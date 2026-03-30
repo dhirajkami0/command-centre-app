@@ -1,0 +1,9 @@
+{
+  "name": "Command Centre",
+  "short_name": "Command",
+  "start_url": "./index.html",
+  "display": "standalone",
+  "background_color": "#0b1a0b",
+  "theme_color": "#0b1a0b",
+  "orientation": "portrait"
+}
