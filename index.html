@@ -2491,13 +2491,20 @@ ${pct(data.health)} / 100
     /* ============================================================
        🔥 DUTY CONTROL (FETCH REAL LEADER)
     ============================================================ */
-   function initDutyControl() {
+ function initDutyControl() {
 
   window.userProfile = window.userProfile || {};
 
-  const email = localStorage.getItem("userEmail");
+  const email = (localStorage.getItem("userEmail") || "")
+    .toLowerCase()
+    .trim();
 
   console.log("📤 Sending email:", email);
+
+  if (!email) {
+    alert("❌ No user email set");
+    return;
+  }
 
   callBackend("getLoggedInLeader", { email: email })
     .then(function (profile) {
