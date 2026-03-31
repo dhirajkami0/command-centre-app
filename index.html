@@ -1296,39 +1296,80 @@ document.addEventListener("DOMContentLoaded", () => {
     /* 🌱 PLANTATION POPUP */
     function openPlantationPopup(id, latlng) {
 
-      var popup = L.popup()
-        .setLatLng(latlng)
-        .setContent('⏳ Loading Plantation Data...')
-        .openOn(map);
+  var popup = L.popup()
+    .setLatLng(latlng)
+    .setContent('⏳ Loading Plantation Data...')
+    .openOn(map);
 
-      callBackend("getPlantationStats", { id })
-        .then(function (data) {
+  callBackend("getPlantationStats", { id })
+    .then(function (data) {
 
-          if (!data) {
-            popup.setContent("❌ No plantation data");
-            return;
-          }
+      if (!data) {
+        popup.setContent("❌ No plantation data");
+        return;
+      }
 
-          function num(v) { return (!v || isNaN(v)) ? "0.00" : Number(v).toFixed(2); }
-          function pct(v) { return (!v || isNaN(v)) ? "0.0" : Number(v).toFixed(1); }
+      function num(v, d = 2) {
+        return (!v || isNaN(v)) ? (0).toFixed(d) : Number(v).toFixed(d);
+      }
 
-          let healthColor = data.health >= 70 ? "#2e7d32" :
-            data.health >= 40 ? "#f9a825" : "#d32f2f";
+      function pct(v) {
+        return (!v || isNaN(v)) ? "0.0" : Number(v).toFixed(1);
+      }
 
-          popup.setContent(`
-      <div style="font-family:Segoe UI;min-width:260px">
-        <b>🌱 ${data.name}</b><hr>
-        Area: ${num(data.total)} ha<br>
-        Canopy: ${pct(data.canopy)}%<br>
-        Health: <b style="color:${healthColor}">${pct(data.health)}</b>
-      </div>
-    `);
+      let healthColor =
+        data.health >= 70 ? "#2e7d32" :
+        data.health >= 40 ? "#f9a825" :
+        "#d32f2f";
 
-        });
+      let conditionColor =
+        data.condition.includes("Healthy") ? "#2e7d32" :
+        data.condition.includes("Degraded") ? "#d32f2f" :
+        "#f9a825";
 
-    }
+      popup.setContent(`
+        <div style="font-family:Segoe UI;min-width:300px;line-height:1.5">
 
+          <b style="font-size:16px">🌱 ${data.name}</b>
+          <hr>
 
+          <b>📊 General</b><br>
+          Area: ${num(data.total)} ha<br>
+          Canopy: ${pct(data.canopy)}%<br>
+          Height: ${num(data.height)} m<br>
+          Density: ${data.density || "-"}<br>
+          Health: <b style="color:${healthColor}">${pct(data.health)}</b><br>
+
+          <hr>
+
+          <b>🌿 Land Cover</b><br>
+          🌳 Forest: ${num(data.forest)} ha (${pct(data.forest_pct)}%)<br>
+          🔴 Degraded: ${num(data.degraded)} ha (${pct(data.degraded_pct)}%)<br>
+          🌱 Grass: ${num(data.grass)} ha (${pct(data.grass_pct)}%)<br>
+          🌾 Crop: ${num(data.crop)} ha (${pct(data.crop_pct)}%)<br>
+          🌿 Bush: ${num(data.bush)} ha (${pct(data.bush_pct)}%)<br>
+          🏠 Built: ${num(data.built)} ha (${pct(data.built_pct)}%)<br>
+          🟤 Bare: ${num(data.bare)} ha (${pct(data.bare_pct)}%)<br>
+          💧 Water: ${num(data.water)} ha (${pct(data.water_pct)}%)<br>
+
+          <hr>
+
+          <b>📌 Condition</b><br>
+          <span style="color:${conditionColor};font-weight:bold">
+            ${data.condition}
+          </span><br>
+          <small>${data.reason}</small>
+
+        </div>
+      `);
+
+    })
+    .catch(function (err) {
+      console.error(err);
+      popup.setContent("❌ Error loading data");
+    });
+
+}
     /* 🌳 RANGE POPUP */
     function openRangePopup(latlng){
 
