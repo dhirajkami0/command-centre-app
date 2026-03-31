@@ -1246,6 +1246,7 @@ document.addEventListener("DOMContentLoaded", () => {
         return;
       }
 
+      // 🔥 CLEAR OLD
       plantationLayer.clearLayers();
 
       const layer = L.geoJSON(data, {
@@ -1254,7 +1255,7 @@ document.addEventListener("DOMContentLoaded", () => {
           return {
             color: "#00ffff",
             weight: 3,
-            fillColor: false,
+            fillColor: null,
             fillOpacity: 0
           };
         },
@@ -1263,15 +1264,11 @@ document.addEventListener("DOMContentLoaded", () => {
 
           let props = feature.properties || {};
 
-          // ✅ DISPLAY NAME
           let name = props.name || "Plantation";
-
-          // 🔥 UNIQUE ID (CRITICAL FIX)
           let id = props.id || props.ID || name;
 
           console.log("🌱 Block:", name, "ID:", id);
 
-          // ✅ CLICK EVENT
           l.on('click', function(e){
             openPlantationPopup(id, e.latlng);
           });
@@ -1280,8 +1277,17 @@ document.addEventListener("DOMContentLoaded", () => {
 
       });
 
+      // 🔥 ADD TO LAYER
       plantationLayer.addLayer(layer);
-      plantationLayer.bringToFront();
+
+      // 🔥 SAFE BRING TO FRONT (FINAL FIX)
+      if (plantationLayer && plantationLayer.eachLayer) {
+        plantationLayer.eachLayer(function(l){
+          if (l && l.bringToFront) {
+            l.bringToFront();
+          }
+        });
+      }
 
       console.log("✅ Plantation layer ready");
 
