@@ -2804,7 +2804,7 @@ var layerControl = L.control.layers({
   "🗺 Google Hybrid": googleHybrid
 
 }, {
-  /* 🔼 OVERLAYS (ORDER MATTERS) */
+  /* 🔼 OVERLAYS */
 
   "🌧 Rain Radar": rainLayer,
   "🌲 Forest NDVI": geeForest,
@@ -2836,7 +2836,58 @@ var layerControl = L.control.layers({
 
 
 /* ============================================================
-   ⚡ LAZY LOAD ENGINE (FULLY FIXED)
+   🚀 GROUP TRACK DRAW ENGINE (GLOBAL)
+============================================================ */
+let groupTrackLayer = L.layerGroup().addTo(map);
+
+function loadGroupTracks(data) {
+
+  groupTrackLayer.clearLayers();
+
+  if (!data || data.length === 0) {
+    console.warn("⚠ No track data");
+    return;
+  }
+
+  data.forEach((d, i) => {
+
+    if (!d || !d.track || d.track.length === 0) return;
+
+    console.log("📍 Track", i, d.group, d.track[0]);
+
+    let color =
+      d.group === "GARAM" ? "orange" :
+      d.group === "PORO" ? "blue" :
+      d.group === "HQ" ? "red" :
+      "gray";
+
+    try {
+      L.polyline(d.track, {
+        color: color,
+        weight: 3,
+        opacity: 0.9
+      }).addTo(groupTrackLayer);
+    } catch (err) {
+      console.error("❌ Polyline error:", err);
+    }
+
+  });
+
+  console.log("🚀 DRAWN TRACKS:", data.length);
+
+  // 🔥 Auto zoom
+  try {
+    if (groupTrackLayer.getLayers().length > 0) {
+      map.fitBounds(groupTrackLayer.getBounds());
+    }
+  } catch (e) {
+    console.warn("⚠ Fit bounds error");
+  }
+}
+
+
+/* ============================================================
+   ⚡ LAZY LOAD ENGINE (FINAL FIXED)
 ============================================================ */
 map.on('overlayadd', function (e) {
 
@@ -2844,70 +2895,35 @@ map.on('overlayadd', function (e) {
 
   try {
 
-    if (!e || !e.name) {
-      console.warn("⚠ Invalid layer event");
-      return;
-    }
+    if (!e || !e.name) return;
 
-    /* ===============================
-       🌱 Plantation
-    =============================== */
+    /* 🌱 Plantation */
     if (e.name === "🌱 Plantation") {
-
-      if (typeof loadPlantationLayer === "function") {
-        loadPlantationLayer();
-      } else {
-        console.error("❌ loadPlantationLayer not defined");
-      }
-
+      if (typeof loadPlantationLayer === "function") loadPlantationLayer();
       return;
     }
 
-    /* ===============================
-       🌊 Waterholes
-    =============================== */
+    /* 🌊 Waterholes */
     if (e.name === "🌊 Waterholes / Ponds") {
-
-      if (typeof loadPondVisuals === "function") {
-        loadPondVisuals();
-      } else {
-        console.error("❌ loadPondVisuals not defined");
-      }
-
+      if (typeof loadPondVisuals === "function") loadPondVisuals();
       return;
     }
 
-    /* ===============================
-       💧 Rivers
-    =============================== */
+    /* 💧 Rivers */
     if (e.name === "💧 River Network") {
-
-      if (typeof loadRiverNetwork === "function") {
-        loadRiverNetwork();
-      } else {
-        console.error("❌ loadRiverNetwork not defined");
-      }
-
+      if (typeof loadRiverNetwork === "function") loadRiverNetwork();
       return;
     }
 
-    /* ===============================
-       👮 Staff
-    =============================== */
+    /* 👮 Staff */
     if (e.name === "👮 Staff") {
-
-      if (typeof loadStaff === "function") {
-        loadStaff();
-      } else {
-        console.error("❌ loadStaff not defined");
-      }
-
+      if (typeof loadStaff === "function") loadStaff();
       return;
     }
 
-    /* ===============================
-       📍 GROUP TRACKS
-    =============================== */
+    /* ============================================================
+       📍 GROUP TRACKS (🔥 FULL FIX)
+    ============================================================ */
     if (
       e.name === "📍 Garam (East + West)" ||
       e.name === "📍 East Poro" ||
@@ -2915,28 +2931,38 @@ map.on('overlayadd', function (e) {
     ) {
 
       callBackend("getMonthlyGroupTracks")
-  .then(function (data) {
+        .then(function (data) {
 
-    let selectedGroup = "";
+          console.log("📦 FULL DATA:", data);
 
-    if (e.name === "📍 Garam (East + West)") selectedGroup = "GARAM";
-    if (e.name === "📍 East Poro") selectedGroup = "PORO";
-    if (e.name === "📍 Range HQ") selectedGroup = "HQ";
+          if (!data || data.length === 0) {
+            console.warn("⚠ No backend data");
+            return;
+          }
 
-    const filtered = data.filter(d => d.group === selectedGroup);
+          let selectedGroup = "";
 
-    console.log("✅ Filtered Tracks:", filtered.length);
+          if (e.name === "📍 Garam (East + West)") selectedGroup = "GARAM";
+          if (e.name === "📍 East Poro") selectedGroup = "PORO";
+          if (e.name === "📍 Range HQ") selectedGroup = "HQ";
 
-    if (typeof loadGroupTracks === "function") {
-      loadGroupTracks(filtered);
-    } else {
-      console.error("❌ loadGroupTracks not defined");
+          console.log("🎯 Selected Group:", selectedGroup);
+
+          const filtered = data.filter(d => d.group === selectedGroup);
+
+          console.log("✅ Filtered Tracks:", filtered.length);
+
+          loadGroupTracks(filtered);
+
+        })
+        .catch(function (err) {
+          console.error("❌ Group Track Error:", err);
+        });
+
+      return; // 🚨 CRITICAL
     }
 
-  })
-    /* ===============================
-       🟢🔴 GRID SYSTEM
-    =============================== */
+    /* 🟢🔴 GRID */
     if (
       e.name === "🟢 Visited Grid" ||
       e.name === "🔴 Unvisited Grid"
@@ -2945,15 +2971,10 @@ map.on('overlayadd', function (e) {
       callBackend("getGridStatus")
         .then(function (data) {
 
-          if (!data || data.length === 0) {
-            console.warn("⚠ Grid empty");
-            return;
-          }
+          if (!data || data.length === 0) return;
 
           if (typeof showGridStatus === "function") {
             showGridStatus(data);
-          } else {
-            console.error("❌ showGridStatus not defined");
           }
 
         })
@@ -2964,9 +2985,7 @@ map.on('overlayadd', function (e) {
       return;
     }
 
-    /* ===============================
-       📊 MONTHLY COVERAGE
-    =============================== */
+    /* 📊 SUMMARY */
     if (e.name === "📊 Monthly Coverage") {
 
       summaryLayer.addTo(map);
@@ -2974,24 +2993,16 @@ map.on('overlayadd', function (e) {
       callBackend("getCompartmentSummary")
         .then(function (data) {
 
-          if (!data || !Array.isArray(data)) {
-            console.warn("⚠ No summary data");
-            return;
-          }
+          if (!data || !Array.isArray(data)) return;
 
           if (typeof showCompartmentSummary === "function") {
             showCompartmentSummary(data);
             summaryLayer.bringToFront();
-          } else {
-            console.error("❌ showCompartmentSummary not defined");
           }
 
         })
         .catch(function (err) {
           console.error("❌ Summary error:", err);
-
-          var el = document.getElementById('last-update');
-          if (el) el.innerHTML = "⚠ Summary Error";
         });
 
       return;
@@ -3001,24 +3012,33 @@ map.on('overlayadd', function (e) {
     console.error("❌ Lazy load crash:", err);
   }
 
-});          /* ============================================================
-             🧹 OPTIONAL CLEANUP (ADVANCED - PREVENT MEMORY BLOAT)
-          ============================================================ */
-          map.on('overlayremove', function (e) {
+});
 
-            console.log("🧹 Layer Disabled:", e.name);
 
-            /* Optional: free heavy layers */
+/* ============================================================
+   🧹 CLEANUP (OPTIONAL)
+============================================================ */
+map.on('overlayremove', function (e) {
 
-            if (e.name === "💧 River Network") {
-              riverLayer.clearLayers(); // free memory
-            }
+  console.log("🧹 Layer Disabled:", e.name);
 
-            if (e.name === "🌱 Plantation") {
-              plantationLayer.clearLayers();
-            }
+  if (e.name === "💧 River Network") {
+    riverLayer.clearLayers();
+  }
 
-          });
+  if (e.name === "🌱 Plantation") {
+    plantationLayer.clearLayers();
+  }
+
+  if (
+    e.name === "📍 Garam (East + West)" ||
+    e.name === "📍 East Poro" ||
+    e.name === "📍 Range HQ"
+  ) {
+    groupTrackLayer.clearLayers(); // 🔥 important cleanup
+  }
+
+});
           /* ============================================================
              🐘 SIGHTING FORM SYSTEM (FINAL SAFE VERSION)
           ============================================================ */
