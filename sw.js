@@ -1,6 +1,5 @@
-const CACHE_NAME = "forest-app-v1";
+const CACHE_NAME = "forest-app-v3";
 
-/* Files to cache */
 const urlsToCache = [
   "./",
   "./index.html",
@@ -9,27 +8,39 @@ const urlsToCache = [
 
 /* INSTALL */
 self.addEventListener("install", event => {
-  console.log("✅ Service Worker Installing...");
+  self.skipWaiting();
 
   event.waitUntil(
     caches.open(CACHE_NAME)
       .then(cache => cache.addAll(urlsToCache))
-      .catch(err => console.error("❌ Cache failed:", err))
   );
-
-  self.skipWaiting();
 });
 
 /* ACTIVATE */
 self.addEventListener("activate", event => {
-  console.log("🚀 Service Worker Activated");
+  event.waitUntil(
+    caches.keys().then(keys => {
+      return Promise.all(
+        keys.map(key => {
+          if (key !== CACHE_NAME) {
+            return caches.delete(key);
+          }
+        })
+      );
+    })
+  );
 });
 
-/* FETCH */
+/* FETCH — network first */
 self.addEventListener("fetch", event => {
   event.respondWith(
-    caches.match(event.request)
-      .then(response => response || fetch(event.request))
-      .catch(() => console.log("⚠️ Fetch failed"))
+    fetch(event.request)
+      .then(res => {
+        return caches.open(CACHE_NAME).then(cache => {
+          cache.put(event.request, res.clone());
+          return res;
+        });
+      })
+      .catch(() => caches.match(event.request))
   );
 });
