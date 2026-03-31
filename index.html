@@ -2915,22 +2915,25 @@ map.on('overlayadd', function (e) {
     ) {
 
       callBackend("getMonthlyGroupTracks")
-        .then(function (data) {
+  .then(function (data) {
 
-          if (typeof loadGroupTracks === "function") {
-            loadGroupTracks(data);
-          } else {
-            console.error("❌ loadGroupTracks not defined");
-          }
+    let selectedGroup = "";
 
-        })
-        .catch(function (err) {
-          console.error("❌ Group Track Error:", err);
-        });
+    if (e.name === "📍 Garam (East + West)") selectedGroup = "GARAM";
+    if (e.name === "📍 East Poro") selectedGroup = "PORO";
+    if (e.name === "📍 Range HQ") selectedGroup = "HQ";
 
-      return;
+    const filtered = data.filter(d => d.group === selectedGroup);
+
+    console.log("✅ Filtered Tracks:", filtered.length);
+
+    if (typeof loadGroupTracks === "function") {
+      loadGroupTracks(filtered);
+    } else {
+      console.error("❌ loadGroupTracks not defined");
     }
 
+  })
     /* ===============================
        🟢🔴 GRID SYSTEM
     =============================== */
