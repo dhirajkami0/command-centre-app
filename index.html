@@ -3145,116 +3145,120 @@ document.getElementById('form-modal').style.display = 'none';
 /* 5. Submit */
 function submitSightingForm(event) {
 
-if (event) event.preventDefault();
+  if (event) event.preventDefault();
 
-try {
+  try {
 
-```
-const sightingID = "SIGHT-" + Date.now();
+    const sightingID = "SIGHT-" + Date.now();
 
-const m = parseInt(document.getElementById("f-m").value) || 0;
-const f = parseInt(document.getElementById("f-f").value) || 0;
-const uni = parseInt(document.getElementById("f-uni").value) || 0;
-const c = parseInt(document.getElementById("f-c").value) || 0;
+    const m   = parseInt(document.getElementById("f-m").value) || 0;
+    const f   = parseInt(document.getElementById("f-f").value) || 0;
+    const uni = parseInt(document.getElementById("f-uni").value) || 0;
+    const c   = parseInt(document.getElementById("f-c").value) || 0;
 
-const total = m + f + uni + c;
+    const total = m + f + uni + c;
 
-const lat = document.getElementById("f-lat").value;
-const lon = document.getElementById("f-lon").value;
+    const lat = document.getElementById("f-lat").value;
+    const lon = document.getElementById("f-lon").value;
 
-const location = lat + "," + lon;
+    const location = lat + "," + lon;
 
-const now = new Date();
-const time = now.toLocaleTimeString("en-IN");
+    const now = new Date();
+    const time = now.toLocaleTimeString("en-IN");
 
-if (!lat || !lon) {
-  alert("❌ Location missing");
-  return;
-}
-
-if (!document.getElementById("f-beat").value || !document.getElementById("f-compt").value) {
-  alert("❌ Select Beat & Compartment");
-  return;
-}
-
-const payload = {
-  sighting_id: sightingID,
-  parent_id: "",
-  beat: document.getElementById("f-beat").value,
-  forest_block: document.getElementById("f-beat").value,
-  compt: document.getElementById("f-compt").value,
-  time: time,
-  m: m,
-  f: f,
-  unidentified: uni,
-  calf: c,
-  total_seen: total,
-  anticipated: "",
-  depredation: "",
-  involved: "",
-  driving: "",
-  remarks: document.getElementById("f-remarks").value,
-  leader: window.userProfile?.leader || "",
-  staff: document.getElementById("f-staff")?.value || "",
-  location: location,
-  direction: document.getElementById("f-dir").value
-};
-
-console.log("📤 Payload:", payload);
-
-const fileInput = document.getElementById("f-photo-file");
-const file = fileInput ? fileInput.files[0] : null;
-
-function submitToServer(finalPayload) {
-
-  if (typeof google === "undefined" || !google.script) {
-    alert("❌ Not running as Apps Script Web App");
-    return;
-  }
-
-  callBackend("saveElephantSighting", {
-    finalPayload: finalPayload
-  })
-  .then(function () {
-
-    alert("✅ Submitted to Command Centre");
-
-    if (typeof closeSightingForm === "function") {
-      closeSightingForm();
+    /* 🔍 VALIDATION */
+    if (!lat || !lon) {
+      alert("❌ Location missing");
+      return;
     }
 
-    const form = document.getElementById("elephantForm");
-    if (form) form.reset();
+    if (!document.getElementById("f-beat").value || !document.getElementById("f-compt").value) {
+      alert("❌ Select Beat & Compartment");
+      return;
+    }
 
-  })
-  .catch(function (err) {
-    console.error("❌ Error:", err);
-    alert("❌ Submission failed\n" + (err.message || ""));
-  });
-
-  if (file) {
-    const reader = new FileReader();
-
-    reader.onloadend = function () {
-      payload.photo = reader.result;
-      submitToServer(payload);
+    /* 📦 PAYLOAD */
+    const payload = {
+      sighting_id: sightingID,
+      parent_id: "",
+      beat: document.getElementById("f-beat").value,
+      forest_block: document.getElementById("f-beat").value,
+      compt: document.getElementById("f-compt").value,
+      time: time,
+      m: m,
+      f: f,
+      unidentified: uni,
+      calf: c,
+      total_seen: total,
+      anticipated: "",
+      depredation: "",
+      involved: "",
+      driving: "",
+      remarks: document.getElementById("f-remarks").value,
+      leader: window.userProfile?.leader || "",
+      staff: document.getElementById("f-staff")?.value || "",
+      location: location,
+      direction: document.getElementById("f-dir").value,
+      photo: "" // default
     };
 
-    reader.readAsDataURL(file);
+    console.log("📤 Payload:", payload);
 
-  } else {
-    payload.photo = "";
-    submitToServer(payload);
+    const fileInput = document.getElementById("f-photo-file");
+    const file = fileInput ? fileInput.files[0] : null;
+
+    /* 🚀 FINAL SUBMIT FUNCTION */
+    function send(finalPayload) {
+
+      callBackend("saveElephantSighting", finalPayload)
+        .then(function (res) {
+
+          if (!res) {
+            alert("❌ No response from server");
+            return;
+          }
+
+          if (res.error) {
+            alert("❌ " + res.error);
+            return;
+          }
+
+          alert("✅ Submitted to Command Centre");
+
+          if (typeof closeSightingForm === "function") {
+            closeSightingForm();
+          }
+
+          const form = document.getElementById("elephantForm");
+          if (form) form.reset();
+
+        })
+        .catch(function (err) {
+          console.error("❌ Error:", err);
+          alert("❌ Submission failed");
+        });
+    }
+
+    /* 📸 PHOTO HANDLING */
+    if (file) {
+
+      const reader = new FileReader();
+
+      reader.onloadend = function () {
+        payload.photo = reader.result;
+        send(payload);
+      };
+
+      reader.readAsDataURL(file);
+
+    } else {
+      send(payload);
+    }
+
+  } catch (e) {
+    console.error("❌ Crash:", e);
+    alert("❌ Form error: " + e.message);
   }
-
-} // ✅ fixed
-```
-
-} catch (e) {
-console.error("❌ Crash:", e);
-alert("❌ Form error: " + e.message);
-}
-
 }
 
 /* ============================================================
