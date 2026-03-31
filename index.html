@@ -2491,31 +2491,36 @@ ${pct(data.health)} / 100
     /* ============================================================
        🔥 DUTY CONTROL (FETCH REAL LEADER)
     ============================================================ */
-    function initDutyControl() {
+   function initDutyControl() {
 
-      callBackend("getLoggedInLeader")
-        .then(function (profile) {
+  // 🔥 Ensure object exists
+  window.userProfile = window.userProfile || {};
 
-          console.log("📡 getLoggedInLeader() response:", profile);
+  callBackend("getLoggedInLeader", {
+    email: localStorage.getItem("userEmail") || "dhirajkami0@gmail.com"
+  })
+  .then(function (profile) {
 
-          if (!profile || !profile.leader) {
-            console.error("❌ No leader returned from backend");
-            return;
-          }
+    console.log("📡 getLoggedInLeader() response:", profile);
 
-          // 🔥 SET REAL LEADER
-          window.userProfile.leader = profile.leader;
-
-          console.log("✅ Leader from backend:", profile.leader);
-
-          console.log("🚀 Checking duty for:", profile.leader);
-
-          autoShowEndDuty();
-
-        });
-
+    if (!profile || !profile.leader) {
+      console.error("❌ No leader returned from backend");
+      return;
     }
 
+    // 🔥 FULL OBJECT ASSIGN (IMPORTANT)
+    window.userProfile = profile;
+
+    console.log("✅ Leader:", profile.leader);
+    console.log("🚀 Checking duty for:", profile.leader);
+
+    autoShowEndDuty();
+
+  })
+  .catch(function (err) {
+    console.error("❌ initDutyControl error:", err);
+  });
+}
 
     /* ============================================================
        🔥 MAIN APP LOAD
