@@ -2753,7 +2753,50 @@ ${pct(data.health)} / 100
     /* ============================================================
    ⚡ LAZY LOAD ENGINE (FIXED + SAFE)
 ============================================================ */
+/* ============================================================
+   🎛 LAYER CONTROL
+============================================================ */
+var layerControl = L.control.layers({
 
+  /* 🔽 BASE MAPS */
+  "🛰 Satellite": esriSat,
+  "🗺 Google Hybrid": googleHybrid
+
+}, {
+  /* 🔼 OVERLAYS (ORDER MATTERS) */
+
+  "🌧 Rain Radar": rainLayer,
+  "🌲 Forest NDVI": geeForest,
+
+  "👮 Staff": staffLayer,
+  "🐘 Elephants": elephantLayer,
+  "🚨 Alerts": incidentLayer,
+
+  "📡 Prediction": predictionLayer,
+  "🏡 Villages": villageLayer,
+
+  "🌱 Plantation": plantationLayer,
+  "🌊 Waterholes / Ponds": pondLayer,
+  "💧 River Network": riverLayer,
+
+  /* 🔥 GROUP TRACKS */
+  "📍 Garam (East + West)": groupLayers["GARAM"],
+  "📍 East Poro": groupLayers["PORO"],
+  "📍 Range HQ": groupLayers["HQ"],
+
+  /* 🔥 GRID + SUMMARY */
+  "🟢 Visited Grid": visitedLayer,
+  "🔴 Unvisited Grid": unvisitedLayer,
+  "📊 Monthly Coverage": summaryLayer
+
+}, {
+  collapsed: true
+}).addTo(map);
+
+
+/* ============================================================
+   ⚡ LAZY LOAD ENGINE (FULLY FIXED)
+============================================================ */
 map.on('overlayadd', function (e) {
 
   console.log("🧭 Layer Enabled:", e.name);
@@ -2773,7 +2816,7 @@ map.on('overlayadd', function (e) {
       if (typeof loadPlantationLayer === "function") {
         loadPlantationLayer();
       } else {
-        console.error("❌ loadPlantationLayer not found");
+        console.error("❌ loadPlantationLayer not defined");
       }
 
       return;
@@ -2787,7 +2830,7 @@ map.on('overlayadd', function (e) {
       if (typeof loadPondVisuals === "function") {
         loadPondVisuals();
       } else {
-        console.error("❌ loadPondVisuals not found");
+        console.error("❌ loadPondVisuals not defined");
       }
 
       return;
@@ -2801,21 +2844,21 @@ map.on('overlayadd', function (e) {
       if (typeof loadRiverNetwork === "function") {
         loadRiverNetwork();
       } else {
-        console.error("❌ loadRiverNetwork not found");
+        console.error("❌ loadRiverNetwork not defined");
       }
 
       return;
     }
 
     /* ===============================
-       👮 Staff (force refresh)
+       👮 Staff
     =============================== */
     if (e.name === "👮 Staff") {
 
       if (typeof loadStaff === "function") {
         loadStaff();
       } else {
-        console.error("❌ loadStaff not found");
+        console.error("❌ loadStaff not defined");
       }
 
       return;
@@ -2836,11 +2879,11 @@ map.on('overlayadd', function (e) {
           if (typeof loadGroupTracks === "function") {
             loadGroupTracks(data);
           } else {
-            console.error("❌ loadGroupTracks not found");
+            console.error("❌ loadGroupTracks not defined");
           }
 
         })
-        .catch(err => {
+        .catch(function (err) {
           console.error("❌ Group Track Error:", err);
         });
 
@@ -2866,11 +2909,11 @@ map.on('overlayadd', function (e) {
           if (typeof showGridStatus === "function") {
             showGridStatus(data);
           } else {
-            console.error("❌ showGridStatus not found");
+            console.error("❌ showGridStatus not defined");
           }
 
         })
-        .catch(err => {
+        .catch(function (err) {
           console.error("❌ Grid error:", err);
         });
 
@@ -2896,14 +2939,14 @@ map.on('overlayadd', function (e) {
             showCompartmentSummary(data);
             summaryLayer.bringToFront();
           } else {
-            console.error("❌ showCompartmentSummary not found");
+            console.error("❌ showCompartmentSummary not defined");
           }
 
         })
         .catch(function (err) {
           console.error("❌ Summary error:", err);
 
-          const el = document.getElementById('last-update');
+          var el = document.getElementById('last-update');
           if (el) el.innerHTML = "⚠ Summary Error";
         });
 
@@ -2914,8 +2957,7 @@ map.on('overlayadd', function (e) {
     console.error("❌ Lazy load crash:", err);
   }
 
-});
-          /* ============================================================
+});          /* ============================================================
              🧹 OPTIONAL CLEANUP (ADVANCED - PREVENT MEMORY BLOAT)
           ============================================================ */
           map.on('overlayremove', function (e) {
