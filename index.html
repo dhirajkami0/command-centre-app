@@ -2750,166 +2750,171 @@ ${pct(data.health)} / 100
     /* ============================================================
        🎛 LAYER CONTROL (CLEAN + ORDERED)
     ============================================================ */
-    var layerControl = L.control.layers({
-
-      /* 🔽 BASE MAPS */
-      "🛰 Satellite": esriSat,
-      "🗺 Google Hybrid": googleHybrid
-
-    }, {
-      /* 🔼 OVERLAYS (ORDER MATTERS) */
-
-      "🌧 Rain Radar": rainLayer,
-      "🌲 Forest NDVI": geeForest,
-
-      "👮 Staff": staffLayer,
-      "🐘 Elephants": elephantLayer,
-      "🚨 Alerts": incidentLayer,
-
-      "📡 Prediction": predictionLayer,
-      "🏡 Villages": villageLayer,
-
-      "🌱 Plantation": plantationLayer,
-      "🌊 Waterholes / Ponds": pondLayer,
-      "💧 River Network": riverLayer,
-
-      /* 🔥 GROUP TRACKS */
-      "📍 Garam (East + West)": groupLayers["GARAM"],
-      "📍 East Poro": groupLayers["PORO"],
-      "📍 Range HQ": groupLayers["HQ"],
-
-      /* 🔥 GRID + SUMMARY */
-      "🟢 Visited Grid": visitedLayer,
-      "🔴 Unvisited Grid": unvisitedLayer,
-      "📊 Monthly Coverage": summaryLayer
-
-    }, {
-      collapsed: true
-    }).addTo(map);
-
-
     /* ============================================================
-       ⚡ LAZY LOAD ENGINE (CRITICAL SYSTEM)
-    ============================================================ */
+   ⚡ LAZY LOAD ENGINE (FIXED + SAFE)
+============================================================ */
+
 map.on('overlayadd', function (e) {
 
-console.log("🧭 Layer Enabled:", e.name);
+  console.log("🧭 Layer Enabled:", e.name);
 
-try {
+  try {
 
-```
-/* ===============================
-   🌱 Plantation
-=============================== */
-if (e.name === "🌱 Plantation") {
-  loadPlantationLayer();
-  return;
-}
+    if (!e || !e.name) {
+      console.warn("⚠ Invalid layer event");
+      return;
+    }
 
-/* ===============================
-   🌊 Waterholes
-=============================== */
-if (e.name === "🌊 Waterholes / Ponds") {
-  loadPondVisuals();
-  return;
-}
+    /* ===============================
+       🌱 Plantation
+    =============================== */
+    if (e.name === "🌱 Plantation") {
 
-/* ===============================
-   💧 Rivers
-=============================== */
-if (e.name === "💧 River Network") {
-  loadRiverNetwork();
-  return;
-}
-
-/* ===============================
-   👮 Staff (force refresh)
-=============================== */
-if (e.name === "👮 Staff") {
-  loadStaff();
-  return;
-}
-
-/* ===============================
-   📍 GROUP TRACKS
-=============================== */
-if (
-  e.name === "📍 Garam (East + West)" ||
-  e.name === "📍 East Poro" ||
-  e.name === "📍 Range HQ"
-) {
-
-  callBackend("getMonthlyGroupTracks")
-    .then(loadGroupTracks)
-    .catch(err => {
-      console.error("❌ Group Track Error:", err);
-    });
-
-  return;
-} // ✅ FIX: closed this block properly
-
-
-/* ===============================
-   🟢🔴 GRID SYSTEM
-=============================== */
-if (
-  e.name === "🟢 Visited Grid" ||
-  e.name === "🔴 Unvisited Grid"
-) {
-
-  callBackend("getGridStatus")
-    .then(function (data) {
-
-      if (!data || data.length === 0) {
-        console.warn("⚠ Grid empty");
-        return;
+      if (typeof loadPlantationLayer === "function") {
+        loadPlantationLayer();
+      } else {
+        console.error("❌ loadPlantationLayer not found");
       }
 
-      showGridStatus(data);
+      return;
+    }
 
-    })
-    .catch(err => {
-      console.error("❌ Grid error:", err);
-    });
+    /* ===============================
+       🌊 Waterholes
+    =============================== */
+    if (e.name === "🌊 Waterholes / Ponds") {
 
-  return;
-} // ✅ FIX: closed GRID block
-
-
-/* ===============================
-   📊 MONTHLY COVERAGE (FIXED)
-=============================== */
-if (e.name === "📊 Monthly Coverage") {
-
-  summaryLayer.addTo(map);
-
-  callBackend("getCompartmentSummary")
-    .then(function (data) {
-
-      if (!data || !Array.isArray(data)) {
-        console.warn("⚠ No summary data");
-        return;
+      if (typeof loadPondVisuals === "function") {
+        loadPondVisuals();
+      } else {
+        console.error("❌ loadPondVisuals not found");
       }
 
-      showCompartmentSummary(data);
-      summaryLayer.bringToFront();
+      return;
+    }
 
-    })
-    .catch(function (err) {
-      console.error("❌ Summary error:", err);
-      document.getElementById('last-update').innerHTML = "⚠ Summary Error";
-    });
+    /* ===============================
+       💧 Rivers
+    =============================== */
+    if (e.name === "💧 River Network") {
 
-  return;
-}
-```
+      if (typeof loadRiverNetwork === "function") {
+        loadRiverNetwork();
+      } else {
+        console.error("❌ loadRiverNetwork not found");
+      }
 
-} catch (err) {
-console.error("❌ Lazy load crash:", err);
-}
+      return;
+    }
+
+    /* ===============================
+       👮 Staff (force refresh)
+    =============================== */
+    if (e.name === "👮 Staff") {
+
+      if (typeof loadStaff === "function") {
+        loadStaff();
+      } else {
+        console.error("❌ loadStaff not found");
+      }
+
+      return;
+    }
+
+    /* ===============================
+       📍 GROUP TRACKS
+    =============================== */
+    if (
+      e.name === "📍 Garam (East + West)" ||
+      e.name === "📍 East Poro" ||
+      e.name === "📍 Range HQ"
+    ) {
+
+      callBackend("getMonthlyGroupTracks")
+        .then(function (data) {
+
+          if (typeof loadGroupTracks === "function") {
+            loadGroupTracks(data);
+          } else {
+            console.error("❌ loadGroupTracks not found");
+          }
+
+        })
+        .catch(err => {
+          console.error("❌ Group Track Error:", err);
+        });
+
+      return;
+    }
+
+    /* ===============================
+       🟢🔴 GRID SYSTEM
+    =============================== */
+    if (
+      e.name === "🟢 Visited Grid" ||
+      e.name === "🔴 Unvisited Grid"
+    ) {
+
+      callBackend("getGridStatus")
+        .then(function (data) {
+
+          if (!data || data.length === 0) {
+            console.warn("⚠ Grid empty");
+            return;
+          }
+
+          if (typeof showGridStatus === "function") {
+            showGridStatus(data);
+          } else {
+            console.error("❌ showGridStatus not found");
+          }
+
+        })
+        .catch(err => {
+          console.error("❌ Grid error:", err);
+        });
+
+      return;
+    }
+
+    /* ===============================
+       📊 MONTHLY COVERAGE
+    =============================== */
+    if (e.name === "📊 Monthly Coverage") {
+
+      summaryLayer.addTo(map);
+
+      callBackend("getCompartmentSummary")
+        .then(function (data) {
+
+          if (!data || !Array.isArray(data)) {
+            console.warn("⚠ No summary data");
+            return;
+          }
+
+          if (typeof showCompartmentSummary === "function") {
+            showCompartmentSummary(data);
+            summaryLayer.bringToFront();
+          } else {
+            console.error("❌ showCompartmentSummary not found");
+          }
+
+        })
+        .catch(function (err) {
+          console.error("❌ Summary error:", err);
+
+          const el = document.getElementById('last-update');
+          if (el) el.innerHTML = "⚠ Summary Error";
+        });
+
+      return;
+    }
+
+  } catch (err) {
+    console.error("❌ Lazy load crash:", err);
+  }
 
 });
-
           /* ============================================================
              🧹 OPTIONAL CLEANUP (ADVANCED - PREVENT MEMORY BLOAT)
           ============================================================ */
