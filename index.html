@@ -2962,30 +2962,55 @@ map.on('overlayadd', function (e) {
       return; // 🚨 CRITICAL
     }
 
-    /* 🟢🔴 GRID */
-    if (
-      e.name === "🟢 Visited Grid" ||
-      e.name === "🔴 Unvisited Grid"
-    ) {
+ /* ===============================
+   🟢🔴 GRID (FULL SAFE FIX)
+=============================== */
+if (
+  e.name === "🟢 Visited Grid" ||
+  e.name === "🔴 Unvisited Grid"
+) {
 
-      callBackend("getGridStatus")
-        .then(function (data) {
+  callBackend("getGridStatus")
+    .then(function (data) {
 
-          if (!data || data.length === 0) return;
+      console.log("📦 RAW GRID RESPONSE:", data);
 
-          if (typeof showGridStatus === "function") {
-            showGridStatus(data);
-          }
+      // 🔥 STEP 1: NULL CHECK
+      if (!data) {
+        console.warn("⚠ No grid data");
+        return;
+      }
 
-        })
-        .catch(function (err) {
-          console.error("❌ Grid error:", err);
-        });
+      // 🔥 STEP 2: HANDLE {data: [...]}
+      if (data.data && Array.isArray(data.data)) {
+        data = data.data;
+      }
 
-      return;
-    }
+      // 🔥 STEP 3: FINAL VALIDATION
+      if (!Array.isArray(data)) {
+        console.error("❌ Grid data is not array:", data);
+        return;
+      }
 
-    /* 📊 SUMMARY */
+      if (data.length === 0) {
+        console.warn("⚠ Grid empty");
+        return;
+      }
+
+      // 🔥 STEP 4: SAFE CALL
+      if (typeof showGridStatus === "function") {
+        showGridStatus(data);
+      } else {
+        console.error("❌ showGridStatus not defined");
+      }
+
+    })
+    .catch(function (err) {
+      console.error("❌ Grid error:", err);
+    });
+
+  return;
+}   /* 📊 SUMMARY */
     if (e.name === "📊 Monthly Coverage") {
 
       summaryLayer.addTo(map);
