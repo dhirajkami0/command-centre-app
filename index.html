@@ -3267,61 +3267,100 @@ function submitSightingForm(event) {
 ============================================================ */
 
 let dutyComptMap = {};
-
 function openDutyForm() {
 
-document.getElementById("duty-modal").style.display = "block";
+  const modal = document.getElementById("duty-modal");
+  if (modal) modal.style.display = "block";
 
-const now = new Date();
+  const now = new Date();
 
-document.getElementById("d-id").value = "DUTY-" + Date.now();
-document.getElementById("d-date").value = now.toLocaleString();
+  const setVal = (id, val) => {
+    const el = document.getElementById(id);
+    if (el) el.value = val;
+    else console.warn("⚠ Missing element:", id);
+  };
 
-callBackend("getLoggedInLeader")
-.then(function (profile) {
+  setVal("d-id", "DUTY-" + Date.now());
+  setVal("d-date", now.toLocaleString());
 
+  /* 🔥 FETCH PROFILE FROM BACKEND */
+  callBackend("getLoggedInLeader")
+    .then(function (profile) {
 
-  window.userProfile = profile;
+      console.log("👤 Profile:", profile);
 
-  document.getElementById("d-leader").value = profile.leader;
+      if (!profile) {
+        console.error("❌ No profile received");
+        return;
+      }
 
-  const beatSel = document.getElementById("d-beat");
-  beatSel.innerHTML = "";
+      window.userProfile = profile;
 
-  if (profile.role === "ADMIN") {
-    ["East Garam", "West Garam", "East Poro", "Range HQ"].forEach(b => {
-      let o = document.createElement("option");
-      o.value = b;
-      o.innerHTML = b;
-      beatSel.appendChild(o);
+      setVal("d-leader", profile.leader);
+
+      const beatSel = document.getElementById("d-beat");
+
+      if (!beatSel) {
+        console.error("❌ d-beat not found");
+        return;
+      }
+
+      beatSel.innerHTML = "";
+
+      /* 🔥 ADMIN → ALL BEATS */
+      if (profile.role === "ADMIN") {
+
+        ["East Garam", "West Garam", "East Poro", "Range HQ"]
+          .forEach(b => {
+            let o = document.createElement("option");
+            o.value = b;
+            o.innerHTML = b;
+            beatSel.appendChild(o);
+          });
+
+      } else {
+
+        /* 🔒 NORMAL USER */
+        let o = document.createElement("option");
+        o.value = profile.beat || "";
+        o.innerHTML = profile.beat || "";
+        beatSel.appendChild(o);
+
+      }
+
+      beatSel.value = profile.beat || "";
+
+      /* 🔥 SAFE FUNCTION CALLS */
+      if (typeof updateDutyStaff === "function") {
+        updateDutyStaff();
+      } else {
+        console.warn("⚠ updateDutyStaff missing");
+      }
+
+      if (typeof updateDutyCompt === "function") {
+        updateDutyCompt();
+      } else {
+        console.error("❌ updateDutyCompt is not a function");
+      }
+
+    })
+    .catch(function (err) {
+      console.error("❌ Profile fetch error:", err);
     });
-  } else {
-    let o = document.createElement("option");
-    o.value = profile.beat;
-    o.innerHTML = profile.beat;
-    beatSel.appendChild(o);
-  }
 
-  beatSel.value = profile.beat;
+  /* 🔥 FINAL SAFETY DELAY */
+  setTimeout(function () {
 
-  updateDutyStaff();
-  updateDutyCompt();
+    if (typeof updateDutyCompt === "function") {
+      updateDutyCompt();
+    }
 
-});
+    if (typeof updateDutyStaff === "function") {
+      updateDutyStaff();
+    }
 
-
-callBackend("getStaffFromDevice")
-.then(function (name) {
-document.getElementById("d-staff").value = name;
-});
-
-}
-
-setTimeout(function () {
-updateDutyCompt();
-updateDutyStaff();
-}, 300);
-/* COMPARTMENT FILTER */
+  }, 500);
+}/* COMPARTMENT FILTER */
           function updateDutyCompt() {
 
 const beatEl = document.getElementById("d-beat");
