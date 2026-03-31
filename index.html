@@ -1225,40 +1225,71 @@ document.addEventListener("DOMContentLoaded", () => {
     /* 🌊 RIVER (GEE JSON VERSION ONLY — REMOVED DUPLICATE SHP VERSION) */
 
     /* 🌱 PLANTATION */
-    function loadPlantationLayer() {
+    function loadPlantationLayer(){
 
-      callBackend("getPlantationGeoJSON")
-        .then(function (json) {
+  callBackend("getPlantationGeoJSON", {})
+    .then(function(json){
 
-          if (!json) return;
+      console.log("📦 GEOJSON RECEIVED");
 
-          const data = JSON.parse(json);
+      if(!json){
+        console.error("❌ No GeoJSON");
+        return;
+      }
 
-          plantationLayer.clearLayers();
+      let data;
 
-          const layer = L.geoJSON(data, {
+      try {
+        data = (typeof json === "string") ? JSON.parse(json) : json;
+      } catch(err){
+        console.error("❌ Invalid GeoJSON:", err);
+        return;
+      }
 
-            style: () => ({
-              color: "#00ffff",
-              weight: 3
-            }),
+      plantationLayer.clearLayers();
 
-            onEachFeature: function (feature, l) {
+      const layer = L.geoJSON(data, {
 
-              let props = feature.properties || {};
-              let id = props.id || props.ID || props.name;
+        style: function(){
+          return {
+            color: "#00ffff",
+            weight: 3,
+            fillColor: false,
+            fillOpacity: 0
+          };
+        },
 
-              l.on('click', e => openPlantationPopup(id, e.latlng));
-            }
+        onEachFeature: function(feature, l){
 
+          let props = feature.properties || {};
+
+          // ✅ DISPLAY NAME
+          let name = props.name || "Plantation";
+
+          // 🔥 UNIQUE ID (CRITICAL FIX)
+          let id = props.id || props.ID || name;
+
+          console.log("🌱 Block:", name, "ID:", id);
+
+          // ✅ CLICK EVENT
+          l.on('click', function(e){
+            openPlantationPopup(id, e.latlng);
           });
 
-          plantationLayer.addLayer(layer);
+        }
 
-        });
+      });
 
-    }
-    /* ============================================================
+      plantationLayer.addLayer(layer);
+      plantationLayer.bringToFront();
+
+      console.log("✅ Plantation layer ready");
+
+    })
+    .catch(function(err){
+      console.error("❌ Plantation load error:", err);
+    });
+}/* ============================================================
        💬 BLOCK 5 → POPUPS SYSTEM
     ============================================================ */
 
