@@ -3149,17 +3149,19 @@ function submitSightingForm(event) {
 
   try {
 
+    const getVal = (id) => document.getElementById(id)?.value || "";
+
     const sightingID = "SIGHT-" + Date.now();
 
-    const m   = parseInt(document.getElementById("f-m").value) || 0;
-    const f   = parseInt(document.getElementById("f-f").value) || 0;
-    const uni = parseInt(document.getElementById("f-uni").value) || 0;
-    const c   = parseInt(document.getElementById("f-c").value) || 0;
+    const m   = parseInt(getVal("f-m")) || 0;
+    const f   = parseInt(getVal("f-f")) || 0;
+    const uni = parseInt(getVal("f-uni")) || 0;
+    const c   = parseInt(getVal("f-c")) || 0;
 
     const total = m + f + uni + c;
 
-    const lat = document.getElementById("f-lat").value;
-    const lon = document.getElementById("f-lon").value;
+    const lat = getVal("f-lat");
+    const lon = getVal("f-lon");
 
     const location = lat + "," + lon;
 
@@ -3172,7 +3174,7 @@ function submitSightingForm(event) {
       return;
     }
 
-    if (!document.getElementById("f-beat").value || !document.getElementById("f-compt").value) {
+    if (!getVal("f-beat") || !getVal("f-compt")) {
       alert("❌ Select Beat & Compartment");
       return;
     }
@@ -3181,9 +3183,9 @@ function submitSightingForm(event) {
     const payload = {
       sighting_id: sightingID,
       parent_id: "",
-      beat: document.getElementById("f-beat").value,
-      forest_block: document.getElementById("f-beat").value,
-      compt: document.getElementById("f-compt").value,
+      beat: getVal("f-beat"),
+      forest_block: getVal("f-beat"),
+      compt: getVal("f-compt"),
       time: time,
       m: m,
       f: f,
@@ -3194,20 +3196,20 @@ function submitSightingForm(event) {
       depredation: "",
       involved: "",
       driving: "",
-      remarks: document.getElementById("f-remarks").value,
+      remarks: getVal("f-remarks"),
       leader: window.userProfile?.leader || "",
-      staff: document.getElementById("f-staff")?.value || "",
+      staff: getVal("f-staff"),
       location: location,
-      direction: document.getElementById("f-dir").value,
-      photo: "" // default
+      direction: getVal("f-dir"),
+      photo: ""
     };
 
     console.log("📤 Payload:", payload);
 
     const fileInput = document.getElementById("f-photo-file");
-    const file = fileInput ? fileInput.files[0] : null;
+    const file = fileInput?.files?.[0] || null;
 
-    /* 🚀 FINAL SUBMIT FUNCTION */
+    /* 🚀 SUBMIT FUNCTION */
     function send(finalPayload) {
 
       callBackend("saveElephantSighting", finalPayload)
@@ -3245,7 +3247,7 @@ function submitSightingForm(event) {
       const reader = new FileReader();
 
       reader.onloadend = function () {
-        payload.photo = reader.result;
+        payload.photo = reader.result || "";
         send(payload);
       };
 
@@ -3260,7 +3262,6 @@ function submitSightingForm(event) {
     alert("❌ Form error: " + e.message);
   }
 }
-
 /* ============================================================
 🚨 DUTY SYSTEM
 ============================================================ */
@@ -3645,7 +3646,7 @@ return el.value;
 ">
         <button type="button" onclick="submitSightingForm(event)"
           style="width:100%; background:#1b5e20; color:white; padding:15px; border:none; border-radius:8px; font-weight:bold; font-size:16px; cursor:pointer; margin-top:20px; box-shadow: 0 4px 10px rgba(0,0,0,0.2);">
-          📤 SUBMIT TO COMMAND CENTRE
+          📤 direction: document.getElementByI
         </button>
       </form>
     </div>
