@@ -3361,62 +3361,78 @@ function openDutyForm() {
 
   }, 500);
 }/* COMPARTMENT FILTER */
-          function updateDutyCompt() {
+         function updateDutyCompt() {
 
-const beatEl = document.getElementById("d-beat");
-const box = document.getElementById("comptOptions");
+  const beatEl = document.getElementById("d-beat");
+  const box = document.getElementById("comptOptions");
 
-if (!beatEl || !box) return;
+  if (!beatEl || !box) {
+    console.warn("⚠ Missing elements");
+    return;
+  }
 
-const beat = beatEl.value;
+  const beat = beatEl.value;
 
-box.innerHTML = "";
+  box.innerHTML = "";
 
-let list = [];
+  let list = [];
 
-/* 🔥 EAST + WEST GARAM COMBINED */
-if (beat === "East Garam" || beat === "West Garam") {
+  /* 🔥 SAFETY: ensure COMPT_MASTER exists */
+  if (typeof COMPT_MASTER !== "object") {
+    console.error("❌ COMPT_MASTER is invalid:", COMPT_MASTER);
+    return;
+  }
 
-```
-list = COMPT_MASTER["East Garam"].concat(
-  COMPT_MASTER["West Garam"]
-);
-```
+  /* 🔥 EAST + WEST GARAM COMBINED */
+  if (beat === "East Garam" || beat === "West Garam") {
 
-}
+    list = (COMPT_MASTER["East Garam"] || [])
+      .concat(COMPT_MASTER["West Garam"] || []);
 
-/* 🔥 RANGE HQ → ALL */
-else if (beat === "Range HQ") {
+  }
 
-```
-list = COMPT_MASTER["East Garam"]
-  .concat(COMPT_MASTER["West Garam"])
-  .concat(COMPT_MASTER["East Poro"]);
-```
+  /* 🔥 RANGE HQ → ALL */
+  else if (beat === "Range HQ") {
 
-}
+    list = (COMPT_MASTER["East Garam"] || [])
+      .concat(COMPT_MASTER["West Garam"] || [])
+      .concat(COMPT_MASTER["East Poro"] || []);
 
-/* 🔥 NORMAL */
-else {
-list = COMPT_MASTER[beat] || [];
-}
+  }
 
-/* 🔥 REMOVE DUPLICATES */
-list = Array.from(new Set(list));
+  /* 🔥 NORMAL */
+  else {
 
-/* 🔥 FILL CHECKBOX DROPDOWN */
-list.forEach(function (c) {
+    list = COMPT_MASTER[beat] || [];
 
-```
-box.innerHTML +=
-  '<label>' +
-  '<input type="checkbox" value="' + c + '">' +
-  c +
-  '</label>';
-```
+  }
 
-});
+  /* 🔥 FINAL SAFETY */
+  if (!Array.isArray(list)) {
+    console.error("❌ list is not array:", list);
+    return;
+  }
 
+  /* 🔥 REMOVE DUPLICATES */
+  list = Array.from(new Set(list));
+
+  /* 🔥 RENDER */
+  list.forEach(function (c) {
+
+    const label = document.createElement("label");
+
+    const input = document.createElement("input");
+    input.type = "checkbox";
+    input.value = c;
+
+    label.appendChild(input);
+    label.appendChild(document.createTextNode(" " + c));
+
+    box.appendChild(label);
+
+  });
+
+  console.log("✅ Compartments loaded:", list.length);
 }
 /* START DUTY (SECURE) */
           /* START DUTY */
