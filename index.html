@@ -745,28 +745,51 @@
 }
 const GAS_URL = "https://script.google.com/macros/s/AKfycbzBipROiRtMq-KoJaCf_Zi-d8PQEstYRsgAZ6VYFJRieHI9z7bTKYP4RtCUNRvJkwO7/exec";
 
-    function callBackend(action, payload = {}) {
+function callBackend(action, payload = {}) {
+
   return fetch(GAS_URL, {
     method: "POST",
+
+    // 🔥 CRITICAL: avoid CORS preflight
+    headers: {
+      "Content-Type": "text/plain"
+    },
+
     body: JSON.stringify({
-      action,
+      action: action,
       ...payload
     })
+
   })
-  .then(res => res.text())
-  .then(text => {
-    if (!text || text.trim() === "") {
-      return {}; // 🔥 silently ignore
+  .then(res => {
+
+    // 🔥 HANDLE HTTP ERRORS
+    if (!res.ok) {
+      throw new Error("HTTP " + res.status);
     }
+
+    return res.text();
+  })
+  .then(text => {
+
+    if (!text || text.trim() === "") {
+      console.warn("⚠ Empty response");
+      return null;
+    }
+
     try {
       return JSON.parse(text);
     } catch (e) {
-      return {}; // 🔥 no warning
+      console.error("❌ JSON parse error:", text);
+      return null;
     }
+
   })
-  .catch(() => ({}));
-}
-const COMPT_MASTER = {
+  .catch(err => {
+    console.error("❌ Backend failed:", err);
+    return null;
+  });
+}const COMPT_MASTER = {
   "East Garam": [
     "DPO 1","DPO 2","DPO 5","DPO 6","DPO 9"
   ],
