@@ -2493,35 +2493,33 @@ ${pct(data.health)} / 100
     ============================================================ */
    function initDutyControl() {
 
-  // 🔥 Ensure object exists
   window.userProfile = window.userProfile || {};
 
-  callBackend("getLoggedInLeader", {
-    email: localStorage.getItem("userEmail") || "dhirajkami0@gmail.com"
-  })
-  .then(function (profile) {
+  const email = localStorage.getItem("userEmail");
 
-    console.log("📡 getLoggedInLeader() response:", profile);
+  console.log("📤 Sending email:", email);
 
-    if (!profile || !profile.leader) {
-      console.error("❌ No leader returned from backend");
-      return;
-    }
+  callBackend("getLoggedInLeader", { email: email })
+    .then(function (profile) {
 
-    // 🔥 FULL OBJECT ASSIGN (IMPORTANT)
-    window.userProfile = profile;
+      console.log("📡 getLoggedInLeader() response:", profile);
 
-    console.log("✅ Leader:", profile.leader);
-    console.log("🚀 Checking duty for:", profile.leader);
+      if (!profile || !profile.leader || profile.leader === "Unknown") {
+        alert("❌ User not found in Team Leader sheet");
+        return;
+      }
 
-    autoShowEndDuty();
+      window.userProfile = profile;
 
-  })
-  .catch(function (err) {
-    console.error("❌ initDutyControl error:", err);
-  });
+      console.log("✅ Logged in as:", profile.leader);
+
+      autoShowEndDuty();
+
+    })
+    .catch(function (err) {
+      console.error("❌ initDutyControl error:", err);
+    });
 }
-
     /* ============================================================
        🔥 MAIN APP LOAD
     ============================================================ */
