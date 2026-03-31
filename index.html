@@ -2965,30 +2965,37 @@ map.on('overlayadd', function (e) {
  /* ===============================
    🟢🔴 GRID (FULL SAFE FIX)
 =============================== */
+/* ===============================
+   🟢🔴 GRID (ULTIMATE FIX)
+=============================== */
 if (
   e.name === "🟢 Visited Grid" ||
   e.name === "🔴 Unvisited Grid"
 ) {
 
   callBackend("getGridStatus")
-    .then(function (data) {
+    .then(function (res) {
 
-      console.log("📦 RAW GRID RESPONSE:", data);
+      console.log("📦 RAW GRID RESPONSE:", res);
 
-      // 🔥 STEP 1: NULL CHECK
-      if (!data) {
-        console.warn("⚠ No grid data");
-        return;
+      let data = res;
+
+      // 🔥 HANDLE ALL POSSIBLE BACKEND FORMATS
+
+      if (Array.isArray(res)) {
+        data = res;
       }
 
-      // 🔥 STEP 2: HANDLE {data: [...]}
-      if (data.data && Array.isArray(data.data)) {
-        data = data.data;
+      else if (res && Array.isArray(res.data)) {
+        data = res.data;
       }
 
-      // 🔥 STEP 3: FINAL VALIDATION
-      if (!Array.isArray(data)) {
-        console.error("❌ Grid data is not array:", data);
+      else if (res && Array.isArray(res.result)) {
+        data = res.result;
+      }
+
+      else {
+        console.error("❌ Invalid grid format:", res);
         return;
       }
 
@@ -2997,12 +3004,7 @@ if (
         return;
       }
 
-      // 🔥 STEP 4: SAFE CALL
-      if (typeof showGridStatus === "function") {
-        showGridStatus(data);
-      } else {
-        console.error("❌ showGridStatus not defined");
-      }
+      showGridStatus(data);
 
     })
     .catch(function (err) {
@@ -3010,7 +3012,7 @@ if (
     });
 
   return;
-}   /* 📊 SUMMARY */
+} /* 📊 SUMMARY */
     if (e.name === "📊 Monthly Coverage") {
 
       summaryLayer.addTo(map);
