@@ -1,0 +1,3755 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+  <title>West Damanpur Range Command Centre</title>
+
+  <meta name="viewport"
+    content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+
+  <meta name="theme-color" content="#0b1a0b">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="mobile-web-app-capable" content="yes">
+
+  <meta name="mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="Command Centre">
+
+  <meta http-equiv="Cache-Control" content="no-store, no-cache, must-revalidate, max-age=0" />
+  <meta http-equiv="Pragma" content="no-cache" />
+  <meta http-equiv="Expires" content="0" />
+
+  <link rel="icon" type="image/png" href="https://img.icons8.com/color/48/forest.png">
+  <link rel="apple-touch-icon" sizes="180x180" href="https://img.icons8.com/color/144/forest.png">
+  <link rel="shortcut icon" href="https://img.icons8.com/color/48/forest.png">
+
+  <link rel="manifest" href="manifest.json">
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css">
+
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <script src="https://unpkg.com/leaflet-omnivore@0.3.4/leaflet-omnivore.min.js"></script>
+  <script src="https://unpkg.com/shpjs@latest/dist/shp.js"></script>
+
+  <script>
+    function hapticFeedback() {
+      if (window.navigator.vibrate) window.navigator.vibrate(15);
+    }
+  </script>
+
+  <script src="https://unpkg.com/leaflet-kml@1.0.1/L.KML.js"></script>
+  <style>
+    /* ============================================================
+   📱 NATIVE MOBILE CORE & SAFE AREA (NOTCH) HANDLING
+============================================================ */
+    :root {
+      /* Dynamic padding for iPhone Notches and Android punch-holes */
+      --sat: env(safe-area-inset-top);
+      --sab: env(safe-area-inset-bottom);
+      --sal: env(safe-area-inset-left);
+      --sar: env(safe-area-inset-right);
+    }
+
+    html,
+    body,
+    #map {
+      height: 100vh;
+      margin: 0;
+      padding: 0;
+      background: #111;
+      overflow: hidden;
+      font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+      overscroll-behavior: none;
+      /* Prevents browser pull-to-refresh */
+    }
+
+    /* Native App Polish: Prevent blue highlight boxes and text selection */
+    * {
+      -webkit-tap-highlight-color: transparent;
+      -webkit-touch-callout: none;
+    }
+
+    /* Allow text selection only in forms */
+    input,
+    textarea,
+    select {
+      -webkit-user-select: text;
+      user-select: text;
+      font-size: 16px;
+      /* Prevents auto-zoom on iOS focus */
+    }
+
+    /* ============================================================
+   🧭 COMPACT COMMAND PANEL & COLLAPSIBLE WEATHER
+============================================================ */
+    /* ============================================================
+   🧭 COMPACT COMMAND PANEL
+============================================================ */
+    /* ============================================================
+   🌿 MAIN PANEL (GLASS)
+============================================================ */
+    /* ============================================================
+   🌿 MAIN PANEL (GLASS) - SCROLLBAR & OVERFLOW FIX
+============================================================ */
+    .panel {
+      display: flex !important;
+      flex-direction: column !important;
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 250px;
+      /* Use vh to ensure it respects the screen height */
+      height: auto !important;
+      max-height: 100vh !important;
+
+      background: rgba(10, 25, 10, 0.4) !important;
+      backdrop-filter: blur(15px) saturate(180%);
+      -webkit-backdrop-filter: blur(15px) saturate(180%);
+      z-index: 4000;
+      color: white;
+
+      border-right: 1px solid rgba(255, 255, 255, 0.2);
+      border-bottom: 1px solid rgba(255, 255, 255, 0.2);
+      box-shadow: 0 10px 40px rgba(0, 0, 0, 0.5);
+
+      border-radius: 0 0 15px 0;
+      transition: transform 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+
+      padding: calc(75px + var(--sat)) 12px 15px 12px;
+
+      /* 🔥 FORCED SCROLLBAR VISIBILITY */
+      overflow-y: scroll !important;
+      overflow-x: hidden;
+      box-sizing: border-box;
+    }
+
+    /* 🔥 VISIBLE GLASS SCROLLBAR */
+    .panel::-webkit-scrollbar {
+      width: 6px;
+    }
+
+    .panel::-webkit-scrollbar-track {
+      background: rgba(255, 255, 255, 0.05);
+    }
+
+    .panel::-webkit-scrollbar-thumb {
+      background: rgba(165, 214, 167, 0.5);
+      /* Light Green Glass */
+      border-radius: 10px;
+      border: 1px solid rgba(255, 255, 255, 0.2);
+    }
+
+    /* 🔥 COLLAPSE STATE */
+    /* 🔥 COLLAPSE STATE (FIXED) */
+    .panel.collapsed {
+      transform: translateX(-260px);
+      /* MUST match panel width */
+    }
+
+    /* ============================================================
+   🌦️ WEATHER DRAWER (GLASS)
+============================================================ */
+    /* ============================================================
+   🌦️ WEATHER DRAWER FIX (ALLOW FULL EXPANSION)
+============================================================ */
+    .weather-drawer {
+      background: rgba(255, 255, 255, 0.05) !important;
+      backdrop-filter: blur(6px);
+      border-radius: 10px;
+      margin-top: 10px;
+      overflow: hidden;
+      /* Clips the content when closed */
+      transition: all 0.4s ease-in-out;
+      flex-shrink: 0;
+      /* Prevents it from being squashed */
+    }
+
+    /* Expansion class toggled by JS */
+    .weather-drawer.expanded {
+      background: rgba(255, 255, 255, 0.15) !important;
+      max-height: 1000px !important;
+      /* High enough to fit everything */
+    }
+
+    .weather-content {
+      padding: 0 12px 12px 12px;
+      color: #ffffff;
+      text-shadow: 0 1px 4px rgba(0, 0, 0, 0.8);
+      /* Ensures text is readable over map */
+      opacity: 0;
+      max-height: 0;
+      transition: all 0.4s ease-in-out;
+    }
+
+    .weather-drawer.expanded .weather-content {
+      opacity: 1;
+      max-height: 1000px;
+      padding-top: 10px;
+    }
+
+    /* ============================================================
+   🔘 PANEL TOGGLE BUTTON (GLASS FLOATING)
+============================================================ */
+    #panelToggle {
+      position: absolute;
+      top: calc(15px + var(--sat));
+      left: 15px;
+      width: 50px;
+      height: 50px;
+      z-index: 4005;
+
+      background: rgba(46, 125, 50, 0.025);
+
+      backdrop-filter: blur(6px) saturate(100%);
+      -webkit-backdrop-filter: blur(6px) saturate(100%);
+
+      color: white;
+      text-shadow: 0 1px 4px rgba(0, 0, 0, 0.9);
+      border-radius: 12px;
+      border: 1px solid rgba(255, 255, 255, 0.2);
+
+      display: flex;
+      align-items: center;
+      justify-content: center;
+
+      cursor: pointer;
+      transition: 0.3s;
+
+      box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+    }
+
+    .toggle-active {
+      left: 220px !important;
+    }
+
+    #panelToggle:active {
+      transform: scale(0.9);
+    }
+
+    #panelToggle {
+      transition: left 0.35s ease, transform 0.2s ease;
+    }
+
+    /* ============================================================
+   🔘 BUTTONS (FULL GLASS STYLE)
+============================================================ */
+    .btn-center {
+      margin-top: 8px;
+      width: 100%;
+      padding: 14px;
+
+      background: rgba(255, 255, 255, 0.08);
+      backdrop-filter: blur(10px);
+
+      border: 1px solid rgba(255, 255, 255, 0.2);
+      color: #fff;
+
+      border-radius: 12px;
+
+      font-weight: 600;
+      letter-spacing: 1px;
+
+      cursor: pointer;
+
+      transition: 0.3s;
+
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .btn-center:hover {
+      background: rgba(76, 175, 80, 0.25);
+      border-color: rgba(76, 175, 80, 0.6);
+
+      transform: translateY(-2px);
+
+      box-shadow: 0 8px 25px rgba(0, 0, 0, 0.3);
+    }
+
+    /* ============================================================
+   🗺️ LEGEND (GLASS FLOATING CARD)
+============================================================ */
+    .legend {
+      position: absolute;
+      bottom: calc(25px + var(--sab));
+      right: 15px;
+      background: rgba(20, 20, 20, 0.04);
+
+      backdrop-filter: blur(8px) saturate(100%);
+      -webkit-backdrop-filter: blur(8px) saturate(100%);
+
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      color: white;
+      padding: 12px;
+
+      border-radius: 14px;
+
+      font-size: 12px;
+      z-index: 1000;
+
+      border: 1px solid rgba(255, 255, 255, 0.15);
+
+      max-width: 200px;
+      overflow: hidden;
+
+      box-shadow: 0 8px 30px rgba(0, 0, 0, 0.35);
+
+      transition: 0.3s;
+    }
+
+    /* Minimized FAB style */
+    .legend.minimized {
+      width: 44px;
+      height: 44px;
+      padding: 0;
+
+      display: flex;
+      align-items: center;
+      justify-content: center;
+
+      border-radius: 50%;
+
+      background: rgba(46, 125, 50, 0.35);
+      backdrop-filter: blur(12px);
+
+      border: 1px solid rgba(255, 255, 255, 0.2);
+    }
+
+    .legend-content {
+      transition: opacity 0.2s;
+    }
+
+    .legend.minimized .legend-content {
+      display: none;
+    }
+
+    #legendToggleBtn {
+      background: transparent;
+      border: none;
+      color: #a5d6a7;
+      cursor: pointer;
+      font-size: 18px;
+    }
+
+    .legend.minimized #legendToggleBtn {
+      color: white;
+    }
+
+    /* ============================================================
+   📍 LEAFLET FIXES & MARKERS
+============================================================ */
+    .leaflet-top,
+    .leaflet-bottom {
+      z-index: 3000 !important;
+    }
+
+    .leaflet-right {
+      right: 10px !important;
+    }
+
+    .leaflet-top.leaflet-right {
+      top: calc(10px + var(--sat)) !important;
+    }
+
+    .leaflet-div-icon {
+      background: transparent !important;
+      border: none !important;
+    }
+
+    .rangeLabel {
+      color: #ffffff !important;
+      font-weight: 800 !important;
+      font-size: 13px !important;
+      text-align: center;
+      text-shadow: 2px 2px 0 #000, -2px -2px 0 #000, 2px -2px 0 #000, -2px 2px 0 #000, 0 0 10px #000;
+      white-space: nowrap;
+      pointer-events: none;
+      z-index: 1000 !important;
+    }
+
+    .markerWrap {
+      position: relative;
+      width: 30px;
+      height: 30px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .markerCore {
+      font-size: 22px;
+      color: white;
+      text-shadow: 0 0 5px black;
+      z-index: 3;
+    }
+
+    /* ============================================================
+   🔥 ANIMATIONS, RADAR & RISK PULSES
+============================================================ */
+    .pulse {
+      animation: pulse 1.6s infinite;
+    }
+
+    @keyframes pulse {
+      0% {
+        transform: scale(1);
+        opacity: 1
+      }
+
+      50% {
+        transform: scale(1.3);
+        opacity: .6
+      }
+
+      100% {
+        transform: scale(1);
+        opacity: 1
+      }
+    }
+
+    .fireGlow {
+      animation: fireGlow 1s infinite alternate;
+    }
+
+    @keyframes fireGlow {
+      0% {
+        box-shadow: 0 0 6px orange
+      }
+
+      100% {
+        box-shadow: 0 0 18px red
+      }
+    }
+
+    .highRisk {
+      animation: blink 1s infinite;
+    }
+
+    @keyframes blink {
+      0% {
+        background: red
+      }
+
+      50% {
+        background: yellow
+      }
+
+      100% {
+        background: red
+      }
+    }
+
+    .radarPulse {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      width: 14px;
+      height: 14px;
+      margin: -7px;
+      border-radius: 50%;
+      pointer-events: none;
+      z-index: 1;
+      border: 2.5px solid #ffcc00;
+      box-shadow: 0 0 10px #ff9500, 0 0 20px rgba(255, 149, 0, 0.7), 0 0 30px rgba(255, 179, 0, 0.5);
+      animation: radarPulseWave 2.2s infinite ease-out;
+    }
+
+    .radarPulse.delay1 {
+      animation-delay: 0.6s;
+    }
+
+    .radarPulse.delay2 {
+      animation-delay: 1.2s;
+    }
+
+    @keyframes radarPulseWave {
+      0% {
+        transform: translate(-50%, -50%) scale(0.3);
+        opacity: 1;
+        border-width: 2.5px;
+      }
+
+      50% {
+        opacity: 0.6;
+      }
+
+      100% {
+        transform: translate(-50%, -50%) scale(4);
+        opacity: 0;
+        border-width: 1px;
+      }
+    }
+
+    .riskPulseRed {
+      border: 2px solid #ff3b30;
+      box-shadow: 0 0 6px #ff3b30, 0 0 12px rgba(255, 59, 48, 0.5);
+    }
+
+    .riskPulseOrange {
+      border: 2px solid #ff9500;
+      box-shadow: 0 0 6px #ff9500, 0 0 12px rgba(255, 149, 0, 0.5);
+    }
+
+    /* ============================================================
+   📡 SHARP RENDERING & GRID FIXES
+============================================================ */
+    .sharpLayer {
+      pointer-events: auto !important;
+      shape-rendering: crispEdges;
+      filter: saturate(1.8) brightness(1.1) !important;
+      mix-blend-mode: screen;
+      stroke-width: 0;
+    }
+
+    canvas.leaflet-zoom-animated {
+      image-rendering: pixelated !important;
+      image-rendering: crisp-edges !important;
+    }
+
+    .compGlow {
+      filter: drop-shadow(0 0 8px rgba(255, 255, 255, 0.9));
+      stroke-linejoin: round;
+    }
+
+    .compactGrid {
+      filter: saturate(2) brightness(1.1);
+    }
+
+    .visitedGlow {
+      filter: drop-shadow(0 0 6px #00ff00);
+    }
+
+    .unvisitedGlow {
+      filter: drop-shadow(0 0 6px #ff0000);
+    }
+
+    /* ============================================================
+   📋 FORMS & DROPDOWNS
+============================================================ */
+    .leader-only {
+      display: none !important;
+    }
+
+    #form-modal label {
+      display: block;
+      margin-top: 10px;
+      color: #333;
+    }
+
+    .multi-select {
+      position: relative;
+      margin-bottom: 10px;
+    }
+
+    .select-box {
+      background: #fff;
+      border: 1px solid #ccc;
+      padding: 12px;
+      border-radius: 8px;
+      cursor: pointer;
+      color: #111;
+      font-weight: 500;
+    }
+
+    .options {
+      display: none;
+      position: absolute;
+      width: 100%;
+      background: #fff;
+      border: 1px solid #ccc;
+      max-height: 220px;
+      overflow-y: auto;
+      z-index: 5000;
+      border-radius: 8px;
+      box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+    }
+
+    .options label {
+      display: block;
+      padding: 12px;
+      cursor: pointer;
+      border-bottom: 1px solid #eee;
+      margin-top: 0 !important;
+      color: #333;
+    }
+
+    .options label:hover {
+      background: #f5f5f5;
+    }
+
+    /* ============================================================
+   📱 MOBILE-ONLY TWEAKS
+============================================================ */
+    @media (max-width: 600px) {
+      .panel {
+        width: 230px;
+      }
+
+      .toggle-active {
+        left: 190px !important;
+      }
+
+      .legend {
+        bottom: calc(10px + var(--sab));
+        right: 10px;
+        padding: 8px;
+        font-size: 10px;
+        max-width: 140px;
+      }
+
+      #fab-container {
+        bottom: calc(340px + var(--sab)) !important;
+        right: 15px !important;
+        left: auto !important;
+      }
+
+      body {
+        padding-bottom: var(--sab);
+      }
+    }
+
+    /* 🔵 BLUE BUTTON (Location) */
+    .btn-blue {
+      background: rgba(0, 77, 207, 0.25);
+      border: 1px solid rgba(0, 77, 207, 0.4);
+    }
+
+    /* 🟢 GREEN BUTTON (Refresh / Action) */
+    .btn-green {
+      background: rgba(46, 125, 50, 0.25);
+      border: 1px solid rgba(46, 125, 50, 0.4);
+    }
+
+    /* ✨ Optional Hover Enhancement */
+    .btn-blue:hover {
+      background: rgba(0, 77, 207, 0.45);
+    }
+
+    .btn-green:hover {
+      background: rgba(46, 125, 50, 0.45);
+    }
+  </style>
+</head>
+
+<body>
+  <button id="panelToggle" onclick="toggleCommandPanel()">
+    <i id="toggleIcon" class="fa-solid fa-bars"></i>
+  </button>
+
+  <div class="panel" id="mainPanel">
+
+    <div class="panel-header"
+      style="border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 10px; margin-bottom: 5px;">
+      <b style="color:#4caf50; font-size:14px;">
+        <i class="fa-solid fa-satellite-dish"></i>
+        WEST DAMANPUR CENTRE
+      </b>
+      <div style="font-size:9px; color:#aaa;" id="last-update">CONNECTING...</div>
+    </div>
+
+    <button class="btn-center" onclick="centerMap()">CENTER RANGE</button>
+
+    <button class="btn-center btn-blue" onclick="findMe()">
+      MY LOCATION
+    </button>
+
+    <button class="btn-center btn-green" onclick="refreshAll()">
+      FORCE REFRESH
+    </button>
+    <button id="dutyMainBtn" class="btn-center" onclick="handleDutyAction()" style="background:#2e7d32;">
+      <i id="dutyIcon" class="fa-solid fa-briefcase"></i>
+      <span id="dutyLabel">START DUTY</span>
+    </button>
+    <button class="btn-center leader-only" onclick="openSightingForm()"
+      style="background:#f9a825; margin-top: 8px; display: none !important;">
+      <i class="fa-solid fa-plus"></i>
+      <span>ADD SIGHTING</span>
+    </button>
+    <!-- 📂 KML UPLOAD -->
+    <div style="margin-top:10px;">
+
+      <button class="btn-center btn-blue" onclick="openKMLForm()">
+        <i class="fa-solid fa-upload"></i>
+        <span>UPLOAD KML</span>
+      </button>
+
+    </div>
+    <div class="weather-drawer" id="weatherDrawer"
+      style="margin-top: 10px; background: rgba(255,255,255,0.05); border-radius: 8px; overflow: hidden;">
+      <button class="weather-toggle" onclick="toggleWeatherDrawer()"
+        style="width:100%; background:none; border:none; color:#4caf50; display:flex; justify-content:space-between; align-items:center; padding: 12px; cursor:pointer; font-weight:bold; font-size:13px;">
+        <span><i class="fa-solid fa-cloud-sun"></i> Weather Info</span>
+        <i id="weatherChevron" class="fa-solid fa-chevron-down"></i>
+      </button>
+
+      <div class="weather-content" id="weatherContent"
+        style="max-height: 0px; opacity: 0; overflow: hidden; transition: all 0.4s ease; padding: 0 12px;">
+        <div id="weatherNow" style="margin-top:5px;"></div>
+        <hr style="border:0; border-top:1px solid rgba(255,255,255,0.1); margin:8px 0;">
+        <div id="todayForecast"></div>
+        <hr style="border:0; border-top:1px solid rgba(255,255,255,0.1); margin:8px 0;">
+        <div id="weekForecast"></div>
+      </div>
+    </div>
+  </div>
+  <div class="legend" id="mapLegend">
+    <button id="legendToggleBtn" onclick="toggleLegend()">
+      <i id="legendIcon" class="fa-solid fa-chevron-down"></i>
+    </button>
+
+    <div class="legend-content" id="legendContent">
+      <b>CONTROL ROOM LEGEND</b><br><br>
+
+      🐘 Elephant Movement<br>
+      ➖ Prediction Path<br><br>
+
+      🔥 Fire Alert<br>
+      🌳 Forest Felling<br>
+      🏚 Encroachment<br><br>
+
+      👮 Patrol Staff / TL<br><br>
+      <span style="color:#0074D9; font-weight:bold;">━</span> River Network<br>
+      🔵 Waterhole / Pond<br>
+      🔴 High Risk Village<br>
+      🏠 Low Risk Village
+    </div>
+  </div>
+  <div id="map"></div>
+  <div id="installContainer" style="
+  display:none;
+  position:fixed;
+  bottom:20px;
+  left:20px;
+  z-index:9999;
+">
+    <button id="installBtn" style="
+    padding:12px 18px;
+    border-radius:12px;
+    border:1px solid rgba(255,255,255,0.2);
+    background:rgba(46,125,50,0.4);
+    color:white;
+    backdrop-filter:blur(10px);
+    font-weight:bold;
+  ">
+      📲 Install App
+    </button>
+  </div>
+
+
+  <script>
+    if ("serviceWorker" in navigator) {
+  navigator.serviceWorker.register("sw.js")
+    .then(() => console.log("✅ SW Registered"))
+    .catch(err => console.log("❌ SW Error:", err));
+}
+const GAS_URL = "https://script.google.com/macros/s/AKfycbzBipROiRtMq-KoJaCf_Zi-d8PQEstYRsgAZ6VYFJRieHI9z7bTKYP4RtCUNRvJkwO7/exec";
+
+    function callBackend(action, payload = {}) {
+  return fetch(GAS_URL, {
+    method: "POST",
+    body: JSON.stringify({
+      action,
+      ...payload
+    })
+  })
+  .then(res => res.text())
+  .then(text => {
+    if (!text || text.trim() === "") {
+      return {}; // 🔥 silently ignore
+    }
+    try {
+      return JSON.parse(text);
+    } catch (e) {
+      return {}; // 🔥 no warning
+    }
+  })
+  .catch(() => ({}));
+}
+const COMPT_MASTER = {
+  "East Garam": [
+    "DPO 1","DPO 2","DPO 5","DPO 6","DPO 9"
+  ],
+  "West Garam": [
+    "PORO 3","PORO 4","PORO 8","PORO 9"
+  ],
+  "East Poro": [
+    "PORO 2","PORO 7","PF","PORO 5","PORO 10"
+  ]
+};
+const STAFF_MASTER = {
+  "East Garam": [
+    "Pradyut Dutta, DR/Fr","Gopal Cheetri-BS","Arsad Ali, FG",
+    "Nilkush Marak-DL","Bhima Goyala-DL","Prakash Goyala-DL",
+    "Eleizer Indwar-DL","Klement Indwar-DL"
+  ],
+  "West Garam": [
+    "Pradyut Dutta, DR/Fr","Bidyut Barman, Banashayak",
+    "Profarson Sangma-Banasahayak","Geleswari Rava-FV"
+  ],
+  "East Poro": [
+    "Pradip Barman, DR/Fr","Upen Rava-BS","Gajen Rava, AS",
+    "Chandan Oraon, Banasayahak","Kisun Bhagat, FV",
+    "Sumitra Rava, FV","Sridam Barman,DL","Biswajit Chauhan,DL"
+  ],
+  "Range HQ": [
+    "Dhiraj Kami, FR","Dhanapati Das,AS","Debdulal Sarkar, AS",
+    "Shambhu Das, AS","Manik Singh Barua, AS","Apel Mandal, AS",
+    "Sarnalata Adhikary, Ordely","Biswajit Das, Banasahayk",
+    "Sachin Chhetri, Banasahayak","Ashis Chakraborty,DL",
+    "Mahesh Nagasia,DL","Manika Das, FV","Rina Basfore, DL",
+    "Bubu Koheli, DL","Sridam Barman,DL","Biswajit Chauhan,DL"
+  ]
+};
+
+function updateDutyStaff(){
+
+  const beatEl = document.getElementById("d-beat");
+  const box = document.getElementById("staffOptions");
+
+  if(!beatEl || !box) return;
+
+  const beat = beatEl.value;
+
+  box.innerHTML = "";
+
+  let list = [];
+
+  /* 🔥 RULE 1: EAST + WEST GARAM */
+  if(beat === "East Garam" || beat === "West Garam"){
+
+    list = [
+      ...STAFF_MASTER["East Garam"],
+      ...STAFF_MASTER["West Garam"]
+    ];
+  }
+
+  /* 🔥 RULE 2: RANGE HQ → ALL STAFF */
+  else if(beat === "Range HQ"){
+
+    list = [
+      ...STAFF_MASTER["East Garam"],
+      ...STAFF_MASTER["West Garam"],
+      ...STAFF_MASTER["East Poro"],
+      ...STAFF_MASTER["Range HQ"]
+    ];
+  }
+
+  /* 🔥 RULE 3: NORMAL */
+  else{
+    list = STAFF_MASTER[beat] || [];
+  }
+
+  /* 🔥 REMOVE DUPLICATES */
+  list = [...new Set(list)];
+
+  /* 🔥 FILL CHECKBOX DROPDOWN */
+  list.forEach(name=>{
+    box.innerHTML += `
+      <label>
+        <input type="checkbox" value="${name}">
+        ${name}
+      </label>
+    `;
+  });
+
+}
+    /* ============================================================
+     📲 INSTALL PROMPT SYSTEM
+  ============================================================ */
+
+    let deferredPrompt;
+
+    window.addEventListener('beforeinstallprompt', (e) => {
+
+      console.log("📲 Install available");
+
+      e.preventDefault(); // stop auto popup
+
+      deferredPrompt = e;
+
+      const box = document.getElementById("installContainer");
+      if (box) box.style.display = "block";
+
+    });
+/* 🔥 HIDE AFTER INSTALL */
+window.addEventListener('appinstalled', () => {
+  document.getElementById("installContainer").style.display = "none";
+});
+
+/* 🔥 HIDE IF ALREADY INSTALLED */
+if (window.matchMedia('(display-mode: standalone)').matches) {
+  document.getElementById("installContainer").style.display = "none";
+}
+document.addEventListener("DOMContentLoaded", () => {
+
+  const btn = document.getElementById("installBtn");
+  if (!btn) return;
+
+  btn.addEventListener("click", async () => {
+
+    if (!deferredPrompt) {
+      alert("Install not ready yet");
+      return;
+    }
+
+    deferredPrompt.prompt();
+
+    const { outcome } = await deferredPrompt.userChoice;
+
+    console.log("📲 Install result:", outcome);
+
+    deferredPrompt = null;
+
+  });
+
+});    /* ============================================================
+      🧠 BLOCK 1 → CORE DATA + BASE MAP
+   ============================================================ */
+
+    /* 🌊 POND DATA */
+    var pondData = [
+      { id: "+497934", area: 0.82, lat: 26.5511, lon: 89.4598 },
+      { id: "+497937", area: 1.49, lat: 26.5590, lon: 89.4613 },
+      { id: "+497939", area: 0.28, lat: 26.5658, lon: 89.4611 },
+      { id: "+497940", area: 0.32, lat: 26.5715, lon: 89.4616 },
+      { id: "+497942", area: 1.60, lat: 26.5673, lon: 89.4626 },
+      { id: "+497951", area: 0.60, lat: 26.5720, lon: 89.4632 },
+      { id: "+497956", area: 0.32, lat: 26.5740, lon: 89.4638 },
+      { id: "+497972", area: 0.10, lat: 26.5901, lon: 89.4673 },
+      { id: "+497974", area: 0.10, lat: 26.5893, lon: 89.4676 },
+      { id: "+497975", area: 0.10, lat: 26.5921, lon: 89.4676 },
+      { id: "+497975", area: 0.03, lat: 26.5947, lon: 89.4678 },
+      { id: "+497977", area: 2.74, lat: 26.5765, lon: 89.4673 },
+      { id: "+497978", area: 0.07, lat: 26.5933, lon: 89.4684 },
+      { id: "+497979", area: 0.49, lat: 26.5814, lon: 89.4683 },
+      { id: "+497981", area: 0.07, lat: 26.6082, lon: 89.4687 },
+      { id: "+497982", area: 0.78, lat: 26.5827, lon: 89.4684 },
+      { id: "+497985", area: 0.64, lat: 26.5847, lon: 89.4692 },
+      { id: "+497987", area: 1.57, lat: 26.5800, lon: 89.4698 },
+      { id: "+497988", area: 0.28, lat: 26.5873, lon: 89.4697 },
+      { id: "+497992", area: 0.71, lat: 26.6028, lon: 89.4709 },
+      { id: "+498086", area: 3.78, lat: 26.5815, lon: 89.4893 },
+      { id: "+498108", area: 0.71, lat: 26.6004, lon: 89.4916 },
+      { id: "+498108", area: 2.24, lat: 26.6126, lon: 89.4925 },
+      { id: "+498109", area: 3.64, lat: 26.5946, lon: 89.4901 },
+      { id: "+498109", area: 1.42, lat: 26.5986, lon: 89.4915 },
+      { id: "+498112", area: 0.14, lat: 26.5967, lon: 89.4923 },
+      { id: "+498113", area: 0.71, lat: 26.6107, lon: 89.4925 },
+      { id: "+498115", area: 0.03, lat: 26.6103, lon: 89.4929 },
+      { id: "+498120", area: 0.67, lat: 26.6101, lon: 89.4938 },
+      { id: "+498122", area: 3.63, lat: 26.6070, lon: 89.4955 },
+      { id: "+498140", area: 3.24, lat: 26.6024, lon: 89.4948 }
+    ];
+
+    /* 🛰 BASE MAPS */
+    var esriSat = L.tileLayer(
+      'https://services.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
+      { maxZoom: 19 }
+    );
+
+    var googleHybrid = L.tileLayer(
+      'https://{s}.google.com/vt/lyrs=y&x={x}&y={y}&z={z}',
+      {
+        maxZoom: 21,
+        subdomains: ['mt0', 'mt1', 'mt2', 'mt3'],
+        errorTileUrl: 'https://tile.openstreetmap.org/0/0/0.png'
+      }
+    );
+
+    /* 🌧 WEATHER RADAR */
+    var rainLayer = L.tileLayer(
+      'https://tile.openweathermap.org/map/precipitation_new/{z}/{x}/{y}.png?appid=b928faa16c09eb3facb9e3238d2e59f8',
+      { opacity: 0.6, maxZoom: 19 }
+    );
+
+    /* 🌲 GEE FOREST */
+    var geeForest = L.tileLayer(
+      'https://earthengine.googleapis.com/v1/projects/glassy-bonsai-475802-m1/maps/ed63fa9503db0068415ce327ed101286-18029cd75bdf621254780198530b2768/tiles/{z}/{x}/{y}',
+      {
+        maxZoom: 19,
+        opacity: 0.85,
+        updateWhenIdle: true,
+        keepBuffer: 3
+      }
+    );
+
+    /* 🌿 FOREST LABELS */
+    var forestHealthLabels = {
+      1: "Water Body",
+      2: "Bare Soil",
+      3: "Grassland",
+      4: "Degraded Forest",
+      5: "Medium Canopy",
+      6: "High Health Forest",
+      7: "Mature Forest"
+    };
+
+    /* ============================================================
+       🗺 BLOCK 2 → MAP INIT + UI CONTROLS
+    ============================================================ */
+
+    var map = L.map('map', {
+      center: [26.561, 89.507],
+      zoom: 14,
+      zoomControl: false
+    });
+
+    /* 🔥 BASE LAYERS LOAD */
+    esriSat.addTo(map);
+
+
+    /* 🖱 CONTROLS */
+    map.scrollWheelZoom.disable();
+    map.tap = true;
+
+    L.control.zoom({ position: 'topright' }).addTo(map);
+
+    /* ============================================================
+       📊 RANGE BUTTON (SAFE)
+    ============================================================ */
+    function autoShowEndDuty() {
+
+      if (!window.userProfile || !window.userProfile.leader) {
+        console.warn("❌ Leader not ready yet");
+        return; // STOP here
+      }
+
+      // 🔥 NEW VERSION (GitHub)
+
+      callBackend("checkDutyFromSheet", {
+        leader: window.userProfile.leader
+      })
+        .then(function (res) {
+
+          const btn = document.getElementById("dutyMainBtn");
+          const icon = document.getElementById("dutyIcon");
+          const label = document.getElementById("dutyLabel");
+
+          if (res && res.active) {
+            window.isDutyActive = true;
+            btn.style.background = "#d32f2f";
+            icon.className = "fa-solid fa-stop";
+            label.innerHTML = "END DUTY";
+          } else {
+            window.isDutyActive = false;
+            btn.style.background = "#2e7d32";
+            icon.className = "fa-solid fa-briefcase";
+            label.innerHTML = "START DUTY";
+          }
+
+        });
+
+    } window.isDutyActive = false;
+
+    function handleDutyAction() {
+
+      if (window.isDutyActive) {
+        openEndDutyForm();   // 🔴 END
+      } else {
+        openDutyForm();      // 🟢 START
+      }
+
+    } function addRangeStatsButton() {
+
+      const control = L.control({ position: 'topright' });
+
+      control.onAdd = function () {
+
+        const div = L.DomUtil.create('div', 'leaflet-bar leaflet-control');
+        div.style.zIndex = "9999";
+
+        div.innerHTML = `
+      <button id="rangeBtn" style="
+        background:white;
+        padding:10px 15px;
+        font-weight:bold;
+        border-radius:4px;
+        border:2px solid rgba(0,0,0,0.2);
+        cursor:pointer;">
+        📊 Range Stats
+      </button>`;
+
+        L.DomEvent.disableClickPropagation(div);
+
+        setTimeout(() => {
+          const btn = div.querySelector("#rangeBtn");
+          if (btn) {
+            btn.onclick = (e) => {
+              L.DomEvent.stopPropagation(e);
+              openRangePopup(map.getCenter());
+            };
+          }
+        }, 100);
+
+        return div;
+      };
+
+      control.addTo(map);
+    }
+
+    /* 🔥 INIT BUTTON AFTER MAP READY */
+    setTimeout(addRangeStatsButton, 1000);
+
+    /* ============================================================
+       📍 LOCATION
+    ============================================================ */
+
+    var myLocationLayer = L.layerGroup().addTo(map);
+
+    function findMe() {
+      map.locate({ setView: true, maxZoom: 16 });
+    }
+
+    map.on('locationfound', function (e) {
+
+      myLocationLayer.clearLayers();
+
+      L.circle(e.latlng, { radius: e.accuracy / 2 }).addTo(myLocationLayer);
+
+      L.marker(e.latlng)
+        .addTo(myLocationLayer)
+        .bindPopup("You are here")
+        .openPopup();
+    });
+
+    /* 🔁 CENTER MAP */
+    function centerMap() {
+      map.setView([26.561, 89.507], 14);
+    }
+
+    /* ============================================================
+       🧱 BLOCK 3 → LAYERS DEFINITIONS
+    ============================================================ */
+
+    /* 🔥 CORE LAYERS */
+    var villageLayer = L.layerGroup();
+    var predictionLayer = L.layerGroup().addTo(map);
+    var incidentLayer = L.layerGroup();
+
+    var elephantLayer = L.layerGroup().addTo(map);
+    var staffLayer = L.layerGroup().addTo(map);
+
+    var patrolTrackLayer = L.layerGroup().addTo(map);
+    var plantationLayer = L.layerGroup();
+    var pondLayer = L.layerGroup();
+
+    var riverLayer = L.layerGroup();
+
+    /* 🔥 GRID + SUMMARY */
+    var visitedLayer = L.featureGroup();
+    var unvisitedLayer = L.featureGroup();
+    var summaryLayer = L.featureGroup();
+
+    /* 🔥 COMPARTMENT LABEL */
+    var compartmentLabelLayer = L.layerGroup().addTo(map);
+
+    /* 🔥 GROUP TRACKS */
+    var groupLayers = {
+      "GARAM": L.layerGroup(),
+      "PORO": L.layerGroup(),
+      "HQ": L.layerGroup()
+    };
+
+    /* 🔥 STATE */
+    window.isSummaryMode = false;
+    let activePopupId = null;
+
+    /* ============================================================
+       📦 BLOCK 4 → STATIC LOADERS
+    ============================================================ */
+
+    /* 🌊 POND VISUALS */
+    function loadPondVisuals() {
+      pondLayer.clearLayers();
+
+      pondData.forEach(function (p) {
+        var marker = L.circleMarker([p.lat, p.lon], {
+          radius: p.area > 2.0 ? 7 : 4,
+          fillColor: "#00d4ff",
+          color: "#ffffff",
+          weight: 2,
+          opacity: 1,
+          fillOpacity: 0.7
+        });
+
+        marker.bindPopup(`
+      <div style="color:#111;font-family:Segoe UI;">
+        <b style="color:#0074D9;">🌊 Waterhole ${p.id}</b><br>
+        Area: ${p.area.toFixed(2)} ha
+      </div>
+    `).addTo(pondLayer);
+      });
+    }
+
+    /* 🗺 RANGE KML */
+    /* 🗺 RANGE KML */
+    function loadRangeKML() {
+
+      callBackend("getRangeKML")
+        .then(function (kml) {
+
+          if (!kml || !kml.includes("<Placemark")) {
+            console.error("❌ Invalid KML");
+            return;
+          }
+
+          const blob = new Blob([kml], { type: "text/xml" });
+          const url = URL.createObjectURL(blob);
+
+          const layer = omnivore.kml(url)
+            .on('ready', function () {
+
+              layer.setStyle({
+                color: "#00ff88",
+                weight: 3,
+                fill: false
+              });
+
+              layer.addTo(map);
+
+              if (layer.getBounds().isValid()) {
+                map.fitBounds(layer.getBounds());
+              }
+
+              layer.eachLayer(function (l) {
+                if (l instanceof L.Polygon || l instanceof L.Polyline) {
+                  l.on('click', e => openRangePopup(e.latlng));
+                }
+              });
+            });
+
+        });
+
+    }
+    /* 🌊 RIVER (GEE JSON VERSION ONLY — REMOVED DUPLICATE SHP VERSION) */
+
+    /* 🌱 PLANTATION */
+    function loadPlantationLayer() {
+
+      callBackend("getPlantationGeoJSON")
+        .then(function (json) {
+
+          if (!json) return;
+
+          const data = JSON.parse(json);
+
+          plantationLayer.clearLayers();
+
+          const layer = L.geoJSON(data, {
+
+            style: () => ({
+              color: "#00ffff",
+              weight: 3
+            }),
+
+            onEachFeature: function (feature, l) {
+
+              let props = feature.properties || {};
+              let id = props.id || props.ID || props.name;
+
+              l.on('click', e => openPlantationPopup(id, e.latlng));
+            }
+
+          });
+
+          plantationLayer.addLayer(layer);
+
+        });
+
+    }
+    /* ============================================================
+       💬 BLOCK 5 → POPUPS SYSTEM
+    ============================================================ */
+
+    /* 🌱 PLANTATION POPUP */
+    function openPlantationPopup(id, latlng) {
+
+      var popup = L.popup()
+        .setLatLng(latlng)
+        .setContent('⏳ Loading Plantation Data...')
+        .openOn(map);
+
+      callBackend("getPlantationStats", { id })
+        .then(function (data) {
+
+          if (!data) {
+            popup.setContent("❌ No plantation data");
+            return;
+          }
+
+          function num(v) { return (!v || isNaN(v)) ? "0.00" : Number(v).toFixed(2); }
+          function pct(v) { return (!v || isNaN(v)) ? "0.0" : Number(v).toFixed(1); }
+
+          let healthColor = data.health >= 70 ? "#2e7d32" :
+            data.health >= 40 ? "#f9a825" : "#d32f2f";
+
+          popup.setContent(`
+      <div style="font-family:Segoe UI;min-width:260px">
+        <b>🌱 ${data.name}</b><hr>
+        Area: ${num(data.total)} ha<br>
+        Canopy: ${pct(data.canopy)}%<br>
+        Health: <b style="color:${healthColor}">${pct(data.health)}</b>
+      </div>
+    `);
+
+        });
+
+    }
+
+
+    /* 🌳 RANGE POPUP */
+    function openRangePopup(latlng) {
+
+      var popup = L.popup()
+        .setLatLng(latlng)
+        .setContent('⏳ Loading Range Data...')
+        .openOn(map);
+
+      callBackend("getRangeStats")
+        .then(function (data) {
+
+          if (!data) {
+            popup.setContent("❌ No range data");
+            return;
+          }
+
+          popup.setContent(`
+      <div style="font-family:Segoe UI">
+        <b>🌳 ${data.name}</b><hr>
+        Area: ${data.total} ha<br>
+        Health: ${data.health}
+      </div>
+    `);
+
+        });
+
+    }
+
+
+    function uploadKML() {
+
+      const fileInput = document.getElementById("kmlUpload");
+      const file = fileInput.files[0];
+
+      if (!file) {
+        alert("❌ Please select a KML file");
+        return;
+      }
+
+      const beatTag = prompt("Enter Beat (EAST GARAM / WEST GARAM / EAST PORO / etc)");
+
+      if (!beatTag) {
+        alert("❌ Beat required");
+        return;
+      }
+
+      const reader = new FileReader();
+
+      reader.onload = function (e) {
+
+        const kmlText = e.target.result;
+
+        callBackend("processUpload", {
+          kmlText: kmlText,
+          beatTag: beatTag
+        })
+          .then(function (msg) {
+
+            alert(msg);
+
+            try {
+              const parser = new DOMParser();
+              const xml = parser.parseFromString(kmlText, "text/xml");
+
+              const layer = new L.KML(xml);
+              layer.addTo(map);
+
+              if (layer.getBounds().isValid()) {
+                map.fitBounds(layer.getBounds());
+              }
+
+            } catch (err) {
+              console.error("KML render error:", err);
+            }
+
+          })
+          .catch(function (err) {
+            console.error(err);
+            alert("❌ Upload failed");
+          });
+
+      };
+
+      reader.readAsText(file);
+    }/* 📊 COMPARTMENT POPUP */
+    function openStatsPopup(name, latlng) {
+
+      var popup = L.popup()
+        .setLatLng(latlng)
+        .setContent('⏳ Loading...')
+        .openOn(map);
+
+      callBackend("getCompartmentStats", { name })
+        .then(function (data) {
+
+          if (!data) {
+            popup.setContent("❌ No data");
+            return;
+          }
+
+          popup.setContent(`
+      <div>
+        <b>${data.name}</b><br>
+        Coverage: ${data.health}
+      </div>
+    `);
+
+        });
+
+    }
+
+
+    /* ============================================================
+       📊 BLOCK 6 → COMPARTMENTS + GRID + SUMMARY
+    ============================================================ */
+
+    /* 📍 LOAD COMPARTMENTS */
+    function loadCompartmentsFromSheet() {
+
+      compartmentLabelLayer.clearLayers();
+
+      callBackend("getCompartmentLocations")
+        .then(function (data) {
+
+          if (!data) return;
+
+          data.forEach(function (c) {
+
+            if (!c.lat || !c.lon) return;
+
+            const marker = L.marker([c.lat, c.lon], {
+              icon: L.divIcon({
+                className: 'rangeLabel',
+                html: `<div class="labelBox">${c.name}</div>`
+              })
+            }).addTo(compartmentLabelLayer);
+
+            marker.on('click', e => openStatsPopup(c.name, e.latlng));
+
+          });
+
+        });
+
+    }
+
+    /* 📊 SUMMARY */
+    function showCompartmentSummary(data) {
+
+      summaryLayer.clearLayers();
+
+      data.forEach(c => {
+
+        if (!c.polygon) return;
+
+        let fill = c.coverage >= 80 ? "#00ff00" :
+          c.coverage > 0 ? "#ffaa00" : "#ff0000";
+
+        L.polygon(c.polygon, {
+          color: "#fff",
+          fillColor: fill,
+          fillOpacity: 0.6
+        })
+          .bindPopup(`📍 ${c.name}<br>${c.coverage}%`)
+          .addTo(summaryLayer);
+
+      });
+
+      summaryLayer.bringToFront();
+    }
+
+    /* 🟩 GRID */
+    function showGridStatus(data) {
+
+      visitedLayer.clearLayers();
+      unvisitedLayer.clearLayers();
+
+      const offset = 0.00044;
+
+      data.forEach(p => {
+
+        const bounds = [
+          [p.lat - offset / 2, p.lon - offset / 2],
+          [p.lat + offset / 2, p.lon + offset / 2]
+        ];
+
+        const isVisited = p.visited == true;
+
+        L.rectangle(bounds, {
+          color: isVisited ? "#00ff00" : "#ff0000",
+          fillOpacity: isVisited ? 0.5 : 0.25
+        })
+          .addTo(isVisited ? visitedLayer : unvisitedLayer);
+
+      });
+    }
+    /* ============================================================
+       🐘 BLOCK 7 → ELEPHANT SYSTEM (FINAL)
+    ============================================================ */
+
+    function loadSightings() {
+
+      elephantLayer.clearLayers();
+
+      callBackend("getSightings")
+        .then(function (data) {
+
+          if (!data) return;
+
+          data.forEach(function (e) {
+
+            if (!e.lat || !e.lon) return;
+            if (e.status && e.status !== "Active") return;
+
+            const lat = Number(e.lat);
+            const lon = Number(e.lon);
+
+            /* 🔴 RISK COLOR */
+            const herd = parseInt(e.herd || e["Total Seen"] || 0);
+            const isHighRisk = herd <= 2;
+            const color = isHighRisk ? "#ff3b30" : "#ff9800";
+
+            /* 🐘 ICON */
+            const icon = L.divIcon({
+              className: '',
+              html: `
+        <div style="position:relative;width:36px;height:36px;">
+          
+          <div style="
+            display:flex;
+            align-items:center;
+            justify-content:center;
+            width:36px;height:36px;
+            animation: elephantPulse 2s infinite;
+          ">
+            <div style="font-size:26px;">🐘</div>
+          </div>
+        </div>
+        `,
+              iconSize: [36, 36],
+              iconAnchor: [18, 18]
+            });
+
+            /* 🕒 TIME FORMAT */
+            let timeDisplay = "Unknown";
+            let rawTime = (e.Time || e.time || "").toString();
+
+            if (rawTime.includes(":")) {
+              let [h, m] = rawTime.split(":");
+              h = parseInt(h);
+              if (!isNaN(h)) {
+                let ampm = h >= 12 ? "PM" : "AM";
+                let hr = h % 12 || 12;
+                timeDisplay = `${hr}:${m} ${ampm}`;
+              }
+            }
+
+            /* 🧭 DIRECTION CLEAN */
+            let rawDir = (e.direction || "").toUpperCase();
+
+            const dirFix = {
+              "SOUTH-WEST": "SW", "SOUTH-EAST": "SE",
+              "NORTH-WEST": "NW", "NORTH-EAST": "NE"
+            };
+            rawDir = dirFix[rawDir] || rawDir;
+
+            const dirMap = {
+              N: "North", S: "South", E: "East", W: "West",
+              NE: "North-East", NW: "North-West",
+              SE: "South-East", SW: "South-West"
+            };
+
+            const movementText = dirMap[rawDir] || "Unknown";
+
+            /* 🔥 VILLAGE RISK */
+            let villageHTML = "";
+
+            const key =
+              Number(lat).toFixed(5) + "," +
+              Number(lon).toFixed(5);
+
+            if (window.coneVillages && window.coneVillages[key]) {
+
+              const villages = window.coneVillages[key];
+
+              if (villages.length > 0) {
+                villageHTML += `<hr><b>🏠 Elephant Risk Zone</b>`;
+                villages.forEach(v => {
+                  villageHTML += `<div style="margin-top:4px;">🔴 <b>${v}</b></div>`;
+                });
+              } else {
+                villageHTML += `<hr>🏠 No villages in cone`;
+              }
+
+            }
+
+            /* 📸 PHOTO */
+            const photoHtml = e.photo ? `
+        <div style="margin-top:8px">
+          <a href="${e.photo}" target="_blank">
+            <img src="${e.photo}" style="width:100%;border-radius:6px">
+          </a>
+        </div>
+      ` : "";
+
+            /* 📍 BEAT */
+            const beat = e.Beat || e["Forest Block"] || "";
+
+            /* 📦 POPUP */
+            const popup = `
+      <div style="font-family:Segoe UI;min-width:220px">
+
+        <div style="color:${color};font-weight:bold">
+          ${e.status === "Moved" ? "🟢 MOVED" : "🔴 ACTIVE"}
+        </div>
+
+        ${beat ? `<div style="font-size:11px;color:#666">📍 ${beat}</div>` : ""}
+
+        <hr>
+
+        <b>🐘 Herd:</b> ${herd}<br>
+        <b>🧭 Movement:</b> ${movementText}<br>
+        <b>⏱ Time:</b> ${timeDisplay}<br>
+
+        <b>📍 Location:</b><br>
+        <code>${lat.toFixed(5)}, ${lon.toFixed(5)}</code>
+
+        ${villageHTML}
+        ${photoHtml}
+
+        ${e.status !== "Moved" ? `
+        <button onclick="confirmExit('${e.id}')" style="
+          background:#2e7d32;color:white;border:none;
+          width:100%;padding:10px;margin-top:10px;
+          border-radius:6px;cursor:pointer;">
+          ✅ MARK AS MOVED
+        </button>` : ""}
+
+      </div>`;
+
+            L.marker([lat, lon], {
+              icon: icon,
+              zIndexOffset: 5000
+            })
+              .bindPopup(popup)
+              .addTo(elephantLayer);
+
+          });
+
+        });
+
+    }/* 🔥 STATUS UPDATE */
+    function confirmExit(id) {
+
+      if (!confirm("Confirm elephant moved?")) return;
+
+      callBackend("updateSightingStatus", {
+        id: id,
+        status: "Moved"
+      })
+        .then(function () {
+
+          alert("Updated");
+          refreshAll();
+
+          // 🔁 nested backend call also converted
+          callBackend("updateVillageRisk");
+
+        });
+
+    }
+
+
+    /* ============================================================
+       👮 BLOCK 8 → STAFF SYSTEM (FINAL)
+    ============================================================ */
+
+
+    /* 🔥 DISTANCE */
+    function getDistance(p1, p2) {
+      const R = 6371;
+      const dLat = (p2[0] - p1[0]) * Math.PI / 180;
+      const dLon = (p2[1] - p1[1]) * Math.PI / 180;
+
+      const a =
+        Math.sin(dLat / 2) ** 2 +
+        Math.cos(p1[0] * Math.PI / 180) *
+        Math.cos(p2[0] * Math.PI / 180) *
+        Math.sin(dLon / 2) ** 2;
+
+      return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+    }
+
+
+    /* 🔥 COLOR */
+    function getColor(i) {
+      const colors = [
+        "#FF0000", "#00FF00", "#00FFFF", "#FF00FF",
+        "#FFFF00", "#FF8000", "#FFFFFF", "#ADFF2F",
+        "#00CCFF", "#FFD700"
+      ];
+      return colors[i % colors.length];
+    }
+
+
+    function loadStaff() {
+
+      staffLayer.clearLayers();
+
+      callBackend("getMapData")
+        .then(function (data) {
+
+          if (!data) return;
+
+          const staff = data.filter(s => s.type === "Staff");
+
+          /* 🔥 GROUP SAME LOCATION */
+          let groups = {};
+
+          staff.forEach(s => {
+            const key = Number(s.lat).toFixed(6) + "," + Number(s.lon).toFixed(6);
+            if (!groups[key]) groups[key] = [];
+            groups[key].push(s);
+          });
+
+          let colorIndex = 0;
+
+          Object.values(groups).forEach(group => {
+
+            group.forEach((s, index) => {
+
+              let track = Array.isArray(s.track) ? s.track : [];
+
+              /* 🔥 CLEAN TRACK */
+              let clean = [];
+              track.forEach(p => {
+                if (!p) return;
+                if (clean.length === 0 ||
+                  Math.abs(clean[clean.length - 1][0] - p[0]) > 1e-6 ||
+                  Math.abs(clean[clean.length - 1][1] - p[1]) > 1e-6) {
+                  clean.push(p);
+                }
+              });
+
+              /* 🔥 LAST POSITION */
+              let lat = clean.length ? clean[clean.length - 1][0] : s.lat;
+              let lon = clean.length ? clean[clean.length - 1][1] : s.lon;
+
+              /* 🔥 SPREAD (FIXED OVERLAP) */
+              if (group.length > 1) {
+                const angle = (index / group.length) * Math.PI * 2;
+                lat += Math.cos(angle) * 0.00015;
+                lon += Math.sin(angle) * 0.00015;
+              }
+
+              /* 🔥 DISTANCE */
+              let dist = 0;
+              for (let i = 1; i < clean.length; i++) {
+                dist += getDistance(clean[i - 1], clean[i]);
+              }
+
+              /* 🔥 SPEED (FIXED REALISTIC) */
+              let speed = 0;
+              if (clean.length > 1) {
+                const d = getDistance(clean[clean.length - 2], clean[clean.length - 1]);
+                speed = d / (1 / 60); // km/h
+              }
+
+              const color = getColor(colorIndex++);
+
+              /* 🔥 ICON */
+              const icon = L.divIcon({
+                html: `
+          <div class="markerWrap">
+            <div class="radarPulse"></div>
+            <div class="markerCore">
+              <i class="fa-solid fa-person-military-pointing"
+                style="color:#00ff00;font-size:20px;"></i>
+            </div>
+          </div>`,
+                iconSize: [30, 30],
+                iconAnchor: [15, 15]
+              });
+
+              const popup = `
+        <div style="font-family:Segoe UI">
+
+          <b>👤 ${s.name}</b><br>
+          📞 ${s.mobile || "N/A"}<br>
+
+          <hr>
+
+          👥 ${s.team || "N/A"}<br>
+          🧾 ${s.dutyType || "N/A"}<br>
+
+          <hr>
+
+          📊 Speed: ${speed.toFixed(1)} km/h<br>
+          📏 Distance: ${dist.toFixed(2)} km<br>
+          ⏱ ${s.lastSeen || "Unknown"}
+
+        </div>`;
+
+              const marker = L.marker([lat, lon], {
+                icon: icon,
+                zIndexOffset: 3000
+              })
+                .bindPopup(popup, {
+                  autoClose: false,
+                  closeOnClick: false
+                })
+                .addTo(staffLayer);
+
+              marker.on('click', () => activePopupId = s.name);
+
+              /* 🔥 TRACK */
+              if (clean.length > 1) {
+
+                const line = L.polyline(clean, {
+                  color: color,
+                  weight: 2,
+                  opacity: 1
+                }).addTo(staffLayer);
+
+                if (L.polylineDecorator) {
+                  L.polylineDecorator(line, {
+                    patterns: [{
+                      offset: '5%',
+                      repeat: '50px',
+                      symbol: L.Symbol.arrowHead({
+                        pixelSize: 10,
+                        pathOptions: { color: color }
+                      })
+                    }]
+                  }).addTo(staffLayer);
+                }
+              }
+
+            });
+
+          });
+
+        });
+
+    }/* ============================================================
+   🚨 BLOCK 9 → INCIDENT + VILLAGE + PREDICTION
+============================================================ */
+
+    /* =========================
+       🚨 INCIDENT SYSTEM (FINAL)
+    ========================= */
+    function loadIncidents() {
+
+      incidentLayer.clearLayers();
+
+      callBackend("getIncidents")
+        .then(function (data) {
+
+          if (!data) return;
+
+          data.forEach(function (i) {
+
+            if (!i.lat || !i.lon) return;
+
+            let type = (i.type || "").toLowerCase();
+
+            /* 🔥 TYPE CLASSIFICATION */
+            let iconType = "fa-triangle-exclamation";
+            let color = "#ffc107";
+
+            if (type.includes("fire")) {
+              iconType = "fa-fire";
+              color = "#ff3b30";
+            }
+            else if (type.includes("felling")) {
+              iconType = "fa-tree-slash";
+              color = "#8d6e63";
+            }
+            else if (type.includes("micro")) {
+              iconType = "fa-circle-dot";
+              color = "#ffee58";
+            }
+            else if (type.includes("encroachment")) {
+              iconType = "fa-house-lock";
+              color = "#ff9800";
+            }
+
+            /* 🔥 AREA SEVERITY */
+            let area = Number(i.area) || 0;
+            let pulseSize = area > 0.2 ? 60 : area > 0.05 ? 48 : 42;
+
+            /* 🔥 ICON */
+            const icon = L.divIcon({
+              className: '',
+              html: `
+        <div class="markerWrap">
+          <div class="radarPulse"></div>
+          <div class="radarPulse delay1"></div>
+          <div class="radarPulse delay2"></div>
+          <div class="markerCore">
+            <i class="fa-solid ${iconType}" style="color:${color};"></i>
+          </div>
+        </div>`,
+              iconSize: [30, 30],
+              iconAnchor: [15, 15]
+            });
+
+            /* 🔥 POPUP */
+            const popup = `
+      <div style="font-family:Segoe UI;min-width:180px">
+
+        <b>⚠ ${i.type}</b><br>
+
+        <div style="margin:6px 0">
+          <b>Area:</b> ${area.toFixed(3)} ha
+        </div>
+
+        <button onclick="verifyAlert('${i.id}')"
+          style="background:#2e7d32;color:white;border:none;
+          width:100%;padding:10px;border-radius:5px;cursor:pointer;">
+          ✔ Confirm Verified
+        </button>
+
+      </div>`;
+
+            L.marker([i.lat, i.lon], {
+              icon: icon,
+              zIndexOffset: 2000
+            })
+              .bindPopup(popup)
+              .addTo(incidentLayer);
+
+          });
+
+        })
+        .catch(function (err) {
+          console.error("❌ Incident load error:", err);
+        });
+
+    }
+
+    /* 🔥 VERIFY ALERT */
+    function verifyAlert(id) {
+
+      if (!confirm("Confirm this alert as VERIFIED?")) return;
+
+      callBackend("confirmAlertVerified", { id })
+        .then(function () {
+
+          alert("Alert verified");
+          refreshAll();
+
+        });
+
+    }
+
+
+    /* =========================
+       🏡 VILLAGE SYSTEM (FINAL)
+    ========================= */
+    function loadVillages() {
+
+      villageLayer.clearLayers();
+
+      callBackend("getVillages")
+        .then(function (data) {
+
+          if (!data) return;
+
+          data.forEach(function (v) {
+
+            if (!v.lat || !v.lon) return;
+
+            const risk = (v.riskLevel || "").toLowerCase();
+
+            let color = "#9e9e9e";
+            let pulse = "";
+
+            if (risk === "high") {
+              color = "#ff3b30";
+              pulse = `<div class="radarPulse riskPulseRed"></div>`;
+            }
+            else if (risk === "medium") {
+              color = "#ff9800";
+              pulse = `<div class="radarPulse riskPulseOrange"></div>`;
+            }
+
+            const icon = L.divIcon({
+              className: '',
+              html: `
+        <div class="markerWrap">
+          ${pulse}
+          <div class="markerCore">
+            <i class="fa-solid fa-house" style="color:${color};"></i>
+          </div>
+        </div>`,
+              iconSize: [30, 30],
+              iconAnchor: [15, 15]
+            });
+
+            const popup = `
+      <div style="font-family:Segoe UI;min-width:160px">
+
+        <b>🏡 ${v.name}</b><br>
+
+        <hr>
+
+        <b>Risk:</b> <span style="color:${color}">${v.riskLevel}</span><br>
+        <b>Conflicts:</b> ${v.conflictHistory}<br>
+        <b>Phone:</b> ${v.phone}<br>
+
+        <a href="${v.whatsappLink}" target="_blank"
+          style="display:block;background:#25D366;color:white;
+          padding:10px;border-radius:5px;text-align:center;
+          margin-top:8px;text-decoration:none;">
+          SEND ALERT
+        </a>
+
+      </div>`;
+
+            L.marker([v.lat, v.lon], { icon: icon })
+              .bindPopup(popup)
+              .addTo(villageLayer);
+
+          });
+
+        });
+
+    }
+
+
+
+    /* =========================
+       🔮 PREDICTION SYSTEM (FINAL)
+    ========================= */
+    function loadPredictions() {
+
+      predictionLayer.clearLayers();
+
+      callBackend("getPredictions")
+        .then(function (data) {
+
+          if (!data || data.length === 0) return;
+
+          let groups = {};
+
+          /* 🔥 GROUP BY HERD */
+          data.forEach(function (p) {
+
+            if (!p.lat || !p.lon) return;
+
+            if (!groups[p.id]) groups[p.id] = [];
+            groups[p.id].push([p.lat, p.lon]);
+
+          });
+
+          /* 🔥 DRAW PATHS */
+          Object.keys(groups).forEach(function (id) {
+
+            const pts = groups[id];
+            if (pts.length < 2) return;
+
+            L.polyline(pts, {
+              color: "#00c6ff",
+              weight: 5,
+              dashArray: '10,8',
+              opacity: 0.85
+            }).addTo(predictionLayer);
+
+            /* 🔥 START MARKER */
+            const startIcon = L.divIcon({
+              html: `
+        <div style="position:relative">
+          <div class="pulse"
+            style="width:34px;height:34px;border-radius:50%;
+            background:#00e5ff;opacity:.35;
+            position:absolute;left:-7px;top:-7px">
+          </div>
+
+          <div style="background:#00c6ff;width:20px;height:20px;
+            border-radius:50%;border:2px solid white;
+            display:flex;align-items:center;justify-content:center">
+
+            <i class="fa-solid fa-elephant"
+              style="color:white;font-size:11px"></i>
+
+          </div>
+        </div>`,
+              iconSize: [20, 20],
+              iconAnchor: [10, 10]
+            });
+
+            L.marker(pts[0], {
+              icon: startIcon,
+              zIndexOffset: 1700
+            }).addTo(predictionLayer);
+
+          });
+
+        });
+
+    } function openKMLForm() {
+      document.getElementById("kmlFormPopup").style.display = "flex";
+    }
+
+    function closeKMLForm() {
+      document.getElementById("kmlFormPopup").style.display = "none";
+    }
+
+    function submitKML() {
+
+      const beat = document.getElementById("kmlBeat").value;
+      const fileInput = document.getElementById("kmlFileInput");
+      const status = document.getElementById("kmlStatus");
+
+      const file = fileInput.files[0];
+
+      if (!beat) {
+        alert("Select Beat");
+        return;
+      }
+
+      if (!file) {
+        alert("Select file");
+        return;
+      }
+
+      status.innerHTML = "⏳ Uploading...";
+
+      const reader = new FileReader();
+
+      reader.onload = function (e) {
+
+        const kmlText = e.target.result;
+
+        callBackend("processUpload", {
+          kmlText: kmlText,
+          beatTag: beat
+        })
+          .then(function (msg) {
+
+            status.innerHTML = "✅ " + msg;
+
+            // 🔥 show on map
+            const parser = new DOMParser();
+            const xml = parser.parseFromString(kmlText, "text/xml");
+
+            const layer = new L.KML(xml);
+            layer.addTo(map);
+
+            if (layer.getBounds().isValid()) {
+              map.fitBounds(layer.getBounds());
+            }
+
+            setTimeout(closeKMLForm, 1500);
+
+          })
+          .catch(function (err) {
+            status.innerHTML = "❌ Upload failed";
+          });
+
+      };
+
+      reader.readAsText(file);
+    }
+
+
+    /* ============================================================
+       📱 RESPONSIVE PANEL TOGGLE
+    ============================================================ */
+    /* ============================================================
+       📱 COLLAPSIBLE SIDE PANEL LOGIC
+    ============================================================ */
+
+    /* AUTO-COLLAPSE FOR MOBILE ON STARTUP */
+    function initResponsiveUI() {
+      if (window.innerWidth < 768) {
+        const panel = document.getElementById("mainPanel");
+        panel.classList.add("collapsed");
+
+        const btn = document.getElementById("panelToggle");
+        btn.classList.remove("toggle-active");
+
+        document.getElementById("toggleIcon").className = "fa-solid fa-bars";
+      } else {
+        document.getElementById("panelToggle").classList.add("toggle-active");
+        document.getElementById("toggleIcon").className = "fa-solid fa-xmark";
+      }
+    }
+
+    // Keep existing onload logic
+
+
+
+    /* ============================================================
+       🌦 BLOCK 10 → WEATHER + REFRESH ENGINE
+    ============================================================ */
+
+    /* =========================
+       🌦 WEATHER SYSTEM (FINAL)
+    ========================= */
+    function loadWeatherFull() {
+
+      // 🔥 REMOVE GAS CHECK (not needed in GitHub)
+
+      callBackend("getWeatherFull")
+
+        .then(function (w) {
+
+          if (!w || !w.current) {
+            document.getElementById("weatherNow").innerHTML = "⚠ Weather unavailable";
+            return;
+          }
+
+          /* 🔥 CURRENT */
+          document.getElementById("weatherNow").innerHTML =
+            "🌡 " + Math.round(w.current.temp) + "°C | " + w.current.cloud + "<br>" +
+            "💧 " + w.current.humidity + "% | 🌬 " + w.current.wind + " m/s";
+
+          /* 🔥 HOURLY */
+          let todayHTML = "<b style='color:#4caf50'>Next 18 Hours</b><br>";
+
+          w.hourly.forEach(h => {
+            todayHTML += `${h.time} | ${h.temp}°C | ${h.weather}<br>`;
+          });
+
+          document.getElementById("todayForecast").innerHTML = todayHTML;
+
+          /* 🔥 WEEK */
+          let weekHTML = "<b style='color:#4caf50'>5-Day Forecast</b><br>";
+
+          w.week.forEach(d => {
+            weekHTML += `${d.day}: ${d.max}°/${d.min}° | 🌧 ${d.rain}%<br>`;
+          });
+
+          document.getElementById("weekForecast").innerHTML = weekHTML;
+
+        })
+
+        .catch(function () {
+          document.getElementById("weatherNow").innerHTML = "⚠ Weather error";
+        });
+
+    }
+
+
+    /* =========================
+       🔄 MASTER REFRESH ENGINE (FINAL)
+    ========================= */
+    function refreshAll() {
+
+      document.getElementById('last-update').innerHTML =
+        "🔄 Syncing Command Centre...";
+
+      /* 🔥 CORE SYSTEM LOAD */
+      loadStaff();
+      loadSightings();
+      loadIncidents();
+      loadPredictions();
+      loadVillages();
+      loadCompartmentsFromSheet();
+
+      /* 🔥 WEATHER DELAY (OPTIMIZED) */
+      setTimeout(loadWeatherFull, 500);
+
+      /* 🔥 BACKGROUND TRACCAR */
+      callBackend("fetchTraccar")
+        .then(() => console.log("✅ Traccar updated"))
+        .catch(err => console.error(err));
+
+      /* 🔥 STATUS UPDATE */
+      setTimeout(function () {
+
+        const now = new Date();
+
+        document.getElementById('last-update').innerHTML =
+          "🟢 LIVE : " + now.toLocaleTimeString();
+
+      }, 1000);
+    }
+
+
+    /* ============================================================
+       🚀 BLOCK 11 → APP INIT (FINAL — SINGLE ENTRY POINT)
+    ============================================================ */
+
+    /* ============================================================
+       🔥 DUTY CONTROL (FETCH REAL LEADER)
+    ============================================================ */
+    function initDutyControl() {
+
+      callBackend("getLoggedInLeader")
+        .then(function (profile) {
+
+          console.log("📡 getLoggedInLeader() response:", profile);
+
+          if (!profile || !profile.leader) {
+            console.error("❌ No leader returned from backend");
+            return;
+          }
+
+          // 🔥 SET REAL LEADER
+          window.userProfile.leader = profile.leader;
+
+          console.log("✅ Leader from backend:", profile.leader);
+
+          console.log("🚀 Checking duty for:", profile.leader);
+
+          autoShowEndDuty();
+
+        });
+
+    }
+
+
+    /* ============================================================
+       🔥 MAIN APP LOAD
+    ============================================================ */
+    window.addEventListener("load", function () {
+
+      console.log("🚀 App Started - Command Centre Initializing");
+
+      /* 1. INITIALIZE UI IMMEDIATELY */
+      try {
+        initResponsiveUI();
+      } catch (e) {
+        console.warn("UI Init delayed: ", e);
+      }
+
+      /* 2. AUTHENTICATION + ROLE CONTROL */
+      callBackend("getAuthProfile")
+        .then(function (profile) {
+
+          if (!profile) {
+            console.error("❌ No auth profile received");
+            return;
+          }
+
+          console.log("🔐 Logged in as:", profile.role);
+          window.userProfile = profile;
+          window.userEmail = profile.email;
+
+          /* 🔥 ROLE BASED UI */
+          if (profile.role === "ADMIN" || profile.role === "LEADER") {
+            document.querySelectorAll('.leader-only').forEach(el => {
+              el.style.setProperty('display', 'block', 'important');
+            });
+          }
+
+          /* 3. INITIALIZE DUTY & KML */
+          initDutyControl();
+          loadRangeKML();
+          loadCompartmentsFromSheet();
+
+          /* 4. CRITICAL DATA CHAIN */
+          callBackend("updateVillageRisk")
+            .then(function (coneData) {
+
+              window.coneVillages = coneData || {};
+
+              callBackend("getVillages")
+                .then(function (villageList) {
+
+                  window.villages = (villageList || []).map(v => ({
+                    name: v.name || v.Village || "Unknown",
+                    lat: parseFloat(v.lat),
+                    lon: parseFloat(v.lon)
+                  }));
+
+                  // 🔥 MASTER REFRESH
+                  refreshAll();
+
+                  /* 5. UI FINALIZATION */
+                  const splash = document.getElementById('splash-screen');
+                  if (splash) {
+                    splash.style.opacity = "0";
+                    setTimeout(() => splash.style.display = "none", 800);
+                  }
+
+                  /* 6. BACKGROUND LOOPS */
+                  setInterval(function () {
+                    if (window.userProfile && window.userProfile.leader) {
+                      autoShowEndDuty();
+                    }
+                  }, 10000);
+
+                  // 🔥 INIT FORM LISTENERS (SAFE)
+                  if (typeof initEventListeners === "function") {
+                    initEventListeners();
+                  }
+
+                });
+
+            });
+
+        })
+        .catch(function (err) {
+          console.error("❌ Startup error:", err);
+        });
+
+    });/* ============================================================
+   🛠️ MANDATORY FIXES FOR THE BUTTONS
+   Ensure these functions exist exactly as written below:
+============================================================ */
+
+    function toggleCommandPanel() {
+      const panel = document.getElementById("mainPanel");
+      const btn = document.getElementById("panelToggle");
+      const icon = document.getElementById("toggleIcon");
+
+      const isCollapsed = panel.classList.toggle("collapsed");
+
+      if (isCollapsed) {
+        // 👉 PANEL CLOSED
+        btn.classList.remove("toggle-active");
+        icon.className = "fa-solid fa-bars";
+      } else {
+        // 👉 PANEL OPEN
+        btn.classList.add("toggle-active");
+        icon.className = "fa-solid fa-xmark";
+      }
+
+      // 📱 vibration
+      if (navigator.vibrate) navigator.vibrate(10);
+
+      // 🗺️ fix leaflet render
+      setTimeout(() => {
+        if (window.map) {
+          map.invalidateSize();
+        }
+      }, 400);
+    } function toggleWeatherDrawer() {
+      console.log("-----------------------------------------");
+      console.log("🔍 DIAGNOSIS: Weather Toggle Triggered");
+
+      const content = document.getElementById("weatherContent");
+      const icon = document.getElementById("weatherChevron");
+      const drawer = document.getElementById("weatherDrawer");
+      const panel = document.getElementById("mainPanel");
+
+      // 1. DOM Check
+      if (!content || !drawer || !panel) {
+        console.error("❌ ERROR: Missing Elements:", { content: !!content, drawer: !!drawer, panel: !!panel });
+        return;
+      }
+
+      // 2. Computed Style Check (What the browser is actually doing)
+      const computedContent = window.getComputedStyle(content);
+      const computedDrawer = window.getComputedStyle(drawer);
+      const computedPanel = window.getComputedStyle(panel);
+
+      console.log("📊 Computed Max-Height (Content):", computedContent.maxHeight);
+      console.log("📊 Computed Overflow (Panel):", computedPanel.overflowY);
+      console.log("📊 Drawer Display State:", computedDrawer.display);
+
+      // 3. Logic Execution
+      const isCollapsed = !content.style.maxHeight || content.style.maxHeight === "0px";
+      console.log("❓ Logic State: " + (isCollapsed ? "IS COLLAPSED" : "IS EXPANDED"));
+
+      if (isCollapsed) {
+        console.log("🚀 Action: ATTEMPTING EXPAND...");
+
+        // Applying Styles
+        content.style.maxHeight = content.scrollHeight + "px";   /* 🔥 dynamic height */
+        content.style.opacity = "1";
+        content.style.display = "block"; // Force display
+
+        if (icon) icon.className = "fa-solid fa-chevron-up";
+        drawer.style.background = "rgba(255,255,255,0.1)";
+
+        // 4. Post-Action Validation
+        setTimeout(() => {
+          console.log("✅ POST-EXPAND CHECK: Content maxHeight is now: " + content.style.maxHeight);
+          if (window.getComputedStyle(content).maxHeight === "0px") {
+            console.error("⛔ CRITICAL: Browser REJECTED the 500px setting. Check for !important in your CSS.");
+          }
+        }, 100);
+
+      } else {
+        console.log("🚀 Action: ATTEMPTING COLLAPSE...");
+        content.style.maxHeight = "0px";
+        content.style.opacity = "0";
+        if (icon) icon.className = "fa-solid fa-chevron-down";
+        drawer.style.background = "rgba(255,255,255,0.05)";
+      }
+
+      if (window.navigator.vibrate) window.navigator.vibrate(15);
+    } function toggleLegend() {
+      const legend = document.getElementById("mapLegend");
+      const icon = document.getElementById("legendIcon");
+
+      legend.classList.toggle("minimized");
+      icon.className = legend.classList.contains("minimized") ? "fa-solid fa-circle-info" : "fa-solid fa-chevron-down";
+    }/* ============================================================
+   🔄 BLOCK 12 → AUTO REFRESH SYSTEM (FINAL OPTIMIZED)
+============================================================ */
+
+    /* ============================================================
+       ⚡ FAST LOOP → REAL-TIME (STAFF + ELEPHANTS)
+    ============================================================ */
+    setInterval(function () {
+
+      try {
+        loadStaff();
+        loadSightings();
+      } catch (err) {
+        console.error("❌ Fast loop error:", err);
+      }
+
+    }, 8000); // 🔥 8 sec (GOOD BALANCE)
+
+
+    /* ============================================================
+       🚨 INCIDENT MONITORING
+    ============================================================ */
+    setInterval(function () {
+
+      try {
+        loadIncidents();
+      } catch (err) {
+        console.error("❌ Incident refresh error:", err);
+      }
+
+    }, 20000); // 20 sec
+
+
+    /* ============================================================
+       🏡 VILLAGE RISK UPDATE
+    ============================================================ */
+    setInterval(function () {
+
+      try {
+        loadVillages();
+      } catch (err) {
+        console.error("❌ Village refresh error:", err);
+      }
+
+    }, 60000); // 1 min
+
+
+    /* ============================================================
+       🌦 WEATHER SYSTEM
+    ============================================================ */
+    setInterval(function () {
+
+      try {
+        loadWeatherFull();
+      } catch (err) {
+        console.error("❌ Weather refresh error:", err);
+      }
+
+    }, 600000); // 10 min
+
+
+    /* ============================================================
+       🧠 OPTIONAL MASTER WATCHDOG (RECOMMENDED)
+       (Prevents silent freeze)
+    ============================================================ */
+    setInterval(function () {
+
+      console.log("🧠 System heartbeat OK:", new Date().toLocaleTimeString());
+
+    }, 120000); // 2 min
+
+    /* ============================================================
+       🧭 BLOCK 13 → LAYER CONTROL + LAZY LOAD (FINAL)
+    ============================================================ */
+
+    /* ============================================================
+       🌊 RIVER LAYER (LAZY INIT SAFE)
+    ============================================================ */
+    // keep detached
+    function loadRiverNetwork() {
+
+      // 🔥 Prevent duplicate heavy load
+      if (riverLayer.getLayers().length > 0) {
+        console.log("⚠ River already loaded");
+        return;
+      }
+
+      console.log("🌊 Loading River Network...");
+
+      document.getElementById('last-update').innerHTML = "🌊 Loading Rivers...";
+
+      callBackend("getRiverGeoJSON")
+        .then(function (jsonString) {
+
+          try {
+            const data = JSON.parse(jsonString);
+
+            L.geoJSON(data, {
+              style: {
+                color: "#00e5ff",
+                weight: 3,
+                opacity: 0.8
+              },
+              renderer: L.canvas() // 🔥 performance
+            }).addTo(riverLayer);
+
+            console.log("✅ Rivers Loaded");
+
+            document.getElementById('last-update').innerHTML = "🟢 Rivers Ready";
+
+          } catch (err) {
+            console.error("❌ River parse error:", err);
+          }
+
+        })
+        .catch(function (err) {
+          console.error("❌ River load error:", err);
+        });
+
+    }
+
+
+    /* ============================================================
+       🎛 LAYER CONTROL (CLEAN + ORDERED)
+    ============================================================ */
+    var layerControl = L.control.layers({
+
+      /* 🔽 BASE MAPS */
+      "🛰 Satellite": esriSat,
+      "🗺 Google Hybrid": googleHybrid
+
+    }, {
+      /* 🔼 OVERLAYS (ORDER MATTERS) */
+
+      "🌧 Rain Radar": rainLayer,
+      "🌲 Forest NDVI": geeForest,
+
+      "👮 Staff": staffLayer,
+      "🐘 Elephants": elephantLayer,
+      "🚨 Alerts": incidentLayer,
+
+      "📡 Prediction": predictionLayer,
+      "🏡 Villages": villageLayer,
+
+      "🌱 Plantation": plantationLayer,
+      "🌊 Waterholes / Ponds": pondLayer,
+      "💧 River Network": riverLayer,
+
+      /* 🔥 GROUP TRACKS */
+      "📍 Garam (East + West)": groupLayers["GARAM"],
+      "📍 East Poro": groupLayers["PORO"],
+      "📍 Range HQ": groupLayers["HQ"],
+
+      /* 🔥 GRID + SUMMARY */
+      "🟢 Visited Grid": visitedLayer,
+      "🔴 Unvisited Grid": unvisitedLayer,
+      "📊 Monthly Coverage": summaryLayer
+
+    }, {
+      collapsed: true
+    }).addTo(map);
+
+
+    /* ============================================================
+       ⚡ LAZY LOAD ENGINE (CRITICAL SYSTEM)
+    ============================================================ */
+map.on('overlayadd', function (e) {
+
+console.log("🧭 Layer Enabled:", e.name);
+
+try {
+
+```
+/* ===============================
+   🌱 Plantation
+=============================== */
+if (e.name === "🌱 Plantation") {
+  loadPlantationLayer();
+  return;
+}
+
+/* ===============================
+   🌊 Waterholes
+=============================== */
+if (e.name === "🌊 Waterholes / Ponds") {
+  loadPondVisuals();
+  return;
+}
+
+/* ===============================
+   💧 Rivers
+=============================== */
+if (e.name === "💧 River Network") {
+  loadRiverNetwork();
+  return;
+}
+
+/* ===============================
+   👮 Staff (force refresh)
+=============================== */
+if (e.name === "👮 Staff") {
+  loadStaff();
+  return;
+}
+
+/* ===============================
+   📍 GROUP TRACKS
+=============================== */
+if (
+  e.name === "📍 Garam (East + West)" ||
+  e.name === "📍 East Poro" ||
+  e.name === "📍 Range HQ"
+) {
+
+  callBackend("getMonthlyGroupTracks")
+    .then(loadGroupTracks)
+    .catch(err => {
+      console.error("❌ Group Track Error:", err);
+    });
+
+  return;
+} // ✅ FIX: closed this block properly
+
+
+/* ===============================
+   🟢🔴 GRID SYSTEM
+=============================== */
+if (
+  e.name === "🟢 Visited Grid" ||
+  e.name === "🔴 Unvisited Grid"
+) {
+
+  callBackend("getGridStatus")
+    .then(function (data) {
+
+      if (!data || data.length === 0) {
+        console.warn("⚠ Grid empty");
+        return;
+      }
+
+      showGridStatus(data);
+
+    })
+    .catch(err => {
+      console.error("❌ Grid error:", err);
+    });
+
+  return;
+} // ✅ FIX: closed GRID block
+
+
+/* ===============================
+   📊 MONTHLY COVERAGE (FIXED)
+=============================== */
+if (e.name === "📊 Monthly Coverage") {
+
+  summaryLayer.addTo(map);
+
+  callBackend("getCompartmentSummary")
+    .then(function (data) {
+
+      if (!data || !Array.isArray(data)) {
+        console.warn("⚠ No summary data");
+        return;
+      }
+
+      showCompartmentSummary(data);
+      summaryLayer.bringToFront();
+
+    })
+    .catch(function (err) {
+      console.error("❌ Summary error:", err);
+      document.getElementById('last-update').innerHTML = "⚠ Summary Error";
+    });
+
+  return;
+}
+```
+
+} catch (err) {
+console.error("❌ Lazy load crash:", err);
+}
+
+});
+
+          /* ============================================================
+             🧹 OPTIONAL CLEANUP (ADVANCED - PREVENT MEMORY BLOAT)
+          ============================================================ */
+          map.on('overlayremove', function (e) {
+
+            console.log("🧹 Layer Disabled:", e.name);
+
+            /* Optional: free heavy layers */
+
+            if (e.name === "💧 River Network") {
+              riverLayer.clearLayers(); // free memory
+            }
+
+            if (e.name === "🌱 Plantation") {
+              plantationLayer.clearLayers();
+            }
+
+          });
+          /* ============================================================
+             🐘 SIGHTING FORM SYSTEM (FINAL SAFE VERSION)
+          ============================================================ */
+
+          /* 1. Cascading Mapping */
+          const beatCompMapping = {
+            "East Garam Beat": ["DPO 1", "DPO 2", "DPO 5", "DPO 6", "DPO 9"],
+            "West Garam Beat": ["PORO 3", "PORO 4", "PORO 8", "PORO 9"],
+            "East Poro Beat": ["PORO 2", "PORO 7", "PF", "PORO 5", "PORO 10"],
+            "Range HQ": ["HQ Compound", "Range Office"]
+          };
+
+          /* 2. Update Compartments */
+          function updateCompartments() {
+            const beat = document.getElementById("f-beat").value;
+            const compSelect = document.getElementById("f-compt");
+
+            compSelect.innerHTML = '<option value="">-- Select Compartment --</option>';
+
+            if (beatCompMapping[beat]) {
+              beatCompMapping[beat].forEach(comp => {
+                let opt = document.createElement("option");
+                opt.value = comp;
+                opt.innerHTML = comp;
+                compSelect.appendChild(opt);
+              });
+            }
+          }
+
+          /* 3. Open Form + GPS */
+          function openSightingForm() {
+
+            if (navigator.geolocation) {
+              navigator.geolocation.getCurrentPosition(function (position) {
+                document.getElementById('f-lat').value = position.coords.latitude;
+                document.getElementById('f-lon').value = position.coords.longitude;
+              });
+            }
+
+            document.getElementById('form-modal').style.display = 'block';
+          }
+
+          /* 4. Close Form */
+          function closeSightingForm() {
+document.getElementById('form-modal').style.display = 'none';
+}
+
+/* 5. Submit */
+function submitSightingForm(event) {
+
+if (event) event.preventDefault();
+
+try {
+
+```
+const sightingID = "SIGHT-" + Date.now();
+
+const m = parseInt(document.getElementById("f-m").value) || 0;
+const f = parseInt(document.getElementById("f-f").value) || 0;
+const uni = parseInt(document.getElementById("f-uni").value) || 0;
+const c = parseInt(document.getElementById("f-c").value) || 0;
+
+const total = m + f + uni + c;
+
+const lat = document.getElementById("f-lat").value;
+const lon = document.getElementById("f-lon").value;
+
+const location = lat + "," + lon;
+
+const now = new Date();
+const time = now.toLocaleTimeString("en-IN");
+
+if (!lat || !lon) {
+  alert("❌ Location missing");
+  return;
+}
+
+if (!document.getElementById("f-beat").value || !document.getElementById("f-compt").value) {
+  alert("❌ Select Beat & Compartment");
+  return;
+}
+
+const payload = {
+  sighting_id: sightingID,
+  parent_id: "",
+  beat: document.getElementById("f-beat").value,
+  forest_block: document.getElementById("f-beat").value,
+  compt: document.getElementById("f-compt").value,
+  time: time,
+  m: m,
+  f: f,
+  unidentified: uni,
+  calf: c,
+  total_seen: total,
+  anticipated: "",
+  depredation: "",
+  involved: "",
+  driving: "",
+  remarks: document.getElementById("f-remarks").value,
+  leader: window.userProfile?.leader || "",
+  staff: document.getElementById("f-staff")?.value || "",
+  location: location,
+  direction: document.getElementById("f-dir").value
+};
+
+console.log("📤 Payload:", payload);
+
+const fileInput = document.getElementById("f-photo-file");
+const file = fileInput ? fileInput.files[0] : null;
+
+function submitToServer(finalPayload) {
+
+  if (typeof google === "undefined" || !google.script) {
+    alert("❌ Not running as Apps Script Web App");
+    return;
+  }
+
+  callBackend("saveElephantSighting", {
+    finalPayload: finalPayload
+  })
+  .then(function () {
+
+    alert("✅ Submitted to Command Centre");
+
+    if (typeof closeSightingForm === "function") {
+      closeSightingForm();
+    }
+
+    const form = document.getElementById("elephantForm");
+    if (form) form.reset();
+
+  })
+  .catch(function (err) {
+    console.error("❌ Error:", err);
+    alert("❌ Submission failed\n" + (err.message || ""));
+  });
+
+  if (file) {
+    const reader = new FileReader();
+
+    reader.onloadend = function () {
+      payload.photo = reader.result;
+      submitToServer(payload);
+    };
+
+    reader.readAsDataURL(file);
+
+  } else {
+    payload.photo = "";
+    submitToServer(payload);
+  }
+
+} // ✅ fixed
+```
+
+} catch (e) {
+console.error("❌ Crash:", e);
+alert("❌ Form error: " + e.message);
+}
+
+}
+
+/* ============================================================
+🚨 DUTY SYSTEM
+============================================================ */
+
+let dutyComptMap = {};
+
+function openDutyForm() {
+
+document.getElementById("duty-modal").style.display = "block";
+
+const now = new Date();
+
+document.getElementById("d-id").value = "DUTY-" + Date.now();
+document.getElementById("d-date").value = now.toLocaleString();
+
+callBackend("getLoggedInLeader")
+.then(function (profile) {
+
+
+  window.userProfile = profile;
+
+  document.getElementById("d-leader").value = profile.leader;
+
+  const beatSel = document.getElementById("d-beat");
+  beatSel.innerHTML = "";
+
+  if (profile.role === "ADMIN") {
+    ["East Garam", "West Garam", "East Poro", "Range HQ"].forEach(b => {
+      let o = document.createElement("option");
+      o.value = b;
+      o.innerHTML = b;
+      beatSel.appendChild(o);
+    });
+  } else {
+    let o = document.createElement("option");
+    o.value = profile.beat;
+    o.innerHTML = profile.beat;
+    beatSel.appendChild(o);
+  }
+
+  beatSel.value = profile.beat;
+
+  updateDutyStaff();
+  updateDutyCompt();
+
+});
+
+
+callBackend("getStaffFromDevice")
+.then(function (name) {
+document.getElementById("d-staff").value = name;
+});
+
+}
+
+setTimeout(function () {
+updateDutyCompt();
+updateDutyStaff();
+}, 300);
+/* COMPARTMENT FILTER */
+          function updateDutyCompt() {
+
+const beatEl = document.getElementById("d-beat");
+const box = document.getElementById("comptOptions");
+
+if (!beatEl || !box) return;
+
+const beat = beatEl.value;
+
+box.innerHTML = "";
+
+let list = [];
+
+/* 🔥 EAST + WEST GARAM COMBINED */
+if (beat === "East Garam" || beat === "West Garam") {
+
+```
+list = COMPT_MASTER["East Garam"].concat(
+  COMPT_MASTER["West Garam"]
+);
+```
+
+}
+
+/* 🔥 RANGE HQ → ALL */
+else if (beat === "Range HQ") {
+
+```
+list = COMPT_MASTER["East Garam"]
+  .concat(COMPT_MASTER["West Garam"])
+  .concat(COMPT_MASTER["East Poro"]);
+```
+
+}
+
+/* 🔥 NORMAL */
+else {
+list = COMPT_MASTER[beat] || [];
+}
+
+/* 🔥 REMOVE DUPLICATES */
+list = Array.from(new Set(list));
+
+/* 🔥 FILL CHECKBOX DROPDOWN */
+list.forEach(function (c) {
+
+```
+box.innerHTML +=
+  '<label>' +
+  '<input type="checkbox" value="' + c + '">' +
+  c +
+  '</label>';
+```
+
+});
+
+}
+/* START DUTY (SECURE) */
+          /* START DUTY */
+          /* 🔥 FIXED START DUTY: CAPTURES AND STORES COMMA-SEPARATED STRINGS */
+          /* 🔥 FIXED: CLOSE DUTY MODAL FUNCTION */
+          function closeDutyForm() {
+            console.log("DIAGNOSIS: Closing Duty Register Modal");
+
+            const modal = document.getElementById("duty-modal");
+            if (modal) {
+              modal.style.display = "none";
+
+              // Also close any open multi-select dropdowns to keep it clean
+              document.querySelectorAll(".options").forEach(opt => opt.style.display = "none");
+            } else {
+              console.error("DIAGNOSIS: Could not find element with ID 'duty-modal'");
+            }
+          }/* END DUTY (PERSON-SPECIFIC) */
+          /* ============================================================
+             🔴 NEW 2-STEP DUTY END SYSTEM
+          ============================================================ */
+          function sendSighting(payload) {
+
+            callBackend("saveSightingFull", {
+              payload: payload
+            })
+              .then(function () {
+                alert("✅ Sighting Submitted");
+                closeSightingForm();
+                loadSightings();
+              })
+              .catch(function (err) {
+                alert("❌ Error: " + (err.message || err));
+              });
+
+          }/* STEP 1 → OPEN FORM */
+          function openEndDutyForm() {
+            document.getElementById("end-duty-modal").style.display = "block";
+          }
+
+          /* CLOSE */
+          function closeEndDutyForm() {
+            document.getElementById("end-duty-modal").style.display = "none";
+          }
+
+          /* STEP 2 → FINAL SUBMIT */
+          function submitEndDuty(event) {
+
+            if (!confirm("Submit report and end duty?")) return;
+
+            const btn = event.target;
+            const original = btn.innerHTML;
+
+            btn.innerHTML = "⏳ SAVING...";
+            btn.disabled = true;
+
+            const obs = document.getElementById("ed-obs").value || "";
+
+            callBackend("markDutyOutWithObs", {
+              obs: obs
+            })
+              .then(function (msg) {
+
+                btn.innerHTML = original;
+                btn.disabled = false;
+
+                alert("✅ " + msg);
+
+                closeEndDutyForm();
+
+                /* 🔥 HIDE BUTTON */
+                const endBtn = document.getElementById("dutyOutBtn");
+                if (endBtn) endBtn.style.display = "none";
+
+                /* 🔄 REFRESH */
+                refreshAll();
+
+              })
+              .catch(function (err) {
+
+                btn.innerHTML = original;
+                btn.disabled = false;
+
+                alert("❌ " + (err.message || err));
+
+              });
+
+          }
+
+          /* 🚀 SAFE INITIALIZATION FOR ALL EVENT LISTENERS */
+          function initEventListeners() {
+            console.log("🛠️ Initializing Safe Listeners...");
+
+            // 1. Photo File Upload Listener
+            const photoInput = document.getElementById("f-photo-file");
+            if (photoInput) {
+              photoInput.addEventListener("change", function (e) {
+                const file = e.target.files[0];
+                if (!file) return;
+                const reader = new FileReader();
+                reader.onload = function (evt) {
+                  const img = document.getElementById("photo-preview");
+                  if (img) {
+                    img.src = evt.target.result;
+                    img.style.display = "block";
+                  }
+                };
+                reader.readAsDataURL(file);
+              });
+            }
+
+            // 2. Install Button Listener
+            const installBtn = document.getElementById("installBtn");
+            if (installBtn) {
+              installBtn.addEventListener("click", async () => {
+                if (!deferredPrompt) return;
+                deferredPrompt.prompt();
+                const choice = await deferredPrompt.userChoice;
+                if (choice.outcome === "accepted") console.log("✅ App installed");
+                deferredPrompt = null;
+                const box = document.getElementById("installContainer");
+                if (box) box.style.display = "none";
+              });
+            }
+
+            // 3. Outside Click for End Duty Modal
+            window.addEventListener("click", function (e) {
+              const modal = document.getElementById("end-duty-modal");
+              if (modal && e.target === modal) {
+                closeEndDutyForm();
+              }
+            });
+          }
+
+          /* 🔄 CALL THIS INSIDE YOUR WINDOW.ONLOAD */
+          // Find your existing window.onload and add initEventListeners(); inside it.
+
+          /* OUTSIDE CLICK CLOSE */
+          function updateDisplayLabels() {
+            const selectedStaff = getCheckedValues("staffOptions");
+            const selectedCompt = getCheckedValues("comptOptions");
+
+            document.querySelector("#staffOptions").previousElementSibling.innerText =
+              selectedStaff.length > 0 ? selectedStaff.join(", ") : "Select Staff ▼";
+
+            document.querySelector("#comptOptions").previousElementSibling.innerText =
+              selectedCompt.length > 0 ? selectedCompt.join(", ") : "Select Compartment ▼";
+          }
+          /* 🔥 IMPROVED DROPDOWN TOGGLE WITH OUTSIDE-CLICK CLOSE */
+          function toggleDropdown(id) {
+            const el = document.getElementById(id);
+            if (!el) return;
+
+            // Close others
+            document.querySelectorAll(".options").forEach(d => {
+              if (d.id !== id) d.style.display = "none";
+            });
+
+            el.style.display = (el.style.display === "block") ? "none" : "block";
+
+            // Update labels when closing
+            if (el.style.display === "none") {
+              updateDisplayLabels();
+            }
+          }// Helper to get values
+          function getCheckedValues(containerId) {
+return Array.from(
+document.querySelectorAll("#" + containerId + " input:checked")
+).map(function(el) {
+return el.value;
+});
+}
+
+  </script>
+
+  </div>
+  <div id="form-modal"
+    style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.9); z-index:5000; overflow-y:auto; padding:10px;">
+    <div
+      style="background:#f4f4f4; border-radius:15px; padding:20px; max-width:480px; margin:10px auto; font-family:'Segoe UI', sans-serif; border-top: 8px solid #1b5e20; box-shadow: 0 10px 30px rgba(0,0,0,0.5);">
+
+      <div style="display:flex; justify-content:space-between; align-items:center;">
+        <h3 style="color:#1b5e20; margin:0;"><i class="fa-solid fa-elephant"></i> Elephant Sighting Report</h3>
+        <button onclick="closeSightingForm()"
+          style="background:none; border:none; font-size:24px; color:#666; cursor:pointer;">&times;</button>
+      </div>
+      <hr style="margin:12px 0; border:0; border-top:1px solid #ddd;">
+
+      <form id="elephantForm">
+        <input type="hidden" id="f-lat">
+        <input type="hidden" id="f-lon">
+
+        <label><b>Select Beat</b></label>
+        <select id="f-beat" onchange="updateCompartments()" required
+          style="width:100%; padding:12px; margin-top:5px; border-radius:5px; border:1px solid #ccc;">
+          <option value="">-- Choose Beat --</option>
+          <option value="East Garam Beat">East Garam Beat</option>
+          <option value="West Garam Beat">West Garam Beat</option>
+          <option value="East Poro Beat">East Poro Beat</option>
+          <option value="Range HQ">Range HQ</option>
+        </select>
+
+        <label><b>Compartment</b></label>
+        <select id="f-compt" required
+          style="width:100%; padding:12px; margin-top:5px; border-radius:5px; border:1px solid #ccc;">
+          <option value="">-- Choose Beat First --</option>
+        </select>
+
+        <div style="display:grid; grid-template-columns: 1fr 1fr; gap:10px; margin-top:10px;">
+          <div><label>Male (M)</label><input type="number" id="f-m" value="0" min="0"
+              style="width:100%; padding:10px; border:1px solid #ccc; border-radius:5px;"></div>
+          <div><label>Female (F)</label><input type="number" id="f-f" value="0" min="0"
+              style="width:100%; padding:10px; border:1px solid #ccc; border-radius:5px;"></div>
+          <div><label>Unidentified</label><input type="number" id="f-uni" value="0" min="0"
+              style="width:100%; padding:10px; border:1px solid #ccc; border-radius:5px;"></div>
+          <div><label>Calf</label><input type="number" id="f-c" value="0" min="0"
+              style="width:100%; padding:10px; border:1px solid #ccc; border-radius:5px;"></div>
+        </div>
+
+        <label><b>Driving Status / Remarks</b></label>
+        <select id="f-remarks"
+          style="width:100%; padding:12px; margin-top:5px; border-radius:5px; border:1px solid #ccc;">
+          <option value="Active">🔴 Active</option>
+          <option value="Moved">🟢 Moved</option>
+          <option value="Driven to DPO 1">Driven to DPO 1</option>
+          <option value="Driven to DPO 2">Driven to DPO 2</option>
+          <option value="Driven to DPO 5">Driven to DPO 5</option>
+          <option value="Driven to DPO 6">Driven to DPO 6</option>
+          <option value="Driven to DPO 9">Driven to DPO 9</option>
+          <option value="Driven to PORO 2">Driven to PORO 2</option>
+          <option value="Driven to PORO 3">Driven to PORO 3</option>
+          <option value="Driven to PORO 4">Driven to PORO 4</option>
+          <option value="Driven to PORO 5">Driven to PORO 5</option>
+          <option value="Driven to PORO 7">Driven to PORO 7</option>
+          <option value="Driven to PORO 8">Driven to PORO 8</option>
+          <option value="Driven to PORO 9">Driven to PORO 9</option>
+          <option value="Driven to PORO 10">Driven to PORO 10</option>
+          <option value="Driven to PF">Driven to PF</option>
+        </select>
+
+        <label><b>Direction</b></label>
+        <select id="f-dir" style="width:100%; padding:10px; border-radius:5px; border:1px solid #ccc;">
+          <option value="N">North</option>
+          <option value="NE">North-East</option>
+          <option value="E">East</option>
+          <option value="SE">South-East</option>
+          <option value="S">South</option>
+          <option value="SW">South-West</option>
+          <option value="W">West</option>
+          <option value="NW">North-West</option>
+          <option value="STATIONARY">Stationary</option>
+        </select>
+
+
+        <label><b>📸 Capture / Upload Photo</b></label>
+
+        <input type="file" id="f-photo-file" accept="image/*" capture="environment"
+          style="width:100%; padding:10px; border-radius:5px; border:1px solid #ccc; background:white;">
+
+        <!-- Preview -->
+        <img id="photo-preview" style="
+  width:100%;
+  margin-top:10px;
+  border-radius:8px;
+  display:none;
+">
+        <button type="button" onclick="submitSightingForm(event)"
+          style="width:100%; background:#1b5e20; color:white; padding:15px; border:none; border-radius:8px; font-weight:bold; font-size:16px; cursor:pointer; margin-top:20px; box-shadow: 0 4px 10px rgba(0,0,0,0.2);">
+          📤 SUBMIT TO COMMAND CENTRE
+        </button>
+      </form>
+    </div>
+  </div>
+  <!-- 🔥 INSTALL APP BUTTON -->
+  <div id="installContainer" style="
+  position:fixed;
+  bottom:30px;
+  right:20px;
+  z-index:5000;
+  display:none;
+">
+    <button id="installBtn" style="
+    background:#2e7d32;
+    color:white;
+    padding:12px 16px;
+    border:none;
+    border-radius:8px;
+    font-weight:bold;
+    box-shadow:0 4px 10px rgba(0,0,0,0.4);
+    cursor:pointer;
+  ">
+      📲 Install App
+    </button>
+  </div><!-- 🔥 DUTY BUTTON -->
+  <!-- 🟢 SINGLE DUTY BUTTON -->
+
+
+  <button id="dutyMainBtn" onclick="handleDutyAction()" style="
+    width:65px;
+    height:65px;
+    background:#2e7d32;
+    color:white;
+    border-radius:50%;
+    border:none;
+    box-shadow:0 4px 15px rgba(0,0,0,0.4);
+    cursor:pointer;
+    font-size:22px;
+  ">
+    <i id="dutyIcon" class="fa-solid fa-briefcase"></i>
+  </button>
+
+  <div id="dutyLabel" style="color:white; font-size:10px; text-align:center; font-weight:bold;">
+    START DUTY
+  </div>
+
+  </div>
+
+
+  <!-- 🔥 DUTY MODAL -->
+  <div id="duty-modal" style="
+  display:none;
+  position:fixed;
+  top:0; left:0;
+  width:100%; height:100%;
+  background:rgba(0,0,0,0.9);
+  z-index:6000;
+  overflow-y:auto;
+  padding:10px;
+">
+
+    <div
+      style="background:#f4f4f4; border-radius:15px; padding:20px; max-width:480px; margin:10px auto; border-top:8px solid #2e7d32;">
+
+      <div style="display:flex; justify-content:space-between;">
+        <h3 style="margin:0;color:#1b5e20;">🧭 Duty Register</h3>
+        <button onclick="closeDutyForm()" style="border:none;font-size:22px;">&times;</button>
+      </div>
+
+      <hr>
+
+      <label>Duty ID</label>
+      <input id="d-id" disabled style="width:100%; padding:8px; margin-bottom:8px;">
+
+      <label>Date</label>
+      <input id="d-date" disabled style="width:100%; padding:8px; margin-bottom:8px;">
+
+      <label>Beat</label>
+      <select id="d-beat" onchange="updateDutyCompt(); updateDutyStaff();"
+        style="width:100%; padding:8px; margin-bottom:8px;">
+        <option value="">Select Beat</option>
+        <option>East Garam</option>
+        <option>West Garam</option>
+        <option>East Poro</option>
+        <option>Range HQ</option>
+      </select>
+
+      <label>Team Leader</label>
+      <input id="d-leader" disabled style="width:100%; padding:8px; margin-bottom:8px;">
+
+      <label>Staff Name</label>
+      <div class="multi-select">
+        <div class="select-box" onclick="toggleDropdown('staffOptions')">Select Staff ▼</div>
+        <div class="options" id="staffOptions"></div>
+      </div>
+
+      <label>Duty Type</label>
+      <select id="d-type" style="width:100%; padding:8px; margin-bottom:8px;">
+        <option value="">Select Duty Type</option>
+        <option>Elephant Patrol</option>
+        <option>Forest Patrol</option>
+        <option>Fire Monitoring</option>
+      </select>
+
+      <label>Compartment</label>
+      <div class="multi-select">
+        <div class="select-box" onclick="toggleDropdown('comptOptions')">Select Compartment ▼</div>
+        <div class="options" id="comptOptions"></div>
+      </div>
+
+      <label>Observations</label>
+      <textarea id="d-obs" rows="3" style="width:100%; padding:8px; margin-bottom:8px;"></textarea>
+
+      <button onclick="startDuty()"
+        style="width:100%; margin-top:15px; background:#2e7d32; color:white; padding:12px; border:none; border-radius:6px;">
+        🚀 START DUTY
+      </button>
+
+    </div>
+  </div>
+
+
+  <!-- 🧾 END DUTY MODAL (FIXED OUTSIDE) -->
+  <div id="end-duty-modal" style="
+  display:none;
+  position:fixed;
+  top:0; left:0;
+  width:100%; height:100%;
+  background:rgba(0,0,0,0.9);
+  z-index:6000;
+  padding:10px;
+">
+
+    <div style="display:flex; align-items:center; justify-content:center; height:100%;">
+
+      <div style="
+      background:#f4f4f4;
+      border-radius:15px;
+      padding:20px;
+      max-width:400px;
+      width:100%;
+      border-top:8px solid #d32f2f;
+    ">
+
+        <div style="display:flex; justify-content:space-between;">
+          <h3 style="margin:0;color:#d32f2f;">🧾 End Duty Report</h3>
+          <button onclick="closeEndDutyForm()" style="border:none;font-size:22px;">&times;</button>
+        </div>
+
+        <hr>
+
+        <label><b>Final Observation</b></label>
+        <textarea id="ed-obs" rows="4" style="width:100%; padding:8px;"></textarea>
+
+        <button onclick="submitEndDuty(event)" style="
+        width:100%;
+        margin-top:15px;
+        background:#d32f2f;
+        color:white;
+        padding:12px;
+        border:none;
+        border-radius:6px;
+        font-weight:bold;
+      ">
+          ✅ SUBMIT & END DUTY
+        </button>
+
+      </div>
+
+    </div>
+  </div>
+
+
+  <script>
+
+          /* GLOBAL STATE */
+          window.isDutyActive = false;
+
+          /* MAIN BUTTON */
+          function handleDutyAction() {
+            if (window.isDutyActive) {
+              openEndDutyForm();
+            } else {
+              openDutyForm();
+            }
+          }
+
+          /* UPDATE BUTTON STATE */
+          function autoShowEndDuty() {
+
+            if (!window.userProfile || !window.userProfile.leader) {
+              console.error("❌ Leader not available for duty check");
+              return;
+            }
+
+            console.log("🚀 Checking duty for:", window.userProfile.leader);
+
+            callBackend("checkDutyFromSheet", {
+              leader: window.userProfile.leader
+            })
+              .then(function (res) {
+
+                console.log("🔥 DUTY RESPONSE:", res);
+
+                const btn = document.getElementById("dutyMainBtn");
+                const icon = document.getElementById("dutyIcon");
+                const label = document.getElementById("dutyLabel");
+
+                if (!btn || !icon || !label) {
+                  console.error("❌ Button elements missing");
+                  return;
+                }
+
+                if (res && res.active) {
+
+                  window.isDutyActive = true;
+
+                  btn.style.background = "#d32f2f";
+                  icon.className = "fa-solid fa-stop";
+                  label.innerHTML = "END DUTY";
+
+                  console.log("🔴 UI updated → END DUTY");
+
+                } else {
+
+                  window.isDutyActive = false;
+
+                  btn.style.background = "#2e7d32";
+                  icon.className = "fa-solid fa-briefcase";
+                  label.innerHTML = "START DUTY";
+
+                  console.log("🟢 UI updated → START DUTY");
+                }
+
+              })
+              .catch(function (err) {
+                console.error("❌ Duty check error:", err);
+              });
+
+          }/* 🔥 FIXED START DUTY: CAPTURES DATA AND UPDATES BUTTON */
+          /* 🔥 FIXED START DUTY: CAPTURES DATA, SUBMITS, AND UPDATES BUTTON */
+          function startDuty() {
+
+const now = new Date();
+
+// 1. Get Values
+const staffArray = getCheckedValues("staffOptions");
+const comptArray = getCheckedValues("comptOptions");
+
+const staffString = staffArray.join(", ");
+const comptString = comptArray.join(", ");
+
+/* 🔒 VALIDATION */
+if (staffArray.length === 0) {
+alert("❌ Error: Select at least one staff member.");
+return;
+}
+
+if (comptArray.length === 0) {
+alert("❌ Error: Select at least one compartment.");
+return;
+}
+
+/* 🚀 PAYLOAD */
+const payload = {
+id: document.getElementById("d-id").value,
+leader: document.getElementById("d-leader").value,
+beat: document.getElementById("d-beat").value,
+staff: staffString,
+type: document.getElementById("d-type").value,
+compt: comptString,
+obs: document.getElementById("d-obs").value,
+startTime: now.toLocaleString("en-IN", {
+day: "2-digit",
+month: "short",
+year: "numeric",
+hour: "2-digit",
+minute: "2-digit",
+hour12: true
+})
+};
+
+const startBtn = document.querySelector("#duty-modal button[onclick='startDuty()']");
+const originalText = startBtn.innerHTML;
+
+startBtn.innerHTML = "⏳ SAVING TO CENTRE...";
+startBtn.disabled = true;
+
+callBackend("saveDutyFull", {
+payload: payload
+})
+.then(function () {
+
+```
+alert("✅ Duty Successfully Logged!");
+
+closeDutyForm();
+
+window.isDutyActive = true;
+
+autoShowEndDuty();
+
+startBtn.innerHTML = originalText;
+startBtn.disabled = false;
+
+refreshAll();
+```
+
+})
+.catch(function (err) {
+
+```
+alert("❌ Critical Error: " + (err.message || err));
+
+startBtn.innerHTML = originalText;
+startBtn.disabled = false;
+```
+
+});
+
+} // ✅ FIX: properly closed startDuty
+
+/* ✅ MOVED OUTSIDE (IMPORTANT) */
+function submitEndDuty(event) {
+
+if (!confirm("Submit report and end duty?")) return;
+
+const obs = document.getElementById("ed-obs").value || "";
+
+callBackend("markDutyOutWithObs", {
+obs: obs
+})
+.then(function (msg) {
+
+```
+alert("✅ " + msg);
+
+closeEndDutyForm();
+
+window.isDutyActive = false;
+autoShowEndDuty();
+```
+
+})
+.catch(function (err) {
+
+```
+alert("❌ " + (err.message || err));
+```
+
+});
+
+}
+
+  </script>
+  </div>
+
+  </div>
+  </div>
+  </div>
+  <div id="kmlFormPopup" style="
+  display:none;
+  position:fixed;
+  top:0;
+  left:0;
+  width:100%;
+  height:100%;
+  background:rgba(0,0,0,0.6);
+  z-index:9999;
+  align-items:center;
+  justify-content:center;
+">
+
+    <div style="
+    background:#1b2e1b;
+    padding:20px;
+    border-radius:12px;
+    width:90%;
+    max-width:320px;
+    color:white;
+  ">
+
+      <h3>📡 Upload KML</h3>
+
+      <select id="kmlBeat" style="width:100%; padding:8px; margin-bottom:10px;">
+        <option value="">-- Select Beat --</option>
+        <option value="EAST GARAM">EAST GARAM</option>
+        <option value="WEST GARAM">WEST GARAM</option>
+        <option value="EAST PORO">EAST PORO</option>
+        <option value="RANGE HQ">RANGE HQ</option>
+        <option value="OTHER">OTHER</option>
+      </select>
+
+      <input type="file" id="kmlFileInput" accept=".kml" style="width:100%; margin-bottom:12px;">
+
+      <button onclick="submitKML()"
+        style="width:100%; padding:10px; background:#2e7d32; color:white; border:none; border-radius:6px;">
+        Submit
+      </button>
+
+      <button onclick="closeKMLForm()"
+        style="width:100%; padding:8px; margin-top:5px; background:#555; color:white; border:none; border-radius:6px;">
+        Cancel
+      </button>
+
+      <div id="kmlStatus" style="margin-top:8px; font-size:11px;"></div>
+
+    </div>
+  </div>
+
+</body>
+
+</html>
