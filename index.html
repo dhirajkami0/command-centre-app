@@ -3596,9 +3596,11 @@ function openDutyForm(){
   // 🔥 CRITICAL FIX → WAIT FOR DOM RENDER
   setTimeout(() => {
 
-    console.log("⏳ Initializing duty dropdowns...");
+     console.log("⏳ Initializing duty dropdowns...");
 
-    if (typeof updateDutyStaff === "function") {
+  updateDutyStaff("FROM_OPEN_DUTY");
+  updateDutyCompt("FROM_OPEN_DUTY");
+   if (typeof updateDutyStaff === "function") {
       updateDutyStaff();
     } else {
       console.error("❌ updateDutyStaff not defined");
