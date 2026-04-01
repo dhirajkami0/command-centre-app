@@ -2863,7 +2863,24 @@ ${pct(data.health)} / 100
     applyRoleControl();
 
   });
-}function loadProfile(){
+}
+ function applyRoleControl(){
+
+  const role = (window.userProfile?.role || "").toUpperCase();
+
+  console.log("🎯 ROLE:", role);
+
+  // 🔥 Example control
+  const leaderButtons = document.querySelectorAll(".leader-only");
+
+  if(role === "LEADER"){
+    leaderButtons.forEach(el => el.style.display = "block");
+  } else {
+    leaderButtons.forEach(el => el.style.display = "none");
+  }
+
+}   
+    function loadProfile(){
 
   const saved = JSON.parse(localStorage.getItem("user") || "{}");
 
