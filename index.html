@@ -2848,42 +2848,29 @@ ${pct(data.health)} / 100
     ============================================================ */
  function initDutyControl() {
 
-  window.userProfile = window.userProfile || {};
+  const profile = window.userProfile;
 
-  // ✅ FIXED SOURCE
-  const email = (window.userEmail || "")
-    .toLowerCase()
-    .trim();
+  console.log("👤 Current Profile:", profile);
 
-  console.log("📤 Sending email:", email);
-
-  if (!email) {
-    console.warn("⚠ No email → using fallback");
-    // optional fallback for testing
-    // email = "test@forest.local";
+  if (!profile || !profile.name) {
+    console.error("❌ No userProfile found");
     return;
   }
 
-  callBackend("getLoggedInLeader", { email: email })
-    .then(function (profile) {
+  // 🔥 SET GLOBAL CONTEXT
+  window.currentLeader = profile.name;
+  window.currentBeat = profile.beat;
+  window.currentRole = profile.role;
 
-      console.log("📡 getLoggedInLeader() response:", profile);
+  console.log("✅ Duty Control Initialized");
+  console.log("👤 Leader:", profile.name);
+  console.log("📍 Beat:", profile.beat);
+  console.log("🎯 Role:", profile.role);
 
-      if (!profile || !profile.leader || profile.leader === "Unknown") {
-        alert("❌ User not found in Team Leader sheet");
-        return;
-      }
-
-      window.userProfile = profile;
-
-      console.log("✅ Logged in as:", profile.leader);
-
-      autoShowEndDuty();
-
-    })
-    .catch(function (err) {
-      console.error("❌ initDutyControl error:", err);
-    });
+  // 🔥 AUTO CHECK DUTY STATUS
+  if (typeof autoShowEndDuty === "function") {
+    autoShowEndDuty();
+  }
 }
     /* ============================================================
        🔥 MAIN APP LOAD
