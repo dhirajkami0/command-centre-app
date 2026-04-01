@@ -959,10 +959,8 @@ function updateDutyCompt(source = "UNKNOWN") {
 
   console.log("📍 SOURCE:", source);
   console.trace("📍 CALL STACK");
-
   console.log("⏱ Time:", new Date().toLocaleTimeString());
 
-  // 🔥 ALWAYS USE GLOBAL
   const master = window.COMPT_MASTER;
 
   console.log("📦 COMPT_MASTER exists:", !!master);
@@ -976,9 +974,6 @@ function updateDutyCompt(source = "UNKNOWN") {
   const beatEl = document.getElementById("d-beat");
   const box = document.getElementById("comptOptions");
 
-  console.log("🎯 beatEl:", !!beatEl);
-  console.log("📦 box:", !!box);
-
   if (!beatEl || !box) {
     console.warn("⚠ Missing elements for compt");
     console.groupEnd();
@@ -989,14 +984,14 @@ function updateDutyCompt(source = "UNKNOWN") {
 
   console.log("📍 Selected Beat:", beat);
 
+  // 🔥 ALWAYS CLEAR FIRST
+  box.innerHTML = "";
+
   if (!beat) {
-    console.warn("⚠ No beat selected → clearing");
-    box.innerHTML = "";
+    console.warn("⚠ No beat selected → cleared");
     console.groupEnd();
     return;
   }
-
-  box.innerHTML = "";
 
   let list = [];
 
@@ -1025,7 +1020,6 @@ function updateDutyCompt(source = "UNKNOWN") {
 
       list = master[beat] || [];
       console.log("🔥 MODE: NORMAL");
-
     }
 
     if (!Array.isArray(list)) {
@@ -1034,6 +1028,7 @@ function updateDutyCompt(source = "UNKNOWN") {
       return;
     }
 
+    // 🔥 REMOVE DUPLICATES
     list = [...new Set(list)];
 
     console.log("📊 Final Compartments:", list);
@@ -1048,6 +1043,9 @@ function updateDutyCompt(source = "UNKNOWN") {
       input.type = "checkbox";
       input.value = c;
 
+      // 🔥 CRITICAL FIX (RESET STATE)
+      input.checked = false;
+
       label.appendChild(input);
       label.appendChild(document.createTextNode(" " + c));
 
@@ -1061,109 +1059,6 @@ function updateDutyCompt(source = "UNKNOWN") {
 
   } catch (err) {
     console.error("❌ updateDutyCompt crash:", err);
-  }
-
-  console.groupEnd();
-}  function updateDutyStaff(source = "UNKNOWN"){
-
-  console.group("👮 updateDutyStaff CALLED");
-
-  console.log("📍 SOURCE:", source);
-  console.log("⏱ Time:", new Date().toLocaleTimeString());
-
-  const master = window.STAFF_MASTER;
-
-  if (!master || typeof master !== "object") {
-    console.error("❌ STAFF_MASTER not loaded");
-    console.groupEnd();
-    return;
-  }
-
-  const beatEl = document.getElementById("d-beat");
-  const box = document.getElementById("staffOptions");
-
-  if(!beatEl || !box){
-    console.warn("⚠ Missing elements");
-    console.groupEnd();
-    return;
-  }
-
-  const beat = beatEl.value;
-
-  if (!beat) {
-    box.innerHTML = "";
-    console.warn("⚠ No beat selected");
-    console.groupEnd();
-    return;
-  }
-
-  // 🔥 CLEAR FIRST (IMPORTANT)
-  box.innerHTML = "";
-
-  let list = [];
-
-  try {
-
-    if(beat === "East Garam" || beat === "West Garam"){
-
-      list = [
-        ...(master["East Garam"] || []),
-        ...(master["West Garam"] || [])
-      ];
-
-      console.log("🔥 MODE: GARAM COMBINED");
-
-    } else if(beat === "Range HQ"){
-
-      list = [
-        ...(master["East Garam"] || []),
-        ...(master["West Garam"] || []),
-        ...(master["East Poro"] || []),
-        ...(master["Range HQ"] || [])
-      ];
-
-      console.log("🔥 MODE: RANGE HQ");
-
-    } else {
-
-      list = master[beat] || [];
-      console.log("🔥 MODE: NORMAL");
-    }
-
-    if (!Array.isArray(list)) {
-      console.error("❌ Invalid staff list");
-      console.groupEnd();
-      return;
-    }
-
-    // 🔥 REMOVE DUPLICATES
-    list = [...new Set(list)];
-
-    const frag = document.createDocumentFragment();
-
-    list.forEach(name=>{
-
-      const label = document.createElement("label");
-
-      const input = document.createElement("input");
-      input.type = "checkbox";
-      input.value = name;
-
-      // 🔥 FORCE RESET STATE
-      input.checked = false;
-
-      label.appendChild(input);
-      label.appendChild(document.createTextNode(" " + name));
-
-      frag.appendChild(label);
-    });
-
-    box.appendChild(frag);
-
-    console.log("✅ Staff rendered:", list.length);
-
-  } catch (err) {
-    console.error("❌ updateDutyStaff crash:", err);
   }
 
   console.groupEnd();
