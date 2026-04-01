@@ -3532,47 +3532,50 @@ function openDutyForm(){
           /* STEP 2 → FINAL SUBMIT */
           function submitEndDuty(event) {
 
-            if (!confirm("Submit report and end duty?")) return;
+  if (!confirm("Submit report and end duty?")) return;
 
-            const btn = event.target;
-            const original = btn.innerHTML;
+  const btn = event?.target;
+  if(!btn) return;
 
-            btn.innerHTML = "⏳ SAVING...";
-            btn.disabled = true;
+  const original = btn.innerHTML;
 
-            const obs = document.getElementById("ed-obs").value || "";
+  btn.innerHTML = "⏳ SAVING...";
+  btn.disabled = true;
 
-            callBackend("markDutyOutWithObs", {
-              obs: obs
-            })
-              .then(function (msg) {
+  const obs = document.getElementById("ed-obs").value || "";
 
-                btn.innerHTML = original;
-                btn.disabled = false;
+  callBackend("markDutyOutWithObs", {
+    obs: obs
+  })
+  .then(function (msg) {
 
-                alert("✅ " + msg);
+    btn.innerHTML = original;
+    btn.disabled = false;
 
-                closeEndDutyForm();
+    alert("✅ " + msg);
 
-                /* 🔥 HIDE BUTTON */
-                const endBtn = document.getElementById("dutyOutBtn");
-                if (endBtn) endBtn.style.display = "none";
+    closeEndDutyForm();
 
-                /* 🔄 REFRESH */
-                refreshAll();
+    // 🔥 REMOVE OLD BUTTON CODE ❌
 
-              })
-              .catch(function (err) {
+    // 🔥 ADD THIS (VERY IMPORTANT)
+    window.isDutyActive = false;
+    updateDutyButton();
+    autoShowEndDuty();
 
-                btn.innerHTML = original;
-                btn.disabled = false;
+    refreshAll();
 
-                alert("❌ " + (err.message || err));
+  })
+  .catch(function (err) {
 
-              });
+    btn.innerHTML = original;
+    btn.disabled = false;
 
-          }
+    alert("❌ " + (err.message || err));
 
+  });
+
+}
           /* 🚀 SAFE INITIALIZATION FOR ALL EVENT LISTENERS */
           function initEventListeners() {
             console.log("🛠️ Initializing Safe Listeners...");
