@@ -2862,6 +2862,21 @@ ${pct(data.health)} / 100
   window.currentBeat = profile.beat;
   window.currentRole = profile.role;
 
+  console.log("✅ Duty system initialized");
+  console.log("👤 Leader:", profile.name);
+  console.log("📍 Beat:", profile.beat);
+  console.log("🎯 Role:", profile.role);
+
+  // 🔥 START DUTY CHECK
+  if (typeof autoShowEndDuty === "function") {
+    autoShowEndDuty();
+  }
+}
+  // 🔥 SET GLOBAL CONTEXT
+  window.currentLeader = profile.name;
+  window.currentBeat = profile.beat;
+  window.currentRole = profile.role;
+
   console.log("✅ Duty Control Initialized");
   console.log("👤 Leader:", profile.name);
   console.log("📍 Beat:", profile.beat);
