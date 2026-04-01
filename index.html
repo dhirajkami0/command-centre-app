@@ -1033,7 +1033,7 @@ document.addEventListener("DOMContentLoaded", () => {
     ============================================================ */
     function autoShowEndDuty() {
 
-      if (!window.userProfile || !window.userProfile.leader) {
+      if (!window.userProfile || window.userProfile.name) {
         console.warn("❌ Leader not ready yet");
         return; // STOP here
       }
@@ -1041,7 +1041,7 @@ document.addEventListener("DOMContentLoaded", () => {
       // 🔥 NEW VERSION (GitHub)
 
       callBackend("checkDutyFromSheet", {
-        leader: window.userProfile.leader
+        leader: window.userProfile.name
       })
         .then(function (res) {
 
@@ -2593,7 +2593,7 @@ ${pct(data.health)} / 100
 
                   /* 6. BACKGROUND LOOPS */
                   setInterval(function () {
-                    if (window.userProfile && window.userProfile.leader) {
+                    if (window.userProfile && window.userProfile.name) {
                       autoShowEndDuty();
                     }
                   }, 10000);
@@ -2683,15 +2683,27 @@ ${pct(data.health)} / 100
   }).then(profile=>{
 
     if(profile && !profile.error){
+
       window.userProfile = profile;
+
+      console.log("✅ USER:", profile); // 🔥 DEBUG
+
       applyRoleControl();
+
+      // 🔥 IMPORTANT ADDITIONS
+      setTimeout(()=>{
+        autoShowEndDuty();   // ✅ check active duty
+        updateDutyButton(); // ✅ sync button UI
+      }, 300);
+
     } else {
+
       showStaffLogin();
+
     }
 
   });
 }
-
 window.onload = loadProfile;function toggleWeatherDrawer() {
       console.log("-----------------------------------------");
       console.log("🔍 DIAGNOSIS: Weather Toggle Triggered");
@@ -3326,7 +3338,7 @@ function submitSightingForm(event) {
 ============================================================ */
 
 let dutyComptMap = {};
-function openDutyForm() {
+function openDutyForm(){
 
   const modal = document.getElementById("duty-modal");
   if (modal) modal.style.display = "block";
@@ -3339,86 +3351,66 @@ function openDutyForm() {
     else console.warn("⚠ Missing element:", id);
   };
 
+  // 🔥 BASIC FIELDS
   setVal("d-id", "DUTY-" + Date.now());
   setVal("d-date", now.toLocaleString());
 
-  /* 🔥 FETCH PROFILE FROM BACKEND */
-  callBackend("getLoggedInLeader")
-    .then(function (profile) {
+  const profile = window.userProfile;
 
-      console.log("👤 Profile:", profile);
+  if(!profile){
+    console.error("❌ No userProfile found");
+    return;
+  }
 
-      if (!profile) {
-        console.error("❌ No profile received");
-        return;
-      }
+  console.log("👤 Using Profile:", profile);
 
-      window.userProfile = profile;
+  // 🔥 FIXED FIELD
+  setVal("d-leader", profile.name);
 
-      setVal("d-leader", profile.leader);
+  const beatSel = document.getElementById("d-beat");
 
-      const beatSel = document.getElementById("d-beat");
+  if (!beatSel) {
+    console.error("❌ d-beat not found");
+    return;
+  }
 
-      if (!beatSel) {
-        console.error("❌ d-beat not found");
-        return;
-      }
+  beatSel.innerHTML = "";
 
-      beatSel.innerHTML = "";
+  // 🔴 ADMIN → ALL BEATS
+  if (profile.role === "ADMIN") {
 
-      /* 🔥 ADMIN → ALL BEATS */
-      if (profile.role === "ADMIN") {
-
-        ["East Garam", "West Garam", "East Poro", "Range HQ"]
-          .forEach(b => {
-            let o = document.createElement("option");
-            o.value = b;
-            o.innerHTML = b;
-            beatSel.appendChild(o);
-          });
-
-      } else {
-
-        /* 🔒 NORMAL USER */
+    ["East Garam", "West Garam", "East Poro", "Range HQ"]
+      .forEach(b => {
         let o = document.createElement("option");
-        o.value = profile.beat || "";
-        o.innerHTML = profile.beat || "";
+        o.value = b;
+        o.innerHTML = b;
         beatSel.appendChild(o);
+      });
 
-      }
+  } else {
 
-      beatSel.value = profile.beat || "";
+    // 🔒 LEADER / STAFF → SINGLE BEAT
+    let o = document.createElement("option");
+    o.value = profile.beat || "";
+    o.innerHTML = profile.beat || "";
+    beatSel.appendChild(o);
+  }
 
-      /* 🔥 SAFE FUNCTION CALLS */
-      if (typeof updateDutyStaff === "function") {
-        updateDutyStaff();
-      } else {
-        console.warn("⚠ updateDutyStaff missing");
-      }
+  beatSel.value = profile.beat || "";
 
-      if (typeof updateDutyCompt === "function") {
-        updateDutyCompt();
-      } else {
-        console.error("❌ updateDutyCompt is not a function");
-      }
+  // 🔥 LOAD STAFF + COMPT
+  if (typeof updateDutyStaff === "function") {
+    updateDutyStaff();
+  } else {
+    console.warn("⚠ updateDutyStaff missing");
+  }
 
-    })
-    .catch(function (err) {
-      console.error("❌ Profile fetch error:", err);
-    });
+  if (typeof updateDutyCompt === "function") {
+    updateDutyCompt();
+  } else {
+    console.warn("⚠ updateDutyCompt missing");
+  }
 
-  /* 🔥 FINAL SAFETY DELAY */
-  setTimeout(function () {
-
-    if (typeof updateDutyCompt === "function") {
-      updateDutyCompt();
-    }
-
-    if (typeof updateDutyStaff === "function") {
-      updateDutyStaff();
-    }
-
-  }, 500);
 }/* COMPARTMENT FILTER */
          function updateDutyCompt() {
 
@@ -3951,15 +3943,15 @@ return el.value;
           /* UPDATE BUTTON STATE */
           function autoShowEndDuty() {
 
-            if (!window.userProfile || !window.userProfile.leader) {
+            if (!window.userProfile || !window.userProfile.name) {
               console.error("❌ Leader not available for duty check");
               return;
             }
 
-            console.log("🚀 Checking duty for:", window.userProfile.leader);
+            console.log("🚀 Checking duty for:", window.userProfile.name);
 
             callBackend("checkDutyFromSheet", {
-              leader: window.userProfile.leader
+              leader: window.userProfile.name
             })
               .then(function (res) {
 
