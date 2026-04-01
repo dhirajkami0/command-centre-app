@@ -811,16 +811,20 @@
 function showLogin(){
   document.getElementById("loginModal").style.display = "flex";
 }
+let appStarted = false;
+
 function startApp(){
+
+  if(appStarted) return; // 🔥 prevent duplicate
+
+  appStarted = true;
 
   console.log("🚀 App Started - Command Centre Initializing");
 
   loadSightings();
   loadStaff();
   refreshAll();
-
-}
-function login(){
+}function login(){
 
   const phone = document.getElementById("loginPhone").value.trim();
 
