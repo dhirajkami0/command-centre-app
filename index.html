@@ -738,6 +738,122 @@
 
 
   <script>
+     function loadProfile(){
+
+  const phone = localStorage.getItem("userPhone") || "";
+
+  console.log("📤 Sending phone:", phone);
+
+  callBackend("GET_PROFILE", {
+    phone: phone
+  }).then(profile=>{
+
+    if(profile && !profile.error){
+
+      window.userProfile = profile;
+
+      console.log("✅ USER:", profile);
+
+      applyRoleControl();
+
+      setTimeout(()=>{
+        autoShowEndDuty();
+        updateDutyButton();
+      }, 300);
+
+      startApp(); // 🔥 IMPORTANT (start system AFTER login)
+
+    } else {
+
+      alert("❌ Not authorized");
+
+      localStorage.clear();
+      showLogin(); // 🔥 FIXED (not showStaffLogin)
+    }
+
+  });
+}
+    function applyRoleControl(){
+
+  const role = (window.userProfile?.role || "").toUpperCase();
+
+  console.log("🎯 ROLE:", role);
+
+  // 🔹 Leader / Staff buttons
+  const leaderButtons = document.querySelectorAll(".leader-only");
+
+  if(role === "ADMIN" || role === "LEADER" || role === "STAFF"){
+    leaderButtons.forEach(el => el.style.display = "flex");
+  } else {
+    leaderButtons.forEach(el => el.style.display = "none");
+  }
+
+  // 🔹 Duty button (only ADMIN + LEADER)
+  const dutyBtn = document.getElementById("dutyMainBtn");
+
+  if(dutyBtn){
+    dutyBtn.style.display =
+      (role === "ADMIN" || role === "LEADER") ? "flex" : "none";
+  }
+
+  // 🔹 KML upload (ADMIN only)
+  const kmlBtn = document.querySelector('[onclick="openKMLForm()"]');
+
+  if(kmlBtn){
+    kmlBtn.style.display =
+      (role === "ADMIN") ? "flex" : "none";
+  }
+
+}/* ===============================
+   🔐 LOGIN SYSTEM
+=============================== */
+
+function showLogin(){
+  document.getElementById("loginModal").style.display = "flex";
+}
+function startApp(){
+
+  console.log("🚀 App Started - Command Centre Initializing");
+
+  loadSightings();
+  loadStaff();
+  refreshAll();
+
+}
+function login(){
+
+  const phone = document.getElementById("loginPhone").value.trim();
+
+  if(phone.length < 10){
+    alert("Enter valid phone number");
+    return;
+  }
+
+  localStorage.setItem("userPhone", phone);
+
+  document.getElementById("loginModal").style.display = "none";
+
+  loadProfile();
+}
+
+function logout(){
+  localStorage.removeItem("userPhone");
+  location.reload();
+}
+    /* ===============================
+   🚀 APP START (PUT HERE)
+=============================== */
+window.onload = function(){
+
+  const phone = localStorage.getItem("userPhone");
+
+  if(phone){
+    loadProfile(); // ✅ auto login
+  } else {
+    showLogin();   // 🔐 show login popup
+  }
+
+};
     console.log("🔥 NEW BUILD LOADED - VERSION 999");
     if ("serviceWorker" in navigator) {
   navigator.serviceWorker.register("sw.js")
@@ -2864,72 +2980,7 @@ ${pct(data.health)} / 100
 
   });
 }
- function applyRoleControl(){
-
-  const role = (window.userProfile?.role || "").toUpperCase();
-
-  console.log("🎯 ROLE:", role);
-
-  // 🔹 Leader / Staff buttons
-  const leaderButtons = document.querySelectorAll(".leader-only");
-
-  if(role === "ADMIN" || role === "LEADER" || role === "STAFF"){
-    leaderButtons.forEach(el => el.style.display = "flex");
-  } else {
-    leaderButtons.forEach(el => el.style.display = "none");
-  }
-
-  // 🔹 Duty button (only ADMIN + LEADER)
-  const dutyBtn = document.getElementById("dutyMainBtn");
-
-  if(dutyBtn){
-    dutyBtn.style.display =
-      (role === "ADMIN" || role === "LEADER") ? "flex" : "none";
-  }
-
-  // 🔹 KML upload (ADMIN only)
-  const kmlBtn = document.querySelector('[onclick="openKMLForm()"]');
-
-  if(kmlBtn){
-    kmlBtn.style.display =
-      (role === "ADMIN") ? "flex" : "none";
-  }
-
-}  function loadProfile(){
-
-  const phone = localStorage.getItem("userPhone") || "";
-
-  console.log("📤 Sending phone:", phone);
-
-  callBackend("GET_PROFILE", {
-    phone: phone
-  }).then(profile=>{
-
-    if(profile && !profile.error){
-
-      window.userProfile = profile;
-
-      console.log("✅ USER:", profile);
-
-      applyRoleControl();
-
-      setTimeout(()=>{
-        autoShowEndDuty();
-        updateDutyButton();
-      }, 300);
-
-      startApp(); // 🔥 IMPORTANT (start system AFTER login)
-
-    } else {
-
-      alert("❌ Not authorized");
-
-      localStorage.clear();
-      showLogin(); // 🔥 FIXED (not showStaffLogin)
-    }
-
-  });
-}
+  
 window.onload = loadProfile;function toggleWeatherDrawer() {
       console.log("-----------------------------------------");
       console.log("🔍 DIAGNOSIS: Weather Toggle Triggered");
