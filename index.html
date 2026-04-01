@@ -1364,11 +1364,8 @@ document.addEventListener("DOMContentLoaded", () => {
   zoom:14,
   zoomControl:false
 });
-
-// ✅ SAFE TILE
-L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-  maxZoom: 19
-}).addTo(map);
+/* 🔥 BASE LAYERS LOAD */
+esriSat.addTo(map);
 
 // 🔥 THIS LINE IS THE ANSWE
 
