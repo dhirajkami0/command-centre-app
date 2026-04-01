@@ -735,6 +735,37 @@
       📲 Install App
     </button>
   </div>
+<!-- 🔥 FIREBASE SETUP (ADD HERE) -->
+<script type="module">
+
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+
+import { 
+  getFirestore, 
+  collection, 
+  onSnapshot 
+} from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+
+const firebaseConfig = {
+  apiKey: "AIzaSyCKLIJCOMkjg7hjp7Kr5_FYQq704f4oZnY",
+  authDomain: "command-centre-86f62.firebaseapp.com",
+  projectId: "command-centre-86f62",
+  storageBucket: "command-centre-86f62.firebasestorage.app",
+  messagingSenderId: "692498208499",
+  appId: "1:692498208499:web:0ec7169d16bb294ee64986"
+};
+
+const app = initializeApp(firebaseConfig);
+const db = getFirestore(app);
+
+// 🔥 make globally available
+window.db = db;
+window.collection = collection;
+window.onSnapshot = onSnapshot;
+
+console.log("✅ Firebase fully initialized");
+
+</script>
 
 
   <script>
@@ -2442,48 +2473,64 @@ ${pct(data.health)} / 100
     ========================= */
     function loadIncidents() {
 
-      incidentLayer.clearLayers();
+  console.log("🔥 Firebase incidents loading...");
 
-      callBackend("getIncidents")
-        .then(function (data) {
+  if (!window.db || !window.collection || !window.onSnapshot) {
+    console.error("❌ Firebase not initialized properly");
+    return;
+  }
 
-          if (!data) return;
+  const incidentsRef = window.collection(window.db, "incidents");
 
-          data.forEach(function (i) {
+  window.onSnapshot(incidentsRef, (snapshot) => {
 
-            if (!i.lat || !i.lon) return;
+    incidentLayer.clearLayers();
 
-            let type = (i.type || "").toLowerCase();
+    snapshot.forEach((doc) => {
 
-            /* 🔥 TYPE CLASSIFICATION */
-            let iconType = "fa-triangle-exclamation";
-            let color = "#ffc107";
+      const i = doc.data();
+      i.id = doc.id;
 
-            if (type.includes("fire")) {
-              iconType = "fa-fire";
-              color = "#ff3b30";
-            }
-            else if (type.includes("felling")) {
-              iconType = "fa-tree-slash";
-              color = "#8d6e63";
-            }
-            else if (type.includes("micro")) {
-              iconType = "fa-circle-dot";
-              color = "#ffee58";
-            }
-            else if (type.includes("encroachment")) {
-              iconType = "fa-house-lock";
-              color = "#ff9800";
-            }
+      // 🔥 LOCATION (with fallback)
+      let lat = Number(i.lat);
+      let lon = Number(i.lon);
 
-            /* 🔥 AREA SEVERITY */
-            let area = Number(i.area) || 0;
-            let pulseSize = area > 0.2 ? 60 : area > 0.05 ? 48 : 42;
+      if (!lat || !lon) {
+        console.warn("⚠ Using fallback location for:", i.type);
+        lat = 26.561;
+        lon = 89.507;
+      }
 
-            /* 🔥 ICON */
-            const icon = L.divIcon({
-              className: '',
-              html: `
+      let type = (i.type || "").toLowerCase();
+
+      /* 🔥 TYPE CLASSIFICATION */
+      let iconType = "fa-triangle-exclamation";
+      let color = "#ffc107";
+
+      if (type.includes("fire")) {
+        iconType = "fa-fire";
+        color = "#ff3b30";
+      }
+      else if (type.includes("felling")) {
+        iconType = "fa-tree-slash";
+        color = "#8d6e63";
+      }
+      else if (type.includes("micro")) {
+        iconType = "fa-circle-dot";
+        color = "#ffee58";
+      }
+      else if (type.includes("encroachment")) {
+        iconType = "fa-house-lock";
+        color = "#ff9800";
+      }
+
+      /* 🔥 AREA */
+      let area = Number(i.area) || 0;
+
+      /* 🔥 ICON */
+      const icon = L.divIcon({
+        className: '',
+        html: `
         <div class="markerWrap">
           <div class="radarPulse"></div>
           <div class="radarPulse delay1"></div>
@@ -2492,15 +2539,15 @@ ${pct(data.health)} / 100
             <i class="fa-solid ${iconType}" style="color:${color};"></i>
           </div>
         </div>`,
-              iconSize: [30, 30],
-              iconAnchor: [15, 15]
-            });
+        iconSize: [30, 30],
+        iconAnchor: [15, 15]
+      });
 
-            /* 🔥 POPUP */
-            const popup = `
+      /* 🔥 POPUP */
+      const popup = `
       <div style="font-family:Segoe UI;min-width:180px">
 
-        <b>⚠ ${i.type}</b><br>
+        <b>⚠ ${i.type || "Unknown"}</b><br>
 
         <div style="margin:6px 0">
           <b>Area:</b> ${area.toFixed(3)} ha
@@ -2514,22 +2561,25 @@ ${pct(data.health)} / 100
 
       </div>`;
 
-            L.marker([i.lat, i.lon], {
-              icon: icon,
-              zIndexOffset: 2000
-            })
-              .bindPopup(popup)
-              .addTo(incidentLayer);
+      L.marker([lat, lon], {
+        icon: icon,
+        zIndexOffset: 2000
+      })
+        .bindPopup(popup)
+        .addTo(incidentLayer);
 
-          });
+    });
 
-        })
-        .catch(function (err) {
-          console.error("❌ Incident load error:", err);
-        });
+    // 🔥 ensure layer is visible
+    incidentLayer.addTo(map);
 
-    }
+    console.log("✅ Incidents rendered:", snapshot.size);
 
+  }, (err) => {
+    console.error("❌ Firebase incident error:", err);
+  });
+
+}
     /* 🔥 VERIFY ALERT */
     function verifyAlert(id) {
 
