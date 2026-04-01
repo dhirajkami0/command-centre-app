@@ -742,7 +742,42 @@
   navigator.serviceWorker.register("sw.js")
     .then(() => console.log("✅ SW Registered"))
     .catch(err => console.log("❌ SW Error:", err));
-}
+}const COMPT_MASTER = {
+  "East Garam": [
+    "DPO 1","DPO 2","DPO 5","DPO 6","DPO 9"
+  ],
+  "West Garam": [
+    "PORO 3","PORO 4","PORO 8","PORO 9"
+  ],
+  "East Poro": [
+    "PORO 2","PORO 7","PF","PORO 5","PORO 10"
+  ]
+};
+const STAFF_MASTER = {
+  "East Garam": [
+    "Pradyut Dutta, DR/Fr","Gopal Cheetri-BS","Arsad Ali, FG",
+    "Nilkush Marak-DL","Bhima Goyala-DL","Prakash Goyala-DL",
+    "Eleizer Indwar-DL","Klement Indwar-DL"
+  ],
+  "West Garam": [
+    "Pradyut Dutta, DR/Fr","Bidyut Barman, Banashayak",
+    "Profarson Sangma-Banasahayak","Geleswari Rava-FV"
+  ],
+  "East Poro": [
+    "Pradip Barman, DR/Fr","Upen Rava-BS","Gajen Rava, AS",
+    "Chandan Oraon, Banasayahak","Kisun Bhagat, FV",
+    "Sumitra Rava, FV","Sridam Barman,DL","Biswajit Chauhan,DL"
+  ],
+  "Range HQ": [
+    "Dhiraj Kami, FR","Dhanapati Das,AS","Debdulal Sarkar, AS",
+    "Shambhu Das, AS","Manik Singh Barua, AS","Apel Mandal, AS",
+    "Sarnalata Adhikary, Ordely","Biswajit Das, Banasahayk",
+    "Sachin Chhetri, Banasahayak","Ashis Chakraborty,DL",
+    "Mahesh Nagasia,DL","Manika Das, FV","Rina Basfore, DL",
+    "Bubu Koheli, DL","Sridam Barman,DL","Biswajit Chauhan,DL"
+  ]
+};
+
 const GAS_URL = "https://script.google.com/macros/s/AKfycbzBipROiRtMq-KoJaCf_Zi-d8PQEstYRsgAZ6VYFJRieHI9z7bTKYP4RtCUNRvJkwO7/exec";
 
 function callBackend(action, payload = {}) {
@@ -789,48 +824,22 @@ function callBackend(action, payload = {}) {
     console.error("❌ Backend failed:", err);
     return null;
   });
-}const COMPT_MASTER = {
-  "East Garam": [
-    "DPO 1","DPO 2","DPO 5","DPO 6","DPO 9"
-  ],
-  "West Garam": [
-    "PORO 3","PORO 4","PORO 8","PORO 9"
-  ],
-  "East Poro": [
-    "PORO 2","PORO 7","PF","PORO 5","PORO 10"
-  ]
-};
-const STAFF_MASTER = {
-  "East Garam": [
-    "Pradyut Dutta, DR/Fr","Gopal Cheetri-BS","Arsad Ali, FG",
-    "Nilkush Marak-DL","Bhima Goyala-DL","Prakash Goyala-DL",
-    "Eleizer Indwar-DL","Klement Indwar-DL"
-  ],
-  "West Garam": [
-    "Pradyut Dutta, DR/Fr","Bidyut Barman, Banashayak",
-    "Profarson Sangma-Banasahayak","Geleswari Rava-FV"
-  ],
-  "East Poro": [
-    "Pradip Barman, DR/Fr","Upen Rava-BS","Gajen Rava, AS",
-    "Chandan Oraon, Banasayahak","Kisun Bhagat, FV",
-    "Sumitra Rava, FV","Sridam Barman,DL","Biswajit Chauhan,DL"
-  ],
-  "Range HQ": [
-    "Dhiraj Kami, FR","Dhanapati Das,AS","Debdulal Sarkar, AS",
-    "Shambhu Das, AS","Manik Singh Barua, AS","Apel Mandal, AS",
-    "Sarnalata Adhikary, Ordely","Biswajit Das, Banasahayk",
-    "Sachin Chhetri, Banasahayak","Ashis Chakraborty,DL",
-    "Mahesh Nagasia,DL","Manika Das, FV","Rina Basfore, DL",
-    "Bubu Koheli, DL","Sridam Barman,DL","Biswajit Chauhan,DL"
-  ]
-};
-
+}
 function updateDutyStaff(){
+
+  // 🔥 HARD SAFETY
+  if (typeof STAFF_MASTER !== "object") {
+    console.error("❌ STAFF_MASTER not loaded");
+    return;
+  }
 
   const beatEl = document.getElementById("d-beat");
   const box = document.getElementById("staffOptions");
 
-  if(!beatEl || !box) return;
+  if(!beatEl || !box){
+    console.warn("⚠ Missing elements for staff");
+    return;
+  }
 
   const beat = beatEl.value;
 
@@ -838,46 +847,65 @@ function updateDutyStaff(){
 
   let list = [];
 
-  /* 🔥 RULE 1: EAST + WEST GARAM */
-  if(beat === "East Garam" || beat === "West Garam"){
+  try {
 
-    list = [
-      ...STAFF_MASTER["East Garam"],
-      ...STAFF_MASTER["West Garam"]
-    ];
+    /* 🔥 EAST + WEST GARAM */
+    if(beat === "East Garam" || beat === "West Garam"){
+
+      list = [
+        ...(STAFF_MASTER["East Garam"] || []),
+        ...(STAFF_MASTER["West Garam"] || [])
+      ];
+    }
+
+    /* 🔥 RANGE HQ */
+    else if(beat === "Range HQ"){
+
+      list = [
+        ...(STAFF_MASTER["East Garam"] || []),
+        ...(STAFF_MASTER["West Garam"] || []),
+        ...(STAFF_MASTER["East Poro"] || []),
+        ...(STAFF_MASTER["Range HQ"] || [])
+      ];
+    }
+
+    /* 🔥 NORMAL */
+    else{
+      list = STAFF_MASTER[beat] || [];
+    }
+
+    // 🔥 SAFETY
+    if (!Array.isArray(list)) {
+      console.error("❌ Invalid staff list:", list);
+      return;
+    }
+
+    // 🔥 REMOVE DUPLICATES
+    list = [...new Set(list)];
+
+    // 🔥 RENDER
+    list.forEach(name=>{
+
+      const label = document.createElement("label");
+
+      const input = document.createElement("input");
+      input.type = "checkbox";
+      input.value = name;
+
+      label.appendChild(input);
+      label.appendChild(document.createTextNode(" " + name));
+
+      box.appendChild(label);
+
+    });
+
+    console.log("✅ Staff loaded:", list.length);
+
+  } catch (err) {
+    console.error("❌ updateDutyStaff crash:", err);
   }
 
-  /* 🔥 RULE 2: RANGE HQ → ALL STAFF */
-  else if(beat === "Range HQ"){
-
-    list = [
-      ...STAFF_MASTER["East Garam"],
-      ...STAFF_MASTER["West Garam"],
-      ...STAFF_MASTER["East Poro"],
-      ...STAFF_MASTER["Range HQ"]
-    ];
-  }
-
-  /* 🔥 RULE 3: NORMAL */
-  else{
-    list = STAFF_MASTER[beat] || [];
-  }
-
-  /* 🔥 REMOVE DUPLICATES */
-  list = [...new Set(list)];
-
-  /* 🔥 FILL CHECKBOX DROPDOWN */
-  list.forEach(name=>{
-    box.innerHTML += `
-      <label>
-        <input type="checkbox" value="${name}">
-        ${name}
-      </label>
-    `;
-  });
-
-}
-    /* ============================================================
+}    /* ============================================================
      📲 INSTALL PROMPT SYSTEM
   ============================================================ */
 
@@ -3345,8 +3373,8 @@ function submitSightingForm(event) {
 /* ============================================================
 🚨 DUTY SYSTEM
 ============================================================ */
-
 let dutyComptMap = {};
+
 function openDutyForm(){
 
   const modal = document.getElementById("duty-modal");
@@ -3366,14 +3394,14 @@ function openDutyForm(){
 
   const profile = window.userProfile;
 
-  if(!profile){
-    console.error("❌ No userProfile found");
+  if(!profile || !profile.name){
+    console.error("❌ No valid userProfile found");
     return;
   }
 
   console.log("👤 Using Profile:", profile);
 
-  // 🔥 FIXED FIELD
+  // 🔥 LEADER
   setVal("d-leader", profile.name);
 
   const beatSel = document.getElementById("d-beat");
@@ -3398,7 +3426,6 @@ function openDutyForm(){
 
   } else {
 
-    // 🔒 LEADER / STAFF → SINGLE BEAT
     let o = document.createElement("option");
     o.value = profile.beat || "";
     o.innerHTML = profile.beat || "";
@@ -3407,27 +3434,49 @@ function openDutyForm(){
 
   beatSel.value = profile.beat || "";
 
-  // 🔥 LOAD STAFF + COMPT
-  if (typeof updateDutyStaff === "function") {
-    updateDutyStaff();
-  } else {
-    console.warn("⚠ updateDutyStaff missing");
-  }
+  // 🔥 SAFE CHANGE LISTENER (prevents multiple binding)
+  beatSel.onchange = () => {
 
-  if (typeof updateDutyCompt === "function") {
-    updateDutyCompt();
-  } else {
-    console.warn("⚠ updateDutyCompt missing");
-  }
+    console.log("🔄 Beat changed:", beatSel.value);
 
-}/* COMPARTMENT FILTER */
-         function updateDutyCompt() {
+    if (typeof updateDutyStaff === "function") updateDutyStaff();
+    if (typeof updateDutyCompt === "function") updateDutyCompt();
+
+  };
+
+  // 🔥 CRITICAL FIX → WAIT FOR DOM RENDER
+  setTimeout(() => {
+
+    console.log("⏳ Initializing duty dropdowns...");
+
+    if (typeof updateDutyStaff === "function") {
+      updateDutyStaff();
+    } else {
+      console.error("❌ updateDutyStaff not defined");
+    }
+
+    if (typeof updateDutyCompt === "function") {
+      updateDutyCompt();
+    } else {
+      console.error("❌ updateDutyCompt not defined");
+    }
+
+  }, 150);
+
+}
+    function updateDutyCompt() {
+
+  // 🔥 HARD SAFETY
+  if (typeof COMPT_MASTER !== "object") {
+    console.error("❌ COMPT_MASTER not loaded");
+    return;
+  }
 
   const beatEl = document.getElementById("d-beat");
   const box = document.getElementById("comptOptions");
 
   if (!beatEl || !box) {
-    console.warn("⚠ Missing elements");
+    console.warn("⚠ Missing elements for compt");
     return;
   }
 
@@ -3437,64 +3486,70 @@ function openDutyForm(){
 
   let list = [];
 
-  /* 🔥 SAFETY: ensure COMPT_MASTER exists */
-  if (typeof COMPT_MASTER !== "object") {
-    console.error("❌ COMPT_MASTER is invalid:", COMPT_MASTER);
-    return;
+  try {
+
+    /* 🔥 EAST + WEST GARAM */
+    if (beat === "East Garam" || beat === "West Garam") {
+
+      list = [
+        ...(COMPT_MASTER["East Garam"] || []),
+        ...(COMPT_MASTER["West Garam"] || [])
+      ];
+
+    }
+
+    /* 🔥 RANGE HQ */
+    else if (beat === "Range HQ") {
+
+      list = [
+        ...(COMPT_MASTER["East Garam"] || []),
+        ...(COMPT_MASTER["West Garam"] || []),
+        ...(COMPT_MASTER["East Poro"] || [])
+      ];
+
+    }
+
+    /* 🔥 NORMAL */
+    else {
+
+      list = COMPT_MASTER[beat] || [];
+
+    }
+
+    // 🔥 SAFETY ARRAY
+    if (!Array.isArray(list)) {
+      console.error("❌ Invalid compt list:", list);
+      return;
+    }
+
+    // 🔥 REMOVE DUPLICATES
+    list = [...new Set(list)];
+
+    // 🔥 RENDER
+    list.forEach(c => {
+
+      const label = document.createElement("label");
+
+      const input = document.createElement("input");
+      input.type = "checkbox";
+      input.value = c;
+
+      label.appendChild(input);
+      label.appendChild(document.createTextNode(" " + c));
+
+      box.appendChild(label);
+
+    });
+
+    console.log("✅ Compartments loaded:", list.length);
+
+  } catch (err) {
+    console.error("❌ updateDutyCompt crash:", err);
   }
 
-  /* 🔥 EAST + WEST GARAM COMBINED */
-  if (beat === "East Garam" || beat === "West Garam") {
-
-    list = (COMPT_MASTER["East Garam"] || [])
-      .concat(COMPT_MASTER["West Garam"] || []);
-
-  }
-
-  /* 🔥 RANGE HQ → ALL */
-  else if (beat === "Range HQ") {
-
-    list = (COMPT_MASTER["East Garam"] || [])
-      .concat(COMPT_MASTER["West Garam"] || [])
-      .concat(COMPT_MASTER["East Poro"] || []);
-
-  }
-
-  /* 🔥 NORMAL */
-  else {
-
-    list = COMPT_MASTER[beat] || [];
-
-  }
-
-  /* 🔥 FINAL SAFETY */
-  if (!Array.isArray(list)) {
-    console.error("❌ list is not array:", list);
-    return;
-  }
-
-  /* 🔥 REMOVE DUPLICATES */
-  list = Array.from(new Set(list));
-
-  /* 🔥 RENDER */
-  list.forEach(function (c) {
-
-    const label = document.createElement("label");
-
-    const input = document.createElement("input");
-    input.type = "checkbox";
-    input.value = c;
-
-    label.appendChild(input);
-    label.appendChild(document.createTextNode(" " + c));
-
-    box.appendChild(label);
-
-  });
-
-  console.log("✅ Compartments loaded:", list.length);
 }
-/* START DUTY (SECURE) */
+    
+    /* START DUTY (SECURE) */
           /* START DUTY */
           /* 🔥 FIXED START DUTY: CAPTURES AND STORES COMMA-SEPARATED STRINGS */
           /* 🔥 FIXED: CLOSE DUTY MODAL FUNCTION */
