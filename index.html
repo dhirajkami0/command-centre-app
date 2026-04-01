@@ -814,17 +814,12 @@ function showLogin(){
 let appStarted = false;
 
 function startApp(){
-
-  if(appStarted) return; // 🔥 prevent duplicate
-
+  if(appStarted) return;
   appStarted = true;
 
-  console.log("🚀 App Started - Command Centre Initializing");
-
-  loadSightings();
-  loadStaff();
-  refreshAll();
-}function login(){
+  refreshAll(); // 🔥 single source of truth
+}
+    function login(){
 
   const phone = document.getElementById("loginPhone").value.trim();
 
