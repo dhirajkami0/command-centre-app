@@ -3802,46 +3802,77 @@ function openDutyForm(){
           }
 
           /* STEP 2 → FINAL SUBMIT */
-        function submitEndDuty(event) {
+ function submitEndDuty(event) {
 
   if (!confirm("Submit report and end duty?")) return;
 
-  const obs = document.getElementById("ed-obs").value || "";
+  const obs = document.getElementById("ed-obs")?.value || "";
 
   callBackend("markDutyOutWithObs", { obs })
 
   .then(function (msg) {
 
-    // 🔥 FIX: handle object response properly
-    const message =
-      (typeof msg === "object")
-        ? (msg.status || msg.message || "Success")
-        : msg;
-
-    alert("✅ " + message);
+    // 🔥 BULLETPROOF MESSAGE EXTRACTION
+    let message = "Success";
 
     try {
 
-      closeEndDutyForm();
+      if (typeof msg === "string") {
+        message = msg;
+
+      } else if (Array.isArray(msg)) {
+        message = msg[0]?.status || msg[0]?.message || JSON.stringify(msg);
+
+      } else if (typeof msg === "object" && msg !== null) {
+
+        // check nested safely
+        message =
+          msg.status ||
+          msg.message ||
+          msg.msg ||
+          msg.result ||
+          msg?.data?.status ||
+          msg?.data?.message ||
+          JSON.stringify(msg);
+      }
+
+    } catch (e) {
+      message = "Success";
+    }
+
+    alert("✅ " + message);
+
+    // 🔥 SAFE EXECUTION BLOCK (NO CRASH)
+    try {
+
+      if (typeof closeEndDutyForm === "function") {
+        closeEndDutyForm();
+      }
 
       window.isDutyActive = false;
 
-      updateDutyButton();
+      if (typeof updateDutyButton === "function") {
+        updateDutyButton();
+      }
 
-      refreshAll();
+      if (typeof refreshAll === "function") {
+        refreshAll();
+      }
 
     } catch (err) {
-
       console.error("💥 CRASH DETECTED:", err);
-      console.error("💥 STACK:", err.stack);
-
     }
 
   })
 
   .catch(function (err) {
 
-    alert("❌ " + (err.message || err));
+    let errMsg =
+      (typeof err === "object" && err !== null)
+        ? (err.message || JSON.stringify(err))
+        : err;
+
+    alert("❌ " + errMsg);
 
   });
 
