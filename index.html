@@ -3996,84 +3996,83 @@ return el.value;
           /* 🔥 FIXED START DUTY: CAPTURES DATA, SUBMITS, AND UPDATES BUTTON */
           function startDuty() {
 
-const now = new Date();
+  const now = new Date();
 
-// 1. Get Values
-const staffArray = getCheckedValues("staffOptions");
-const comptArray = getCheckedValues("comptOptions");
+  const profile = window.userProfile;
 
-const staffString = staffArray.join(", ");
-const comptString = comptArray.join(", ");
+  if(!profile){
+    alert("❌ User not loaded");
+    return;
+  }
 
-/* 🔒 VALIDATION */
-if (staffArray.length === 0) {
-alert("❌ Error: Select at least one staff member.");
-return;
-}
+  // 🔹 GET VALUES
+  const staffArray = getCheckedValues("staffOptions");
+  const comptArray = getCheckedValues("comptOptions");
 
-if (comptArray.length === 0) {
-alert("❌ Error: Select at least one compartment.");
-return;
-}
+  const staffString = staffArray.join(", ");
+  const comptString = comptArray.join(", ");
 
-/* 🚀 PAYLOAD */
-const payload = {
-id: document.getElementById("d-id").value,
-leader: document.getElementById("d-leader").value,
-beat: document.getElementById("d-beat").value,
-staff: staffString,
-type: document.getElementById("d-type").value,
-compt: comptString,
-obs: document.getElementById("d-obs").value,
-startTime: now.toLocaleString("en-IN", {
-day: "2-digit",
-month: "short",
-year: "numeric",
-hour: "2-digit",
-minute: "2-digit",
-hour12: true
-})
-};
+  // 🔒 VALIDATION
+  if (staffArray.length === 0) {
+    alert("❌ Select at least one staff");
+    return;
+  }
 
-const startBtn = document.querySelector("#duty-modal button[onclick='startDuty()']");
-const originalText = startBtn.innerHTML;
+  if (comptArray.length === 0) {
+    alert("❌ Select at least one compartment");
+    return;
+  }
 
-startBtn.innerHTML = "⏳ SAVING TO CENTRE...";
-startBtn.disabled = true;
+  // 🔥 DUPLICATE PROTECTION
+  if(window.isDutyActive){
+    alert("⚠ Duty already active");
+    return;
+  }
 
-callBackend("saveDutyFull", {
-payload: payload
-})
-.then(function () {
+  // 🚀 PAYLOAD (MINIMAL)
+  const payload = {
+    staff: staffString,
+    type: document.getElementById("d-type")?.value || "",
+    compt: comptString,
+    obs: document.getElementById("d-obs")?.value || ""
+  };
 
-```
-alert("✅ Duty Successfully Logged!");
+  const startBtn = document.querySelector("#duty-modal button[onclick='startDuty()']");
+  const originalText = startBtn.innerHTML;
 
-closeDutyForm();
+  startBtn.innerHTML = "⏳ Starting Duty...";
+  startBtn.disabled = true;
 
-window.isDutyActive = true;
+  // 🔥 USE SECURE API
+  callBackend("markDutyIn", payload)
+  .then(function (res) {
 
-autoShowEndDuty();
+    if(!res) return;
 
-startBtn.innerHTML = originalText;
-startBtn.disabled = false;
+    alert("✅ Duty Started");
 
-refreshAll();
-```
+    closeDutyForm();
 
-})
-.catch(function (err) {
+    window.isDutyActive = true;
 
-```
-alert("❌ Critical Error: " + (err.message || err));
+    updateDutyButton();   // 🔥 immediate UI update
 
-startBtn.innerHTML = originalText;
-startBtn.disabled = false;
-```
+    startBtn.innerHTML = originalText;
+    startBtn.disabled = false;
 
-});
+    autoShowEndDuty();    // 🔥 sync with backend
 
-} // ✅ FIX: properly closed startDuty
+  })
+  .catch(function (err) {
+
+    alert("❌ Error: " + (err.message || err));
+
+    startBtn.innerHTML = originalText;
+    startBtn.disabled = false;
+
+  });
+
+}// ✅ FIX: properly closed startDuty
 
 /* ✅ MOVED OUTSIDE (IMPORTANT) */
 function submitEndDuty(event) {
