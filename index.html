@@ -3528,93 +3528,168 @@ function openDutyForm(){
 
   console.group("🚀 openDutyForm START");
 
+  console.log("⏱ Time:", new Date().toLocaleTimeString());
+
+  // 🔍 CHECK MODAL
   const modal = document.getElementById("duty-modal");
+  console.log("📦 duty-modal:", modal);
 
   if (!modal) {
-    console.error("❌ duty-modal NOT FOUND");
+    console.error("❌ CRITICAL: duty-modal NOT FOUND in DOM");
     console.groupEnd();
     return;
   }
 
   modal.style.display = "block";
+  console.log("✅ Modal opened");
 
+  // 🔍 CHECK PROFILE
   const profile = window.userProfile;
+  console.log("👤 userProfile:", profile);
 
-  if(!profile || !profile.name){
-    console.error("❌ Invalid userProfile");
+  if (!profile) {
+    console.error("❌ CRITICAL: userProfile is NULL");
     console.groupEnd();
     return;
   }
 
-  console.log("👤 Profile:", profile);
+  if (!profile.name) {
+    console.warn("⚠ userProfile.name missing → using fallback");
+  }
 
-  // 🔥 SAFE SETTER
+  // 🔍 SAFE SETTER
   const setVal = (id, val) => {
     const el = document.getElementById(id);
 
+    console.log(`🔎 Checking element: ${id}`, el);
+
     if (!el) {
-      console.warn("❌ Element not found:", id);
+      console.error(`❌ ELEMENT NOT FOUND → ${id}`);
       return;
     }
 
-    el.value = val;
+    try {
+      el.value = val;
+      console.log(`✅ SET ${id} =`, val);
+    } catch (err) {
+      console.error(`❌ FAILED setting ${id}`, err);
+    }
   };
 
+  // 🔍 CHECK BEAT DROPDOWN
   const beatSel = document.getElementById("d-beat");
+  console.log("📍 d-beat:", beatSel);
 
   if (!beatSel) {
-    console.error("❌ d-beat not found");
+    console.error("❌ CRITICAL: d-beat NOT FOUND");
     console.groupEnd();
     return;
   }
 
+  // 🔥 RESET OPTIONS
   beatSel.innerHTML = "";
+  console.log("🧹 Cleared beat dropdown");
 
-  // 🔴 ADMIN → ALL BEATS
-  if (profile.role === "ADMIN") {
+  // 🔍 ROLE LOGIC
+  console.log("👤 Role:", profile.role);
 
-    ["East Garam", "West Garam", "East Poro", "Range HQ"]
-      .forEach(b => {
-        let o = document.createElement("option");
-        o.value = b;
-        o.innerHTML = b;
-        beatSel.appendChild(o);
-      });
+  try {
 
-  } else {
+    if (profile.role === "ADMIN") {
 
-    let o = document.createElement("option");
-    o.value = profile.beat || "";
-    o.innerHTML = profile.beat || "";
-    beatSel.appendChild(o);
+      console.log("🔴 ADMIN → loading all beats");
+
+      ["East Garam", "West Garam", "East Poro", "Range HQ"]
+        .forEach(b => {
+          let o = document.createElement("option");
+          o.value = b;
+          o.innerHTML = b;
+          beatSel.appendChild(o);
+        });
+
+    } else {
+
+      console.log("🔒 NON-ADMIN → single beat");
+
+      let o = document.createElement("option");
+      o.value = profile.beat || "";
+      o.innerHTML = profile.beat || "";
+      beatSel.appendChild(o);
+    }
+
+    beatSel.value = profile.beat || "";
+
+    console.log("✅ Beat set:", beatSel.value);
+
+  } catch (err) {
+    console.error("❌ Beat setup failed:", err);
   }
 
-  beatSel.value = profile.beat || "";
-
-  // 🔥 CHANGE LISTENER
+  // 🔍 CHANGE LISTENER DEBUG
   beatSel.onchange = () => {
-    console.log("🔄 Beat changed:", beatSel.value);
-    updateDutyStaff("BEAT_CHANGE");
-    updateDutyCompt("BEAT_CHANGE");
+
+    console.group("🔄 BEAT CHANGED");
+
+    console.log("New Beat:", beatSel.value);
+
+    if (typeof updateDutyStaff === "function") {
+      updateDutyStaff("BEAT_CHANGE");
+    } else {
+      console.error("❌ updateDutyStaff NOT FOUND");
+    }
+
+    if (typeof updateDutyCompt === "function") {
+      updateDutyCompt("BEAT_CHANGE");
+    } else {
+      console.error("❌ updateDutyCompt NOT FOUND");
+    }
+
+    console.groupEnd();
   };
 
-  // 🔥🔥 CRITICAL FIX (DELAY EVERYTHING THAT USES DOM)
+  // 🔥 CRITICAL DEBUG BLOCK
   setTimeout(() => {
 
-    console.log("⏳ DOM READY → Setting values");
+    console.group("⏳ POST-DOM CHECK");
 
+    // 🔍 CHECK ALL REQUIRED ELEMENTS
+    const ids = [
+      "d-id",
+      "d-date",
+      "d-leader",
+      "d-beat",
+      "staffOptions",
+      "comptOptions"
+    ];
+
+    ids.forEach(id => {
+      console.log(`🔎 ${id}:`, document.getElementById(id));
+    });
+
+    // 🔍 SET VALUES
     setVal("d-id", "DUTY-" + Date.now());
     setVal("d-date", new Date().toLocaleString());
-    setVal("d-leader", profile.name);
+    setVal("d-leader", profile.name || "Unknown");
 
-    updateDutyStaff("FROM_OPEN_DUTY");
-    updateDutyCompt("FROM_OPEN_DUTY");
+    // 🔍 CALL DROPDOWN LOADERS
+    if (typeof updateDutyStaff === "function") {
+      updateDutyStaff("FROM_OPEN_DUTY");
+    } else {
+      console.error("❌ updateDutyStaff NOT DEFINED");
+    }
 
-  }, 120);
+    if (typeof updateDutyCompt === "function") {
+      updateDutyCompt("FROM_OPEN_DUTY");
+    } else {
+      console.error("❌ updateDutyCompt NOT DEFINED");
+    }
+
+    console.groupEnd();
+
+  }, 150);
 
   console.groupEnd();
-}    
-    /* START DUTY (SECURE) */
+}    /* START DUTY (SECURE) */
           /* START DUTY */
           /* 🔥 FIXED START DUTY: CAPTURES AND STORES COMMA-SEPARATED STRINGS */
           /* 🔥 FIXED: CLOSE DUTY MODAL FUNCTION */
