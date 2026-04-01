@@ -738,127 +738,122 @@
 
 
   <script>
-     function loadProfile(){
 
-  const phone = localStorage.getItem("userPhone") || "";
+/* ===============================
+   🔧 GLOBAL UTILITIES (BACKEND)
+=============================== */
 
-  console.log("📤 Sending phone:", phone);
+function cleanName(name){
+  return String(name || "")
+    .toUpperCase()
+    .split(",")[0]
+    .split("(")[0]
+    .split("-")[0]
+    .split("/")[0]
+    .replace(/\s+/g," ")
+    .replace(/\./g,"")
+    .replace(/[^A-Z\s]/g,"")
+    .trim();
+}
 
-  callBackend("GET_PROFILE", {
-    phone: phone
-  }).then(profile=>{
 
-    if(profile && !profile.error){
+/* ===============================
+   🔐 MAIN PROFILE FUNCTION
+=============================== */
 
-      window.userProfile = profile;
+function GET_PROFILE(data){
 
-      console.log("✅ USER:", profile);
+  data = data || {};
 
-      applyRoleControl();
+  const phone = (data.phone || "").toString().trim();
 
-      setTimeout(()=>{
-        autoShowEndDuty();
-        updateDutyButton();
-      }, 300);
+  if(!phone){
+    return { error: "NO_PHONE" };
+  }
 
-      startApp(); // 🔥 IMPORTANT (start system AFTER login)
+  console.log("📥 Incoming phone:", phone);
 
-    } else {
+  /* =========================================
+     🔴 ADMIN (PHONE BASED)
+  ========================================= */
 
-      alert("❌ Not authorized");
+  if(phone === "9876543210"){ // 🔥 CHANGE THIS to your number
+    return {
+      name: cleanName("Dhiraj Kami"),
+      role: "ADMIN",
+      beat: "Range HQ",
+      phone: phone
+    };
+  }
 
-      localStorage.clear();
-      showLogin(); // 🔥 FIXED (not showStaffLogin)
+  /* =========================================
+     🔵 LEADER (TEAM LEADER SHEET)
+  ========================================= */
+
+  const leaderSh = SpreadsheetApp.getActive()
+    .getSheetByName("Team Leader");
+
+  if(leaderSh){
+
+    const leaderData = leaderSh.getDataRange().getValues();
+
+    for(let i=1;i<leaderData.length;i++){
+
+      const sheetPhone = (leaderData[i][3] || "")
+        .toString().trim();
+
+      if(sheetPhone === phone){
+
+        console.log("✅ Leader matched:", leaderData[i][2]);
+
+        return {
+          name: cleanName(leaderData[i][2]),
+          role: "LEADER",
+          beat: (leaderData[i][1] || "").toString().trim(),
+          phone: phone
+        };
+      }
     }
-
-  });
-}
-    function applyRoleControl(){
-
-  const role = (window.userProfile?.role || "").toUpperCase();
-
-  console.log("🎯 ROLE:", role);
-
-  const leaderButtons = document.querySelectorAll(".leader-only"); // ADD SIGHTING
-  const dutyBtn = document.getElementById("dutyMainBtn");
-
-  // 🔥 ADMIN + LEADER → full access
-  if(role === "ADMIN" || role === "LEADER"){
-
-    leaderButtons.forEach(el => el.style.display = "flex");
-
-    if(dutyBtn) dutyBtn.style.display = "flex";
-
   }
 
-  // 🔥 STAFF → only ADD SIGHTING
-  else if(role === "STAFF"){
+  /* =========================================
+     🟢 STAFF (STAFF MASTER SHEET)
+  ========================================= */
 
-    leaderButtons.forEach(el => el.style.display = "flex");
+  const staffSh = SpreadsheetApp.getActive()
+    .getSheetByName("Staff Master");
 
-    if(dutyBtn) dutyBtn.style.display = "none";
+  if(staffSh){
 
+    const staffData = staffSh.getDataRange().getValues();
+
+    for(let i=1;i<staffData.length;i++){
+
+      const sheetPhone = (staffData[i][4] || "")
+        .toString().trim();
+
+      if(sheetPhone === phone){
+
+        console.log("✅ Staff matched:", staffData[i][3]);
+
+        return {
+          name: cleanName(staffData[i][3]),
+          role: (staffData[i][5] || "STAFF").toString().toUpperCase(),
+          beat: (staffData[i][2] || "").toString().trim(),
+          phone: phone
+        };
+      }
+    }
   }
 
-  // 🔥 UNKNOWN → block all
-  else {
+  /* =========================================
+     ❌ NOT AUTHORIZED
+  ========================================= */
 
-    leaderButtons.forEach(el => el.style.display = "none");
+  console.warn("❌ No match for phone:", phone);
 
-    if(dutyBtn) dutyBtn.style.display = "none";
-
-  }
-
-}/* ===============================
-   🔐 LOGIN SYSTEM
-=============================== */
-
-function showLogin(){
-  document.getElementById("loginModal").style.display = "flex";
-}
-let appStarted = false;
-
-function startApp(){
-  if(appStarted) return;
-  appStarted = true;
-
-  refreshAll(); // 🔥 single source of truth
-}
-    function login(){
-
-  const phone = document.getElementById("loginPhone").value.trim();
-
-  if(phone.length < 10){
-    alert("Enter valid phone number");
-    return;
-  }
-
-  localStorage.setItem("userPhone", phone);
-
-  document.getElementById("loginModal").style.display = "none";
-
-  loadProfile();
-}
-
-function logout(){
-  localStorage.removeItem("userPhone");
-  location.reload();
-}
-    /* ===============================
-   🚀 APP START (PUT HERE)
-=============================== */
-window.onload = function(){
-
-  const phone = localStorage.getItem("userPhone");
-
-  if(phone){
-    loadProfile(); // ✅ auto login
-  } else {
-    showLogin();   // 🔐 show login popup
-  }
-
-};
-    console.log("🔥 NEW BUILD LOADED - VERSION 999");
+  return { error: "NOT_AUTHORIZED" };
+}    console.log("🔥 NEW BUILD LOADED - VERSION 999");
     if ("serviceWorker" in navigator) {
   navigator.serviceWorker.register("sw.js")
     .then(() => console.log("✅ SW Registered"))
