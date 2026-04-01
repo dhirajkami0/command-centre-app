@@ -2880,32 +2880,37 @@ ${pct(data.health)} / 100
   }
 
 }   
-    function loadProfile(){
+   function loadProfile(){
 
-  const saved = JSON.parse(localStorage.getItem("user") || "{}");
+  const phone = localStorage.getItem("userPhone") || "";
+
+  console.log("📤 Sending phone:", phone);
 
   callBackend("GET_PROFILE", {
-    phone: saved.phone || ""   // ✅ ONLY phone (deviceId removed)
+    phone: phone
   }).then(profile=>{
 
     if(profile && !profile.error){
 
       window.userProfile = profile;
 
-      console.log("✅ USER:", profile); // 🔥 DEBUG
+      console.log("✅ USER:", profile);
 
       applyRoleControl();
 
-      // 🔥 IMPORTANT ADDITIONS
       setTimeout(()=>{
-        autoShowEndDuty();   // ✅ check active duty
-        updateDutyButton(); // ✅ sync button UI
+        autoShowEndDuty();
+        updateDutyButton();
       }, 300);
+
+      startApp(); // 🔥 IMPORTANT (start system AFTER login)
 
     } else {
 
-      showStaffLogin();
+      alert("❌ Not authorized");
 
+      localStorage.clear();
+      showLogin(); // 🔥 FIXED (not showStaffLogin)
     }
 
   });
