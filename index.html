@@ -4422,9 +4422,9 @@ function submitEndDuty(event) {
     btn.innerHTML = original;
     btn.disabled = false;
 
-    alert("✅ " + msg);
+    // ❌ REMOVED SUCCESS ALERT (THIS WAS CAUSING SECOND POPUP)
 
-    // 🔥 CLOSE POPUP (MAIN FIX)
+    // 🔥 CLOSE POPUP
     if (typeof closeEndDutyForm === "function") {
       closeEndDutyForm();
       console.log("🚪 Popup closed");
@@ -4445,9 +4445,6 @@ function submitEndDuty(event) {
       console.log("🔄 Data refreshed");
     }
 
-    // ❌ DO NOT CALL autoShowEndDuty HERE
-    // This was causing popup to reopen
-
   })
 
   .catch(function (err) {
@@ -4457,11 +4454,12 @@ function submitEndDuty(event) {
     btn.innerHTML = original;
     btn.disabled = false;
 
+    // ✅ ONLY error popup
     alert("❌ " + (err.message || err));
 
   });
 
-}    function updateDutyButton(){
+}  function updateDutyButton(){
 
   const btn = document.getElementById("dutyMainBtn");
   const icon = document.getElementById("dutyIcon");
