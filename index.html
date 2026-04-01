@@ -1562,40 +1562,7 @@ setTimeout(loadRangeKML, 100);
 
     /* 🗺 RANGE KML */
     /* 🗺 RANGE KML */
-    function loadRangeKML() {
-
-  const url = "https://drive.google.com/uc?export=download&id=1uUgMEic3btc4GRogquPmsypWixnrKaUB";
-
-  const layer = omnivore.kml(url)
-    .on('ready', function () {
-
-      console.log("⚡ Range loaded instantly");
-
-      layer.setStyle({
-        color: "#00ff88",
-        weight: 3,
-        fill: false
-      });
-
-      layer.addTo(map);
-      layer.bringToFront();
-
-      if (layer.getBounds().isValid()) {
-        map.fitBounds(layer.getBounds());
-      }
-
-      // ✅ KEEP YOUR CLICK LOGIC
-      layer.eachLayer(function (l) {
-        if (l instanceof L.Polygon || l instanceof L.Polyline) {
-          l.on('click', e => openRangePopup(e.latlng));
-        }
-      });
-
-    })
-    .on('error', function (e) {
-      console.error("❌ KML load error:", e);
-    });
-}/* 🌊 RIVER (GEE JSON VERSION ONLY — REMOVED DUPLICATE SHP VERSION) */
+    /* 🌊 RIVER (GEE JSON VERSION ONLY — REMOVED DUPLICATE SHP VERSION) */
 
     /* 🌱 PLANTATION */
     function loadPlantationLayer(){
