@@ -3526,37 +3526,45 @@ let dutyComptMap = {};
 
 function openDutyForm(){
 
+  console.group("🚀 openDutyForm START");
+
   const modal = document.getElementById("duty-modal");
-  if (modal) modal.style.display = "block";
 
-  const now = new Date();
+  if (!modal) {
+    console.error("❌ duty-modal NOT FOUND");
+    console.groupEnd();
+    return;
+  }
 
-  const setVal = (id, val) => {
-    const el = document.getElementById(id);
-    if (el) el.value = val;
-    else console.warn("⚠ Missing element:", id);
-  };
-
-  // 🔥 BASIC FIELDS
-  setVal("d-id", "DUTY-" + Date.now());
-  setVal("d-date", now.toLocaleString());
+  modal.style.display = "block";
 
   const profile = window.userProfile;
 
   if(!profile || !profile.name){
-    console.error("❌ No valid userProfile found");
+    console.error("❌ Invalid userProfile");
+    console.groupEnd();
     return;
   }
 
-  console.log("👤 Using Profile:", profile);
+  console.log("👤 Profile:", profile);
 
-  // 🔥 LEADER
-  setVal("d-leader", profile.name);
+  // 🔥 SAFE SETTER
+  const setVal = (id, val) => {
+    const el = document.getElementById(id);
+
+    if (!el) {
+      console.warn("❌ Element not found:", id);
+      return;
+    }
+
+    el.value = val;
+  };
 
   const beatSel = document.getElementById("d-beat");
 
   if (!beatSel) {
     console.error("❌ d-beat not found");
+    console.groupEnd();
     return;
   }
 
@@ -3583,39 +3591,29 @@ function openDutyForm(){
 
   beatSel.value = profile.beat || "";
 
-  // 🔥 SAFE CHANGE LISTENER (prevents multiple binding)
+  // 🔥 CHANGE LISTENER
   beatSel.onchange = () => {
-
     console.log("🔄 Beat changed:", beatSel.value);
-
-    if (typeof updateDutyStaff === "function") updateDutyStaff();
-    if (typeof updateDutyCompt === "function") updateDutyCompt();
-
+    updateDutyStaff("BEAT_CHANGE");
+    updateDutyCompt("BEAT_CHANGE");
   };
 
-  // 🔥 CRITICAL FIX → WAIT FOR DOM RENDER
+  // 🔥🔥 CRITICAL FIX (DELAY EVERYTHING THAT USES DOM)
   setTimeout(() => {
 
-     console.log("⏳ Initializing duty dropdowns...");
+    console.log("⏳ DOM READY → Setting values");
 
-  updateDutyStaff("FROM_OPEN_DUTY");
-  updateDutyCompt("FROM_OPEN_DUTY");
-   if (typeof updateDutyStaff === "function") {
-      updateDutyStaff();
-    } else {
-      console.error("❌ updateDutyStaff not defined");
-    }
+    setVal("d-id", "DUTY-" + Date.now());
+    setVal("d-date", new Date().toLocaleString());
+    setVal("d-leader", profile.name);
 
-    if (typeof updateDutyCompt === "function") {
-      updateDutyCompt();
-    } else {
-      console.error("❌ updateDutyCompt not defined");
-    }
+    updateDutyStaff("FROM_OPEN_DUTY");
+    updateDutyCompt("FROM_OPEN_DUTY");
 
-  }, 150);
+  }, 120);
 
-}
-    
+  console.groupEnd();
+}    
     /* START DUTY (SECURE) */
           /* START DUTY */
           /* 🔥 FIXED START DUTY: CAPTURES AND STORES COMMA-SEPARATED STRINGS */
