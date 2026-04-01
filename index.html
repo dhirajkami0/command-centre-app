@@ -1033,40 +1033,46 @@ document.addEventListener("DOMContentLoaded", () => {
     ============================================================ */
     function autoShowEndDuty() {
 
-      if (!window.userProfile || window.userProfile.name) {
-        console.warn("❌ Leader not ready yet");
-        return; // STOP here
-      }
+  if (!window.userProfile || !window.userProfile.name) {
+    console.warn("❌ Leader not ready yet");
+    return;
+  }
 
-      // 🔥 NEW VERSION (GitHub)
+  callBackend("checkDutyFromSheet", {
+    leader: window.userProfile.name
+      .split(",")[0]
+      .trim()
+      .toUpperCase()
+  })
+  .then(function (res) {
 
-      callBackend("checkDutyFromSheet", {
-       leader: window.userProfile.name
-  .split(",")[0]
-  .trim()
-  .toUpperCase()
-      })
-        .then(function (res) {
+    const btn = document.getElementById("dutyMainBtn");
+    const icon = document.getElementById("dutyIcon");
+    const label = document.getElementById("dutyLabel");
 
-          const btn = document.getElementById("dutyMainBtn");
-          const icon = document.getElementById("dutyIcon");
-          const label = document.getElementById("dutyLabel");
+    if (!btn || !icon || !label) return;
 
-          if (res && res.active) {
-            window.isDutyActive = true;
-            btn.style.background = "#d32f2f";
-            icon.className = "fa-solid fa-stop";
-            label.innerHTML = "END DUTY";
-          } else {
-            window.isDutyActive = false;
-            btn.style.background = "#2e7d32";
-            icon.className = "fa-solid fa-briefcase";
-            label.innerHTML = "START DUTY";
-          }
+    if (res && res.active) {
 
-        });
+      window.isDutyActive = true;
 
-    } window.isDutyActive = false;
+      btn.style.background = "#d32f2f";
+      icon.className = "fa-solid fa-stop";
+      label.innerHTML = "END DUTY";
+
+    } else {
+
+      window.isDutyActive = false;
+
+      btn.style.background = "#2e7d32";
+      icon.className = "fa-solid fa-briefcase";
+      label.innerHTML = "START DUTY";
+    }
+
+  });
+
+}
+    window.isDutyActive = false;
 
     function handleDutyAction() {
 
@@ -4056,20 +4062,28 @@ return el.value;
   callBackend("markDutyIn", payload)
   .then(function (res) {
 
-    if(!res) return;
+    // 🔴 FIX: handle null/failed response
+    if(!res){
+      alert("❌ Failed to start duty");
+      startBtn.innerHTML = originalText;
+      startBtn.disabled = false;
+      return;
+    }
 
     alert("✅ Duty Started");
 
     closeDutyForm();
 
+    // ✅ KEEP (fast UI feedback)
     window.isDutyActive = true;
 
-    updateDutyButton();   // 🔥 immediate UI update
+    updateDutyButton();   // immediate UI change
+
+    // 🔥 IMPORTANT: backend truth sync
+    autoShowEndDuty();
 
     startBtn.innerHTML = originalText;
     startBtn.disabled = false;
-
-    autoShowEndDuty();    // 🔥 sync with backend
 
   })
   .catch(function (err) {
