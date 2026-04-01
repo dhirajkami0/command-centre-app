@@ -3804,81 +3804,46 @@ function openDutyForm(){
           /* STEP 2 → FINAL SUBMIT */
         function submitEndDuty(event) {
 
-  console.log("🚀 submitEndDuty START");
-
   if (!confirm("Submit report and end duty?")) return;
 
-  const btn = event?.target;
-  console.log("🔍 btn:", btn, "type:", typeof btn);
-
-  if(!btn){
-    console.error("❌ Button not found");
-    return;
-  }
-
-  const original = btn.innerHTML;
-
-  btn.innerHTML = "⏳ SAVING...";
-  btn.disabled = true;
-
-  const obsEl = document.getElementById("ed-obs");
-  console.log("🔍 obsEl:", obsEl);
-
-  const obs = obsEl ? obsEl.value : "";
-  console.log("🔍 obs value:", obs);
-
-  console.log("📤 Calling backend...");
+  const obs = document.getElementById("ed-obs").value || "";
 
   callBackend("markDutyOutWithObs", { obs })
+
+  // 🔥 REPLACE THIS ENTIRE BLOCK
   .then(function (msg) {
-
-    console.log("✅ Backend response:", msg);
-
-    btn.innerHTML = original;
-    btn.disabled = false;
 
     alert("✅ " + msg);
 
-    // 🔥 CRITICAL DEBUG BLOCK
-    console.log("🔍 closeEndDutyForm:", closeEndDutyForm, typeof closeEndDutyForm);
-    console.log("🔍 updateDutyButton:", updateDutyButton, typeof updateDutyButton);
-    console.log("🔍 autoShowEndDuty:", autoShowEndDuty, typeof autoShowEndDuty);
-    console.log("🔍 refreshAll:", refreshAll, typeof refreshAll);
+    console.log("🧪 AFTER ALERT — starting execution");
 
-    // 🔥 SAFE EXECUTION (won’t crash)
-    if (typeof closeEndDutyForm === "function") {
+    try {
+
+      console.log("➡️ Step 1: closing popup");
       closeEndDutyForm();
-    } else {
-      console.error("❌ closeEndDutyForm is NOT a function");
-    }
+      console.log("✅ closeEndDutyForm OK");
 
-    window.isDutyActive = false;
+      console.log("➡️ Step 2: set duty flag");
+      window.isDutyActive = false;
 
-    if (typeof updateDutyButton === "function") {
+      console.log("➡️ Step 3: update button");
       updateDutyButton();
-    } else {
-      console.error("❌ updateDutyButton is NOT a function");
-    }
+      console.log("✅ updateDutyButton OK");
 
-    if (typeof autoShowEndDuty === "function") {
-      autoShowEndDuty();
-    } else {
-      console.error("❌ autoShowEndDuty is NOT a function");
-    }
-
-    if (typeof refreshAll === "function") {
+      console.log("➡️ Step 4: refresh");
       refreshAll();
-    } else {
-      console.error("❌ refreshAll is NOT a function");
+      console.log("✅ refreshAll OK");
+
+    } catch (err) {
+
+      console.error("💥 CRASH DETECTED:", err);
+      console.error("💥 STACK:", err.stack);
+
     }
 
   })
+
   .catch(function (err) {
-
-    console.error("❌ Backend error:", err);
-
-    btn.innerHTML = original;
-    btn.disabled = false;
 
     alert("❌ " + (err.message || err));
 
