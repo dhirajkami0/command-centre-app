@@ -4398,36 +4398,78 @@ return el.value;
 /* ✅ MOVED OUTSIDE (IMPORTANT) */
 function submitEndDuty(event) {
 
-if (!confirm("Submit report and end duty?")) return;
+  console.log("🚀 submitEndDuty START");
 
-const obs = document.getElementById("ed-obs").value || "";
+  if (!confirm("Submit report and end duty?")) return;
 
-callBackend("markDutyOutWithObs", {
-obs: obs
-})
-.then(function (msg) {
+  const btn = event?.target || document.activeElement;
 
-```
-alert("✅ " + msg);
+  if (!btn) {
+    console.error("❌ Button not found");
+    return;
+  }
 
-closeEndDutyForm();
+  const original = btn.innerHTML;
 
-window.isDutyActive = false;
-updateDutyButton(); 
-autoShowEndDuty();
-```
+  // 🔒 UI LOCK
+  btn.innerHTML = "⏳ SAVING...";
+  btn.disabled = true;
 
-})
-.catch(function (err) {
+  const obsEl = document.getElementById("ed-obs");
+  const obs = obsEl ? obsEl.value : "";
 
-```
-alert("❌ " + (err.message || err));
-```
+  console.log("📤 Sending obs:", obs);
 
-});
+  callBackend("markDutyOutWithObs", { obs })
 
-}
-    function updateDutyButton(){
+  .then(function (msg) {
+
+    console.log("✅ Backend response:", msg);
+
+    // 🔓 Restore button
+    btn.innerHTML = original;
+    btn.disabled = false;
+
+    alert("✅ " + msg);
+
+    // 🔥 CLOSE POPUP (MAIN FIX)
+    if (typeof closeEndDutyForm === "function") {
+      closeEndDutyForm();
+      console.log("🚪 Popup closed");
+    }
+
+    // 🔥 UPDATE STATE
+    window.isDutyActive = false;
+
+    // 🔥 UPDATE UI
+    if (typeof updateDutyButton === "function") {
+      updateDutyButton();
+      console.log("🔄 Duty button updated");
+    }
+
+    // 🔥 REFRESH DATA
+    if (typeof refreshAll === "function") {
+      refreshAll();
+      console.log("🔄 Data refreshed");
+    }
+
+    // ❌ DO NOT CALL autoShowEndDuty HERE
+    // This was causing popup to reopen
+
+  })
+
+  .catch(function (err) {
+
+    console.error("❌ Backend error:", err);
+
+    btn.innerHTML = original;
+    btn.disabled = false;
+
+    alert("❌ " + (err.message || err));
+
+  });
+
+}    function updateDutyButton(){
 
   const btn = document.getElementById("dutyMainBtn");
   const icon = document.getElementById("dutyIcon");
