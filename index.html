@@ -1359,11 +1359,15 @@ document.addEventListener("DOMContentLoaded", () => {
        🗺 BLOCK 2 → MAP INIT + UI CONTROLS
     ============================================================ */
 
-    var map = L.map('map', {
-  center: [26.561, 89.507],
-  zoom: 14,
-  zoomControl: false
+   
+var map = L.map('map', {
+  center:[26.561, 89.507],
+  zoom:14,
+  zoomControl:false
 });
+
+/* 🔥 BASE LAYERS LOAD */
+esriSat.addTo(map);
 
 // 🔥 THIS LINE IS THE ANSWE
 
