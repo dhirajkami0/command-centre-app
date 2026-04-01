@@ -2037,13 +2037,22 @@ ${pct(data.health)} / 100
 
   console.log("📊 TOTAL CELLS:", data.length);
   console.log("🟢 Visited:", data.filter(d => d.visited).length);
+  console.log("🔴 Unvisited:", data.filter(d => !d.visited).length);
+
+  // 🔍 Check first few data points
+  console.log("📍 Sample Data:", data.slice(0, 5));
 
   visitedLayer.clearLayers();
   unvisitedLayer.clearLayers();
 
   const offset = 0.00044;
 
-  data.forEach(p => {
+  data.forEach((p, i) => {
+
+    // 🔍 Log first 3 cells to verify coordinates
+    if (i < 3) {
+      console.log(`🧭 Cell ${i}:`, p.lat, p.lon, "Visited:", p.visited);
+    }
 
     const bounds = [
       [p.lat - offset / 2, p.lon - offset / 2],
@@ -2060,19 +2069,25 @@ ${pct(data.health)} / 100
 
   });
 
+  // 🔥 Layer counts
+  console.log("🟢 Visited layer count:", visitedLayer.getLayers().length);
+  console.log("🔴 Unvisited layer count:", unvisitedLayer.getLayers().length);
+
   visitedLayer.addTo(map);
   unvisitedLayer.addTo(map);
 
   visitedLayer.bringToFront();
   unvisitedLayer.bringToFront();
 
-  // 🔥 FORCE ZOOM (VERY IMPORTANT)
+  // 🔥 Check bounds
   if (unvisitedLayer.getLayers().length > 0) {
-    map.fitBounds(unvisitedLayer.getBounds());
+    const bounds = unvisitedLayer.getBounds();
+    console.log("🗺️ Bounds:", bounds);
+    map.fitBounds(bounds);
+  } else {
+    console.warn("⚠ No layers to zoom");
   }
-
-}
-    /* ============================================================
+}  /* ============================================================
        🐘 BLOCK 7 → ELEPHANT SYSTEM (FINAL)
     ============================================================ */
 
@@ -3416,16 +3431,12 @@ map.on('overlayadd', function (e) {
       return; // 🚨 CRITICAL
     }
 
- /* ===============================
-   🟢🔴 GRID (FULL SAFE FIX)
-=============================== */
 /* ===============================
-   🟢🔴 GRID (ULTIMATE FIX)
+   🟢🔴 GRID (FINAL FIX)
 =============================== */
-if (
-  e.name === "🟢 Visited Grid" ||
-  e.name === "🔴 Unvisited Grid"
-) {
+if (e.name.includes("Grid")) {
+
+  console.log("🚀 GRID TRIGGERED:", e.name);
 
   callBackend("getGridStatus")
     .then(function (res) {
@@ -3434,20 +3445,15 @@ if (
 
       let data = res;
 
-      // 🔥 HANDLE ALL POSSIBLE BACKEND FORMATS
-
       if (Array.isArray(res)) {
         data = res;
       }
-
       else if (res && Array.isArray(res.data)) {
         data = res.data;
       }
-
       else if (res && Array.isArray(res.result)) {
         data = res.result;
       }
-
       else {
         console.error("❌ Invalid grid format:", res);
         return;
@@ -3458,6 +3464,7 @@ if (
         return;
       }
 
+      console.log("🔥 Calling showGridStatus...");
       showGridStatus(data);
 
     })
@@ -3466,7 +3473,7 @@ if (
     });
 
   return;
-} /* 📊 SUMMARY */
+}/* 📊 SUMMARY */
     if (e.name === "📊 Monthly Coverage") {
 
       summaryLayer.addTo(map);
