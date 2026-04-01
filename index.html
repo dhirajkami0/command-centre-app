@@ -2872,21 +2872,6 @@ ${pct(data.health)} / 100
     autoShowEndDuty();
   }
 }
-  // 🔥 SET GLOBAL CONTEXT
-  window.currentLeader = profile.name;
-  window.currentBeat = profile.beat;
-  window.currentRole = profile.role;
-
-  console.log("✅ Duty Control Initialized");
-  console.log("👤 Leader:", profile.name);
-  console.log("📍 Beat:", profile.beat);
-  console.log("🎯 Role:", profile.role);
-
-  // 🔥 AUTO CHECK DUTY STATUS
-  if (typeof autoShowEndDuty === "function") {
-    autoShowEndDuty();
-  }
-}
     /* ============================================================
    🔥 MAIN APP LOAD (UPDATED - PHONE BASED)
 ============================================================ */
