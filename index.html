@@ -3619,161 +3619,145 @@ function openDutyForm(){
   console.group("🚀 openDutyForm START");
   console.log("⏱ Time:", new Date().toLocaleTimeString());
 
-  // 🔍 MODAL CHECK
   const modal = document.getElementById("duty-modal");
-  console.log("📦 duty-modal:", modal);
-
   if (!modal) {
-    console.error("❌ CRITICAL: duty-modal NOT FOUND");
+    console.error("❌ duty-modal NOT FOUND");
     console.groupEnd();
     return;
   }
 
   modal.style.display = "block";
-  console.log("✅ Modal opened");
 
-  // 🔍 PROFILE CHECK
   const profile = window.userProfile;
   console.log("👤 userProfile:", profile);
 
   if (!profile) {
-    console.error("❌ CRITICAL: userProfile missing");
+    console.error("❌ userProfile missing");
     console.groupEnd();
     return;
   }
 
-  // 🔥 SAFE SETTER (NO CRASH EVER)
+  /* ===============================
+     🔧 SAFE SETTER
+  =============================== */
   const setVal = (id, val) => {
     const el = document.getElementById(id);
+    if (!el) return console.error("❌ Missing:", id);
 
-    if (!el) {
-      console.error("❌ ELEMENT NOT FOUND →", id);
-      return;
-    }
-
-    try {
-      el.value = val;
-      console.log(`✅ SET ${id} =`, val);
-    } catch (err) {
-      console.error(`❌ FAILED setting ${id}`, err);
-    }
+    el.value = val;
+    console.log(`✅ ${id} =`, val);
   };
 
-  // 🔍 BEAT SELECT
+  /* ===============================
+     📍 BEAT SETUP
+  =============================== */
   const beatSel = document.getElementById("d-beat");
-  console.log("📍 d-beat:", beatSel);
 
   if (!beatSel) {
-    console.error("❌ CRITICAL: d-beat NOT FOUND");
+    console.error("❌ d-beat NOT FOUND");
     console.groupEnd();
     return;
   }
 
-  // 🔄 RESET
   beatSel.innerHTML = "";
-  console.log("🧹 Beat dropdown cleared");
 
-  // 🔍 ROLE LOGIC
-  console.log("👤 Role:", profile.role);
+  if (profile.role === "ADMIN") {
 
-  try {
-
-    if (profile.role === "ADMIN") {
-
-      console.log("🔴 ADMIN → loading all beats");
-
-      ["East Garam", "West Garam", "East Poro", "Range HQ"]
-        .forEach(b => {
-          const o = document.createElement("option");
-          o.value = b;
-          o.innerHTML = b;
-          beatSel.appendChild(o);
-        });
-
-    } else {
-
-      console.log("🔒 NON-ADMIN → single beat");
-
+    ["East Garam", "West Garam", "East Poro", "Range HQ"]
+    .forEach(b => {
       const o = document.createElement("option");
-      o.value = profile.beat || "";
-      o.innerHTML = profile.beat || "";
+      o.value = b;
+      o.innerHTML = b;
       beatSel.appendChild(o);
-    }
+    });
 
-    beatSel.value = profile.beat || "";
-    console.log("✅ Beat set:", beatSel.value);
+  } else {
 
-  } catch (err) {
-    console.error("❌ Beat setup failed:", err);
+    const o = document.createElement("option");
+    o.value = profile.beat || "";
+    o.innerHTML = profile.beat || "";
+    beatSel.appendChild(o);
   }
 
-  // 🔄 CHANGE LISTENER
+  beatSel.value = profile.beat || "";
+  console.log("📍 Beat set:", beatSel.value);
+
+  /* ===============================
+     🔒 FORCE LEADER (CRITICAL FIX)
+  =============================== */
+  const leaderInput = document.getElementById("d-leader");
+
+  if (leaderInput) {
+    leaderInput.value = profile.name || "Unknown";
+    leaderInput.readOnly = true;   // 🔥 prevent edit
+    console.log("👤 Leader locked:", leaderInput.value);
+  } else {
+    console.error("❌ d-leader NOT FOUND");
+  }
+
+  /* ===============================
+     🔄 CHANGE LISTENER
+  =============================== */
   beatSel.onchange = () => {
 
-    console.group("🔄 BEAT CHANGED");
-    console.log("New Beat:", beatSel.value);
+    console.log("🔄 Beat changed:", beatSel.value);
 
     if (typeof updateDutyStaff === "function") {
       updateDutyStaff("BEAT_CHANGE");
-    } else {
-      console.error("❌ updateDutyStaff NOT FOUND");
     }
 
     if (typeof updateDutyCompt === "function") {
       updateDutyCompt("BEAT_CHANGE");
-    } else {
-      console.error("❌ updateDutyCompt NOT FOUND");
     }
 
-    console.groupEnd();
   };
 
-  // 🔥 FINAL DEBUG BLOCK (DOM + VALUES + DROPDOWNS)
+  /* ===============================
+     ⏳ POST LOAD
+  =============================== */
   setTimeout(() => {
 
-    console.group("⏳ POST-DOM CHECK");
+    console.group("⏳ POST-DOM");
 
-    const ids = [
-      "d-id",
-      "d-date",
-      "d-leader",
-      "d-beat",
-      "staffOptions",
-      "comptOptions"
-    ];
-
-    ids.forEach(id => {
-      const el = document.getElementById(id);
-      console.log(`🔎 ${id}:`, el ? "✅ FOUND" : "❌ MISSING", el);
-    });
-
-    console.log("📦 COMPT_MASTER:", window.COMPT_MASTER);
-    console.log("👮 STAFF_MASTER:", window.STAFF_MASTER);
-
-    // 🔥 SET VALUES (SAFE)
     setVal("d-id", "DUTY-" + Date.now());
     setVal("d-date", new Date().toLocaleString());
-    setVal("d-leader", profile.name || "Unknown");
 
-    // 🔥 LOAD DROPDOWNS
+    // 🔥 AGAIN FORCE LEADER (double protection)
+    const leader = document.getElementById("d-leader");
+    if (leader) {
+      leader.value = profile.name || "Unknown";
+      console.log("🔁 Leader re-set:", leader.value);
+    }
+
+    // 🔥 Load lists
     if (typeof updateDutyStaff === "function") {
       updateDutyStaff("FROM_OPEN_DUTY");
-    } else {
-      console.error("❌ updateDutyStaff NOT DEFINED");
     }
 
     if (typeof updateDutyCompt === "function") {
       updateDutyCompt("FROM_OPEN_DUTY");
-    } else {
-      console.error("❌ updateDutyCompt NOT DEFINED");
     }
 
     console.groupEnd();
 
   }, 150);
 
+  /* ===============================
+     🔥 FINAL PROTECTION (VERY IMPORTANT)
+  =============================== */
+  setTimeout(() => {
+
+    const leader = document.getElementById("d-leader");
+
+    if (leader && leader.value !== profile.name) {
+      console.warn("⚠ Leader overridden! Fixing...");
+      leader.value = profile.name;
+    }
+
+  }, 500);
+
   console.groupEnd();
-} /* START DUTY (SECURE) */
+}/* START DUTY (SECURE) */
           /* START DUTY */
           /* 🔥 FIXED START DUTY: CAPTURES AND STORES COMMA-SEPARATED STRINGS */
           /* 🔥 FIXED: CLOSE DUTY MODAL FUNCTION */
