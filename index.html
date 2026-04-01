@@ -2870,17 +2870,32 @@ ${pct(data.health)} / 100
 
   console.log("🎯 ROLE:", role);
 
-  // 🔥 Example control
+  // 🔹 Leader / Staff buttons
   const leaderButtons = document.querySelectorAll(".leader-only");
 
-  if(role === "LEADER"){
-    leaderButtons.forEach(el => el.style.display = "block");
+  if(role === "ADMIN" || role === "LEADER" || role === "STAFF"){
+    leaderButtons.forEach(el => el.style.display = "flex");
   } else {
     leaderButtons.forEach(el => el.style.display = "none");
   }
 
-}   
-   function loadProfile(){
+  // 🔹 Duty button (only ADMIN + LEADER)
+  const dutyBtn = document.getElementById("dutyMainBtn");
+
+  if(dutyBtn){
+    dutyBtn.style.display =
+      (role === "ADMIN" || role === "LEADER") ? "flex" : "none";
+  }
+
+  // 🔹 KML upload (ADMIN only)
+  const kmlBtn = document.querySelector('[onclick="openKMLForm()"]');
+
+  if(kmlBtn){
+    kmlBtn.style.display =
+      (role === "ADMIN") ? "flex" : "none";
+  }
+
+}  function loadProfile(){
 
   const phone = localStorage.getItem("userPhone") || "";
 
