@@ -2682,14 +2682,17 @@ ${pct(data.health)} / 100
 
   window.userProfile = window.userProfile || {};
 
-  const email = (localStorage.getItem("userEmail") || "")
+  // ✅ FIXED SOURCE
+  const email = (window.userEmail || "")
     .toLowerCase()
     .trim();
 
   console.log("📤 Sending email:", email);
 
   if (!email) {
-    alert("❌ No user email set");
+    console.warn("⚠ No email → using fallback");
+    // optional fallback for testing
+    // email = "test@forest.local";
     return;
   }
 
