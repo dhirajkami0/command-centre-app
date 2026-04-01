@@ -2868,8 +2868,7 @@ ${pct(data.health)} / 100
   const saved = JSON.parse(localStorage.getItem("user") || "{}");
 
   callBackend("GET_PROFILE", {
-    phone: saved.phone || "",
-    deviceId: getDeviceId()
+    phone: saved.phone || ""   // ✅ ONLY phone (deviceId removed)
   }).then(profile=>{
 
     if(profile && !profile.error){
