@@ -2643,7 +2643,56 @@ ${pct(data.health)} / 100
           map.invalidateSize();
         }
       }, 400);
-    } function toggleWeatherDrawer() {
+    } function loginStaff(){
+
+  const phone = document.getElementById("login-phone").value;
+
+  if(!phone){
+    alert("Enter phone number");
+    return;
+  }
+
+  callBackend("GET_PROFILE", {
+    phone: phone,
+    deviceId: getDeviceId() // optional
+  }).then(profile=>{
+
+    if(profile.error){
+      alert(profile.error);
+      return;
+    }
+
+    window.userProfile = profile;
+
+    localStorage.setItem("user", JSON.stringify({
+      phone: phone
+    }));
+
+    document.getElementById("form-modal").style.display = "none";
+
+    applyRoleControl();
+
+  });
+}function loadProfile(){
+
+  const saved = JSON.parse(localStorage.getItem("user") || "{}");
+
+  callBackend("GET_PROFILE", {
+    phone: saved.phone || "",
+    deviceId: getDeviceId()
+  }).then(profile=>{
+
+    if(profile && !profile.error){
+      window.userProfile = profile;
+      applyRoleControl();
+    } else {
+      showStaffLogin();
+    }
+
+  });
+}
+
+window.onload = loadProfile;function toggleWeatherDrawer() {
       console.log("-----------------------------------------");
       console.log("🔍 DIAGNOSIS: Weather Toggle Triggered");
 
