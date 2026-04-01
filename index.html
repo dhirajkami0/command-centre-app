@@ -3810,29 +3810,25 @@ function openDutyForm(){
 
   callBackend("markDutyOutWithObs", { obs })
 
-  // 🔥 REPLACE THIS ENTIRE BLOCK
   .then(function (msg) {
 
-    alert("✅ " + msg);
+    // 🔥 FIX: handle object response properly
+    const message =
+      (typeof msg === "object")
+        ? (msg.status || msg.message || "Success")
+        : msg;
 
-    console.log("🧪 AFTER ALERT — starting execution");
+    alert("✅ " + message);
 
     try {
 
-      console.log("➡️ Step 1: closing popup");
       closeEndDutyForm();
-      console.log("✅ closeEndDutyForm OK");
 
-      console.log("➡️ Step 2: set duty flag");
       window.isDutyActive = false;
 
-      console.log("➡️ Step 3: update button");
       updateDutyButton();
-      console.log("✅ updateDutyButton OK");
 
-      console.log("➡️ Step 4: refresh");
       refreshAll();
-      console.log("✅ refreshAll OK");
 
     } catch (err) {
 
