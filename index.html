@@ -2888,91 +2888,104 @@ ${pct(data.health)} / 100
   }
 }
     /* ============================================================
-       🔥 MAIN APP LOAD
-    ============================================================ */
-    window.addEventListener("load", function () {
+   🔥 MAIN APP LOAD (UPDATED - PHONE BASED)
+============================================================ */
+window.addEventListener("load", function () {
 
-      console.log("🚀 App Started - Command Centre Initializing");
+  console.log("🚀 App Started - Command Centre Initializing");
 
-      /* 1. INITIALIZE UI IMMEDIATELY */
-      try {
-        initResponsiveUI();
-      } catch (e) {
-        console.warn("UI Init delayed: ", e);
+  /* 1. INITIALIZE UI IMMEDIATELY */
+  try {
+    initResponsiveUI();
+  } catch (e) {
+    console.warn("UI Init delayed: ", e);
+  }
+
+  /* 🔥 2. GET PHONE FROM LOCAL STORAGE */
+  const phone = localStorage.getItem("userPhone") || "";
+
+  if (!phone) {
+    console.warn("⚠ No phone found → showing login");
+    showLogin();   // ✅ your existing login popup
+    return;
+  }
+
+  console.log("📤 Sending phone:", phone);
+
+  /* 🔥 3. FETCH PROFILE (NEW SYSTEM) */
+  callBackend("GET_PROFILE", { phone: phone })
+    .then(function (profile) {
+
+      if (!profile || profile.error) {
+        console.error("❌ Invalid user");
+        localStorage.removeItem("userPhone");
+        showLogin();
+        return;
       }
 
-      /* 2. AUTHENTICATION + ROLE CONTROL */
-      callBackend("getAuthProfile")
-        .then(function (profile) {
+      console.log("🔐 Logged in as:", profile.name);
 
-          if (!profile) {
-            console.error("❌ No auth profile received");
-            return;
-          }
+      window.userProfile = profile;   // ✅ ONLY SOURCE OF TRUTH
 
-          console.log("🔐 Logged in as:", profile.role);
-          window.userProfile = profile;
-          window.userEmail = profile.email;
+      /* 🔥 ROLE BASED UI */
+      if (profile.role === "ADMIN" || profile.role === "TEAM LEADER" || profile.role === "LEADER") {
+        document.querySelectorAll('.leader-only').forEach(el => {
+          el.style.setProperty('display', 'block', 'important');
+        });
+      }
 
-          /* 🔥 ROLE BASED UI */
-          if (profile.role === "ADMIN" || profile.role === "LEADER") {
-            document.querySelectorAll('.leader-only').forEach(el => {
-              el.style.setProperty('display', 'block', 'important');
-            });
-          }
+      /* 3. INITIALIZE DUTY & KML */
+      initDutyControl();   // ✅ now uses userProfile
+      loadRangeKML();
+      loadCompartmentsFromSheet();
 
-          /* 3. INITIALIZE DUTY & KML */
-          initDutyControl();
-          loadRangeKML();
-          loadCompartmentsFromSheet();
+      /* 4. CRITICAL DATA CHAIN */
+      callBackend("updateVillageRisk")
+        .then(function (coneData) {
 
-          /* 4. CRITICAL DATA CHAIN */
-          callBackend("updateVillageRisk")
-            .then(function (coneData) {
+          window.coneVillages = coneData || {};
 
-              window.coneVillages = coneData || {};
+          callBackend("getVillages")
+            .then(function (villageList) {
 
-              callBackend("getVillages")
-                .then(function (villageList) {
+              window.villages = (villageList || []).map(v => ({
+                name: v.name || v.Village || "Unknown",
+                lat: parseFloat(v.lat),
+                lon: parseFloat(v.lon)
+              }));
 
-                  window.villages = (villageList || []).map(v => ({
-                    name: v.name || v.Village || "Unknown",
-                    lat: parseFloat(v.lat),
-                    lon: parseFloat(v.lon)
-                  }));
+              // 🔥 MASTER REFRESH
+              refreshAll();
 
-                  // 🔥 MASTER REFRESH
-                  refreshAll();
+              /* 5. UI FINALIZATION */
+              const splash = document.getElementById('splash-screen');
+              if (splash) {
+                splash.style.opacity = "0";
+                setTimeout(() => splash.style.display = "none", 800);
+              }
 
-                  /* 5. UI FINALIZATION */
-                  const splash = document.getElementById('splash-screen');
-                  if (splash) {
-                    splash.style.opacity = "0";
-                    setTimeout(() => splash.style.display = "none", 800);
-                  }
+              /* 6. BACKGROUND LOOPS */
+              setInterval(function () {
+                if (window.userProfile && window.userProfile.name) {
+                  autoShowEndDuty();
+                }
+              }, 10000);
 
-                  /* 6. BACKGROUND LOOPS */
-                  setInterval(function () {
-                    if (window.userProfile && window.userProfile.name) {
-                      autoShowEndDuty();
-                    }
-                  }, 10000);
-
-                  // 🔥 INIT FORM LISTENERS (SAFE)
-                  if (typeof initEventListeners === "function") {
-                    initEventListeners();
-                  }
-
-                });
+              // 🔥 INIT FORM LISTENERS (SAFE)
+              if (typeof initEventListeners === "function") {
+                initEventListeners();
+              }
 
             });
 
-        })
-        .catch(function (err) {
-          console.error("❌ Startup error:", err);
         });
 
-    });/* ============================================================
+    })
+    .catch(function (err) {
+      console.error("❌ Startup error:", err);
+    });
+
+});/* ============================================================
    🛠️ MANDATORY FIXES FOR THE BUTTONS
    Ensure these functions exist exactly as written below:
 ============================================================ */
