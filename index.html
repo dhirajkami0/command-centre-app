@@ -3178,47 +3178,53 @@ window.onload = loadProfile;function toggleWeatherDrawer() {
        🌊 RIVER LAYER (LAZY INIT SAFE)
     ============================================================ */
     // keep detached
-    function loadRiverNetwork() {
+   function loadRiverNetwork() {
 
-      // 🔥 Prevent duplicate heavy load
-      if (riverLayer.getLayers().length > 0) {
-        console.log("⚠ River already loaded");
-        return;
+  // 🔥 Prevent duplicate heavy load
+  if (riverLayer.getLayers().length > 0) {
+    console.log("⚠ River already loaded");
+    return;
+  }
+
+  console.log("🌊 Loading River Network...");
+  document.getElementById('last-update').innerHTML = "🌊 Loading Rivers...";
+
+  callBackend("getRiverGeoJSON")
+    .then(function (jsonString) {
+
+      try {
+
+        // 🔥 FIXED LINE
+        const data = (typeof jsonString === "string")
+          ? JSON.parse(jsonString)
+          : jsonString;
+
+        if (!data || data.error) {
+          console.error("❌ Invalid river data:", data);
+          return;
+        }
+
+        L.geoJSON(data, {
+          style: {
+            color: "#00e5ff",
+            weight: 3,
+            opacity: 0.8
+          },
+          renderer: L.canvas() // 🔥 performance
+        }).addTo(riverLayer);
+
+        console.log("✅ Rivers Loaded");
+        document.getElementById('last-update').innerHTML = "🟢 Rivers Ready";
+
+      } catch (err) {
+        console.error("❌ River parse error:", err);
       }
 
-      console.log("🌊 Loading River Network...");
-
-      document.getElementById('last-update').innerHTML = "🌊 Loading Rivers...";
-
-      callBackend("getRiverGeoJSON")
-        .then(function (jsonString) {
-
-          try {
-            const data = JSON.parse(jsonString);
-
-            L.geoJSON(data, {
-              style: {
-                color: "#00e5ff",
-                weight: 3,
-                opacity: 0.8
-              },
-              renderer: L.canvas() // 🔥 performance
-            }).addTo(riverLayer);
-
-            console.log("✅ Rivers Loaded");
-
-            document.getElementById('last-update').innerHTML = "🟢 Rivers Ready";
-
-          } catch (err) {
-            console.error("❌ River parse error:", err);
-          }
-
-        })
-        .catch(function (err) {
-          console.error("❌ River load error:", err);
-        });
-
-    }
+    })
+    .catch(function (err) {
+      console.error("❌ River load error:", err);
+    });
+}
 
 
     /* ============================================================
