@@ -1834,6 +1834,45 @@ ${pct(data.health)} / 100
       popup.setContent("❌ Error loading range data");
     });
 }
+    function loadRangeKML() {
+
+      callBackend("getRangeKML")
+        .then(function (kml) {
+
+          if (!kml || !kml.includes("<Placemark")) {
+            console.error("❌ Invalid KML");
+            return;
+          }
+
+          const blob = new Blob([kml], { type: "text/xml" });
+          const url = URL.createObjectURL(blob);
+
+          const layer = omnivore.kml(url)
+            .on('ready', function () {
+
+              layer.setStyle({
+                color: "#00ff88",
+                weight: 3,
+                fill: false
+              });
+
+              layer.addTo(map);
+
+              if (layer.getBounds().isValid()) {
+                map.fitBounds(layer.getBounds());
+              }
+
+              layer.eachLayer(function (l) {
+                if (l instanceof L.Polygon || l instanceof L.Polyline) {
+                  l.on('click', e => openRangePopup(e.latlng));
+                }
+              });
+            });
+
+        });
+
+    }
+    
     function uploadKML() {
 
       const fileInput = document.getElementById("kmlUpload");
