@@ -1114,6 +1114,7 @@ function callBackend(action, payload = {}) {
 
   console.groupEnd();
 }
+    
 function updateDutyCompt(source = "UNKNOWN") {
 
   console.group("📦 updateDutyCompt CALLED");
@@ -1359,14 +1360,13 @@ document.addEventListener("DOMContentLoaded", () => {
     ============================================================ */
 
     var map = L.map('map', {
-      center: [26.561, 89.507],
-      zoom: 14,
-      zoomControl: false
-    });
+  center: [26.561, 89.507],
+  zoom: 14,
+  zoomControl: false
+});
 
-    /* 🔥 BASE LAYERS LOAD */
-    esriSat.addTo(map);
-
+// 🔥 THIS LINE IS THE ANSWER
+setTimeout(loadRangeKML, 100);
 
     /* 🖱 CONTROLS */
     map.scrollWheelZoom.disable();
@@ -1564,43 +1564,38 @@ document.addEventListener("DOMContentLoaded", () => {
     /* 🗺 RANGE KML */
     function loadRangeKML() {
 
-      callBackend("getRangeKML")
-        .then(function (kml) {
+  const url = "https://drive.google.com/uc?export=download&id=1uUgMEic3btc4GRogquPmsypWixnrKaUB";
 
-          if (!kml || !kml.includes("<Placemark")) {
-            console.error("❌ Invalid KML");
-            return;
-          }
+  const layer = omnivore.kml(url)
+    .on('ready', function () {
 
-          const blob = new Blob([kml], { type: "text/xml" });
-          const url = URL.createObjectURL(blob);
+      console.log("⚡ Range loaded instantly");
 
-          const layer = omnivore.kml(url)
-            .on('ready', function () {
+      layer.setStyle({
+        color: "#00ff88",
+        weight: 3,
+        fill: false
+      });
 
-              layer.setStyle({
-                color: "#00ff88",
-                weight: 3,
-                fill: false
-              });
+      layer.addTo(map);
+      layer.bringToFront();
 
-              layer.addTo(map);
+      if (layer.getBounds().isValid()) {
+        map.fitBounds(layer.getBounds());
+      }
 
-              if (layer.getBounds().isValid()) {
-                map.fitBounds(layer.getBounds());
-              }
+      // ✅ KEEP YOUR CLICK LOGIC
+      layer.eachLayer(function (l) {
+        if (l instanceof L.Polygon || l instanceof L.Polyline) {
+          l.on('click', e => openRangePopup(e.latlng));
+        }
+      });
 
-              layer.eachLayer(function (l) {
-                if (l instanceof L.Polygon || l instanceof L.Polyline) {
-                  l.on('click', e => openRangePopup(e.latlng));
-                }
-              });
-            });
-
-        });
-
-    }
-    /* 🌊 RIVER (GEE JSON VERSION ONLY — REMOVED DUPLICATE SHP VERSION) */
+    })
+    .on('error', function (e) {
+      console.error("❌ KML load error:", e);
+    });
+}/* 🌊 RIVER (GEE JSON VERSION ONLY — REMOVED DUPLICATE SHP VERSION) */
 
     /* 🌱 PLANTATION */
     function loadPlantationLayer(){
