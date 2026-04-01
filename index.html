@@ -779,29 +779,34 @@
 
   console.log("🎯 ROLE:", role);
 
-  // 🔹 Leader / Staff buttons
-  const leaderButtons = document.querySelectorAll(".leader-only");
-
-  if(role === "ADMIN" || role === "LEADER" || role === "STAFF"){
-    leaderButtons.forEach(el => el.style.display = "flex");
-  } else {
-    leaderButtons.forEach(el => el.style.display = "none");
-  }
-
-  // 🔹 Duty button (only ADMIN + LEADER)
+  const leaderButtons = document.querySelectorAll(".leader-only"); // ADD SIGHTING
   const dutyBtn = document.getElementById("dutyMainBtn");
 
-  if(dutyBtn){
-    dutyBtn.style.display =
-      (role === "ADMIN" || role === "LEADER") ? "flex" : "none";
+  // 🔥 ADMIN + LEADER → full access
+  if(role === "ADMIN" || role === "LEADER"){
+
+    leaderButtons.forEach(el => el.style.display = "flex");
+
+    if(dutyBtn) dutyBtn.style.display = "flex";
+
   }
 
-  // 🔹 KML upload (ADMIN only)
-  const kmlBtn = document.querySelector('[onclick="openKMLForm()"]');
+  // 🔥 STAFF → only ADD SIGHTING
+  else if(role === "STAFF"){
 
-  if(kmlBtn){
-    kmlBtn.style.display =
-      (role === "ADMIN") ? "flex" : "none";
+    leaderButtons.forEach(el => el.style.display = "flex");
+
+    if(dutyBtn) dutyBtn.style.display = "none";
+
+  }
+
+  // 🔥 UNKNOWN → block all
+  else {
+
+    leaderButtons.forEach(el => el.style.display = "none");
+
+    if(dutyBtn) dutyBtn.style.display = "none";
+
   }
 
 }/* ===============================
