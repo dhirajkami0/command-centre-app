@@ -2035,28 +2035,37 @@ ${pct(data.health)} / 100
     /* 🟩 GRID */
     function showGridStatus(data) {
 
-      visitedLayer.clearLayers();
-      unvisitedLayer.clearLayers();
+  visitedLayer.clearLayers();
+  unvisitedLayer.clearLayers();
 
-      const offset = 0.00044;
+  const offset = 0.00044;
 
-      data.forEach(p => {
+  data.forEach(p => {
 
-        const bounds = [
-          [p.lat - offset / 2, p.lon - offset / 2],
-          [p.lat + offset / 2, p.lon + offset / 2]
-        ];
+    const bounds = [
+      [p.lat - offset / 2, p.lon - offset / 2],
+      [p.lat + offset / 2, p.lon + offset / 2]
+    ];
 
-        const isVisited = p.visited == true;
+    const isVisited = p.visited == true;
 
-        L.rectangle(bounds, {
-          color: isVisited ? "#00ff00" : "#ff0000",
-          fillOpacity: isVisited ? 0.5 : 0.25
-        })
-          .addTo(isVisited ? visitedLayer : unvisitedLayer);
+    L.rectangle(bounds, {
+      color: isVisited ? "#00ff00" : "#ff0000",
+      fillOpacity: isVisited ? 0.5 : 0.25,
+      weight: 1   // 🔥 ADD THIS (better visibility)
+    })
+    .addTo(isVisited ? visitedLayer : unvisitedLayer);
 
-      });
-    }
+  });
+
+  // 🔥🔥🔥 THIS WAS MISSING
+  visitedLayer.addTo(map);
+  unvisitedLayer.addTo(map);
+
+  // 🔥 ensure visible above tiles
+  visitedLayer.bringToFront();
+  unvisitedLayer.bringToFront();
+}
     /* ============================================================
        🐘 BLOCK 7 → ELEPHANT SYSTEM (FINAL)
     ============================================================ */
