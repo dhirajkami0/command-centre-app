@@ -2033,7 +2033,10 @@ ${pct(data.health)} / 100
     }
 
     /* 🟩 GRID */
-    function showGridStatus(data) {
+  function showGridStatus(data) {
+
+  console.log("📊 TOTAL CELLS:", data.length);
+  console.log("🟢 Visited:", data.filter(d => d.visited).length);
 
   visitedLayer.clearLayers();
   unvisitedLayer.clearLayers();
@@ -2052,19 +2055,22 @@ ${pct(data.health)} / 100
     L.rectangle(bounds, {
       color: isVisited ? "#00ff00" : "#ff0000",
       fillOpacity: isVisited ? 0.5 : 0.25,
-      weight: 1   // 🔥 ADD THIS (better visibility)
-    })
-    .addTo(isVisited ? visitedLayer : unvisitedLayer);
+      weight: 1
+    }).addTo(isVisited ? visitedLayer : unvisitedLayer);
 
   });
 
-  // 🔥🔥🔥 THIS WAS MISSING
   visitedLayer.addTo(map);
   unvisitedLayer.addTo(map);
 
-  // 🔥 ensure visible above tiles
   visitedLayer.bringToFront();
   unvisitedLayer.bringToFront();
+
+  // 🔥 FORCE ZOOM (VERY IMPORTANT)
+  if (unvisitedLayer.getLayers().length > 0) {
+    map.fitBounds(unvisitedLayer.getBounds());
+  }
+
 }
     /* ============================================================
        🐘 BLOCK 7 → ELEPHANT SYSTEM (FINAL)
