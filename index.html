@@ -3527,15 +3527,14 @@ let dutyComptMap = {};
 function openDutyForm(){
 
   console.group("🚀 openDutyForm START");
-
   console.log("⏱ Time:", new Date().toLocaleTimeString());
 
-  // 🔍 CHECK MODAL
+  // 🔍 MODAL CHECK
   const modal = document.getElementById("duty-modal");
   console.log("📦 duty-modal:", modal);
 
   if (!modal) {
-    console.error("❌ CRITICAL: duty-modal NOT FOUND in DOM");
+    console.error("❌ CRITICAL: duty-modal NOT FOUND");
     console.groupEnd();
     return;
   }
@@ -3543,28 +3542,22 @@ function openDutyForm(){
   modal.style.display = "block";
   console.log("✅ Modal opened");
 
-  // 🔍 CHECK PROFILE
+  // 🔍 PROFILE CHECK
   const profile = window.userProfile;
   console.log("👤 userProfile:", profile);
 
   if (!profile) {
-    console.error("❌ CRITICAL: userProfile is NULL");
+    console.error("❌ CRITICAL: userProfile missing");
     console.groupEnd();
     return;
   }
 
-  if (!profile.name) {
-    console.warn("⚠ userProfile.name missing → using fallback");
-  }
-
-  // 🔍 SAFE SETTER
+  // 🔥 SAFE SETTER (NO CRASH EVER)
   const setVal = (id, val) => {
     const el = document.getElementById(id);
 
-    console.log(`🔎 Checking element: ${id}`, el);
-
     if (!el) {
-      console.error(`❌ ELEMENT NOT FOUND → ${id}`);
+      console.error("❌ ELEMENT NOT FOUND →", id);
       return;
     }
 
@@ -3576,7 +3569,7 @@ function openDutyForm(){
     }
   };
 
-  // 🔍 CHECK BEAT DROPDOWN
+  // 🔍 BEAT SELECT
   const beatSel = document.getElementById("d-beat");
   console.log("📍 d-beat:", beatSel);
 
@@ -3586,9 +3579,9 @@ function openDutyForm(){
     return;
   }
 
-  // 🔥 RESET OPTIONS
+  // 🔄 RESET
   beatSel.innerHTML = "";
-  console.log("🧹 Cleared beat dropdown");
+  console.log("🧹 Beat dropdown cleared");
 
   // 🔍 ROLE LOGIC
   console.log("👤 Role:", profile.role);
@@ -3601,7 +3594,7 @@ function openDutyForm(){
 
       ["East Garam", "West Garam", "East Poro", "Range HQ"]
         .forEach(b => {
-          let o = document.createElement("option");
+          const o = document.createElement("option");
           o.value = b;
           o.innerHTML = b;
           beatSel.appendChild(o);
@@ -3611,25 +3604,23 @@ function openDutyForm(){
 
       console.log("🔒 NON-ADMIN → single beat");
 
-      let o = document.createElement("option");
+      const o = document.createElement("option");
       o.value = profile.beat || "";
       o.innerHTML = profile.beat || "";
       beatSel.appendChild(o);
     }
 
     beatSel.value = profile.beat || "";
-
     console.log("✅ Beat set:", beatSel.value);
 
   } catch (err) {
     console.error("❌ Beat setup failed:", err);
   }
 
-  // 🔍 CHANGE LISTENER DEBUG
+  // 🔄 CHANGE LISTENER
   beatSel.onchange = () => {
 
     console.group("🔄 BEAT CHANGED");
-
     console.log("New Beat:", beatSel.value);
 
     if (typeof updateDutyStaff === "function") {
@@ -3647,12 +3638,11 @@ function openDutyForm(){
     console.groupEnd();
   };
 
-  // 🔥 CRITICAL DEBUG BLOCK
+  // 🔥 FINAL DEBUG BLOCK (DOM + VALUES + DROPDOWNS)
   setTimeout(() => {
 
     console.group("⏳ POST-DOM CHECK");
 
-    // 🔍 CHECK ALL REQUIRED ELEMENTS
     const ids = [
       "d-id",
       "d-date",
@@ -3663,15 +3653,19 @@ function openDutyForm(){
     ];
 
     ids.forEach(id => {
-      console.log(`🔎 ${id}:`, document.getElementById(id));
+      const el = document.getElementById(id);
+      console.log(`🔎 ${id}:`, el ? "✅ FOUND" : "❌ MISSING", el);
     });
 
-    // 🔍 SET VALUES
+    console.log("📦 COMPT_MASTER:", window.COMPT_MASTER);
+    console.log("👮 STAFF_MASTER:", window.STAFF_MASTER);
+
+    // 🔥 SET VALUES (SAFE)
     setVal("d-id", "DUTY-" + Date.now());
     setVal("d-date", new Date().toLocaleString());
     setVal("d-leader", profile.name || "Unknown");
 
-    // 🔍 CALL DROPDOWN LOADERS
+    // 🔥 LOAD DROPDOWNS
     if (typeof updateDutyStaff === "function") {
       updateDutyStaff("FROM_OPEN_DUTY");
     } else {
@@ -3689,7 +3683,7 @@ function openDutyForm(){
   }, 150);
 
   console.groupEnd();
-}    /* START DUTY (SECURE) */
+} /* START DUTY (SECURE) */
           /* START DUTY */
           /* 🔥 FIXED START DUTY: CAPTURES AND STORES COMMA-SEPARATED STRINGS */
           /* 🔥 FIXED: CLOSE DUTY MODAL FUNCTION */
