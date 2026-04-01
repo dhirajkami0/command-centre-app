@@ -742,7 +742,12 @@
   navigator.serviceWorker.register("sw.js")
     .then(() => console.log("✅ SW Registered"))
     .catch(err => console.log("❌ SW Error:", err));
-}const COMPT_MASTER = {
+}/* ============================================================
+   🔥 GLOBAL MASTER DATA (CRASH-PROOF)
+============================================================ */
+
+// ✅ FORCE GLOBAL (never undefined)
+window.COMPT_MASTER = window.COMPT_MASTER || {
   "East Garam": [
     "DPO 1","DPO 2","DPO 5","DPO 6","DPO 9"
   ],
@@ -753,7 +758,9 @@
     "PORO 2","PORO 7","PF","PORO 5","PORO 10"
   ]
 };
-const STAFF_MASTER = {
+
+// ✅ FORCE GLOBAL STAFF
+window.STAFF_MASTER = window.STAFF_MASTER || {
   "East Garam": [
     "Pradyut Dutta, DR/Fr","Gopal Cheetri-BS","Arsad Ali, FG",
     "Nilkush Marak-DL","Bhima Goyala-DL","Prakash Goyala-DL",
@@ -825,11 +832,108 @@ function callBackend(action, payload = {}) {
     return null;
   });
 }
-function updateDutyStaff(){
+function updateDutyCompt() {
 
-  // 🔥 HARD SAFETY
-  if (typeof STAFF_MASTER !== "object") {
-    console.error("❌ STAFF_MASTER not loaded");
+  // 🔥 ALWAYS USE GLOBAL (prevents undefined error)
+  const master = window.COMPT_MASTER;
+
+  if (!master || typeof master !== "object") {
+    console.error("❌ COMPT_MASTER not loaded yet");
+    return;
+  }
+
+  const beatEl = document.getElementById("d-beat");
+  const box = document.getElementById("comptOptions");
+
+  if (!beatEl || !box) {
+    console.warn("⚠ Missing elements for compt");
+    return;
+  }
+
+  const beat = beatEl.value;
+
+  // 🔥 SAFETY: empty state
+  if (!beat) {
+    box.innerHTML = "";
+    return;
+  }
+
+  box.innerHTML = "";
+
+  let list = [];
+
+  try {
+
+    /* 🔥 EAST + WEST GARAM */
+    if (beat === "East Garam" || beat === "West Garam") {
+
+      list = [
+        ...(master["East Garam"] || []),
+        ...(master["West Garam"] || [])
+      ];
+
+    }
+
+    /* 🔥 RANGE HQ */
+    else if (beat === "Range HQ") {
+
+      list = [
+        ...(master["East Garam"] || []),
+        ...(master["West Garam"] || []),
+        ...(master["East Poro"] || [])
+      ];
+
+    }
+
+    /* 🔥 NORMAL */
+    else {
+
+      list = master[beat] || [];
+
+    }
+
+    // 🔥 SAFETY ARRAY
+    if (!Array.isArray(list)) {
+      console.error("❌ Invalid compt list:", list);
+      return;
+    }
+
+    // 🔥 REMOVE DUPLICATES
+    list = [...new Set(list)];
+
+    // 🔥 RENDER SAFELY
+    const frag = document.createDocumentFragment();
+
+    list.forEach(c => {
+
+      const label = document.createElement("label");
+
+      const input = document.createElement("input");
+      input.type = "checkbox";
+      input.value = c;
+
+      label.appendChild(input);
+      label.appendChild(document.createTextNode(" " + c));
+
+      frag.appendChild(label);
+
+    });
+
+    box.appendChild(frag);
+
+    console.log("✅ Compartments loaded:", list.length);
+
+  } catch (err) {
+    console.error("❌ updateDutyCompt crash:", err);
+  }
+
+}  function updateDutyStaff(){
+
+  // 🔥 ALWAYS USE GLOBAL
+  const master = window.STAFF_MASTER;
+
+  if (!master || typeof master !== "object") {
+    console.error("❌ STAFF_MASTER not loaded yet");
     return;
   }
 
@@ -843,6 +947,12 @@ function updateDutyStaff(){
 
   const beat = beatEl.value;
 
+  // 🔥 SAFETY: empty state
+  if (!beat) {
+    box.innerHTML = "";
+    return;
+  }
+
   box.innerHTML = "";
 
   let list = [];
@@ -853,8 +963,8 @@ function updateDutyStaff(){
     if(beat === "East Garam" || beat === "West Garam"){
 
       list = [
-        ...(STAFF_MASTER["East Garam"] || []),
-        ...(STAFF_MASTER["West Garam"] || [])
+        ...(master["East Garam"] || []),
+        ...(master["West Garam"] || [])
       ];
     }
 
@@ -862,16 +972,16 @@ function updateDutyStaff(){
     else if(beat === "Range HQ"){
 
       list = [
-        ...(STAFF_MASTER["East Garam"] || []),
-        ...(STAFF_MASTER["West Garam"] || []),
-        ...(STAFF_MASTER["East Poro"] || []),
-        ...(STAFF_MASTER["Range HQ"] || [])
+        ...(master["East Garam"] || []),
+        ...(master["West Garam"] || []),
+        ...(master["East Poro"] || []),
+        ...(master["Range HQ"] || [])
       ];
     }
 
     /* 🔥 NORMAL */
     else{
-      list = STAFF_MASTER[beat] || [];
+      list = master[beat] || [];
     }
 
     // 🔥 SAFETY
@@ -883,7 +993,9 @@ function updateDutyStaff(){
     // 🔥 REMOVE DUPLICATES
     list = [...new Set(list)];
 
-    // 🔥 RENDER
+    // 🔥 RENDER SAFELY
+    const frag = document.createDocumentFragment();
+
     list.forEach(name=>{
 
       const label = document.createElement("label");
@@ -895,9 +1007,11 @@ function updateDutyStaff(){
       label.appendChild(input);
       label.appendChild(document.createTextNode(" " + name));
 
-      box.appendChild(label);
+      frag.appendChild(label);
 
     });
+
+    box.appendChild(frag);
 
     console.log("✅ Staff loaded:", list.length);
 
@@ -905,7 +1019,7 @@ function updateDutyStaff(){
     console.error("❌ updateDutyStaff crash:", err);
   }
 
-}    /* ============================================================
+}/* ============================================================
      📲 INSTALL PROMPT SYSTEM
   ============================================================ */
 
@@ -3464,90 +3578,6 @@ function openDutyForm(){
   }, 150);
 
 }
-    function updateDutyCompt() {
-
-  // 🔥 HARD SAFETY
-  if (typeof COMPT_MASTER !== "object") {
-    console.error("❌ COMPT_MASTER not loaded");
-    return;
-  }
-
-  const beatEl = document.getElementById("d-beat");
-  const box = document.getElementById("comptOptions");
-
-  if (!beatEl || !box) {
-    console.warn("⚠ Missing elements for compt");
-    return;
-  }
-
-  const beat = beatEl.value;
-
-  box.innerHTML = "";
-
-  let list = [];
-
-  try {
-
-    /* 🔥 EAST + WEST GARAM */
-    if (beat === "East Garam" || beat === "West Garam") {
-
-      list = [
-        ...(COMPT_MASTER["East Garam"] || []),
-        ...(COMPT_MASTER["West Garam"] || [])
-      ];
-
-    }
-
-    /* 🔥 RANGE HQ */
-    else if (beat === "Range HQ") {
-
-      list = [
-        ...(COMPT_MASTER["East Garam"] || []),
-        ...(COMPT_MASTER["West Garam"] || []),
-        ...(COMPT_MASTER["East Poro"] || [])
-      ];
-
-    }
-
-    /* 🔥 NORMAL */
-    else {
-
-      list = COMPT_MASTER[beat] || [];
-
-    }
-
-    // 🔥 SAFETY ARRAY
-    if (!Array.isArray(list)) {
-      console.error("❌ Invalid compt list:", list);
-      return;
-    }
-
-    // 🔥 REMOVE DUPLICATES
-    list = [...new Set(list)];
-
-    // 🔥 RENDER
-    list.forEach(c => {
-
-      const label = document.createElement("label");
-
-      const input = document.createElement("input");
-      input.type = "checkbox";
-      input.value = c;
-
-      label.appendChild(input);
-      label.appendChild(document.createTextNode(" " + c));
-
-      box.appendChild(label);
-
-    });
-
-    console.log("✅ Compartments loaded:", list.length);
-
-  } catch (err) {
-    console.error("❌ updateDutyCompt crash:", err);
-  }
-
-}
     
     /* START DUTY (SECURE) */
           /* START DUTY */
@@ -3723,7 +3753,6 @@ document.querySelectorAll("#" + containerId + " input:checked")
 return el.value;
 });
 }
-
   </script>
 
   </div>
