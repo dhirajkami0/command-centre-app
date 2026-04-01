@@ -1041,7 +1041,10 @@ document.addEventListener("DOMContentLoaded", () => {
       // 🔥 NEW VERSION (GitHub)
 
       callBackend("checkDutyFromSheet", {
-        leader: window.userProfile.name
+       leader: window.userProfile.name
+  .split(",")[0]
+  .trim()
+  .toUpperCase()
       })
         .then(function (res) {
 
@@ -3955,6 +3958,9 @@ return el.value;
 
             callBackend("checkDutyFromSheet", {
               leader: window.userProfile.name
+  .split(",")[0]
+  .trim()
+  .toUpperCase()
             })
               .then(function (res) {
 
