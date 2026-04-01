@@ -809,26 +809,40 @@ function applyRoleControl(){
   const leaderButtons = document.querySelectorAll(".leader-only");
   const dutyBtn = document.getElementById("dutyMainBtn");
 
-  if(role === "ADMIN" || role === "LEADER"){
+  // 🔴 ADMIN
+  if(role === "ADMIN"){
 
     leaderButtons.forEach(el => el.style.display = "flex");
     if(dutyBtn) dutyBtn.style.display = "flex";
 
-  } else if(role === "STAFF"){
+  }
+
+  // 🔵 TEAM LEADER
+  else if(role === "TEAM LEADER"){
+
+    leaderButtons.forEach(el => el.style.display = "flex");
+    if(dutyBtn) dutyBtn.style.display = "flex";
+
+  }
+
+  // 🟢 STAFF
+  else if(role === "STAFF"){
 
     leaderButtons.forEach(el => el.style.display = "flex");
     if(dutyBtn) dutyBtn.style.display = "none";
 
-  } else {
+  }
+
+  // ❌ BLOCK ALL
+  else {
 
     leaderButtons.forEach(el => el.style.display = "none");
     if(dutyBtn) dutyBtn.style.display = "none";
 
+    alert("❌ Not authorized");
   }
 }
-
-
-function login(){
+    function login(){
 
   const phone = document.getElementById("loginPhone").value.trim();
 
@@ -837,17 +851,28 @@ function login(){
     return;
   }
 
-  // ✅ VERIFY FIRST
   callBackend("GET_PROFILE", { phone })
     .then(profile => {
 
       if(profile && !profile.error){
 
+        const role = (profile.role || "").toUpperCase();
+
+        // 🔥 ROLE CHECK HERE
+        if(role !== "ADMIN" && role !== "TEAM LEADER" && role !== "STAFF"){
+          alert("❌ Not authorized role");
+          return;
+        }
+
+        // ✅ STORE AFTER CHECK
         localStorage.setItem("userPhone", phone);
+
+        window.userProfile = profile;
 
         document.getElementById("loginModal").style.display = "none";
 
-        loadProfile();
+        applyRoleControl();
+        startApp();
 
       } else {
         alert("❌ Not authorized");
