@@ -1406,62 +1406,94 @@ esriSat.addTo(map);
     /* ============================================================
        📊 RANGE BUTTON (SAFE)
     ============================================================ */
-    let dutyCheckRunning = false;
+ let dutyCheckRunning = false;
 
 function autoShowEndDuty() {
+
+  console.group("🧠 autoShowEndDuty START");
+  console.log("⏱ Time:", new Date().toLocaleTimeString());
 
   // 🔥 BLOCK MULTIPLE CALLS
   if (dutyCheckRunning) {
     console.warn("⛔ Skipping duplicate duty check");
+    console.groupEnd();
     return;
   }
 
   dutyCheckRunning = true;
+  console.log("🔒 dutyCheckRunning = TRUE");
 
+  // 🔥 PROFILE CHECK
   if (!window.userProfile || !window.userProfile.name) {
-    console.warn("❌ Leader not ready yet");
+    console.warn("❌ Leader not ready yet:", window.userProfile);
     dutyCheckRunning = false;
+    console.groupEnd();
     return;
   }
 
-  console.log("🚀 Checking duty for:", window.userProfile.name);
+  const rawName = window.userProfile.name;
+  const cleanedName = rawName.split(",")[0].trim().toUpperCase();
+
+  console.log("👤 Raw Name:", rawName);
+  console.log("🧹 Cleaned Name:", cleanedName);
+
+  console.log("🌐 Calling backend checkDutyFromSheet...");
 
   callBackend("checkDutyFromSheet", {
-    leader: window.userProfile.name
-      .split(",")[0]
-      .trim()
-      .toUpperCase()
+    leader: cleanedName
   })
 
   .then(function (res) {
 
     console.log("🔥 DUTY RESPONSE:", res);
+    console.log("📊 res.active:", res?.active);
 
     const btn = document.getElementById("dutyMainBtn");
     const icon = document.getElementById("dutyIcon");
     const label = document.getElementById("dutyLabel");
 
-    if (!btn || !icon || !label) return;
+    console.log("🔘 btn:", btn);
+    console.log("🎯 icon:", icon);
+    console.log("🏷 label:", label);
+
+    if (!btn || !label) {
+      console.error("❌ Required elements missing (btn/label)");
+      return;
+    }
 
     if (res && res.active) {
 
+      console.log("🟢 CONDITION: ACTIVE DUTY TRUE");
+
       window.isDutyActive = true;
+      console.log("🧠 isDutyActive set → TRUE");
 
       btn.style.background = "#d32f2f";
-      icon.className = "fa-solid fa-stop";
       label.innerHTML = "END DUTY";
 
-      console.log("🔴 UI → END DUTY");
+      if (icon) {
+        icon.className = "fa-solid fa-stop";
+      } else {
+        console.warn("⚠ icon not found (safe skip)");
+      }
+
+      console.log("🔴 UI → END DUTY APPLIED");
 
     } else {
 
+      console.log("🟡 CONDITION: NO ACTIVE DUTY");
+
       window.isDutyActive = false;
+      console.log("🧠 isDutyActive set → FALSE");
 
       btn.style.background = "#2e7d32";
-      icon.className = "fa-solid fa-briefcase";
       label.innerHTML = "START DUTY";
 
-      console.log("🟢 UI → START DUTY");
+      if (icon) {
+        icon.className = "fa-solid fa-briefcase";
+      }
+
+      console.log("🟢 UI → START DUTY APPLIED");
     }
 
   })
@@ -1472,14 +1504,16 @@ function autoShowEndDuty() {
 
   .finally(function () {
 
-    // 🔥 COOLDOWN (IMPORTANT)
+    console.log("🔓 Releasing dutyCheckRunning...");
+
     setTimeout(() => {
       dutyCheckRunning = false;
+      console.log("🔓 dutyCheckRunning = FALSE");
+      console.groupEnd();
     }, 2000);
 
   });
-}
-    let dutyInitDone = false;
+}   let dutyInitDone = false;
 
 function initDutyControl() {
 
