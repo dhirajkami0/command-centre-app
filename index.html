@@ -657,10 +657,10 @@
     <button class="btn-center btn-green" onclick="refreshAll()">
       FORCE REFRESH
     </button>
-   <button id="dutyMainBtn" class="btn-center btn-green" onclick="handleDutyAction()">
-  <span id="dutyLabel">START DUTY</span>
-</button>
-    <button class="btn-center leader-only" onclick="openSightingForm()"
+ <button id="startDutyBtn"
+  style="width:100%; margin-top:15px; background:#2e7d32; color:white; padding:12px; border:none; border-radius:6px;">
+  🚀 START DUTY
+</button>   <button class="btn-center leader-only" onclick="openSightingForm()"
       style="background:#f9a825; margin-top: 8px; display: none;">
       <i class="fa-solid fa-plus"></i>
       <span>ADD SIGHTING</span>
@@ -3825,7 +3825,7 @@ function openDutyForm(){
   const obsBox = document.getElementById("obs-container");
 
   if (obsBox) {
-    obsBox.style.display = "none";   // ✅ HIDE during start duty
+    obsBox.style.display = "none";
     console.log("📝 Observation hidden (start duty)");
   }
 
@@ -3952,6 +3952,34 @@ function openDutyForm(){
     }
 
   }, 300);
+
+  /* ===============================
+     🚀 🔥 FIX: START DUTY BUTTON BINDING
+  =============================== */
+  setTimeout(() => {
+
+    const btn = document.getElementById("startDutyBtn");
+
+    if (!btn) {
+      console.error("❌ startDutyBtn NOT FOUND");
+      return;
+    }
+
+    // remove any previous binding
+    btn.onclick = null;
+
+    btn.addEventListener("click", function(e){
+      e.preventDefault();
+      e.stopPropagation();
+
+      console.log("🔥 START DUTY BUTTON CLICKED");
+
+      startDuty();
+    });
+
+    console.log("✅ startDutyBtn bound");
+
+  }, 400);
 
   console.groupEnd();
 }/* START DUTY (SECURE) */
@@ -4509,11 +4537,11 @@ return el.value;
     style="width:100%; padding:8px; margin-bottom:8px;">
   </textarea>
 </div>
-      <button onclick="startDuty()"
-        style="width:100%; margin-top:15px; background:#2e7d32; color:white; padding:12px; border:none; border-radius:6px;">
-        🚀 START DUTY
-      </button>
-
+     
+      <button id="startDutyBtn"
+  style="width:100%; margin-top:15px; background:#2e7d32; color:white; padding:12px; border:none; border-radius:6px;">
+  START DUTY
+</button>
     </div>
   </div>
 
