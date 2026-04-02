@@ -4670,60 +4670,70 @@ return el.value;
 
     console.log("🌐 Calling backend...");
 
-    // ✅ 🔥 FIXED ACTION NAME
     callBackend("START_DUTY", payload)
 
-    .then(function (res) {
+.then(function (res) {
 
-      console.log("🔥 BACKEND RESPONSE:", res);
+  console.log("🔥 BACKEND RESPONSE:", res);
 
-      // 🔴 FIX: HANDLE ERROR PROPERLY
-      if (!res || res.error) {
+  if (!res || res.error) {
 
-        console.error("❌ Backend error:", res);
+    console.error("❌ Backend error:", res);
 
-        alert("❌ " + (res?.error || "Failed to start duty"));
+    alert("❌ " + (res?.error || "Failed to start duty"));
 
-        if (startBtn) {
-          startBtn.innerHTML = originalText;
-          startBtn.disabled = false;
-        }
+    if (startBtn) {
+      startBtn.innerHTML = originalText;
+      startBtn.disabled = false;
+    }
 
-        return;
-      }
+    return;
+  }
 
-      // ✅ SUCCESS
-      console.log("✅ Duty success");
+  // ✅ SUCCESS
+  console.log("✅ Duty success");
 
-      alert("✅ Duty Started");
+  alert("✅ Duty Started");
 
-      // 🔥 SET STATE
-      window.isDutyActive = true;
+  // 🔥 STEP 1: SET STATE
+  window.isDutyActive = true;
 
-      // 🔥 CLOSE MODAL
-      if (typeof closeDutyForm === "function") {
-        console.log("📴 Closing form");
-        closeDutyForm();
-      }
+  // 🔥 STEP 2: UPDATE UI (FAST)
+  if (typeof updateDutyButton === "function") {
+    updateDutyButton();
+  }
 
-    })
+  // 🔥 STEP 3: BACKEND VERIFY (REAL STATE)
+  setTimeout(() => {
+    console.log("🔄 Rechecking duty from backend...");
+    if (typeof autoShowEndDuty === "function") {
+      autoShowEndDuty();
+    }
+  }, 800);
 
-    .catch(function(err){
-      console.error("❌ Backend crash:", err);
+  // 🔥 STEP 4: CLOSE MODAL
+  if (typeof closeDutyForm === "function") {
+    console.log("📴 Closing form");
+    closeDutyForm();
+  }
 
-      alert("❌ Server error");
+})
 
-      if (startBtn) {
-        startBtn.innerHTML = originalText;
-        startBtn.disabled = false;
-      }
-    })
+.catch(function(err){
+  console.error("❌ Backend crash:", err);
 
-    .finally(function(){
-      console.log("🏁 startDuty FINISHED");
-      console.groupEnd();
-    });
+  alert("❌ Server error");
 
+  if (startBtn) {
+    startBtn.innerHTML = originalText;
+    startBtn.disabled = false;
+  }
+})
+
+.finally(function(){
+  console.log("🏁 startDuty FINISHED");
+  console.groupEnd();
+});
   } catch (err) {
     console.error("💥 CRASH:", err);
     console.groupEnd();
