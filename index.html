@@ -4053,85 +4053,136 @@ function openDutyForm(){
           /* STEP 2 → FINAL SUBMIT */
  function submitEndDuty(event) {
 
-  
   console.group("🚨 submitEndDuty TRIGGERED");
+  console.log("⏱ Time:", new Date().toLocaleTimeString());
   console.log("🖱 Click event:", event);
-  console.log("🎯 Button element:", event?.target);
 
-  if (!window.isDutyActive) {
-    console.warn("⚠ Prevented accidental end duty");
-    return;
+  try {
+
+    const profile = window.userProfile;
+    console.log("👤 userProfile:", profile);
+
+    if (!window.isDutyActive) {
+      console.warn("⚠ Prevented accidental end duty");
+      console.groupEnd();
+      return;
+    }
+
+    if (!profile || !profile.cleanName || !profile.phone) {
+      console.error("❌ Invalid userProfile");
+      alert("❌ User not loaded properly");
+      console.groupEnd();
+      return;
+    }
+
+    if (!confirm("Submit report and end duty?")) {
+      console.warn("⚠ User cancelled");
+      console.groupEnd();
+      return;
+    }
+
+    const btn = event?.target || document.activeElement;
+
+    if (!btn) {
+      console.error("❌ Button not found");
+      console.groupEnd();
+      return;
+    }
+
+    console.log("🎯 Button element:", btn);
+
+    const original = btn.innerHTML;
+
+    // 🔒 LOCK BUTTON
+    btn.innerHTML = "⏳ SAVING...";
+    btn.disabled = true;
+
+    const obs = document.getElementById("ed-obs")?.value || "";
+
+    // 🔥 BUILD SAFE PAYLOAD
+    const payload = {
+      obs: obs,
+      leader: profile.cleanName,   // ✅ CLEAN NAME
+      phone: profile.phone         // ✅ UNIQUE ID
+    };
+
+    console.log("📤 FINAL PAYLOAD:", payload);
+
+    console.log("🌐 Calling backend markDutyOutWithObs...");
+
+    callBackend("markDutyOutWithObs", payload)
+
+      .then(function (msg) {
+
+        console.log("✅ Backend response:", msg);
+
+        // 🔴 HANDLE ERROR RESPONSE
+        if (!msg || msg.error) {
+          console.error("❌ Backend returned error:", msg);
+          alert("❌ " + (msg?.error || "Failed to end duty"));
+
+          btn.innerHTML = original;
+          btn.disabled = false;
+
+          console.groupEnd();
+          return;
+        }
+
+        // 🔓 RESTORE BUTTON
+        btn.innerHTML = original;
+        btn.disabled = false;
+
+        // 🔥 CLOSE POPUP
+        if (typeof closeEndDutyForm === "function") {
+          console.log("📴 Closing end duty form");
+          closeEndDutyForm();
+        }
+
+        // 🔥 STEP 1: UPDATE STATE
+        window.isDutyActive = false;
+        console.log("🧠 isDutyActive → FALSE");
+
+        // 🔥 STEP 2: UPDATE UI
+        if (typeof updateDutyButton === "function") {
+          updateDutyButton();
+        }
+
+        // 🔥 STEP 3: BACKEND VERIFY
+        setTimeout(() => {
+          console.log("🔄 Rechecking duty after END...");
+          if (typeof autoShowEndDuty === "function") {
+            autoShowEndDuty();
+          }
+        }, 800);
+
+        // 🔥 STEP 4: OPTIONAL REFRESH
+        if (typeof refreshAll === "function") {
+          refreshAll();
+        }
+
+      })
+
+      .catch(function (err) {
+
+        console.error("❌ Backend crash:", err);
+
+        btn.innerHTML = original;
+        btn.disabled = false;
+
+        alert("❌ Server error");
+
+      })
+
+      .finally(function () {
+        console.log("🏁 submitEndDuty FINISHED");
+        console.groupEnd();
+      });
+
+  } catch (err) {
+    console.error("💥 CRASH in submitEndDuty:", err);
+    console.groupEnd();
   }
-
-  if (!confirm("Submit report and end duty?")) return;
-
-  const btn = event?.target || document.activeElement;
-
-  if (!btn) {
-    console.error("❌ Button not found");
-    return;
-  }
-
-  const original = btn.innerHTML;
-
-  // 🔒 LOCK BUTTON
-  btn.innerHTML = "⏳ SAVING...";
-  btn.disabled = true;
-
-  const obs = document.getElementById("ed-obs")?.value || "";
-
-  console.log("📤 Sending obs:", obs);
-
-  callBackend("markDutyOutWithObs", { obs })
-
-  .then(function (msg) {
-
-    console.log("✅ Backend response:", msg);
-
-    // 🔓 RESTORE BUTTON
-    btn.innerHTML = original;
-    btn.disabled = false;
-
-    // 🔥 CLOSE POPUP
-    if (typeof closeEndDutyForm === "function") {
-      closeEndDutyForm();
-    }
-
-    // 🔥 STEP 1: UPDATE STATE
-    window.isDutyActive = false;
-
-    // 🔥 STEP 2: UPDATE UI (FAST)
-    if (typeof updateDutyButton === "function") {
-      updateDutyButton();
-    }
-
-    // 🔥 STEP 3: VERIFY FROM BACKEND (CRITICAL)
-    setTimeout(() => {
-      console.log("🔄 Rechecking duty after END...");
-      if (typeof autoShowEndDuty === "function") {
-        autoShowEndDuty();
-      }
-    }, 800);
-
-    // 🔥 STEP 4: OPTIONAL REFRESH
-    if (typeof refreshAll === "function") {
-      refreshAll();
-    }
-
-  })
-
-  .catch(function (err) {
-
-    console.error("❌ Backend error:", err);
-
-    btn.innerHTML = original;
-    btn.disabled = false;
-
-    alert("❌ " + (err.message || err));
-
-  });
-
-}       /* 🚀 SAFE INITIALIZATION FOR ALL EVENT LISTENERS */
+}   /* 🚀 SAFE INITIALIZATION FOR ALL EVENT LISTENERS */
           function initEventListeners() {
             console.log("🛠️ Initializing Safe Listeners...");
 
