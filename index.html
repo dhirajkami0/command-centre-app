@@ -4053,7 +4053,10 @@ function openDutyForm(){
           /* STEP 2 → FINAL SUBMIT */
  function submitEndDuty(event) {
 
-  console.log("🚨 submitEndDuty TRIGGERED");
+  
+  console.group("🚨 submitEndDuty TRIGGERED");
+  console.log("🖱 Click event:", event);
+  console.log("🎯 Button element:", event?.target);
 
   if (!window.isDutyActive) {
     console.warn("⚠ Prevented accidental end duty");
