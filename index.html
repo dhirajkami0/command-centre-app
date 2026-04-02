@@ -2571,7 +2571,27 @@ ${pct(data.health)} / 100
 
         });
 
-    }/* ============================================================
+    }function showToast(msg){
+  const t = document.createElement("div");
+  t.innerText = msg;
+
+  t.style = `
+    position:fixed;
+    bottom:20px;
+    left:50%;
+    transform:translateX(-50%);
+    background:#2e7d32;
+    color:white;
+    padding:12px 20px;
+    border-radius:6px;
+    z-index:9999;
+    font-weight:bold;
+  `;
+
+  document.body.appendChild(t);
+
+  setTimeout(() => t.remove(), 2500);
+}/* ============================================================
    🚨 BLOCK 9 → INCIDENT + VILLAGE + PREDICTION
 ============================================================ */
 
@@ -4055,12 +4075,10 @@ function openDutyForm(){
 
   console.group("🚨 submitEndDuty TRIGGERED");
   console.log("⏱ Time:", new Date().toLocaleTimeString());
-  console.log("🖱 Click event:", event);
 
   try {
 
     const profile = window.userProfile;
-    console.log("👤 userProfile:", profile);
 
     if (!window.isDutyActive) {
       console.warn("⚠ Prevented accidental end duty");
@@ -4069,14 +4087,12 @@ function openDutyForm(){
     }
 
     if (!profile || !profile.cleanName || !profile.phone) {
-      console.error("❌ Invalid userProfile");
       alert("❌ User not loaded properly");
       console.groupEnd();
       return;
     }
 
     if (!confirm("Submit report and end duty?")) {
-      console.warn("⚠ User cancelled");
       console.groupEnd();
       return;
     }
@@ -4089,8 +4105,6 @@ function openDutyForm(){
       return;
     }
 
-    console.log("🎯 Button element:", btn);
-
     const original = btn.innerHTML;
 
     // 🔒 LOCK BUTTON
@@ -4099,90 +4113,84 @@ function openDutyForm(){
 
     const obs = document.getElementById("ed-obs")?.value || "";
 
-    // 🔥 BUILD SAFE PAYLOAD
     const payload = {
       obs: obs,
-      leader: profile.cleanName,   // ✅ CLEAN NAME
-      phone: profile.phone         // ✅ UNIQUE ID
+      leader: profile.cleanName,
+      phone: profile.phone
     };
 
     console.log("📤 FINAL PAYLOAD:", payload);
 
-    console.log("🌐 Calling backend markDutyOutWithObs...");
-
     callBackend("markDutyOutWithObs", payload)
 
-      .then(function (msg) {
+    .then(function (msg) {
 
-        console.log("✅ Backend response:", msg);
+      console.log("✅ Backend response:", msg);
 
-        // 🔴 HANDLE ERROR RESPONSE
-        if (!msg || msg.error) {
-          console.error("❌ Backend returned error:", msg);
-          alert("❌ " + (msg?.error || "Failed to end duty"));
+      if (!msg || msg.error) {
 
-          btn.innerHTML = original;
-          btn.disabled = false;
-
-          console.groupEnd();
-          return;
-        }
-
-        // 🔓 RESTORE BUTTON
-        btn.innerHTML = original;
-        btn.disabled = false;
-
-        // 🔥 CLOSE POPUP
-        if (typeof closeEndDutyForm === "function") {
-          console.log("📴 Closing end duty form");
-          closeEndDutyForm();
-        }
-
-        // 🔥 STEP 1: UPDATE STATE
-        window.isDutyActive = false;
-        console.log("🧠 isDutyActive → FALSE");
-
-        // 🔥 STEP 2: UPDATE UI
-        if (typeof updateDutyButton === "function") {
-          updateDutyButton();
-        }
-
-        // 🔥 STEP 3: BACKEND VERIFY
-        setTimeout(() => {
-          console.log("🔄 Rechecking duty after END...");
-          if (typeof autoShowEndDuty === "function") {
-            autoShowEndDuty();
-          }
-        }, 800);
-
-        // 🔥 STEP 4: OPTIONAL REFRESH
-        if (typeof refreshAll === "function") {
-          refreshAll();
-        }
-
-      })
-
-      .catch(function (err) {
-
-        console.error("❌ Backend crash:", err);
+        alert("❌ " + (msg?.error || "Failed to end duty"));
 
         btn.innerHTML = original;
         btn.disabled = false;
 
-        alert("❌ Server error");
-
-      })
-
-      .finally(function () {
-        console.log("🏁 submitEndDuty FINISHED");
         console.groupEnd();
-      });
+        return;
+      }
+
+      // 🔥 CLOSE MODAL FIRST (NO DELAY)
+      if (typeof closeEndDutyForm === "function") {
+        closeEndDutyForm();
+      }
+
+      // 🔥 UPDATE STATE
+      window.isDutyActive = false;
+
+      // 🔥 UPDATE UI
+      if (typeof updateDutyButton === "function") {
+        updateDutyButton();
+      }
+
+      // 🔥 VERIFY BACKEND
+      setTimeout(() => {
+        if (typeof autoShowEndDuty === "function") {
+          autoShowEndDuty();
+        }
+      }, 500);
+
+      // 🔥 OPTIONAL REFRESH
+      if (typeof refreshAll === "function") {
+        refreshAll();
+      }
+
+      // 🔥 SHOW SUCCESS AFTER UI CLOSE
+      setTimeout(() => {
+        showToast("✅ Duty Ended Successfully");
+      }, 100);
+
+    })
+
+    .catch(function (err) {
+
+      console.error("❌ Backend crash:", err);
+
+      alert("❌ Server error");
+
+      btn.innerHTML = original;
+      btn.disabled = false;
+
+    })
+
+    .finally(function () {
+      console.log("🏁 submitEndDuty FINISHED");
+      console.groupEnd();
+    });
 
   } catch (err) {
-    console.error("💥 CRASH in submitEndDuty:", err);
+    console.error("💥 CRASH:", err);
     console.groupEnd();
   }
-}   /* 🚀 SAFE INITIALIZATION FOR ALL EVENT LISTENERS */
+}  /* 🚀 SAFE INITIALIZATION FOR ALL EVENT LISTENERS */
           function initEventListeners() {
             console.log("🛠️ Initializing Safe Listeners...");
 
@@ -4635,8 +4643,8 @@ return el.value;
   </div>
 
 
-  <!-- 🧾 END DUTY MODAL (FIXED OUTSIDE) -->
-  <div id="end-duty-modal" style="
+ <!-- 🧾 END DUTY MODAL -->
+<div id="end-duty-modal" style="
   display:none;
   position:fixed;
   top:0; left:0;
@@ -4646,9 +4654,9 @@ return el.value;
   padding:10px;
 ">
 
-    <div style="display:flex; align-items:center; justify-content:center; height:100%;">
+  <div style="display:flex; align-items:center; justify-content:center; height:100%;">
 
-      <div style="
+    <div style="
       background:#f4f4f4;
       border-radius:15px;
       padding:20px;
@@ -4657,34 +4665,34 @@ return el.value;
       border-top:8px solid #d32f2f;
     ">
 
-        <div style="display:flex; justify-content:space-between;">
-          <h3 style="margin:0;color:#d32f2f;">🧾 End Duty Report</h3>
-          <button onclick="closeEndDutyForm()" style="border:none;font-size:22px;">&times;</button>
-        </div>
-
-        <hr>
-
-        <label><b>Final Observation</b></label>
-        <textarea id="ed-obs" rows="4" style="width:100%; padding:8px;"></textarea>
-
-        <button onclick="submitEndDuty(event)" style="
-        width:100%;
-        margin-top:15px;
-        background:#d32f2f;
-        color:white;
-        padding:12px;
-        border:none;
-        border-radius:6px;
-        font-weight:bold;
-      ">
-          ✅ SUBMIT & END DUTY
-        </button>
-
+      <div style="display:flex; justify-content:space-between;">
+        <h3 style="margin:0;color:#d32f2f;">🧾 End Duty Report</h3>
+        <button type="button" onclick="closeEndDutyForm()" style="border:none;font-size:22px;">&times;</button>
       </div>
+
+      <hr>
+
+      <label><b>Final Observation</b></label>
+      <textarea id="ed-obs" rows="4" style="width:100%; padding:8px;"></textarea>
+
+      <button type="button"
+        onclick="event.stopPropagation(); submitEndDuty(event)"
+        style="
+          width:100%;
+          margin-top:15px;
+          background:#d32f2f;
+          color:white;
+          padding:12px;
+          border:none;
+          border-radius:6px;
+          font-weight:bold;
+        ">
+        ✅ SUBMIT & END DUTY
+      </button>
 
     </div>
   </div>
-
+</div>
 
   <script>
 
