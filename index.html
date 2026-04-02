@@ -1481,6 +1481,48 @@ function autoShowEndDuty() {
 
   });
 }
+    let dutyInitDone = false;
+
+function initDutyControl() {
+
+  // 🔥 PREVENT MULTIPLE RUNS
+  if (dutyInitDone) {
+    console.warn("⚠ initDutyControl already executed");
+    return;
+  }
+
+  const profile = window.userProfile;
+
+  console.log("👤 Current Profile:", profile);
+
+  if (!profile || !profile.name) {
+    console.error("❌ No userProfile found");
+    return;
+  }
+
+  // 🔥 SET GLOBAL CONTEXT
+  window.currentLeader = profile.name;
+  window.currentBeat = profile.beat;
+  window.currentRole = profile.role;
+
+  console.log("✅ Duty system initialized");
+  console.log("👤 Leader:", profile.name);
+  console.log("📍 Beat:", profile.beat);
+  console.log("🎯 Role:", profile.role);
+
+  dutyInitDone = true;
+
+  // 🔥 SAFE DUTY CHECK (DELAYED)
+  if (typeof autoShowEndDuty === "function") {
+
+    setTimeout(() => {
+      console.log("🔄 Initial duty check...");
+      autoShowEndDuty();
+    }, 500);   // slight delay for stability
+
+  }
+
+}
     window.isDutyActive = false;
 
     function handleDutyAction() {
@@ -2959,32 +3001,6 @@ ${pct(data.health)} / 100
     /* ============================================================
        🔥 DUTY CONTROL (FETCH REAL LEADER)
     ============================================================ */
- function initDutyControl() {
-
-  const profile = window.userProfile;
-
-  console.log("👤 Current Profile:", profile);
-
-  if (!profile || !profile.name) {
-    console.error("❌ No userProfile found");
-    return;
-  }
-
-  // 🔥 SET GLOBAL CONTEXT
-  window.currentLeader = profile.name;
-  window.currentBeat = profile.beat;
-  window.currentRole = profile.role;
-
-  console.log("✅ Duty system initialized");
-  console.log("👤 Leader:", profile.name);
-  console.log("📍 Beat:", profile.beat);
-  console.log("🎯 Role:", profile.role);
-
-  // 🔥 START DUTY CHECK
-  if (typeof autoShowEndDuty === "function") {
-    autoShowEndDuty();
-  }
-}
     /* ============================================================
    🔥 MAIN APP LOAD (UPDATED - PHONE BASED)
 ============================================================ */
@@ -4591,62 +4607,7 @@ return el.value;
             }
           }
 
-          /* UPDATE BUTTON STATE */
-          function autoShowEndDuty() {
-
-            if (!window.userProfile || !window.userProfile.name) {
-              console.error("❌ Leader not available for duty check");
-              return;
-            }
-
-            console.log("🚀 Checking duty for:", window.userProfile.name);
-
-            callBackend("checkDutyFromSheet", {
-              leader: window.userProfile.name
-  .split(",")[0]
-  .trim()
-  .toUpperCase()
-            })
-              .then(function (res) {
-
-                console.log("🔥 DUTY RESPONSE:", res);
-
-                const btn = document.getElementById("dutyMainBtn");
-                const icon = document.getElementById("dutyIcon");
-                const label = document.getElementById("dutyLabel");
-
-                if (!btn || !icon || !label) {
-                  console.error("❌ Button elements missing");
-                  return;
-                }
-
-                if (res && res.active) {
-
-                  window.isDutyActive = true;
-
-                  btn.style.background = "#d32f2f";
-                  icon.className = "fa-solid fa-stop";
-                  label.innerHTML = "END DUTY";
-
-                  console.log("🔴 UI updated → END DUTY");
-
-                } else {
-
-                  window.isDutyActive = false;
-
-                  btn.style.background = "#2e7d32";
-                  icon.className = "fa-solid fa-briefcase";
-                  label.innerHTML = "START DUTY";
-
-                  console.log("🟢 UI updated → START DUTY");
-                }
-
-              })
-              .catch(function (err) {
-                console.error("❌ Duty check error:", err);
-              });
-
-          }/* 🔥 FIXED START DUTY: CAPTURES DATA AND UPDATES BUTTON */
+        /* 🔥 FIXED START DUTY: CAPTURES DATA AND UPDATES BUTTON */
           /* 🔥 FIXED START DUTY: CAPTURES DATA, SUBMITS, AND UPDATES BUTTON */
           function startDuty() {
 
