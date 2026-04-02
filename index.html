@@ -4605,106 +4605,125 @@ return el.value;
           /* 🔥 FIXED START DUTY: CAPTURES DATA, SUBMITS, AND UPDATES BUTTON */
           function startDuty() {
 
-  const now = new Date();
+  console.group("🚀 startDuty START");
+  console.log("⏱ Time:", new Date().toLocaleTimeString());
 
-  const profile = window.userProfile;
+  try {
 
-  if(!profile){
-    alert("❌ User not loaded");
-    return;
-  }
+    const now = new Date();
+    console.log("🕒 now:", now);
 
-  // 🔹 GET VALUES
-  const staffArray = getCheckedValues("staffOptions");
-  const comptArray = getCheckedValues("comptOptions");
+    const profile = window.userProfile;
+    console.log("👤 profile:", profile);
 
-  const staffString = staffArray.join(", ");
-  const comptString = comptArray.join(", ");
-
-  // 🔒 VALIDATION
-  if (staffArray.length === 0) {
-    alert("❌ Select at least one staff");
-    return;
-  }
-
-  if (comptArray.length === 0) {
-    alert("❌ Select at least one compartment");
-    return;
-  }
-
-  // 🔥 DUPLICATE PROTECTION
-  if(window.isDutyActive){
-    alert("⚠ Duty already active");
-    return;
-  }
-
-  // 🚀 PAYLOAD (MATCH BACKEND)
-  const payload = {
-    staff: staffString,
-    type: document.getElementById("d-type")?.value || "",
-    compt: comptString
-  };
-
-  // 🔥 SAFE BUTTON SELECT
-  const startBtn = document.querySelector("#duty-modal button[onclick='startDuty()']");
-  const originalText = startBtn ? startBtn.innerHTML : "";
-
-  if (startBtn) {
-    startBtn.innerHTML = "⏳ Starting Duty...";
-    startBtn.disabled = true;
-  }
-
-  // 🔥 USE CORRECT SECURE API
-  callBackend("startDutySecure", payload)
-
-  .then(function (res) {
-
-    if(!res){
-      alert("❌ Failed to start duty");
-
-      if (startBtn) {
-        startBtn.innerHTML = originalText;
-        startBtn.disabled = false;
-      }
-
+    if(!profile){
+      console.error("❌ profile missing");
+      alert("❌ User not loaded");
+      console.groupEnd();
       return;
     }
 
-    alert("✅ Duty Started");
+    // 🔹 GET VALUES
+    const staffArray = getCheckedValues("staffOptions");
+    const comptArray = getCheckedValues("comptOptions");
 
-    if (typeof closeDutyForm === "function") {
-      closeDutyForm();
+    console.log("👮 staffArray:", staffArray);
+    console.log("📦 comptArray:", comptArray);
+
+    const staffString = staffArray.join(", ");
+    const comptString = comptArray.join(", ");
+
+    // 🔒 VALIDATION
+    if (staffArray.length === 0) {
+      console.warn("⚠ No staff selected");
+      alert("❌ Select at least one staff");
+      console.groupEnd();
+      return;
     }
 
-    // ✅ FAST UI UPDATE
-    window.isDutyActive = true;
-
-    if (typeof updateDutyButton === "function") {
-      updateDutyButton();
+    if (comptArray.length === 0) {
+      console.warn("⚠ No compartment selected");
+      alert("❌ Select at least one compartment");
+      console.groupEnd();
+      return;
     }
 
-    // 🔥 SYNC WITH BACKEND
-  setTimeout(() => {
-  autoShowEndDuty();
-}, 1500);   // wait for sheet write
+    // 🔥 DUPLICATE PROTECTION
+    console.log("🟡 isDutyActive:", window.isDutyActive);
+
+    if(window.isDutyActive){
+      console.warn("⚠ Duty already active");
+      alert("⚠ Duty already active");
+      console.groupEnd();
+      return;
+    }
+
+    // 🚀 PAYLOAD
+    const payload = {
+      staff: staffString,
+      type: document.getElementById("d-type")?.value || "",
+      compt: comptString
+    };
+
+    console.log("📤 PAYLOAD:", payload);
+
+    // 🔥 BUTTON
+    const startBtn = document.querySelector("#duty-modal button[onclick='startDuty()']");
+    console.log("🔘 startBtn:", startBtn);
+
+    const originalText = startBtn ? startBtn.innerHTML : "";
+
     if (startBtn) {
-      startBtn.innerHTML = originalText;
-      startBtn.disabled = false;
+      startBtn.innerHTML = "⏳ Starting Duty...";
+      startBtn.disabled = true;
     }
 
-  })
+    console.log("🌐 Calling backend...");
 
-  .catch(function (err) {
+    // 🔥 BACKEND CALL
+    callBackend("startDutySecure", payload)
 
-    alert("❌ Error: " + (err.message || err));
+    .then(function (res) {
 
-    if (startBtn) {
-      startBtn.innerHTML = originalText;
-      startBtn.disabled = false;
-    }
+      console.log("🔥 BACKEND RESPONSE:", res);
 
-  });
+      if(!res){
+        console.error("❌ Empty backend response");
 
+        alert("❌ Failed to start duty");
+
+        if (startBtn) {
+          startBtn.innerHTML = originalText;
+          startBtn.disabled = false;
+        }
+
+        return;
+      }
+
+      console.log("✅ Duty success");
+
+      alert("✅ Duty Started");
+
+      if (typeof closeDutyForm === "function") {
+        console.log("📴 Closing form");
+        closeDutyForm();
+      }
+
+    })
+
+    .catch(function(err){
+      console.error("❌ Backend error:", err);
+    })
+
+    .finally(function(){
+      console.log("🏁 startDuty FINISHED");
+      console.groupEnd();
+    });
+
+  } catch (err) {
+    console.error("💥 CRASH:", err);
+    console.groupEnd();
+  }
 }// ✅ FIX: properly closed startDuty
 
 /* ✅ MOVED OUTSIDE (IMPORTANT) */
