@@ -4124,14 +4124,17 @@ return el.value;
     villageLayer.clearLayers();
     elephantLayer.clearLayers();
 
+    let staffCount = 0; // 🔥 DEBUG
+
     snapshot.forEach(doc => {
 
       const d = doc.data();
 
-      const lat = d.lat;
-      const lon = d.lon;
+      const lat = Number(d.lat);
+      const lon = Number(d.lon);
 
-      if (!lat || !lon) return;
+      // 🔥 FIX: proper validation
+      if (isNaN(lat) || isNaN(lon)) return;
 
       const type = (d.type || "").toLowerCase();
 
@@ -4146,6 +4149,10 @@ return el.value;
 
       // 👮 STAFF
       else if (type === "staff") {
+
+        staffCount++; // 🔥 DEBUG
+
+        console.log("👮 STAFF:", d.name, lat, lon); // 🔥 DEBUG
 
         L.marker([lat, lon])
           .bindPopup(`👮 ${d.name}`)
@@ -4172,6 +4179,8 @@ return el.value;
       }
 
     });
+
+    console.log("👮 TOTAL STAFF RENDERED:", staffCount); // 🔥 FINAL CHECK
 
   });
 
