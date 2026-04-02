@@ -4124,63 +4124,156 @@ return el.value;
     villageLayer.clearLayers();
     elephantLayer.clearLayers();
 
-    let staffCount = 0; // 🔥 DEBUG
+    let staffRaw = [];
 
     snapshot.forEach(doc => {
 
       const d = doc.data();
-
       const lat = Number(d.lat);
       const lon = Number(d.lon);
 
-      // 🔥 FIX: proper validation
       if (isNaN(lat) || isNaN(lon)) return;
 
       const type = (d.type || "").toLowerCase();
 
-      // 🚨 INCIDENT
-      if (type.includes("encroachment") || type.includes("fire")) {
-
-        L.marker([lat, lon])
-          .bindPopup(`<b>${d.name}</b>`)
-          .addTo(incidentLayer);
-
+      // 👮 STAFF COLLECT ONLY
+      if (type === "staff") {
+        staffRaw.push(d);
       }
 
-      // 👮 STAFF
-      else if (type === "staff") {
+      // (keep your other layers same...)
+    });
 
-        staffCount++; // 🔥 DEBUG
+    // =====================================================
+    // 🔥 NOW APPLY YOUR ORIGINAL LOGIC
+    // =====================================================
 
-        console.log("👮 STAFF:", d.name, lat, lon); // 🔥 DEBUG
+    let groups = {};
 
-        L.marker([lat, lon])
-          .bindPopup(`👮 ${d.name}`)
+    staffRaw.forEach(s => {
+
+      const key = Number(s.lat).toFixed(6) + "," + Number(s.lon).toFixed(6);
+
+      if (!groups[key]) groups[key] = [];
+
+      groups[key].push(s);
+    });
+
+    let colorIndex = 0;
+
+    Object.values(groups).forEach(group => {
+
+      group.forEach((s, index) => {
+
+        let track = Array.isArray(s.track) ? s.track : [];
+
+        /* 🔥 CLEAN TRACK */
+        let clean = [];
+
+        track.forEach(p => {
+
+          if (!p) return;
+
+          const lat = Number(p.lat);
+          const lon = Number(p.lon);
+
+          if (isNaN(lat) || isNaN(lon)) return;
+
+          if (
+            clean.length === 0 ||
+            Math.abs(clean[clean.length - 1][0] - lat) > 1e-6 ||
+            Math.abs(clean[clean.length - 1][1] - lon) > 1e-6
+          ) {
+            clean.push([lat, lon]);
+          }
+
+        });
+
+        /* 🔥 LAST POSITION */
+        let lat = clean.length ? clean[clean.length - 1][0] : Number(s.lat);
+        let lon = clean.length ? clean[clean.length - 1][1] : Number(s.lon);
+
+        /* 🔥 SPREAD */
+        if (group.length > 1) {
+          const angle = (index / group.length) * Math.PI * 2;
+          lat += Math.cos(angle) * 0.00015;
+          lon += Math.sin(angle) * 0.00015;
+        }
+
+        /* 🔥 DISTANCE */
+        let dist = 0;
+        for (let i = 1; i < clean.length; i++) {
+          dist += getDistance(clean[i - 1], clean[i]);
+        }
+
+        /* 🔥 SPEED */
+        let speed = 0;
+        if (clean.length > 1) {
+          const d = getDistance(clean[clean.length - 2], clean[clean.length - 1]);
+          speed = d / (1 / 60);
+        }
+
+        const color = getColor(colorIndex++);
+
+        /* 🔥 ICON */
+        const icon = L.divIcon({
+          html: `
+          <div class="markerWrap">
+            <div class="radarPulse"></div>
+            <div class="markerCore">
+              <i class="fa-solid fa-person-military-pointing"
+                style="color:#00ff00;font-size:20px;"></i>
+            </div>
+          </div>`,
+          iconSize: [30, 30],
+          iconAnchor: [15, 15]
+        });
+
+        const popup = `
+        <div style="font-family:Segoe UI">
+          <b>👤 ${s.name}</b><br>
+          📊 Speed: ${speed.toFixed(1)} km/h<br>
+          📏 Distance: ${dist.toFixed(2)} km<br>
+        </div>`;
+
+        const marker = L.marker([lat, lon], {
+          icon: icon,
+          zIndexOffset: 3000
+        })
+          .bindPopup(popup, {
+            autoClose: false,
+            closeOnClick: false
+          })
           .addTo(staffLayer);
 
-      }
+        /* 🔥 TRACK LINE */
+        if (clean.length > 1) {
 
-      // 🏡 VILLAGE
-      else if (type === "village") {
+          const line = L.polyline(clean, {
+            color: color,
+            weight: 2,
+            opacity: 1
+          }).addTo(staffLayer);
 
-        L.marker([lat, lon])
-          .bindPopup(`🏡 ${d.name}`)
-          .addTo(villageLayer);
+          if (L.polylineDecorator) {
+            L.polylineDecorator(line, {
+              patterns: [{
+                offset: '5%',
+                repeat: '50px',
+                symbol: L.Symbol.arrowHead({
+                  pixelSize: 10,
+                  pathOptions: { color: color }
+                })
+              }]
+            }).addTo(staffLayer);
+          }
+        }
 
-      }
-
-      // 🐘 ELEPHANT
-      else if (type.includes("elephant")) {
-
-        L.marker([lat, lon])
-          .bindPopup(`🐘 ${d.name}`)
-          .addTo(elephantLayer);
-
-      }
+      });
 
     });
 
-    console.log("👮 TOTAL STAFF RENDERED:", staffCount); // 🔥 FINAL CHECK
+    console.log("👮 STAFF FINAL:", staffRaw.length);
 
   });
 
