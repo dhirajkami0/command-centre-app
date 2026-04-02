@@ -812,10 +812,7 @@ function cleanName(name){
 
         applyRoleControl();
 
-        setTimeout(()=>{
-          autoShowEndDuty();
-          updateDutyButton();
-        }, 300);
+      
 
         startApp();
 
@@ -825,6 +822,8 @@ function cleanName(name){
 
         localStorage.removeItem("userPhone");
         showLogin();
+    
+      
       }
 
     })
@@ -1409,12 +1408,25 @@ esriSat.addTo(map);
     /* ============================================================
        📊 RANGE BUTTON (SAFE)
     ============================================================ */
-    function autoShowEndDuty() {
+    let dutyCheckRunning = false;
+
+function autoShowEndDuty() {
+
+  // 🔥 BLOCK MULTIPLE CALLS
+  if (dutyCheckRunning) {
+    console.warn("⛔ Skipping duplicate duty check");
+    return;
+  }
+
+  dutyCheckRunning = true;
 
   if (!window.userProfile || !window.userProfile.name) {
     console.warn("❌ Leader not ready yet");
+    dutyCheckRunning = false;
     return;
   }
+
+  console.log("🚀 Checking duty for:", window.userProfile.name);
 
   callBackend("checkDutyFromSheet", {
     leader: window.userProfile.name
@@ -1422,7 +1434,10 @@ esriSat.addTo(map);
       .trim()
       .toUpperCase()
   })
+
   .then(function (res) {
+
+    console.log("🔥 DUTY RESPONSE:", res);
 
     const btn = document.getElementById("dutyMainBtn");
     const icon = document.getElementById("dutyIcon");
@@ -1438,6 +1453,8 @@ esriSat.addTo(map);
       icon.className = "fa-solid fa-stop";
       label.innerHTML = "END DUTY";
 
+      console.log("🔴 UI → END DUTY");
+
     } else {
 
       window.isDutyActive = false;
@@ -1445,10 +1462,24 @@ esriSat.addTo(map);
       btn.style.background = "#2e7d32";
       icon.className = "fa-solid fa-briefcase";
       label.innerHTML = "START DUTY";
+
+      console.log("🟢 UI → START DUTY");
     }
 
-  });
+  })
 
+  .catch(function(err){
+    console.error("❌ Duty check error:", err);
+  })
+
+  .finally(function () {
+
+    // 🔥 COOLDOWN (IMPORTANT)
+    setTimeout(() => {
+      dutyCheckRunning = false;
+    }, 2000);
+
+  });
 }
     window.isDutyActive = false;
 
@@ -3032,12 +3063,7 @@ window.addEventListener("load", function () {
               }
 
               /* 6. BACKGROUND LOOPS */
-              setInterval(function () {
-                if (window.userProfile && window.userProfile.name) {
-                  autoShowEndDuty();
-                }
-              }, 10000);
-
+             
               // 🔥 INIT FORM LISTENERS (SAFE)
               if (typeof initEventListeners === "function") {
                 initEventListeners();
@@ -4703,10 +4729,9 @@ return el.value;
     }
 
     // 🔥 SYNC WITH BACKEND
-    if (typeof autoShowEndDuty === "function") {
-      autoShowEndDuty();
-    }
-
+  setTimeout(() => {
+  autoShowEndDuty();
+}, 1500);   // wait for sheet write
     if (startBtn) {
       startBtn.innerHTML = originalText;
       startBtn.disabled = false;
