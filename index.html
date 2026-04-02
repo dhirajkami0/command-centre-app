@@ -3793,13 +3793,21 @@ function openDutyForm(){
   console.log("⏱ Time:", new Date().toLocaleTimeString());
 
   const modal = document.getElementById("duty-modal");
+
+  console.log("🔍 duty-modal element:", modal);
+
   if (!modal) {
     console.error("❌ duty-modal NOT FOUND");
     console.groupEnd();
     return;
   }
 
+  /* 🔥 FORCE SHOW (IMPORTANT FIX) */
   modal.style.display = "block";
+  modal.style.visibility = "visible";
+  modal.style.opacity = "1";
+
+  console.log("✅ Modal forced visible");
 
   /* ===============================
      🧹 HARD RESET FORM (CRITICAL)
@@ -3952,34 +3960,6 @@ function openDutyForm(){
     }
 
   }, 300);
-
-  /* ===============================
-     🚀 🔥 FIX: START DUTY BUTTON BINDING
-  =============================== */
-  setTimeout(() => {
-
-    const btn = document.getElementById("startDutyBtn");
-
-    if (!btn) {
-      console.error("❌ startDutyBtn NOT FOUND");
-      return;
-    }
-
-    // remove any previous binding
-    btn.onclick = null;
-
-    btn.addEventListener("click", function(e){
-      e.preventDefault();
-      e.stopPropagation();
-
-      console.log("🔥 START DUTY BUTTON CLICKED");
-
-      startDuty();
-    });
-
-    console.log("✅ startDutyBtn bound");
-
-  }, 400);
 
   console.groupEnd();
 }/* START DUTY (SECURE) */
