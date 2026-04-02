@@ -4118,7 +4118,7 @@ return el.value;
 
     console.log("🔥 Firestore map_all:", snapshot.size);
 
-    // 🔥 CLEAR ALL
+    // 🔥 CLEAR ALL LAYERS
     incidentLayer.clearLayers();
     staffLayer.clearLayers();
     villageLayer.clearLayers();
@@ -4166,7 +4166,7 @@ return el.value;
     });
 
     // =====================================================
-    // 🔥 SAME LOGIC AS YOUR loadStaff()
+    // 🔥 EXACT SAME LOGIC AS YOUR loadStaff()
     // =====================================================
 
     let groups = {};
@@ -4192,8 +4192,9 @@ return el.value;
 
           if (!p) return;
 
-          const lat = Number(p.lat);
-          const lon = Number(p.lon);
+          // 🔥 FIREBASE FORMAT (object)
+          let lat = Number(p.lat);
+          let lon = Number(p.lon);
 
           if (isNaN(lat) || isNaN(lon)) return;
 
@@ -4247,7 +4248,7 @@ return el.value;
           iconAnchor: [15, 15]
         });
 
-        /* 🔥 POPUP (UNCHANGED — YOUR STYLE) */
+        /* 🔥 POPUP (UNCHANGED EXACT STYLE) */
         const popup = `
         <div style="font-family:Segoe UI">
 
@@ -4279,7 +4280,7 @@ return el.value;
 
         marker.on('click', () => activePopupId = s.name);
 
-        /* 🔥 TRACK (UNCHANGED STYLE) */
+        /* 🔥 TRACK */
         if (clean.length > 1) {
 
           const line = L.polyline(clean, {
