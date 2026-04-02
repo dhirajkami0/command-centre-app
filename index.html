@@ -4054,15 +4054,23 @@ function openDutyForm(){
       closeEndDutyForm();
     }
 
-    // 🔥 UPDATE STATE
+    // 🔥 STEP 1: UPDATE STATE
     window.isDutyActive = false;
 
-    // 🔥 UPDATE UI
+    // 🔥 STEP 2: UPDATE UI (FAST)
     if (typeof updateDutyButton === "function") {
       updateDutyButton();
     }
 
-    // 🔥 REFRESH
+    // 🔥 STEP 3: VERIFY FROM BACKEND (CRITICAL)
+    setTimeout(() => {
+      console.log("🔄 Rechecking duty after END...");
+      if (typeof autoShowEndDuty === "function") {
+        autoShowEndDuty();
+      }
+    }, 800);
+
+    // 🔥 STEP 4: OPTIONAL REFRESH
     if (typeof refreshAll === "function") {
       refreshAll();
     }
@@ -4080,7 +4088,7 @@ function openDutyForm(){
 
   });
 
-}         /* 🚀 SAFE INITIALIZATION FOR ALL EVENT LISTENERS */
+}       /* 🚀 SAFE INITIALIZATION FOR ALL EVENT LISTENERS */
           function initEventListeners() {
             console.log("🛠️ Initializing Safe Listeners...");
 
