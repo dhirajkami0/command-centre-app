@@ -4700,19 +4700,29 @@ return el.value;
  function updateDutyButton(){
 
   const btn = document.getElementById("dutyMainBtn");
-  const icon = document.getElementById("dutyIcon");
+  const icon = document.getElementById("dutyIcon"); // optional
   const label = document.getElementById("dutyLabel");
 
-  if(!btn || !icon || !label) return;
+  if(!btn || !label) return; // 🔥 only required elements
 
   if(window.isDutyActive){
+
     btn.style.background = "#d32f2f";
-    icon.className = "fa-solid fa-stop";
     label.innerHTML = "END DUTY";
+
+    // 🔥 safe icon update
+    if(icon){
+      icon.className = "fa-solid fa-stop";
+    }
+
   } else {
+
     btn.style.background = "#2e7d32";
-    icon.className = "fa-solid fa-briefcase";
     label.innerHTML = "START DUTY";
+
+    if(icon){
+      icon.className = "fa-solid fa-briefcase";
+    }
   }
 }
 // ... ALL YOUR HUGE CODE ABOVE
