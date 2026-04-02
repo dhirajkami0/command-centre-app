@@ -4002,80 +4002,74 @@ function openDutyForm(){
           /* STEP 2 → FINAL SUBMIT */
  function submitEndDuty(event) {
 
+  console.log("🚨 submitEndDuty TRIGGERED");
+
+  if (!window.isDutyActive) {
+    console.warn("⚠ Prevented accidental end duty");
+    return;
+  }
+
   if (!confirm("Submit report and end duty?")) return;
 
+  const btn = event?.target || document.activeElement;
+
+  if (!btn) {
+    console.error("❌ Button not found");
+    return;
+  }
+
+  const original = btn.innerHTML;
+
+  // 🔒 LOCK BUTTON
+  btn.innerHTML = "⏳ SAVING...";
+  btn.disabled = true;
+
   const obs = document.getElementById("ed-obs")?.value || "";
+
+  console.log("📤 Sending obs:", obs);
 
   callBackend("markDutyOutWithObs", { obs })
 
   .then(function (msg) {
 
-    // 🔥 BULLETPROOF MESSAGE EXTRACTION
-    let message = "Success";
+    console.log("✅ Backend response:", msg);
 
-    try {
+    // 🔓 RESTORE BUTTON
+    btn.innerHTML = original;
+    btn.disabled = false;
 
-      if (typeof msg === "string") {
-        message = msg;
-
-      } else if (Array.isArray(msg)) {
-        message = msg[0]?.status || msg[0]?.message || JSON.stringify(msg);
-
-      } else if (typeof msg === "object" && msg !== null) {
-
-        // check nested safely
-        message =
-          msg.status ||
-          msg.message ||
-          msg.msg ||
-          msg.result ||
-          msg?.data?.status ||
-          msg?.data?.message ||
-          JSON.stringify(msg);
-      }
-
-    } catch (e) {
-      message = "Success";
+    // 🔥 CLOSE POPUP
+    if (typeof closeEndDutyForm === "function") {
+      closeEndDutyForm();
     }
 
-    alert("✅ " + message);
+    // 🔥 UPDATE STATE
+    window.isDutyActive = false;
 
-    // 🔥 SAFE EXECUTION BLOCK (NO CRASH)
-    try {
+    // 🔥 UPDATE UI
+    if (typeof updateDutyButton === "function") {
+      updateDutyButton();
+    }
 
-      if (typeof closeEndDutyForm === "function") {
-        closeEndDutyForm();
-      }
-
-      window.isDutyActive = false;
-
-      if (typeof updateDutyButton === "function") {
-        updateDutyButton();
-      }
-
-      if (typeof refreshAll === "function") {
-        refreshAll();
-      }
-
-    } catch (err) {
-      console.error("💥 CRASH DETECTED:", err);
+    // 🔥 REFRESH
+    if (typeof refreshAll === "function") {
+      refreshAll();
     }
 
   })
 
   .catch(function (err) {
 
-    let errMsg =
-      (typeof err === "object" && err !== null)
-        ? (err.message || JSON.stringify(err))
-        : err;
+    console.error("❌ Backend error:", err);
 
-    alert("❌ " + errMsg);
+    btn.innerHTML = original;
+    btn.disabled = false;
+
+    alert("❌ " + (err.message || err));
 
   });
 
-}
-          /* 🚀 SAFE INITIALIZATION FOR ALL EVENT LISTENERS */
+}         /* 🚀 SAFE INITIALIZATION FOR ALL EVENT LISTENERS */
           function initEventListeners() {
             console.log("🛠️ Initializing Safe Listeners...");
 
@@ -4714,78 +4708,7 @@ return el.value;
 }// ✅ FIX: properly closed startDuty
 
 /* ✅ MOVED OUTSIDE (IMPORTANT) */
-function submitEndDuty(event) {
-
-  console.log("🚨🚨 submitEndDuty TRIGGERED");
-
-  if (!confirm("Submit report and end duty?")) return;
-
-  const btn = event?.target || document.activeElement;
-
-  if (!btn) {
-    console.error("❌ Button not found");
-    return;
-  }
-
-  const original = btn.innerHTML;
-
-  // 🔒 UI LOCK
-  btn.innerHTML = "⏳ SAVING...";
-  btn.disabled = true;
-
-  const obsEl = document.getElementById("ed-obs");
-  const obs = obsEl ? obsEl.value : "";
-
-  console.log("📤 Sending obs:", obs);
-
-  callBackend("markDutyOutWithObs", { obs })
-
-  .then(function (msg) {
-
-    console.log("✅ Backend response:", msg);
-
-    // 🔓 Restore button
-    btn.innerHTML = original;
-    btn.disabled = false;
-
-    // ❌ REMOVED SUCCESS ALERT (THIS WAS CAUSING SECOND POPUP)
-
-    // 🔥 CLOSE POPUP
-    if (typeof closeEndDutyForm === "function") {
-      closeEndDutyForm();
-      console.log("🚪 Popup closed");
-    }
-
-    // 🔥 UPDATE STATE
-    window.isDutyActive = false;
-
-    // 🔥 UPDATE UI
-    if (typeof updateDutyButton === "function") {
-      updateDutyButton();
-      console.log("🔄 Duty button updated");
-    }
-
-    // 🔥 REFRESH DATA
-    if (typeof refreshAll === "function") {
-      refreshAll();
-      console.log("🔄 Data refreshed");
-    }
-
-  })
-
-  .catch(function (err) {
-
-    console.error("❌ Backend error:", err);
-
-    btn.innerHTML = original;
-    btn.disabled = false;
-
-    // ✅ ONLY error popup
-    alert("❌ " + (err.message || err));
-
-  });
-
-}  function updateDutyButton(){
+ function updateDutyButton(){
 
   const btn = document.getElementById("dutyMainBtn");
   const icon = document.getElementById("dutyIcon");
