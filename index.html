@@ -4564,21 +4564,17 @@ return el.value;
 
         /* 🔥 FIXED START DUTY: CAPTURES DATA AND UPDATES BUTTON */
           /* 🔥 FIXED START DUTY: CAPTURES DATA, SUBMITS, AND UPDATES BUTTON */
-          function startDuty() {
+        function startDuty() {
 
   console.group("🚀 startDuty START");
   console.log("⏱ Time:", new Date().toLocaleTimeString());
 
   try {
 
-    const now = new Date();
-    console.log("🕒 now:", now);
-
     const profile = window.userProfile;
     console.log("👤 profile:", profile);
 
     if(!profile){
-      console.error("❌ profile missing");
       alert("❌ User not loaded");
       console.groupEnd();
       return;
@@ -4596,41 +4592,40 @@ return el.value;
 
     // 🔒 VALIDATION
     if (staffArray.length === 0) {
-      console.warn("⚠ No staff selected");
       alert("❌ Select at least one staff");
       console.groupEnd();
       return;
     }
 
     if (comptArray.length === 0) {
-      console.warn("⚠ No compartment selected");
       alert("❌ Select at least one compartment");
       console.groupEnd();
       return;
     }
 
     // 🔥 DUPLICATE PROTECTION
-    console.log("🟡 isDutyActive:", window.isDutyActive);
-
     if(window.isDutyActive){
-      console.warn("⚠ Duty already active");
       alert("⚠ Duty already active");
       console.groupEnd();
       return;
     }
 
-    // 🚀 PAYLOAD
+    // ✅ 🔥 FIXED PAYLOAD (ADD USER DATA)
     const payload = {
       staff: staffString,
       type: document.getElementById("d-type")?.value || "",
-      compt: comptString
+      compt: comptString,
+
+      // 🔥 REQUIRED FOR BACKEND AUTH
+      leader: profile.name || "",
+      email: profile.email || "",
+      phone: localStorage.getItem("userPhone") || ""
     };
 
     console.log("📤 PAYLOAD:", payload);
 
-    // 🔥 BUTTON
-    const startBtn = document.querySelector("#duty-modal button[onclick='startDuty()']");
-    console.log("🔘 startBtn:", startBtn);
+    // 🔥 FIXED BUTTON SELECT
+    const startBtn = document.getElementById("startDutyBtn");
 
     const originalText = startBtn ? startBtn.innerHTML : "";
 
@@ -4641,17 +4636,19 @@ return el.value;
 
     console.log("🌐 Calling backend...");
 
-    // 🔥 BACKEND CALL
-   callBackend("startDutySecure", payload)
+    // ✅ 🔥 FIXED ACTION NAME
+    callBackend("START_DUTY", payload)
 
     .then(function (res) {
 
       console.log("🔥 BACKEND RESPONSE:", res);
 
-      if(!res){
-        console.error("❌ Empty backend response");
+      // 🔴 FIX: HANDLE ERROR PROPERLY
+      if (!res || res.error) {
 
-        alert("❌ Failed to start duty");
+        console.error("❌ Backend error:", res);
+
+        alert("❌ " + (res?.error || "Failed to start duty"));
 
         if (startBtn) {
           startBtn.innerHTML = originalText;
@@ -4661,10 +4658,15 @@ return el.value;
         return;
       }
 
+      // ✅ SUCCESS
       console.log("✅ Duty success");
 
       alert("✅ Duty Started");
 
+      // 🔥 SET STATE
+      window.isDutyActive = true;
+
+      // 🔥 CLOSE MODAL
       if (typeof closeDutyForm === "function") {
         console.log("📴 Closing form");
         closeDutyForm();
@@ -4673,7 +4675,14 @@ return el.value;
     })
 
     .catch(function(err){
-      console.error("❌ Backend error:", err);
+      console.error("❌ Backend crash:", err);
+
+      alert("❌ Server error");
+
+      if (startBtn) {
+        startBtn.innerHTML = originalText;
+        startBtn.disabled = false;
+      }
     })
 
     .finally(function(){
