@@ -4110,65 +4110,42 @@ document.querySelectorAll("#" + containerId + " input:checked")
 return el.value;
 });
 }
-   function loadMapDataFirebase() {
+  function loadMapDataFirebase() {
 
   const ref = window.collection(window.db, "map_all");
 
   window.onSnapshot(ref, (snapshot) => {
 
-    console.log("🔥 Firestore map_all:", snapshot.size);
-
-    // 🔥 CLEAR ALL LAYERS
-    incidentLayer.clearLayers();
     staffLayer.clearLayers();
-    villageLayer.clearLayers();
-    elephantLayer.clearLayers();
 
-    let staff = [];
+    let data = [];
 
+    // 🔥 CONVERT SNAPSHOT → SAME FORMAT AS getMapData()
     snapshot.forEach(doc => {
 
       const d = doc.data();
 
-      const lat = Number(d.lat);
-      const lon = Number(d.lon);
+      if ((d.type || "").toLowerCase() !== "staff") return;
 
-      if (isNaN(lat) || isNaN(lon)) return;
+      data.push({
+        ...d,
+        type: "Staff", // 🔥 match your original filter
+        lat: Number(d.lat),
+        lon: Number(d.lon),
 
-      const type = (d.type || "").toLowerCase();
-
-      // 👮 STAFF COLLECT
-      if (type === "staff") {
-        staff.push(d);
-      }
-
-      // 🚨 INCIDENT
-      else if (type.includes("encroachment") || type.includes("fire")) {
-        L.marker([lat, lon])
-          .bindPopup(`<b>${d.name}</b>`)
-          .addTo(incidentLayer);
-      }
-
-      // 🏡 VILLAGE
-      else if (type === "village") {
-        L.marker([lat, lon])
-          .bindPopup(`🏡 ${d.name}`)
-          .addTo(villageLayer);
-      }
-
-      // 🐘 ELEPHANT
-      else if (type.includes("elephant")) {
-        L.marker([lat, lon])
-          .bindPopup(`🐘 ${d.name}`)
-          .addTo(elephantLayer);
-      }
+        // 🔥 CONVERT FIRESTORE TRACK → OLD FORMAT [lat, lon]
+        track: Array.isArray(d.track)
+          ? d.track.map(p => [Number(p.lat), Number(p.lon)])
+          : []
+      });
 
     });
 
-    // =====================================================
-    // 🔥 EXACT SAME LOGIC AS YOUR loadStaff()
-    // =====================================================
+    if (!data.length) return;
 
+    const staff = data.filter(s => s.type === "Staff");
+
+    /* 🔥 GROUP SAME LOCATION */
     let groups = {};
 
     staff.forEach(s => {
@@ -4187,32 +4164,20 @@ return el.value;
 
         /* 🔥 CLEAN TRACK */
         let clean = [];
-
         track.forEach(p => {
-
           if (!p) return;
-
-          // 🔥 FIREBASE FORMAT (object)
-          let lat = Number(p.lat);
-          let lon = Number(p.lon);
-
-          if (isNaN(lat) || isNaN(lon)) return;
-
-          if (
-            clean.length === 0 ||
-            Math.abs(clean[clean.length - 1][0] - lat) > 1e-6 ||
-            Math.abs(clean[clean.length - 1][1] - lon) > 1e-6
-          ) {
-            clean.push([lat, lon]);
+          if (clean.length === 0 ||
+            Math.abs(clean[clean.length - 1][0] - p[0]) > 1e-6 ||
+            Math.abs(clean[clean.length - 1][1] - p[1]) > 1e-6) {
+            clean.push(p);
           }
-
         });
 
         /* 🔥 LAST POSITION */
-        let lat = clean.length ? clean[clean.length - 1][0] : Number(s.lat);
-        let lon = clean.length ? clean[clean.length - 1][1] : Number(s.lon);
+        let lat = clean.length ? clean[clean.length - 1][0] : s.lat;
+        let lon = clean.length ? clean[clean.length - 1][1] : s.lon;
 
-        /* 🔥 SPREAD */
+        /* 🔥 SPREAD (UNCHANGED) */
         if (group.length > 1) {
           const angle = (index / group.length) * Math.PI * 2;
           lat += Math.cos(angle) * 0.00015;
@@ -4248,7 +4213,7 @@ return el.value;
           iconAnchor: [15, 15]
         });
 
-        /* 🔥 POPUP (UNCHANGED EXACT STYLE) */
+        /* 🔥 POPUP (UNCHANGED) */
         const popup = `
         <div style="font-family:Segoe UI">
 
@@ -4280,7 +4245,7 @@ return el.value;
 
         marker.on('click', () => activePopupId = s.name);
 
-        /* 🔥 TRACK */
+        /* 🔥 TRACK (UNCHANGED) */
         if (clean.length > 1) {
 
           const line = L.polyline(clean, {
@@ -4309,8 +4274,7 @@ return el.value;
 
   });
 
-}
-  </script>
+}</script>
 
   </div>
   <div id="form-modal"
