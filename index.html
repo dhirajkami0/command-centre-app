@@ -3746,7 +3746,6 @@ function submitSightingForm(event) {
 🚨 DUTY SYSTEM
 ============================================================ */
 let dutyComptMap = {};
-
 function openDutyForm(){
 
   console.group("🚀 openDutyForm START");
@@ -3767,7 +3766,7 @@ function openDutyForm(){
   const form = document.getElementById("duty-form");
 
   if (form) {
-    form.reset(); // 🔥 clears ALL inputs
+    form.reset();
     console.log("🧹 Form reset done");
   }
 
@@ -3778,6 +3777,16 @@ function openDutyForm(){
   if (comptBox) comptBox.innerHTML = "";
 
   console.log("🧹 Dynamic lists cleared");
+
+  /* ===============================
+     🔥 FIX: HIDE OBSERVATION FIELD
+  =============================== */
+  const obsBox = document.getElementById("obs-container");
+
+  if (obsBox) {
+    obsBox.style.display = "none";   // ✅ HIDE during start duty
+    console.log("📝 Observation hidden (start duty)");
+  }
 
   /* ===============================
      👤 PROFILE VALIDATION
@@ -3848,8 +3857,6 @@ function openDutyForm(){
 
     leaderInput.value = leaderName;
     leaderInput.readOnly = true;
-
-    // 🔥 LOCK VALUE
     leaderInput.dataset.lockedUser = leaderName;
 
     console.log("👤 Leader locked:", leaderName);
@@ -3876,7 +3883,6 @@ function openDutyForm(){
     setVal("d-id", "DUTY-" + Date.now());
     setVal("d-date", new Date().toLocaleString());
 
-    // 🔁 Re-lock leader
     const leader = document.getElementById("d-leader");
     if (leader && leader.dataset.lockedUser) {
       leader.value = leader.dataset.lockedUser;
@@ -4479,9 +4485,12 @@ return el.value;
         <div class="options" id="comptOptions"></div>
       </div>
 
-      <label>Observations</label>
-      <textarea id="d-obs" rows="3" style="width:100%; padding:8px; margin-bottom:8px;"></textarea>
-
+     <div id="obs-container">
+  <label>Observations</label>
+  <textarea id="d-obs" rows="3"
+    style="width:100%; padding:8px; margin-bottom:8px;">
+  </textarea>
+</div>
       <button onclick="startDuty()"
         style="width:100%; margin-top:15px; background:#2e7d32; color:white; padding:12px; border:none; border-radius:6px;">
         🚀 START DUTY
