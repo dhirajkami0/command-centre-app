@@ -656,28 +656,11 @@
 
     <button class="btn-center btn-green" onclick="refreshAll()">
       FORCE REFRESH
-    </button><button id="dutyMainBtn" onclick="handleDutyAction()" style="
-  width:65px;
-  height:65px;
-  background:#2e7d32;
-  color:white;
-  border-radius:50%;
-  border:none;
-  box-shadow:0 4px 15px rgba(0,0,0,0.4);
-  cursor:pointer;
-  font-size:22px;
-">
+    </button>
+   <button id="dutyMainBtn" class="btn-center btn-green" onclick="handleDutyAction()">
   <i id="dutyIcon" class="fa-solid fa-briefcase"></i>
+  <span id="dutyLabel" style="margin-left:8px;">START DUTY</span>
 </button>
-
-<div id="dutyLabel" style="
-  color:white;
-  font-size:10px;
-  text-align:center;
-  font-weight:bold;
-">
-  START DUTY
-</div>
     <button class="btn-center leader-only" onclick="openSightingForm()"
       style="background:#f9a825; margin-top: 8px; display: none;">
       <i class="fa-solid fa-plus"></i>
