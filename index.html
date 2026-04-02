@@ -3801,7 +3801,7 @@ function openDutyForm(){
     return;
   }
 
-  /* 🔥 FORCE SHOW (IMPORTANT FIX) */
+  /* 🔥 FORCE SHOW */
   modal.style.display = "block";
   modal.style.visibility = "visible";
   modal.style.opacity = "1";
@@ -3809,7 +3809,7 @@ function openDutyForm(){
   console.log("✅ Modal forced visible");
 
   /* ===============================
-     🧹 HARD RESET FORM (CRITICAL)
+     🧹 RESET FORM
   =============================== */
   const form = document.getElementById("duty-form");
 
@@ -3827,138 +3827,109 @@ function openDutyForm(){
   console.log("🧹 Dynamic lists cleared");
 
   /* ===============================
-     🔥 FIX: HIDE OBSERVATION FIELD
+     HIDE OBS
   =============================== */
   const obsBox = document.getElementById("obs-container");
-
-  if (obsBox) {
-    obsBox.style.display = "none";
-    console.log("📝 Observation hidden (start duty)");
-  }
+  if (obsBox) obsBox.style.display = "none";
 
   /* ===============================
-     👤 PROFILE VALIDATION
+     PROFILE
   =============================== */
   const profile = window.userProfile;
 
-  console.log("👤 userProfile:", profile);
-
   if (!profile || !profile.name) {
-    console.error("❌ INVALID userProfile");
-    alert("User not loaded. Please refresh.");
+    alert("User not loaded");
     console.groupEnd();
     return;
   }
 
   /* ===============================
-     🔧 SAFE SETTER
+     SAFE SET
   =============================== */
   const setVal = (id, val) => {
     const el = document.getElementById(id);
-    if (!el) return console.error("❌ Missing:", id);
-
-    el.value = val;
-    console.log(`✅ ${id} =`, val);
+    if (el) el.value = val;
   };
 
   /* ===============================
-     📍 BEAT SETUP
+     BEAT
   =============================== */
   const beatSel = document.getElementById("d-beat");
-
-  if (!beatSel) {
-    console.error("❌ d-beat NOT FOUND");
-    console.groupEnd();
-    return;
-  }
-
   beatSel.innerHTML = "";
 
   if (profile.role === "ADMIN") {
-
-    ["East Garam", "West Garam", "East Poro", "Range HQ"]
-    .forEach(b => {
-      const o = document.createElement("option");
-      o.value = b;
-      o.innerHTML = b;
+    ["East Garam","West Garam","East Poro","Range HQ"]
+    .forEach(b=>{
+      const o=document.createElement("option");
+      o.value=b;
+      o.innerHTML=b;
       beatSel.appendChild(o);
     });
-
   } else {
-
-    const o = document.createElement("option");
-    o.value = profile.beat || "";
-    o.innerHTML = profile.beat || "";
+    const o=document.createElement("option");
+    o.value=profile.beat||"";
+    o.innerHTML=profile.beat||"";
     beatSel.appendChild(o);
   }
 
   beatSel.value = profile.beat || "";
-  console.log("📍 Beat set:", beatSel.value);
 
   /* ===============================
-     👤 FORCE LEADER (LOCKED)
+     LEADER LOCK
   =============================== */
   const leaderInput = document.getElementById("d-leader");
-
   if (leaderInput) {
-    const leaderName = (profile.name || "").trim();
-
-    leaderInput.value = leaderName;
+    leaderInput.value = profile.name;
     leaderInput.readOnly = true;
-    leaderInput.dataset.lockedUser = leaderName;
-
-    console.log("👤 Leader locked:", leaderName);
+    leaderInput.dataset.lockedUser = profile.name;
   }
 
   /* ===============================
-     🔄 CHANGE LISTENER
+     CHANGE
   =============================== */
   beatSel.onchange = () => {
-
-    console.log("🔄 Beat changed:", beatSel.value);
-
     updateDutyStaff("BEAT_CHANGE");
     updateDutyCompt("BEAT_CHANGE");
   };
 
   /* ===============================
-     ⏳ POST LOAD INIT
+     POST INIT
   =============================== */
   setTimeout(() => {
-
-    console.group("⏳ POST-DOM");
 
     setVal("d-id", "DUTY-" + Date.now());
     setVal("d-date", new Date().toLocaleString());
 
-    const leader = document.getElementById("d-leader");
-    if (leader && leader.dataset.lockedUser) {
-      leader.value = leader.dataset.lockedUser;
-      console.log("🔁 Leader re-set:", leader.value);
-    }
-
     updateDutyStaff("FROM_OPEN_DUTY");
     updateDutyCompt("FROM_OPEN_DUTY");
-
-    console.groupEnd();
 
   }, 150);
 
   /* ===============================
-     🔥 FINAL PROTECTION
+     🔥 FINAL FIX: START BUTTON
   =============================== */
-  setTimeout(() => {
 
-    const leader = document.getElementById("d-leader");
+  const startBtn = document.getElementById("startDutyBtn");
 
-    if (leader && leader.dataset.lockedUser) {
-      if (leader.value !== leader.dataset.lockedUser) {
-        console.warn("⚠ Leader overridden! Fixing...");
-        leader.value = leader.dataset.lockedUser;
-      }
-    }
+  if (!startBtn) {
+    console.error("❌ startDutyBtn NOT FOUND");
+  } else {
 
-  }, 300);
+    // 🔥 REMOVE OLD HANDLER
+    startBtn.onclick = null;
+
+    // 🔥 ADD NEW HANDLER
+    startBtn.onclick = function(e){
+      e.preventDefault();
+      e.stopPropagation();
+
+      console.log("🔥 START DUTY CLICKED");
+
+      startDuty();
+    };
+
+    console.log("✅ startDutyBtn CONNECTED");
+  }
 
   console.groupEnd();
 }/* START DUTY (SECURE) */
