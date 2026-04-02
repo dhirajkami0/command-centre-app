@@ -925,9 +925,9 @@ function startApp(){
   if(appStarted) return;
   appStarted = true;
 
-  refreshAll();
-}
-    window.onload = function(){
+  loadMapDataFirebase();   // 🔥 NEW
+  refreshAll();            // (keep temporarily)
+}    window.onload = function(){
 
   const phone = localStorage.getItem("userPhone");
 
@@ -4109,6 +4109,72 @@ document.querySelectorAll("#" + containerId + " input:checked")
 ).map(function(el) {
 return el.value;
 });
+}
+    function loadMapDataFirebase() {
+
+  const ref = window.collection(window.db, "map_all");
+
+  window.onSnapshot(ref, (snapshot) => {
+
+    console.log("🔥 Firestore map_all:", snapshot.size);
+
+    // 🔥 CLEAR ALL
+    incidentLayer.clearLayers();
+    staffLayer.clearLayers();
+    villageLayer.clearLayers();
+    elephantLayer.clearLayers();
+
+    snapshot.forEach(doc => {
+
+      const d = doc.data();
+
+      const lat = d.lat;
+      const lon = d.lon;
+
+      if (!lat || !lon) return;
+
+      const type = (d.type || "").toLowerCase();
+
+      // 🚨 INCIDENT
+      if (type.includes("encroachment") || type.includes("fire")) {
+
+        L.marker([lat, lon])
+          .bindPopup(`<b>${d.name}</b>`)
+          .addTo(incidentLayer);
+
+      }
+
+      // 👮 STAFF
+      else if (type === "staff") {
+
+        L.marker([lat, lon])
+          .bindPopup(`👮 ${d.name}`)
+          .addTo(staffLayer);
+
+      }
+
+      // 🏡 VILLAGE
+      else if (type === "village") {
+
+        L.marker([lat, lon])
+          .bindPopup(`🏡 ${d.name}`)
+          .addTo(villageLayer);
+
+      }
+
+      // 🐘 ELEPHANT
+      else if (type.includes("elephant")) {
+
+        L.marker([lat, lon])
+          .bindPopup(`🐘 ${d.name}`)
+          .addTo(elephantLayer);
+
+      }
+
+    });
+
+  });
+
 }
   </script>
 
