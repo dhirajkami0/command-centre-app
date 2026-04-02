@@ -32,6 +32,15 @@
   <script src="https://unpkg.com/shpjs@latest/dist/shp.js"></script>
 
   <script>
+    // 🔥 GLOBAL ERROR HANDLER
+window.addEventListener("error", function (e) {
+  console.error("💥 GLOBAL ERROR:", e.message, "at", e.filename, ":", e.lineno);
+});
+
+// 🔥 PROMISE ERROR HANDLER
+window.addEventListener("unhandledrejection", function (e) {
+  console.error("💥 UNHANDLED PROMISE:", e.reason);
+});
     function hapticFeedback() {
       if (window.navigator.vibrate) window.navigator.vibrate(15);
     }
@@ -2697,18 +2706,42 @@ ${pct(data.health)} / 100
     /* =========================
        🏡 VILLAGE SYSTEM (FINAL)
     ========================= */
-    function loadVillages() {
+   function loadVillages() {
 
-      villageLayer.clearLayers();
+  console.group("🏡 loadVillages START");
 
-      callBackend("getVillages")
-        .then(function (data) {
+  try {
 
-          if (!data) return;
+    villageLayer.clearLayers();
+    console.log("🧹 Cleared villageLayer");
 
-          data.forEach(function (v) {
+    callBackend("getVillages")
 
-            if (!v.lat || !v.lon) return;
+      .then(function (data) {
+
+        console.log("📦 Raw villages data:", data);
+
+        // 🔴 CRITICAL FIX
+        if (!Array.isArray(data)) {
+          console.error("❌ Expected array, got:", data);
+          console.groupEnd();
+          return;
+        }
+
+        if (!data.length) {
+          console.warn("⚠ No villages data");
+          console.groupEnd();
+          return;
+        }
+
+        data.forEach(function (v, i) {
+
+          try {
+
+            if (!v || !v.lat || !v.lon) {
+              console.warn("⚠ Skipping invalid village:", v);
+              return;
+            }
 
             const risk = (v.riskLevel || "").toLowerCase();
 
@@ -2761,13 +2794,27 @@ ${pct(data.health)} / 100
               .bindPopup(popup)
               .addTo(villageLayer);
 
-          });
+          } catch (innerErr) {
+            console.error("❌ Error in village row:", i, innerErr, v);
+          }
 
         });
 
-    }
+        console.log("✅ Villages rendered:", data.length);
+        console.groupEnd();
 
+      })
 
+      .catch(function (err) {
+        console.error("❌ loadVillages backend error:", err);
+        console.groupEnd();
+      });
+
+  } catch (err) {
+    console.error("💥 loadVillages crash:", err);
+    console.groupEnd();
+  }
+}
 
     /* =========================
        🔮 PREDICTION SYSTEM (FINAL)
