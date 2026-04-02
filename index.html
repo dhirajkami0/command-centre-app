@@ -4110,7 +4110,7 @@ document.querySelectorAll("#" + containerId + " input:checked")
 return el.value;
 });
 }
-    function loadMapDataFirebase() {
+   function loadMapDataFirebase() {
 
   const ref = window.collection(window.db, "map_all");
 
@@ -4124,11 +4124,12 @@ return el.value;
     villageLayer.clearLayers();
     elephantLayer.clearLayers();
 
-    let staffRaw = [];
+    let staff = [];
 
     snapshot.forEach(doc => {
 
       const d = doc.data();
+
       const lat = Number(d.lat);
       const lon = Number(d.lon);
 
@@ -4136,26 +4137,43 @@ return el.value;
 
       const type = (d.type || "").toLowerCase();
 
-      // 👮 STAFF COLLECT ONLY
+      // 👮 STAFF COLLECT
       if (type === "staff") {
-        staffRaw.push(d);
+        staff.push(d);
       }
 
-      // (keep your other layers same...)
+      // 🚨 INCIDENT
+      else if (type.includes("encroachment") || type.includes("fire")) {
+        L.marker([lat, lon])
+          .bindPopup(`<b>${d.name}</b>`)
+          .addTo(incidentLayer);
+      }
+
+      // 🏡 VILLAGE
+      else if (type === "village") {
+        L.marker([lat, lon])
+          .bindPopup(`🏡 ${d.name}`)
+          .addTo(villageLayer);
+      }
+
+      // 🐘 ELEPHANT
+      else if (type.includes("elephant")) {
+        L.marker([lat, lon])
+          .bindPopup(`🐘 ${d.name}`)
+          .addTo(elephantLayer);
+      }
+
     });
 
     // =====================================================
-    // 🔥 NOW APPLY YOUR ORIGINAL LOGIC
+    // 🔥 SAME LOGIC AS YOUR loadStaff()
     // =====================================================
 
     let groups = {};
 
-    staffRaw.forEach(s => {
-
+    staff.forEach(s => {
       const key = Number(s.lat).toFixed(6) + "," + Number(s.lon).toFixed(6);
-
       if (!groups[key]) groups[key] = [];
-
       groups[key].push(s);
     });
 
@@ -4215,7 +4233,7 @@ return el.value;
 
         const color = getColor(colorIndex++);
 
-        /* 🔥 ICON */
+        /* 🔥 ICON (UNCHANGED) */
         const icon = L.divIcon({
           html: `
           <div class="markerWrap">
@@ -4229,11 +4247,24 @@ return el.value;
           iconAnchor: [15, 15]
         });
 
+        /* 🔥 POPUP (UNCHANGED — YOUR STYLE) */
         const popup = `
         <div style="font-family:Segoe UI">
+
           <b>👤 ${s.name}</b><br>
+          📞 ${s.mobile || "N/A"}<br>
+
+          <hr>
+
+          👥 ${s.team || "N/A"}<br>
+          🧾 ${s.dutyType || "N/A"}<br>
+
+          <hr>
+
           📊 Speed: ${speed.toFixed(1)} km/h<br>
           📏 Distance: ${dist.toFixed(2)} km<br>
+          ⏱ ${s.lastSeen || "Unknown"}
+
         </div>`;
 
         const marker = L.marker([lat, lon], {
@@ -4246,7 +4277,9 @@ return el.value;
           })
           .addTo(staffLayer);
 
-        /* 🔥 TRACK LINE */
+        marker.on('click', () => activePopupId = s.name);
+
+        /* 🔥 TRACK (UNCHANGED STYLE) */
         if (clean.length > 1) {
 
           const line = L.polyline(clean, {
@@ -4272,8 +4305,6 @@ return el.value;
       });
 
     });
-
-    console.log("👮 STAFF FINAL:", staffRaw.length);
 
   });
 
