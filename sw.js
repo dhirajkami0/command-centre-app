@@ -2,7 +2,7 @@
    🔥 COMMAND CENTRE SERVICE WORKER
 ========================================= */
 
-const CACHE_NAME = "command-centre-v3"; // 🔥 CHANGE VERSION WHEN YOU UPDATE
+const CACHE_NAME = "command-centre-v4"; // 🔥 CHANGE VERSION WHEN YOU UPDATE
 
 /* 📦 CORE FILES (APP SHELL) */
 const urlsToCache = [
