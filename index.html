@@ -4657,54 +4657,71 @@ return el.value;
     return;
   }
 
-  // 🚀 PAYLOAD (MINIMAL)
+  // 🚀 PAYLOAD (MATCH BACKEND)
   const payload = {
     staff: staffString,
     type: document.getElementById("d-type")?.value || "",
-    compt: comptString,
-    obs: document.getElementById("d-obs")?.value || ""
+    compt: comptString
   };
 
+  // 🔥 SAFE BUTTON SELECT
   const startBtn = document.querySelector("#duty-modal button[onclick='startDuty()']");
-  const originalText = startBtn.innerHTML;
+  const originalText = startBtn ? startBtn.innerHTML : "";
 
-  startBtn.innerHTML = "⏳ Starting Duty...";
-  startBtn.disabled = true;
+  if (startBtn) {
+    startBtn.innerHTML = "⏳ Starting Duty...";
+    startBtn.disabled = true;
+  }
 
-  // 🔥 USE SECURE API
-  callBackend("markDutyIn", payload)
+  // 🔥 USE CORRECT SECURE API
+  callBackend("startDutySecure", payload)
+
   .then(function (res) {
 
-    // 🔴 FIX: handle null/failed response
     if(!res){
       alert("❌ Failed to start duty");
-      startBtn.innerHTML = originalText;
-      startBtn.disabled = false;
+
+      if (startBtn) {
+        startBtn.innerHTML = originalText;
+        startBtn.disabled = false;
+      }
+
       return;
     }
 
     alert("✅ Duty Started");
 
-    closeDutyForm();
+    if (typeof closeDutyForm === "function") {
+      closeDutyForm();
+    }
 
-    // ✅ KEEP (fast UI feedback)
+    // ✅ FAST UI UPDATE
     window.isDutyActive = true;
 
-    updateDutyButton();   // immediate UI change
+    if (typeof updateDutyButton === "function") {
+      updateDutyButton();
+    }
 
-    // 🔥 IMPORTANT: backend truth sync
-    autoShowEndDuty();
+    // 🔥 SYNC WITH BACKEND
+    if (typeof autoShowEndDuty === "function") {
+      autoShowEndDuty();
+    }
 
-    startBtn.innerHTML = originalText;
-    startBtn.disabled = false;
+    if (startBtn) {
+      startBtn.innerHTML = originalText;
+      startBtn.disabled = false;
+    }
 
   })
+
   .catch(function (err) {
 
     alert("❌ Error: " + (err.message || err));
 
-    startBtn.innerHTML = originalText;
-    startBtn.disabled = false;
+    if (startBtn) {
+      startBtn.innerHTML = originalText;
+      startBtn.disabled = false;
+    }
 
   });
 
