@@ -889,9 +889,9 @@ function startApp(){
   if(appStarted) return;
   appStarted = true;
 
-  loadMapDataFirebase();   // 🔥 NEW
-  refreshAll();            // (keep temporarily)
-}    window.onload = function(){
+  loadMapDataFirebase();   // ✅ FIREBASE REALTIME (this contains onSnapshot)
+  loadSightings();         // ✅ fallback / elephant data
+}   window.onload = function(){
 
   const phone = localStorage.getItem("userPhone");
 
@@ -2194,156 +2194,179 @@ ${pct(data.health)} / 100
 
     function loadSightings() {
 
-      elephantLayer.clearLayers();
+  callBackend("getSightings")
+    .then(function (data) {
 
-      callBackend("getSightings")
-        .then(function (data) {
+      if (!data) return;
 
-          if (!data) return;
+      let seenIds = {};   // 🔥 track active markers
 
-          data.forEach(function (e) {
+      data.forEach(function (e) {
 
-            if (!e.lat || !e.lon) return;
-            if (e.status && e.status !== "Active") return;
+        if (!e.lat || !e.lon) return;
+        if (e.status && e.status !== "Active") return;
 
-            const lat = Number(e.lat);
-            const lon = Number(e.lon);
+        const lat = Number(e.lat);
+        const lon = Number(e.lon);
 
-            /* 🔴 RISK COLOR */
-            const herd = parseInt(e.herd || e["Total Seen"] || 0);
-            const isHighRisk = herd <= 2;
-            const color = isHighRisk ? "#ff3b30" : "#ff9800";
+        // 🔥 UNIQUE ID (VERY IMPORTANT)
+        const id = e.id || (lat.toFixed(5) + "_" + lon.toFixed(5));
+        seenIds[id] = true;
 
-            /* 🐘 ICON */
-            const icon = L.divIcon({
-              className: '',
-              html: `
-        <div style="position:relative;width:36px;height:36px;">
-          
-          <div style="
-            display:flex;
-            align-items:center;
-            justify-content:center;
-            width:36px;height:36px;
-            animation: elephantPulse 2s infinite;
-          ">
-            <div style="font-size:26px;">🐘</div>
+        /* 🔴 RISK COLOR */
+        const herd = parseInt(e.herd || e["Total Seen"] || 0);
+        const isHighRisk = herd <= 2;
+        const color = isHighRisk ? "#ff3b30" : "#ff9800";
+
+        /* 🐘 ICON */
+        const icon = L.divIcon({
+          className: '',
+          html: `
+          <div style="position:relative;width:36px;height:36px;">
+            <div style="
+              display:flex;
+              align-items:center;
+              justify-content:center;
+              width:36px;height:36px;
+              animation: elephantPulse 2s infinite;
+            ">
+              <div style="font-size:26px;">🐘</div>
+            </div>
           </div>
-        </div>
-        `,
-              iconSize: [36, 36],
-              iconAnchor: [18, 18]
-            });
-
-            /* 🕒 TIME FORMAT */
-            let timeDisplay = "Unknown";
-            let rawTime = (e.Time || e.time || "").toString();
-
-            if (rawTime.includes(":")) {
-              let [h, m] = rawTime.split(":");
-              h = parseInt(h);
-              if (!isNaN(h)) {
-                let ampm = h >= 12 ? "PM" : "AM";
-                let hr = h % 12 || 12;
-                timeDisplay = `${hr}:${m} ${ampm}`;
-              }
-            }
-
-            /* 🧭 DIRECTION CLEAN */
-            let rawDir = (e.direction || "").toUpperCase();
-
-            const dirFix = {
-              "SOUTH-WEST": "SW", "SOUTH-EAST": "SE",
-              "NORTH-WEST": "NW", "NORTH-EAST": "NE"
-            };
-            rawDir = dirFix[rawDir] || rawDir;
-
-            const dirMap = {
-              N: "North", S: "South", E: "East", W: "West",
-              NE: "North-East", NW: "North-West",
-              SE: "South-East", SW: "South-West"
-            };
-
-            const movementText = dirMap[rawDir] || "Unknown";
-
-            /* 🔥 VILLAGE RISK */
-            let villageHTML = "";
-
-            const key =
-              Number(lat).toFixed(5) + "," +
-              Number(lon).toFixed(5);
-
-            if (window.coneVillages && window.coneVillages[key]) {
-
-              const villages = window.coneVillages[key];
-
-              if (villages.length > 0) {
-                villageHTML += `<hr><b>🏠 Elephant Risk Zone</b>`;
-                villages.forEach(v => {
-                  villageHTML += `<div style="margin-top:4px;">🔴 <b>${v}</b></div>`;
-                });
-              } else {
-                villageHTML += `<hr>🏠 No villages in cone`;
-              }
-
-            }
-
-            /* 📸 PHOTO */
-            const photoHtml = e.photo ? `
-        <div style="margin-top:8px">
-          <a href="${e.photo}" target="_blank">
-            <img src="${e.photo}" style="width:100%;border-radius:6px">
-          </a>
-        </div>
-      ` : "";
-
-            /* 📍 BEAT */
-            const beat = e.Beat || e["Forest Block"] || "";
-
-            /* 📦 POPUP */
-            const popup = `
-      <div style="font-family:Segoe UI;min-width:220px">
-
-        <div style="color:${color};font-weight:bold">
-          ${e.status === "Moved" ? "🟢 MOVED" : "🔴 ACTIVE"}
-        </div>
-
-        ${beat ? `<div style="font-size:11px;color:#666">📍 ${beat}</div>` : ""}
-
-        <hr>
-
-        <b>🐘 Herd:</b> ${herd}<br>
-        <b>🧭 Movement:</b> ${movementText}<br>
-        <b>⏱ Time:</b> ${timeDisplay}<br>
-
-        <b>📍 Location:</b><br>
-        <code>${lat.toFixed(5)}, ${lon.toFixed(5)}</code>
-
-        ${villageHTML}
-        ${photoHtml}
-
-        ${e.status !== "Moved" ? `
-        <button onclick="confirmExit('${e.id}')" style="
-          background:#2e7d32;color:white;border:none;
-          width:100%;padding:10px;margin-top:10px;
-          border-radius:6px;cursor:pointer;">
-          ✅ MARK AS MOVED
-        </button>` : ""}
-
-      </div>`;
-
-            L.marker([lat, lon], {
-              icon: icon,
-              zIndexOffset: 5000
-            })
-              .bindPopup(popup)
-              .addTo(elephantLayer);
-
-          });
-
+          `,
+          iconSize: [36, 36],
+          iconAnchor: [18, 18]
         });
 
-    }/* 🔥 STATUS UPDATE */
+        /* 🕒 TIME FORMAT */
+        let timeDisplay = "Unknown";
+        let rawTime = (e.Time || e.time || "").toString();
+
+        if (rawTime.includes(":")) {
+          let [h, m] = rawTime.split(":");
+          h = parseInt(h);
+          if (!isNaN(h)) {
+            let ampm = h >= 12 ? "PM" : "AM";
+            let hr = h % 12 || 12;
+            timeDisplay = `${hr}:${m} ${ampm}`;
+          }
+        }
+
+        /* 🧭 DIRECTION CLEAN */
+        let rawDir = (e.direction || "").toUpperCase();
+
+        const dirFix = {
+          "SOUTH-WEST": "SW", "SOUTH-EAST": "SE",
+          "NORTH-WEST": "NW", "NORTH-EAST": "NE"
+        };
+        rawDir = dirFix[rawDir] || rawDir;
+
+        const dirMap = {
+          N: "North", S: "South", E: "East", W: "West",
+          NE: "North-East", NW: "North-West",
+          SE: "South-East", SW: "South-West"
+        };
+
+        const movementText = dirMap[rawDir] || "Unknown";
+
+        /* 🔥 VILLAGE RISK */
+        let villageHTML = "";
+
+        const key =
+          Number(lat).toFixed(5) + "," +
+          Number(lon).toFixed(5);
+
+        if (window.coneVillages && window.coneVillages[key]) {
+
+          const villages = window.coneVillages[key];
+
+          if (villages.length > 0) {
+            villageHTML += `<hr><b>🏠 Elephant Risk Zone</b>`;
+            villages.forEach(v => {
+              villageHTML += `<div style="margin-top:4px;">🔴 <b>${v}</b></div>`;
+            });
+          } else {
+            villageHTML += `<hr>🏠 No villages in cone`;
+          }
+
+        }
+
+        /* 📸 PHOTO */
+        const photoHtml = e.photo ? `
+          <div style="margin-top:8px">
+            <a href="${e.photo}" target="_blank">
+              <img src="${e.photo}" style="width:100%;border-radius:6px">
+            </a>
+          </div>
+        ` : "";
+
+        /* 📍 BEAT */
+        const beat = e.Beat || e["Forest Block"] || "";
+
+        /* 📦 POPUP */
+        const popup = `
+        <div style="font-family:Segoe UI;min-width:220px">
+
+          <div style="color:${color};font-weight:bold">
+            ${e.status === "Moved" ? "🟢 MOVED" : "🔴 ACTIVE"}
+          </div>
+
+          ${beat ? `<div style="font-size:11px;color:#666">📍 ${beat}</div>` : ""}
+
+          <hr>
+
+          <b>🐘 Herd:</b> ${herd}<br>
+          <b>🧭 Movement:</b> ${movementText}<br>
+          <b>⏱ Time:</b> ${timeDisplay}<br>
+
+          <b>📍 Location:</b><br>
+          <code>${lat.toFixed(5)}, ${lon.toFixed(5)}</code>
+
+          ${villageHTML}
+          ${photoHtml}
+
+          ${e.status !== "Moved" ? `
+          <button onclick="confirmExit('${e.id}')" style="
+            background:#2e7d32;color:white;border:none;
+            width:100%;padding:10px;margin-top:10px;
+            border-radius:6px;cursor:pointer;">
+            ✅ MARK AS MOVED
+          </button>` : ""}
+
+        </div>`;
+
+        // ✅ UPDATE EXISTING (NO FLICKER)
+        if (markerMap[id]) {
+
+          markerMap[id].setLatLng([lat, lon]);
+          markerMap[id].setPopupContent(popup);
+
+        } else {
+
+          // 🆕 CREATE ONLY ONCE
+          const marker = L.marker([lat, lon], {
+            icon: icon,
+            zIndexOffset: 5000
+          })
+            .bindPopup(popup)
+            .addTo(elephantLayer);
+
+          markerMap[id] = marker;
+        }
+
+      });
+
+      // ❌ REMOVE OLD MARKERS (IMPORTANT)
+      Object.keys(markerMap).forEach(id => {
+        if (!seenIds[id]) {
+          elephantLayer.removeLayer(markerMap[id]);
+          delete markerMap[id];
+        }
+      });
+
+    });
+
+}/* 🔥 STATUS UPDATE */
     function confirmExit(id) {
 
       if (!confirm("Confirm elephant moved?")) return;
@@ -4225,203 +4248,221 @@ document.querySelectorAll("#" + containerId + " input:checked")
 ).map(function(el) {
 return el.value;
 });
-}function loadMapDataFirebase() {
+}let firebaseUpdateScheduled = false;
+let firebaseBuffer = [];
+
+function loadMapDataFirebase() {
 
   const ref = window.collection(window.db, "map_all");
 
   window.onSnapshot(ref, (snapshot) => {
 
-    let data = [];
-    let activeIds = new Set();
+    firebaseBuffer = snapshot; // store latest snapshot
 
-    snapshot.forEach(doc => {
+    // 🔥 PREVENT MULTIPLE RAPID UPDATES
+    if (firebaseUpdateScheduled) return;
 
-      const id = doc.id;
-      const d = doc.data();
+    firebaseUpdateScheduled = true;
 
-      if ((d.type || "").toLowerCase() !== "staff") return;
+    requestAnimationFrame(() => {
 
-      activeIds.add(id);
+      firebaseUpdateScheduled = false;
 
-      data.push({
-        id: id,
-        ...d,
-        type: "Staff",
-        lat: Number(d.lat),
-        lon: Number(d.lon),
-        track: Array.isArray(d.track)
-          ? d.track.map(p => [Number(p.lat), Number(p.lon)])
-          : []
+      const snap = firebaseBuffer;
+
+      let data = [];
+      let activeIds = new Set();
+
+      snap.forEach(doc => {
+
+        const id = doc.id;
+        const d = doc.data();
+
+        if ((d.type || "").toLowerCase() !== "staff") return;
+
+        activeIds.add(id);
+
+        data.push({
+          id: id,
+          ...d,
+          type: "Staff",
+          lat: Number(d.lat),
+          lon: Number(d.lon),
+          track: Array.isArray(d.track)
+            ? d.track.map(p => [Number(p.lat), Number(p.lon)])
+            : []
+        });
+
       });
 
-    });
+      if (!data.length) return;
 
-    if (!data.length) return;
+      const staff = data.filter(s => s.type === "Staff");
 
-    const staff = data.filter(s => s.type === "Staff");
+      /* 🔥 GROUP SAME LOCATION (UNCHANGED) */
+      let groups = {};
 
-    /* 🔥 GROUP SAME LOCATION (UNCHANGED) */
-    let groups = {};
+      staff.forEach(s => {
+        const key = Number(s.lat).toFixed(6) + "," + Number(s.lon).toFixed(6);
+        if (!groups[key]) groups[key] = [];
+        groups[key].push(s);
+      });
 
-    staff.forEach(s => {
-      const key = Number(s.lat).toFixed(6) + "," + Number(s.lon).toFixed(6);
-      if (!groups[key]) groups[key] = [];
-      groups[key].push(s);
-    });
+      let colorIndex = 0;
 
-    let colorIndex = 0;
+      Object.values(groups).forEach(group => {
 
-    Object.values(groups).forEach(group => {
+        group.forEach((s, index) => {
 
-      group.forEach((s, index) => {
+          let track = Array.isArray(s.track) ? s.track : [];
 
-        let track = Array.isArray(s.track) ? s.track : [];
+          /* 🔥 CLEAN TRACK (UNCHANGED) */
+          let clean = [];
+          track.forEach(p => {
+            if (!p) return;
+            if (clean.length === 0 ||
+              Math.abs(clean[clean.length - 1][0] - p[0]) > 1e-6 ||
+              Math.abs(clean[clean.length - 1][1] - p[1]) > 1e-6) {
+              clean.push(p);
+            }
+          });
 
-        /* 🔥 CLEAN TRACK (UNCHANGED) */
-        let clean = [];
-        track.forEach(p => {
-          if (!p) return;
-          if (clean.length === 0 ||
-            Math.abs(clean[clean.length - 1][0] - p[0]) > 1e-6 ||
-            Math.abs(clean[clean.length - 1][1] - p[1]) > 1e-6) {
-            clean.push(p);
+          /* 🔥 LAST POSITION */
+          let lat = clean.length ? clean[clean.length - 1][0] : s.lat;
+          let lon = clean.length ? clean[clean.length - 1][1] : s.lon;
+
+          /* 🔥 SPREAD (UNCHANGED) */
+          if (group.length > 1) {
+            const angle = (index / group.length) * Math.PI * 2;
+            lat += Math.cos(angle) * 0.00015;
+            lon += Math.sin(angle) * 0.00015;
           }
-        });
 
-        /* 🔥 LAST POSITION */
-        let lat = clean.length ? clean[clean.length - 1][0] : s.lat;
-        let lon = clean.length ? clean[clean.length - 1][1] : s.lon;
+          /* 🔥 DISTANCE + SPEED (UNCHANGED) */
+          let dist = 0;
+          for (let i = 1; i < clean.length; i++) {
+            dist += getDistance(clean[i - 1], clean[i]);
+          }
 
-        /* 🔥 SPREAD (UNCHANGED) */
-        if (group.length > 1) {
-          const angle = (index / group.length) * Math.PI * 2;
-          lat += Math.cos(angle) * 0.00015;
-          lon += Math.sin(angle) * 0.00015;
-        }
+          let speed = 0;
+          if (clean.length > 1) {
+            const d = getDistance(clean[clean.length - 2], clean[clean.length - 1]);
+            speed = d / (1 / 60);
+          }
 
-        /* 🔥 DISTANCE + SPEED (UNCHANGED) */
-        let dist = 0;
-        for (let i = 1; i < clean.length; i++) {
-          dist += getDistance(clean[i - 1], clean[i]);
-        }
+          const color = getColor(colorIndex++);
 
-        let speed = 0;
-        if (clean.length > 1) {
-          const d = getDistance(clean[clean.length - 2], clean[clean.length - 1]);
-          speed = d / (1 / 60);
-        }
+          /* 🔥 ICON (UNCHANGED) */
+          const icon = L.divIcon({
+            html: `
+            <div class="markerWrap">
+              <div class="radarPulse"></div>
+              <div class="markerCore">
+                <i class="fa-solid fa-person-military-pointing"
+                  style="color:#00ff00;font-size:12px;"></i>
+              </div>
+            </div>`,
+            iconSize: [22, 22],
+            iconAnchor: [11, 11]
+          });
 
-        const color = getColor(colorIndex++);
+          /* 🔥 POPUP (UNCHANGED) */
+          const popup = `
+          <div style="font-family:Segoe UI">
 
-        /* 🔥 SMALLER ICON (ONLY CHANGE) */
-        const icon = L.divIcon({
-          html: `
-          <div class="markerWrap">
-            <div class="radarPulse"></div>
-            <div class="markerCore">
-              <i class="fa-solid fa-person-military-pointing"
-                style="color:#00ff00;font-size:12px;"></i>
-            </div>
-          </div>`,
-          iconSize: [22, 22],
-          iconAnchor: [11, 11]
-        });
+            <b>👤 ${s.name}</b><br>
+            📞 ${s.mobile || "N/A"}<br>
 
-        /* 🔥 POPUP (UNCHANGED) */
-        const popup = `
-        <div style="font-family:Segoe UI">
+            <hr>
 
-          <b>👤 ${s.name}</b><br>
-          📞 ${s.mobile || "N/A"}<br>
+            👥 ${s.team || "N/A"}<br>
+            🧾 ${s.dutyType || "N/A"}<br>
 
-          <hr>
+            <hr>
 
-          👥 ${s.team || "N/A"}<br>
-          🧾 ${s.dutyType || "N/A"}<br>
+            📊 Speed: ${speed.toFixed(1)} km/h<br>
+            📏 Distance: ${dist.toFixed(2)} km<br>
+            ⏱ ${s.lastSeen || "Unknown"}
 
-          <hr>
+          </div>`;
 
-          📊 Speed: ${speed.toFixed(1)} km/h<br>
-          📏 Distance: ${dist.toFixed(2)} km<br>
-          ⏱ ${s.lastSeen || "Unknown"}
+          /* ===========================
+             🟢 UPDATE OR CREATE MARKER
+          =========================== */
+          if (markerMap[s.id]) {
 
-        </div>`;
-
-        /* ===========================
-           🟢 UPDATE OR CREATE MARKER
-        =========================== */
-        if (markerMap[s.id]) {
-
-          markerMap[s.id].setLatLng([lat, lon]);
-
-        } else {
-
-          const marker = L.marker([lat, lon], {
-            icon: icon,
-            zIndexOffset: 3000
-          })
-            .bindPopup(popup, {
-              autoClose: false,
-              closeOnClick: false
-            })
-            .addTo(staffLayer);
-
-          marker.on('click', () => activePopupId = s.name);
-
-          markerMap[s.id] = marker;
-        }
-
-        /* ===========================
-           📍 TRACK UPDATE (NO FLICKER)
-        =========================== */
-        if (clean.length > 1) {
-
-          if (trackMap[s.id]) {
-
-            trackMap[s.id].setLatLngs(clean);
+            markerMap[s.id].setLatLng([lat, lon]);
 
           } else {
 
-            const line = L.polyline(clean, {
-              color: color,
-              weight: 2,
-              opacity: 1
-            }).addTo(staffLayer);
+            const marker = L.marker([lat, lon], {
+              icon: icon,
+              zIndexOffset: 3000
+            })
+              .bindPopup(popup, {
+                autoClose: false,
+                closeOnClick: false
+              })
+              .addTo(staffLayer);
 
-            trackMap[s.id] = line;
+            marker.on('click', () => activePopupId = s.name);
 
-            if (L.polylineDecorator) {
-              L.polylineDecorator(line, {
-                patterns: [{
-                  offset: '5%',
-                  repeat: '50px',
-                  symbol: L.Symbol.arrowHead({
-                    pixelSize: 10,
-                    pathOptions: { color: color }
-                  })
-                }]
+            markerMap[s.id] = marker;
+          }
+
+          /* ===========================
+             📍 TRACK UPDATE (NO FLICKER)
+          =========================== */
+          if (clean.length > 1) {
+
+            if (trackMap[s.id]) {
+
+              trackMap[s.id].setLatLngs(clean);
+
+            } else {
+
+              const line = L.polyline(clean, {
+                color: color,
+                weight: 2,
+                opacity: 1
               }).addTo(staffLayer);
+
+              trackMap[s.id] = line;
+
+              if (L.polylineDecorator) {
+                L.polylineDecorator(line, {
+                  patterns: [{
+                    offset: '5%',
+                    repeat: '50px',
+                    symbol: L.Symbol.arrowHead({
+                      pixelSize: 10,
+                      pathOptions: { color: color }
+                    })
+                  }]
+                }).addTo(staffLayer);
+              }
             }
           }
-        }
+
+        });
 
       });
 
-    });
+      /* 🔥 REMOVE OLD */
+      Object.keys(markerMap).forEach(id => {
+        if (!activeIds.has(id)) {
 
-    /* 🔥 REMOVE OLD */
-    Object.keys(markerMap).forEach(id => {
-      if (!activeIds.has(id)) {
+          staffLayer.removeLayer(markerMap[id]);
+          delete markerMap[id];
 
-        staffLayer.removeLayer(markerMap[id]);
-        delete markerMap[id];
-
-        if (trackMap[id]) {
-          staffLayer.removeLayer(trackMap[id]);
-          delete trackMap[id];
+          if (trackMap[id]) {
+            staffLayer.removeLayer(trackMap[id]);
+            delete trackMap[id];
+          }
         }
-      }
-    });
+      });
+
+    }); // ✅ RAF END
 
   });
 
