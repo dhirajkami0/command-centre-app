@@ -2101,10 +2101,14 @@ ${pct(data.health)} / 100
     data = data.slice(0, 800);
   }
 
+  // 🔥 RESET ZOOM FLAG (IMPORTANT)
+  window.gridZoomDone = false;
+
   visitedLayer.clearLayers();
   unvisitedLayer.clearLayers();
 
-  const offset = 0.00044;
+  // 🔥 FIX: 250m GRID OFFSET (was 50m before)
+  const offset = 0.00225;
 
   // 🔥 USE BATCH RENDER (PREVENT UI BLOCK)
   let i = 0;
@@ -2161,11 +2165,11 @@ ${pct(data.health)} / 100
         console.log("🗺️ Bounds:", bounds);
 
         map.fitBounds(bounds, {
-          maxZoom: 15,   // 🚫 prevent over-zoom
-          animate: false // 🚫 prevent lag
+          maxZoom: 14,   // 🔥 slightly reduced (more stable)
+          animate: false
         });
 
-        window.gridZoomDone = true; // 🔒 run once only
+        window.gridZoomDone = true;
       }
 
     }
@@ -2173,7 +2177,7 @@ ${pct(data.health)} / 100
   }
 
   renderBatch(); // 🔥 start batch rendering
-} /* ============================================================
+}/* ============================================================
        🐘 BLOCK 7 → ELEPHANT SYSTEM (FINAL)
     ============================================================ */
 
@@ -3582,7 +3586,7 @@ if (e.name.includes("Grid")) {
 
       console.log("📦 RAW GRID RESPONSE:", res);
 
-      let data = res;
+      let data = [];
 
       if (Array.isArray(res)) {
         data = res;
@@ -3598,18 +3602,15 @@ if (e.name.includes("Grid")) {
         return;
       }
 
-      if (data.length === 0) {
+      if (!data.length) {
         console.warn("⚠ Grid empty");
         return;
       }
 
-      console.log("🔥 Calling showGridStatus...");
       showGridStatus(data);
 
     })
-    .catch(function (err) {
-      console.error("❌ Grid error:", err);
-    });
+    .catch(err => console.error("❌ Grid error:", err));
 
   return;
 }/* 📊 SUMMARY */
