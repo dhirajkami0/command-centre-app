@@ -2177,179 +2177,162 @@ ${pct(data.health)} / 100
        🐘 BLOCK 7 → ELEPHANT SYSTEM (FINAL)
     ============================================================ */
 
-    function loadSightings() {
+   function loadSightings() {
 
-  callBackend("getSightings")
-    .then(function (data) {
+  elephantLayer.clearLayers();
 
-      if (!data) return;
+  callBackend("getSightings")   // 🔥 ONLY CHANGE
+  .then(function(data){
 
-      let seenIds = {};   // 🔥 track active markers
+    if(!data) return;
 
-      data.forEach(function (e) {
+    data.forEach(function(e){
 
-        if (!e.lat || !e.lon) return;
-        if (e.status && e.status !== "Active") return;
+      if(!e.lat || !e.lon) return;
+      if(e.status && e.status !== "Active") return;
 
-        const lat = Number(e.lat);
-        const lon = Number(e.lon);
+      const lat = Number(e.lat);
+      const lon = Number(e.lon);
 
-        // 🔥 UNIQUE ID (VERY IMPORTANT)
-        const id = e.id || (lat.toFixed(5) + "_" + lon.toFixed(5));
-        seenIds[id] = true;
+      /* 🔴 RISK COLOR */
+      const herd = parseInt(e.herd || e["Total Seen"] || 0);
+      const isHighRisk = herd <= 2;
+      const color = isHighRisk ? "#ff3b30" : "#ff9800";
 
-        /* 🔴 RISK COLOR */
-        const herd = parseInt(e.herd || e["Total Seen"] || 0);
-        const isHighRisk = herd <= 2;
-        const color = isHighRisk ? "#ff3b30" : "#ff9800";
-
-        /* 🐘 ICON */
-        const icon = L.divIcon({
-          className: '',
-          html: `
-          <div style="position:relative;width:36px;height:36px;">
-            <div style="
-              display:flex;
-              align-items:center;
-              justify-content:center;
-              width:36px;height:36px;
-              animation: elephantPulse 2s infinite;
-            ">
-              <div style="font-size:26px;">🐘</div>
-            </div>
+      /* 🐘 ICON */
+      const icon = L.divIcon({
+        className:'',
+        html:`
+        <div style="position:relative;width:36px;height:36px;">
+          
+          <div style="
+            display:flex;
+            align-items:center;
+            justify-content:center;
+            width:36px;height:36px;
+            animation: elephantPulse 2s infinite;
+          ">
+            <div style="font-size:26px;">🐘</div>
           </div>
-          `,
-          iconSize: [36, 36],
-          iconAnchor: [18, 18]
-        });
+        </div>
+        `,
+        iconSize:[36,36],
+        iconAnchor:[18,18]
+      });
 
-        /* 🕒 TIME FORMAT */
-        let timeDisplay = "Unknown";
-        let rawTime = (e.Time || e.time || "").toString();
+      /* 🕒 TIME FORMAT */
+      let timeDisplay = "Unknown";
+      let rawTime = (e.Time || e.time || "").toString();
 
-        if (rawTime.includes(":")) {
-          let [h, m] = rawTime.split(":");
-          h = parseInt(h);
-          if (!isNaN(h)) {
-            let ampm = h >= 12 ? "PM" : "AM";
-            let hr = h % 12 || 12;
-            timeDisplay = `${hr}:${m} ${ampm}`;
-          }
+      if(rawTime.includes(":")){
+        let [h,m] = rawTime.split(":");
+        h = parseInt(h);
+        if(!isNaN(h)){
+          let ampm = h>=12?"PM":"AM";
+          let hr = h%12 || 12;
+          timeDisplay = `${hr}:${m} ${ampm}`;
         }
+      }
 
-        /* 🧭 DIRECTION CLEAN */
-        let rawDir = (e.direction || "").toUpperCase();
+      /* 🧭 DIRECTION CLEAN */
+      let rawDir = (e.direction || "").toUpperCase();
 
-        const dirFix = {
-          "SOUTH-WEST": "SW", "SOUTH-EAST": "SE",
-          "NORTH-WEST": "NW", "NORTH-EAST": "NE"
-        };
-        rawDir = dirFix[rawDir] || rawDir;
+      const dirFix = {
+        "SOUTH-WEST":"SW","SOUTH-EAST":"SE",
+        "NORTH-WEST":"NW","NORTH-EAST":"NE"
+      };
+      rawDir = dirFix[rawDir] || rawDir;
 
-        const dirMap = {
-          N: "North", S: "South", E: "East", W: "West",
-          NE: "North-East", NW: "North-West",
-          SE: "South-East", SW: "South-West"
-        };
+      const dirMap = {
+        N:"North",S:"South",E:"East",W:"West",
+        NE:"North-East",NW:"North-West",
+        SE:"South-East",SW:"South-West"
+      };
 
-        const movementText = dirMap[rawDir] || "Unknown";
+      const movementText = dirMap[rawDir] || "Unknown";
 
-        /* 🔥 VILLAGE RISK */
-        let villageHTML = "";
+      /* =========================
+         🔥 VILLAGE RISK (FINAL FIX)
+      ========================= */
 
-        const key =
-          Number(lat).toFixed(5) + "," +
-          Number(lon).toFixed(5);
+      let villageHTML = "";
 
-        if (window.coneVillages && window.coneVillages[key]) {
+      const key =
+        Number(lat).toFixed(5) + "," +
+        Number(lon).toFixed(5);
 
-          const villages = window.coneVillages[key];
+      if(window.coneVillages && window.coneVillages[key]){
 
-          if (villages.length > 0) {
-            villageHTML += `<hr><b>🏠 Elephant Risk Zone</b>`;
-            villages.forEach(v => {
-              villageHTML += `<div style="margin-top:4px;">🔴 <b>${v}</b></div>`;
-            });
-          } else {
-            villageHTML += `<hr>🏠 No villages in cone`;
-          }
+        const villages = window.coneVillages[key];
 
-        }
-
-        /* 📸 PHOTO */
-        const photoHtml = e.photo ? `
-          <div style="margin-top:8px">
-            <a href="${e.photo}" target="_blank">
-              <img src="${e.photo}" style="width:100%;border-radius:6px">
-            </a>
-          </div>
-        ` : "";
-
-        /* 📍 BEAT */
-        const beat = e.Beat || e["Forest Block"] || "";
-
-        /* 📦 POPUP */
-        const popup = `
-        <div style="font-family:Segoe UI;min-width:220px">
-
-          <div style="color:${color};font-weight:bold">
-            ${e.status === "Moved" ? "🟢 MOVED" : "🔴 ACTIVE"}
-          </div>
-
-          ${beat ? `<div style="font-size:11px;color:#666">📍 ${beat}</div>` : ""}
-
-          <hr>
-
-          <b>🐘 Herd:</b> ${herd}<br>
-          <b>🧭 Movement:</b> ${movementText}<br>
-          <b>⏱ Time:</b> ${timeDisplay}<br>
-
-          <b>📍 Location:</b><br>
-          <code>${lat.toFixed(5)}, ${lon.toFixed(5)}</code>
-
-          ${villageHTML}
-          ${photoHtml}
-
-          ${e.status !== "Moved" ? `
-          <button onclick="confirmExit('${e.id}')" style="
-            background:#2e7d32;color:white;border:none;
-            width:100%;padding:10px;margin-top:10px;
-            border-radius:6px;cursor:pointer;">
-            ✅ MARK AS MOVED
-          </button>` : ""}
-
-        </div>`;
-
-        // ✅ UPDATE EXISTING (NO FLICKER)
-        if (markerMap[id]) {
-
-          markerMap[id].setLatLng([lat, lon]);
-          markerMap[id].setPopupContent(popup);
-
+        if(villages.length > 0){
+          villageHTML += `<hr><b>🏠 Elephant Risk Zone</b>`;
+          villages.forEach(v=>{
+            villageHTML += `<div style="margin-top:4px;">🔴 <b>${v}</b></div>`;
+          });
         } else {
-
-          // 🆕 CREATE ONLY ONCE
-          const marker = L.marker([lat, lon], {
-            icon: icon,
-            zIndexOffset: 5000
-          })
-            .bindPopup(popup)
-            .addTo(elephantLayer);
-
-          markerMap[id] = marker;
+          villageHTML += `<hr>🏠 No villages in cone`;
         }
 
-      });
+      }
 
-      // ❌ REMOVE OLD MARKERS (IMPORTANT)
-      Object.keys(markerMap).forEach(id => {
-        if (!seenIds[id]) {
-          elephantLayer.removeLayer(markerMap[id]);
-          delete markerMap[id];
-        }
-      });
+      /* 📸 PHOTO */
+      const photoHtml = e.photo ? `
+        <div style="margin-top:8px">
+          <a href="${e.photo}" target="_blank">
+            <img src="${e.photo}" style="width:100%;border-radius:6px">
+          </a>
+        </div>
+      ` : "";
+
+      /* 📍 BEAT */
+      const beat = e.Beat || e["Forest Block"] || "";
+
+      /* 📦 POPUP */
+      const popup = `
+      <div style="font-family:Segoe UI;min-width:220px">
+
+        <div style="color:${color};font-weight:bold">
+          ${e.status === "Moved" ? "🟢 MOVED" : "🔴 ACTIVE"}
+        </div>
+
+        ${beat ? `<div style="font-size:11px;color:#666">📍 ${beat}</div>` : ""}
+
+        <hr>
+
+        <b>🐘 Herd:</b> ${herd}<br>
+        <b>🧭 Movement:</b> ${movementText}<br>
+        <b>⏱ Time:</b> ${timeDisplay}<br>
+
+        <b>📍 Location:</b><br>
+        <code>${lat.toFixed(5)}, ${lon.toFixed(5)}</code>
+
+        ${villageHTML}
+        ${photoHtml}
+
+        ${e.status !== "Moved" ? `
+        <button onclick="confirmExit('${e.id}')" style="
+          background:#2e7d32;color:white;border:none;
+          width:100%;padding:10px;margin-top:10px;
+          border-radius:6px;cursor:pointer;">
+          ✅ MARK AS MOVED
+        </button>` : ""}
+
+      </div>`;
+
+      L.marker([lat,lon],{
+        icon:icon,
+        zIndexOffset:5000
+      })
+      .bindPopup(popup)
+      .addTo(elephantLayer);
 
     });
+
+  })
+  .catch(err=>{
+    console.error("❌ loadSightings error:", err);
+  });
 
 }/* 🔥 STATUS UPDATE */
     function confirmExit(id) {
