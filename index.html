@@ -3398,7 +3398,54 @@ window.onload = loadProfile;function toggleWeatherDrawer() {
       console.error("❌ River load error:", err);
     });
 }
+function show3MonthSummary(data){
 
+  function block(title, d){
+    if(!d) return "";
+
+    return `
+    <div style="margin-bottom:10px">
+
+      <b>${title}</b><br>
+
+      📡 ${d.totalTracks} tracks<br>
+      📏 ${d.totalDistance} km<br>
+      🟩 ${d.totalArea} ha<br>
+      📊 ${d.coverage}%<br>
+
+      <div style="font-size:11px;margin-top:4px">
+        ${Array.isArray(d.combined) ? d.combined.join("<br>") : ""}
+      </div>
+
+    </div>`;
+  }
+
+  const cmp = data?.comparison?.lastVsPrevious || {};
+
+  const html = `
+  <div style="font-family:Segoe UI;max-height:500px;overflow:auto">
+
+    <h3>📊 3-Month Summary</h3>
+
+    ${block("🟢 Current Month", data.current)}
+    ${block("🟡 Last Month", data.last)}
+    ${block("🔵 Previous Month", data.previous)}
+
+    <hr>
+
+    <b>📈 Last vs Previous</b><br>
+    Tracks: ${cmp.tracksDiff}<br>
+    Distance: ${cmp.distanceDiff} km<br>
+    Area: ${cmp.areaDiff} ha<br>
+    Coverage: ${cmp.coverageDiff}%<br>
+
+  </div>`;
+
+  L.popup()
+    .setLatLng(map.getCenter())
+    .setContent(html)
+    .openOn(map);
+}
 
     /* ============================================================
        🎛 LAYER CONTROL (CLEAN + ORDERED)
