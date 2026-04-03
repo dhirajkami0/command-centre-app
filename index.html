@@ -1955,69 +1955,77 @@ ${pct(data.health)} / 100
 
       reader.readAsText(file);
     }/* 📊 COMPARTMENT POPUP */
-    function openStatsPopup(name, latlng){
+    function openStatsPopup(name, latlng) {
 
   var popup = L.popup()
     .setLatLng(latlng)
-    .setContent('⏳ Loading...')
+    .setContent('⏳ Loading ' + name + '...')
     .openOn(map);
 
-  callBackend("getCompartmentStats", { name: name })
-  .then(function(data){
+  callBackend("getCompartmentStats", { name: name })   // 🔥 ONLY CHANGE
+    .then(function(data) {
 
-    console.log("📊 Stats Response:", data); // 🔥 DEBUG
+      if (!data) {
+        popup.setContent("<b>❌ No data found</b>");
+        return;
+      }
 
-    if(!data || data.error){
-      popup.setContent("❌ No data");
-      return;
-    }
+      function num(v){
+        return (!v || isNaN(v)) ? "0.00" : Number(v).toFixed(2);
+      }
 
-    // 🔥 SAFE FALLBACKS (VERY IMPORTANT)
-    const val = (v, d="0") => (v !== undefined && v !== null ? v : d);
+      function pct(v){
+        return (!v || isNaN(v)) ? "0.0" : Number(v).toFixed(1);
+      }
 
-    popup.setContent(`
-      <div style="font-family:Segoe UI;min-width:260px;line-height:1.5">
+      // 🎨 Health color
+      let healthColor = "#d32f2f";
+      if(data.health >= 70) healthColor = "#2e7d32";
+      else if(data.health >= 40) healthColor = "#f9a825";
 
-        <b style="font-size:14px;">📍 ${val(data.name, "Unknown")}</b>
+      var content = `
+<div style="font-family:Segoe UI; min-width:260px; line-height:1.6; color:#222;">
 
-        <hr>
+<b style="color:#1b5e20; font-size:16px;">🌳 ${data.name}</b>
 
-        <b>🌳 Health:</b> ${val(data.health)}%<br>
-        <b>🌿 Canopy:</b> ${val(data.canopy)}%<br>
-        <b>📏 Height:</b> ${val(data.height)} m<br>
-        <b>🌲 Density:</b> ${val(data.density, "N/A")}<br>
+<hr>
 
-        <hr>
+<b>📐 Total Area:</b> ${num(data.total)} ha<br>
+<b>🌿 Canopy:</b> ${pct(data.canopy)} %<br>
+<b>📏 Height:</b> ${num(data.height)} m<br>
 
-        <b>🌳 Forest:</b> ${val(data.forest)} ha (${val(data.forest_pct)}%)<br>
-        <b>🔴 Degraded:</b> ${val(data.degraded)} ha (${val(data.degraded_pct)}%)<br>
-        <b>🌿 Grass:</b> ${val(data.grass)} ha (${val(data.grass_pct)}%)<br>
-        <b>🌾 Crop:</b> ${val(data.crop)} ha (${val(data.crop_pct)}%)<br>
-        <b>🌱 Bush:</b> ${val(data.bush)} ha (${val(data.bush_pct)}%)<br>
+<b>🌳 Density:</b> ${data.density}<br>
 
-        <hr>
+<b>❤️ Health:</b> 
+<span style="color:${healthColor}; font-weight:bold;">
+${pct(data.health)} / 100
+</span><br>
 
-        <b>🏢 Built:</b> ${val(data.built)} ha (${val(data.built_pct)}%)<br>
-        <b>🟫 Bare:</b> ${val(data.bare)} ha (${val(data.bare_pct)}%)<br>
-        <b>💧 Water:</b> ${val(data.water)} ha (${val(data.water_pct)}%)<br>
+<b>📌 Condition:</b> ${data.condition}<br>
+<b>Reason:</b> ${data.reason}<br>
 
-        <hr>
+<hr>
 
-        <b>📊 Condition:</b><br>
-        ${val(data.condition, "N/A")}<br>
+<b>🌍 Land Distribution</b><br>
 
-        <div style="color:#666;font-size:11px;margin-top:4px;">
-          ${val(data.reason, "")}
-        </div>
+🌲 Forest: ${num(data.forest)} ha (${data.forest_pct}%)<br>
+🔴 Degraded: ${num(data.degraded)} ha (${data.degraded_pct}%)<br>
+🌿 Grass: ${num(data.grass)} ha (${data.grass_pct}%)<br>
+🌾 Crop: ${num(data.crop)} ha (${data.crop_pct}%)<br>
+🌳 Bush: ${num(data.bush)} ha (${data.bush_pct}%)<br>
+🏠 Built: ${num(data.built)} ha (${data.built_pct}%)<br>
+🟫 Bare: ${num(data.bare)} ha (${data.bare_pct}%)<br>
+🟦 Water: ${num(data.water)} ha (${data.water_pct}%)<br>
 
-      </div>
-    `);
+</div>`;
 
-  })
-  .catch(err=>{
-    console.error("❌ Popup Error:", err);
-    popup.setContent("❌ Error loading data");
-  });
+      popup.setContent(content);
+
+    })
+    .catch(function(err){
+      console.error(err);
+      popup.setContent("❌ Error loading data");
+    });
 
 }
     /* ============================================================
