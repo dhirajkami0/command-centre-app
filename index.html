@@ -3707,8 +3707,20 @@ if (e.name.includes("Grid")) {
     console.error("❌ Lazy load crash:", err);
   }
 
-});
+/* 📊 Monthly Analysis */
+  if (e.name === "📊 Monthly Analysis") {
 
+    console.log("📊 Monthly Analysis triggered");
+
+    load3MonthSummary();
+
+    // 🔒 optional: remove layer (since popup only)
+    map.removeLayer(summaryLayer);
+
+    return;
+  }
+
+});
 
 /* ============================================================
    🧹 CLEANUP (OPTIONAL)
