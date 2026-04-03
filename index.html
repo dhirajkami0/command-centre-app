@@ -32,6 +32,9 @@
   <script src="https://unpkg.com/shpjs@latest/dist/shp.js"></script>
 
   <script>
+    
+let markerMap = {};
+let trackMap = {};  
     // 🔥 GLOBAL ERROR HANDLER
 window.addEventListener("error", function (e) {
   console.error("💥 GLOBAL ERROR:", e.message, "at", e.filename, ":", e.lineno);
