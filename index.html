@@ -3748,28 +3748,38 @@ function submitSightingForm(event){
     }
 
     const payload = {
-      sighting_id: sightingID,
-      parent_id: "",
-      beat: document.getElementById("f-beat").value,
-      forest_block: document.getElementById("f-beat").value,
-      compt: document.getElementById("f-compt").value,
-      time: time,
-      m: m,
-      f: f,
-      unidentified: uni,
-      calf: c,
-      total_seen: total,
-      anticipated: "",
-      depredation: "",
-      involved: "",
-      driving: "",
-      remarks: document.getElementById("f-remarks").value,
-      leader: window.userProfile?.leader || "",
-      staff: document.getElementById("f-staff")?.value || "",
-      location: location,
-      direction: document.getElementById("f-dir").value
-    };
+  sighting_id: sightingID,
+  parent_id: "",
+  beat: document.getElementById("f-beat").value,
+  forest_block: document.getElementById("f-beat").value,
+  compt: document.getElementById("f-compt").value,
+  time: time,
 
+  // 🔥 FORCE NUMBER (VERY IMPORTANT)
+  m: Number(m) || 0,
+  f: Number(f) || 0,
+  unidentified: Number(uni) || 0,
+  calf: Number(c) || 0,
+
+  // 🔥 FIX TOTAL (NO #NUM!)
+  total_seen: Number(m) + Number(f) + Number(uni) + Number(c),
+
+  anticipated: "",
+  depredation: "",
+  involved: "",
+  driving: "",
+  remarks: document.getElementById("f-remarks").value,
+
+  leader: window.userProfile?.leader || "",
+  staff: document.getElementById("f-staff")?.value || "",
+
+  // 🔥 FIX LOCATION (CRITICAL)
+  lat: Number(lat),
+  lon: Number(lon),
+  location: Number(lat) + "," + Number(lon),
+
+  direction: document.getElementById("f-dir").value
+};
     console.log("📤 Payload:", payload);
 
     const fileInput = document.getElementById("f-photo-file");
