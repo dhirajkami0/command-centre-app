@@ -3397,6 +3397,27 @@ window.onload = loadProfile;function toggleWeatherDrawer() {
     .catch(function (err) {
       console.error("❌ River load error:", err);
     });
+}function load3MonthSummary(){
+
+  console.log("🚀 Loading 3 Month Summary...");
+
+  callBackend("getMultiMonthSummary")
+    .then(function(data){
+
+      console.log("📦 Summary Response:", data);
+
+      if(!data){
+        alert("❌ No data received");
+        return;
+      }
+
+      show3MonthSummary(data);
+
+    })
+    .catch(function(err){
+      console.error("❌ Summary error:", err);
+      alert("❌ Failed to load summary");
+    });
 }
 function show3MonthSummary(data){
 
@@ -3408,10 +3429,10 @@ function show3MonthSummary(data){
 
       <b>${title}</b><br>
 
-      📡 ${d.totalTracks} tracks<br>
-      📏 ${d.totalDistance} km<br>
-      🟩 ${d.totalArea} ha<br>
-      📊 ${d.coverage}%<br>
+      📡 ${d.totalTracks || 0} tracks<br>
+      📏 ${d.totalDistance || 0} km<br>
+      🟩 ${d.totalArea || 0} ha<br>
+      📊 ${d.coverage || 0}%<br>
 
       <div style="font-size:11px;margin-top:4px">
         ${Array.isArray(d.combined) ? d.combined.join("<br>") : ""}
@@ -3434,10 +3455,10 @@ function show3MonthSummary(data){
     <hr>
 
     <b>📈 Last vs Previous</b><br>
-    Tracks: ${cmp.tracksDiff}<br>
-    Distance: ${cmp.distanceDiff} km<br>
-    Area: ${cmp.areaDiff} ha<br>
-    Coverage: ${cmp.coverageDiff}%<br>
+    Tracks: ${cmp.tracksDiff || 0}<br>
+    Distance: ${cmp.distanceDiff || 0} km<br>
+    Area: ${cmp.areaDiff || 0} ha<br>
+    Coverage: ${cmp.coverageDiff || 0}%<br>
 
   </div>`;
 
@@ -3445,9 +3466,7 @@ function show3MonthSummary(data){
     .setLatLng(map.getCenter())
     .setContent(html)
     .openOn(map);
-}
-
-    /* ============================================================
+}    /* ============================================================
        🎛 LAYER CONTROL (CLEAN + ORDERED)
     ============================================================ */
     /* ============================================================
@@ -3487,7 +3506,8 @@ var layerControl = L.control.layers({
   /* 🔥 GRID + SUMMARY */
   "🟢 Visited Grid": visitedLayer,
   "🔴 Unvisited Grid": unvisitedLayer,
-  "📊 Monthly Coverage": summaryLayer
+  "📊 Monthly Coverage": summaryLayer,
+   "📊 Monthly Analysis": summaryLayer
 
 }, {
   collapsed: true
