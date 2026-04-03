@@ -469,11 +469,9 @@ window.addEventListener("unhandledrejection", function (e) {
       stroke-width: 0;
     }
 
-    canvas.leaflet-zoom-animated {
-      image-rendering: pixelated !important;
-      image-rendering: crisp-edges !important;
-    }
-
+  canvas.leaflet-zoom-animated {
+  image-rendering: auto !important;
+}
     .compGlow {
       filter: drop-shadow(0 0 8px rgba(255, 255, 255, 0.9));
       stroke-linejoin: round;
