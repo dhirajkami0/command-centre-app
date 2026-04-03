@@ -1965,44 +1965,49 @@ ${pct(data.health)} / 100
   callBackend("getCompartmentStats", { name: name })
   .then(function(data){
 
-    if(!data){
+    console.log("📊 Stats Response:", data); // 🔥 DEBUG
+
+    if(!data || data.error){
       popup.setContent("❌ No data");
       return;
     }
 
+    // 🔥 SAFE FALLBACKS (VERY IMPORTANT)
+    const val = (v, d="0") => (v !== undefined && v !== null ? v : d);
+
     popup.setContent(`
       <div style="font-family:Segoe UI;min-width:260px;line-height:1.5">
 
-        <b style="font-size:14px;">📍 ${data.name}</b>
+        <b style="font-size:14px;">📍 ${val(data.name, "Unknown")}</b>
 
         <hr>
 
-        <b>🌳 Health:</b> ${data.health}%<br>
-        <b>🌿 Canopy:</b> ${data.canopy}%<br>
-        <b>📏 Height:</b> ${data.height} m<br>
-        <b>🌲 Density:</b> ${data.density}<br>
+        <b>🌳 Health:</b> ${val(data.health)}%<br>
+        <b>🌿 Canopy:</b> ${val(data.canopy)}%<br>
+        <b>📏 Height:</b> ${val(data.height)} m<br>
+        <b>🌲 Density:</b> ${val(data.density, "N/A")}<br>
 
         <hr>
 
-        <b>🌳 Forest:</b> ${data.forest} ha (${data.forest_pct}%)<br>
-        <b>🔴 Degraded:</b> ${data.degraded} ha (${data.degraded_pct}%)<br>
-        <b>🌿 Grass:</b> ${data.grass} ha (${data.grass_pct}%)<br>
-        <b>🌾 Crop:</b> ${data.crop} ha (${data.crop_pct}%)<br>
-        <b>🌱 Bush:</b> ${data.bush} ha (${data.bush_pct}%)<br>
+        <b>🌳 Forest:</b> ${val(data.forest)} ha (${val(data.forest_pct)}%)<br>
+        <b>🔴 Degraded:</b> ${val(data.degraded)} ha (${val(data.degraded_pct)}%)<br>
+        <b>🌿 Grass:</b> ${val(data.grass)} ha (${val(data.grass_pct)}%)<br>
+        <b>🌾 Crop:</b> ${val(data.crop)} ha (${val(data.crop_pct)}%)<br>
+        <b>🌱 Bush:</b> ${val(data.bush)} ha (${val(data.bush_pct)}%)<br>
 
         <hr>
 
-        <b>🏢 Built:</b> ${data.built} ha (${data.built_pct}%)<br>
-        <b>🟫 Bare:</b> ${data.bare} ha (${data.bare_pct}%)<br>
-        <b>💧 Water:</b> ${data.water} ha (${data.water_pct}%)<br>
+        <b>🏢 Built:</b> ${val(data.built)} ha (${val(data.built_pct)}%)<br>
+        <b>🟫 Bare:</b> ${val(data.bare)} ha (${val(data.bare_pct)}%)<br>
+        <b>💧 Water:</b> ${val(data.water)} ha (${val(data.water_pct)}%)<br>
 
         <hr>
 
         <b>📊 Condition:</b><br>
-        ${data.condition}<br>
+        ${val(data.condition, "N/A")}<br>
 
         <div style="color:#666;font-size:11px;margin-top:4px;">
-          ${data.reason}
+          ${val(data.reason, "")}
         </div>
 
       </div>
@@ -2010,7 +2015,7 @@ ${pct(data.health)} / 100
 
   })
   .catch(err=>{
-    console.error(err);
+    console.error("❌ Popup Error:", err);
     popup.setContent("❌ Error loading data");
   });
 
