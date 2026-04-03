@@ -1955,14 +1955,14 @@ ${pct(data.health)} / 100
 
       reader.readAsText(file);
     }/* 📊 COMPARTMENT POPUP */
-    function openStatsPopup(name, latlng) {
+   function openStatsPopup(name, latlng) {
 
   var popup = L.popup()
     .setLatLng(latlng)
     .setContent('⏳ Loading ' + name + '...')
     .openOn(map);
 
-  callBackend("getCompartmentStats", { name: name })   // 🔥 ONLY CHANGE
+  callBackend("getCompartmentStats", { name: name })
     .then(function(data) {
 
       if (!data) {
@@ -1978,11 +1978,6 @@ ${pct(data.health)} / 100
         return (!v || isNaN(v)) ? "0.0" : Number(v).toFixed(1);
       }
 
-      // 🎨 Health color
-      let healthColor = "#d32f2f";
-      if(data.health >= 70) healthColor = "#2e7d32";
-      else if(data.health >= 40) healthColor = "#f9a825";
-
       var content = `
 <div style="font-family:Segoe UI; min-width:260px; line-height:1.6; color:#222;">
 
@@ -1990,32 +1985,26 @@ ${pct(data.health)} / 100
 
 <hr>
 
-<b>📐 Total Area:</b> ${num(data.total)} ha<br>
-<b>🌿 Canopy:</b> ${pct(data.canopy)} %<br>
-<b>📏 Height:</b> ${num(data.height)} m<br>
+<b>📐 Total Grid:</b> ${data.total}<br>
+<b>✅ Visited:</b> ${data.visited}<br>
+<b>❌ Missed:</b> ${data.unvisited}<br>
 
-<b>🌳 Density:</b> ${data.density}<br>
-
-<b>❤️ Health:</b> 
-<span style="color:${healthColor}; font-weight:bold;">
-${pct(data.health)} / 100
-</span><br>
-
-<b>📌 Condition:</b> ${data.condition}<br>
-<b>Reason:</b> ${data.reason}<br>
+<b>📊 Coverage:</b> ${pct(data.coverage)} %<br>
 
 <hr>
 
-<b>🌍 Land Distribution</b><br>
+<b>📏 Area</b><br>
+Total: ${num(data.totalArea)} ha<br>
+Visited: ${num(data.visitedArea)} ha<br>
+Missed: ${num(data.unvisitedArea)} ha<br>
 
-🌲 Forest: ${num(data.forest)} ha (${data.forest_pct}%)<br>
-🔴 Degraded: ${num(data.degraded)} ha (${data.degraded_pct}%)<br>
-🌿 Grass: ${num(data.grass)} ha (${data.grass_pct}%)<br>
-🌾 Crop: ${num(data.crop)} ha (${data.crop_pct}%)<br>
-🌳 Bush: ${num(data.bush)} ha (${data.bush_pct}%)<br>
-🏠 Built: ${num(data.built)} ha (${data.built_pct}%)<br>
-🟫 Bare: ${num(data.bare)} ha (${data.bare_pct}%)<br>
-🟦 Water: ${num(data.water)} ha (${data.water_pct}%)<br>
+<hr>
+
+<b>🚶 Patrol</b><br>
+Tracks: ${data.tracks}<br>
+Distance: ${num(data.distance)} km<br>
+
+<b>🏷 Beat:</b> ${data.beat}
 
 </div>`;
 
@@ -2026,9 +2015,7 @@ ${pct(data.health)} / 100
       console.error(err);
       popup.setContent("❌ Error loading data");
     });
-
-}
-    /* ============================================================
+} /* ============================================================
        📊 BLOCK 6 → COMPARTMENTS + GRID + SUMMARY
     ============================================================ */
 
@@ -3397,7 +3384,8 @@ window.onload = loadProfile;function toggleWeatherDrawer() {
     .catch(function (err) {
       console.error("❌ River load error:", err);
     });
-}function load3MonthSummary(){
+}
+    function load3MonthSummary(){
 
   console.log("🚀 Loading 3 Month Summary...");
 
