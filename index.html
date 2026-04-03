@@ -2434,7 +2434,7 @@ ${pct(data.health)} / 100
 
     function loadStaff() {
 
-      staffLayer.clearLayers();
+      
 
       callBackend("getMapData")
         .then(function (data) {
@@ -4272,31 +4272,30 @@ document.querySelectorAll("#" + containerId + " input:checked")
 ).map(function(el) {
 return el.value;
 });
-}
-  function loadMapDataFirebase() {
+}function loadMapDataFirebase() {
 
   const ref = window.collection(window.db, "map_all");
 
   window.onSnapshot(ref, (snapshot) => {
 
-    staffLayer.clearLayers();
-
     let data = [];
+    let activeIds = new Set();
 
-    // 🔥 CONVERT SNAPSHOT → SAME FORMAT AS getMapData()
     snapshot.forEach(doc => {
 
+      const id = doc.id;
       const d = doc.data();
 
       if ((d.type || "").toLowerCase() !== "staff") return;
 
+      activeIds.add(id);
+
       data.push({
+        id: id,
         ...d,
-        type: "Staff", // 🔥 match your original filter
+        type: "Staff",
         lat: Number(d.lat),
         lon: Number(d.lon),
-
-        // 🔥 CONVERT FIRESTORE TRACK → OLD FORMAT [lat, lon]
         track: Array.isArray(d.track)
           ? d.track.map(p => [Number(p.lat), Number(p.lon)])
           : []
@@ -4308,7 +4307,7 @@ return el.value;
 
     const staff = data.filter(s => s.type === "Staff");
 
-    /* 🔥 GROUP SAME LOCATION */
+    /* 🔥 GROUP SAME LOCATION (UNCHANGED) */
     let groups = {};
 
     staff.forEach(s => {
@@ -4325,7 +4324,7 @@ return el.value;
 
         let track = Array.isArray(s.track) ? s.track : [];
 
-        /* 🔥 CLEAN TRACK */
+        /* 🔥 CLEAN TRACK (UNCHANGED) */
         let clean = [];
         track.forEach(p => {
           if (!p) return;
@@ -4347,13 +4346,12 @@ return el.value;
           lon += Math.sin(angle) * 0.00015;
         }
 
-        /* 🔥 DISTANCE */
+        /* 🔥 DISTANCE + SPEED (UNCHANGED) */
         let dist = 0;
         for (let i = 1; i < clean.length; i++) {
           dist += getDistance(clean[i - 1], clean[i]);
         }
 
-        /* 🔥 SPEED */
         let speed = 0;
         if (clean.length > 1) {
           const d = getDistance(clean[clean.length - 2], clean[clean.length - 1]);
@@ -4362,18 +4360,18 @@ return el.value;
 
         const color = getColor(colorIndex++);
 
-        /* 🔥 ICON (UNCHANGED) */
+        /* 🔥 SMALLER ICON (ONLY CHANGE) */
         const icon = L.divIcon({
           html: `
           <div class="markerWrap">
             <div class="radarPulse"></div>
             <div class="markerCore">
               <i class="fa-solid fa-person-military-pointing"
-                style="color:#00ff00;font-size:20px;"></i>
+                style="color:#00ff00;font-size:12px;"></i>
             </div>
           </div>`,
-          iconSize: [30, 30],
-          iconAnchor: [15, 15]
+          iconSize: [22, 22],
+          iconAnchor: [11, 11]
         });
 
         /* 🔥 POPUP (UNCHANGED) */
@@ -4396,38 +4394,61 @@ return el.value;
 
         </div>`;
 
-        const marker = L.marker([lat, lon], {
-          icon: icon,
-          zIndexOffset: 3000
-        })
-          .bindPopup(popup, {
-            autoClose: false,
-            closeOnClick: false
+        /* ===========================
+           🟢 UPDATE OR CREATE MARKER
+        =========================== */
+        if (markerMap[s.id]) {
+
+          markerMap[s.id].setLatLng([lat, lon]);
+
+        } else {
+
+          const marker = L.marker([lat, lon], {
+            icon: icon,
+            zIndexOffset: 3000
           })
-          .addTo(staffLayer);
+            .bindPopup(popup, {
+              autoClose: false,
+              closeOnClick: false
+            })
+            .addTo(staffLayer);
 
-        marker.on('click', () => activePopupId = s.name);
+          marker.on('click', () => activePopupId = s.name);
 
-        /* 🔥 TRACK (UNCHANGED) */
+          markerMap[s.id] = marker;
+        }
+
+        /* ===========================
+           📍 TRACK UPDATE (NO FLICKER)
+        =========================== */
         if (clean.length > 1) {
 
-          const line = L.polyline(clean, {
-            color: color,
-            weight: 2,
-            opacity: 1
-          }).addTo(staffLayer);
+          if (trackMap[s.id]) {
 
-          if (L.polylineDecorator) {
-            L.polylineDecorator(line, {
-              patterns: [{
-                offset: '5%',
-                repeat: '50px',
-                symbol: L.Symbol.arrowHead({
-                  pixelSize: 10,
-                  pathOptions: { color: color }
-                })
-              }]
+            trackMap[s.id].setLatLngs(clean);
+
+          } else {
+
+            const line = L.polyline(clean, {
+              color: color,
+              weight: 2,
+              opacity: 1
             }).addTo(staffLayer);
+
+            trackMap[s.id] = line;
+
+            if (L.polylineDecorator) {
+              L.polylineDecorator(line, {
+                patterns: [{
+                  offset: '5%',
+                  repeat: '50px',
+                  symbol: L.Symbol.arrowHead({
+                    pixelSize: 10,
+                    pathOptions: { color: color }
+                  })
+                }]
+              }).addTo(staffLayer);
+            }
           }
         }
 
@@ -4435,9 +4456,24 @@ return el.value;
 
     });
 
+    /* 🔥 REMOVE OLD */
+    Object.keys(markerMap).forEach(id => {
+      if (!activeIds.has(id)) {
+
+        staffLayer.removeLayer(markerMap[id]);
+        delete markerMap[id];
+
+        if (trackMap[id]) {
+          staffLayer.removeLayer(trackMap[id]);
+          delete trackMap[id];
+        }
+      }
+    });
+
   });
 
-}</script>
+}
+  </script>
 
   </div>
   <div id="form-modal"
