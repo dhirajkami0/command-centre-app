@@ -3714,49 +3714,45 @@ document.getElementById('form-modal').style.display = 'none';
 }
 
 /* 5. Submit */
-function submitSightingForm(event) {
+function submitSightingForm(event){
 
-  if (event) event.preventDefault();
+  if(event) event.preventDefault();
 
   try {
 
-    const getVal = (id) => document.getElementById(id)?.value || "";
-
     const sightingID = "SIGHT-" + Date.now();
 
-    const m   = parseInt(getVal("f-m")) || 0;
-    const f   = parseInt(getVal("f-f")) || 0;
-    const uni = parseInt(getVal("f-uni")) || 0;
-    const c   = parseInt(getVal("f-c")) || 0;
+    const m   = parseInt(document.getElementById("f-m").value) || 0;
+    const f   = parseInt(document.getElementById("f-f").value) || 0;
+    const uni = parseInt(document.getElementById("f-uni").value) || 0;
+    const c   = parseInt(document.getElementById("f-c").value) || 0;
 
     const total = m + f + uni + c;
 
-    const lat = getVal("f-lat");
-    const lon = getVal("f-lon");
+    const lat = document.getElementById("f-lat").value;
+    const lon = document.getElementById("f-lon").value;
 
     const location = lat + "," + lon;
 
     const now = new Date();
     const time = now.toLocaleTimeString("en-IN");
 
-    /* 🔍 VALIDATION */
     if (!lat || !lon) {
       alert("❌ Location missing");
       return;
     }
 
-    if (!getVal("f-beat") || !getVal("f-compt")) {
+    if (!document.getElementById("f-beat").value || !document.getElementById("f-compt").value) {
       alert("❌ Select Beat & Compartment");
       return;
     }
 
-    /* 📦 PAYLOAD */
     const payload = {
       sighting_id: sightingID,
       parent_id: "",
-      beat: getVal("f-beat"),
-      forest_block: getVal("f-beat"),
-      compt: getVal("f-compt"),
+      beat: document.getElementById("f-beat").value,
+      forest_block: document.getElementById("f-beat").value,
+      compt: document.getElementById("f-compt").value,
       time: time,
       m: m,
       f: f,
@@ -3767,34 +3763,23 @@ function submitSightingForm(event) {
       depredation: "",
       involved: "",
       driving: "",
-      remarks: getVal("f-remarks"),
+      remarks: document.getElementById("f-remarks").value,
       leader: window.userProfile?.leader || "",
-      staff: getVal("f-staff"),
+      staff: document.getElementById("f-staff")?.value || "",
       location: location,
-      direction: getVal("f-dir"),
-      photo: ""
+      direction: document.getElementById("f-dir").value
     };
 
     console.log("📤 Payload:", payload);
 
     const fileInput = document.getElementById("f-photo-file");
-    const file = fileInput?.files?.[0] || null;
+    const file = fileInput ? fileInput.files[0] : null;
 
-    /* 🚀 SUBMIT FUNCTION */
-    function send(finalPayload) {
+    // 🔥 UPDATED SUBMIT (GITHUB SAFE)
+    function submitToServer(finalPayload){
 
       callBackend("saveElephantSighting", finalPayload)
-        .then(function (res) {
-
-          if (!res) {
-            alert("❌ No response from server");
-            return;
-          }
-
-          if (res.error) {
-            alert("❌ " + res.error);
-            return;
-          }
+        .then(function(){
 
           alert("✅ Submitted to Command Centre");
 
@@ -3803,37 +3788,36 @@ function submitSightingForm(event) {
           }
 
           const form = document.getElementById("elephantForm");
-          if (form) form.reset();
+          if(form) form.reset();
 
         })
-        .catch(function (err) {
+        .catch(function(err){
           console.error("❌ Error:", err);
           alert("❌ Submission failed");
         });
     }
 
-    /* 📸 PHOTO HANDLING */
-    if (file) {
-
+    // 📸 PHOTO HANDLING
+    if(file){
       const reader = new FileReader();
 
-      reader.onloadend = function () {
-        payload.photo = reader.result || "";
-        send(payload);
+      reader.onloadend = function(){
+        payload.photo = reader.result;
+        submitToServer(payload);
       };
 
       reader.readAsDataURL(file);
 
     } else {
-      send(payload);
+      payload.photo = "";
+      submitToServer(payload);
     }
 
   } catch (e) {
     console.error("❌ Crash:", e);
     alert("❌ Form error: " + e.message);
   }
-}
-/* ============================================================
+}/* ============================================================
 🚨 DUTY SYSTEM
 ============================================================ */
 let dutyComptMap = {};
