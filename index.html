@@ -2138,55 +2138,87 @@ ${pct(data.health)} / 100
   console.log("🟢 Visited:", data.filter(d => d.visited).length);
   console.log("🔴 Unvisited:", data.filter(d => !d.visited).length);
 
-  // 🔍 Check first few data points
   console.log("📍 Sample Data:", data.slice(0, 5));
+
+  // 🔥 LIMIT DATA (PREVENT FREEZE)
+  if (data.length > 800) {
+    console.warn("⚠ Too many cells, limiting to 800");
+    data = data.slice(0, 800);
+  }
 
   visitedLayer.clearLayers();
   unvisitedLayer.clearLayers();
 
   const offset = 0.00044;
 
-  data.forEach((p, i) => {
+  // 🔥 USE BATCH RENDER (PREVENT UI BLOCK)
+  let i = 0;
+  const batchSize = 100;
 
-    // 🔍 Log first 3 cells to verify coordinates
-    if (i < 3) {
-      console.log(`🧭 Cell ${i}:`, p.lat, p.lon, "Visited:", p.visited);
+  function renderBatch() {
+
+    const end = Math.min(i + batchSize, data.length);
+
+    for (; i < end; i++) {
+
+      const p = data[i];
+
+      if (!p.lat || !p.lon) continue;
+
+      if (i < 3) {
+        console.log(`🧭 Cell ${i}:`, p.lat, p.lon, "Visited:", p.visited);
+      }
+
+      const bounds = [
+        [p.lat - offset / 2, p.lon - offset / 2],
+        [p.lat + offset / 2, p.lon + offset / 2]
+      ];
+
+      const isVisited = p.visited == true;
+
+      L.rectangle(bounds, {
+        color: isVisited ? "#00ff00" : "#ff0000",
+        fillOpacity: isVisited ? 0.5 : 0.25,
+        weight: 1
+      }).addTo(isVisited ? visitedLayer : unvisitedLayer);
+
     }
 
-    const bounds = [
-      [p.lat - offset / 2, p.lon - offset / 2],
-      [p.lat + offset / 2, p.lon + offset / 2]
-    ];
+    if (i < data.length) {
+      requestAnimationFrame(renderBatch); // 🔥 smooth rendering
+    } else {
 
-    const isVisited = p.visited == true;
+      // 🔥 FINALIZE AFTER ALL BATCHES
+      visitedLayer.addTo(map);
+      unvisitedLayer.addTo(map);
 
-    L.rectangle(bounds, {
-      color: isVisited ? "#00ff00" : "#ff0000",
-      fillOpacity: isVisited ? 0.5 : 0.25,
-      weight: 1
-    }).addTo(isVisited ? visitedLayer : unvisitedLayer);
+      visitedLayer.bringToFront();
+      unvisitedLayer.bringToFront();
 
-  });
+      console.log("🟢 Visited layer count:", visitedLayer.getLayers().length);
+      console.log("🔴 Unvisited layer count:", unvisitedLayer.getLayers().length);
 
-  // 🔥 Layer counts
-  console.log("🟢 Visited layer count:", visitedLayer.getLayers().length);
-  console.log("🔴 Unvisited layer count:", unvisitedLayer.getLayers().length);
+      // 🔥 SAFE ZOOM (ONLY ONCE + LIMITED)
+      if (unvisitedLayer.getLayers().length > 0 && !window.gridZoomDone) {
 
-  visitedLayer.addTo(map);
-  unvisitedLayer.addTo(map);
+        const bounds = unvisitedLayer.getBounds();
 
-  visitedLayer.bringToFront();
-  unvisitedLayer.bringToFront();
+        console.log("🗺️ Bounds:", bounds);
 
-  // 🔥 Check bounds
-  if (unvisitedLayer.getLayers().length > 0) {
-    const bounds = unvisitedLayer.getBounds();
-    console.log("🗺️ Bounds:", bounds);
-    map.fitBounds(bounds);
-  } else {
-    console.warn("⚠ No layers to zoom");
+        map.fitBounds(bounds, {
+          maxZoom: 15,   // 🚫 prevent over-zoom
+          animate: false // 🚫 prevent lag
+        });
+
+        window.gridZoomDone = true; // 🔒 run once only
+      }
+
+    }
+
   }
-}  /* ============================================================
+
+  renderBatch(); // 🔥 start batch rendering
+} /* ============================================================
        🐘 BLOCK 7 → ELEPHANT SYSTEM (FINAL)
     ============================================================ */
 
