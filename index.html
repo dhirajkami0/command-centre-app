@@ -4677,68 +4677,71 @@ function loadMapDataFirebase() {
 
     <div
       style="background:#f4f4f4; border-radius:15px; padding:20px; max-width:480px; margin:10px auto; border-top:8px solid #2e7d32;">
+<div style="background:#f4f4f4; border-radius:15px; padding:20px; max-width:480px; margin:10px auto; border-top:8px solid #2e7d32;">
 
-      <div style="display:flex; justify-content:space-between;">
-        <h3 style="margin:0;color:#1b5e20;">🧭 Duty Register</h3>
-        <button onclick="closeDutyForm()" style="border:none;font-size:22px;">&times;</button>
-      </div>
-
-      <hr>
-
-      <label>Duty ID</label>
-      <input id="d-id" disabled style="width:100%; padding:8px; margin-bottom:8px;">
-
-      <label>Date</label>
-      <input id="d-date" disabled style="width:100%; padding:8px; margin-bottom:8px;">
-
-      <label>Beat</label>
-<select id="d-beat"
-  style="width:100%; padding:8px; margin-bottom:8px;">
-  <option value="">Select Beat</option>
-  <option>East Garam</option>
-  <option>West Garam</option>
-  <option>East Poro</option>
-  <option>Range HQ</option>
-</select>
-      <label>Team Leader</label>
-      <input id="d-leader" disabled style="width:100%; padding:8px; margin-bottom:8px;">
-
-      <label>Staff Name</label>
-      <div class="multi-select">
-        <div class="select-box" onclick="toggleDropdown('staffOptions')">Select Staff ▼</div>
-        <div class="options" id="staffOptions"></div>
-      </div>
-
-      <label>Duty Type</label>
-      <select id="d-type" style="width:100%; padding:8px; margin-bottom:8px;">
-        <option value="">Select Duty Type</option>
-        <option>Elephant Patrol</option>
-        <option>Forest Patrol</option>
-        <option>Fire Monitoring</option>
-      </select>
-
-      <label>Compartment</label>
-      <div class="multi-select">
-        <div class="select-box" onclick="toggleDropdown('comptOptions')">Select Compartment ▼</div>
-        <div class="options" id="comptOptions"></div>
-      </div>
-
-     <div id="obs-container" style="display:none;">
-  <label>Observations</label>
-  <textarea id="d-obs" rows="3"
-    style="width:100%; padding:8px; margin-bottom:8px;">
-  </textarea>
-</div>
-     
-      <!-- MODAL BUTTON (INSIDE duty-modal ONLY) -->
-<button id="startDutyBtn"
-  type="button"
-  onclick="startDuty(event)"
-  style="width:100%; margin-top:15px; background:#2e7d32; color:white; padding:12px; border:none; border-radius:6px;">
-  🚀 START DUTY
-</button>
-    </div>
+  <div style="display:flex; justify-content:space-between;">
+    <h3 style="margin:0;color:#1b5e20;">🧭 Duty Register</h3>
+    <button onclick="closeDutyForm()" style="border:none;font-size:22px;">&times;</button>
   </div>
+
+  <hr>
+
+  <label>Duty ID</label>
+  <input id="d-id" disabled style="width:100%; padding:8px; margin-bottom:8px;">
+
+  <label>Date</label>
+  <input id="d-date" disabled style="width:100%; padding:8px; margin-bottom:8px;">
+
+  <label>Beat</label>
+  <select id="d-beat" style="width:100%; padding:8px; margin-bottom:8px;">
+    <option value="">Select Beat</option>
+    <option>East Garam</option>
+    <option>West Garam</option>
+    <option>East Poro</option>
+    <option>Range HQ</option>
+  </select>
+
+  <label>Team Leader</label>
+  <input id="d-leader" disabled style="width:100%; padding:8px; margin-bottom:8px;">
+
+  <label>Staff Name</label>
+  <div class="multi-select">
+    <div class="select-box" onclick="event.stopPropagation(); toggleDropdown('staffOptions')">
+      Select Staff ▼
+    </div>
+    <div class="options" id="staffOptions"></div>
+  </div>
+
+  <label>Duty Type</label>
+  <select id="d-type" style="width:100%; padding:8px; margin-bottom:8px;">
+    <option value="">Select Duty Type</option>
+    <option>Elephant Patrol</option>
+    <option>Forest Patrol</option>
+    <option>Fire Monitoring</option>
+  </select>
+
+  <label>Compartment</label>
+  <div class="multi-select">
+    <div class="select-box" onclick="event.stopPropagation(); toggleDropdown('comptOptions')">
+      Select Compartment ▼
+    </div>
+    <div class="options" id="comptOptions"></div>
+  </div>
+
+  <div id="obs-container" style="display:none;">
+    <label>Observations</label>
+    <textarea id="d-obs" rows="3"
+      style="width:100%; padding:8px; margin-bottom:8px;"></textarea>
+  </div>
+
+  <button id="startDutyBtn"
+    type="button"
+    onclick="startDuty()"
+    style="width:100%; margin-top:15px; background:#2e7d32; color:white; padding:12px; border:none; border-radius:6px;">
+    🚀 START DUTY
+  </button>
+
+</div>
 
 
  <!-- 🧾 END DUTY MODAL -->
@@ -4808,12 +4811,21 @@ function loadMapDataFirebase() {
 
         /* 🔥 FIXED START DUTY: CAPTURES DATA AND UPDATES BUTTON */
           /* 🔥 FIXED START DUTY: CAPTURES DATA, SUBMITS, AND UPDATES BUTTON */
-        function startDuty() {
+       function startDuty() {
 
   console.group("🚀 startDuty START");
   console.log("⏱ Time:", new Date().toLocaleTimeString());
 
   try {
+
+    const startBtn = document.getElementById("startDutyBtn");
+
+    // 🔒 STRICT GUARD → ONLY BUTTON CLICK SHOULD RUN
+    if (!startBtn || document.activeElement !== startBtn) {
+      console.log("⚠ Ignored non-button trigger");
+      console.groupEnd();
+      return;
+    }
 
     const profile = window.userProfile;
     console.log("👤 profile:", profile);
@@ -4824,9 +4836,9 @@ function loadMapDataFirebase() {
       return;
     }
 
-    // 🔹 GET VALUES
-    const staffArray = getCheckedValues("staffOptions");
-    const comptArray = getCheckedValues("comptOptions");
+    // 🔹 GET VALUES (CLEAN EMPTY VALUES)
+    const staffArray = getCheckedValues("staffOptions").filter(v => v && v.trim());
+    const comptArray = getCheckedValues("comptOptions").filter(v => v && v.trim());
 
     console.log("👮 staffArray:", staffArray);
     console.log("📦 comptArray:", comptArray);
@@ -4854,13 +4866,12 @@ function loadMapDataFirebase() {
       return;
     }
 
-    // ✅ 🔥 FIXED PAYLOAD (ADD USER DATA)
+    // ✅ PAYLOAD
     const payload = {
       staff: staffString,
       type: document.getElementById("d-type")?.value || "",
       compt: comptString,
 
-      // 🔥 REQUIRED FOR BACKEND AUTH
       leader: profile.name || "",
       email: profile.email || "",
       phone: localStorage.getItem("userPhone") || ""
@@ -4868,82 +4879,69 @@ function loadMapDataFirebase() {
 
     console.log("📤 PAYLOAD:", payload);
 
-    // 🔥 FIXED BUTTON SELECT
-    const startBtn = document.getElementById("startDutyBtn");
+    // 🔥 NOW SET LOADING STATE (ONLY AFTER VALIDATION)
+    const originalText = startBtn.innerHTML;
 
-    const originalText = startBtn ? startBtn.innerHTML : "";
-
-    if (startBtn) {
-      startBtn.innerHTML = "⏳ Starting Duty...";
-      startBtn.disabled = true;
-    }
+    startBtn.innerHTML = "⏳ Starting Duty...";
+    startBtn.disabled = true;
 
     console.log("🌐 Calling backend...");
 
     callBackend("START_DUTY", payload)
 
-.then(function (res) {
+    .then(function (res) {
 
-  console.log("🔥 BACKEND RESPONSE:", res);
+      console.log("🔥 BACKEND RESPONSE:", res);
 
-  if (!res || res.error) {
+      if (!res || res.error) {
 
-    console.error("❌ Backend error:", res);
+        console.error("❌ Backend error:", res);
 
-    alert("❌ " + (res?.error || "Failed to start duty"));
+        alert("❌ " + (res?.error || "Failed to start duty"));
 
-    if (startBtn) {
+        startBtn.innerHTML = originalText;
+        startBtn.disabled = false;
+        return;
+      }
+
+      // ✅ SUCCESS
+      console.log("✅ Duty success");
+      alert("✅ Duty Started");
+
+      window.isDutyActive = true;
+
+      if (typeof updateDutyButton === "function") {
+        updateDutyButton();
+      }
+
+      setTimeout(() => {
+        console.log("🔄 Rechecking duty from backend...");
+        if (typeof autoShowEndDuty === "function") {
+          autoShowEndDuty();
+        }
+      }, 800);
+
+      if (typeof closeDutyForm === "function") {
+        console.log("📴 Closing form");
+        closeDutyForm();
+      }
+
+    })
+
+    .catch(function(err){
+      console.error("❌ Backend crash:", err);
+
+      alert("❌ Server error");
+
       startBtn.innerHTML = originalText;
       startBtn.disabled = false;
-    }
+    })
 
-    return;
-  }
+    .finally(function(){
+      console.log("🏁 startDuty FINISHED");
+      console.groupEnd();
+    });
 
-  // ✅ SUCCESS
-  console.log("✅ Duty success");
-
-  alert("✅ Duty Started");
-
-  // 🔥 STEP 1: SET STATE
-  window.isDutyActive = true;
-
-  // 🔥 STEP 2: UPDATE UI (FAST)
-  if (typeof updateDutyButton === "function") {
-    updateDutyButton();
-  }
-
-  // 🔥 STEP 3: BACKEND VERIFY (REAL STATE)
-  setTimeout(() => {
-    console.log("🔄 Rechecking duty from backend...");
-    if (typeof autoShowEndDuty === "function") {
-      autoShowEndDuty();
-    }
-  }, 800);
-
-  // 🔥 STEP 4: CLOSE MODAL
-  if (typeof closeDutyForm === "function") {
-    console.log("📴 Closing form");
-    closeDutyForm();
-  }
-
-})
-
-.catch(function(err){
-  console.error("❌ Backend crash:", err);
-
-  alert("❌ Server error");
-
-  if (startBtn) {
-    startBtn.innerHTML = originalText;
-    startBtn.disabled = false;
-  }
-})
-
-.finally(function(){
-  console.log("🏁 startDuty FINISHED");
-  console.groupEnd();
-});
   } catch (err) {
     console.error("💥 CRASH:", err);
     console.groupEnd();
