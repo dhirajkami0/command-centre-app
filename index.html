@@ -4109,15 +4109,15 @@ function openDutyForm(){
               });
 
           }/* STEP 1 → OPEN FORM */
-         function openEndDutyForm() {
+        function openEndDutyForm() {
   const m = document.getElementById("end-duty-modal");
   m.style.display = "flex";
-  m.style.zIndex = "999999";
-} /* CLOSE */
-          function closeEndDutyForm() {
-            document.getElementById("end-duty-modal").style.display = "none";
-          }
+}
 
+function closeEndDutyForm() {
+  const m = document.getElementById("end-duty-modal");
+  m.style.display = "none";
+}
           /* STEP 2 → FINAL SUBMIT */
  function submitEndDuty(event) {
 
