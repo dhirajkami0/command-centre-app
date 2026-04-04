@@ -1961,7 +1961,7 @@ ${pct(data.health)} / 100
     .setLatLng(latlng)
     .setContent('⏳ Loading ' + name + '...')
     .openOn(map);
-
+console.log("📤 Sending name:", name);
   callBackend("getCompartmentStats", name)
     .then(function(data) {
 
