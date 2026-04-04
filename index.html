@@ -4109,23 +4109,11 @@ function openDutyForm(){
               });
 
           }/* STEP 1 → OPEN FORM */
-          function openEndDutyForm() {
-
-  const modal = document.getElementById("end-duty-modal");
-
-  if (!modal) {
-    console.error("❌ Modal not found");
-    return;
-  }
-
-  modal.style.display = "flex";   // 🔥 IMPORTANT (not block)
-  modal.style.position = "fixed";
-  modal.style.inset = "0";
-  modal.style.zIndex = "999999";  // 🔥 ABOVE EVERYTHING
-
-  console.log("✅ MODAL FORCED VISIBLE");
-}
-          /* CLOSE */
+         function openEndDutyForm() {
+  const m = document.getElementById("end-duty-modal");
+  m.style.display = "flex";
+  m.style.zIndex = "999999";
+} /* CLOSE */
           function closeEndDutyForm() {
             document.getElementById("end-duty-modal").style.display = "none";
           }
