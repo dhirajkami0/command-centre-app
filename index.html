@@ -3599,46 +3599,43 @@ map.on('overlayadd', function (e) {
     /* ============================================================
        📍 GROUP TRACKS (🔥 FULL FIX)
     ============================================================ */
-    if (
-      layerName === "📍 Garam (East + West)" ||
-      layerName === "📍 East Poro" ||
-      layerName === "📍 Range HQ"
-    ) {
+ if (
+  e.name === "📍 Garam (East + West)" ||
+  e.name === "📍 East Poro" ||
+  e.name === "📍 Range HQ"
+) {
 
-      callBackend("getMonthlyGroupTracks")
-        .then(function (data) {
+  callBackend("getMonthlyGroupTracks")
+    .then(function (data) {
 
-          console.log("📦 FULL DATA:", data);
+      console.log("📦 FULL DATA:", data);
 
-          if (!data || Object.keys(data).length === 0) {
-  console.warn("⚠ No backend data");
+      if (!data || Object.keys(data).length === 0) {
+        console.warn("⚠ No backend data");
+        return;
+      }
+
+      let selectedGroup = "";
+
+      if (e.name === "📍 Garam (East + West)") selectedGroup = "GARAM";
+      if (e.name === "📍 East Poro") selectedGroup = "PORO";
+      if (e.name === "📍 Range HQ") selectedGroup = "HQ";
+
+      console.log("🎯 Selected Group:", selectedGroup);
+
+      const filtered = data[selectedGroup] || [];
+
+      console.log("✅ Filtered Tracks:", filtered.length);
+
+      loadGroupTracks(filtered);
+
+    })
+    .catch(function (err) {
+      console.error("❌ Group Track Error:", err);
+    });
+
   return;
 }
-          let selectedGroup = "";
-
-          if (layerName === "📍 Garam (East + West)") selectedGroup = "GARAM";
-          if (layerName === "📍 East Poro") selectedGroup = "PORO";
-          if (layerName === "📍 Range HQ") selectedGroup = "HQ";
-
-          console.log("🎯 Selected Group:", selectedGroup);
-
-          const filtered = data.filter(function (d) {
-            return d && d.group === selectedGroup;
-          });
-
-          console.log("✅ Filtered Tracks:", filtered.length);
-
-          if (typeof loadGroupTracks === "function") {
-            loadGroupTracks(filtered);
-          }
-
-        })
-        .catch(function (err) {
-          console.error("❌ Group Track Error:", err);
-        });
-
-      return; // 🚨 CRITICAL
-    }
 
     /* ===============================
        🟢🔴 GRID (FINAL FIX)
