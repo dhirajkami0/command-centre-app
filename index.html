@@ -1955,27 +1955,23 @@ ${pct(data.health)} / 100
 
       reader.readAsText(file);
     }/* 📊 COMPARTMENT POPUP */
- function openStatsPopup(name, latlng) {
+function openStatsPopup(name, latlng) {
+
+  console.log("📤 Sending name:", name);
 
   var popup = L.popup()
     .setLatLng(latlng)
     .setContent('⏳ Loading ' + name + '...')
     .openOn(map);
-console.log("📤 Sending name:", name);
+
   callBackend("getCompartmentStats", { name: name })
     .then(function(data) {
+
+      console.log("📥 Received data:", data);
 
       if (!data) {
         popup.setContent("<b>❌ No data found</b>");
         return;
-      }
-
-      function num(v){
-        return (!v || isNaN(v)) ? "0.00" : Number(v).toFixed(2);
-      }
-
-      function pct(v){
-        return (!v || isNaN(v)) ? "0.0" : Number(v).toFixed(1);
       }
 
       var content = `
@@ -2014,10 +2010,10 @@ console.log("📤 Sending name:", name);
 
     })
     .catch(function(err){
-      console.error(err);
+      console.error("❌ Popup error:", err);
       popup.setContent("❌ Error loading data");
     });
-} /* ============================================================
+}/* ============================================================
        📊 BLOCK 6 → COMPARTMENTS + GRID + SUMMARY
     ============================================================ */
 
