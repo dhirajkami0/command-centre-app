@@ -1479,15 +1479,22 @@ function initDutyControl() {
 }
     window.isDutyActive = false;
 
-    function handleDutyAction() {
+    function handleDutyAction(){
 
-      if (window.isDutyActive) {
-        openEndDutyForm();   // 🔴 END
-      } else {
-        openDutyForm();      // 🟢 START
-      }
+  console.group("🔥 BUTTON CLICK DETECTED");
 
-    } function addRangeStatsButton() {
+  console.log("🧠 isDutyActive:", window.isDutyActive);
+
+  if(window.isDutyActive){
+    console.log("🔴 TRYING TO OPEN END DUTY FORM");
+    openEndDutyForm();
+  } else {
+    console.log("🟢 OPENING START DUTY FORM");
+    openDutyForm();
+  }
+
+  console.groupEnd();
+}function addRangeStatsButton() {
 
       const control = L.control({ position: 'topright' });
 
