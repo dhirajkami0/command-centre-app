@@ -1481,19 +1481,15 @@ function initDutyControl() {
 
     function handleDutyAction(){
 
-  console.group("🔥 BUTTON CLICK DETECTED");
+  alert("CLICK WORKED");   // 🔥 TEMP TEST
 
-  console.log("🧠 isDutyActive:", window.isDutyActive);
+  console.log("🔥 CLICK FIRED");
 
   if(window.isDutyActive){
-    console.log("🔴 TRYING TO OPEN END DUTY FORM");
     openEndDutyForm();
   } else {
-    console.log("🟢 OPENING START DUTY FORM");
     openDutyForm();
   }
-
-  console.groupEnd();
 }function addRangeStatsButton() {
 
       const control = L.control({ position: 'topright' });
