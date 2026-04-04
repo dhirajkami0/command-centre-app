@@ -3610,11 +3610,10 @@ map.on('overlayadd', function (e) {
 
           console.log("📦 FULL DATA:", data);
 
-          if (!data || !Array.isArray(data) || data.length === 0) {
-            console.warn("⚠ No backend data");
-            return;
-          }
-
+          if (!data || Object.keys(data).length === 0) {
+  console.warn("⚠ No backend data");
+  return;
+}
           let selectedGroup = "";
 
           if (layerName === "📍 Garam (East + West)") selectedGroup = "GARAM";
