@@ -3668,7 +3668,10 @@ if (e.name.includes("Grid")) {
     .catch(err => console.error("❌ Grid error:", err));
 
   return;
-}/*if (e.name === "📊 Monthly Coverage") {
+}
+
+/* 📊 Monthly Coverage */
+if (e.name === "📊 Monthly Coverage") {
 
   summaryLayer.addTo(map);
 
@@ -3691,21 +3694,16 @@ if (e.name.includes("Grid")) {
 }
 
 /* 📊 Monthly Analysis */
-  if (e.name === "📊 Monthly Analysis") {
+if (e.name === "📊 Monthly Analysis") {
 
-    console.log("📊 Monthly Analysis triggered");
+  console.log("📊 Monthly Analysis triggered");
 
-    load3MonthSummary();
+  load3MonthSummary();
 
-    // 🔒 optional: remove layer (since popup only)
-    map.removeLayer(summaryLayer);
+  map.removeLayer(summaryLayer);
 
-    return;
-  }
-
-});
-
-/* ============================================================
+  return;
+}/* ============================================================
    🧹 CLEANUP (OPTIONAL)
 ============================================================ */
 map.on('overlayremove', function (e) {
