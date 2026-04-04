@@ -1962,7 +1962,7 @@ ${pct(data.health)} / 100
     .setContent('⏳ Loading ' + name + '...')
     .openOn(map);
 console.log("📤 Sending name:", name);
-  callBackend("getCompartmentStats", name)
+  callBackend("getCompartmentStats", { name: name })
     .then(function(data) {
 
       if (!data) {
