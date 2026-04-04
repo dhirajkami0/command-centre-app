@@ -1955,7 +1955,7 @@ ${pct(data.health)} / 100
 
       reader.readAsText(file);
     }/* 📊 COMPARTMENT POPUP */
-   function openStatsPopup(name, latlng) {
+ function openStatsPopup(name, latlng) {
 
   var popup = L.popup()
     .setLatLng(latlng)
@@ -1985,26 +1985,28 @@ ${pct(data.health)} / 100
 
 <hr>
 
-<b>📐 Total Grid:</b> ${data.total}<br>
-<b>✅ Visited:</b> ${data.visited}<br>
-<b>❌ Missed:</b> ${data.unvisited}<br>
-
-<b>📊 Coverage:</b> ${pct(data.coverage)} %<br>
-
-<hr>
-
-<b>📏 Area</b><br>
-Total: ${num(data.totalArea)} ha<br>
-Visited: ${num(data.visitedArea)} ha<br>
-Missed: ${num(data.unvisitedArea)} ha<br>
+<b>📐 Total Area:</b> ${data.total} ha<br>
+<b>🌿 Canopy:</b> ${data.canopy} %<br>
+<b>🌲 Height:</b> ${data.height} m<br>
+<b>🌳 Density:</b> ${data.density}<br>
+<b>❤️ Health:</b> ${data.health} %<br>
 
 <hr>
 
-<b>🚶 Patrol</b><br>
-Tracks: ${data.tracks}<br>
-Distance: ${num(data.distance)} km<br>
+<b>🌳 Forest:</b> ${data.forest} ha (${data.forest_pct}%)<br>
+<b>🟥 Degraded:</b> ${data.degraded} ha (${data.degraded_pct}%)<br>
+<b>🌿 Grass:</b> ${data.grass} ha (${data.grass_pct}%)<br>
+<b>🌾 Crop:</b> ${data.crop} ha (${data.crop_pct}%)<br>
+<b>🌵 Bush:</b> ${data.bush} ha (${data.bush_pct}%)<br>
 
-<b>🏷 Beat:</b> ${data.beat}
+<b>🏠 Built:</b> ${data.built} ha (${data.built_pct}%)<br>
+<b>⬜ Bare:</b> ${data.bare} ha (${data.bare_pct}%)<br>
+<b>💧 Water:</b> ${data.water} ha (${data.water_pct}%)<br>
+
+<hr>
+
+<b>📌 Condition:</b> ${data.condition}<br>
+<b>📝 Reason:</b> ${data.reason}
 
 </div>`;
 
