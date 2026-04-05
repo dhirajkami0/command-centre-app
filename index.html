@@ -2180,7 +2180,7 @@ function openStatsPopup(name, latlng) {
 
   elephantLayer.clearLayers();
 
-  callBackend("getSightings")   // 🔥 ONLY CHANGE
+  callBackend("getSightings")
   .then(function(data){
 
     if(!data) return;
@@ -2194,7 +2194,7 @@ function openStatsPopup(name, latlng) {
       const lon = Number(e.lon);
 
       /* 🔴 RISK COLOR */
-      const herd = parseInt(e.herd || e["Total Seen"] || 0);
+      const herd = parseInt(e.herd || 0);
       const isHighRisk = herd <= 2;
       const color = isHighRisk ? "#ff3b30" : "#ff9800";
 
@@ -2203,7 +2203,6 @@ function openStatsPopup(name, latlng) {
         className:'',
         html:`
         <div style="position:relative;width:36px;height:36px;">
-          
           <div style="
             display:flex;
             align-items:center;
@@ -2219,9 +2218,9 @@ function openStatsPopup(name, latlng) {
         iconAnchor:[18,18]
       });
 
-      /* 🕒 TIME FORMAT */
+      /* 🕒 TIME FORMAT (ALIGNED) */
       let timeDisplay = "Unknown";
-      let rawTime = (e.Time || e.time || "").toString();
+      let rawTime = (e.time || "").toString();
 
       if(rawTime.includes(":")){
         let [h,m] = rawTime.split(":");
@@ -2233,14 +2232,8 @@ function openStatsPopup(name, latlng) {
         }
       }
 
-      /* 🧭 DIRECTION CLEAN */
-      let rawDir = (e.direction || "").toUpperCase();
-
-      const dirFix = {
-        "SOUTH-WEST":"SW","SOUTH-EAST":"SE",
-        "NORTH-WEST":"NW","NORTH-EAST":"NE"
-      };
-      rawDir = dirFix[rawDir] || rawDir;
+      /* 🧭 DIRECTION FIX (IMPORTANT) */
+      let rawDir = (e.direction || "").toUpperCase().trim();
 
       const dirMap = {
         N:"North",S:"South",E:"East",W:"West",
@@ -2249,31 +2242,6 @@ function openStatsPopup(name, latlng) {
       };
 
       const movementText = dirMap[rawDir] || "Unknown";
-
-      /* =========================
-         🔥 VILLAGE RISK (FINAL FIX)
-      ========================= */
-
-      let villageHTML = "";
-
-      const key =
-        Number(lat).toFixed(5) + "," +
-        Number(lon).toFixed(5);
-
-      if(window.coneVillages && window.coneVillages[key]){
-
-        const villages = window.coneVillages[key];
-
-        if(villages.length > 0){
-          villageHTML += `<hr><b>🏠 Elephant Risk Zone</b>`;
-          villages.forEach(v=>{
-            villageHTML += `<div style="margin-top:4px;">🔴 <b>${v}</b></div>`;
-          });
-        } else {
-          villageHTML += `<hr>🏠 No villages in cone`;
-        }
-
-      }
 
       /* 📸 PHOTO */
       const photoHtml = e.photo ? `
@@ -2284,9 +2252,6 @@ function openStatsPopup(name, latlng) {
         </div>
       ` : "";
 
-      /* 📍 BEAT */
-      const beat = e.Beat || e["Forest Block"] || "";
-
       /* 📦 POPUP */
       const popup = `
       <div style="font-family:Segoe UI;min-width:220px">
@@ -2295,18 +2260,19 @@ function openStatsPopup(name, latlng) {
           ${e.status === "Moved" ? "🟢 MOVED" : "🔴 ACTIVE"}
         </div>
 
-        ${beat ? `<div style="font-size:11px;color:#666">📍 ${beat}</div>` : ""}
-
         <hr>
 
         <b>🐘 Herd:</b> ${herd}<br>
         <b>🧭 Movement:</b> ${movementText}<br>
         <b>⏱ Time:</b> ${timeDisplay}<br>
 
+        <b>👤 Team Leader:</b> ${e.teamLeader || "Unknown"}<br>
+        <b>🏠 Nearest Village:</b> ${e.village || "Unknown"}<br>
+
+        <br>
         <b>📍 Location:</b><br>
         <code>${lat.toFixed(5)}, ${lon.toFixed(5)}</code>
 
-        ${villageHTML}
         ${photoHtml}
 
         ${e.status !== "Moved" ? `
