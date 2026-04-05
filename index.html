@@ -2310,23 +2310,29 @@ function loadSightings() {
         ${photoHtml}
 
         <div style="margin-top:10px">
+<button onclick="
+  event.stopPropagation();
+  window.isPopupInteracting = true;
+  showMoveOptions('${e.id}', this)
+" style="
+  background:#2e7d32;color:white;border:none;
+  width:100%;padding:10px;
+  border-radius:6px;cursor:pointer;">
+  ✅ MARK AS MOVED
+</button>
 
-          <button onclick="event.stopPropagation(); showMoveOptions('${e.id}', this)" style="
-            background:#2e7d32;color:white;border:none;
-            width:100%;padding:10px;
-            border-radius:6px;cursor:pointer;">
-            ✅ MARK AS MOVED
-          </button>
-
-          <select onchange="confirmExit(this,'${e.id}')"
-                  onclick="event.stopPropagation()"
-                  style="
-            display:none;
-            width:100%;
-            margin-top:8px;
-            padding:10px;
-            border-radius:6px;
-          ">
+<select 
+  onchange="confirmExit(this,'${e.id}')"
+  onclick="event.stopPropagation(); window.isPopupInteracting = true;"
+  onfocus="window.isPopupInteracting = true;"
+  onblur="setTimeout(()=>window.isPopupInteracting=false, 4000);"
+  style="
+  display:none;
+  width:100%;
+  margin-top:8px;
+  padding:10px;
+  border-radius:6px;
+">
 
             <option value="">-- Select Action --</option>
             <option value="Moved">🟢 Moved</option>
@@ -2369,13 +2375,12 @@ function loadSightings() {
   });
 
 }/* 🔥 STATUS UPDATE */
-    function confirmExit(input, id) {
+   function confirmExit(input, id) {
 
   let value;
 
-  // 🔥 HANDLE BOTH CASES
   if(typeof input === "string"){
-    value = "Moved";   // fallback if called directly
+    value = "Moved";
     id = input;
   } else {
     value = input.value;
@@ -2387,16 +2392,20 @@ function loadSightings() {
 
   callBackend("updateSightingStatus", {
     id: id,
-    remarks: value   // ✅ IMPORTANT (NOT status)
+    remarks: value
   })
   .then(function () {
 
     alert("✅ Updated");
 
-    refreshAll();
+    // 🔥 UNLOCK INTERACTION
+    window.isPopupInteracting = false;
 
-    // 🔁 keep your existing flow
-    callBackend("updateVillageRisk");
+    // 🔥 SMALL DELAY (IMPORTANT)
+    setTimeout(()=>{
+      refreshAll();
+      callBackend("updateVillageRisk");
+    }, 1500);
 
   })
   .catch(err=>{
@@ -2404,7 +2413,6 @@ function loadSightings() {
   });
 
 }
-
     /* ============================================================
        👮 BLOCK 8 → STAFF SYSTEM (FINAL)
     ============================================================ */
@@ -3059,13 +3067,14 @@ function loadSightings() {
     /* =========================
        🔄 MASTER REFRESH ENGINE (FINAL)
     ========================= */
-   /* 🔥 GLOBAL TIMERS (5 SEC FOR BOTH) */
+  /* 🔥 GLOBAL TIMERS (5 SEC FOR BOTH) */
 window.lastSightingsLoad = 0;
 window.lastStaffLoad = 0;
+window.isPopupInteracting = false;   // ✅ NEW (CRITICAL)
 
 const MIN_SIGHTING_VISIBLE_TIME = 5000; // ⏱ 5 sec
 const MIN_STAFF_VISIBLE_TIME = 5000;    // ⏱ 5 sec
-
+window.isPopupInteracting = false;
 
 function refreshAll() {
 
@@ -3083,9 +3092,17 @@ function refreshAll() {
   if (now - window.lastStaffLoad > MIN_STAFF_VISIBLE_TIME) {
 
     setTimeout(() => {
+
+      // 🛑 BLOCK DURING INTERACTION
+      if (window.isPopupInteracting) {
+        console.log("⏸ Skipping staff (user interacting)");
+        return;
+      }
+
       loadStaff();
       window.lastStaffLoad = Date.now();
-    }, 1000);   // ⏱ slight delay
+
+    }, 1000);
 
   } else {
     console.log("⏸ Staff held (5 sec rule)");
@@ -3094,12 +3111,18 @@ function refreshAll() {
   /* 🔥 WEATHER */
   setTimeout(loadWeatherFull, 500);
 
-  /* 🔥 SIGHTINGS (5 SEC HOLD + POPUP SAFE) */
+  /* 🔥 SIGHTINGS (5 SEC HOLD + FULL SAFETY) */
   if (now - window.lastSightingsLoad > MIN_SIGHTING_VISIBLE_TIME) {
 
     setTimeout(() => {
 
-      // 🛑 DO NOT REFRESH IF USER INTERACTING
+      // 🛑 BLOCK IF USER USING DROPDOWN
+      if (window.isPopupInteracting) {
+        console.log("⏸ Skipping sightings (user interacting)");
+        return;
+      }
+
+      // 🛑 BLOCK IF POPUP OPEN
       if (map && map._popup && map._popup.isOpen()) {
         console.log("⏸ Skipping sightings (popup open)");
         return;
@@ -3108,7 +3131,7 @@ function refreshAll() {
       loadSightings();
       window.lastSightingsLoad = Date.now();
 
-    }, 2500);   // ⏱ delayed refresh
+    }, 2500);
 
   } else {
     console.log("⏸ Sightings held (5 sec rule)");
