@@ -2233,23 +2233,43 @@ function openStatsPopup(name, latlng) {
       let movementText = dirMap[e.direction] || "Unknown";
 
       /* 🔥 VILLAGE RISK */
-      let villageHTML = "";
+     /* 🔥 VILLAGE RISK (DISTANCE BASED) */
+let villageHTML = "";
 
-      const key =
-        Number(lat).toFixed(5) + "," +
-        Number(lon).toFixed(5);
+if(window.coneVillages){
 
-      if(window.coneVillages && window.coneVillages[key]){
-        const villages = window.coneVillages[key];
+  let nearestKey = null;
+  let minDist = Infinity;
 
-        if(villages.length > 0){
-          villageHTML += `<hr><b>🏠 Elephant Risk Zone</b>`;
-          villages.forEach(v=>{
-            villageHTML += `<div style="margin-top:4px;">🔴 <b>${v}</b></div>`;
-          });
-        }
-      }
+  Object.keys(window.coneVillages).forEach(k=>{
 
+    const [clat, clon] = k.split(",").map(Number);
+
+    const d = Math.sqrt(
+      Math.pow(lat - clat, 2) +
+      Math.pow(lon - clon, 2)
+    );
+
+    if(d < minDist){
+      minDist = d;
+      nearestKey = k;
+    }
+  });
+
+  /* 🔥 THRESHOLD (IMPORTANT) */
+  if(nearestKey && minDist < 0.01){   // ~1km range
+
+    const villages = window.coneVillages[nearestKey];
+
+    if(villages && villages.length > 0){
+      villageHTML += `<hr><b>🏠 Elephant Risk Zone</b>`;
+      villages.forEach(v=>{
+        villageHTML += `<div style="margin-top:4px;">🔴 <b>${v}</b></div>`;
+      });
+    }
+  }
+
+}
       /* PHOTO */
       const photoHtml = e.photo ? `
         <div style="margin-top:8px">
