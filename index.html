@@ -2263,7 +2263,11 @@ function loadSightings() {
         SE:"South-East",SW:"South-West"
       };
 
-      let movementText = dirMap[e.direction] || "Unknown";
+      const dirKey = String(e.direction || "")
+  .trim()
+  .toUpperCase();
+
+let movementText = dirMap[dirKey] || "Unknown";
 
       /* 🔥 VILLAGE RISK */
       let villageHTML = "";
