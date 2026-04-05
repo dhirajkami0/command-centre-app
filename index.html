@@ -2259,19 +2259,30 @@ console.log("🔍 RAW DIR:", JSON.stringify(e.direction));
 console.log("🔍 TYPE:", typeof e.direction);
       /* DIRECTION */
 const dirMap = {
-  N:"North", S:"South", E:"East", W:"West",
-  NE:"North-East", NW:"North-West",
-  SE:"South-East", SW:"South-West"
+  N:"North",
+  NE:"North-East",
+  E:"East",
+  SE:"South-East",
+  S:"South",
+  SW:"South-West",
+  W:"West",
+  NW:"North-West"
 };
 
-const rawDir = e.Direction || "";
+/* 🔥 READ FROM SHEET (IMPORTANT: capital D) */
+const rawDir = e.Direction;
 
-const dirKey = String(rawDir)
-  .trim()
-  .toUpperCase();
+/* 🔥 HANDLE EMPTY */
+if (!rawDir) {
+  movementText = "Unknown";
+} else {
 
-let movementText = dirMap[dirKey] || "Unknown";
-      
+  const dirKey = String(rawDir)
+    .trim()
+    .toUpperCase();
+
+  movementText = dirMap[dirKey] || "Unknown";
+}      
       /* 🔥 VILLAGE RISK */
       let villageHTML = "";
 
