@@ -2189,16 +2189,21 @@ function openStatsPopup(name, latlng) {
     ============================================================ */
 function loadSightings() {
 
-if(window.sightingsLoadedOnce){
-  console.log("⏸ Skipping full clear (keeping markers stable)");
-} else {
-  elephantLayer.clearLayers();
-}
+  /* 🔥 CLEAR ONLY FIRST TIME */
+  if(!window.sightingsInitialized){
+    elephantLayer.clearLayers();
+    window.sightingsInitialized = true;
+  } else {
+    console.log("⏸ Keeping existing sighting markers");
+  }
 
   callBackend("getSightings")
   .then(function(data){
 
     if(!data) return;
+
+    /* 🔥 GLOBAL STORE */
+    window.sightingMarkers = window.sightingMarkers || {};
 
     data.forEach(function(e){
 
@@ -2247,7 +2252,7 @@ if(window.sightingsLoadedOnce){
 
       let movementText = dirMap[e.direction] || "Unknown";
 
-      /* 🔥 VILLAGE RISK (DISTANCE BASED) */
+      /* 🔥 VILLAGE RISK */
       let villageHTML = "";
 
       if(window.coneVillages){
@@ -2269,7 +2274,7 @@ if(window.sightingsLoadedOnce){
           }
         });
 
-        if(nearestKey && minDist < 0.02){ // 🔥 increased range
+        if(nearestKey && minDist < 0.02){
 
           const villages = window.coneVillages[nearestKey];
 
@@ -2290,7 +2295,7 @@ if(window.sightingsLoadedOnce){
           </a>
         </div>` : "";
 
-      /* ✅ FINAL POPUP (FIXED) */
+      /* POPUP (UNCHANGED) */
       const popup = `
       <div style="font-family:Segoe UI;min-width:220px">
 
@@ -2314,72 +2319,66 @@ if(window.sightingsLoadedOnce){
         ${photoHtml}
 
         <div style="margin-top:10px">
-<button onclick="
-  event.stopPropagation();
-  window.isPopupInteracting = true;
-  window.lastInteractionTime = Date.now();   /* 🔥 ADD THIS */
-  showMoveOptions('${e.id}', this)
-" style="
-  background:#2e7d32;color:white;border:none;
-  width:100%;padding:10px;
-  border-radius:6px;cursor:pointer;">
-  ✅ MARK AS MOVED
-</button>
-<select 
-  onchange="confirmExit(this,'${e.id}')"
-  onclick="
-    event.stopPropagation();
-    window.isPopupInteracting = true;
-    window.lastInteractionTime = Date.now();
-  "
-  onfocus="
-    window.isPopupInteracting = true;
-    window.lastInteractionTime = Date.now();
-  "
-  onblur="
-    setTimeout(()=>{
-      window.isPopupInteracting = false;
-    }, 5000);
-  "
-  style="
-    display:none;
-    width:100%;
-    margin-top:8px;
-    padding:10px;
-    border-radius:6px;
-  "
->
-  <option value="">-- Select Action --</option>
+          <button onclick="
+            event.stopPropagation();
+            window.isPopupInteracting = true;
+            window.lastInteractionTime = Date.now();
+            showMoveOptions('${e.id}', this)
+          " style="
+            background:#2e7d32;color:white;border:none;
+            width:100%;padding:10px;
+            border-radius:6px;cursor:pointer;">
+            ✅ MARK AS MOVED
+          </button>
 
-  <option value="Moved">🟢 Moved</option>
-
-  <option>Driven to DPO 1</option>
-  <option>Driven to DPO 2</option>
-  <option>Driven to DPO 5</option>
-  <option>Driven to DPO 6</option>
-  <option>Driven to DPO 9</option>
-
-  <option>Driven to PORO 2</option>
-  <option>Driven to PORO 3</option>
-  <option>Driven to PORO 4</option>
-  <option>Driven to PORO 5</option>
-  <option>Driven to PORO 7</option>
-  <option>Driven to PORO 8</option>
-  <option>Driven to PORO 9</option>
-  <option>Driven to PORO 10</option>
-
-  <option>Driven to PF</option>
-</select>
-</div>
+          <select 
+            onchange="confirmExit(this,'${e.id}')"
+            onclick="event.stopPropagation(); window.isPopupInteracting=true; window.lastInteractionTime=Date.now();"
+            onfocus="window.isPopupInteracting=true; window.lastInteractionTime=Date.now();"
+            onblur="setTimeout(()=>window.isPopupInteracting=false,5000);"
+            style="display:none;width:100%;margin-top:8px;padding:10px;border-radius:6px;"
+          >
+            <option value="">-- Select Action --</option>
+            <option value="Moved">🟢 Moved</option>
+            <option>Driven to DPO 1</option>
+            <option>Driven to DPO 2</option>
+            <option>Driven to DPO 5</option>
+            <option>Driven to DPO 6</option>
+            <option>Driven to DPO 9</option>
+            <option>Driven to PORO 2</option>
+            <option>Driven to PORO 3</option>
+            <option>Driven to PORO 4</option>
+            <option>Driven to PORO 5</option>
+            <option>Driven to PORO 7</option>
+            <option>Driven to PORO 8</option>
+            <option>Driven to PORO 9</option>
+            <option>Driven to PORO 10</option>
+            <option>Driven to PF</option>
+          </select>
+        </div>
 
       </div>`;
 
-      L.marker([lat,lon],{
+      const key = e.id;
+
+      /* 🔥 FIX: NO DUPLICATE MARKERS */
+      if(window.sightingMarkers[key]){
+        window.sightingMarkers[key].setLatLng([lat,lon]);  // update only
+        return;
+      }
+
+      /* 🔥 CREATE ONLY ONCE */
+      const marker = L.marker([lat,lon],{
         icon:icon,
         zIndexOffset:5000
       })
-      .bindPopup(popup)
+      .bindPopup(popup,{
+        autoClose:false,
+        closeOnClick:false
+      })
       .addTo(elephantLayer);
+
+      window.sightingMarkers[key] = marker;
 
     });
 
