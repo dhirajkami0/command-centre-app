@@ -2312,55 +2312,72 @@ if(window.coneVillages){
 
         ${villageHTML}
         ${photoHtml}
+const popup = `
+<div style="font-family:Segoe UI;min-width:220px">
 
-        <div style="margin-top:10px">
+  <div style="color:${color};font-weight:bold">
+    🔴 ACTIVE
+  </div>
 
-  <button onclick="showMoveOptions('${e.id}', this)" style="
-    background:#2e7d32;color:white;border:none;
-    width:100%;padding:10px;
-    border-radius:6px;cursor:pointer;">
-    ✅ MARK AS MOVED
-  </button>
+  <hr>
 
-  <select onchange="confirmExit(this,'${e.id}')" style="
-    display:none;
-    width:100%;
-    margin-top:8px;
-    padding:10px;
-    border-radius:6px;
-  ">
+  <b>🐘 Herd:</b> ${herd}<br>
+  <b>🧭 Movement:</b> ${movementText}<br>
+  <b>⏱ Time:</b> ${timeDisplay}<br>
 
-    <option value="">-- Select Action --</option>
+  <b>👤 Sighted by:</b> ${e.teamLeader || "Unknown"}<br>
 
-    <option value="Moved">🟢 Moved</option>
+  <br>
+  <b>📍 Location of sighting:</b><br>
+  <code>${lat.toFixed(5)}, ${lon.toFixed(5)} near ${e.village || "Unknown"}</code>
 
-    <option>Driven to DPO 1</option>
-    <option>Driven to DPO 2</option>
-    <option>Driven to DPO 5</option>
-    <option>Driven to DPO 6</option>
-    <option>Driven to DPO 9</option>
+  ${villageHTML}
+  ${photoHtml}
 
-    <option>Driven to PORO 2</option>
-    <option>Driven to PORO 3</option>
-    <option>Driven to PORO 4</option>
-    <option>Driven to PORO 5</option>
-    <option>Driven to PORO 7</option>
-    <option>Driven to PORO 8</option>
-    <option>Driven to PORO 9</option>
-    <option>Driven to PORO 10</option>
+  <!-- 🔥 MOVE ACTION BLOCK -->
+  <div style="margin-top:10px">
 
-    <option>Driven to PF</option>
+    <button onclick="showMoveOptions('${e.id}', this)" style="
+      background:#2e7d32;color:white;border:none;
+      width:100%;padding:10px;
+      border-radius:6px;cursor:pointer;">
+      ✅ MARK AS MOVED
+    </button>
 
-  </select>
+    <select onchange="confirmExit(this,'${e.id}')" style="
+      display:none;
+      width:100%;
+      margin-top:8px;
+      padding:10px;
+      border-radius:6px;
+    ">
 
-</div>
-          background:#2e7d32;color:white;border:none;
-          width:100%;padding:10px;margin-top:10px;
-          border-radius:6px;cursor:pointer;">
-          ✅ MARK AS MOVED
-        </button>
+      <option value="">-- Select Action --</option>
 
-      </div>`;
+      <option value="Moved">🟢 Moved</option>
+
+      <option>Driven to DPO 1</option>
+      <option>Driven to DPO 2</option>
+      <option>Driven to DPO 5</option>
+      <option>Driven to DPO 6</option>
+      <option>Driven to DPO 9</option>
+
+      <option>Driven to PORO 2</option>
+      <option>Driven to PORO 3</option>
+      <option>Driven to PORO 4</option>
+      <option>Driven to PORO 5</option>
+      <option>Driven to PORO 7</option>
+      <option>Driven to PORO 8</option>
+      <option>Driven to PORO 9</option>
+      <option>Driven to PORO 10</option>
+
+      <option>Driven to PF</option>
+
+    </select>
+
+  </div>
+
+</div>`;
 
       L.marker([lat,lon],{
         icon:icon,
