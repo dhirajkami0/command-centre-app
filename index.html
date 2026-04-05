@@ -2002,6 +2002,8 @@ ${pct(data.health)} / 100
     }
 function clearKMLPreview(){
 
+  console.log("🔎 previewKMLLayer:", previewKMLLayer);
+
   if (previewKMLLayer) {
 
     map.removeLayer(previewKMLLayer);
@@ -3161,62 +3163,98 @@ if (rawDir) {
 
     function submitKML() {
 
-      const beat = document.getElementById("kmlBeat").value;
-      const fileInput = document.getElementById("kmlFileInput");
-      const status = document.getElementById("kmlStatus");
+  console.group("📤 submitKML");
 
-      const file = fileInput.files[0];
+  const beat = document.getElementById("kmlBeat").value;
+  const fileInput = document.getElementById("kmlFileInput");
+  const status = document.getElementById("kmlStatus");
 
-      if (!beat) {
-        alert("Select Beat");
-        return;
+  const file = fileInput.files[0];
+
+  console.log("📁 File:", file);
+  console.log("🏷 Beat:", beat);
+
+  if (!beat) {
+    alert("Select Beat");
+    console.warn("⚠ No beat selected");
+    console.groupEnd();
+    return;
+  }
+
+  if (!file) {
+    alert("Select file");
+    console.warn("⚠ No file selected");
+    console.groupEnd();
+    return;
+  }
+
+  status.innerHTML = "⏳ Uploading...";
+
+  const reader = new FileReader();
+
+  reader.onload = function (e) {
+
+    console.log("📄 File loaded");
+
+    const kmlText = e.target.result;
+
+    callBackend("processUpload", {
+      kmlText: kmlText,
+      beatTag: beat
+    })
+    .then(function (msg) {
+
+      console.log("📥 Backend:", msg);
+
+      status.innerHTML = "✅ " + msg;
+
+      try {
+
+        // 🔥 REMOVE OLD PREVIEW FIRST
+        if (previewKMLLayer) {
+          console.log("🧹 Removing old preview");
+          map.removeLayer(previewKMLLayer);
+          previewKMLLayer = null;
+        }
+
+        // 🔥 PARSE + STORE
+        const parser = new DOMParser();
+        const xml = parser.parseFromString(kmlText, "text/xml");
+
+        previewKMLLayer = new L.KML(xml);
+
+        console.log("🆕 previewKMLLayer set:", previewKMLLayer);
+
+        previewKMLLayer.addTo(map);
+
+        // 🔥 ZOOM AFTER LOAD
+        previewKMLLayer.on("loaded", function () {
+          console.log("✅ KML LOADED");
+
+          if (previewKMLLayer.getBounds().isValid()) {
+            map.fitBounds(previewKMLLayer.getBounds());
+          }
+        });
+
+      } catch (err) {
+        console.error("❌ KML render error:", err);
       }
 
-      if (!file) {
-        alert("Select file");
-        return;
-      }
+      setTimeout(closeKMLForm, 1500);
 
-      status.innerHTML = "⏳ Uploading...";
+      console.groupEnd();
 
-      const reader = new FileReader();
+    })
+    .catch(function (err) {
+      console.error("❌ Upload failed:", err);
+      status.innerHTML = "❌ Upload failed";
+      console.groupEnd();
+    });
 
-      reader.onload = function (e) {
+  };
 
-        const kmlText = e.target.result;
-
-        callBackend("processUpload", {
-          kmlText: kmlText,
-          beatTag: beat
-        })
-          .then(function (msg) {
-
-            status.innerHTML = "✅ " + msg;
-
-            // 🔥 show on map
-            const parser = new DOMParser();
-            const xml = parser.parseFromString(kmlText, "text/xml");
-
-            const layer = new L.KML(xml);
-            layer.addTo(map);
-
-            if (layer.getBounds().isValid()) {
-              map.fitBounds(layer.getBounds());
-            }
-
-            setTimeout(closeKMLForm, 1500);
-
-          })
-          .catch(function (err) {
-            status.innerHTML = "❌ Upload failed";
-          });
-
-      };
-
-      reader.readAsText(file);
-    }
-
-
+  reader.readAsText(file);
+}
     /* ============================================================
        📱 RESPONSIVE PANEL TOGGLE
     ============================================================ */
