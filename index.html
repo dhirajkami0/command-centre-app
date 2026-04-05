@@ -2002,17 +2002,19 @@ ${pct(data.health)} / 100
     }
     function clearKMLPreview(){
 
-  if (previewKMLLayer) {
-    map.removeLayer(previewKMLLayer);
-    previewKMLLayer = null;
+  if (previewKMLGroup) {
+
+    previewKMLGroup.clearLayers();
+    map.removeLayer(previewKMLGroup);
+    previewKMLGroup = null;
 
     showToast("KML preview removed");
+
   } else {
     showToast("No preview to remove", "warning");
   }
 
-}
-  function uploadKML() {
+}nction uploadKML() {
 
   const fileInput = document.getElementById("kmlUpload");
   const file = fileInput.files[0];
