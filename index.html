@@ -2259,25 +2259,20 @@ console.log("🔍 RAW DIR:", JSON.stringify(e.direction));
 console.log("🔍 TYPE:", typeof e.direction);
       /* DIRECTION */
 const dirMap = {
-  N:"North",S:"South",E:"East",W:"West",
-  NE:"North-East",NW:"North-West",
-  SE:"South-East",SW:"South-West",
-  NORTH:"North",SOUTH:"South",EAST:"East",WEST:"West",
-  NORTHEAST:"North-East",NORTHWEST:"North-West",
-  SOUTHEAST:"South-East",SOUTHWEST:"South-West"
+  N:"North", S:"South", E:"East", W:"West",
+  NE:"North-East", NW:"North-West",
+  SE:"South-East", SW:"South-West"
 };
 
-/* 🔥 USE CORRECT FIELD */
 const rawDir = e.Direction || "";
 
-/* 🔥 CLEAN + NORMALIZE */
 const dirKey = String(rawDir)
   .trim()
-  .replace(/\s+/g,"")
   .toUpperCase();
 
-/* 🔥 FINAL */
-let movementText = dirMap[dirKey] || rawDir || "Unknown";/* 🔥 VILLAGE RISK */
+let movementText = dirMap[dirKey] || "Unknown";
+      
+      /* 🔥 VILLAGE RISK */
       let villageHTML = "";
 
       if(window.coneVillages){
