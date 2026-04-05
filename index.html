@@ -2255,12 +2255,23 @@ function loadSightings() {
           timeDisplay = `${hr}:${m} ${ampm}`;
         }
       }
-
+console.log("🔍 RAW DIR:", JSON.stringify(e.direction));
+console.log("🔍 TYPE:", typeof e.direction);
       /* DIRECTION */
-    const dirMap = {
+  const dirMap = {
   N:"North",S:"South",E:"East",W:"West",
   NE:"North-East",NW:"North-West",
-  SE:"South-East",SW:"South-West"
+  SE:"South-East",SW:"South-West",
+
+  // 🔥 ADD THIS (IMPORTANT)
+  NORTH:"North",
+  SOUTH:"South",
+  EAST:"East",
+  WEST:"West",
+  NORTHEAST:"North-East",
+  NORTHWEST:"North-West",
+  SOUTHEAST:"South-East",
+  SOUTHWEST:"South-West"
 };
 
 /* 🔥 HARD CLEAN (handles ALL garbage chars) */
