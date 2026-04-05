@@ -99,7 +99,7 @@
   <script>
     // ===============================
     
- let previewKMLGroup = null;
+ let previewKMLLayer = null;
 let markerMap = {};
 let trackMap = {};  
     // 🔥 GLOBAL ERROR HANDLER
@@ -2000,13 +2000,12 @@ ${pct(data.health)} / 100
         });
 
     }
- function clearKMLPreview(){
+function clearKMLPreview(){
 
-  if (previewKMLGroup && map.hasLayer(previewKMLGroup)) {
+  if (previewKMLLayer) {
 
-    previewKMLGroup.clearLayers();
-    map.removeLayer(previewKMLGroup);
-    previewKMLGroup = null;
+    map.removeLayer(previewKMLLayer);
+    previewKMLLayer = null;
 
     showToast("KML preview removed");
 
@@ -2048,43 +2047,26 @@ ${pct(data.health)} / 100
       try {
 
         // 🔥 REMOVE OLD PREVIEW
-        if (previewKMLGroup && map.hasLayer(previewKMLGroup)) {
-          previewKMLGroup.clearLayers();
-          map.removeLayer(previewKMLGroup);
-          previewKMLGroup = null;
+        if (previewKMLLayer) {
+          map.removeLayer(previewKMLLayer);
+          previewKMLLayer = null;
         }
-
-        // 🔥 CREATE GROUP
-        previewKMLGroup = L.layerGroup();
-        map.addLayer(previewKMLGroup);
 
         const parser = new DOMParser();
         const xml = parser.parseFromString(kmlText, "text/xml");
 
-        const kmlLayer = new L.KML(xml);
+        // 🔥 STORE DIRECTLY
+        previewKMLLayer = new L.KML(xml);
+        previewKMLLayer.addTo(map);
 
-        // 🔥 IMPORTANT: ADD TO MAP FIRST (forces parsing)
-        kmlLayer.addTo(map);
-
-        // 🔥 WAIT FOR LOAD → THEN MOVE INTO GROUP
-        kmlLayer.on("loaded", function () {
-
-          // move all sublayers into group
-          kmlLayer.eachLayer(function(layer){
-            previewKMLGroup.addLayer(layer);
-          });
-
-          // remove original container
-          map.removeLayer(kmlLayer);
-
-          // zoom
-          if (previewKMLGroup.getBounds().isValid()) {
-            map.fitBounds(previewKMLGroup.getBounds());
+        // 🔥 ZOOM
+        previewKMLLayer.on("loaded", function () {
+          if (previewKMLLayer.getBounds().isValid()) {
+            map.fitBounds(previewKMLLayer.getBounds());
           }
-
-          console.log("✅ KML PREVIEW ADDED (group controlled)");
-
         });
+
+        console.log("✅ previewKMLLayer SET:", previewKMLLayer);
 
       } catch (err) {
         console.error("KML render error:", err);
