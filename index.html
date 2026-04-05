@@ -2000,9 +2000,9 @@ ${pct(data.health)} / 100
         });
 
     }
-    function clearKMLPreview(){
+ function clearKMLPreview(){
 
-  if (previewKMLGroup) {
+  if (previewKMLGroup && map.hasLayer(previewKMLGroup)) {
 
     previewKMLGroup.clearLayers();
     map.removeLayer(previewKMLGroup);
@@ -2014,8 +2014,7 @@ ${pct(data.health)} / 100
     showToast("No preview to remove", "warning");
   }
 
-}
-    function uploadKML() {
+}function uploadKML() {
 
   const fileInput = document.getElementById("kmlUpload");
   const file = fileInput.files[0];
@@ -2025,7 +2024,6 @@ ${pct(data.health)} / 100
     return;
   }
 
-  // ✅ FROM DROPDOWN (NO PROMPT)
   const beatTag = document.getElementById("kmlBeat")?.value;
 
   if (!beatTag) {
@@ -2049,48 +2047,44 @@ ${pct(data.health)} / 100
 
       try {
 
-        // 🔥 REMOVE OLD PREVIEW COMPLETELY
-        if (previewKMLGroup) {
+        // 🔥 REMOVE OLD PREVIEW
+        if (previewKMLGroup && map.hasLayer(previewKMLGroup)) {
           previewKMLGroup.clearLayers();
           map.removeLayer(previewKMLGroup);
           previewKMLGroup = null;
         }
 
-        // 🔥 CREATE GROUP CONTAINER
-        previewKMLGroup = L.layerGroup().addTo(map);
+        // 🔥 CREATE GROUP
+        previewKMLGroup = L.layerGroup();
+        map.addLayer(previewKMLGroup);
 
         const parser = new DOMParser();
         const xml = parser.parseFromString(kmlText, "text/xml");
 
         const kmlLayer = new L.KML(xml);
 
-        // 🔥 WHEN KML FULLY LOADED
+        // 🔥 IMPORTANT: ADD TO MAP FIRST (forces parsing)
+        kmlLayer.addTo(map);
+
+        // 🔥 WAIT FOR LOAD → THEN MOVE INTO GROUP
         kmlLayer.on("loaded", function () {
 
-          previewKMLGroup.addLayer(kmlLayer);
+          // move all sublayers into group
+          kmlLayer.eachLayer(function(layer){
+            previewKMLGroup.addLayer(layer);
+          });
 
-          // 🔥 AUTO ZOOM
-          if (kmlLayer.getBounds().isValid()) {
-            map.fitBounds(kmlLayer.getBounds());
+          // remove original container
+          map.removeLayer(kmlLayer);
+
+          // zoom
+          if (previewKMLGroup.getBounds().isValid()) {
+            map.fitBounds(previewKMLGroup.getBounds());
           }
 
-          console.log("✅ KML PREVIEW ADDED");
+          console.log("✅ KML PREVIEW ADDED (group controlled)");
 
         });
-
-        // 🔥 AUTO REMOVE AFTER 10 SECONDS
-        setTimeout(() => {
-
-          if (previewKMLGroup) {
-            previewKMLGroup.clearLayers();
-            map.removeLayer(previewKMLGroup);
-            previewKMLGroup = null;
-
-            showToast("Preview removed from map");
-            console.log("🔥 KML PREVIEW REMOVED");
-          }
-
-        }, 10000);
 
       } catch (err) {
         console.error("KML render error:", err);
