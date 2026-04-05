@@ -2257,20 +2257,18 @@ function loadSightings() {
       }
 
       /* DIRECTION */
-     const dirMap = {
+    const dirMap = {
   N:"North",S:"South",E:"East",W:"West",
   NE:"North-East",NW:"North-West",
   SE:"South-East",SW:"South-West"
 };
 
-/* 🔥 CLEAN INPUT */
+/* 🔥 HARD CLEAN (handles ALL garbage chars) */
 const dirKey = String(e.direction || "")
-  .trim()              // remove spaces
-  .replace(/\s+/g,"")  // remove inner spaces
-  .toUpperCase();      // normalize case
+  .replace(/[^A-Za-z]/g, "")   // 🔥 remove EVERYTHING except letters
+  .toUpperCase();
 
-let movementText = dirMap[dirKey] || "Unknown";
-      /* 🔥 VILLAGE RISK */
+let movementText = dirMap[dirKey] || "Unknown";  /* 🔥 VILLAGE RISK */
       let villageHTML = "";
 
       if(window.coneVillages){
