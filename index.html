@@ -2334,17 +2334,18 @@ const popup = `
   ${villageHTML}
   ${photoHtml}
 
-  <!-- 🔥 MOVE ACTION BLOCK -->
   <div style="margin-top:10px">
 
-    <button onclick="showMoveOptions('${e.id}', this)" style="
+    <button onclick="event.stopPropagation(); showMoveOptions('${e.id}', this)" style="
       background:#2e7d32;color:white;border:none;
       width:100%;padding:10px;
       border-radius:6px;cursor:pointer;">
       ✅ MARK AS MOVED
     </button>
 
-    <select onchange="confirmExit(this,'${e.id}')" style="
+    <select onchange="confirmExit(this,'${e.id}')"
+            onclick="event.stopPropagation()"
+            style="
       display:none;
       width:100%;
       margin-top:8px;
@@ -2353,7 +2354,6 @@ const popup = `
     ">
 
       <option value="">-- Select Action --</option>
-
       <option value="Moved">🟢 Moved</option>
 
       <option>Driven to DPO 1</option>
