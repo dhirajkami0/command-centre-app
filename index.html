@@ -3762,20 +3762,49 @@ map.on('overlayremove', function (e) {
               });
             }
           }
+function calculateTotal(){
 
+  const m = parseInt(document.getElementById("f-m").value) || 0;
+  const f = parseInt(document.getElementById("f-f").value) || 0;
+  const u = parseInt(document.getElementById("f-u").value) || 0;
+  const c = parseInt(document.getElementById("f-c").value) || 0;
+
+  document.getElementById("f-total").value = m + f + u + c;
+}
           /* 3. Open Form + GPS */
-          function openSightingForm() {
+         function openSightingForm() {
 
-            if (navigator.geolocation) {
-              navigator.geolocation.getCurrentPosition(function (position) {
-                document.getElementById('f-lat').value = position.coords.latitude;
-                document.getElementById('f-lon').value = position.coords.longitude;
-              });
-            }
+  document.getElementById("form-modal").style.display = "block";
 
-            document.getElementById('form-modal').style.display = 'block';
-          }
+  /* ✅ TEAM LEADER AUTO */
+  document.getElementById("f-team").value =
+    window.loggedInUser || window.userProfile?.leader || "Unknown";
 
+  /* ✅ TIME AUTO */
+  const now = new Date();
+  const hh = String(now.getHours()).padStart(2,"0");
+  const mm = String(now.getMinutes()).padStart(2,"0");
+  document.getElementById("f-time").value = hh + ":" + mm;
+
+  /* ✅ LOCATION AUTO */
+  if(navigator.geolocation){
+    navigator.geolocation.getCurrentPosition(function(pos){
+
+      const lat = pos.coords.latitude.toFixed(6);
+      const lon = pos.coords.longitude.toFixed(6);
+
+      document.getElementById("f-lat").value = lat;
+      document.getElementById("f-lon").value = lon;
+
+      document.getElementById("f-location").value =
+        lat + ", " + lon;
+
+    });
+  }
+
+  /* ✅ RESET TOTAL */
+  calculateTotal();
+}
           /* 4. Close Form */
           function closeSightingForm() {
 document.getElementById('form-modal').style.display = 'none';
@@ -4518,6 +4547,48 @@ function loadMapDataFirebase() {
   });
 
 }
+    function updateCompt(){
+
+  const block = document.getElementById("f-block").value;
+  const compt = document.getElementById("f-compt");
+
+  compt.innerHTML = "";
+
+  let list = [];
+
+  if(block === "PORO"){
+    list = ["PORO 3","PORO 4","PORO 8","PORO 9","PORO 2","PORO 7","PF","PORO 5","PORO 10"];
+  }
+
+  else if(block === "DPO"){
+    list = ["DPO 1","DPO 2","DPO 5","DPO 6","DPO 9"];
+  }
+
+  else if(block === "VILLAGE"){
+    list = [
+"Fhoksadanga(Joler Tank)","Fhoksadanga(Satu Mill)","Police Camp","Barua Road",
+"Kali Mandir","Royal Dhaba","Burir Dokan","Garam Bridge","RVK Road",
+"Dakhal Busty","Poro Bus Stand","River Camp Road","Uttar Poro Busty",
+"Dakshin Poro Busty","East Poro Beat","Near Fagu Chowpaty",
+"Fagu Chowpaty (Poro)","Hindi School (Satkodali)","Chandan Dokan",
+"Satkodali","Bagan Kona(Satkodali)","Dilip House(Bagan Kona School)",
+"Nauka Ghat(Satkodali)","Shivmandir(Satkodali)","Dolapara",
+"Dolapara Dotalabari","Jabrabasty(Chowpatty)","Neka Chowpaty",
+"Ultaghar","Nisu Panchyat House","Bagan Chowpatty Jitpur",
+"Bagan Office Road Division","Dangapara Primary School","Power House",
+"Damanpur Division Ground Majherdabri","Dodiyar Bridge",
+"Jitpur Central School","Naba Udayan Sporting Club Damanpur",
+"Bat Talai Damanpur"
+    ];
+  }
+
+  list.forEach(v=>{
+    const opt = document.createElement("option");
+    opt.value = v;
+    opt.textContent = v;
+    compt.appendChild(opt);
+  });
+}
   </script>
 
   </div><div id="form-modal"
@@ -4600,12 +4671,31 @@ style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; bac
 <input type="text" id="f-driving">
 
 <!-- REMARKS -->
-<label><b>Remarks</b></label>
-<select id="f-remarks">
+<label><b>Driving Status / Remarks</b></label>
+<select id="f-remarks"
+style="width:100%; padding:12px; margin-top:5px; border-radius:5px; border:1px solid #ccc;">
+
 <option value="Active">🔴 Active</option>
 <option value="Moved">🟢 Moved</option>
-</select>
 
+<option>Driven to DPO 1</option>
+<option>Driven to DPO 2</option>
+<option>Driven to DPO 5</option>
+<option>Driven to DPO 6</option>
+<option>Driven to DPO 9</option>
+
+<option>Driven to PORO 2</option>
+<option>Driven to PORO 3</option>
+<option>Driven to PORO 4</option>
+<option>Driven to PORO 5</option>
+<option>Driven to PORO 7</option>
+<option>Driven to PORO 8</option>
+<option>Driven to PORO 9</option>
+<option>Driven to PORO 10</option>
+
+<option>Driven to PF</option>
+
+</select>
 <!-- TEAM LEADER AUTO -->
 <label><b>Team Leader</b></label>
 <input type="text" id="f-team" readonly>
