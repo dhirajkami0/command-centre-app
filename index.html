@@ -32,8 +32,7 @@
 </script><!DOCTYPE html>
 <html>
 
-<head>
-  <script>
+<head><script>
 (function(){
 
   function toast(msg, type="success"){
@@ -58,7 +57,10 @@
     setTimeout(()=>t.remove(),3000);
   }
 
-  // 🔥 HARD OVERRIDE (ALL TYPES)
+  // ✅ MAKE GLOBAL
+  window.showToast = toast;
+
+  // 🔥 OVERRIDES
   window.alert = function(msg){ toast(msg); return true; };
   window.confirm = function(msg){ toast(msg); return true; };
   window.prompt = function(msg){ toast(msg); return ""; };
