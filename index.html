@@ -2257,18 +2257,19 @@ function loadSightings() {
       }
 
       /* DIRECTION */
-      const dirMap = {
-        N:"North",S:"South",E:"East",W:"West",
-        NE:"North-East",NW:"North-West",
-        SE:"South-East",SW:"South-West"
-      };
+     const dirMap = {
+  N:"North",S:"South",E:"East",W:"West",
+  NE:"North-East",NW:"North-West",
+  SE:"South-East",SW:"South-West"
+};
 
-      const dirKey = String(e.direction || "")
-  .trim()
-  .toUpperCase();
+/* 🔥 CLEAN INPUT */
+const dirKey = String(e.direction || "")
+  .trim()              // remove spaces
+  .replace(/\s+/g,"")  // remove inner spaces
+  .toUpperCase();      // normalize case
 
 let movementText = dirMap[dirKey] || "Unknown";
-
       /* 🔥 VILLAGE RISK */
       let villageHTML = "";
 
