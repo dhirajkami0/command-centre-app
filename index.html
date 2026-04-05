@@ -3774,28 +3774,107 @@ function calculateTotal(){
           /* 3. Open Form + GPS */
          function openSightingForm(){
 
-  document.getElementById("form-modal").style.display = "block";
+  console.group("🐘 openSightingForm START");
+  console.log("⏱ Time:", new Date().toLocaleTimeString());
 
-  /* TEAM */
-  document.getElementById("f-team").value =
-    window.userProfile?.name || "Unknown";
+  const modal = document.getElementById("form-modal");
 
-  /* TIME */
+  if (!modal) {
+    console.error("❌ form-modal NOT FOUND");
+    console.groupEnd();
+    return;
+  }
+
+  /* 🔥 FORCE SHOW */
+  modal.style.display = "block";
+  modal.style.visibility = "visible";
+  modal.style.opacity = "1";
+
+  console.log("✅ Modal visible");
+
+  /* ===============================
+     🧹 RESET FORM
+  =============================== */
+  const form = document.getElementById("elephantForm");
+
+  if (form) {
+    form.reset();
+    console.log("🧹 Form reset done");
+  }
+
+  /* ===============================
+     PROFILE
+  =============================== */
+  const profile = window.userProfile;
+
+  console.log("👤 Profile:", profile);
+
+  if (!profile || !profile.name) {
+    alert("User not loaded");
+    console.groupEnd();
+    return;
+  }
+
+  /* ===============================
+     SAFE SET
+  =============================== */
+  const setVal = (id, val) => {
+    const el = document.getElementById(id);
+    if (el) el.value = val;
+  };
+
+  /* ===============================
+     TEAM LEADER (LOCKED)
+  =============================== */
+  const teamInput = document.getElementById("f-team");
+
+  if (teamInput) {
+    teamInput.value = profile.name;   // ✅ CLEAN NAME ALREADY DONE
+    teamInput.readOnly = true;
+    teamInput.dataset.lockedUser = profile.name;
+    console.log("✅ Team Leader set:", profile.name);
+  }
+
+  /* ===============================
+     TIME AUTO
+  =============================== */
   const now = new Date();
-  document.getElementById("f-time").value =
-    now.toTimeString().slice(0,5);
 
-  /* LOCATION */
-  navigator.geolocation.getCurrentPosition(pos=>{
-    const lat = pos.coords.latitude.toFixed(6);
-    const lon = pos.coords.longitude.toFixed(6);
+  const hh = String(now.getHours()).padStart(2,"0");
+  const mm = String(now.getMinutes()).padStart(2,"0");
 
-    document.getElementById("f-lat").value = lat;
-    document.getElementById("f-lon").value = lon;
-    document.getElementById("f-location").value = lat + ", " + lon;
-  });
+  setVal("f-time", hh + ":" + mm);
 
-  calculateTotal();
+  /* ===============================
+     LOCATION AUTO
+  =============================== */
+  if (navigator.geolocation){
+
+    navigator.geolocation.getCurrentPosition(function(pos){
+
+      const lat = pos.coords.latitude.toFixed(6);
+      const lon = pos.coords.longitude.toFixed(6);
+
+      setVal("f-lat", lat);
+      setVal("f-lon", lon);
+      setVal("f-location", lat + ", " + lon);
+
+      console.log("📍 Location set:", lat, lon);
+
+    }, function(err){
+      console.error("❌ GPS error:", err);
+    });
+
+  }
+
+  /* ===============================
+     TOTAL INIT (IMPORTANT FIX)
+  =============================== */
+  setTimeout(() => {
+    calculateTotal();   // ✅ ensures UI update
+  }, 100);
+
+  console.groupEnd();
 }
           /* 4. Close Form */
           function closeSightingForm() {
