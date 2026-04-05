@@ -701,11 +701,12 @@ window.addEventListener("unhandledrejection", function (e) {
       </button>
 
       <!-- 🔥 NEW BUTTON ADDED -->
-      <button class="btn-center"
-        onclick="clearKMLPreview()"
-        style="background:#c62828; margin-top:6px;">
-        ❌ CLEAR KML PREVIEW
-      </button>
+      <button id="clearKMLBtn"
+  class="btn-center"
+  onclick="clearKMLPreview()"
+  style="background:#c62828; margin-top:6px; display:none;">
+  ❌ CLEAR KML PREVIEW
+</button>
 
     </div>
 
@@ -2002,12 +2003,13 @@ ${pct(data.health)} / 100
     }
 function clearKMLPreview(){
 
-  console.log("🔎 previewKMLLayer:", previewKMLLayer);
-
   if (previewKMLLayer) {
 
     map.removeLayer(previewKMLLayer);
     previewKMLLayer = null;
+
+    // 🔥 HIDE BUTTON
+    document.getElementById("clearKMLBtn").style.display = "none";
 
     showToast("KML preview removed");
 
@@ -2015,7 +2017,8 @@ function clearKMLPreview(){
     showToast("No preview to remove", "warning");
   }
 
-}function uploadKML() {
+}
+    function uploadKML() {
 
   const fileInput = document.getElementById("kmlUpload");
   const file = fileInput.files[0];
@@ -2058,9 +2061,11 @@ function clearKMLPreview(){
         const xml = parser.parseFromString(kmlText, "text/xml");
 
         // 🔥 STORE DIRECTLY
-        previewKMLLayer = new L.KML(xml);
-        previewKMLLayer.addTo(map);
+       previewKMLLayer = new L.KML(xml);
+previewKMLLayer.addTo(map);
 
+// 🔥 SHOW BUTTON
+document.getElementById("clearKMLBtn").style.display = "block";
         // 🔥 ZOOM
         previewKMLLayer.on("loaded", function () {
           if (previewKMLLayer.getBounds().isValid()) {
