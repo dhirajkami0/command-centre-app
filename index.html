@@ -3792,7 +3792,7 @@ function submitSightingForm(event){
 
     const m   = parseInt(document.getElementById("f-m").value) || 0;
     const f   = parseInt(document.getElementById("f-f").value) || 0;
-    const uni = parseInt(document.getElementById("f-uni").value) || 0;
+    const uni = parseInt(document.getElementById("f-u").value) || 0; // ✅ FIXED
     const c   = parseInt(document.getElementById("f-c").value) || 0;
 
     const total = m + f + uni + c;
@@ -3816,44 +3816,53 @@ function submitSightingForm(event){
     }
 
     const payload = {
-  sighting_id: sightingID,
-  parent_id: "",
-  beat: document.getElementById("f-beat").value,
-  forest_block: document.getElementById("f-beat").value,
-  compt: document.getElementById("f-compt").value,
-  time: time,
 
-  // 🔥 FORCE NUMBER (VERY IMPORTANT)
-  m: Number(m) || 0,
-  f: Number(f) || 0,
-  unidentified: Number(uni) || 0,
-  calf: Number(c) || 0,
+      sighting_id: sightingID,
+      parent_id: "",
 
-  // 🔥 FIX TOTAL (NO #NUM!)
-  total_seen: Number(m) + Number(f) + Number(uni) + Number(c),
+      beat: document.getElementById("f-beat").value,
 
-  anticipated: "",
-  depredation: "",
-  involved: "",
-  driving: "",
-  remarks: document.getElementById("f-remarks").value,
+      /* ✅ FIXED */
+      forest_block: document.getElementById("f-block").value,
 
-  leader: window.userProfile?.leader || "",
-  staff: document.getElementById("f-staff")?.value || "",
+      compt: document.getElementById("f-compt").value,
 
-  // 🔥 FIX LOCATION (CRITICAL)
-  lat: Number(lat),
-  lon: Number(lon),
-  location: Number(lat) + "," + Number(lon),
+      time: time,
 
-  direction: document.getElementById("f-dir").value
-};
+      m: Number(m),
+      f: Number(f),
+      unidentified: Number(uni),
+      calf: Number(c),
+
+      total_seen: total,
+
+      anticipated: "",
+      depredation: "",
+      involved: "",
+      driving: "",
+
+      remarks: document.getElementById("f-remarks").value,
+
+      /* ✅ FINAL TEAM LEADER (NO UNKNOWN EVER) */
+      leader: document.getElementById("f-team").value || "",
+
+      /* ✅ KEEP EMPTY TO PREVENT SHIFT */
+      staff: "",
+
+      lat: Number(lat),
+      lon: Number(lon),
+
+      /* ✅ KEEP EXACT FORMAT */
+      location: lat + "," + lon,
+
+      direction: document.getElementById("f-dir").value
+    };
+
     console.log("📤 Payload:", payload);
 
-    const fileInput = document.getElementById("f-photo-file");
+    const fileInput = document.getElementById("f-photo");
     const file = fileInput ? fileInput.files[0] : null;
 
-    // 🔥 UPDATED SUBMIT (GITHUB SAFE)
     function submitToServer(finalPayload){
 
       callBackend("saveElephantSighting", finalPayload)
@@ -3875,7 +3884,6 @@ function submitSightingForm(event){
         });
     }
 
-    // 📸 PHOTO HANDLING
     if(file){
       const reader = new FileReader();
 
@@ -4512,104 +4520,125 @@ function loadMapDataFirebase() {
 }
   </script>
 
-  </div>
-  <div id="form-modal"
-    style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.9); z-index:5000; overflow-y:auto; padding:10px;">
-    <div
-      style="background:#f4f4f4; border-radius:15px; padding:20px; max-width:480px; margin:10px auto; font-family:'Segoe UI', sans-serif; border-top: 8px solid #1b5e20; box-shadow: 0 10px 30px rgba(0,0,0,0.5);">
+  </div><div id="form-modal"
+style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.9); z-index:5000; overflow-y:auto; padding:10px;">
 
-      <div style="display:flex; justify-content:space-between; align-items:center;">
-        <h3 style="color:#1b5e20; margin:0;"><i class="fa-solid fa-elephant"></i> Elephant Sighting Report</h3>
-        <button onclick="closeSightingForm()"
-          style="background:none; border:none; font-size:24px; color:#666; cursor:pointer;">&times;</button>
-      </div>
-      <hr style="margin:12px 0; border:0; border-top:1px solid #ddd;">
+<div style="background:#f4f4f4; border-radius:15px; padding:20px; max-width:480px; margin:10px auto; font-family:'Segoe UI'; border-top:8px solid #1b5e20;">
 
-      <form id="elephantForm">
-        <input type="hidden" id="f-lat">
-        <input type="hidden" id="f-lon">
+<div style="display:flex; justify-content:space-between;">
+<h3 style="margin:0;color:#1b5e20;">🐘 Elephant Sighting Report</h3>
+<button onclick="closeSightingForm()" style="font-size:24px;border:none;background:none;">&times;</button>
+</div>
 
-        <label><b>Select Beat</b></label>
-        <select id="f-beat" onchange="updateCompartments()" required
-          style="width:100%; padding:12px; margin-top:5px; border-radius:5px; border:1px solid #ccc;">
-          <option value="">-- Choose Beat --</option>
-          <option value="East Garam Beat">East Garam Beat</option>
-          <option value="West Garam Beat">West Garam Beat</option>
-          <option value="East Poro Beat">East Poro Beat</option>
-          <option value="Range HQ">Range HQ</option>
-        </select>
+<hr>
 
-        <label><b>Compartment</b></label>
-        <select id="f-compt" required
-          style="width:100%; padding:12px; margin-top:5px; border-radius:5px; border:1px solid #ccc;">
-          <option value="">-- Choose Beat First --</option>
-        </select>
+<form id="elephantForm">
 
-        <div style="display:grid; grid-template-columns: 1fr 1fr; gap:10px; margin-top:10px;">
-          <div><label>Male (M)</label><input type="number" id="f-m" value="0" min="0"
-              style="width:100%; padding:10px; border:1px solid #ccc; border-radius:5px;"></div>
-          <div><label>Female (F)</label><input type="number" id="f-f" value="0" min="0"
-              style="width:100%; padding:10px; border:1px solid #ccc; border-radius:5px;"></div>
-          <div><label>Unidentified</label><input type="number" id="f-uni" value="0" min="0"
-              style="width:100%; padding:10px; border:1px solid #ccc; border-radius:5px;"></div>
-          <div><label>Calf</label><input type="number" id="f-c" value="0" min="0"
-              style="width:100%; padding:10px; border:1px solid #ccc; border-radius:5px;"></div>
-        </div>
+<input type="hidden" id="f-lat">
+<input type="hidden" id="f-lon">
 
-        <label><b>Driving Status / Remarks</b></label>
-        <select id="f-remarks"
-          style="width:100%; padding:12px; margin-top:5px; border-radius:5px; border:1px solid #ccc;">
-          <option value="Active">🔴 Active</option>
-          <option value="Moved">🟢 Moved</option>
-          <option value="Driven to DPO 1">Driven to DPO 1</option>
-          <option value="Driven to DPO 2">Driven to DPO 2</option>
-          <option value="Driven to DPO 5">Driven to DPO 5</option>
-          <option value="Driven to DPO 6">Driven to DPO 6</option>
-          <option value="Driven to DPO 9">Driven to DPO 9</option>
-          <option value="Driven to PORO 2">Driven to PORO 2</option>
-          <option value="Driven to PORO 3">Driven to PORO 3</option>
-          <option value="Driven to PORO 4">Driven to PORO 4</option>
-          <option value="Driven to PORO 5">Driven to PORO 5</option>
-          <option value="Driven to PORO 7">Driven to PORO 7</option>
-          <option value="Driven to PORO 8">Driven to PORO 8</option>
-          <option value="Driven to PORO 9">Driven to PORO 9</option>
-          <option value="Driven to PORO 10">Driven to PORO 10</option>
-          <option value="Driven to PF">Driven to PF</option>
-        </select>
+<!-- Sighting ID -->
+<input type="hidden" id="f-id">
 
-        <label><b>Direction</b></label>
-        <select id="f-dir" style="width:100%; padding:10px; border-radius:5px; border:1px solid #ccc;">
-          <option value="N">North</option>
-          <option value="NE">North-East</option>
-          <option value="E">East</option>
-          <option value="SE">South-East</option>
-          <option value="S">South</option>
-          <option value="SW">South-West</option>
-          <option value="W">West</option>
-          <option value="NW">North-West</option>
-          <option value="STATIONARY">Stationary</option>
-        </select>
+<!-- Parent -->
+<input type="hidden" id="f-parent">
 
+<!-- BEAT -->
+<label><b>Beat</b></label>
+<select id="f-beat" required>
+<option value="">-- Select Beat --</option>
+<option>East Garam Beat</option>
+<option>West Garam Beat</option>
+<option>East Poro Beat</option>
+</select>
 
-        <label><b>📸 Capture / Upload Photo</b></label>
+<!-- FOREST BLOCK -->
+<label><b>Forest Block</b></label>
+<select id="f-block" onchange="updateCompt()" required>
+<option value="">-- Select Block --</option>
+<option value="PORO">PORO</option>
+<option value="DPO">DPO</option>
+<option value="VILLAGE">VILLAGE</option>
+</select>
 
-        <input type="file" id="f-photo-file" accept="image/*" capture="environment"
-          style="width:100%; padding:10px; border-radius:5px; border:1px solid #ccc; background:white;">
+<!-- COMPT -->
+<label><b>Compt</b></label>
+<select id="f-compt" required>
+<option value="">-- Select Block First --</option>
+</select>
 
-        <!-- Preview -->
-        <img id="photo-preview" style="
-  width:100%;
-  margin-top:10px;
-  border-radius:8px;
-  display:none;
-">
-        <button type="button" onclick="submitSightingForm(event)"
-          style="width:100%; background:#1b5e20; color:white; padding:15px; border:none; border-radius:8px; font-weight:bold; font-size:16px; cursor:pointer; margin-top:20px; box-shadow: 0 4px 10px rgba(0,0,0,0.2);">
-          📤 SUBMIT TO COMMAND CENTRE
-        </button>
-      </form>
-    </div>
-  </div>
+<!-- TIME -->
+<label><b>Time</b></label>
+<input type="time" id="f-time" required>
+
+<!-- COUNT -->
+<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
+<input type="number" id="f-m" placeholder="M" value="0">
+<input type="number" id="f-f" placeholder="F" value="0">
+<input type="number" id="f-u" placeholder="Unidentified" value="0">
+<input type="number" id="f-c" placeholder="Calf" value="0">
+</div>
+
+<!-- TOTAL -->
+<label>Total Seen</label>
+<input type="number" id="f-total" readonly>
+
+<!-- ANTICIPATED -->
+<label>Anticipated</label>
+<input type="text" id="f-anticipated">
+
+<!-- DEPREDATION -->
+<label>Depredation</label>
+<input type="text" id="f-depredation">
+
+<!-- INVOLVED -->
+<label>Involved</label>
+<input type="text" id="f-involved">
+
+<!-- DRIVING -->
+<label>Driving</label>
+<input type="text" id="f-driving">
+
+<!-- REMARKS -->
+<label><b>Remarks</b></label>
+<select id="f-remarks">
+<option value="Active">🔴 Active</option>
+<option value="Moved">🟢 Moved</option>
+</select>
+
+<!-- TEAM LEADER AUTO -->
+<label><b>Team Leader</b></label>
+<input type="text" id="f-team" readonly>
+
+<!-- LOCATION -->
+<label><b>Location</b></label>
+<input type="text" id="f-location" readonly>
+
+<!-- PHOTO -->
+<label>Photo</label>
+<input type="file" id="f-photo">
+
+<!-- DIRECTION -->
+<label><b>Direction</b></label>
+<select id="f-dir">
+<option value="N">North</option>
+<option value="NE">North-East</option>
+<option value="E">East</option>
+<option value="SE">South-East</option>
+<option value="S">South</option>
+<option value="SW">South-West</option>
+<option value="W">West</option>
+<option value="NW">North-West</option>
+</select>
+
+<button type="button" onclick="submitSightingForm()"
+style="width:100%;padding:15px;background:#1b5e20;color:white;margin-top:15px;border:none;border-radius:8px;">
+📤 SUBMIT
+</button>
+
+</form>
+</div>
+</div>
   <!-- 🔥 INSTALL APP BUTTON -->
   <div id="installContainer" style="
   position:fixed;
