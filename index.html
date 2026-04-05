@@ -2247,7 +2247,7 @@ if(window.sightingsLoadedOnce){
 
       let movementText = dirMap[e.direction] || "Unknown";
 
-      /* 🔥 VILLAGE RISK (DISTANCE BASED) */
+      /* 🔥 VILLAGE RISK */
       let villageHTML = "";
 
       if(window.coneVillages){
@@ -2269,7 +2269,7 @@ if(window.sightingsLoadedOnce){
           }
         });
 
-        if(nearestKey && minDist < 0.02){ // 🔥 increased range
+        if(nearestKey && minDist < 0.02){
 
           const villages = window.coneVillages[nearestKey];
 
@@ -2290,7 +2290,7 @@ if(window.sightingsLoadedOnce){
           </a>
         </div>` : "";
 
-      /* ✅ FINAL POPUP (FIXED) */
+      /* POPUP */
       const popup = `
       <div style="font-family:Segoe UI;min-width:220px">
 
@@ -2317,7 +2317,7 @@ if(window.sightingsLoadedOnce){
 <button onclick="
   event.stopPropagation();
   window.isPopupInteracting = true;
-  window.lastInteractionTime = Date.now();   /* 🔥 ADD THIS */
+  window.lastInteractionTime = Date.now();
   showMoveOptions('${e.id}', this)
 " style="
   background:#2e7d32;color:white;border:none;
@@ -2325,6 +2325,7 @@ if(window.sightingsLoadedOnce){
   border-radius:6px;cursor:pointer;">
   ✅ MARK AS MOVED
 </button>
+
 <select 
   onchange="confirmExit(this,'${e.id}')"
   onclick="
@@ -2350,7 +2351,6 @@ if(window.sightingsLoadedOnce){
   "
 >
   <option value="">-- Select Action --</option>
-
   <option value="Moved">🟢 Moved</option>
 
   <option>Driven to DPO 1</option>
@@ -2374,14 +2374,25 @@ if(window.sightingsLoadedOnce){
 
       </div>`;
 
-      L.marker([lat,lon],{
+      /* 🔥 NEW: MARKER STABILITY FIX */
+      window.sightingMarkers = window.sightingMarkers || {};
+
+      if(window.sightingMarkers[e.id]){
+        return; // already exists
+      }
+
+      const marker = L.marker([lat,lon],{
         icon:icon,
         zIndexOffset:5000
       })
       .bindPopup(popup)
       .addTo(elephantLayer);
 
+      window.sightingMarkers[e.id] = marker;
+
     });
+
+    window.sightingsLoadedOnce = true;
 
   })
   .catch(err=>{
@@ -2461,8 +2472,12 @@ if(window.sightingsLoadedOnce){
 
     function loadStaff(){
 
+  if(!window.staffInitialized){
   staffLayer.clearLayers();
-
+  window.staffInitialized = true;
+} else {
+  console.log("⏸ Staff preserved (no clear)");
+}
   callBackend("getMapData")   // 🔥 CHANGED (ONLY THIS)
   .then(function(data){
 
