@@ -2411,7 +2411,7 @@ function loadSightings() {
 
   callBackend("updateSightingStatus", {
     id: id,
-    remarks: value
+    newStatus: value
   })
   .then(function () {
 
