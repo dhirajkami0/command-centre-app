@@ -2438,11 +2438,19 @@ function loadSightings() {
       window.sightingMarkers[id].closePopup();
     }
 
-    setTimeout(()=>{
-      refreshAll();
-      callBackend("updateVillageRisk");
-    }, 1500);
+   setTimeout(()=>{
 
+  // 🔥 FORCE UNLOCK
+  window.isPopupInteracting = false;
+  window.lastInteractionTime = 0;
+
+  // 🔥 FORCE LOAD (bypass protection)
+  console.log("🔥 Force loading sightings after update");
+  loadSightings();
+
+  callBackend("updateVillageRisk");
+
+}, 1000);
     console.groupEnd();
   })
   .catch(err=>{
