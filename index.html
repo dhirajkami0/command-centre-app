@@ -1,4 +1,35 @@
-<!DOCTYPE html>
+<script>
+(function(){
+
+  function toast(msg, type="success"){
+    const t = document.createElement("div");
+
+    t.innerText =
+      (type==="error"?"❌ ":
+       type==="warning"?"⚠️ ":"✅ ") + msg;
+
+    t.style.position = "fixed";
+    t.style.bottom = "20px";
+    t.style.left = "50%";
+    t.style.transform = "translateX(-50%)";
+    t.style.background = "#2e7d32";
+    t.style.color = "#fff";
+    t.style.padding = "12px 20px";
+    t.style.borderRadius = "6px";
+    t.style.zIndex = "999999";
+    t.style.fontWeight = "bold";
+
+    document.body.appendChild(t);
+    setTimeout(()=>t.remove(),3000);
+  }
+
+  // 🔥 HARD OVERRIDE (ALL TYPES)
+  window.alert = function(msg){ toast(msg); return true; };
+  window.confirm = function(msg){ toast(msg); return true; };
+  window.prompt = function(msg){ toast(msg); return ""; };
+
+})();
+</script><!DOCTYPE html>
 <html>
 
 <head>
@@ -1953,62 +1984,82 @@ ${pct(data.health)} / 100
 
     }
     
-    function uploadKML() {
+  function uploadKML() {
 
-      const fileInput = document.getElementById("kmlUpload");
-      const file = fileInput.files[0];
+  const fileInput = document.getElementById("kmlUpload");
+  const file = fileInput.files[0];
 
-      if (!file) {
-        alert("❌ Please select a KML file");
-        return;
+  if (!file) {
+    showToast("Please select a KML file", "warning");
+    return;
+  }
+
+  // ✅ GET FROM DROPDOWN (NO PROMPT)
+  const beatTag = document.getElementById("kmlBeat")?.value;
+
+  if (!beatTag) {
+    showToast("Please select a Beat", "warning");
+    return;
+  }
+
+  const reader = new FileReader();
+
+  reader.onload = function (e) {
+
+    const kmlText = e.target.result;
+
+    callBackend("processUpload", {
+      kmlText: kmlText,
+      beatTag: beatTag
+    })
+    .then(function (msg) {
+
+      showToast(msg || "Uploaded successfully");
+
+      try {
+
+        // 🔥 REMOVE OLD PREVIEW (IMPORTANT)
+        if (previewKMLLayer) {
+          map.removeLayer(previewKMLLayer);
+          previewKMLLayer = null;
+        }
+
+        const parser = new DOMParser();
+        const xml = parser.parseFromString(kmlText, "text/xml");
+
+        // 🔥 ADD NEW PREVIEW
+        previewKMLLayer = new L.KML(xml);
+        previewKMLLayer.addTo(map);
+
+        // 🔥 AUTO ZOOM
+        if (previewKMLLayer.getBounds().isValid()) {
+          map.fitBounds(previewKMLLayer.getBounds());
+        }
+
+        // 🔥 AUTO REMOVE AFTER 10 SECONDS
+        setTimeout(() => {
+          if (previewKMLLayer) {
+            map.removeLayer(previewKMLLayer);
+            previewKMLLayer = null;
+            showToast("Preview removed from map");
+          }
+        }, 10000);
+
+      } catch (err) {
+        console.error("KML render error:", err);
+        showToast("KML preview error", "error");
       }
 
-      const beatTag = prompt("Enter Beat (EAST GARAM / WEST GARAM / EAST PORO / etc)");
+    })
+    .catch(function (err) {
+      console.error(err);
+      showToast("Upload failed", "error");
+    });
 
-      if (!beatTag) {
-        alert("❌ Beat required");
-        return;
-      }
+  };
 
-      const reader = new FileReader();
-
-      reader.onload = function (e) {
-
-        const kmlText = e.target.result;
-
-        callBackend("processUpload", {
-          kmlText: kmlText,
-          beatTag: beatTag
-        })
-          .then(function (msg) {
-
-            alert(msg);
-
-            try {
-              const parser = new DOMParser();
-              const xml = parser.parseFromString(kmlText, "text/xml");
-
-              const layer = new L.KML(xml);
-              layer.addTo(map);
-
-              if (layer.getBounds().isValid()) {
-                map.fitBounds(layer.getBounds());
-              }
-
-            } catch (err) {
-              console.error("KML render error:", err);
-            }
-
-          })
-          .catch(function (err) {
-            console.error(err);
-            alert("❌ Upload failed");
-          });
-
-      };
-
-      reader.readAsText(file);
-    }/* 📊 COMPARTMENT POPUP */
+  reader.readAsText(file);
+}/* 📊 COMPARTMENT POPUP */
 function openStatsPopup(name, latlng) {
 
   console.log("📤 Sending name:", name);
