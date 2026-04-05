@@ -32,7 +32,58 @@
   <script src="https://unpkg.com/shpjs@latest/dist/shp.js"></script>
 
   <script>
-    
+    // ===============================
+// 🔥 GLOBAL ALERT OVERRIDE + TOAST
+// ===============================
+
+// ✅ Your ONE toast function (bottom style - clean)
+function showToast(msg, type = "success") {
+
+  const t = document.createElement("div");
+
+  t.innerText =
+    (type === "error" ? "❌ " :
+     type === "warning" ? "⚠️ " : "✅ ") + msg;
+
+  t.style.position = "fixed";
+  t.style.bottom = "20px";
+  t.style.left = "50%";
+  t.style.transform = "translateX(-50%)";
+  t.style.padding = "12px 20px";
+  t.style.borderRadius = "6px";
+  t.style.zIndex = "9999";
+  t.style.fontWeight = "bold";
+  t.style.color = "white";
+  t.style.boxShadow = "0 4px 10px rgba(0,0,0,0.3)";
+  t.style.opacity = "1";
+  t.style.transition = "opacity 0.3s ease";
+
+  // 🎨 Color control
+  if (type === "error") {
+    t.style.background = "#c62828";
+  } else if (type === "warning") {
+    t.style.background = "#ef6c00";
+  } else {
+    t.style.background = "#2e7d32";
+  }
+
+  document.body.appendChild(t);
+
+  setTimeout(() => {
+    t.style.opacity = "0";
+    setTimeout(() => t.remove(), 300);
+  }, 3000);
+}
+
+
+// ===============================
+// 🔁 OVERRIDE ALL alert()
+// ===============================
+(function () {
+  window.alert = function (message) {
+    showToast(message, "success");
+  };
+})();
 let markerMap = {};
 let trackMap = {};  
     // 🔥 GLOBAL ERROR HANDLER
