@@ -2388,7 +2388,7 @@ function loadSightings() {
   });
 
 }/* 🔥 STATUS UPDATE */
-  function confirmExit(input, id) {
+ function confirmExit(input, id) {
 
   let value;
 
@@ -2401,11 +2401,17 @@ function loadSightings() {
 
   if (!value) return;
 
+  console.group("🚀 FRONTEND → updateSightingStatus");
+  console.log("📤 Sending ID:", id);
+  console.log("📤 Sending Status:", value);
+
   if (!confirm("Confirm update: " + value + " ?")) {
     if(input && input.tagName === "SELECT"){
-      input.value = "";   // reset if cancel
+      input.value = "";
       input.blur();
     }
+    console.warn("❌ User cancelled");
+    console.groupEnd();
     return;
   }
 
@@ -2413,46 +2419,35 @@ function loadSightings() {
     id: id,
     newStatus: value
   })
-  .then(function () {
+  .then(function (res) {
+
+    console.log("📥 Backend response:", res);
 
     alert("✅ Updated");
 
-    // 🔥 UNLOCK INTERACTION
     window.isPopupInteracting = false;
 
-    /* ===============================
-       🔥 FIX: CLOSE DROPDOWN + POPUP
-    =============================== */
-
+    /* CLOSE UI */
     if(input && input.tagName === "SELECT"){
-
-      // 1. Reset dropdown
       input.value = "";
-
-      // 2. Force close dropdown UI
       input.blur();
-
-      // 3. Hide it (since you show it dynamically)
       input.style.display = "none";
     }
 
-    // 4. CLOSE LEAFLET POPUP (IMPORTANT)
     if(window.sightingMarkers && window.sightingMarkers[id]){
       window.sightingMarkers[id].closePopup();
     }
-
-    /* ===============================
-       EXISTING FLOW (UNCHANGED)
-    =============================== */
 
     setTimeout(()=>{
       refreshAll();
       callBackend("updateVillageRisk");
     }, 1500);
 
+    console.groupEnd();
   })
   .catch(err=>{
     console.error("❌ Update failed:", err);
+    console.groupEnd();
   });
 
 } /* ============================================================
