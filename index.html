@@ -3927,7 +3927,7 @@ function calculateTotal(){
   document.getElementById("f-total").value = m + f + u + c;
 }
           /* 3. Open Form + GPS */
-         function openSightingForm(){
+        function openSightingForm(){
 
   console.group("🐘 openSightingForm START");
   console.log("⏱ Time:", new Date().toLocaleTimeString());
@@ -3962,13 +3962,32 @@ function calculateTotal(){
   =============================== */
   const profile = window.userProfile;
 
-  console.log("👤 Profile:", profile);
+  console.log("👤 Profile RAW:", profile);
 
   if (!profile || !profile.name) {
     alert("User not loaded");
     console.groupEnd();
     return;
   }
+
+  /* ===============================
+     🧠 CLEAN NAME (🔥 MAIN FIX)
+  =============================== */
+  let cleanName = profile.name;
+
+  if (cleanName) {
+    // Split by comma blocks and remove duplicates
+    const parts = cleanName.split(",").map(p => p.trim());
+
+    // Rebuild safely (Name + Role only once)
+    if (parts.length >= 2) {
+      cleanName = parts[0] + ", " + parts[1];
+    } else {
+      cleanName = parts[0];
+    }
+  }
+
+  console.log("✅ Clean Name:", cleanName);
 
   /* ===============================
      SAFE SET
@@ -3984,10 +4003,10 @@ function calculateTotal(){
   const teamInput = document.getElementById("f-team");
 
   if (teamInput) {
-    teamInput.value = profile.name;   // ✅ CLEAN NAME ALREADY DONE
+    teamInput.value = cleanName;   // ✅ FIXED HERE
     teamInput.readOnly = true;
-    teamInput.dataset.lockedUser = profile.name;
-    console.log("✅ Team Leader set:", profile.name);
+    teamInput.dataset.lockedUser = cleanName;
+    console.log("✅ Team Leader set:", cleanName);
   }
 
   /* ===============================
@@ -4023,10 +4042,10 @@ function calculateTotal(){
   }
 
   /* ===============================
-     TOTAL INIT (IMPORTANT FIX)
+     TOTAL INIT
   =============================== */
   setTimeout(() => {
-    calculateTotal();   // ✅ ensures UI update
+    calculateTotal();
   }, 100);
 
   console.groupEnd();
