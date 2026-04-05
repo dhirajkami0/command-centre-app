@@ -2388,7 +2388,7 @@ function loadSightings() {
   });
 
 }/* 🔥 STATUS UPDATE */
-   function confirmExit(input, id) {
+  function confirmExit(input, id) {
 
   let value;
 
@@ -2401,7 +2401,13 @@ function loadSightings() {
 
   if (!value) return;
 
-  if (!confirm("Confirm update: " + value + " ?")) return;
+  if (!confirm("Confirm update: " + value + " ?")) {
+    if(input && input.tagName === "SELECT"){
+      input.value = "";   // reset if cancel
+      input.blur();
+    }
+    return;
+  }
 
   callBackend("updateSightingStatus", {
     id: id,
@@ -2414,7 +2420,31 @@ function loadSightings() {
     // 🔥 UNLOCK INTERACTION
     window.isPopupInteracting = false;
 
-    // 🔥 SMALL DELAY (IMPORTANT)
+    /* ===============================
+       🔥 FIX: CLOSE DROPDOWN + POPUP
+    =============================== */
+
+    if(input && input.tagName === "SELECT"){
+
+      // 1. Reset dropdown
+      input.value = "";
+
+      // 2. Force close dropdown UI
+      input.blur();
+
+      // 3. Hide it (since you show it dynamically)
+      input.style.display = "none";
+    }
+
+    // 4. CLOSE LEAFLET POPUP (IMPORTANT)
+    if(window.sightingMarkers && window.sightingMarkers[id]){
+      window.sightingMarkers[id].closePopup();
+    }
+
+    /* ===============================
+       EXISTING FLOW (UNCHANGED)
+    =============================== */
+
     setTimeout(()=>{
       refreshAll();
       callBackend("updateVillageRisk");
@@ -2425,8 +2455,7 @@ function loadSightings() {
     console.error("❌ Update failed:", err);
   });
 
-}
-    /* ============================================================
+}  /* ============================================================
        👮 BLOCK 8 → STAFF SYSTEM (FINAL)
     ============================================================ */
 
