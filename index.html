@@ -2015,15 +2015,22 @@ function clearKMLPreview(){
 
     showToast("KML preview removed");
 
+    console.log("🧹 KML removed");
+
   } else {
 
-    // 🔥 SAFETY HIDE (in case mismatch)
+    // 🔥 FORCE HIDE (safety)
     if (btn) btn.style.display = "none";
 
     showToast("No preview to remove", "warning");
+
+    console.warn("⚠ previewKMLLayer was null");
   }
 
-}    function uploadKML() {
+}  
+    
+    
+    function uploadKML() {
 
   const fileInput = document.getElementById("kmlUpload");
   const file = fileInput.files[0];
@@ -3220,26 +3227,25 @@ if (rawDir) {
         const parser = new DOMParser();
         const xml = parser.parseFromString(kmlText, "text/xml");
 
+        // 🔥 CREATE + ADD
         previewKMLLayer = new L.KML(xml);
         previewKMLLayer.addTo(map);
 
-        // 🔥 WAIT UNTIL ACTUALLY LOADED
-        previewKMLLayer.on("loaded", function () {
+        console.log("✅ KML added:", previewKMLLayer);
 
-          console.log("✅ KML LOADED");
+        // 🔥 SHOW BUTTON (NO EVENT DEPENDENCY)
+        const btn = document.getElementById("clearKMLBtn");
+        if (btn) {
+          btn.style.display = "block";
+          console.log("✅ Clear button shown");
+        }
 
-          if (previewKMLLayer.getBounds().isValid()) {
+        // 🔥 SAFE ZOOM (delayed)
+        setTimeout(() => {
+          if (previewKMLLayer && previewKMLLayer.getBounds().isValid()) {
             map.fitBounds(previewKMLLayer.getBounds());
           }
-
-          // 🔥 SHOW BUTTON HERE (FINAL FIX)
-          const btn = document.getElementById("clearKMLBtn");
-          if (btn) {
-            btn.style.display = "block";
-            console.log("✅ Clear button shown");
-          }
-
-        });
+        }, 500);
 
       } catch (err) {
         console.error("❌ KML render error:", err);
