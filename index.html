@@ -2208,7 +2208,20 @@ function loadSightings() {
     data.forEach(function(e){
 
       if(!e.lat || !e.lon) return;
-      if(e.status && e.status !== "Active") return;
+
+      const key = e.id;
+
+      /* 🔥 ✅ FIX: REMOVE IMMEDIATELY IF NOT ACTIVE */
+      if(e.status && e.status !== "Active"){
+
+        if(window.sightingMarkers[key]){
+          elephantLayer.removeLayer(window.sightingMarkers[key]);
+          delete window.sightingMarkers[key];
+          console.log("🗑 Removed inactive sighting:", key);
+        }
+
+        return;
+      }
 
       const lat = Number(e.lat);
       const lon = Number(e.lon);
@@ -2359,15 +2372,13 @@ function loadSightings() {
 
       </div>`;
 
-      const key = e.id;
-
-      /* 🔥 FIX: NO DUPLICATE MARKERS */
+      /* 🔥 UPDATE EXISTING */
       if(window.sightingMarkers[key]){
-        window.sightingMarkers[key].setLatLng([lat,lon]);  // update only
+        window.sightingMarkers[key].setLatLng([lat,lon]);
         return;
       }
 
-      /* 🔥 CREATE ONLY ONCE */
+      /* 🔥 CREATE NEW */
       const marker = L.marker([lat,lon],{
         icon:icon,
         zIndexOffset:5000
