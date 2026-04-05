@@ -2189,7 +2189,11 @@ function openStatsPopup(name, latlng) {
     ============================================================ */
 function loadSightings() {
 
+if(window.sightingsLoadedOnce){
+  console.log("⏸ Skipping full clear (keeping markers stable)");
+} else {
   elephantLayer.clearLayers();
+}
 
   callBackend("getSightings")
   .then(function(data){
@@ -2313,6 +2317,7 @@ function loadSightings() {
 <button onclick="
   event.stopPropagation();
   window.isPopupInteracting = true;
+  window.lastInteractionTime = Date.now();   /* 🔥 ADD THIS */
   showMoveOptions('${e.id}', this)
 " style="
   background:#2e7d32;color:white;border:none;
@@ -2320,43 +2325,52 @@ function loadSightings() {
   border-radius:6px;cursor:pointer;">
   ✅ MARK AS MOVED
 </button>
-
 <select 
   onchange="confirmExit(this,'${e.id}')"
-  onclick="event.stopPropagation(); window.isPopupInteracting = true;"
-  onfocus="window.isPopupInteracting = true;"
-  onblur="setTimeout(()=>window.isPopupInteracting=false, 4000);"
+  onclick="
+    event.stopPropagation();
+    window.isPopupInteracting = true;
+    window.lastInteractionTime = Date.now();
+  "
+  onfocus="
+    window.isPopupInteracting = true;
+    window.lastInteractionTime = Date.now();
+  "
+  onblur="
+    setTimeout(()=>{
+      window.isPopupInteracting = false;
+    }, 5000);
+  "
   style="
-  display:none;
-  width:100%;
-  margin-top:8px;
-  padding:10px;
-  border-radius:6px;
-">
+    display:none;
+    width:100%;
+    margin-top:8px;
+    padding:10px;
+    border-radius:6px;
+  "
+>
+  <option value="">-- Select Action --</option>
 
-            <option value="">-- Select Action --</option>
-            <option value="Moved">🟢 Moved</option>
+  <option value="Moved">🟢 Moved</option>
 
-            <option>Driven to DPO 1</option>
-            <option>Driven to DPO 2</option>
-            <option>Driven to DPO 5</option>
-            <option>Driven to DPO 6</option>
-            <option>Driven to DPO 9</option>
+  <option>Driven to DPO 1</option>
+  <option>Driven to DPO 2</option>
+  <option>Driven to DPO 5</option>
+  <option>Driven to DPO 6</option>
+  <option>Driven to DPO 9</option>
 
-            <option>Driven to PORO 2</option>
-            <option>Driven to PORO 3</option>
-            <option>Driven to PORO 4</option>
-            <option>Driven to PORO 5</option>
-            <option>Driven to PORO 7</option>
-            <option>Driven to PORO 8</option>
-            <option>Driven to PORO 9</option>
-            <option>Driven to PORO 10</option>
+  <option>Driven to PORO 2</option>
+  <option>Driven to PORO 3</option>
+  <option>Driven to PORO 4</option>
+  <option>Driven to PORO 5</option>
+  <option>Driven to PORO 7</option>
+  <option>Driven to PORO 8</option>
+  <option>Driven to PORO 9</option>
+  <option>Driven to PORO 10</option>
 
-            <option>Driven to PF</option>
-
-          </select>
-
-        </div>
+  <option>Driven to PF</option>
+</select>
+</div>
 
       </div>`;
 
@@ -3070,11 +3084,13 @@ function loadSightings() {
   /* 🔥 GLOBAL TIMERS (5 SEC FOR BOTH) */
 window.lastSightingsLoad = 0;
 window.lastStaffLoad = 0;
-window.isPopupInteracting = false;   // ✅ NEW (CRITICAL)
 
-const MIN_SIGHTING_VISIBLE_TIME = 5000; // ⏱ 5 sec
-const MIN_STAFF_VISIBLE_TIME = 5000;    // ⏱ 5 sec
+const MIN_SIGHTING_VISIBLE_TIME = 5000; // 5 sec
+const MIN_STAFF_VISIBLE_TIME = 5000;    // 5 sec
+
+// 🔥 NEW: popup interaction lock
 window.isPopupInteracting = false;
+window.lastInteractionTime = 0;
 
 function refreshAll() {
 
@@ -3083,26 +3099,25 @@ function refreshAll() {
 
   const now = Date.now();
 
-  /* 🔥 SAFE LOADS (NO MAP IMPACT) */
+  /* 🔥 SAFE LOADS (NO MAP CLEAR IMPACT) */
   loadIncidents();
   loadPredictions();
   loadCompartmentsFromSheet();
 
-  /* 🔥 STAFF (5 SEC HOLD) */
+  /* 🔥 STAFF (5 SEC HOLD + INTERACTION SAFE) */
   if (now - window.lastStaffLoad > MIN_STAFF_VISIBLE_TIME) {
 
     setTimeout(() => {
 
-      // 🛑 BLOCK DURING INTERACTION
-      if (window.isPopupInteracting) {
-        console.log("⏸ Skipping staff (user interacting)");
+      if (window.isPopupInteracting || (Date.now() - window.lastInteractionTime < 5000)) {
+        console.log("⏸ Staff skipped (user interacting)");
         return;
       }
 
       loadStaff();
       window.lastStaffLoad = Date.now();
 
-    }, 1000);
+    }, 1200);
 
   } else {
     console.log("⏸ Staff held (5 sec rule)");
@@ -3111,20 +3126,18 @@ function refreshAll() {
   /* 🔥 WEATHER */
   setTimeout(loadWeatherFull, 500);
 
-  /* 🔥 SIGHTINGS (5 SEC HOLD + FULL SAFETY) */
+  /* 🔥 SIGHTINGS (5 SEC HOLD + STRONG PROTECTION) */
   if (now - window.lastSightingsLoad > MIN_SIGHTING_VISIBLE_TIME) {
 
     setTimeout(() => {
 
-      // 🛑 BLOCK IF USER USING DROPDOWN
-      if (window.isPopupInteracting) {
-        console.log("⏸ Skipping sightings (user interacting)");
+      if (window.isPopupInteracting || (Date.now() - window.lastInteractionTime < 5000)) {
+        console.log("⏸ Sightings skipped (user interacting)");
         return;
       }
 
-      // 🛑 BLOCK IF POPUP OPEN
       if (map && map._popup && map._popup.isOpen()) {
-        console.log("⏸ Skipping sightings (popup open)");
+        console.log("⏸ Sightings skipped (popup open)");
         return;
       }
 
@@ -3137,25 +3150,22 @@ function refreshAll() {
     console.log("⏸ Sightings held (5 sec rule)");
   }
 
-  /* 🔥 VILLAGES (AFTER MAP STABLE) */
+  /* 🔥 VILLAGES (UNCHANGED — already stable) */
   setTimeout(() => {
     loadVillages();
   }, 3000);
 
-  /* 🔥 TRACKING (BACKGROUND) */
+  /* 🔥 TRACKING */
   callBackend("fetchTraccar")
     .then(() => console.log("✅ Traccar updated"))
     .catch(err => console.error(err));
 
-  /* 🔥 STATUS UPDATE */
+  /* 🔥 STATUS */
   setTimeout(function () {
-
     document.getElementById('last-update').innerHTML =
       "🟢 LIVE : " + new Date().toLocaleTimeString();
-
   }, 1000);
-}
-    /* ============================================================
+}    /* ============================================================
        🚀 BLOCK 11 → APP INIT (FINAL — SINGLE ENTRY POINT)
     ============================================================ */
 
