@@ -3059,39 +3059,57 @@ function loadSightings() {
     /* =========================
        🔄 MASTER REFRESH ENGINE (FINAL)
     ========================= */
-    function refreshAll() {
+   function refreshAll() {
 
-      document.getElementById('last-update').innerHTML =
-        "🔄 Syncing Command Centre...";
+  document.getElementById('last-update').innerHTML =
+    "🔄 Syncing Command Centre...";
 
-      /* 🔥 CORE SYSTEM LOAD */
-      loadStaff();
-      loadSightings();
-      loadIncidents();
-      loadPredictions();
-      loadVillages();
-      loadCompartmentsFromSheet();
+  /* 🔥 STEP 1: FAST NON-MAP LOADS */
+  loadIncidents();
+  loadPredictions();
+  loadCompartmentsFromSheet();
 
-      /* 🔥 WEATHER DELAY (OPTIMIZED) */
-      setTimeout(loadWeatherFull, 500);
+  /* 🔥 STEP 2: STAFF (DELAYED SLIGHTLY) */
+  setTimeout(() => {
+    loadStaff();   // 👮 slight delay
+  }, 300);
 
-      /* 🔥 BACKGROUND TRACCAR */
-      callBackend("fetchTraccar")
-        .then(() => console.log("✅ Traccar updated"))
-        .catch(err => console.error(err));
+  /* 🔥 STEP 3: WEATHER */
+  setTimeout(loadWeatherFull, 500);
 
-      /* 🔥 STATUS UPDATE */
-      setTimeout(function () {
+  /* 🔥 STEP 4: SIGHTINGS (IMPORTANT DELAY) */
+  setTimeout(() => {
 
-        const now = new Date();
-
-        document.getElementById('last-update').innerHTML =
-          "🟢 LIVE : " + now.toLocaleTimeString();
-
-      }, 1000);
+    // 🛑 DO NOT REFRESH IF POPUP OPEN
+    if (map && map._popup && map._popup.isOpen()) {
+      console.log("⏸ Skipping sightings refresh (popup open)");
+      return;
     }
 
+    loadSightings();   // 🐘 safe refresh
 
+  }, 1500);
+
+  /* 🔥 STEP 5: VILLAGES (AFTER SIGHTINGS) */
+  setTimeout(() => {
+    loadVillages();    // 🏡
+  }, 2000);
+
+  /* 🔥 BACKGROUND TRACKING */
+  callBackend("fetchTraccar")
+    .then(() => console.log("✅ Traccar updated"))
+    .catch(err => console.error(err));
+
+  /* 🔥 STATUS UPDATE */
+  setTimeout(function () {
+
+    const now = new Date();
+
+    document.getElementById('last-update').innerHTML =
+      "🟢 LIVE : " + now.toLocaleTimeString();
+
+  }, 1000);
+}
     /* ============================================================
        🚀 BLOCK 11 → APP INIT (FINAL — SINGLE ENTRY POINT)
     ============================================================ */
