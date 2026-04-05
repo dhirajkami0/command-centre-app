@@ -2782,26 +2782,6 @@ if (rawDir) {
   })
   .catch(err => console.error("❌ loadStaff error:", err));
 
-}function showToast(msg){
-  const t = document.createElement("div");
-  t.innerText = msg;
-
-  t.style = `
-    position:fixed;
-    bottom:20px;
-    left:50%;
-    transform:translateX(-50%);
-    background:#2e7d32;
-    color:white;
-    padding:12px 20px;
-    border-radius:6px;
-    z-index:9999;
-    font-weight:bold;
-  `;
-
-  document.body.appendChild(t);
-
-  setTimeout(() => t.remove(), 4000);
 }/* ============================================================
    🚨 BLOCK 9 → INCIDENT + VILLAGE + PREDICTION
 ============================================================ */
