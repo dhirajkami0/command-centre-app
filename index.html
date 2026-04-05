@@ -2193,32 +2193,23 @@ function openStatsPopup(name, latlng) {
       const lat = Number(e.lat);
       const lon = Number(e.lon);
 
-      /* 🔴 RISK COLOR */
       const herd = parseInt(e.herd || 0);
       const isHighRisk = herd <= 2;
       const color = isHighRisk ? "#ff3b30" : "#ff9800";
 
-      /* 🐘 ICON */
       const icon = L.divIcon({
         className:'',
         html:`
         <div style="position:relative;width:36px;height:36px;">
-          <div style="
-            display:flex;
-            align-items:center;
-            justify-content:center;
-            width:36px;height:36px;
-            animation: elephantPulse 2s infinite;
-          ">
+          <div style="display:flex;align-items:center;justify-content:center;width:36px;height:36px;animation: elephantPulse 2s infinite;">
             <div style="font-size:26px;">🐘</div>
           </div>
-        </div>
-        `,
+        </div>`,
         iconSize:[36,36],
         iconAnchor:[18,18]
       });
 
-      /* 🕒 TIME FORMAT (ALIGNED) */
+      /* TIME */
       let timeDisplay = "Unknown";
       let rawTime = (e.time || "").toString();
 
@@ -2232,32 +2223,47 @@ function openStatsPopup(name, latlng) {
         }
       }
 
-      /* 🧭 DIRECTION FIX (IMPORTANT) */
-      let rawDir = (e.direction || "").toUpperCase().trim();
-
+      /* ✅ DIRECTION FIX (FINAL) */
       const dirMap = {
         N:"North",S:"South",E:"East",W:"West",
         NE:"North-East",NW:"North-West",
         SE:"South-East",SW:"South-West"
       };
 
-      const movementText = dirMap[rawDir] || "Unknown";
+      let movementText = dirMap[e.direction] || "Unknown";
 
-      /* 📸 PHOTO */
+      /* 🔥 VILLAGE RISK */
+      let villageHTML = "";
+
+      const key =
+        Number(lat).toFixed(5) + "," +
+        Number(lon).toFixed(5);
+
+      if(window.coneVillages && window.coneVillages[key]){
+        const villages = window.coneVillages[key];
+
+        if(villages.length > 0){
+          villageHTML += `<hr><b>🏠 Elephant Risk Zone</b>`;
+          villages.forEach(v=>{
+            villageHTML += `<div style="margin-top:4px;">🔴 <b>${v}</b></div>`;
+          });
+        }
+      }
+
+      /* PHOTO */
       const photoHtml = e.photo ? `
         <div style="margin-top:8px">
           <a href="${e.photo}" target="_blank">
             <img src="${e.photo}" style="width:100%;border-radius:6px">
           </a>
-        </div>
-      ` : "";
+        </div>` : "";
 
-      /* 📦 POPUP */
+      /* ✅ FINAL POPUP (EXACT FORMAT) */
       const popup = `
       <div style="font-family:Segoe UI;min-width:220px">
 
         <div style="color:${color};font-weight:bold">
-          ${e.status === "Moved" ? "🟢 MOVED" : "🔴 ACTIVE"}
+          🔴 ACTIVE
         </div>
 
         <hr>
@@ -2266,22 +2272,21 @@ function openStatsPopup(name, latlng) {
         <b>🧭 Movement:</b> ${movementText}<br>
         <b>⏱ Time:</b> ${timeDisplay}<br>
 
-        <b>👤 Team Leader:</b> ${e.teamLeader || "Unknown"}<br>
-        <b>🏠 Nearest Village:</b> ${e.village || "Unknown"}<br>
+        <b>👤 Sighted by:</b> ${e.teamLeader || "Unknown"}<br>
 
         <br>
-        <b>📍 Location:</b><br>
-        <code>${lat.toFixed(5)}, ${lon.toFixed(5)}</code>
+        <b>📍 Location of sighting:</b><br>
+        <code>${lat.toFixed(5)}, ${lon.toFixed(5)} near ${e.village || "Unknown"}</code>
 
+        ${villageHTML}
         ${photoHtml}
 
-        ${e.status !== "Moved" ? `
         <button onclick="confirmExit('${e.id}')" style="
           background:#2e7d32;color:white;border:none;
           width:100%;padding:10px;margin-top:10px;
           border-radius:6px;cursor:pointer;">
           ✅ MARK AS MOVED
-        </button>` : ""}
+        </button>
 
       </div>`;
 
