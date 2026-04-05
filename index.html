@@ -2618,7 +2618,7 @@ if(window.sightingsLoadedOnce){
 
   document.body.appendChild(t);
 
-  setTimeout(() => t.remove(), 2500);
+  setTimeout(() => t.remove(), 4000);
 }/* ============================================================
    🚨 BLOCK 9 → INCIDENT + VILLAGE + PREDICTION
 ============================================================ */
@@ -3144,7 +3144,7 @@ function refreshAll() {
       loadSightings();
       window.lastSightingsLoad = Date.now();
 
-    }, 2500);
+    }, 4000);
 
   } else {
     console.log("⏸ Sightings held (5 sec rule)");
