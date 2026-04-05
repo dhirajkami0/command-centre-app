@@ -2451,17 +2451,32 @@ function loadSightings() {
     console.log("📥 Backend response:", res);
 
     /* ===============================
-       RESULT CHECK
+       RESULT CHECK (IMPORTANT FIX)
     =============================== */
     if (res) {
       alert("✅ Updated");
 
-      /* 🔥🔥🔥 FINAL FIX — REMOVE MARKER IMMEDIATELY */
-      if (window.sightingMarkers && window.sightingMarkers[id]) {
-        elephantLayer.removeLayer(window.sightingMarkers[id]);
-        delete window.sightingMarkers[id];
-        console.log("⚡ Marker removed instantly after success:", id);
-      }
+      /* 🔥🔥🔥 BULLETPROOF REMOVE (FIX) */
+      const normalize = v => String(v)
+        .trim()
+        .replace(/\s+/g, "")
+        .replace(/[\n\r]/g, "")
+        .replace(/[‐-‒–—−]/g, "-")
+        .toUpperCase();
+
+      const targetId = normalize(id);
+
+      Object.keys(window.sightingMarkers || {}).forEach(key => {
+
+        if (normalize(key) === targetId) {
+
+          elephantLayer.removeLayer(window.sightingMarkers[key]);
+          delete window.sightingMarkers[key];
+
+          console.log("⚡ Marker removed instantly:", key);
+        }
+
+      });
 
     } else {
       alert("❌ Update failed (ID not matched)");
@@ -2470,7 +2485,7 @@ function loadSightings() {
     }
 
     /* ===============================
-       🔥 UNLOCK FIRST
+       🔥 UNLOCK FIRST (CRITICAL)
     =============================== */
     window.isPopupInteracting = false;
     window.lastInteractionTime = 0;
@@ -2485,14 +2500,14 @@ function loadSightings() {
     }
 
     /* ===============================
-       CLOSE POPUP (SAFE CHECK)
+       CLOSE POPUP
     =============================== */
     if (window.sightingMarkers && window.sightingMarkers[id]) {
       window.sightingMarkers[id].closePopup();
     }
 
     /* ===============================
-       🔥 FORCE UPDATE (SYNC ONLY)
+       🔥 FORCE UPDATE (NO BLOCKING)
     =============================== */
     setTimeout(() => {
 
@@ -2501,7 +2516,7 @@ function loadSightings() {
       loadSightings();
       callBackend("updateVillageRisk");
 
-    }, 300); // reduced delay for faster sync
+    }, 300);
 
     console.groupEnd();
 
