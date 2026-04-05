@@ -2257,33 +2257,47 @@ function loadSightings() {
       }
 console.log("🔍 RAW DIR:", JSON.stringify(e.direction));
 console.log("🔍 TYPE:", typeof e.direction);
-      /* DIRECTION */
-const dirMap = {
-  N:"North",
-  NE:"North-East",
-  E:"East",
-  SE:"South-East",
-  S:"South",
-  SW:"South-West",
-  W:"West",
-  NW:"North-West"
-};
+/* ===============================
+   🔥 DIRECTION (FINAL FIX)
+=============================== */
 
-/* 🔥 READ FROM SHEET (IMPORTANT: capital D) */
-const rawDir = e.Direction;
+let movementText = "Unknown";
 
-/* 🔥 HANDLE EMPTY */
-if (!rawDir) {
-  movementText = "Unknown";
-} else {
+/* 🔥 TRY ALL POSSIBLE SOURCES */
+const rawDir =
+  e.Direction ||   // correct column
+  e.direction ||   // fallback
+  "";
+
+/* 🔥 DEBUG (KEEP TEMP) */
+console.log("DIR RAW:", JSON.stringify(rawDir));
+
+if (rawDir) {
 
   const dirKey = String(rawDir)
     .trim()
+    .replace(/\s+/g,"")
     .toUpperCase();
 
-  movementText = dirMap[dirKey] || "Unknown";
-}      
-      /* 🔥 VILLAGE RISK */
+  console.log("DIR KEY:", dirKey);
+
+  const dirMap = {
+    N:"North", NE:"North-East",
+    E:"East", SE:"South-East",
+    S:"South", SW:"South-West",
+    W:"West", NW:"North-West",
+
+    // full words support
+    NORTH:"North", SOUTH:"South",
+    EAST:"East", WEST:"West",
+    NORTHEAST:"North-East",
+    NORTHWEST:"North-West",
+    SOUTHEAST:"South-East",
+    SOUTHWEST:"South-West"
+  };
+
+  movementText = dirMap[dirKey] || rawDir;
+}      /* 🔥 VILLAGE RISK */
       let villageHTML = "";
 
       if(window.coneVillages){
