@@ -4920,10 +4920,49 @@ function loadMapDataFirebase() {
   else if(block==="DPO"){
     list=["DPO 1","DPO 2","DPO 5","DPO 6","DPO 9"];
   }
-  else if(block==="VILLAGE"){
-    list=["Police Camp","Barua Road","Kali Mandir","Bat Talai Damanpur"];
-  }
-
+ else if (block === "VILLAGE") {
+  list = [
+    "Fhoksadanga(Joler Tank)",
+    "Fhoksadanga(Satu Mill)",
+    "Police Camp",
+    "Barua Road",
+    "Kali Mandir",
+    "Royal Dhaba",
+    "Burir Dokan",
+    "Garam Bridge",
+    "RVK Road",
+    "Dakhal Busty",
+    "Poro Bus Stand",
+    "River Camp Road",
+    "Uttar Poro Busty",
+    "Dakshin Poro Busty",
+    "East Poro Beat",
+    "Near Fagu Chowpaty",
+    "Fagu Chowpaty (Poro)",
+    "Hindi School (Satkodali)",
+    "Chandan Dokan",
+    "Satkodali",
+    "Bagan Kona(Satkodali)",
+    "Dilip House(Bagan Kona School)",
+    "Nauka Ghat(Satkodali)",
+    "Shivmandir(Satkodali)",
+    "Dolapara",
+    "Dolapara Dotalabari",
+    "Jabrabasty(Chowpatty)",
+    "Neka Chowpaty",
+    "Ultaghar",
+    "Nisu Panchyat House",
+    "Bagan Chowpatty Jitpur",
+    "Bagan Office Road Division",
+    "Dangapara Primary School",
+    "Power House",
+    "Damanpur Division Ground Majherdabri",
+    "Dodiyar Bridge",
+    "Jitpur Central School",
+    "Naba Udayan Sporting Club Damanpur",
+    "Bat Talai Damanpur"
+  ];
+}
   list.forEach(v=>{
     const opt=document.createElement("option");
     opt.textContent=v;
