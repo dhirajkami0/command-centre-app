@@ -759,7 +759,9 @@ window.addEventListener("unhandledrejection", function (e) {
 
 
   <script>
-let previewKMLLayer = null;
+    
+    
+ let previewKMLGroup = null;
 /* ===============================
    🔧 GLOBAL UTILITIES (BACKEND)
 =============================== */
@@ -1994,7 +1996,7 @@ ${pct(data.health)} / 100
     return;
   }
 
-  // ✅ GET FROM DROPDOWN (NO PROMPT)
+  // ✅ FROM DROPDOWN (NO PROMPT)
   const beatTag = document.getElementById("kmlBeat")?.value;
 
   if (!beatTag) {
@@ -2018,31 +2020,47 @@ ${pct(data.health)} / 100
 
       try {
 
-        // 🔥 REMOVE OLD PREVIEW (IMPORTANT)
-        if (previewKMLLayer) {
-          map.removeLayer(previewKMLLayer);
-          previewKMLLayer = null;
+        // 🔥 REMOVE OLD PREVIEW COMPLETELY
+        if (previewKMLGroup) {
+          previewKMLGroup.clearLayers();
+          map.removeLayer(previewKMLGroup);
+          previewKMLGroup = null;
         }
+
+        // 🔥 CREATE GROUP CONTAINER
+        previewKMLGroup = L.layerGroup().addTo(map);
 
         const parser = new DOMParser();
         const xml = parser.parseFromString(kmlText, "text/xml");
 
-        // 🔥 ADD NEW PREVIEW
-        previewKMLLayer = new L.KML(xml);
-        previewKMLLayer.addTo(map);
+        const kmlLayer = new L.KML(xml);
 
-        // 🔥 AUTO ZOOM
-        if (previewKMLLayer.getBounds().isValid()) {
-          map.fitBounds(previewKMLLayer.getBounds());
-        }
+        // 🔥 WHEN KML FULLY LOADED
+        kmlLayer.on("loaded", function () {
+
+          previewKMLGroup.addLayer(kmlLayer);
+
+          // 🔥 AUTO ZOOM
+          if (kmlLayer.getBounds().isValid()) {
+            map.fitBounds(kmlLayer.getBounds());
+          }
+
+          console.log("✅ KML PREVIEW ADDED");
+
+        });
 
         // 🔥 AUTO REMOVE AFTER 10 SECONDS
         setTimeout(() => {
-          if (previewKMLLayer) {
-            map.removeLayer(previewKMLLayer);
-            previewKMLLayer = null;
+
+          if (previewKMLGroup) {
+            previewKMLGroup.clearLayers();
+            map.removeLayer(previewKMLGroup);
+            previewKMLGroup = null;
+
             showToast("Preview removed from map");
+            console.log("🔥 KML PREVIEW REMOVED");
           }
+
         }, 10000);
 
       } catch (err) {
