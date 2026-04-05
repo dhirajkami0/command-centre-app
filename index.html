@@ -2451,10 +2451,18 @@ function loadSightings() {
     console.log("📥 Backend response:", res);
 
     /* ===============================
-       RESULT CHECK (IMPORTANT FIX)
+       RESULT CHECK
     =============================== */
     if (res) {
       alert("✅ Updated");
+
+      /* 🔥🔥🔥 FINAL FIX — REMOVE MARKER IMMEDIATELY */
+      if (window.sightingMarkers && window.sightingMarkers[id]) {
+        elephantLayer.removeLayer(window.sightingMarkers[id]);
+        delete window.sightingMarkers[id];
+        console.log("⚡ Marker removed instantly after success:", id);
+      }
+
     } else {
       alert("❌ Update failed (ID not matched)");
       console.groupEnd();
@@ -2462,7 +2470,7 @@ function loadSightings() {
     }
 
     /* ===============================
-       🔥 UNLOCK FIRST (CRITICAL)
+       🔥 UNLOCK FIRST
     =============================== */
     window.isPopupInteracting = false;
     window.lastInteractionTime = 0;
@@ -2477,26 +2485,23 @@ function loadSightings() {
     }
 
     /* ===============================
-       CLOSE POPUP
+       CLOSE POPUP (SAFE CHECK)
     =============================== */
     if (window.sightingMarkers && window.sightingMarkers[id]) {
       window.sightingMarkers[id].closePopup();
     }
 
     /* ===============================
-       🔥 FORCE UPDATE (NO BLOCKING)
+       🔥 FORCE UPDATE (SYNC ONLY)
     =============================== */
     setTimeout(() => {
 
       console.log("🔥 Force loading sightings after update");
 
-      // direct reload (bypass refreshAll restrictions)
       loadSightings();
-
-      // update risk
       callBackend("updateVillageRisk");
 
-    }, 800);
+    }, 300); // reduced delay for faster sync
 
     console.groupEnd();
 
