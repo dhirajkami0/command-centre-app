@@ -2392,7 +2392,10 @@ function loadSightings() {
 
   let value;
 
-  if(typeof input === "string"){
+  /* ===============================
+     GET VALUE
+  =============================== */
+  if (typeof input === "string") {
     value = "Moved";
     id = input;
   } else {
@@ -2405,59 +2408,90 @@ function loadSightings() {
   console.log("📤 Sending ID:", id);
   console.log("📤 Sending Status:", value);
 
+  /* ===============================
+     CONFIRM
+  =============================== */
   if (!confirm("Confirm update: " + value + " ?")) {
-    if(input && input.tagName === "SELECT"){
+
+    if (input && input.tagName === "SELECT") {
       input.value = "";
       input.blur();
     }
+
     console.warn("❌ User cancelled");
     console.groupEnd();
     return;
   }
 
+  /* ===============================
+     BACKEND CALL
+  =============================== */
   callBackend("updateSightingStatus", {
     id: id,
     newStatus: value
   })
+
   .then(function (res) {
 
     console.log("📥 Backend response:", res);
 
-    alert("✅ Updated");
+    /* ===============================
+       RESULT CHECK (IMPORTANT FIX)
+    =============================== */
+    if (res) {
+      alert("✅ Updated");
+    } else {
+      alert("❌ Update failed (ID not matched)");
+      console.groupEnd();
+      return;
+    }
 
+    /* ===============================
+       🔥 UNLOCK FIRST (CRITICAL)
+    =============================== */
     window.isPopupInteracting = false;
+    window.lastInteractionTime = 0;
 
-    /* CLOSE UI */
-    if(input && input.tagName === "SELECT"){
+    /* ===============================
+       CLOSE DROPDOWN
+    =============================== */
+    if (input && input.tagName === "SELECT") {
       input.value = "";
       input.blur();
       input.style.display = "none";
     }
 
-    if(window.sightingMarkers && window.sightingMarkers[id]){
+    /* ===============================
+       CLOSE POPUP
+    =============================== */
+    if (window.sightingMarkers && window.sightingMarkers[id]) {
       window.sightingMarkers[id].closePopup();
     }
 
-   setTimeout(()=>{
+    /* ===============================
+       🔥 FORCE UPDATE (NO BLOCKING)
+    =============================== */
+    setTimeout(() => {
 
-  // 🔥 FORCE UNLOCK
-  window.isPopupInteracting = false;
-  window.lastInteractionTime = 0;
+      console.log("🔥 Force loading sightings after update");
 
-  // 🔥 FORCE LOAD (bypass protection)
-  console.log("🔥 Force loading sightings after update");
-  loadSightings();
+      // direct reload (bypass refreshAll restrictions)
+      loadSightings();
 
-  callBackend("updateVillageRisk");
+      // update risk
+      callBackend("updateVillageRisk");
 
-}, 1000);
+    }, 800);
+
     console.groupEnd();
+
   })
-  .catch(err=>{
+
+  .catch(err => {
     console.error("❌ Update failed:", err);
+    alert("❌ Backend error");
     console.groupEnd();
   });
-
 } /* ============================================================
        👮 BLOCK 8 → STAFF SYSTEM (FINAL)
     ============================================================ */
