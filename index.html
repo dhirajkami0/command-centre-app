@@ -3059,43 +3059,67 @@ function loadSightings() {
     /* =========================
        🔄 MASTER REFRESH ENGINE (FINAL)
     ========================= */
-   function refreshAll() {
+   /* 🔥 GLOBAL TIMERS (5 SEC FOR BOTH) */
+window.lastSightingsLoad = 0;
+window.lastStaffLoad = 0;
+
+const MIN_SIGHTING_VISIBLE_TIME = 5000; // ⏱ 5 sec
+const MIN_STAFF_VISIBLE_TIME = 5000;    // ⏱ 5 sec
+
+
+function refreshAll() {
 
   document.getElementById('last-update').innerHTML =
     "🔄 Syncing Command Centre...";
 
-  /* 🔥 STEP 1: FAST NON-MAP LOADS */
+  const now = Date.now();
+
+  /* 🔥 SAFE LOADS (NO MAP IMPACT) */
   loadIncidents();
   loadPredictions();
   loadCompartmentsFromSheet();
 
-  /* 🔥 STEP 2: STAFF (DELAYED SLIGHTLY) */
-  setTimeout(() => {
-    loadStaff();   // 👮 slight delay
-  }, 300);
+  /* 🔥 STAFF (5 SEC HOLD) */
+  if (now - window.lastStaffLoad > MIN_STAFF_VISIBLE_TIME) {
 
-  /* 🔥 STEP 3: WEATHER */
+    setTimeout(() => {
+      loadStaff();
+      window.lastStaffLoad = Date.now();
+    }, 1000);   // ⏱ slight delay
+
+  } else {
+    console.log("⏸ Staff held (5 sec rule)");
+  }
+
+  /* 🔥 WEATHER */
   setTimeout(loadWeatherFull, 500);
 
-  /* 🔥 STEP 4: SIGHTINGS (IMPORTANT DELAY) */
+  /* 🔥 SIGHTINGS (5 SEC HOLD + POPUP SAFE) */
+  if (now - window.lastSightingsLoad > MIN_SIGHTING_VISIBLE_TIME) {
+
+    setTimeout(() => {
+
+      // 🛑 DO NOT REFRESH IF USER INTERACTING
+      if (map && map._popup && map._popup.isOpen()) {
+        console.log("⏸ Skipping sightings (popup open)");
+        return;
+      }
+
+      loadSightings();
+      window.lastSightingsLoad = Date.now();
+
+    }, 2500);   // ⏱ delayed refresh
+
+  } else {
+    console.log("⏸ Sightings held (5 sec rule)");
+  }
+
+  /* 🔥 VILLAGES (AFTER MAP STABLE) */
   setTimeout(() => {
+    loadVillages();
+  }, 3000);
 
-    // 🛑 DO NOT REFRESH IF POPUP OPEN
-    if (map && map._popup && map._popup.isOpen()) {
-      console.log("⏸ Skipping sightings refresh (popup open)");
-      return;
-    }
-
-    loadSightings();   // 🐘 safe refresh
-
-  }, 1500);
-
-  /* 🔥 STEP 5: VILLAGES (AFTER SIGHTINGS) */
-  setTimeout(() => {
-    loadVillages();    // 🏡
-  }, 2000);
-
-  /* 🔥 BACKGROUND TRACKING */
+  /* 🔥 TRACKING (BACKGROUND) */
   callBackend("fetchTraccar")
     .then(() => console.log("✅ Traccar updated"))
     .catch(err => console.error(err));
@@ -3103,10 +3127,8 @@ function loadSightings() {
   /* 🔥 STATUS UPDATE */
   setTimeout(function () {
 
-    const now = new Date();
-
     document.getElementById('last-update').innerHTML =
-      "🟢 LIVE : " + now.toLocaleTimeString();
+      "🟢 LIVE : " + new Date().toLocaleTimeString();
 
   }, 1000);
 }
