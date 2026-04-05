@@ -2003,22 +2003,27 @@ ${pct(data.health)} / 100
     }
 function clearKMLPreview(){
 
+  const btn = document.getElementById("clearKMLBtn");
+
   if (previewKMLLayer) {
 
     map.removeLayer(previewKMLLayer);
     previewKMLLayer = null;
 
     // 🔥 HIDE BUTTON
-    document.getElementById("clearKMLBtn").style.display = "none";
+    if (btn) btn.style.display = "none";
 
     showToast("KML preview removed");
 
   } else {
+
+    // 🔥 SAFETY HIDE (in case mismatch)
+    if (btn) btn.style.display = "none";
+
     showToast("No preview to remove", "warning");
   }
 
-}
-    function uploadKML() {
+}    function uploadKML() {
 
   const fileInput = document.getElementById("kmlUpload");
   const file = fileInput.files[0];
@@ -3176,19 +3181,14 @@ if (rawDir) {
 
   const file = fileInput.files[0];
 
-  console.log("📁 File:", file);
-  console.log("🏷 Beat:", beat);
-
   if (!beat) {
     alert("Select Beat");
-    console.warn("⚠ No beat selected");
     console.groupEnd();
     return;
   }
 
   if (!file) {
     alert("Select file");
-    console.warn("⚠ No file selected");
     console.groupEnd();
     return;
   }
@@ -3199,8 +3199,6 @@ if (rawDir) {
 
   reader.onload = function (e) {
 
-    console.log("📄 File loaded");
-
     const kmlText = e.target.result;
 
     callBackend("processUpload", {
@@ -3209,36 +3207,38 @@ if (rawDir) {
     })
     .then(function (msg) {
 
-      console.log("📥 Backend:", msg);
-
       status.innerHTML = "✅ " + msg;
 
       try {
 
-        // 🔥 REMOVE OLD PREVIEW FIRST
+        // 🔥 REMOVE OLD PREVIEW
         if (previewKMLLayer) {
-          console.log("🧹 Removing old preview");
           map.removeLayer(previewKMLLayer);
           previewKMLLayer = null;
         }
 
-        // 🔥 PARSE + STORE
         const parser = new DOMParser();
         const xml = parser.parseFromString(kmlText, "text/xml");
 
         previewKMLLayer = new L.KML(xml);
-
-        console.log("🆕 previewKMLLayer set:", previewKMLLayer);
-
         previewKMLLayer.addTo(map);
 
-        // 🔥 ZOOM AFTER LOAD
+        // 🔥 WAIT UNTIL ACTUALLY LOADED
         previewKMLLayer.on("loaded", function () {
+
           console.log("✅ KML LOADED");
 
           if (previewKMLLayer.getBounds().isValid()) {
             map.fitBounds(previewKMLLayer.getBounds());
           }
+
+          // 🔥 SHOW BUTTON HERE (FINAL FIX)
+          const btn = document.getElementById("clearKMLBtn");
+          if (btn) {
+            btn.style.display = "block";
+            console.log("✅ Clear button shown");
+          }
+
         });
 
       } catch (err) {
@@ -3246,7 +3246,6 @@ if (rawDir) {
       }
 
       setTimeout(closeKMLForm, 1500);
-
       console.groupEnd();
 
     })
