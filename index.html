@@ -3157,41 +3157,25 @@ const MIN_STAFF_VISIBLE_TIME = 5000;    // 5 sec
 window.isPopupInteracting = false;
 window.lastInteractionTime = 0;
 
-function refreshAll() {
+function refreshAll(){
 
   document.getElementById('last-update').innerHTML =
     "🔄 Syncing Command Centre...";
 
   const now = Date.now();
 
-  /* 🔥 SAFE LOADS (NO MAP CLEAR IMPACT) */
+  /* 🔥 KEEP EXISTING SAFE LOADS */
   loadIncidents();
   loadPredictions();
   loadCompartmentsFromSheet();
 
-  /* 🔥 STAFF (5 SEC HOLD + INTERACTION SAFE) */
-  if (now - window.lastStaffLoad > MIN_STAFF_VISIBLE_TIME) {
+  /* 🔥 STAFF (SIMPLIFIED — DIRECT LOAD) */
+  loadStaff();
 
-    setTimeout(() => {
-
-      if (window.isPopupInteracting || (Date.now() - window.lastInteractionTime < 5000)) {
-        console.log("⏸ Staff skipped (user interacting)");
-        return;
-      }
-
-      loadStaff();
-      window.lastStaffLoad = Date.now();
-
-    }, 1200);
-
-  } else {
-    console.log("⏸ Staff held (5 sec rule)");
-  }
-
-  /* 🔥 WEATHER */
+  /* 🔥 WEATHER (UNCHANGED) */
   setTimeout(loadWeatherFull, 500);
 
-  /* 🔥 SIGHTINGS (5 SEC HOLD + STRONG PROTECTION) */
+  /* 🔥 SIGHTINGS (KEEP AS-IS) */
   if (now - window.lastSightingsLoad > MIN_SIGHTING_VISIBLE_TIME) {
 
     setTimeout(() => {
@@ -3215,22 +3199,22 @@ function refreshAll() {
     console.log("⏸ Sightings held (5 sec rule)");
   }
 
-  /* 🔥 VILLAGES (UNCHANGED — already stable) */
+  /* 🔥 VILLAGES (UNCHANGED) */
   setTimeout(() => {
     loadVillages();
   }, 3000);
 
-  /* 🔥 TRACKING */
+  /* 🔥 TRACKING (GITHUB SAFE) */
   callBackend("fetchTraccar")
     .then(() => console.log("✅ Traccar updated"))
     .catch(err => console.error(err));
 
-  /* 🔥 STATUS */
+  /* 🔥 STATUS (UNCHANGED) */
   setTimeout(function () {
     document.getElementById('last-update').innerHTML =
       "🟢 LIVE : " + new Date().toLocaleTimeString();
   }, 1000);
-}    /* ============================================================
+}  /* ============================================================
        🚀 BLOCK 11 → APP INIT (FINAL — SINGLE ENTRY POINT)
     ============================================================ */
 
