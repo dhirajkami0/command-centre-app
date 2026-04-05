@@ -2187,8 +2187,7 @@ function openStatsPopup(name, latlng) {
 }/* ============================================================
        🐘 BLOCK 7 → ELEPHANT SYSTEM (FINAL)
     ============================================================ */
-
-   function loadSightings() {
+function loadSightings() {
 
   elephantLayer.clearLayers();
 
@@ -2235,7 +2234,7 @@ function openStatsPopup(name, latlng) {
         }
       }
 
-      /* ✅ DIRECTION FIX (FINAL) */
+      /* DIRECTION */
       const dirMap = {
         N:"North",S:"South",E:"East",W:"West",
         NE:"North-East",NW:"North-West",
@@ -2244,44 +2243,41 @@ function openStatsPopup(name, latlng) {
 
       let movementText = dirMap[e.direction] || "Unknown";
 
-      /* 🔥 VILLAGE RISK */
-     /* 🔥 VILLAGE RISK (DISTANCE BASED) */
-let villageHTML = "";
+      /* 🔥 VILLAGE RISK (DISTANCE BASED) */
+      let villageHTML = "";
 
-if(window.coneVillages){
+      if(window.coneVillages){
 
-  let nearestKey = null;
-  let minDist = Infinity;
+        let nearestKey = null;
+        let minDist = Infinity;
 
-  Object.keys(window.coneVillages).forEach(k=>{
+        Object.keys(window.coneVillages).forEach(k=>{
+          const [clat, clon] = k.split(",").map(Number);
 
-    const [clat, clon] = k.split(",").map(Number);
+          const d = Math.sqrt(
+            Math.pow(lat - clat, 2) +
+            Math.pow(lon - clon, 2)
+          );
 
-    const d = Math.sqrt(
-      Math.pow(lat - clat, 2) +
-      Math.pow(lon - clon, 2)
-    );
+          if(d < minDist){
+            minDist = d;
+            nearestKey = k;
+          }
+        });
 
-    if(d < minDist){
-      minDist = d;
-      nearestKey = k;
-    }
-  });
+        if(nearestKey && minDist < 0.02){ // 🔥 increased range
 
-  /* 🔥 THRESHOLD (IMPORTANT) */
-  if(nearestKey && minDist < 0.01){   // ~1km range
+          const villages = window.coneVillages[nearestKey];
 
-    const villages = window.coneVillages[nearestKey];
+          if(villages && villages.length > 0){
+            villageHTML += `<hr><b>🏠 Elephant Risk Zone</b>`;
+            villages.forEach(v=>{
+              villageHTML += `<div style="margin-top:4px;">🔴 <b>${v}</b></div>`;
+            });
+          }
+        }
+      }
 
-    if(villages && villages.length > 0){
-      villageHTML += `<hr><b>🏠 Elephant Risk Zone</b>`;
-      villages.forEach(v=>{
-        villageHTML += `<div style="margin-top:4px;">🔴 <b>${v}</b></div>`;
-      });
-    }
-  }
-
-}
       /* PHOTO */
       const photoHtml = e.photo ? `
         <div style="margin-top:8px">
@@ -2290,7 +2286,7 @@ if(window.coneVillages){
           </a>
         </div>` : "";
 
-      /* ✅ FINAL POPUP (EXACT FORMAT) */
+      /* ✅ FINAL POPUP (FIXED) */
       const popup = `
       <div style="font-family:Segoe UI;min-width:220px">
 
@@ -2312,72 +2308,51 @@ if(window.coneVillages){
 
         ${villageHTML}
         ${photoHtml}
-const popup = `
-<div style="font-family:Segoe UI;min-width:220px">
 
-  <div style="color:${color};font-weight:bold">
-    🔴 ACTIVE
-  </div>
+        <div style="margin-top:10px">
 
-  <hr>
+          <button onclick="event.stopPropagation(); showMoveOptions('${e.id}', this)" style="
+            background:#2e7d32;color:white;border:none;
+            width:100%;padding:10px;
+            border-radius:6px;cursor:pointer;">
+            ✅ MARK AS MOVED
+          </button>
 
-  <b>🐘 Herd:</b> ${herd}<br>
-  <b>🧭 Movement:</b> ${movementText}<br>
-  <b>⏱ Time:</b> ${timeDisplay}<br>
+          <select onchange="confirmExit(this,'${e.id}')"
+                  onclick="event.stopPropagation()"
+                  style="
+            display:none;
+            width:100%;
+            margin-top:8px;
+            padding:10px;
+            border-radius:6px;
+          ">
 
-  <b>👤 Sighted by:</b> ${e.teamLeader || "Unknown"}<br>
+            <option value="">-- Select Action --</option>
+            <option value="Moved">🟢 Moved</option>
 
-  <br>
-  <b>📍 Location of sighting:</b><br>
-  <code>${lat.toFixed(5)}, ${lon.toFixed(5)} near ${e.village || "Unknown"}</code>
+            <option>Driven to DPO 1</option>
+            <option>Driven to DPO 2</option>
+            <option>Driven to DPO 5</option>
+            <option>Driven to DPO 6</option>
+            <option>Driven to DPO 9</option>
 
-  ${villageHTML}
-  ${photoHtml}
+            <option>Driven to PORO 2</option>
+            <option>Driven to PORO 3</option>
+            <option>Driven to PORO 4</option>
+            <option>Driven to PORO 5</option>
+            <option>Driven to PORO 7</option>
+            <option>Driven to PORO 8</option>
+            <option>Driven to PORO 9</option>
+            <option>Driven to PORO 10</option>
 
-  <div style="margin-top:10px">
+            <option>Driven to PF</option>
 
-    <button onclick="event.stopPropagation(); showMoveOptions('${e.id}', this)" style="
-      background:#2e7d32;color:white;border:none;
-      width:100%;padding:10px;
-      border-radius:6px;cursor:pointer;">
-      ✅ MARK AS MOVED
-    </button>
+          </select>
 
-    <select onchange="confirmExit(this,'${e.id}')"
-            onclick="event.stopPropagation()"
-            style="
-      display:none;
-      width:100%;
-      margin-top:8px;
-      padding:10px;
-      border-radius:6px;
-    ">
+        </div>
 
-      <option value="">-- Select Action --</option>
-      <option value="Moved">🟢 Moved</option>
-
-      <option>Driven to DPO 1</option>
-      <option>Driven to DPO 2</option>
-      <option>Driven to DPO 5</option>
-      <option>Driven to DPO 6</option>
-      <option>Driven to DPO 9</option>
-
-      <option>Driven to PORO 2</option>
-      <option>Driven to PORO 3</option>
-      <option>Driven to PORO 4</option>
-      <option>Driven to PORO 5</option>
-      <option>Driven to PORO 7</option>
-      <option>Driven to PORO 8</option>
-      <option>Driven to PORO 9</option>
-      <option>Driven to PORO 10</option>
-
-      <option>Driven to PF</option>
-
-    </select>
-
-  </div>
-
-</div>`;
+      </div>`;
 
       L.marker([lat,lon],{
         icon:icon,
