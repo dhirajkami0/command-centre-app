@@ -1497,7 +1497,19 @@ function initDutyControl() {
   } else {
     openDutyForm();
   }
-}function addRangeStatsButton() {
+}
+  function showMoveOptions(id, btn){
+
+  const container = btn.parentElement;
+  const dropdown = container.querySelector("select");
+
+  if(dropdown){
+    dropdown.style.display = "block";
+    btn.style.display = "none";
+  }
+
+}  
+    function addRangeStatsButton() {
 
       const control = L.control({ position: 'topright' });
 
@@ -2301,7 +2313,47 @@ if(window.coneVillages){
         ${villageHTML}
         ${photoHtml}
 
-        <button onclick="confirmExit('${e.id}')" style="
+        <div style="margin-top:10px">
+
+  <button onclick="showMoveOptions('${e.id}', this)" style="
+    background:#2e7d32;color:white;border:none;
+    width:100%;padding:10px;
+    border-radius:6px;cursor:pointer;">
+    ✅ MARK AS MOVED
+  </button>
+
+  <select onchange="confirmExit(this,'${e.id}')" style="
+    display:none;
+    width:100%;
+    margin-top:8px;
+    padding:10px;
+    border-radius:6px;
+  ">
+
+    <option value="">-- Select Action --</option>
+
+    <option value="Moved">🟢 Moved</option>
+
+    <option>Driven to DPO 1</option>
+    <option>Driven to DPO 2</option>
+    <option>Driven to DPO 5</option>
+    <option>Driven to DPO 6</option>
+    <option>Driven to DPO 9</option>
+
+    <option>Driven to PORO 2</option>
+    <option>Driven to PORO 3</option>
+    <option>Driven to PORO 4</option>
+    <option>Driven to PORO 5</option>
+    <option>Driven to PORO 7</option>
+    <option>Driven to PORO 8</option>
+    <option>Driven to PORO 9</option>
+    <option>Driven to PORO 10</option>
+
+    <option>Driven to PF</option>
+
+  </select>
+
+</div>
           background:#2e7d32;color:white;border:none;
           width:100%;padding:10px;margin-top:10px;
           border-radius:6px;cursor:pointer;">
@@ -2325,26 +2377,41 @@ if(window.coneVillages){
   });
 
 }/* 🔥 STATUS UPDATE */
-    function confirmExit(id) {
+    function confirmExit(input, id) {
 
-      if (!confirm("Confirm elephant moved?")) return;
+  let value;
 
-      callBackend("updateSightingStatus", {
-        id: id,
-        status: "Moved"
-      })
-        .then(function () {
+  // 🔥 HANDLE BOTH CASES
+  if(typeof input === "string"){
+    value = "Moved";   // fallback if called directly
+    id = input;
+  } else {
+    value = input.value;
+  }
 
-          alert("Updated");
-          refreshAll();
+  if (!value) return;
 
-          // 🔁 nested backend call also converted
-          callBackend("updateVillageRisk");
+  if (!confirm("Confirm update: " + value + " ?")) return;
 
-        });
+  callBackend("updateSightingStatus", {
+    id: id,
+    remarks: value   // ✅ IMPORTANT (NOT status)
+  })
+  .then(function () {
 
-    }
+    alert("✅ Updated");
 
+    refreshAll();
+
+    // 🔁 keep your existing flow
+    callBackend("updateVillageRisk");
+
+  })
+  .catch(err=>{
+    console.error("❌ Update failed:", err);
+  });
+
+}
 
     /* ============================================================
        👮 BLOCK 8 → STAFF SYSTEM (FINAL)
