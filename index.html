@@ -2030,20 +2030,20 @@ function clearKMLPreview(){
 }  
     
     
-    function uploadKML() {
+   function uploadKML() {
 
   const fileInput = document.getElementById("kmlUpload");
   const file = fileInput.files[0];
 
   if (!file) {
-    showToast("Please select a KML file", "warning");
+    alert("❌ Please select a KML file");
     return;
   }
 
-  const beatTag = document.getElementById("kmlBeat")?.value;
+  const beatTag = prompt("Enter Beat (EAST GARAM / WEST GARAM / EAST PORO / etc)");
 
   if (!beatTag) {
-    showToast("Please select a Beat", "warning");
+    alert("❌ Beat required");
     return;
   }
 
@@ -2059,9 +2059,12 @@ function clearKMLPreview(){
     })
     .then(function (msg) {
 
-      showToast(msg || "Uploaded successfully");
+      alert(msg);
 
       try {
+
+        const parser = new DOMParser();
+        const xml = parser.parseFromString(kmlText, "text/xml");
 
         // 🔥 REMOVE OLD PREVIEW
         if (previewKMLLayer) {
@@ -2069,33 +2072,22 @@ function clearKMLPreview(){
           previewKMLLayer = null;
         }
 
-        const parser = new DOMParser();
-        const xml = parser.parseFromString(kmlText, "text/xml");
+        // 🔥 STORE LAYER
+        previewKMLLayer = new L.KML(xml);
+        previewKMLLayer.addTo(map);
 
-        // 🔥 STORE DIRECTLY
-       previewKMLLayer = new L.KML(xml);
-previewKMLLayer.addTo(map);
-
-// 🔥 SHOW BUTTON
-document.getElementById("clearKMLBtn").style.display = "block";
-        // 🔥 ZOOM
-        previewKMLLayer.on("loaded", function () {
-          if (previewKMLLayer.getBounds().isValid()) {
-            map.fitBounds(previewKMLLayer.getBounds());
-          }
-        });
-
-        console.log("✅ previewKMLLayer SET:", previewKMLLayer);
+        if (previewKMLLayer.getBounds().isValid()) {
+          map.fitBounds(previewKMLLayer.getBounds());
+        }
 
       } catch (err) {
         console.error("KML render error:", err);
-        showToast("KML preview error", "error");
       }
 
     })
     .catch(function (err) {
       console.error(err);
-      showToast("Upload failed", "error");
+      alert("❌ Upload failed");
     });
 
   };
