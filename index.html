@@ -3772,37 +3772,29 @@ function calculateTotal(){
   document.getElementById("f-total").value = m + f + u + c;
 }
           /* 3. Open Form + GPS */
-         function openSightingForm() {
+         function openSightingForm(){
 
   document.getElementById("form-modal").style.display = "block";
 
-  /* ✅ TEAM LEADER AUTO */
+  /* TEAM */
   document.getElementById("f-team").value =
-    window.loggedInUser || window.userProfile?.leader || "Unknown";
+    window.userProfile?.name || "Unknown";
 
-  /* ✅ TIME AUTO */
+  /* TIME */
   const now = new Date();
-  const hh = String(now.getHours()).padStart(2,"0");
-  const mm = String(now.getMinutes()).padStart(2,"0");
-  document.getElementById("f-time").value = hh + ":" + mm;
+  document.getElementById("f-time").value =
+    now.toTimeString().slice(0,5);
 
-  /* ✅ LOCATION AUTO */
-  if(navigator.geolocation){
-    navigator.geolocation.getCurrentPosition(function(pos){
+  /* LOCATION */
+  navigator.geolocation.getCurrentPosition(pos=>{
+    const lat = pos.coords.latitude.toFixed(6);
+    const lon = pos.coords.longitude.toFixed(6);
 
-      const lat = pos.coords.latitude.toFixed(6);
-      const lon = pos.coords.longitude.toFixed(6);
+    document.getElementById("f-lat").value = lat;
+    document.getElementById("f-lon").value = lon;
+    document.getElementById("f-location").value = lat + ", " + lon;
+  });
 
-      document.getElementById("f-lat").value = lat;
-      document.getElementById("f-lon").value = lon;
-
-      document.getElementById("f-location").value =
-        lat + ", " + lon;
-
-    });
-  }
-
-  /* ✅ RESET TOTAL */
   calculateTotal();
 }
           /* 4. Close Form */
@@ -4550,43 +4542,26 @@ function loadMapDataFirebase() {
     function updateCompt(){
 
   const block = document.getElementById("f-block").value;
-  const compt = document.getElementById("f-compt");
+  const c = document.getElementById("f-compt");
 
-  compt.innerHTML = "";
+  c.innerHTML = "";
 
   let list = [];
 
-  if(block === "PORO"){
-    list = ["PORO 3","PORO 4","PORO 8","PORO 9","PORO 2","PORO 7","PF","PORO 5","PORO 10"];
+  if(block==="PORO"){
+    list=["PORO 3","PORO 4","PORO 8","PORO 9","PORO 2","PORO 7","PF","PORO 5","PORO 10"];
   }
-
-  else if(block === "DPO"){
-    list = ["DPO 1","DPO 2","DPO 5","DPO 6","DPO 9"];
+  else if(block==="DPO"){
+    list=["DPO 1","DPO 2","DPO 5","DPO 6","DPO 9"];
   }
-
-  else if(block === "VILLAGE"){
-    list = [
-"Fhoksadanga(Joler Tank)","Fhoksadanga(Satu Mill)","Police Camp","Barua Road",
-"Kali Mandir","Royal Dhaba","Burir Dokan","Garam Bridge","RVK Road",
-"Dakhal Busty","Poro Bus Stand","River Camp Road","Uttar Poro Busty",
-"Dakshin Poro Busty","East Poro Beat","Near Fagu Chowpaty",
-"Fagu Chowpaty (Poro)","Hindi School (Satkodali)","Chandan Dokan",
-"Satkodali","Bagan Kona(Satkodali)","Dilip House(Bagan Kona School)",
-"Nauka Ghat(Satkodali)","Shivmandir(Satkodali)","Dolapara",
-"Dolapara Dotalabari","Jabrabasty(Chowpatty)","Neka Chowpaty",
-"Ultaghar","Nisu Panchyat House","Bagan Chowpatty Jitpur",
-"Bagan Office Road Division","Dangapara Primary School","Power House",
-"Damanpur Division Ground Majherdabri","Dodiyar Bridge",
-"Jitpur Central School","Naba Udayan Sporting Club Damanpur",
-"Bat Talai Damanpur"
-    ];
+  else if(block==="VILLAGE"){
+    list=["Police Camp","Barua Road","Kali Mandir","Bat Talai Damanpur"];
   }
 
   list.forEach(v=>{
-    const opt = document.createElement("option");
-    opt.value = v;
-    opt.textContent = v;
-    compt.appendChild(opt);
+    const opt=document.createElement("option");
+    opt.textContent=v;
+    c.appendChild(opt);
   });
 }
   </script>
@@ -4608,13 +4583,6 @@ style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; bac
 <input type="hidden" id="f-lat">
 <input type="hidden" id="f-lon">
 
-<!-- Sighting ID -->
-<input type="hidden" id="f-id">
-
-<!-- Parent -->
-<input type="hidden" id="f-parent">
-
-<!-- BEAT -->
 <label><b>Beat</b></label>
 <select id="f-beat" required>
 <option value="">-- Select Beat --</option>
@@ -4623,7 +4591,6 @@ style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; bac
 <option>East Poro Beat</option>
 </select>
 
-<!-- FOREST BLOCK -->
 <label><b>Forest Block</b></label>
 <select id="f-block" onchange="updateCompt()" required>
 <option value="">-- Select Block --</option>
@@ -4632,58 +4599,45 @@ style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; bac
 <option value="VILLAGE">VILLAGE</option>
 </select>
 
-<!-- COMPT -->
 <label><b>Compt</b></label>
 <select id="f-compt" required>
 <option value="">-- Select Block First --</option>
 </select>
 
-<!-- TIME -->
 <label><b>Time</b></label>
 <input type="time" id="f-time" required>
 
-<!-- COUNT -->
 <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
-<input type="number" id="f-m" placeholder="M" value="0">
-<input type="number" id="f-f" placeholder="F" value="0">
-<input type="number" id="f-u" placeholder="Unidentified" value="0">
-<input type="number" id="f-c" placeholder="Calf" value="0">
+<input type="number" id="f-m" value="0" oninput="calculateTotal()">
+<input type="number" id="f-f" value="0" oninput="calculateTotal()">
+<input type="number" id="f-u" value="0" oninput="calculateTotal()">
+<input type="number" id="f-c" value="0" oninput="calculateTotal()">
 </div>
 
-<!-- TOTAL -->
 <label>Total Seen</label>
 <input type="number" id="f-total" readonly>
 
-<!-- ANTICIPATED -->
 <label>Anticipated</label>
 <input type="text" id="f-anticipated">
 
-<!-- DEPREDATION -->
 <label>Depredation</label>
 <input type="text" id="f-depredation">
 
-<!-- INVOLVED -->
 <label>Involved</label>
 <input type="text" id="f-involved">
 
-<!-- DRIVING -->
 <label>Driving</label>
 <input type="text" id="f-driving">
 
-<!-- REMARKS -->
 <label><b>Driving Status / Remarks</b></label>
-<select id="f-remarks"
-style="width:100%; padding:12px; margin-top:5px; border-radius:5px; border:1px solid #ccc;">
-
+<select id="f-remarks">
 <option value="Active">🔴 Active</option>
 <option value="Moved">🟢 Moved</option>
-
 <option>Driven to DPO 1</option>
 <option>Driven to DPO 2</option>
 <option>Driven to DPO 5</option>
 <option>Driven to DPO 6</option>
 <option>Driven to DPO 9</option>
-
 <option>Driven to PORO 2</option>
 <option>Driven to PORO 3</option>
 <option>Driven to PORO 4</option>
@@ -4692,23 +4646,18 @@ style="width:100%; padding:12px; margin-top:5px; border-radius:5px; border:1px s
 <option>Driven to PORO 8</option>
 <option>Driven to PORO 9</option>
 <option>Driven to PORO 10</option>
-
 <option>Driven to PF</option>
-
 </select>
-<!-- TEAM LEADER AUTO -->
+
 <label><b>Team Leader</b></label>
 <input type="text" id="f-team" readonly>
 
-<!-- LOCATION -->
 <label><b>Location</b></label>
 <input type="text" id="f-location" readonly>
 
-<!-- PHOTO -->
 <label>Photo</label>
 <input type="file" id="f-photo">
 
-<!-- DIRECTION -->
 <label><b>Direction</b></label>
 <select id="f-dir">
 <option value="N">North</option>
@@ -4721,8 +4670,7 @@ style="width:100%; padding:12px; margin-top:5px; border-radius:5px; border:1px s
 <option value="NW">North-West</option>
 </select>
 
-<button type="button" onclick="submitSightingForm()"
-style="width:100%;padding:15px;background:#1b5e20;color:white;margin-top:15px;border:none;border-radius:8px;">
+<button type="button" onclick="submitSightingForm()">
 📤 SUBMIT
 </button>
 
