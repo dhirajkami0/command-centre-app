@@ -3142,9 +3142,9 @@ if (rawDir) {
       document.getElementById("kmlFormPopup").style.display = "none";
     }
 
-   function submitKML() {
+ function submitKML() {
 
-  console.group("📤 submitKML");
+  console.group("📤 submitKML START");
 
   const beat = document.getElementById("kmlBeat").value;
   const fileInput = document.getElementById("kmlFileInput");
@@ -3152,13 +3152,18 @@ if (rawDir) {
 
   const file = fileInput.files[0];
 
+  console.log("📌 Beat:", beat);
+  console.log("📂 File:", file);
+
   if (!beat) {
+    console.error("❌ Beat missing");
     alert("Select Beat");
     console.groupEnd();
     return;
   }
 
   if (!file) {
+    console.error("❌ File missing");
     alert("Select file");
     console.groupEnd();
     return;
@@ -3170,7 +3175,10 @@ if (rawDir) {
 
   reader.onload = function (e) {
 
+    console.group("📖 File Read");
+
     const kmlText = e.target.result;
+    console.log("📄 KML length:", kmlText?.length);
 
     // ================= KML VALIDATION =================
     let xml;
@@ -3183,18 +3191,27 @@ if (rawDir) {
         showToast("❌ Invalid KML file");
         status.innerHTML = "❌ Invalid KML";
         console.groupEnd();
+        console.groupEnd();
         return;
       }
+
+      console.log("✅ KML parsed successfully");
+
     } catch (err) {
       console.error("❌ KML parse error:", err);
       showToast("❌ Failed to read KML");
       status.innerHTML = "❌ Parse error";
       console.groupEnd();
+      console.groupEnd();
       return;
     }
 
-    // 🔥 INCLUDE MODE IN SAME CALL
+    console.groupEnd();
+
     const mode = document.getElementById("analysisMode")?.value || "polygon";
+    console.log("⚙ Mode:", mode);
+
+    console.group("📡 Backend Call");
 
     callBackend("processUpload", {
       kmlText: kmlText,
@@ -3203,106 +3220,121 @@ if (rawDir) {
     })
     .then(function (res) {
 
-      console.log("📥 Backend Response:", res);
+      console.log("📥 FULL BACKEND RESPONSE:", res);
 
       // ================= RESPONSE GUARD =================
-      if (!res || res.status === "error") {
-        console.error("❌ Backend error:", res);
-        status.innerHTML = "❌ " + (res?.message || "Unknown error");
+      if (!res) {
+        console.error("❌ No response from backend");
+        console.groupEnd();
         console.groupEnd();
         return;
       }
 
+      if (res.status === "error") {
+        console.error("❌ Backend returned error:", res.message);
+        status.innerHTML = "❌ " + (res.message || "Unknown error");
+        console.groupEnd();
+        console.groupEnd();
+        return;
+      }
+
+      console.log("✅ Backend success");
+
       status.innerHTML = "✅ " + (res.message || "Uploaded");
+
+      console.groupEnd();
+
+      // ================= ANALYSIS DEBUG =================
+      console.group("📊 Analysis Check");
+      console.log("Analysis object:", res.analysis);
+
+      if (!res.analysis) {
+        console.warn("⚠ No analysis returned from backend");
+      } else {
+        console.log("✅ Analysis present:", res.analysis.type);
+      }
+      console.groupEnd();
+
+      // ================= MAP RENDER =================
+      console.group("🗺 Map Render");
 
       try {
 
-        // 🔥 REMOVE OLD PREVIEW
         if (previewKMLLayer) {
           try {
             map.removeLayer(previewKMLLayer);
-          } catch(e){}
+            console.log("♻ Old layer removed");
+          } catch(e){
+            console.warn("⚠ Failed to remove old layer:", e);
+          }
           previewKMLLayer = null;
         }
 
-        // 🔥 CREATE + ADD
         previewKMLLayer = new L.KML(xml);
         previewKMLLayer.addTo(map);
 
-        console.log("✅ KML added:", previewKMLLayer);
+        console.log("✅ KML layer added");
 
-        // 🔥 SHOW CLEAR BUTTON
-        const btn = document.getElementById("clearKMLBtn");
-        if (btn) {
-          btn.style.display = "block";
-        }
+        // 🔥 CLICK DEBUG
+        previewKMLLayer.on("click", function () {
+          console.log("🖱 KML CLICK EVENT TRIGGERED");
 
-        // ================= SAFE AUTO ZOOM =================
-        setTimeout(() => {
           try {
-            if (
-              previewKMLLayer &&
-              typeof previewKMLLayer.getBounds === "function"
-            ) {
-              const bounds = previewKMLLayer.getBounds();
-
-              if (bounds && bounds.isValid && bounds.isValid()) {
-                map.fitBounds(bounds);
-              } else {
-                console.warn("⚠ Invalid bounds");
-              }
+            if (window.lastAnalysis) {
+              console.log("📊 Showing stored analysis");
+              showAnalysisResult(window.lastAnalysis);
+            } else {
+              console.warn("⚠ No analysis in window.lastAnalysis");
+              showToast("No analysis available");
             }
           } catch (err) {
-            console.warn("⚠ Zoom error:", err);
+            console.error("❌ Click handler crashed:", err);
           }
-        }, 500);
-
-        // =====================================================
-        // 🔥 ANALYSIS HANDLING (SAFE)
-        // =====================================================
-
-        if (res.analysis) {
-
-          // 🔥 STORE GLOBALLY (FIXED)
-          window.lastAnalysis = res.analysis;
-
-          // 🔥 AUTO POPUP
-          showAnalysisResult(res.analysis);
-
-          // 🔥 CLICK EVENT ON KML
-          previewKMLLayer.on("click", function () {
-
-            try {
-              if (window.lastAnalysis) {
-                showAnalysisResult(window.lastAnalysis);
-              } else {
-                showToast("No analysis available");
-              }
-            } catch (err) {
-              console.error("❌ Click handler error:", err);
-            }
-
-          });
-
-        } else {
-          console.warn("⚠ No analysis returned");
-          showToast("No analysis available");
-        }
+        });
 
       } catch (err) {
         console.error("❌ KML render error:", err);
         showToast("❌ Failed to render KML");
       }
 
+      console.groupEnd();
+
+      // ================= STORE + SHOW =================
+      console.group("💾 Store & Display Analysis");
+
+      if (res.analysis) {
+
+        window.lastAnalysis = res.analysis;
+
+        console.log("✅ Stored in window.lastAnalysis");
+
+        try {
+          showAnalysisResult(res.analysis);
+          console.log("✅ showAnalysisResult executed");
+        } catch (err) {
+          console.error("❌ showAnalysisResult failed:", err);
+        }
+
+      } else {
+        console.warn("⚠ Skipping display (no analysis)");
+      }
+
+      console.groupEnd();
+
       setTimeout(() => {
-        try { closeKMLForm(); } catch(e){}
+        try {
+          closeKMLForm();
+          console.log("✅ Form closed");
+        } catch(e){
+          console.warn("⚠ closeKMLForm failed:", e);
+        }
       }, 1500);
 
       console.groupEnd();
 
     })
     .catch(function (err) {
-      console.error("❌ Upload failed:", err);
+      console.error("❌ Backend call failed:", err);
       status.innerHTML = "❌ Upload failed";
       showToast("❌ Upload failed");
       console.groupEnd();
@@ -3312,42 +3344,47 @@ if (rawDir) {
 
   reader.readAsText(file);
 }
-
+    
     function showAnalysisResult(d){
+
+  console.group("📊 showAnalysisResult");
 
   try {
 
+    console.log("Input data:", d);
+
     if (!d || !d.type) {
+      console.error("❌ Invalid analysis data");
       showToast("❌ Invalid analysis data");
+      console.groupEnd();
       return;
     }
 
-    // 🔒 Safe number formatter
+    console.log("Type detected:", d.type);
+
     const safeNum = (v, digits = 2) => {
       const n = Number(v);
       return isNaN(n) ? "0.00" : n.toFixed(digits);
     };
 
-    // ================= TRACK =================
     if (d.type === "Track") {
-
-      const len = safeNum(d.length_km, 2);
-      showToast(`📏 Length: ${len} km`);
+      console.log("📏 Track length:", d.length_km);
+      showToast(`📏 Length: ${safeNum(d.length_km)} km`);
+      console.groupEnd();
       return;
     }
 
-    // ================= POINT =================
     if (d.type === "Point") {
-
-      const lat = safeNum(d.lat, 5);
-      const lon = safeNum(d.lon, 5);
-
-      showToast(`📍 ${lat}, ${lon}`);
+      console.log("📍 Point coords:", d.lat, d.lon);
+      showToast(`📍 ${safeNum(d.lat,5)}, ${safeNum(d.lon,5)}`);
+      console.groupEnd();
       return;
     }
 
-    // ================= AREA =================
     if (d.type === "Area") {
+
+      console.log("📐 Area:", d.Total_ha);
+      console.log("🌿 Distribution:", d.distribution);
 
       const dist = d.distribution || {};
       const safe = (v) => safeNum(v, 2);
@@ -3372,16 +3409,21 @@ Reason: ${d.reason || "-"}
 🟦 Water: ${safe(dist.Water)} ha`;
 
       showToast(msg);
+
+      console.log("✅ Area analysis displayed");
+      console.groupEnd();
       return;
     }
 
-    // ================= UNKNOWN =================
+    console.warn("⚠ Unknown type:", d.type);
     showToast("⚠️ Unknown analysis type");
 
   } catch (err) {
-    console.error("❌ Analysis display error:", err);
+    console.error("❌ showAnalysisResult crashed:", err);
     showToast("❌ Failed to display analysis");
   }
+
+  console.groupEnd();
 }/* ============================================================
        📱 RESPONSIVE PANEL TOGGLE
     ============================================================ */
