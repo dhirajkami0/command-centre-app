@@ -5517,7 +5517,7 @@ window.openDutyForm = openDutyForm;
   </div>
   </div>
   </div>
-  <div id="kmlFormPopup" style="
+ <div id="kmlFormPopup" style="
   display:none;
   position:fixed;
   top:0;
@@ -5530,7 +5530,7 @@ window.openDutyForm = openDutyForm;
   justify-content:center;
 ">
 
-    <div style="
+  <div style="
     background:#1b2e1b;
     padding:20px;
     border-radius:12px;
@@ -5539,33 +5539,43 @@ window.openDutyForm = openDutyForm;
     color:white;
   ">
 
-      <h3>📡 Upload KML</h3>
+    <h3>📡 Upload KML</h3>
 
-      <select id="kmlBeat" style="width:100%; padding:8px; margin-bottom:10px;">
-        <option value="">-- Select Beat --</option>
-        <option value="EAST GARAM">EAST GARAM</option>
-        <option value="WEST GARAM">WEST GARAM</option>
-        <option value="EAST PORO">EAST PORO</option>
-        <option value="RANGE HQ">RANGE HQ</option>
-        <option value="OTHER">OTHER</option>
-      </select>
+    <!-- 🔥 NEW: ANALYSIS MODE -->
+    <select id="analysisMode" style="width:100%; padding:8px; margin-bottom:10px;">
+      <option value="point">📍 Point Analysis</option>
+      <option value="line">📏 Patrol Track</option>
+      <option value="polygon" selected>🌍 Area / Forest</option>
+    </select>
 
-      <input type="file" id="kmlFileInput" accept=".kml" style="width:100%; margin-bottom:12px;">
+    <!-- EXISTING -->
+    <select id="kmlBeat" style="width:100%; padding:8px; margin-bottom:10px;">
+      <option value="">-- Select Beat --</option>
+      <option value="EAST GARAM">EAST GARAM</option>
+      <option value="WEST GARAM">WEST GARAM</option>
+      <option value="EAST PORO">EAST PORO</option>
+      <option value="RANGE HQ">RANGE HQ</option>
+      <option value="OTHER">OTHER</option>
+    </select>
 
-      <button onclick="submitKML()"
-        style="width:100%; padding:10px; background:#2e7d32; color:white; border:none; border-radius:6px;">
-        Submit
-      </button>
+    <input type="file" id="kmlFileInput" accept=".kml"
+      style="width:100%; margin-bottom:12px;">
 
-      <button onclick="closeKMLForm()"
-        style="width:100%; padding:8px; margin-top:5px; background:#555; color:white; border:none; border-radius:6px;">
-        Cancel
-      </button>
+    <!-- 🔥 UPDATED BUTTON TEXT -->
+    <button onclick="submitKML()"
+      style="width:100%; padding:10px; background:#2e7d32; color:white; border:none; border-radius:6px;">
+      🚀 Upload & Analyze
+    </button>
 
-      <div id="kmlStatus" style="margin-top:8px; font-size:11px;"></div>
+    <button onclick="closeKMLForm()"
+      style="width:100%; padding:8px; margin-top:5px; background:#555; color:white; border:none; border-radius:6px;">
+      Cancel
+    </button>
 
-    </div>
+    <div id="kmlStatus" style="margin-top:8px; font-size:11px;"></div>
+
   </div>
+</div>
 <!-- 🔐 LOGIN MODAL -->
 <div id="loginModal" style="
   position:fixed;
