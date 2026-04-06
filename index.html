@@ -3143,7 +3143,7 @@ if (rawDir) {
     }
 function submitKML() {
 
-  console.group("📤 submitKML START");
+  console.group("📤 submitKML");
 
   const beat = document.getElementById("kmlBeat").value;
   const fileInput = document.getElementById("kmlFileInput");
@@ -3151,18 +3151,13 @@ function submitKML() {
 
   const file = fileInput.files[0];
 
-  console.log("📌 Beat:", beat);
-  console.log("📂 File:", file);
-
   if (!beat) {
-    console.error("❌ Beat missing");
     alert("Select Beat");
     console.groupEnd();
     return;
   }
 
   if (!file) {
-    console.error("❌ File missing");
     alert("Select file");
     console.groupEnd();
     return;
@@ -3174,170 +3169,64 @@ function submitKML() {
 
   reader.onload = function (e) {
 
-    console.group("📖 File Read");
-
     const kmlText = e.target.result;
-    console.log("📄 KML length:", kmlText?.length);
-
-    let xml;
-    try {
-      const parser = new DOMParser();
-      xml = parser.parseFromString(kmlText, "text/xml");
-
-      if (xml.getElementsByTagName("parsererror").length) {
-        console.error("❌ Invalid KML");
-        showToast("❌ Invalid KML file");
-        status.innerHTML = "❌ Invalid KML";
-        console.groupEnd();
-        console.groupEnd();
-        return;
-      }
-
-      console.log("✅ KML parsed successfully");
-
-    } catch (err) {
-      console.error("❌ KML parse error:", err);
-      showToast("❌ Failed to read KML");
-      status.innerHTML = "❌ Parse error";
-      console.groupEnd();
-      console.groupEnd();
-      return;
-    }
-
-    console.groupEnd();
-
-    const mode = document.getElementById("analysisMode")?.value || "polygon";
-    console.log("⚙ Mode:", mode);
-
-    console.group("📡 Backend Call");
 
     callBackend("processUpload", {
       kmlText: kmlText,
-      beatTag: beat,
-      mode: mode
+      beatTag: beat
     })
-    .then(function (res) {
+    .then(function (msg) {
 
-      console.log("📥 FULL BACKEND RESPONSE:", res);
-
-      if (!res) {
-        console.error("❌ No response from backend");
-        console.groupEnd();
-        console.groupEnd();
-        return;
-      }
-
-      if (res.status === "error") {
-        console.error("❌ Backend returned error:", res.message);
-        status.innerHTML = "❌ " + (res.message || "Unknown error");
-        console.groupEnd();
-        console.groupEnd();
-        return;
-      }
-
-      console.log("✅ Backend success");
-
-      status.innerHTML = "✅ " + (res.message || "Uploaded");
-
-      console.groupEnd();
-
-      console.group("📊 Analysis Check");
-      console.log("Analysis object:", res.analysis);
-      console.groupEnd();
-
-      console.group("🗺 Map Render");
+      status.innerHTML = "✅ " + msg;
 
       try {
 
+        // 🔥 REMOVE OLD PREVIEW
         if (previewKMLLayer) {
-          try {
-            map.removeLayer(previewKMLLayer);
-            console.log("♻ Old layer removed");
-          } catch(e){
-            console.warn("⚠ Failed to remove old layer:", e);
-          }
+          map.removeLayer(previewKMLLayer);
           previewKMLLayer = null;
         }
 
+        const parser = new DOMParser();
+        const xml = parser.parseFromString(kmlText, "text/xml");
+
+        // 🔥 CREATE + ADD
         previewKMLLayer = new L.KML(xml);
         previewKMLLayer.addTo(map);
 
-        console.log("✅ KML layer added");
+        console.log("✅ KML added:", previewKMLLayer);
 
-        // 🔥🔥🔥 ONLY FIX ADDED (SHOW BUTTON IMMEDIATELY)
+        // 🔥 SHOW CLEAR BUTTON (THIS IS THE KEY PART)
         const btn = document.getElementById("clearKMLBtn");
         if (btn) {
           btn.style.display = "block";
-          console.log("✅ Clear button shown");
         }
 
-        previewKMLLayer.on("click", function () {
-          console.log("🖱 KML CLICK EVENT TRIGGERED");
-
-          try {
-            if (window.lastAnalysis) {
-              console.log("📊 Showing stored analysis");
-              showAnalysisResult(window.lastAnalysis);
-            } else {
-              console.warn("⚠ No analysis in window.lastAnalysis");
-              showToast("No analysis available");
-            }
-          } catch (err) {
-            console.error("❌ Click handler crashed:", err);
+        // 🔥 AUTO ZOOM
+        setTimeout(() => {
+          if (previewKMLLayer && previewKMLLayer.getBounds().isValid()) {
+            map.fitBounds(previewKMLLayer.getBounds());
           }
-        });
+        }, 500);
 
       } catch (err) {
         console.error("❌ KML render error:", err);
-        showToast("❌ Failed to render KML");
       }
 
-      console.groupEnd();
-
-      console.group("💾 Store & Display Analysis");
-
-      if (res.analysis) {
-
-        window.lastAnalysis = res.analysis;
-
-        console.log("✅ Stored in window.lastAnalysis");
-
-        try {
-          showAnalysisResult(res.analysis);
-          console.log("✅ showAnalysisResult executed");
-        } catch (err) {
-          console.error("❌ showAnalysisResult failed:", err);
-        }
-
-      }
-
-      console.groupEnd();
-
-      setTimeout(() => {
-        try {
-          closeKMLForm();
-          console.log("✅ Form closed");
-        } catch(e){
-          console.warn("⚠ closeKMLForm failed:", e);
-        }
-      }, 1500);
-
+      setTimeout(closeKMLForm, 1500);
       console.groupEnd();
 
     })
     .catch(function (err) {
-      console.error("❌ Backend call failed:", err);
+      console.error("❌ Upload failed:", err);
       status.innerHTML = "❌ Upload failed";
-      showToast("❌ Upload failed");
       console.groupEnd();
     });
 
   };
 
   reader.readAsText(file);
-}
-    
-    function showAnalysisResult(d){
+}    function showAnalysisResult(d){
 
   console.group("📊 showAnalysisResult");
 
