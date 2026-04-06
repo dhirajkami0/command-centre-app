@@ -1,35 +1,4 @@
-<script>
-(function(){
-
-  function toast(msg, type="success"){
-    const t = document.createElement("div");
-
-    t.innerText =
-      (type==="error"?"❌ ":
-       type==="warning"?"⚠️ ":"✅ ") + msg;
-
-    t.style.position = "fixed";
-    t.style.bottom = "20px";
-    t.style.left = "50%";
-    t.style.transform = "translateX(-50%)";
-    t.style.background = "#2e7d32";
-    t.style.color = "#fff";
-    t.style.padding = "12px 20px";
-    t.style.borderRadius = "6px";
-    t.style.zIndex = "999999";
-    t.style.fontWeight = "bold";
-
-    document.body.appendChild(t);
-    setTimeout(()=>t.remove(),3000);
-  }
-
-  // 🔥 HARD OVERRIDE (ALL TYPES)
-  window.alert = function(msg){ toast(msg); return true; };
-  window.confirm = function(msg){ toast(msg); return true; };
-  window.prompt = function(msg){ toast(msg); return ""; };
-
-})();
-</script><!DOCTYPE html>
+<!DOCTYPE html>
 <html>
 
 <head><script>
@@ -5387,7 +5356,7 @@ style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; bac
 </div>
 
   <script>
-
+let lastAnalysis = null;
           /* GLOBAL STATE */
           window.isDutyActive = false;
 
