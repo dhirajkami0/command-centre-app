@@ -3179,7 +3179,6 @@ function submitKML() {
     const kmlText = e.target.result;
     console.log("📄 KML length:", kmlText?.length);
 
-    // ================= KML VALIDATION =================
     let xml;
     try {
       const parser = new DOMParser();
@@ -3221,7 +3220,6 @@ function submitKML() {
 
       console.log("📥 FULL BACKEND RESPONSE:", res);
 
-      // ================= RESPONSE GUARD =================
       if (!res) {
         console.error("❌ No response from backend");
         console.groupEnd();
@@ -3239,23 +3237,22 @@ function submitKML() {
 
       console.log("✅ Backend success");
 
-      // 🔥🔥🔥 ONLY FIX: HANDLE MESSAGE PROPERLY
-      status.innerHTML = "✅ " + (res.message || res);
+      status.innerHTML = "✅ " + (res.message || "Uploaded");
 
       console.groupEnd();
 
-      // ================= ANALYSIS DEBUG =================
       console.group("📊 Analysis Check");
       console.log("Analysis object:", res.analysis);
 
-      if (!res.analysis) {
-        console.warn("⚠ No analysis returned from backend");
-      } else {
+      if (res.analysis) {
         console.log("✅ Analysis present:", res.analysis.type);
+        window.lastAnalysis = res.analysis; // 🔥 ensure available for click
+      } else {
+        console.warn("⚠ No analysis returned from backend");
       }
+
       console.groupEnd();
 
-      // ================= MAP RENDER =================
       console.group("🗺 Map Render");
 
       try {
@@ -3275,16 +3272,21 @@ function submitKML() {
 
         console.log("✅ KML layer added");
 
-        // 🔥 CLICK DEBUG
+        // 🔥🔥🔥 SHOW CLEAR BUTTON
+        const btn = document.getElementById("clearKMLBtn");
+        if (btn) {
+          btn.style.display = "block";
+          console.log("✅ Clear button shown");
+        }
+
+        // 🔥 CLICK → SHOW ANALYSIS
         previewKMLLayer.on("click", function () {
           console.log("🖱 KML CLICK EVENT TRIGGERED");
 
           try {
             if (window.lastAnalysis) {
-              console.log("📊 Showing stored analysis");
               showAnalysisResult(window.lastAnalysis);
             } else {
-              console.warn("⚠ No analysis in window.lastAnalysis");
               showToast("No analysis available");
             }
           } catch (err) {
@@ -3299,14 +3301,9 @@ function submitKML() {
 
       console.groupEnd();
 
-      // ================= STORE + SHOW =================
       console.group("💾 Store & Display Analysis");
 
       if (res.analysis) {
-
-        window.lastAnalysis = res.analysis;
-
-        console.log("✅ Stored in window.lastAnalysis");
 
         try {
           showAnalysisResult(res.analysis);
@@ -3315,8 +3312,6 @@ function submitKML() {
           console.error("❌ showAnalysisResult failed:", err);
         }
 
-      } else {
-        console.warn("⚠ Skipping display (no analysis)");
       }
 
       console.groupEnd();
@@ -3343,8 +3338,7 @@ function submitKML() {
   };
 
   reader.readAsText(file);
-}   
-    
+}    
     function showAnalysisResult(d){
 
   console.group("📊 showAnalysisResult");
