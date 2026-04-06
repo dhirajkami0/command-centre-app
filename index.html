@@ -1,7 +1,8 @@
 <!DOCTYPE html>
 <html>
 
-<head><script>
+<head>
+  <script>
 (function(){
 
   function toast(msg, type="success"){
@@ -3221,7 +3222,7 @@ if (rawDir) {
         if (res.analysis) {
 
           // 🔥 STORE GLOBALLY
-          window.lastAnalysis = res.analysis;
+        
 
           // 🔥 AUTO POPUP
           showAnalysisResult(res.analysis);
@@ -3257,41 +3258,69 @@ if (rawDir) {
   reader.readAsText(file);
 }
 
-    function showAnalysisResult(d){
+   function showAnalysisResult(d){
 
+  if (!d || !d.type) {
+    showToast("❌ Invalid analysis data");
+    return;
+  }
+
+  // 🔒 Safe number formatter
+  const safeNum = (v, digits = 2) => {
+    const n = Number(v);
+    return isNaN(n) ? "0.00" : n.toFixed(digits);
+  };
+
+  // ================= TRACK =================
   if (d.type === "Track") {
-    showToast(`📏 Length: ${d.length_km} km`);
+
+    const len = safeNum(d.length_km, 2);
+    showToast(`📏 Length: ${len} km`);
+    return;
   }
 
-  else if (d.type === "Point") {
-    showToast(`📍 ${d.lat}, ${d.lon}`);
+  // ================= POINT =================
+  if (d.type === "Point") {
+
+    const lat = safeNum(d.lat, 5);
+    const lon = safeNum(d.lon, 5);
+
+    showToast(`📍 ${lat}, ${lon}`);
+    return;
   }
 
-  else if (d.type === "Area") {
+  // ================= AREA =================
+  if (d.type === "Area") {
 
-    const dist = d.distribution;
+    const dist = d.distribution || {};
+
+    const safe = (v) => safeNum(v, 2);
 
     const msg =
-`📐 Total Area: ${d.Total_ha.toFixed(2)} ha
-🌿 Canopy: ${d.canopy_pct.toFixed(1)} %
-📏 Height: ${d.height_m.toFixed(2)} m
-🌳 Density: ${d.density}
-❤️ Health: ${d.health.toFixed(1)} / 100
-📌 Condition: ${d.condition}
-Reason: ${d.reason}
+`📐 Total Area: ${safe(d.Total_ha)} ha
+🌿 Canopy: ${safeNum(d.canopy_pct,1)} %
+📏 Height: ${safe(d.height_m)} m
+🌳 Density: ${d.density || "N/A"}
+❤️ Health: ${safeNum(d.health,1)} / 100
+📌 Condition: ${d.condition || "Unknown"}
+Reason: ${d.reason || "-"}
 
 🌍 Land Distribution
-🌲 Forest: ${dist.Forest.toFixed(2)} ha
-🔴 Degraded: ${dist.Degraded.toFixed(2)} ha
-🌿 Grass: ${dist.Grass.toFixed(2)} ha
-🌾 Crop: ${dist.Crop.toFixed(2)} ha
-🌳 Bush: ${dist.Bush.toFixed(2)} ha
-🏠 Built: ${dist.Built.toFixed(2)} ha
-🟫 Bare: ${dist.Bare.toFixed(2)} ha
-🟦 Water: ${dist.Water.toFixed(2)} ha`;
+🌲 Forest: ${safe(dist.Forest)} ha
+🔴 Degraded: ${safe(dist.Degraded)} ha
+🌿 Grass: ${safe(dist.Grass)} ha
+🌾 Crop: ${safe(dist.Crop)} ha
+🌳 Bush: ${safe(dist.Bush)} ha
+🏠 Built: ${safe(dist.Built)} ha
+🟫 Bare: ${safe(dist.Bare)} ha
+🟦 Water: ${safe(dist.Water)} ha`;
 
     showToast(msg);
+    return;
   }
+
+  // ================= UNKNOWN =================
+  showToast("⚠️ Unknown analysis type");
 }
     /* ============================================================
        📱 RESPONSIVE PANEL TOGGLE
