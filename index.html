@@ -3225,14 +3225,14 @@ if (rawDir) {
 
         console.log("✅ KML added:", previewKMLLayer);
 
-        // 🔥 SHOW BUTTON (NO EVENT DEPENDENCY)
+        // 🔥 SHOW BUTTON
         const btn = document.getElementById("clearKMLBtn");
         if (btn) {
           btn.style.display = "block";
           console.log("✅ Clear button shown");
         }
 
-        // 🔥 SAFE ZOOM (delayed)
+        // 🔥 SAFE ZOOM
         setTimeout(() => {
           if (previewKMLLayer && previewKMLLayer.getBounds().isValid()) {
             map.fitBounds(previewKMLLayer.getBounds());
@@ -3242,6 +3242,49 @@ if (rawDir) {
       } catch (err) {
         console.error("❌ KML render error:", err);
       }
+
+      // =====================================================
+      // 🔥🔥🔥 NEW ANALYSIS SYSTEM (ADD FROM HERE)
+      // =====================================================
+
+      try {
+
+        // 1️⃣ Get mode
+        const mode = document.getElementById("analysisMode")?.value || "polygon";
+        console.log("🧠 Mode Selected:", mode);
+
+        // 2️⃣ Convert KML → GeoJSON
+        const geojson = toGeoJSON.kml(
+          new DOMParser().parseFromString(kmlText, "text/xml")
+        );
+
+        console.log("📦 GeoJSON:", geojson);
+
+        // 3️⃣ Send for analysis
+        callBackend("analyzeKML", {
+          geojson: geojson,
+          mode: mode,
+          beat: beat
+        })
+        .then(function(result){
+
+          console.log("📊 Analysis Result:", result);
+
+          // 4️⃣ SHOW RESULT
+          showAnalysisResult(result);
+
+        })
+        .catch(function(err){
+          console.error("❌ Analysis error:", err);
+        });
+
+      } catch(e){
+        console.error("❌ Analysis system error:", e);
+      }
+
+      // =====================================================
+      // 🔥🔥🔥 END NEW SYSTEM
+      // =====================================================
 
       setTimeout(closeKMLForm, 1500);
       console.groupEnd();
