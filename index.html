@@ -3287,6 +3287,43 @@ if (rawDir) {
 
   reader.readAsText(file);
 }
+
+    function showAnalysisResult(d){
+
+  if (d.type === "Track") {
+    showToast(`📏 Length: ${d.length_km} km`);
+  }
+
+  else if (d.type === "Point") {
+    showToast(`📍 ${d.lat}, ${d.lon}`);
+  }
+
+  else if (d.type === "Area") {
+
+    const dist = d.distribution;
+
+    const msg =
+`📐 Total Area: ${d.Total_ha.toFixed(2)} ha
+🌿 Canopy: ${d.canopy_pct.toFixed(1)} %
+📏 Height: ${d.height_m.toFixed(2)} m
+🌳 Density: ${d.density}
+❤️ Health: ${d.health.toFixed(1)} / 100
+📌 Condition: ${d.condition}
+Reason: ${d.reason}
+
+🌍 Land Distribution
+🌲 Forest: ${dist.Forest.toFixed(2)} ha
+🔴 Degraded: ${dist.Degraded.toFixed(2)} ha
+🌿 Grass: ${dist.Grass.toFixed(2)} ha
+🌾 Crop: ${dist.Crop.toFixed(2)} ha
+🌳 Bush: ${dist.Bush.toFixed(2)} ha
+🏠 Built: ${dist.Built.toFixed(2)} ha
+🟫 Bare: ${dist.Bare.toFixed(2)} ha
+🟦 Water: ${dist.Water.toFixed(2)} ha`;
+
+    showToast(msg);
+  }
+}
     /* ============================================================
        📱 RESPONSIVE PANEL TOGGLE
     ============================================================ */
