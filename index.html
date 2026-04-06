@@ -3200,13 +3200,20 @@ if (rawDir) {
 
     const kmlText = e.target.result;
 
+    // 🔥 INCLUDE MODE IN SAME CALL
+    const mode = document.getElementById("analysisMode")?.value || "polygon";
+
     callBackend("processUpload", {
       kmlText: kmlText,
-      beatTag: beat
+      beatTag: beat,
+      mode: mode
     })
-    .then(function (msg) {
+    .then(function (res) {
 
-      status.innerHTML = "✅ " + msg;
+      console.log("📥 Backend Response:", res);
+
+      // 🔥 FIX: backend returns object
+      status.innerHTML = "✅ " + (res.message || "Uploaded");
 
       try {
 
@@ -3225,66 +3232,46 @@ if (rawDir) {
 
         console.log("✅ KML added:", previewKMLLayer);
 
-        // 🔥 SHOW BUTTON
+        // 🔥 SHOW CLEAR BUTTON
         const btn = document.getElementById("clearKMLBtn");
         if (btn) {
           btn.style.display = "block";
-          console.log("✅ Clear button shown");
         }
 
-        // 🔥 SAFE ZOOM
+        // 🔥 AUTO ZOOM
         setTimeout(() => {
           if (previewKMLLayer && previewKMLLayer.getBounds().isValid()) {
             map.fitBounds(previewKMLLayer.getBounds());
           }
         }, 500);
 
+        // =====================================================
+        // 🔥🔥🔥 ANALYSIS HANDLING (FIXED)
+        // =====================================================
+
+        if (res.analysis) {
+
+          // 🔥 STORE GLOBALLY
+          window.lastAnalysis = res.analysis;
+
+          // 🔥 AUTO POPUP
+          showAnalysisResult(res.analysis);
+
+          // 🔥 CLICK EVENT ON KML
+          previewKMLLayer.on("click", function () {
+
+            if (window.lastAnalysis) {
+              showAnalysisResult(window.lastAnalysis);
+            } else {
+              showToast("No analysis available");
+            }
+
+          });
+        }
+
       } catch (err) {
         console.error("❌ KML render error:", err);
       }
-
-      // =====================================================
-      // 🔥🔥🔥 NEW ANALYSIS SYSTEM (ADD FROM HERE)
-      // =====================================================
-
-      try {
-
-        // 1️⃣ Get mode
-        const mode = document.getElementById("analysisMode")?.value || "polygon";
-        console.log("🧠 Mode Selected:", mode);
-
-        // 2️⃣ Convert KML → GeoJSON
-        const geojson = toGeoJSON.kml(
-          new DOMParser().parseFromString(kmlText, "text/xml")
-        );
-
-        console.log("📦 GeoJSON:", geojson);
-
-        // 3️⃣ Send for analysis
-        callBackend("analyzeKML", {
-          geojson: geojson,
-          mode: mode,
-          beat: beat
-        })
-        .then(function(result){
-
-          console.log("📊 Analysis Result:", result);
-
-          // 4️⃣ SHOW RESULT
-          showAnalysisResult(result);
-
-        })
-        .catch(function(err){
-          console.error("❌ Analysis error:", err);
-        });
-
-      } catch(e){
-        console.error("❌ Analysis system error:", e);
-      }
-
-      // =====================================================
-      // 🔥🔥🔥 END NEW SYSTEM
-      // =====================================================
 
       setTimeout(closeKMLForm, 1500);
       console.groupEnd();
