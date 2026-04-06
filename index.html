@@ -3141,8 +3141,7 @@ if (rawDir) {
     function closeKMLForm() {
       document.getElementById("kmlFormPopup").style.display = "none";
     }
-
- function submitKML() {
+function submitKML() {
 
   console.group("📤 submitKML START");
 
@@ -3180,7 +3179,6 @@ if (rawDir) {
     const kmlText = e.target.result;
     console.log("📄 KML length:", kmlText?.length);
 
-    // ================= KML VALIDATION =================
     let xml;
     try {
       const parser = new DOMParser();
@@ -3222,7 +3220,6 @@ if (rawDir) {
 
       console.log("📥 FULL BACKEND RESPONSE:", res);
 
-      // ================= RESPONSE GUARD =================
       if (!res) {
         console.error("❌ No response from backend");
         console.groupEnd();
@@ -3244,18 +3241,10 @@ if (rawDir) {
 
       console.groupEnd();
 
-      // ================= ANALYSIS DEBUG =================
       console.group("📊 Analysis Check");
       console.log("Analysis object:", res.analysis);
-
-      if (!res.analysis) {
-        console.warn("⚠ No analysis returned from backend");
-      } else {
-        console.log("✅ Analysis present:", res.analysis.type);
-      }
       console.groupEnd();
 
-      // ================= MAP RENDER =================
       console.group("🗺 Map Render");
 
       try {
@@ -3275,7 +3264,13 @@ if (rawDir) {
 
         console.log("✅ KML layer added");
 
-        // 🔥 CLICK DEBUG
+        // 🔥🔥🔥 ONLY FIX ADDED (SHOW BUTTON IMMEDIATELY)
+        const btn = document.getElementById("clearKMLBtn");
+        if (btn) {
+          btn.style.display = "block";
+          console.log("✅ Clear button shown");
+        }
+
         previewKMLLayer.on("click", function () {
           console.log("🖱 KML CLICK EVENT TRIGGERED");
 
@@ -3299,7 +3294,6 @@ if (rawDir) {
 
       console.groupEnd();
 
-      // ================= STORE + SHOW =================
       console.group("💾 Store & Display Analysis");
 
       if (res.analysis) {
@@ -3315,8 +3309,6 @@ if (rawDir) {
           console.error("❌ showAnalysisResult failed:", err);
         }
 
-      } else {
-        console.warn("⚠ Skipping display (no analysis)");
       }
 
       console.groupEnd();
