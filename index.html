@@ -3132,7 +3132,9 @@ if (rawDir) {
 
         });
 
-    } function openKMLForm() {
+    } 
+    
+    function openKMLForm() {
       document.getElementById("kmlFormPopup").style.display = "flex";
     }
 
@@ -3140,7 +3142,7 @@ if (rawDir) {
       document.getElementById("kmlFormPopup").style.display = "none";
     }
 
-    function submitKML() {
+   function submitKML() {
 
   console.group("📤 submitKML");
 
@@ -3170,6 +3172,27 @@ if (rawDir) {
 
     const kmlText = e.target.result;
 
+    // ================= KML VALIDATION =================
+    let xml;
+    try {
+      const parser = new DOMParser();
+      xml = parser.parseFromString(kmlText, "text/xml");
+
+      if (xml.getElementsByTagName("parsererror").length) {
+        console.error("❌ Invalid KML");
+        showToast("❌ Invalid KML file");
+        status.innerHTML = "❌ Invalid KML";
+        console.groupEnd();
+        return;
+      }
+    } catch (err) {
+      console.error("❌ KML parse error:", err);
+      showToast("❌ Failed to read KML");
+      status.innerHTML = "❌ Parse error";
+      console.groupEnd();
+      return;
+    }
+
     // 🔥 INCLUDE MODE IN SAME CALL
     const mode = document.getElementById("analysisMode")?.value || "polygon";
 
@@ -3182,19 +3205,25 @@ if (rawDir) {
 
       console.log("📥 Backend Response:", res);
 
-      // 🔥 FIX: backend returns object
+      // ================= RESPONSE GUARD =================
+      if (!res || res.status === "error") {
+        console.error("❌ Backend error:", res);
+        status.innerHTML = "❌ " + (res?.message || "Unknown error");
+        console.groupEnd();
+        return;
+      }
+
       status.innerHTML = "✅ " + (res.message || "Uploaded");
 
       try {
 
         // 🔥 REMOVE OLD PREVIEW
         if (previewKMLLayer) {
-          map.removeLayer(previewKMLLayer);
+          try {
+            map.removeLayer(previewKMLLayer);
+          } catch(e){}
           previewKMLLayer = null;
         }
-
-        const parser = new DOMParser();
-        const xml = parser.parseFromString(kmlText, "text/xml");
 
         // 🔥 CREATE + ADD
         previewKMLLayer = new L.KML(xml);
@@ -3208,21 +3237,34 @@ if (rawDir) {
           btn.style.display = "block";
         }
 
-        // 🔥 AUTO ZOOM
+        // ================= SAFE AUTO ZOOM =================
         setTimeout(() => {
-          if (previewKMLLayer && previewKMLLayer.getBounds().isValid()) {
-            map.fitBounds(previewKMLLayer.getBounds());
+          try {
+            if (
+              previewKMLLayer &&
+              typeof previewKMLLayer.getBounds === "function"
+            ) {
+              const bounds = previewKMLLayer.getBounds();
+
+              if (bounds && bounds.isValid && bounds.isValid()) {
+                map.fitBounds(bounds);
+              } else {
+                console.warn("⚠ Invalid bounds");
+              }
+            }
+          } catch (err) {
+            console.warn("⚠ Zoom error:", err);
           }
         }, 500);
 
         // =====================================================
-        // 🔥🔥🔥 ANALYSIS HANDLING (FIXED)
+        // 🔥 ANALYSIS HANDLING (SAFE)
         // =====================================================
 
         if (res.analysis) {
 
-          // 🔥 STORE GLOBALLY
-        
+          // 🔥 STORE GLOBALLY (FIXED)
+          window.lastAnalysis = res.analysis;
 
           // 🔥 AUTO POPUP
           showAnalysisResult(res.analysis);
@@ -3230,26 +3272,39 @@ if (rawDir) {
           // 🔥 CLICK EVENT ON KML
           previewKMLLayer.on("click", function () {
 
-            if (window.lastAnalysis) {
-              showAnalysisResult(window.lastAnalysis);
-            } else {
-              showToast("No analysis available");
+            try {
+              if (window.lastAnalysis) {
+                showAnalysisResult(window.lastAnalysis);
+              } else {
+                showToast("No analysis available");
+              }
+            } catch (err) {
+              console.error("❌ Click handler error:", err);
             }
 
           });
+
+        } else {
+          console.warn("⚠ No analysis returned");
+          showToast("No analysis available");
         }
 
       } catch (err) {
         console.error("❌ KML render error:", err);
+        showToast("❌ Failed to render KML");
       }
 
-      setTimeout(closeKMLForm, 1500);
+      setTimeout(() => {
+        try { closeKMLForm(); } catch(e){}
+      }, 1500);
+
       console.groupEnd();
 
     })
     .catch(function (err) {
       console.error("❌ Upload failed:", err);
       status.innerHTML = "❌ Upload failed";
+      showToast("❌ Upload failed");
       console.groupEnd();
     });
 
@@ -3258,45 +3313,46 @@ if (rawDir) {
   reader.readAsText(file);
 }
 
-   function showAnalysisResult(d){
+    function showAnalysisResult(d){
 
-  if (!d || !d.type) {
-    showToast("❌ Invalid analysis data");
-    return;
-  }
+  try {
 
-  // 🔒 Safe number formatter
-  const safeNum = (v, digits = 2) => {
-    const n = Number(v);
-    return isNaN(n) ? "0.00" : n.toFixed(digits);
-  };
+    if (!d || !d.type) {
+      showToast("❌ Invalid analysis data");
+      return;
+    }
 
-  // ================= TRACK =================
-  if (d.type === "Track") {
+    // 🔒 Safe number formatter
+    const safeNum = (v, digits = 2) => {
+      const n = Number(v);
+      return isNaN(n) ? "0.00" : n.toFixed(digits);
+    };
 
-    const len = safeNum(d.length_km, 2);
-    showToast(`📏 Length: ${len} km`);
-    return;
-  }
+    // ================= TRACK =================
+    if (d.type === "Track") {
 
-  // ================= POINT =================
-  if (d.type === "Point") {
+      const len = safeNum(d.length_km, 2);
+      showToast(`📏 Length: ${len} km`);
+      return;
+    }
 
-    const lat = safeNum(d.lat, 5);
-    const lon = safeNum(d.lon, 5);
+    // ================= POINT =================
+    if (d.type === "Point") {
 
-    showToast(`📍 ${lat}, ${lon}`);
-    return;
-  }
+      const lat = safeNum(d.lat, 5);
+      const lon = safeNum(d.lon, 5);
 
-  // ================= AREA =================
-  if (d.type === "Area") {
+      showToast(`📍 ${lat}, ${lon}`);
+      return;
+    }
 
-    const dist = d.distribution || {};
+    // ================= AREA =================
+    if (d.type === "Area") {
 
-    const safe = (v) => safeNum(v, 2);
+      const dist = d.distribution || {};
+      const safe = (v) => safeNum(v, 2);
 
-    const msg =
+      const msg =
 `📐 Total Area: ${safe(d.Total_ha)} ha
 🌿 Canopy: ${safeNum(d.canopy_pct,1)} %
 📏 Height: ${safe(d.height_m)} m
@@ -3315,12 +3371,17 @@ Reason: ${d.reason || "-"}
 🟫 Bare: ${safe(dist.Bare)} ha
 🟦 Water: ${safe(dist.Water)} ha`;
 
-    showToast(msg);
-    return;
-  }
+      showToast(msg);
+      return;
+    }
 
-  // ================= UNKNOWN =================
-  showToast("⚠️ Unknown analysis type");
+    // ================= UNKNOWN =================
+    showToast("⚠️ Unknown analysis type");
+
+  } catch (err) {
+    console.error("❌ Analysis display error:", err);
+    showToast("❌ Failed to display analysis");
+  }
 }
     /* ============================================================
        📱 RESPONSIVE PANEL TOGGLE
