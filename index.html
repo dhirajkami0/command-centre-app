@@ -68,7 +68,7 @@
 
   <script>
     // ===============================
-    
+    window.originalConfirm = window.confirm;
  let previewKMLLayer = null;
 let markerMap = {};
 let trackMap = {};  
@@ -4829,16 +4829,25 @@ function closeEndDutyForm() {
   m.style.display = "none";
 }
           /* STEP 2 → FINAL SUBMIT */
- function submitEndDuty(event) {
+ let endDutySubmitting = false;   // 🔒 GLOBAL LOCK
+
+function submitEndDuty(event) {
 
   console.group("🚨 submitEndDuty TRIGGERED");
   console.log("⏱ Time:", new Date().toLocaleTimeString());
 
   try {
 
-    // 🔒 STRICT: MUST BE CLICK EVENT
-    if (!event || !event.target) {
-      console.warn("⚠ Ignored auto trigger");
+    // 🔥 STRICT: ONLY REAL USER CLICK ALLOWED
+    if (!event || event.isTrusted !== true) {
+      console.warn("⛔ Blocked auto trigger");
+      console.groupEnd();
+      return;
+    }
+
+    // 🔒 BLOCK DUPLICATE / RAPID TRIGGERS
+    if (endDutySubmitting) {
+      console.warn("⛔ Duplicate submit blocked");
       console.groupEnd();
       return;
     }
@@ -4857,16 +4866,23 @@ function closeEndDutyForm() {
       return;
     }
 
-    if (!confirm("Submit report and end duty?")) {
+    // ✅ SAFE CONFIRM (DO NOT RELY ON OVERRIDDEN confirm)
+    const userOk = window.originalConfirm 
+      ? window.originalConfirm("Submit report and end duty?")
+      : true;   // fallback if not defined
+
+    if (!userOk) {
+      console.log("❌ User cancelled");
       console.groupEnd();
       return;
     }
 
-    const btn = event.target;
+    endDutySubmitting = true;   // 🔒 LOCK START
 
+    const btn = event.target;
     const original = btn.innerHTML;
 
-    // 🔒 LOCK BUTTON
+    // 🔒 LOCK BUTTON UI
     btn.innerHTML = "⏳ SAVING...";
     btn.disabled = true;
 
@@ -4892,6 +4908,7 @@ function closeEndDutyForm() {
 
         btn.innerHTML = original;
         btn.disabled = false;
+        endDutySubmitting = false;
 
         console.groupEnd();
         return;
@@ -4941,7 +4958,15 @@ function closeEndDutyForm() {
     })
 
     .finally(function () {
+
       console.log("🏁 submitEndDuty FINISHED");
+
+      // 🔓 UNLOCK AFTER SAFE DELAY
+      setTimeout(() => {
+        endDutySubmitting = false;
+        console.log("🔓 Submit unlocked");
+      }, 2000);
+
       console.groupEnd();
     });
 
