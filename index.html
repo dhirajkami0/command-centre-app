@@ -685,14 +685,27 @@ window.addEventListener("unhandledrejection", function (e) {
           <hr style="border:0; border-top:1px solid rgba(255,255,255,0.1); margin:8px 0;">
           <div id="todayForecast"></div> <hr style="border:0; border-top:1px solid rgba(255,255,255,0.1); margin:8px 0;">
           <div id="weekForecast"></div> </div> </div> </div>
-  <div class="legend-content" id="legendContent"> <b>CONTROL ROOM LEGEND</b><br>
-    <br> 🐘 Elephant Movement<br> ➖ Prediction Path<br>
-    <br> 🔥 Fire Alert<br> 🌳 Forest Felling<br> 🏚 Encroachment<br>
-    <br> 👮 Patrol Staff / TL<br><br> 
-    <span style="color:#0074D9; font-weight:bold;">━</span> River Network<br> 🔵 Waterhole / Pond<br>
-    🔴 High Risk Village<br> 
-    
-    🏠 Low Risk Village </div> 
+  <div class="legend" id="mapLegend">
+  <button id="legendToggleBtn" onclick="toggleLegend()">
+    <i id="legendIcon" class="fa-solid fa-chevron-down"></i>
+  </button>
+  <div class="legend-content" id="legendContent">
+    <b>CONTROL ROOM LEGEND</b><br><br>
+
+    🐘 Elephant Movement<br>
+    ➖ Prediction Path<br><br>
+
+    🔥 Fire Alert<br>
+    🌳 Forest Felling<br>
+    🏚 Encroachment<br><br>
+
+    👮 Patrol Staff / TL<br><br>
+
+    <span style="color:#0074D9; font-weight:bold;">━</span> River Network<br>
+    🔵 Waterhole / Pond<br>
+    🔴 High Risk Village<br>
+    🏠 Low Risk Village
+  </div>
 </div>
   <div id="map"></div>
   <div id="installContainer" class="admin-only" style="
