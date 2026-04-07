@@ -734,28 +734,36 @@ window.addEventListener("unhandledrejection", function (e) {
 
   <script>
     
-    document.addEventListener("DOMContentLoaded", function(){
+   let startDutyBound = false;
+
+document.addEventListener("DOMContentLoaded", function(){
 
   const startBtn = document.getElementById("startDutyBtn");
 
-  if(startBtn){
-
-    // 🔥 REMOVE ANY OLD LISTENERS (ULTRA SAFE)
-    const cleanBtn = startBtn.cloneNode(true);
-    startBtn.parentNode.replaceChild(cleanBtn, startBtn);
-
-    cleanBtn.onclick = function(e){
-      e.preventDefault();
-      e.stopPropagation();
-
-      console.log("🔥 START DUTY CLICKED (SINGLE)");
-
-      startDuty(e);   // ✅ PASS EVENT
-    };
-
-    console.log("✅ startDutyBtn CONNECTED ONCE");
+  if(!startBtn){
+    console.error("❌ startDutyBtn not found");
+    return;
   }
 
+  if(startDutyBound){
+    console.warn("⚠ startDuty already bound");
+    return;
+  }
+
+  startBtn.addEventListener("click", function(e){
+
+    e.preventDefault();
+    e.stopPropagation();
+
+    console.log("🔥 START DUTY CLICKED (SAFE SINGLE)");
+
+    startDuty(e);
+
+  });
+
+  startDutyBound = true;
+
+  console.log("✅ startDutyBtn bound ONCE (stable)");
 });
 /* ===============================
    🔧 GLOBAL UTILITIES (BACKEND)
@@ -4743,14 +4751,36 @@ function openDutyForm(){
 
   /* POST INIT */
   setTimeout(() => {
-
     setVal("d-id", "DUTY-" + Date.now());
     setVal("d-date", new Date().toLocaleString());
 
     updateDutyStaff("FROM_OPEN_DUTY");
     updateDutyCompt("FROM_OPEN_DUTY");
-
   }, 150);
+
+  /* ===============================
+     ✅ FINAL FIX: START BUTTON (SAFE)
+  =============================== */
+
+  const startBtn = document.getElementById("startDutyBtn");
+
+  if (startBtn) {
+
+    // 🔥 HARD RESET BUTTON (REMOVES ALL OLD LISTENERS)
+    const newBtn = startBtn.cloneNode(true);
+    startBtn.parentNode.replaceChild(newBtn, startBtn);
+
+    newBtn.onclick = function(e){
+      e.preventDefault();
+      e.stopPropagation();
+
+      console.log("🔥 START DUTY CLICKED (SAFE)");
+
+      startDuty(e);   // ✅ PASS EVENT
+    };
+
+    console.log("✅ startDutyBtn safely rebound");
+  }
 
   console.groupEnd();
 }/* START DUTY (SECURE) */
@@ -5572,7 +5602,7 @@ function startDuty(event) {
       return;
     }
 
-    // 🔒 BLOCK DOUBLE CLICK / DUPLICATE CALL
+    // 🔒 BLOCK DUPLICATE CALLS
     if (startDutySubmitting) {
       console.warn("⛔ Duplicate startDuty blocked");
       console.groupEnd();
@@ -5666,6 +5696,7 @@ function startDuty(event) {
         return;
       }
 
+      // ✅ SUCCESS
       console.log("✅ Duty success");
       alert("✅ Duty Started");
 
