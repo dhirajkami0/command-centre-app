@@ -734,37 +734,7 @@ window.addEventListener("unhandledrejection", function (e) {
 
   <script>
     
-   let startDutyBound = false;
-
-document.addEventListener("DOMContentLoaded", function(){
-
-  const startBtn = document.getElementById("startDutyBtn");
-
-  if(!startBtn){
-    console.error("❌ startDutyBtn not found");
-    return;
-  }
-
-  if(startDutyBound){
-    console.warn("⚠ startDuty already bound");
-    return;
-  }
-
-  startBtn.addEventListener("click", function(e){
-
-    e.preventDefault();
-    e.stopPropagation();
-
-    console.log("🔥 START DUTY CLICKED (SAFE SINGLE)");
-
-    startDuty(e);
-
-  });
-
-  startDutyBound = true;
-
-  console.log("✅ startDutyBtn bound ONCE (stable)");
-});
+  
 /* ===============================
    🔧 GLOBAL UTILITIES (BACKEND)
 =============================== */
@@ -4662,7 +4632,7 @@ function submitSightingForm(event){
 }/* ============================================================
 🚨 DUTY SYSTEM
 ============================================================ */
-let dutyComptMap = {};
+let dutyComptMap = {}
 
 function openDutyForm(){
 
@@ -4775,7 +4745,7 @@ function openDutyForm(){
 
       console.log("🔥 START DUTY CLICKED (SAFE)");
 
-       // ✅ PASS EVENT
+      startDuty(e);   // ✅ THIS WAS MISSING 🔥
     };
 
     console.log("✅ startDutyBtn safely rebound");
