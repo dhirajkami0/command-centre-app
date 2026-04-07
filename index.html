@@ -3720,7 +3720,9 @@ window.addEventListener("load", function () {
           map.invalidateSize();
         }
       }, 400);
-    } function loginStaff(){
+    } 
+    
+    function loginStaff(){
 
   const phone = document.getElementById("login-phone").value;
 
@@ -4533,6 +4535,33 @@ function submitSightingForm(event){
       return;
     }
 
+    /* ============================================================
+       🔥 FIX 2: SAFE LEADER VALUE (CRITICAL)
+    ============================================================ */
+
+    const teamInput = document.getElementById("f-team");
+
+    let leaderValue = teamInput ? teamInput.value : "";
+
+    // 🔥 fallback to correct profile name if anything wrong
+    if (!leaderValue || leaderValue.trim() === "") {
+      leaderValue = window.userProfile?.name || "";
+    }
+
+    // 🔥 prevent internal uppercase name from being saved
+    if (
+      leaderValue === window.userProfile?.cleanName ||
+      leaderValue === window.userProfile?.cleanName?.toUpperCase()
+    ) {
+      console.warn("⚠ Prevented cleanName overwrite → using UI name");
+      leaderValue = window.userProfile?.name || leaderValue;
+    }
+
+    // 🔥 final cleanup
+    leaderValue = String(leaderValue).trim();
+
+    console.log("👤 FINAL LEADER:", leaderValue);
+
     const payload = {
 
       /* 🔥 IMPORTANT: SAME ID USED FOR UPDATE */
@@ -4562,7 +4591,8 @@ function submitSightingForm(event){
 
       remarks: document.getElementById("f-remarks").value,
 
-      leader: document.getElementById("f-team").value || "",
+      /* 🔥 SAFE LEADER */
+      leader: leaderValue,
 
       staff: "",
 
@@ -4587,7 +4617,7 @@ function submitSightingForm(event){
           alert("✅ Submitted to Command Centre");
 
           /* ============================================================
-             🔥 FIX 2: STORE ID FOR FUTURE UPDATES
+             🔥 FIX 3: STORE ID FOR FUTURE UPDATES
           ============================================================ */
           window.currentSightingId = sightingID;
 
