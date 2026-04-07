@@ -2540,6 +2540,16 @@ if (rawDir) {
 
   if (!value) return;
 
+  /* ============================================================
+     🔥 FIX 1: PREVENT DOUBLE CLICK / MULTI-TRIGGER
+  ============================================================ */
+  if (window.isUpdating) {
+    console.warn("⚠ Update already in progress");
+    return;
+  }
+
+  window.isUpdating = true;
+
   console.group("🚀 FRONTEND → updateSightingStatus");
   console.log("📤 Sending ID:", id);
   console.log("📤 Sending Status:", value);
@@ -2548,6 +2558,8 @@ if (rawDir) {
      CONFIRM
   =============================== */
   if (!confirm("Confirm update: " + value + " ?")) {
+
+    window.isUpdating = false;
 
     if (input && input.tagName === "SELECT") {
       input.value = "";
@@ -2559,11 +2571,23 @@ if (rawDir) {
     return;
   }
 
+  /* ============================================================
+     🔥 FIX 2: NORMALIZE ID BEFORE SENDING
+  ============================================================ */
+  const normalize = v => String(v)
+    .trim()
+    .replace(/\s+/g, "")
+    .replace(/[\n\r]/g, "")
+    .replace(/[‐-‒–—−]/g, "-")
+    .toUpperCase();
+
+  const cleanId = normalize(id);
+
   /* ===============================
      BACKEND CALL
   =============================== */
   callBackend("updateSightingStatus", {
-    id: id,
+    id: cleanId,
     newStatus: value
   })
 
@@ -2571,25 +2595,16 @@ if (rawDir) {
 
     console.log("📥 Backend response:", res);
 
-    /* ===============================
-       RESULT CHECK (IMPORTANT FIX)
-    =============================== */
     if (res) {
+
       alert("✅ Updated");
 
-      /* 🔥🔥🔥 BULLETPROOF REMOVE (FIX) */
-      const normalize = v => String(v)
-        .trim()
-        .replace(/\s+/g, "")
-        .replace(/[\n\r]/g, "")
-        .replace(/[‐-‒–—−]/g, "-")
-        .toUpperCase();
-
-      const targetId = normalize(id);
-
+      /* ============================================================
+         🔥 FIX 3: SAFE MARKER REMOVE (MULTIUSER SAFE)
+      ============================================================ */
       Object.keys(window.sightingMarkers || {}).forEach(key => {
 
-        if (normalize(key) === targetId) {
+        if (normalize(key) === cleanId) {
 
           elephantLayer.removeLayer(window.sightingMarkers[key]);
           delete window.sightingMarkers[key];
@@ -2601,13 +2616,15 @@ if (rawDir) {
 
     } else {
       alert("❌ Update failed (ID not matched)");
+      window.isUpdating = false;
       console.groupEnd();
       return;
     }
 
     /* ===============================
-       🔥 UNLOCK FIRST (CRITICAL)
+       UNLOCK
     =============================== */
+    window.isUpdating = false;
     window.isPopupInteracting = false;
     window.lastInteractionTime = 0;
 
@@ -2627,15 +2644,15 @@ if (rawDir) {
       window.sightingMarkers[id].closePopup();
     }
 
-    /* ===============================
-       🔥 FORCE UPDATE (NO BLOCKING)
-    =============================== */
+    /* ============================================================
+       🔥 FIX 4: SMART REFRESH (NO SPAM)
+    ============================================================ */
     setTimeout(() => {
 
       console.log("🔥 Force loading sightings after update");
 
-      loadSightings();
-      callBackend("updateVillageRisk");
+      loadSightings();                 // refresh markers
+      callBackend("updateVillageRisk"); // backend recalculation
 
     }, 300);
 
@@ -2646,6 +2663,8 @@ if (rawDir) {
   .catch(err => {
     console.error("❌ Update failed:", err);
     alert("❌ Backend error");
+
+    window.isUpdating = false;
     console.groupEnd();
   });
 } /* ============================================================
