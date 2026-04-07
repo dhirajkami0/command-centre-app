@@ -813,83 +813,53 @@ function applyRoleControl(){
   const role = (window.userProfile?.role || "").toUpperCase();
 
   const leaderButtons = document.querySelectorAll(".leader-only");
+  const adminButtons = document.querySelectorAll(".admin-only");
+  const staffButtons = document.querySelectorAll(".staff-only");
+
   const dutyBtn = document.getElementById("dutyMainBtn");
 
-  /* ===============================
-     🔴 ADMIN
-  =============================== */
+  /* 🔴 ADMIN */
   if(role === "ADMIN"){
 
     leaderButtons.forEach(el => el.style.display = "flex");
-    if(dutyBtn) dutyBtn.style.display = "flex";
+    adminButtons.forEach(el => el.style.display = "flex");
+    staffButtons.forEach(el => el.style.display = "flex");
 
+    if(dutyBtn) dutyBtn.style.display = "flex";
   }
 
-  /* ===============================
-     🔵 TEAM LEADER
-  =============================== */
+  /* 🔵 TEAM LEADER */
   else if(role === "TEAM LEADER"){
 
     leaderButtons.forEach(el => el.style.display = "flex");
-    if(dutyBtn) dutyBtn.style.display = "flex";
+    adminButtons.forEach(el => el.style.display = "none");
+    staffButtons.forEach(el => el.style.display = "flex");
 
+    if(dutyBtn) dutyBtn.style.display = "flex";
   }
 
-  /* ===============================
-     🟢 STAFF
-  =============================== */
+  /* 🟢 STAFF */
   else if(role === "STAFF"){
 
-    leaderButtons.forEach(el => el.style.display = "flex");
-    if(dutyBtn) dutyBtn.style.display = "none";
+    leaderButtons.forEach(el => el.style.display = "none");
+    adminButtons.forEach(el => el.style.display = "none");
+    staffButtons.forEach(el => el.style.display = "flex");
 
+    if(dutyBtn) dutyBtn.style.display = "none";
   }
 
-  /* ===============================
-     ❌ BLOCK ALL
-  =============================== */
+  /* ❌ BLOCK */
   else {
 
     leaderButtons.forEach(el => el.style.display = "none");
+    adminButtons.forEach(el => el.style.display = "none");
+    staffButtons.forEach(el => el.style.display = "none");
+
     if(dutyBtn) dutyBtn.style.display = "none";
 
     alert("❌ Not authorized");
   }
-
-  /* ============================================================
-     🔥 NEW ADDITION — ADMIN ONLY CONTROLS
-  ============================================================ */
-
-  // 🔴 ADMIN ONLY BUTTONS (Force Refresh, Upload KML, etc.)
-  document.querySelectorAll(".admin-only").forEach(el => {
-    el.style.display = (role === "ADMIN") ? "flex" : "none";
-  });
-
-  /* ============================================================
-     🗺 LAYER CONTROL (RIGHT PANEL)
-  ============================================================ */
-
-  if (typeof layerControl !== "undefined" && typeof map !== "undefined") {
-
-    if (role === "ADMIN") {
-
-      try {
-        if (!map._controlCorners?.topright?.contains(layerControl._container)) {
-          layerControl.addTo(map);
-          console.log("✅ Layer control enabled (ADMIN)");
-        }
-      } catch(e){}
-
-    } else {
-
-      try {
-        map.removeControl(layerControl);
-        console.log("❌ Layer control removed (NON-ADMIN)");
-      } catch(e){}
-    }
-  }
-
-}    function login(){
+}   function login(){
 
   const phone = document.getElementById("loginPhone").value.trim();
 
@@ -3675,11 +3645,11 @@ window.addEventListener("load", function () {
 
       window.userProfile = profile;   // ✅ ONLY SOURCE OF TRUTH
 
-      /* 🔥 ROLE BASED UI */
-      if (profile.role === "ADMIN" || profile.role === "TEAM LEADER" || profile.role === "LEADER") {
-        document.querySelectorAll('.leader-only').forEach(el => {
-          el.style.setProperty('display', 'block', 'important');
-        });
+      /* ============================================================
+         🔥 NEW: APPLY ROLE CONTROL (REPLACES OLD BLOCK)
+      ============================================================ */
+      if (typeof applyRoleControl === "function") {
+        applyRoleControl();
       }
 
       /* 3. INITIALIZE DUTY & KML */
@@ -3713,8 +3683,9 @@ window.addEventListener("load", function () {
               }
 
               /* 6. BACKGROUND LOOPS */
-             
-              // 🔥 INIT FORM LISTENERS (SAFE)
+              // (you can add auto refresh here later if needed)
+
+              /* 🔥 INIT FORM LISTENERS (SAFE) */
               if (typeof initEventListeners === "function") {
                 initEventListeners();
               }
