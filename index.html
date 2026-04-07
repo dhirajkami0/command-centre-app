@@ -646,11 +646,10 @@ window.addEventListener("unhandledrejection", function (e) {
 
     <button class="btn-center btn-blue" onclick="findMe()">
       MY LOCATION
-    </button>
-
-    <button class="btn-center btn-green" onclick="refreshAll()">
-      FORCE REFRESH
-    </button>
+   
+    </button><button id="force-refresh-btn" class="admin-only btn-center btn-green" onclick="forceRefresh()">
+  FORCE REFRESH
+</button>
 
     <button id="dutyMainBtn" class="btn-center btn-green" onclick="handleDutyAction()">
       <span id="dutyLabel">START DUTY</span>
@@ -665,11 +664,10 @@ window.addEventListener("unhandledrejection", function (e) {
     <!-- 📂 KML UPLOAD -->
     <div style="margin-top:10px;">
 
-      <button class="btn-center btn-blue" onclick="openKMLForm()">
-        <i class="fa-solid fa-upload"></i>
-        <span>UPLOAD KML</span>
-      </button>
-
+      <button id="upload-kml-btn" class="admin-only btn-center btn-blue" onclick="openKMLForm()">
+  <i class="fa-solid fa-upload"></i>
+  <span>UPLOAD KML</span>
+</button>
       <!-- 🔥 NEW BUTTON ADDED -->
       <button id="clearKMLBtn"
   class="btn-center"
@@ -817,7 +815,9 @@ function applyRoleControl(){
   const leaderButtons = document.querySelectorAll(".leader-only");
   const dutyBtn = document.getElementById("dutyMainBtn");
 
-  // 🔴 ADMIN
+  /* ===============================
+     🔴 ADMIN
+  =============================== */
   if(role === "ADMIN"){
 
     leaderButtons.forEach(el => el.style.display = "flex");
@@ -825,7 +825,9 @@ function applyRoleControl(){
 
   }
 
-  // 🔵 TEAM LEADER
+  /* ===============================
+     🔵 TEAM LEADER
+  =============================== */
   else if(role === "TEAM LEADER"){
 
     leaderButtons.forEach(el => el.style.display = "flex");
@@ -833,7 +835,9 @@ function applyRoleControl(){
 
   }
 
-  // 🟢 STAFF
+  /* ===============================
+     🟢 STAFF
+  =============================== */
   else if(role === "STAFF"){
 
     leaderButtons.forEach(el => el.style.display = "flex");
@@ -841,7 +845,9 @@ function applyRoleControl(){
 
   }
 
-  // ❌ BLOCK ALL
+  /* ===============================
+     ❌ BLOCK ALL
+  =============================== */
   else {
 
     leaderButtons.forEach(el => el.style.display = "none");
@@ -849,8 +855,41 @@ function applyRoleControl(){
 
     alert("❌ Not authorized");
   }
-}
-    function login(){
+
+  /* ============================================================
+     🔥 NEW ADDITION — ADMIN ONLY CONTROLS
+  ============================================================ */
+
+  // 🔴 ADMIN ONLY BUTTONS (Force Refresh, Upload KML, etc.)
+  document.querySelectorAll(".admin-only").forEach(el => {
+    el.style.display = (role === "ADMIN") ? "flex" : "none";
+  });
+
+  /* ============================================================
+     🗺 LAYER CONTROL (RIGHT PANEL)
+  ============================================================ */
+
+  if (typeof layerControl !== "undefined" && typeof map !== "undefined") {
+
+    if (role === "ADMIN") {
+
+      try {
+        if (!map._controlCorners?.topright?.contains(layerControl._container)) {
+          layerControl.addTo(map);
+          console.log("✅ Layer control enabled (ADMIN)");
+        }
+      } catch(e){}
+
+    } else {
+
+      try {
+        map.removeControl(layerControl);
+        console.log("❌ Layer control removed (NON-ADMIN)");
+      } catch(e){}
+    }
+  }
+
+}    function login(){
 
   const phone = document.getElementById("loginPhone").value.trim();
 
@@ -4052,13 +4091,11 @@ var layerControl = L.control.layers({
   "🟢 Visited Grid": visitedLayer,
   "🔴 Unvisited Grid": unvisitedLayer,
   "📊 Monthly Coverage": summaryLayer,
-   "📊 Monthly Analysis": summaryLayer
+  "📊 Monthly Analysis": summaryLayer
 
 }, {
   collapsed: true
-}).addTo(map);
-
-
+});
 /* ============================================================
    🚀 GROUP TRACK DRAW ENGINE (GLOBAL)
 ============================================================ */
