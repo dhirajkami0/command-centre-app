@@ -678,28 +678,22 @@ window.addEventListener("unhandledrejection", function (e) {
 
     </div>
 
-    <div class="weather-drawer" id="weatherDrawer" style="margin-top: 10px; background: rgba(255,255,255,0.05); border-radius: 8px; overflow: hidden;"> <button class="weather-toggle" onclick="toggleWeatherDrawer()" style="width:100%; background:none; border:none; color:#4caf50; display:flex; justify-content:space-between; align-items:center; padding: 12px; cursor:pointer; font-weight:bold; font-size:13px;"> <span><i class="fa-solid fa-cloud-sun"></i> Weather Info</span> <i id="weatherChevron" class="fa-solid fa-chevron-down"></i> </button> <div class="weather-content" id="weatherContent" style="max-height: 0px; opacity: 0; overflow: hidden; transition: all 0.4s ease; padding: 0 12px;"> <div id="weatherNow" style="margin-top:5px;"></div> <hr style="border:0; border-top:1px solid rgba(255,255,255,0.1); margin:8px 0;"> <div id="todayForecast"></div> <hr style="border:0; border-top:1px solid rgba(255,255,255,0.1); margin:8px 0;"> <div id="weekForecast"></div> </div> </div> </div><div class="legend staff-only" id="mapLegend">
-    <button id="legendToggleBtn" onclick="toggleLegend()">
-      <i id="legendIcon" class="fa-solid fa-chevron-down"></i>
-    </button>
-
-    <div class="legend-content" id="legendContent">
-      <b>CONTROL ROOM LEGEND</b><br><br>
-
-      🐘 Elephant Movement<br>
-      ➖ Prediction Path<br><br>
-
-      🔥 Fire Alert<br>
-      🌳 Forest Felling<br>
-      🏚 Encroachment<br><br>
-
-      👮 Patrol Staff / TL<br><br>
-      <span style="color:#0074D9; font-weight:bold;">━</span> River Network<br>
-      🔵 Waterhole / Pond<br>
-      🔴 High Risk Village<br>
-      🏠 Low Risk Village
-    </div>
-  </div>
+    <div class="weather-drawer" id="weatherDrawer" style="margin-top: 10px; background: rgba(255,255,255,0.05); border-radius: 8px; overflow: hidden;">
+      <button class="weather-toggle" onclick="toggleWeatherDrawer()" style="width:100%; background:none; border:none; color:#4caf50; display:flex; justify-content:space-between; align-items:center; padding: 12px; cursor:pointer; font-weight:bold; font-size:13px;"> <span>
+        <i class="fa-solid fa-cloud-sun"></i> Weather Info</span> <i id="weatherChevron" class="fa-solid fa-chevron-down"></i> </button> <div class="weather-content" id="weatherContent" style="max-height: 0px; opacity: 0; overflow: hidden; transition: all 0.4s ease; padding: 0 12px;"> 
+          <div id="weatherNow" style="margin-top:5px;"></div> 
+          <hr style="border:0; border-top:1px solid rgba(255,255,255,0.1); margin:8px 0;">
+          <div id="todayForecast"></div> <hr style="border:0; border-top:1px solid rgba(255,255,255,0.1); margin:8px 0;">
+          <div id="weekForecast"></div> </div> </div> </div>
+  <div class="legend-content" id="legendContent"> <b>CONTROL ROOM LEGEND</b><br>
+    <br> 🐘 Elephant Movement<br> ➖ Prediction Path<br>
+    <br> 🔥 Fire Alert<br> 🌳 Forest Felling<br> 🏚 Encroachment<br>
+    <br> 👮 Patrol Staff / TL<br><br> 
+    <span style="color:#0074D9; font-weight:bold;">━</span> River Network<br> 🔵 Waterhole / Pond<br>
+    🔴 High Risk Village<br> 
+    
+    🏠 Low Risk Village </div> 
+</div>
   <div id="map"></div>
   <div id="installContainer" class="admin-only" style="
   display:none;
