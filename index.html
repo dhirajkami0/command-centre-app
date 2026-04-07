@@ -734,7 +734,29 @@ window.addEventListener("unhandledrejection", function (e) {
 
   <script>
     
-    
+    document.addEventListener("DOMContentLoaded", function(){
+
+  const startBtn = document.getElementById("startDutyBtn");
+
+  if(startBtn){
+
+    // 🔥 REMOVE ANY OLD LISTENERS (ULTRA SAFE)
+    const cleanBtn = startBtn.cloneNode(true);
+    startBtn.parentNode.replaceChild(cleanBtn, startBtn);
+
+    cleanBtn.onclick = function(e){
+      e.preventDefault();
+      e.stopPropagation();
+
+      console.log("🔥 START DUTY CLICKED (SINGLE)");
+
+      startDuty(e);   // ✅ PASS EVENT
+    };
+
+    console.log("✅ startDutyBtn CONNECTED ONCE");
+  }
+
+});
 /* ===============================
    🔧 GLOBAL UTILITIES (BACKEND)
 =============================== */
@@ -4633,6 +4655,8 @@ function submitSightingForm(event){
 🚨 DUTY SYSTEM
 ============================================================ */
 let dutyComptMap = {};
+let dutyComptMap = {};
+
 function openDutyForm(){
 
   console.group("🚀 openDutyForm START");
@@ -4640,30 +4664,21 @@ function openDutyForm(){
 
   const modal = document.getElementById("duty-modal");
 
-  console.log("🔍 duty-modal element:", modal);
-
   if (!modal) {
     console.error("❌ duty-modal NOT FOUND");
     console.groupEnd();
     return;
   }
 
-  /* 🔥 FORCE SHOW */
   modal.style.display = "block";
   modal.style.visibility = "visible";
   modal.style.opacity = "1";
 
   console.log("✅ Modal forced visible");
 
-  /* ===============================
-     🧹 RESET FORM
-  =============================== */
+  /* 🧹 RESET FORM */
   const form = document.getElementById("duty-form");
-
-  if (form) {
-    form.reset();
-    console.log("🧹 Form reset done");
-  }
+  if (form) form.reset();
 
   const staffBox = document.getElementById("staffOptions");
   const comptBox = document.getElementById("comptOptions");
@@ -4673,15 +4688,11 @@ function openDutyForm(){
 
   console.log("🧹 Dynamic lists cleared");
 
-  /* ===============================
-     HIDE OBS
-  =============================== */
+  /* HIDE OBS */
   const obsBox = document.getElementById("obs-container");
   if (obsBox) obsBox.style.display = "none";
 
-  /* ===============================
-     PROFILE
-  =============================== */
+  /* PROFILE */
   const profile = window.userProfile;
 
   if (!profile || !profile.name) {
@@ -4690,17 +4701,12 @@ function openDutyForm(){
     return;
   }
 
-  /* ===============================
-     SAFE SET
-  =============================== */
   const setVal = (id, val) => {
     const el = document.getElementById(id);
     if (el) el.value = val;
   };
 
-  /* ===============================
-     BEAT
-  =============================== */
+  /* BEAT */
   const beatSel = document.getElementById("d-beat");
   beatSel.innerHTML = "";
 
@@ -4721,14 +4727,7 @@ function openDutyForm(){
 
   beatSel.value = profile.beat || "";
 
-  /* ===============================
-     🔥 DUTY TYPE DROPDOWN (ADDED)
-  =============================== */
-  
-
-  /* ===============================
-     LEADER LOCK
-  =============================== */
+  /* LEADER LOCK */
   const leaderInput = document.getElementById("d-leader");
   if (leaderInput) {
     leaderInput.value = profile.name;
@@ -4736,17 +4735,13 @@ function openDutyForm(){
     leaderInput.dataset.lockedUser = profile.name;
   }
 
-  /* ===============================
-     CHANGE
-  =============================== */
+  /* CHANGE */
   beatSel.onchange = () => {
     updateDutyStaff("BEAT_CHANGE");
     updateDutyCompt("BEAT_CHANGE");
   };
 
-  /* ===============================
-     POST INIT
-  =============================== */
+  /* POST INIT */
   setTimeout(() => {
 
     setVal("d-id", "DUTY-" + Date.now());
@@ -4756,32 +4751,6 @@ function openDutyForm(){
     updateDutyCompt("FROM_OPEN_DUTY");
 
   }, 150);
-
-  /* ===============================
-     🔥 FINAL FIX: START BUTTON
-  =============================== */
-
-  const startBtn = document.getElementById("startDutyBtn");
-
-  if (!startBtn) {
-    console.error("❌ startDutyBtn NOT FOUND");
-  } else {
-
-    // 🔥 REMOVE OLD HANDLER
-    startBtn.onclick = null;
-
-    // 🔥 ADD NEW HANDLER
-    startBtn.onclick = function(e){
-      e.preventDefault();
-      e.stopPropagation();
-
-      console.log("🔥 START DUTY CLICKED");
-
-      startDuty();
-    };
-
-    console.log("✅ startDutyBtn CONNECTED");
-  }
 
   console.groupEnd();
 }/* START DUTY (SECURE) */
@@ -5560,12 +5529,10 @@ style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; bac
   </div>
 
   <button id="startDutyBtn"
-    type="button"
-    onclick="startDuty()"
-    style="width:100%; margin-top:15px; background:#2e7d32; color:white; padding:12px; border:none; border-radius:6px;">
-    🚀 START DUTY
-  </button>
-
+  type="button"
+  style="width:100%; margin-top:15px; background:#2e7d32; color:white; padding:12px; border:none; border-radius:6px;">
+  🚀 START DUTY
+</button>
 </div>
 
 
