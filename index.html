@@ -646,17 +646,16 @@ window.addEventListener("unhandledrejection", function (e) {
 
     <button class="btn-center btn-blue staff-only" onclick="findMe()">
       MY LOCATION
-    </button>
-
-    <button id="force-refresh-btn" class="admin-only btn-center btn-green" onclick="forceRefresh()">
-      FORCE REFRESH
-    </button>
+   
+    </button><button id="force-refresh-btn" class="admin-only btn-center btn-green" onclick="forceRefresh()">
+  FORCE REFRESH
+</button>
 
     <button id="dutyMainBtn" class="staff-only btn-center btn-green" onclick="handleDutyAction()">
       <span id="dutyLabel">START DUTY</span>
     </button>
 
-    <button class="btn-center staff-only" onclick="openSightingForm()"
+    <button class="btn-center staff-only"" onclick="openSightingForm()"
       style="background:#f9a825; margin-top: 8px; display: none;">
       <i class="fa-solid fa-plus"></i>
       <span>ADD SIGHTING</span>
@@ -666,16 +665,16 @@ window.addEventListener("unhandledrejection", function (e) {
     <div style="margin-top:10px;">
 
       <button id="upload-kml-btn" class="admin-only btn-center btn-blue" onclick="openKMLForm()">
-        <i class="fa-solid fa-upload"></i>
-        <span>UPLOAD KML</span>
-      </button>
-
+  <i class="fa-solid fa-upload"></i>
+  <span>UPLOAD KML</span>
+</button>
+      <!-- 🔥 NEW BUTTON ADDED -->
       <button id="clearKMLBtn"
-        class="admin-only btn-center"
-        onclick="clearKMLPreview()"
-        style="background:#c62828; margin-top:6px; display:none;">
-        ❌ CLEAR KML PREVIEW
-      </button>
+  class="admin-only btn-center"
+  onclick="clearKMLPreview()"
+  style="background:#c62828; margin-top:6px; display:none;">
+  ❌ CLEAR KML PREVIEW
+</button>
 
     </div>
 
@@ -698,7 +697,6 @@ window.addEventListener("unhandledrejection", function (e) {
     </div>
 
   </div>
-
   <div class="legend staff-only" id="mapLegend">
     <button id="legendToggleBtn" onclick="toggleLegend()">
       <i id="legendIcon" class="fa-solid fa-chevron-down"></i>
@@ -721,9 +719,7 @@ window.addEventListener("unhandledrejection", function (e) {
       🏠 Low Risk Village
     </div>
   </div>
-
   <div id="map"></div>
-
   <div id="installContainer" class="admin-only" style="
   display:none;
   position:fixed;
@@ -743,7 +739,8 @@ window.addEventListener("unhandledrejection", function (e) {
       📲 Install App
     </button>
   </div>
--- 🔥 FIREBASE SETUP (ADD HERE) -->
+  
+  -- 🔥 FIREBASE SETUP (ADD HERE) -->
 
 
 
