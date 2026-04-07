@@ -648,17 +648,14 @@ window.addEventListener("unhandledrejection", function (e) {
       MY LOCATION
     </button>
 
-    <!-- 🔴 ADMIN ONLY -->
     <button id="force-refresh-btn" class="admin-only btn-center btn-green" onclick="forceRefresh()">
       FORCE REFRESH
     </button>
 
-    <!-- 🟢 ALL USERS -->
     <button id="dutyMainBtn" class="staff-only btn-center btn-green" onclick="handleDutyAction()">
       <span id="dutyLabel">START DUTY</span>
     </button>
 
-    <!-- 🟢 ALL USERS -->
     <button class="btn-center staff-only" onclick="openSightingForm()"
       style="background:#f9a825; margin-top: 8px; display: none;">
       <i class="fa-solid fa-plus"></i>
@@ -668,13 +665,11 @@ window.addEventListener("unhandledrejection", function (e) {
     <!-- 📂 KML UPLOAD -->
     <div style="margin-top:10px;">
 
-      <!-- 🔴 ADMIN ONLY -->
       <button id="upload-kml-btn" class="admin-only btn-center btn-blue" onclick="openKMLForm()">
         <i class="fa-solid fa-upload"></i>
         <span>UPLOAD KML</span>
       </button>
 
-      <!-- 🔴 ADMIN ONLY -->
       <button id="clearKMLBtn"
         class="admin-only btn-center"
         onclick="clearKMLPreview()"
@@ -684,7 +679,6 @@ window.addEventListener("unhandledrejection", function (e) {
 
     </div>
 
-    <!-- 🟢 ALL USERS -->
     <div class="weather-drawer staff-only" id="weatherDrawer"
       style="margin-top: 10px; background: rgba(255,255,255,0.05); border-radius: 8px; overflow: hidden;">
       <button class="weather-toggle" onclick="toggleWeatherDrawer()"
@@ -705,7 +699,6 @@ window.addEventListener("unhandledrejection", function (e) {
 
   </div>
 
-  <!-- 🟢 ALL USERS -->
   <div class="legend staff-only" id="mapLegend">
     <button id="legendToggleBtn" onclick="toggleLegend()">
       <i id="legendIcon" class="fa-solid fa-chevron-down"></i>
@@ -731,23 +724,22 @@ window.addEventListener("unhandledrejection", function (e) {
 
   <div id="map"></div>
 
-  <!-- 🔴 ADMIN ONLY (OPTIONAL FUTURE CONTROL) -->
   <div id="installContainer" class="admin-only" style="
-    display:none;
-    position:fixed;
-    bottom:20px;
-    left:20px;
-    z-index:9999;
-  ">
+  display:none;
+  position:fixed;
+  bottom:20px;
+  left:20px;
+  z-index:9999;
+">
     <button id="installBtn" style="
-      padding:12px 18px;
-      border-radius:12px;
-      border:1px solid rgba(255,255,255,0.2);
-      background:rgba(46,125,50,0.4);
-      color:white;
-      backdrop-filter:blur(10px);
-      font-weight:bold;
-    ">
+    padding:12px 18px;
+    border-radius:12px;
+    border:1px solid rgba(255,255,255,0.2);
+    background:rgba(46,125,50,0.4);
+    color:white;
+    backdrop-filter:blur(10px);
+    font-weight:bold;
+  ">
       📲 Install App
     </button>
   </div>
