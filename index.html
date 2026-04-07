@@ -4392,34 +4392,11 @@ function calculateTotal(){
   }
 
   /* ===============================
-     🧠 CLEAN NAME (🔥 FINAL FIX)
+     🧠 USE RAW NAME (FINAL FIX)
   =============================== */
-  let cleanName = profile.name || "";
+  const displayName = profile.name;   // 🔥 DIRECT FROM BACKEND
 
-  if (cleanName) {
-
-    // 🔥 STEP 1: normalize case (MAIN FIX)
-    cleanName = cleanName
-      .toLowerCase()
-      .replace(/\b\w/g, c => c.toUpperCase());
-
-    // 🔥 STEP 2: split and clean
-    const parts = cleanName.split(",").map(p => p.trim());
-
-    // 🔥 STEP 3: rebuild Name + Role
-    if (parts.length >= 2) {
-
-      let role = parts[1].toUpperCase(); // force FR uppercase
-
-      cleanName = parts[0] + ", " + role;
-
-    } else {
-
-      cleanName = parts[0];
-    }
-  }
-
-  console.log("✅ Clean Name:", cleanName);
+  console.log("✅ Using RAW Name:", displayName);
 
   /* ===============================
      SAFE SET
@@ -4435,10 +4412,10 @@ function calculateTotal(){
   const teamInput = document.getElementById("f-team");
 
   if (teamInput) {
-    teamInput.value = cleanName;
+    teamInput.value = displayName;   // 🔥 NO CLEANING
     teamInput.readOnly = true;
-    teamInput.dataset.lockedUser = cleanName;
-    console.log("✅ Team Leader set:", cleanName);
+    teamInput.dataset.lockedUser = displayName;
+    console.log("✅ Team Leader set:", displayName);
   }
 
   /* ===============================
