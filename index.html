@@ -4722,6 +4722,35 @@ function openDutyForm(){
   beatSel.value = profile.beat || "";
 
   /* ===============================
+     🔥 DUTY TYPE DROPDOWN (ADDED)
+  =============================== */
+  const dutyTypeSel = document.getElementById("d-dutyType");
+
+  if (dutyTypeSel) {
+
+    dutyTypeSel.innerHTML = "";
+
+    [
+      "Foot Patrolling",
+      "Night Patrolling",
+      "Watch Tower Duty",
+      "Depredation Duty",
+      "Wild Animal Rescue",
+      "Raid Program",
+      "Enquiry",
+      "Vehicle Patrolling",
+      "Office Duty"
+    ].forEach(type => {
+      const o = document.createElement("option");
+      o.value = type;
+      o.innerHTML = type;
+      dutyTypeSel.appendChild(o);
+    });
+
+    console.log("✅ Duty Type dropdown loaded");
+  }
+
+  /* ===============================
      LEADER LOCK
   =============================== */
   const leaderInput = document.getElementById("d-leader");
