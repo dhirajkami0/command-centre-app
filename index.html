@@ -4832,7 +4832,7 @@ function closeEndDutyForm() {
  let endDutySubmitting = false;   // 🔒 GLOBAL LOCK
 
 function submitEndDuty(event) {
-
+console.trace("🚨 WHO TRIGGERED submitEndDuty");
   console.group("🚨 submitEndDuty TRIGGERED");
   console.log("⏱ Time:", new Date().toLocaleTimeString());
 
@@ -5588,7 +5588,7 @@ let lastAnalysis = null;
         /* 🔥 FIXED START DUTY: CAPTURES DATA AND UPDATES BUTTON */
           /* 🔥 FIXED START DUTY: CAPTURES DATA, SUBMITS, AND UPDATES BUTTON */
  function startDuty() {
-
+console.trace("🚨 WHO TRIGGERED startDuty");
   console.group("🚀 startDuty START");
   console.log("⏱ Time:", new Date().toLocaleTimeString());
 
