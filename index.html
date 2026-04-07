@@ -1534,20 +1534,7 @@ function initDutyControl() {
   }
 
 }
-    window.isDutyActive = false;
-
-    function handleDutyAction(){
-
-  alert("CLICK WORKED");   // 🔥 TEMP TEST
-
-  console.log("🔥 CLICK FIRED");
-
-  if(window.isDutyActive){
-    openEndDutyForm();
-  } else {
-    openDutyForm();
-  }
-}
+    
   function showMoveOptions(id, btn){
 
   const container = btn.parentElement;
@@ -5540,17 +5527,21 @@ style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; bac
   <script>
 let lastAnalysis = null;
           /* GLOBAL STATE */
-          window.isDutyActive = false;
+         window.isDutyActive = false;
 
-          /* MAIN BUTTON */
-          function handleDutyAction() {
-            if (window.isDutyActive) {
-              openEndDutyForm();
-            } else {
-              openDutyForm();
-            }
-          }
+function handleDutyAction(e){
 
+  console.log("🔥 BUTTON CLICK");
+  console.log("👉 isDutyActive:", window.isDutyActive);
+
+  if(window.isDutyActive){
+    console.log("🔴 Opening END DUTY");
+    openEndDutyForm();
+  } else {
+    console.log("🟢 Opening START DUTY");
+    openDutyForm();
+  }
+}
         /* 🔥 FIXED START DUTY: CAPTURES DATA AND UPDATES BUTTON */
           /* 🔥 FIXED START DUTY: CAPTURES DATA, SUBMITS, AND UPDATES BUTTON */
  let startDutySubmitting = false;   // 🔒 GLOBAL LOCK
