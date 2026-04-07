@@ -679,26 +679,28 @@ window.addEventListener("unhandledrejection", function (e) {
 
     </div>
 
-    <div class="weather-drawer staff-only" id="weatherDrawer"
-      style="margin-top: 10px; background: rgba(255,255,255,0.05); border-radius: 8px; overflow: hidden;">
-      <button class="weather-toggle" onclick="toggleWeatherDrawer()"
-        style="width:100%; background:none; border:none; color:#4caf50; display:flex; justify-content:space-between; align-items:center; padding: 12px; cursor:pointer; font-weight:bold; font-size:13px;">
-        <span><i class="fa-solid fa-cloud-sun"></i> Weather Info</span>
-        <i id="weatherChevron" class="fa-solid fa-chevron-down"></i>
-      </button>
+    <div class="weather-drawer" id="weatherDrawer" style="margin-top: 10px; background: rgba(255,255,255,0.05); border-radius: 8px; overflow: hidden;">
 
-      <div class="weather-content" id="weatherContent"
-        style="max-height: 0px; opacity: 0; overflow: hidden; transition: all 0.4s ease; padding: 0 12px;">
-        <div id="weatherNow" style="margin-top:5px;"></div>
-        <hr style="border:0; border-top:1px solid rgba(255,255,255,0.1); margin:8px 0;">
-        <div id="todayForecast"></div>
-        <hr style="border:0; border-top:1px solid rgba(255,255,255,0.1); margin:8px 0;">
-        <div id="weekForecast"></div>
-      </div>
-    </div>
+  <button class="weather-toggle" onclick="toggleWeatherDrawer()" style="width:100%; background:none; border:none; color:#4caf50; display:flex; justify-content:space-between; align-items:center; padding: 12px; cursor:pointer; font-weight:bold; font-size:13px;">
+    <span><i class="fa-solid fa-cloud-sun"></i> Weather Info</span>
+    <i id="weatherChevron" class="fa-solid fa-chevron-down"></i>
+  </button>
+
+  <div class="weather-content" id="weatherContent" style="max-height: 0px; opacity: 0; overflow: hidden; transition: all 0.4s ease; padding: 0 12px;">
+    
+    <div id="weatherNow" style="margin-top:5px;"></div>
+
+    <hr style="border:0; border-top:1px solid rgba(255,255,255,0.1); margin:8px 0;">
+
+    <div id="todayForecast"></div>
+
+    <hr style="border:0; border-top:1px solid rgba(255,255,255,0.1); margin:8px 0;">
+
+    <div id="weekForecast"></div>
 
   </div>
 
+</div>
   <div class="legend staff-only" id="mapLegend">
     <button id="legendToggleBtn" onclick="toggleLegend()">
       <i id="legendIcon" class="fa-solid fa-chevron-down"></i>
