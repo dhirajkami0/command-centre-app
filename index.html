@@ -5554,16 +5554,33 @@ let lastAnalysis = null;
 
         /* 🔥 FIXED START DUTY: CAPTURES DATA AND UPDATES BUTTON */
           /* 🔥 FIXED START DUTY: CAPTURES DATA, SUBMITS, AND UPDATES BUTTON */
- function startDuty() {
-console.trace("🚨 WHO TRIGGERED startDuty");
+ let startDutySubmitting = false;   // 🔒 GLOBAL LOCK
+
+function startDuty(event) {
+
+  console.trace("🚨 WHO TRIGGERED startDuty");
+
   console.group("🚀 startDuty START");
   console.log("⏱ Time:", new Date().toLocaleTimeString());
 
   try {
 
+    // 🔥 BLOCK AUTO / NON-USER TRIGGERS
+    if (!event || event.isTrusted !== true) {
+      console.warn("⛔ Blocked auto trigger");
+      console.groupEnd();
+      return;
+    }
+
+    // 🔒 BLOCK DOUBLE CLICK / DUPLICATE CALL
+    if (startDutySubmitting) {
+      console.warn("⛔ Duplicate startDuty blocked");
+      console.groupEnd();
+      return;
+    }
+
     const startBtn = document.getElementById("startDutyBtn");
 
-    // 🔒 SIMPLE SAFE GUARD
     if (!startBtn) {
       console.log("⚠ Button not found");
       console.groupEnd();
@@ -5573,13 +5590,13 @@ console.trace("🚨 WHO TRIGGERED startDuty");
     const profile = window.userProfile;
     console.log("👤 profile:", profile);
 
-    if(!profile){
+    if (!profile) {
       alert("❌ User not loaded");
       console.groupEnd();
       return;
     }
 
-    // 🔹 GET VALUES (CLEAN EMPTY VALUES)
+    // 🔹 GET VALUES
     const staffArray = getCheckedValues("staffOptions").filter(v => v && v.trim());
     const comptArray = getCheckedValues("comptOptions").filter(v => v && v.trim());
 
@@ -5602,19 +5619,20 @@ console.trace("🚨 WHO TRIGGERED startDuty");
       return;
     }
 
-    // 🔥 DUPLICATE PROTECTION
-    if(window.isDutyActive){
+    if (window.isDutyActive) {
       alert("⚠ Duty already active");
       console.groupEnd();
       return;
     }
+
+    // 🔒 LOCK START
+    startDutySubmitting = true;
 
     // ✅ PAYLOAD
     const payload = {
       staff: staffString,
       type: document.getElementById("d-type")?.value || "",
       compt: comptString,
-
       leader: profile.name || "",
       email: profile.email || "",
       phone: localStorage.getItem("userPhone") || ""
@@ -5622,9 +5640,9 @@ console.trace("🚨 WHO TRIGGERED startDuty");
 
     console.log("📤 PAYLOAD:", payload);
 
-    // 🔥 LOCK BUTTON ONLY ON REAL CLICK
     const originalText = startBtn.innerHTML;
 
+    // 🔒 LOCK BUTTON UI
     startBtn.innerHTML = "⏳ Starting Duty...";
     startBtn.disabled = true;
 
@@ -5638,16 +5656,16 @@ console.trace("🚨 WHO TRIGGERED startDuty");
 
       if (!res || res.error) {
 
-        console.error("❌ Backend error:", res);
-
         alert("❌ " + (res?.error || "Failed to start duty"));
 
         startBtn.innerHTML = originalText;
         startBtn.disabled = false;
+        startDutySubmitting = false;
+
+        console.groupEnd();
         return;
       }
 
-      // ✅ SUCCESS
       console.log("✅ Duty success");
       alert("✅ Duty Started");
 
@@ -5671,7 +5689,8 @@ console.trace("🚨 WHO TRIGGERED startDuty");
 
     })
 
-    .catch(function(err){
+    .catch(function (err) {
+
       console.error("❌ Backend crash:", err);
 
       alert("❌ Server error");
@@ -5680,8 +5699,16 @@ console.trace("🚨 WHO TRIGGERED startDuty");
       startBtn.disabled = false;
     })
 
-    .finally(function(){
+    .finally(function () {
+
       console.log("🏁 startDuty FINISHED");
+
+      // 🔓 UNLOCK AFTER SAFE DELAY
+      setTimeout(() => {
+        startDutySubmitting = false;
+        console.log("🔓 startDuty unlocked");
+      }, 1500);
+
       console.groupEnd();
     });
 
