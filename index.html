@@ -642,20 +642,24 @@ window.addEventListener("unhandledrejection", function (e) {
       <div style="font-size:9px; color:#aaa;" id="last-update">CONNECTING...</div>
     </div>
 
-    <button class="btn-center" onclick="centerMap()">CENTER RANGE</button>
+    <button class="btn-center staff-only" onclick="centerMap()">CENTER RANGE</button>
 
-    <button class="btn-center btn-blue" onclick="findMe()">
+    <button class="btn-center btn-blue staff-only" onclick="findMe()">
       MY LOCATION
-   
-    </button><button id="force-refresh-btn" class="admin-only btn-center btn-green" onclick="forceRefresh()">
-  FORCE REFRESH
-</button>
+    </button>
 
+    <!-- 🔴 ADMIN ONLY -->
+    <button id="force-refresh-btn" class="admin-only btn-center btn-green" onclick="forceRefresh()">
+      FORCE REFRESH
+    </button>
+
+    <!-- 🟢 ALL USERS -->
     <button id="dutyMainBtn" class="staff-only btn-center btn-green" onclick="handleDutyAction()">
       <span id="dutyLabel">START DUTY</span>
     </button>
 
-    <button class="btn-center staff-only"" onclick="openSightingForm()"
+    <!-- 🟢 ALL USERS -->
+    <button class="btn-center staff-only" onclick="openSightingForm()"
       style="background:#f9a825; margin-top: 8px; display: none;">
       <i class="fa-solid fa-plus"></i>
       <span>ADD SIGHTING</span>
@@ -664,21 +668,24 @@ window.addEventListener("unhandledrejection", function (e) {
     <!-- 📂 KML UPLOAD -->
     <div style="margin-top:10px;">
 
+      <!-- 🔴 ADMIN ONLY -->
       <button id="upload-kml-btn" class="admin-only btn-center btn-blue" onclick="openKMLForm()">
-  <i class="fa-solid fa-upload"></i>
-  <span>UPLOAD KML</span>
-</button>
-      <!-- 🔥 NEW BUTTON ADDED -->
+        <i class="fa-solid fa-upload"></i>
+        <span>UPLOAD KML</span>
+      </button>
+
+      <!-- 🔴 ADMIN ONLY -->
       <button id="clearKMLBtn"
-  class="btn-center"
-  onclick="clearKMLPreview()"
-  style="background:#c62828; margin-top:6px; display:none;">
-  ❌ CLEAR KML PREVIEW
-</button>
+        class="admin-only btn-center"
+        onclick="clearKMLPreview()"
+        style="background:#c62828; margin-top:6px; display:none;">
+        ❌ CLEAR KML PREVIEW
+      </button>
 
     </div>
 
-    <div class="weather-drawer" id="weatherDrawer"
+    <!-- 🟢 ALL USERS -->
+    <div class="weather-drawer staff-only" id="weatherDrawer"
       style="margin-top: 10px; background: rgba(255,255,255,0.05); border-radius: 8px; overflow: hidden;">
       <button class="weather-toggle" onclick="toggleWeatherDrawer()"
         style="width:100%; background:none; border:none; color:#4caf50; display:flex; justify-content:space-between; align-items:center; padding: 12px; cursor:pointer; font-weight:bold; font-size:13px;">
@@ -697,7 +704,9 @@ window.addEventListener("unhandledrejection", function (e) {
     </div>
 
   </div>
-  <div class="legend" id="mapLegend">
+
+  <!-- 🟢 ALL USERS -->
+  <div class="legend staff-only" id="mapLegend">
     <button id="legendToggleBtn" onclick="toggleLegend()">
       <i id="legendIcon" class="fa-solid fa-chevron-down"></i>
     </button>
@@ -719,23 +728,26 @@ window.addEventListener("unhandledrejection", function (e) {
       🏠 Low Risk Village
     </div>
   </div>
+
   <div id="map"></div>
-  <div id="installContainer" style="
-  display:none;
-  position:fixed;
-  bottom:20px;
-  left:20px;
-  z-index:9999;
-">
-    <button id="installBtn" style="
-    padding:12px 18px;
-    border-radius:12px;
-    border:1px solid rgba(255,255,255,0.2);
-    background:rgba(46,125,50,0.4);
-    color:white;
-    backdrop-filter:blur(10px);
-    font-weight:bold;
+
+  <!-- 🔴 ADMIN ONLY (OPTIONAL FUTURE CONTROL) -->
+  <div id="installContainer" class="admin-only" style="
+    display:none;
+    position:fixed;
+    bottom:20px;
+    left:20px;
+    z-index:9999;
   ">
+    <button id="installBtn" style="
+      padding:12px 18px;
+      border-radius:12px;
+      border:1px solid rgba(255,255,255,0.2);
+      background:rgba(46,125,50,0.4);
+      color:white;
+      backdrop-filter:blur(10px);
+      font-weight:bold;
+    ">
       📲 Install App
     </button>
   </div>
