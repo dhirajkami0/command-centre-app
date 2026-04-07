@@ -849,7 +849,8 @@ function applyRoleControl(){
     adminButtons.forEach(el => el.style.display = "none");
     staffButtons.forEach(el => el.style.display = "flex");
 
-    if(dutyBtn) dutyBtn.style.display = "none";
+    /* 🔥 FIX: SHOW DUTY BUTTON FOR STAFF */
+    if(dutyBtn) dutyBtn.style.display = "flex";
   }
 
   /* ❌ BLOCK */
@@ -863,7 +864,7 @@ function applyRoleControl(){
 
     alert("❌ Not authorized");
   }
-}   function login(){
+}  function login(){
 
   const phone = document.getElementById("loginPhone").value.trim();
 
