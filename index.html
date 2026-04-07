@@ -5561,7 +5561,7 @@ let lastAnalysis = null;
 
         /* 🔥 FIXED START DUTY: CAPTURES DATA AND UPDATES BUTTON */
           /* 🔥 FIXED START DUTY: CAPTURES DATA, SUBMITS, AND UPDATES BUTTON */
-       function startDuty() {
+ function startDuty() {
 
   console.group("🚀 startDuty START");
   console.log("⏱ Time:", new Date().toLocaleTimeString());
@@ -5570,9 +5570,9 @@ let lastAnalysis = null;
 
     const startBtn = document.getElementById("startDutyBtn");
 
-    // 🔒 STRICT GUARD → ONLY BUTTON CLICK SHOULD RUN
-    if (!startBtn || document.activeElement !== startBtn) {
-      console.log("⚠ Ignored non-button trigger");
+    // 🔒 SIMPLE SAFE GUARD
+    if (!startBtn) {
+      console.log("⚠ Button not found");
       console.groupEnd();
       return;
     }
@@ -5629,7 +5629,7 @@ let lastAnalysis = null;
 
     console.log("📤 PAYLOAD:", payload);
 
-    // 🔥 NOW SET LOADING STATE (ONLY AFTER VALIDATION)
+    // 🔥 LOCK BUTTON ONLY ON REAL CLICK
     const originalText = startBtn.innerHTML;
 
     startBtn.innerHTML = "⏳ Starting Duty...";
