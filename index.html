@@ -4836,6 +4836,13 @@ function closeEndDutyForm() {
 
   try {
 
+    // 🔒 STRICT: MUST BE CLICK EVENT
+    if (!event || !event.target) {
+      console.warn("⚠ Ignored auto trigger");
+      console.groupEnd();
+      return;
+    }
+
     const profile = window.userProfile;
 
     if (!window.isDutyActive) {
@@ -4855,13 +4862,7 @@ function closeEndDutyForm() {
       return;
     }
 
-    const btn = event?.target || document.activeElement;
-
-    if (!btn) {
-      console.error("❌ Button not found");
-      console.groupEnd();
-      return;
-    }
+    const btn = event.target;
 
     const original = btn.innerHTML;
 
@@ -4896,7 +4897,7 @@ function closeEndDutyForm() {
         return;
       }
 
-      // 🔥 CLOSE MODAL FIRST (NO DELAY)
+      // 🔥 CLOSE MODAL FIRST
       if (typeof closeEndDutyForm === "function") {
         closeEndDutyForm();
       }
@@ -4921,7 +4922,7 @@ function closeEndDutyForm() {
         refreshAll();
       }
 
-      // 🔥 SHOW SUCCESS AFTER UI CLOSE
+      // 🔥 SUCCESS MESSAGE
       setTimeout(() => {
         showToast("✅ Duty Ended Successfully");
       }, 100);
@@ -4948,7 +4949,7 @@ function closeEndDutyForm() {
     console.error("💥 CRASH:", err);
     console.groupEnd();
   }
-}  /* 🚀 SAFE INITIALIZATION FOR ALL EVENT LISTENERS */
+} /* 🚀 SAFE INITIALIZATION FOR ALL EVENT LISTENERS */
           function initEventListeners() {
             console.log("🛠️ Initializing Safe Listeners...");
 
