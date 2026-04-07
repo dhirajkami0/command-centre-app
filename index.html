@@ -1712,7 +1712,9 @@ function initDutyControl() {
       let data;
 
       try {
-        data = (typeof json === "string") ? JSON.parse(json) : json;
+        data
+          
+        = (typeof json === "string") ? JSON.parse(json) : json;
       } catch(err){
         console.error("❌ Invalid GeoJSON:", err);
         return;
@@ -4462,11 +4464,23 @@ function submitSightingForm(event){
 
   try {
 
-    const sightingID = "SIGHT-" + Date.now();
+    /* ============================================================
+       🔥 FIX 1: MULTI-USER SAFE UNIQUE ID
+    ============================================================ */
+
+    let sightingID = window.currentSightingId;
+
+    // If NEW sighting → generate unique ID
+    if (!sightingID) {
+      sightingID =
+        "SIGHT-" +
+        Date.now() + "-" +
+        Math.floor(Math.random() * 10000);
+    }
 
     const m   = parseInt(document.getElementById("f-m").value) || 0;
     const f   = parseInt(document.getElementById("f-f").value) || 0;
-    const uni = parseInt(document.getElementById("f-u").value) || 0; // ✅ FIXED
+    const uni = parseInt(document.getElementById("f-u").value) || 0;
     const c   = parseInt(document.getElementById("f-c").value) || 0;
 
     const total = m + f + uni + c;
@@ -4491,12 +4505,13 @@ function submitSightingForm(event){
 
     const payload = {
 
+      /* 🔥 IMPORTANT: SAME ID USED FOR UPDATE */
       sighting_id: sightingID,
+
       parent_id: "",
 
       beat: document.getElementById("f-beat").value,
 
-      /* ✅ FIXED */
       forest_block: document.getElementById("f-block").value,
 
       compt: document.getElementById("f-compt").value,
@@ -4517,17 +4532,14 @@ function submitSightingForm(event){
 
       remarks: document.getElementById("f-remarks").value,
 
-      /* ✅ FINAL TEAM LEADER (NO UNKNOWN EVER) */
       leader: document.getElementById("f-team").value || "",
 
-      /* ✅ KEEP EMPTY TO PREVENT SHIFT */
       staff: "",
 
       lat: Number(lat),
       lon: Number(lon),
 
-      /* ✅ KEEP EXACT FORMAT */
-      location: lat + "," + lon,
+      location: location,
 
       direction: document.getElementById("f-dir").value
     };
@@ -4543,6 +4555,11 @@ function submitSightingForm(event){
         .then(function(){
 
           alert("✅ Submitted to Command Centre");
+
+          /* ============================================================
+             🔥 FIX 2: STORE ID FOR FUTURE UPDATES
+          ============================================================ */
+          window.currentSightingId = sightingID;
 
           if (typeof closeSightingForm === "function") {
             closeSightingForm();
