@@ -1,8 +1,8 @@
 /* =========================================
-   🔥 COMMAND CENTRE SERVICE WORKER
+   🔥 GREENGUARD SERVICE WORKER
 ========================================= */
 
-const CACHE_NAME = "command-centre-v7"; // 🔥 CHANGE VERSION WHEN YOU UPDATE
+const CACHE_NAME = "greenguard-v1"; // 🔥 UPDATE VERSION WHEN CHANGING FILES
 
 /* 📦 CORE FILES (APP SHELL) */
 const urlsToCache = [
@@ -18,7 +18,6 @@ self.addEventListener("install", event => {
 
   console.log("✅ SW Installing...");
 
-  // 🔥 Activate immediately
   self.skipWaiting();
 
   event.waitUntil(
@@ -38,7 +37,6 @@ self.addEventListener("activate", event => {
 
   console.log("🚀 SW Activated");
 
-  // 🔥 Delete old caches
   event.waitUntil(
     caches.keys().then(keys => {
       return Promise.all(
@@ -52,25 +50,24 @@ self.addEventListener("activate", event => {
     })
   );
 
-  // 🔥 Take control immediately
   return self.clients.claim();
 
 });
 
 /* =========================================
-   🌐 FETCH HANDLER (SMART NETWORK FIRST)
+   🌐 FETCH HANDLER (NETWORK FIRST)
 ========================================= */
 self.addEventListener("fetch", event => {
 
   const req = event.request;
 
-  /* ❌ SKIP NON-GET (prevents POST cache error) */
+  /* ❌ SKIP NON-GET */
   if (req.method !== "GET") return;
 
-  /* ❌ SKIP API CALLS (VERY IMPORTANT) */
+  /* ❌ SKIP API CALLS */
   if (req.url.includes("script.google.com")) return;
 
-  /* ❌ SKIP CHROME EXTENSIONS / UNKNOWN */
+  /* ❌ SKIP NON-HTTP */
   if (!req.url.startsWith("http")) return;
 
   event.respondWith(
@@ -78,14 +75,12 @@ self.addEventListener("fetch", event => {
     fetch(req)
       .then(res => {
 
-        /* ❌ DO NOT CACHE INVALID RESPONSES */
         if (!res || res.status !== 200 || res.type !== "basic") {
           return res;
         }
 
         const resClone = res.clone();
 
-        /* 💾 SAVE TO CACHE */
         caches.open(CACHE_NAME).then(cache => {
           cache.put(req, resClone);
         });
@@ -95,8 +90,15 @@ self.addEventListener("fetch", event => {
       })
       .catch(() => {
 
-        /* 📦 OFFLINE FALLBACK */
-        return caches.match(req);
+        /* 📦 TRY CACHE */
+        return caches.match(req).then(cached => {
+
+          if (cached) return cached;
+
+          /* 🔥 FALLBACK TO INDEX (PWA SAFE) */
+          return caches.match("./index.html");
+
+        });
 
       })
 
