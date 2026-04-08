@@ -5416,7 +5416,36 @@ style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; bac
 
  
   </div>
+<div id="move-form-modal" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.8); z-index:999999; align-items:center; justify-content:center;">
+  <div style="background:#fff;padding:20px;border-radius:12px;width:320px">
 
+    <h3>Update Sighting</h3>
+
+    <input type="hidden" id="move-id">
+
+    <label>Depredation</label>
+    <input type="text" id="move-depredation">
+
+    <label>Involved</label>
+    <input type="text" id="move-involved">
+
+    <label>Driving</label>
+    <input type="text" id="move-driving">
+
+    <label>Remarks</label>
+    <select id="move-remarks">
+      <option value="Moved">🟢 Moved</option>
+      <option>Driven to DPO 1</option>
+      <option>Driven to DPO 2</option>
+      <option>Driven to PORO 3</option>
+      <option>Driven to PF</option>
+    </select>
+
+    <button onclick="submitMoveForm()">✅ Confirm</button>
+    <button onclick="closeMoveForm()">❌ Cancel</button>
+
+  </div>
+</div>
 
   <!-- 🔥 DUTY MODAL -->
   <div id="duty-modal" style="
