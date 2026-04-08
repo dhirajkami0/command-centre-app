@@ -2534,6 +2534,7 @@ function submitMoveForm() {
   const depredation = document.getElementById("move-depredation").value;
   const involved = document.getElementById("move-involved").value;
   const driving = document.getElementById("move-driving").value;
+  const direction = document.getElementById("move-dir").value;
   const remarks = document.getElementById("move-remarks").value;
 
   if (!remarks) {
@@ -2592,6 +2593,7 @@ console.log("📤 FINAL MOVE PAYLOAD →", {
     depredation: depredation,
     involved: involved,
     driving: driving,
+    direction: direction,
     updatedBy: (
   window.userProfile?.name ||
   window.currentLeader ||
