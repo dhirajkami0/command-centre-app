@@ -4474,13 +4474,15 @@ function submitSightingForm(event){
   try {
 
     /* ============================================================
-       🔥 FIX 1: MULTI-USER SAFE UNIQUE ID
+       🔥 FIX 1: MULTI-USER SAFE UNIQUE ID (CORRECTED)
     ============================================================ */
 
-    let sightingID = window.currentSightingId;
+    let sightingID;
 
-    // If NEW sighting → generate unique ID
-    if (!sightingID) {
+    // 🔥 ONLY reuse ID if explicitly editing
+    if (window.isEditingSighting && window.currentSightingId) {
+      sightingID = window.currentSightingId;
+    } else {
       sightingID =
         "SIGHT-" +
         Date.now() + "-" +
@@ -4513,19 +4515,17 @@ function submitSightingForm(event){
     }
 
     /* ============================================================
-       🔥 FIX 2: SAFE LEADER VALUE (CRITICAL)
+       🔥 FIX 2: SAFE LEADER VALUE (CRITICAL) (UNCHANGED)
     ============================================================ */
 
     const teamInput = document.getElementById("f-team");
 
     let leaderValue = teamInput ? teamInput.value : "";
 
-    // 🔥 fallback to correct profile name if anything wrong
     if (!leaderValue || leaderValue.trim() === "") {
       leaderValue = window.userProfile?.name || "";
     }
 
-    // 🔥 prevent internal uppercase name from being saved
     if (
       leaderValue === window.userProfile?.cleanName ||
       leaderValue === window.userProfile?.cleanName?.toUpperCase()
@@ -4534,7 +4534,6 @@ function submitSightingForm(event){
       leaderValue = window.userProfile?.name || leaderValue;
     }
 
-    // 🔥 final cleanup
     leaderValue = String(leaderValue).trim();
 
     console.log("👤 FINAL LEADER:", leaderValue);
@@ -4568,7 +4567,6 @@ function submitSightingForm(event){
 
       remarks: document.getElementById("f-remarks").value,
 
-      /* 🔥 SAFE LEADER */
       leader: leaderValue,
 
       staff: "",
@@ -4594,9 +4592,16 @@ function submitSightingForm(event){
           alert("✅ Submitted to Command Centre");
 
           /* ============================================================
-             🔥 FIX 3: STORE ID FOR FUTURE UPDATES
+             🔥 FIX 3: STORE ID FOR FUTURE UPDATES (SAFE)
           ============================================================ */
-          window.currentSightingId = sightingID;
+
+          if (window.isEditingSighting) {
+            window.currentSightingId = sightingID;
+          } else {
+            window.currentSightingId = null;   // 🔥 CRITICAL RESET
+          }
+
+          window.isEditingSighting = false;   // 🔥 RESET MODE
 
           if (typeof closeSightingForm === "function") {
             closeSightingForm();
