@@ -2707,7 +2707,7 @@ console.log("📤 FINAL MOVE PAYLOAD →", {
     }
 
 
-   function loadStaff(){
+  function loadStaff(){
 
   staffLayer.clearLayers();
 
@@ -2786,6 +2786,10 @@ console.log("📤 FINAL MOVE PAYLOAD →", {
           iconAnchor:[15,15]
         });
 
+        /* 🔥 SAFE DISPLAY FIX (ONLY CHANGE) */
+        const team = (s.team && String(s.team).trim()) ? s.team : "N/A";
+        const duty = (s.dutyType && String(s.dutyType).trim()) ? s.dutyType : "N/A";
+
         const popup = `
         <div style="font-family:Segoe UI">
 
@@ -2794,8 +2798,8 @@ console.log("📤 FINAL MOVE PAYLOAD →", {
 
           <hr>
 
-          👥 ${s.team || "N/A"}<br>
-          🧾 ${s.dutyType || "N/A"}<br>
+          👥 ${team}<br>
+          🧾 ${duty}<br>
 
           <hr>
 
