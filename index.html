@@ -2487,57 +2487,68 @@ if (rawDir) {
     console.error("❌ loadSightings error:", err);
   });
 
-}/* 🔥 STATUS UPDATE */
- function confirmExit(input, id) {
+}function openMoveForm(id){
 
-  let value;
+  document.getElementById("move-id").value = id;
+
+  document.getElementById("move-depredation").value = "";
+  document.getElementById("move-involved").value = "";
+  document.getElementById("move-driving").value = "";
+
+  document.getElementById("move-form-modal").style.display = "flex";
+}
+    /* 🔥 STATUS UPDATE */
+    /* 🔥 STATUS UPDATE */
+    function closeMoveForm(){
+  document.getElementById("move-form-modal").style.display = "none";
+}
+    
+    
+    /* 🔥 STATUS UPDATE */
+function submitMoveForm() {
+
+  console.group("🚀 submitMoveForm START");
 
   /* ===============================
-     GET VALUE
+     GET VALUES
   =============================== */
-  if (typeof input === "string") {
-    value = "Moved";
-    id = input;
-  } else {
-    value = input.value;
+  const id = document.getElementById("move-id").value;
+
+  const depredation = document.getElementById("move-depredation").value;
+  const involved = document.getElementById("move-involved").value;
+  const driving = document.getElementById("move-driving").value;
+  const remarks = document.getElementById("move-remarks").value;
+
+  if (!remarks) {
+    alert("❌ Please select action");
+    console.groupEnd();
+    return;
   }
 
-  if (!value) return;
-
-  /* ============================================================
-     🔥 FIX 1: PREVENT DOUBLE CLICK / MULTI-TRIGGER
-  ============================================================ */
+  /* ===============================
+     🔒 PREVENT MULTI-CLICK
+  =============================== */
   if (window.isUpdating) {
     console.warn("⚠ Update already in progress");
+    console.groupEnd();
     return;
   }
 
   window.isUpdating = true;
 
-  console.group("🚀 FRONTEND → updateSightingStatus");
-  console.log("📤 Sending ID:", id);
-  console.log("📤 Sending Status:", value);
-
   /* ===============================
      CONFIRM
   =============================== */
-  if (!confirm("Confirm update: " + value + " ?")) {
-
+  if (!confirm("Confirm update: " + remarks + " ?")) {
     window.isUpdating = false;
-
-    if (input && input.tagName === "SELECT") {
-      input.value = "";
-      input.blur();
-    }
-
     console.warn("❌ User cancelled");
     console.groupEnd();
     return;
   }
 
-  /* ============================================================
-     🔥 FIX 2: NORMALIZE ID BEFORE SENDING
-  ============================================================ */
+  /* ===============================
+     🔥 NORMALIZE ID (IMPORTANT)
+  =============================== */
   const normalize = v => String(v)
     .trim()
     .replace(/\s+/g, "")
@@ -2547,12 +2558,19 @@ if (rawDir) {
 
   const cleanId = normalize(id);
 
+  console.log("📤 Sending ID:", cleanId);
+  console.log("📤 Status:", remarks);
+
   /* ===============================
      BACKEND CALL
   =============================== */
   callBackend("updateSightingStatus", {
     id: cleanId,
-    newStatus: value
+    newStatus: remarks,
+    depredation: depredation,
+    involved: involved,
+    driving: driving,
+    updatedBy: window.userProfile?.name || "UNKNOWN"
   })
 
   .then(function (res) {
@@ -2563,9 +2581,16 @@ if (rawDir) {
 
       alert("✅ Updated");
 
-      /* ============================================================
-         🔥 FIX 3: SAFE MARKER REMOVE (MULTIUSER SAFE)
-      ============================================================ */
+      /* ===============================
+         CLOSE FORM
+      =============================== */
+      if (typeof closeMoveForm === "function") {
+        closeMoveForm();
+      }
+
+      /* ===============================
+         🔥 REMOVE MARKER (SAME AS OLD)
+      =============================== */
       Object.keys(window.sightingMarkers || {}).forEach(key => {
 
         if (normalize(key) === cleanId) {
@@ -2573,7 +2598,7 @@ if (rawDir) {
           elephantLayer.removeLayer(window.sightingMarkers[key]);
           delete window.sightingMarkers[key];
 
-          console.log("⚡ Marker removed instantly:", key);
+          console.log("⚡ Marker removed:", key);
         }
 
       });
@@ -2593,30 +2618,21 @@ if (rawDir) {
     window.lastInteractionTime = 0;
 
     /* ===============================
-       CLOSE DROPDOWN
-    =============================== */
-    if (input && input.tagName === "SELECT") {
-      input.value = "";
-      input.blur();
-      input.style.display = "none";
-    }
-
-    /* ===============================
        CLOSE POPUP
     =============================== */
     if (window.sightingMarkers && window.sightingMarkers[id]) {
       window.sightingMarkers[id].closePopup();
     }
 
-    /* ============================================================
-       🔥 FIX 4: SMART REFRESH (NO SPAM)
-    ============================================================ */
+    /* ===============================
+       🔥 SMART REFRESH
+    =============================== */
     setTimeout(() => {
 
-      console.log("🔥 Force loading sightings after update");
+      console.log("🔥 Refreshing sightings...");
 
-      loadSightings();                 // refresh markers
-      callBackend("updateVillageRisk"); // backend recalculation
+      loadSightings();
+      callBackend("updateVillageRisk");
 
     }, 300);
 
@@ -2624,7 +2640,8 @@ if (rawDir) {
 
   })
 
-  .catch(err => {
+  .catch(function (err) {
+
     console.error("❌ Update failed:", err);
     alert("❌ Backend error");
 
