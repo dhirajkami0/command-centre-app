@@ -2790,6 +2790,12 @@ console.log("📤 FINAL MOVE PAYLOAD →", {
         const team = (s.team && String(s.team).trim()) ? s.team : "N/A";
         const duty = (s.dutyType && String(s.dutyType).trim()) ? s.dutyType : "N/A";
 
+console.log("👤 STAFF DEBUG:", {
+  name: s.name,
+  team: s.team,
+  duty: s.dutyType
+});
+        
         const popup = `
         <div style="font-family:Segoe UI">
 
