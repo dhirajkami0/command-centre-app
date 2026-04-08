@@ -4112,15 +4112,18 @@ var layerControl = L.control.layers(
     "🌱 Plantation": plantationLayer,
     "🌊 Waterholes / Ponds": pondLayer,
     "💧 River Network": riverLayer,
-    "📍 Garam (East + West)": groupLayers["GARAM"],
-    "📍 East Poro": groupLayers["PORO"],
-    "📍 Range HQ": groupLayers["HQ"],
+    "📍 Garam (East + West)": groupLayers?.["GARAM"],
+    "📍 East Poro": groupLayers?.["PORO"],
+    "📍 Range HQ": groupLayers?.["HQ"],
     "🟢 Visited Grid": visitedLayer,
     "🔴 Unvisited Grid": unvisitedLayer,
     "📊 Monthly Coverage": summaryLayer
   },
   { collapsed: true }
-).addTo(map); // 🔥 IMPORTANT/* ============================================================
+).addTo(map);
+
+// 🔥 SEPARATE PROPERLY
+    // 🔥 IMPORTANT/* ============================================================
    🚀 GROUP TRACK DRAW ENGINE (GLOBAL)
 ============================================================ */
 let groupTrackLayer = L.layerGroup().addTo(map);
