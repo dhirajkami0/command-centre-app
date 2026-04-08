@@ -5487,39 +5487,53 @@ style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; bac
 
     <label>Involved</label>
     <input type="text" id="move-involved">
+
     <label>Driving</label>
     <input type="text" id="move-driving">
 
+    <!-- 🔥 NEW FIELD ADDED -->
+    <label><b>Direction</b></label>
+    <select id="move-dir" style="width:100%; padding:8px; margin-top:5px; border-radius:6px;">
+      <option value="">Select Direction</option>
+      <option value="N">North</option>
+      <option value="NE">North-East</option>
+      <option value="E">East</option>
+      <option value="SE">South-East</option>
+      <option value="S">South</option>
+      <option value="SW">South-West</option>
+      <option value="W">West</option>
+      <option value="NW">North-West</option>
+    </select>
+
     <label>Remarks</label>
-   <select id="move-remarks" style="width:100%; padding:8px; margin-top:5px; border-radius:6px;">
+    <select id="move-remarks" style="width:100%; padding:8px; margin-top:5px; border-radius:6px;">
 
-  <option value="Moved">🟢 Moved</option>
+      <option value="Moved">🟢 Moved</option>
 
-  <option>Driven to DPO 1</option>
-  <option>Driven to DPO 2</option>
-  <option>Driven to DPO 5</option>
-  <option>Driven to DPO 6</option>
-  <option>Driven to DPO 9</option>
+      <option>Driven to DPO 1</option>
+      <option>Driven to DPO 2</option>
+      <option>Driven to DPO 5</option>
+      <option>Driven to DPO 6</option>
+      <option>Driven to DPO 9</option>
 
-  <option>Driven to PORO 2</option>
-  <option>Driven to PORO 3</option>
-  <option>Driven to PORO 4</option>
-  <option>Driven to PORO 5</option>
-  <option>Driven to PORO 7</option>
-  <option>Driven to PORO 8</option>
-  <option>Driven to PORO 9</option>
-  <option>Driven to PORO 10</option>
+      <option>Driven to PORO 2</option>
+      <option>Driven to PORO 3</option>
+      <option>Driven to PORO 4</option>
+      <option>Driven to PORO 5</option>
+      <option>Driven to PORO 7</option>
+      <option>Driven to PORO 8</option>
+      <option>Driven to PORO 9</option>
+      <option>Driven to PORO 10</option>
 
-  <option>Driven to PF</option>
+      <option>Driven to PF</option>
 
-</select>
+    </select>
+
     <button onclick="submitMoveForm()">✅ Confirm</button>
     <button onclick="closeMoveForm()">❌ Cancel</button>
 
   </div>
-</div>
-
-  <!-- 🔥 DUTY MODAL -->
+</div>  <!-- 🔥 DUTY MODAL -->
   <div id="duty-modal" style="
   display:none;
   position:fixed;
