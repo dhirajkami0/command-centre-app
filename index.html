@@ -2570,7 +2570,14 @@ function submitMoveForm() {
 
   console.log("📤 Sending ID:", cleanId);
   console.log("📤 Status:", remarks);
-
+console.log("📤 FINAL MOVE PAYLOAD →", {
+  id: id,
+  remarks: remarks,
+  depredation: depredation,
+  involved: involved,
+  driving: driving,
+  updatedBy: window.currentLeader || window.userProfile?.name
+});
   /* ===============================
      BACKEND CALL
   =============================== */
