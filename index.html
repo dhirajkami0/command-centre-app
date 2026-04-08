@@ -2000,8 +2000,11 @@ function clearKMLPreview(){
   const fileInput = document.getElementById("kmlUpload");
   const file = fileInput.files[0];
 
+  const btn = document.getElementById("clearKMLBtn");   // 🔥 ADD
+
   if (!file) {
     alert("❌ Please select a KML file");
+    if (btn) btn.style.display = "none";   // 🔒 SAFETY
     return;
   }
 
@@ -2009,6 +2012,7 @@ function clearKMLPreview(){
 
   if (!beatTag) {
     alert("❌ Beat required");
+    if (btn) btn.style.display = "none";   // 🔒 SAFETY
     return;
   }
 
@@ -2045,14 +2049,25 @@ function clearKMLPreview(){
           map.fitBounds(previewKMLLayer.getBounds());
         }
 
+        // ✅ SHOW BUTTON ONLY AFTER SUCCESS
+        if (btn) btn.style.display = "block";
+
+        console.log("✅ KML loaded → Button shown");
+
       } catch (err) {
         console.error("KML render error:", err);
+
+        // ❌ FAIL SAFE
+        if (btn) btn.style.display = "none";
       }
 
     })
     .catch(function (err) {
       console.error(err);
       alert("❌ Upload failed");
+
+      // ❌ FAIL SAFE
+      if (btn) btn.style.display = "none";
     });
 
   };
