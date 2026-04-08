@@ -742,17 +742,24 @@ window.addEventListener("unhandledrejection", function (e) {
 function cleanName(name){
   return String(name || "")
     .toUpperCase()
+
+    // 🔥 REMOVE DESIGNATIONS (VERY IMPORTANT)
+    .replace(/\b(FR|DR|FG|DL|BS|AS|FV|RO|DFO|RANGER|BANA\S*|ORD\w*)\b/g, "")
+
+    // 🔥 REMOVE AFTER COMMA / BRACKET / DASH / SLASH
     .split(",")[0]
     .split("(")[0]
     .split("-")[0]
     .split("/")[0]
-    .replace(/\s+/g," ")
+
+    // 🔥 REMOVE DOTS + SPECIALS
     .replace(/\./g,"")
     .replace(/[^A-Z\s]/g,"")
-    .trim();
-}
 
-    function loadProfile(){
+    // 🔥 NORMALIZE SPACES
+    .replace(/\s+/g," ")
+    .trim();
+}    function loadProfile(){
 
   const phone = localStorage.getItem("userPhone") || "";
 
