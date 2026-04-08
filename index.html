@@ -4096,44 +4096,31 @@ function show3MonthSummary(data){
 /* ============================================================
    🎛 LAYER CONTROL
 ============================================================ */
-var layerControl = L.control.layers({
-
-  /* 🔽 BASE MAPS */
-  "🛰 Satellite": esriSat,
-  "🗺 Google Hybrid": googleHybrid
-
-}, {
-  /* 🔼 OVERLAYS */
-
-  "🌧 Rain Radar": rainLayer,
-  "🌲 Forest NDVI": geeForest,
-
-  "👮 Staff": staffLayer,
-  "🐘 Elephants": elephantLayer,
-  "🚨 Alerts": incidentLayer,
-
-  "📡 Prediction": predictionLayer,
-  "🏡 Villages": villageLayer,
-
-  "🌱 Plantation": plantationLayer,
-  "🌊 Waterholes / Ponds": pondLayer,
-  "💧 River Network": riverLayer,
-
-  /* 🔥 GROUP TRACKS */
-  "📍 Garam (East + West)": groupLayers["GARAM"],
-  "📍 East Poro": groupLayers["PORO"],
-  "📍 Range HQ": groupLayers["HQ"],
-
-  /* 🔥 GRID + SUMMARY */
-  "🟢 Visited Grid": visitedLayer,
-  "🔴 Unvisited Grid": unvisitedLayer,
-  "📊 Monthly Coverage": summaryLayer,
-  "📊 Monthly Analysis": summaryLayer
-
-}, {
-  collapsed: true
-});
-/* ============================================================
+var layerControl = L.control.layers(
+  {
+    "🛰 Satellite": esriSat,
+    "🗺 Google Hybrid": googleHybrid
+  },
+  {
+    "🌧 Rain Radar": rainLayer,
+    "🌲 Forest NDVI": geeForest,
+    "👮 Staff": staffLayer,
+    "🐘 Elephants": elephantLayer,
+    "🚨 Alerts": incidentLayer,
+    "📡 Prediction": predictionLayer,
+    "🏡 Villages": villageLayer,
+    "🌱 Plantation": plantationLayer,
+    "🌊 Waterholes / Ponds": pondLayer,
+    "💧 River Network": riverLayer,
+    "📍 Garam (East + West)": groupLayers["GARAM"],
+    "📍 East Poro": groupLayers["PORO"],
+    "📍 Range HQ": groupLayers["HQ"],
+    "🟢 Visited Grid": visitedLayer,
+    "🔴 Unvisited Grid": unvisitedLayer,
+    "📊 Monthly Coverage": summaryLayer
+  },
+  { collapsed: true }
+).addTo(map); // 🔥 IMPORTANT/* ============================================================
    🚀 GROUP TRACK DRAW ENGINE (GLOBAL)
 ============================================================ */
 let groupTrackLayer = L.layerGroup().addTo(map);
