@@ -1,14 +1,18 @@
 /* =========================================
-   🔥 GREENGUARD SERVICE WORKER
+   🔥 GREENGUARD SERVICE WORKER (FINAL)
 ========================================= */
 
-const CACHE_NAME = "greenguard-v5"; // 🔥 UPDATE VERSION WHEN CHANGING FILES
+const CACHE_NAME = "greenguard-v6"; // 🔥 CHANGE VERSION ON EVERY UPDATE
 
 /* 📦 CORE FILES (APP SHELL) */
 const urlsToCache = [
   "./",
   "./index.html",
-  "./manifest.json"
+  "./manifest.json",
+
+  // 🔥 ICONS (VERY IMPORTANT FOR PWA)
+  "./icons/icon-192.png",
+  "./icons/icon-512.png"
 ];
 
 /* =========================================
@@ -50,6 +54,7 @@ self.addEventListener("activate", event => {
     })
   );
 
+  // 🔥 TAKE CONTROL IMMEDIATELY
   return self.clients.claim();
 
 });
@@ -75,12 +80,14 @@ self.addEventListener("fetch", event => {
     fetch(req)
       .then(res => {
 
-        if (!res || res.status !== 200 || res.type !== "basic") {
+        // ❌ INVALID RESPONSE
+        if (!res || res.status !== 200) {
           return res;
         }
 
         const resClone = res.clone();
 
+        // 💾 CACHE NEW RESPONSE
         caches.open(CACHE_NAME).then(cache => {
           cache.put(req, resClone);
         });
@@ -90,12 +97,12 @@ self.addEventListener("fetch", event => {
       })
       .catch(() => {
 
-        /* 📦 TRY CACHE */
+        // 📦 CACHE FALLBACK
         return caches.match(req).then(cached => {
 
           if (cached) return cached;
 
-          /* 🔥 FALLBACK TO INDEX (PWA SAFE) */
+          // 🔥 PWA FALLBACK
           return caches.match("./index.html");
 
         });
