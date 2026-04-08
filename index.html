@@ -4784,7 +4784,7 @@ function openDutyForm(){
           }/* STEP 1 → OPEN FORM */
         function openEndDutyForm() {
   console.group("🔓 openEndDutyForm");
-  
+
   const m = document.getElementById("end-duty-modal");
   if (!m) {
     console.error("❌ Modal element not found");
@@ -4792,30 +4792,38 @@ function openDutyForm(){
     return;
   }
 
-  // 1. Show the modal
+  // 1. Show modal
   m.style.display = "flex";
 
-  // 2. Clear previous observations
+  // 2. Clear observation
   const obsField = document.getElementById("ed-obs");
   if (obsField) obsField.value = "";
 
-  // 3. Find and Reset the Submit Button (Cloning kills ghost listeners)
-  const oldBtn = document.getElementById("confirmEndDutyBtn");
-  if (oldBtn) {
-    const newBtn = oldBtn.cloneNode(true);
-    oldBtn.parentNode.replaceChild(newBtn, oldBtn);
+  // 3. SAFE BUTTON BIND (NO CLONE)
+  const btn = document.getElementById("confirmEndDutyBtn");
 
-    // 4. Safe Binding: Assign the function reference
-    newBtn.onclick = function(event) {
-      console.log("🖱️ User physically clicked SUBMIT & END DUTY");
-      submitEndDuty(event);
-    };
-    console.log("✅ Submit button armed and waiting for user click.");
+  if (btn) {
+
+    if (!btn.dataset.bound) {
+
+      btn.addEventListener("click", function(event){
+
+        console.log("🖱️ User clicked END DUTY");
+
+        submitEndDuty(event);
+
+      });
+
+      btn.dataset.bound = "true";
+
+      console.log("✅ Submit button bound safely");
+    } else {
+      console.log("⚠ Button already bound");
+    }
   }
 
   console.groupEnd();
 }
-
 function closeEndDutyForm() {
   const m = document.getElementById("end-duty-modal");
   if (m) m.style.display = "none";
@@ -5747,12 +5755,12 @@ window.openDutyForm = openDutyForm;
 
     <label><b>Final Observation</b></label>
     <textarea id="ed-obs" rows="4" style="width:100%; padding:8px; border-radius:4px; border:1px solid #ccc; width:100%; box-sizing: border-box;"></textarea>
-
-    <button type="button"
-      id="confirmEndDutyBtn"
-      style="width:100%; margin-top:15px; background:#d32f2f; color:white; padding:12px; border:none; border-radius:6px; font-weight:bold; cursor:pointer;">
-      ✅ SUBMIT & END DUTY
-    </button>
+<button 
+  type="button"
+  id="confirmEndDutyBtn"
+  style="width:100%; margin-top:15px; background:#d32f2f; color:white; padding:12px; border:none; border-radius:6px; font-weight:bold; cursor:pointer;">
+  ✅ SUBMIT & END DUTY
+</button>
 
   </div>
 </div>
