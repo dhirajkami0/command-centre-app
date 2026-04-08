@@ -2415,74 +2415,52 @@ if (rawDir) {
           </a>
         </div>` : "";
 
-      /* POPUP (UNCHANGED) */
-      const popup = `
-      <div style="font-family:Segoe UI;min-width:220px">
+    const popup = `
+<div style="font-family:Segoe UI;min-width:220px">
 
-        <div style="color:${color};font-weight:bold">
-          🔴 ACTIVE
-        </div>
+  <div style="color:${color};font-weight:bold">
+    🔴 ACTIVE
+  </div>
 
-        <hr>
+  <hr>
 
-        <b>🐘 Herd:</b> ${herd}<br>
-        <b>🧭 Movement:</b> ${movementText}<br>
-        <b>⏱ Time:</b> ${timeDisplay}<br>
+  <b>🐘 Herd:</b> ${herd}<br>
+  <b>🧭 Movement:</b> ${movementText}<br>
+  <b>⏱ Time:</b> ${timeDisplay}<br>
 
-        <b>👤 Sighted by:</b> ${e.teamLeader || "Unknown"}<br>
+  <b>👤 Sighted by:</b> ${e.teamLeader || "Unknown"}<br>
 
-        <br>
-        <b>📍 Location of sighting:</b><br>
-        <code>${lat.toFixed(5)}, ${lon.toFixed(5)} near ${e.village || "Unknown"}</code>
+  <br>
+  <b>📍 Location of sighting:</b><br>
+  <code>${lat.toFixed(5)}, ${lon.toFixed(5)} near ${e.village || "Unknown"}</code>
 
-        ${villageHTML}
-        ${photoHtml}
+  ${villageHTML}
+  ${photoHtml}
 
-        <div style="margin-top:10px">
-          <button onclick="
-            event.stopPropagation();
-            window.isPopupInteracting = true;
-            window.lastInteractionTime = Date.now();
-            showMoveOptions('${e.id}', this)
-          " style="
-            background:#2e7d32;color:white;border:none;
-            width:100%;padding:10px;
-            border-radius:6px;cursor:pointer;">
-            ✅ MARK AS MOVED
-          </button>
+  <div style="margin-top:10px">
 
-          <select 
-            onchange="confirmExit(this,'${e.id}')"
-            onclick="event.stopPropagation(); window.isPopupInteracting=true; window.lastInteractionTime=Date.now();"
-            onfocus="window.isPopupInteracting=true; window.lastInteractionTime=Date.now();"
-            onblur="setTimeout(()=>window.isPopupInteracting=false,5000);"
-            style="display:none;width:100%;margin-top:8px;padding:10px;border-radius:6px;"
-          >
-             <option value="">-- Select Action --</option>
+    <!-- 🔥 NEW: OPEN FULL MOVE FORM -->
+    <button onclick="
+      event.stopPropagation();
+      window.isPopupInteracting = true;
+      window.lastInteractionTime = Date.now();
+      openMoveForm('${e.id}')
+    " style="
+      background:#2e7d32;
+      color:white;
+      border:none;
+      width:100%;
+      padding:10px;
+      border-radius:6px;
+      cursor:pointer;
+      font-weight:bold;
+    ">
+      ✅ MARK AS MOVED / UPDATE
+    </button>
 
-  <option value="Moved">🟢 Moved</option>
+  </div>
 
-  <option>Driven to DPO 1</option>
-  <option>Driven to DPO 2</option>
-  <option>Driven to DPO 5</option>
-  <option>Driven to DPO 6</option>
-  <option>Driven to DPO 9</option>
-
-  <option>Driven to PORO 2</option>
-  <option>Driven to PORO 3</option>
-  <option>Driven to PORO 4</option>
-  <option>Driven to PORO 5</option>
-  <option>Driven to PORO 7</option>
-  <option>Driven to PORO 8</option>
-  <option>Driven to PORO 9</option>
-  <option>Driven to PORO 10</option>
-
-  <option>Driven to PF</option>
-  </select>
-        </div>
-
-      </div>`;
-
+</div>`;
       /* 🔥 UPDATE EXISTING */
       if(window.sightingMarkers[key]){
         window.sightingMarkers[key].setLatLng([lat,lon]);
