@@ -4783,47 +4783,42 @@ function openDutyForm(){
 
           }/* STEP 1 → OPEN FORM */
         function openEndDutyForm() {
+
   console.group("🔓 openEndDutyForm");
 
-  const m = document.getElementById("end-duty-modal");
-  if (!m) {
-    console.error("❌ Modal element not found");
-    console.groupEnd();
-    return;
-  }
+  const modal = document.getElementById("end-duty-modal");
+  if (!modal) return;
 
-  // 1. Show modal
-  m.style.display = "flex";
+  modal.style.display = "flex";
 
-  // 2. Clear observation
-  const obsField = document.getElementById("ed-obs");
-  if (obsField) obsField.value = "";
+  // reset field
+  const obs = document.getElementById("ed-obs");
+  if (obs) obs.value = "";
 
-  // 3. SAFE BUTTON BIND (NO CLONE)
   const btn = document.getElementById("confirmEndDutyBtn");
 
-  if (btn) {
+  if (btn && !btn.dataset.bound) {
 
-    if (!btn.dataset.bound) {
+    btn.addEventListener("click", function(event){
 
-      btn.addEventListener("click", function(event){
+      if (!event.isTrusted) {
+        console.warn("⛔ Blocked non-user trigger");
+        return;
+      }
 
-        console.log("🖱️ User clicked END DUTY");
+      console.log("🖱️ END DUTY BUTTON CLICKED");
 
-        submitEndDuty(event);
+      submitEndDuty(event);
 
-      });
+    });
 
-      btn.dataset.bound = "true";
-
-      console.log("✅ Submit button bound safely");
-    } else {
-      console.log("⚠ Button already bound");
-    }
+    btn.dataset.bound = "true";
+    console.log("✅ End duty button bound");
   }
 
   console.groupEnd();
-}function submitEndDuty(event) {
+}
+    function submitEndDuty(event) {
 
   console.group("🚨 submitEndDuty TRIGGERED");
 
