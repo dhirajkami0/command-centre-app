@@ -2,7 +2,7 @@
    🔥 GREENGUARD SERVICE WORKER
 ========================================= */
 
-const CACHE_NAME = "greenguard-v1"; // 🔥 UPDATE VERSION WHEN CHANGING FILES
+const CACHE_NAME = "greenguard-v2"; // 🔥 UPDATE VERSION WHEN CHANGING FILES
 
 /* 📦 CORE FILES (APP SHELL) */
 const urlsToCache = [
