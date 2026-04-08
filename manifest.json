@@ -1,12 +1,13 @@
 {
-  "name": "West Damanpur Command Centre",
-  "short_name": "Command",
+  "name": "GreenGuard",
+  "short_name": "GGuard",
   "start_url": "./",
   "scope": "./",
   "display": "standalone",
   "background_color": "#0b1a0b",
-  "theme_color": "#0b1a0b",
+  "theme_color": "#1b5e20",
   "orientation": "portrait",
+  "description": "Forest Protection, Patrolling & Monitoring System",
   "icons": [
     {
       "src": "https://img.icons8.com/color/192/forest.png",
