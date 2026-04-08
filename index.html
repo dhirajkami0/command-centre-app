@@ -4122,10 +4122,7 @@ var layerControl = L.control.layers(
   { collapsed: true }
 ).addTo(map);
 
-// 🔥 SEPARATE PROPERLY
-    // 🔥 IMPORTANT/* ============================================================
-   🚀 GROUP TRACK DRAW ENGINE (GLOBAL)
-============================================================ */
+
 let groupTrackLayer = L.layerGroup().addTo(map);
 
 function loadGroupTracks(data) {
