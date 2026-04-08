@@ -2487,7 +2487,17 @@ if (rawDir) {
     console.error("❌ loadSightings error:", err);
   });
 
-}function openMoveForm(id){
+}
+    window.openMoveForm = function(id){
+
+  console.log("🔥 openMoveForm CALLED with ID:", id);
+
+  const modal = document.getElementById("move-form-modal");
+
+  if (!modal) {
+    console.error("❌ move-form-modal NOT FOUND");
+    return;
+  }
 
   document.getElementById("move-id").value = id;
 
@@ -2495,8 +2505,8 @@ if (rawDir) {
   document.getElementById("move-involved").value = "";
   document.getElementById("move-driving").value = "";
 
-  document.getElementById("move-form-modal").style.display = "flex";
-}
+  modal.style.display = "flex";
+};
     /* 🔥 STATUS UPDATE */
     /* 🔥 STATUS UPDATE */
     function closeMoveForm(){
