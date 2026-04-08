@@ -4378,7 +4378,7 @@ function calculateTotal(){
   document.getElementById("f-total").value = m + f + u + c;
 }
           /* 3. Open Form + GPS */
-        function openSightingForm(){
+       function openSightingForm(){
 
   console.group("🐘 openSightingForm START");
   console.log("⏱ Time:", new Date().toLocaleTimeString());
@@ -4422,9 +4422,14 @@ function calculateTotal(){
   }
 
   /* ===============================
-     🧠 USE RAW NAME (FINAL FIX)
+     🧠 USE RAW NAME (FINAL FIX LOCK)
   =============================== */
-  const displayName = profile.name;   // 🔥 DIRECT FROM BACKEND
+  const displayName = String(profile.name || "").trim();   // 🔥 STRICT RAW
+
+  // 🔒 HARD BLOCK: prevent cleanName misuse
+  if (profile.cleanName && displayName === profile.cleanName) {
+    console.warn("⚠️ WARNING: cleanName detected in UI flow — forcing RAW name");
+  }
 
   console.log("✅ Using RAW Name:", displayName);
 
@@ -4442,7 +4447,7 @@ function calculateTotal(){
   const teamInput = document.getElementById("f-team");
 
   if (teamInput) {
-    teamInput.value = displayName;   // 🔥 NO CLEANING
+    teamInput.value = displayName;   // 🔥 ALWAYS RAW
     teamInput.readOnly = true;
     teamInput.dataset.lockedUser = displayName;
     console.log("✅ Team Leader set:", displayName);
