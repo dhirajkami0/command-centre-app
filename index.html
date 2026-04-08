@@ -5035,20 +5035,7 @@ function closeEndDutyForm() {
               });
             }
 
-            // 2. Install Button Listener
-            const installBtn = document.getElementById("installBtn");
-            if (installBtn) {
-              installBtn.addEventListener("click", async () => {
-                if (!deferredPrompt) return;
-                deferredPrompt.prompt();
-                const choice = await deferredPrompt.userChoice;
-                if (choice.outcome === "accepted") console.log("✅ App installed");
-                deferredPrompt = null;
-                const box = document.getElementById("installContainer");
-                if (box) box.style.display = "none";
-              });
-            }
-
+           
             // 3. Outside Click for End Duty Modal
             window.addEventListener("click", function (e) {
               const modal = document.getElementById("end-duty-modal");
