@@ -1242,14 +1242,27 @@ function updateDutyCompt(source = "UNKNOWN") {
      📲 INSTALL PROMPT SYSTEM
   ============================================================ */
 
-   let deferredPrompt = null;
+  let deferredPrompt = null;
+
+/* 🔥 CHECK INSTALLED (ROBUST) */
+function isInstalled() {
+  return (
+    window.matchMedia('(display-mode: standalone)').matches ||
+    window.navigator.standalone === true ||
+    document.referrer.includes('android-app://')
+  );
+}
 
 /* 📲 INSTALL AVAILABLE */
 window.addEventListener('beforeinstallprompt', (e) => {
 
-  console.log("📲 Install available");
-
   e.preventDefault();
+
+  // ❌ DO NOT SHOW IF ALREADY INSTALLED
+  if (isInstalled()) {
+    console.log("🚫 Already installed → ignore");
+    return;
+  }
 
   deferredPrompt = e;
 
@@ -1260,7 +1273,8 @@ window.addEventListener('beforeinstallprompt', (e) => {
 /* ✅ AFTER INSTALL */
 window.addEventListener('appinstalled', () => {
   console.log("✅ Installed");
-  document.getElementById("installContainer").style.display = "none";
+  const box = document.getElementById("installContainer");
+  if (box) box.style.display = "none";
 });
 
 /* 🔥 DOM READY */
@@ -1269,13 +1283,11 @@ document.addEventListener("DOMContentLoaded", () => {
   const box = document.getElementById("installContainer");
   const btn = document.getElementById("installBtn");
 
-  // 🔥 HIDE IF ALREADY INSTALLED
-  const isStandalone =
-    window.matchMedia('(display-mode: standalone)').matches ||
-    window.navigator.standalone === true;
-
-  if (isStandalone && box) {
-    box.style.display = "none";
+  // 🔥 FORCE HIDE IF INSTALLED
+  if (isInstalled()) {
+    console.log("✅ Running as installed app");
+    if (box) box.style.display = "none";
+    return; // 🔥 IMPORTANT (stop everything)
   }
 
   if (!btn) return;
@@ -1291,14 +1303,22 @@ document.addEventListener("DOMContentLoaded", () => {
 
     const result = await deferredPrompt.userChoice;
 
-    console.log("📲 Install result:", result.outcome);
+    console.log("📲 Result:", result.outcome);
 
     deferredPrompt = null;
 
-    box.style.display = "none";
+    if (box) box.style.display = "none";
   });
 
-});    /* ============================================================
+});
+
+/* 🔥 ANDROID BUG FIX (VERY IMPORTANT) */
+setInterval(() => {
+  if (isInstalled()) {
+    const box = document.getElementById("installContainer");
+    if (box) box.style.display = "none";
+  }
+}, 2000);    /* ============================================================
       🧠 BLOCK 1 → CORE DATA + BASE MAP
    ============================================================ */
 
