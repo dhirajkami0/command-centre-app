@@ -5518,9 +5518,10 @@ style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; bac
     <textarea id="d-obs" rows="3"
       style="width:100%; padding:8px; margin-bottom:8px;"></textarea>
   </div>
-
-  <button id="startDutyBtn"
+<button 
+  id="startDutyBtn"
   type="button"
+  onclick="startDuty(event)"
   style="width:100%; margin-top:15px; background:#2e7d32; color:white; padding:12px; border:none; border-radius:6px;">
   🚀 START DUTY
 </button>
@@ -5556,18 +5557,17 @@ function startDuty(event) {
   console.trace("🚨 startDuty CALLED FROM");
 
   console.group("🚀 startDuty START");
-  console.log("⏱ Time:", new Date().toLocaleTimeString());
 
   try {
 
-    // 🔥 BLOCK AUTO / NON-USER TRIGGERS
+    // 🔒 ONLY REAL USER CLICK
     if (!event || event.isTrusted !== true) {
       console.warn("⛔ Blocked auto trigger");
       console.groupEnd();
       return;
     }
 
-    // 🔒 BLOCK DUPLICATE CALLS
+    // 🔒 PREVENT DOUBLE CLICK
     if (startDutySubmitting) {
       console.warn("⛔ Duplicate startDuty blocked");
       console.groupEnd();
@@ -5577,13 +5577,12 @@ function startDuty(event) {
     const startBtn = document.getElementById("startDutyBtn");
 
     if (!startBtn) {
-      console.log("⚠ Button not found");
+      console.error("❌ Button not found");
       console.groupEnd();
       return;
     }
 
     const profile = window.userProfile;
-    console.log("👤 profile:", profile);
 
     if (!profile) {
       alert("❌ User not loaded");
@@ -5594,9 +5593,6 @@ function startDuty(event) {
     // 🔹 GET VALUES
     const staffArray = getCheckedValues("staffOptions").filter(v => v && v.trim());
     const comptArray = getCheckedValues("comptOptions").filter(v => v && v.trim());
-
-    console.log("👮 staffArray:", staffArray);
-    console.log("📦 comptArray:", comptArray);
 
     const staffString = staffArray.join(", ");
     const comptString = comptArray.join(", ");
@@ -5620,10 +5616,9 @@ function startDuty(event) {
       return;
     }
 
-    // 🔒 LOCK START
+    // 🔒 LOCK PROCESS
     startDutySubmitting = true;
 
-    // ✅ PAYLOAD
     const payload = {
       staff: staffString,
       type: document.getElementById("d-type")?.value || "",
@@ -5641,8 +5636,6 @@ function startDuty(event) {
     startBtn.innerHTML = "⏳ Starting Duty...";
     startBtn.disabled = true;
 
-    console.log("🌐 Calling backend...");
-
     callBackend("START_DUTY", payload)
 
     .then(function (res) {
@@ -5650,21 +5643,12 @@ function startDuty(event) {
       console.log("🔥 BACKEND RESPONSE:", res);
 
       if (!res || res.error) {
-
-        alert("❌ " + (res?.error || "Failed to start duty"));
-
-        startBtn.innerHTML = originalText;
-        startBtn.disabled = false;
-        startDutySubmitting = false;
-
-        console.groupEnd();
-        return;
+        throw new Error(res?.error || "Failed to start duty");
       }
 
-      // ✅ SUCCESS
-      console.log("✅ Duty success");
       alert("✅ Duty Started");
 
+      // ⚠ Let backend control state ideally
       window.isDutyActive = true;
 
       if (typeof updateDutyButton === "function") {
@@ -5672,14 +5656,12 @@ function startDuty(event) {
       }
 
       setTimeout(() => {
-        console.log("🔄 Rechecking duty from backend...");
         if (typeof autoShowEndDuty === "function") {
           autoShowEndDuty();
         }
       }, 800);
 
       if (typeof closeDutyForm === "function") {
-        console.log("📴 Closing form");
         closeDutyForm();
       }
 
@@ -5687,22 +5669,20 @@ function startDuty(event) {
 
     .catch(function (err) {
 
-      console.error("❌ Backend crash:", err);
-
-      alert("❌ Server error");
+      console.error("❌ Error:", err);
+      alert("❌ " + err.message);
 
       startBtn.innerHTML = originalText;
       startBtn.disabled = false;
+
     })
 
     .finally(function () {
 
-      console.log("🏁 startDuty FINISHED");
-
-      // 🔓 UNLOCK AFTER SAFE DELAY
       setTimeout(() => {
         startDutySubmitting = false;
-        console.log("🔓 startDuty unlocked");
+        startBtn.innerHTML = "🚀 START DUTY";
+        startBtn.disabled = false;
       }, 1500);
 
       console.groupEnd();
