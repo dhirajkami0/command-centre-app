@@ -708,14 +708,14 @@ window.addEventListener("unhandledrejection", function (e) {
   </div>
 </div>
   <div id="map"></div>
-  <div id="installContainer" class="admin-only" style="
+ <div id="installContainer" class="admin-only" style="
   display:none;
   position:fixed;
   bottom:20px;
   left:20px;
   z-index:9999;
 ">
-    <button id="installBtn" style="
+  <button id="installBtn" style="
     padding:12px 18px;
     border-radius:12px;
     border:1px solid rgba(255,255,255,0.2);
@@ -724,9 +724,9 @@ window.addEventListener("unhandledrejection", function (e) {
     backdrop-filter:blur(10px);
     font-weight:bold;
   ">
-      📲 Install App
-    </button>
-  </div>
+    📲 Install App
+  </button>
+</div>
   
   -- 🔥 FIREBASE SETUP (ADD HERE) -->
 
@@ -1242,32 +1242,42 @@ function updateDutyCompt(source = "UNKNOWN") {
      📲 INSTALL PROMPT SYSTEM
   ============================================================ */
 
-    let deferredPrompt;
+   let deferredPrompt = null;
 
-    window.addEventListener('beforeinstallprompt', (e) => {
+/* 📲 INSTALL AVAILABLE */
+window.addEventListener('beforeinstallprompt', (e) => {
 
-      console.log("📲 Install available");
+  console.log("📲 Install available");
 
-      e.preventDefault(); // stop auto popup
+  e.preventDefault();
 
-      deferredPrompt = e;
+  deferredPrompt = e;
 
-      const box = document.getElementById("installContainer");
-      if (box) box.style.display = "block";
+  const box = document.getElementById("installContainer");
+  if (box) box.style.display = "block";
+});
 
-    });
-/* 🔥 HIDE AFTER INSTALL */
+/* ✅ AFTER INSTALL */
 window.addEventListener('appinstalled', () => {
+  console.log("✅ Installed");
   document.getElementById("installContainer").style.display = "none";
 });
 
-/* 🔥 HIDE IF ALREADY INSTALLED */
-if (window.matchMedia('(display-mode: standalone)').matches) {
-  document.getElementById("installContainer").style.display = "none";
-}
+/* 🔥 DOM READY */
 document.addEventListener("DOMContentLoaded", () => {
 
+  const box = document.getElementById("installContainer");
   const btn = document.getElementById("installBtn");
+
+  // 🔥 HIDE IF ALREADY INSTALLED
+  const isStandalone =
+    window.matchMedia('(display-mode: standalone)').matches ||
+    window.navigator.standalone === true;
+
+  if (isStandalone && box) {
+    box.style.display = "none";
+  }
+
   if (!btn) return;
 
   btn.addEventListener("click", async () => {
@@ -1279,12 +1289,13 @@ document.addEventListener("DOMContentLoaded", () => {
 
     deferredPrompt.prompt();
 
-    const { outcome } = await deferredPrompt.userChoice;
+    const result = await deferredPrompt.userChoice;
 
-    console.log("📲 Install result:", outcome);
+    console.log("📲 Install result:", result.outcome);
 
     deferredPrompt = null;
 
+    box.style.display = "none";
   });
 
 });    /* ============================================================
