@@ -2580,7 +2580,12 @@ function submitMoveForm() {
     depredation: depredation,
     involved: involved,
     driving: driving,
-    updatedBy: window.userProfile?.name || "UNKNOWN"
+    updatedBy: (
+  window.userProfile?.name ||
+  window.currentLeader ||
+  localStorage.getItem("userName") ||
+  "UNKNOWN"
+)
   })
 
   .then(function (res) {
