@@ -4823,6 +4823,118 @@ function openDutyForm(){
   }
 
   console.groupEnd();
+}function submitEndDuty(event) {
+
+  console.group("🚨 submitEndDuty TRIGGERED");
+
+  try {
+
+    // 🔒 ONLY USER CLICK
+    if (!event || event.isTrusted !== true) {
+      console.warn("⛔ Blocked auto trigger");
+      console.groupEnd();
+      return;
+    }
+
+    const profile = window.userProfile;
+
+    if (!window.isDutyActive) {
+      console.warn("⚠ No active duty");
+      console.groupEnd();
+      return;
+    }
+
+    if (!profile || !profile.cleanName || !profile.phone) {
+      alert("❌ User not loaded properly");
+      console.groupEnd();
+      return;
+    }
+
+    if (!window.originalConfirm 
+        ? !confirm("Submit report and end duty?")
+        : !window.originalConfirm("Submit report and end duty?")) {
+      console.groupEnd();
+      return;
+    }
+
+    const btn = event.target;
+
+    if (!btn) {
+      console.error("❌ Button not found");
+      console.groupEnd();
+      return;
+    }
+
+    const original = btn.innerHTML;
+
+    // 🔒 LOCK BUTTON
+    btn.innerHTML = "⏳ SAVING...";
+    btn.disabled = true;
+
+    const obs = document.getElementById("ed-obs")?.value || "";
+
+    const payload = {
+      obs: obs,
+      leader: profile.cleanName,
+      phone: profile.phone
+    };
+
+    console.log("📤 PAYLOAD:", payload);
+
+    callBackend("markDutyOutWithObs", payload)
+
+    .then(function (msg) {
+
+      console.log("✅ Backend response:", msg);
+
+      if (!msg || msg.error) {
+        throw new Error(msg?.error || "Failed to end duty");
+      }
+
+      // 🔥 CLOSE MODAL
+      closeEndDutyForm();
+
+      // ⚠ DO NOT FORCE STATE HERE (let backend decide)
+      // window.isDutyActive = false; ❌ removed
+
+      // 🔄 VERIFY FROM BACKEND
+      setTimeout(() => {
+        autoShowEndDuty();
+      }, 500);
+
+      if (typeof refreshAll === "function") {
+        refreshAll();
+      }
+
+      showToast("✅ Duty Ended Successfully");
+
+    })
+
+    .catch(function (err) {
+
+      console.error("❌ Error:", err);
+      alert("❌ " + err.message);
+
+      btn.innerHTML = original;
+      btn.disabled = false;
+
+    })
+
+    .finally(function () {
+
+      // 🔓 restore safely
+      setTimeout(() => {
+        btn.innerHTML = original;
+        btn.disabled = false;
+      }, 300);
+
+      console.groupEnd();
+    });
+
+  } catch (err) {
+    console.error("💥 CRASH:", err);
+    console.groupEnd();
+  }
 }
 function closeEndDutyForm() {
   const m = document.getElementById("end-duty-modal");
