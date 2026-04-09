@@ -3549,7 +3549,38 @@ const mode = modeEl ? modeEl.value : "polygon";
     console.group("📡 Backend Call");
 
     const coords = extractCoordsFromKML(kmlText, mode);
+const coords = extractCoordsFromKML(kmlText);
 
+// 🔥 DEBUG BLOCK START
+console.group("🧪 GEOMETRY DEBUG");
+
+console.log("Mode:", mode);
+console.log("Raw coords:", coords);
+
+if (!coords || coords.length === 0) {
+  console.error("❌ coords EMPTY");
+}
+
+if (Array.isArray(coords)) {
+  console.log("Top level length:", coords.length);
+
+  if (Array.isArray(coords[0])) {
+    console.log("Ring length:", coords[0].length);
+
+    coords[0].forEach((pt, i) => {
+      if (!Array.isArray(pt) || pt.length !== 2) {
+        console.error("❌ INVALID POINT STRUCTURE at", i, pt);
+      }
+
+      if (isNaN(pt[0]) || isNaN(pt[1])) {
+        console.error("❌ NaN DETECTED at", i, pt);
+      }
+    });
+  }
+}
+
+console.groupEnd();
+// 🔥 DEBUG BLOCK END
     fetch("https://gee-api-332214398279.asia-south1.run.app/dw", {
       method: "POST",
       headers: {
