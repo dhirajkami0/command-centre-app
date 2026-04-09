@@ -3159,6 +3159,176 @@ console.log("👤 STAFF DEBUG:", {
     console.groupEnd();
   }
 }
+function submitSightingForm(event){
+
+  if(event) event.preventDefault();
+
+  try {
+
+    /* ============================================================
+       🔥 FIX 1: MULTI-USER SAFE UNIQUE ID (CORRECTED)
+    ============================================================ */
+
+    let sightingID;
+
+    // 🔥 ONLY reuse ID if explicitly editing
+    if (window.isEditingSighting && window.currentSightingId) {
+      sightingID = window.currentSightingId;
+    } else {
+      sightingID =
+        "SIGHT-" +
+        Date.now() + "-" +
+        Math.floor(Math.random() * 10000);
+    }
+
+    const m   = parseInt(document.getElementById("f-m").value) || 0;
+    const f   = parseInt(document.getElementById("f-f").value) || 0;
+    const uni = parseInt(document.getElementById("f-u").value) || 0;
+    const c   = parseInt(document.getElementById("f-c").value) || 0;
+
+    const total = m + f + uni + c;
+
+    const lat = document.getElementById("f-lat").value;
+    const lon = document.getElementById("f-lon").value;
+
+    const location = lat + "," + lon;
+
+    const now = new Date();
+    const time = now.toLocaleTimeString("en-IN");
+
+    if (!lat || !lon) {
+      alert("❌ Location missing");
+      return;
+    }
+
+    if (!document.getElementById("f-beat").value || !document.getElementById("f-compt").value) {
+      alert("❌ Select Beat & Compartment");
+      return;
+    }
+
+    /* ============================================================
+       🔥 FIX 2: SAFE LEADER VALUE (CRITICAL) (UNCHANGED)
+    ============================================================ */
+
+    const teamInput = document.getElementById("f-team");
+
+    let leaderValue = teamInput ? teamInput.value : "";
+
+    if (!leaderValue || leaderValue.trim() === "") {
+      leaderValue = window.userProfile?.name || "";
+    }
+
+    if (
+      leaderValue === window.userProfile?.cleanName ||
+      leaderValue === window.userProfile?.cleanName?.toUpperCase()
+    ) {
+      console.warn("⚠ Prevented cleanName overwrite → using UI name");
+      leaderValue = window.userProfile?.name || leaderValue;
+    }
+
+    leaderValue = String(leaderValue).trim();
+
+    console.log("👤 FINAL LEADER:", leaderValue);
+
+    const payload = {
+
+      /* 🔥 IMPORTANT: SAME ID USED FOR UPDATE */
+      sighting_id: sightingID,
+
+      parent_id: "",
+
+      beat: document.getElementById("f-beat").value,
+
+      forest_block: document.getElementById("f-block").value,
+
+      compt: document.getElementById("f-compt").value,
+
+      time: time,
+
+      m: Number(m),
+      f: Number(f),
+      unidentified: Number(uni),
+      calf: Number(c),
+
+      total_seen: total,
+
+      anticipated: "",
+      depredation: "",
+      involved: "",
+      driving: "",
+
+      remarks: document.getElementById("f-remarks").value,
+
+      leader: leaderValue,
+
+      staff: "",
+
+      lat: Number(lat),
+      lon: Number(lon),
+
+      location: location,
+
+      direction: document.getElementById("f-dir").value
+    };
+
+    console.log("📤 Payload:", payload);
+
+    const fileInput = document.getElementById("f-photo");
+    const file = fileInput ? fileInput.files[0] : null;
+
+    function submitToServer(finalPayload){
+
+      callBackend("saveElephantSighting", finalPayload)
+        .then(function(){
+
+          alert("✅ Submitted to Command Centre");
+
+          /* ============================================================
+             🔥 FIX 3: STORE ID FOR FUTURE UPDATES (SAFE)
+          ============================================================ */
+
+          if (window.isEditingSighting) {
+            window.currentSightingId = sightingID;
+          } else {
+            window.currentSightingId = null;   // 🔥 CRITICAL RESET
+          }
+
+          window.isEditingSighting = false;   // 🔥 RESET MODE
+
+          if (typeof closeSightingForm === "function") {
+            closeSightingForm();
+          }
+
+          const form = document.getElementById("elephantForm");
+          if(form) form.reset();
+
+        })
+        .catch(function(err){
+          console.error("❌ Error:", err);
+          alert("❌ Submission failed");
+        });
+    }
+
+    if(file){
+      const reader = new FileReader();
+
+      reader.onloadend = function(){
+        payload.photo = reader.result;
+        submitToServer(payload);
+      };
+
+      reader.readAsDataURL(file);
+
+    } else {
+      payload.photo = "";
+      submitToServer(payload);
+    }
+
+  } catch (e) {
+    console.error("❌ Crash:", e);
+    alert("❌ Form error: " + e.message);
+  }
+}
 
     /* =========================
        🔮 PREDICTION SYSTEM (FINAL)
