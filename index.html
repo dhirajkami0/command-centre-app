@@ -4498,13 +4498,41 @@ function calculateTotal(){
   setVal("f-time", hh + ":" + mm);
 
  /* ===============================
-   LOCATION AUTO (HIGH ACCURACY FIX)
+   LOCATION AUTO (HYBRID FIX)
 =============================== */
 
 if (navigator.geolocation){
 
-  console.log("📡 Starting high-accuracy GPS...");
+  console.log("📡 Getting initial GPS...");
 
+  // 🔥 STEP 1: QUICK LOCATION (INSTANT)
+  navigator.geolocation.getCurrentPosition(
+
+    function(pos){
+
+      const lat = pos.coords.latitude.toFixed(6);
+      const lon = pos.coords.longitude.toFixed(6);
+
+      setVal("f-lat", lat);
+      setVal("f-lon", lon);
+      setVal("f-location", lat + ", " + lon + " (fetching accuracy...)");
+
+      console.log("⚡ QUICK GPS:", lat, lon, pos.coords.accuracy);
+
+    },
+
+    function(err){
+      console.warn("⚠ Quick GPS failed:", err.message);
+    },
+
+    {
+      enableHighAccuracy: false, // 🔥 FAST
+      timeout: 5000,
+      maximumAge: 60000
+    }
+  );
+
+  // 🔥 STEP 2: HIGH ACCURACY TRACKING
   let bestPos = null;
   let attempts = 0;
   const maxAttempts = 5;
@@ -4515,31 +4543,31 @@ if (navigator.geolocation){
 
       attempts++;
 
-      const acc = pos.coords.accuracy; // meters
+      const acc = pos.coords.accuracy;
 
-      console.log(`📍 Attempt ${attempts} → Accuracy: ${acc}m`);
+      console.log(`📍 Attempt ${attempts} → ${acc}m`);
 
-      // 🔥 Keep best accuracy
       if(!bestPos || acc < bestPos.coords.accuracy){
         bestPos = pos;
       }
 
-      // 🎯 Stop early if accuracy is good enough
+      // 🔥 ALWAYS UPDATE (IMPORTANT)
+      const lat = pos.coords.latitude.toFixed(6);
+      const lon = pos.coords.longitude.toFixed(6);
+
+      setVal("f-lat", lat);
+      setVal("f-lon", lon);
+      setVal("f-location", lat + ", " + lon + " (±" + Math.round(acc) + "m)");
+
+      // 🎯 STOP CONDITION
       if(acc <= 20 || attempts >= maxAttempts){
 
         navigator.geolocation.clearWatch(watchId);
 
-        const lat = bestPos.coords.latitude.toFixed(6);
-        const lon = bestPos.coords.longitude.toFixed(6);
+        console.log("✅ FINAL GPS:", lat, lon, acc);
 
-        setVal("f-lat", lat);
-        setVal("f-lon", lon);
-        setVal("f-location", lat + ", " + lon);
-
-        console.log("✅ FINAL GPS:", lat, lon, "Accuracy:", bestPos.coords.accuracy);
-
-        if(bestPos.coords.accuracy > 50){
-          alert("⚠️ Low GPS accuracy (~" + Math.round(bestPos.coords.accuracy) + "m). Move to open area.");
+        if(acc > 50){
+          alert("⚠️ Low accuracy (~" + Math.round(acc) + "m). Move to open area.");
         }
       }
 
@@ -4547,13 +4575,18 @@ if (navigator.geolocation){
 
     function(err){
       console.error("❌ GPS ERROR:", err);
-      alert("⚠️ GPS failed. Please enable location and retry.");
+
+      if(err.code === 1){
+        alert("⚠️ Location permission denied");
+      } else {
+        alert("⚠️ GPS error. Try again.");
+      }
     },
 
     {
       enableHighAccuracy: true,
-      maximumAge: 0,
-      timeout: 20000
+      maximumAge: 0
+      // ❌ REMOVE timeout here
     }
 
   );
