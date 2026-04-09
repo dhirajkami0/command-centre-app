@@ -3476,8 +3476,7 @@ function submitSightingForm(event){
     window.lastAnalysis = res.analysis;
     showAnalysisResult(res.analysis);
   }
-}
-function submitKML() {
+}function submitKML() {
 
   console.group("📤 submitKML START");
 
@@ -3543,149 +3542,163 @@ function submitKML() {
     console.groupEnd();
 
     const modeEl = document.getElementById("analysisMode");
-const mode = modeEl ? modeEl.value : "polygon";
+    const mode = modeEl ? modeEl.value : "polygon";
+
     console.log("⚙ Mode:", mode);
 
     console.group("📡 Backend Call");
 
     const coords = extractCoordsFromKML(kmlText, mode);
-const coords = extractCoordsFromKML(kmlText);
 
-// 🔥 DEBUG BLOCK START
-console.group("🧪 GEOMETRY DEBUG");
+    // =====================================================
+    // 🔥 FULL GEOMETRY DEBUG (ALL POSSIBLE FAIL CASES)
+    // =====================================================
+    console.group("🧪 GEOMETRY DEBUG");
 
-console.log("Mode:", mode);
-console.log("Raw coords:", coords);
+    console.log("Mode:", mode);
+    console.log("Coords:", coords);
 
-if (!coords || coords.length === 0) {
-  console.error("❌ coords EMPTY");
-}
+    if (!coords) {
+      console.error("❌ coords is NULL/UNDEFINED");
+    }
 
-if (Array.isArray(coords)) {
-  console.log("Top level length:", coords.length);
+    if (!Array.isArray(coords)) {
+      console.error("❌ coords is NOT array");
+    }
 
-  if (Array.isArray(coords[0])) {
-    console.log("Ring length:", coords[0].length);
+    if (coords.length === 0) {
+      console.error("❌ coords EMPTY");
+    }
 
-    coords[0].forEach((pt, i) => {
-      if (!Array.isArray(pt) || pt.length !== 2) {
-        console.error("❌ INVALID POINT STRUCTURE at", i, pt);
+    if (Array.isArray(coords) && Array.isArray(coords[0])) {
+
+      console.log("Ring length:", coords[0].length);
+
+      if (coords[0].length < 4) {
+        console.error("❌ LESS THAN 4 POINTS (INVALID POLYGON)");
       }
 
-      if (isNaN(pt[0]) || isNaN(pt[1])) {
-        console.error("❌ NaN DETECTED at", i, pt);
-      }
-    });
-  }
-}
+      coords[0].forEach((pt, i) => {
 
-console.groupEnd();
-// 🔥 DEBUG BLOCK END
+        if (!Array.isArray(pt)) {
+          console.error("❌ NOT ARRAY POINT at", i, pt);
+        }
+
+        if (pt.length !== 2) {
+          console.error("❌ INVALID POINT LENGTH at", i, pt);
+        }
+
+        if (isNaN(pt[0]) || isNaN(pt[1])) {
+          console.error("❌ NaN VALUE at", i, pt);
+        }
+
+      });
+
+      // 🔥 SELF INTERSECTION BASIC CHECK (visual hint)
+      console.log("⚠ If all above OK → likely SELF-INTERSECTION issue (backend)");
+
+    }
+
+    console.groupEnd();
+
+    // =====================================================
+    // 🔥 HARD STOP IF INVALID (FRONTEND)
+    // =====================================================
+    if (!coords || !coords[0] || coords[0].length < 4) {
+      console.error("❌ INVALID POLYGON BEFORE SEND", coords);
+      status.innerHTML = "❌ Invalid polygon (frontend)";
+      console.groupEnd();
+      return;
+    }
+
+    // =====================================================
+    // 🔥 BACKEND CALL WITH RAW ERROR CAPTURE
+    // =====================================================
     fetch("https://gee-api-332214398279.asia-south1.run.app/dw", {
       method: "POST",
       headers: {
         "Content-Type": "application/json"
       },
-      body: JSON.stringify({
-        coords: coords
-      })
+      body: JSON.stringify({ coords })
     })
-    .then(res => res.json())
+    .then(async (res) => {
+
+      console.group("🌐 BACKEND RAW RESPONSE");
+
+      console.log("Status:", res.status);
+
+      const text = await res.text();
+
+      console.log("Raw response text:", text);
+
+      let data;
+
+      try {
+        data = JSON.parse(text);
+      } catch (e) {
+        console.error("❌ JSON PARSE FAILED");
+        console.groupEnd();
+        throw new Error("Invalid JSON response");
+      }
+
+      console.log("Parsed JSON:", data);
+      console.groupEnd();
+
+      return data;
+    })
     .then(function (data) {
 
-      console.log("🌍 API RESPONSE:", data);
-
       if (!data) {
+        console.error("❌ Empty response");
         status.innerHTML = "❌ No response";
         return;
       }
+
+      if (data.error) {
+        console.error("❌ BACKEND ERROR:", data.error);
+        status.innerHTML = "❌ " + data.error;
+        return;
+      }
+
+      console.log("✅ SUCCESS:", data);
 
       status.innerHTML = "✅ Done";
 
       window.lastAnalysis = data;
 
-      // 🔥 SHOW RESULT
       showAnalysisResult(data);
 
-      // =========================
-      // 🔥 MOVED YOUR OLD BLOCK HERE (UNCHANGED LOGIC)
-      // =========================
-
+      // ================= MAP (UNCHANGED) =================
       console.group("🗺 Map Render");
 
       try {
 
         if (previewKMLLayer) {
-          try {
-            map.removeLayer(previewKMLLayer);
-            console.log("♻ Old layer removed");
-          } catch(e){
-            console.warn("⚠ Failed to remove old layer:", e);
-          }
+          map.removeLayer(previewKMLLayer);
           previewKMLLayer = null;
         }
 
         previewKMLLayer = new L.KML(xml);
         previewKMLLayer.addTo(map);
 
-        console.log("✅ KML layer added");
-
         const btn = document.getElementById("clearKMLBtn");
-        if (btn) {
-          btn.style.display = "block";
-          console.log("✅ Clear button shown");
-        }
+        if (btn) btn.style.display = "block";
 
         previewKMLLayer.on("click", function () {
-          console.log("🖱 KML CLICK EVENT TRIGGERED");
-
-          try {
-            if (window.lastAnalysis) {
-              showAnalysisResult(window.lastAnalysis);
-            } else {
-              showToast("No analysis available");
-            }
-          } catch (err) {
-            console.error("❌ Click handler crashed:", err);
+          if (window.lastAnalysis) {
+            showAnalysisResult(window.lastAnalysis);
           }
         });
 
       } catch (err) {
         console.error("❌ KML render error:", err);
-        showToast("❌ Failed to render KML");
       }
-
-      console.groupEnd();
-
-      console.group("💾 Store & Display Analysis");
-
-      if (data.analysis) {
-
-        try {
-          showAnalysisResult(data.analysis);
-          console.log("✅ showAnalysisResult executed");
-        } catch (err) {
-          console.error("❌ showAnalysisResult failed:", err);
-        }
-
-      }
-
-      console.groupEnd();
-
-      setTimeout(() => {
-        try {
-          closeKMLForm();
-          console.log("✅ Form closed");
-        } catch(e){
-          console.warn("⚠ closeKMLForm failed:", e);
-        }
-      }, 1500);
 
       console.groupEnd();
 
     })
     .catch(function (err) {
-      console.error("❌ API error:", err);
+      console.error("❌ FETCH FAILED:", err);
       status.innerHTML = "❌ Upload failed";
       showToast("❌ Upload failed");
       console.groupEnd();
@@ -3694,7 +3707,7 @@ console.groupEnd();
   };
 
   reader.readAsText(file);
-} function showAnalysisResult(d){
+}function showAnalysisResult(d){
 
   console.group("📊 showAnalysisResult");
 
