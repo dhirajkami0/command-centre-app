@@ -3518,7 +3518,8 @@ function submitKML() {
 
     console.groupEnd();
 
-    const mode = document.getElementById("analysisMode")?.value || "polygon";
+    const modeEl = document.getElementById("analysisMode");
+const mode = modeEl ? modeEl.value : "polygon";
     console.log("⚙ Mode:", mode);
 
     console.group("📡 Backend Call");
