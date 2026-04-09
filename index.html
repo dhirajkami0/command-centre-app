@@ -3408,6 +3408,51 @@ function submitSightingForm(event){
     function closeKMLForm() {
       document.getElementById("kmlFormPopup").style.display = "none";
     }
+
+
+
+    function extractCoordsFromKML(kmlText){
+
+  const parser = new DOMParser();
+  const xml = parser.parseFromString(kmlText, "text/xml");
+
+  const coordText = xml.getElementsByTagName("coordinates")[0]?.textContent;
+
+  if(!coordText) return [];
+
+  const coords = coordText.trim().split(/\s+/).map(p=>{
+    const [lon, lat] = p.split(",").map(Number);
+    return [lon, lat]; // ✅ GEE FORMAT
+  });
+
+  // 🔥 CLOSE POLYGON
+  if (coords.length) {
+    const first = coords[0];
+    const last = coords[coords.length - 1];
+    if (first[0] !== last[0] || first[1] !== last[1]) {
+      coords.push(first);
+    }
+  }
+
+  return [coords];
+}function handleFrontendResult(res){
+
+  console.log("📥 FINAL RESPONSE:", res);
+
+  const status = document.getElementById("kmlStatus");
+
+  if (!res || res.status === "error") {
+    status.innerHTML = "❌ Error";
+    return;
+  }
+
+  status.innerHTML = "✅ Done";
+
+  if (res.analysis) {
+    window.lastAnalysis = res.analysis;
+    showAnalysisResult(res.analysis);
+  }
+}
 function submitKML() {
 
   console.group("📤 submitKML START");
@@ -3478,11 +3523,39 @@ function submitKML() {
 
     console.group("📡 Backend Call");
 
-    callBackend("processUpload", {
-      kmlText: kmlText,
-      beatTag: beat,
-      mode: mode
-    })
+    const coords = extractCoordsFromKML(kmlText);
+
+fetch("https://gee-api-332214398279.asia-south1.run.app/dw", {
+  method: "POST",
+  headers: {
+    "Content-Type": "application/json"
+  },
+  body: JSON.stringify({
+    coords: coords
+  })
+})
+.then(res => res.json())
+.then(function (geeRes) {
+
+  console.log("🌍 GEE RESPONSE:", geeRes);
+
+  const analysis = convertGEEToUI(geeRes, beat);
+
+  const res = {
+    status: "success",
+    message: "Analyzed",
+    analysis: analysis
+  };
+
+  // 🔥 SAME FLOW CONTINUES (no change below)
+  handleFrontendResult(res);
+
+})
+.catch(function (err) {
+  console.error("❌ API error:", err);
+  status.innerHTML = "❌ Upload failed";
+  showToast("❌ Upload failed");
+});
     .then(function (res) {
 
       console.log("📥 FULL BACKEND RESPONSE:", res);
@@ -3606,7 +3679,7 @@ function submitKML() {
 
   reader.readAsText(file);
 }    
-    function showAnalysisResult(d){
+ function showAnalysisResult(d){
 
   console.group("📊 showAnalysisResult");
 
@@ -3628,6 +3701,7 @@ function submitKML() {
       return isNaN(n) ? "0.00" : n.toFixed(digits);
     };
 
+    // ================= TRACK =================
     if (d.type === "Track") {
       console.log("📏 Track length:", d.length_km);
       showToast(`📏 Length: ${safeNum(d.length_km)} km`);
@@ -3635,6 +3709,7 @@ function submitKML() {
       return;
     }
 
+    // ================= POINT =================
     if (d.type === "Point") {
       console.log("📍 Point coords:", d.lat, d.lon);
       showToast(`📍 ${safeNum(d.lat,5)}, ${safeNum(d.lon,5)}`);
@@ -3642,10 +3717,22 @@ function submitKML() {
       return;
     }
 
+    // ================= AREA =================
     if (d.type === "Area") {
 
       console.log("📐 Area:", d.Total_ha);
       console.log("🌿 Distribution:", d.distribution);
+
+      // 🔥 PRIORITY 1 → USE FULL REPORT (NEW SYSTEM)
+      if (d.reportText) {
+        console.log("🧠 Using formatted reportText");
+        showToast(d.reportText);
+        console.groupEnd();
+        return;
+      }
+
+      // 🔁 FALLBACK (OLD SYSTEM)
+      console.warn("⚠ Using fallback UI");
 
       const dist = d.distribution || {};
       const safe = (v) => safeNum(v, 2);
@@ -3671,11 +3758,12 @@ Reason: ${d.reason || "-"}
 
       showToast(msg);
 
-      console.log("✅ Area analysis displayed");
+      console.log("✅ Area analysis displayed (fallback)");
       console.groupEnd();
       return;
     }
 
+    // ================= UNKNOWN =================
     console.warn("⚠ Unknown type:", d.type);
     showToast("⚠️ Unknown analysis type");
 
