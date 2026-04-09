@@ -3420,18 +3420,40 @@ function submitSightingForm(event){
 
   if(!coordText) return [];
 
-  const coords = coordText.trim().split(/\s+/).map(p=>{
-    const [lon, lat] = p.split(",").map(Number);
-    return [lon, lat]; // ✅ GEE FORMAT
+  let coords = coordText
+    .trim()
+    .split(/\s+/)
+    .map(p => {
+      const parts = p.split(",");
+
+      const lon = parseFloat(parts[0]);
+      const lat = parseFloat(parts[1]);
+
+      // 🔥 FILTER INVALID
+      if (isNaN(lon) || isNaN(lat)) return null;
+
+      return [lon, lat];
+    })
+    .filter(Boolean);
+
+  // 🔥 REMOVE DUPLICATES
+  coords = coords.filter((c, i, arr) => {
+    if (i === 0) return true;
+    return !(c[0] === arr[i-1][0] && c[1] === arr[i-1][1]);
   });
 
-  // 🔥 CLOSE POLYGON
-  if (coords.length) {
-    const first = coords[0];
-    const last = coords[coords.length - 1];
-    if (first[0] !== last[0] || first[1] !== last[1]) {
-      coords.push(first);
-    }
+  // 🔥 MINIMUM 4 POINTS REQUIRED
+  if (coords.length < 4) {
+    console.error("❌ Invalid polygon: too few points");
+    return [];
+  }
+
+  // 🔥 FORCE CLOSE RING
+  const first = coords[0];
+  const last = coords[coords.length - 1];
+
+  if (first[0] !== last[0] || first[1] !== last[1]) {
+    coords.push(first);
   }
 
   return [coords];
