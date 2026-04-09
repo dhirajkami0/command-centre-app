@@ -3523,77 +3523,37 @@ function submitKML() {
 
     console.group("📡 Backend Call");
 
-  const coords = extractCoordsFromKML(kmlText);
+    const coords = extractCoordsFromKML(kmlText);
 
-fetch("https://gee-api-332214398279.asia-south1.run.app/dw", {
-  method: "POST",
-  headers: {
-    "Content-Type": "application/json"
-  },
-  body: JSON.stringify({
-    coords: coords
-  })
-})
-.then(res => res.json())
-.then(function (data) {
+    fetch("https://gee-api-332214398279.asia-south1.run.app/dw", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({
+        coords: coords
+      })
+    })
+    .then(res => res.json())
+    .then(function (data) {
 
-  console.log("🌍 API RESPONSE:", data);
+      console.log("🌍 API RESPONSE:", data);
 
-  if (!data) {
-    status.innerHTML = "❌ No response";
-    return;
-  }
-
-  status.innerHTML = "✅ Done";
-
-  window.lastAnalysis = data;
-
-  // 🔥 SHOW RESULT
-  showAnalysisResult(data);
-
-})
-.catch(function (err) {
-  console.error("❌ API error:", err);
-  status.innerHTML = "❌ Upload failed";
-  showToast("❌ Upload failed");
-});
-    
-    .then(function (res) {
-
-      console.log("📥 FULL BACKEND RESPONSE:", res);
-
-      if (!res) {
-        console.error("❌ No response from backend");
-        console.groupEnd();
-        console.groupEnd();
+      if (!data) {
+        status.innerHTML = "❌ No response";
         return;
       }
 
-      if (res.status === "error") {
-        console.error("❌ Backend returned error:", res.message);
-        status.innerHTML = "❌ " + (res.message || "Unknown error");
-        console.groupEnd();
-        console.groupEnd();
-        return;
-      }
+      status.innerHTML = "✅ Done";
 
-      console.log("✅ Backend success");
+      window.lastAnalysis = data;
 
-      status.innerHTML = "✅ " + (res.message || "Uploaded");
+      // 🔥 SHOW RESULT
+      showAnalysisResult(data);
 
-      console.groupEnd();
-
-      console.group("📊 Analysis Check");
-      console.log("Analysis object:", res.analysis);
-
-      if (res.analysis) {
-        console.log("✅ Analysis present:", res.analysis.type);
-        window.lastAnalysis = res.analysis; // 🔥 ensure available for click
-      } else {
-        console.warn("⚠ No analysis returned from backend");
-      }
-
-      console.groupEnd();
+      // =========================
+      // 🔥 MOVED YOUR OLD BLOCK HERE (UNCHANGED LOGIC)
+      // =========================
 
       console.group("🗺 Map Render");
 
@@ -3614,14 +3574,12 @@ fetch("https://gee-api-332214398279.asia-south1.run.app/dw", {
 
         console.log("✅ KML layer added");
 
-        // 🔥🔥🔥 SHOW CLEAR BUTTON
         const btn = document.getElementById("clearKMLBtn");
         if (btn) {
           btn.style.display = "block";
           console.log("✅ Clear button shown");
         }
 
-        // 🔥 CLICK → SHOW ANALYSIS
         previewKMLLayer.on("click", function () {
           console.log("🖱 KML CLICK EVENT TRIGGERED");
 
@@ -3645,10 +3603,10 @@ fetch("https://gee-api-332214398279.asia-south1.run.app/dw", {
 
       console.group("💾 Store & Display Analysis");
 
-      if (res.analysis) {
+      if (data.analysis) {
 
         try {
-          showAnalysisResult(res.analysis);
+          showAnalysisResult(data.analysis);
           console.log("✅ showAnalysisResult executed");
         } catch (err) {
           console.error("❌ showAnalysisResult failed:", err);
@@ -3671,7 +3629,7 @@ fetch("https://gee-api-332214398279.asia-south1.run.app/dw", {
 
     })
     .catch(function (err) {
-      console.error("❌ Backend call failed:", err);
+      console.error("❌ API error:", err);
       status.innerHTML = "❌ Upload failed";
       showToast("❌ Upload failed");
       console.groupEnd();
@@ -3680,8 +3638,7 @@ fetch("https://gee-api-332214398279.asia-south1.run.app/dw", {
   };
 
   reader.readAsText(file);
-}    
- function showAnalysisResult(d){
+} function showAnalysisResult(d){
 
   console.group("📊 showAnalysisResult");
 
