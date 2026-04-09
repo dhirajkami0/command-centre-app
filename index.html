@@ -4498,11 +4498,15 @@ function calculateTotal(){
   setVal("f-time", hh + ":" + mm);
 
   /* ===============================
-     LOCATION AUTO
-  =============================== */
-  if (navigator.geolocation){
+   LOCATION AUTO (ROBUST FIX)
+=============================== */
+if (navigator.geolocation){
 
-    navigator.geolocation.getCurrentPosition(function(pos){
+  console.log("📡 Requesting GPS...");
+
+  navigator.geolocation.getCurrentPosition(
+
+    function(pos){
 
       const lat = pos.coords.latitude.toFixed(6);
       const lon = pos.coords.longitude.toFixed(6);
@@ -4511,15 +4515,37 @@ function calculateTotal(){
       setVal("f-lon", lon);
       setVal("f-location", lat + ", " + lon);
 
-      console.log("📍 Location set:", lat, lon);
+      console.log("✅ GPS SUCCESS:", lat, lon);
 
-    }, function(err){
-      console.error("❌ GPS error:", err);
-    });
+    },
 
-  }
+    function(err){
 
-  /* ===============================
+      console.error("❌ GPS ERROR:", err.code, err.message);
+
+      if(err.code === 1){
+        alert("⚠️ Location permission DENIED.\nPlease allow location.");
+      }
+      else if(err.code === 2){
+        alert("⚠️ Location unavailable.\nTurn on GPS.");
+      }
+      else if(err.code === 3){
+        alert("⚠️ Location timeout.\nTry again.");
+      }
+
+    },
+
+    {
+      enableHighAccuracy: true,
+      timeout: 15000,     // 🔥 IMPORTANT
+      maximumAge: 0
+    }
+
+  );
+
+} else {
+  alert("❌ Geolocation not supported on this device");
+}/* ===============================
      TOTAL INIT
   =============================== */
   setTimeout(() => {
