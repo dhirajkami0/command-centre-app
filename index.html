@@ -3523,7 +3523,7 @@ function submitKML() {
 
     console.group("📡 Backend Call");
 
-    const coords = extractCoordsFromKML(kmlText);
+  const coords = extractCoordsFromKML(kmlText);
 
 fetch("https://gee-api-332214398279.asia-south1.run.app/dw", {
   method: "POST",
@@ -3535,20 +3535,21 @@ fetch("https://gee-api-332214398279.asia-south1.run.app/dw", {
   })
 })
 .then(res => res.json())
-.then(function (geeRes) {
+.then(function (data) {
 
-  console.log("🌍 GEE RESPONSE:", geeRes);
+  console.log("🌍 API RESPONSE:", data);
 
-  const analysis = convertGEEToUI(geeRes, beat);
+  if (!data) {
+    status.innerHTML = "❌ No response";
+    return;
+  }
 
-  const res = {
-    status: "success",
-    message: "Analyzed",
-    analysis: analysis
-  };
+  status.innerHTML = "✅ Done";
 
-  // 🔥 SAME FLOW CONTINUES (no change below)
-  handleFrontendResult(res);
+  window.lastAnalysis = data;
+
+  // 🔥 SHOW RESULT
+  showAnalysisResult(data);
 
 })
 .catch(function (err) {
@@ -3556,6 +3557,7 @@ fetch("https://gee-api-332214398279.asia-south1.run.app/dw", {
   status.innerHTML = "❌ Upload failed";
   showToast("❌ Upload failed");
 });
+    
     .then(function (res) {
 
       console.log("📥 FULL BACKEND RESPONSE:", res);
