@@ -4497,54 +4497,69 @@ function calculateTotal(){
 
   setVal("f-time", hh + ":" + mm);
 
-  /* ===============================
-   LOCATION AUTO (ROBUST FIX)
+ /* ===============================
+   LOCATION AUTO (HIGH ACCURACY FIX)
 =============================== */
+
 if (navigator.geolocation){
 
-  console.log("📡 Requesting GPS...");
+  console.log("📡 Starting high-accuracy GPS...");
 
-  navigator.geolocation.getCurrentPosition(
+  let bestPos = null;
+  let attempts = 0;
+  const maxAttempts = 5;
+
+  const watchId = navigator.geolocation.watchPosition(
 
     function(pos){
 
-      const lat = pos.coords.latitude.toFixed(6);
-      const lon = pos.coords.longitude.toFixed(6);
+      attempts++;
 
-      setVal("f-lat", lat);
-      setVal("f-lon", lon);
-      setVal("f-location", lat + ", " + lon);
+      const acc = pos.coords.accuracy; // meters
 
-      console.log("✅ GPS SUCCESS:", lat, lon);
+      console.log(`📍 Attempt ${attempts} → Accuracy: ${acc}m`);
+
+      // 🔥 Keep best accuracy
+      if(!bestPos || acc < bestPos.coords.accuracy){
+        bestPos = pos;
+      }
+
+      // 🎯 Stop early if accuracy is good enough
+      if(acc <= 20 || attempts >= maxAttempts){
+
+        navigator.geolocation.clearWatch(watchId);
+
+        const lat = bestPos.coords.latitude.toFixed(6);
+        const lon = bestPos.coords.longitude.toFixed(6);
+
+        setVal("f-lat", lat);
+        setVal("f-lon", lon);
+        setVal("f-location", lat + ", " + lon);
+
+        console.log("✅ FINAL GPS:", lat, lon, "Accuracy:", bestPos.coords.accuracy);
+
+        if(bestPos.coords.accuracy > 50){
+          alert("⚠️ Low GPS accuracy (~" + Math.round(bestPos.coords.accuracy) + "m). Move to open area.");
+        }
+      }
 
     },
 
     function(err){
-
-      console.error("❌ GPS ERROR:", err.code, err.message);
-
-      if(err.code === 1){
-        alert("⚠️ Location permission DENIED.\nPlease allow location.");
-      }
-      else if(err.code === 2){
-        alert("⚠️ Location unavailable.\nTurn on GPS.");
-      }
-      else if(err.code === 3){
-        alert("⚠️ Location timeout.\nTry again.");
-      }
-
+      console.error("❌ GPS ERROR:", err);
+      alert("⚠️ GPS failed. Please enable location and retry.");
     },
 
     {
       enableHighAccuracy: true,
-      timeout: 15000,     // 🔥 IMPORTANT
-      maximumAge: 0
+      maximumAge: 0,
+      timeout: 20000
     }
 
   );
 
 } else {
-  alert("❌ Geolocation not supported on this device");
+  alert("❌ Geolocation not supported");
 }/* ===============================
      TOTAL INIT
   =============================== */
