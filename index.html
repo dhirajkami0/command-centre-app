@@ -4456,14 +4456,9 @@ function calculateTotal(){
   }
 
   /* ===============================
-     🧠 USE RAW NAME (FINAL FIX LOCK)
+     🧠 USE RAW NAME
   =============================== */
-  const displayName = String(profile.name || "").trim();   // 🔥 STRICT RAW
-
-  // 🔒 HARD BLOCK: prevent cleanName misuse
-  if (profile.cleanName && displayName === profile.cleanName) {
-    console.warn("⚠️ WARNING: cleanName detected in UI flow — forcing RAW name");
-  }
+  const displayName = String(profile.name || "").trim();
 
   console.log("✅ Using RAW Name:", displayName);
 
@@ -4472,16 +4467,20 @@ function calculateTotal(){
   =============================== */
   const setVal = (id, val) => {
     const el = document.getElementById(id);
-    if (el) el.value = val;
+    if (!el) {
+      console.error("❌ Missing field:", id);
+      return;
+    }
+    el.value = val;
   };
 
   /* ===============================
-     TEAM LEADER (LOCKED)
+     TEAM LEADER
   =============================== */
   const teamInput = document.getElementById("f-team");
 
   if (teamInput) {
-    teamInput.value = displayName;   // 🔥 ALWAYS RAW
+    teamInput.value = displayName;
     teamInput.readOnly = true;
     teamInput.dataset.lockedUser = displayName;
     console.log("✅ Team Leader set:", displayName);
@@ -4491,75 +4490,70 @@ function calculateTotal(){
      TIME AUTO
   =============================== */
   const now = new Date();
-
   const hh = String(now.getHours()).padStart(2,"0");
   const mm = String(now.getMinutes()).padStart(2,"0");
 
   setVal("f-time", hh + ":" + mm);
 
- /* ===============================
-   LOCATION AUTO (INSTANT - NO WAIT)
-=============================== */
+  /* ===============================
+     📍 LOCATION AUTO (FINAL FIX)
+  =============================== */
 
-if (navigator.geolocation){
+  function fillLocation(lat, lon){
+    setVal("f-lat", lat);
+    setVal("f-lon", lon);
+    setVal("f-location", lat + ", " + lon);
 
-  console.log("⚡ Instant GPS start");
+    // 🔥 SAVE LAST
+    localStorage.setItem("lastLat", lat);
+    localStorage.setItem("lastLon", lon);
 
-  navigator.geolocation.getCurrentPosition(
+    console.log("📍 Location set:", lat, lon);
+  }
 
-    function(pos){
+  function tryGPS(){
 
-      const lat = pos.coords.latitude.toFixed(6);
-      const lon = pos.coords.longitude.toFixed(6);
-
-      setVal("f-lat", lat);
-      setVal("f-lon", lon);
-      setVal("f-location", lat + ", " + lon);
-
-      console.log("✅ GPS SET:", lat, lon);
-
-      // 🔥 SAVE FOR OFFLINE / FUTURE
-      localStorage.setItem("lastLat", lat);
-      localStorage.setItem("lastLon", lon);
-
-    },
-
-    function(err){
-
-      console.warn("⚠ GPS FAILED:", err.message);
-
-      // 🔥 FALLBACK (VERY IMPORTANT)
-      const lat = localStorage.getItem("lastLat");
-      const lon = localStorage.getItem("lastLon");
-
-      if(lat && lon){
-
-        setVal("f-lat", lat);
-        setVal("f-lon", lon);
-        setVal("f-location", lat + ", " + lon);
-
-        console.log("📴 Using last saved location");
-
-      } else {
-
-        setVal("f-location", "Location unavailable");
-
-        alert("⚠️ Turn on GPS");
-      }
-
-    },
-
-    {
-      enableHighAccuracy: false,   // ⚡ FASTEST
-      timeout: 4000,              // ⏱ quick fail
-      maximumAge: 600000         // 🔥 USE CACHED (10 min)
+    if (!navigator.geolocation) {
+      console.error("❌ Geolocation not supported");
+      return;
     }
 
-  );
+    navigator.geolocation.getCurrentPosition(
 
-} else {
-  alert("❌ Geolocation not supported");
-}/* ===============================
+      function(pos){
+        const lat = pos.coords.latitude.toFixed(6);
+        const lon = pos.coords.longitude.toFixed(6);
+        fillLocation(lat, lon);
+      },
+
+      function(err){
+        console.warn("⚠ GPS failed:", err.message);
+
+        // 🔥 FALLBACK
+        const lat = localStorage.getItem("lastLat");
+        const lon = localStorage.getItem("lastLon");
+
+        if(lat && lon){
+          console.log("📴 Using last saved location");
+          fillLocation(lat, lon);
+        } else {
+          console.warn("❌ No fallback location available");
+        }
+      },
+
+      {
+        enableHighAccuracy: false,
+        timeout: 5000,
+        maximumAge: 600000
+      }
+
+    );
+  }
+
+  // 🔥 IMPORTANT: Delay ensures modal + DOM ready
+  setTimeout(tryGPS, 300);
+
+  /* ===============================
      TOTAL INIT
   =============================== */
   setTimeout(() => {
@@ -4567,182 +4561,6 @@ if (navigator.geolocation){
   }, 100);
 
   console.groupEnd();
-}
-          /* 4. Close Form */
-          function closeSightingForm() {
-document.getElementById('form-modal').style.display = 'none';
-}
-
-/* 5. Submit */
-function submitSightingForm(event){
-
-  if(event) event.preventDefault();
-
-  try {
-
-    /* ============================================================
-       🔥 FIX 1: MULTI-USER SAFE UNIQUE ID (CORRECTED)
-    ============================================================ */
-
-    let sightingID;
-
-    // 🔥 ONLY reuse ID if explicitly editing
-    if (window.isEditingSighting && window.currentSightingId) {
-      sightingID = window.currentSightingId;
-    } else {
-      sightingID =
-        "SIGHT-" +
-        Date.now() + "-" +
-        Math.floor(Math.random() * 10000);
-    }
-
-    const m   = parseInt(document.getElementById("f-m").value) || 0;
-    const f   = parseInt(document.getElementById("f-f").value) || 0;
-    const uni = parseInt(document.getElementById("f-u").value) || 0;
-    const c   = parseInt(document.getElementById("f-c").value) || 0;
-
-    const total = m + f + uni + c;
-
-    const lat = document.getElementById("f-lat").value;
-    const lon = document.getElementById("f-lon").value;
-
-    const location = lat + "," + lon;
-
-    const now = new Date();
-    const time = now.toLocaleTimeString("en-IN");
-
-    if (!lat || !lon) {
-      alert("❌ Location missing");
-      return;
-    }
-
-    if (!document.getElementById("f-beat").value || !document.getElementById("f-compt").value) {
-      alert("❌ Select Beat & Compartment");
-      return;
-    }
-
-    /* ============================================================
-       🔥 FIX 2: SAFE LEADER VALUE (CRITICAL) (UNCHANGED)
-    ============================================================ */
-
-    const teamInput = document.getElementById("f-team");
-
-    let leaderValue = teamInput ? teamInput.value : "";
-
-    if (!leaderValue || leaderValue.trim() === "") {
-      leaderValue = window.userProfile?.name || "";
-    }
-
-    if (
-      leaderValue === window.userProfile?.cleanName ||
-      leaderValue === window.userProfile?.cleanName?.toUpperCase()
-    ) {
-      console.warn("⚠ Prevented cleanName overwrite → using UI name");
-      leaderValue = window.userProfile?.name || leaderValue;
-    }
-
-    leaderValue = String(leaderValue).trim();
-
-    console.log("👤 FINAL LEADER:", leaderValue);
-
-    const payload = {
-
-      /* 🔥 IMPORTANT: SAME ID USED FOR UPDATE */
-      sighting_id: sightingID,
-
-      parent_id: "",
-
-      beat: document.getElementById("f-beat").value,
-
-      forest_block: document.getElementById("f-block").value,
-
-      compt: document.getElementById("f-compt").value,
-
-      time: time,
-
-      m: Number(m),
-      f: Number(f),
-      unidentified: Number(uni),
-      calf: Number(c),
-
-      total_seen: total,
-
-      anticipated: "",
-      depredation: "",
-      involved: "",
-      driving: "",
-
-      remarks: document.getElementById("f-remarks").value,
-
-      leader: leaderValue,
-
-      staff: "",
-
-      lat: Number(lat),
-      lon: Number(lon),
-
-      location: location,
-
-      direction: document.getElementById("f-dir").value
-    };
-
-    console.log("📤 Payload:", payload);
-
-    const fileInput = document.getElementById("f-photo");
-    const file = fileInput ? fileInput.files[0] : null;
-
-    function submitToServer(finalPayload){
-
-      callBackend("saveElephantSighting", finalPayload)
-        .then(function(){
-
-          alert("✅ Submitted to Command Centre");
-
-          /* ============================================================
-             🔥 FIX 3: STORE ID FOR FUTURE UPDATES (SAFE)
-          ============================================================ */
-
-          if (window.isEditingSighting) {
-            window.currentSightingId = sightingID;
-          } else {
-            window.currentSightingId = null;   // 🔥 CRITICAL RESET
-          }
-
-          window.isEditingSighting = false;   // 🔥 RESET MODE
-
-          if (typeof closeSightingForm === "function") {
-            closeSightingForm();
-          }
-
-          const form = document.getElementById("elephantForm");
-          if(form) form.reset();
-
-        })
-        .catch(function(err){
-          console.error("❌ Error:", err);
-          alert("❌ Submission failed");
-        });
-    }
-
-    if(file){
-      const reader = new FileReader();
-
-      reader.onloadend = function(){
-        payload.photo = reader.result;
-        submitToServer(payload);
-      };
-
-      reader.readAsDataURL(file);
-
-    } else {
-      payload.photo = "";
-      submitToServer(payload);
-    }
-
-  } catch (e) {
-    console.error("❌ Crash:", e);
-    alert("❌ Form error: " + e.message);
-  }
 }/* ============================================================
 🚨 DUTY SYSTEM
 ============================================================ */
