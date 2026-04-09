@@ -4498,14 +4498,13 @@ function calculateTotal(){
   setVal("f-time", hh + ":" + mm);
 
  /* ===============================
-   LOCATION AUTO (HYBRID FIX)
+   LOCATION AUTO (INSTANT - NO WAIT)
 =============================== */
 
 if (navigator.geolocation){
 
-  console.log("📡 Getting initial GPS...");
+  console.log("⚡ Instant GPS start");
 
-  // 🔥 STEP 1: QUICK LOCATION (INSTANT)
   navigator.geolocation.getCurrentPosition(
 
     function(pos){
@@ -4515,78 +4514,45 @@ if (navigator.geolocation){
 
       setVal("f-lat", lat);
       setVal("f-lon", lon);
-      setVal("f-location", lat + ", " + lon + " (fetching accuracy...)");
+      setVal("f-location", lat + ", " + lon);
 
-      console.log("⚡ QUICK GPS:", lat, lon, pos.coords.accuracy);
+      console.log("✅ GPS SET:", lat, lon);
 
-    },
-
-    function(err){
-      console.warn("⚠ Quick GPS failed:", err.message);
-    },
-
-    {
-      enableHighAccuracy: false, // 🔥 FAST
-      timeout: 5000,
-      maximumAge: 60000
-    }
-  );
-
-  // 🔥 STEP 2: HIGH ACCURACY TRACKING
-  let bestPos = null;
-  let attempts = 0;
-  const maxAttempts = 5;
-
-  const watchId = navigator.geolocation.watchPosition(
-
-    function(pos){
-
-      attempts++;
-
-      const acc = pos.coords.accuracy;
-
-      console.log(`📍 Attempt ${attempts} → ${acc}m`);
-
-      if(!bestPos || acc < bestPos.coords.accuracy){
-        bestPos = pos;
-      }
-
-      // 🔥 ALWAYS UPDATE (IMPORTANT)
-      const lat = pos.coords.latitude.toFixed(6);
-      const lon = pos.coords.longitude.toFixed(6);
-
-      setVal("f-lat", lat);
-      setVal("f-lon", lon);
-      setVal("f-location", lat + ", " + lon + " (±" + Math.round(acc) + "m)");
-
-      // 🎯 STOP CONDITION
-      if(acc <= 20 || attempts >= maxAttempts){
-
-        navigator.geolocation.clearWatch(watchId);
-
-        console.log("✅ FINAL GPS:", lat, lon, acc);
-
-        if(acc > 50){
-          alert("⚠️ Low accuracy (~" + Math.round(acc) + "m). Move to open area.");
-        }
-      }
+      // 🔥 SAVE FOR OFFLINE / FUTURE
+      localStorage.setItem("lastLat", lat);
+      localStorage.setItem("lastLon", lon);
 
     },
 
     function(err){
-      console.error("❌ GPS ERROR:", err);
 
-      if(err.code === 1){
-        alert("⚠️ Location permission denied");
+      console.warn("⚠ GPS FAILED:", err.message);
+
+      // 🔥 FALLBACK (VERY IMPORTANT)
+      const lat = localStorage.getItem("lastLat");
+      const lon = localStorage.getItem("lastLon");
+
+      if(lat && lon){
+
+        setVal("f-lat", lat);
+        setVal("f-lon", lon);
+        setVal("f-location", lat + ", " + lon);
+
+        console.log("📴 Using last saved location");
+
       } else {
-        alert("⚠️ GPS error. Try again.");
+
+        setVal("f-location", "Location unavailable");
+
+        alert("⚠️ Turn on GPS");
       }
+
     },
 
     {
-      enableHighAccuracy: true,
-      maximumAge: 0
-      // ❌ REMOVE timeout here
+      enableHighAccuracy: false,   // ⚡ FASTEST
+      timeout: 4000,              // ⏱ quick fail
+      maximumAge: 600000         // 🔥 USE CACHED (10 min)
     }
 
   );
