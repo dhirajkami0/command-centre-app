@@ -3710,100 +3710,79 @@ function submitSightingForm(event){
   };
 
   reader.readAsText(file);
-}function showAnalysisResult(d){
+}function showAnalysisResult(data){
 
-  console.group("📊 showAnalysisResult");
+  console.log("📊 showAnalysisResult");
+  console.log("Input data:", data);
 
-  try {
-
-    console.log("Input data:", d);
-
-    if (!d || !d.type) {
-      console.error("❌ Invalid analysis data");
-      showToast("❌ Invalid analysis data");
-      console.groupEnd();
-      return;
-    }
-
-    console.log("Type detected:", d.type);
-
-    const safeNum = (v, digits = 2) => {
-      const n = Number(v);
-      return isNaN(n) ? "0.00" : n.toFixed(digits);
-    };
-
-    // ================= TRACK =================
-    if (d.type === "Track") {
-      console.log("📏 Track length:", d.length_km);
-      showToast(`📏 Length: ${safeNum(d.length_km)} km`);
-      console.groupEnd();
-      return;
-    }
-
-    // ================= POINT =================
-    if (d.type === "Point") {
-      console.log("📍 Point coords:", d.lat, d.lon);
-      showToast(`📍 ${safeNum(d.lat,5)}, ${safeNum(d.lon,5)}`);
-      console.groupEnd();
-      return;
-    }
-
-    // ================= AREA =================
-    if (d.type === "Area") {
-
-      console.log("📐 Area:", d.Total_ha);
-      console.log("🌿 Distribution:", d.distribution);
-
-      // 🔥 PRIORITY 1 → USE FULL REPORT (NEW SYSTEM)
-      if (d.reportText) {
-        console.log("🧠 Using formatted reportText");
-        showToast(d.reportText);
-        console.groupEnd();
-        return;
-      }
-
-      // 🔁 FALLBACK (OLD SYSTEM)
-      console.warn("⚠ Using fallback UI");
-
-      const dist = d.distribution || {};
-      const safe = (v) => safeNum(v, 2);
-
-      const msg =
-`📐 Total Area: ${safe(d.Total_ha)} ha
-🌿 Canopy: ${safeNum(d.canopy_pct,1)} %
-📏 Height: ${safe(d.height_m)} m
-🌳 Density: ${d.density || "N/A"}
-❤️ Health: ${safeNum(d.health,1)} / 100
-📌 Condition: ${d.condition || "Unknown"}
-Reason: ${d.reason || "-"}
-
-🌍 Land Distribution
-🌲 Forest: ${safe(dist.Forest)} ha
-🔴 Degraded: ${safe(dist.Degraded)} ha
-🌿 Grass: ${safe(dist.Grass)} ha
-🌾 Crop: ${safe(dist.Crop)} ha
-🌳 Bush: ${safe(dist.Bush)} ha
-🏠 Built: ${safe(dist.Built)} ha
-🟫 Bare: ${safe(dist.Bare)} ha
-🟦 Water: ${safe(dist.Water)} ha`;
-
-      showToast(msg);
-
-      console.log("✅ Area analysis displayed (fallback)");
-      console.groupEnd();
-      return;
-    }
-
-    // ================= UNKNOWN =================
-    console.warn("⚠ Unknown type:", d.type);
-    showToast("⚠️ Unknown analysis type");
-
-  } catch (err) {
-    console.error("❌ showAnalysisResult crashed:", err);
-    showToast("❌ Failed to display analysis");
+  if(!data || !data.Total_ha){
+    console.error("❌ Invalid analysis data");
+    return;
   }
 
-  console.groupEnd();
+  console.log("Type detected:", data.type);
+
+  const area = data.Total_ha || 0;
+
+  const canopy = data.canopy_pct ?? "-";
+  const height = data.height_m ?? "-";
+  const density = data.density ?? "-";
+  const health = data.health ?? "-";
+  const condition = data.condition ?? "-";
+
+  const dist = data.distribution || {};
+
+  console.log("📐 Area:", area);
+  console.log("🌿 Distribution:", dist);
+
+  // ==============================
+  // 🧾 BUILD FULL HTML
+  // ==============================
+  let html = `
+  <div style="font-size:14px; line-height:1.5">
+    <h3>🌱 Proposed Plantation Area</h3>
+
+    <b>📊 Area:</b> ${area.toFixed(2)} ha<br>
+    <b>🌿 Canopy:</b> ${Number(canopy).toFixed(1)} %<br>
+    <b>📏 Height:</b> ${Number(height).toFixed(2)} m<br>
+    <b>🌳 Density:</b> ${density}<br>
+    <b>❤️ Health:</b> ${Number(health).toFixed(1)}<br>
+    <b>📌 Condition:</b> ${condition}<br>
+
+    <hr>
+
+    <b>🌍 Land Distribution:</b><br>
+    🌳 Forest: ${(dist.Forest || 0).toFixed(2)} ha<br>
+    🌱 Degraded: ${(dist.Degraded || 0).toFixed(2)} ha<br>
+    🌾 Grass: ${(dist.Grass || 0).toFixed(2)} ha<br>
+    🌽 Crop: ${(dist.Crop || 0).toFixed(2)} ha<br>
+    🌿 Bush: ${(dist.Bush || 0).toFixed(2)} ha<br>
+    🏠 Built: ${(dist.Built || 0).toFixed(2)} ha<br>
+    🪨 Bare: ${(dist.Bare || 0).toFixed(2)} ha<br>
+    💧 Water: ${(dist.Water || 0).toFixed(2)} ha
+  </div>
+  `;
+
+  // ==============================
+  // 🔥 OPTIONAL: APPEND RAW REPORT
+  // ==============================
+  if(data.reportText){
+    html += `
+      <hr>
+      <pre style="white-space:pre-wrap; font-size:12px;">
+${data.reportText}
+      </pre>
+    `;
+  }
+
+  // ==============================
+  // 📍 SHOW POPUP (LEAFLET)
+  // ==============================
+  if(window.currentLayer){
+    window.currentLayer.bindPopup(html).openPopup();
+  } else {
+    alert(html);
+  }
 }/* ============================================================
        📱 RESPONSIVE PANEL TOGGLE
     ============================================================ */
