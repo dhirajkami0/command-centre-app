@@ -3781,7 +3781,8 @@ window.addEventListener("online", () => {
     window.lastAnalysis = res.analysis;
     showAnalysisResult(res.analysis);
   }
-}function submitKML() {
+}
+function submitKML() {
   console.group("📤 submitKML START");
 
   const beat = document.getElementById("kmlBeat").value;
@@ -3862,6 +3863,23 @@ window.addEventListener("online", () => {
     }
     console.groupEnd();
 
+    // ==============================
+    // 🔥 DEBUG ADD (DO NOT REMOVE)
+    // ==============================
+    console.log("📍 FINAL COORDS SENT:", JSON.stringify(coords));
+
+    try {
+      const areaCheck = turf.area({
+        type: "Polygon",
+        coordinates: [coords]
+      }) / 10000;
+
+      console.log("📐 FRONTEND AREA (ha):", areaCheck);
+    } catch (e) {
+      console.warn("⚠️ Turf area calc failed:", e);
+    }
+    // ==============================
+
     console.group("📡 Backend Call");
 
     fetch("https://gee-api-332214398279.asia-south1.run.app/dw", {
@@ -3894,7 +3912,6 @@ window.addEventListener("online", () => {
         status.innerHTML = "❌ " + errorMsg;
         showToast("⚠️ " + errorMsg, "warning");
 
-        // 🔥 FIX: hide button if backend fails
         const clearBtn = document.getElementById("clearKMLBtn");
         if (clearBtn) clearBtn.style.display = "none";
 
@@ -3925,7 +3942,6 @@ window.addEventListener("online", () => {
         previewKMLLayer = new L.KML(xml);
         previewKMLLayer.addTo(map);
 
-        // 🔥 FIX: show ONLY if really added
         if (clearBtn && previewKMLLayer && map.hasLayer(previewKMLLayer)) {
           clearBtn.style.display = "block";
         } else if (clearBtn) {
@@ -3956,7 +3972,6 @@ window.addEventListener("online", () => {
       status.innerHTML = "❌ Network error";
       showToast("❌ Upload failed: Connection Error", "error");
 
-      // 🔥 FIX: hide button on failure
       const clearBtn = document.getElementById("clearKMLBtn");
       if (clearBtn) clearBtn.style.display = "none";
     })
@@ -3968,7 +3983,6 @@ window.addEventListener("online", () => {
 
   reader.readAsText(file);
 }
-
 
 function updateClearKMLButton(){
 
