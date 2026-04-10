@@ -2689,16 +2689,12 @@ function submitMoveForm() {
 
   console.group("🚀 submitMoveForm START");
 
-  /* ===============================
-     GET VALUES
-  =============================== */
   const id = document.getElementById("move-id").value;
 
   const depredation = document.getElementById("move-depredation").value;
   const involved = document.getElementById("move-involved").value;
   const driving = document.getElementById("move-driving").value;
 
-  /* 🔥 FIXED DIRECTION (SAFE READ) */
   const dirEl = document.getElementById("move-dir");
   let direction = dirEl ? dirEl.value : "";
 
@@ -2712,9 +2708,6 @@ function submitMoveForm() {
     return;
   }
 
-  /* ===============================
-     🔒 PREVENT MULTI-CLICK
-  =============================== */
   if (window.isUpdating) {
     console.warn("⚠ Update already in progress");
     console.groupEnd();
@@ -2723,9 +2716,6 @@ function submitMoveForm() {
 
   window.isUpdating = true;
 
-  /* ===============================
-     CONFIRM
-  =============================== */
   if (!confirm("Confirm update: " + remarks + " ?")) {
     window.isUpdating = false;
     console.warn("❌ User cancelled");
@@ -2733,9 +2723,6 @@ function submitMoveForm() {
     return;
   }
 
-  /* ===============================
-     🔥 NORMALIZE ID (IMPORTANT)
-  =============================== */
   const normalize = v => String(v)
     .trim()
     .replace(/\s+/g, "")
@@ -2745,34 +2732,42 @@ function submitMoveForm() {
 
   const cleanId = normalize(id);
 
-  /* 🔥 DEBUG (IMPORTANT) */
-  console.log("📤 FINAL MOVE PAYLOAD →", {
-    id: id,
-    remarks: remarks,
-    depredation: depredation,
-    involved: involved,
-    driving: driving,
-    direction: direction,   // ✅ NOW LOGGED
-    updatedBy: window.currentLeader || window.userProfile?.name
-  });
-
-  /* ===============================
-     BACKEND CALL
-  =============================== */
-  callBackend("updateSightingStatus", {
+  const payload = {
     id: cleanId,
     newStatus: remarks,
     depredation: depredation,
     involved: involved,
     driving: driving,
-    direction: direction,   // ✅ SENT CLEAN
+    direction: direction,
     updatedBy: (
       window.userProfile?.name ||
       window.currentLeader ||
       localStorage.getItem("userName") ||
       "UNKNOWN"
     )
-  })
+  };
+
+  console.log("📤 FINAL MOVE PAYLOAD →", payload);
+
+  /* ============================================================
+     🔥 NEW: OFFLINE / ONLINE HANDLING
+  ============================================================ */
+
+  if (!navigator.onLine) {
+
+    saveMoveOffline(payload);
+
+    alert("📴 Saved offline. Will sync automatically.");
+
+    window.isUpdating = false;
+    console.groupEnd();
+    return;
+  }
+
+  /* ===============================
+     BACKEND CALL
+  =============================== */
+  callBackend("updateSightingStatus", payload)
 
   .then(function (res) {
 
@@ -2782,16 +2777,10 @@ function submitMoveForm() {
 
       alert("✅ Updated");
 
-      /* ===============================
-         CLOSE FORM
-      =============================== */
       if (typeof closeMoveForm === "function") {
         closeMoveForm();
       }
 
-      /* ===============================
-         🔥 REMOVE MARKER (SAME AS OLD)
-      =============================== */
       Object.keys(window.sightingMarkers || {}).forEach(key => {
 
         if (normalize(key) === cleanId) {
@@ -2811,23 +2800,14 @@ function submitMoveForm() {
       return;
     }
 
-    /* ===============================
-       UNLOCK
-    =============================== */
     window.isUpdating = false;
     window.isPopupInteracting = false;
     window.lastInteractionTime = 0;
 
-    /* ===============================
-       CLOSE POPUP
-    =============================== */
     if (window.sightingMarkers && window.sightingMarkers[id]) {
       window.sightingMarkers[id].closePopup();
     }
 
-    /* ===============================
-       🔥 SMART REFRESH
-    =============================== */
     setTimeout(() => {
 
       console.log("🔥 Refreshing sightings...");
@@ -2844,12 +2824,72 @@ function submitMoveForm() {
   .catch(function (err) {
 
     console.error("❌ Update failed:", err);
-    alert("❌ Backend error");
+
+    // 🔥 SAVE IF FAILED
+    saveMoveOffline(payload);
+
+    alert("⚠ Network issue → saved offline");
 
     window.isUpdating = false;
     console.groupEnd();
   });
-} /* ============================================================
+}/* ============================================================
+   🔥 OFFLINE SAVE (MOVE FORM)
+============================================================ */
+function saveMoveOffline(data){
+
+  let records = JSON.parse(localStorage.getItem("offlineMoves") || "[]");
+
+  records.push({
+    ...data,
+    timestamp: new Date().toISOString()
+  });
+
+  localStorage.setItem("offlineMoves", JSON.stringify(records));
+
+  console.log("💾 Move saved offline:", data);
+}
+
+
+/* ============================================================
+   🔥 AUTO SYNC (MOVE FORM)
+============================================================ */
+function syncOfflineMoves(){
+
+  let records = JSON.parse(localStorage.getItem("offlineMoves") || "[]");
+
+  if (!records.length) return;
+
+  console.log("🔄 Syncing offline moves...");
+
+  let remaining = [];
+
+  const promises = records.map(rec => {
+
+    return callBackend("updateSightingStatus", rec)
+      .then(() => {
+        console.log("✅ Move synced:", rec.id);
+      })
+      .catch(() => {
+        remaining.push(rec);
+      });
+
+  });
+
+  Promise.all(promises).then(() => {
+    localStorage.setItem("offlineMoves", JSON.stringify(remaining));
+    console.log("✅ Move sync complete");
+  });
+}
+
+
+/* ============================================================
+   🔥 AUTO TRIGGER
+============================================================ */
+window.addEventListener("online", () => {
+  console.log("🌐 Internet back → syncing moves...");
+  syncOfflineMoves();
+}); /* ============================================================
        👮 BLOCK 8 → STAFF SYSTEM (FINAL)
     ============================================================ */
 
