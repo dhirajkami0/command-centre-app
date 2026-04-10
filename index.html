@@ -2006,21 +2006,25 @@ function clearKMLPreview(){
 
     try {
 
+      // ✅ Remove layer properly
       if (typeof previewKMLLayer.remove === "function") {
         previewKMLLayer.remove();
       }
 
+      // ✅ Clear internal layers (KML fix)
       if (typeof previewKMLLayer.clearLayers === "function") {
         previewKMLLayer.clearLayers();
       }
 
+      // ✅ Safety fallback
       if (map.hasLayer(previewKMLLayer)) {
         map.removeLayer(previewKMLLayer);
       }
 
       previewKMLLayer = null;
 
-      if (btn) btn.style.display = "none";
+      // ✅ Sync button with state
+      updateClearKMLButton();
 
       showToast("KML preview removed");
 
@@ -2032,14 +2036,15 @@ function clearKMLPreview(){
 
   } else {
 
-    if (btn) btn.style.display = "none";
+    // ✅ Force UI correction
+    previewKMLLayer = null;
+    updateClearKMLButton();
 
     showToast("No preview to remove", "warning");
 
     console.warn("⚠ previewKMLLayer was null");
   }
-}    
-   function uploadKML() {
+}  function uploadKML() {
 
   const fileInput = document.getElementById("kmlUpload");
   const file = fileInput.files[0];
@@ -2088,7 +2093,7 @@ function clearKMLPreview(){
         // 🔥 STORE LAYER
         previewKMLLayer = new L.KML(xml);
         previewKMLLayer.addTo(map);
-
+updateClearKMLButton();
         if (previewKMLLayer.getBounds().isValid()) {
           map.fitBounds(previewKMLLayer.getBounds());
         }
@@ -3549,9 +3554,6 @@ function submitSightingForm(event){
     const mode = modeEl ? modeEl.value : "polygon";
     console.log("⚙ Mode:", mode);
 
-    // =====================================================
-    // 🛰️ COORDS EXTRACTION
-    // =====================================================
     let coords;
     try {
       coords = extractCoordsFromKML(kmlText, mode);
@@ -3577,9 +3579,6 @@ function submitSightingForm(event){
 
     console.group("📡 Backend Call");
 
-    // =====================================================
-    // 🔥 BACKEND CALL
-    // =====================================================
     fetch("https://gee-api-332214398279.asia-south1.run.app/dw", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -3603,7 +3602,7 @@ function submitSightingForm(event){
       return data;
     })
     .then(function (data) {
-      // Check for backend internal errors (Total_ha 0 usually means GEE found nothing)
+
       if (data.Total_ha === 0 || data.error) {
         const errorMsg = data.reportText || data.error || "No data found in this area";
         console.error("❌ BACKEND ERROR:", errorMsg);
@@ -3616,47 +3615,55 @@ function submitSightingForm(event){
       status.innerHTML = "✅ Done";
       window.lastAnalysis = data;
 
-      // Show results
       showAnalysisResult(data);
 
       // ================= MAP RENDER =================
       console.group("🗺 Map Render");
       try {
-        if (window.previewKMLLayer) {
-          map.removeLayer(window.previewKMLLayer);
-        }
 
-       // 🔥 REMOVE OLD LAYER FIRST (IMPORTANT)
-if (previewKMLLayer) {
-  if (typeof previewKMLLayer.remove === "function") {
-    previewKMLLayer.remove();
-  }
-  if (map.hasLayer(previewKMLLayer)) {
-    map.removeLayer(previewKMLLayer);
-  }
-  previewKMLLayer = null;
-}
-
-// 🔥 CREATE NEW LAYER (USE SAME VARIABLE)
-previewKMLLayer = new L.KML(xml);
-
-// 🔥 ADD TO MAP
-previewKMLLayer.addTo(map);
         const clearBtn = document.getElementById("clearKMLBtn");
-        if (clearBtn) clearBtn.style.display = "block";
 
-        if (window.previewKMLLayer.getBounds().isValid()) {
-            map.fitBounds(window.previewKMLLayer.getBounds());
+        // 🔥 REMOVE OLD LAYER (NO window usage)
+        if (previewKMLLayer) {
+          if (typeof previewKMLLayer.remove === "function") {
+            previewKMLLayer.remove();
+          }
+          if (map.hasLayer(previewKMLLayer)) {
+            map.removeLayer(previewKMLLayer);
+          }
+          previewKMLLayer = null;
         }
 
-        window.previewKMLLayer.on("click", function () {
+        // 🔥 CREATE NEW LAYER
+        previewKMLLayer = new L.KML(xml);
+        previewKMLLayer.addTo(map);
+
+        // 🔥 SHOW BUTTON ONLY IF LAYER REALLY ADDED
+        if (clearBtn && map.hasLayer(previewKMLLayer)) {
+          clearBtn.style.display = "block";
+        } else if (clearBtn) {
+          clearBtn.style.display = "none";
+        }
+
+        // 🔥 FIT BOUNDS (FIXED VARIABLE)
+        if (previewKMLLayer.getBounds().isValid()) {
+          map.fitBounds(previewKMLLayer.getBounds());
+        }
+
+        // 🔥 CLICK EVENT (FIXED VARIABLE)
+        previewKMLLayer.on("click", function () {
           if (window.lastAnalysis) {
             showAnalysisResult(window.lastAnalysis);
           }
         });
+
       } catch (err) {
         console.error("❌ KML leaflet render error:", err);
+
+        const clearBtn = document.getElementById("clearKMLBtn");
+        if (clearBtn) clearBtn.style.display = "none";
       }
+
       console.groupEnd();
     })
     .catch(function (err) {
@@ -3665,13 +3672,25 @@ previewKMLLayer.addTo(map);
       showToast("❌ Upload failed: Connection Error", "error");
     })
     .finally(() => {
-      console.groupEnd(); // Close Backend Call group
-      console.groupEnd(); // Close main submitKML group
+      console.groupEnd();
+      console.groupEnd();
     });
   };
 
   reader.readAsText(file);
-}function showAnalysisResult(data) {
+}function updateClearKMLButton(){
+
+  const btn = document.getElementById("clearKMLBtn");
+  if (!btn) return;
+
+  if (previewKMLLayer && map.hasLayer(previewKMLLayer)) {
+    btn.style.display = "block";
+  } else {
+    btn.style.display = "none";
+  }
+}
+    
+    function showAnalysisResult(data) {
   console.log("📊 showAnalysisResult");
   console.log("Input data:", data);
 
