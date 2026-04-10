@@ -2731,12 +2731,8 @@ function submitMoveForm() {
 
   window.isUpdating = true;
 
-  if (!confirm("Confirm update: " + remarks + " ?")) {
-    window.isUpdating = false;
-    console.warn("❌ User cancelled");
-    console.groupEnd();
-    return;
-  }
+  // 🔥 NEW: START LOADING (REPLACES confirm)
+  setMoveLoading("loading");
 
   const normalize = v => String(v)
     .trim()
@@ -2765,7 +2761,7 @@ function submitMoveForm() {
   console.log("📤 FINAL MOVE PAYLOAD →", payload);
 
   /* ============================================================
-     🔥 NEW: OFFLINE / ONLINE HANDLING
+     🔥 OFFLINE
   ============================================================ */
 
   if (!navigator.onLine) {
@@ -2774,6 +2770,7 @@ function submitMoveForm() {
 
     alert("📴 Saved offline. Will sync automatically.");
 
+    setMoveLoading("reset"); // 🔥 RESET BUTTON
     window.isUpdating = false;
     console.groupEnd();
     return;
@@ -2790,26 +2787,32 @@ function submitMoveForm() {
 
     if (res) {
 
-      alert("✅ Updated");
+      // 🔥 SUCCESS UI
+      setMoveLoading("success");
 
-      if (typeof closeMoveForm === "function") {
-        closeMoveForm();
-      }
+      setTimeout(() => {
 
-      Object.keys(window.sightingMarkers || {}).forEach(key => {
-
-        if (normalize(key) === cleanId) {
-
-          elephantLayer.removeLayer(window.sightingMarkers[key]);
-          delete window.sightingMarkers[key];
-
-          console.log("⚡ Marker removed:", key);
+        if (typeof closeMoveForm === "function") {
+          closeMoveForm();
         }
 
-      });
+        Object.keys(window.sightingMarkers || {}).forEach(key => {
+
+          if (normalize(key) === cleanId) {
+
+            elephantLayer.removeLayer(window.sightingMarkers[key]);
+            delete window.sightingMarkers[key];
+
+            console.log("⚡ Marker removed:", key);
+          }
+
+        });
+
+      }, 800);
 
     } else {
       alert("❌ Update failed (ID not matched)");
+      setMoveLoading("reset");
       window.isUpdating = false;
       console.groupEnd();
       return;
@@ -2840,14 +2843,38 @@ function submitMoveForm() {
 
     console.error("❌ Update failed:", err);
 
-    // 🔥 SAVE IF FAILED
     saveMoveOffline(payload);
 
     alert("⚠ Network issue → saved offline");
 
+    setMoveLoading("reset"); // 🔥 RESET BUTTON
     window.isUpdating = false;
     console.groupEnd();
   });
+}function setMoveLoading(state){
+
+  const btn = document.getElementById("moveConfirmBtn");
+  if(!btn) return;
+
+  if(state === "loading"){
+    btn.innerText = "⏳ Updating...";
+    btn.disabled = true;
+    btn.style.background = "#ff9800";
+    btn.style.color = "#fff";
+  }
+
+  else if(state === "success"){
+    btn.innerText = "✅ Updated";
+    btn.style.background = "#43a047";
+    btn.style.color = "#fff";
+  }
+
+  else {
+    btn.innerText = "✅ Confirm";
+    btn.disabled = false;
+    btn.style.background = "";
+    btn.style.color = "";
+  }
 }/* ============================================================
    🔥 OFFLINE SAVE (MOVE FORM)
 ============================================================ */
@@ -5991,9 +6018,8 @@ style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; bac
 
     </select>
 
-    <button onclick="submitMoveForm()">✅ Confirm</button>
-    <button onclick="closeMoveForm()">❌ Cancel</button>
-
+    <button id="moveConfirmBtn" onclick="submitMoveForm()">✅ Confirm</button>
+<button onclick="closeMoveForm()">❌ Cancel</button>
   </div>
 </div>  <!-- 🔥 DUTY MODAL -->
   <div id="duty-modal" style="
