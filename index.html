@@ -1297,6 +1297,12 @@ window.addEventListener('beforeinstallprompt', (e) => {
   if (box) box.style.display = "block";
 });
 
+    
+    
+    window.addEventListener("online", () => {
+  console.log("🌐 Back online → refreshing profile");
+  loadProfile();
+});
 /* ✅ AFTER INSTALL */
 window.addEventListener('appinstalled', () => {
   console.log("✅ Installed");
