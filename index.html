@@ -2002,17 +2002,37 @@ function clearKMLPreview(){
 
   const btn = document.getElementById("clearKMLBtn");
 
-  if (previewKMLLayer) {
+  if (window.previewKMLLayer) {
 
-    map.removeLayer(previewKMLLayer);
-    previewKMLLayer = null;
+    try {
 
-    // 🔥 HIDE BUTTON
-    if (btn) btn.style.display = "none";
+      // ✅ BEST FIX for L.KML (removes fully)
+      if (typeof window.previewKMLLayer.remove === "function") {
+        window.previewKMLLayer.remove();
+      }
 
-    showToast("KML preview removed");
+      // ✅ EXTRA SAFETY (important for KML internal layers)
+      if (typeof window.previewKMLLayer.clearLayers === "function") {
+        window.previewKMLLayer.clearLayers();
+      }
 
-    console.log("🧹 KML removed");
+      // ✅ DOUBLE SAFETY (in case still attached)
+      if (map.hasLayer(window.previewKMLLayer)) {
+        map.removeLayer(window.previewKMLLayer);
+      }
+
+      window.previewKMLLayer = null;
+
+      // 🔥 HIDE BUTTON
+      if (btn) btn.style.display = "none";
+
+      showToast("KML preview removed");
+
+      console.log("🧹 KML removed COMPLETELY");
+
+    } catch (err) {
+      console.error("❌ Error removing KML:", err);
+    }
 
   } else {
 
@@ -2024,8 +2044,7 @@ function clearKMLPreview(){
     console.warn("⚠ previewKMLLayer was null");
   }
 
-}  
-    
+}    
     
    function uploadKML() {
 
