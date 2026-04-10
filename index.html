@@ -3633,9 +3633,22 @@ function submitSightingForm(event){
           map.removeLayer(window.previewKMLLayer);
         }
 
-        window.previewKMLLayer = new L.KML(xml);
-        window.previewKMLLayer.addTo(map);
+       // 🔥 REMOVE OLD LAYER FIRST (IMPORTANT)
+if (previewKMLLayer) {
+  if (typeof previewKMLLayer.remove === "function") {
+    previewKMLLayer.remove();
+  }
+  if (map.hasLayer(previewKMLLayer)) {
+    map.removeLayer(previewKMLLayer);
+  }
+  previewKMLLayer = null;
+}
 
+// 🔥 CREATE NEW LAYER (USE SAME VARIABLE)
+previewKMLLayer = new L.KML(xml);
+
+// 🔥 ADD TO MAP
+previewKMLLayer.addTo(map);
         const clearBtn = document.getElementById("clearKMLBtn");
         if (clearBtn) clearBtn.style.display = "block";
 
