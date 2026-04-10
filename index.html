@@ -2673,7 +2673,7 @@ if (rawDir) {
   });
 
 }
-    window.openMoveForm = function(id){
+   window.openMoveForm = function(id){
 
   console.log("🔥 openMoveForm CALLED with ID:", id);
 
@@ -2684,6 +2684,9 @@ if (rawDir) {
     return;
   }
 
+  // 🔥 RESET BUTTON STATE (CRITICAL FIX)
+  setMoveLoading("reset");
+
   document.getElementById("move-id").value = id;
 
   document.getElementById("move-depredation").value = "";
@@ -2691,8 +2694,7 @@ if (rawDir) {
   document.getElementById("move-driving").value = "";
 
   modal.style.display = "flex";
-};
-    /* 🔥 STATUS UPDATE */
+}; /* 🔥 STATUS UPDATE */
     /* 🔥 STATUS UPDATE */
     function closeMoveForm(){
   document.getElementById("move-form-modal").style.display = "none";
@@ -2770,7 +2772,7 @@ function submitMoveForm() {
 
     alert("📴 Saved offline. Will sync automatically.");
 
-    setMoveLoading("reset"); // 🔥 RESET BUTTON
+    setMoveLoading("reset");
     window.isUpdating = false;
     console.groupEnd();
     return;
@@ -2795,6 +2797,9 @@ function submitMoveForm() {
         if (typeof closeMoveForm === "function") {
           closeMoveForm();
         }
+
+        // 🔥 CRITICAL FIX → RESET BUTTON AFTER SUCCESS
+        setMoveLoading("reset");
 
         Object.keys(window.sightingMarkers || {}).forEach(key => {
 
@@ -2847,7 +2852,7 @@ function submitMoveForm() {
 
     alert("⚠ Network issue → saved offline");
 
-    setMoveLoading("reset"); // 🔥 RESET BUTTON
+    setMoveLoading("reset");
     window.isUpdating = false;
     console.groupEnd();
   });
