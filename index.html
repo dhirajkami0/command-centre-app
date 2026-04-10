@@ -3332,17 +3332,35 @@ console.log("👤 STAFF DEBUG:", {
 }function setSubmitLoading(isLoading){
 
   const btn = document.getElementById("submitBtn");
-
   if(!btn) return;
 
   if(isLoading){
+
     btn.innerText = "⏳ Submitting...";
+
     btn.disabled = true;
-    btn.style.opacity = "0.6";
-  } else {
-    btn.innerText = "📤 SUBMIT";
-    btn.disabled = false;
+
+    // 🔥 MAKE IT PROMINENT
+    btn.style.backgroundColor = "#ff9800";   // bright orange
+    btn.style.color = "#ffffff";             // white text
+    btn.style.fontWeight = "bold";
+    btn.style.border = "none";
+    btn.style.boxShadow = "0 0 10px rgba(0,0,0,0.3)";
     btn.style.opacity = "1";
+    btn.style.cursor = "not-allowed";
+
+  } else {
+
+    btn.innerText = "📤 SUBMIT";
+
+    btn.disabled = false;
+
+    // 🔄 RESET STYLE
+    btn.style.backgroundColor = "#1976d2";  // your original blue
+    btn.style.color = "#ffffff";
+    btn.style.fontWeight = "normal";
+    btn.style.boxShadow = "none";
+    btn.style.cursor = "pointer";
   }
 }
 function submitSightingForm(event){
