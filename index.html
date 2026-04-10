@@ -885,6 +885,7 @@ function applyRoleControl(){
   }
 }  function login(){
 
+  const btn = document.getElementById("loginBtn");
   const phone = document.getElementById("loginPhone").value.trim();
 
   if(phone.length < 10){
@@ -892,25 +893,46 @@ function applyRoleControl(){
     return;
   }
 
+  // 🔥 LOADING STATE
+  if(btn){
+    btn.innerText = "⏳ Logging in...";
+    btn.disabled = true;
+  }
+
   callBackend("GET_PROFILE", { phone })
+
     .then(profile => {
+
+      // 🔄 RESET BUTTON
+      if(btn){
+        btn.innerText = "Login";
+        btn.disabled = false;
+      }
 
       if(profile && !profile.error){
 
         const role = (profile.role || "").toUpperCase();
 
-        // 🔥 ROLE CHECK HERE
+        // 🔥 ROLE CHECK
         if(role !== "ADMIN" && role !== "TEAM LEADER" && role !== "STAFF"){
           alert("❌ Not authorized role");
           return;
         }
 
-        // ✅ STORE AFTER CHECK
+        // ✅ STORE PHONE
         localStorage.setItem("userPhone", phone);
 
+        // 🔥 CLEAN + SAVE PROFILE (CRITICAL FOR OFFLINE)
+        profile.name = cleanName(profile.name);
+        localStorage.setItem("userProfile", JSON.stringify(profile));
+
+        // ✅ SET GLOBAL
         window.userProfile = profile;
 
+        // ✅ CLOSE LOGIN
         document.getElementById("loginModal").style.display = "none";
+
+        console.log("✅ Logged in (ONLINE):", profile);
 
         applyRoleControl();
         startApp();
@@ -919,6 +941,48 @@ function applyRoleControl(){
         alert("❌ Not authorized");
       }
 
+    })
+
+    .catch(err => {
+
+      console.warn("⚠ Login failed (maybe offline), trying offline profile");
+
+      // 🔄 RESET BUTTON
+      if(btn){
+        btn.innerText = "Login";
+        btn.disabled = false;
+      }
+
+      // 🔥 OFFLINE LOGIN FALLBACK
+      const saved = localStorage.getItem("userProfile");
+
+      if(saved){
+
+        const profile = JSON.parse(saved);
+
+        // 🔐 Ensure same user (phone match)
+        const savedPhone = localStorage.getItem("userPhone");
+
+        if(savedPhone === phone){
+
+          window.userProfile = profile;
+
+          document.getElementById("loginModal").style.display = "none";
+
+          console.log("📴 Logged in (OFFLINE):", profile);
+
+          applyRoleControl();
+          startApp();
+
+        } else {
+
+          alert("❌ Offline login only allowed for last logged-in user");
+        }
+
+      } else {
+
+        alert("❌ No internet & no saved user. First login must be online.");
+      }
     });
 }
 function showLogin(){
@@ -6160,11 +6224,10 @@ window.openDutyForm = openDutyForm;
       placeholder="Phone Number"
       style="width:100%; padding:8px; margin:10px 0;">
 
-    <button onclick="login()"
-      style="width:100%; padding:10px; background:#1976d2; color:white; border:none; border-radius:6px;">
-      Login
-    </button>
-
+   <button id="loginBtn" onclick="login()"
+  style="width:100%; padding:10px; background:#1976d2; color:white; border:none; border-radius:6px;">
+  Login
+</button>
   </div>
 </div><div id="end-duty-modal" style="display:none; position:fixed; inset:0; width:100%; height:100%; background:rgba(0,0,0,0.9); z-index:9999999; padding:10px; align-items:center; justify-content:center;">
   <div style="background:#f4f4f4; border-radius:15px; padding:20px; max-width:400px; width:100%; border-top:8px solid #d32f2f;">
