@@ -3329,16 +3329,29 @@ console.log("👤 STAFF DEBUG:", {
     console.error("💥 loadVillages crash:", err);
     console.groupEnd();
   }
+}function setSubmitLoading(isLoading){
+
+  const btn = document.getElementById("submitBtn");
+
+  if(!btn) return;
+
+  if(isLoading){
+    btn.innerText = "⏳ Submitting...";
+    btn.disabled = true;
+    btn.style.opacity = "0.6";
+  } else {
+    btn.innerText = "📤 SUBMIT";
+    btn.disabled = false;
+    btn.style.opacity = "1";
+  }
 }
 function submitSightingForm(event){
 
   if(event) event.preventDefault();
 
-  try {
+  setSubmitLoading(true); // ✅ START LOADING
 
-    /* ============================================================
-       🔥 FIX 1: MULTI-USER SAFE UNIQUE ID (CORRECTED)
-    ============================================================ */
+  try {
 
     let sightingID;
 
@@ -3366,13 +3379,16 @@ function submitSightingForm(event){
     const now = new Date();
     const time = now.toLocaleTimeString("en-IN");
 
+    /* 🔥 VALIDATION FIX */
     if (!lat || !lon) {
       alert("❌ Location missing");
+      setSubmitLoading(false);
       return;
     }
 
     if (!document.getElementById("f-beat").value || !document.getElementById("f-compt").value) {
       alert("❌ Select Beat & Compartment");
+      setSubmitLoading(false);
       return;
     }
 
@@ -3438,23 +3454,23 @@ function submitSightingForm(event){
 
     function submitToServer(finalPayload){
 
-      /* ============================================================
-         🔥 NEW: ONLINE / OFFLINE HANDLING
-      ============================================================ */
-
       if (!navigator.onLine) {
 
         saveSightingOffline(finalPayload);
 
         alert("📴 Saved offline. Will sync automatically.");
 
+        setSubmitLoading(false);
         return;
       }
 
       callBackend("saveElephantSighting", finalPayload)
+
         .then(function(){
 
           alert("✅ Submitted to Command Centre");
+
+          setSubmitLoading(false);
 
           if (window.isEditingSighting) {
             window.currentSightingId = sightingID;
@@ -3472,18 +3488,21 @@ function submitSightingForm(event){
           if(form) form.reset();
 
         })
+
         .catch(function(err){
 
           console.error("❌ Error:", err);
 
-          // 🔥 SAVE IF FAILED
           saveSightingOffline(finalPayload);
 
           alert("⚠ Network issue → saved offline");
+
+          setSubmitLoading(false);
         });
     }
 
     if(file){
+
       const reader = new FileReader();
 
       reader.onloadend = function(){
@@ -3494,16 +3513,19 @@ function submitSightingForm(event){
       reader.readAsDataURL(file);
 
     } else {
+
       payload.photo = "";
       submitToServer(payload);
     }
 
   } catch (e) {
+
     console.error("❌ Crash:", e);
     alert("❌ Form error: " + e.message);
+
+    setSubmitLoading(false);
   }
-}
-    /* ============================================================
+}    /* ============================================================
    🔥 OFFLINE SAVE
 ============================================================ */
 function saveSightingOffline(data){
@@ -5861,9 +5883,8 @@ style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; bac
 <option value="W">West</option>
 <option value="NW">North-West</option>
 </select>
-
-<button type="button" onclick="submitSightingForm()">
-📤 SUBMIT
+<button type="button" id="submitBtn" onclick="submitSightingForm()">
+  📤 SUBMIT
 </button>
 
 </form>
