@@ -819,7 +819,11 @@ function applyRoleControl(){
   if(role === "ADMIN"){
 
     leaderButtons.forEach(el => el.style.display = "flex");
-    adminButtons.forEach(el => el.style.display = "flex");
+    adminButtons.forEach(el => {
+  if (el.id !== "clearKMLBtn") {
+    el.style.display = "flex";
+  }
+});
     staffButtons.forEach(el => el.style.display = "flex");
 
     if(dutyBtn) dutyBtn.style.display = "flex";
