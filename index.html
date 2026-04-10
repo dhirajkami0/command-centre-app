@@ -760,7 +760,7 @@ function cleanName(name){
     // 🔥 NORMALIZE SPACES
     .replace(/\s+/g," ")
     .trim();
-}    function loadProfile(){
+}function loadProfile(){
 
   const phone = localStorage.getItem("userPhone") || "";
 
@@ -776,17 +776,17 @@ function cleanName(name){
 
       if(profile && !profile.error){
 
-        // 🔥 CLEAN NAME HERE
+        // 🔥 CLEAN NAME
         profile.name = cleanName(profile.name);
 
         window.userProfile = profile;
 
+        // 🔥 SAVE FOR OFFLINE USE (NEW)
+        localStorage.setItem("userProfile", JSON.stringify(profile));
+
         console.log("✅ USER:", profile);
 
         applyRoleControl();
-
-      
-
         startApp();
 
       } else {
@@ -794,15 +794,37 @@ function cleanName(name){
         alert("❌ Not authorized");
 
         localStorage.removeItem("userPhone");
+        localStorage.removeItem("userProfile"); // 🔥 CLEAN CACHE
         showLogin();
-    
-      
       }
 
     })
     .catch(err=>{
-      console.error("❌ Backend error:", err);
-      alert("Server error");
+
+      console.warn("⚠ Backend failed, trying offline profile");
+
+      // 🔥 OFFLINE FALLBACK (NEW)
+      const saved = localStorage.getItem("userProfile");
+
+      if(saved){
+
+        const profile = JSON.parse(saved);
+
+        window.userProfile = profile;
+
+        console.log("📴 USING OFFLINE PROFILE:", profile);
+
+        applyRoleControl();
+        startApp();
+
+      } else {
+
+        console.error("❌ No offline profile available");
+
+        alert("❌ First login requires internet");
+
+        showLogin();
+      }
     });
 }
 function applyRoleControl(){
