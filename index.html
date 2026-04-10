@@ -5639,6 +5639,12 @@ function loadMapDataFirebase() {
     c.appendChild(opt);
   });
 }
+
+    document.getElementById("loginPhone").addEventListener("keypress", function(e){
+  if(e.key === "Enter"){
+    login();
+  }
+});
   </script>
 
   </div><div id="form-modal"
