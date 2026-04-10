@@ -3287,7 +3287,6 @@ function submitSightingForm(event){
 
     let sightingID;
 
-    // 🔥 ONLY reuse ID if explicitly editing
     if (window.isEditingSighting && window.currentSightingId) {
       sightingID = window.currentSightingId;
     } else {
@@ -3322,10 +3321,6 @@ function submitSightingForm(event){
       return;
     }
 
-    /* ============================================================
-       🔥 FIX 2: SAFE LEADER VALUE (CRITICAL) (UNCHANGED)
-    ============================================================ */
-
     const teamInput = document.getElementById("f-team");
 
     let leaderValue = teamInput ? teamInput.value : "";
@@ -3348,17 +3343,11 @@ function submitSightingForm(event){
 
     const payload = {
 
-      /* 🔥 IMPORTANT: SAME ID USED FOR UPDATE */
       sighting_id: sightingID,
-
       parent_id: "",
-
       beat: document.getElementById("f-beat").value,
-
       forest_block: document.getElementById("f-block").value,
-
       compt: document.getElementById("f-compt").value,
-
       time: time,
 
       m: Number(m),
@@ -3394,22 +3383,31 @@ function submitSightingForm(event){
 
     function submitToServer(finalPayload){
 
+      /* ============================================================
+         🔥 NEW: ONLINE / OFFLINE HANDLING
+      ============================================================ */
+
+      if (!navigator.onLine) {
+
+        saveSightingOffline(finalPayload);
+
+        alert("📴 Saved offline. Will sync automatically.");
+
+        return;
+      }
+
       callBackend("saveElephantSighting", finalPayload)
         .then(function(){
 
           alert("✅ Submitted to Command Centre");
 
-          /* ============================================================
-             🔥 FIX 3: STORE ID FOR FUTURE UPDATES (SAFE)
-          ============================================================ */
-
           if (window.isEditingSighting) {
             window.currentSightingId = sightingID;
           } else {
-            window.currentSightingId = null;   // 🔥 CRITICAL RESET
+            window.currentSightingId = null;
           }
 
-          window.isEditingSighting = false;   // 🔥 RESET MODE
+          window.isEditingSighting = false;
 
           if (typeof closeSightingForm === "function") {
             closeSightingForm();
@@ -3420,8 +3418,13 @@ function submitSightingForm(event){
 
         })
         .catch(function(err){
+
           console.error("❌ Error:", err);
-          alert("❌ Submission failed");
+
+          // 🔥 SAVE IF FAILED
+          saveSightingOffline(finalPayload);
+
+          alert("⚠ Network issue → saved offline");
         });
     }
 
@@ -3445,7 +3448,63 @@ function submitSightingForm(event){
     alert("❌ Form error: " + e.message);
   }
 }
+    /* ============================================================
+   🔥 OFFLINE SAVE
+============================================================ */
+function saveSightingOffline(data){
 
+  let records = JSON.parse(localStorage.getItem("offlineSightings") || "[]");
+
+  records.push({
+    ...data,
+    timestamp: new Date().toISOString()
+  });
+
+  localStorage.setItem("offlineSightings", JSON.stringify(records));
+
+  console.log("💾 Saved offline:", data);
+}
+
+
+/* ============================================================
+   🔥 AUTO SYNC
+============================================================ */
+function syncOfflineSightings(){
+
+  let records = JSON.parse(localStorage.getItem("offlineSightings") || "[]");
+
+  if (!records.length) return;
+
+  console.log("🔄 Syncing offline sightings...");
+
+  let remaining = [];
+
+  const promises = records.map(rec => {
+
+    return callBackend("saveElephantSighting", rec)
+      .then(() => {
+        console.log("✅ Synced:", rec.sighting_id);
+      })
+      .catch(() => {
+        remaining.push(rec);
+      });
+
+  });
+
+  Promise.all(promises).then(() => {
+    localStorage.setItem("offlineSightings", JSON.stringify(remaining));
+    console.log("✅ Sync complete");
+  });
+}
+
+
+/* ============================================================
+   🔥 AUTO TRIGGER ON INTERNET
+============================================================ */
+window.addEventListener("online", () => {
+  console.log("🌐 Internet back → syncing...");
+  syncOfflineSightings();
+});
     /* =========================
        🔮 PREDICTION SYSTEM (FINAL)
     ========================= */
