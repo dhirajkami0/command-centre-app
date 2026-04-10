@@ -1277,7 +1277,10 @@ window.addEventListener('appinstalled', () => {
   const box = document.getElementById("installContainer");
   if (box) box.style.display = "none";
 });
-
+document.addEventListener("DOMContentLoaded", function () {
+  const btn = document.getElementById("clearKMLBtn");
+  if (btn) btn.style.display = "none";
+});
 /* 🔥 DOM READY */
 document.addEventListener("DOMContentLoaded", () => {
 
@@ -3608,6 +3611,11 @@ function submitSightingForm(event){
         console.error("❌ BACKEND ERROR:", errorMsg);
         status.innerHTML = "❌ " + errorMsg;
         showToast("⚠️ " + errorMsg, "warning");
+
+        // 🔥 FIX: hide button if backend fails
+        const clearBtn = document.getElementById("clearKMLBtn");
+        if (clearBtn) clearBtn.style.display = "none";
+
         return;
       }
 
@@ -3617,13 +3625,11 @@ function submitSightingForm(event){
 
       showAnalysisResult(data);
 
-      // ================= MAP RENDER =================
       console.group("🗺 Map Render");
       try {
 
         const clearBtn = document.getElementById("clearKMLBtn");
 
-        // 🔥 REMOVE OLD LAYER (NO window usage)
         if (previewKMLLayer) {
           if (typeof previewKMLLayer.remove === "function") {
             previewKMLLayer.remove();
@@ -3634,23 +3640,20 @@ function submitSightingForm(event){
           previewKMLLayer = null;
         }
 
-        // 🔥 CREATE NEW LAYER
         previewKMLLayer = new L.KML(xml);
         previewKMLLayer.addTo(map);
 
-        // 🔥 SHOW BUTTON ONLY IF LAYER REALLY ADDED
-        if (clearBtn && map.hasLayer(previewKMLLayer)) {
+        // 🔥 FIX: show ONLY if really added
+        if (clearBtn && previewKMLLayer && map.hasLayer(previewKMLLayer)) {
           clearBtn.style.display = "block";
         } else if (clearBtn) {
           clearBtn.style.display = "none";
         }
 
-        // 🔥 FIT BOUNDS (FIXED VARIABLE)
         if (previewKMLLayer.getBounds().isValid()) {
           map.fitBounds(previewKMLLayer.getBounds());
         }
 
-        // 🔥 CLICK EVENT (FIXED VARIABLE)
         previewKMLLayer.on("click", function () {
           if (window.lastAnalysis) {
             showAnalysisResult(window.lastAnalysis);
@@ -3670,6 +3673,10 @@ function submitSightingForm(event){
       console.error("❌ FETCH FAILED:", err);
       status.innerHTML = "❌ Network error";
       showToast("❌ Upload failed: Connection Error", "error");
+
+      // 🔥 FIX: hide button on failure
+      const clearBtn = document.getElementById("clearKMLBtn");
+      if (clearBtn) clearBtn.style.display = "none";
     })
     .finally(() => {
       console.groupEnd();
@@ -3678,7 +3685,10 @@ function submitSightingForm(event){
   };
 
   reader.readAsText(file);
-}function updateClearKMLButton(){
+}
+
+
+function updateClearKMLButton(){
 
   const btn = document.getElementById("clearKMLBtn");
   if (!btn) return;
