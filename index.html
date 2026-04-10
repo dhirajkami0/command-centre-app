@@ -986,9 +986,24 @@ function applyRoleControl(){
     });
 }
 function showLogin(){
-  document.getElementById("loginModal").style.display = "flex";
-}
 
+  document.getElementById("loginModal").style.display = "flex";
+
+  // 🔥 ADD THIS PART
+  const input = document.getElementById("loginPhone");
+
+  if(input){
+
+    input.focus(); // optional but good UX
+
+    input.onkeypress = function(e){
+      if(e.key === "Enter"){
+        login();
+      }
+    };
+
+  }
+}
 function logout(){
   localStorage.removeItem("userPhone");
   location.reload();
@@ -5739,11 +5754,7 @@ function loadMapDataFirebase() {
   });
 }
 
-    document.getElementById("loginPhone").addEventListener("keypress", function(e){
-  if(e.key === "Enter"){
-    login();
-  }
-});
+   
   </script>
 
   </div><div id="form-modal"
