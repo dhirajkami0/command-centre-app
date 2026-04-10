@@ -3656,95 +3656,117 @@ function submitSightingForm(event){
     return;
   }
 
-  // 🔥 HELPER: Safely convert any value to a Number
   const toNum = (val) => {
     const n = parseFloat(val);
     return isNaN(n) ? 0 : n;
   };
 
+  // ==============================
+  // 📊 BASIC VALUES
+  // ==============================
   const area = toNum(data.Total_ha);
-  const canopy = data.canopy_pct ?? 0;
-  const height = data.height_m ?? 0;
-  const density = data.density ?? "N/A";
-  const health = data.health ?? 0;
-  const condition = data.condition ?? "Unknown";
+  const canopy = toNum(data.canopy_pct);
+  const height = toNum(data.height_m);
+  const density = data.density || "N/A";
+  const condition = data.condition || "Unknown";
 
-  const dist = data.distribution || {};
+  // ==============================
+  // 🌿 DISTRIBUTION (🔥 FIXED)
+  // ==============================
+  const forest = toNum(data.Forest ?? data.distribution?.Forest);
+  const degraded = toNum(data.Degraded ?? data.distribution?.Degraded);
+  const grass = toNum(data.Grass ?? data.distribution?.Grass);
+  const crop = toNum(data.Crop ?? data.distribution?.Crop);
+  const bush = toNum(data.Bush ?? data.distribution?.Bush);
+  const built = toNum(data.Built ?? data.distribution?.Built);
+  const bare = toNum(data.Bare ?? data.distribution?.Bare);
+  const water = toNum(data.Water ?? data.distribution?.Water);
 
-  // Convert all distribution strings to numbers before math
-  const forest = toNum(dist.Forest);
-  const degraded = toNum(dist.Degraded);
-  const grass = toNum(dist.Grass);
-  const crop = toNum(dist.Crop);
-  const bush = toNum(dist.Bush);
-  const built = toNum(dist.Built);
-  const bare = toNum(dist.Bare);
-  const water = toNum(dist.Water);
+  // ==============================
+  // 📈 PERCENTAGES
+  // ==============================
+  const pct = (val) => (area > 0 ? ((val / area) * 100).toFixed(1) : "0.0");
 
-  // Calculate Percentages
-  const forestPct = area > 0 ? ((forest / area) * 100).toFixed(1) : "0.0";
-  const degradedPct = area > 0 ? ((degraded / area) * 100).toFixed(1) : "0.0";
+  const forestPct = pct(forest);
+  const degradedPct = pct(degraded);
+
+  // ==============================
+  // ❤️ HEALTH (🔥 FIXED)
+  // ==============================
+  // Health derived from forest proportion
+  const health = area > 0 ? ((forest / area) * 100) : 0;
 
   console.log("📐 Area:", area);
-  console.log("🌿 Distribution (Parsed):", { forest, degraded, grass });
+  console.log("🌿 Distribution:", { forest, degraded, grass });
 
   // ==============================
-  // 🧾 BUILD FULL HTML
+  // 🎨 COLOR LOGIC
+  // ==============================
+  const getConditionColor = () => {
+    if (condition.includes("Healthy")) return "#2e7d32";
+    if (condition.includes("Partially")) return "#f9a825";
+    return "#d32f2f";
+  };
+
+  // ==============================
+  // 🧾 HTML
   // ==============================
   let html = `
-  <div style="font-family:'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; font-size:13px; line-height:1.6; min-width:250px; color: #333;">
-    <h3 style="margin: 0 0 10px 0; color: #2e7d32; border-bottom: 2px solid #2e7d32; padding-bottom: 5px;">
+  <div style="font-family:'Segoe UI', Tahoma; font-size:13px; line-height:1.6; min-width:260px; color:#333;">
+    
+    <h3 style="margin:0 0 10px 0; color:#2e7d32; border-bottom:2px solid #2e7d32; padding-bottom:5px;">
       🌱 Plantation Analysis
     </h3>
 
-    <div style="background: #f9f9f9; padding: 8px; border-radius: 6px; margin-bottom: 10px; border-left: 4px solid #1976d2;">
+    <div style="background:#f9f9f9; padding:8px; border-radius:6px; margin-bottom:10px; border-left:4px solid #1976d2;">
       <b>📊 Area:</b> ${area.toFixed(2)} ha<br>
-      <b>🌿 Canopy:</b> ${toNum(canopy).toFixed(1)} %<br>
-      <b>📏 Height:</b> ${toNum(height).toFixed(2)} m<br>
+      <b>🌿 Canopy:</b> ${canopy.toFixed(1)} %<br>
+      <b>📏 Height:</b> ${height.toFixed(2)} m<br>
       <b>🌳 Density:</b> ${density}<br>
-      <b>❤️ Health:</b> ${toNum(health).toFixed(1)}<br>
-      <b>📌 Condition:</b> <span style="font-weight:bold; color: ${condition.includes('Healthy') ? '#2e7d32' : '#d32f2f'}">${condition}</span>
+      <b>❤️ Health:</b> ${health.toFixed(1)}<br>
+      <b>📌 Condition:</b> 
+      <span style="font-weight:bold; color:${getConditionColor()}">${condition}</span>
     </div>
 
     <b>🌍 Land Distribution:</b><br>
-    <div style="display: grid; grid-template-columns: 1fr auto; gap: 2px 10px; margin-top: 5px;">
+    <div style="display:grid; grid-template-columns:1fr auto; gap:3px 10px; margin-top:5px;">
+      
       <span>🌳 Forest:</span> <b>${forest.toFixed(2)} ha (${forestPct}%)</b>
       <span>🔴 Degraded:</span> <b>${degraded.toFixed(2)} ha (${degradedPct}%)</b>
+
       <span>🌾 Grass:</span> <span>${grass.toFixed(2)} ha</span>
       <span>🌽 Crop:</span> <span>${crop.toFixed(2)} ha</span>
       <span>🌿 Bush:</span> <span>${bush.toFixed(2)} ha</span>
       <span>🏠 Built:</span> <span>${built.toFixed(2)} ha</span>
       <span>🪨 Bare:</span> <span>${bare.toFixed(2)} ha</span>
       <span>💧 Water:</span> <span>${water.toFixed(2)} ha</span>
+
     </div>
   </div>
   `;
 
   // ==============================
-  // 🔥 APPEND RAW REPORT IF PRESENT
+  // 📡 SYSTEM NOTES
   // ==============================
-  if (data.reportText && data.reportText !== "") {
+  if (data.reportText) {
     html += `
-      <hr style="border: 0; border-top: 1px solid #ccc; margin: 10px 0;">
-      <div style="font-size:11px; background: #eee; padding: 5px; border-radius: 4px; color: #555;">
+      <hr style="border:0; border-top:1px solid #ccc; margin:10px 0;">
+      <div style="font-size:11px; background:#eee; padding:6px; border-radius:4px; color:#555;">
         <b>📡 System Notes:</b><br>${data.reportText}
       </div>
     `;
   }
 
   // ==============================
-  // 📍 SHOW POPUP OR TOAST
+  // 📍 DISPLAY
   // ==============================
   if (window.previewKMLLayer) {
-    // If the KML layer exists, show the popup on its center
     window.previewKMLLayer.bindPopup(html).openPopup();
   } else if (window.showToast) {
-    // If no layer, show as a notification (strip HTML tags first)
     const tempDiv = document.createElement("div");
     tempDiv.innerHTML = html;
     window.showToast(tempDiv.innerText || tempDiv.textContent, "success");
   } else {
-    // Fallback
     console.log("Analysis Result ready but no display target found.");
   }
 }/* ============================================================
