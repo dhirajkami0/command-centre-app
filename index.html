@@ -5187,6 +5187,30 @@ function openDutyForm(){
 
   console.log("🧹 Dynamic lists cleared");
 
+  /* 🔥 CRITICAL FULL RESET FIX (ADDED) */
+  ["d-id","d-date","d-leader"].forEach(id=>{
+    const el = document.getElementById(id);
+    if(el) el.value = "";
+  });
+
+  const beatSel = document.getElementById("d-beat");
+  if (beatSel) beatSel.selectedIndex = 0;
+
+  const dirSel = document.getElementById("d-dir");
+  if (dirSel) dirSel.selectedIndex = 0;
+
+  // reset internal map
+  dutyComptMap = {};
+
+  // force repaint (fix stale checkbox UI issue)
+  if (staffBox) staffBox.style.display = "none";
+  if (comptBox) comptBox.style.display = "none";
+
+  setTimeout(()=>{
+    if (staffBox) staffBox.style.display = "block";
+    if (comptBox) comptBox.style.display = "block";
+  }, 50);
+
   /* HIDE OBS */
   const obsBox = document.getElementById("obs-container");
   if (obsBox) obsBox.style.display = "none";
@@ -5206,7 +5230,6 @@ function openDutyForm(){
   };
 
   /* BEAT */
-  const beatSel = document.getElementById("d-beat");
   beatSel.innerHTML = "";
 
   if (profile.role === "ADMIN") {
@@ -5256,21 +5279,17 @@ function openDutyForm(){
   const startBtn = document.getElementById("startDutyBtn");
 
   if (startBtn) {
-    // 1. HARD RESET BUTTON (Clears any old/stuck event listeners)
     const newBtn = startBtn.cloneNode(true);
     startBtn.parentNode.replaceChild(newBtn, startBtn);
 
-    // 2. ASSIGN ANONYMOUS FUNCTION REFERENCE
-    // This ensures startDuty(e) ONLY runs when the button is actually clicked.
     newBtn.onclick = function(e) {
-      if (!e.isTrusted) return; // Basic security: block script-generated clicks
-      
+      if (!e.isTrusted) return;
+
       e.preventDefault();
       e.stopPropagation();
 
       console.log("🔥 START DUTY CLICKED BY USER");
-      
-      // Call the function explicitly here
+
       if (typeof startDuty === "function") {
           startDuty(e);
       } else {
