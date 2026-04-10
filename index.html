@@ -3480,13 +3480,11 @@ function submitSightingForm(event){
     showAnalysisResult(res.analysis);
   }
 }function submitKML() {
-
   console.group("📤 submitKML START");
 
   const beat = document.getElementById("kmlBeat").value;
   const fileInput = document.getElementById("kmlFileInput");
   const status = document.getElementById("kmlStatus");
-
   const file = fileInput.files[0];
 
   console.log("📌 Beat:", beat);
@@ -3506,12 +3504,11 @@ function submitSightingForm(event){
     return;
   }
 
-  status.innerHTML = "⏳ Uploading...";
+  status.innerHTML = "⏳ Uploading & Analyzing...";
 
   const reader = new FileReader();
 
   reader.onload = function (e) {
-
     console.group("📖 File Read");
 
     const kmlText = e.target.result;
@@ -3523,190 +3520,129 @@ function submitSightingForm(event){
       xml = parser.parseFromString(kmlText, "text/xml");
 
       if (xml.getElementsByTagName("parsererror").length) {
-        console.error("❌ Invalid KML");
-        showToast("❌ Invalid KML file");
-        status.innerHTML = "❌ Invalid KML";
-        console.groupEnd();
-        console.groupEnd();
-        return;
+        throw new Error("Invalid XML structure in KML");
       }
-
       console.log("✅ KML parsed successfully");
-
     } catch (err) {
       console.error("❌ KML parse error:", err);
-      showToast("❌ Failed to read KML");
+      showToast("❌ Invalid KML file", "error");
       status.innerHTML = "❌ Parse error";
       console.groupEnd();
       console.groupEnd();
       return;
     }
-
     console.groupEnd();
 
     const modeEl = document.getElementById("analysisMode");
     const mode = modeEl ? modeEl.value : "polygon";
-
     console.log("⚙ Mode:", mode);
 
-    console.group("📡 Backend Call");
-
-    const coords = extractCoordsFromKML(kmlText, mode);
-
     // =====================================================
-    // 🔥 FULL GEOMETRY DEBUG (ALL POSSIBLE FAIL CASES)
+    // 🛰️ COORDS EXTRACTION
     // =====================================================
-    console.group("🧪 GEOMETRY DEBUG");
-
-    console.log("Mode:", mode);
-    console.log("Coords:", coords);
-
-    if (!coords) {
-      console.error("❌ coords is NULL/UNDEFINED");
-    }
-
-    if (!Array.isArray(coords)) {
-      console.error("❌ coords is NOT array");
-    }
-
-    if (coords.length === 0) {
-      console.error("❌ coords EMPTY");
-    }
-
-    if (Array.isArray(coords) && Array.isArray(coords[0])) {
-
-      console.log("Ring length:", coords[0].length);
-
-      if (coords[0].length < 4) {
-        console.error("❌ LESS THAN 4 POINTS (INVALID POLYGON)");
-      }
-
-      coords[0].forEach((pt, i) => {
-
-        if (!Array.isArray(pt)) {
-          console.error("❌ NOT ARRAY POINT at", i, pt);
-        }
-
-        if (pt.length !== 2) {
-          console.error("❌ INVALID POINT LENGTH at", i, pt);
-        }
-
-        if (isNaN(pt[0]) || isNaN(pt[1])) {
-          console.error("❌ NaN VALUE at", i, pt);
-        }
-
-      });
-
-      // 🔥 SELF INTERSECTION BASIC CHECK (visual hint)
-      console.log("⚠ If all above OK → likely SELF-INTERSECTION issue (backend)");
-
-    }
-
-    console.groupEnd();
-
-    // =====================================================
-    // 🔥 HARD STOP IF INVALID (FRONTEND)
-    // =====================================================
-    if (!coords || !coords[0] || coords[0].length < 4) {
-      console.error("❌ INVALID POLYGON BEFORE SEND", coords);
-      status.innerHTML = "❌ Invalid polygon (frontend)";
+    let coords;
+    try {
+      coords = extractCoordsFromKML(kmlText, mode);
+    } catch (err) {
+      console.error("❌ extractCoordsFromKML crashed:", err);
+      status.innerHTML = "❌ Coordinate error";
       console.groupEnd();
       return;
     }
 
+    console.group("🧪 GEOMETRY DEBUG");
+    console.log("Mode:", mode);
+    console.log("Coords:", coords);
+
+    if (!coords || !Array.isArray(coords) || coords.length === 0) {
+      console.error("❌ INVALID GEOMETRY");
+      status.innerHTML = "❌ Invalid polygon coordinates";
+      console.groupEnd();
+      console.groupEnd();
+      return;
+    }
+    console.groupEnd();
+
+    console.group("📡 Backend Call");
+
     // =====================================================
-    // 🔥 BACKEND CALL WITH RAW ERROR CAPTURE
+    // 🔥 BACKEND CALL
     // =====================================================
     fetch("https://gee-api-332214398279.asia-south1.run.app/dw", {
       method: "POST",
-      headers: {
-        "Content-Type": "application/json"
-      },
+      headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ coords })
     })
     .then(async (res) => {
-
       console.group("🌐 BACKEND RAW RESPONSE");
-
       console.log("Status:", res.status);
 
       const text = await res.text();
-
       console.log("Raw response text:", text);
 
       let data;
-
       try {
         data = JSON.parse(text);
       } catch (e) {
         console.error("❌ JSON PARSE FAILED");
-        console.groupEnd();
-        throw new Error("Invalid JSON response");
+        throw new Error("Invalid JSON from server");
       }
-
-      console.log("Parsed JSON:", data);
       console.groupEnd();
-
       return data;
     })
     .then(function (data) {
-
-      if (!data) {
-        console.error("❌ Empty response");
-        status.innerHTML = "❌ No response";
-        return;
-      }
-
-      if (data.error) {
-        console.error("❌ BACKEND ERROR:", data.error);
-        status.innerHTML = "❌ " + data.error;
+      // Check for backend internal errors (Total_ha 0 usually means GEE found nothing)
+      if (data.Total_ha === 0 || data.error) {
+        const errorMsg = data.reportText || data.error || "No data found in this area";
+        console.error("❌ BACKEND ERROR:", errorMsg);
+        status.innerHTML = "❌ " + errorMsg;
+        showToast("⚠️ " + errorMsg, "warning");
         return;
       }
 
       console.log("✅ SUCCESS:", data);
-
       status.innerHTML = "✅ Done";
-
       window.lastAnalysis = data;
 
+      // Show results
       showAnalysisResult(data);
 
-      // ================= MAP (UNCHANGED) =================
+      // ================= MAP RENDER =================
       console.group("🗺 Map Render");
-
       try {
-
-        if (previewKMLLayer) {
-          map.removeLayer(previewKMLLayer);
-          previewKMLLayer = null;
+        if (window.previewKMLLayer) {
+          map.removeLayer(window.previewKMLLayer);
         }
 
-        previewKMLLayer = new L.KML(xml);
-        previewKMLLayer.addTo(map);
+        window.previewKMLLayer = new L.KML(xml);
+        window.previewKMLLayer.addTo(map);
 
-        const btn = document.getElementById("clearKMLBtn");
-        if (btn) btn.style.display = "block";
+        const clearBtn = document.getElementById("clearKMLBtn");
+        if (clearBtn) clearBtn.style.display = "block";
 
-        previewKMLLayer.on("click", function () {
+        if (window.previewKMLLayer.getBounds().isValid()) {
+            map.fitBounds(window.previewKMLLayer.getBounds());
+        }
+
+        window.previewKMLLayer.on("click", function () {
           if (window.lastAnalysis) {
             showAnalysisResult(window.lastAnalysis);
           }
         });
-
       } catch (err) {
-        console.error("❌ KML render error:", err);
+        console.error("❌ KML leaflet render error:", err);
       }
-
       console.groupEnd();
-
     })
     .catch(function (err) {
       console.error("❌ FETCH FAILED:", err);
-      status.innerHTML = "❌ Upload failed";
-      showToast("❌ Upload failed");
-      console.groupEnd();
+      status.innerHTML = "❌ Network error";
+      showToast("❌ Upload failed: Connection Error", "error");
+    })
+    .finally(() => {
+      console.groupEnd(); // Close Backend Call group
+      console.groupEnd(); // Close main submitKML group
     });
-
   };
 
   reader.readAsText(file);
