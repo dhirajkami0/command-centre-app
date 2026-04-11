@@ -1047,10 +1047,16 @@ function startApp(){
     
     
     console.log("🔥 NEW BUILD LOADED - VERSION 999");
-    if ("serviceWorker" in navigator) {
-  navigator.serviceWorker.register("sw.js")
-    .then(() => console.log("✅ SW Registered"))
-    .catch(err => console.log("❌ SW Error:", err));
+   if ("serviceWorker" in navigator) {
+  window.addEventListener("load", function () {
+    navigator.serviceWorker.register("./sw.js")
+      .then(reg => {
+        console.log("✅ SW Registered:", reg.scope);
+      })
+      .catch(err => {
+        console.error("❌ SW Registration Failed:", err);
+      });
+  });
 }/* ============================================================
    🔥 GLOBAL MASTER DATA (CRASH-PROOF)
 ============================================================ */
