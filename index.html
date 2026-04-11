@@ -754,7 +754,25 @@ window.addEventListener("unhandledrejection", function (e) {
 
 
   <script>
-    
+    const DEBUG = false;
+
+function safeBackend(action, payload = {}) {
+
+  return callBackend(action, payload)
+
+    .then(res => {
+      if (!res) {
+        if (DEBUG) console.warn(`⚠ ${action}: empty`);
+        return null;
+      }
+      return res;
+    })
+
+    .catch(err => {
+      if (DEBUG) console.warn(`⚠ ${action} failed:`, err.message);
+      return null;
+    });
+}
   
 /* ===============================
    🔧 GLOBAL UTILITIES (BACKEND)
@@ -781,7 +799,7 @@ function cleanName(name){
     .replace(/\s+/g," ")
     .trim();
 }
-    function loadProfile(){
+   function loadProfile(){
 
   const phone = localStorage.getItem("userPhone") || "";
 
@@ -792,61 +810,82 @@ function cleanName(name){
 
   console.log("📤 Sending phone:", phone);
 
-  callBackend("GET_PROFILE", { phone })
+  // 🔥 USE SAFE BACKEND
+  safeBackend("GET_PROFILE", { phone })
+
     .then(profile=>{
 
-      if(profile && !profile.error){
+      /* ============================================================
+         ❌ NO RESPONSE (OFFLINE / ERROR)
+      ============================================================ */
+      if(!profile){
 
-        // 🔥 CLEAN NAME
-        profile.name = cleanName(profile.name);
+        console.warn("⚠ Backend failed, trying offline profile");
 
-        window.userProfile = profile;
+        const saved = localStorage.getItem("userProfile");
 
-        // 🔥 SAVE FOR OFFLINE USE (NEW)
-        localStorage.setItem("userProfile", JSON.stringify(profile));
+        if(saved){
 
-        console.log("✅ USER:", profile);
+          const offlineProfile = JSON.parse(saved);
 
-        applyRoleControl();
-        startApp();
+          window.userProfile = offlineProfile;
 
-      } else {
+          console.log("📴 USING OFFLINE PROFILE:", offlineProfile);
+
+          updateNetworkStatus("offline");
+
+          applyRoleControl();
+          startApp();
+
+        } else {
+
+          console.error("❌ No offline profile available");
+
+          alert("❌ First login requires internet");
+
+          showLogin();
+        }
+
+        return;
+      }
+
+      /* ============================================================
+         ❌ INVALID USER
+      ============================================================ */
+      if(profile.error){
 
         alert("❌ Not authorized");
 
         localStorage.removeItem("userPhone");
-        localStorage.removeItem("userProfile"); // 🔥 CLEAN CACHE
-        showLogin();
-      }
-
-    })
-    .catch(err=>{
-
-      console.warn("⚠ Backend failed, trying offline profile");
-
-      // 🔥 OFFLINE FALLBACK (NEW)
-      const saved = localStorage.getItem("userProfile");
-
-      if(saved){
-
-        const profile = JSON.parse(saved);
-
-        window.userProfile = profile;
-
-        console.log("📴 USING OFFLINE PROFILE:", profile);
-
-        applyRoleControl();
-        startApp();
-
-      } else {
-
-        console.error("❌ No offline profile available");
-
-        alert("❌ First login requires internet");
+        localStorage.removeItem("userProfile");
 
         showLogin();
+        return;
       }
+
+      /* ============================================================
+         ✅ SUCCESS
+      ============================================================ */
+
+      // 🔥 CLEAN NAME
+      profile.name = cleanName(profile.name);
+
+      window.userProfile = profile;
+
+      // 🔥 SAVE FOR OFFLINE USE
+      localStorage.setItem("userProfile", JSON.stringify(profile));
+
+      console.log("✅ USER:", profile);
+
+      updateNetworkStatus("online");
+
+      applyRoleControl();
+      startApp();
+
     });
+
+  // ❌ NO .catch NEEDED (safeBackend handles it)
+
 }
 function applyRoleControl(){
 
@@ -920,7 +959,8 @@ function applyRoleControl(){
     btn.disabled = true;
   }
 
-  callBackend("GET_PROFILE", { phone })
+  // 🔥 USE SAFE BACKEND
+  safeBackend("GET_PROFILE", { phone })
 
     .then(profile => {
 
@@ -930,81 +970,91 @@ function applyRoleControl(){
         btn.disabled = false;
       }
 
-      if(profile && !profile.error){
+      /* ============================================================
+         ❌ NO RESPONSE (OFFLINE / ERROR)
+      ============================================================ */
+      if(!profile){
 
-        const role = (profile.role || "").toUpperCase();
+        console.warn("⚠ Login failed (maybe offline), trying offline profile");
 
-        // 🔥 ROLE CHECK
-        if(role !== "ADMIN" && role !== "TEAM LEADER" && role !== "STAFF"){
-          alert("❌ Not authorized role");
-          return;
-        }
+        // 🔥 OFFLINE LOGIN FALLBACK
+        const saved = localStorage.getItem("userProfile");
 
-        // ✅ STORE PHONE
-        localStorage.setItem("userPhone", phone);
+        if(saved){
 
-        // 🔥 CLEAN + SAVE PROFILE (CRITICAL FOR OFFLINE)
-        profile.name = cleanName(profile.name);
-        localStorage.setItem("userProfile", JSON.stringify(profile));
+          const offlineProfile = JSON.parse(saved);
 
-        // ✅ SET GLOBAL
-        window.userProfile = profile;
+          const savedPhone = localStorage.getItem("userPhone");
 
-        // ✅ CLOSE LOGIN
-        document.getElementById("loginModal").style.display = "none";
+          if(savedPhone === phone){
 
-        console.log("✅ Logged in (ONLINE):", profile);
+            window.userProfile = offlineProfile;
 
-        applyRoleControl();
-        startApp();
+            document.getElementById("loginModal").style.display = "none";
 
-      } else {
-        alert("❌ Not authorized");
-      }
+            console.log("📴 Logged in (OFFLINE):", offlineProfile);
 
-    })
+            updateNetworkStatus("offline");
 
-    .catch(err => {
+            applyRoleControl();
+            startApp();
 
-      console.warn("⚠ Login failed (maybe offline), trying offline profile");
+          } else {
 
-      // 🔄 RESET BUTTON
-      if(btn){
-        btn.innerText = "Login";
-        btn.disabled = false;
-      }
-
-      // 🔥 OFFLINE LOGIN FALLBACK
-      const saved = localStorage.getItem("userProfile");
-
-      if(saved){
-
-        const profile = JSON.parse(saved);
-
-        // 🔐 Ensure same user (phone match)
-        const savedPhone = localStorage.getItem("userPhone");
-
-        if(savedPhone === phone){
-
-          window.userProfile = profile;
-
-          document.getElementById("loginModal").style.display = "none";
-
-          console.log("📴 Logged in (OFFLINE):", profile);
-
-          applyRoleControl();
-          startApp();
+            alert("❌ Offline login only allowed for last logged-in user");
+          }
 
         } else {
 
-          alert("❌ Offline login only allowed for last logged-in user");
+          alert("❌ No internet & no saved user. First login must be online.");
         }
 
-      } else {
-
-        alert("❌ No internet & no saved user. First login must be online.");
+        return;
       }
+
+      /* ============================================================
+         ❌ INVALID USER
+      ============================================================ */
+      if(profile.error){
+        alert("❌ Not authorized");
+        return;
+      }
+
+      const role = (profile.role || "").toUpperCase();
+
+      // 🔥 ROLE CHECK
+      if(role !== "ADMIN" && role !== "TEAM LEADER" && role !== "STAFF"){
+        alert("❌ Not authorized role");
+        return;
+      }
+
+      /* ============================================================
+         ✅ SUCCESS (ONLINE LOGIN)
+      ============================================================ */
+
+      // ✅ STORE PHONE
+      localStorage.setItem("userPhone", phone);
+
+      // 🔥 CLEAN + SAVE PROFILE
+      profile.name = cleanName(profile.name);
+      localStorage.setItem("userProfile", JSON.stringify(profile));
+
+      // ✅ SET GLOBAL
+      window.userProfile = profile;
+
+      // ✅ CLOSE LOGIN
+      document.getElementById("loginModal").style.display = "none";
+
+      console.log("✅ Logged in (ONLINE):", profile);
+
+      updateNetworkStatus("online");
+
+      applyRoleControl();
+      startApp();
+
     });
+
+  // ❌ NO .catch NEEDED (safeBackend handles it)
 }
 function showLogin(){
 
@@ -1120,30 +1170,40 @@ function callBackend(action, payload = {}) {
   })
   .then(res => {
 
-    // ❌ HTTP error → go to catch
+    // ❌ HTTP error → handled below safely
     if (!res.ok) {
-      throw new Error("HTTP " + res.status);
+      console.warn(`⚠ ${action}: HTTP ${res.status}`);
+      return null;
     }
 
     return res.text();
   })
   .then(text => {
 
-    // ❌ empty response → treat as error
+    // 🔥 if previous step returned null
+    if (text === null) return null;
+
+    // 🔥 EMPTY RESPONSE → SAFE RETURN
     if (!text || text.trim() === "") {
-      throw new Error("Empty response");
+      console.warn(`⚠ ${action}: Empty response`);
+      return null;
     }
 
     try {
       return JSON.parse(text);
     } catch (e) {
-      throw new Error("Invalid JSON");
+      console.warn(`⚠ ${action}: Invalid JSON`, text);
+      return null;
     }
 
-  });
+  })
+  .catch(err => {
 
-  // ❌ IMPORTANT: NO .catch HERE
-}    function updateDutyStaff(source = "UNKNOWN"){
+    console.warn(`⚠ ${action} failed:`, err.message);
+
+    return null; // ✅ ALWAYS SAFE RETURN
+  });
+}   function updateDutyStaff(source = "UNKNOWN"){
 
   console.group("👮 updateDutyStaff CALLED");
 
