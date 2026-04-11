@@ -51,36 +51,26 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="Command Centre">
 
-<!-- 🔥 REMOVE NO-CACHE (IMPORTANT FOR OFFLINE) -->
-<!-- ❌ DELETE THESE 3 LINES -->
-<!--
-<meta http-equiv="Cache-Control" content="no-store, no-cache, must-revalidate, max-age=0" />
-<meta http-equiv="Pragma" content="no-cache" />
-<meta http-equiv="Expires" content="0" />
--->
+<!-- ✅ REMOVE NO-CACHE (CRITICAL FOR OFFLINE) -->
 
-<!-- ✅ LOCAL ICONS (OPTIONAL IMPROVEMENT) -->
+<!-- ✅ LOCAL ICONS -->
 <link rel="icon" type="image/png" href="icons/icon-192.png">
 <link rel="apple-touch-icon" sizes="180x180" href="icons/icon-192.png">
-<link rel="shortcut icon" href="icons/icon-192.png">
 
+<!-- ✅ MANIFEST -->
 <link rel="manifest" href="manifest.json">
 
 <!-- ✅ LOCAL CSS -->
 <link rel="stylesheet" href="css/leaflet.css">
 
-<!-- ⚠️ OPTIONAL (if you downloaded fontawesome locally) -->
-<!-- <link rel="stylesheet" href="css/fontawesome.css"> -->
-
-<!-- ❌ REMOVE CDN FONT AWESOME (or keep TEMP if not downloaded) -->
+<!-- ⚠️ TEMP KEEP (icons) → later download locally -->
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css">
 
-<!-- ✅ LOCAL JS (CRITICAL FOR OFFLINE) -->
+<!-- ✅ LOCAL JS (LOAD IN HEAD IS OK FOR YOUR APP) -->
 <script src="js/leaflet.js"></script>
 <script src="js/leaflet-omnivore.min.js"></script>
 <script src="js/shp.js"></script>
 <script src="js/leaflet-kml.js"></script>
-
   <script>
     // ===============================
     window.originalConfirm = window.confirm;
