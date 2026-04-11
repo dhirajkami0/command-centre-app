@@ -3649,44 +3649,49 @@ window.addEventListener("online", () => {
 });
     /* =========================
        🔮 PREDICTION SYSTEM (FINAL)
-    ========================= */
-    function loadPredictions() {
+   function loadPredictions() {
 
-      predictionLayer.clearLayers();
+  predictionLayer.clearLayers();
 
-      callBackend("getPredictions")
-        .then(function (data) {
+  callBackend("getPredictions")
+    .then(function (data) {
 
-          if (!data || data.length === 0) return;
+      // ✅ SAFETY CHECK (VERY IMPORTANT)
+      if (!Array.isArray(data)) {
+        console.error("❌ Predictions not array:", data);
+        return;
+      }
 
-          let groups = {};
+      if (data.length === 0) return;
 
-          /* 🔥 GROUP BY HERD */
-          data.forEach(function (p) {
+      let groups = {};
 
-            if (!p.lat || !p.lon) return;
+      /* 🔥 GROUP BY HERD */
+      data.forEach(function (p) {
 
-            if (!groups[p.id]) groups[p.id] = [];
-            groups[p.id].push([p.lat, p.lon]);
+        if (!p.lat || !p.lon) return;
 
-          });
+        if (!groups[p.id]) groups[p.id] = [];
+        groups[p.id].push([p.lat, p.lon]);
 
-          /* 🔥 DRAW PATHS */
-          Object.keys(groups).forEach(function (id) {
+      });
 
-            const pts = groups[id];
-            if (pts.length < 2) return;
+      /* 🔥 DRAW PATHS */
+      Object.keys(groups).forEach(function (id) {
 
-            L.polyline(pts, {
-              color: "#00c6ff",
-              weight: 5,
-              dashArray: '10,8',
-              opacity: 0.85
-            }).addTo(predictionLayer);
+        const pts = groups[id];
+        if (pts.length < 2) return;
 
-            /* 🔥 START MARKER */
-            const startIcon = L.divIcon({
-              html: `
+        L.polyline(pts, {
+          color: "#00c6ff",
+          weight: 5,
+          dashArray: '10,8',
+          opacity: 0.85
+        }).addTo(predictionLayer);
+
+        /* 🔥 START MARKER */
+        const startIcon = L.divIcon({
+          html: `
         <div style="position:relative">
           <div class="pulse"
             style="width:34px;height:34px;border-radius:50%;
@@ -3703,22 +3708,23 @@ window.addEventListener("online", () => {
 
           </div>
         </div>`,
-              iconSize: [20, 20],
-              iconAnchor: [10, 10]
-            });
-
-            L.marker(pts[0], {
-              icon: startIcon,
-              zIndexOffset: 1700
-            }).addTo(predictionLayer);
-
-          });
-
+          iconSize: [20, 20],
+          iconAnchor: [10, 10]
         });
 
-    } 
-    
-    function openKMLForm() {
+        L.marker(pts[0], {
+          icon: startIcon,
+          zIndexOffset: 1700
+        }).addTo(predictionLayer);
+
+      });
+
+    })
+    .catch(function(err){
+      console.error("❌ Prediction load error:", err);
+    });
+
+} function openKMLForm() {
       document.getElementById("kmlFormPopup").style.display = "flex";
     }
 
