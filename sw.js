@@ -1,18 +1,26 @@
 /* =========================================
-   🔥 GREENGUARD SERVICE WORKER (FINAL)
+   🔥 GREENGUARD SERVICE WORKER (FINAL PRO)
 ========================================= */
 
-const CACHE_NAME = "greenguard-v9"; // 🔥 CHANGE VERSION ON EVERY UPDATE
+const CACHE_NAME = "greenguard-v10"; // 🔥 UPDATE VERSION
 
-/* 📦 CORE FILES (APP SHELL) */
+/* 📦 CORE + LIBRARIES (OFFLINE READY) */
 const urlsToCache = [
   "./",
   "./index.html",
   "./manifest.json",
 
-  // 🔥 ICONS (VERY IMPORTANT FOR PWA)
+  // 🔥 ICONS
   "./icons/icon-192.png",
-  "./icons/icon-512.png"
+  "./icons/icon-512.png",
+
+  /* 🔥 CRITICAL CDN FILES (ADDED) */
+  "https://unpkg.com/leaflet@1.9.4/dist/leaflet.js",
+  "https://unpkg.com/leaflet@1.9.4/dist/leaflet.css",
+  "https://unpkg.com/leaflet-omnivore@0.3.4/leaflet-omnivore.min.js",
+  "https://unpkg.com/shpjs@latest/dist/shp.js",
+  "https://unpkg.com/leaflet-kml@1.0.1/L.KML.js",
+  "https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css"
 ];
 
 /* =========================================
@@ -27,8 +35,12 @@ self.addEventListener("install", event => {
   event.waitUntil(
     caches.open(CACHE_NAME)
       .then(cache => {
-        console.log("📦 Caching core files");
-        return cache.addAll(urlsToCache);
+        console.log("📦 Caching core + libs");
+
+        return cache.addAll(urlsToCache)
+          .catch(err => {
+            console.warn("⚠ Some files failed to cache:", err);
+          });
       })
   );
 
@@ -54,13 +66,12 @@ self.addEventListener("activate", event => {
     })
   );
 
-  // 🔥 TAKE CONTROL IMMEDIATELY
   return self.clients.claim();
 
 });
 
 /* =========================================
-   🌐 FETCH HANDLER (NETWORK FIRST)
+   🌐 FETCH (NETWORK FIRST → CACHE FALLBACK)
 ========================================= */
 self.addEventListener("fetch", event => {
 
@@ -80,14 +91,10 @@ self.addEventListener("fetch", event => {
     fetch(req)
       .then(res => {
 
-        // ❌ INVALID RESPONSE
-        if (!res || res.status !== 200) {
-          return res;
-        }
+        if (!res || res.status !== 200) return res;
 
         const resClone = res.clone();
 
-        // 💾 CACHE NEW RESPONSE
         caches.open(CACHE_NAME).then(cache => {
           cache.put(req, resClone);
         });
@@ -97,13 +104,19 @@ self.addEventListener("fetch", event => {
       })
       .catch(() => {
 
-        // 📦 CACHE FALLBACK
         return caches.match(req).then(cached => {
 
           if (cached) return cached;
 
-          // 🔥 PWA FALLBACK
-          return caches.match("./index.html");
+          /* 🔥 SMART FALLBACKS */
+          if (req.destination === "document") {
+            return caches.match("./index.html");
+          }
+
+          return new Response("Offline", {
+            status: 503,
+            statusText: "Offline"
+          });
 
         });
 
