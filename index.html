@@ -4312,98 +4312,7 @@ function refreshAll(){
     /* ============================================================
    🔥 MAIN APP LOAD (UPDATED - PHONE BASED)
 ============================================================ */
-window.addEventListener("load", function () {
-
-  console.log("🚀 App Started - Command Centre Initializing");
-
-  /* 1. INITIALIZE UI IMMEDIATELY */
-  try {
-    initResponsiveUI();
-  } catch (e) {
-    console.warn("UI Init delayed: ", e);
-  }
-
-  /* 🔥 2. GET PHONE FROM LOCAL STORAGE */
-  const phone = localStorage.getItem("userPhone") || "";
-
-  if (!phone) {
-    console.warn("⚠ No phone found → showing login");
-    showLogin();   // ✅ your existing login popup
-    return;
-  }
-
-  console.log("📤 Sending phone:", phone);
-
-  /* 🔥 3. FETCH PROFILE (NEW SYSTEM) */
-  callBackend("GET_PROFILE", { phone: phone })
-    .then(function (profile) {
-
-      if (!profile || profile.error) {
-        console.error("❌ Invalid user");
-        localStorage.removeItem("userPhone");
-        showLogin();
-        return;
-      }
-
-      console.log("🔐 Logged in as:", profile.name);
-
-      window.userProfile = profile;   // ✅ ONLY SOURCE OF TRUTH
-
-      /* ============================================================
-         🔥 NEW: APPLY ROLE CONTROL (REPLACES OLD BLOCK)
-      ============================================================ */
-      if (typeof applyRoleControl === "function") {
-        applyRoleControl();
-      }
-
-      /* 3. INITIALIZE DUTY & KML */
-      initDutyControl();   // ✅ now uses userProfile
-      loadRangeKML();
-      loadCompartmentsFromSheet();
-
-      /* 4. CRITICAL DATA CHAIN */
-      callBackend("updateVillageRisk")
-        .then(function (coneData) {
-
-          window.coneVillages = coneData || {};
-
-          callBackend("getVillages")
-            .then(function (villageList) {
-
-              window.villages = (villageList || []).map(v => ({
-                name: v.name || v.Village || "Unknown",
-                lat: parseFloat(v.lat),
-                lon: parseFloat(v.lon)
-              }));
-
-              // 🔥 MASTER REFRESH
-              refreshAll();
-
-              /* 5. UI FINALIZATION */
-              const splash = document.getElementById('splash-screen');
-              if (splash) {
-                splash.style.opacity = "0";
-                setTimeout(() => splash.style.display = "none", 800);
-              }
-
-              /* 6. BACKGROUND LOOPS */
-              // (you can add auto refresh here later if needed)
-
-              /* 🔥 INIT FORM LISTENERS (SAFE) */
-              if (typeof initEventListeners === "function") {
-                initEventListeners();
-              }
-
-            });
-
-        });
-
-    })
-    .catch(function (err) {
-      console.error("❌ Startup error:", err);
-    });
-
-});/* ============================================================
+/* ============================================================
    🛠️ MANDATORY FIXES FOR THE BUTTONS
    Ensure these functions exist exactly as written below:
 ============================================================ */
@@ -5945,6 +5854,15 @@ function generateAndShowReport(){
   }
 
   /* ============================================================
+     🔥 PREVENT DOUBLE INIT (CRITICAL FIX)
+  ============================================================ */
+  if (window.__APP_STARTED__) {
+    console.warn("⚠ App already started → skipping duplicate init");
+    return;
+  }
+  window.__APP_STARTED__ = true;
+
+  /* ============================================================
      2. CHECK OFFLINE PROFILE FIRST (🔥 CRITICAL)
   ============================================================ */
   const savedProfile = localStorage.getItem("userProfile");
@@ -5997,7 +5915,6 @@ function generateAndShowReport(){
       setTimeout(() => {
 
         const phone = localStorage.getItem("userPhone") || "";
-
         if (!phone) return;
 
         console.log("🌐 Fetching fresh profile...");
@@ -6014,12 +5931,10 @@ function generateAndShowReport(){
             console.log("🔐 Online profile refreshed:", profile.name);
 
             window.userProfile = profile;
-
             localStorage.setItem("userProfile", JSON.stringify(profile));
 
             applyRoleControl();
 
-            /* 🔥 FULL DATA CHAIN */
             return callBackend("updateVillageRisk");
 
           })
@@ -6042,12 +5957,10 @@ function generateAndShowReport(){
               lon: parseFloat(v.lon)
             }));
 
-            /* 🔥 MASTER REFRESH */
             if (typeof refreshAll === "function") {
               refreshAll();
             }
 
-            /* 🔥 INIT EVENTS */
             if (typeof initEventListeners === "function") {
               initEventListeners();
             }
@@ -6095,20 +6008,17 @@ function generateAndShowReport(){
       console.log("🔐 Logged in (ONLINE):", profile.name);
 
       window.userProfile = profile;
-
-      localStorage.setItem("userProfile", JSON.stringify(profile)); // 🔥 SAVE
+      localStorage.setItem("userProfile", JSON.stringify(profile));
 
       if (typeof applyRoleControl === "function") {
         applyRoleControl();
       }
 
-      /* 🔥 INIT SYSTEM */
       startApp();
       initDutyControl();
       loadRangeKML();
       loadCompartmentsFromSheet();
 
-      /* 🔥 FULL DATA CHAIN */
       return callBackend("updateVillageRisk");
 
     })
@@ -6148,7 +6058,6 @@ function generateAndShowReport(){
     });
 
 });
-  
   </script>
 
   </div><div id="form-modal"
