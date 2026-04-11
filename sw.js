@@ -2,7 +2,7 @@
    🔥 GREENGUARD SERVICE WORKER (FINAL PRO LOCAL)
 ========================================= */
 
-const CACHE_NAME = "greenguard-v12"; // 🔥 UPDATE VERSION EVERY CHANGE
+const CACHE_NAME = "greenguard-v13"; // 🔥 UPDATE VERSION EVERY CHANGE
 
 /* =========================================
    📦 CORE + LOCAL FILES
@@ -77,7 +77,7 @@ self.addEventListener("activate", event => {
 });
 
 /* =========================================
-   🌐 FETCH (OFFLINE-FIRST + SMART CACHE)
+   🌐 FETCH (OFFLINE-FIRST + NAVIGATION FIX)
 ========================================= */
 self.addEventListener("fetch", event => {
 
@@ -89,16 +89,32 @@ self.addEventListener("fetch", event => {
   /* ❌ Only GET */
   if (req.method !== "GET") return;
 
+  /* 🔥🔥 CRITICAL FIX: HANDLE PAGE RELOAD OFFLINE */
+  if (req.mode === "navigate") {
+    event.respondWith(
+      caches.match("./index.html")
+        .then(res => {
+          if (res) return res;
+          return fetch(req);
+        })
+        .catch(() => caches.match("./index.html"))
+    );
+    return;
+  }
+
+  /* =========================================
+     🔄 NORMAL CACHE FLOW
+  ========================================= */
   event.respondWith(
 
     caches.match(req).then(cached => {
 
-      /* ✅ 1. CACHE FIRST */
+      /* ✅ CACHE FIRST */
       if (cached) {
         return cached;
       }
 
-      /* 🌐 2. NETWORK FALLBACK */
+      /* 🌐 NETWORK */
       return fetch(req)
         .then(res => {
 
@@ -106,7 +122,7 @@ self.addEventListener("fetch", event => {
 
           const resClone = res.clone();
 
-          /* 💾 SAVE DYNAMIC CACHE */
+          /* 💾 SAVE */
           caches.open(CACHE_NAME).then(cache => {
             cache.put(req, resClone);
           });
