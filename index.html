@@ -5880,25 +5880,22 @@ function generateAndShowReport(){
   btn.disabled = true;
   btn.innerText = "⏳ Generating...";
 
-  // 1️⃣ Generate report
   callBackend("GENERATE_REPORT", {})
     .then(function(res){
 
       console.log("📊 Report Generated:", res);
 
-      // ⏳ small delay to ensure sheet updates
-      setTimeout(function(){
+      if(res && res.fileUrl){
 
-        const sheetUrl =
-          "https://docs.google.com/spreadsheets/d/1NXje0O6JdjXFmzH_He9lBM00LGwBolor_zoIcqLYOL0/edit#gid=32015587";
+        // 🔥 OPEN EXCEL FILE (NOT SHEET)
+        window.open(res.fileUrl, "_blank");
 
-        // 🔥 OPEN IN NEW TAB (WORKING METHOD)
-        window.open(sheetUrl, "_blank");
+      } else {
+        alert("❌ File URL not received");
+      }
 
-        btn.disabled = false;
-        btn.innerText = "📊 GENERATE & VIEW REPORT";
-
-      }, 2000);
+      btn.disabled = false;
+      btn.innerText = "📊 GENERATE & VIEW REPORT";
 
     })
     .catch(function(err){
@@ -5911,8 +5908,7 @@ function generateAndShowReport(){
       btn.innerText = "📊 GENERATE & VIEW REPORT";
 
     });
-}   
-  </script>
+}  </script>
 
   </div><div id="form-modal"
 style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.9); z-index:5000; overflow-y:auto; padding:10px;">
