@@ -1,26 +1,27 @@
 /* =========================================
-   🔥 GREENGUARD SERVICE WORKER (FINAL PRO)
+   🔥 GREENGUARD SERVICE WORKER (FINAL PRO LOCAL)
 ========================================= */
 
-const CACHE_NAME = "greenguard-v10"; // 🔥 UPDATE VERSION
+const CACHE_NAME = "greenguard-v11"; // 🔥 UPDATE VERSION EVERY CHANGE
 
-/* 📦 CORE + LIBRARIES (OFFLINE READY) */
+/* =========================================
+   📦 CORE + LOCAL FILES
+========================================= */
 const urlsToCache = [
   "./",
   "./index.html",
   "./manifest.json",
 
-  // 🔥 ICONS
-  "./icons/icon-192.png",
-  "./icons/icon-512.png",
+  /* 🔥 LOCAL LIBRARIES (IMPORTANT) */
+  "./css/leaflet.css",
+  "./js/leaflet.js",
+  "./js/leaflet-omnivore.min.js",
+  "./js/shp.js",
+  "./js/leaflet-kml.js",
 
-  /* 🔥 CRITICAL CDN FILES (ADDED) */
-  "https://unpkg.com/leaflet@1.9.4/dist/leaflet.js",
-  "https://unpkg.com/leaflet@1.9.4/dist/leaflet.css",
-  "https://unpkg.com/leaflet-omnivore@0.3.4/leaflet-omnivore.min.js",
-  "https://unpkg.com/shpjs@latest/dist/shp.js",
-  "https://unpkg.com/leaflet-kml@1.0.1/L.KML.js",
-  "https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css"
+  /* 🔥 ICONS */
+  "./icons/icon-192.png",
+  "./icons/icon-512.png"
 ];
 
 /* =========================================
@@ -35,12 +36,11 @@ self.addEventListener("install", event => {
   event.waitUntil(
     caches.open(CACHE_NAME)
       .then(cache => {
-        console.log("📦 Caching core + libs");
-
-        return cache.addAll(urlsToCache)
-          .catch(err => {
-            console.warn("⚠ Some files failed to cache:", err);
-          });
+        console.log("📦 Caching app shell...");
+        return cache.addAll(urlsToCache);
+      })
+      .catch(err => {
+        console.error("❌ Cache failed:", err);
       })
   );
 
@@ -58,7 +58,7 @@ self.addEventListener("activate", event => {
       return Promise.all(
         keys.map(key => {
           if (key !== CACHE_NAME) {
-            console.log("🧹 Removing old cache:", key);
+            console.log("🧹 Deleting old cache:", key);
             return caches.delete(key);
           }
         })
@@ -67,48 +67,47 @@ self.addEventListener("activate", event => {
   );
 
   return self.clients.claim();
-
 });
 
 /* =========================================
-   🌐 FETCH (NETWORK FIRST → CACHE FALLBACK)
+   🌐 FETCH (OFFLINE-FIRST STRATEGY)
 ========================================= */
 self.addEventListener("fetch", event => {
 
   const req = event.request;
 
-  /* ❌ SKIP NON-GET */
-  if (req.method !== "GET") return;
-
-  /* ❌ SKIP API CALLS */
+  /* ❌ Skip API calls */
   if (req.url.includes("script.google.com")) return;
 
-  /* ❌ SKIP NON-HTTP */
-  if (!req.url.startsWith("http")) return;
+  /* ❌ Only handle GET */
+  if (req.method !== "GET") return;
 
   event.respondWith(
 
-    fetch(req)
-      .then(res => {
+    caches.match(req).then(cached => {
 
-        if (!res || res.status !== 200) return res;
+      /* ✅ Serve from cache first */
+      if (cached) {
+        return cached;
+      }
 
-        const resClone = res.clone();
+      /* 🌐 Else go to network */
+      return fetch(req)
+        .then(res => {
 
-        caches.open(CACHE_NAME).then(cache => {
-          cache.put(req, resClone);
-        });
+          if (!res || res.status !== 200) return res;
 
-        return res;
+          const resClone = res.clone();
 
-      })
-      .catch(() => {
+          caches.open(CACHE_NAME).then(cache => {
+            cache.put(req, resClone);
+          });
 
-        return caches.match(req).then(cached => {
+          return res;
+        })
+        .catch(() => {
 
-          if (cached) return cached;
-
-          /* 🔥 SMART FALLBACKS */
+          /* 🔥 Offline fallback */
           if (req.destination === "document") {
             return caches.match("./index.html");
           }
@@ -120,7 +119,7 @@ self.addEventListener("fetch", event => {
 
         });
 
-      })
+    })
 
   );
 
