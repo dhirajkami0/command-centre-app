@@ -5926,15 +5926,15 @@ function updateNetworkStatus(status) {
 
 
     
-   window.addEventListener("load", function () {
+  window.addEventListener("load", function () {
 
   console.log("🚀 App Started - Command Centre Initializing");
 
-  // 🔥 INITIAL STATUS (FIXED - NO OVERRIDE ISSUE)
+  // 🔥 INITIAL STATUS (SMART)
   if (!navigator.onLine) {
     updateNetworkStatus("offline");
   } else {
-    updateNetworkStatus("online");
+    updateNetworkStatus("connecting"); // 🔥 FIX: not directly online
   }
 
   /* ============================================================
@@ -5969,7 +5969,7 @@ function updateNetworkStatus(status) {
 
       console.log("📴 OFFLINE MODE → APP STARTED");
 
-      // 🔥 FIX: ONLY SET OFFLINE IF ACTUALLY OFFLINE
+      // 🔥 FIX: DON'T OVERRIDE STATUS WRONGLY
       if (!navigator.onLine) {
         updateNetworkStatus("offline");
       }
@@ -5997,7 +5997,7 @@ function updateNetworkStatus(status) {
       ============================================================ */
       if (navigator.onLine) {
         console.log("🌐 Online → syncing pending data...");
-        updateNetworkStatus("online"); // 🔥 FIX
+        updateNetworkStatus("connecting"); // 🔥 FIX
 
         try {
           syncOfflineMoves();
@@ -6032,6 +6032,8 @@ function updateNetworkStatus(status) {
             localStorage.setItem("userProfile", JSON.stringify(profile));
 
             applyRoleControl();
+
+            updateNetworkStatus("online"); // 🔥 FIX
 
             return callBackend("updateVillageRisk");
 
@@ -6073,6 +6075,9 @@ function updateNetworkStatus(status) {
           })
           .catch(err => {
             console.warn("⚠ Background sync failed:", err);
+
+            // 🔥 FIX: IF FAILS → SHOW OFFLINE
+            updateNetworkStatus("offline");
           });
 
       }, 2000);
@@ -6097,7 +6102,7 @@ function updateNetworkStatus(status) {
     return;
   }
 
-  // 🔥 FIX: ONLY SHOW CONNECTING IF ONLINE
+  // 🔥 FIX: SMART STATUS
   if (navigator.onLine) {
     updateNetworkStatus("connecting");
   } else {
@@ -6184,6 +6189,8 @@ function updateNetworkStatus(status) {
 
       console.error("❌ Startup failed:", err);
 
+      updateNetworkStatus("offline"); // 🔥 FIX
+
       alert("❌ Internet required for first login");
       showLogin();
 
@@ -6191,12 +6198,13 @@ function updateNetworkStatus(status) {
 
 });
 
-// ============================
-// 🌐 NETWORK LISTENERS
-// ============================
+/* ============================================================
+   🌐 NETWORK LISTENERS (UNCHANGED BUT FIXED BEHAVIOR)
+============================================================ */
 window.addEventListener("online", () => {
   console.log("🌐 Back Online");
-  updateNetworkStatus("online");
+
+  updateNetworkStatus("connecting"); // 🔥 first connecting
 
   if (typeof syncOfflineData === "function") {
     syncOfflineData();
@@ -6205,9 +6213,10 @@ window.addEventListener("online", () => {
 
 window.addEventListener("offline", () => {
   console.log("📴 Gone Offline");
+
   updateNetworkStatus("offline");
 });
-    
+  
   </script>
 
   </div><div id="form-modal"
