@@ -5886,18 +5886,19 @@ function generateAndShowReport(){
 
       console.log("📊 Report Generated:", res);
 
-      // 2️⃣ Show in UI (after small delay)
+      // ⏳ small delay to ensure sheet updates
       setTimeout(function(){
 
-       const sheetUrl =
-  "https://docs.google.com/spreadsheets/d/1NXje0O6JdjXFmzH_He9lBM00LGwBolor_zoIcqLYOL0/preview#gid=32015587";
+        const sheetUrl =
+          "https://docs.google.com/spreadsheets/d/1NXje0O6JdjXFmzH_He9lBM00LGwBolor_zoIcqLYOL0/edit#gid=32015587";
 
-document.getElementById("reportFrame").src = sheetUrl;
-document.getElementById("reportContainer").style.display = "block";
+        // 🔥 OPEN IN NEW TAB (WORKING METHOD)
+        window.open(sheetUrl, "_blank");
+
         btn.disabled = false;
         btn.innerText = "📊 GENERATE & VIEW REPORT";
 
-      }, 2000); // wait for sheet to update
+      }, 2000);
 
     })
     .catch(function(err){
@@ -5910,8 +5911,7 @@ document.getElementById("reportContainer").style.display = "block";
       btn.innerText = "📊 GENERATE & VIEW REPORT";
 
     });
-}
-   
+}   
   </script>
 
   </div><div id="form-modal"
