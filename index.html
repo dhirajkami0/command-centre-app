@@ -5841,10 +5841,41 @@ function generateAndShowReport(){
 
     });
 }
+
+function updateNetworkStatus(status) {
+
+  const el = document.getElementById("live-status"); // 🔥 your status element
+
+  if (!el) return;
+
+  if (status === "online") {
+    el.innerText = "🟢 LIVE";
+    el.style.color = "#00ff88";
+  }
+
+  else if (status === "offline") {
+    el.innerText = "🔴 OFFLINE";
+    el.style.color = "#ff4444";
+  }
+
+  else if (status === "connecting") {
+    el.innerText = "🟡 CONNECTING...";
+    el.style.color = "#ffaa00";
+  }
+}
+
+
     
     window.addEventListener("load", function () {
 
   console.log("🚀 App Started - Command Centre Initializing");
+
+      // 🔥 ADD HERE (EXACT PLACE)
+  if (navigator.onLine) {
+    updateNetworkStatus("online");
+  } else {
+    updateNetworkStatus("offline");
+  }
 
   /* ============================================================
      1. UI INIT (SAFE)
@@ -5877,6 +5908,8 @@ function generateAndShowReport(){
       window.userProfile = profile;
 
       console.log("📴 OFFLINE MODE → APP STARTED");
+
+      updateNetworkStatus("offline");
 
       if (typeof applyRoleControl === "function") {
         applyRoleControl();
@@ -6001,7 +6034,7 @@ function generateAndShowReport(){
     showLogin();
     return;
   }
-
+updateNetworkStatus("connecting");
   console.log("📤 Sending phone:", phone);
 
   callBackend("GET_PROFILE", { phone: phone })
@@ -6087,6 +6120,24 @@ function generateAndShowReport(){
     });
 
 });
+// ============================
+// 🌐 NETWORK LISTENERS (ADD HERE)
+// ============================
+window.addEventListener("online", () => {
+  console.log("🌐 Back Online");
+  updateNetworkStatus("online");
+
+  if (typeof syncOfflineData === "function") {
+    syncOfflineData();
+  }
+});
+
+window.addEventListener("offline", () => {
+  console.log("📴 Gone Offline");
+  updateNetworkStatus("offline");
+});
+
+    
   </script>
 
   </div><div id="form-modal"
