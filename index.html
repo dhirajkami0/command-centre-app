@@ -3647,17 +3647,18 @@ window.addEventListener("online", () => {
   console.log("🌐 Internet back → syncing...");
   syncOfflineSightings();
 });
-    /* =========================
-    ============================================================ */
-       🔮 PREDICTION SYSTEM (FINAL)
-   function loadPredictions() {
+ /* =========================
+   🔮 PREDICTION SYSTEM (FINAL)
+============================================================ */
+
+function loadPredictions() {
 
   predictionLayer.clearLayers();
 
   callBackend("getPredictions")
     .then(function (data) {
 
-      // ✅ SAFETY CHECK (VERY IMPORTANT)
+      // ✅ SAFETY CHECK
       if (!Array.isArray(data)) {
         console.error("❌ Predictions not array:", data);
         return;
@@ -3690,7 +3691,6 @@ window.addEventListener("online", () => {
           opacity: 0.85
         }).addTo(predictionLayer);
 
-        /* 🔥 START MARKER */
         const startIcon = L.divIcon({
           html: `
         <div style="position:relative">
