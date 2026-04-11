@@ -2,7 +2,7 @@
    🔥 GREENGUARD SERVICE WORKER (FINAL PRO LOCAL)
 ========================================= */
 
-const CACHE_NAME = "greenguard-v11"; // 🔥 UPDATE VERSION EVERY CHANGE
+const CACHE_NAME = "greenguard-v12"; // 🔥 UPDATE VERSION EVERY CHANGE
 
 /* =========================================
    📦 CORE + LOCAL FILES
@@ -12,14 +12,21 @@ const urlsToCache = [
   "./index.html",
   "./manifest.json",
 
-  /* 🔥 LOCAL LIBRARIES (IMPORTANT) */
+  /* 🔥 LOCAL LIBRARIES */
   "./css/leaflet.css",
   "./js/leaflet.js",
   "./js/leaflet-omnivore.min.js",
   "./js/shp.js",
   "./js/leaflet-kml.js",
 
-  /* 🔥 ICONS */
+  /* 🔥 LEAFLET IMAGES (CRITICAL FIX) */
+  "./css/images/layers.png",
+  "./css/images/layers-2x.png",
+  "./css/images/marker-icon.png",
+  "./css/images/marker-icon-2x.png",
+  "./css/images/marker-shadow.png",
+
+  /* 🔥 APP ICONS */
   "./icons/icon-192.png",
   "./icons/icon-512.png"
 ];
@@ -70,7 +77,7 @@ self.addEventListener("activate", event => {
 });
 
 /* =========================================
-   🌐 FETCH (OFFLINE-FIRST STRATEGY)
+   🌐 FETCH (OFFLINE-FIRST + SMART CACHE)
 ========================================= */
 self.addEventListener("fetch", event => {
 
@@ -79,19 +86,19 @@ self.addEventListener("fetch", event => {
   /* ❌ Skip API calls */
   if (req.url.includes("script.google.com")) return;
 
-  /* ❌ Only handle GET */
+  /* ❌ Only GET */
   if (req.method !== "GET") return;
 
   event.respondWith(
 
     caches.match(req).then(cached => {
 
-      /* ✅ Serve from cache first */
+      /* ✅ 1. CACHE FIRST */
       if (cached) {
         return cached;
       }
 
-      /* 🌐 Else go to network */
+      /* 🌐 2. NETWORK FALLBACK */
       return fetch(req)
         .then(res => {
 
@@ -99,6 +106,7 @@ self.addEventListener("fetch", event => {
 
           const resClone = res.clone();
 
+          /* 💾 SAVE DYNAMIC CACHE */
           caches.open(CACHE_NAME).then(cache => {
             cache.put(req, resClone);
           });
@@ -107,7 +115,7 @@ self.addEventListener("fetch", event => {
         })
         .catch(() => {
 
-          /* 🔥 Offline fallback */
+          /* 🔥 OFFLINE FALLBACK */
           if (req.destination === "document") {
             return caches.match("./index.html");
           }
