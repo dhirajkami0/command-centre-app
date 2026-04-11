@@ -2887,7 +2887,15 @@ function submitMoveForm() {
 ============================================================ */
 function saveMoveOffline(data){
 
-  let records = JSON.parse(localStorage.getItem("offlineMoves") || "[]");
+  let records;
+
+try{
+  records = JSON.parse(localStorage.getItem("offlineMoves") || "[]");
+}catch(e){
+  console.error("❌ Corrupt offlineMoves");
+  localStorage.removeItem("offlineMoves");
+  return;
+}
 
   records.push({
     ...data,
@@ -5938,7 +5946,22 @@ function generateAndShowReport(){
       applyRoleControl();
       startApp();   // 🔥 APP LOADS WITHOUT INTERNET
 
-      // 🔄 BACKGROUND SYNC (NON-BLOCKING)
+      /* ============================================================
+         🔄 AUTO SYNC IF ONLINE (NEW - IMPORTANT)
+      ============================================================ */
+      if(navigator.onLine){
+        console.log("🌐 Online at start → syncing...");
+        try{
+          syncOfflineMoves();
+          syncOfflineSightings();
+        }catch(e){
+          console.warn("⚠ Sync functions not ready yet");
+        }
+      }
+
+      /* ============================================================
+         🌐 BACKGROUND PROFILE SYNC (NON-BLOCKING)
+      ============================================================ */
       setTimeout(()=>{
         console.log("🌐 Trying backend sync...");
         loadProfile();
@@ -5957,7 +5980,6 @@ function generateAndShowReport(){
   }
 
 });
-  
   
   </script>
 
