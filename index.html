@@ -5908,8 +5908,8 @@ function updateNetworkStatus(status) {
       window.userProfile = profile;
 
       console.log("📴 OFFLINE MODE → APP STARTED");
-
-      updateNetworkStatus("offline");
+updateNetworkStatus("offline");
+    
 
       if (typeof applyRoleControl === "function") {
         applyRoleControl();
