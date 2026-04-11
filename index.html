@@ -1380,10 +1380,7 @@ window.addEventListener('beforeinstallprompt', (e) => {
 
     
     
-    window.addEventListener("online", () => {
-  console.log("🌐 Back online → refreshing profile");
-  loadProfile();
-});
+   
 /* ✅ AFTER INSTALL */
 window.addEventListener('appinstalled', () => {
   console.log("✅ Installed");
@@ -2947,10 +2944,7 @@ function syncOfflineMoves(){
 /* ============================================================
    🔥 AUTO TRIGGER
 ============================================================ */
-window.addEventListener("online", () => {
-  console.log("🌐 Internet back → syncing moves...");
-  syncOfflineMoves();
-}); /* ============================================================
+ /* ============================================================
        👮 BLOCK 8 → STAFF SYSTEM (FINAL)
     ============================================================ */
 
@@ -3649,12 +3643,11 @@ function syncOfflineSightings(){
    🔥 AUTO TRIGGER ON INTERNET
 ============================================================ */
 window.addEventListener("online", () => {
-
-  console.log("🌐 Internet back → syncing all...");
+  console.log("🌐 Internet back → syncing all");
 
   syncOfflineMoves();
   syncOfflineSightings();
-
+  loadProfile();
 });/* =========================
    PREDICTION SYSTEM (FINAL)
 =========================== */
@@ -5927,57 +5920,221 @@ function generateAndShowReport(){
       btn.innerText = "📊 GENERATE & VIEW REPORT";
 
     });
-} 
-  window.addEventListener("load", function(){
+} window.addEventListener("load", function () {
 
-  console.log("🚀 APP START");
+  console.log("🚀 App Started - Command Centre Initializing");
 
+  /* ============================================================
+     1. UI INIT (SAFE)
+  ============================================================ */
+  try {
+    initResponsiveUI();
+  } catch (e) {
+    console.warn("UI Init delayed:", e);
+  }
+
+  /* ============================================================
+     2. CHECK OFFLINE PROFILE FIRST (🔥 CRITICAL)
+  ============================================================ */
   const savedProfile = localStorage.getItem("userProfile");
 
-  if(savedProfile){
+  if (savedProfile) {
 
-    try{
+    try {
       const profile = JSON.parse(savedProfile);
 
       window.userProfile = profile;
 
       console.log("📴 OFFLINE MODE → APP STARTED");
 
-      applyRoleControl();
-      startApp();   // 🔥 APP LOADS WITHOUT INTERNET
+      if (typeof applyRoleControl === "function") {
+        applyRoleControl();
+      }
+
+      /* 🔥 BASIC APP START (OFFLINE SAFE) */
+      startApp();
+
+      /* 🔥 DUTY + KML INIT (SAFE) */
+      if (typeof initDutyControl === "function") {
+        initDutyControl();
+      }
+
+      if (typeof loadRangeKML === "function") {
+        loadRangeKML();
+      }
+
+      if (typeof loadCompartmentsFromSheet === "function") {
+        loadCompartmentsFromSheet();
+      }
 
       /* ============================================================
-         🔄 AUTO SYNC IF ONLINE (NEW - IMPORTANT)
+         🔄 AUTO SYNC IF ONLINE
       ============================================================ */
-      if(navigator.onLine){
-        console.log("🌐 Online at start → syncing...");
-        try{
+      if (navigator.onLine) {
+        console.log("🌐 Online → syncing pending data...");
+        try {
           syncOfflineMoves();
           syncOfflineSightings();
-        }catch(e){
-          console.warn("⚠ Sync functions not ready yet");
+        } catch (e) {
+          console.warn("⚠ Sync error:", e);
         }
       }
 
       /* ============================================================
-         🌐 BACKGROUND PROFILE SYNC (NON-BLOCKING)
+         🌐 BACKGROUND FULL DATA LOAD (NON-BLOCKING)
       ============================================================ */
-      setTimeout(()=>{
-        console.log("🌐 Trying backend sync...");
-        loadProfile();
+      setTimeout(() => {
+
+        const phone = localStorage.getItem("userPhone") || "";
+
+        if (!phone) return;
+
+        console.log("🌐 Fetching fresh profile...");
+
+        callBackend("GET_PROFILE", { phone: phone })
+
+          .then(function (profile) {
+
+            if (!profile || profile.error) {
+              console.warn("⚠ Backend profile invalid");
+              return;
+            }
+
+            console.log("🔐 Online profile refreshed:", profile.name);
+
+            window.userProfile = profile;
+
+            localStorage.setItem("userProfile", JSON.stringify(profile));
+
+            applyRoleControl();
+
+            /* 🔥 FULL DATA CHAIN */
+            return callBackend("updateVillageRisk");
+
+          })
+          .then(function (coneData) {
+
+            if (!coneData) return;
+
+            window.coneVillages = coneData;
+
+            return callBackend("getVillages");
+
+          })
+          .then(function (villageList) {
+
+            if (!villageList) return;
+
+            window.villages = (villageList || []).map(v => ({
+              name: v.name || v.Village || "Unknown",
+              lat: parseFloat(v.lat),
+              lon: parseFloat(v.lon)
+            }));
+
+            /* 🔥 MASTER REFRESH */
+            if (typeof refreshAll === "function") {
+              refreshAll();
+            }
+
+            /* 🔥 INIT EVENTS */
+            if (typeof initEventListeners === "function") {
+              initEventListeners();
+            }
+
+          })
+          .catch(err => {
+            console.warn("⚠ Background sync failed:", err);
+          });
+
       }, 2000);
 
-    }catch(e){
-      console.error("❌ Corrupt profile");
+      return;
+
+    } catch (e) {
+      console.error("❌ Corrupt offline profile");
       localStorage.removeItem("userProfile");
-      showLogin();
     }
-
-  } else {
-
-    console.warn("⚠ No saved user → login required");
-    showLogin();
   }
+
+  /* ============================================================
+     3. NO OFFLINE PROFILE → ONLINE LOGIN FLOW
+  ============================================================ */
+
+  const phone = localStorage.getItem("userPhone") || "";
+
+  if (!phone) {
+    console.warn("⚠ No phone found → showing login");
+    showLogin();
+    return;
+  }
+
+  console.log("📤 Sending phone:", phone);
+
+  callBackend("GET_PROFILE", { phone: phone })
+
+    .then(function (profile) {
+
+      if (!profile || profile.error) {
+        console.error("❌ Invalid user");
+        localStorage.removeItem("userPhone");
+        showLogin();
+        return;
+      }
+
+      console.log("🔐 Logged in (ONLINE):", profile.name);
+
+      window.userProfile = profile;
+
+      localStorage.setItem("userProfile", JSON.stringify(profile)); // 🔥 SAVE
+
+      if (typeof applyRoleControl === "function") {
+        applyRoleControl();
+      }
+
+      /* 🔥 INIT SYSTEM */
+      startApp();
+      initDutyControl();
+      loadRangeKML();
+      loadCompartmentsFromSheet();
+
+      /* 🔥 FULL DATA CHAIN */
+      return callBackend("updateVillageRisk");
+
+    })
+    .then(function (coneData) {
+
+      if (!coneData) return;
+
+      window.coneVillages = coneData;
+
+      return callBackend("getVillages");
+
+    })
+    .then(function (villageList) {
+
+      if (!villageList) return;
+
+      window.villages = (villageList || []).map(v => ({
+        name: v.name || v.Village || "Unknown",
+        lat: parseFloat(v.lat),
+        lon: parseFloat(v.lon)
+      }));
+
+      refreshAll();
+
+      if (typeof initEventListeners === "function") {
+        initEventListeners();
+      }
+
+    })
+    .catch(function (err) {
+
+      console.error("❌ Startup failed:", err);
+
+      alert("❌ Internet required for first login");
+      showLogin();
+
+    });
 
 });
   
