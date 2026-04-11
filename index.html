@@ -6260,7 +6260,30 @@ window.addEventListener("offline", () => {
   updateNetworkStatus("offline");
 });
   
-  </script>
+ <script>
+window.addEventListener("load", function () {
+
+  setTimeout(() => {
+
+    const splash = document.getElementById("splash-screen");
+
+    if (splash) {
+
+      // Fade out
+      splash.style.opacity = "0";
+      splash.style.transition = "opacity 0.5s ease";
+
+      // Remove after fade
+      setTimeout(() => {
+        splash.remove();
+      }, 500);
+
+    }
+
+  }, 1200); // ⏱ show splash for 1.2 seconds
+
+});
+</script>
 
   </div>
   <div id="form-modal"
