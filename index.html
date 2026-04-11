@@ -5840,7 +5840,9 @@ function generateAndShowReport(){
       btn.innerText = "📊 GENERATE & VIEW REPORT";
 
     });
-} window.addEventListener("load", function () {
+}
+    
+    window.addEventListener("load", function () {
 
   console.log("🚀 App Started - Command Centre Initializing");
 
@@ -5961,6 +5963,14 @@ function generateAndShowReport(){
               refreshAll();
             }
 
+            /* 🔥 MAP FIX (OFFLINE LOAD CASE) */
+            setTimeout(() => {
+              if (window.map) {
+                map.invalidateSize();
+                console.log("🗺 Map resized fix applied (offline flow)");
+              }
+            }, 300);
+
             if (typeof initEventListeners === "function") {
               initEventListeners();
             }
@@ -6042,6 +6052,25 @@ function generateAndShowReport(){
       }));
 
       refreshAll();
+
+      /* 🔥 MAP FIX (MAIN STARTUP FLOW) */
+      const splash = document.getElementById('splash-screen');
+
+      if (splash) {
+        splash.style.opacity = "0";
+
+        setTimeout(() => {
+          splash.style.display = "none";
+
+          setTimeout(() => {
+            if (window.map) {
+              map.invalidateSize();
+              console.log("🗺 Map resized fix applied (startup)");
+            }
+          }, 300);
+
+        }, 800);
+      }
 
       if (typeof initEventListeners === "function") {
         initEventListeners();
