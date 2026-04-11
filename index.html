@@ -4305,10 +4305,24 @@ const MIN_STAFF_VISIBLE_TIME = 5000;    // 5 sec
 window.isPopupInteracting = false;
 window.lastInteractionTime = 0;
 
-function refreshAll(){
+function refreshAll() {
+  const statusEl = document.getElementById('last-update');
 
-  document.getElementById('last-update').innerHTML =
-    "🔄 Syncing Command Centre...";
+  /* 🔥 IMMEDIATE OFFLINE CHECK */
+  if (!navigator.onLine) {
+    console.warn("📡 Refresh blocked: Device is Offline");
+    if (statusEl) {
+      statusEl.innerHTML = "🔴 OFFLINE - CHECK INTERNET";
+      statusEl.style.color = "#ff4444";
+    }
+    return; // Exit function immediately
+  }
+
+  // If online, proceed with syncing UI
+  if (statusEl) {
+    statusEl.innerHTML = "🔄 Syncing Command Centre...";
+    statusEl.style.color = "#ffaa00"; // Yellow for syncing
+  }
 
   const now = Date.now();
 
@@ -4325,9 +4339,7 @@ function refreshAll(){
 
   /* 🔥 SIGHTINGS (KEEP AS-IS) */
   if (now - window.lastSightingsLoad > MIN_SIGHTING_VISIBLE_TIME) {
-
     setTimeout(() => {
-
       if (window.isPopupInteracting || (Date.now() - window.lastInteractionTime < 5000)) {
         console.log("⏸ Sightings skipped (user interacting)");
         return;
@@ -4340,9 +4352,7 @@ function refreshAll(){
 
       loadSightings();
       window.lastSightingsLoad = Date.now();
-
     }, 4000);
-
   } else {
     console.log("⏸ Sightings held (5 sec rule)");
   }
@@ -4355,12 +4365,19 @@ function refreshAll(){
   /* 🔥 TRACKING (GITHUB SAFE) */
   callBackend("fetchTraccar")
     .then(() => console.log("✅ Traccar updated"))
-    .catch(err => console.error(err));
+    .catch(err => {
+        console.error(err);
+        // If the backend call fails due to network, show offline
+        updateNetworkStatus("offline");
+    });
 
   /* 🔥 STATUS (UNCHANGED) */
   setTimeout(function () {
-    document.getElementById('last-update').innerHTML =
-      "🟢 LIVE : " + new Date().toLocaleTimeString();
+    if (navigator.onLine) {
+      updateNetworkStatus("online");
+    } else {
+      updateNetworkStatus("offline");
+    }
   }, 1000);
 }  /* ============================================================
        🚀 BLOCK 11 → APP INIT (FINAL — SINGLE ENTRY POINT)
@@ -5903,29 +5920,26 @@ function generateAndShowReport(){
 }
 
 function updateNetworkStatus(status) {
-
-  const el = document.getElementById("live-status"); // 🔥 your status element
-
+  // Use the correct ID from your panel-header
+  const el = document.getElementById("last-update"); 
   if (!el) return;
 
   if (status === "online") {
-    el.innerText = "🟢 LIVE";
+    window.isOfflineUI = false; // Reset flag
+    el.innerHTML = "🟢 LIVE : " + new Date().toLocaleTimeString();
     el.style.color = "#00ff88";
   }
-
   else if (status === "offline") {
-    el.innerText = "🔴 OFFLINE";
+    window.isOfflineUI = true; // Set flag to block refresh overwrites
+    el.innerHTML = "🔴 OFFLINE - CHECK INTERNET";
     el.style.color = "#ff4444";
+    if (navigator.vibrate) navigator.vibrate([50, 50, 50]); // Triple buzz for alert
   }
-
   else if (status === "connecting") {
-    el.innerText = "🟡 CONNECTING...";
+    el.innerHTML = "🟡 CONNECTING...";
     el.style.color = "#ffaa00";
   }
-}
-
-
-    
+}    
   window.addEventListener("load", function () {
 
   console.log("🚀 App Started - Command Centre Initializing");
