@@ -5926,15 +5926,15 @@ function updateNetworkStatus(status) {
 
 
     
-    window.addEventListener("load", function () {
+   window.addEventListener("load", function () {
 
   console.log("🚀 App Started - Command Centre Initializing");
 
-      // 🔥 ADD HERE (EXACT PLACE)
-  if (navigator.onLine) {
-    updateNetworkStatus("online");
-  } else {
+  // 🔥 INITIAL STATUS (FIXED - NO OVERRIDE ISSUE)
+  if (!navigator.onLine) {
     updateNetworkStatus("offline");
+  } else {
+    updateNetworkStatus("online");
   }
 
   /* ============================================================
@@ -5968,17 +5968,18 @@ function updateNetworkStatus(status) {
       window.userProfile = profile;
 
       console.log("📴 OFFLINE MODE → APP STARTED");
-updateNetworkStatus("offline");
-    
+
+      // 🔥 FIX: ONLY SET OFFLINE IF ACTUALLY OFFLINE
+      if (!navigator.onLine) {
+        updateNetworkStatus("offline");
+      }
 
       if (typeof applyRoleControl === "function") {
         applyRoleControl();
       }
 
-      /* 🔥 BASIC APP START (OFFLINE SAFE) */
       startApp();
 
-      /* 🔥 DUTY + KML INIT (SAFE) */
       if (typeof initDutyControl === "function") {
         initDutyControl();
       }
@@ -5996,6 +5997,8 @@ updateNetworkStatus("offline");
       ============================================================ */
       if (navigator.onLine) {
         console.log("🌐 Online → syncing pending data...");
+        updateNetworkStatus("online"); // 🔥 FIX
+
         try {
           syncOfflineMoves();
           syncOfflineSightings();
@@ -6056,7 +6059,6 @@ updateNetworkStatus("offline");
               refreshAll();
             }
 
-            /* 🔥 MAP FIX (OFFLINE LOAD CASE) */
             setTimeout(() => {
               if (window.map) {
                 map.invalidateSize();
@@ -6094,7 +6096,14 @@ updateNetworkStatus("offline");
     showLogin();
     return;
   }
-updateNetworkStatus("connecting");
+
+  // 🔥 FIX: ONLY SHOW CONNECTING IF ONLINE
+  if (navigator.onLine) {
+    updateNetworkStatus("connecting");
+  } else {
+    updateNetworkStatus("offline");
+  }
+
   console.log("📤 Sending phone:", phone);
 
   callBackend("GET_PROFILE", { phone: phone })
@@ -6112,6 +6121,8 @@ updateNetworkStatus("connecting");
 
       window.userProfile = profile;
       localStorage.setItem("userProfile", JSON.stringify(profile));
+
+      updateNetworkStatus("online"); // 🔥 FIX
 
       if (typeof applyRoleControl === "function") {
         applyRoleControl();
@@ -6146,7 +6157,6 @@ updateNetworkStatus("connecting");
 
       refreshAll();
 
-      /* 🔥 MAP FIX (MAIN STARTUP FLOW) */
       const splash = document.getElementById('splash-screen');
 
       if (splash) {
@@ -6180,8 +6190,9 @@ updateNetworkStatus("connecting");
     });
 
 });
+
 // ============================
-// 🌐 NETWORK LISTENERS (ADD HERE)
+// 🌐 NETWORK LISTENERS
 // ============================
 window.addEventListener("online", () => {
   console.log("🌐 Back Online");
@@ -6196,7 +6207,6 @@ window.addEventListener("offline", () => {
   console.log("📴 Gone Offline");
   updateNetworkStatus("offline");
 });
-
     
   </script>
 
