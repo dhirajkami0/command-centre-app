@@ -660,8 +660,12 @@ window.addEventListener("unhandledrejection", function (e) {
       <i class="fa-solid fa-plus"></i>
       <span>ADD SIGHTING</span>
     </button>
-
-
+<button id="generateAndShowBtn"
+  class="admin-only btn-center"
+  onclick="generateAndShowReport()"
+  style="background:#2e7d32; margin-top:6px; display:none;">
+  📊 GENERATE & VIEW REPORT
+</button>
     <!-- 📂 KML UPLOAD -->
     <div style="margin-top:10px;">
 
@@ -708,6 +712,17 @@ window.addEventListener("unhandledrejection", function (e) {
     🏠 Low Risk Village
   </div>
 </div><div id="map"></div>
+
+  <!-- 📊 REPORT PANEL -->
+<div id="reportContainer"
+  style="display:none; height:500px; margin-top:10px;">
+
+  <iframe id="reportFrame"
+    width="100%" height="100%"
+    style="border:none;">
+  </iframe>
+
+</div>
   <div id="installContainer" style="
   display:none;
   position:fixed;
@@ -5858,7 +5873,44 @@ function loadMapDataFirebase() {
     c.appendChild(opt);
   });
 }
+function generateAndShowReport(){
 
+  const btn = document.getElementById("generateAndShowBtn");
+
+  btn.disabled = true;
+  btn.innerText = "⏳ Generating...";
+
+  // 1️⃣ Generate report
+  callBackend("GENERATE_REPORT", {})
+    .then(function(res){
+
+      console.log("📊 Report Generated:", res);
+
+      // 2️⃣ Show in UI (after small delay)
+      setTimeout(function(){
+
+       const sheetUrl =
+  "https://docs.google.com/spreadsheets/d/1NXje0O6JdjXFmzH_He9lBM00LGwBolor_zoIcqLYOL0/preview#gid=32015587";
+
+document.getElementById("reportFrame").src = sheetUrl;
+document.getElementById("reportContainer").style.display = "block";
+        btn.disabled = false;
+        btn.innerText = "📊 GENERATE & VIEW REPORT";
+
+      }, 2000); // wait for sheet to update
+
+    })
+    .catch(function(err){
+
+      console.error("❌ Error:", err);
+
+      alert("❌ Failed to generate report");
+
+      btn.disabled = false;
+      btn.innerText = "📊 GENERATE & VIEW REPORT";
+
+    });
+}
    
   </script>
 
