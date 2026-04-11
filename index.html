@@ -6200,21 +6200,28 @@ function updateNetworkStatus(status) {
 
       const splash = document.getElementById('splash-screen');
 
-      if (splash) {
-        splash.style.opacity = "0";
+  // 🔥 WAIT PROPERLY (IMPORTANT)
+  setTimeout(() => {
 
+    if (splash) {
+      splash.style.transition = "opacity 0.6s ease";
+      splash.style.opacity = "0";
+
+      setTimeout(() => {
+        splash.style.display = "none";
+
+        // 🔥 FIX MAP SIZE AFTER SPLASH
         setTimeout(() => {
-          splash.style.display = "none";
+          if (window.map) {
+            map.invalidateSize();
+            console.log("🗺 Map resized after splash");
+          }
+        }, 300);
 
-          setTimeout(() => {
-            if (window.map) {
-              map.invalidateSize();
-              console.log("🗺 Map resized fix applied (startup)");
-            }
-          }, 300);
+      }, 600);
+    }
 
-        }, 800);
-      }
+  }, 1500); // 🔥 IMPORTANT DELAY
 
       if (typeof initEventListeners === "function") {
         initEventListeners();
