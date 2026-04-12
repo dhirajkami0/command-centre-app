@@ -633,7 +633,7 @@ window.addEventListener("unhandledrejection", function (e) {
 </head>
 <body>
   <!-- 🔥 SPLASH SCREEN (PUT HERE — FIRST ELEMENT) -->
-  <div id="splash-screen" style="
+ <div id="splash-screen" style="
     position: fixed;
     inset: 0;
     width: 100vw;
@@ -653,11 +653,11 @@ window.addEventListener("unhandledrejection", function (e) {
         z-index: 1;
     "></div>
 
-    <!-- FULL SCREEN IMAGE -->
+    <!-- MAIN IMAGE (NO CROPPING) -->
     <div style="
         position: absolute;
         inset: 0;
-        background: url('icons/splash.png') center center / cover no-repeat;
+        background: url('icons/splash.png') center center / contain no-repeat;
         z-index: 2;
     "></div>
 
