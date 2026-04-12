@@ -677,11 +677,10 @@ window.addEventListener("unhandledrejection", function (e) {
     </div>
 
     <button class="btn-center staff-only" onclick="centerMap()">CENTER RANGE</button>
-
-    <button class="btn-center btn-blue staff-only" onclick="findMe()">
-      MY LOCATION
-   
-    </button><button id="force-refresh-btn" class="admin-only btn-center btn-green" onclick="refreshAll()">
+<button id="locBtn" class="btn-center btn-blue staff-only" onclick="findMe()">
+  MY LOCATION
+</button>
+    <button id="force-refresh-btn" class="admin-only btn-center btn-green" onclick="refreshAll()">
   FORCE REFRESH
 </button>
 
@@ -1842,26 +1841,93 @@ function initDutyControl() {
     /* ============================================================
        📍 LOCATION
     ============================================================ */
+// 📍 Layer for location
+var myLocationLayer = L.layerGroup().addTo(map);
 
-    var myLocationLayer = L.layerGroup().addTo(map);
+// 📌 Track state (ON/OFF)
+var locationActive = false;
 
-    function findMe() {
-      map.locate({ setView: true, maxZoom: 16 });
-    }
 
-    map.on('locationfound', function (e) {
+// 🔘 TOGGLE FUNCTION
+function toggleLocation() {
 
-      myLocationLayer.clearLayers();
+  const btn = document.getElementById("locBtn");
 
-      L.circle(e.latlng, { radius: e.accuracy / 2 }).addTo(myLocationLayer);
+  if (locationActive) {
+    // ❌ TURN OFF
+    console.log("🛑 Location OFF");
 
-      L.marker(e.latlng)
-        .addTo(myLocationLayer)
-        .bindPopup("You are here")
-        .openPopup();
+    myLocationLayer.clearLayers();
+    map.stopLocate();
+
+    btn.innerText = "MY LOCATION";
+    btn.disabled = false;
+
+    locationActive = false;
+
+  } else {
+    // ✅ TURN ON
+    console.log("📍 Finding location...");
+
+    btn.innerText = "Locating...";
+    btn.disabled = true;
+
+    map.locate({
+      setView: true,
+      maxZoom: 18,
+      enableHighAccuracy: true,
+      timeout: 10000,
+      watch: true   // 🔥 LIVE TRACKING
     });
 
-    /* 🔁 CENTER MAP */
+    locationActive = true;
+  }
+}
+
+
+// ✅ LOCATION FOUND
+map.on('locationfound', function (e) {
+
+  const btn = document.getElementById("locBtn");
+
+  console.log("✅ Found:", e.latlng);
+
+  // 🔄 Clear previous marker
+  myLocationLayer.clearLayers();
+
+  // 🔵 Accuracy circle
+  L.circle(e.latlng, {
+    radius: e.accuracy / 2,
+    color: "blue",
+    fillOpacity: 0.2
+  }).addTo(myLocationLayer);
+
+  // 📍 Marker
+  L.marker(e.latlng)
+    .addTo(myLocationLayer)
+    .bindPopup("You are here")
+    .openPopup();
+
+  // 🔄 Reset button
+  btn.innerText = "STOP LOCATION";
+  btn.disabled = false;
+});
+
+
+// ❌ LOCATION ERROR
+map.on('locationerror', function (e) {
+
+  const btn = document.getElementById("locBtn");
+
+  console.error("❌ Location error:", e.message);
+
+  alert("Location not working.\n\nEnable GPS & allow permission.");
+
+  btn.innerText = "MY LOCATION";
+  btn.disabled = false;
+
+  locationActive = false;
+});    /* 🔁 CENTER MAP */
     function centerMap() {
       map.setView([26.561, 89.507], 14);
     }
