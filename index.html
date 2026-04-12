@@ -1847,6 +1847,11 @@ var myLocationLayer = L.layerGroup().addTo(map);
 // 📌 Track state
 var locationActive = false;
 
+// 🧠 BEST LOCATION TRACKING
+var bestLocation = null;
+var bestAccuracy = Infinity;
+var gpsTimer = null;
+
 
 // 🔘 TOGGLE FUNCTION
 function toggleLocation() {
@@ -1861,6 +1866,10 @@ function toggleLocation() {
     myLocationLayer.clearLayers();
     map.stopLocate();
 
+    clearTimeout(gpsTimer);
+    bestLocation = null;
+    bestAccuracy = Infinity;
+
     btn.innerText = "MY LOCATION";
     btn.disabled = false;
 
@@ -1872,7 +1881,7 @@ function toggleLocation() {
     btn.innerText = "Checking GPS...";
     btn.disabled = true;
 
-    // 🔥 STEP 1: CHECK PERMISSION FIRST
+    // 🔥 CHECK PERMISSION
     if (navigator.permissions) {
       navigator.permissions.query({ name: 'geolocation' }).then(function(result) {
 
@@ -1883,13 +1892,13 @@ function toggleLocation() {
           return;
         }
 
-        startGPS(); // ✅ continue
+        startGPS();
 
       }).catch(() => {
-        startGPS(); // fallback
+        startGPS();
       });
     } else {
-      startGPS(); // older devices
+      startGPS();
     }
 
     locationActive = true;
@@ -1897,23 +1906,30 @@ function toggleLocation() {
 }
 
 
-// 🚀 START GPS FUNCTION
+// 🚀 START GPS
 function startGPS() {
 
   const btn = document.getElementById("locBtn");
 
   console.log("📍 Finding location...");
 
-  btn.innerText = "Locating...";
+  btn.innerText = "Locating... (10s)";
+
+  // RESET
+  bestLocation = null;
+  bestAccuracy = Infinity;
 
   map.locate({
     setView: true,
     maxZoom: 19,
-    enableHighAccuracy: true,   // 🔥 HIGH ACCURACY
-    timeout: 20000,             // ⏱ wait up to 20 sec
+    enableHighAccuracy: true,
+    timeout: 20000,
     maximumAge: 0,
     watch: true
   });
+
+  // ⏱ WAIT 10 SECONDS THEN SHOW BEST
+  gpsTimer = setTimeout(showBestLocation, 10000);
 }
 
 
@@ -1930,42 +1946,61 @@ function copyCoords(lat, lng) {
 }
 
 
-// ✅ LOCATION FOUND
+// ✅ COLLECT LOCATION (NO REJECTION)
 map.on('locationfound', function (e) {
 
   const btn = document.getElementById("locBtn");
 
-  const lat = e.latlng.lat.toFixed(6);
-  const lng = e.latlng.lng.toFixed(6);
   const acc = Math.round(e.accuracy);
 
   console.log("📍 Accuracy:", acc);
 
-  // 🔥 FILTER BAD GPS (IMPORTANT)
-  if (acc > 30) {
-    console.log("⚠️ Low accuracy, waiting...");
-    btn.innerText = "Improving accuracy... (" + acc + "m)";
+  // 🔥 STORE BEST ONLY
+  if (acc < bestAccuracy) {
+    bestAccuracy = acc;
+    bestLocation = e;
+  }
+
+  // SHOW STATUS
+  btn.innerText = "Improving... (" + acc + "m)";
+});
+
+
+// 🧠 FINAL DISPLAY AFTER 10 SEC
+function showBestLocation() {
+
+  const btn = document.getElementById("locBtn");
+
+  if (!bestLocation) {
+    alert("❌ Could not get location");
+    btn.innerText = "MY LOCATION";
+    btn.disabled = false;
+    locationActive = false;
     return;
   }
 
-  console.log("✅ Good accuracy:", acc);
+  console.log("✅ Final accuracy:", bestAccuracy);
+
+  const lat = bestLocation.latlng.lat.toFixed(6);
+  const lng = bestLocation.latlng.lng.toFixed(6);
+  const acc = Math.round(bestLocation.accuracy);
 
   // 🔄 Clear previous
   myLocationLayer.clearLayers();
 
   // 🔵 Accuracy circle
-  L.circle(e.latlng, {
-    radius: e.accuracy / 2,
+  L.circle(bestLocation.latlng, {
+    radius: bestLocation.accuracy / 2,
     color: "#007bff",
     fillOpacity: 0.2
   }).addTo(myLocationLayer);
 
-  // 📍 Marker with popup
-  L.marker(e.latlng)
+  // 📍 Marker
+  L.marker(bestLocation.latlng)
     .addTo(myLocationLayer)
     .bindPopup(`
       <div style="font-size:14px;">
-        <b>📍 You are here</b><br><br>
+        <b>📍 Your Location</b><br><br>
 
         <b>Latitude:</b><br>${lat}<br>
         <b>Longitude:</b><br>${lng}<br>
@@ -1986,10 +2021,11 @@ map.on('locationfound', function (e) {
     `)
     .openPopup();
 
-  // 🔄 Button update
+  map.setView(bestLocation.latlng, 18);
+
   btn.innerText = "STOP LOCATION";
   btn.disabled = false;
-});
+}
 
 
 // ❌ LOCATION ERROR
@@ -2015,8 +2051,7 @@ map.on('locationerror', function (e) {
   btn.disabled = false;
 
   locationActive = false;
-});    
-    /* 🔁 CENTER MAP */
+});    /* 🔁 CENTER MAP */
     function centerMap() {
       map.setView([26.561, 89.507], 14);
     }
