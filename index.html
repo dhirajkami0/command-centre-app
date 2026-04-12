@@ -4183,14 +4183,15 @@ function submitKML() {
     console.groupEnd();
 
     // ==============================
-    // 🔥 DEBUG ADD (DO NOT REMOVE)
+    // 🔥 DEBUG
     // ==============================
     console.log("📍 FINAL COORDS SENT:", JSON.stringify(coords));
 
+    // 🔥 FIXED TURF AREA (NO EXTRA [])
     try {
       const areaCheck = turf.area({
         type: "Polygon",
-        coordinates: [coords]
+        coordinates: coords
       }) / 10000;
 
       console.log("📐 FRONTEND AREA (ha):", areaCheck);
@@ -4201,10 +4202,11 @@ function submitKML() {
 
     console.group("📡 Backend Call");
 
+    // 🔥 FIXED PAYLOAD (coords[0])
     fetch("https://dw-api-332214398279.asia-south1.run.app/analyze", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ coords })
+      body: JSON.stringify({ coords: coords[0] })
     })
     .then(async (res) => {
       console.group("🌐 BACKEND RAW RESPONSE");
@@ -4302,7 +4304,6 @@ function submitKML() {
 
   reader.readAsText(file);
 }
-
 function updateClearKMLButton(){
 
   const btn = document.getElementById("clearKMLBtn");
