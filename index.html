@@ -1843,7 +1843,7 @@ function initDutyControl() {
 // 📍 Layer for location
 var myLocationLayer = L.layerGroup().addTo(map);
 
-// 📌 Track state (ON/OFF)
+// 📌 Track state
 var locationActive = false;
 
 
@@ -1853,7 +1853,7 @@ function toggleLocation() {
   const btn = document.getElementById("locBtn");
 
   if (locationActive) {
-    // ❌ TURN OFF
+    // ❌ STOP
     console.log("🛑 Location OFF");
 
     myLocationLayer.clearLayers();
@@ -1865,7 +1865,7 @@ function toggleLocation() {
     locationActive = false;
 
   } else {
-    // ✅ TURN ON
+    // ✅ START
     console.log("📍 Finding location...");
 
     btn.innerText = "Locating...";
@@ -1876,11 +1876,24 @@ function toggleLocation() {
       maxZoom: 18,
       enableHighAccuracy: true,
       timeout: 10000,
-      watch: true   // 🔥 LIVE TRACKING
+      watch: true
     });
 
     locationActive = true;
   }
+}
+
+
+// 📋 COPY FUNCTION
+function copyCoords(lat, lng) {
+  const text = `${lat}, ${lng}`;
+  navigator.clipboard.writeText(text)
+    .then(() => {
+      alert("✅ Coordinates copied:\n" + text);
+    })
+    .catch(() => {
+      alert("❌ Copy failed");
+    });
 }
 
 
@@ -1891,23 +1904,47 @@ map.on('locationfound', function (e) {
 
   console.log("✅ Found:", e.latlng);
 
-  // 🔄 Clear previous marker
+  const lat = e.latlng.lat.toFixed(6);
+  const lng = e.latlng.lng.toFixed(6);
+  const acc = Math.round(e.accuracy);
+
+  // 🔄 Clear previous
   myLocationLayer.clearLayers();
 
   // 🔵 Accuracy circle
   L.circle(e.latlng, {
     radius: e.accuracy / 2,
-    color: "blue",
+    color: "#007bff",
     fillOpacity: 0.2
   }).addTo(myLocationLayer);
 
-  // 📍 Marker
+  // 📍 Marker with full popup
   L.marker(e.latlng)
     .addTo(myLocationLayer)
-    .bindPopup("You are here")
+    .bindPopup(`
+      <div style="font-size:14px;">
+        <b>📍 You are here</b><br><br>
+
+        <b>Latitude:</b><br>${lat}<br>
+        <b>Longitude:</b><br>${lng}<br>
+        <b>Accuracy:</b> ${acc} m<br><br>
+
+        <button onclick="copyCoords('${lat}', '${lng}')" 
+          style="
+            padding:6px 10px;
+            background:#1b5e20;
+            color:#fff;
+            border:none;
+            border-radius:5px;
+            cursor:pointer;
+          ">
+          📋 Copy Coordinates
+        </button>
+      </div>
+    `)
     .openPopup();
 
-  // 🔄 Reset button
+  // 🔄 Button update
   btn.innerText = "STOP LOCATION";
   btn.disabled = false;
 });
@@ -1920,13 +1957,15 @@ map.on('locationerror', function (e) {
 
   console.error("❌ Location error:", e.message);
 
-  alert("Location not working.\n\nEnable GPS & allow permission.");
+  alert("❌ Location not working.\n\n👉 Turn ON GPS\n👉 Allow permission");
 
   btn.innerText = "MY LOCATION";
   btn.disabled = false;
 
   locationActive = false;
-});    /* 🔁 CENTER MAP */
+});
+    
+    /* 🔁 CENTER MAP */
     function centerMap() {
       map.setView([26.561, 89.507], 14);
     }
