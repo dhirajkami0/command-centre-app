@@ -8,14 +8,9 @@
   "theme_color": "#1b5e20",
   "orientation": "portrait",
   "description": "Forest Protection, Patrolling & Monitoring System",
-  "icons": [
+ "icons": [
   {
-    "src": "./icons/icon-192.png",
-    "sizes": "192x192",
-    "type": "image/png"
-  },
-  {
-    "src": "./icons/icon-512.png",
+    "src": "./icons/icon-home.png",
     "sizes": "512x512",
     "type": "image/png"
   }
