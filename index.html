@@ -6206,29 +6206,32 @@ function updateNetworkStatus(status) {
       refreshAll();
 
       const splash = document.getElementById('splash-screen');
+const splash = document.getElementById('splash-screen');
 
-  // 🔥 WAIT PROPERLY (IMPORTANT)
-  setTimeout(() => {
+// ⏳ KEEP SPLASH LONGER
+setTimeout(() => {
 
-    if (splash) {
-      splash.style.transition = "opacity 0.6s ease";
-      splash.style.opacity = "0";
+  if (splash) {
+    splash.style.transition = "opacity 0.8s ease";
+    splash.style.opacity = "0";
 
+    setTimeout(() => {
+      splash.style.display = "none";
+
+      // 🗺 Fix map size after splash
       setTimeout(() => {
-        splash.style.display = "none";
+        if (window.map) {
+          map.invalidateSize();
+          console.log("🗺 Map resized after splash");
+        }
+      }, 300);
 
-        // 🔥 FIX MAP SIZE AFTER SPLASH
-        setTimeout(() => {
-          if (window.map) {
-            map.invalidateSize();
-            console.log("🗺 Map resized after splash");
-          }
-        }, 300);
+    }, 800); // match fade duration
+  }
 
-      }, 600);
-    }
-
-  }, 1500); // 🔥 IMPORTANT DELAY
+}, 2800); // 🔥 increased delay (2.8 sec)
+      
+      // 🔥 IMPORTANT DELAY
 
       if (typeof initEventListeners === "function") {
         initEventListeners();
