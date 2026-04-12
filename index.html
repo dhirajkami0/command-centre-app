@@ -4199,7 +4199,7 @@ function submitKML() {
 
     console.group("📡 Backend Call");
 
-    fetch("https://gee-api-332214398279.asia-south1.run.app/dw", {
+    fetch("https://dw-api-332214398279.asia-south1.run.app/analyze", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ coords })
