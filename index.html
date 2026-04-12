@@ -679,7 +679,8 @@ window.addEventListener("unhandledrejection", function (e) {
     <button class="btn-center staff-only" onclick="centerMap()">CENTER RANGE</button>
 <button id="locBtn" class="btn-center btn-blue staff-only" onclick="toggleLocation()">
   MY LOCATION
-</button>    <button id="force-refresh-btn" class="admin-only btn-center btn-green" onclick="refreshAll()">
+</button> 
+    <button id="force-refresh-btn" class="admin-only btn-center btn-green" onclick="refreshAll()">
   FORCE REFRESH
 </button>
 
@@ -1849,6 +1850,7 @@ var locationActive = false;
 
 // 🔘 TOGGLE FUNCTION
 function toggleLocation() {
+  console.log("BUTTON CLICKED");
 
   const btn = document.getElementById("locBtn");
 
@@ -1866,21 +1868,52 @@ function toggleLocation() {
 
   } else {
     // ✅ START
-    console.log("📍 Finding location...");
 
-    btn.innerText = "Locating...";
+    btn.innerText = "Checking GPS...";
     btn.disabled = true;
 
-    map.locate({
-      setView: true,
-      maxZoom: 18,
-      enableHighAccuracy: true,
-      timeout: 10000,
-      watch: true
-    });
+    // 🔥 STEP 1: CHECK PERMISSION FIRST
+    if (navigator.permissions) {
+      navigator.permissions.query({ name: 'geolocation' }).then(function(result) {
+
+        if (result.state === 'denied') {
+          alert("❌ Location permission denied.\n\n👉 Enable from browser settings.");
+          btn.innerText = "MY LOCATION";
+          btn.disabled = false;
+          return;
+        }
+
+        startGPS(); // ✅ continue
+
+      }).catch(() => {
+        startGPS(); // fallback
+      });
+    } else {
+      startGPS(); // older devices
+    }
 
     locationActive = true;
   }
+}
+
+
+// 🚀 START GPS FUNCTION
+function startGPS() {
+
+  const btn = document.getElementById("locBtn");
+
+  console.log("📍 Finding location...");
+
+  btn.innerText = "Locating...";
+
+  map.locate({
+    setView: true,
+    maxZoom: 19,
+    enableHighAccuracy: true,   // 🔥 HIGH ACCURACY
+    timeout: 20000,             // ⏱ wait up to 20 sec
+    maximumAge: 0,
+    watch: true
+  });
 }
 
 
@@ -1902,11 +1935,20 @@ map.on('locationfound', function (e) {
 
   const btn = document.getElementById("locBtn");
 
-  console.log("✅ Found:", e.latlng);
-
   const lat = e.latlng.lat.toFixed(6);
   const lng = e.latlng.lng.toFixed(6);
   const acc = Math.round(e.accuracy);
+
+  console.log("📍 Accuracy:", acc);
+
+  // 🔥 FILTER BAD GPS (IMPORTANT)
+  if (acc > 30) {
+    console.log("⚠️ Low accuracy, waiting...");
+    btn.innerText = "Improving accuracy... (" + acc + "m)";
+    return;
+  }
+
+  console.log("✅ Good accuracy:", acc);
 
   // 🔄 Clear previous
   myLocationLayer.clearLayers();
@@ -1918,7 +1960,7 @@ map.on('locationfound', function (e) {
     fillOpacity: 0.2
   }).addTo(myLocationLayer);
 
-  // 📍 Marker with full popup
+  // 📍 Marker with popup
   L.marker(e.latlng)
     .addTo(myLocationLayer)
     .bindPopup(`
@@ -1957,14 +1999,23 @@ map.on('locationerror', function (e) {
 
   console.error("❌ Location error:", e.message);
 
-  alert("❌ Location not working.\n\n👉 Turn ON GPS\n👉 Allow permission");
+  let msg = "";
+
+  if (e.message.includes("denied")) {
+    msg = "❌ Permission denied.\n\n👉 Enable location in browser settings.";
+  } else if (e.message.includes("timeout")) {
+    msg = "⏳ GPS timeout.\n\n👉 Move to open area & try again.";
+  } else {
+    msg = "⚠️ GPS not available.\n\n👉 Turn ON location & internet.";
+  }
+
+  alert(msg);
 
   btn.innerText = "MY LOCATION";
   btn.disabled = false;
 
   locationActive = false;
-});
-    
+});    
     /* 🔁 CENTER MAP */
     function centerMap() {
       map.setView([26.561, 89.507], 14);
