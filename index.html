@@ -1916,53 +1916,37 @@ var gpsTimer = null;
 
 // 🔘 TOGGLE FUNCTION
 function toggleLocation() {
-  console.log("BUTTON CLICKED");
 
   const btn = document.getElementById("locBtn");
 
   if (locationActive) {
-    // ❌ STOP
-    console.log("🛑 Location OFF");
+    stopLocation();
+    return;
+  }
 
-    myLocationLayer.clearLayers();
-    map.stopLocate();
+  btn.innerText = "Checking GPS...";
+  btn.disabled = true;
 
-    clearTimeout(gpsTimer);
-    bestLocation = null;
-    bestAccuracy = Infinity;
-
-    btn.innerText = "MY LOCATION";
-    btn.disabled = false;
-
-    locationActive = false;
-
-  } else {
-    // ✅ START
-
-    btn.innerText = "Checking GPS...";
-    btn.disabled = true;
-
-    if (navigator.permissions) {
-      navigator.permissions.query({ name: 'geolocation' }).then(function(result) {
+  if (navigator.permissions) {
+    navigator.permissions.query({ name: 'geolocation' })
+      .then(result => {
 
         if (result.state === 'denied') {
           alert("❌ Location permission denied.\n\n👉 Enable from browser settings.");
-          btn.innerText = "MY LOCATION";
-          btn.disabled = false;
+          resetButton();
           return;
         }
 
         startGPS();
 
-      }).catch(() => {
-        startGPS();
-      });
-    } else {
-      startGPS();
-    }
+      })
+      .catch(startGPS);
 
-    locationActive = true;
+  } else {
+    startGPS();
   }
+
+  locationActive = true;
 }
 
 
@@ -1975,7 +1959,6 @@ function startGPS() {
 
   btn.innerText = "Locating... (10s)";
 
-  // RESET
   bestLocation = null;
   bestAccuracy = Infinity;
 
@@ -1988,11 +1971,39 @@ function startGPS() {
     watch: true
   });
 
-  // ⏱ WAIT 10 SECONDS → THEN STOP + SHOW
-  gpsTimer = setTimeout(function () {
-    map.stopLocate();        // 🔥 STOP GPS (IMPORTANT FIX)
-    showBestLocation();      // 🔥 SHOW RESULT
+  gpsTimer = setTimeout(() => {
+    map.stopLocate();
+    showBestLocation();
   }, 10000);
+}
+
+
+// 🛑 STOP LOCATION CLEANLY
+function stopLocation() {
+
+  const btn = document.getElementById("locBtn");
+
+  console.log("🛑 Location OFF");
+
+  try { map.stopLocate(); } catch(e){}
+  try { clearTimeout(gpsTimer); } catch(e){}
+
+  bestLocation = null;
+  bestAccuracy = Infinity;
+
+  btn.innerText = "MY LOCATION";
+  btn.disabled = false;
+
+  locationActive = false;
+}
+
+
+// 🔄 RESET BUTTON
+function resetButton(){
+  const btn = document.getElementById("locBtn");
+  btn.innerText = "MY LOCATION";
+  btn.disabled = false;
+  locationActive = false;
 }
 
 
@@ -2000,52 +2011,44 @@ function startGPS() {
 function copyCoords(lat, lng) {
   const text = `${lat}, ${lng}`;
   navigator.clipboard.writeText(text)
-    .then(() => {
-      alert("✅ Coordinates copied:\n" + text);
-    })
-    .catch(() => {
-      alert("❌ Copy failed");
-    });
+    .then(() => alert("✅ Coordinates copied:\n" + text))
+    .catch(() => alert("❌ Copy failed"));
 }
 
 
 // ✅ COLLECT LOCATION
 map.on('locationfound', function (e) {
 
-  const btn = document.getElementById("locBtn");
-
   const acc = Math.round(e.accuracy);
 
   console.log("📍 Accuracy:", acc);
 
-  // 🔥 STORE BEST ONLY
   if (acc < bestAccuracy) {
     bestAccuracy = acc;
     bestLocation = e;
   }
 
-  btn.innerText = "Improving... (" + acc + "m)";
+  const btn = document.getElementById("locBtn");
+  if(btn) btn.innerText = "Improving... (" + acc + "m)";
 });
 
 
-// 🧠 FINAL DISPLAY
+// 🧠 FINAL DISPLAY + DUTY LOGIC
 function showBestLocation() {
 
   const btn = document.getElementById("locBtn");
 
   if (!bestLocation) {
     alert("❌ Could not get location");
-    btn.innerText = "MY LOCATION";
-    btn.disabled = false;
-    locationActive = false;
+    resetButton();
     return;
   }
-
-  console.log("✅ Final accuracy:", bestAccuracy);
 
   const lat = bestLocation.latlng.lat.toFixed(6);
   const lng = bestLocation.latlng.lng.toFixed(6);
   const acc = Math.round(bestLocation.accuracy);
+
+  console.log("✅ Final location:", lat, lng, acc);
 
   // 🔄 Clear previous
   myLocationLayer.clearLayers();
@@ -2063,20 +2066,11 @@ function showBestLocation() {
     .bindPopup(`
       <div style="font-size:14px;">
         <b>📍 Your Location</b><br><br>
-
         <b>Latitude:</b><br>${lat}<br>
         <b>Longitude:</b><br>${lng}<br>
         <b>Accuracy:</b> ${acc} m<br><br>
-
         <button onclick="copyCoords('${lat}', '${lng}')" 
-          style="
-            padding:6px 10px;
-            background:#1b5e20;
-            color:#fff;
-            border:none;
-            border-radius:5px;
-            cursor:pointer;
-          ">
+          style="padding:6px 10px;background:#1b5e20;color:#fff;border:none;border-radius:5px;">
           📋 Copy Coordinates
         </button>
       </div>
@@ -2087,20 +2081,46 @@ function showBestLocation() {
 
   btn.innerText = "STOP LOCATION";
   btn.disabled = false;
+
+  // ================= DUTY CHECK =================
+  const isOnDuty =
+    window.userProfile &&
+    window.userProfile.duty === true;
+
+  if (isOnDuty) {
+
+    console.log("📤 Sending GPS (on duty)");
+
+    try {
+
+      callBackend("SAVE_MANUAL_GPS", {
+        name: window.userProfile.name,
+        lat: lat,
+        lon: lng,
+        time: new Date().toISOString()
+      });
+
+    } catch (e) {
+      console.warn("⚠ GPS send failed:", e);
+    }
+
+  } else {
+
+    console.log("👁 View only (not on duty)");
+
+  }
 }
 
 
 // ❌ LOCATION ERROR
 map.on('locationerror', function (e) {
 
-  const btn = document.getElementById("locBtn");
-
   console.error("❌ Location error:", e.message);
 
   let msg = "";
 
   if (e.message.includes("denied")) {
-    msg = "❌ Permission denied.\n\n👉 Enable location in browser settings.";
+    msg = "❌ Permission denied.\n\n👉 Enable from browser settings.";
   } else if (e.message.includes("timeout")) {
     msg = "⏳ GPS timeout.\n\n👉 Move to open area & try again.";
   } else {
@@ -2109,12 +2129,8 @@ map.on('locationerror', function (e) {
 
   alert(msg);
 
-  btn.innerText = "MY LOCATION";
-  btn.disabled = false;
-
-  locationActive = false;
-});
-    
+  resetButton();
+});    
     
     
     /* 🔁 CENTER MAP */
