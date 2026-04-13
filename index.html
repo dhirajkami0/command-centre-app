@@ -35,7 +35,7 @@
   window.confirm = function(msg){ toast(msg); return true; };
   window.prompt = function(msg){ toast(msg); return ""; };
 
-})();
+})();// ================= AUTO GPS FALLBACK =================
 </script>
   
   <title>GreenGuard</title>
@@ -1200,7 +1200,6 @@ function callBackend(action, payload = {}) {
   })
   .then(res => {
 
-    // ❌ HTTP error → handled below safely
     if (!res.ok) {
       console.warn(`⚠ ${action}: HTTP ${res.status}`);
       return null;
@@ -1208,32 +1207,75 @@ function callBackend(action, payload = {}) {
 
     return res.text();
   })
+
   .then(text => {
 
-    // 🔥 if previous step returned null
     if (text === null) return null;
 
-    // 🔥 EMPTY RESPONSE → SAFE RETURN
     if (!text || text.trim() === "") {
       console.warn(`⚠ ${action}: Empty response`);
       return null;
     }
 
+    let data;
+
     try {
-      return JSON.parse(text);
+      data = JSON.parse(text);
     } catch (e) {
       console.warn(`⚠ ${action}: Invalid JSON`, text);
       return null;
     }
 
+    // ============================================================
+    // 🔥 SMART TRACCAR DETECTION (CRITICAL ADD)
+    // ============================================================
+
+    try {
+
+      if (data) {
+
+        // ✅ Case 1: Array data (Map_All, tracking, sightings etc.)
+        if (Array.isArray(data) && data.length > 0) {
+
+          markTraccarAlive();
+          console.log("🟢 Traccar Alive (array data)");
+
+        }
+
+        // ✅ Case 2: Object with tracking-like fields
+        else if (typeof data === "object") {
+
+          if (
+            data.lat || data.latitude ||
+            data.lon || data.longitude ||
+            data.track || data.positions
+          ) {
+            markTraccarAlive();
+            console.log("🟢 Traccar Alive (object data)");
+          }
+
+        }
+
+      }
+
+    } catch (err) {
+      console.warn("⚠ Traccar detection error:", err);
+    }
+
+    return data;
+
   })
+
   .catch(err => {
 
     console.warn(`⚠ ${action} failed:`, err.message);
 
-    return null; // ✅ ALWAYS SAFE RETURN
+    return null;
   });
-}   function updateDutyStaff(source = "UNKNOWN"){
+}
+    
+    
+    function updateDutyStaff(source = "UNKNOWN"){
 
   console.group("👮 updateDutyStaff CALLED");
 
@@ -6490,7 +6532,75 @@ window.addEventListener("load", function () {
             }, 800);
         }, 1800); 
     }
-});  </script>
+}); let autoGpsTimer = null;
+let lastManualSent = 0;
+let lastTraccarUpdate = 0;
+
+// 🔥 CALL THIS WHENEVER MAP LOADS / REFRESHES FROM BACKEND
+function markTraccarAlive(){
+  lastTraccarUpdate = Date.now();
+}
+
+// ================= START AUTO GPS =================
+function startAutoGPS(){
+
+  if(autoGpsTimer) return;
+
+  console.log("🟢 Auto GPS STARTED");
+
+  autoGpsTimer = setInterval(() => {
+
+    navigator.geolocation.getCurrentPosition(pos => {
+
+      const lat = pos.coords.latitude.toFixed(6);
+      const lon = pos.coords.longitude.toFixed(6);
+
+      const now = Date.now();
+
+      // ⏱ prevent spam
+      if(now - lastManualSent < 110000) return;
+
+      lastManualSent = now;
+
+      console.log("📍 Auto GPS SENT");
+
+      callBackend("SAVE_MANUAL_GPS", {
+        name: window.userProfile.name,
+        lat,
+        lon,
+        time: new Date().toISOString()
+      });
+
+    });
+
+  }, 120000); // 2 min
+}
+
+// ================= STOP AUTO GPS =================
+function stopAutoGPS(){
+
+  if(autoGpsTimer){
+    clearInterval(autoGpsTimer);
+    autoGpsTimer = null;
+    console.log("🛑 Auto GPS STOPPED");
+  }
+}
+
+// ================= MONITOR TRACCAR =================
+setInterval(() => {
+
+  const now = Date.now();
+
+  // ❌ Traccar not updating for 3 min
+  if(now - lastTraccarUpdate > 180000){
+    startAutoGPS();
+  } else {
+    stopAutoGPS();
+  }
+
+}, 60000);
+
+  </script>
 
   </div>
   <div id="form-modal"
