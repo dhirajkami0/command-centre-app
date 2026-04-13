@@ -1416,6 +1416,11 @@ function updateDutyCompt(source = "UNKNOWN") {
     // 🔥 REMOVE DUPLICATES
     list = [...new Set(list)];
 
+    // ✅ ADD "Village Area" FOR ALL BEATS
+    if (!list.includes("Village Area")) {
+      list.unshift("Village Area");
+    }
+
     console.log("📊 Final Compartments:", list);
 
     const frag = document.createDocumentFragment();
