@@ -2044,8 +2044,7 @@ map.on('locationfound', function (e) {
 });
 
 
-// 🧠 FINAL DISPLAY + DUTY LOGIC
-function showBestLocation() {
+// 🧠 FINAL DISPLAY + DUTY LOGICfunction showBestLocation() {
 
   const btn = document.getElementById("locBtn");
 
@@ -2094,7 +2093,7 @@ function showBestLocation() {
   btn.innerText = "STOP LOCATION";
   btn.disabled = false;
 
-  // ================= DUTY CHECK (FINAL FIX) =================
+  // ================= DUTY CHECK =================
   console.log("👤 USER PROFILE:", window.userProfile);
   console.log("🧠 isDutyActive:", window.isDutyActive);
 
@@ -2113,9 +2112,21 @@ function showBestLocation() {
         lat: lat,
         lon: lng,
         time: new Date().toISOString()
-      });
+      })
+      .then(res => {
 
-      console.log("✅ GPS sent successfully");
+        console.log("📡 Backend response:", res);
+
+        if (res && res.error) {
+          console.error("❌ Backend error:", res.error);
+        } else {
+          console.log("✅ GPS saved in sheet");
+        }
+
+      })
+      .catch(err => {
+        console.error("❌ Backend call failed:", err);
+      });
 
     } catch (e) {
       console.error("❌ GPS send failed:", e);
