@@ -1227,31 +1227,44 @@ function callBackend(action, payload = {}) {
     }
 
     // ============================================================
-    // 🔥 SMART TRACCAR DETECTION (CRITICAL ADD)
+    // 🔥 SMART TRACCAR DETECTION (FINAL VERSION)
     // ============================================================
 
     try {
 
       if (data) {
 
-        // ✅ Case 1: Array data (Map_All, tracking, sightings etc.)
-        if (Array.isArray(data) && data.length > 0) {
+        // ✅ ONLY detect for tracking-related actions
+        const isTrackingAction =
+          action &&
+          (
+            action.toUpperCase().includes("MAP") ||
+            action.toUpperCase().includes("TRACK") ||
+            action.toUpperCase().includes("PATROL")
+          );
 
-          markTraccarAlive();
-          console.log("🟢 Traccar Alive (array data)");
+        if (isTrackingAction) {
 
-        }
+          // ✅ Case 1: Array data (Map_All, Patrol_Track etc.)
+          if (Array.isArray(data) && data.length > 0) {
 
-        // ✅ Case 2: Object with tracking-like fields
-        else if (typeof data === "object") {
-
-          if (
-            data.lat || data.latitude ||
-            data.lon || data.longitude ||
-            data.track || data.positions
-          ) {
             markTraccarAlive();
-            console.log("🟢 Traccar Alive (object data)");
+            console.log("🟢 Traccar Alive (array data, filtered)");
+
+          }
+
+          // ✅ Case 2: Object with GPS fields
+          else if (typeof data === "object") {
+
+            if (
+              data.lat !== undefined || data.latitude !== undefined ||
+              data.lon !== undefined || data.longitude !== undefined ||
+              data.track !== undefined || data.positions !== undefined
+            ) {
+              markTraccarAlive();
+              console.log("🟢 Traccar Alive (object data, filtered)");
+            }
+
           }
 
         }
@@ -1272,8 +1285,7 @@ function callBackend(action, payload = {}) {
 
     return null;
   });
-}
-    
+}    
     
     function updateDutyStaff(source = "UNKNOWN"){
 
@@ -6532,7 +6544,8 @@ window.addEventListener("load", function () {
             }, 800);
         }, 1800); 
     }
-}); let autoGpsTimer = null;
+}); 
+    let autoGpsTimer = null;
 let lastManualSent = 0;
 let lastTraccarUpdate = 0;
 
