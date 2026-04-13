@@ -1996,6 +1996,9 @@ function stopLocation() {
   try { map.stopLocate(); } catch(e){ console.warn(e); }
   try { clearTimeout(gpsTimer); } catch(e){ console.warn(e); }
 
+  // 🔥 IMPORTANT FIX → REMOVE MARKER + CIRCLE
+  try { myLocationLayer.clearLayers(); } catch(e){ console.warn(e); }
+
   bestLocation = null;
   bestAccuracy = Infinity;
 
@@ -2004,7 +2007,6 @@ function stopLocation() {
 
   locationActive = false;
 }
-
 
 // 🔄 RESET BUTTON
 function resetButton(){
