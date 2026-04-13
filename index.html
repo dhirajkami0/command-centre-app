@@ -1917,6 +1917,8 @@ var gpsTimer = null;
 // 🔘 TOGGLE FUNCTION
 function toggleLocation() {
 
+  console.log("🔘 toggleLocation clicked");
+
   const btn = document.getElementById("locBtn");
 
   if (locationActive) {
@@ -1931,6 +1933,8 @@ function toggleLocation() {
     navigator.permissions.query({ name: 'geolocation' })
       .then(result => {
 
+        console.log("🔐 Permission state:", result.state);
+
         if (result.state === 'denied') {
           alert("❌ Location permission denied.\n\n👉 Enable from browser settings.");
           resetButton();
@@ -1940,7 +1944,10 @@ function toggleLocation() {
         startGPS();
 
       })
-      .catch(startGPS);
+      .catch(err => {
+        console.warn("⚠ Permission check failed:", err);
+        startGPS();
+      });
 
   } else {
     startGPS();
@@ -1972,6 +1979,7 @@ function startGPS() {
   });
 
   gpsTimer = setTimeout(() => {
+    console.log("⏱ Stopping GPS after 10s");
     map.stopLocate();
     showBestLocation();
   }, 10000);
@@ -1985,8 +1993,8 @@ function stopLocation() {
 
   console.log("🛑 Location OFF");
 
-  try { map.stopLocate(); } catch(e){}
-  try { clearTimeout(gpsTimer); } catch(e){}
+  try { map.stopLocate(); } catch(e){ console.warn(e); }
+  try { clearTimeout(gpsTimer); } catch(e){ console.warn(e); }
 
   bestLocation = null;
   bestAccuracy = Infinity;
@@ -2021,11 +2029,12 @@ map.on('locationfound', function (e) {
 
   const acc = Math.round(e.accuracy);
 
-  console.log("📍 Accuracy:", acc);
+  console.log("📍 GPS update → Accuracy:", acc);
 
   if (acc < bestAccuracy) {
     bestAccuracy = acc;
     bestLocation = e;
+    console.log("⭐ New best location stored");
   }
 
   const btn = document.getElementById("locBtn");
@@ -2039,6 +2048,7 @@ function showBestLocation() {
   const btn = document.getElementById("locBtn");
 
   if (!bestLocation) {
+    console.error("❌ No bestLocation found");
     alert("❌ Could not get location");
     resetButton();
     return;
@@ -2048,7 +2058,7 @@ function showBestLocation() {
   const lng = bestLocation.latlng.lng.toFixed(6);
   const acc = Math.round(bestLocation.accuracy);
 
-  console.log("✅ Final location:", lat, lng, acc);
+  console.log("✅ Final location selected:", { lat, lng, acc });
 
   // 🔄 Clear previous
   myLocationLayer.clearLayers();
@@ -2082,14 +2092,17 @@ function showBestLocation() {
   btn.innerText = "STOP LOCATION";
   btn.disabled = false;
 
-  // ================= DUTY CHECK =================
-  const isOnDuty =
-    window.userProfile &&
-    window.userProfile.duty === true;
+  // ================= DUTY CHECK (FINAL FIX) =================
+  console.log("👤 USER PROFILE:", window.userProfile);
+  console.log("🧠 isDutyActive:", window.isDutyActive);
+
+  const isOnDuty = window.isDutyActive === true;
+
+  console.log("✅ FINAL DUTY CHECK RESULT:", isOnDuty);
 
   if (isOnDuty) {
 
-    console.log("📤 Sending GPS (on duty)");
+    console.log("📤 Sending GPS to backend...");
 
     try {
 
@@ -2100,13 +2113,15 @@ function showBestLocation() {
         time: new Date().toISOString()
       });
 
+      console.log("✅ GPS sent successfully");
+
     } catch (e) {
-      console.warn("⚠ GPS send failed:", e);
+      console.error("❌ GPS send failed:", e);
     }
 
   } else {
 
-    console.log("👁 View only (not on duty)");
+    console.log("👁 View only mode (NOT on duty)");
 
   }
 }
@@ -2131,7 +2146,6 @@ map.on('locationerror', function (e) {
 
   resetButton();
 });    
-    
     
     /* 🔁 CENTER MAP */
     function centerMap() {
