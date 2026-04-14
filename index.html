@@ -850,7 +850,9 @@ function cleanName(name){
     // 🔥 NORMALIZE SPACES
     .replace(/\s+/g," ")
     .trim();
-}   function loadProfile(){
+}  
+    
+ function loadProfile(){
 
   const phone = localStorage.getItem("userPhone") || "";
 
@@ -878,6 +880,10 @@ function cleanName(name){
         if(saved){
 
           const offlineProfile = JSON.parse(saved);
+
+          // 🔥 ENSURE STRUCTURE (BACKWARD COMPATIBLE)
+          offlineProfile.rawName = offlineProfile.rawName || offlineProfile.name;
+          offlineProfile.cleanName = offlineProfile.cleanName || cleanName(offlineProfile.name);
 
           window.userProfile = offlineProfile;
 
@@ -918,8 +924,11 @@ function cleanName(name){
          ✅ SUCCESS
       ============================================================ */
 
-      // 🔥 CLEAN NAME
-      profile.name = cleanName(profile.name);
+      // 🔥 KEEP ORIGINAL NAME
+      profile.rawName = profile.name;
+
+      // 🔥 ADD CLEAN NAME (FOR INTERNAL USE)
+      profile.cleanName = cleanName(profile.name);
 
       window.userProfile = profile;
 
