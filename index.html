@@ -1936,6 +1936,149 @@ function initDutyControl() {
     /* ============================================================
        📍 LOCATION
     ============================================================ */
+// 📍 Layer for location
+var myLocationLayer = L.layerGroup().addTo(map);
+
+// 📌 Track state
+var locationActive = false;
+
+// 🧠 BEST LOCATION TRACKING
+var bestLocation = null;
+var bestAccuracy = Infinity;
+var gpsTimer = null;
+
+
+// 🔘 TOGGLE FUNCTION
+function toggleLocation() {
+
+  console.log("🔘 toggleLocation clicked");
+
+  const btn = document.getElementById("locBtn");
+
+  if (locationActive) {
+    stopLocation();
+    return;
+  }
+
+  btn.innerText = "Checking GPS...";
+  btn.disabled = true;
+
+  if (navigator.permissions) {
+    navigator.permissions.query({ name: 'geolocation' })
+      .then(result => {
+
+        console.log("🔐 Permission state:", result.state);
+
+        if (result.state === 'denied') {
+          alert("❌ Location permission denied.\n\n👉 Enable from browser settings.");
+          resetButton();
+          return;
+        }
+
+        startGPS();
+
+      })
+      .catch(err => {
+        console.warn("⚠ Permission check failed:", err);
+        startGPS();
+      });
+
+  } else {
+    startGPS();
+  }
+
+  locationActive = true;
+}
+
+
+// 🚀 START GPS
+function startGPS() {
+
+  const btn = document.getElementById("locBtn");
+
+  console.log("📍 Finding location...");
+
+  btn.innerText = "Locating... (10s)";
+
+  bestLocation = null;
+  bestAccuracy = Infinity;
+
+  map.locate({
+    setView: true,
+    maxZoom: 19,
+    enableHighAccuracy: true,
+    timeout: 20000,
+    maximumAge: 0,
+    watch: true
+  });
+
+  gpsTimer = setTimeout(() => {
+    console.log("⏱ Stopping GPS after 10s");
+    map.stopLocate();
+    showBestLocation();
+  }, 10000);
+}
+
+
+// 🛑 STOP LOCATION CLEANLY
+function stopLocation() {
+
+  const btn = document.getElementById("locBtn");
+
+  console.log("🛑 Location OFF");
+
+  try { map.stopLocate(); } catch(e){ console.warn(e); }
+  try { clearTimeout(gpsTimer); } catch(e){ console.warn(e); }
+
+  // 🔥 FIX: REMOVE ICON + CIRCLE
+  try { myLocationLayer.clearLayers(); } catch(e){ console.warn(e); }
+
+  bestLocation = null;
+  bestAccuracy = Infinity;
+
+  btn.innerText = "MY LOCATION";
+  btn.disabled = false;
+
+  locationActive = false;
+}
+
+
+// 🔄 RESET BUTTON
+function resetButton(){
+  const btn = document.getElementById("locBtn");
+  btn.innerText = "MY LOCATION";
+  btn.disabled = false;
+  locationActive = false;
+}
+
+
+// 📋 COPY FUNCTION
+function copyCoords(lat, lng) {
+  const text = `${lat}, ${lng}`;
+  navigator.clipboard.writeText(text)
+    .then(() => alert("✅ Coordinates copied:\n" + text))
+    .catch(() => alert("❌ Copy failed"));
+}
+
+
+// ✅ COLLECT LOCATION
+map.on('locationfound', function (e) {
+
+  const acc = Math.round(e.accuracy);
+
+  console.log("📍 GPS update → Accuracy:", acc);
+
+  if (acc < bestAccuracy) {
+    bestAccuracy = acc;
+    bestLocation = e;
+    console.log("⭐ New best location stored");
+  }
+
+  const btn = document.getElementById("locBtn");
+  if(btn) btn.innerText = "Improving... (" + acc + "m)";
+});
+
+
 // 🧠 FINAL DISPLAY + DUTY LOGIC
 function showBestLocation() {
 
@@ -1955,7 +2098,7 @@ function showBestLocation() {
   console.log("✅ Final location selected:", { lat, lng, acc });
 
   // 🔄 Clear previous
-  try { myLocationLayer.clearLayers(); } catch(e){ console.warn(e); }
+  myLocationLayer.clearLayers();
 
   // 🔵 Accuracy circle
   L.circle(bestLocation.latlng, {
@@ -1998,16 +2141,15 @@ function showBestLocation() {
 
     console.log("📤 Sending GPS to backend...");
 
-    // 🔥 FIXED PROFILE PART ONLY
-    const gpsData = {
-      name: window.userProfile.rawName,        // ✅ ORIGINAL NAME (for sheet)
-      cleanName: window.userProfile.cleanName, // ✅ NORMALIZED (for logic)
-      lat: lat,
-      lon: lng,
-      time: new Date().toISOString()
-    };
-
     try {
+
+      const gpsData = {
+        name: window.userProfile.rawName,   // 🔥 FIXED
+        cleanName: window.userProfile.cleanName,
+        lat: lat,
+        lon: lng,
+        time: new Date().toISOString()
+      };
 
       callBackend("SAVE_MANUAL_GPS", gpsData)
 
@@ -2015,41 +2157,40 @@ function showBestLocation() {
 
         console.log("📡 Backend response:", res);
 
-        // ❌ NO RESPONSE (offline / timeout)
         if (!res) {
           console.warn("📴 No response → saving offline");
           saveOfflineGPS(gpsData);
           return;
         }
 
-        // ❌ BACKEND ERROR
-        if (res.error) {
+        if (res && res.error) {
           console.error("❌ Backend error:", res.error);
           saveOfflineGPS(gpsData);
-          return;
         }
 
-        // ✅ SUCCESS
-        console.log("✅ GPS saved in sheet");
+        else {
+          console.log("✅ GPS saved in sheet");
+        }
 
       })
 
       .catch(err => {
-
         console.error("❌ Backend call failed:", err);
-
-        // 🔥 SAVE OFFLINE
         saveOfflineGPS(gpsData);
-
       });
 
     } catch (e) {
 
       console.error("❌ GPS send failed:", e);
 
-      // 🔥 FINAL FALLBACK
       try {
-        saveOfflineGPS(gpsData);
+        saveOfflineGPS({
+          name: window.userProfile.rawName,
+          cleanName: window.userProfile.cleanName,
+          lat: lat,
+          lon: lng,
+          time: new Date().toISOString()
+        });
       } catch(err){
         console.error("❌ Offline save also failed:", err);
       }
@@ -2061,8 +2202,28 @@ function showBestLocation() {
     console.log("👁 View only mode (NOT on duty)");
 
   }
-}    
-    /* 🔁 CENTER MAP */
+}
+
+
+// ❌ LOCATION ERROR
+map.on('locationerror', function (e) {
+
+  console.error("❌ Location error:", e.message);
+
+  let msg = "";
+
+  if (e.message.includes("denied")) {
+    msg = "❌ Permission denied.\n\n👉 Enable from browser settings.";
+  } else if (e.message.includes("timeout")) {
+    msg = "⏳ GPS timeout.\n\n👉 Move to open area & try again.";
+  } else {
+    msg = "⚠️ GPS not available.\n\n👉 Turn ON location & internet.";
+  }
+
+  alert(msg);
+
+  resetButton();
+});    /* 🔁 CENTER MAP */
     function centerMap() {
       map.setView([26.561, 89.507], 14);
     }
