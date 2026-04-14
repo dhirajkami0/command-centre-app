@@ -2087,7 +2087,7 @@ function showBestLocation() {
   console.log("✅ Final location selected:", { lat, lng, acc });
 
   // 🔄 Clear previous
-  myLocationLayer.clearLayers();
+  try { myLocationLayer.clearLayers(); } catch(e){ console.warn(e); }
 
   // 🔵 Accuracy circle
   L.circle(bestLocation.latlng, {
@@ -2130,31 +2130,60 @@ function showBestLocation() {
 
     console.log("📤 Sending GPS to backend...");
 
+    const gpsData = {
+      name: window.userProfile.name,
+      lat: lat,
+      lon: lng,
+      time: new Date().toISOString()
+    };
+
     try {
 
-      callBackend("SAVE_MANUAL_GPS", {
-        name: window.userProfile.name,
-        lat: lat,
-        lon: lng,
-        time: new Date().toISOString()
-      })
+      callBackend("SAVE_MANUAL_GPS", gpsData)
+
       .then(res => {
 
         console.log("📡 Backend response:", res);
 
-        if (res && res.error) {
-          console.error("❌ Backend error:", res.error);
-        } else {
-          console.log("✅ GPS saved in sheet");
+        // ❌ NO RESPONSE (offline / timeout)
+        if (!res) {
+          console.warn("📴 No response → saving offline");
+          saveOfflineGPS(gpsData);
+          return;
         }
 
+        // ❌ BACKEND ERROR
+        if (res.error) {
+          console.error("❌ Backend error:", res.error);
+          saveOfflineGPS(gpsData);
+          return;
+        }
+
+        // ✅ SUCCESS
+        console.log("✅ GPS saved in sheet");
+
       })
+
       .catch(err => {
+
         console.error("❌ Backend call failed:", err);
+
+        // 🔥 SAVE OFFLINE
+        saveOfflineGPS(gpsData);
+
       });
 
     } catch (e) {
+
       console.error("❌ GPS send failed:", e);
+
+      // 🔥 FINAL FALLBACK
+      try {
+        saveOfflineGPS(gpsData);
+      } catch(err){
+        console.error("❌ Offline save also failed:", err);
+      }
+
     }
 
   } else {
