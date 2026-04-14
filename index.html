@@ -6931,10 +6931,22 @@ window.addEventListener("online", () => {
 });
 
 
-// ================= DUTY BASED CONTROL =================
+// ================= DUTY BASED CONTROL (FINAL SAFE) =================
 setInterval(() => {
 
   try {
+
+    // 🔥 WAIT UNTIL PROFILE READY
+    if(!window.userProfile || !window.userProfile.rawName){
+      console.log("⏳ Waiting for userProfile...");
+      return;
+    }
+
+    // 🔥 WAIT UNTIL DUTY STATE KNOWN
+    if(typeof window.isDutyActive === "undefined"){
+      console.log("⏳ Waiting for duty status...");
+      return;
+    }
 
     if(window.isDutyActive === true){
 
@@ -6950,15 +6962,21 @@ setInterval(() => {
     console.error("❌ Duty control crash:", e);
   }
 
-}, 10000);
-
-
-// ================= RESUME AFTER REFRESH =================
-setTimeout(()=>{
+}, 10000); 
+  
+  
+  
+  
+  setTimeout(()=>{
 
   try {
 
-    if(window.isDutyActive === true){
+    // 🔥 WAIT FOR PROFILE + DUTY
+    if(
+      window.userProfile &&
+      window.userProfile.rawName &&
+      window.isDutyActive === true
+    ){
       console.log("🔄 Resume tracking after reload");
       startAutoGPS();
     }
@@ -6968,6 +6986,8 @@ setTimeout(()=>{
   }
 
 }, 3000);
+  
+  
   </script>
 
   </div>
@@ -7277,6 +7297,13 @@ style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; bac
 </div>
 
   <script>
+
+    let lastTraccarUpdate = 0;
+
+function markTraccarAlive(){
+  lastTraccarUpdate = Date.now();
+  console.log("🟢 Traccar heartbeat updated");
+}
 let lastAnalysis = null;
           /* GLOBAL STATE */
          window.isDutyActive = false;
