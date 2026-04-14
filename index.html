@@ -2080,6 +2080,10 @@ map.on('locationfound', function (e) {
 
 
 // 🧠 FINAL DISPLAY + DUTY LOGIC
+// 🔥 GLOBAL (add once above)
+let lastGPSSentTime = 0;
+
+
 function showBestLocation() {
 
   const btn = document.getElementById("locBtn");
@@ -2139,17 +2143,35 @@ function showBestLocation() {
 
   if (isOnDuty) {
 
-    console.log("📤 Sending GPS to backend...");
+    console.log("📤 Preparing to send GPS...");
+
+    // 🔥 SAFETY 1: userProfile check
+    if (!window.userProfile || !window.userProfile.rawName) {
+      console.error("❌ userProfile missing → GPS not sent");
+      return;
+    }
+
+    // 🔥 SAFETY 2: prevent spam clicks
+    const now = Date.now();
+    if (now - lastGPSSentTime < 20000) {
+      console.log("⏱ Skipped duplicate GPS (too soon)");
+      return;
+    }
+    lastGPSSentTime = now;
 
     try {
 
       const gpsData = {
-        name: window.userProfile.rawName,   // 🔥 FIXED
-        cleanName: window.userProfile.cleanName,
+        name: window.userProfile.rawName,        // ✅ sheet display
+        cleanName: window.userProfile.cleanName, // ✅ internal match
+        phone: window.userProfile.phone || "",   // ⭐ optional safety
+        source: "MANUAL_APP",                    // ⭐ debug source
         lat: lat,
         lon: lng,
         time: new Date().toISOString()
       };
+
+      console.log("📤 Sending GPS:", gpsData);
 
       callBackend("SAVE_MANUAL_GPS", gpsData)
 
@@ -2157,17 +2179,20 @@ function showBestLocation() {
 
         console.log("📡 Backend response:", res);
 
+        // 📴 OFFLINE / NO RESPONSE
         if (!res) {
           console.warn("📴 No response → saving offline");
           saveOfflineGPS(gpsData);
           return;
         }
 
+        // ❌ BACKEND ERROR
         if (res && res.error) {
           console.error("❌ Backend error:", res.error);
           saveOfflineGPS(gpsData);
         }
 
+        // ✅ SUCCESS
         else {
           console.log("✅ GPS saved in sheet");
         }
@@ -2187,6 +2212,8 @@ function showBestLocation() {
         saveOfflineGPS({
           name: window.userProfile.rawName,
           cleanName: window.userProfile.cleanName,
+          phone: window.userProfile.phone || "",
+          source: "MANUAL_APP",
           lat: lat,
           lon: lng,
           time: new Date().toISOString()
@@ -2203,7 +2230,6 @@ function showBestLocation() {
 
   }
 }
-
 
 // ❌ LOCATION ERROR
 map.on('locationerror', function (e) {
@@ -6669,32 +6695,100 @@ function startAutoGPS(){
 
   autoGpsTimer = setInterval(() => {
 
-    navigator.geolocation.getCurrentPosition(pos => {
+    // 🔥 DUTY CHECK (CRITICAL)
+    if(window.isDutyActive !== true){
+      console.log("⏸ Auto GPS skipped (not on duty)");
+      return;
+    }
 
-      const lat = pos.coords.latitude.toFixed(6);
-      const lon = pos.coords.longitude.toFixed(6);
+    // 🔥 USER PROFILE SAFETY
+    if(!window.userProfile || !window.userProfile.rawName){
+      console.warn("⚠ userProfile missing → Auto GPS skipped");
+      return;
+    }
 
-      const now = Date.now();
+    navigator.geolocation.getCurrentPosition(
 
-      // ⏱ prevent spam
-      if(now - lastManualSent < 110000) return;
+      pos => {
 
-      lastManualSent = now;
+        try {
 
-      console.log("📍 Auto GPS SENT");
+          const lat = pos.coords.latitude.toFixed(6);
+          const lon = pos.coords.longitude.toFixed(6);
 
-      callBackend("SAVE_MANUAL_GPS", {
-        name: window.userProfile.name,
-        lat,
-        lon,
-        time: new Date().toISOString()
-      });
+          const now = Date.now();
 
-    });
+          // ⏱ prevent spam (same as your logic)
+          if(now - lastManualSent < 110000){
+            console.log("⏱ Auto GPS skipped (cooldown)");
+            return;
+          }
 
-  }, 120000); // 2 min
+          lastManualSent = now;
+
+          const gpsData = {
+            name: window.userProfile.rawName,        // ✅ FIXED
+            cleanName: window.userProfile.cleanName, // ✅ IMPORTANT
+            phone: window.userProfile.phone || "",   // ⭐ optional safety
+            source: "AUTO_GPS",                      // ⭐ debug source
+            lat: lat,
+            lon: lon,
+            time: new Date().toISOString()
+          };
+
+          console.log("📍 Auto GPS sending:", gpsData);
+
+          callBackend("SAVE_MANUAL_GPS", gpsData)
+
+          .then(res => {
+
+            console.log("📡 Auto GPS response:", res);
+
+            // 📴 OFFLINE / NO RESPONSE
+            if (!res) {
+              console.warn("📴 Auto GPS → saving offline");
+              saveOfflineGPS(gpsData);
+              return;
+            }
+
+            // ❌ BACKEND ERROR
+            if (res && res.error) {
+              console.error("❌ Auto GPS backend error:", res.error);
+              saveOfflineGPS(gpsData);
+            }
+
+            // ✅ SUCCESS
+            else {
+              console.log("✅ Auto GPS saved in sheet");
+            }
+
+          })
+
+          .catch(err => {
+            console.error("❌ Auto GPS failed:", err);
+            saveOfflineGPS(gpsData);
+          });
+
+        } catch (e) {
+          console.error("❌ Auto GPS crash:", e);
+        }
+
+      },
+
+      err => {
+        console.warn("⚠ GPS error:", err.message);
+      },
+
+      {
+        enableHighAccuracy: true,
+        timeout: 15000,
+        maximumAge: 0
+      }
+
+    );
+
+  }, 120000); // 🔥 every 2 min
 }
-
 // ================= STOP AUTO GPS =================
 function stopAutoGPS(){
 
