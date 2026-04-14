@@ -830,11 +830,12 @@ function safeBackend(action, payload = {}) {
 =============================== */
 
 function cleanName(name){
+
   return String(name || "")
     .toUpperCase()
 
-    // 🔥 REMOVE DESIGNATIONS (VERY IMPORTANT)
-    .replace(/\b(FR|DR|FG|DL|BS|AS|FV|RO|DFO|RANGER|BANA\S*|ORD\w*)\b/g, "")
+    // 🔥 REMOVE DESIGNATIONS (VERY ROBUST)
+    .replace(/\b(DR\.?|FR\.?|FG|DL|BS|AS|FV|RO|DFO|RANGER|BANA\S*|ORD\w*)\b/g, "")
 
     // 🔥 REMOVE AFTER COMMA / BRACKET / DASH / SLASH
     .split(",")[0]
@@ -849,8 +850,7 @@ function cleanName(name){
     // 🔥 NORMALIZE SPACES
     .replace(/\s+/g," ")
     .trim();
-}
-   function loadProfile(){
+}   function loadProfile(){
 
   const phone = localStorage.getItem("userPhone") || "";
 
