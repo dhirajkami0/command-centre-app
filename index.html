@@ -841,8 +841,7 @@ function cleanName(n){
     .replace(/[^A-Z\s]/g,"")
     .replace(/\s+/g," ")
     .trim();
-}    
- 
+} 
 function applyRoleControl(){
 
   const role = (window.userProfile?.role || "").toUpperCase();
@@ -4858,36 +4857,90 @@ function refreshAll() {
     
     function loginStaff(){
 
-  const phone = document.getElementById("login-phone").value;
+  try {
 
-  if(!phone){
-    alert("Enter phone number");
-    return;
-  }
+    const phone = document.getElementById("login-phone")?.value?.trim();
 
-  callBackend("GET_PROFILE", {
-    phone: phone,
-    deviceId: getDeviceId() // optional
-  }).then(profile=>{
-
-    if(profile.error){
-      alert(profile.error);
+    if(!phone){
+      alert("Enter phone number");
       return;
     }
 
-    window.userProfile = profile;
+    console.log("📤 Logging in:", phone);
 
-    localStorage.setItem("user", JSON.stringify({
-      phone: phone
-    }));
+    callBackend("GET_PROFILE", {
+      phone: phone,
+      deviceId: getDeviceId()
+    })
 
-    document.getElementById("form-modal").style.display = "none";
+    .then(profile => {
 
-    applyRoleControl();
+      // ================= OFFLINE LOGIN =================
+      if(!profile){
 
-  });
+        const saved = localStorage.getItem("userProfile");
+
+        if(saved){
+
+          const offlineProfile = normalizeUserProfile(JSON.parse(saved));
+          const savedPhone = localStorage.getItem("userPhone");
+
+          if(savedPhone === phone){
+
+            window.userProfile = offlineProfile;
+
+            console.log("📴 Offline login:", offlineProfile);
+
+            document.getElementById("form-modal").style.display = "none";
+
+            applyRoleControl();
+            startApp();
+            initDutyControl();
+
+          } else {
+            alert("❌ Offline login only for last user");
+          }
+
+        } else {
+          alert("❌ First login requires internet");
+        }
+
+        return;
+      }
+
+      // ================= ERROR =================
+      if(profile.error){
+        alert(profile.error);
+        return;
+      }
+
+      // ================= FINAL PROFILE =================
+      const finalProfile = normalizeUserProfile(profile);
+
+      window.userProfile = finalProfile;
+
+      localStorage.setItem("userPhone", phone);
+      localStorage.setItem("userProfile", JSON.stringify(finalProfile));
+
+      console.log("✅ Login success:", finalProfile);
+
+      document.getElementById("form-modal").style.display = "none";
+
+      applyRoleControl();
+      startApp();
+      initDutyControl();
+
+    })
+
+    .catch(err => {
+      console.error("❌ Login crash:", err);
+      alert("Login failed");
+    });
+
+  } catch(e){
+    console.error("❌ loginStaff crash:", e);
+  }
 }
-  
 
     
     
@@ -6352,7 +6405,18 @@ function generateAndShowReport(){
 
     });
 }
+function normalizeUserProfile(profile){
 
+  if(!profile) return null;
+
+  return {
+    rawName: profile.rawName || profile.name,   // 🔥 FIX
+    cleanName: profile.cleanName || cleanName(profile.name),
+    role: profile.role,
+    beat: profile.beat,
+    phone: profile.phone
+  };
+}
 function updateNetworkStatus(status) {
   // Use the correct ID from your panel-header
   const el = document.getElementById("last-update"); 
@@ -6413,7 +6477,7 @@ function updateNetworkStatus(status) {
     try {
       const profile = JSON.parse(savedProfile);
 
-      window.userProfile = profile;
+     window.userProfile = normalizeUserProfile(profile); ✅
 
       console.log("📴 OFFLINE MODE → APP STARTED");
 
@@ -6476,7 +6540,7 @@ function updateNetworkStatus(status) {
 
             console.log("🔐 Online profile refreshed:", profile.name);
 
-            window.userProfile = profile;
+            window.userProfile = normalizeUserProfile(profile); ✅
             localStorage.setItem("userProfile", JSON.stringify(profile));
 
             applyRoleControl();
@@ -6572,7 +6636,7 @@ function updateNetworkStatus(status) {
 
       console.log("🔐 Logged in (ONLINE):", profile.name);
 
-      window.userProfile = profile;
+     window.userProfile = normalizeUserProfile(profile); ✅
       localStorage.setItem("userProfile", JSON.stringify(profile));
 
       updateNetworkStatus("online"); // 🔥 FIX
