@@ -1739,7 +1739,7 @@ function autoShowEndDuty() {
   try {
 
     // ================= PROFILE CHECK =================
-    if (!window.userProfile || !window.userProfile.name) {
+    if (!window.userProfile || !window.userProfile.rawName) {
       console.warn("❌ Leader not ready yet:", window.userProfile);
       return;
     }
