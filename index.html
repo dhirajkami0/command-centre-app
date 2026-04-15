@@ -1867,13 +1867,13 @@ function initDutyControl() {
 
   console.log("👤 Current Profile:", profile);
 
-  if (!profile || !profile.name) {
+  if (!profile || !profile.rawName) {
     console.error("❌ No userProfile found");
     return;
   }
 
   // 🔥 SET GLOBAL CONTEXT
-  window.currentLeader = profile.name;
+  window.currentLeader = profile.rawName;
   window.currentBeat = profile.beat;
   window.currentRole = profile.role;
 
@@ -5564,7 +5564,7 @@ function calculateTotal(){
 
   console.log("👤 Profile RAW:", profile);
 
-  if (!profile || !profile.name) {
+if (!profile || !profile.rawName) {
     alert("User not loaded");
     console.groupEnd();
     return;
@@ -5743,7 +5743,7 @@ function openDutyForm(){
   /* PROFILE */
   const profile = window.userProfile;
 
-  if (!profile || !profile.name) {
+ if (!profile || !profile.rawName) {
     alert("User not loaded");
     console.groupEnd();
     return;
