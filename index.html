@@ -6456,206 +6456,102 @@ function normalizeUserProfile(profile){
 
 
 // ================= APP START =================
+// ================= APP START =================
 window.addEventListener("load", function () {
 
   console.log("🚀 App Started - Command Centre Initializing");
 
-  // ================= STATUS =================
-  if (!navigator.onLine) {
-    updateNetworkStatus("offline");
-  } else {
-    updateNetworkStatus("connecting");
-  }
-
-  // ================= UI INIT =================
-  try {
-    initResponsiveUI();
-  } catch (e) {
-    console.warn("UI Init delayed:", e);
-  }
-
   // ================= PREVENT DOUBLE INIT =================
   if (window.__APP_STARTED__) {
     console.warn("⚠ App already started → skipping duplicate init");
-    return;
-  }
-  window.__APP_STARTED__ = true;
+  } else {
 
-  // ================= OFFLINE PROFILE =================
-  const savedProfile = localStorage.getItem("userProfile");
+    window.__APP_STARTED__ = true;
 
-  if (savedProfile) {
-
-    try {
-
-      const profile = JSON.parse(savedProfile);
-
-      // 🔥 FIXED (removed invalid token)
-      window.userProfile = normalizeUserProfile(profile);
-
-      console.log("📴 OFFLINE MODE → APP STARTED");
-
-      if (!navigator.onLine) {
-        updateNetworkStatus("offline");
-      }
-
-      if (typeof applyRoleControl === "function") {
-        applyRoleControl();
-      }
-
-      startApp();
-
-      if (typeof initDutyControl === "function") {
-        initDutyControl();
-      }
-
-      if (typeof loadRangeKML === "function") {
-        loadRangeKML();
-      }
-
-      if (typeof loadCompartmentsFromSheet === "function") {
-        loadCompartmentsFromSheet();
-      }
-
-      // ================= AUTO SYNC =================
-      if (navigator.onLine) {
-
-        console.log("🌐 Online → syncing pending data...");
-        updateNetworkStatus("connecting");
-
-        try {
-          syncOfflineMoves();
-          syncOfflineSightings();
-        } catch (e) {
-          console.warn("⚠ Sync error:", e);
-        }
-      }
-
-      // ================= BACKGROUND REFRESH =================
-      setTimeout(() => {
-
-        const phone = localStorage.getItem("userPhone") || "";
-        if (!phone) return;
-
-        console.log("🌐 Fetching fresh profile...");
-
-        callBackend("GET_PROFILE", { phone: phone })
-
-          .then(function (profile) {
-
-            if (!profile || profile.error) {
-              console.warn("⚠ Backend profile invalid");
-              return;
-            }
-
-            console.log("🔐 Online profile refreshed:", profile.name);
-
-            const fixedProfile = normalizeUserProfile(profile);
-
-            window.userProfile = fixedProfile;
-            localStorage.setItem("userProfile", JSON.stringify(fixedProfile));
-
-            applyRoleControl();
-
-            updateNetworkStatus("online");
-
-            return callBackend("updateVillageRisk");
-
-          })
-          .then(function (coneData) {
-
-            if (!coneData) return;
-
-            window.coneVillages = coneData;
-
-            return callBackend("getVillages");
-
-          })
-          .then(function (villageList) {
-
-            if (!villageList) return;
-
-            window.villages = (villageList || []).map(v => ({
-              name: v.name || v.Village || "Unknown",
-              lat: parseFloat(v.lat),
-              lon: parseFloat(v.lon)
-            }));
-
-            if (typeof refreshAll === "function") {
-              refreshAll();
-            }
-
-            setTimeout(() => {
-              if (window.map) {
-                map.invalidateSize();
-                console.log("🗺 Map resized fix applied");
-              }
-            }, 300);
-
-            if (typeof initEventListeners === "function") {
-              initEventListeners();
-            }
-
-          })
-          .catch(err => {
-            console.warn("⚠ Background sync failed:", err);
-            updateNetworkStatus("offline");
-          });
-
-      }, 2000);
-
-      return;
-
-    } catch (e) {
-
-      console.error("❌ Corrupt offline profile");
-      localStorage.removeItem("userProfile");
+    // ================= STATUS =================
+    if (!navigator.onLine) {
+      updateNetworkStatus("offline");
+    } else {
+      updateNetworkStatus("connecting");
     }
+
+    // ================= UI INIT =================
+    try {
+      initResponsiveUI();
+    } catch (e) {
+      console.warn("UI Init delayed:", e);
+    }
+
+    // ================= OFFLINE PROFILE =================
+    const savedProfile = localStorage.getItem("userProfile");
+
+    if (savedProfile) {
+
+      try {
+
+        const profile = JSON.parse(savedProfile);
+
+        window.userProfile = normalizeUserProfile(profile);
+
+        console.log("📴 OFFLINE MODE → APP STARTED");
+
+        applyRoleControl?.();
+        startApp?.();
+        initDutyControl?.();
+        loadRangeKML?.();
+        loadCompartmentsFromSheet?.();
+
+        if (navigator.onLine) {
+          try {
+            syncOfflineMoves?.();
+            syncOfflineSightings?.();
+          } catch (e) {
+            console.warn("⚠ Sync error:", e);
+          }
+        }
+
+        // 🔥 background refresh
+        setTimeout(refreshOnlineProfile, 2000);
+
+      } catch (e) {
+        console.error("❌ Corrupt offline profile");
+        localStorage.removeItem("userProfile");
+        startOnlineLoginFlow();
+      }
+
+    } else {
+      // 🔥 NO OFFLINE PROFILE
+      startOnlineLoginFlow();
+    }
+
   }
 
 });
- /* ============================================================
-   3. NO OFFLINE PROFILE → ONLINE LOGIN FLOW
-============================================================ */
-/* ============================================================
-   3. NO OFFLINE PROFILE → ONLINE LOGIN FLOW
-============================================================ */
 
-(function startOnlineLoginFlow(){
+
+// ================= ONLINE LOGIN FLOW =================
+function startOnlineLoginFlow(){
 
   const phone = localStorage.getItem("userPhone") || "";
 
-  // ================= NO PHONE =================
   if (!phone) {
-    console.warn("⚠ No phone found → showing login");
+    console.warn("⚠ No phone → login");
     showLogin();
-    return; // ✅ NOW VALID (inside function)
-  }
-
-  // ================= NETWORK STATUS =================
-  if (navigator.onLine) {
-    updateNetworkStatus("connecting");
-  } else {
-    updateNetworkStatus("offline");
+    return;
   }
 
   console.log("📤 Sending phone:", phone);
 
-  // ================= FETCH PROFILE =================
   callBackend("GET_PROFILE", { phone: phone })
 
     .then(function (profile) {
 
       if (!profile || profile.error) {
-        console.error("❌ Invalid user");
         localStorage.removeItem("userPhone");
         showLogin();
         return;
       }
 
-      console.log("🔐 Logged in (ONLINE):", profile.name);
-
-      // 🔥 ALWAYS NORMALIZE PROFILE
       const fixedProfile = normalizeUserProfile(profile);
 
       window.userProfile = fixedProfile;
@@ -6663,30 +6559,15 @@ window.addEventListener("load", function () {
 
       updateNetworkStatus("online");
 
-      if (typeof applyRoleControl === "function") {
-        applyRoleControl();
-      }
-
-      if (typeof startApp === "function") {
-        startApp();
-      }
-
-      if (typeof initDutyControl === "function") {
-        initDutyControl();
-      }
-
-      if (typeof loadRangeKML === "function") {
-        loadRangeKML();
-      }
-
-      if (typeof loadCompartmentsFromSheet === "function") {
-        loadCompartmentsFromSheet();
-      }
+      applyRoleControl?.();
+      startApp?.();
+      initDutyControl?.();
+      loadRangeKML?.();
+      loadCompartmentsFromSheet?.();
 
       return callBackend("updateVillageRisk");
     })
 
-    // ================= RISK DATA =================
     .then(function (coneData) {
 
       if (!coneData) return;
@@ -6696,7 +6577,6 @@ window.addEventListener("load", function () {
       return callBackend("getVillages");
     })
 
-    // ================= VILLAGE DATA =================
     .then(function (villageList) {
 
       if (!villageList) return;
@@ -6707,59 +6587,65 @@ window.addEventListener("load", function () {
         lon: parseFloat(v.lon)
       }));
 
-      if (typeof refreshAll === "function") {
-        refreshAll();
-      }
+      refreshAll?.();
 
-      // ================= SPLASH HANDLING =================
+      // 🔥 splash
       const splash = document.getElementById('splash-screen');
 
       setTimeout(() => {
 
         if (splash) {
 
-          splash.style.transition = "opacity 0.8s ease";
           splash.style.opacity = "0";
 
           setTimeout(() => {
 
             splash.style.display = "none";
 
-            // 🗺 FIX MAP SIZE AFTER SPLASH
             setTimeout(() => {
-              if (window.map) {
-                map.invalidateSize();
-                console.log("🗺 Map resized after splash");
-              }
+              if (window.map) map.invalidateSize();
             }, 300);
 
           }, 800);
-
         }
 
       }, 2800);
 
-      // ================= EVENT LISTENERS =================
-      if (typeof initEventListeners === "function") {
-        initEventListeners();
-      }
+      initEventListeners?.();
 
     })
 
-    // ================= ERROR =================
-    .catch(function (err) {
-
-      console.error("❌ Startup failed:", err);
+    .catch(function () {
 
       updateNetworkStatus("offline");
-
-      alert("❌ Internet required for first login");
       showLogin();
 
     });
+}
 
-})();
-    
+
+// ================= REFRESH PROFILE =================
+function refreshOnlineProfile(){
+
+  const phone = localStorage.getItem("userPhone") || "";
+  if (!phone) return;
+
+  callBackend("GET_PROFILE", { phone: phone })
+
+    .then(function (profile) {
+
+      if (!profile || profile.error) return;
+
+      const fixedProfile = normalizeUserProfile(profile);
+
+      window.userProfile = fixedProfile;
+      localStorage.setItem("userProfile", JSON.stringify(fixedProfile));
+
+      updateNetworkStatus("online");
+
+    })
+    .catch(() => updateNetworkStatus("offline"));
+}    
     /* ============================================================
    🌐 NETWORK LISTENERS (UNCHANGED BUT FIXED BEHAVIOR)
 ============================================================ */
