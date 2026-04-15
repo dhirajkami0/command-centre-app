@@ -1769,101 +1769,124 @@ function autoShowEndDuty() {
   dutyCheckRunning = true;
   console.log("🔒 dutyCheckRunning = TRUE");
 
-  // 🔥 PROFILE CHECK
-  if (!window.userProfile || !window.userProfile.name) {
-    console.warn("❌ Leader not ready yet:", window.userProfile);
-    dutyCheckRunning = false;
-    console.groupEnd();
-    return;
-  }
+  try {
 
-  const rawName = window.userProfile.name;
-
-// ❌ REMOVE THIS
-// const cleanedName = rawName.split(",")[0].trim().toUpperCase();
-
-// ✅ ADD THIS
-const cleanedName = window.userProfile.cleanName;
-  console.log("👤 Raw Name:", rawName);
-  console.log("🧹 Cleaned Name:", cleanedName);
-
-  console.log("🌐 Calling backend checkDutyFromSheet...");
-
-  callBackend("checkDutyFromSheet", {
-    leader: cleanedName
-  })
-
-  .then(function (res) {
-
-    console.log("🔥 DUTY RESPONSE:", res);
-    console.log("📊 res.active:", res?.active);
-
-    const btn = document.getElementById("dutyMainBtn");
-    const icon = document.getElementById("dutyIcon");
-    const label = document.getElementById("dutyLabel");
-
-    console.log("🔘 btn:", btn);
-    console.log("🎯 icon:", icon);
-    console.log("🏷 label:", label);
-
-    if (!btn || !label) {
-      console.error("❌ Required elements missing (btn/label)");
+    // ================= PROFILE CHECK =================
+    if (!window.userProfile || !window.userProfile.name) {
+      console.warn("❌ Leader not ready yet:", window.userProfile);
       return;
     }
 
-    if (res && res.active) {
+    const rawName = window.userProfile.name;
+    const cleanedName = window.userProfile.cleanName;
 
-      console.log("🟢 CONDITION: ACTIVE DUTY TRUE");
+    console.log("👤 Raw Name:", rawName);
+    console.log("🧹 Cleaned Name:", cleanedName);
 
-      window.isDutyActive = true;
-      console.log("🧠 isDutyActive set → TRUE");
+    console.log("🌐 Calling backend checkDutyFromSheet...");
 
-      btn.style.background = "#d32f2f";
-      label.innerHTML = "END DUTY";
+    callBackend("checkDutyFromSheet", {
+      leader: cleanedName
+    })
 
-      if (icon) {
-        icon.className = "fa-solid fa-stop";
-      } else {
-        console.warn("⚠ icon not found (safe skip)");
+    .then(function (res) {
+
+      console.log("🔥 DUTY RESPONSE:", res);
+      console.log("📊 res.active:", res?.active);
+
+      const btn   = document.getElementById("dutyMainBtn");
+      const icon  = document.getElementById("dutyIcon");
+      const label = document.getElementById("dutyLabel");
+
+      if (!btn || !label) {
+        console.error("❌ Required elements missing (btn/label)");
+        return;
       }
 
-      console.log("🔴 UI → END DUTY APPLIED");
+      // ================= ACTIVE DUTY =================
+      if (res && res.active) {
 
-    } else {
+        console.log("🟢 CONDITION: ACTIVE DUTY TRUE");
 
-      console.log("🟡 CONDITION: NO ACTIVE DUTY");
+        window.isDutyActive = true;
 
-      window.isDutyActive = false;
-      console.log("🧠 isDutyActive set → FALSE");
+        btn.style.background = "#d32f2f";
+        label.innerHTML = "END DUTY";
 
-      btn.style.background = "#2e7d32";
-      label.innerHTML = "START DUTY";
+        if (icon) {
+          icon.className = "fa-solid fa-stop";
+        }
 
-      if (icon) {
-        icon.className = "fa-solid fa-briefcase";
+        console.log("🔴 UI → END DUTY APPLIED");
+
+        // 🔥 START GPS (SAFE)
+        try {
+          if(window.userProfile){
+            console.log("🟢 Duty active → starting GPS");
+            startAutoGPS();
+          }
+        } catch(e){
+          console.error("❌ startAutoGPS error:", e);
+        }
+
+      } 
+      
+      // ================= NO DUTY =================
+      else {
+
+        console.log("🟡 CONDITION: NO ACTIVE DUTY");
+
+        window.isDutyActive = false;
+
+        btn.style.background = "#2e7d32";
+        label.innerHTML = "START DUTY";
+
+        if (icon) {
+          icon.className = "fa-solid fa-briefcase";
+        }
+
+        console.log("🟢 UI → START DUTY APPLIED");
+
+        // 🔥 STOP GPS (IMPORTANT)
+        try {
+          console.log("🔴 Duty inactive → stopping GPS");
+          stopAutoGPS();
+        } catch(e){
+          console.error("❌ stopAutoGPS error:", e);
+        }
       }
 
-      console.log("🟢 UI → START DUTY APPLIED");
-    }
+    })
 
-  })
+    .catch(function(err){
+      console.error("❌ Duty check error:", err);
+    })
 
-  .catch(function(err){
-    console.error("❌ Duty check error:", err);
-  })
+    .finally(function () {
 
-  .finally(function () {
+      console.log("🔓 Releasing dutyCheckRunning...");
 
-    console.log("🔓 Releasing dutyCheckRunning...");
+      setTimeout(() => {
+        dutyCheckRunning = false;
+        console.log("🔓 dutyCheckRunning = FALSE");
+        console.groupEnd();
+      }, 2000);
 
-    setTimeout(() => {
-      dutyCheckRunning = false;
-      console.log("🔓 dutyCheckRunning = FALSE");
-      console.groupEnd();
-    }, 2000);
+    });
 
-  });
-}   let dutyInitDone = false;
+  } catch(e){
+
+    console.error("❌ autoShowEndDuty crash:", e);
+
+    dutyCheckRunning = false;
+    console.groupEnd();
+  }
+
+}
+    
+    
+    
+    let dutyInitDone = false;
 
 function initDutyControl() {
 
@@ -6707,9 +6730,11 @@ window.addEventListener("load", function () {
    ========================================================= */
 
 // ================= GLOBAL STATE =================
+// ================= GLOBAL STATE =================
 let autoGpsTimer = null;
 let lastGpsSent = 0;
 let isTrackingRunning = false;
+let isSyncRunning = false;
 
 
 // ================= START AUTO GPS =================
@@ -6717,7 +6742,10 @@ function startAutoGPS(){
 
   try {
 
-    if(isTrackingRunning) return;
+    if(isTrackingRunning){
+      console.log("⚠ GPS already running");
+      return;
+    }
 
     if(!window.userProfile || !window.userProfile.rawName){
       console.warn("⚠ userProfile missing");
@@ -6727,10 +6755,35 @@ function startAutoGPS(){
     console.log("🟢 AUTO GPS STARTED");
 
     isTrackingRunning = true;
+
+    // 🔥 RUN IMMEDIATELY (no 1 min wait)
+    runAutoGPS();
+
+    // 🔥 THEN EVERY 1 MIN
     autoGpsTimer = setInterval(runAutoGPS, 60000);
 
   } catch(e){
     console.error("❌ startAutoGPS crash:", e);
+  }
+}
+
+
+// ================= STOP AUTO GPS =================
+function stopAutoGPS(){
+
+  try {
+
+    if(autoGpsTimer){
+      clearInterval(autoGpsTimer);
+      autoGpsTimer = null;
+    }
+
+    isTrackingRunning = false;
+
+    console.log("🔴 AUTO GPS STOPPED");
+
+  } catch(e){
+    console.error("❌ stopAutoGPS crash:", e);
   }
 }
 
@@ -6763,9 +6816,14 @@ function runAutoGPS(){
           const acc = Number(pos.coords.accuracy);
 
           if(isNaN(lat) || isNaN(lon)) return;
-          if(acc > 60) return;
+          if(acc > 60) {
+            console.warn("⚠ Poor accuracy skipped:", acc);
+            return;
+          }
 
           const now = Date.now();
+
+          // 🔥 prevent duplicate within 50 sec
           if(now - lastGpsSent < 50000) return;
 
           lastGpsSent = now;
@@ -6812,7 +6870,9 @@ async function sendGPS(data){
 
   try {
 
+    // 🔴 OFFLINE → SAVE
     if(!navigator.onLine){
+      console.warn("📴 Offline → saving GPS locally");
       saveOfflineGPS(data);
       return;
     }
@@ -6820,25 +6880,45 @@ async function sendGPS(data){
     const res = await callBackend("SAVE_PATROL_GPS", data);
 
     if(!res || res.status !== "ok"){
+      console.warn("⚠ Backend fail → saving offline");
       saveOfflineGPS(data);
     } else {
-      console.log("✅ Saved");
+
+      console.log("✅ GPS saved to backend");
+
+      // 🔥 INSTANT MAP REFRESH (if exists)
+      try {
+        if(typeof loadStaff === "function"){
+          loadStaff();
+        }
+      } catch(e){}
+
     }
 
   } catch(e){
+    console.warn("⚠ Network error → saving offline");
     saveOfflineGPS(data);
   }
 }
 
 
-// ================= OFFLINE =================
+// ================= OFFLINE SAVE =================
 function saveOfflineGPS(data){
 
   try {
 
     let list = JSON.parse(localStorage.getItem("offlineGPS") || "[]");
+
     list.push(data);
+
+    // 🔥 LIMIT STORAGE (safety)
+    if(list.length > 500){
+      list = list.slice(-300);
+    }
+
     localStorage.setItem("offlineGPS", JSON.stringify(list));
+
+    console.log("💾 Saved offline GPS:", list.length);
 
   } catch(e){
     console.error("❌ Offline save failed:", e);
@@ -6846,28 +6926,37 @@ function saveOfflineGPS(data){
 }
 
 
-// ================= SYNC =================
-let isSyncRunning = false;
-
+// ================= SYNC OFFLINE =================
 async function syncOfflineGPS(){
 
   if(isSyncRunning) return;
   isSyncRunning = true;
 
   try {
+
     if(!navigator.onLine) return;
 
     let list = JSON.parse(localStorage.getItem("offlineGPS") || "[]");
-    if(!list.length) return;
+
+    if(!list.length){
+      isSyncRunning = false;
+      return;
+    }
+
+    console.log("🔄 Syncing offline GPS:", list.length);
 
     let remaining = [];
 
     for(let item of list){
+
       try {
+
         const res = await callBackend("SAVE_PATROL_GPS", item);
+
         if(!res || res.status !== "ok"){
           remaining.push(item);
         }
+
       } catch {
         remaining.push(item);
       }
@@ -6875,14 +6964,36 @@ async function syncOfflineGPS(){
 
     localStorage.setItem("offlineGPS", JSON.stringify(remaining));
 
+    console.log("✅ Sync complete, remaining:", remaining.length);
+
   } catch(e){
     console.error("❌ sync crash:", e);
   }
 
   isSyncRunning = false;
 }
+
+
+// ================= AUTO SYNC =================
 setInterval(syncOfflineGPS, 30000);
-window.addEventListener("online", syncOfflineGPS);
+
+
+// ================= ONLINE EVENT =================
+window.addEventListener("online", () => {
+
+  console.log("🌐 Online → syncing + GPS restart");
+
+  syncOfflineGPS();
+
+  try {
+    if(window.userProfile && window.isDutyActive){
+      startAutoGPS();
+    }
+  } catch(e){
+    console.error("❌ GPS restart failed:", e);
+  }
+
+});
 
 
 // ================= DUTY CONTROL =================
@@ -6904,18 +7015,6 @@ setInterval(() => {
   }
 
 }, 10000);
-
-
-// ================= STOP =================
-function stopAutoGPS(){
-
-  if(autoGpsTimer){
-    clearInterval(autoGpsTimer);
-    autoGpsTimer = null;
-  }
-
-  isTrackingRunning = false;
-} 
   
   
   </script>
