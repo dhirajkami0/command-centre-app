@@ -6418,70 +6418,83 @@ function normalizeUserProfile(profile){
   };
 }
 function updateNetworkStatus(status) {
-  // Use the correct ID from your panel-header
+
   const el = document.getElementById("last-update"); 
   if (!el) return;
 
   if (status === "online") {
-    window.isOfflineUI = false; // Reset flag
+    window.isOfflineUI = false;
     el.innerHTML = "🟢 LIVE : " + new Date().toLocaleTimeString();
     el.style.color = "#00ff88";
   }
   else if (status === "offline") {
-    window.isOfflineUI = true; // Set flag to block refresh overwrites
+    window.isOfflineUI = true;
     el.innerHTML = "🔴 OFFLINE - CHECK INTERNET";
     el.style.color = "#ff4444";
-    if (navigator.vibrate) navigator.vibrate([50, 50, 50]); // Triple buzz for alert
+    if (navigator.vibrate) navigator.vibrate([50, 50, 50]);
   }
   else if (status === "connecting") {
     el.innerHTML = "🟡 CONNECTING...";
     el.style.color = "#ffaa00";
   }
-}    
-  window.addEventListener("load", function () {
+}
+
+
+// ================= PROFILE NORMALIZER =================
+function normalizeUserProfile(profile){
+
+  if(!profile) return null;
+
+  return {
+    rawName: profile.rawName || profile.name,
+    cleanName: profile.cleanName || cleanName(profile.name),
+    role: profile.role,
+    beat: profile.beat,
+    phone: profile.phone
+  };
+}
+
+
+// ================= APP START =================
+window.addEventListener("load", function () {
 
   console.log("🚀 App Started - Command Centre Initializing");
 
-  // 🔥 INITIAL STATUS (SMART)
+  // ================= STATUS =================
   if (!navigator.onLine) {
     updateNetworkStatus("offline");
   } else {
-    updateNetworkStatus("connecting"); // 🔥 FIX: not directly online
+    updateNetworkStatus("connecting");
   }
 
-  /* ============================================================
-     1. UI INIT (SAFE)
-  ============================================================ */
+  // ================= UI INIT =================
   try {
     initResponsiveUI();
   } catch (e) {
     console.warn("UI Init delayed:", e);
   }
 
-  /* ============================================================
-     🔥 PREVENT DOUBLE INIT (CRITICAL FIX)
-  ============================================================ */
+  // ================= PREVENT DOUBLE INIT =================
   if (window.__APP_STARTED__) {
     console.warn("⚠ App already started → skipping duplicate init");
     return;
   }
   window.__APP_STARTED__ = true;
 
-  /* ============================================================
-     2. CHECK OFFLINE PROFILE FIRST (🔥 CRITICAL)
-  ============================================================ */
+  // ================= OFFLINE PROFILE =================
   const savedProfile = localStorage.getItem("userProfile");
 
   if (savedProfile) {
 
     try {
+
       const profile = JSON.parse(savedProfile);
 
-     window.userProfile = normalizeUserProfile(profile); ✅
+      // 🔥 FIXED (removed invalid token)
+      window.userProfile = normalizeUserProfile(profile);
 
       console.log("📴 OFFLINE MODE → APP STARTED");
 
-      // 🔥 FIX: DON'T OVERRIDE STATUS WRONGLY
       if (!navigator.onLine) {
         updateNetworkStatus("offline");
       }
@@ -6504,12 +6517,11 @@ function updateNetworkStatus(status) {
         loadCompartmentsFromSheet();
       }
 
-      /* ============================================================
-         🔄 AUTO SYNC IF ONLINE
-      ============================================================ */
+      // ================= AUTO SYNC =================
       if (navigator.onLine) {
+
         console.log("🌐 Online → syncing pending data...");
-        updateNetworkStatus("connecting"); // 🔥 FIX
+        updateNetworkStatus("connecting");
 
         try {
           syncOfflineMoves();
@@ -6519,9 +6531,7 @@ function updateNetworkStatus(status) {
         }
       }
 
-      /* ============================================================
-         🌐 BACKGROUND FULL DATA LOAD (NON-BLOCKING)
-      ============================================================ */
+      // ================= BACKGROUND REFRESH =================
       setTimeout(() => {
 
         const phone = localStorage.getItem("userPhone") || "";
@@ -6540,13 +6550,14 @@ function updateNetworkStatus(status) {
 
             console.log("🔐 Online profile refreshed:", profile.name);
 
-           const fixedProfile = normalizeUserProfile(profile);
+            const fixedProfile = normalizeUserProfile(profile);
 
-window.userProfile = fixedProfile;
-localStorage.setItem("userProfile", JSON.stringify(fixedProfile));
+            window.userProfile = fixedProfile;
+            localStorage.setItem("userProfile", JSON.stringify(fixedProfile));
+
             applyRoleControl();
 
-            updateNetworkStatus("online"); // 🔥 FIX
+            updateNetworkStatus("online");
 
             return callBackend("updateVillageRisk");
 
@@ -6577,7 +6588,7 @@ localStorage.setItem("userProfile", JSON.stringify(fixedProfile));
             setTimeout(() => {
               if (window.map) {
                 map.invalidateSize();
-                console.log("🗺 Map resized fix applied (offline flow)");
+                console.log("🗺 Map resized fix applied");
               }
             }, 300);
 
@@ -6588,8 +6599,6 @@ localStorage.setItem("userProfile", JSON.stringify(fixedProfile));
           })
           .catch(err => {
             console.warn("⚠ Background sync failed:", err);
-
-            // 🔥 FIX: IF FAILS → SHOW OFFLINE
             updateNetworkStatus("offline");
           });
 
@@ -6598,11 +6607,13 @@ localStorage.setItem("userProfile", JSON.stringify(fixedProfile));
       return;
 
     } catch (e) {
+
       console.error("❌ Corrupt offline profile");
       localStorage.removeItem("userProfile");
     }
   }
 
+});
   /* ============================================================
      3. NO OFFLINE PROFILE → ONLINE LOGIN FLOW
   ============================================================ */
