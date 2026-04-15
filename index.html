@@ -6617,143 +6617,150 @@ window.addEventListener("load", function () {
  /* ============================================================
    3. NO OFFLINE PROFILE → ONLINE LOGIN FLOW
 ============================================================ */
+/* ============================================================
+   3. NO OFFLINE PROFILE → ONLINE LOGIN FLOW
+============================================================ */
 
-const phone = localStorage.getItem("userPhone") || "";
+(function startOnlineLoginFlow(){
 
-if (!phone) {
-  console.warn("⚠ No phone found → showing login");
-  showLogin();
-  return;
-}
+  const phone = localStorage.getItem("userPhone") || "";
 
-// ================= NETWORK STATUS =================
-if (navigator.onLine) {
-  updateNetworkStatus("connecting");
-} else {
-  updateNetworkStatus("offline");
-}
+  // ================= NO PHONE =================
+  if (!phone) {
+    console.warn("⚠ No phone found → showing login");
+    showLogin();
+    return; // ✅ NOW VALID (inside function)
+  }
 
-console.log("📤 Sending phone:", phone);
+  // ================= NETWORK STATUS =================
+  if (navigator.onLine) {
+    updateNetworkStatus("connecting");
+  } else {
+    updateNetworkStatus("offline");
+  }
 
-// ================= FETCH PROFILE =================
-callBackend("GET_PROFILE", { phone: phone })
+  console.log("📤 Sending phone:", phone);
 
-  .then(function (profile) {
+  // ================= FETCH PROFILE =================
+  callBackend("GET_PROFILE", { phone: phone })
 
-    if (!profile || profile.error) {
-      console.error("❌ Invalid user");
-      localStorage.removeItem("userPhone");
-      showLogin();
-      return;
-    }
+    .then(function (profile) {
 
-    console.log("🔐 Logged in (ONLINE):", profile.name);
-
-    // 🔥 FIX: ALWAYS NORMALIZE PROFILE
-    const fixedProfile = normalizeUserProfile(profile);
-
-    window.userProfile = fixedProfile;
-    localStorage.setItem("userProfile", JSON.stringify(fixedProfile));
-
-    updateNetworkStatus("online");
-
-    if (typeof applyRoleControl === "function") {
-      applyRoleControl();
-    }
-
-    if (typeof startApp === "function") {
-      startApp();
-    }
-
-    if (typeof initDutyControl === "function") {
-      initDutyControl();
-    }
-
-    if (typeof loadRangeKML === "function") {
-      loadRangeKML();
-    }
-
-    if (typeof loadCompartmentsFromSheet === "function") {
-      loadCompartmentsFromSheet();
-    }
-
-    return callBackend("updateVillageRisk");
-
-  })
-
-  // ================= RISK DATA =================
-  .then(function (coneData) {
-
-    if (!coneData) return;
-
-    window.coneVillages = coneData;
-
-    return callBackend("getVillages");
-
-  })
-
-  // ================= VILLAGE DATA =================
-  .then(function (villageList) {
-
-    if (!villageList) return;
-
-    window.villages = (villageList || []).map(v => ({
-      name: v.name || v.Village || "Unknown",
-      lat: parseFloat(v.lat),
-      lon: parseFloat(v.lon)
-    }));
-
-    if (typeof refreshAll === "function") {
-      refreshAll();
-    }
-
-    // ================= SPLASH HANDLING =================
-    const splash = document.getElementById('splash-screen');
-
-    setTimeout(() => {
-
-      if (splash) {
-
-        splash.style.transition = "opacity 0.8s ease";
-        splash.style.opacity = "0";
-
-        setTimeout(() => {
-
-          splash.style.display = "none";
-
-          // 🗺 FIX MAP SIZE AFTER SPLASH
-          setTimeout(() => {
-            if (window.map) {
-              map.invalidateSize();
-              console.log("🗺 Map resized after splash");
-            }
-          }, 300);
-
-        }, 800);
-
+      if (!profile || profile.error) {
+        console.error("❌ Invalid user");
+        localStorage.removeItem("userPhone");
+        showLogin();
+        return;
       }
 
-    }, 2800);
+      console.log("🔐 Logged in (ONLINE):", profile.name);
 
-    // ================= EVENT LISTENERS =================
-    if (typeof initEventListeners === "function") {
-      initEventListeners();
-    }
+      // 🔥 ALWAYS NORMALIZE PROFILE
+      const fixedProfile = normalizeUserProfile(profile);
 
-  })
+      window.userProfile = fixedProfile;
+      localStorage.setItem("userProfile", JSON.stringify(fixedProfile));
 
-  // ================= ERROR =================
-  .catch(function (err) {
+      updateNetworkStatus("online");
 
-    console.error("❌ Startup failed:", err);
+      if (typeof applyRoleControl === "function") {
+        applyRoleControl();
+      }
 
-    updateNetworkStatus("offline");
+      if (typeof startApp === "function") {
+        startApp();
+      }
 
-    alert("❌ Internet required for first login");
-    showLogin();
+      if (typeof initDutyControl === "function") {
+        initDutyControl();
+      }
 
-  });
-/* ============================================================
+      if (typeof loadRangeKML === "function") {
+        loadRangeKML();
+      }
+
+      if (typeof loadCompartmentsFromSheet === "function") {
+        loadCompartmentsFromSheet();
+      }
+
+      return callBackend("updateVillageRisk");
+    })
+
+    // ================= RISK DATA =================
+    .then(function (coneData) {
+
+      if (!coneData) return;
+
+      window.coneVillages = coneData;
+
+      return callBackend("getVillages");
+    })
+
+    // ================= VILLAGE DATA =================
+    .then(function (villageList) {
+
+      if (!villageList) return;
+
+      window.villages = (villageList || []).map(v => ({
+        name: v.name || v.Village || "Unknown",
+        lat: parseFloat(v.lat),
+        lon: parseFloat(v.lon)
+      }));
+
+      if (typeof refreshAll === "function") {
+        refreshAll();
+      }
+
+      // ================= SPLASH HANDLING =================
+      const splash = document.getElementById('splash-screen');
+
+      setTimeout(() => {
+
+        if (splash) {
+
+          splash.style.transition = "opacity 0.8s ease";
+          splash.style.opacity = "0";
+
+          setTimeout(() => {
+
+            splash.style.display = "none";
+
+            // 🗺 FIX MAP SIZE AFTER SPLASH
+            setTimeout(() => {
+              if (window.map) {
+                map.invalidateSize();
+                console.log("🗺 Map resized after splash");
+              }
+            }, 300);
+
+          }, 800);
+
+        }
+
+      }, 2800);
+
+      // ================= EVENT LISTENERS =================
+      if (typeof initEventListeners === "function") {
+        initEventListeners();
+      }
+
+    })
+
+    // ================= ERROR =================
+    .catch(function (err) {
+
+      console.error("❌ Startup failed:", err);
+
+      updateNetworkStatus("offline");
+
+      alert("❌ Internet required for first login");
+      showLogin();
+
+    });
+
+})();
+    
+    /* ============================================================
    🌐 NETWORK LISTENERS (UNCHANGED BUT FIXED BEHAVIOR)
 ============================================================ */
 window.addEventListener("online", () => {
