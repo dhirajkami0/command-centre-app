@@ -1142,13 +1142,37 @@ function logout(){
     let appStarted = false;
 
 function startApp(){
+
   if(appStarted) return;
   appStarted = true;
 
- // loadMapDataFirebase();   // ✅ FIREBASE REALTIME (this contains onSnapshot)
-  loadSightings();         // ✅ fallback / elephant data
-}  
-    /* ===============================
+  console.log("🚀 App Started - Command Centre Initializing");
+
+  loadSightings();
+
+  // 🔥 ADD THIS BLOCK (CRITICAL)
+  setTimeout(() => {
+
+    try {
+
+      if(window.userProfile && window.isDutyActive === true){
+
+        console.log("🟢 Starting AUTO GPS from startApp");
+        startAutoGPS();
+
+      } else {
+
+        console.warn("⚠ GPS not started → duty inactive or profile missing");
+
+      }
+
+    } catch(e){
+      console.error("❌ startAutoGPS failed:", e);
+    }
+
+  }, 1500); // small delay for stability
+
+}    /* ===============================
    🔐 MAIN PROFILE FUNCTION
 =============================== */
 
