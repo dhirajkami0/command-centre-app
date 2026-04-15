@@ -6823,10 +6823,14 @@ function saveOfflineGPS(data){
 
 
 // ================= SYNC =================
+let isSyncRunning = false;
+
 async function syncOfflineGPS(){
 
-  try {
+  if(isSyncRunning) return;
+  isSyncRunning = true;
 
+  try {
     if(!navigator.onLine) return;
 
     let list = JSON.parse(localStorage.getItem("offlineGPS") || "[]");
@@ -6835,7 +6839,6 @@ async function syncOfflineGPS(){
     let remaining = [];
 
     for(let item of list){
-
       try {
         const res = await callBackend("SAVE_PATROL_GPS", item);
         if(!res || res.status !== "ok"){
@@ -6844,7 +6847,6 @@ async function syncOfflineGPS(){
       } catch {
         remaining.push(item);
       }
-
     }
 
     localStorage.setItem("offlineGPS", JSON.stringify(remaining));
@@ -6852,8 +6854,9 @@ async function syncOfflineGPS(){
   } catch(e){
     console.error("❌ sync crash:", e);
   }
-}
 
+  isSyncRunning = false;
+}
 setInterval(syncOfflineGPS, 30000);
 window.addEventListener("online", syncOfflineGPS);
 
@@ -6888,7 +6891,10 @@ function stopAutoGPS(){
   }
 
   isTrackingRunning = false;
-}  </script>
+} 
+  
+  
+  </script>
 
   </div>
   <div id="form-modal"
