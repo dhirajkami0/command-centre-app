@@ -6540,9 +6540,10 @@ function updateNetworkStatus(status) {
 
             console.log("🔐 Online profile refreshed:", profile.name);
 
-            window.userProfile = normalizeUserProfile(profile); ✅
-            localStorage.setItem("userProfile", JSON.stringify(profile));
+           const fixedProfile = normalizeUserProfile(profile);
 
+window.userProfile = fixedProfile;
+localStorage.setItem("userProfile", JSON.stringify(fixedProfile));
             applyRoleControl();
 
             updateNetworkStatus("online"); // 🔥 FIX
