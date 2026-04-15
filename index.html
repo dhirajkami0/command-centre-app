@@ -829,124 +829,20 @@ function safeBackend(action, payload = {}) {
    🔧 GLOBAL UTILITIES (BACKEND)
 =============================== */
 
-function cleanName(name){
-
-  return String(name || "")
+function cleanName(n){
+  return String(n || "")
     .toUpperCase()
-
-    // 🔥 REMOVE DESIGNATIONS (VERY ROBUST)
     .replace(/\b(DR\.?|FR\.?|FG|DL|BS|AS|FV|RO|DFO|RANGER|BANA\S*|ORD\w*)\b/g, "")
-
-    // 🔥 REMOVE AFTER COMMA / BRACKET / DASH / SLASH
     .split(",")[0]
     .split("(")[0]
     .split("-")[0]
     .split("/")[0]
-
-    // 🔥 REMOVE DOTS + SPECIALS
     .replace(/\./g,"")
     .replace(/[^A-Z\s]/g,"")
-
-    // 🔥 NORMALIZE SPACES
     .replace(/\s+/g," ")
     .trim();
-}  
-    
- function loadProfile(){
-
-  const phone = localStorage.getItem("userPhone") || "";
-
-  if(!phone){
-    showLogin();
-    return;
-  }
-
-  console.log("📤 Sending phone:", phone);
-
-  // 🔥 USE SAFE BACKEND
-  safeBackend("GET_PROFILE", { phone })
-
-    .then(profile=>{
-
-      /* ============================================================
-         ❌ NO RESPONSE (OFFLINE / ERROR)
-      ============================================================ */
-      if(!profile){
-
-        console.warn("⚠ Backend failed, trying offline profile");
-
-        const saved = localStorage.getItem("userProfile");
-
-        if(saved){
-
-          const offlineProfile = JSON.parse(saved);
-
-          // 🔥 ENSURE STRUCTURE (BACKWARD COMPATIBLE)
-          offlineProfile.rawName = offlineProfile.rawName || offlineProfile.name;
-          offlineProfile.cleanName = offlineProfile.cleanName || cleanName(offlineProfile.name);
-
-          window.userProfile = offlineProfile;
-
-          console.log("📴 USING OFFLINE PROFILE:", offlineProfile);
-
-          updateNetworkStatus("offline");
-
-          applyRoleControl();
-          startApp();
-
-        } else {
-
-          console.error("❌ No offline profile available");
-
-          alert("❌ First login requires internet");
-
-          showLogin();
-        }
-
-        return;
-      }
-
-      /* ============================================================
-         ❌ INVALID USER
-      ============================================================ */
-      if(profile.error){
-
-        alert("❌ Not authorized");
-
-        localStorage.removeItem("userPhone");
-        localStorage.removeItem("userProfile");
-
-        showLogin();
-        return;
-      }
-
-      /* ============================================================
-         ✅ SUCCESS
-      ============================================================ */
-
-      // 🔥 KEEP ORIGINAL NAME
-      profile.rawName = profile.name;
-
-      // 🔥 ADD CLEAN NAME (FOR INTERNAL USE)
-      profile.cleanName = cleanName(profile.name);
-
-      window.userProfile = profile;
-
-      // 🔥 SAVE FOR OFFLINE USE
-      localStorage.setItem("userProfile", JSON.stringify(profile));
-
-      console.log("✅ USER:", profile);
-
-      updateNetworkStatus("online");
-
-      applyRoleControl();
-      startApp();
-
-    });
-
-  // ❌ NO .catch NEEDED (safeBackend handles it)
-
-}
+}    
+ 
 function applyRoleControl(){
 
   const role = (window.userProfile?.role || "").toUpperCase();
@@ -1003,7 +899,96 @@ function applyRoleControl(){
 
     alert("❌ Not authorized");
   }
-}  function login(){
+}  
+    // ================= LOAD PROFILE =================
+function loadProfile(){
+
+  const phone = localStorage.getItem("userPhone") || "";
+
+  if(!phone){
+    showLogin();
+    return;
+  }
+
+  console.log("📤 Sending phone:", phone);
+
+  safeBackend("GET_PROFILE", { phone })
+
+    .then(profile=>{
+
+      // ================= OFFLINE FALLBACK =================
+      if(!profile){
+
+        console.warn("⚠ Backend failed, trying offline profile");
+
+        const saved = localStorage.getItem("userProfile");
+
+        if(saved){
+
+          const offlineProfile = JSON.parse(saved);
+
+          // 🔥 ENSURE STRUCTURE
+          offlineProfile.rawName = offlineProfile.rawName || offlineProfile.name;
+          offlineProfile.cleanName = offlineProfile.cleanName || cleanName(offlineProfile.rawName);
+
+          window.userProfile = offlineProfile;
+
+          console.log("📴 USING OFFLINE PROFILE:", offlineProfile);
+
+          updateNetworkStatus("offline");
+
+          applyRoleControl();
+          startApp();
+
+        } else {
+
+          alert("❌ First login requires internet");
+          showLogin();
+        }
+
+        return;
+      }
+
+      // ================= INVALID =================
+      if(profile.error){
+
+        alert("❌ Not authorized");
+
+        localStorage.removeItem("userPhone");
+        localStorage.removeItem("userProfile");
+
+        showLogin();
+        return;
+      }
+
+      // ================= SUCCESS =================
+
+      const finalProfile = {
+        rawName: profile.name,                 // 🔥 ORIGINAL
+        cleanName: profile.cleanName || cleanName(profile.name), // 🔥 NORMALIZED
+        role: profile.role,
+        beat: profile.beat,
+        phone: profile.phone
+      };
+
+      window.userProfile = finalProfile;
+
+      localStorage.setItem("userProfile", JSON.stringify(finalProfile));
+
+      console.log("✅ USER:", finalProfile);
+
+      updateNetworkStatus("online");
+
+      applyRoleControl();
+      startApp();
+
+    });
+
+}
+
+
+// ================= LOGIN =================
+function login(){
 
   const btn = document.getElementById("loginBtn");
   const phone = document.getElementById("loginPhone").value.trim();
@@ -1013,37 +998,28 @@ function applyRoleControl(){
     return;
   }
 
-  // 🔥 LOADING STATE
   if(btn){
     btn.innerText = "⏳ Logging in...";
     btn.disabled = true;
   }
 
-  // 🔥 USE SAFE BACKEND
   safeBackend("GET_PROFILE", { phone })
 
     .then(profile => {
 
-      // 🔄 RESET BUTTON
       if(btn){
         btn.innerText = "Login";
         btn.disabled = false;
       }
 
-      /* ============================================================
-         ❌ NO RESPONSE (OFFLINE / ERROR)
-      ============================================================ */
+      // ================= OFFLINE LOGIN =================
       if(!profile){
 
-        console.warn("⚠ Login failed (maybe offline), trying offline profile");
-
-        // 🔥 OFFLINE LOGIN FALLBACK
         const saved = localStorage.getItem("userProfile");
 
         if(saved){
 
           const offlineProfile = JSON.parse(saved);
-
           const savedPhone = localStorage.getItem("userPhone");
 
           if(savedPhone === phone){
@@ -1052,29 +1028,23 @@ function applyRoleControl(){
 
             document.getElementById("loginModal").style.display = "none";
 
-            console.log("📴 Logged in (OFFLINE):", offlineProfile);
-
             updateNetworkStatus("offline");
 
             applyRoleControl();
             startApp();
 
           } else {
-
-            alert("❌ Offline login only allowed for last logged-in user");
+            alert("❌ Offline login only for last user");
           }
 
         } else {
-
-          alert("❌ No internet & no saved user. First login must be online.");
+          alert("❌ First login must be online");
         }
 
         return;
       }
 
-      /* ============================================================
-         ❌ INVALID USER
-      ============================================================ */
+      // ================= INVALID =================
       if(profile.error){
         alert("❌ Not authorized");
         return;
@@ -1082,30 +1052,29 @@ function applyRoleControl(){
 
       const role = (profile.role || "").toUpperCase();
 
-      // 🔥 ROLE CHECK
       if(role !== "ADMIN" && role !== "TEAM LEADER" && role !== "STAFF"){
         alert("❌ Not authorized role");
         return;
       }
 
-      /* ============================================================
-         ✅ SUCCESS (ONLINE LOGIN)
-      ============================================================ */
+      // ================= SUCCESS =================
 
-      // ✅ STORE PHONE
+      const finalProfile = {
+        rawName: profile.name,                 // 🔥 ORIGINAL
+        cleanName: profile.cleanName || cleanName(profile.name), // 🔥 NORMALIZED
+        role: profile.role,
+        beat: profile.beat,
+        phone: profile.phone
+      };
+
       localStorage.setItem("userPhone", phone);
+      localStorage.setItem("userProfile", JSON.stringify(finalProfile));
 
-      // 🔥 CLEAN + SAVE PROFILE
-      profile.name = cleanName(profile.name);
-      localStorage.setItem("userProfile", JSON.stringify(profile));
+      window.userProfile = finalProfile;
 
-      // ✅ SET GLOBAL
-      window.userProfile = profile;
-
-      // ✅ CLOSE LOGIN
       document.getElementById("loginModal").style.display = "none";
 
-      console.log("✅ Logged in (ONLINE):", profile);
+      console.log("✅ Logged in:", finalProfile);
 
       updateNetworkStatus("online");
 
@@ -1114,7 +1083,6 @@ function applyRoleControl(){
 
     });
 
-  // ❌ NO .catch NEEDED (safeBackend handles it)
 }
 function showLogin(){
 
