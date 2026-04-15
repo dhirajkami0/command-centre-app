@@ -913,35 +913,43 @@ function loadProfile(){
 
   safeBackend("GET_PROFILE", { phone })
 
-    .then(profile=>{
+    .then(profile => {
 
       // ================= OFFLINE FALLBACK =================
       if(!profile){
 
         console.warn("⚠ Backend failed, trying offline profile");
 
-        const saved = localStorage.getItem("userProfile");
+        try {
 
-        if(saved){
+          const saved = localStorage.getItem("userProfile");
 
-          const offlineProfile = JSON.parse(saved);
+          if(saved){
 
-          // 🔥 ENSURE STRUCTURE
-          offlineProfile.rawName = offlineProfile.rawName || offlineProfile.name;
-          offlineProfile.cleanName = offlineProfile.cleanName || cleanName(offlineProfile.rawName);
+            const offlineProfile = JSON.parse(saved);
 
-          window.userProfile = offlineProfile;
+            // 🔥 ENSURE STRUCTURE
+            offlineProfile.rawName = offlineProfile.rawName || offlineProfile.name || "";
+            offlineProfile.cleanName = offlineProfile.cleanName || cleanName(offlineProfile.rawName);
 
-          console.log("📴 USING OFFLINE PROFILE:", offlineProfile);
+            window.userProfile = offlineProfile;
 
-          updateNetworkStatus("offline");
+            console.log("📴 USING OFFLINE PROFILE:", offlineProfile);
 
-          applyRoleControl();
-          startApp();
+            updateNetworkStatus("offline");
 
-        } else {
+            applyRoleControl();
+            startApp();
 
-          alert("❌ First login requires internet");
+          } else {
+
+            alert("❌ First login requires internet");
+            showLogin();
+          }
+
+        } catch(e){
+          console.error("❌ Offline profile corrupted:", e);
+          localStorage.removeItem("userProfile");
           showLogin();
         }
 
@@ -962,12 +970,14 @@ function loadProfile(){
 
       // ================= SUCCESS =================
 
+      const raw = profile.rawName || profile.name || "";
+
       const finalProfile = {
-        rawName: profile.name,                 // 🔥 ORIGINAL
-        cleanName: profile.cleanName || cleanName(profile.name), // 🔥 NORMALIZED
-        role: profile.role,
-        beat: profile.beat,
-        phone: profile.phone
+        rawName: raw,
+        cleanName: profile.cleanName || cleanName(raw),
+        role: profile.role || "",
+        beat: profile.beat || "",
+        phone: profile.phone || ""
       };
 
       window.userProfile = finalProfile;
@@ -980,6 +990,35 @@ function loadProfile(){
 
       applyRoleControl();
       startApp();
+
+    })
+
+    .catch(err => {
+
+      console.error("❌ loadProfile crash:", err);
+
+      const saved = localStorage.getItem("userProfile");
+
+      if(saved){
+        try {
+          const offlineProfile = JSON.parse(saved);
+
+          offlineProfile.rawName = offlineProfile.rawName || offlineProfile.name || "";
+          offlineProfile.cleanName = offlineProfile.cleanName || cleanName(offlineProfile.rawName);
+
+          window.userProfile = offlineProfile;
+
+          updateNetworkStatus("offline");
+
+          applyRoleControl();
+          startApp();
+
+        } catch(e){
+          showLogin();
+        }
+      } else {
+        showLogin();
+      }
 
     });
 
@@ -5573,7 +5612,7 @@ if (!profile || !profile.rawName) {
   /* ===============================
      🧠 USE RAW NAME
   =============================== */
-  const displayName = String(profile.name || "").trim();
+ const displayName = String(profile.rawName || profile.name || "").trim();
 
   console.log("✅ Using RAW Name:", displayName);
 
@@ -5775,14 +5814,17 @@ function openDutyForm(){
   beatSel.value = profile.beat || "";
 
   /* LEADER LOCK */
-  const leaderInput = document.getElementById("d-leader");
-  if (leaderInput) {
-    leaderInput.value = profile.name;
-    leaderInput.readOnly = true;
-    leaderInput.dataset.lockedUser = profile.name;
-  }
+ const leaderInput = document.getElementById("d-leader");
 
-  /* CHANGE */
+if (leaderInput) {
+
+  const displayName = String(profile.rawName || profile.name || "").trim();
+
+  leaderInput.value = displayName;
+  leaderInput.readOnly = true;
+  leaderInput.dataset.lockedUser = displayName;
+
+} /* CHANGE */
   beatSel.onchange = () => {
     updateDutyStaff("BEAT_CHANGE");
     updateDutyCompt("BEAT_CHANGE");
@@ -7380,15 +7422,13 @@ function startDuty(event) {
     startDutySubmitting = true;
 
     const payload = {
-      staff: staffString,
-      type: document.getElementById("d-type")?.value || "",
-      compt: comptString,
-      leader: profile.name || "",
-      email: profile.email || "",
-      phone: localStorage.getItem("userPhone") || ""
-    };
-
-    console.log("📤 PAYLOAD:", payload);
+  staff: staffString,
+  type: document.getElementById("d-type")?.value || "",
+  compt: comptString,
+  leader: String(profile.rawName || profile.name || "").trim(),
+  email: profile.email || "",
+  phone: localStorage.getItem("userPhone") || ""
+};   console.log("📤 PAYLOAD:", payload);
 
     const originalText = startBtn.innerHTML;
 
