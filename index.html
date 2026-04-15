@@ -6692,21 +6692,17 @@ function startAutoGPS(){
 
   try {
 
-    if(isTrackingRunning){
-      console.log("⚠️ Auto GPS already running");
-      return;
-    }
+    if(isTrackingRunning) return;
 
     if(!window.userProfile || !window.userProfile.rawName){
-      console.warn("⚠ No userProfile → cannot start GPS");
+      console.warn("⚠ userProfile missing");
       return;
     }
 
-    console.log("🟢 FULL AUTO GPS STARTED");
+    console.log("🟢 AUTO GPS STARTED");
 
     isTrackingRunning = true;
-
-    autoGpsTimer = setInterval(runAutoGPS, 60000); // ✅ 1 MINUTE
+    autoGpsTimer = setInterval(runAutoGPS, 60000);
 
   } catch(e){
     console.error("❌ startAutoGPS crash:", e);
@@ -6714,15 +6710,12 @@ function startAutoGPS(){
 }
 
 
-// ================= MAIN GPS ENGINE =================
+// ================= MAIN GPS =================
 function runAutoGPS(){
 
   try {
 
-    if(window.isDutyActive !== true){
-      console.log("⏸ Skipped (not on duty)");
-      return;
-    }
+    if(window.isDutyActive !== true) return;
 
     if(!window.userProfile || !window.userProfile.rawName){
       console.warn("⚠ userProfile missing");
@@ -6736,7 +6729,7 @@ function runAutoGPS(){
 
     navigator.geolocation.getCurrentPosition(
 
-      pos => {
+      async pos => {
 
         try {
 
@@ -6744,24 +6737,11 @@ function runAutoGPS(){
           const lon = Number(pos.coords.longitude.toFixed(6));
           const acc = Number(pos.coords.accuracy);
 
-          // 🔥 VALIDATION
-          if(!lat || !lon){
-            console.warn("⚠ Invalid GPS");
-            return;
-          }
-
-          if(acc > 60){
-            console.warn("⚠ Poor accuracy:", acc);
-            return;
-          }
+          if(isNaN(lat) || isNaN(lon)) return;
+          if(acc > 60) return;
 
           const now = Date.now();
-
-          // ⏱ ANTI SPAM SAFETY
-          if(now - lastGpsSent < 50000){
-            console.log("⏱ Cooldown skip");
-            return;
-          }
+          if(now - lastGpsSent < 50000) return;
 
           lastGpsSent = now;
 
@@ -6776,19 +6756,17 @@ function runAutoGPS(){
             time: new Date().toISOString()
           };
 
-          console.log("📍 AUTO GPS:", gpsData);
+          console.log("📍 GPS:", gpsData);
 
-          sendGPS(gpsData);
+          await sendGPS(gpsData);
 
-        } catch (e) {
+        } catch(e){
           console.error("❌ GPS processing crash:", e);
         }
 
       },
 
-      err => {
-        console.warn("⚠ GPS error:", err.message);
-      },
+      err => console.warn("⚠ GPS error:", err.message),
 
       {
         enableHighAccuracy: true,
@@ -6798,72 +6776,44 @@ function runAutoGPS(){
 
     );
 
-  } catch (err){
-    console.error("❌ runAutoGPS crash:", err);
+  } catch(e){
+    console.error("❌ runAutoGPS crash:", e);
   }
 }
 
 
 // ================= SEND GPS =================
-async function sendGPS(gpsData){
+async function sendGPS(data){
 
   try {
 
-    // 📴 OFFLINE
     if(!navigator.onLine){
-      console.log("📴 Offline → saving");
-      saveOfflineGPS(gpsData);
+      saveOfflineGPS(data);
       return;
     }
 
-    const res = await callBackend("SAVE_PATROL_GPS", gpsData);
+    const res = await callBackend("SAVE_PATROL_GPS", data);
 
-    if(!res || res.error){
-      console.warn("⚠ Backend fail → save offline");
-      saveOfflineGPS(gpsData);
+    if(!res || res.status !== "ok"){
+      saveOfflineGPS(data);
     } else {
-      console.log("✅ Saved to sheet");
+      console.log("✅ Saved");
     }
 
   } catch(e){
-    console.error("❌ Send error → offline save");
-    saveOfflineGPS(gpsData);
+    saveOfflineGPS(data);
   }
 }
 
 
-// ================= STOP AUTO GPS =================
-function stopAutoGPS(){
-
-  try {
-
-    if(autoGpsTimer){
-      clearInterval(autoGpsTimer);
-      autoGpsTimer = null;
-    }
-
-    isTrackingRunning = false;
-
-    console.log("🛑 AUTO GPS STOPPED");
-
-  } catch(e){
-    console.error("❌ stopAutoGPS crash:", e);
-  }
-}
-
-
-// ================= OFFLINE SAVE =================
+// ================= OFFLINE =================
 function saveOfflineGPS(data){
 
   try {
 
     let list = JSON.parse(localStorage.getItem("offlineGPS") || "[]");
-
     list.push(data);
-
     localStorage.setItem("offlineGPS", JSON.stringify(list));
-
-    console.log("💾 Saved offline:", list.length);
 
   } catch(e){
     console.error("❌ Offline save failed:", e);
@@ -6871,7 +6821,7 @@ function saveOfflineGPS(data){
 }
 
 
-// ================= SYNC OFFLINE (SAFE + ORDERED) =================
+// ================= SYNC =================
 async function syncOfflineGPS(){
 
   try {
@@ -6879,100 +6829,65 @@ async function syncOfflineGPS(){
     if(!navigator.onLine) return;
 
     let list = JSON.parse(localStorage.getItem("offlineGPS") || "[]");
-
     if(!list.length) return;
-
-    console.log("🔄 Syncing:", list.length);
 
     let remaining = [];
 
-    for(let i=0;i<list.length;i++){
+    for(let item of list){
 
       try {
-
-        const res = await callBackend("SAVE_PATROL_GPS", list[i]);
-
-        if(!res || res.error){
-          remaining.push(list[i]);
-        } else {
-          console.log("✅ Synced:", list[i]);
+        const res = await callBackend("SAVE_PATROL_GPS", item);
+        if(!res || res.status !== "ok"){
+          remaining.push(item);
         }
-
-      } catch(e){
-        remaining.push(list[i]);
+      } catch {
+        remaining.push(item);
       }
 
     }
 
     localStorage.setItem("offlineGPS", JSON.stringify(remaining));
 
-    console.log("📦 Remaining after sync:", remaining.length);
-
   } catch(e){
-    console.error("❌ syncOfflineGPS crash:", e);
+    console.error("❌ sync crash:", e);
   }
 }
 
-
-// ================= AUTO SYNC =================
 setInterval(syncOfflineGPS, 30000);
+window.addEventListener("online", syncOfflineGPS);
 
 
-// ================= ONLINE EVENT =================
-window.addEventListener("online", () => {
-  console.log("🌐 Back online → syncing");
-  syncOfflineGPS();
-});
-
-
-// ================= DUTY BASED CONTROL =================
+// ================= DUTY CONTROL =================
 setInterval(() => {
 
   try {
 
-    if(!window.userProfile || !window.userProfile.rawName){
-      console.log("⏳ Waiting for userProfile...");
-      return;
-    }
+    if(!window.userProfile || !window.userProfile.rawName) return;
+    if(typeof window.isDutyActive === "undefined") return;
 
-    if(typeof window.isDutyActive === "undefined"){
-      console.log("⏳ Waiting for duty status...");
-      return;
-    }
-
-    if(window.isDutyActive === true){
+    if(window.isDutyActive){
       startAutoGPS();
     } else {
       stopAutoGPS();
     }
 
   } catch(e){
-    console.error("❌ Duty control crash:", e);
+    console.error("❌ duty control crash:", e);
   }
 
 }, 10000);
 
 
-// ================= RESUME AFTER REFRESH =================
-setTimeout(()=>{
+// ================= STOP =================
+function stopAutoGPS(){
 
-  try {
-
-    if(
-      window.userProfile &&
-      window.userProfile.rawName &&
-      window.isDutyActive === true
-    ){
-      console.log("🔄 Resume tracking after reload");
-      startAutoGPS();
-    }
-
-  } catch(e){
-    console.error("❌ Resume crash:", e);
+  if(autoGpsTimer){
+    clearInterval(autoGpsTimer);
+    autoGpsTimer = null;
   }
 
-}, 3000);  
-  </script>
+  isTrackingRunning = false;
+}  </script>
 
   </div>
   <div id="form-modal"
