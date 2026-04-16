@@ -2218,7 +2218,7 @@ function showBestLocation() {
   btn.disabled = false;
 
   // ============================================================
-  // 🔥 FINAL DUTY CHECK
+  // 🔥 DUTY CHECK
   // ============================================================
   const isOnDuty = window.isDutyActive === true;
 
@@ -2238,7 +2238,7 @@ function showBestLocation() {
   }
 
   // ============================================================
-  // 🔥 DUPLICATE BLOCK
+  // 🔥 DUPLICATE CLICK BLOCK
   // ============================================================
   const now = Date.now();
 
@@ -2250,14 +2250,34 @@ function showBestLocation() {
   lastGPSSentTime = now;
 
   // ============================================================
-  // 📤 FINAL GPS DATA (UNIFIED FOR ALL USERS)
+  // 🔥 CRITICAL FIX: GET TEAM LEADER NAME
+  // ============================================================
+
+  let leaderName = "";
+
+  // ✅ If your app already stores active leader (recommended)
+  if (window.activeDutyLeader) {
+    leaderName = window.activeDutyLeader;
+  }
+
+  // ✅ Fallback → self (for leader login)
+  if (!leaderName) {
+    leaderName = window.userProfile.rawName;
+  }
+
+  const leaderClean = cleanName(leaderName);
+
+  console.log("👤 Using Leader:", leaderName);
+
+  // ============================================================
+  // 📤 FINAL GPS DATA (ALIGNED WITH BACKEND)
   // ============================================================
   const gpsData = {
-    name: window.userProfile.rawName,        // ✅ SAME FOR ALL USERS
-    cleanName: window.userProfile.cleanName, // ✅ MATCHING
+    name: leaderName,           // 🔥 MUST BE LEADER
+    cleanName: leaderClean,     // 🔥 MUST MATCH BACKEND
     phone: window.userProfile.phone || "",
     source: "MANUAL_APP",
-    lat,
+    lat: lat,
     lon: lng,
     time: new Date().toISOString()
   };
@@ -2265,30 +2285,36 @@ function showBestLocation() {
   console.log("📤 Sending GPS:", gpsData);
 
   // ============================================================
-  // 🌐 SEND (CRITICAL FIX: CORRECT ACTION)
+  // 🌐 SEND TO BACKEND (CORRECT FUNCTION)
   // ============================================================
-  callBackend("SAVE_MANUAL_GPS", gpsData)
+  callBackend("SAVE_PATROL_GPS", gpsData)
 
   .then(res => {
 
     console.log("📡 Response:", res);
 
-    if (!res || res.error) {
+    if (!res || res.status !== "ok") {
+
       console.warn("📴 Save failed → offline fallback");
+
       saveOfflineGPS(gpsData);
+
     } else {
-      console.log("✅ GPS saved in sheet");
+
+      console.log("✅ GPS saved for leader:", leaderName);
+
     }
 
   })
 
   .catch(err => {
+
     console.error("❌ Network fail:", err);
+
     saveOfflineGPS(gpsData);
+
   });
 }
-
-
 // ❌ ERROR
 map.on('locationerror', function (e) {
 
