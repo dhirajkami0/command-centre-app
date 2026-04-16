@@ -1780,7 +1780,6 @@ function autoShowEndDuty() {
     if (!window.userProfile || !window.userProfile.rawName) {
       console.warn("❌ Leader not ready yet:", window.userProfile);
 
-      // 🔥 IMPORTANT: RELEASE LOCK
       dutyCheckRunning = false;
       console.groupEnd();
       return;
@@ -1791,6 +1790,9 @@ function autoShowEndDuty() {
 
     console.log("👤 Raw Name:", rawName);
     console.log("🧹 Cleaned Name:", cleanedName);
+
+    // 🔥 STORE PREVIOUS STATE
+    const wasActive = window.isDutyActive === true;
 
     console.log("🌐 Calling backend checkDutyFromSheet...");
 
@@ -1812,7 +1814,9 @@ function autoShowEndDuty() {
         return;
       }
 
-      // ================= ACTIVE DUTY =================
+      // =========================================================
+      // 🟢 ACTIVE DUTY
+      // =========================================================
       if (res && res.active) {
 
         console.log("🟢 CONDITION: ACTIVE DUTY TRUE");
@@ -1828,18 +1832,14 @@ function autoShowEndDuty() {
 
         console.log("🔴 UI → END DUTY APPLIED");
 
-        // 🔥 START GPS (SAFE + NO DUPLICATE)
+        // 🔥 START GPS (SAFE)
         try {
 
-          if (window.userProfile && window.isDutyActive === true) {
-
-            if (!window.gpsRunning) {
-              console.log("🟢 Duty active → starting GPS");
-              startAutoGPS();
-            } else {
-              console.log("⛔ GPS already running → skip start");
-            }
-
+          if (!window.gpsRunning) {
+            console.log("🟢 Duty active → starting GPS");
+            startAutoGPS();
+          } else {
+            console.log("⛔ GPS already running");
           }
 
         } catch(e){
@@ -1848,7 +1848,9 @@ function autoShowEndDuty() {
 
       } 
       
-      // ================= NO DUTY =================
+      // =========================================================
+      // 🟡 NO DUTY
+      // =========================================================
       else {
 
         console.log("🟡 CONDITION: NO ACTIVE DUTY");
@@ -1864,18 +1866,52 @@ function autoShowEndDuty() {
 
         console.log("🟢 UI → START DUTY APPLIED");
 
-        // 🔥 STOP GPS (SAFE)
+        // 🔥 STOP GPS
         try {
 
           if (window.gpsRunning) {
             console.log("🔴 Duty inactive → stopping GPS");
             stopAutoGPS();
           } else {
-            console.log("⛔ GPS already stopped → skip");
+            console.log("⛔ GPS already stopped");
           }
 
         } catch(e){
           console.error("❌ stopAutoGPS error:", e);
+        }
+
+        // =====================================================
+        // 🔥 CRITICAL FIX: CLEAR ONLY ON TRUE → FALSE
+        // =====================================================
+        if (wasActive) {
+
+          console.warn("🧹 Duty ended → clearing old GPS data");
+
+          // 🔥 CLEAR OFFLINE STORAGE
+          try {
+            localStorage.removeItem("offlineGPS");
+            console.log("💾 Offline GPS cleared");
+          } catch(e){
+            console.error("❌ Offline clear failed:", e);
+          }
+
+          // 🔥 CLEAR BACKEND DATA
+          try {
+            callBackend("CLEAR_OLD_PATROL_DATA", {
+              name: rawName,
+              cleanName: cleanedName
+            });
+            console.log("🗑 Backend patrol data cleared");
+          } catch(e){
+            console.error("❌ Backend clear failed:", e);
+          }
+
+          // 🔥 RESET DUPLICATE MEMORY
+          try {
+            lastLocationKey = "";
+            console.log("♻ Location memory reset");
+          } catch(e){}
+
         }
       }
 
@@ -1906,7 +1942,6 @@ function autoShowEndDuty() {
   }
 
 }    
-    
     let dutyInitDone = false;
 
 function initDutyControl() {
@@ -6814,19 +6849,8 @@ function stopAutoGPS(){
 
   console.log("🔴 AUTO GPS STOPPED");
 
-  // 🔥 CLEAR OFFLINE DATA WHEN DUTY ENDS
-  localStorage.removeItem("offlineGPS");
-
-  // 🔥 CLEAR BACKEND DATA FOR USER
-  if(window.userProfile){
-    callBackend("CLEAR_OLD_PATROL_DATA", {
-      name: window.userProfile.rawName,
-      cleanName: window.userProfile.cleanName
-    });
-  }
+  // ❌ DO NOT CLEAR DATA HERE
 }
-
-
 // ============================================================
 // 📍 AUTO GPS ENGINE
 // ============================================================
