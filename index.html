@@ -2039,8 +2039,7 @@ function initDutyControl() {
 
     /* ============================================================
        📍 LOCATION
-    ============================================================ */
-// 📍 Layer for location
+    ============================================================ */// 📍 Layer for location
 var myLocationLayer = L.layerGroup().addTo(map);
 
 // 📌 Track state
@@ -2233,8 +2232,15 @@ function showBestLocation() {
   btn.innerText = "STOP LOCATION";
   btn.disabled = false;
 
-  // ================= DUTY CHECK =================
-  const isOnDuty = window.isDutyActive === true;
+  // ================= DUTY CHECK (FIXED FOR ALL USERS) =================
+  let isOnDuty = false;
+
+  if (window.isDutyActive === true) {
+    isOnDuty = true;
+  }
+  else if (window.currentDutyTeam && window.currentDutyTeam.length > 0) {
+    isOnDuty = true;
+  }
 
   if (!isOnDuty) {
     console.log("👁 View only mode (NOT on duty)");
@@ -2253,15 +2259,17 @@ function showBestLocation() {
   }
   lastGPSSentTime = now;
 
-  // ============================================================
-  // 🔥 ONLY FIX (LEADER BASED SYSTEM)
-  // ============================================================
+  // ================= LEADER FIX =================
+  let leaderName = window.activeDutyLeader;
 
-  let leaderName = window.activeDutyLeader || window.userProfile.rawName;
+  if (!leaderName || leaderName.trim() === "") {
+    console.warn("⚠ No leader found → fallback to self");
+    leaderName = window.userProfile.rawName;
+  }
 
   const gpsData = {
-    name: leaderName,                      // 🔥 FIXED
-    cleanName: cleanName(leaderName),      // 🔥 FIXED
+    name: leaderName,
+    cleanName: cleanName(leaderName),
     phone: window.userProfile.phone || "",
     source: "MANUAL_APP",
     lat: lat,
