@@ -2051,6 +2051,9 @@ var bestLocation = null;
 var bestAccuracy = Infinity;
 var gpsTimer = null;
 
+// 🔥 GLOBAL DUPLICATE CONTROL
+let lastGPSSentTime = 0;
+
 
 // 🔘 TOGGLE FUNCTION
 function toggleLocation() {
@@ -2082,10 +2085,7 @@ function toggleLocation() {
         startGPS();
 
       })
-      .catch(err => {
-        console.warn("⚠ Permission check failed:", err);
-        startGPS();
-      });
+      .catch(() => startGPS());
 
   } else {
     startGPS();
@@ -2124,18 +2124,18 @@ function startGPS() {
 }
 
 
-// 🛑 STOP LOCATION CLEANLY
+// 🛑 STOP LOCATION
 function stopLocation() {
 
   const btn = document.getElementById("locBtn");
 
   console.log("🛑 Location OFF");
 
-  try { map.stopLocate(); } catch(e){ console.warn(e); }
-  try { clearTimeout(gpsTimer); } catch(e){ console.warn(e); }
+  try { map.stopLocate(); } catch(e){}
+  try { clearTimeout(gpsTimer); } catch(e){}
 
-  // 🔥 FIX: REMOVE ICON + CIRCLE
-  try { myLocationLayer.clearLayers(); } catch(e){ console.warn(e); }
+  // 🔥 REMOVE ICON
+  myLocationLayer.clearLayers();
 
   bestLocation = null;
   bestAccuracy = Infinity;
@@ -2156,26 +2156,20 @@ function resetButton(){
 }
 
 
-// 📋 COPY FUNCTION
+// 📋 COPY
 function copyCoords(lat, lng) {
-  const text = `${lat}, ${lng}`;
-  navigator.clipboard.writeText(text)
-    .then(() => alert("✅ Coordinates copied:\n" + text))
-    .catch(() => alert("❌ Copy failed"));
+  navigator.clipboard.writeText(`${lat}, ${lng}`);
 }
 
 
-// ✅ COLLECT LOCATION
+// ✅ LOCATION FOUND
 map.on('locationfound', function (e) {
 
   const acc = Math.round(e.accuracy);
 
-  console.log("📍 GPS update → Accuracy:", acc);
-
   if (acc < bestAccuracy) {
     bestAccuracy = acc;
     bestLocation = e;
-    console.log("⭐ New best location stored");
   }
 
   const btn = document.getElementById("locBtn");
@@ -2183,17 +2177,14 @@ map.on('locationfound', function (e) {
 });
 
 
-// 🧠 FINAL DISPLAY + DUTY LOGIC
-// 🔥 GLOBAL (add once above)
-let lastGPSSentTime = 0;
-
-
+// ============================================================
+// 🧠 FINAL LOCATION + DUTY LOGIC (CRITICAL)
+// ============================================================
 function showBestLocation() {
 
   const btn = document.getElementById("locBtn");
 
   if (!bestLocation) {
-    console.error("❌ No bestLocation found");
     alert("❌ Could not get location");
     resetButton();
     return;
@@ -2203,12 +2194,12 @@ function showBestLocation() {
   const lng = bestLocation.latlng.lng.toFixed(6);
   const acc = Math.round(bestLocation.accuracy);
 
-  console.log("✅ Final location selected:", { lat, lng, acc });
+  console.log("✅ Final location:", lat, lng, acc);
 
   // 🔄 Clear previous
   myLocationLayer.clearLayers();
 
-  // 🔵 Accuracy circle
+  // 🔵 Circle
   L.circle(bestLocation.latlng, {
     radius: bestLocation.accuracy / 2,
     color: "#007bff",
@@ -2218,18 +2209,7 @@ function showBestLocation() {
   // 📍 Marker
   L.marker(bestLocation.latlng)
     .addTo(myLocationLayer)
-    .bindPopup(`
-      <div style="font-size:14px;">
-        <b>📍 Your Location</b><br><br>
-        <b>Latitude:</b><br>${lat}<br>
-        <b>Longitude:</b><br>${lng}<br>
-        <b>Accuracy:</b> ${acc} m<br><br>
-        <button onclick="copyCoords('${lat}', '${lng}')" 
-          style="padding:6px 10px;background:#1b5e20;color:#fff;border:none;border-radius:5px;">
-          📋 Copy Coordinates
-        </button>
-      </div>
-    `)
+    .bindPopup(`<b>📍 Your Location</b><br>${lat}, ${lng}<br>Acc: ${acc}m`)
     .openPopup();
 
   map.setView(bestLocation.latlng, 18);
@@ -2237,123 +2217,88 @@ function showBestLocation() {
   btn.innerText = "STOP LOCATION";
   btn.disabled = false;
 
-  // ================= DUTY CHECK =================
-  console.log("👤 USER PROFILE:", window.userProfile);
-  console.log("🧠 isDutyActive:", window.isDutyActive);
-
+  // ============================================================
+  // 🔥 FINAL DUTY CHECK
+  // ============================================================
   const isOnDuty = window.isDutyActive === true;
 
-  console.log("✅ FINAL DUTY CHECK RESULT:", isOnDuty);
+  console.log("🧠 Duty status:", isOnDuty);
 
-  if (isOnDuty) {
-
-    console.log("📤 Preparing to send GPS...");
-
-    // 🔥 SAFETY 1: userProfile check
-    if (!window.userProfile || !window.userProfile.rawName) {
-      console.error("❌ userProfile missing → GPS not sent");
-      return;
-    }
-
-    // 🔥 SAFETY 2: prevent spam clicks
-    const now = Date.now();
-    if (now - lastGPSSentTime < 20000) {
-      console.log("⏱ Skipped duplicate GPS (too soon)");
-      return;
-    }
-    lastGPSSentTime = now;
-
-    try {
-
-      const gpsData = {
-        name: window.userProfile.rawName,        // ✅ sheet display
-        cleanName: window.userProfile.cleanName, // ✅ internal match
-        phone: window.userProfile.phone || "",   // ⭐ optional safety
-        source: "MANUAL_APP",                    // ⭐ debug source
-        lat: lat,
-        lon: lng,
-        time: new Date().toISOString()
-      };
-
-      console.log("📤 Sending GPS:", gpsData);
-
-      callBackend("SAVE_PATROL_GPS", gpsData)
-
-      .then(res => {
-
-        console.log("📡 Backend response:", res);
-
-        // 📴 OFFLINE / NO RESPONSE
-        if (!res) {
-          console.warn("📴 No response → saving offline");
-          saveOfflineGPS(gpsData);
-          return;
-        }
-
-        // ❌ BACKEND ERROR
-        if (res && res.error) {
-          console.error("❌ Backend error:", res.error);
-          saveOfflineGPS(gpsData);
-        }
-
-        // ✅ SUCCESS
-        else {
-          console.log("✅ GPS saved in sheet");
-        }
-
-      })
-
-      .catch(err => {
-        console.error("❌ Backend call failed:", err);
-        saveOfflineGPS(gpsData);
-      });
-
-    } catch (e) {
-
-      console.error("❌ GPS send failed:", e);
-
-      try {
-        saveOfflineGPS({
-          name: window.userProfile.rawName,
-          cleanName: window.userProfile.cleanName,
-          phone: window.userProfile.phone || "",
-          source: "MANUAL_APP",
-          lat: lat,
-          lon: lng,
-          time: new Date().toISOString()
-        });
-      } catch(err){
-        console.error("❌ Offline save also failed:", err);
-      }
-
-    }
-
-  } else {
-
-    console.log("👁 View only mode (NOT on duty)");
-
+  if (!isOnDuty) {
+    console.log("👁 View only mode");
+    return;
   }
+
+  // ============================================================
+  // 🔥 USER SAFETY
+  // ============================================================
+  if (!window.userProfile || !window.userProfile.rawName) {
+    console.error("❌ userProfile missing");
+    return;
+  }
+
+  // ============================================================
+  // 🔥 DUPLICATE BLOCK
+  // ============================================================
+  const now = Date.now();
+
+  if (now - lastGPSSentTime < 20000) {
+    console.warn("⏱ Duplicate click skipped");
+    return;
+  }
+
+  lastGPSSentTime = now;
+
+  // ============================================================
+  // 📤 FINAL GPS DATA (UNIFIED FOR ALL USERS)
+  // ============================================================
+  const gpsData = {
+    name: window.userProfile.rawName,        // ✅ SAME FOR ALL USERS
+    cleanName: window.userProfile.cleanName, // ✅ MATCHING
+    phone: window.userProfile.phone || "",
+    source: "MANUAL_APP",
+    lat,
+    lon: lng,
+    time: new Date().toISOString()
+  };
+
+  console.log("📤 Sending GPS:", gpsData);
+
+  // ============================================================
+  // 🌐 SEND (CRITICAL FIX: CORRECT ACTION)
+  // ============================================================
+  callBackend("SAVE_MANUAL_GPS", gpsData)
+
+  .then(res => {
+
+    console.log("📡 Response:", res);
+
+    if (!res || res.error) {
+      console.warn("📴 Save failed → offline fallback");
+      saveOfflineGPS(gpsData);
+    } else {
+      console.log("✅ GPS saved in sheet");
+    }
+
+  })
+
+  .catch(err => {
+    console.error("❌ Network fail:", err);
+    saveOfflineGPS(gpsData);
+  });
 }
 
-// ❌ LOCATION ERROR
+
+// ❌ ERROR
 map.on('locationerror', function (e) {
 
   console.error("❌ Location error:", e.message);
 
-  let msg = "";
-
-  if (e.message.includes("denied")) {
-    msg = "❌ Permission denied.\n\n👉 Enable from browser settings.";
-  } else if (e.message.includes("timeout")) {
-    msg = "⏳ GPS timeout.\n\n👉 Move to open area & try again.";
-  } else {
-    msg = "⚠️ GPS not available.\n\n👉 Turn ON location & internet.";
-  }
-
-  alert(msg);
+  alert("❌ GPS error. Enable location & retry.");
 
   resetButton();
-});    /* 🔁 CENTER MAP */
+});
+    /* 🔁 CENTER MAP */
     function centerMap() {
       map.setView([26.561, 89.507], 14);
     }
