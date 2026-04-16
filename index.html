@@ -2242,7 +2242,7 @@ function showBestLocation() {
 
       console.log("📤 Sending GPS:", gpsData);
 
-      callBackend("SAVE_MANUAL_GPS", gpsData)
+      callBackend("SAVE_PATROL_GPS", gpsData)
 
       .then(res => {
 
@@ -6911,7 +6911,7 @@ function runAutoGPS(){
 
             try {
 
-              const res = await callBackend("SAVE_MANUAL_GPS", gpsData);
+              const res = await callBackend("SAVE_PATROL_GPS", gpsData);
 
               if(!res || res.error){
                 console.warn("📴 Backend fail → saving offline");
@@ -7024,7 +7024,7 @@ async function syncOfflineGPS(){
 
       try {
 
-        const res = await callBackend("SAVE_MANUAL_GPS", item);
+        const res = await callBackend("SAVE_PATROL_GPS", item);
 
         if(!res || res.error){
           remaining.push(item);
