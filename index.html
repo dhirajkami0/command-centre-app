@@ -6765,6 +6765,8 @@ window.addEventListener("load", function () {
 // ================= GLOBAL STATE =================
 // ============================================================
 // 🔥 GLOBAL STATE
+// ============================================================// ============================================================
+// 🔥 GLOBAL STATE
 // ============================================================
 let autoGpsTimer = null;
 let lastGpsSent = 0;
@@ -6776,7 +6778,7 @@ window.gpsRunning = false;
 
 
 // ============================================================
-// 🚀 START AUTO GPS (IDEMPOTENT - NO DUPLICATE)
+// 🚀 START AUTO GPS (NO DUPLICATE)
 // ============================================================
 function startAutoGPS(){
 
@@ -6791,13 +6793,12 @@ function startAutoGPS(){
 
   autoGpsTimer = setInterval(runAutoGPS, 60000); // 1 min
 
-  // 🔥 run immediately
-  runAutoGPS();
+  runAutoGPS(); // 🔥 instant run
 }
 
 
 // ============================================================
-// 🛑 STOP AUTO GPS (CLEAN STOP)
+// 🛑 STOP AUTO GPS
 // ============================================================
 function stopAutoGPS(){
 
@@ -6820,13 +6821,12 @@ function stopAutoGPS(){
 
 
 // ============================================================
-// 📍 MAIN GPS ENGINE
+// 📍 MAIN GPS ENGINE (OFFLINE-FIRST)
 // ============================================================
 function runAutoGPS(){
 
   console.log("🔥 AUTO GPS TRIGGERED", new Date().toLocaleTimeString());
 
-  // 🔥 prevent overlap
   if(isTrackingRunning){
     console.warn("⏳ Previous GPS still running → skipped");
     return;
@@ -6836,21 +6836,18 @@ function runAutoGPS(){
 
   try {
 
-    // 🔥 duty check
     if(window.isDutyActive !== true){
       console.log("⏸ Not on duty → stopping GPS");
       stopAutoGPS();
       return;
     }
 
-    // 🔥 profile check
     if(!window.userProfile || !window.userProfile.rawName){
       console.warn("⚠ userProfile missing");
       isTrackingRunning = false;
       return;
     }
 
-    // 🔥 cooldown (50 sec)
     const now = Date.now();
     if(now - lastGpsSent < 50000){
       console.log("⏱ Cooldown skip");
@@ -6858,7 +6855,6 @@ function runAutoGPS(){
       return;
     }
 
-    // 🔥 GPS CALL
     navigator.geolocation.getCurrentPosition(
 
       async pos => {
@@ -6871,8 +6867,13 @@ function runAutoGPS(){
 
           console.log("📍 GPS:", lat, lon, "ACC:", acc);
 
-          // 🔥 accuracy filter
-          if(acc > 100){
+          // 🧠 GPS QUALITY LOG
+          if(acc < 50) console.log("🛰 TRUE GPS");
+          else if(acc < 100) console.log("📶 GOOD GPS");
+          else console.warn("📡 WEAK GPS");
+
+          // 🔥 RELAXED FILTER (forest safe)
+          if(acc > 150){
             console.warn("⚠ Poor accuracy skipped:", acc);
             isTrackingRunning = false;
             return;
@@ -6891,9 +6892,17 @@ function runAutoGPS(){
             time: new Date().toISOString()
           };
 
-          console.log("📤 Sending GPS...");
+          // ====================================================
+          // 🔥 ALWAYS SAVE FIRST (OFFLINE SAFE)
+          // ====================================================
+          saveOfflineGPS(gpsData);
 
-          await sendGPS(gpsData);
+          // ====================================================
+          // 🌐 TRY SEND (ONLY IF ONLINE)
+          // ====================================================
+          if(navigator.onLine){
+            await sendGPS(gpsData);
+          }
 
         } catch(e){
           console.error("❌ GPS processing crash:", e);
@@ -6910,7 +6919,7 @@ function runAutoGPS(){
 
       {
         enableHighAccuracy: true,
-        timeout: 15000,
+        timeout: 20000,
         maximumAge: 0
       }
 
@@ -6924,46 +6933,38 @@ function runAutoGPS(){
 
 
 // ============================================================
-// 📡 SEND GPS (ONLINE + OFFLINE SAFE)
+// 📡 SEND GPS (SAFE)
 // ============================================================
 async function sendGPS(data){
 
   try {
 
-    // 📴 offline
     if(!navigator.onLine){
-      console.warn("📴 Offline → saving GPS locally");
-      saveOfflineGPS(data);
       return;
     }
 
     const res = await callBackend("SAVE_PATROL_GPS", data);
 
     if(!res || res.status !== "ok"){
-      console.warn("⚠ Backend fail → saving offline");
-      saveOfflineGPS(data);
+      console.warn("⚠ Backend fail → keep in local queue");
     } else {
+      console.log("✅ GPS sent to backend");
 
-      console.log("✅ GPS saved to backend");
-
-      // 🔄 optional refresh
       try {
         if(typeof loadStaff === "function"){
           loadStaff();
         }
       } catch(e){}
-
     }
 
   } catch(e){
-    console.warn("⚠ Network error → saving offline");
-    saveOfflineGPS(data);
+    console.warn("⚠ Network error → keep offline");
   }
 }
 
 
 // ============================================================
-// 💾 OFFLINE SAVE
+// 💾 OFFLINE STORAGE (QUEUE)
 // ============================================================
 function saveOfflineGPS(data){
 
@@ -6973,14 +6974,14 @@ function saveOfflineGPS(data){
 
     list.push(data);
 
-    // 🔥 limit storage
-    if(list.length > 500){
-      list = list.slice(-300);
+    // 🔥 limit
+    if(list.length > 1000){
+      list = list.slice(-500);
     }
 
     localStorage.setItem("offlineGPS", JSON.stringify(list));
 
-    console.log("💾 Saved offline GPS:", list.length);
+    console.log("💾 GPS saved locally:", list.length);
 
   } catch(e){
     console.error("❌ Offline save failed:", e);
@@ -6989,19 +6990,16 @@ function saveOfflineGPS(data){
 
 
 // ============================================================
-// 🔄 SYNC OFFLINE GPS
+// 🔄 SYNC OFFLINE DATA
 // ============================================================
 async function syncOfflineGPS(){
 
   if(isSyncRunning) return;
+  if(!navigator.onLine) return;
+
   isSyncRunning = true;
 
   try {
-
-    if(!navigator.onLine){
-      isSyncRunning = false;
-      return;
-    }
 
     let list = JSON.parse(localStorage.getItem("offlineGPS") || "[]");
 
@@ -7010,7 +7008,7 @@ async function syncOfflineGPS(){
       return;
     }
 
-    console.log("🔄 Syncing offline GPS:", list.length);
+    console.log("🔄 Syncing GPS queue:", list.length);
 
     let remaining = [];
 
@@ -7031,10 +7029,10 @@ async function syncOfflineGPS(){
 
     localStorage.setItem("offlineGPS", JSON.stringify(remaining));
 
-    console.log("✅ Sync complete, remaining:", remaining.length);
+    console.log("✅ Sync done, remaining:", remaining.length);
 
   } catch(e){
-    console.error("❌ sync crash:", e);
+    console.error("❌ Sync crash:", e);
   }
 
   isSyncRunning = false;
@@ -7048,11 +7046,11 @@ setInterval(syncOfflineGPS, 30000);
 
 
 // ============================================================
-// 🌐 ONLINE EVENT (SAFE RESTART)
+// 🌐 ONLINE EVENT
 // ============================================================
 window.addEventListener("online", () => {
 
-  console.log("🌐 Online → syncing + GPS check");
+  console.log("🌐 Online → syncing");
 
   syncOfflineGPS();
 
@@ -7075,7 +7073,7 @@ setInterval(() => {
   try {
 
     if(window.isDutyActive === true && !window.gpsRunning){
-      console.warn("⚠ GPS not running → restarting safely");
+      console.warn("⚠ GPS not running → restarting");
       startAutoGPS();
     }
 
@@ -7087,8 +7085,8 @@ setInterval(() => {
 
 
 // ============================================================
-// ❌ IMPORTANT: DO NOT ADD DUTY setInterval LOOP AGAIN
-// ============================================================  
+// ❌ DO NOT ADD ANY OTHER GPS INTERVALS
+// ============================================================
   
   </script>
 
