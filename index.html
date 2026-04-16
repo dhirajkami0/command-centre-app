@@ -6768,6 +6768,9 @@ window.addEventListener("load", function () {
 // ============================================================// ============================================================
 // 🔥 GLOBAL STATE
 // ============================================================
+// ============================================================
+// 🔥 GLOBAL STATE
+// ============================================================
 let autoGpsTimer = null;
 let lastGpsSent = 0;
 
@@ -6776,280 +6779,256 @@ let isSyncRunning = false;
 
 window.gpsRunning = false;
 
-// 🔥 PREVENT SAME LOCATION SPAM
 let lastLocationKey = "";
 
 
 // ============================================================
-// 🚀 START AUTO GPS (NO DUPLICATE)
+// 🚀 START AUTO GPS
 // ============================================================
 function startAutoGPS(){
 
   if(window.gpsRunning === true){
-    console.warn("⛔ GPS already running → skip");
+    console.warn("⛔ GPS already running");
     return;
   }
-
-  console.log("🟢 FULL AUTO GPS STARTED");
 
   window.gpsRunning = true;
 
-  autoGpsTimer = setInterval(runAutoGPS, 60000); // ✅ 1 min
-
-  runAutoGPS(); // 🔥 instant first run
+  autoGpsTimer = setInterval(runAutoGPS, 60000);
+  runAutoGPS();
 }
 
 
 // ============================================================
-// 🛑 STOP AUTO GPS
+// 🛑 STOP AUTO GPS + CLEAR OLD DATA
 // ============================================================
 function stopAutoGPS(){
 
-  try {
+  if(autoGpsTimer){
+    clearInterval(autoGpsTimer);
+    autoGpsTimer = null;
+  }
 
-    if(autoGpsTimer){
-      clearInterval(autoGpsTimer);
-      autoGpsTimer = null;
-    }
+  window.gpsRunning = false;
+  isTrackingRunning = false;
 
-    window.gpsRunning = false;
-    isTrackingRunning = false;
+  console.log("🔴 AUTO GPS STOPPED");
 
-    console.log("🔴 AUTO GPS STOPPED");
+  // 🔥 CLEAR OFFLINE DATA WHEN DUTY ENDS
+  localStorage.removeItem("offlineGPS");
 
-  } catch(e){
-    console.error("❌ stopAutoGPS crash:", e);
+  // 🔥 CLEAR BACKEND DATA FOR USER
+  if(window.userProfile){
+    callBackend("CLEAR_OLD_PATROL_DATA", {
+      name: window.userProfile.rawName,
+      cleanName: window.userProfile.cleanName
+    });
   }
 }
 
 
 // ============================================================
-// 📍 MAIN GPS ENGINE (FIXED)
+// 📍 AUTO GPS ENGINE
 // ============================================================
 function runAutoGPS(){
 
-  console.log("🔥 AUTO GPS TRIGGERED", new Date().toLocaleTimeString());
-
-  if(isTrackingRunning){
-    console.warn("⏳ Previous GPS still running → skipped");
-    return;
-  }
-
+  if(isTrackingRunning) return;
   isTrackingRunning = true;
 
   try {
 
     if(window.isDutyActive !== true){
-      console.log("⏸ Not on duty → stopping GPS");
       stopAutoGPS();
       return;
     }
 
-    if(!window.userProfile || !window.userProfile.rawName){
-      console.warn("⚠ userProfile missing");
+    if(!window.userProfile){
       isTrackingRunning = false;
       return;
     }
 
     const now = Date.now();
-
-    // 🔥 STRICT 1 MIN CONTROL
     if(now - lastGpsSent < 55000){
-      console.log("⏱ Cooldown skip");
       isTrackingRunning = false;
       return;
     }
 
-    navigator.geolocation.getCurrentPosition(
+    navigator.geolocation.getCurrentPosition(async pos => {
 
-      async pos => {
+      try {
 
-        try {
+        const lat = Number(pos.coords.latitude.toFixed(6));
+        const lon = Number(pos.coords.longitude.toFixed(6));
+        const acc = Number(pos.coords.accuracy);
 
-          const lat = Number(pos.coords.latitude.toFixed(6));
-          const lon = Number(pos.coords.longitude.toFixed(6));
-          const acc = Number(pos.coords.accuracy);
-
-          console.log("📍 GPS:", lat, lon, "ACC:", acc);
-
-          // 🔥 ACCURACY FILTER
-          if(acc > 150){
-            console.warn("⚠ Poor accuracy skipped:", acc);
-            isTrackingRunning = false;
-            return;
-          }
-
-          // 🔥 DUPLICATE LOCATION BLOCK
-          const key = lat + "," + lon;
-
-          if(key === lastLocationKey){
-            console.warn("⚠ Same location skipped");
-            isTrackingRunning = false;
-            return;
-          }
-
-          lastLocationKey = key;
-          lastGpsSent = Date.now();
-
-          const gpsData = {
-            name: window.userProfile.rawName,
-            cleanName: window.userProfile.cleanName || "",
-            phone: window.userProfile.phone || "",
-            source: "AUTO_PATROL",   // ✅ ALWAYS FILLED
-            lat,
-            lon,
-            accuracy: acc,
-            time: new Date().toISOString()
-          };
-
-          console.log("📤 FINAL GPS:", gpsData);
-
-          // ====================================================
-          // 🌐 SEND FIRST (NO DUPLICATE BUG)
-          // ====================================================
-          if(navigator.onLine){
-
-            try {
-
-              const res = await callBackend("SAVE_PATROL_GPS", gpsData);
-
-              if(!res || res.error){
-                console.warn("📴 Backend fail → saving offline");
-                saveOfflineGPS(gpsData);
-              } else {
-                console.log("✅ GPS saved in sheet");
-              }
-
-            } catch(e){
-              console.warn("📴 Send failed → saving offline");
-              saveOfflineGPS(gpsData);
-            }
-
-          } else {
-
-            console.warn("📴 Offline → saving GPS");
-            saveOfflineGPS(gpsData);
-          }
-
-        } catch(e){
-          console.error("❌ GPS processing crash:", e);
+        if(acc > 150){
+          isTrackingRunning = false;
+          return;
         }
 
-        isTrackingRunning = false;
+        const key = lat + "," + lon;
 
-      },
+        if(key === lastLocationKey){
+          isTrackingRunning = false;
+          return;
+        }
 
-      err => {
-        console.warn("⚠ GPS error:", err.message);
-        isTrackingRunning = false;
-      },
+        lastLocationKey = key;
+        lastGpsSent = Date.now();
 
-      {
-        enableHighAccuracy: true,
-        timeout: 20000,
-        maximumAge: 0
-      }
+        const gpsData = {
+          name: window.userProfile.rawName,
+          cleanName: window.userProfile.cleanName,
+          phone: window.userProfile.phone || "",
+          source: "AUTO",
+          lat,
+          lon,
+          time: new Date().toISOString()
+        };
 
-    );
+        sendOrStoreGPS(gpsData);
+
+      } catch(e){}
+
+      isTrackingRunning = false;
+
+    });
 
   } catch(e){
-    console.error("❌ runAutoGPS crash:", e);
     isTrackingRunning = false;
   }
 }
 
 
 // ============================================================
-// 💾 OFFLINE STORAGE (NO DUPLICATE)
+// 📍 MANUAL GPS (MY LOCATION FIX)
 // ============================================================
-function saveOfflineGPS(data){
+function saveMyLocation(lat, lon){
 
-  try {
+  if(!window.isDutyActive){
+    alert("Not on duty");
+    return;
+  }
 
-    let list = JSON.parse(localStorage.getItem("offlineGPS") || "[]");
+  const gpsData = {
+    name: window.userProfile.rawName,
+    cleanName: window.userProfile.cleanName,
+    phone: window.userProfile.phone || "",
+    source: "MANUAL_APP",
+    lat,
+    lon,
+    time: new Date().toISOString()
+  };
 
-    // 🔥 DUPLICATE BLOCK
-    const exists = list.some(item =>
-      item.lat === data.lat &&
-      item.lon === data.lon &&
-      item.time === data.time
-    );
+  sendOrStoreGPS(gpsData);
+}
 
-    if(exists){
-      console.warn("⚠ Duplicate offline GPS skipped");
-      return;
+
+// ============================================================
+// 📡 SEND OR SAVE
+// ============================================================
+async function sendOrStoreGPS(gpsData){
+
+  // 🔥 BLOCK OLD OFFLINE DATA (>30 min)
+  const age = Date.now() - new Date(gpsData.time).getTime();
+  if(age > 30 * 60 * 1000){
+    console.warn("❌ Old GPS blocked");
+    return;
+  }
+
+  if(navigator.onLine){
+
+    try {
+
+      const res = await callBackend("SAVE_PATROL_GPS", gpsData);
+
+      if(!res || res.status !== "ok"){
+        saveOfflineGPS(gpsData);
+      }
+
+    } catch {
+      saveOfflineGPS(gpsData);
     }
 
-    list.push(data);
+  } else {
 
-    // 🔥 LIMIT SIZE
-    if(list.length > 500){
-      list = list.slice(-300);
-    }
-
-    localStorage.setItem("offlineGPS", JSON.stringify(list));
-
-    console.log("💾 GPS saved locally:", list.length);
-
-  } catch(e){
-    console.error("❌ Offline save failed:", e);
+    saveOfflineGPS(gpsData);
   }
 }
 
 
 // ============================================================
-// 🔄 SYNC OFFLINE DATA (FIXED)
+// 💾 OFFLINE SAVE
+// ============================================================
+function saveOfflineGPS(data){
+
+  let list = JSON.parse(localStorage.getItem("offlineGPS") || "[]");
+
+  const exists = list.some(x =>
+    x.lat === data.lat &&
+    x.lon === data.lon &&
+    x.time === data.time
+  );
+
+  if(exists) return;
+
+  list.push(data);
+
+  if(list.length > 500){
+    list = list.slice(-300);
+  }
+
+  localStorage.setItem("offlineGPS", JSON.stringify(list));
+}
+
+
+// ============================================================
+// 🔄 SYNC OFFLINE (ASCENDING ORDER)
 // ============================================================
 async function syncOfflineGPS(){
 
-  if(isSyncRunning) return;
-  if(!navigator.onLine) return;
-
+  if(isSyncRunning || !navigator.onLine) return;
   isSyncRunning = true;
 
-  try {
+  let list = JSON.parse(localStorage.getItem("offlineGPS") || "[]");
 
-    let list = JSON.parse(localStorage.getItem("offlineGPS") || "[]");
+  if(!list.length){
+    isSyncRunning = false;
+    return;
+  }
 
-    if(!list.length){
-      isSyncRunning = false;
-      return;
-    }
+  // 🔥 SORT BY TIME ASCENDING
+  list.sort((a,b)=> new Date(a.time) - new Date(b.time));
 
-    console.log("🔄 Syncing GPS queue:", list.length);
+  let remaining = [];
 
-    let remaining = [];
+  for(let item of list){
 
-    for(let item of list){
+    try {
 
-      try {
+      // 🔥 SKIP OLD (>30 min)
+      const age = Date.now() - new Date(item.time).getTime();
+      if(age > 30 * 60 * 1000) continue;
 
-        const res = await callBackend("SAVE_PATROL_GPS", item);
+      const res = await callBackend("SAVE_PATROL_GPS", item);
 
-        if(!res || res.error){
-          remaining.push(item);
-        }
-
-      } catch {
+      if(!res || res.status !== "ok"){
         remaining.push(item);
       }
+
+    } catch {
+      remaining.push(item);
     }
-
-    // 🔥 KEEP ONLY FAILED
-    localStorage.setItem("offlineGPS", JSON.stringify(remaining));
-
-    console.log("✅ Sync done, remaining:", remaining.length);
-
-  } catch(e){
-    console.error("❌ Sync crash:", e);
   }
+
+  localStorage.setItem("offlineGPS", JSON.stringify(remaining));
 
   isSyncRunning = false;
 }
 
 
 // ============================================================
-// 🔁 AUTO SYNC LOOP
+// 🔁 AUTO SYNC
 // ============================================================
 setInterval(syncOfflineGPS, 30000);
 
@@ -7058,40 +7037,8 @@ setInterval(syncOfflineGPS, 30000);
 // 🌐 ONLINE EVENT
 // ============================================================
 window.addEventListener("online", () => {
-
-  console.log("🌐 Online → syncing");
-
   syncOfflineGPS();
-
-  try {
-    if(window.userProfile && window.isDutyActive && !window.gpsRunning){
-      startAutoGPS();
-    }
-  } catch(e){
-    console.error("❌ GPS restart failed:", e);
-  }
-
-});
-
-
-// ============================================================
-// 🧠 WATCHDOG (SELF HEAL)
-// ============================================================
-setInterval(() => {
-
-  try {
-
-    if(window.isDutyActive === true && !window.gpsRunning){
-      console.warn("⚠ GPS not running → restarting");
-      startAutoGPS();
-    }
-
-  } catch(e){
-    console.error("❌ watchdog crash:", e);
-  }
-
-}, 20000);
-  
+});  
   
   </script>
 
