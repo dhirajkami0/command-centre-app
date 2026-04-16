@@ -6776,6 +6776,9 @@ let isSyncRunning = false;
 
 window.gpsRunning = false;
 
+// 🔥 PREVENT SAME LOCATION SPAM
+let lastLocationKey = "";
+
 
 // ============================================================
 // 🚀 START AUTO GPS (NO DUPLICATE)
@@ -6791,9 +6794,9 @@ function startAutoGPS(){
 
   window.gpsRunning = true;
 
-  autoGpsTimer = setInterval(runAutoGPS, 60000); // 1 min
+  autoGpsTimer = setInterval(runAutoGPS, 60000); // ✅ 1 min
 
-  runAutoGPS(); // 🔥 instant run
+  runAutoGPS(); // 🔥 instant first run
 }
 
 
@@ -6821,7 +6824,7 @@ function stopAutoGPS(){
 
 
 // ============================================================
-// 📍 MAIN GPS ENGINE (OFFLINE-FIRST)
+// 📍 MAIN GPS ENGINE (FIXED)
 // ============================================================
 function runAutoGPS(){
 
@@ -6849,7 +6852,9 @@ function runAutoGPS(){
     }
 
     const now = Date.now();
-    if(now - lastGpsSent < 50000){
+
+    // 🔥 STRICT 1 MIN CONTROL
+    if(now - lastGpsSent < 55000){
       console.log("⏱ Cooldown skip");
       isTrackingRunning = false;
       return;
@@ -6867,41 +6872,63 @@ function runAutoGPS(){
 
           console.log("📍 GPS:", lat, lon, "ACC:", acc);
 
-          // 🧠 GPS QUALITY LOG
-          if(acc < 50) console.log("🛰 TRUE GPS");
-          else if(acc < 100) console.log("📶 GOOD GPS");
-          else console.warn("📡 WEAK GPS");
-
-          // 🔥 RELAXED FILTER (forest safe)
+          // 🔥 ACCURACY FILTER
           if(acc > 150){
             console.warn("⚠ Poor accuracy skipped:", acc);
             isTrackingRunning = false;
             return;
           }
 
+          // 🔥 DUPLICATE LOCATION BLOCK
+          const key = lat + "," + lon;
+
+          if(key === lastLocationKey){
+            console.warn("⚠ Same location skipped");
+            isTrackingRunning = false;
+            return;
+          }
+
+          lastLocationKey = key;
           lastGpsSent = Date.now();
 
           const gpsData = {
             name: window.userProfile.rawName,
             cleanName: window.userProfile.cleanName || "",
             phone: window.userProfile.phone || "",
-            source: "AUTO_PATROL",
+            source: "AUTO_PATROL",   // ✅ ALWAYS FILLED
             lat,
             lon,
             accuracy: acc,
             time: new Date().toISOString()
           };
 
-          // ====================================================
-          // 🔥 ALWAYS SAVE FIRST (OFFLINE SAFE)
-          // ====================================================
-          saveOfflineGPS(gpsData);
+          console.log("📤 FINAL GPS:", gpsData);
 
           // ====================================================
-          // 🌐 TRY SEND (ONLY IF ONLINE)
+          // 🌐 SEND FIRST (NO DUPLICATE BUG)
           // ====================================================
           if(navigator.onLine){
-            await sendGPS(gpsData);
+
+            try {
+
+              const res = await callBackend("SAVE_MANUAL_GPS", gpsData);
+
+              if(!res || res.error){
+                console.warn("📴 Backend fail → saving offline");
+                saveOfflineGPS(gpsData);
+              } else {
+                console.log("✅ GPS saved in sheet");
+              }
+
+            } catch(e){
+              console.warn("📴 Send failed → saving offline");
+              saveOfflineGPS(gpsData);
+            }
+
+          } else {
+
+            console.warn("📴 Offline → saving GPS");
+            saveOfflineGPS(gpsData);
           }
 
         } catch(e){
@@ -6933,38 +6960,7 @@ function runAutoGPS(){
 
 
 // ============================================================
-// 📡 SEND GPS (SAFE)
-// ============================================================
-async function sendGPS(data){
-
-  try {
-
-    if(!navigator.onLine){
-      return;
-    }
-
-    const res = await callBackend("SAVE_PATROL_GPS", data);
-
-    if(!res || res.status !== "ok"){
-      console.warn("⚠ Backend fail → keep in local queue");
-    } else {
-      console.log("✅ GPS sent to backend");
-
-      try {
-        if(typeof loadStaff === "function"){
-          loadStaff();
-        }
-      } catch(e){}
-    }
-
-  } catch(e){
-    console.warn("⚠ Network error → keep offline");
-  }
-}
-
-
-// ============================================================
-// 💾 OFFLINE STORAGE (QUEUE)
+// 💾 OFFLINE STORAGE (NO DUPLICATE)
 // ============================================================
 function saveOfflineGPS(data){
 
@@ -6972,11 +6968,23 @@ function saveOfflineGPS(data){
 
     let list = JSON.parse(localStorage.getItem("offlineGPS") || "[]");
 
+    // 🔥 DUPLICATE BLOCK
+    const exists = list.some(item =>
+      item.lat === data.lat &&
+      item.lon === data.lon &&
+      item.time === data.time
+    );
+
+    if(exists){
+      console.warn("⚠ Duplicate offline GPS skipped");
+      return;
+    }
+
     list.push(data);
 
-    // 🔥 limit
-    if(list.length > 1000){
-      list = list.slice(-500);
+    // 🔥 LIMIT SIZE
+    if(list.length > 500){
+      list = list.slice(-300);
     }
 
     localStorage.setItem("offlineGPS", JSON.stringify(list));
@@ -6990,7 +6998,7 @@ function saveOfflineGPS(data){
 
 
 // ============================================================
-// 🔄 SYNC OFFLINE DATA
+// 🔄 SYNC OFFLINE DATA (FIXED)
 // ============================================================
 async function syncOfflineGPS(){
 
@@ -7016,9 +7024,9 @@ async function syncOfflineGPS(){
 
       try {
 
-        const res = await callBackend("SAVE_PATROL_GPS", item);
+        const res = await callBackend("SAVE_MANUAL_GPS", item);
 
-        if(!res || res.status !== "ok"){
+        if(!res || res.error){
           remaining.push(item);
         }
 
@@ -7027,6 +7035,7 @@ async function syncOfflineGPS(){
       }
     }
 
+    // 🔥 KEEP ONLY FAILED
     localStorage.setItem("offlineGPS", JSON.stringify(remaining));
 
     console.log("✅ Sync done, remaining:", remaining.length);
@@ -7082,11 +7091,7 @@ setInterval(() => {
   }
 
 }, 20000);
-
-
-// ============================================================
-// ❌ DO NOT ADD ANY OTHER GPS INTERVALS
-// ============================================================
+  
   
   </script>
 
