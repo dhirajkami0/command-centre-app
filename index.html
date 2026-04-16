@@ -6757,10 +6757,20 @@ let isSyncRunning = false;
 // ================= START AUTO GPS =================
 function startAutoGPS(){
 
-  try {
+  if(autoGpsTimer){
+    console.warn("⚠ GPS already running");
+    return;
+  }
 
-    if(isTrackingRunning){
-      console.log("⚠ GPS already running");
+  console.log("🟢 FULL AUTO GPS STARTED");
+
+  autoGpsTimer = setInterval(() => {
+
+    console.log("🔥 AUTO GPS TRIGGERED", new Date().toLocaleTimeString());
+
+    // 🔥 HARD DUTY CHECK
+    if(window.isDutyActive !== true){
+      console.log("⏸ Skipped (not on duty)");
       return;
     }
 
@@ -6769,21 +6779,65 @@ function startAutoGPS(){
       return;
     }
 
-    console.log("🟢 AUTO GPS STARTED");
+    navigator.geolocation.getCurrentPosition(
 
-    isTrackingRunning = true;
+      pos => {
 
-    // 🔥 RUN IMMEDIATELY (no 1 min wait)
-    runAutoGPS();
+        const lat = pos.coords.latitude.toFixed(6);
+        const lon = pos.coords.longitude.toFixed(6);
+        const acc = Math.round(pos.coords.accuracy);
 
-    // 🔥 THEN EVERY 1 MIN
-    autoGpsTimer = setInterval(runAutoGPS, 60000);
+        console.log("📍 AUTO GPS:", lat, lon, "ACC:", acc);
 
-  } catch(e){
-    console.error("❌ startAutoGPS crash:", e);
-  }
+        // 🔥 RELAXED FILTER (IMPORTANT)
+        if(acc > 150){
+          console.warn("⚠ Poor accuracy skipped:", acc);
+          return;
+        }
+
+        const gpsData = {
+          name: window.userProfile.rawName,
+          cleanName: window.userProfile.cleanName,
+          source: "AUTO_GPS",
+          lat,
+          lon,
+          time: new Date().toISOString()
+        };
+
+        callBackend("SAVE_MANUAL_GPS", gpsData)
+
+        .then(res => {
+
+          console.log("📡 Auto GPS response:", res);
+
+          if (!res) {
+            console.warn("📴 Saving offline");
+            saveOfflineGPS(gpsData);
+          }
+
+        })
+
+        .catch(err => {
+          console.error("❌ Auto GPS failed:", err);
+          saveOfflineGPS(gpsData);
+        });
+
+      },
+
+      err => {
+        console.warn("⚠ GPS error:", err.message);
+      },
+
+      {
+        enableHighAccuracy: true,
+        timeout: 15000,
+        maximumAge: 0
+      }
+
+    );
+
+  }, 60000); // ✅ 1 MIN
 }
-
 
 // ================= STOP AUTO GPS =================
 function stopAutoGPS(){
