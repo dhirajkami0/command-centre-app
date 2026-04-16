@@ -2191,9 +2191,6 @@ function showBestLocation() {
   console.group("📍 showBestLocation FLOW START");
 
   console.log("👤 CLICKED USER:", window.userProfile);
-  console.log("🧠 isDutyActive:", window.isDutyActive);
-  console.log("👥 currentDutyTeam:", window.currentDutyTeam);
-  console.log("👤 activeDutyLeader:", window.activeDutyLeader);
 
   const btn = document.getElementById("locBtn");
 
@@ -2211,6 +2208,7 @@ function showBestLocation() {
 
   console.log("✅ Final location selected:", { lat, lng, acc });
 
+  // ================= SHOW LOCATION (ALWAYS) =================
   myLocationLayer.clearLayers();
 
   L.circle(bestLocation.latlng, {
@@ -2240,37 +2238,17 @@ function showBestLocation() {
   btn.innerText = "STOP LOCATION";
   btn.disabled = false;
 
-  // ================= DUTY CHECK =================
-  let isOnDuty = false;
-
-  if (window.isDutyActive === true) {
-    console.log("🟢 Duty via isDutyActive");
-    isOnDuty = true;
-  }
-  else if (window.currentDutyTeam && window.currentDutyTeam.length > 0) {
-    console.log("🟢 Duty via currentDutyTeam");
-    isOnDuty = true;
-  }
-  else {
-    console.warn("🔴 Duty NOT detected");
-  }
-
-  console.log("🧠 FINAL DUTY RESULT:", isOnDuty);
-
-  if (!isOnDuty) {
-    console.log("👁 View only mode (NOT on duty)");
-    console.groupEnd();
-    return;
-  }
-
-  // ================= USER PROFILE =================
+  // ================= USER CHECK =================
   if (!window.userProfile || !window.userProfile.rawName) {
-    console.error("❌ userProfile missing → GPS not sent");
+    console.error("❌ userProfile missing → stop");
     console.groupEnd();
     return;
   }
 
-  console.log("👤 USER VALID:", window.userProfile.rawName);
+  const leaderName = window.userProfile.rawName;
+  const leaderClean = window.userProfile.cleanName;
+
+  console.log("👤 USER:", leaderName);
 
   // ================= DUPLICATE CONTROL =================
   const now = Date.now();
@@ -2283,72 +2261,93 @@ function showBestLocation() {
     return;
   }
 
-  lastGPSSentTime = now;
+  // ================= LIVE DUTY CHECK =================
+  console.log("🌐 Checking duty before GPS send...");
 
-  // ================= LEADER RESOLUTION =================
-  let leaderName = window.activeDutyLeader;
-
-  if (!leaderName || leaderName.trim() === "") {
-    console.warn("⚠ No activeDutyLeader → fallback to self");
-    leaderName = window.userProfile.rawName;
-  }
-
-  console.log("👤 FINAL LEADER USED:", leaderName);
-
-  const leaderClean = cleanName(leaderName);
-
-  console.log("🧹 CLEAN NAME:", leaderClean);
-
-  // ================= FINAL GPS DATA =================
-  const gpsData = {
-    name: leaderName,
-    cleanName: leaderClean,
-    phone: window.userProfile.phone || "",
-    source: "MANUAL_APP",
-    lat: lat,
-    lon: lng,
-    time: new Date().toISOString()
-  };
-
-  console.log("📤 FINAL GPS PAYLOAD:", JSON.stringify(gpsData, null, 2));
-
-  // ================= BACKEND CALL =================
-  console.log("🌐 Calling SAVE_PATROL_GPS...");
-
-  callBackend("SAVE_PATROL_GPS", gpsData)
+  callBackend("checkDutyFromSheet", {
+    leader: leaderClean
+  })
 
   .then(res => {
 
-    console.log("📡 BACKEND RESPONSE:", res);
+    console.log("📡 DUTY RESULT:", res);
 
-    if (!res) {
-      console.warn("📴 NULL response → offline save");
-      saveOfflineGPS(gpsData);
-    }
-    else if (res.status !== "ok") {
-      console.warn("❌ Backend rejected:", res);
-      saveOfflineGPS(gpsData);
-    }
-    else {
-      console.log("✅ GPS saved in sheet successfully");
+    // ================= VIEW ONLY MODE =================
+    if (!res || res.active !== true) {
+
+      console.warn("👁 VIEW ONLY MODE → location shown only");
+
+      if (typeof showToast === "function") {
+        showToast("👁 View only mode (Not on duty)", "warning");
+      }
+
+      console.groupEnd();
+      return; // 🔥 STOP HERE
     }
 
-    console.groupEnd();
+    // ================= ACTIVE DUTY =================
+    console.log("🟢 ACTIVE DUTY → sending GPS");
+
+    lastGPSSentTime = now;
+
+    const gpsData = {
+      name: leaderName,
+      cleanName: leaderClean,
+      phone: window.userProfile.phone || "",
+      source: "MANUAL_APP",
+      lat: lat,
+      lon: lng,
+      time: new Date().toISOString()
+    };
+
+    console.log("📤 FINAL GPS PAYLOAD:", JSON.stringify(gpsData, null, 2));
+
+    console.log("🌐 Calling SAVE_PATROL_GPS...");
+
+    callBackend("SAVE_PATROL_GPS", gpsData)
+
+    .then(res => {
+
+      console.log("📡 BACKEND RESPONSE:", res);
+
+      if (!res) {
+        console.warn("📴 NULL response → offline save");
+        saveOfflineGPS(gpsData);
+      }
+      else if (res.status !== "ok") {
+        console.warn("❌ Backend rejected:", res);
+        saveOfflineGPS(gpsData);
+      }
+      else {
+        console.log("✅ GPS saved in sheet successfully");
+
+        if (typeof showToast === "function") {
+          showToast("✅ GPS saved", "success");
+        }
+      }
+
+      console.groupEnd();
+
+    })
+
+    .catch(err => {
+
+      console.error("❌ Backend call failed:", err);
+
+      console.warn("📴 Saving offline due to error");
+      saveOfflineGPS(gpsData);
+
+      console.groupEnd();
+
+    });
 
   })
 
   .catch(err => {
-
-    console.error("❌ Backend call failed:", err);
-
-    console.warn("📴 Saving offline due to error");
-    saveOfflineGPS(gpsData);
-
+    console.error("❌ Duty check failed:", err);
     console.groupEnd();
-
   });
 }
-
 // ❌ LOCATION ERROR
 map.on('locationerror', function (e) {
 
