@@ -5751,7 +5751,7 @@ function openDutyForm(){
 
   console.log("🧹 Dynamic lists cleared");
 
-  /* 🔥 CRITICAL FULL RESET FIX (ADDED) */
+  /* 🔥 RESET FIELDS */
   ["d-id","d-date","d-leader"].forEach(id=>{
     const el = document.getElementById(id);
     if(el) el.value = "";
@@ -5763,10 +5763,8 @@ function openDutyForm(){
   const dirSel = document.getElementById("d-dir");
   if (dirSel) dirSel.selectedIndex = 0;
 
-  // reset internal map
   dutyComptMap = {};
 
-  // force repaint (fix stale checkbox UI issue)
   if (staffBox) staffBox.style.display = "none";
   if (comptBox) comptBox.style.display = "none";
 
@@ -5779,21 +5777,40 @@ function openDutyForm(){
   const obsBox = document.getElementById("obs-container");
   if (obsBox) obsBox.style.display = "none";
 
-  /* PROFILE */
-  const profile = window.userProfile;
+  /* ================= PROFILE SAFE LOAD ================= */
+  let profile = window.userProfile;
 
- if (!profile || !profile.rawName) {
-    alert("User not loaded");
+  if (!profile) {
+    alert("❌ User not loaded");
     console.groupEnd();
     return;
   }
+
+  // 🔥 FORCE SAFE NAME STRUCTURE
+  if (!profile.rawName) {
+    console.warn("⚠ rawName missing → recovering from name");
+    profile.rawName = profile.name || "";
+  }
+
+  if (!profile.cleanName) {
+    console.warn("⚠ cleanName missing → generating");
+    profile.cleanName = cleanName(profile.rawName);
+  }
+
+  if (!profile.rawName || profile.rawName.trim() === "") {
+    alert("❌ User name missing");
+    console.groupEnd();
+    return;
+  }
+
+  console.log("🧠 PROFILE:", profile);
 
   const setVal = (id, val) => {
     const el = document.getElementById(id);
     if (el) el.value = val;
   };
 
-  /* BEAT */
+  /* ================= BEAT ================= */
   beatSel.innerHTML = "";
 
   if (profile.role === "ADMIN") {
@@ -5813,24 +5830,27 @@ function openDutyForm(){
 
   beatSel.value = profile.beat || "";
 
-  /* LEADER LOCK */
- const leaderInput = document.getElementById("d-leader");
+  /* ================= LEADER LOCK ================= */
+  const leaderInput = document.getElementById("d-leader");
 
-if (leaderInput) {
+  if (leaderInput) {
 
-  const displayName = String(profile.rawName || profile.name || "").trim();
+    const displayName = profile.rawName.trim(); // 🔥 FIXED
 
-  leaderInput.value = displayName;
-  leaderInput.readOnly = true;
-  leaderInput.dataset.lockedUser = displayName;
+    leaderInput.value = displayName;
+    leaderInput.readOnly = true;
+    leaderInput.dataset.lockedUser = displayName;
 
-} /* CHANGE */
+    console.log("👤 Leader set:", displayName);
+  }
+
+  /* ================= EVENTS ================= */
   beatSel.onchange = () => {
     updateDutyStaff("BEAT_CHANGE");
     updateDutyCompt("BEAT_CHANGE");
   };
 
-  /* POST INIT */
+  /* ================= POST INIT ================= */
   setTimeout(() => {
     setVal("d-id", "DUTY-" + Date.now());
     setVal("d-date", new Date().toLocaleString());
@@ -5839,10 +5859,7 @@ if (leaderInput) {
     updateDutyCompt("FROM_OPEN_DUTY");
   }, 150);
 
-  /* ============================================================
-     ✅ FINAL FIX: START BUTTON (SAFE REFERENCE BINDING)
-     ============================================================ */
-
+  /* ================= BUTTON FIX ================= */
   const startBtn = document.getElementById("startDutyBtn");
 
   if (startBtn) {
@@ -5864,7 +5881,7 @@ if (leaderInput) {
       }
     };
 
-    console.log("✅ startDutyBtn safely rebound - waiting for human click");
+    console.log("✅ startDutyBtn safely rebound");
   }
 
   console.groupEnd();
