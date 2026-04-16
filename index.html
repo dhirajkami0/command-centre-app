@@ -2188,12 +2188,20 @@ let lastGPSSentTime = 0;
 // 🧠 FINAL DISPLAY + DUTY LOGIC
 function showBestLocation() {
 
+  console.group("📍 showBestLocation FLOW START");
+
+  console.log("👤 CLICKED USER:", window.userProfile);
+  console.log("🧠 isDutyActive:", window.isDutyActive);
+  console.log("👥 currentDutyTeam:", window.currentDutyTeam);
+  console.log("👤 activeDutyLeader:", window.activeDutyLeader);
+
   const btn = document.getElementById("locBtn");
 
   if (!bestLocation) {
     console.error("❌ No bestLocation found");
     alert("❌ Could not get location");
     resetButton();
+    console.groupEnd();
     return;
   }
 
@@ -2232,44 +2240,69 @@ function showBestLocation() {
   btn.innerText = "STOP LOCATION";
   btn.disabled = false;
 
-  // ================= DUTY CHECK (FIXED FOR ALL USERS) =================
+  // ================= DUTY CHECK =================
   let isOnDuty = false;
 
   if (window.isDutyActive === true) {
+    console.log("🟢 Duty via isDutyActive");
     isOnDuty = true;
   }
   else if (window.currentDutyTeam && window.currentDutyTeam.length > 0) {
+    console.log("🟢 Duty via currentDutyTeam");
     isOnDuty = true;
   }
+  else {
+    console.warn("🔴 Duty NOT detected");
+  }
+
+  console.log("🧠 FINAL DUTY RESULT:", isOnDuty);
 
   if (!isOnDuty) {
     console.log("👁 View only mode (NOT on duty)");
+    console.groupEnd();
     return;
   }
 
+  // ================= USER PROFILE =================
   if (!window.userProfile || !window.userProfile.rawName) {
     console.error("❌ userProfile missing → GPS not sent");
+    console.groupEnd();
     return;
   }
 
+  console.log("👤 USER VALID:", window.userProfile.rawName);
+
+  // ================= DUPLICATE CONTROL =================
   const now = Date.now();
+
+  console.log("⏱ Last sent:", lastGPSSentTime, "| Now:", now);
+
   if (now - lastGPSSentTime < 20000) {
-    console.log("⏱ Skipped duplicate GPS (too soon)");
+    console.warn("⏱ Skipped duplicate GPS (too soon)");
+    console.groupEnd();
     return;
   }
+
   lastGPSSentTime = now;
 
-  // ================= LEADER FIX =================
+  // ================= LEADER RESOLUTION =================
   let leaderName = window.activeDutyLeader;
 
   if (!leaderName || leaderName.trim() === "") {
-    console.warn("⚠ No leader found → fallback to self");
+    console.warn("⚠ No activeDutyLeader → fallback to self");
     leaderName = window.userProfile.rawName;
   }
 
+  console.log("👤 FINAL LEADER USED:", leaderName);
+
+  const leaderClean = cleanName(leaderName);
+
+  console.log("🧹 CLEAN NAME:", leaderClean);
+
+  // ================= FINAL GPS DATA =================
   const gpsData = {
     name: leaderName,
-    cleanName: cleanName(leaderName),
+    cleanName: leaderClean,
     phone: window.userProfile.phone || "",
     source: "MANUAL_APP",
     lat: lat,
@@ -2277,29 +2310,44 @@ function showBestLocation() {
     time: new Date().toISOString()
   };
 
-  console.log("📤 Sending GPS:", gpsData);
+  console.log("📤 FINAL GPS PAYLOAD:", JSON.stringify(gpsData, null, 2));
+
+  // ================= BACKEND CALL =================
+  console.log("🌐 Calling SAVE_PATROL_GPS...");
 
   callBackend("SAVE_PATROL_GPS", gpsData)
 
   .then(res => {
 
-    console.log("📡 Backend response:", res);
+    console.log("📡 BACKEND RESPONSE:", res);
 
-    if (!res || res.status !== "ok") {
-      console.warn("📴 Save failed → saving offline");
+    if (!res) {
+      console.warn("📴 NULL response → offline save");
       saveOfflineGPS(gpsData);
-    } else {
-      console.log("✅ GPS saved in sheet");
     }
+    else if (res.status !== "ok") {
+      console.warn("❌ Backend rejected:", res);
+      saveOfflineGPS(gpsData);
+    }
+    else {
+      console.log("✅ GPS saved in sheet successfully");
+    }
+
+    console.groupEnd();
 
   })
 
   .catch(err => {
+
     console.error("❌ Backend call failed:", err);
+
+    console.warn("📴 Saving offline due to error");
     saveOfflineGPS(gpsData);
+
+    console.groupEnd();
+
   });
 }
-
 
 // ❌ LOCATION ERROR
 map.on('locationerror', function (e) {
