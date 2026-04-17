@@ -1809,7 +1809,6 @@ function autoShowEndDuty() {
   console.group("🧠 autoShowEndDuty START");
   console.log("⏱ Time:", new Date().toLocaleTimeString());
 
-  // 🔥 BLOCK MULTIPLE CALLS
   if (dutyCheckRunning) {
     console.warn("⛔ Skipping duplicate duty check");
     console.groupEnd();
@@ -1817,14 +1816,10 @@ function autoShowEndDuty() {
   }
 
   dutyCheckRunning = true;
-  console.log("🔒 dutyCheckRunning = TRUE");
 
   try {
 
-    // ================= PROFILE CHECK =================
     if (!window.userProfile || !window.userProfile.rawName) {
-      console.warn("❌ Leader not ready yet:", window.userProfile);
-
       dutyCheckRunning = false;
       console.groupEnd();
       return;
@@ -1833,13 +1828,7 @@ function autoShowEndDuty() {
     const rawName = window.userProfile.rawName;
     const cleanedName = window.userProfile.cleanName;
 
-    console.log("👤 Raw Name:", rawName);
-    console.log("🧹 Cleaned Name:", cleanedName);
-
-    // 🔥 STORE PREVIOUS STATE
     const wasActive = window.isDutyActive === true;
-
-    console.log("🌐 Calling backend checkDutyFromSheet...");
 
     callBackend("checkDutyFromSheet", {
       leader: cleanedName
@@ -1847,46 +1836,57 @@ function autoShowEndDuty() {
 
     .then(function (res) {
 
-      console.log("🔥 DUTY RESPONSE:", res);
-      console.log("📊 res.active:", res?.active);
-
       const btn   = document.getElementById("dutyMainBtn");
       const icon  = document.getElementById("dutyIcon");
       const label = document.getElementById("dutyLabel");
 
-      if (!btn || !label) {
-        console.error("❌ Required elements missing (btn/label)");
-        return;
-      }
+      if (!btn || !label) return;
 
       // =========================================================
       // 🟢 ACTIVE DUTY
       // =========================================================
       if (res && res.active) {
 
-        console.log("🟢 CONDITION: ACTIVE DUTY TRUE");
-
         window.isDutyActive = true;
 
         btn.style.background = "#d32f2f";
         label.innerHTML = "END DUTY";
 
-        if (icon) {
-          icon.className = "fa-solid fa-stop";
+        if (icon) icon.className = "fa-solid fa-stop";
+
+        console.log("🟢 DUTY ACTIVE");
+
+        // =====================================================
+        // 🔥 NEW FIX: CLEAR OLD DATA ON START
+        // =====================================================
+        if (!wasActive) {
+
+          console.warn("🧹 Duty START → clearing old session data");
+
+          // 🔥 CLEAR BACKEND DATA
+          callBackend("CLEAR_OLD_PATROL_DATA", {
+            name: rawName,
+            cleanName: cleanedName
+          });
+
+          // 🔥 CLEAR OFFLINE CACHE
+          try {
+            localStorage.removeItem("offlineGPS");
+          } catch(e){}
+
+          // 🔥 RESET DUPLICATE MEMORY
+          try {
+            window.lastManualKey = "";
+            lastLocationKey = "";
+          } catch(e){}
+
         }
 
-        console.log("🔴 UI → END DUTY APPLIED");
-
-        // 🔥 START GPS (SAFE)
+        // 🔥 START GPS
         try {
-
           if (!window.gpsRunning) {
-            console.log("🟢 Duty active → starting GPS");
             startAutoGPS();
-          } else {
-            console.log("⛔ GPS already running");
           }
-
         } catch(e){
           console.error("❌ startAutoGPS error:", e);
         }
@@ -1894,69 +1894,46 @@ function autoShowEndDuty() {
       } 
       
       // =========================================================
-      // 🟡 NO DUTY
+      // 🔴 DUTY NOT ACTIVE
       // =========================================================
       else {
-
-        console.log("🟡 CONDITION: NO ACTIVE DUTY");
 
         window.isDutyActive = false;
 
         btn.style.background = "#2e7d32";
         label.innerHTML = "START DUTY";
 
-        if (icon) {
-          icon.className = "fa-solid fa-briefcase";
-        }
+        if (icon) icon.className = "fa-solid fa-briefcase";
 
-        console.log("🟢 UI → START DUTY APPLIED");
+        console.log("🔴 DUTY INACTIVE");
 
         // 🔥 STOP GPS
         try {
-
           if (window.gpsRunning) {
-            console.log("🔴 Duty inactive → stopping GPS");
             stopAutoGPS();
-          } else {
-            console.log("⛔ GPS already stopped");
           }
-
-        } catch(e){
-          console.error("❌ stopAutoGPS error:", e);
-        }
+        } catch(e){}
 
         // =====================================================
-        // 🔥 CRITICAL FIX: CLEAR ONLY ON TRUE → FALSE
+        // 🔥 CLEAR ON END (SAFETY)
         // =====================================================
         if (wasActive) {
 
-          console.warn("🧹 Duty ended → clearing old GPS data");
+          console.warn("🧹 Duty END → clearing session");
 
-          // 🔥 CLEAR OFFLINE STORAGE
+          callBackend("CLEAR_OLD_PATROL_DATA", {
+            name: rawName,
+            cleanName: cleanedName
+          });
+
           try {
             localStorage.removeItem("offlineGPS");
-            console.log("💾 Offline GPS cleared");
-          } catch(e){
-            console.error("❌ Offline clear failed:", e);
-          }
-
-          // 🔥 CLEAR BACKEND DATA
-          try {
-            callBackend("CLEAR_OLD_PATROL_DATA", {
-              name: rawName,
-              cleanName: cleanedName
-            });
-            console.log("🗑 Backend patrol data cleared");
-          } catch(e){
-            console.error("❌ Backend clear failed:", e);
-          }
-
-          // 🔥 RESET DUPLICATE MEMORY
-          try {
-            lastLocationKey = "";
-            console.log("♻ Location memory reset");
           } catch(e){}
 
+          try {
+            window.lastManualKey = "";
+            lastLocationKey = "";
+          } catch(e){}
         }
       }
 
@@ -1968,25 +1945,21 @@ function autoShowEndDuty() {
 
     .finally(function () {
 
-      console.log("🔓 Releasing dutyCheckRunning...");
-
       setTimeout(() => {
         dutyCheckRunning = false;
-        console.log("🔓 dutyCheckRunning = FALSE");
         console.groupEnd();
-      }, 2000);
+      }, 1500);
 
     });
 
   } catch(e){
 
     console.error("❌ autoShowEndDuty crash:", e);
-
     dutyCheckRunning = false;
     console.groupEnd();
   }
-
-}    
+}  
+    
     let dutyInitDone = false;
 
 function initDutyControl() {
