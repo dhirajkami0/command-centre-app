@@ -1034,39 +1034,48 @@ function login(){
         btn.disabled = false;
       }
 
-      // ================= OFFLINE LOGIN =================
-      if(!profile){
+      // ============================================================
+      // 🚨 BACKEND NOT REACHABLE (NOT SAME AS OFFLINE)
+      // ============================================================
+      if(profile === null){
+
+        console.warn("⚠ Backend unreachable");
 
         const saved = localStorage.getItem("userProfile");
+        const savedPhone = localStorage.getItem("userPhone");
 
-        if(saved){
+        // ================= OFFLINE LOGIN (ONLY LAST USER) =================
+        if(saved && savedPhone === phone){
+
+          console.log("📴 Offline login allowed");
 
           const offlineProfile = JSON.parse(saved);
-          const savedPhone = localStorage.getItem("userPhone");
 
-          if(savedPhone === phone){
+          window.userProfile = offlineProfile;
 
-            window.userProfile = offlineProfile;
+          document.getElementById("loginModal").style.display = "none";
 
-            document.getElementById("loginModal").style.display = "none";
+          updateNetworkStatus("offline");
 
-            updateNetworkStatus("offline");
-
-            applyRoleControl();
-            startApp();
-
-          } else {
-            alert("❌ Offline login only for last user");
-          }
+          applyRoleControl();
+          startApp();
 
         } else {
-          alert("❌ First login must be online");
+
+          if(navigator.onLine){
+            alert("⚠ Server not responding.\nTry again.");
+          } else {
+            alert("❌ No internet connection.\nFirst login must be online.");
+          }
+
         }
 
         return;
       }
 
-      // ================= INVALID =================
+      // ============================================================
+      // ❌ INVALID USER
+      // ============================================================
       if(profile.error){
         alert("❌ Not authorized");
         return;
@@ -1079,11 +1088,12 @@ function login(){
         return;
       }
 
-      // ================= SUCCESS =================
-
+      // ============================================================
+      // ✅ SUCCESS LOGIN
+      // ============================================================
       const finalProfile = {
-        rawName: profile.name,                 // 🔥 ORIGINAL
-        cleanName: profile.cleanName || cleanName(profile.name), // 🔥 NORMALIZED
+        rawName: profile.name,
+        cleanName: profile.cleanName || cleanName(profile.name),
         role: profile.role,
         beat: profile.beat,
         phone: profile.phone
@@ -1103,10 +1113,22 @@ function login(){
       applyRoleControl();
       startApp();
 
+    })
+
+    .catch(err => {
+
+      console.error("❌ Login crash:", err);
+
+      if(btn){
+        btn.innerText = "Login";
+        btn.disabled = false;
+      }
+
+      alert("❌ Login failed. Try again.");
+
     });
 
-}
-function showLogin(){
+}function showLogin(){
 
   document.getElementById("loginModal").style.display = "flex";
 
