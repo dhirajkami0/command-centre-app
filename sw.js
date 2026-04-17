@@ -2,7 +2,7 @@
    🔥 GREENGUARD SERVICE WORKER (FINAL PRO LOCAL)
 ========================================= */
 
-const CACHE_NAME = "greenguard-v14"; // 🔥 UPDATE VERSION EVERY CHANGE
+const CACHE_NAME = "greenguard-v15"; // 🔥 UPDATE VERSION EVERY CHANGE
 
 /* =========================================
    📦 CORE + LOCAL FILES
