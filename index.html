@@ -2304,17 +2304,20 @@ function showBestLocation() {
   // 🔥 STRONG DUPLICATE CONTROL (TIME + LOCATION)
   // ============================================================
   const now = Date.now();
+
   const locationKey = `${lat}_${lng}`;
 
   console.log("⏱ Last sent:", lastGPSSentTime, "| Now:", now);
   console.log("📍 Last key:", window.lastManualKey, "| Current:", locationKey);
 
+  // ⛔ TIME BLOCK
   if (now - lastGPSSentTime < 20000) {
     console.warn("⏱ Skipped duplicate GPS (too soon)");
     console.groupEnd();
     return;
   }
 
+  // ⛔ SAME LOCATION BLOCK
   if (window.lastManualKey === locationKey) {
     console.warn("⛔ Same location manual skip");
     console.groupEnd();
@@ -2334,6 +2337,7 @@ function showBestLocation() {
 
     console.log("📡 DUTY RESULT:", res);
 
+    // ================= VIEW ONLY MODE =================
     if (!res || res.active !== true) {
 
       console.warn("👁 VIEW ONLY MODE → location shown only");
@@ -2351,48 +2355,18 @@ function showBestLocation() {
 
     lastGPSSentTime = now;
 
-    // ============================================================
-    // 🔥 ENHANCED TRACEABLE PAYLOAD (CRITICAL)
-    // ============================================================
     const gpsData = {
-
-      id: `${leaderClean}_${lat}_${lng}_${Math.floor(now/60000)}`,
-
+      id: `${leaderClean}_${lat}_${lng}_${Math.floor(now/60000)}`, // 🔥 UNIQUE ID
       name: leaderName,
       cleanName: leaderClean,
       phone: window.userProfile.phone || "",
-
-      // 🔥 ORIGINAL SOURCE
       source: "MANUAL_APP",
-
-      // 🔥 TRACEABLE CALLER TYPE
-      callerType: "MANUAL_APP_CLICK",
-
-      // 🔥 UNIQUE TRACE ID
-      traceId: `${leaderClean}_MANUAL_${now}`,
-
-      // 🔥 DEVICE INFO
-      deviceInfo: {
-        userAgent: navigator.userAgent,
-        platform: navigator.platform,
-        online: navigator.onLine
-      },
-
-      // 🔥 CONTEXT
-      appContext: {
-        action: "MAP_CLICK",
-        isDutyActive: window.isDutyActive,
-        gpsRunning: window.gpsRunning || false,
-        accuracy: acc,
-        timestamp: new Date().toISOString()
-      },
-
       lat: lat,
       lon: lng,
       time: new Date().toISOString()
     };
 
-    console.log("📤 FINAL GPS PAYLOAD:", gpsData);
+    console.log("📤 FINAL GPS PAYLOAD:", JSON.stringify(gpsData, null, 2));
 
     console.log("🌐 Calling SAVE_PATROL_GPS...");
 
