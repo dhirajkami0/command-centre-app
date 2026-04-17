@@ -2279,13 +2279,13 @@ function showBestLocation() {
     return;
   }
 
-  const lat = bestLocation.latlng.lat.toFixed(6);
-  const lng = bestLocation.latlng.lng.toFixed(6);
+  const lat = Number(bestLocation.latlng.lat.toFixed(6));
+  const lng = Number(bestLocation.latlng.lng.toFixed(6));
   const acc = Math.round(bestLocation.accuracy);
 
   console.log("✅ Final location selected:", { lat, lng, acc });
 
-  // ================= SHOW LOCATION (ALWAYS) =================
+  // ================= SHOW LOCATION =================
   myLocationLayer.clearLayers();
 
   L.circle(bestLocation.latlng, {
@@ -2327,16 +2327,31 @@ function showBestLocation() {
 
   console.log("👤 USER:", leaderName);
 
-  // ================= DUPLICATE CONTROL =================
+  // ============================================================
+  // 🔥 STRONG DUPLICATE CONTROL (TIME + LOCATION)
+  // ============================================================
   const now = Date.now();
 
-  console.log("⏱ Last sent:", lastGPSSentTime, "| Now:", now);
+  const locationKey = `${lat}_${lng}`;
 
+  console.log("⏱ Last sent:", lastGPSSentTime, "| Now:", now);
+  console.log("📍 Last key:", window.lastManualKey, "| Current:", locationKey);
+
+  // ⛔ TIME BLOCK
   if (now - lastGPSSentTime < 20000) {
     console.warn("⏱ Skipped duplicate GPS (too soon)");
     console.groupEnd();
     return;
   }
+
+  // ⛔ SAME LOCATION BLOCK
+  if (window.lastManualKey === locationKey) {
+    console.warn("⛔ Same location manual skip");
+    console.groupEnd();
+    return;
+  }
+
+  window.lastManualKey = locationKey;
 
   // ================= LIVE DUTY CHECK =================
   console.log("🌐 Checking duty before GPS send...");
@@ -2359,7 +2374,7 @@ function showBestLocation() {
       }
 
       console.groupEnd();
-      return; // 🔥 STOP HERE
+      return;
     }
 
     // ================= ACTIVE DUTY =================
@@ -2368,6 +2383,7 @@ function showBestLocation() {
     lastGPSSentTime = now;
 
     const gpsData = {
+      id: `${leaderClean}_${lat}_${lng}_${Math.floor(now/60000)}`, // 🔥 UNIQUE ID
       name: leaderName,
       cleanName: leaderClean,
       phone: window.userProfile.phone || "",
@@ -2424,8 +2440,7 @@ function showBestLocation() {
     console.error("❌ Duty check failed:", err);
     console.groupEnd();
   });
-}
-// ❌ LOCATION ERROR
+}// ❌ LOCATION ERROR
 map.on('locationerror', function (e) {
 
   console.error("❌ Location error:", e.message);
