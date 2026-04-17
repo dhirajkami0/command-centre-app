@@ -1258,22 +1258,41 @@ const GAS_URL = "https://script.google.com/macros/s/AKfycbyq5lJqIPEIO9TO3glu5Kkh
 
 function callBackend(action, payload = {}) {
 
+  // ============================================================
+  // 🔥 TIMEOUT CONTROL (VERY IMPORTANT)
+  // ============================================================
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 15000); // 15 sec
+
   return fetch(GAS_URL, {
     method: "POST",
 
-    // 🔥 avoid CORS preflight
+    // ============================================================
+    // 🔥 FORCE SIMPLE REQUEST (NO CORS PREFLIGHT)
+    // ============================================================
     headers: {
-      "Content-Type": "text/plain"
+      "Content-Type": "text/plain;charset=utf-8"
     },
 
     body: JSON.stringify({
       action: action,
       ...payload
-    })
+    }),
+
+    signal: controller.signal
 
   })
+
   .then(res => {
 
+    clearTimeout(timeout);
+
+    // ============================================================
+    // 🔍 DEBUG STATUS
+    // ============================================================
+    console.log(`🌐 ${action} → STATUS:`, res.status);
+
+    // ⚠ GAS often returns 200 even on logical error
     if (!res.ok) {
       console.warn(`⚠ ${action}: HTTP ${res.status}`);
       return null;
@@ -1284,7 +1303,10 @@ function callBackend(action, payload = {}) {
 
   .then(text => {
 
-    if (text === null) return null;
+    // ============================================================
+    // 🔍 RAW DEBUG
+    // ============================================================
+    console.log(`📦 ${action} RAW:`, text);
 
     if (!text || text.trim() === "") {
       console.warn(`⚠ ${action}: Empty response`);
@@ -1301,42 +1323,42 @@ function callBackend(action, payload = {}) {
     }
 
     // ============================================================
-    // 🔥 SMART TRACCAR DETECTION (FINAL VERSION)
+    // 🔥 TRACCAR DETECTION (SAFE + FILTERED)
     // ============================================================
-
     try {
 
       if (data) {
 
-        // ✅ ONLY detect for tracking-related actions
+        const act = (action || "").toUpperCase();
+
         const isTrackingAction =
-          action &&
-          (
-            action.toUpperCase().includes("MAP") ||
-            action.toUpperCase().includes("TRACK") ||
-            action.toUpperCase().includes("PATROL")
-          );
+          act.includes("MAP") ||
+          act.includes("TRACK") ||
+          act.includes("PATROL");
 
         if (isTrackingAction) {
 
-          // ✅ Case 1: Array data (Map_All, Patrol_Track etc.)
+          // ✅ Case 1: Array
           if (Array.isArray(data) && data.length > 0) {
 
             markTraccarAlive();
-            console.log("🟢 Traccar Alive (array data, filtered)");
+            console.log("🟢 Traccar Alive (array)");
 
           }
 
-          // ✅ Case 2: Object with GPS fields
+          // ✅ Case 2: Object
           else if (typeof data === "object") {
 
             if (
-              data.lat !== undefined || data.latitude !== undefined ||
-              data.lon !== undefined || data.longitude !== undefined ||
-              data.track !== undefined || data.positions !== undefined
+              data.lat !== undefined ||
+              data.latitude !== undefined ||
+              data.lon !== undefined ||
+              data.longitude !== undefined ||
+              data.track !== undefined ||
+              data.positions !== undefined
             ) {
               markTraccarAlive();
-              console.log("🟢 Traccar Alive (object data, filtered)");
+              console.log("🟢 Traccar Alive (object)");
             }
 
           }
@@ -1355,12 +1377,20 @@ function callBackend(action, payload = {}) {
 
   .catch(err => {
 
-    console.warn(`⚠ ${action} failed:`, err.message);
+    clearTimeout(timeout);
+
+    // ============================================================
+    // 🔥 ERROR HANDLING (IMPORTANT)
+    // ============================================================
+    if (err.name === "AbortError") {
+      console.warn(`⏱ ${action} timeout`);
+    } else {
+      console.warn(`⚠ ${action} failed:`, err.message);
+    }
 
     return null;
   });
 }    
-    
     function updateDutyStaff(source = "UNKNOWN"){
 
   console.group("👮 updateDutyStaff CALLED");
