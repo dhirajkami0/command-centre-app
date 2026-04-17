@@ -788,23 +788,7 @@ window.addEventListener("unhandledrejection", function (e) {
 
 
 
-    function saveOfflineGPS(data){
-
-  try {
-
-    let list = JSON.parse(localStorage.getItem("offlineGPS") || "[]");
-
-    list.push(data);
-
-    localStorage.setItem("offlineGPS", JSON.stringify(list));
-
-    console.warn("📴 GPS saved OFFLINE:", data);
-
-  } catch(e){
-    console.error("❌ Offline GPS save failed:", e);
-  }
-
-}
+    
     const DEBUG = false;
 
 function safeBackend(action, payload = {}) {
@@ -1145,7 +1129,7 @@ function logout(){
   localStorage.removeItem("userPhone");
   location.reload();
 }    
-    let appStarted = false;
+   let appStarted = false;
 
 function startApp(){
 
@@ -1154,30 +1138,39 @@ function startApp(){
 
   console.log("🚀 App Started - Command Centre Initializing");
 
-  loadSightings();
+  try {
 
-  setTimeout(() => {
+    // ================= LOAD CORE MODULES =================
+    loadSightings();
 
-    try {
-
-      if(window.userProfile && window.isDutyActive === true && !window.gpsRunning){
-
-        console.log("🟢 Starting AUTO GPS from startApp");
-        startAutoGPS();
-
-      } else {
-
-        console.warn("⚠ GPS not started → inactive/already running");
-
-      }
-
-    } catch(e){
-      console.error("❌ startAutoGPS failed:", e);
+    // 🔥 INIT DUTY CONTROL (THIS WILL CONTROL GPS)
+    if(typeof initDutyControl === "function"){
+      initDutyControl();
+    } else {
+      console.warn("⚠ initDutyControl not found");
     }
 
-  }, 1500);
+    // 🔥 SAFETY: Ensure GPS is NOT running initially
+    if(window.gpsRunning){
+      console.warn("⚠ GPS was running unexpectedly → stopping");
+      stopAutoGPS();
+    }
 
-}   /* ===============================
+    // 🔥 CLEAR any leftover offline data if not on duty
+    if(window.isDutyActive !== true){
+      try {
+        localStorage.removeItem("offlineGPS");
+        console.log("🧹 Cleared old offline GPS (startup safety)");
+      } catch(e){}
+    }
+
+    console.log("✅ App initialization complete (GPS controlled by duty)");
+
+  } catch(e){
+    console.error("❌ startApp crash:", e);
+  }
+
+} /* ===============================
    🔐 MAIN PROFILE FUNCTION
 =============================== */
 
@@ -7025,30 +7018,61 @@ async function sendOrStoreGPS(gpsData){
 // ============================================================
 function saveOfflineGPS(data){
 
-  // 🔥 BLOCK IF NOT ON DUTY
-  if(window.isDutyActive !== true){
-    return;
+  try {
+
+    // ============================================================
+    // 🔥 HARD DUTY BLOCK (CRITICAL)
+    // ============================================================
+    if(window.isDutyActive !== true){
+      console.warn("🚫 Not on duty → offline GPS blocked");
+      return;
+    }
+
+    // ============================================================
+    // 🔥 BASIC VALIDATION
+    // ============================================================
+    if(!data || !data.lat || !data.lon || !data.time){
+      console.warn("⚠ Invalid GPS data skipped");
+      return;
+    }
+
+    let list = JSON.parse(localStorage.getItem("offlineGPS") || "[]");
+
+    // ============================================================
+    // 🔥 DUPLICATE PREVENTION
+    // ============================================================
+    const exists = list.some(x =>
+      x.lat === data.lat &&
+      x.lon === data.lon &&
+      x.time === data.time
+    );
+
+    if(exists){
+      console.warn("⚠ Duplicate GPS skipped");
+      return;
+    }
+
+    // ============================================================
+    // 🔥 ADD NEW DATA
+    // ============================================================
+    list.push(data);
+
+    // ============================================================
+    // 🔥 SIZE CONTROL (VERY IMPORTANT)
+    // ============================================================
+    if(list.length > 500){
+      list = list.slice(-300); // keep latest
+    }
+
+    localStorage.setItem("offlineGPS", JSON.stringify(list));
+
+    console.warn("📴 GPS saved OFFLINE:", data);
+
+  } catch(e){
+    console.error("❌ Offline GPS save failed:", e);
   }
 
-  let list = JSON.parse(localStorage.getItem("offlineGPS") || "[]");
-
-  const exists = list.some(x =>
-    x.lat === data.lat &&
-    x.lon === data.lon &&
-    x.time === data.time
-  );
-
-  if(exists) return;
-
-  list.push(data);
-
-  if(list.length > 500){
-    list = list.slice(-300);
-  }
-
-  localStorage.setItem("offlineGPS", JSON.stringify(list));
 }
-
 
 // ============================================================
 // 🔄 SYNC OFFLINE
