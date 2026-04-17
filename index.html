@@ -6891,6 +6891,9 @@ window.addEventListener("load", function () {
 // ============================================================
 // 🌍 GLOBAL STATE
 // ============================================================
+// ============================================================
+// 🔥 GLOBAL STATE
+// ============================================================
 let autoGpsTimer = null;
 let lastGpsSent = 0;
 
@@ -6899,6 +6902,7 @@ let isSyncRunning = false;
 
 window.gpsRunning = false;
 
+// 🔥 STRONG DUPLICATE KEY
 let lastLocationKey = "";
 
 
@@ -6913,9 +6917,6 @@ function startAutoGPS(){
     clearInterval(autoGpsTimer);
     autoGpsTimer = null;
   }
-
-  window.gpsRunning = false;
-  isTrackingRunning = false;
 
   if(window.gpsRunning === true){
     console.warn("⛔ GPS already running");
@@ -6960,7 +6961,6 @@ function runAutoGPS(){
 
   try {
 
-    // 🔥 HARD DUTY BLOCK
     if(window.isDutyActive !== true){
       console.log("⏸ Not on duty → stopping GPS");
       stopAutoGPS();
@@ -6993,9 +6993,13 @@ function runAutoGPS(){
           return;
         }
 
-        const key = lat + "," + lon;
+        // ============================================================
+        // 🔥 STRONG DUPLICATE BLOCK (LOCATION LEVEL)
+        // ============================================================
+        const key = `${lat}_${lon}`;
 
         if(key === lastLocationKey){
+          console.warn("⛔ Duplicate GPS blocked (same location)");
           isTrackingRunning = false;
           return;
         }
@@ -7004,6 +7008,7 @@ function runAutoGPS(){
         lastGpsSent = Date.now();
 
         const gpsData = {
+          id: `${window.userProfile.cleanName}_${lat}_${lon}_${Math.floor(Date.now()/60000)}`, // 🔥 UNIQUE
           name: window.userProfile.rawName,
           cleanName: window.userProfile.cleanName,
           phone: window.userProfile.phone || "",
@@ -7037,35 +7042,10 @@ function runAutoGPS(){
 
 
 // ============================================================
-// 📍 MANUAL GPS
-// ============================================================
-function saveMyLocation(lat, lon){
-
-  if(window.isDutyActive !== true){
-    console.warn("🚫 Manual GPS blocked (not on duty)");
-    return;
-  }
-
-  const gpsData = {
-    name: window.userProfile.rawName,
-    cleanName: window.userProfile.cleanName,
-    phone: window.userProfile.phone || "",
-    source: "MANUAL_APP",
-    lat,
-    lon,
-    time: new Date().toISOString()
-  };
-
-  sendOrStoreGPS(gpsData);
-}
-
-
-// ============================================================
-// 📡 SEND OR STORE (MASTER CONTROL)
+// 📡 SEND OR STORE (FIXED)
 // ============================================================
 async function sendOrStoreGPS(gpsData){
 
-  // 🔥 MASTER DUTY BLOCK
   if(window.isDutyActive !== true){
     console.warn("🚫 Not on duty → GPS blocked");
     return;
@@ -7074,6 +7054,7 @@ async function sendOrStoreGPS(gpsData){
   const age = Date.now() - new Date(gpsData.time).getTime();
 
   if(age > 30 * 60 * 1000){
+    console.warn("⚠ Old GPS skipped");
     return;
   }
 
@@ -7083,92 +7064,79 @@ async function sendOrStoreGPS(gpsData){
 
       const res = await callBackend("SAVE_PATROL_GPS", gpsData);
 
-      if(!res || res.status !== "ok"){
-        saveOfflineGPS(gpsData);
+      // ============================================================
+      // 🔥 SUCCESS → DO NOTHING (IMPORTANT)
+      // ============================================================
+      if(res && res.status === "ok"){
+        console.log("✅ GPS saved (LIVE)");
+        return;
       }
 
-    } catch {
+      console.warn("⚠ Backend rejected → saving offline");
+      saveOfflineGPS(gpsData);
+
+    } catch(e){
+
+      console.warn("📴 Network error → saving offline");
       saveOfflineGPS(gpsData);
     }
 
   } else {
+
+    console.warn("📴 Offline → storing GPS");
     saveOfflineGPS(gpsData);
   }
 }
 
 
 // ============================================================
-// 💾 OFFLINE SAVE
+// 💾 OFFLINE SAVE (FIXED)
 // ============================================================
 function saveOfflineGPS(data){
 
   try {
 
-    // ============================================================
-    // 🔥 HARD DUTY BLOCK (CRITICAL)
-    // ============================================================
-    if(window.isDutyActive !== true){
-      console.warn("🚫 Not on duty → offline GPS blocked");
-      return;
-    }
+    if(window.isDutyActive !== true) return;
 
-    // ============================================================
-    // 🔥 BASIC VALIDATION
-    // ============================================================
-    if(!data || !data.lat || !data.lon || !data.time){
-      console.warn("⚠ Invalid GPS data skipped");
-      return;
-    }
+    if(!data || !data.lat || !data.lon || !data.time) return;
 
     let list = JSON.parse(localStorage.getItem("offlineGPS") || "[]");
 
     // ============================================================
-    // 🔥 DUPLICATE PREVENTION
+    // 🔥 STRONG DUPLICATE CHECK
     // ============================================================
-    const exists = list.some(x =>
-      x.lat === data.lat &&
-      x.lon === data.lon &&
-      x.time === data.time
-    );
+    const exists = list.some(x => x.id === data.id);
 
     if(exists){
-      console.warn("⚠ Duplicate GPS skipped");
+      console.warn("⚠ Duplicate offline GPS skipped");
       return;
     }
 
-    // ============================================================
-    // 🔥 ADD NEW DATA
-    // ============================================================
     list.push(data);
 
-    // ============================================================
-    // 🔥 SIZE CONTROL (VERY IMPORTANT)
-    // ============================================================
-    if(list.length > 500){
-      list = list.slice(-300); // keep latest
+    // 🔥 LIMIT SIZE
+    if(list.length > 300){
+      list = list.slice(-200);
     }
 
     localStorage.setItem("offlineGPS", JSON.stringify(list));
 
-    console.warn("📴 GPS saved OFFLINE:", data);
+    console.warn("📴 GPS saved OFFLINE:", data.id);
 
   } catch(e){
     console.error("❌ Offline GPS save failed:", e);
   }
-
 }
 
+
 // ============================================================
-// 🔄 SYNC OFFLINE
+// 🔄 SYNC OFFLINE (🔥 MAIN FIX)
 // ============================================================
 async function syncOfflineGPS(){
 
   if(isSyncRunning || !navigator.onLine) return;
 
-  // 🔥 BLOCK IF NOT ON DUTY
-  if(window.isDutyActive !== true){
-    return;
-  }
+  if(window.isDutyActive !== true) return;
 
   isSyncRunning = true;
 
@@ -7179,7 +7147,8 @@ async function syncOfflineGPS(){
     return;
   }
 
-  // 🔥 ASCENDING ORDER
+  console.log("📤 Syncing offline GPS:", list.length);
+
   list.sort((a,b)=> new Date(a.time) - new Date(b.time));
 
   let remaining = [];
@@ -7193,6 +7162,9 @@ async function syncOfflineGPS(){
 
       const res = await callBackend("SAVE_PATROL_GPS", item);
 
+      // ============================================================
+      // 🔥 ONLY KEEP FAILED ONES
+      // ============================================================
       if(!res || res.status !== "ok"){
         remaining.push(item);
       }
@@ -7202,7 +7174,12 @@ async function syncOfflineGPS(){
     }
   }
 
+  // ============================================================
+  // 🔥 CRITICAL FIX: OVERWRITE STORAGE
+  // ============================================================
   localStorage.setItem("offlineGPS", JSON.stringify(remaining));
+
+  console.log("🧹 Remaining unsynced:", remaining.length);
 
   isSyncRunning = false;
 }
@@ -7222,12 +7199,9 @@ window.addEventListener("online", () => {
   if(window.isDutyActive === true){
     console.log("🌐 Online + duty active → syncing");
     syncOfflineGPS();
-  } else {
-    console.log("🚫 Online but OFF duty → no sync");
   }
 
-});  
-  </script>
+});  </script>
 
   </div>
   <div id="form-modal"
