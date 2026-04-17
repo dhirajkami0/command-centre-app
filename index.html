@@ -1939,40 +1939,72 @@ function autoShowEndDuty() {
 
 function initDutyControl() {
 
-  // 🔥 PREVENT MULTIPLE RUNS
-  if (dutyInitDone) {
-    console.warn("⚠ initDutyControl already executed");
-    return;
-  }
+  // ============================================================
+  // 🔥 SILENT GUARD (NO WARNING SPAM)
+  // ============================================================
+  if (dutyInitDone === true) return;
 
-  const profile = window.userProfile;
+  try {
 
-  console.log("👤 Current Profile:", profile);
+    const profile = window.userProfile;
 
-  if (!profile || !profile.rawName) {
-    console.error("❌ No userProfile found");
-    return;
-  }
+    console.log("👤 Current Profile:", profile);
 
-  // 🔥 SET GLOBAL CONTEXT
-  window.currentLeader = profile.rawName;
-  window.currentBeat = profile.beat;
-  window.currentRole = profile.role;
+    // ============================================================
+    // ❌ PROFILE CHECK
+    // ============================================================
+    if (!profile || !profile.rawName) {
+      console.error("❌ No userProfile found");
+      return;
+    }
 
-  console.log("✅ Duty system initialized");
-  console.log("👤 Leader:", profile.rawName);
-  console.log("📍 Beat:", profile.beat);
-  console.log("🎯 Role:", profile.role);
+    // ============================================================
+    // ✅ SET GLOBAL CONTEXT
+    // ============================================================
+    window.currentLeader = profile.rawName;
+    window.currentBeat   = profile.beat;
+    window.currentRole   = profile.role;
 
-  dutyInitDone = true;
+    console.log("✅ Duty system initialized");
+    console.log("👤 Leader:", profile.rawName);
+    console.log("📍 Beat:", profile.beat);
+    console.log("🎯 Role:", profile.role);
 
-  // 🔥 SAFE DUTY CHECK (DELAYED)
-  if (typeof autoShowEndDuty === "function") {
+    dutyInitDone = true;
 
-    setTimeout(() => {
-      console.log("🔄 Initial duty check...");
-      autoShowEndDuty();
-    }, 500);   // slight delay for stability
+    // ============================================================
+    // 🔥 SAFETY RESET (IMPORTANT)
+    // ============================================================
+    try {
+
+      if(window.gpsRunning){
+        console.warn("⚠ GPS running before duty check → stopping");
+        stopAutoGPS();
+      }
+
+    } catch(e){}
+
+    // ============================================================
+    // 🔄 INITIAL DUTY CHECK
+    // ============================================================
+    if (typeof autoShowEndDuty === "function") {
+
+      setTimeout(() => {
+
+        console.log("🔄 Initial duty check...");
+        autoShowEndDuty();
+
+      }, 500);
+
+    } else {
+      console.error("❌ autoShowEndDuty not found");
+    }
+
+  } catch(e){
+
+    console.error("❌ initDutyControl crash:", e);
+
+    dutyInitDone = false; // allow retry if failed
 
   }
 
