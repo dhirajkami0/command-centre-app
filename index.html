@@ -7269,15 +7269,7 @@ async function syncOfflineGPS(){
   console.log("📦 Remaining offline GPS:", remaining.length);
 
   isSyncRunning = false;
-}  // ============================================================
-  // 🔥 CRITICAL FIX: OVERWRITE STORAGE
-  // ============================================================
-  localStorage.setItem("offlineGPS", JSON.stringify(remaining));
-
-  console.log("🧹 Remaining unsynced:", remaining.length);
-
-  isSyncRunning = false;
-}
+}  
 
 
 // ============================================================
