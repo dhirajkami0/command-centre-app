@@ -1857,29 +1857,24 @@ function autoShowEndDuty() {
         console.log("🟢 DUTY ACTIVE");
 
         // =====================================================
-        // 🔥 NEW FIX: CLEAR OLD DATA ON START
+        // 🔥 FIXED: ONLY LOCAL RESET (NO BACKEND CLEAR)
         // =====================================================
         if (!wasActive) {
 
-          console.warn("🧹 Duty START → clearing old session data");
+          console.warn("🧹 Duty START → resetting local session");
 
-          // 🔥 CLEAR BACKEND DATA
-          callBackend("CLEAR_OLD_PATROL_DATA", {
-            name: rawName,
-            cleanName: cleanedName
-          });
+          // ❌ REMOVED: callBackend("CLEAR_OLD_PATROL_DATA", ...);
 
-          // 🔥 CLEAR OFFLINE CACHE
+          // ✅ CLEAR OFFLINE CACHE
           try {
             localStorage.removeItem("offlineGPS");
           } catch(e){}
 
-          // 🔥 RESET DUPLICATE MEMORY
+          // ✅ RESET DUPLICATE MEMORY
           try {
             window.lastManualKey = "";
             lastLocationKey = "";
           } catch(e){}
-
         }
 
         // 🔥 START GPS
@@ -1915,21 +1910,20 @@ function autoShowEndDuty() {
         } catch(e){}
 
         // =====================================================
-        // 🔥 CLEAR ON END (SAFETY)
+        // 🔥 FIXED: ONLY LOCAL CLEANUP (NO BACKEND CLEAR)
         // =====================================================
         if (wasActive) {
 
-          console.warn("🧹 Duty END → clearing session");
+          console.warn("🧹 Duty END → local cleanup only");
 
-          callBackend("CLEAR_OLD_PATROL_DATA", {
-            name: rawName,
-            cleanName: cleanedName
-          });
+          // ❌ REMOVED: callBackend("CLEAR_OLD_PATROL_DATA", ...);
 
+          // ✅ CLEAR OFFLINE CACHE
           try {
             localStorage.removeItem("offlineGPS");
           } catch(e){}
 
+          // ✅ RESET DUPLICATE MEMORY
           try {
             window.lastManualKey = "";
             lastLocationKey = "";
@@ -1958,8 +1952,7 @@ function autoShowEndDuty() {
     dutyCheckRunning = false;
     console.groupEnd();
   }
-}  
-    
+}    
     let dutyInitDone = false;
 
 function initDutyControl() {
