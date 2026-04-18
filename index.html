@@ -1857,23 +1857,20 @@ function autoShowEndDuty() {
         console.log("🟢 DUTY ACTIVE");
 
         // =====================================================
-        // 🔥 FIXED: ONLY LOCAL RESET (NO BACKEND CLEAR)
+        // 🔥 ONLY LOCAL RESET (NO BACKEND CLEAR)
         // =====================================================
         if (!wasActive) {
 
           console.warn("🧹 Duty START → resetting local session");
 
-          // ❌ REMOVED: callBackend("CLEAR_OLD_PATROL_DATA", ...);
-
-          // ✅ CLEAR OFFLINE CACHE
           try {
             localStorage.removeItem("offlineGPS");
           } catch(e){}
 
-          // ✅ RESET DUPLICATE MEMORY
           try {
             window.lastManualKey = "";
             lastLocationKey = "";
+            lastGpsSent = 0;
           } catch(e){}
         }
 
@@ -1881,6 +1878,7 @@ function autoShowEndDuty() {
         try {
           if (!window.gpsRunning) {
             startAutoGPS();
+            window.gpsRunning = true;
           }
         } catch(e){
           console.error("❌ startAutoGPS error:", e);
@@ -1902,31 +1900,39 @@ function autoShowEndDuty() {
 
         console.log("🔴 DUTY INACTIVE");
 
-        // 🔥 STOP GPS
-        try {
-          if (window.gpsRunning) {
-            stopAutoGPS();
-          }
-        } catch(e){}
-
         // =====================================================
-        // 🔥 FIXED: ONLY LOCAL CLEANUP (NO BACKEND CLEAR)
+        // 🔥 FULL CLEANUP ON DUTY END
         // =====================================================
         if (wasActive) {
 
-          console.warn("🧹 Duty END → local cleanup only");
+          console.warn("🧹 Duty END → FULL CLIENT CLEANUP");
 
-          // ❌ REMOVED: callBackend("CLEAR_OLD_PATROL_DATA", ...);
+          // 🛑 STOP GPS COMPLETELY
+          try {
+            stopAutoGPS();
+            window.gpsRunning = false;
+          } catch(e){}
 
-          // ✅ CLEAR OFFLINE CACHE
+          // 📴 CLEAR ALL OFFLINE / CACHED GPS
           try {
             localStorage.removeItem("offlineGPS");
           } catch(e){}
 
-          // ✅ RESET DUPLICATE MEMORY
+          // 🔁 RESET ALL MEMORY VARIABLES
           try {
             window.lastManualKey = "";
             lastLocationKey = "";
+            lastGpsSent = 0;
+          } catch(e){}
+
+          // 🧹 CLEAR ANY TEMP QUEUES (if used)
+          try {
+            window.gpsQueue = [];
+          } catch(e){}
+
+          // 🛑 HARD BLOCK: prevent late async GPS send
+          try {
+            window.isDutyActive = false;
           } catch(e){}
         }
       }
@@ -1952,8 +1958,7 @@ function autoShowEndDuty() {
     dutyCheckRunning = false;
     console.groupEnd();
   }
-}    
-    let dutyInitDone = false;
+}    let dutyInitDone = false;
 
 function initDutyControl() {
 
