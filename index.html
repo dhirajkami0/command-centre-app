@@ -8292,22 +8292,34 @@ function stopVoice(){
     console.error("❌ stopVoice:", e);
   }
 }
-   function openCamera(){
+ function openCamera(){
 
   const input = document.getElementById("cameraInput");
 
-  input.value = ""; // 🔥 reset
+  if(!input){
+    console.error("❌ cameraInput not found");
+    alert("Camera not ready");
+    return;
+  }
+
+  input.value = "";
   input.click();
 }
+
 
 function openGallery(){
 
   const input = document.getElementById("galleryInput");
 
-  input.value = ""; // 🔥 reset
+  if(!input){
+    console.error("❌ galleryInput not found");
+    alert("Gallery not ready");
+    return;
+  }
+
+  input.value = "";
   input.click();
-}
-  
+} 
   </script>
 
   </div>
@@ -9033,7 +9045,6 @@ overflow:hidden;
   style="display:none"
   onchange="sendPhoto(event)">
 
-<!-- GALLERY INPUT -->
 <input type="file" id="galleryInput"
   accept="image/*"
   style="display:none"
@@ -9052,9 +9063,19 @@ overflow:hidden;
       🎤
     </button>
 
-    <button onclick="document.getElementById('photoInput').click()" style="width:40px;height:40px;flex-shrink:0;background:#2e7d32;color:white;border:none;border-radius:6px;">📷</button>
+    <!-- CAMERA -->
+<button onclick="openCamera()" style="
+width:40px;height:40px;flex-shrink:0;
+background:#2e7d32;color:white;border:none;border-radius:6px;">
+📸
+</button>
 
-    <button onclick="sendMessage()" style="width:48px;height:40px;flex-shrink:0;background:#4caf50;color:white;border:none;border-radius:6px;">➤</button>
+<!-- GALLERY -->
+<button onclick="openGallery()" style="
+width:40px;height:40px;flex-shrink:0;
+background:#2e7d32;color:white;border:none;border-radius:6px;">
+🖼
+</button>   <button onclick="sendMessage()" style="width:48px;height:40px;flex-shrink:0;background:#4caf50;color:white;border:none;border-radius:6px;">➤</button>
 
   </div>
 
