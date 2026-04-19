@@ -7855,6 +7855,13 @@ function renderMessage(docId, m){
 }
 // ================= DELETE MENU =================
 // ================= DELETE OPTIONS =================
+// ================= DELETE POPUP CONTROL =================
+let currentDeleteDoc = null;
+let currentIsMe = false;
+let currentIsAdmin = false;
+
+
+// ================= SHOW DELETE OPTIONS =================
 function showDeleteOptions(docId, m, isMe, isAdmin){
 
   try {
@@ -7864,52 +7871,60 @@ function showDeleteOptions(docId, m, isMe, isAdmin){
       return;
     }
 
-    let msg = "Choose:\n";
+    currentDeleteDoc = docId;
+    currentIsMe = isMe;
+    currentIsAdmin = isAdmin;
 
-    if(isMe){
-      msg += "1 = Delete for me\n2 = Delete for everyone\n";
-    }
+    // 🔥 OPEN POPUP
+    document.getElementById("deletePopup").style.bottom = "0";
+    document.getElementById("deleteOverlay").style.display = "block";
 
-    if(isAdmin){
-      msg += "3 = Admin delete\n";
-    }
-
-    const choice = prompt(msg);
-    if(!choice) return;
-
-    switch(choice){
-
-      case "1":
-        if(isMe){
-          deleteForMe(docId);
-        } else {
-          alert("❌ Not allowed");
-        }
-        break;
-
-      case "2":
-        if(isMe){
-          deleteForEveryone(docId);
-        } else {
-          alert("❌ Not allowed");
-        }
-        break;
-
-      case "3":
-        if(isAdmin){
-          adminDelete(docId);
-        } else {
-          alert("❌ Not admin");
-        }
-        break;
-
-      default:
-        console.warn("⚠ Invalid choice");
-    }
+    // 🔥 SHOW/HIDE BUTTONS
+    document.getElementById("btnDeleteMe").style.display = isMe ? "block" : "none";
+    document.getElementById("btnDeleteAll").style.display = isMe ? "block" : "none";
+    document.getElementById("btnDeleteAdmin").style.display = isAdmin ? "block" : "none";
 
   } catch(e){
     console.error("❌ showDeleteOptions:", e);
   }
+}
+
+
+// ================= BUTTON ACTIONS =================
+document.addEventListener("DOMContentLoaded", () => {
+
+  const btnMe = document.getElementById("btnDeleteMe");
+  const btnAll = document.getElementById("btnDeleteAll");
+  const btnAdmin = document.getElementById("btnDeleteAdmin");
+
+  if(btnMe){
+    btnMe.onclick = () => {
+      deleteForMe(currentDeleteDoc);
+      closeDeletePopup();
+    };
+  }
+
+  if(btnAll){
+    btnAll.onclick = () => {
+      deleteForEveryone(currentDeleteDoc);
+      closeDeletePopup();
+    };
+  }
+
+  if(btnAdmin){
+    btnAdmin.onclick = () => {
+      adminDelete(currentDeleteDoc);
+      closeDeletePopup();
+    };
+  }
+
+});
+
+
+// ================= CLOSE POPUP =================
+function closeDeletePopup(){
+  document.getElementById("deletePopup").style.bottom = "-300px";
+  document.getElementById("deleteOverlay").style.display = "none";
 }
 
 
@@ -7996,8 +8011,7 @@ async function adminDelete(docId){
   } catch(e){
     console.error("❌ adminDelete:", e);
   }
-}    
-// ================= REALTIME =================
+}// ================= REALTIME =================
 let chatUnsubscribe = null;
 
 function startChat(){
@@ -8980,39 +8994,83 @@ z-index:9999999;
   </div>
 
 </div>
-<div id="deleteMenu" style="
+<!-- OVERLAY -->
+<!-- ================= DELETE POPUP (WHATSAPP STYLE) ================= -->
+
+<!-- 🔲 OVERLAY (BACKGROUND DARK) -->
+<div id="deleteOverlay" onclick="closeDeletePopup()" style="
 position:fixed;
-bottom:80px;
-left:50%;
-transform:translateX(-50%);
+top:0;
+left:0;
+width:100%;
+height:100%;
+background:rgba(0,0,0,0.6);
+display:none;
+z-index:9999998;
+"></div>
+
+
+<!-- 📦 POPUP MENU -->
+<div id="deletePopup" style="
+position:fixed;
+bottom:-300px;
+left:0;
+width:100%;
 background:#1b5e20;
 color:white;
-padding:12px;
-border-radius:10px;
-display:none;
+border-radius:16px 16px 0 0;
+padding:15px;
 z-index:9999999;
-box-shadow:0 4px 10px rgba(0,0,0,0.5);
+transition:bottom 0.3s ease;
+box-shadow:0 -4px 20px rgba(0,0,0,0.5);
 ">
 
-  <div style="margin-bottom:8px;">Choose:</div>
+  <div style="text-align:center;font-weight:bold;margin-bottom:10px;">
+    Delete Message
+  </div>
 
-  <button onclick="handleDelete('me')" style="display:block;margin:5px;width:100%;">
-    1 = Delete for me
-  </button>
+  <button id="btnDeleteMe" style="
+    width:100%;
+    padding:12px;
+    margin:5px 0;
+    border:none;
+    border-radius:8px;
+    background:#2e7d32;
+    color:white;
+  ">🗑 Delete for me</button>
 
-  <button onclick="handleDelete('all')" style="display:block;margin:5px;width:100%;">
-    2 = Delete for everyone
-  </button>
+  <button id="btnDeleteAll" style="
+    width:100%;
+    padding:12px;
+    margin:5px 0;
+    border:none;
+    border-radius:8px;
+    background:#c62828;
+    color:white;
+  ">🚫 Delete for everyone</button>
 
-  <button onclick="handleDelete('admin')" style="display:block;margin:5px;width:100%;">
-    3 = Admin delete
-  </button>
+  <button id="btnDeleteAdmin" style="
+    width:100%;
+    padding:12px;
+    margin:5px 0;
+    border:none;
+    border-radius:8px;
+    background:#ff9800;
+    color:black;
+  ">⚠ Admin delete</button>
 
-  <button onclick="closeDeleteMenu()" style="margin-top:8px;width:100%;">
-    Cancel
-  </button>
+  <button onclick="closeDeletePopup()" style="
+    width:100%;
+    padding:12px;
+    margin-top:10px;
+    border:none;
+    border-radius:8px;
+    background:#444;
+    color:white;
+  ">Cancel</button>
 
 </div>
+
 </body>
 
 </html>
