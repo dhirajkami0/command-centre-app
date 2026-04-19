@@ -7308,25 +7308,45 @@ window.addEventListener("online", function(){
 });
   
   // ================= CHAT TOGGLE =================
+// ================= CHAT TOGGLE =================
 function toggleChat(){
-  const box = document.getElementById("chatUI");
-  box.style.display = (box.style.display === "flex") ? "none" : "flex";
+
+  const ui = document.getElementById("chatUI");
+
+  if(ui.style.display === "flex"){
+    ui.style.display = "none";
+  } else {
+    ui.style.display = "flex";
+
+    document.getElementById("chatBeat").innerText =
+      window.userProfile?.beat || "ALL";
+  }
 }
 
 
-// ================= SEND MESSAGE =================
+// ================= COLLECTION PER BEAT =================
+function getChatCollection(){
+
+  const beat = window.userProfile?.beat || "GENERAL";
+
+  return window.fb.collection(window.db, "chat_" + beat);
+}
+
+
+// ================= SEND TEXT =================
 async function sendMessage(){
 
   const input = document.getElementById("chatInput");
   const text = input.value.trim();
   if(!text) return;
 
-  await addDoc(collection(window.db, "patrol_chat"), {
+  await window.fb.addDoc(getChatCollection(), {
     type: "text",
     text,
     user: window.userProfile.cleanName,
     phone: window.userProfile.phone,
-    time: serverTimestamp()
+    beat: window.userProfile.beat,
+    time: window.fb.serverTimestamp()
   });
 
   input.value = "";
@@ -7345,44 +7365,54 @@ async function sendPhoto(e){
 
     const base64 = reader.result;
 
-    const fileRef = ref(window.storage, "chat_photos/" + Date.now());
+    const fileRef = window.fb.ref(
+      window.storage,
+      "chat_photos/" + Date.now()
+    );
 
-    await uploadString(fileRef, base64, "data_url");
+    await window.fb.uploadString(fileRef, base64, "data_url");
 
-    const url = await getDownloadURL(fileRef);
+    const url = await window.fb.getDownloadURL(fileRef);
 
-    await addDoc(collection(window.db, "patrol_chat"), {
+    await window.fb.addDoc(getChatCollection(), {
       type: "image",
       imageUrl: url,
       user: window.userProfile.cleanName,
       phone: window.userProfile.phone,
-      time: serverTimestamp()
+      beat: window.userProfile.beat,
+      time: window.fb.serverTimestamp()
     });
 
   };
 
   reader.readAsDataURL(file);
 }
-    function startChat(){
 
-  const q = query(
-    collection(window.db, "patrol_chat"),
-    orderBy("time", "asc")
+
+// ================= REALTIME LISTENER =================
+function startChat(){
+
+  const q = window.fb.query(
+    getChatCollection(),
+    window.fb.orderBy("time", "asc")
   );
 
-  onSnapshot(q, (snapshot)=>{
+  window.fb.onSnapshot(q, (snap)=>{
 
     const box = document.getElementById("chatMessages");
     box.innerHTML = "";
 
-    snapshot.forEach(doc=>{
+    snap.forEach(doc=>{
       renderMessage(doc.data());
     });
 
     box.scrollTop = box.scrollHeight;
   });
 }
-    function renderMessage(m){
+
+
+// ================= RENDER =================
+function renderMessage(m){
 
   const div = document.createElement("div");
 
@@ -7392,6 +7422,7 @@ async function sendPhoto(e){
   div.style.margin = "6px";
   div.style.padding = "8px";
   div.style.borderRadius = "10px";
+  div.style.fontSize = "13px";
 
   if(isMe){
     div.style.background = "#4caf50";
@@ -7415,6 +7446,19 @@ async function sendPhoto(e){
   document.getElementById("chatMessages").appendChild(div);
 }
 
+
+// ================= CALL =================
+function callUserFromChat(){
+
+  const phone = window.userProfile?.phone;
+
+  if(!phone){
+    alert("No phone number");
+    return;
+  }
+
+  window.location.href = "tel:" + phone;
+}
     function callUser(phone){
   window.location.href = "tel:" + phone;
 }
@@ -8065,6 +8109,7 @@ background:#0b1a0b;
 z-index:999999;
 display:none;
 flex-direction:column;
+border-top:2px solid #2e7d32;
 ">
 
   <!-- HEADER -->
@@ -8074,25 +8119,38 @@ flex-direction:column;
     padding:10px;
     display:flex;
     justify-content:space-between;
+    align-items:center;
   ">
-    <b>📡 Patrol Chat</b>
-    <span onclick="toggleChat()" style="cursor:pointer;">✖</span>
+    <span>📡 Patrol Chat (<span id="chatBeat"></span>)</span>
+
+    <div>
+      <button onclick="callUserFromChat()" style="background:none;border:none;color:white;">📞</button>
+      <button onclick="toggleChat()" style="background:none;border:none;color:white;">✖</button>
+    </div>
   </div>
 
   <!-- MESSAGES -->
-  <div id="chatMessages" style="flex:1; overflow-y:auto; padding:10px;"></div>
+  <div id="chatMessages" style="
+    flex:1;
+    overflow-y:auto;
+    padding:10px;
+  "></div>
 
   <!-- INPUT -->
-  <div style="display:flex; padding:8px; background:#111;">
-    <input id="chatInput" placeholder="Type..." style="flex:1; padding:10px;">
+  <div style="display:flex;padding:8px;background:#111;">
     
-    <input type="file" id="photoInput" accept="image/*" style="display:none" onchange="sendPhoto(event)">
-    
+    <input id="chatInput" placeholder="Type message..." 
+      style="flex:1;padding:10px;border-radius:8px;border:none;">
+
+    <input type="file" id="photoInput" accept="image/*"
+      style="display:none" onchange="sendPhoto(event)">
+
     <button onclick="document.getElementById('photoInput').click()">📷</button>
     <button onclick="sendMessage()">➤</button>
   </div>
 
 </div>
+
 </body>
 
 </html>
