@@ -7870,7 +7870,93 @@ function closeImageViewer(){
   const viewer = document.getElementById("imageViewer");
   if(viewer) viewer.style.display = "none";
 }
+// ================= VOICE =================
+let mediaRecorder;
+let audioChunks = [];
+let isRecording = false;
 
+
+// START RECORD
+async function startVoice(){
+
+  try {
+
+    if(isRecording) return;
+
+    const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+
+    mediaRecorder = new MediaRecorder(stream);
+    audioChunks = [];
+    isRecording = true;
+
+    mediaRecorder.ondataavailable = e => {
+      if(e.data.size > 0){
+        audioChunks.push(e.data);
+      }
+    };
+
+    mediaRecorder.start();
+
+    console.log("🎤 Recording started");
+
+  } catch(e){
+    console.error("❌ startVoice:", e);
+    alert("Microphone permission denied");
+  }
+}
+
+
+// STOP RECORD
+function stopVoice(){
+
+  try {
+
+    if(!mediaRecorder || !isRecording) return;
+
+    isRecording = false;
+
+    mediaRecorder.stop();
+
+    mediaRecorder.onstop = async () => {
+
+      if(audioChunks.length === 0){
+        console.warn("⚠ Empty audio skipped");
+        return;
+      }
+
+      const blob = new Blob(audioChunks, { type: "audio/webm" });
+
+      const fileRef = window.fb.ref(
+        window.storage,
+        "chat_audio/" + Date.now() + ".webm"
+      );
+
+      await window.fb.uploadBytes(fileRef, blob);
+
+      const url = await window.fb.getDownloadURL(fileRef);
+
+      await window.fb.addDoc(
+        window.fb.collection(window.db, "patrol_chat"),
+        {
+          type: "audio",
+          audioUrl: url,
+          user: window.userProfile.rawName,
+          phone: window.userProfile.phone,
+          time: window.fb.serverTimestamp(),
+          status: "sent"
+        }
+      );
+
+      console.log("🎤 Voice sent");
+
+      audioChunks = [];
+
+    };
+
+  } catch(e){
+    console.error("❌ stopVoice:", e);
+  }
+}
   
   </script>
 
