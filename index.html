@@ -7310,9 +7310,16 @@ window.addEventListener("online", function(){
   // ================= CHAT TOGGLE =================
 // ================= CHAT TOGGLE =================
 // ================= GLOBAL =================
-let mediaRecorder;
-let audioChunks = [];
+// ================= CHAT TOGGLE =================
+function toggleChat(){
+  const ui = document.getElementById("chatUI");
+  if(!ui) return;
 
+  ui.style.display = (ui.style.display === "flex") ? "none" : "flex";
+}
+
+
+// ================= COLLECTION =================
 function getChatCollection(){
   return window.fb.collection(window.db, "patrol_chat");
 }
@@ -7322,6 +7329,8 @@ function getChatCollection(){
 async function sendMessage(){
 
   const input = document.getElementById("chatInput");
+  if(!input) return;
+
   const text = input.value.trim();
   if(!text) return;
 
@@ -7347,11 +7356,11 @@ async function sendPhoto(e){
 
   reader.onload = async function(){
 
-    const fileRef = window.fb.ref(window.storage, "chat_photos/" + Date.now());
+    const ref = window.fb.ref(window.storage, "chat_photos/" + Date.now());
 
-    await window.fb.uploadString(fileRef, reader.result, "data_url");
+    await window.fb.uploadString(ref, reader.result, "data_url");
 
-    const url = await window.fb.getDownloadURL(fileRef);
+    const url = await window.fb.getDownloadURL(ref);
 
     await window.fb.addDoc(getChatCollection(), {
       type: "image",
@@ -7377,13 +7386,10 @@ function sendLocation(){
 
   navigator.geolocation.getCurrentPosition(async pos => {
 
-    const lat = pos.coords.latitude;
-    const lng = pos.coords.longitude;
-
     await window.fb.addDoc(getChatCollection(), {
       type: "location",
-      lat,
-      lng,
+      lat: pos.coords.latitude,
+      lng: pos.coords.longitude,
       user: window.userProfile.rawName,
       phone: window.userProfile.phone,
       time: window.fb.serverTimestamp()
@@ -7393,7 +7399,10 @@ function sendLocation(){
 }
 
 
-// ================= VOICE MESSAGE =================
+// ================= VOICE =================
+let mediaRecorder;
+let audioChunks = [];
+
 async function startRecording(){
 
   if(mediaRecorder && mediaRecorder.state === "recording"){
@@ -7406,9 +7415,7 @@ async function startRecording(){
   mediaRecorder = new MediaRecorder(stream);
   audioChunks = [];
 
-  mediaRecorder.ondataavailable = e => {
-    audioChunks.push(e.data);
-  };
+  mediaRecorder.ondataavailable = e => audioChunks.push(e.data);
 
   mediaRecorder.onstop = async () => {
 
@@ -7418,11 +7425,11 @@ async function startRecording(){
 
     reader.onload = async function(){
 
-      const fileRef = window.fb.ref(window.storage, "chat_audio/" + Date.now());
+      const ref = window.fb.ref(window.storage, "chat_audio/" + Date.now());
 
-      await window.fb.uploadString(fileRef, reader.result, "data_url");
+      await window.fb.uploadString(ref, reader.result, "data_url");
 
-      const url = await window.fb.getDownloadURL(fileRef);
+      const url = await window.fb.getDownloadURL(ref);
 
       await window.fb.addDoc(getChatCollection(), {
         type: "audio",
@@ -7439,7 +7446,7 @@ async function startRecording(){
 
   mediaRecorder.start();
 
-  setTimeout(()=>mediaRecorder.stop(), 5000); // 5 sec recording
+  setTimeout(()=>mediaRecorder.stop(), 5000); // 5 sec
 }
 
 
@@ -7463,7 +7470,6 @@ function startChat(){
     snapshot.forEach(doc => {
 
       const m = doc.data();
-
       renderMessage(m);
 
       // 🔔 Notification
@@ -7489,7 +7495,8 @@ function renderMessage(m){
   div.style.maxWidth = "75%";
   div.style.margin = "6px";
   div.style.padding = "10px";
-  div.style.borderRadius = "10px";
+  div.style.borderRadius = "12px";
+  div.style.fontSize = "13px";
 
   if(isMe){
     div.style.background = "#4caf50";
@@ -7499,32 +7506,32 @@ function renderMessage(m){
     div.style.marginRight = "auto";
   }
 
-  // USER CLICK → CALL
-  const nameHTML = `<b onclick="callUser('${m.phone}')" style="cursor:pointer;color:#ffd54f">${m.user}</b><br>`;
+  const name = `<b onclick="callUser('${m.phone}')" 
+    style="cursor:pointer;color:#ffd54f">${m.user}</b><br>`;
 
   if(m.type === "text"){
-    div.innerHTML = nameHTML + m.text;
+    div.innerHTML = name + m.text;
   }
 
   if(m.type === "image"){
-    div.innerHTML = nameHTML + `<img src="${m.imageUrl}" style="width:150px;">`;
+    div.innerHTML = name + `<img src="${m.imageUrl}" style="width:150px;border-radius:10px;">`;
   }
 
   if(m.type === "location"){
-    div.innerHTML = nameHTML + `
+    div.innerHTML = name + `
       📍 <a href="https://maps.google.com/?q=${m.lat},${m.lng}" target="_blank">
       Open Location</a>`;
   }
 
   if(m.type === "audio"){
-    div.innerHTML = nameHTML + `<audio controls src="${m.audioUrl}"></audio>`;
+    div.innerHTML = name + `<audio controls src="${m.audioUrl}"></audio>`;
   }
 
   document.getElementById("chatMessages").appendChild(div);
 }
 
 
-// ================= CALL ANY USER =================
+// ================= CALL USER =================
 function callUser(phone){
 
   if(!phone){
@@ -7536,12 +7543,12 @@ function callUser(phone){
 }
 
 
-// ================= SOUND NOTIFICATION =================
+// ================= NOTIFICATION =================
 function playNotification(){
-
   const audio = new Audio("https://actions.google.com/sounds/v1/alarms/notification.ogg");
   audio.play().catch(()=>{});
-}
+} 
+  
   </script>
 
   </div>
