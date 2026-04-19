@@ -2807,42 +2807,66 @@ ${pct(data.health)} / 100
 }
     function loadRangeKML() {
 
-      callBackend("getRangeKML")
-        .then(function (kml) {
+  const url = "./kml/Compartments.kml"; // ✅ use your real file
 
-          if (!kml || !kml.includes("<Placemark")) {
-            console.error("❌ Invalid KML");
-            return;
+  console.log("⚡ Loading Range KML (local)");
+
+  fetch(url)
+    .then(res => res.text())
+    .then(function (kml) {
+
+      /* 🔥 VALIDATION */
+      if (!kml || !kml.includes("<Placemark")) {
+        console.error("❌ Invalid KML");
+        return;
+      }
+
+      /* 🔥 CREATE OBJECT URL */
+      const blob = new Blob([kml], { type: "text/xml" });
+      const objUrl = URL.createObjectURL(blob);
+
+      /* 🔥 LOAD KML */
+      const layer = omnivore.kml(objUrl)
+        .on('ready', function () {
+
+          console.log("✅ KML Loaded");
+
+          /* 🎨 STYLE */
+          layer.setStyle({
+            color: "#00ff88",
+            weight: 3,
+            fill: false
+          });
+
+          /* 🗺 ADD TO MAP */
+          layer.addTo(map);
+
+          /* 📍 FIT BOUNDS */
+          if (layer.getBounds().isValid()) {
+            map.fitBounds(layer.getBounds());
           }
 
-          const blob = new Blob([kml], { type: "text/xml" });
-          const url = URL.createObjectURL(blob);
+          /* 🖱 CLICK HANDLER */
+          layer.eachLayer(function (l) {
+            if (l instanceof L.Polygon || l instanceof L.Polyline) {
+              l.on('click', e => openRangePopup(e.latlng));
+            }
+          });
 
-          const layer = omnivore.kml(url)
-            .on('ready', function () {
+          /* 🧹 CLEAN MEMORY (IMPORTANT) */
+          URL.revokeObjectURL(objUrl);
 
-              layer.setStyle({
-                color: "#00ff88",
-                weight: 3,
-                fill: false
-              });
-
-              layer.addTo(map);
-
-              if (layer.getBounds().isValid()) {
-                map.fitBounds(layer.getBounds());
-              }
-
-              layer.eachLayer(function (l) {
-                if (l instanceof L.Polygon || l instanceof L.Polyline) {
-                  l.on('click', e => openRangePopup(e.latlng));
-                }
-              });
-            });
-
+        })
+        .on('error', function (err) {
+          console.error("❌ KML Parse Error:", err);
         });
 
-    }
+    })
+    .catch(err => {
+      console.error("❌ KML Fetch Error:", err);
+    });
+
+}
 function clearKMLPreview(){
 
   const btn = document.getElementById("clearKMLBtn");
