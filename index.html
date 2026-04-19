@@ -7704,7 +7704,7 @@ async function sendPhoto(e){
     const file = e.target.files[0];
     if(!file) return;
 
-    const source = e.target.getAttribute("data-source"); // 🔥 KEY
+    const source = e.target.getAttribute("data-source");
 
     // =========================
     // 🖼 GALLERY → NO OVERLAY
@@ -7729,13 +7729,13 @@ async function sendPhoto(e){
         status: "sent"
       });
 
-      console.log("🖼 Gallery photo sent (no GPS overlay)");
+      console.log("🖼 Gallery photo sent (no overlay)");
       return;
     }
 
 
     // =========================
-    // 📸 CAMERA → GPS OVERLAY
+    // 📸 CAMERA → GPS OVERLAY (BIG)
     // =========================
     if(source === "camera"){
 
@@ -7762,23 +7762,56 @@ async function sendPhoto(e){
 
           ctx.drawImage(img, 0, 0);
 
-          // 🔥 OVERLAY
-          ctx.fillStyle = "rgba(0,0,0,0.6)";
-          ctx.fillRect(0, canvas.height - 100, canvas.width, 100);
+          // =========================
+          // 🔥 BIG AUTO-SCALE OVERLAY
+          // =========================
+          const scale = canvas.width / 400;
 
-          ctx.fillStyle = "#fff";
-          ctx.font = "bold 18px Arial";
+          const fontSize = Math.floor(18 * scale * 2.8); // 🔥 ~5x bigger
+          const padding = Math.floor(12 * scale);
+          const lineHeight = Math.floor(fontSize * 1.4);
 
+          const boxHeight = lineHeight * 3 + padding * 2;
+
+          // 🔥 BACKGROUND
+          ctx.fillStyle = "rgba(0,0,0,0.65)";
+          ctx.fillRect(0, canvas.height - boxHeight, canvas.width, boxHeight);
+
+          // 🔥 TEXT STYLE
+          ctx.fillStyle = "#ffffff";
+          ctx.font = `bold ${fontSize}px Arial`;
+
+          // 🔥 OUTLINE FOR VISIBILITY
+          ctx.strokeStyle = "#000000";
+          ctx.lineWidth = Math.max(2, fontSize * 0.08);
+
+          // LEFT SIDE
           ctx.textAlign = "left";
-          ctx.fillText(`Lat: ${lat}`, 10, canvas.height - 65);
-          ctx.fillText(`Lng: ${lng}`, 10, canvas.height - 45);
-          ctx.fillText(`${time}`, 10, canvas.height - 25);
 
+          let y = canvas.height - boxHeight + lineHeight;
+
+          ctx.strokeText(`Lat: ${lat}`, padding, y);
+          ctx.fillText(`Lat: ${lat}`, padding, y);
+
+          y += lineHeight;
+          ctx.strokeText(`Lng: ${lng}`, padding, y);
+          ctx.fillText(`Lng: ${lng}`, padding, y);
+
+          y += lineHeight;
+          ctx.strokeText(`${time}`, padding, y);
+          ctx.fillText(`${time}`, padding, y);
+
+          // RIGHT SIDE
           ctx.textAlign = "right";
-          ctx.fillText(`Clicked by: ${name}`, canvas.width - 10, canvas.height - 25);
+
+          ctx.strokeText(`Clicked by: ${name}`, canvas.width - padding, canvas.height - padding);
+          ctx.fillText(`Clicked by: ${name}`, canvas.width - padding, canvas.height - padding);
 
           ctx.textAlign = "left";
 
+          // =========================
+          // 🔥 CONVERT & UPLOAD
+          // =========================
           canvas.toBlob(async blob => {
 
             const fileRef = window.fb.ref(
@@ -7801,16 +7834,16 @@ async function sendPhoto(e){
               status: "sent"
             });
 
-            console.log("📸 Camera photo sent with GPS overlay");
+            console.log("📸 Camera photo sent with BIG GPS overlay");
 
-          }, "image/jpeg", 0.7);
+          }, "image/jpeg", 0.75);
 
         };
 
         reader.readAsDataURL(file);
 
       }, err => {
-        alert("Location permission required");
+        alert("⚠ Location permission required");
       });
 
     }
@@ -7818,7 +7851,10 @@ async function sendPhoto(e){
   } catch(e){
     console.error("❌ sendPhoto crash:", e);
   }
-}    function renderMessage(docId, m){
+}
+    
+    
+    function renderMessage(docId, m){
 
   const box = document.getElementById("chatMessages");
   if(!box) return;
