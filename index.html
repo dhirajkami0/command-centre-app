@@ -7416,12 +7416,21 @@ window.addEventListener("online", function(){
 // ================= CHAT TOGGLE =================
 // ================= STATE =================
 // ================= STATE =================
+// ================= GLOBAL =================
 let unreadCount = 0;
 let lastMsgTime = 0;
 let typingTimer;
-
-// 🔥 ONLINE STATE
 let onlineRef;
+
+
+// ================= SAFE CHECK =================
+function isFirebaseReady(){
+  if(!window.fb || !window.db){
+    console.error("❌ Firebase NOT READY");
+    return false;
+  }
+  return true;
+}
 
 
 // ================= TOGGLE =================
@@ -7441,6 +7450,7 @@ function toggleChat(){
 
 // ================= COLLECTION =================
 function getChatCollection(){
+  if(!isFirebaseReady()) return null;
   return window.fb.collection(window.db, "patrol_chat");
 }
 
@@ -7448,65 +7458,95 @@ function getChatCollection(){
 // ================= ONLINE STATUS =================
 async function setOnline(){
 
-  const user = window.userProfile.rawName;
+  if(!isFirebaseReady()) return;
 
-  onlineRef = window.fb.doc(window.db, "online_users", user);
+  try {
 
-  await window.fb.setDoc(onlineRef, {
-    user,
-    lastSeen: Date.now(),
-    online: true
-  });
+    const user = window.userProfile?.rawName;
+    if(!user) return;
 
-  window.addEventListener("beforeunload", async () => {
+    onlineRef = window.fb.doc(window.db, "online_users", user);
+
     await window.fb.setDoc(onlineRef, {
       user,
       lastSeen: Date.now(),
-      online: false
+      online: true
     });
-  });
+
+    window.addEventListener("beforeunload", async () => {
+      await window.fb.setDoc(onlineRef, {
+        user,
+        lastSeen: Date.now(),
+        online: false
+      });
+    });
+
+    console.log("🟢 Online set");
+
+  } catch(e){
+    console.error("❌ setOnline error:", e);
+  }
 }
 
 
 // ================= LISTEN ONLINE =================
 function listenOnline(){
 
-  const ref = window.fb.collection(window.db, "online_users");
+  if(!isFirebaseReady()) return;
 
-  window.fb.onSnapshot(ref, snap => {
+  try {
 
-    let statusText = "";
+    const ref = window.fb.collection(window.db, "online_users");
 
-    snap.forEach(doc => {
-      const d = doc.data();
+    window.fb.onSnapshot(ref, snap => {
 
-      if(d.user !== window.userProfile.rawName){
-        statusText += `${d.user} - ${d.online ? "🟢 Online" : "Last seen: " + new Date(d.lastSeen).toLocaleTimeString()}<br>`;
-      }
+      let statusText = "";
+
+      snap.forEach(doc => {
+        const d = doc.data();
+
+        if(d.user !== window.userProfile.rawName){
+          statusText += `${d.user} - ${d.online ? "🟢 Online" : "Last seen: " + new Date(d.lastSeen).toLocaleTimeString()}<br>`;
+        }
+      });
+
+      const box = document.getElementById("typingIndicator");
+      if(box && !box.innerText) box.innerHTML = statusText;
     });
 
-    const box = document.getElementById("typingIndicator");
-    if(box && !box.innerText) box.innerHTML = statusText;
-  });
+  } catch(e){
+    console.error("❌ listenOnline error:", e);
+  }
 }
 
 
 // ================= SEND TEXT =================
 async function sendMessage(){
-  const input = document.getElementById("chatInput");
-  const text = input.value.trim();
-  if(!text) return;
 
-  await window.fb.addDoc(getChatCollection(), {
-    type: "text",
-    text,
-    user: window.userProfile.rawName,
-    phone: window.userProfile.phone,
-    time: window.fb.serverTimestamp(),
-    status: "sent"
-  });
+  try {
 
-  input.value = "";
+    const input = document.getElementById("chatInput");
+    const text = input.value.trim();
+    if(!text) return;
+
+    const col = getChatCollection();
+    if(!col) return;
+
+    await window.fb.addDoc(col, {
+      type: "text",
+      text,
+      user: window.userProfile.rawName,
+      phone: window.userProfile.phone,
+      time: window.fb.serverTimestamp(),
+      status: "sent"
+    });
+
+    input.value = "";
+    console.log("✅ Message sent");
+
+  } catch(e){
+    console.error("❌ sendMessage:", e);
+  }
 }
 
 
@@ -7542,209 +7582,105 @@ function compressImage(file){
 // ================= SEND PHOTO =================
 async function sendPhoto(e){
 
-  const file = e.target.files[0];
-  if(!file) return;
+  try {
 
-  const compressed = await compressImage(file);
+    const file = e.target.files[0];
+    if(!file) return;
 
-  const fileRef = window.fb.ref(
-    window.storage,
-    "chat_photos/" + Date.now() + ".jpg"
-  );
+    const col = getChatCollection();
+    if(!col) return;
 
-  await window.fb.uploadBytes(fileRef, compressed);
+    const compressed = await compressImage(file);
 
-  const url = await window.fb.getDownloadURL(fileRef);
+    const fileRef = window.fb.ref(
+      window.storage,
+      "chat_photos/" + Date.now() + ".jpg"
+    );
 
-  await window.fb.addDoc(getChatCollection(), {
-    type: "image",
-    imageUrl: url,
-    user: window.userProfile.rawName,
-    phone: window.userProfile.phone,
-    time: window.fb.serverTimestamp(),
-    status: "sent"
-  });
-}
+    await window.fb.uploadBytes(fileRef, compressed);
 
+    const url = await window.fb.getDownloadURL(fileRef);
 
-// ================= IMAGE GALLERY =================
-let images = [];
-let currentIndex = 0;
+    await window.fb.addDoc(col, {
+      type: "image",
+      imageUrl: url,
+      user: window.userProfile.rawName,
+      phone: window.userProfile.phone,
+      time: window.fb.serverTimestamp(),
+      status: "sent"
+    });
 
-function openImageViewer(url){
+    console.log("📷 Photo sent");
 
-  const viewer = document.getElementById("imageViewer");
-  const img = document.getElementById("fullImage");
-
-  images = Array.from(document.querySelectorAll("#chatMessages img")).map(i => i.src);
-  currentIndex = images.indexOf(url);
-
-  viewer.style.display = "flex";
-  img.src = url;
-}
-
-
-// SWIPE
-let startX = 0;
-
-function initSwipe(){
-
-  const img = document.getElementById("fullImage");
-
-  img.addEventListener("touchstart", e => {
-    startX = e.touches[0].clientX;
-  });
-
-  img.addEventListener("touchend", e => {
-
-    let endX = e.changedTouches[0].clientX;
-
-    if(startX - endX > 50){
-      nextImage();
-    }
-
-    if(endX - startX > 50){
-      prevImage();
-    }
-  });
-}
-
-
-function nextImage(){
-  if(currentIndex < images.length - 1){
-    currentIndex++;
-    document.getElementById("fullImage").src = images[currentIndex];
+  } catch(e){
+    console.error("❌ sendPhoto:", e);
   }
-}
-
-function prevImage(){
-  if(currentIndex > 0){
-    currentIndex--;
-    document.getElementById("fullImage").src = images[currentIndex];
-  }
-}
-
-
-// ZOOM
-function enableZoom(){
-
-  const img = document.getElementById("fullImage");
-
-  img.style.transition = "transform 0.2s";
-
-  img.onclick = () => {
-    img.style.transform = img.style.transform === "scale(2)" ? "scale(1)" : "scale(2)";
-  };
-}
-
-
-function closeImageViewer(){
-  document.getElementById("imageViewer").style.display = "none";
 }
 
 
 // ================= REALTIME =================
 function startChat(){
 
-  const q = window.fb.query(
-    getChatCollection(),
-    window.fb.orderBy("time", "asc")
-  );
+  if(!isFirebaseReady()){
+    console.warn("⏳ Waiting Firebase...");
+    setTimeout(startChat, 1000);
+    return;
+  }
 
-  window.fb.onSnapshot(q, snapshot => {
+  try {
 
-    const box = document.getElementById("chatMessages");
-    box.innerHTML = "";
+    const col = getChatCollection();
+    if(!col) return;
 
-    snapshot.forEach(doc => {
+    const q = window.fb.query(
+      col,
+      window.fb.orderBy("time", "asc")
+    );
 
-      const m = doc.data();
+    window.fb.onSnapshot(q, snapshot => {
 
-      if(m.status === "sent"){
-        window.fb.updateDoc(doc.ref, {status:"delivered"});
-      }
+      const box = document.getElementById("chatMessages");
+      if(!box) return;
 
-      renderMessage(m);
+      box.innerHTML = "";
 
-      if(m.time && m.time.seconds > lastMsgTime){
+      snapshot.forEach(doc => {
 
-        if(document.getElementById("chatUI").style.display !== "flex"){
-          unreadCount++;
-          updateBadge();
+        const m = doc.data();
+
+        if(m.status === "sent"){
+          window.fb.updateDoc(doc.ref, {status:"delivered"});
         }
 
-        playNotification();
-        lastMsgTime = m.time.seconds;
-      }
+        renderMessage(m);
+
+        if(m.time && m.time.seconds > lastMsgTime){
+
+          if(document.getElementById("chatUI").style.display !== "flex"){
+            unreadCount++;
+            updateBadge();
+          }
+
+          playNotification();
+          lastMsgTime = m.time.seconds;
+        }
+      });
+
+      setTimeout(()=>{
+        box.scrollTop = box.scrollHeight;
+      },50);
+
     });
 
-    setTimeout(()=>{
-      box.scrollTop = box.scrollHeight;
-    },50);
+    listenOnline();
+    setOnline();
 
-  });
+    console.log("✅ Chat started");
 
-  listenTyping();
-  listenOnline();
-}
-
-
-// ================= RENDER =================
-function renderMessage(m){
-
-  const div = document.createElement("div");
-  const isMe = m.user === window.userProfile.rawName;
-
-  div.style.maxWidth = "75%";
-  div.style.margin = "6px";
-  div.style.padding = "10px";
-  div.style.borderRadius = "12px";
-
-  if(isMe){
-    div.style.background = "#4caf50";
-    div.style.color = "#000";
-    div.style.marginLeft = "auto";
-  } else {
-    div.style.background = "#263238";
-    div.style.color = "#fff";
+  } catch(e){
+    console.error("❌ startChat:", e);
   }
-
-  const name = `
-    <b onclick="callUser('${m.phone}')" style="cursor:pointer;color:#ffd54f;">
-      📞 ${m.user}
-    </b><br>
-  `;
-
-  let content = "";
-
-  if(m.type === "text") content = m.text;
-
-  if(m.type === "image"){
-    content = `<img src="${m.imageUrl}" onclick="openImageViewer('${m.imageUrl}')" style="width:150px;border-radius:10px;">`;
-  }
-
-  if(m.type === "audio"){
-    content = `<audio controls src="${m.audioUrl}" style="width:100%;max-width:200px;"></audio>`;
-  }
-
-  div.innerHTML = `
-    ${name}
-    ${content}
-    <div style="font-size:10px;opacity:0.7;">
-      ${formatTime(m.time)} ${getStatusIcon(m.status)}
-    </div>
-  `;
-
-  document.getElementById("chatMessages").appendChild(div);
-}
-
-
-// ================= INIT =================
-setOnline();
-initSwipe();
-enableZoom(); 
-  
-  
+} 
   
   </script>
 
