@@ -7704,36 +7704,101 @@ async function sendPhoto(e){
     const file = e.target.files[0];
     if(!file) return;
 
-    const col = getChatCollection();
-    if(!col) return;
+    if(!window.userProfile){
+      alert("❌ User profile missing");
+      return;
+    }
 
-    const compressed = await compressImage(file);
+    // 📍 GET GPS
+    navigator.geolocation.getCurrentPosition(async pos => {
 
-    const fileRef = window.fb.ref(
-      window.storage,
-      "chat_photos/" + Date.now() + ".jpg"
-    );
+      const lat = pos.coords.latitude.toFixed(5);
+      const lng = pos.coords.longitude.toFixed(5);
 
-    await window.fb.uploadBytes(fileRef, compressed);
+      const name = window.userProfile.rawName || "UNKNOWN";
+      const time = new Date().toLocaleString();
 
-    const url = await window.fb.getDownloadURL(fileRef);
+      const img = new Image();
+      const reader = new FileReader();
 
-    await window.fb.addDoc(col, {
-      type: "image",
-      imageUrl: url,
-      user: window.userProfile.rawName,
-      phone: window.userProfile.phone,
-      time: window.fb.serverTimestamp(),
-      status: "sent"
+      reader.onload = e => img.src = e.target.result;
+
+      img.onload = async () => {
+
+        // 🔥 CANVAS
+        const canvas = document.createElement("canvas");
+        const ctx = canvas.getContext("2d");
+
+        canvas.width = img.width;
+        canvas.height = img.height;
+
+        // DRAW IMAGE
+        ctx.drawImage(img, 0, 0);
+
+        // 🔥 OVERLAY BACKGROUND
+        ctx.fillStyle = "rgba(0,0,0,0.6)";
+        ctx.fillRect(0, canvas.height - 100, canvas.width, 100);
+
+        // 🔥 TEXT STYLE
+        ctx.fillStyle = "#fff";
+        ctx.font = "bold 18px Arial";
+
+        // LEFT SIDE
+        ctx.textAlign = "left";
+        ctx.fillText(`Lat: ${lat}`, 10, canvas.height - 65);
+        ctx.fillText(`Lng: ${lng}`, 10, canvas.height - 45);
+        ctx.fillText(`${time}`, 10, canvas.height - 25);
+
+        // RIGHT SIDE
+        ctx.textAlign = "right";
+        ctx.fillText(`Clicked by: ${name}`, canvas.width - 10, canvas.height - 25);
+
+        ctx.textAlign = "left";
+
+        // 🔥 CONVERT
+        canvas.toBlob(async blob => {
+
+          const fileRef = window.fb.ref(
+            window.storage,
+            "chat_photos/" + Date.now() + ".jpg"
+          );
+
+          await window.fb.uploadBytes(fileRef, blob);
+
+          const url = await window.fb.getDownloadURL(fileRef);
+
+          // 🔥 SAVE MESSAGE
+          await window.fb.addDoc(getChatCollection(), {
+            type: "image",
+            imageUrl: url,
+            lat,
+            lng,
+            user: name,
+            phone: window.userProfile.phone,
+            time: window.fb.serverTimestamp(),
+            status: "sent"
+          });
+
+          console.log("📸 Photo sent with GPS + rawName");
+
+        }, "image/jpeg", 0.7);
+
+      };
+
+      reader.readAsDataURL(file);
+
+    }, err => {
+
+      alert("⚠ Location permission required");
+      console.warn(err);
+
     });
 
-    console.log("📷 Photo sent");
-
   } catch(e){
-    console.error("❌ sendPhoto:", e);
+    console.error("❌ sendPhoto crash:", e);
   }
 }
-function renderMessage(docId, m){
+    function renderMessage(docId, m){
 
   const box = document.getElementById("chatMessages");
   if(!box) return;
@@ -8226,6 +8291,17 @@ function stopVoice(){
   } catch(e){
     console.error("❌ stopVoice:", e);
   }
+}
+    function openCamera(){
+  const input = document.getElementById("photoInput");
+  input.setAttribute("capture", "environment"); // back camera
+  input.click();
+}
+
+function openGallery(){
+  const input = document.getElementById("photoInput");
+  input.removeAttribute("capture"); // gallery
+  input.click();
 }
   
   </script>
@@ -8945,12 +9021,18 @@ overflow:hidden;
         outline:none;
       ">
 
-    <input type="file" id="photoInput"
-      accept="image/*"
-      style="display:none"
-      onchange="sendPhoto(event)">
+   <!-- HIDDEN INPUT -->
+<input type="file" id="photoInput"
+  accept="image/*"
+  style="display:none"
+  onchange="sendPhoto(event)">
 
-    <button onclick="sendLocation()" style="width:40px;height:40px;flex-shrink:0;background:#2e7d32;color:white;border:none;border-radius:6px;">📍</button>
+<!-- CAMERA BUTTON -->
+<button onclick="openCamera()">📸</button>
+
+<!-- GALLERY BUTTON -->
+<button onclick="openGallery()">🖼</button>
+<button onclick="sendLocation()" style="width:40px;height:40px;flex-shrink:0;background:#2e7d32;color:white;border:none;border-radius:6px;">📍</button>
 
     <button 
       ontouchstart="startVoice()" 
