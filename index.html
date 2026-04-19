@@ -7616,7 +7616,85 @@ async function sendPhoto(e){
     console.error("❌ sendPhoto:", e);
   }
 }
+function renderMessage(m){
 
+  const box = document.getElementById("chatMessages");
+  if(!box) return;
+
+  const div = document.createElement("div");
+
+  const isMe = m.user === window.userProfile?.rawName;
+
+  div.style.maxWidth = "75%";
+  div.style.margin = "6px";
+  div.style.padding = "10px";
+  div.style.borderRadius = "12px";
+  div.style.fontSize = "14px";
+
+  if(isMe){
+    div.style.background = "#4caf50";
+    div.style.color = "#000";
+    div.style.marginLeft = "auto";
+  } else {
+    div.style.background = "#263238";
+    div.style.color = "#fff";
+  }
+
+  // 📞 CALLABLE NAME
+  const name = `
+    <b onclick="callUser('${m.phone}')"
+       style="cursor:pointer;color:#ffd54f;">
+      📞 ${m.user}
+    </b><br>
+  `;
+
+  let content = "";
+
+  // TEXT
+  if(m.type === "text"){
+    content = `<div>${m.text}</div>`;
+  }
+
+  // IMAGE
+  if(m.type === "image"){
+    content = `
+      <img src="${m.imageUrl}"
+        onclick="openImageViewer('${m.imageUrl}')"
+        style="width:150px;border-radius:10px;cursor:pointer;">
+    `;
+  }
+
+  // AUDIO
+  if(m.type === "audio"){
+    content = `
+      <audio controls src="${m.audioUrl}"
+        style="width:100%;max-width:200px;"></audio>
+    `;
+  }
+
+  // LOCATION
+  if(m.type === "location"){
+    content = `
+      📍 <a href="https://maps.google.com/?q=${m.lat},${m.lng}" target="_blank">
+      Open Location</a>
+    `;
+  }
+
+  // TIME
+  const time = m.time?.seconds
+    ? new Date(m.time.seconds * 1000).toLocaleTimeString()
+    : "";
+
+  div.innerHTML = `
+    ${name}
+    ${content}
+    <div style="font-size:10px;opacity:0.7;margin-top:4px;">
+      ${time}
+    </div>
+  `;
+
+  box.appendChild(div);
+}
 
 // ================= REALTIME =================
 function startChat(){
