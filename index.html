@@ -96,19 +96,6 @@ window.fb = {
 console.log("🔥 Firebase FULLY READY");
 
   // ================= AUTO CLEAN =================
-async function cleanOldMessages(){
-
-  const cutoff = Date.now() - (2 * 24 * 60 * 60 * 1000); // 2 days
-
-  const snapshot = await window.fb.getDocs(getChatCollection());
-
-  snapshot.forEach(async doc => {
-    const m = doc.data();
-    if(m.time && m.time.toMillis() < cutoff){
-      await window.fb.deleteDoc(doc.ref);
-    }
-  });
-}
 
 </script>
 
@@ -1274,7 +1261,22 @@ function login(){
 function logout(){
   localStorage.removeItem("userPhone");
   location.reload();
-}    
+}  
+
+    async function cleanOldMessages(){
+
+  const cutoff = Date.now() - (2 * 24 * 60 * 60 * 1000); // 2 days
+
+  const snapshot = await window.fb.getDocs(getChatCollection());
+
+  snapshot.forEach(async doc => {
+    const m = doc.data();
+    if(m.time && m.time.toMillis() < cutoff){
+      await window.fb.deleteDoc(doc.ref);
+    }
+  });
+}
+
    let appStarted = false;
 
 function startApp(){
