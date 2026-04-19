@@ -49,9 +49,10 @@ import {
   onSnapshot,
   query,
   orderBy,
-  serverTimestamp
+  serverTimestamp,
+  getDocs,      // 🔥 ADD
+  deleteDoc     // 🔥 ADD
 } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
-
 import {
   getStorage,
   ref,
@@ -86,12 +87,28 @@ window.fb = {
   query,
   orderBy,
   serverTimestamp,
+  getDocs,      // 🔥 ADD
+  deleteDoc,    // 🔥 ADD
   ref,
-  uploadBytes,       // ✅ FIXED
+  uploadBytes,
   getDownloadURL
 };
-
 console.log("🔥 Firebase FULLY READY");
+
+  // ================= AUTO CLEAN =================
+async function cleanOldMessages(){
+
+  const cutoff = Date.now() - (2 * 24 * 60 * 60 * 1000); // 2 days
+
+  const snapshot = await window.fb.getDocs(getChatCollection());
+
+  snapshot.forEach(async doc => {
+    const m = doc.data();
+    if(m.time && m.time.toMillis() < cutoff){
+      await window.fb.deleteDoc(doc.ref);
+    }
+  });
+}
 
 </script>
 
@@ -690,6 +707,28 @@ window.addEventListener("unhandledrejection", function (e) {
   background: rgba(0,0,0,0.9);
   z-index: 999999 !important;
 }
+
+    #chatInputBox{
+  display:flex;
+  gap:5px;
+  padding:5px;
+}
+
+#chatInput{
+  flex:1;
+  font-size:14px;
+}
+
+#sendBtn{
+  min-width:60px;
+}
+
+@media (max-width:600px){
+  #sendBtn{
+    min-width:50px;
+    font-size:12px;
+  }
+}
   </style>
 </head>
 <body>
@@ -746,8 +785,12 @@ window.addEventListener("unhandledrejection", function (e) {
 </button>
 <button class="btn-center" onclick="toggleChat()">
   💬 PATROL CHAT
-</button>
-    <button id="dutyMainBtn" class="staff-only btn-center btn-green" onclick="handleDutyAction()">
+  <span id="chatBadge"
+    style="background:red;color:white;border-radius:50%;
+    padding:2px 6px;font-size:12px;display:none;">
+  </span>
+</button> 
+<button id="dutyMainBtn" class="staff-only btn-center btn-green" onclick="handleDutyAction()">
       <span id="dutyLabel">START DUTY</span>
     </button>
 
@@ -1258,7 +1301,8 @@ function startApp(){
       console.warn("⚠ GPS was running unexpectedly → stopping");
       stopAutoGPS();
     }
-startChat();
+startChat();       // existing
+cleanOldMessages(); // 🔥 ADD THIS LINE HERE
     // 🔥 CLEAR any leftover offline data if not on duty
     if(window.isDutyActive !== true){
       try {
