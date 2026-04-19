@@ -7313,11 +7313,20 @@ window.addEventListener("online", function(){
 // ================= CHAT TOGGLE =================
 // ================= GLOBAL =================
 // ================= CHAT TOGGLE =================
+// ================= CHAT TOGGLE =================
+let unreadCount = 0;
+
 function toggleChat(){
   const ui = document.getElementById("chatUI");
   if(!ui) return;
 
-  ui.style.display = (ui.style.display === "flex") ? "none" : "flex";
+  if(ui.style.display === "flex"){
+    ui.style.display = "none";
+  } else {
+    ui.style.display = "flex";
+    unreadCount = 0;
+    updateBadge();
+  }
 }
 
 
@@ -7329,7 +7338,6 @@ function getChatCollection(){
 
 // ================= SEND TEXT =================
 async function sendMessage(){
-
   const input = document.getElementById("chatInput");
   if(!input) return;
 
@@ -7348,47 +7356,68 @@ async function sendMessage(){
 }
 
 
+// ================= IMAGE COMPRESSION =================
+function compressImage(file){
+
+  return new Promise(resolve => {
+
+    const img = new Image();
+    const reader = new FileReader();
+
+    reader.onload = e => img.src = e.target.result;
+
+    img.onload = () => {
+
+      const canvas = document.createElement("canvas");
+      const ctx = canvas.getContext("2d");
+
+      const maxWidth = 800;
+      const scale = maxWidth / img.width;
+
+      canvas.width = maxWidth;
+      canvas.height = img.height * scale;
+
+      ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+
+      canvas.toBlob(blob => {
+        resolve(blob);
+      }, "image/jpeg", 0.6); // 🔥 compression
+    };
+
+    reader.readAsDataURL(file);
+  });
+}
+
+
 // ================= SEND PHOTO =================
 async function sendPhoto(e){
 
   const file = e.target.files[0];
   if(!file) return;
 
+  const compressed = await compressImage(file);
+
   const fileRef = window.fb.ref(
     window.storage,
-    "chat_photos/" + Date.now() + "_" + file.name
+    "chat_photos/" + Date.now() + ".jpg"
   );
 
-  try {
+  await window.fb.uploadBytes(fileRef, compressed);
 
-    // ✅ FIXED UPLOAD METHOD
-    await window.fb.uploadBytes(fileRef, file);
+  const url = await window.fb.getDownloadURL(fileRef);
 
-    const url = await window.fb.getDownloadURL(fileRef);
-
-    await window.fb.addDoc(getChatCollection(), {
-      type: "image",
-      imageUrl: url,
-      user: window.userProfile.rawName,
-      phone: window.userProfile.phone,
-      time: window.fb.serverTimestamp()
-    });
-
-    console.log("✅ Photo uploaded");
-
-  } catch(err){
-    console.error("❌ Upload error:", err);
-    alert("Upload failed");
-  }
+  await window.fb.addDoc(getChatCollection(), {
+    type: "image",
+    imageUrl: url,
+    user: window.userProfile.rawName,
+    phone: window.userProfile.phone,
+    time: window.fb.serverTimestamp()
+  });
 }
-// ================= SEND LOCATION =================
+
+
+// ================= LOCATION =================
 function sendLocation(){
-
-  if(!navigator.geolocation){
-    alert("GPS not supported");
-    return;
-  }
-
   navigator.geolocation.getCurrentPosition(async pos => {
 
     await window.fb.addDoc(getChatCollection(), {
@@ -7401,57 +7430,6 @@ function sendLocation(){
     });
 
   });
-}
-
-
-// ================= VOICE =================
-let mediaRecorder;
-let audioChunks = [];
-
-async function startRecording(){
-
-  if(mediaRecorder && mediaRecorder.state === "recording"){
-    mediaRecorder.stop();
-    return;
-  }
-
-  const stream = await navigator.mediaDevices.getUserMedia({ audio:true });
-
-  mediaRecorder = new MediaRecorder(stream);
-  audioChunks = [];
-
-  mediaRecorder.ondataavailable = e => audioChunks.push(e.data);
-
-  mediaRecorder.onstop = async () => {
-
-    const blob = new Blob(audioChunks, { type:"audio/webm" });
-
-    const reader = new FileReader();
-
-    reader.onload = async function(){
-
-      const ref = window.fb.ref(window.storage, "chat_audio/" + Date.now());
-
-      await window.fb.uploadString(ref, reader.result, "data_url");
-
-      const url = await window.fb.getDownloadURL(ref);
-
-      await window.fb.addDoc(getChatCollection(), {
-        type: "audio",
-        audioUrl: url,
-        user: window.userProfile.rawName,
-        phone: window.userProfile.phone,
-        time: window.fb.serverTimestamp()
-      });
-
-    };
-
-    reader.readAsDataURL(blob);
-  };
-
-  mediaRecorder.start();
-
-  setTimeout(()=>mediaRecorder.stop(), 5000); // 5 sec
 }
 
 
@@ -7477,12 +7455,17 @@ function startChat(){
       const m = doc.data();
       renderMessage(m);
 
-      // 🔔 Notification
+      // 🔔 Notification + unread
       if(m.time && m.time.seconds > lastMsgTime){
+
+        if(document.getElementById("chatUI").style.display !== "flex"){
+          unreadCount++;
+          updateBadge();
+        }
+
         playNotification();
         lastMsgTime = m.time.seconds;
       }
-
     });
 
     box.scrollTop = box.scrollHeight;
@@ -7494,25 +7477,26 @@ function startChat(){
 function renderMessage(m){
 
   const div = document.createElement("div");
-
   const isMe = m.user === window.userProfile.rawName;
 
   div.style.maxWidth = "75%";
   div.style.margin = "6px";
   div.style.padding = "10px";
   div.style.borderRadius = "12px";
-  div.style.fontSize = "13px";
 
   if(isMe){
     div.style.background = "#4caf50";
     div.style.marginLeft = "auto";
   } else {
     div.style.background = "#2a2a2a";
-    div.style.marginRight = "auto";
   }
 
-  const name = `<b onclick="callUser('${m.phone}')" 
-    style="cursor:pointer;color:#ffd54f">${m.user}</b><br>`;
+  const name = `
+    <b onclick="callUser('${m.phone}')" 
+    style="cursor:pointer;color:#ffd54f">
+    📞 ${m.user}
+    </b><br>
+  `;
 
   if(m.type === "text"){
     div.innerHTML = name + m.text;
@@ -7528,23 +7512,27 @@ function renderMessage(m){
       Open Location</a>`;
   }
 
-  if(m.type === "audio"){
-    div.innerHTML = name + `<audio controls src="${m.audioUrl}"></audio>`;
-  }
-
   document.getElementById("chatMessages").appendChild(div);
 }
 
 
-// ================= CALL USER =================
+// ================= CALL =================
 function callUser(phone){
-
   if(!phone){
     alert("No phone");
     return;
   }
-
   window.location.href = "tel:" + phone;
+}
+
+
+// ================= BADGE =================
+function updateBadge(){
+  const badge = document.getElementById("chatBadge");
+  if(!badge) return;
+
+  badge.innerText = unreadCount;
+  badge.style.display = unreadCount > 0 ? "block" : "none";
 }
 
 
@@ -7552,8 +7540,7 @@ function callUser(phone){
 function playNotification(){
   const audio = new Audio("https://actions.google.com/sounds/v1/alarms/notification.ogg");
   audio.play().catch(()=>{});
-} 
-  
+}  
   </script>
 
   </div>
