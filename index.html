@@ -7309,27 +7309,12 @@ window.addEventListener("online", function(){
   
   // ================= CHAT TOGGLE =================
 // ================= CHAT TOGGLE =================
-function toggleChat(){
+// ================= GLOBAL =================
+let mediaRecorder;
+let audioChunks = [];
 
-  const ui = document.getElementById("chatUI");
-
-  if(ui.style.display === "flex"){
-    ui.style.display = "none";
-  } else {
-    ui.style.display = "flex";
-
-    document.getElementById("chatBeat").innerText =
-      window.userProfile?.beat || "ALL";
-  }
-}
-
-
-// ================= COLLECTION PER BEAT =================
 function getChatCollection(){
-
-  const beat = window.userProfile?.beat || "GENERAL";
-
-  return window.fb.collection(window.db, "chat_" + beat);
+  return window.fb.collection(window.db, "patrol_chat");
 }
 
 
@@ -7343,9 +7328,8 @@ async function sendMessage(){
   await window.fb.addDoc(getChatCollection(), {
     type: "text",
     text,
-    user: window.userProfile.cleanName,
+    user: window.userProfile.rawName,
     phone: window.userProfile.phone,
-    beat: window.userProfile.beat,
     time: window.fb.serverTimestamp()
   });
 
@@ -7363,23 +7347,17 @@ async function sendPhoto(e){
 
   reader.onload = async function(){
 
-    const base64 = reader.result;
+    const fileRef = window.fb.ref(window.storage, "chat_photos/" + Date.now());
 
-    const fileRef = window.fb.ref(
-      window.storage,
-      "chat_photos/" + Date.now()
-    );
-
-    await window.fb.uploadString(fileRef, base64, "data_url");
+    await window.fb.uploadString(fileRef, reader.result, "data_url");
 
     const url = await window.fb.getDownloadURL(fileRef);
 
     await window.fb.addDoc(getChatCollection(), {
       type: "image",
       imageUrl: url,
-      user: window.userProfile.cleanName,
+      user: window.userProfile.rawName,
       phone: window.userProfile.phone,
-      beat: window.userProfile.beat,
       time: window.fb.serverTimestamp()
     });
 
@@ -7389,7 +7367,85 @@ async function sendPhoto(e){
 }
 
 
-// ================= REALTIME LISTENER =================
+// ================= SEND LOCATION =================
+function sendLocation(){
+
+  if(!navigator.geolocation){
+    alert("GPS not supported");
+    return;
+  }
+
+  navigator.geolocation.getCurrentPosition(async pos => {
+
+    const lat = pos.coords.latitude;
+    const lng = pos.coords.longitude;
+
+    await window.fb.addDoc(getChatCollection(), {
+      type: "location",
+      lat,
+      lng,
+      user: window.userProfile.rawName,
+      phone: window.userProfile.phone,
+      time: window.fb.serverTimestamp()
+    });
+
+  });
+}
+
+
+// ================= VOICE MESSAGE =================
+async function startRecording(){
+
+  if(mediaRecorder && mediaRecorder.state === "recording"){
+    mediaRecorder.stop();
+    return;
+  }
+
+  const stream = await navigator.mediaDevices.getUserMedia({ audio:true });
+
+  mediaRecorder = new MediaRecorder(stream);
+  audioChunks = [];
+
+  mediaRecorder.ondataavailable = e => {
+    audioChunks.push(e.data);
+  };
+
+  mediaRecorder.onstop = async () => {
+
+    const blob = new Blob(audioChunks, { type:"audio/webm" });
+
+    const reader = new FileReader();
+
+    reader.onload = async function(){
+
+      const fileRef = window.fb.ref(window.storage, "chat_audio/" + Date.now());
+
+      await window.fb.uploadString(fileRef, reader.result, "data_url");
+
+      const url = await window.fb.getDownloadURL(fileRef);
+
+      await window.fb.addDoc(getChatCollection(), {
+        type: "audio",
+        audioUrl: url,
+        user: window.userProfile.rawName,
+        phone: window.userProfile.phone,
+        time: window.fb.serverTimestamp()
+      });
+
+    };
+
+    reader.readAsDataURL(blob);
+  };
+
+  mediaRecorder.start();
+
+  setTimeout(()=>mediaRecorder.stop(), 5000); // 5 sec recording
+}
+
+
+// ================= REALTIME =================
+let lastMsgTime = 0;
+
 function startChat(){
 
   const q = window.fb.query(
@@ -7397,13 +7453,25 @@ function startChat(){
     window.fb.orderBy("time", "asc")
   );
 
-  window.fb.onSnapshot(q, (snap)=>{
+  window.fb.onSnapshot(q, snapshot => {
 
     const box = document.getElementById("chatMessages");
+    if(!box) return;
+
     box.innerHTML = "";
 
-    snap.forEach(doc=>{
-      renderMessage(doc.data());
+    snapshot.forEach(doc => {
+
+      const m = doc.data();
+
+      renderMessage(m);
+
+      // 🔔 Notification
+      if(m.time && m.time.seconds > lastMsgTime){
+        playNotification();
+        lastMsgTime = m.time.seconds;
+      }
+
     });
 
     box.scrollTop = box.scrollHeight;
@@ -7416,51 +7484,63 @@ function renderMessage(m){
 
   const div = document.createElement("div");
 
-  const isMe = m.user === window.userProfile.cleanName;
+  const isMe = m.user === window.userProfile.rawName;
 
-  div.style.maxWidth = "70%";
+  div.style.maxWidth = "75%";
   div.style.margin = "6px";
-  div.style.padding = "8px";
+  div.style.padding = "10px";
   div.style.borderRadius = "10px";
-  div.style.fontSize = "13px";
 
   if(isMe){
     div.style.background = "#4caf50";
     div.style.marginLeft = "auto";
   } else {
-    div.style.background = "#333";
+    div.style.background = "#2a2a2a";
     div.style.marginRight = "auto";
   }
 
+  // USER CLICK → CALL
+  const nameHTML = `<b onclick="callUser('${m.phone}')" style="cursor:pointer;color:#ffd54f">${m.user}</b><br>`;
+
   if(m.type === "text"){
-    div.innerHTML = `<b>${m.user}</b><br>${m.text}`;
+    div.innerHTML = nameHTML + m.text;
   }
 
   if(m.type === "image"){
-    div.innerHTML = `
-      <b>${m.user}</b><br>
-      <img src="${m.imageUrl}" style="width:140px;border-radius:8px;">
-    `;
+    div.innerHTML = nameHTML + `<img src="${m.imageUrl}" style="width:150px;">`;
+  }
+
+  if(m.type === "location"){
+    div.innerHTML = nameHTML + `
+      📍 <a href="https://maps.google.com/?q=${m.lat},${m.lng}" target="_blank">
+      Open Location</a>`;
+  }
+
+  if(m.type === "audio"){
+    div.innerHTML = nameHTML + `<audio controls src="${m.audioUrl}"></audio>`;
   }
 
   document.getElementById("chatMessages").appendChild(div);
 }
 
 
-// ================= CALL =================
-function callUserFromChat(){
-
-  const phone = window.userProfile?.phone;
+// ================= CALL ANY USER =================
+function callUser(phone){
 
   if(!phone){
-    alert("No phone number");
+    alert("No phone");
     return;
   }
 
   window.location.href = "tel:" + phone;
 }
-    function callUser(phone){
-  window.location.href = "tel:" + phone;
+
+
+// ================= SOUND NOTIFICATION =================
+function playNotification(){
+
+  const audio = new Audio("https://actions.google.com/sounds/v1/alarms/notification.ogg");
+  audio.play().catch(()=>{});
 }
   </script>
 
@@ -8119,38 +8199,29 @@ border-top:2px solid #2e7d32;
     padding:10px;
     display:flex;
     justify-content:space-between;
-    align-items:center;
   ">
-    <span>📡 Patrol Chat (<span id="chatBeat"></span>)</span>
-
-    <div>
-      <button onclick="callUserFromChat()" style="background:none;border:none;color:white;">📞</button>
-      <button onclick="toggleChat()" style="background:none;border:none;color:white;">✖</button>
-    </div>
+    <b>📡 Patrol Chat</b>
+    <span onclick="toggleChat()">✖</span>
   </div>
 
   <!-- MESSAGES -->
-  <div id="chatMessages" style="
-    flex:1;
-    overflow-y:auto;
-    padding:10px;
-  "></div>
+  <div id="chatMessages" style="flex:1;overflow-y:auto;padding:10px;"></div>
 
   <!-- INPUT -->
   <div style="display:flex;padding:8px;background:#111;">
     
-    <input id="chatInput" placeholder="Type message..." 
-      style="flex:1;padding:10px;border-radius:8px;border:none;">
+    <input id="chatInput" placeholder="Type..." style="flex:1;padding:10px;">
 
     <input type="file" id="photoInput" accept="image/*"
       style="display:none" onchange="sendPhoto(event)">
 
+    <button onclick="sendLocation()">📍</button>
+    <button onclick="startRecording()">🎤</button>
     <button onclick="document.getElementById('photoInput').click()">📷</button>
     <button onclick="sendMessage()">➤</button>
   </div>
 
 </div>
-
 </body>
 
 </html>
