@@ -37,7 +37,7 @@
 
 })();// ================= AUTO GPS FALLBACK =================
 </script>
- <script type="module">
+<script type="module">
 
 // ================= FIREBASE IMPORTS =================
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
@@ -55,7 +55,7 @@ import {
 import {
   getStorage,
   ref,
-  uploadString,
+  uploadBytes,        // ✅ FIXED
   getDownloadURL
 } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-storage.js";
 
@@ -74,11 +74,11 @@ const firebaseConfig = {
 // ================= INIT =================
 const app = initializeApp(firebaseConfig);
 
-// 🔥 MAKE GLOBAL (VERY IMPORTANT)
+// 🔥 GLOBAL ACCESS
 window.db = getFirestore(app);
 window.storage = getStorage(app);
 
-// 🔥 ALSO MAKE FUNCTIONS GLOBAL (CRITICAL FOR YOUR APP)
+// 🔥 GLOBAL FUNCTIONS (IMPORTANT)
 window.fb = {
   collection,
   addDoc,
@@ -87,13 +87,15 @@ window.fb = {
   orderBy,
   serverTimestamp,
   ref,
-  uploadString,
+  uploadBytes,       // ✅ FIXED
   getDownloadURL
 };
 
 console.log("🔥 Firebase FULLY READY");
 
 </script>
+
+
   
   <title>GreenGuard</title>
 
@@ -7352,15 +7354,17 @@ async function sendPhoto(e){
   const file = e.target.files[0];
   if(!file) return;
 
-  const reader = new FileReader();
+  const fileRef = window.fb.ref(
+    window.storage,
+    "chat_photos/" + Date.now() + "_" + file.name
+  );
 
-  reader.onload = async function(){
+  try {
 
-    const ref = window.fb.ref(window.storage, "chat_photos/" + Date.now());
+    // ✅ FIXED UPLOAD METHOD
+    await window.fb.uploadBytes(fileRef, file);
 
-    await window.fb.uploadString(ref, reader.result, "data_url");
-
-    const url = await window.fb.getDownloadURL(ref);
+    const url = await window.fb.getDownloadURL(fileRef);
 
     await window.fb.addDoc(getChatCollection(), {
       type: "image",
@@ -7370,12 +7374,13 @@ async function sendPhoto(e){
       time: window.fb.serverTimestamp()
     });
 
-  };
+    console.log("✅ Photo uploaded");
 
-  reader.readAsDataURL(file);
+  } catch(err){
+    console.error("❌ Upload error:", err);
+    alert("Upload failed");
+  }
 }
-
-
 // ================= SEND LOCATION =================
 function sendLocation(){
 
