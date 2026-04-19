@@ -37,30 +37,64 @@
 
 })();// ================= AUTO GPS FALLBACK =================
 </script>
-  <script type="module">
+ <script type="module">
 
+// ================= FIREBASE IMPORTS =================
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
-import { getFirestore } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
-import { getStorage } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-storage.js";
 
+import {
+  getFirestore,
+  collection,
+  addDoc,
+  onSnapshot,
+  query,
+  orderBy,
+  serverTimestamp
+} from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+
+import {
+  getStorage,
+  ref,
+  uploadString,
+  getDownloadURL
+} from "https://www.gstatic.com/firebasejs/10.12.0/firebase-storage.js";
+
+
+// ================= CONFIG =================
 const firebaseConfig = {
   apiKey: "AIzaSyCKLIJC0Mkjg7hjp7Kr5_FYQq704f4oZnY",
   authDomain: "command-centre-86f62.firebaseapp.com",
   projectId: "command-centre-86f62",
-  storageBucket: "command-centre-86f62.appspot.com", // ✅ FIXED
+  storageBucket: "command-centre-86f62.appspot.com",
   messagingSenderId: "692498208499",
   appId: "1:692498208499:web:34defc152a3b3411e64986"
 };
 
+
+// ================= INIT =================
 const app = initializeApp(firebaseConfig);
 
-// 🔥 VERY IMPORTANT
+// 🔥 MAKE GLOBAL (VERY IMPORTANT)
 window.db = getFirestore(app);
 window.storage = getStorage(app);
 
-console.log("🔥 Firebase Connected");
+// 🔥 ALSO MAKE FUNCTIONS GLOBAL (CRITICAL FOR YOUR APP)
+window.fb = {
+  collection,
+  addDoc,
+  onSnapshot,
+  query,
+  orderBy,
+  serverTimestamp,
+  ref,
+  uploadString,
+  getDownloadURL
+};
+
+console.log("🔥 Firebase FULLY READY");
 
 </script>
+  
   <title>GreenGuard</title>
 
 <meta name="viewport"
@@ -708,7 +742,9 @@ window.addEventListener("unhandledrejection", function (e) {
     <button id="force-refresh-btn" class="admin-only btn-center btn-green" onclick="refreshAll()">
   FORCE REFRESH
 </button>
-
+<button class="btn-center" onclick="toggleChat()">
+  💬 PATROL CHAT
+</button>
     <button id="dutyMainBtn" class="staff-only btn-center btn-green" onclick="handleDutyAction()">
       <span id="dutyLabel">START DUTY</span>
     </button>
@@ -1220,7 +1256,7 @@ function startApp(){
       console.warn("⚠ GPS was running unexpectedly → stopping");
       stopAutoGPS();
     }
-
+startChat();
     // 🔥 CLEAR any leftover offline data if not on duty
     if(window.isDutyActive !== true){
       try {
@@ -7271,7 +7307,117 @@ window.addEventListener("online", function(){
 
 });
   
-  
+  // ================= CHAT TOGGLE =================
+function toggleChat(){
+  const box = document.getElementById("chatUI");
+  box.style.display = (box.style.display === "flex") ? "none" : "flex";
+}
+
+
+// ================= SEND MESSAGE =================
+async function sendMessage(){
+
+  const input = document.getElementById("chatInput");
+  const text = input.value.trim();
+  if(!text) return;
+
+  await addDoc(collection(window.db, "patrol_chat"), {
+    type: "text",
+    text,
+    user: window.userProfile.cleanName,
+    phone: window.userProfile.phone,
+    time: serverTimestamp()
+  });
+
+  input.value = "";
+}
+
+
+// ================= SEND PHOTO =================
+async function sendPhoto(e){
+
+  const file = e.target.files[0];
+  if(!file) return;
+
+  const reader = new FileReader();
+
+  reader.onload = async function(){
+
+    const base64 = reader.result;
+
+    const fileRef = ref(window.storage, "chat_photos/" + Date.now());
+
+    await uploadString(fileRef, base64, "data_url");
+
+    const url = await getDownloadURL(fileRef);
+
+    await addDoc(collection(window.db, "patrol_chat"), {
+      type: "image",
+      imageUrl: url,
+      user: window.userProfile.cleanName,
+      phone: window.userProfile.phone,
+      time: serverTimestamp()
+    });
+
+  };
+
+  reader.readAsDataURL(file);
+}
+    function startChat(){
+
+  const q = query(
+    collection(window.db, "patrol_chat"),
+    orderBy("time", "asc")
+  );
+
+  onSnapshot(q, (snapshot)=>{
+
+    const box = document.getElementById("chatMessages");
+    box.innerHTML = "";
+
+    snapshot.forEach(doc=>{
+      renderMessage(doc.data());
+    });
+
+    box.scrollTop = box.scrollHeight;
+  });
+}
+    function renderMessage(m){
+
+  const div = document.createElement("div");
+
+  const isMe = m.user === window.userProfile.cleanName;
+
+  div.style.maxWidth = "70%";
+  div.style.margin = "6px";
+  div.style.padding = "8px";
+  div.style.borderRadius = "10px";
+
+  if(isMe){
+    div.style.background = "#4caf50";
+    div.style.marginLeft = "auto";
+  } else {
+    div.style.background = "#333";
+    div.style.marginRight = "auto";
+  }
+
+  if(m.type === "text"){
+    div.innerHTML = `<b>${m.user}</b><br>${m.text}`;
+  }
+
+  if(m.type === "image"){
+    div.innerHTML = `
+      <b>${m.user}</b><br>
+      <img src="${m.imageUrl}" style="width:140px;border-radius:8px;">
+    `;
+  }
+
+  document.getElementById("chatMessages").appendChild(div);
+}
+
+    function callUser(phone){
+  window.location.href = "tel:" + phone;
+}
   </script>
 
   </div>
@@ -7909,7 +8055,44 @@ window.openDutyForm = openDutyForm;
   </div>
 
 </div>
+<div id="chatUI" style="
+position:fixed;
+bottom:0;
+left:0;
+width:100%;
+height:60%;
+background:#0b1a0b;
+z-index:999999;
+display:none;
+flex-direction:column;
+">
 
+  <!-- HEADER -->
+  <div style="
+    background:#1b5e20;
+    color:white;
+    padding:10px;
+    display:flex;
+    justify-content:space-between;
+  ">
+    <b>📡 Patrol Chat</b>
+    <span onclick="toggleChat()" style="cursor:pointer;">✖</span>
+  </div>
+
+  <!-- MESSAGES -->
+  <div id="chatMessages" style="flex:1; overflow-y:auto; padding:10px;"></div>
+
+  <!-- INPUT -->
+  <div style="display:flex; padding:8px; background:#111;">
+    <input id="chatInput" placeholder="Type..." style="flex:1; padding:10px;">
+    
+    <input type="file" id="photoInput" accept="image/*" style="display:none" onchange="sendPhoto(event)">
+    
+    <button onclick="document.getElementById('photoInput').click()">📷</button>
+    <button onclick="sendMessage()">➤</button>
+  </div>
+
+</div>
 </body>
 
 </html>
