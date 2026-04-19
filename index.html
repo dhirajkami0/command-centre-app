@@ -7492,45 +7492,96 @@ function sendLocation(){
 
 
 // ================= VOICE MESSAGE =================
+// ================= VOICE STATE =================
 let mediaRecorder;
 let audioChunks = [];
+let isRecording = false;
 
+
+// ================= START VOICE =================
 async function startVoice(){
 
-  const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+  try {
 
-  mediaRecorder = new MediaRecorder(stream);
+    if(isRecording) return; // prevent double start
 
-  mediaRecorder.start();
+    const indicator = document.getElementById("recordingIndicator");
+    if(indicator) indicator.style.display = "block";
 
-  mediaRecorder.ondataavailable = e => {
-    audioChunks.push(e.data);
-  };
+    const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+
+    mediaRecorder = new MediaRecorder(stream);
+    audioChunks = [];
+    isRecording = true;
+
+    mediaRecorder.ondataavailable = e => {
+      if(e.data.size > 0){
+        audioChunks.push(e.data);
+      }
+    };
+
+    mediaRecorder.start();
+
+    console.log("🎤 Recording started");
+
+  } catch(err){
+    console.error("❌ Mic error:", err);
+    alert("Microphone permission denied");
+  }
+}
+
+
+// ================= STOP VOICE =================
+function stopVoice(){
+
+  if(!mediaRecorder || !isRecording) return;
+
+  const indicator = document.getElementById("recordingIndicator");
+  if(indicator) indicator.style.display = "none";
+
+  isRecording = false;
+
+  mediaRecorder.stop();
 
   mediaRecorder.onstop = async () => {
 
-    const blob = new Blob(audioChunks, { type: "audio/mp3" });
+    try {
+
+      if(audioChunks.length === 0){
+        console.warn("⚠️ Empty recording skipped");
+        return;
+      }
+
+      // 🔥 CORRECT FORMAT
+      const blob = new Blob(audioChunks, { type: "audio/webm" });
+
+      const fileRef = window.fb.ref(
+        window.storage,
+        "chat_audio/" + Date.now() + ".webm"
+      );
+
+      await window.fb.uploadBytes(fileRef, blob);
+
+      const url = await window.fb.getDownloadURL(fileRef);
+
+      await window.fb.addDoc(getChatCollection(), {
+        type: "audio",
+        audioUrl: url,
+        user: window.userProfile.rawName,
+        phone: window.userProfile.phone,
+        time: window.fb.serverTimestamp(),
+        status: "sent"
+      });
+
+      console.log("✅ Voice message sent");
+
+    } catch(err){
+      console.error("❌ Voice upload error:", err);
+      alert("Voice upload failed");
+    }
+
     audioChunks = [];
-
-    const ref = window.fb.ref(window.storage, "chat_audio/" + Date.now());
-
-    await window.fb.uploadBytes(ref, blob);
-
-    const url = await window.fb.getDownloadURL(ref);
-
-    await window.fb.addDoc(getChatCollection(), {
-      type: "audio",
-      audioUrl: url,
-      user: window.userProfile.rawName,
-      phone: window.userProfile.phone,
-      time: window.fb.serverTimestamp(),
-      status: "sent"
-    });
   };
-}
-
-function stopVoice(){
-  mediaRecorder.stop();
 }
 
 
@@ -8385,7 +8436,14 @@ font-family:sans-serif;
     display:flex;
     flex-direction:column;
   "></div>
-
+<div id="recordingIndicator" style="
+  display:none;
+  color:red;
+  font-size:12px;
+  padding-left:10px;
+">
+  🔴 Recording...
+</div>
   <!-- INPUT AREA -->
   <div id="chatInputBox" style="
     display:flex;
