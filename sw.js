@@ -13,6 +13,7 @@ const APP_SHELL = [
   "./js/leaflet-omnivore.min.js",
   "./js/shp.js",
   "./js/leaflet-kml.js",
+   "./kml/Compartments.kml",
   "./css/images/layers.png",
   "./css/images/layers-2x.png",
   "./css/images/marker-icon.png",
