@@ -7666,45 +7666,73 @@ function renderMessage(m){
   div.style.margin = "6px";
   div.style.padding = "10px";
   div.style.borderRadius = "12px";
+  div.style.fontSize = "14px";
+  div.style.lineHeight = "1.4";
 
   if(isMe){
     div.style.background = "#4caf50";
+    div.style.color = "#000"; // 🔥 FIX readability
     div.style.marginLeft = "auto";
   } else {
-    div.style.background = "#2a2a2a";
+    div.style.background = "#263238"; // 🔥 FIX better contrast
+    div.style.color = "#fff";
   }
+
+  // 🔥 CALL BUTTON (RESTORED)
+  const name = `
+    <b onclick="callUser('${m.phone}')" 
+    style="cursor:pointer;color:#ffd54f;">
+      📞 ${m.user}
+    </b><br>
+  `;
 
   let content = "";
 
+  // TEXT
   if(m.type === "text"){
-    content = m.text;
+    content = `<div>${m.text}</div>`;
   }
 
+  // IMAGE (FIXED VIEW + BACK)
   if(m.type === "image"){
-    content = `<img src="${m.imageUrl}" 
-      onclick="downloadImage('${m.imageUrl}')" 
-      style="width:150px;border-radius:10px;cursor:pointer;">`;
+    content = `
+      <img src="${m.imageUrl}" 
+        onclick="openImageViewer('${m.imageUrl}')"
+        style="
+          width:150px;
+          border-radius:10px;
+          cursor:pointer;
+          display:block;
+          margin-top:5px;
+        ">
+      <div style="font-size:10px;color:#ccc;">Tap to view</div>
+    `;
   }
 
+  // LOCATION
   if(m.type === "location"){
-    content = `📍 <a href="https://maps.google.com/?q=${m.lat},${m.lng}" target="_blank">Open</a>`;
+    content = `
+      📍 <a href="https://maps.google.com/?q=${m.lat},${m.lng}" 
+      target="_blank" style="color:#4fc3f7;">
+      Open Location</a>
+    `;
   }
 
+  // AUDIO
   if(m.type === "audio"){
-    content = `<audio controls src="${m.audioUrl}"></audio>`;
+    content = `<audio controls src="${m.audioUrl}" style="width:100%;"></audio>`;
   }
 
   div.innerHTML = `
-    <b>${m.user}</b><br>
+    ${name}
     ${content}
-    <div style="font-size:10px;opacity:0.7;">
+    <div style="font-size:10px;opacity:0.7;margin-top:4px;">
       ${formatTime(m.time)} ${getStatusIcon(m.status)}
     </div>
   `;
 
   document.getElementById("chatMessages").appendChild(div);
 }
-
 
 // ================= READ =================
 async function markMessagesRead(){
@@ -7757,7 +7785,16 @@ function updateBadge(){
 function playNotification(){
   const audio = new Audio("https://actions.google.com/sounds/v1/alarms/notification.ogg");
   audio.play().catch(()=>{});
-}  
+} 
+
+    function openImageViewer(url){
+  document.getElementById("imageViewer").style.display = "flex";
+  document.getElementById("fullImage").src = url;
+}
+
+function closeImageViewer(){
+  document.getElementById("imageViewer").style.display = "none";
+}
   </script>
 
   </div>
@@ -8422,7 +8459,7 @@ font-family:sans-serif;
     <span onclick="toggleChat()" style="cursor:pointer;">✖</span>
   </div>
 
-  <!-- 🔥 TYPING INDICATOR (CORRECT PLACE) -->
+  <!-- TYPING INDICATOR -->
   <div id="typingIndicator" style="
     font-size:12px;
     color:#aaa;
@@ -8438,14 +8475,18 @@ font-family:sans-serif;
     display:flex;
     flex-direction:column;
   "></div>
-<div id="recordingIndicator" style="
-  display:none;
-  color:red;
-  font-size:12px;
-  padding-left:10px;
-">
-  🔴 Recording...
-</div>
+
+  <!-- RECORDING INDICATOR -->
+  <div id="recordingIndicator" style="
+    display:none;
+    color:#ff5252;
+    font-size:12px;
+    padding-left:10px;
+    padding-bottom:4px;
+  ">
+    🔴 Recording...
+  </div>
+
   <!-- INPUT AREA -->
   <div id="chatInputBox" style="
     display:flex;
@@ -8465,15 +8506,16 @@ font-family:sans-serif;
         border-radius:8px;
         border:none;
         font-size:14px;
+        outline:none;
       ">
 
-    <!-- HIDDEN FILE INPUT -->
+    <!-- FILE INPUT -->
     <input type="file" id="photoInput"
       accept="image/*"
       style="display:none"
       onchange="sendPhoto(event)">
 
-    <!-- LOCATION -->
+    <!-- LOCATION BUTTON -->
     <button onclick="sendLocation()" style="
       padding:8px;
       font-size:16px;
@@ -8481,29 +8523,30 @@ font-family:sans-serif;
       color:white;
       border:none;
       border-radius:6px;
+      cursor:pointer;
     ">📍</button>
 
-    <!-- VOICE (PRESS & HOLD) -->
+    <!-- VOICE BUTTON -->
     <button 
-  onmousedown="startVoice()" 
-  onmouseup="stopVoice()"
-  onmouseleave="stopVoice()"
+      onmousedown="startVoice()" 
+      onmouseup="stopVoice()"
+      onmouseleave="stopVoice()"
+      ontouchstart="startVoice()" 
+      ontouchend="stopVoice()"
+      ontouchcancel="stopVoice()"
+      style="
+        padding:8px;
+        font-size:16px;
+        background:#2e7d32;
+        color:white;
+        border:none;
+        border-radius:6px;
+        cursor:pointer;
+      ">
+      🎤
+    </button>
 
-  ontouchstart="startVoice()" 
-  ontouchend="stopVoice()"
-  ontouchcancel="stopVoice()"
-
-  style="
-    padding:8px;
-    font-size:16px;
-    background:#2e7d32;
-    color:white;
-    border:none;
-    border-radius:6px;
-  ">
-  🎤
-</button>
-    <!-- PHOTO -->
+    <!-- PHOTO BUTTON -->
     <button onclick="document.getElementById('photoInput').click()" style="
       padding:8px;
       font-size:16px;
@@ -8511,6 +8554,7 @@ font-family:sans-serif;
       color:white;
       border:none;
       border-radius:6px;
+      cursor:pointer;
     ">📷</button>
 
     <!-- SEND BUTTON -->
@@ -8522,8 +8566,40 @@ font-family:sans-serif;
       border:none;
       border-radius:6px;
       min-width:50px;
+      cursor:pointer;
     ">➤</button>
 
+  </div>
+
+</div>
+  <div id="imageViewer" style="
+position:fixed;
+top:0;
+left:0;
+width:100%;
+height:100%;
+background:black;
+display:none;
+flex-direction:column;
+z-index:9999999;
+">
+
+  <div style="
+    padding:12px;
+    color:white;
+    background:#111;
+    font-size:16px;
+  ">
+    <span onclick="closeImageViewer()" style="cursor:pointer;">⬅ Back</span>
+  </div>
+
+  <div style="
+    flex:1;
+    display:flex;
+    justify-content:center;
+    align-items:center;
+  ">
+    <img id="fullImage" style="max-width:100%;max-height:100%;">
   </div>
 
 </div>
