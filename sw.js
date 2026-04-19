@@ -1,32 +1,23 @@
 /* =========================================
-   🔥 GREENGUARD SERVICE WORKER (FINAL PRO LOCAL)
+   🔥 GREENGUARD SERVICE WORKER (SMART UPDATE)
 ========================================= */
 
-const CACHE_NAME = "greenguard-v15"; // 🔥 UPDATE VERSION EVERY CHANGE
+const CACHE_NAME = "greenguard-v16"; // 🔥 CHANGE EVERY UPDATE
 
-/* =========================================
-   📦 CORE + LOCAL FILES
-========================================= */
-const urlsToCache = [
+const APP_SHELL = [
   "./",
   "./index.html",
   "./manifest.json",
-
-  /* 🔥 LOCAL LIBRARIES */
   "./css/leaflet.css",
   "./js/leaflet.js",
   "./js/leaflet-omnivore.min.js",
   "./js/shp.js",
   "./js/leaflet-kml.js",
-
-  /* 🔥 LEAFLET IMAGES (CRITICAL FIX) */
   "./css/images/layers.png",
   "./css/images/layers-2x.png",
   "./css/images/marker-icon.png",
   "./css/images/marker-icon-2x.png",
   "./css/images/marker-shadow.png",
-
-  /* 🔥 APP ICONS */
   "./icons/icon-192.png",
   "./icons/icon-512.png"
 ];
@@ -36,19 +27,11 @@ const urlsToCache = [
 ========================================= */
 self.addEventListener("install", event => {
 
-  console.log("✅ SW Installing...");
-
-  self.skipWaiting();
+  console.log("📦 SW Installing...");
 
   event.waitUntil(
     caches.open(CACHE_NAME)
-      .then(cache => {
-        console.log("📦 Caching app shell...");
-        return cache.addAll(urlsToCache);
-      })
-      .catch(err => {
-        console.error("❌ Cache failed:", err);
-      })
+      .then(cache => cache.addAll(APP_SHELL))
   );
 
 });
@@ -61,87 +44,90 @@ self.addEventListener("activate", event => {
   console.log("🚀 SW Activated");
 
   event.waitUntil(
-    caches.keys().then(keys => {
-      return Promise.all(
+    caches.keys().then(keys =>
+      Promise.all(
         keys.map(key => {
           if (key !== CACHE_NAME) {
             console.log("🧹 Deleting old cache:", key);
             return caches.delete(key);
           }
         })
-      );
-    })
+      )
+    )
   );
 
-  return self.clients.claim();
+  self.clients.claim();
 });
 
 /* =========================================
-   🌐 FETCH (OFFLINE-FIRST + NAVIGATION FIX)
+   🔄 SKIP WAITING (ON USER ACTION)
+========================================= */
+self.addEventListener("message", event => {
+  if (event.data && event.data.action === "skipWaiting") {
+    self.skipWaiting();
+  }
+});
+
+/* =========================================
+   🌐 FETCH (SMART STRATEGY)
 ========================================= */
 self.addEventListener("fetch", event => {
 
   const req = event.request;
 
-  /* ❌ Skip API calls */
+  /* ❌ Skip API */
   if (req.url.includes("script.google.com")) return;
 
   /* ❌ Only GET */
   if (req.method !== "GET") return;
 
-  /* 🔥🔥 CRITICAL FIX: HANDLE PAGE RELOAD OFFLINE */
+  /* =========================================
+     📄 HTML → NETWORK FIRST
+  ========================================= */
   if (req.mode === "navigate") {
+
     event.respondWith(
-      caches.match("./index.html")
+      fetch(req)
         .then(res => {
-          if (res) return res;
-          return fetch(req);
+
+          const clone = res.clone();
+
+          caches.open(CACHE_NAME).then(cache => {
+            cache.put("./index.html", clone);
+          });
+
+          return res;
+
         })
         .catch(() => caches.match("./index.html"))
     );
+
     return;
   }
 
   /* =========================================
-     🔄 NORMAL CACHE FLOW
+     📦 STATIC → CACHE FIRST + UPDATE
   ========================================= */
   event.respondWith(
 
     caches.match(req).then(cached => {
 
-      /* ✅ CACHE FIRST */
-      if (cached) {
-        return cached;
-      }
-
-      /* 🌐 NETWORK */
-      return fetch(req)
+      const networkFetch = fetch(req)
         .then(res => {
 
-          if (!res || res.status !== 200) return res;
-
-          const resClone = res.clone();
-
-          /* 💾 SAVE */
-          caches.open(CACHE_NAME).then(cache => {
-            cache.put(req, resClone);
-          });
-
-          return res;
-        })
-        .catch(() => {
-
-          /* 🔥 OFFLINE FALLBACK */
-          if (req.destination === "document") {
-            return caches.match("./index.html");
+          if (res && res.status === 200) {
+            const clone = res.clone();
+            caches.open(CACHE_NAME).then(cache => {
+              cache.put(req, clone);
+            });
           }
 
-          return new Response("Offline", {
-            status: 503,
-            statusText: "Offline"
-          });
+          return res;
 
-        });
+        })
+        .catch(() => cached);
+
+      return cached || networkFetch;
 
     })
 
