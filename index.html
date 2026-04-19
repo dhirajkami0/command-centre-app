@@ -5,6 +5,7 @@
   <script>
 (function(){
 
+  // ================= TOAST =================
   function toast(msg, type="success"){
     const t = document.createElement("div");
 
@@ -22,23 +23,44 @@
     t.style.borderRadius = "6px";
     t.style.zIndex = "999999";
     t.style.fontWeight = "bold";
+    t.style.boxShadow = "0 4px 10px rgba(0,0,0,0.5)";
 
     document.body.appendChild(t);
     setTimeout(()=>t.remove(),3000);
   }
 
-  // ✅ MAKE GLOBAL
+  // ================= MAKE GLOBAL =================
   window.showToast = toast;
 
-  // 🔥 OVERRIDES
-  window.alert = function(msg){ toast(msg); return true; };
-  window.confirm = function(msg){ toast(msg); return true; };
-  window.prompt = function(msg){
-  return window.originalPrompt ? window.originalPrompt(msg) : prompt(msg);
-};
+  // ================= SAVE ORIGINALS (CRITICAL) =================
+  const _alert = window.alert;
+  const _confirm = window.confirm;
+  const _prompt = window.prompt;
 
-})();// ================= AUTO GPS FALLBACK =================
-</script>
+  // (optional) expose originals if needed elsewhere
+  window._alert = _alert;
+  window._confirm = _confirm;
+  window._prompt = _prompt;
+
+  // ================= SAFE OVERRIDES =================
+
+  // Use toast instead of blocking alert
+  window.alert = function(msg){
+    toast(msg);
+    return true;
+  };
+
+  // Keep real confirm (so user can cancel!)
+  window.confirm = function(msg){
+    return _confirm(msg);
+  };
+
+  // Keep real prompt (no recursion)
+  window.prompt = function(msg){
+    return _prompt(msg);
+  };
+
+})();</script>
   
   
   <script type="module">
