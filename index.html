@@ -36,8 +36,7 @@
   window.prompt = function(msg){ toast(msg); return ""; };
 
 })();// ================= AUTO GPS FALLBACK =================
-</script>
-<script type="module">
+</script><script type="module">
 
 // ================= FIREBASE IMPORTS =================
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
@@ -54,7 +53,8 @@ import {
   deleteDoc,
   doc,
   setDoc,
-  updateDoc
+  updateDoc,
+  arrayUnion
 } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
 
 import {
@@ -70,10 +70,7 @@ const firebaseConfig = {
   apiKey: "AIzaSyCKLIJC0Mkjg7hjp7Kr5_FYQq704f4oZnY",
   authDomain: "command-centre-86f62.firebaseapp.com",
   projectId: "command-centre-86f62",
-
-  // ✅ KEEPING YOUR WORKING BUCKET (AS REQUESTED)
   storageBucket: "command-centre-86f62.firebasestorage.app",
-
   messagingSenderId: "692498208499",
   appId: "1:692498208499:web:34defc152a3b3411e64986"
 };
@@ -82,6 +79,7 @@ const firebaseConfig = {
 // ================= INIT =================
 const app = initializeApp(firebaseConfig);
 
+
 // ================= GLOBAL ACCESS =================
 window.db = getFirestore(app);
 window.storage = getStorage(app);
@@ -89,7 +87,6 @@ window.storage = getStorage(app);
 
 // ================= GLOBAL FIREBASE OBJECT =================
 window.fb = {
-  // Firestore
   collection,
   addDoc,
   onSnapshot,
@@ -101,14 +98,23 @@ window.fb = {
   doc,
   setDoc,
   updateDoc,
-
-  // Storage
+  arrayUnion,
   ref,
   uploadBytes,
   getDownloadURL
 };
 
-console.log("🔥 Firebase FULLY READY (CLEAN)");
+
+// ================= READY FLAG =================
+window.firebaseReady = true;
+
+console.log("🔥 Firebase FULLY READY");
+
+
+// ================= SAFE CHECK =================
+window.isFirebaseReady = function(){
+  return !!(window.fb && window.db);
+};
 
 
 // ================= AUTO CLEAN FUNCTION =================
@@ -116,10 +122,15 @@ async function cleanOldMessages(){
 
   try {
 
-    const cutoff = Date.now() - (2 * 24 * 60 * 60 * 1000); // 2 days
+    if(!window.isFirebaseReady()){
+      console.warn("⏳ Firebase not ready");
+      return;
+    }
 
-    const chatRef = collection(window.db, "patrol_chat");
-    const snapshot = await getDocs(chatRef);
+    const cutoff = Date.now() - (2 * 24 * 60 * 60 * 1000);
+
+    const chatRef = window.fb.collection(window.db, "patrol_chat");
+    const snapshot = await window.fb.getDocs(chatRef);
 
     if(snapshot.empty){
       console.log("🧹 No old messages");
@@ -133,7 +144,7 @@ async function cleanOldMessages(){
       if(m.time && m.time.toMillis && m.time.toMillis() < cutoff){
 
         try {
-          await deleteDoc(docSnap.ref);
+          await window.fb.deleteDoc(docSnap.ref);
           console.log("🗑 Old message deleted");
         } catch(e){
           console.warn("⚠ Delete failed:", e);
@@ -150,7 +161,7 @@ async function cleanOldMessages(){
 
 
 // ================= MAKE GLOBAL =================
-window.cleanOldMessages = cleanOldMessages;
+
 
 </script>
 
@@ -7515,6 +7526,7 @@ function toggleChat(){
     unreadCount = 0;
     updateBadge();
     markMessagesRead();
+    initMic(); 
   }
 }
 
@@ -7589,7 +7601,14 @@ function listenOnline(){
     console.error("❌ listenOnline error:", e);
   }
 }
-
+async function initMic(){
+  try{
+    await navigator.mediaDevices.getUserMedia({ audio: true });
+    console.log("🎤 Mic ready");
+  }catch(e){
+    alert("Allow microphone permission");
+  }
+}
 
 // ================= SEND TEXT =================
 async function sendMessage(){
@@ -7687,14 +7706,21 @@ async function sendPhoto(e){
     console.error("❌ sendPhoto:", e);
   }
 }
-function renderMessage(m){
+function renderMessage(m, docId){
 
   const box = document.getElementById("chatMessages");
   if(!box) return;
 
   const div = document.createElement("div");
 
-  const isMe = m.user === window.userProfile?.rawName;
+  const currentUser = window.userProfile?.rawName;
+  const isMe = m.user === currentUser;
+  const isAdmin = window.userProfile?.role === "ADMIN";
+
+  // ❌ HIDE if deleted for me
+  if(m.deletedFor && m.deletedFor.includes(currentUser)){
+    return;
+  }
 
   div.style.maxWidth = "75%";
   div.style.margin = "6px";
@@ -7711,7 +7737,25 @@ function renderMessage(m){
     div.style.color = "#fff";
   }
 
-  // 📞 CALLABLE NAME
+  // 🔥 LONG PRESS / RIGHT CLICK MENU
+  if(isMe || isAdmin){
+
+    div.oncontextmenu = (e)=>{
+      e.preventDefault();
+      showDeleteOptions(docId, m, isMe, isAdmin);
+    };
+
+    div.ontouchstart = ()=>{
+      div._pressTimer = setTimeout(()=>{
+        showDeleteOptions(docId, m, isMe, isAdmin);
+      }, 600);
+    };
+
+    div.ontouchend = ()=>{
+      clearTimeout(div._pressTimer);
+    };
+  }
+
   const name = `
     <b onclick="callUser('${m.phone}')"
        style="cursor:pointer;color:#ffd54f;">
@@ -7721,37 +7765,39 @@ function renderMessage(m){
 
   let content = "";
 
-  // TEXT
-  if(m.type === "text"){
-    content = `<div>${m.text}</div>`;
+  // 🔥 IF DELETED FOR EVERYONE
+  if(m.deleted){
+    content = `<i style="opacity:0.7;">🚫 Message deleted</i>`;
+  }
+  else {
+
+    if(m.type === "text"){
+      content = `<div>${m.text}</div>`;
+    }
+
+    if(m.type === "image"){
+      content = `
+        <img src="${m.imageUrl}"
+          onclick="openImageViewer('${m.imageUrl}')"
+          style="width:150px;border-radius:10px;cursor:pointer;">
+      `;
+    }
+
+    if(m.type === "audio"){
+      content = `
+        <audio controls src="${m.audioUrl}"
+          style="width:100%;max-width:200px;"></audio>
+      `;
+    }
+
+    if(m.type === "location"){
+      content = `
+        📍 <a href="https://maps.google.com/?q=${m.lat},${m.lng}" target="_blank">
+        Open Location</a>
+      `;
+    }
   }
 
-  // IMAGE
-  if(m.type === "image"){
-    content = `
-      <img src="${m.imageUrl}"
-        onclick="openImageViewer('${m.imageUrl}')"
-        style="width:150px;border-radius:10px;cursor:pointer;">
-    `;
-  }
-
-  // AUDIO
-  if(m.type === "audio"){
-    content = `
-      <audio controls src="${m.audioUrl}"
-        style="width:100%;max-width:200px;"></audio>
-    `;
-  }
-
-  // LOCATION
-  if(m.type === "location"){
-    content = `
-      📍 <a href="https://maps.google.com/?q=${m.lat},${m.lng}" target="_blank">
-      Open Location</a>
-    `;
-  }
-
-  // TIME
   const time = m.time?.seconds
     ? new Date(m.time.seconds * 1000).toLocaleTimeString()
     : "";
@@ -7767,7 +7813,128 @@ function renderMessage(m){
   box.appendChild(div);
 }
 
+// ================= DELETE MENU =================
+function showDeleteOptions(docId, m, isMe, isAdmin){
+
+  try {
+
+    let msg = "Choose:\n";
+
+    if(isMe){
+      msg += "1 = Delete for me\n2 = Delete for everyone\n";
+    }
+
+    if(isAdmin){
+      msg += "3 = Admin delete\n";
+    }
+
+    const choice = prompt(msg);
+    if(!choice) return;
+
+    if(choice === "1" && isMe){
+      deleteForMe(docId);
+    }
+
+    if(choice === "2" && isMe){
+      deleteForEveryone(docId);
+    }
+
+    if(choice === "3" && isAdmin){
+      adminDelete(docId);
+    }
+
+  } catch(e){
+    console.error("❌ showDeleteOptions:", e);
+  }
+}
+
+
+// ================= DELETE FOR ME =================
+async function deleteForMe(docId){
+
+  try {
+
+    if(!window.fb || !window.db){
+      console.warn("⏳ Firebase not ready");
+      return;
+    }
+
+    const user = window.userProfile?.rawName;
+    if(!user){
+      console.warn("❌ No userProfile");
+      return;
+    }
+
+    const ref = window.fb.doc(window.db, "patrol_chat", docId);
+
+    await window.fb.updateDoc(ref, {
+      deletedFor: window.fb.arrayUnion(user)
+    });
+
+    console.log("🗑 Deleted for me");
+
+  } catch(e){
+    console.error("❌ deleteForMe:", e);
+  }
+}
+
+
+// ================= DELETE FOR EVERYONE =================
+async function deleteForEveryone(docId){
+
+  try {
+
+    if(!window.fb || !window.db){
+      console.warn("⏳ Firebase not ready");
+      return;
+    }
+
+    const ref = window.fb.doc(window.db, "patrol_chat", docId);
+
+    await window.fb.updateDoc(ref, {
+      deleted: true,
+      text: "",
+      imageUrl: "",
+      audioUrl: "",
+      lat: null,
+      lng: null
+    });
+
+    console.log("🚫 Deleted for everyone");
+
+  } catch(e){
+    console.error("❌ deleteForEveryone:", e);
+  }
+}
+
+
+// ================= ADMIN DELETE =================
+async function adminDelete(docId){
+
+  try {
+
+    if(!window.fb || !window.db){
+      console.warn("⏳ Firebase not ready");
+      return;
+    }
+
+    const ok = confirm("Admin delete permanently?");
+    if(!ok) return;
+
+    const ref = window.fb.doc(window.db, "patrol_chat", docId);
+
+    await window.fb.deleteDoc(ref);
+
+    console.log("🧨 Admin deleted message");
+
+  } catch(e){
+    console.error("❌ adminDelete:", e);
+  }
+}
+    
 // ================= REALTIME =================
+let chatUnsubscribe = null;
+
 function startChat(){
 
   if(!isFirebaseReady()){
@@ -7781,28 +7948,38 @@ function startChat(){
     const col = getChatCollection();
     if(!col) return;
 
+    // 🔥 prevent duplicate listeners
+    if(chatUnsubscribe){
+      chatUnsubscribe();
+      chatUnsubscribe = null;
+    }
+
     const q = window.fb.query(
       col,
       window.fb.orderBy("time", "asc")
     );
 
-    window.fb.onSnapshot(q, snapshot => {
+    chatUnsubscribe = window.fb.onSnapshot(q, snapshot => {
 
       const box = document.getElementById("chatMessages");
       if(!box) return;
 
       box.innerHTML = "";
 
-      snapshot.forEach(doc => {
+      snapshot.forEach(docSnap => {
 
-        const m = doc.data();
+        const m = docSnap.data();
+        const docId = docSnap.id;
 
+        // 🔥 DELIVERY STATUS UPDATE
         if(m.status === "sent"){
-          window.fb.updateDoc(doc.ref, {status:"delivered"});
+          window.fb.updateDoc(docSnap.ref, { status: "delivered" });
         }
 
-        renderMessage(m);
+        // 🔥 RENDER WITH docId (IMPORTANT FOR DELETE SYSTEM)
+        renderMessage(m, docId);
 
+        // 🔔 UNREAD + NOTIFICATION
         if(m.time && m.time.seconds > lastMsgTime){
 
           if(document.getElementById("chatUI").style.display !== "flex"){
@@ -7813,24 +7990,32 @@ function startChat(){
           playNotification();
           lastMsgTime = m.time.seconds;
         }
+
+        // 🔥 MARK AS READ (ONLY OTHERS' MESSAGES)
+        const currentUser = window.userProfile?.rawName;
+        if(m.user !== currentUser && m.status !== "read"){
+          window.fb.updateDoc(docSnap.ref, { status: "read" });
+        }
+
       });
 
+      // 🔽 SCROLL FIX
       setTimeout(()=>{
         box.scrollTop = box.scrollHeight;
-      },50);
+      }, 50);
 
     });
 
+    // 🔥 ONLINE SYSTEM
     listenOnline();
     setOnline();
 
-    console.log("✅ Chat started");
+    console.log("✅ Chat started (updated)");
 
   } catch(e){
     console.error("❌ startChat:", e);
   }
-} 
-
+}
     function openImageViewer(url){
 
   let viewer = document.getElementById("imageViewer");
@@ -8607,6 +8792,7 @@ display:none;
 flex-direction:column;
 border-top:2px solid #2e7d32;
 font-family:sans-serif;
+overflow:hidden;
 ">
 
   <!-- HEADER -->
@@ -8622,7 +8808,7 @@ font-family:sans-serif;
     <span onclick="toggleChat()" style="cursor:pointer;">✖</span>
   </div>
 
-  <!-- TYPING INDICATOR -->
+  <!-- TYPING -->
   <div id="typingIndicator" style="
     font-size:12px;
     color:#aaa;
@@ -8639,7 +8825,7 @@ font-family:sans-serif;
     flex-direction:column;
   "></div>
 
-  <!-- RECORDING INDICATOR -->
+  <!-- RECORDING -->
   <div id="recordingIndicator" style="
     display:none;
     color:#ff5252;
@@ -8650,21 +8836,23 @@ font-family:sans-serif;
     🔴 Recording...
   </div>
 
-  <!-- INPUT AREA -->
+  <!-- INPUT -->
   <div id="chatInputBox" style="
     display:flex;
     gap:6px;
     padding:8px;
     background:#111;
     align-items:center;
+    width:100%;
+    box-sizing:border-box;
   ">
 
-    <!-- TEXT INPUT -->
     <input id="chatInput"
       placeholder="Type message..."
       oninput="typing()"
       style="
         flex:1;
+        min-width:0;
         padding:10px;
         border-radius:8px;
         border:none;
@@ -8672,70 +8860,35 @@ font-family:sans-serif;
         outline:none;
       ">
 
-    <!-- FILE INPUT -->
     <input type="file" id="photoInput"
       accept="image/*"
       style="display:none"
       onchange="sendPhoto(event)">
 
-    <!-- LOCATION BUTTON -->
-    <button onclick="sendLocation()" style="
-      padding:8px;
-      font-size:16px;
-      background:#2e7d32;
-      color:white;
-      border:none;
-      border-radius:6px;
-      cursor:pointer;
-    ">📍</button>
+    <button onclick="sendLocation()" style="width:40px;height:40px;flex-shrink:0;background:#2e7d32;color:white;border:none;border-radius:6px;">📍</button>
 
-    <!-- VOICE BUTTON -->
     <button 
-      onmousedown="startVoice()" 
-      onmouseup="stopVoice()"
-      onmouseleave="stopVoice()"
       ontouchstart="startVoice()" 
       ontouchend="stopVoice()"
       ontouchcancel="stopVoice()"
-      style="
-        padding:8px;
-        font-size:16px;
-        background:#2e7d32;
-        color:white;
-        border:none;
-        border-radius:6px;
-        cursor:pointer;
-      ">
+      onmousedown="startVoice()" 
+      onmouseup="stopVoice()"
+      onmouseleave="stopVoice()"
+      style="width:40px;height:40px;flex-shrink:0;background:#2e7d32;color:white;border:none;border-radius:6px;">
       🎤
     </button>
 
-    <!-- PHOTO BUTTON -->
-    <button onclick="document.getElementById('photoInput').click()" style="
-      padding:8px;
-      font-size:16px;
-      background:#2e7d32;
-      color:white;
-      border:none;
-      border-radius:6px;
-      cursor:pointer;
-    ">📷</button>
+    <button onclick="document.getElementById('photoInput').click()" style="width:40px;height:40px;flex-shrink:0;background:#2e7d32;color:white;border:none;border-radius:6px;">📷</button>
 
-    <!-- SEND BUTTON -->
-    <button id="sendBtn" onclick="sendMessage()" style="
-      padding:8px 12px;
-      font-size:14px;
-      background:#4caf50;
-      color:white;
-      border:none;
-      border-radius:6px;
-      min-width:50px;
-      cursor:pointer;
-    ">➤</button>
+    <button onclick="sendMessage()" style="width:48px;height:40px;flex-shrink:0;background:#4caf50;color:white;border:none;border-radius:6px;">➤</button>
 
   </div>
 
 </div>
-  <div id="imageViewer" style="
+
+
+<!-- ✅ MOVE IMAGE VIEWER OUTSIDE -->
+<div id="imageViewer" style="
 position:fixed;
 top:0;
 left:0;
@@ -8747,21 +8900,11 @@ flex-direction:column;
 z-index:9999999;
 ">
 
-  <div style="
-    padding:12px;
-    color:white;
-    background:#111;
-    font-size:16px;
-  ">
+  <div style="padding:12px;color:white;background:#111;">
     <span onclick="closeImageViewer()" style="cursor:pointer;">⬅ Back</span>
   </div>
 
-  <div style="
-    flex:1;
-    display:flex;
-    justify-content:center;
-    align-items:center;
-  ">
+  <div style="flex:1;display:flex;justify-content:center;align-items:center;">
     <img id="fullImage" style="max-width:100%;max-height:100%;">
   </div>
 
