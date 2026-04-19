@@ -42,7 +42,120 @@
 // ================= FIREBASE IMPORTS =================
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
 
+import {<script type="module">
+
+// ================= FIREBASE IMPORTS =================
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+
 import {
+  getFirestore,
+  collection,
+  addDoc,
+  onSnapshot,
+  query,
+  orderBy,
+  serverTimestamp,
+  getDocs,
+  deleteDoc,
+  doc,          // ✅ REQUIRED
+  setDoc,       // ✅ REQUIRED
+  updateDoc     // ✅ REQUIRED
+} from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+
+import {
+  getStorage,
+  ref,
+  uploadBytes,
+  getDownloadURL
+} from "https://www.gstatic.com/firebasejs/10.12.0/firebase-storage.js";
+
+
+// ================= CONFIG =================
+const firebaseConfig = {
+  apiKey: "AIzaSyCKLIJC0Mkjg7hjp7Kr5_FYQq704f4oZnY",
+  authDomain: "command-centre-86f62.firebaseapp.com",
+  projectId: "command-centre-86f62",
+  storageBucket: "command-centre-86f62.firebasestorage.app",
+  messagingSenderId: "692498208499",
+  appId: "1:692498208499:web:34defc152a3b3411e64986"
+};
+
+
+// ================= INIT =================
+const app = initializeApp(firebaseConfig);
+
+// ================= GLOBAL ACCESS =================
+window.db = getFirestore(app);
+window.storage = getStorage(app);
+
+
+// ================= GLOBAL FIREBASE OBJECT =================
+window.fb = {
+  collection,
+  addDoc,
+  onSnapshot,
+  query,
+  orderBy,
+  serverTimestamp,
+  getDocs,
+  deleteDoc,
+  doc,        // 🔥 for online users
+  setDoc,     // 🔥 for online status
+  updateDoc,  // 🔥 for message status
+  ref,
+  uploadBytes,
+  getDownloadURL
+};
+
+console.log("🔥 Firebase FULLY READY");
+
+
+// ================= AUTO CLEAN FUNCTION =================
+async function cleanOldMessages(){
+
+  try {
+
+    const cutoff = Date.now() - (2 * 24 * 60 * 60 * 1000); // 2 days
+
+    const chatRef = collection(window.db, "patrol_chat");
+
+    const snapshot = await getDocs(chatRef);
+
+    if(snapshot.empty){
+      console.log("🧹 No old messages to clean");
+      return;
+    }
+
+    snapshot.forEach(async (docSnap) => {
+
+      const m = docSnap.data();
+
+      if(m.time && m.time.toMillis && m.time.toMillis() < cutoff){
+
+        try {
+          await deleteDoc(docSnap.ref);
+          console.log("🗑 Deleted old message");
+        } catch(e){
+          console.warn("⚠️ Delete failed:", e);
+        }
+
+      }
+
+    });
+
+  } catch(err){
+    console.error("❌ Clean error:", err);
+  }
+}
+
+
+// ================= RUN CLEAN ON LOAD =================
+setTimeout(() => {
+  cleanOldMessages();
+}, 3000); // delay ensures Firebase ready
+
+
+</script>
   getFirestore,
   collection,
   addDoc,
@@ -7361,9 +7474,13 @@ window.addEventListener("online", function(){
 // ================= CHAT TOGGLE =================
 // ================= CHAT TOGGLE =================
 // ================= STATE =================
+// ================= STATE =================
 let unreadCount = 0;
 let lastMsgTime = 0;
 let typingTimer;
+
+// 🔥 ONLINE STATE
+let onlineRef;
 
 
 // ================= TOGGLE =================
@@ -7376,7 +7493,7 @@ function toggleChat(){
     ui.style.display = "flex";
     unreadCount = 0;
     updateBadge();
-    markMessagesRead(); // ✅ mark read
+    markMessagesRead();
   }
 }
 
@@ -7384,6 +7501,52 @@ function toggleChat(){
 // ================= COLLECTION =================
 function getChatCollection(){
   return window.fb.collection(window.db, "patrol_chat");
+}
+
+
+// ================= ONLINE STATUS =================
+async function setOnline(){
+
+  const user = window.userProfile.rawName;
+
+  onlineRef = window.fb.doc(window.db, "online_users", user);
+
+  await window.fb.setDoc(onlineRef, {
+    user,
+    lastSeen: Date.now(),
+    online: true
+  });
+
+  window.addEventListener("beforeunload", async () => {
+    await window.fb.setDoc(onlineRef, {
+      user,
+      lastSeen: Date.now(),
+      online: false
+    });
+  });
+}
+
+
+// ================= LISTEN ONLINE =================
+function listenOnline(){
+
+  const ref = window.fb.collection(window.db, "online_users");
+
+  window.fb.onSnapshot(ref, snap => {
+
+    let statusText = "";
+
+    snap.forEach(doc => {
+      const d = doc.data();
+
+      if(d.user !== window.userProfile.rawName){
+        statusText += `${d.user} - ${d.online ? "🟢 Online" : "Last seen: " + new Date(d.lastSeen).toLocaleTimeString()}<br>`;
+      }
+    });
+
+    const box = document.getElementById("typingIndicator");
+    if(box && !box.innerText) box.innerHTML = statusText;
+  });
 }
 
 
@@ -7406,41 +7569,28 @@ async function sendMessage(){
 }
 
 
-// ================= TYPING =================
-function typing(){
-  window.fb.addDoc(window.fb.collection(window.db, "typing"), {
-    user: window.userProfile.rawName,
-    time: Date.now()
-  });
-
-  clearTimeout(typingTimer);
-  typingTimer = setTimeout(()=>{}, 2000);
-}
-
-
 // ================= IMAGE COMPRESS =================
 function compressImage(file){
   return new Promise(resolve => {
+
     const img = new Image();
     const reader = new FileReader();
 
     reader.onload = e => img.src = e.target.result;
 
     img.onload = () => {
+
       const canvas = document.createElement("canvas");
       const ctx = canvas.getContext("2d");
 
-      const maxWidth = 800;
-      const scale = maxWidth / img.width;
+      const scale = 800 / img.width;
 
-      canvas.width = maxWidth;
+      canvas.width = 800;
       canvas.height = img.height * scale;
 
       ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
 
-      canvas.toBlob(blob => {
-        resolve(blob);
-      }, "image/jpeg", 0.6);
+      canvas.toBlob(blob => resolve(blob), "image/jpeg", 0.6);
     };
 
     reader.readAsDataURL(file);
@@ -7450,6 +7600,7 @@ function compressImage(file){
 
 // ================= SEND PHOTO =================
 async function sendPhoto(e){
+
   const file = e.target.files[0];
   if(!file) return;
 
@@ -7475,141 +7626,79 @@ async function sendPhoto(e){
 }
 
 
-// ================= LOCATION =================
-function sendLocation(){
-  navigator.geolocation.getCurrentPosition(async pos => {
+// ================= IMAGE GALLERY =================
+let images = [];
+let currentIndex = 0;
 
-    await window.fb.addDoc(getChatCollection(), {
-      type: "location",
-      lat: pos.coords.latitude,
-      lng: pos.coords.longitude,
-      user: window.userProfile.rawName,
-      phone: window.userProfile.phone,
-      time: window.fb.serverTimestamp(),
-      status: "sent"
-    });
+function openImageViewer(url){
 
+  const viewer = document.getElementById("imageViewer");
+  const img = document.getElementById("fullImage");
+
+  images = Array.from(document.querySelectorAll("#chatMessages img")).map(i => i.src);
+  currentIndex = images.indexOf(url);
+
+  viewer.style.display = "flex";
+  img.src = url;
+}
+
+
+// SWIPE
+let startX = 0;
+
+function initSwipe(){
+
+  const img = document.getElementById("fullImage");
+
+  img.addEventListener("touchstart", e => {
+    startX = e.touches[0].clientX;
+  });
+
+  img.addEventListener("touchend", e => {
+
+    let endX = e.changedTouches[0].clientX;
+
+    if(startX - endX > 50){
+      nextImage();
+    }
+
+    if(endX - startX > 50){
+      prevImage();
+    }
   });
 }
 
 
-// ================= VOICE MESSAGE =================
-// ================= VOICE STATE =================
-let mediaRecorder;
-let audioChunks = [];
-let isRecording = false;
+function nextImage(){
+  if(currentIndex < images.length - 1){
+    currentIndex++;
+    document.getElementById("fullImage").src = images[currentIndex];
+  }
+}
 
-
-// ================= START VOICE =================
-async function startVoice(){
-
-  try {
-
-    if(isRecording) return; // prevent double start
-
-    const indicator = document.getElementById("recordingIndicator");
-    if(indicator) indicator.style.display = "block";
-
-    const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-
-    mediaRecorder = new MediaRecorder(stream);
-    audioChunks = [];
-    isRecording = true;
-
-    mediaRecorder.ondataavailable = e => {
-      if(e.data.size > 0){
-        audioChunks.push(e.data);
-      }
-    };
-
-    mediaRecorder.start();
-
-    console.log("🎤 Recording started");
-
-  } catch(err){
-    console.error("❌ Mic error:", err);
-    alert("Microphone permission denied");
+function prevImage(){
+  if(currentIndex > 0){
+    currentIndex--;
+    document.getElementById("fullImage").src = images[currentIndex];
   }
 }
 
 
-// ================= STOP VOICE =================
-function stopVoice(){
+// ZOOM
+function enableZoom(){
 
-  if(!mediaRecorder || !isRecording) return;
+  const img = document.getElementById("fullImage");
 
-  const indicator = document.getElementById("recordingIndicator");
-  if(indicator) indicator.style.display = "none";
+  img.style.transition = "transform 0.2s";
 
-  isRecording = false;
-
-  mediaRecorder.stop();
-
-  mediaRecorder.onstop = async () => {
-
-    try {
-
-      if(audioChunks.length === 0){
-        console.warn("⚠️ Empty recording skipped");
-        return;
-      }
-
-      // 🔥 CORRECT FORMAT
-      const blob = new Blob(audioChunks, { type: "audio/webm" });
-
-      const fileRef = window.fb.ref(
-        window.storage,
-        "chat_audio/" + Date.now() + ".webm"
-      );
-
-      await window.fb.uploadBytes(fileRef, blob);
-
-      const url = await window.fb.getDownloadURL(fileRef);
-
-      await window.fb.addDoc(getChatCollection(), {
-        type: "audio",
-        audioUrl: url,
-        user: window.userProfile.rawName,
-        phone: window.userProfile.phone,
-        time: window.fb.serverTimestamp(),
-        status: "sent"
-      });
-
-      console.log("✅ Voice message sent");
-
-    } catch(err){
-      console.error("❌ Voice upload error:", err);
-      alert("Voice upload failed");
-    }
-
-    audioChunks = [];
+  img.onclick = () => {
+    img.style.transform = img.style.transform === "scale(2)" ? "scale(1)" : "scale(2)";
   };
 }
 
 
-// ================= FORMAT TIME =================
-function formatTime(ts){
-  if(!ts) return "";
-  const d = new Date(ts.seconds * 1000);
-  return d.toLocaleTimeString([], {hour:"2-digit", minute:"2-digit"});
-}
-
-
-// ================= DOWNLOAD IMAGE =================
-function downloadImage(url){
-  const a = document.createElement("a");
-  a.href = url;
-  a.download = "photo.jpg";
-  a.click();
-}
-
-
-// ================= STATUS ICON =================
-function getStatusIcon(status){
-  if(status === "sent") return "✔";
-  if(status === "delivered") return "✔✔";
-  if(status === "read") return "✔✔";
-  return "";
+function closeImageViewer(){
+  document.getElementById("imageViewer").style.display = "none";
 }
 
 
@@ -7630,9 +7719,8 @@ function startChat(){
 
       const m = doc.data();
 
-      // auto mark delivered
       if(m.status === "sent"){
-        doc.ref.update({status:"delivered"});
+        window.fb.updateDoc(doc.ref, {status:"delivered"});
       }
 
       renderMessage(m);
@@ -7649,10 +7737,14 @@ function startChat(){
       }
     });
 
-    box.scrollTop = box.scrollHeight;
+    setTimeout(()=>{
+      box.scrollTop = box.scrollHeight;
+    },50);
+
   });
 
   listenTyping();
+  listenOnline();
 }
 
 
@@ -7666,67 +7758,38 @@ function renderMessage(m){
   div.style.margin = "6px";
   div.style.padding = "10px";
   div.style.borderRadius = "12px";
-  div.style.fontSize = "14px";
-  div.style.lineHeight = "1.4";
 
   if(isMe){
     div.style.background = "#4caf50";
-    div.style.color = "#000"; // 🔥 FIX readability
+    div.style.color = "#000";
     div.style.marginLeft = "auto";
   } else {
-    div.style.background = "#263238"; // 🔥 FIX better contrast
+    div.style.background = "#263238";
     div.style.color = "#fff";
   }
 
-  // 🔥 CALL BUTTON (RESTORED)
   const name = `
-    <b onclick="callUser('${m.phone}')" 
-    style="cursor:pointer;color:#ffd54f;">
+    <b onclick="callUser('${m.phone}')" style="cursor:pointer;color:#ffd54f;">
       📞 ${m.user}
     </b><br>
   `;
 
   let content = "";
 
-  // TEXT
-  if(m.type === "text"){
-    content = `<div>${m.text}</div>`;
-  }
+  if(m.type === "text") content = m.text;
 
-  // IMAGE (FIXED VIEW + BACK)
   if(m.type === "image"){
-    content = `
-      <img src="${m.imageUrl}" 
-        onclick="openImageViewer('${m.imageUrl}')"
-        style="
-          width:150px;
-          border-radius:10px;
-          cursor:pointer;
-          display:block;
-          margin-top:5px;
-        ">
-      <div style="font-size:10px;color:#ccc;">Tap to view</div>
-    `;
+    content = `<img src="${m.imageUrl}" onclick="openImageViewer('${m.imageUrl}')" style="width:150px;border-radius:10px;">`;
   }
 
-  // LOCATION
-  if(m.type === "location"){
-    content = `
-      📍 <a href="https://maps.google.com/?q=${m.lat},${m.lng}" 
-      target="_blank" style="color:#4fc3f7;">
-      Open Location</a>
-    `;
-  }
-
-  // AUDIO
   if(m.type === "audio"){
-    content = `<audio controls src="${m.audioUrl}" style="width:100%;"></audio>`;
+    content = `<audio controls src="${m.audioUrl}" style="width:100%;max-width:200px;"></audio>`;
   }
 
   div.innerHTML = `
     ${name}
     ${content}
-    <div style="font-size:10px;opacity:0.7;margin-top:4px;">
+    <div style="font-size:10px;opacity:0.7;">
       ${formatTime(m.time)} ${getStatusIcon(m.status)}
     </div>
   `;
@@ -7734,67 +7797,14 @@ function renderMessage(m){
   document.getElementById("chatMessages").appendChild(div);
 }
 
-// ================= READ =================
-async function markMessagesRead(){
 
-  const snapshot = await window.fb.getDocs(getChatCollection());
-
-  snapshot.forEach(doc => {
-    const m = doc.data();
-    if(m.status !== "read"){
-      doc.ref.update({status:"read"});
-    }
-  });
-}
-
-
-// ================= TYPING LISTENER =================
-function listenTyping(){
-
-  const ref = window.fb.collection(window.db, "typing");
-
-  window.fb.onSnapshot(ref, snap => {
-
-    const box = document.getElementById("typingIndicator");
-
-    let found = false;
-
-    snap.forEach(d=>{
-      const data = d.data();
-
-      if(data.user !== window.userProfile.rawName &&
-         Date.now() - data.time < 3000){
-        found = true;
-      }
-    });
-
-    box.innerText = found ? "Typing..." : "";
-  });
-}
-
-
-// ================= BADGE =================
-function updateBadge(){
-  const badge = document.getElementById("chatBadge");
-  badge.innerText = unreadCount;
-  badge.style.display = unreadCount > 0 ? "block" : "none";
-}
-
-
-// ================= NOTIFICATION =================
-function playNotification(){
-  const audio = new Audio("https://actions.google.com/sounds/v1/alarms/notification.ogg");
-  audio.play().catch(()=>{});
-} 
-
-    function openImageViewer(url){
-  document.getElementById("imageViewer").style.display = "flex";
-  document.getElementById("fullImage").src = url;
-}
-
-function closeImageViewer(){
-  document.getElementById("imageViewer").style.display = "none";
-}
+// ================= INIT =================
+setOnline();
+initSwipe();
+enableZoom(); 
+  
+  
+  
   </script>
 
   </div>
