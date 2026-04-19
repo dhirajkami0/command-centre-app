@@ -42,11 +42,6 @@
 // ================= FIREBASE IMPORTS =================
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
 
-import {<script type="module">
-
-// ================= FIREBASE IMPORTS =================
-import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
-
 import {
   getFirestore,
   collection,
@@ -57,9 +52,9 @@ import {
   serverTimestamp,
   getDocs,
   deleteDoc,
-  doc,          // ✅ REQUIRED
-  setDoc,       // ✅ REQUIRED
-  updateDoc     // ✅ REQUIRED
+  doc,
+  setDoc,
+  updateDoc
 } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
 
 import {
@@ -75,7 +70,10 @@ const firebaseConfig = {
   apiKey: "AIzaSyCKLIJC0Mkjg7hjp7Kr5_FYQq704f4oZnY",
   authDomain: "command-centre-86f62.firebaseapp.com",
   projectId: "command-centre-86f62",
+
+  // ✅ KEEPING YOUR WORKING BUCKET (AS REQUESTED)
   storageBucket: "command-centre-86f62.firebasestorage.app",
+
   messagingSenderId: "692498208499",
   appId: "1:692498208499:web:34defc152a3b3411e64986"
 };
@@ -91,6 +89,7 @@ window.storage = getStorage(app);
 
 // ================= GLOBAL FIREBASE OBJECT =================
 window.fb = {
+  // Firestore
   collection,
   addDoc,
   onSnapshot,
@@ -99,15 +98,17 @@ window.fb = {
   serverTimestamp,
   getDocs,
   deleteDoc,
-  doc,        // 🔥 for online users
-  setDoc,     // 🔥 for online status
-  updateDoc,  // 🔥 for message status
+  doc,
+  setDoc,
+  updateDoc,
+
+  // Storage
   ref,
   uploadBytes,
   getDownloadURL
 };
 
-console.log("🔥 Firebase FULLY READY");
+console.log("🔥 Firebase FULLY READY (CLEAN)");
 
 
 // ================= AUTO CLEAN FUNCTION =================
@@ -118,11 +119,10 @@ async function cleanOldMessages(){
     const cutoff = Date.now() - (2 * 24 * 60 * 60 * 1000); // 2 days
 
     const chatRef = collection(window.db, "patrol_chat");
-
     const snapshot = await getDocs(chatRef);
 
     if(snapshot.empty){
-      console.log("🧹 No old messages to clean");
+      console.log("🧹 No old messages");
       return;
     }
 
@@ -134,9 +134,9 @@ async function cleanOldMessages(){
 
         try {
           await deleteDoc(docSnap.ref);
-          console.log("🗑 Deleted old message");
+          console.log("🗑 Old message deleted");
         } catch(e){
-          console.warn("⚠️ Delete failed:", e);
+          console.warn("⚠ Delete failed:", e);
         }
 
       }
@@ -149,66 +149,10 @@ async function cleanOldMessages(){
 }
 
 
-// ================= RUN CLEAN ON LOAD =================
-
-
-</script>
-  getFirestore,
-  collection,
-  addDoc,
-  onSnapshot,
-  query,
-  orderBy,
-  serverTimestamp,
-  getDocs,      // 🔥 ADD
-  deleteDoc     // 🔥 ADD
-} from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
-import {
-  getStorage,
-  ref,
-  uploadBytes,        // ✅ FIXED
-  getDownloadURL
-} from "https://www.gstatic.com/firebasejs/10.12.0/firebase-storage.js";
-
-
-// ================= CONFIG =================
-const firebaseConfig = {
-  apiKey: "AIzaSyCKLIJC0Mkjg7hjp7Kr5_FYQq704f4oZnY",
-  authDomain: "command-centre-86f62.firebaseapp.com",
-  projectId: "command-centre-86f62",
-  storageBucket: "command-centre-86f62.firebasestorage.app",
-  messagingSenderId: "692498208499",
-  appId: "1:692498208499:web:34defc152a3b3411e64986"
-};
-
-
-// ================= INIT =================
-const app = initializeApp(firebaseConfig);
-
-// 🔥 GLOBAL ACCESS
-window.db = getFirestore(app);
-window.storage = getStorage(app);
-
-// 🔥 GLOBAL FUNCTIONS (IMPORTANT)
-window.fb = {
-  collection,
-  addDoc,
-  onSnapshot,
-  query,
-  orderBy,
-  serverTimestamp,
-  getDocs,      // 🔥 ADD
-  deleteDoc,    // 🔥 ADD
-  ref,
-  uploadBytes,
-  getDownloadURL
-};
-console.log("🔥 Firebase FULLY READY");
-
-  // ================= AUTO CLEAN =================
+// ================= MAKE GLOBAL =================
+window.cleanOldMessages = cleanOldMessages;
 
 </script>
-
 
   
   <title>GreenGuard</title>
