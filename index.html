@@ -7431,7 +7431,78 @@ function isFirebaseReady(){
   }
   return true;
 }
+// ================= BADGE =================
+function updateBadge(){
+  const badge = document.getElementById("chatBadge");
+  if(!badge) return;
 
+  badge.innerText = unreadCount;
+  badge.style.display = unreadCount > 0 ? "block" : "none";
+}
+
+
+// ================= NOTIFICATION =================
+function playNotification(){
+  try{
+    const audio = new Audio("https://actions.google.com/sounds/v1/alarms/notification.ogg");
+    audio.play().catch(()=>{});
+  }catch(e){}
+}
+
+
+// ================= FORMAT TIME =================
+function formatTime(ts){
+  if(!ts) return "";
+
+  try{
+    const d = ts.seconds ? new Date(ts.seconds * 1000) : new Date(ts);
+    return d.toLocaleTimeString([], {hour:"2-digit", minute:"2-digit"});
+  }catch(e){
+    return "";
+  }
+}
+
+
+// ================= STATUS ICON =================
+function getStatusIcon(status){
+  if(status === "sent") return "✔";
+  if(status === "delivered") return "✔✔";
+  if(status === "read") return "✔✔";
+  return "";
+}
+
+
+// ================= READ =================
+async function markMessagesRead(){
+
+  try {
+
+    const col = getChatCollection();
+    if(!col) return;
+
+    const snapshot = await window.fb.getDocs(col);
+
+    snapshot.forEach(doc => {
+      const m = doc.data();
+      if(m.status !== "read"){
+        window.fb.updateDoc(doc.ref, {status:"read"});
+      }
+    });
+
+  } catch(e){
+    console.error("❌ markMessagesRead:", e);
+  }
+}
+
+
+// ================= CALL =================
+function callUser(phone){
+  if(!phone){
+    alert("No phone number");
+    return;
+  }
+  window.location.href = "tel:" + phone;
+}
 
 // ================= TOGGLE =================
 function toggleChat(){
