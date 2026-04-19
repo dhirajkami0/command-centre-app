@@ -7827,9 +7827,15 @@ function renderMessage(docId, m){
   box.appendChild(div);
 }
 // ================= DELETE MENU =================
+// ================= DELETE OPTIONS =================
 function showDeleteOptions(docId, m, isMe, isAdmin){
 
   try {
+
+    if(!docId){
+      console.warn("❌ No docId");
+      return;
+    }
 
     let msg = "Choose:\n";
 
@@ -7844,16 +7850,34 @@ function showDeleteOptions(docId, m, isMe, isAdmin){
     const choice = prompt(msg);
     if(!choice) return;
 
-    if(choice === "1" && isMe){
-      deleteForMe(docId);
-    }
+    switch(choice){
 
-    if(choice === "2" && isMe){
-      deleteForEveryone(docId);
-    }
+      case "1":
+        if(isMe){
+          deleteForMe(docId);
+        } else {
+          alert("❌ Not allowed");
+        }
+        break;
 
-    if(choice === "3" && isAdmin){
-      adminDelete(docId);
+      case "2":
+        if(isMe){
+          deleteForEveryone(docId);
+        } else {
+          alert("❌ Not allowed");
+        }
+        break;
+
+      case "3":
+        if(isAdmin){
+          adminDelete(docId);
+        } else {
+          alert("❌ Not admin");
+        }
+        break;
+
+      default:
+        console.warn("⚠ Invalid choice");
     }
 
   } catch(e){
@@ -7867,12 +7891,13 @@ async function deleteForMe(docId){
 
   try {
 
-    if(!window.fb || !window.db){
+    if(!window.isFirebaseReady()){
       console.warn("⏳ Firebase not ready");
       return;
     }
 
     const user = window.userProfile?.rawName;
+
     if(!user){
       console.warn("❌ No userProfile");
       return;
@@ -7897,7 +7922,7 @@ async function deleteForEveryone(docId){
 
   try {
 
-    if(!window.fb || !window.db){
+    if(!window.isFirebaseReady()){
       console.warn("⏳ Firebase not ready");
       return;
     }
@@ -7910,7 +7935,8 @@ async function deleteForEveryone(docId){
       imageUrl: "",
       audioUrl: "",
       lat: null,
-      lng: null
+      lng: null,
+      status: "deleted"
     });
 
     console.log("🚫 Deleted for everyone");
@@ -7926,12 +7952,12 @@ async function adminDelete(docId){
 
   try {
 
-    if(!window.fb || !window.db){
+    if(!window.isFirebaseReady()){
       console.warn("⏳ Firebase not ready");
       return;
     }
 
-    const ok = confirm("Admin delete permanently?");
+    const ok = confirm("⚠ Admin delete permanently?");
     if(!ok) return;
 
     const ref = window.fb.doc(window.db, "patrol_chat", docId);
@@ -7943,8 +7969,7 @@ async function adminDelete(docId){
   } catch(e){
     console.error("❌ adminDelete:", e);
   }
-}
-    
+}    
 // ================= REALTIME =================
 let chatUnsubscribe = null;
 
