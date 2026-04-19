@@ -7830,6 +7830,47 @@ function startChat(){
     console.error("❌ startChat:", e);
   }
 } 
+
+    function openImageViewer(url){
+
+  let viewer = document.getElementById("imageViewer");
+
+  // create if not exists
+  if(!viewer){
+    viewer = document.createElement("div");
+    viewer.id = "imageViewer";
+    viewer.style = `
+      position:fixed;
+      top:0;left:0;
+      width:100%;height:100%;
+      background:black;
+      display:flex;
+      flex-direction:column;
+      z-index:9999999;
+    `;
+
+    viewer.innerHTML = `
+      <div style="padding:10px;color:white;background:#111;">
+        <span onclick="closeImageViewer()" style="cursor:pointer;">⬅ Back</span>
+      </div>
+      <div style="flex:1;display:flex;justify-content:center;align-items:center;">
+        <img id="fullImage" style="max-width:100%;max-height:100%;">
+      </div>
+    `;
+
+    document.body.appendChild(viewer);
+  }
+
+  viewer.style.display = "flex";
+  document.getElementById("fullImage").src = url;
+}
+
+
+function closeImageViewer(){
+  const viewer = document.getElementById("imageViewer");
+  if(viewer) viewer.style.display = "none";
+}
+
   
   </script>
 
