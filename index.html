@@ -8292,15 +8292,19 @@ function stopVoice(){
     console.error("❌ stopVoice:", e);
   }
 }
-    function openCamera(){
-  const input = document.getElementById("photoInput");
-  input.setAttribute("capture", "environment"); // back camera
+   function openCamera(){
+
+  const input = document.getElementById("cameraInput");
+
+  input.value = ""; // 🔥 reset
   input.click();
 }
 
 function openGallery(){
-  const input = document.getElementById("photoInput");
-  input.removeAttribute("capture"); // gallery
+
+  const input = document.getElementById("galleryInput");
+
+  input.value = ""; // 🔥 reset
   input.click();
 }
   
@@ -9022,17 +9026,20 @@ overflow:hidden;
       ">
 
    <!-- HIDDEN INPUT -->
-<input type="file" id="photoInput"
+<!-- CAMERA INPUT -->
+<input type="file" id="cameraInput"
   accept="image/*"
+  capture="environment"
   style="display:none"
   onchange="sendPhoto(event)">
 
-<!-- CAMERA BUTTON -->
-<button onclick="openCamera()">📸</button>
-
-<!-- GALLERY BUTTON -->
-<button onclick="openGallery()">🖼</button>
-<button onclick="sendLocation()" style="width:40px;height:40px;flex-shrink:0;background:#2e7d32;color:white;border:none;border-radius:6px;">📍</button>
+<!-- GALLERY INPUT -->
+<input type="file" id="galleryInput"
+  accept="image/*"
+  style="display:none"
+  onchange="sendPhoto(event)">
+    
+    <button onclick="sendLocation()" style="width:40px;height:40px;flex-shrink:0;background:#2e7d32;color:white;border:none;border-radius:6px;">📍</button>
 
     <button 
       ontouchstart="startVoice()" 
