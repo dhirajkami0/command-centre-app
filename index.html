@@ -7706,7 +7706,7 @@ async function sendPhoto(e){
     console.error("❌ sendPhoto:", e);
   }
 }
-function renderMessage(m, docId){
+function renderMessage(docId, m){
 
   const box = document.getElementById("chatMessages");
   if(!box) return;
@@ -7727,6 +7727,8 @@ function renderMessage(m, docId){
   div.style.padding = "10px";
   div.style.borderRadius = "12px";
   div.style.fontSize = "14px";
+  div.style.cursor = "pointer";
+  div.style.userSelect = "none";
 
   if(isMe){
     div.style.background = "#4caf50";
@@ -7737,14 +7739,16 @@ function renderMessage(m, docId){
     div.style.color = "#fff";
   }
 
-  // 🔥 LONG PRESS / RIGHT CLICK MENU
+  // 🔥 LONG PRESS / RIGHT CLICK DELETE MENU
   if(isMe || isAdmin){
 
+    // Desktop right click
     div.oncontextmenu = (e)=>{
       e.preventDefault();
       showDeleteOptions(docId, m, isMe, isAdmin);
     };
 
+    // Mobile long press
     div.ontouchstart = ()=>{
       div._pressTimer = setTimeout(()=>{
         showDeleteOptions(docId, m, isMe, isAdmin);
@@ -7754,8 +7758,13 @@ function renderMessage(m, docId){
     div.ontouchend = ()=>{
       clearTimeout(div._pressTimer);
     };
+
+    div.ontouchmove = ()=>{
+      clearTimeout(div._pressTimer);
+    };
   }
 
+  // 📞 CALLABLE NAME
   const name = `
     <b onclick="callUser('${m.phone}')"
        style="cursor:pointer;color:#ffd54f;">
@@ -7765,16 +7774,18 @@ function renderMessage(m, docId){
 
   let content = "";
 
-  // 🔥 IF DELETED FOR EVERYONE
+  // 🚫 DELETED FOR EVERYONE
   if(m.deleted){
     content = `<i style="opacity:0.7;">🚫 Message deleted</i>`;
   }
   else {
 
+    // TEXT
     if(m.type === "text"){
-      content = `<div>${m.text}</div>`;
+      content = `<div style="word-break:break-word;">${m.text}</div>`;
     }
 
+    // IMAGE
     if(m.type === "image"){
       content = `
         <img src="${m.imageUrl}"
@@ -7783,6 +7794,7 @@ function renderMessage(m, docId){
       `;
     }
 
+    // AUDIO
     if(m.type === "audio"){
       content = `
         <audio controls src="${m.audioUrl}"
@@ -7790,6 +7802,7 @@ function renderMessage(m, docId){
       `;
     }
 
+    // LOCATION
     if(m.type === "location"){
       content = `
         📍 <a href="https://maps.google.com/?q=${m.lat},${m.lng}" target="_blank">
@@ -7798,8 +7811,9 @@ function renderMessage(m, docId){
     }
   }
 
+  // 🕒 TIME
   const time = m.time?.seconds
-    ? new Date(m.time.seconds * 1000).toLocaleTimeString()
+    ? new Date(m.time.seconds * 1000).toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'})
     : "";
 
   div.innerHTML = `
@@ -7812,7 +7826,6 @@ function renderMessage(m, docId){
 
   box.appendChild(div);
 }
-
 // ================= DELETE MENU =================
 function showDeleteOptions(docId, m, isMe, isAdmin){
 
@@ -7949,9 +7962,9 @@ function startChat(){
     if(!col) return;
 
     // 🔥 prevent duplicate listeners
-    if(chatUnsubscribe){
-      chatUnsubscribe();
-      chatUnsubscribe = null;
+    if(window.chatUnsubscribe){
+      window.chatUnsubscribe();
+      window.chatUnsubscribe = null;
     }
 
     const q = window.fb.query(
@@ -7959,25 +7972,32 @@ function startChat(){
       window.fb.orderBy("time", "asc")
     );
 
-    chatUnsubscribe = window.fb.onSnapshot(q, snapshot => {
+    window.chatUnsubscribe = window.fb.onSnapshot(q, snapshot => {
 
       const box = document.getElementById("chatMessages");
       if(!box) return;
 
       box.innerHTML = "";
 
+      const currentUser = window.userProfile?.rawName;
+
       snapshot.forEach(docSnap => {
 
         const m = docSnap.data();
         const docId = docSnap.id;
 
-        // 🔥 DELIVERY STATUS UPDATE
-        if(m.status === "sent"){
+        // 🚫 skip deleted for me
+        if(m.deletedFor && m.deletedFor.includes(currentUser)){
+          return;
+        }
+
+        // 🔥 DELIVERY STATUS (safe)
+        if(m.status === "sent" && m.user !== currentUser){
           window.fb.updateDoc(docSnap.ref, { status: "delivered" });
         }
 
-        // 🔥 RENDER WITH docId (IMPORTANT FOR DELETE SYSTEM)
-        renderMessage(m, docId);
+        // 🔥 FIXED PARAM ORDER
+        renderMessage(docId, m);
 
         // 🔔 UNREAD + NOTIFICATION
         if(m.time && m.time.seconds > lastMsgTime){
@@ -7991,8 +8011,7 @@ function startChat(){
           lastMsgTime = m.time.seconds;
         }
 
-        // 🔥 MARK AS READ (ONLY OTHERS' MESSAGES)
-        const currentUser = window.userProfile?.rawName;
+        // 🔥 MARK AS READ (only others)
         if(m.user !== currentUser && m.status !== "read"){
           window.fb.updateDoc(docSnap.ref, { status: "read" });
         }
@@ -8010,7 +8029,7 @@ function startChat(){
     listenOnline();
     setOnline();
 
-    console.log("✅ Chat started (updated)");
+    console.log("✅ Chat started (final)");
 
   } catch(e){
     console.error("❌ startChat:", e);
@@ -8909,7 +8928,39 @@ z-index:9999999;
   </div>
 
 </div>
+<div id="deleteMenu" style="
+position:fixed;
+bottom:80px;
+left:50%;
+transform:translateX(-50%);
+background:#1b5e20;
+color:white;
+padding:12px;
+border-radius:10px;
+display:none;
+z-index:9999999;
+box-shadow:0 4px 10px rgba(0,0,0,0.5);
+">
 
+  <div style="margin-bottom:8px;">Choose:</div>
+
+  <button onclick="handleDelete('me')" style="display:block;margin:5px;width:100%;">
+    1 = Delete for me
+  </button>
+
+  <button onclick="handleDelete('all')" style="display:block;margin:5px;width:100%;">
+    2 = Delete for everyone
+  </button>
+
+  <button onclick="handleDelete('admin')" style="display:block;margin:5px;width:100%;">
+    3 = Admin delete
+  </button>
+
+  <button onclick="closeDeleteMenu()" style="margin-top:8px;width:100%;">
+    Cancel
+  </button>
+
+</div>
 </body>
 
 </html>
