@@ -3638,13 +3638,13 @@ function syncOfflineMoves(){
 
   function loadStaff(){
 
+  callBackend("getMapData")
+.then(function(data){
+
+  // 🔥 CLEAR ONLY WHEN DATA IS READY
   staffLayer.clearLayers();
 
-  callBackend("getMapData")   // 🔥 CHANGED (ONLY THIS)
-  .then(function(data){
-
-    if(!data) return;
-
+  if(!data) return;
     const staff = data.filter(s=>s.type==="Staff");
 
     /* 🔥 GROUP SAME LOCATION */
