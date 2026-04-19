@@ -7358,11 +7358,15 @@ window.addEventListener("online", function(){
 // ================= GLOBAL =================
 // ================= CHAT TOGGLE =================
 // ================= CHAT TOGGLE =================
+// ================= STATE =================
 let unreadCount = 0;
+let lastMsgTime = 0;
+let typingTimer;
 
+
+// ================= TOGGLE =================
 function toggleChat(){
   const ui = document.getElementById("chatUI");
-  if(!ui) return;
 
   if(ui.style.display === "flex"){
     ui.style.display = "none";
@@ -7370,6 +7374,7 @@ function toggleChat(){
     ui.style.display = "flex";
     unreadCount = 0;
     updateBadge();
+    markMessagesRead(); // ✅ mark read
   }
 }
 
@@ -7383,8 +7388,6 @@ function getChatCollection(){
 // ================= SEND TEXT =================
 async function sendMessage(){
   const input = document.getElementById("chatInput");
-  if(!input) return;
-
   const text = input.value.trim();
   if(!text) return;
 
@@ -7393,25 +7396,35 @@ async function sendMessage(){
     text,
     user: window.userProfile.rawName,
     phone: window.userProfile.phone,
-    time: window.fb.serverTimestamp()
+    time: window.fb.serverTimestamp(),
+    status: "sent"
   });
 
   input.value = "";
 }
 
 
-// ================= IMAGE COMPRESSION =================
+// ================= TYPING =================
+function typing(){
+  window.fb.addDoc(window.fb.collection(window.db, "typing"), {
+    user: window.userProfile.rawName,
+    time: Date.now()
+  });
+
+  clearTimeout(typingTimer);
+  typingTimer = setTimeout(()=>{}, 2000);
+}
+
+
+// ================= IMAGE COMPRESS =================
 function compressImage(file){
-
   return new Promise(resolve => {
-
     const img = new Image();
     const reader = new FileReader();
 
     reader.onload = e => img.src = e.target.result;
 
     img.onload = () => {
-
       const canvas = document.createElement("canvas");
       const ctx = canvas.getContext("2d");
 
@@ -7425,7 +7438,7 @@ function compressImage(file){
 
       canvas.toBlob(blob => {
         resolve(blob);
-      }, "image/jpeg", 0.6); // 🔥 compression
+      }, "image/jpeg", 0.6);
     };
 
     reader.readAsDataURL(file);
@@ -7435,7 +7448,6 @@ function compressImage(file){
 
 // ================= SEND PHOTO =================
 async function sendPhoto(e){
-
   const file = e.target.files[0];
   if(!file) return;
 
@@ -7455,7 +7467,8 @@ async function sendPhoto(e){
     imageUrl: url,
     user: window.userProfile.rawName,
     phone: window.userProfile.phone,
-    time: window.fb.serverTimestamp()
+    time: window.fb.serverTimestamp(),
+    status: "sent"
   });
 }
 
@@ -7470,16 +7483,84 @@ function sendLocation(){
       lng: pos.coords.longitude,
       user: window.userProfile.rawName,
       phone: window.userProfile.phone,
-      time: window.fb.serverTimestamp()
+      time: window.fb.serverTimestamp(),
+      status: "sent"
     });
 
   });
 }
 
 
-// ================= REALTIME =================
-let lastMsgTime = 0;
+// ================= VOICE MESSAGE =================
+let mediaRecorder;
+let audioChunks = [];
 
+async function startVoice(){
+
+  const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+
+  mediaRecorder = new MediaRecorder(stream);
+
+  mediaRecorder.start();
+
+  mediaRecorder.ondataavailable = e => {
+    audioChunks.push(e.data);
+  };
+
+  mediaRecorder.onstop = async () => {
+
+    const blob = new Blob(audioChunks, { type: "audio/mp3" });
+    audioChunks = [];
+
+    const ref = window.fb.ref(window.storage, "chat_audio/" + Date.now());
+
+    await window.fb.uploadBytes(ref, blob);
+
+    const url = await window.fb.getDownloadURL(ref);
+
+    await window.fb.addDoc(getChatCollection(), {
+      type: "audio",
+      audioUrl: url,
+      user: window.userProfile.rawName,
+      phone: window.userProfile.phone,
+      time: window.fb.serverTimestamp(),
+      status: "sent"
+    });
+  };
+}
+
+function stopVoice(){
+  mediaRecorder.stop();
+}
+
+
+// ================= FORMAT TIME =================
+function formatTime(ts){
+  if(!ts) return "";
+  const d = new Date(ts.seconds * 1000);
+  return d.toLocaleTimeString([], {hour:"2-digit", minute:"2-digit"});
+}
+
+
+// ================= DOWNLOAD IMAGE =================
+function downloadImage(url){
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = "photo.jpg";
+  a.click();
+}
+
+
+// ================= STATUS ICON =================
+function getStatusIcon(status){
+  if(status === "sent") return "✔";
+  if(status === "delivered") return "✔✔";
+  if(status === "read") return "✔✔";
+  return "";
+}
+
+
+// ================= REALTIME =================
 function startChat(){
 
   const q = window.fb.query(
@@ -7490,16 +7571,19 @@ function startChat(){
   window.fb.onSnapshot(q, snapshot => {
 
     const box = document.getElementById("chatMessages");
-    if(!box) return;
-
     box.innerHTML = "";
 
     snapshot.forEach(doc => {
 
       const m = doc.data();
+
+      // auto mark delivered
+      if(m.status === "sent"){
+        doc.ref.update({status:"delivered"});
+      }
+
       renderMessage(m);
 
-      // 🔔 Notification + unread
       if(m.time && m.time.seconds > lastMsgTime){
 
         if(document.getElementById("chatUI").style.display !== "flex"){
@@ -7514,6 +7598,8 @@ function startChat(){
 
     box.scrollTop = box.scrollHeight;
   });
+
+  listenTyping();
 }
 
 
@@ -7535,46 +7621,80 @@ function renderMessage(m){
     div.style.background = "#2a2a2a";
   }
 
-  const name = `
-    <b onclick="callUser('${m.phone}')" 
-    style="cursor:pointer;color:#ffd54f">
-    📞 ${m.user}
-    </b><br>
-  `;
+  let content = "";
 
   if(m.type === "text"){
-    div.innerHTML = name + m.text;
+    content = m.text;
   }
 
   if(m.type === "image"){
-    div.innerHTML = name + `<img src="${m.imageUrl}" style="width:150px;border-radius:10px;">`;
+    content = `<img src="${m.imageUrl}" 
+      onclick="downloadImage('${m.imageUrl}')" 
+      style="width:150px;border-radius:10px;cursor:pointer;">`;
   }
 
   if(m.type === "location"){
-    div.innerHTML = name + `
-      📍 <a href="https://maps.google.com/?q=${m.lat},${m.lng}" target="_blank">
-      Open Location</a>`;
+    content = `📍 <a href="https://maps.google.com/?q=${m.lat},${m.lng}" target="_blank">Open</a>`;
   }
+
+  if(m.type === "audio"){
+    content = `<audio controls src="${m.audioUrl}"></audio>`;
+  }
+
+  div.innerHTML = `
+    <b>${m.user}</b><br>
+    ${content}
+    <div style="font-size:10px;opacity:0.7;">
+      ${formatTime(m.time)} ${getStatusIcon(m.status)}
+    </div>
+  `;
 
   document.getElementById("chatMessages").appendChild(div);
 }
 
 
-// ================= CALL =================
-function callUser(phone){
-  if(!phone){
-    alert("No phone");
-    return;
-  }
-  window.location.href = "tel:" + phone;
+// ================= READ =================
+async function markMessagesRead(){
+
+  const snapshot = await window.fb.getDocs(getChatCollection());
+
+  snapshot.forEach(doc => {
+    const m = doc.data();
+    if(m.status !== "read"){
+      doc.ref.update({status:"read"});
+    }
+  });
+}
+
+
+// ================= TYPING LISTENER =================
+function listenTyping(){
+
+  const ref = window.fb.collection(window.db, "typing");
+
+  window.fb.onSnapshot(ref, snap => {
+
+    const box = document.getElementById("typingIndicator");
+
+    let found = false;
+
+    snap.forEach(d=>{
+      const data = d.data();
+
+      if(data.user !== window.userProfile.rawName &&
+         Date.now() - data.time < 3000){
+        found = true;
+      }
+    });
+
+    box.innerText = found ? "Typing..." : "";
+  });
 }
 
 
 // ================= BADGE =================
 function updateBadge(){
   const badge = document.getElementById("chatBadge");
-  if(!badge) return;
-
   badge.innerText = unreadCount;
   badge.style.display = unreadCount > 0 ? "block" : "none";
 }
