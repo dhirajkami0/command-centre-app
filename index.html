@@ -8479,11 +8479,13 @@ function closeImageViewer(){
 // ================= VOICE =================
 // ================= VOICE =================
 // ================= VOICE =================
+// ================= VOICE =================
 let mediaRecorder;
 let audioChunks = [];
-window.isRecording = false; // 🔥 global (important)
+window.isRecording = false; // 🔥 global state
 let recordTimer;
 let recordSeconds = 0;
+let currentStream = null; // 🔥 to stop mic properly
 
 
 // ================= START RECORD =================
@@ -8493,9 +8495,9 @@ async function startVoice(){
 
     if(window.isRecording) return;
 
-    const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+    currentStream = await navigator.mediaDevices.getUserMedia({ audio: true });
 
-    mediaRecorder = new MediaRecorder(stream);
+    mediaRecorder = new MediaRecorder(currentStream);
     audioChunks = [];
     window.isRecording = true;
 
@@ -8509,8 +8511,8 @@ async function startVoice(){
     }
 
     if(btn){
-      btn.style.background = "#d32f2f"; // 🔴 red
-      btn.innerText = "⏹"; // stop icon
+      btn.style.background = "#d32f2f";
+      btn.innerText = "⏹";
     }
 
     // ================= TIMER =================
@@ -8527,7 +8529,7 @@ async function startVoice(){
 
     // ================= DATA =================
     mediaRecorder.ondataavailable = e => {
-      if(e.data.size > 0){
+      if(e.data && e.data.size > 0){
         audioChunks.push(e.data);
       }
     };
@@ -8568,14 +8570,23 @@ function stopVoice(){
 
     clearInterval(recordTimer);
 
-    mediaRecorder.stop();
+    // 🔥 SAFE STOP (avoid crash)
+    if(mediaRecorder.state !== "inactive"){
+      mediaRecorder.stop();
+    }
+
+    // 🔥 STOP MIC STREAM (VERY IMPORTANT)
+    if(currentStream){
+      currentStream.getTracks().forEach(track => track.stop());
+      currentStream = null;
+    }
 
     // ================= ON STOP =================
     mediaRecorder.onstop = async () => {
 
       try {
 
-        if(audioChunks.length === 0){
+        if(!audioChunks || audioChunks.length === 0){
           console.warn("⚠ Empty audio skipped");
           return;
         }
@@ -8617,7 +8628,6 @@ function stopVoice(){
     console.error("❌ stopVoice:", e);
   }
 }
-
 
 // ================= CAMERA =================
 function openCamera(){
