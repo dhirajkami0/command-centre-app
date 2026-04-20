@@ -4965,18 +4965,18 @@ function submitKML(){
               throw new Error("Invalid server response");
             }
 
-            // ✅ FIX 1: Proper null check
             if (!data) {
               throw new Error("Empty server response");
             }
 
-            // ✅ FIX 2: Backend error handling
             if (data.error) {
-              console.error("❌ API ERROR:", data);
               throw new Error(data.message || "Analysis failed");
             }
 
             result = { type:"polygon", ...data };
+
+            // ✅🔥 CRITICAL FIX → SHOW ANALYSIS UI
+            showAnalysisResult(result);
 
           } catch(err){
 
@@ -4999,14 +4999,10 @@ function submitKML(){
             };
 
             showToast("Using offline estimate","warning");
-          }
-        }
 
-        // ================= UI =================
-        try {
-          showKMLResult(result);
-        } catch(e){
-          console.error("UI error:", e);
+            // ✅ ALSO SHOW FALLBACK RESULT
+            showAnalysisResult(result);
+          }
         }
 
         // ================= MAP =================
@@ -5015,14 +5011,15 @@ function submitKML(){
           const parser = new DOMParser();
           const xml = parser.parseFromString(kmlText, "text/xml");
 
-          if(window.previewKMLLayer && map?.hasLayer(previewKMLLayer)){
-            map.removeLayer(previewKMLLayer);
+          if(window.previewKMLLayer && map?.hasLayer(window.previewKMLLayer)){
+            map.removeLayer(window.previewKMLLayer);
           }
 
-          previewKMLLayer = new L.KML(xml);
-          previewKMLLayer.addTo(map);
+          // ✅ GLOBAL FIX
+          window.previewKMLLayer = new L.KML(xml);
+          window.previewKMLLayer.addTo(map);
 
-          const bounds = previewKMLLayer.getBounds();
+          const bounds = window.previewKMLLayer.getBounds();
 
           if(bounds && bounds.isValid()){
             map.fitBounds(bounds);
@@ -5030,15 +5027,14 @@ function submitKML(){
 
           if(clearBtn) clearBtn.style.display = "block";
 
-          previewKMLLayer.on("click", ()=>{
-            showKMLResult(result);
+          // ✅ CLICK POPUP
+          window.previewKMLLayer.on("click", ()=>{
+            showAnalysisResult(result);
           });
 
         } catch(e){
           console.error("Map error:", e);
         }
-
-        
 
       } catch(err){
 
@@ -5060,8 +5056,7 @@ function submitKML(){
   }
 
   console.groupEnd();
-}  
-    
+}    
     function updateClearKMLButton(){
 
   const btn = document.getElementById("clearKMLBtn");
