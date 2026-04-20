@@ -4926,8 +4926,6 @@ function submitKML(){
 
             result = { type:"polygon", ...data };
 
-            // ❌ REMOVED AUTO SHOW HERE
-
           } catch(err){
 
             console.warn("⚠ GEE FAILED → fallback", err);
@@ -4965,10 +4963,8 @@ function submitKML(){
 
         if(clearBtn) clearBtn.style.display = "block";
 
-        // ✅ ONLY SHOW ON CLICK
-        window.previewKMLLayer.on("click", function(){
-          showAnalysisResult(result);
-        });
+        // 🔥 FIX: bind popup BEFORE click
+        showAnalysisResult(result);
 
       } catch(err){
         console.error("❌ Processing crash:", err);
@@ -4985,7 +4981,7 @@ function submitKML(){
   }
 
   console.groupEnd();
-}    function updateClearKMLButton(){
+}   function updateClearKMLButton(){
 
   const btn = document.getElementById("clearKMLBtn");
   if (!btn) return;
@@ -5138,28 +5134,27 @@ function submitKML(){
   </div>
   `;
 
-  // 🔥 FIXED POPUP BEHAVIOR
+  // 🔥 CORRECT POPUP BINDING (NO CLICK HANDLER NEEDED)
   if (window.previewKMLLayer) {
 
     try {
 
-      window.previewKMLLayer.eachLayer(layer => {
+      // 🔥 Some KML layers are nested → handle both cases
+      if (typeof window.previewKMLLayer.eachLayer === "function") {
 
-        if (layer.getBounds || layer.getLatLng) {
+        window.previewKMLLayer.eachLayer(layer => {
 
-          layer.unbindPopup();
-          layer.bindPopup(html);
+          if (layer instanceof L.Path || layer instanceof L.Marker) {
+            layer.unbindPopup();
+            layer.bindPopup(html);
+          }
 
-          // 🔥 THIS LINE FIXES YOUR ISSUE
-          layer.off("click"); // prevent duplicate bindings
+        });
 
-          layer.on("click", function () {
-            this.openPopup();
-          });
-
-        }
-
-      });
+      } else {
+        // fallback (rare)
+        window.previewKMLLayer.bindPopup(html);
+      }
 
     } catch (e) {
       console.warn("⚠ Popup error:", e);
@@ -5167,7 +5162,7 @@ function submitKML(){
 
   }
 
-  console.log("✅ Popup ready → click polygon");
+  console.log("✅ Popup bound successfully (click polygon)");
 }/* ============================================================
        📱 RESPONSIVE PANEL TOGGLE
     ============================================================ */
