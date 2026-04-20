@@ -4690,57 +4690,119 @@ function loadPredictions() {
 
 
 
-  function extractCoordsFromKML(kmlText){
+  function extractCoordsFromKML(kmlText, mode){
 
-  const parser = new DOMParser();
-  const xml = parser.parseFromString(kmlText, "text/xml");
+  try {
 
-  const coordText = xml.getElementsByTagName("coordinates")[0]?.textContent;
+    if(!kmlText) throw new Error("Empty KML");
 
-  if(!coordText) return [];
+    const parser = new DOMParser();
+    const xml = parser.parseFromString(kmlText, "text/xml");
 
-  // 🔥 USE DIFFERENT VARIABLE NAME (IMPORTANT)
-  let rawCoords = coordText
-    .trim()
-    .split(/\s+/)
-    .map(p => {
-      const parts = p.split(",");
+    if(xml.getElementsByTagName("parsererror").length){
+      throw new Error("Invalid XML/KML");
+    }
 
-      const lon = Number(parts[0]);
-      const lat = Number(parts[1]);
+    // ================= AUTO DETECT =================
+    if(!mode){
+      if(xml.getElementsByTagName("Polygon").length) mode = "polygon";
+      else if(xml.getElementsByTagName("LineString").length) mode = "line";
+      else if(xml.getElementsByTagName("Point").length) mode = "point";
+      else throw new Error("No supported geometry found");
+    }
 
-      if (isNaN(lon) || isNaN(lat)) return null;
+    console.log("📐 Geometry mode:", mode);
 
-      return [
-        Number(lon.toFixed(6)),
-        Number(lat.toFixed(6))
-      ];
-    })
-    .filter(Boolean);
+    // ================= GET NODE =================
+    let node;
 
-  // 🔥 REMOVE DUPLICATES
-  rawCoords = rawCoords.filter((c, i, arr) => {
-    if (i === 0) return true;
-    return !(c[0] === arr[i-1][0] && c[1] === arr[i-1][1]);
-  });
+    if(mode === "polygon"){
+      node = xml.getElementsByTagName("Polygon")[0];
+    }
+    else if(mode === "line"){
+      node = xml.getElementsByTagName("LineString")[0];
+    }
+    else {
+      node = xml.getElementsByTagName("Point")[0];
+    }
 
-  // 🔥 ENSURE MIN POINTS
-  if (rawCoords.length < 4) {
-    console.error("❌ Too few points:", rawCoords.length);
-    return [];
+    if(!node) throw new Error("Geometry not found");
+
+    const coordTag = node.getElementsByTagName("coordinates")[0];
+    if(!coordTag) throw new Error("Coordinates tag missing");
+
+    const coordText = coordTag.textContent.trim();
+    if(!coordText) throw new Error("Empty coordinates");
+
+    // ================= PARSE =================
+    let coords = coordText
+      .split(/\s+/)
+      .map(p => {
+        const parts = p.split(",");
+        const lon = Number(parts[0]);
+        const lat = Number(parts[1]);
+
+        if(isNaN(lon) || isNaN(lat)) return null;
+
+        return [
+          Number(lon.toFixed(6)),
+          Number(lat.toFixed(6))
+        ];
+      })
+      .filter(Boolean);
+
+    if(coords.length === 0){
+      throw new Error("Invalid coordinates");
+    }
+
+    // ================= REMOVE DUPLICATES =================
+    coords = coords.filter((c, i, arr)=>{
+      if(i === 0) return true;
+      return !(c[0] === arr[i-1][0] && c[1] === arr[i-1][1]);
+    });
+
+    // ================= POINT =================
+    if(mode === "point"){
+      return coords.slice(0,1); // single point
+    }
+
+    // ================= LINE =================
+    if(mode === "line"){
+      if(coords.length < 2){
+        throw new Error("Line needs at least 2 points");
+      }
+      return coords;
+    }
+
+    // ================= POLYGON =================
+    if(mode === "polygon"){
+
+      if(coords.length < 3){
+        throw new Error("Polygon needs at least 3 points");
+      }
+
+      // 🔥 FORCE CLOSE POLYGON
+      const first = coords[0];
+      const last = coords[coords.length - 1];
+
+      if(first[0] !== last[0] || first[1] !== last[1]){
+        coords.push(first);
+        console.log("🔁 Polygon auto-closed");
+      }
+
+      // 🔥 FINAL SAFETY CHECK
+      if(coords.length < 4){
+        throw new Error("Invalid polygon after closing");
+      }
+
+      return [coords]; // GeoJSON format
+    }
+
+  } catch(e){
+    console.error("❌ extractCoordsFromKML:", e.message);
+    throw e;
   }
-
-  // 🔥 FORCE CLOSE POLYGON
-  const first = rawCoords[0];
-  const last = rawCoords[rawCoords.length - 1];
-
-  if (first[0] !== last[0] || first[1] !== last[1]) {
-    rawCoords.push(first);
-  }
-
-  // 🔥 FINAL OUTPUT
-  return [rawCoords];
-}  
+} 
     function handleFrontendResult(res){
 
   console.log("📥 FINAL RESPONSE:", res);
@@ -4759,210 +4821,210 @@ function loadPredictions() {
     showAnalysisResult(res.analysis);
   }
 }
-function submitKML() {
-  console.group("📤 submitKML START");
+function submitKML(){
 
-  const beat = document.getElementById("kmlBeat").value;
-  const fileInput = document.getElementById("kmlFileInput");
-  const status = document.getElementById("kmlStatus");
-  const file = fileInput.files[0];
+  console.group("📤 submitKML");
 
-  console.log("📌 Beat:", beat);
-  console.log("📂 File:", file);
+  try {
 
-  if (!beat) {
-    console.error("❌ Beat missing");
-    alert("Select Beat");
-    console.groupEnd();
-    return;
-  }
+    const beat = document.getElementById("kmlBeat")?.value;
+    const file = document.getElementById("kmlFileInput")?.files?.[0];
+    const mode = document.getElementById("analysisMode")?.value || "polygon";
 
-  if (!file) {
-    console.error("❌ File missing");
-    alert("Select file");
-    console.groupEnd();
-    return;
-  }
+    const status = document.getElementById("kmlStatus");
+    const clearBtn = document.getElementById("clearKMLBtn");
 
-  status.innerHTML = "⏳ Uploading & Analyzing...";
-
-  const reader = new FileReader();
-
-  reader.onload = function (e) {
-    console.group("📖 File Read");
-
-    const kmlText = e.target.result;
-    console.log("📄 KML length:", kmlText?.length);
-
-    let xml;
-    try {
-      const parser = new DOMParser();
-      xml = parser.parseFromString(kmlText, "text/xml");
-
-      if (xml.getElementsByTagName("parsererror").length) {
-        throw new Error("Invalid XML structure in KML");
-      }
-      console.log("✅ KML parsed successfully");
-    } catch (err) {
-      console.error("❌ KML parse error:", err);
-      showToast("❌ Invalid KML file", "error");
-      status.innerHTML = "❌ Parse error";
-      console.groupEnd();
-      console.groupEnd();
-      return;
-    }
-    console.groupEnd();
-
-    const modeEl = document.getElementById("analysisMode");
-    const mode = modeEl ? modeEl.value : "polygon";
-    console.log("⚙ Mode:", mode);
-
-    let coords;
-    try {
-      coords = extractCoordsFromKML(kmlText, mode);
-    } catch (err) {
-      console.error("❌ extractCoordsFromKML crashed:", err);
-      status.innerHTML = "❌ Coordinate error";
-      console.groupEnd();
+    if(!beat){
+      showToast("Select Beat","warning");
       return;
     }
 
-    console.group("🧪 GEOMETRY DEBUG");
-    console.log("Mode:", mode);
-    console.log("Coords:", coords);
-
-    if (!coords || !Array.isArray(coords) || coords.length === 0) {
-      console.error("❌ INVALID GEOMETRY");
-      status.innerHTML = "❌ Invalid polygon coordinates";
-      console.groupEnd();
-      console.groupEnd();
+    if(!file){
+      showToast("Select file","warning");
       return;
     }
-    console.groupEnd();
 
-    // ==============================
-    // 🔥 DEBUG
-    // ==============================
-    console.log("📍 FINAL COORDS SENT:", JSON.stringify(coords));
+    if(status) status.innerHTML = "⏳ Processing...";
 
-    // 🔥 FIXED TURF AREA (NO EXTRA [])
-    try {
-      const areaCheck = turf.area({
-        type: "Polygon",
-        coordinates: coords
-      }) / 10000;
+    const reader = new FileReader();
 
-      console.log("📐 FRONTEND AREA (ha):", areaCheck);
-    } catch (e) {
-      console.warn("⚠️ Turf area calc failed:", e);
-    }
-    // ==============================
+    reader.onload = async function(e){
 
-    console.group("📡 Backend Call");
-
-    // 🔥 FIXED PAYLOAD (coords[0])
-    fetch("https://dw-api-332214398279.asia-south1.run.app/analyze", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ coords: coords[0] })
-    })
-    .then(async (res) => {
-      console.group("🌐 BACKEND RAW RESPONSE");
-      console.log("Status:", res.status);
-
-      const text = await res.text();
-      console.log("Raw response text:", text);
-
-      let data;
-      try {
-        data = JSON.parse(text);
-      } catch (e) {
-        console.error("❌ JSON PARSE FAILED");
-        throw new Error("Invalid JSON from server");
-      }
-      console.groupEnd();
-      return data;
-    })
-    .then(function (data) {
-
-      if (data.Total_ha === 0 || data.error) {
-        const errorMsg = data.reportText || data.error || "No data found in this area";
-        console.error("❌ BACKEND ERROR:", errorMsg);
-        status.innerHTML = "❌ " + errorMsg;
-        showToast("⚠️ " + errorMsg, "warning");
-
-        const clearBtn = document.getElementById("clearKMLBtn");
-        if (clearBtn) clearBtn.style.display = "none";
-
-        return;
-      }
-
-      console.log("✅ SUCCESS:", data);
-      status.innerHTML = "✅ Done";
-      window.lastAnalysis = data;
-
-      showAnalysisResult(data);
-
-      console.group("🗺 Map Render");
       try {
 
-        const clearBtn = document.getElementById("clearKMLBtn");
+        const kmlText = e.target.result;
 
-        if (previewKMLLayer) {
-          if (typeof previewKMLLayer.remove === "function") {
-            previewKMLLayer.remove();
+        // ================= PARSE =================
+        let coords;
+
+        try {
+          coords = extractCoordsFromKML(kmlText, mode);
+        } catch(err){
+          showToast(err.message,"error");
+          if(status) status.innerHTML = "❌ " + err.message;
+          return;
+        }
+
+        if(!coords || coords.length === 0){
+          showToast("Invalid geometry","error");
+          if(status) status.innerHTML = "❌ Invalid geometry";
+          return;
+        }
+
+        let result = null;
+
+        // ================= 📍 POINT =================
+        if(mode === "point"){
+
+          const [lng, lat] = coords[0] || [];
+
+          if(!lat || !lng){
+            showToast("Invalid point","error");
+            return;
           }
-          if (map.hasLayer(previewKMLLayer)) {
+
+          result = { type:"point", lat, lng };
+        }
+
+        // ================= 📏 LINE =================
+        else if(mode === "line"){
+
+          if(typeof turf === "undefined"){
+            showToast("Distance engine missing","error");
+            return;
+          }
+
+          let total = 0;
+
+          for(let i=1;i<coords.length;i++){
+            total += turf.distance(
+              turf.point(coords[i-1]),
+              turf.point(coords[i]),
+              { units:"kilometers" }
+            );
+          }
+
+          result = {
+            type:"line",
+            distance_km: total.toFixed(2),
+            time_min: Math.round((total/4)*60)
+          };
+        }
+
+        // ================= 🌍 POLYGON =================
+        else {
+
+          try {
+
+            const res = await fetch(
+              "https://dw-api-332214398279.asia-south1.run.app/analyze",
+              {
+                method:"POST",
+                headers:{ "Content-Type":"application/json" },
+                body: JSON.stringify({ coords: coords[0] })
+              }
+            );
+
+            const text = await res.text();
+
+            let data;
+            try {
+              data = JSON.parse(text);
+            } catch {
+              throw new Error("Invalid server response");
+            }
+
+            if(!data || data.error || !data.Total_ha){
+              throw new Error(data?.reportText || "Analysis failed");
+            }
+
+            result = { type:"polygon", ...data };
+
+          } catch(err){
+
+            console.warn("⚠ Backend failed → fallback");
+
+            if(typeof turf === "undefined"){
+              showToast("Fallback failed","error");
+              return;
+            }
+
+            const area = turf.area({
+              type:"Polygon",
+              coordinates: coords
+            }) / 10000;
+
+            result = {
+              type:"polygon",
+              Total_ha: area.toFixed(2),
+              reportText:"⚠ Offline estimate"
+            };
+
+            showToast("Using offline estimate","warning");
+          }
+        }
+
+        // ================= UI =================
+        try {
+          showKMLResult(result);
+        } catch(e){
+          console.error("UI error:", e);
+        }
+
+        // ================= MAP =================
+        try {
+
+          const parser = new DOMParser();
+          const xml = parser.parseFromString(kmlText, "text/xml");
+
+          if(window.previewKMLLayer && map?.hasLayer(previewKMLLayer)){
             map.removeLayer(previewKMLLayer);
           }
-          previewKMLLayer = null;
-        }
 
-        previewKMLLayer = new L.KML(xml);
-        previewKMLLayer.addTo(map);
+          previewKMLLayer = new L.KML(xml);
+          previewKMLLayer.addTo(map);
 
-        if (clearBtn && previewKMLLayer && map.hasLayer(previewKMLLayer)) {
-          clearBtn.style.display = "block";
-        } else if (clearBtn) {
-          clearBtn.style.display = "none";
-        }
+          const bounds = previewKMLLayer.getBounds();
 
-        if (previewKMLLayer.getBounds().isValid()) {
-          map.fitBounds(previewKMLLayer.getBounds());
-        }
-
-        previewKMLLayer.on("click", function () {
-          if (window.lastAnalysis) {
-            showAnalysisResult(window.lastAnalysis);
+          if(bounds && bounds.isValid()){
+            map.fitBounds(bounds);
           }
-        });
 
-      } catch (err) {
-        console.error("❌ KML leaflet render error:", err);
+          if(clearBtn) clearBtn.style.display = "block";
 
-        const clearBtn = document.getElementById("clearKMLBtn");
-        if (clearBtn) clearBtn.style.display = "none";
+          previewKMLLayer.on("click", ()=>{
+            showKMLResult(result);
+          });
+
+        } catch(e){
+          console.error("Map error:", e);
+        }
+
+        if(status) status.innerHTML = "✅ Done";
+
+      } catch(err){
+
+        console.error("❌ Processing crash:", err);
+        showToast("Processing failed","error");
+        if(status) status.innerHTML = "❌ Failed";
+
       }
 
-      console.groupEnd();
-    })
-    .catch(function (err) {
-      console.error("❌ FETCH FAILED:", err);
-      status.innerHTML = "❌ Network error";
-      showToast("❌ Upload failed: Connection Error", "error");
+    };
 
-      const clearBtn = document.getElementById("clearKMLBtn");
-      if (clearBtn) clearBtn.style.display = "none";
-    })
-    .finally(() => {
-      console.groupEnd();
-      console.groupEnd();
-    });
-  };
+    reader.readAsText(file);
 
-  reader.readAsText(file);
+  } catch(e){
+
+    console.error("❌ submitKML crash:", e);
+    showToast("Unexpected error","error");
+
+  }
+
+  console.groupEnd();
 }
-function updateClearKMLButton(){
+    
+    function updateClearKMLButton(){
 
   const btn = document.getElementById("clearKMLBtn");
   if (!btn) return;
@@ -4973,34 +5035,74 @@ function updateClearKMLButton(){
     btn.style.display = "none";
   }
 }
-    
-    function showAnalysisResult(data) {
-  console.log("📊 showAnalysisResult");
-  console.log("Input data:", data);
+   function showKMLResult(result){
 
-  if (!data || !data.Total_ha) {
-    console.error("❌ Invalid analysis data");
-    if (window.showToast) showToast("❌ Invalid analysis data", "error");
+  const status = document.getElementById("kmlStatus");
+  if(!status || !result) return;
+
+  let html = "";
+
+  // ================= 📍 POINT =================
+  if(result.type === "point"){
+
+    html = `
+      <div style="background:#102a12;padding:10px;border-radius:8px;color:#eee;">
+        <b>📍 Point Location</b><br>
+        Lat: ${result.lat}<br>
+        Lng: ${result.lng}
+      </div>
+    `;
+  }
+
+  // ================= 📏 LINE =================
+  else if(result.type === "line"){
+
+    html = `
+      <div style="background:#102a12;padding:10px;border-radius:8px;color:#eee;">
+        <b>📏 Patrol Track</b><br>
+        Distance: ${result.distance_km} km<br>
+        ⏱ Time: ${result.time_min} min
+      </div>
+    `;
+  }
+
+  // ================= 🌍 POLYGON =================
+  else if(result.type === "polygon"){
+    showAnalysisResult(result);
     return;
   }
 
-  const toNum = (val) => {
+  // 🔥 UI PANEL
+  status.innerHTML = html;
+
+  // 🔥 MAP POPUP (if exists)
+  if(window.previewKMLLayer){
+    window.previewKMLLayer.bindPopup(html).openPopup();
+  }
+} 
+   function showAnalysisResult(data){
+
+  console.log("📊 showAnalysisResult", data);
+
+  if (!data || !data.Total_ha) {
+    console.error("❌ Invalid analysis data");
+    showToast("Invalid analysis data","error");
+    return;
+  }
+
+  const status = document.getElementById("kmlStatus");
+
+  const toNum = (val)=>{
     const n = parseFloat(val);
     return isNaN(n) ? 0 : n;
   };
 
-  // ==============================
-  // 📊 BASIC VALUES
-  // ==============================
   const area = toNum(data.Total_ha);
   const canopy = toNum(data.canopy_pct);
   const height = toNum(data.height_m);
   const density = data.density || "N/A";
   const condition = data.condition || "Unknown";
 
-  // ==============================
-  // 🌿 DISTRIBUTION (🔥 FIXED)
-  // ==============================
   const forest = toNum(data.Forest ?? data.distribution?.Forest);
   const degraded = toNum(data.Degraded ?? data.distribution?.Degraded);
   const grass = toNum(data.Grass ?? data.distribution?.Grass);
@@ -5010,92 +5112,61 @@ function updateClearKMLButton(){
   const bare = toNum(data.Bare ?? data.distribution?.Bare);
   const water = toNum(data.Water ?? data.distribution?.Water);
 
-  // ==============================
-  // 📈 PERCENTAGES
-  // ==============================
-  const pct = (val) => (area > 0 ? ((val / area) * 100).toFixed(1) : "0.0");
+  const pct = (val)=> area>0 ? ((val/area)*100).toFixed(1) : "0.0";
 
-  const forestPct = pct(forest);
-  const degradedPct = pct(degraded);
+  const health = area>0 ? ((forest/area)*100) : 0;
 
-  // ==============================
-  // ❤️ HEALTH (🔥 FIXED)
-  // ==============================
-  // Health derived from forest proportion
-  const health = area > 0 ? ((forest / area) * 100) : 0;
-
-  console.log("📐 Area:", area);
-  console.log("🌿 Distribution:", { forest, degraded, grass });
-
-  // ==============================
-  // 🎨 COLOR LOGIC
-  // ==============================
-  const getConditionColor = () => {
-    if (condition.includes("Healthy")) return "#2e7d32";
-    if (condition.includes("Partially")) return "#f9a825";
+  const getColor = ()=>{
+    if(condition.includes("Healthy")) return "#2e7d32";
+    if(condition.includes("Partially")) return "#f9a825";
     return "#d32f2f";
   };
 
-  // ==============================
-  // 🧾 HTML
-  // ==============================
-  let html = `
-  <div style="font-family:'Segoe UI', Tahoma; font-size:13px; line-height:1.6; min-width:260px; color:#333;">
-    
-    <h3 style="margin:0 0 10px 0; color:#2e7d32; border-bottom:2px solid #2e7d32; padding-bottom:5px;">
-      🌱 Plantation Analysis
-    </h3>
+  const html = `
+  <div style="
+    font-family:Segoe UI;
+    font-size:13px;
+    color:#eee;
+    background:#081508;
+    padding:10px;
+    border-radius:10px;
+  ">
 
-    <div style="background:#f9f9f9; padding:8px; border-radius:6px; margin-bottom:10px; border-left:4px solid #1976d2;">
-      <b>📊 Area:</b> ${area.toFixed(2)} ha<br>
-      <b>🌿 Canopy:</b> ${canopy.toFixed(1)} %<br>
-      <b>📏 Height:</b> ${height.toFixed(2)} m<br>
-      <b>🌳 Density:</b> ${density}<br>
-      <b>❤️ Health:</b> ${health.toFixed(1)}<br>
-      <b>📌 Condition:</b> 
-      <span style="font-weight:bold; color:${getConditionColor()}">${condition}</span>
+    <h3 style="color:#4caf50;margin-bottom:8px;">🌱 Plantation Analysis</h3>
+
+    <div style="background:#102a12;padding:8px;border-radius:6px;margin-bottom:8px;">
+      📊 Area: ${area.toFixed(2)} ha<br>
+      🌿 Canopy: ${canopy.toFixed(1)} %<br>
+      📏 Height: ${height.toFixed(2)} m<br>
+      🌳 Density: ${density}<br>
+      ❤️ Health: ${health.toFixed(1)} %<br>
+      📌 Condition:
+      <span style="color:${getColor()};font-weight:bold">${condition}</span>
     </div>
 
-    <b>🌍 Land Distribution:</b><br>
-    <div style="display:grid; grid-template-columns:1fr auto; gap:3px 10px; margin-top:5px;">
-      
-      <span>🌳 Forest:</span> <b>${forest.toFixed(2)} ha (${forestPct}%)</b>
-      <span>🔴 Degraded:</span> <b>${degraded.toFixed(2)} ha (${degradedPct}%)</b>
+    <b>🌍 Land Distribution</b>
 
-      <span>🌾 Grass:</span> <span>${grass.toFixed(2)} ha</span>
-      <span>🌽 Crop:</span> <span>${crop.toFixed(2)} ha</span>
-      <span>🌿 Bush:</span> <span>${bush.toFixed(2)} ha</span>
-      <span>🏠 Built:</span> <span>${built.toFixed(2)} ha</span>
-      <span>🪨 Bare:</span> <span>${bare.toFixed(2)} ha</span>
-      <span>💧 Water:</span> <span>${water.toFixed(2)} ha</span>
-
+    <div style="display:grid;grid-template-columns:1fr auto;gap:3px 10px;font-size:12px;margin-top:5px;">
+      <span>🌳 Forest</span><b>${forest.toFixed(2)} (${pct(forest)}%)</b>
+      <span>🔴 Degraded</span><b>${degraded.toFixed(2)} (${pct(degraded)}%)</b>
+      <span>🌾 Grass</span><span>${grass.toFixed(2)}</span>
+      <span>🌽 Crop</span><span>${crop.toFixed(2)}</span>
+      <span>🌿 Bush</span><span>${bush.toFixed(2)}</span>
+      <span>🏠 Built</span><span>${built.toFixed(2)}</span>
+      <span>🪨 Bare</span><span>${bare.toFixed(2)}</span>
+      <span>💧 Water</span><span>${water.toFixed(2)}</span>
     </div>
   </div>
   `;
 
-  // ==============================
-  // 📡 SYSTEM NOTES
-  // ==============================
-  if (data.reportText) {
-    html += `
-      <hr style="border:0; border-top:1px solid #ccc; margin:10px 0;">
-      <div style="font-size:11px; background:#eee; padding:6px; border-radius:4px; color:#555;">
-        <b>📡 System Notes:</b><br>${data.reportText}
-      </div>
-    `;
+  // 🔥 PANEL
+  if(status){
+    status.innerHTML = html;
   }
 
-  // ==============================
-  // 📍 DISPLAY
-  // ==============================
-  if (window.previewKMLLayer) {
+  // 🔥 MAP POPUP
+  if(window.previewKMLLayer){
     window.previewKMLLayer.bindPopup(html).openPopup();
-  } else if (window.showToast) {
-    const tempDiv = document.createElement("div");
-    tempDiv.innerHTML = html;
-    window.showToast(tempDiv.innerText || tempDiv.textContent, "success");
-  } else {
-    console.log("Analysis Result ready but no display target found.");
   }
 }/* ============================================================
        📱 RESPONSIVE PANEL TOGGLE
