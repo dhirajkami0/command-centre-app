@@ -4853,6 +4853,9 @@ function submitKML(){
     const status = document.getElementById("kmlStatus");
     const clearBtn = document.getElementById("clearKMLBtn");
 
+    // 🔥 RESET UI FIRST (IMPORTANT)
+    if(status) status.innerHTML = "";
+
     if(!beat){
       showToast("Select Beat","warning");
       return;
@@ -4939,47 +4942,50 @@ function submitKML(){
         const parser = new DOMParser();
         const xml = parser.parseFromString(kmlText, "text/xml");
 
-        // 🔥 REMOVE OLD
-        if(window.previewKMLLayer && map?.hasLayer(window.previewKMLLayer)){
-          map.removeLayer(window.previewKMLLayer);
+        // 🔥 CLEAN OLD LAYER + EVENTS
+        if(window.previewKMLLayer){
+          try{
+            window.previewKMLLayer.off();
+            if(map?.hasLayer(window.previewKMLLayer)){
+              map.removeLayer(window.previewKMLLayer);
+            }
+          } catch(e){
+            console.warn("cleanup error:", e);
+          }
         }
 
-        // 🔥 CREATE NEW LAYER
         window.previewKMLLayer = new L.KML(xml);
 
-        // 🔥 CRITICAL FIX → WAIT FOR FULL ADD
-        window.previewKMLLayer.on("add", function(){
+        // 🔥 WAIT FOR FULL ADD
+        window.previewKMLLayer.once("add", function(){
 
-          console.log("✅ KML fully added → binding popup");
+          console.log("✅ KML ready");
 
-          // ✅ FIT BOUNDS SAFELY
           try{
             const bounds = window.previewKMLLayer.getBounds();
             if(bounds && bounds.isValid()){
               map.fitBounds(bounds);
             }
           } catch(e){
-            console.warn("⚠ Bounds error:", e);
+            console.warn("bounds error:", e);
           }
 
-          // ✅ BIND POPUP ONLY AFTER READY
           if(result){
             showAnalysisResult(result);
-          } else {
-            console.warn("⚠ No result to bind popup");
           }
 
+          // 🔥 CLEAR PROCESSING MESSAGE
+          if(status) status.innerHTML = "✅ Done";
         });
 
-        // 🔥 ADD TO MAP (TRIGGERS EVENT)
         window.previewKMLLayer.addTo(map);
 
-        // 🔥 SHOW CLEAR BUTTON
         if(clearBtn) clearBtn.style.display = "block";
 
       } catch(err){
         console.error("❌ Processing crash:", err);
         showToast("Processing failed","error");
+        if(status) status.innerHTML = "❌ Failed";
       }
 
     };
@@ -4992,8 +4998,7 @@ function submitKML(){
   }
 
   console.groupEnd();
-}    
-    function updateClearKMLButton(){
+}    function updateClearKMLButton(){
 
   const btn = document.getElementById("clearKMLBtn");
   if (!btn) return;
