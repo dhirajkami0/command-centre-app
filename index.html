@@ -4939,22 +4939,43 @@ function submitKML(){
         const parser = new DOMParser();
         const xml = parser.parseFromString(kmlText, "text/xml");
 
+        // 🔥 REMOVE OLD
         if(window.previewKMLLayer && map?.hasLayer(window.previewKMLLayer)){
           map.removeLayer(window.previewKMLLayer);
         }
 
+        // 🔥 CREATE NEW LAYER
         window.previewKMLLayer = new L.KML(xml);
+
+        // 🔥 CRITICAL FIX → WAIT FOR FULL ADD
+        window.previewKMLLayer.on("add", function(){
+
+          console.log("✅ KML fully added → binding popup");
+
+          // ✅ FIT BOUNDS SAFELY
+          try{
+            const bounds = window.previewKMLLayer.getBounds();
+            if(bounds && bounds.isValid()){
+              map.fitBounds(bounds);
+            }
+          } catch(e){
+            console.warn("⚠ Bounds error:", e);
+          }
+
+          // ✅ BIND POPUP ONLY AFTER READY
+          if(result){
+            showAnalysisResult(result);
+          } else {
+            console.warn("⚠ No result to bind popup");
+          }
+
+        });
+
+        // 🔥 ADD TO MAP (TRIGGERS EVENT)
         window.previewKMLLayer.addTo(map);
 
-        const bounds = window.previewKMLLayer.getBounds();
-        if(bounds && bounds.isValid()){
-          map.fitBounds(bounds);
-        }
-
+        // 🔥 SHOW CLEAR BUTTON
         if(clearBtn) clearBtn.style.display = "block";
-
-        // 🔥 FIX: bind popup BEFORE click
-        showAnalysisResult(result);
 
       } catch(err){
         console.error("❌ Processing crash:", err);
@@ -4971,7 +4992,8 @@ function submitKML(){
   }
 
   console.groupEnd();
-}   function updateClearKMLButton(){
+}    
+    function updateClearKMLButton(){
 
   const btn = document.getElementById("clearKMLBtn");
   if (!btn) return;
@@ -5124,35 +5146,30 @@ function submitKML(){
   </div>
   `;
 
-  // 🔥 CORRECT POPUP BINDING (NO CLICK HANDLER NEEDED)
+  // 🔥 🔥 REAL FIX → RECURSIVE BINDING 🔥 🔥
+  function bindPopupRecursive(layer){
+
+    // ✅ If actual drawable layer → bind popup
+    if (layer instanceof L.Path || layer instanceof L.Marker) {
+      layer.unbindPopup();
+      layer.bindPopup(html);
+    }
+
+    // 🔁 If group → go deeper (THIS WAS MISSING)
+    if (layer.eachLayer) {
+      layer.eachLayer(bindPopupRecursive);
+    }
+  }
+
   if (window.previewKMLLayer) {
-
     try {
-
-      // 🔥 Some KML layers are nested → handle both cases
-      if (typeof window.previewKMLLayer.eachLayer === "function") {
-
-        window.previewKMLLayer.eachLayer(layer => {
-
-          if (layer instanceof L.Path || layer instanceof L.Marker) {
-            layer.unbindPopup();
-            layer.bindPopup(html);
-          }
-
-        });
-
-      } else {
-        // fallback (rare)
-        window.previewKMLLayer.bindPopup(html);
-      }
-
+      bindPopupRecursive(window.previewKMLLayer);
     } catch (e) {
       console.warn("⚠ Popup error:", e);
     }
-
   }
 
-  console.log("✅ Popup bound successfully (click polygon)");
+  console.log("✅ Popup bound to ALL KML layers (click will work)");
 }/* ============================================================
        📱 RESPONSIVE PANEL TOGGLE
     ============================================================ */
