@@ -4714,25 +4714,33 @@ function loadPredictions() {
     console.log("📐 Geometry mode:", mode);
 
     // ================= GET NODE =================
-    let node;
+    let nodes;
 
     if(mode === "polygon"){
-      node = xml.getElementsByTagName("Polygon")[0];
+      nodes = xml.getElementsByTagName("Polygon");
     }
     else if(mode === "line"){
-      node = xml.getElementsByTagName("LineString")[0];
+      nodes = xml.getElementsByTagName("LineString");
     }
     else {
-      node = xml.getElementsByTagName("Point")[0];
+      nodes = xml.getElementsByTagName("Point");
     }
 
-    if(!node) throw new Error("Geometry not found");
+    if(!nodes || nodes.length === 0){
+      throw new Error("Geometry not found");
+    }
 
-    const coordTag = node.getElementsByTagName("coordinates")[0];
-    if(!coordTag) throw new Error("Coordinates tag missing");
+    // 🔥 MULTI-GEOMETRY SUPPORT → use first (or largest later)
+    let coordTag = nodes[0].getElementsByTagName("coordinates")[0];
+
+    if(!coordTag){
+      throw new Error("Coordinates tag missing");
+    }
 
     const coordText = coordTag.textContent.trim();
-    if(!coordText) throw new Error("Empty coordinates");
+    if(!coordText){
+      throw new Error("Empty coordinates");
+    }
 
     // ================= PARSE =================
     let coords = coordText
@@ -4763,7 +4771,7 @@ function loadPredictions() {
 
     // ================= POINT =================
     if(mode === "point"){
-      return coords.slice(0,1); // single point
+      return coords.slice(0,1);
     }
 
     // ================= LINE =================
@@ -4781,6 +4789,17 @@ function loadPredictions() {
         throw new Error("Polygon needs at least 3 points");
       }
 
+      // 🔥 REMOVE VERY CLOSE POINTS (prevents GEE crash)
+      coords = coords.filter((c, i, arr)=>{
+        if(i === 0) return true;
+
+        const prev = arr[i-1];
+        const dx = Math.abs(c[0] - prev[0]);
+        const dy = Math.abs(c[1] - prev[1]);
+
+        return (dx > 0.000001 || dy > 0.000001);
+      });
+
       // 🔥 FORCE CLOSE POLYGON
       const first = coords[0];
       const last = coords[coords.length - 1];
@@ -4795,14 +4814,15 @@ function loadPredictions() {
         throw new Error("Invalid polygon after closing");
       }
 
-      return [coords]; // GeoJSON format
+      // 🔥 VALID GEOJSON FORMAT
+      return [coords];   // VERY IMPORTANT
     }
 
   } catch(e){
     console.error("❌ extractCoordsFromKML:", e.message);
     throw e;
   }
-} 
+}
     function handleFrontendResult(res){
 
   console.log("📥 FINAL RESPONSE:", res);
