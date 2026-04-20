@@ -5087,7 +5087,6 @@ function submitKML(){
   const canopy = toNum(data.canopy_pct);
   const height = toNum(data.height_m);
   const density = data.density || "N/A";
-  const condition = data.condition || "Unknown";
 
   const dist = data.distribution || {};
 
@@ -5107,10 +5106,31 @@ function submitKML(){
 
   const health = area > 0 ? ((forest / area) * 100) : 0;
 
+  // 🔥 ✅ FIXED CONDITION LOGIC (REAL DATA BASED)
+  const forestPct = area > 0 ? (forest / area) * 100 : 0;
+  const degradedPct = area > 0 ? (degraded / area) * 100 : 0;
+
+  let condition = "Unknown";
+
+  if (forestPct >= 70 && degradedPct < 20) {
+    condition = "🟢 Healthy Dense Forest";
+  } 
+  else if (forestPct >= 40) {
+    condition = "🟡 Moderately Forested";
+  } 
+  else if (forestPct >= 10) {
+    condition = "🟠 Sparse / Fragmented";
+  } 
+  else {
+    condition = "🔴 Highly Degraded / Non-Forest";
+  }
+
+  // 🔥 ✅ FIXED COLOR LOGIC
   const getColor = ()=>{
-    if(condition.includes("Healthy")) return "#2e7d32";
-    if(condition.includes("Partially")) return "#f9a825";
-    return "#d32f2f";
+    if (forestPct >= 70) return "#2e7d32";   // green
+    if (forestPct >= 40) return "#f9a825";   // yellow
+    if (forestPct >= 10) return "#ef6c00";   // orange
+    return "#d32f2f";                        // red
   };
 
   const html = `
@@ -5151,16 +5171,14 @@ function submitKML(){
   </div>
   `;
 
-  // 🔥 🔥 REAL FIX → RECURSIVE BINDING 🔥 🔥
+  // 🔥 🔥 RECURSIVE POPUP BINDING (UNCHANGED)
   function bindPopupRecursive(layer){
 
-    // ✅ If actual drawable layer → bind popup
     if (layer instanceof L.Path || layer instanceof L.Marker) {
       layer.unbindPopup();
       layer.bindPopup(html);
     }
 
-    // 🔁 If group → go deeper (THIS WAS MISSING)
     if (layer.eachLayer) {
       layer.eachLayer(bindPopupRecursive);
     }
