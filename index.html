@@ -7694,7 +7694,68 @@ function compressImage(file){
     reader.readAsDataURL(file);
   });
 }
+async function sendLocation(){
 
+  try {
+
+    if(!window.isFirebaseReady()){
+      showToast("⏳ Firebase not ready", "warning");
+      return;
+    }
+
+    if(!navigator.geolocation){
+      showToast("❌ GPS not supported", "error");
+      return;
+    }
+
+    showToast("📍 Getting location...");
+
+    navigator.geolocation.getCurrentPosition(
+
+      async (pos) => {
+
+        const lat = Number(pos.coords.latitude.toFixed(6));
+        const lng = Number(pos.coords.longitude.toFixed(6));
+        const acc = Math.round(pos.coords.accuracy);
+
+        console.log("📍 LOCATION:", lat, lng, "Accuracy:", acc);
+
+        await window.fb.addDoc(getChatCollection(), {
+          type: "location",
+          lat: lat,
+          lng: lng,
+          accuracy: acc,
+          user: window.userProfile.rawName,
+          phone: window.userProfile.phone,
+          time: window.fb.serverTimestamp(),
+          status: "sent"
+        });
+
+        showToast("📍 Location sent");
+
+      },
+
+      (err) => {
+        console.error("❌ GPS ERROR:", err);
+        showToast("❌ Location failed", "error");
+      },
+
+      {
+        enableHighAccuracy: true,
+        timeout: 10000,
+        maximumAge: 0
+      }
+
+    );
+
+  } catch(e){
+    console.error("❌ sendLocation crash:", e);
+    showToast("❌ Failed to send location", "error");
+  }
+}
+
+// 🔥 MUST ADD THIS
+window.sendLocation = sendLocation;
 
 // ================= SEND PHOTO =================
 async function sendPhoto(e){
@@ -7867,7 +7928,7 @@ async function sendPhoto(e){
     alert("Photo send failed");
   }
 }    
-    function renderMessage(docId, m){
+ function renderMessage(docId, m){
 
   const box = document.getElementById("chatMessages");
   if(!box) return;
@@ -7900,16 +7961,14 @@ async function sendPhoto(e){
     div.style.color = "#fff";
   }
 
-  // 🔥 LONG PRESS / RIGHT CLICK DELETE MENU
+  // 🔥 DELETE MENU
   if(isMe || isAdmin){
 
-    // Desktop right click
     div.oncontextmenu = (e)=>{
       e.preventDefault();
       showDeleteOptions(docId, m, isMe, isAdmin);
     };
 
-    // Mobile long press
     div.ontouchstart = ()=>{
       div._pressTimer = setTimeout(()=>{
         showDeleteOptions(docId, m, isMe, isAdmin);
@@ -7925,7 +7984,7 @@ async function sendPhoto(e){
     };
   }
 
-  // 📞 CALLABLE NAME
+  // 📞 NAME
   const name = `
     <b onclick="callUser('${m.phone}')"
        style="cursor:pointer;color:#ffd54f;">
@@ -7935,7 +7994,7 @@ async function sendPhoto(e){
 
   let content = "";
 
-  // 🚫 DELETED FOR EVERYONE
+  // 🚫 DELETED
   if(m.deleted){
     content = `<i style="opacity:0.7;">🚫 Message deleted</i>`;
   }
@@ -7963,11 +8022,42 @@ async function sendPhoto(e){
       `;
     }
 
-    // LOCATION
+    // =========================
+    // 📍 UPDATED LOCATION (FULL FIX)
+    // =========================
     if(m.type === "location"){
+
+      const lat = m.lat || 0;
+      const lng = m.lng || 0;
+      const acc = m.accuracy || "N/A";
+
       content = `
-        📍 <a href="https://maps.google.com/?q=${m.lat},${m.lng}" target="_blank">
-        Open Location</a>
+        <div style="
+          background:#102a12;
+          padding:8px;
+          border-radius:8px;
+          font-size:13px;
+        ">
+
+          <div style="margin-bottom:4px;">
+            📍 <b>Location Shared</b>
+          </div>
+
+          <div style="font-size:11px;opacity:0.8;">
+            Lat: ${lat}<br>
+            Lng: ${lng}<br>
+            Accuracy: ${acc} m
+          </div>
+
+          <div style="margin-top:6px;">
+            <a href="https://maps.google.com/?q=${lat},${lng}" 
+               target="_blank"
+               style="color:#81c784;font-weight:bold;text-decoration:none;">
+               🌍 Open in Google Maps
+            </a>
+          </div>
+
+        </div>
       `;
     }
   }
