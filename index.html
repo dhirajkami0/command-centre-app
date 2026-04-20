@@ -5109,48 +5109,61 @@ function submitKML(){
     window.previewKMLLayer.bindPopup(html).openPopup();
   }
 } 
-   function showAnalysisResult(data){
+  function showAnalysisResult(data){
 
-  console.log("📊 showAnalysisResult", data);
+  console.log("📊 showAnalysisResult RAW:", data);
 
+  // ✅ SAFE VALIDATION
   if (!data || data.Total_ha === undefined || data.Total_ha === null) {
-    console.error("❌ Invalid analysis data");
+    console.error("❌ Invalid analysis data:", data);
     showToast("Invalid analysis data","error");
     return;
   }
 
   const status = document.getElementById("kmlStatus");
 
+  // ✅ SAFE NUMBER PARSER
   const toNum = (val)=>{
     const n = parseFloat(val);
     return isNaN(n) ? 0 : n;
   };
 
+  // ✅ BASIC VALUES
   const area = toNum(data.Total_ha);
   const canopy = toNum(data.canopy_pct);
   const height = toNum(data.height_m);
   const density = data.density || "N/A";
   const condition = data.condition || "Unknown";
 
-  const forest = toNum(data.Forest ?? data.distribution?.Forest);
-  const degraded = toNum(data.Degraded ?? data.distribution?.Degraded);
-  const grass = toNum(data.Grass ?? data.distribution?.Grass);
-  const crop = toNum(data.Crop ?? data.distribution?.Crop);
-  const bush = toNum(data.Bush ?? data.distribution?.Bush);
-  const built = toNum(data.Built ?? data.distribution?.Built);
-  const bare = toNum(data.Bare ?? data.distribution?.Bare);
-  const water = toNum(data.Water ?? data.distribution?.Water);
+  // ✅ DISTRIBUTION (supports both formats)
+  const dist = data.distribution || {};
 
-  const pct = (val)=> area>0 ? ((val/area)*100).toFixed(1) : "0.0";
+  const forest   = toNum(data.Forest   ?? dist.Forest);
+  const degraded = toNum(data.Degraded ?? dist.Degraded);
+  const grass    = toNum(data.Grass    ?? dist.Grass);
+  const crop     = toNum(data.Crop     ?? dist.Crop);
+  const bush     = toNum(data.Bush     ?? dist.Bush);
+  const built    = toNum(data.Built    ?? dist.Built);
+  const bare     = toNum(data.Bare     ?? dist.Bare);
+  const water    = toNum(data.Water    ?? dist.Water);
 
-  const health = area>0 ? ((forest/area)*100) : 0;
+  // ✅ FIXED PERCENT CALC
+  const pct = (val)=> {
+    const v = toNum(val);
+    return area > 0 ? ((v / area) * 100).toFixed(1) : "0.0";
+  };
 
+  // ✅ HEALTH (your logic)
+  const health = area > 0 ? ((forest / area) * 100) : 0;
+
+  // ✅ COLOR LOGIC
   const getColor = ()=>{
     if(condition.includes("Healthy")) return "#2e7d32";
     if(condition.includes("Partially")) return "#f9a825";
     return "#d32f2f";
   };
 
+  // ✅ HTML UI
   const html = `
   <div style="
     font-family:Segoe UI;
@@ -5185,18 +5198,27 @@ function submitKML(){
       <span>🪨 Bare</span><span>${bare.toFixed(2)}</span>
       <span>💧 Water</span><span>${water.toFixed(2)}</span>
     </div>
+
   </div>
   `;
 
-  // 🔥 PANEL
+  // ✅ UPDATE PANEL
   if(status){
     status.innerHTML = html;
+  } else {
+    console.warn("⚠ kmlStatus element not found");
   }
 
-  // 🔥 MAP POPUP
+  // ✅ MAP POPUP
   if(window.previewKMLLayer){
-    window.previewKMLLayer.bindPopup(html).openPopup();
+    try{
+      window.previewKMLLayer.bindPopup(html).openPopup();
+    } catch(e){
+      console.warn("⚠ Popup error:", e);
+    }
   }
+
+  console.log("✅ Analysis rendered successfully");
 }/* ============================================================
        📱 RESPONSIVE PANEL TOGGLE
     ============================================================ */
