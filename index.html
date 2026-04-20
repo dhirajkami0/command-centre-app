@@ -7807,10 +7807,17 @@ async function sendLocation(){
     showToast("❌ Location failed", "error");
   }
 }
-
+ // ================= SEND PHOTO =================
 
 // 🔥 MAKE GLOBAL
 window.sendLocation = sendLocation;
+
+ // ================= SEND PHOTO =================
+
+    function closeActionMenu(){
+  const m = document.getElementById("actionMenu");
+  if(m) m.style.display = "none";
+}
     
     // ================= SEND PHOTO =================
 async function sendPhoto(e){
@@ -8470,42 +8477,55 @@ function closeImageViewer(){
 }
 // ================= VOICE =================
 // ================= VOICE =================
+// ================= VOICE =================
+// ================= VOICE =================
 let mediaRecorder;
 let audioChunks = [];
-let isRecording = false;
+window.isRecording = false; // 🔥 global (important)
 let recordTimer;
 let recordSeconds = 0;
 
 
-// START RECORD
+// ================= START RECORD =================
 async function startVoice(){
 
   try {
 
-    if(isRecording) return;
+    if(window.isRecording) return;
 
     const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
 
     mediaRecorder = new MediaRecorder(stream);
     audioChunks = [];
-    isRecording = true;
+    window.isRecording = true;
 
-    // 🔥 SHOW RECORDING UI
+    // ================= UI START =================
     const recDiv = document.getElementById("recordingIndicator");
-    const micBtn = event?.target;
+    const btn = document.getElementById("mainActionBtn");
 
-    if(recDiv) recDiv.style.display = "block";
-    if(micBtn) micBtn.style.background = "#d32f2f"; // 🔴 red
+    if(recDiv){
+      recDiv.style.display = "block";
+      recDiv.innerText = "🔴 Recording... 0s";
+    }
 
-    // 🔥 TIMER
+    if(btn){
+      btn.style.background = "#d32f2f"; // 🔴 red
+      btn.innerText = "⏹"; // stop icon
+    }
+
+    // ================= TIMER =================
     recordSeconds = 0;
+
     recordTimer = setInterval(()=>{
       recordSeconds++;
+
       if(recDiv){
         recDiv.innerText = "🔴 Recording... " + recordSeconds + "s";
       }
+
     }, 1000);
 
+    // ================= DATA =================
     mediaRecorder.ondataavailable = e => {
       if(e.data.size > 0){
         audioChunks.push(e.data);
@@ -8523,59 +8543,73 @@ async function startVoice(){
 }
 
 
-// STOP RECORD
+// ================= STOP RECORD =================
 function stopVoice(){
 
   try {
 
-    if(!mediaRecorder || !isRecording) return;
+    if(!mediaRecorder || !window.isRecording) return;
 
-    isRecording = false;
+    window.isRecording = false;
 
-    // 🔥 HIDE RECORDING UI
     const recDiv = document.getElementById("recordingIndicator");
+    const btn = document.getElementById("mainActionBtn");
+
+    // ================= UI RESET =================
     if(recDiv){
       recDiv.style.display = "none";
       recDiv.innerText = "🔴 Recording...";
+    }
+
+    if(btn){
+      btn.style.background = "#4caf50";
+      btn.innerText = "🎤";
     }
 
     clearInterval(recordTimer);
 
     mediaRecorder.stop();
 
+    // ================= ON STOP =================
     mediaRecorder.onstop = async () => {
 
-      if(audioChunks.length === 0){
-        console.warn("⚠ Empty audio skipped");
-        return;
-      }
+      try {
 
-      const blob = new Blob(audioChunks, { type: "audio/webm" });
-
-      const fileRef = window.fb.ref(
-        window.storage,
-        "chat_audio/" + Date.now() + ".webm"
-      );
-
-      await window.fb.uploadBytes(fileRef, blob);
-
-      const url = await window.fb.getDownloadURL(fileRef);
-
-      await window.fb.addDoc(
-        window.fb.collection(window.db, "patrol_chat"),
-        {
-          type: "audio",
-          audioUrl: url,
-          user: window.userProfile.rawName,
-          phone: window.userProfile.phone,
-          time: window.fb.serverTimestamp(),
-          status: "sent"
+        if(audioChunks.length === 0){
+          console.warn("⚠ Empty audio skipped");
+          return;
         }
-      );
 
-      console.log("🎤 Voice sent");
+        const blob = new Blob(audioChunks, { type: "audio/webm" });
 
-      audioChunks = [];
+        const fileRef = window.fb.ref(
+          window.storage,
+          "chat_audio/" + Date.now() + ".webm"
+        );
+
+        await window.fb.uploadBytes(fileRef, blob);
+
+        const url = await window.fb.getDownloadURL(fileRef);
+
+        await window.fb.addDoc(
+          window.fb.collection(window.db, "patrol_chat"),
+          {
+            type: "audio",
+            audioUrl: url,
+            user: window.userProfile.rawName,
+            phone: window.userProfile.phone,
+            time: window.fb.serverTimestamp(),
+            status: "sent"
+          }
+        );
+
+        console.log("🎤 Voice sent");
+
+        audioChunks = [];
+
+      } catch(err){
+        console.error("❌ voice upload error:", err);
+      }
 
     };
 
@@ -8583,8 +8617,10 @@ function stopVoice(){
     console.error("❌ stopVoice:", e);
   }
 }
-    
-    function openCamera(){
+
+
+// ================= CAMERA =================
+function openCamera(){
 
   const input = document.getElementById("cameraInput");
 
@@ -8599,6 +8635,7 @@ function stopVoice(){
 }
 
 
+// ================= GALLERY =================
 function openGallery(){
 
   const input = document.getElementById("galleryInput");
@@ -8611,7 +8648,84 @@ function openGallery(){
 
   input.value = "";
   input.click();
-} 
+}
+
+
+// ================= ACTION MENU =================
+function toggleActionMenu(){
+  const m = document.getElementById("actionMenu");
+  m.style.display = (m.style.display === "flex") ? "none" : "flex";
+}
+
+
+// ================= INPUT SWITCH =================
+function handleInputChange(){
+  const txt = document.getElementById("chatInput").value.trim();
+  const btn = document.getElementById("mainActionBtn");
+
+  if(window.isRecording) return; // 🔥 don't override during recording
+
+  btn.innerText = txt ? "➤" : "🎤";
+}
+
+
+// ================= SMART BUTTON =================
+document.addEventListener("DOMContentLoaded", () => {
+
+  const btn = document.getElementById("mainActionBtn");
+  if(!btn) return;
+
+  // DESKTOP
+  btn.addEventListener("mousedown", startMainAction);
+  btn.addEventListener("mouseup", stopMainAction);
+
+  // MOBILE
+  btn.addEventListener("touchstart", startMainAction, { passive:false });
+  btn.addEventListener("touchend", stopMainAction, { passive:false });
+
+});
+
+
+// ================= START ACTION =================
+function startMainAction(e){
+
+  if(e) e.preventDefault(); // 🔥 fix mobile double trigger
+
+  const txt = document.getElementById("chatInput").value.trim();
+
+  // 👉 SEND MESSAGE
+  if(txt){
+    sendMessage();
+    return;
+  }
+
+  // 👉 START VOICE
+  startVoice();
+}
+
+
+// ================= STOP ACTION =================
+function stopMainAction(e){
+
+  if(e) e.preventDefault();
+
+  if(!window.isRecording) return;
+
+  stopVoice();
+}
+
+
+// ================= AUTO CLOSE MENU =================
+document.addEventListener("click", (e)=>{
+  const menu = document.getElementById("actionMenu");
+  const plusBtn = e.target.innerText === "➕";
+
+  if(menu && !menu.contains(e.target) && !plusBtn){
+    menu.style.display = "none";
+  }
+});  
+  
+  
   </script>
 
   </div>
@@ -9294,87 +9408,104 @@ overflow:hidden;
     flex-direction:column;
   "></div>
 
-  <!-- RECORDING -->
+  <!-- 🔴 RECORDING INDICATOR -->
   <div id="recordingIndicator" style="
     display:none;
     color:#ff5252;
-    font-size:12px;
-    padding-left:10px;
-    padding-bottom:4px;
+    font-size:13px;
+    text-align:center;
+    padding:6px;
+    font-weight:bold;
   ">
     🔴 Recording...
   </div>
 
-  <!-- INPUT -->
+  <!-- ================= INPUT ================= -->
   <div id="chatInputBox" style="
     display:flex;
+    align-items:center;
     gap:6px;
     padding:8px;
     background:#111;
-    align-items:center;
-    width:100%;
-    box-sizing:border-box;
+    position:relative;
   ">
 
+    <!-- ➕ BUTTON -->
+    <button id="plusBtn" onclick="toggleActionMenu()" style="
+      width:40px;height:40px;
+      border:none;
+      border-radius:50%;
+      background:#263238;
+      color:white;
+      font-size:18px;
+      flex-shrink:0;
+    ">➕</button>
+
+    <!-- INPUT -->
     <input id="chatInput"
-      placeholder="Type message..."
-      oninput="typing()"
+      placeholder="Message..."
+      oninput="typing(); handleInputChange();"
       style="
         flex:1;
-        min-width:0;
-        padding:10px;
-        border-radius:8px;
+        padding:10px 14px;
+        border-radius:20px;
         border:none;
         font-size:14px;
         outline:none;
       ">
 
-   <!-- HIDDEN INPUT -->
-<!-- CAMERA INPUT -->
-<input type="file" id="cameraInput"
-  accept="image/*"
-  capture="environment"
-  style="display:none"
-  onchange="sendPhoto(event)">
+    <!-- 🎤 / ➤ SMART BUTTON -->
+    <button id="mainActionBtn"
+      style="
+        width:40px;height:40px;
+        border:none;
+        border-radius:50%;
+        background:#4caf50;
+        color:white;
+        font-size:18px;
+        flex-shrink:0;
+        touch-action: manipulation; /* 🔥 mobile fix */
+      ">🎤</button>
 
-<input type="file" id="galleryInput"
-  accept="image/*"
-  style="display:none"
-  onchange="sendPhoto(event)">
-    
-    <button onclick="sendLocation()" style="width:40px;height:40px;flex-shrink:0;background:#2e7d32;color:white;border:none;border-radius:6px;">📍</button>
+    <!-- FLOAT MENU -->
+    <div id="actionMenu" style="
+      display:none;
+      position:absolute;
+      bottom:60px;
+      left:10px;
+      background:#1b5e20;
+      padding:10px;
+      border-radius:12px;
+      flex-direction:column;
+      gap:8px;
+      z-index:9999999;
+      box-shadow:0 4px 10px rgba(0,0,0,0.5);
+    ">
 
-    <button 
-      ontouchstart="startVoice()" 
-      ontouchend="stopVoice()"
-      ontouchcancel="stopVoice()"
-      onmousedown="startVoice()" 
-      onmouseup="stopVoice()"
-      onmouseleave="stopVoice()"
-      style="width:40px;height:40px;flex-shrink:0;background:#2e7d32;color:white;border:none;border-radius:6px;">
-      🎤
-    </button>
+      <button onclick="sendLocation(); closeActionMenu()">📍 Location</button>
+      <button onclick="openCamera(); closeActionMenu()">📸 Camera</button>
+      <button onclick="openGallery(); closeActionMenu()">🖼 Gallery</button>
 
-    <!-- CAMERA -->
-<button onclick="openCamera()" style="
-width:40px;height:40px;flex-shrink:0;
-background:#2e7d32;color:white;border:none;border-radius:6px;">
-📸
-</button>
-
-<!-- GALLERY -->
-<button onclick="openGallery()" style="
-width:40px;height:40px;flex-shrink:0;
-background:#2e7d32;color:white;border:none;border-radius:6px;">
-🖼
-</button>   <button onclick="sendMessage()" style="width:48px;height:40px;flex-shrink:0;background:#4caf50;color:white;border:none;border-radius:6px;">➤</button>
+    </div>
 
   </div>
+
+  <!-- HIDDEN INPUTS -->
+  <input type="file" id="cameraInput"
+    accept="image/*"
+    capture="environment"
+    style="display:none"
+    onchange="sendPhoto(event)">
+
+  <input type="file" id="galleryInput"
+    accept="image/*"
+    style="display:none"
+    onchange="sendPhoto(event)">
 
 </div>
 
 
-<!-- ✅ MOVE IMAGE VIEWER OUTSIDE -->
+<!-- ================= IMAGE VIEWER ================= -->
 <div id="imageViewer" style="
 position:fixed;
 top:0;
@@ -9396,10 +9527,9 @@ z-index:9999999;
   </div>
 
 </div>
-<!-- OVERLAY -->
-<!-- ================= DELETE POPUP (WHATSAPP STYLE) ================= -->
 
-<!-- 🔲 OVERLAY (BACKGROUND DARK) -->
+
+<!-- ================= DELETE POPUP ================= -->
 <div id="deleteOverlay" onclick="closeDeletePopup()" style="
 position:fixed;
 top:0;
@@ -9411,8 +9541,6 @@ display:none;
 z-index:9999998;
 "></div>
 
-
-<!-- 📦 POPUP MENU -->
 <div id="deletePopup" style="
 position:fixed;
 bottom:-300px;
@@ -9431,45 +9559,21 @@ box-shadow:0 -4px 20px rgba(0,0,0,0.5);
     Delete Message
   </div>
 
-  <button id="btnDeleteMe" style="
-    width:100%;
-    padding:12px;
-    margin:5px 0;
-    border:none;
-    border-radius:8px;
-    background:#2e7d32;
-    color:white;
-  ">🗑 Delete for me</button>
+  <button id="btnDeleteMe" style="width:100%;padding:12px;margin:5px 0;border:none;border-radius:8px;background:#2e7d32;color:white;">
+    🗑 Delete for me
+  </button>
 
-  <button id="btnDeleteAll" style="
-    width:100%;
-    padding:12px;
-    margin:5px 0;
-    border:none;
-    border-radius:8px;
-    background:#c62828;
-    color:white;
-  ">🚫 Delete for everyone</button>
+  <button id="btnDeleteAll" style="width:100%;padding:12px;margin:5px 0;border:none;border-radius:8px;background:#c62828;color:white;">
+    🚫 Delete for everyone
+  </button>
 
-  <button id="btnDeleteAdmin" style="
-    width:100%;
-    padding:12px;
-    margin:5px 0;
-    border:none;
-    border-radius:8px;
-    background:#ff9800;
-    color:black;
-  ">⚠ Admin delete</button>
+  <button id="btnDeleteAdmin" style="width:100%;padding:12px;margin:5px 0;border:none;border-radius:8px;background:#ff9800;color:black;">
+    ⚠ Admin delete
+  </button>
 
-  <button onclick="closeDeletePopup()" style="
-    width:100%;
-    padding:12px;
-    margin-top:10px;
-    border:none;
-    border-radius:8px;
-    background:#444;
-    color:white;
-  ">Cancel</button>
+  <button onclick="closeDeletePopup()" style="width:100%;padding:12px;margin-top:10px;border:none;border-radius:8px;background:#444;color:white;">
+    Cancel
+  </button>
 
 </div>
 
