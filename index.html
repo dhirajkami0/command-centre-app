@@ -231,7 +231,7 @@ async function cleanOldMessages(){
     
     // ===============================
     window.originalConfirm = window.confirm;
- let previewKMLLayer = null;
+ window.previewKMLLayer = null;
 let markerMap = {};
 let trackMap = {};  
     // 🔥 GLOBAL ERROR HANDLER
@@ -900,7 +900,16 @@ window.addEventListener("unhandledrejection", function (e) {
 </button>
 
     </div>
-
+<div id="kmlStatus" style="
+  margin-top:10px;
+  background:rgba(0,0,0,0.6);
+  border-radius:10px;
+  padding:8px;
+  color:#fff;
+  font-size:13px;
+  max-height:250px;
+  overflow:auto;
+"></div>
     <div class="weather-drawer" id="weatherDrawer" style="margin-top: 10px; background: rgba(255,255,255,0.05); border-radius: 8px; overflow: hidden;">
       <button class="weather-toggle" onclick="toggleWeatherDrawer()" style="width:100%; background:none; border:none; color:#4caf50; display:flex; justify-content:space-between; align-items:center; padding: 12px; cursor:pointer; font-weight:bold; font-size:13px;"> <span>
         <i class="fa-solid fa-cloud-sun"></i> Weather Info</span> <i id="weatherChevron" class="fa-solid fa-chevron-down"></i> </button> <div class="weather-content" id="weatherContent" style="max-height: 0px; opacity: 0; overflow: hidden; transition: all 0.4s ease; padding: 0 12px;"> 
@@ -4834,7 +4843,7 @@ function loadPredictions() {
     return;
   }
 
-  status.innerHTML = "✅ Done";
+  
 
   if (res.analysis) {
     window.lastAnalysis = res.analysis;
@@ -5029,7 +5038,7 @@ function submitKML(){
           console.error("Map error:", e);
         }
 
-        if(status) status.innerHTML = "✅ Done";
+        
 
       } catch(err){
 
@@ -5106,10 +5115,25 @@ function submitKML(){
 
   // 🔥 MAP POPUP (if exists)
   if(window.previewKMLLayer){
-    window.previewKMLLayer.bindPopup(html).openPopup();
+   if (window.previewKMLLayer) {
+
+  try {
+
+    window.previewKMLLayer.eachLayer(layer => {
+
+      if (layer.getBounds || layer.getLatLng) {
+        layer.bindPopup(html).openPopup();
+      }
+
+    });
+
+  } catch (e) {
+    console.warn("Popup error:", e);
+  }
+}
   }
 } 
-  function showAnalysisResult(data){
+ function showAnalysisResult(data){
 
   console.log("📊 showAnalysisResult RAW:", data);
 
@@ -5153,7 +5177,7 @@ function submitKML(){
     return area > 0 ? ((v / area) * 100).toFixed(1) : "0.0";
   };
 
-  // ✅ HEALTH (your logic)
+  // ✅ HEALTH
   const health = area > 0 ? ((forest / area) * 100) : 0;
 
   // ✅ COLOR LOGIC
@@ -5202,20 +5226,39 @@ function submitKML(){
   </div>
   `;
 
-  // ✅ UPDATE PANEL
+  // ✅ UPDATE PANEL (MAIN FIX FOR YOUR UI ISSUE)
   if(status){
     status.innerHTML = html;
   } else {
     console.warn("⚠ kmlStatus element not found");
   }
 
-  // ✅ MAP POPUP
-  if(window.previewKMLLayer){
-    try{
-      window.previewKMLLayer.bindPopup(html).openPopup();
-    } catch(e){
+  // ✅ MAP POPUP (🔥 FIXED FOR KML)
+  if (window.previewKMLLayer) {
+
+    try {
+
+      let popupOpened = false;
+
+      window.previewKMLLayer.eachLayer(layer => {
+
+        // Works for Polygon, Line, Point
+        if (layer.getBounds || layer.getLatLng) {
+
+          layer.bindPopup(html);
+
+          if (!popupOpened) {
+            layer.openPopup();
+            popupOpened = true;
+          }
+        }
+
+      });
+
+    } catch (e) {
       console.warn("⚠ Popup error:", e);
     }
+
   }
 
   console.log("✅ Analysis rendered successfully");
