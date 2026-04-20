@@ -7706,8 +7706,10 @@ async function sendPhoto(e){
 
     const source = e.target.getAttribute("data-source");
 
+    console.log("📸 Photo source:", source);
+
     // =========================
-    // 🖼 GALLERY → NO OVERLAY
+    // 🖼 GALLERY → DIRECT SEND
     // =========================
     if(source === "gallery"){
 
@@ -7729,127 +7731,141 @@ async function sendPhoto(e){
         status: "sent"
       });
 
-      console.log("🖼 Gallery photo sent (no overlay)");
+      console.log("✅ Gallery photo sent");
       return;
     }
 
 
     // =========================
-    // 📸 CAMERA → GPS OVERLAY (BIG)
+    // 📸 CAMERA → SAFE FLOW
     // =========================
-    if(source === "camera"){
 
-      navigator.geolocation.getCurrentPosition(async pos => {
+    let lat = null;
+    let lng = null;
 
-        const lat = pos.coords.latitude.toFixed(5);
-        const lng = pos.coords.longitude.toFixed(5);
-
-        const name = window.userProfile.rawName || "UNKNOWN";
-        const time = new Date().toLocaleString();
-
-        const img = new Image();
-        const reader = new FileReader();
-
-        reader.onload = e => img.src = e.target.result;
-
-        img.onload = async () => {
-
-          const canvas = document.createElement("canvas");
-          const ctx = canvas.getContext("2d");
-
-          canvas.width = img.width;
-          canvas.height = img.height;
-
-          ctx.drawImage(img, 0, 0);
-
-          // =========================
-          // 🔥 BIG AUTO-SCALE OVERLAY
-          // =========================
-          const scale = canvas.width / 400;
-
-          const fontSize = Math.floor(18 * scale * 2.8); // 🔥 ~5x bigger
-          const padding = Math.floor(12 * scale);
-          const lineHeight = Math.floor(fontSize * 1.4);
-
-          const boxHeight = lineHeight * 3 + padding * 2;
-
-          // 🔥 BACKGROUND
-          ctx.fillStyle = "rgba(0,0,0,0.65)";
-          ctx.fillRect(0, canvas.height - boxHeight, canvas.width, boxHeight);
-
-          // 🔥 TEXT STYLE
-          ctx.fillStyle = "#ffffff";
-          ctx.font = `bold ${fontSize}px Arial`;
-
-          // 🔥 OUTLINE FOR VISIBILITY
-          ctx.strokeStyle = "#000000";
-          ctx.lineWidth = Math.max(2, fontSize * 0.08);
-
-          // LEFT SIDE
-          ctx.textAlign = "left";
-
-          let y = canvas.height - boxHeight + lineHeight;
-
-          ctx.strokeText(`Lat: ${lat}`, padding, y);
-          ctx.fillText(`Lat: ${lat}`, padding, y);
-
-          y += lineHeight;
-          ctx.strokeText(`Lng: ${lng}`, padding, y);
-          ctx.fillText(`Lng: ${lng}`, padding, y);
-
-          y += lineHeight;
-          ctx.strokeText(`${time}`, padding, y);
-          ctx.fillText(`${time}`, padding, y);
-
-          // RIGHT SIDE
-          ctx.textAlign = "right";
-
-          ctx.strokeText(`Clicked by: ${name}`, canvas.width - padding, canvas.height - padding);
-          ctx.fillText(`Clicked by: ${name}`, canvas.width - padding, canvas.height - padding);
-
-          ctx.textAlign = "left";
-
-          // =========================
-          // 🔥 CONVERT & UPLOAD
-          // =========================
-          canvas.toBlob(async blob => {
-
-            const fileRef = window.fb.ref(
-              window.storage,
-              "chat_photos/" + Date.now() + ".jpg"
-            );
-
-            await window.fb.uploadBytes(fileRef, blob);
-
-            const url = await window.fb.getDownloadURL(fileRef);
-
-            await window.fb.addDoc(getChatCollection(), {
-              type: "image",
-              imageUrl: url,
-              lat,
-              lng,
-              user: name,
-              phone: window.userProfile.phone,
-              time: window.fb.serverTimestamp(),
-              status: "sent"
-            });
-
-            console.log("📸 Camera photo sent with BIG GPS overlay");
-
-          }, "image/jpeg", 0.75);
-
-        };
-
-        reader.readAsDataURL(file);
-
-      }, err => {
-        alert("⚠ Location permission required");
+    // 🔥 TRY GPS (but don't block)
+    try {
+      const pos = await new Promise((resolve, reject) => {
+        navigator.geolocation.getCurrentPosition(resolve, reject, {
+          timeout: 3000
+        });
       });
 
+      lat = pos.coords.latitude.toFixed(5);
+      lng = pos.coords.longitude.toFixed(5);
+
+      console.log("📍 GPS:", lat, lng);
+
+    } catch(err){
+      console.warn("⚠ GPS failed, continuing without GPS");
     }
+
+    const name = window.userProfile.rawName || "UNKNOWN";
+    const time = new Date().toLocaleString();
+
+    const img = new Image();
+    const reader = new FileReader();
+
+    reader.onload = e => img.src = e.target.result;
+
+    img.onload = async () => {
+
+      const canvas = document.createElement("canvas");
+      const ctx = canvas.getContext("2d");
+
+      canvas.width = img.width;
+      canvas.height = img.height;
+
+      ctx.drawImage(img, 0, 0);
+
+      // 🔥 ONLY ADD OVERLAY IF GPS EXISTS
+      if(lat && lng){
+
+        const scale = canvas.width / 400;
+        const fontSize = Math.floor(18 * scale * 2.8);
+        const padding = Math.floor(12 * scale);
+        const lineHeight = Math.floor(fontSize * 1.4);
+        const boxHeight = lineHeight * 3 + padding * 2;
+
+        ctx.fillStyle = "rgba(0,0,0,0.65)";
+        ctx.fillRect(0, canvas.height - boxHeight, canvas.width, boxHeight);
+
+        ctx.fillStyle = "#fff";
+        ctx.font = `bold ${fontSize}px Arial`;
+
+        ctx.textAlign = "left";
+
+        let y = canvas.height - boxHeight + lineHeight;
+        ctx.fillText(`Lat: ${lat}`, padding, y);
+        y += lineHeight;
+        ctx.fillText(`Lng: ${lng}`, padding, y);
+        y += lineHeight;
+        ctx.fillText(`${time}`, padding, y);
+
+        ctx.textAlign = "right";
+        ctx.fillText(`Clicked by: ${name}`, canvas.width - padding, canvas.height - padding);
+
+        ctx.textAlign = "left";
+      }
+
+      // 🔥 SAFE BLOB
+      canvas.toBlob(async blob => {
+
+        if(!blob){
+          console.error("❌ Blob failed, sending original");
+          
+          const fileRef = window.fb.ref(
+            window.storage,
+            "chat_photos/" + Date.now() + ".jpg"
+          );
+
+          await window.fb.uploadBytes(fileRef, file);
+
+          const url = await window.fb.getDownloadURL(fileRef);
+
+          await window.fb.addDoc(getChatCollection(), {
+            type: "image",
+            imageUrl: url,
+            user: name,
+            phone: window.userProfile.phone,
+            time: window.fb.serverTimestamp(),
+            status: "sent"
+          });
+
+          return;
+        }
+
+        const fileRef = window.fb.ref(
+          window.storage,
+          "chat_photos/" + Date.now() + ".jpg"
+        );
+
+        await window.fb.uploadBytes(fileRef, blob);
+
+        const url = await window.fb.getDownloadURL(fileRef);
+
+        await window.fb.addDoc(getChatCollection(), {
+          type: "image",
+          imageUrl: url,
+          lat,
+          lng,
+          user: name,
+          phone: window.userProfile.phone,
+          time: window.fb.serverTimestamp(),
+          status: "sent"
+        });
+
+        console.log("✅ Camera photo sent");
+
+      }, "image/jpeg", 0.75);
+
+    };
+
+    reader.readAsDataURL(file);
 
   } catch(e){
     console.error("❌ sendPhoto crash:", e);
+    alert("Photo send failed");
   }
 }
     
