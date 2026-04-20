@@ -4941,20 +4941,24 @@ function submitKML(){
               {
                 method:"POST",
                 headers:{ "Content-Type":"application/json" },
-                body: JSON.stringify({ coords: coords[0] })
+                // 🔥 FIX: send FULL coords (GeoJSON ring)
+                body: JSON.stringify({ coords: coords })
               }
             );
 
             const text = await res.text();
+            console.log("🌐 RAW RESPONSE:", text); // 🔥 DEBUG
 
             let data;
+
             try {
               data = JSON.parse(text);
             } catch {
               throw new Error("Invalid server response");
             }
 
-            if(!data || data.error || !data.Total_ha){
+            if(!data || data.error){
+              console.error("❌ API ERROR:", data);
               throw new Error(data?.reportText || "Analysis failed");
             }
 
@@ -4962,7 +4966,7 @@ function submitKML(){
 
           } catch(err){
 
-            console.warn("⚠ Backend failed → fallback");
+            console.warn("⚠ GEE FAILED → fallback", err);
 
             if(typeof turf === "undefined"){
               showToast("Fallback failed","error");
@@ -5042,8 +5046,7 @@ function submitKML(){
   }
 
   console.groupEnd();
-}
-    
+}    
     function updateClearKMLButton(){
 
   const btn = document.getElementById("clearKMLBtn");
