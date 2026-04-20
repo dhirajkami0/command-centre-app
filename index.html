@@ -7708,56 +7708,111 @@ async function sendLocation(){
       return;
     }
 
-    showToast("📍 Getting location...");
+    showToast("📡 Getting accurate GPS...");
 
-    navigator.geolocation.getCurrentPosition(
+    let bestPos = null;
+    let bestAccuracy = Infinity;
+    let readings = 0;
 
-      async (pos) => {
+    const finalPos = await new Promise((resolve, reject) => {
 
-        const lat = Number(pos.coords.latitude.toFixed(6));
-        const lng = Number(pos.coords.longitude.toFixed(6));
-        const acc = Math.round(pos.coords.accuracy);
+      const watchId = navigator.geolocation.watchPosition(
 
-        console.log("📍 LOCATION:", lat, lng, "Accuracy:", acc);
+        (pos) => {
 
-        await window.fb.addDoc(getChatCollection(), {
-          type: "location",
-          lat: lat,
-          lng: lng,
-          accuracy: acc,
-          user: window.userProfile.rawName,
-          phone: window.userProfile.phone,
-          time: window.fb.serverTimestamp(),
-          status: "sent"
-        });
+          const acc = pos.coords.accuracy;
 
-        showToast("📍 Location sent");
+          console.log("📍 Reading:", acc);
 
-      },
+          readings++;
 
-      (err) => {
-        console.error("❌ GPS ERROR:", err);
-        showToast("❌ Location failed", "error");
-      },
+          // 🔥 Pick BEST accuracy
+          if(acc < bestAccuracy){
+            bestAccuracy = acc;
+            bestPos = pos;
+          }
 
-      {
-        enableHighAccuracy: true,
-        timeout: 10000,
-        maximumAge: 0
-      }
+          // ✅ STOP CONDITIONS
+          if(acc <= 15 || readings >= 5){
+            navigator.geolocation.clearWatch(watchId);
+            resolve(bestPos);
+          }
 
-    );
+        },
+
+        (err) => {
+          navigator.geolocation.clearWatch(watchId);
+          reject(err);
+        },
+
+        {
+          enableHighAccuracy: true,
+          maximumAge: 0,
+          timeout: 15000
+        }
+      );
+
+      // 🔥 HARD TIMEOUT SAFETY (10 sec)
+      setTimeout(()=>{
+        try{
+          navigator.geolocation.clearWatch(watchId);
+          if(bestPos){
+            resolve(bestPos);
+          } else {
+            reject("Timeout no GPS");
+          }
+        }catch(e){
+          reject(e);
+        }
+      }, 10000);
+
+    });
+
+    // =========================
+    // 📍 FINAL LOCATION
+    // =========================
+    const lat = Number(finalPos.coords.latitude.toFixed(6));
+    const lng = Number(finalPos.coords.longitude.toFixed(6));
+    const acc = Math.round(finalPos.coords.accuracy);
+
+    console.log("✅ FINAL:", lat, lng, "Acc:", acc);
+
+    // =========================
+    // 🚫 REJECT VERY BAD GPS
+    // =========================
+    if(acc > 80){
+      showToast("⚠ Weak GPS (" + acc + "m)", "warning");
+    }
+
+    // =========================
+    // 📤 SEND TO CHAT
+    // =========================
+    await window.fb.addDoc(getChatCollection(), {
+      type: "location",
+      lat: lat,
+      lng: lng,
+      accuracy: acc,
+      user: window.userProfile.rawName,
+      phone: window.userProfile.phone,
+      time: window.fb.serverTimestamp(),
+      status: "sent"
+    });
+
+    showToast("📍 Location sent (" + acc + "m)");
 
   } catch(e){
-    console.error("❌ sendLocation crash:", e);
-    showToast("❌ Failed to send location", "error");
+
+    console.error("❌ sendLocation:", e);
+
+    showToast("❌ Location failed", "error");
   }
 }
 
-// 🔥 MUST ADD THIS
-window.sendLocation = sendLocation;
 
-// ================= SEND PHOTO =================
+// 🔥 MAKE GLOBAL
+window.sendLocation = sendLocation;
+    
+    // ================= SEND PHOTO =================
 async function sendPhoto(e){
 
   try {
