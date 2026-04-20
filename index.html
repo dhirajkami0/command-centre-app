@@ -4941,13 +4941,12 @@ function submitKML(){
               {
                 method:"POST",
                 headers:{ "Content-Type":"application/json" },
-                // 🔥 FIX: send FULL coords (GeoJSON ring)
                 body: JSON.stringify({ coords: coords })
               }
             );
 
             const text = await res.text();
-            console.log("🌐 RAW RESPONSE:", text); // 🔥 DEBUG
+            console.log("🌐 RAW RESPONSE:", text);
 
             let data;
 
@@ -4957,9 +4956,15 @@ function submitKML(){
               throw new Error("Invalid server response");
             }
 
-            if(!data || data.error){
+            // ✅ FIX 1: Proper null check
+            if (!data) {
+              throw new Error("Empty server response");
+            }
+
+            // ✅ FIX 2: Backend error handling
+            if (data.error) {
               console.error("❌ API ERROR:", data);
-              throw new Error(data?.reportText || "Analysis failed");
+              throw new Error(data.message || "Analysis failed");
             }
 
             result = { type:"polygon", ...data };
@@ -5046,7 +5051,8 @@ function submitKML(){
   }
 
   console.groupEnd();
-}    
+}  
+    
     function updateClearKMLButton(){
 
   const btn = document.getElementById("clearKMLBtn");
@@ -5107,7 +5113,7 @@ function submitKML(){
 
   console.log("📊 showAnalysisResult", data);
 
-  if (!data || !data.Total_ha) {
+  if (!data || data.Total_ha === undefined || data.Total_ha === null) {
     console.error("❌ Invalid analysis data");
     showToast("Invalid analysis data","error");
     return;
