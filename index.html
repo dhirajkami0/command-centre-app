@@ -2114,84 +2114,12 @@ esriSat.addTo(map);
 
     L.control.zoom({ position: 'topright' }).addTo(map);
 
-function showCoveragePanel(){
 
-  // remove existing
-  document.getElementById("coveragePanel")?.remove();
-
-  const html = `
-  <div id="coveragePanel" style="
-    position:absolute;
-    top:70px;
-    right:10px;
-    width:260px;
-    background:#081508;
-    color:#eee;
-    padding:10px;
-    border-radius:10px;
-    font-size:13px;
-    z-index:9999;
-    box-shadow:0 2px 10px rgba(0,0,0,0.5);
-  ">
-
-    <div style="margin-bottom:6px;">
-      <b>📊 Coverage</b>
-    </div>
-
-    <!-- BEAT -->
-    <select id="beatSelect" style="width:100%;margin-bottom:6px;">
-      <option value="EAST_GARAM">East Garam</option>
-      <option value="WEST_GARAM">West Garam</option>
-      <option value="EAST_PORO">East Poro</option>
-    </select>
-
-    <!-- MODES -->
-    <div style="display:flex;flex-wrap:wrap;gap:4px;margin-bottom:6px;">
-      <button onclick="applyMode('today')">Today</button>
-      <button onclick="applyMode('current')">Current</button>
-      <button onclick="applyMode('last')">Last</button>
-      <button onclick="applyMode('compare')">Compare</button>
-      <button onclick="applyMode('cumulative')">Cumulative</button>
-    </div>
-
-    <!-- ACTION -->
-    <div style="display:flex;gap:4px;">
-      <button onclick="hideGrid()">Hide Grid</button>
-      <button onclick="closeCoveragePanel()">Close</button>
-    </div>
-
-  </div>
-  `;
-
-  document.body.insertAdjacentHTML("beforeend", html);
-}
+   
 
 
+  
 
-    function closeCoveragePanel(){
-  document.getElementById("coveragePanel")?.remove();
-  hideGrid();
-}
-
-function applyMode(mode){
-
-  window.currentCoverageMode = mode;
-
-  renderGrid(mode, window.currentBeat || "ALL");
-}
-
-
-   function showGrid(){
-
-  renderGrid(window.currentCoverageMode || "current",
-             window.currentBeat || "ALL");
-}
-function hideGrid(){
-  if(map.hasLayer(window.gridLayer)){
-    map.removeLayer(window.gridLayer);
-  }
-  window.gridLayer.clearLayers();
-}
     /* ============================================================
        📊 RANGE BUTTON (SAFE)
     ============================================================ */
@@ -3221,7 +3149,8 @@ function loadRangeKML() {
     .catch(err => {
       console.error("❌ KML Fetch Error:", err);
     });
-}function markVisited(lat, lon){
+}
+    function markVisited(lat, lon){
 
   if(!window.gridMeta || !window.gridIndex) return;
 
@@ -3255,21 +3184,60 @@ function loadRangeKML() {
     renderGrid("current");
   }
 }
-   function renderGrid(mode = "current", beat = "ALL"){
+   
+     // ===============================
+// 🔲 BUILD GRID (FINAL CORRECT)
+// ===============================
+// ============================================================
+// 🟢 GRID / COVERAGE FULL SYSTEM (FINAL)
+// ============================================================
+
+// ===== GLOBAL STATE =====
+window.gridLayer = L.layerGroup();
+window.currentCoverageMode = "current";
+window.currentBeat = "ALL";
+
+// ===== PANEL CONTROL =====
+function showCoveragePanel(){
+
+  const panel = document.getElementById("coveragePanel");
+  if(panel) panel.style.display = "block";
+
+  const beat = document.getElementById("beatSelect")?.value || "ALL";
+
+  renderGrid("current", beat);
+}
+
+function closeCoveragePanel(){
+
+  const panel = document.getElementById("coveragePanel");
+  if(panel) panel.style.display = "none";
+
+  if(window.gridLayer){
+    window.gridLayer.clearLayers();
+    if(map.hasLayer(window.gridLayer)){
+      map.removeLayer(window.gridLayer);
+    }
+  }
+}
+
+// ===== CORE ENGINE =====
+function renderGrid(mode = "current", beat = "ALL"){
 
   if(!window.gridIndex){
     console.warn("⚠ No gridIndex");
     return;
   }
 
+  window.currentCoverageMode = mode;
+  window.currentBeat = beat;
+
   if(!window.gridLayer){
     window.gridLayer = L.layerGroup();
   }
 
-  // 🔥 clear previous grid
   window.gridLayer.clearLayers();
 
-  // 🔥 load visited data
   const current = JSON.parse(localStorage.getItem("grid_current") || "{}");
 
   let drawn = 0;
@@ -3280,29 +3248,27 @@ function loadRangeKML() {
 
     const cell = window.gridIndex[id];
 
-    // =========================
-    // 🎯 BEAT FILTER
-    // =========================
+    // ===== BEAT FILTER =====
     if(beat !== "ALL" && cell.beat !== beat) return;
 
     total++;
 
-    let isVisited = !!current[id];
-
+    const isVisited = !!current[id];
     if(isVisited) visited++;
 
     let color = null;
 
-    // =========================
-    // 🎯 MODES
-    // =========================
+    // ===== MODES =====
     if(mode === "current"){
-      // ALL view → show both
       if(beat === "ALL"){
         color = isVisited ? "#00ff00" : "#ff0000";
       } else {
         color = isVisited ? "#00ff00" : "#330000";
       }
+    }
+
+    if(mode === "today"){
+      if(isVisited) color = "#00ff00";
     }
 
     if(mode === "visited"){
@@ -3313,12 +3279,16 @@ function loadRangeKML() {
       if(!isVisited) color = "#ff0000";
     }
 
-    // skip if nothing to draw
+    if(mode === "cumulative"){
+      color = isVisited ? "#00ff00" : "#330000";
+    }
+
+    if(mode === "last" || mode === "compare"){
+      color = isVisited ? "#00ff00" : "#330000";
+    }
+
     if(!color) return;
 
-    // =========================
-    // 🎨 DRAW
-    // =========================
     L.rectangle(cell.bounds, {
       color:"#111",
       weight:0.2,
@@ -3330,31 +3300,51 @@ function loadRangeKML() {
 
   });
 
-  // 🔥 add layer if not present
   if(!map.hasLayer(window.gridLayer)){
     window.gridLayer.addTo(map);
   }
 
-  // =========================
-  // 📊 LOG
-  // =========================
   const percent = total ? ((visited / total) * 100).toFixed(1) : 0;
 
   console.log(`🔲 Grid rendered: ${drawn}`);
   console.log(`📊 ${beat} → ${visited}/${total} (${percent}%)`);
 }
-     // ===============================
-// 🔲 BUILD GRID (FINAL CORRECT)
-// ===============================
 
- function onBeatChange(){
+// ===== UI EVENTS =====
+function applyMode(mode){
 
-  const beat = document.getElementById("beatSelect").value;
+  window.currentCoverageMode = mode;
+
+  const beat = document.getElementById("beatSelect")?.value || "ALL";
+
+  renderGrid(mode, beat);
+}
+
+function onBeatChange(){
+
+  const beat = document.getElementById("beatSelect")?.value || "ALL";
 
   window.currentBeat = beat;
 
   renderGrid(window.currentCoverageMode, beat);
-}   
+}
+
+function showGrid(){
+
+  renderGrid(window.currentCoverageMode, window.currentBeat);
+}
+
+function hideGrid(){
+
+  if(window.gridLayer){
+    window.gridLayer.clearLayers();
+
+    if(map.hasLayer(window.gridLayer)){
+      map.removeLayer(window.gridLayer);
+    }
+  }
+}
+    
   // ===============================
 // 🔲 BUILD GRID (FINAL CORRECT)
 // ===============================
@@ -6567,30 +6557,7 @@ function show3MonthSummary(data){
    ⚡ LAZY LOAD ENGINE (FIXED + SAFE)
 ============================================================ */
 // ================= GLOBAL STATE =================
-window.gridLayer = L.layerGroup();
-window.currentCoverageMode = "current";
-window.currentBeat = "ALL";
-  function showCoveragePanel(){
-
-  console.log("📊 Panel Open");
-
-  const panel = document.getElementById("coveragePanel");
-  if(panel) panel.style.display = "block";
-
-  const beat = document.getElementById("beatSelect")?.value || "ALL";
-
-  renderGrid("current", beat);
-}
-
-function closeCoveragePanel(){
-
-  console.log("❌ Panel Close");
-
-  const panel = document.getElementById("coveragePanel");
-  if(panel) panel.style.display = "none";
-
-  hideGrid();
-}  
+  
 /* ============================================================
    🎛 LAYER CONTROL
 ============================================================ */
