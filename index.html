@@ -3170,9 +3170,19 @@ ${pct(data.health)} / 100
   window.gridLayer.addTo(map);
 }
 
-    function buildGridFromBounds(bounds, rangeLayer){
+   function buildGridFromBounds(bounds, rangeLayer){
 
-  console.log("🔲 Building clipped grid...");
+  console.log("🔲 Building SAFE clipped grid...");
+
+  if(!bounds){
+    console.error("❌ No bounds");
+    return;
+  }
+
+  if(!rangeLayer || typeof rangeLayer.eachLayer !== "function"){
+    console.error("❌ Invalid rangeLayer:", rangeLayer);
+    return;
+  }
 
   const size = 0.00225;
 
@@ -3183,26 +3193,49 @@ ${pct(data.health)} / 100
 
   let count = 0;
 
-  // 🔥 collect all polygons from KML
+  // 🔥 COLLECT SAFE POLYGONS
   let polygons = [];
 
   rangeLayer.eachLayer(l => {
+
+    // omnivore sometimes nests deeper
     if (l instanceof L.Polygon) {
       polygons.push(l);
     }
+
+    // handle nested groups
+    if (l.eachLayer) {
+      l.eachLayer(inner => {
+        if (inner instanceof L.Polygon) {
+          polygons.push(inner);
+        }
+      });
+    }
+
   });
 
+  if(polygons.length === 0){
+    console.warn("⚠ No polygons found → fallback to full bounds");
+  }
+
+  // 🔥 BUILD GRID
   for(let lat = south; lat < north; lat += size){
     for(let lon = west; lon < east; lon += size){
 
-      const center = [lat + size/2, lon + size/2];
+      const center = L.latLng(lat + size/2, lon + size/2);
 
-      // 🔥 CHECK IF INSIDE ANY POLYGON
-      let inside = polygons.some(poly => {
-        return leafletPip.pointInLayer(center, poly).length > 0;
-      });
+      let inside = false;
 
-      if(!inside) continue; // ❌ skip outside
+      // 🔥 SAFE CHECK (NO leaflet-pip)
+      if(polygons.length){
+        inside = polygons.some(poly => {
+          return poly.getBounds().contains(center);
+        });
+      } else {
+        inside = true; // fallback
+      }
+
+      if(!inside) continue;
 
       const id = lat.toFixed(5) + "_" + lon.toFixed(5);
 
@@ -3217,9 +3250,8 @@ ${pct(data.health)} / 100
 
   window.gridMeta = { size, total: count };
 
-  console.log("✅ Clipped Grid built:", count);
+  console.log("✅ SAFE Grid built:", count);
 }
-
 function saveGrid(){
   localStorage.setItem("range_grid", JSON.stringify({
     meta: window.gridMeta,
@@ -3261,12 +3293,12 @@ function initGrid(layer){
     return;
   }
 
- buildGridFromBounds(bounds, layer);
+  buildGridFromBounds(bounds, layer);
   saveGrid();
 
   window.__gridReady = true;
 }
-function clearKMLPreview(){
+    function clearKMLPreview(){
 
   const btn = document.getElementById("clearKMLBtn");
 
