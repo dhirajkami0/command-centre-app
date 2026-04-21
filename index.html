@@ -4689,223 +4689,8 @@ function loadPredictions() {
 
 
 
- function extractCoordsFromKML(kmlText, mode){
+ 
 
-  try {
-
-    if(!kmlText) throw new Error("Empty KML");
-
-    const parser = new DOMParser();
-    const xml = parser.parseFromString(kmlText, "text/xml");
-
-    if(xml.getElementsByTagName("parsererror").length){
-      throw new Error("Invalid XML");
-    }
-
-    let coords = [];
-
-    // =====================================================
-    // 🔥 1. gx:Track (GPS TRACK)
-    // =====================================================
-    const trackNodes = xml.getElementsByTagName("gx:Track");
-
-    if(trackNodes.length){
-
-      console.log("📍 gx:Track detected");
-
-      for(let track of trackNodes){
-
-        const coordTags = track.getElementsByTagName("gx:coord");
-
-        for(let i=0; i<coordTags.length; i++){
-          const parts = coordTags[i].textContent.trim().split(" ");
-
-          const lon = parseFloat(parts[0]);
-          const lat = parseFloat(parts[1]);
-
-          if(!isNaN(lon) && !isNaN(lat)){
-            coords.push([lon, lat]);
-          }
-        }
-      }
-    }
-
-    // =====================================================
-    // 🔥 2. POLYGON / MULTIPOLYGON / MULTIGEOMETRY
-    // =====================================================
-    if(coords.length === 0){
-
-      const polygons = xml.getElementsByTagName("Polygon");
-
-      if(polygons.length){
-
-        console.log("🌍 Polygon / MultiPolygon detected");
-
-        let rings = [];
-
-        for(let poly of polygons){
-
-          const coordTags = poly.getElementsByTagName("coordinates");
-
-          for(let tag of coordTags){
-
-            const ring = tag.textContent
-              .trim()
-              .split(/\s+/)
-              .map(p=>{
-                const parts = p.split(",");
-                if(parts.length < 2) return null;
-
-                const lon = parseFloat(parts[0]);
-                const lat = parseFloat(parts[1]);
-
-                if(isNaN(lon) || isNaN(lat)) return null;
-
-                return [lon, lat];
-              })
-              .filter(Boolean);
-
-            if(ring.length >= 3){
-
-              // 🔥 close ring
-              const first = ring[0];
-              const last = ring[ring.length - 1];
-
-              if(first[0] !== last[0] || first[1] !== last[1]){
-                ring.push(first);
-              }
-
-              rings.push(ring);
-            }
-          }
-        }
-
-        if(rings.length){
-          coords = rings.flat(); // flatten for mode handling
-        }
-      }
-    }
-
-    // =====================================================
-    // 🔥 3. LINESTRING (MULTI SUPPORT)
-    // =====================================================
-    if(coords.length === 0){
-
-      const lines = xml.getElementsByTagName("LineString");
-
-      if(lines.length){
-
-        console.log("📏 LineString detected");
-
-        for(let line of lines){
-
-          const coordTag = line.getElementsByTagName("coordinates")[0];
-          if(!coordTag) continue;
-
-          const parsed = coordTag.textContent
-            .trim()
-            .split(/\s+/)
-            .map(p=>{
-              const parts = p.split(",");
-              if(parts.length < 2) return null;
-
-              const lon = parseFloat(parts[0]);
-              const lat = parseFloat(parts[1]);
-
-              if(isNaN(lon) || isNaN(lat)) return null;
-
-              return [lon, lat];
-            })
-            .filter(Boolean);
-
-          coords.push(...parsed);
-        }
-      }
-    }
-
-    // =====================================================
-    // 🔥 4. POINT (MULTI SUPPORT)
-    // =====================================================
-    if(coords.length === 0){
-
-      const points = xml.getElementsByTagName("Point");
-
-      if(points.length){
-
-        console.log("📍 Point detected");
-
-        for(let pt of points){
-
-          const coordTag = pt.getElementsByTagName("coordinates")[0];
-          if(!coordTag) continue;
-
-          const parts = coordTag.textContent.split(",");
-
-          const lon = parseFloat(parts[0]);
-          const lat = parseFloat(parts[1]);
-
-          if(!isNaN(lon) && !isNaN(lat)){
-            coords.push([lon, lat]);
-          }
-        }
-      }
-    }
-
-    // =====================================================
-    // ❌ NOTHING FOUND
-    // =====================================================
-    if(coords.length === 0){
-      throw new Error("Unsupported KML format");
-    }
-
-    // =====================================================
-    // 🔧 REMOVE DUPLICATES
-    // =====================================================
-    coords = coords.filter((c, i, arr)=>{
-      if(i === 0) return true;
-      return !(c[0] === arr[i-1][0] && c[1] === arr[i-1][1]);
-    });
-
-    // =====================================================
-    // 🎯 MODE CONVERSION (GEE FORMAT)
-    // =====================================================
-
-    // 📍 POINT
-    if(mode === "point"){
-      return coords[0];
-    }
-
-    // 📏 LINE
-    if(mode === "line"){
-      if(coords.length < 2){
-        throw new Error("Line needs at least 2 points");
-      }
-      return coords;
-    }
-
-    // 🌍 POLYGON
-    if(mode === "polygon"){
-
-      if(coords.length < 3){
-        throw new Error("Not enough points for polygon");
-      }
-
-      // 🔥 close polygon
-      const first = coords[0];
-      const last = coords[coords.length - 1];
-
-      if(first[0] !== last[0] || first[1] !== last[1]){
-        coords.push(first);
-      }
-
-      return [coords]; // GEE valid
-    }
-
-  } catch(e){
-    console.error("❌ extractCoordsFromKML:", e.message);
-    throw e;
-  }
-}
     function handleFrontendResult(res){
 
   console.log("📥 FINAL RESPONSE:", res);
@@ -5022,6 +4807,66 @@ function submitKML(){
           }
         }
 
+        // ================= LINE (TRACK ANALYSIS) =================
+        if(mode === "line"){
+
+          try {
+
+            if(!coords || coords.length < 2){
+              throw new Error("Invalid track geometry");
+            }
+
+            // 📏 DISTANCE
+            let distance = 0;
+
+            for(let i=1; i<coords.length; i++){
+
+              const p1 = turf.point(coords[i-1]);
+              const p2 = turf.point(coords[i]);
+
+              distance += turf.distance(p1, p2, { units:"kilometers" });
+            }
+
+            // ⏱ TIME
+            let timeMin = "N/A";
+
+            try {
+
+              const parser2 = new DOMParser();
+              const xml2 = parser2.parseFromString(kmlText, "text/xml");
+
+              const timeTags = xml2.getElementsByTagName("when");
+
+              if(timeTags.length >= 2){
+
+                const start = new Date(timeTags[0].textContent);
+                const end   = new Date(timeTags[timeTags.length - 1].textContent);
+
+                const diff = (end - start) / (1000 * 60);
+
+                if(!isNaN(diff) && diff > 0){
+                  timeMin = diff.toFixed(1);
+                }
+              }
+
+            } catch(e){
+              console.warn("⚠ Time parsing failed:", e);
+            }
+
+            result = {
+              type: "line",
+              distance_km: distance.toFixed(2),
+              time_min: timeMin
+            };
+
+            console.log("📏 Track Analysis:", result);
+
+          } catch(err){
+            console.error("❌ Line analysis failed:", err);
+            showToast("Track analysis failed","error");
+          }
+        }
+
         // ================= MAP =================
         const parser = new DOMParser();
         const xml = parser.parseFromString(kmlText, "text/xml");
@@ -5082,7 +4927,8 @@ function submitKML(){
   }
 
   console.groupEnd();
-}    function updateClearKMLButton(){
+}
+    function updateClearKMLButton(){
 
   const btn = document.getElementById("clearKMLBtn");
   if (!btn) return;
@@ -5157,6 +5003,50 @@ function submitKML(){
 
   console.log("📊 showAnalysisResult RAW:", data);
 
+  // ================= LINE SUPPORT (🔥 ADDED) =================
+  if (data && data.type === "line") {
+
+    const html = `
+    <div style="
+      font-family:Segoe UI;
+      font-size:13px;
+      color:#eee;
+      background:#081508;
+      padding:10px;
+      border-radius:10px;
+    ">
+      <h3 style="color:#4caf50;margin-bottom:8px;">📏 Patrol Track</h3>
+
+      <div style="background:#102a12;padding:8px;border-radius:6px;">
+        📏 Distance: ${data.distance_km} km<br>
+        ⏱ Time: ${data.time_min} min
+      </div>
+    </div>
+    `;
+
+    function bindPopupRecursive(layer){
+      if (layer instanceof L.Path || layer instanceof L.Marker) {
+        layer.unbindPopup();
+        layer.bindPopup(html);
+      }
+      if (layer.eachLayer) {
+        layer.eachLayer(bindPopupRecursive);
+      }
+    }
+
+    if (window.previewKMLLayer) {
+      try {
+        bindPopupRecursive(window.previewKMLLayer);
+      } catch (e) {
+        console.warn("⚠ Popup error:", e);
+      }
+    }
+
+    console.log("✅ Line popup bound");
+    return; // 🔥 STOP HERE (do not run polygon logic)
+  }
+
+  // ================= EXISTING CODE (UNCHANGED) =================
   if (!data || data.Total_ha === undefined) {
     console.error("❌ Invalid analysis data:", data);
     return;
@@ -5190,7 +5080,7 @@ function submitKML(){
 
   const health = area > 0 ? ((forest / area) * 100) : 0;
 
-  // 🔥 ✅ FIXED CONDITION LOGIC (REAL DATA BASED)
+  // 🔥 CONDITION LOGIC (UNCHANGED)
   const forestPct = area > 0 ? (forest / area) * 100 : 0;
   const degradedPct = area > 0 ? (degraded / area) * 100 : 0;
 
@@ -5209,12 +5099,11 @@ function submitKML(){
     condition = "🔴 Highly Degraded / Non-Forest";
   }
 
-  // 🔥 ✅ FIXED COLOR LOGIC
   const getColor = ()=>{
-    if (forestPct >= 70) return "#2e7d32";   // green
-    if (forestPct >= 40) return "#f9a825";   // yellow
-    if (forestPct >= 10) return "#ef6c00";   // orange
-    return "#d32f2f";                        // red
+    if (forestPct >= 70) return "#2e7d32";
+    if (forestPct >= 40) return "#f9a825";
+    if (forestPct >= 10) return "#ef6c00";
+    return "#d32f2f";
   };
 
   const html = `
@@ -5255,7 +5144,6 @@ function submitKML(){
   </div>
   `;
 
-  // 🔥 🔥 RECURSIVE POPUP BINDING (UNCHANGED)
   function bindPopupRecursive(layer){
 
     if (layer instanceof L.Path || layer instanceof L.Marker) {
