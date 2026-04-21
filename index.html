@@ -4709,6 +4709,225 @@ function loadPredictions() {
     showAnalysisResult(res.analysis);
   }
 }
+function extractCoordsFromKML(kmlText, mode){
+
+  try {
+
+    if(!kmlText) throw new Error("Empty KML");
+
+    const parser = new DOMParser();
+    const xml = parser.parseFromString(kmlText, "text/xml");
+
+    if(xml.getElementsByTagName("parsererror").length){
+      throw new Error("Invalid XML");
+    }
+
+    let coords = [];
+
+    // =====================================================
+    // 🔥 1. gx:Track (GPS TRACK)
+    // =====================================================
+    const trackNodes = xml.getElementsByTagName("gx:Track");
+
+    if(trackNodes.length){
+
+      console.log("📍 gx:Track detected");
+
+      for(let track of trackNodes){
+
+        const coordTags = track.getElementsByTagName("gx:coord");
+
+        for(let i=0; i<coordTags.length; i++){
+          const parts = coordTags[i].textContent.trim().split(" ");
+
+          const lon = parseFloat(parts[0]);
+          const lat = parseFloat(parts[1]);
+
+          if(!isNaN(lon) && !isNaN(lat)){
+            coords.push([lon, lat]);
+          }
+        }
+      }
+    }
+
+    // =====================================================
+    // 🔥 2. POLYGON / MULTIPOLYGON / MULTIGEOMETRY
+    // =====================================================
+    if(coords.length === 0){
+
+      const polygons = xml.getElementsByTagName("Polygon");
+
+      if(polygons.length){
+
+        console.log("🌍 Polygon / MultiPolygon detected");
+
+        let rings = [];
+
+        for(let poly of polygons){
+
+          const coordTags = poly.getElementsByTagName("coordinates");
+
+          for(let tag of coordTags){
+
+            const ring = tag.textContent
+              .trim()
+              .split(/\s+/)
+              .map(p=>{
+                const parts = p.split(",");
+                if(parts.length < 2) return null;
+
+                const lon = parseFloat(parts[0]);
+                const lat = parseFloat(parts[1]);
+
+                if(isNaN(lon) || isNaN(lat)) return null;
+
+                return [lon, lat];
+              })
+              .filter(Boolean);
+
+            if(ring.length >= 3){
+
+              // 🔥 close ring
+              const first = ring[0];
+              const last = ring[ring.length - 1];
+
+              if(first[0] !== last[0] || first[1] !== last[1]){
+                ring.push(first);
+              }
+
+              rings.push(ring);
+            }
+          }
+        }
+
+        if(rings.length){
+          coords = rings.flat(); // flatten for mode handling
+        }
+      }
+    }
+
+    // =====================================================
+    // 🔥 3. LINESTRING (MULTI SUPPORT)
+    // =====================================================
+    if(coords.length === 0){
+
+      const lines = xml.getElementsByTagName("LineString");
+
+      if(lines.length){
+
+        console.log("📏 LineString detected");
+
+        for(let line of lines){
+
+          const coordTag = line.getElementsByTagName("coordinates")[0];
+          if(!coordTag) continue;
+
+          const parsed = coordTag.textContent
+            .trim()
+            .split(/\s+/)
+            .map(p=>{
+              const parts = p.split(",");
+              if(parts.length < 2) return null;
+
+              const lon = parseFloat(parts[0]);
+              const lat = parseFloat(parts[1]);
+
+              if(isNaN(lon) || isNaN(lat)) return null;
+
+              return [lon, lat];
+            })
+            .filter(Boolean);
+
+          coords.push(...parsed);
+        }
+      }
+    }
+
+    // =====================================================
+    // 🔥 4. POINT (MULTI SUPPORT)
+    // =====================================================
+    if(coords.length === 0){
+
+      const points = xml.getElementsByTagName("Point");
+
+      if(points.length){
+
+        console.log("📍 Point detected");
+
+        for(let pt of points){
+
+          const coordTag = pt.getElementsByTagName("coordinates")[0];
+          if(!coordTag) continue;
+
+          const parts = coordTag.textContent.split(",");
+
+          const lon = parseFloat(parts[0]);
+          const lat = parseFloat(parts[1]);
+
+          if(!isNaN(lon) && !isNaN(lat)){
+            coords.push([lon, lat]);
+          }
+        }
+      }
+    }
+
+    // =====================================================
+    // ❌ NOTHING FOUND
+    // =====================================================
+    if(coords.length === 0){
+      throw new Error("Unsupported KML format");
+    }
+
+    // =====================================================
+    // 🔧 REMOVE DUPLICATES
+    // =====================================================
+    coords = coords.filter((c, i, arr)=>{
+      if(i === 0) return true;
+      return !(c[0] === arr[i-1][0] && c[1] === arr[i-1][1]);
+    });
+
+    // =====================================================
+    // 🎯 MODE CONVERSION (GEE FORMAT)
+    // =====================================================
+
+    // 📍 POINT
+    if(mode === "point"){
+      return coords[0];
+    }
+
+    // 📏 LINE
+    if(mode === "line"){
+      if(coords.length < 2){
+        throw new Error("Line needs at least 2 points");
+      }
+      return coords;
+    }
+
+    // 🌍 POLYGON
+    if(mode === "polygon"){
+
+      if(coords.length < 3){
+        throw new Error("Not enough points for polygon");
+      }
+
+      // 🔥 close polygon
+      const first = coords[0];
+      const last = coords[coords.length - 1];
+
+      if(first[0] !== last[0] || first[1] !== last[1]){
+        coords.push(first);
+      }
+
+      return [coords]; // GEE valid
+    }
+
+  } catch(e){
+    console.error("❌ extractCoordsFromKML:", e.message);
+    throw e;
+  }
+}
+
+    
 function submitKML(){
 
   console.group("📤 submitKML");
