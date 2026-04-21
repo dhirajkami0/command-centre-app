@@ -908,69 +908,55 @@ window.addEventListener("unhandledrejection", function (e) {
           <hr style="border:0; border-top:1px solid rgba(255,255,255,0.1); margin:8px 0;">
           <div id="todayForecast"></div> <hr style="border:0; border-top:1px solid rgba(255,255,255,0.1); margin:8px 0;">
           <div id="weekForecast"></div> </div> </div> </div>
-  <div class="legend" id="mapLegend">
-  <button id="legendToggleBtn" onclick="toggleLegend()">
-    <i id="legendIcon" class="fa-solid fa-chevron-down"></i>
-  </button>
-  <div class="legend-content" id="legendContent">
-    <b>CONTROL ROOM LEGEND</b><br><br>
-
-    🐘 Elephant Movement<br>
-    ➖ Prediction Path<br><br>
-
-    🔥 Fire Alert<br>
-    🌳 Forest Felling<br>
-    🏚 Encroachment<br><br>
-
-    👮 Patrol Staff / TL<br><br>
-
-    <span style="color:#0074D9; font-weight:bold;">━</span> River Network<br>
-    🔵 Waterhole / Pond<br>
-    🔴 High Risk Village<br>
-    🏠 Low Risk Village
-  </div>
-</div><div id="map"></div>
-
-  <div id="coveragePanel" style="
-  position:absolute;
-  top:80px;
-  right:10px;
-  width:230px;
-  background:#111;
-  color:#fff;
-  padding:10px;
-  border-radius:10px;
+  <!-- 🟩 COVERAGE PANEL (REPLACES LEGEND EXACT POSITION) -->
+<div id="coveragePanel" class="legend" style="
   display:none;
-  z-index:999;
-  font-size:13px;
 ">
 
-  <div style="font-weight:bold;margin-bottom:8px;">
-    🟢 Coverage
+  <!-- 🔘 TOGGLE BUTTON (same as legend) -->
+  <button id="coverageToggleBtn" onclick="toggleCoveragePanel()">
+    <i id="coverageIcon" class="fa-solid fa-chevron-down"></i>
+  </button>
+
+  <!-- 📊 CONTENT -->
+  <div class="legend-content" id="coverageContent">
+
+    <b>🟢 COVERAGE</b><br><br>
+
+    <!-- 🌍 BEAT SELECT -->
+    <select id="beatSelect" onchange="onBeatChange()" style="
+      width:100%;
+      margin-bottom:8px;
+      padding:6px;
+      border-radius:6px;
+      border:none;
+    ">
+      <option value="ALL">🌍 Range (All)</option>
+      <option value="EAST_GARAM">East Garam</option>
+      <option value="WEST_GARAM">West Garam</option>
+      <option value="EAST_PORO">East Poro</option>
+    </select>
+
+    <!-- ⚡ MODES -->
+    <div style="margin-bottom:8px;">
+      <button onclick="applyMode('today')">Today</button>
+      <button onclick="applyMode('current')">Current</button>
+      <button onclick="applyMode('visited')">Visited</button>
+      <button onclick="applyMode('unvisited')">Unvisited</button>
+      <button onclick="applyMode('cumulative')">Cumulative</button>
+    </div>
+
+    <!-- 🎛 ACTIONS -->
+    <div>
+      <button onclick="showGrid()">Show</button>
+      <button onclick="hideGrid()">Hide</button>
+      <button onclick="closeCoveragePanel()">Close</button>
+    </div>
+
   </div>
-
-  <select id="beatSelect" onchange="onBeatChange()" style="width:100%;margin-bottom:6px;">
-    <option value="ALL">🌍 Range (All)</option>
-    <option value="EAST_GARAM">East Garam</option>
-    <option value="WEST_GARAM">West Garam</option>
-    <option value="EAST_PORO">East Poro</option>
-  </select>
-
-  <div style="margin-bottom:6px;">
-    <button onclick="applyMode('today')">Today</button>
-    <button onclick="applyMode('current')">Current</button>
-    <button onclick="applyMode('visited')">Visited</button>
-    <button onclick="applyMode('unvisited')">Unvisited</button>
-    <button onclick="applyMode('cumulative')">Cumulative</button>
-  </div>
-
-  <div>
-    <button onclick="showGrid()">Show</button>
-    <button onclick="hideGrid()">Hide</button>
-    <button onclick="closeCoveragePanel()">Close</button>
-  </div>
-
 </div>
+  <div id="map"></div>
+
   <!-- 📊 REPORT PANEL -->
 <div id="reportContainer"
   style="display:none; height:500px; margin-top:10px;">
