@@ -3459,20 +3459,19 @@ function convertCompartment(id){
 // ===============================
 function assignGridToBeat(rangeLayer){
 
-  console.log("🎯 Assigning grid to beats (FINAL FIXED)...");
+  console.log("🎯 Assigning grid to beats (FINAL CORRECT)...");
 
   try {
 
     let polygons = [];
 
     // ===============================
-    // 🔥 EXTRACT POLYGONS (CLEAN)
+    // 🔥 EXTRACT POLYGONS
     // ===============================
     function extract(layer){
 
       if (!layer) return;
 
-      // ✅ Only process real polygons
       if (layer instanceof L.Polygon) {
 
         const p = layer.feature?.properties || {};
@@ -3482,20 +3481,18 @@ function assignGridToBeat(rangeLayer){
 
         if(!cleanName) return;
 
-        console.log("🧪 RAW:", rawID, "→ CLEAN:", cleanName);
-
         const coords = layer.getLatLngs()[0].map(pt => [pt.lat, pt.lng]);
 
         polygons.push({
           raw: rawID,
           name: cleanName,
-          coords
+          coords,
+          size: layer.getBounds().getArea?.() || 0 // optional
         });
 
-        return; // 🔥 IMPORTANT: stop recursion here
+        return;
       }
 
-      // 🔥 Handle nested groups safely
       if (layer._layers) {
         Object.values(layer._layers).forEach(extract);
       }
@@ -3503,18 +3500,20 @@ function assignGridToBeat(rangeLayer){
 
     extract(rangeLayer);
 
-    // 🔥 DEBUG ACCESS
     window.__debugPolygons = polygons;
 
     if(!polygons.length){
-      console.warn("⚠ No polygons for beat mapping");
+      console.warn("⚠ No polygons found");
       return;
     }
 
     console.log("📐 Total polygons:", polygons.length);
 
+    // 🔥 IMPORTANT: sort by polygon size (small → large)
+    polygons.sort((a,b) => a.size - b.size);
+
     // ===============================
-    // 🔥 ASSIGN GRID → BEAT (FIXED LOGIC)
+    // 🔥 GRID → BEAT (CORRECT LOGIC)
     // ===============================
     Object.values(window.gridIndex).forEach(cell => {
 
@@ -3523,7 +3522,7 @@ function assignGridToBeat(rangeLayer){
         (cell.bounds[0][1] + cell.bounds[1][1]) / 2
       ];
 
-      let matchedBeat = "UNKNOWN";
+      let assignedBeat = "UNKNOWN";
 
       for(let poly of polygons){
 
@@ -3531,7 +3530,6 @@ function assignGridToBeat(rangeLayer){
 
         let beat = null;
 
-        // 🔥 MATCH WITH beatMap
         for(let key in window.beatMap){
           if(window.beatMap[key].includes(poly.name)){
             beat = key;
@@ -3541,24 +3539,21 @@ function assignGridToBeat(rangeLayer){
 
         if(!beat) continue;
 
-        // 🔥 SPATIAL CHECK
         if(isPointInPolygon(center, poly.coords)){
 
-          matchedBeat = beat;
+          assignedBeat = beat;
 
           console.log("✅ MATCH:",
             "Grid:", center,
-            "| KML:", poly.raw,
-            "| Converted:", poly.name,
+            "| Poly:", poly.name,
             "| Beat:", beat
           );
 
-          // ❌ DO NOT BREAK → allow better match later
+          break; // ✅ FIRST MATCH WINS (IMPORTANT)
         }
       }
 
-      // 🔥 FINAL ASSIGNMENT
-      cell.beat = matchedBeat;
+      cell.beat = assignedBeat;
 
     });
 
@@ -3567,8 +3562,7 @@ function assignGridToBeat(rangeLayer){
   } catch(e){
     console.error("❌ Beat assignment error:", e);
   }
-}    
-    function loadGrid(){
+}    function loadGrid(){
 
   const raw = localStorage.getItem("range_grid");
   if(!raw) return false;
