@@ -3473,7 +3473,7 @@ function hideGrid(){
 // ===============================
 function buildGridFromBounds(bounds, rangeLayer){
 
-  console.log("🔲 Building FINAL clipped grid...");
+  console.log("🔲 Building PERFECT FIT grid...");
 
   if(!bounds || !rangeLayer){
     console.error("❌ Invalid inputs");
@@ -3483,10 +3483,10 @@ function buildGridFromBounds(bounds, rangeLayer){
   const step = 0.00225;
   let count = 0;
 
-  window.gridIndex = {}; // 🔥 reset before build
+  window.gridIndex = {};
 
   // ===============================
-  // 🔥 EXTRACT ALL POLYGONS (SAFE)
+  // 🔥 EXTRACT POLYGONS
   // ===============================
   let polygons = [];
 
@@ -3494,24 +3494,18 @@ function buildGridFromBounds(bounds, rangeLayer){
 
     if (!layer) return;
 
-    // direct polygon
     if (layer instanceof L.Polygon) {
 
       const rings = layer.getLatLngs();
+      const flat = rings.flat(Infinity);
 
-      // handle multi-ring / nested
-      if(Array.isArray(rings)){
-        const flat = rings.flat(Infinity);
+      const coords = flat.map(p => [p.lat, p.lng]);
 
-        const coords = flat.map(p => [p.lat, p.lng]);
-
-        if(coords.length > 2){
-          polygons.push(coords);
-        }
+      if(coords.length > 2){
+        polygons.push(coords);
       }
     }
 
-    // recurse if group
     if (typeof layer.eachLayer === "function") {
       layer.eachLayer(extractPolygons);
     }
@@ -3524,34 +3518,41 @@ function buildGridFromBounds(bounds, rangeLayer){
     return;
   }
 
-  console.log("📐 Polygons found:", polygons.length);
-
   const south = bounds.getSouth();
   const north = bounds.getNorth();
   const west  = bounds.getWest();
   const east  = bounds.getEast();
 
   // ===============================
-  // 🔥 GRID LOOP (CENTER CHECK)
+  // 🔥 GRID LOOP (INTERSECTION BASED)
   // ===============================
   for(let lat = south; lat < north; lat += step){
     for(let lon = west; lon < east; lon += step){
 
-      const center = [lat + step/2, lon + step/2]; // 🔥 CRITICAL FIX
+      const cellBounds = [
+        [lat, lon],
+        [lat + step, lon + step]
+      ];
 
-      let inside = polygons.some(poly =>
-        isPointInPolygon(center, poly)
+      // 🔥 Check if ANY corner OR center intersects
+      const corners = [
+        [lat, lon],
+        [lat + step, lon],
+        [lat, lon + step],
+        [lat + step, lon + step],
+        [lat + step/2, lon + step/2] // center
+      ];
+
+      let intersects = polygons.some(poly =>
+        corners.some(pt => isPointInPolygon(pt, poly))
       );
 
-      if(!inside) continue;
+      if(!intersects) continue;
 
       const id = lat.toFixed(5) + "_" + lon.toFixed(5);
 
       window.gridIndex[id] = {
-        bounds: [
-          [lat, lon],
-          [lat + step, lon + step]
-        ],
+        bounds: cellBounds,
         visited: false
       };
 
@@ -3564,9 +3565,8 @@ function buildGridFromBounds(bounds, rangeLayer){
     total: count
   };
 
-  console.log("✅ FINAL Grid built:", count);
+  console.log("✅ PERFECT Grid built:", count);
 }
-
 
 // ===============================
 // 🔺 POINT IN POLYGON (STABLE)
