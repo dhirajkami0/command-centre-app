@@ -1033,7 +1033,7 @@ window.addEventListener("unhandledrejection", function (e) {
 window.gridIndex = {};
 window.gridMeta = null;
 window.gridLayer = window.gridLayer || L.layerGroup();
-
+window.gridLayer.addTo(map); 
 window.__gridReady = false;
 
     
@@ -3368,10 +3368,9 @@ function onBeatChange(){
 }
 
 function showGrid(){
-
-  renderGrid(window.currentCoverageMode, window.currentBeat);
+  renderGrid(window.currentCoverageMode || "current",
+             window.currentBeat || "ALL");
 }
-
 function hideGrid(){
 
   if(window.gridLayer){
