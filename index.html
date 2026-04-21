@@ -3236,48 +3236,79 @@ function markVisited(lat, lon){
 
   console.log("🔲 Grid rendered:", drawn);
 }
-   function buildGridFromBounds(bounds, rangeLayer){
+  // ===============================
+// 🔲 BUILD GRID (FINAL CORRECT)
+// ===============================
+function buildGridFromBounds(bounds, rangeLayer){
 
-  console.log("🔲 Building TRUE grid (backend logic)...");
+  console.log("🔲 Building FINAL clipped grid...");
+
+  if(!bounds || !rangeLayer){
+    console.error("❌ Invalid inputs");
+    return;
+  }
 
   const step = 0.00225;
-
   let count = 0;
 
-  // 🔥 EXTRACT ALL POLYGONS
+  window.gridIndex = {}; // 🔥 reset before build
+
+  // ===============================
+  // 🔥 EXTRACT ALL POLYGONS (SAFE)
+  // ===============================
   let polygons = [];
 
-  rangeLayer.eachLayer(l => {
+  function extractPolygons(layer){
 
-    if (l instanceof L.Polygon) {
-      polygons.push(l.getLatLngs()[0].map(p => [p.lat, p.lng]));
-    }
+    if (!layer) return;
 
-    if (l.eachLayer) {
-      l.eachLayer(inner => {
-        if (inner instanceof L.Polygon) {
-          polygons.push(inner.getLatLngs()[0].map(p => [p.lat, p.lng]));
+    // direct polygon
+    if (layer instanceof L.Polygon) {
+
+      const rings = layer.getLatLngs();
+
+      // handle multi-ring / nested
+      if(Array.isArray(rings)){
+        const flat = rings.flat(Infinity);
+
+        const coords = flat.map(p => [p.lat, p.lng]);
+
+        if(coords.length > 2){
+          polygons.push(coords);
         }
-      });
+      }
     }
 
-  });
+    // recurse if group
+    if (typeof layer.eachLayer === "function") {
+      layer.eachLayer(extractPolygons);
+    }
+  }
+
+  extractPolygons(rangeLayer);
 
   if(!polygons.length){
     console.error("❌ No polygons found");
     return;
   }
 
+  console.log("📐 Polygons found:", polygons.length);
+
   const south = bounds.getSouth();
   const north = bounds.getNorth();
   const west  = bounds.getWest();
   const east  = bounds.getEast();
 
+  // ===============================
+  // 🔥 GRID LOOP (CENTER CHECK)
+  // ===============================
   for(let lat = south; lat < north; lat += step){
     for(let lon = west; lon < east; lon += step){
 
-      let inside = polygons.some(poly => 
-        isPointInPolygon([lat, lon], poly)
+      const center = [lat + step/2, lon + step/2]; // 🔥 CRITICAL FIX
+
+      let inside = polygons.some(poly =>
+        isPointInPolygon(center, poly)
       );
 
       if(!inside) continue;
@@ -3285,7 +3316,10 @@ function markVisited(lat, lon){
       const id = lat.toFixed(5) + "_" + lon.toFixed(5);
 
       window.gridIndex[id] = {
-        bounds: [[lat, lon],[lat+step, lon+step]],
+        bounds: [
+          [lat, lon],
+          [lat + step, lon + step]
+        ],
         visited: false
       };
 
@@ -3293,24 +3327,33 @@ function markVisited(lat, lon){
     }
   }
 
-  window.gridMeta = { size: step, total: count };
+  window.gridMeta = {
+    size: step,
+    total: count
+  };
 
-  console.log("✅ Grid built correctly:", count);
+  console.log("✅ FINAL Grid built:", count);
 }
 
-    function isPointInPolygon(point, polygon){
 
-  let x = point[0], y = point[1];
+// ===============================
+// 🔺 POINT IN POLYGON (STABLE)
+// ===============================
+function isPointInPolygon(point, polygon){
+
+  const x = point[0];
+  const y = point[1];
+
   let inside = false;
 
   for(let i = 0, j = polygon.length - 1; i < polygon.length; j = i++){
 
-    let xi = polygon[i][0], yi = polygon[i][1];
-    let xj = polygon[j][0], yj = polygon[j][1];
+    const xi = polygon[i][0], yi = polygon[i][1];
+    const xj = polygon[j][0], yj = polygon[j][1];
 
-    let intersect =
+    const intersect =
       ((yi > y) !== (yj > y)) &&
-      (x < (xj - xi) * (y - yi) / (yj - yi + 0.0000001) + xi);
+      (x < (xj - xi) * (y - yi) / ((yj - yi) || 1e-10) + xi);
 
     if(intersect) inside = !inside;
   }
