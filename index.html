@@ -3496,7 +3496,7 @@ function assignGridToBeat(rangeLayer){
     }
 
     extract(rangeLayer);
-
+window.__debugPolygons = polygons; 
     if(!polygons.length){
       console.warn("⚠ No polygons for beat mapping");
       return;
