@@ -988,7 +988,12 @@ window.addEventListener("unhandledrejection", function (e) {
   <script>
 
 
+// ================= GRID GLOBAL =================
+window.gridIndex = {};
+window.gridMeta = null;
+window.gridLayer = window.gridLayer || L.layerGroup();
 
+window.__gridReady = false;
 
     
     const DEBUG = false;
@@ -2068,7 +2073,91 @@ esriSat.addTo(map);
 
     L.control.zoom({ position: 'topright' }).addTo(map);
 
+function showCoveragePanel(){
 
+  // remove existing
+  document.getElementById("coveragePanel")?.remove();
+
+  const html = `
+  <div id="coveragePanel" style="
+    position:absolute;
+    top:70px;
+    right:10px;
+    width:260px;
+    background:#081508;
+    color:#eee;
+    padding:10px;
+    border-radius:10px;
+    font-size:13px;
+    z-index:9999;
+    box-shadow:0 2px 10px rgba(0,0,0,0.5);
+  ">
+
+    <div style="margin-bottom:6px;">
+      <b>📊 Coverage</b>
+    </div>
+
+    <!-- BEAT -->
+    <select id="beatSelect" style="width:100%;margin-bottom:6px;">
+      <option value="EAST_GARAM">East Garam</option>
+      <option value="WEST_GARAM">West Garam</option>
+      <option value="EAST_PORO">East Poro</option>
+    </select>
+
+    <!-- MODES -->
+    <div style="display:flex;flex-wrap:wrap;gap:4px;margin-bottom:6px;">
+      <button onclick="applyMode('today')">Today</button>
+      <button onclick="applyMode('current')">Current</button>
+      <button onclick="applyMode('last')">Last</button>
+      <button onclick="applyMode('compare')">Compare</button>
+      <button onclick="applyMode('cumulative')">Cumulative</button>
+    </div>
+
+    <!-- ACTION -->
+    <div style="display:flex;gap:4px;">
+      <button onclick="hideGrid()">Hide Grid</button>
+      <button onclick="closeCoveragePanel()">Close</button>
+    </div>
+
+  </div>
+  `;
+
+  document.body.insertAdjacentHTML("beforeend", html);
+}
+
+
+
+    function closeCoveragePanel(){
+  document.getElementById("coveragePanel")?.remove();
+  hideGrid();
+}
+
+function applyMode(mode){
+
+  const beat = document.getElementById("beatSelect")?.value;
+
+  if(!beat){
+    console.warn("No beat selected");
+    return;
+  }
+
+  renderGrid(mode, beat); // you already have / will plug this
+}
+
+
+
+    function showGrid(){
+  if(!map.hasLayer(window.gridLayer)){
+    window.gridLayer.addTo(map);
+  }
+}
+
+function hideGrid(){
+  if(map.hasLayer(window.gridLayer)){
+    map.removeLayer(window.gridLayer);
+  }
+  window.gridLayer.clearLayers();
+}
     /* ============================================================
        📊 RANGE BUTTON (SAFE)
     ============================================================ */
@@ -3003,9 +3092,9 @@ ${pct(data.health)} / 100
       popup.setContent("❌ Error loading range data");
     });
 }
-    function loadRangeKML() {
+ function loadRangeKML() {
 
-  const url = "./kml/Compartments.kml"; // ✅ use your real file
+  const url = "./kml/Compartments.kml";
 
   console.log("⚡ Loading Range KML (local)");
 
@@ -3013,45 +3102,43 @@ ${pct(data.health)} / 100
     .then(res => res.text())
     .then(function (kml) {
 
-      /* 🔥 VALIDATION */
       if (!kml || !kml.includes("<Placemark")) {
         console.error("❌ Invalid KML");
         return;
       }
 
-      /* 🔥 CREATE OBJECT URL */
       const blob = new Blob([kml], { type: "text/xml" });
       const objUrl = URL.createObjectURL(blob);
 
-      /* 🔥 LOAD KML */
       const layer = omnivore.kml(objUrl)
         .on('ready', function () {
 
           console.log("✅ KML Loaded");
 
-          /* 🎨 STYLE */
           layer.setStyle({
             color: "#00ff88",
             weight: 3,
             fill: false
           });
 
-          /* 🗺 ADD TO MAP */
+          // ✅ SAVE GLOBAL (IMPORTANT)
+          window.rangeLayer = layer;
+
           layer.addTo(map);
 
-          /* 📍 FIT BOUNDS */
           if (layer.getBounds().isValid()) {
             map.fitBounds(layer.getBounds());
           }
 
-          /* 🖱 CLICK HANDLER */
+          // 🔥 🔥 ADD THIS (GRID INIT)
+          initGrid(layer);
+
           layer.eachLayer(function (l) {
             if (l instanceof L.Polygon || l instanceof L.Polyline) {
               l.on('click', e => openRangePopup(e.latlng));
             }
           });
 
-          /* 🧹 CLEAN MEMORY (IMPORTANT) */
           URL.revokeObjectURL(objUrl);
 
         })
@@ -3063,7 +3150,102 @@ ${pct(data.health)} / 100
     .catch(err => {
       console.error("❌ KML Fetch Error:", err);
     });
+}
 
+    function renderGrid(){
+
+  window.gridLayer.clearLayers();
+
+  Object.values(window.gridIndex).forEach(cell => {
+
+    L.rectangle(cell.bounds, {
+      color:"#222",
+      weight:0.3,
+      fillOpacity:0
+    }).addTo(window.gridLayer);
+
+  });
+
+  window.gridLayer.addTo(map);
+}
+
+    function buildGridFromBounds(bounds){
+
+  console.log("🔲 Building grid...");
+
+  const size = 0.00225;
+
+  const south = bounds.getSouth();
+  const north = bounds.getNorth();
+  const west  = bounds.getWest();
+  const east  = bounds.getEast();
+
+  let count = 0;
+
+  for(let lat = south; lat < north; lat += size){
+    for(let lon = west; lon < east; lon += size){
+
+      const id = lat.toFixed(5) + "_" + lon.toFixed(5);
+
+      window.gridIndex[id] = {
+        bounds: [[lat, lon],[lat+size, lon+size]],
+        visited: false
+      };
+
+      count++;
+    }
+  }
+
+  window.gridMeta = { size, total: count };
+
+  console.log("✅ Grid built:", count);
+}
+
+function saveGrid(){
+  localStorage.setItem("range_grid", JSON.stringify({
+    meta: window.gridMeta,
+    grid: window.gridIndex
+  }));
+}
+
+function loadGrid(){
+
+  const raw = localStorage.getItem("range_grid");
+  if(!raw) return false;
+
+  const data = JSON.parse(raw);
+
+  window.gridIndex = data.grid;
+  window.gridMeta = data.meta;
+
+  console.log("⚡ Grid loaded:", Object.keys(window.gridIndex).length);
+
+  return true;
+}
+
+function initGrid(layer){
+
+  if(window.__gridReady){
+    console.log("⚡ Grid already ready");
+    return;
+  }
+
+  if(loadGrid()){
+    window.__gridReady = true;
+    return;
+  }
+
+  const bounds = layer.getBounds();
+
+  if(!bounds || !bounds.isValid()){
+    console.error("❌ Invalid bounds");
+    return;
+  }
+
+  buildGridFromBounds(bounds);
+  saveGrid();
+
+  window.__gridReady = true;
 }
 function clearKMLPreview(){
 
@@ -5948,6 +6130,8 @@ function show3MonthSummary(data){
     /* ============================================================
    ⚡ LAZY LOAD ENGINE (FIXED + SAFE)
 ============================================================ */
+
+    
 /* ============================================================
    🎛 LAYER CONTROL
 ============================================================ */
@@ -6037,145 +6221,94 @@ map.on('overlayadd', function (e) {
 
     if (!e || !e.name) return;
 
-    const layerName = String(e.name); // ✅ safety cast
+    const layerName = String(e.name);
 
     /* 🌱 Plantation */
     if (layerName === "🌱 Plantation") {
-      if (typeof loadPlantationLayer === "function") {
-        loadPlantationLayer();
-      }
+      loadPlantationLayer?.();
       return;
     }
 
     /* 🌊 Waterholes */
     if (layerName === "🌊 Waterholes / Ponds") {
-      if (typeof loadPondVisuals === "function") {
-        loadPondVisuals();
-      }
+      loadPondVisuals?.();
       return;
     }
 
     /* 💧 Rivers */
     if (layerName === "💧 River Network") {
-      if (typeof loadRiverNetwork === "function") {
-        loadRiverNetwork();
-      }
+      loadRiverNetwork?.();
       return;
     }
 
     /* 👮 Staff */
     if (layerName === "👮 Staff") {
-      if (typeof loadStaff === "function") {
-        loadStaff();
-      }
+      loadStaff?.();
       return;
     }
 
     /* ============================================================
-       📍 GROUP TRACKS (🔥 FULL FIX)
+       📍 GROUP TRACKS
     ============================================================ */
- if (
-  e.name === "📍 Garam (East + West)" ||
-  e.name === "📍 East Poro" ||
-  e.name === "📍 Range HQ"
-) {
+    if (
+      layerName === "📍 Garam (East + West)" ||
+      layerName === "📍 East Poro" ||
+      layerName === "📍 Range HQ"
+    ) {
 
-  callBackend("getMonthlyGroupTracks")
-    .then(function (data) {
+      callBackend("getMonthlyGroupTracks")
+        .then(function (data) {
 
-      console.log("📦 FULL DATA:", data);
-
-      if (!data || Object.keys(data).length === 0) {
-        console.warn("⚠ No backend data");
-        return;
-      }
-
-      let selectedGroup = "";
-
-      if (e.name === "📍 Garam (East + West)") selectedGroup = "GARAM";
-      if (e.name === "📍 East Poro") selectedGroup = "PORO";
-      if (e.name === "📍 Range HQ") selectedGroup = "HQ";
-
-      console.log("🎯 Selected Group:", selectedGroup);
-
-      const filtered = data[selectedGroup] || [];
-
-      console.log("✅ Filtered Tracks:", filtered.length);
-
-      loadGroupTracks(filtered);
-
-    })
-    .catch(function (err) {
-      console.error("❌ Group Track Error:", err);
-    });
-
-  return;
-}
-
-    /* ===============================
-       🟢🔴 GRID (FINAL FIX)
-    =============================== */
-    if (layerName && layerName.includes("Grid")) {
-
-      console.log("🚀 GRID TRIGGERED:", layerName);
-
-      callBackend("getGridStatus")
-        .then(function (res) {
-
-          console.log("📦 RAW GRID RESPONSE:", res);
-
-          let data = [];
-
-          if (Array.isArray(res)) {
-            data = res;
-          }
-          else if (res && Array.isArray(res.data)) {
-            data = res.data;
-          }
-          else if (res && Array.isArray(res.result)) {
-            data = res.result;
-          }
-          else {
-            console.error("❌ Invalid grid format:", res);
+          if (!data || Object.keys(data).length === 0) {
+            console.warn("⚠ No backend data");
             return;
           }
 
-          if (!data.length) {
-            console.warn("⚠ Grid empty");
-            return;
-          }
+          let selectedGroup = "";
 
-          if (typeof showGridStatus === "function") {
-            showGridStatus(data);
-          }
+          if (layerName === "📍 Garam (East + West)") selectedGroup = "GARAM";
+          if (layerName === "📍 East Poro") selectedGroup = "PORO";
+          if (layerName === "📍 Range HQ") selectedGroup = "HQ";
+
+          const filtered = data[selectedGroup] || [];
+
+          loadGroupTracks(filtered);
 
         })
         .catch(function (err) {
-          console.error("❌ Grid error:", err);
+          console.error("❌ Group Track Error:", err);
         });
 
       return;
     }
 
-    /* 📊 Monthly Coverage */
+    /* ============================================================
+       🟢 GRID / COVERAGE (NEW SYSTEM)
+    ============================================================ */
+    if (layerName === "🟢 Grid / Coverage") {
+
+      console.log("📊 Coverage Panel Open");
+
+      showCoveragePanel();
+
+      // default render
+      renderGrid("current", "EAST_GARAM");
+
+      return;
+    }
+
+    /* 📊 Monthly Coverage (keep if needed) */
     if (layerName === "📊 Monthly Coverage") {
 
-      if (summaryLayer && typeof summaryLayer.addTo === "function") {
-        summaryLayer.addTo(map);
-      }
+      summaryLayer?.addTo?.(map);
 
       callBackend("getCompartmentSummary")
         .then(function (data) {
 
           if (!data || !Array.isArray(data.compartments)) return;
 
-          if (typeof showCompartmentSummary === "function") {
-            showCompartmentSummary(data.compartments);
-
-            if (summaryLayer && typeof summaryLayer.bringToFront === "function") {
-              summaryLayer.bringToFront();
-            }
-          }
+          showCompartmentSummary?.(data.compartments);
+          summaryLayer?.bringToFront?.();
 
         })
         .catch(function (err) {
@@ -6188,11 +6321,7 @@ map.on('overlayadd', function (e) {
     /* 📊 Monthly Analysis */
     if (layerName === "📊 Monthly Analysis") {
 
-      console.log("📊 Monthly Analysis triggered");
-
-      if (typeof load3MonthSummary === "function") {
-        load3MonthSummary();
-      }
+      load3MonthSummary?.();
 
       if (summaryLayer && map.hasLayer(summaryLayer)) {
         map.removeLayer(summaryLayer);
@@ -6204,7 +6333,7 @@ map.on('overlayadd', function (e) {
   } catch (err) {
     console.error("🔥 overlayadd crash:", err);
   }
-});    /* ============================================================
+});   /* ============================================================
    🧹 CLEANUP (OPTIONAL)
 ============================================================ */
 map.on('overlayremove', function (e) {
@@ -6224,11 +6353,25 @@ map.on('overlayremove', function (e) {
     e.name === "📍 East Poro" ||
     e.name === "📍 Range HQ"
   ) {
-    groupTrackLayer.clearLayers(); // 🔥 important cleanup
+    groupTrackLayer.clearLayers();
   }
 
-});
-          /* ============================================================
+  /* 🟢 GRID CLEANUP */
+  if (e.name === "🟢 Grid / Coverage") {
+
+    console.log("🧹 Closing Coverage Panel");
+
+    closeCoveragePanel();
+
+    if (window.gridLayer) {
+      window.gridLayer.clearLayers();
+      if (map.hasLayer(window.gridLayer)) {
+        map.removeLayer(window.gridLayer);
+      }
+    }
+  }
+
+});          /* ============================================================
              🐘 SIGHTING FORM SYSTEM (FINAL SAFE VERSION)
           ============================================================ */
 
