@@ -3093,7 +3093,7 @@ ${pct(data.health)} / 100
       popup.setContent("❌ Error loading range data");
     });
 }
- function loadRangeKML() {
+function loadRangeKML() {
 
   const url = "./kml/Compartments.kml";
 
@@ -3111,65 +3111,84 @@ ${pct(data.health)} / 100
       const blob = new Blob([kml], { type: "text/xml" });
       const objUrl = URL.createObjectURL(blob);
 
-      const layer = omnivore.kml(objUrl)
-        .on('ready', function () {
+      const layer = omnivore.kml(objUrl);
 
-          console.log("✅ KML Loaded");
+      layer.on('ready', function () {
 
-          layer.setStyle({
-            color: "#00ff88",
-            weight: 3,
-            fill: false
-          });
+        console.log("✅ KML Loaded");
 
-          // ✅ SAVE GLOBAL
-          window.rangeLayer = layer;
+        try {
 
-          layer.addTo(map);
+          // 🔥 WAIT UNTIL LAYER IS FULLY INITIALIZED
+          setTimeout(() => {
 
-          if (layer.getBounds().isValid()) {
-            map.fitBounds(layer.getBounds());
-          }
+            // 🎯 GLOBAL SAVE (FINAL SAFE POINT)
+            window.rangeLayer = layer;
 
-          // ===============================
-          // 🔥 GRID INIT (SMART)
-          // ===============================
-          initGrid(layer);
-
-          // 🔥 ONLY ASSIGN BEAT IF NOT PRESENT
-          const anyCell = Object.values(window.gridIndex)[0];
-
-          if (!anyCell || !anyCell.beat || anyCell.beat === "UNKNOWN") {
-            console.log("🔁 Assigning beat (first time)");
-            assignGridToBeat(layer);
-            saveGrid();
-          } else {
-            console.log("⚡ Beat already mapped (cached)");
-          }
-
-          // ===============================
-          // 🖱 CLICK HANDLER
-          // ===============================
-          layer.eachLayer(function (l) {
-            if (l instanceof L.Polygon || l instanceof L.Polyline) {
-              l.on('click', e => openRangePopup(e.latlng));
+            if (!window.rangeLayer || !window.rangeLayer.getBounds) {
+              console.error("❌ rangeLayer invalid");
+              return;
             }
-          });
 
-          // 🔥 CLEAN OBJECT URL
-          URL.revokeObjectURL(objUrl);
+            console.log("🟢 rangeLayer saved:", window.rangeLayer);
 
-        })
-        .on('error', function (err) {
-          console.error("❌ KML Parse Error:", err);
-        });
+            layer.setStyle({
+              color: "#00ff88",
+              weight: 3,
+              fill: false
+            });
+
+            layer.addTo(map);
+
+            const bounds = layer.getBounds();
+
+            if (bounds && bounds.isValid()) {
+              map.fitBounds(bounds);
+            } else {
+              console.warn("⚠ Invalid bounds");
+            }
+
+            // 🔥 GRID BUILD
+            if (typeof initGrid === "function") {
+              initGrid(layer);
+            }
+
+            // 🔥 BEAT MAPPING
+            setTimeout(() => {
+              if (typeof assignGridToBeat === "function") {
+                assignGridToBeat(layer);
+              }
+            }, 300);
+
+            // 🔥 CLICK HANDLER
+            if (typeof layer.eachLayer === "function") {
+              layer.eachLayer(function (l) {
+                if (l instanceof L.Polygon || l instanceof L.Polyline) {
+                  l.on('click', e => openRangePopup(e.latlng));
+                }
+              });
+            }
+
+            console.log("✅ Range + Grid + Beat system READY");
+
+          }, 300); // 🔥 KEY FIX (delay ensures layer is ready)
+
+        } catch (e) {
+          console.error("❌ KML processing crash:", e);
+        }
+
+        URL.revokeObjectURL(objUrl);
+      });
+
+      layer.on('error', function (err) {
+        console.error("❌ KML Parse Error:", err);
+      });
 
     })
     .catch(err => {
       console.error("❌ KML Fetch Error:", err);
     });
-}
-function markVisited(lat, lon){
+}function markVisited(lat, lon){
 
   if(!window.gridMeta || !window.gridIndex) return;
 
