@@ -3495,108 +3495,165 @@ function hideGrid(){
 // ===============================
 function buildGridFromBounds(bounds, rangeLayer){
 
-  console.log("🔲 Building CLIPPED grid (STABLE)...");
+  console.log("🔲 Building CLIPPED grid (FINAL STABLE)...");
 
-  if(!bounds || !rangeLayer){
-    console.error("❌ Invalid inputs");
-    return;
-  }
+  try {
 
-  const step = 0.00225;
-  let count = 0;
-
-  window.gridIndex = {};
-
-  // ===============================
-  // 🔥 EXTRACT GEO POLYGONS
-  // ===============================
-  let geoPolys = [];
-
-  function extract(layer){
-
-    if(!layer) return;
-
-    if(layer instanceof L.Polygon){
-
-      const latlngs = layer.getLatLngs();
-
-      const polys = Array.isArray(latlngs[0][0]) ? latlngs : [latlngs];
-
-      polys.forEach(rings => {
-
-        const coords = rings.map(ring =>
-          ring.map(p => [p.lng, p.lat])
-        );
-
-        geoPolys.push(turf.polygon(coords));
-      });
+    if(!bounds || !rangeLayer){
+      console.error("❌ Invalid inputs");
+      return;
     }
 
-    if(typeof layer.eachLayer === "function"){
-      layer.eachLayer(extract);
-    }
-  }
+    const step = 0.00225;
+    let count = 0;
 
-  extract(rangeLayer);
+    // 🔥 RESET GRID
+    window.gridIndex = {};
 
-  console.log("📐 Polygons found:", geoPolys.length);
+    // ===============================
+    // 🔥 EXTRACT GEO POLYGONS (SAFE)
+    // ===============================
+    let geoPolys = [];
 
-  if(!geoPolys.length){
-    console.error("❌ No polygons");
-    return;
-  }
+    function extract(layer){
 
-  const south = bounds.getSouth();
-  const north = bounds.getNorth();
-  const west  = bounds.getWest();
-  const east  = bounds.getEast();
+      if(!layer) return;
 
-  // ===============================
-  // 🔥 GRID LOOP
-  // ===============================
-  for(let lat = south; lat < north; lat += step){
-    for(let lon = west; lon < east; lon += step){
+      // 🔹 Handle Polygon
+      if(layer instanceof L.Polygon){
 
-      const cell = turf.polygon([[
-        [lon, lat],
-        [lon + step, lat],
-        [lon + step, lat + step],
-        [lon, lat + step],
-        [lon, lat]
-      ]]);
+        let latlngs = layer.getLatLngs();
 
-      // 🔥 CHECK AGAINST ALL POLYGONS (NO UNION)
-      let clipped = null;
+        // Normalize structure → always array of polygons
+        const polygons = Array.isArray(latlngs[0][0]) ? latlngs : [latlngs];
 
-      for(let poly of geoPolys){
-        try {
-          const part = turf.intersect(cell, poly);
-          if(part){
-            clipped = part;
-            break;
+        polygons.forEach(rings => {
+
+          let coords = [];
+
+          rings.forEach(ring => {
+
+            if(!Array.isArray(ring) || ring.length < 3) return;
+
+            let pts = ring.map(p => [p.lng, p.lat]);
+
+            // 🔥 FIX: CLOSE RING (CRITICAL)
+            const first = pts[0];
+            const last  = pts[pts.length - 1];
+
+            if(first[0] !== last[0] || first[1] !== last[1]){
+              pts.push(first);
+            }
+
+            // 🔥 Skip invalid rings
+            if(pts.length >= 4){
+              coords.push(pts);
+            }
+
+          });
+
+          // 🔥 Create polygon safely
+          if(coords.length){
+            try {
+              geoPolys.push(turf.polygon(coords));
+            } catch(e){
+              console.warn("⚠ Invalid polygon skipped", e);
+            }
           }
-        } catch(e){}
+
+        });
       }
 
-      if(!clipped) continue;
-
-      const id = lat.toFixed(5) + "_" + lon.toFixed(5);
-
-      window.gridIndex[id] = {
-        geo: clipped,
-        visited: false
-      };
-
-      count++;
+      // 🔹 Recurse groups
+      if(typeof layer.eachLayer === "function"){
+        layer.eachLayer(extract);
+      }
     }
+
+    extract(rangeLayer);
+
+    console.log("📐 Polygons extracted:", geoPolys.length);
+
+    if(!geoPolys.length){
+      console.error("❌ No valid polygons found");
+      return;
+    }
+
+    const south = bounds.getSouth();
+    const north = bounds.getNorth();
+    const west  = bounds.getWest();
+    const east  = bounds.getEast();
+
+    console.log("🌍 Bounds:", south, north, west, east);
+
+    // ===============================
+    // 🔥 GRID LOOP (CLIPPED CELLS)
+    // ===============================
+    for(let lat = south; lat < north; lat += step){
+      for(let lon = west; lon < east; lon += step){
+
+        let cell;
+
+        try {
+          cell = turf.polygon([[
+            [lon, lat],
+            [lon + step, lat],
+            [lon + step, lat + step],
+            [lon, lat + step],
+            [lon, lat]
+          ]]);
+        } catch(e){
+          continue;
+        }
+
+        let clipped = null;
+
+        // 🔥 Check against all polygons
+        for(let poly of geoPolys){
+
+          try {
+            const part = turf.intersect(cell, poly);
+
+            if(part){
+              clipped = part;
+              break;
+            }
+
+          } catch(e){
+            // silently ignore intersection errors
+          }
+        }
+
+        if(!clipped) continue;
+
+        const id = lat.toFixed(5) + "_" + lon.toFixed(5);
+
+        window.gridIndex[id] = {
+          geo: clipped,     // 🔥 clipped geometry
+          visited: false
+        };
+
+        count++;
+      }
+    }
+
+    // ===============================
+    // 🔥 META
+    // ===============================
+    window.gridMeta = {
+      size: step,
+      total: count
+    };
+
+    console.log("✅ Grid built:", count);
+
+    if(count === 0){
+      console.warn("⚠ Grid empty — check bounds / layer load timing");
+    }
+
+  } catch(e){
+    console.error("❌ buildGridFromBounds crash:", e);
   }
-
-  window.gridMeta = {
-    size: step,
-    total: count
-  };
-
-  console.log("✅ Grid built:", count);
 }// ===============================
 // 🔺 POINT IN POLYGON (STABLE)
 // ===============================
