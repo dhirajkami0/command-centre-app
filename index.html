@@ -226,6 +226,7 @@ async function cleanOldMessages(){
 <script src="js/leaflet-omnivore.min.js"></script>
 <script src="js/shp.js"></script>
 <script src="js/leaflet-kml.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@turf/turf@6/turf.min.js"></script>
   <script src="./js/leaflet-pip.min.js"></script>
   <script src="https://unpkg.com/@turf/turf@6/turf.min.js"></script>
   <script>
@@ -3337,7 +3338,13 @@ function renderGrid(mode = "current", beat = "ALL"){
     // =========================
     Object.entries(window.gridIndex).forEach(([id, cell]) => {
 
-      if(!cell || !cell.bounds || !Array.isArray(cell.bounds)) return;
+      if(!cell) return;
+
+      // 🔥 SUPPORT BOTH OLD + NEW GRID FORMAT
+      const hasGeo = !!cell.geo;
+      const hasBounds = !!cell.bounds;
+
+      if(!hasGeo && !hasBounds) return;
 
       // =========================
       // 🎯 BEAT FILTER
@@ -3359,10 +3366,10 @@ function renderGrid(mode = "current", beat = "ALL"){
 
         case "current":
           if(beat === "ALL"){
-            color = isVisited ? "#00ff00" : "#ff0000";   // 🌍 full range
+            color = isVisited ? "#00ff00" : "#ff0000";
             opacity = isVisited ? 0.5 : 0.3;
           } else {
-            color = isVisited ? "#00ff00" : "#330000";   // 🎯 beat focus
+            color = isVisited ? "#00ff00" : "#330000";
             opacity = isVisited ? 0.5 : 0.15;
           }
         break;
@@ -3397,15 +3404,30 @@ function renderGrid(mode = "current", beat = "ALL"){
       if(!color) return;
 
       // =========================
-      // 🎨 DRAW CELL
+      // 🎨 DRAW CELL (🔥 FIXED)
       // =========================
       try {
-        L.rectangle(cell.bounds, {
-          color: "#111",
-          weight: 0.2,
-          fillColor: color,
-          fillOpacity: opacity
-        }).addTo(window.gridLayer);
+
+        if(hasGeo){
+          // ✅ NEW SYSTEM (CLIPPED SHAPE)
+          L.geoJSON(cell.geo, {
+            style: {
+              color: "#111",
+              weight: 0.2,
+              fillColor: color,
+              fillOpacity: opacity
+            }
+          }).addTo(window.gridLayer);
+
+        } else if(hasBounds){
+          // ⚠️ FALLBACK (OLD RECTANGLE SYSTEM)
+          L.rectangle(cell.bounds, {
+            color: "#111",
+            weight: 0.2,
+            fillColor: color,
+            fillOpacity: opacity
+          }).addTo(window.gridLayer);
+        }
 
         drawn++;
 
@@ -3473,7 +3495,7 @@ function hideGrid(){
 // ===============================
 function buildGridFromBounds(bounds, rangeLayer){
 
-  console.log("🔲 Building PERFECT FIT grid...");
+  console.log("🔲 Building EXACT CLIPPED grid...");
 
   if(!bounds || !rangeLayer){
     console.error("❌ Invalid inputs");
@@ -3483,39 +3505,51 @@ function buildGridFromBounds(bounds, rangeLayer){
   const step = 0.00225;
   let count = 0;
 
+  // 🔥 always reset
   window.gridIndex = {};
 
   // ===============================
-  // 🔥 EXTRACT POLYGONS
+  // 🔥 EXTRACT GEOJSON POLYGONS (WITH HOLES SUPPORT)
   // ===============================
-  let polygons = [];
+  let geoPolys = [];
 
-  function extractPolygons(layer){
+  function extract(layer){
+    if(!layer) return;
 
-    if (!layer) return;
+    if(layer instanceof L.Polygon){
+      const latlngs = layer.getLatLngs();
 
-    if (layer instanceof L.Polygon) {
+      // Normalize to MultiPolygon-style: [ [ring, hole1, hole2...] , ... ]
+      const polys = Array.isArray(latlngs[0][0]) ? latlngs : [latlngs];
 
-      const rings = layer.getLatLngs();
-      const flat = rings.flat(Infinity);
-
-      const coords = flat.map(p => [p.lat, p.lng]);
-
-      if(coords.length > 2){
-        polygons.push(coords);
-      }
+      polys.forEach(rings => {
+        const coords = rings.map(ring =>
+          ring.map(p => [p.lng, p.lat]) // turf uses [lng, lat]
+        );
+        geoPolys.push(turf.polygon(coords));
+      });
     }
 
-    if (typeof layer.eachLayer === "function") {
-      layer.eachLayer(extractPolygons);
+    if(typeof layer.eachLayer === "function"){
+      layer.eachLayer(extract);
     }
   }
 
-  extractPolygons(rangeLayer);
+  extract(rangeLayer);
 
-  if(!polygons.length){
+  if(!geoPolys.length){
     console.error("❌ No polygons found");
     return;
+  }
+
+  // 🔥 UNION all pieces into one geometry (handles disjoint areas)
+  let rangeUnion = geoPolys[0];
+  for(let i = 1; i < geoPolys.length; i++){
+    try {
+      rangeUnion = turf.union(rangeUnion, geoPolys[i]) || rangeUnion;
+    } catch(e){
+      // union can fail on tiny slivers; ignore and continue
+    }
   }
 
   const south = bounds.getSouth();
@@ -3524,35 +3558,32 @@ function buildGridFromBounds(bounds, rangeLayer){
   const east  = bounds.getEast();
 
   // ===============================
-  // 🔥 GRID LOOP (INTERSECTION BASED)
+  // 🔥 GRID LOOP WITH TRUE CLIPPING
   // ===============================
   for(let lat = south; lat < north; lat += step){
     for(let lon = west; lon < east; lon += step){
 
-      const cellBounds = [
-        [lat, lon],
-        [lat + step, lon + step]
-      ];
+      const cell = turf.polygon([[
+        [lon, lat],
+        [lon + step, lat],
+        [lon + step, lat + step],
+        [lon, lat + step],
+        [lon, lat]
+      ]]);
 
-      // 🔥 Check if ANY corner OR center intersects
-      const corners = [
-        [lat, lon],
-        [lat + step, lon],
-        [lat, lon + step],
-        [lat + step, lon + step],
-        [lat + step/2, lon + step/2] // center
-      ];
+      let clipped;
+      try {
+        clipped = turf.intersect(cell, rangeUnion);
+      } catch(e){
+        clipped = null;
+      }
 
-      let intersects = polygons.some(poly =>
-        corners.some(pt => isPointInPolygon(pt, poly))
-      );
-
-      if(!intersects) continue;
+      if(!clipped) continue; // no overlap at all
 
       const id = lat.toFixed(5) + "_" + lon.toFixed(5);
 
       window.gridIndex[id] = {
-        bounds: cellBounds,
+        geo: clipped,   // 🔥 store clipped geometry
         visited: false
       };
 
@@ -3565,9 +3596,8 @@ function buildGridFromBounds(bounds, rangeLayer){
     total: count
   };
 
-  console.log("✅ PERFECT Grid built:", count);
+  console.log("✅ EXACT Grid built:", count);
 }
-
 // ===============================
 // 🔺 POINT IN POLYGON (STABLE)
 // ===============================
