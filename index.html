@@ -3169,9 +3169,9 @@ ${pct(data.health)} / 100
   window.gridLayer.addTo(map);
 }
 
-    function buildGridFromBounds(bounds){
+    function buildGridFromBounds(bounds, rangeLayer){
 
-  console.log("🔲 Building grid...");
+  console.log("🔲 Building clipped grid...");
 
   const size = 0.00225;
 
@@ -3182,8 +3182,26 @@ ${pct(data.health)} / 100
 
   let count = 0;
 
+  // 🔥 collect all polygons from KML
+  let polygons = [];
+
+  rangeLayer.eachLayer(l => {
+    if (l instanceof L.Polygon) {
+      polygons.push(l);
+    }
+  });
+
   for(let lat = south; lat < north; lat += size){
     for(let lon = west; lon < east; lon += size){
+
+      const center = [lat + size/2, lon + size/2];
+
+      // 🔥 CHECK IF INSIDE ANY POLYGON
+      let inside = polygons.some(poly => {
+        return leafletPip.pointInLayer(center, poly).length > 0;
+      });
+
+      if(!inside) continue; // ❌ skip outside
 
       const id = lat.toFixed(5) + "_" + lon.toFixed(5);
 
@@ -3198,7 +3216,7 @@ ${pct(data.health)} / 100
 
   window.gridMeta = { size, total: count };
 
-  console.log("✅ Grid built:", count);
+  console.log("✅ Clipped Grid built:", count);
 }
 
 function saveGrid(){
