@@ -931,6 +931,46 @@ window.addEventListener("unhandledrejection", function (e) {
   </div>
 </div><div id="map"></div>
 
+  <div id="coveragePanel" style="
+  position:absolute;
+  top:80px;
+  right:10px;
+  width:230px;
+  background:#111;
+  color:#fff;
+  padding:10px;
+  border-radius:10px;
+  display:none;
+  z-index:999;
+  font-size:13px;
+">
+
+  <div style="font-weight:bold;margin-bottom:8px;">
+    🟢 Coverage
+  </div>
+
+  <select id="beatSelect" onchange="onBeatChange()" style="width:100%;margin-bottom:6px;">
+    <option value="ALL">🌍 Range (All)</option>
+    <option value="EAST_GARAM">East Garam</option>
+    <option value="WEST_GARAM">West Garam</option>
+    <option value="EAST_PORO">East Poro</option>
+  </select>
+
+  <div style="margin-bottom:6px;">
+    <button onclick="applyMode('today')">Today</button>
+    <button onclick="applyMode('current')">Current</button>
+    <button onclick="applyMode('visited')">Visited</button>
+    <button onclick="applyMode('unvisited')">Unvisited</button>
+    <button onclick="applyMode('cumulative')">Cumulative</button>
+  </div>
+
+  <div>
+    <button onclick="showGrid()">Show</button>
+    <button onclick="hideGrid()">Hide</button>
+    <button onclick="closeCoveragePanel()">Close</button>
+  </div>
+
+</div>
   <!-- 📊 REPORT PANEL -->
 <div id="reportContainer"
   style="display:none; height:500px; margin-top:10px;">
@@ -2135,24 +2175,17 @@ function showCoveragePanel(){
 
 function applyMode(mode){
 
-  const beat = document.getElementById("beatSelect")?.value;
+  window.currentCoverageMode = mode;
 
-  if(!beat){
-    console.warn("No beat selected");
-    return;
-  }
-
-  renderGrid(mode, beat); // you already have / will plug this
+  renderGrid(mode, window.currentBeat || "ALL");
 }
 
 
+   function showGrid(){
 
-    function showGrid(){
-  if(!map.hasLayer(window.gridLayer)){
-    window.gridLayer.addTo(map);
-  }
+  renderGrid(window.currentCoverageMode || "current",
+             window.currentBeat || "ALL");
 }
-
 function hideGrid(){
   if(map.hasLayer(window.gridLayer)){
     map.removeLayer(window.gridLayer);
@@ -3222,20 +3255,41 @@ function loadRangeKML() {
     renderGrid("current");
   }
 }
-    function renderGrid(mode = "current"){
+   function renderGrid(mode = "current", beat = "ALL"){
 
-  if(!window.gridIndex) return;
+  if(!window.gridIndex){
+    console.warn("⚠ No gridIndex");
+    return;
+  }
 
+  if(!window.gridLayer){
+    window.gridLayer = L.layerGroup();
+  }
+
+  // 🔥 clear previous grid
   window.gridLayer.clearLayers();
 
   // 🔥 load visited data
   const current = JSON.parse(localStorage.getItem("grid_current") || "{}");
 
   let drawn = 0;
+  let total = 0;
+  let visited = 0;
 
   Object.keys(window.gridIndex).forEach(id => {
 
     const cell = window.gridIndex[id];
+
+    // =========================
+    // 🎯 BEAT FILTER
+    // =========================
+    if(beat !== "ALL" && cell.beat !== beat) return;
+
+    total++;
+
+    let isVisited = !!current[id];
+
+    if(isVisited) visited++;
 
     let color = null;
 
@@ -3243,20 +3297,28 @@ function loadRangeKML() {
     // 🎯 MODES
     // =========================
     if(mode === "current"){
-      color = current[id] ? "#00ff00" : "#330000";
+      // ALL view → show both
+      if(beat === "ALL"){
+        color = isVisited ? "#00ff00" : "#ff0000";
+      } else {
+        color = isVisited ? "#00ff00" : "#330000";
+      }
     }
 
     if(mode === "visited"){
-      if(current[id]) color = "#00ff00";
+      if(isVisited) color = "#00ff00";
     }
 
     if(mode === "unvisited"){
-      if(!current[id]) color = "#ff0000";
+      if(!isVisited) color = "#ff0000";
     }
 
-    // skip if no color
+    // skip if nothing to draw
     if(!color) return;
 
+    // =========================
+    // 🎨 DRAW
+    // =========================
     L.rectangle(cell.bounds, {
       color:"#111",
       weight:0.2,
@@ -3268,12 +3330,31 @@ function loadRangeKML() {
 
   });
 
-  window.gridLayer.addTo(map);
+  // 🔥 add layer if not present
+  if(!map.hasLayer(window.gridLayer)){
+    window.gridLayer.addTo(map);
+  }
 
-  console.log("🔲 Grid rendered:", drawn);
+  // =========================
+  // 📊 LOG
+  // =========================
+  const percent = total ? ((visited / total) * 100).toFixed(1) : 0;
+
+  console.log(`🔲 Grid rendered: ${drawn}`);
+  console.log(`📊 ${beat} → ${visited}/${total} (${percent}%)`);
 }
+     // ===============================
+// 🔲 BUILD GRID (FINAL CORRECT)
+// ===============================
 
-    
+ function onBeatChange(){
+
+  const beat = document.getElementById("beatSelect").value;
+
+  window.currentBeat = beat;
+
+  renderGrid(window.currentCoverageMode, beat);
+}   
   // ===============================
 // 🔲 BUILD GRID (FINAL CORRECT)
 // ===============================
@@ -6485,8 +6566,31 @@ function show3MonthSummary(data){
     /* ============================================================
    ⚡ LAZY LOAD ENGINE (FIXED + SAFE)
 ============================================================ */
+// ================= GLOBAL STATE =================
+window.gridLayer = L.layerGroup();
+window.currentCoverageMode = "current";
+window.currentBeat = "ALL";
+  function showCoveragePanel(){
 
-    
+  console.log("📊 Panel Open");
+
+  const panel = document.getElementById("coveragePanel");
+  if(panel) panel.style.display = "block";
+
+  const beat = document.getElementById("beatSelect")?.value || "ALL";
+
+  renderGrid("current", beat);
+}
+
+function closeCoveragePanel(){
+
+  console.log("❌ Panel Close");
+
+  const panel = document.getElementById("coveragePanel");
+  if(panel) panel.style.display = "none";
+
+  hideGrid();
+}  
 /* ============================================================
    🎛 LAYER CONTROL
 ============================================================ */
@@ -6640,17 +6744,17 @@ map.on('overlayadd', function (e) {
     /* ============================================================
        🟢 GRID / COVERAGE (NEW SYSTEM)
     ============================================================ */
-    if (layerName === "🟢 Grid / Coverage") {
+   if (layerName === "🟢 Grid / Coverage") {
 
-      console.log("📊 Coverage Panel Open");
+  console.log("📊 Coverage Panel Open");
 
-      showCoveragePanel();
+  showCoveragePanel();
 
-      // default render
-      renderGrid("current", "EAST_GARAM");
+  // 🔥 dynamic default (ALL)
+  renderGrid("current", "ALL");
 
-      return;
-    }
+  return;
+}
 
     /* 📊 Monthly Coverage (keep if needed) */
     if (layerName === "📊 Monthly Coverage") {
