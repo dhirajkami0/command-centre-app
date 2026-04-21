@@ -3224,92 +3224,130 @@ function closeCoveragePanel(){
 // ===== CORE ENGINE =====
 function renderGrid(mode = "current", beat = "ALL"){
 
-  if(!window.gridIndex){
-    console.warn("⚠ No gridIndex");
-    return;
-  }
+  try {
 
-  window.currentCoverageMode = mode;
-  window.currentBeat = beat;
+    if(!window.gridIndex){
+      console.warn("⚠ No gridIndex");
+      return;
+    }
 
-  if(!window.gridLayer){
-    window.gridLayer = L.layerGroup();
-  }
+    window.currentCoverageMode = mode;
+    window.currentBeat = beat;
 
-  window.gridLayer.clearLayers();
+    if(!window.gridLayer){
+      window.gridLayer = L.layerGroup();
+    }
 
-  const current = JSON.parse(localStorage.getItem("grid_current") || "{}");
+    // 🔥 ALWAYS CLEAR (critical)
+    window.gridLayer.clearLayers();
 
-  let drawn = 0;
-  let total = 0;
-  let visited = 0;
+    const current = JSON.parse(localStorage.getItem("grid_current") || "{}");
 
-  Object.keys(window.gridIndex).forEach(id => {
+    let drawn = 0;
+    let total = 0;
+    let visited = 0;
 
-    const cell = window.gridIndex[id];
+    Object.keys(window.gridIndex).forEach(id => {
 
-    // ===== BEAT FILTER =====
-    if(beat !== "ALL" && cell.beat !== beat) return;
+      const cell = window.gridIndex[id];
+      if(!cell || !cell.bounds) return;
 
-    total++;
+      // =========================
+      // 🎯 BEAT FILTER
+      // =========================
+      if(beat !== "ALL" && cell.beat !== beat) return;
 
-    const isVisited = !!current[id];
-    if(isVisited) visited++;
+      total++;
 
-    let color = null;
+      const isVisited = !!current[id];
+      if(isVisited) visited++;
 
-    // ===== MODES =====
-    if(mode === "current"){
-      if(beat === "ALL"){
-        color = isVisited ? "#00ff00" : "#ff0000";
-      } else {
-        color = isVisited ? "#00ff00" : "#330000";
+      let color = null;
+      let opacity = 0.35;
+
+      // =========================
+      // 🎯 MODES (CLEAN SWITCH)
+      // =========================
+      switch(mode){
+
+        case "current":
+
+          if(beat === "ALL"){
+            color = isVisited ? "#00ff00" : "#ff0000"; // 🌍 range
+            opacity = isVisited ? 0.5 : 0.3;
+          } else {
+            color = isVisited ? "#00ff00" : "#330000"; // 🎯 single beat
+            opacity = isVisited ? 0.5 : 0.15;
+          }
+
+        break;
+
+        case "today":
+        case "visited":
+
+          if(isVisited){
+            color = "#00ff00";
+            opacity = 0.6;
+          }
+
+        break;
+
+        case "unvisited":
+
+          if(!isVisited){
+            color = "#ff0000";
+            opacity = 0.4;
+          }
+
+        break;
+
+        case "cumulative":
+        case "last":
+        case "compare":
+
+          // placeholder (same as current single beat)
+          color = isVisited ? "#00ff00" : "#330000";
+          opacity = isVisited ? 0.5 : 0.15;
+
+        break;
       }
+
+      if(!color) return;
+
+      // =========================
+      // 🎨 DRAW
+      // =========================
+      L.rectangle(cell.bounds, {
+        color: "#111",
+        weight: 0.2,
+        fillColor: color,
+        fillOpacity: opacity
+      }).addTo(window.gridLayer);
+
+      drawn++;
+
+    });
+
+    // =========================
+    // 🗺 ADD LAYER SAFELY
+    // =========================
+    if(!map.hasLayer(window.gridLayer)){
+      window.gridLayer.addTo(map);
     }
 
-    if(mode === "today"){
-      if(isVisited) color = "#00ff00";
-    }
+    // =========================
+    // 📊 STATS
+    // =========================
+    const percent = total ? ((visited / total) * 100).toFixed(1) : 0;
 
-    if(mode === "visited"){
-      if(isVisited) color = "#00ff00";
-    }
+    console.log(`🔲 Grid rendered: ${drawn}`);
+    console.log(`📊 ${beat} → ${visited}/${total} (${percent}%)`);
+    console.log(`⚙ Mode: ${mode}`);
 
-    if(mode === "unvisited"){
-      if(!isVisited) color = "#ff0000";
-    }
-
-    if(mode === "cumulative"){
-      color = isVisited ? "#00ff00" : "#330000";
-    }
-
-    if(mode === "last" || mode === "compare"){
-      color = isVisited ? "#00ff00" : "#330000";
-    }
-
-    if(!color) return;
-
-    L.rectangle(cell.bounds, {
-      color:"#111",
-      weight:0.2,
-      fillColor:color,
-      fillOpacity:0.35
-    }).addTo(window.gridLayer);
-
-    drawn++;
-
-  });
-
-  if(!map.hasLayer(window.gridLayer)){
-    window.gridLayer.addTo(map);
+  } catch(e){
+    console.error("❌ renderGrid error:", e);
   }
-
-  const percent = total ? ((visited / total) * 100).toFixed(1) : 0;
-
-  console.log(`🔲 Grid rendered: ${drawn}`);
-  console.log(`📊 ${beat} → ${visited}/${total} (${percent}%)`);
 }
-
 // ===== UI EVENTS =====
 function applyMode(mode){
 
