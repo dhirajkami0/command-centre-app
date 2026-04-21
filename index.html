@@ -3495,7 +3495,7 @@ function hideGrid(){
 // ===============================
 function buildGridFromBounds(bounds, rangeLayer){
 
-  console.log("🔲 Building EXACT CLIPPED grid...");
+  console.log("🔲 Building CLIPPED grid (STABLE)...");
 
   if(!bounds || !rangeLayer){
     console.error("❌ Invalid inputs");
@@ -3505,27 +3505,29 @@ function buildGridFromBounds(bounds, rangeLayer){
   const step = 0.00225;
   let count = 0;
 
-  // 🔥 always reset
   window.gridIndex = {};
 
   // ===============================
-  // 🔥 EXTRACT GEOJSON POLYGONS (WITH HOLES SUPPORT)
+  // 🔥 EXTRACT GEO POLYGONS
   // ===============================
   let geoPolys = [];
 
   function extract(layer){
+
     if(!layer) return;
 
     if(layer instanceof L.Polygon){
+
       const latlngs = layer.getLatLngs();
 
-      // Normalize to MultiPolygon-style: [ [ring, hole1, hole2...] , ... ]
       const polys = Array.isArray(latlngs[0][0]) ? latlngs : [latlngs];
 
       polys.forEach(rings => {
+
         const coords = rings.map(ring =>
-          ring.map(p => [p.lng, p.lat]) // turf uses [lng, lat]
+          ring.map(p => [p.lng, p.lat])
         );
+
         geoPolys.push(turf.polygon(coords));
       });
     }
@@ -3537,19 +3539,11 @@ function buildGridFromBounds(bounds, rangeLayer){
 
   extract(rangeLayer);
 
-  if(!geoPolys.length){
-    console.error("❌ No polygons found");
-    return;
-  }
+  console.log("📐 Polygons found:", geoPolys.length);
 
-  // 🔥 UNION all pieces into one geometry (handles disjoint areas)
-  let rangeUnion = geoPolys[0];
-  for(let i = 1; i < geoPolys.length; i++){
-    try {
-      rangeUnion = turf.union(rangeUnion, geoPolys[i]) || rangeUnion;
-    } catch(e){
-      // union can fail on tiny slivers; ignore and continue
-    }
+  if(!geoPolys.length){
+    console.error("❌ No polygons");
+    return;
   }
 
   const south = bounds.getSouth();
@@ -3558,7 +3552,7 @@ function buildGridFromBounds(bounds, rangeLayer){
   const east  = bounds.getEast();
 
   // ===============================
-  // 🔥 GRID LOOP WITH TRUE CLIPPING
+  // 🔥 GRID LOOP
   // ===============================
   for(let lat = south; lat < north; lat += step){
     for(let lon = west; lon < east; lon += step){
@@ -3571,19 +3565,25 @@ function buildGridFromBounds(bounds, rangeLayer){
         [lon, lat]
       ]]);
 
-      let clipped;
-      try {
-        clipped = turf.intersect(cell, rangeUnion);
-      } catch(e){
-        clipped = null;
+      // 🔥 CHECK AGAINST ALL POLYGONS (NO UNION)
+      let clipped = null;
+
+      for(let poly of geoPolys){
+        try {
+          const part = turf.intersect(cell, poly);
+          if(part){
+            clipped = part;
+            break;
+          }
+        } catch(e){}
       }
 
-      if(!clipped) continue; // no overlap at all
+      if(!clipped) continue;
 
       const id = lat.toFixed(5) + "_" + lon.toFixed(5);
 
       window.gridIndex[id] = {
-        geo: clipped,   // 🔥 store clipped geometry
+        geo: clipped,
         visited: false
       };
 
@@ -3596,9 +3596,8 @@ function buildGridFromBounds(bounds, rangeLayer){
     total: count
   };
 
-  console.log("✅ EXACT Grid built:", count);
-}
-// ===============================
+  console.log("✅ Grid built:", count);
+}// ===============================
 // 🔺 POINT IN POLYGON (STABLE)
 // ===============================
 function isPointInPolygon(point, polygon){
