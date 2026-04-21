@@ -1032,8 +1032,8 @@ window.addEventListener("unhandledrejection", function (e) {
 // ================= GRID GLOBAL =================
 window.gridIndex = {};
 window.gridMeta = null;
-window.gridLayer = window.gridLayer || L.layerGroup();
-window.gridLayer.addTo(map); 
+
+
 window.__gridReady = false;
 
     
@@ -2115,7 +2115,9 @@ esriSat.addTo(map);
     L.control.zoom({ position: 'topright' }).addTo(map);
 
 
-   
+   // ✅ SAFE GRID LAYER INIT (AFTER MAP READY)
+window.gridLayer = window.gridLayer || L.layerGroup();
+window.gridLayer.addTo(map);
 
 
   
