@@ -3131,21 +3131,32 @@ ${pct(data.health)} / 100
             map.fitBounds(layer.getBounds());
           }
 
-          // 🔥 GRID INIT
+          // ===============================
+          // 🔥 GRID INIT (SMART)
+          // ===============================
           initGrid(layer);
 
-          // 🔥 NEW → ASSIGN GRID TO BEATS
-          assignGridToBeat(layer);
+          // 🔥 ONLY ASSIGN BEAT IF NOT PRESENT
+          const anyCell = Object.values(window.gridIndex)[0];
 
-          // 🔥 SAVE AGAIN (WITH BEATS)
-          saveGrid();
+          if (!anyCell || !anyCell.beat || anyCell.beat === "UNKNOWN") {
+            console.log("🔁 Assigning beat (first time)");
+            assignGridToBeat(layer);
+            saveGrid();
+          } else {
+            console.log("⚡ Beat already mapped (cached)");
+          }
 
+          // ===============================
+          // 🖱 CLICK HANDLER
+          // ===============================
           layer.eachLayer(function (l) {
             if (l instanceof L.Polygon || l instanceof L.Polyline) {
               l.on('click', e => openRangePopup(e.latlng));
             }
           });
 
+          // 🔥 CLEAN OBJECT URL
           URL.revokeObjectURL(objUrl);
 
         })
