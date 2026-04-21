@@ -3405,55 +3405,83 @@ window.beatMap = {
 // ===============================
 function assignGridToBeat(rangeLayer){
 
-  console.log("🎯 Assigning grid to beats...");
+  console.log("🎯 Assigning grid to beats (ROBUST)...");
 
   try {
 
     let polygons = [];
 
-    // 🔥 extract polygons + names
-    rangeLayer.eachLayer(layer => {
+    // ===============================
+    // 🔥 NORMALIZER (CORE FIX)
+    // ===============================
+    function normalizeName(name){
+
+      if(!name) return "";
+
+      let raw = name.toString().toUpperCase().trim();
+
+      // 🔹 Damanpur BL1 → DPO 1
+      if(raw.includes("DAMANPUR")){
+        const num = raw.match(/\d+/);
+        if(num) return "DPO " + num[0];
+      }
+
+      // 🔹 Poro BL4 → PORO 4
+      if(raw.includes("PORO") && raw.includes("BL")){
+        const num = raw.match(/\d+/);
+        if(num) return "PORO " + num[0];
+      }
+
+      // 🔹 Poro5 → PORO 5
+      if(raw.match(/PORO\s*\d+/)){
+        return raw.replace(/PORO\s*(\d+)/, "PORO $1");
+      }
+
+      // 🔹 Already correct (DPO 1 etc.)
+      return raw;
+    }
+
+    // ===============================
+    // 🔥 EXTRACT POLYGONS
+    // ===============================
+    function extract(layer){
+
+      if (!layer) return;
 
       if (layer instanceof L.Polygon) {
 
-        const name =
+        const rawName =
           layer.feature?.properties?.name ||
           layer.feature?.properties?.Name ||
           layer.feature?.properties?.NAME ||
           "";
 
+        const cleanName = normalizeName(rawName);
+
+        console.log("🧪 RAW:", rawName, "→ CLEAN:", cleanName);
+
         const coords = layer.getLatLngs()[0].map(p => [p.lat, p.lng]);
 
-        polygons.push({ name, coords });
+        polygons.push({ rawName, name: cleanName, coords });
       }
 
-      if (layer.eachLayer) {
-        layer.eachLayer(inner => {
-
-          if (inner instanceof L.Polygon) {
-
-            const name =
-              inner.feature?.properties?.name ||
-              inner.feature?.properties?.Name ||
-              inner.feature?.properties?.NAME ||
-              "";
-
-            const coords = inner.getLatLngs()[0].map(p => [p.lat, p.lng]);
-
-            polygons.push({ name, coords });
-          }
-
-        });
+      if (typeof layer.eachLayer === "function") {
+        layer.eachLayer(extract);
       }
+    }
 
-    });
+    extract(rangeLayer);
 
     if(!polygons.length){
       console.warn("⚠ No polygons for beat mapping");
       return;
     }
 
-    // 🔥 assign grid
+    console.log("📐 Total polygons:", polygons.length);
+
+    // ===============================
+    // 🔥 ASSIGN GRID → BEAT
+    // ===============================
     Object.values(window.gridIndex).forEach(cell => {
 
       const center = [
@@ -3470,16 +3498,25 @@ function assignGridToBeat(rangeLayer){
         let beat = null;
 
         for(let key in window.beatMap){
+
           if(window.beatMap[key].includes(poly.name)){
             beat = key;
             break;
           }
+
         }
 
         if(!beat) continue;
 
         if(isPointInPolygon(center, poly.coords)){
           assignedBeat = beat;
+
+          console.log("✅ MATCH:",
+            "Grid →", center,
+            "| Poly:", poly.name,
+            "| Beat:", beat
+          );
+
           break;
         }
       }
@@ -3488,7 +3525,7 @@ function assignGridToBeat(rangeLayer){
 
     });
 
-    console.log("✅ Grid → Beat mapping complete");
+    console.log("🎯 Grid → Beat mapping COMPLETE");
 
   } catch(e){
     console.error("❌ Beat assignment error:", e);
