@@ -3228,31 +3228,52 @@ function renderGrid(mode = "current", beat = "ALL"){
 
   try {
 
-    if(!window.gridIndex){
+    // =========================
+    // 🔐 SAFETY CHECKS
+    // =========================
+    if(!window.gridIndex || typeof window.gridIndex !== "object"){
       console.warn("⚠ No gridIndex");
       return;
     }
 
+    if(typeof map === "undefined" || !map){
+      console.error("❌ Map not ready");
+      return;
+    }
+
+    // =========================
+    // 🧠 STATE SAVE
+    // =========================
     window.currentCoverageMode = mode;
     window.currentBeat = beat;
 
+    // =========================
+    // 🧱 LAYER INIT (SAFE)
+    // =========================
     if(!window.gridLayer){
       window.gridLayer = L.layerGroup();
     }
 
-    // 🔥 ALWAYS CLEAR (critical)
+    // =========================
+    // 🔥 CLEAR PREVIOUS GRID
+    // =========================
     window.gridLayer.clearLayers();
 
+    // =========================
+    // 📂 LOAD VISITED DATA
+    // =========================
     const current = JSON.parse(localStorage.getItem("grid_current") || "{}");
 
     let drawn = 0;
     let total = 0;
     let visited = 0;
 
-    Object.keys(window.gridIndex).forEach(id => {
+    // =========================
+    // 🔁 LOOP GRID
+    // =========================
+    Object.entries(window.gridIndex).forEach(([id, cell]) => {
 
-      const cell = window.gridIndex[id];
-      if(!cell || !cell.bounds) return;
+      if(!cell || !cell.bounds || !Array.isArray(cell.bounds)) return;
 
       // =========================
       // 🎯 BEAT FILTER
@@ -3268,72 +3289,72 @@ function renderGrid(mode = "current", beat = "ALL"){
       let opacity = 0.35;
 
       // =========================
-      // 🎯 MODES (CLEAN SWITCH)
+      // 🎯 MODE HANDLER
       // =========================
       switch(mode){
 
         case "current":
-
           if(beat === "ALL"){
-            color = isVisited ? "#00ff00" : "#ff0000"; // 🌍 range
+            color = isVisited ? "#00ff00" : "#ff0000";   // 🌍 full range
             opacity = isVisited ? 0.5 : 0.3;
           } else {
-            color = isVisited ? "#00ff00" : "#330000"; // 🎯 single beat
+            color = isVisited ? "#00ff00" : "#330000";   // 🎯 beat focus
             opacity = isVisited ? 0.5 : 0.15;
           }
-
         break;
 
         case "today":
         case "visited":
-
           if(isVisited){
             color = "#00ff00";
             opacity = 0.6;
           }
-
         break;
 
         case "unvisited":
-
           if(!isVisited){
             color = "#ff0000";
             opacity = 0.4;
           }
-
         break;
 
         case "cumulative":
         case "last":
         case "compare":
-
-          // placeholder (same as current single beat)
           color = isVisited ? "#00ff00" : "#330000";
           opacity = isVisited ? 0.5 : 0.15;
+        break;
 
+        default:
+          console.warn("⚠ Unknown mode:", mode);
         break;
       }
 
       if(!color) return;
 
       // =========================
-      // 🎨 DRAW
+      // 🎨 DRAW CELL
       // =========================
-      L.rectangle(cell.bounds, {
-        color: "#111",
-        weight: 0.2,
-        fillColor: color,
-        fillOpacity: opacity
-      }).addTo(window.gridLayer);
+      try {
+        L.rectangle(cell.bounds, {
+          color: "#111",
+          weight: 0.2,
+          fillColor: color,
+          fillOpacity: opacity
+        }).addTo(window.gridLayer);
 
-      drawn++;
+        drawn++;
+
+      } catch(err){
+        console.warn("⚠ Grid draw failed:", id, err);
+      }
 
     });
 
     // =========================
     // 🗺 ADD LAYER SAFELY
     // =========================
-    if(!map.hasLayer(window.gridLayer)){
+    if(map && window.gridLayer && !map.hasLayer(window.gridLayer)){
       window.gridLayer.addTo(map);
     }
 
@@ -3342,15 +3363,14 @@ function renderGrid(mode = "current", beat = "ALL"){
     // =========================
     const percent = total ? ((visited / total) * 100).toFixed(1) : 0;
 
-    console.log(`🔲 Grid rendered: ${drawn}`);
+    console.log("🔲 Grid rendered:", drawn);
     console.log(`📊 ${beat} → ${visited}/${total} (${percent}%)`);
     console.log(`⚙ Mode: ${mode}`);
 
   } catch(e){
     console.error("❌ renderGrid error:", e);
   }
-}
-// ===== UI EVENTS =====
+}// ===== UI EVENTS =====
 function applyMode(mode){
 
   window.currentCoverageMode = mode;
