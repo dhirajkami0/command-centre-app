@@ -2117,7 +2117,6 @@ esriSat.addTo(map);
 
    // ✅ SAFE GRID LAYER INIT (AFTER MAP READY)
 window.gridLayer = window.gridLayer || L.layerGroup();
-window.gridLayer.addTo(map);
 
 
   
@@ -6620,6 +6619,18 @@ function show3MonthSummary(data){
 /* ============================================================
    🎛 LAYER CONTROL
 ============================================================ */
+/* ============================================================
+   🟩 GRID LAYER INIT (CRITICAL - MUST BE BEFORE CONTROL)
+============================================================ */
+window.gridLayer      = window.gridLayer      || L.layerGroup();
+window.visitedLayer   = window.visitedLayer   || L.layerGroup();
+window.unvisitedLayer = window.unvisitedLayer || L.layerGroup();
+window.summaryLayer   = window.summaryLayer   || L.layerGroup();
+
+
+/* ============================================================
+   🎛 LAYER CONTROL (UPDATED)
+============================================================ */
 var layerControl = L.control.layers(
   {
     "🛰 Satellite": esriSat,
@@ -6639,16 +6650,27 @@ var layerControl = L.control.layers(
     "📍 Garam (East + West)": groupLayers?.["GARAM"],
     "📍 East Poro": groupLayers?.["PORO"],
     "📍 Range HQ": groupLayers?.["HQ"],
-    "🟢 Visited Grid": visitedLayer,
-    "🔴 Unvisited Grid": unvisitedLayer,
-    "📊 Monthly Coverage": summaryLayer
+
+    // 🔥 FIXED GRID SECTION (VISIBLE IN UI NOW)
+    "🟩 Coverage Grid": window.gridLayer,
+    "🟢 Visited Grid": window.visitedLayer,
+    "🔴 Unvisited Grid": window.unvisitedLayer,
+    "📊 Monthly Coverage": window.summaryLayer
+
   },
   { collapsed: true }
 ).addTo(map);
 
 
+/* ============================================================
+   📍 GROUP TRACK LAYER
+============================================================ */
 let groupTrackLayer = L.layerGroup().addTo(map);
 
+
+/* ============================================================
+   🚀 TRACK DRAW
+============================================================ */
 function loadGroupTracks(data) {
 
   groupTrackLayer.clearLayers();
@@ -6662,45 +6684,30 @@ function loadGroupTracks(data) {
 
     if (!d || !d.track || d.track.length === 0) return;
 
-    console.log("📍 Track", i, d.group, d.track[0]);
-
     let color =
       d.group === "GARAM" ? "orange" :
       d.group === "PORO" ? "blue" :
       d.group === "HQ" ? "red" :
       "gray";
 
-    try {
-      L.polyline(d.track, {
-        color: color,
-        weight: 3,
-        opacity: 0.9
-      }).addTo(groupTrackLayer);
-    } catch (err) {
-      console.error("❌ Polyline error:", err);
-    }
+    L.polyline(d.track, {
+      color: color,
+      weight: 3,
+      opacity: 0.9
+    }).addTo(groupTrackLayer);
 
   });
 
-  console.log("🚀 DRAWN TRACKS:", data.length);
-
-  // 🔥 Auto zoom
-  try {
-    if (groupTrackLayer.getLayers().length > 0) {
-      map.fitBounds(groupTrackLayer.getBounds());
-    }
-  } catch (e) {
-    console.warn("⚠ Fit bounds error");
+  if (groupTrackLayer.getLayers().length > 0) {
+    map.fitBounds(groupTrackLayer.getBounds());
   }
 }
 
 
 /* ============================================================
-   ⚡ LAZY LOAD ENGINE (FINAL FIXED - ERROR FREE)
+   ⚡ OVERLAY ADD (FIXED)
 ============================================================ */
 map.on('overlayadd', function (e) {
-
-  console.log("🧭 Layer Enabled:", e && e.name);
 
   try {
 
@@ -6708,29 +6715,20 @@ map.on('overlayadd', function (e) {
 
     const layerName = String(e.name);
 
+    console.log("🧭 Layer Enabled:", layerName);
+
     /* 🌱 Plantation */
-    if (layerName === "🌱 Plantation") {
-      loadPlantationLayer?.();
-      return;
-    }
+    if (layerName === "🌱 Plantation") return loadPlantationLayer?.();
 
     /* 🌊 Waterholes */
-    if (layerName === "🌊 Waterholes / Ponds") {
-      loadPondVisuals?.();
-      return;
-    }
+    if (layerName === "🌊 Waterholes / Ponds") return loadPondVisuals?.();
 
     /* 💧 Rivers */
-    if (layerName === "💧 River Network") {
-      loadRiverNetwork?.();
-      return;
-    }
+    if (layerName === "💧 River Network") return loadRiverNetwork?.();
 
     /* 👮 Staff */
-    if (layerName === "👮 Staff") {
-      loadStaff?.();
-      return;
-    }
+    if (layerName === "👮 Staff") return loadStaff?.();
+
 
     /* ============================================================
        📍 GROUP TRACKS
@@ -6742,75 +6740,75 @@ map.on('overlayadd', function (e) {
     ) {
 
       callBackend("getMonthlyGroupTracks")
-        .then(function (data) {
+        .then(data => {
 
-          if (!data || Object.keys(data).length === 0) {
-            console.warn("⚠ No backend data");
-            return;
-          }
+          if (!data) return;
 
-          let selectedGroup = "";
+          let key =
+            layerName.includes("Garam") ? "GARAM" :
+            layerName.includes("Poro") ? "PORO" :
+            "HQ";
 
-          if (layerName === "📍 Garam (East + West)") selectedGroup = "GARAM";
-          if (layerName === "📍 East Poro") selectedGroup = "PORO";
-          if (layerName === "📍 Range HQ") selectedGroup = "HQ";
+          loadGroupTracks(data[key] || []);
 
-          const filtered = data[selectedGroup] || [];
-
-          loadGroupTracks(filtered);
-
-        })
-        .catch(function (err) {
-          console.error("❌ Group Track Error:", err);
         });
 
       return;
     }
+
 
     /* ============================================================
-       🟢 GRID / COVERAGE (NEW SYSTEM)
+       🟩 GRID (🔥 FIXED NAME + WORKING)
     ============================================================ */
-   if (layerName === "🟢 Grid / Coverage") {
+    if (layerName === "🟩 Coverage Grid") {
 
-  console.log("📊 Coverage Panel Open");
+      console.log("📊 Coverage Grid ON");
 
-  showCoveragePanel();
+      showCoveragePanel?.();
 
-  // 🔥 dynamic default (ALL)
-  renderGrid("current", "ALL");
-
-  return;
-}
-
-    /* 📊 Monthly Coverage (keep if needed) */
-    if (layerName === "📊 Monthly Coverage") {
-
-      summaryLayer?.addTo?.(map);
-
-      callBackend("getCompartmentSummary")
-        .then(function (data) {
-
-          if (!data || !Array.isArray(data.compartments)) return;
-
-          showCompartmentSummary?.(data.compartments);
-          summaryLayer?.bringToFront?.();
-
-        })
-        .catch(function (err) {
-          console.error("❌ Summary error:", err);
-        });
+      // 🔥 render grid ONLY when toggled ON
+      renderGrid?.("current", "ALL");
 
       return;
     }
 
-    /* 📊 Monthly Analysis */
-    if (layerName === "📊 Monthly Analysis") {
 
-      load3MonthSummary?.();
+    /* ============================================================
+       🟢 VISITED GRID
+    ============================================================ */
+    if (layerName === "🟢 Visited Grid") {
 
-      if (summaryLayer && map.hasLayer(summaryLayer)) {
-        map.removeLayer(summaryLayer);
-      }
+      console.log("🟢 Visited Grid ON");
+
+      renderGrid?.("visited", "ALL");
+      return;
+    }
+
+
+    /* ============================================================
+       🔴 UNVISITED GRID
+    ============================================================ */
+    if (layerName === "🔴 Unvisited Grid") {
+
+      console.log("🔴 Unvisited Grid ON");
+
+      renderGrid?.("unvisited", "ALL");
+      return;
+    }
+
+
+    /* ============================================================
+       📊 MONTHLY COVERAGE
+    ============================================================ */
+    if (layerName === "📊 Monthly Coverage") {
+
+      summaryLayer.addTo(map);
+
+      callBackend("getCompartmentSummary")
+        .then(data => {
+          if (!data?.compartments) return;
+          showCompartmentSummary?.(data.compartments);
+        });
 
       return;
     }
@@ -6818,45 +6816,46 @@ map.on('overlayadd', function (e) {
   } catch (err) {
     console.error("🔥 overlayadd crash:", err);
   }
-});   /* ============================================================
-   🧹 CLEANUP (OPTIONAL)
+});
+
+
+/* ============================================================
+   🧹 OVERLAY REMOVE (FIXED)
 ============================================================ */
 map.on('overlayremove', function (e) {
 
-  console.log("🧹 Layer Disabled:", e.name);
+  const name = e.name;
 
-  if (e.name === "💧 River Network") {
-    riverLayer.clearLayers();
-  }
+  console.log("🧹 Layer Disabled:", name);
 
-  if (e.name === "🌱 Plantation") {
-    plantationLayer.clearLayers();
-  }
+  if (name === "💧 River Network") riverLayer.clearLayers();
+  if (name === "🌱 Plantation") plantationLayer.clearLayers();
 
   if (
-    e.name === "📍 Garam (East + West)" ||
-    e.name === "📍 East Poro" ||
-    e.name === "📍 Range HQ"
+    name === "📍 Garam (East + West)" ||
+    name === "📍 East Poro" ||
+    name === "📍 Range HQ"
   ) {
     groupTrackLayer.clearLayers();
   }
 
-  /* 🟢 GRID CLEANUP */
-  if (e.name === "🟢 Grid / Coverage") {
+  /* 🔥 GRID CLEANUP */
+  if (
+    name === "🟩 Coverage Grid" ||
+    name === "🟢 Visited Grid" ||
+    name === "🔴 Unvisited Grid"
+  ) {
 
-    console.log("🧹 Closing Coverage Panel");
+    console.log("🧹 Clearing Grid");
 
-    closeCoveragePanel();
+    window.gridLayer.clearLayers();
+    window.visitedLayer.clearLayers();
+    window.unvisitedLayer.clearLayers();
 
-    if (window.gridLayer) {
-      window.gridLayer.clearLayers();
-      if (map.hasLayer(window.gridLayer)) {
-        map.removeLayer(window.gridLayer);
-      }
-    }
+    closeCoveragePanel?.();
   }
 
-});          /* ============================================================
+});        /* ============================================================
              🐘 SIGHTING FORM SYSTEM (FINAL SAFE VERSION)
           ============================================================ */
 
