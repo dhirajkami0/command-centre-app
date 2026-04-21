@@ -3152,24 +3152,90 @@ ${pct(data.health)} / 100
       console.error("❌ KML Fetch Error:", err);
     });
 }
+function markVisited(lat, lon){
 
-    function renderGrid(){
+  if(!window.gridMeta || !window.gridIndex) return;
+
+  const size = window.gridMeta.size;
+
+  // 🔥 FAST GRID ID CALC (NO LOOP)
+  const latKey = Math.floor(lat / size) * size;
+  const lonKey = Math.floor(lon / size) * size;
+
+  const id = latKey.toFixed(5) + "_" + lonKey.toFixed(5);
+
+  const cell = window.gridIndex[id];
+
+  if(!cell) return;
+
+  // already marked → skip
+  if(cell.visited) return;
+
+  // ✅ mark visited
+  cell.visited = true;
+
+  // ✅ save current month
+  const current = JSON.parse(localStorage.getItem("grid_current") || "{}");
+  current[id] = true;
+  localStorage.setItem("grid_current", JSON.stringify(current));
+
+  console.log("🟢 VISITED:", id);
+
+  // 🔥 live update if grid visible
+  if(map.hasLayer(window.gridLayer)){
+    renderGrid("current");
+  }
+}
+    function renderGrid(mode = "current"){
+
+  if(!window.gridIndex) return;
 
   window.gridLayer.clearLayers();
 
-  Object.values(window.gridIndex).forEach(cell => {
+  // 🔥 load visited data
+  const current = JSON.parse(localStorage.getItem("grid_current") || "{}");
+
+  let drawn = 0;
+
+  Object.keys(window.gridIndex).forEach(id => {
+
+    const cell = window.gridIndex[id];
+
+    let color = null;
+
+    // =========================
+    // 🎯 MODES
+    // =========================
+    if(mode === "current"){
+      color = current[id] ? "#00ff00" : "#330000";
+    }
+
+    if(mode === "visited"){
+      if(current[id]) color = "#00ff00";
+    }
+
+    if(mode === "unvisited"){
+      if(!current[id]) color = "#ff0000";
+    }
+
+    // skip if no color
+    if(!color) return;
 
     L.rectangle(cell.bounds, {
-      color:"#222",
-      weight:0.3,
-      fillOpacity:0
+      color:"#111",
+      weight:0.2,
+      fillColor:color,
+      fillOpacity:0.35
     }).addTo(window.gridLayer);
+
+    drawn++;
 
   });
 
   window.gridLayer.addTo(map);
-}
 
+  console.log("🔲 Grid rendered:", drawn);
+}
    function buildGridFromBounds(bounds, rangeLayer){
 
   console.log("🔲 Building SAFE clipped grid...");
@@ -8207,13 +8273,11 @@ async function sendLocation(){
 
           readings++;
 
-          // 🔥 Pick BEST accuracy
           if(acc < bestAccuracy){
             bestAccuracy = acc;
             bestPos = pos;
           }
 
-          // ✅ STOP CONDITIONS
           if(acc <= 15 || readings >= 5){
             navigator.geolocation.clearWatch(watchId);
             resolve(bestPos);
@@ -8233,7 +8297,6 @@ async function sendLocation(){
         }
       );
 
-      // 🔥 HARD TIMEOUT SAFETY (10 sec)
       setTimeout(()=>{
         try{
           navigator.geolocation.clearWatch(watchId);
@@ -8257,6 +8320,19 @@ async function sendLocation(){
     const acc = Math.round(finalPos.coords.accuracy);
 
     console.log("✅ FINAL:", lat, lng, "Acc:", acc);
+
+    // =========================
+    // 🔥 NEW: GRID MARKING
+    // =========================
+    try {
+      if(typeof markVisited === "function"){
+        markVisited(lat, lng);
+      } else {
+        console.warn("⚠ markVisited not found");
+      }
+    } catch(e){
+      console.warn("⚠ Grid marking failed:", e);
+    }
 
     // =========================
     // 🚫 REJECT VERY BAD GPS
