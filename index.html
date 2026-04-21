@@ -3185,26 +3185,105 @@ window.currentCoverageMode = "current";
 window.currentBeat = "ALL";
 
 // ===== PANEL CONTROL =====
+/* ============================================================
+   🟢 SHOW COVERAGE PANEL (FIXED + SAFE)
+============================================================ */
 function showCoveragePanel(){
 
-  const panel = document.getElementById("coveragePanel");
-  if(panel) panel.style.display = "block";
+  try {
 
-  const beat = document.getElementById("beatSelect")?.value || "ALL";
+    const panel = document.getElementById("coveragePanel");
 
-  renderGrid("current", beat);
+    if(panel){
+      panel.style.display = "block";
+
+      // 🔥 Ensure expanded (not minimized)
+      panel.classList.remove("minimized");
+    }
+
+    const beat = document.getElementById("beatSelect")?.value || "ALL";
+
+    // 🔥 Ensure grid layer exists
+    if(!window.gridLayer){
+      window.gridLayer = L.layerGroup();
+    }
+
+    // 🔥 Add layer ONLY if not already on map
+    if(!map.hasLayer(window.gridLayer)){
+      window.gridLayer.addTo(map);
+    }
+
+    // 🔥 Clear old grid before rendering
+    window.gridLayer.clearLayers();
+
+    // 🔥 Render safely
+    if(typeof renderGrid === "function"){
+      renderGrid("current", beat);
+    } else {
+      console.warn("⚠ renderGrid not found");
+    }
+
+    console.log("🟢 Coverage Panel OPEN");
+
+  } catch(e){
+    console.error("❌ showCoveragePanel error:", e);
+  }
 }
 
+
+/* ============================================================
+   🔴 CLOSE COVERAGE PANEL (FIXED + CLEAN)
+============================================================ */
 function closeCoveragePanel(){
 
-  const panel = document.getElementById("coveragePanel");
-  if(panel) panel.style.display = "none";
+  try {
 
-  if(window.gridLayer){
-    window.gridLayer.clearLayers();
-    if(map.hasLayer(window.gridLayer)){
-      map.removeLayer(window.gridLayer);
+    const panel = document.getElementById("coveragePanel");
+
+    if(panel){
+      panel.style.display = "none";
     }
+
+    // 🔥 Clear ALL grid-related layers safely
+    if(window.gridLayer){
+      window.gridLayer.clearLayers();
+
+      if(map.hasLayer(window.gridLayer)){
+        map.removeLayer(window.gridLayer);
+      }
+    }
+
+    if(window.visitedLayer){
+      window.visitedLayer.clearLayers();
+      if(map.hasLayer(window.visitedLayer)){
+        map.removeLayer(window.visitedLayer);
+      }
+    }
+
+    if(window.unvisitedLayer){
+      window.unvisitedLayer.clearLayers();
+      if(map.hasLayer(window.unvisitedLayer)){
+        map.removeLayer(window.unvisitedLayer);
+      }
+    }
+
+    console.log("🔴 Coverage Panel CLOSED");
+
+  } catch(e){
+    console.error("❌ closeCoveragePanel error:", e);
+  }
+}
+    function toggleCoveragePanel(){
+
+  const panel = document.getElementById("coveragePanel");
+  const icon = document.getElementById("coverageIcon");
+
+  panel.classList.toggle("minimized");
+
+  if(panel.classList.contains("minimized")){
+    icon.className = "fa-solid fa-chevron-up";
+  } else {
+    icon.className = "fa-solid fa-chevron-down";
   }
 }
 
