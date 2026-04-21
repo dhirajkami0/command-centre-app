@@ -3394,52 +3394,57 @@ function saveGrid(){
 // 🔺 POINT IN POLYGON (STABLE)
 // ===============================
 
+// ===============================
+// ✅ BEAT MAP (UI SYSTEM)
+// ===============================
 window.beatMap = {
   "EAST_GARAM": ["DPO 1","DPO 2","DPO 5","DPO 6","DPO 9"],
   "WEST_GARAM": ["PORO 3","PORO 4","PORO 8","PORO 9"],
   "EAST_PORO":  ["PORO 2","PORO 7","PF","PORO 5","PORO 10"]
 };
 
-    // ===============================
-// 🔺 POINT IN POLYGON (STABLE)
+
+// ===============================
+// 🔄 KML → UI CONVERSION
+// ===============================
+function convertCompartment(id){
+
+  if(!id) return "";
+
+  id = id.toUpperCase().trim();
+
+  // 🔹 Damanpur BL1 → DPO 1
+  if(id.includes("DAMANPUR")){
+    const num = id.match(/\d+/);
+    return num ? "DPO " + num[0] : "";
+  }
+
+  // 🔹 Poro BL4 → PORO 4
+  if(id.includes("PORO") && id.includes("BL")){
+    const num = id.match(/\d+/);
+    return num ? "PORO " + num[0] : "";
+  }
+
+  // 🔹 Poro5 → PORO 5 (SAFE)
+  if(id.startsWith("PORO") && !id.includes("BL")){
+    const num = id.match(/\d+/);
+    return num ? "PORO " + num[0] : "";
+  }
+
+  return "";
+}
+
+
+// ===============================
+// 🎯 GRID → BEAT ASSIGNMENT
 // ===============================
 function assignGridToBeat(rangeLayer){
 
-  console.log("🎯 Assigning grid to beats (ROBUST)...");
+  console.log("🎯 Assigning grid to beats (FINAL CLEAN)...");
 
   try {
 
     let polygons = [];
-
-    // ===============================
-    // 🔥 NORMALIZER (CORE FIX)
-    // ===============================
-    function normalizeName(name){
-
-      if(!name) return "";
-
-      let raw = name.toString().toUpperCase().trim();
-
-      // 🔹 Damanpur BL1 → DPO 1
-      if(raw.includes("DAMANPUR")){
-        const num = raw.match(/\d+/);
-        if(num) return "DPO " + num[0];
-      }
-
-      // 🔹 Poro BL4 → PORO 4
-      if(raw.includes("PORO") && raw.includes("BL")){
-        const num = raw.match(/\d+/);
-        if(num) return "PORO " + num[0];
-      }
-
-      // 🔹 Poro5 → PORO 5
-      if(raw.match(/PORO\s*\d+/)){
-        return raw.replace(/PORO\s*(\d+)/, "PORO $1");
-      }
-
-      // 🔹 Already correct (DPO 1 etc.)
-      return raw;
-    }
 
     // ===============================
     // 🔥 EXTRACT POLYGONS
@@ -3450,19 +3455,20 @@ function assignGridToBeat(rangeLayer){
 
       if (layer instanceof L.Polygon) {
 
-        const rawName =
-          layer.feature?.properties?.name ||
-          layer.feature?.properties?.Name ||
-          layer.feature?.properties?.NAME ||
-          "";
+        const p = layer.feature?.properties || {};
 
-        const cleanName = normalizeName(rawName);
+        const rawID = p.ID || "";
+        const cleanName = convertCompartment(rawID);
 
-        console.log("🧪 RAW:", rawName, "→ CLEAN:", cleanName);
+        console.log("🧪 RAW:", rawID, "→ CLEAN:", cleanName);
 
-        const coords = layer.getLatLngs()[0].map(p => [p.lat, p.lng]);
+        const coords = layer.getLatLngs()[0].map(pt => [pt.lat, pt.lng]);
 
-        polygons.push({ rawName, name: cleanName, coords });
+        polygons.push({
+          raw: rawID,
+          name: cleanName,
+          coords
+        });
       }
 
       if (typeof layer.eachLayer === "function") {
@@ -3498,12 +3504,10 @@ function assignGridToBeat(rangeLayer){
         let beat = null;
 
         for(let key in window.beatMap){
-
           if(window.beatMap[key].includes(poly.name)){
             beat = key;
             break;
           }
-
         }
 
         if(!beat) continue;
@@ -3512,8 +3516,9 @@ function assignGridToBeat(rangeLayer){
           assignedBeat = beat;
 
           console.log("✅ MATCH:",
-            "Grid →", center,
-            "| Poly:", poly.name,
+            "Grid:", center,
+            "| KML:", poly.raw,
+            "| Converted:", poly.name,
             "| Beat:", beat
           );
 
