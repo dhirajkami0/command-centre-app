@@ -4235,107 +4235,45 @@ function loadSightings() {
 
     if(!data) return;
 
+    /* 🔥 GLOBAL STORE */
     window.sightingMarkers = window.sightingMarkers || {};
-
-    const now = Date.now();
 
     data.forEach(function(e){
 
       if(!e.lat || !e.lon) return;
 
       const key = e.id;
-      const lat = Number(e.lat);
-      const lon = Number(e.lon);
 
-      const status = (e.status || "Active").toUpperCase();
-
-      const timestamp = new Date(e.timestamp || e.time || Date.now()).getTime();
-      const minutes = (now - timestamp) / (1000 * 60);
-
-      /* ============================================================
-         ❌ REMOVE: RESOLVED OR >24 HOURS
-      ============================================================ */
-
-      if(status === "RESOLVED" || minutes > 1440){
+      /* 🔥 ✅ FIX: REMOVE IMMEDIATELY IF NOT ACTIVE */
+      if(e.status && e.status !== "Active"){
 
         if(window.sightingMarkers[key]){
           elephantLayer.removeLayer(window.sightingMarkers[key]);
           delete window.sightingMarkers[key];
-          console.log("🗑 Removed (resolved/expired):", key);
+          console.log("🗑 Removed instantly:", key);
         }
 
         return;
       }
 
-      /* ============================================================
-         🔥 STATE LOGIC (TIME + MANUAL)
-      ============================================================ */
-
-      let state = "ACTIVE";
-
-      if(status === "DRIVEN" || status === "MOVED"){
-        state = "CONTROLLED";
-      }
-      else if(minutes > 360){
-        state = "OLD";
-      }
-      else if(minutes > 120){
-        state = "MID";
-      }
-
-      /* ============================================================
-         🎨 STYLE (ONLY CHANGE HERE)
-      ============================================================ */
+      const lat = Number(e.lat);
+      const lon = Number(e.lon);
 
       const herd = parseInt(e.herd || 0);
       const isHighRisk = herd <= 2;
-
-      let color = isHighRisk ? "#ff3b30" : "#ff9800";
-      let animation = "elephantPulse 2s infinite";
-      let opacity = 1;
-
-      if(state === "MID"){
-        animation = "elephantPulseSlow 3s infinite";
-        color = "#ff9800";
-      }
-
-      if(state === "OLD"){
-        animation = "none";
-        opacity = 0.5;
-      }
-
-      if(state === "CONTROLLED"){
-        animation = "none";
-        opacity = 0.7;
-        color = "#9e9e9e";
-      }
-
-      /* ============================================================
-         🐘 ICON (UPDATED ONLY)
-      ============================================================ */
+      const color = isHighRisk ? "#ff3b30" : "#ff9800";
 
       const icon = L.divIcon({
         className:'',
         html:`
-        <div style="position:relative;width:36px;height:36px;opacity:${opacity}">
-          <div style="
-            display:flex;
-            align-items:center;
-            justify-content:center;
-            width:36px;
-            height:36px;
-            animation:${animation};
-          ">
-            <div style="font-size:26px;color:${color};">🐘</div>
+        <div style="position:relative;width:36px;height:36px;">
+          <div style="display:flex;align-items:center;justify-content:center;width:36px;height:36px;animation: elephantPulse 2s infinite;">
+            <div style="font-size:26px;">🐘</div>
           </div>
         </div>`,
         iconSize:[36,36],
         iconAnchor:[18,18]
       });
-
-      /* ============================================================
-         🔥 KEEP ALL YOUR EXISTING CODE BELOW (UNCHANGED)
-      ============================================================ */
 
       /* TIME */
       let timeDisplay = "Unknown";
@@ -4350,45 +4288,49 @@ function loadSightings() {
           timeDisplay = `${hr}:${m} ${ampm}`;
         }
       }
+console.log("🔍 RAW DIR:", JSON.stringify(e.direction));
+console.log("🔍 TYPE:", typeof e.direction);
+/* ===============================
+   🔥 DIRECTION (FINAL FIX)
+=============================== */
 
-      console.log("🔍 RAW DIR:", JSON.stringify(e.direction));
-      console.log("🔍 TYPE:", typeof e.direction);
+let movementText = "Unknown";
 
-      let movementText = "Unknown";
+/* 🔥 TRY ALL POSSIBLE SOURCES */
+const rawDir =
+  e.Direction ||   // correct column
+  e.direction ||   // fallback
+  "";
 
-      const rawDir =
-        e.Direction ||
-        e.direction ||
-        "";
+/* 🔥 DEBUG (KEEP TEMP) */
+console.log("DIR RAW:", JSON.stringify(rawDir));
 
-      console.log("DIR RAW:", JSON.stringify(rawDir));
+if (rawDir) {
 
-      if (rawDir) {
+  const dirKey = String(rawDir)
+    .trim()
+    .replace(/\s+/g,"")
+    .toUpperCase();
 
-        const dirKey = String(rawDir)
-          .trim()
-          .replace(/\s+/g,"")
-          .toUpperCase();
+  console.log("DIR KEY:", dirKey);
 
-        console.log("DIR KEY:", dirKey);
+  const dirMap = {
+    N:"North", NE:"North-East",
+    E:"East", SE:"South-East",
+    S:"South", SW:"South-West",
+    W:"West", NW:"North-West",
 
-        const dirMap = {
-          N:"North", NE:"North-East",
-          E:"East", SE:"South-East",
-          S:"South", SW:"South-West",
-          W:"West", NW:"North-West",
-          NORTH:"North", SOUTH:"South",
-          EAST:"East", WEST:"West",
-          NORTHEAST:"North-East",
-          NORTHWEST:"North-West",
-          SOUTHEAST:"South-East",
-          SOUTHWEST:"South-West"
-        };
+    // full words support
+    NORTH:"North", SOUTH:"South",
+    EAST:"East", WEST:"West",
+    NORTHEAST:"North-East",
+    NORTHWEST:"North-West",
+    SOUTHEAST:"South-East",
+    SOUTHWEST:"South-West"
+  };
 
-        movementText = dirMap[dirKey] || rawDir;
-      }
-
-      /* VILLAGE RISK */
+  movementText = dirMap[dirKey] || rawDir;
+}      /* 🔥 VILLAGE RISK */
       let villageHTML = "";
 
       if(window.coneVillages){
@@ -4423,6 +4365,7 @@ function loadSightings() {
         }
       }
 
+      /* PHOTO */
       const photoHtml = e.photo ? `
         <div style="margin-top:8px">
           <a href="${e.photo}" target="_blank">
@@ -4430,11 +4373,11 @@ function loadSightings() {
           </a>
         </div>` : "";
 
-      const popup = `
+    const popup = `
 <div style="font-family:Segoe UI;min-width:220px">
 
   <div style="color:${color};font-weight:bold">
-    🐘 ${state}
+    🔴 ACTIVE
   </div>
 
   <hr>
@@ -4453,6 +4396,8 @@ function loadSightings() {
   ${photoHtml}
 
   <div style="margin-top:10px">
+
+    <!-- 🔥 NEW: OPEN FULL MOVE FORM -->
     <button onclick="
       event.stopPropagation();
       window.isPopupInteracting = true;
@@ -4470,19 +4415,17 @@ function loadSightings() {
     ">
       ✅ MARK AS MOVED / UPDATE
     </button>
+
   </div>
 
 </div>`;
-
-      /* UPDATE EXISTING */
+      /* 🔥 UPDATE EXISTING */
       if(window.sightingMarkers[key]){
         window.sightingMarkers[key].setLatLng([lat,lon]);
-        window.sightingMarkers[key].setIcon(icon);
-        window.sightingMarkers[key].setPopupContent(popup);
         return;
       }
 
-      /* CREATE NEW */
+      /* 🔥 CREATE NEW */
       const marker = L.marker([lat,lon],{
         icon:icon,
         zIndexOffset:5000
@@ -4502,7 +4445,7 @@ function loadSightings() {
     console.error("❌ loadSightings error:", err);
   });
 
-}    
+}
     
     window.openMoveForm = function(id){
 
