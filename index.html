@@ -4600,7 +4600,13 @@ const icon = L.divIcon({
         let hr = h%12 || 12;
         timeDisplay = `${hr}:${m} ${ampm}`;
       }
+/* 🔥 FORMAT AGE → hr + min */
+const hrs = Math.floor(minutes / 60);
+const mins = Math.floor(minutes % 60);
 
+const ageFormatted = hrs > 0
+  ? `${hrs} hr ${mins} min`
+  : `${mins} min`;
       /* ===============================
          🪟 POPUP
       =============================== */
@@ -4618,7 +4624,7 @@ const icon = L.divIcon({
   <b>🧠 Herd Match:</b> ${confidence}%<br>
   <b>🧭 Movement:</b> ${movementText}<br>
   <b>⏱ Time:</b> ${timeDisplay}<br>
-  <b>⏱ Age:</b> ${Math.round(minutes)} min<br>
+  <b>⏱ Age:</b> ${ageFormatted}<br>
 
   <b>👤 Sighted by:</b> ${e.teamLeader || "Unknown"}<br>
 
