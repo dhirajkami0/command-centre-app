@@ -3287,7 +3287,118 @@ function closeCoveragePanel(){
     icon.className = "fa-solid fa-chevron-down";
   }
 }
+function assignGridToBeat(rangeLayer){
 
+  console.log("🎯 Assigning grid to beats (COMPAT FIX)...");
+
+  try {
+
+    let polygons = [];
+
+    // ===============================
+    // 🔥 EXTRACT POLYGONS (UNCHANGED LOGIC)
+    // ===============================
+    function extract(layer){
+
+      if (!layer) return;
+
+      if (layer instanceof L.Polygon) {
+
+        const p = layer.feature?.properties || {};
+        const rawID = p.ID || "";
+
+        const comp = convertCompartment(rawID);
+        if(!comp) return;
+
+        const coords = layer.getLatLngs()[0].map(pt => [pt.lat, pt.lng]);
+
+        polygons.push({
+          raw: rawID,
+          comp: comp,
+          coords
+        });
+
+        return;
+      }
+
+      if (layer._layers) {
+        Object.values(layer._layers).forEach(extract);
+      }
+    }
+
+    extract(rangeLayer);
+
+    window.__debugPolygons = polygons;
+
+    if(!polygons.length){
+      console.warn("⚠ No polygons found");
+      return;
+    }
+
+    console.log("📐 Total polygons:", polygons.length);
+
+    // ===============================
+    // 🔥 ASSIGN GRID → BEAT (FIXED CENTER ONLY)
+    // ===============================
+    Object.values(window.gridIndex).forEach(cell => {
+
+      let center = null;
+
+      // 🔥 NEW GRID (geo)
+      if(cell.geo){
+        try {
+          const c = turf.centroid(cell.geo).geometry.coordinates;
+          center = [c[1], c[0]]; // convert to [lat, lng]
+        } catch(e){
+          console.warn("⚠ centroid fail");
+          return;
+        }
+      }
+
+      // 🔥 OLD GRID (bounds) — fallback
+      else if(cell.bounds){
+        center = [
+          (cell.bounds[0][0] + cell.bounds[1][0]) / 2,
+          (cell.bounds[0][1] + cell.bounds[1][1]) / 2
+        ];
+      }
+
+      if(!center){
+        cell.beat = "UNKNOWN";
+        return;
+      }
+
+      let assignedBeat = "UNKNOWN";
+
+      for(let poly of polygons){
+
+        let beat = null;
+
+        for(let key in window.beatMap){
+          if(window.beatMap[key].includes(poly.comp)){
+            beat = key;
+            break;
+          }
+        }
+
+        if(!beat) continue;
+
+        if(isPointInPolygon(center, poly.coords)){
+          assignedBeat = beat;
+          break;
+        }
+      }
+
+      cell.beat = assignedBeat;
+
+    });
+
+    console.log("🎯 Grid → Beat mapping COMPLETE");
+
+  } catch(e){
+    console.error("❌ Beat assignment error:", e);
+  }
+}
 // ===== CORE ENGINE =====
 function renderGrid(mode = "current", beat = "ALL"){
 
