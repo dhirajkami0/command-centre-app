@@ -3404,62 +3404,27 @@ function renderGrid(mode = "current", beat = "ALL"){
 
   try {
 
-    // =========================
-    // 🔐 SAFETY CHECKS
-    // =========================
-    if(!window.gridIndex || typeof window.gridIndex !== "object"){
+    if(!window.gridIndex){
       console.warn("⚠ No gridIndex");
       return;
     }
 
-    if(typeof map === "undefined" || !map){
-      console.error("❌ Map not ready");
-      return;
-    }
-
-    // =========================
-    // 🧠 STATE SAVE
-    // =========================
-    window.currentCoverageMode = mode;
-    window.currentBeat = beat;
-
-    // =========================
-    // 🧱 LAYER INIT (SAFE)
-    // =========================
     if(!window.gridLayer){
       window.gridLayer = L.layerGroup();
     }
 
-    // =========================
-    // 🔥 CLEAR PREVIOUS GRID
-    // =========================
     window.gridLayer.clearLayers();
 
-    // =========================
-    // 📂 LOAD VISITED DATA
-    // =========================
     const current = JSON.parse(localStorage.getItem("grid_current") || "{}");
 
     let drawn = 0;
     let total = 0;
     let visited = 0;
 
-    // =========================
-    // 🔁 LOOP GRID
-    // =========================
     Object.entries(window.gridIndex).forEach(([id, cell]) => {
 
-      if(!cell) return;
+      if(!cell || !cell.geo) return;
 
-      // 🔥 SUPPORT BOTH OLD + NEW GRID FORMAT
-      const hasGeo = !!cell.geo;
-      const hasBounds = !!cell.bounds;
-
-      if(!hasGeo && !hasBounds) return;
-
-      // =========================
-      // 🎯 BEAT FILTER
-      // =========================
       if(beat !== "ALL" && cell.beat !== beat) return;
 
       total++;
@@ -3470,22 +3435,13 @@ function renderGrid(mode = "current", beat = "ALL"){
       let color = null;
       let opacity = 0.35;
 
-      // =========================
-      // 🎯 MODE HANDLER
-      // =========================
       switch(mode){
 
         case "current":
-          if(beat === "ALL"){
-            color = isVisited ? "#00ff00" : "#ff0000";
-            opacity = isVisited ? 0.5 : 0.3;
-          } else {
-            color = isVisited ? "#00ff00" : "#330000";
-            opacity = isVisited ? 0.5 : 0.15;
-          }
+          color = isVisited ? "#00ff00" : "#ff0000";
+          opacity = isVisited ? 0.5 : 0.3;
         break;
 
-        case "today":
         case "visited":
           if(isVisited){
             color = "#00ff00";
@@ -3501,68 +3457,37 @@ function renderGrid(mode = "current", beat = "ALL"){
         break;
 
         case "cumulative":
-        case "last":
-        case "compare":
           color = isVisited ? "#00ff00" : "#330000";
           opacity = isVisited ? 0.5 : 0.15;
-        break;
-
-        default:
-          console.warn("⚠ Unknown mode:", mode);
         break;
       }
 
       if(!color) return;
 
-      // =========================
-      // 🎨 DRAW CELL (🔥 FIXED)
-      // =========================
       try {
 
-        if(hasGeo){
-          // ✅ NEW SYSTEM (CLIPPED SHAPE)
-          L.geoJSON(cell.geo, {
-            style: {
-              color: "#111",
-              weight: 0.2,
-              fillColor: color,
-              fillOpacity: opacity
-            }
-          }).addTo(window.gridLayer);
-
-        } else if(hasBounds){
-          // ⚠️ FALLBACK (OLD RECTANGLE SYSTEM)
-          L.rectangle(cell.bounds, {
-            color: "#111",
-            weight: 0.2,
+        // 🔥 IMPORTANT: use shared style (avoids tiny seams)
+        L.geoJSON(cell.geo, {
+          style: {
+            color: "#222",
+            weight: 0.15,
             fillColor: color,
             fillOpacity: opacity
-          }).addTo(window.gridLayer);
-        }
+          }
+        }).addTo(window.gridLayer);
 
         drawn++;
 
-      } catch(err){
-        console.warn("⚠ Grid draw failed:", id, err);
-      }
-
+      } catch(e){}
     });
 
-    // =========================
-    // 🗺 ADD LAYER SAFELY
-    // =========================
-    if(map && window.gridLayer && !map.hasLayer(window.gridLayer)){
+    if(!map.hasLayer(window.gridLayer)){
       window.gridLayer.addTo(map);
     }
 
-    // =========================
-    // 📊 STATS
-    // =========================
     const percent = total ? ((visited / total) * 100).toFixed(1) : 0;
 
-    console.log("🔲 Grid rendered:", drawn);
-    console.log(`📊 ${beat} → ${visited}/${total} (${percent}%)`);
-    console.log(`⚙ Mode: ${mode}`);
+    console.log(`📊 ${visited}/${total} (${percent}%)`);
 
   } catch(e){
     console.error("❌ renderGrid error:", e);
@@ -3693,7 +3618,7 @@ window.beatMap = {
 }
 function buildGridFromBounds(bounds, rangeLayer){
 
-  console.log("🔲 Building CLIPPED grid (NO GAPS FINAL)...");
+  console.log("🔲 Building CLIPPED grid (FINAL STABLE - NO GAPS)...");
 
   try {
 
@@ -3705,11 +3630,10 @@ function buildGridFromBounds(bounds, rangeLayer){
     const step = 0.00225;
     let count = 0;
 
-    // 🔥 RESET GRID
     window.gridIndex = {};
 
     // ===============================
-    // 🔥 EXTRACT GEO POLYGONS (SAFE)
+    // 🔥 EXTRACT POLYGONS
     // ===============================
     let geoPolys = [];
 
@@ -3732,7 +3656,7 @@ function buildGridFromBounds(bounds, rangeLayer){
 
             let pts = ring.map(p => [p.lng, p.lat]);
 
-            // 🔥 CLOSE RING
+            // close ring
             const first = pts[0];
             const last  = pts[pts.length - 1];
 
@@ -3749,25 +3673,21 @@ function buildGridFromBounds(bounds, rangeLayer){
           if(coords.length){
             try {
               geoPolys.push(turf.polygon(coords));
-            } catch(e){
-              console.warn("⚠ Invalid polygon skipped", e);
-            }
+            } catch(e){}
           }
 
         });
       }
 
-      if(typeof layer.eachLayer === "function"){
+      if(layer.eachLayer){
         layer.eachLayer(extract);
       }
     }
 
     extract(rangeLayer);
 
-    console.log("📐 Polygons extracted:", geoPolys.length);
-
     if(!geoPolys.length){
-      console.error("❌ No valid polygons found");
+      console.error("❌ No polygons");
       return;
     }
 
@@ -3776,86 +3696,54 @@ function buildGridFromBounds(bounds, rangeLayer){
     const west  = bounds.getWest();
     const east  = bounds.getEast();
 
-    console.log("🌍 Bounds:", south, north, west, east);
-
-    // 🔥 SNAP GRID (prevents floating gaps)
+    // 🔥 SNAP GRID
     const startLat = Math.floor(south / step) * step;
     const startLon = Math.floor(west / step) * step;
 
     // ===============================
-    // 🔥 GRID LOOP (GAP-FREE LOGIC)
+    // 🔥 GRID LOOP (SIMPLIFIED + STABLE)
     // ===============================
     for(let lat = startLat; lat < north; lat += step){
       for(let lon = startLon; lon < east; lon += step){
 
-        let cell;
+        const id = lat.toFixed(5) + "_" + lon.toFixed(5);
 
-        try {
-          cell = turf.polygon([[
-            [lon, lat],
-            [lon + step, lat],
-            [lon + step, lat + step],
-            [lon, lat + step],
-            [lon, lat]
-          ]]);
-        } catch(e){
-          continue;
-        }
+        const cellPoly = turf.polygon([[
+          [lon, lat],
+          [lon + step, lat],
+          [lon + step, lat + step],
+          [lon, lat + step],
+          [lon, lat]
+        ]]);
 
-        let include = false;
+        const center = turf.point([
+          lon + step/2,
+          lat + step/2
+        ]);
+
         let clipped = null;
 
         for(let poly of geoPolys){
 
           try {
 
-            // ✅ 1. TRUE INTERSECTION (BEST)
-            const part = turf.intersect(cell, poly);
+            // ✅ PRIMARY → intersection
+            const part = turf.intersect(cellPoly, poly);
             if(part){
-              include = true;
               clipped = part;
               break;
             }
 
-            // ✅ 2. CENTER INSIDE (fills holes)
-            const center = turf.centroid(cell);
+            // ✅ FALLBACK → center inside
             if(turf.booleanPointInPolygon(center, poly)){
-              include = true;
-              clipped = cell;
-              break;
-            }
-
-            // ✅ 3. CORNER INSIDE (critical for edges)
-            const corners = [
-              [lon, lat],
-              [lon + step, lat],
-              [lon, lat + step],
-              [lon + step, lat + step]
-            ];
-
-            for(let c of corners){
-              if(turf.booleanPointInPolygon(turf.point(c), poly)){
-                include = true;
-                clipped = cell;
-                break;
-              }
-            }
-
-            if(include) break;
-
-            // ✅ 4. FINAL SAFETY (tiny overlaps)
-            if(turf.booleanIntersects(cell, poly)){
-              include = true;
-              clipped = cell;
+              clipped = cellPoly;
               break;
             }
 
           } catch(e){}
         }
 
-        if(!include) continue;
-
-        const id = lat.toFixed(5) + "_" + lon.toFixed(5);
+        if(!clipped) continue;
 
         window.gridIndex[id] = {
           geo: clipped,
@@ -3866,62 +3754,19 @@ function buildGridFromBounds(bounds, rangeLayer){
       }
     }
 
-    // ===============================
-    // 🔥 META
-    // ===============================
     window.gridMeta = {
       size: step,
       total: count
     };
 
-    console.log("✅ Grid built (NO GAPS):", count);
-
-    if(count === 0){
-      console.warn("⚠ Grid empty — check bounds / layer load timing");
-    }
+    console.log("✅ Grid built:", count);
 
   } catch(e){
     console.error("❌ buildGridFromBounds crash:", e);
   }
-}    
-    function initGrid(layer){
-
-  if(window.__gridReady){
-    console.log("⚡ Grid already ready");
-    return;
-  }
-
-  if(loadGrid()){
-    console.log("⚡ Loaded cached grid");
-
-    // 🔥 IMPORTANT → assign beats if missing
-    if(!Object.values(window.gridIndex)[0]?.beat){
-      assignGridToBeat(layer);
-      saveGrid();
-    }
-
-    window.__gridReady = true;
-    return;
-  }
-
-  const bounds = layer.getBounds();
-
-  if(!bounds || !bounds.isValid()){
-    console.error("❌ Invalid bounds");
-    return;
-  }
-
-  buildGridFromBounds(bounds, layer);
-
-  // 🔥 NEW → assign beat
-  assignGridToBeat(layer);
-
-  saveGrid();
-
-  window.__gridReady = true;
-
-  console.log("✅ Grid initialized fully");
-}    function clearKMLPreview(){
+}   
+    
+    function clearKMLPreview(){
 
   const btn = document.getElementById("clearKMLBtn");
 
