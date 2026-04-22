@@ -3693,7 +3693,7 @@ window.beatMap = {
 }
 function buildGridFromBounds(bounds, rangeLayer){
 
-  console.log("🔲 Building CLIPPED grid (NO GAPS)...");
+  console.log("🔲 Building CLIPPED grid (FINAL STABLE)...");
 
   try {
 
@@ -3705,10 +3705,11 @@ function buildGridFromBounds(bounds, rangeLayer){
     const step = 0.00225;
     let count = 0;
 
+    // 🔥 RESET GRID
     window.gridIndex = {};
 
     // ===============================
-    // 🔥 EXTRACT POLYGONS
+    // 🔥 EXTRACT GEO POLYGONS (SAFE)
     // ===============================
     let geoPolys = [];
 
@@ -3716,9 +3717,12 @@ function buildGridFromBounds(bounds, rangeLayer){
 
       if(!layer) return;
 
+      // 🔹 Handle Polygon
       if(layer instanceof L.Polygon){
 
         let latlngs = layer.getLatLngs();
+
+        // Normalize structure → always array of polygons
         const polygons = Array.isArray(latlngs[0][0]) ? latlngs : [latlngs];
 
         polygons.forEach(rings => {
@@ -3727,9 +3731,11 @@ function buildGridFromBounds(bounds, rangeLayer){
 
           rings.forEach(ring => {
 
+            if(!Array.isArray(ring) || ring.length < 3) return;
+
             let pts = ring.map(p => [p.lng, p.lat]);
 
-            // 🔥 CLOSE RING
+            // 🔥 FIX: CLOSE RING (CRITICAL)
             const first = pts[0];
             const last  = pts[pts.length - 1];
 
@@ -3737,21 +3743,26 @@ function buildGridFromBounds(bounds, rangeLayer){
               pts.push(first);
             }
 
+            // 🔥 Skip invalid rings
             if(pts.length >= 4){
               coords.push(pts);
             }
 
           });
 
+          // 🔥 Create polygon safely
           if(coords.length){
             try {
               geoPolys.push(turf.polygon(coords));
-            } catch(e){}
+            } catch(e){
+              console.warn("⚠ Invalid polygon skipped", e);
+            }
           }
 
         });
       }
 
+      // 🔹 Recurse groups
       if(typeof layer.eachLayer === "function"){
         layer.eachLayer(extract);
       }
@@ -3759,10 +3770,10 @@ function buildGridFromBounds(bounds, rangeLayer){
 
     extract(rangeLayer);
 
-    console.log("📐 Polygons:", geoPolys.length);
+    console.log("📐 Polygons extracted:", geoPolys.length);
 
     if(!geoPolys.length){
-      console.error("❌ No polygons");
+      console.error("❌ No valid polygons found");
       return;
     }
 
@@ -3771,60 +3782,52 @@ function buildGridFromBounds(bounds, rangeLayer){
     const west  = bounds.getWest();
     const east  = bounds.getEast();
 
+    console.log("🌍 Bounds:", south, north, west, east);
+
     // ===============================
-    // 🔥 GRID LOOP (NO GAPS LOGIC)
+    // 🔥 GRID LOOP (CLIPPED CELLS)
     // ===============================
     for(let lat = south; lat < north; lat += step){
       for(let lon = west; lon < east; lon += step){
 
-        const cell = turf.polygon([[
-          [lon, lat],
-          [lon + step, lat],
-          [lon + step, lat + step],
-          [lon, lat + step],
-          [lon, lat]
-        ]]);
+        let cell;
+
+        try {
+          cell = turf.polygon([[
+            [lon, lat],
+            [lon + step, lat],
+            [lon + step, lat + step],
+            [lon, lat + step],
+            [lon, lat]
+          ]]);
+        } catch(e){
+          continue;
+        }
 
         let clipped = null;
-        let intersects = false;
 
+        // 🔥 Check against all polygons
         for(let poly of geoPolys){
 
           try {
-
-            // 🔥 TRY TRUE CLIP
             const part = turf.intersect(cell, poly);
 
             if(part){
               clipped = part;
-              intersects = true;
               break;
             }
 
-            // 🔥 FALLBACK 1: centroid inside
-            const center = turf.centroid(cell);
-            if(turf.booleanPointInPolygon(center, poly)){
-              clipped = cell; // take full cell
-              intersects = true;
-              break;
-            }
-
-            // 🔥 FALLBACK 2: bbox overlap (VERY IMPORTANT)
-            if(turf.booleanOverlap(cell, poly) || turf.booleanContains(poly, cell)){
-              clipped = cell;
-              intersects = true;
-              break;
-            }
-
-          } catch(e){}
+          } catch(e){
+            // silently ignore intersection errors
+          }
         }
 
-        if(!intersects) continue;
+        if(!clipped) continue;
 
         const id = lat.toFixed(5) + "_" + lon.toFixed(5);
 
         window.gridIndex[id] = {
-          geo: clipped,
+          geo: clipped,     // 🔥 clipped geometry
           visited: false
         };
 
@@ -3832,17 +3835,26 @@ function buildGridFromBounds(bounds, rangeLayer){
       }
     }
 
+    // ===============================
+    // 🔥 META
+    // ===============================
     window.gridMeta = {
       size: step,
       total: count
     };
 
-    console.log("✅ Grid built (gap-free):", count);
+    console.log("✅ Grid built:", count);
+
+    if(count === 0){
+      console.warn("⚠ Grid empty — check bounds / layer load timing");
+    }
 
   } catch(e){
-    console.error("❌ buildGrid error:", e);
+    console.error("❌ buildGridFromBounds crash:", e);
   }
-}    function initGrid(layer){
+}    
+    
+    function initGrid(layer){
 
   if(window.__gridReady){
     console.log("⚡ Grid already ready");
