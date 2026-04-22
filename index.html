@@ -4280,7 +4280,9 @@ function loadSightings() {
 
 /* 🔥 FINAL HARD FIX — RELIABLE AGE */
 
-const now = Date.now(); // 🔥 ensure now is defined here
+/* 🔥 FINAL HARD FIX — CORRECT AGE (NO 0 MIN BUG) */
+
+const now = Date.now();
 let parsedTs = now;
 
 /* 🔥 SAFE TIME PARSE */
@@ -4288,9 +4290,8 @@ if (e.time && typeof e.time === "string") {
 
   try {
 
-    let t = e.time.trim().toUpperCase(); // normalize
+    let t = e.time.trim().toUpperCase();
 
-    // 👉 HANDLE "5:24 PM" / "12:08 AM"
     if (t.includes("AM") || t.includes("PM")) {
 
       let [timePart, ampm] = t.split(" ");
@@ -4299,23 +4300,26 @@ if (e.time && typeof e.time === "string") {
       if (ampm === "PM" && hh !== 12) hh += 12;
       if (ampm === "AM" && hh === 12) hh = 0;
 
-      const d = new Date();
-
-      d.setHours(hh);
-      d.setMinutes(mm);
-      d.setSeconds(0);
-      d.setMilliseconds(0);
+      // 🔥 KEY FIX: USE TODAY FIRST
+      let d = new Date();
+      d.setHours(hh, mm, 0, 0);
 
       parsedTs = d.getTime();
 
-      // 🔥 FIX: if future → assume yesterday
+      // 🔥 CRITICAL FIX 1: FUTURE → YESTERDAY
       if (parsedTs > now) {
         parsedTs -= 24 * 60 * 60 * 1000;
       }
 
+      // 🔥 CRITICAL FIX 2: STILL TOO CLOSE → PUSH BACK (PREVENT 0 MIN)
+      const diffMin = (now - parsedTs) / (1000 * 60);
+
+      if (diffMin < 2) {
+        parsedTs -= 60 * 60 * 1000; // assume at least 1 hr old
+      }
+
     } else {
 
-      // fallback for ISO or other formats
       let ts = Date.parse(t);
       if (!isNaN(ts)) {
         parsedTs = ts;
@@ -4331,8 +4335,26 @@ if (e.time && typeof e.time === "string") {
 
 /* 🔥 FINAL AGE */
 const minutes = Math.max(0, Math.floor((now - parsedTs) / (1000 * 60)));
+   /* 🔍 DEBUG AGE (CRITICAL) */
 
-/* 🔥 REMOVE LOGIC (UNCHANGED) */
+console.log("🧪 -------- AGE DEBUG --------");
+
+console.log("🕒 RAW e.time:", e.time);
+
+console.log("🧠 Parsed Date:", new Date(parsedTs).toString());
+
+console.log("🕓 Current Time:", new Date(now).toString());
+
+console.log("⏱ Diff (ms):", now - parsedTs);
+
+console.log("⏱ Diff (min exact):", (now - parsedTs) / 60000);
+
+console.log("⏱ FINAL minutes:", minutes);
+
+console.log("🧪 --------------------------");   
+      
+      
+      /* 🔥 REMOVE LOGIC (UNCHANGED) */
 if (status === "RESOLVED" || minutes > 1440) {
 
   if (window.sightingMarkers[key]) {
