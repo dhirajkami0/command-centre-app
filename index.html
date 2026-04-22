@@ -559,7 +559,17 @@ window.addEventListener("unhandledrejection", function (e) {
     .legend.minimized #legendToggleBtn {
       color: white;
     }
+@keyframes pulseFast {
+  0% { transform: translate(-50%, -50%) scale(1); opacity:0.5; }
+  70% { transform: translate(-50%, -50%) scale(2.2); opacity:0; }
+  100% { opacity:0; }
+}
 
+@keyframes pulseSlow {
+  0% { transform: translate(-50%, -50%) scale(1); opacity:0.4; }
+  70% { transform: translate(-50%, -50%) scale(1.8); opacity:0; }
+  100% { opacity:0; }
+}
     /* ============================================================
    📍 LEAFLET FIXES & MARKERS
 ============================================================ */
