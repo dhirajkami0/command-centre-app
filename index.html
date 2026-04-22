@@ -4282,17 +4282,25 @@ function loadSightings() {
 
 /* 🔥 FINAL HARD FIX — CORRECT AGE (NO 0 MIN BUG) */
 
+/* 🔥 FINAL AGE FIX — SUPPORTS ALL FORMATS */
+
 const now = Date.now();
 let parsedTs = now;
 
-/* 🔥 SAFE TIME PARSE */
 if (e.time && typeof e.time === "string") {
 
   try {
 
     let t = e.time.trim().toUpperCase();
 
+    /* ===============================
+       🟢 CASE 1: AM / PM
+    =============================== */
     if (t.includes("AM") || t.includes("PM")) {
+
+      if (!t.includes(" ")) {
+        t = t.replace(/(AM|PM)/, " $1");
+      }
 
       let [timePart, ampm] = t.split(" ");
       let [hh, mm] = timePart.split(":").map(Number);
@@ -4300,31 +4308,40 @@ if (e.time && typeof e.time === "string") {
       if (ampm === "PM" && hh !== 12) hh += 12;
       if (ampm === "AM" && hh === 12) hh = 0;
 
-      // 🔥 KEY FIX: USE TODAY FIRST
       let d = new Date();
       d.setHours(hh, mm, 0, 0);
-
       parsedTs = d.getTime();
 
-      // 🔥 CRITICAL FIX 1: FUTURE → YESTERDAY
-      if (parsedTs > now) {
-        parsedTs -= 24 * 60 * 60 * 1000;
-      }
+    }
 
-      // 🔥 CRITICAL FIX 2: STILL TOO CLOSE → PUSH BACK (PREVENT 0 MIN)
-      const diffMin = (now - parsedTs) / (1000 * 60);
+    /* ===============================
+       🟢 CASE 2: HH:MM:SS (YOUR DATA)
+    =============================== */
+    else if (/^\d{2}:\d{2}:\d{2}$/.test(t)) {
 
-      if (diffMin < 2) {
-        parsedTs -= 60 * 60 * 1000; // assume at least 1 hr old
-      }
+      let [hh, mm, ss] = t.split(":").map(Number);
 
-    } else {
+      let d = new Date();
+      d.setHours(hh, mm, ss, 0);
+      parsedTs = d.getTime();
+
+    }
+
+    /* ===============================
+       🟢 CASE 3: fallback
+    =============================== */
+    else {
 
       let ts = Date.parse(t);
       if (!isNaN(ts)) {
         parsedTs = ts;
       }
 
+    }
+
+    /* 🔥 FIX: FUTURE → YESTERDAY */
+    if (parsedTs > now) {
+      parsedTs -= 24 * 60 * 60 * 1000;
     }
 
   } catch (err) {
@@ -4334,8 +4351,7 @@ if (e.time && typeof e.time === "string") {
 }
 
 /* 🔥 FINAL AGE */
-const minutes = Math.max(0, Math.floor((now - parsedTs) / (1000 * 60)));
-   /* 🔍 DEBUG AGE (CRITICAL) */
+const minutes = Math.max(0, Math.floor((now - parsedTs) / (1000 * 60)));   /* 🔍 DEBUG AGE (CRITICAL) */
 
 console.log("🧪 -------- AGE DEBUG --------");
 
