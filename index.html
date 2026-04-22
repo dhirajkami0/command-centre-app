@@ -4248,18 +4248,15 @@ function loadSightings() {
       const key = e.id;
 
       const status = (e.status || "Active").toUpperCase();
-
       const timestamp = new Date(e.timestamp || e.time || Date.now()).getTime();
       const minutes = (now - timestamp) / (1000 * 60);
 
-      /* ❌ REMOVE ONLY CORRECT CONDITIONS */
+      /* ❌ REMOVE */
       if(status === "RESOLVED" || minutes > 1440){
-
         if(window.sightingMarkers[key]){
           elephantLayer.removeLayer(window.sightingMarkers[key]);
           delete window.sightingMarkers[key];
         }
-
         return;
       }
 
@@ -4267,7 +4264,7 @@ function loadSightings() {
       const lon = Number(e.lon);
 
       /* ===============================
-         🧠 HERD MATCH (UNCHANGED)
+         🧠 HERD MATCH
       =============================== */
 
       let matchedHerd = null;
@@ -4310,7 +4307,7 @@ function loadSightings() {
       const confidence = Math.round(bestScore * 100);
 
       /* ===============================
-         🧭 TRACK PER HERD
+         🧭 TRACK
       =============================== */
 
       if(!window.herdTracks[matchedHerd]){
@@ -4318,9 +4315,8 @@ function loadSightings() {
       }
 
       const track = window.herdTracks[matchedHerd];
-      const lastPoint = track[track.length - 1];
 
-      if(!lastPoint || Math.abs(lastPoint.lat - lat) > 0.0001){
+      if(!track.length || Math.abs(track[track.length-1].lat - lat) > 0.0001){
         track.push({lat, lon, time: timestamp});
       }
 
@@ -4340,7 +4336,7 @@ function loadSightings() {
       }
 
       /* ===============================
-         🎨 UI STATE LOGIC (FIXED)
+         🎨 UI STATE
       =============================== */
 
       let color = "#ff3b30";
@@ -4362,7 +4358,7 @@ function loadSightings() {
       }
 
       /* ===============================
-         🐘 RADAR RING (FIXED)
+         🐘 ICON (RADAR)
       =============================== */
 
       const icon = L.divIcon({
@@ -4371,39 +4367,19 @@ function loadSightings() {
         <div style="position:relative;width:36px;height:36px;opacity:${opacity}">
 
           ${animation !== "none" ? `
-          <span style="
-            position:absolute;
-            top:50%;
-            left:50%;
-            width:36px;
-            height:36px;
-            border:2px solid ${color};
-            border-radius:50%;
-            transform:translate(-50%, -50%);
-            animation:${animation};
-          "></span>
+          <span style="position:absolute;top:50%;left:50%;
+          width:36px;height:36px;border:2px solid ${color};
+          border-radius:50%;transform:translate(-50%, -50%);
+          animation:${animation};"></span>
 
-          <span style="
-            position:absolute;
-            top:50%;
-            left:50%;
-            width:36px;
-            height:36px;
-            border:2px solid ${color};
-            border-radius:50%;
-            transform:translate(-50%, -50%);
-            animation:${animation};
-            animation-delay:0.8s;
-          "></span>
+          <span style="position:absolute;top:50%;left:50%;
+          width:36px;height:36px;border:2px solid ${color};
+          border-radius:50%;transform:translate(-50%, -50%);
+          animation:${animation};animation-delay:0.8s;"></span>
           ` : ""}
 
-          <div style="
-            position:absolute;
-            top:50%;
-            left:50%;
-            transform:translate(-50%, -50%);
-            font-size:26px;
-          ">
+          <div style="position:absolute;top:50%;left:50%;
+          transform:translate(-50%, -50%);font-size:26px;">
             🐘
           </div>
 
@@ -4413,19 +4389,84 @@ function loadSightings() {
       });
 
       /* ===============================
-         🔥 UPDATE / CREATE MARKER
+         🧭 DIRECTION
+      =============================== */
+
+      let movementText = "Unknown";
+      const rawDir = e.Direction || e.direction || "";
+
+      if(rawDir){
+        const dirKey = String(rawDir).trim().replace(/\s+/g,"").toUpperCase();
+        const dirMap = {
+          N:"North", NE:"North-East",
+          E:"East", SE:"South-East",
+          S:"South", SW:"South-West",
+          W:"West", NW:"North-West"
+        };
+        movementText = dirMap[dirKey] || rawDir;
+      }
+
+      /* ===============================
+         🪟 FULL POPUP (FIXED + ADDED)
+      =============================== */
+
+      const popup = `
+<div style="font-family:Segoe UI;min-width:220px">
+
+  <div style="color:${color};font-weight:bold">
+    🐘 ${status}
+  </div>
+
+  <hr>
+
+  <b>🐘 Herd:</b> ${e.herd || "?"}<br>
+  <b>🧠 Herd Match:</b> ${confidence}%<br>
+  <b>🧭 Movement:</b> ${movementText}<br>
+  <b>⏱ Age:</b> ${Math.round(minutes)} min<br>
+
+  <b>👤 Sighted by:</b> ${e.teamLeader || "Unknown"}<br>
+
+  <br>
+  <b>📍 Location:</b><br>
+  <code>${lat.toFixed(5)}, ${lon.toFixed(5)} near ${e.village || "Unknown"}</code>
+
+  <div style="margin-top:10px">
+    <button onclick="
+      event.stopPropagation();
+      openMoveForm('${e.id}')
+    " style="
+      background:#2e7d32;
+      color:white;
+      border:none;
+      width:100%;
+      padding:10px;
+      border-radius:6px;
+      cursor:pointer;
+      font-weight:bold;
+    ">
+      ✅ UPDATE STATUS
+    </button>
+  </div>
+
+</div>`;
+
+      /* ===============================
+         🔥 UPDATE / CREATE
       =============================== */
 
       if(window.sightingMarkers[key]){
         window.sightingMarkers[key].setLatLng([lat,lon]);
         window.sightingMarkers[key].setIcon(icon);
+        window.sightingMarkers[key].setPopupContent(popup);
         return;
       }
 
       const marker = L.marker([lat,lon],{
         icon:icon,
         zIndexOffset:5000
-      }).addTo(elephantLayer);
+      })
+      .bindPopup(popup)
+      .addTo(elephantLayer);
 
       window.sightingMarkers[key] = marker;
 
@@ -4433,7 +4474,9 @@ function loadSightings() {
 
   });
 
-}    window.openMoveForm = function(id){
+}
+    
+    window.openMoveForm = function(id){
 
   console.log("🔥 openMoveForm CALLED with ID:", id);
 
