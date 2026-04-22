@@ -4222,7 +4222,6 @@ function openStatsPopup(name, latlng) {
     ============================================================ */
 function loadSightings() {
 
-  /* 🔥 CLEAR ONLY FIRST TIME */
   if(!window.sightingsInitialized){
     elephantLayer.clearLayers();
     window.sightingsInitialized = true;
@@ -4235,10 +4234,7 @@ function loadSightings() {
 
     if(!data) return;
 
-    /* 🔥 GLOBAL STORE */
     window.sightingMarkers = window.sightingMarkers || {};
-
-    /* 🔥 NEW GLOBALS (ADDED) */
     window.herdClusters = window.herdClusters || {};
     window.herdTracks = window.herdTracks || {};
     window.herdLines = window.herdLines || {};
@@ -4251,13 +4247,17 @@ function loadSightings() {
 
       const key = e.id;
 
-      /* 🔥 KEEP YOUR ORIGINAL REMOVE LOGIC */
-      if(e.status && e.status !== "Active"){
+      const status = (e.status || "Active").toUpperCase();
+
+      const timestamp = new Date(e.timestamp || e.time || Date.now()).getTime();
+      const minutes = (now - timestamp) / (1000 * 60);
+
+      /* ❌ REMOVE ONLY CORRECT CONDITIONS */
+      if(status === "RESOLVED" || minutes > 1440){
 
         if(window.sightingMarkers[key]){
           elephantLayer.removeLayer(window.sightingMarkers[key]);
           delete window.sightingMarkers[key];
-          console.log("🗑 Removed instantly:", key);
         }
 
         return;
@@ -4266,11 +4266,9 @@ function loadSightings() {
       const lat = Number(e.lat);
       const lon = Number(e.lon);
 
-      const timestamp = new Date(e.timestamp || e.time || Date.now()).getTime();
-
-      /* ============================================================
-         🧠 HERD MATCH ENGINE (ADDED)
-      ============================================================ */
+      /* ===============================
+         🧠 HERD MATCH (UNCHANGED)
+      =============================== */
 
       let matchedHerd = null;
       let bestScore = 0;
@@ -4311,9 +4309,9 @@ function loadSightings() {
 
       const confidence = Math.round(bestScore * 100);
 
-      /* ============================================================
-         🧭 TRACK PER HERD (ADDED)
-      ============================================================ */
+      /* ===============================
+         🧭 TRACK PER HERD
+      =============================== */
 
       if(!window.herdTracks[matchedHerd]){
         window.herdTracks[matchedHerd] = [];
@@ -4341,180 +4339,101 @@ function loadSightings() {
         }).addTo(elephantLayer);
       }
 
-      /* ============================================================
-         🎨 YOUR ORIGINAL STYLE (UNCHANGED)
-      ============================================================ */
+      /* ===============================
+         🎨 UI STATE LOGIC (FIXED)
+      =============================== */
 
-      const herd = parseInt(e.herd || 0);
-      const isHighRisk = herd <= 2;
-      const color = isHighRisk ? "#ff3b30" : "#ff9800";
+      let color = "#ff3b30";
+      let animation = "pulseStrong";
+      let opacity = 1;
+
+      if(status === "MOVED" || status === "DRIVEN"){
+        color = "#9e9e9e";
+        animation = "none";
+        opacity = 0.7;
+      }
+      else if(minutes > 360){
+        color = "#9e9e9e";
+        animation = "none";
+        opacity = 0.7;
+      }
+      else if(minutes > 120){
+        animation = "pulseMedium";
+      }
+
+      /* ===============================
+         🐘 RADAR RING (FIXED)
+      =============================== */
 
       const icon = L.divIcon({
         className:'',
         html:`
-        <div style="position:relative;width:36px;height:36px;">
-          <div style="display:flex;align-items:center;justify-content:center;width:36px;height:36px;animation: elephantPulse 2s infinite;">
-            <div style="font-size:26px;">🐘</div>
+        <div style="position:relative;width:36px;height:36px;opacity:${opacity}">
+
+          ${animation !== "none" ? `
+          <span style="
+            position:absolute;
+            top:50%;
+            left:50%;
+            width:36px;
+            height:36px;
+            border:2px solid ${color};
+            border-radius:50%;
+            transform:translate(-50%, -50%);
+            animation:${animation};
+          "></span>
+
+          <span style="
+            position:absolute;
+            top:50%;
+            left:50%;
+            width:36px;
+            height:36px;
+            border:2px solid ${color};
+            border-radius:50%;
+            transform:translate(-50%, -50%);
+            animation:${animation};
+            animation-delay:0.8s;
+          "></span>
+          ` : ""}
+
+          <div style="
+            position:absolute;
+            top:50%;
+            left:50%;
+            transform:translate(-50%, -50%);
+            font-size:26px;
+          ">
+            🐘
           </div>
+
         </div>`,
         iconSize:[36,36],
         iconAnchor:[18,18]
       });
 
-      /* TIME */
-      let timeDisplay = "Unknown";
-      let rawTime = (e.time || "").toString();
-
-      if(rawTime.includes(":")){
-        let [h,m] = rawTime.split(":");
-        h = parseInt(h);
-        if(!isNaN(h)){
-          let ampm = h>=12?"PM":"AM";
-          let hr = h%12 || 12;
-          timeDisplay = `${hr}:${m} ${ampm}`;
-        }
-      }
-
-      let movementText = "Unknown";
-
-      const rawDir = e.Direction || e.direction || "";
-
-      if (rawDir) {
-
-        const dirKey = String(rawDir)
-          .trim()
-          .replace(/\s+/g,"")
-          .toUpperCase();
-
-        const dirMap = {
-          N:"North", NE:"North-East",
-          E:"East", SE:"South-East",
-          S:"South", SW:"South-West",
-          W:"West", NW:"North-West",
-          NORTH:"North", SOUTH:"South",
-          EAST:"East", WEST:"West",
-          NORTHEAST:"North-East",
-          NORTHWEST:"North-West",
-          SOUTHEAST:"South-East",
-          SOUTHWEST:"South-West"
-        };
-
-        movementText = dirMap[dirKey] || rawDir;
-      }
-
-      let villageHTML = "";
-
-      if(window.coneVillages){
-
-        let nearestKey = null;
-        let minDist = Infinity;
-
-        Object.keys(window.coneVillages).forEach(k=>{
-          const [clat, clon] = k.split(",").map(Number);
-
-          const d = Math.sqrt(
-            Math.pow(lat - clat, 2) +
-            Math.pow(lon - clon, 2)
-          );
-
-          if(d < minDist){
-            minDist = d;
-            nearestKey = k;
-          }
-        });
-
-        if(nearestKey && minDist < 0.02){
-
-          const villages = window.coneVillages[nearestKey];
-
-          if(villages && villages.length > 0){
-            villageHTML += `<hr><b>🏠 Elephant Risk Zone</b>`;
-            villages.forEach(v=>{
-              villageHTML += `<div style="margin-top:4px;">🔴 <b>${v}</b></div>`;
-            });
-          }
-        }
-      }
-
-      const photoHtml = e.photo ? `
-        <div style="margin-top:8px">
-          <a href="${e.photo}" target="_blank">
-            <img src="${e.photo}" style="width:100%;border-radius:6px">
-          </a>
-        </div>` : "";
-
-      /* 🔥 UPDATED POPUP (ONLY ADD CONFIDENCE) */
-      const popup = `
-<div style="font-family:Segoe UI;min-width:220px">
-
-  <div style="color:${color};font-weight:bold">
-    🔴 ACTIVE
-  </div>
-
-  <hr>
-
-  <b>🐘 Herd:</b> ${herd}<br>
-  <b>🧠 Herd Match:</b> ${confidence}%<br>
-  <b>🧭 Movement:</b> ${movementText}<br>
-  <b>⏱ Time:</b> ${timeDisplay}<br>
-
-  <b>👤 Sighted by:</b> ${e.teamLeader || "Unknown"}<br>
-
-  <br>
-  <b>📍 Location of sighting:</b><br>
-  <code>${lat.toFixed(5)}, ${lon.toFixed(5)} near ${e.village || "Unknown"}</code>
-
-  ${villageHTML}
-  ${photoHtml}
-
-  <div style="margin-top:10px">
-    <button onclick="
-      event.stopPropagation();
-      window.isPopupInteracting = true;
-      window.lastInteractionTime = Date.now();
-      openMoveForm('${e.id}')
-    " style="
-      background:#2e7d32;
-      color:white;
-      border:none;
-      width:100%;
-      padding:10px;
-      border-radius:6px;
-      cursor:pointer;
-      font-weight:bold;
-    ">
-      ✅ MARK AS MOVED / UPDATE
-    </button>
-  </div>
-
-</div>`;
+      /* ===============================
+         🔥 UPDATE / CREATE MARKER
+      =============================== */
 
       if(window.sightingMarkers[key]){
         window.sightingMarkers[key].setLatLng([lat,lon]);
+        window.sightingMarkers[key].setIcon(icon);
         return;
       }
 
       const marker = L.marker([lat,lon],{
         icon:icon,
         zIndexOffset:5000
-      })
-      .bindPopup(popup,{
-        autoClose:false,
-        closeOnClick:false
-      })
-      .addTo(elephantLayer);
+      }).addTo(elephantLayer);
 
       window.sightingMarkers[key] = marker;
 
     });
 
-  })
-  .catch(err=>{
-    console.error("❌ loadSightings error:", err);
   });
 
-}    
-    window.openMoveForm = function(id){
+}    window.openMoveForm = function(id){
 
   console.log("🔥 openMoveForm CALLED with ID:", id);
 
@@ -4574,7 +4493,6 @@ function submitMoveForm() {
 
   window.isUpdating = true;
 
-  // 🔥 NEW: START LOADING (REPLACES confirm)
   setMoveLoading("loading");
 
   const normalize = v => String(v)
@@ -4622,6 +4540,7 @@ function submitMoveForm() {
   /* ===============================
      BACKEND CALL
   =============================== */
+
   callBackend("updateSightingStatus", payload)
 
   .then(function (res) {
@@ -4630,7 +4549,6 @@ function submitMoveForm() {
 
     if (res) {
 
-      // 🔥 SUCCESS UI
       setMoveLoading("success");
 
       setTimeout(() => {
@@ -4639,24 +4557,35 @@ function submitMoveForm() {
           closeMoveForm();
         }
 
-        // 🔥 CRITICAL FIX → RESET BUTTON AFTER SUCCESS
         setMoveLoading("reset");
 
-        Object.keys(window.sightingMarkers || {}).forEach(key => {
+        /* 🔥 FIX: REMOVE ONLY IF RESOLVED */
+        const status = (remarks || "").toUpperCase().trim();
 
-          if (normalize(key) === cleanId) {
+        if (status === "RESOLVED") {
 
-            elephantLayer.removeLayer(window.sightingMarkers[key]);
-            delete window.sightingMarkers[key];
+          Object.keys(window.sightingMarkers || {}).forEach(key => {
 
-            console.log("⚡ Marker removed:", key);
-          }
+            if (normalize(key) === cleanId) {
 
-        });
+              elephantLayer.removeLayer(window.sightingMarkers[key]);
+              delete window.sightingMarkers[key];
+
+              console.log("⚡ Marker removed (RESOLVED):", key);
+            }
+
+          });
+
+        } else {
+
+          console.log("ℹ️ Marker retained for status:", status);
+
+        }
 
       }, 800);
 
     } else {
+
       alert("❌ Update failed (ID not matched)");
       setMoveLoading("reset");
       window.isUpdating = false;
@@ -4676,7 +4605,11 @@ function submitMoveForm() {
 
       console.log("🔥 Refreshing sightings...");
 
-      loadSightings();
+      loadSightings(); // 🔥 This will handle:
+                       // >6h → grey
+                       // >24h → remove
+                       // moved/driven → grey
+
       callBackend("updateVillageRisk");
 
     }, 300);
@@ -4697,6 +4630,7 @@ function submitMoveForm() {
     window.isUpdating = false;
     console.groupEnd();
   });
+
 }function setMoveLoading(state){
 
   const btn = document.getElementById("moveConfirmBtn");
