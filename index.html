@@ -4388,50 +4388,78 @@ const lon = Number(e.lon);
          🧠 HERD MATCH
       =============================== */
 
-      let matchedHerd = null;
-      let bestScore = 0;
+     let matchedHerd = null;
+let bestScore = 0;
 
-      Object.keys(window.herdClusters).forEach(hid => {
+Object.keys(window.herdClusters).forEach(hid => {
 
-        const last = window.herdClusters[hid].last;
+  const last = window.herdClusters[hid].last;
 
-        const dist = Math.sqrt(
-          Math.pow(lat - last.lat,2) +
-          Math.pow(lon - last.lon,2)
-        );
+  const score = calculateHerdScore(
+    {
+      lat,
+      lon,
+      time: parsedTs,
+      direction: e.direction,
+      count: e.count   // 🔥 IMPORTANT (NEW)
+    },
+    last
+  );
 
-        const timeGap = Math.abs(parsedTs - last.time) / 60000;
+  if(score > bestScore){
+    bestScore = score;
+    matchedHerd = hid;
+  }
 
-        const distanceScore = Math.max(0, 1 - (dist / 0.02));
-        const timeScore = Math.max(0, 1 - (timeGap / 180));
+});
+     /* ===============================
+   🐘 HERD MATCH + STORE (UPDATED)
+=============================== */
 
-        const score = (distanceScore * 0.6) + (timeScore * 0.4);
+if(!matchedHerd || bestScore < 0.5){
 
-        if(score > bestScore){
-          bestScore = score;
-          matchedHerd = hid;
-        }
+  matchedHerd = "HERD_" + Date.now() + "_" + Math.random();
 
-      });
+  window.herdClusters[matchedHerd] = {
+    last: {
+      lat,
+      lon,
+      time: parsedTs,
+      direction: e.direction || "",
+      count: e.count || 1
+    },
+    members: []
+  };
 
-      if(!matchedHerd || bestScore < 0.5){
-        matchedHerd = "HERD_" + Date.now() + "_" + Math.random();
-        window.herdClusters[matchedHerd] = {
-          last: {lat, lon, time: parsedTs},
-          members: []
-        };
-      }
+}
 
-      window.herdClusters[matchedHerd].last = {lat, lon, time: parsedTs};
-      window.herdClusters[matchedHerd].members.push(e.id);
+/* 🔥 UPDATE LAST KNOWN STATE (IMPORTANT FOR SCORING) */
+window.herdClusters[matchedHerd].last = {
+  lat,
+  lon,
+  time: parsedTs,
+  direction: e.direction || window.herdClusters[matchedHerd].last.direction || "",
+  count: e.count || window.herdClusters[matchedHerd].last.count || 1
+};
 
-      /* 🔥 FIX: CONFIDENCE (ADDED) */
-      let confidence = Math.round(bestScore * 100);
-      if(!bestScore || bestScore === 0){
-        confidence = 100;
-      }
+/* 🔥 TRACK MEMBERS */
+window.herdClusters[matchedHerd].members.push(e.id);
 
-      /* ===============================
+/* ===============================
+   🧠 CONFIDENCE (FIXED)
+=============================== */
+
+let confidence = Math.round(bestScore * 100);
+
+/* 🔥 CORRECT LOGIC */
+if(bestScore <= 0){
+  confidence = 0; // unknown
+}
+
+/* 🔥 CAP OVERCONFIDENCE */
+if(confidence > 95){
+  confidence = 95;
+} /* ===============================
          🧭 TRACK
       =============================== */
 
@@ -4674,6 +4702,70 @@ const ageFormatted = hrs > 0
 
 }   
     
+  /* ===============================
+   🧠 ADVANCED HERD MATCH SCORE (WITH ELEPHANT COUNT)
+=============================== */
+
+/* ===============================
+   🧠 ADVANCED HERD MATCH SCORE (REBALANCED)
+=============================== */
+
+function calculateHerdScore(current, last){
+
+  const dist = getDistance(current.lat, current.lon, last.lat, last.lon);
+  const timeGap = Math.abs(current.time - last.time) / (1000 * 60);
+
+  /* 🔥 DISTANCE SCORE */
+  let distanceScore = 0;
+  if(dist < 500) distanceScore = 1;
+  else if(dist < 2000) distanceScore = 0.7;
+  else if(dist < 5000) distanceScore = 0.4;
+  else distanceScore = 0;
+
+  /* 🔥 TIME SCORE */
+  let timeScore = 0;
+  if(timeGap < 30) timeScore = 1;
+  else if(timeGap < 120) timeScore = 0.7;
+  else if(timeGap < 360) timeScore = 0.4;
+  else timeScore = 0;
+
+  /* 🔥 DIRECTION SCORE (INCREASED IMPORTANCE) */
+  let directionScore = 0.5;
+
+  if(current.direction && last.direction){
+    if(current.direction === last.direction){
+      directionScore = 1;
+    } else {
+      directionScore = 0.2; // harsher penalty
+    }
+  }
+
+  /* 🔥 COUNT SCORE (MOST IMPORTANT) */
+  let countScore = 0.5;
+
+  if(current.count && last.count){
+
+    const diff = Math.abs(current.count - last.count);
+    const maxVal = Math.max(current.count, last.count);
+
+    const similarity = 1 - (diff / maxVal);
+
+    if(similarity > 0.85) countScore = 1;
+    else if(similarity > 0.6) countScore = 0.75;
+    else if(similarity > 0.4) countScore = 0.4;
+    else countScore = 0.1;
+
+  }
+
+  /* 🔥 FINAL SCORE (NEW WEIGHTS) */
+  const score =
+    (distanceScore * 0.25) +
+    (timeScore * 0.20) +
+    (directionScore * 0.25) +
+    (countScore * 0.30);
+
+  return score;
+}    
     
     window.openMoveForm = function(id){
 
