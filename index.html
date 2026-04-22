@@ -3727,16 +3727,26 @@ window.beatMap = {
 
   return "";
 }
-    function assignGridToBeat(rangeLayer){
+   function assignGridToBeat(rangeLayer){
 
-  console.log("🎯 Assigning grid to beats (FINAL CORRECT)...");
+  console.log("🎯 Assigning grid to beats (FINAL FIXED)...");
 
   try {
+
+    if(!rangeLayer){
+      console.warn("⚠ rangeLayer missing");
+      return;
+    }
+
+    if(!window.gridIndex){
+      console.warn("⚠ gridIndex missing");
+      return;
+    }
 
     let polygons = [];
 
     // ===============================
-    // 🔥 EXTRACT POLYGONS (USE ID ONLY)
+    // 🔥 EXTRACT POLYGONS (SAFE)
     // ===============================
     function extract(layer){
 
@@ -3744,29 +3754,45 @@ window.beatMap = {
 
       if (layer instanceof L.Polygon) {
 
-        const p = layer.feature?.properties || {};
+        try {
 
-        const rawID = p.ID || "";
+          const p = layer.feature?.properties || {};
+          const rawID = p.ID || "";
 
-        const comp = convertCompartment(rawID);
+          const comp = convertCompartment(rawID);
+          if(!comp) return;
 
-        if(!comp) return;
+          let latlngs = layer.getLatLngs();
 
-        const coords = layer.getLatLngs()[0].map(pt => [pt.lat, pt.lng]);
+          const rings = Array.isArray(latlngs[0][0]) ? latlngs[0] : latlngs;
 
-        polygons.push({
-          raw: rawID,
-          comp: comp,
-          coords
-        });
+          let coords = rings.map(pt => [pt.lat, pt.lng]);
 
-        console.log("🧪 RAW:", rawID, "→ COMP:", comp);
+          // 🔥 CLOSE POLYGON (CRITICAL)
+          if(coords.length){
+            const first = coords[0];
+            const last  = coords[coords.length - 1];
+
+            if(first[0] !== last[0] || first[1] !== last[1]){
+              coords.push(first);
+            }
+          }
+
+          polygons.push({
+            raw: rawID,
+            comp: comp,
+            coords
+          });
+
+        } catch(e){
+          console.warn("⚠ Polygon extract failed:", e);
+        }
 
         return;
       }
 
-      if (layer._layers) {
-        Object.values(layer._layers).forEach(extract);
+      if (typeof layer.eachLayer === "function") {
+        layer.eachLayer(extract);
       }
     }
 
@@ -3781,50 +3807,88 @@ window.beatMap = {
 
     console.log("📐 Total polygons:", polygons.length);
 
+    let assignedCount = 0;
+
     // ===============================
-    // 🔥 ASSIGN GRID → BEAT (TRUE LOGIC)
+    // 🔥 ASSIGN GRID → BEAT (UPDATED)
     // ===============================
-    Object.values(window.gridIndex).forEach(cell => {
+    Object.entries(window.gridIndex).forEach(([id, cell]) => {
 
-      const center = [
-        (cell.bounds[0][0] + cell.bounds[1][0]) / 2,
-        (cell.bounds[0][1] + cell.bounds[1][1]) / 2
-      ];
+      try {
 
-      let assignedBeat = "UNKNOWN";
+        if(!cell){
+          return;
+        }
 
-      for(let poly of polygons){
+        let center = null;
 
-        let beat = null;
+        // =========================
+        // 🔥 NEW SYSTEM (GEO)
+        // =========================
+        if(cell.geo){
 
-        for(let key in window.beatMap){
-          if(window.beatMap[key].includes(poly.comp)){
-            beat = key;
+          try {
+            const centroid = turf.centroid(cell.geo);
+            const c = centroid.geometry.coordinates;
+            center = [c[1], c[0]]; // convert to [lat, lng]
+          } catch(e){
+            console.warn("⚠ centroid failed:", id);
+            return;
+          }
+
+        }
+
+        // =========================
+        // ⚠ FALLBACK (OLD SYSTEM)
+        // =========================
+        else if(cell.bounds){
+
+          center = [
+            (cell.bounds[0][0] + cell.bounds[1][0]) / 2,
+            (cell.bounds[0][1] + cell.bounds[1][1]) / 2
+          ];
+        }
+
+        if(!center){
+          cell.beat = "UNKNOWN";
+          return;
+        }
+
+        let assignedBeat = "UNKNOWN";
+
+        for(let poly of polygons){
+
+          let beat = null;
+
+          for(let key in window.beatMap){
+            if(window.beatMap[key].includes(poly.comp)){
+              beat = key;
+              break;
+            }
+          }
+
+          if(!beat) continue;
+
+          if(isPointInPolygon(center, poly.coords)){
+            assignedBeat = beat;
             break;
           }
         }
 
-        if(!beat) continue;
+        cell.beat = assignedBeat;
 
-        if(isPointInPolygon(center, poly.coords)){
-
-          assignedBeat = beat;
-
-          console.log("✅ MATCH:",
-            "Grid:", center,
-            "| Comp:", poly.comp,
-            "| Beat:", beat
-          );
-
-          break; // ✅ FIRST correct match
+        if(assignedBeat !== "UNKNOWN"){
+          assignedCount++;
         }
-      }
 
-      cell.beat = assignedBeat;
+      } catch(err){
+        console.warn("⚠ assign fail:", id, err);
+        cell.beat = "UNKNOWN";
+      }
 
     });
 
-    console.log("🎯 Grid → Beat mapping COMPLETE");
+    console.log("🎯 Grid → Beat mapping COMPLETE:", assignedCount);
 
   } catch(e){
     console.error("❌ Beat assignment error:", e);
