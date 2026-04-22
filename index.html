@@ -4249,25 +4249,18 @@ function loadSightings() {
 
       const status = (e.status || "Active").toUpperCase();
 
-     /* 🔥 FIX: SAFE TIME PARSE (KEEP COMPATIBILITY) *//* 🔥 FIX: SAFE TIME PARSE */
-let rawTimeVal = e.timestamp || e.time || "";
-let parsedTs = Date.parse(rawTimeVal);
+     /* 🔥 FINAL HARD FIX (NO DEPENDENCY ON ABOVE) */
 
-/* 🔥 TEMP FALLBACK */
-if(isNaN(parsedTs)){
-  parsedTs = Date.now();
-}
+let parsedTs = Date.now(); // temp default
 
-/* 🔥 FORCE CORRECT PARSE FOR "12:08 AM / PM" */
 if(e.time && typeof e.time === "string"){
 
-  const hasAMPM = e.time.includes("AM") || e.time.includes("PM");
+  try{
 
-  if(hasAMPM){
+    let t = e.time.trim();
 
-    try {
-
-      let t = e.time.trim();
+    // handle "12:08 AM"
+    if(t.includes("AM") || t.includes("PM")){
 
       let [timePart, ampm] = t.split(" ");
       let [hh, mm] = timePart.split(":").map(Number);
@@ -4283,27 +4276,29 @@ if(e.time && typeof e.time === "string"){
       d.setSeconds(0);
       d.setMilliseconds(0);
 
-      let fixedTs = d.getTime();
+      parsedTs = d.getTime();
 
-      /* 🔥 KEY FIX: HANDLE FUTURE TIME */
-      if(fixedTs > now){
-        fixedTs -= 24 * 60 * 60 * 1000;
+      // 🔥 CRITICAL: if future → shift to yesterday
+      if(parsedTs > now){
+        parsedTs -= 24 * 60 * 60 * 1000;
       }
 
-      parsedTs = fixedTs; // 🔥 FORCE OVERRIDE
+    } else {
 
-    } catch(err){
-      console.warn("⚠ Time parse failed:", e.time);
+      // fallback: try normal parse
+      let ts = Date.parse(e.time);
+      if(!isNaN(ts)) parsedTs = ts;
+
     }
 
+  }catch(err){
+    console.warn("Time parse failed:", e.time);
   }
 
 }
 
 /* 🔥 FINAL AGE */
-const timestamp = new Date(e.timestamp || e.time || Date.now()).getTime();
-const minutes = Math.max(0, Math.floor((now - parsedTs) / (1000 * 60)));
-      /* ❌ REMOVE */
+const minutes = Math.max(0, Math.floor((now - parsedTs) / (1000 * 60)));    /* ❌ REMOVE */
       if(status === "RESOLVED" || minutes > 1440){
         if(window.sightingMarkers[key]){
           elephantLayer.removeLayer(window.sightingMarkers[key]);
