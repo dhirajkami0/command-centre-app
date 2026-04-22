@@ -4238,13 +4238,20 @@ function loadSightings() {
     /* 🔥 GLOBAL STORE */
     window.sightingMarkers = window.sightingMarkers || {};
 
+    /* 🔥 NEW GLOBALS (ADDED) */
+    window.herdClusters = window.herdClusters || {};
+    window.herdTracks = window.herdTracks || {};
+    window.herdLines = window.herdLines || {};
+
+    const now = Date.now();
+
     data.forEach(function(e){
 
       if(!e.lat || !e.lon) return;
 
       const key = e.id;
 
-      /* 🔥 ✅ FIX: REMOVE IMMEDIATELY IF NOT ACTIVE */
+      /* 🔥 KEEP YOUR ORIGINAL REMOVE LOGIC */
       if(e.status && e.status !== "Active"){
 
         if(window.sightingMarkers[key]){
@@ -4258,6 +4265,85 @@ function loadSightings() {
 
       const lat = Number(e.lat);
       const lon = Number(e.lon);
+
+      const timestamp = new Date(e.timestamp || e.time || Date.now()).getTime();
+
+      /* ============================================================
+         🧠 HERD MATCH ENGINE (ADDED)
+      ============================================================ */
+
+      let matchedHerd = null;
+      let bestScore = 0;
+
+      Object.keys(window.herdClusters).forEach(hid => {
+
+        const last = window.herdClusters[hid].last;
+
+        const dist = Math.sqrt(
+          Math.pow(lat - last.lat,2) +
+          Math.pow(lon - last.lon,2)
+        );
+
+        const timeGap = Math.abs(timestamp - last.time) / 60000;
+
+        const distanceScore = Math.max(0, 1 - (dist / 0.02));
+        const timeScore = Math.max(0, 1 - (timeGap / 180));
+
+        const score = (distanceScore * 0.6) + (timeScore * 0.4);
+
+        if(score > bestScore){
+          bestScore = score;
+          matchedHerd = hid;
+        }
+
+      });
+
+      if(!matchedHerd || bestScore < 0.5){
+        matchedHerd = "HERD_" + Date.now() + "_" + Math.random();
+        window.herdClusters[matchedHerd] = {
+          last: {lat, lon, time: timestamp},
+          members: []
+        };
+      }
+
+      window.herdClusters[matchedHerd].last = {lat, lon, time: timestamp};
+      window.herdClusters[matchedHerd].members.push(e.id);
+
+      const confidence = Math.round(bestScore * 100);
+
+      /* ============================================================
+         🧭 TRACK PER HERD (ADDED)
+      ============================================================ */
+
+      if(!window.herdTracks[matchedHerd]){
+        window.herdTracks[matchedHerd] = [];
+      }
+
+      const track = window.herdTracks[matchedHerd];
+      const lastPoint = track[track.length - 1];
+
+      if(!lastPoint || Math.abs(lastPoint.lat - lat) > 0.0001){
+        track.push({lat, lon, time: timestamp});
+      }
+
+      window.herdTracks[matchedHerd] =
+        track.filter(p => (now - p.time) < 86400000);
+
+      const latlngs = window.herdTracks[matchedHerd].map(p => [p.lat, p.lon]);
+
+      if(window.herdLines[matchedHerd]){
+        window.herdLines[matchedHerd].setLatLngs(latlngs);
+      } else {
+        window.herdLines[matchedHerd] = L.polyline(latlngs,{
+          color:"#ff9800",
+          weight:3,
+          opacity:0.6
+        }).addTo(elephantLayer);
+      }
+
+      /* ============================================================
+         🎨 YOUR ORIGINAL STYLE (UNCHANGED)
+      ============================================================ */
 
       const herd = parseInt(e.herd || 0);
       const isHighRisk = herd <= 2;
@@ -4288,49 +4374,34 @@ function loadSightings() {
           timeDisplay = `${hr}:${m} ${ampm}`;
         }
       }
-console.log("🔍 RAW DIR:", JSON.stringify(e.direction));
-console.log("🔍 TYPE:", typeof e.direction);
-/* ===============================
-   🔥 DIRECTION (FINAL FIX)
-=============================== */
 
-let movementText = "Unknown";
+      let movementText = "Unknown";
 
-/* 🔥 TRY ALL POSSIBLE SOURCES */
-const rawDir =
-  e.Direction ||   // correct column
-  e.direction ||   // fallback
-  "";
+      const rawDir = e.Direction || e.direction || "";
 
-/* 🔥 DEBUG (KEEP TEMP) */
-console.log("DIR RAW:", JSON.stringify(rawDir));
+      if (rawDir) {
 
-if (rawDir) {
+        const dirKey = String(rawDir)
+          .trim()
+          .replace(/\s+/g,"")
+          .toUpperCase();
 
-  const dirKey = String(rawDir)
-    .trim()
-    .replace(/\s+/g,"")
-    .toUpperCase();
+        const dirMap = {
+          N:"North", NE:"North-East",
+          E:"East", SE:"South-East",
+          S:"South", SW:"South-West",
+          W:"West", NW:"North-West",
+          NORTH:"North", SOUTH:"South",
+          EAST:"East", WEST:"West",
+          NORTHEAST:"North-East",
+          NORTHWEST:"North-West",
+          SOUTHEAST:"South-East",
+          SOUTHWEST:"South-West"
+        };
 
-  console.log("DIR KEY:", dirKey);
+        movementText = dirMap[dirKey] || rawDir;
+      }
 
-  const dirMap = {
-    N:"North", NE:"North-East",
-    E:"East", SE:"South-East",
-    S:"South", SW:"South-West",
-    W:"West", NW:"North-West",
-
-    // full words support
-    NORTH:"North", SOUTH:"South",
-    EAST:"East", WEST:"West",
-    NORTHEAST:"North-East",
-    NORTHWEST:"North-West",
-    SOUTHEAST:"South-East",
-    SOUTHWEST:"South-West"
-  };
-
-  movementText = dirMap[dirKey] || rawDir;
-}      /* 🔥 VILLAGE RISK */
       let villageHTML = "";
 
       if(window.coneVillages){
@@ -4365,7 +4436,6 @@ if (rawDir) {
         }
       }
 
-      /* PHOTO */
       const photoHtml = e.photo ? `
         <div style="margin-top:8px">
           <a href="${e.photo}" target="_blank">
@@ -4373,7 +4443,8 @@ if (rawDir) {
           </a>
         </div>` : "";
 
-    const popup = `
+      /* 🔥 UPDATED POPUP (ONLY ADD CONFIDENCE) */
+      const popup = `
 <div style="font-family:Segoe UI;min-width:220px">
 
   <div style="color:${color};font-weight:bold">
@@ -4383,6 +4454,7 @@ if (rawDir) {
   <hr>
 
   <b>🐘 Herd:</b> ${herd}<br>
+  <b>🧠 Herd Match:</b> ${confidence}%<br>
   <b>🧭 Movement:</b> ${movementText}<br>
   <b>⏱ Time:</b> ${timeDisplay}<br>
 
@@ -4396,8 +4468,6 @@ if (rawDir) {
   ${photoHtml}
 
   <div style="margin-top:10px">
-
-    <!-- 🔥 NEW: OPEN FULL MOVE FORM -->
     <button onclick="
       event.stopPropagation();
       window.isPopupInteracting = true;
@@ -4415,17 +4485,15 @@ if (rawDir) {
     ">
       ✅ MARK AS MOVED / UPDATE
     </button>
-
   </div>
 
 </div>`;
-      /* 🔥 UPDATE EXISTING */
+
       if(window.sightingMarkers[key]){
         window.sightingMarkers[key].setLatLng([lat,lon]);
         return;
       }
 
-      /* 🔥 CREATE NEW */
       const marker = L.marker([lat,lon],{
         icon:icon,
         zIndexOffset:5000
@@ -4445,8 +4513,7 @@ if (rawDir) {
     console.error("❌ loadSightings error:", err);
   });
 
-}
-    
+}    
     window.openMoveForm = function(id){
 
   console.log("🔥 openMoveForm CALLED with ID:", id);
@@ -9874,7 +9941,7 @@ style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; bac
     <select id="move-remarks" style="width:100%; padding:8px; margin-top:5px; border-radius:6px;">
 
       <option value="Moved">🟢 Moved</option>
-
+  <option value="Resolved">Resolved</option> 
       <option>Driven to DPO 1</option>
       <option>Driven to DPO 2</option>
        <option>Driven to DPO 8</option>
