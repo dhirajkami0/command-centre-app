@@ -4249,52 +4249,58 @@ function loadSightings() {
 
       const status = (e.status || "Active").toUpperCase();
 
-     /* 🔥 FIX: SAFE TIME PARSE (KEEP COMPATIBILITY) */
+     /* 🔥 FIX: SAFE TIME PARSE (KEEP COMPATIBILITY) *//* 🔥 FIX: SAFE TIME PARSE */
 let rawTimeVal = e.timestamp || e.time || "";
 let parsedTs = Date.parse(rawTimeVal);
 
-/* 🔥 FALLBACK (TEMP) */
+/* 🔥 TEMP FALLBACK */
 if(isNaN(parsedTs)){
   parsedTs = Date.now();
 }
 
-/* 🔥 HANDLE "12:08 AM / PM" FORMAT PROPERLY */
-const hasAMPM = (e.time || "").includes("AM") || (e.time || "").includes("PM");
+/* 🔥 FORCE CORRECT PARSE FOR "12:08 AM / PM" */
+if(e.time && typeof e.time === "string"){
 
-if(e.time && typeof e.time === "string" && hasAMPM){
+  const hasAMPM = e.time.includes("AM") || e.time.includes("PM");
 
-  try {
+  if(hasAMPM){
 
-    let t = e.time.trim();
+    try {
 
-    let [timePart, ampm] = t.split(" ");
-    let [hh, mm] = timePart.split(":").map(Number);
+      let t = e.time.trim();
 
-    if (ampm === "PM" && hh !== 12) hh += 12;
-    if (ampm === "AM" && hh === 12) hh = 0;
+      let [timePart, ampm] = t.split(" ");
+      let [hh, mm] = timePart.split(":").map(Number);
 
-    const nowDate = new Date();
-    const d = new Date(nowDate);
+      if (ampm === "PM" && hh !== 12) hh += 12;
+      if (ampm === "AM" && hh === 12) hh = 0;
 
-    d.setHours(hh);
-    d.setMinutes(mm);
-    d.setSeconds(0);
-    d.setMilliseconds(0);
+      const nowDate = new Date();
+      const d = new Date(nowDate);
 
-    parsedTs = d.getTime();
+      d.setHours(hh);
+      d.setMinutes(mm);
+      d.setSeconds(0);
+      d.setMilliseconds(0);
 
-    /* 🔥 CRITICAL FIX: HANDLE MIDNIGHT / FUTURE TIME */
-    if(parsedTs > now){
-      parsedTs -= 24 * 60 * 60 * 1000; // shift to yesterday
+      let fixedTs = d.getTime();
+
+      /* 🔥 KEY FIX: HANDLE FUTURE TIME */
+      if(fixedTs > now){
+        fixedTs -= 24 * 60 * 60 * 1000;
+      }
+
+      parsedTs = fixedTs; // 🔥 FORCE OVERRIDE
+
+    } catch(err){
+      console.warn("⚠ Time parse failed:", e.time);
     }
 
-  } catch(err){
-    console.warn("⚠ Time parse fallback failed:", e.time);
   }
 
 }
 
-/* 🔥 FINAL AGE CALCULATION */
+/* 🔥 FINAL AGE */
 const timestamp = new Date(e.timestamp || e.time || Date.now()).getTime();
 const minutes = Math.max(0, Math.floor((now - parsedTs) / (1000 * 60)));
       /* ❌ REMOVE */
