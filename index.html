@@ -4251,7 +4251,9 @@ function loadSightings() {
 
      /* 🔥 FINAL HARD FIX (NO DEPENDENCY ON ABOVE) */
 
-let parsedTs = Date.now(); // temp default
+/* 🔥 FINAL HARD FIX — USE ONLY THIS */
+
+let parsedTs = Date.now();
 
 if(e.time && typeof e.time === "string"){
 
@@ -4259,7 +4261,7 @@ if(e.time && typeof e.time === "string"){
 
     let t = e.time.trim();
 
-    // handle "12:08 AM"
+    // 👉 HANDLE "5:24 PM" / "12:08 AM"
     if(t.includes("AM") || t.includes("PM")){
 
       let [timePart, ampm] = t.split(" ");
@@ -4278,16 +4280,18 @@ if(e.time && typeof e.time === "string"){
 
       parsedTs = d.getTime();
 
-      // 🔥 CRITICAL: if future → shift to yesterday
+      // 🔥 CRITICAL: fix future time (same-day issue)
       if(parsedTs > now){
         parsedTs -= 24 * 60 * 60 * 1000;
       }
 
     } else {
 
-      // fallback: try normal parse
+      // fallback for other formats
       let ts = Date.parse(e.time);
-      if(!isNaN(ts)) parsedTs = ts;
+      if(!isNaN(ts)){
+        parsedTs = ts;
+      }
 
     }
 
@@ -4298,8 +4302,7 @@ if(e.time && typeof e.time === "string"){
 }
 
 /* 🔥 FINAL AGE */
-const minutes = Math.max(0, Math.floor((now - parsedTs) / (1000 * 60)));    /* ❌ REMOVE */
-      if(status === "RESOLVED" || minutes > 1440){
+const minutes = Math.max(0, Math.floor((now - parsedTs) / (1000 * 60)));      if(status === "RESOLVED" || minutes > 1440){
         if(window.sightingMarkers[key]){
           elephantLayer.removeLayer(window.sightingMarkers[key]);
           delete window.sightingMarkers[key];
