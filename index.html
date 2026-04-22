@@ -3693,7 +3693,7 @@ window.beatMap = {
 }
 function buildGridFromBounds(bounds, rangeLayer){
 
-  console.log("🔲 Building HYBRID grid (NO GAPS + SMOOTH EDGES)...");
+  console.log("🔲 Building CLIPPED grid (NO GAPS)...");
 
   try {
 
@@ -3759,6 +3759,8 @@ function buildGridFromBounds(bounds, rangeLayer){
 
     extract(rangeLayer);
 
+    console.log("📐 Polygons:", geoPolys.length);
+
     if(!geoPolys.length){
       console.error("❌ No polygons");
       return;
@@ -3770,14 +3772,12 @@ function buildGridFromBounds(bounds, rangeLayer){
     const east  = bounds.getEast();
 
     // ===============================
-    // 🔥 GRID LOOP (HYBRID)
+    // 🔥 GRID LOOP (NO GAPS LOGIC)
     // ===============================
     for(let lat = south; lat < north; lat += step){
       for(let lon = west; lon < east; lon += step){
 
-        const id = lat.toFixed(5) + "_" + lon.toFixed(5);
-
-        const cellPoly = turf.polygon([[
+        const cell = turf.polygon([[
           [lon, lat],
           [lon + step, lat],
           [lon + step, lat + step],
@@ -3785,43 +3785,46 @@ function buildGridFromBounds(bounds, rangeLayer){
           [lon, lat]
         ]]);
 
-        const center = turf.point([
-          lon + step/2,
-          lat + step/2
-        ]);
-
-        let inside = false;
-        let boundary = false;
         let clipped = null;
+        let intersects = false;
 
         for(let poly of geoPolys){
 
           try {
 
-            // 🔥 CENTER INSIDE → FULL CELL (NO GAPS)
-            if(turf.booleanPointInPolygon(center, poly)){
-              inside = true;
-              clipped = cellPoly;
+            // 🔥 TRY TRUE CLIP
+            const part = turf.intersect(cell, poly);
+
+            if(part){
+              clipped = part;
+              intersects = true;
               break;
             }
 
-            // 🔥 INTERSECTION → BOUNDARY CELL (SMOOTH EDGE)
-            const part = turf.intersect(cellPoly, poly);
+            // 🔥 FALLBACK 1: centroid inside
+            const center = turf.centroid(cell);
+            if(turf.booleanPointInPolygon(center, poly)){
+              clipped = cell; // take full cell
+              intersects = true;
+              break;
+            }
 
-            if(part){
-              inside = true;
-              boundary = true;
-              clipped = part;
+            // 🔥 FALLBACK 2: bbox overlap (VERY IMPORTANT)
+            if(turf.booleanOverlap(cell, poly) || turf.booleanContains(poly, cell)){
+              clipped = cell;
+              intersects = true;
               break;
             }
 
           } catch(e){}
         }
 
-        if(!inside) continue;
+        if(!intersects) continue;
+
+        const id = lat.toFixed(5) + "_" + lon.toFixed(5);
 
         window.gridIndex[id] = {
-          geo: clipped,     // full cell OR clipped edge
+          geo: clipped,
           visited: false
         };
 
@@ -3834,13 +3837,12 @@ function buildGridFromBounds(bounds, rangeLayer){
       total: count
     };
 
-    console.log("✅ Hybrid grid built:", count);
+    console.log("✅ Grid built (gap-free):", count);
 
   } catch(e){
     console.error("❌ buildGrid error:", e);
   }
-}
-    function initGrid(layer){
+}    function initGrid(layer){
 
   if(window.__gridReady){
     console.log("⚡ Grid already ready");
