@@ -4478,6 +4478,30 @@ if(bestScore <= 0){
 if(confidence > 95){
   confidence = 95;
 }
+let color = "#ff3b30"; // default red
+let animation = "pulseStrong";
+let opacity = 1;
+
+/* 🔥 AGE-BASED VISUAL LOGIC */
+
+if(status === "MOVED" || status === "DRIVEN"){
+  color = "#9e9e9e";
+  animation = "none";
+  opacity = 0.7;
+}
+else if(minutes > 360){ // >6 hr
+  color = "#9e9e9e";
+  animation = "none";
+  opacity = 0.7;
+}
+else if(minutes > 120){ // 2–6 hr
+  color = "#ff9800"; // orange
+  animation = "pulseMedium";
+}
+else {
+  color = "#ff3b30"; // red
+  animation = "pulseStrong";
+}
 
 /* ===============================
    🧭 TRACK (LINE PATH)
@@ -4525,30 +4549,6 @@ if(latlngs.length > 1){
 }  /* ===============================
          🎨 UI STATE
       =============================== */
-let color = "#ff3b30"; // default red
-let animation = "pulseStrong";
-let opacity = 1;
-
-/* 🔥 AGE-BASED VISUAL LOGIC */
-
-if(status === "MOVED" || status === "DRIVEN"){
-  color = "#9e9e9e";
-  animation = "none";
-  opacity = 0.7;
-}
-else if(minutes > 360){ // >6 hr
-  color = "#9e9e9e";
-  animation = "none";
-  opacity = 0.7;
-}
-else if(minutes > 120){ // 2–6 hr
-  color = "#ff9800"; // orange
-  animation = "pulseMedium";
-}
-else {
-  color = "#ff3b30"; // red
-  animation = "pulseStrong";
-}
 
 /* 🔥 DYNAMIC PULSE CONTROL */
 
