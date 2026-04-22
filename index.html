@@ -4248,8 +4248,16 @@ function loadSightings() {
       const key = e.id;
 
       const status = (e.status || "Active").toUpperCase();
+
+      /* 🔥 FIX: SAFE TIME PARSE (ADDED, OLD LINE KEPT) */
+      let rawTimeVal = e.timestamp || e.time || "";
+      let parsedTs = Date.parse(rawTimeVal);
+      if(isNaN(parsedTs)){
+        parsedTs = Date.now();
+      }
+
       const timestamp = new Date(e.timestamp || e.time || Date.now()).getTime();
-      const minutes = (now - timestamp) / (1000 * 60);
+      const minutes = Math.max(0, (now - parsedTs) / (1000 * 60));
 
       /* ❌ REMOVE */
       if(status === "RESOLVED" || minutes > 1440){
@@ -4279,7 +4287,7 @@ function loadSightings() {
           Math.pow(lon - last.lon,2)
         );
 
-        const timeGap = Math.abs(timestamp - last.time) / 60000;
+        const timeGap = Math.abs(parsedTs - last.time) / 60000;
 
         const distanceScore = Math.max(0, 1 - (dist / 0.02));
         const timeScore = Math.max(0, 1 - (timeGap / 180));
@@ -4296,15 +4304,19 @@ function loadSightings() {
       if(!matchedHerd || bestScore < 0.5){
         matchedHerd = "HERD_" + Date.now() + "_" + Math.random();
         window.herdClusters[matchedHerd] = {
-          last: {lat, lon, time: timestamp},
+          last: {lat, lon, time: parsedTs},
           members: []
         };
       }
 
-      window.herdClusters[matchedHerd].last = {lat, lon, time: timestamp};
+      window.herdClusters[matchedHerd].last = {lat, lon, time: parsedTs};
       window.herdClusters[matchedHerd].members.push(e.id);
 
-      const confidence = Math.round(bestScore * 100);
+      /* 🔥 FIX: CONFIDENCE (ADDED) */
+      let confidence = Math.round(bestScore * 100);
+      if(!bestScore || bestScore === 0){
+        confidence = 100;
+      }
 
       /* ===============================
          🧭 TRACK
@@ -4317,7 +4329,7 @@ function loadSightings() {
       const track = window.herdTracks[matchedHerd];
 
       if(!track.length || Math.abs(track[track.length-1].lat - lat) > 0.0001){
-        track.push({lat, lon, time: timestamp});
+        track.push({lat, lon, time: parsedTs});
       }
 
       window.herdTracks[matchedHerd] =
@@ -4358,7 +4370,7 @@ function loadSightings() {
       }
 
       /* ===============================
-         🐘 ICON (RADAR)
+         🐘 ICON
       =============================== */
 
       const icon = L.divIcon({
@@ -4406,8 +4418,22 @@ function loadSightings() {
         movementText = dirMap[dirKey] || rawDir;
       }
 
+      /* 🔥 FIX: TIME DISPLAY (ADDED) */
+      let timeDisplay = "Unknown";
+      let rawTime = (e.time || e.timestamp || "").toString();
+
+      if(rawTime.includes(":")){
+        let [h,m] = rawTime.split(":");
+        h = parseInt(h);
+        if(!isNaN(h)){
+          let ampm = h>=12?"PM":"AM";
+          let hr = h%12 || 12;
+          timeDisplay = `${hr}:${m} ${ampm}`;
+        }
+      }
+
       /* ===============================
-         🪟 FULL POPUP (FIXED + ADDED)
+         🪟 POPUP
       =============================== */
 
       const popup = `
@@ -4422,6 +4448,7 @@ function loadSightings() {
   <b>🐘 Herd:</b> ${e.herd || "?"}<br>
   <b>🧠 Herd Match:</b> ${confidence}%<br>
   <b>🧭 Movement:</b> ${movementText}<br>
+  <b>⏱ Time:</b> ${timeDisplay}<br>
   <b>⏱ Age:</b> ${Math.round(minutes)} min<br>
 
   <b>👤 Sighted by:</b> ${e.teamLeader || "Unknown"}<br>
@@ -4450,10 +4477,6 @@ function loadSightings() {
 
 </div>`;
 
-      /* ===============================
-         🔥 UPDATE / CREATE
-      =============================== */
-
       if(window.sightingMarkers[key]){
         window.sightingMarkers[key].setLatLng([lat,lon]);
         window.sightingMarkers[key].setIcon(icon);
@@ -4474,8 +4497,7 @@ function loadSightings() {
 
   });
 
-}
-    
+}    
     window.openMoveForm = function(id){
 
   console.log("🔥 openMoveForm CALLED with ID:", id);
