@@ -986,8 +986,7 @@ window.addEventListener("unhandledrejection", function (e) {
   ">
       📲 Install App
     </button>
-  </div>
-<div id="updateBanner" style="
+  </div><div id="updateBanner" style="
   display:none;
   position:fixed;
   bottom:20px;
@@ -997,16 +996,22 @@ window.addEventListener("unhandledrejection", function (e) {
   color:white;
   padding:12px 16px;
   border-radius:10px;
+  box-shadow:0 4px 15px rgba(0,0,0,0.4);
+  font-weight:bold;
 ">
   🚀 New version available
+
   <button id="updateBtn" style="
     margin-left:10px;
     background:#4caf50;
     border:none;
     color:white;
-    padding:6px 10px;
+    padding:6px 12px;
     border-radius:6px;
-  ">Update</button>
+    cursor:pointer;
+  ">
+    Update
+  </button>
 </div>
   
 
@@ -1453,8 +1458,15 @@ cleanOldMessages(); // 🔥 ADD THIS LINE HERE
     
    console.log("🔥 NEW BUILD LOADED - VERSION 999");
 
+// ======================================================
+// 🚀 SMART SERVICE WORKER UPDATE SYSTEM (FINAL)
+// ======================================================
+
 let newWorker;
 
+// ======================================================
+// 🔧 REGISTER SW
+// ======================================================
 if ("serviceWorker" in navigator) {
 
   window.addEventListener("load", function () {
@@ -1464,55 +1476,141 @@ if ("serviceWorker" in navigator) {
 
       console.log("✅ SW Registered");
 
-      // 🔥 FORCE CHECK UPDATE
+      // 🔁 ALWAYS CHECK FOR UPDATE
+      setInterval(() => reg.update(), 60000);
       reg.update();
 
-      // 🔥 LISTEN FOR UPDATE
-      reg.onupdatefound = () => {
+      // ==================================================
+      // ✅ CASE 1: ALREADY WAITING (VERY IMPORTANT)
+      // ==================================================
+      if (reg.waiting) {
+        console.log("🟢 Update already waiting");
+        newWorker = reg.waiting;
+        showUpdateUI();
+      }
 
-        newWorker = reg.installing;
+      // ==================================================
+      // ✅ CASE 2: NEW UPDATE FOUND
+      // ==================================================
+      reg.addEventListener("updatefound", () => {
 
-        newWorker.onstatechange = () => {
+        const installing = reg.installing;
 
-          if (newWorker.state === "installed") {
+        installing.addEventListener("statechange", () => {
+
+          if (installing.state === "installed") {
 
             if (navigator.serviceWorker.controller) {
 
-              console.log("🚀 Update Available");
+              console.log("🚀 New version available");
 
-              document.getElementById("updateBanner").style.display = "block";
-
+              newWorker = installing;
+              showUpdateUI();
             }
-
           }
-        };
-      };
+        });
 
+      });
+
+    })
+    .catch(err => {
+      console.error("❌ SW registration failed:", err);
     });
 
   });
 
 }
 
-/* =========================================
-   🔘 USER CLICK UPDATE
-========================================= */
+
+// ======================================================
+// 🎯 SHOW UPDATE UI
+// ======================================================
+function showUpdateUI() {
+
+  const banner = document.getElementById("updateBanner");
+
+  if (banner) {
+    banner.style.display = "block";
+  }
+
+  if (window.showToast) {
+    showToast("🚀 New version available");
+  }
+
+  // 🔥 OPTIONAL REMINDER (PRO MODE)
+  setTimeout(() => {
+    if (newWorker) {
+      showToast("⚠️ Please update app", "warning");
+    }
+  }, 120000); // 2 minutes
+}
+
+
+// ======================================================
+// 🔘 USER CLICK UPDATE
+// ======================================================
+// ======================================================
+// 🔘 USER CLICK UPDATE (FINAL CLEAN VERSION)
+// ======================================================
 document.getElementById("updateBtn").addEventListener("click", () => {
 
-  if (!newWorker) return;
+  console.log("🟢 Update clicked");
 
-  newWorker.postMessage({ action: "skipWaiting" });
+  const banner = document.getElementById("updateBanner");
+  const btn = document.getElementById("updateBtn");
+
+  // 🔥 HIDE BANNER IMMEDIATELY
+  if (banner) banner.style.display = "none";
+
+  // ❌ SAFETY CHECK
+  if (!newWorker) {
+    showToast("⚠️ No update available", "warning");
+
+    // restore UI just in case
+    if (btn) {
+      btn.innerText = "Update";
+      btn.disabled = false;
+    }
+
+    return;
+  }
+
+  // 🔥 UI FEEDBACK
+  if (btn) {
+    btn.innerText = "Updating...";
+    btn.disabled = true;
+  }
+
+  showToast("Updating app...");
+
+  try {
+    // 🔥 TRIGGER UPDATE
+    newWorker.postMessage({ action: "skipWaiting" });
+  } catch (e) {
+    console.error("❌ skipWaiting failed:", e);
+    showToast("❌ Update failed", "error");
+  }
 
 });
 
-/* =========================================
-   🔄 RELOAD AFTER UPDATE
-========================================= */
+
+// ======================================================
+// 🔄 AFTER UPDATE → RELOAD (SAFE + CLEAN)
+// ======================================================
+let refreshing = false;
+
 navigator.serviceWorker.addEventListener("controllerchange", () => {
 
-  console.log("🔄 Updated → Reloading");
+  if (refreshing) return; // 🔥 prevent multiple reloads
+  refreshing = true;
 
-  location.reload();
+  console.log("🔄 New version active");
+
+  showToast("✅ App updated");
+
+  setTimeout(() => {
+    location.reload();
+  }, 800);
 
 });/* ============================================================
    🔥 GLOBAL MASTER DATA (CRASH-PROOF)
