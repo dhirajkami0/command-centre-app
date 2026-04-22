@@ -4278,18 +4278,20 @@ function loadSightings() {
 
      /* 🔥 FINAL HARD FIX (NO DEPENDENCY ON ABOVE) */
 
-/* 🔥 FINAL HARD FIX — USE ONLY THIS */
+/* 🔥 FINAL HARD FIX — RELIABLE AGE */
 
-let parsedTs = Date.now();
+const now = Date.now(); // 🔥 ensure now is defined here
+let parsedTs = now;
 
-if(e.time && typeof e.time === "string"){
+/* 🔥 SAFE TIME PARSE */
+if (e.time && typeof e.time === "string") {
 
-  try{
+  try {
 
-    let t = e.time.trim();
+    let t = e.time.trim().toUpperCase(); // normalize
 
     // 👉 HANDLE "5:24 PM" / "12:08 AM"
-    if(t.includes("AM") || t.includes("PM")){
+    if (t.includes("AM") || t.includes("PM")) {
 
       let [timePart, ampm] = t.split(" ");
       let [hh, mm] = timePart.split(":").map(Number);
@@ -4297,8 +4299,7 @@ if(e.time && typeof e.time === "string"){
       if (ampm === "PM" && hh !== 12) hh += 12;
       if (ampm === "AM" && hh === 12) hh = 0;
 
-      const nowDate = new Date();
-      const d = new Date(nowDate);
+      const d = new Date();
 
       d.setHours(hh);
       d.setMinutes(mm);
@@ -4307,39 +4308,44 @@ if(e.time && typeof e.time === "string"){
 
       parsedTs = d.getTime();
 
-      // 🔥 CRITICAL: fix future time (same-day issue)
-      if(parsedTs > now){
+      // 🔥 FIX: if future → assume yesterday
+      if (parsedTs > now) {
         parsedTs -= 24 * 60 * 60 * 1000;
       }
 
     } else {
 
-      // fallback for other formats
-      let ts = Date.parse(e.time);
-      if(!isNaN(ts)){
+      // fallback for ISO or other formats
+      let ts = Date.parse(t);
+      if (!isNaN(ts)) {
         parsedTs = ts;
       }
 
     }
 
-  }catch(err){
-    console.warn("Time parse failed:", e.time);
+  } catch (err) {
+    console.warn("⚠ Time parse failed:", e.time);
   }
 
 }
 
 /* 🔥 FINAL AGE */
-const minutes = Math.max(0, Math.floor((now - parsedTs) / (1000 * 60)));      if(status === "RESOLVED" || minutes > 1440){
-        if(window.sightingMarkers[key]){
-          elephantLayer.removeLayer(window.sightingMarkers[key]);
-          delete window.sightingMarkers[key];
-        }
-        return;
-      }
+const minutes = Math.max(0, Math.floor((now - parsedTs) / (1000 * 60)));
 
-      const lat = Number(e.lat);
-      const lon = Number(e.lon);
+/* 🔥 REMOVE LOGIC (UNCHANGED) */
+if (status === "RESOLVED" || minutes > 1440) {
 
+  if (window.sightingMarkers[key]) {
+    elephantLayer.removeLayer(window.sightingMarkers[key]);
+    delete window.sightingMarkers[key];
+  }
+
+  return;
+}
+
+/* 🔥 CONTINUE ORIGINAL FLOW */
+const lat = Number(e.lat);
+const lon = Number(e.lon);
       /* ===============================
          🧠 HERD MATCH
       =============================== */
