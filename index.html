@@ -3727,119 +3727,158 @@ window.beatMap = {
 
   return "";
 }
-  function assignGridToBeat(rangeLayer){
+ function buildGridFromBounds(bounds, rangeLayer){
 
-  console.log("🎯 Assigning grid to beats (COMPAT FIX)...");
+  console.log("🔲 Building CLIPPED grid (NO GAPS)...");
 
   try {
 
-    let polygons = [];
+    if(!bounds || !rangeLayer){
+      console.error("❌ Invalid inputs");
+      return;
+    }
+
+    const step = 0.00225;
+    let count = 0;
+
+    window.gridIndex = {};
 
     // ===============================
-    // 🔥 EXTRACT POLYGONS (UNCHANGED LOGIC)
+    // 🔥 EXTRACT POLYGONS
     // ===============================
+    let geoPolys = [];
+
     function extract(layer){
 
-      if (!layer) return;
+      if(!layer) return;
 
-      if (layer instanceof L.Polygon) {
+      if(layer instanceof L.Polygon){
 
-        const p = layer.feature?.properties || {};
-        const rawID = p.ID || "";
+        let latlngs = layer.getLatLngs();
+        const polygons = Array.isArray(latlngs[0][0]) ? latlngs : [latlngs];
 
-        const comp = convertCompartment(rawID);
-        if(!comp) return;
+        polygons.forEach(rings => {
 
-        const coords = layer.getLatLngs()[0].map(pt => [pt.lat, pt.lng]);
+          let coords = [];
 
-        polygons.push({
-          raw: rawID,
-          comp: comp,
-          coords
+          rings.forEach(ring => {
+
+            let pts = ring.map(p => [p.lng, p.lat]);
+
+            // 🔥 CLOSE RING
+            const first = pts[0];
+            const last  = pts[pts.length - 1];
+
+            if(first[0] !== last[0] || first[1] !== last[1]){
+              pts.push(first);
+            }
+
+            if(pts.length >= 4){
+              coords.push(pts);
+            }
+
+          });
+
+          if(coords.length){
+            try {
+              geoPolys.push(turf.polygon(coords));
+            } catch(e){}
+          }
+
         });
-
-        return;
       }
 
-      if (layer._layers) {
-        Object.values(layer._layers).forEach(extract);
+      if(typeof layer.eachLayer === "function"){
+        layer.eachLayer(extract);
       }
     }
 
     extract(rangeLayer);
 
-    window.__debugPolygons = polygons;
+    console.log("📐 Polygons:", geoPolys.length);
 
-    if(!polygons.length){
-      console.warn("⚠ No polygons found");
+    if(!geoPolys.length){
+      console.error("❌ No polygons");
       return;
     }
 
-    console.log("📐 Total polygons:", polygons.length);
+    const south = bounds.getSouth();
+    const north = bounds.getNorth();
+    const west  = bounds.getWest();
+    const east  = bounds.getEast();
 
     // ===============================
-    // 🔥 ASSIGN GRID → BEAT (FIXED CENTER ONLY)
+    // 🔥 GRID LOOP (NO GAPS LOGIC)
     // ===============================
-    Object.values(window.gridIndex).forEach(cell => {
+    for(let lat = south; lat < north; lat += step){
+      for(let lon = west; lon < east; lon += step){
 
-      let center = null;
+        const cell = turf.polygon([[
+          [lon, lat],
+          [lon + step, lat],
+          [lon + step, lat + step],
+          [lon, lat + step],
+          [lon, lat]
+        ]]);
 
-      // 🔥 NEW GRID (geo)
-      if(cell.geo){
-        try {
-          const c = turf.centroid(cell.geo).geometry.coordinates;
-          center = [c[1], c[0]]; // convert to [lat, lng]
-        } catch(e){
-          console.warn("⚠ centroid fail");
-          return;
+        let clipped = null;
+        let intersects = false;
+
+        for(let poly of geoPolys){
+
+          try {
+
+            // 🔥 TRY TRUE CLIP
+            const part = turf.intersect(cell, poly);
+
+            if(part){
+              clipped = part;
+              intersects = true;
+              break;
+            }
+
+            // 🔥 FALLBACK 1: centroid inside
+            const center = turf.centroid(cell);
+            if(turf.booleanPointInPolygon(center, poly)){
+              clipped = cell; // take full cell
+              intersects = true;
+              break;
+            }
+
+            // 🔥 FALLBACK 2: bbox overlap (VERY IMPORTANT)
+            if(turf.booleanOverlap(cell, poly) || turf.booleanContains(poly, cell)){
+              clipped = cell;
+              intersects = true;
+              break;
+            }
+
+          } catch(e){}
         }
+
+        if(!intersects) continue;
+
+        const id = lat.toFixed(5) + "_" + lon.toFixed(5);
+
+        window.gridIndex[id] = {
+          geo: clipped,
+          visited: false
+        };
+
+        count++;
       }
+    }
 
-      // 🔥 OLD GRID (bounds) — fallback
-      else if(cell.bounds){
-        center = [
-          (cell.bounds[0][0] + cell.bounds[1][0]) / 2,
-          (cell.bounds[0][1] + cell.bounds[1][1]) / 2
-        ];
-      }
+    window.gridMeta = {
+      size: step,
+      total: count
+    };
 
-      if(!center){
-        cell.beat = "UNKNOWN";
-        return;
-      }
-
-      let assignedBeat = "UNKNOWN";
-
-      for(let poly of polygons){
-
-        let beat = null;
-
-        for(let key in window.beatMap){
-          if(window.beatMap[key].includes(poly.comp)){
-            beat = key;
-            break;
-          }
-        }
-
-        if(!beat) continue;
-
-        if(isPointInPolygon(center, poly.coords)){
-          assignedBeat = beat;
-          break;
-        }
-      }
-
-      cell.beat = assignedBeat;
-
-    });
-
-    console.log("🎯 Grid → Beat mapping COMPLETE");
+    console.log("✅ Grid built (gap-free):", count);
 
   } catch(e){
-    console.error("❌ Beat assignment error:", e);
+    console.error("❌ buildGrid error:", e);
   }
-}
-    function loadGrid(){
+}   function loadGrid(){
 
   const raw = localStorage.getItem("range_grid");
   if(!raw) return false;
