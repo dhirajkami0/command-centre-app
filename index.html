@@ -4256,6 +4256,35 @@ function loadSightings() {
         parsedTs = Date.now();
       }
 
+      /* 🔥 ADD: HANDLE "12:08 AM" FORMAT (NO CHANGE ABOVE) */
+      const hasAMPM = (e.time || "").includes("AM") || (e.time || "").includes("PM");
+
+      if(e.time && typeof e.time === "string" && hasAMPM){
+
+        try {
+
+          let t = e.time.trim();
+
+          let [timePart, ampm] = t.split(" ");
+          let [hh, mm] = timePart.split(":").map(Number);
+
+          if (ampm === "PM" && hh !== 12) hh += 12;
+          if (ampm === "AM" && hh === 12) hh = 0;
+
+          const d = new Date();
+
+          d.setHours(hh);
+          d.setMinutes(mm);
+          d.setSeconds(0);
+
+          parsedTs = d.getTime();
+
+        } catch(err){
+          console.warn("⚠ Time parse fallback failed:", e.time);
+        }
+
+      }
+
       const timestamp = new Date(e.timestamp || e.time || Date.now()).getTime();
       const minutes = Math.max(0, (now - parsedTs) / (1000 * 60));
 
@@ -4432,6 +4461,16 @@ function loadSightings() {
         }
       }
 
+      /* 🔥 ADD: BACKUP TIME DISPLAY */
+      if(timeDisplay === "Unknown" && !isNaN(parsedTs)){
+        const d = new Date(parsedTs);
+        let h = d.getHours();
+        let m = d.getMinutes().toString().padStart(2,'0');
+        let ampm = h>=12?"PM":"AM";
+        let hr = h%12 || 12;
+        timeDisplay = `${hr}:${m} ${ampm}`;
+      }
+
       /* ===============================
          🪟 POPUP
       =============================== */
@@ -4497,7 +4536,9 @@ function loadSightings() {
 
   });
 
-}    
+}   
+    
+    
     window.openMoveForm = function(id){
 
   console.log("🔥 openMoveForm CALLED with ID:", id);
