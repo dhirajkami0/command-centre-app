@@ -3693,7 +3693,7 @@ window.beatMap = {
 }
 function buildGridFromBounds(bounds, rangeLayer){
 
-  console.log("🔲 Building CLIPPED grid (FINAL STABLE)...");
+  console.log("🔲 Building CLIPPED grid (NO GAPS FINAL)...");
 
   try {
 
@@ -3717,12 +3717,9 @@ function buildGridFromBounds(bounds, rangeLayer){
 
       if(!layer) return;
 
-      // 🔹 Handle Polygon
       if(layer instanceof L.Polygon){
 
         let latlngs = layer.getLatLngs();
-
-        // Normalize structure → always array of polygons
         const polygons = Array.isArray(latlngs[0][0]) ? latlngs : [latlngs];
 
         polygons.forEach(rings => {
@@ -3735,7 +3732,7 @@ function buildGridFromBounds(bounds, rangeLayer){
 
             let pts = ring.map(p => [p.lng, p.lat]);
 
-            // 🔥 FIX: CLOSE RING (CRITICAL)
+            // 🔥 CLOSE RING
             const first = pts[0];
             const last  = pts[pts.length - 1];
 
@@ -3743,14 +3740,12 @@ function buildGridFromBounds(bounds, rangeLayer){
               pts.push(first);
             }
 
-            // 🔥 Skip invalid rings
             if(pts.length >= 4){
               coords.push(pts);
             }
 
           });
 
-          // 🔥 Create polygon safely
           if(coords.length){
             try {
               geoPolys.push(turf.polygon(coords));
@@ -3762,7 +3757,6 @@ function buildGridFromBounds(bounds, rangeLayer){
         });
       }
 
-      // 🔹 Recurse groups
       if(typeof layer.eachLayer === "function"){
         layer.eachLayer(extract);
       }
@@ -3784,11 +3778,15 @@ function buildGridFromBounds(bounds, rangeLayer){
 
     console.log("🌍 Bounds:", south, north, west, east);
 
+    // 🔥 SNAP GRID (prevents floating gaps)
+    const startLat = Math.floor(south / step) * step;
+    const startLon = Math.floor(west / step) * step;
+
     // ===============================
-    // 🔥 GRID LOOP (CLIPPED CELLS)
+    // 🔥 GRID LOOP (GAP-FREE LOGIC)
     // ===============================
-    for(let lat = south; lat < north; lat += step){
-      for(let lon = west; lon < east; lon += step){
+    for(let lat = startLat; lat < north; lat += step){
+      for(let lon = startLon; lon < east; lon += step){
 
         let cell;
 
@@ -3804,30 +3802,63 @@ function buildGridFromBounds(bounds, rangeLayer){
           continue;
         }
 
+        let include = false;
         let clipped = null;
 
-        // 🔥 Check against all polygons
         for(let poly of geoPolys){
 
           try {
-            const part = turf.intersect(cell, poly);
 
+            // ✅ 1. TRUE INTERSECTION (BEST)
+            const part = turf.intersect(cell, poly);
             if(part){
+              include = true;
               clipped = part;
               break;
             }
 
-          } catch(e){
-            // silently ignore intersection errors
-          }
+            // ✅ 2. CENTER INSIDE (fills holes)
+            const center = turf.centroid(cell);
+            if(turf.booleanPointInPolygon(center, poly)){
+              include = true;
+              clipped = cell;
+              break;
+            }
+
+            // ✅ 3. CORNER INSIDE (critical for edges)
+            const corners = [
+              [lon, lat],
+              [lon + step, lat],
+              [lon, lat + step],
+              [lon + step, lat + step]
+            ];
+
+            for(let c of corners){
+              if(turf.booleanPointInPolygon(turf.point(c), poly)){
+                include = true;
+                clipped = cell;
+                break;
+              }
+            }
+
+            if(include) break;
+
+            // ✅ 4. FINAL SAFETY (tiny overlaps)
+            if(turf.booleanIntersects(cell, poly)){
+              include = true;
+              clipped = cell;
+              break;
+            }
+
+          } catch(e){}
         }
 
-        if(!clipped) continue;
+        if(!include) continue;
 
         const id = lat.toFixed(5) + "_" + lon.toFixed(5);
 
         window.gridIndex[id] = {
-          geo: clipped,     // 🔥 clipped geometry
+          geo: clipped,
           visited: false
         };
 
@@ -3843,7 +3874,7 @@ function buildGridFromBounds(bounds, rangeLayer){
       total: count
     };
 
-    console.log("✅ Grid built:", count);
+    console.log("✅ Grid built (NO GAPS):", count);
 
     if(count === 0){
       console.warn("⚠ Grid empty — check bounds / layer load timing");
@@ -3853,7 +3884,6 @@ function buildGridFromBounds(bounds, rangeLayer){
     console.error("❌ buildGridFromBounds crash:", e);
   }
 }    
-    
     function initGrid(layer){
 
   if(window.__gridReady){
