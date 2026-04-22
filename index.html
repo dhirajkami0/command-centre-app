@@ -312,16 +312,32 @@ window.addEventListener("unhandledrejection", function (e) {
   50% { transform: scale(1.15); opacity:0.5; }
   100% { transform: scale(1); opacity:0.7; }
 }
-    @keyframes pulseStrong {
-  0% { transform: translate(-50%, -50%) scale(0.5); opacity: 0.6; }
-  70% { transform: translate(-50%, -50%) scale(2.5); opacity: 0; }
-  100% { opacity: 0; }
+   @keyframes pulseStrong {
+  0% {
+    transform: translate(-50%, -50%) scale(0.4);
+    opacity: 0.6;
+  }
+  70% {
+    transform: translate(-50%, -50%) scale(2.8);
+    opacity: 0;
+  }
+  100% {
+    opacity: 0;
+  }
 }
 
 @keyframes pulseMedium {
-  0% { transform: translate(-50%, -50%) scale(0.6); opacity: 0.4; }
-  70% { transform: translate(-50%, -50%) scale(2.0); opacity: 0; }
-  100% { opacity: 0; }
+  0% {
+    transform: translate(-50%, -50%) scale(0.5);
+    opacity: 0.4;
+  }
+  70% {
+    transform: translate(-50%, -50%) scale(2.0);
+    opacity: 0;
+  }
+  100% {
+    opacity: 0;
+  }
 }
     /* ============================================================
    🌿 MAIN PANEL (GLASS) - SCROLLBAR & OVERFLOW FIX
@@ -4415,21 +4431,41 @@ if(status === "MOVED" || status === "DRIVEN"){
   opacity = 0.7;
 }
 else if(minutes > 360){ // >6 hr
-  color = "#9e9e9e"; // grey
+  color = "#9e9e9e";
   animation = "none";
   opacity = 0.7;
 }
 else if(minutes > 120){ // 2–6 hr
-  color = "#ff9800"; // 🟠 orange
+  color = "#ff9800"; // orange
   animation = "pulseMedium";
 }
 else {
-  color = "#ff3b30"; // 🔴 red
+  color = "#ff3b30"; // red
   animation = "pulseStrong";
 }
 
+/* 🔥 DYNAMIC PULSE CONTROL */
+
+let pulseDuration = "1.2s";
+let pulseScale = 2.5;
+let pulseOpacity = 0.4;
+
+if(minutes <= 120){
+  pulseDuration = "1.2s";   // fast
+  pulseScale = 2.8;
+  pulseOpacity = 0.45;
+}
+else if(minutes <= 360){
+  pulseDuration = "2.4s";   // slower
+  pulseScale = 2.0;
+  pulseOpacity = 0.25;
+}
+else{
+  pulseDuration = "0s"; // no pulse
+}
+
 /* ===============================
-   🐘 ICON (UPDATED RADAR)
+   🐘 ICON (RADAR FIXED)
 =============================== */
 
 const icon = L.divIcon({
@@ -4447,8 +4483,8 @@ const icon = L.divIcon({
       border-radius:50%;
       background:${color};
       transform:translate(-50%, -50%);
-      animation:${animation} 1.6s infinite;
-      opacity:0.35;
+      animation:${animation} ${pulseDuration} infinite;
+      opacity:${pulseOpacity};
     "></span>
 
     <span style="
@@ -4460,9 +4496,9 @@ const icon = L.divIcon({
       border-radius:50%;
       background:${color};
       transform:translate(-50%, -50%);
-      animation:${animation} 1.6s infinite;
-      animation-delay:0.8s;
-      opacity:0.35;
+      animation:${animation} ${pulseDuration} infinite;
+      animation-delay:${pulseDuration === "1.2s" ? "0.6s" : "1.2s"};
+      opacity:${pulseOpacity};
     "></span>
     ` : ""}
 
@@ -4479,9 +4515,7 @@ const icon = L.divIcon({
   </div>`,
   iconSize:[36,36],
   iconAnchor:[18,18]
-});
-
-      /* ===============================
+});      /* ===============================
          🧭 DIRECTION
       =============================== */
 
