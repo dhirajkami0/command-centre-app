@@ -4507,97 +4507,106 @@ else {
    🧭 TRACK + DIRECTION (FINAL)
 =============================== */
 
+/* ===============================
+   🧭 TRACK + DIRECTION (FINAL CLEAN)
+=============================== */
+
+const JOIN_THRESHOLD = 0.8; // 🔥 only strong herd match will join
+
 if(!window.herdTracks) window.herdTracks = {};
 if(!window.herdLines) window.herdLines = {};
 if(!window.herdArrows) window.herdArrows = {};
 
-/* 🔥 INIT HERD TRACK */
-if(!window.herdTracks[matchedHerd]){
-  window.herdTracks[matchedHerd] = [];
-}
+/* 🔥 ONLY JOIN IF SAME HERD (STRICT) */
+if(bestScore >= JOIN_THRESHOLD){
 
-const track = window.herdTracks[matchedHerd];
-const lastPoint = track[track.length - 1];
+  /* 🔥 INIT HERD TRACK */
+  if(!window.herdTracks[matchedHerd]){
+    window.herdTracks[matchedHerd] = [];
+  }
 
-/* 🔥 ADD ONLY IF MOVED */
-if(
-  !lastPoint ||
-  Math.abs(lastPoint.lat - lat) > 0.0001 ||
-  Math.abs(lastPoint.lon - lon) > 0.0001
-){
-  track.push({lat, lon, time: parsedTs});
-}
+  const track = window.herdTracks[matchedHerd];
+  const lastPoint = track[track.length - 1];
 
-/* 🔥 KEEP LAST 24 HOURS */
-window.herdTracks[matchedHerd] =
-  track.filter(p => (Date.now() - p.time) < 86400000);
+  /* 🔥 ADD ONLY IF MOVED (LAT + LON) */
+  if(
+    !lastPoint ||
+    Math.abs(lastPoint.lat - lat) > 0.0001 ||
+    Math.abs(lastPoint.lon - lon) > 0.0001
+  ){
+    track.push({lat, lon, time: parsedTs});
+  }
 
-/* 🔥 SORT BY TIME (IMPORTANT FOR DIRECTION) */
-window.herdTracks[matchedHerd].sort((a,b) => a.time - b.time);
+  /* 🔥 KEEP LAST 24 HOURS */
+  window.herdTracks[matchedHerd] =
+    track.filter(p => (Date.now() - p.time) < 86400000);
 
-const latlngs = window.herdTracks[matchedHerd].map(p => [p.lat, p.lon]);
+  /* 🔥 SORT BY TIME (CRITICAL) */
+  window.herdTracks[matchedHerd].sort((a,b) => a.time - b.time);
 
-/* ===============================
-   🔥 DRAW PROMINENT LINE
-=============================== */
+  const latlngs = window.herdTracks[matchedHerd].map(p => [p.lat, p.lon]);
 
-if(latlngs.length > 1){
+  /* ===============================
+     🔥 DRAW PROMINENT LINE
+  =============================== */
 
-  if(window.herdLines[matchedHerd]){
-    window.herdLines[matchedHerd].setLatLngs(latlngs);
-  } else {
+  if(latlngs.length > 1){
 
-    window.herdLines[matchedHerd] = L.polyline(latlngs,{
-      color: color || "#ff3b30",
-      weight: 6,              // 🔥 thicker line
-      opacity: 0.9,           // 🔥 more visible
-      smoothFactor: 1.5,      // 🔥 smoother curve
-      lineCap: "round",
-      lineJoin: "round"
-    }).addTo(elephantLayer);
+    if(window.herdLines[matchedHerd]){
+      window.herdLines[matchedHerd].setLatLngs(latlngs);
+    } else {
+
+      window.herdLines[matchedHerd] = L.polyline(latlngs,{
+        color: color || "#ff3b30",
+        weight: 6,
+        opacity: 0.9,
+        smoothFactor: 1.5,
+        lineCap: "round",
+        lineJoin: "round"
+      }).addTo(elephantLayer);
+
+    }
 
   }
 
-}
+  /* ===============================
+     🧭 DIRECTION ARROW (LATEST)
+  =============================== */
 
-/* ===============================
-   🧭 DIRECTION ARROW (END)
-=============================== */
+  if(latlngs.length > 1){
 
-if(latlngs.length > 1){
+    const last = latlngs[latlngs.length - 1];
+    const prev = latlngs[latlngs.length - 2];
 
-  const last = latlngs[latlngs.length - 1];
-  const prev = latlngs[latlngs.length - 2];
+    const dLat = last[0] - prev[0];
+    const dLon = last[1] - prev[1];
 
-  const dLat = last[0] - prev[0];
-  const dLon = last[1] - prev[1];
+    const angle = Math.atan2(dLat, dLon) * (180 / Math.PI);
 
-  const angle = Math.atan2(dLat, dLon) * (180 / Math.PI);
+    /* 🔥 REMOVE OLD ARROW */
+    if(window.herdArrows[matchedHerd]){
+      elephantLayer.removeLayer(window.herdArrows[matchedHerd]);
+    }
 
-  /* 🔥 REMOVE OLD ARROW */
-  if(window.herdArrows[matchedHerd]){
-    elephantLayer.removeLayer(window.herdArrows[matchedHerd]);
+    /* 🔥 ARROW ICON */
+    const arrowIcon = L.divIcon({
+      className: '',
+      html: `
+        <div style="
+          transform: rotate(${angle}deg);
+          font-size: 20px;
+          color: ${color || "#ff3b30"};
+          text-shadow: 0 0 4px #000;
+        ">➤</div>
+      `
+    });
+
+    /* 🔥 ADD NEW ARROW */
+    window.herdArrows[matchedHerd] =
+      L.marker(last, {icon: arrowIcon, zIndexOffset: 6000})
+        .addTo(elephantLayer);
+
   }
-
-  /* 🔥 ARROW ICON */
-  const arrowIcon = L.divIcon({
-    className: '',
-    html: `
-      <div style="
-        transform: rotate(${angle}deg);
-        font-size: 20px;
-        color: ${color || "#ff3b30"};
-        text-shadow: 0 0 4px #000;
-      ">
-        ➤
-      </div>
-    `
-  });
-
-  /* 🔥 ADD NEW ARROW */
-  window.herdArrows[matchedHerd] =
-    L.marker(last, {icon: arrowIcon, zIndexOffset: 6000})
-      .addTo(elephantLayer);
 
 } /* ===============================
          🎨 UI STATE
