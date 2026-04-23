@@ -4761,59 +4761,78 @@ const icon = L.divIcon({
         let hr = h%12 || 12;
         timeDisplay = `${hr}:${m} ${ampm}`;
       }
-      const herdObj = window.herdClusters[matchedHerd] || {};
+     /* ===============================
+   🐘 HERD INFO (SAFE)
+=============================== */
+
+const herdObj = window.herdClusters[matchedHerd] || {};
 
 const herdId = herdObj.id || matchedHerd;
-const herdName = herdObj.name || matchedHerd;
+const herdLabel = herdObj.label || herdObj.name || matchedHerd || "H?";
 const herdSize = herdObj.members ? herdObj.members.length : 1;
-/* 🔥 FORMAT AGE → hr + min */
+
+
+/* ===============================
+   🔥 FORMAT AGE → hr + min
+=============================== */
+
 const hrs = Math.floor(minutes / 60);
 const mins = Math.floor(minutes % 60);
 
 const ageFormatted = hrs > 0
   ? `${hrs} hr ${mins} min`
   : `${mins} min`;
-      /* ===============================
-   🧠 MATCHING HERDS (ADDED ONLY)
+
+
+/* ===============================
+   🧠 MATCHING HERDS (SAFE FINAL)
 =============================== */
 
-let allScores = [];
+let matchingHerds = "";
 
-Object.keys(window.herdClusters || {}).forEach(hid => {
+try {
 
-  const last = window.herdClusters[hid].last;
+  let allScores = [];
 
-  const score = calculateHerdScore(
-    {
-      lat,
-      lon,
-      time: parsedTs,
-      direction: e.direction,
-      count: e.count
-    },
-    last
-  );
+  Object.keys(window.herdClusters || {}).forEach(hid => {
 
-  allScores.push({hid, score});
+    const last = window.herdClusters[hid].last;
 
-});
+    const score = calculateHerdScore(
+      {
+        lat,
+        lon,
+        time: parsedTs,
+        direction: e.direction,
+        count: e.count
+      },
+      last
+    );
 
-/* 🔥 SORT */
-allScores.sort((a,b) => b.score - a.score);
+    allScores.push({hid, score});
 
-/* 🔥 EXCLUDE CURRENT HERD */
-let matchingHerds = allScores
-  .filter(s => s.hid !== matchedHerd && s.score > 0.4)
-  .slice(0,3)
-  .map(s => {
-    const label = window.herdClusters[s.hid]?.label || s.hid;
-    return `${label} (${Math.round(s.score * 100)}%)`;
-  })
-  .join(", ");
+  });
 
-/* 🔥 HERD LABEL + SIZE */
-    /* ===============================
-   🪟 POPUP (UPDATED ONLY)
+  /* 🔥 SORT */
+  allScores.sort((a,b) => b.score - a.score);
+
+  /* 🔥 EXCLUDE CURRENT HERD */
+  matchingHerds = allScores
+    .filter(s => s.hid !== matchedHerd && s.score > 0.4)
+    .slice(0,3)
+    .map(s => {
+      const label = window.herdClusters[s.hid]?.label || s.hid;
+      return `${label} (${Math.round(s.score * 100)}%)`;
+    })
+    .join(", ");
+
+} catch(err){
+  console.warn("Matching herd error:", err);
+}
+
+
+/* ===============================
+   🪟 POPUP (FINAL FIXED)
 =============================== */
 
 const popup = `
@@ -4857,8 +4876,7 @@ const popup = `
     </button>
   </div>
 
-</div>`;
-      if(window.sightingMarkers[key]){
+</div>`; if(window.sightingMarkers[key]){
         window.sightingMarkers[key].setLatLng([lat,lon]);
         window.sightingMarkers[key].setIcon(icon);
         window.sightingMarkers[key].setPopupContent(popup);
