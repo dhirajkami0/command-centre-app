@@ -1544,11 +1544,42 @@ cleanOldMessages(); // 🔥 ADD THIS LINE HERE
 // ======================================================
 // 🚀 SMART SERVICE WORKER UPDATE SYSTEM (FINAL)
 // ======================================================
+// ======================================================
+// 🚀 SMART SERVICE WORKER UPDATE SYSTEM (AUTO + MANUAL)
+// ======================================================
+// ======================================================
+// 🚀 SMART SERVICE WORKER UPDATE SYSTEM (AUTO + MANUAL)
+// ======================================================
 
 let newWorker;
 
+// 🔥 VERSION (CHANGE ON EVERY DEPLOY)
+const APP_VERSION = "v1001";
+console.log("🔥 VERSION", APP_VERSION);
+
+
 // ======================================================
-// 🔧 REGISTER SW
+// 🔧 INIT AFTER DOM LOAD (IMPORTANT)
+// ======================================================
+window.addEventListener("load", () => {
+
+  // 🔥 SET VERSION TAG
+  const versionEl = document.getElementById("versionTag");
+  if (versionEl) {
+    versionEl.innerText = APP_VERSION;
+  }
+
+  // 🔥 ATTACH UPDATE BUTTON SAFELY
+  const updateBtn = document.getElementById("updateBtn");
+  if (updateBtn) {
+    updateBtn.addEventListener("click", handleManualUpdate);
+  }
+
+});
+
+
+// ======================================================
+// 🔧 REGISTER SERVICE WORKER
 // ======================================================
 if ("serviceWorker" in navigator) {
 
@@ -1564,12 +1595,12 @@ if ("serviceWorker" in navigator) {
       reg.update();
 
       // ==================================================
-      // ✅ CASE 1: ALREADY WAITING (VERY IMPORTANT)
+      // ✅ CASE 1: ALREADY WAITING
       // ==================================================
       if (reg.waiting) {
         console.log("🟢 Update already waiting");
         newWorker = reg.waiting;
-        showUpdateUI();
+        triggerUpdateFlow();
       }
 
       // ==================================================
@@ -1583,17 +1614,27 @@ if ("serviceWorker" in navigator) {
 
           if (installing.state === "installed") {
 
-            if (navigator.serviceWorker.controller) {
+            console.log("🚀 New version installed");
 
-              console.log("🚀 New version available");
+            newWorker = installing;
+            triggerUpdateFlow();
 
-              newWorker = installing;
-              showUpdateUI();
-            }
           }
+
         });
 
       });
+
+      // ==================================================
+      // 🔥 MOBILE FIX (DELAYED CHECK)
+      // ==================================================
+      setTimeout(() => {
+        if (reg.waiting) {
+          console.log("🟢 Waiting SW detected (delayed)");
+          newWorker = reg.waiting;
+          triggerUpdateFlow();
+        }
+      }, 3000);
 
     })
     .catch(err => {
@@ -1601,6 +1642,45 @@ if ("serviceWorker" in navigator) {
     });
 
   });
+
+}
+
+
+// ======================================================
+// 🎯 UPDATE FLOW (AUTO + MANUAL SAFE)
+// ======================================================
+function triggerUpdateFlow() {
+
+  console.log("⚡ Update detected");
+
+  // 🔥 SHOW MANUAL OPTION
+  showUpdateUI();
+
+  // ==================================================
+  // 🔥 AUTO UPDATE (SAFE DELAY)
+  // ==================================================
+  setTimeout(() => {
+
+    if (window.isFormOpen || window.isUserTyping) {
+      console.log("⛔ Skipping auto update (user busy)");
+      return;
+    }
+
+    if (newWorker) {
+      console.log("⚡ Auto updating...");
+
+      if (window.showToast) {
+        showToast("🔄 Updating app...");
+      }
+
+      try {
+        newWorker.postMessage({ action: "skipWaiting" });
+      } catch (e) {
+        console.error("❌ Auto update failed:", e);
+      }
+    }
+
+  }, 10000); // 10 sec delay
 
 }
 
@@ -1620,82 +1700,77 @@ function showUpdateUI() {
     showToast("🚀 New version available");
   }
 
-  // 🔥 OPTIONAL REMINDER (PRO MODE)
   setTimeout(() => {
-    if (newWorker) {
+    if (newWorker && window.showToast) {
       showToast("⚠️ Please update app", "warning");
     }
-  }, 120000); // 2 minutes
+  }, 120000);
+
 }
 
 
 // ======================================================
-// 🔘 USER CLICK UPDATE
+// 🔘 MANUAL UPDATE HANDLER (SAFE)
 // ======================================================
-// ======================================================
-// 🔘 USER CLICK UPDATE (FINAL CLEAN VERSION)
-// ======================================================
-document.getElementById("updateBtn").addEventListener("click", () => {
+function handleManualUpdate() {
 
-  console.log("🟢 Update clicked");
+  console.log("🟢 Manual update clicked");
 
   const banner = document.getElementById("updateBanner");
   const btn = document.getElementById("updateBtn");
 
-  // 🔥 HIDE BANNER IMMEDIATELY
   if (banner) banner.style.display = "none";
 
-  // ❌ SAFETY CHECK
   if (!newWorker) {
-    showToast("⚠️ No update available", "warning");
-
-    // restore UI just in case
-    if (btn) {
-      btn.innerText = "Update";
-      btn.disabled = false;
+    if (window.showToast) {
+      showToast("⚠️ No update available", "warning");
     }
-
     return;
   }
 
-  // 🔥 UI FEEDBACK
   if (btn) {
     btn.innerText = "Updating...";
     btn.disabled = true;
   }
 
-  showToast("Updating app...");
+  if (window.showToast) {
+    showToast("Updating app...");
+  }
 
   try {
-    // 🔥 TRIGGER UPDATE
     newWorker.postMessage({ action: "skipWaiting" });
   } catch (e) {
     console.error("❌ skipWaiting failed:", e);
-    showToast("❌ Update failed", "error");
+    if (window.showToast) {
+      showToast("❌ Update failed", "error");
+    }
   }
 
-});
+}
 
 
 // ======================================================
-// 🔄 AFTER UPDATE → RELOAD (SAFE + CLEAN)
+// 🔄 AFTER UPDATE → RELOAD
 // ======================================================
 let refreshing = false;
 
 navigator.serviceWorker.addEventListener("controllerchange", () => {
 
-  if (refreshing) return; // 🔥 prevent multiple reloads
+  if (refreshing) return;
   refreshing = true;
 
   console.log("🔄 New version active");
 
-  showToast("✅ App updated");
+  if (window.showToast) {
+    showToast("✅ App updated");
+  }
 
   setTimeout(() => {
     location.reload();
   }, 800);
 
-});/* ============================================================
+});
+    /* ============================================================
    🔥 GLOBAL MASTER DATA (CRASH-PROOF)
 ============================================================ */
 
@@ -11064,7 +11139,17 @@ box-shadow:0 -4px 20px rgba(0,0,0,0.5);
   </button>
 
 </div>
-
+<div id="versionTag" style="
+  position:fixed;
+  bottom:4px;
+  right:8px;
+  font-size:10px;
+  color:#aaa;
+  opacity:0.6;
+  pointer-events:none;
+  z-index:9999;
+">
+</div>
 </body>
 
 </html>
