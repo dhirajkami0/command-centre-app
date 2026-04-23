@@ -4481,7 +4481,12 @@ else if(bestScore < SOFT_THRESHOLD){
 if(!window.herdClusters) window.herdClusters = {};
 
 if(!window.herdClusters[matchedHerd]){
+
+  const herdIndex = Object.keys(window.herdClusters).length + 1;
+
   window.herdClusters[matchedHerd] = {
+    id: matchedHerd,
+    name: "Herd " + herdIndex,
     last: {},
     members: []
   };
@@ -4756,6 +4761,11 @@ const icon = L.divIcon({
         let hr = h%12 || 12;
         timeDisplay = `${hr}:${m} ${ampm}`;
       }
+      const herdObj = window.herdClusters[matchedHerd] || {};
+
+const herdId = herdObj.id || matchedHerd;
+const herdName = herdObj.name || matchedHerd;
+const herdSize = herdObj.members ? herdObj.members.length : 1;
 /* 🔥 FORMAT AGE → hr + min */
 const hrs = Math.floor(minutes / 60);
 const mins = Math.floor(minutes % 60);
@@ -4776,11 +4786,11 @@ const ageFormatted = hrs > 0
 
   <hr>
 
-  <b>🐘 Herd:</b> ${e.herd || "?"}<br>
-  <b>🧠 Herd Match:</b> ${confidence}%<br>
-  <b>🧭 Movement:</b> ${movementText}<br>
+  <b>🆔 Herd ID:</b> ${herdId}<br>
+<b>🐘 Herd Size:</b> ${herdSize}<br>
+<b>🧠 Herd Match:</b> ${confidence}% with ${herdId}<br><b>🧭 Movement:</b> ${movementText}<br>
   <b>⏱ Time:</b> ${timeDisplay}<br>
-  <b>⏱ Age:</b> ${ageFormatted}<br>
+  <b>⏱ Age of Sighting:</b> ${ageFormatted}<br>
 
   <b>👤 Sighted by:</b> ${e.teamLeader || "Unknown"}<br>
 
