@@ -299,75 +299,13 @@ window.addEventListener("unhandledrejection", function (e) {
    🔥 STRONG RADAR PULSE
 =============================== */
 
-@keyframes radarStrong {
+@keyframes radarWave {
   0% {
     transform: translate(-50%, -50%) scale(0.5);
-    opacity: 1;
-    box-shadow: 0 0 0 0 rgba(255, 59, 48, 0.9);
-  }
-
-  50% {
-    opacity: 0.7;
-    box-shadow: 0 0 0 12px rgba(255, 59, 48, 0.5);
-  }
-
-  100% {
-    transform: translate(-50%, -50%) scale(2.5);
-    opacity: 0;
-    box-shadow: 0 0 0 25px rgba(255, 59, 48, 0);
-  }
-}
-
-/* 🔥 MEDIUM (2–6 hr) */
-@keyframes radarMedium {
-  0% {
-    transform: translate(-50%, -50%) scale(0.6);
-    opacity: 0.8;
-  }
-
-  100% {
-    transform: translate(-50%, -50%) scale(2);
-    opacity: 0;
-  }
-}
-    /* ============================================================
-   🧭 COMPACT COMMAND PANEL
-============================================================ */
-    /* ============================================================
-   🌿 MAIN PANEL (GLASS)
-============================================================ */
-    @keyframes elephantPulse {
-  0% { transform: scale(1); opacity:1; }
-  50% { transform: scale(1.3); opacity:0.7; }
-  100% { transform: scale(1); opacity:1; }
-}
-
-@keyframes elephantPulseSlow {
-  0% { transform: scale(1); opacity:0.7; }
-  50% { transform: scale(1.15); opacity:0.5; }
-  100% { transform: scale(1); opacity:0.7; }
-}
-   @keyframes pulseStrong {
-  0% {
-    transform: translate(-50%, -50%) scale(0.4);
     opacity: 0.6;
   }
   70% {
-    transform: translate(-50%, -50%) scale(2.8);
-    opacity: 0;
-  }
-  100% {
-    opacity: 0;
-  }
-}
-
-@keyframes pulseMedium {
-  0% {
-    transform: translate(-50%, -50%) scale(0.5);
-    opacity: 0.4;
-  }
-  70% {
-    transform: translate(-50%, -50%) scale(2.0);
+    transform: translate(-50%, -50%) scale(2.5);
     opacity: 0;
   }
   100% {
@@ -4728,60 +4666,89 @@ if(bestScore >= JOIN_THRESHOLD){
       =============================== */
 
 /* 🔥 DYNAMIC PULSE CONTROL */
+/* 🔥 DYNAMIC PULSE CONTROL */
 
 let pulseDuration = "1.2s";
-let pulseScale = 2.5;
-let pulseOpacity = 0.4;
+let pulseScale = 2.6;
+let pulseOpacity = 0.35;
 
 if(minutes <= 120){
-  pulseDuration = "1.2s";   // fast
+  pulseDuration = "1.2s";   // 🔴 fast
   pulseScale = 2.8;
   pulseOpacity = 0.45;
 }
 else if(minutes <= 360){
-  pulseDuration = "2.4s";   // slower
+  pulseDuration = "2.4s";   // 🟠 slower
   pulseScale = 2.0;
   pulseOpacity = 0.25;
 }
 else{
-  pulseDuration = "0s"; // no pulse
+  pulseDuration = "0s";     // ⚪ no pulse
 }
 
+
 /* ===============================
-   🐘 ICON (RADAR FIXED)
+   🐘 ICON (FINAL — SAME AS STAFF)
 =============================== */
+
 const icon = L.divIcon({
   className:'',
   html:`
-  <div style="position:relative;width:36px;height:36px;opacity:${opacity}">
+  <div style="
+    position:relative;
+    width:36px;
+    height:36px;
+    opacity:${opacity};
+  ">
 
-    ${animation !== "none" ? `
-    <span style="
-      position:absolute;
-      top:50%;
-      left:50%;
-      width:36px;
-      height:36px;
-      border:3px solid ${color};
-      border-radius:50%;
-      transform:translate(-50%, -50%);
-      animation:${animation === "pulseStrong" ? "radarStrong" : "radarMedium"} 1.8s infinite;
-    "></span>
+    ${pulseDuration !== "0s" ? `
 
-    <span style="
-      position:absolute;
-      top:50%;
-      left:50%;
-      width:36px;
-      height:36px;
-      border:3px solid ${color};
-      border-radius:50%;
-      transform:translate(-50%, -50%);
-      animation:${animation === "pulseStrong" ? "radarStrong" : "radarMedium"} 1.8s infinite;
-      animation-delay:0.9s;
-    "></span>
+      <!-- 🔥 WAVE 1 -->
+      <span style="
+        position:absolute;
+        top:50%;
+        left:50%;
+        width:36px;
+        height:36px;
+        border-radius:50%;
+        background:${color};
+        transform:translate(-50%, -50%);
+        animation:radarWave ${pulseDuration} infinite;
+        opacity:${pulseOpacity};
+      "></span>
+
+      <!-- 🔥 WAVE 2 -->
+      <span style="
+        position:absolute;
+        top:50%;
+        left:50%;
+        width:36px;
+        height:36px;
+        border-radius:50%;
+        background:${color};
+        transform:translate(-50%, -50%);
+        animation:radarWave ${pulseDuration} infinite;
+        animation-delay:${parseFloat(pulseDuration)/2}s;
+        opacity:${pulseOpacity * 0.8};
+      "></span>
+
+      <!-- 🔥 CORE GLOW -->
+      <span style="
+        position:absolute;
+        top:50%;
+        left:50%;
+        width:18px;
+        height:18px;
+        border-radius:50%;
+        background:${color};
+        transform:translate(-50%, -50%);
+        box-shadow:0 0 10px ${color};
+        opacity:0.9;
+      "></span>
+
     ` : ""}
 
+    <!-- 🐘 ICON -->
     <div style="
       position:absolute;
       top:50%;
@@ -4795,7 +4762,7 @@ const icon = L.divIcon({
   </div>`,
   iconSize:[36,36],
   iconAnchor:[18,18]
-});     /* ===============================
+});   /* ===============================
          🧭 DIRECTION
       =============================== */
 
