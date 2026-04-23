@@ -4774,10 +4774,52 @@ const ageFormatted = hrs > 0
   ? `${hrs} hr ${mins} min`
   : `${mins} min`;
       /* ===============================
-         🪟 POPUP
-      =============================== */
+   🧠 MATCHING HERDS (ADDED ONLY)
+=============================== */
 
-      const popup = `
+let allScores = [];
+
+Object.keys(window.herdClusters || {}).forEach(hid => {
+
+  const last = window.herdClusters[hid].last;
+
+  const score = calculateHerdScore(
+    {
+      lat,
+      lon,
+      time: parsedTs,
+      direction: e.direction,
+      count: e.count
+    },
+    last
+  );
+
+  allScores.push({hid, score});
+
+});
+
+/* 🔥 SORT */
+allScores.sort((a,b) => b.score - a.score);
+
+/* 🔥 EXCLUDE CURRENT HERD */
+let matchingHerds = allScores
+  .filter(s => s.hid !== matchedHerd && s.score > 0.4)
+  .slice(0,3)
+  .map(s => {
+    const label = window.herdClusters[s.hid]?.label || s.hid;
+    return `${label} (${Math.round(s.score * 100)}%)`;
+  })
+  .join(", ");
+
+/* 🔥 HERD LABEL + SIZE */
+const herdObj = window.herdClusters[matchedHerd] || {};
+const herdLabel = herdObj.label || matchedHerd;
+const herdSize = herdObj.members ? herdObj.members.length : 1;
+    /* ===============================
+   🪟 POPUP (UPDATED ONLY)
+=============================== */
+
+const popup = `
 <div style="font-family:Segoe UI;min-width:220px">
 
   <div style="color:${color};font-weight:bold">
@@ -4786,11 +4828,13 @@ const ageFormatted = hrs > 0
 
   <hr>
 
-  <b>🆔 Herd ID:</b> ${herdId}<br>
-<b>🐘 Herd Size:</b> ${herdSize}<br>
-<b>🧠 Herd Match:</b> ${confidence}% with ${herdId}<br><b>🧭 Movement:</b> ${movementText}<br>
+  <b>🐘 Herd ID:</b> ${herdLabel}<br>
+  <b>👥 Herd Size:</b> ${herdSize}<br>
+  ${matchingHerds ? `<b>🧠 Matching Herds:</b> ${matchingHerds}<br>` : ""}
+
+  <b>🧭 Movement:</b> ${movementText}<br>
   <b>⏱ Time:</b> ${timeDisplay}<br>
-  <b>⏱ Age of Sighting:</b> ${ageFormatted}<br>
+  <b>⏱ Age:</b> ${ageFormatted}<br>
 
   <b>👤 Sighted by:</b> ${e.teamLeader || "Unknown"}<br>
 
@@ -4817,7 +4861,6 @@ const ageFormatted = hrs > 0
   </div>
 
 </div>`;
-
       if(window.sightingMarkers[key]){
         window.sightingMarkers[key].setLatLng([lat,lon]);
         window.sightingMarkers[key].setIcon(icon);
