@@ -4668,101 +4668,50 @@ if(bestScore >= JOIN_THRESHOLD){
 /* 🔥 DYNAMIC PULSE CONTROL */
 /* 🔥 DYNAMIC PULSE CONTROL */
 
-let pulseDuration = "1.2s";
-let pulseScale = 2.6;
-let pulseOpacity = 0.35;
-
-if(minutes <= 120){
-  pulseDuration = "1.2s";   // 🔴 fast
-  pulseScale = 2.8;
-  pulseOpacity = 0.45;
-}
-else if(minutes <= 360){
-  pulseDuration = "2.4s";   // 🟠 slower
-  pulseScale = 2.0;
-  pulseOpacity = 0.25;
-}
-else{
-  pulseDuration = "0s";     // ⚪ no pulse
-}
-
-
 /* ===============================
-   🐘 ICON (FINAL — SAME AS STAFF)
+   🐘 ICON (USE STAFF RADAR SYSTEM)
 =============================== */
 
+let pulseClass = "";
+let showPulse = true;
+
+/* 🔥 AGE → COLOR LOGIC */
+if(minutes <= 120){
+  pulseClass = "riskPulseRed";       // 🔴 fresh
+}
+else if(minutes <= 360){
+  pulseClass = "riskPulseOrange";    // 🟠 medium
+}
+else{
+  showPulse = false;                 // ⚪ old → NO pulse
+}
+
+/* 🔥 ICON */
 const icon = L.divIcon({
   className:'',
   html:`
-  <div style="
-    position:relative;
-    width:36px;
-    height:36px;
-    opacity:${opacity};
-  ">
+  <div class="markerWrap">
 
-    ${pulseDuration !== "0s" ? `
-
-      <!-- 🔥 WAVE 1 -->
-      <span style="
-        position:absolute;
-        top:50%;
-        left:50%;
-        width:36px;
-        height:36px;
-        border-radius:50%;
-        background:${color};
-        transform:translate(-50%, -50%);
-        animation:radarWave ${pulseDuration} infinite;
-        opacity:${pulseOpacity};
-      "></span>
-
-      <!-- 🔥 WAVE 2 -->
-      <span style="
-        position:absolute;
-        top:50%;
-        left:50%;
-        width:36px;
-        height:36px;
-        border-radius:50%;
-        background:${color};
-        transform:translate(-50%, -50%);
-        animation:radarWave ${pulseDuration} infinite;
-        animation-delay:${parseFloat(pulseDuration)/2}s;
-        opacity:${pulseOpacity * 0.8};
-      "></span>
-
-      <!-- 🔥 CORE GLOW -->
-      <span style="
-        position:absolute;
-        top:50%;
-        left:50%;
-        width:18px;
-        height:18px;
-        border-radius:50%;
-        background:${color};
-        transform:translate(-50%, -50%);
-        box-shadow:0 0 10px ${color};
-        opacity:0.9;
-      "></span>
-
+    ${showPulse ? `
+      <div class="radarPulse ${pulseClass}"></div>
+      <div class="radarPulse delay1 ${pulseClass}"></div>
+      <div class="radarPulse delay2 ${pulseClass}"></div>
     ` : ""}
 
-    <!-- 🐘 ICON -->
-    <div style="
-      position:absolute;
-      top:50%;
-      left:50%;
-      transform:translate(-50%, -50%);
-      font-size:26px;
-    ">
-      🐘
+    <div class="markerCore">
+      <span style="
+        font-size:22px;
+        color:${showPulse ? color : "#9e9e9e"};
+        text-shadow:0 0 5px black;
+      ">
+        🐘
+      </span>
     </div>
 
   </div>`,
-  iconSize:[36,36],
-  iconAnchor:[18,18]
-});   /* ===============================
+  iconSize:[30,30],
+  iconAnchor:[15,15]
+}); /* ===============================
          🧭 DIRECTION
       =============================== */
 
