@@ -4770,8 +4770,11 @@ const herdObj = window.herdClusters[matchedHerd] || {};
 const herdId = herdObj.id || matchedHerd;
 const herdLabel = herdObj.label || herdObj.name || matchedHerd || "H?";
 
-/* 🔥 FINAL — HERD SIZE = TOTAL SEEN ONLY */
-const herdSize = parseInt(e.totalSeen || e.total || 0);/* ===============================
+/* 🔥 FINAL — HERD SIZE = TOTAL SEEN ONLY *//* 🔥 FINAL FIX — READ FROM SHEET COLUMN */
+const herdSize = parseInt(
+  e["Total Seen"] || e.totalSeen || e.total || 0
+);
+      /* ===============================
    🔥 FORMAT AGE → hr + min
 =============================== */
 
