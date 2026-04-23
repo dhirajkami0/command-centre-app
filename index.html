@@ -4761,7 +4761,7 @@ const icon = L.divIcon({
         let hr = h%12 || 12;
         timeDisplay = `${hr}:${m} ${ampm}`;
       }
-     /* ===============================
+    /* ===============================
    🐘 HERD INFO (SAFE)
 =============================== */
 
@@ -4769,7 +4769,20 @@ const herdObj = window.herdClusters[matchedHerd] || {};
 
 const herdId = herdObj.id || matchedHerd;
 const herdLabel = herdObj.label || herdObj.name || matchedHerd || "H?";
-const herdSize = herdObj.members ? herdObj.members.length : 1;
+
+/* 🔥 FIX: HERD SIZE = TOTAL ELEPHANTS SEEN (FROM FORM) */
+const herdSize = parseInt(
+  e.totalSeen ||
+  e.count ||
+  (
+    (parseInt(e.male) || 0) +
+    (parseInt(e.female) || 0) +
+    (parseInt(e.calf) || 0) +
+    (parseInt(e.unknown) || 0)
+  ) ||
+  herdObj.last?.count ||
+  0
+);
 
 
 /* ===============================
@@ -4876,7 +4889,10 @@ const popup = `
     </button>
   </div>
 
-</div>`; if(window.sightingMarkers[key]){
+</div>`;
+      
+      
+      if(window.sightingMarkers[key]){
         window.sightingMarkers[key].setLatLng([lat,lon]);
         window.sightingMarkers[key].setIcon(icon);
         window.sightingMarkers[key].setPopupContent(popup);
