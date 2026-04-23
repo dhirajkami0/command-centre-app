@@ -4770,44 +4770,8 @@ const herdObj = window.herdClusters[matchedHerd] || {};
 const herdId = herdObj.id || matchedHerd;
 const herdLabel = herdObj.label || herdObj.name || matchedHerd || "H?";
 
-/* 🔥 FINAL FIX: HERD SIZE = TOTAL ELEPHANTS (ROBUST) */
-
-let herdSize = 0;
-
-/* 1️⃣ BEST: totalSeen (from form) */
-if(e.totalSeen && !isNaN(e.totalSeen)){
-  herdSize = parseInt(e.totalSeen);
-}
-
-/* 2️⃣ NEXT: count field */
-else if(e.count && !isNaN(e.count)){
-  herdSize = parseInt(e.count);
-}
-
-/* 3️⃣ NEXT: sum of categories */
-else if(
-  e.male !== undefined ||
-  e.female !== undefined ||
-  e.calf !== undefined ||
-  e.unknown !== undefined
-){
-  herdSize =
-    (parseInt(e.male) || 0) +
-    (parseInt(e.female) || 0) +
-    (parseInt(e.calf) || 0) +
-    (parseInt(e.unknown) || 0);
-}
-
-/* 4️⃣ FINAL FALLBACK: last known herd count */
-else if(herdObj.last?.count){
-  herdSize = parseInt(herdObj.last.count);
-}
-
-/* 5️⃣ SAFETY */
-if(!herdSize || herdSize <= 0){
-  herdSize = 1;
-}
-/* ===============================
+/* 🔥 FINAL — HERD SIZE = TOTAL SEEN ONLY */
+const herdSize = parseInt(e.totalSeen || e.total || 0);/* ===============================
    🔥 FORMAT AGE → hr + min
 =============================== */
 
