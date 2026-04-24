@@ -1583,15 +1583,12 @@ function showUpdateUI() {
 
   const banner = document.getElementById("updateBanner");
 
-  if (banner) banner.style.display = "block";
+  // 🔥 STOP duplicate calls using DOM state
+  if (!banner || banner.style.display === "block") return;
 
-  if (window.showToast) {
-    showToast("🚀 New version available");
-  }
+  banner.style.display = "block";
 
 }
-
-
 // ======================================================
 // 🔘 MANUAL UPDATE (ONLY TRIGGER)
 // ======================================================
