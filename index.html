@@ -4322,7 +4322,9 @@ function loadSightings() {
 
       const key = e.id;
 
-      const status = (e.status || "Active").toUpperCase();
+      const status = String(e.status || "ACTIVE")
+  .trim()
+  .toUpperCase();
 
      /* 🔥 FINAL HARD FIX (NO DEPENDENCY ON ABOVE) */
 
@@ -4333,7 +4335,13 @@ function loadSightings() {
 /* 🔥 FINAL AGE FIX — SUPPORTS ALL FORMATS */
 
 const now = Date.now();
-let parsedTs = now;
+      
+      let parsedTs = now;
+
+if(!e.time || typeof e.time !== "string"){
+  console.warn("⚠ Invalid time → using NOW");
+  parsedTs = now;
+}
 
 if (e.time && typeof e.time === "string") {
 
@@ -4419,7 +4427,10 @@ console.log("🧪 --------------------------");
       
       
       /* 🔥 REMOVE LOGIC (UNCHANGED) */
-if (status === "RESOLVED" || minutes > 1440) {
+if (
+  status === "RESOLVED" ||
+  (minutes > 1440 && status === "ACTIVE")
+) {
 
   if (window.sightingMarkers[key]) {
     elephantLayer.removeLayer(window.sightingMarkers[key]);
@@ -5005,8 +5016,7 @@ function calculateHerdScore(current, last){
 }
     
     
-    /* 🔥 STATUS UPDATE */
-function submitMoveForm() {
+    /* 🔥 STATUS UPDATE */function submitMoveForm() {
 
   console.group("🚀 submitMoveForm START");
 
@@ -5095,6 +5105,54 @@ function submitMoveForm() {
 
       setMoveLoading("success");
 
+      /* ============================================================
+         🔥 FIX 1: INSTANT UI UPDATE (CRITICAL)
+      ============================================================ */
+
+      const status = (remarks || "").trim().toUpperCase();
+
+      if (window.sightingMarkers && window.sightingMarkers[cleanId]) {
+
+        const marker = window.sightingMarkers[cleanId];
+
+        if (status === "MOVED" || status === "DRIVEN") {
+
+          // 🔥 FORCE STATIC GREY ICON (NO PULSE)
+          marker.setIcon(L.divIcon({
+            className: '',
+            html: `
+              <div class="markerWrap">
+                <div class="markerCore">
+                  <span style="
+                    font-size:22px;
+                    color:#9e9e9e;
+                    opacity:0.7;
+                    text-shadow:0 0 5px black;
+                  ">
+                    🐘
+                  </span>
+                </div>
+              </div>
+            `,
+            iconSize:[30,30],
+            iconAnchor:[15,15]
+          }));
+
+        }
+
+        if (status === "RESOLVED") {
+
+          elephantLayer.removeLayer(marker);
+          delete window.sightingMarkers[cleanId];
+
+          console.log("⚡ Marker removed (RESOLVED):", cleanId);
+        }
+      }
+
+      /* ============================================================
+         🔥 ORIGINAL FLOW (UNCHANGED)
+      ============================================================ */
+
       setTimeout(() => {
 
         if (typeof closeMoveForm === "function") {
@@ -5103,27 +5161,8 @@ function submitMoveForm() {
 
         setMoveLoading("reset");
 
-        /* 🔥 FIX: REMOVE ONLY IF RESOLVED */
-        const status = (remarks || "").toUpperCase().trim();
-
-        if (status === "RESOLVED") {
-
-          Object.keys(window.sightingMarkers || {}).forEach(key => {
-
-            if (normalize(key) === cleanId) {
-
-              elephantLayer.removeLayer(window.sightingMarkers[key]);
-              delete window.sightingMarkers[key];
-
-              console.log("⚡ Marker removed (RESOLVED):", key);
-            }
-
-          });
-
-        } else {
-
+        if (status !== "RESOLVED") {
           console.log("ℹ️ Marker retained for status:", status);
-
         }
 
       }, 800);
@@ -5141,22 +5180,28 @@ function submitMoveForm() {
     window.isPopupInteracting = false;
     window.lastInteractionTime = 0;
 
-    if (window.sightingMarkers && window.sightingMarkers[id]) {
-      window.sightingMarkers[id].closePopup();
+    // 🔥 FIX 2: use cleanId (IMPORTANT BUG FIX)
+    if (window.sightingMarkers && window.sightingMarkers[cleanId]) {
+      window.sightingMarkers[cleanId].closePopup();
     }
 
+    /* ============================================================
+       🔥 FIX 3: PROPER REFRESH TIMING
+    ============================================================ */
+
     setTimeout(() => {
+      console.log("🔄 Refreshing sightings (1)...");
+      loadSightings();
+    }, 1200);
 
-      console.log("🔥 Refreshing sightings...");
+    setTimeout(() => {
+      console.log("🔄 Refreshing sightings (2)...");
+      loadSightings();
+    }, 2500);
 
-      loadSightings(); // 🔥 This will handle:
-                       // >6h → grey
-                       // >24h → remove
-                       // moved/driven → grey
-
+    setTimeout(() => {
       callBackend("updateVillageRisk");
-
-    }, 300);
+    }, 1000);
 
     console.groupEnd();
 
