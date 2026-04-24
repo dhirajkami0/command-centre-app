@@ -4878,13 +4878,25 @@ const popup = `
 </div>`;
       
       
-      if(window.sightingMarkers[key]){
-        window.sightingMarkers[key].setLatLng([lat,lon]);
-        window.sightingMarkers[key].setIcon(icon);
-        window.sightingMarkers[key].setPopupContent(popup);
-        return;
-      }
+     if(window.sightingMarkers[key]){
 
+  const oldMarker = window.sightingMarkers[key];
+
+  // 🔥 REMOVE OLD MARKER COMPLETELY (CRITICAL)
+  elephantLayer.removeLayer(oldMarker);
+
+  // 🔥 CREATE FRESH MARKER (NO DOM REUSE)
+  const newMarker = L.marker([lat,lon],{
+    icon:icon,
+    zIndexOffset:5000
+  })
+  .bindPopup(popup)
+  .addTo(elephantLayer);
+
+  window.sightingMarkers[key] = newMarker;
+
+  return;
+}
       const marker = L.marker([lat,lon],{
         icon:icon,
         zIndexOffset:5000
