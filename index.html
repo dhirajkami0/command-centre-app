@@ -3780,7 +3780,7 @@ function renderGrid(mode = "today", beat = "ALL"){
 
     window.gridLayer.clearLayers();
 
-    // 🔥 USE CACHE (NOT old grid_current)
+    // 🔥 CACHE SOURCE
     let current = {};
 
     switch(mode){
@@ -3788,13 +3788,16 @@ function renderGrid(mode = "today", beat = "ALL"){
       case "today":
       case "visited":
       case "unvisited":
-        current = window.gridCache.today || {};
+        current = window.gridCache?.today || {};
       break;
 
       case "current":
       case "cumulative":
-        current = window.gridCache.month || {};
+        current = window.gridCache?.month || {};
       break;
+
+      default:
+        current = {};
     }
 
     let total = 0;
@@ -3803,7 +3806,6 @@ function renderGrid(mode = "today", beat = "ALL"){
     Object.entries(window.gridIndex).forEach(([id, cell]) => {
 
       if(!cell || !cell.geo) return;
-
       if(beat !== "ALL" && cell.beat !== beat) return;
 
       const isVisited = !!current[id];
@@ -3819,7 +3821,6 @@ function renderGrid(mode = "today", beat = "ALL"){
       const opacity = isVisited ? 0.5 : 0.3;
 
       try {
-
         L.geoJSON(cell.geo, {
           style: {
             color: "#222",
@@ -3829,7 +3830,6 @@ function renderGrid(mode = "today", beat = "ALL"){
             smoothFactor: 0
           }
         }).addTo(window.gridLayer);
-
       } catch(e){
         console.warn("⚠ Grid render fail:", id);
       }
@@ -3847,8 +3847,29 @@ function renderGrid(mode = "today", beat = "ALL"){
   } catch(e){
     console.error("❌ renderGrid error:", e);
   }
+}    function saveTodayVisited(){
+
+  const key = "grid_" + new Date().toISOString().slice(0,10);
+
+  let data = JSON.parse(localStorage.getItem(key) || "{}");
+
+  Object.entries(window.gridIndex).forEach(([id, cell])=>{
+    if(cell.visited){
+      data[id] = true;
+    }
+  });
+
+  localStorage.setItem(key, JSON.stringify(data));
+
+  // 🔥 UPDATE CACHE IMMEDIATELY
+  window.gridCache = window.gridCache || {};
+  window.gridCache.today = data;
+
+  // 🔥 UPDATE MONTH CACHE
+  if(typeof updateMonthCache === "function"){
+    updateMonthCache();
+  }
 }
-    
 function ensureGridReady(){
 
   if(window.gridIndex && Object.keys(window.gridIndex).length){
@@ -5762,6 +5783,37 @@ console.log("👤 STAFF DEBUG:", {
       });
 
     });
+
+    // ======================================================
+    // 🔥 GRID UPDATE FROM STAFF TRACKS (ONLY ADDITION)
+    // ======================================================
+    try {
+
+      let tracks = [];
+
+      staff.forEach(s=>{
+        if(Array.isArray(s.track) && s.track.length > 1){
+          tracks.push({ track: s.track });
+        }
+      });
+
+      if(tracks.length && window.gridIndex){
+
+        markVisitedByLine(Object.values(window.gridIndex), tracks);
+
+        saveTodayVisited();
+
+        renderGrid(
+          window.currentCoverageMode || "today",
+          window.currentBeat || "ALL"
+        );
+
+        console.log("✅ Grid updated from staff tracks");
+      }
+
+    } catch(e){
+      console.error("❌ Grid update error:", e);
+    }
 
   })
   .catch(err => console.error("❌ loadStaff error:", err));
