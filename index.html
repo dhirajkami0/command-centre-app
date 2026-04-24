@@ -1495,10 +1495,14 @@ cleanOldMessages(); // 🔥 ADD THIS LINE HERE
 // ======================================================
 // 🔥 GLOBAL STATE
 // ======================================================
+// ======================================================
+// 🔥 GLOBAL STATE
+// ======================================================
 let newWorker = null;
 let isUpdating = false;
+let refreshing = false;
 
-const APP_VERSION = "v1003";
+const APP_VERSION = "v1004";
 console.log("🔥 VERSION", APP_VERSION);
 
 
@@ -1530,21 +1534,22 @@ if ("serviceWorker" in navigator) {
 
       console.log("✅ SW Registered");
 
-      // 🔁 force check
+      // 🔁 force update check
       setInterval(() => reg.update(), 60000);
       reg.update();
 
       // =========================
-      // ✅ WAITING (ALREADY READY)
+      // ✅ CASE 1: WAITING EXISTS
       // =========================
       if (reg.waiting) {
+        console.log("🟢 SW already waiting");
         newWorker = reg.waiting;
         showUpdateUI();
         scheduleAutoUpdate();
       }
 
       // =========================
-      // 🆕 UPDATE FOUND
+      // 🆕 CASE 2: NEW UPDATE
       // =========================
       reg.addEventListener("updatefound", () => {
 
@@ -1554,12 +1559,18 @@ if ("serviceWorker" in navigator) {
 
           if (installing.state === "installed" && navigator.serviceWorker.controller) {
 
-            console.log("🚀 New version ready");
+            // 🔥 CRITICAL FIX → ONLY USE WAITING
+            if (reg.waiting) {
+              console.log("🟢 SW ready (waiting)");
 
-            newWorker = installing;
+              newWorker = reg.waiting;
 
-            showUpdateUI();
-            scheduleAutoUpdate();
+              showUpdateUI();
+              scheduleAutoUpdate();
+            } else {
+              console.log("⚠ Installed but no waiting yet");
+            }
+
           }
 
         });
@@ -1571,12 +1582,17 @@ if ("serviceWorker" in navigator) {
       // =========================
       setTimeout(() => {
         if (reg.waiting && !newWorker) {
+          console.log("🟢 Delayed waiting detected");
+
           newWorker = reg.waiting;
           showUpdateUI();
           scheduleAutoUpdate();
         }
       }, 3000);
 
+    })
+    .catch(err => {
+      console.error("❌ SW registration failed:", err);
     });
 
   });
@@ -1591,7 +1607,6 @@ function showUpdateUI() {
 
   const banner = document.getElementById("updateBanner");
 
-  // 🔥 PREVENT DUPLICATE
   if (!banner || banner.style.display === "block") return;
 
   banner.style.display = "block";
@@ -1600,7 +1615,7 @@ function showUpdateUI() {
 
 
 // ======================================================
-// 🤖 AUTO UPDATE (BACKGROUND)
+// 🤖 AUTO UPDATE (SAFE)
 // ======================================================
 function scheduleAutoUpdate() {
 
@@ -1608,25 +1623,39 @@ function scheduleAutoUpdate() {
 
     if (isUpdating) return;
 
+    // 🔥 ONLY if valid waiting worker
+    if (!newWorker) {
+      console.log("⛔ No waiting SW → skip auto update");
+      return;
+    }
+
     if (window.isFormOpen || window.isUserTyping) {
       console.log("⛔ User busy → skip auto update");
       return;
     }
 
-    if (newWorker) {
-      console.log("⚡ Auto updating (background)");
+    console.log("⚡ Auto updating (safe)");
 
-      isUpdating = true;
+    isUpdating = true;
 
-      try {
-        newWorker.postMessage({ action: "skipWaiting" });
-      } catch (e) {
-        console.error("❌ Auto update failed:", e);
-        isUpdating = false;
-      }
+    updateUIToUpdating();
+
+    try {
+      newWorker.postMessage({ action: "skipWaiting" });
+    } catch (e) {
+      console.error("❌ Auto update failed:", e);
+      resetUpdateUI();
     }
 
-  }, 10000); // 10 sec delay
+    // 🔥 FAILSAFE (prevents stuck UI)
+    setTimeout(() => {
+      if (isUpdating && !refreshing) {
+        console.warn("⚠ Update stuck → resetting UI");
+        resetUpdateUI();
+      }
+    }, 15000);
+
+  }, 10000);
 
 }
 
@@ -1640,35 +1669,59 @@ function handleManualUpdate() {
 
   if (isUpdating) return;
 
-  const banner = document.getElementById("updateBanner");
-  const btn = document.getElementById("updateBtn");
-
-  if (!newWorker) return;
+  if (!newWorker) {
+    console.warn("⚠ No worker available");
+    return;
+  }
 
   isUpdating = true;
 
-  if (banner) banner.style.display = "none";
-
-  if (btn) {
-    btn.innerText = "Updating...";
-    btn.disabled = true;
-  }
+  updateUIToUpdating();
 
   try {
     newWorker.postMessage({ action: "skipWaiting" });
   } catch (e) {
     console.error("❌ Manual update failed:", e);
-    isUpdating = false;
+    resetUpdateUI();
   }
 
 }
 
 
 // ======================================================
-// 🔄 ACTIVATE → RELOAD (NO TOAST)
+// 🔧 UI HELPERS
 // ======================================================
-let refreshing = false;
+function updateUIToUpdating() {
 
+  const banner = document.getElementById("updateBanner");
+  const btn = document.getElementById("updateBtn");
+
+  if (banner) banner.style.display = "block";
+
+  if (btn) {
+    btn.innerText = "Updating...";
+    btn.disabled = true;
+  }
+
+}
+
+function resetUpdateUI() {
+
+  isUpdating = false;
+
+  const btn = document.getElementById("updateBtn");
+
+  if (btn) {
+    btn.innerText = "Update";
+    btn.disabled = false;
+  }
+
+}
+
+
+// ======================================================
+// 🔄 ACTIVATE → RELOAD
+// ======================================================
 navigator.serviceWorker.addEventListener("controllerchange", () => {
 
   if (refreshing) return;
@@ -1680,7 +1733,7 @@ navigator.serviceWorker.addEventListener("controllerchange", () => {
     location.reload();
   }, 500);
 
-});  /* ============================================================
+}); /* ============================================================
    🔥 GLOBAL MASTER DATA (CRASH-PROOF)
 ============================================================ */
 
