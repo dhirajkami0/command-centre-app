@@ -4318,6 +4318,9 @@ function loadSightings() {
 
     data.forEach(function(e){
 
+  console.log("🧪 LAT LON:", e.lat, e.lon, "STATUS:", e.status);
+
+  if(!e.lat || !e.lon) return;
       if(!e.lat || !e.lon) return;
 
       const key = e.id;
