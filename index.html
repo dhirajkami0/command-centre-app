@@ -3485,153 +3485,108 @@ function closeCoveragePanel(){
 // ==========================================
 // 🎯 ASSIGN GRID TO BEAT (FINAL STABLE VERSION)
 // ==========================================
-function assignGridToBeat(rangeLayer){
+function assignGridToBeat(rangeLayer) {
+    console.log("🎯 Slicing grid by beat boundaries (PERFECT MATCH)...");
 
-  console.log("🎯 Assigning grid to beats (ULTRA FIX - NO GAP / NO OVERFLOW)...");
+    try {
+        let beatPolygons = {}; 
 
-  try {
+        // 1. EXTRACT & GROUP POLYGONS BY BEAT
+        function extract(layer) {
+            if (!layer) return;
+            if (layer instanceof L.Polygon) {
+                const props = layer.feature?.properties || {};
+                const rawID = props.ID || props.Name || props.name || "";
+                const compName = typeof convertCompartment === "function" ? convertCompartment(rawID) : rawID;
+                
+                if (!compName) return;
 
-    let polygons = [];
+                let assignedBeat = "UNKNOWN";
+                for (let beatName in window.beatMap) {
+                    if (window.beatMap[beatName].includes(compName)) {
+                        assignedBeat = beatName;
+                        break;
+                    }
+                }
 
-    // ===============================
-    // 🔥 EXTRACT POLYGONS
-    // ===============================
-    function extract(layer){
+                if (assignedBeat !== "UNKNOWN") {
+                    let latlngs = layer.getLatLngs();
+                    const rings = (Array.isArray(latlngs[0]) && Array.isArray(latlngs[0][0])) ? latlngs[0] : latlngs;
+                    let pts = rings.map(p => [p.lng, p.lat]);
+                    
+                    if (pts.length > 0 && (pts[0][0] !== pts[pts.length - 1][0] || pts[0][1] !== pts[pts.length - 1][1])) {
+                        pts.push(pts[0]);
+                    }
+                    
+                    if (pts.length >= 4) {
+                        if (!beatPolygons[assignedBeat]) beatPolygons[assignedBeat] = [];
+                        beatPolygons[assignedBeat].push(turf.polygon([pts]));
+                    }
+                }
+            }
+            if (layer.eachLayer) layer.eachLayer(extract);
+            else if (layer._layers) Object.values(layer._layers).forEach(extract);
+        }
+        extract(rangeLayer);
 
-      if (!layer) return;
-
-      if (layer instanceof L.Polygon) {
-
-        const p = layer.feature?.properties || {};
-        const rawID = p.ID || "";
-
-        const comp = convertCompartment(rawID);
-        if(!comp) return;
-
-        const latlngs = layer.getLatLngs()[0];
-
-        let coords = latlngs.map(pt => [pt.lng, pt.lat]);
-
-        // close polygon
-        if(coords.length){
-          const f = coords[0];
-          const l = coords[coords.length - 1];
-          if(f[0] !== l[0] || f[1] !== l[1]){
-            coords.push(f);
-          }
+        // 2. CREATE SOLID MASK FOR EACH BEAT (Removes internal compartment gaps)
+        let beatMasks = {};
+        for (let beatName in beatPolygons) {
+            const polys = beatPolygons[beatName];
+            if (polys.length > 0) {
+                try {
+                    let merged = polys[0];
+                    if (polys.length > 1) {
+                        // Use buffer(0) to fix self-intersection issues during union
+                        merged = turf.buffer(merged, 0);
+                        for (let i = 1; i < polys.length; i++) {
+                            merged = turf.union(merged, turf.buffer(polys[i], 0));
+                        }
+                    }
+                    beatMasks[beatName] = merged;
+                } catch (e) { 
+                    beatMasks[beatName] = polys[0]; 
+                }
+            }
         }
 
-        polygons.push({
-          comp,
-          turfPoly: turf.polygon([coords])
+        // 3. PHYSICAL SLICING LOGIC
+        // We iterate through every grid cell and 'cut' it using the beat masks
+        Object.entries(window.gridIndex).forEach(([id, cell]) => {
+            if (!cell.geo) return;
+
+            // Store sliced geometries for this cell: { "EAST PORO": geoPart, ... }
+            cell.slicedBeats = {}; 
+
+            for (let beatName in beatMasks) {
+                try {
+                    if (turf.booleanIntersects(cell.geo, beatMasks[beatName])) {
+                        const cutPart = turf.intersect(cell.geo, beatMasks[beatName]);
+                        if (cutPart && turf.area(cutPart) > 0.1) {
+                            cell.slicedBeats[beatName] = cutPart;
+                        }
+                    }
+                } catch (e) { continue; }
+            }
+
+            // For legacy compatibility, assign the 'Primary' beat based on largest area
+            let maxArea = -1;
+            let primary = "UNKNOWN";
+            Object.entries(cell.slicedBeats).forEach(([bName, bGeo]) => {
+                const a = turf.area(bGeo);
+                if (a > maxArea) {
+                    maxArea = a;
+                    primary = bName;
+                }
+            });
+            cell.beat = primary;
         });
 
-        return;
-      }
+        console.log("✅ Grid slicing complete. Boundaries are now mathematically perfect.");
 
-      if (layer._layers) {
-        Object.values(layer._layers).forEach(extract);
-      }
+    } catch (e) {
+        console.error("❌ assignGridToBeat error:", e);
     }
-
-    extract(rangeLayer);
-
-    if(!polygons.length){
-      console.warn("⚠ No polygons found");
-      return;
-    }
-
-    console.log("📐 Total polygons:", polygons.length);
-
-    // ===============================
-    // 🔥 ASSIGN GRID → BEAT (ULTRA PRECISE)
-    // ===============================
-    Object.values(window.gridIndex).forEach(cell => {
-
-      if(!cell || !cell.geo){
-        cell.beat = "UNKNOWN";
-        return;
-      }
-
-      let bestBeat = "UNKNOWN";
-      let bestScore = 0;
-
-      const cellArea = turf.area(cell.geo);
-
-      for(let poly of polygons){
-
-        let beat = null;
-
-        for(let key in window.beatMap){
-          if(window.beatMap[key].includes(poly.comp)){
-            beat = key;
-            break;
-          }
-        }
-
-        if(!beat) continue;
-
-        try {
-
-          const inter = turf.intersect(cell.geo, poly.turfPoly);
-
-          if(!inter) continue;
-
-          const interArea = turf.area(inter);
-
-          // 🔥 IGNORE MICRO SLIVERS (CRITICAL)
-          if(interArea < 5) continue;
-
-          // 🔥 USE RATIO (NOT RAW AREA)
-          const score = interArea / cellArea;
-
-          if(score > bestScore){
-            bestScore = score;
-            bestBeat = beat;
-          }
-
-        } catch(e){}
-      }
-
-      // ===============================
-      // 🔥 FALLBACK (CENTROID)
-      // ===============================
-      if(bestBeat === "UNKNOWN"){
-        try {
-          const c = turf.centroid(cell.geo).geometry.coordinates;
-          const pt = turf.point(c);
-
-          for(let poly of polygons){
-
-            let beat = null;
-
-            for(let key in window.beatMap){
-              if(window.beatMap[key].includes(poly.comp)){
-                beat = key;
-                break;
-              }
-            }
-
-            if(!beat) continue;
-
-            if(turf.booleanPointInPolygon(pt, poly.turfPoly)){
-              bestBeat = beat;
-              break;
-            }
-          }
-
-        } catch(e){}
-      }
-
-      cell.beat = bestBeat;
-
-    });
-
-    console.log("🎯 Grid → Beat mapping COMPLETE (ULTRA PERFECT)");
-
-  } catch(e){
-    console.error("❌ Beat assignment error:", e);
-  }
 }// ===== CORE ENGINE =====
 function renderGrid(mode = "current", beat = "ALL"){
 
