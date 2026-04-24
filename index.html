@@ -3656,23 +3656,31 @@ function renderGrid(mode = "current", beat = "ALL"){
         break;
       }
 
-      if(!color) return;
+      // 🔥 CRITICAL FIX: NEVER SKIP CELLS
+      if(!color){
+        color = "#330000";   // faint fallback
+        opacity = 0.12;
+      }
 
       try {
 
-        // 🔥 IMPORTANT: use shared style (avoids tiny seams)
+        // 🔥 IMPROVED RENDER (NO VISUAL GAPS)
         L.geoJSON(cell.geo, {
           style: {
             color: "#222",
-            weight: 0.15,
+            weight: 0.4,              // thicker border (fix visual gaps)
             fillColor: color,
-            fillOpacity: opacity
+            fillOpacity: opacity,
+            smoothFactor: 0           // prevents edge artifacts
           }
         }).addTo(window.gridLayer);
 
         drawn++;
 
-      } catch(e){}
+      } catch(e){
+        console.warn("⚠ Grid render fail:", id);
+      }
+
     });
 
     if(!map.hasLayer(window.gridLayer)){
@@ -3809,8 +3817,7 @@ window.beatMap = {
   console.log("⚡ Grid loaded:", Object.keys(window.gridIndex).length);
 
   return true;
-}
-function buildGridFromBounds(bounds, rangeLayer){
+}function buildGridFromBounds(bounds, rangeLayer){
 
   console.log("🔲 Building CLIPPED grid (FINAL STABLE - NO GAPS)...");
 
@@ -3895,7 +3902,7 @@ function buildGridFromBounds(bounds, rangeLayer){
     const startLon = Math.floor(west / step) * step;
 
     // ===============================
-    // 🔥 GRID LOOP (SIMPLIFIED + STABLE)
+    // 🔥 GRID LOOP (BALANCED FIX)
     // ===============================
     for(let lat = startLat; lat < north; lat += step){
       for(let lon = startLon; lon < east; lon += step){
@@ -3915,25 +3922,40 @@ function buildGridFromBounds(bounds, rangeLayer){
           lat + step/2
         ]);
 
-        let clipped = null;
+        let finalGeo = null;
 
         for(let poly of geoPolys){
 
           try {
 
-            // ✅ PRIMARY → intersection
-           // ✅ BEST: ANY overlap check (NO GAPS)
-if (turf.booleanIntersects(cellPoly, poly)) {
-  clipped = cellPoly; // full cell (no clipping → no cracks)
-  break;
-}
+            // ✅ 1. TRY PERFECT CLIP
+            const part = turf.intersect(cellPoly, poly);
+
+            if(part){
+              finalGeo = part;
+              break;
+            }
+
+            // ✅ 2. FALLBACK → ANY OVERLAP
+            if(turf.booleanIntersects(cellPoly, poly)){
+              finalGeo = cellPoly;
+              break;
+            }
+
+            // ✅ 3. FINAL FALLBACK → CENTER INSIDE
+            if(turf.booleanPointInPolygon(center, poly)){
+              finalGeo = cellPoly;
+              break;
+            }
+
           } catch(e){}
         }
 
-        if(!clipped) continue;
+        if(!finalGeo) continue;
 
+        // ✅ CLEAN ASSIGNMENT (FIXED)
         window.gridIndex[id] = {
-          geo: clipped,
+          geo: finalGeo,
           visited: false
         };
 
@@ -3951,7 +3973,7 @@ if (turf.booleanIntersects(cellPoly, poly)) {
   } catch(e){
     console.error("❌ buildGridFromBounds crash:", e);
   }
-}   
+}  
     
     function clearKMLPreview(){
 
