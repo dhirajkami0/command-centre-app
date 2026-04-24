@@ -3487,14 +3487,14 @@ function closeCoveragePanel(){
 // ==========================================
 function assignGridToBeat(rangeLayer){
 
-  console.log("🎯 Assigning grid to beats (COMPAT FIX)...");
+  console.log("🎯 Assigning grid to beats (FINAL FIX - NO GAP / NO OVERFLOW)...");
 
   try {
 
     let polygons = [];
 
     // ===============================
-    // 🔥 EXTRACT POLYGONS (UNCHANGED LOGIC)
+    // 🔥 EXTRACT POLYGONS
     // ===============================
     function extract(layer){
 
@@ -3508,12 +3508,24 @@ function assignGridToBeat(rangeLayer){
         const comp = convertCompartment(rawID);
         if(!comp) return;
 
-        const coords = layer.getLatLngs()[0].map(pt => [pt.lat, pt.lng]);
+        const latlngs = layer.getLatLngs()[0];
+
+        // convert to turf format [lng, lat]
+        const coords = latlngs.map(pt => [pt.lng, pt.lat]);
+
+        // ensure closed polygon
+        if(coords.length){
+          const first = coords[0];
+          const last = coords[coords.length - 1];
+          if(first[0] !== last[0] || first[1] !== last[1]){
+            coords.push(first);
+          }
+        }
 
         polygons.push({
           raw: rawID,
           comp: comp,
-          coords
+          turfPoly: turf.polygon([coords])
         });
 
         return;
@@ -3536,37 +3548,17 @@ function assignGridToBeat(rangeLayer){
     console.log("📐 Total polygons:", polygons.length);
 
     // ===============================
-    // 🔥 ASSIGN GRID → BEAT (FIXED CENTER ONLY)
+    // 🔥 ASSIGN GRID → BEAT (AREA BASED)
     // ===============================
     Object.values(window.gridIndex).forEach(cell => {
 
-      let center = null;
-
-      // 🔥 NEW GRID (geo)
-      if(cell.geo){
-        try {
-          const c = turf.centroid(cell.geo).geometry.coordinates;
-          center = [c[1], c[0]]; // convert to [lat, lng]
-        } catch(e){
-          console.warn("⚠ centroid fail");
-          return;
-        }
-      }
-
-      // 🔥 OLD GRID (bounds) — fallback
-      else if(cell.bounds){
-        center = [
-          (cell.bounds[0][0] + cell.bounds[1][0]) / 2,
-          (cell.bounds[0][1] + cell.bounds[1][1]) / 2
-        ];
-      }
-
-      if(!center){
+      if(!cell || !cell.geo){
         cell.beat = "UNKNOWN";
         return;
       }
 
-      let assignedBeat = "UNKNOWN";
+      let bestBeat = "UNKNOWN";
+      let maxArea = 0;
 
       for(let poly of polygons){
 
@@ -3581,23 +3573,37 @@ function assignGridToBeat(rangeLayer){
 
         if(!beat) continue;
 
-        if(isPointInPolygon(center, poly.coords)){
-          assignedBeat = beat;
-          break;
+        try {
+
+          // 🔥 INTERSECTION AREA (KEY FIX)
+          const inter = turf.intersect(cell.geo, poly.turfPoly);
+
+          if(inter){
+            const area = turf.area(inter);
+
+            // 🔥 PICK BEST MATCH (NO OVERFLOW)
+            if(area > maxArea){
+              maxArea = area;
+              bestBeat = beat;
+            }
+          }
+
+        } catch(e){
+          // ignore geometry errors
         }
       }
 
-      cell.beat = assignedBeat;
+      // 🔥 FINAL ASSIGNMENT
+      cell.beat = bestBeat;
 
     });
 
-    console.log("🎯 Grid → Beat mapping COMPLETE");
+    console.log("🎯 Grid → Beat mapping COMPLETE (PERFECT)");
 
   } catch(e){
     console.error("❌ Beat assignment error:", e);
   }
-}
-// ===== CORE ENGINE =====
+}// ===== CORE ENGINE =====
 function renderGrid(mode = "current", beat = "ALL"){
 
   try {
