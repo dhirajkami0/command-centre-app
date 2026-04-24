@@ -3486,19 +3486,24 @@ function closeCoveragePanel(){
 // 🎯 ASSIGN GRID TO BEAT (FINAL STABLE VERSION)
 // ==========================================
 function assignGridToBeat(rangeLayer) {
-    console.log("🎯 Slicing grids by beat boundaries (ZERO OVERFLOW / ZERO GAP)...");
+    console.log("🎯 Aligning clipped grids to Beats (STABLE FIX)...");
 
     try {
+        if (!window.gridIndex) {
+            console.error("❌ No gridIndex found. Build the grid first.");
+            return;
+        }
+
         let beatPolygons = {};
 
-        // ===============================
-        // 1. EXTRACT & GROUP POLYGONS BY BEAT
-        // ===============================
+        // 1. EXTRACT POLYGONS AND GROUP BY BEAT
         function extract(layer) {
             if (!layer) return;
             if (layer instanceof L.Polygon) {
                 const props = layer.feature?.properties || {};
                 const rawID = props.ID || props.Name || props.name || "";
+                
+                // Use your existing compartment converter
                 const compName = typeof convertCompartment === "function" ? convertCompartment(rawID) : rawID;
                 if (!compName) return;
 
@@ -3512,6 +3517,7 @@ function assignGridToBeat(rangeLayer) {
 
                 if (assignedBeat !== "UNKNOWN") {
                     let latlngs = layer.getLatLngs();
+                    // Handle nested arrays for MultiPolygons
                     const rings = (Array.isArray(latlngs[0]) && Array.isArray(latlngs[0][0])) ? latlngs[0] : latlngs;
                     let pts = rings.map(p => [p.lng, p.lat]);
                     
@@ -3521,8 +3527,7 @@ function assignGridToBeat(rangeLayer) {
                     
                     if (pts.length >= 4) {
                         if (!beatPolygons[assignedBeat]) beatPolygons[assignedBeat] = [];
-                        // Use buffer(0) to fix any self-intersections in KML geometry
-                        beatPolygons[assignedBeat].push(turf.buffer(turf.polygon([pts]), 0));
+                        beatPolygons[assignedBeat].push(turf.polygon([pts]));
                     }
                 }
             }
@@ -3531,9 +3536,7 @@ function assignGridToBeat(rangeLayer) {
         }
         extract(rangeLayer);
 
-        // ===============================
-        // 2. CREATE UNIFIED MASKS PER BEAT
-        // ===============================
+        // 2. CREATE UNIFIED MASK PER BEAT (to close internal gaps)
         let beatMasks = {};
         for (let beatName in beatPolygons) {
             const polys = beatPolygons[beatName];
@@ -3552,43 +3555,48 @@ function assignGridToBeat(rangeLayer) {
             }
         }
 
-        // ===============================
-        // 3. PRECISE SLICING LOGIC
-        // ===============================
+        // 3. ASSIGN VIA CENTROID (Ensures alignment with your buildGrid function)
         Object.entries(window.gridIndex).forEach(([id, cell]) => {
             if (!cell.geo) return;
 
-            // Store multiple geometry slices for cells that cross boundaries
-            cell.slicedBeats = {}; 
+            let assignedBeat = "UNKNOWN";
 
-            for (let beatName in beatMasks) {
-                try {
-                    // Check if square even touches this beat
-                    if (turf.booleanIntersects(cell.geo, beatMasks[beatName])) {
-                        // Physically 'Cut' the square using the beat boundary
-                        const intersection = turf.intersect(cell.geo, beatMasks[beatName]);
-                        
-                        if (intersection && turf.area(intersection) > 0.5) {
-                            cell.slicedBeats[beatName] = intersection;
+            try {
+                // Calculate the center of your already clipped grid cell
+                const center = turf.centroid(cell.geo);
+
+                for (let beatName in beatMasks) {
+                    if (turf.booleanPointInPolygon(center, beatMasks[beatName])) {
+                        assignedBeat = beatName;
+                        break;
+                    }
+                }
+
+                // Final Fallback: If centroid is outside (on edges), use intersection check
+                if (assignedBeat === "UNKNOWN") {
+                    for (let beatName in beatMasks) {
+                        if (turf.booleanIntersects(cell.geo, beatMasks[beatName])) {
+                            assignedBeat = beatName;
+                            break;
                         }
                     }
-                } catch (e) { continue; }
+                }
+            } catch (e) {
+                assignedBeat = "UNKNOWN";
             }
 
-            // For Stats & Legacy: Assign 'Primary' beat to the largest slice
-            let maxArea = -1;
-            let primaryBeat = "UNKNOWN";
-            Object.entries(cell.slicedBeats).forEach(([bName, bGeo]) => {
-                const a = turf.area(bGeo);
-                if (a > maxArea) {
-                    maxArea = a;
-                    primaryBeat = bName;
-                }
-            });
-            cell.beat = primaryBeat;
+            // Assign the beat to the cell
+            cell.beat = assignedBeat;
+            
+            // 🔥 CRITICAL: We use cell.geo (the perfect clipped shape) for rendering
+            // We set slicedBeats to just contain the cell.geo so your current render logic works
+            cell.slicedBeats = {};
+            if (assignedBeat !== "UNKNOWN") {
+                cell.slicedBeats[assignedBeat] = cell.geo;
+            }
         });
 
-        console.log("✅ Beat Slicing COMPLETE. No overflows or gaps possible.");
+        console.log("✅ Beat alignment complete.");
 
     } catch (e) {
         console.error("❌ assignGridToBeat error:", e);
