@@ -1007,7 +1007,8 @@ window.addEventListener("unhandledrejection", function (e) {
   ">
       📲 Install App
     </button>
-  </div><div id="updateBanner" style="
+  </div>
+  <div id="updateBanner" style="
   display:none;
   position:fixed;
   bottom:20px;
@@ -1505,7 +1506,7 @@ let newWorker = null;
 let isUpdating = false;
 let refreshing = false;
 
-const APP_VERSION = "v1005";
+const APP_VERSION = "v1006";
 console.log("🔥 VERSION", APP_VERSION);
 
 
@@ -1526,7 +1527,7 @@ window.addEventListener("load", () => {
 
 
 // ======================================================
-// 🔧 REGISTER SERVICE WORKER
+// 🔧 REGISTER SW
 // ======================================================
 if ("serviceWorker" in navigator) {
 
@@ -1540,19 +1541,12 @@ if ("serviceWorker" in navigator) {
       setInterval(() => reg.update(), 60000);
       reg.update();
 
-      // =========================
-      // ✅ WAITING EXISTS
-      // =========================
       if (reg.waiting) {
-        console.log("🟢 SW already waiting");
         newWorker = reg.waiting;
         showUpdateUI();
         scheduleAutoUpdate();
       }
 
-      // =========================
-      // 🆕 UPDATE FOUND
-      // =========================
       reg.addEventListener("updatefound", () => {
 
         const installing = reg.installing;
@@ -1562,9 +1556,7 @@ if ("serviceWorker" in navigator) {
           if (installing.state === "installed" && navigator.serviceWorker.controller) {
 
             if (reg.waiting) {
-              console.log("🟢 SW ready (waiting)");
               newWorker = reg.waiting;
-
               showUpdateUI();
               scheduleAutoUpdate();
             }
@@ -1575,22 +1567,14 @@ if ("serviceWorker" in navigator) {
 
       });
 
-      // =========================
-      // 📱 MOBILE DELAY FIX
-      // =========================
       setTimeout(() => {
         if (reg.waiting && !newWorker) {
-          console.log("🟢 Delayed waiting detected");
-
           newWorker = reg.waiting;
           showUpdateUI();
           scheduleAutoUpdate();
         }
       }, 3000);
 
-    })
-    .catch(err => {
-      console.error("❌ SW registration failed:", err);
     });
 
   });
@@ -1613,45 +1597,20 @@ function showUpdateUI() {
 
 
 // ======================================================
-// 🤖 AUTO UPDATE (SAFE)
+// 🤖 AUTO UPDATE
 // ======================================================
 function scheduleAutoUpdate() {
 
   setTimeout(() => {
 
-    // 🔥 DO NOT BLOCK MANUAL CLICK
-    if (isUpdating) {
-      console.log("⛔ Auto skipped (manual allowed)");
-      return;
-    }
-
+    if (isUpdating) return;
     if (!newWorker) return;
 
-    if (window.isFormOpen || window.isUserTyping) {
-      console.log("⛔ User busy → skip auto update");
-      return;
-    }
+    if (window.isFormOpen || window.isUserTyping) return;
 
     console.log("⚡ Auto updating");
 
-    isUpdating = true;
-
-    updateUIToUpdating();
-
-    try {
-      newWorker.postMessage({ action: "skipWaiting" });
-    } catch (e) {
-      console.error("❌ Auto update failed:", e);
-      resetUpdateUI();
-    }
-
-    // 🔥 FAILSAFE RESET
-    setTimeout(() => {
-      if (isUpdating && !refreshing) {
-        console.warn("⚠ Update stuck → reset");
-        resetUpdateUI();
-      }
-    }, 15000);
+    startUpdate();
 
   }, 10000);
 
@@ -1659,7 +1618,7 @@ function scheduleAutoUpdate() {
 
 
 // ======================================================
-// 🔘 MANUAL UPDATE (FIXED)
+// 🔘 MANUAL UPDATE
 // ======================================================
 function handleManualUpdate() {
 
@@ -1670,19 +1629,36 @@ function handleManualUpdate() {
     return;
   }
 
-  // 🔥 FORCE RESET → allows retry
-  isUpdating = false;
+  startUpdate();
+
+}
+
+
+// ======================================================
+// 🔥 CORE UPDATE FUNCTION (FIXED)
+// ======================================================
+function startUpdate() {
 
   isUpdating = true;
-
   updateUIToUpdating();
 
   try {
     newWorker.postMessage({ action: "skipWaiting" });
   } catch (e) {
-    console.error("❌ Manual update failed:", e);
+    console.error("❌ Update failed:", e);
     resetUpdateUI();
   }
+
+  // 🔥 GUARANTEED RECOVERY (CRITICAL FIX)
+  setTimeout(() => {
+
+    if (!refreshing) {
+      console.warn("⚠ SW did not activate → forcing reload");
+
+      location.reload(); // 🔥 FORCE UPDATE
+    }
+
+  }, 8000); // wait 8 sec max
 
 }
 
@@ -1692,10 +1668,7 @@ function handleManualUpdate() {
 // ======================================================
 function updateUIToUpdating() {
 
-  const banner = document.getElementById("updateBanner");
   const btn = document.getElementById("updateBtn");
-
-  if (banner) banner.style.display = "block";
 
   if (btn) {
     btn.innerText = "Updating...";
@@ -1728,9 +1701,7 @@ navigator.serviceWorker.addEventListener("controllerchange", () => {
 
   console.log("🔄 New version active");
 
-  setTimeout(() => {
-    location.reload();
-  }, 500);
+  location.reload();
 
 });/* ============================================================
    🔥 GLOBAL MASTER DATA (CRASH-PROOF)
