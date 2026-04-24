@@ -3350,7 +3350,30 @@ function loadRangeKML() {
   cell.visited = true;
 
   // ✅ save current month
-  const current = JSON.parse(localStorage.getItem("grid_current") || "{}");
+  let current = {};
+
+switch(mode){
+
+  case "today":
+    current = getTodayData();
+  break;
+
+  case "current":
+    current = getCurrentMonthData();
+  break;
+
+  case "visited":
+    current = getTodayData();
+  break;
+
+  case "unvisited":
+    current = getTodayData();
+  break;
+
+  case "cumulative":
+    current = getCurrentMonthData();
+  break;
+}
   current[id] = true;
   localStorage.setItem("grid_current", JSON.stringify(current));
 
@@ -3727,7 +3750,93 @@ function renderGrid(mode = "current", beat = "ALL"){
   } catch(e){
     console.error("❌ renderGrid error:", e);
   }
-}// ===== UI EVENTS =====
+}
+    
+    function markVisitedHybrid(tracks){
+
+  console.log("📍 Hybrid marking started");
+
+  let visited = {};
+
+  Object.entries(window.gridIndex).forEach(([id, cell]) => {
+
+    if(!cell.geo) return;
+
+    const bbox = turf.bbox(cell.geo);
+    const [minLon, minLat, maxLon, maxLat] = bbox;
+
+    for(let t of tracks){
+
+      if(!t.track || t.track.length < 2) continue;
+
+      for(let i = 1; i < t.track.length; i++){
+
+        const p1 = t.track[i-1];
+        const p2 = t.track[i];
+
+        // ⚡ FAST CHECK (line-box)
+        if(lineIntersectsBox(
+          p1[0], p1[1],
+          p2[0], p2[1],
+          minLat, minLon,
+          maxLat, maxLon
+        )){
+          visited[id] = true;
+          break;
+        }
+
+        // 🎯 PRECISE FALLBACK
+        const line = turf.lineString([
+          [p1[1], p1[0]],
+          [p2[1], p2[0]]
+        ]);
+
+        if(turf.booleanIntersects(line, cell.geo)){
+          visited[id] = true;
+          break;
+        }
+
+      }
+
+      if(visited[id]) break;
+    }
+
+  });
+
+  // 🔥 STORE TODAY
+  const todayKey = getTodayKey();
+  localStorage.setItem(todayKey, JSON.stringify(visited));
+
+  console.log("✅ Hybrid marking complete:", Object.keys(visited).length);
+}
+    // ===== UI EVENTS =====
+    function getTodayKey(){
+  return "grid_" + new Date().toISOString().slice(0,10);
+}
+
+    function getTodayData(){
+  const key = getTodayKey();
+  return JSON.parse(localStorage.getItem(key) || "{}");
+}
+
+  function getCurrentMonthData(){
+
+  let result = {};
+
+  const today = new Date();
+  const start = new Date(today.getFullYear(), today.getMonth(), 1);
+
+  for(let d = new Date(start); d <= today; d.setDate(d.getDate()+1)){
+
+    const key = "grid_" + d.toISOString().slice(0,10);
+    const data = JSON.parse(localStorage.getItem(key) || "{}");
+
+    Object.keys(data).forEach(id => result[id] = true);
+  }
+
+  return result;
+}  
+    
 function applyMode(mode){
 
   window.currentCoverageMode = mode;
