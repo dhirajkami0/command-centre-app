@@ -1428,7 +1428,7 @@ function logout(){
   });
 }
 
-  let appStarted = false;
+ let appStarted = false;
 
 function startApp(){
 
@@ -1442,7 +1442,7 @@ function startApp(){
     // ================= LOAD CORE MODULES =================
     loadSightings();
 
-    // 🔥 INIT DUTY CONTROL (THIS WILL CONTROL GPS)
+    // 🔥 INIT DUTY CONTROL
     if(typeof initDutyControl === "function"){
       initDutyControl();
     } else {
@@ -1460,7 +1460,7 @@ function startApp(){
     cleanOldMessages();
 
     // ================= CACHE LOAD =================
-    loadCacheOnStart(); // ✅ KEEP HERE (correct)
+    loadCacheOnStart();
 
     // ================= OFFLINE CLEAN =================
     if(window.isDutyActive !== true){
@@ -1470,24 +1470,65 @@ function startApp(){
       } catch(e){}
     }
 
-    // ================= 🔥 GRID SAFE RENDER =================
-    // Wait until grid is ready before rendering
-    setTimeout(() => {
+    // ======================================================
+    // 🔥 GRID INIT LOOP (ROBUST - NO TIMING ISSUES)
+    // ======================================================
+    let attempts = 0;
 
+    const gridInitInterval = setInterval(() => {
+
+      attempts++;
+
+      // 🔍 Wait until rangeLayer is ready
+      if(!window.rangeLayer){
+        console.log("⏳ Waiting for rangeLayer...");
+        if(attempts > 10) clearInterval(gridInitInterval);
+        return;
+      }
+
+      // 🔍 Check if grid already exists
+      if(!window.gridIndex || !Object.keys(window.gridIndex).length){
+
+        console.log("🔁 Building grid...");
+
+        try {
+          const bounds = rangeLayer.getBounds();
+
+          if(bounds && bounds.isValid()){
+            buildGridFromBounds(bounds, rangeLayer);
+            assignGridToBeat(rangeLayer);
+            console.log("✅ Grid built & assigned");
+          } else {
+            console.warn("⚠ Invalid bounds");
+            return;
+          }
+
+        } catch(e){
+          console.error("❌ Grid build error:", e);
+          return;
+        }
+      }
+
+      // 🎯 RENDER AFTER GRID READY
       if(window.gridIndex && Object.keys(window.gridIndex).length){
 
-        console.log("🎯 Initial grid render");
+        console.log("🎯 Rendering grid");
 
         renderGrid(
           window.currentCoverageMode || "today",
           window.currentBeat || "ALL"
         );
 
-      } else {
-        console.warn("⚠ Grid not ready yet (will render later)");
+        clearInterval(gridInitInterval);
       }
 
-    }, 2000); // 🔥 safe delay for grid build
+      // 🔥 FAIL SAFE STOP
+      if(attempts > 10){
+        console.warn("⚠ Grid init timeout");
+        clearInterval(gridInitInterval);
+      }
+
+    }, 500); // check every 0.5 sec
 
     console.log("✅ App initialization complete (GPS controlled by duty)");
 
@@ -3808,7 +3849,27 @@ function renderGrid(mode = "today", beat = "ALL"){
   }
 }
     
-    
+function ensureGridReady(){
+
+  if(window.gridIndex && Object.keys(window.gridIndex).length){
+    console.log("✅ Grid already ready");
+    return;
+  }
+
+  console.log("🔁 Grid missing → rebuilding");
+
+  if(!window.rangeLayer){
+    console.warn("⚠ rangeLayer not ready");
+    return;
+  }
+
+  const bounds = rangeLayer.getBounds();
+
+  buildGridFromBounds(bounds, rangeLayer);
+  assignGridToBeat(rangeLayer);
+
+  console.log("✅ Grid rebuilt");
+}    
     // ===== UI EVENTS =====
    
 
