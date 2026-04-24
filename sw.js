@@ -2,7 +2,7 @@
    🔥 GREENGUARD SERVICE WORKER (SMART UPDATE)
 ========================================= */
 
-const CACHE_NAME = "greenguard-v27"; // 🔥 CHANGE EVERY UPDATE
+const CACHE_NAME = "greenguard-v28"; // 🔥 CHANGE EVERY UPDATE
 
 const APP_SHELL = [
   "./",
