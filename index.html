@@ -1428,7 +1428,7 @@ function logout(){
   });
 }
 
-   let appStarted = false;
+  let appStarted = false;
 
 function startApp(){
 
@@ -1454,9 +1454,15 @@ function startApp(){
       console.warn("⚠ GPS was running unexpectedly → stopping");
       stopAutoGPS();
     }
-startChat();       // existing
-cleanOldMessages(); // 🔥 ADD THIS LINE HERE
-    // 🔥 CLEAR any leftover offline data if not on duty
+
+    // ================= CHAT =================
+    startChat();
+    cleanOldMessages();
+
+    // ================= CACHE LOAD =================
+    loadCacheOnStart(); // ✅ KEEP HERE (correct)
+
+    // ================= OFFLINE CLEAN =================
     if(window.isDutyActive !== true){
       try {
         localStorage.removeItem("offlineGPS");
@@ -1464,13 +1470,32 @@ cleanOldMessages(); // 🔥 ADD THIS LINE HERE
       } catch(e){}
     }
 
+    // ================= 🔥 GRID SAFE RENDER =================
+    // Wait until grid is ready before rendering
+    setTimeout(() => {
+
+      if(window.gridIndex && Object.keys(window.gridIndex).length){
+
+        console.log("🎯 Initial grid render");
+
+        renderGrid(
+          window.currentCoverageMode || "today",
+          window.currentBeat || "ALL"
+        );
+
+      } else {
+        console.warn("⚠ Grid not ready yet (will render later)");
+      }
+
+    }, 2000); // 🔥 safe delay for grid build
+
     console.log("✅ App initialization complete (GPS controlled by duty)");
 
   } catch(e){
     console.error("❌ startApp crash:", e);
   }
 
-} /* ===============================
+}/* ===============================
    🔐 MAIN PROFILE FUNCTION
 =============================== */
 
@@ -3508,6 +3533,9 @@ function closeCoveragePanel(){
 // ==========================================
 // 🎯 ASSIGN GRID TO BEAT (FINAL STABLE VERSION)
 // ==========================================
+// ======================================================
+// 🎯 ASSIGN GRID → BEAT (FINAL STABLE - NO GAP / NO OVERFLOW)
+// ======================================================
 function assignGridToBeat(rangeLayer){
 
   console.log("🎯 Assigning grid to beats (FINAL STABLE)...");
@@ -3516,9 +3544,6 @@ function assignGridToBeat(rangeLayer){
 
     let polygons = [];
 
-    // ===============================
-    // 🔥 EXTRACT POLYGONS
-    // ===============================
     function extract(layer){
 
       if (!layer) return;
@@ -3535,7 +3560,6 @@ function assignGridToBeat(rangeLayer){
 
         let coords = latlngs.map(pt => [pt.lng, pt.lat]);
 
-        // close polygon
         if(coords.length){
           const f = coords[0];
           const l = coords[coords.length - 1];
@@ -3564,9 +3588,6 @@ function assignGridToBeat(rangeLayer){
 
     console.log("📐 Total polygons:", polygons.length);
 
-    // ===============================
-    // 🔥 ASSIGN GRID → BEAT (ROBUST)
-    // ===============================
     Object.values(window.gridIndex).forEach(cell => {
 
       if(!cell.geo){
@@ -3599,7 +3620,6 @@ function assignGridToBeat(rangeLayer){
 
           const interArea = turf.area(inter);
 
-          // 🔥 ignore noise
           if(interArea < 5) continue;
 
           const score = interArea / cellArea;
@@ -3612,7 +3632,6 @@ function assignGridToBeat(rangeLayer){
         } catch(e){}
       }
 
-      // 🔥 fallback
       if(bestBeat === "UNKNOWN"){
         try {
           const c = turf.centroid(cell.geo).geometry.coordinates;
@@ -3644,13 +3663,68 @@ function assignGridToBeat(rangeLayer){
 
     });
 
-    console.log("✅ Grid → Beat mapping COMPLETE (STABLE)");
+    console.log("✅ Grid → Beat mapping COMPLETE");
 
   } catch(e){
     console.error("❌ assignGridToBeat error:", e);
   }
-}// ===== CORE ENGINE =====
-function renderGrid(mode = "current", beat = "ALL"){
+}
+
+
+// ======================================================
+// 🧠 GRID CACHE (LIVE + MONTH)
+// ======================================================
+window.gridCache = window.gridCache || {
+  today: {},
+  month: {}
+};
+
+function getTodayKey(){
+  return "grid_" + new Date().toISOString().slice(0,10);
+}
+
+function loadCacheOnStart(){
+  const key = getTodayKey();
+  window.gridCache.today = JSON.parse(localStorage.getItem(key) || "{}");
+  updateMonthCache();
+}
+
+function updateMonthCache(){
+
+  let result = {};
+
+  const today = new Date();
+  const start = new Date(today.getFullYear(), today.getMonth(), 1);
+
+  for(let d = new Date(start); d <= today; d.setDate(d.getDate()+1)){
+    const key = "grid_" + d.toISOString().slice(0,10);
+    const data = JSON.parse(localStorage.getItem(key) || "{}");
+    Object.keys(data).forEach(id => result[id] = true);
+  }
+
+  window.gridCache.month = result;
+}
+
+function updateVisitedCache(newVisited){
+
+  const key = getTodayKey();
+  let todayData = JSON.parse(localStorage.getItem(key) || "{}");
+
+  Object.keys(newVisited).forEach(id => {
+    todayData[id] = true;
+  });
+
+  localStorage.setItem(key, JSON.stringify(todayData));
+
+  window.gridCache.today = todayData;
+  updateMonthCache();
+}
+
+
+// ======================================================
+// 🚀 RENDER GRID (UPDATED - CACHE BASED)
+// ======================================================
+function renderGrid(mode = "today", beat = "ALL"){
 
   try {
 
@@ -3665,9 +3739,23 @@ function renderGrid(mode = "current", beat = "ALL"){
 
     window.gridLayer.clearLayers();
 
-    const current = JSON.parse(localStorage.getItem("grid_current") || "{}");
+    // 🔥 USE CACHE (NOT old grid_current)
+    let current = {};
 
-    let drawn = 0;
+    switch(mode){
+
+      case "today":
+      case "visited":
+      case "unvisited":
+        current = window.gridCache.today || {};
+      break;
+
+      case "current":
+      case "cumulative":
+        current = window.gridCache.month || {};
+      break;
+    }
+
     let total = 0;
     let visited = 0;
 
@@ -3677,61 +3765,29 @@ function renderGrid(mode = "current", beat = "ALL"){
 
       if(beat !== "ALL" && cell.beat !== beat) return;
 
-      total++;
-
       const isVisited = !!current[id];
+
+      // 🔥 FILTER MODES
+      if(mode === "visited" && !isVisited) return;
+      if(mode === "unvisited" && isVisited) return;
+
+      total++;
       if(isVisited) visited++;
 
-      let color = null;
-      let opacity = 0.35;
-
-      switch(mode){
-
-        case "current":
-          color = isVisited ? "#00ff00" : "#ff0000";
-          opacity = isVisited ? 0.5 : 0.3;
-        break;
-
-        case "visited":
-          if(isVisited){
-            color = "#00ff00";
-            opacity = 0.6;
-          }
-        break;
-
-        case "unvisited":
-          if(!isVisited){
-            color = "#ff0000";
-            opacity = 0.4;
-          }
-        break;
-
-        case "cumulative":
-          color = isVisited ? "#00ff00" : "#330000";
-          opacity = isVisited ? 0.5 : 0.15;
-        break;
-      }
-
-      // 🔥 CRITICAL FIX: NEVER SKIP CELLS
-      if(!color){
-        color = "#330000";   // faint fallback
-        opacity = 0.12;
-      }
+      const color = isVisited ? "#00ff00" : "#ff0000";
+      const opacity = isVisited ? 0.5 : 0.3;
 
       try {
 
-        // 🔥 IMPROVED RENDER (NO VISUAL GAPS)
         L.geoJSON(cell.geo, {
           style: {
             color: "#222",
-            weight: 0.4,              // thicker border (fix visual gaps)
+            weight: 0.4,
             fillColor: color,
             fillOpacity: opacity,
-            smoothFactor: 0           // prevents edge artifacts
+            smoothFactor: 0
           }
         }).addTo(window.gridLayer);
-
-        drawn++;
 
       } catch(e){
         console.warn("⚠ Grid render fail:", id);
@@ -3752,9 +3808,58 @@ function renderGrid(mode = "current", beat = "ALL"){
   }
 }
     
-    function markVisitedHybrid(tracks){
+    
+    // ===== UI EVENTS =====
+   
 
-  console.log("📍 Hybrid marking started");
+   // ===============================
+// 🔥 GLOBAL CACHE
+// ===============================
+window.gridCache = {
+  today: {},
+  month: {}
+};
+
+function getTodayKey(){
+  return "grid_" + new Date().toISOString().slice(0,10);
+}
+
+function loadCacheOnStart(){
+  const todayKey = getTodayKey();
+  window.gridCache.today = JSON.parse(localStorage.getItem(todayKey) || "{}");
+  updateMonthCache();
+}
+
+function updateMonthCache(){
+  let result = {};
+
+  const today = new Date();
+  const start = new Date(today.getFullYear(), today.getMonth(), 1);
+
+  for(let d = new Date(start); d <= today; d.setDate(d.getDate()+1)){
+    const key = "grid_" + d.toISOString().slice(0,10);
+    const data = JSON.parse(localStorage.getItem(key) || "{}");
+    Object.keys(data).forEach(id => result[id] = true);
+  }
+
+  window.gridCache.month = result;
+}
+
+    function updateVisitedCache(newVisited){
+
+  const todayKey = getTodayKey();
+  let todayData = JSON.parse(localStorage.getItem(todayKey) || "{}");
+
+  Object.keys(newVisited).forEach(id => {
+    todayData[id] = true;
+  });
+
+  localStorage.setItem(todayKey, JSON.stringify(todayData));
+
+  window.gridCache.today = todayData;
+  updateMonthCache();
+}
+function markVisitedHybrid(tracks){
 
   let visited = {};
 
@@ -3774,7 +3879,7 @@ function renderGrid(mode = "current", beat = "ALL"){
         const p1 = t.track[i-1];
         const p2 = t.track[i];
 
-        // ⚡ FAST CHECK (line-box)
+        // FAST
         if(lineIntersectsBox(
           p1[0], p1[1],
           p2[0], p2[1],
@@ -3785,7 +3890,7 @@ function renderGrid(mode = "current", beat = "ALL"){
           break;
         }
 
-        // 🎯 PRECISE FALLBACK
+        // PRECISE
         const line = turf.lineString([
           [p1[1], p1[0]],
           [p2[1], p2[0]]
@@ -3795,7 +3900,6 @@ function renderGrid(mode = "current", beat = "ALL"){
           visited[id] = true;
           break;
         }
-
       }
 
       if(visited[id]) break;
@@ -3803,39 +3907,9 @@ function renderGrid(mode = "current", beat = "ALL"){
 
   });
 
-  // 🔥 STORE TODAY
-  const todayKey = getTodayKey();
-  localStorage.setItem(todayKey, JSON.stringify(visited));
-
-  console.log("✅ Hybrid marking complete:", Object.keys(visited).length);
-}
-    // ===== UI EVENTS =====
-    function getTodayKey(){
-  return "grid_" + new Date().toISOString().slice(0,10);
+  return visited;
 }
 
-    function getTodayData(){
-  const key = getTodayKey();
-  return JSON.parse(localStorage.getItem(key) || "{}");
-}
-
-  function getCurrentMonthData(){
-
-  let result = {};
-
-  const today = new Date();
-  const start = new Date(today.getFullYear(), today.getMonth(), 1);
-
-  for(let d = new Date(start); d <= today; d.setDate(d.getDate()+1)){
-
-    const key = "grid_" + d.toISOString().slice(0,10);
-    const data = JSON.parse(localStorage.getItem(key) || "{}");
-
-    Object.keys(data).forEach(id => result[id] = true);
-  }
-
-  return result;
-}  
     
 function applyMode(mode){
 
