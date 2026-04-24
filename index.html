@@ -3922,18 +3922,11 @@ function buildGridFromBounds(bounds, rangeLayer){
           try {
 
             // ✅ PRIMARY → intersection
-            const part = turf.intersect(cellPoly, poly);
-            if(part){
-              clipped = part;
-              break;
-            }
-
-            // ✅ FALLBACK → center inside
-            if(turf.booleanPointInPolygon(center, poly)){
-              clipped = cellPoly;
-              break;
-            }
-
+           // ✅ BEST: ANY overlap check (NO GAPS)
+if (turf.booleanIntersects(cellPoly, poly)) {
+  clipped = cellPoly; // full cell (no clipping → no cracks)
+  break;
+}
           } catch(e){}
         }
 
