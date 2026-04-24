@@ -1492,10 +1492,13 @@ cleanOldMessages(); // 🔥 ADD THIS LINE HERE
 // ======================================================
 // 🔥 GLOBAL STATE
 // ======================================================
+// ======================================================
+// 🔥 GLOBAL STATE
+// ======================================================
 let newWorker = null;
-let isUpdating = false;   // 🔥 prevents duplicate toasts
+let isUpdating = false;
 
-const APP_VERSION = "v1002";
+const APP_VERSION = "v1003";
 console.log("🔥 VERSION", APP_VERSION);
 
 
@@ -1516,7 +1519,7 @@ window.addEventListener("load", () => {
 
 
 // ======================================================
-// 🔧 REGISTER SW
+// 🔧 REGISTER SERVICE WORKER
 // ======================================================
 if ("serviceWorker" in navigator) {
 
@@ -1532,11 +1535,12 @@ if ("serviceWorker" in navigator) {
       reg.update();
 
       // =========================
-      // ✅ WAITING
+      // ✅ WAITING (ALREADY READY)
       // =========================
       if (reg.waiting) {
         newWorker = reg.waiting;
         showUpdateUI();
+        scheduleAutoUpdate();
       }
 
       // =========================
@@ -1549,10 +1553,13 @@ if ("serviceWorker" in navigator) {
         installing.addEventListener("statechange", () => {
 
           if (installing.state === "installed" && navigator.serviceWorker.controller) {
+
             console.log("🚀 New version ready");
 
             newWorker = installing;
+
             showUpdateUI();
+            scheduleAutoUpdate();
           }
 
         });
@@ -1560,12 +1567,13 @@ if ("serviceWorker" in navigator) {
       });
 
       // =========================
-      // 📱 MOBILE FIX
+      // 📱 MOBILE DELAY FIX
       // =========================
       setTimeout(() => {
-        if (reg.waiting) {
+        if (reg.waiting && !newWorker) {
           newWorker = reg.waiting;
           showUpdateUI();
+          scheduleAutoUpdate();
         }
       }, 3000);
 
@@ -1577,54 +1585,79 @@ if ("serviceWorker" in navigator) {
 
 
 // ======================================================
-// 🎯 SHOW UPDATE UI
+// 🎯 SHOW UPDATE UI (ONCE ONLY)
 // ======================================================
 function showUpdateUI() {
 
   const banner = document.getElementById("updateBanner");
 
-  // 🔥 STOP duplicate calls using DOM state
+  // 🔥 PREVENT DUPLICATE
   if (!banner || banner.style.display === "block") return;
 
   banner.style.display = "block";
 
 }
+
+
 // ======================================================
-// 🔘 MANUAL UPDATE (ONLY TRIGGER)
+// 🤖 AUTO UPDATE (BACKGROUND)
+// ======================================================
+function scheduleAutoUpdate() {
+
+  setTimeout(() => {
+
+    if (isUpdating) return;
+
+    if (window.isFormOpen || window.isUserTyping) {
+      console.log("⛔ User busy → skip auto update");
+      return;
+    }
+
+    if (newWorker) {
+      console.log("⚡ Auto updating (background)");
+
+      isUpdating = true;
+
+      try {
+        newWorker.postMessage({ action: "skipWaiting" });
+      } catch (e) {
+        console.error("❌ Auto update failed:", e);
+        isUpdating = false;
+      }
+    }
+
+  }, 10000); // 10 sec delay
+
+}
+
+
+// ======================================================
+// 🔘 MANUAL UPDATE
 // ======================================================
 function handleManualUpdate() {
 
   console.log("🟢 Manual update clicked");
 
-  if (isUpdating) return; // 🔥 prevent double click
+  if (isUpdating) return;
 
   const banner = document.getElementById("updateBanner");
   const btn = document.getElementById("updateBtn");
 
-  if (banner) banner.style.display = "none";
-
-  if (!newWorker) {
-    showToast("⚠️ No update available", "warning");
-    return;
-  }
+  if (!newWorker) return;
 
   isUpdating = true;
+
+  if (banner) banner.style.display = "none";
 
   if (btn) {
     btn.innerText = "Updating...";
     btn.disabled = true;
   }
 
-  // ✅ ONLY ONE TOAST HERE
-  if (window.showToast) {
-    showToast("Updating app...");
-  }
-
   try {
     newWorker.postMessage({ action: "skipWaiting" });
   } catch (e) {
-    console.error("❌ Update failed:", e);
-    showToast("❌ Update failed", "error");
+    console.error("❌ Manual update failed:", e);
     isUpdating = false;
   }
 
@@ -1632,34 +1665,7 @@ function handleManualUpdate() {
 
 
 // ======================================================
-// 🤖 AUTO UPDATE (SILENT, NO TOAST)
-// ======================================================
-function autoUpdate() {
-
-  if (isUpdating) return;
-
-  if (window.isFormOpen || window.isUserTyping) {
-    console.log("⛔ Skip auto update (user busy)");
-    return;
-  }
-
-  if (newWorker) {
-    console.log("⚡ Auto updating silently");
-    isUpdating = true;
-
-    try {
-      newWorker.postMessage({ action: "skipWaiting" });
-    } catch(e){
-      console.error("❌ Auto update error:", e);
-      isUpdating = false;
-    }
-  }
-
-}
-
-
-// ======================================================
-// 🔄 ACTIVATE → RELOAD
+// 🔄 ACTIVATE → RELOAD (NO TOAST)
 // ======================================================
 let refreshing = false;
 
@@ -1670,16 +1676,11 @@ navigator.serviceWorker.addEventListener("controllerchange", () => {
 
   console.log("🔄 New version active");
 
-  // ✅ ONLY ONE FINAL TOAST
-  if (window.showToast) {
-    showToast("✅ App updated");
-  }
-
   setTimeout(() => {
     location.reload();
-  }, 800);
+  }, 500);
 
-});    /* ============================================================
+});  /* ============================================================
    🔥 GLOBAL MASTER DATA (CRASH-PROOF)
 ============================================================ */
 
