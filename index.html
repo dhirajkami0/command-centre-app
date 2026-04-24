@@ -5446,7 +5446,14 @@ console.log("👤 STAFF DEBUG:", {
         <div style="font-family:Segoe UI">
 
           <b>👤 ${s.name}</b><br>
-          📞 ${s.mobile || "N/A"}<br>
+        📞 ${
+  s.mobile
+    ? `<a href="tel:${s.mobile}" title="Call ${s.name}" 
+         style="color:#00e676;font-size:18px;text-decoration:none;">
+         <i class="fa-solid fa-phone"></i> ${s.mobile}
+       </a>`
+    : "N/A"
+}<br>
 
           <hr>
 
