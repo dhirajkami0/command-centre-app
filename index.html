@@ -1498,11 +1498,14 @@ cleanOldMessages(); // 🔥 ADD THIS LINE HERE
 // ======================================================
 // 🔥 GLOBAL STATE
 // ======================================================
+// ======================================================
+// 🔥 GLOBAL STATE
+// ======================================================
 let newWorker = null;
 let isUpdating = false;
 let refreshing = false;
 
-const APP_VERSION = "v1004";
+const APP_VERSION = "v1005";
 console.log("🔥 VERSION", APP_VERSION);
 
 
@@ -1534,12 +1537,11 @@ if ("serviceWorker" in navigator) {
 
       console.log("✅ SW Registered");
 
-      // 🔁 force update check
       setInterval(() => reg.update(), 60000);
       reg.update();
 
       // =========================
-      // ✅ CASE 1: WAITING EXISTS
+      // ✅ WAITING EXISTS
       // =========================
       if (reg.waiting) {
         console.log("🟢 SW already waiting");
@@ -1549,7 +1551,7 @@ if ("serviceWorker" in navigator) {
       }
 
       // =========================
-      // 🆕 CASE 2: NEW UPDATE
+      // 🆕 UPDATE FOUND
       // =========================
       reg.addEventListener("updatefound", () => {
 
@@ -1559,16 +1561,12 @@ if ("serviceWorker" in navigator) {
 
           if (installing.state === "installed" && navigator.serviceWorker.controller) {
 
-            // 🔥 CRITICAL FIX → ONLY USE WAITING
             if (reg.waiting) {
               console.log("🟢 SW ready (waiting)");
-
               newWorker = reg.waiting;
 
               showUpdateUI();
               scheduleAutoUpdate();
-            } else {
-              console.log("⚠ Installed but no waiting yet");
             }
 
           }
@@ -1601,7 +1599,7 @@ if ("serviceWorker" in navigator) {
 
 
 // ======================================================
-// 🎯 SHOW UPDATE UI (ONCE ONLY)
+// 🎯 SHOW UPDATE UI
 // ======================================================
 function showUpdateUI() {
 
@@ -1621,20 +1619,20 @@ function scheduleAutoUpdate() {
 
   setTimeout(() => {
 
-    if (isUpdating) return;
-
-    // 🔥 ONLY if valid waiting worker
-    if (!newWorker) {
-      console.log("⛔ No waiting SW → skip auto update");
+    // 🔥 DO NOT BLOCK MANUAL CLICK
+    if (isUpdating) {
+      console.log("⛔ Auto skipped (manual allowed)");
       return;
     }
+
+    if (!newWorker) return;
 
     if (window.isFormOpen || window.isUserTyping) {
       console.log("⛔ User busy → skip auto update");
       return;
     }
 
-    console.log("⚡ Auto updating (safe)");
+    console.log("⚡ Auto updating");
 
     isUpdating = true;
 
@@ -1647,10 +1645,10 @@ function scheduleAutoUpdate() {
       resetUpdateUI();
     }
 
-    // 🔥 FAILSAFE (prevents stuck UI)
+    // 🔥 FAILSAFE RESET
     setTimeout(() => {
       if (isUpdating && !refreshing) {
-        console.warn("⚠ Update stuck → resetting UI");
+        console.warn("⚠ Update stuck → reset");
         resetUpdateUI();
       }
     }, 15000);
@@ -1661,18 +1659,19 @@ function scheduleAutoUpdate() {
 
 
 // ======================================================
-// 🔘 MANUAL UPDATE
+// 🔘 MANUAL UPDATE (FIXED)
 // ======================================================
 function handleManualUpdate() {
 
   console.log("🟢 Manual update clicked");
 
-  if (isUpdating) return;
-
   if (!newWorker) {
     console.warn("⚠ No worker available");
     return;
   }
+
+  // 🔥 FORCE RESET → allows retry
+  isUpdating = false;
 
   isUpdating = true;
 
@@ -1733,7 +1732,7 @@ navigator.serviceWorker.addEventListener("controllerchange", () => {
     location.reload();
   }, 500);
 
-}); /* ============================================================
+});/* ============================================================
    🔥 GLOBAL MASTER DATA (CRASH-PROOF)
 ============================================================ */
 
