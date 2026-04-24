@@ -3393,6 +3393,45 @@ function loadRangeKML() {
       console.error("❌ KML Fetch Error:", err);
     });
 }
+
+    function lineIntersectsBox(lat1, lon1, lat2, lon2, minLat, minLon, maxLat, maxLon) {
+
+  const eps = 0.000001;
+
+  // ✅ endpoint inside box
+  if (
+    lat1 >= minLat - eps && lat1 <= maxLat + eps &&
+    lon1 >= minLon - eps && lon1 <= maxLon + eps
+  ) return true;
+
+  if (
+    lat2 >= minLat - eps && lat2 <= maxLat + eps &&
+    lon2 >= minLon - eps && lon2 <= maxLon + eps
+  ) return true;
+
+  // ✅ check crossing edges
+  return (
+    lineIntersect(lat1, lon1, lat2, lon2, minLat, minLon, minLat, maxLon) || // bottom
+    lineIntersect(lat1, lon1, lat2, lon2, maxLat, minLon, maxLat, maxLon) || // top
+    lineIntersect(lat1, lon1, lat2, lon2, minLat, minLon, maxLat, minLon) || // left
+    lineIntersect(lat1, lon1, lat2, lon2, minLat, maxLon, maxLat, maxLon)    // right
+  );
+}
+
+function lineIntersect(lat1, lon1, lat2, lon2, lat3, lon3, lat4, lon4) {
+
+  function ccw(ax, ay, bx, by, cx, cy) {
+    return (cy - ay) * (bx - ax) > (by - ay) * (cx - ax);
+  }
+
+  return (
+    ccw(lat1, lon1, lat3, lon3, lat4, lon4) !==
+    ccw(lat2, lon2, lat3, lon3, lat4, lon4)
+  ) && (
+    ccw(lat1, lon1, lat2, lon2, lat3, lon3) !==
+    ccw(lat1, lon1, lat2, lon2, lat4, lon4)
+  );
+}
    function markVisited(lat, lon){
 
   if(!window.gridMeta || !window.gridIndex) return;
