@@ -3479,180 +3479,188 @@ function closeCoveragePanel(){
     // ==========================================
 // 🎯 ASSIGN GRID TO BEAT (PRECISE CLIPPING)
 // ==========================================
+// ==========================================
+// 🎯 ASSIGN GRID TO BEAT (PRECISE CLIPPING)
+// ==========================================
 function assignGridToBeat(rangeLayer) {
-    console.log("🎯 Assigning grid to beats (STABLE FIX)...");
+  console.log("🎯 Assigning grid to beats (STABLE BEAT-CLIPPING FIX)...");
 
-    try {
-        let beatPolygons = {}; 
+  try {
+    let beatPolygons = {}; 
 
-        // 1. EXTRACT & GROUP POLYGONS BY BEAT
-        function extract(layer) {
-            if (!layer) return;
-            if (layer instanceof L.Polygon) {
-                const p = layer.feature?.properties || {};
-                const rawID = p.ID || "";
-                const compName = convertCompartment(rawID);
-                if (!compName) return;
+    // 1. EXTRACT & GROUP POLYGONS BY BEAT
+    function extract(layer) {
+      if (!layer) return;
+      if (layer instanceof L.Polygon) {
+        const p = layer.feature?.properties || {};
+        const rawID = p.ID || "";
+        const compName = convertCompartment(rawID);
+        if (!compName) return;
 
-                let assignedBeat = "UNKNOWN";
-                for (let beatName in window.beatMap) {
-                    if (window.beatMap[beatName].includes(compName)) {
-                        assignedBeat = beatName;
-                        break;
-                    }
-                }
-
-                if (assignedBeat !== "UNKNOWN") {
-                    let latlngs = layer.getLatLngs();
-                    // Handle nested arrays (MultiPolygons)
-                    const rings = Array.isArray(latlngs[0]) && Array.isArray(latlngs[0][0]) ? latlngs[0] : latlngs;
-                    let pts = rings.map(p => [p.lng, p.lat]);
-                    
-                    if (pts.length > 0 && (pts[0][0] !== pts[pts.length - 1][0] || pts[0][1] !== pts[pts.length - 1][1])) {
-                        pts.push(pts[0]);
-                    }
-                    
-                    if (pts.length >= 4) {
-                        if (!beatPolygons[assignedBeat]) beatPolygons[assignedBeat] = [];
-                        beatPolygons[assignedBeat].push(turf.polygon([pts]));
-                    }
-                }
-            }
-            if (layer.eachLayer) layer.eachLayer(extract);
-            else if (layer._layers) Object.values(layer._layers).forEach(extract);
-        }
-        extract(rangeLayer);
-
-        // 2. CREATE UNIFIED BEAT MASKS
-        let beatMasks = {};
-        for (let beatName in beatPolygons) {
-            const polys = beatPolygons[beatName];
-            if (polys.length > 0) {
-                try {
-                    beatMasks[beatName] = polys.length === 1 ? polys[0] : turf.union(turf.featureCollection(polys));
-                } catch (e) { beatMasks[beatName] = polys[0]; }
-            }
+        let assignedBeat = "UNKNOWN";
+        for (let beatName in window.beatMap) {
+          if (window.beatMap[beatName].includes(compName)) {
+            assignedBeat = beatName;
+            break;
+          }
         }
 
-        // 3. ASSIGN & CLIP GRID TO BEATS
-        if (!window.gridIndex) return;
-
-        Object.entries(window.gridIndex).forEach(([id, cell]) => {
-            if (!cell.geo) return;
-
-            let bestBeat = "UNKNOWN";
-            let bestIntersectionArea = 0;
-            let clippedGeoForBeat = null;
-
-            for (let beatName in beatMasks) {
-                try {
-                    // Check intersection
-                    if (turf.booleanIntersects(cell.geo, beatMasks[beatName])) {
-                        const intersection = turf.intersect(cell.geo, beatMasks[beatName]);
-                        if (intersection) {
-                            const interArea = turf.area(intersection);
-                            // The cell belongs to the beat where it has the most area
-                            if (interArea > bestIntersectionArea) {
-                                bestIntersectionArea = interArea;
-                                bestBeat = beatName;
-                                clippedGeoForBeat = intersection;
-                            }
-                        }
-                    }
-                } catch (e) { continue; }
-            }
-
-            cell.beat = bestBeat;
-            // Store the perfectly clipped geometry for this specific beat
-            if (bestBeat !== "UNKNOWN") {
-                cell.beatGeo = clippedGeoForBeat; 
-            }
-        });
-
-        console.log("🎯 Grid → Beat mapping COMPLETE.");
-
-    } catch (e) {
-        console.error("❌ assignGridToBeat CRASHED:", e);
+        if (assignedBeat !== "UNKNOWN") {
+          let latlngs = layer.getLatLngs();
+          // Handle nested arrays (MultiPolygons vs simple Polygons)
+          const rings = (Array.isArray(latlngs[0]) && Array.isArray(latlngs[0][0])) ? latlngs[0] : latlngs;
+          let pts = rings.map(p => [p.lng, p.lat]);
+          
+          // Ensure valid Turf closed ring
+          if (pts.length > 0 && (pts[0][0] !== pts[pts.length - 1][0] || pts[0][1] !== pts[pts.length - 1][1])) {
+            pts.push(pts[0]);
+          }
+          
+          if (pts.length >= 4) {
+            if (!beatPolygons[assignedBeat]) beatPolygons[assignedBeat] = [];
+            beatPolygons[assignedBeat].push(turf.polygon([pts]));
+          }
+        }
+      }
+      if (layer.eachLayer) layer.eachLayer(extract);
+      else if (layer._layers) Object.values(layer._layers).forEach(extract);
     }
+    extract(rangeLayer);
+
+    // 2. CREATE UNIFIED MASTER SHAPE FOR EACH BEAT (GAP FIX)
+    let beatMasks = {};
+    for (let beatName in beatPolygons) {
+      const polys = beatPolygons[beatName];
+      if (polys.length > 0) {
+        try {
+          // Merge all compartments of this beat into one solid shape
+          beatMasks[beatName] = polys.length === 1 ? polys[0] : turf.union(turf.featureCollection(polys));
+        } catch (e) { 
+          console.warn(`Union failed for ${beatName}, using fallback`, e);
+          beatMasks[beatName] = polys[0]; 
+        }
+      }
+    }
+
+    // 3. SLICE EACH GRID CELL TO THE BEAT BOUNDARY
+    if (!window.gridIndex) return;
+
+    Object.entries(window.gridIndex).forEach(([id, cell]) => {
+      if (!cell.geo) return;
+
+      let bestBeat = "UNKNOWN";
+      let maxArea = 0;
+      let bestClip = null;
+
+      for (let beatName in beatMasks) {
+        try {
+          // Quick check to see if the cell touches the beat
+          if (turf.booleanIntersects(cell.geo, beatMasks[beatName])) {
+            const clip = turf.intersect(cell.geo, beatMasks[beatName]);
+            if (clip) {
+              const area = turf.area(clip);
+              // Logic: Cell belongs to whichever Beat it overlaps with most
+              if (area > maxArea) {
+                maxArea = area;
+                bestBeat = beatName;
+                bestClip = clip;
+              }
+            }
+          }
+        } catch (e) { continue; }
+      }
+
+      cell.beat = bestBeat;
+      // Store the perfect "Cut" for this beat's view
+      if (bestBeat !== "UNKNOWN") {
+        cell.beatGeo = bestClip; 
+      }
+    });
+
+    console.log("✅ Beat assignment and Clipping COMPLETE.");
+
+  } catch (e) {
+    console.error("❌ assignGridToBeat CRASHED:", e);
+  }
 }
 
 // ==========================================
-// 📊 CORE RENDER ENGINE (NO GAPS)
+// 📊 CORE RENDER ENGINE (NO GAPS/OVERFLOW)
 // ==========================================
 function renderGrid(mode = "current", beat = "ALL"){
-    try {
-        if(!window.gridIndex){
-            console.warn("⚠ No gridIndex");
-            return;
-        }
-
-        if(!window.gridLayer) window.gridLayer = L.layerGroup();
-        window.gridLayer.clearLayers();
-
-        const current = JSON.parse(localStorage.getItem("grid_current") || "{}");
-        let drawn = 0, total = 0, visited = 0;
-
-        Object.entries(window.gridIndex).forEach(([id, cell]) => {
-            if(!cell || (!cell.geo && !cell.beatGeo)) return;
-
-            // Filter by selected beat
-            if(beat !== "ALL" && cell.beat !== beat) return;
-
-            total++;
-            const isVisited = !!current[id];
-            if(isVisited) visited++;
-
-            let color = null;
-            let opacity = 0.35;
-
-            switch(mode){
-                case "current":
-                    color = isVisited ? "#00ff00" : "#ff0000";
-                    opacity = isVisited ? 0.5 : 0.3;
-                    break;
-                case "visited":
-                    if(!isVisited) return;
-                    color = "#00ff00"; opacity = 0.6;
-                    break;
-                case "unvisited":
-                    if(isVisited) return;
-                    color = "#ff0000"; opacity = 0.4;
-                    break;
-                case "cumulative":
-                    color = isVisited ? "#00ff00" : "#330000";
-                    opacity = isVisited ? 0.5 : 0.15;
-                    break;
-            }
-
-            if(!color) { color = "#330000"; opacity = 0.12; }
-
-            try {
-                // 🔥 THE BOUNDARY FIX:
-                // If viewing a specific beat, use the geometry clipped to that beat's boundary.
-                // Otherwise, use the geometry clipped to the range boundary.
-                const geometryToDraw = (beat !== "ALL" && cell.beatGeo) ? cell.beatGeo : cell.geo;
-
-                L.geoJSON(geometryToDraw, {
-                    style: {
-                        color: "#222",
-                        weight: 0.5,           // Thin border ensures squares look connected
-                        fillColor: color,
-                        fillOpacity: opacity,
-                        smoothFactor: 0        // CRITICAL: prevents rounding of clipped edges
-                    }
-                }).addTo(window.gridLayer);
-                drawn++;
-            } catch(e){ console.warn("⚠ Grid render fail:", id); }
-        });
-
-        if(!map.hasLayer(window.gridLayer)) window.gridLayer.addTo(map);
-
-        const percent = total ? ((visited / total) * 100).toFixed(1) : 0;
-        console.log(`📊 ${beat} View: ${visited}/${total} (${percent}%)`);
-
-    } catch(e){
-        console.error("❌ renderGrid error:", e);
+  try {
+    if(!window.gridIndex){
+      console.warn("⚠ No gridIndex");
+      return;
     }
+
+    if(!window.gridLayer) window.gridLayer = L.layerGroup();
+    window.gridLayer.clearLayers();
+
+    const current = JSON.parse(localStorage.getItem("grid_current") || "{}");
+    let drawn = 0, total = 0, visited = 0;
+
+    Object.entries(window.gridIndex).forEach(([id, cell]) => {
+      if(!cell || (!cell.geo && !cell.beatGeo)) return;
+
+      // Filter logic
+      if(beat !== "ALL" && cell.beat !== beat) return;
+
+      total++;
+      const isVisited = !!current[id];
+      if(isVisited) visited++;
+
+      let color = null;
+      let opacity = 0.35;
+
+      switch(mode){
+        case "current":
+          color = isVisited ? "#00ff00" : "#ff0000";
+          opacity = isVisited ? 0.5 : 0.3;
+          break;
+        case "visited":
+          if(!isVisited) return;
+          color = "#00ff00"; opacity = 0.6;
+          break;
+        case "unvisited":
+          if(isVisited) return;
+          color = "#ff0000"; opacity = 0.4;
+          break;
+        case "cumulative":
+          color = isVisited ? "#00ff00" : "#330000";
+          opacity = isVisited ? 0.5 : 0.15;
+          break;
+      }
+
+      if(!color) { color = "#330000"; opacity = 0.12; }
+
+      try {
+        // 🔥 THE MAGIC FIX: 
+        // If viewing a single beat, draw the clip made specifically for that beat boundary.
+        // If viewing ALL, draw the clip made for the whole range boundary.
+        const geometryToDraw = (beat !== "ALL" && cell.beatGeo) ? cell.beatGeo : cell.geo;
+
+        L.geoJSON(geometryToDraw, {
+          style: {
+            color: "#222",
+            weight: 0.5,           // Hairline border to make squares look continuous
+            fillColor: color,
+            fillOpacity: opacity,
+            smoothFactor: 0        // Disable simplification to keep boundary math perfect
+          }
+        }).addTo(window.gridLayer);
+        drawn++;
+      } catch(e){ console.warn("⚠ Render fail for cell:", id); }
+    });
+
+    if(!map.hasLayer(window.gridLayer)) window.gridLayer.addTo(map);
+
+    const percent = total ? ((visited / total) * 100).toFixed(1) : 0;
+    console.log(`📊 ${beat} View: ${visited}/${total} (${percent}%)`);
+
+  } catch(e){
+    console.error("❌ renderGrid error:", e);
+  }
 }// ===== UI EVENTS =====
 function applyMode(mode){
 
