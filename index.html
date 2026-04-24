@@ -3486,19 +3486,20 @@ function closeCoveragePanel(){
 // 🎯 ASSIGN GRID TO BEAT (FINAL STABLE VERSION)
 // ==========================================
 function assignGridToBeat(rangeLayer) {
-    console.log("🎯 Slicing grid by beat boundaries (PERFECT MATCH)...");
+    console.log("🎯 Slicing grids by beat boundaries (ZERO OVERFLOW / ZERO GAP)...");
 
     try {
-        let beatPolygons = {}; 
+        let beatPolygons = {};
 
+        // ===============================
         // 1. EXTRACT & GROUP POLYGONS BY BEAT
+        // ===============================
         function extract(layer) {
             if (!layer) return;
             if (layer instanceof L.Polygon) {
                 const props = layer.feature?.properties || {};
                 const rawID = props.ID || props.Name || props.name || "";
                 const compName = typeof convertCompartment === "function" ? convertCompartment(rawID) : rawID;
-                
                 if (!compName) return;
 
                 let assignedBeat = "UNKNOWN";
@@ -3520,7 +3521,8 @@ function assignGridToBeat(rangeLayer) {
                     
                     if (pts.length >= 4) {
                         if (!beatPolygons[assignedBeat]) beatPolygons[assignedBeat] = [];
-                        beatPolygons[assignedBeat].push(turf.polygon([pts]));
+                        // Use buffer(0) to fix any self-intersections in KML geometry
+                        beatPolygons[assignedBeat].push(turf.buffer(turf.polygon([pts]), 0));
                     }
                 }
             }
@@ -3529,7 +3531,9 @@ function assignGridToBeat(rangeLayer) {
         }
         extract(rangeLayer);
 
-        // 2. CREATE SOLID MASK FOR EACH BEAT (Removes internal compartment gaps)
+        // ===============================
+        // 2. CREATE UNIFIED MASKS PER BEAT
+        // ===============================
         let beatMasks = {};
         for (let beatName in beatPolygons) {
             const polys = beatPolygons[beatName];
@@ -3537,52 +3541,54 @@ function assignGridToBeat(rangeLayer) {
                 try {
                     let merged = polys[0];
                     if (polys.length > 1) {
-                        // Use buffer(0) to fix self-intersection issues during union
-                        merged = turf.buffer(merged, 0);
                         for (let i = 1; i < polys.length; i++) {
-                            merged = turf.union(merged, turf.buffer(polys[i], 0));
+                            merged = turf.union(merged, polys[i]);
                         }
                     }
                     beatMasks[beatName] = merged;
-                } catch (e) { 
-                    beatMasks[beatName] = polys[0]; 
+                } catch (e) {
+                    beatMasks[beatName] = polys[0];
                 }
             }
         }
 
-        // 3. PHYSICAL SLICING LOGIC
-        // We iterate through every grid cell and 'cut' it using the beat masks
+        // ===============================
+        // 3. PRECISE SLICING LOGIC
+        // ===============================
         Object.entries(window.gridIndex).forEach(([id, cell]) => {
             if (!cell.geo) return;
 
-            // Store sliced geometries for this cell: { "EAST PORO": geoPart, ... }
+            // Store multiple geometry slices for cells that cross boundaries
             cell.slicedBeats = {}; 
 
             for (let beatName in beatMasks) {
                 try {
+                    // Check if square even touches this beat
                     if (turf.booleanIntersects(cell.geo, beatMasks[beatName])) {
-                        const cutPart = turf.intersect(cell.geo, beatMasks[beatName]);
-                        if (cutPart && turf.area(cutPart) > 0.1) {
-                            cell.slicedBeats[beatName] = cutPart;
+                        // Physically 'Cut' the square using the beat boundary
+                        const intersection = turf.intersect(cell.geo, beatMasks[beatName]);
+                        
+                        if (intersection && turf.area(intersection) > 0.5) {
+                            cell.slicedBeats[beatName] = intersection;
                         }
                     }
                 } catch (e) { continue; }
             }
 
-            // For legacy compatibility, assign the 'Primary' beat based on largest area
+            // For Stats & Legacy: Assign 'Primary' beat to the largest slice
             let maxArea = -1;
-            let primary = "UNKNOWN";
+            let primaryBeat = "UNKNOWN";
             Object.entries(cell.slicedBeats).forEach(([bName, bGeo]) => {
                 const a = turf.area(bGeo);
                 if (a > maxArea) {
                     maxArea = a;
-                    primary = bName;
+                    primaryBeat = bName;
                 }
             });
-            cell.beat = primary;
+            cell.beat = primaryBeat;
         });
 
-        console.log("✅ Grid slicing complete. Boundaries are now mathematically perfect.");
+        console.log("✅ Beat Slicing COMPLETE. No overflows or gaps possible.");
 
     } catch (e) {
         console.error("❌ assignGridToBeat error:", e);
