@@ -8217,14 +8217,14 @@ function loadMapDataFirebase() {
           <div style="font-family:Segoe UI">
 
             <b>👤 ${s.name}</b><br>
-           📞 ${
+          📞 ${
   s.mobile
-    ? `<a href="tel:${s.mobile}" style="color:#007bff;text-decoration:none;">
-         ${s.mobile}
+    ? `<a href="tel:${s.mobile}" title="Call ${s.name}" 
+         style="color:#00e676;font-size:18px;text-decoration:none;">
+         <i class="fa-solid fa-phone"></i> ${s.mobile}
        </a>`
     : "N/A"
 }<br>
-
             <hr>
 
             👥 ${s.team || "N/A"}<br>
