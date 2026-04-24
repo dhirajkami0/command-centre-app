@@ -1428,7 +1428,7 @@ function logout(){
   });
 }
 
- let appStarted = false;
+let appStarted = false;
 
 function startApp(){
 
@@ -1471,7 +1471,7 @@ function startApp(){
     }
 
     // ======================================================
-    // 🔥 GRID INIT LOOP (ROBUST - NO TIMING ISSUES)
+    // 🔥 GRID INIT LOOP (CACHE FIRST + SAFE INIT)
     // ======================================================
     let attempts = 0;
 
@@ -1486,30 +1486,14 @@ function startApp(){
         return;
       }
 
-      // 🔍 Check if grid already exists
-      if(!window.gridIndex || !Object.keys(window.gridIndex).length){
+      // ==================================================
+      // 🔥 ENSURE GRID (MEMORY → CACHE → BUILD)
+      // ==================================================
+      ensureGridReady();
 
-        console.log("🔁 Building grid...");
-
-        try {
-          const bounds = rangeLayer.getBounds();
-
-          if(bounds && bounds.isValid()){
-            buildGridFromBounds(bounds, rangeLayer);
-            assignGridToBeat(rangeLayer);
-            console.log("✅ Grid built & assigned");
-          } else {
-            console.warn("⚠ Invalid bounds");
-            return;
-          }
-
-        } catch(e){
-          console.error("❌ Grid build error:", e);
-          return;
-        }
-      }
-
-      // 🎯 RENDER AFTER GRID READY
+      // ==================================================
+      // 🎯 RENDER ONLY WHEN READY
+      // ==================================================
       if(window.gridIndex && Object.keys(window.gridIndex).length){
 
         console.log("🎯 Rendering grid");
@@ -1528,7 +1512,7 @@ function startApp(){
         clearInterval(gridInitInterval);
       }
 
-    }, 500); // check every 0.5 sec
+    }, 500);
 
     console.log("✅ App initialization complete (GPS controlled by duty)");
 
@@ -3858,7 +3842,7 @@ function renderGrid(mode = "today", beat = "ALL"){
         L.geoJSON(cell.geo, {
           style: {
             color: "#222",
-            weight: 0.4,
+            weight: 0.25,
             fillColor: color,
             fillOpacity: opacity,
             smoothFactor: 0
@@ -3906,26 +3890,76 @@ function renderGrid(mode = "today", beat = "ALL"){
 }
 function ensureGridReady(){
 
+  // ===============================
+  // 🔥 STEP 1: already in memory
+  // ===============================
   if(window.gridIndex && Object.keys(window.gridIndex).length){
-    console.log("✅ Grid already ready");
+    console.log("✅ Grid already ready (memory)");
     return;
   }
 
-  console.log("🔁 Grid missing → rebuilding");
+  console.log("🔍 Grid not in memory → checking cache");
+
+  // ===============================
+  // 🔥 STEP 2: LOAD FROM CACHE
+  // ===============================
+  try {
+
+    const cachedGrid = localStorage.getItem("gridIndex");
+    const cachedMeta = localStorage.getItem("gridMeta");
+
+    if(cachedGrid && cachedMeta){
+
+      window.gridIndex = JSON.parse(cachedGrid);
+      window.gridMeta  = JSON.parse(cachedMeta);
+
+      console.log("⚡ Grid loaded from cache:", Object.keys(window.gridIndex).length);
+      return;
+    }
+
+  } catch(e){
+    console.error("❌ Cache load failed:", e);
+  }
+
+  // ===============================
+  // 🔥 STEP 3: BUILD ONLY IF NEEDED
+  // ===============================
+  console.log("🔁 No cache → rebuilding grid");
 
   if(!window.rangeLayer){
     console.warn("⚠ rangeLayer not ready");
     return;
   }
 
-  const bounds = rangeLayer.getBounds();
+  try {
 
-  buildGridFromBounds(bounds, rangeLayer);
-  assignGridToBeat(rangeLayer);
+    const bounds = rangeLayer.getBounds();
 
-  console.log("✅ Grid rebuilt");
-}    
-    // ===== UI EVENTS =====
+    if(!bounds || !bounds.isValid()){
+      console.warn("⚠ Invalid bounds");
+      return;
+    }
+
+    buildGridFromBounds(bounds, rangeLayer);
+    assignGridToBeat(rangeLayer);
+
+    // ===============================
+    // 🔥 SAVE AFTER BUILD
+    // ===============================
+    try {
+      localStorage.setItem("gridIndex", JSON.stringify(window.gridIndex));
+      localStorage.setItem("gridMeta", JSON.stringify(window.gridMeta));
+      console.log("💾 Grid saved to cache");
+    } catch(e){
+      console.error("❌ Grid save failed:", e);
+    }
+
+    console.log("✅ Grid built & assigned");
+
+  } catch(e){
+    console.error("❌ Grid rebuild failed:", e);
+  }
+}    // ===== UI EVENTS =====
    
 
    // ===============================
@@ -4202,6 +4236,41 @@ window.beatMap = {
 
   return true;
 }
+    function saveGridToCache(){
+  try {
+    localStorage.setItem("gridIndex", JSON.stringify(window.gridIndex));
+    localStorage.setItem("gridMeta", JSON.stringify(window.gridMeta));
+    console.log("💾 Grid saved to cache");
+  } catch(e){
+    console.error("❌ Grid save failed:", e);
+  }
+}
+
+
+    function loadGridFromCache(){
+
+  try {
+
+    const grid = localStorage.getItem("gridIndex");
+    const meta = localStorage.getItem("gridMeta");
+
+    if(!grid || !meta){
+      console.warn("⚠ No cached grid");
+      return false;
+    }
+
+    window.gridIndex = JSON.parse(grid);
+    window.gridMeta  = JSON.parse(meta);
+
+    console.log("⚡ Grid loaded from cache:", Object.keys(window.gridIndex).length);
+
+    return true;
+
+  } catch(e){
+    console.error("❌ Grid load failed:", e);
+    return false;
+  }
+}
     function buildGridFromBounds(bounds, rangeLayer) {
   console.log("🔲 Building COMPACT CLIPPED grid (GAP-FREE)...");
 
@@ -4211,7 +4280,7 @@ window.beatMap = {
       return;
     }
 
-    const step = 0.00225; // ~250m
+    const step = 0.0009; // ~250m
     let count = 0;
     window.gridIndex = {};
 
@@ -4297,7 +4366,7 @@ window.beatMap = {
           if (clippedGeo) {
             // Check if the resulting geometry is valid and has area
             const area = turf.area(clippedGeo);
-            if (area > 1) { // Ignore slivers smaller than 1sq meter
+            if (area > 3) { // Ignore slivers smaller than 1sq meter
               window.gridIndex[id] = {
                 geo: clippedGeo,
                 visited: false
