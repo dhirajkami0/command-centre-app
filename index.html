@@ -1489,10 +1489,32 @@ function startApp(){
       ensureGridReady();
 
       // ==================================================
-      // 🎯 RENDER ONLY WHEN READY
+      // 🎯 WHEN GRID READY → RUN BACKFILL + RENDER
       // ==================================================
       if(window.gridIndex && Object.keys(window.gridIndex).length){
 
+        console.log("🎯 Grid ready");
+
+        // 🔥 ================= BACKFILL (RUN ONCE) =================
+        if(!localStorage.getItem("archiveBackfillDone")){
+
+          console.log("🛠 Running archive backfill...");
+
+          try {
+
+            backfillFromArchive();   // 🔥 pulls archive → builds history
+
+            localStorage.setItem("archiveBackfillDone", true);
+
+          } catch(e){
+            console.error("❌ Backfill failed:", e);
+          }
+
+        }
+
+        // ==================================================
+        // 🎯 FINAL RENDER
+        // ==================================================
         console.log("🎯 Rendering grid");
 
         renderGrid(
