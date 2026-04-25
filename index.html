@@ -3822,7 +3822,72 @@ function getCoverageStats(mode = "today", beat = "ALL", type = "all"){
     percent: percent.toFixed(1)
   };
 }
+async function backfillFromArchive(){
 
+  console.log("🛠 Backfill from Archive START");
+
+  try {
+
+    const data = await callBackend("getArchiveTracks");
+
+    if(!data || !data.length){
+      console.warn("⚠ No archive data");
+      return;
+    }
+
+    if(!window.gridIndex){
+      console.warn("⚠ Grid not ready");
+      return;
+    }
+
+    let dayCache = {};
+
+    data.forEach(p => {
+
+      const lat = p.lat;
+      const lon = p.lon;
+      const time = new Date(p.time);
+
+      if(isNaN(time)) return;
+
+      // 🔥 DATE KEY
+      const key = "grid_" + time.toISOString().slice(0,10);
+
+      if(!dayCache[key]){
+        dayCache[key] = JSON.parse(localStorage.getItem(key) || "{}");
+      }
+
+      // 🔥 GRID ID CALC (FAST)
+      const size = window.gridMeta.size;
+
+      const latKey = Math.floor(lat / size) * size;
+      const lonKey = Math.floor(lon / size) * size;
+
+      const id = latKey.toFixed(5) + "_" + lonKey.toFixed(5);
+
+      if(window.gridIndex[id]){
+        dayCache[key][id] = true;
+      }
+
+    });
+
+    // 🔥 SAVE ALL DAYS
+    Object.keys(dayCache).forEach(key => {
+      localStorage.setItem(key, JSON.stringify(dayCache[key]));
+    });
+
+    console.log("✅ Backfill complete:", Object.keys(dayCache).length, "days");
+
+    // 🔥 REBUILD MONTH
+    buildMonthCache();
+
+    // 🔥 REFRESH UI
+    renderGrid("current", window.currentBeat || "ALL");
+
+  } catch(e){
+    console.error("❌ Backfill error:", e);
+  }
+}
 // ======================================================
 // 🚀 RENDER GRID (UPDATED - CACHE BASED)
 // ======================================================
