@@ -930,12 +930,12 @@ window.addEventListener("unhandledrejection", function (e) {
           <hr style="border:0; border-top:1px solid rgba(255,255,255,0.1); margin:8px 0;">
           <div id="todayForecast"></div> <hr style="border:0; border-top:1px solid rgba(255,255,255,0.1); margin:8px 0;">
           <div id="weekForecast"></div> </div> </div> </div>
-  <!-- 🟩 COVERAGE PANEL (REPLACES LEGEND EXACT POSITION) -->
+  <!-- 🟩 COVERAGE PANEL (FINAL CLEAN VERSION) -->
 <div id="coveragePanel" class="legend" style="
   display:none;
 ">
 
-  <!-- 🔘 TOGGLE BUTTON (same as legend) -->
+  <!-- 🔘 TOGGLE BUTTON -->
   <button id="coverageToggleBtn" onclick="toggleCoveragePanel()">
     <i id="coverageIcon" class="fa-solid fa-chevron-down"></i>
   </button>
@@ -959,13 +959,10 @@ window.addEventListener("unhandledrejection", function (e) {
       <option value="EAST_PORO">East Poro</option>
     </select>
 
-    <!-- ⚡ MODES -->
+    <!-- ⚡ MODES (ONLY 2) -->
     <div style="margin-bottom:8px;">
       <button onclick="applyMode('today')">Today</button>
       <button onclick="applyMode('current')">Current</button>
-      <button onclick="applyMode('visited')">Visited</button>
-      <button onclick="applyMode('unvisited')">Unvisited</button>
-      <button onclick="applyMode('cumulative')">Cumulative</button>
     </div>
 
     <!-- 🎛 ACTIONS -->
@@ -3778,7 +3775,53 @@ function updateVisitedCache(newVisited){
   window.gridCache.today = todayData;
   updateMonthCache();
 }
+function getCoverageStats(mode = "today", beat = "ALL", type = "all"){
 
+  if(!window.gridIndex || !window.gridMeta) return null;
+
+  let data = {};
+
+  if(mode === "today"){
+    data = window.gridCache?.today || {};
+  } else {
+    data = window.gridCache?.month || {};
+  }
+
+  let total = 0;
+  let visited = 0;
+
+  Object.entries(window.gridIndex).forEach(([id, cell]) => {
+
+    if(!cell || !cell.geo) return;
+    if(beat !== "ALL" && cell.beat !== beat) return;
+
+    total++;
+
+    if(data[id]) visited++;
+  });
+
+  const step = window.gridMeta.size;
+
+  const cellAreaSqm = Math.pow(step * 111320, 2);
+  const cellAreaHa = cellAreaSqm / 10000;
+
+  const visitedArea = visited * cellAreaHa;
+  const totalArea   = total * cellAreaHa;
+  const unvisited   = total - visited;
+  const unvisitedArea = totalArea - visitedArea;
+
+  const percent = total ? ((visited / total) * 100) : 0;
+
+  return {
+    totalGrids: total,
+    visitedGrids: visited,
+    unvisitedGrids: unvisited,
+    totalAreaHa: totalArea.toFixed(2),
+    visitedAreaHa: visitedArea.toFixed(2),
+    unvisitedAreaHa: unvisitedArea.toFixed(2),
+    percent: percent.toFixed(1)
+  };
+}
 
 // ======================================================
 // 🚀 RENDER GRID (UPDATED - CACHE BASED)
@@ -3787,8 +3830,8 @@ function renderGrid(mode = "today", beat = "ALL"){
 
   try {
 
-    if(!window.gridIndex){
-      console.warn("⚠ No gridIndex");
+    if(!window.gridIndex || !window.gridMeta){
+      console.warn("⚠ Grid not ready");
       return;
     }
 
@@ -3798,24 +3841,15 @@ function renderGrid(mode = "today", beat = "ALL"){
 
     window.gridLayer.clearLayers();
 
-    // 🔥 CACHE SOURCE
+    // ===============================
+    // 🔥 DATA SOURCE (ONLY 2 MODES)
+    // ===============================
     let current = {};
 
-    switch(mode){
-
-      case "today":
-      case "visited":
-      case "unvisited":
-        current = window.gridCache?.today || {};
-      break;
-
-      case "current":
-      case "cumulative":
-        current = window.gridCache?.month || {};
-      break;
-
-      default:
-        current = {};
+    if(mode === "today"){
+      current = window.gridCache?.today || {};
+    } else if(mode === "current"){
+      current = window.gridCache?.month || {};
     }
 
     let total = 0;
@@ -3823,37 +3857,91 @@ function renderGrid(mode = "today", beat = "ALL"){
 
     Object.entries(window.gridIndex).forEach(([id, cell]) => {
 
-      if(!cell || !cell.geo) return;
-      if(beat !== "ALL" && cell.beat !== beat) return;
-
-      const isVisited = !!current[id];
-
-      // 🔥 FILTER MODES
-      if(mode === "visited" && !isVisited) return;
-      if(mode === "unvisited" && isVisited) return;
-
-      total++;
-      if(isVisited) visited++;
-
-      const color = isVisited ? "#00ff00" : "#ff0000";
-      const opacity = isVisited ? 0.5 : 0.3;
-
       try {
+
+        if(!cell || !cell.geo) return;
+        if(beat !== "ALL" && cell.beat !== beat) return;
+
+        total++;
+
+        const isVisited = !!current[id];
+        if(isVisited) visited++;
+
+        const color = isVisited ? "#00ff00" : "#ff0000";
+        const opacity = isVisited ? 0.5 : 0.3;
+
         L.geoJSON(cell.geo, {
+
           style: {
             color: "#222",
             weight: 0.25,
             fillColor: color,
             fillOpacity: opacity,
             smoothFactor: 0
+          },
+
+          // ===============================
+          // 🔥 CLICK POPUP (CORE FEATURE)
+          // ===============================
+          onEachFeature: function(feature, layer){
+
+            layer.on("click", function(){
+
+              try {
+
+                const stats = getCoverageStats(
+                  mode,
+                  beat
+                );
+
+                if(!stats) return;
+
+                let html = "";
+
+                if(isVisited){
+
+                  html = `
+                  <div style="font-family:Segoe UI">
+                    <b>🟢 VISITED AREA</b><br><br>
+
+                    📊 Grids: ${stats.visitedGrids} / ${stats.totalGrids}<br>
+                    🌿 Area: ${stats.visitedAreaHa} / ${stats.totalAreaHa} Ha<br>
+                    📈 Coverage: ${stats.percent}%
+                  </div>`;
+
+                } else {
+
+                  html = `
+                  <div style="font-family:Segoe UI">
+                    <b>🔴 UNVISITED AREA</b><br><br>
+
+                    📊 Grids: ${stats.unvisitedGrids} / ${stats.totalGrids}<br>
+                    🌿 Area: ${stats.unvisitedAreaHa} / ${stats.totalAreaHa} Ha<br>
+                    📉 Remaining: ${(100 - stats.percent).toFixed(1)}%
+                  </div>`;
+                }
+
+                layer.bindPopup(html).openPopup();
+
+              } catch(e){
+                console.error("❌ Popup error:", e);
+              }
+
+            });
+
           }
+
         }).addTo(window.gridLayer);
+
       } catch(e){
         console.warn("⚠ Grid render fail:", id);
       }
 
     });
 
+    // ===============================
+    // 🔥 ADD TO MAP
+    // ===============================
     if(!map.hasLayer(window.gridLayer)){
       window.gridLayer.addTo(map);
     }
@@ -3863,9 +3951,9 @@ function renderGrid(mode = "today", beat = "ALL"){
     console.log(`📊 ${visited}/${total} (${percent}%)`);
 
   } catch(e){
-    console.error("❌ renderGrid error:", e);
+    console.error("❌ renderGrid crash:", e);
   }
-}    function saveTodayVisited(){
+}   function saveTodayVisited(){
 
   const key = "grid_" + new Date().toISOString().slice(0,10);
 
