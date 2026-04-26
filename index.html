@@ -3455,9 +3455,9 @@ function lineIntersect(lat1, lon1, lat2, lon2, lat3, lon3, lat4, lon4) {
   cell.visited = true;
 
   // ===============================
-  // 🔥 SAVE TODAY
+  // 🔥 SAVE TODAY (FIXED LOCAL DATE)
   // ===============================
-  const key = "grid_" + new Date().toISOString().slice(0,10);
+  const key = "grid_" + getLocalDateStr();
 
   let data = JSON.parse(localStorage.getItem(key) || "{}");
 
@@ -3466,12 +3466,11 @@ function lineIntersect(lat1, lon1, lat2, lon2, lat3, lon3, lat4, lon4) {
   localStorage.setItem(key, JSON.stringify(data));
 
   // ===============================
-  // 🔥 UPDATE CACHE (CRITICAL)
+  // 🔥 UPDATE CACHE
   // ===============================
   window.gridCache = window.gridCache || {};
   window.gridCache.today = data;
 
-  // update month cache if exists
   if(typeof updateMonthCache === "function"){
     updateMonthCache();
   }
@@ -3487,8 +3486,7 @@ function lineIntersect(lat1, lon1, lat2, lon2, lat3, lon3, lat4, lon4) {
       window.currentBeat || "ALL"
     );
   }
-}
-     // ===============================
+}  // ===============================
 // 🔲 BUILD GRID (FINAL CORRECT)
 // ===============================
 // ============================================================
@@ -3758,16 +3756,25 @@ window.gridCache = window.gridCache || {
 };
 
 function getTodayKey(){
-  return "grid_" + new Date().toISOString().slice(0,10);
+  return "grid_" + getLocalDateStr();
 }
-
 function loadCacheOnStart(){
+
   const key = getTodayKey();
-  window.gridCache.today = JSON.parse(localStorage.getItem(key) || "{}");
+
+  window.gridCache = window.gridCache || {};
+
+  try {
+    window.gridCache.today = JSON.parse(localStorage.getItem(key) || "{}");
+  } catch(e){
+    window.gridCache.today = {};
+  }
+
   updateMonthCache();
 }
-
 function updateMonthCache(){
+
+  console.log("🧠 Rebuilding MONTH cache");
 
   let result = {};
 
@@ -3775,17 +3782,47 @@ function updateMonthCache(){
   const start = new Date(today.getFullYear(), today.getMonth(), 1);
 
   for(let d = new Date(start); d <= today; d.setDate(d.getDate()+1)){
-    const key = "grid_" + d.toISOString().slice(0,10);
-    const data = JSON.parse(localStorage.getItem(key) || "{}");
-    Object.keys(data).forEach(id => result[id] = true);
+
+    // 🔥 FIXED LOCAL DATE
+    const key = "grid_" + getLocalDateStr(d);
+
+    let data = {};
+    try {
+      data = JSON.parse(localStorage.getItem(key) || "{}");
+    } catch(e){
+      data = {};
+    }
+
+    Object.keys(data).forEach(id => {
+      result[id] = true;
+    });
   }
 
+  window.gridCache = window.gridCache || {};
   window.gridCache.month = result;
-}
 
+  console.log("✅ Month grids:", Object.keys(result).length);
+}
+    function updateTodayCache(){
+
+  const key = "grid_" + getLocalDateStr();
+
+  let data = {};
+  try {
+    data = JSON.parse(localStorage.getItem(key) || "{}");
+  } catch(e){
+    data = {};
+  }
+
+  window.gridCache = window.gridCache || {};
+  window.gridCache.today = data;
+
+  console.log("📅 Today grids:", Object.keys(data).length);
+}
 function updateVisitedCache(newVisited){
 
-  const key = getTodayKey();
+  const key = "grid_" + getLocalDateStr();
+
   let todayData = JSON.parse(localStorage.getItem(key) || "{}");
 
   Object.keys(newVisited).forEach(id => {
@@ -3795,9 +3832,9 @@ function updateVisitedCache(newVisited){
   localStorage.setItem(key, JSON.stringify(todayData));
 
   window.gridCache.today = todayData;
+
   updateMonthCache();
-}
-function getCoverageStats(mode = "today", beat = "ALL", type = "all"){
+}function getCoverageStats(mode = "today", beat = "ALL", type = "all"){
 
   if(!window.gridIndex || !window.gridMeta) return null;
 
@@ -3925,7 +3962,14 @@ async function backfillFromKML(){
 
   buildMonthCache();
   renderGrid("current","ALL");
-}    // ======================================================
+}  
+    
+    function getLocalDateStr(date = new Date()){
+  const d = new Date(date);
+  d.setMinutes(d.getMinutes() - d.getTimezoneOffset());
+  return d.toISOString().slice(0,10);
+}
+    // ======================================================
 // 🚀 RENDER GRID (UPDATED - CACHE BASED)
 // ======================================================
 function renderGrid(mode = "today", beat = "ALL"){
@@ -4170,20 +4214,6 @@ function loadCacheOnStart(){
   updateMonthCache();
 }
 
-function updateMonthCache(){
-  let result = {};
-
-  const today = new Date();
-  const start = new Date(today.getFullYear(), today.getMonth(), 1);
-
-  for(let d = new Date(start); d <= today; d.setDate(d.getDate()+1)){
-    const key = "grid_" + d.toISOString().slice(0,10);
-    const data = JSON.parse(localStorage.getItem(key) || "{}");
-    Object.keys(data).forEach(id => result[id] = true);
-  }
-
-  window.gridCache.month = result;
-}
 
     function updateVisitedCache(newVisited){
 
@@ -4266,24 +4296,36 @@ function markVisitedHybrid(tracks){
   });
 
   // ===============================
-  // 🔥 APPLY + SAVE + CACHE UPDATE
+  // 🔥 APPLY + SAVE + CACHE UPDATE (FIXED)
   // ===============================
   if(Object.keys(visited).length){
 
-    const key = "grid_" + new Date().toISOString().slice(0,10);
+    // 🔥 FIX: LOCAL DATE (CRITICAL)
+    const key = "grid_" + getLocalDateStr();
 
-    let data = JSON.parse(localStorage.getItem(key) || "{}");
+    let data;
+    try {
+      data = JSON.parse(localStorage.getItem(key) || "{}");
+    } catch(e){
+      data = {};
+    }
 
     Object.keys(visited).forEach(id => {
+
+      // 🔥 update memory grid
       if(window.gridIndex[id]){
         window.gridIndex[id].visited = true;
       }
+
+      // 🔥 save to localStorage
       data[id] = true;
     });
 
     localStorage.setItem(key, JSON.stringify(data));
 
-    // 🔥 cache update
+    // ===============================
+    // 🔥 CACHE UPDATE (FIXED)
+    // ===============================
     window.gridCache = window.gridCache || {};
     window.gridCache.today = data;
 
@@ -4293,16 +4335,19 @@ function markVisitedHybrid(tracks){
 
     console.log("✅ Hybrid visited:", Object.keys(visited).length);
 
-    // 🔥 live render
-    renderGrid(
-      window.currentCoverageMode || "today",
-      window.currentBeat || "ALL"
-    );
+    // ===============================
+    // 🔥 LIVE RENDER
+    // ===============================
+    if(typeof renderGrid === "function"){
+      renderGrid(
+        window.currentCoverageMode || "today",
+        window.currentBeat || "ALL"
+      );
+    }
   }
 
   return visited;
-}
-    
+}    
 function applyMode(mode){
 
   window.currentCoverageMode = mode;
