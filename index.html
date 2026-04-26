@@ -3854,22 +3854,36 @@ async function backfillFromKML(){
   }
 
   let rounds = 0;
-  const MAX_ROUNDS = 20; // safety cap
+  const MAX_ROUNDS = 25;        // safety cap
+  const RETRY_DELAY = 2000;     // on timeout
+  const LOOP_DELAY  = 1200;     // between rounds
 
-  while(rounds < MAX_ROUNDS){
+  // 🔥 track what we already processed in this run (avoid duplicates)
+  const seenDates = new Set();
+
+  while (rounds < MAX_ROUNDS){
 
     console.log("🔁 Backfill round:", rounds + 1);
 
-    let data;
+    let data = null;
 
     try {
       data = await callBackend("getKMLTracks");
-    } catch(e){
-      console.warn("⚠ Backend error");
-      break;
+    } catch (e) {
+      console.warn("⚠ Backend threw error, retrying…");
+      await new Promise(r => setTimeout(r, RETRY_DELAY));
+      continue; // retry same round
     }
 
-    if(!data || !data.length){
+    // 🔥 handle timeout / null
+    if (!data){
+      console.warn("⚠ Backend timeout/null → retrying…");
+      await new Promise(r => setTimeout(r, RETRY_DELAY));
+      continue; // retry same round
+    }
+
+    // 🔥 no more data → finished
+    if (!Array.isArray(data) || data.length === 0){
       console.log("✅ No more KML data → DONE");
       break;
     }
@@ -3877,11 +3891,15 @@ async function backfillFromKML(){
     console.log("📦 KML DAYS RECEIVED:", data.length);
 
     // ======================================================
-    // 🔥 PROCESS EACH DAY
+    // 🔥 PROCESS EACH DAY (DEDUP PER RUN)
     // ======================================================
-    data.forEach(d => {
+    for (const d of data){
 
-      if(!d.track || d.track.length < 2) return;
+      if(!d || !d.date || !Array.isArray(d.track) || d.track.length < 2) continue;
+
+      // skip if already handled this date in current run
+      if (seenDates.has(d.date)) continue;
+      seenDates.add(d.date);
 
       const key = "grid_" + d.date;
 
@@ -3892,20 +3910,21 @@ async function backfillFromKML(){
         dayData = {};
       }
 
+      // your hybrid grid marking
       const visited = markVisitedHybrid([{ track: d.track }]);
 
-      Object.keys(visited).forEach(id => {
+      // merge
+      for (const id in visited){
         dayData[id] = true;
-      });
+      }
 
       localStorage.setItem(key, JSON.stringify(dayData));
-
-    });
+    }
 
     rounds++;
 
-    // ⏳ small delay → allow backend cursor to advance
-    await new Promise(r => setTimeout(r, 1500));
+    // small delay so GAS cursor can advance and avoid throttling
+    await new Promise(r => setTimeout(r, LOOP_DELAY));
   }
 
   console.log("🎯 Full backfill complete");
@@ -3913,9 +3932,19 @@ async function backfillFromKML(){
   // ======================================================
   // 🔥 FINAL UPDATE
   // ======================================================
-  buildMonthCache();
-  renderGrid("current","ALL");
-}// ======================================================
+  try {
+    buildMonthCache();
+  } catch(e){
+    console.warn("⚠ buildMonthCache failed:", e);
+  }
+
+  try {
+    renderGrid("current", window.currentBeat || "ALL");
+  } catch(e){
+    console.warn("⚠ renderGrid failed:", e);
+  }
+}
+    // ======================================================
 // 🚀 RENDER GRID (UPDATED - CACHE BASED)
 // ======================================================
 function renderGrid(mode = "today", beat = "ALL"){
