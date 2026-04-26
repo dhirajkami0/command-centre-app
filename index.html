@@ -3860,28 +3860,37 @@ async function backfillFromKML(){
     return;
   }
 
+  console.log("📦 KML DAYS RECEIVED:", data.length);
+
   data.forEach(d => {
 
     if(!d.track || d.track.length < 2) return;
 
+    // 🔥 IMPORTANT: USE DATE FROM KML
     const key = "grid_" + d.date;
 
+    // 🔥 LOAD EXISTING (DO NOT OVERWRITE)
     let dayData = JSON.parse(localStorage.getItem(key) || "{}");
 
-    // 🔥 USE YOUR HYBRID ENGINE (BEST)
-    const visited = markVisitedHybrid([{track: d.track}]);
+    // 🔥 USE YOUR GRID ENGINE
+    const visited = markVisitedHybrid([{ track: d.track }]);
 
+    // 🔥 MERGE (CRITICAL)
     Object.keys(visited).forEach(id => {
       dayData[id] = true;
     });
 
+    // 🔥 SAVE PER DAY
     localStorage.setItem(key, JSON.stringify(dayData));
 
   });
 
-  console.log("✅ KML Backfill COMPLETE");
+  console.log("✅ Backfill COMPLETE");
 
+  // 🔥 REBUILD MONTH CACHE
   buildMonthCache();
+
+  // 🔥 REFRESH UI
   renderGrid("current","ALL");
 }// ======================================================
 // 🚀 RENDER GRID (UPDATED - CACHE BASED)
