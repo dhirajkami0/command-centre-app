@@ -1495,19 +1495,19 @@ function startApp(){
 
         console.log("🎯 Grid ready");
 
-        // 🔥 ================= BACKFILL (RUN ONCE) =================
-        if(!localStorage.getItem("archiveBackfillDone")){
+        // 🔥 ================= KML BACKFILL (RUN ONCE) =================
+        if(!localStorage.getItem("kmlBackfillDone")){
 
-          console.log("🛠 Running archive backfill...");
+          console.log("🛠 Running KML backfill...");
 
           try {
 
-            backfillFromArchive();   // 🔥 pulls archive → builds history
+            backfillFromKML();   // 🔥 NEW (replaces archive)
 
-            localStorage.setItem("archiveBackfillDone", true);
+            localStorage.setItem("kmlBackfillDone", true);
 
           } catch(e){
-            console.error("❌ Backfill failed:", e);
+            console.error("❌ KML Backfill failed:", e);
           }
 
         }
