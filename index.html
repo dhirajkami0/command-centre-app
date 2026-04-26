@@ -3854,42 +3854,71 @@ async function backfillFromKML(){
   }
 
   let rounds = 0;
-  const MAX_ROUNDS = 50;
 
-  while(rounds < MAX_ROUNDS){
+  while(rounds < 50){
 
     console.log("🔁 Round:", rounds + 1);
 
-    const data = await callBackend("getKMLTracks");
+    // 🔥 STEP 1 → get ONE file
+    const meta = await callBackend("getKMLTracks");
 
-    if(!data || !data.length){
+    if(!meta || !meta.length){
       console.log("✅ DONE (no more files)");
       break;
     }
 
-    const d = data[0];
+    const file = meta[0];
 
-    if(!d.track || d.track.length < 2){
+    // 🔥 STEP 2 → read file
+    const res = await callBackend("readKMLFile", {fileId: file.id});
+
+    if(!res || !res.text){
       rounds++;
       continue;
     }
 
-    const key = "grid_" + d.date;
+    // 🔥 PARSE KML
+    const coordMatch = res.text.match(/<coordinates>([\s\S]*?)<\/coordinates>/);
 
-    let dayData = JSON.parse(localStorage.getItem(key) || "{}");
+    if(!coordMatch){
+      rounds++;
+      continue;
+    }
 
-    const visited = markVisitedHybrid([{track: d.track}]);
+    const points = coordMatch[1].trim().split(/\s+/);
 
-    Object.keys(visited).forEach(id => {
-      dayData[id] = true;
+    let track = [];
+
+    points.forEach(p => {
+      const parts = p.split(",");
+      if(parts.length < 2) return;
+
+      const lon = parseFloat(parts[0]);
+      const lat = parseFloat(parts[1]);
+
+      if(!isNaN(lat) && !isNaN(lon)){
+        track.push([lat, lon]);
+      }
     });
 
-    localStorage.setItem(key, JSON.stringify(dayData));
+    if(track.length > 1){
+
+      const key = "grid_" + file.date;
+
+      let dayData = JSON.parse(localStorage.getItem(key) || "{}");
+
+      const visited = markVisitedHybrid([{track}]);
+
+      Object.keys(visited).forEach(id => {
+        dayData[id] = true;
+      });
+
+      localStorage.setItem(key, JSON.stringify(dayData));
+    }
 
     rounds++;
 
-    // 🔥 small delay (critical)
-    await new Promise(r => setTimeout(r, 1000));
+    await new Promise(r => setTimeout(r, 800));
   }
 
   console.log("🎯 Backfill COMPLETE");
