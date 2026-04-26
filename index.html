@@ -3844,162 +3844,45 @@ function getCoverageStats(mode = "today", beat = "ALL", type = "all"){
     percent: percent.toFixed(1)
   };
 }
-async function backfillFromArchive(){
+async function backfillFromKML(){
 
-  console.log("🛠 Backfill from Archive START");
+  console.log("🛠 KML Backfill START");
 
-  try {
-
-    // ===============================
-    // 🔥 SAFETY CHECKS
-    // ===============================
-    if(!window.gridIndex || !Object.keys(window.gridIndex).length){
-      console.warn("⚠ Grid not ready → abort backfill");
-      return;
-    }
-
-    if(!window.gridMeta || !window.gridMeta.size){
-      console.warn("⚠ gridMeta missing");
-      return;
-    }
-
-    const data = await callBackend("getArchiveTracks");
-
-    if(!data || !Array.isArray(data) || !data.length){
-      console.warn("⚠ No archive data");
-      return;
-    }
-
-    console.log("📦 Archive points:", data.length);
-
-    // ===============================
-    // 🔥 GROUP TRACKS BY DAY
-    // ===============================
-    let tracksByDate = {};
-
-    data.forEach(p => {
-
-      if(!p) return;
-
-      const lat = parseFloat(p.lat);
-      const lon = parseFloat(p.lon);
-      const time = new Date(p.time);
-
-      if(isNaN(lat) || isNaN(lon) || isNaN(time)) return;
-
-      const dateKey = time.toISOString().slice(0,10);
-
-      if(!tracksByDate[dateKey]){
-        tracksByDate[dateKey] = [];
-      }
-
-      tracksByDate[dateKey].push([lat, lon]);
-
-    });
-
-    // ===============================
-    // 🔥 PROCESS EACH DAY
-    // ===============================
-    Object.entries(tracksByDate).forEach(([date, points]) => {
-
-      if(!points || points.length < 2) return;
-
-      const storageKey = "grid_" + date;
-
-      let dayData = {};
-
-      try {
-        dayData = JSON.parse(localStorage.getItem(storageKey) || "{}");
-      } catch(e){
-        dayData = {};
-      }
-
-      // ===============================
-      // 🔥 HYBRID LINE-BASED MARKING
-      // ===============================
-      let visited = {};
-
-      try {
-
-        const trackObj = [{
-          track: points
-        }];
-
-        // use your existing hybrid engine
-        visited = markVisitedHybrid(trackObj) || {};
-
-      } catch(e){
-        console.warn("⚠ Hybrid failed → fallback to point mode");
-      }
-
-      // ===============================
-      // 🔥 FALLBACK (POINT SNAP)
-      // ===============================
-      if(!visited || !Object.keys(visited).length){
-
-        const size = window.gridMeta.size;
-
-        points.forEach(([lat, lon]) => {
-
-          const latKey = Math.floor(lat / size) * size;
-          const lonKey = Math.floor(lon / size) * size;
-
-          const id = latKey.toFixed(5) + "_" + lonKey.toFixed(5);
-
-          if(window.gridIndex[id]){
-            visited[id] = true;
-          } else {
-            // 🔥 soft fallback (rounding tolerance)
-            const alt = Object.keys(window.gridIndex).find(k =>
-              k.startsWith(latKey.toFixed(4)) && k.includes(lonKey.toFixed(4))
-            );
-            if(alt) visited[alt] = true;
-          }
-
-        });
-      }
-
-      // ===============================
-      // 🔥 MERGE INTO STORAGE
-      // ===============================
-      Object.keys(visited).forEach(id => {
-        dayData[id] = true;
-      });
-
-      try {
-        localStorage.setItem(storageKey, JSON.stringify(dayData));
-      } catch(e){
-        console.error("❌ localStorage save failed:", e);
-      }
-
-    });
-
-    // ===============================
-    // 🔥 REBUILD MONTH CACHE
-    // ===============================
-    try {
-      buildMonthCache();
-    } catch(e){
-      console.warn("⚠ buildMonthCache failed:", e);
-    }
-
-    // ===============================
-    // 🔥 FINAL UI REFRESH
-    // ===============================
-    try {
-      renderGrid(
-        "current",
-        window.currentBeat || "ALL"
-      );
-    } catch(e){
-      console.warn("⚠ renderGrid failed:", e);
-    }
-
-    console.log("✅ Backfill COMPLETE:", Object.keys(tracksByDate).length, "days processed");
-
-  } catch(e){
-    console.error("❌ Backfill crash:", e);
+  if(!window.gridIndex){
+    console.warn("⚠ Grid not ready");
+    return;
   }
+
+  const data = await callBackend("getKMLTracks");
+
+  if(!data || !data.length){
+    console.warn("⚠ No KML data");
+    return;
+  }
+
+  data.forEach(d => {
+
+    if(!d.track || d.track.length < 2) return;
+
+    const key = "grid_" + d.date;
+
+    let dayData = JSON.parse(localStorage.getItem(key) || "{}");
+
+    // 🔥 USE YOUR HYBRID ENGINE (BEST)
+    const visited = markVisitedHybrid([{track: d.track}]);
+
+    Object.keys(visited).forEach(id => {
+      dayData[id] = true;
+    });
+
+    localStorage.setItem(key, JSON.stringify(dayData));
+
+  });
+
+  console.log("✅ KML Backfill COMPLETE");
+
+  buildMonthCache();
+  renderGrid("current","ALL");
 }// ======================================================
 // 🚀 RENDER GRID (UPDATED - CACHE BASED)
 // ======================================================
