@@ -3853,44 +3853,67 @@ async function backfillFromKML(){
     return;
   }
 
-  const data = await callBackend("getKMLTracks");
+  let rounds = 0;
+  const MAX_ROUNDS = 20; // safety cap
 
-  if(!data || !data.length){
-    console.warn("⚠ No KML data");
-    return;
-  }
+  while(rounds < MAX_ROUNDS){
 
-  console.log("📦 KML DAYS RECEIVED:", data.length);
+    console.log("🔁 Backfill round:", rounds + 1);
 
-  data.forEach(d => {
+    let data;
 
-    if(!d.track || d.track.length < 2) return;
+    try {
+      data = await callBackend("getKMLTracks");
+    } catch(e){
+      console.warn("⚠ Backend error");
+      break;
+    }
 
-    // 🔥 IMPORTANT: USE DATE FROM KML
-    const key = "grid_" + d.date;
+    if(!data || !data.length){
+      console.log("✅ No more KML data → DONE");
+      break;
+    }
 
-    // 🔥 LOAD EXISTING (DO NOT OVERWRITE)
-    let dayData = JSON.parse(localStorage.getItem(key) || "{}");
+    console.log("📦 KML DAYS RECEIVED:", data.length);
 
-    // 🔥 USE YOUR GRID ENGINE
-    const visited = markVisitedHybrid([{ track: d.track }]);
+    // ======================================================
+    // 🔥 PROCESS EACH DAY
+    // ======================================================
+    data.forEach(d => {
 
-    // 🔥 MERGE (CRITICAL)
-    Object.keys(visited).forEach(id => {
-      dayData[id] = true;
+      if(!d.track || d.track.length < 2) return;
+
+      const key = "grid_" + d.date;
+
+      let dayData;
+      try {
+        dayData = JSON.parse(localStorage.getItem(key) || "{}");
+      } catch(e){
+        dayData = {};
+      }
+
+      const visited = markVisitedHybrid([{ track: d.track }]);
+
+      Object.keys(visited).forEach(id => {
+        dayData[id] = true;
+      });
+
+      localStorage.setItem(key, JSON.stringify(dayData));
+
     });
 
-    // 🔥 SAVE PER DAY
-    localStorage.setItem(key, JSON.stringify(dayData));
+    rounds++;
 
-  });
+    // ⏳ small delay → allow backend cursor to advance
+    await new Promise(r => setTimeout(r, 1500));
+  }
 
-  console.log("✅ Backfill COMPLETE");
+  console.log("🎯 Full backfill complete");
 
-  // 🔥 REBUILD MONTH CACHE
+  // ======================================================
+  // 🔥 FINAL UPDATE
+  // ======================================================
   buildMonthCache();
-
-  // 🔥 REFRESH UI
   renderGrid("current","ALL");
 }// ======================================================
 // 🚀 RENDER GRID (UPDATED - CACHE BASED)
