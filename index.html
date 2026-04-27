@@ -935,62 +935,7 @@ window.addEventListener("unhandledrejection", function (e) {
   display:none;
 ">
 
-  <!-- 🔘 TOGGLE BUTTON -->
-<div id="coveragePanel" class="legend-container">
-
-  <!-- 🔽 TOGGLE BUTTON -->
-  <button id="coverageToggleBtn" onclick="toggleCoveragePanel()">
-    <i id="coverageIcon" class="fa-solid fa-chevron-down"></i>
-  </button>
-
-  <!-- 📊 CONTENT -->
-  <div class="legend-content" id="coverageContent">
-
-    <b>🟢 COVERAGE</b><br><br>
-
-    <!-- 🌍 BEAT SELECT -->
-    <select id="beatSelect" onchange="onBeatChange()" style="
-      width:100%;
-      margin-bottom:10px;
-      padding:6px;
-      border-radius:6px;
-      border:none;
-      background:#222;
-      color:#fff;
-    ">
-      <option value="ALL">🌍 Range (All)</option>
-      <option value="EAST_GARAM">East Garam</option>
-      <option value="WEST_GARAM">West Garam</option>
-      <option value="EAST_PORO">East Poro</option>
-    </select>
-
-    <!-- ⚡ MODES -->
-    <div style="display:flex; gap:6px; margin-bottom:10px;">
-      
-      <button id="btnToday"
-        onclick="applyMode('today')"
-        style="flex:1;">
-        Today
-      </button>
-
-      <button id="btnCurrent"
-        onclick="applyMode('current')"
-        style="flex:1;">
-        Current
-      </button>
-
-    </div>
-
-    <!-- 🎛 ACTIONS -->
-    <div style="text-align:center;">
-      <button onclick="closeCoveragePanel()">
-        Close
-      </button>
-    </div>
-
-  </div>
-</div>
-  
+<button id="coverageToggleBtn" onclick="toggleCoveragePanel()">  
   <div id="map"></div>
 
   <!-- 📊 REPORT PANEL -->
