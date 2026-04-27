@@ -3652,8 +3652,14 @@ function assignGridToBeat(rangeLayer){
 
   try {
 
+    // 🔥 SAFETY
+    window.beatMap = window.beatMap || {};
+
     let polygons = [];
 
+    // ==========================================
+    // 🔥 EXTRACT POLYGONS
+    // ==========================================
     function extract(layer){
 
       if (!layer) return;
@@ -3670,6 +3676,7 @@ function assignGridToBeat(rangeLayer){
 
         let coords = latlngs.map(pt => [pt.lng, pt.lat]);
 
+        // 🔥 ensure closed ring
         if(coords.length){
           const f = coords[0];
           const l = coords[coords.length - 1];
@@ -3678,10 +3685,14 @@ function assignGridToBeat(rangeLayer){
           }
         }
 
-        polygons.push({
-          comp,
-          turfPoly: turf.polygon([coords])
-        });
+        try {
+          polygons.push({
+            comp,
+            turfPoly: turf.polygon([coords])
+          });
+        } catch(e){
+          console.warn("⚠ Turf polygon fail");
+        }
 
         return;
       }
@@ -3698,6 +3709,9 @@ function assignGridToBeat(rangeLayer){
 
     console.log("📐 Total polygons:", polygons.length);
 
+    // ==========================================
+    // 🔥 ASSIGN BEAT TO EACH GRID
+    // ==========================================
     Object.values(window.gridIndex).forEach(cell => {
 
       if(!cell.geo){
@@ -3714,8 +3728,15 @@ function assignGridToBeat(rangeLayer){
 
         let beat = null;
 
+        // 🔥 SAFE beatMap lookup
         for(let key in window.beatMap){
-          if(window.beatMap[key].includes(poly.comp)){
+
+          const list = window.beatMap[key];
+
+          if(!Array.isArray(list)) continue;
+          if(!poly.comp) continue;
+
+          if(list.includes(poly.comp)){
             beat = key;
             break;
           }
@@ -3724,6 +3745,19 @@ function assignGridToBeat(rangeLayer){
         if(!beat) continue;
 
         try {
+
+          // 🔥 FAST BBOX CHECK (PERFORMANCE)
+          const cellBBox = turf.bbox(cell.geo);
+          const polyBBox = turf.bbox(poly.turfPoly);
+
+          if(
+            cellBBox[2] < polyBBox[0] ||
+            cellBBox[0] > polyBBox[2] ||
+            cellBBox[3] < polyBBox[1] ||
+            cellBBox[1] > polyBBox[3]
+          ){
+            continue;
+          }
 
           const inter = turf.intersect(cell.geo, poly.turfPoly);
           if(!inter) continue;
@@ -3742,8 +3776,12 @@ function assignGridToBeat(rangeLayer){
         } catch(e){}
       }
 
+      // ==========================================
+      // 🔥 FALLBACK (CENTROID METHOD)
+      // ==========================================
       if(bestBeat === "UNKNOWN"){
         try {
+
           const c = turf.centroid(cell.geo).geometry.coordinates;
           const pt = turf.point(c);
 
@@ -3752,7 +3790,13 @@ function assignGridToBeat(rangeLayer){
             let beat = null;
 
             for(let key in window.beatMap){
-              if(window.beatMap[key].includes(poly.comp)){
+
+              const list = window.beatMap[key];
+
+              if(!Array.isArray(list)) continue;
+              if(!poly.comp) continue;
+
+              if(list.includes(poly.comp)){
                 beat = key;
                 break;
               }
@@ -3779,7 +3823,6 @@ function assignGridToBeat(rangeLayer){
     console.error("❌ assignGridToBeat error:", e);
   }
 }
-
 
 // ======================================================
 // 🧠 GRID CACHE (LIVE + MONTH)
