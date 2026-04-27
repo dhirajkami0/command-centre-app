@@ -3773,8 +3773,6 @@ function loadCacheOnStart(){
 }
 function updateMonthCache(){
 
-  console.log("🧠 Rebuilding MONTH cache");
-
   let result = {};
 
   const today = new Date();
@@ -3782,10 +3780,9 @@ function updateMonthCache(){
 
   for(let d = new Date(start); d <= today; d.setDate(d.getDate()+1)){
 
-    // 🔥 FIXED LOCAL DATE
-    const key = "grid_" + getLocalDateStr(d);
+    const key = "grid_" + d.toISOString().slice(0,10);
 
-    let data = {};
+    let data;
     try {
       data = JSON.parse(localStorage.getItem(key) || "{}");
     } catch(e){
@@ -3800,9 +3797,8 @@ function updateMonthCache(){
   window.gridCache = window.gridCache || {};
   window.gridCache.month = result;
 
-  console.log("✅ Month grids:", Object.keys(result).length);
-}
-    function updateTodayCache(){
+  console.log("📅 Month cache grids:", Object.keys(result).length);
+}    function updateTodayCache(){
 
   const key = "grid_" + getLocalDateStr();
 
@@ -4390,7 +4386,6 @@ function markVisitedHybrid(tracks){
         } catch(e){
           console.warn("⚠ Turf error:", e);
         }
-
       }
 
       if(visited[id]) break;
@@ -4421,10 +4416,12 @@ function markVisitedHybrid(tracks){
 
     Object.keys(visited).forEach(id => {
 
+      // 🔥 memory update
       if(window.gridIndex[id]){
         window.gridIndex[id].visited = true;
       }
 
+      // 🔥 simple boolean storage (stable)
       data[id] = true;
     });
 
@@ -4433,16 +4430,21 @@ function markVisitedHybrid(tracks){
     console.log("📦 Total grids in this day:", Object.keys(data).length);
 
     // ===============================
-    // 🔥 CACHE UPDATE
+    // 🔥 CACHE UPDATE (FINAL FIX)
     // ===============================
     window.gridCache = window.gridCache || {};
 
-    if(trackDate){
-      console.log("📊 Updating MONTH cache (historical)");
-      updateMonthCache();
-    } else {
-      console.log("📊 Updating TODAY cache (live)");
-      window.gridCache.today = data;
+    // 🔥 ALWAYS refresh today cache from storage (critical)
+    const todayKey = "grid_" + getLocalDateStr();
+
+    try {
+      window.gridCache.today = JSON.parse(localStorage.getItem(todayKey) || "{}");
+    } catch(e){
+      window.gridCache.today = {};
+    }
+
+    // 🔥 ALWAYS rebuild month cache
+    if(typeof updateMonthCache === "function"){
       updateMonthCache();
     }
 
@@ -4462,13 +4464,13 @@ function markVisitedHybrid(tracks){
         window.currentBeat || "ALL"
       );
     }
+
   } else {
     console.log("⚠ No grids intersected for this track");
   }
 
   return visited;
-}
-    function applyMode(mode){
+}    function applyMode(mode){
 
   window.currentCoverageMode = mode;
 
