@@ -4575,7 +4575,7 @@ function markVisitedHybrid(tracks){
   });
 
   // ======================================================
-  // 🔥 SAVE WITH DATE + STAFF + BEAT (CRITICAL FIX)
+  // 🔥 SAVE WITH DATE + STAFF + BEAT (FINAL FIX)
   // ======================================================
   if(Object.keys(visited).length){
 
@@ -4589,13 +4589,15 @@ function markVisitedHybrid(tracks){
       data = {};
     }
 
-    const name = window.userProfile?.cleanName || "UNKNOWN";
-    const beat = window.userProfile?.beat || "UNKNOWN";
+    // 🔥 GET FROM TRACK FIRST (KML), ELSE USER PROFILE
+    const t = tracks[0] || {};
+    const name = t.staff || window.userProfile?.cleanName || "UNKNOWN";
+    const beat = t.beat || window.userProfile?.beat || "UNKNOWN";
 
     Object.keys(visited).forEach(id => {
 
-      // 🔥 INIT STRUCTURE
-      if(!data[id]){
+      // 🔥 FIX OLD FORMAT (CRITICAL)
+      if(typeof data[id] !== "object"){
         data[id] = {
           visited: true,
           staff: [],
@@ -4603,9 +4605,19 @@ function markVisitedHybrid(tracks){
         };
       }
 
+      // 🔥 ENSURE ARRAYS EXIST
+      if(!Array.isArray(data[id].staff)){
+        data[id].staff = [];
+      }
+
+      if(!Array.isArray(data[id].beats)){
+        data[id].beats = [];
+      }
+
       // 🔥 UPDATE
       data[id].visited = true;
 
+      // 🔥 SAFE PUSH
       if(!data[id].staff.includes(name)){
         data[id].staff.push(name);
       }
@@ -4622,7 +4634,9 @@ function markVisitedHybrid(tracks){
 
     localStorage.setItem(key, JSON.stringify(data));
 
+    // ======================================================
     // 🔥 CACHE UPDATE
+    // ======================================================
     window.gridCache = window.gridCache || {};
 
     if(trackDate){
@@ -4631,10 +4645,15 @@ function markVisitedHybrid(tracks){
       window.gridCache.today = data;
     }
 
-    updateMonthCache();
+    if(typeof updateMonthCache === "function"){
+      updateMonthCache();
+    }
 
     console.log("✅ Hybrid visited:", Object.keys(visited).length, "|", key);
 
+    // ======================================================
+    // 🔥 LIVE RENDER
+    // ======================================================
     if(typeof renderGrid === "function"){
       renderGrid(
         window.currentCoverageMode || "today",
@@ -4644,7 +4663,7 @@ function markVisitedHybrid(tracks){
   }
 
   return visited;
-}    function applyMode(mode){
+}   function applyMode(mode){
 
   window.currentCoverageMode = mode;
 
