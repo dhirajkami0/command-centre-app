@@ -3623,9 +3623,29 @@ function closeCoveragePanel(){
 // ==========================================
 // 🎯 ASSIGN GRID TO BEAT (PRECISE CLIPPING)
 // ==========================================
+    window.gridCache = window.gridCache || {
+  today: {},
+  month: {}
+};
 // ==========================================
 // 🎯 ASSIGN GRID TO BEAT (FINAL STABLE VERSION)
 // ==========================================
+
+    function loadCacheOnStart(){
+
+  const key = getTodayKey();
+
+  window.gridCache = window.gridCache || {};
+
+  try {
+    window.gridCache.today = JSON.parse(localStorage.getItem(key) || "{}");
+  } catch(e){
+    window.gridCache.today = {};
+  }
+
+  updateMonthCache();
+}
+
 // ======================================================
 // 🎯 ASSIGN GRID → BEAT (FINAL STABLE - NO GAP / NO OVERFLOW)
 // ======================================================
@@ -3767,27 +3787,10 @@ function assignGridToBeat(rangeLayer){
 // ======================================================
 // 🧠 GRID CACHE (LIVE + MONTH)
 // ======================================================
-window.gridCache = window.gridCache || {
-  today: {},
-  month: {}
-};
+
 
 function getTodayKey(){
   return "grid_" + getLocalDateStr();
-}
-function loadCacheOnStart(){
-
-  const key = getTodayKey();
-
-  window.gridCache = window.gridCache || {};
-
-  try {
-    window.gridCache.today = JSON.parse(localStorage.getItem(key) || "{}");
-  } catch(e){
-    window.gridCache.today = {};
-  }
-
-  updateMonthCache();
 }
 function updateMonthCache(){
 
@@ -4310,22 +4313,12 @@ function ensureGridReady(){
     console.error("❌ Grid rebuild failed:", e);
   }
 }    // ===== UI EVENTS =====
-   
+  
 
    // ===============================
 // 🔥 GLOBAL CACHE
 // ===============================
-window.gridCache = {
-  today: {},
-  month: {}
-};
 
-
-function loadCacheOnStart(){
-  const todayKey = getTodayKey();
-  window.gridCache.today = JSON.parse(localStorage.getItem(todayKey) || "{}");
-  updateMonthCache();
-}
 
 
 function markVisitedHybrid(tracks){
