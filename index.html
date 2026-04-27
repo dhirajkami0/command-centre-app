@@ -6207,7 +6207,7 @@ function syncOfflineMoves(){
           dist += getDistance(clean[i-1],clean[i]);
         }
 
-        /* 🔥 SPEED (FIXED REALISTIC) */
+        /* 🔥 SPEED */
         let speed = 0;
         if(clean.length>1){
           const d = getDistance(clean[clean.length-2],clean[clean.length-1]);
@@ -6230,15 +6230,14 @@ function syncOfflineMoves(){
           iconAnchor:[15,15]
         });
 
-        /* 🔥 SAFE DISPLAY FIX (ONLY CHANGE) */
         const team = (s.team && String(s.team).trim()) ? s.team : "N/A";
         const duty = (s.dutyType && String(s.dutyType).trim()) ? s.dutyType : "N/A";
 
-console.log("👤 STAFF DEBUG:", {
-  name: s.name,
-  team: s.team,
-  duty: s.dutyType
-});
+        console.log("👤 STAFF DEBUG:", {
+          name: s.name,
+          team: s.team,
+          duty: s.dutyType
+        });
         
         const popup = `
         <div style="font-family:Segoe UI">
@@ -6306,25 +6305,30 @@ console.log("👤 STAFF DEBUG:", {
     });
 
     // ======================================================
-    // 🔥 GRID UPDATE FROM STAFF TRACKS (ONLY ADDITION)
+    // 🔥 GRID UPDATE FROM STAFF TRACKS (FIXED)
     // ======================================================
     try {
 
-     let tracks = [];
+      let tracks = [];
+      const MAX_POINTS = 15; // 🔥 ONLY RECENT MOVEMENT
 
-staff.forEach(s=>{
-  if(Array.isArray(s.track) && s.track.length > 1){
+      staff.forEach(s=>{
+        if(Array.isArray(s.track) && s.track.length > 1){
 
-    tracks.push({
-      track: s.track,
-      date: getLocalDateStr() // 🔥 FORCE TODAY
-    });
+          // 🔥 TRIM OLD HISTORY (CRITICAL FIX)
+          const trimmed = s.track.slice(-MAX_POINTS);
 
-  }
-});
+          tracks.push({
+            track: trimmed
+            // ❌ NO date → will auto go to TODAY
+          });
+
+        }
+      });
+
       if(tracks.length && window.gridIndex){
 
-      markVisitedHybrid(tracks);
+        markVisitedHybrid(tracks);
 
         saveTodayVisited();
 
@@ -6333,7 +6337,8 @@ staff.forEach(s=>{
           window.currentBeat || "ALL"
         );
 
-        console.log("✅ Grid updated from staff tracks");
+        console.log("✅ Grid updated from staff tracks (trimmed)");
+
       }
 
     } catch(e){
