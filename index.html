@@ -6301,14 +6301,18 @@ console.log("👤 STAFF DEBUG:", {
     // ======================================================
     try {
 
-      let tracks = [];
+     let tracks = [];
 
-      staff.forEach(s=>{
-        if(Array.isArray(s.track) && s.track.length > 1){
-          tracks.push({ track: s.track });
-        }
-      });
+staff.forEach(s=>{
+  if(Array.isArray(s.track) && s.track.length > 1){
 
+    tracks.push({
+      track: s.track,
+      date: getLocalDateStr() // 🔥 FORCE TODAY
+    });
+
+  }
+});
       if(tracks.length && window.gridIndex){
 
       markVisitedHybrid(tracks);
