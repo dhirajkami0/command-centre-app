@@ -230,7 +230,43 @@ async function cleanOldMessages(){
   <script src="./js/leaflet-pip.min.js"></script>
   <script src="https://unpkg.com/@turf/turf@6/turf.min.js"></script>
   <script>
-    
+
+
+    // ===============================
+// 🧭 BEAT DETECTION SYSTEM
+// ===============================
+window.beatIndex = {};
+
+function setBeats(geojson){
+
+  window.beatIndex = {};
+
+  geojson.features.forEach(f => {
+    const name = f.properties?.name || "UNKNOWN";
+    window.beatIndex[name] = f;
+  });
+
+  console.log("🧭 Beats loaded:", Object.keys(window.beatIndex));
+}
+
+function detectBeat(lat, lon){
+
+  try {
+
+    const pt = turf.point([lon, lat]);
+
+    for(const [name, poly] of Object.entries(window.beatIndex)){
+      if(turf.booleanPointInPolygon(pt, poly)){
+        return name;
+      }
+    }
+
+  } catch(e){
+    console.warn("⚠ Beat detect error:", e);
+  }
+
+  return "UNKNOWN";
+}
     // ===============================
     window.originalConfirm = window.confirm;
  window.previewKMLLayer = null;
@@ -3963,6 +3999,19 @@ function updateVisitedCache(newVisited){
     }
 
     // ===============================
+    // 🔥 NEW → EXTRACT STAFF NAME
+    // ===============================
+    let staffName = "UNKNOWN";
+
+    try {
+      // Example: ARSAD_ALI_2026-04-27.kml
+      const parts = file.name.split("_");
+      staffName = parts[0]?.trim() || "UNKNOWN";
+    } catch(e){}
+
+    console.log("👤 Staff:", staffName);
+
+    // ===============================
     // 🔥 STEP 2 → READ FILE
     // ===============================
     let res;
@@ -3982,17 +4031,15 @@ function updateVisitedCache(newVisited){
     }
 
     // ===============================
-    // 🔥 STEP 3 → EXTRACT COORDINATES
+    // 🔥 STEP 3 → EXTRACT ALL COORD BLOCKS (FIXED)
     // ===============================
-    const coordMatch = res.text.match(/<coordinates>([\s\S]*?)<\/coordinates>/);
+    const coordBlocks = res.text.match(/<coordinates>([\s\S]*?)<\/coordinates>/g);
 
-    if(!coordMatch){
+    if(!coordBlocks){
       console.warn("⚠ No <coordinates> found");
       rounds++;
       continue;
     }
-
-    const rawPoints = coordMatch[1].trim().split(/\s+/);
 
     let track = [];
     let lastLat = null;
@@ -4000,48 +4047,74 @@ function updateVisitedCache(newVisited){
 
     const MIN_MOVE = 0.00005;
 
-    rawPoints.forEach(p => {
+    coordBlocks.forEach(block => {
 
-      const parts = p.split(",");
-      if(parts.length < 2) return;
+      const raw = block
+        .replace("<coordinates>", "")
+        .replace("</coordinates>", "")
+        .trim();
 
-      const lon = parseFloat(parts[0]);
-      const lat = parseFloat(parts[1]);
+      const rawPoints = raw.split(/\s+/);
 
-      if(isNaN(lat) || isNaN(lon)) return;
+      rawPoints.forEach(p => {
 
-      // 🔥 remove duplicates
-      if(lat === lastLat && lon === lastLon) return;
+        const parts = p.split(",");
+        if(parts.length < 2) return;
 
-      // 🔥 remove noise
-      if(
-        lastLat !== null &&
-        Math.abs(lat - lastLat) < MIN_MOVE &&
-        Math.abs(lon - lastLon) < MIN_MOVE
-      ){
-        return;
-      }
+        const lon = parseFloat(parts[0]);
+        const lat = parseFloat(parts[1]);
 
-      track.push([lat, lon]);
+        if(isNaN(lat) || isNaN(lon)) return;
 
-      lastLat = lat;
-      lastLon = lon;
+        // 🔥 remove duplicates
+        if(lat === lastLat && lon === lastLon) return;
+
+        // 🔥 remove noise
+        if(
+          lastLat !== null &&
+          Math.abs(lat - lastLat) < MIN_MOVE &&
+          Math.abs(lon - lastLon) < MIN_MOVE
+        ){
+          return;
+        }
+
+        track.push([lat, lon]);
+
+        lastLat = lat;
+        lastLon = lon;
+      });
+
     });
 
     console.log("📍 Track points after filter:", track.length);
+
+    // ===============================
+    // 🔥 NEW → AUTO DETECT BEAT
+    // ===============================
+    let beatName = "UNKNOWN";
+
+    try {
+      if(track.length && typeof detectBeat === "function"){
+        const [lat, lon] = track[0];
+        beatName = detectBeat(lat, lon);
+      }
+    } catch(e){}
+
+    console.log("🧭 Beat:", beatName);
 
     // ===============================
     // 🔥 STEP 4 → APPLY GRID VISITS
     // ===============================
     if(track.length > 1){
 
-      markVisitedHybrid([
-        {
-          track: track,
-          date: file.date // 🔥 CRITICAL
-        }
-      ]);
-
+     markVisitedHybrid([
+  {
+    track: track,
+    date: file.date,
+    staff: window.userProfile?.cleanName,
+    beat: beatName   // ✅ NEW
+  }
+]);
       console.log("📅 Saved grids for:", file.date);
 
     } else {
@@ -4076,7 +4149,51 @@ function updateVisitedCache(newVisited){
       .filter(k => k.startsWith("grid_"))
       .sort()
   );
-}   
+}
+
+   function showBeatCoverage(){
+
+  const list = getBeatCoverage("current");
+
+  let html = "";
+
+  list.forEach(b => {
+    html += `🧭 ${b.beat}: ${b.percent.toFixed(1)}%<br>`;
+  });
+
+  document.getElementById("coverageContent").innerHTML += "<br>" + html;
+} 
+  function getBeatCoverage(mode = "current"){
+
+  const data = (mode === "today")
+    ? (window.gridCache?.today || {})
+    : (window.gridCache?.month || {});
+
+  let stats = {};
+
+  Object.entries(window.gridIndex).forEach(([id, cell]) => {
+
+    if(!cell?.geo) return;
+
+    const beat = cell.beat || "UNKNOWN";
+
+    if(!stats[beat]){
+      stats[beat] = { total: 0, visited: 0 };
+    }
+
+    stats[beat].total++;
+
+    if(data[id]){
+      stats[beat].visited++;
+    }
+  });
+
+  return Object.entries(stats).map(([beat, v]) => ({
+    beat,
+    percent: v.total ? ((v.visited / v.total) * 100) : 0
+  }));
+}  
+    
     function getLocalDateStr(date = new Date()){
   const d = new Date(date);
   d.setMinutes(d.getMinutes() - d.getTimezoneOffset());
