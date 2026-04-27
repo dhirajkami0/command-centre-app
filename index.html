@@ -228,44 +228,9 @@ async function cleanOldMessages(){
 <script src="js/leaflet-kml.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/@turf/turf@6/turf.min.js"></script>
   <script src="./js/leaflet-pip.min.js"></script>
+  <script src="https://unpkg.com/@turf/turf@6/turf.min.js"></script>
   <script>
-
-
-    // ===============================
-// 🧭 BEAT DETECTION SYSTEM
-// ===============================
-window.beatIndex = {};
-
-function setBeats(geojson){
-
-  window.beatIndex = {};
-
-  geojson.features.forEach(f => {
-    const name = f.properties?.name || "UNKNOWN";
-    window.beatIndex[name] = f;
-  });
-
-  console.log("🧭 Beats loaded:", Object.keys(window.beatIndex));
-}
-
-function detectBeat(lat, lon){
-
-  try {
-
-    const pt = turf.point([lon, lat]);
-
-    for(const [name, poly] of Object.entries(window.beatIndex)){
-      if(turf.booleanPointInPolygon(pt, poly)){
-        return name;
-      }
-    }
-
-  } catch(e){
-    console.warn("⚠ Beat detect error:", e);
-  }
-
-  return "UNKNOWN";
-}
+    
     // ===============================
     window.originalConfirm = window.confirm;
  window.previewKMLLayer = null;
@@ -3652,14 +3617,8 @@ function assignGridToBeat(rangeLayer){
 
   try {
 
-    // 🔥 SAFETY
-    window.beatMap = window.beatMap || {};
-
     let polygons = [];
 
-    // ==========================================
-    // 🔥 EXTRACT POLYGONS
-    // ==========================================
     function extract(layer){
 
       if (!layer) return;
@@ -3676,7 +3635,6 @@ function assignGridToBeat(rangeLayer){
 
         let coords = latlngs.map(pt => [pt.lng, pt.lat]);
 
-        // 🔥 ensure closed ring
         if(coords.length){
           const f = coords[0];
           const l = coords[coords.length - 1];
@@ -3685,14 +3643,10 @@ function assignGridToBeat(rangeLayer){
           }
         }
 
-        try {
-          polygons.push({
-            comp,
-            turfPoly: turf.polygon([coords])
-          });
-        } catch(e){
-          console.warn("⚠ Turf polygon fail");
-        }
+        polygons.push({
+          comp,
+          turfPoly: turf.polygon([coords])
+        });
 
         return;
       }
@@ -3709,9 +3663,6 @@ function assignGridToBeat(rangeLayer){
 
     console.log("📐 Total polygons:", polygons.length);
 
-    // ==========================================
-    // 🔥 ASSIGN BEAT TO EACH GRID
-    // ==========================================
     Object.values(window.gridIndex).forEach(cell => {
 
       if(!cell.geo){
@@ -3728,15 +3679,8 @@ function assignGridToBeat(rangeLayer){
 
         let beat = null;
 
-        // 🔥 SAFE beatMap lookup
         for(let key in window.beatMap){
-
-          const list = window.beatMap[key];
-
-          if(!Array.isArray(list)) continue;
-          if(!poly.comp) continue;
-
-          if(list.includes(poly.comp)){
+          if(window.beatMap[key].includes(poly.comp)){
             beat = key;
             break;
           }
@@ -3745,19 +3689,6 @@ function assignGridToBeat(rangeLayer){
         if(!beat) continue;
 
         try {
-
-          // 🔥 FAST BBOX CHECK (PERFORMANCE)
-          const cellBBox = turf.bbox(cell.geo);
-          const polyBBox = turf.bbox(poly.turfPoly);
-
-          if(
-            cellBBox[2] < polyBBox[0] ||
-            cellBBox[0] > polyBBox[2] ||
-            cellBBox[3] < polyBBox[1] ||
-            cellBBox[1] > polyBBox[3]
-          ){
-            continue;
-          }
 
           const inter = turf.intersect(cell.geo, poly.turfPoly);
           if(!inter) continue;
@@ -3776,12 +3707,8 @@ function assignGridToBeat(rangeLayer){
         } catch(e){}
       }
 
-      // ==========================================
-      // 🔥 FALLBACK (CENTROID METHOD)
-      // ==========================================
       if(bestBeat === "UNKNOWN"){
         try {
-
           const c = turf.centroid(cell.geo).geometry.coordinates;
           const pt = turf.point(c);
 
@@ -3790,13 +3717,7 @@ function assignGridToBeat(rangeLayer){
             let beat = null;
 
             for(let key in window.beatMap){
-
-              const list = window.beatMap[key];
-
-              if(!Array.isArray(list)) continue;
-              if(!poly.comp) continue;
-
-              if(list.includes(poly.comp)){
+              if(window.beatMap[key].includes(poly.comp)){
                 beat = key;
                 break;
               }
@@ -3823,6 +3744,7 @@ function assignGridToBeat(rangeLayer){
     console.error("❌ assignGridToBeat error:", e);
   }
 }
+
 
 // ======================================================
 // 🧠 GRID CACHE (LIVE + MONTH)
@@ -3851,6 +3773,8 @@ function loadCacheOnStart(){
 }
 function updateMonthCache(){
 
+  console.log("🧠 Rebuilding MONTH cache");
+
   let result = {};
 
   const today = new Date();
@@ -3858,48 +3782,27 @@ function updateMonthCache(){
 
   for(let d = new Date(start); d <= today; d.setDate(d.getDate()+1)){
 
-    const key = "grid_" + d.toISOString().slice(0,10);
+    // 🔥 FIXED LOCAL DATE
+    const key = "grid_" + getLocalDateStr(d);
 
-    let data;
+    let data = {};
     try {
       data = JSON.parse(localStorage.getItem(key) || "{}");
     } catch(e){
       data = {};
     }
 
-    Object.entries(data).forEach(([id, val]) => {
-
-      if(!result[id]){
-        result[id] = {
-          visited: true,
-          staff: [],
-          beats: []
-        };
-      }
-
-      if(val.staff){
-        val.staff.forEach(s => {
-          if(!result[id].staff.includes(s)){
-            result[id].staff.push(s);
-          }
-        });
-      }
-
-      if(val.beats){
-        val.beats.forEach(b => {
-          if(!result[id].beats.includes(b)){
-            result[id].beats.push(b);
-          }
-        });
-      }
+    Object.keys(data).forEach(id => {
+      result[id] = true;
     });
   }
 
   window.gridCache = window.gridCache || {};
   window.gridCache.month = result;
 
-  console.log("📊 Month cache built:", Object.keys(result).length);
-}    function updateTodayCache(){
+  console.log("✅ Month grids:", Object.keys(result).length);
+}
+    function updateTodayCache(){
 
   const key = "grid_" + getLocalDateStr();
 
@@ -3977,25 +3880,7 @@ function updateVisitedCache(newVisited){
     percent: percent.toFixed(1)
   };
 }
-
-    function runBackfillAuto(){
-
-  console.log("🚀 Auto Backfill Started");
-
-  const interval = setInterval(async () => {
-
-    await backfillFromKML();
-
-    const meta = await callBackend("getKMLTracks");
-
-    if(!meta || !meta.length){
-      console.log("🎯 FULL BACKFILL COMPLETE");
-      clearInterval(interval);
-    }
-
-  }, 3000); // every 3 seconds
-}
-  async function backfillFromKML(){
+async function backfillFromKML(){
 
   console.log("🛠 KML Backfill START");
 
@@ -4005,235 +3890,77 @@ function updateVisitedCache(newVisited){
   }
 
   let rounds = 0;
-  const MAX_PER_RUN = 3; // ✅ 2–3 files per batch
 
-  while(rounds < MAX_PER_RUN){
+  while(rounds < 50){
 
-    console.log("🔁 File batch:", rounds + 1);
+    console.log("🔁 Round:", rounds + 1);
 
-    // ===============================
-    // 🔥 STEP 1 → GET NEXT FILE
-    // ===============================
-    let meta;
-
-    try {
-      meta = await callBackend("getKMLTracks");
-    } catch(e){
-      console.error("❌ getKMLTracks failed:", e);
-      break;
-    }
+    // 🔥 STEP 1 → get ONE file
+    const meta = await callBackend("getKMLTracks");
 
     if(!meta || !meta.length){
       console.log("✅ DONE (no more files)");
-      return;
+      break;
     }
 
     const file = meta[0];
 
-    console.log("📂 Processing:", file.name);
-    console.log("📅 File Date:", file.date);
-    console.log("🆔 File ID:", file.id);
-
-    if(!file.date){
-      console.warn("⚠ Missing file.date → SKIPPING");
-      rounds++;
-      continue;
-    }
-
-    // ===============================
-    // 🔥 NEW → EXTRACT STAFF NAME
-    // ===============================
-    let staffName = "UNKNOWN";
-
-    try {
-      // Example: ARSAD_ALI_2026-04-27.kml
-      const parts = file.name.split("_");
-      staffName = parts[0]?.trim() || "UNKNOWN";
-    } catch(e){}
-
-    console.log("👤 Staff:", staffName);
-
-    // ===============================
-    // 🔥 STEP 2 → READ FILE
-    // ===============================
-    let res;
-
-    try {
-      res = await callBackend("readKMLFile", {fileId: file.id});
-    } catch(e){
-      console.error("❌ readKMLFile failed:", e);
-      rounds++;
-      continue;
-    }
+    // 🔥 STEP 2 → read file
+    const res = await callBackend("readKMLFile", {fileId: file.id});
 
     if(!res || !res.text){
-      console.warn("⚠ Empty KML content");
       rounds++;
       continue;
     }
 
-    // ===============================
-    // 🔥 STEP 3 → EXTRACT ALL COORD BLOCKS (FIXED)
-    // ===============================
-    const coordBlocks = res.text.match(/<coordinates>([\s\S]*?)<\/coordinates>/g);
+    // 🔥 PARSE KML
+    const coordMatch = res.text.match(/<coordinates>([\s\S]*?)<\/coordinates>/);
 
-    if(!coordBlocks){
-      console.warn("⚠ No <coordinates> found");
+    if(!coordMatch){
       rounds++;
       continue;
     }
+
+    const points = coordMatch[1].trim().split(/\s+/);
 
     let track = [];
-    let lastLat = null;
-    let lastLon = null;
 
-    const MIN_MOVE = 0.00005;
+    points.forEach(p => {
+      const parts = p.split(",");
+      if(parts.length < 2) return;
 
-    coordBlocks.forEach(block => {
+      const lon = parseFloat(parts[0]);
+      const lat = parseFloat(parts[1]);
 
-      const raw = block
-        .replace("<coordinates>", "")
-        .replace("</coordinates>", "")
-        .trim();
-
-      const rawPoints = raw.split(/\s+/);
-
-      rawPoints.forEach(p => {
-
-        const parts = p.split(",");
-        if(parts.length < 2) return;
-
-        const lon = parseFloat(parts[0]);
-        const lat = parseFloat(parts[1]);
-
-        if(isNaN(lat) || isNaN(lon)) return;
-
-        // 🔥 remove duplicates
-        if(lat === lastLat && lon === lastLon) return;
-
-        // 🔥 remove noise
-        if(
-          lastLat !== null &&
-          Math.abs(lat - lastLat) < MIN_MOVE &&
-          Math.abs(lon - lastLon) < MIN_MOVE
-        ){
-          return;
-        }
-
+      if(!isNaN(lat) && !isNaN(lon)){
         track.push([lat, lon]);
-
-        lastLat = lat;
-        lastLon = lon;
-      });
-
+      }
     });
 
-    console.log("📍 Track points after filter:", track.length);
-
-    // ===============================
-    // 🔥 NEW → AUTO DETECT BEAT
-    // ===============================
-    let beatName = "UNKNOWN";
-
-    try {
-      if(track.length && typeof detectBeat === "function"){
-        const [lat, lon] = track[0];
-        beatName = detectBeat(lat, lon);
-      }
-    } catch(e){}
-
-    console.log("🧭 Beat:", beatName);
-
-    // ===============================
-    // 🔥 STEP 4 → APPLY GRID VISITS
-    // ===============================
     if(track.length > 1){
 
-     markVisitedHybrid([
-  {
-    track: track,
-    date: file.date,
-    staff: window.userProfile?.cleanName,
-    beat: beatName   // ✅ NEW
-  }
-]);
-      console.log("📅 Saved grids for:", file.date);
+      const key = "grid_" + file.date;
 
-    } else {
-      console.warn("⚠ Track too small → skipped");
+      let dayData = JSON.parse(localStorage.getItem(key) || "{}");
+
+      const visited = markVisitedHybrid([{track}]);
+
+      Object.keys(visited).forEach(id => {
+        dayData[id] = true;
+      });
+
+      localStorage.setItem(key, JSON.stringify(dayData));
     }
 
     rounds++;
 
-    // ⏳ small delay (avoid throttling)
-    await new Promise(r => setTimeout(r, 500));
+    await new Promise(r => setTimeout(r, 800));
   }
 
-  console.log("⏸ Batch complete (next run continues)");
+  console.log("🎯 Backfill COMPLETE");
 
-  // ===============================
-  // 🔥 FINAL UPDATE
-  // ===============================
-  if(typeof updateMonthCache === "function"){
-    updateMonthCache();
-  }
-
-  if(typeof renderGrid === "function"){
-    renderGrid("current","ALL");
-  }
-
-  // ===============================
-  // 🔥 DEBUG STORAGE STATE
-  // ===============================
-  console.log(
-    "📦 Stored grid days:",
-    Object.keys(localStorage)
-      .filter(k => k.startsWith("grid_"))
-      .sort()
-  );
-}
-
-   function showBeatCoverage(){
-
-  const list = getBeatCoverage("current");
-
-  let html = "";
-
-  list.forEach(b => {
-    html += `🧭 ${b.beat}: ${b.percent.toFixed(1)}%<br>`;
-  });
-
-  document.getElementById("coverageContent").innerHTML += "<br>" + html;
-} 
-  function getBeatCoverage(mode = "current"){
-
-  const data = (mode === "today")
-    ? (window.gridCache?.today || {})
-    : (window.gridCache?.month || {});
-
-  let stats = {};
-
-  Object.entries(window.gridIndex).forEach(([id, cell]) => {
-
-    if(!cell?.geo) return;
-
-    const beat = cell.beat || "UNKNOWN";
-
-    if(!stats[beat]){
-      stats[beat] = { total: 0, visited: 0 };
-    }
-
-    stats[beat].total++;
-
-    if(data[id]){
-      stats[beat].visited++;
-    }
-  });
-
-  return Object.entries(stats).map(([beat, v]) => ({
-    beat,
-    percent: v.total ? ((v.visited / v.total) * 100) : 0
-  }));
+  buildMonthCache();
+  renderGrid("current","ALL");
 }  
     
     function getLocalDateStr(date = new Date()){
@@ -4253,9 +3980,6 @@ function renderGrid(mode = "today", beat = "ALL"){
       return;
     }
 
-    window.currentCoverageMode = mode;
-    window.currentBeat = beat;
-
     if(!window.gridLayer){
       window.gridLayer = L.layerGroup();
     }
@@ -4263,7 +3987,7 @@ function renderGrid(mode = "today", beat = "ALL"){
     window.gridLayer.clearLayers();
 
     // ===============================
-    // 🔥 DATA SOURCE
+    // 🔥 DATA SOURCE (ONLY 2 MODES)
     // ===============================
     let current = {};
 
@@ -4281,30 +4005,15 @@ function renderGrid(mode = "today", beat = "ALL"){
       try {
 
         if(!cell || !cell.geo) return;
-
-        // 🔥 BEAT FILTER (grid level)
         if(beat !== "ALL" && cell.beat !== beat) return;
 
         total++;
 
-        const cellData = current[id];
-
-        // 🔥 NEW STRUCTURE SUPPORT
-        const isVisited = !!cellData;
-
-        // 🔥 OPTIONAL: strict beat filter (data-level)
-        let passesBeat = true;
-
-        if(beat !== "ALL" && cellData){
-          passesBeat = cellData.beats?.includes(beat);
-        }
-
-        if(!passesBeat) return;
-
+        const isVisited = !!current[id];
         if(isVisited) visited++;
 
         const color = isVisited ? "#00ff00" : "#ff0000";
-        const opacity = isVisited ? 0.5 : 0.25;
+        const opacity = isVisited ? 0.5 : 0.3;
 
         L.geoJSON(cell.geo, {
 
@@ -4317,7 +4026,7 @@ function renderGrid(mode = "today", beat = "ALL"){
           },
 
           // ===============================
-          // 🔥 CLICK POPUP (ENHANCED)
+          // 🔥 CLICK POPUP (CORE FEATURE)
           // ===============================
           onEachFeature: function(feature, layer){
 
@@ -4325,11 +4034,12 @@ function renderGrid(mode = "today", beat = "ALL"){
 
               try {
 
-                const stats = getCoverageStats(mode, beat);
-                if(!stats) return;
+                const stats = getCoverageStats(
+                  mode,
+                  beat
+                );
 
-                const staffList = cellData?.staff?.join(", ") || "N/A";
-                const beatList  = cellData?.beats?.join(", ") || "N/A";
+                if(!stats) return;
 
                 let html = "";
 
@@ -4341,10 +4051,7 @@ function renderGrid(mode = "today", beat = "ALL"){
 
                     📊 Grids: ${stats.visitedGrids} / ${stats.totalGrids}<br>
                     🌿 Area: ${stats.visitedAreaHa} / ${stats.totalAreaHa} Ha<br>
-                    📈 Coverage: ${stats.percent}%<br><br>
-
-                    👤 Staff: ${staffList}<br>
-                    🧭 Beat: ${beatList}
+                    📈 Coverage: ${stats.percent}%
                   </div>`;
 
                 } else {
@@ -4386,12 +4093,12 @@ function renderGrid(mode = "today", beat = "ALL"){
 
     const percent = total ? ((visited / total) * 100).toFixed(1) : 0;
 
-    console.log(`📊 ${visited}/${total} (${percent}%) | Mode: ${mode} | Beat: ${beat}`);
+    console.log(`📊 ${visited}/${total} (${percent}%)`);
 
   } catch(e){
     console.error("❌ renderGrid crash:", e);
   }
-}  function saveTodayVisited(){
+}   function saveTodayVisited(){
 
   const key = "grid_" + new Date().toISOString().slice(0,10);
 
@@ -4639,7 +4346,8 @@ function markVisitedHybrid(tracks){
   }
 
   return visited;
-}  function applyMode(mode){
+}    
+function applyMode(mode){
 
   window.currentCoverageMode = mode;
 
@@ -4808,8 +4516,6 @@ window.beatMap = {
 
     const step = 0.0009; // ~250m
     let count = 0;
-
-    // 🔥 RESET GRID
     window.gridIndex = {};
 
     // ==========================================
@@ -4819,41 +4525,29 @@ window.beatMap = {
 
     function extract(layer) {
       if (!layer) return;
-
       if (layer instanceof L.Polygon) {
-
         let latlngs = layer.getLatLngs();
-
-        // Handle MultiPolygon / Polygon
+        // Handle MultiPolygon or simple Polygon
         const rings = Array.isArray(latlngs[0][0]) ? latlngs : [latlngs];
 
         rings.forEach(ringSet => {
-
           let coords = ringSet.map(ring => {
-
+            // Map Leaflet latlng to [lng, lat]
             let pts = ring.map(p => [p.lng, p.lat]);
-
-            // 🔥 ensure closed ring
-            if (pts[0][0] !== pts[pts.length - 1][0] ||
-                pts[0][1] !== pts[pts.length - 1][1]) {
+            // Ensure Turf-valid closed ring
+            if (pts[0][0] !== pts[pts.length - 1][0] || pts[0][1] !== pts[pts.length - 1][1]) {
               pts.push(pts[0]);
             }
-
             return pts;
-
           }).filter(r => r.length >= 4);
 
           if (coords.length) {
             try {
               allPolys.push(turf.polygon(coords));
-            } catch (e) {
-              console.warn("⚠ Turf polygon failed");
-            }
+            } catch (e) { console.warn("Turf poly creation failed", e); }
           }
-
         });
       }
-
       if (layer.eachLayer) layer.eachLayer(extract);
     }
 
@@ -4864,36 +4558,33 @@ window.beatMap = {
       return;
     }
 
-    // ==========================================
-    // 🔥 UNION ALL (REMOVE GAPS)
-    // ==========================================
+    // 🔥 THE MASTER FIX: Union all compartments into one single mask
+    // This removes the "white gaps" between PORO/DPO boundaries
     let unifiedRange = allPolys[0];
-
     for (let i = 1; i < allPolys.length; i++) {
       try {
         unifiedRange = turf.union(unifiedRange, allPolys[i]);
-      } catch (e) {
-        continue;
-      }
+      } catch (e) { continue; }
     }
 
     const south = bounds.getSouth();
     const north = bounds.getNorth();
-    const west  = bounds.getWest();
-    const east  = bounds.getEast();
+    const west = bounds.getWest();
+    const east = bounds.getEast();
 
-    // 🔥 snap grid start (important for consistency)
+    // Snap grid start to global coordinates to ensure consistency
     const startLat = Math.floor(south / step) * step;
     const startLon = Math.floor(west / step) * step;
 
     // ==========================================
-    // 2. GRID GENERATION & CLIPPING
+    // 2. GRID GENERATION & PRECISE CLIPPING
     // ==========================================
     for (let lat = startLat; lat < north; lat += step) {
       for (let lon = startLon; lon < east; lon += step) {
-
+        
         const id = lat.toFixed(5) + "_" + lon.toFixed(5);
 
+        // Create the standard square cell
         const cellPoly = turf.polygon([[
           [lon, lat],
           [lon + step, lat],
@@ -4903,66 +4594,32 @@ window.beatMap = {
         ]]);
 
         try {
-
-          // 🔥 PRE-CHECK (performance boost)
-          if (!turf.booleanIntersects(cellPoly, unifiedRange)) continue;
-
+          // ✅ PRECISE CLIPPING: Only keep the part of the square inside the forest
           const clippedGeo = turf.intersect(cellPoly, unifiedRange);
 
           if (clippedGeo) {
-
+            // Check if the resulting geometry is valid and has area
             const area = turf.area(clippedGeo);
-
-            // 🔥 ignore tiny slivers
-            if (area > 3) {
-
+            if (area > 3) { // Ignore slivers smaller than 1sq meter
               window.gridIndex[id] = {
                 geo: clippedGeo,
-                visited: false,
-
-                // 🔥 NEW (IMPORTANT)
-                beat: "UNKNOWN",
-                staff: []
+                visited: false
               };
-
               count++;
             }
           }
-
         } catch (e) {
-
-          // 🔥 fallback
+          // Fallback logic for complex geometry errors
           if (turf.booleanIntersects(cellPoly, unifiedRange)) {
-
-            window.gridIndex[id] = {
-              geo: cellPoly,
-              visited: false,
-              beat: "UNKNOWN",
-              staff: []
-            };
-
+            window.gridIndex[id] = { geo: cellPoly, visited: false };
             count++;
           }
         }
       }
     }
 
-    // ==========================================
-    // 🔥 META
-    // ==========================================
-    window.gridMeta = {
-      size: step,
-      total: count
-    };
-
+    window.gridMeta = { size: step, total: count };
     console.log("✅ Perfect clipped grid built:", count);
-
-    // ==========================================
-    // 🔥 AUTO ASSIGN BEATS (VERY IMPORTANT)
-    // ==========================================
-    if (typeof assignGridToBeat === "function") {
-      assignGridToBeat(rangeLayer);
-    }
 
   } catch (e) {
     console.error("❌ buildGridFromBounds total crash:", e);
