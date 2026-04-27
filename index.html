@@ -3773,8 +3773,6 @@ function loadCacheOnStart(){
 }
 function updateMonthCache(){
 
-  console.log("🧠 Rebuilding MONTH cache");
-
   let result = {};
 
   const today = new Date();
@@ -3782,27 +3780,48 @@ function updateMonthCache(){
 
   for(let d = new Date(start); d <= today; d.setDate(d.getDate()+1)){
 
-    // 🔥 FIXED LOCAL DATE
-    const key = "grid_" + getLocalDateStr(d);
+    const key = "grid_" + d.toISOString().slice(0,10);
 
-    let data = {};
+    let data;
     try {
       data = JSON.parse(localStorage.getItem(key) || "{}");
     } catch(e){
       data = {};
     }
 
-    Object.keys(data).forEach(id => {
-      result[id] = true;
+    Object.entries(data).forEach(([id, val]) => {
+
+      if(!result[id]){
+        result[id] = {
+          visited: true,
+          staff: [],
+          beats: []
+        };
+      }
+
+      if(val.staff){
+        val.staff.forEach(s => {
+          if(!result[id].staff.includes(s)){
+            result[id].staff.push(s);
+          }
+        });
+      }
+
+      if(val.beats){
+        val.beats.forEach(b => {
+          if(!result[id].beats.includes(b)){
+            result[id].beats.push(b);
+          }
+        });
+      }
     });
   }
 
   window.gridCache = window.gridCache || {};
   window.gridCache.month = result;
 
-  console.log("✅ Month grids:", Object.keys(result).length);
-}
-    function updateTodayCache(){
+  console.log("📊 Month cache built:", Object.keys(result).length);
+}    function updateTodayCache(){
 
   const key = "grid_" + getLocalDateStr();
 
@@ -3898,7 +3917,7 @@ function updateVisitedCache(newVisited){
 
   }, 3000); // every 3 seconds
 }
-    async function backfillFromKML(){
+  async function backfillFromKML(){
 
   console.log("🛠 KML Backfill START");
 
@@ -3908,16 +3927,23 @@ function updateVisitedCache(newVisited){
   }
 
   let rounds = 0;
-  const MAX_PER_RUN = 3; // ✅ ONLY 2–3 FILES
+  const MAX_PER_RUN = 3; // ✅ 2–3 files per batch
 
   while(rounds < MAX_PER_RUN){
 
     console.log("🔁 File batch:", rounds + 1);
 
     // ===============================
-    // 🔥 GET NEXT FILE (CURSOR BASED)
+    // 🔥 STEP 1 → GET NEXT FILE
     // ===============================
-    const meta = await callBackend("getKMLTracks");
+    let meta;
+
+    try {
+      meta = await callBackend("getKMLTracks");
+    } catch(e){
+      console.error("❌ getKMLTracks failed:", e);
+      break;
+    }
 
     if(!meta || !meta.length){
       console.log("✅ DONE (no more files)");
@@ -3927,23 +3953,41 @@ function updateVisitedCache(newVisited){
     const file = meta[0];
 
     console.log("📂 Processing:", file.name);
+    console.log("📅 File Date:", file.date);
+    console.log("🆔 File ID:", file.id);
 
-    // ===============================
-    // 🔥 READ FILE
-    // ===============================
-    const res = await callBackend("readKMLFile", {fileId: file.id});
-
-    if(!res || !res.text){
+    if(!file.date){
+      console.warn("⚠ Missing file.date → SKIPPING");
       rounds++;
       continue;
     }
 
     // ===============================
-    // 🔥 EXTRACT COORDS
+    // 🔥 STEP 2 → READ FILE
+    // ===============================
+    let res;
+
+    try {
+      res = await callBackend("readKMLFile", {fileId: file.id});
+    } catch(e){
+      console.error("❌ readKMLFile failed:", e);
+      rounds++;
+      continue;
+    }
+
+    if(!res || !res.text){
+      console.warn("⚠ Empty KML content");
+      rounds++;
+      continue;
+    }
+
+    // ===============================
+    // 🔥 STEP 3 → EXTRACT COORDINATES
     // ===============================
     const coordMatch = res.text.match(/<coordinates>([\s\S]*?)<\/coordinates>/);
 
     if(!coordMatch){
+      console.warn("⚠ No <coordinates> found");
       rounds++;
       continue;
     }
@@ -3984,35 +4028,55 @@ function updateVisitedCache(newVisited){
       lastLon = lon;
     });
 
+    console.log("📍 Track points after filter:", track.length);
+
     // ===============================
-    // 🔥 APPLY VISITED
+    // 🔥 STEP 4 → APPLY GRID VISITS
     // ===============================
     if(track.length > 1){
 
       markVisitedHybrid([
         {
           track: track,
-          date: file.date // 🔥 VERY IMPORTANT
+          date: file.date // 🔥 CRITICAL
         }
       ]);
 
-      console.log("📅 Saved:", file.date, "| Points:", track.length);
+      console.log("📅 Saved grids for:", file.date);
+
+    } else {
+      console.warn("⚠ Track too small → skipped");
     }
 
     rounds++;
 
-    // ⏳ small delay (important)
+    // ⏳ small delay (avoid throttling)
     await new Promise(r => setTimeout(r, 500));
   }
 
-  console.log("⏸ Batch complete (next run will continue)");
+  console.log("⏸ Batch complete (next run continues)");
 
   // ===============================
-  // 🔥 UPDATE UI
+  // 🔥 FINAL UPDATE
   // ===============================
-  updateMonthCache();
-  renderGrid("current","ALL");
-}    
+  if(typeof updateMonthCache === "function"){
+    updateMonthCache();
+  }
+
+  if(typeof renderGrid === "function"){
+    renderGrid("current","ALL");
+  }
+
+  // ===============================
+  // 🔥 DEBUG STORAGE STATE
+  // ===============================
+  console.log(
+    "📦 Stored grid days:",
+    Object.keys(localStorage)
+      .filter(k => k.startsWith("grid_"))
+      .sort()
+  );
+}   
     function getLocalDateStr(date = new Date()){
   const d = new Date(date);
   d.setMinutes(d.getMinutes() - d.getTimezoneOffset());
@@ -4030,6 +4094,9 @@ function renderGrid(mode = "today", beat = "ALL"){
       return;
     }
 
+    window.currentCoverageMode = mode;
+    window.currentBeat = beat;
+
     if(!window.gridLayer){
       window.gridLayer = L.layerGroup();
     }
@@ -4037,7 +4104,7 @@ function renderGrid(mode = "today", beat = "ALL"){
     window.gridLayer.clearLayers();
 
     // ===============================
-    // 🔥 DATA SOURCE (ONLY 2 MODES)
+    // 🔥 DATA SOURCE
     // ===============================
     let current = {};
 
@@ -4055,15 +4122,30 @@ function renderGrid(mode = "today", beat = "ALL"){
       try {
 
         if(!cell || !cell.geo) return;
+
+        // 🔥 BEAT FILTER (grid level)
         if(beat !== "ALL" && cell.beat !== beat) return;
 
         total++;
 
-        const isVisited = !!current[id];
+        const cellData = current[id];
+
+        // 🔥 NEW STRUCTURE SUPPORT
+        const isVisited = !!cellData;
+
+        // 🔥 OPTIONAL: strict beat filter (data-level)
+        let passesBeat = true;
+
+        if(beat !== "ALL" && cellData){
+          passesBeat = cellData.beats?.includes(beat);
+        }
+
+        if(!passesBeat) return;
+
         if(isVisited) visited++;
 
         const color = isVisited ? "#00ff00" : "#ff0000";
-        const opacity = isVisited ? 0.5 : 0.3;
+        const opacity = isVisited ? 0.5 : 0.25;
 
         L.geoJSON(cell.geo, {
 
@@ -4076,7 +4158,7 @@ function renderGrid(mode = "today", beat = "ALL"){
           },
 
           // ===============================
-          // 🔥 CLICK POPUP (CORE FEATURE)
+          // 🔥 CLICK POPUP (ENHANCED)
           // ===============================
           onEachFeature: function(feature, layer){
 
@@ -4084,12 +4166,11 @@ function renderGrid(mode = "today", beat = "ALL"){
 
               try {
 
-                const stats = getCoverageStats(
-                  mode,
-                  beat
-                );
-
+                const stats = getCoverageStats(mode, beat);
                 if(!stats) return;
+
+                const staffList = cellData?.staff?.join(", ") || "N/A";
+                const beatList  = cellData?.beats?.join(", ") || "N/A";
 
                 let html = "";
 
@@ -4101,7 +4182,10 @@ function renderGrid(mode = "today", beat = "ALL"){
 
                     📊 Grids: ${stats.visitedGrids} / ${stats.totalGrids}<br>
                     🌿 Area: ${stats.visitedAreaHa} / ${stats.totalAreaHa} Ha<br>
-                    📈 Coverage: ${stats.percent}%
+                    📈 Coverage: ${stats.percent}%<br><br>
+
+                    👤 Staff: ${staffList}<br>
+                    🧭 Beat: ${beatList}
                   </div>`;
 
                 } else {
@@ -4143,12 +4227,12 @@ function renderGrid(mode = "today", beat = "ALL"){
 
     const percent = total ? ((visited / total) * 100).toFixed(1) : 0;
 
-    console.log(`📊 ${visited}/${total} (${percent}%)`);
+    console.log(`📊 ${visited}/${total} (${percent}%) | Mode: ${mode} | Beat: ${beat}`);
 
   } catch(e){
     console.error("❌ renderGrid crash:", e);
   }
-}   function saveTodayVisited(){
+}  function saveTodayVisited(){
 
   const key = "grid_" + new Date().toISOString().slice(0,10);
 
@@ -4307,24 +4391,14 @@ function markVisitedHybrid(tracks){
 
         if([lat1, lon1, lat2, lon2].some(isNaN)) continue;
 
-        // ===============================
-        // 🔥 FAST BOX CHECK
-        // ===============================
-        if(lineIntersectsBox(
-          lat1, lon1,
-          lat2, lon2,
-          minLat, minLon,
-          maxLat, maxLon
-        )){
+        // 🔥 FAST CHECK
+        if(lineIntersectsBox(lat1, lon1, lat2, lon2, minLat, minLon, maxLat, maxLon)){
           visited[id] = true;
           break;
         }
 
-        // ===============================
-        // 🔥 PRECISE TURF CHECK
-        // ===============================
+        // 🔥 PRECISE
         try {
-
           const line = turf.lineString([
             [lon1, lat1],
             [lon2, lat2]
@@ -4334,22 +4408,18 @@ function markVisitedHybrid(tracks){
             visited[id] = true;
             break;
           }
-
         } catch(e){}
-
       }
 
       if(visited[id]) break;
     }
-
   });
 
-  // ===============================
-  // 🔥 APPLY + SAVE + CACHE UPDATE (FINAL FIX)
-  // ===============================
+  // ======================================================
+  // 🔥 SAVE WITH DATE + STAFF + BEAT (CRITICAL FIX)
+  // ======================================================
   if(Object.keys(visited).length){
 
-    // 🔥 CRITICAL FIX → USE TRACK DATE IF AVAILABLE
     const trackDate = tracks[0]?.date;
     const key = "grid_" + (trackDate || getLocalDateStr());
 
@@ -4360,43 +4430,52 @@ function markVisitedHybrid(tracks){
       data = {};
     }
 
+    const name = window.userProfile?.cleanName || "UNKNOWN";
+    const beat = window.userProfile?.beat || "UNKNOWN";
+
     Object.keys(visited).forEach(id => {
 
-      // 🔥 update in-memory grid
+      // 🔥 INIT STRUCTURE
+      if(!data[id]){
+        data[id] = {
+          visited: true,
+          staff: [],
+          beats: []
+        };
+      }
+
+      // 🔥 UPDATE
+      data[id].visited = true;
+
+      if(!data[id].staff.includes(name)){
+        data[id].staff.push(name);
+      }
+
+      if(!data[id].beats.includes(beat)){
+        data[id].beats.push(beat);
+      }
+
+      // 🔥 memory update
       if(window.gridIndex[id]){
         window.gridIndex[id].visited = true;
       }
-
-      // 🔥 persist
-      data[id] = true;
     });
 
     localStorage.setItem(key, JSON.stringify(data));
 
-    // ===============================
     // 🔥 CACHE UPDATE
-    // ===============================
     window.gridCache = window.gridCache || {};
 
     if(trackDate){
-      // 🔥 HISTORICAL (KML BACKFILL)
-      updateMonthCache();
+      console.log("📅 Backfill saved:", trackDate);
     } else {
-      // 🔥 LIVE GPS
       window.gridCache.today = data;
-      updateMonthCache();
     }
 
-    console.log(
-      "✅ Hybrid visited:",
-      Object.keys(visited).length,
-      "| Date:",
-      trackDate || "TODAY"
-    );
+    updateMonthCache();
 
-    // ===============================
-    // 🔥 LIVE RENDER
-    // ===============================
+    console.log("✅ Hybrid visited:", Object.keys(visited).length, "|", key);
+
     if(typeof renderGrid === "function"){
       renderGrid(
         window.currentCoverageMode || "today",
@@ -4406,7 +4485,7 @@ function markVisitedHybrid(tracks){
   }
 
   return visited;
-}function applyMode(mode){
+}    function applyMode(mode){
 
   window.currentCoverageMode = mode;
 
