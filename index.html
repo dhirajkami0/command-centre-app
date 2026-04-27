@@ -4326,9 +4326,22 @@ function markVisitedHybrid(tracks){
     return {};
   }
 
-  // 🔥 DEBUG: incoming tracks
+  // 🔥 DEBUG
   console.log("🧪 Incoming tracks:", tracks);
-  console.log("🧪 Track Date Incoming:", tracks[0]?.date);
+
+  // ======================================================
+  // 🔥 FIX: DETECT CORRECT DATE (CRITICAL)
+  // ======================================================
+  let trackDate = null;
+
+  for(let t of tracks){
+    if(t && t.date){
+      trackDate = t.date;
+      break;
+    }
+  }
+
+  console.log("📅 FINAL DATE SELECTED:", trackDate || "TODAY");
 
   let visited = {};
 
@@ -4393,14 +4406,10 @@ function markVisitedHybrid(tracks){
 
   });
 
-  // ===============================
+  // ======================================================
   // 🔥 APPLY + SAVE + CACHE UPDATE
-  // ===============================
+  // ======================================================
   if(Object.keys(visited).length){
-
-    const trackDate = tracks[0]?.date;
-
-    console.log("📅 Using date for save:", trackDate || "TODAY");
 
     const key = "grid_" + (trackDate || getLocalDateStr());
 
@@ -4421,7 +4430,7 @@ function markVisitedHybrid(tracks){
         window.gridIndex[id].visited = true;
       }
 
-      // 🔥 simple boolean storage (stable)
+      // 🔥 simple boolean storage
       data[id] = true;
     });
 
@@ -4429,12 +4438,12 @@ function markVisitedHybrid(tracks){
 
     console.log("📦 Total grids in this day:", Object.keys(data).length);
 
-    // ===============================
-    // 🔥 CACHE UPDATE (FINAL FIX)
-    // ===============================
+    // ======================================================
+    // 🔥 CACHE UPDATE (FINAL STABLE)
+    // ======================================================
     window.gridCache = window.gridCache || {};
 
-    // 🔥 ALWAYS refresh today cache from storage (critical)
+    // 🔥 TODAY cache (always reload fresh)
     const todayKey = "grid_" + getLocalDateStr();
 
     try {
@@ -4443,7 +4452,7 @@ function markVisitedHybrid(tracks){
       window.gridCache.today = {};
     }
 
-    // 🔥 ALWAYS rebuild month cache
+    // 🔥 MONTH cache (ALL DAYS)
     if(typeof updateMonthCache === "function"){
       updateMonthCache();
     }
@@ -4455,9 +4464,9 @@ function markVisitedHybrid(tracks){
       trackDate || "TODAY"
     );
 
-    // ===============================
+    // ======================================================
     // 🔥 LIVE RENDER
-    // ===============================
+    // ======================================================
     if(typeof renderGrid === "function"){
       renderGrid(
         window.currentCoverageMode || "today",
@@ -4470,7 +4479,7 @@ function markVisitedHybrid(tracks){
   }
 
   return visited;
-}    function applyMode(mode){
+}   function applyMode(mode){
 
   window.currentCoverageMode = mode;
 
