@@ -4345,12 +4345,13 @@ function markVisitedHybrid(tracks){
   });
 
   // ===============================
-  // 🔥 APPLY + SAVE + CACHE UPDATE (FIXED)
+  // 🔥 APPLY + SAVE + CACHE UPDATE (FINAL FIX)
   // ===============================
   if(Object.keys(visited).length){
 
-    // 🔥 FIX: LOCAL DATE (CRITICAL)
-    const key = "grid_" + getLocalDateStr();
+    // 🔥 CRITICAL FIX → USE TRACK DATE IF AVAILABLE
+    const trackDate = tracks[0]?.date;
+    const key = "grid_" + (trackDate || getLocalDateStr());
 
     let data;
     try {
@@ -4361,28 +4362,37 @@ function markVisitedHybrid(tracks){
 
     Object.keys(visited).forEach(id => {
 
-      // 🔥 update memory grid
+      // 🔥 update in-memory grid
       if(window.gridIndex[id]){
         window.gridIndex[id].visited = true;
       }
 
-      // 🔥 save to localStorage
+      // 🔥 persist
       data[id] = true;
     });
 
     localStorage.setItem(key, JSON.stringify(data));
 
     // ===============================
-    // 🔥 CACHE UPDATE (FIXED)
+    // 🔥 CACHE UPDATE
     // ===============================
     window.gridCache = window.gridCache || {};
-    window.gridCache.today = data;
 
-    if(typeof updateMonthCache === "function"){
+    if(trackDate){
+      // 🔥 HISTORICAL (KML BACKFILL)
+      updateMonthCache();
+    } else {
+      // 🔥 LIVE GPS
+      window.gridCache.today = data;
       updateMonthCache();
     }
 
-    console.log("✅ Hybrid visited:", Object.keys(visited).length);
+    console.log(
+      "✅ Hybrid visited:",
+      Object.keys(visited).length,
+      "| Date:",
+      trackDate || "TODAY"
+    );
 
     // ===============================
     // 🔥 LIVE RENDER
@@ -4396,8 +4406,7 @@ function markVisitedHybrid(tracks){
   }
 
   return visited;
-}    
-function applyMode(mode){
+}function applyMode(mode){
 
   window.currentCoverageMode = mode;
 
