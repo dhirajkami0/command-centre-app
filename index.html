@@ -3880,7 +3880,25 @@ function updateVisitedCache(newVisited){
     percent: percent.toFixed(1)
   };
 }
-async function backfillFromKML(){
+
+    function runBackfillAuto(){
+
+  console.log("🚀 Auto Backfill Started");
+
+  const interval = setInterval(async () => {
+
+    await backfillFromKML();
+
+    const meta = await callBackend("getKMLTracks");
+
+    if(!meta || !meta.length){
+      console.log("🎯 FULL BACKFILL COMPLETE");
+      clearInterval(interval);
+    }
+
+  }, 3000); // every 3 seconds
+}
+    async function backfillFromKML(){
 
   console.log("🛠 KML Backfill START");
 
@@ -3890,22 +3908,29 @@ async function backfillFromKML(){
   }
 
   let rounds = 0;
+  const MAX_PER_RUN = 3; // ✅ ONLY 2–3 FILES
 
-  while(rounds < 50){
+  while(rounds < MAX_PER_RUN){
 
-    console.log("🔁 Round:", rounds + 1);
+    console.log("🔁 File batch:", rounds + 1);
 
-    // 🔥 STEP 1 → get ONE file
+    // ===============================
+    // 🔥 GET NEXT FILE (CURSOR BASED)
+    // ===============================
     const meta = await callBackend("getKMLTracks");
 
     if(!meta || !meta.length){
       console.log("✅ DONE (no more files)");
-      break;
+      return;
     }
 
     const file = meta[0];
 
-    // 🔥 STEP 2 → read file
+    console.log("📂 Processing:", file.name);
+
+    // ===============================
+    // 🔥 READ FILE
+    // ===============================
     const res = await callBackend("readKMLFile", {fileId: file.id});
 
     if(!res || !res.text){
@@ -3913,7 +3938,9 @@ async function backfillFromKML(){
       continue;
     }
 
-    // 🔥 PARSE KML
+    // ===============================
+    // 🔥 EXTRACT COORDS
+    // ===============================
     const coordMatch = res.text.match(/<coordinates>([\s\S]*?)<\/coordinates>/);
 
     if(!coordMatch){
@@ -3921,48 +3948,71 @@ async function backfillFromKML(){
       continue;
     }
 
-    const points = coordMatch[1].trim().split(/\s+/);
+    const rawPoints = coordMatch[1].trim().split(/\s+/);
 
     let track = [];
+    let lastLat = null;
+    let lastLon = null;
 
-    points.forEach(p => {
+    const MIN_MOVE = 0.00005;
+
+    rawPoints.forEach(p => {
+
       const parts = p.split(",");
       if(parts.length < 2) return;
 
       const lon = parseFloat(parts[0]);
       const lat = parseFloat(parts[1]);
 
-      if(!isNaN(lat) && !isNaN(lon)){
-        track.push([lat, lon]);
+      if(isNaN(lat) || isNaN(lon)) return;
+
+      // 🔥 remove duplicates
+      if(lat === lastLat && lon === lastLon) return;
+
+      // 🔥 remove noise
+      if(
+        lastLat !== null &&
+        Math.abs(lat - lastLat) < MIN_MOVE &&
+        Math.abs(lon - lastLon) < MIN_MOVE
+      ){
+        return;
       }
+
+      track.push([lat, lon]);
+
+      lastLat = lat;
+      lastLon = lon;
     });
 
+    // ===============================
+    // 🔥 APPLY VISITED
+    // ===============================
     if(track.length > 1){
 
-      const key = "grid_" + file.date;
+      markVisitedHybrid([
+        {
+          track: track,
+          date: file.date // 🔥 VERY IMPORTANT
+        }
+      ]);
 
-      let dayData = JSON.parse(localStorage.getItem(key) || "{}");
-
-      const visited = markVisitedHybrid([{track}]);
-
-      Object.keys(visited).forEach(id => {
-        dayData[id] = true;
-      });
-
-      localStorage.setItem(key, JSON.stringify(dayData));
+      console.log("📅 Saved:", file.date, "| Points:", track.length);
     }
 
     rounds++;
 
-    await new Promise(r => setTimeout(r, 800));
+    // ⏳ small delay (important)
+    await new Promise(r => setTimeout(r, 500));
   }
 
-  console.log("🎯 Backfill COMPLETE");
+  console.log("⏸ Batch complete (next run will continue)");
 
-  buildMonthCache();
+  // ===============================
+  // 🔥 UPDATE UI
+  // ===============================
+  updateMonthCache();
   renderGrid("current","ALL");
-}  
-    
+}    
     function getLocalDateStr(date = new Date()){
   const d = new Date(date);
   d.setMinutes(d.getMinutes() - d.getTimezoneOffset());
