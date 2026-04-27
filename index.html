@@ -4065,11 +4065,10 @@ function renderGrid(mode = "today", beat = "ALL"){
 
   try {
 
-    if(!window.gridIndex || !window.gridMeta){
-      console.warn("⚠ Grid not ready");
-      return;
-    }
-
+    if(!window.gridIndex || !window.gridMeta || !Object.keys(window.gridIndex).length){
+  console.warn("⚠ Grid not ready (skip render)");
+  return;
+}
     if(!window.gridLayer){
       window.gridLayer = L.layerGroup();
     }
