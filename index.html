@@ -4550,14 +4550,24 @@ function markVisitedHybrid(tracks){
 
         if([lat1, lon1, lat2, lon2].some(isNaN)) continue;
 
-        // 🔥 FAST CHECK
-        if(lineIntersectsBox(lat1, lon1, lat2, lon2, minLat, minLon, maxLat, maxLon)){
+        // ===============================
+        // 🔥 FAST BOX CHECK
+        // ===============================
+        if(lineIntersectsBox(
+          lat1, lon1,
+          lat2, lon2,
+          minLat, minLon,
+          maxLat, maxLon
+        )){
           visited[id] = true;
           break;
         }
 
-        // 🔥 PRECISE
+        // ===============================
+        // 🔥 PRECISE TURF CHECK
+        // ===============================
         try {
+
           const line = turf.lineString([
             [lon1, lat1],
             [lon2, lat2]
@@ -4567,20 +4577,23 @@ function markVisitedHybrid(tracks){
             visited[id] = true;
             break;
           }
+
         } catch(e){}
+
       }
 
       if(visited[id]) break;
     }
+
   });
 
-  // ======================================================
-  // 🔥 SAVE WITH DATE + STAFF + BEAT (FINAL FIX)
-  // ======================================================
+  // ===============================
+  // 🔥 APPLY + SAVE + CACHE UPDATE (FIXED)
+  // ===============================
   if(Object.keys(visited).length){
 
-    const trackDate = tracks[0]?.date;
-    const key = "grid_" + (trackDate || getLocalDateStr());
+    // 🔥 FIX: LOCAL DATE (CRITICAL)
+    const key = "grid_" + getLocalDateStr();
 
     let data;
     try {
@@ -4589,71 +4602,34 @@ function markVisitedHybrid(tracks){
       data = {};
     }
 
-    // 🔥 GET FROM TRACK FIRST (KML), ELSE USER PROFILE
-    const t = tracks[0] || {};
-    const name = t.staff || window.userProfile?.cleanName || "UNKNOWN";
-    const beat = t.beat || window.userProfile?.beat || "UNKNOWN";
-
     Object.keys(visited).forEach(id => {
 
-      // 🔥 FIX OLD FORMAT (CRITICAL)
-      if(typeof data[id] !== "object"){
-        data[id] = {
-          visited: true,
-          staff: [],
-          beats: []
-        };
-      }
-
-      // 🔥 ENSURE ARRAYS EXIST
-      if(!Array.isArray(data[id].staff)){
-        data[id].staff = [];
-      }
-
-      if(!Array.isArray(data[id].beats)){
-        data[id].beats = [];
-      }
-
-      // 🔥 UPDATE
-      data[id].visited = true;
-
-      // 🔥 SAFE PUSH
-      if(!data[id].staff.includes(name)){
-        data[id].staff.push(name);
-      }
-
-      if(!data[id].beats.includes(beat)){
-        data[id].beats.push(beat);
-      }
-
-      // 🔥 memory update
+      // 🔥 update memory grid
       if(window.gridIndex[id]){
         window.gridIndex[id].visited = true;
       }
+
+      // 🔥 save to localStorage
+      data[id] = true;
     });
 
     localStorage.setItem(key, JSON.stringify(data));
 
-    // ======================================================
-    // 🔥 CACHE UPDATE
-    // ======================================================
+    // ===============================
+    // 🔥 CACHE UPDATE (FIXED)
+    // ===============================
     window.gridCache = window.gridCache || {};
-
-    if(trackDate){
-      console.log("📅 Backfill saved:", trackDate);
-    } else {
-      window.gridCache.today = data;
-    }
+    window.gridCache.today = data;
 
     if(typeof updateMonthCache === "function"){
       updateMonthCache();
     }
 
-    console.log("✅ Hybrid visited:", Object.keys(visited).length, "|", key);
+    console.log("✅ Hybrid visited:", Object.keys(visited).length);
 
-    // ======================================================
+    // ===============================
     // 🔥 LIVE RENDER
-    // ======================================================
+    // ===============================
     if(typeof renderGrid === "function"){
       renderGrid(
         window.currentCoverageMode || "today",
@@ -4663,7 +4639,7 @@ function markVisitedHybrid(tracks){
   }
 
   return visited;
-}   function applyMode(mode){
+}  function applyMode(mode){
 
   window.currentCoverageMode = mode;
 
