@@ -3880,7 +3880,25 @@ function updateVisitedCache(newVisited){
     percent: percent.toFixed(1)
   };
 }
-async function backfillFromKML(){
+
+    function runBackfillAuto(){
+
+  console.log("🚀 Auto Backfill Started");
+
+  const interval = setInterval(async () => {
+
+    await backfillFromKML();
+
+    const meta = await callBackend("getKMLTracks");
+
+    if(!meta || !meta.length){
+      console.log("🎯 FULL BACKFILL COMPLETE");
+      clearInterval(interval);
+    }
+
+  }, 3000); // every 3 seconds
+}
+  async function backfillFromKML(){
 
   console.log("🛠 KML Backfill START");
 
@@ -3890,79 +3908,156 @@ async function backfillFromKML(){
   }
 
   let rounds = 0;
+  const MAX_PER_RUN = 3; // ✅ 2–3 files per batch
 
-  while(rounds < 50){
+  while(rounds < MAX_PER_RUN){
 
-    console.log("🔁 Round:", rounds + 1);
+    console.log("🔁 File batch:", rounds + 1);
 
-    // 🔥 STEP 1 → get ONE file
-    const meta = await callBackend("getKMLTracks");
+    // ===============================
+    // 🔥 STEP 1 → GET NEXT FILE
+    // ===============================
+    let meta;
+
+    try {
+      meta = await callBackend("getKMLTracks");
+    } catch(e){
+      console.error("❌ getKMLTracks failed:", e);
+      break;
+    }
 
     if(!meta || !meta.length){
       console.log("✅ DONE (no more files)");
-      break;
+      return;
     }
 
     const file = meta[0];
 
-    // 🔥 STEP 2 → read file
-    const res = await callBackend("readKMLFile", {fileId: file.id});
+    console.log("📂 Processing:", file.name);
+    console.log("📅 File Date:", file.date);
+    console.log("🆔 File ID:", file.id);
 
-    if(!res || !res.text){
+    if(!file.date){
+      console.warn("⚠ Missing file.date → SKIPPING");
       rounds++;
       continue;
     }
 
-    // 🔥 PARSE KML
+    // ===============================
+    // 🔥 STEP 2 → READ FILE
+    // ===============================
+    let res;
+
+    try {
+      res = await callBackend("readKMLFile", {fileId: file.id});
+    } catch(e){
+      console.error("❌ readKMLFile failed:", e);
+      rounds++;
+      continue;
+    }
+
+    if(!res || !res.text){
+      console.warn("⚠ Empty KML content");
+      rounds++;
+      continue;
+    }
+
+    // ===============================
+    // 🔥 STEP 3 → EXTRACT COORDINATES
+    // ===============================
     const coordMatch = res.text.match(/<coordinates>([\s\S]*?)<\/coordinates>/);
 
     if(!coordMatch){
+      console.warn("⚠ No <coordinates> found");
       rounds++;
       continue;
     }
 
-    const points = coordMatch[1].trim().split(/\s+/);
+    const rawPoints = coordMatch[1].trim().split(/\s+/);
 
     let track = [];
+    let lastLat = null;
+    let lastLon = null;
 
-    points.forEach(p => {
+    const MIN_MOVE = 0.00005;
+
+    rawPoints.forEach(p => {
+
       const parts = p.split(",");
       if(parts.length < 2) return;
 
       const lon = parseFloat(parts[0]);
       const lat = parseFloat(parts[1]);
 
-      if(!isNaN(lat) && !isNaN(lon)){
-        track.push([lat, lon]);
+      if(isNaN(lat) || isNaN(lon)) return;
+
+      // 🔥 remove duplicates
+      if(lat === lastLat && lon === lastLon) return;
+
+      // 🔥 remove noise
+      if(
+        lastLat !== null &&
+        Math.abs(lat - lastLat) < MIN_MOVE &&
+        Math.abs(lon - lastLon) < MIN_MOVE
+      ){
+        return;
       }
+
+      track.push([lat, lon]);
+
+      lastLat = lat;
+      lastLon = lon;
     });
 
+    console.log("📍 Track points after filter:", track.length);
+
+    // ===============================
+    // 🔥 STEP 4 → APPLY GRID VISITS
+    // ===============================
     if(track.length > 1){
 
-      const key = "grid_" + file.date;
+      markVisitedHybrid([
+        {
+          track: track,
+          date: file.date // 🔥 CRITICAL
+        }
+      ]);
 
-      let dayData = JSON.parse(localStorage.getItem(key) || "{}");
+      console.log("📅 Saved grids for:", file.date);
 
-      const visited = markVisitedHybrid([{track}]);
-
-      Object.keys(visited).forEach(id => {
-        dayData[id] = true;
-      });
-
-      localStorage.setItem(key, JSON.stringify(dayData));
+    } else {
+      console.warn("⚠ Track too small → skipped");
     }
 
     rounds++;
 
-    await new Promise(r => setTimeout(r, 800));
+    // ⏳ small delay (avoid throttling)
+    await new Promise(r => setTimeout(r, 500));
   }
 
-  console.log("🎯 Backfill COMPLETE");
+  console.log("⏸ Batch complete (next run continues)");
 
-  buildMonthCache();
-  renderGrid("current","ALL");
-}  
-    
+  // ===============================
+  // 🔥 FINAL UPDATE
+  // ===============================
+  if(typeof updateMonthCache === "function"){
+    updateMonthCache();
+  }
+
+  if(typeof renderGrid === "function"){
+    renderGrid("current","ALL");
+  }
+
+  // ===============================
+  // 🔥 DEBUG STORAGE STATE
+  // ===============================
+  console.log(
+    "📦 Stored grid days:",
+    Object.keys(localStorage)
+      .filter(k => k.startsWith("grid_"))
+      .sort()
+  );
+}   
     function getLocalDateStr(date = new Date()){
   const d = new Date(date);
   d.setMinutes(d.getMinutes() - d.getTimezoneOffset());
@@ -4230,7 +4325,14 @@ function loadCacheOnStart(){
 }
 function markVisitedHybrid(tracks){
 
-  if(!window.gridIndex) return {};
+  if(!window.gridIndex){
+    console.warn("⚠ gridIndex not ready");
+    return {};
+  }
+
+  // 🔥 DEBUG: incoming tracks
+  console.log("🧪 Incoming tracks:", tracks);
+  console.log("🧪 Track Date Incoming:", tracks[0]?.date);
 
   let visited = {};
 
@@ -4285,7 +4387,9 @@ function markVisitedHybrid(tracks){
             break;
           }
 
-        } catch(e){}
+        } catch(e){
+          console.warn("⚠ Turf error:", e);
+        }
 
       }
 
@@ -4295,44 +4399,59 @@ function markVisitedHybrid(tracks){
   });
 
   // ===============================
-  // 🔥 APPLY + SAVE + CACHE UPDATE (FIXED)
+  // 🔥 APPLY + SAVE + CACHE UPDATE
   // ===============================
   if(Object.keys(visited).length){
 
-    // 🔥 FIX: LOCAL DATE (CRITICAL)
-    const key = "grid_" + getLocalDateStr();
+    const trackDate = tracks[0]?.date;
+
+    console.log("📅 Using date for save:", trackDate || "TODAY");
+
+    const key = "grid_" + (trackDate || getLocalDateStr());
+
+    console.log("💾 Saving into key:", key);
 
     let data;
     try {
       data = JSON.parse(localStorage.getItem(key) || "{}");
     } catch(e){
+      console.warn("⚠ JSON parse failed, resetting:", key);
       data = {};
     }
 
     Object.keys(visited).forEach(id => {
 
-      // 🔥 update memory grid
       if(window.gridIndex[id]){
         window.gridIndex[id].visited = true;
       }
 
-      // 🔥 save to localStorage
       data[id] = true;
     });
 
     localStorage.setItem(key, JSON.stringify(data));
 
+    console.log("📦 Total grids in this day:", Object.keys(data).length);
+
     // ===============================
-    // 🔥 CACHE UPDATE (FIXED)
+    // 🔥 CACHE UPDATE
     // ===============================
     window.gridCache = window.gridCache || {};
-    window.gridCache.today = data;
 
-    if(typeof updateMonthCache === "function"){
+    if(trackDate){
+      console.log("📊 Updating MONTH cache (historical)");
+      updateMonthCache();
+    } else {
+      console.log("📊 Updating TODAY cache (live)");
+      window.gridCache.today = data;
       updateMonthCache();
     }
 
-    console.log("✅ Hybrid visited:", Object.keys(visited).length);
+    console.log(
+      "✅ Hybrid visited:",
+      Object.keys(visited).length,
+      "| Date:",
+      trackDate || "TODAY"
+    );
 
     // ===============================
     // 🔥 LIVE RENDER
@@ -4343,11 +4462,13 @@ function markVisitedHybrid(tracks){
         window.currentBeat || "ALL"
       );
     }
+  } else {
+    console.log("⚠ No grids intersected for this track");
   }
 
   return visited;
-}    
-function applyMode(mode){
+}
+    function applyMode(mode){
 
   window.currentCoverageMode = mode;
 
