@@ -3775,30 +3775,29 @@ function updateMonthCache(){
 
   let result = {};
 
-  const today = new Date();
-  const start = new Date(today.getFullYear(), today.getMonth(), 1);
+  Object.keys(localStorage).forEach(key => {
 
-  for(let d = new Date(start); d <= today; d.setDate(d.getDate()+1)){
+    if(!key.startsWith("grid_")) return;
 
-    const key = "grid_" + d.toISOString().slice(0,10);
-
-    let data;
     try {
-      data = JSON.parse(localStorage.getItem(key) || "{}");
+      const data = JSON.parse(localStorage.getItem(key) || "{}");
+
+      Object.keys(data).forEach(id => {
+        result[id] = true;
+      });
+
     } catch(e){
-      data = {};
+      console.warn("⚠ Failed reading:", key);
     }
 
-    Object.keys(data).forEach(id => {
-      result[id] = true;
-    });
-  }
+  });
 
   window.gridCache = window.gridCache || {};
   window.gridCache.month = result;
 
   console.log("📅 Month cache grids:", Object.keys(result).length);
-}    function updateTodayCache(){
+}   
+    function updateTodayCache(){
 
   const key = "grid_" + getLocalDateStr();
 
