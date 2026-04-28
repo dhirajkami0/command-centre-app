@@ -4093,17 +4093,19 @@ function renderGrid(mode = "today", beat = "ALL"){
   try {
 
     if(!window.gridIndex || !window.gridMeta || !Object.keys(window.gridIndex).length){
-  console.warn("⚠ Grid not ready (skip render)");
-  return;
-}
+      console.warn("⚠ Grid not ready (skip render)");
+      return;
+    }
+
     if(!window.gridLayer){
       window.gridLayer = L.layerGroup();
     }
 
+    // 🔥 DO NOT add/remove layer here
     window.gridLayer.clearLayers();
 
     // ===============================
-    // 🔥 DATA SOURCE (ONLY 2 MODES)
+    // 🔥 DATA SOURCE
     // ===============================
     let current = {};
 
@@ -4141,41 +4143,29 @@ function renderGrid(mode = "today", beat = "ALL"){
             smoothFactor: 0
           },
 
-          // ===============================
-          // 🔥 CLICK POPUP (CORE FEATURE)
-          // ===============================
           onEachFeature: function(feature, layer){
 
             layer.on("click", function(){
 
               try {
 
-                const stats = getCoverageStats(
-                  mode,
-                  beat
-                );
-
+                const stats = getCoverageStats(mode, beat);
                 if(!stats) return;
 
                 let html = "";
 
                 if(isVisited){
-
                   html = `
                   <div style="font-family:Segoe UI">
                     <b>🟢 VISITED AREA</b><br><br>
-
                     📊 Grids: ${stats.visitedGrids} / ${stats.totalGrids}<br>
                     🌿 Area: ${stats.visitedAreaHa} / ${stats.totalAreaHa} Ha<br>
                     📈 Coverage: ${stats.percent}%
                   </div>`;
-
                 } else {
-
                   html = `
                   <div style="font-family:Segoe UI">
                     <b>🔴 UNVISITED AREA</b><br><br>
-
                     📊 Grids: ${stats.unvisitedGrids} / ${stats.totalGrids}<br>
                     🌿 Area: ${stats.unvisitedAreaHa} / ${stats.totalAreaHa} Ha<br>
                     📉 Remaining: ${(100 - stats.percent).toFixed(1)}%
@@ -4199,13 +4189,6 @@ function renderGrid(mode = "today", beat = "ALL"){
       }
 
     });
-
-    // ===============================
-    // 🔥 ADD TO MAP
-    // ===============================
-    if(!map.hasLayer(window.gridLayer)){
-      window.gridLayer.addTo(map);
-    }
 
     const percent = total ? ((visited / total) * 100).toFixed(1) : 0;
 
