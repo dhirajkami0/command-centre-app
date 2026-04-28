@@ -1457,6 +1457,31 @@ function startApp(){
     // ================= CACHE LOAD =================
     loadCacheOnStart();
 
+    // ======================================================
+    // 🔥 CLEAN OLD MONTH DATA (INLINE - NO HELPER)
+    // ======================================================
+    try {
+
+      const now = new Date();
+      const prefix = now.toISOString().slice(0,7); // YYYY-MM
+
+      Object.keys(localStorage).forEach(key => {
+
+        if(!key.startsWith("grid_")) return;
+
+        const date = key.replace("grid_", "");
+
+        if(!date.startsWith(prefix)){
+          localStorage.removeItem(key);
+          console.log("🧹 Removed old grid:", key);
+        }
+
+      });
+
+    } catch(e){
+      console.warn("⚠ Cleanup failed");
+    }
+
     // ================= OFFLINE CLEAN =================
     if(window.isDutyActive !== true){
       try {
@@ -1470,7 +1495,7 @@ function startApp(){
     // ======================================================
     let attempts = 0;
 
-    const gridInitInterval = setInterval(() => {
+    const gridInitInterval = setInterval(async () => {
 
       attempts++;
 
@@ -1493,25 +1518,45 @@ function startApp(){
 
         console.log("🎯 Grid ready");
 
-        // 🔥 ================= KML BACKFILL (RUN ONCE) =================
-        if(!localStorage.getItem("kmlBackfillDone")){
+        // ==================================================
+        // 🔥 KML BACKFILL (CURRENT MONTH ONLY CONTROL)
+        // ==================================================
+        const BACKFILL_KEY = "kmlBackfillDone_v2";
 
-          console.log("🛠 Running KML backfill...");
+        // 🔥 DEFINE CURRENT MONTH PREFIX (USED INSIDE BACKFILL)
+        window.__currentMonthPrefix = new Date().toISOString().slice(0,7);
+
+        if(!localStorage.getItem(BACKFILL_KEY)){
+
+          console.log("🛠 Running ONE-TIME KML backfill (current month only)...");
 
           try {
 
-            backfillFromKML();   // 🔥 NEW (replaces archive)
+            await backfillFromKML();   // existing function (now filtered internally)
 
-            localStorage.setItem("kmlBackfillDone", true);
+            // 🔥 After backfill → refresh cache properly
+            if(typeof updateMonthCache === "function"){
+              updateMonthCache();
+            }
+
+            if(typeof updateTodayCache === "function"){
+              updateTodayCache();
+            }
+
+            localStorage.setItem(BACKFILL_KEY, "true");
+
+            console.log("✅ Backfill completed & cached (current month only)");
 
           } catch(e){
             console.error("❌ KML Backfill failed:", e);
           }
 
+        } else {
+          console.log("⏭ Backfill already done — using cache");
         }
 
         // ==================================================
-        // 🎯 FINAL RENDER
+        // 🎯 FINAL RENDER (CACHE BASED)
         // ==================================================
         console.log("🎯 Rendering grid");
 
