@@ -835,34 +835,39 @@ window.addEventListener("unhandledrejection", function (e) {
 <body>
   <!-- 🔥 SPLASH SCREEN (PUT HERE — FIRST ELEMENT) -->
  <div id="splash-screen" style="
-    position: fixed;
-    inset: 0;
-    width: 100vw;
-    height: 100vh;
-    z-index: 999999;
-    background-color: #0b1a0b;
-    overflow: hidden;
-    transition: opacity 0.8s ease;
+  position: fixed;
+  inset: 0;
+  width: 100vw;
+  height: 100vh;
+  z-index: 999999;
+  background-color: #0b1a0b;
+  overflow: hidden;
+  transition: opacity 0.6s ease;
 ">
 
-    <!-- Blurred background -->
-    <div style="
-        position: absolute;
-        inset: -10%;
-        background: url('icons/splash.png') center center / cover no-repeat;
-        filter: blur(35px) brightness(0.4);
-        z-index: 1;
-    "></div>
+  <!-- 🔥 LIGHTWEIGHT BLUR (small image only) -->
+  <div style="
+    position: absolute;
+    inset: 0;
+    background: url('icons/splash-small.webp') center / cover no-repeat;
+    filter: blur(12px) brightness(0.5);
+    transform: scale(1.05);
+    z-index: 1;
+  "></div>
 
-    <!-- FULL SCREEN IMAGE -->
-    <div style="
-        position: absolute;
-        inset: 0;
-        background: url('icons/splash.png') center center / cover no-repeat;
-        z-index: 2;
-    "></div>
+  <!-- 🔥 MAIN IMAGE -->
+  <img src="icons/splash.webp"
+       style="
+         position:absolute;
+         inset:0;
+         width:100%;
+         height:100%;
+         object-fit:cover;
+         z-index:2;
+       " />
 
-</div> <button id="panelToggle" onclick="toggleCommandPanel()">
+</div>
+  <button id="panelToggle" onclick="toggleCommandPanel()">
     <i id="toggleIcon" class="fa-solid fa-bars"></i>
   </button>
 
@@ -1437,6 +1442,9 @@ function startApp(){
 
   try {
 
+    // ================= INIT DUTY STATE (IMPORTANT) =================
+    window.isDutyActive = null; // 🔥 prevents wrong initial state
+
     // ================= LOAD CORE MODULES =================
     loadSightings();
 
@@ -1496,7 +1504,6 @@ function startApp(){
     // ======================================================
     let attempts = 0;
 
-    // 🔥 PREVENT MULTIPLE INTERVALS
     if(window.__gridInitStarted){
       console.warn("⚠ Grid init already started");
     } else {
@@ -1513,7 +1520,6 @@ function startApp(){
           return;
         }
 
-        // 🔥 Ensure grid ready
         ensureGridReady();
 
         if(window.gridIndex && Object.keys(window.gridIndex).length){
@@ -1522,19 +1528,11 @@ function startApp(){
 
           const BACKFILL_KEY = "kmlBackfillDone_v2";
 
-          // 🔥 current month prefix
           window.__currentMonthPrefix = new Date().toISOString().slice(0,7);
 
-          // ==================================================
-          // 🔥 START BACKFILL ENGINE (ONLY ONCE)
-          // ==================================================
           if(!localStorage.getItem(BACKFILL_KEY)){
-
             console.log("🚀 Starting incremental backfill engine...");
-
-            // 🔥 IMPORTANT: DO NOT await
             runBackfillAuto();
-
           } else {
             console.log("⏭ Backfill already completed");
           }
@@ -1548,10 +1546,32 @@ function startApp(){
         }
 
       }, 500);
-
     }
 
     console.log("✅ App initialized (grid on-demand only)");
+
+    // ======================================================
+    // 🔥 DUTY CHECK FIX (CRITICAL)
+    // ======================================================
+
+    // 🔹 1. Initial delayed check (UI ready)
+    setTimeout(() => {
+      console.log("🔄 Initial duty check...");
+      autoShowEndDuty();
+    }, 1500);
+
+    // 🔹 2. Retry once more (network delay safe)
+    setTimeout(() => {
+      console.log("🔄 Backup duty check...");
+      autoShowEndDuty();
+    }, 3000);
+
+    // 🔹 3. Periodic sync (bulletproof)
+    setInterval(() => {
+      if(window.userProfile){
+        autoShowEndDuty();
+      }
+    }, 15000);
 
     // ======================================================
     // 🔥 KML CACHE WARM (NON-BLOCKING & SAFE)
@@ -1560,13 +1580,11 @@ function startApp(){
 
       const runWarmKML = () => {
 
-        // 🔴 Skip if offline
         if(!navigator.onLine){
           console.log("📴 Skip KML cache (offline)");
           return;
         }
 
-        // 🔴 Skip if already cached
         if(localStorage.getItem("kmlCached")){
           console.log("⏭ KML already cached");
           return;
@@ -1574,7 +1592,6 @@ function startApp(){
 
         console.log("🔥 Scheduling KML warm cache...");
 
-        // ✅ BEST: Run when browser idle
         if("requestIdleCallback" in window){
           requestIdleCallback(warmKMLCache, { timeout: 5000 });
         } else {
@@ -1583,7 +1600,6 @@ function startApp(){
 
       };
 
-      // 🔥 Delay so it doesn’t fight grid/backfill
       setTimeout(runWarmKML, 3000);
 
     } catch(e){
@@ -2472,7 +2488,11 @@ function autoShowEndDuty() {
       const icon  = document.getElementById("dutyIcon");
       const label = document.getElementById("dutyLabel");
 
-      if (!btn || !label) return;
+      if (!btn || !label) {
+  console.warn("⚠ Duty UI not ready → retrying...");
+  setTimeout(autoShowEndDuty, 700);
+  return;
+}
 
       // =========================================================
       // 🟢 ACTIVE DUTY
@@ -2643,13 +2663,10 @@ function initDutyControl() {
     // 🔄 INITIAL DUTY CHECK
     // ============================================================
     if (typeof autoShowEndDuty === "function") {
-
-      setTimeout(() => {
-
-        console.log("🔄 Initial duty check...");
-        autoShowEndDuty();
-
-      }, 500);
+setTimeout(() => {
+  console.log("🔄 Initial duty check (delayed)");
+  autoShowEndDuty();
+}, 1500);
 
     } else {
       console.error("❌ autoShowEndDuty not found");
@@ -9454,10 +9471,14 @@ function startOnlineLoginFlow(){
       updateNetworkStatus("online");
 
       applyRoleControl?.();
+
+      // ✅ Start core app FIRST
       startApp?.();
+
+      // ⚠ keep duty control if needed
       initDutyControl?.();
-      loadRangeKML?.();
-      loadCompartmentsFromSheet?.();
+
+      // ❌ DO NOT load heavy KML here (moved later)
 
       return callBackend("updateVillageRisk");
     })
@@ -9483,28 +9504,34 @@ function startOnlineLoginFlow(){
 
       refreshAll?.();
 
-      // 🔥 splash
-      const splash = document.getElementById('splash-screen');
+      // ======================================================
+      // ✅ HIDE SPLASH (NO DELAY / NO FREEZE)
+      // ======================================================
+      try {
+        hideSplash();
+      } catch(e){
+        console.warn("⚠ hideSplash failed");
+      }
 
+      // ======================================================
+      // 🚀 LOAD HEAVY KML AFTER UI IS VISIBLE
+      // ======================================================
       setTimeout(() => {
 
-        if (splash) {
+        console.log("🗺 Loading KML layers (delayed)...");
 
-          splash.style.opacity = "0";
-
-          setTimeout(() => {
-
-            splash.style.display = "none";
-
-            setTimeout(() => {
-              if (window.map) map.invalidateSize();
-            }, 300);
-
-          }, 800);
+        try {
+          loadRangeKML?.();
+          loadCompartmentsFromSheet?.();
+        } catch(e){
+          console.warn("⚠ KML load failed");
         }
 
-      }, 2800);
+      }, 300); // small delay to keep UI smooth
 
+      // ======================================================
+      // 🔧 INIT EVENTS LAST
+      // ======================================================
       initEventListeners?.();
 
     })
@@ -9515,8 +9542,20 @@ function startOnlineLoginFlow(){
       showLogin();
 
     });
-}
 
+}
+    function hideSplash(){
+
+  const splash = document.getElementById("splash-screen");
+  if(!splash) return;
+
+  splash.style.opacity = "0";
+
+  setTimeout(() => {
+    splash.remove();
+    if(window.map) map.invalidateSize();
+  }, 600);
+}
 
 // ================= REFRESH PROFILE =================
 function refreshOnlineProfile(){
