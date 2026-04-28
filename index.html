@@ -1069,7 +1069,11 @@ function safeBackend(action, payload = {}) {
 /* ===============================
    🔧 GLOBAL UTILITIES (BACKEND)
 =============================== */
+window.processedKML = new Set(
+  JSON.parse(localStorage.getItem("processedKML") || "[]")
+);
 
+window.backfillRunning = false;
 function cleanName(n){
   return String(n || "")
     .toUpperCase()
@@ -1457,7 +1461,7 @@ function startApp(){
     loadCacheOnStart();
 
     // ======================================================
-    // 🧹 CLEAN OLD MONTH DATA (FIXED)
+    // 🧹 CLEAN OLD MONTH DATA
     // ======================================================
     try {
 
@@ -1489,11 +1493,11 @@ function startApp(){
     }
 
     // ======================================================
-    // 🔥 GRID INIT (NO AUTO RENDER)
+    // 🔥 GRID INIT + BACKFILL START
     // ======================================================
     let attempts = 0;
 
-    const gridInitInterval = setInterval(async () => {
+    const gridInitInterval = setInterval(() => {
 
       attempts++;
 
@@ -1503,45 +1507,33 @@ function startApp(){
         return;
       }
 
-      // 🔥 Build or load grid (memory only)
+      // 🔥 Ensure grid ready
       ensureGridReady();
 
       if(window.gridIndex && Object.keys(window.gridIndex).length){
 
         console.log("🎯 Grid ready (no auto render)");
 
-        // ==================================================
-        // 🔥 BACKFILL (RUN ONCE)
-        // ==================================================
         const BACKFILL_KEY = "kmlBackfillDone_v2";
 
+        // 🔥 current month prefix
         window.__currentMonthPrefix = new Date().toISOString().slice(0,7);
 
+        // ==================================================
+        // 🔥 START BACKFILL ENGINE (ONLY ONCE)
+        // ==================================================
         if(!localStorage.getItem(BACKFILL_KEY)){
 
-          console.log("🛠 Running KML backfill...");
+          console.log("🚀 Starting incremental backfill engine...");
 
-          try {
-
-            await backfillFromKML();
-
-            updateMonthCache?.();
-            updateTodayCache?.();
-
-            localStorage.setItem(BACKFILL_KEY, "true");
-
-            console.log("✅ Backfill done");
-
-          } catch(e){
-            console.error("❌ Backfill failed:", e);
-          }
+          // 🔥 IMPORTANT: DO NOT await
+          runBackfillAuto();
 
         } else {
-          console.log("⏭ Backfill already done");
+          console.log("⏭ Backfill already completed");
         }
 
-        // ❗ DO NOT RENDER GRID HERE
-
+        // ❗ DO NOT render grid here
         clearInterval(gridInitInterval);
       }
 
@@ -3891,20 +3883,29 @@ function updateVisitedCache(newVisited){
 
     function runBackfillAuto(){
 
+  if(window.backfillRunning){
+    console.log("⏭ Backfill already running");
+    return;
+  }
+
   console.log("🚀 Auto Backfill Started");
+  window.backfillRunning = true;
 
   const interval = setInterval(async () => {
 
-    await backfillFromKML();
+    const done = await backfillFromKML();
 
-    const meta = await callBackend("getKMLTracks");
-
-    if(!meta || !meta.length){
+    // 🔥 STOP WHEN DONE
+    if(done){
       console.log("🎯 FULL BACKFILL COMPLETE");
+
       clearInterval(interval);
+      window.backfillRunning = false;
+
+      localStorage.setItem("kmlBackfillDone_v2", "true");
     }
 
-  }, 3000); // every 3 seconds
+  }, 3000);
 }
   async function backfillFromKML(){
 
@@ -3912,62 +3913,48 @@ function updateVisitedCache(newVisited){
 
   if(!window.gridIndex){
     console.warn("⚠ Grid not ready");
-    return;
+    return false;
   }
 
   let rounds = 0;
-  const MAX_PER_RUN = 3; // ✅ 2–3 files per batch
+  const MAX_PER_RUN = 3;
 
   while(rounds < MAX_PER_RUN){
 
     console.log("🔁 File batch:", rounds + 1);
 
-    // ===============================
-    // 🔥 STEP 1 → GET NEXT FILE
-    // ===============================
     let meta;
 
     try {
       meta = await callBackend("getKMLTracks");
     } catch(e){
       console.error("❌ getKMLTracks failed:", e);
-      break;
+      return false;
     }
 
-    // 🔥 FIX: HANDLE DONE CASE PROPERLY
     if(!meta || !meta.length){
       console.log("✅ DONE (no more files)");
-
-      if(typeof updateMonthCache === "function"){
-        updateMonthCache();
-      }
-
-      if(typeof renderGrid === "function"){
-        renderGrid("current","ALL");
-      }
-
-      return;
+      return true; // 🔥 SIGNAL COMPLETE
     }
 
     const file = meta[0];
-if(file.date && !file.date.startsWith(window.__currentMonthPrefix)){
-  console.log("⏭ Skipping old month:", file.date);
-  rounds++;
-  continue;
-}
-    console.log("📂 Processing:", file.name);
-    console.log("📅 File Date:", file.date);
-    console.log("🆔 File ID:", file.id);
 
-    if(!file.date){
-      console.warn("⚠ Missing file.date → SKIPPING");
+    // 🔥 SKIP OLD MONTH
+    if(file.date && !file.date.startsWith(window.__currentMonthPrefix)){
+      console.log("⏭ Skipping old month:", file.date);
       rounds++;
       continue;
     }
 
-    // ===============================
-    // 🔥 STEP 2 → READ FILE
-    // ===============================
+    // 🔥 SKIP ALREADY PROCESSED
+    if(window.processedKML.has(file.id)){
+      console.log("⏭ Already processed:", file.name);
+      rounds++;
+      continue;
+    }
+
+    console.log("📂 Processing:", file.name);
+
     let res;
 
     try {
@@ -3984,9 +3971,6 @@ if(file.date && !file.date.startsWith(window.__currentMonthPrefix)){
       continue;
     }
 
-    // ===============================
-    // 🔥 STEP 3 → EXTRACT COORDINATES
-    // ===============================
     const coordMatch = res.text.match(/<coordinates>([\s\S]*?)<\/coordinates>/);
 
     if(!coordMatch){
@@ -4013,10 +3997,8 @@ if(file.date && !file.date.startsWith(window.__currentMonthPrefix)){
 
       if(isNaN(lat) || isNaN(lon)) return;
 
-      // 🔥 remove duplicates
       if(lat === lastLat && lon === lastLon) return;
 
-      // 🔥 remove noise
       if(
         lastLat !== null &&
         Math.abs(lat - lastLat) < MIN_MOVE &&
@@ -4031,56 +4013,40 @@ if(file.date && !file.date.startsWith(window.__currentMonthPrefix)){
       lastLon = lon;
     });
 
-    console.log("📍 Track points after filter:", track.length);
+    console.log("📍 Track points:", track.length);
 
-    // ===============================
-    // 🔥 STEP 4 → APPLY GRID VISITS
-    // ===============================
     if(track.length > 1){
 
-      markVisitedHybrid([
-        {
-          track: track,
-          date: file.date // 🔥 CRITICAL
-        }
-      ]);
+      markVisitedHybrid([{
+        track: track,
+        date: file.date
+      }]);
 
       console.log("📅 Saved grids for:", file.date);
 
+      // 🔥 MARK PROCESSED
+      window.processedKML.add(file.id);
+
+      localStorage.setItem(
+        "processedKML",
+        JSON.stringify([...window.processedKML])
+      );
+
     } else {
-      console.warn("⚠ Track too small → skipped");
+      console.warn("⚠ Track too small");
     }
 
     rounds++;
 
-    // ⏳ small delay (avoid throttling)
-    await new Promise(r => setTimeout(r, 500));
+    await new Promise(r => setTimeout(r, 400));
   }
 
-  console.log("⏸ Batch complete (next run continues)");
+  console.log("⏸ Batch complete");
 
-  // ===============================
-  // 🔥 FINAL UPDATE
-  // ===============================
-  if(typeof updateMonthCache === "function"){
-    updateMonthCache();
-  }
+  updateMonthCache?.();
 
-  if(typeof renderGrid === "function"){
-    renderGrid("current","ALL");
-  }
-
-  // ===============================
-  // 🔥 DEBUG STORAGE STATE
-  // ===============================
-  console.log(
-    "📦 Stored grid days:",
-    Object.keys(localStorage)
-      .filter(k => k.startsWith("grid_"))
-      .sort()
-  );
-}  
-    function getLocalDateStr(date = new Date()){
+  return false; // 🔥 NOT DONE YET
+}  function getLocalDateStr(date = new Date()){
   const d = new Date(date);
   d.setMinutes(d.getMinutes() - d.getTimezoneOffset());
   return d.toISOString().slice(0,10);
