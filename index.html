@@ -1496,54 +1496,99 @@ function startApp(){
     // ======================================================
     let attempts = 0;
 
-    const gridInitInterval = setInterval(() => {
+    // 🔥 PREVENT MULTIPLE INTERVALS
+    if(window.__gridInitStarted){
+      console.warn("⚠ Grid init already started");
+    } else {
 
-      attempts++;
+      window.__gridInitStarted = true;
 
-      if(!window.rangeLayer){
-        console.log("⏳ Waiting for rangeLayer...");
-        if(attempts > 10) clearInterval(gridInitInterval);
-        return;
-      }
+      const gridInitInterval = setInterval(() => {
 
-      // 🔥 Ensure grid ready
-      ensureGridReady();
+        attempts++;
 
-      if(window.gridIndex && Object.keys(window.gridIndex).length){
-
-        console.log("🎯 Grid ready (no auto render)");
-
-        const BACKFILL_KEY = "kmlBackfillDone_v2";
-
-        // 🔥 current month prefix
-        window.__currentMonthPrefix = new Date().toISOString().slice(0,7);
-
-        // ==================================================
-        // 🔥 START BACKFILL ENGINE (ONLY ONCE)
-        // ==================================================
-        if(!localStorage.getItem(BACKFILL_KEY)){
-
-          console.log("🚀 Starting incremental backfill engine...");
-
-          // 🔥 IMPORTANT: DO NOT await
-          runBackfillAuto();
-
-        } else {
-          console.log("⏭ Backfill already completed");
+        if(!window.rangeLayer){
+          console.log("⏳ Waiting for rangeLayer...");
+          if(attempts > 10) clearInterval(gridInitInterval);
+          return;
         }
 
-        // ❗ DO NOT render grid here
-        clearInterval(gridInitInterval);
-      }
+        // 🔥 Ensure grid ready
+        ensureGridReady();
 
-      if(attempts > 10){
-        console.warn("⚠ Grid init timeout");
-        clearInterval(gridInitInterval);
-      }
+        if(window.gridIndex && Object.keys(window.gridIndex).length){
 
-    }, 500);
+          console.log("🎯 Grid ready (no auto render)");
+
+          const BACKFILL_KEY = "kmlBackfillDone_v2";
+
+          // 🔥 current month prefix
+          window.__currentMonthPrefix = new Date().toISOString().slice(0,7);
+
+          // ==================================================
+          // 🔥 START BACKFILL ENGINE (ONLY ONCE)
+          // ==================================================
+          if(!localStorage.getItem(BACKFILL_KEY)){
+
+            console.log("🚀 Starting incremental backfill engine...");
+
+            // 🔥 IMPORTANT: DO NOT await
+            runBackfillAuto();
+
+          } else {
+            console.log("⏭ Backfill already completed");
+          }
+
+          clearInterval(gridInitInterval);
+        }
+
+        if(attempts > 10){
+          console.warn("⚠ Grid init timeout");
+          clearInterval(gridInitInterval);
+        }
+
+      }, 500);
+
+    }
 
     console.log("✅ App initialized (grid on-demand only)");
+
+    // ======================================================
+    // 🔥 KML CACHE WARM (NON-BLOCKING & SAFE)
+    // ======================================================
+    try {
+
+      const runWarmKML = () => {
+
+        // 🔴 Skip if offline
+        if(!navigator.onLine){
+          console.log("📴 Skip KML cache (offline)");
+          return;
+        }
+
+        // 🔴 Skip if already cached
+        if(localStorage.getItem("kmlCached")){
+          console.log("⏭ KML already cached");
+          return;
+        }
+
+        console.log("🔥 Scheduling KML warm cache...");
+
+        // ✅ BEST: Run when browser idle
+        if("requestIdleCallback" in window){
+          requestIdleCallback(warmKMLCache, { timeout: 5000 });
+        } else {
+          setTimeout(warmKMLCache, 5000);
+        }
+
+      };
+
+      // 🔥 Delay so it doesn’t fight grid/backfill
+      setTimeout(runWarmKML, 3000);
+
+    } catch(e){
+      console.warn("⚠ warmKML scheduling failed");
+    }
 
   } catch(e){
     console.error("❌ startApp crash:", e);
@@ -1658,7 +1703,18 @@ if ("serviceWorker" in navigator) {
   });
 
 }
+function warmKMLCache(){
 
+  if(localStorage.getItem("kmlCached")) return;
+
+  fetch("./kml/Compartments.kml")
+    .then(() => {
+      console.log("🔥 KML cached");
+      localStorage.setItem("kmlCached", "1");
+    })
+    .catch(()=>{});
+
+}
 
 // ======================================================
 // 🎯 SHOW UPDATE UI
