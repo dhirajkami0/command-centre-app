@@ -4291,7 +4291,7 @@ function markVisitedHybrid(tracks){
   console.log("🧪 Incoming tracks:", tracks);
 
   // ======================================================
-  // 🔥 DETECT DATE
+  // 🔥 DETECT DATE (STRICT)
   // ======================================================
   let trackDate = null;
 
@@ -4303,6 +4303,8 @@ function markVisitedHybrid(tracks){
       }
     }
   }
+
+  const todayStr = getLocalDateStr();
 
   console.log("📅 FINAL DATE SELECTED:", trackDate || "TODAY");
 
@@ -4337,7 +4339,7 @@ function markVisitedHybrid(tracks){
         if([lat1, lon1, lat2, lon2].some(isNaN)) continue;
 
         // ===============================
-        // 🔥 FAST BOX CHECK
+        // 🔥 FAST BOX CHECK (PRIMARY)
         // ===============================
         if(lineIntersectsBox(
           lat1, lon1,
@@ -4350,7 +4352,7 @@ function markVisitedHybrid(tracks){
         }
 
         // ===============================
-        // 🔥 PRECISE TURF CHECK
+        // 🔥 PRECISE TURF CHECK (FALLBACK)
         // ===============================
         try {
 
@@ -4371,7 +4373,6 @@ function markVisitedHybrid(tracks){
 
       if(visited[id]) break;
     }
-
   }
 
   // ======================================================
@@ -4379,7 +4380,8 @@ function markVisitedHybrid(tracks){
   // ======================================================
   if(Object.keys(visited).length){
 
-    const key = "grid_" + (trackDate || getLocalDateStr());
+    const finalDate = trackDate || todayStr;
+    const key = "grid_" + finalDate;
 
     console.log("💾 Saving into key:", key);
 
@@ -4392,9 +4394,13 @@ function markVisitedHybrid(tracks){
       data = {};
     }
 
+    // ======================================================
+    // 🔥 MERGE VISITED
+    // ======================================================
     Object.keys(visited).forEach(id => {
 
-      // memory update
+      // ❌ DO NOT trust memory as source of truth
+      // (only for UI)
       if(window.gridIndex[id]){
         window.gridIndex[id].visited = true;
       }
@@ -4407,18 +4413,40 @@ function markVisitedHybrid(tracks){
     console.log("📦 Total grids in this day:", Object.keys(data).length);
 
     // ======================================================
-    // 🔥 CACHE UPDATE
+    // 🔥 CACHE UPDATE (FIXED LOGIC)
     // ======================================================
     window.gridCache = window.gridCache || {};
 
-    const todayKey = "grid_" + getLocalDateStr();
+    const todayKey = "grid_" + todayStr;
 
     try {
-      window.gridCache.today = JSON.parse(localStorage.getItem(todayKey) || "{}");
+
+      // ✅ ONLY update TODAY cache if this is today's data
+      if(finalDate === todayStr){
+
+        window.gridCache.today =
+          JSON.parse(localStorage.getItem(todayKey) || "{}");
+
+        console.log("🟢 TODAY cache updated:",
+          Object.keys(window.gridCache.today).length
+        );
+
+      } else {
+
+        // ❗ DO NOT overwrite today cache
+        window.gridCache.today = window.gridCache.today || {};
+
+        console.log("⏭ Skipped TODAY cache update (old date):", finalDate);
+      }
+
     } catch(e){
-      window.gridCache.today = {};
+      console.warn("⚠ Today cache load failed");
+      window.gridCache.today = window.gridCache.today || {};
     }
 
+    // ======================================================
+    // 🔥 MONTH CACHE (ALWAYS UPDATE)
+    // ======================================================
     if(typeof updateMonthCache === "function"){
       updateMonthCache();
     }
@@ -4427,7 +4455,7 @@ function markVisitedHybrid(tracks){
       "✅ Hybrid visited:",
       Object.keys(visited).length,
       "| Date:",
-      trackDate || "TODAY"
+      finalDate
     );
 
   } else {
@@ -4435,7 +4463,7 @@ function markVisitedHybrid(tracks){
   }
 
   return visited;
-}  function applyMode(mode){
+} function applyMode(mode){
 
   // 🔥 store mode globally
   window.currentCoverageMode = mode || "today";
