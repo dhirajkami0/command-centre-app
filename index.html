@@ -1437,14 +1437,13 @@ function startApp(){
     // ================= LOAD CORE MODULES =================
     loadSightings();
 
-    // 🔥 INIT DUTY CONTROL
     if(typeof initDutyControl === "function"){
       initDutyControl();
     } else {
       console.warn("⚠ initDutyControl not found");
     }
 
-    // 🔥 SAFETY: Ensure GPS is NOT running initially
+    // 🔥 SAFETY: Ensure GPS is OFF initially
     if(window.gpsRunning){
       console.warn("⚠ GPS was running unexpectedly → stopping");
       stopAutoGPS();
@@ -1454,22 +1453,20 @@ function startApp(){
     startChat();
     cleanOldMessages();
 
-    // ================= CACHE LOAD =================
+    // ================= CACHE =================
     loadCacheOnStart();
 
     // ======================================================
-    // 🔥 CLEAN OLD MONTH DATA (INLINE - NO HELPER)
+    // 🧹 CLEAN OLD MONTH DATA (FIXED)
     // ======================================================
     try {
 
-      const now = new Date();
-      const prefix = now.toISOString().slice(0,7); // YYYY-MM
+      const prefix = new Date().toISOString().slice(0,7);
 
       Object.keys(localStorage).forEach(key => {
 
         if(!key.startsWith("grid_")) return;
-const prefix = new Date().toISOString().slice(0,7);
-if(!key.startsWith("grid_" + prefix)) return;
+
         const date = key.replace("grid_", "");
 
         if(!date.startsWith(prefix)){
@@ -1487,12 +1484,12 @@ if(!key.startsWith("grid_" + prefix)) return;
     if(window.isDutyActive !== true){
       try {
         localStorage.removeItem("offlineGPS");
-        console.log("🧹 Cleared old offline GPS (startup safety)");
+        console.log("🧹 Cleared old offline GPS");
       } catch(e){}
     }
 
     // ======================================================
-    // 🔥 GRID INIT LOOP (CACHE FIRST + SAFE INIT)
+    // 🔥 GRID INIT (NO AUTO RENDER)
     // ======================================================
     let attempts = 0;
 
@@ -1500,76 +1497,54 @@ if(!key.startsWith("grid_" + prefix)) return;
 
       attempts++;
 
-      // 🔍 Wait until rangeLayer is ready
       if(!window.rangeLayer){
         console.log("⏳ Waiting for rangeLayer...");
         if(attempts > 10) clearInterval(gridInitInterval);
         return;
       }
 
-      // ==================================================
-      // 🔥 ENSURE GRID (MEMORY → CACHE → BUILD)
-      // ==================================================
+      // 🔥 Build or load grid (memory only)
       ensureGridReady();
 
-      // ==================================================
-      // 🎯 WHEN GRID READY → RUN BACKFILL + RENDER
-      // ==================================================
       if(window.gridIndex && Object.keys(window.gridIndex).length){
 
-        console.log("🎯 Grid ready");
+        console.log("🎯 Grid ready (no auto render)");
 
         // ==================================================
-        // 🔥 KML BACKFILL (CURRENT MONTH ONLY CONTROL)
+        // 🔥 BACKFILL (RUN ONCE)
         // ==================================================
         const BACKFILL_KEY = "kmlBackfillDone_v2";
 
-        // 🔥 DEFINE CURRENT MONTH PREFIX (USED INSIDE BACKFILL)
         window.__currentMonthPrefix = new Date().toISOString().slice(0,7);
 
         if(!localStorage.getItem(BACKFILL_KEY)){
 
-          console.log("🛠 Running ONE-TIME KML backfill (current month only)...");
+          console.log("🛠 Running KML backfill...");
 
           try {
 
-            await backfillFromKML();   // existing function (now filtered internally)
+            await backfillFromKML();
 
-            // 🔥 After backfill → refresh cache properly
-            if(typeof updateMonthCache === "function"){
-              updateMonthCache();
-            }
-
-            if(typeof updateTodayCache === "function"){
-              updateTodayCache();
-            }
+            updateMonthCache?.();
+            updateTodayCache?.();
 
             localStorage.setItem(BACKFILL_KEY, "true");
 
-            console.log("✅ Backfill completed & cached (current month only)");
+            console.log("✅ Backfill done");
 
           } catch(e){
-            console.error("❌ KML Backfill failed:", e);
+            console.error("❌ Backfill failed:", e);
           }
 
         } else {
-          console.log("⏭ Backfill already done — using cache");
+          console.log("⏭ Backfill already done");
         }
 
-        // ==================================================
-        // 🎯 FINAL RENDER (CACHE BASED)
-        // ==================================================
-        console.log("🎯 Rendering grid");
-
-        renderGrid(
-          window.currentCoverageMode || "today",
-          window.currentBeat || "ALL"
-        );
+        // ❗ DO NOT RENDER GRID HERE
 
         clearInterval(gridInitInterval);
       }
 
-      // 🔥 FAIL SAFE STOP
       if(attempts > 10){
         console.warn("⚠ Grid init timeout");
         clearInterval(gridInitInterval);
@@ -1577,12 +1552,11 @@ if(!key.startsWith("grid_" + prefix)) return;
 
     }, 500);
 
-    console.log("✅ App initialization complete (GPS controlled by duty)");
+    console.log("✅ App initialized (grid on-demand only)");
 
   } catch(e){
     console.error("❌ startApp crash:", e);
   }
-
 }/* ===============================
    🔐 MAIN PROFILE FUNCTION
 =============================== */
@@ -3546,6 +3520,9 @@ window.currentBeat = "ALL";
 /* ============================================================
    🟢 SHOW COVERAGE PANEL (FIXED + SAFE)
 ============================================================ */
+/* ============================================================
+   🟢 SHOW COVERAGE PANEL (CONTROLLED)
+============================================================ */
 function showCoveragePanel(){
 
   try {
@@ -3554,34 +3531,26 @@ function showCoveragePanel(){
 
     if(panel){
       panel.style.display = "block";
-
-      // 🔥 Ensure expanded (not minimized)
       panel.classList.remove("minimized");
     }
 
-    const beat = document.getElementById("beatSelect")?.value || "ALL";
+    console.log("📊 Coverage Panel OPEN");
 
-    // 🔥 Ensure grid layer exists
-    if(!window.gridLayer){
-      window.gridLayer = L.layerGroup();
+    // ❗ DO NOT render grid blindly
+    // Render ONLY if layer is enabled
+    if(map.hasLayer(window.gridLayer)){
+
+      ensureGridReady();
+
+      const beat = document.getElementById("beatSelect")?.value || "ALL";
+
+      window.gridLayer.clearLayers();
+
+      if(typeof renderGrid === "function"){
+        renderGrid("current", beat);
+      }
+
     }
-
-    // 🔥 Add layer ONLY if not already on map
-    if(!map.hasLayer(window.gridLayer)){
-      window.gridLayer.addTo(map);
-    }
-
-    // 🔥 Clear old grid before rendering
-    window.gridLayer.clearLayers();
-
-    // 🔥 Render safely
-    if(typeof renderGrid === "function"){
-      renderGrid("current", beat);
-    } else {
-      console.warn("⚠ renderGrid not found");
-    }
-
-    console.log("🟢 Coverage Panel OPEN");
 
   } catch(e){
     console.error("❌ showCoveragePanel error:", e);
@@ -3590,7 +3559,7 @@ function showCoveragePanel(){
 
 
 /* ============================================================
-   🔴 CLOSE COVERAGE PANEL (FIXED + CLEAN)
+   🔴 CLOSE COVERAGE PANEL (CLEAN + SAFE)
 ============================================================ */
 function closeCoveragePanel(){
 
@@ -3602,27 +3571,18 @@ function closeCoveragePanel(){
       panel.style.display = "none";
     }
 
-    // 🔥 Clear ALL grid-related layers safely
+    // 🔴 CLEAR GRID
     if(window.gridLayer){
       window.gridLayer.clearLayers();
-
-      if(map.hasLayer(window.gridLayer)){
-        map.removeLayer(window.gridLayer);
-      }
     }
 
+    // 🔴 OPTIONAL: clear extra layers if used
     if(window.visitedLayer){
       window.visitedLayer.clearLayers();
-      if(map.hasLayer(window.visitedLayer)){
-        map.removeLayer(window.visitedLayer);
-      }
     }
 
     if(window.unvisitedLayer){
       window.unvisitedLayer.clearLayers();
-      if(map.hasLayer(window.unvisitedLayer)){
-        map.removeLayer(window.unvisitedLayer);
-      }
     }
 
     console.log("🔴 Coverage Panel CLOSED");
@@ -3631,10 +3591,17 @@ function closeCoveragePanel(){
     console.error("❌ closeCoveragePanel error:", e);
   }
 }
-    function toggleCoveragePanel(){
+
+
+/* ============================================================
+   🔽 TOGGLE PANEL MINIMIZE (UI ONLY)
+============================================================ */
+function toggleCoveragePanel(){
 
   const panel = document.getElementById("coveragePanel");
   const icon = document.getElementById("coverageIcon");
+
+  if(!panel || !icon) return;
 
   panel.classList.toggle("minimized");
 
@@ -3644,17 +3611,15 @@ function closeCoveragePanel(){
     icon.className = "fa-solid fa-chevron-down";
   }
 }
-    // ==========================================
-// 🎯 ASSIGN GRID TO BEAT (PRECISE CLIPPING)
-// ==========================================
-// ==========================================
-// 🎯 ASSIGN GRID TO BEAT (PRECISE CLIPPING)
-// ==========================================
-    window.gridCache = window.gridCache || {
+
+
+/* ============================================================
+   🟩 GRID CACHE (LIGHTWEIGHT ONLY)
+============================================================ */
+window.gridCache = window.gridCache || {
   today: {},
   month: {}
-};
-// ==========================================
+};// ==========================================
 // 🎯 ASSIGN GRID TO BEAT (FINAL STABLE VERSION)
 // ==========================================
 
