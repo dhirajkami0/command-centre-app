@@ -3488,7 +3488,7 @@ function lineIntersect(lat1, lon1, lat2, lon2, lat3, lon3, lat4, lon4) {
   const latKey = Math.floor(lat / size) * size;
   const lonKey = Math.floor(lon / size) * size;
 
-  const id = latKey.toFixed(5) + "_" + lonKey.toFixed(5);
+  const id = latKey.toFixed(6) + "_" + lonKey.toFixed(6);
 
   const cell = window.gridIndex[id];
 
@@ -4271,34 +4271,66 @@ function renderGrid(mode = "today", beat = "ALL"){
   if(typeof updateMonthCache === "function"){
     updateMonthCache();
   }
-}
-function ensureGridReady(){
+}function ensureGridReady(){
+
+  const TARGET_GRID_SIZE = 0.00045; // 🔥 50m grid
 
   // ===============================
-  // 🔥 STEP 1: already in memory
+  // 🔥 STEP 1: ALREADY IN MEMORY
   // ===============================
-  if(window.gridIndex && Object.keys(window.gridIndex).length){
-    console.log("✅ Grid already ready (memory)");
-    return;
+  if (window.gridIndex && Object.keys(window.gridIndex).length) {
+
+    // 🔥 Ensure correct size
+    if (window.gridMeta?.size === TARGET_GRID_SIZE) {
+      console.log("✅ Grid already ready (memory)");
+      return;
+    } else {
+      console.warn("⚠ Memory grid size mismatch → clearing");
+      window.gridIndex = {};
+      window.gridMeta = null;
+    }
   }
 
-  console.log("🔍 Grid not in memory → checking cache");
+  console.log("🔍 Grid not ready → checking cache");
 
   // ===============================
-  // 🔥 STEP 2: LOAD FROM CACHE
+  // 🔥 STEP 2: LOAD FROM CACHE (SAFE)
   // ===============================
   try {
 
     const cachedGrid = localStorage.getItem("gridIndex");
     const cachedMeta = localStorage.getItem("gridMeta");
 
-    if(cachedGrid && cachedMeta){
+    if (cachedGrid && cachedMeta) {
 
-      window.gridIndex = JSON.parse(cachedGrid);
-      window.gridMeta  = JSON.parse(cachedMeta);
+      let meta;
 
-      console.log("⚡ Grid loaded from cache:", Object.keys(window.gridIndex).length);
-      return;
+      try {
+        meta = JSON.parse(cachedMeta);
+      } catch (e) {
+        console.warn("⚠ Corrupt gridMeta → clearing");
+        localStorage.removeItem("gridIndex");
+        localStorage.removeItem("gridMeta");
+        return;
+      }
+
+      // 🔥 CRITICAL CHECK (GRID SIZE MATCH)
+      if (meta.size !== TARGET_GRID_SIZE) {
+
+        console.warn("⚠ Old grid detected → clearing cache");
+
+        localStorage.removeItem("gridIndex");
+        localStorage.removeItem("gridMeta");
+
+      } else {
+
+        // ✅ SAFE LOAD
+        window.gridIndex = JSON.parse(cachedGrid);
+        window.gridMeta  = meta;
+
+        console.log("⚡ Grid loaded from cache:", Object.keys(window.gridIndex).length);
+        return;
+      }
     }
 
   } catch(e){
@@ -4306,44 +4338,50 @@ function ensureGridReady(){
   }
 
   // ===============================
-  // 🔥 STEP 3: BUILD ONLY IF NEEDED
+  // 🔥 STEP 3: BUILD GRID (ONCE)
   // ===============================
-  console.log("🔁 No cache → rebuilding grid");
+  console.log("🔁 Building NEW 50m grid...");
 
-  if(!window.rangeLayer){
+  if (!window.rangeLayer) {
     console.warn("⚠ rangeLayer not ready");
     return;
   }
 
   try {
 
-    const bounds = rangeLayer.getBounds();
+    const bounds = window.rangeLayer.getBounds();
 
-    if(!bounds || !bounds.isValid()){
+    if (!bounds || !bounds.isValid()) {
       console.warn("⚠ Invalid bounds");
       return;
     }
 
-    buildGridFromBounds(bounds, rangeLayer);
-    assignGridToBeat(rangeLayer);
+    // 🔥 BUILD GRID
+    buildGridFromBounds(bounds, window.rangeLayer);
+
+    // 🔥 ASSIGN BEATS
+    assignGridToBeat(window.rangeLayer);
 
     // ===============================
-    // 🔥 SAVE AFTER BUILD
+    // 🔥 SAVE TO CACHE
     // ===============================
     try {
+
       localStorage.setItem("gridIndex", JSON.stringify(window.gridIndex));
       localStorage.setItem("gridMeta", JSON.stringify(window.gridMeta));
-      console.log("💾 Grid saved to cache");
+
+      console.log("💾 Grid saved (50m)");
+
     } catch(e){
       console.error("❌ Grid save failed:", e);
     }
 
-    console.log("✅ Grid built & assigned");
+    console.log("✅ 50m Grid built & ready");
 
   } catch(e){
     console.error("❌ Grid rebuild failed:", e);
   }
-}    // ===== UI EVENTS =====
+}   // ===== UI EVENTS =====
   
 
    // ===============================
@@ -4696,7 +4734,7 @@ window.beatMap = {
       return;
     }
 
-    const step = 0.0009; // ~250m
+    const step = 0.00045; // ~50m 
     let count = 0;
     window.gridIndex = {};
 
@@ -4764,7 +4802,7 @@ window.beatMap = {
     for (let lat = startLat; lat < north; lat += step) {
       for (let lon = startLon; lon < east; lon += step) {
         
-        const id = lat.toFixed(5) + "_" + lon.toFixed(5);
+       const id = lat.toFixed(6) + "_" + lon.toFixed(6);
 
         // Create the standard square cell
         const cellPoly = turf.polygon([[
@@ -4782,7 +4820,7 @@ window.beatMap = {
           if (clippedGeo) {
             // Check if the resulting geometry is valid and has area
             const area = turf.area(clippedGeo);
-            if (area > 3) { // Ignore slivers smaller than 1sq meter
+            if (area > 20) { // Ignore slivers smaller than 1sq meter
               window.gridIndex[id] = {
                 geo: clippedGeo,
                 visited: false
