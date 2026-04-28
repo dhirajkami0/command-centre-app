@@ -211,7 +211,8 @@ async function cleanOldMessages(){
 <!-- ✅ LOCAL ICONS -->
 <link rel="icon" type="image/png" href="icons/icon-192.png">
 <link rel="apple-touch-icon" sizes="180x180" href="icons/icon-192.png">
-
+<link rel="preload" as="image" href="./icons/splash.webp">
+<link rel="preload" as="image" href="./icons/splash-small.webp">
 <!-- ✅ MANIFEST -->
 <link rel="manifest" href="manifest.json">
 
@@ -834,7 +835,8 @@ window.addEventListener("unhandledrejection", function (e) {
 </head>
 <body>
   <!-- 🔥 SPLASH SCREEN (PUT HERE — FIRST ELEMENT) -->
- <div id="splash-screen" style="
+ <!-- 🔥 SPLASH SCREEN (FIRST ELEMENT IN BODY) -->
+<div id="splash-screen" style="
   position: fixed;
   inset: 0;
   width: 100vw;
@@ -842,21 +844,22 @@ window.addEventListener("unhandledrejection", function (e) {
   z-index: 999999;
   background-color: #0b1a0b;
   overflow: hidden;
-  transition: opacity 0.6s ease;
+  transition: opacity 0.5s ease;
 ">
 
-  <!-- 🔥 LIGHTWEIGHT BLUR (small image only) -->
+  <!-- 🔥 FAST BLUR BACKGROUND -->
   <div style="
     position: absolute;
     inset: 0;
-    background: url('icons/splash-small.webp') center / cover no-repeat;
-    filter: blur(12px) brightness(0.5);
+    background: url('./icons/splash-small.webp') center / cover no-repeat;
+    filter: blur(10px) brightness(0.5);
     transform: scale(1.05);
     z-index: 1;
   "></div>
 
-  <!-- 🔥 MAIN IMAGE -->
-  <img src="icons/splash.webp"
+  <!-- 🔥 MAIN IMAGE (FAST LOAD) -->
+  <img src="./icons/splash.webp"
+       alt="GreenGuard Splash"
        style="
          position:absolute;
          inset:0;
@@ -866,8 +869,23 @@ window.addEventListener("unhandledrejection", function (e) {
          z-index:2;
        " />
 
-</div>
-  <button id="panelToggle" onclick="toggleCommandPanel()">
+  <!-- 🔥 FALLBACK TEXT (no blank screen ever) -->
+  <div style="
+    position:absolute;
+    inset:0;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    color:#fff;
+    font-size:16px;
+    letter-spacing:1px;
+    z-index:3;
+    pointer-events:none;
+  ">
+    Loading...
+  </div>
+
+</div> <button id="panelToggle" onclick="toggleCommandPanel()">
     <i id="toggleIcon" class="fa-solid fa-bars"></i>
   </button>
 
@@ -9554,9 +9572,8 @@ function startOnlineLoginFlow(){
   setTimeout(() => {
     splash.remove();
     if(window.map) map.invalidateSize();
-  }, 600);
+  }, 500);
 }
-
 // ================= REFRESH PROFILE =================
 function refreshOnlineProfile(){
 
