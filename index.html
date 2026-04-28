@@ -1468,7 +1468,8 @@ function startApp(){
       Object.keys(localStorage).forEach(key => {
 
         if(!key.startsWith("grid_")) return;
-
+const prefix = new Date().toISOString().slice(0,7);
+if(!key.startsWith("grid_" + prefix)) return;
         const date = key.replace("grid_", "");
 
         if(!date.startsWith(prefix)){
@@ -3984,7 +3985,11 @@ function updateVisitedCache(newVisited){
     }
 
     const file = meta[0];
-
+if(file.date && !file.date.startsWith(window.__currentMonthPrefix)){
+  console.log("⏭ Skipping old month:", file.date);
+  rounds++;
+  continue;
+}
     console.log("📂 Processing:", file.name);
     console.log("📅 File Date:", file.date);
     console.log("🆔 File ID:", file.id);
