@@ -211,9 +211,8 @@ async function cleanOldMessages(){
 <!-- ✅ LOCAL ICONS -->
 <link rel="icon" type="image/png" href="icons/icon-192.png">
 <link rel="apple-touch-icon" sizes="180x180" href="icons/icon-192.png">
-<link rel="preload" as="image" href="./icons/splash.webp">
-<link rel="preload" as="image" href="./icons/splash-small.webp">
-<!-- ✅ MANIFEST -->
+<link rel="preload" as="image" href="./icons/splash.png">
+  <!-- ✅ MANIFEST -->
 <link rel="manifest" href="manifest.json">
 
 <!-- ✅ LOCAL CSS -->
@@ -836,6 +835,7 @@ window.addEventListener("unhandledrejection", function (e) {
 <body>
   <!-- 🔥 SPLASH SCREEN (PUT HERE — FIRST ELEMENT) -->
  <!-- 🔥 SPLASH SCREEN (FIRST ELEMENT IN BODY) -->
+<!-- 🔥 SPLASH SCREEN -->
 <div id="splash-screen" style="
   position: fixed;
   inset: 0;
@@ -847,18 +847,18 @@ window.addEventListener("unhandledrejection", function (e) {
   transition: opacity 0.5s ease;
 ">
 
-  <!-- 🔥 FAST BLUR BACKGROUND -->
+  <!-- 🔥 LIGHT BLUR BACKGROUND (same image but lighter effect) -->
   <div style="
     position: absolute;
     inset: 0;
-    background: url('./icons/splash-small.webp') center / cover no-repeat;
-    filter: blur(10px) brightness(0.5);
+    background: url('./icons/splash.png') center / cover no-repeat;
+    filter: blur(8px) brightness(0.5);
     transform: scale(1.05);
     z-index: 1;
   "></div>
 
-  <!-- 🔥 MAIN IMAGE (FAST LOAD) -->
-  <img src="./icons/splash.webp"
+  <!-- 🔥 MAIN IMAGE -->
+  <img src="./icons/splash.png"
        alt="GreenGuard Splash"
        style="
          position:absolute;
@@ -869,7 +869,7 @@ window.addEventListener("unhandledrejection", function (e) {
          z-index:2;
        " />
 
-  <!-- 🔥 FALLBACK TEXT (no blank screen ever) -->
+  <!-- 🔥 FALLBACK TEXT -->
   <div style="
     position:absolute;
     inset:0;
@@ -878,14 +878,13 @@ window.addEventListener("unhandledrejection", function (e) {
     justify-content:center;
     color:#fff;
     font-size:16px;
-    letter-spacing:1px;
     z-index:3;
-    pointer-events:none;
   ">
     Loading...
   </div>
 
-</div> <button id="panelToggle" onclick="toggleCommandPanel()">
+</div>
+  <button id="panelToggle" onclick="toggleCommandPanel()">
     <i id="toggleIcon" class="fa-solid fa-bars"></i>
   </button>
 
