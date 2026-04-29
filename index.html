@@ -4264,9 +4264,17 @@ function renderGrid(mode = "today", beat = "ALL"){
       if(beat !== "ALL" && cellBeat !== beat) continue;
 
       // 🔥 FAST VISIBILITY CHECK
-      const [lng, lat] = coords[0];
-      if(!bounds.contains([lat, lng])) continue;
+      let visible = false;
 
+for(let i=0; i<coords.length; i++){
+  const [lng, lat] = coords[i];
+  if(bounds.contains([lat, lng])){
+    visible = true;
+    break;
+  }
+}
+
+if(!visible) continue;
       total++;
 
       const isVisited = !!current[id];
