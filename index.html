@@ -3454,15 +3454,15 @@ async function loadRangeKML(){
 // 🔥 FORCE GRID AFTER DATA READY
 setTimeout(() => {
 
-  console.log("🔲 Triggering grid build (FINAL)");
+  console.log("🧠 Grid init (cache or build)");
 
-  window.__gridReady = false; // allow rebuild
+  if(!loadGridFromCache()){
+    ensureGridReady();          // 🔥 build only if needed
+  } else {
+    renderGrid("current", "ALL"); // 🔥 instant render
+  }
 
-  ensureGridReady();
-
-  renderGrid("current", "ALL");
-
-}, 500);
+}, 300);
         // ======================================
         // 🎯 FIT MAP (SAFE)
         // ======================================
@@ -4196,7 +4196,6 @@ function renderGrid(mode = "today", beat = "ALL"){
     // 🔥 DATA SOURCE
     // ===============================
     let current = {};
-
     if(mode === "today"){
       current = window.gridCache?.today || {};
     } else if(mode === "current"){
@@ -4209,10 +4208,48 @@ function renderGrid(mode = "today", beat = "ALL"){
     const entries = Object.entries(window.gridIndex);
 
     // ===============================
+    // 🔥 VIEWPORT FILTER (NO TURF)
+    // ===============================
+    const bounds = map.getBounds();
+    const west = bounds.getWest();
+    const east = bounds.getEast();
+    const south = bounds.getSouth();
+    const north = bounds.getNorth();
+
+    function isVisible(cell){
+      try {
+        const coords = cell.geo?.geometry?.coordinates?.[0];
+        if(!coords) return false;
+
+        // quick bbox from first/last points
+        let minX=Infinity, maxX=-Infinity, minY=Infinity, maxY=-Infinity;
+
+        for(let i=0;i<coords.length;i++){
+          const [x,y] = coords[i];
+          if(x < minX) minX = x;
+          if(x > maxX) maxX = x;
+          if(y < minY) minY = y;
+          if(y > maxY) maxY = y;
+        }
+
+        return !(minX > east || maxX < west || minY > north || maxY < south);
+
+      } catch(e){
+        return false;
+      }
+    }
+
+    // ===============================
+    // 🔥 LIMIT DRAW (CRITICAL)
+    // ===============================
+    let drawn = 0;
+    const MAX_DRAW = 1500; // 🔥 adjust if needed
+
+    // ===============================
     // 🔥 CHUNK RENDER (NO FREEZE)
     // ===============================
     let i = 0;
-    const chunkSize = 200;
+    const chunkSize = 150;
 
     function drawChunk(){
 
@@ -4222,27 +4259,32 @@ function renderGrid(mode = "today", beat = "ALL"){
 
         try {
 
+          if(drawn >= MAX_DRAW) return;
           if(!cell || !cell.geo) return;
           if(beat !== "ALL" && cell.beat !== beat) return;
+
+          // 🔥 VIEW FILTER
+          if(!isVisible(cell)) return;
 
           total++;
 
           const isVisited = !!current[id];
           if(isVisited) visited++;
 
+          drawn++;
+
           const color = isVisited ? "#00ff00" : "#ff0000";
-          const opacity = isVisited ? 0.5 : 0.3;
+          const opacity = isVisited ? 0.6 : 0.4;
 
           L.geoJSON(cell.geo, {
 
-            renderer: L.canvas(), // 🔥 PERFORMANCE BOOST
+            renderer: L.canvas(),
 
             style: {
-              color: "#222",
-              weight: 0.25,
+              color: "#111",
+              weight: 0.6,          // 🔥 more visible
               fillColor: color,
-              fillOpacity: opacity,
-              smoothFactor: 0
+              fillOpacity: opacity
             },
 
             onEachFeature: function(feature, layer){
@@ -4294,11 +4336,11 @@ function renderGrid(mode = "today", beat = "ALL"){
 
       i += chunkSize;
 
-      if(i < entries.length){
+      if(i < entries.length && drawn < MAX_DRAW){
         requestAnimationFrame(drawChunk);
       } else {
         const percent = total ? ((visited / total) * 100).toFixed(1) : 0;
-        console.log(`📊 ${visited}/${total} (${percent}%)`);
+        console.log(`📊 ${visited}/${total} (${percent}%) | drawn:${drawn}`);
       }
     }
 
@@ -4307,32 +4349,10 @@ function renderGrid(mode = "today", beat = "ALL"){
   } catch(e){
     console.error("❌ renderGrid crash:", e);
   }
-}  function saveTodayVisited(){
+}   function ensureGridReady(){
 
-  const key = "grid_" + getLocalDateStr();
-
-  let data = JSON.parse(localStorage.getItem(key) || "{}");
-
-  Object.entries(window.gridIndex).forEach(([id, cell])=>{
-    if(cell.visited){
-      data[id] = true;
-    }
-  });
-
-  localStorage.setItem(key, JSON.stringify(data));
-
-  // 🔥 UPDATE CACHE IMMEDIATELY
-  window.gridCache = window.gridCache || {};
-  window.gridCache.today = data;
-
-  // 🔥 UPDATE MONTH CACHE
-  if(typeof updateMonthCache === "function"){
-    updateMonthCache();
-  }
-}
-    function ensureGridReady(){
-
-  const TARGET_GRID_SIZE = 0.00045; // 🔥 50m grid
+  const TARGET_GRID_SIZE = 0.00045;
+  const CACHE_KEY = "grid_cache_v1";
 
   // ===============================
   // 🔥 PREVENT MULTIPLE RUNS
@@ -4343,7 +4363,40 @@ function renderGrid(mode = "today", beat = "ALL"){
   }
 
   // ===============================
-  // 🔥 CHECK EXISTING GRID
+  // 🔥 STEP 1: TRY LOAD FROM CACHE
+  // ===============================
+  try {
+
+    if(!window.gridIndex || !Object.keys(window.gridIndex).length){
+
+      const raw = localStorage.getItem(CACHE_KEY);
+
+      if(raw){
+        const parsed = JSON.parse(raw);
+
+        if(parsed?.grid && parsed?.meta?.size === TARGET_GRID_SIZE){
+
+          window.gridIndex = parsed.grid;
+          window.gridMeta = parsed.meta;
+
+          console.log("⚡ Grid loaded from cache:", Object.keys(window.gridIndex).length);
+
+          if(typeof renderGrid === "function"){
+            renderGrid("current", "ALL");
+          }
+
+          return;
+        }
+      }
+
+    }
+
+  } catch(e){
+    console.warn("⚠ Cache load failed");
+  }
+
+  // ===============================
+  // 🔥 STEP 2: CHECK MEMORY
   // ===============================
   if (window.gridIndex && Object.keys(window.gridIndex).length) {
 
@@ -4375,7 +4428,7 @@ function renderGrid(mode = "today", beat = "ALL"){
   }
 
   // ===============================
-  // 🔥 VALIDATE TURF (CRITICAL)
+  // 🔥 VALIDATE TURF
   // ===============================
   if (typeof turf === "undefined") {
     console.error("❌ Turf not loaded");
@@ -4422,7 +4475,20 @@ function renderGrid(mode = "today", beat = "ALL"){
     console.log("✅ 50m Grid built & ready:", window.gridMeta.total);
 
     // ===============================
-    // 🔥 AUTO RENDER (IMPORTANT)
+    // 🔥 SAVE TO CACHE (CRITICAL)
+    // ===============================
+    try {
+      localStorage.setItem(CACHE_KEY, JSON.stringify({
+        grid: window.gridIndex,
+        meta: window.gridMeta
+      }));
+      console.log("💾 Grid saved to cache");
+    } catch(e){
+      console.warn("⚠ Cache save failed (too large?)");
+    }
+
+    // ===============================
+    // 🔥 AUTO RENDER
     // ===============================
     if(typeof renderGrid === "function"){
       renderGrid("current", "ALL");
@@ -4793,28 +4859,70 @@ window.beatMap = {
 }
 function loadGridFromCache(){
 
+  const CACHE_KEY = "grid_cache_v1";
+  const TARGET_GRID_SIZE = 0.00045;
+
   try {
 
-    const meta = localStorage.getItem("gridMeta");
-
-    if(!meta){
-      console.warn("⚠ No cached grid meta");
+    const raw = localStorage.getItem(CACHE_KEY);
+    if(!raw){
+      console.log("ℹ️ No grid cache found");
       return false;
     }
 
-    window.gridMeta = JSON.parse(meta);
+    const parsed = JSON.parse(raw);
 
-    console.log("⚡ Grid meta loaded:", window.gridMeta);
+    // ===============================
+    // 🔥 BASIC VALIDATION
+    // ===============================
+    if(!parsed?.grid || !parsed?.meta){
+      console.warn("⚠ Invalid cache structure");
+      return false;
+    }
 
-    // ❌ DO NOT load gridIndex (geo is rebuilt)
+    // ===============================
+    // 🔥 SIZE CHECK (CRITICAL)
+    // ===============================
+    if(parsed.meta.size !== TARGET_GRID_SIZE){
+      console.warn("⚠ Grid size mismatch → ignoring cache");
+      return false;
+    }
+
+    const keys = Object.keys(parsed.grid);
+
+    // ===============================
+    // 🔥 SANITY CHECK
+    // ===============================
+    if(!keys.length || keys.length < 100){
+      console.warn("⚠ Cache too small / invalid");
+      return false;
+    }
+
+    // ===============================
+    // 🔥 SAMPLE CELL VALIDATION
+    // ===============================
+    const sample = parsed.grid[keys[0]];
+
+    if(!sample || !sample.geo || !sample.geo.geometry){
+      console.warn("⚠ Corrupted grid data");
+      return false;
+    }
+
+    // ===============================
+    // 🔥 APPLY CACHE
+    // ===============================
+    window.gridIndex = parsed.grid;
+    window.gridMeta = parsed.meta;
+
+    console.log("⚡ Grid loaded from cache:", keys.length);
+
     return true;
 
   } catch(e){
-    console.error("❌ Grid load failed:", e);
+    console.warn("⚠ Failed to load grid cache");
     return false;
   }
-}
-    
+}    
     async function buildGridFromBounds(bounds, rangeLayer) {
   console.log("🔲 Building ULTRA-FAST CLIPPED grid...");
 
