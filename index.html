@@ -6569,43 +6569,55 @@ function saveTodayVisited(){
     // ======================================================
     // 🔥 GRID UPDATE FROM STAFF TRACKS (FIXED)
     // ======================================================
-    try {
+    // ======================================================
+// 🔥 GRID UPDATE FROM STAFF TRACKS (FINAL FIX)
+// ======================================================
+try {
 
-      let tracks = [];
-      const MAX_POINTS = 15; // 🔥 ONLY RECENT MOVEMENT
+  let points = [];
+  const MAX_POINTS = 15;
 
-      staff.forEach(s=>{
-        if(Array.isArray(s.track) && s.track.length > 1){
+  staff.forEach(s=>{
 
-          // 🔥 TRIM OLD HISTORY (CRITICAL FIX)
-          const trimmed = s.track.slice(-MAX_POINTS);
+    if(Array.isArray(s.track) && s.track.length > 1){
 
-          tracks.push({
-            track: trimmed
-            // ❌ NO date → will auto go to TODAY
+      const trimmed = s.track.slice(-MAX_POINTS);
+
+      trimmed.forEach(p=>{
+        if(Array.isArray(p) && p.length === 2){
+          points.push({
+            lat: p[0],
+            lng: p[1]
           });
-
         }
       });
 
-      if(tracks.length && window.gridIndex){
-
-        markVisitedHybrid(tracks);
-
-        saveTodayVisited();
-
-        renderGrid(
-          window.currentCoverageMode || "today",
-          window.currentBeat || "ALL"
-        );
-
-        console.log("✅ Grid updated from staff tracks (trimmed)");
-
-      }
-
-    } catch(e){
-      console.error("❌ Grid update error:", e);
     }
+
+  });
+
+  if(points.length && window.gridIndex){
+
+    console.log("📍 Feeding grid points:", points.length);
+
+    updateGridFromPoints(points);   // ✅ DIRECT + FAST
+
+    saveTodayVisited();
+
+    renderGrid(
+      window.currentCoverageMode || "today",
+      window.currentBeat || "ALL"
+    );
+
+    console.log("✅ Grid updated from staff tracks");
+
+  } else {
+    console.warn("⚠ No track points for grid");
+  }
+
+} catch(e){
+  console.error("❌ Grid update error:", e);
+}
 
   })
   .catch(err => console.error("❌ loadStaff error:", err));
