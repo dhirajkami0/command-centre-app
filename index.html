@@ -6494,7 +6494,29 @@ function syncOfflineMoves(){
       return colors[i % colors.length];
     }
 
+function saveTodayVisited(){
 
+  const key = "grid_" + getLocalDateStr();
+
+  let data = JSON.parse(localStorage.getItem(key) || "{}");
+
+  Object.entries(window.gridIndex).forEach(([id, cell])=>{
+    if(cell.visited){
+      data[id] = true;
+    }
+  });
+
+  localStorage.setItem(key, JSON.stringify(data));
+
+  // 🔥 UPDATE CACHE IMMEDIATELY
+  window.gridCache = window.gridCache || {};
+  window.gridCache.today = data;
+
+  // 🔥 UPDATE MONTH CACHE
+  if(typeof updateMonthCache === "function"){
+    updateMonthCache();
+  }
+}
   function loadStaff(){
 
   callBackend("getMapData")
