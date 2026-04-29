@@ -1612,7 +1612,6 @@ setTimeout(async () => {
     window.firebaseReady = true;
 
 console.log("✅ Firebase READY (delayed)");
-
 // 🔥 START CHAT HERE (PERFECT TIMING)
 try {
   console.log("💬 Starting chat after Firebase ready");
@@ -1620,10 +1619,12 @@ try {
 } catch(e){
   console.warn("⚠ startChat failed");
 }
-  } catch(e){
+
+} catch(e){
   console.error("❌ Firebase load failed:", e);
 }
-}/* ===============================
+
+}, 1500); // ✅ THIS LINE FIXES EVERYTHING/* ===============================
    🔐 MAIN PROFILE FUNCTION
 =============================== */
 
