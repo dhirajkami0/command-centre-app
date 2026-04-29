@@ -3765,7 +3765,13 @@ function assignGridToBeat(rangeLayer){
 
       if (!layer) return;
 
-      if (layer instanceof L.Polygon) {
+      // 🔥 FIRST: go inside groups / geojson (IMPORTANT ORDER)
+      if (layer.eachLayer && typeof layer.eachLayer === "function") {
+        layer.eachLayer(extract);
+      }
+
+      // 🔥 FIX: DO NOT USE instanceof (breaks in minified builds)
+      if (layer.getLatLngs && typeof layer.getLatLngs === "function") {
 
         const p = layer.feature?.properties || {};
         const rawID = p.ID || p.Name || "";
@@ -3773,10 +3779,10 @@ function assignGridToBeat(rangeLayer){
         const comp = convertCompartment(rawID);
         if(!comp) return;
 
-        // 🔥 FIX: handle Polygon + MultiPolygon correctly
         let latlngs = layer.getLatLngs();
+        if(!latlngs || !latlngs.length) return;
 
-        // Normalize to array of rings
+        // 🔥 Normalize Polygon / MultiPolygon
         const rings = Array.isArray(latlngs[0][0]) ? latlngs : [latlngs];
 
         rings.forEach(ring => {
@@ -3785,7 +3791,7 @@ function assignGridToBeat(rangeLayer){
 
           let coords = ring.map(pt => [pt.lng, pt.lat]);
 
-          // 🔥 ensure closed polygon
+          // 🔥 CLOSE POLYGON
           const f = coords[0];
           const l = coords[coords.length - 1];
 
@@ -3800,11 +3806,7 @@ function assignGridToBeat(rangeLayer){
             });
           } catch(e){}
         });
-
-        return;
       }
-
-      if (layer.eachLayer) layer.eachLayer(extract);
     }
 
     extract(rangeLayer);
