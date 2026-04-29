@@ -4241,21 +4241,20 @@ function ensureGridReady(){
   // ===============================
   // 🔥 MEMORY CHECK (SAFE)
   // ===============================
-  if (window.gridIndex && Object.keys(window.gridIndex).length) {
+  const currentSize = Object.keys(window.gridIndex || {}).length;
 
-    const size = Object.keys(window.gridIndex).length;
+if(currentSize > MIN_VALID_GRID && window.gridMeta?.size === TARGET_GRID_SIZE){
+  console.log("✅ Grid already ready (memory)");
+  return;
+}
 
-    if(size > MIN_VALID_GRID && window.gridMeta?.size === TARGET_GRID_SIZE){
-      console.log("✅ Grid already ready (memory)");
-      return;
-    }
+// 🔥 ALWAYS RESET if not valid
+if(currentSize > 0){
+  console.warn("⚠ Resetting invalid grid:", currentSize);
+}
 
-    console.warn("⚠ Corrupted grid → rebuilding", size);
-
-    window.gridIndex = {};
-    window.gridMeta = null;
-  }
-
+window.gridIndex = {};
+window.gridMeta = null;
   console.log("🔁 Building NEW 50m grid...");
 
   if (!window.rangeLayer) return;
