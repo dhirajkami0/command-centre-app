@@ -4301,7 +4301,7 @@ async function ensureGridReady(){
 
   window.__gridBuilding = false;
 }    // ===== UI EVENTS =====
-  function renderGrid(mode = "today", beat = "ALL"){
+ function renderGrid(mode = "today", beat = "ALL"){
 
   try {
 
@@ -4314,6 +4314,7 @@ async function ensureGridReady(){
     // 🔥 INIT CANVAS (ONCE)
     // ===============================
     if(!window.__gridCanvas){
+
       const pane = map.getPane("overlayPane");
 
       const canvas = document.createElement("canvas");
@@ -4326,7 +4327,13 @@ async function ensureGridReady(){
 
       window.__gridCanvas = canvas;
 
-      map.on("move zoom resize", () => {
+      // 🔥 KEEP CANVAS LOCKED TO MAP (VERY IMPORTANT)
+      map.on("move", () => {
+        const topLeft = map.containerPointToLayerPoint([0,0]);
+        L.DomUtil.setPosition(canvas, topLeft);
+      });
+
+      map.on("moveend zoomend resize", () => {
         renderGrid(window.__lastMode || "current", window.__lastBeat || "ALL");
       });
     }
@@ -4347,32 +4354,31 @@ async function ensureGridReady(){
     // 🔥 DATA SOURCE
     // ===============================
     let current = {};
+
     if(mode === "today"){
       current = window.gridCache?.today || {};
-    } else if(mode === "current"){
+    } else {
       current = window.gridCache?.month || {};
     }
+
+    // ===============================
+    // 🔥 VIEWPORT FILTER (BIG BOOST)
+    // ===============================
+    const bounds = map.getBounds();
 
     let total = 0;
     let visited = 0;
     let drawn = 0;
 
     // ===============================
-    // 🔥 MAIN DRAW LOOP (SAFE)
+    // 🔥 MAIN LOOP (FAST)
     // ===============================
     for(const [id, cell] of Object.entries(window.gridIndex)){
 
-      if(!cell || !cell.geo) continue;
+      if(!cell || !cell.coords || !cell.center) continue;
 
-      let coords;
-
-      try {
-        coords = cell.geo?.geometry?.coordinates?.[0];
-      } catch(e){
-        continue;
-      }
-
-      if(!coords || !Array.isArray(coords)) continue;
+      // 🔥 skip if outside view
+      if(!bounds.contains([cell.center.lat, cell.center.lng])) continue;
 
       const cellBeat = cell.beat || "UNKNOWN";
       if(beat !== "ALL" && cellBeat !== beat) continue;
@@ -4387,23 +4393,20 @@ async function ensureGridReady(){
         (isVisited ? "#00ff00" : "#ff0000");
 
       ctx.globalAlpha = isVisited ? 0.6 : 0.4;
-      ctx.strokeStyle = "#111";
-      ctx.lineWidth = 0.5;
+
+      const coords = cell.coords;
+
+      if(!coords || coords.length < 3) continue;
 
       ctx.beginPath();
 
-      let validPointFound = false;
+      let first = true;
 
       for(let i = 0; i < coords.length; i++){
 
-        const pt = coords[i];
+        const [lat, lng] = coords[i];
 
-        if(!pt || pt.length < 2) continue;
-
-        const lng = pt[0];
-        const lat = pt[1];
-
-        if(lat == null || lng == null || isNaN(lat) || isNaN(lng)) continue;
+        if(lat == null || lng == null) continue;
 
         let p;
 
@@ -4415,21 +4418,19 @@ async function ensureGridReady(){
 
         if(!p) continue;
 
-        if(!validPointFound){
+        if(first){
           ctx.moveTo(p.x, p.y);
-          validPointFound = true;
+          first = false;
         } else {
           ctx.lineTo(p.x, p.y);
         }
       }
 
-      if(!validPointFound) continue;
-
-      ctx.closePath();
-      ctx.fill();
-      ctx.stroke();
-
-      drawn++;
+      if(!first){
+        ctx.closePath();
+        ctx.fill();
+        drawn++;
+      }
     }
 
     ctx.globalAlpha = 1;
@@ -4863,7 +4864,7 @@ function loadGridFromCache(){
 }    
    async function buildGridFromBounds(bounds, rangeLayer) {
 
-  console.log("🔲 Building FINAL CLIPPED grid...");
+  console.log("🔲 Building FINAL STRICT CLIPPED grid...");
 
   try {
 
@@ -4897,6 +4898,7 @@ function loadGridFromCache(){
 
             let pts = ring.map(p => [p.lng, p.lat]);
 
+            // close polygon
             if (
               pts[0][0] !== pts[pts.length - 1][0] ||
               pts[0][1] !== pts[pts.length - 1][1]
@@ -4949,7 +4951,7 @@ function loadGridFromCache(){
     const startLon = Math.floor(west / step) * step;
 
     // ==========================================
-    // 🔥 3. GRID BUILD (ASYNC CHUNKED)
+    // 🔥 3. GRID BUILD (STRICT CLIP ONLY)
     // ==========================================
     let lat = startLat;
 
@@ -4982,43 +4984,49 @@ function loadGridFromCache(){
             [lon, lat]
           ]]);
 
-          let finalGeo = null;
+          let clipped;
 
           try {
-
-            const clipped = turf.intersect(cellPoly, unifiedRange);
-
-            if (clipped) {
-              const area = turf.area(clipped);
-
-              if (area > 30) { // 🔥 remove tiny fragments
-                finalGeo = clipped;
-              }
-            }
-
-          } catch (e) {}
-
-          // 🔥 FALLBACK
-          if (!finalGeo) {
-            try {
-              if (turf.booleanIntersects(cellPoly, unifiedRange)) {
-                finalGeo = cellPoly;
-              }
-            } catch (e) {}
+            clipped = turf.intersect(cellPoly, unifiedRange);
+          } catch (e) {
+            continue;
           }
 
-          if (!finalGeo) continue;
+          // ❌ STRICT: skip if no intersection
+          if (!clipped) continue;
 
+          // 🔥 remove tiny fragments
+          if (turf.area(clipped) < 30) continue;
+
+          // ==========================================
+          // 🔥 NORMALIZE GEOMETRY
+          // ==========================================
+          let geom = clipped.geometry;
+
+          if (geom.type === "MultiPolygon") {
+            geom = {
+              type: "Polygon",
+              coordinates: geom.coordinates[0]
+            };
+          }
+
+          const coords = geom.coordinates[0].map(p => [p[1], p[0]]);
+
+          if (!coords || coords.length < 4) continue;
+
+          // ==========================================
+          // 🔥 FINAL STORE (CLEAN ONLY)
+          // ==========================================
           window.gridIndex[id] = {
             id,
-            geo: finalGeo,
+            coords, // ✅ ONLY coords (NO geo)
             center: { lat: centerLat, lng: centerLon },
             visited: false
           };
 
           count++;
 
-          // 🔥 NO FREEZE
+          // 🔥 NON-BLOCKING
           if (++iterations % 200 === 0) {
             await new Promise(r => setTimeout(r, 0));
           }
@@ -5032,7 +5040,7 @@ function loadGridFromCache(){
         total: count
       };
 
-      console.log("✅ Grid built PERFECT:", count);
+      console.log("✅ Grid built (STRICT CLIPPED):", count);
     }
 
     await processRow();
@@ -5040,7 +5048,7 @@ function loadGridFromCache(){
   } catch (e) {
     console.error("❌ buildGrid crash:", e);
   }
-} 
+}
     function clearKMLPreview(){
 
   const btn = document.getElementById("clearKMLBtn");
