@@ -1491,6 +1491,9 @@ function startApp(){
 
               window.__gridLoadedFromCache = true;
 
+              // 🔥 IMPORTANT FIX
+              window.__gridReady = true;
+
               console.log("⚡ Using cached grid ONLY (no rebuild)");
 
               setTimeout(() => {
@@ -1510,11 +1513,11 @@ function startApp(){
           }
 
           // ===============================
-          // 🔥 AFTER GRID READY
+          // 🔥 AFTER GRID READY (FIXED)
           // ===============================
-          if(window.gridIndex && Object.keys(window.gridIndex).length){
+          if(window.__gridReady){
 
-            console.log("🎯 Grid ready");
+            console.log("🎯 Grid ready (confirmed)");
 
             // 🔥 STOP INTERVAL AFTER SUCCESS
             clearInterval(gridInitInterval);
@@ -1645,7 +1648,6 @@ function startApp(){
   }
 
 }    
-    
    console.log("🔥 NEW BUILD LOADED - VERSION 999");
 
 // ======================================================
@@ -4166,14 +4168,20 @@ async function ensureGridReady(){
   const CACHE_KEY = "grid_cache_v1";
   const MIN_VALID_GRID = 5000;
 
+  // ==========================================
+  // 🔥 PREVENT PARALLEL BUILDS
+  // ==========================================
   if(window.__gridBuilding){
     console.warn("⏳ Grid build already in progress");
     return;
   }
 
-  // ===============================
+  // 🔥 reset readiness
+  window.__gridReady = false;
+
+  // ==========================================
   // 🔥 LOAD FROM CACHE
-  // ===============================
+  // ==========================================
   try {
 
     const raw = localStorage.getItem(CACHE_KEY);
@@ -4191,20 +4199,27 @@ async function ensureGridReady(){
         window.gridIndex = parsed.grid;
         window.gridMeta = parsed.meta;
 
+        // 🔥 MARK READY (VERY IMPORTANT)
+        window.__gridReady = true;
+
         console.log("⚡ Grid loaded from cache:", size);
 
+        // 🔥 SAFE RENDER (only after ready)
         renderGrid("current", "ALL");
+
         return;
       }
+
+      console.warn("⚠ Cache invalid → rebuilding", size);
     }
 
   } catch(e){
     console.warn("⚠ Cache load failed");
   }
 
-  // ===============================
+  // ==========================================
   // 🔥 RESET INVALID GRID
-  // ===============================
+  // ==========================================
   window.gridIndex = {};
   window.gridMeta = null;
 
@@ -4226,12 +4241,23 @@ async function ensureGridReady(){
     }
 
     // ==========================================
-    // 🔥 STEP 1: BUILD GRID (WAIT)
+    // 🔥 STEP 1: BUILD GRID (ASYNC WAIT)
     // ==========================================
     await buildGridFromBounds(bounds, window.rangeLayer);
 
     // ==========================================
-    // 🔥 STEP 2: ASSIGN BEATS (AFTER BUILD)
+    // 🔥 VALIDATION (CRITICAL)
+    // ==========================================
+    const builtSize = Object.keys(window.gridIndex || {}).length;
+
+    if(builtSize < MIN_VALID_GRID){
+      console.error("❌ Grid build too small → abort:", builtSize);
+      window.__gridBuilding = false;
+      return;
+    }
+
+    // ==========================================
+    // 🔥 STEP 2: ASSIGN BEATS
     // ==========================================
     assignGridToBeat(window.rangeLayer);
 
@@ -4240,10 +4266,10 @@ async function ensureGridReady(){
     // ==========================================
     window.gridMeta = {
       size: TARGET_GRID_SIZE,
-      total: Object.keys(window.gridIndex || {}).length
+      total: builtSize
     };
 
-    console.log("✅ Grid built:", window.gridMeta.total);
+    console.log("✅ Grid built:", builtSize);
 
     // ==========================================
     // 🔥 STEP 4: SAVE CACHE
@@ -4254,10 +4280,17 @@ async function ensureGridReady(){
         meta: window.gridMeta
       }));
       console.log("💾 Grid cached permanently");
-    } catch(e){}
+    } catch(e){
+      console.warn("⚠ Cache save failed");
+    }
 
     // ==========================================
-    // 🔥 STEP 5: RENDER
+    // 🔥 MARK READY (FINAL STEP)
+    // ==========================================
+    window.__gridReady = true;
+
+    // ==========================================
+    // 🔥 STEP 5: RENDER (ONLY AFTER READY)
     // ==========================================
     renderGrid("current", "ALL");
 
@@ -4265,8 +4298,11 @@ async function ensureGridReady(){
     console.error("❌ Grid build failed:", e);
   }
 
+  // ==========================================
+  // 🔥 CLEANUP
+  // ==========================================
   window.__gridBuilding = false;
-}    // ===== UI EVENTS =====
+}   // ===== UI EVENTS =====
  function renderGrid(mode = "today", beat = "ALL"){
 
   try {
@@ -6370,96 +6406,7 @@ function syncOfflineMoves(){
       return colors[i % colors.length];
     }
 
-function saveTodayVisited(){
-
-  const key = "grid_" + getLocalDateStr();
-
-  let data = JSON.parse(localStorage.getItem(key) || "{}");
-
-  Object.entries(window.gridIndex).forEach(([id, cell])=>{
-    if(cell.visited){
-      data[id] = true;
-    }
-  });
-
-  localStorage.setItem(key, JSON.stringify(data));
-
-  // 🔥 UPDATE CACHE IMMEDIATELY
-  window.gridCache = window.gridCache || {};
-  window.gridCache.today = data;
-
-  // 🔥 UPDATE MONTH CACHE
-  if(typeof updateMonthCache === "function"){
-    updateMonthCache();
-  }
-}
-    function updateGridFromPoints(points){
-
-  try {
-
-    if(!points || !points.length){
-      console.warn("❌ No points");
-      return;
-    }
-
-    if(!window.gridIndex){
-      console.warn("⚠ Grid not ready");
-      return;
-    }
-
-    const step = window.gridMeta?.size || 0.00045;
-    let updated = 0;
-
-    window.gridCache = window.gridCache || {};
-    window.gridCache.month = window.gridCache.month || {};
-
-    const todayKey = "grid_" + getLocalDateStr();
-    let todayData = JSON.parse(localStorage.getItem(todayKey) || "{}");
-
-    // ===============================
-    // 🔥 DIRECT GRID HIT (NO TURF)
-    // ===============================
-    points.forEach(p => {
-
-      let lat, lng;
-
-      if(Array.isArray(p)){
-        lat = p[0];
-        lng = p[1];
-      } else {
-        lat = p.lat;
-        lng = p.lng;
-      }
-
-      if(lat == null || lng == null) return;
-
-      // 🔥 SNAP TO GRID
-      const snapLat = Math.floor(lat / step) * step;
-      const snapLng = Math.floor(lng / step) * step;
-
-      const id = snapLat.toFixed(6) + "_" + snapLng.toFixed(6);
-
-      const cell = window.gridIndex[id];
-
-      if(cell && !cell.visited){
-
-        cell.visited = true;
-        updated++;
-
-        window.gridCache.month[id] = true;
-        todayData[id] = true;
-      }
-
-    });
-
-    localStorage.setItem(todayKey, JSON.stringify(todayData));
-
-    console.log("⚡ Fast grid update:", updated);
-
-  } catch(e){
-    console.error("❌ Fast update crash:", e);
-  }
-}
+    
   function loadStaff(){
 
   callBackend("getMapData")
