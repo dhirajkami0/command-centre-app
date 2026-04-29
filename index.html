@@ -4194,7 +4194,119 @@ if(beat !== "ALL" && cellBeat !== beat) return;
     // ======================================================
 // 🚀 RENDER GRID (UPDATED - CACHE BASED)
 // ======================================================
-function renderGrid(mode = "today", beat = "ALL"){
+function ensureGridReady(){
+
+  const TARGET_GRID_SIZE = 0.00045;
+  const CACHE_KEY = "grid_cache_v1";
+  const MIN_VALID_GRID = 5000; // 🔥 critical fix
+
+  if(window.__gridBuilding){
+    console.warn("⏳ Grid build already in progress");
+    return;
+  }
+
+  // ===============================
+  // 🔥 LOAD FROM CACHE (SAFE)
+  // ===============================
+  try {
+
+    const raw = localStorage.getItem(CACHE_KEY);
+
+    if(raw){
+      const parsed = JSON.parse(raw);
+
+      const size = Object.keys(parsed?.grid || {}).length;
+
+      if(
+        parsed?.grid &&
+        parsed?.meta?.size === TARGET_GRID_SIZE &&
+        size > MIN_VALID_GRID   // 🔥 VALIDATION FIX
+      ){
+        window.gridIndex = parsed.grid;
+        window.gridMeta = parsed.meta;
+
+        console.log("⚡ Grid loaded from cache:", size);
+
+        renderGrid("current", "ALL");
+        return;
+      } else {
+        console.warn("⚠ Cache invalid → rebuilding", size);
+      }
+    }
+
+  } catch(e){
+    console.warn("⚠ Cache load failed");
+  }
+
+  // ===============================
+  // 🔥 MEMORY CHECK (SAFE)
+  // ===============================
+  if (window.gridIndex && Object.keys(window.gridIndex).length) {
+
+    const size = Object.keys(window.gridIndex).length;
+
+    if(size > MIN_VALID_GRID && window.gridMeta?.size === TARGET_GRID_SIZE){
+      console.log("✅ Grid already ready (memory)");
+      return;
+    }
+
+    console.warn("⚠ Corrupted grid → rebuilding", size);
+
+    window.gridIndex = {};
+    window.gridMeta = null;
+  }
+
+  console.log("🔁 Building NEW 50m grid...");
+
+  if (!window.rangeLayer) return;
+  if (!window.rangeLayer.getLayers().length) return;
+  if (typeof turf === "undefined") return;
+
+  window.__gridBuilding = true;
+
+  try {
+
+    const bounds = window.rangeLayer.getBounds();
+
+    if (!bounds || !bounds.isValid()) {
+      window.__gridBuilding = false;
+      return;
+    }
+
+    buildGridFromBounds(bounds, window.rangeLayer);
+
+    try {
+      assignGridToBeat(window.rangeLayer);
+    } catch(e){}
+
+    window.gridMeta = {
+      size: TARGET_GRID_SIZE,
+      total: Object.keys(window.gridIndex || {}).length
+    };
+
+    console.log("✅ Grid built:", window.gridMeta.total);
+
+    // ===============================
+    // 🔥 SAVE CACHE (SAFE)
+    // ===============================
+    try {
+      localStorage.setItem(CACHE_KEY, JSON.stringify({
+        grid: window.gridIndex,
+        meta: window.gridMeta
+      }));
+      console.log("💾 Cached");
+    } catch(e){}
+
+    renderGrid("current", "ALL");
+
+  } catch(e){
+    console.error("❌ Grid build failed:", e);
+  }
+
+  window.__gridBuilding = false;
+}
+    // ===== UI EVENTS =====
+  function renderGrid(mode = "today", beat = "ALL"){
 
   try {
 
@@ -4291,20 +4403,12 @@ function renderGrid(mode = "today", beat = "ALL"){
 
         const pt = coords[i];
 
-        // ===============================
-        // 🔥 HARD SAFETY CHECK
-        // ===============================
         if(!pt || pt.length < 2) continue;
 
         const lng = pt[0];
         const lat = pt[1];
 
-        if(
-          lat == null || lng == null ||
-          isNaN(lat) || isNaN(lng)
-        ){
-          continue;
-        }
+        if(lat == null || lng == null || isNaN(lat) || isNaN(lng)) continue;
 
         let p;
 
@@ -4324,7 +4428,6 @@ function renderGrid(mode = "today", beat = "ALL"){
         }
       }
 
-      // skip empty/bad polygons
       if(!validPointFound) continue;
 
       ctx.closePath();
@@ -4343,112 +4446,7 @@ function renderGrid(mode = "today", beat = "ALL"){
   } catch(e){
     console.error("❌ renderGrid crash:", e);
   }
-}    
-    function ensureGridReady(){
-
-  const TARGET_GRID_SIZE = 0.00045;
-  const CACHE_KEY = "grid_cache_v1";
-
-  if(window.__gridBuilding){
-    console.warn("⏳ Grid build already in progress");
-    return;
-  }
-
-  // ===============================
-  // 🔥 LOAD FROM CACHE FIRST
-  // ===============================
-  try {
-
-    if(!window.gridIndex || !Object.keys(window.gridIndex).length){
-
-      const raw = localStorage.getItem(CACHE_KEY);
-
-      if(raw){
-        const parsed = JSON.parse(raw);
-
-        if(parsed?.grid && parsed?.meta?.size === TARGET_GRID_SIZE){
-
-          window.gridIndex = parsed.grid;
-          window.gridMeta = parsed.meta;
-
-          console.log("⚡ Grid loaded from cache:", Object.keys(window.gridIndex).length);
-
-          renderGrid("current", "ALL"); // ✅ SAME CALL
-
-          return;
-        }
-      }
-
-    }
-
-  } catch(e){
-    console.warn("⚠ Cache load failed");
-  }
-
-  // ===============================
-  // 🔥 MEMORY CHECK
-  // ===============================
-  if (window.gridIndex && Object.keys(window.gridIndex).length) {
-
-    if (window.gridMeta?.size === TARGET_GRID_SIZE) {
-      console.log("✅ Grid already ready (memory)");
-      return;
-    }
-
-    window.gridIndex = {};
-    window.gridMeta = null;
-  }
-
-  console.log("🔁 Building NEW 50m grid...");
-
-  if (!window.rangeLayer) return;
-  if (!window.rangeLayer.getLayers().length) return;
-  if (typeof turf === "undefined") return;
-
-  window.__gridBuilding = true;
-
-  try {
-
-    const bounds = window.rangeLayer.getBounds();
-
-    if (!bounds || !bounds.isValid()) {
-      window.__gridBuilding = false;
-      return;
-    }
-
-    buildGridFromBounds(bounds, window.rangeLayer);
-
-    try {
-      assignGridToBeat(window.rangeLayer);
-    } catch(e){}
-
-    window.gridMeta = {
-      size: TARGET_GRID_SIZE,
-      total: Object.keys(window.gridIndex || {}).length
-    };
-
-    console.log("✅ Grid built:", window.gridMeta.total);
-
-    try {
-      localStorage.setItem(CACHE_KEY, JSON.stringify({
-        grid: window.gridIndex,
-        meta: window.gridMeta
-      }));
-      console.log("💾 Cached");
-    } catch(e){}
-
-    // ===============================
-    // 🔥 RENDER
-    // ===============================
-    renderGrid("current", "ALL");
-
-  } catch(e){
-    console.error("❌ Grid build failed:", e);
-  }
-
-  window.__gridBuilding = false;
-}// ===== UI EVENTS =====
-  
+}
 
    // ===============================
 // 🔥 GLOBAL CACHE
