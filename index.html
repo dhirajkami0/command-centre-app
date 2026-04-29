@@ -6413,6 +6413,101 @@ function saveTodayVisited(){
     updateMonthCache();
   }
 }
+    function updateGridFromPoints(points){
+
+  try {
+
+    if(!points || !points.length){
+      console.warn("❌ No points to process");
+      return;
+    }
+
+    if(!window.gridIndex || !Object.keys(window.gridIndex).length){
+      console.warn("⚠ Grid not ready");
+      return;
+    }
+
+    let updated = 0;
+
+    // ===============================
+    // 🔥 PROCESS EACH GRID CELL
+    // ===============================
+    Object.entries(window.gridIndex).forEach(([id, cell]) => {
+
+      if(!cell || !cell.geo) return;
+
+      // Skip already visited (performance boost)
+      if(cell.visited) return;
+
+      for(const p of points){
+
+        let lat, lng;
+
+        // ===============================
+        // 🔥 SUPPORT MULTIPLE FORMATS
+        // ===============================
+        if(Array.isArray(p)){
+          lat = p[0];
+          lng = p[1];
+        } else if(typeof p === "object"){
+          lat = p.lat;
+          lng = p.lng;
+        }
+
+        if(lat == null || lng == null) continue;
+
+        // ===============================
+        // 🔥 CREATE TURF POINT
+        // ===============================
+        const pt = turf.point([lng, lat]); // ⚠ [lng, lat]
+
+        // ===============================
+        // 🔥 BUFFER (GPS ACCURACY FIX)
+        // ===============================
+        const buffered = turf.buffer(pt, 20, { units: "meters" });
+
+        try {
+
+          // ===============================
+          // 🔥 INTERSECTION CHECK
+          // ===============================
+          if(turf.booleanIntersects(buffered, cell.geo)){
+
+            cell.visited = true;
+            updated++;
+
+            // ===============================
+            // 🔥 SAVE IN CACHE (MONTH)
+            // ===============================
+            window.gridCache = window.gridCache || {};
+            window.gridCache.month = window.gridCache.month || {};
+            window.gridCache.month[id] = true;
+
+            // ===============================
+            // 🔥 SAVE IN TODAY CACHE
+            // ===============================
+            const todayKey = "grid_" + getLocalDateStr();
+            let todayData = JSON.parse(localStorage.getItem(todayKey) || "{}");
+            todayData[id] = true;
+            localStorage.setItem(todayKey, JSON.stringify(todayData));
+
+            break;
+          }
+
+        } catch(e){
+          // ignore turf errors
+        }
+
+      }
+
+    });
+
+    console.log(`✅ Grids updated: ${updated}`);
+
+  } catch(e){
+    console.error("❌ updateGridFromPoints crash:", e);
+  }
+}
   function loadStaff(){
 
   callBackend("getMapData")
