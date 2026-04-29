@@ -4194,11 +4194,11 @@ if(beat !== "ALL" && cellBeat !== beat) return;
     // ======================================================
 // 🚀 RENDER GRID (UPDATED - CACHE BASED)
 // ======================================================
-function ensureGridReady(){
+async function ensureGridReady(){
 
   const TARGET_GRID_SIZE = 0.00045;
   const CACHE_KEY = "grid_cache_v1";
-  const MIN_VALID_GRID = 5000; // 🔥 critical fix
+  const MIN_VALID_GRID = 5000;
 
   if(window.__gridBuilding){
     console.warn("⏳ Grid build already in progress");
@@ -4206,21 +4206,21 @@ function ensureGridReady(){
   }
 
   // ===============================
-  // 🔥 LOAD FROM CACHE (SAFE)
+  // 🔥 LOAD FROM CACHE
   // ===============================
   try {
 
     const raw = localStorage.getItem(CACHE_KEY);
 
     if(raw){
-      const parsed = JSON.parse(raw);
 
+      const parsed = JSON.parse(raw);
       const size = Object.keys(parsed?.grid || {}).length;
 
       if(
         parsed?.grid &&
         parsed?.meta?.size === TARGET_GRID_SIZE &&
-        size > MIN_VALID_GRID   // 🔥 VALIDATION FIX
+        size > MIN_VALID_GRID
       ){
         window.gridIndex = parsed.grid;
         window.gridMeta = parsed.meta;
@@ -4229,8 +4229,6 @@ function ensureGridReady(){
 
         renderGrid("current", "ALL");
         return;
-      } else {
-        console.warn("⚠ Cache invalid → rebuilding", size);
       }
     }
 
@@ -4239,22 +4237,11 @@ function ensureGridReady(){
   }
 
   // ===============================
-  // 🔥 MEMORY CHECK (SAFE)
+  // 🔥 RESET INVALID GRID
   // ===============================
-  const currentSize = Object.keys(window.gridIndex || {}).length;
+  window.gridIndex = {};
+  window.gridMeta = null;
 
-if(currentSize > MIN_VALID_GRID && window.gridMeta?.size === TARGET_GRID_SIZE){
-  console.log("✅ Grid already ready (memory)");
-  return;
-}
-
-// 🔥 ALWAYS RESET if not valid
-if(currentSize > 0){
-  console.warn("⚠ Resetting invalid grid:", currentSize);
-}
-
-window.gridIndex = {};
-window.gridMeta = null;
   console.log("🔁 Building NEW 50m grid...");
 
   if (!window.rangeLayer) return;
@@ -4272,12 +4259,19 @@ window.gridMeta = null;
       return;
     }
 
-    buildGridFromBounds(bounds, window.rangeLayer);
+    // ==========================================
+    // 🔥 STEP 1: BUILD GRID (WAIT)
+    // ==========================================
+    await buildGridFromBounds(bounds, window.rangeLayer);
 
-    try {
-      assignGridToBeat(window.rangeLayer);
-    } catch(e){}
+    // ==========================================
+    // 🔥 STEP 2: ASSIGN BEATS (AFTER BUILD)
+    // ==========================================
+    assignGridToBeat(window.rangeLayer);
 
+    // ==========================================
+    // 🔥 STEP 3: FINAL META
+    // ==========================================
     window.gridMeta = {
       size: TARGET_GRID_SIZE,
       total: Object.keys(window.gridIndex || {}).length
@@ -4285,17 +4279,20 @@ window.gridMeta = null;
 
     console.log("✅ Grid built:", window.gridMeta.total);
 
-    // ===============================
-    // 🔥 SAVE CACHE (SAFE)
-    // ===============================
+    // ==========================================
+    // 🔥 STEP 4: SAVE CACHE
+    // ==========================================
     try {
       localStorage.setItem(CACHE_KEY, JSON.stringify({
         grid: window.gridIndex,
         meta: window.gridMeta
       }));
-      console.log("💾 Cached");
+      console.log("💾 Grid cached permanently");
     } catch(e){}
 
+    // ==========================================
+    // 🔥 STEP 5: RENDER
+    // ==========================================
     renderGrid("current", "ALL");
 
   } catch(e){
@@ -4303,8 +4300,7 @@ window.gridMeta = null;
   }
 
   window.__gridBuilding = false;
-}
-    // ===== UI EVENTS =====
+}    // ===== UI EVENTS =====
   function renderGrid(mode = "today", beat = "ALL"){
 
   try {
@@ -4865,10 +4861,12 @@ function loadGridFromCache(){
     return false;
   }
 }    
-    async function buildGridFromBounds(bounds, rangeLayer) {
-  console.log("🔲 Building ULTRA-FAST CLIPPED grid...");
+   async function buildGridFromBounds(bounds, rangeLayer) {
+
+  console.log("🔲 Building FINAL CLIPPED grid...");
 
   try {
+
     if (!bounds || !rangeLayer) {
       console.error("❌ Invalid inputs");
       return;
@@ -4876,22 +4874,27 @@ function loadGridFromCache(){
 
     const step = 0.00045; // ~50m
     let count = 0;
+
     window.gridIndex = {};
 
     // ==========================================
-    // 1. EXTRACT POLYGONS (FAST)
+    // 🔥 1. EXTRACT POLYGONS
     // ==========================================
     let allPolys = [];
 
     function extract(layer) {
+
       if (!layer) return;
 
       if (layer instanceof L.Polygon) {
+
         let latlngs = layer.getLatLngs();
         const rings = Array.isArray(latlngs[0][0]) ? latlngs : [latlngs];
 
         rings.forEach(ringSet => {
+
           let coords = ringSet.map(ring => {
+
             let pts = ring.map(p => [p.lng, p.lat]);
 
             if (
@@ -4902,6 +4905,7 @@ function loadGridFromCache(){
             }
 
             return pts;
+
           }).filter(r => r.length >= 4);
 
           if (coords.length) {
@@ -4909,6 +4913,7 @@ function loadGridFromCache(){
               allPolys.push(turf.polygon(coords));
             } catch (e) {}
           }
+
         });
       }
 
@@ -4918,12 +4923,12 @@ function loadGridFromCache(){
     extract(rangeLayer);
 
     if (!allPolys.length) {
-      console.error("❌ No polygons");
+      console.error("❌ No polygons found");
       return;
     }
 
     // ==========================================
-    // 🔥 2. FAST UNION (REDUCED COST)
+    // 🔥 2. UNION POLYGON
     // ==========================================
     let unifiedRange = allPolys[0];
 
@@ -4933,7 +4938,7 @@ function loadGridFromCache(){
       } catch (e) {}
     }
 
-    const unifiedBBox = turf.bbox(unifiedRange); // 🔥 SPEED BOOST
+    const unifiedBBox = turf.bbox(unifiedRange);
 
     const south = bounds.getSouth();
     const north = bounds.getNorth();
@@ -4944,7 +4949,7 @@ function loadGridFromCache(){
     const startLon = Math.floor(west / step) * step;
 
     // ==========================================
-    // 🔥 3. NON-BLOCKING GRID BUILD (CRITICAL)
+    // 🔥 3. GRID BUILD (ASYNC CHUNKED)
     // ==========================================
     let lat = startLat;
 
@@ -4956,17 +4961,18 @@ function loadGridFromCache(){
 
         for (let lon = startLon; lon < east; lon += step) {
 
-          const id = lat.toFixed(6) + "_" + lon.toFixed(6);
-
-          // 🔥 BBOX SKIP (BIG SPEED BOOST)
+          // 🔥 FAST BBOX SKIP
           if (
             lon > unifiedBBox[2] ||
             lon + step < unifiedBBox[0] ||
             lat > unifiedBBox[3] ||
             lat + step < unifiedBBox[1]
-          ) {
-            continue;
-          }
+          ) continue;
+
+          const centerLat = lat + step / 2;
+          const centerLon = lon + step / 2;
+
+          const id = centerLat.toFixed(5) + "_" + centerLon.toFixed(5);
 
           const cellPoly = turf.polygon([[
             [lon, lat],
@@ -4976,54 +4982,65 @@ function loadGridFromCache(){
             [lon, lat]
           ]]);
 
+          let finalGeo = null;
+
           try {
+
             const clipped = turf.intersect(cellPoly, unifiedRange);
 
             if (clipped) {
               const area = turf.area(clipped);
 
-              if (area > 20) {
-                window.gridIndex[id] = {
-                  geo: clipped,
-                  visited: false
-                };
-                count++;
+              if (area > 30) { // 🔥 remove tiny fragments
+                finalGeo = clipped;
               }
             }
 
-          } catch (e) {
-            // fallback
-            if (turf.booleanIntersects(cellPoly, unifiedRange)) {
-              window.gridIndex[id] = {
-                geo: cellPoly,
-                visited: false
-              };
-              count++;
-            }
+          } catch (e) {}
+
+          // 🔥 FALLBACK
+          if (!finalGeo) {
+            try {
+              if (turf.booleanIntersects(cellPoly, unifiedRange)) {
+                finalGeo = cellPoly;
+              }
+            } catch (e) {}
           }
 
-          // 🔥 YIELD EVERY 200 CELLS (NO FREEZE)
+          if (!finalGeo) continue;
+
+          window.gridIndex[id] = {
+            id,
+            geo: finalGeo,
+            center: { lat: centerLat, lng: centerLon },
+            visited: false
+          };
+
+          count++;
+
+          // 🔥 NO FREEZE
           if (++iterations % 200 === 0) {
             await new Promise(r => setTimeout(r, 0));
           }
         }
 
-        // 🔥 YIELD EVERY ROW
         await new Promise(r => setTimeout(r, 0));
       }
 
-      window.gridMeta = { size: step, total: count };
+      window.gridMeta = {
+        size: step,
+        total: count
+      };
 
-      console.log("✅ Grid built (smooth):", count);
+      console.log("✅ Grid built PERFECT:", count);
     }
 
     await processRow();
 
   } catch (e) {
-    console.error("❌ buildGridFromBounds crash:", e);
+    console.error("❌ buildGrid crash:", e);
   }
-}
-    
+} 
     function clearKMLPreview(){
 
   const btn = document.getElementById("clearKMLBtn");
