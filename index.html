@@ -1372,7 +1372,7 @@ window.firebaseConfig = {
   messagingSenderId: "692498208499",
   appId: "1:692498208499:web:34defc152a3b3411e64986"
 };
-
+window.__gridLoadedFromCache = false;
 let appStarted = false;
 
 function startApp(){
@@ -1481,7 +1481,32 @@ function startApp(){
             return;
           }
 
-          ensureGridReady();
+         // ===============================
+// 🔥 CACHE-FIRST GRID INIT
+// ===============================
+if(!window.__gridLoadedFromCache){
+
+  const loaded = loadGridFromCache();
+
+  if(loaded){
+
+    window.__gridLoadedFromCache = true;
+
+    console.log("⚡ Using cached grid ONLY (no rebuild)");
+
+    setTimeout(() => {
+      renderGrid("current", "ALL");
+    }, 200);
+
+    // 🔥 CRITICAL FIX
+    clearInterval(gridInitInterval);
+
+    return;
+  }
+}
+
+// ❌ ONLY BUILD IF CACHE FAILED
+ensureGridReady();
 
           if(window.gridIndex && Object.keys(window.gridIndex).length){
 
