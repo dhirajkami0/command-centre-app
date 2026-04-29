@@ -4219,13 +4219,11 @@ function renderGrid(mode = "today", beat = "ALL"){
 
       window.__gridCanvas = canvas;
 
-      // 🔥 FIX: avoid stale mode/beat closure
       map.on("move zoom resize", () => {
         renderGrid(window.__lastMode || "current", window.__lastBeat || "ALL");
       });
     }
 
-    // 🔥 store last state
     window.__lastMode = mode;
     window.__lastBeat = beat;
 
@@ -4252,18 +4250,22 @@ function renderGrid(mode = "today", beat = "ALL"){
     let visited = 0;
     let drawn = 0;
 
-    const MAX_DRAW = Infinity;
-
     // ===============================
-    // 🔥 MAIN DRAW LOOP (NO FILTER BUG)
+    // 🔥 MAIN DRAW LOOP (SAFE)
     // ===============================
     for(const [id, cell] of Object.entries(window.gridIndex)){
 
-      if(drawn >= MAX_DRAW) break;
       if(!cell || !cell.geo) continue;
 
-      const coords = cell.geo.geometry?.coordinates?.[0];
-      if(!coords) continue;
+      let coords;
+
+      try {
+        coords = cell.geo?.geometry?.coordinates?.[0];
+      } catch(e){
+        continue;
+      }
+
+      if(!coords || !Array.isArray(coords)) continue;
 
       const cellBeat = cell.beat || "UNKNOWN";
       if(beat !== "ALL" && cellBeat !== beat) continue;
@@ -4273,11 +4275,6 @@ function renderGrid(mode = "today", beat = "ALL"){
       const isVisited = !!current[id];
       if(isVisited) visited++;
 
-      drawn++;
-
-      // ===============================
-      // 🎨 COLOR
-      // ===============================
       ctx.fillStyle =
         (cellBeat === "UNKNOWN") ? "#888" :
         (isVisited ? "#00ff00" : "#ff0000");
@@ -4288,20 +4285,53 @@ function renderGrid(mode = "today", beat = "ALL"){
 
       ctx.beginPath();
 
-      for(let i = 0; i < coords.length; i++){
-        const pt = coords[i];
-        const p = map.latLngToContainerPoint([pt[1], pt[0]]);
+      let validPointFound = false;
 
-        if(i === 0){
+      for(let i = 0; i < coords.length; i++){
+
+        const pt = coords[i];
+
+        // ===============================
+        // 🔥 HARD SAFETY CHECK
+        // ===============================
+        if(!pt || pt.length < 2) continue;
+
+        const lng = pt[0];
+        const lat = pt[1];
+
+        if(
+          lat == null || lng == null ||
+          isNaN(lat) || isNaN(lng)
+        ){
+          continue;
+        }
+
+        let p;
+
+        try {
+          p = map.latLngToContainerPoint([lat, lng]);
+        } catch(e){
+          continue;
+        }
+
+        if(!p) continue;
+
+        if(!validPointFound){
           ctx.moveTo(p.x, p.y);
+          validPointFound = true;
         } else {
           ctx.lineTo(p.x, p.y);
         }
       }
 
+      // skip empty/bad polygons
+      if(!validPointFound) continue;
+
       ctx.closePath();
       ctx.fill();
       ctx.stroke();
+
+      drawn++;
     }
 
     ctx.globalAlpha = 1;
@@ -4314,7 +4344,6 @@ function renderGrid(mode = "today", beat = "ALL"){
     console.error("❌ renderGrid crash:", e);
   }
 }    
-    
     function ensureGridReady(){
 
   const TARGET_GRID_SIZE = 0.00045;
