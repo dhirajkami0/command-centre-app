@@ -4211,16 +4211,23 @@ function renderGrid(mode = "today", beat = "ALL"){
 
       const canvas = document.createElement("canvas");
       canvas.style.position = "absolute";
-      canvas.style.top = 0;
-      canvas.style.left = 0;
+      canvas.style.top = "0";
+      canvas.style.left = "0";
       canvas.style.pointerEvents = "none";
 
       pane.appendChild(canvas);
 
       window.__gridCanvas = canvas;
 
-      map.on("move zoom resize", () => renderGrid(mode, beat));
+      // 🔥 FIX: avoid stale mode/beat closure
+      map.on("move zoom resize", () => {
+        renderGrid(window.__lastMode || "current", window.__lastBeat || "ALL");
+      });
     }
+
+    // 🔥 store last state
+    window.__lastMode = mode;
+    window.__lastBeat = beat;
 
     const canvas = window.__gridCanvas;
     const ctx = canvas.getContext("2d");
@@ -4241,16 +4248,14 @@ function renderGrid(mode = "today", beat = "ALL"){
       current = window.gridCache?.month || {};
     }
 
-    const bounds = map.getBounds();
-
     let total = 0;
     let visited = 0;
     let drawn = 0;
 
-    const MAX_DRAW = 8000; // 🔥 MUCH HIGHER NOW
+    const MAX_DRAW = 8000;
 
     // ===============================
-    // 🔥 MAIN DRAW LOOP (NO LEAFLET)
+    // 🔥 MAIN DRAW LOOP (NO FILTER BUG)
     // ===============================
     for(const [id, cell] of Object.entries(window.gridIndex)){
 
@@ -4263,18 +4268,6 @@ function renderGrid(mode = "today", beat = "ALL"){
       const cellBeat = cell.beat || "UNKNOWN";
       if(beat !== "ALL" && cellBeat !== beat) continue;
 
-      // 🔥 FAST VISIBILITY CHECK
-      let visible = false;
-
-for(let i=0; i<coords.length; i++){
-  const [lng, lat] = coords[i];
-  if(bounds.contains([lat, lng])){
-    visible = true;
-    break;
-  }
-}
-
-if(!visible) continue;
       total++;
 
       const isVisited = !!current[id];
@@ -4295,11 +4288,16 @@ if(!visible) continue;
 
       ctx.beginPath();
 
-      coords.forEach((pt, i)=>{
+      for(let i = 0; i < coords.length; i++){
+        const pt = coords[i];
         const p = map.latLngToContainerPoint([pt[1], pt[0]]);
-        if(i === 0) ctx.moveTo(p.x, p.y);
-        else ctx.lineTo(p.x, p.y);
-      });
+
+        if(i === 0){
+          ctx.moveTo(p.x, p.y);
+        } else {
+          ctx.lineTo(p.x, p.y);
+        }
+      }
 
       ctx.closePath();
       ctx.fill();
@@ -4315,8 +4313,7 @@ if(!visible) continue;
   } catch(e){
     console.error("❌ renderGrid crash:", e);
   }
-}
-    
+}    
     
     function ensureGridReady(){
 
