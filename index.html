@@ -3989,7 +3989,9 @@ function updateVisitedCache(newVisited){
   Object.entries(window.gridIndex).forEach(([id, cell]) => {
 
     if(!cell || !cell.geo) return;
-    if(beat !== "ALL" && cell.beat !== beat) return;
+    const cellBeat = cell.beat || "UNKNOWN";
+
+if(beat !== "ALL" && cellBeat !== beat) return;
 
     total++;
 
@@ -4262,110 +4264,77 @@ function renderGrid(mode = "today", beat = "ALL"){
     // ===============================
     // 🔥 LIMIT DRAW (CRITICAL)
     // ===============================
-    let drawn = 0;
-    const MAX_DRAW = 1500; // 🔥 adjust if needed
+   let drawn = 0;
+const MAX_DRAW = 1500;
 
-    // ===============================
-    // 🔥 CHUNK RENDER (NO FREEZE)
-    // ===============================
-    let i = 0;
-    const chunkSize = 150;
+let i = 0;
+const chunkSize = 150;
 
-    function drawChunk(){
+function drawChunk(){
 
-      const slice = entries.slice(i, i + chunkSize);
+  if(drawn >= MAX_DRAW){
+    console.log("⏹ Max draw reached");
+    return;
+  }
 
-      slice.forEach(([id, cell]) => {
+  const slice = entries.slice(i, i + chunkSize);
 
-        try {
+  slice.forEach(([id, cell]) => {
 
-          if(drawn >= MAX_DRAW) return;
-          if(!cell || !cell.geo) return;
-          if(beat !== "ALL" && cell.beat !== beat) return;
+    try {
 
-          // 🔥 VIEW FILTER
-          if(!isVisible(cell)) return;
+      if(drawn >= MAX_DRAW) return;
+      if(!cell || !cell.geo) return;
 
-          total++;
-
-          const isVisited = !!current[id];
-          if(isVisited) visited++;
-
-          drawn++;
-
-          const color = isVisited ? "#00ff00" : "#ff0000";
-          const opacity = isVisited ? 0.6 : 0.4;
-
-          L.geoJSON(cell.geo, {
-
-            renderer: L.canvas(),
-
-            style: {
-              color: "#111",
-              weight: 0.6,          // 🔥 more visible
-              fillColor: color,
-              fillOpacity: opacity
-            },
-
-            onEachFeature: function(feature, layer){
-
-              layer.on("click", function(){
-
-                try {
-
-                  const stats = getCoverageStats(mode, beat);
-                  if(!stats) return;
-
-                  let html = "";
-
-                  if(isVisited){
-                    html = `
-                    <div style="font-family:Segoe UI">
-                      <b>🟢 VISITED AREA</b><br><br>
-                      📊 Grids: ${stats.visitedGrids} / ${stats.totalGrids}<br>
-                      🌿 Area: ${stats.visitedAreaHa} / ${stats.totalAreaHa} Ha<br>
-                      📈 Coverage: ${stats.percent}%
-                    </div>`;
-                  } else {
-                    html = `
-                    <div style="font-family:Segoe UI">
-                      <b>🔴 UNVISITED AREA</b><br><br>
-                      📊 Grids: ${stats.unvisitedGrids} / ${stats.totalGrids}<br>
-                      🌿 Area: ${stats.unvisitedAreaHa} / ${stats.totalAreaHa} Ha<br>
-                      📉 Remaining: ${(100 - stats.percent).toFixed(1)}%
-                    </div>`;
-                  }
-
-                  layer.bindPopup(html).openPopup();
-
-                } catch(e){
-                  console.error("❌ Popup error:", e);
-                }
-
-              });
-
-            }
-
-          }).addTo(window.gridLayer);
-
-        } catch(e){
-          console.warn("⚠ Grid render fail:", id);
-        }
-
-      });
-
-      i += chunkSize;
-
-      if(i < entries.length && drawn < MAX_DRAW){
-        requestAnimationFrame(drawChunk);
-      } else {
-        const percent = total ? ((visited / total) * 100).toFixed(1) : 0;
-        console.log(`📊 ${visited}/${total} (${percent}%) | drawn:${drawn}`);
+      if(!cell.beat){
+        cell.beat = "UNKNOWN";
       }
+
+      const cellBeat = cell.beat;
+
+      if(beat !== "ALL" && cellBeat !== beat) return;
+      if(!isVisible(cell)) return;
+
+      total++;
+
+      const isVisited = !!current[id];
+      if(isVisited) visited++;
+
+      drawn++;
+
+      let color = (cellBeat === "UNKNOWN")
+        ? "#888"
+        : (isVisited ? "#00ff00" : "#ff0000");
+
+      const opacity = isVisited ? 0.6 : 0.4;
+
+      L.geoJSON(cell.geo, {
+        renderer: L.canvas(),
+        style: {
+          color: "#111",
+          weight: 0.6,
+          fillColor: color,
+          fillOpacity: opacity
+        }
+      }).addTo(window.gridLayer);
+
+    } catch(e){
+      console.warn("⚠ Grid render fail:", id);
     }
 
-    drawChunk();
+  });
 
+  i += chunkSize;
+
+  if(i < entries.length && drawn < MAX_DRAW){
+    requestAnimationFrame(drawChunk);
+  } else {
+    const percent = total ? ((visited / total) * 100).toFixed(1) : 0;
+    console.log(`📊 ${visited}/${total} (${percent}%) | drawn:${drawn}`);
+  }
+}
+drawChunk();
+  
   } catch(e){
     console.error("❌ renderGrid crash:", e);
   }
