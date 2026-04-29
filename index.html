@@ -4676,8 +4676,8 @@ function loadGridFromCache(){
   }
 }
     
-    function buildGridFromBounds(bounds, rangeLayer) {
-  console.log("🔲 Building COMPACT CLIPPED grid (GAP-FREE)...");
+    async function buildGridFromBounds(bounds, rangeLayer) {
+  console.log("🔲 Building ULTRA-FAST CLIPPED grid...");
 
   try {
     if (!bounds || !rangeLayer) {
@@ -4685,115 +4685,153 @@ function loadGridFromCache(){
       return;
     }
 
-    const step = 0.00045; // ~50m 
+    const step = 0.00045; // ~50m
     let count = 0;
     window.gridIndex = {};
 
     // ==========================================
-    // 1. EXTRACT & UNITE ALL POLYGONS (GAP FIX)
+    // 1. EXTRACT POLYGONS (FAST)
     // ==========================================
     let allPolys = [];
 
     function extract(layer) {
       if (!layer) return;
+
       if (layer instanceof L.Polygon) {
         let latlngs = layer.getLatLngs();
-        // Handle MultiPolygon or simple Polygon
         const rings = Array.isArray(latlngs[0][0]) ? latlngs : [latlngs];
 
         rings.forEach(ringSet => {
           let coords = ringSet.map(ring => {
-            // Map Leaflet latlng to [lng, lat]
             let pts = ring.map(p => [p.lng, p.lat]);
-            // Ensure Turf-valid closed ring
-            if (pts[0][0] !== pts[pts.length - 1][0] || pts[0][1] !== pts[pts.length - 1][1]) {
+
+            if (
+              pts[0][0] !== pts[pts.length - 1][0] ||
+              pts[0][1] !== pts[pts.length - 1][1]
+            ) {
               pts.push(pts[0]);
             }
+
             return pts;
           }).filter(r => r.length >= 4);
 
           if (coords.length) {
             try {
               allPolys.push(turf.polygon(coords));
-            } catch (e) { console.warn("Turf poly creation failed", e); }
+            } catch (e) {}
           }
         });
       }
+
       if (layer.eachLayer) layer.eachLayer(extract);
     }
 
     extract(rangeLayer);
 
     if (!allPolys.length) {
-      console.error("❌ No forest polygons found");
+      console.error("❌ No polygons");
       return;
     }
 
-    // 🔥 THE MASTER FIX: Union all compartments into one single mask
-    // This removes the "white gaps" between PORO/DPO boundaries
+    // ==========================================
+    // 🔥 2. FAST UNION (REDUCED COST)
+    // ==========================================
     let unifiedRange = allPolys[0];
+
     for (let i = 1; i < allPolys.length; i++) {
       try {
         unifiedRange = turf.union(unifiedRange, allPolys[i]);
-      } catch (e) { continue; }
+      } catch (e) {}
     }
+
+    const unifiedBBox = turf.bbox(unifiedRange); // 🔥 SPEED BOOST
 
     const south = bounds.getSouth();
     const north = bounds.getNorth();
     const west = bounds.getWest();
     const east = bounds.getEast();
 
-    // Snap grid start to global coordinates to ensure consistency
     const startLat = Math.floor(south / step) * step;
     const startLon = Math.floor(west / step) * step;
 
     // ==========================================
-    // 2. GRID GENERATION & PRECISE CLIPPING
+    // 🔥 3. NON-BLOCKING GRID BUILD (CRITICAL)
     // ==========================================
-    for (let lat = startLat; lat < north; lat += step) {
-      for (let lon = startLon; lon < east; lon += step) {
-        
-       const id = lat.toFixed(6) + "_" + lon.toFixed(6);
+    let lat = startLat;
 
-        // Create the standard square cell
-        const cellPoly = turf.polygon([[
-          [lon, lat],
-          [lon + step, lat],
-          [lon + step, lat + step],
-          [lon, lat + step],
-          [lon, lat]
-        ]]);
+    async function processRow() {
 
-        try {
-          // ✅ PRECISE CLIPPING: Only keep the part of the square inside the forest
-          const clippedGeo = turf.intersect(cellPoly, unifiedRange);
+      let iterations = 0;
 
-          if (clippedGeo) {
-            // Check if the resulting geometry is valid and has area
-            const area = turf.area(clippedGeo);
-            if (area > 20) { // Ignore slivers smaller than 1sq meter
+      for (; lat < north; lat += step) {
+
+        for (let lon = startLon; lon < east; lon += step) {
+
+          const id = lat.toFixed(6) + "_" + lon.toFixed(6);
+
+          // 🔥 BBOX SKIP (BIG SPEED BOOST)
+          if (
+            lon > unifiedBBox[2] ||
+            lon + step < unifiedBBox[0] ||
+            lat > unifiedBBox[3] ||
+            lat + step < unifiedBBox[1]
+          ) {
+            continue;
+          }
+
+          const cellPoly = turf.polygon([[
+            [lon, lat],
+            [lon + step, lat],
+            [lon + step, lat + step],
+            [lon, lat + step],
+            [lon, lat]
+          ]]);
+
+          try {
+            const clipped = turf.intersect(cellPoly, unifiedRange);
+
+            if (clipped) {
+              const area = turf.area(clipped);
+
+              if (area > 20) {
+                window.gridIndex[id] = {
+                  geo: clipped,
+                  visited: false
+                };
+                count++;
+              }
+            }
+
+          } catch (e) {
+            // fallback
+            if (turf.booleanIntersects(cellPoly, unifiedRange)) {
               window.gridIndex[id] = {
-                geo: clippedGeo,
+                geo: cellPoly,
                 visited: false
               };
               count++;
             }
           }
-        } catch (e) {
-          // Fallback logic for complex geometry errors
-          if (turf.booleanIntersects(cellPoly, unifiedRange)) {
-            window.gridIndex[id] = { geo: cellPoly, visited: false };
-            count++;
+
+          // 🔥 YIELD EVERY 200 CELLS (NO FREEZE)
+          if (++iterations % 200 === 0) {
+            await new Promise(r => setTimeout(r, 0));
           }
         }
+
+        // 🔥 YIELD EVERY ROW
+        await new Promise(r => setTimeout(r, 0));
       }
+
+      window.gridMeta = { size: step, total: count };
+
+      console.log("✅ Grid built (smooth):", count);
     }
 
-    window.gridMeta = { size: step, total: count };
-    console.log("✅ Perfect clipped grid built:", count);
+    await processRow();
 
   } catch (e) {
-    console.error("❌ buildGridFromBounds total crash:", e);
+    console.error("❌ buildGridFromBounds crash:", e);
   }
 }
     
