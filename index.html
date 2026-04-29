@@ -3384,7 +3384,8 @@ ${pct(data.health)} / 100
 // 🚀 ULTRA FAST GEOJSON LOADER (PRO VERSION)
 // ==========================================
 
-let rangeLayer = null; // 🔥 keep reference
+// 🔥 GLOBAL (IMPORTANT)
+window.rangeLayer = null;
 
 async function loadRangeKML(){
 
@@ -3393,11 +3394,11 @@ async function loadRangeKML(){
     console.log("🚀 Loading FAST GeoJSON...");
 
     // ======================================
-    // 🔥 REMOVE OLD LAYER (IMPORTANT)
+    // 🔥 REMOVE OLD LAYER
     // ======================================
-    if(rangeLayer){
-      map.removeLayer(rangeLayer);
-      rangeLayer = null;
+    if(window.rangeLayer){
+      map.removeLayer(window.rangeLayer);
+      window.rangeLayer = null;
     }
 
     // ======================================
@@ -3415,10 +3416,10 @@ async function loadRangeKML(){
     console.log("📦 Features:", features.length);
 
     // ======================================
-    // 🔥 CREATE SINGLE LAYER (BEST PRACTICE)
+    // 🔥 CREATE GLOBAL RANGE LAYER
     // ======================================
-    rangeLayer = L.geoJSON([], {
-      renderer: L.canvas(), // 🔥 mobile boost
+    window.rangeLayer = L.geoJSON([], {
+      renderer: L.canvas(),
       style: {
         color: "#00e5ff",
         weight: 1,
@@ -3431,29 +3432,52 @@ async function loadRangeKML(){
     // ⚡ CHUNK RENDER (NO FREEZE)
     // ======================================
     let i = 0;
-    const chunkSize = 40; // 🔥 tune (30–60)
+    const chunkSize = 40;
 
     function drawChunk(){
 
       const slice = features.slice(i, i + chunkSize);
 
       slice.forEach(f => {
-        rangeLayer.addData(f); // ✅ MUCH faster than L.geoJSON(f)
+        window.rangeLayer.addData(f);
       });
 
       i += chunkSize;
 
       if(i < features.length){
+
         requestAnimationFrame(drawChunk);
+
       } else {
+
         console.log("✅ GeoJSON render complete");
 
         // ======================================
-        // 🎯 FIT MAP (ONLY ONCE)
+        // 🎯 FIT MAP (SAFE)
         // ======================================
         try {
-          map.fitBounds(rangeLayer.getBounds(), { padding: [10, 10] });
+          map.fitBounds(window.rangeLayer.getBounds(), {
+            padding: [10, 10]
+          });
         } catch(e){}
+
+        // ======================================
+        // 🔥 CRITICAL FIX: BUILD GRID AFTER LOAD
+        // ======================================
+        setTimeout(() => {
+
+          console.log("🔲 Building grid after GeoJSON ready");
+
+          try {
+
+            ensureGridReady();   // 🔥 builds grid
+            renderGrid("current", "ALL"); // 🔥 shows grid
+
+          } catch(e){
+            console.warn("⚠ Grid build failed");
+          }
+
+        }, 300);
 
       }
     }
@@ -3465,8 +3489,7 @@ async function loadRangeKML(){
     console.error("❌ loadRangeKML error:", e);
 
   }
-}
-    function lineIntersectsBox(lat1, lon1, lat2, lon2, minLat, minLon, maxLat, maxLon) {
+}    function lineIntersectsBox(lat1, lon1, lat2, lon2, minLat, minLon, maxLat, maxLon) {
 
   const eps = 0.000001;
 
