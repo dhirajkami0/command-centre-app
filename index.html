@@ -63,93 +63,13 @@
 })();</script>
   
   
-  <script type="module">
-
-// ================= FIREBASE IMPORTS =================
-import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
-
-import {
-  getFirestore,
-  collection,
-  addDoc,
-  onSnapshot,
-  query,
-  orderBy,
-  serverTimestamp,
-  getDocs,
-  deleteDoc,
-  doc,
-  setDoc,
-  updateDoc,
-  arrayUnion
-} from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
-
-import {
-  getStorage,
-  ref,
-  uploadBytes,
-  getDownloadURL
-} from "https://www.gstatic.com/firebasejs/10.12.0/firebase-storage.js";
-
-
-// ================= CONFIG =================
-const firebaseConfig = {
-  apiKey: "AIzaSyCKLIJC0Mkjg7hjp7Kr5_FYQq704f4oZnY",
-  authDomain: "command-centre-86f62.firebaseapp.com",
-  projectId: "command-centre-86f62",
-  storageBucket: "command-centre-86f62.firebasestorage.app",
-  messagingSenderId: "692498208499",
-  appId: "1:692498208499:web:34defc152a3b3411e64986"
-};
-
-
-// ================= INIT =================
-const app = initializeApp(firebaseConfig);
-
-
-// ================= GLOBAL ACCESS =================
-window.db = getFirestore(app);
-window.storage = getStorage(app);
-
-
-// ================= GLOBAL FIREBASE OBJECT =================
-window.fb = {
-  collection,
-  addDoc,
-  onSnapshot,
-  query,
-  orderBy,
-  serverTimestamp,
-  getDocs,
-  deleteDoc,
-  doc,
-  setDoc,
-  updateDoc,
-  arrayUnion,
-  ref,
-  uploadBytes,
-  getDownloadURL
-};
-
-
-// ================= READY FLAG =================
-window.firebaseReady = true;
-
-console.log("🔥 Firebase FULLY READY");
-
-
-// ================= SAFE CHECK =================
-window.isFirebaseReady = function(){
-  return !!(window.fb && window.db);
-};
-
-
+ 
 // ================= AUTO CLEAN FUNCTION =================
 async function cleanOldMessages(){
 
   try {
 
-    if(!window.isFirebaseReady()){
+    if(!window.isFirebaseReady || !window.isFirebaseReady()){
       console.warn("⏳ Firebase not ready");
       return;
     }
@@ -221,13 +141,30 @@ async function cleanOldMessages(){
 <!-- ⚠️ TEMP KEEP (icons) → later download locally -->
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css">
 
-<!-- ✅ LOCAL JS (LOAD IN HEAD IS OK FOR YOUR APP) -->
-<script src="js/leaflet.js"></script>
+<!-- ✅ CORE MAP LIBRARY -->
+<script src="js/leaflet.js" defer></script>
+
+<!-- ✅ OPTIONAL (KEEP ONLY IF USED) -->
+<script src="./js/leaflet-pip.min.js" defer></script>
+
+<!-- ⚠️ LOAD TURF ONLY IF REALLY NEEDED -->
+<script defer>
+  function loadTurfIfNeeded(){
+    if(window.turf) return;
+
+    const s = document.createElement("script");
+    s.src = "https://cdn.jsdelivr.net/npm/@turf/turf@6/turf.min.js";
+    s.defer = true;
+    document.head.appendChild(s);
+  }
+</script>
+
+<!-- ❌ REMOVE THESE (IMPORTANT) -->
+<!--
 <script src="js/leaflet-omnivore.min.js"></script>
 <script src="js/shp.js"></script>
 <script src="js/leaflet-kml.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/@turf/turf@6/turf.min.js"></script>
-  <script src="./js/leaflet-pip.min.js"></script>
+-->
   <script>
     
     // ===============================
@@ -1434,19 +1371,15 @@ function logout(){
   location.reload();
 }  
 
-    async function cleanOldMessages(){
-
-  const cutoff = Date.now() - (2 * 24 * 60 * 60 * 1000); // 2 days
-
-  const snapshot = await window.fb.getDocs(getChatCollection());
-
-  snapshot.forEach(async doc => {
-    const m = doc.data();
-    if(m.time && m.time.toMillis() < cutoff){
-      await window.fb.deleteDoc(doc.ref);
-    }
-  });
-}
+    // ================= CONFIG (KEEP THIS ONLY) =================
+window.firebaseConfig = {
+  apiKey: "AIzaSyCKLIJC0Mkjg7hjp7Kr5_FYQq704f4oZnY",
+  authDomain: "command-centre-86f62.firebaseapp.com",
+  projectId: "command-centre-86f62",
+  storageBucket: "command-centre-86f62.firebasestorage.app",
+  messagingSenderId: "692498208499",
+  appId: "1:692498208499:web:34defc152a3b3411e64986"
+};
 
 let appStarted = false;
 
@@ -1459,10 +1392,14 @@ function startApp(){
 
   try {
 
-    // ================= INIT DUTY STATE (IMPORTANT) =================
-    window.isDutyActive = null; // 🔥 prevents wrong initial state
+    // ======================================================
+    // 🔥 INIT DUTY STATE (IMPORTANT)
+    // ======================================================
+    window.isDutyActive = null;
 
-    // ================= LOAD CORE MODULES =================
+    // ======================================================
+    // ⚡ PHASE 1 → LIGHT + FAST (NO BLOCKING)
+    // ======================================================
     loadSightings();
 
     if(typeof initDutyControl === "function"){
@@ -1477,36 +1414,34 @@ function startApp(){
       stopAutoGPS();
     }
 
-    // ================= CHAT =================
-    startChat();
-    cleanOldMessages();
-
     // ================= CACHE =================
     loadCacheOnStart();
 
     // ======================================================
-    // 🧹 CLEAN OLD MONTH DATA
+    // 🧹 CLEAN OLD MONTH DATA (SAFE)
     // ======================================================
-    try {
+    setTimeout(() => {
+      try {
 
-      const prefix = new Date().toISOString().slice(0,7);
+        const prefix = new Date().toISOString().slice(0,7);
 
-      Object.keys(localStorage).forEach(key => {
+        Object.keys(localStorage).forEach(key => {
 
-        if(!key.startsWith("grid_")) return;
+          if(!key.startsWith("grid_")) return;
 
-        const date = key.replace("grid_", "");
+          const date = key.replace("grid_", "");
 
-        if(!date.startsWith(prefix)){
-          localStorage.removeItem(key);
-          console.log("🧹 Removed old grid:", key);
-        }
+          if(!date.startsWith(prefix)){
+            localStorage.removeItem(key);
+            console.log("🧹 Removed old grid:", key);
+          }
 
-      });
+        });
 
-    } catch(e){
-      console.warn("⚠ Cleanup failed");
-    }
+      } catch(e){
+        console.warn("⚠ Cleanup failed");
+      }
+    }, 1000);
 
     // ================= OFFLINE CLEAN =================
     if(window.isDutyActive !== true){
@@ -1516,74 +1451,92 @@ function startApp(){
       } catch(e){}
     }
 
+    console.log("⚡ Phase 1 complete (UI fast)");
+
     // ======================================================
-    // 🔥 GRID INIT + BACKFILL START
+    // 🚀 PHASE 2 → DELAYED TASKS (NO FREEZE)
     // ======================================================
-    let attempts = 0;
 
-    if(window.__gridInitStarted){
-      console.warn("⚠ Grid init already started");
-    } else {
+        // 🔥 Cleanup messages (HEAVY → DELAY MORE)
+    setTimeout(() => {
+      try {
+        cleanOldMessages();
+      } catch(e){
+        console.warn("⚠ cleanOldMessages failed");
+      }
+    }, 7000);
 
-      window.__gridInitStarted = true;
+    // ======================================================
+    // 🔥 GRID INIT + BACKFILL (NON-BLOCKING)
+    // ======================================================
+    setTimeout(() => {
 
-      const gridInitInterval = setInterval(() => {
+      let attempts = 0;
 
-        attempts++;
+      if(window.__gridInitStarted){
+        console.warn("⚠ Grid init already started");
+      } else {
 
-        if(!window.rangeLayer){
-          console.log("⏳ Waiting for rangeLayer...");
-          if(attempts > 10) clearInterval(gridInitInterval);
-          return;
-        }
+        window.__gridInitStarted = true;
 
-        ensureGridReady();
+        const gridInitInterval = setInterval(() => {
 
-        if(window.gridIndex && Object.keys(window.gridIndex).length){
+          attempts++;
 
-          console.log("🎯 Grid ready (no auto render)");
-
-          const BACKFILL_KEY = "kmlBackfillDone_v2";
-
-          window.__currentMonthPrefix = new Date().toISOString().slice(0,7);
-
-          if(!localStorage.getItem(BACKFILL_KEY)){
-            console.log("🚀 Starting incremental backfill engine...");
-            runBackfillAuto();
-          } else {
-            console.log("⏭ Backfill already completed");
+          if(!window.rangeLayer){
+            console.log("⏳ Waiting for rangeLayer...");
+            if(attempts > 10) clearInterval(gridInitInterval);
+            return;
           }
 
-          clearInterval(gridInitInterval);
-        }
+          ensureGridReady();
 
-        if(attempts > 10){
-          console.warn("⚠ Grid init timeout");
-          clearInterval(gridInitInterval);
-        }
+          if(window.gridIndex && Object.keys(window.gridIndex).length){
 
-      }, 500);
-    }
+            console.log("🎯 Grid ready");
 
-    console.log("✅ App initialized (grid on-demand only)");
+            const BACKFILL_KEY = "kmlBackfillDone_v2";
+            window.__currentMonthPrefix = new Date().toISOString().slice(0,7);
+
+            if(!localStorage.getItem(BACKFILL_KEY)){
+
+              console.log("🚀 Scheduling backfill...");
+
+              // 🔥 DELAY BACKFILL (CRITICAL)
+              setTimeout(() => {
+                runBackfillAuto();
+              }, 3000);
+
+            } else {
+              console.log("⏭ Backfill already completed");
+            }
+
+            clearInterval(gridInitInterval);
+          }
+
+          if(attempts > 10){
+            console.warn("⚠ Grid init timeout");
+            clearInterval(gridInitInterval);
+          }
+
+        }, 600);
+      }
+
+    }, 1200);
 
     // ======================================================
-    // 🔥 DUTY CHECK FIX (CRITICAL)
+    // 🔥 DUTY CHECK (SAFE + RETRY)
     // ======================================================
-
-    // 🔹 1. Initial delayed check (UI ready)
     setTimeout(() => {
       console.log("🔄 Initial duty check...");
       autoShowEndDuty();
     }, 1500);
 
-    // 🔹 2. Retry once more (network delay safe)
     setTimeout(() => {
       console.log("🔄 Backup duty check...");
       autoShowEndDuty();
     }, 3000);
 
-    // 🔹 3. Periodic sync (bulletproof)
     setInterval(() => {
       if(window.userProfile){
         autoShowEndDuty();
@@ -1591,41 +1544,85 @@ function startApp(){
     }, 15000);
 
     // ======================================================
-    // 🔥 KML CACHE WARM (NON-BLOCKING & SAFE)
+    // ❌ REMOVE KML WARM CACHE (NOT NEEDED ANYMORE)
     // ======================================================
-    try {
+    // ❌ warmKMLCache removed (you use GeoJSON now)
 
-      const runWarmKML = () => {
+    console.log("✅ App initialized (optimized, no freeze)");
+    // ======================================================
+// 🔥 DELAYED FIREBASE INIT (NON-BLOCKING)
+// ======================================================
+setTimeout(async () => {
 
-        if(!navigator.onLine){
-          console.log("📴 Skip KML cache (offline)");
-          return;
-        }
+  try {
 
-        if(localStorage.getItem("kmlCached")){
-          console.log("⏭ KML already cached");
-          return;
-        }
+    console.log("🔥 Loading Firebase (delayed)");
 
-        console.log("🔥 Scheduling KML warm cache...");
+    // ================= IMPORTS =================
+    const { initializeApp } = await import("https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js");
 
-        if("requestIdleCallback" in window){
-          requestIdleCallback(warmKMLCache, { timeout: 5000 });
-        } else {
-          setTimeout(warmKMLCache, 5000);
-        }
+    const {
+      getFirestore,
+      collection,
+      addDoc,
+      onSnapshot,
+      query,
+      orderBy,
+      serverTimestamp,
+      getDocs,
+      deleteDoc,
+      doc,
+      setDoc,
+      updateDoc,
+      arrayUnion
+    } = await import("https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js");
 
-      };
+    const {
+      getStorage,
+      ref,
+      uploadBytes,
+      getDownloadURL
+    } = await import("https://www.gstatic.com/firebasejs/10.12.0/firebase-storage.js");
 
-      setTimeout(runWarmKML, 3000);
+    // ================= INIT =================
+    const app = initializeApp(window.firebaseConfig);
 
-    } catch(e){
-      console.warn("⚠ warmKML scheduling failed");
-    }
+    window.db = getFirestore(app);
+    window.storage = getStorage(app);
 
+    // ================= GLOBAL ACCESS =================
+    window.fb = {
+      collection,
+      addDoc,
+      onSnapshot,
+      query,
+      orderBy,
+      serverTimestamp,
+      getDocs,
+      deleteDoc,
+      doc,
+      setDoc,
+      updateDoc,
+      arrayUnion,
+      ref,
+      uploadBytes,
+      getDownloadURL
+    };
+
+    window.firebaseReady = true;
+
+console.log("✅ Firebase READY (delayed)");
+
+// 🔥 START CHAT HERE (PERFECT TIMING)
+try {
+  console.log("💬 Starting chat after Firebase ready");
+  startChat();
+} catch(e){
+  console.warn("⚠ startChat failed");
+}
   } catch(e){
-    console.error("❌ startApp crash:", e);
-  }
+  console.error("❌ Firebase load failed:", e);
+}
 }/* ===============================
    🔐 MAIN PROFILE FUNCTION
 =============================== */
@@ -1734,18 +1731,6 @@ if ("serviceWorker" in navigator) {
     });
 
   });
-
-}
-function warmKMLCache(){
-
-  if(localStorage.getItem("kmlCached")) return;
-
-  fetch("./kml/Compartments.kml")
-    .then(() => {
-      console.log("🔥 KML cached");
-      localStorage.setItem("kmlCached", "1");
-    })
-    .catch(()=>{});
 
 }
 
@@ -2444,7 +2429,8 @@ setInterval(() => {
    var map = L.map('map', {
   center:[26.561, 89.507],
   zoom:14,
-  zoomControl:false
+  zoomControl:false,
+  preferCanvas: true   // 🔥 HUGE BOOST
 });
 /* 🔥 BASE LAYERS LOAD */
 esriSat.addTo(map);
@@ -3399,103 +3385,92 @@ ${pct(data.health)} / 100
       popup.setContent("❌ Error loading range data");
     });
 }
-function loadRangeKML() {
+// ==========================================
+// 🚀 ULTRA FAST GEOJSON LOADER (PRO VERSION)
+// ==========================================
 
-  const url = "./kml/Compartments.kml";
+let rangeLayer = null; // 🔥 keep reference
 
-  console.log("⚡ Loading Range KML (local)");
+async function loadRangeKML(){
 
-  fetch(url)
-    .then(res => res.text())
-    .then(function (kml) {
+  try {
 
-      if (!kml || !kml.includes("<Placemark")) {
-        console.error("❌ Invalid KML");
-        return;
+    console.log("🚀 Loading FAST GeoJSON...");
+
+    // ======================================
+    // 🔥 REMOVE OLD LAYER (IMPORTANT)
+    // ======================================
+    if(rangeLayer){
+      map.removeLayer(rangeLayer);
+      rangeLayer = null;
+    }
+
+    // ======================================
+    // 📥 FETCH DATA
+    // ======================================
+    const res = await fetch("./kml/compartments.json");
+
+    if(!res.ok){
+      throw new Error("❌ Failed to load GeoJSON");
+    }
+
+    const data = await res.json();
+    const features = data.features || [];
+
+    console.log("📦 Features:", features.length);
+
+    // ======================================
+    // 🔥 CREATE SINGLE LAYER (BEST PRACTICE)
+    // ======================================
+    rangeLayer = L.geoJSON([], {
+      renderer: L.canvas(), // 🔥 mobile boost
+      style: {
+        color: "#00e5ff",
+        weight: 1,
+        opacity: 0.8,
+        fillOpacity: 0.1
       }
+    }).addTo(map);
 
-      const blob = new Blob([kml], { type: "text/xml" });
-      const objUrl = URL.createObjectURL(blob);
+    // ======================================
+    // ⚡ CHUNK RENDER (NO FREEZE)
+    // ======================================
+    let i = 0;
+    const chunkSize = 40; // 🔥 tune (30–60)
 
-      const layer = omnivore.kml(objUrl);
+    function drawChunk(){
 
-      layer.on('ready', function () {
+      const slice = features.slice(i, i + chunkSize);
 
-        console.log("✅ KML Loaded");
+      slice.forEach(f => {
+        rangeLayer.addData(f); // ✅ MUCH faster than L.geoJSON(f)
+      });
 
+      i += chunkSize;
+
+      if(i < features.length){
+        requestAnimationFrame(drawChunk);
+      } else {
+        console.log("✅ GeoJSON render complete");
+
+        // ======================================
+        // 🎯 FIT MAP (ONLY ONCE)
+        // ======================================
         try {
+          map.fitBounds(rangeLayer.getBounds(), { padding: [10, 10] });
+        } catch(e){}
 
-          // 🔥 WAIT UNTIL LAYER IS FULLY INITIALIZED
-          setTimeout(() => {
+      }
+    }
 
-            // 🎯 GLOBAL SAVE (FINAL SAFE POINT)
-            window.rangeLayer = layer;
+    drawChunk();
 
-            if (!window.rangeLayer || !window.rangeLayer.getBounds) {
-              console.error("❌ rangeLayer invalid");
-              return;
-            }
+  } catch(e){
 
-            console.log("🟢 rangeLayer saved:", window.rangeLayer);
+    console.error("❌ loadRangeKML error:", e);
 
-            layer.setStyle({
-              color: "#00ff88",
-              weight: 3,
-              fill: false
-            });
-
-            layer.addTo(map);
-
-            const bounds = layer.getBounds();
-
-            if (bounds && bounds.isValid()) {
-              map.fitBounds(bounds);
-            } else {
-              console.warn("⚠ Invalid bounds");
-            }
-
-            // 🔥 GRID BUILD
-            if (typeof initGrid === "function") {
-              initGrid(layer);
-            }
-
-            // 🔥 BEAT MAPPING
-            setTimeout(() => {
-              if (typeof assignGridToBeat === "function") {
-                assignGridToBeat(layer);
-              }
-            }, 300);
-
-            // 🔥 CLICK HANDLER
-            if (typeof layer.eachLayer === "function") {
-              layer.eachLayer(function (l) {
-                if (l instanceof L.Polygon || l instanceof L.Polyline) {
-                  l.on('click', e => openRangePopup(e.latlng));
-                }
-              });
-            }
-
-            console.log("✅ Range + Grid + Beat system READY");
-
-          }, 300); // 🔥 KEY FIX (delay ensures layer is ready)
-
-        } catch (e) {
-          console.error("❌ KML processing crash:", e);
-        }
-
-        URL.revokeObjectURL(objUrl);
-      });
-
-      layer.on('error', function (err) {
-        console.error("❌ KML Parse Error:", err);
-      });
-
-    })
-    .catch(err => {
-      console.error("❌ KML Fetch Error:", err);
-    });
+  }
 }
-
     function lineIntersectsBox(lat1, lon1, lat2, lon2, minLat, minLon, maxLat, maxLon) {
 
   const eps = 0.000001;
@@ -9477,7 +9452,7 @@ function startOnlineLoginFlow(){
       if (!profile || profile.error) {
         localStorage.removeItem("userPhone");
         showLogin();
-        return;
+        return Promise.reject("Invalid profile");
       }
 
       const fixedProfile = normalizeUserProfile(profile);
@@ -9489,20 +9464,22 @@ function startOnlineLoginFlow(){
 
       applyRoleControl?.();
 
-      // ✅ Start core app FIRST
+      // ======================================================
+      // 🚀 START CORE APP (LIGHT ONLY)
+      // ======================================================
       startApp?.();
 
-      // ⚠ keep duty control if needed
+      // ⚠ optional (keep if needed)
       initDutyControl?.();
 
-      // ❌ DO NOT load heavy KML here (moved later)
+      // ❌ DO NOT LOAD HEAVY MAP DATA HERE
 
       return callBackend("updateVillageRisk");
     })
 
     .then(function (coneData) {
 
-      if (!coneData) return;
+      if (!coneData) return null;
 
       window.coneVillages = coneData;
 
@@ -9511,18 +9488,23 @@ function startOnlineLoginFlow(){
 
     .then(function (villageList) {
 
-      if (!villageList) return;
+      if (villageList) {
 
-      window.villages = (villageList || []).map(v => ({
-        name: v.name || v.Village || "Unknown",
-        lat: parseFloat(v.lat),
-        lon: parseFloat(v.lon)
-      }));
+        window.villages = (villageList || []).map(v => ({
+          name: v.name || v.Village || "Unknown",
+          lat: parseFloat(v.lat),
+          lon: parseFloat(v.lon)
+        }));
 
+      }
+
+      // ======================================================
+      // ⚡ FAST UI REFRESH
+      // ======================================================
       refreshAll?.();
 
       // ======================================================
-      // ✅ HIDE SPLASH (NO DELAY / NO FREEZE)
+      // 🔥 HIDE SPLASH (IMMEDIATE)
       // ======================================================
       try {
         hideSplash();
@@ -9531,37 +9513,61 @@ function startOnlineLoginFlow(){
       }
 
       // ======================================================
-      // 🚀 LOAD HEAVY KML AFTER UI IS VISIBLE
+      // 🗺 LOAD GEOJSON (NON-BLOCKING)
       // ======================================================
       setTimeout(() => {
 
-        console.log("🗺 Loading KML layers (delayed)...");
+        console.log("🗺 Loading GeoJSON layer...");
 
         try {
+
+          // ✅ NEW FAST LOADER
           loadRangeKML?.();
-          loadCompartmentsFromSheet?.();
+
+          // ⚠ KEEP ONLY IF REALLY NEEDED
+          // (remove if duplicate or heavy)
+          // loadCompartmentsFromSheet?.();
+
         } catch(e){
-          console.warn("⚠ KML load failed");
+          console.warn("⚠ GeoJSON load failed");
         }
 
-      }, 300); // small delay to keep UI smooth
+      }, 500);
 
       // ======================================================
-      // 🔧 INIT EVENTS LAST
+      // 🔧 INIT EVENTS (AFTER UI READY)
       // ======================================================
-      initEventListeners?.();
+      setTimeout(() => {
+        initEventListeners?.();
+      }, 200);
+
+      // ======================================================
+      // ⚡ OPTIONAL: DELAY HEAVY BACKGROUND TASKS
+      // ======================================================
+      setTimeout(() => {
+        try {
+          startChat?.();            // 🔥 delayed Firebase
+        } catch(e){}
+      }, 1500);
+
+      setTimeout(() => {
+        try {
+          cleanOldMessages?.();     // 🔥 delayed cleanup
+        } catch(e){}
+      }, 6000);
 
     })
 
-    .catch(function () {
+    .catch(function (err) {
+
+      console.warn("⚠ startOnlineLoginFlow failed:", err);
 
       updateNetworkStatus("offline");
       showLogin();
 
     });
 
-}
-    function hideSplash(){
+}    function hideSplash(){
 
   const splash = document.getElementById("splash-screen");
   if(!splash) return;
