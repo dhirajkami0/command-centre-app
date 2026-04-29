@@ -4012,7 +4012,7 @@ if(beat !== "ALL" && cellBeat !== beat) return;
 
     if(!meta || !meta.length){
       console.log("✅ DONE (no more files)");
-      return true; // 🔥 SIGNAL COMPLETE
+      return true;
     }
 
     const file = meta[0];
@@ -4095,6 +4095,9 @@ if(beat !== "ALL" && cellBeat !== beat) return;
 
     if(track.length > 1){
 
+      // ==========================================
+      // 🔥 MARK VISITED (YOUR EXISTING FUNCTION)
+      // ==========================================
       markVisitedHybrid([{
         track: track,
         date: file.date
@@ -4102,7 +4105,34 @@ if(beat !== "ALL" && cellBeat !== beat) return;
 
       console.log("📅 Saved grids for:", file.date);
 
+      // ==========================================
+      // 🔥 FORCE CACHE SYNC (CRITICAL FIX)
+      // ==========================================
+      const todayKey = "grid_" + getLocalDateStr();
+
+      try {
+        window.gridCache = window.gridCache || {};
+
+        window.gridCache.today =
+          JSON.parse(localStorage.getItem(todayKey) || "{}");
+
+      } catch(e){
+        console.warn("⚠ Today cache reload failed");
+      }
+
+      // 🔥 MONTH UPDATE
+      if(typeof updateMonthCache === "function"){
+        updateMonthCache();
+      }
+
+      // 🔥 SAFE RENDER (ONLY IF GRID READY)
+      if(window.gridIndex && window.__gridCanvas){
+        renderGrid("current", window.__lastBeat || "ALL");
+      }
+
+      // ==========================================
       // 🔥 MARK PROCESSED
+      // ==========================================
       window.processedKML.add(file.id);
 
       localStorage.setItem(
@@ -4121,10 +4151,8 @@ if(beat !== "ALL" && cellBeat !== beat) return;
 
   console.log("⏸ Batch complete");
 
-  updateMonthCache?.();
-
-  return false; // 🔥 NOT DONE YET
-}  function getLocalDateStr(date = new Date()){
+  return false;
+} function getLocalDateStr(date = new Date()){
   const d = new Date(date);
   d.setMinutes(d.getMinutes() - d.getTimezoneOffset());
   return d.toISOString().slice(0,10);
@@ -4397,57 +4425,71 @@ function markVisitedHybrid(tracks){
 
   console.log("🧪 Incoming tracks:", tracks);
 
-  // ======================================================
-  // 🔥 DETECT DATE (STRICT)
-  // ======================================================
-  let trackDate = null;
-
-  if(Array.isArray(tracks)){
-    for(let t of tracks){
-      if(t && t.date){
-        trackDate = t.date;
-        break;
-      }
-    }
-  }
-
+  let visited = {};
   const todayStr = getLocalDateStr();
 
-  console.log("📅 FINAL DATE SELECTED:", trackDate || "TODAY");
-
-  let visited = {};
+  // ======================================================
+  // 🔥 PRE-FETCH CELLS (IMPORTANT OPTIMIZATION)
+  // ======================================================
+  const cells = Object.entries(window.gridIndex);
 
   // ======================================================
-  // 🔥 GRID LOOP
+  // 🔥 TRACK LOOP
   // ======================================================
-  for(let [id, cell] of Object.entries(window.gridIndex)){
+  for(let t of tracks){
 
-    if(!cell || !cell.geo) continue;
+    if(!t || !t.track || t.track.length < 2) continue;
 
-    const bbox = turf.bbox(cell.geo);
-    const [minLon, minLat, maxLon, maxLat] = bbox;
+    for(let i = 1; i < t.track.length; i++){
 
-    for(let t of tracks){
+      const p1 = t.track[i-1];
+      const p2 = t.track[i];
 
-      if(!t || !t.track || t.track.length < 2) continue;
+      if(!p1 || !p2) continue;
 
-      for(let i = 1; i < t.track.length; i++){
+      const lat1 = Number(p1[0]);
+      const lon1 = Number(p1[1]);
+      const lat2 = Number(p2[0]);
+      const lon2 = Number(p2[1]);
 
-        const p1 = t.track[i-1];
-        const p2 = t.track[i];
+      if([lat1, lon1, lat2, lon2].some(isNaN)) continue;
 
-        if(!p1 || !p2) continue;
+      // ======================================================
+      // 🔥 LOOP CELLS (OPTIMIZED)
+      // ======================================================
+      for(let [id, cell] of cells){
 
-        const lat1 = Number(p1[0]);
-        const lon1 = Number(p1[1]);
-        const lat2 = Number(p2[0]);
-        const lon2 = Number(p2[1]);
+        if(!cell || !cell.coords) continue;
 
-        if([lat1, lon1, lat2, lon2].some(isNaN)) continue;
+        // 🔥 FAST CENTER CHECK (MOST CASES)
+        const c = cell.center;
+        if(!c) continue;
 
-        // ===============================
-        // 🔥 FAST BOX CHECK (PRIMARY)
-        // ===============================
+        const near =
+          Math.abs(c.lat - lat1) < 0.0006 &&
+          Math.abs(c.lng - lon1) < 0.0006;
+
+        if(near){
+          visited[id] = true;
+          continue;
+        }
+
+        // ======================================================
+        // 🔥 BBOX FROM COORDS (NO TURF)
+        // ======================================================
+        let minLat = Infinity, minLon = Infinity;
+        let maxLat = -Infinity, maxLon = -Infinity;
+
+        for(let [lat, lon] of cell.coords){
+          if(lat < minLat) minLat = lat;
+          if(lat > maxLat) maxLat = lat;
+          if(lon < minLon) minLon = lon;
+          if(lon > maxLon) maxLon = lon;
+        }
+
+        // ======================================================
+        // 🔥 FAST LINE-BOX INTERSECTION
+        // ======================================================
         if(lineIntersectsBox(
           lat1, lon1,
           lat2, lon2,
@@ -4455,12 +4497,12 @@ function markVisitedHybrid(tracks){
           maxLat, maxLon
         )){
           visited[id] = true;
-          break;
+          continue;
         }
 
-        // ===============================
-        // 🔥 PRECISE TURF CHECK (FALLBACK)
-        // ===============================
+        // ======================================================
+        // 🔥 PRECISE CHECK (RARE CASE)
+        // ======================================================
         try {
 
           const line = turf.lineString([
@@ -4468,46 +4510,34 @@ function markVisitedHybrid(tracks){
             [lon2, lat2]
           ]);
 
-          if(turf.booleanIntersects(line, cell.geo)){
+          const poly = turf.polygon([
+            cell.coords.map(([lat, lon]) => [lon, lat])
+          ]);
+
+          if(turf.booleanIntersects(line, poly)){
             visited[id] = true;
-            break;
           }
 
-        } catch(e){
-          console.warn("⚠ Turf error:", e);
-        }
+        } catch(e){}
       }
-
-      if(visited[id]) break;
     }
   }
 
   // ======================================================
-  // 🔥 SAVE + CACHE UPDATE
+  // 🔥 SAVE + CACHE
   // ======================================================
   if(Object.keys(visited).length){
 
-    const finalDate = trackDate || todayStr;
-    const key = "grid_" + finalDate;
+    const key = "grid_" + todayStr;
 
-    console.log("💾 Saving into key:", key);
-
-    let data;
+    let data = {};
 
     try {
       data = JSON.parse(localStorage.getItem(key) || "{}");
-    } catch(e){
-      console.warn("⚠ JSON parse failed:", key);
-      data = {};
-    }
+    } catch(e){}
 
-    // ======================================================
-    // 🔥 MERGE VISITED
-    // ======================================================
     Object.keys(visited).forEach(id => {
 
-      // ❌ DO NOT trust memory as source of truth
-      // (only for UI)
       if(window.gridIndex[id]){
         window.gridIndex[id].visited = true;
       }
@@ -4517,56 +4547,20 @@ function markVisitedHybrid(tracks){
 
     localStorage.setItem(key, JSON.stringify(data));
 
-    console.log("📦 Total grids in this day:", Object.keys(data).length);
-
-    // ======================================================
-    // 🔥 CACHE UPDATE (FIXED LOGIC)
-    // ======================================================
     window.gridCache = window.gridCache || {};
+    window.gridCache.today = data;
 
-    const todayKey = "grid_" + todayStr;
-
-    try {
-
-      // ✅ ONLY update TODAY cache if this is today's data
-      if(finalDate === todayStr){
-
-        window.gridCache.today =
-          JSON.parse(localStorage.getItem(todayKey) || "{}");
-
-        console.log("🟢 TODAY cache updated:",
-          Object.keys(window.gridCache.today).length
-        );
-
-      } else {
-
-        // ❗ DO NOT overwrite today cache
-        window.gridCache.today = window.gridCache.today || {};
-
-        console.log("⏭ Skipped TODAY cache update (old date):", finalDate);
-      }
-
-    } catch(e){
-      console.warn("⚠ Today cache load failed");
-      window.gridCache.today = window.gridCache.today || {};
-    }
-
-    // ======================================================
-    // 🔥 MONTH CACHE (ALWAYS UPDATE)
-    // ======================================================
     if(typeof updateMonthCache === "function"){
       updateMonthCache();
     }
 
     console.log(
       "✅ Hybrid visited:",
-      Object.keys(visited).length,
-      "| Date:",
-      finalDate
+      Object.keys(visited).length
     );
 
   } else {
-    console.log("⚠ No grids intersected for this track");
+    console.log("⚠ No grids intersected");
   }
 
   return visited;
@@ -6625,53 +6619,61 @@ function saveTodayVisited(){
     // ======================================================
 // 🔥 GRID UPDATE FROM STAFF TRACKS (FINAL FIX)
 // ======================================================
+// ======================================================
+// 🔥 GRID UPDATE FROM STAFF TRACKS (HYBRID - FINAL)
+// ======================================================
 try {
 
-  let points = [];
-  const MAX_POINTS = 15;
+  let tracks = [];
 
   staff.forEach(s=>{
 
     if(Array.isArray(s.track) && s.track.length > 1){
 
-      const trimmed = s.track.slice(-MAX_POINTS);
-
-      trimmed.forEach(p=>{
-        if(Array.isArray(p) && p.length === 2){
-          points.push({
-            lat: p[0],
-            lng: p[1]
-          });
-        }
+      tracks.push({
+        track: s.track
       });
 
     }
 
   });
 
-  if(points.length && window.gridIndex){
+  if(tracks.length && window.gridIndex){
 
-    console.log("📍 Feeding grid points:", points.length);
+    console.log("📍 Feeding tracks to hybrid:", tracks.length);
 
-    updateGridFromPoints(points);   // ✅ DIRECT + FAST
+    // 🔥 USE HYBRID (LINE BASED)
+    markVisitedHybrid(tracks);
 
-    saveTodayVisited();
+    // 🔥 SAFE CACHE SYNC
+    const todayKey = "grid_" + getLocalDateStr();
 
+    try {
+      window.gridCache = window.gridCache || {};
+      window.gridCache.today =
+        JSON.parse(localStorage.getItem(todayKey) || "{}");
+    } catch(e){}
+
+    // 🔥 MONTH UPDATE
+    if(typeof updateMonthCache === "function"){
+      updateMonthCache();
+    }
+
+    // 🔥 RENDER
     renderGrid(
       window.currentCoverageMode || "today",
       window.currentBeat || "ALL"
     );
 
-    console.log("✅ Grid updated from staff tracks");
+    console.log("✅ Grid updated from staff tracks (HYBRID)");
 
   } else {
-    console.warn("⚠ No track points for grid");
+    console.warn("⚠ No tracks for grid");
   }
 
 } catch(e){
   console.error("❌ Grid update error:", e);
 }
-
   })
   .catch(err => console.error("❌ loadStaff error:", err));
 
