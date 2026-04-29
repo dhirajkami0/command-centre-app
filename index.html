@@ -1449,7 +1449,6 @@ function startApp(){
     // 🚀 PHASE 2 → DELAYED TASKS (NO FREEZE)
     // ======================================================
 
-        // 🔥 Cleanup messages (HEAVY → DELAY MORE)
     setTimeout(() => {
       try {
         cleanOldMessages();
@@ -1481,36 +1480,44 @@ function startApp(){
             return;
           }
 
-         // ===============================
-// 🔥 CACHE-FIRST GRID INIT
-// ===============================
-if(!window.__gridLoadedFromCache){
+          // ===============================
+          // 🔥 CACHE-FIRST GRID INIT
+          // ===============================
+          if(!window.__gridLoadedFromCache){
 
-  const loaded = loadGridFromCache();
+            const loaded = loadGridFromCache();
 
-  if(loaded){
+            if(loaded){
 
-    window.__gridLoadedFromCache = true;
+              window.__gridLoadedFromCache = true;
 
-    console.log("⚡ Using cached grid ONLY (no rebuild)");
+              console.log("⚡ Using cached grid ONLY (no rebuild)");
 
-    setTimeout(() => {
-      renderGrid("current", "ALL");
-    }, 200);
+              setTimeout(() => {
+                renderGrid("current", "ALL");
+              }, 200);
 
-    // 🔥 CRITICAL FIX
-    clearInterval(gridInitInterval);
+              clearInterval(gridInitInterval);
+              return;
+            }
+          }
 
-    return;
-  }
-}
+          // ===============================
+          // 🔥 SAFE BUILD (ONLY ONCE)
+          // ===============================
+          if(!window.__gridLoadedFromCache && !window.__gridBuilding){
+            ensureGridReady();
+          }
 
-// ❌ ONLY BUILD IF CACHE FAILED
-ensureGridReady();
-
+          // ===============================
+          // 🔥 AFTER GRID READY
+          // ===============================
           if(window.gridIndex && Object.keys(window.gridIndex).length){
 
             console.log("🎯 Grid ready");
+
+            // 🔥 STOP INTERVAL AFTER SUCCESS
+            clearInterval(gridInitInterval);
 
             const BACKFILL_KEY = "kmlBackfillDone_v2";
             window.__currentMonthPrefix = new Date().toISOString().slice(0,7);
@@ -1519,7 +1526,6 @@ ensureGridReady();
 
               console.log("🚀 Scheduling backfill...");
 
-              // 🔥 DELAY BACKFILL (CRITICAL)
               setTimeout(() => {
                 runBackfillAuto();
               }, 3000);
@@ -1527,8 +1533,6 @@ ensureGridReady();
             } else {
               console.log("⏭ Backfill already completed");
             }
-
-            clearInterval(gridInitInterval);
           }
 
           if(attempts > 10){
@@ -1560,96 +1564,87 @@ ensureGridReady();
       }
     }, 15000);
 
-    // ======================================================
-    // ❌ REMOVE KML WARM CACHE (NOT NEEDED ANYMORE)
-    // ======================================================
-    // ❌ warmKMLCache removed (you use GeoJSON now)
-
     console.log("✅ App initialized (optimized, no freeze)");
+
     // ======================================================
-// 🔥 DELAYED FIREBASE INIT (NON-BLOCKING)
-// ======================================================
-setTimeout(async () => {
+    // 🔥 DELAYED FIREBASE INIT (NON-BLOCKING)
+    // ======================================================
+    setTimeout(async () => {
 
-  try {
+      try {
 
-    console.log("🔥 Loading Firebase (delayed)");
+        console.log("🔥 Loading Firebase (delayed)");
 
-    // ================= IMPORTS =================
-    const { initializeApp } = await import("https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js");
+        const { initializeApp } = await import("https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js");
 
-    const {
-      getFirestore,
-      collection,
-      addDoc,
-      onSnapshot,
-      query,
-      orderBy,
-      serverTimestamp,
-      getDocs,
-      deleteDoc,
-      doc,
-      setDoc,
-      updateDoc,
-      arrayUnion
-    } = await import("https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js");
+        const {
+          getFirestore,
+          collection,
+          addDoc,
+          onSnapshot,
+          query,
+          orderBy,
+          serverTimestamp,
+          getDocs,
+          deleteDoc,
+          doc,
+          setDoc,
+          updateDoc,
+          arrayUnion
+        } = await import("https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js");
 
-    const {
-      getStorage,
-      ref,
-      uploadBytes,
-      getDownloadURL
-    } = await import("https://www.gstatic.com/firebasejs/10.12.0/firebase-storage.js");
+        const {
+          getStorage,
+          ref,
+          uploadBytes,
+          getDownloadURL
+        } = await import("https://www.gstatic.com/firebasejs/10.12.0/firebase-storage.js");
 
-    // ================= INIT =================
-    const app = initializeApp(window.firebaseConfig);
+        const app = initializeApp(window.firebaseConfig);
 
-    window.db = getFirestore(app);
-    window.storage = getStorage(app);
+        window.db = getFirestore(app);
+        window.storage = getStorage(app);
 
-    // ================= GLOBAL ACCESS =================
-    window.fb = {
-      collection,
-      addDoc,
-      onSnapshot,
-      query,
-      orderBy,
-      serverTimestamp,
-      getDocs,
-      deleteDoc,
-      doc,
-      setDoc,
-      updateDoc,
-      arrayUnion,
-      ref,
-      uploadBytes,
-      getDownloadURL
-    };
+        window.fb = {
+          collection,
+          addDoc,
+          onSnapshot,
+          query,
+          orderBy,
+          serverTimestamp,
+          getDocs,
+          deleteDoc,
+          doc,
+          setDoc,
+          updateDoc,
+          arrayUnion,
+          ref,
+          uploadBytes,
+          getDownloadURL
+        };
 
-    window.firebaseReady = true;
+        window.firebaseReady = true;
 
-console.log("✅ Firebase READY (delayed)");
-// 🔥 START CHAT HERE (PERFECT TIMING)
-try {
-  console.log("💬 Starting chat after Firebase ready");
-  startChat();
-} catch(e){
-  console.warn("⚠ startChat failed");
-}
+        console.log("✅ Firebase READY (delayed)");
 
-} catch(e){
-  console.error("❌ Firebase load failed:", e);
-}
+        try {
+          console.log("💬 Starting chat after Firebase ready");
+          startChat();
+        } catch(e){
+          console.warn("⚠ startChat failed");
+        }
 
-}, 1500); // ✅ THIS LINE FIXES EVERYTHING
-    
-// 🔥 ADD THIS BELOW
-} catch(e){
-  console.error("❌ startApp crash:", e);
-}
+      } catch(e){
+        console.error("❌ Firebase load failed:", e);
+      }
 
-} // 🔥 THIS CLOSES startApp()  
-    
+    }, 1500);
+
+  } catch(e){
+    console.error("❌ startApp crash:", e);
+  }
+
+}    
     
    console.log("🔥 NEW BUILD LOADED - VERSION 999");
 
