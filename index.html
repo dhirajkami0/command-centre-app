@@ -3728,12 +3728,23 @@ window.gridCache = window.gridCache || {
 // ======================================================
 function assignGridToBeat(rangeLayer){
 
-  console.log("🎯 Assigning grid to beats (FINAL STABLE)...");
+  console.log("🎯 Assigning grid to beats (OPTIMIZED)...");
 
   try {
 
+    // ===============================
+    // 🔥 SAFETY: TURF CHECK
+    // ===============================
+    if(typeof turf === "undefined"){
+      console.error("❌ Turf not loaded → skipping beat assignment");
+      return;
+    }
+
     let polygons = [];
 
+    // ===============================
+    // 🔥 EXTRACT POLYGONS
+    // ===============================
     function extract(layer){
 
       if (!layer) return;
@@ -3742,26 +3753,29 @@ function assignGridToBeat(rangeLayer){
 
         const p = layer.feature?.properties || {};
         const rawID = p.ID || p.Name || "";
-        const comp = convertCompartment(rawID);
 
+        const comp = convertCompartment(rawID);
         if(!comp) return;
 
         const latlngs = layer.getLatLngs()[0];
 
+        if(!latlngs || latlngs.length < 3) return;
+
         let coords = latlngs.map(pt => [pt.lng, pt.lat]);
 
-        if(coords.length){
-          const f = coords[0];
-          const l = coords[coords.length - 1];
-          if(f[0] !== l[0] || f[1] !== l[1]){
-            coords.push(f);
-          }
+        // 🔥 CLOSE POLYGON
+        const f = coords[0];
+        const l = coords[coords.length - 1];
+        if(f[0] !== l[0] || f[1] !== l[1]){
+          coords.push(f);
         }
 
-        polygons.push({
-          comp,
-          turfPoly: turf.polygon([coords])
-        });
+        try {
+          polygons.push({
+            comp,
+            turfPoly: turf.polygon([coords])
+          });
+        } catch(e){}
 
         return;
       }
@@ -3772,13 +3786,16 @@ function assignGridToBeat(rangeLayer){
     extract(rangeLayer);
 
     if(!polygons.length){
-      console.warn("⚠ No polygons found");
+      console.warn("⚠ No polygons found for beat mapping");
       return;
     }
 
     console.log("📐 Total polygons:", polygons.length);
 
-    Object.values(window.gridIndex).forEach(cell => {
+    // ===============================
+    // 🔥 GRID LOOP
+    // ===============================
+    Object.values(window.gridIndex || {}).forEach(cell => {
 
       if(!cell.geo){
         cell.beat = "UNKNOWN";
@@ -3786,67 +3803,76 @@ function assignGridToBeat(rangeLayer){
       }
 
       let bestBeat = "UNKNOWN";
-      let bestScore = 0;
 
-      const cellArea = turf.area(cell.geo);
+      // ==========================================
+      // 🔥 FAST METHOD: CENTROID FIRST (90% CASES)
+      // ==========================================
+      try {
 
-      for(let poly of polygons){
+        const centroid = turf.centroid(cell.geo).geometry.coordinates;
+        const pt = turf.point(centroid);
 
-        let beat = null;
+        for(let poly of polygons){
 
-        for(let key in window.beatMap){
-          if(window.beatMap[key].includes(poly.comp)){
-            beat = key;
-            break;
-          }
-        }
+          let beat = null;
 
-        if(!beat) continue;
-
-        try {
-
-          const inter = turf.intersect(cell.geo, poly.turfPoly);
-          if(!inter) continue;
-
-          const interArea = turf.area(inter);
-
-          if(interArea < 5) continue;
-
-          const score = interArea / cellArea;
-
-          if(score > bestScore){
-            bestScore = score;
-            bestBeat = beat;
-          }
-
-        } catch(e){}
-      }
-
-      if(bestBeat === "UNKNOWN"){
-        try {
-          const c = turf.centroid(cell.geo).geometry.coordinates;
-          const pt = turf.point(c);
-
-          for(let poly of polygons){
-
-            let beat = null;
-
-            for(let key in window.beatMap){
-              if(window.beatMap[key].includes(poly.comp)){
-                beat = key;
-                break;
-              }
-            }
-
-            if(!beat) continue;
-
-            if(turf.booleanPointInPolygon(pt, poly.turfPoly)){
-              bestBeat = beat;
+          for(let key in window.beatMap){
+            if(window.beatMap[key].includes(poly.comp)){
+              beat = key;
               break;
             }
           }
 
-        } catch(e){}
+          if(!beat) continue;
+
+          if(turf.booleanPointInPolygon(pt, poly.turfPoly)){
+            bestBeat = beat;
+            break;
+          }
+        }
+
+      } catch(e){}
+
+      // ==========================================
+      // 🔥 FALLBACK: INTERSECTION (ONLY IF NEEDED)
+      // ==========================================
+      if(bestBeat === "UNKNOWN"){
+
+        let bestScore = 0;
+
+        const cellArea = turf.area(cell.geo);
+
+        for(let poly of polygons){
+
+          let beat = null;
+
+          for(let key in window.beatMap){
+            if(window.beatMap[key].includes(poly.comp)){
+              beat = key;
+              break;
+            }
+          }
+
+          if(!beat) continue;
+
+          try {
+
+            const inter = turf.intersect(cell.geo, poly.turfPoly);
+            if(!inter) continue;
+
+            const interArea = turf.area(inter);
+
+            if(interArea < 5) continue;
+
+            const score = interArea / cellArea;
+
+            if(score > bestScore){
+              bestScore = score;
+              bestBeat = beat;
+            }
+
+          } catch(e){}
+        }
       }
 
       cell.beat = bestBeat;
@@ -3859,7 +3885,6 @@ function assignGridToBeat(rangeLayer){
     console.error("❌ assignGridToBeat error:", e);
   }
 }
-
 
 // ======================================================
 // 🧠 GRID CACHE (LIVE + MONTH)
@@ -4156,11 +4181,15 @@ function renderGrid(mode = "today", beat = "ALL"){
       return;
     }
 
+    // ===============================
+    // 🔥 ENSURE LAYER EXISTS + ON MAP
+    // ===============================
     if(!window.gridLayer){
-      window.gridLayer = L.layerGroup();
+      window.gridLayer = L.layerGroup().addTo(map);
+    } else if(!map.hasLayer(window.gridLayer)){
+      window.gridLayer.addTo(map);
     }
 
-    // 🔥 DO NOT add/remove layer here
     window.gridLayer.clearLayers();
 
     // ===============================
@@ -4177,86 +4206,108 @@ function renderGrid(mode = "today", beat = "ALL"){
     let total = 0;
     let visited = 0;
 
-    Object.entries(window.gridIndex).forEach(([id, cell]) => {
+    const entries = Object.entries(window.gridIndex);
 
-      try {
+    // ===============================
+    // 🔥 CHUNK RENDER (NO FREEZE)
+    // ===============================
+    let i = 0;
+    const chunkSize = 200;
 
-        if(!cell || !cell.geo) return;
-        if(beat !== "ALL" && cell.beat !== beat) return;
+    function drawChunk(){
 
-        total++;
+      const slice = entries.slice(i, i + chunkSize);
 
-        const isVisited = !!current[id];
-        if(isVisited) visited++;
+      slice.forEach(([id, cell]) => {
 
-        const color = isVisited ? "#00ff00" : "#ff0000";
-        const opacity = isVisited ? 0.5 : 0.3;
+        try {
 
-        L.geoJSON(cell.geo, {
+          if(!cell || !cell.geo) return;
+          if(beat !== "ALL" && cell.beat !== beat) return;
 
-          style: {
-            color: "#222",
-            weight: 0.25,
-            fillColor: color,
-            fillOpacity: opacity,
-            smoothFactor: 0
-          },
+          total++;
 
-          onEachFeature: function(feature, layer){
+          const isVisited = !!current[id];
+          if(isVisited) visited++;
 
-            layer.on("click", function(){
+          const color = isVisited ? "#00ff00" : "#ff0000";
+          const opacity = isVisited ? 0.5 : 0.3;
 
-              try {
+          L.geoJSON(cell.geo, {
 
-                const stats = getCoverageStats(mode, beat);
-                if(!stats) return;
+            renderer: L.canvas(), // 🔥 PERFORMANCE BOOST
 
-                let html = "";
+            style: {
+              color: "#222",
+              weight: 0.25,
+              fillColor: color,
+              fillOpacity: opacity,
+              smoothFactor: 0
+            },
 
-                if(isVisited){
-                  html = `
-                  <div style="font-family:Segoe UI">
-                    <b>🟢 VISITED AREA</b><br><br>
-                    📊 Grids: ${stats.visitedGrids} / ${stats.totalGrids}<br>
-                    🌿 Area: ${stats.visitedAreaHa} / ${stats.totalAreaHa} Ha<br>
-                    📈 Coverage: ${stats.percent}%
-                  </div>`;
-                } else {
-                  html = `
-                  <div style="font-family:Segoe UI">
-                    <b>🔴 UNVISITED AREA</b><br><br>
-                    📊 Grids: ${stats.unvisitedGrids} / ${stats.totalGrids}<br>
-                    🌿 Area: ${stats.unvisitedAreaHa} / ${stats.totalAreaHa} Ha<br>
-                    📉 Remaining: ${(100 - stats.percent).toFixed(1)}%
-                  </div>`;
+            onEachFeature: function(feature, layer){
+
+              layer.on("click", function(){
+
+                try {
+
+                  const stats = getCoverageStats(mode, beat);
+                  if(!stats) return;
+
+                  let html = "";
+
+                  if(isVisited){
+                    html = `
+                    <div style="font-family:Segoe UI">
+                      <b>🟢 VISITED AREA</b><br><br>
+                      📊 Grids: ${stats.visitedGrids} / ${stats.totalGrids}<br>
+                      🌿 Area: ${stats.visitedAreaHa} / ${stats.totalAreaHa} Ha<br>
+                      📈 Coverage: ${stats.percent}%
+                    </div>`;
+                  } else {
+                    html = `
+                    <div style="font-family:Segoe UI">
+                      <b>🔴 UNVISITED AREA</b><br><br>
+                      📊 Grids: ${stats.unvisitedGrids} / ${stats.totalGrids}<br>
+                      🌿 Area: ${stats.unvisitedAreaHa} / ${stats.totalAreaHa} Ha<br>
+                      📉 Remaining: ${(100 - stats.percent).toFixed(1)}%
+                    </div>`;
+                  }
+
+                  layer.bindPopup(html).openPopup();
+
+                } catch(e){
+                  console.error("❌ Popup error:", e);
                 }
 
-                layer.bindPopup(html).openPopup();
+              });
 
-              } catch(e){
-                console.error("❌ Popup error:", e);
-              }
+            }
 
-            });
+          }).addTo(window.gridLayer);
 
-          }
+        } catch(e){
+          console.warn("⚠ Grid render fail:", id);
+        }
 
-        }).addTo(window.gridLayer);
+      });
 
-      } catch(e){
-        console.warn("⚠ Grid render fail:", id);
+      i += chunkSize;
+
+      if(i < entries.length){
+        requestAnimationFrame(drawChunk);
+      } else {
+        const percent = total ? ((visited / total) * 100).toFixed(1) : 0;
+        console.log(`📊 ${visited}/${total} (${percent}%)`);
       }
+    }
 
-    });
-
-    const percent = total ? ((visited / total) * 100).toFixed(1) : 0;
-
-    console.log(`📊 ${visited}/${total} (${percent}%)`);
+    drawChunk();
 
   } catch(e){
     console.error("❌ renderGrid crash:", e);
   }
-}   function saveTodayVisited(){
+}  function saveTodayVisited(){
 
   const key = "grid_" + getLocalDateStr();
 
