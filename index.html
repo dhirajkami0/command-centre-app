@@ -1618,7 +1618,12 @@ try {
 
 }, 1500); // ✅ THIS LINE FIXES EVERYTHING
     
-  
+// 🔥 ADD THIS BELOW
+} catch(e){
+  console.error("❌ startApp crash:", e);
+}
+
+} // 🔥 THIS CLOSES startApp()  
     
     
    console.log("🔥 NEW BUILD LOADED - VERSION 999");
