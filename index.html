@@ -3748,23 +3748,17 @@ window.gridCache = window.gridCache || {
 // ======================================================
 function assignGridToBeat(rangeLayer){
 
-  console.log("🎯 Assigning grid to beats (OPTIMIZED)...");
+  console.log("🎯 Assigning grid to beats (FINAL)...");
 
   try {
 
-    // ===============================
-    // 🔥 SAFETY: TURF CHECK
-    // ===============================
     if(typeof turf === "undefined"){
-      console.error("❌ Turf not loaded → skipping beat assignment");
+      console.error("❌ Turf not loaded");
       return;
     }
 
     let polygons = [];
 
-    // ===============================
-    // 🔥 EXTRACT POLYGONS
-    // ===============================
     function extract(layer){
 
       if (!layer) return;
@@ -3778,24 +3772,20 @@ function assignGridToBeat(rangeLayer){
         if(!comp) return;
 
         const latlngs = layer.getLatLngs()[0];
-
         if(!latlngs || latlngs.length < 3) return;
 
         let coords = latlngs.map(pt => [pt.lng, pt.lat]);
 
-        // 🔥 CLOSE POLYGON
         const f = coords[0];
         const l = coords[coords.length - 1];
         if(f[0] !== l[0] || f[1] !== l[1]){
           coords.push(f);
         }
 
-        try {
-          polygons.push({
-            comp,
-            turfPoly: turf.polygon([coords])
-          });
-        } catch(e){}
+        polygons.push({
+          comp,
+          turfPoly: turf.polygon([coords])
+        });
 
         return;
       }
@@ -3806,92 +3796,42 @@ function assignGridToBeat(rangeLayer){
     extract(rangeLayer);
 
     if(!polygons.length){
-      console.warn("⚠ No polygons found for beat mapping");
+      console.warn("⚠ No polygons");
       return;
     }
 
-    console.log("📐 Total polygons:", polygons.length);
+    console.log("📐 Polygons:", polygons.length);
 
     // ===============================
-    // 🔥 GRID LOOP
+    // 🔥 GRID LOOP (CENTER BASED)
     // ===============================
     Object.values(window.gridIndex || {}).forEach(cell => {
 
-      if(!cell.geo){
+      if(!cell.center){
         cell.beat = "UNKNOWN";
         return;
       }
 
+      const pt = turf.point([cell.center.lng, cell.center.lat]);
+
       let bestBeat = "UNKNOWN";
 
-      // ==========================================
-      // 🔥 FAST METHOD: CENTROID FIRST (90% CASES)
-      // ==========================================
-      try {
+      for(let poly of polygons){
 
-        const centroid = turf.centroid(cell.geo).geometry.coordinates;
-        const pt = turf.point(centroid);
+        let beat = null;
 
-        for(let poly of polygons){
-
-          let beat = null;
-
-          for(let key in window.beatMap){
-            if(window.beatMap[key].includes(poly.comp)){
-              beat = key;
-              break;
-            }
-          }
-
-          if(!beat) continue;
-
-          if(turf.booleanPointInPolygon(pt, poly.turfPoly)){
-            bestBeat = beat;
+        for(let key in window.beatMap){
+          if(window.beatMap[key].includes(poly.comp)){
+            beat = key;
             break;
           }
         }
 
-      } catch(e){}
+        if(!beat) continue;
 
-      // ==========================================
-      // 🔥 FALLBACK: INTERSECTION (ONLY IF NEEDED)
-      // ==========================================
-      if(bestBeat === "UNKNOWN"){
-
-        let bestScore = 0;
-
-        const cellArea = turf.area(cell.geo);
-
-        for(let poly of polygons){
-
-          let beat = null;
-
-          for(let key in window.beatMap){
-            if(window.beatMap[key].includes(poly.comp)){
-              beat = key;
-              break;
-            }
-          }
-
-          if(!beat) continue;
-
-          try {
-
-            const inter = turf.intersect(cell.geo, poly.turfPoly);
-            if(!inter) continue;
-
-            const interArea = turf.area(inter);
-
-            if(interArea < 5) continue;
-
-            const score = interArea / cellArea;
-
-            if(score > bestScore){
-              bestScore = score;
-              bestBeat = beat;
-            }
-
-          } catch(e){}
+        if(turf.booleanPointInPolygon(pt, poly.turfPoly)){
+          bestBeat = beat;
+          break;
         }
       }
 
@@ -3899,14 +3839,12 @@ function assignGridToBeat(rangeLayer){
 
     });
 
-    console.log("✅ Grid → Beat mapping COMPLETE");
+    console.log("✅ Beat mapping COMPLETE");
 
   } catch(e){
     console.error("❌ assignGridToBeat error:", e);
   }
-}
-
-// ======================================================
+}// ======================================================
 // 🧠 GRID CACHE (LIVE + MONTH)
 // ======================================================
 
@@ -4744,20 +4682,17 @@ window.beatMap = {
 
   id = id.toUpperCase().trim();
 
-  // 🔹 Damanpur BL1 → DPO 1
+  // 🔥 DIRECT MATCH (YOUR CASE)
+  if(id.startsWith("PORO") || id.startsWith("DPO")){
+    return id;
+  }
+
   if(id.includes("DAMANPUR")){
     const num = id.match(/\d+/);
     return num ? "DPO " + num[0] : "";
   }
 
-  // 🔹 Poro BL4 → PORO 4
   if(id.includes("PORO") && id.includes("BL")){
-    const num = id.match(/\d+/);
-    return num ? "PORO " + num[0] : "";
-  }
-
-  // 🔹 Poro5 → PORO 5
-  if(id.startsWith("PORO") && !id.includes("BL")){
     const num = id.match(/\d+/);
     return num ? "PORO " + num[0] : "";
   }
