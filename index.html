@@ -3773,20 +3773,32 @@ function assignGridToBeat(rangeLayer){
         const comp = convertCompartment(rawID);
         if(!comp) return;
 
-        const latlngs = layer.getLatLngs()[0];
-        if(!latlngs || latlngs.length < 3) return;
+        // 🔥 FIX: handle Polygon + MultiPolygon correctly
+        let latlngs = layer.getLatLngs();
 
-        let coords = latlngs.map(pt => [pt.lng, pt.lat]);
+        // Normalize to array of rings
+        const rings = Array.isArray(latlngs[0][0]) ? latlngs : [latlngs];
 
-        const f = coords[0];
-        const l = coords[coords.length - 1];
-        if(f[0] !== l[0] || f[1] !== l[1]){
-          coords.push(f);
-        }
+        rings.forEach(ring => {
 
-        polygons.push({
-          comp,
-          turfPoly: turf.polygon([coords])
+          if(!ring || ring.length < 3) return;
+
+          let coords = ring.map(pt => [pt.lng, pt.lat]);
+
+          // 🔥 ensure closed polygon
+          const f = coords[0];
+          const l = coords[coords.length - 1];
+
+          if(f[0] !== l[0] || f[1] !== l[1]){
+            coords.push(f);
+          }
+
+          try {
+            polygons.push({
+              comp,
+              turfPoly: turf.polygon([coords])
+            });
+          } catch(e){}
         });
 
         return;
@@ -3831,10 +3843,12 @@ function assignGridToBeat(rangeLayer){
 
         if(!beat) continue;
 
-        if(turf.booleanPointInPolygon(pt, poly.turfPoly)){
-          bestBeat = beat;
-          break;
-        }
+        try {
+          if(turf.booleanPointInPolygon(pt, poly.turfPoly)){
+            bestBeat = beat;
+            break;
+          }
+        } catch(e){}
       }
 
       cell.beat = bestBeat;
