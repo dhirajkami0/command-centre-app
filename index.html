@@ -144,7 +144,7 @@ async function cleanOldMessages(){
 
 <!-- ✅ CORE MAP LIBRARY -->
 <script src="js/leaflet.js"></script>
-
+<script src="https://cdn.jsdelivr.net/npm/@turf/turf@6/turf.min.js"></script>
 <!-- ✅ OPTIONAL (KEEP ONLY IF USED) -->
   <script src="./js/leaflet-pip.min.js"></script>
 
@@ -3451,7 +3451,18 @@ async function loadRangeKML(){
       } else {
 
         console.log("✅ GeoJSON render complete");
+// 🔥 FORCE GRID AFTER DATA READY
+setTimeout(() => {
 
+  console.log("🔲 Triggering grid build (FINAL)");
+
+  window.__gridReady = false; // allow rebuild
+
+  ensureGridReady();
+
+  renderGrid("current", "ALL");
+
+}, 500);
         // ======================================
         // 🎯 FIT MAP (SAFE)
         // ======================================
@@ -4267,12 +4278,21 @@ function renderGrid(mode = "today", beat = "ALL"){
   if(typeof updateMonthCache === "function"){
     updateMonthCache();
   }
-}function ensureGridReady(){
+}
+    function ensureGridReady(){
 
   const TARGET_GRID_SIZE = 0.00045; // 🔥 50m grid
 
   // ===============================
-  // 🔥 STEP 1: CHECK MEMORY ONLY
+  // 🔥 PREVENT MULTIPLE RUNS
+  // ===============================
+  if(window.__gridBuilding){
+    console.warn("⏳ Grid build already in progress");
+    return;
+  }
+
+  // ===============================
+  // 🔥 CHECK EXISTING GRID
   // ===============================
   if (window.gridIndex && Object.keys(window.gridIndex).length) {
 
@@ -4289,12 +4309,32 @@ function renderGrid(mode = "today", beat = "ALL"){
   console.log("🔁 Building NEW 50m grid...");
 
   // ===============================
-  // 🔥 STEP 2: VALIDATE INPUT
+  // 🔥 VALIDATE RANGE LAYER
   // ===============================
   if (!window.rangeLayer) {
     console.warn("⚠ rangeLayer not ready");
     return;
   }
+
+  const layers = window.rangeLayer.getLayers();
+
+  if (!layers || !layers.length) {
+    console.warn("⚠ rangeLayer has no polygons yet");
+    return;
+  }
+
+  // ===============================
+  // 🔥 VALIDATE TURF (CRITICAL)
+  // ===============================
+  if (typeof turf === "undefined") {
+    console.error("❌ Turf not loaded");
+    return;
+  }
+
+  // ===============================
+  // 🔥 START BUILD
+  // ===============================
+  window.__gridBuilding = true;
 
   try {
 
@@ -4302,25 +4342,50 @@ function renderGrid(mode = "today", beat = "ALL"){
 
     if (!bounds || !bounds.isValid()) {
       console.warn("⚠ Invalid bounds");
+      window.__gridBuilding = false;
       return;
     }
 
     // ===============================
-    // 🔥 STEP 3: BUILD GRID
+    // 🔥 BUILD GRID
     // ===============================
     buildGridFromBounds(bounds, window.rangeLayer);
 
     // ===============================
-    // 🔥 STEP 4: ASSIGN BEATS
+    // 🔥 ASSIGN BEATS
     // ===============================
-    assignGridToBeat(window.rangeLayer);
+    try {
+      assignGridToBeat(window.rangeLayer);
+    } catch(e){
+      console.warn("⚠ Beat assignment failed (continuing)");
+    }
 
-    console.log("✅ 50m Grid built & ready");
+    // ===============================
+    // 🔥 MARK READY
+    // ===============================
+    window.gridMeta = {
+      size: TARGET_GRID_SIZE,
+      total: Object.keys(window.gridIndex || {}).length
+    };
+
+    console.log("✅ 50m Grid built & ready:", window.gridMeta.total);
+
+    // ===============================
+    // 🔥 AUTO RENDER (IMPORTANT)
+    // ===============================
+    if(typeof renderGrid === "function"){
+      renderGrid("current", "ALL");
+    }
 
   } catch(e){
     console.error("❌ Grid build failed:", e);
   }
-}  // ===== UI EVENTS =====
+
+  // ===============================
+  // 🔥 RESET FLAG
+  // ===============================
+  window.__gridBuilding = false;
+} // ===== UI EVENTS =====
   
 
    // ===============================
