@@ -6418,94 +6418,66 @@ function saveTodayVisited(){
   try {
 
     if(!points || !points.length){
-      console.warn("❌ No points to process");
+      console.warn("❌ No points");
       return;
     }
 
-    if(!window.gridIndex || !Object.keys(window.gridIndex).length){
+    if(!window.gridIndex){
       console.warn("⚠ Grid not ready");
       return;
     }
 
+    const step = window.gridMeta?.size || 0.00045;
     let updated = 0;
 
+    window.gridCache = window.gridCache || {};
+    window.gridCache.month = window.gridCache.month || {};
+
+    const todayKey = "grid_" + getLocalDateStr();
+    let todayData = JSON.parse(localStorage.getItem(todayKey) || "{}");
+
     // ===============================
-    // 🔥 PROCESS EACH GRID CELL
+    // 🔥 DIRECT GRID HIT (NO TURF)
     // ===============================
-    Object.entries(window.gridIndex).forEach(([id, cell]) => {
+    points.forEach(p => {
 
-      if(!cell || !cell.geo) return;
+      let lat, lng;
 
-      // Skip already visited (performance boost)
-      if(cell.visited) return;
+      if(Array.isArray(p)){
+        lat = p[0];
+        lng = p[1];
+      } else {
+        lat = p.lat;
+        lng = p.lng;
+      }
 
-      for(const p of points){
+      if(lat == null || lng == null) return;
 
-        let lat, lng;
+      // 🔥 SNAP TO GRID
+      const snapLat = Math.floor(lat / step) * step;
+      const snapLng = Math.floor(lng / step) * step;
 
-        // ===============================
-        // 🔥 SUPPORT MULTIPLE FORMATS
-        // ===============================
-        if(Array.isArray(p)){
-          lat = p[0];
-          lng = p[1];
-        } else if(typeof p === "object"){
-          lat = p.lat;
-          lng = p.lng;
-        }
+      const id = snapLat.toFixed(6) + "_" + snapLng.toFixed(6);
 
-        if(lat == null || lng == null) continue;
+      const cell = window.gridIndex[id];
 
-        // ===============================
-        // 🔥 CREATE TURF POINT
-        // ===============================
-        const pt = turf.point([lng, lat]); // ⚠ [lng, lat]
+      if(cell && !cell.visited){
 
-        // ===============================
-        // 🔥 BUFFER (GPS ACCURACY FIX)
-        // ===============================
-        const buffered = turf.buffer(pt, 20, { units: "meters" });
+        cell.visited = true;
+        updated++;
 
-        try {
-
-          // ===============================
-          // 🔥 INTERSECTION CHECK
-          // ===============================
-          if(turf.booleanIntersects(buffered, cell.geo)){
-
-            cell.visited = true;
-            updated++;
-
-            // ===============================
-            // 🔥 SAVE IN CACHE (MONTH)
-            // ===============================
-            window.gridCache = window.gridCache || {};
-            window.gridCache.month = window.gridCache.month || {};
-            window.gridCache.month[id] = true;
-
-            // ===============================
-            // 🔥 SAVE IN TODAY CACHE
-            // ===============================
-            const todayKey = "grid_" + getLocalDateStr();
-            let todayData = JSON.parse(localStorage.getItem(todayKey) || "{}");
-            todayData[id] = true;
-            localStorage.setItem(todayKey, JSON.stringify(todayData));
-
-            break;
-          }
-
-        } catch(e){
-          // ignore turf errors
-        }
-
+        window.gridCache.month[id] = true;
+        todayData[id] = true;
       }
 
     });
 
-    console.log(`✅ Grids updated: ${updated}`);
+    localStorage.setItem(todayKey, JSON.stringify(todayData));
+
+    console.log("⚡ Fast grid update:", updated);
 
   } catch(e){
-    console.error("❌ updateGridFromPoints crash:", e);
+    console.error("❌ Fast update crash:", e);
   }
 }
   function loadStaff(){
