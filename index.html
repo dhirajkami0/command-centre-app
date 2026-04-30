@@ -2503,6 +2503,9 @@ window.gridLayer = window.gridLayer || L.layerGroup();
 // ===============================
 // 🔥 GRID SYNC (CORRECT WAY)
 // ===============================
+// ===============================
+// 🔥 GRID SYNC CORE (NEW)
+// ===============================
 function syncGridCanvas(){
 
   if(!window.__gridCanvas) return;
@@ -2513,7 +2516,7 @@ function syncGridCanvas(){
 }
 
 // ===============================
-// 🔥 KEEP CANVAS IN SYNC (SMOOTH)
+// 🔥 GRID EVENT BIND (REPLACEMENT)
 // ===============================
 map.on("move", () => {
   requestAnimationFrame(syncGridCanvas);
@@ -2521,30 +2524,23 @@ map.on("move", () => {
 
 map.on("zoom", syncGridCanvas);
 
-// ===============================
-// 🔥 HANDLE ZOOM END (RESIZE + REDRAW)
-// ===============================
 map.on("zoomend", () => {
 
   if(!window.__gridCanvas) return;
 
-  // ✅ resize canvas properly
   const size = map.getSize();
   window.__gridCanvas.width  = size.x;
   window.__gridCanvas.height = size.y;
 
-  // ✅ align again after zoom
   syncGridCanvas();
 
-  // ✅ redraw grid
   if(window.gridVisible){
     renderGrid(
       window.currentCoverageMode || "today",
       window.currentBeat || "ALL"
     );
   }
-
-});    /* ============================================================
+});   /* ============================================================
        📊 RANGE BUTTON (SAFE)
     ============================================================ */
  let dutyCheckRunning = false;
@@ -4057,7 +4053,6 @@ function renderGrid(mode = "today", beat = "ALL"){
 
   try {
 
-    // 🔥 GLOBAL CONTROL
     if(!window.gridVisible){
       if(window.__gridCanvas){
         window.__gridCanvas.style.display = "none";
@@ -4072,48 +4067,35 @@ function renderGrid(mode = "today", beat = "ALL"){
       return;
     }
 
-    // ==========================================
-    // 🔥 ZOOM CONTROL (FIXED PROPERLY)
-    // ==========================================
     const zoom = map.getZoom();
 
     let drawBorders = true;
-
     let alphaVisited = 0.6;
     let alphaUnvisited = 0.4;
-
     let borderAlpha = 0.35;
     let borderWidth = 0.6;
 
-    // 🔻 10–12 → faint but visible
     if(zoom < 13){
       alphaVisited = 0.4;
       alphaUnvisited = 0.25;
-
       borderAlpha = 0.15;
       borderWidth = 0.3;
     }
-
-    // 🔺 13–15 → clear
     else if(zoom < 16){
       alphaVisited = 0.6;
       alphaUnvisited = 0.4;
-
       borderAlpha = 0.25;
       borderWidth = 0.45;
     }
-
-    // 🔥 16+ → sharp
     else {
       alphaVisited = 0.7;
       alphaUnvisited = 0.5;
-
       borderAlpha = 0.45;
       borderWidth = 0.8;
     }
 
     // ===============================
-    // 🔥 INIT CANVAS (ONCE)
+    // 🔥 INIT CANVAS (UNCHANGED)
     // ===============================
     if(!window.__gridCanvas){
 
@@ -4134,7 +4116,6 @@ function renderGrid(mode = "today", beat = "ALL"){
       canvas.style.visibility = "hidden";
       canvas.style.opacity = "0";
 
-      // 🔥 CLICK HANDLER (UNCHANGED)
       if(!window.__gridClickAttached){
 
         map.on("click", function(e){
@@ -4182,7 +4163,6 @@ function renderGrid(mode = "today", beat = "ALL"){
         window.__gridClickAttached = true;
       }
 
-      // 🔥 SMART RENDER
       map.on("moveend zoomend resize", () => {
 
         if(!window.gridVisible) return;
@@ -4213,18 +4193,16 @@ function renderGrid(mode = "today", beat = "ALL"){
     canvas.style.visibility = "visible";
     canvas.style.opacity = "1";
 
-    syncGridCanvas(); ✅
+    // 🔥 FIXED ALIGNMENT
+    syncGridCanvas();
+
     const size = map.getSize();
     canvas.width = size.x;
     canvas.height = size.y;
 
     ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-    // ===============================
-    // 🔥 DATA SOURCE
-    // ===============================
     let current = {};
-
     if(mode === "today"){
       current = window.gridCache?.today || {};
     } else {
@@ -4233,26 +4211,15 @@ function renderGrid(mode = "today", beat = "ALL"){
 
     const bounds = map.getBounds();
 
-    let total = 0;
-    let visited = 0;
-    let drawn = 0;
-
-    // ===============================
-    // 🔥 MAIN LOOP
-    // ===============================
     for(const [id, cell] of Object.entries(window.gridIndex)){
 
       if(!cell || !cell.coords || !cell.center) continue;
-
       if(!bounds.contains([cell.center.lat, cell.center.lng])) continue;
 
       const cellBeat = cell.beat || "UNKNOWN";
       if(beat !== "ALL" && cellBeat !== beat) continue;
 
-      total++;
-
       const isVisited = !!current[id];
-      if(isVisited) visited++;
 
       ctx.fillStyle =
         (cellBeat === "UNKNOWN") ? "#888" :
@@ -4270,8 +4237,6 @@ function renderGrid(mode = "today", beat = "ALL"){
       for(let i = 0; i < coords.length; i++){
 
         const [clat, clng] = coords[i];
-        if(clat == null || clng == null) continue;
-
         let p;
 
         try {
@@ -4279,8 +4244,6 @@ function renderGrid(mode = "today", beat = "ALL"){
         } catch(e){
           continue;
         }
-
-        if(!p) continue;
 
         if(first){
           ctx.moveTo(p.x, p.y);
@@ -4291,34 +4254,23 @@ function renderGrid(mode = "today", beat = "ALL"){
       }
 
       if(!first){
-
         ctx.closePath();
         ctx.fill();
 
-        // ==========================================
-        // 🔥 FIXED BORDER LOGIC
-        // ==========================================
         if(drawBorders && zoom >= 10){
           ctx.strokeStyle = `rgba(0,255,255,${borderAlpha})`;
           ctx.lineWidth = borderWidth;
           ctx.stroke();
         }
-
-        drawn++;
       }
     }
 
     ctx.globalAlpha = 1;
 
-    const percent = total ? ((visited / total) * 100).toFixed(1) : 0;
-
-    console.log(`📊 ${visited}/${total} (${percent}%) | drawn:${drawn}`);
-
   } catch(e){
     console.error("❌ renderGrid crash:", e);
   }
 }
-
 function getTodayKey(){
   return "grid_" + getLocalDateStr();
 }
