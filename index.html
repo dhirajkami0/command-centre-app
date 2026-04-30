@@ -4529,7 +4529,6 @@ function renderGrid(mode = "today", beat = "ALL"){
       canvas.style.left = "0";
       canvas.style.pointerEvents = "none";
 
-      // 🔥 CRITICAL FIX
       canvas.style.transformOrigin = "0 0";
 
       pane.appendChild(canvas);
@@ -4541,74 +4540,45 @@ function renderGrid(mode = "today", beat = "ALL"){
       canvas.style.opacity = "0";
 
       // ==========================================
-      // 🔥 CLICK HANDLER (UNCHANGED)
+      // 🔥 CLICK HANDLER (FIXED)
       // ==========================================
       if(!window.__gridClickAttached){
 
-  map.on("click", function(e){
+        map.on("click", function(e){
 
-    try {
+          try {
 
-      if(!window.gridVisible) return;
+            if(!window.gridVisible) return;
 
-      const lat = e.latlng.lat;
-      const lng = e.latlng.lng;
+            const lat = e.latlng.lat;
+            const lng = e.latlng.lng;
 
-      // ✅ continue your logic here
+            // 🔥 SPATIAL INDEX SEARCH
+            const baseLat = Math.floor(lat * 1000);
+            const baseLng = Math.floor(lng * 1000);
 
-    } catch(err){
-      console.error("❌ Map click error:", err);
-    }
+            const candidates = [];
 
-  });
+            for(let i = -1; i <= 1; i++){
+              for(let j = -1; j <= 1; j++){
 
-  window.__gridClickAttached = true;
-}
-// 🔥 find nearby buckets
-const baseLat = Math.floor(lat * 1000);
-const baseLng = Math.floor(lng * 1000);
+                const key = (baseLat + i) + "_" + (baseLng + j);
 
-const candidates = [];
+                if(window.gridSpatialIndex && window.gridSpatialIndex[key]){
+                  candidates.push(...window.gridSpatialIndex[key]);
+                }
+              }
+            }
 
-// check surrounding buckets (3x3 grid)
-for(let i = -1; i <= 1; i++){
-  for(let j = -1; j <= 1; j++){
-
-    const key = (baseLat + i) + "_" + (baseLng + j);
-
-    if(window.gridSpatialIndex[key]){
-      candidates.push(...window.gridSpatialIndex[key]);
-    }
-  }
-}
-
-// 🔥 now check only candidates (very small)
-for(const cell of candidates){
-
-  if(!cell || !cell.coords) continue;
-
-  try {
-
-    const poly = turf.polygon([
-      cell.coords.map(([lat, lng]) => [lng, lat])
-    ]);
-
-    const pt = turf.point([lng, lat]);
-
-    if(turf.booleanPointInPolygon(pt, poly)){
-      showGridPopup(cell, e.latlng);
-      return;
-    }
-
-  } catch(e){}
-}
+            // 🔥 CHECK ONLY CANDIDATES
+            for(const cell of candidates){
 
               if(!cell || !cell.coords) continue;
 
               try {
 
                 const poly = turf.polygon([
-                  cell.coords.map(([lat, lng]) => [lng, lat])
+                  cell.coords.map(([clat, clng]) => [clng, clat])
                 ]);
 
                 const pt = turf.point([lng, lat]);
@@ -4629,9 +4599,9 @@ for(const cell of candidates){
         window.__gridClickAttached = true;
       }
 
-      // ❌ REMOVED WRONG MOVE HANDLER (CAUSE OF DRIFT)
-
-      // ✅ ONLY RE-RENDER AFTER MOVEMENT ENDS
+      // ==========================================
+      // 🔥 RE-RENDER EVENTS
+      // ==========================================
       map.on("moveend zoomend resize", () => {
         if(!window.gridVisible) return;
         renderGrid(window.__lastMode || "current", window.__lastBeat || "ALL");
@@ -4648,7 +4618,7 @@ for(const cell of candidates){
     canvas.style.visibility = "visible";
     canvas.style.opacity = "1";
 
-    // 🔥 CRITICAL ALIGNMENT FIX
+    // 🔥 ALIGN FIX
     const topLeft = map.containerPointToLayerPoint([0,0]);
     L.DomUtil.setPosition(canvas, topLeft);
 
@@ -4708,14 +4678,14 @@ for(const cell of candidates){
 
       for(let i = 0; i < coords.length; i++){
 
-        const [lat, lng] = coords[i];
+        const [clat, clng] = coords[i];
 
-        if(lat == null || lng == null) continue;
+        if(clat == null || clng == null) continue;
 
         let p;
 
         try {
-          p = map.latLngToContainerPoint([lat, lng]);
+          p = map.latLngToContainerPoint([clat, clng]);
         } catch(e){
           continue;
         }
