@@ -3786,6 +3786,7 @@ function assignGridToBeat(rangeLayer){
 
         if(!latlngs || !latlngs.length) return;
 
+        // 🔥 normalize rings (Polygon + MultiPolygon)
         const rings = Array.isArray(latlngs[0][0]) ? latlngs.flat(1) : latlngs;
 
         rings.forEach(ring => {
@@ -3801,7 +3802,7 @@ function assignGridToBeat(rangeLayer){
 
           if(coords.length < 3) return;
 
-          // close ring
+          // 🔥 close ring
           const f = coords[0];
           const l = coords[coords.length - 1];
           if(f[0] !== l[0] || f[1] !== l[1]){
@@ -3810,11 +3811,10 @@ function assignGridToBeat(rangeLayer){
 
           try {
 
-            // 🔥 convert compartment
             const comp = convertCompartment(rawID);
 
             polygons.push({
-              comp: comp || null,  // ✅ DO NOT DROP
+              comp: comp || null,
               turfPoly: turf.polygon([coords])
             });
 
@@ -3837,7 +3837,7 @@ function assignGridToBeat(rangeLayer){
     // ==========================================
     Object.values(window.gridIndex || {}).forEach(cell => {
 
-      if(!cell.center){
+      if(!cell.center || !cell.geo){
         cell.beat = "UNKNOWN";
         return;
       }
@@ -3852,8 +3852,14 @@ function assignGridToBeat(rangeLayer){
 
         let beat = null;
 
+        // 🔥 SAFE MATCH (trim + normalize)
         for(let key in window.beatMap){
-          if(window.beatMap[key].includes(poly.comp)){
+
+          const match = window.beatMap[key].some(v =>
+            v.replace(/\s+/g," ").trim() === poly.comp
+          );
+
+          if(match){
             beat = key;
             break;
           }
@@ -3862,10 +3868,23 @@ function assignGridToBeat(rangeLayer){
         if(!beat) continue;
 
         try {
+
+          // ==========================================
+          // 🔥 PRIMARY: CENTER CHECK
+          // ==========================================
           if(turf.booleanPointInPolygon(pt, poly.turfPoly)){
             bestBeat = beat;
             break;
           }
+
+          // ==========================================
+          // 🔥 FALLBACK: EDGE INTERSECTION (CRITICAL FIX)
+          // ==========================================
+          if(turf.booleanIntersects(cell.geo, poly.turfPoly)){
+            bestBeat = beat;
+            break;
+          }
+
         } catch(e){}
       }
 
