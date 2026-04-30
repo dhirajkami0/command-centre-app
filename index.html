@@ -1496,9 +1496,15 @@ function startApp(){
 
               console.log("⚡ Using cached grid ONLY (no rebuild)");
 
+              // ❌ REMOVED AUTO SHOW GRID
+              // renderGrid("current", "ALL");
+
+              // ✅ FORCE HIDDEN STATE
               setTimeout(() => {
-                renderGrid("current", "ALL");
-              }, 200);
+                if(window.__gridCanvas){
+                  window.__gridCanvas.style.display = "none";
+                }
+              }, 100);
 
               clearInterval(gridInitInterval);
               return;
@@ -1519,16 +1525,17 @@ function startApp(){
 
             console.log("🎯 Grid ready (confirmed)");
 
-            // 🔥 STOP INTERVAL AFTER SUCCESS
             clearInterval(gridInitInterval);
 
-            // 🔥 HIDE GRID ON START (CRITICAL)
-setTimeout(() => {
-  if(window.__gridCanvas){
-    window.__gridCanvas.style.display = "none";
-    console.log("🙈 Grid hidden on startup");
-  }
-}, 300);
+            // 🔥 HARD FORCE HIDE (MULTI SAFETY)
+            setTimeout(() => {
+              if(window.__gridCanvas){
+                window.__gridCanvas.style.display = "none";
+                window.__gridCanvas.style.visibility = "hidden";
+                window.__gridCanvas.style.opacity = "0";
+                console.log("🙈 Grid hidden on startup");
+              }
+            }, 300);
 
             const BACKFILL_KEY = "kmlBackfillDone_v2";
             window.__currentMonthPrefix = new Date().toISOString().slice(0,7);
@@ -1655,8 +1662,7 @@ setTimeout(() => {
     console.error("❌ startApp crash:", e);
   }
 
-}    
-   console.log("🔥 NEW BUILD LOADED - VERSION 999");
+}   console.log("🔥 NEW BUILD LOADED - VERSION 999");
 
 // ======================================================
 // 🚀 SMART SERVICE WORKER UPDATE SYSTEM (FINAL)
@@ -4463,6 +4469,16 @@ async function ensureGridReady(){
 
   try {
 
+    // 🔥 GLOBAL CONTROL (CRITICAL FIX)
+    if(!window.gridVisible){
+      if(window.__gridCanvas){
+        window.__gridCanvas.style.display = "none";
+        window.__gridCanvas.style.visibility = "hidden";
+        window.__gridCanvas.style.opacity = "0";
+      }
+      return;
+    }
+
     if(!window.gridIndex || !window.gridMeta || !Object.keys(window.gridIndex).length){
       console.warn("⚠ Grid not ready (skip render)");
       return;
@@ -4485,6 +4501,11 @@ async function ensureGridReady(){
 
       window.__gridCanvas = canvas;
 
+      // 🔥 DEFAULT HIDDEN (CRITICAL)
+      canvas.style.display = "none";
+      canvas.style.visibility = "hidden";
+      canvas.style.opacity = "0";
+
       // ==========================================
       // 🔥 CLICK HANDLER (MAP LEVEL - RELIABLE)
       // ==========================================
@@ -4493,6 +4514,9 @@ async function ensureGridReady(){
         map.on("click", function(e){
 
           try {
+
+            // 🔥 DO NOT PROCESS IF GRID OFF
+            if(!window.gridVisible) return;
 
             const lat = e.latlng.lat;
             const lng = e.latlng.lng;
@@ -4533,6 +4557,10 @@ async function ensureGridReady(){
       });
 
       map.on("moveend zoomend resize", () => {
+
+        // 🔥 BLOCK AUTO RENDER IF GRID OFF
+        if(!window.gridVisible) return;
+
         renderGrid(window.__lastMode || "current", window.__lastBeat || "ALL");
       });
     }
@@ -4542,6 +4570,11 @@ async function ensureGridReady(){
 
     const canvas = window.__gridCanvas;
     const ctx = canvas.getContext("2d");
+
+    // 🔥 ENSURE VISIBLE WHEN ENABLED
+    canvas.style.display = "block";
+    canvas.style.visibility = "visible";
+    canvas.style.opacity = "1";
 
     const size = map.getSize();
     canvas.width = size.x;
@@ -5118,7 +5151,18 @@ function loadGridFromCache(){
     console.warn("⚠ Failed to load grid cache");
     return false;
   }
-}    
+}   
+   
+    // ===============================
+    // 🔥 APPLY CACHE
+    // ===============================
+    
+    window.gridVisible = false; // 🔥 MASTER SWITCH
+
+    
+    // ===============================
+    // 🔥 APPLY CACHE
+    // ===============================
    async function buildGridFromBounds(bounds, rangeLayer) {
 
   console.log("🔲 Building FINAL STRICT CLIPPED grid...");
@@ -8968,6 +9012,10 @@ var layerControl = L.control.layers(
 ).addTo(map);
 
 
+// 🔥 GLOBAL VISIBILITY FLAG (CRITICAL FIX)
+window.gridVisible = false;
+
+
 /* ============================================================
    ⚡ OVERLAY ADD (CLEANED)
 ============================================================ */
@@ -8998,15 +9046,20 @@ map.on('overlayadd', function (e) {
 
       console.log("📊 Coverage Grid ON");
 
+      // 🔥 ENABLE GRID
+      window.gridVisible = true;
+
       // 🔥 SHOW PANEL
       showCoveragePanel?.();
 
-      // 🔥 SHOW CANVAS (REAL GRID)
+      // 🔥 SHOW CANVAS
       if (window.__gridCanvas) {
         window.__gridCanvas.style.display = "block";
+        window.__gridCanvas.style.visibility = "visible";
+        window.__gridCanvas.style.opacity = "1";
       }
 
-      // 🔥 FORCE RENDER (VERY IMPORTANT)
+      // 🔥 FORCE RENDER
       renderGrid(
         window.currentCoverageMode || "today",
         window.currentBeat || "ALL"
@@ -9042,19 +9095,21 @@ map.on('overlayremove', function (e) {
 
     console.log("🧹 Clearing Coverage Grid");
 
+    // 🔥 DISABLE GRID
+    window.gridVisible = false;
+
     // 🔥 CLOSE PANEL
     closeCoveragePanel?.();
 
-    // ❌ OLD (USELESS)
-    // window.gridLayer.clearLayers();
-
-    // ✅ REAL FIX: HIDE CANVAS
+    // ✅ HIDE CANVAS (HARD)
     if (window.__gridCanvas) {
       window.__gridCanvas.style.display = "none";
+      window.__gridCanvas.style.visibility = "hidden";
+      window.__gridCanvas.style.opacity = "0";
     }
   }
 
-});      /* ============================================================
+});     /* ============================================================
              🐘 SIGHTING FORM SYSTEM (FINAL SAFE VERSION)
           ============================================================ */
 
