@@ -2500,38 +2500,51 @@ window.gridLayer = window.gridLayer || L.layerGroup();
 // ======================================================
 
 // 🔻 Hide during zoom (extra safety)
-map.on("zoomstart", () => {
-  if(window.__gridCanvas){
-    window.__gridCanvas.style.visibility = "hidden";
-  }
-});
+// ===============================
+// 🔥 GRID SYNC (CORRECT WAY)
+// ===============================
+function syncGridCanvas(){
 
-// 🔻 Keep canvas aligned with map pane
-map.on("zoom move", () => {
   if(!window.__gridCanvas) return;
 
-  const pos = map._getMapPanePos();
-  L.DomUtil.setPosition(window.__gridCanvas, pos);
+  const topLeft = map.containerPointToLayerPoint([0, 0]);
+
+  L.DomUtil.setPosition(window.__gridCanvas, topLeft);
+}
+
+// ===============================
+// 🔥 KEEP CANVAS IN SYNC (SMOOTH)
+// ===============================
+map.on("move", () => {
+  requestAnimationFrame(syncGridCanvas);
 });
 
-// 🔻 Redraw after zoom completes
+map.on("zoom", syncGridCanvas);
+
+// ===============================
+// 🔥 HANDLE ZOOM END (RESIZE + REDRAW)
+// ===============================
 map.on("zoomend", () => {
 
-  if(!window.__gridCanvas || !window.gridVisible) return;
+  if(!window.__gridCanvas) return;
 
-  requestAnimationFrame(() => {
+  // ✅ resize canvas properly
+  const size = map.getSize();
+  window.__gridCanvas.width  = size.x;
+  window.__gridCanvas.height = size.y;
 
-    // 🔥 show again after zoom
-    window.__gridCanvas.style.visibility = "visible";
+  // ✅ align again after zoom
+  syncGridCanvas();
 
+  // ✅ redraw grid
+  if(window.gridVisible){
     renderGrid(
       window.currentCoverageMode || "today",
       window.currentBeat || "ALL"
     );
+  }
 
-  });
-});
-    /* ============================================================
+});    /* ============================================================
        📊 RANGE BUTTON (SAFE)
     ============================================================ */
  let dutyCheckRunning = false;
@@ -4200,8 +4213,7 @@ function renderGrid(mode = "today", beat = "ALL"){
     canvas.style.visibility = "visible";
     canvas.style.opacity = "1";
 
-    const pos = map._getMapPanePos();
-L.DomUtil.setPosition(canvas, pos);
+    syncGridCanvas(); ✅
     const size = map.getSize();
     canvas.width = size.x;
     canvas.height = size.y;
