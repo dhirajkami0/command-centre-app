@@ -2488,7 +2488,36 @@ esriSat.addTo(map);
 window.gridLayer = window.gridLayer || L.layerGroup();
 
 
-  
+  // ======================================================
+// 🔥 GRID ↔ MAP ZOOM SYNC (CRITICAL FIX)
+// ======================================================
+
+// 🔻 1. Hide grid during zoom (prevents visual shift)
+map.on("zoomstart", () => {
+  if(window.__gridCanvas){
+    window.__gridCanvas.style.visibility = "hidden";
+  }
+});
+
+// 🔻 2. Keep canvas locked to map transform (MOST IMPORTANT)
+map.on("zoom", () => {
+  if(!window.__gridCanvas) return;
+
+  const pos = map._getMapPanePos();
+  L.DomUtil.setPosition(window.__gridCanvas, pos);
+});
+
+// 🔻 3. Redraw clean after zoom
+map.on("zoomend", () => {
+  if(!window.__gridCanvas || !window.gridVisible) return;
+
+  requestAnimationFrame(() => {
+    renderGrid(
+      window.currentCoverageMode || "today",
+      window.currentBeat || "ALL"
+    );
+  });
+});
 
     /* ============================================================
        📊 RANGE BUTTON (SAFE)
@@ -4159,9 +4188,8 @@ function renderGrid(mode = "today", beat = "ALL"){
     canvas.style.visibility = "visible";
     canvas.style.opacity = "1";
 
-    const topLeft = map.containerPointToLayerPoint([0,0]);
-    L.DomUtil.setPosition(canvas, topLeft);
-
+    const pos = map._getMapPanePos();
+L.DomUtil.setPosition(canvas, pos);
     const size = map.getSize();
     canvas.width = size.x;
     canvas.height = size.y;
