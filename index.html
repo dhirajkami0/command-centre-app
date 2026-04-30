@@ -3999,7 +3999,273 @@ function assignGridToBeat(rangeLayer){
 }// ======================================================
 // 🧠 GRID CACHE (LIVE + MONTH)
 // ======================================================
+function renderGrid(mode = "today", beat = "ALL"){
 
+  try {
+
+    // 🔥 GLOBAL CONTROL
+    if(!window.gridVisible){
+      if(window.__gridCanvas){
+        window.__gridCanvas.style.display = "none";
+        window.__gridCanvas.style.visibility = "hidden";
+        window.__gridCanvas.style.opacity = "0";
+      }
+      return;
+    }
+
+    if(!window.gridIndex || !window.gridMeta || !Object.keys(window.gridIndex).length){
+      console.warn("⚠ Grid not ready (skip render)");
+      return;
+    }
+
+    // ==========================================
+    // 🔥 ZOOM CONTROL (FIXED PROPERLY)
+    // ==========================================
+    const zoom = map.getZoom();
+
+    let drawBorders = true;
+
+    let alphaVisited = 0.6;
+    let alphaUnvisited = 0.4;
+
+    let borderAlpha = 0.35;
+    let borderWidth = 0.6;
+
+    // 🔻 10–12 → faint but visible
+    if(zoom < 13){
+      alphaVisited = 0.4;
+      alphaUnvisited = 0.25;
+
+      borderAlpha = 0.15;
+      borderWidth = 0.3;
+    }
+
+    // 🔺 13–15 → clear
+    else if(zoom < 16){
+      alphaVisited = 0.6;
+      alphaUnvisited = 0.4;
+
+      borderAlpha = 0.25;
+      borderWidth = 0.45;
+    }
+
+    // 🔥 16+ → sharp
+    else {
+      alphaVisited = 0.7;
+      alphaUnvisited = 0.5;
+
+      borderAlpha = 0.45;
+      borderWidth = 0.8;
+    }
+
+    // ===============================
+    // 🔥 INIT CANVAS (ONCE)
+    // ===============================
+    if(!window.__gridCanvas){
+
+      const pane = map.getPane("overlayPane");
+
+      const canvas = document.createElement("canvas");
+      canvas.style.position = "absolute";
+      canvas.style.top = "0";
+      canvas.style.left = "0";
+      canvas.style.pointerEvents = "none";
+      canvas.style.transformOrigin = "0 0";
+
+      pane.appendChild(canvas);
+
+      window.__gridCanvas = canvas;
+
+      canvas.style.display = "none";
+      canvas.style.visibility = "hidden";
+      canvas.style.opacity = "0";
+
+      // 🔥 CLICK HANDLER (UNCHANGED)
+      if(!window.__gridClickAttached){
+
+        map.on("click", function(e){
+
+          try {
+
+            if(!window.gridVisible) return;
+
+            const lat = e.latlng.lat;
+            const lng = e.latlng.lng;
+
+            const baseLat = Math.floor(lat * 1000);
+            const baseLng = Math.floor(lng * 1000);
+
+            const candidates = [];
+
+            for(let i = -1; i <= 1; i++){
+              for(let j = -1; j <= 1; j++){
+
+                const key = (baseLat + i) + "_" + (baseLng + j);
+
+                if(window.gridSpatialIndex && window.gridSpatialIndex[key]){
+                  candidates.push(...window.gridSpatialIndex[key]);
+                }
+              }
+            }
+
+            for(const cell of candidates){
+
+              if(!cell || !cell.coords) continue;
+
+              try {
+                if(pointInPoly(lat, lng, cell.coords)){
+                  showGridPopup(cell, e.latlng);
+                  return;
+                }
+              } catch(err){}
+            }
+
+          } catch(err){
+            console.error("❌ Map click error:", err);
+          }
+        });
+
+        window.__gridClickAttached = true;
+      }
+
+      // 🔥 SMART RENDER
+      map.on("moveend zoomend resize", () => {
+
+        if(!window.gridVisible) return;
+
+        const z = map.getZoom();
+        const b = map.getBounds();
+
+        if(window.__lastZoom === z &&
+           window.__lastBounds &&
+           window.__lastBounds.equals(b)){
+          return;
+        }
+
+        window.__lastZoom = z;
+        window.__lastBounds = b;
+
+        renderGrid(window.__lastMode || "current", window.__lastBeat || "ALL");
+      });
+    }
+
+    window.__lastMode = mode;
+    window.__lastBeat = beat;
+
+    const canvas = window.__gridCanvas;
+    const ctx = canvas.getContext("2d");
+
+    canvas.style.display = "block";
+    canvas.style.visibility = "visible";
+    canvas.style.opacity = "1";
+
+    const topLeft = map.containerPointToLayerPoint([0,0]);
+    L.DomUtil.setPosition(canvas, topLeft);
+
+    const size = map.getSize();
+    canvas.width = size.x;
+    canvas.height = size.y;
+
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+    // ===============================
+    // 🔥 DATA SOURCE
+    // ===============================
+    let current = {};
+
+    if(mode === "today"){
+      current = window.gridCache?.today || {};
+    } else {
+      current = window.gridCache?.month || {};
+    }
+
+    const bounds = map.getBounds();
+
+    let total = 0;
+    let visited = 0;
+    let drawn = 0;
+
+    // ===============================
+    // 🔥 MAIN LOOP
+    // ===============================
+    for(const [id, cell] of Object.entries(window.gridIndex)){
+
+      if(!cell || !cell.coords || !cell.center) continue;
+
+      if(!bounds.contains([cell.center.lat, cell.center.lng])) continue;
+
+      const cellBeat = cell.beat || "UNKNOWN";
+      if(beat !== "ALL" && cellBeat !== beat) continue;
+
+      total++;
+
+      const isVisited = !!current[id];
+      if(isVisited) visited++;
+
+      ctx.fillStyle =
+        (cellBeat === "UNKNOWN") ? "#888" :
+        (isVisited ? "#00ff00" : "#ff0000");
+
+      ctx.globalAlpha = isVisited ? alphaVisited : alphaUnvisited;
+
+      const coords = cell.coords;
+      if(!coords || coords.length < 3) continue;
+
+      ctx.beginPath();
+
+      let first = true;
+
+      for(let i = 0; i < coords.length; i++){
+
+        const [clat, clng] = coords[i];
+        if(clat == null || clng == null) continue;
+
+        let p;
+
+        try {
+          p = map.latLngToContainerPoint([clat, clng]);
+        } catch(e){
+          continue;
+        }
+
+        if(!p) continue;
+
+        if(first){
+          ctx.moveTo(p.x, p.y);
+          first = false;
+        } else {
+          ctx.lineTo(p.x, p.y);
+        }
+      }
+
+      if(!first){
+
+        ctx.closePath();
+        ctx.fill();
+
+        // ==========================================
+        // 🔥 FIXED BORDER LOGIC
+        // ==========================================
+        if(drawBorders && zoom >= 10){
+          ctx.strokeStyle = `rgba(0,255,255,${borderAlpha})`;
+          ctx.lineWidth = borderWidth;
+          ctx.stroke();
+        }
+
+        drawn++;
+      }
+    }
+
+    ctx.globalAlpha = 1;
+
+    const percent = total ? ((visited / total) * 100).toFixed(1) : 0;
+
+    console.log(`📊 ${visited}/${total} (${percent}%) | drawn:${drawn}`);
+
+  } catch(e){
+    console.error("❌ renderGrid crash:", e);
+  }
+}
 
 function getTodayKey(){
   return "grid_" + getLocalDateStr();
