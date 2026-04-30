@@ -3587,13 +3587,13 @@ setTimeout(() => {
   console.log("🧠 Grid init (cache or build)");
 
   if(!loadGridFromCache()){
-    ensureGridReady();          // 🔥 build only if needed
-  } else {
-    renderGrid("current", "ALL"); // 🔥 instant render
+    ensureGridReady();   // 🔥 build once
   }
 
-}, 300);
-        // ======================================
+  // ❌ REMOVE AUTO RENDER
+  // renderGrid("current", "ALL");
+
+}, 300);        // ======================================
         // 🎯 FIT MAP (SAFE)
         // ======================================
         try {
@@ -3605,21 +3605,7 @@ setTimeout(() => {
         // ======================================
         // 🔥 CRITICAL FIX: BUILD GRID AFTER LOAD
         // ======================================
-        setTimeout(() => {
-
-          console.log("🔲 Building grid after GeoJSON ready");
-
-          try {
-
-            ensureGridReady();   // 🔥 builds grid
-            renderGrid("current", "ALL"); // 🔥 shows grid
-
-          } catch(e){
-            console.warn("⚠ Grid build failed");
-          }
-
-        }, 300);
-
+       
       }
     }
 
@@ -4333,6 +4319,14 @@ async function ensureGridReady(){
   const MIN_VALID_GRID = 5000;
 
   // ==========================================
+  // 🔥 PREVENT RE-BUILD IF ALREADY READY (CRITICAL FIX)
+  // ==========================================
+  if(window.__gridReady){
+    console.log("⚡ Grid already ready (memory)");
+    return;
+  }
+
+  // ==========================================
   // 🔥 PREVENT PARALLEL BUILDS
   // ==========================================
   if(window.__gridBuilding){
@@ -4361,7 +4355,7 @@ async function ensureGridReady(){
         parsed?.grid &&
         parsed?.meta?.size === TARGET_GRID_SIZE &&
         size > MIN_VALID_GRID &&
-        sample?.beat   // 🔥 CRITICAL VALIDATION
+        sample?.beat
       ){
         window.gridIndex = parsed.grid;
         window.gridMeta = parsed.meta;
@@ -4370,7 +4364,11 @@ async function ensureGridReady(){
 
         console.log("⚡ Grid loaded from cache:", size);
 
-        renderGrid("current", "ALL");
+        // 🔥 DO NOT AUTO RENDER HERE (IMPORTANT)
+        if(window.gridVisible){
+          renderGrid("current", "ALL");
+        }
+
         return;
       }
 
@@ -4405,7 +4403,7 @@ async function ensureGridReady(){
     }
 
     // ==========================================
-    // 🔥 STEP 1: BUILD GRID (ASYNC WAIT)
+    // 🔥 STEP 1: BUILD GRID
     // ==========================================
     await buildGridFromBounds(bounds, window.rangeLayer);
 
@@ -4420,13 +4418,12 @@ async function ensureGridReady(){
     console.log("🧱 Grid built, waiting for layer settle...");
 
     // ==========================================
-    // 🔥 STEP 2: DELAYED BEAT ASSIGN (CRITICAL FIX)
+    // 🔥 STEP 2: DELAYED BEAT ASSIGN
     // ==========================================
     await new Promise(resolve => setTimeout(resolve, 400));
 
     assignGridToBeat(window.rangeLayer);
 
-    // 🔥 VERIFY
     const unknown = Object.values(window.gridIndex)
       .filter(c => !c.beat || c.beat === "UNKNOWN").length;
 
@@ -4443,7 +4440,7 @@ async function ensureGridReady(){
     console.log("✅ Grid built:", builtSize);
 
     // ==========================================
-    // 🔥 STEP 4: SAVE CACHE (SAFE)
+    // 🔥 STEP 4: SAVE CACHE (SAFE FAIL)
     // ==========================================
     try {
       localStorage.setItem(CACHE_KEY, JSON.stringify({
@@ -4461,9 +4458,11 @@ async function ensureGridReady(){
     window.__gridReady = true;
 
     // ==========================================
-    // 🔥 STEP 5: FINAL RENDER
+    // 🔥 STEP 5: FINAL RENDER (ONLY IF ENABLED)
     // ==========================================
-    renderGrid("current", "ALL");
+    if(window.gridVisible){
+      renderGrid("current", "ALL");
+    }
 
   } catch(e){
     console.error("❌ Grid build failed:", e);
