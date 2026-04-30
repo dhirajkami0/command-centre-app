@@ -4763,6 +4763,31 @@ function pointInPoly(lat, lng, coords){
   return inside;
 }
 
+
+
+    function lineIntersectsPolygon(lat1, lon1, lat2, lon2, coords){
+
+  function intersect(a1x,a1y,a2x,a2y,b1x,b1y,b2x,b2y){
+    const det = (a2x-a1x)*(b2y-b1y)-(a2y-a1y)*(b2x-b1x);
+    if(det === 0) return false;
+
+    const t = ((b1x-a1x)*(b2y-b1y)-(b1y-a1y)*(b2x-b1x)) / det;
+    const u = ((b1x-a1x)*(a2y-a1y)-(b1y-a1y)*(a2x-a1x)) / det;
+
+    return t>=0 && t<=1 && u>=0 && u<=1;
+  }
+
+  for(let i=0;i<coords.length;i++){
+    const [latA, lonA] = coords[i];
+    const [latB, lonB] = coords[(i+1)%coords.length];
+
+    if(intersect(lon1, lat1, lon2, lat2, lonA, latA, lonB, latB)){
+      return true;
+    }
+  }
+
+  return false;
+}
  // ===============================
 // 🔥 GLOBAL CACHE
 // ===============================
@@ -4780,7 +4805,7 @@ function markVisitedHybrid(tracks){
   const todayStr = getLocalDateStr();
 
   // ======================================================
-  // 🔥 PRE-FETCH CELLS (IMPORTANT OPTIMIZATION)
+  // 🔥 PRE-FETCH CELLS (KEEP AS IS)
   // ======================================================
   const cells = Object.entries(window.gridIndex);
 
@@ -4806,29 +4831,30 @@ function markVisitedHybrid(tracks){
       if([lat1, lon1, lat2, lon2].some(isNaN)) continue;
 
       // ======================================================
-      // 🔥 LOOP CELLS (OPTIMIZED)
+      // 🔥 SPATIAL INDEX (YOUR UPGRADE)
       // ======================================================
-     // 🔥 approximate bucket for point
-const baseLat = Math.floor(lat1 * 1000);
-const baseLng = Math.floor(lon1 * 1000);
+      const baseLat = Math.floor(lat1 * 1000);
+      const baseLng = Math.floor(lon1 * 1000);
 
-let nearby = [];
+      let nearby = [];
 
-for(let i=-1;i<=1;i++){
-  for(let j=-1;j<=1;j++){
-    const key = (baseLat+i)+"_"+(baseLng+j);
-    if(window.gridSpatialIndex[key]){
-      nearby.push(...window.gridSpatialIndex[key]);
-    }
-  }
-}
+      for(let i=-1;i<=1;i++){
+        for(let j=-1;j<=1;j++){
+          const key = (baseLat+i)+"_"+(baseLng+j);
+          if(window.gridSpatialIndex && window.gridSpatialIndex[key]){
+            nearby.push(...window.gridSpatialIndex[key]);
+          }
+        }
+      }
 
-// 🔥 loop only nearby
-for(let cell of nearby){
+      // ======================================================
+      // 🔥 LOOP NEARBY CELLS
+      // ======================================================
+      for(let cell of nearby){
 
-        if(!cell || !cell.coords) continue;
+        if(!cell || !cell.coords || !cell.id) continue;
 
-        // 🔥 FAST CENTER CHECK (MOST CASES)
+        // 🔥 FAST CENTER CHECK
         const c = cell.center;
         if(!c) continue;
 
@@ -4837,25 +4863,25 @@ for(let cell of nearby){
           Math.abs(c.lng - lon1) < 0.0006;
 
         if(near){
-          visited[id] = true;
+          visited[cell.id] = true;
           continue;
         }
 
         // ======================================================
-        // 🔥 BBOX FROM COORDS (NO TURF)
+        // 🔥 BBOX FROM COORDS
         // ======================================================
         let minLat = Infinity, minLon = Infinity;
         let maxLat = -Infinity, maxLon = -Infinity;
 
-        for(let [lat, lon] of cell.coords){
-          if(lat < minLat) minLat = lat;
-          if(lat > maxLat) maxLat = lat;
-          if(lon < minLon) minLon = lon;
-          if(lon > maxLon) maxLon = lon;
+        for(let [clat, clon] of cell.coords){
+          if(clat < minLat) minLat = clat;
+          if(clat > maxLat) maxLat = clat;
+          if(clon < minLon) minLon = clon;
+          if(clon > maxLon) maxLon = clon;
         }
 
         // ======================================================
-        // 🔥 FAST LINE-BOX INTERSECTION
+        // 🔥 LINE-BOX INTERSECTION
         // ======================================================
         if(lineIntersectsBox(
           lat1, lon1,
@@ -4863,35 +4889,26 @@ for(let cell of nearby){
           minLat, minLon,
           maxLat, maxLon
         )){
-          visited[id] = true;
+          visited[cell.id] = true;
           continue;
         }
 
         // ======================================================
-        // 🔥 PRECISE CHECK (RARE CASE)
+        // 🔥 PRECISE CHECK (NO TURF NOW)
         // ======================================================
-        try {
-
-          const line = turf.lineString([
-            [lon1, lat1],
-            [lon2, lat2]
-          ]);
-
-          const poly = turf.polygon([
-            cell.coords.map(([lat, lon]) => [lon, lat])
-          ]);
-
-          if(turf.booleanIntersects(line, poly)){
-            visited[id] = true;
-          }
-
-        } catch(e){}
+        if(lineIntersectsPolygon(
+          lat1, lon1,
+          lat2, lon2,
+          cell.coords
+        )){
+          visited[cell.id] = true;
+        }
       }
     }
   }
 
   // ======================================================
-  // 🔥 SAVE + CACHE
+  // 🔥 SAVE + CACHE (UNCHANGED)
   // ======================================================
   if(Object.keys(visited).length){
 
