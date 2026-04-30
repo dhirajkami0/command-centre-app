@@ -2506,6 +2506,9 @@ window.gridLayer = window.gridLayer || L.layerGroup();
 // ===============================
 // 🔥 GRID SYNC CORE (NEW)
 // ===============================
+// ===============================
+// 🔥 GRID SYNC CORE
+// ===============================
 function syncGridCanvas(){
 
   if(!window.__gridCanvas) return;
@@ -2515,32 +2518,51 @@ function syncGridCanvas(){
   L.DomUtil.setPosition(window.__gridCanvas, topLeft);
 }
 
-// ===============================
-// 🔥 GRID EVENT BIND (REPLACEMENT)
-// ===============================
-map.on("move", () => {
-  requestAnimationFrame(syncGridCanvas);
-});
 
+// ===============================
+// 🔥 PERFECT EVENT BIND
+// ===============================
+
+// 🔥 REAL-TIME PAN (NO DELAY)
+map.on("move", syncGridCanvas);
+
+// 🔥 EXTRA SAFETY FOR DRAG (important on mobile)
+map.on("drag", syncGridCanvas);
+
+// 🔥 ZOOM SYNC
 map.on("zoom", syncGridCanvas);
 
+
+// ===============================
+// 🔥 ZOOM END (RESIZE + REDRAW)
+// ===============================
 map.on("zoomend", () => {
 
   if(!window.__gridCanvas) return;
 
   const size = map.getSize();
-  window.__gridCanvas.width  = size.x;
-  window.__gridCanvas.height = size.y;
 
+  // 🔥 ONLY resize if needed (CRITICAL FIX)
+  if(
+    window.__gridCanvas.width !== size.x ||
+    window.__gridCanvas.height !== size.y
+  ){
+    window.__gridCanvas.width  = size.x;
+    window.__gridCanvas.height = size.y;
+  }
+
+  // 🔥 ALIGN AFTER ZOOM
   syncGridCanvas();
 
+  // 🔥 REDRAW
   if(window.gridVisible){
     renderGrid(
       window.currentCoverageMode || "today",
       window.currentBeat || "ALL"
     );
   }
-});   /* ============================================================
+
+});  /* ============================================================
        📊 RANGE BUTTON (SAFE)
     ============================================================ */
  let dutyCheckRunning = false;
