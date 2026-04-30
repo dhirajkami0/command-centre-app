@@ -2509,40 +2509,12 @@ window.gridLayer = window.gridLayer || L.layerGroup();
 // ===============================
 // 🔥 GRID SYNC CORE
 // ===============================
-function syncGridCanvas(){
-
-  if(!window.__gridCanvas) return;
-
-  const topLeft = map.containerPointToLayerPoint([0, 0]);
-
-  L.DomUtil.setPosition(window.__gridCanvas, topLeft);
-}
-
-
-// ===============================
-// 🔥 PERFECT EVENT BIND
-// ===============================
-
-// 🔥 REAL-TIME PAN (NO DELAY)
-map.on("move", syncGridCanvas);
-
-// 🔥 EXTRA SAFETY FOR DRAG (important on mobile)
-map.on("drag", syncGridCanvas);
-
-// 🔥 ZOOM SYNC
-map.on("zoom", syncGridCanvas);
-
-
-// ===============================
-// 🔥 ZOOM END (RESIZE + REDRAW)
-// ===============================
 map.on("zoomend", () => {
 
   if(!window.__gridCanvas) return;
 
   const size = map.getSize();
 
-  // 🔥 ONLY resize if needed (CRITICAL FIX)
   if(
     window.__gridCanvas.width !== size.x ||
     window.__gridCanvas.height !== size.y
@@ -2551,18 +2523,13 @@ map.on("zoomend", () => {
     window.__gridCanvas.height = size.y;
   }
 
-  // 🔥 ALIGN AFTER ZOOM
-  syncGridCanvas();
-
-  // 🔥 REDRAW
   if(window.gridVisible){
     renderGrid(
       window.currentCoverageMode || "today",
       window.currentBeat || "ALL"
     );
   }
-
-});  /* ============================================================
+}); /* ============================================================
        📊 RANGE BUTTON (SAFE)
     ============================================================ */
  let dutyCheckRunning = false;
@@ -4117,18 +4084,21 @@ function renderGrid(mode = "today", beat = "ALL"){
     }
 
     // ===============================
-    // 🔥 INIT CANVAS (UNCHANGED)
+    // 🔥 CREATE CANVAS (ZERO DRIFT FIX)
     // ===============================
     if(!window.__gridCanvas){
 
       const pane = map.getPane("overlayPane");
 
-      const canvas = document.createElement("canvas");
+      const canvas = L.DomUtil.create(
+        "canvas",
+        "leaflet-layer leaflet-zoom-animated"
+      );
+
       canvas.style.position = "absolute";
       canvas.style.top = "0";
       canvas.style.left = "0";
       canvas.style.pointerEvents = "none";
-      canvas.style.transformOrigin = "0 0";
 
       pane.appendChild(canvas);
 
@@ -4138,6 +4108,7 @@ function renderGrid(mode = "today", beat = "ALL"){
       canvas.style.visibility = "hidden";
       canvas.style.opacity = "0";
 
+      // 🔥 CLICK HANDLER (UNCHANGED)
       if(!window.__gridClickAttached){
 
         map.on("click", function(e){
@@ -4185,6 +4156,7 @@ function renderGrid(mode = "today", beat = "ALL"){
         window.__gridClickAttached = true;
       }
 
+      // 🔥 SMART RENDER (KEEP)
       map.on("moveend zoomend resize", () => {
 
         if(!window.gridVisible) return;
@@ -4215,16 +4187,14 @@ function renderGrid(mode = "today", beat = "ALL"){
     canvas.style.visibility = "visible";
     canvas.style.opacity = "1";
 
-    // 🔥 FIXED ALIGNMENT
-    syncGridCanvas();
+    // 🔥 ONLY RESIZE WHEN NEEDED
+    const size = map.getSize();
 
-    // 🔥 ONLY RESIZE IF SIZE CHANGED (CRITICAL FIX)
-const size = map.getSize();
+    if(canvas.width !== size.x || canvas.height !== size.y){
+      canvas.width  = size.x;
+      canvas.height = size.y;
+    }
 
-if(canvas.width !== size.x || canvas.height !== size.y){
-  canvas.width  = size.x;
-  canvas.height = size.y;
-}
     ctx.clearRect(0, 0, canvas.width, canvas.height);
 
     let current = {};
@@ -4262,13 +4232,8 @@ if(canvas.width !== size.x || canvas.height !== size.y){
       for(let i = 0; i < coords.length; i++){
 
         const [clat, clng] = coords[i];
-        let p;
 
-        try {
-          p = map.latLngToContainerPoint([clat, clng]);
-        } catch(e){
-          continue;
-        }
+        let p = map.latLngToContainerPoint([clat, clng]);
 
         if(first){
           ctx.moveTo(p.x, p.y);
@@ -4295,8 +4260,7 @@ if(canvas.width !== size.x || canvas.height !== size.y){
   } catch(e){
     console.error("❌ renderGrid crash:", e);
   }
-}
-function getTodayKey(){
+}function getTodayKey(){
   return "grid_" + getLocalDateStr();
 }
 /* ============================================================
