@@ -4196,10 +4196,13 @@ function renderGrid(mode = "today", beat = "ALL"){
     // 🔥 FIXED ALIGNMENT
     syncGridCanvas();
 
-    const size = map.getSize();
-    canvas.width = size.x;
-    canvas.height = size.y;
+    // 🔥 ONLY RESIZE IF SIZE CHANGED (CRITICAL FIX)
+const size = map.getSize();
 
+if(canvas.width !== size.x || canvas.height !== size.y){
+  canvas.width  = size.x;
+  canvas.height = size.y;
+}
     ctx.clearRect(0, 0, canvas.width, canvas.height);
 
     let current = {};
