@@ -4430,6 +4430,30 @@ async function ensureGridReady(){
     console.log("📊 UNKNOWN after assign:", unknown);
 
     // ==========================================
+    // 🔥 STEP 2.5: BUILD SPATIAL INDEX (NEW)
+    // ==========================================
+    console.log("⚡ Building spatial index...");
+
+    window.gridSpatialIndex = {};
+
+    for(const [id, cell] of Object.entries(window.gridIndex)){
+
+      if(!cell || !cell.center) continue;
+
+      const key =
+        Math.floor(cell.center.lat * 1000) + "_" +
+        Math.floor(cell.center.lng * 1000);
+
+      if(!window.gridSpatialIndex[key]){
+        window.gridSpatialIndex[key] = [];
+      }
+
+      window.gridSpatialIndex[key].push(cell);
+    }
+
+    console.log("✅ Spatial index ready:", Object.keys(window.gridSpatialIndex).length);
+
+    // ==========================================
     // 🔥 STEP 3: FINAL META
     // ==========================================
     window.gridMeta = {
@@ -4472,7 +4496,7 @@ async function ensureGridReady(){
   // 🔥 CLEANUP
   // ==========================================
   window.__gridBuilding = false;
-}   // ===== UI EVENTS =====
+}  // ===== UI EVENTS =====
 function renderGrid(mode = "today", beat = "ALL"){
 
   try {
@@ -4530,7 +4554,47 @@ function renderGrid(mode = "today", beat = "ALL"){
             const lat = e.latlng.lat;
             const lng = e.latlng.lng;
 
-            for(const cell of Object.values(window.gridIndex)){
+            const lat = e.latlng.lat;
+const lng = e.latlng.lng;
+
+// 🔥 find nearby buckets
+const baseLat = Math.floor(lat * 1000);
+const baseLng = Math.floor(lng * 1000);
+
+const candidates = [];
+
+// check surrounding buckets (3x3 grid)
+for(let i = -1; i <= 1; i++){
+  for(let j = -1; j <= 1; j++){
+
+    const key = (baseLat + i) + "_" + (baseLng + j);
+
+    if(window.gridSpatialIndex[key]){
+      candidates.push(...window.gridSpatialIndex[key]);
+    }
+  }
+}
+
+// 🔥 now check only candidates (very small)
+for(const cell of candidates){
+
+  if(!cell || !cell.coords) continue;
+
+  try {
+
+    const poly = turf.polygon([
+      cell.coords.map(([lat, lng]) => [lng, lat])
+    ]);
+
+    const pt = turf.point([lng, lat]);
+
+    if(turf.booleanPointInPolygon(pt, poly)){
+      showGridPopup(cell, e.latlng);
+      return;
+    }
+
+  } catch(e){}
+}
 
               if(!cell || !cell.coords) continue;
 
@@ -4729,7 +4793,23 @@ function markVisitedHybrid(tracks){
       // ======================================================
       // 🔥 LOOP CELLS (OPTIMIZED)
       // ======================================================
-      for(let [id, cell] of cells){
+     // 🔥 approximate bucket for point
+const baseLat = Math.floor(lat1 * 1000);
+const baseLng = Math.floor(lon1 * 1000);
+
+let nearby = [];
+
+for(let i=-1;i<=1;i++){
+  for(let j=-1;j<=1;j++){
+    const key = (baseLat+i)+"_"+(baseLng+j);
+    if(window.gridSpatialIndex[key]){
+      nearby.push(...window.gridSpatialIndex[key]);
+    }
+  }
+}
+
+// 🔥 loop only nearby
+for(let cell of nearby){
 
         if(!cell || !cell.coords) continue;
 
