@@ -3750,7 +3750,7 @@ window.gridCache = window.gridCache || {
 // ======================================================
 function assignGridToBeat(rangeLayer){
 
-  console.log("🎯 Assigning grid to beats (FINAL)...");
+  console.log("🎯 Assigning grid to beats (FINAL CORRECT)...");
 
   try {
 
@@ -3765,45 +3765,59 @@ function assignGridToBeat(rangeLayer){
 
       if (!layer) return;
 
-      // 🔥 FIRST: go inside groups / geojson (IMPORTANT ORDER)
-      if (layer.eachLayer && typeof layer.eachLayer === "function") {
+      // 🔥 traverse all
+      if (layer.eachLayer) {
         layer.eachLayer(extract);
       }
 
-      // 🔥 FIX: DO NOT USE instanceof (breaks in minified builds)
+      // 🔥 polygon detection (NO instanceof)
       if (layer.getLatLngs && typeof layer.getLatLngs === "function") {
 
         const p = layer.feature?.properties || {};
-        const rawID = p.ID || p.Name || "";
+        const rawID = (p.ID || p.Name || "").toUpperCase().trim();
 
-        const comp = convertCompartment(rawID);
-        if(!comp) return;
+        let latlngs;
 
-        let latlngs = layer.getLatLngs();
+        try {
+          latlngs = layer.getLatLngs();
+        } catch(e){
+          return;
+        }
+
         if(!latlngs || !latlngs.length) return;
 
-        // 🔥 Normalize Polygon / MultiPolygon
-        const rings = Array.isArray(latlngs[0][0]) ? latlngs : [latlngs];
+        const rings = Array.isArray(latlngs[0][0]) ? latlngs.flat(1) : latlngs;
 
         rings.forEach(ring => {
 
           if(!ring || ring.length < 3) return;
 
-          let coords = ring.map(pt => [pt.lng, pt.lat]);
+          let coords = [];
 
-          // 🔥 CLOSE POLYGON
+          for(let pt of ring){
+            if(!pt || pt.lat == null || pt.lng == null) continue;
+            coords.push([pt.lng, pt.lat]);
+          }
+
+          if(coords.length < 3) return;
+
+          // close ring
           const f = coords[0];
           const l = coords[coords.length - 1];
-
           if(f[0] !== l[0] || f[1] !== l[1]){
             coords.push(f);
           }
 
           try {
+
+            // 🔥 convert compartment
+            const comp = convertCompartment(rawID);
+
             polygons.push({
-              comp,
+              comp: comp || null,  // ✅ DO NOT DROP
               turfPoly: turf.polygon([coords])
             });
+
           } catch(e){}
         });
       }
@@ -3818,9 +3832,9 @@ function assignGridToBeat(rangeLayer){
 
     console.log("📐 Polygons:", polygons.length);
 
-    // ===============================
-    // 🔥 GRID LOOP (CENTER BASED)
-    // ===============================
+    // ==========================================
+    // 🔥 GRID LOOP
+    // ==========================================
     Object.values(window.gridIndex || {}).forEach(cell => {
 
       if(!cell.center){
@@ -3833,6 +3847,8 @@ function assignGridToBeat(rangeLayer){
       let bestBeat = "UNKNOWN";
 
       for(let poly of polygons){
+
+        if(!poly.comp) continue;
 
         let beat = null;
 
