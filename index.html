@@ -2466,59 +2466,71 @@ setInterval(() => {
        🗺 BLOCK 2 → MAP INIT + UI CONTROLS
     ============================================================ */
 
-   var map = L.map('map', {
+   // ======================================================
+// 🗺 MAP INIT (FINAL STABLE)
+// ======================================================
+var map = L.map('map', {
   center:[26.561, 89.507],
   zoom:14,
   zoomControl:false,
-  preferCanvas: true   // 🔥 HUGE BOOST
+  preferCanvas: true,
+
+  // 🔥 CRITICAL FIX (REMOVES GRID SEPARATION)
+  zoomAnimation: false,
+  fadeAnimation: false,
+  markerZoomAnimation: false
 });
+
 /* 🔥 BASE LAYERS LOAD */
 esriSat.addTo(map);
 
-// 🔥 THIS LINE IS THE ANSWE
+/* 🖱 CONTROLS */
+map.scrollWheelZoom.disable();
+map.tap = true;
 
-    /* 🖱 CONTROLS */
-    map.scrollWheelZoom.disable();
-    map.tap = true;
+L.control.zoom({ position: 'topright' }).addTo(map);
 
-    L.control.zoom({ position: 'topright' }).addTo(map);
-
-
-   // ✅ SAFE GRID LAYER INIT (AFTER MAP READY)
+// ======================================================
+// 🟩 GRID LAYER INIT
+// ======================================================
 window.gridLayer = window.gridLayer || L.layerGroup();
 
-
-  // ======================================================
-// 🔥 GRID ↔ MAP ZOOM SYNC (CRITICAL FIX)
+// ======================================================
+// 🔥 GRID ↔ MAP SYNC (SAFE + STABLE)
 // ======================================================
 
-// 🔻 1. Hide grid during zoom (prevents visual shift)
+// 🔻 Hide during zoom (extra safety)
 map.on("zoomstart", () => {
   if(window.__gridCanvas){
     window.__gridCanvas.style.visibility = "hidden";
   }
 });
 
-// 🔻 2. Keep canvas locked to map transform (MOST IMPORTANT)
-map.on("zoom", () => {
+// 🔻 Keep canvas aligned with map pane
+map.on("zoom move", () => {
   if(!window.__gridCanvas) return;
 
   const pos = map._getMapPanePos();
   L.DomUtil.setPosition(window.__gridCanvas, pos);
 });
 
-// 🔻 3. Redraw clean after zoom
+// 🔻 Redraw after zoom completes
 map.on("zoomend", () => {
+
   if(!window.__gridCanvas || !window.gridVisible) return;
 
   requestAnimationFrame(() => {
+
+    // 🔥 show again after zoom
+    window.__gridCanvas.style.visibility = "visible";
+
     renderGrid(
       window.currentCoverageMode || "today",
       window.currentBeat || "ALL"
     );
+
   });
 });
-
     /* ============================================================
        📊 RANGE BUTTON (SAFE)
     ============================================================ */
