@@ -3765,12 +3765,12 @@ function assignGridToBeat(rangeLayer){
 
       if (!layer) return;
 
-      // 🔥 traverse all
+      // 🔥 traverse all nested layers
       if (layer.eachLayer) {
         layer.eachLayer(extract);
       }
 
-      // 🔥 polygon detection (NO instanceof)
+      // 🔥 polygon detection
       if (layer.getLatLngs && typeof layer.getLatLngs === "function") {
 
         const p = layer.feature?.properties || {};
@@ -3786,6 +3786,7 @@ function assignGridToBeat(rangeLayer){
 
         if(!latlngs || !latlngs.length) return;
 
+        // 🔥 normalize Polygon + MultiPolygon
         const rings = Array.isArray(latlngs[0][0]) ? latlngs.flat(1) : latlngs;
 
         rings.forEach(ring => {
@@ -3796,11 +3797,12 @@ function assignGridToBeat(rangeLayer){
 
           for(let pt of ring){
             if(!pt || pt.lat == null || pt.lng == null) continue;
-            coords.push([pt.lng, pt.lat]);
+            coords.push([pt.lng, pt.lat]); // 🔥 Turf format
           }
 
           if(coords.length < 3) return;
 
+          // 🔥 close ring
           const f = coords[0];
           const l = coords[coords.length - 1];
           if(f[0] !== l[0] || f[1] !== l[1]){
@@ -3808,10 +3810,13 @@ function assignGridToBeat(rangeLayer){
           }
 
           try {
-            const comp = convertCompartment(rawID);
+
+            const comp = (convertCompartment(rawID) || "")
+              .replace(/\s+/g," ")
+              .trim();
 
             polygons.push({
-              comp: comp || null,
+              comp,
               turfPoly: turf.polygon([coords])
             });
 
@@ -3843,10 +3848,11 @@ function assignGridToBeat(rangeLayer){
 
       let bestBeat = "UNKNOWN";
 
-      // 🔥 build cell polygon ONCE
+      // 🔥 FIX: convert coords to [lng, lat]
       let cellPoly = null;
       try {
-        cellPoly = turf.polygon([cell.coords]);
+        const fixedCoords = cell.coords.map(p => [p[1], p[0]]);
+        cellPoly = turf.polygon([fixedCoords]);
       } catch(e){}
 
       for(let poly of polygons){
@@ -3855,6 +3861,7 @@ function assignGridToBeat(rangeLayer){
 
         let beat = null;
 
+        // 🔥 robust matching
         for(let key in window.beatMap){
 
           const match = window.beatMap[key].some(v =>
@@ -3871,13 +3878,13 @@ function assignGridToBeat(rangeLayer){
 
         try {
 
-          // 🔥 PRIMARY
+          // 🔥 PRIMARY: center check
           if(turf.booleanPointInPolygon(pt, poly.turfPoly)){
             bestBeat = beat;
             break;
           }
 
-          // 🔥 FALLBACK (FIXED)
+          // 🔥 FALLBACK: edge intersection
           if(cellPoly && turf.booleanIntersects(cellPoly, poly.turfPoly)){
             bestBeat = beat;
             break;
