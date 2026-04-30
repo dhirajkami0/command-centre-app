@@ -4270,15 +4270,46 @@ function renderGrid(mode = "today", beat = "ALL"){
 function getTodayKey(){
   return "grid_" + getLocalDateStr();
 }
+/* ============================================================
+   📅 TODAY CACHE
+============================================================ */
+function updateTodayCache(){
+
+  const key = "grid_" + getLocalDateStr();
+
+  let data = {};
+
+  try {
+    data = JSON.parse(localStorage.getItem(key) || "{}");
+  } catch(e){
+    console.warn("⚠ Today cache parse failed");
+    data = {};
+  }
+
+  window.gridCache = window.gridCache || {};
+  window.gridCache.today = data;
+
+  console.log("📅 Today grids:", Object.keys(data).length);
+}
+
+
+/* ============================================================
+   📅 MONTH CACHE (STRICT: 1st → TODAY ONLY)
+============================================================ */
 function updateMonthCache(){
 
   let result = {};
 
+  // 🔥 current month prefix (CRITICAL FIX)
+  const prefix = new Date().toISOString().slice(0,7); // YYYY-MM
+
   Object.keys(localStorage).forEach(key => {
 
-    if(!key.startsWith("grid_")) return;
+    // 🔥 ONLY current month
+    if(!key.startsWith("grid_" + prefix)) return;
 
     try {
+
       const data = JSON.parse(localStorage.getItem(key) || "{}");
 
       Object.keys(data).forEach(id => {
@@ -4295,41 +4326,62 @@ function updateMonthCache(){
   window.gridCache.month = result;
 
   console.log("📅 Month cache grids:", Object.keys(result).length);
-}   
-    function updateTodayCache(){
-
-  const key = "grid_" + getLocalDateStr();
-
-  let data = {};
-  try {
-    data = JSON.parse(localStorage.getItem(key) || "{}");
-  } catch(e){
-    data = {};
-  }
-
-  window.gridCache = window.gridCache || {};
-  window.gridCache.today = data;
-
-  console.log("📅 Today grids:", Object.keys(data).length);
 }
+
+
+/* ============================================================
+   🔄 INCREMENTAL VISITED UPDATE (SAFE + FAST)
+============================================================ */
 function updateVisitedCache(newVisited){
 
   const key = "grid_" + getLocalDateStr();
 
-  let todayData = JSON.parse(localStorage.getItem(key) || "{}");
+  let todayData = {};
+
+  try {
+    todayData = JSON.parse(localStorage.getItem(key) || "{}");
+  } catch(e){
+    console.warn("⚠ Today cache read failed");
+    todayData = {};
+  }
+
+  let added = 0;
 
   Object.keys(newVisited).forEach(id => {
-    todayData[id] = true;
+
+    if(!todayData[id]){
+      todayData[id] = true;
+      added++;
+    }
+
   });
 
-  localStorage.setItem(key, JSON.stringify(todayData));
+  try {
+    localStorage.setItem(key, JSON.stringify(todayData));
+  } catch(e){
+    console.warn("⚠ Cache save failed");
+  }
 
+  window.gridCache = window.gridCache || {};
   window.gridCache.today = todayData;
 
+  // 🔥 rebuild month cache (incremental safe)
   updateMonthCache();
-}function getCoverageStats(mode = "today", beat = "ALL", type = "all"){
 
-  if(!window.gridIndex || !window.gridMeta) return null;
+  console.log("➕ Added new grids:", added);
+  console.log("📊 Today total:", Object.keys(todayData).length);
+}
+
+
+/* ============================================================
+   📊 COVERAGE STATS (FIXED + ACCURATE)
+============================================================ */
+function getCoverageStats(mode = "today", beat = "ALL", type = "all"){
+
+  if(!window.gridIndex || !window.gridMeta){
+    console.warn("⚠ Grid not ready for stats");
+    return null;
+  }
 
   let data = {};
 
@@ -4344,23 +4396,32 @@ function updateVisitedCache(newVisited){
 
   Object.entries(window.gridIndex).forEach(([id, cell]) => {
 
-    if(!cell || !cell.geo) return;
+    if(!cell || !cell.center) return;
+
     const cellBeat = cell.beat || "UNKNOWN";
 
-if(beat !== "ALL" && cellBeat !== beat) return;
+    // 🔥 beat filter
+    if(beat !== "ALL" && cellBeat !== beat) return;
 
     total++;
 
     if(data[id]) visited++;
   });
 
-  const step = window.gridMeta.size;
+  // ==========================================
+  // 🔥 AREA CALCULATION (FIXED)
+  // ==========================================
+  const step = window.gridMeta.size || 0.00045;
 
-  const cellAreaSqm = Math.pow(step * 111320, 2);
+  // approx meters conversion
+  const metersPerDeg = 111320;
+
+  const cellAreaSqm = Math.pow(step * metersPerDeg, 2);
   const cellAreaHa = cellAreaSqm / 10000;
 
   const visitedArea = visited * cellAreaHa;
   const totalArea   = total * cellAreaHa;
+
   const unvisited   = total - visited;
   const unvisitedArea = totalArea - visitedArea;
 
@@ -4370,14 +4431,14 @@ if(beat !== "ALL" && cellBeat !== beat) return;
     totalGrids: total,
     visitedGrids: visited,
     unvisitedGrids: unvisited,
+
     totalAreaHa: totalArea.toFixed(2),
     visitedAreaHa: visitedArea.toFixed(2),
     unvisitedAreaHa: unvisitedArea.toFixed(2),
+
     percent: percent.toFixed(1)
   };
-}
-
-    function runBackfillAuto(){
+}    function runBackfillAuto(){
 
   if(window.backfillRunning){
     console.log("⏭ Backfill already running");
@@ -4825,14 +4886,8 @@ function markVisitedHybrid(tracks){
   let visited = {};
   const todayStr = getLocalDateStr();
 
-  // ======================================================
-  // 🔥 PRE-FETCH CELLS (KEEP AS IS)
-  // ======================================================
   const cells = Object.entries(window.gridIndex);
 
-  // ======================================================
-  // 🔥 TRACK LOOP
-  // ======================================================
   for(let t of tracks){
 
     if(!t || !t.track || t.track.length < 2) continue;
@@ -4851,9 +4906,11 @@ function markVisitedHybrid(tracks){
 
       if([lat1, lon1, lat2, lon2].some(isNaN)) continue;
 
-      // ======================================================
-      // 🔥 SPATIAL INDEX (YOUR UPGRADE)
-      // ======================================================
+      // 🔥 midpoint (NEW - IMPORTANT)
+      const midLat = (lat1 + lat2) / 2;
+      const midLng = (lon1 + lon2) / 2;
+
+      // 🔥 spatial index
       const baseLat = Math.floor(lat1 * 1000);
       const baseLng = Math.floor(lon1 * 1000);
 
@@ -4868,29 +4925,34 @@ function markVisitedHybrid(tracks){
         }
       }
 
-      // ======================================================
-      // 🔥 LOOP NEARBY CELLS
-      // ======================================================
       for(let cell of nearby){
 
         if(!cell || !cell.coords || !cell.id) continue;
 
-        // 🔥 FAST CENTER CHECK
         const c = cell.center;
         if(!c) continue;
 
+        // ==========================================
+        // 🔥 STRICT CENTER + MIDPOINT CHECK (FIXED)
+        // ==========================================
         const near =
-          Math.abs(c.lat - lat1) < 0.0006 &&
-          Math.abs(c.lng - lon1) < 0.0006;
+          (
+            Math.abs(c.lat - lat1) < 0.00025 &&
+            Math.abs(c.lng - lon1) < 0.00025
+          ) ||
+          (
+            Math.abs(c.lat - midLat) < 0.00025 &&
+            Math.abs(c.lng - midLng) < 0.00025
+          );
 
         if(near){
           visited[cell.id] = true;
           continue;
         }
 
-        // ======================================================
-        // 🔥 BBOX FROM COORDS
-        // ======================================================
+        // ==========================================
+        // 🔥 STRICT BBOX (SHRUNK)
+        // ==========================================
         let minLat = Infinity, minLon = Infinity;
         let maxLat = -Infinity, maxLon = -Infinity;
 
@@ -4901,22 +4963,21 @@ function markVisitedHybrid(tracks){
           if(clon > maxLon) maxLon = clon;
         }
 
-        // ======================================================
-        // 🔥 LINE-BOX INTERSECTION
-        // ======================================================
+        const pad = 0.00005; // 🔥 shrink bbox
+
         if(lineIntersectsBox(
           lat1, lon1,
           lat2, lon2,
-          minLat, minLon,
-          maxLat, maxLon
+          minLat + pad, minLon + pad,
+          maxLat - pad, maxLon - pad
         )){
           visited[cell.id] = true;
           continue;
         }
 
-        // ======================================================
-        // 🔥 PRECISE CHECK (NO TURF NOW)
-        // ======================================================
+        // ==========================================
+        // 🔥 FINAL PRECISE CHECK (NO TURF)
+        // ==========================================
         if(lineIntersectsPolygon(
           lat1, lon1,
           lat2, lon2,
@@ -4928,9 +4989,9 @@ function markVisitedHybrid(tracks){
     }
   }
 
-  // ======================================================
+  // ==========================================
   // 🔥 SAVE + CACHE (UNCHANGED)
-  // ======================================================
+  // ==========================================
   if(Object.keys(visited).length){
 
     const key = "grid_" + todayStr;
