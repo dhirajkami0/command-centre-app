@@ -4473,11 +4473,11 @@ async function ensureGridReady(){
   // ==========================================
   window.__gridBuilding = false;
 }   // ===== UI EVENTS =====
- function renderGrid(mode = "today", beat = "ALL"){
+function renderGrid(mode = "today", beat = "ALL"){
 
   try {
 
-    // 🔥 GLOBAL CONTROL (CRITICAL FIX)
+    // 🔥 GLOBAL CONTROL
     if(!window.gridVisible){
       if(window.__gridCanvas){
         window.__gridCanvas.style.display = "none";
@@ -4505,6 +4505,9 @@ async function ensureGridReady(){
       canvas.style.left = "0";
       canvas.style.pointerEvents = "none";
 
+      // 🔥 CRITICAL FIX
+      canvas.style.transformOrigin = "0 0";
+
       pane.appendChild(canvas);
 
       window.__gridCanvas = canvas;
@@ -4513,7 +4516,9 @@ async function ensureGridReady(){
       canvas.style.visibility = "hidden";
       canvas.style.opacity = "0";
 
-      // 🔥 CLICK HANDLER
+      // ==========================================
+      // 🔥 CLICK HANDLER (UNCHANGED)
+      // ==========================================
       if(!window.__gridClickAttached){
 
         map.on("click", function(e){
@@ -4553,12 +4558,9 @@ async function ensureGridReady(){
         window.__gridClickAttached = true;
       }
 
-      // 🔥 LOCK CANVAS
-      map.on("move", () => {
-        const topLeft = map.containerPointToLayerPoint([0,0]);
-        L.DomUtil.setPosition(canvas, topLeft);
-      });
+      // ❌ REMOVED WRONG MOVE HANDLER (CAUSE OF DRIFT)
 
+      // ✅ ONLY RE-RENDER AFTER MOVEMENT ENDS
       map.on("moveend zoomend resize", () => {
         if(!window.gridVisible) return;
         renderGrid(window.__lastMode || "current", window.__lastBeat || "ALL");
@@ -4574,6 +4576,10 @@ async function ensureGridReady(){
     canvas.style.display = "block";
     canvas.style.visibility = "visible";
     canvas.style.opacity = "1";
+
+    // 🔥 CRITICAL ALIGNMENT FIX
+    const topLeft = map.containerPointToLayerPoint([0,0]);
+    L.DomUtil.setPosition(canvas, topLeft);
 
     const size = map.getSize();
     canvas.width = size.x;
@@ -4657,11 +4663,9 @@ async function ensureGridReady(){
 
         ctx.closePath();
 
-        // 🔥 FILL CELL
         ctx.fill();
 
-        // 🔥 🔥 GRID BORDER (NEW — CRITICAL FIX)
-        ctx.strokeStyle = "rgba(0,255,255,0.35)"; // cyan grid lines
+        ctx.strokeStyle = "rgba(0,255,255,0.35)";
         ctx.lineWidth = 0.6;
         ctx.stroke();
 
