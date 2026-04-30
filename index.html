@@ -4386,57 +4386,52 @@ async function ensureGridReady(){
       canvas.style.position = "absolute";
       canvas.style.top = "0";
       canvas.style.left = "0";
-
-      // ❌ OLD
-      // canvas.style.pointerEvents = "none";
-
-      // ✅ FIX (ENABLE CLICK)
-      canvas.style.pointerEvents = "auto";
+      canvas.style.pointerEvents = "none"; // 🔥 IMPORTANT (let map handle click)
 
       pane.appendChild(canvas);
 
       window.__gridCanvas = canvas;
 
       // ==========================================
-      // 🔥 CLICK HANDLER (ADDED)
+      // 🔥 CLICK HANDLER (MAP LEVEL - RELIABLE)
       // ==========================================
-      canvas.onclick = function(e){
+      if(!window.__gridClickAttached){
 
-        try {
+        map.on("click", function(e){
 
-          const rect = canvas.getBoundingClientRect();
+          try {
 
-          const x = e.clientX - rect.left;
-          const y = e.clientY - rect.top;
+            const lat = e.latlng.lat;
+            const lng = e.latlng.lng;
 
-          const latlng = map.containerPointToLatLng([x, y]);
+            for(const cell of Object.values(window.gridIndex)){
 
-          for(const cell of Object.values(window.gridIndex)){
+              if(!cell || !cell.coords) continue;
 
-            if(!cell || !cell.coords) continue;
+              try {
 
-            try {
+                const poly = turf.polygon([
+                  cell.coords.map(([lat, lng]) => [lng, lat])
+                ]);
 
-              const poly = turf.polygon([
-                cell.coords.map(([lat, lng]) => [lng, lat])
-              ]);
+                const pt = turf.point([lng, lat]);
 
-              const pt = turf.point([latlng.lng, latlng.lat]);
+                if(turf.booleanPointInPolygon(pt, poly)){
 
-              if(turf.booleanPointInPolygon(pt, poly)){
+                  showGridPopup(cell, e.latlng);
+                  return;
+                }
 
-                // 🔥 CALL YOUR EXISTING POPUP
-                showGridPopup(cell, latlng);
-                return;
-              }
+              } catch(err){}
+            }
 
-            } catch(e){}
+          } catch(err){
+            console.error("❌ Map click error:", err);
           }
+        });
 
-        } catch(err){
-          console.error("❌ Click error:", err);
-        }
-      };
+        window.__gridClickAttached = true;
+      }
 
       // 🔥 KEEP CANVAS LOCKED TO MAP
       map.on("move", () => {
@@ -4552,8 +4547,7 @@ async function ensureGridReady(){
   } catch(e){
     console.error("❌ renderGrid crash:", e);
   }
-}
-   // ===============================
+}  // ===============================
 // 🔥 GLOBAL CACHE
 // ===============================
 
