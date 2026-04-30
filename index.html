@@ -1522,6 +1522,14 @@ function startApp(){
             // 🔥 STOP INTERVAL AFTER SUCCESS
             clearInterval(gridInitInterval);
 
+            // 🔥 HIDE GRID ON START (CRITICAL)
+setTimeout(() => {
+  if(window.__gridCanvas){
+    window.__gridCanvas.style.display = "none";
+    console.log("🙈 Grid hidden on startup");
+  }
+}, 300);
+
             const BACKFILL_KEY = "kmlBackfillDone_v2";
             window.__currentMonthPrefix = new Date().toISOString().slice(0,7);
 
@@ -8952,7 +8960,7 @@ var layerControl = L.control.layers(
     "🏡 Villages": villageLayer,
     "🌱 Plantation": plantationLayer,
 
-    // ✅ ONLY GRID LEFT
+    // ✅ KEEP AS IS (DO NOT CHANGE STRUCTURE)
     "🟩 Coverage Grid": window.gridLayer
 
   },
@@ -8984,13 +8992,25 @@ map.on('overlayadd', function (e) {
     }
 
     /* ============================================================
-       🟩 COVERAGE GRID (ONLY GRID LEFT)
+       🟩 COVERAGE GRID (FIXED)
     ============================================================ */
     if (layerName === "🟩 Coverage Grid") {
 
       console.log("📊 Coverage Grid ON");
 
+      // 🔥 SHOW PANEL
       showCoveragePanel?.();
+
+      // 🔥 SHOW CANVAS (REAL GRID)
+      if (window.__gridCanvas) {
+        window.__gridCanvas.style.display = "block";
+      }
+
+      // 🔥 FORCE RENDER (VERY IMPORTANT)
+      renderGrid(
+        window.currentCoverageMode || "today",
+        window.currentBeat || "ALL"
+      );
 
       return;
     }
@@ -9015,23 +9035,26 @@ map.on('overlayremove', function (e) {
     plantationLayer?.clearLayers?.();
   }
 
-  /* 🟩 GRID CLEANUP */
+  /* ============================================================
+     🟩 GRID CLEANUP (FIXED)
+  ============================================================ */
   if (name === "🟩 Coverage Grid") {
 
     console.log("🧹 Clearing Coverage Grid");
 
+    // 🔥 CLOSE PANEL
     closeCoveragePanel?.();
 
-    if (window.gridLayer) {
-      window.gridLayer.clearLayers();
+    // ❌ OLD (USELESS)
+    // window.gridLayer.clearLayers();
 
-      if (map.hasLayer(window.gridLayer)) {
-        map.removeLayer(window.gridLayer);
-      }
+    // ✅ REAL FIX: HIDE CANVAS
+    if (window.__gridCanvas) {
+      window.__gridCanvas.style.display = "none";
     }
   }
 
-});       /* ============================================================
+});      /* ============================================================
              🐘 SIGHTING FORM SYSTEM (FINAL SAFE VERSION)
           ============================================================ */
 
