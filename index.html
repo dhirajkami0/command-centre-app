@@ -4503,27 +4503,23 @@ async function ensureGridReady(){
       canvas.style.position = "absolute";
       canvas.style.top = "0";
       canvas.style.left = "0";
-      canvas.style.pointerEvents = "none"; // 🔥 IMPORTANT (let map handle click)
+      canvas.style.pointerEvents = "none";
 
       pane.appendChild(canvas);
 
       window.__gridCanvas = canvas;
 
-      // 🔥 DEFAULT HIDDEN (CRITICAL)
       canvas.style.display = "none";
       canvas.style.visibility = "hidden";
       canvas.style.opacity = "0";
 
-      // ==========================================
-      // 🔥 CLICK HANDLER (MAP LEVEL - RELIABLE)
-      // ==========================================
+      // 🔥 CLICK HANDLER
       if(!window.__gridClickAttached){
 
         map.on("click", function(e){
 
           try {
 
-            // 🔥 DO NOT PROCESS IF GRID OFF
             if(!window.gridVisible) return;
 
             const lat = e.latlng.lat;
@@ -4542,7 +4538,6 @@ async function ensureGridReady(){
                 const pt = turf.point([lng, lat]);
 
                 if(turf.booleanPointInPolygon(pt, poly)){
-
                   showGridPopup(cell, e.latlng);
                   return;
                 }
@@ -4558,17 +4553,14 @@ async function ensureGridReady(){
         window.__gridClickAttached = true;
       }
 
-      // 🔥 KEEP CANVAS LOCKED TO MAP
+      // 🔥 LOCK CANVAS
       map.on("move", () => {
         const topLeft = map.containerPointToLayerPoint([0,0]);
         L.DomUtil.setPosition(canvas, topLeft);
       });
 
       map.on("moveend zoomend resize", () => {
-
-        // 🔥 BLOCK AUTO RENDER IF GRID OFF
         if(!window.gridVisible) return;
-
         renderGrid(window.__lastMode || "current", window.__lastBeat || "ALL");
       });
     }
@@ -4579,7 +4571,6 @@ async function ensureGridReady(){
     const canvas = window.__gridCanvas;
     const ctx = canvas.getContext("2d");
 
-    // 🔥 ENSURE VISIBLE WHEN ENABLED
     canvas.style.display = "block";
     canvas.style.visibility = "visible";
     canvas.style.opacity = "1";
@@ -4601,9 +4592,6 @@ async function ensureGridReady(){
       current = window.gridCache?.month || {};
     }
 
-    // ===============================
-    // 🔥 VIEWPORT FILTER
-    // ===============================
     const bounds = map.getBounds();
 
     let total = 0;
@@ -4666,8 +4654,17 @@ async function ensureGridReady(){
       }
 
       if(!first){
+
         ctx.closePath();
+
+        // 🔥 FILL CELL
         ctx.fill();
+
+        // 🔥 🔥 GRID BORDER (NEW — CRITICAL FIX)
+        ctx.strokeStyle = "rgba(0,255,255,0.35)"; // cyan grid lines
+        ctx.lineWidth = 0.6;
+        ctx.stroke();
+
         drawn++;
       }
     }
