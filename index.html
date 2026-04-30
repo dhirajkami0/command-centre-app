@@ -4196,7 +4196,7 @@ async function ensureGridReady(){
   window.__gridReady = false;
 
   // ==========================================
-  // 🔥 LOAD FROM CACHE
+  // 🔥 LOAD FROM CACHE (WITH VALIDATION)
   // ==========================================
   try {
 
@@ -4207,22 +4207,22 @@ async function ensureGridReady(){
       const parsed = JSON.parse(raw);
       const size = Object.keys(parsed?.grid || {}).length;
 
+      const sample = Object.values(parsed?.grid || {})[0];
+
       if(
         parsed?.grid &&
         parsed?.meta?.size === TARGET_GRID_SIZE &&
-        size > MIN_VALID_GRID
+        size > MIN_VALID_GRID &&
+        sample?.beat   // 🔥 CRITICAL VALIDATION
       ){
         window.gridIndex = parsed.grid;
         window.gridMeta = parsed.meta;
 
-        // 🔥 MARK READY (VERY IMPORTANT)
         window.__gridReady = true;
 
         console.log("⚡ Grid loaded from cache:", size);
 
-        // 🔥 SAFE RENDER (only after ready)
         renderGrid("current", "ALL");
-
         return;
       }
 
@@ -4261,9 +4261,6 @@ async function ensureGridReady(){
     // ==========================================
     await buildGridFromBounds(bounds, window.rangeLayer);
 
-    // ==========================================
-    // 🔥 VALIDATION (CRITICAL)
-    // ==========================================
     const builtSize = Object.keys(window.gridIndex || {}).length;
 
     if(builtSize < MIN_VALID_GRID){
@@ -4272,10 +4269,20 @@ async function ensureGridReady(){
       return;
     }
 
+    console.log("🧱 Grid built, waiting for layer settle...");
+
     // ==========================================
-    // 🔥 STEP 2: ASSIGN BEATS
+    // 🔥 STEP 2: DELAYED BEAT ASSIGN (CRITICAL FIX)
     // ==========================================
+    await new Promise(resolve => setTimeout(resolve, 400));
+
     assignGridToBeat(window.rangeLayer);
+
+    // 🔥 VERIFY
+    const unknown = Object.values(window.gridIndex)
+      .filter(c => !c.beat || c.beat === "UNKNOWN").length;
+
+    console.log("📊 UNKNOWN after assign:", unknown);
 
     // ==========================================
     // 🔥 STEP 3: FINAL META
@@ -4288,7 +4295,7 @@ async function ensureGridReady(){
     console.log("✅ Grid built:", builtSize);
 
     // ==========================================
-    // 🔥 STEP 4: SAVE CACHE
+    // 🔥 STEP 4: SAVE CACHE (SAFE)
     // ==========================================
     try {
       localStorage.setItem(CACHE_KEY, JSON.stringify({
@@ -4301,12 +4308,12 @@ async function ensureGridReady(){
     }
 
     // ==========================================
-    // 🔥 MARK READY (FINAL STEP)
+    // 🔥 MARK READY
     // ==========================================
     window.__gridReady = true;
 
     // ==========================================
-    // 🔥 STEP 5: RENDER (ONLY AFTER READY)
+    // 🔥 STEP 5: FINAL RENDER
     // ==========================================
     renderGrid("current", "ALL");
 
