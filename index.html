@@ -4751,24 +4751,36 @@ window.beatMap = {
 
   id = id.toUpperCase().trim();
 
-  // 🔥 DIRECT MATCH (YOUR CASE)
+  // 🔥 normalize separators
+  id = id.replace(/[-_]/g, " ");
+  id = id.replace(/\s+/g, " ");
+
+  // ===============================
+  // 🔹 DIRECT PORO/DPO CASE (FIXED)
+  // ===============================
   if(id.startsWith("PORO") || id.startsWith("DPO")){
-    return id;
+    const num = id.match(/\d+/);
+    return num ? (id.startsWith("DPO") ? "DPO " : "PORO ") + parseInt(num[0]) : "";
   }
 
+  // ===============================
+  // 🔹 DAMANPUR → DPO
+  // ===============================
   if(id.includes("DAMANPUR")){
     const num = id.match(/\d+/);
-    return num ? "DPO " + num[0] : "";
+    return num ? "DPO " + parseInt(num[0]) : "";
   }
 
-  if(id.includes("PORO") && id.includes("BL")){
+  // ===============================
+  // 🔹 PORO BL → PORO X
+  // ===============================
+  if(id.includes("PORO")){
     const num = id.match(/\d+/);
-    return num ? "PORO " + num[0] : "";
+    return num ? "PORO " + parseInt(num[0]) : "";
   }
 
   return "";
-}
-   function loadGrid(){
+} function loadGrid(){
 
   const raw = localStorage.getItem("range_grid");
   if(!raw) return false;
