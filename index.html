@@ -4927,25 +4927,33 @@ function markVisitedHybrid(tracks){
       if([lat1, lon1, lat2, lon2].some(isNaN)) continue;
 
       // ==========================================
-      // 🔥 SPATIAL INDEX (KEEP)
+      // 🔥 FIXED SPATIAL INDEX (FULL SEGMENT)
       // ==========================================
-      const baseLat = Math.floor(lat1 * 1000);
-      const baseLng = Math.floor(lon1 * 1000);
+      const baseLat1 = Math.floor(lat1 * 1000);
+      const baseLng1 = Math.floor(lon1 * 1000);
 
-      let nearby = [];
+      const baseLat2 = Math.floor(lat2 * 1000);
+      const baseLng2 = Math.floor(lon2 * 1000);
 
-      for(let di=-1; di<=1; di++){
-        for(let dj=-1; dj<=1; dj++){
-          const key = (baseLat+di)+"_"+(baseLng+dj);
+      let nearbySet = new Set();
+
+      for(let lat = Math.min(baseLat1, baseLat2)-1; lat <= Math.max(baseLat1, baseLat2)+1; lat++){
+        for(let lng = Math.min(baseLng1, baseLng2)-1; lng <= Math.max(baseLng1, baseLng2)+1; lng++){
+
+          const key = lat + "_" + lng;
 
           if(window.gridSpatialIndex && window.gridSpatialIndex[key]){
-            nearby.push(...window.gridSpatialIndex[key]);
+            for(let cell of window.gridSpatialIndex[key]){
+              nearbySet.add(cell);
+            }
           }
         }
       }
 
+      const nearby = Array.from(nearbySet);
+
       // ==========================================
-      // 🔥 PURE LINE → POLYGON (FINAL)
+      // 🔥 PURE LINE → POLYGON (UNCHANGED)
       // ==========================================
       for(let cell of nearby){
 
@@ -5003,8 +5011,7 @@ function markVisitedHybrid(tracks){
   }
 
   return visited;
-} 
-    
+}    
     
     
     function applyMode(mode){
