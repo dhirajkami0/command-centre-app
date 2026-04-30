@@ -4386,13 +4386,59 @@ async function ensureGridReady(){
       canvas.style.position = "absolute";
       canvas.style.top = "0";
       canvas.style.left = "0";
-      canvas.style.pointerEvents = "none";
+
+      // ❌ OLD
+      // canvas.style.pointerEvents = "none";
+
+      // ✅ FIX (ENABLE CLICK)
+      canvas.style.pointerEvents = "auto";
 
       pane.appendChild(canvas);
 
       window.__gridCanvas = canvas;
 
-      // 🔥 KEEP CANVAS LOCKED TO MAP (VERY IMPORTANT)
+      // ==========================================
+      // 🔥 CLICK HANDLER (ADDED)
+      // ==========================================
+      canvas.onclick = function(e){
+
+        try {
+
+          const rect = canvas.getBoundingClientRect();
+
+          const x = e.clientX - rect.left;
+          const y = e.clientY - rect.top;
+
+          const latlng = map.containerPointToLatLng([x, y]);
+
+          for(const cell of Object.values(window.gridIndex)){
+
+            if(!cell || !cell.coords) continue;
+
+            try {
+
+              const poly = turf.polygon([
+                cell.coords.map(([lat, lng]) => [lng, lat])
+              ]);
+
+              const pt = turf.point([latlng.lng, latlng.lat]);
+
+              if(turf.booleanPointInPolygon(pt, poly)){
+
+                // 🔥 CALL YOUR EXISTING POPUP
+                showGridPopup(cell, latlng);
+                return;
+              }
+
+            } catch(e){}
+          }
+
+        } catch(err){
+          console.error("❌ Click error:", err);
+        }
+      };
+
+      // 🔥 KEEP CANVAS LOCKED TO MAP
       map.on("move", () => {
         const topLeft = map.containerPointToLayerPoint([0,0]);
         L.DomUtil.setPosition(canvas, topLeft);
@@ -4427,7 +4473,7 @@ async function ensureGridReady(){
     }
 
     // ===============================
-    // 🔥 VIEWPORT FILTER (BIG BOOST)
+    // 🔥 VIEWPORT FILTER
     // ===============================
     const bounds = map.getBounds();
 
@@ -4436,13 +4482,12 @@ async function ensureGridReady(){
     let drawn = 0;
 
     // ===============================
-    // 🔥 MAIN LOOP (FAST)
+    // 🔥 MAIN LOOP
     // ===============================
     for(const [id, cell] of Object.entries(window.gridIndex)){
 
       if(!cell || !cell.coords || !cell.center) continue;
 
-      // 🔥 skip if outside view
       if(!bounds.contains([cell.center.lat, cell.center.lng])) continue;
 
       const cellBeat = cell.beat || "UNKNOWN";
@@ -4508,7 +4553,6 @@ async function ensureGridReady(){
     console.error("❌ renderGrid crash:", e);
   }
 }
-
    // ===============================
 // 🔥 GLOBAL CACHE
 // ===============================
@@ -4703,6 +4747,92 @@ function onBeatChange(){
 
   // 🔥 render with current mode + new beat
   renderGrid(window.currentCoverageMode, window.currentBeat);
+}
+    function showGridPopup(cell, latlng){
+
+  try {
+
+    const mode = window.currentCoverageMode || "today";
+    const beat = window.currentBeat || "ALL";
+
+    const todayKey = "grid_" + getLocalDateStr();
+
+    const todayData = JSON.parse(localStorage.getItem(todayKey) || "{}");
+    const monthData = window.gridCache?.month || {};
+
+    const current = (mode === "today") ? todayData : monthData;
+
+    const isVisited = !!current[cell.id];
+
+    // ==========================================
+    // 🔥 CALCULATE STATS INLINE
+    // ==========================================
+    let total = 0;
+    let visited = 0;
+
+    for(const [id, c] of Object.entries(window.gridIndex)){
+
+      if(!c || !c.center) continue;
+
+      if(beat !== "ALL" && c.beat !== beat) continue;
+
+      total++;
+
+      if(current[id]) visited++;
+    }
+
+    const notVisited = total - visited;
+
+    const visitedPercent = total ? ((visited / total) * 100).toFixed(1) : 0;
+    const notVisitedPercent = total ? ((notVisited / total) * 100).toFixed(1) : 0;
+
+    const visitedArea = (visited * 0.25).toFixed(2);
+    const notVisitedArea = (notVisited * 0.25).toFixed(2);
+
+    // ==========================================
+    // 🔥 CONDITIONAL POPUP (CORE FIX)
+    // ==========================================
+    let html = "";
+
+    if(isVisited){
+
+      // 🟢 GREEN CLICK → VISITED DATA ONLY
+      html = `
+        <div style="font-size:13px;line-height:1.5">
+
+          <b>🟢 VISITED GRID</b><br><br>
+
+          ✔ Visited: ${visited}/${total}<br>
+          📈 ${visitedPercent}%<br>
+          🌿 Area Covered: ${visitedArea} ha
+
+        </div>
+      `;
+
+    } else {
+
+      // 🔴 RED CLICK → NOT VISITED DATA ONLY
+      html = `
+        <div style="font-size:13px;line-height:1.5">
+
+          <b>🔴 NOT VISITED GRID</b><br><br>
+
+          ❌ Remaining: ${notVisited}/${total}<br>
+          📉 ${notVisitedPercent}%<br>
+          🌿 Area Remaining: ${notVisitedArea} ha
+
+        </div>
+      `;
+    }
+
+    L.popup()
+      .setLatLng(latlng)
+      .setContent(html)
+      .openOn(map);
+
+  } catch(e){
+    console.error("❌ Popup error:", e);
+  }
 }
 function showGrid(){
   renderGrid(window.currentCoverageMode || "current",
