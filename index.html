@@ -4545,18 +4545,25 @@ function renderGrid(mode = "today", beat = "ALL"){
       // ==========================================
       if(!window.__gridClickAttached){
 
-        map.on("click", function(e){
+  map.on("click", function(e){
 
-          try {
+    try {
 
-            if(!window.gridVisible) return;
+      if(!window.gridVisible) return;
 
-            const lat = e.latlng.lat;
-            const lng = e.latlng.lng;
+      const lat = e.latlng.lat;
+      const lng = e.latlng.lng;
 
-            const lat = e.latlng.lat;
-const lng = e.latlng.lng;
+      // ✅ continue your logic here
 
+    } catch(err){
+      console.error("❌ Map click error:", err);
+    }
+
+  });
+
+  window.__gridClickAttached = true;
+}
 // 🔥 find nearby buckets
 const baseLat = Math.floor(lat * 1000);
 const baseLng = Math.floor(lng * 1000);
