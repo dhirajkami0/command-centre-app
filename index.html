@@ -4516,6 +4516,15 @@ function renderGrid(mode = "today", beat = "ALL"){
       return;
     }
 
+    // ==========================================
+    // 🔥 NEW: ZOOM-BASED SKIP (PERFORMANCE FIX)
+    // ==========================================
+    const zoom = map.getZoom();
+    if(zoom < 14){
+      console.log("⏭ Skipping grid (zoom too low)");
+      return;
+    }
+
     // ===============================
     // 🔥 INIT CANVAS (ONCE)
     // ===============================
@@ -4528,7 +4537,6 @@ function renderGrid(mode = "today", beat = "ALL"){
       canvas.style.top = "0";
       canvas.style.left = "0";
       canvas.style.pointerEvents = "none";
-
       canvas.style.transformOrigin = "0 0";
 
       pane.appendChild(canvas);
@@ -4540,7 +4548,7 @@ function renderGrid(mode = "today", beat = "ALL"){
       canvas.style.opacity = "0";
 
       // ==========================================
-      // 🔥 CLICK HANDLER (FIXED)
+      // 🔥 CLICK HANDLER (UNCHANGED)
       // ==========================================
       if(!window.__gridClickAttached){
 
@@ -4553,7 +4561,6 @@ function renderGrid(mode = "today", beat = "ALL"){
             const lat = e.latlng.lat;
             const lng = e.latlng.lng;
 
-            // 🔥 SPATIAL INDEX SEARCH
             const baseLat = Math.floor(lat * 1000);
             const baseLng = Math.floor(lng * 1000);
 
@@ -4570,20 +4577,13 @@ function renderGrid(mode = "today", beat = "ALL"){
               }
             }
 
-            // 🔥 CHECK ONLY CANDIDATES
             for(const cell of candidates){
 
               if(!cell || !cell.coords) continue;
 
               try {
 
-                const poly = turf.polygon([
-                  cell.coords.map(([clat, clng]) => [clng, clat])
-                ]);
-
-                const pt = turf.point([lng, lat]);
-
-                if(turf.booleanPointInPolygon(pt, poly)){
+                if(pointInPoly(lat, lng, cell.coords)){
                   showGridPopup(cell, e.latlng);
                   return;
                 }
@@ -4600,10 +4600,24 @@ function renderGrid(mode = "today", beat = "ALL"){
       }
 
       // ==========================================
-      // 🔥 RE-RENDER EVENTS
+      // 🔥 NEW: SMART RENDER (NO DUPLICATE REDRAW)
       // ==========================================
       map.on("moveend zoomend resize", () => {
+
         if(!window.gridVisible) return;
+
+        const z = map.getZoom();
+        const b = map.getBounds();
+
+        if(window.__lastZoom === z &&
+           window.__lastBounds &&
+           window.__lastBounds.equals(b)){
+          return;
+        }
+
+        window.__lastZoom = z;
+        window.__lastBounds = b;
+
         renderGrid(window.__lastMode || "current", window.__lastBeat || "ALL");
       });
     }
@@ -4618,7 +4632,7 @@ function renderGrid(mode = "today", beat = "ALL"){
     canvas.style.visibility = "visible";
     canvas.style.opacity = "1";
 
-    // 🔥 ALIGN FIX
+    // 🔥 ALIGN FIX (CRITICAL)
     const topLeft = map.containerPointToLayerPoint([0,0]);
     L.DomUtil.setPosition(canvas, topLeft);
 
@@ -4706,9 +4720,14 @@ function renderGrid(mode = "today", beat = "ALL"){
 
         ctx.fill();
 
-        ctx.strokeStyle = "rgba(0,255,255,0.35)";
-        ctx.lineWidth = 0.6;
-        ctx.stroke();
+        // ==========================================
+        // 🔥 NEW: STROKE ONLY AT HIGH ZOOM
+        // ==========================================
+        if(zoom >= 16){
+          ctx.strokeStyle = "rgba(0,255,255,0.35)";
+          ctx.lineWidth = 0.6;
+          ctx.stroke();
+        }
 
         drawn++;
       }
@@ -4726,8 +4745,27 @@ function renderGrid(mode = "today", beat = "ALL"){
 }  // ===============================
 // 🔥 GLOBAL CACHE
 // ===============================
+// 🔥 FAST point-in-polygon (ray casting) — no Turf
+function pointInPoly(lat, lng, coords){
+  let inside = false;
 
+  for(let i = 0, j = coords.length - 1; i < coords.length; j = i++){
+    const yi = coords[i][0], xi = coords[i][1]; // [lat, lng]
+    const yj = coords[j][0], xj = coords[j][1];
 
+    const intersect =
+      ((xi > lng) !== (xj > lng)) &&
+      (lat < (yj - yi) * (lng - xi) / ((xj - xi) || 1e-12) + yi);
+
+    if(intersect) inside = !inside;
+  }
+
+  return inside;
+}
+
+ // ===============================
+// 🔥 GLOBAL CACHE
+// ===============================
 
 function markVisitedHybrid(tracks){
 
