@@ -1521,47 +1521,56 @@ function startApp(){
           // ===============================
           // 🔥 AFTER GRID READY (FIXED)
           // ===============================
-          if(window.__gridReady){
+       if(window.__gridReady){
 
-            console.log("🎯 Grid ready (confirmed)");
+  console.log("🎯 Grid ready (confirmed)");
 
-            clearInterval(gridInitInterval);
+  clearInterval(gridInitInterval);
 
-            // 🔥 HARD FORCE HIDE (MULTI SAFETY)
-            setTimeout(() => {
-              if(window.__gridCanvas){
-                window.__gridCanvas.style.display = "none";
-                window.__gridCanvas.style.visibility = "hidden";
-                window.__gridCanvas.style.opacity = "0";
-                console.log("🙈 Grid hidden on startup");
-              }
-            }, 300);
+  // 🔥 HARD FORCE HIDE (MULTI SAFETY)
+  setTimeout(() => {
+    if(window.__gridCanvas){
+      window.__gridCanvas.style.display = "none";
+      window.__gridCanvas.style.visibility = "hidden";
+      window.__gridCanvas.style.opacity = "0";
+      console.log("🙈 Grid hidden on startup");
+    }
+  }, 300);
 
-            const BACKFILL_KEY = "kmlBackfillDone_v2";
-            window.__currentMonthPrefix = new Date().toISOString().slice(0,7);
+  const BACKFILL_KEY = "kmlBackfillDone_v2";
+  window.__currentMonthPrefix = new Date().toISOString().slice(0,7);
 
-            if(!localStorage.getItem(BACKFILL_KEY)){
+  if(!localStorage.getItem(BACKFILL_KEY)){
 
-              console.log("🚀 Scheduling backfill...");
+    console.log("🚀 Scheduling backfill...");
 
-              setTimeout(() => {
-                runBackfillAuto();
-              }, 3000);
+    setTimeout(() => {
+      runBackfillAuto();
+    }, 3000);
 
-            } else {
-              console.log("⏭ Backfill already completed");
-            }
-          }
+  } else {
+    console.log("⏭ Backfill already completed");
+  }
+}
 
-          if(attempts > 10){
-            console.warn("⚠ Grid init timeout");
-            clearInterval(gridInitInterval);
-          }
+// 🔥 UPDATED TIMEOUT (MORE STABLE)
+if(attempts > 30){   // ← was 10 (too aggressive)
 
-        }, 600);
-      }
+  if(window.__gridReady){
+    // 🔥 grid already ready → ignore timeout
+    clearInterval(gridInitInterval);
+    return;
+  }
 
-    }, 1200);
+  console.warn("⚠ Grid init timeout (extended)");
+
+  clearInterval(gridInitInterval);
+}
+
+}, 600);
+}
+
+}, 1200);
 
     // ======================================================
     // 🔥 DUTY CHECK (SAFE + RETRY)
