@@ -3822,28 +3822,22 @@ function showCoveragePanel(){
 
     console.log("📊 Coverage Panel OPEN");
 
-    // ❗ DO NOT render grid blindly
-    // Render ONLY if layer is enabled
-    if(map.hasLayer(window.gridLayer)){
+    // 🔥 ALWAYS PREPARE GRID
+    ensureGridReady();
 
-      ensureGridReady();
+    const mode = window.currentCoverageMode || "today";
+    const beat = document.getElementById("beatSelect")?.value || "ALL";
 
-      const beat = document.getElementById("beatSelect")?.value || "ALL";
+    // 🔥 sync mode globally (VERY IMPORTANT)
+    window.__lastMode = mode;
 
-      window.gridLayer.clearLayers();
-
-      if(typeof renderGrid === "function"){
-        renderGrid("current", beat);
-      }
-
-    }
+    // 🔥 ALWAYS RENDER FROM CACHE
+    renderGrid(mode, beat);
 
   } catch(e){
     console.error("❌ showCoveragePanel error:", e);
   }
 }
-
-
 /* ============================================================
    🔴 CLOSE COVERAGE PANEL (CLEAN + SAFE)
 ============================================================ */
@@ -3857,27 +3851,12 @@ function closeCoveragePanel(){
       panel.style.display = "none";
     }
 
-    // 🔴 CLEAR GRID
-    if(window.gridLayer){
-      window.gridLayer.clearLayers();
-    }
-
-    // 🔴 OPTIONAL: clear extra layers if used
-    if(window.visitedLayer){
-      window.visitedLayer.clearLayers();
-    }
-
-    if(window.unvisitedLayer){
-      window.unvisitedLayer.clearLayers();
-    }
-
     console.log("🔴 Coverage Panel CLOSED");
 
   } catch(e){
     console.error("❌ closeCoveragePanel error:", e);
   }
 }
-
 
 /* ============================================================
    🔽 TOGGLE PANEL MINIMIZE (UI ONLY)
@@ -5018,44 +4997,90 @@ function markVisitedHybrid(tracks){
     
     function applyMode(mode){
 
-  // 🔥 store mode globally
-  window.currentCoverageMode = mode || "today";
+  try {
 
-  // 🔥 get current beat
-  const beat = document.getElementById("beatSelect")?.value || "ALL";
+    // 🔥 set mode globally (single source of truth)
+    window.currentCoverageMode = mode || "today";
 
-  // 🔥 store beat also (important)
-  window.currentBeat = beat;
+    // 🔥 sync popup mode (VERY IMPORTANT)
+    window.__lastMode = window.currentCoverageMode;
 
-  // 🔥 highlight buttons (UI feedback)
-  const btnToday = document.getElementById("btnToday");
-  const btnCurrent = document.getElementById("btnCurrent");
+    // 🔥 get beat
+    const beat = document.getElementById("beatSelect")?.value || "ALL";
 
-  if(btnToday && btnCurrent){
-    btnToday.style.background = (mode === "today") ? "#00e676" : "";
-    btnCurrent.style.background = (mode === "current") ? "#00e676" : "";
+    // 🔥 store beat globally
+    window.currentBeat = beat;
+
+    // 🔥 UI highlight
+    const btnToday = document.getElementById("btnToday");
+    const btnCurrent = document.getElementById("btnCurrent");
+
+    if(btnToday && btnCurrent){
+      btnToday.style.background = (window.currentCoverageMode === "today") ? "#00e676" : "";
+      btnCurrent.style.background = (window.currentCoverageMode === "current") ? "#00e676" : "";
+    }
+
+    // 🔥 ALWAYS rebuild month cache (important for CURRENT mode)
+    if(typeof updateMonthCache === "function"){
+      updateMonthCache();
+    }
+
+    // 🔥 ensure grid is ready
+    if(typeof ensureGridReady === "function"){
+      ensureGridReady();
+    }
+
+    // 🔥 ALWAYS render from cache (not duty, not live data)
+    if(typeof renderGrid === "function"){
+      renderGrid(window.currentCoverageMode, window.currentBeat);
+    }
+
+    console.log("🎛 Mode Applied:", window.currentCoverageMode, "| Beat:", window.currentBeat);
+
+  } catch(e){
+    console.error("❌ applyMode error:", e);
   }
-
-  // 🔥 render
-  renderGrid(window.currentCoverageMode, window.currentBeat);
 }
 
 
 
 function onBeatChange(){
 
-  const beat = document.getElementById("beatSelect")?.value || "ALL";
+  try {
 
-  // 🔥 store beat
-  window.currentBeat = beat;
+    const beat = document.getElementById("beatSelect")?.value || "ALL";
 
-  // 🔥 ensure mode exists
-  if(!window.currentCoverageMode){
-    window.currentCoverageMode = "today";
+    // 🔥 store beat
+    window.currentBeat = beat;
+
+    // 🔥 ensure mode exists
+    if(!window.currentCoverageMode){
+      window.currentCoverageMode = "today";
+    }
+
+    // 🔥 sync popup mode
+    window.__lastMode = window.currentCoverageMode;
+
+    // 🔥 rebuild cache (safe + consistent)
+    if(typeof updateMonthCache === "function"){
+      updateMonthCache();
+    }
+
+    // 🔥 ensure grid ready
+    if(typeof ensureGridReady === "function"){
+      ensureGridReady();
+    }
+
+    // 🔥 render with updated beat + mode
+    if(typeof renderGrid === "function"){
+      renderGrid(window.currentCoverageMode, window.currentBeat);
+    }
+
+    console.log("🎯 Beat Changed:", window.currentBeat, "| Mode:", window.currentCoverageMode);
+
+  } catch(e){
+    console.error("❌ onBeatChange error:", e);
   }
-
-  // 🔥 render with current mode + new beat
-  renderGrid(window.currentCoverageMode, window.currentBeat);
 }
  function showGridPopup(cell, latlng){
 
