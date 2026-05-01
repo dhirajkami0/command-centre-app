@@ -4128,7 +4128,7 @@ function renderGrid(mode = "today", beat = "ALL") {
       });
 
       // =========================================================
-      // 🔥 CLICK HANDLER (FIXED)
+      // 🔥 CLICK HANDLER (UNCHANGED)
       // =========================================================
       if (!window.__gridClickAttached) {
 
@@ -4161,9 +4161,7 @@ function renderGrid(mode = "today", beat = "ALL") {
 
               if (pointInPoly(lat, lng, cell.coords)) {
 
-                // ✅ FINAL FIX → USE FUNCTION
                 showGridPopup(cell, e.latlng);
-
                 return;
               }
             }
@@ -4197,7 +4195,28 @@ function renderGrid(mode = "today", beat = "ALL") {
 
     const bounds = map.getBounds();
 
-    let count = 0;
+    // ===============================
+    // 🔥 HEATMAP PREP
+    // ===============================
+    let maxCount = 1;
+
+    Object.values(current).forEach(v => {
+      const c = (v === true) ? 1 : Number(v) || 0;
+      if (c > maxCount) maxCount = c;
+    });
+
+    function getHeatColor(t){
+      if(t < 0) t = 0;
+      if(t > 1) t = 1;
+
+      const r = Math.floor(255 * t);
+      const g = Math.floor(255 * (1 - Math.abs(t - 0.5) * 2));
+      const b = Math.floor(255 * (1 - t));
+
+      return `rgb(${r},${g},${b})`;
+    }
+
+    let countDrawn = 0;
 
     for (const [id, cell] of Object.entries(window.gridIndex)) {
 
@@ -4207,10 +4226,19 @@ function renderGrid(mode = "today", beat = "ALL") {
 
       if (beat !== "ALL" && cell.beat !== beat) continue;
 
-      const isVisited = !!current[id];
+      // 🔥 frequency-aware
+      const raw = current[id];
+      const visitCount = (raw === true) ? 1 : Number(raw) || 0;
 
-      ctx.fillStyle = isVisited ? "#00ff00" : "#ff0000";
-      ctx.globalAlpha = isVisited ? alphaVisited : alphaUnvisited;
+      let color = "#220000"; // 🔴 unvisited dark
+
+      if (visitCount > 0) {
+        const intensity = visitCount / maxCount;
+        color = getHeatColor(intensity);
+      }
+
+      ctx.fillStyle = color;
+      ctx.globalAlpha = visitCount === 0 ? alphaUnvisited : alphaVisited;
 
       const coords = cell.coords;
       if (!coords || coords.length < 3) continue;
@@ -4232,12 +4260,12 @@ function renderGrid(mode = "today", beat = "ALL") {
         ctx.stroke();
       }
 
-      count++;
+      countDrawn++;
     }
 
     ctx.globalAlpha = 1;
 
-    console.log("🟩 Grid drawn:", count);
+    console.log("🟩 Grid drawn:", countDrawn, "| Max visits:", maxCount);
 
   } catch (e) {
     console.error("❌ renderGrid crash:", e);
@@ -4267,34 +4295,58 @@ function updateTodayCache(){
     data = {};
   }
 
+  // 🔥 convert old boolean → frequency count
+  Object.keys(data).forEach(id => {
+    if(data[id] === true){
+      data[id] = 1;
+    } else {
+      data[id] = Number(data[id]) || 0;
+    }
+  });
+
   window.gridCache = window.gridCache || {};
   window.gridCache.today = data;
 
-  console.log("📅 Today grids:", Object.keys(data).length);
+  console.log(
+    "📅 Today grids:",
+    Object.keys(data).length,
+    "| Total visits:",
+    Object.values(data).reduce((a,b)=>a+b,0)
+  );
 }
-
 
 /* ============================================================
    📅 MONTH CACHE (STRICT: 1st → TODAY ONLY)
+============================================================ */
+/* ============================================================
+   📅 MONTH CACHE (FREQUENCY AWARE)
 ============================================================ */
 function updateMonthCache(){
 
   let result = {};
 
-  // 🔥 current month prefix (CRITICAL FIX)
+  // 🔥 current month prefix
   const prefix = new Date().toISOString().slice(0,7); // YYYY-MM
 
   Object.keys(localStorage).forEach(key => {
 
-    // 🔥 ONLY current month
     if(!key.startsWith("grid_" + prefix)) return;
 
     try {
 
       const data = JSON.parse(localStorage.getItem(key) || "{}");
 
-      Object.keys(data).forEach(id => {
-        result[id] = true;
+      Object.entries(data).forEach(([id, val]) => {
+
+        // 🔥 convert old boolean → count
+        const count = (val === true) ? 1 : Number(val) || 0;
+
+        if(!result[id]){
+          result[id] = count;
+        } else {
+          result[id] += count; // 🔥 aggregate across days
+        }
+
       });
 
     } catch(e){
@@ -4310,8 +4362,9 @@ function updateMonthCache(){
 }
 
 
+
 /* ============================================================
-   🔄 INCREMENTAL VISITED UPDATE (SAFE + FAST)
+   🔄 INCREMENTAL VISITED UPDATE (FREQUENCY BASED)
 ============================================================ */
 function updateVisitedCache(newVisited){
 
@@ -4326,13 +4379,20 @@ function updateVisitedCache(newVisited){
     todayData = {};
   }
 
+  // 🔥 convert old boolean → count (safety)
+  Object.keys(todayData).forEach(id => {
+    if(todayData[id] === true) todayData[id] = 1;
+  });
+
   let added = 0;
 
   Object.keys(newVisited).forEach(id => {
 
     if(!todayData[id]){
-      todayData[id] = true;
+      todayData[id] = 1;   // first visit
       added++;
+    } else {
+      todayData[id] += 1;  // 🔥 increment frequency
     }
 
   });
@@ -4346,7 +4406,7 @@ function updateVisitedCache(newVisited){
   window.gridCache = window.gridCache || {};
   window.gridCache.today = todayData;
 
-  // 🔥 rebuild month cache (incremental safe)
+  // 🔥 rebuild month cache
   updateMonthCache();
 
   console.log("➕ Added new grids:", added);
@@ -4354,8 +4414,9 @@ function updateVisitedCache(newVisited){
 }
 
 
+
 /* ============================================================
-   📊 COVERAGE STATS (FIXED + ACCURATE)
+   📊 COVERAGE STATS (FREQUENCY AWARE)
 ============================================================ */
 function getCoverageStats(mode = "today", beat = "ALL", type = "all"){
 
@@ -4374,6 +4435,7 @@ function getCoverageStats(mode = "today", beat = "ALL", type = "all"){
 
   let total = 0;
   let visited = 0;
+  let totalVisits = 0; // 🔥 new metric
 
   Object.entries(window.gridIndex).forEach(([id, cell]) => {
 
@@ -4381,20 +4443,23 @@ function getCoverageStats(mode = "today", beat = "ALL", type = "all"){
 
     const cellBeat = cell.beat || "UNKNOWN";
 
-    // 🔥 beat filter
     if(beat !== "ALL" && cellBeat !== beat) return;
 
     total++;
 
-    if(data[id]) visited++;
+    const count = (data[id] === true) ? 1 : Number(data[id]) || 0;
+
+    if(count > 0){
+      visited++;
+      totalVisits += count;
+    }
+
   });
 
   // ==========================================
-  // 🔥 AREA CALCULATION (FIXED)
+  // 🔥 AREA CALCULATION
   // ==========================================
   const step = window.gridMeta.size || 0.00045;
-
-  // approx meters conversion
   const metersPerDeg = 111320;
 
   const cellAreaSqm = Math.pow(step * metersPerDeg, 2);
@@ -4408,6 +4473,9 @@ function getCoverageStats(mode = "today", beat = "ALL", type = "all"){
 
   const percent = total ? ((visited / total) * 100) : 0;
 
+  // 🔥 new insights
+  const avgVisits = total ? (totalVisits / total) : 0;
+
   return {
     totalGrids: total,
     visitedGrids: visited,
@@ -4417,7 +4485,11 @@ function getCoverageStats(mode = "today", beat = "ALL", type = "all"){
     visitedAreaHa: visitedArea.toFixed(2),
     unvisitedAreaHa: unvisitedArea.toFixed(2),
 
-    percent: percent.toFixed(1)
+    percent: percent.toFixed(1),
+
+    // 🔥 NEW METRICS
+    totalVisits: totalVisits,
+    avgVisits: avgVisits.toFixed(2)
   };
 }    function runBackfillAuto(){
 
@@ -4952,7 +5024,7 @@ function markVisitedHybrid(tracks){
   }
 
   // ==========================================
-  // 🔥 SAVE + INCREMENTAL CACHE (UNCHANGED)
+  // 🔥 SAVE + INCREMENTAL CACHE (UPDATED → FREQUENCY)
   // ==========================================
   if(Object.keys(visited).length){
 
@@ -4962,7 +5034,14 @@ function markVisitedHybrid(tracks){
 
     try {
       data = JSON.parse(localStorage.getItem(key) || "{}");
-    } catch(e){}
+    } catch(e){
+      data = {};
+    }
+
+    // 🔥 SAFETY: convert old boolean → count
+    Object.keys(data).forEach(id => {
+      if(data[id] === true) data[id] = 1;
+    });
 
     Object.keys(visited).forEach(id => {
 
@@ -4970,10 +5049,20 @@ function markVisitedHybrid(tracks){
         window.gridIndex[id].visited = true;
       }
 
-      data[id] = true;
+      // 🔥 FREQUENCY UPDATE (CORE FIX)
+      if(!data[id]){
+        data[id] = 1;        // first visit
+      } else {
+        data[id] += 1;       // increment visit count
+      }
+
     });
 
-    localStorage.setItem(key, JSON.stringify(data));
+    try {
+      localStorage.setItem(key, JSON.stringify(data));
+    } catch(e){
+      console.warn("⚠ Failed to save grid cache");
+    }
 
     window.gridCache = window.gridCache || {};
     window.gridCache.today = data;
@@ -4993,7 +5082,6 @@ function markVisitedHybrid(tracks){
 
   return visited;
 }    
-    
     
     function applyMode(mode){
 
@@ -5082,7 +5170,7 @@ function onBeatChange(){
     console.error("❌ onBeatChange error:", e);
   }
 }
- function showGridPopup(cell, latlng){
+function showGridPopup(cell, latlng){
 
   try {
 
@@ -5095,6 +5183,7 @@ function onBeatChange(){
 
     let total = 0;
     let visited = 0;
+    let totalVisits = 0;
 
     for (const [id, c] of Object.entries(window.gridIndex)) {
 
@@ -5104,7 +5193,12 @@ function onBeatChange(){
 
       total++;
 
-      if (current[id]) visited++;
+      const count = (current[id] === true) ? 1 : Number(current[id]) || 0;
+
+      if (count > 0){
+        visited++;
+        totalVisits += count;
+      }
     }
 
     const unvisited = total - visited;
@@ -5117,15 +5211,17 @@ function onBeatChange(){
     const visitedPct = total ? ((visited / total) * 100).toFixed(1) : 0;
     const unvisitedPct = total ? ((unvisited / total) * 100).toFixed(1) : 0;
 
+    const avgVisits = total ? (totalVisits / total).toFixed(2) : 0;
+
     // 🔥 SAFE ID MATCH
     const idSafe = cell.id || (
       cell.center.lat.toFixed(5) + "_" +
       cell.center.lng.toFixed(5)
     );
 
-    const isVisited = !!current[idSafe];
+    const cellCount = (current[idSafe] === true) ? 1 : Number(current[idSafe]) || 0;
 
-    // 🔥 detect selected beat from UI
+    // 🔥 detect selected beat
     const selectedBeat = document.getElementById("beatSelect")?.value || "ALL";
 
     let html = "";
@@ -5137,27 +5233,35 @@ function onBeatChange(){
 
       let totalAll = 0;
       let visitedAll = 0;
+      let visitsAll = 0;
 
       for (const [id, c] of Object.entries(window.gridIndex)) {
+
         if (!c) continue;
 
         totalAll++;
-        if (current[id]) visitedAll++;
-      }
 
-      const unvisitedAll = totalAll - visitedAll;
+        const count = (current[id] === true) ? 1 : Number(current[id]) || 0;
+
+        if (count > 0){
+          visitedAll++;
+          visitsAll += count;
+        }
+      }
 
       const areaTotal = (totalAll * cellAreaHa).toFixed(2);
       const visitedAreaAll = (visitedAll * cellAreaHa).toFixed(2);
 
       const pctAll = totalAll ? ((visitedAll / totalAll) * 100).toFixed(1) : 0;
+      const avgAll = totalAll ? (visitsAll / totalAll).toFixed(2) : 0;
 
       html += `
         <b>🌍 TOTAL COVERAGE</b><br>
         Grids: <b>${totalAll}</b><br>
         Covered: <b>${visitedAll}</b><br>
         Area: <b>${visitedAreaAll}/${areaTotal} ha</b><br>
-        Coverage: <b>${pctAll}%</b>
+        Coverage: <b>${pctAll}%</b><br>
+        Avg Visits: <b>${avgAll}</b>
         <hr>
       `;
 
@@ -5171,44 +5275,63 @@ function onBeatChange(){
         const b = c.beat || "UNKNOWN";
 
         if (!beats[b]) {
-          beats[b] = { total: 0, visited: 0 };
+          beats[b] = { total: 0, visited: 0, visits: 0 };
         }
 
         beats[b].total++;
 
-        if (current[id]) beats[b].visited++;
+        const count = (current[id] === true) ? 1 : Number(current[id]) || 0;
+
+        if (count > 0){
+          beats[b].visited++;
+          beats[b].visits += count;
+        }
       }
 
       for (const b in beats) {
 
         const t = beats[b].total;
         const v = beats[b].visited;
+        const visits = beats[b].visits;
 
         const pct = t ? ((v / t) * 100).toFixed(1) : 0;
         const area = (v * cellAreaHa).toFixed(2);
+        const avg = t ? (visits / t).toFixed(2) : 0;
 
         html += `
           <b>${b}</b><br>
           ${v}/${t} grids<br>
           ${area} ha<br>
-          ${pct}%<br><br>
+          ${pct}%<br>
+          Avg: ${avg}<br><br>
         `;
       }
 
     } else {
 
       // =====================================================
-      // 🎯 SINGLE BEAT MODE
+      // 🎯 SINGLE CELL / BEAT MODE
       // =====================================================
 
-      if (isVisited) {
+      let densityLabel = "Unvisited";
+
+      if(cellCount === 1) densityLabel = "Low";
+      else if(cellCount <= 3) densityLabel = "Medium";
+      else if(cellCount <= 6) densityLabel = "High";
+      else if(cellCount > 6) densityLabel = "Very High";
+
+      if (cellCount > 0) {
 
         html = `
           <b>🟢 VISITED AREA</b><br><br>
           Beat: <b>${beat}</b><br>
-          Visited Grids: <b>${visited}</b><br>
+          Visits on this grid: <b>${cellCount}</b><br>
+          Density: <b>${densityLabel}</b><br><br>
+
+          Total Visited Grids: <b>${visited}</b><br>
           Area Covered: <b>${visitedArea} ha</b><br>
-          Coverage: <b>${visitedPct}%</b>
+          Coverage: <b>${visitedPct}%</b><br>
+          Avg Visits: <b>${avgVisits}</b>
         `;
 
       } else {
@@ -5216,6 +5339,9 @@ function onBeatChange(){
         html = `
           <b>🔴 UNVISITED AREA</b><br><br>
           Beat: <b>${beat}</b><br>
+          Visits: <b>0</b><br>
+          Status: <b>Not Patrolled</b><br><br>
+
           Pending Grids: <b>${unvisited}</b><br>
           Area Remaining: <b>${unvisitedArea} ha</b><br>
           Remaining: <b>${unvisitedPct}%</b>
@@ -5223,8 +5349,7 @@ function onBeatChange(){
       }
     }
 
-    // 🔥 FINAL POPUP
-    L.popup({ maxWidth: 240 })
+    L.popup({ maxWidth: 260 })
       .setLatLng(latlng)
       .setContent(html)
       .openOn(map);
@@ -5232,8 +5357,7 @@ function onBeatChange(){
   } catch(e) {
     console.error("❌ showGridPopup error:", e);
   }
-}
-function showGrid(){
+}function showGrid(){
   renderGrid(window.currentCoverageMode || "current",
              window.currentBeat || "ALL");
 }
