@@ -5057,76 +5057,99 @@ function onBeatChange(){
   // 🔥 render with current mode + new beat
   renderGrid(window.currentCoverageMode, window.currentBeat);
 }
-  function showGridPopup(cell, latlng){
+  // 🔥 detect selected beat from UI
+const selectedBeat = document.getElementById("beatSelect")?.value || "ALL";
 
-  try {
+let html = "";
 
-    const beat = cell.beat || "UNKNOWN";
-    const mode = window.__lastMode || "current";
+if (selectedBeat === "ALL") {
 
-    let current = (mode === "today")
-      ? window.gridCache?.today || {}
-      : window.gridCache?.month || {};
+  // =========================
+  // 🔥 TOTAL (ALL BEATS)
+  // =========================
+  let totalAll = 0;
+  let visitedAll = 0;
 
-    let total = 0;
-    let visited = 0;
+  for (const [id, c] of Object.entries(window.gridIndex)) {
+    if (!c) continue;
+    totalAll++;
+    if (current[id]) visitedAll++;
+  }
 
-    // 🔥 USE EXISTING gridIndex (NO NEW FUNCTION)
-    for (const [id, c] of Object.entries(window.gridIndex)) {
+  const unvisitedAll = totalAll - visitedAll;
 
-      if (!c) continue;
+  const areaTotal = (totalAll * 0.25).toFixed(2);
+  const visitedAreaAll = (visitedAll * 0.25).toFixed(2);
+  const pctAll = totalAll ? ((visitedAll / totalAll) * 100).toFixed(1) : 0;
 
-      if (beat !== "ALL" && c.beat !== beat) continue;
+  html += `
+    <b>🌍 TOTAL COVERAGE</b><br>
+    Grids: <b>${totalAll}</b><br>
+    Covered: <b>${visitedAll}</b><br>
+    Area: <b>${visitedAreaAll}/${areaTotal} ha</b><br>
+    Coverage: <b>${pctAll}%</b>
+    <hr>
+  `;
 
-      total++;
+  // =========================
+  // 🔥 BEAT-WISE BREAKDOWN
+  // =========================
+  const beats = {};
 
-      if (current[id]) visited++;
+  for (const [id, c] of Object.entries(window.gridIndex)) {
+    if (!c) continue;
+
+    const b = c.beat || "UNKNOWN";
+
+    if (!beats[b]) {
+      beats[b] = { total: 0, visited: 0 };
     }
 
-    const unvisited = total - visited;
+    beats[b].total++;
 
-    const cellAreaHa = 0.25;
+    if (current[id]) beats[b].visited++;
+  }
 
-    const visitedArea = (visited * cellAreaHa).toFixed(2);
-    const unvisitedArea = (unvisited * cellAreaHa).toFixed(2);
+  for (const b in beats) {
 
-    const visitedPct = total ? ((visited / total) * 100).toFixed(1) : 0;
-    const unvisitedPct = total ? ((unvisited / total) * 100).toFixed(1) : 0;
+    const t = beats[b].total;
+    const v = beats[b].visited;
+    const pct = t ? ((v / t) * 100).toFixed(1) : 0;
+    const area = (v * 0.25).toFixed(2);
 
-    const isVisited = !!current[cell.id];
+    html += `
+      <b>${b}</b><br>
+      ${v}/${t} grids<br>
+      ${area} ha<br>
+      ${pct}%<br><br>
+    `;
+  }
 
-    let html = "";
+} else {
 
-    if (isVisited) {
+  // =========================
+  // 🔥 EXISTING SINGLE BEAT LOGIC
+  // =========================
 
-      // 🟢 GREEN CLICK
-      html = `
-        <b>🟢 VISITED AREA</b><br><br>
-        Beat: <b>${beat}</b><br>
-        Visited Grids: <b>${visited}</b><br>
-        Area Covered: <b>${visitedArea} ha</b><br>
-        Coverage: <b>${visitedPct}%</b>
-      `;
+  if (isVisited) {
 
-    } else {
+    html = `
+      <b>🟢 VISITED AREA</b><br><br>
+      Beat: <b>${beat}</b><br>
+      Visited Grids: <b>${visited}</b><br>
+      Area Covered: <b>${visitedArea} ha</b><br>
+      Coverage: <b>${visitedPct}%</b>
+    `;
 
-      // 🔴 RED CLICK
-      html = `
-        <b>🔴 UNVISITED AREA</b><br><br>
-        Beat: <b>${beat}</b><br>
-        Pending Grids: <b>${unvisited}</b><br>
-        Area Remaining: <b>${unvisitedArea} ha</b><br>
-        Remaining: <b>${unvisitedPct}%</b>
-      `;
-    }
+  } else {
 
-    L.popup({ maxWidth: 220 })
-      .setLatLng(latlng)
-      .setContent(html)
-      .openOn(map);
-
-  } catch (e) {
-    console.error("❌ showGridPopup error:", e);
+    html = `
+      <b>🔴 UNVISITED AREA</b><br><br>
+      Beat: <b>${beat}</b><br>
+      Pending Grids: <b>${unvisited}</b><br>
+      Area Remaining: <b>${unvisitedArea} ha</b><br>
+      Remaining: <b>${unvisitedPct}%</b>
+    `;
   }
 }
 function showGrid(){
