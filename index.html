@@ -2521,22 +2521,38 @@ function syncGridCanvas(){
   L.DomUtil.setPosition(window.__gridCanvas, topLeft);
 }
 
-// ===============================
-// 🔥 GRID EVENT BIND (REPLACEMENT)
-// ===============================
-map.on("move", () => {
-  requestAnimationFrame(syncGridCanvas);
-});
 
+// ===============================
+// 🔥 GRID EVENT BIND (FIXED PAN)
+// ===============================
+
+// 🔥 REAL-TIME PAN (REMOVE RAF DELAY)
+map.on("move", syncGridCanvas);
+
+// 🔥 EXTRA DRAG SYNC (important for continuous movement)
+map.on("drag", syncGridCanvas);
+
+// 🔥 ZOOM SYNC (keep as is)
 map.on("zoom", syncGridCanvas);
 
+
+// ===============================
+// 🔥 ZOOM END (KEEP LOGIC, ADD SAFE RESIZE)
+// ===============================
 map.on("zoomend", () => {
 
   if(!window.__gridCanvas) return;
 
   const size = map.getSize();
-  window.__gridCanvas.width  = size.x;
-  window.__gridCanvas.height = size.y;
+
+  // 🔥 CRITICAL FIX: resize ONLY if needed (prevents drift)
+  if(
+    window.__gridCanvas.width !== size.x ||
+    window.__gridCanvas.height !== size.y
+  ){
+    window.__gridCanvas.width  = size.x;
+    window.__gridCanvas.height = size.y;
+  }
 
   syncGridCanvas();
 
@@ -2546,6 +2562,7 @@ map.on("zoomend", () => {
       window.currentBeat || "ALL"
     );
   }
+
 }); /* ============================================================
        📊 RANGE BUTTON (SAFE)
     ============================================================ */
@@ -4200,12 +4217,13 @@ function renderGrid(mode = "today", beat = "ALL"){
     canvas.style.opacity = "1";
 
     // 🔥 FIXED ALIGNMENT
-    syncGridCanvas();
+  
 
     const size = map.getSize();
-    canvas.width = size.x;
-    canvas.height = size.y;
-
+   if(canvas.width !== size.x || canvas.height !== size.y){
+  canvas.width  = size.x;
+  canvas.height = size.y;
+}
     ctx.clearRect(0, 0, canvas.width, canvas.height);
 
     let current = {};
