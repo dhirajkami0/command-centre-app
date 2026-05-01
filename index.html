@@ -4368,53 +4368,77 @@ function updateMonthCache(){
 ============================================================ */
 function updateVisitedCache(newVisited){
 
-  const key = "grid_" + getLocalDateStr();
-
-  let todayData = {};
-
   try {
-    todayData = JSON.parse(localStorage.getItem(key) || "{}");
-  } catch(e){
-    console.warn("⚠ Today cache read failed");
-    todayData = {};
-  }
 
-  // 🔥 convert old boolean → count (safety)
-  Object.keys(todayData).forEach(id => {
-    if(todayData[id] === true) todayData[id] = 1;
-  });
-
-  let added = 0;
-
-  Object.keys(newVisited).forEach(id => {
-
-    if(!todayData[id]){
-      todayData[id] = 1;   // first visit
-      added++;
-    } else {
-      todayData[id] += 1;  // 🔥 increment frequency
+    // 🔥 safety: skip if nothing to update
+    if(!newVisited || !Object.keys(newVisited).length){
+      console.log("⚠ No newVisited data");
+      return;
     }
 
-  });
+    const key = "grid_" + getLocalDateStr();
 
-  try {
-    localStorage.setItem(key, JSON.stringify(todayData));
+    let todayData = {};
+
+    try {
+      todayData = JSON.parse(localStorage.getItem(key) || "{}");
+    } catch(e){
+      console.warn("⚠ Today cache read failed");
+      todayData = {};
+    }
+
+    // 🔥 convert old boolean → count
+    Object.keys(todayData).forEach(id => {
+      if(todayData[id] === true){
+        todayData[id] = 1;
+      } else {
+        todayData[id] = Number(todayData[id]) || 0;
+      }
+    });
+
+    let added = 0;
+
+    Object.keys(newVisited).forEach(id => {
+
+      // 🔥 ensure valid id
+      if(!id) return;
+
+      if(!todayData[id]){
+        todayData[id] = 1;     // first visit
+        added++;
+      } else {
+        todayData[id] += 1;    // increment frequency
+      }
+
+    });
+
+    try {
+      localStorage.setItem(key, JSON.stringify(todayData));
+    } catch(e){
+      console.warn("⚠ Cache save failed");
+    }
+
+    // 🔥 sync to memory
+    window.gridCache = window.gridCache || {};
+    window.gridCache.today = todayData;
+
+    // 🔥 rebuild month cache
+    if(typeof updateMonthCache === "function"){
+      updateMonthCache();
+    }
+
+    console.log("➕ Added new grids:", added);
+    console.log(
+      "📊 Today total grids:",
+      Object.keys(todayData).length,
+      "| Total visits:",
+      Object.values(todayData).reduce((a,b)=>a+b,0)
+    );
+
   } catch(e){
-    console.warn("⚠ Cache save failed");
+    console.error("❌ updateVisitedCache error:", e);
   }
-
-  window.gridCache = window.gridCache || {};
-  window.gridCache.today = todayData;
-
-  // 🔥 rebuild month cache
-  updateMonthCache();
-
-  console.log("➕ Added new grids:", added);
-  console.log("📊 Today total:", Object.keys(todayData).length);
 }
-
-
-
 /* ============================================================
    📊 COVERAGE STATS (FREQUENCY AWARE)
 ============================================================ */
@@ -5006,7 +5030,7 @@ function markVisitedHybrid(tracks){
       const nearby = Array.from(nearbySet);
 
       // ==========================================
-      // 🔥 PURE LINE → POLYGON (UNCHANGED)
+      // 🔥 PURE LINE → POLYGON
       // ==========================================
       for(let cell of nearby){
 
@@ -5024,36 +5048,47 @@ function markVisitedHybrid(tracks){
   }
 
   // ==========================================
-  // 🔥 SAVE + INCREMENTAL CACHE (UPDATED → FREQUENCY)
+  // 🔥 SAVE + INCREMENTAL CACHE (HARDENED)
   // ==========================================
   if(Object.keys(visited).length){
 
     const key = "grid_" + todayStr;
 
+    console.log("💾 Saving to:", key);
+
     let data = {};
 
     try {
-      data = JSON.parse(localStorage.getItem(key) || "{}");
+      const raw = localStorage.getItem(key);
+      if(raw){
+        data = JSON.parse(raw);
+      }
     } catch(e){
+      console.warn("⚠ Parse failed → resetting today data");
       data = {};
     }
 
-    // 🔥 SAFETY: convert old boolean → count
+    // 🔥 normalize old values
     Object.keys(data).forEach(id => {
       if(data[id] === true) data[id] = 1;
+      else data[id] = Number(data[id]) || 0;
     });
 
+    let updates = 0;
+
     Object.keys(visited).forEach(id => {
+
+      if(!id) return;
 
       if(window.gridIndex[id]){
         window.gridIndex[id].visited = true;
       }
 
-      // 🔥 FREQUENCY UPDATE (CORE FIX)
       if(!data[id]){
-        data[id] = 1;        // first visit
+        data[id] = 1;
+        updates++;
       } else {
-        data[id] += 1;       // increment visit count
+        data[id] += 1;
       }
 
     });
@@ -5061,19 +5096,25 @@ function markVisitedHybrid(tracks){
     try {
       localStorage.setItem(key, JSON.stringify(data));
     } catch(e){
-      console.warn("⚠ Failed to save grid cache");
+      console.error("❌ CRITICAL: localStorage save failed", e);
     }
 
+    // 🔥 FORCE MEMORY SYNC
     window.gridCache = window.gridCache || {};
     window.gridCache.today = data;
 
+    // 🔥 REBUILD MONTH
     if(typeof updateMonthCache === "function"){
       updateMonthCache();
     }
 
     console.log(
-      "✅ Line-based visited:",
-      Object.keys(visited).length
+      "✅ Saved grids:",
+      updates,
+      "| Total grids:",
+      Object.keys(data).length,
+      "| Total visits:",
+      Object.values(data).reduce((a,b)=>a+b,0)
     );
 
   } else {
@@ -5082,7 +5123,6 @@ function markVisitedHybrid(tracks){
 
   return visited;
 }    
-    
     function applyMode(mode){
 
   try {
