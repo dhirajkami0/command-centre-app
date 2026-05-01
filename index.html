@@ -4104,6 +4104,12 @@ function assignGridToBeat(rangeLayer){
 // ======================================================
 function renderGrid(mode = "today", beat = "ALL") {
   try {
+
+    // 🔥 FIX: auto-enable if called manually
+    if (!window.gridVisible) {
+      console.warn("⚠ gridVisible was false → enabling");
+      window.gridVisible = true;
+    }
     if (!window.gridVisible) {
       if (window.__gridCanvas) {
         window.__gridCanvas.style.display = "none";
@@ -4249,7 +4255,16 @@ function renderGrid(mode = "today", beat = "ALL") {
 
     for (const [id, cell] of Object.entries(window.gridIndex)) {
       if (!cell || !cell.coords || !cell.center) continue;
-      if (!bounds.contains([cell.center.lat, cell.center.lng])) continue;
+      const pad = 0.005;
+
+if (
+  cell.center.lat < bounds.getSouth() - pad ||
+  cell.center.lat > bounds.getNorth() + pad ||
+  cell.center.lng < bounds.getWest() - pad ||
+  cell.center.lng > bounds.getEast() + pad
+) {
+  continue;
+}
 
       const cellBeat = cell.beat || "UNKNOWN";
       if (beat !== "ALL" && cellBeat !== beat) continue;
@@ -9270,6 +9285,11 @@ map.on('overlayadd', function (e) {
 
       // 🔥 ENABLE GRID
       window.gridVisible = true;
+
+renderGrid(
+  window.currentCoverageMode || "today",
+  window.currentBeat || "ALL"
+);
 
       // 🔥 SHOW PANEL
       showCoveragePanel?.();
