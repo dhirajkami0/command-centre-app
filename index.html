@@ -145,6 +145,7 @@ async function cleanOldMessages(){
 <!-- ✅ CORE MAP LIBRARY -->
 <script src="js/leaflet.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@turf/turf@6/turf.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/idb-keyval@6/dist/idb-keyval.iife.min.js"></script>
 <!-- ✅ OPTIONAL (KEEP ONLY IF USED) -->
   <script src="./js/leaflet-pip.min.js"></script>
 
@@ -989,12 +990,77 @@ window.addEventListener("unhandledrejection", function (e) {
 
 
 // ================= GRID GLOBAL =================
+// ================= GRID GLOBAL =================
 window.gridIndex = {};
 window.gridMeta = null;
 
-
 window.__gridReady = false;
 
+
+// ===============================
+// 🔥 GRID DB CACHE (ADD HERE)
+// ===============================
+
+// 🔥 SAVE GRID
+async function saveGridToDB(gridData){
+  try {
+
+    if(!gridData || !Object.keys(gridData).length){
+      console.warn("⚠ Empty grid not saved");
+      return;
+    }
+
+    await idbKeyval.set('full_grid_index', gridData);
+    await idbKeyval.set('grid_timestamp', Date.now());
+
+    console.log("💾 Grid saved:", Object.keys(gridData).length);
+
+  } catch(err){
+    console.error("❌ DB save failed", err);
+  }
+}
+
+
+// 🔥 LOAD GRID
+async function loadGridFromDB(){
+  try {
+
+    const loaded = await loadGridFromDB();
+
+if(loaded){
+
+  window.__gridLoadedFromCache = true;
+
+  console.log("⚡ Grid loaded from IndexedDB");
+
+  setTimeout(() => {
+    if(window.__gridCanvas){
+      window.__gridCanvas.style.display = "none";
+      window.__gridCanvas.style.visibility = "hidden";
+      window.__gridCanvas.style.opacity = "0";
+    }
+  }, 100);
+
+  clearInterval(gridInitInterval);
+  return;
+}
+
+    if(cached && Object.keys(cached).length){
+
+      window.gridIndex = cached;
+      window.__gridReady = true;
+
+      console.log("⚡ Grid loaded from DB:", Object.keys(cached).length);
+
+      return true;
+    }
+
+  } catch(err){
+    console.error("❌ DB load failed", err);
+  }
+
+  return false;
+}
     
     const DEBUG = false;
 
@@ -1460,118 +1526,137 @@ function startApp(){
     // ======================================================
     // 🔥 GRID INIT + BACKFILL (NON-BLOCKING)
     // ======================================================
-    setTimeout(() => {
+    // ======================================================
+// 🔥 GRID INIT + BACKFILL (INDEXEDDB ENABLED)
+// ======================================================
+setTimeout(() => {
 
-      let attempts = 0;
+  let attempts = 0;
 
-      if(window.__gridInitStarted){
-        console.warn("⚠ Grid init already started");
-      } else {
-
-        window.__gridInitStarted = true;
-
-        const gridInitInterval = setInterval(() => {
-
-          attempts++;
-
-          if(!window.rangeLayer){
-            console.log("⏳ Waiting for rangeLayer...");
-            if(attempts > 10) clearInterval(gridInitInterval);
-            return;
-          }
-
-          // ===============================
-          // 🔥 CACHE-FIRST GRID INIT
-          // ===============================
-          if(!window.__gridLoadedFromCache){
-
-            const loaded = loadGridFromCache();
-
-            if(loaded){
-
-              window.__gridLoadedFromCache = true;
-
-              // 🔥 IMPORTANT FIX
-              window.__gridReady = true;
-
-              console.log("⚡ Using cached grid ONLY (no rebuild)");
-
-              // ❌ REMOVED AUTO SHOW GRID
-              // renderGrid("current", "ALL");
-
-              // ✅ FORCE HIDDEN STATE
-              setTimeout(() => {
-                if(window.__gridCanvas){
-                  window.__gridCanvas.style.display = "none";
-                }
-              }, 100);
-
-              clearInterval(gridInitInterval);
-              return;
-            }
-          }
-
-          // ===============================
-          // 🔥 SAFE BUILD (ONLY ONCE)
-          // ===============================
-          if(!window.__gridLoadedFromCache && !window.__gridBuilding){
-            ensureGridReady();
-          }
-
-          // ===============================
-          // 🔥 AFTER GRID READY (FIXED)
-          // ===============================
-       if(window.__gridReady){
-
-  console.log("🎯 Grid ready (confirmed)");
-
-  clearInterval(gridInitInterval);
-
-  // 🔥 HARD FORCE HIDE (MULTI SAFETY)
-  setTimeout(() => {
-    if(window.__gridCanvas){
-      window.__gridCanvas.style.display = "none";
-      window.__gridCanvas.style.visibility = "hidden";
-      window.__gridCanvas.style.opacity = "0";
-      console.log("🙈 Grid hidden on startup");
-    }
-  }, 300);
-
-  const BACKFILL_KEY = "kmlBackfillDone_v2";
-  window.__currentMonthPrefix = new Date().toISOString().slice(0,7);
-
-  if(!localStorage.getItem(BACKFILL_KEY)){
-
-    console.log("🚀 Scheduling backfill...");
-
-    setTimeout(() => {
-      runBackfillAuto();
-    }, 3000);
-
-  } else {
-    console.log("⏭ Backfill already completed");
-  }
-}
-
-// 🔥 UPDATED TIMEOUT (MORE STABLE)
-if(attempts > 30){   // ← was 10 (too aggressive)
-
-  if(window.__gridReady){
-    // 🔥 grid already ready → ignore timeout
-    clearInterval(gridInitInterval);
+  if(window.__gridInitStarted){
+    console.warn("⚠ Grid init already started");
     return;
   }
 
-  console.warn("⚠ Grid init timeout (extended)");
+  window.__gridInitStarted = true;
 
-  clearInterval(gridInitInterval);
-}
+  const gridInitInterval = setInterval(async () => {
 
-}, 600);
-}
+    attempts++;
+
+    if(!window.rangeLayer){
+      console.log("⏳ Waiting for rangeLayer...");
+      if(attempts > 10) clearInterval(gridInitInterval);
+      return;
+    }
+
+    // ===============================
+    // 🔥 STEP 1: TRY INDEXEDDB FIRST
+    // ===============================
+    if(!window.__gridLoadedFromCache){
+
+      try {
+        const cached = await idbKeyval.get('full_grid_index');
+
+        if(cached && Object.keys(cached).length){
+
+          window.gridIndex = cached;
+          window.__gridReady = true;
+          window.__gridLoadedFromCache = true;
+
+          console.log("⚡ Grid loaded from IndexedDB:", Object.keys(cached).length);
+
+          // 🔥 hide on startup
+          setTimeout(() => {
+            if(window.__gridCanvas){
+              window.__gridCanvas.style.display = "none";
+              window.__gridCanvas.style.visibility = "hidden";
+              window.__gridCanvas.style.opacity = "0";
+            }
+          }, 100);
+
+          clearInterval(gridInitInterval);
+          return;
+        }
+
+      } catch(e){
+        console.warn("⚠ IndexedDB load failed");
+      }
+    }
+
+    // ===============================
+    // 🔥 STEP 2: BUILD GRID IF NOT FOUND
+    // ===============================
+    if(!window.__gridLoadedFromCache && !window.__gridBuilding){
+
+      console.log("🔁 Building grid (no cache)");
+
+      await ensureGridReady();
+
+      // 🔥 SAVE TO DB AFTER BUILD
+      try {
+        if(window.gridIndex && Object.keys(window.gridIndex).length){
+         await saveGridToDB(window.gridIndex);
+          console.log("💾 Grid saved to IndexedDB");
+        }
+      } catch(e){
+        console.warn("⚠ IndexedDB save failed");
+      }
+
+      window.__gridLoadedFromCache = true;
+    }
+
+    // ===============================
+    // 🔥 STEP 3: READY STATE
+    // ===============================
+    if(window.__gridReady){
+
+      console.log("🎯 Grid ready (confirmed)");
+
+      clearInterval(gridInitInterval);
+
+      setTimeout(() => {
+        if(window.__gridCanvas){
+          window.__gridCanvas.style.display = "none";
+          window.__gridCanvas.style.visibility = "hidden";
+          window.__gridCanvas.style.opacity = "0";
+          console.log("🙈 Grid hidden on startup");
+        }
+      }, 300);
+
+      const BACKFILL_KEY = "kmlBackfillDone_v2";
+      window.__currentMonthPrefix = new Date().toISOString().slice(0,7);
+
+      if(!localStorage.getItem(BACKFILL_KEY)){
+
+        console.log("🚀 Scheduling backfill...");
+
+        setTimeout(() => {
+          runBackfillAuto();
+        }, 3000);
+
+      } else {
+        console.log("⏭ Backfill already completed");
+      }
+    }
+
+    // ===============================
+    // 🔥 TIMEOUT SAFETY
+    // ===============================
+    if(attempts > 30){
+
+      if(window.__gridReady){
+        clearInterval(gridInitInterval);
+        return;
+      }
+
+      console.warn("⚠ Grid init timeout (extended)");
+      clearInterval(gridInitInterval);
+    }
+
+  }, 600);
 
 }, 1200);
-
     // ======================================================
     // 🔥 DUTY CHECK (SAFE + RETRY)
     // ======================================================
