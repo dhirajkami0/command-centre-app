@@ -7251,15 +7251,16 @@ function syncOfflineMoves(){
     }
 
     
-  function loadStaff(){
+ function loadStaff(){
 
   callBackend("getMapData")
-.then(function(data){
+  .then(function(data){
 
-  // 🔥 CLEAR ONLY WHEN DATA IS READY
-  staffLayer.clearLayers();
+    // 🔥 CLEAR ONLY WHEN DATA IS READY
+    staffLayer.clearLayers();
 
-  if(!data) return;
+    if(!data) return;
+
     const staff = data.filter(s=>s.type==="Staff");
 
     /* 🔥 GROUP SAME LOCATION */
@@ -7333,24 +7334,16 @@ function syncOfflineMoves(){
         const team = (s.team && String(s.team).trim()) ? s.team : "N/A";
         const duty = (s.dutyType && String(s.dutyType).trim()) ? s.dutyType : "N/A";
 
-        console.log("👤 STAFF DEBUG:", {
-          name: s.name,
-          team: s.team,
-          duty: s.dutyType
-        });
-        
         const popup = `
         <div style="font-family:Segoe UI">
-
           <b>👤 ${s.name}</b><br>
-         ${
-  s.mobile
-    ? `<a href="tel:${s.mobile}" title="Call ${s.name}" 
-         style="color:#00e676;font-size:15px;text-decoration:none;">
-         <i class="fa-solid fa-phone"></i> ${s.mobile}
-       </a>`
-    : "N/A"
-}<br>
+          ${
+            s.mobile
+            ? `<a href="tel:${s.mobile}" style="color:#00e676;text-decoration:none;">
+               <i class="fa-solid fa-phone"></i> ${s.mobile}
+               </a>`
+            : "N/A"
+          }<br>
 
           <hr>
 
@@ -7377,7 +7370,7 @@ function syncOfflineMoves(){
 
         marker.on('click',()=> activePopupId = s.name);
 
-        /* 🔥 TRACK */
+        /* 🔥 TRACK DRAW */
         if(clean.length>1){
 
           const line = L.polyline(clean,{
@@ -7405,66 +7398,63 @@ function syncOfflineMoves(){
     });
 
     // ======================================================
-    // 🔥 GRID UPDATE FROM STAFF TRACKS (FIXED)
+    // 🔥 GRID UPDATE FROM STAFF TRACKS (FINAL CORRECT)
     // ======================================================
-    // ======================================================
-// 🔥 GRID UPDATE FROM STAFF TRACKS (FINAL FIX)
-// ======================================================
-// ======================================================
-// 🔥 GRID UPDATE FROM STAFF TRACKS (HYBRID - FINAL)
-// ======================================================
-try {
+    try {
 
-  let tracks = [];
+      let tracks = [];
 
-  staff.forEach(s=>{
+      staff.forEach(s=>{
 
-    if(Array.isArray(s.track) && s.track.length > 1){
+        if(Array.isArray(s.track) && s.track.length > 1){
 
-      tracks.push({
-        track: s.track
+          tracks.push({
+            track: s.track   // ✅ CORRECT FORMAT
+          });
+
+        }
+
       });
 
+      if(tracks.length && window.gridIndex){
+
+        console.log("🔥 GRID INPUT TRACKS:", tracks.length);
+
+        // 💣 ONLY THIS (FINAL RULE)
+        markVisitedHybrid(tracks);
+
+        // 🔥 RELOAD TODAY CACHE (IMPORTANT)
+        const todayKey = "grid_" + getLocalDateStr();
+
+        try {
+          window.gridCache = window.gridCache || {};
+          window.gridCache.today =
+            JSON.parse(localStorage.getItem(todayKey) || "{}");
+        } catch(e){
+          console.warn("⚠ cache reload failed");
+        }
+
+        // 🔥 MONTH UPDATE
+        if(typeof updateMonthCache === "function"){
+          updateMonthCache();
+        }
+
+        // 🔥 FORCE RENDER
+        renderGrid(
+          window.currentCoverageMode || "today",
+          window.currentBeat || "ALL"
+        );
+
+        console.log("✅ GRID UPDATED FROM STAFF TRACKS");
+
+      } else {
+        console.warn("⚠ No valid tracks for grid");
+      }
+
+    } catch(e){
+      console.error("❌ Grid update error:", e);
     }
 
-  });
-
-  if(tracks.length && window.gridIndex){
-
-    console.log("📍 Feeding tracks to hybrid:", tracks.length);
-
-    // 🔥 USE HYBRID (LINE BASED)
-    markVisitedHybrid(tracks);
-
-    // 🔥 SAFE CACHE SYNC
-    const todayKey = "grid_" + getLocalDateStr();
-
-    try {
-      window.gridCache = window.gridCache || {};
-      window.gridCache.today =
-        JSON.parse(localStorage.getItem(todayKey) || "{}");
-    } catch(e){}
-
-    // 🔥 MONTH UPDATE
-    if(typeof updateMonthCache === "function"){
-      updateMonthCache();
-    }
-
-    // 🔥 RENDER
-    renderGrid(
-      window.currentCoverageMode || "today",
-      window.currentBeat || "ALL"
-    );
-
-    console.log("✅ Grid updated from staff tracks (HYBRID)");
-
-  } else {
-    console.warn("⚠ No tracks for grid");
-  }
-
-} catch(e){
-  console.error("❌ Grid update error:", e);
-}
   })
   .catch(err => console.error("❌ loadStaff error:", err));
 
