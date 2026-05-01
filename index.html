@@ -145,7 +145,7 @@ async function cleanOldMessages(){
 <!-- ✅ CORE MAP LIBRARY -->
 <script src="js/leaflet.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@turf/turf@6/turf.min.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/idb-keyval@6/dist/idb-keyval.iife.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/idb-keyval@6/dist/index.iife.min.js"></script>
 <!-- ✅ OPTIONAL (KEEP ONLY IF USED) -->
   <script src="./js/leaflet-pip.min.js"></script>
 
@@ -1005,6 +1005,11 @@ window.__gridReady = false;
 async function saveGridToDB(gridData){
   try {
 
+    if(typeof idbKeyval === "undefined"){
+      console.warn("⚠ idbKeyval not loaded → skipping save");
+      return;
+    }
+
     if(!gridData || !Object.keys(gridData).length){
       console.warn("⚠ Empty grid not saved");
       return;
@@ -1020,48 +1025,30 @@ async function saveGridToDB(gridData){
   }
 }
 
-
 // 🔥 LOAD GRID
 async function loadGridFromDB(){
   try {
 
-    const loaded = await loadGridFromDB();
-
-if(loaded){
-
-  window.__gridLoadedFromCache = true;
-
-  console.log("⚡ Grid loaded from IndexedDB");
-
-  setTimeout(() => {
-    if(window.__gridCanvas){
-      window.__gridCanvas.style.display = "none";
-      window.__gridCanvas.style.visibility = "hidden";
-      window.__gridCanvas.style.opacity = "0";
+    if(typeof idbKeyval === "undefined"){
+      console.warn("⚠ idbKeyval not ready");
+      return false;
     }
-  }, 100);
 
-  clearInterval(gridInitInterval);
-  return;
-}
+    const cached = await idbKeyval.get('full_grid_index');
 
     if(cached && Object.keys(cached).length){
-
       window.gridIndex = cached;
       window.__gridReady = true;
-
-      console.log("⚡ Grid loaded from DB:", Object.keys(cached).length);
-
+      console.log("⚡ Grid loaded:", Object.keys(cached).length);
       return true;
     }
 
   } catch(err){
-    console.error("❌ DB load failed", err);
+    console.warn("⚠ IndexedDB load failed", err);
   }
 
   return false;
-}
-    
+}    
     const DEBUG = false;
 
 function safeBackend(action, payload = {}) {
