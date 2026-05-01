@@ -4087,29 +4087,13 @@ function assignGridToBeat(rangeLayer){
 function renderGrid(mode = "today", beat = "ALL") {
   try {
 
-    // 🔥 FIX: auto-enable if called manually
-    if (!window.gridVisible) {
-  if (window.__gridCanvas) {
-    window.__gridCanvas.style.display = "none";
-  }
-  return;
-}
-    if (!window.gridVisible) {
-      if (window.__gridCanvas) {
-        window.__gridCanvas.style.display = "none";
-        window.__gridCanvas.style.visibility = "hidden";
-        window.__gridCanvas.style.opacity = "0";
-      }
-      return;
-    }
-
     if (!window.gridIndex || !window.gridMeta || !Object.keys(window.gridIndex).length) {
       console.warn("⚠ Grid not ready (skip render)");
       return;
     }
 
     const zoom = map.getZoom();
-    let drawBorders = true;
+
     let alphaVisited = 0.6;
     let alphaUnvisited = 0.4;
     let borderAlpha = 0.35;
@@ -4121,8 +4105,6 @@ function renderGrid(mode = "today", beat = "ALL") {
       borderAlpha = 0.15;
       borderWidth = 0.3;
     } else if (zoom < 16) {
-      alphaVisited = 0.6;
-      alphaUnvisited = 0.4;
       borderAlpha = 0.25;
       borderWidth = 0.45;
     } else {
@@ -4136,75 +4118,34 @@ function renderGrid(mode = "today", beat = "ALL") {
     // 🔥 INIT CANVAS
     // ===============================
     if (!window.__gridCanvas) {
-      const pane = map.getPane("mapPane");
+      const pane = map.getPane("overlayPane"); // 🔥 FIXED (was mapPane)
       const canvas = document.createElement("canvas");
+
       canvas.style.position = "absolute";
       canvas.style.top = "0";
       canvas.style.left = "0";
       canvas.style.pointerEvents = "none";
       canvas.style.transformOrigin = "0 0";
-      canvas.className = "leaflet-zoom-animated"; // Allows Leaflet to handle CSS transitions
+      canvas.className = "leaflet-zoom-animated";
 
       pane.appendChild(canvas);
       window.__gridCanvas = canvas;
 
-      canvas.style.display = "none";
-      canvas.style.visibility = "hidden";
-      canvas.style.opacity = "0";
+      // ✅ ALWAYS VISIBLE
+      canvas.style.display = "block";
+      canvas.style.visibility = "visible";
+      canvas.style.opacity = "1";
 
-      if (!window.__gridClickAttached) {
-        map.on("click", function(e) {
-          try {
-            if (!window.gridVisible) return;
-            const lat = e.latlng.lat;
-            const lng = e.latlng.lng;
-            const baseLat = Math.floor(lat * 1000);
-            const baseLng = Math.floor(lng * 1000);
-            const candidates = [];
-            for (let i = -1; i <= 1; i++) {
-              for (let j = -1; j <= 1; j++) {
-                const key = (baseLat + i) + "_" + (baseLng + j);
-                if (window.gridSpatialIndex && window.gridSpatialIndex[key]) {
-                  candidates.push(...window.gridSpatialIndex[key]);
-                }
-              }
-            }
-            for (const cell of candidates) {
-              if (!cell || !cell.coords) continue;
-              try {
-                if (pointInPoly(lat, lng, cell.coords)) {
-                  showGridPopup(cell, e.latlng);
-                  return;
-                }
-              } catch (err) {}
-            }
-          } catch (err) {
-            console.error("❌ Map click error:", err);
-          }
-        });
-        window.__gridClickAttached = true;
-      }
-
-      // 🔥 CRITICAL SYNC HANDLERS
       map.on("move", syncGridCanvas);
+
       map.on("resize", () => {
         const size = map.getSize();
-        window.__gridCanvas.width = size.x;
-        window.__gridCanvas.height = size.y;
+        canvas.width = size.x;
+        canvas.height = size.y;
         syncGridCanvas();
-        renderGrid(window.__lastMode, window.__lastBeat);
       });
 
       map.on("moveend zoomend", () => {
-        if (!window.gridVisible) return;
-        const z = map.getZoom();
-        const b = map.getBounds();
-        if (window.__lastZoom === z && window.__lastBounds && window.__lastBounds.equals(b)) {
-          syncGridCanvas(); // Still sync position even if no redraw
-          return;
-        }
-        window.__lastZoom = z;
-        window.__lastBounds = b;
         renderGrid(window.__lastMode || "current", window.__lastBeat || "ALL");
       });
     }
@@ -4215,81 +4156,62 @@ function renderGrid(mode = "today", beat = "ALL") {
     const canvas = window.__gridCanvas;
     const ctx = canvas.getContext("2d");
 
-    canvas.style.display = "block";
-    canvas.style.visibility = "visible";
-    canvas.style.opacity = "1";
-
-    // Align canvas to current map view
-    syncGridCanvas();
-
     const size = map.getSize();
     canvas.width = size.x;
     canvas.height = size.y;
 
+    syncGridCanvas();
+
     ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-    let current = {};
-    if (mode === "today") {
-      current = window.gridCache?.today || {};
-    } else {
-      current = window.gridCache?.month || {};
-    }
+    let current = (mode === "today")
+      ? window.gridCache?.today || {}
+      : window.gridCache?.month || {};
 
     const bounds = map.getBounds();
 
+    let count = 0;
+
     for (const [id, cell] of Object.entries(window.gridIndex)) {
+
       if (!cell || !cell.coords || !cell.center) continue;
-      const pad = 0.005;
 
-if (
-  cell.center.lat < bounds.getSouth() - pad ||
-  cell.center.lat > bounds.getNorth() + pad ||
-  cell.center.lng < bounds.getWest() - pad ||
-  cell.center.lng > bounds.getEast() + pad
-) {
-  continue;
-}
+      if (!bounds.contains([cell.center.lat, cell.center.lng])) continue;
 
-      const cellBeat = cell.beat || "UNKNOWN";
-      if (beat !== "ALL" && cellBeat !== beat) continue;
+      if (beat !== "ALL" && cell.beat !== beat) continue;
 
       const isVisited = !!current[id];
-      ctx.fillStyle = (cellBeat === "UNKNOWN") ? "#888" : (isVisited ? "#00ff00" : "#ff0000");
+
+      ctx.fillStyle = isVisited ? "#00ff00" : "#ff0000";
       ctx.globalAlpha = isVisited ? alphaVisited : alphaUnvisited;
 
       const coords = cell.coords;
       if (!coords || coords.length < 3) continue;
 
       ctx.beginPath();
-      let first = true;
 
-      for (let i = 0; i < coords.length; i++) {
-        const [clat, clng] = coords[i];
-        let p;
-        try {
-          p = map.latLngToContainerPoint([clat, clng]);
-        } catch (e) {
-          continue;
-        }
-        if (first) {
-          ctx.moveTo(p.x, p.y);
-          first = false;
-        } else {
-          ctx.lineTo(p.x, p.y);
-        }
+      coords.forEach(([lat, lng], i) => {
+        const p = map.latLngToContainerPoint([lat, lng]);
+        if (i === 0) ctx.moveTo(p.x, p.y);
+        else ctx.lineTo(p.x, p.y);
+      });
+
+      ctx.closePath();
+      ctx.fill();
+
+      if (zoom >= 10) {
+        ctx.strokeStyle = `rgba(0,255,255,${borderAlpha})`;
+        ctx.lineWidth = borderWidth;
+        ctx.stroke();
       }
 
-      if (!first) {
-        ctx.closePath();
-        ctx.fill();
-        if (drawBorders && zoom >= 10) {
-          ctx.strokeStyle = `rgba(0,255,255,${borderAlpha})`;
-          ctx.lineWidth = borderWidth;
-          ctx.stroke();
-        }
-      }
+      count++;
     }
+
     ctx.globalAlpha = 1;
+
+    console.log("🟩 Grid drawn:", count);
+
   } catch (e) {
     console.error("❌ renderGrid crash:", e);
   }
