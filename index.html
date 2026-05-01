@@ -127,27 +127,36 @@ async function cleanOldMessages(){
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="Command Centre">
 
-<!-- ✅ REMOVE NO-CACHE (CRITICAL FOR OFFLINE) -->
-
 <!-- ✅ LOCAL ICONS -->
 <link rel="icon" type="image/png" href="icons/icon-192.png">
 <link rel="apple-touch-icon" sizes="180x180" href="icons/icon-192.png">
 <link rel="preload" as="image" href="./icons/splash.png">
-  <!-- ✅ MANIFEST -->
+
+<!-- ✅ MANIFEST -->
 <link rel="manifest" href="manifest.json">
 
 <!-- ✅ LOCAL CSS -->
 <link rel="stylesheet" href="css/leaflet.css">
 
-<!-- ⚠️ TEMP KEEP (icons) → later download locally -->
+<!-- ⚠️ TEMP KEEP (icons) -->
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css">
 
 <!-- ✅ CORE MAP LIBRARY -->
 <script src="js/leaflet.js"></script>
+
+<!-- ✅ TURF -->
 <script src="https://cdn.jsdelivr.net/npm/@turf/turf@6/turf.min.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/idb-keyval@6/dist/index.iife.min.js"></script>
-<!-- ✅ OPTIONAL (KEEP ONLY IF USED) -->
-  <script src="./js/leaflet-pip.min.js"></script>
+
+<!-- ========================================= -->
+<!-- 🔥 FIXED IDB-KEYVAL (WORKING VERSION) -->
+<!-- ========================================= -->
+<script type="module">
+  import * as idbKeyval from "https://cdn.jsdelivr.net/npm/idb-keyval@6/+esm";
+  window.idbKeyval = idbKeyval;
+</script>
+
+<!-- ✅ OPTIONAL -->
+<script src="./js/leaflet-pip.min.js"></script>
 
 <!-- ⚠️ LOAD TURF ONLY IF REALLY NEEDED -->
 <script defer>
@@ -161,7 +170,7 @@ async function cleanOldMessages(){
   }
 </script>
 
-<!-- ❌ REMOVE THESE (IMPORTANT) -->
+<!-- ❌ REMOVE THESE -->
 <!--
 <script src="js/leaflet-omnivore.min.js"></script>
 <script src="js/shp.js"></script>
