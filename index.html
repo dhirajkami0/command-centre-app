@@ -4118,7 +4118,7 @@ function renderGrid(mode = "today", beat = "ALL") {
     // 🔥 INIT CANVAS
     // ===============================
     if (!window.__gridCanvas) {
-      const pane = map.getPane("overlayPane"); // 🔥 FIXED (was mapPane)
+      const pane = map.getPane("overlayPane");
       const canvas = document.createElement("canvas");
 
       canvas.style.position = "absolute";
@@ -4131,7 +4131,6 @@ function renderGrid(mode = "today", beat = "ALL") {
       pane.appendChild(canvas);
       window.__gridCanvas = canvas;
 
-      // ✅ ALWAYS VISIBLE
       canvas.style.display = "block";
       canvas.style.visibility = "visible";
       canvas.style.opacity = "1";
@@ -4148,6 +4147,55 @@ function renderGrid(mode = "today", beat = "ALL") {
       map.on("moveend zoomend", () => {
         renderGrid(window.__lastMode || "current", window.__lastBeat || "ALL");
       });
+
+      // =========================================================
+      // 🔥 CLICK HANDLER (FIXED)
+      // =========================================================
+      if (!window.__gridClickAttached) {
+
+        map.on("click", function(e) {
+          try {
+
+            const lat = e.latlng.lat;
+            const lng = e.latlng.lng;
+
+            const baseLat = Math.floor(lat * 1000);
+            const baseLng = Math.floor(lng * 1000);
+
+            const candidates = [];
+
+            for (let i = -1; i <= 1; i++) {
+              for (let j = -1; j <= 1; j++) {
+
+                const key = (baseLat + i) + "_" + (baseLng + j);
+
+                if (window.gridSpatialIndex && window.gridSpatialIndex[key]) {
+                  candidates.push(...window.gridSpatialIndex[key]);
+                }
+
+              }
+            }
+
+            for (const cell of candidates) {
+
+              if (!cell || !cell.coords) continue;
+
+              if (pointInPoly(lat, lng, cell.coords)) {
+
+                // ✅ FINAL FIX → USE FUNCTION
+                showGridPopup(cell, e.latlng);
+
+                return;
+              }
+            }
+
+          } catch (err) {
+            console.error("❌ Grid click error:", err);
+          }
+        });
+
+        window.__gridClickAttached = true;
+      }
     }
 
     window.__lastMode = mode;
@@ -4215,9 +4263,7 @@ function renderGrid(mode = "today", beat = "ALL") {
   } catch (e) {
     console.error("❌ renderGrid crash:", e);
   }
-}
-
-function syncGridCanvas() {
+}function syncGridCanvas() {
   if (!window.__gridCanvas) return;
   // This calculates the offset from the top-left of the container to the map layer
   const topLeft = map.containerPointToLayerPoint([0, 0]);
@@ -5011,90 +5057,76 @@ function onBeatChange(){
   // 🔥 render with current mode + new beat
   renderGrid(window.currentCoverageMode, window.currentBeat);
 }
-    function showGridPopup(cell, latlng){
+  function showGridPopup(cell, latlng){
 
   try {
 
-    const mode = window.currentCoverageMode || "today";
-    const beat = window.currentBeat || "ALL";
+    const beat = cell.beat || "UNKNOWN";
+    const mode = window.__lastMode || "current";
 
-    const todayKey = "grid_" + getLocalDateStr();
+    let current = (mode === "today")
+      ? window.gridCache?.today || {}
+      : window.gridCache?.month || {};
 
-    const todayData = JSON.parse(localStorage.getItem(todayKey) || "{}");
-    const monthData = window.gridCache?.month || {};
-
-    const current = (mode === "today") ? todayData : monthData;
-
-    const isVisited = !!current[cell.id];
-
-    // ==========================================
-    // 🔥 CALCULATE STATS INLINE
-    // ==========================================
     let total = 0;
     let visited = 0;
 
-    for(const [id, c] of Object.entries(window.gridIndex)){
+    // 🔥 USE EXISTING gridIndex (NO NEW FUNCTION)
+    for (const [id, c] of Object.entries(window.gridIndex)) {
 
-      if(!c || !c.center) continue;
+      if (!c) continue;
 
-      if(beat !== "ALL" && c.beat !== beat) continue;
+      if (beat !== "ALL" && c.beat !== beat) continue;
 
       total++;
 
-      if(current[id]) visited++;
+      if (current[id]) visited++;
     }
 
-    const notVisited = total - visited;
+    const unvisited = total - visited;
 
-    const visitedPercent = total ? ((visited / total) * 100).toFixed(1) : 0;
-    const notVisitedPercent = total ? ((notVisited / total) * 100).toFixed(1) : 0;
+    const cellAreaHa = 0.25;
 
-    const visitedArea = (visited * 0.25).toFixed(2);
-    const notVisitedArea = (notVisited * 0.25).toFixed(2);
+    const visitedArea = (visited * cellAreaHa).toFixed(2);
+    const unvisitedArea = (unvisited * cellAreaHa).toFixed(2);
 
-    // ==========================================
-    // 🔥 CONDITIONAL POPUP (CORE FIX)
-    // ==========================================
+    const visitedPct = total ? ((visited / total) * 100).toFixed(1) : 0;
+    const unvisitedPct = total ? ((unvisited / total) * 100).toFixed(1) : 0;
+
+    const isVisited = !!current[cell.id];
+
     let html = "";
 
-    if(isVisited){
+    if (isVisited) {
 
-      // 🟢 GREEN CLICK → VISITED DATA ONLY
+      // 🟢 GREEN CLICK
       html = `
-        <div style="font-size:13px;line-height:1.5">
-
-          <b>🟢 VISITED GRID</b><br><br>
-
-          ✔ Visited: ${visited}/${total}<br>
-          📈 ${visitedPercent}%<br>
-          🌿 Area Covered: ${visitedArea} ha
-
-        </div>
+        <b>🟢 VISITED AREA</b><br><br>
+        Beat: <b>${beat}</b><br>
+        Visited Grids: <b>${visited}</b><br>
+        Area Covered: <b>${visitedArea} ha</b><br>
+        Coverage: <b>${visitedPct}%</b>
       `;
 
     } else {
 
-      // 🔴 RED CLICK → NOT VISITED DATA ONLY
+      // 🔴 RED CLICK
       html = `
-        <div style="font-size:13px;line-height:1.5">
-
-          <b>🔴 NOT VISITED GRID</b><br><br>
-
-          ❌ Remaining: ${notVisited}/${total}<br>
-          📉 ${notVisitedPercent}%<br>
-          🌿 Area Remaining: ${notVisitedArea} ha
-
-        </div>
+        <b>🔴 UNVISITED AREA</b><br><br>
+        Beat: <b>${beat}</b><br>
+        Pending Grids: <b>${unvisited}</b><br>
+        Area Remaining: <b>${unvisitedArea} ha</b><br>
+        Remaining: <b>${unvisitedPct}%</b>
       `;
     }
 
-    L.popup()
+    L.popup({ maxWidth: 220 })
       .setLatLng(latlng)
       .setContent(html)
       .openOn(map);
 
-  } catch(e){
-    console.error("❌ Popup error:", e);
+  } catch (e) {
+    console.error("❌ showGridPopup error:", e);
   }
 }
 function showGrid(){
