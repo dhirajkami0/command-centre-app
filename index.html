@@ -5057,99 +5057,155 @@ function onBeatChange(){
   // 🔥 render with current mode + new beat
   renderGrid(window.currentCoverageMode, window.currentBeat);
 }
-  // 🔥 detect selected beat from UI
-const selectedBeat = document.getElementById("beatSelect")?.value || "ALL";
+ function showGridPopup(cell, latlng){
 
-let html = "";
+  try {
 
-if (selectedBeat === "ALL") {
+    const beat = cell.beat || "UNKNOWN";
+    const mode = window.__lastMode || "current";
 
-  // =========================
-  // 🔥 TOTAL (ALL BEATS)
-  // =========================
-  let totalAll = 0;
-  let visitedAll = 0;
+    let current = (mode === "today")
+      ? window.gridCache?.today || {}
+      : window.gridCache?.month || {};
 
-  for (const [id, c] of Object.entries(window.gridIndex)) {
-    if (!c) continue;
-    totalAll++;
-    if (current[id]) visitedAll++;
-  }
+    let total = 0;
+    let visited = 0;
 
-  const unvisitedAll = totalAll - visitedAll;
+    for (const [id, c] of Object.entries(window.gridIndex)) {
 
-  const areaTotal = (totalAll * 0.25).toFixed(2);
-  const visitedAreaAll = (visitedAll * 0.25).toFixed(2);
-  const pctAll = totalAll ? ((visitedAll / totalAll) * 100).toFixed(1) : 0;
+      if (!c) continue;
 
-  html += `
-    <b>🌍 TOTAL COVERAGE</b><br>
-    Grids: <b>${totalAll}</b><br>
-    Covered: <b>${visitedAll}</b><br>
-    Area: <b>${visitedAreaAll}/${areaTotal} ha</b><br>
-    Coverage: <b>${pctAll}%</b>
-    <hr>
-  `;
+      if (beat !== "ALL" && c.beat !== beat) continue;
 
-  // =========================
-  // 🔥 BEAT-WISE BREAKDOWN
-  // =========================
-  const beats = {};
+      total++;
 
-  for (const [id, c] of Object.entries(window.gridIndex)) {
-    if (!c) continue;
-
-    const b = c.beat || "UNKNOWN";
-
-    if (!beats[b]) {
-      beats[b] = { total: 0, visited: 0 };
+      if (current[id]) visited++;
     }
 
-    beats[b].total++;
+    const unvisited = total - visited;
 
-    if (current[id]) beats[b].visited++;
-  }
+    const cellAreaHa = 0.25;
 
-  for (const b in beats) {
+    const visitedArea = (visited * cellAreaHa).toFixed(2);
+    const unvisitedArea = (unvisited * cellAreaHa).toFixed(2);
 
-    const t = beats[b].total;
-    const v = beats[b].visited;
-    const pct = t ? ((v / t) * 100).toFixed(1) : 0;
-    const area = (v * 0.25).toFixed(2);
+    const visitedPct = total ? ((visited / total) * 100).toFixed(1) : 0;
+    const unvisitedPct = total ? ((unvisited / total) * 100).toFixed(1) : 0;
 
-    html += `
-      <b>${b}</b><br>
-      ${v}/${t} grids<br>
-      ${area} ha<br>
-      ${pct}%<br><br>
-    `;
-  }
+    // 🔥 SAFE ID MATCH
+    const idSafe = cell.id || (
+      cell.center.lat.toFixed(5) + "_" +
+      cell.center.lng.toFixed(5)
+    );
 
-} else {
+    const isVisited = !!current[idSafe];
 
-  // =========================
-  // 🔥 EXISTING SINGLE BEAT LOGIC
-  // =========================
+    // 🔥 detect selected beat from UI
+    const selectedBeat = document.getElementById("beatSelect")?.value || "ALL";
 
-  if (isVisited) {
+    let html = "";
 
-    html = `
-      <b>🟢 VISITED AREA</b><br><br>
-      Beat: <b>${beat}</b><br>
-      Visited Grids: <b>${visited}</b><br>
-      Area Covered: <b>${visitedArea} ha</b><br>
-      Coverage: <b>${visitedPct}%</b>
-    `;
+    // =====================================================
+    // 🌍 RANGE MODE (ALL BEATS)
+    // =====================================================
+    if (selectedBeat === "ALL") {
 
-  } else {
+      let totalAll = 0;
+      let visitedAll = 0;
 
-    html = `
-      <b>🔴 UNVISITED AREA</b><br><br>
-      Beat: <b>${beat}</b><br>
-      Pending Grids: <b>${unvisited}</b><br>
-      Area Remaining: <b>${unvisitedArea} ha</b><br>
-      Remaining: <b>${unvisitedPct}%</b>
-    `;
+      for (const [id, c] of Object.entries(window.gridIndex)) {
+        if (!c) continue;
+
+        totalAll++;
+        if (current[id]) visitedAll++;
+      }
+
+      const unvisitedAll = totalAll - visitedAll;
+
+      const areaTotal = (totalAll * cellAreaHa).toFixed(2);
+      const visitedAreaAll = (visitedAll * cellAreaHa).toFixed(2);
+
+      const pctAll = totalAll ? ((visitedAll / totalAll) * 100).toFixed(1) : 0;
+
+      html += `
+        <b>🌍 TOTAL COVERAGE</b><br>
+        Grids: <b>${totalAll}</b><br>
+        Covered: <b>${visitedAll}</b><br>
+        Area: <b>${visitedAreaAll}/${areaTotal} ha</b><br>
+        Coverage: <b>${pctAll}%</b>
+        <hr>
+      `;
+
+      // 🔥 Beat-wise breakdown
+      const beats = {};
+
+      for (const [id, c] of Object.entries(window.gridIndex)) {
+
+        if (!c) continue;
+
+        const b = c.beat || "UNKNOWN";
+
+        if (!beats[b]) {
+          beats[b] = { total: 0, visited: 0 };
+        }
+
+        beats[b].total++;
+
+        if (current[id]) beats[b].visited++;
+      }
+
+      for (const b in beats) {
+
+        const t = beats[b].total;
+        const v = beats[b].visited;
+
+        const pct = t ? ((v / t) * 100).toFixed(1) : 0;
+        const area = (v * cellAreaHa).toFixed(2);
+
+        html += `
+          <b>${b}</b><br>
+          ${v}/${t} grids<br>
+          ${area} ha<br>
+          ${pct}%<br><br>
+        `;
+      }
+
+    } else {
+
+      // =====================================================
+      // 🎯 SINGLE BEAT MODE
+      // =====================================================
+
+      if (isVisited) {
+
+        html = `
+          <b>🟢 VISITED AREA</b><br><br>
+          Beat: <b>${beat}</b><br>
+          Visited Grids: <b>${visited}</b><br>
+          Area Covered: <b>${visitedArea} ha</b><br>
+          Coverage: <b>${visitedPct}%</b>
+        `;
+
+      } else {
+
+        html = `
+          <b>🔴 UNVISITED AREA</b><br><br>
+          Beat: <b>${beat}</b><br>
+          Pending Grids: <b>${unvisited}</b><br>
+          Area Remaining: <b>${unvisitedArea} ha</b><br>
+          Remaining: <b>${unvisitedPct}%</b>
+        `;
+      }
+    }
+
+    // 🔥 FINAL POPUP
+    L.popup({ maxWidth: 240 })
+      .setLatLng(latlng)
+      .setContent(html)
+      .openOn(map);
+
+  } catch(e) {
+    console.error("❌ showGridPopup error:", e);
   }
 }
 function showGrid(){
