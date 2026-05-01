@@ -4097,9 +4097,11 @@ function renderGrid(mode = "today", beat = "ALL") {
 
     // 🔥 FIX: auto-enable if called manually
     if (!window.gridVisible) {
-      console.warn("⚠ gridVisible was false → enabling");
-      window.gridVisible = true;
-    }
+  if (window.__gridCanvas) {
+    window.__gridCanvas.style.display = "none";
+  }
+  return;
+}
     if (!window.gridVisible) {
       if (window.__gridCanvas) {
         window.__gridCanvas.style.display = "none";
