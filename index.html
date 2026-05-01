@@ -1449,7 +1449,8 @@ function startApp(){
     // ======================================================
     // 🔥 INIT DUTY STATE (IMPORTANT)
     // ======================================================
-    window.isDutyActive = null;
+    window.isDutyActive = false;
+window.__dutyChecked = false;
 
     // ======================================================
     // ⚡ PHASE 1 → LIGHT + FAST (NO BLOCKING)
@@ -2596,14 +2597,48 @@ window.gridLayer = window.gridLayer || L.layerGroup();
  /* ============================================================
        📊 RANGE BUTTON (SAFE)
     ============================================================ */
- let dutyCheckRunning = false;
+// ======================================================
+// 🔥 DUTY STATE GLOBALS
+// ======================================================
+let dutyCheckRunning = false;
+window.isDutyActive = false;
+window.__dutyChecked = false;
 
-function autoShowEndDuty() {
+
+// ======================================================
+// 🔥 SINGLE UI CONTROLLER (SOURCE OF TRUTH)
+// ======================================================
+function updateDutyUI(isActive){
+
+  const btn   = document.getElementById("dutyMainBtn");
+  const icon  = document.getElementById("dutyIcon");
+  const label = document.getElementById("dutyLabel");
+
+  if(!btn || !label){
+    console.warn("⚠ Duty UI not ready");
+    return;
+  }
+
+  if(isActive){
+    btn.style.background = "#d32f2f";
+    label.innerHTML = "END DUTY";
+    if(icon) icon.className = "fa-solid fa-stop";
+  } else {
+    btn.style.background = "#2e7d32";
+    label.innerHTML = "START DUTY";
+    if(icon) icon.className = "fa-solid fa-briefcase";
+  }
+}
+
+
+// ======================================================
+// 🔥 MAIN DUTY CHECK (FIXED)
+// ======================================================
+function autoShowEndDuty(){
 
   console.group("🧠 autoShowEndDuty START");
-  console.log("⏱ Time:", new Date().toLocaleTimeString());
 
-  if (dutyCheckRunning) {
+  if(dutyCheckRunning){
     console.warn("⛔ Skipping duplicate duty check");
     console.groupEnd();
     return;
@@ -2613,57 +2648,39 @@ function autoShowEndDuty() {
 
   try {
 
-    if (!window.userProfile || !window.userProfile.rawName) {
+    if(!window.userProfile || !window.userProfile.rawName){
       dutyCheckRunning = false;
       console.groupEnd();
       return;
     }
 
-    const rawName = window.userProfile.rawName;
     const cleanedName = window.userProfile.cleanName;
-
     const wasActive = window.isDutyActive === true;
 
     callBackend("checkDutyFromSheet", {
       leader: cleanedName
     })
 
-    .then(function (res) {
+    .then(function(res){
 
-      const btn   = document.getElementById("dutyMainBtn");
-      const icon  = document.getElementById("dutyIcon");
-      const label = document.getElementById("dutyLabel");
+      window.__dutyChecked = true;
 
-      if (!btn || !label) {
-  console.warn("⚠ Duty UI not ready → retrying...");
-  setTimeout(autoShowEndDuty, 700);
-  return;
-}
-
-      // =========================================================
+      // =====================================================
       // 🟢 ACTIVE DUTY
-      // =========================================================
-      if (res && res.active) {
+      // =====================================================
+      if(res && res.active){
 
         window.isDutyActive = true;
-
-        btn.style.background = "#d32f2f";
-        label.innerHTML = "END DUTY";
-
-        if (icon) icon.className = "fa-solid fa-stop";
+        updateDutyUI(true);
 
         console.log("🟢 DUTY ACTIVE");
 
-        // =====================================================
-        // 🔥 ONLY LOCAL RESET (NO BACKEND CLEAR)
-        // =====================================================
-        if (!wasActive) {
+        // 🔥 ONLY ON TRANSITION
+        if(!wasActive){
 
-          console.warn("🧹 Duty START → resetting local session");
+          console.warn("🧹 Duty START → reset local session");
 
-          try {
-            localStorage.removeItem("offlineGPS");
-          } catch(e){}
+          try { localStorage.removeItem("offlineGPS"); } catch(e){}
 
           try {
             window.lastManualKey = "";
@@ -2672,65 +2689,45 @@ function autoShowEndDuty() {
           } catch(e){}
         }
 
-        // 🔥 START GPS
-        try {
-          if (!window.gpsRunning) {
+        // 🔥 GPS START SAFE
+        if(!window.gpsRunning){
+          try {
             startAutoGPS();
             window.gpsRunning = true;
+          } catch(e){
+            console.error("❌ startAutoGPS error:", e);
           }
-        } catch(e){
-          console.error("❌ startAutoGPS error:", e);
         }
 
-      } 
-      
-      // =========================================================
+      }
+
+      // =====================================================
       // 🔴 DUTY NOT ACTIVE
-      // =========================================================
+      // =====================================================
       else {
 
         window.isDutyActive = false;
-
-        btn.style.background = "#2e7d32";
-        label.innerHTML = "START DUTY";
-
-        if (icon) icon.className = "fa-solid fa-briefcase";
+        updateDutyUI(false);
 
         console.log("🔴 DUTY INACTIVE");
 
-        // =====================================================
-        // 🔥 FULL CLEANUP ON DUTY END
-        // =====================================================
-        if (wasActive) {
+        // 🔥 ONLY ON TRANSITION
+        if(wasActive){
 
-          console.warn("🧹 Duty END → FULL CLIENT CLEANUP");
+          console.warn("🧹 Duty END → FULL CLEANUP");
 
-          // 🛑 STOP GPS COMPLETELY
           try {
             stopAutoGPS();
             window.gpsRunning = false;
           } catch(e){}
 
-          // 📴 CLEAR ALL OFFLINE / CACHED GPS
-          try {
-            localStorage.removeItem("offlineGPS");
-          } catch(e){}
+          try { localStorage.removeItem("offlineGPS"); } catch(e){}
 
-          // 🔁 RESET ALL MEMORY VARIABLES
           try {
             window.lastManualKey = "";
             lastLocationKey = "";
             lastGpsSent = 0;
-          } catch(e){}
-
-          // 🧹 CLEAR ANY TEMP QUEUES (if used)
-          try {
             window.gpsQueue = [];
-          } catch(e){}
-
-          // 🛑 HARD BLOCK: prevent late async GPS send
-          try {
-            window.isDutyActive = false;
           } catch(e){}
         }
       }
@@ -2741,12 +2738,13 @@ function autoShowEndDuty() {
       console.error("❌ Duty check error:", err);
     })
 
-    .finally(function () {
+    .finally(function(){
 
+      // 🔥 SMALL DELAY TO PREVENT RACE
       setTimeout(() => {
         dutyCheckRunning = false;
         console.groupEnd();
-      }, 1500);
+      }, 800);
 
     });
 
@@ -2756,78 +2754,70 @@ function autoShowEndDuty() {
     dutyCheckRunning = false;
     console.groupEnd();
   }
-}    let dutyInitDone = false;
+}
 
-function initDutyControl() {
 
-  // ============================================================
-  // 🔥 SILENT GUARD (NO WARNING SPAM)
-  // ============================================================
-  if (dutyInitDone === true) return;
+// ======================================================
+// 🔥 INIT DUTY CONTROL (CLEAN)
+// ======================================================
+let dutyInitDone = false;
+
+function initDutyControl(){
+
+  if(dutyInitDone) return;
 
   try {
 
     const profile = window.userProfile;
 
-    console.log("👤 Current Profile:", profile);
-
-    // ============================================================
-    // ❌ PROFILE CHECK
-    // ============================================================
-    if (!profile || !profile.rawName) {
-      console.error("❌ No userProfile found");
+    if(!profile || !profile.rawName){
+      console.error("❌ No userProfile");
       return;
     }
 
-    // ============================================================
-    // ✅ SET GLOBAL CONTEXT
-    // ============================================================
     window.currentLeader = profile.rawName;
     window.currentBeat   = profile.beat;
     window.currentRole   = profile.role;
 
     console.log("✅ Duty system initialized");
-    console.log("👤 Leader:", profile.rawName);
-    console.log("📍 Beat:", profile.beat);
-    console.log("🎯 Role:", profile.role);
 
     dutyInitDone = true;
 
-    // ============================================================
-    // 🔥 SAFETY RESET (IMPORTANT)
-    // ============================================================
-    try {
-
-      if(window.gpsRunning){
-        console.warn("⚠ GPS running before duty check → stopping");
+    // 🔥 SAFE RESET
+    if(window.gpsRunning){
+      try {
         stopAutoGPS();
-      }
-
-    } catch(e){}
-
-    // ============================================================
-    // 🔄 INITIAL DUTY CHECK
-    // ============================================================
-    if (typeof autoShowEndDuty === "function") {
-setTimeout(() => {
-  console.log("🔄 Initial duty check (delayed)");
-  autoShowEndDuty();
-}, 1500);
-
-    } else {
-      console.error("❌ autoShowEndDuty not found");
+        window.gpsRunning = false;
+      } catch(e){}
     }
+
+    // 🔥 DEFAULT SAFE UI (NO FLICKER)
+    updateDutyUI(false);
+
+    // 🔥 SINGLE INITIAL CHECK
+    setTimeout(() => {
+      console.log("🔄 Initial duty check");
+      autoShowEndDuty();
+    }, 1500);
 
   } catch(e){
 
     console.error("❌ initDutyControl crash:", e);
+    dutyInitDone = false;
+  }
+}
 
-    dutyInitDone = false; // allow retry if failed
 
+// ======================================================
+// 🔥 SAFE PERIODIC CHECK (NO CHAOS)
+// ======================================================
+setInterval(() => {
+
+  if(window.__dutyChecked){
+    autoShowEndDuty();
   }
 
-}
-    
+}, 20000);    
   function showMoveOptions(id, btn){
 
   const container = btn.parentElement;
@@ -12553,12 +12543,11 @@ function handleDutyAction(e){
 }
         /* 🔥 FIXED START DUTY: CAPTURES DATA AND UPDATES BUTTON */
           /* 🔥 FIXED START DUTY: CAPTURES DATA, SUBMITS, AND UPDATES BUTTON */
- let startDutySubmitting = false;   // 🔒 GLOBAL LOCK
+ let startDutySubmitting = false;
 
 function startDuty(event) {
 
   console.trace("🚨 startDuty CALLED FROM");
-
   console.group("🚀 startDuty START");
 
   try {
@@ -12613,7 +12602,7 @@ function startDuty(event) {
       return;
     }
 
-    if (window.isDutyActive) {
+    if (window.isDutyActive === true) {
       alert("⚠ Duty already active");
       console.groupEnd();
       return;
@@ -12623,13 +12612,15 @@ function startDuty(event) {
     startDutySubmitting = true;
 
     const payload = {
-  staff: staffString,
-  type: document.getElementById("d-type")?.value || "",
-  compt: comptString,
-  leader: String(profile.rawName || profile.name || "").trim(),
-  email: profile.email || "",
-  phone: localStorage.getItem("userPhone") || ""
-};   console.log("📤 PAYLOAD:", payload);
+      staff: staffString,
+      type: document.getElementById("d-type")?.value || "",
+      compt: comptString,
+      leader: String(profile.rawName || profile.name || "").trim(),
+      email: profile.email || "",
+      phone: localStorage.getItem("userPhone") || ""
+    };
+
+    console.log("📤 PAYLOAD:", payload);
 
     const originalText = startBtn.innerHTML;
 
@@ -12637,6 +12628,15 @@ function startDuty(event) {
     startBtn.innerHTML = "⏳ Starting Duty...";
     startBtn.disabled = true;
 
+    // =====================================================
+    // 🔥 IMMEDIATE UI UPDATE (NO WAIT)
+    // =====================================================
+    window.__dutyUpdating = true;
+    updateDutyButton(); // shows ⏳
+
+    // =====================================================
+    // 🔥 BACKEND CALL
+    // =====================================================
     callBackend("START_DUTY", payload)
 
     .then(function (res) {
@@ -12649,13 +12649,16 @@ function startDuty(event) {
 
       alert("✅ Duty Started");
 
-      // ⚠ Let backend control state ideally
+      // =====================================================
+      // 🔥 FINAL STATE APPLY
+      // =====================================================
       window.isDutyActive = true;
+      window.__dutyChecked = true;
+      window.__dutyUpdating = false;
 
-      if (typeof updateDutyButton === "function") {
-        updateDutyButton();
-      }
+      updateDutyButton(); // 🔥 SHOW END DUTY IMMEDIATELY
 
+      // 🔁 BACKEND VERIFY (NO UI IMPACT)
       setTimeout(() => {
         if (typeof autoShowEndDuty === "function") {
           autoShowEndDuty();
@@ -12673,6 +12676,12 @@ function startDuty(event) {
       console.error("❌ Error:", err);
       alert("❌ " + err.message);
 
+      // 🔥 RESET UI IF FAILED
+      window.__dutyUpdating = false;
+      window.isDutyActive = false;
+
+      updateDutyButton();
+
       startBtn.innerHTML = originalText;
       startBtn.disabled = false;
 
@@ -12684,7 +12693,7 @@ function startDuty(event) {
         startDutySubmitting = false;
         startBtn.innerHTML = "🚀 START DUTY";
         startBtn.disabled = false;
-      }, 1500);
+      }, 1200);
 
       console.groupEnd();
     });
@@ -12698,23 +12707,43 @@ function startDuty(event) {
 /* ✅ MOVED OUTSIDE (IMPORTANT) */
  function updateDutyButton(){
 
-  const btn = document.getElementById("dutyMainBtn");
-  const icon = document.getElementById("dutyIcon"); // optional
+  const btn   = document.getElementById("dutyMainBtn");
+  const icon  = document.getElementById("dutyIcon");
   const label = document.getElementById("dutyLabel");
 
-  if(!btn || !label) return; // 🔥 only required elements
+  if(!btn || !label){
+    console.warn("⚠ Duty UI not ready");
+    return;
+  }
 
-  if(window.isDutyActive){
+  // =====================================================
+  // 🔒 OPTIONAL: TRANSITION STATE (prevents flicker)
+  // =====================================================
+  if(window.__dutyUpdating === true){
+    btn.style.background = "#9e9e9e";
+    label.innerHTML = "⏳ Updating...";
+    if(icon) icon.className = "fa-solid fa-spinner fa-spin";
+    return;
+  }
+
+  // =====================================================
+  // 🟢 ACTIVE DUTY
+  // =====================================================
+  if(window.isDutyActive === true){
 
     btn.style.background = "#d32f2f";
     label.innerHTML = "END DUTY";
 
-    // 🔥 safe icon update
     if(icon){
       icon.className = "fa-solid fa-stop";
     }
 
-  } else {
+  }
+
+  // =====================================================
+  // 🔴 NOT ACTIVE
+  // =====================================================
+  else {
 
     btn.style.background = "#2e7d32";
     label.innerHTML = "START DUTY";
@@ -12723,6 +12752,11 @@ function startDuty(event) {
       icon.className = "fa-solid fa-briefcase";
     }
   }
+
+  // =====================================================
+  // 🔍 DEBUG (REMOVE LATER)
+  // =====================================================
+  console.log("🎯 Duty UI Updated →", window.isDutyActive);
 }
 // ... ALL YOUR HUGE CODE ABOVE
 /* ===============================
