@@ -4197,9 +4197,20 @@ function renderGrid(mode = "today", beat = "ALL") {
 
     ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-    let current = (mode === "today")
-      ? window.gridCache?.today || {}
-      : window.gridCache?.month || {};
+    // ======================================================
+    // 🔥 UPDATED MODE HANDLING (ADDED PREV)
+    // ======================================================
+    let current;
+
+    if(mode === "today"){
+      current = window.gridCache?.today || {};
+    }
+    else if(mode === "current"){
+      current = window.gridCache?.month || {};
+    }
+    else if(mode === "prev"){
+      current = window.gridCache?.prev || {};
+    }
 
     const bounds = map.getBounds();
 
@@ -4234,11 +4245,10 @@ function renderGrid(mode = "today", beat = "ALL") {
 
       if (beat !== "ALL" && cell.beat !== beat) continue;
 
-      // 🔥 frequency-aware
       const raw = current[id];
       const visitCount = (raw === true) ? 1 : Number(raw) || 0;
 
-      let color = "#220000"; // 🔴 unvisited dark
+      let color = "#220000";
 
       if (visitCount > 0) {
         const intensity = visitCount / maxCount;
