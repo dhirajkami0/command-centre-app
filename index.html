@@ -891,9 +891,7 @@ window.addEventListener("unhandledrejection", function (e) {
           <div id="todayForecast"></div> <hr style="border:0; border-top:1px solid rgba(255,255,255,0.1); margin:8px 0;">
           <div id="weekForecast"></div> </div> </div> </div>
   <!-- 🟩 COVERAGE PANEL (FINAL CLEAN VERSION) -->
-<div id="coveragePanel" class="legend" style="
-  display:none;
-">
+<div id="coveragePanel" class="legend" style="display:none;">
 
 <button id="coverageToggleBtn" onclick="toggleCoveragePanel()">
   <i id="coverageIcon" class="fa-solid fa-chevron-down"></i>
@@ -918,20 +916,21 @@ window.addEventListener("unhandledrejection", function (e) {
     <option value="EAST_PORO">East Poro</option>
   </select>
 
-  <!-- ⚡ MODES (ONLY 2) -->
+  <!-- ⚡ MODES (UPDATED) -->
   <div style="margin-bottom:8px;">
-    <button onclick="applyMode('today')">Today</button>
-    <button onclick="applyMode('current')">Current</button>
+    <button id="btnToday" onclick="applyMode('today')">Today</button>
+    <button id="btnCurrent" onclick="applyMode('current')">Current</button>
+    <button id="btnPrev" onclick="applyMode('prev')">Prev Month</button>
   </div>
 
   <!-- 🎛 ACTIONS -->
   <div>
-
     <button onclick="closeCoveragePanel()">Close</button>
   </div>
 
 </div>
-</div>  
+</div> 
+  
   <div id="map"></div>
 
   <!-- 📊 REPORT PANEL -->
@@ -3890,7 +3889,7 @@ window.gridCache = window.gridCache || {
 
     function loadCacheOnStart(){
 
-  const key = getTodayKey();
+  const key = "grid_" + getLocalDateStr(); // 🔥 FIX: ensure consistent key
 
   window.gridCache = window.gridCache || {};
 
@@ -3900,9 +3899,18 @@ window.gridCache = window.gridCache || {
     window.gridCache.today = {};
   }
 
-  updateMonthCache();
-}
+  // 🔥 ALWAYS BUILD MONTH CACHE
+  if(typeof updateMonthCache === "function"){
+    updateMonthCache();
+  }
 
+  // 🔥 ADD PREV MONTH CACHE (NEW)
+  if(typeof updatePrevMonthCache === "function"){
+    updatePrevMonthCache();
+  }
+
+  console.log("📦 Cache Loaded | Today:", Object.keys(window.gridCache.today).length);
+}
 // ======================================================
 // 🎯 ASSIGN GRID → BEAT (FINAL STABLE - NO GAP / NO OVERFLOW)
 // ======================================================
@@ -4387,7 +4395,7 @@ function updateVisitedCache(newVisited){
       todayData = {};
     }
 
-    // 🔥 convert old boolean → count
+    // 🔥 normalize old values (boolean → number)
     Object.keys(todayData).forEach(id => {
       if(todayData[id] === true){
         todayData[id] = 1;
@@ -4400,14 +4408,13 @@ function updateVisitedCache(newVisited){
 
     Object.keys(newVisited).forEach(id => {
 
-      // 🔥 ensure valid id
       if(!id) return;
 
       if(!todayData[id]){
-        todayData[id] = 1;     // first visit
+        todayData[id] = 1;
         added++;
       } else {
-        todayData[id] += 1;    // increment frequency
+        todayData[id] += 1;
       }
 
     });
@@ -4418,13 +4425,18 @@ function updateVisitedCache(newVisited){
       console.warn("⚠ Cache save failed");
     }
 
-    // 🔥 sync to memory
+    // 🔥 sync memory
     window.gridCache = window.gridCache || {};
     window.gridCache.today = todayData;
 
     // 🔥 rebuild month cache
     if(typeof updateMonthCache === "function"){
       updateMonthCache();
+    }
+
+    // 🔥 rebuild prev cache (NEW)
+    if(typeof updatePrevMonthCache === "function"){
+      updatePrevMonthCache();
     }
 
     console.log("➕ Added new grids:", added);
@@ -4438,8 +4450,7 @@ function updateVisitedCache(newVisited){
   } catch(e){
     console.error("❌ updateVisitedCache error:", e);
   }
-}
-/* ============================================================
+}/* ============================================================
    📊 COVERAGE STATS (FREQUENCY AWARE)
 ============================================================ */
 function getCoverageStats(mode = "today", beat = "ALL", type = "all"){
@@ -5099,13 +5110,24 @@ function markVisitedHybrid(tracks){
       console.error("❌ CRITICAL: localStorage save failed", e);
     }
 
+    // ==========================================
     // 🔥 FORCE MEMORY SYNC
+    // ==========================================
     window.gridCache = window.gridCache || {};
     window.gridCache.today = data;
 
+    // ==========================================
     // 🔥 REBUILD MONTH
+    // ==========================================
     if(typeof updateMonthCache === "function"){
       updateMonthCache();
+    }
+
+    // ==========================================
+    // 🔥 NEW: REBUILD PREV MONTH (SAFE)
+    // ==========================================
+    if(typeof updatePrevMonthCache === "function"){
+      updatePrevMonthCache();
     }
 
     console.log(
@@ -5122,48 +5144,68 @@ function markVisitedHybrid(tracks){
   }
 
   return visited;
-}    
-    function applyMode(mode){
+}    function applyMode(mode){
 
   try {
 
-    // 🔥 set mode globally (single source of truth)
+    // 🔥 set mode globally
     window.currentCoverageMode = mode || "today";
 
-    // 🔥 sync popup mode (VERY IMPORTANT)
+    // 🔥 sync popup mode
     window.__lastMode = window.currentCoverageMode;
 
     // 🔥 get beat
     const beat = document.getElementById("beatSelect")?.value || "ALL";
 
-    // 🔥 store beat globally
+    // 🔥 store beat
     window.currentBeat = beat;
 
     // 🔥 UI highlight
     const btnToday = document.getElementById("btnToday");
     const btnCurrent = document.getElementById("btnCurrent");
+    const btnPrev = document.getElementById("btnPrev");
 
-    if(btnToday && btnCurrent){
-      btnToday.style.background = (window.currentCoverageMode === "today") ? "#00e676" : "";
-      btnCurrent.style.background = (window.currentCoverageMode === "current") ? "#00e676" : "";
+    if(btnToday && btnCurrent && btnPrev){
+      btnToday.style.background   = (mode === "today")   ? "#00e676" : "";
+      btnCurrent.style.background = (mode === "current") ? "#00e676" : "";
+      btnPrev.style.background    = (mode === "prev")    ? "#00e676" : "";
     }
 
-    // 🔥 ALWAYS rebuild month cache (important for CURRENT mode)
-    if(typeof updateMonthCache === "function"){
-      updateMonthCache();
+    // 🔥 CACHE HANDLING
+    if(mode === "today"){
+      if(typeof updateTodayCache === "function"){
+        updateTodayCache();
+      }
     }
 
-    // 🔥 ensure grid is ready
+    if(mode === "current"){
+      if(typeof updateMonthCache === "function"){
+        updateMonthCache();
+      }
+    }
+
+    if(mode === "prev"){
+      if(typeof updatePrevMonthCache === "function"){
+        updatePrevMonthCache();
+      }
+    }
+
+    // 🔥 ensure grid ready
     if(typeof ensureGridReady === "function"){
       ensureGridReady();
     }
 
-    // 🔥 ALWAYS render from cache (not duty, not live data)
+    // 🔥 render from cache ONLY
     if(typeof renderGrid === "function"){
       renderGrid(window.currentCoverageMode, window.currentBeat);
     }
 
-    console.log("🎛 Mode Applied:", window.currentCoverageMode, "| Beat:", window.currentBeat);
+    console.log(
+      "🎛 Mode Applied:",
+      window.currentCoverageMode,
+      "| Beat:",
+      window.currentBeat
+    );
 
   } catch(e){
     console.error("❌ applyMode error:", e);
@@ -5189,9 +5231,23 @@ function onBeatChange(){
     // 🔥 sync popup mode
     window.__lastMode = window.currentCoverageMode;
 
-    // 🔥 rebuild cache (safe + consistent)
-    if(typeof updateMonthCache === "function"){
-      updateMonthCache();
+    // 🔥 CACHE HANDLING (based on mode)
+    if(window.currentCoverageMode === "today"){
+      if(typeof updateTodayCache === "function"){
+        updateTodayCache();
+      }
+    }
+
+    if(window.currentCoverageMode === "current"){
+      if(typeof updateMonthCache === "function"){
+        updateMonthCache();
+      }
+    }
+
+    if(window.currentCoverageMode === "prev"){
+      if(typeof updatePrevMonthCache === "function"){
+        updatePrevMonthCache();
+      }
     }
 
     // 🔥 ensure grid ready
@@ -5199,12 +5255,17 @@ function onBeatChange(){
       ensureGridReady();
     }
 
-    // 🔥 render with updated beat + mode
+    // 🔥 render updated view
     if(typeof renderGrid === "function"){
       renderGrid(window.currentCoverageMode, window.currentBeat);
     }
 
-    console.log("🎯 Beat Changed:", window.currentBeat, "| Mode:", window.currentCoverageMode);
+    console.log(
+      "🎯 Beat Changed:",
+      window.currentBeat,
+      "| Mode:",
+      window.currentCoverageMode
+    );
 
   } catch(e){
     console.error("❌ onBeatChange error:", e);
@@ -5217,9 +5278,18 @@ function showGridPopup(cell, latlng){
     const beat = cell.beat || "UNKNOWN";
     const mode = window.__lastMode || "current";
 
-    let current = (mode === "today")
-      ? window.gridCache?.today || {}
-      : window.gridCache?.month || {};
+    // 🔥 UPDATED MODE HANDLING (ADDED PREV)
+    let current;
+
+    if(mode === "today"){
+      current = window.gridCache?.today || {};
+    }
+    else if(mode === "current"){
+      current = window.gridCache?.month || {};
+    }
+    else if(mode === "prev"){
+      current = window.gridCache?.prev || {};
+    }
 
     let total = 0;
     let visited = 0;
@@ -5261,7 +5331,6 @@ function showGridPopup(cell, latlng){
 
     const cellCount = (current[idSafe] === true) ? 1 : Number(current[idSafe]) || 0;
 
-    // 🔥 detect selected beat
     const selectedBeat = document.getElementById("beatSelect")?.value || "ALL";
 
     let html = "";
@@ -5296,7 +5365,7 @@ function showGridPopup(cell, latlng){
       const avgAll = totalAll ? (visitsAll / totalAll).toFixed(2) : 0;
 
       html += `
-        <b>🌍 TOTAL COVERAGE</b><br>
+        <b>🌍 TOTAL COVERAGE (${mode.toUpperCase()})</b><br>
         Grids: <b>${totalAll}</b><br>
         Covered: <b>${visitedAll}</b><br>
         Area: <b>${visitedAreaAll}/${areaTotal} ha</b><br>
@@ -5305,7 +5374,6 @@ function showGridPopup(cell, latlng){
         <hr>
       `;
 
-      // 🔥 Beat-wise breakdown
       const beats = {};
 
       for (const [id, c] of Object.entries(window.gridIndex)) {
@@ -5363,7 +5431,7 @@ function showGridPopup(cell, latlng){
       if (cellCount > 0) {
 
         html = `
-          <b>🟢 VISITED AREA</b><br><br>
+          <b>🟢 VISITED AREA (${mode.toUpperCase()})</b><br><br>
           Beat: <b>${beat}</b><br>
           Visits on this grid: <b>${cellCount}</b><br>
           Density: <b>${densityLabel}</b><br><br>
@@ -5377,7 +5445,7 @@ function showGridPopup(cell, latlng){
       } else {
 
         html = `
-          <b>🔴 UNVISITED AREA</b><br><br>
+          <b>🔴 UNVISITED AREA (${mode.toUpperCase()})</b><br><br>
           Beat: <b>${beat}</b><br>
           Visits: <b>0</b><br>
           Status: <b>Not Patrolled</b><br><br>
@@ -5397,7 +5465,51 @@ function showGridPopup(cell, latlng){
   } catch(e) {
     console.error("❌ showGridPopup error:", e);
   }
-}function showGrid(){
+}
+ function updatePrevMonthCache(){
+
+  let result = {};
+
+  const now = new Date();
+
+  // 🔥 previous month
+  const prev = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+  const prefix = prev.toISOString().slice(0,7); // YYYY-MM
+
+  Object.keys(localStorage).forEach(key => {
+
+    if(!key.startsWith("grid_" + prefix)) return;
+
+    try {
+
+      const data = JSON.parse(localStorage.getItem(key) || "{}");
+
+      Object.entries(data).forEach(([id, val]) => {
+
+        const count = (val === true) ? 1 : Number(val) || 0;
+
+        if(!result[id]){
+          result[id] = count;
+        } else {
+          result[id] += count;
+        }
+
+      });
+
+    } catch(e){
+      console.warn("⚠ Prev month read failed:", key);
+    }
+
+  });
+
+  window.gridCache = window.gridCache || {};
+  window.gridCache.prev = result;
+
+  console.log("📅 Prev month grids:", Object.keys(result).length);
+}   
+    
+    
+    function showGrid(){
   renderGrid(window.currentCoverageMode || "current",
              window.currentBeat || "ALL");
 }
@@ -7398,7 +7510,7 @@ function syncOfflineMoves(){
     });
 
     // ======================================================
-    // 🔥 GRID UPDATE FROM STAFF TRACKS (FINAL CORRECT)
+    // 🔥 GRID UPDATE FROM STAFF TRACKS (FINAL FIXED)
     // ======================================================
     try {
 
@@ -7406,12 +7518,23 @@ function syncOfflineMoves(){
 
       staff.forEach(s=>{
 
-        if(Array.isArray(s.track) && s.track.length > 1){
+        let raw = Array.isArray(s.track) ? s.track : [];
 
+        let clean=[];
+
+        raw.forEach(p=>{
+          if(!p) return;
+          if(clean.length===0 || 
+            Math.abs(clean[clean.length-1][0]-p[0])>1e-6 ||
+            Math.abs(clean[clean.length-1][1]-p[1])>1e-6){
+              clean.push(p);
+          }
+        });
+
+        if(clean.length > 1){
           tracks.push({
-            track: s.track   // ✅ CORRECT FORMAT
+            track: clean   // 🔥 CRITICAL FIX
           });
-
         }
 
       });
@@ -7423,7 +7546,6 @@ function syncOfflineMoves(){
         // 💣 ONLY THIS (FINAL RULE)
         markVisitedHybrid(tracks);
 
-        // 🔥 RELOAD TODAY CACHE (IMPORTANT)
         const todayKey = "grid_" + getLocalDateStr();
 
         try {
@@ -7434,12 +7556,10 @@ function syncOfflineMoves(){
           console.warn("⚠ cache reload failed");
         }
 
-        // 🔥 MONTH UPDATE
         if(typeof updateMonthCache === "function"){
           updateMonthCache();
         }
 
-        // 🔥 FORCE RENDER
         renderGrid(
           window.currentCoverageMode || "today",
           window.currentBeat || "ALL"
