@@ -1564,14 +1564,7 @@ setTimeout(() => {
           console.log("⚡ Grid loaded from IndexedDB:", Object.keys(cached).length);
 
           // 🔥 hide on startup
-          setTimeout(() => {
-            if(window.__gridCanvas){
-              window.__gridCanvas.style.display = "none";
-              window.__gridCanvas.style.visibility = "hidden";
-              window.__gridCanvas.style.opacity = "0";
-            }
-          }, 100);
-
+         
           clearInterval(gridInitInterval);
           return;
         }
