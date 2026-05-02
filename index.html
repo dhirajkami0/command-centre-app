@@ -1634,28 +1634,34 @@ setTimeout(() => {
     // ===============================
     // 🔥 STEP 3: READY STATE
     // ===============================
-    if(window.__gridReady){
+if(window.__gridReady){
 
-      console.log("🎯 Grid ready (confirmed)");
+  console.log("🎯 Grid ready (confirmed)");
 
-      clearInterval(gridInitInterval);
+  clearInterval(gridInitInterval);
 
-      const BACKFILL_KEY = "kmlBackfillDone_v2";
-      window.__currentMonthPrefix = new Date().toISOString().slice(0,7);
+  const BACKFILL_KEY = "kml_backfill_done_v3";
 
-      if(!localStorage.getItem(BACKFILL_KEY)){
+  if(!localStorage.getItem(BACKFILL_KEY)){
 
-        console.log("🚀 Scheduling backfill...");
+    console.log("🚀 Scheduling backfill (batched)...");
 
-        setTimeout(() => {
-          runBackfillAuto();
-        }, 3000);
+    setTimeout(() => {
 
+      if(typeof backfillKMLOnceBatched === "function"){
+        backfillKMLOnceBatched();
       } else {
-        console.log("⏭ Backfill already completed");
+        console.warn("⚠ backfillKMLOnceBatched not available");
       }
-    }
 
+    }, 3000);
+
+  } else {
+
+    console.log("⏭ Backfill already completed");
+
+  }
+}
     // ===============================
     // 🔥 TIMEOUT SAFETY
     // ===============================
@@ -4652,32 +4658,7 @@ function getCoverageStats(mode = "today", beat = "ALL"){
     
     
     
-    function runBackfillAuto(){
-
-  if(window.backfillRunning){
-    console.log("⏭ Backfill already running");
-    return;
-  }
-
-  console.log("🚀 Auto Backfill Started");
-  window.backfillRunning = true;
-
-  const interval = setInterval(async () => {
-
-    const done = await backfillFromKML();
-
-    // 🔥 STOP WHEN DONE
-    if(done){
-      console.log("🎯 FULL BACKFILL COMPLETE");
-
-      clearInterval(interval);
-      window.backfillRunning = false;
-
-      localStorage.setItem("kmlBackfillDone_v2", "true");
-    }
-
-  }, 3000);
-}
+   
   async function backfillKMLOnceBatched(){
 
   const DONE_KEY = "kml_backfill_done_v3";
