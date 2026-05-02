@@ -4343,7 +4343,6 @@ function updateMonthCache(){
 
   let result = {};
 
-  // 🔥 current month prefix
   const prefix = new Date().toISOString().slice(0,7); // YYYY-MM
 
   Object.keys(localStorage).forEach(key => {
@@ -4351,34 +4350,25 @@ function updateMonthCache(){
     if(!key.startsWith("grid_" + prefix)) return;
 
     try {
-
       const data = JSON.parse(localStorage.getItem(key) || "{}");
 
       Object.entries(data).forEach(([id, val]) => {
-
-        // 🔥 convert old boolean → count
         const count = (val === true) ? 1 : Number(val) || 0;
 
-        if(!result[id]){
-          result[id] = count;
-        } else {
-          result[id] += count; // 🔥 aggregate across days
-        }
-
+        if(!result[id]) result[id] = count;
+        else result[id] += count;
       });
 
     } catch(e){
-      console.warn("⚠ Failed reading:", key);
+      console.warn("⚠ Month cache read failed:", key);
     }
-
   });
 
   window.gridCache = window.gridCache || {};
   window.gridCache.month = result;
 
-  console.log("📅 Month cache grids:", Object.keys(result).length);
+  console.log("📅 Current month grids:", Object.keys(result).length);
 }
-
 
 
 /* ============================================================
@@ -4564,92 +4554,70 @@ function getCoverageStats(mode = "today", beat = "ALL", type = "all"){
 }
   async function backfillFromKML(){
 
-  console.log("🛠 KML Backfill START");
+  console.log("🛠 PREV MONTH BACKFILL START");
+
+  // 🔥 run only once
+  if(localStorage.getItem("backfill_prev_done") === "true"){
+    console.log("✅ Backfill already done — skipping");
+    return;
+  }
 
   if(!window.gridIndex){
     console.warn("⚠ Grid not ready");
-    return false;
+    return;
   }
 
-  let rounds = 0;
-  const MAX_PER_RUN = 3;
+  const now = new Date();
+  const prev = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+  const prevPrefix = prev.toISOString().slice(0,7);
 
-  while(rounds < MAX_PER_RUN){
+  let meta;
 
-    console.log("🔁 File batch:", rounds + 1);
+  try {
+    meta = await callBackend("getKMLTracks");
+  } catch(e){
+    console.error("❌ getKMLTracks failed:", e);
+    return;
+  }
 
-    let meta;
+  if(!meta || !meta.length){
+    console.warn("⚠ No KML files");
+    return;
+  }
 
-    try {
-      meta = await callBackend("getKMLTracks");
-    } catch(e){
-      console.error("❌ getKMLTracks failed:", e);
-      return false;
-    }
+  console.log("📦 Total KML files:", meta.length);
 
-    if(!meta || !meta.length){
-      console.log("✅ DONE (no more files)");
-      return true;
-    }
+  for(const file of meta){
 
-    const file = meta[0];
-
-    // 🔥 SKIP OLD MONTH
-    if(file.date && !file.date.startsWith(window.__currentMonthPrefix)){
-      console.log("⏭ Skipping old month:", file.date);
-      rounds++;
-      continue;
-    }
-
-    // 🔥 SKIP ALREADY PROCESSED
-    if(window.processedKML.has(file.id)){
-      console.log("⏭ Already processed:", file.name);
-      rounds++;
-      continue;
-    }
+    if(!file.date || !file.date.startsWith(prevPrefix)) continue;
 
     console.log("📂 Processing:", file.name);
 
     let res;
-
     try {
       res = await callBackend("readKMLFile", {fileId: file.id});
     } catch(e){
       console.error("❌ readKMLFile failed:", e);
-      rounds++;
       continue;
     }
 
-    if(!res || !res.text){
-      console.warn("⚠ Empty KML content");
-      rounds++;
-      continue;
-    }
+    if(!res || !res.text) continue;
 
-    const coordMatch = res.text.match(/<coordinates>([\s\S]*?)<\/coordinates>/);
+    const match = res.text.match(/<coordinates>([\s\S]*?)<\/coordinates>/);
+    if(!match) continue;
 
-    if(!coordMatch){
-      console.warn("⚠ No <coordinates> found");
-      rounds++;
-      continue;
-    }
-
-    const rawPoints = coordMatch[1].trim().split(/\s+/);
+    const rawPoints = match[1].trim().split(/\s+/);
 
     let track = [];
-    let lastLat = null;
-    let lastLon = null;
-
+    let lastLat = null, lastLon = null;
     const MIN_MOVE = 0.00005;
 
     rawPoints.forEach(p => {
-
       const parts = p.split(",");
       if(parts.length < 2) return;
 
       const lon = parseFloat(parts[0]);
       const lat = parseFloat(parts[1]);
-
       if(isNaN(lat) || isNaN(lon)) return;
 
       if(lat === lastLat && lon === lastLon) return;
@@ -4663,73 +4631,27 @@ function getCoverageStats(mode = "today", beat = "ALL", type = "all"){
       }
 
       track.push([lat, lon]);
-
       lastLat = lat;
       lastLon = lon;
     });
 
-    console.log("📍 Track points:", track.length);
-
     if(track.length > 1){
-
-      // ==========================================
-      // 🔥 MARK VISITED (YOUR EXISTING FUNCTION)
-      // ==========================================
-      markVisitedHybrid([{
-        track: track,
-        date: file.date
-      }]);
-
-      console.log("📅 Saved grids for:", file.date);
-
-      // ==========================================
-      // 🔥 FORCE CACHE SYNC (CRITICAL FIX)
-      // ==========================================
-      const todayKey = "grid_" + getLocalDateStr();
-
-      try {
-        window.gridCache = window.gridCache || {};
-
-        window.gridCache.today =
-          JSON.parse(localStorage.getItem(todayKey) || "{}");
-
-      } catch(e){
-        console.warn("⚠ Today cache reload failed");
-      }
-
-      // 🔥 MONTH UPDATE
-      if(typeof updateMonthCache === "function"){
-        updateMonthCache();
-      }
-
-      // 🔥 SAFE RENDER (ONLY IF GRID READY)
-      if(window.gridIndex && window.__gridCanvas){
-        renderGrid("current", window.__lastBeat || "ALL");
-      }
-
-      // ==========================================
-      // 🔥 MARK PROCESSED
-      // ==========================================
-      window.processedKML.add(file.id);
-
-      localStorage.setItem(
-        "processedKML",
-        JSON.stringify([...window.processedKML])
-      );
-
-    } else {
-      console.warn("⚠ Track too small");
+      // 🔥 SAVE USING FILE DATE
+      markVisitedHybrid([{ track, date: file.date }]);
+      console.log("📅 Saved:", file.date);
     }
-
-    rounds++;
-
-    await new Promise(r => setTimeout(r, 400));
   }
 
-  console.log("⏸ Batch complete");
+  // 🔥 final aggregate
+  if(typeof updatePrevMonthCache === "function"){
+    updatePrevMonthCache();
+  }
 
-  return false;
-} function getLocalDateStr(date = new Date()){
+  localStorage.setItem("backfill_prev_done", "true");
+
+  console.log("🎉 PREV MONTH BACKFILL COMPLETE");
+}
+    function getLocalDateStr(date = new Date()){
   const d = new Date(date);
   d.setMinutes(d.getMinutes() - d.getTimezoneOffset());
   return d.toISOString().slice(0,10);
@@ -4993,7 +4915,6 @@ function pointInPoly(lat, lng, coords){
  // ===============================
 // 🔥 GLOBAL CACHE
 // ===============================
-
 function markVisitedHybrid(tracks){
 
   if(!window.gridIndex){
@@ -5004,7 +4925,11 @@ function markVisitedHybrid(tracks){
   console.log("🧪 Incoming tracks:", tracks);
 
   let visited = {};
-  const todayStr = getLocalDateStr();
+
+  // 🔥 CRITICAL: use track date if provided (for backfill), else today
+  const todayStr = getLocalDateStr(
+    tracks?.[0]?.date ? new Date(tracks[0].date) : new Date()
+  );
 
   for(let t of tracks){
 
@@ -5024,12 +4949,9 @@ function markVisitedHybrid(tracks){
 
       if([lat1, lon1, lat2, lon2].some(isNaN)) continue;
 
-      // ==========================================
-      // 🔥 FIXED SPATIAL INDEX (FULL SEGMENT)
-      // ==========================================
+      // 🔥 spatial index window
       const baseLat1 = Math.floor(lat1 * 1000);
       const baseLng1 = Math.floor(lon1 * 1000);
-
       const baseLat2 = Math.floor(lat2 * 1000);
       const baseLng2 = Math.floor(lon2 * 1000);
 
@@ -5037,9 +4959,7 @@ function markVisitedHybrid(tracks){
 
       for(let lat = Math.min(baseLat1, baseLat2)-1; lat <= Math.max(baseLat1, baseLat2)+1; lat++){
         for(let lng = Math.min(baseLng1, baseLng2)-1; lng <= Math.max(baseLng1, baseLng2)+1; lng++){
-
           const key = lat + "_" + lng;
-
           if(window.gridSpatialIndex && window.gridSpatialIndex[key]){
             for(let cell of window.gridSpatialIndex[key]){
               nearbySet.add(cell);
@@ -5050,46 +4970,33 @@ function markVisitedHybrid(tracks){
 
       const nearby = Array.from(nearbySet);
 
-      // ==========================================
-      // 🔥 PURE LINE → POLYGON
-      // ==========================================
+      // 🔥 line → polygon
       for(let cell of nearby){
-
         if(!cell || !cell.coords || !cell.id) continue;
 
-        if(lineIntersectsPolygon(
-          lat1, lon1,
-          lat2, lon2,
-          cell.coords
-        )){
+        if(lineIntersectsPolygon(lat1, lon1, lat2, lon2, cell.coords)){
           visited[cell.id] = true;
         }
       }
     }
   }
 
-  // ==========================================
-  // 🔥 SAVE + INCREMENTAL CACHE (HARDENED)
-  // ==========================================
+  // 🔥 SAVE (frequency-safe)
   if(Object.keys(visited).length){
 
     const key = "grid_" + todayStr;
-
     console.log("💾 Saving to:", key);
 
     let data = {};
-
     try {
       const raw = localStorage.getItem(key);
-      if(raw){
-        data = JSON.parse(raw);
-      }
+      if(raw) data = JSON.parse(raw);
     } catch(e){
-      console.warn("⚠ Parse failed → resetting today data");
+      console.warn("⚠ Parse failed → resetting day data");
       data = {};
     }
 
-    // 🔥 normalize old values
+    // normalize old values
     Object.keys(data).forEach(id => {
       if(data[id] === true) data[id] = 1;
       else data[id] = Number(data[id]) || 0;
@@ -5098,7 +5005,6 @@ function markVisitedHybrid(tracks){
     let updates = 0;
 
     Object.keys(visited).forEach(id => {
-
       if(!id) return;
 
       if(window.gridIndex[id]){
@@ -5111,7 +5017,6 @@ function markVisitedHybrid(tracks){
       } else {
         data[id] += 1;
       }
-
     });
 
     try {
@@ -5120,25 +5025,13 @@ function markVisitedHybrid(tracks){
       console.error("❌ CRITICAL: localStorage save failed", e);
     }
 
-    // ==========================================
-    // 🔥 FORCE MEMORY SYNC
-    // ==========================================
+    // memory sync (today view)
     window.gridCache = window.gridCache || {};
     window.gridCache.today = data;
 
-    // ==========================================
-    // 🔥 REBUILD MONTH
-    // ==========================================
-    if(typeof updateMonthCache === "function"){
-      updateMonthCache();
-    }
-
-    // ==========================================
-    // 🔥 NEW: REBUILD PREV MONTH (SAFE)
-    // ==========================================
-    if(typeof updatePrevMonthCache === "function"){
-      updatePrevMonthCache();
-    }
+    // rebuild aggregates
+    if(typeof updateMonthCache === "function") updateMonthCache();
+    if(typeof updatePrevMonthCache === "function") updatePrevMonthCache();
 
     console.log(
       "✅ Saved grids:",
@@ -5154,7 +5047,7 @@ function markVisitedHybrid(tracks){
   }
 
   return visited;
-}    function applyMode(mode){
+}   function applyMode(mode){
 
   try {
 
@@ -5481,8 +5374,6 @@ function showGridPopup(cell, latlng){
   let result = {};
 
   const now = new Date();
-
-  // 🔥 previous month
   const prev = new Date(now.getFullYear(), now.getMonth() - 1, 1);
   const prefix = prev.toISOString().slice(0,7); // YYYY-MM
 
@@ -5491,25 +5382,18 @@ function showGridPopup(cell, latlng){
     if(!key.startsWith("grid_" + prefix)) return;
 
     try {
-
       const data = JSON.parse(localStorage.getItem(key) || "{}");
 
       Object.entries(data).forEach(([id, val]) => {
-
         const count = (val === true) ? 1 : Number(val) || 0;
 
-        if(!result[id]){
-          result[id] = count;
-        } else {
-          result[id] += count;
-        }
-
+        if(!result[id]) result[id] = count;
+        else result[id] += count;
       });
 
     } catch(e){
-      console.warn("⚠ Prev month read failed:", key);
+      console.warn("⚠ Prev cache read failed:", key);
     }
-
   });
 
   window.gridCache = window.gridCache || {};
