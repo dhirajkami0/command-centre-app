@@ -1475,28 +1475,42 @@ window.__dutyChecked = false;
     // 🧹 CLEAN OLD MONTH DATA (SAFE)
     // ======================================================
     setTimeout(() => {
-      try {
+  try {
 
-        const prefix = new Date().toISOString().slice(0,7);
+    const now = new Date();
 
-        Object.keys(localStorage).forEach(key => {
+    Object.keys(localStorage).forEach(key => {
 
-          if(!key.startsWith("grid_")) return;
+      // 🔒 only grid keys
+      if(!key.startsWith("grid_")) return;
 
-          const date = key.replace("grid_", "");
+      const dateStr = key.replace("grid_", "");
 
-          if(!date.startsWith(prefix)){
-            localStorage.removeItem(key);
-            console.log("🧹 Removed old grid:", key);
-          }
+      // 🔒 validate date
+      const d = new Date(dateStr);
+      if(isNaN(d)) return;
 
-        });
+      // 🔥 difference in days
+      const diffDays = (now - d) / (1000 * 60 * 60 * 24);
 
-      } catch(e){
-        console.warn("⚠ Cleanup failed");
+      // ==========================================
+      // 🔥 SAFE CLEAN RULE
+      // ==========================================
+      // keep last 60 days (covers:
+      // today + current month + prev month)
+      if(diffDays > 60){
+
+        localStorage.removeItem(key);
+        console.log("🧹 Removed old grid:", key);
+
       }
-    }, 1000);
 
+    });
+
+  } catch(e){
+    console.warn("⚠ Cleanup failed");
+  }
+}, 1000);
     // ================= OFFLINE CLEAN =================
     if(window.isDutyActive !== true){
       try {
@@ -4924,18 +4938,18 @@ function markVisitedHybrid(tracks){
 
   console.log("🧪 Incoming tracks:", tracks);
 
-  let visited = {};
+  let visitedGlobal = {};
 
   for(let t of tracks){
 
-    // ==========================================
-    // 🔥 CRITICAL FIX: DATE-AWARE KEY
-    // ==========================================
     const dayStr = t.date
       ? getLocalDateStr(new Date(t.date))
       : getLocalDateStr();
 
     if(!t || !t.track || t.track.length < 2) continue;
+
+    // 🔥 per-track visited (CRITICAL FIX)
+    let visited = {};
 
     for(let i = 1; i < t.track.length; i++){
 
@@ -4951,12 +4965,8 @@ function markVisitedHybrid(tracks){
 
       if([lat1, lon1, lat2, lon2].some(isNaN)) continue;
 
-      // ==========================================
-      // 🔥 SPATIAL INDEX SEARCH
-      // ==========================================
       const baseLat1 = Math.floor(lat1 * 1000);
       const baseLng1 = Math.floor(lon1 * 1000);
-
       const baseLat2 = Math.floor(lat2 * 1000);
       const baseLng2 = Math.floor(lon2 * 1000);
 
@@ -4978,8 +4988,10 @@ function markVisitedHybrid(tracks){
       const nearby = Array.from(nearbySet);
 
       // ==========================================
-      // 🔥 LINE → POLYGON
+      // 🔥 INTERSECTION CHECK
       // ==========================================
+      let hit = false;
+
       for(let cell of nearby){
 
         if(!cell || !cell.coords || !cell.id) continue;
@@ -4990,18 +5002,21 @@ function markVisitedHybrid(tracks){
           cell.coords
         )){
           visited[cell.id] = true;
+          hit = true;
         }
       }
 
       // ==========================================
-      // 🔥 FALLBACK (CRITICAL FIX)
-      // if no intersection, still mark nearest grid
+      // 🔥 FALLBACK (FIXED → per segment)
       // ==========================================
-      if(Object.keys(visited).length === 0){
+      if(!hit){
+
+        const approxLat = Math.floor(lat2 / window.gridMeta.size) * window.gridMeta.size;
+        const approxLng = Math.floor(lon2 / window.gridMeta.size) * window.gridMeta.size;
 
         const approxId =
-          (Math.floor(lat2 * 1000) / 1000).toFixed(5) + "_" +
-          (Math.floor(lon2 * 1000) / 1000).toFixed(5);
+          approxLat.toFixed(6) + "_" +
+          approxLng.toFixed(6);
 
         if(window.gridIndex[approxId]){
           visited[approxId] = true;
@@ -5010,7 +5025,7 @@ function markVisitedHybrid(tracks){
     }
 
     // ==========================================
-    // 🔥 SAVE PER DAY (CRITICAL FIX)
+    // 🔥 SAVE PER TRACK (FIXED)
     // ==========================================
     if(Object.keys(visited).length){
 
@@ -5030,7 +5045,7 @@ function markVisitedHybrid(tracks){
         data = {};
       }
 
-      // normalize old values
+      // normalize
       Object.keys(data).forEach(id => {
         if(data[id] === true) data[id] = 1;
         else data[id] = Number(data[id]) || 0;
@@ -5053,6 +5068,9 @@ function markVisitedHybrid(tracks){
           data[id] += 1;
         }
 
+        // 🔥 global merge
+        visitedGlobal[id] = true;
+
       });
 
       try {
@@ -5062,7 +5080,7 @@ function markVisitedHybrid(tracks){
       }
 
       // ==========================================
-      // 🔥 SYNC CACHE (IMPORTANT)
+      // 🔥 CACHE SYNC (NO CHANGE)
       // ==========================================
       window.gridCache = window.gridCache || {};
       window.gridCache.today = data;
@@ -5083,12 +5101,12 @@ function markVisitedHybrid(tracks){
       );
 
     } else {
-      console.warn("⚠ No grids intersected (even after fallback)");
+      console.warn("⚠ No grids intersected");
     }
   }
 
-  return visited;
-}   function applyMode(mode){
+  return visitedGlobal;
+}  function applyMode(mode){
 
   try {
 
