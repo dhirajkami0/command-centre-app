@@ -4659,188 +4659,256 @@ function getCoverageStats(mode = "today", beat = "ALL"){
     
     
    
+// 🔥 GLOBAL CONTROL FLAGS
+// ==========================================
+// 🔥 GLOBAL CONTROL FLAGS
+// ==========================================
+let isBackfillRunning = false;
+
 async function backfillKMLOnceBatched(){
 
   const DONE_KEY = "kml_backfill_done_v3";
   const CURSOR_KEY = "kml_backfill_cursor_v3";
+  const PROCESSED_KEY = "kml_processed_ids_v3";
 
-  if(localStorage.getItem(DONE_KEY) === "1"){
-    console.log("✅ Backfill already completed");
+  // ==========================================
+  // 🔒 PREVENT MULTIPLE LOOPS
+  // ==========================================
+  if(isBackfillRunning){
+    console.warn("⛔ Backfill already running");
     return;
   }
 
-  if(!window.gridIndex){
-    console.warn("⚠ Grid not ready");
-    return;
-  }
+  isBackfillRunning = true;
 
-  console.log("🚀 Backfill (batched) START");
+  // 🔥 pause live tracking
+  window.pauseLiveTracking = true;
 
-  // ==========================================
-  // 🔥 LOAD ALL FILES
-  // ==========================================
-  let files;
   try {
-    files = await callBackend("getKMLTracks", { mode: "ALL" });
-  } catch(e){
-    console.error("❌ getKMLTracks failed:", e);
-    return;
-  }
 
-  if(!files || !files.length){
-    console.warn("⚠ No KML files found");
-    return;
-  }
+    if(localStorage.getItem(DONE_KEY) === "1"){
+      console.log("✅ Backfill already completed");
+      return;
+    }
 
-  // ==========================================
-  // 🔥 FILTER CURRENT + PREV MONTH
-  // ==========================================
-  const now = new Date();
+    if(!window.gridIndex){
+      console.warn("⚠ Grid not ready");
+      return;
+    }
 
-  const currentPrefix =
-    `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,"0")}`;
+    console.log("🚀 Backfill (batched) START");
 
-  const prevDate = new Date(now.getFullYear(), now.getMonth()-1, 1);
-  const prevPrefix =
-    `${prevDate.getFullYear()}-${String(prevDate.getMonth()+1).padStart(2,"0")}`;
-
-  const filtered = files.filter(f =>
-    f.date &&
-    (f.date.startsWith(currentPrefix) || f.date.startsWith(prevPrefix))
-  );
-
-  console.log("📦 Files to process:", filtered.length);
-
-  if(!filtered.length){
-    console.warn("⚠ No files in current/prev month");
-    localStorage.setItem(DONE_KEY, "1");
-    return;
-  }
-
-  // ==========================================
-  // 🔥 CURSOR (SAFE)
-  // ==========================================
-  let cursor = Number(localStorage.getItem(CURSOR_KEY) || 0);
-
-  // 🔥 reset if mismatch (important)
-  if(cursor >= filtered.length){
-    cursor = 0;
-    localStorage.setItem(CURSOR_KEY, "0");
-  }
-
-  const BATCH_SIZE = 3;
-  let processed = 0;
-
-  // ==========================================
-  // 🔥 PROCESS BATCH
-  // ==========================================
-  for(let i = cursor; i < filtered.length && processed < BATCH_SIZE; i++){
-
-    const file = filtered[i];
-
-    console.log("📂 Processing:", file.name, "| Date:", file.date);
-
-    let res;
+    // ==========================================
+    // 🔥 LOAD FILES
+    // ==========================================
+    let files;
     try {
-      res = await callBackend("readKMLFile", { fileId: file.id });
+      files = await callBackend("getKMLTracks", { mode: "ALL" });
     } catch(e){
-      console.warn("⚠ read failed:", file.name);
-      continue;
+      console.error("❌ getKMLTracks failed:", e);
+      return;
     }
 
-    if(!res || !res.text){
-      console.warn("⚠ Empty file:", file.name);
-      continue;
-    }
-
-    // ==========================================
-    // 🔥 EXTRACT TRACK
-    // ==========================================
-    const match = res.text.match(/<coordinates>([\s\S]*?)<\/coordinates>/i);
-
-    if(!match){
-      console.warn("⚠ No <coordinates>:", file.name);
-      continue;
-    }
-
-    const rawPoints = match[1].trim().split(/\s+/);
-
-    let track = [];
-    let lastLat = null, lastLon = null;
-
-    rawPoints.forEach(p => {
-
-      const parts = p.split(",");
-      if(parts.length < 2) return;
-
-      const lon = parseFloat(parts[0]);
-      const lat = parseFloat(parts[1]);
-
-      if(isNaN(lat) || isNaN(lon)) return;
-
-      // 🔥 remove duplicate consecutive points
-      if(lat === lastLat && lon === lastLon) return;
-
-      track.push([lat, lon]);
-
-      lastLat = lat;
-      lastLon = lon;
-    });
-
-    // ==========================================
-    // 🔥 DEBUG
-    // ==========================================
-    if(track.length){
-      console.log("🟡 First point:", track[0]);
-      console.log("📏 Track length:", track.length);
+    if(!files || !files.length){
+      console.warn("⚠ No KML files found");
+      return;
     }
 
     // ==========================================
-    // 🔥 PROCESS (FIXED)
+    // 🔥 FILTER CURRENT + PREV MONTH
     // ==========================================
-    if(track.length >= 1){
+    const now = new Date();
 
-      markVisitedHybrid([{
-        track: track,
-        date: file.date
-      }]);
+    const currentPrefix =
+      `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,"0")}`;
+
+    const prevDate = new Date(now.getFullYear(), now.getMonth()-1, 1);
+    const prevPrefix =
+      `${prevDate.getFullYear()}-${String(prevDate.getMonth()+1).padStart(2,"0")}`;
+
+    const filtered = files.filter(f =>
+      f.date &&
+      (f.date.startsWith(currentPrefix) || f.date.startsWith(prevPrefix))
+    );
+
+    console.log("📦 Files to process:", filtered.length);
+
+    if(!filtered.length){
+      console.warn("⚠ No valid files for months");
+      localStorage.setItem(DONE_KEY, "1");
+      return;
+    }
+
+    // ==========================================
+    // 🔥 CURSOR SAFE
+    // ==========================================
+    let cursor = Number(localStorage.getItem(CURSOR_KEY) || 0);
+
+    if(cursor >= filtered.length){
+      cursor = 0;
+      localStorage.setItem(CURSOR_KEY, "0");
+    }
+
+    // ==========================================
+    // 🔥 LOAD PROCESSED FILE IDS
+    // ==========================================
+    let processedIds = JSON.parse(
+      localStorage.getItem(PROCESSED_KEY) || "[]"
+    );
+
+    const BATCH_SIZE = 2; // 🔥 IMPORTANT (prevents freeze)
+    let processed = 0;
+
+    // ==========================================
+    // 🔥 MAIN LOOP
+    // ==========================================
+    for(let i = cursor; i < filtered.length && processed < BATCH_SIZE; i++){
+
+      const file = filtered[i];
+
+      // ==========================================
+      // 🔥 DUPLICATE CHECK
+      // ==========================================
+      if(processedIds.includes(file.id)){
+        console.log("⏭ Skipping duplicate:", file.name);
+        localStorage.setItem(CURSOR_KEY, i + 1);
+        continue;
+      }
+
+      console.log("📂 Processing:", file.name, "| Date:", file.date);
+
+      // ==========================================
+      // 🔥 READ FILE
+      // ==========================================
+      let res;
+      try {
+        res = await callBackend("readKMLFile", { fileId: file.id });
+      } catch(e){
+        console.warn("⚠ read failed:", file.name);
+        continue;
+      }
+
+      if(!res || !res.text){
+        console.warn("⚠ Empty file:", file.name);
+        continue;
+      }
+
+      // ==========================================
+      // 🔥 EXTRACT COORDINATES
+      // ==========================================
+      const match = res.text.match(/<coordinates>([\s\S]*?)<\/coordinates>/i);
+
+      if(!match){
+        console.warn("⚠ No <coordinates>:", file.name);
+        continue;
+      }
+
+      const rawPoints = match[1].trim().split(/\s+/);
+
+      let track = [];
+      let lastLat = null, lastLon = null;
+
+      for(const p of rawPoints){
+
+        const parts = p.split(",");
+        if(parts.length < 2) continue;
+
+        const lon = parseFloat(parts[0]);
+        const lat = parseFloat(parts[1]);
+
+        // 🔥 skip invalid
+        if(isNaN(lat) || isNaN(lon)) continue;
+
+        // 🔥 skip 0,0 garbage
+        if(lat === 0 && lon === 0) continue;
+
+        // 🔥 remove duplicates
+        if(lat === lastLat && lon === lastLon) continue;
+
+        track.push([lat, lon]);
+
+        lastLat = lat;
+        lastLon = lon;
+      }
+
+      // ==========================================
+      // 🔥 SKIP WEAK TRACKS
+      // ==========================================
+      if(track.length < 5){
+        console.warn("⚠ Too small track:", file.name);
+        localStorage.setItem(CURSOR_KEY, i + 1);
+        continue;
+      }
+
+      console.log("🟡 First:", track[0], "| Len:", track.length);
+
+      // ==========================================
+      // 🔥 GRID UPDATE (THROTTLED)
+      // ==========================================
+      const nowTime = Date.now();
+
+      if(!window.lastGridUpdate){
+        window.lastGridUpdate = 0;
+      }
+
+      if(nowTime - window.lastGridUpdate > 1000){
+
+        markVisitedHybrid([{
+          track: track,
+          date: file.date
+        }]);
+
+        window.lastGridUpdate = nowTime;
+
+      } else {
+        console.log("⏸ Grid throttled");
+      }
+
+      // ==========================================
+      // 🔥 MARK AS PROCESSED
+      // ==========================================
+      processedIds.push(file.id);
+      localStorage.setItem(PROCESSED_KEY, JSON.stringify(processedIds));
 
       processed++;
-
-    } else {
-      console.warn("⚠ Empty track:", file.name);
+      localStorage.setItem(CURSOR_KEY, i + 1);
     }
 
-    // 🔥 update cursor after each file
-    localStorage.setItem(CURSOR_KEY, i + 1);
+    // ==========================================
+    // 🔥 CACHE UPDATE
+    // ==========================================
+    if(typeof updateMonthCache === "function"){
+      updateMonthCache();
+    }
+
+    if(typeof updatePrevMonthCache === "function"){
+      updatePrevMonthCache();
+    }
+
+    console.log("⏱ Batch processed:", processed);
+
+    // ==========================================
+    // 🔥 LOOP / COMPLETE
+    // ==========================================
+    if(Number(localStorage.getItem(CURSOR_KEY)) < filtered.length){
+
+      setTimeout(backfillKMLOnceBatched, 1200); // 🔥 smooth UI
+
+    } else {
+
+      console.log("🎉 BACKFILL COMPLETE");
+
+      localStorage.setItem(DONE_KEY, "1");
+      window.pauseLiveTracking = false;
+    }
+
+  } catch(e){
+    console.error("❌ Backfill crash:", e);
+  } finally {
+
+    isBackfillRunning = false;
   }
-
-  // ==========================================
-  // 🔥 CACHE REFRESH
-  // ==========================================
-  if(typeof updateMonthCache === "function"){
-    updateMonthCache();
-  }
-
-  if(typeof updatePrevMonthCache === "function"){
-    updatePrevMonthCache();
-  }
-
-  console.log("⏱ Batch processed:", processed);
-
-  // ==========================================
-  // 🔥 CONTINUE OR COMPLETE
-  // ==========================================
-  if(Number(localStorage.getItem(CURSOR_KEY)) < filtered.length){
-
-    setTimeout(backfillKMLOnceBatched, 400);
-
-  } else {
-
-    console.log("🎉 BACKFILL COMPLETE");
-    localStorage.setItem(DONE_KEY, "1");
-  }
-}  function getLocalDateStr(date = new Date()){
+} function getLocalDateStr(date = new Date()){
   const d = new Date(date);
   d.setMinutes(d.getMinutes() - d.getTimezoneOffset());
   return d.toISOString().slice(0,10);
