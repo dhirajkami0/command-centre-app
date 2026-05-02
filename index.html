@@ -4574,7 +4574,7 @@ function getCoverageStats(mode = "today", beat = "ALL", type = "all"){
   let meta;
 
   try {
-    meta = await callBackend("getKMLTracks");
+    meta = await callBackend("getKMLTracks", { mode: "ALL" });
   } catch(e){
     console.error("❌ getKMLTracks failed:", e);
     return;
@@ -4926,12 +4926,14 @@ function markVisitedHybrid(tracks){
 
   let visited = {};
 
-  // 🔥 CRITICAL: use track date if provided (for backfill), else today
-  const todayStr = getLocalDateStr(
-    tracks?.[0]?.date ? new Date(tracks[0].date) : new Date()
-  );
-
   for(let t of tracks){
+
+    // ==========================================
+    // 🔥 CRITICAL FIX: DATE-AWARE KEY
+    // ==========================================
+    const dayStr = t.date
+      ? getLocalDateStr(new Date(t.date))
+      : getLocalDateStr();
 
     if(!t || !t.track || t.track.length < 2) continue;
 
@@ -4949,9 +4951,12 @@ function markVisitedHybrid(tracks){
 
       if([lat1, lon1, lat2, lon2].some(isNaN)) continue;
 
-      // 🔥 spatial index window
+      // ==========================================
+      // 🔥 SPATIAL INDEX SEARCH
+      // ==========================================
       const baseLat1 = Math.floor(lat1 * 1000);
       const baseLng1 = Math.floor(lon1 * 1000);
+
       const baseLat2 = Math.floor(lat2 * 1000);
       const baseLng2 = Math.floor(lon2 * 1000);
 
@@ -4959,7 +4964,9 @@ function markVisitedHybrid(tracks){
 
       for(let lat = Math.min(baseLat1, baseLat2)-1; lat <= Math.max(baseLat1, baseLat2)+1; lat++){
         for(let lng = Math.min(baseLng1, baseLng2)-1; lng <= Math.max(baseLng1, baseLng2)+1; lng++){
+
           const key = lat + "_" + lng;
+
           if(window.gridSpatialIndex && window.gridSpatialIndex[key]){
             for(let cell of window.gridSpatialIndex[key]){
               nearbySet.add(cell);
@@ -4970,80 +4977,114 @@ function markVisitedHybrid(tracks){
 
       const nearby = Array.from(nearbySet);
 
-      // 🔥 line → polygon
+      // ==========================================
+      // 🔥 LINE → POLYGON
+      // ==========================================
       for(let cell of nearby){
+
         if(!cell || !cell.coords || !cell.id) continue;
 
-        if(lineIntersectsPolygon(lat1, lon1, lat2, lon2, cell.coords)){
+        if(lineIntersectsPolygon(
+          lat1, lon1,
+          lat2, lon2,
+          cell.coords
+        )){
           visited[cell.id] = true;
         }
       }
+
+      // ==========================================
+      // 🔥 FALLBACK (CRITICAL FIX)
+      // if no intersection, still mark nearest grid
+      // ==========================================
+      if(Object.keys(visited).length === 0){
+
+        const approxId =
+          (Math.floor(lat2 * 1000) / 1000).toFixed(5) + "_" +
+          (Math.floor(lon2 * 1000) / 1000).toFixed(5);
+
+        if(window.gridIndex[approxId]){
+          visited[approxId] = true;
+        }
+      }
     }
-  }
 
-  // 🔥 SAVE (frequency-safe)
-  if(Object.keys(visited).length){
+    // ==========================================
+    // 🔥 SAVE PER DAY (CRITICAL FIX)
+    // ==========================================
+    if(Object.keys(visited).length){
 
-    const key = "grid_" + todayStr;
-    console.log("💾 Saving to:", key);
+      const key = "grid_" + dayStr;
 
-    let data = {};
-    try {
-      const raw = localStorage.getItem(key);
-      if(raw) data = JSON.parse(raw);
-    } catch(e){
-      console.warn("⚠ Parse failed → resetting day data");
-      data = {};
-    }
+      console.log("💾 Saving to:", key);
 
-    // normalize old values
-    Object.keys(data).forEach(id => {
-      if(data[id] === true) data[id] = 1;
-      else data[id] = Number(data[id]) || 0;
-    });
+      let data = {};
 
-    let updates = 0;
-
-    Object.keys(visited).forEach(id => {
-      if(!id) return;
-
-      if(window.gridIndex[id]){
-        window.gridIndex[id].visited = true;
+      try {
+        const raw = localStorage.getItem(key);
+        if(raw){
+          data = JSON.parse(raw);
+        }
+      } catch(e){
+        console.warn("⚠ Parse failed → resetting");
+        data = {};
       }
 
-      if(!data[id]){
-        data[id] = 1;
-        updates++;
-      } else {
-        data[id] += 1;
+      // normalize old values
+      Object.keys(data).forEach(id => {
+        if(data[id] === true) data[id] = 1;
+        else data[id] = Number(data[id]) || 0;
+      });
+
+      let updates = 0;
+
+      Object.keys(visited).forEach(id => {
+
+        if(!id) return;
+
+        if(window.gridIndex[id]){
+          window.gridIndex[id].visited = true;
+        }
+
+        if(!data[id]){
+          data[id] = 1;
+          updates++;
+        } else {
+          data[id] += 1;
+        }
+
+      });
+
+      try {
+        localStorage.setItem(key, JSON.stringify(data));
+      } catch(e){
+        console.error("❌ Save failed", e);
       }
-    });
 
-    try {
-      localStorage.setItem(key, JSON.stringify(data));
-    } catch(e){
-      console.error("❌ CRITICAL: localStorage save failed", e);
+      // ==========================================
+      // 🔥 SYNC CACHE (IMPORTANT)
+      // ==========================================
+      window.gridCache = window.gridCache || {};
+      window.gridCache.today = data;
+
+      if(typeof updateMonthCache === "function"){
+        updateMonthCache();
+      }
+
+      if(typeof updatePrevMonthCache === "function"){
+        updatePrevMonthCache();
+      }
+
+      console.log(
+        "✅ Saved:",
+        updates,
+        "| Total grids:",
+        Object.keys(data).length
+      );
+
+    } else {
+      console.warn("⚠ No grids intersected (even after fallback)");
     }
-
-    // memory sync (today view)
-    window.gridCache = window.gridCache || {};
-    window.gridCache.today = data;
-
-    // rebuild aggregates
-    if(typeof updateMonthCache === "function") updateMonthCache();
-    if(typeof updatePrevMonthCache === "function") updatePrevMonthCache();
-
-    console.log(
-      "✅ Saved grids:",
-      updates,
-      "| Total grids:",
-      Object.keys(data).length,
-      "| Total visits:",
-      Object.values(data).reduce((a,b)=>a+b,0)
-    );
-
-  } else {
-    console.log("⚠ No grids intersected");
   }
 
   return visited;
