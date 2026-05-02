@@ -4931,8 +4931,11 @@ function pointInPoly(lat, lng, coords){
 // ===============================
 function markVisitedHybrid(tracks){
 
-  if(!window.gridIndex){
-    console.warn("⚠ gridIndex not ready");
+  // ==========================================
+  // 🔥 HARD SAFETY (CRITICAL FIX)
+  // ==========================================
+  if(!window.gridIndex || !window.gridMeta){
+    console.warn("⚠ Grid not ready");
     return {};
   }
 
@@ -4948,7 +4951,7 @@ function markVisitedHybrid(tracks){
 
     if(!t || !t.track || t.track.length < 2) continue;
 
-    // 🔥 per-track visited (CRITICAL FIX)
+    // 🔥 per-track visited
     let visited = {};
 
     for(let i = 1; i < t.track.length; i++){
@@ -5002,17 +5005,20 @@ function markVisitedHybrid(tracks){
           cell.coords
         )){
           visited[cell.id] = true;
+          visitedGlobal[cell.id] = true;
           hit = true;
         }
       }
 
       // ==========================================
-      // 🔥 FALLBACK (FIXED → per segment)
+      // 🔥 FALLBACK (SAFE)
       // ==========================================
       if(!hit){
 
-        const approxLat = Math.floor(lat2 / window.gridMeta.size) * window.gridMeta.size;
-        const approxLng = Math.floor(lon2 / window.gridMeta.size) * window.gridMeta.size;
+        const size = window.gridMeta.size;
+
+        const approxLat = Math.floor(lat2 / size) * size;
+        const approxLng = Math.floor(lon2 / size) * size;
 
         const approxId =
           approxLat.toFixed(6) + "_" +
@@ -5020,12 +5026,13 @@ function markVisitedHybrid(tracks){
 
         if(window.gridIndex[approxId]){
           visited[approxId] = true;
+          visitedGlobal[approxId] = true;
         }
       }
     }
 
     // ==========================================
-    // 🔥 SAVE PER TRACK (FIXED)
+    // 🔥 SAVE PER DAY
     // ==========================================
     if(Object.keys(visited).length){
 
@@ -5037,11 +5044,9 @@ function markVisitedHybrid(tracks){
 
       try {
         const raw = localStorage.getItem(key);
-        if(raw){
-          data = JSON.parse(raw);
-        }
+        if(raw) data = JSON.parse(raw);
       } catch(e){
-        console.warn("⚠ Parse failed → resetting");
+        console.warn("⚠ Parse failed → reset");
         data = {};
       }
 
@@ -5067,30 +5072,12 @@ function markVisitedHybrid(tracks){
         } else {
           data[id] += 1;
         }
-
-        // 🔥 global merge
-        visitedGlobal[id] = true;
-
       });
 
       try {
         localStorage.setItem(key, JSON.stringify(data));
       } catch(e){
         console.error("❌ Save failed", e);
-      }
-
-      // ==========================================
-      // 🔥 CACHE SYNC (NO CHANGE)
-      // ==========================================
-      window.gridCache = window.gridCache || {};
-      window.gridCache.today = data;
-
-      if(typeof updateMonthCache === "function"){
-        updateMonthCache();
-      }
-
-      if(typeof updatePrevMonthCache === "function"){
-        updatePrevMonthCache();
       }
 
       console.log(
@@ -5103,6 +5090,17 @@ function markVisitedHybrid(tracks){
     } else {
       console.warn("⚠ No grids intersected");
     }
+  }
+
+  // ==========================================
+  // 🔥 CACHE REBUILD (ONCE ONLY)
+  // ==========================================
+  if(typeof updateMonthCache === "function"){
+    updateMonthCache();
+  }
+
+  if(typeof updatePrevMonthCache === "function"){
+    updatePrevMonthCache();
   }
 
   return visitedGlobal;
