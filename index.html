@@ -4659,7 +4659,7 @@ function getCoverageStats(mode = "today", beat = "ALL"){
     
     
    
- async function backfillKMLOnceBatched(){
+async function backfillKMLOnceBatched(){
 
   const DONE_KEY = "kml_backfill_done_v3";
   const CURSOR_KEY = "kml_backfill_cursor_v3";
@@ -4677,7 +4677,7 @@ function getCoverageStats(mode = "today", beat = "ALL"){
   console.log("🚀 Backfill (batched) START");
 
   // ==========================================
-  // 🔥 LOAD ALL KML METADATA (ONCE)
+  // 🔥 LOAD ALL FILES
   // ==========================================
   let files;
   try {
@@ -4696,14 +4696,13 @@ function getCoverageStats(mode = "today", beat = "ALL"){
   // 🔥 FILTER CURRENT + PREV MONTH
   // ==========================================
   const now = new Date();
-  const curYear = now.getFullYear();
-  const curMonth = String(now.getMonth() + 1).padStart(2,"0");
-  const currentPrefix = `${curYear}-${curMonth}`;
 
-  const prev = new Date(now.getFullYear(), now.getMonth() - 1, 1);
-  const prevYear = prev.getFullYear();
-  const prevMonth = String(prev.getMonth() + 1).padStart(2,"0");
-  const prevPrefix = `${prevYear}-${prevMonth}`;
+  const currentPrefix =
+    `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,"0")}`;
+
+  const prevDate = new Date(now.getFullYear(), now.getMonth()-1, 1);
+  const prevPrefix =
+    `${prevDate.getFullYear()}-${String(prevDate.getMonth()+1).padStart(2,"0")}`;
 
   const filtered = files.filter(f =>
     f.date &&
@@ -4712,15 +4711,29 @@ function getCoverageStats(mode = "today", beat = "ALL"){
 
   console.log("📦 Files to process:", filtered.length);
 
+  if(!filtered.length){
+    console.warn("⚠ No files in current/prev month");
+    localStorage.setItem(DONE_KEY, "1");
+    return;
+  }
+
   // ==========================================
-  // 🔥 RESUME SUPPORT
+  // 🔥 CURSOR (SAFE)
   // ==========================================
   let cursor = Number(localStorage.getItem(CURSOR_KEY) || 0);
 
-  const BATCH_SIZE = 3;
+  // 🔥 reset if mismatch (important)
+  if(cursor >= filtered.length){
+    cursor = 0;
+    localStorage.setItem(CURSOR_KEY, "0");
+  }
 
+  const BATCH_SIZE = 3;
   let processed = 0;
 
+  // ==========================================
+  // 🔥 PROCESS BATCH
+  // ==========================================
   for(let i = cursor; i < filtered.length && processed < BATCH_SIZE; i++){
 
     const file = filtered[i];
@@ -4735,13 +4748,20 @@ function getCoverageStats(mode = "today", beat = "ALL"){
       continue;
     }
 
-    if(!res || !res.text) continue;
+    if(!res || !res.text){
+      console.warn("⚠ Empty file:", file.name);
+      continue;
+    }
 
     // ==========================================
     // 🔥 EXTRACT TRACK
     // ==========================================
-    const match = res.text.match(/<coordinates>([\s\S]*?)<\/coordinates>/);
-    if(!match) continue;
+    const match = res.text.match(/<coordinates>([\s\S]*?)<\/coordinates>/i);
+
+    if(!match){
+      console.warn("⚠ No <coordinates>:", file.name);
+      continue;
+    }
 
     const rawPoints = match[1].trim().split(/\s+/);
 
@@ -4758,6 +4778,7 @@ function getCoverageStats(mode = "today", beat = "ALL"){
 
       if(isNaN(lat) || isNaN(lon)) return;
 
+      // 🔥 remove duplicate consecutive points
       if(lat === lastLat && lon === lastLon) return;
 
       track.push([lat, lon]);
@@ -4767,20 +4788,17 @@ function getCoverageStats(mode = "today", beat = "ALL"){
     });
 
     // ==========================================
-    // 🔥 DEBUG LOG (CRITICAL)
+    // 🔥 DEBUG
     // ==========================================
     if(track.length){
-      console.log("🟡 KML first point:", track[0]);
-      console.log("🟡 KML last point:", track[track.length - 1]);
-      console.log("📏 KML track length:", track.length);
-    } else {
-      console.warn("⚠ Empty track parsed");
+      console.log("🟡 First point:", track[0]);
+      console.log("📏 Track length:", track.length);
     }
 
     // ==========================================
-    // 🔥 PROCESS
+    // 🔥 PROCESS (FIXED)
     // ==========================================
-    if(track.length > 1){
+    if(track.length >= 1){
 
       markVisitedHybrid([{
         track: track,
@@ -4790,17 +4808,15 @@ function getCoverageStats(mode = "today", beat = "ALL"){
       processed++;
 
     } else {
-      console.warn("⚠ Skipped track (too short):", file.name);
+      console.warn("⚠ Empty track:", file.name);
     }
 
-    // ==========================================
-    // 🔥 SAVE PROGRESS
-    // ==========================================
+    // 🔥 update cursor after each file
     localStorage.setItem(CURSOR_KEY, i + 1);
   }
 
   // ==========================================
-  // 🔥 REBUILD CACHES
+  // 🔥 CACHE REFRESH
   // ==========================================
   if(typeof updateMonthCache === "function"){
     updateMonthCache();
@@ -4810,26 +4826,21 @@ function getCoverageStats(mode = "today", beat = "ALL"){
     updatePrevMonthCache();
   }
 
-  console.log(
-    "⏱ Batch processed:",
-    processed,
-    "| Cursor:", localStorage.getItem(CURSOR_KEY)
-  );
+  console.log("⏱ Batch processed:", processed);
 
   // ==========================================
-  // 🔥 AUTO-CONTINUE
+  // 🔥 CONTINUE OR COMPLETE
   // ==========================================
-  if(cursor + processed < filtered.length){
+  if(Number(localStorage.getItem(CURSOR_KEY)) < filtered.length){
 
     setTimeout(backfillKMLOnceBatched, 400);
 
   } else {
 
     console.log("🎉 BACKFILL COMPLETE");
-
     localStorage.setItem(DONE_KEY, "1");
   }
-}   function getLocalDateStr(date = new Date()){
+}  function getLocalDateStr(date = new Date()){
   const d = new Date(date);
   d.setMinutes(d.getMinutes() - d.getTimezoneOffset());
   return d.toISOString().slice(0,10);
