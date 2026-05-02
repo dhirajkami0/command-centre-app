@@ -4766,7 +4766,7 @@ function getCoverageStats(mode = "today", beat = "ALL"){
       lastLat = lat;
       lastLon = lon;
     });
-
+console.log("KML first point:", track[0]);
     if(track.length > 1){
 
       // 🔥 CRITICAL → DATE-AWARE SAVE
@@ -7720,7 +7720,7 @@ try {
     }
 
   });
-
+console.log("LIVE first point:", clean[0]);
   if(tracks.length && window.gridIndex){
 
     console.log("🔥 GRID INPUT TRACKS:", tracks.length);
