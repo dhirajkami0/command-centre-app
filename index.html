@@ -3902,27 +3902,59 @@ window.gridCache = window.gridCache || {
 
     function loadCacheOnStart(){
 
-  const key = "grid_" + getLocalDateStr(); // 🔥 FIX: ensure consistent key
-
-  window.gridCache = window.gridCache || {};
-
   try {
-    window.gridCache.today = JSON.parse(localStorage.getItem(key) || "{}");
+
+    window.gridCache = window.gridCache || {};
+
+    // ==========================================
+    // 🔵 TODAY CACHE (SAFE + NORMALIZED)
+    // ==========================================
+    const todayKey = "grid_" + getLocalDateStr();
+
+    let todayData = {};
+
+    try {
+      todayData = JSON.parse(localStorage.getItem(todayKey) || "{}");
+    } catch(e){
+      console.warn("⚠ Today cache parse failed");
+      todayData = {};
+    }
+
+    // 🔥 normalize (CRITICAL)
+    Object.keys(todayData).forEach(id => {
+      if(todayData[id] === true){
+        todayData[id] = 1;
+      } else {
+        todayData[id] = Number(todayData[id]) || 0;
+      }
+    });
+
+    window.gridCache.today = todayData;
+
+    // ==========================================
+    // 🟢 CURRENT MONTH CACHE
+    // ==========================================
+    if(typeof updateMonthCache === "function"){
+      updateMonthCache();
+    }
+
+    // ==========================================
+    // 🟡 PREVIOUS MONTH CACHE
+    // ==========================================
+    if(typeof updatePrevMonthCache === "function"){
+      updatePrevMonthCache();
+    }
+
+    console.log(
+      "📦 Cache Loaded →",
+      "Today:", Object.keys(window.gridCache.today).length,
+      "| Current:", Object.keys(window.gridCache.current || {}).length,
+      "| Prev:", Object.keys(window.gridCache.prev || {}).length
+    );
+
   } catch(e){
-    window.gridCache.today = {};
+    console.error("❌ loadCacheOnStart failed:", e);
   }
-
-  // 🔥 ALWAYS BUILD MONTH CACHE
-  if(typeof updateMonthCache === "function"){
-    updateMonthCache();
-  }
-
-  // 🔥 ADD PREV MONTH CACHE (NEW)
-  if(typeof updatePrevMonthCache === "function"){
-    updatePrevMonthCache();
-  }
-
-  console.log("📦 Cache Loaded | Today:", Object.keys(window.gridCache.today).length);
 }
 // ======================================================
 // 🎯 ASSIGN GRID → BEAT (FINAL STABLE - NO GAP / NO OVERFLOW)
@@ -4356,8 +4388,13 @@ function updateMonthCache(){
 
   let result = {};
 
-  // 🔥 current month prefix (YYYY-MM)
-  const prefix = new Date().toISOString().slice(0,7);
+  // ==========================================
+  // 🔥 LOCAL TIME SAFE PREFIX (FIXED)
+  // ==========================================
+  const now = new Date();
+  const year = now.getFullYear();
+  const month = String(now.getMonth() + 1).padStart(2, "0");
+  const prefix = year + "-" + month;   // YYYY-MM
 
   Object.keys(localStorage).forEach(key => {
 
@@ -4366,17 +4403,31 @@ function updateMonthCache(){
 
     try {
 
-      const data = JSON.parse(localStorage.getItem(key) || "{}");
+      const raw = localStorage.getItem(key);
+      if(!raw) return;
+
+      const data = JSON.parse(raw);
 
       Object.entries(data).forEach(([id, val]) => {
 
-        // 🔥 normalize value (boolean → count safe)
-        const count = (val === true) ? 1 : Number(val) || 0;
+        // ==========================================
+        // 🔥 STRICT NORMALIZATION (ALIGNED WITH PREV)
+        // ==========================================
+        let count;
+
+        if(val === true){
+          count = 1;
+        } else if(typeof val === "number"){
+          count = val;
+        } else {
+          count = Number(val);
+          if(isNaN(count)) count = 0;
+        }
 
         if(!result[id]){
-          result[id] = count;     // first occurrence
+          result[id] = count;
         } else {
-          result[id] += count;    // 🔥 accumulate density
+          result[id] += count;   // 🔥 density aggregation
         }
 
       });
@@ -4388,10 +4439,10 @@ function updateMonthCache(){
   });
 
   // ==========================================
-  // 🔥 FINAL CACHE ASSIGNMENT (CRITICAL FIX)
+  // 🔥 FINAL CACHE ASSIGNMENT (CRITICAL)
   // ==========================================
   window.gridCache = window.gridCache || {};
-  window.gridCache.current = result;   // ✅ NOT "month"
+  window.gridCache.current = result;
 
   console.log(
     "📅 Current month grids:",
@@ -4399,16 +4450,16 @@ function updateMonthCache(){
     "| Total visits:",
     Object.values(result).reduce((a,b)=>a+b,0)
   );
-}
-
-/* ============================================================
+}/* ============================================================
    🔄 INCREMENTAL VISITED UPDATE (FREQUENCY BASED)
 ============================================================ */
 function updateVisitedCache(newVisited){
 
   try {
 
-    // 🔥 safety: skip if nothing to update
+    // ==========================================
+    // 🔥 SAFETY
+    // ==========================================
     if(!newVisited || !Object.keys(newVisited).length){
       console.log("⚠ No newVisited data");
       return;
@@ -4419,18 +4470,22 @@ function updateVisitedCache(newVisited){
     let todayData = {};
 
     try {
-      todayData = JSON.parse(localStorage.getItem(key) || "{}");
+      const raw = localStorage.getItem(key);
+      if(raw) todayData = JSON.parse(raw);
     } catch(e){
       console.warn("⚠ Today cache read failed");
       todayData = {};
     }
 
-    // 🔥 normalize old values (boolean → number)
+    // ==========================================
+    // 🔥 NORMALIZE (STRICT)
+    // ==========================================
     Object.keys(todayData).forEach(id => {
       if(todayData[id] === true){
         todayData[id] = 1;
       } else {
-        todayData[id] = Number(todayData[id]) || 0;
+        const num = Number(todayData[id]);
+        todayData[id] = isNaN(num) ? 0 : num;
       }
     });
 
@@ -4455,19 +4510,20 @@ function updateVisitedCache(newVisited){
       console.warn("⚠ Cache save failed");
     }
 
-    // 🔥 sync memory
+    // ==========================================
+    // 🔥 MEMORY SYNC
+    // ==========================================
     window.gridCache = window.gridCache || {};
     window.gridCache.today = todayData;
 
-    // 🔥 rebuild month cache
+    // ==========================================
+    // 🔥 REBUILD CURRENT MONTH ONLY
+    // ==========================================
     if(typeof updateMonthCache === "function"){
       updateMonthCache();
     }
 
-    // 🔥 rebuild prev cache (NEW)
-    if(typeof updatePrevMonthCache === "function"){
-      updatePrevMonthCache();
-    }
+    // ❌ DO NOT rebuild prev here (unnecessary)
 
     console.log("➕ Added new grids:", added);
     console.log(
@@ -4480,10 +4536,11 @@ function updateVisitedCache(newVisited){
   } catch(e){
     console.error("❌ updateVisitedCache error:", e);
   }
-}/* ============================================================
-   📊 COVERAGE STATS (FREQUENCY AWARE)
+}
+ /* ============================================================
+   📊 COVERAGE STATS (FULLY MODE-AWARE + DENSITY SAFE)
 ============================================================ */
-function getCoverageStats(mode = "today", beat = "ALL", type = "all"){
+function getCoverageStats(mode = "today", beat = "ALL"){
 
   if(!window.gridIndex || !window.gridMeta){
     console.warn("⚠ Grid not ready for stats");
@@ -4492,15 +4549,22 @@ function getCoverageStats(mode = "today", beat = "ALL", type = "all"){
 
   let data = {};
 
+  // ==========================================
+  // 🔥 MODE MAPPING (CRITICAL FIX)
+  // ==========================================
   if(mode === "today"){
     data = window.gridCache?.today || {};
-  } else {
-    data = window.gridCache?.month || {};
+  }
+  else if(mode === "current"){
+    data = window.gridCache?.current || {};   // ✅ FIXED
+  }
+  else if(mode === "prev"){
+    data = window.gridCache?.prev || {};
   }
 
   let total = 0;
   let visited = 0;
-  let totalVisits = 0; // 🔥 new metric
+  let totalVisits = 0;
 
   Object.entries(window.gridIndex).forEach(([id, cell]) => {
 
@@ -4512,7 +4576,14 @@ function getCoverageStats(mode = "today", beat = "ALL", type = "all"){
 
     total++;
 
-    const count = (data[id] === true) ? 1 : Number(data[id]) || 0;
+    let count;
+
+    if(data[id] === true){
+      count = 1;
+    } else {
+      const num = Number(data[id]);
+      count = isNaN(num) ? 0 : num;
+    }
 
     if(count > 0){
       visited++;
@@ -4538,7 +4609,6 @@ function getCoverageStats(mode = "today", beat = "ALL", type = "all"){
 
   const percent = total ? ((visited / total) * 100) : 0;
 
-  // 🔥 new insights
   const avgVisits = total ? (totalVisits / total) : 0;
 
   return {
@@ -4552,11 +4622,14 @@ function getCoverageStats(mode = "today", beat = "ALL", type = "all"){
 
     percent: percent.toFixed(1),
 
-    // 🔥 NEW METRICS
     totalVisits: totalVisits,
     avgVisits: avgVisits.toFixed(2)
   };
-}    function runBackfillAuto(){
+}   
+    
+    
+    
+    function runBackfillAuto(){
 
   if(window.backfillRunning){
     console.log("⏭ Backfill already running");
@@ -5405,11 +5478,11 @@ function updatePrevMonthCache(){
 
   const now = new Date();
 
-  // 🔥 build prev month safely (no timezone issues)
+  // 🔥 SAFE PREV MONTH (NO TIMEZONE BUG)
   const prev = new Date(now.getFullYear(), now.getMonth() - 1, 1);
   const year = prev.getFullYear();
   const month = String(prev.getMonth() + 1).padStart(2, "0");
-  const prefix = year + "-" + month;   // YYYY-MM
+  const prefix = year + "-" + month;
 
   Object.keys(localStorage).forEach(key => {
 
@@ -5417,16 +5490,29 @@ function updatePrevMonthCache(){
 
     try {
 
-      const data = JSON.parse(localStorage.getItem(key) || "{}");
+      const raw = localStorage.getItem(key);
+      if(!raw) return;
+
+      const data = JSON.parse(raw);
 
       Object.entries(data).forEach(([id, val]) => {
 
-        const count = (val === true) ? 1 : Number(val) || 0;
+        // 🔥 STRICT NORMALIZATION
+        let count;
+
+        if(val === true){
+          count = 1;
+        } else if(typeof val === "number"){
+          count = val;
+        } else {
+          count = Number(val);
+          if(isNaN(count)) count = 0;
+        }
 
         if(!result[id]){
           result[id] = count;
         } else {
-          result[id] += count;   // 🔥 density aggregation
+          result[id] += count;
         }
 
       });
@@ -5447,7 +5533,6 @@ function updatePrevMonthCache(){
   );
 }
 
-
 /* ============================================================
    📊 GRID RENDER TRIGGER (MODE + BEAT SAFE)
 ============================================================ */
@@ -5458,23 +5543,29 @@ function showGrid(){
     const mode = window.currentCoverageMode || "current";
     const beat = window.currentBeat || "ALL";
 
-    // 🔥 ensure correct cache is ready
-    if(mode === "today" && typeof updateTodayCache === "function"){
+    // ==========================================
+    // 🔥 ENSURE CACHE BEFORE RENDER
+    // ==========================================
+    if(mode === "today"){
       updateTodayCache();
     }
-    else if(mode === "current" && typeof updateMonthCache === "function"){
+    else if(mode === "current"){
       updateMonthCache();
     }
-    else if(mode === "prev" && typeof updatePrevMonthCache === "function"){
+    else if(mode === "prev"){
       updatePrevMonthCache();
     }
 
-    // 🔥 ensure grid ready
+    // ==========================================
+    // 🔥 ENSURE GRID READY
+    // ==========================================
     if(typeof ensureGridReady === "function"){
       ensureGridReady();
     }
 
-    // 🔥 render
+    // ==========================================
+    // 🔥 RENDER
+    // ==========================================
     if(typeof renderGrid === "function"){
       renderGrid(mode, beat);
     }
@@ -5484,8 +5575,7 @@ function showGrid(){
   } catch(e){
     console.error("❌ showGrid error:", e);
   }
-}
-function hideGrid(){
+}function hideGrid(){
 
   if(window.gridLayer){
     window.gridLayer.clearLayers();
