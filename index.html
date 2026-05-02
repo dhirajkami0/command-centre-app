@@ -1474,11 +1474,15 @@ window.__dutyChecked = false;
     // ======================================================
     // 🧹 CLEAN OLD MONTH DATA (SAFE)
     // ======================================================
-    setTimeout(() => {
+  setTimeout(() => {
+
   try {
 
     const now = new Date();
-    now.setHours(0,0,0,0); // 🔥 normalize to midnight
+    now.setHours(0,0,0,0); // 🔥 normalize
+
+    let kept = 0;
+    let removed = 0;
 
     Object.keys(localStorage).forEach(key => {
 
@@ -1486,31 +1490,50 @@ window.__dutyChecked = false;
 
       const dateStr = key.replace("grid_", "");
 
-      // 🔥 strict parse (no timezone bugs)
+      // 🔒 strict parse (NO timezone bugs)
       const parts = dateStr.split("-");
       if(parts.length !== 3) return;
 
-      const d = new Date(parts[0], parts[1] - 1, parts[2]);
-      d.setHours(0,0,0,0);
+      const d = new Date(
+        Number(parts[0]),
+        Number(parts[1]) - 1,
+        Number(parts[2])
+      );
 
-      if(isNaN(d)) return;
+      if(isNaN(d.getTime())) return;
+
+      d.setHours(0,0,0,0);
 
       const diffDays = Math.floor((now - d) / (1000 * 60 * 60 * 24));
 
-      // 🔥 KEEP LAST 60 DAYS ONLY
-      if(diffDays > 60){
+      // ==========================================
+      // 🔥 CORE RULE (DO NOT TOUCH THIS)
+      // ==========================================
+      if(diffDays <= 60){
 
+        // ✅ KEEP (last 2 months)
+        kept++;
+
+      } else {
+
+        // 🧹 SAFE CLEAN (older than 2 months only)
         localStorage.removeItem(key);
-        console.log("🧹 Removed old grid:", key, "| Age:", diffDays);
+        removed++;
 
+        console.log("🧹 Removed:", key, "| Days:", diffDays);
       }
 
     });
 
+    console.log("📦 Grid retention → kept:", kept, "| removed:", removed);
+
   } catch(e){
-    console.warn("⚠ Cleanup failed");
+    console.warn("⚠ Cleanup failed:", e);
   }
-}, 1000);// ================= OFFLINE CLEAN =================
+
+}, 1000);
+    
+    // ================= OFFLINE CLEAN =================
     if(window.isDutyActive !== true){
       try {
         localStorage.removeItem("offlineGPS");
@@ -4655,13 +4678,13 @@ function getCoverageStats(mode = "today", beat = "ALL"){
 
   }, 3000);
 }
-  async function backfillFromKML(){
+  async function backfillKMLOnceBatched(){
 
-  console.log("🛠 PREV MONTH BACKFILL START");
+  const DONE_KEY = "kml_backfill_done_v3";
+  const CURSOR_KEY = "kml_backfill_cursor_v3";
 
-  // 🔥 run only once
-  if(localStorage.getItem("backfill_prev_done") === "true"){
-    console.log("✅ Backfill already done — skipping");
+  if(localStorage.getItem(DONE_KEY) === "1"){
+    console.log("✅ Backfill already completed");
     return;
   }
 
@@ -4670,42 +4693,73 @@ function getCoverageStats(mode = "today", beat = "ALL"){
     return;
   }
 
-  const now = new Date();
-  const prev = new Date(now.getFullYear(), now.getMonth() - 1, 1);
-  const prevPrefix = prev.toISOString().slice(0,7);
+  console.log("🚀 Backfill (batched) START");
 
-  let meta;
-
+  // ==========================================
+  // 🔥 LOAD ALL KML METADATA (ONCE)
+  // ==========================================
+  let files;
   try {
-    meta = await callBackend("getKMLTracks", { mode: "ALL" });
+    files = await callBackend("getKMLTracks", { mode: "ALL" });
   } catch(e){
     console.error("❌ getKMLTracks failed:", e);
     return;
   }
 
-  if(!meta || !meta.length){
-    console.warn("⚠ No KML files");
+  if(!files || !files.length){
+    console.warn("⚠ No KML files found");
     return;
   }
 
-  console.log("📦 Total KML files:", meta.length);
+  // ==========================================
+  // 🔥 FILTER CURRENT + PREV MONTH
+  // (LOCAL TIME SAFE)
+  // ==========================================
+  const now = new Date();
+  const curYear = now.getFullYear();
+  const curMonth = String(now.getMonth() + 1).padStart(2,"0");
+  const currentPrefix = `${curYear}-${curMonth}`;
 
-  for(const file of meta){
+  const prev = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+  const prevYear = prev.getFullYear();
+  const prevMonth = String(prev.getMonth() + 1).padStart(2,"0");
+  const prevPrefix = `${prevYear}-${prevMonth}`;
 
-    if(!file.date || !file.date.startsWith(prevPrefix)) continue;
+  const filtered = files.filter(f =>
+    f.date &&
+    (f.date.startsWith(currentPrefix) || f.date.startsWith(prevPrefix))
+  );
+
+  console.log("📦 Files to process:", filtered.length);
+
+  // ==========================================
+  // 🔥 RESUME SUPPORT
+  // ==========================================
+  let cursor = Number(localStorage.getItem(CURSOR_KEY) || 0);
+
+  const BATCH_SIZE = 3; // 🔥 safe value (2–5)
+
+  let processed = 0;
+
+  for(let i = cursor; i < filtered.length && processed < BATCH_SIZE; i++){
+
+    const file = filtered[i];
 
     console.log("📂 Processing:", file.name);
 
     let res;
     try {
-      res = await callBackend("readKMLFile", {fileId: file.id});
+      res = await callBackend("readKMLFile", { fileId: file.id });
     } catch(e){
-      console.error("❌ readKMLFile failed:", e);
+      console.warn("⚠ read failed:", file.name);
       continue;
     }
 
     if(!res || !res.text) continue;
 
+    // ==========================================
+    // 🔥 EXTRACT TRACK
+    // ==========================================
     const match = res.text.match(/<coordinates>([\s\S]*?)<\/coordinates>/);
     if(!match) continue;
 
@@ -4713,46 +4767,72 @@ function getCoverageStats(mode = "today", beat = "ALL"){
 
     let track = [];
     let lastLat = null, lastLon = null;
-    const MIN_MOVE = 0.00005;
 
     rawPoints.forEach(p => {
+
       const parts = p.split(",");
       if(parts.length < 2) return;
 
       const lon = parseFloat(parts[0]);
       const lat = parseFloat(parts[1]);
+
       if(isNaN(lat) || isNaN(lon)) return;
 
       if(lat === lastLat && lon === lastLon) return;
 
-      if(
-        lastLat !== null &&
-        Math.abs(lat - lastLat) < MIN_MOVE &&
-        Math.abs(lon - lastLon) < MIN_MOVE
-      ){
-        return;
-      }
-
       track.push([lat, lon]);
+
       lastLat = lat;
       lastLon = lon;
     });
 
     if(track.length > 1){
-      // 🔥 SAVE USING FILE DATE
-      markVisitedHybrid([{ track, date: file.date }]);
-      console.log("📅 Saved:", file.date);
+
+      // 🔥 CRITICAL → DATE-AWARE SAVE
+      markVisitedHybrid([{
+        track: track,
+        date: file.date
+      }]);
+
+      processed++;
     }
+
+    // ==========================================
+    // 🔥 SAVE PROGRESS
+    // ==========================================
+    localStorage.setItem(CURSOR_KEY, i + 1);
   }
 
-  // 🔥 final aggregate
+  // ==========================================
+  // 🔥 REBUILD CACHES
+  // ==========================================
+  if(typeof updateMonthCache === "function"){
+    updateMonthCache(); // → gridCache.current
+  }
+
   if(typeof updatePrevMonthCache === "function"){
-    updatePrevMonthCache();
+    updatePrevMonthCache(); // → gridCache.prev
   }
 
-  localStorage.setItem("backfill_prev_done", "true");
+  console.log(
+    "⏱ Batch processed:",
+    processed,
+    "| Cursor:", localStorage.getItem(CURSOR_KEY)
+  );
 
-  console.log("🎉 PREV MONTH BACKFILL COMPLETE");
+  // ==========================================
+  // 🔥 AUTO-CONTINUE UNTIL DONE
+  // ==========================================
+  if(cursor + processed < filtered.length){
+
+    setTimeout(backfillKMLOnceBatched, 400);
+
+  } else {
+
+    console.log("🎉 BACKFILL COMPLETE");
+
+    localStorage.setItem(DONE_KEY, "1");
+  }
 }
     function getLocalDateStr(date = new Date()){
   const d = new Date(date);
