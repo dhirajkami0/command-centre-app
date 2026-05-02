@@ -4659,7 +4659,7 @@ function getCoverageStats(mode = "today", beat = "ALL"){
     
     
    
-  async function backfillKMLOnceBatched(){
+ async function backfillKMLOnceBatched(){
 
   const DONE_KEY = "kml_backfill_done_v3";
   const CURSOR_KEY = "kml_backfill_cursor_v3";
@@ -4694,7 +4694,6 @@ function getCoverageStats(mode = "today", beat = "ALL"){
 
   // ==========================================
   // 🔥 FILTER CURRENT + PREV MONTH
-  // (LOCAL TIME SAFE)
   // ==========================================
   const now = new Date();
   const curYear = now.getFullYear();
@@ -4718,7 +4717,7 @@ function getCoverageStats(mode = "today", beat = "ALL"){
   // ==========================================
   let cursor = Number(localStorage.getItem(CURSOR_KEY) || 0);
 
-  const BATCH_SIZE = 3; // 🔥 safe value (2–5)
+  const BATCH_SIZE = 3;
 
   let processed = 0;
 
@@ -4726,7 +4725,7 @@ function getCoverageStats(mode = "today", beat = "ALL"){
 
     const file = filtered[i];
 
-    console.log("📂 Processing:", file.name);
+    console.log("📂 Processing:", file.name, "| Date:", file.date);
 
     let res;
     try {
@@ -4766,15 +4765,32 @@ function getCoverageStats(mode = "today", beat = "ALL"){
       lastLat = lat;
       lastLon = lon;
     });
+
+    // ==========================================
+    // 🔥 DEBUG LOG (CRITICAL)
+    // ==========================================
+    if(track.length){
+      console.log("🟡 KML first point:", track[0]);
+      console.log("🟡 KML last point:", track[track.length - 1]);
+      console.log("📏 KML track length:", track.length);
+    } else {
+      console.warn("⚠ Empty track parsed");
+    }
+
+    // ==========================================
+    // 🔥 PROCESS
+    // ==========================================
     if(track.length > 1){
 
-      // 🔥 CRITICAL → DATE-AWARE SAVE
       markVisitedHybrid([{
         track: track,
         date: file.date
       }]);
 
       processed++;
+
+    } else {
+      console.warn("⚠ Skipped track (too short):", file.name);
     }
 
     // ==========================================
@@ -4787,11 +4803,11 @@ function getCoverageStats(mode = "today", beat = "ALL"){
   // 🔥 REBUILD CACHES
   // ==========================================
   if(typeof updateMonthCache === "function"){
-    updateMonthCache(); // → gridCache.current
+    updateMonthCache();
   }
 
   if(typeof updatePrevMonthCache === "function"){
-    updatePrevMonthCache(); // → gridCache.prev
+    updatePrevMonthCache();
   }
 
   console.log(
@@ -4801,7 +4817,7 @@ function getCoverageStats(mode = "today", beat = "ALL"){
   );
 
   // ==========================================
-  // 🔥 AUTO-CONTINUE UNTIL DONE
+  // 🔥 AUTO-CONTINUE
   // ==========================================
   if(cursor + processed < filtered.length){
 
@@ -4813,8 +4829,7 @@ function getCoverageStats(mode = "today", beat = "ALL"){
 
     localStorage.setItem(DONE_KEY, "1");
   }
-}
-    function getLocalDateStr(date = new Date()){
+}   function getLocalDateStr(date = new Date()){
   const d = new Date(date);
   d.setMinutes(d.getMinutes() - d.getTimezoneOffset());
   return d.toISOString().slice(0,10);
@@ -7581,6 +7596,11 @@ function syncOfflineMoves(){
           }
         });
 
+        // ✅ SAFE DEBUG (LIVE TRACK FORMAT)
+        if(clean.length){
+          console.log("🟢 LIVE first point:", clean[0]);
+        }
+
         /* 🔥 LAST POSITION */
         let lat = clean.length ? clean[clean.length-1][0] : s.lat;
         let lon = clean.length ? clean[clean.length-1][1] : s.lon;
@@ -7688,99 +7708,91 @@ function syncOfflineMoves(){
     });
 
     // ======================================================
-    // 🔥 GRID UPDATE FROM STAFF TRACKS (FINAL FIXED)
+    // 🔥 GRID UPDATE FROM STAFF TRACKS (UNCHANGED LOGIC)
     // ======================================================
-   // ======================================================
-// 🔥 GRID UPDATE FROM STAFF TRACKS (FINAL FIXED + SAFE)
-// ======================================================
-try {
-
-  let tracks = [];
-
-  staff.forEach(s=>{
-
-    let raw = Array.isArray(s.track) ? s.track : [];
-
-    let clean=[];
-
-    raw.forEach(p=>{
-      if(!p) return;
-      if(clean.length===0 || 
-        Math.abs(clean[clean.length-1][0]-p[0])>1e-6 ||
-        Math.abs(clean[clean.length-1][1]-p[1])>1e-6){
-          clean.push(p);
-      }
-    });
-
-    if(clean.length > 1){
-      tracks.push({
-        track: clean
-      });
-    }
-
-  });
-  if(tracks.length && window.gridIndex){
-
-    console.log("🔥 GRID INPUT TRACKS:", tracks.length);
-
-    // 💣 ONLY THIS (FINAL RULE)
-    markVisitedHybrid(tracks);
-
-    // ==========================================
-    // 🔥 SAFE TODAY CACHE RELOAD (FIXED)
-    // ==========================================
-    const todayKey = "grid_" + getLocalDateStr();
-
     try {
 
-      let data = JSON.parse(localStorage.getItem(todayKey) || "{}");
+      let tracks = [];
 
-      // 🔥 normalize (CRITICAL)
-      Object.keys(data).forEach(id=>{
-        if(data[id] === true) data[id] = 1;
-        else data[id] = Number(data[id]) || 0;
+      staff.forEach(s=>{
+
+        let raw = Array.isArray(s.track) ? s.track : [];
+
+        let clean=[];
+
+        raw.forEach(p=>{
+          if(!p) return;
+          if(clean.length===0 || 
+            Math.abs(clean[clean.length-1][0]-p[0])>1e-6 ||
+            Math.abs(clean[clean.length-1][1]-p[1])>1e-6){
+              clean.push(p);
+          }
+        });
+
+        // ✅ SAFE DEBUG AGAIN
+        if(clean.length){
+          console.log("🟢 LIVE (grid) first point:", clean[0]);
+        }
+
+        if(clean.length > 1){
+          tracks.push({
+            track: clean
+          });
+        }
+
       });
 
-      window.gridCache = window.gridCache || {};
-      window.gridCache.today = data;
+      if(tracks.length && window.gridIndex){
+
+        console.log("🔥 GRID INPUT TRACKS:", tracks.length);
+
+        markVisitedHybrid(tracks);
+
+        const todayKey = "grid_" + getLocalDateStr();
+
+        try {
+
+          let data = JSON.parse(localStorage.getItem(todayKey) || "{}");
+
+          Object.keys(data).forEach(id=>{
+            if(data[id] === true) data[id] = 1;
+            else data[id] = Number(data[id]) || 0;
+          });
+
+          window.gridCache = window.gridCache || {};
+          window.gridCache.today = data;
+
+        } catch(e){
+          console.warn("⚠ cache reload failed");
+        }
+
+        if(typeof updateMonthCache === "function"){
+          updateMonthCache();
+        }
+
+        if(typeof updatePrevMonthCache === "function"){
+          updatePrevMonthCache();
+        }
+
+        if(window.gridIndex && window.__gridCanvas){
+
+          renderGrid(
+            window.currentCoverageMode || "today",
+            window.currentBeat || "ALL"
+          );
+
+        }
+
+        console.log("✅ GRID UPDATED FROM STAFF TRACKS");
+
+      } else {
+        console.warn("⚠ No valid tracks for grid");
+      }
 
     } catch(e){
-      console.warn("⚠ cache reload failed");
+      console.error("❌ Grid update error:", e);
     }
 
-    // ==========================================
-    // 🔥 REBUILD AGGREGATES
-    // ==========================================
-    if(typeof updateMonthCache === "function"){
-      updateMonthCache();
-    }
-
-    if(typeof updatePrevMonthCache === "function"){
-      updatePrevMonthCache();
-    }
-
-    // ==========================================
-    // 🔥 SAFE RENDER (FIXED)
-    // ==========================================
-    if(window.gridIndex && window.__gridCanvas){
-
-      renderGrid(
-        window.currentCoverageMode || "today",
-        window.currentBeat || "ALL"
-      );
-
-    }
-
-    console.log("✅ GRID UPDATED FROM STAFF TRACKS");
-
-  } else {
-    console.warn("⚠ No valid tracks for grid");
-  }
-
-} catch(e){
-  console.error("❌ Grid update error:", e);
-}
-  
   })
   .catch(err => console.error("❌ loadStaff error:", err));
 
