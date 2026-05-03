@@ -5130,11 +5130,14 @@ function pointInPoly(lat, lng, coords){
 // ===============================
 function markVisitedHybrid(tracks){
 
-  // ==========================================
-  // 🔥 HARD SAFETY
-  // ==========================================
   if(!window.gridIndex || !window.gridMeta){
     console.warn("⚠ Grid not ready");
+    return {};
+  }
+
+  // 🚫 BLOCK LIVE STAFF
+  if(window.__fromLiveStaff === true){
+    console.warn("⛔ Skip LIVE staff grid");
     return {};
   }
 
@@ -5151,13 +5154,37 @@ function markVisitedHybrid(tracks){
     if(!t || !t.track || !t.track.length) continue;
 
     // ==========================================
-    // 🔥 NEW: HANDLE POINT TRACK (CRITICAL)
+    // 🔥 CLEAN + NORMALIZE TRACK
     // ==========================================
-    if(t.track.length === 1){
+    let pts = t.track.map(p => ({
+      lat: Number(p[0]),
+      lon: Number(p[1])
+    })).filter(p => !isNaN(p.lat) && !isNaN(p.lon));
 
-      const [lat, lon] = t.track[0];
+    // 🔥 REMOVE BIG JUMPS (>500m)
+    pts = pts.filter((p,i)=>{
+      if(i===0) return true;
 
-      if(isNaN(lat) || isNaN(lon)) continue;
+      const prev = pts[i-1];
+
+      const d = Math.sqrt(
+        Math.pow((p.lat-prev.lat)*111000,2) +
+        Math.pow((p.lon-prev.lon)*111000,2)
+      );
+
+      return d < 500;
+    });
+
+    if(pts.length === 0) continue;
+
+    let visited = {};
+
+    // ==========================================
+    // 🔥 SINGLE POINT HANDLING
+    // ==========================================
+    if(pts.length === 1){
+
+      const p = pts[0];
 
       let nearestId = null;
       let minDist = Infinity;
@@ -5167,8 +5194,8 @@ function markVisitedHybrid(tracks){
         const cell = window.gridIndex[id];
         if(!cell || !cell.center) continue;
 
-        const dLat = cell.center[0] - lat;
-        const dLon = cell.center[1] - lon;
+        const dLat = cell.center[0] - p.lat;
+        const dLon = cell.center[1] - p.lon;
 
         const dist = dLat*dLat + dLon*dLon;
 
@@ -5179,192 +5206,175 @@ function markVisitedHybrid(tracks){
       }
 
       if(nearestId){
+        visited[nearestId] = true;
         visitedGlobal[nearestId] = true;
-
-        const key = "grid_" + dayStr;
-
-        let data = {};
-        try {
-          data = JSON.parse(localStorage.getItem(key) || "{}");
-        } catch(e){
-          data = {};
-        }
-
-        if(!data[nearestId]){
-          data[nearestId] = 1;
-        } else {
-          data[nearestId] += 1;
-        }
-
-        localStorage.setItem(key, JSON.stringify(data));
-
-        console.log("📍 Point mapped →", nearestId);
       }
-
-      continue; // 🔥 skip LineString logic
     }
 
     // ==========================================
-    // 🔥 EXISTING LINESTRING FLOW (UNCHANGED)
+    // 🔥 LINE + HYBRID LOGIC
     // ==========================================
-    if(t.track.length < 2) continue;
+    else {
 
-    let visited = {};
+      for(let i = 1; i < pts.length; i++){
 
-    for(let i = 1; i < t.track.length; i++){
+        const p1 = pts[i-1];
+        const p2 = pts[i];
 
-      const p1 = t.track[i-1];
-      const p2 = t.track[i];
+        const lat1 = p1.lat;
+        const lon1 = p1.lon;
+        const lat2 = p2.lat;
+        const lon2 = p2.lon;
 
-      if(!p1 || !p2) continue;
+        const distMeters = Math.sqrt(
+          Math.pow((lat2-lat1)*111000,2) +
+          Math.pow((lon2-lon1)*111000,2)
+        );
 
-      const lat1 = Number(p1[0]);
-      const lon1 = Number(p1[1]);
-      const lat2 = Number(p2[0]);
-      const lon2 = Number(p2[1]);
+        let hit = false;
 
-      if([lat1, lon1, lat2, lon2].some(isNaN)) continue;
+        // 🔥 NORMAL LINE CASE
+        if(distMeters <= 200){
 
-      const baseLat1 = Math.floor(lat1 * 1000);
-      const baseLng1 = Math.floor(lon1 * 1000);
-      const baseLat2 = Math.floor(lat2 * 1000);
-      const baseLng2 = Math.floor(lon2 * 1000);
+          let nearbySet = new Set();
 
-      let nearbySet = new Set();
+          const baseLat1 = Math.floor(lat1 * 1000);
+          const baseLng1 = Math.floor(lon1 * 1000);
+          const baseLat2 = Math.floor(lat2 * 1000);
+          const baseLng2 = Math.floor(lon2 * 1000);
 
-      for(let lat = Math.min(baseLat1, baseLat2)-1; lat <= Math.max(baseLat1, baseLat2)+1; lat++){
-        for(let lng = Math.min(baseLng1, baseLng2)-1; lng <= Math.max(baseLng1, baseLng2)+1; lng++){
+          for(let lat = Math.min(baseLat1, baseLat2)-1; lat <= Math.max(baseLat1, baseLat2)+1; lat++){
+            for(let lng = Math.min(baseLng1, baseLng2)-1; lng <= Math.max(baseLng1, baseLng2)+1; lng++){
 
-          const key = lat + "_" + lng;
+              const key = lat + "_" + lng;
 
-          if(window.gridSpatialIndex && window.gridSpatialIndex[key]){
-            for(let cell of window.gridSpatialIndex[key]){
-              nearbySet.add(cell);
+              if(window.gridSpatialIndex && window.gridSpatialIndex[key]){
+                for(let cell of window.gridSpatialIndex[key]){
+                  nearbySet.add(cell);
+                }
+              }
+            }
+          }
+
+          const nearby = Array.from(nearbySet);
+
+          for(let cell of nearby){
+
+            if(!cell || !cell.coords || !cell.id) continue;
+
+            if(lineIntersectsPolygon(
+              lat1, lon1,
+              lat2, lon2,
+              cell.coords
+            )){
+              visited[cell.id] = true;
+              visitedGlobal[cell.id] = true;
+              hit = true;
             }
           }
         }
-      }
 
-      const nearby = Array.from(nearbySet);
+        // ==========================================
+        // 🔥 FALLBACK (POINT MODE)
+        // ==========================================
+        if(!hit){
 
-      // ==========================================
-      // 🔥 INTERSECTION CHECK (UNCHANGED)
-      // ==========================================
-      let hit = false;
+          let nearestId = null;
+          let minDist = Infinity;
 
-      for(let cell of nearby){
+          for(let id in window.gridIndex){
 
-        if(!cell || !cell.coords || !cell.id) continue;
+            const cell = window.gridIndex[id];
+            if(!cell || !cell.center) continue;
 
-        if(lineIntersectsPolygon(
-          lat1, lon1,
-          lat2, lon2,
-          cell.coords
-        )){
-          visited[cell.id] = true;
-          visitedGlobal[cell.id] = true;
-          hit = true;
-        }
-      }
+            const dLat = cell.center[0] - lat2;
+            const dLon = cell.center[1] - lon2;
 
-      // ==========================================
-      // 🔥 UPDATED FALLBACK (FIXED → NO ROUNDING BUG)
-      // ==========================================
-      if(!hit){
+            const dist = dLat*dLat + dLon*dLon;
 
-        let nearestId = null;
-        let minDist = Infinity;
-
-        for(let id in window.gridIndex){
-
-          const cell = window.gridIndex[id];
-          if(!cell || !cell.center) continue;
-
-          const dLat = cell.center[0] - lat2;
-          const dLon = cell.center[1] - lon2;
-
-          const dist = dLat*dLat + dLon*dLon;
-
-          if(dist < minDist){
-            minDist = dist;
-            nearestId = id;
+            if(dist < minDist){
+              minDist = dist;
+              nearestId = id;
+            }
           }
-        }
 
-        if(nearestId){
-          visited[nearestId] = true;
-          visitedGlobal[nearestId] = true;
+          if(nearestId){
+            visited[nearestId] = true;
+            visitedGlobal[nearestId] = true;
+          }
         }
       }
     }
 
     // ==========================================
-    // 🔥 SAVE PER DAY (UNCHANGED)
+    // 🔥 FINAL SAFETY (NEVER EMPTY)
+    // ==========================================
+    if(Object.keys(visited).length === 0){
+
+      const last = pts[pts.length - 1];
+
+      let nearestId = null;
+      let minDist = Infinity;
+
+      for(let id in window.gridIndex){
+
+        const cell = window.gridIndex[id];
+        if(!cell || !cell.center) continue;
+
+        const dLat = cell.center[0] - last.lat;
+        const dLon = cell.center[1] - last.lon;
+
+        const dist = dLat*dLat + dLon*dLon;
+
+        if(dist < minDist){
+          minDist = dist;
+          nearestId = id;
+        }
+      }
+
+      if(nearestId){
+        visited[nearestId] = true;
+        visitedGlobal[nearestId] = true;
+        console.warn("⚡ Forced mapping:", nearestId);
+      }
+    }
+
+    // ==========================================
+    // 🔥 SAVE
     // ==========================================
     if(Object.keys(visited).length){
 
       const key = "grid_" + dayStr;
 
-      console.log("💾 Saving to:", key);
-
       let data = {};
 
       try {
-        const raw = localStorage.getItem(key);
-        if(raw) data = JSON.parse(raw);
+        data = JSON.parse(localStorage.getItem(key) || "{}");
       } catch(e){
-        console.warn("⚠ Parse failed → reset");
         data = {};
       }
 
-      Object.keys(data).forEach(id => {
-        if(data[id] === true) data[id] = 1;
-        else data[id] = Number(data[id]) || 0;
-      });
-
-      let updates = 0;
-
       Object.keys(visited).forEach(id => {
-
-        if(!id) return;
 
         if(window.gridIndex[id]){
           window.gridIndex[id].visited = true;
         }
 
-        if(!data[id]){
-          data[id] = 1;
-          updates++;
-        } else {
-          data[id] += 1;
-        }
+        data[id] = (data[id] || 0) + 1;
       });
 
-      try {
-        localStorage.setItem(key, JSON.stringify(data));
-      } catch(e){
-        console.error("❌ Save failed", e);
-      }
+      localStorage.setItem(key, JSON.stringify(data));
 
-      // 🔥 cache sync
       window.gridCache = window.gridCache || {};
       window.gridCache.today = data;
 
-      console.log(
-        "✅ Saved:",
-        updates,
-        "| Total grids:",
-        Object.keys(data).length
-      );
+      console.log("✅ Saved grids:", Object.keys(data).length);
 
     } else {
       console.warn("⚠ No grids intersected");
     }
   }
 
-  // ==========================================
-  // 🔥 CACHE REBUILD (UNCHANGED)
-  // ==========================================
   if(typeof updateMonthCache === "function"){
     updateMonthCache();
   }
@@ -5374,8 +5384,7 @@ function markVisitedHybrid(tracks){
   }
 
   return visitedGlobal;
-} 
-    function applyMode(mode){
+}    function applyMode(mode){
 
   try {
 
