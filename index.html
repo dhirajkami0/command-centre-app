@@ -11051,19 +11051,15 @@ window.addEventListener("load", function () {
 // ================= ONLINE LOGIN FLOW =================
 function startOnlineLoginFlow(){
 
-  if(authFlowRunning){
-    console.warn("⛔ Auth flow already running");
-    return;
-  }
-  authFlowRunning = true;
-
   const phone = localStorage.getItem("userPhone") || "";
 
   if (!phone) {
+    console.warn("⚠ No phone → login");
     showLogin();
-    authFlowRunning = false;
     return;
   }
+
+  console.log("📤 Sending phone:", phone);
 
   callBackend("GET_PROFILE", { phone: phone })
 
@@ -11072,7 +11068,6 @@ function startOnlineLoginFlow(){
       if (!profile || profile.error) {
         localStorage.removeItem("userPhone");
         showLogin();
-        authFlowRunning = false;
         return Promise.reject("Invalid profile");
       }
 
@@ -11082,50 +11077,112 @@ function startOnlineLoginFlow(){
       localStorage.setItem("userProfile", JSON.stringify(fixedProfile));
 
       updateNetworkStatus("online");
+
       applyRoleControl?.();
 
+      // ======================================================
+      // 🚀 START CORE APP (LIGHT ONLY)
+      // ======================================================
       startApp?.();
+
+      // ⚠ optional (keep if needed)
       initDutyControl?.();
+
+      // ❌ DO NOT LOAD HEAVY MAP DATA HERE
 
       return callBackend("updateVillageRisk");
     })
 
     .then(function (coneData) {
+
       if (!coneData) return null;
+
       window.coneVillages = coneData;
+
       return callBackend("getVillages");
     })
 
     .then(function (villageList) {
 
       if (villageList) {
+
         window.villages = (villageList || []).map(v => ({
           name: v.name || v.Village || "Unknown",
           lat: parseFloat(v.lat),
           lon: parseFloat(v.lon)
         }));
+
       }
 
+      // ======================================================
+      // ⚡ FAST UI REFRESH
+      // ======================================================
       refreshAll?.();
 
-      try { hideSplash(); } catch(e){}
+      // ======================================================
+      // 🔥 HIDE SPLASH (IMMEDIATE)
+      // ======================================================
+      try {
+        hideSplash();
+      } catch(e){
+        console.warn("⚠ hideSplash failed");
+      }
 
-      setTimeout(() => { loadRangeKML?.(); }, 500);
-      setTimeout(() => { initEventListeners?.(); }, 200);
-      setTimeout(() => { startChat?.(); }, 1500);
-      setTimeout(() => { cleanOldMessages?.(); }, 6000);
+      // ======================================================
+      // 🗺 LOAD GEOJSON (NON-BLOCKING)
+      // ======================================================
+      setTimeout(() => {
+
+        console.log("🗺 Loading GeoJSON layer...");
+
+        try {
+
+          // ✅ NEW FAST LOADER
+          loadRangeKML?.();
+
+          // ⚠ KEEP ONLY IF REALLY NEEDED
+          // (remove if duplicate or heavy)
+          // loadCompartmentsFromSheet?.();
+
+        } catch(e){
+          console.warn("⚠ GeoJSON load failed");
+        }
+
+      }, 500);
+
+      // ======================================================
+      // 🔧 INIT EVENTS (AFTER UI READY)
+      // ======================================================
+      setTimeout(() => {
+        initEventListeners?.();
+      }, 200);
+
+      // ======================================================
+      // ⚡ OPTIONAL: DELAY HEAVY BACKGROUND TASKS
+      // ======================================================
+      setTimeout(() => {
+        try {
+          startChat?.();            // 🔥 delayed Firebase
+        } catch(e){}
+      }, 1500);
+
+      setTimeout(() => {
+        try {
+          cleanOldMessages?.();     // 🔥 delayed cleanup
+        } catch(e){}
+      }, 6000);
 
     })
 
     .catch(function (err) {
+
       console.warn("⚠ startOnlineLoginFlow failed:", err);
+
       updateNetworkStatus("offline");
       showLogin();
-    })
 
-    .finally(() => {
-      authFlowRunning = false;
     });
+
 }   function hideSplash(){
 
   const splash = document.getElementById("splash-screen");
