@@ -11660,7 +11660,20 @@ function getChatCollection(){
   return window.fb.collection(window.db, "patrol_chat");
 }
 
+function typing(){
 
+  const el = document.getElementById("typingIndicator");
+
+  if(!el) return;
+
+  el.innerText = "Typing...";
+
+  clearTimeout(window.__typingTimer);
+
+  window.__typingTimer = setTimeout(() => {
+    el.innerText = "";
+  }, 1200);
+}
 // ================= ONLINE STATUS =================
 async function setOnline(){
 
