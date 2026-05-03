@@ -11253,6 +11253,9 @@ function refreshOnlineProfile(){
 // ============================================================
 // 🔥 GLOBALS
 // ============================================================
+// ============================================================
+// 🔥 GLOBALS
+// ============================================================
 let autoGpsTimer = null;
 let lastGpsSent = 0;
 
@@ -11262,9 +11265,15 @@ let isSyncRunning = false;
 window.gpsRunning = false;
 let lastLocationKey = "";
 
-// 🔥 NEW: TRACK BUFFER (CRITICAL FOR REAL PATH)
+// 🔥 TRACK BUFFER
 let gpsBuffer = [];
 let lastGPS = null;
+
+// 🔥 DIRECTION
+let lastBearing = null;
+
+// 🔥 DISTANCE TRACK
+let distanceSinceLastSend = 0;
 
 
 // ============================================================
@@ -11288,7 +11297,7 @@ function startAutoGPS(){
 
   console.log("🟢 AUTO GPS STARTED");
 
-  autoGpsTimer = setInterval(runAutoGPS, 5000); // 🔥 every 5 sec
+  autoGpsTimer = setInterval(runAutoGPS, 5000);
   runAutoGPS();
 }
 
@@ -11311,7 +11320,7 @@ function stopAutoGPS(){
 
 
 // ============================================================
-// 📍 AUTO GPS ENGINE (FIXED FOR REAL PATH)
+// 📍 AUTO GPS ENGINE (FINAL ADVANCED)
 // ============================================================
 function runAutoGPS(){
 
@@ -11339,9 +11348,6 @@ function runAutoGPS(){
         const lon = Number(pos.coords.longitude.toFixed(6));
         const acc = Number(pos.coords.accuracy);
 
-        // ==========================================
-        // 🔥 ACCEPT MORE POINTS (LESS STRICT)
-        // ==========================================
         if(acc > 300){
           isTrackingRunning = false;
           return;
@@ -11350,7 +11356,7 @@ function runAutoGPS(){
         const now = Date.now();
 
         // ==========================================
-        // 🔥 DISTANCE CALC
+        // 🔥 DISTANCE FUNCTION
         // ==========================================
         function getDistance(a, b){
           const R = 6371000;
@@ -11370,23 +11376,57 @@ function runAutoGPS(){
 
         if(lastGPS){
           dist = getDistance(lastGPS, {lat, lng: lon});
+          distanceSinceLastSend += dist;
         }
 
         // ==========================================
-        // 🔥 IGNORE MICRO NOISE
+        // 🔥 BEARING
         // ==========================================
-        if(dist < 5){
+        let bearing = null;
+
+        if(lastGPS){
+
+          const y = Math.sin((lon - lastGPS.lng) * Math.PI/180) * Math.cos(lat * Math.PI/180);
+
+          const x =
+            Math.cos(lastGPS.lat * Math.PI/180) * Math.sin(lat * Math.PI/180) -
+            Math.sin(lastGPS.lat * Math.PI/180) * Math.cos(lat * Math.PI/180) *
+            Math.cos((lon - lastGPS.lng) * Math.PI/180);
+
+          bearing = Math.atan2(y, x) * 180/Math.PI;
+        }
+
+        // ==========================================
+        // 🔥 BEND DETECTION
+        // ==========================================
+        let isBend = false;
+
+        if(bearing !== null && lastBearing !== null){
+
+          let diff = Math.abs(bearing - lastBearing);
+          if(diff > 180) diff = 360 - diff;
+
+          if(diff > 25){
+            isBend = true;
+            console.log("🔄 BEND:", diff);
+          }
+        }
+
+        // ==========================================
+        // 🔥 NOISE FILTER
+        // ==========================================
+        if(dist < 5 && !isBend){
           isTrackingRunning = false;
           return;
         }
 
         // ==========================================
-        // 🔥 HANDLE LARGE GAP (CRITICAL FIX)
+        // 🔥 CONTROLLED INTERPOLATION
+        // ONLY when safe AND NOT bending
         // ==========================================
-        if(lastGPS && dist > 80 && dist < 500){
+        if(!isBend && lastGPS && dist > 20 && dist <= 50){
 
-          // 🔥 INTERPOLATE POINTS (REAL PATH FIX)
-          const steps = Math.floor(dist / 30); // every ~30m
+          const steps = Math.floor(dist / 25);
 
           for(let i = 1; i <= steps; i++){
 
@@ -11400,8 +11440,6 @@ function runAutoGPS(){
               source: "INTERPOLATED"
             });
           }
-
-          console.log("🧩 Interpolated:", steps, "points");
         }
 
         // ==========================================
@@ -11417,9 +11455,21 @@ function runAutoGPS(){
         lastGPS = {lat, lng: lon};
 
         // ==========================================
-        // 🔥 SEND IN BATCH (IMPORTANT)
+        // 🔥 FINAL DECISION ENGINE
         // ==========================================
-        if(now - lastGpsSent > 10000 && gpsBuffer.length){
+        let shouldSend = false;
+
+        if(isBend){
+          shouldSend = true;
+        }
+        else if(distanceSinceLastSend >= 25){ // 🔥 distance rule
+          shouldSend = true;
+        }
+        else if(now - lastGpsSent > 10000){
+          shouldSend = true;
+        }
+
+        if(shouldSend && gpsBuffer.length){
 
           const batch = [...gpsBuffer];
           gpsBuffer = [];
@@ -11441,8 +11491,13 @@ function runAutoGPS(){
           }
 
           lastGpsSent = Date.now();
+          distanceSinceLastSend = 0;
 
-          console.log("📦 Sent batch:", batch.length);
+          console.log("📦 Sent:", batch.length, "| Bend:", isBend);
+        }
+
+        if(bearing !== null){
+          lastBearing = bearing;
         }
 
       } catch(e){
@@ -11464,7 +11519,6 @@ function runAutoGPS(){
     isTrackingRunning = false;
   }
 }
-
 
 // ============================================================
 // 📡 SEND OR STORE
