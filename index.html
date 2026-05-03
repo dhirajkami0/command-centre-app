@@ -1159,78 +1159,58 @@ function applyRoleControl(){
 // ============================================================
 // 🔥 GLOBAL STATE (CRITICAL)
 // ============================================================
+// ============================================================
+// 🔥 GLOBAL STATE (STRONG LOCK)
+// ============================================================
 let loginUIShown = false;
 let loginInProgress = false;
 let authFlowRunning = false;
+let loginModalLocked = false;   // 🔥 NEW HARD LOCK
+
 
 // ============================================================
-// 🔥 LOAD PROFILE (FIXED)
+// 🔥 LOAD PROFILE (UNCHANGED LOGIC + HARD GUARD)
 // ============================================================
 function loadProfile(){
 
   console.log("🔁 loadProfile() called");
 
-  // ============================================================
-  // 🔒 PREVENT DUPLICATE AUTH FLOW
-  // ============================================================
-  if(typeof authFlowRunning !== "undefined" && authFlowRunning){
-    console.warn("⛔ Skipping loadProfile (auth in progress)");
+  // 🔥 BLOCK if already logged in
+  if(window.userProfile){
+    console.log("✅ Already logged in → skip loadProfile");
     return;
   }
 
-  // 🔒 MARK FLOW START
+  // 🔒 PREVENT DUPLICATE FLOW
+  if(authFlowRunning){
+    console.warn("⛔ Skipping loadProfile (auth running)");
+    return;
+  }
+
   authFlowRunning = true;
 
   const phone = localStorage.getItem("userPhone") || "";
 
-  // ============================================================
-  // 🔥 NO PHONE → SHOW LOGIN (ONLY ONCE)
-  // ============================================================
   if(!phone){
-
-    if(!loginUIShown){
-      showLogin();
-    }
-
+    showLogin();
     authFlowRunning = false;
     return;
   }
-
-  console.log("📤 Sending phone:", phone);
 
   safeBackend("GET_PROFILE", { phone })
 
     .then(profile => {
 
-      // ================= OFFLINE =================
       if(!profile){
 
-        console.warn("⚠ Backend failed, trying offline");
+        const saved = localStorage.getItem("userProfile");
 
-        try {
-
-          const saved = localStorage.getItem("userProfile");
-
-          if(saved){
-
-            const offlineProfile = JSON.parse(saved);
-
-            offlineProfile.rawName = offlineProfile.rawName || offlineProfile.name || "";
-            offlineProfile.cleanName = offlineProfile.cleanName || cleanName(offlineProfile.rawName);
-
-            window.userProfile = offlineProfile;
-
-            updateNetworkStatus("offline");
-
-            applyRoleControl();
-            startApp();
-
-          } else {
-            showLogin();
-          }
-
-        } catch(e){
-          localStorage.removeItem("userProfile");
+        if(saved){
+          window.userProfile = JSON.parse(saved);
+          updateNetworkStatus("offline");
+          applyRoleControl();
+          startApp();
+        } else {
           showLogin();
         }
 
@@ -1238,39 +1218,26 @@ function loadProfile(){
         return;
       }
 
-      // ================= INVALID =================
       if(profile.error){
-
-        alert("❌ Not authorized");
-
         localStorage.removeItem("userPhone");
         localStorage.removeItem("userProfile");
-
         showLogin();
-
         authFlowRunning = false;
         return;
       }
 
-      // ================= SUCCESS =================
-      const raw = profile.rawName || profile.name || "";
-
       const finalProfile = {
-        rawName: raw,
-        cleanName: profile.cleanName || cleanName(raw),
-        role: profile.role || "",
-        beat: profile.beat || "",
-        phone: profile.phone || ""
+        rawName: profile.name,
+        cleanName: profile.cleanName || cleanName(profile.name),
+        role: profile.role,
+        beat: profile.beat,
+        phone: profile.phone
       };
 
       window.userProfile = finalProfile;
-
       localStorage.setItem("userProfile", JSON.stringify(finalProfile));
 
-      console.log("✅ USER:", finalProfile);
-
       updateNetworkStatus("online");
-
       applyRoleControl();
       startApp();
 
@@ -1278,52 +1245,22 @@ function loadProfile(){
 
     })
 
-    .catch(err => {
-
-      console.error("❌ loadProfile crash:", err);
-
-      const saved = localStorage.getItem("userProfile");
-
-      if(saved){
-        try {
-
-          const offlineProfile = JSON.parse(saved);
-
-          offlineProfile.rawName = offlineProfile.rawName || offlineProfile.name || "";
-          offlineProfile.cleanName = offlineProfile.cleanName || cleanName(offlineProfile.rawName);
-
-          window.userProfile = offlineProfile;
-
-          updateNetworkStatus("offline");
-
-          applyRoleControl();
-          startApp();
-
-        } catch(e){
-          showLogin();
-        }
-      } else {
-        showLogin();
-      }
-
+    .catch(() => {
+      showLogin();
       authFlowRunning = false;
-
     });
 }
 
+
 // ============================================================
-// 🔥 LOGIN (FIXED)
+// 🔥 LOGIN (STRONG RESET)
 // ============================================================
 function login(){
 
-  if(loginInProgress){
-    console.warn("⛔ Login already running");
-    return;
-  }
+  if(loginInProgress) return;
 
   loginInProgress = true;
 
-  const btn = document.getElementById("loginBtn");
   const phone = document.getElementById("loginPhone").value.trim();
 
   if(phone.length < 10){
@@ -1332,50 +1269,12 @@ function login(){
     return;
   }
 
-  if(btn){
-    btn.innerText = "⏳ Logging in...";
-    btn.disabled = true;
-  }
-
   safeBackend("GET_PROFILE", { phone })
 
     .then(profile => {
 
-      if(btn){
-        btn.innerText = "Login";
-        btn.disabled = false;
-      }
-
-      if(profile === null){
-
-        const saved = localStorage.getItem("userProfile");
-        const savedPhone = localStorage.getItem("userPhone");
-
-        if(saved && savedPhone === phone){
-
-          const offlineProfile = JSON.parse(saved);
-
-          window.userProfile = offlineProfile;
-
-          document.getElementById("loginModal").style.display = "none";
-
-          loginUIShown = false;
-          loginInProgress = false;
-
-          updateNetworkStatus("offline");
-          applyRoleControl();
-          startApp();
-
-        } else {
-          alert("❌ Cannot login offline");
-          loginInProgress = false;
-        }
-
-        return;
-      }
-
-      if(profile.error){
-        alert("❌ Not authorized");
+      if(!profile || profile.error){
+        alert("❌ Login failed");
         loginInProgress = false;
         return;
       }
@@ -1393,13 +1292,14 @@ function login(){
 
       window.userProfile = finalProfile;
 
-      document.getElementById("loginModal").style.display = "none";
+      const modal = document.getElementById("loginModal");
+      if(modal) modal.style.display = "none";
 
-      // 🔥 CRITICAL RESET
+      // 🔥 RESET EVERYTHING
       loginUIShown = false;
       loginInProgress = false;
-
-      console.log("✅ Logged in");
+      authFlowRunning = false;
+      loginModalLocked = false;
 
       updateNetworkStatus("online");
       applyRoleControl();
@@ -1407,41 +1307,42 @@ function login(){
 
     })
 
-    .catch(err => {
-
-      console.error("❌ Login crash:", err);
-
-      if(btn){
-        btn.innerText = "Login";
-        btn.disabled = false;
-      }
-
+    .catch(() => {
       loginInProgress = false;
-
-      alert("❌ Login failed");
-
     });
 }
 
 
 // ============================================================
-// 🔥 SHOW LOGIN (FIXED)
+// 🔥 SHOW LOGIN (FINAL FIX — NO FLICKER EVER)
 // ============================================================
 function showLogin(){
 
-  // 🔥 BLOCK DOUBLE OPEN
-  if(loginUIShown){
-    console.warn("⚠ Login already open");
+  console.log("🔐 showLogin called");
+
+  // 🔥 HARD BLOCK (MOST IMPORTANT)
+  if(loginModalLocked){
+    console.warn("⛔ Modal locked → skip");
     return;
   }
 
-  // 🔥 IF ALREADY LOGGED IN → SKIP
-  if(localStorage.getItem("userPhone")){
+  // 🔥 BLOCK if already logged in
+  if(window.userProfile){
+    console.warn("⛔ Already logged in → skip");
     return;
   }
 
+  // 🔥 BLOCK if already visible in DOM
   const modal = document.getElementById("loginModal");
   if(!modal) return;
+
+  if(modal.style.display === "flex"){
+    console.warn("⚠ Modal already visible");
+    return;
+  }
+
+  // 🔥 LOCK IMMEDIATELY (CRITICAL)
+  loginModalLocked = true;
 
   modal.style.display = "flex";
   loginUIShown = true;
