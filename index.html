@@ -11250,6 +11250,9 @@ function refreshOnlineProfile(){
 // ============================================================
 // 🔧 GLOBALS
 // ============================================================
+// ============================================================
+// 🔥 GLOBALS
+// ============================================================
 let autoGpsTimer = null;
 let lastGpsSent = 0;
 
@@ -11258,6 +11261,10 @@ let isSyncRunning = false;
 
 window.gpsRunning = false;
 let lastLocationKey = "";
+
+// 🔥 NEW: TRACK BUFFER (CRITICAL FOR REAL PATH)
+let gpsBuffer = [];
+let lastGPS = null;
 
 
 // ============================================================
@@ -11281,12 +11288,8 @@ function startAutoGPS(){
 
   console.log("🟢 AUTO GPS STARTED");
 
-  // ==========================================
-  // 🔥 RUN FREQUENTLY (NOT 60 sec)
-  // ==========================================
   autoGpsTimer = setInterval(runAutoGPS, 5000); // 🔥 every 5 sec
-
-  runAutoGPS(); // immediate first call
+  runAutoGPS();
 }
 
 
@@ -11308,7 +11311,7 @@ function stopAutoGPS(){
 
 
 // ============================================================
-// 📍 AUTO GPS ENGINE
+// 📍 AUTO GPS ENGINE (FIXED FOR REAL PATH)
 // ============================================================
 function runAutoGPS(){
 
@@ -11328,16 +11331,6 @@ function runAutoGPS(){
       return;
     }
 
-    const now = Date.now();
-
-    // ==========================================
-    // 🔥 NEW: SHORTER TIME WINDOW
-    // ==========================================
-    if(now - lastGpsSent < 8000){   // 🔥 8 sec (was 58 sec)
-      isTrackingRunning = false;
-      return;
-    }
-
     navigator.geolocation.getCurrentPosition(async pos => {
 
       try {
@@ -11347,15 +11340,17 @@ function runAutoGPS(){
         const acc = Number(pos.coords.accuracy);
 
         // ==========================================
-        // 🔥 ACCURACY FILTER
+        // 🔥 ACCEPT MORE POINTS (LESS STRICT)
         // ==========================================
-        if(acc > 120){
+        if(acc > 300){
           isTrackingRunning = false;
           return;
         }
 
+        const now = Date.now();
+
         // ==========================================
-        // 🔥 DISTANCE FUNCTION
+        // 🔥 DISTANCE CALC
         // ==========================================
         function getDistance(a, b){
           const R = 6371000;
@@ -11371,43 +11366,84 @@ function runAutoGPS(){
           return R * 2 * Math.atan2(Math.sqrt(x), Math.sqrt(1-x));
         }
 
-        // ==========================================
-        // 🔥 DISTANCE FILTER (CRITICAL)
-        // ==========================================
-        if(window.lastGPS){
+        let dist = 0;
 
-          const dist = getDistance(window.lastGPS, {lat, lng: lon});
-
-          // ⛔ skip if almost same location
-          if(dist < 15){
-            isTrackingRunning = false;
-            return;
-          }
-
-          // ⛔ skip unrealistic jump (GPS glitch)
-          if(dist > 500){
-            console.warn("⚠ GPS jump skipped:", dist);
-            isTrackingRunning = false;
-            return;
-          }
+        if(lastGPS){
+          dist = getDistance(lastGPS, {lat, lng: lon});
         }
 
-        window.lastGPS = {lat, lng: lon};
+        // ==========================================
+        // 🔥 IGNORE MICRO NOISE
+        // ==========================================
+        if(dist < 5){
+          isTrackingRunning = false;
+          return;
+        }
 
-        lastGpsSent = Date.now();
+        // ==========================================
+        // 🔥 HANDLE LARGE GAP (CRITICAL FIX)
+        // ==========================================
+        if(lastGPS && dist > 80 && dist < 500){
 
-        const gpsData = {
-          id: `${window.userProfile.cleanName}_${lat}_${lon}_${Math.floor(Date.now()/60000)}`,
-          name: window.userProfile.rawName,
-          cleanName: window.userProfile.cleanName,
-          phone: window.userProfile.phone || "",
-          source: "AUTO_APP",
+          // 🔥 INTERPOLATE POINTS (REAL PATH FIX)
+          const steps = Math.floor(dist / 30); // every ~30m
+
+          for(let i = 1; i <= steps; i++){
+
+            const latI = lastGPS.lat + (lat - lastGPS.lat) * (i/(steps+1));
+            const lonI = lastGPS.lng + (lon - lastGPS.lng) * (i/(steps+1));
+
+            gpsBuffer.push({
+              lat: Number(latI.toFixed(6)),
+              lon: Number(lonI.toFixed(6)),
+              time: new Date().toISOString(),
+              source: "INTERPOLATED"
+            });
+          }
+
+          console.log("🧩 Interpolated:", steps, "points");
+        }
+
+        // ==========================================
+        // 🔥 ADD REAL POINT
+        // ==========================================
+        gpsBuffer.push({
           lat,
           lon,
-          time: new Date().toISOString()
-        };
+          time: new Date().toISOString(),
+          source: "AUTO_APP"
+        });
 
-        sendOrStoreGPS(gpsData);
+        lastGPS = {lat, lng: lon};
+
+        // ==========================================
+        // 🔥 SEND IN BATCH (IMPORTANT)
+        // ==========================================
+        if(now - lastGpsSent > 10000 && gpsBuffer.length){
+
+          const batch = [...gpsBuffer];
+          gpsBuffer = [];
+
+          for(let p of batch){
+
+            const gpsData = {
+              id: `${window.userProfile.cleanName}_${p.lat}_${p.lon}_${Math.floor(Date.now()/60000)}`,
+              name: window.userProfile.rawName,
+              cleanName: window.userProfile.cleanName,
+              phone: window.userProfile.phone || "",
+              source: p.source || "AUTO_APP",
+              lat: p.lat,
+              lon: p.lon,
+              time: p.time
+            };
+
+            sendOrStoreGPS(gpsData);
+          }
+
+          lastGpsSent = Date.now();
+
+          console.log("📦 Sent batch:", batch.length);
+        }
 
       } catch(e){
         console.error(e);
@@ -11420,7 +11456,7 @@ function runAutoGPS(){
     }, {
       enableHighAccuracy: true,
       timeout: 15000,
-      maximumAge: 0
+      maximumAge: 2000
     });
 
   } catch(e){
@@ -11429,6 +11465,7 @@ function runAutoGPS(){
   }
 }
 
+
 // ============================================================
 // 📡 SEND OR STORE
 // ============================================================
@@ -11436,9 +11473,6 @@ async function sendOrStoreGPS(gpsData){
 
   if(window.isDutyActive !== true) return;
 
-  // ==========================================
-  // 🔥 BASIC VALIDATION
-  // ==========================================
   if(!gpsData || isNaN(gpsData.lat) || isNaN(gpsData.lon)) return;
 
   const age = Date.now() - new Date(gpsData.time).getTime();
@@ -11452,35 +11486,22 @@ async function sendOrStoreGPS(gpsData){
 
   try {
 
-    // ==========================================
-    // 🔥 ONLINE MODE
-    // ==========================================
     if(navigator.onLine){
 
       const res = await callBackend("SAVE_PATROL_GPS", enrichedData);
 
       if(res && res.status === "ok"){
-
-        // 🔥 Try flushing any pending offline data
         flushOfflineGPS?.();
-
         return;
       }
 
-      console.warn("⚠ Backend failed, storing offline:", res);
       saveOfflineGPS(enrichedData);
 
     } else {
-
-      // ==========================================
-      // 🔥 OFFLINE MODE
-      // ==========================================
       saveOfflineGPS(enrichedData);
     }
 
   } catch(e){
-
-    console.warn("⚠ Network error → storing offline");
     saveOfflineGPS(enrichedData);
   }
 }
@@ -11494,7 +11515,6 @@ function saveOfflineGPS(data){
   try {
 
     if(window.isDutyActive !== true) return;
-    if(!data || !data.lat || !data.lon || !data.time) return;
 
     let list = JSON.parse(localStorage.getItem("offlineGPS") || "[]");
 
@@ -11575,8 +11595,7 @@ window.addEventListener("online", function(){
     syncOfflineGPS();
   }
 
-});
-  
+});  
   // ================= CHAT TOGGLE =================
 // ================= CHAT TOGGLE =================
 // ================= GLOBAL =================
