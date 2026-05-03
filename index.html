@@ -11138,48 +11138,32 @@ function refreshOnlineProfile(){
 // ============================================================
 // 🔥 GLOBALS
 // ============================================================
+// ============================================================
+// 🔥 GLOBAL STATE
+// ============================================================
 let autoGpsTimer = null;
-let lastGpsSent = 0;
-
 let isTrackingRunning = false;
-let isSyncRunning = false;
 
 window.gpsRunning = false;
-let lastLocationKey = "";
-
-// 🔥 TRACK BUFFER
-let gpsBuffer = [];
-let lastGPS = null;
-
-// 🔥 DIRECTION
-let lastBearing = null;
-
-// 🔥 DISTANCE TRACK
-let distanceSinceLastSend = 0;
 
 
 // ============================================================
-// 🚀 START AUTO GPS
+// 🚀 START AUTO GPS (STRICT 5s LOOP)
 // ============================================================
 function startAutoGPS(){
 
-  console.log("🟢 Attempting to start AUTO GPS...");
+  console.log("🟢 FORCE START AUTO GPS");
 
   if(autoGpsTimer){
     clearInterval(autoGpsTimer);
-    autoGpsTimer = null;
-  }
-
-  if(window.gpsRunning === true){
-    console.warn("⛔ GPS already running");
-    return;
   }
 
   window.gpsRunning = true;
 
-  console.log("🟢 AUTO GPS STARTED");
-
+  // 🔥 RUN EVERY 5 SEC (STRICT)
   autoGpsTimer = setInterval(runAutoGPS, 5000);
+
+  // 🔥 RUN IMMEDIATELY
   runAutoGPS();
 }
 
@@ -11202,7 +11186,7 @@ function stopAutoGPS(){
 
 
 // ============================================================
-// 📍 AUTO GPS ENGINE (FINAL ADVANCED)
+// 📍 CORE ENGINE (NO CONDITIONS / NO SKIP)
 // ============================================================
 function runAutoGPS(){
 
@@ -11211,239 +11195,89 @@ function runAutoGPS(){
 
   try {
 
-    if(window.isDutyActive !== true){
-      stopAutoGPS();
-      isTrackingRunning = false;
-      return;
-    }
-
-    if(!window.userProfile){
-      isTrackingRunning = false;
-      return;
-    }
-
     navigator.geolocation.getCurrentPosition(async pos => {
 
       try {
 
         const lat = Number(pos.coords.latitude.toFixed(6));
         const lon = Number(pos.coords.longitude.toFixed(6));
-        const acc = Number(pos.coords.accuracy);
 
-        if(acc > 300){
-          isTrackingRunning = false;
-          return;
-        }
+        const gpsData = {
+          id: `${window.userProfile?.cleanName || "USER"}_${lat}_${lon}_${Date.now()}`,
+          name: window.userProfile?.rawName || "",
+          cleanName: window.userProfile?.cleanName || "",
+          phone: window.userProfile?.phone || "",
+          source: "AUTO_APP",
+          lat: lat,
+          lon: lon,
+          time: new Date().toISOString()
+        };
 
-        const now = Date.now();
+        console.log("📍 GPS:", lat, lon);
 
-        // ==========================================
-        // 🔥 DISTANCE FUNCTION
-        // ==========================================
-        function getDistance(a, b){
-          const R = 6371000;
-          const dLat = (b.lat - a.lat) * Math.PI/180;
-          const dLon = (b.lng - a.lng) * Math.PI/180;
-
-          const x =
-            Math.sin(dLat/2)**2 +
-            Math.cos(a.lat*Math.PI/180) *
-            Math.cos(b.lat*Math.PI/180) *
-            Math.sin(dLon/2)**2;
-
-          return R * 2 * Math.atan2(Math.sqrt(x), Math.sqrt(1-x));
-        }
-
-        let dist = 0;
-
-        if(lastGPS){
-          dist = getDistance(lastGPS, {lat, lng: lon});
-          distanceSinceLastSend += dist;
-        }
-
-        // ==========================================
-        // 🔥 BEARING
-        // ==========================================
-        let bearing = null;
-
-        if(lastGPS){
-
-          const y = Math.sin((lon - lastGPS.lng) * Math.PI/180) * Math.cos(lat * Math.PI/180);
-
-          const x =
-            Math.cos(lastGPS.lat * Math.PI/180) * Math.sin(lat * Math.PI/180) -
-            Math.sin(lastGPS.lat * Math.PI/180) * Math.cos(lat * Math.PI/180) *
-            Math.cos((lon - lastGPS.lng) * Math.PI/180);
-
-          bearing = Math.atan2(y, x) * 180/Math.PI;
-        }
-
-        // ==========================================
-        // 🔥 BEND DETECTION
-        // ==========================================
-        let isBend = false;
-
-        if(bearing !== null && lastBearing !== null){
-
-          let diff = Math.abs(bearing - lastBearing);
-          if(diff > 180) diff = 360 - diff;
-
-          if(diff > 25){
-            isBend = true;
-            console.log("🔄 BEND:", diff);
-          }
-        }
-
-        // ==========================================
-        // 🔥 NOISE FILTER
-        // ==========================================
-        if(dist < 5 && !isBend){
-          isTrackingRunning = false;
-          return;
-        }
-
-        // ==========================================
-        // 🔥 CONTROLLED INTERPOLATION
-        // ONLY when safe AND NOT bending
-        // ==========================================
-        if(!isBend && lastGPS && dist > 20 && dist <= 50){
-
-          const steps = Math.floor(dist / 25);
-
-          for(let i = 1; i <= steps; i++){
-
-            const latI = lastGPS.lat + (lat - lastGPS.lat) * (i/(steps+1));
-            const lonI = lastGPS.lng + (lon - lastGPS.lng) * (i/(steps+1));
-
-            gpsBuffer.push({
-              lat: Number(latI.toFixed(6)),
-              lon: Number(lonI.toFixed(6)),
-              time: new Date().toISOString(),
-              source: "INTERPOLATED"
-            });
-          }
-        }
-
-        // ==========================================
-        // 🔥 ADD REAL POINT
-        // ==========================================
-        gpsBuffer.push({
-          lat,
-          lon,
-          time: new Date().toISOString(),
-          source: "AUTO_APP"
-        });
-
-        lastGPS = {lat, lng: lon};
-
-        // ==========================================
-        // 🔥 FINAL DECISION ENGINE
-        // ==========================================
-        let shouldSend = false;
-
-        if(isBend){
-          shouldSend = true;
-        }
-        else if(distanceSinceLastSend >= 25){ // 🔥 distance rule
-          shouldSend = true;
-        }
-        else if(now - lastGpsSent > 10000){
-          shouldSend = true;
-        }
-
-        if(shouldSend && gpsBuffer.length){
-
-          const batch = [...gpsBuffer];
-          gpsBuffer = [];
-
-          for(let p of batch){
-
-            const gpsData = {
-              id: `${window.userProfile.cleanName}_${p.lat}_${p.lon}_${Math.floor(Date.now()/60000)}`,
-              name: window.userProfile.rawName,
-              cleanName: window.userProfile.cleanName,
-              phone: window.userProfile.phone || "",
-              source: p.source || "AUTO_APP",
-              lat: p.lat,
-              lon: p.lon,
-              time: p.time
-            };
-
-            sendOrStoreGPS(gpsData);
-          }
-
-          lastGpsSent = Date.now();
-          distanceSinceLastSend = 0;
-
-          console.log("📦 Sent:", batch.length, "| Bend:", isBend);
-        }
-
-        if(bearing !== null){
-          lastBearing = bearing;
-        }
+        // 🔥 ALWAYS SEND (NO CONDITION)
+        sendOrStoreGPS(gpsData);
 
       } catch(e){
-        console.error(e);
+        console.error("❌ GPS PROCESS ERROR", e);
       }
 
       isTrackingRunning = false;
 
-    }, () => {
+    }, err => {
+
+      console.warn("⚠ GPS ERROR", err);
       isTrackingRunning = false;
+
     }, {
       enableHighAccuracy: true,
-      timeout: 15000,
-      maximumAge: 2000
+      timeout: 10000,
+      maximumAge: 0
     });
 
   } catch(e){
-    console.error(e);
+    console.error("❌ RUN ERROR", e);
     isTrackingRunning = false;
   }
 }
 
+
 // ============================================================
-// 📡 SEND OR STORE
+// 📡 SEND OR STORE (FORCED)
 // ============================================================
 async function sendOrStoreGPS(gpsData){
 
-  if(window.isDutyActive !== true) return;
-
-  if(!gpsData || isNaN(gpsData.lat) || isNaN(gpsData.lon)) return;
-
-  const age = Date.now() - new Date(gpsData.time).getTime();
-  if(age > 30 * 60 * 1000) return;
+  if(!gpsData) return;
 
   const enrichedData = {
     ...gpsData,
-    callerType: gpsData.source || "UNKNOWN",
-    traceId: `${window.userProfile?.cleanName}_${Date.now()}`
+    callerType: "AUTO_APP",
+    traceId: `${gpsData.cleanName}_${Date.now()}`
   };
+
+  // 🔥 ADD THIS (MUST)
+  console.log("📡 SENDING TO BACKEND:", JSON.stringify(enrichedData));
 
   try {
 
-    if(navigator.onLine){
+    const res = await callBackend("SAVE_PATROL_GPS", enrichedData);
 
-      const res = await callBackend("SAVE_PATROL_GPS", enrichedData);
+    // 🔥 ADD THIS
+    console.log("📡 BACKEND RESPONSE:", res);
 
-      if(res && res.status === "ok"){
-        flushOfflineGPS?.();
-        return;
-      }
-
-      saveOfflineGPS(enrichedData);
-
+    if(res && res.status === "ok"){
+      console.log("✅ GPS SAVED");
+      flushOfflineGPS?.();
     } else {
+      console.warn("⚠ SAVE FAILED → OFFLINE");
       saveOfflineGPS(enrichedData);
     }
 
   } catch(e){
+    console.warn("⚠ ERROR → OFFLINE", e);
     saveOfflineGPS(enrichedData);
   }
-}
-
-
-// ============================================================
+}// ============================================================
 // 💾 OFFLINE SAVE
 // ============================================================
 function saveOfflineGPS(data){
