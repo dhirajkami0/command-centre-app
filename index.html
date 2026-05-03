@@ -1156,12 +1156,43 @@ function applyRoleControl(){
   }
 }  
     // ================= LOAD PROFILE =================
+// ============================================================
+// 🔥 GLOBAL STATE (CRITICAL)
+// ============================================================
+let loginUIShown = false;
+let loginInProgress = false;
+
+
+// ============================================================
+// 🔥 LOAD PROFILE (FIXED)
+// ============================================================
 function loadProfile(){
+
+  console.log("🔁 loadProfile() called");
+
+  // ============================================================
+  // 🔒 PREVENT DUPLICATE AUTH FLOW
+  // ============================================================
+  if(typeof authFlowRunning !== "undefined" && authFlowRunning){
+    console.warn("⛔ Skipping loadProfile (auth in progress)");
+    return;
+  }
+
+  // 🔒 MARK FLOW START
+  authFlowRunning = true;
 
   const phone = localStorage.getItem("userPhone") || "";
 
+  // ============================================================
+  // 🔥 NO PHONE → SHOW LOGIN (ONLY ONCE)
+  // ============================================================
   if(!phone){
-    showLogin();
+
+    if(!loginUIShown){
+      showLogin();
+    }
+
+    authFlowRunning = false;
     return;
   }
 
@@ -1171,10 +1202,10 @@ function loadProfile(){
 
     .then(profile => {
 
-      // ================= OFFLINE FALLBACK =================
+      // ================= OFFLINE =================
       if(!profile){
 
-        console.warn("⚠ Backend failed, trying offline profile");
+        console.warn("⚠ Backend failed, trying offline");
 
         try {
 
@@ -1184,13 +1215,10 @@ function loadProfile(){
 
             const offlineProfile = JSON.parse(saved);
 
-            // 🔥 ENSURE STRUCTURE
             offlineProfile.rawName = offlineProfile.rawName || offlineProfile.name || "";
             offlineProfile.cleanName = offlineProfile.cleanName || cleanName(offlineProfile.rawName);
 
             window.userProfile = offlineProfile;
-
-            console.log("📴 USING OFFLINE PROFILE:", offlineProfile);
 
             updateNetworkStatus("offline");
 
@@ -1198,17 +1226,15 @@ function loadProfile(){
             startApp();
 
           } else {
-
-            alert("❌ First login requires internet");
             showLogin();
           }
 
         } catch(e){
-          console.error("❌ Offline profile corrupted:", e);
           localStorage.removeItem("userProfile");
           showLogin();
         }
 
+        authFlowRunning = false;
         return;
       }
 
@@ -1221,11 +1247,12 @@ function loadProfile(){
         localStorage.removeItem("userProfile");
 
         showLogin();
+
+        authFlowRunning = false;
         return;
       }
 
       // ================= SUCCESS =================
-
       const raw = profile.rawName || profile.name || "";
 
       const finalProfile = {
@@ -1247,6 +1274,8 @@ function loadProfile(){
       applyRoleControl();
       startApp();
 
+      authFlowRunning = false;
+
     })
 
     .catch(err => {
@@ -1257,6 +1286,7 @@ function loadProfile(){
 
       if(saved){
         try {
+
           const offlineProfile = JSON.parse(saved);
 
           offlineProfile.rawName = offlineProfile.rawName || offlineProfile.name || "";
@@ -1276,19 +1306,29 @@ function loadProfile(){
         showLogin();
       }
 
-    });
+      authFlowRunning = false;
 
+    });
 }
 
-
-// ================= LOGIN =================
+// ============================================================
+// 🔥 LOGIN (FIXED)
+// ============================================================
 function login(){
+
+  if(loginInProgress){
+    console.warn("⛔ Login already running");
+    return;
+  }
+
+  loginInProgress = true;
 
   const btn = document.getElementById("loginBtn");
   const phone = document.getElementById("loginPhone").value.trim();
 
   if(phone.length < 10){
     alert("Enter valid phone number");
+    loginInProgress = false;
     return;
   }
 
@@ -1306,20 +1346,12 @@ function login(){
         btn.disabled = false;
       }
 
-      // ============================================================
-      // 🚨 BACKEND NOT REACHABLE (NOT SAME AS OFFLINE)
-      // ============================================================
       if(profile === null){
-
-        console.warn("⚠ Backend unreachable");
 
         const saved = localStorage.getItem("userProfile");
         const savedPhone = localStorage.getItem("userPhone");
 
-        // ================= OFFLINE LOGIN (ONLY LAST USER) =================
         if(saved && savedPhone === phone){
-
-          console.log("📴 Offline login allowed");
 
           const offlineProfile = JSON.parse(saved);
 
@@ -1327,42 +1359,27 @@ function login(){
 
           document.getElementById("loginModal").style.display = "none";
 
-          updateNetworkStatus("offline");
+          loginUIShown = false;
+          loginInProgress = false;
 
+          updateNetworkStatus("offline");
           applyRoleControl();
           startApp();
 
         } else {
-
-          if(navigator.onLine){
-            alert("⚠ Server not responding.\nTry again.");
-          } else {
-            alert("❌ No internet connection.\nFirst login must be online.");
-          }
-
+          alert("❌ Cannot login offline");
+          loginInProgress = false;
         }
 
         return;
       }
 
-      // ============================================================
-      // ❌ INVALID USER
-      // ============================================================
       if(profile.error){
         alert("❌ Not authorized");
+        loginInProgress = false;
         return;
       }
 
-      const role = (profile.role || "").toUpperCase();
-
-      if(role !== "ADMIN" && role !== "TEAM LEADER" && role !== "STAFF"){
-        alert("❌ Not authorized role");
-        return;
-      }
-
-      // ============================================================
-      // ✅ SUCCESS LOGIN
-      // ============================================================
       const finalProfile = {
         rawName: profile.name,
         cleanName: profile.cleanName || cleanName(profile.name),
@@ -1378,10 +1395,13 @@ function login(){
 
       document.getElementById("loginModal").style.display = "none";
 
-      console.log("✅ Logged in:", finalProfile);
+      // 🔥 CRITICAL RESET
+      loginUIShown = false;
+      loginInProgress = false;
+
+      console.log("✅ Logged in");
 
       updateNetworkStatus("online");
-
       applyRoleControl();
       startApp();
 
@@ -1396,30 +1416,48 @@ function login(){
         btn.disabled = false;
       }
 
-      alert("❌ Login failed. Try again.");
+      loginInProgress = false;
+
+      alert("❌ Login failed");
 
     });
+}
 
-}function showLogin(){
 
-  document.getElementById("loginModal").style.display = "flex";
+// ============================================================
+// 🔥 SHOW LOGIN (FIXED)
+// ============================================================
+function showLogin(){
 
-  // 🔥 ADD THIS PART
+  // 🔥 BLOCK DOUBLE OPEN
+  if(loginUIShown){
+    console.warn("⚠ Login already open");
+    return;
+  }
+
+  // 🔥 IF ALREADY LOGGED IN → SKIP
+  if(localStorage.getItem("userPhone")){
+    return;
+  }
+
+  const modal = document.getElementById("loginModal");
+  if(!modal) return;
+
+  modal.style.display = "flex";
+  loginUIShown = true;
+
   const input = document.getElementById("loginPhone");
 
   if(input){
-
-    input.focus(); // optional but good UX
+    input.focus();
 
     input.onkeypress = function(e){
       if(e.key === "Enter"){
         login();
       }
     };
-
   }
-}
-function logout(){
+}function logout(){
   localStorage.removeItem("userPhone");
   location.reload();
 }  
@@ -11041,15 +11079,19 @@ window.addEventListener("load", function () {
 // ================= ONLINE LOGIN FLOW =================
 function startOnlineLoginFlow(){
 
+  if(authFlowRunning){
+    console.warn("⛔ Auth flow already running");
+    return;
+  }
+  authFlowRunning = true;
+
   const phone = localStorage.getItem("userPhone") || "";
 
   if (!phone) {
-    console.warn("⚠ No phone → login");
     showLogin();
+    authFlowRunning = false;
     return;
   }
-
-  console.log("📤 Sending phone:", phone);
 
   callBackend("GET_PROFILE", { phone: phone })
 
@@ -11058,6 +11100,7 @@ function startOnlineLoginFlow(){
       if (!profile || profile.error) {
         localStorage.removeItem("userPhone");
         showLogin();
+        authFlowRunning = false;
         return Promise.reject("Invalid profile");
       }
 
@@ -11067,113 +11110,51 @@ function startOnlineLoginFlow(){
       localStorage.setItem("userProfile", JSON.stringify(fixedProfile));
 
       updateNetworkStatus("online");
-
       applyRoleControl?.();
 
-      // ======================================================
-      // 🚀 START CORE APP (LIGHT ONLY)
-      // ======================================================
       startApp?.();
-
-      // ⚠ optional (keep if needed)
       initDutyControl?.();
-
-      // ❌ DO NOT LOAD HEAVY MAP DATA HERE
 
       return callBackend("updateVillageRisk");
     })
 
     .then(function (coneData) {
-
       if (!coneData) return null;
-
       window.coneVillages = coneData;
-
       return callBackend("getVillages");
     })
 
     .then(function (villageList) {
 
       if (villageList) {
-
         window.villages = (villageList || []).map(v => ({
           name: v.name || v.Village || "Unknown",
           lat: parseFloat(v.lat),
           lon: parseFloat(v.lon)
         }));
-
       }
 
-      // ======================================================
-      // ⚡ FAST UI REFRESH
-      // ======================================================
       refreshAll?.();
 
-      // ======================================================
-      // 🔥 HIDE SPLASH (IMMEDIATE)
-      // ======================================================
-      try {
-        hideSplash();
-      } catch(e){
-        console.warn("⚠ hideSplash failed");
-      }
+      try { hideSplash(); } catch(e){}
 
-      // ======================================================
-      // 🗺 LOAD GEOJSON (NON-BLOCKING)
-      // ======================================================
-      setTimeout(() => {
-
-        console.log("🗺 Loading GeoJSON layer...");
-
-        try {
-
-          // ✅ NEW FAST LOADER
-          loadRangeKML?.();
-
-          // ⚠ KEEP ONLY IF REALLY NEEDED
-          // (remove if duplicate or heavy)
-          // loadCompartmentsFromSheet?.();
-
-        } catch(e){
-          console.warn("⚠ GeoJSON load failed");
-        }
-
-      }, 500);
-
-      // ======================================================
-      // 🔧 INIT EVENTS (AFTER UI READY)
-      // ======================================================
-      setTimeout(() => {
-        initEventListeners?.();
-      }, 200);
-
-      // ======================================================
-      // ⚡ OPTIONAL: DELAY HEAVY BACKGROUND TASKS
-      // ======================================================
-      setTimeout(() => {
-        try {
-          startChat?.();            // 🔥 delayed Firebase
-        } catch(e){}
-      }, 1500);
-
-      setTimeout(() => {
-        try {
-          cleanOldMessages?.();     // 🔥 delayed cleanup
-        } catch(e){}
-      }, 6000);
+      setTimeout(() => { loadRangeKML?.(); }, 500);
+      setTimeout(() => { initEventListeners?.(); }, 200);
+      setTimeout(() => { startChat?.(); }, 1500);
+      setTimeout(() => { cleanOldMessages?.(); }, 6000);
 
     })
 
     .catch(function (err) {
-
       console.warn("⚠ startOnlineLoginFlow failed:", err);
-
       updateNetworkStatus("offline");
       showLogin();
+    })
 
+    .finally(() => {
+      authFlowRunning = false;
     });
-
-}    function hideSplash(){
+}   function hideSplash(){
 
   const splash = document.getElementById("splash-screen");
   if(!splash) return;
