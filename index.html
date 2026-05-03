@@ -2038,9 +2038,6 @@ const GAS_URL = "https://script.google.com/macros/s/AKfycbzniaIOGUHFg4q8WxyuBjnu
 
 function callBackend(action, payload = {}) {
 
-  // 🔥 SET CONNECTING STATE (GLOBAL FIX)
-  updateNetworkStatus("connecting");
-
   // ============================================================
   // 🔥 TIMEOUT CONTROL (VERY IMPORTANT)
   // ============================================================
@@ -2070,14 +2067,14 @@ function callBackend(action, payload = {}) {
 
     clearTimeout(timeout);
 
+    // ============================================================
+    // 🔍 DEBUG STATUS
+    // ============================================================
     console.log(`🌐 ${action} → STATUS:`, res.status);
 
+    // ⚠ GAS often returns 200 even on logical error
     if (!res.ok) {
       console.warn(`⚠ ${action}: HTTP ${res.status}`);
-
-      // 🔴 NETWORK FAIL
-      updateNetworkStatus("offline");
-
       return null;
     }
 
@@ -2086,14 +2083,13 @@ function callBackend(action, payload = {}) {
 
   .then(text => {
 
+    // ============================================================
+    // 🔍 RAW DEBUG
+    // ============================================================
     console.log(`📦 ${action} RAW:`, text);
 
     if (!text || text.trim() === "") {
       console.warn(`⚠ ${action}: Empty response`);
-
-      // 🔴 INVALID RESPONSE
-      updateNetworkStatus("offline");
-
       return null;
     }
 
@@ -2103,20 +2099,11 @@ function callBackend(action, payload = {}) {
       data = JSON.parse(text);
     } catch (e) {
       console.warn(`⚠ ${action}: Invalid JSON`, text);
-
-      // 🔴 BAD DATA
-      updateNetworkStatus("offline");
-
       return null;
     }
 
     // ============================================================
-    // 🔥 SUCCESS → SET ONLINE (CRITICAL FIX)
-    // ============================================================
-    updateNetworkStatus("online");
-
-    // ============================================================
-    // 🔥 TRACCAR DETECTION (UNCHANGED)
+    // 🔥 TRACCAR DETECTION (SAFE + FILTERED)
     // ============================================================
     try {
 
@@ -2131,11 +2118,15 @@ function callBackend(action, payload = {}) {
 
         if (isTrackingAction) {
 
+          // ✅ Case 1: Array
           if (Array.isArray(data) && data.length > 0) {
+
             markTraccarAlive();
             console.log("🟢 Traccar Alive (array)");
+
           }
 
+          // ✅ Case 2: Object
           else if (typeof data === "object") {
 
             if (
@@ -2168,18 +2159,19 @@ function callBackend(action, payload = {}) {
 
     clearTimeout(timeout);
 
+    // ============================================================
+    // 🔥 ERROR HANDLING (IMPORTANT)
+    // ============================================================
     if (err.name === "AbortError") {
       console.warn(`⏱ ${action} timeout`);
     } else {
       console.warn(`⚠ ${action} failed:`, err.message);
     }
 
-    // 🔴 ERROR → OFFLINE
-    updateNetworkStatus("offline");
-
     return null;
   });
-}    function updateDutyStaff(source = "UNKNOWN"){
+}    
+   function updateDutyStaff(source = "UNKNOWN"){
 
   console.group("👮 updateDutyStaff CALLED");
 
@@ -11002,55 +10994,28 @@ function normalizeUserProfile(profile){
     phone: profile.phone
   };
 }
-let networkTimeout;
-let lastStatus = "";   // 🔥 prevent flicker
-
-function updateNetworkStatus(status){
+function updateNetworkStatus(status) {
 
   const el = document.getElementById("last-update"); 
   if (!el) return;
 
-  // 🔥 prevent unnecessary UI updates
-  if(status === lastStatus) return;
-  lastStatus = status;
-
-  // 🔥 always clear previous timeout
-  if(networkTimeout){
-    clearTimeout(networkTimeout);
-    networkTimeout = null;
-  }
-
-  if (status === "connecting") {
-
-    el.innerHTML = "🟡 CONNECTING...";
-    el.style.color = "#ffaa00";
-
-    // 🔥 SAFE FAILBACK (only if still connecting)
-    networkTimeout = setTimeout(() => {
-      if(lastStatus === "connecting"){
-        updateNetworkStatus("offline");
-      }
-    }, 10000);
-  }
-
-  else if (status === "online") {
-
+  if (status === "online") {
     window.isOfflineUI = false;
-
     el.innerHTML = "🟢 LIVE : " + new Date().toLocaleTimeString();
     el.style.color = "#00ff88";
   }
-
   else if (status === "offline") {
-
     window.isOfflineUI = true;
-
     el.innerHTML = "🔴 OFFLINE - CHECK INTERNET";
     el.style.color = "#ff4444";
-
     if (navigator.vibrate) navigator.vibrate([50, 50, 50]);
   }
+  else if (status === "connecting") {
+    el.innerHTML = "🟡 CONNECTING...";
+    el.style.color = "#ffaa00";
+  }
 }
+
 
 // ================= PROFILE NORMALIZER =================
 function normalizeUserProfile(profile){
