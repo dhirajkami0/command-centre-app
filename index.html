@@ -4399,17 +4399,13 @@ function updateMonthCache(){
 
   let result = {};
 
-  // ==========================================
-  // 🔥 LOCAL TIME SAFE PREFIX (FIXED)
-  // ==========================================
   const now = new Date();
   const year = now.getFullYear();
   const month = String(now.getMonth() + 1).padStart(2, "0");
-  const prefix = year + "-" + month;   // YYYY-MM
+  const prefix = year + "-" + month;
 
   Object.keys(localStorage).forEach(key => {
 
-    // 🔒 only current month grid data
     if(!key.startsWith("grid_" + prefix)) return;
 
     try {
@@ -4421,9 +4417,6 @@ function updateMonthCache(){
 
       Object.entries(data).forEach(([id, val]) => {
 
-        // ==========================================
-        // 🔥 STRICT NORMALIZATION (ALIGNED WITH PREV)
-        // ==========================================
         let count;
 
         if(val === true){
@@ -4438,7 +4431,7 @@ function updateMonthCache(){
         if(!result[id]){
           result[id] = count;
         } else {
-          result[id] += count;   // 🔥 density aggregation
+          result[id] += count;
         }
 
       });
@@ -4450,16 +4443,16 @@ function updateMonthCache(){
   });
 
   // ==========================================
-  // 🔥 FINAL CACHE ASSIGNMENT (CRITICAL)
+  // 🔥 SAFE: DO NOT TOUCH BACKEND DATA
   // ==========================================
   window.gridCache = window.gridCache || {};
-  window.gridCache.current = result;
+
+  // ❗ CHANGED LINE (IMPORTANT)
+  window.gridCache.localMonth = result;
 
   console.log(
-    "📅 Current month grids:",
-    Object.keys(result).length,
-    "| Total visits:",
-    Object.values(result).reduce((a,b)=>a+b,0)
+    "📅 Local month (fallback):",
+    Object.keys(result).length
   );
 }/* ============================================================
    🔄 INCREMENTAL VISITED UPDATE (FREQUENCY BASED)
