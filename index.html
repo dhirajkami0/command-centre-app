@@ -8391,12 +8391,70 @@ function syncOfflineSightings(){
 /* ============================================================
    🔥 AUTO TRIGGER ON INTERNET
 ============================================================ */
+// ==========================================
+// 🌐 NETWORK EVENTS (CLEAN + MERGED)
+// ==========================================
+
 window.addEventListener("online", () => {
   console.log("🌐 Internet back → syncing all");
 
-  syncOfflineMoves();
-  syncOfflineSightings();
-  loadProfile();
+  // 🔥 Update UI first
+  updateNetworkStatus?.("connecting");
+
+  // ==========================================
+  // 🔥 SYNC ALL OFFLINE DATA
+  // ==========================================
+  syncOfflineMoves?.();
+  syncOfflineSightings?.();
+
+  if (typeof syncOfflineData === "function") {
+    syncOfflineData();
+  }
+
+  // ==========================================
+  // 🔥 CRITICAL: GPS QUEUE FLUSH
+  // ==========================================
+  flushOfflineGPS?.();
+
+  // ==========================================
+  // 🔥 REFRESH PROFILE / STATE
+  // ==========================================
+  loadProfile?.();
+
+  console.log("✅ All offline data sync triggered");
+});
+
+window.addEventListener("offline", () => {
+  console.log("📴 Gone Offline");
+  updateNetworkStatus("offline");
+});
+
+// ==========================================
+// 🚀 APP LOAD (SPLASH)
+// ==========================================
+window.addEventListener("load", function () {
+
+  const splash = document.getElementById("splash-screen");
+
+  if (splash) {
+
+    setTimeout(() => {
+
+      splash.style.opacity = "0";
+
+      setTimeout(() => {
+
+        splash.remove();
+
+        // 🗺️ Force map resize
+        if (window.map) {
+          window.map.invalidateSize();
+        }
+
+      }, 800);
+
+    }, 1800);
+  }
 });/* =========================
    PREDICTION SYSTEM (FINAL)
 =========================== */
@@ -11135,40 +11193,6 @@ function refreshOnlineProfile(){
     /* ============================================================
    🌐 NETWORK LISTENERS (UNCHANGED BUT FIXED BEHAVIOR)
 ============================================================ */
-window.addEventListener("online", () => {
-  console.log("🌐 Back Online");
-
-  updateNetworkStatus("connecting"); // 🔥 first connecting
-
-  if (typeof syncOfflineData === "function") {
-    syncOfflineData();
-  }
-});
-
-window.addEventListener("offline", () => {
-  console.log("📴 Gone Offline");
-
-  updateNetworkStatus("offline");
-});
-  
-window.addEventListener("load", function () {
-    const splash = document.getElementById("splash-screen");
-    if (splash) {
-        // Delay to let the user see the professional shield
-        setTimeout(() => {
-            splash.style.opacity = "0";
-            
-            // Remove from DOM after fade animation
-            setTimeout(() => {
-                splash.remove();
-                // 🗺️ ESSENTIAL: Force map to redraw to full screen
-                if (window.map) {
-                    window.map.invalidateSize();
-                }
-            }, 800);
-        }, 1800); 
-    }
-}); 
   /* =========================================================
    🧠 FULL AUTO GPS PATROL SYSTEM (CRASH PROOF)
    ========================================================= */
@@ -11378,6 +11402,11 @@ async function sendOrStoreGPS(gpsData){
 
   if(window.isDutyActive !== true) return;
 
+  // ==========================================
+  // 🔥 BASIC VALIDATION
+  // ==========================================
+  if(!gpsData || isNaN(gpsData.lat) || isNaN(gpsData.lon)) return;
+
   const age = Date.now() - new Date(gpsData.time).getTime();
   if(age > 30 * 60 * 1000) return;
 
@@ -11389,21 +11418,35 @@ async function sendOrStoreGPS(gpsData){
 
   try {
 
+    // ==========================================
+    // 🔥 ONLINE MODE
+    // ==========================================
     if(navigator.onLine){
 
       const res = await callBackend("SAVE_PATROL_GPS", enrichedData);
 
       if(res && res.status === "ok"){
+
+        // 🔥 Try flushing any pending offline data
+        flushOfflineGPS?.();
+
         return;
       }
 
+      console.warn("⚠ Backend failed, storing offline:", res);
       saveOfflineGPS(enrichedData);
 
     } else {
+
+      // ==========================================
+      // 🔥 OFFLINE MODE
+      // ==========================================
       saveOfflineGPS(enrichedData);
     }
 
   } catch(e){
+
+    console.warn("⚠ Network error → storing offline");
     saveOfflineGPS(enrichedData);
   }
 }
