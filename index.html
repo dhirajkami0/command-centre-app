@@ -3905,6 +3905,27 @@ window.gridCache = window.gridCache || {
 
 function saveToBackendDebounced(){
 
+  // ==========================================
+  // 🔥 BLOCK DURING BACKFILL
+  // ==========================================
+  if(window.pauseLiveTracking === true){
+    console.warn("⛔ Skip save (backfill running)");
+    return;
+  }
+
+  const data = window.gridCache?.today;
+
+  // ==========================================
+  // 🔥 BLOCK EMPTY OR INVALID GRID
+  // ==========================================
+  if(!data || Object.keys(data).length === 0){
+    console.warn("⛔ Skip save (empty grid)");
+    return;
+  }
+
+  // ==========================================
+  // 🔥 THROTTLE
+  // ==========================================
   clearTimeout(__saveTimer);
 
   __saveTimer = setTimeout(() => {
@@ -3913,12 +3934,12 @@ function saveToBackendDebounced(){
 
     safeBackend("SAVE_GRID", {
       dateKey: key,
-      data: window.gridCache?.today || {}
+      data: data
     });
 
-    console.log("☁ Synced to backend");
+    console.log("☁ Synced to backend:", Object.keys(data).length);
 
-  }, 5000); // every 5 sec
+  }, 5000);
 }
 
     function loadBackendCoverage(){
@@ -3931,11 +3952,15 @@ function saveToBackendDebounced(){
 
       window.gridCache = window.gridCache || {};
 
-      // ✅ MATCH renderGrid
       window.gridCache.current = res.current || {};
       window.gridCache.prev = res.prev || {};
 
-      console.log("📡 Backend loaded");
+      console.log(
+        "📡 Backend loaded | current:",
+        Object.keys(window.gridCache.current).length,
+        "| prev:",
+        Object.keys(window.gridCache.prev).length
+      );
 
       return res;
     });
