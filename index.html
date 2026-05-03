@@ -1469,7 +1469,10 @@ function startApp(){
 
     // ================= CACHE =================
     loadCacheOnStart();
-
+// 🔥 PERMANENT CLEAN FIX
+if(window.gridCache){
+  delete window.gridCache.month;
+}
     // ======================================================
     // 🔥 ✅ NEW: BACKEND PRELOAD (CRITICAL)
     // ======================================================
