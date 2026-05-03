@@ -11269,8 +11269,13 @@ function runAutoGPS(){
     maximumAge: 0
   });
 }
+// ============================================================
+// 📡 SEND OR STORE (FORCED)
+// ============================================================
 
-
+function flushOfflineGPS(){
+  console.log("⚠ flushOfflineGPS skipped (not implemented)");
+}
 // ============================================================
 // 📡 SEND OR STORE (FORCED)
 // ============================================================
@@ -11284,27 +11289,25 @@ async function sendOrStoreGPS(gpsData){
     traceId: `${gpsData.cleanName}_${Date.now()}`
   };
 
-  // 🔥 ADD THIS (MUST)
   console.log("📡 SENDING TO BACKEND:", JSON.stringify(enrichedData));
 
   try {
 
     const res = await callBackend("SAVE_PATROL_GPS", enrichedData);
 
-    // 🔥 ADD THIS
     console.log("📡 BACKEND RESPONSE:", res);
 
     if(res && res.status === "ok"){
       console.log("✅ GPS SAVED");
-      flushOfflineGPS?.();
-    } else {
-      console.warn("⚠ SAVE FAILED → OFFLINE");
-      saveOfflineGPS(enrichedData);
+      return;
     }
+
+    console.warn("⚠ SAVE FAILED → OFFLINE");
+    saveOfflineGPS?.(enrichedData);
 
   } catch(e){
     console.warn("⚠ ERROR → OFFLINE", e);
-    saveOfflineGPS(enrichedData);
+    saveOfflineGPS?.(enrichedData);
   }
 }// ============================================================
 // 💾 OFFLINE SAVE
