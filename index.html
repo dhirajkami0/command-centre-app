@@ -1171,17 +1171,51 @@ let loginModalLocked = false;   // 🔥 NEW HARD LOCK
 // ============================================================
 // 🔥 LOAD PROFILE (UNCHANGED LOGIC + HARD GUARD)
 // ============================================================
+
+
+// ============================================================
+// 🔥 LOGIN (STRONG RESET)
+// ============================================================
+// ============================================================
+// 🔥 SHOW LOGIN (FINAL FIX — NO FLICKER EVER)
+// ============================================================
+let loginUIShown = false;
+let loginInProgress = false;
+let authFlowRunning = false;
+let loginModalLocked = false;   // 🔥 HARD LOCK
+
+
+// ============================================================
+// 🔓 HIDE LOGIN (NEW - REQUIRED)
+// ============================================================
+function hideLogin(){
+
+  const modal = document.getElementById("loginModal");
+
+  if(modal){
+    modal.style.display = "none";
+  }
+
+  // 🔓 unlock everything cleanly
+  loginModalLocked = false;
+  loginUIShown = false;
+
+  console.log("🔓 Login modal unlocked");
+}
+
+
+// ============================================================
+// 🔥 LOAD PROFILE (FIXED SAFE LOGIN TRIGGER)
+// ============================================================
 function loadProfile(){
 
   console.log("🔁 loadProfile() called");
 
-  // 🔥 BLOCK if already logged in
   if(window.userProfile){
     console.log("✅ Already logged in → skip loadProfile");
     return;
   }
 
-  // 🔒 PREVENT DUPLICATE FLOW
   if(authFlowRunning){
     console.warn("⛔ Skipping loadProfile (auth running)");
     return;
@@ -1191,8 +1225,12 @@ function loadProfile(){
 
   const phone = localStorage.getItem("userPhone") || "";
 
+  // 🔥 NO PHONE → SAFE SHOW
   if(!phone){
-    showLogin();
+    setTimeout(() => {
+      if(!loginModalLocked) showLogin();
+    }, 200);
+
     authFlowRunning = false;
     return;
   }
@@ -1211,18 +1249,17 @@ function loadProfile(){
           applyRoleControl();
           startApp();
         } else {
-          showLogin();
+          if(!loginModalLocked) showLogin();
         }
 
-        authFlowRunning = false;
         return;
       }
 
       if(profile.error){
         localStorage.removeItem("userPhone");
         localStorage.removeItem("userProfile");
-        showLogin();
-        authFlowRunning = false;
+
+        if(!loginModalLocked) showLogin();
         return;
       }
 
@@ -1239,29 +1276,39 @@ function loadProfile(){
 
       updateNetworkStatus("online");
       applyRoleControl();
-      startApp();
 
-      authFlowRunning = false;
+      hideLogin();   // 🔥 IMPORTANT
+
+      startApp();
 
     })
 
     .catch(() => {
-      showLogin();
+      if(!loginModalLocked) showLogin();
+    })
+
+    .finally(() => {
       authFlowRunning = false;
     });
 }
 
 
 // ============================================================
-// 🔥 LOGIN (STRONG RESET)
+// 🔥 LOGIN (SAFE + CLEAN)
 // ============================================================
 function login(){
 
-  if(loginInProgress) return;
+  console.log("🔐 login() called");
+
+  if(loginInProgress){
+    console.warn("⛔ Login already in progress");
+    return;
+  }
 
   loginInProgress = true;
 
-  const phone = document.getElementById("loginPhone").value.trim();
+  const input = document.getElementById("loginPhone");
+  const phone = input ? input.value.trim() : "";
 
   if(phone.length < 10){
     alert("Enter valid phone number");
@@ -1275,7 +1322,6 @@ function login(){
 
       if(!profile || profile.error){
         alert("❌ Login failed");
-        loginInProgress = false;
         return;
       }
 
@@ -1292,60 +1338,71 @@ function login(){
 
       window.userProfile = finalProfile;
 
-      const modal = document.getElementById("loginModal");
-      if(modal) modal.style.display = "none";
-
-      // 🔥 RESET EVERYTHING
-      loginUIShown = false;
-      loginInProgress = false;
-      authFlowRunning = false;
-      loginModalLocked = false;
+      hideLogin();   // 🔥 central unlock
 
       updateNetworkStatus("online");
       applyRoleControl();
       startApp();
 
+      console.log("✅ Login success");
+
     })
 
-    .catch(() => {
+    .catch(err => {
+      console.warn("⚠ Login error:", err);
+      alert("⚠ Network error");
+    })
+
+    .finally(() => {
       loginInProgress = false;
+      authFlowRunning = false;
     });
 }
 
 
 // ============================================================
-// 🔥 SHOW LOGIN (FINAL FIX — NO FLICKER EVER)
+// 🔥 SHOW LOGIN (FINAL HARDENED VERSION)
 // ============================================================
 function showLogin(){
 
   console.log("🔐 showLogin called");
 
-  // 🔥 HARD BLOCK (MOST IMPORTANT)
-  if(loginModalLocked){
-    console.warn("⛔ Modal locked → skip");
+  const modal = document.getElementById("loginModal");
+
+  if(!modal){
+    console.warn("⚠ loginModal not found");
     return;
   }
 
-  // 🔥 BLOCK if already logged in
   if(window.userProfile){
     console.warn("⛔ Already logged in → skip");
     return;
   }
 
-  // 🔥 BLOCK if already visible in DOM
-  const modal = document.getElementById("loginModal");
-  if(!modal) return;
-
-  if(modal.style.display === "flex"){
-    console.warn("⚠ Modal already visible");
+  if(loginModalLocked){
+    console.warn("⛔ Modal locked → skip");
     return;
   }
 
-  // 🔥 LOCK IMMEDIATELY (CRITICAL)
+  const isVisible =
+    modal.style.display === "flex" ||
+    modal.style.display === "block" ||
+    modal.classList.contains("active") ||
+    modal.offsetParent !== null;
+
+  if(isVisible){
+    console.warn("⚠ Modal already visible (DOM)");
+    loginModalLocked = true;
+    return;
+  }
+
+  // 🔥 LOCK FIRST
   loginModalLocked = true;
 
   modal.style.display = "flex";
   loginUIShown = true;
+
+  console.log("✅ Login modal shown");
 
   const input = document.getElementById("loginPhone");
 
@@ -1358,10 +1415,16 @@ function showLogin(){
       }
     };
   }
-}function logout(){
+}
+
+
+// ============================================================
+// 🔥 LOGOUT (UNCHANGED)
+// ============================================================
+function logout(){
   localStorage.removeItem("userPhone");
   location.reload();
-}  
+}
 
     // ================= CONFIG (KEEP THIS ONLY) =================
 window.firebaseConfig = {
@@ -5683,8 +5746,10 @@ function showGrid(){
       map.removeLayer(window.gridLayer);
     }
   }
-}
-    
+}// ===============================
+// 🔲 BUILD GRID (FINAL CORRECT)
+// ===============================
+  
   // ===============================
 // 🔲 BUILD GRID (FINAL CORRECT)
 // ===============================
