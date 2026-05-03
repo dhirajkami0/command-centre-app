@@ -5378,7 +5378,16 @@ function markVisitedHybrid(tracks){
     window.currentCoverageMode = mode || "today";
     window.__lastMode = window.currentCoverageMode;
 
-    const beat = document.getElementById("beatSelect")?.value || "ALL";
+    let beat = document.getElementById("beatSelect")?.value || "ALL";
+
+    // ======================================================
+    // 🔥 FIX: INVALID BEAT → FALLBACK TO ALL
+    // ======================================================
+    if(beat !== "ALL" && !window.beatMap?.[beat]){
+      console.warn("⚠ Unknown beat:", beat, "→ fallback to ALL");
+      beat = "ALL";
+    }
+
     window.currentBeat = beat;
 
     const btnToday = document.getElementById("btnToday");
@@ -5407,14 +5416,12 @@ function markVisitedHybrid(tracks){
     // ======================================================
     // 🔥 CURRENT / PREV (BACKEND)
     // ======================================================
-    // ✅ USE LOADED CACHE IF AVAILABLE
     if(window.gridCache?.current && window.gridCache?.prev){
 
       renderGrid(mode, beat);
       return;
     }
 
-    // 🔁 ELSE LOAD FROM BACKEND ONCE
     loadBackendCoverage()
       .then(() => {
         renderGrid(mode, beat);
@@ -5430,12 +5437,20 @@ function markVisitedHybrid(tracks){
     console.error("❌ applyMode error:", e);
   }
 }
-
-   function onBeatChange(){
+    function onBeatChange(){
 
   try {
 
-    const beat = document.getElementById("beatSelect")?.value || "ALL";
+    let beat = document.getElementById("beatSelect")?.value || "ALL";
+
+    // ======================================================
+    // 🔥 SAME FIX HERE
+    // ======================================================
+    if(beat !== "ALL" && !window.beatMap?.[beat]){
+      console.warn("⚠ Unknown beat:", beat, "→ fallback to ALL");
+      beat = "ALL";
+    }
+
     window.currentBeat = beat;
 
     if(!window.currentCoverageMode){
@@ -5455,7 +5470,6 @@ function markVisitedHybrid(tracks){
       return;
     }
 
-    // ✅ NO BACKEND CALL AGAIN
     renderGrid(mode, beat);
 
     if(typeof ensureGridReady === "function"){
