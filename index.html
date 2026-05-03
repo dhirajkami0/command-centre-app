@@ -1159,6 +1159,7 @@ function applyRoleControl(){
 // ============================================================
 // 🔥 GLOBAL STATE (CRITICAL)
 // ============================================================
+    let isSyncRunning = false;
 // ============================================================
 // 🔥 GLOBAL STATE (STRONG LOCK)
 // ============================================================
@@ -1432,7 +1433,64 @@ function login(){
 function logout(){
   localStorage.removeItem("userPhone");
   location.reload();
-}    // ================= CONFIG (KEEP THIS ONLY) =================
+} 
+    
+  async function syncOfflineGPS(){
+
+  // 🔒 PREVENT PARALLEL RUN
+  if(isSyncRunning){
+    console.warn("⛔ Sync already running");
+    return;
+  }
+
+  isSyncRunning = true;
+
+  let records;
+
+  try{
+    records = JSON.parse(localStorage.getItem("offlineGPS") || "[]");
+  }catch(e){
+    console.error("❌ Corrupt offlineGPS");
+    localStorage.removeItem("offlineGPS");
+    isSyncRunning = false;
+    return;
+  }
+
+  if (!records.length){
+    isSyncRunning = false;
+    return;
+  }
+
+  console.log("🔄 Syncing offline GPS:", records.length);
+
+  let remaining = [];
+
+  for(const rec of records){
+
+    try{
+
+      const res = await callBackend("SAVE_PATROL_GPS", rec);
+
+      if(res && res.status === "ok"){
+        console.log("✅ Synced:", rec.id);
+      } else {
+        remaining.push(rec);
+      }
+
+    }catch(e){
+      remaining.push(rec);
+    }
+  }
+
+  localStorage.setItem("offlineGPS", JSON.stringify(remaining));
+
+  console.log("✅ Sync complete. Remaining:", remaining.length);
+
+  isSyncRunning = false;
+}  
+    
+    
+    // ================= CONFIG (KEEP THIS ONLY) =================
 window.firebaseConfig = {
   apiKey: "AIzaSyCKLIJC0Mkjg7hjp7Kr5_FYQq704f4oZnY",
   authDomain: "command-centre-86f62.firebaseapp.com",
@@ -11468,47 +11526,41 @@ function saveOfflineGPS(data){
 // ============================================================
 // 🔄 SYNC OFFLINE
 // ============================================================
-async function syncOfflineGPS(){
+function syncOfflineMoves(){
 
-  if(isSyncRunning || !navigator.onLine) return;
-  if(window.isDutyActive !== true) return;
+  let records;
 
-  isSyncRunning = true;
-
-  let list = JSON.parse(localStorage.getItem("offlineGPS") || "[]");
-
-  if(!list.length){
-    isSyncRunning = false;
+  try{
+    records = JSON.parse(localStorage.getItem("offlineMoves") || "[]");
+  }catch(e){
+    console.error("❌ Corrupt offlineMoves");
+    localStorage.removeItem("offlineMoves");
     return;
   }
 
-  list.sort((a,b)=> new Date(a.time) - new Date(b.time));
+  if (!records.length) return;
+
+  console.log("🔄 Syncing offline moves...");
 
   let remaining = [];
 
-  for(let item of list){
+  const promises = records.map(rec => {
 
-    try {
+    return callBackend("updateSightingStatus", rec)
+      .then(() => {
+        console.log("✅ Move synced:", rec.id);
+      })
+      .catch(() => {
+        remaining.push(rec);
+      });
 
-      const age = Date.now() - new Date(item.time).getTime();
-      if(age > 30 * 60 * 1000) continue;
+  });
 
-      const res = await callBackend("SAVE_PATROL_GPS", item);
-
-      if(!res || res.status !== "ok"){
-        remaining.push(item);
-      }
-
-    } catch(e){
-      remaining.push(item);
-    }
-  }
-
-  localStorage.setItem("offlineGPS", JSON.stringify(remaining));
-
-  isSyncRunning = false;
+  Promise.all(promises).then(() => {
+    localStorage.setItem("offlineMoves", JSON.stringify(remaining));
+    console.log("✅ Move sync complete");
+  });
 }
-
 
 // ============================================================
 // 🔁 AUTO SYNC LOOP
