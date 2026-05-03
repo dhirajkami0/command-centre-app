@@ -1432,8 +1432,7 @@ window.firebaseConfig = {
   storageBucket: "command-centre-86f62.firebasestorage.app",
   messagingSenderId: "692498208499",
   appId: "1:692498208499:web:34defc152a3b3411e64986"
-};
-window.__gridLoadedFromCache = false;
+};window.__gridLoadedFromCache = false;
 let appStarted = false;
 
 function startApp(){
@@ -1449,7 +1448,7 @@ function startApp(){
     // 🔥 INIT DUTY STATE (IMPORTANT)
     // ======================================================
     window.isDutyActive = false;
-window.__dutyChecked = false;
+    window.__dutyChecked = false;
 
     // ======================================================
     // ⚡ PHASE 1 → LIGHT + FAST (NO BLOCKING)
@@ -1472,67 +1471,61 @@ window.__dutyChecked = false;
     loadCacheOnStart();
 
     // ======================================================
+    // 🔥 ✅ NEW: BACKEND PRELOAD (CRITICAL)
+    // ======================================================
+    loadBackendCoverage();
+
+    // ======================================================
     // 🧹 CLEAN OLD MONTH DATA (SAFE)
     // ======================================================
-  setTimeout(() => {
+    setTimeout(() => {
 
-  try {
+      try {
 
-    const now = new Date();
-    now.setHours(0,0,0,0); // 🔥 normalize
+        const now = new Date();
+        now.setHours(0,0,0,0);
 
-    let kept = 0;
-    let removed = 0;
+        let kept = 0;
+        let removed = 0;
 
-    Object.keys(localStorage).forEach(key => {
+        Object.keys(localStorage).forEach(key => {
 
-      if(!key.startsWith("grid_")) return;
+          if(!key.startsWith("grid_")) return;
 
-      const dateStr = key.replace("grid_", "");
+          const dateStr = key.replace("grid_", "");
+          const parts = dateStr.split("-");
+          if(parts.length !== 3) return;
 
-      // 🔒 strict parse (NO timezone bugs)
-      const parts = dateStr.split("-");
-      if(parts.length !== 3) return;
+          const d = new Date(
+            Number(parts[0]),
+            Number(parts[1]) - 1,
+            Number(parts[2])
+          );
 
-      const d = new Date(
-        Number(parts[0]),
-        Number(parts[1]) - 1,
-        Number(parts[2])
-      );
+          if(isNaN(d.getTime())) return;
 
-      if(isNaN(d.getTime())) return;
+          d.setHours(0,0,0,0);
 
-      d.setHours(0,0,0,0);
+          const diffDays = Math.floor((now - d) / (1000 * 60 * 60 * 24));
 
-      const diffDays = Math.floor((now - d) / (1000 * 60 * 60 * 24));
+          if(diffDays <= 60){
+            kept++;
+          } else {
+            localStorage.removeItem(key);
+            removed++;
+            console.log("🧹 Removed:", key, "| Days:", diffDays);
+          }
 
-      // ==========================================
-      // 🔥 CORE RULE (DO NOT TOUCH THIS)
-      // ==========================================
-      if(diffDays <= 60){
+        });
 
-        // ✅ KEEP (last 2 months)
-        kept++;
+        console.log("📦 Grid retention → kept:", kept, "| removed:", removed);
 
-      } else {
-
-        // 🧹 SAFE CLEAN (older than 2 months only)
-        localStorage.removeItem(key);
-        removed++;
-
-        console.log("🧹 Removed:", key, "| Days:", diffDays);
+      } catch(e){
+        console.warn("⚠ Cleanup failed:", e);
       }
 
-    });
+    }, 1000);
 
-    console.log("📦 Grid retention → kept:", kept, "| removed:", removed);
-
-  } catch(e){
-    console.warn("⚠ Cleanup failed:", e);
-  }
-
-}, 1000);
-    
     // ================= OFFLINE CLEAN =================
     if(window.isDutyActive !== true){
       try {
@@ -1546,7 +1539,6 @@ window.__dutyChecked = false;
     // ======================================================
     // 🚀 PHASE 2 → DELAYED TASKS (NO FREEZE)
     // ======================================================
-
     setTimeout(() => {
       try {
         cleanOldMessages();
@@ -1556,149 +1548,124 @@ window.__dutyChecked = false;
     }, 7000);
 
     // ======================================================
-    // 🔥 GRID INIT + BACKFILL (NON-BLOCKING)
+    // 🔥 GRID INIT + BACKFILL
     // ======================================================
-    // ======================================================
-// 🔥 GRID INIT + BACKFILL (INDEXEDDB ENABLED)
-// ======================================================
-setTimeout(() => {
-
-  let attempts = 0;
-
-  if(window.__gridInitStarted){
-    console.warn("⚠ Grid init already started");
-    return;
-  }
-
-  window.__gridInitStarted = true;
-
-  const gridInitInterval = setInterval(async () => {
-
-    attempts++;
-
-    if(!window.rangeLayer){
-      console.log("⏳ Waiting for rangeLayer...");
-      if(attempts > 10) clearInterval(gridInitInterval);
-      return;
-    }
-
-    // ===============================
-    // 🔥 STEP 1: TRY INDEXEDDB FIRST
-    // ===============================
-    if(!window.__gridLoadedFromCache){
-
-      try {
-        const cached = await idbKeyval.get('full_grid_index');
-
-        if(cached && Object.keys(cached).length){
-
-          window.gridIndex = cached;
-          window.__gridReady = true;
-          window.__gridLoadedFromCache = true;
-
-          console.log("⚡ Grid loaded from IndexedDB:", Object.keys(cached).length);
-
-          // 🔥 hide on startup
-         
-          clearInterval(gridInitInterval);
-          return;
-        }
-
-      } catch(e){
-        console.warn("⚠ IndexedDB load failed");
-      }
-    }
-
-    // ===============================
-    // 🔥 STEP 2: BUILD GRID IF NOT FOUND
-    // ===============================
-    if(!window.__gridLoadedFromCache && !window.__gridBuilding){
-
-      console.log("🔁 Building grid (no cache)");
-
-      await ensureGridReady();
-
-      // 🔥 SAVE TO DB AFTER BUILD
-      try {
-        if(window.gridIndex && Object.keys(window.gridIndex).length){
-         await saveGridToDB(window.gridIndex);
-          console.log("💾 Grid saved to IndexedDB");
-        }
-      } catch(e){
-        console.warn("⚠ IndexedDB save failed");
-      }
-
-      window.__gridLoadedFromCache = true;
-    }
-
-    // ===============================
-    // 🔥 STEP 3: READY STATE
-    // ===============================
-if(window.__gridReady){
-
-  console.log("🎯 Grid ready (confirmed)");
-
-  clearInterval(gridInitInterval);
-
-  const BACKFILL_KEY = "kml_backfill_done_v3";
-
-  if(!localStorage.getItem(BACKFILL_KEY)){
-
-    console.log("🚀 Scheduling backfill (batched)...");
-
     setTimeout(() => {
 
-      if(typeof backfillKMLOnceBatched === "function"){
-        backfillKMLOnceBatched();
-      } else {
-        console.warn("⚠ backfillKMLOnceBatched not available");
-      }
+      let attempts = 0;
 
-    }, 3000);
-
-  } else {
-
-    console.log("⏭ Backfill already completed");
-
-  }
-}
-    // ===============================
-    // 🔥 TIMEOUT SAFETY
-    // ===============================
-    if(attempts > 30){
-
-      if(window.__gridReady){
-        console.log("🎯 Triggering initial grid render");
-
-// 🔥 IMPORTANT
-window.showGrid = true;
-
-setTimeout(() => {
-  renderGrid("current","ALL");
-}, 200);
-        clearInterval(gridInitInterval);
+      if(window.__gridInitStarted){
+        console.warn("⚠ Grid init already started");
         return;
       }
 
-      console.warn("⚠ Grid init timeout (extended)");
-      clearInterval(gridInitInterval);
-    }
+      window.__gridInitStarted = true;
 
-  }, 600);
+      const gridInitInterval = setInterval(async () => {
 
-}, 1200);
+        attempts++;
+
+        if(!window.rangeLayer){
+          console.log("⏳ Waiting for rangeLayer...");
+          if(attempts > 10) clearInterval(gridInitInterval);
+          return;
+        }
+
+        // 🔥 STEP 1: IndexedDB
+        if(!window.__gridLoadedFromCache){
+
+          try {
+            const cached = await idbKeyval.get('full_grid_index');
+
+            if(cached && Object.keys(cached).length){
+
+              window.gridIndex = cached;
+              window.__gridReady = true;
+              window.__gridLoadedFromCache = true;
+
+              console.log("⚡ Grid loaded from IndexedDB:", Object.keys(cached).length);
+
+              clearInterval(gridInitInterval);
+              return;
+            }
+
+          } catch(e){
+            console.warn("⚠ IndexedDB load failed");
+          }
+        }
+
+        // 🔥 STEP 2: Build
+        if(!window.__gridLoadedFromCache && !window.__gridBuilding){
+
+          console.log("🔁 Building grid (no cache)");
+
+          await ensureGridReady();
+
+          try {
+            if(window.gridIndex && Object.keys(window.gridIndex).length){
+              await saveGridToDB(window.gridIndex);
+              console.log("💾 Grid saved to IndexedDB");
+            }
+          } catch(e){
+            console.warn("⚠ IndexedDB save failed");
+          }
+
+          window.__gridLoadedFromCache = true;
+        }
+
+        // 🔥 STEP 3: READY
+        if(window.__gridReady){
+
+          console.log("🎯 Grid ready (confirmed)");
+          clearInterval(gridInitInterval);
+
+          const BACKFILL_KEY = "kml_backfill_done_v3";
+
+          if(!localStorage.getItem(BACKFILL_KEY)){
+
+            console.log("🚀 Scheduling backfill (batched)...");
+
+            setTimeout(() => {
+              if(typeof backfillKMLOnceBatched === "function"){
+                backfillKMLOnceBatched();
+              }
+            }, 3000);
+
+          } else {
+            console.log("⏭ Backfill already completed");
+          }
+        }
+
+        // 🔥 TIMEOUT SAFETY
+        if(attempts > 30){
+
+          if(window.__gridReady){
+
+            console.log("🎯 Triggering initial grid render");
+
+            window.showGrid = true;
+
+            setTimeout(() => {
+              renderGrid("current","ALL");
+            }, 200);
+
+            clearInterval(gridInitInterval);
+            return;
+          }
+
+          console.warn("⚠ Grid init timeout (extended)");
+          clearInterval(gridInitInterval);
+        }
+
+      }, 600);
+
+    }, 1200);
+
     // ======================================================
-    // 🔥 DUTY CHECK (SAFE + RETRY)
+    // 🔥 DUTY CHECK
     // ======================================================
-    setTimeout(() => {
-      console.log("🔄 Initial duty check...");
-      autoShowEndDuty();
-    }, 1500);
-
-    setTimeout(() => {
-      console.log("🔄 Backup duty check...");
-      autoShowEndDuty();
-    }, 3000);
+    setTimeout(() => autoShowEndDuty(), 1500);
+    setTimeout(() => autoShowEndDuty(), 3000);
 
     setInterval(() => {
       if(window.userProfile){
@@ -1709,7 +1676,7 @@ setTimeout(() => {
     console.log("✅ App initialized (optimized, no freeze)");
 
     // ======================================================
-    // 🔥 DELAYED FIREBASE INIT (NON-BLOCKING)
+    // 🔥 FIREBASE (UNCHANGED)
     // ======================================================
     setTimeout(async () => {
 
@@ -1720,27 +1687,13 @@ setTimeout(() => {
         const { initializeApp } = await import("https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js");
 
         const {
-          getFirestore,
-          collection,
-          addDoc,
-          onSnapshot,
-          query,
-          orderBy,
-          serverTimestamp,
-          getDocs,
-          deleteDoc,
-          doc,
-          setDoc,
-          updateDoc,
-          arrayUnion
+          getFirestore, collection, addDoc, onSnapshot,
+          query, orderBy, serverTimestamp, getDocs,
+          deleteDoc, doc, setDoc, updateDoc, arrayUnion
         } = await import("https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js");
 
-        const {
-          getStorage,
-          ref,
-          uploadBytes,
-          getDownloadURL
-        } = await import("https://www.gstatic.com/firebasejs/10.12.0/firebase-storage.js");
+        const { getStorage, ref, uploadBytes, getDownloadURL }
+          = await import("https://www.gstatic.com/firebasejs/10.12.0/firebase-storage.js");
 
         const app = initializeApp(window.firebaseConfig);
 
@@ -1748,32 +1701,18 @@ setTimeout(() => {
         window.storage = getStorage(app);
 
         window.fb = {
-          collection,
-          addDoc,
-          onSnapshot,
-          query,
-          orderBy,
-          serverTimestamp,
-          getDocs,
-          deleteDoc,
-          doc,
-          setDoc,
-          updateDoc,
-          arrayUnion,
-          ref,
-          uploadBytes,
-          getDownloadURL
+          collection, addDoc, onSnapshot, query, orderBy,
+          serverTimestamp, getDocs, deleteDoc, doc,
+          setDoc, updateDoc, arrayUnion,
+          ref, uploadBytes, getDownloadURL
         };
 
         window.firebaseReady = true;
 
-        console.log("✅ Firebase READY (delayed)");
+        console.log("✅ Firebase READY");
 
-        try {
-          console.log("💬 Starting chat after Firebase ready");
+        if(typeof startChat === "function"){
           startChat();
-        } catch(e){
-          console.warn("⚠ startChat failed");
         }
 
       } catch(e){
@@ -1785,8 +1724,7 @@ setTimeout(() => {
   } catch(e){
     console.error("❌ startApp crash:", e);
   }
-
-}   console.log("🔥 NEW BUILD LOADED - VERSION 999");
+}  console.log("🔥 NEW BUILD LOADED - VERSION 999");
 
 // ======================================================
 // 🚀 SMART SERVICE WORKER UPDATE SYSTEM (FINAL)
@@ -3985,9 +3923,50 @@ window.gridCache = window.gridCache || {
     console.error("❌ loadCacheOnStart failed:", e);
   }
 }
+
+    let __saveTimer = null;
+
+function saveToBackendDebounced(){
+
+  clearTimeout(__saveTimer);
+
+  __saveTimer = setTimeout(() => {
+
+    const key = "grid_" + getLocalDateStr();
+
+    safeBackend("SAVE_GRID", {
+      dateKey: key,
+      data: window.gridCache?.today || {}
+    });
+
+    console.log("☁ Synced to backend");
+
+  }, 5000); // every 5 sec
+}
+
+    function loadBackendCoverage(){
+
+  return safeBackend("GET_GRID_MONTHS")
+
+    .then(res => {
+
+      if(!res) return;
+
+      window.gridCache = window.gridCache || {};
+
+      // ✅ MATCH renderGrid
+      window.gridCache.current = res.current || {};
+      window.gridCache.prev = res.prev || {};
+
+      console.log("📡 Backend loaded");
+
+      return res;
+    });
+}
 // ======================================================
 // 🎯 ASSIGN GRID → BEAT (FINAL STABLE - NO GAP / NO OVERFLOW)
 // ======================================================
+    
 function assignGridToBeat(rangeLayer){
 
   console.log("🎯 Assigning grid to beats (FINAL CORRECT)...");
@@ -4276,18 +4255,21 @@ function renderGrid(mode = "today", beat = "ALL") {
     // ======================================================
     // 🔥 ONLY THIS PART CHANGED
 
-let current;
+// ======================================================
+// 🔥 FINAL MODE HANDLING (FIXED)
+// ======================================================
+
+let current = {};
 
 if(mode === "today"){
   current = window.gridCache?.today || {};
 }
 else if(mode === "current"){
-  current = window.gridCache?.current || {};   // ✅ FIXED
+  current = window.gridCache?.current || {};   // ✅ aligned
 }
 else if(mode === "prev"){
-  current = window.gridCache?.prev || {};
+  current = window.gridCache?.prev || {};      // ✅ aligned
 }
-
     const bounds = map.getBounds();
 
     // ===============================
@@ -5418,23 +5400,17 @@ function markVisitedHybrid(tracks){
   }
 
   return visitedGlobal;
-}  function applyMode(mode){
+} 
+    function applyMode(mode){
 
   try {
 
-    // 🔥 set mode globally
     window.currentCoverageMode = mode || "today";
-
-    // 🔥 sync popup mode
     window.__lastMode = window.currentCoverageMode;
 
-    // 🔥 get beat
     const beat = document.getElementById("beatSelect")?.value || "ALL";
-
-    // 🔥 store beat
     window.currentBeat = beat;
 
-    // 🔥 UI highlight
     const btnToday = document.getElementById("btnToday");
     const btnCurrent = document.getElementById("btnCurrent");
     const btnPrev = document.getElementById("btnPrev");
@@ -5445,101 +5421,78 @@ function markVisitedHybrid(tracks){
       btnPrev.style.background    = (mode === "prev")    ? "#00e676" : "";
     }
 
-    // 🔥 CACHE HANDLING
+    // ======================================================
+    // 🔥 TODAY (LOCAL)
+    // ======================================================
     if(mode === "today"){
+
       if(typeof updateTodayCache === "function"){
         updateTodayCache();
       }
+
+      renderGrid(mode, beat);
+      return;
     }
 
-    if(mode === "current"){
-      if(typeof updateMonthCache === "function"){
-        updateMonthCache();
-      }
+    // ======================================================
+    // 🔥 CURRENT / PREV (BACKEND)
+    // ======================================================
+    // ✅ USE LOADED CACHE IF AVAILABLE
+    if(window.gridCache?.current && window.gridCache?.prev){
+
+      renderGrid(mode, beat);
+      return;
     }
 
-    if(mode === "prev"){
-      if(typeof updatePrevMonthCache === "function"){
-        updatePrevMonthCache();
-      }
-    }
+    // 🔁 ELSE LOAD FROM BACKEND ONCE
+    loadBackendCoverage()
+      .then(() => {
+        renderGrid(mode, beat);
+      });
 
-    // 🔥 ensure grid ready
     if(typeof ensureGridReady === "function"){
       ensureGridReady();
     }
 
-    // 🔥 render from cache ONLY
-    if(typeof renderGrid === "function"){
-      renderGrid(window.currentCoverageMode, window.currentBeat);
-    }
-
-    console.log(
-      "🎛 Mode Applied:",
-      window.currentCoverageMode,
-      "| Beat:",
-      window.currentBeat
-    );
+    console.log("🎛 Mode Applied:", mode, "| Beat:", beat);
 
   } catch(e){
     console.error("❌ applyMode error:", e);
   }
 }
 
-
-
-function onBeatChange(){
+   function onBeatChange(){
 
   try {
 
     const beat = document.getElementById("beatSelect")?.value || "ALL";
-
-    // 🔥 store beat
     window.currentBeat = beat;
 
-    // 🔥 ensure mode exists
     if(!window.currentCoverageMode){
       window.currentCoverageMode = "today";
     }
 
-    // 🔥 sync popup mode
-    window.__lastMode = window.currentCoverageMode;
+    const mode = window.currentCoverageMode;
+    window.__lastMode = mode;
 
-    // 🔥 CACHE HANDLING (based on mode)
-    if(window.currentCoverageMode === "today"){
+    if(mode === "today"){
+
       if(typeof updateTodayCache === "function"){
         updateTodayCache();
       }
+
+      renderGrid(mode, beat);
+      return;
     }
 
-    if(window.currentCoverageMode === "current"){
-      if(typeof updateMonthCache === "function"){
-        updateMonthCache();
-      }
-    }
+    // ✅ NO BACKEND CALL AGAIN
+    renderGrid(mode, beat);
 
-    if(window.currentCoverageMode === "prev"){
-      if(typeof updatePrevMonthCache === "function"){
-        updatePrevMonthCache();
-      }
-    }
-
-    // 🔥 ensure grid ready
     if(typeof ensureGridReady === "function"){
       ensureGridReady();
     }
 
-    // 🔥 render updated view
-    if(typeof renderGrid === "function"){
-      renderGrid(window.currentCoverageMode, window.currentBeat);
-    }
-
-    console.log(
-      "🎯 Beat Changed:",
-      window.currentBeat,
-      "| Mode:",
-      window.currentCoverageMode
-    );
+    console.log("🎯 Beat Changed:", beat, "| Mode:", mode);
 
   } catch(e){
     console.error("❌ onBeatChange error:", e);
@@ -7826,7 +7779,7 @@ function syncOfflineMoves(){
         console.log("🔥 GRID INPUT TRACKS:", tracks.length);
 
         markVisitedHybrid(tracks);
-
+        saveToBackendDebounced();
         const todayKey = "grid_" + getLocalDateStr();
 
         try {
