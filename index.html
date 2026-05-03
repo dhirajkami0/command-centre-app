@@ -11223,9 +11223,12 @@ function startAutoGPS(){
 
   console.log("🟢 AUTO GPS STARTED");
 
-  autoGpsTimer = setInterval(runAutoGPS, 60000);
+  // ==========================================
+  // 🔥 RUN FREQUENTLY (NOT 60 sec)
+  // ==========================================
+  autoGpsTimer = setInterval(runAutoGPS, 5000); // 🔥 every 5 sec
 
-  runAutoGPS();
+  runAutoGPS(); // immediate first call
 }
 
 
@@ -11252,7 +11255,6 @@ function stopAutoGPS(){
 function runAutoGPS(){
 
   if(isTrackingRunning) return;
-
   isTrackingRunning = true;
 
   try {
@@ -11270,7 +11272,10 @@ function runAutoGPS(){
 
     const now = Date.now();
 
-    if(now - lastGpsSent < 58000){
+    // ==========================================
+    // 🔥 NEW: SHORTER TIME WINDOW
+    // ==========================================
+    if(now - lastGpsSent < 8000){   // 🔥 8 sec (was 58 sec)
       isTrackingRunning = false;
       return;
     }
@@ -11283,19 +11288,54 @@ function runAutoGPS(){
         const lon = Number(pos.coords.longitude.toFixed(6));
         const acc = Number(pos.coords.accuracy);
 
-        if(acc > 150){
+        // ==========================================
+        // 🔥 ACCURACY FILTER
+        // ==========================================
+        if(acc > 120){
           isTrackingRunning = false;
           return;
         }
 
-        const key = `${lat}_${lon}`;
+        // ==========================================
+        // 🔥 DISTANCE FUNCTION
+        // ==========================================
+        function getDistance(a, b){
+          const R = 6371000;
+          const dLat = (b.lat - a.lat) * Math.PI/180;
+          const dLon = (b.lng - a.lng) * Math.PI/180;
 
-        if(key === lastLocationKey){
-          isTrackingRunning = false;
-          return;
+          const x =
+            Math.sin(dLat/2)**2 +
+            Math.cos(a.lat*Math.PI/180) *
+            Math.cos(b.lat*Math.PI/180) *
+            Math.sin(dLon/2)**2;
+
+          return R * 2 * Math.atan2(Math.sqrt(x), Math.sqrt(1-x));
         }
 
-        lastLocationKey = key;
+        // ==========================================
+        // 🔥 DISTANCE FILTER (CRITICAL)
+        // ==========================================
+        if(window.lastGPS){
+
+          const dist = getDistance(window.lastGPS, {lat, lng: lon});
+
+          // ⛔ skip if almost same location
+          if(dist < 15){
+            isTrackingRunning = false;
+            return;
+          }
+
+          // ⛔ skip unrealistic jump (GPS glitch)
+          if(dist > 500){
+            console.warn("⚠ GPS jump skipped:", dist);
+            isTrackingRunning = false;
+            return;
+          }
+        }
+
+        window.lastGPS = {lat, lng: lon};
+
         lastGpsSent = Date.now();
 
         const gpsData = {
@@ -11321,7 +11361,7 @@ function runAutoGPS(){
       isTrackingRunning = false;
     }, {
       enableHighAccuracy: true,
-      timeout: 20000,
+      timeout: 15000,
       maximumAge: 0
     });
 
@@ -11330,7 +11370,6 @@ function runAutoGPS(){
     isTrackingRunning = false;
   }
 }
-
 
 // ============================================================
 // 📡 SEND OR STORE
