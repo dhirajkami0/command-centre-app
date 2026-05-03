@@ -4623,17 +4623,12 @@ async function backfillKMLOnceBatched(){
   const CURSOR_KEY = "kml_backfill_cursor_v3";
   const PROCESSED_KEY = "kml_processed_ids_v3";
 
-  // ==========================================
-  // 🔒 PREVENT MULTIPLE LOOPS
-  // ==========================================
   if(isBackfillRunning){
     console.warn("⛔ Backfill already running");
     return;
   }
 
   isBackfillRunning = true;
-
-  // 🔥 pause live tracking
   window.pauseLiveTracking = true;
 
   try {
@@ -4653,13 +4648,7 @@ async function backfillKMLOnceBatched(){
     // ==========================================
     // 🔥 LOAD FILES
     // ==========================================
-    let files;
-    try {
-      files = await callBackend("getKMLTracks", { mode: "ALL" });
-    } catch(e){
-      console.error("❌ getKMLTracks failed:", e);
-      return;
-    }
+    let files = await callBackend("getKMLTracks", { mode: "ALL" });
 
     if(!files || !files.length){
       console.warn("⚠ No KML files found");
@@ -4686,14 +4675,10 @@ async function backfillKMLOnceBatched(){
     console.log("📦 Files to process:", filtered.length);
 
     if(!filtered.length){
-      console.warn("⚠ No valid files for months");
       localStorage.setItem(DONE_KEY, "1");
       return;
     }
 
-    // ==========================================
-    // 🔥 CURSOR SAFE
-    // ==========================================
     let cursor = Number(localStorage.getItem(CURSOR_KEY) || 0);
 
     if(cursor >= filtered.length){
@@ -4701,14 +4686,11 @@ async function backfillKMLOnceBatched(){
       localStorage.setItem(CURSOR_KEY, "0");
     }
 
-    // ==========================================
-    // 🔥 LOAD PROCESSED FILE IDS
-    // ==========================================
     let processedIds = JSON.parse(
       localStorage.getItem(PROCESSED_KEY) || "[]"
     );
 
-    const BATCH_SIZE = 2; // 🔥 IMPORTANT (prevents freeze)
+    const BATCH_SIZE = 2;
     let processed = 0;
 
     // ==========================================
@@ -4718,9 +4700,6 @@ async function backfillKMLOnceBatched(){
 
       const file = filtered[i];
 
-      // ==========================================
-      // 🔥 DUPLICATE CHECK
-      // ==========================================
       if(processedIds.includes(file.id)){
         console.log("⏭ Skipping duplicate:", file.name);
         localStorage.setItem(CURSOR_KEY, i + 1);
@@ -4729,29 +4708,17 @@ async function backfillKMLOnceBatched(){
 
       console.log("📂 Processing:", file.name, "| Date:", file.date);
 
-      // ==========================================
-      // 🔥 READ FILE
-      // ==========================================
-      let res;
-      try {
-        res = await callBackend("readKMLFile", { fileId: file.id });
-      } catch(e){
-        console.warn("⚠ read failed:", file.name);
-        continue;
-      }
+      let res = await callBackend("readKMLFile", { fileId: file.id });
 
       if(!res || !res.text){
         console.warn("⚠ Empty file:", file.name);
         continue;
       }
 
-      // ==========================================
-      // 🔥 EXTRACT COORDINATES
-      // ==========================================
       const match = res.text.match(/<coordinates>([\s\S]*?)<\/coordinates>/i);
 
       if(!match){
-        console.warn("⚠ No <coordinates>:", file.name);
+        console.warn("⚠ No coordinates:", file.name);
         continue;
       }
 
@@ -4768,13 +4735,8 @@ async function backfillKMLOnceBatched(){
         const lon = parseFloat(parts[0]);
         const lat = parseFloat(parts[1]);
 
-        // 🔥 skip invalid
         if(isNaN(lat) || isNaN(lon)) continue;
-
-        // 🔥 skip 0,0 garbage
         if(lat === 0 && lon === 0) continue;
-
-        // 🔥 remove duplicates
         if(lat === lastLat && lon === lastLon) continue;
 
         track.push([lat, lon]);
@@ -4783,41 +4745,61 @@ async function backfillKMLOnceBatched(){
         lastLon = lon;
       }
 
-      // ==========================================
-      // 🔥 SKIP WEAK TRACKS
-      // ==========================================
       if(track.length < 5){
         console.warn("⚠ Too small track:", file.name);
         localStorage.setItem(CURSOR_KEY, i + 1);
         continue;
       }
 
-      console.log("🟡 First:", track[0], "| Len:", track.length);
+      // ==========================================
+      // 🔥 BUILD GRID (PER DAY RESET)
+      // ==========================================
+      window.gridCache = window.gridCache || {};
+      window.gridCache.today = {};
+
+      markVisitedHybrid([{
+        track: track,
+        date: file.date
+      }]);
+
+      const dateKey = "grid_" + file.date;
 
       // ==========================================
-      // 🔥 GRID UPDATE (THROTTLED)
+      // 🔥 SAFE MERGE + SAVE (CRITICAL)
       // ==========================================
-      const nowTime = Date.now();
+      try {
 
-      if(!window.lastGridUpdate){
-        window.lastGridUpdate = 0;
+        let existing = {};
+
+        try {
+          const res = await safeBackend("GET_GRID_BY_DATE", { dateKey });
+          existing = res || {};
+        } catch(e){
+          console.log("ℹ No existing data for:", dateKey);
+        }
+
+        const merged = { ...existing };
+
+        Object.entries(window.gridCache.today).forEach(([id, val]) => {
+          merged[id] = (merged[id] || 0) + val;
+        });
+
+        await safeBackend("SAVE_GRID", {
+          dateKey,
+          data: merged
+        });
+
+        console.log("☁ Backfill saved:", dateKey, "| Cells:", Object.keys(merged).length);
+
+        // 🔥 throttle to avoid API overload
+        await new Promise(r => setTimeout(r, 300));
+
+      } catch(e){
+        console.warn("⚠ Save failed:", file.name);
       }
 
-      if(nowTime - window.lastGridUpdate > 1000){
-
-        markVisitedHybrid([{
-          track: track,
-          date: file.date
-        }]);
-
-        window.lastGridUpdate = nowTime;
-
-      } else {
-        console.log("⏸ Grid throttled");
-      }
-
       // ==========================================
-      // 🔥 MARK AS PROCESSED
+      // 🔥 MARK PROCESSED
       // ==========================================
       processedIds.push(file.id);
       localStorage.setItem(PROCESSED_KEY, JSON.stringify(processedIds));
@@ -4826,40 +4808,37 @@ async function backfillKMLOnceBatched(){
       localStorage.setItem(CURSOR_KEY, i + 1);
     }
 
-    // ==========================================
-    // 🔥 CACHE UPDATE
-    // ==========================================
-    if(typeof updateMonthCache === "function"){
-      updateMonthCache();
-    }
-
-    if(typeof updatePrevMonthCache === "function"){
-      updatePrevMonthCache();
-    }
-
     console.log("⏱ Batch processed:", processed);
 
-    // ==========================================
-    // 🔥 LOOP / COMPLETE
-    // ==========================================
-    if(Number(localStorage.getItem(CURSOR_KEY)) < filtered.length){
+// 🔥 SAFE CHECK USING CURRENT CURSOR
+if(cursor + processed < filtered.length){
 
-      setTimeout(backfillKMLOnceBatched, 1200); // 🔥 smooth UI
+  setTimeout(backfillKMLOnceBatched, 1200);
 
-    } else {
+} else {
 
-      console.log("🎉 BACKFILL COMPLETE");
+  console.log("🎉 BACKFILL COMPLETE");
 
-      localStorage.setItem(DONE_KEY, "1");
-      window.pauseLiveTracking = false;
-    }
+  localStorage.setItem(DONE_KEY, "1");
+  window.pauseLiveTracking = false;
 
+}
   } catch(e){
     console.error("❌ Backfill crash:", e);
   } finally {
-
     isBackfillRunning = false;
   }
+}
+
+function getLocalDateStr(date = new Date()){
+  const d = new Date(date);
+  d.setMinutes(d.getMinutes() - d.getTimezoneOffset());
+  return d.toISOString().slice(0,10);
+}
+function getLocalDateStr(date = new Date()){
+  const d = new Date(date);
+  d.setMinutes(d.getMinutes() - d.getTimezoneOffset());
+  return d.toISOString().slice(0,10);
 } function getLocalDateStr(date = new Date()){
   const d = new Date(date);
   d.setMinutes(d.getMinutes() - d.getTimezoneOffset());
