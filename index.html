@@ -11340,6 +11340,7 @@ window.gpsRunning = false;
 
 let lastSentPoint = null;
 let lastSentTime = 0;
+
 // ============================================================
 // 🚀 START AUTO GPS (STRICT 5s LOOP)
 // ============================================================
@@ -11353,11 +11354,8 @@ function startAutoGPS(){
 
   window.gpsRunning = true;
 
-  // 🔥 RUN EVERY 5 SEC (STRICT)
-  autoGpsTimer = setInterval(runAutoGPS, 5000);
-
-  // 🔥 RUN IMMEDIATELY
-  runAutoGPS();
+  autoGpsTimer = setInterval(runAutoGPS, 5000); // 5 sec
+  runAutoGPS(); // immediate
 }
 
 
@@ -11379,27 +11377,25 @@ function stopAutoGPS(){
 
 
 // ============================================================
-// 📍 CORE ENGINE (NO CONDITIONS / NO SKIP)
+// 📍 CORE ENGINE (ONLY EXACT DUPLICATE SKIP)
 // ============================================================
-
 function runAutoGPS(){
 
   console.log("⏱ runAutoGPS trigger");
 
   navigator.geolocation.getCurrentPosition(pos => {
 
-    const acc = pos.coords.accuracy; // 🔥 IMPORTANT
+    const acc = pos.coords.accuracy;
 
-    // ====================================================
-    // 🔥 ACCURACY FILTER (VERY IMPORTANT)
-    // ====================================================
+    // 🔥 keep your accuracy filter
     if(acc > 30){
       console.warn("⛔ Poor GPS accuracy:", acc, "m → skipped");
       return;
     }
 
-    const lat = Number(pos.coords.latitude.toFixed(6));
-    const lon = Number(pos.coords.longitude.toFixed(6));
+    // 🔥 IMPORTANT: NO ROUNDING
+    const lat = pos.coords.latitude;
+    const lon = pos.coords.longitude;
 
     console.log("📍 GPS:", lat, lon, "| accuracy:", acc);
 
@@ -11415,23 +11411,23 @@ function runAutoGPS(){
     }
 
     // ====================================================
-    // 🔥 DUPLICATE CHECK
+    // 🔥 EXACT DUPLICATE CHECK ONLY
     // ====================================================
     if(lastSentPoint.lat === lat && lastSentPoint.lon === lon){
-      console.log("⛔ Duplicate skipped");
+      console.log("⛔ Exact duplicate skipped");
       return;
     }
 
     // ====================================================
-    // 🔥 SEND
+    // 🔥 ALWAYS SEND (NO DISTANCE / NO TIME LIMIT)
     // ====================================================
     sendGPS(lat, lon, now);
 
   }, err => {
     console.warn("⚠ GPS ERROR", err);
   }, {
-    enableHighAccuracy: true,   // 🔥 MUST
-    timeout: 10000,             // 🔥 allow better fix
+    enableHighAccuracy: true,
+    timeout: 10000,
     maximumAge: 0
   });
 }
@@ -11440,7 +11436,6 @@ function runAutoGPS(){
 // ============================================================
 // 🔥 SEND FUNCTION
 // ============================================================
-
 function sendGPS(lat, lon, now){
 
   const gpsData = {
@@ -11460,13 +11455,17 @@ function sendGPS(lat, lon, now){
   console.log("📡 Sending GPS");
 
   sendOrStoreGPS(gpsData);
-}// ============================================================
+}
+
+
+// ============================================================
 // 📡 SEND OR STORE (FORCED)
 // ============================================================
-
 function flushOfflineGPS(){
   console.log("⚠ flushOfflineGPS skipped (not implemented)");
 }
+
+
 // ============================================================
 // 📡 SEND OR STORE (FORCED)
 // ============================================================
@@ -11490,6 +11489,11 @@ async function sendOrStoreGPS(gpsData){
 
     if(res && res.status === "ok"){
       console.log("✅ GPS SAVED");
+      return;
+    }
+
+    if(res && res.status === "duplicate"){
+      console.log("⛔ Backend duplicate skipped");
       return;
     }
 
