@@ -1800,39 +1800,26 @@ window.addEventListener("load", function () {
   if (versionEl) versionEl.innerText = APP_VERSION;
 
   // ======================================================
-  // 🔘 UPDATE BUTTON
-  // ======================================================
-  const updateBtn = document.getElementById("updateBtn");
-  if (updateBtn) {
-    updateBtn.addEventListener("click", handleManualUpdate);
-  }
-
-  // ======================================================
   // 🔥 SPLASH SCREEN
   // ======================================================
   const splash = document.getElementById("splash-screen");
 
   if (splash) {
-
     setTimeout(() => {
-
       splash.style.opacity = "0";
 
       setTimeout(() => {
-
         splash.remove();
-
         if (window.map) {
           window.map.invalidateSize();
         }
-
       }, 800);
 
     }, 1800);
   }
 
   // ======================================================
-  // 🔥 SERVICE WORKER (NO SECOND LOAD)
+  // 🔥 SERVICE WORKER (PRODUCTION SAFE SILENT MODE)
   // ======================================================
   if ("serviceWorker" in navigator && !window.__SW_REGISTERED__) {
 
@@ -1843,54 +1830,82 @@ window.addEventListener("load", function () {
 
       console.log("✅ SW Registered");
 
+      // 🔁 periodic update check
       setInterval(() => reg.update(), 60000);
       reg.update();
 
-      if (reg.waiting) {
-        newWorker = reg.waiting;
-        showUpdateUI();
-        scheduleAutoUpdate();
-      }
+      // ======================================================
+      // 🔥 HANDLE UPDATE (SILENT)
+      // ======================================================
+      function handleUpdate(worker) {
 
-      reg.addEventListener("updatefound", () => {
+        if (!worker) return;
 
-        const installing = reg.installing;
-        if(!installing) return;
-
-        installing.addEventListener("statechange", () => {
+        worker.addEventListener("statechange", () => {
 
           if (
-            installing.state === "installed" &&
+            worker.state === "installed" &&
             navigator.serviceWorker.controller
           ) {
-            if (reg.waiting) {
-              newWorker = reg.waiting;
-              showUpdateUI();
-              scheduleAutoUpdate();
+            console.log("⚡ New version ready (silent)");
+
+            // 🔥 activate immediately
+            try {
+              worker.postMessage({ action: "skipWaiting" });
+            } catch(e){
+              console.warn("⚠ skipWaiting failed:", e);
             }
           }
 
         });
+      }
 
+      // already waiting
+      if (reg.waiting) {
+        handleUpdate(reg.waiting);
+      }
+
+      // update found
+      reg.addEventListener("updatefound", () => {
+        handleUpdate(reg.installing);
       });
-
-      setTimeout(() => {
-        if (reg.waiting && !newWorker) {
-          newWorker = reg.waiting;
-          showUpdateUI();
-          scheduleAutoUpdate();
-        }
-      }, 3000);
 
     })
     .catch(err => {
       console.error("❌ SW registration failed:", err);
     });
-
   }
 
   // ======================================================
-  // 🔥 MAIN APP INIT
+  // 🔄 SAFE RELOAD (NO INTERRUPTION)
+  // ======================================================
+  let refreshing = false;
+
+  navigator.serviceWorker.addEventListener("controllerchange", () => {
+
+    if (refreshing) return;
+
+    function safeReload() {
+
+      // 🔥 BLOCK reload during critical activity
+      if (window.isFormOpen || window.isUserTyping || window.isDutyActive) {
+        console.log("⏳ Waiting to reload (user busy)");
+        setTimeout(safeReload, 3000);
+        return;
+      }
+
+      refreshing = true;
+
+      console.log("🔄 Silent update applied");
+
+      location.reload();
+    }
+
+    setTimeout(safeReload, 1500);
+  });
+
+  // ======================================================
+  // 🔥 MAIN APP INIT (UNCHANGED)
   // ======================================================
   console.log("🚀 App Started - Command Centre Initializing");
 
@@ -1959,9 +1974,7 @@ window.addEventListener("load", function () {
     startOnlineLoginFlow();
   }
 
-});
-
-// ======================================================
+});// ======================================================
 // 🔧 INIT
 // ======================================================
 // ======================================================
@@ -2082,11 +2095,29 @@ function resetUpdateUI() {
 navigator.serviceWorker.addEventListener("controllerchange", () => {
 
   if (refreshing) return;
-  refreshing = true;
 
-  console.log("🔄 New version active");
+  function safeReload(){
 
-  location.reload();
+    // 🔥 BLOCK reload during critical usage
+    if (
+      window.isFormOpen ||
+      window.isUserTyping ||
+      window.isDutyActive
+    ){
+      console.log("⏳ Update ready, waiting for safe state...");
+      setTimeout(safeReload, 3000);
+      return;
+    }
+
+    refreshing = true;
+
+    console.log("🔄 New version active (safe reload)");
+
+    location.reload();
+  }
+
+  // 🔥 slight delay prevents flicker + race condition
+  setTimeout(safeReload, 1500);
 
 });/* ============================================================
    🔥 GLOBAL MASTER DATA (CRASH-PROOF)
