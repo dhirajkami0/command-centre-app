@@ -2021,24 +2021,35 @@ window.addEventListener("load", function () {
 // ======================================================
 // 🔥 GPS WATCHDOG (AUTO RECOVERY)
 // ======================================================
-
 setInterval(() => {
 
+  // 🔒 Run only during duty
   if(!window.isDutyActive) return;
 
   const now = Date.now();
-  const last = window.__lastGpsTime || 0;
+  const last = window.__lastGpsTime;
+
+  // 🔒 Skip if no GPS has ever been sent yet
+  if(!last) return;
 
   const gap = now - last;
 
-  if(gap > 20000){ // 20 sec no GPS
+  // 🔥 Detect stall (>20 sec no GPS)
+  if(gap > 20000){
 
-    console.error("🚨 GPS DEAD → restarting");
+    console.error("🚨 GPS DEAD → restarting | gap:", Math.floor(gap/1000), "s");
 
-    try { stopAutoGPS(); } catch(e){}
+    try {
+      stopAutoGPS();
+    } catch(e){}
 
     setTimeout(() => {
-      startAutoGPS();
+
+      // 🔒 Prevent double start
+      if(!window.gpsRunning){
+        startAutoGPS();
+      }
+
     }, 1500);
 
   }
