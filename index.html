@@ -11357,10 +11357,20 @@ function runAutoGPS(){
 
   navigator.geolocation.getCurrentPosition(pos => {
 
+    const acc = pos.coords.accuracy; // 🔥 IMPORTANT
+
+    // ====================================================
+    // 🔥 ACCURACY FILTER (VERY IMPORTANT)
+    // ====================================================
+    if(acc > 30){
+      console.warn("⛔ Poor GPS accuracy:", acc, "m → skipped");
+      return;
+    }
+
     const lat = Number(pos.coords.latitude.toFixed(6));
     const lon = Number(pos.coords.longitude.toFixed(6));
 
-    console.log("📍 GPS:", lat, lon);
+    console.log("📍 GPS:", lat, lon, "| accuracy:", acc);
 
     const now = Date.now();
 
@@ -11369,36 +11379,35 @@ function runAutoGPS(){
     // ====================================================
     if(!lastSentPoint){
       console.log("🟢 First GPS → sending");
-
       sendGPS(lat, lon, now);
       return;
     }
 
     // ====================================================
-    // 🔥 DUPLICATE CHECK (ONLY LOGIC)
+    // 🔥 DUPLICATE CHECK
     // ====================================================
     if(lastSentPoint.lat === lat && lastSentPoint.lon === lon){
-      console.log("⛔ Duplicate skipped (same lat/lon)");
+      console.log("⛔ Duplicate skipped");
       return;
     }
 
     // ====================================================
-    // 🔥 ALWAYS SEND (NO TIME / NO DISTANCE)
+    // 🔥 SEND
     // ====================================================
     sendGPS(lat, lon, now);
 
   }, err => {
     console.warn("⚠ GPS ERROR", err);
   }, {
-    enableHighAccuracy: true,
-    timeout: 5000,
+    enableHighAccuracy: true,   // 🔥 MUST
+    timeout: 10000,             // 🔥 allow better fix
     maximumAge: 0
   });
 }
 
 
 // ============================================================
-// 🔥 SEND FUNCTION (UNCHANGED STRUCTURE)
+// 🔥 SEND FUNCTION
 // ============================================================
 
 function sendGPS(lat, lon, now){
