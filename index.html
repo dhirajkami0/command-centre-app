@@ -2018,7 +2018,74 @@ window.addEventListener("load", function () {
 
   }
 
+// ======================================================
+// 🔥 GPS WATCHDOG (AUTO RECOVERY)
+// ======================================================
+
+setInterval(() => {
+
+  if(!window.isDutyActive) return;
+
+  const now = Date.now();
+  const last = window.__lastGpsTime || 0;
+
+  const gap = now - last;
+
+  if(gap > 20000){ // 20 sec no GPS
+
+    console.error("🚨 GPS DEAD → restarting");
+
+    try { stopAutoGPS(); } catch(e){}
+
+    setTimeout(() => {
+      startAutoGPS();
+    }, 1500);
+
+  }
+
+}, 10000);
+
+// ======================================================
+// 👁 VISIBILITY RESUME FIX (GPS RECOVERY)
+// ======================================================
+
+document.addEventListener("visibilitychange", () => {
+
+  if(document.visibilityState === "visible"){
+
+    console.log("👁 App resumed");
+
+    if(window.isDutyActive && !window.gpsRunning){
+
+      console.warn("⚠ GPS was OFF → restarting");
+
+      startAutoGPS();
+    }
+
+  }
+});
+
+  // ======================================================
+// 🔥 GPS FAILSAFE (DUTY CHECK RESTART)
+// ======================================================
+
+setInterval(() => {
+
+  if(window.isDutyActive && !window.gpsRunning){
+
+    console.warn("⚠ GPS missing during duty → restart");
+
+    startAutoGPS();
+  }
+
+}, 15000);
+// ======================================================
+// 🔥 END OF LOAD BLOCK
+// ======================================================
+
 }); // ✅🔥 ONLY ONE FINAL CLOSING
+    
+    // ✅🔥 ONLY ONE FINAL CLOSING
     
     // ✅🔥 CRITICAL CLOSING (DO NOT MISS) 
   // ======================================================
@@ -11494,12 +11561,68 @@ async function runAutoGPSCycle(){
 // ============================================================
 // 📡 SEND FUNCTION
 // ============================================================
+// ============================================================
+// 📡 SEND FUNCTION (FINAL SAFE VERSION)
+// ============================================================
 function sendGPS(lat, lon){
 
-  if(!window.userProfile) return;
+  // 🔒 Safety
+  if(!window.userProfile || !window.userProfile.cleanName){
+    console.warn("⛔ Missing userProfile → skip GPS");
+    return;
+  }
 
   const now = Date.now();
 
+  // ============================================================
+  // 🔥 1. HEARTBEAT (for watchdog)
+  // ============================================================
+  window.__lastGpsTime = now;
+
+  // ============================================================
+  // 🔥 2. DUPLICATE FILTER (same lat/lon)
+  // ============================================================
+  const key = lat.toFixed(6) + "_" + lon.toFixed(6);
+
+  if(window.__lastGPSKey === key){
+    console.log("⛔ Duplicate GPS skipped");
+    return;
+  }
+
+  window.__lastGPSKey = key;
+
+  // ============================================================
+  // 🔥 3. MOVEMENT FILTER (skip <10m)
+  // ============================================================
+  function distance(lat1, lon1, lat2, lon2){
+    const R = 6371000;
+    const dLat = (lat2 - lat1) * Math.PI / 180;
+    const dLon = (lon2 - lon1) * Math.PI / 180;
+
+    const a = Math.sin(dLat/2) * Math.sin(dLat/2) +
+      Math.cos(lat1*Math.PI/180) *
+      Math.cos(lat2*Math.PI/180) *
+      Math.sin(dLon/2) * Math.sin(dLon/2);
+
+    return 2 * R * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+  }
+
+  if(window.__lastLat !== undefined){
+
+    const d = distance(window.__lastLat, window.__lastLon, lat, lon);
+
+    if(d < 10){
+      console.log("⛔ Not moved enough:", Math.round(d), "m");
+      return;
+    }
+  }
+
+  window.__lastLat = lat;
+  window.__lastLon = lon;
+
+  // ============================================================
+  // 📦 BUILD DATA
+  // ============================================================
   const gpsData = {
     id: `${window.userProfile.cleanName}_${lat}_${lon}_${Math.floor(now/60000)}`,
     name: window.userProfile.rawName,
@@ -11513,7 +11636,14 @@ function sendGPS(lat, lon){
 
   console.log("📡 Sending GPS:", gpsData);
 
-  sendOrStoreGPS(gpsData);
+  // ============================================================
+  // 🚀 SEND
+  // ============================================================
+  try {
+    sendOrStoreGPS(gpsData);
+  } catch(e){
+    console.error("❌ GPS send error:", e);
+  }
 }
 
 
