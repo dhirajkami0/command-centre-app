@@ -1479,12 +1479,10 @@ window.firebaseConfig = {
   window.__gridLoadedFromCache = false;
 let appStarted = false;
 
-async function startApp(){
+async function startApp(){   // 🔥 MADE ASYNC (CRITICAL)
 
-  if(appStarted){
-    console.warn("⛔ startApp blocked");
-    return;
-  }
+  if(appStarted) return;
+  appStarted = true;
 
   console.log("🚀 App Started - Command Centre Initializing");
 
@@ -1527,11 +1525,6 @@ async function startApp(){
     // 🔥 BACKEND LOAD (BLOCKING — CRITICAL FIX)
     // ======================================================
     await loadBackendCoverage();   // 🔥 THIS FIXES YOUR ISSUE
-
-    // ======================================================
-    // 🔥 MOVE FLAG HERE (CRITICAL FIX)
-    // ======================================================
-    appStarted = true;
 
     // 🔥 LOCK CACHE (PREVENT OVERWRITE)
     window.__backendLoaded = true;
@@ -1751,7 +1744,8 @@ async function startApp(){
   } catch(e){
     console.error("❌ startApp crash:", e);
   }
-}console.log("🔥 NEW BUILD LOADED - VERSION 999");
+} 
+console.log("🔥 NEW BUILD LOADED - VERSION 999");
 
 // ======================================================
 // 🚀 SMART SERVICE WORKER UPDATE SYSTEM (FINAL)
