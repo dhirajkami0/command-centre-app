@@ -1167,7 +1167,7 @@ let loginInProgress = false;
 let authFlowRunning = false;
 let loginModalLocked = false;   // 🔥 NEW HARD LOCK
 let isSyncRunning = false;
-
+let loginShownOnce = false;   // 🔥 master guard
 // ============================================================
 // 🔥 LOAD PROFILE (UNCHANGED LOGIC + HARD GUARD)
 // ============================================================
@@ -1219,11 +1219,13 @@ function loadProfile(){
 
   const phone = localStorage.getItem("userPhone") || "";
 
-  // 🔥 NO PHONE → SAFE SHOW
+  // 🔥 NO PHONE → SAFE SHOW (FIXED: removed timeout + guard added)
   if(!phone){
-    setTimeout(() => {
-      if(!loginModalLocked) showLogin();
-    }, 200);
+
+    if(!loginModalLocked && !loginShownOnce){
+      loginShownOnce = true;
+      showLogin();
+    }
 
     authFlowRunning = false;
     return;
@@ -1241,9 +1243,18 @@ function loadProfile(){
           window.userProfile = JSON.parse(saved);
           updateNetworkStatus("offline");
           applyRoleControl();
-          startApp();
+
+          // 🔥 FIX: prevent duplicate startApp
+          if(!window.__appBootRequested){
+            window.__appBootRequested = true;
+            startApp();
+          }
+
         } else {
-          if(!loginModalLocked) showLogin();
+          if(!loginModalLocked && !loginShownOnce){
+            loginShownOnce = true;
+            showLogin();
+          }
         }
 
         return;
@@ -1253,7 +1264,10 @@ function loadProfile(){
         localStorage.removeItem("userPhone");
         localStorage.removeItem("userProfile");
 
-        if(!loginModalLocked) showLogin();
+        if(!loginModalLocked && !loginShownOnce){
+          loginShownOnce = true;
+          showLogin();
+        }
         return;
       }
 
@@ -1273,19 +1287,25 @@ function loadProfile(){
 
       hideLogin();   // 🔥 IMPORTANT
 
-      startApp();
+      // 🔥 FIX: prevent duplicate startApp
+      if(!window.__appBootRequested){
+        window.__appBootRequested = true;
+        startApp();
+      }
 
     })
 
     .catch(() => {
-      if(!loginModalLocked) showLogin();
+      if(!loginModalLocked && !loginShownOnce){
+        loginShownOnce = true;
+        showLogin();
+      }
     })
 
     .finally(() => {
       authFlowRunning = false;
     });
 }
-
 
 // ============================================================
 // 🔥 LOGIN (SAFE + CLEAN)
@@ -1312,7 +1332,7 @@ function login(){
   loginInProgress = true;
 
   // ============================================================
-  // 🔥 UI UPDATE (THIS WAS MISSING)
+  // 🔥 UI UPDATE
   // ============================================================
   btn.innerText = "⏳ Logging...";
   btn.disabled = true;
@@ -1351,7 +1371,12 @@ function login(){
 
       updateNetworkStatus("online");
       applyRoleControl();
-      startApp();
+
+      // 🔥 FIX: prevent duplicate startApp
+      if(!window.__appBootRequested){
+        window.__appBootRequested = true;
+        startApp();
+      }
 
       console.log("✅ Login success");
 
@@ -1375,7 +1400,6 @@ function login(){
       authFlowRunning = false;
     });
 }
-
 
 // ============================================================
 // 🔥 SHOW LOGIN (FINAL HARDENED VERSION)
@@ -9548,7 +9572,13 @@ function refreshAll() {
             document.getElementById("form-modal").style.display = "none";
 
             applyRoleControl();
-            startApp();
+
+            // 🔥 FIX: prevent duplicate startApp
+            if(!window.__appBootRequested){
+              window.__appBootRequested = true;
+              startApp();
+            }
+
             initDutyControl();
 
           } else {
@@ -9581,7 +9611,13 @@ function refreshAll() {
       document.getElementById("form-modal").style.display = "none";
 
       applyRoleControl();
-      startApp();
+
+      // 🔥 FIX: prevent duplicate startApp
+      if(!window.__appBootRequested){
+        window.__appBootRequested = true;
+        startApp();
+      }
+
       initDutyControl();
 
     })
@@ -9595,7 +9631,6 @@ function refreshAll() {
     console.error("❌ loginStaff crash:", e);
   }
 }
-
     
     
     function toggleWeatherDrawer() {
@@ -11033,7 +11068,13 @@ window.addEventListener("load", function () {
         console.log("📴 OFFLINE MODE → APP STARTED");
 
         applyRoleControl?.();
-        startApp?.();
+
+        // 🔥 FIX: prevent duplicate startApp
+        if(!window.__appBootRequested){
+          window.__appBootRequested = true;
+          startApp?.();
+        }
+
         initDutyControl?.();
         loadRangeKML?.();
         loadCompartmentsFromSheet?.();
@@ -11078,7 +11119,10 @@ function startOnlineLoginFlow(){
   const phone = localStorage.getItem("userPhone") || "";
 
   if (!phone) {
-    showLogin();
+    if(!loginModalLocked && !loginShownOnce){
+      loginShownOnce = true;
+      showLogin();
+    }
     authFlowRunning = false;
     return;
   }
@@ -11089,7 +11133,12 @@ function startOnlineLoginFlow(){
 
       if (!profile || profile.error) {
         localStorage.removeItem("userPhone");
-        showLogin();
+
+        if(!loginModalLocked && !loginShownOnce){
+          loginShownOnce = true;
+          showLogin();
+        }
+
         authFlowRunning = false;
         return Promise.reject("Invalid profile");
       }
@@ -11102,7 +11151,12 @@ function startOnlineLoginFlow(){
       updateNetworkStatus("online");
       applyRoleControl?.();
 
-      startApp?.();
+      // 🔥 FIX: prevent duplicate startApp
+      if(!window.__appBootRequested){
+        window.__appBootRequested = true;
+        startApp?.();
+      }
+
       initDutyControl?.();
 
       return callBackend("updateVillageRisk");
@@ -11138,13 +11192,17 @@ function startOnlineLoginFlow(){
     .catch(function (err) {
       console.warn("⚠ startOnlineLoginFlow failed:", err);
       updateNetworkStatus("offline");
-      showLogin();
+
+      if(!loginModalLocked && !loginShownOnce){
+        loginShownOnce = true;
+        showLogin();
+      }
     })
 
     .finally(() => {
       authFlowRunning = false;
     });
-}   function hideSplash(){
+}  function hideSplash(){
 
   const splash = document.getElementById("splash-screen");
   if(!splash) return;
