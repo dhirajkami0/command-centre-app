@@ -1159,221 +1159,166 @@ function applyRoleControl(){
 // ============================================================
 // 🔥 GLOBAL STATE (CRITICAL)
 // ============================================================
-    let isSyncRunning = false;
 // ============================================================
 // 🔥 GLOBAL STATE (STRONG LOCK)
 // ============================================================
+let loginUIShown = false;
+let loginInProgress = false;
+let authFlowRunning = false;
+let loginModalLocked = false;   // 🔥 NEW HARD LOCK
+
+
 // ============================================================
-// 🔥 GLOBAL STATE (CLEAN + FINAL)
+// 🔥 LOAD PROFILE (UNCHANGED LOGIC + HARD GUARD)
 // ============================================================
-    // ================= LOAD PROFILE =================
+
+
+// ============================================================
+// 🔥 LOGIN (STRONG RESET)
+// ============================================================
+// ============================================================
+// 🔥 SHOW LOGIN (FINAL FIX — NO FLICKER EVER)
+// ============================================================
+// ============================================================
+// 🔓 HIDE LOGIN (NEW - REQUIRED)
+// ============================================================
+function hideLogin(){
+
+  const modal = document.getElementById("loginModal");
+
+  if(modal){
+    modal.style.display = "none";
+  }
+
+  // 🔓 unlock everything cleanly
+  loginModalLocked = false;
+  loginUIShown = false;
+
+  console.log("🔓 Login modal unlocked");
+}
+
+
+// ============================================================
+// 🔥 LOAD PROFILE (FIXED SAFE LOGIN TRIGGER)
+// ============================================================
 function loadProfile(){
 
-  const phone = localStorage.getItem("userPhone") || "";
+  console.log("🔁 loadProfile() called");
 
-  if(!phone){
-    showLogin();
+  if(window.userProfile){
+    console.log("✅ Already logged in → skip loadProfile");
     return;
   }
 
-  console.log("📤 Sending phone:", phone);
+  if(authFlowRunning){
+    console.warn("⛔ Skipping loadProfile (auth running)");
+    return;
+  }
+
+  authFlowRunning = true;
+
+  const phone = localStorage.getItem("userPhone") || "";
+
+  // 🔥 NO PHONE → SAFE SHOW
+  if(!phone){
+    setTimeout(() => {
+      if(!loginModalLocked) showLogin();
+    }, 200);
+
+    authFlowRunning = false;
+    return;
+  }
 
   safeBackend("GET_PROFILE", { phone })
 
     .then(profile => {
 
-      // ================= OFFLINE FALLBACK =================
       if(!profile){
 
-        console.warn("⚠ Backend failed, trying offline profile");
+        const saved = localStorage.getItem("userProfile");
 
-        try {
-
-          const saved = localStorage.getItem("userProfile");
-
-          if(saved){
-
-            const offlineProfile = JSON.parse(saved);
-
-            // 🔥 ENSURE STRUCTURE
-            offlineProfile.rawName = offlineProfile.rawName || offlineProfile.name || "";
-            offlineProfile.cleanName = offlineProfile.cleanName || cleanName(offlineProfile.rawName);
-
-            window.userProfile = offlineProfile;
-
-            console.log("📴 USING OFFLINE PROFILE:", offlineProfile);
-
-            updateNetworkStatus("offline");
-
-            applyRoleControl();
-            startApp();
-
-          } else {
-
-            alert("❌ First login requires internet");
-            showLogin();
-          }
-
-        } catch(e){
-          console.error("❌ Offline profile corrupted:", e);
-          localStorage.removeItem("userProfile");
-          showLogin();
+        if(saved){
+          window.userProfile = JSON.parse(saved);
+          updateNetworkStatus("offline");
+          applyRoleControl();
+          startApp();
+        } else {
+          if(!loginModalLocked) showLogin();
         }
 
         return;
       }
 
-      // ================= INVALID =================
       if(profile.error){
-
-        alert("❌ Not authorized");
-
         localStorage.removeItem("userPhone");
         localStorage.removeItem("userProfile");
 
-        showLogin();
+        if(!loginModalLocked) showLogin();
         return;
       }
 
-      // ================= SUCCESS =================
-
-      const raw = profile.rawName || profile.name || "";
-
       const finalProfile = {
-        rawName: raw,
-        cleanName: profile.cleanName || cleanName(raw),
-        role: profile.role || "",
-        beat: profile.beat || "",
-        phone: profile.phone || ""
+        rawName: profile.name,
+        cleanName: profile.cleanName || cleanName(profile.name),
+        role: profile.role,
+        beat: profile.beat,
+        phone: profile.phone
       };
 
       window.userProfile = finalProfile;
-
       localStorage.setItem("userProfile", JSON.stringify(finalProfile));
 
-      console.log("✅ USER:", finalProfile);
-
       updateNetworkStatus("online");
-
       applyRoleControl();
+
+      hideLogin();   // 🔥 IMPORTANT
+
       startApp();
 
     })
 
-    .catch(err => {
+    .catch(() => {
+      if(!loginModalLocked) showLogin();
+    })
 
-      console.error("❌ loadProfile crash:", err);
-
-      const saved = localStorage.getItem("userProfile");
-
-      if(saved){
-        try {
-          const offlineProfile = JSON.parse(saved);
-
-          offlineProfile.rawName = offlineProfile.rawName || offlineProfile.name || "";
-          offlineProfile.cleanName = offlineProfile.cleanName || cleanName(offlineProfile.rawName);
-
-          window.userProfile = offlineProfile;
-
-          updateNetworkStatus("offline");
-
-          applyRoleControl();
-          startApp();
-
-        } catch(e){
-          showLogin();
-        }
-      } else {
-        showLogin();
-      }
-
+    .finally(() => {
+      authFlowRunning = false;
     });
-
 }
 
 
-// ================= LOGIN =================
+// ============================================================
+// 🔥 LOGIN (SAFE + CLEAN)
+// ============================================================
 function login(){
 
-  const btn = document.getElementById("loginBtn");
-  const phone = document.getElementById("loginPhone").value.trim();
+  console.log("🔐 login() called");
 
-  if(phone.length < 10){
-    alert("Enter valid phone number");
+  if(loginInProgress){
+    console.warn("⛔ Login already in progress");
     return;
   }
 
-  if(btn){
-    btn.innerText = "⏳ Logging in...";
-    btn.disabled = true;
+  loginInProgress = true;
+
+  const input = document.getElementById("loginPhone");
+  const phone = input ? input.value.trim() : "";
+
+  if(phone.length < 10){
+    alert("Enter valid phone number");
+    loginInProgress = false;
+    return;
   }
 
   safeBackend("GET_PROFILE", { phone })
 
     .then(profile => {
 
-      if(btn){
-        btn.innerText = "Login";
-        btn.disabled = false;
-      }
-
-      // ============================================================
-      // 🚨 BACKEND NOT REACHABLE (NOT SAME AS OFFLINE)
-      // ============================================================
-      if(profile === null){
-
-        console.warn("⚠ Backend unreachable");
-
-        const saved = localStorage.getItem("userProfile");
-        const savedPhone = localStorage.getItem("userPhone");
-
-        // ================= OFFLINE LOGIN (ONLY LAST USER) =================
-        if(saved && savedPhone === phone){
-
-          console.log("📴 Offline login allowed");
-
-          const offlineProfile = JSON.parse(saved);
-
-          window.userProfile = offlineProfile;
-
-          document.getElementById("loginModal").style.display = "none";
-
-          updateNetworkStatus("offline");
-
-          applyRoleControl();
-          startApp();
-
-        } else {
-
-          if(navigator.onLine){
-            alert("⚠ Server not responding.\nTry again.");
-          } else {
-            alert("❌ No internet connection.\nFirst login must be online.");
-          }
-
-        }
-
+      if(!profile || profile.error){
+        alert("❌ Login failed");
         return;
       }
 
-      // ============================================================
-      // ❌ INVALID USER
-      // ============================================================
-      if(profile.error){
-        alert("❌ Not authorized");
-        return;
-      }
-
-      const role = (profile.role || "").toUpperCase();
-
-      if(role !== "ADMIN" && role !== "TEAM LEADER" && role !== "STAFF"){
-        alert("❌ Not authorized role");
-        return;
-      }
-
-      // ============================================================
-      // ✅ SUCCESS LOGIN
-      // ============================================================
       const finalProfile = {
         rawName: profile.name,
         cleanName: profile.cleanName || cleanName(profile.name),
@@ -1387,109 +1332,94 @@ function login(){
 
       window.userProfile = finalProfile;
 
-      document.getElementById("loginModal").style.display = "none";
-
-      console.log("✅ Logged in:", finalProfile);
+      hideLogin();   // 🔥 central unlock
 
       updateNetworkStatus("online");
-
       applyRoleControl();
       startApp();
+
+      console.log("✅ Login success");
 
     })
 
     .catch(err => {
+      console.warn("⚠ Login error:", err);
+      alert("⚠ Network error");
+    })
 
-      console.error("❌ Login crash:", err);
-
-      if(btn){
-        btn.innerText = "Login";
-        btn.disabled = false;
-      }
-
-      alert("❌ Login failed. Try again.");
-
+    .finally(() => {
+      loginInProgress = false;
+      authFlowRunning = false;
     });
+}
 
-}function showLogin(){
 
-  document.getElementById("loginModal").style.display = "flex";
+// ============================================================
+// 🔥 SHOW LOGIN (FINAL HARDENED VERSION)
+// ============================================================
+function showLogin(){
 
-  // 🔥 ADD THIS PART
+  console.log("🔐 showLogin called");
+
+  const modal = document.getElementById("loginModal");
+
+  if(!modal){
+    console.warn("⚠ loginModal not found");
+    return;
+  }
+
+  if(window.userProfile){
+    console.warn("⛔ Already logged in → skip");
+    return;
+  }
+
+  if(loginModalLocked){
+    console.warn("⛔ Modal locked → skip");
+    return;
+  }
+
+  const isVisible =
+    modal.style.display === "flex" ||
+    modal.style.display === "block" ||
+    modal.classList.contains("active") ||
+    modal.offsetParent !== null;
+
+  if(isVisible){
+    console.warn("⚠ Modal already visible (DOM)");
+    loginModalLocked = true;
+    return;
+  }
+
+  // 🔥 LOCK FIRST
+  loginModalLocked = true;
+
+  modal.style.display = "flex";
+  loginUIShown = true;
+
+  console.log("✅ Login modal shown");
+
   const input = document.getElementById("loginPhone");
 
   if(input){
-
-    input.focus(); // optional but good UX
+    input.focus();
 
     input.onkeypress = function(e){
       if(e.key === "Enter"){
         login();
       }
     };
-
   }
 }
+
+
+// ============================================================
+// 🔥 LOGOUT (UNCHANGED)
+// ============================================================
 function logout(){
   localStorage.removeItem("userPhone");
   location.reload();
-} 
-    
-  async function syncOfflineGPS(){
+}
 
-  // 🔒 PREVENT PARALLEL RUN
-  if(isSyncRunning){
-    console.warn("⛔ Sync already running");
-    return;
-  }
-
-  isSyncRunning = true;
-
-  let records;
-
-  try{
-    records = JSON.parse(localStorage.getItem("offlineGPS") || "[]");
-  }catch(e){
-    console.error("❌ Corrupt offlineGPS");
-    localStorage.removeItem("offlineGPS");
-    isSyncRunning = false;
-    return;
-  }
-
-  if (!records.length){
-    isSyncRunning = false;
-    return;
-  }
-
-  console.log("🔄 Syncing offline GPS:", records.length);
-
-  let remaining = [];
-
-  for(const rec of records){
-
-    try{
-
-      const res = await callBackend("SAVE_PATROL_GPS", rec);
-
-      if(res && res.status === "ok"){
-        console.log("✅ Synced:", rec.id);
-      } else {
-        remaining.push(rec);
-      }
-
-    }catch(e){
-      remaining.push(rec);
-    }
-  }
-
-  localStorage.setItem("offlineGPS", JSON.stringify(remaining));
-
-  console.log("✅ Sync complete. Remaining:", remaining.length);
-
-  isSyncRunning = false;
-}  
-    
-    
     // ================= CONFIG (KEEP THIS ONLY) =================
 window.firebaseConfig = {
   apiKey: "AIzaSyCKLIJC0Mkjg7hjp7Kr5_FYQq704f4oZnY",
@@ -2171,7 +2101,7 @@ function callBackend(action, payload = {}) {
     return null;
   });
 }    
-   function updateDutyStaff(source = "UNKNOWN"){
+    function updateDutyStaff(source = "UNKNOWN"){
 
   console.group("👮 updateDutyStaff CALLED");
 
@@ -11109,15 +11039,19 @@ window.addEventListener("load", function () {
 // ================= ONLINE LOGIN FLOW =================
 function startOnlineLoginFlow(){
 
+  if(authFlowRunning){
+    console.warn("⛔ Auth flow already running");
+    return;
+  }
+  authFlowRunning = true;
+
   const phone = localStorage.getItem("userPhone") || "";
 
   if (!phone) {
-    console.warn("⚠ No phone → login");
     showLogin();
+    authFlowRunning = false;
     return;
   }
-
-  console.log("📤 Sending phone:", phone);
 
   callBackend("GET_PROFILE", { phone: phone })
 
@@ -11126,6 +11060,7 @@ function startOnlineLoginFlow(){
       if (!profile || profile.error) {
         localStorage.removeItem("userPhone");
         showLogin();
+        authFlowRunning = false;
         return Promise.reject("Invalid profile");
       }
 
@@ -11135,112 +11070,50 @@ function startOnlineLoginFlow(){
       localStorage.setItem("userProfile", JSON.stringify(fixedProfile));
 
       updateNetworkStatus("online");
-
       applyRoleControl?.();
 
-      // ======================================================
-      // 🚀 START CORE APP (LIGHT ONLY)
-      // ======================================================
       startApp?.();
-
-      // ⚠ optional (keep if needed)
       initDutyControl?.();
-
-      // ❌ DO NOT LOAD HEAVY MAP DATA HERE
 
       return callBackend("updateVillageRisk");
     })
 
     .then(function (coneData) {
-
       if (!coneData) return null;
-
       window.coneVillages = coneData;
-
       return callBackend("getVillages");
     })
 
     .then(function (villageList) {
 
       if (villageList) {
-
         window.villages = (villageList || []).map(v => ({
           name: v.name || v.Village || "Unknown",
           lat: parseFloat(v.lat),
           lon: parseFloat(v.lon)
         }));
-
       }
 
-      // ======================================================
-      // ⚡ FAST UI REFRESH
-      // ======================================================
       refreshAll?.();
 
-      // ======================================================
-      // 🔥 HIDE SPLASH (IMMEDIATE)
-      // ======================================================
-      try {
-        hideSplash();
-      } catch(e){
-        console.warn("⚠ hideSplash failed");
-      }
+      try { hideSplash(); } catch(e){}
 
-      // ======================================================
-      // 🗺 LOAD GEOJSON (NON-BLOCKING)
-      // ======================================================
-      setTimeout(() => {
-
-        console.log("🗺 Loading GeoJSON layer...");
-
-        try {
-
-          // ✅ NEW FAST LOADER
-          loadRangeKML?.();
-
-          // ⚠ KEEP ONLY IF REALLY NEEDED
-          // (remove if duplicate or heavy)
-          // loadCompartmentsFromSheet?.();
-
-        } catch(e){
-          console.warn("⚠ GeoJSON load failed");
-        }
-
-      }, 500);
-
-      // ======================================================
-      // 🔧 INIT EVENTS (AFTER UI READY)
-      // ======================================================
-      setTimeout(() => {
-        initEventListeners?.();
-      }, 200);
-
-      // ======================================================
-      // ⚡ OPTIONAL: DELAY HEAVY BACKGROUND TASKS
-      // ======================================================
-      setTimeout(() => {
-        try {
-          startChat?.();            // 🔥 delayed Firebase
-        } catch(e){}
-      }, 1500);
-
-      setTimeout(() => {
-        try {
-          cleanOldMessages?.();     // 🔥 delayed cleanup
-        } catch(e){}
-      }, 6000);
+      setTimeout(() => { loadRangeKML?.(); }, 500);
+      setTimeout(() => { initEventListeners?.(); }, 200);
+      setTimeout(() => { startChat?.(); }, 1500);
+      setTimeout(() => { cleanOldMessages?.(); }, 6000);
 
     })
 
     .catch(function (err) {
-
       console.warn("⚠ startOnlineLoginFlow failed:", err);
-
       updateNetworkStatus("offline");
       showLogin();
+    })
 
+    .finally(() => {
+      authFlowRunning = false;
     });
-
 }   function hideSplash(){
 
   const splash = document.getElementById("splash-screen");
@@ -11526,41 +11399,47 @@ function saveOfflineGPS(data){
 // ============================================================
 // 🔄 SYNC OFFLINE
 // ============================================================
-function syncOfflineMoves(){
+async function syncOfflineGPS(){
 
-  let records;
+  if(isSyncRunning || !navigator.onLine) return;
+  if(window.isDutyActive !== true) return;
 
-  try{
-    records = JSON.parse(localStorage.getItem("offlineMoves") || "[]");
-  }catch(e){
-    console.error("❌ Corrupt offlineMoves");
-    localStorage.removeItem("offlineMoves");
+  isSyncRunning = true;
+
+  let list = JSON.parse(localStorage.getItem("offlineGPS") || "[]");
+
+  if(!list.length){
+    isSyncRunning = false;
     return;
   }
 
-  if (!records.length) return;
-
-  console.log("🔄 Syncing offline moves...");
+  list.sort((a,b)=> new Date(a.time) - new Date(b.time));
 
   let remaining = [];
 
-  const promises = records.map(rec => {
+  for(let item of list){
 
-    return callBackend("updateSightingStatus", rec)
-      .then(() => {
-        console.log("✅ Move synced:", rec.id);
-      })
-      .catch(() => {
-        remaining.push(rec);
-      });
+    try {
 
-  });
+      const age = Date.now() - new Date(item.time).getTime();
+      if(age > 30 * 60 * 1000) continue;
 
-  Promise.all(promises).then(() => {
-    localStorage.setItem("offlineMoves", JSON.stringify(remaining));
-    console.log("✅ Move sync complete");
-  });
+      const res = await callBackend("SAVE_PATROL_GPS", item);
+
+      if(!res || res.status !== "ok"){
+        remaining.push(item);
+      }
+
+    } catch(e){
+      remaining.push(item);
+    }
+  }
+
+  localStorage.setItem("offlineGPS", JSON.stringify(remaining));
+
+  isSyncRunning = false;
 }
+
 
 // ============================================================
 // 🔁 AUTO SYNC LOOP
@@ -13501,7 +13380,8 @@ window.openDutyForm = openDutyForm;
     <div id="kmlStatus" style="margin-top:8px; font-size:11px;"></div>
 
   </div>
-<!-- 🔐 LOGIN MODAL (FINAL CLEAN VERSION) -->
+</div>
+<!-- 🔐 LOGIN MODAL -->
 <div id="loginModal" style="
   position:fixed;
   top:0; left:0;
@@ -13519,41 +13399,19 @@ window.openDutyForm = openDutyForm;
     border-radius:12px;
     width:280px;
     text-align:center;
-    box-shadow:0 4px 20px rgba(0,0,0,0.3);
   ">
 
-    <h3 style="margin-bottom:10px;">📱 Enter Phone Number</h3>
+    <h3>📱 Enter Phone Number</h3>
 
     <input id="loginPhone"
       placeholder="Phone Number"
-      type="tel"
-      maxlength="12"
-      style="
-        width:100%;
-        padding:10px;
-        margin:10px 0;
-        border:1px solid #ccc;
-        border-radius:6px;
-        font-size:16px;
-      ">
+      style="width:100%; padding:8px; margin:10px 0;">
 
-    <!-- 🔥 LOGIN BUTTON -->
-    <button id="loginBtn" onclick="login()"
-      style="
-        width:100%;
-        padding:10px;
-        background:#1976d2;
-        color:white;
-        border:none;
-        border-radius:6px;
-        font-size:16px;
-        cursor:pointer;
-      ">
-      Login
-    </button>
-
+   <button id="loginBtn" onclick="login()"
+  style="width:100%; padding:10px; background:#1976d2; color:white; border:none; border-radius:6px;">
+  Login
+</button>
   </div>
-</div>
 </div><div id="end-duty-modal" style="display:none; position:fixed; inset:0; width:100%; height:100%; background:rgba(0,0,0,0.9); z-index:9999999; padding:10px; align-items:center; justify-content:center;">
   <div style="background:#f4f4f4; border-radius:15px; padding:20px; max-width:400px; width:100%; border-top:8px solid #d32f2f;">
 
@@ -13804,5 +13662,4 @@ box-shadow:0 -4px 20px rgba(0,0,0,0.5);
 ">
 </div>
 </body>
-
 </html>
