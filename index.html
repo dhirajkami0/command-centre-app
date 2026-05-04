@@ -2019,78 +2019,119 @@ window.addEventListener("load", function () {
   }
 
 // ======================================================
-// 🔥 GPS WATCHDOG (AUTO RECOVERY)
+// 🔥 GPS WATCHDOG SYSTEM (PRODUCTION GRADE - FINAL)
 // ======================================================
-setInterval(() => {
 
-  // 🔒 Run only during duty
-  if(!window.isDutyActive) return;
+if (!window.__GPS_WATCHDOG_STARTED__) {
 
-  const now = Date.now();
-  const last = window.__lastGpsTime;
+  window.__GPS_WATCHDOG_STARTED__ = true;
 
-  // 🔒 Skip if no GPS has ever been sent yet
-  if(!last) return;
+  // ======================================================
+  // 🔥 RESTART LOCK (PREVENT LOOP / STORM)
+  // ======================================================
+  window.__GPS_RESTARTING__ = false;
 
-  const gap = now - last;
+  function safeGPSRestart(reason){
 
-  // 🔥 Detect stall (>20 sec no GPS)
-  if(gap > 20000){
+    if(window.__GPS_RESTARTING__) return;
 
-    console.error("🚨 GPS DEAD → restarting | gap:", Math.floor(gap/1000), "s");
+    window.__GPS_RESTARTING__ = true;
 
-    try {
-      stopAutoGPS();
-    } catch(e){}
+    console.warn("🔄 GPS controlled restart →", reason);
+
+    if(window.gpsRunning){
+      try { stopAutoGPS(); } catch(e){}
+    }
 
     setTimeout(() => {
 
-      // 🔒 Prevent double start
       if(!window.gpsRunning){
         startAutoGPS();
       }
 
-    }, 1500);
+      // 🔓 unlock after cooldown
+      setTimeout(() => {
+        window.__GPS_RESTARTING__ = false;
+      }, 5000);
 
+    }, 1000);
   }
 
-}, 10000);
 
-// ======================================================
-// 👁 VISIBILITY RESUME FIX (GPS RECOVERY)
-// ======================================================
+  // ======================================================
+  // 🔥 1. HEARTBEAT WATCHDOG (PRIMARY RECOVERY)
+  // ======================================================
+  setInterval(() => {
 
-document.addEventListener("visibilitychange", () => {
+    if(!window.isDutyActive) return;
 
-  if(document.visibilityState === "visible"){
+    const now = Date.now();
+    const last = window.__lastGpsTime;
 
-    console.log("👁 App resumed");
+    const gap = last ? (now - last) : Infinity;
+
+    if(gap > 20000){
+
+      console.error("🚨 GPS DEAD → restarting | gap:", Math.floor(gap/1000), "s");
+
+      safeGPSRestart("heartbeat");
+
+    }
+
+  }, 10000);
+
+
+  // ======================================================
+  // 👁 2. VISIBILITY FORCE RECOVERY (SCREEN OFF FIX)
+  // ======================================================
+  document.addEventListener("visibilitychange", () => {
+
+    if(document.visibilityState === "visible"){
+
+      console.log("👁 App resumed");
+
+      if(window.isDutyActive){
+
+        safeGPSRestart("visibility");
+
+      }
+
+    }
+  });
+
+
+  // ======================================================
+  // 🔥 3. DUTY FAILSAFE (GPS MUST RUN DURING DUTY)
+  // ======================================================
+  setInterval(() => {
 
     if(window.isDutyActive && !window.gpsRunning){
 
-      console.warn("⚠ GPS was OFF → restarting");
+      console.warn("⚠ GPS missing during duty → restart");
 
-      startAutoGPS();
+      safeGPSRestart("duty");
+
     }
 
-  }
-});
+  }, 15000);
+
 
   // ======================================================
-// 🔥 GPS FAILSAFE (DUTY CHECK RESTART)
-// ======================================================
+  // 🔄 4. PERIODIC HARD RESET (ANTI-FREEZE)
+  // ======================================================
+  setInterval(() => {
 
-setInterval(() => {
+    if(window.isDutyActive){
 
-  if(window.isDutyActive && !window.gpsRunning){
+      console.warn("🔄 Periodic GPS refresh");
 
-    console.warn("⚠ GPS missing during duty → restart");
+      safeGPSRestart("periodic");
 
-    startAutoGPS();
-  }
+    }
 
-}, 15000);
-// ======================================================
+  }, 60000); // every 60 sec
+
+}// ======================================================
 // 🔥 END OF LOAD BLOCK
 // ======================================================
 
@@ -11586,12 +11627,7 @@ function sendGPS(lat, lon){
   const now = Date.now();
 
   // ============================================================
-  // 🔥 1. HEARTBEAT (for watchdog)
-  // ============================================================
-  window.__lastGpsTime = now;
-
-  // ============================================================
-  // 🔥 2. DUPLICATE FILTER (same lat/lon)
+  // 🔥 1. DUPLICATE FILTER (same lat/lon)
   // ============================================================
   const key = lat.toFixed(6) + "_" + lon.toFixed(6);
 
@@ -11603,7 +11639,7 @@ function sendGPS(lat, lon){
   window.__lastGPSKey = key;
 
   // ============================================================
-  // 🔥 3. MOVEMENT FILTER (skip <10m)
+  // 🔥 2. MOVEMENT FILTER (skip <10m)
   // ============================================================
   function distance(lat1, lon1, lat2, lon2){
     const R = 6371000;
@@ -11652,6 +11688,10 @@ function sendGPS(lat, lon){
   // ============================================================
   try {
     sendOrStoreGPS(gpsData);
+
+    // 🔥 3. HEARTBEAT (ONLY AFTER SUCCESSFUL SEND)
+    window.__lastGpsTime = now;
+
   } catch(e){
     console.error("❌ GPS send error:", e);
   }
