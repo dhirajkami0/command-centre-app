@@ -11558,6 +11558,12 @@ async function runAutoGPSCycle(){
 
         console.log("📍 Sample:", acc);
 
+        // 🔥 IGNORE VERY BAD SAMPLES (>500m)
+        if(acc > 500){
+          console.warn("🚫 Ignoring very poor GPS:", acc);
+          return;
+        }
+
         if(acc < bestAccuracy){
           bestAccuracy = acc;
           bestLocation = pos;
@@ -11591,8 +11597,12 @@ async function runAutoGPSCycle(){
     } catch(e){}
   }
 
+  // ============================================================
+  // ❌ NO FIX → FAST RETRY (NO GAP)
+  // ============================================================
   if(!bestLocation){
-    console.warn("❌ No GPS fix");
+    console.warn("❌ No GPS fix → retrying fast");
+    await sleep(2000);
     return;
   }
 
@@ -11602,14 +11612,26 @@ async function runAutoGPSCycle(){
 
   console.log("✅ FINAL BEST:", lat, lon, "acc:", acc);
 
-  if(acc > 200){
-    console.warn("⚠ Low accuracy, still sending:", acc);
+  // ============================================================
+  // 🔥 STRICT ACCURACY FILTER
+  // ============================================================
+  if(acc > 100){
+
+    console.warn("⛔ Accuracy too low → skipping:", acc);
+
+    // 🔁 retry quickly instead of waiting full cycle
+    await sleep(2000);
+    return;
   }
 
+  // ============================================================
+  // 🚀 SEND
+  // ============================================================
   sendGPS(lat, lon);
+
+  // 🔥 NORMAL SMALL GAP BEFORE NEXT CYCLE
+  await sleep(1000);
 }
-
-
 // ============================================================
 // 📡 SEND FUNCTION
 // ============================================================
