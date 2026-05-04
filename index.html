@@ -11356,6 +11356,10 @@ function refreshOnlineProfile(){
 // 🚀 AUTO GPS ENGINE (BEST-OF-10-SECONDS LOOP)
 // ============================================================
 
+// ============================================================
+// 🚀 AUTO GPS ENGINE (FINAL STABLE)
+// ============================================================
+
 let autoGpsRunning = false;
 let autoGpsWatchId = null;
 
@@ -11371,7 +11375,7 @@ function startAutoGPS(){
   autoGpsRunning = true;
   window.gpsRunning = true;
 
-  autoGPSLoop(); // start immediately
+  autoGPSLoop();
 }
 
 
@@ -11383,34 +11387,42 @@ function stopAutoGPS(){
   window.gpsRunning = false;
 
   try {
-    navigator.geolocation.clearWatch(autoGpsWatchId);
+    if(autoGpsWatchId){
+      navigator.geolocation.clearWatch(autoGpsWatchId);
+      autoGpsWatchId = null;
+    }
   } catch(e){}
 }
 
 
 // ============================================================
-// 🔁 CONTINUOUS LOOP (NO GAP)
+// 🔁 CONTINUOUS LOOP
 // ============================================================
 async function autoGPSLoop(){
 
   while(autoGpsRunning){
 
-    await runAutoGPSCycle();
+    try {
+      await runAutoGPSCycle();
+    } catch(e){
+      console.error("⚠ Loop error:", e);
+    }
 
   }
 }
 
 
 // ============================================================
-// 📍 ONE CYCLE = 10s COLLECTION + SEND
+// 📍 ONE CYCLE
 // ============================================================
 async function runAutoGPSCycle(){
 
   console.log("⏱ Auto GPS Cycle Start");
 
-  if(window.isDutyActive !== true){
-    console.warn("⛔ Duty not active → skip");
-    await sleep(5000);
+  // 🔥 SAFETY: userProfile required
+  if(!window.userProfile || !window.userProfile.cleanName){
+    console.warn("⛔ No userProfile → skip GPS");
+    await sleep(3000);
     return;
   }
 
@@ -11441,7 +11453,7 @@ async function runAutoGPSCycle(){
 
       {
         enableHighAccuracy: true,
-        timeout: 20000,
+        timeout: 15000,
         maximumAge: 0
       }
     );
@@ -11449,29 +11461,33 @@ async function runAutoGPSCycle(){
     // 🔥 COLLECT FOR 10 SECONDS
     await sleep(10000);
 
-    navigator.geolocation.clearWatch(autoGpsWatchId);
+  } finally {
 
-    if(!bestLocation){
-      console.warn("❌ No GPS fix");
-      return;
-    }
-
-    const lat = +bestLocation.coords.latitude.toFixed(6);
-    const lon = +bestLocation.coords.longitude.toFixed(6);
-    const acc = Math.round(bestLocation.coords.accuracy);
-
-    console.log("✅ FINAL BEST:", lat, lon, "acc:", acc);
-
-    // 🚨 DO NOT BLOCK
-    if(acc > 200){
-      console.warn("⚠ Low accuracy, still sending:", acc);
-    }
-
-    sendGPS(lat, lon);
-
-  } catch(e){
-    console.error("❌ Auto GPS cycle crash:", e);
+    // 🔥 ALWAYS CLEAR WATCH
+    try {
+      if(autoGpsWatchId){
+        navigator.geolocation.clearWatch(autoGpsWatchId);
+        autoGpsWatchId = null;
+      }
+    } catch(e){}
   }
+
+  if(!bestLocation){
+    console.warn("❌ No GPS fix");
+    return;
+  }
+
+  const lat = +bestLocation.coords.latitude.toFixed(6);
+  const lon = +bestLocation.coords.longitude.toFixed(6);
+  const acc = Math.round(bestLocation.coords.accuracy);
+
+  console.log("✅ FINAL BEST:", lat, lon, "acc:", acc);
+
+  if(acc > 200){
+    console.warn("⚠ Low accuracy, still sending:", acc);
+  }
+
+  sendGPS(lat, lon);
 }
 
 
@@ -11480,13 +11496,15 @@ async function runAutoGPSCycle(){
 // ============================================================
 function sendGPS(lat, lon){
 
+  if(!window.userProfile) return;
+
   const now = Date.now();
 
   const gpsData = {
-    id: `${window.userProfile?.cleanName || "USER"}_${lat}_${lon}_${Math.floor(now/60000)}`,
-    name: window.userProfile?.rawName || "",
-    cleanName: window.userProfile?.cleanName || "",
-    phone: window.userProfile?.phone || "",
+    id: `${window.userProfile.cleanName}_${lat}_${lon}_${Math.floor(now/60000)}`,
+    name: window.userProfile.rawName,
+    cleanName: window.userProfile.cleanName,
+    phone: window.userProfile.phone || "",
     source: "AUTO_APP",
     lat,
     lon,
@@ -11504,8 +11522,7 @@ function sendGPS(lat, lon){
 // ============================================================
 function sleep(ms){
   return new Promise(r => setTimeout(r, ms));
-}
-// ============================================================
+}// ============================================================
 // 📡 SEND OR STORE (FORCED)
 // ============================================================
 function flushOfflineGPS(){
