@@ -1452,13 +1452,15 @@ window.firebaseConfig = {
   messagingSenderId: "692498208499",
   appId: "1:692498208499:web:34defc152a3b3411e64986"
 };
-    window.__gridLoadedFromCache = false;
+  window.__gridLoadedFromCache = false;
 let appStarted = false;
 
-async function startApp(){   // 🔥 MADE ASYNC (CRITICAL)
+async function startApp(){
 
-  if(appStarted) return;
-  appStarted = true;
+  if(appStarted){
+    console.warn("⛔ startApp blocked");
+    return;
+  }
 
   console.log("🚀 App Started - Command Centre Initializing");
 
@@ -1501,6 +1503,11 @@ async function startApp(){   // 🔥 MADE ASYNC (CRITICAL)
     // 🔥 BACKEND LOAD (BLOCKING — CRITICAL FIX)
     // ======================================================
     await loadBackendCoverage();   // 🔥 THIS FIXES YOUR ISSUE
+
+    // ======================================================
+    // 🔥 MOVE FLAG HERE (CRITICAL FIX)
+    // ======================================================
+    appStarted = true;
 
     // 🔥 LOCK CACHE (PREVENT OVERWRITE)
     window.__backendLoaded = true;
@@ -1720,7 +1727,7 @@ async function startApp(){   // 🔥 MADE ASYNC (CRITICAL)
   } catch(e){
     console.error("❌ startApp crash:", e);
   }
-}  console.log("🔥 NEW BUILD LOADED - VERSION 999");
+}console.log("🔥 NEW BUILD LOADED - VERSION 999");
 
 // ======================================================
 // 🚀 SMART SERVICE WORKER UPDATE SYSTEM (FINAL)
