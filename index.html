@@ -11349,7 +11349,9 @@ function stopAutoGPS(){
 
 // ============================================================
 // 📍 CORE ENGINE (NO CONDITIONS / NO SKIP)
-// ===========================================================function runAutoGPS(){
+// ============================================================
+
+function runAutoGPS(){
 
   console.log("⏱ runAutoGPS trigger");
 
@@ -11398,6 +11400,7 @@ function stopAutoGPS(){
 // ============================================================
 // 🔥 SEND FUNCTION (UNCHANGED STRUCTURE)
 // ============================================================
+
 function sendGPS(lat, lon, now){
 
   const gpsData = {
@@ -11417,8 +11420,7 @@ function sendGPS(lat, lon, now){
   console.log("📡 Sending GPS");
 
   sendOrStoreGPS(gpsData);
-}
-// ============================================================
+}// ============================================================
 // 📡 SEND OR STORE (FORCED)
 // ============================================================
 
