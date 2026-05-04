@@ -11672,30 +11672,59 @@ function sendGPS(lat, lon){
   const now = Date.now();
 
   // ============================================================
-  // 🔥 1. DUPLICATE FILTER (same lat/lon)
+  // 🔥 0. SAME-SECOND BLOCK (prevents burst flood)
+  // ============================================================
+  const nowSec = Math.floor(now / 1000);
+
+  if(window.__lastSendSec === nowSec){
+    console.log("⛔ Same-second GPS blocked");
+
+    // 🔥 heartbeat alive
+    window.__lastGpsTime = now;
+
+    return;
+  }
+
+  window.__lastSendSec = nowSec;
+
+  // ============================================================
+  // 🔥 1. MIN TIME GAP (prevents rapid spam)
+  // ============================================================
+  if(window.__lastSendTime){
+    const gap = now - window.__lastSendTime;
+
+    if(gap < 6000){ // 🔥 6 sec minimum interval
+      console.log("⛔ Too frequent → skipped:", gap, "ms");
+
+      window.__lastGpsTime = now;
+      return;
+    }
+  }
+
+  // ============================================================
+  // 🔥 2. DUPLICATE FILTER (same lat/lon)
   // ============================================================
   const key = lat.toFixed(6) + "_" + lon.toFixed(6);
 
   if(window.__lastGPSKey === key){
     console.log("⛔ Duplicate GPS skipped");
 
-    // 🔥 keep heartbeat alive (important)
     window.__lastGpsTime = now;
-
     return;
   }
 
   window.__lastGPSKey = key;
 
   // ============================================================
-  // 🔥 2. MOVEMENT FILTER (skip <5m)
+  // 🔥 3. MOVEMENT FILTER (skip <8m → stronger)
   // ============================================================
   function distance(lat1, lon1, lat2, lon2){
     const R = 6371000;
     const dLat = (lat2 - lat1) * Math.PI / 180;
     const dLon = (lon2 - lon1) * Math.PI / 180;
 
-    const a = Math.sin(dLat/2) * Math.sin(dLat/2) +
+    const a =
+      Math.sin(dLat/2) * Math.sin(dLat/2) +
       Math.cos(lat1*Math.PI/180) *
       Math.cos(lat2*Math.PI/180) *
       Math.sin(dLon/2) * Math.sin(dLon/2);
@@ -11707,16 +11736,17 @@ function sendGPS(lat, lon){
 
     const d = distance(window.__lastLat, window.__lastLon, lat, lon);
 
-    if(d < 5){
-      console.log("⛔ Not moved enough:", Math.round(d), "m");
+    if(d < 8){
+      console.log("⛔ Jitter blocked:", Math.round(d), "m");
 
-      // 🔥 keep heartbeat alive (CRITICAL)
       window.__lastGpsTime = now;
-
       return;
     }
   }
 
+  // ============================================================
+  // 🔥 4. UPDATE LAST POSITION
+  // ============================================================
   window.__lastLat = lat;
   window.__lastLon = lon;
 
@@ -11740,19 +11770,26 @@ function sendGPS(lat, lon){
   // 🚀 SEND
   // ============================================================
   try {
+
     sendOrStoreGPS(gpsData);
 
-    // 🔥 HEARTBEAT (ONLY AFTER REAL SEND)
+    // 🔥 mark send time AFTER success
+    window.__lastSendTime = now;
+
+    // 🔥 heartbeat
     window.__lastGpsTime = now;
 
   } catch(e){
     console.error("❌ GPS send error:", e);
+
+    // 🔥 still mark alive (avoid watchdog restart)
+    window.__lastGpsTime = now;
   }
 }
 
 
 // ============================================================
-// 🧰 HELPER
+// 🧰 HELPER (unchanged)
 // ============================================================
 function sleep(ms){
   return new Promise(r => setTimeout(r, ms));
