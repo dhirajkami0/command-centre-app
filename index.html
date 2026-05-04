@@ -1887,155 +1887,159 @@ window.addEventListener("load", function () {
 // 🚀 SERVICE WORKER CONTROLLER CHANGE (FINAL STABLE)
 // ======================================================
 
-if (!window.__SW_CONTROLLER_BOUND__) {
+// ======================================================
+// 🚀 LOAD WRAPPER (CRITICAL - MUST EXIST)
+// ======================================================
+window.addEventListener("load", function () {
 
-  window.__SW_CONTROLLER_BOUND__ = true;
+  // ======================================================
+  // 🚀 SERVICE WORKER CONTROLLER CHANGE (FINAL STABLE)
+  // ======================================================
 
-  navigator.serviceWorker.addEventListener("controllerchange", () => {
+  if (!window.__SW_CONTROLLER_BOUND__) {
 
-    console.log("⚡ controllerchange detected");
+    window.__SW_CONTROLLER_BOUND__ = true;
 
-    // 🔥 RESET TIMER EVERY TIME (CRITICAL FIX)
-    window.__SW_RELOAD_START__ = Date.now();
+    navigator.serviceWorker.addEventListener("controllerchange", () => {
 
-    // 🔒 PREVENT MULTIPLE RELOADS
-    if (window.__SW_REFRESHING__) {
-      console.warn("⛔ Reload already in progress");
-      return;
-    }
+      console.log("⚡ controllerchange detected");
 
-    function safeReload() {
+      // 🔥 RESET TIMER EVERY TIME
+      window.__SW_RELOAD_START__ = Date.now();
 
-      const elapsed = Date.now() - window.__SW_RELOAD_START__;
-
-      const isBusy =
-        window.isFormOpen ||
-        window.isUserTyping ||
-        window.isDutyActive;
-
-      // ======================================================
-      // ⏳ WAIT IF BUSY (MAX 10s)
-      // ======================================================
-      if (isBusy && elapsed < 10000) {
-
-        console.log(
-          "⏳ Waiting before reload...",
-          "| busy:", isBusy,
-          "| elapsed:", Math.floor(elapsed / 1000), "s"
-        );
-
-        setTimeout(safeReload, 2000);
+      if (window.__SW_REFRESHING__) {
+        console.warn("⛔ Reload already in progress");
         return;
       }
 
-      // ======================================================
-      // 🔥 RELOAD
-      // ======================================================
-      window.__SW_REFRESHING__ = true;
+      function safeReload() {
 
-      console.log(
-        elapsed >= 10000
-          ? "⚠ Force reload after timeout"
-          : "🔄 Safe reload"
-      );
+        const elapsed = Date.now() - window.__SW_RELOAD_START__;
 
-      location.reload();
-    }
+        const isBusy =
+          window.isFormOpen ||
+          window.isUserTyping ||
+          window.isDutyActive;
 
-    // 🔥 SMALL DELAY (AVOID RACE CONDITION)
-    setTimeout(safeReload, 1200);
+        // ⏳ WAIT (MAX 10s)
+        if (isBusy && elapsed < 10000) {
 
-    // 🔥 HARD FAILSAFE (GUARANTEED RECOVERY)
-    setTimeout(() => {
-      if (!window.__SW_REFRESHING__) {
-        console.warn("⚠ Fallback reload triggered");
+          console.log(
+            "⏳ Waiting before reload...",
+            "| elapsed:", Math.floor(elapsed / 1000), "s"
+          );
+
+          setTimeout(safeReload, 2000);
+          return;
+        }
+
+        // 🔥 RELOAD
+        window.__SW_REFRESHING__ = true;
+
+        console.log(
+          elapsed >= 10000
+            ? "⚠ Force reload after timeout"
+            : "🔄 Safe reload"
+        );
+
         location.reload();
       }
-    }, 15000);
 
-  });
+      setTimeout(safeReload, 1200);
 
-}
+      // 🔥 FAILSAFE
+      setTimeout(() => {
+        if (!window.__SW_REFRESHING__) {
+          console.warn("⚠ Fallback reload triggered");
+          location.reload();
+        }
+      }, 15000);
 
+    });
 
-// ======================================================
-// 🔥 MAIN APP INIT (UNCHANGED - PRESERVED)
-// ======================================================
-
-console.log("🚀 App Started - Command Centre Initializing");
-
-if (window.__APP_STARTED__) {
-  console.warn("⚠ App already started → skipping duplicate init");
-  return;
-}
-
-window.__APP_STARTED__ = true;
+  }
 
 
-// ================= STATUS =================
-if (!navigator.onLine) {
-  updateNetworkStatus("offline");
-} else {
-  updateNetworkStatus("connecting");
-}
+  // ======================================================
+  // 🔥 MAIN APP INIT
+  // ======================================================
+
+  console.log("🚀 App Started - Command Centre Initializing");
+
+  if (window.__APP_STARTED__) {
+    console.warn("⚠ App already started → skipping duplicate init");
+    return;
+  }
+
+  window.__APP_STARTED__ = true;
 
 
-// ================= UI INIT =================
-try {
-  initResponsiveUI();
-} catch (e) {
-  console.warn("UI Init delayed:", e);
-}
+  // ================= STATUS =================
+  if (!navigator.onLine) {
+    updateNetworkStatus("offline");
+  } else {
+    updateNetworkStatus("connecting");
+  }
 
 
-// ================= PROFILE FLOW =================
-const savedProfile = localStorage.getItem("userProfile");
-
-if (savedProfile) {
-
+  // ================= UI INIT =================
   try {
-
-    const profile = JSON.parse(savedProfile);
-    window.userProfile = normalizeUserProfile(profile);
-
-    console.log("📴 OFFLINE MODE → APP STARTED");
-
-    applyRoleControl?.();
-
-    if (!window.__appBootRequested) {
-      window.__appBootRequested = true;
-      startApp?.();
-    }
-
-    initDutyControl?.();
-    loadRangeKML?.();
-    loadCompartmentsFromSheet?.();
-
-    if (navigator.onLine) {
-      try {
-        syncOfflineMoves?.();
-        syncOfflineSightings?.();
-      } catch (e) {
-        console.warn("⚠ Sync error:", e);
-      }
-    }
-
-    setTimeout(refreshOnlineProfile, 2000);
-
+    initResponsiveUI();
   } catch (e) {
+    console.warn("UI Init delayed:", e);
+  }
 
-    console.error("❌ Corrupt offline profile");
 
-    localStorage.removeItem("userProfile");
+  // ================= PROFILE FLOW =================
+  const savedProfile = localStorage.getItem("userProfile");
+
+  if (savedProfile) {
+
+    try {
+
+      const profile = JSON.parse(savedProfile);
+      window.userProfile = normalizeUserProfile(profile);
+
+      console.log("📴 OFFLINE MODE → APP STARTED");
+
+      applyRoleControl?.();
+
+      if (!window.__appBootRequested) {
+        window.__appBootRequested = true;
+        startApp?.();
+      }
+
+      initDutyControl?.();
+      loadRangeKML?.();
+      loadCompartmentsFromSheet?.();
+
+      if (navigator.onLine) {
+        try {
+          syncOfflineMoves?.();
+          syncOfflineSightings?.();
+        } catch (e) {
+          console.warn("⚠ Sync error:", e);
+        }
+      }
+
+      setTimeout(refreshOnlineProfile, 2000);
+
+    } catch (e) {
+
+      console.error("❌ Corrupt offline profile");
+
+      localStorage.removeItem("userProfile");
+      startOnlineLoginFlow();
+
+    }
+
+  } else {
+
     startOnlineLoginFlow();
 
   }
 
-} else {
-
-  startOnlineLoginFlow();
-
-}
+}); // ✅🔥 CRITICAL CLOSING (DO NOT MISS) 
   // ======================================================
 // 🔧 INIT
 // ======================================================
