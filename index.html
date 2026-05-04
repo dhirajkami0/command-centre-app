@@ -11541,6 +11541,10 @@ async function runAutoGPSCycle(){
   // 🔥 SAFETY: userProfile required
   if(!window.userProfile || !window.userProfile.cleanName){
     console.warn("⛔ No userProfile → skip GPS");
+
+    // 🔥 heartbeat (important)
+    window.__lastGpsTime = Date.now();
+
     await sleep(3000);
     return;
   }
@@ -11561,6 +11565,9 @@ async function runAutoGPSCycle(){
         // 🔥 IGNORE VERY BAD SAMPLES (>500m)
         if(acc > 500){
           console.warn("🚫 Ignoring very poor GPS:", acc);
+
+          // 🔥 still alive
+          window.__lastGpsTime = Date.now();
           return;
         }
 
@@ -11573,7 +11580,11 @@ async function runAutoGPSCycle(){
       },
 
       err => {
+
         console.warn("⚠ GPS error:", err);
+
+        // 🔥 CRITICAL: prevent watchdog restart
+        window.__lastGpsTime = Date.now();
       },
 
       {
@@ -11601,7 +11612,12 @@ async function runAutoGPSCycle(){
   // ❌ NO FIX → FAST RETRY (NO GAP)
   // ============================================================
   if(!bestLocation){
+
     console.warn("❌ No GPS fix → retrying fast");
+
+    // 🔥 heartbeat (critical)
+    window.__lastGpsTime = Date.now();
+
     await sleep(2000);
     return;
   }
@@ -11619,7 +11635,9 @@ async function runAutoGPSCycle(){
 
     console.warn("⛔ Accuracy too low → skipping:", acc);
 
-    // 🔁 retry quickly instead of waiting full cycle
+    // 🔥 heartbeat (critical)
+    window.__lastGpsTime = Date.now();
+
     await sleep(2000);
     return;
   }
@@ -11629,10 +11647,12 @@ async function runAutoGPSCycle(){
   // ============================================================
   sendGPS(lat, lon);
 
-  // 🔥 NORMAL SMALL GAP BEFORE NEXT CYCLE
+  // 🔥 HEARTBEAT AFTER SUCCESS
+  window.__lastGpsTime = Date.now();
+
+  // 🔥 SMALL GAP
   await sleep(1000);
-}
-// ============================================================
+}// ============================================================
 // 📡 SEND FUNCTION
 // ============================================================
 // ============================================================
