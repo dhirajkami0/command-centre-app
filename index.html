@@ -11349,8 +11349,7 @@ function stopAutoGPS(){
 
 // ============================================================
 // 📍 CORE ENGINE (NO CONDITIONS / NO SKIP)
-// ============================================================
-function runAutoGPS(){
+// ===========================================================function runAutoGPS(){
 
   console.log("⏱ runAutoGPS trigger");
 
@@ -11364,63 +11363,27 @@ function runAutoGPS(){
     const now = Date.now();
 
     // ====================================================
-    // 🔥 DISTANCE FUNCTION
+    // 🔥 FIRST POINT ALWAYS SEND
     // ====================================================
-    function getDistance(a, b){
-      const R = 6371000;
-      const dLat = (b.lat - a.lat) * Math.PI/180;
-      const dLon = (b.lon - a.lon) * Math.PI/180;
-
-      const x =
-        Math.sin(dLat/2)**2 +
-        Math.cos(a.lat*Math.PI/180) *
-        Math.cos(b.lat*Math.PI/180) *
-        Math.sin(dLon/2)**2;
-
-      return R * 2 * Math.atan2(Math.sqrt(x), Math.sqrt(1-x));
-    }
-
-    let shouldSend = false;
-
     if(!lastSentPoint){
-      shouldSend = true;
-    } else {
+      console.log("🟢 First GPS → sending");
 
-      const dist = getDistance(lastSentPoint, {lat, lon});
-
-      // 🔥 MOVE RULE
-      if(dist > 5){
-        shouldSend = true;
-      }
-
-      // 🔥 HEARTBEAT RULE (no movement)
-      else if(now - lastSentTime > 30000){
-        shouldSend = true;
-        console.log("💓 Heartbeat send");
-      }
-    }
-
-    if(!shouldSend){
-      console.log("⛔ Skipped duplicate");
+      sendGPS(lat, lon, now);
       return;
     }
 
-    const gpsData = {
-      id: `${window.userProfile?.cleanName || "USER"}_${lat}_${lon}_${Date.now()}`,
-      name: window.userProfile?.rawName || "",
-      cleanName: window.userProfile?.cleanName || "",
-      phone: window.userProfile?.phone || "",
-      source: "AUTO_APP",
-      lat,
-      lon,
-      time: new Date().toISOString()
-    };
+    // ====================================================
+    // 🔥 DUPLICATE CHECK (ONLY LOGIC)
+    // ====================================================
+    if(lastSentPoint.lat === lat && lastSentPoint.lon === lon){
+      console.log("⛔ Duplicate skipped (same lat/lon)");
+      return;
+    }
 
-    // 🔥 UPDATE CACHE
-    lastSentPoint = {lat, lon};
-    lastSentTime = now;
-
-    sendOrStoreGPS(gpsData);
+    // ====================================================
+    // 🔥 ALWAYS SEND (NO TIME / NO DISTANCE)
+    // ====================================================
+    sendGPS(lat, lon, now);
 
   }, err => {
     console.warn("⚠ GPS ERROR", err);
@@ -11429,6 +11392,31 @@ function runAutoGPS(){
     timeout: 5000,
     maximumAge: 0
   });
+}
+
+
+// ============================================================
+// 🔥 SEND FUNCTION (UNCHANGED STRUCTURE)
+// ============================================================
+function sendGPS(lat, lon, now){
+
+  const gpsData = {
+    id: `${window.userProfile?.cleanName || "USER"}_${lat}_${lon}_${now}`,
+    name: window.userProfile?.rawName || "",
+    cleanName: window.userProfile?.cleanName || "",
+    phone: window.userProfile?.phone || "",
+    source: "AUTO_APP",
+    lat,
+    lon,
+    time: new Date().toISOString()
+  };
+
+  lastSentPoint = {lat, lon};
+  lastSentTime = now;
+
+  console.log("📡 Sending GPS");
+
+  sendOrStoreGPS(gpsData);
 }
 // ============================================================
 // 📡 SEND OR STORE (FORCED)
