@@ -1299,23 +1299,38 @@ function login(){
     return;
   }
 
-  loginInProgress = true;
-
   const input = document.getElementById("loginPhone");
+  const btn   = document.getElementById("loginBtn");
+
   const phone = input ? input.value.trim() : "";
 
   if(phone.length < 10){
     alert("Enter valid phone number");
-    loginInProgress = false;
     return;
   }
+
+  loginInProgress = true;
+
+  // ============================================================
+  // 🔥 UI UPDATE (THIS WAS MISSING)
+  // ============================================================
+  btn.innerText = "⏳ Logging...";
+  btn.disabled = true;
+  input.disabled = true;
 
   safeBackend("GET_PROFILE", { phone })
 
     .then(profile => {
 
       if(!profile || profile.error){
+
         alert("❌ Login failed");
+
+        // 🔁 RESET UI
+        btn.innerText = "Login";
+        btn.disabled = false;
+        input.disabled = false;
+
         return;
       }
 
@@ -1332,7 +1347,7 @@ function login(){
 
       window.userProfile = finalProfile;
 
-      hideLogin();   // 🔥 central unlock
+      hideLogin();   // close modal
 
       updateNetworkStatus("online");
       applyRoleControl();
@@ -1343,11 +1358,19 @@ function login(){
     })
 
     .catch(err => {
+
       console.warn("⚠ Login error:", err);
       alert("⚠ Network error");
+
+      // 🔁 RESET UI
+      btn.innerText = "Login";
+      btn.disabled = false;
+      input.disabled = false;
+
     })
 
     .finally(() => {
+
       loginInProgress = false;
       authFlowRunning = false;
     });
@@ -13412,7 +13435,8 @@ window.openDutyForm = openDutyForm;
   Login
 </button>
   </div>
-</div><div id="end-duty-modal" style="display:none; position:fixed; inset:0; width:100%; height:100%; background:rgba(0,0,0,0.9); z-index:9999999; padding:10px; align-items:center; justify-content:center;">
+</div>
+  <div id="end-duty-modal" style="display:none; position:fixed; inset:0; width:100%; height:100%; background:rgba(0,0,0,0.9); z-index:9999999; padding:10px; align-items:center; justify-content:center;">
   <div style="background:#f4f4f4; border-radius:15px; padding:20px; max-width:400px; width:100%; border-top:8px solid #d32f2f;">
 
     <div style="display:flex; justify-content:space-between;">
