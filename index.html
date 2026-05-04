@@ -1879,102 +1879,164 @@ window.addEventListener("load", function () {
   // ======================================================
   // 🔄 SAFE RELOAD (NO INTERRUPTION)
   // ======================================================
-  let refreshing = false;
+  // ======================================================
+// 🚀 SERVICE WORKER CONTROLLER CHANGE (FINAL CLEAN FIX)
+// ======================================================
+
+// ======================================================
+// 🚀 SERVICE WORKER CONTROLLER CHANGE (FINAL STABLE)
+// ======================================================
+
+if (!window.__SW_CONTROLLER_BOUND__) {
+
+  window.__SW_CONTROLLER_BOUND__ = true;
 
   navigator.serviceWorker.addEventListener("controllerchange", () => {
 
-    if (refreshing) return;
+    console.log("⚡ controllerchange detected");
+
+    // 🔥 RESET TIMER EVERY TIME (CRITICAL FIX)
+    window.__SW_RELOAD_START__ = Date.now();
+
+    // 🔒 PREVENT MULTIPLE RELOADS
+    if (window.__SW_REFRESHING__) {
+      console.warn("⛔ Reload already in progress");
+      return;
+    }
 
     function safeReload() {
 
-      // 🔥 BLOCK reload during critical activity
-      if (window.isFormOpen || window.isUserTyping || window.isDutyActive) {
-        console.log("⏳ Waiting to reload (user busy)");
-        setTimeout(safeReload, 3000);
+      const elapsed = Date.now() - window.__SW_RELOAD_START__;
+
+      const isBusy =
+        window.isFormOpen ||
+        window.isUserTyping ||
+        window.isDutyActive;
+
+      // ======================================================
+      // ⏳ WAIT IF BUSY (MAX 10s)
+      // ======================================================
+      if (isBusy && elapsed < 10000) {
+
+        console.log(
+          "⏳ Waiting before reload...",
+          "| busy:", isBusy,
+          "| elapsed:", Math.floor(elapsed / 1000), "s"
+        );
+
+        setTimeout(safeReload, 2000);
         return;
       }
 
-      refreshing = true;
+      // ======================================================
+      // 🔥 RELOAD
+      // ======================================================
+      window.__SW_REFRESHING__ = true;
 
-      console.log("🔄 Silent update applied");
+      console.log(
+        elapsed >= 10000
+          ? "⚠ Force reload after timeout"
+          : "🔄 Safe reload"
+      );
 
       location.reload();
     }
 
-    setTimeout(safeReload, 1500);
+    // 🔥 SMALL DELAY (AVOID RACE CONDITION)
+    setTimeout(safeReload, 1200);
+
+    // 🔥 HARD FAILSAFE (GUARANTEED RECOVERY)
+    setTimeout(() => {
+      if (!window.__SW_REFRESHING__) {
+        console.warn("⚠ Fallback reload triggered");
+        location.reload();
+      }
+    }, 15000);
+
   });
 
-  // ======================================================
-  // 🔥 MAIN APP INIT (UNCHANGED)
-  // ======================================================
-  console.log("🚀 App Started - Command Centre Initializing");
+}
 
-  if (window.__APP_STARTED__) {
-    console.warn("⚠ App already started → skipping duplicate init");
-    return;
-  }
 
-  window.__APP_STARTED__ = true;
+// ======================================================
+// 🔥 MAIN APP INIT (UNCHANGED - PRESERVED)
+// ======================================================
 
-  // ================= STATUS =================
-  if (!navigator.onLine) {
-    updateNetworkStatus("offline");
-  } else {
-    updateNetworkStatus("connecting");
-  }
+console.log("🚀 App Started - Command Centre Initializing");
 
-  // ================= UI INIT =================
+if (window.__APP_STARTED__) {
+  console.warn("⚠ App already started → skipping duplicate init");
+  return;
+}
+
+window.__APP_STARTED__ = true;
+
+
+// ================= STATUS =================
+if (!navigator.onLine) {
+  updateNetworkStatus("offline");
+} else {
+  updateNetworkStatus("connecting");
+}
+
+
+// ================= UI INIT =================
+try {
+  initResponsiveUI();
+} catch (e) {
+  console.warn("UI Init delayed:", e);
+}
+
+
+// ================= PROFILE FLOW =================
+const savedProfile = localStorage.getItem("userProfile");
+
+if (savedProfile) {
+
   try {
-    initResponsiveUI();
-  } catch (e) {
-    console.warn("UI Init delayed:", e);
-  }
 
-  // ================= PROFILE FLOW =================
-  const savedProfile = localStorage.getItem("userProfile");
+    const profile = JSON.parse(savedProfile);
+    window.userProfile = normalizeUserProfile(profile);
 
-  if (savedProfile) {
+    console.log("📴 OFFLINE MODE → APP STARTED");
 
-    try {
+    applyRoleControl?.();
 
-      const profile = JSON.parse(savedProfile);
-      window.userProfile = normalizeUserProfile(profile);
-
-      console.log("📴 OFFLINE MODE → APP STARTED");
-
-      applyRoleControl?.();
-
-      if(!window.__appBootRequested){
-        window.__appBootRequested = true;
-        startApp?.();
-      }
-
-      initDutyControl?.();
-      loadRangeKML?.();
-      loadCompartmentsFromSheet?.();
-
-      if (navigator.onLine) {
-        try {
-          syncOfflineMoves?.();
-          syncOfflineSightings?.();
-        } catch (e) {
-          console.warn("⚠ Sync error:", e);
-        }
-      }
-
-      setTimeout(refreshOnlineProfile, 2000);
-
-    } catch (e) {
-      console.error("❌ Corrupt offline profile");
-      localStorage.removeItem("userProfile");
-      startOnlineLoginFlow();
+    if (!window.__appBootRequested) {
+      window.__appBootRequested = true;
+      startApp?.();
     }
 
-  } else {
+    initDutyControl?.();
+    loadRangeKML?.();
+    loadCompartmentsFromSheet?.();
+
+    if (navigator.onLine) {
+      try {
+        syncOfflineMoves?.();
+        syncOfflineSightings?.();
+      } catch (e) {
+        console.warn("⚠ Sync error:", e);
+      }
+    }
+
+    setTimeout(refreshOnlineProfile, 2000);
+
+  } catch (e) {
+
+    console.error("❌ Corrupt offline profile");
+
+    localStorage.removeItem("userProfile");
     startOnlineLoginFlow();
+
   }
 
-});// ======================================================
+} else {
+
+  startOnlineLoginFlow();
+
+}
+  // ======================================================
 // 🔧 INIT
 // ======================================================
 // ======================================================
@@ -2092,34 +2154,7 @@ function resetUpdateUI() {
 // ======================================================
 // 🔄 ACTIVATE → RELOAD
 // ======================================================
-navigator.serviceWorker.addEventListener("controllerchange", () => {
-
-  if (refreshing) return;
-
-  function safeReload(){
-
-    // 🔥 BLOCK reload during critical usage
-    if (
-      window.isFormOpen ||
-      window.isUserTyping ||
-      window.isDutyActive
-    ){
-      console.log("⏳ Update ready, waiting for safe state...");
-      setTimeout(safeReload, 3000);
-      return;
-    }
-
-    refreshing = true;
-
-    console.log("🔄 New version active (safe reload)");
-
-    location.reload();
-  }
-
-  // 🔥 slight delay prevents flicker + race condition
-  setTimeout(safeReload, 1500);
-
-});/* ============================================================
+/* ============================================================
    🔥 GLOBAL MASTER DATA (CRASH-PROOF)
 ============================================================ */
 
