@@ -1775,6 +1775,9 @@ async function startApp(){
 // ======================================================
 // 🔥 GLOBAL STATE
 // ======================================================
+// ======================================================
+// 🔥 GLOBAL STATE
+// ======================================================
 let newWorker = null;
 let isUpdating = false;
 let refreshing = false;
@@ -1782,10 +1785,14 @@ let refreshing = false;
 const APP_VERSION = "v1006";
 console.log("🔥 VERSION", APP_VERSION);
 
+
+// ======================================================
+// 🚀 SINGLE LOAD WRAPPER (ONLY ONE - FINAL)
+// ======================================================
 window.addEventListener("load", function () {
 
-  // 🔥 MASTER LOCK (ABSOLUTE)
-  if(window.__LOAD_EXECUTED__){
+  // 🔥 MASTER LOCK
+  if (window.__LOAD_EXECUTED__) {
     console.warn("⛔ Duplicate load blocked");
     return;
   }
@@ -1793,11 +1800,13 @@ window.addEventListener("load", function () {
 
   console.log("🚀 LOAD INIT START");
 
+
   // ======================================================
   // 🔧 VERSION TAG
   // ======================================================
   const versionEl = document.getElementById("versionTag");
   if (versionEl) versionEl.innerText = APP_VERSION;
+
 
   // ======================================================
   // 🔥 SPLASH SCREEN
@@ -1818,8 +1827,9 @@ window.addEventListener("load", function () {
     }, 1800);
   }
 
+
   // ======================================================
-  // 🔥 SERVICE WORKER (PRODUCTION SAFE SILENT MODE)
+  // 🔥 SERVICE WORKER REGISTER (FIXED)
   // ======================================================
   if ("serviceWorker" in navigator && !window.__SW_REGISTERED__) {
 
@@ -1830,13 +1840,13 @@ window.addEventListener("load", function () {
 
       console.log("✅ SW Registered");
 
-      // 🔁 periodic update check
-      setInterval(() => reg.update(), 60000);
-      reg.update();
+      // ❌ REMOVE INTERVAL (WAS CAUSING LOOP)
+      // setInterval(() => reg.update(), 60000);
 
-      // ======================================================
-      // 🔥 HANDLE UPDATE (SILENT)
-      // ======================================================
+      // ✅ ONLY ONE CHECK
+      setTimeout(() => reg.update(), 5000);
+
+
       function handleUpdate(worker) {
 
         if (!worker) return;
@@ -1847,12 +1857,11 @@ window.addEventListener("load", function () {
             worker.state === "installed" &&
             navigator.serviceWorker.controller
           ) {
-            console.log("⚡ New version ready (silent)");
+            console.log("⚡ New version ready");
 
-            // 🔥 activate immediately
             try {
               worker.postMessage({ action: "skipWaiting" });
-            } catch(e){
+            } catch (e) {
               console.warn("⚠ skipWaiting failed:", e);
             }
           }
@@ -1860,12 +1869,8 @@ window.addEventListener("load", function () {
         });
       }
 
-      // already waiting
-      if (reg.waiting) {
-        handleUpdate(reg.waiting);
-      }
+      if (reg.waiting) handleUpdate(reg.waiting);
 
-      // update found
       reg.addEventListener("updatefound", () => {
         handleUpdate(reg.installing);
       });
@@ -1876,26 +1881,10 @@ window.addEventListener("load", function () {
     });
   }
 
-  // ======================================================
-  // 🔄 SAFE RELOAD (NO INTERRUPTION)
-  // ======================================================
-  // ======================================================
-// 🚀 SERVICE WORKER CONTROLLER CHANGE (FINAL CLEAN FIX)
-// ======================================================
-
-// ======================================================
-// 🚀 SERVICE WORKER CONTROLLER CHANGE (FINAL STABLE)
-// ======================================================
-
-// ======================================================
-// 🚀 LOAD WRAPPER (CRITICAL - MUST EXIST)
-// ======================================================
-window.addEventListener("load", function () {
 
   // ======================================================
-  // 🚀 SERVICE WORKER CONTROLLER CHANGE (FINAL STABLE)
+  // 🚀 SERVICE WORKER CONTROLLER CHANGE (FINAL FIX)
   // ======================================================
-
   if (!window.__SW_CONTROLLER_BOUND__) {
 
     window.__SW_CONTROLLER_BOUND__ = true;
@@ -1904,7 +1893,6 @@ window.addEventListener("load", function () {
 
       console.log("⚡ controllerchange detected");
 
-      // 🔥 RESET TIMER EVERY TIME
       window.__SW_RELOAD_START__ = Date.now();
 
       if (window.__SW_REFRESHING__) {
@@ -1921,7 +1909,6 @@ window.addEventListener("load", function () {
           window.isUserTyping ||
           window.isDutyActive;
 
-        // ⏳ WAIT (MAX 10s)
         if (isBusy && elapsed < 10000) {
 
           console.log(
@@ -1933,12 +1920,11 @@ window.addEventListener("load", function () {
           return;
         }
 
-        // 🔥 RELOAD
         window.__SW_REFRESHING__ = true;
 
         console.log(
           elapsed >= 10000
-            ? "⚠ Force reload after timeout"
+            ? "⚠ Force reload"
             : "🔄 Safe reload"
         );
 
@@ -1950,7 +1936,7 @@ window.addEventListener("load", function () {
       // 🔥 FAILSAFE
       setTimeout(() => {
         if (!window.__SW_REFRESHING__) {
-          console.warn("⚠ Fallback reload triggered");
+          console.warn("⚠ Fallback reload");
           location.reload();
         }
       }, 15000);
@@ -1963,11 +1949,10 @@ window.addEventListener("load", function () {
   // ======================================================
   // 🔥 MAIN APP INIT
   // ======================================================
-
   console.log("🚀 App Started - Command Centre Initializing");
 
   if (window.__APP_STARTED__) {
-    console.warn("⚠ App already started → skipping duplicate init");
+    console.warn("⚠ App already started → skipping");
     return;
   }
 
@@ -2026,7 +2011,7 @@ window.addEventListener("load", function () {
 
     } catch (e) {
 
-      console.error("❌ Corrupt offline profile");
+      console.error("❌ Corrupt profile");
 
       localStorage.removeItem("userProfile");
       startOnlineLoginFlow();
@@ -2039,7 +2024,9 @@ window.addEventListener("load", function () {
 
   }
 
-}); // ✅🔥 CRITICAL CLOSING (DO NOT MISS) 
+}); // ✅🔥 ONLY ONE FINAL CLOSING
+    
+    // ✅🔥 CRITICAL CLOSING (DO NOT MISS) 
   // ======================================================
 // 🔧 INIT
 // ======================================================
