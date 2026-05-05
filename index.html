@@ -1508,7 +1508,7 @@ async function startApp(){   // 🔥 MADE ASYNC (CRITICAL)
     // 🔥 SAFETY: Ensure GPS is OFF initially
     if(window.gpsRunning){
       console.warn("⚠ GPS was running unexpectedly → stopping");
-      stopAutoGPS();
+     // stopAutoGPS();
     }
 
     // ======================================================
@@ -2046,7 +2046,7 @@ if (!window.__GPS_WATCHDOG_STARTED__) {
     setTimeout(() => {
 
       if(!window.gpsRunning){
-        startAutoGPS();
+       // startAutoGPS();
       }
 
       // 🔓 unlock after cooldown
@@ -2974,7 +2974,7 @@ function autoShowEndDuty(){
         if(!window.gpsRunning){
           try {
             console.log("🚀 Starting Auto GPS (duty active)");
-            startAutoGPS();   // 🔥 let this manage gpsRunning internally
+            //startAutoGPS();   // 🔥 let this manage gpsRunning internally
           } catch(e){
             console.error("❌ startAutoGPS error:", e);
           }
@@ -2999,7 +2999,7 @@ function autoShowEndDuty(){
 
           try {
             console.log("🛑 Stopping Auto GPS (duty off)");
-            stopAutoGPS();   // 🔥 let this manage gpsRunning internally
+           // stopAutoGPS();   // 🔥 let this manage gpsRunning internally
           } catch(e){}
 
           try { localStorage.removeItem("offlineGPS"); } catch(e){}
@@ -3066,7 +3066,7 @@ function initDutyControl(){
     // 🔥 SAFE RESET
     if(window.gpsRunning){
       try {
-        stopAutoGPS();
+        //stopAutoGPS();
         window.gpsRunning = false;
       } catch(e){}
     }
@@ -11494,7 +11494,7 @@ function startAutoGPS(){
   autoGpsRunning = true;
   window.gpsRunning = true;
 
-  autoGPSLoop();
+  //autoGPSLoop();
 }
 
 
@@ -11522,7 +11522,7 @@ async function autoGPSLoop(){
   while(autoGpsRunning){
 
     try {
-      await runAutoGPSCycle();
+      //await runAutoGPSCycle();
     } catch(e){
       console.error("⚠ Loop error:", e);
     }
@@ -11555,7 +11555,7 @@ async function runAutoGPSCycle(){
 
   try {
 
-    autoGpsWatchId = navigator.geolocation.watchPosition(
+   // autoGpsWatchId = navigator.geolocation.watchPosition(
 
       pos => {
 
