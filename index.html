@@ -11538,19 +11538,21 @@ async function runAutoGPSCycle(){
 
   console.log("⏱ Auto GPS Cycle Start");
 
-  // 🔥 SAFETY: userProfile required
+  // 🔒 SAFETY: userProfile required
   if(!window.userProfile || !window.userProfile.cleanName){
     console.warn("⛔ No userProfile → skip GPS");
 
-    // 🔥 heartbeat (important)
     window.__lastGpsTime = Date.now();
-
     await sleep(3000);
     return;
   }
 
   let bestLocation = null;
   let bestAccuracy = Infinity;
+  let gotAnyFix = false;
+
+  const WARMUP_TIME = 12000;   // 🔥 allow GPS lock
+  const MAX_WAIT = 20000;
 
   try {
 
@@ -11559,47 +11561,48 @@ async function runAutoGPSCycle(){
       pos => {
 
         const acc = Math.round(pos.coords.accuracy);
+        gotAnyFix = true;
 
         console.log("📍 Sample:", acc);
 
-        // 🔥 IGNORE VERY BAD SAMPLES (>500m)
-        if(acc > 500){
-          console.warn("🚫 Ignoring very poor GPS:", acc);
-
-          // 🔥 still alive
+        // 🔥 Ignore extreme garbage (>800m)
+        if(acc > 800){
+          console.warn("🚫 Ignoring extreme poor GPS:", acc);
           window.__lastGpsTime = Date.now();
           return;
         }
 
+        // 🔥 Best-of-window logic
         if(acc < bestAccuracy){
           bestAccuracy = acc;
           bestLocation = pos;
           console.log("⭐ Best updated:", acc);
         }
 
+        // 🔥 keep watchdog alive
+        window.__lastGpsTime = Date.now();
+
       },
 
       err => {
-
         console.warn("⚠ GPS error:", err);
 
-        // 🔥 CRITICAL: prevent watchdog restart
+        // 🔥 prevent watchdog restart loop
         window.__lastGpsTime = Date.now();
       },
 
       {
         enableHighAccuracy: true,
-        timeout: 15000,
+        timeout: MAX_WAIT,
         maximumAge: 0
       }
     );
 
-    // 🔥 COLLECT FOR 10 SECONDS
-    await sleep(10000);
+    // 🔥 collect samples (IMPORTANT)
+    await sleep(WARMUP_TIME);
 
   } finally {
 
-    // 🔥 ALWAYS CLEAR WATCH
     try {
       if(autoGpsWatchId){
         navigator.geolocation.clearWatch(autoGpsWatchId);
@@ -11609,16 +11612,35 @@ async function runAutoGPSCycle(){
   }
 
   // ============================================================
-  // ❌ NO FIX → FAST RETRY (NO GAP)
+  // ❌ NO SIGNAL AT ALL
+  // ============================================================
+  if(!gotAnyFix){
+
+    console.error("🚨 No GPS signal");
+
+    if(window.__lastLat){
+      console.warn("⚠ Using last known location (no signal)");
+      sendGPS(window.__lastLat, window.__lastLon);
+    }
+
+    window.__lastGpsTime = Date.now();
+    await sleep(3000);
+    return;
+  }
+
+  // ============================================================
+  // ❌ NO BEST POINT
   // ============================================================
   if(!bestLocation){
 
-    console.warn("❌ No GPS fix → retrying fast");
+    console.warn("⚠ No best location → fallback");
 
-    // 🔥 heartbeat (critical)
+    if(window.__lastLat){
+      sendGPS(window.__lastLat, window.__lastLon);
+    }
+
     window.__lastGpsTime = Date.now();
-
-    await sleep(2000);
+    await sleep(3000);
     return;
   }
 
@@ -11629,29 +11651,38 @@ async function runAutoGPSCycle(){
   console.log("✅ FINAL BEST:", lat, lon, "acc:", acc);
 
   // ============================================================
-  // 🔥 STRICT ACCURACY FILTER
+  // 🔥 ADAPTIVE ACCURACY (CRITICAL FIX)
   // ============================================================
-  if(acc > 100){
 
-    console.warn("⛔ Accuracy too low → skipping:", acc);
+  if(acc <= 50){
+    console.log("🟢 High accuracy");
+    sendGPS(lat, lon);
+  }
+  else if(acc <= 150){
+    console.log("🟡 Medium accuracy");
+    sendGPS(lat, lon);
+  }
+  else if(acc <= 400){
+    console.warn("🟠 Low accuracy → still sending (no gap)");
+    sendGPS(lat, lon);
+  }
+  else {
+    console.warn("🔴 Very poor GPS → fallback");
 
-    // 🔥 heartbeat (critical)
-    window.__lastGpsTime = Date.now();
-
-    await sleep(2000);
-    return;
+    if(window.__lastLat){
+      sendGPS(window.__lastLat, window.__lastLon);
+    }
   }
 
-  // ============================================================
-  // 🚀 SEND
-  // ============================================================
-  sendGPS(lat, lon);
+  // 🔥 update last known
+  window.__lastLat = lat;
+  window.__lastLon = lon;
 
-  // 🔥 HEARTBEAT AFTER SUCCESS
+  // 🔥 heartbeat
   window.__lastGpsTime = Date.now();
 
-  // 🔥 SMALL GAP
-  await sleep(1000);
+  // 🔥 minimal gap (continuous tracking)
+  await sleep(1500);
 }// ============================================================
 // 📡 SEND FUNCTION
 // ============================================================
