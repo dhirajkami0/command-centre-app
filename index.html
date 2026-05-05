@@ -11536,11 +11536,11 @@ async function autoGPSLoop(){
 // ============================================================
 async function runAutoGPSCycle(){
 
-  console.log("⏱ Auto GPS Cycle Start");
+  console.log("⏱ AUTO GPS (MERGED ENGINE)");
 
-  // 🔒 SAFETY: userProfile required
+  // 🔒 SAFETY
   if(!window.userProfile || !window.userProfile.cleanName){
-    console.warn("⛔ No userProfile → skip GPS");
+    console.warn("⛔ No userProfile");
 
     window.__lastGpsTime = Date.now();
     await sleep(3000);
@@ -11549,10 +11549,9 @@ async function runAutoGPSCycle(){
 
   let bestLocation = null;
   let bestAccuracy = Infinity;
-  let gotAnyFix = false;
+  let gotFix = false;
 
-  const WARMUP_TIME = 12000;   // 🔥 allow GPS lock
-  const MAX_WAIT = 20000;
+  const COLLECTION_TIME = 10000; // 🔥 same as manual
 
   try {
 
@@ -11561,45 +11560,41 @@ async function runAutoGPSCycle(){
       pos => {
 
         const acc = Math.round(pos.coords.accuracy);
-        gotAnyFix = true;
+        gotFix = true;
 
         console.log("📍 Sample:", acc);
 
-        // 🔥 Ignore extreme garbage (>800m)
+        // 🔥 IGNORE EXTREME GARBAGE
         if(acc > 800){
-          console.warn("🚫 Ignoring extreme poor GPS:", acc);
           window.__lastGpsTime = Date.now();
           return;
         }
 
-        // 🔥 Best-of-window logic
+        // 🔥 EXACT SAME AS MANUAL
         if(acc < bestAccuracy){
           bestAccuracy = acc;
           bestLocation = pos;
           console.log("⭐ Best updated:", acc);
         }
 
-        // 🔥 keep watchdog alive
         window.__lastGpsTime = Date.now();
 
       },
 
       err => {
         console.warn("⚠ GPS error:", err);
-
-        // 🔥 prevent watchdog restart loop
         window.__lastGpsTime = Date.now();
       },
 
       {
         enableHighAccuracy: true,
-        timeout: MAX_WAIT,
+        timeout: 20000,
         maximumAge: 0
       }
     );
 
-    // 🔥 collect samples (IMPORTANT)
-    await sleep(WARMUP_TIME);
+    // 🔥 SAME AS MANUAL (CRITICAL)
+    await sleep(COLLECTION_TIME);
 
   } finally {
 
@@ -11612,14 +11607,13 @@ async function runAutoGPSCycle(){
   }
 
   // ============================================================
-  // ❌ NO SIGNAL AT ALL
+  // ❌ NO GPS AT ALL
   // ============================================================
-  if(!gotAnyFix){
+  if(!gotFix){
 
     console.error("🚨 No GPS signal");
 
     if(window.__lastLat){
-      console.warn("⚠ Using last known location (no signal)");
       sendGPS(window.__lastLat, window.__lastLon);
     }
 
@@ -11629,11 +11623,11 @@ async function runAutoGPSCycle(){
   }
 
   // ============================================================
-  // ❌ NO BEST POINT
+  // ❌ NO BEST → fallback
   // ============================================================
   if(!bestLocation){
 
-    console.warn("⚠ No best location → fallback");
+    console.warn("⚠ No best → fallback");
 
     if(window.__lastLat){
       sendGPS(window.__lastLat, window.__lastLon);
@@ -11651,28 +11645,11 @@ async function runAutoGPSCycle(){
   console.log("✅ FINAL BEST:", lat, lon, "acc:", acc);
 
   // ============================================================
-  // 🔥 ADAPTIVE ACCURACY (CRITICAL FIX)
+  // 🔥 CRITICAL: DO NOT OVER-FILTER (manual behavior)
   // ============================================================
 
-  if(acc <= 50){
-    console.log("🟢 High accuracy");
-    sendGPS(lat, lon);
-  }
-  else if(acc <= 150){
-    console.log("🟡 Medium accuracy");
-    sendGPS(lat, lon);
-  }
-  else if(acc <= 400){
-    console.warn("🟠 Low accuracy → still sending (no gap)");
-    sendGPS(lat, lon);
-  }
-  else {
-    console.warn("🔴 Very poor GPS → fallback");
-
-    if(window.__lastLat){
-      sendGPS(window.__lastLat, window.__lastLon);
-    }
-  }
+  // ALWAYS SEND (sendGPS already has filters)
+  sendGPS(lat, lon);
 
   // 🔥 update last known
   window.__lastLat = lat;
@@ -11681,7 +11658,7 @@ async function runAutoGPSCycle(){
   // 🔥 heartbeat
   window.__lastGpsTime = Date.now();
 
-  // 🔥 minimal gap (continuous tracking)
+  // 🔥 SMALL GAP (continuous)
   await sleep(1500);
 }// ============================================================
 // 📡 SEND FUNCTION
