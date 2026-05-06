@@ -11534,6 +11534,9 @@ async function autoGPSLoop(){
 // ============================================================
 // 📍 ONE CYCLE
 // ============================================================
+// ============================================================
+// 📍 ONE CYCLE
+// ============================================================
 async function runAutoGPSCycle(){
 
   console.log("⏱ AUTO GPS (MERGED ENGINE)");
@@ -11555,7 +11558,7 @@ async function runAutoGPSCycle(){
 
   try {
 
-   // autoGpsWatchId = navigator.geolocation.watchPosition(
+    autoGpsWatchId = navigator.geolocation.watchPosition(
 
       pos => {
 
