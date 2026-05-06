@@ -3333,20 +3333,29 @@ function autoShowEndDuty(){
 
   try {
 
-    if(!window.userProfile || !window.userProfile.rawName){
+    if(
+      !window.userProfile ||
+      !window.userProfile.rawName
+    ){
       dutyCheckRunning = false;
       console.groupEnd();
       return;
     }
 
-    const cleanedName = window.userProfile.cleanName;
-    const wasActive = window.isDutyActive === true;
+    const cleanedName =
+      window.userProfile.cleanName;
 
-    callBackend("checkDutyFromSheet", {
-      leader: cleanedName
-    })
+    const wasActive =
+      window.isDutyActive === true;
 
-    .then(function(res){
+    callBackend(
+      "checkDutyFromSheet",
+      {
+        leader: cleanedName
+      }
+    )
+
+    .then(async function(res){
 
       window.__dutyChecked = true;
 
@@ -3356,48 +3365,78 @@ function autoShowEndDuty(){
       if(res && res.active){
 
         window.isDutyActive = true;
+
         updateDutyUI(true);
 
-        console.log("🟢 DUTY ACTIVE");
+        console.log(
+          "🟢 DUTY ACTIVE"
+        );
 
+        // =====================================================
         // 🔥 ONLY ON TRANSITION
+        // =====================================================
         if(!wasActive){
 
-          console.warn("🧹 Duty START → reset local session");
+          console.warn(
+            "🧹 Duty START → reset local session"
+          );
 
-          try { localStorage.removeItem("offlineGPS"); } catch(e){}
+          try{
+            localStorage.removeItem(
+              "offlineGPS"
+            );
+          }catch(e){}
 
-          try {
+          try{
+
             window.lastManualKey = "";
             lastLocationKey = "";
             lastGpsSent = 0;
-          } catch(e){}
+
+          }catch(e){}
 
           // =====================================================
-          // 🔥 START ANDROID NATIVE GPS
+          // 🔥 WAIT FOR PROFILE + BRIDGE
           // =====================================================
-          try {
+          try{
 
-            console.log(
-              "📱 notifyAndroidDuty(true)"
-            );
+            let tries = 0;
 
-            if(window.Android){
-
-              Android.updateDutyState(true);
+            while(
+              !window.userProfile &&
+              tries < 20
+            ){
 
               console.log(
-                "✅ Android.updateDutyState(true) sent"
+                "⏳ Waiting for userProfile..."
               );
 
-            }else{
-
-              console.warn(
-                "❌ Android bridge missing"
+              await new Promise(r =>
+                setTimeout(r, 500)
               );
+
+              tries++;
             }
 
-          } catch(e){
+            if(!window.userProfile){
+
+              console.warn(
+                "❌ userProfile still missing"
+              );
+
+              return;
+            }
+
+            console.log(
+              "✅ userProfile READY"
+            );
+
+            // =====================================================
+            // 🔥 START ANDROID NATIVE GPS
+            // =====================================================
+            await notifyAndroidDuty(true);
+
+          }catch(e){
 
             console.error(
               "❌ notifyAndroidDuty(true) failed:",
@@ -3436,14 +3475,21 @@ function autoShowEndDuty(){
       else {
 
         window.isDutyActive = false;
+
         updateDutyUI(false);
 
-        console.log("🔴 DUTY INACTIVE");
+        console.log(
+          "🔴 DUTY INACTIVE"
+        );
 
+        // =====================================================
         // 🔥 ONLY ON TRANSITION
+        // =====================================================
         if(wasActive){
 
-          console.warn("🧹 Duty END → FULL CLEANUP");
+          console.warn(
+            "🧹 Duty END → FULL CLEANUP"
+          );
 
           // =====================================================
           // 🔥 STOP ANDROID NATIVE GPS
@@ -3454,20 +3500,7 @@ function autoShowEndDuty(){
               "📱 notifyAndroidDuty(false)"
             );
 
-            if(window.Android){
-
-              Android.updateDutyState(false);
-
-              console.log(
-                "✅ Android.updateDutyState(false) sent"
-              );
-
-            }else{
-
-              console.warn(
-                "❌ Android bridge missing"
-              );
-            }
+            await notifyAndroidDuty(false);
 
           } catch(e){
 
@@ -3488,7 +3521,11 @@ function autoShowEndDuty(){
           } catch(e){}
 
           try {
-            localStorage.removeItem("offlineGPS");
+
+            localStorage.removeItem(
+              "offlineGPS"
+            );
+
           } catch(e){}
 
           try {
@@ -3514,10 +3551,13 @@ function autoShowEndDuty(){
 
     .finally(function(){
 
+      // =====================================================
       // 🔥 SMALL DELAY TO PREVENT RACE
+      // =====================================================
       setTimeout(() => {
 
         dutyCheckRunning = false;
+
         console.groupEnd();
 
       }, 800);
@@ -3532,10 +3572,10 @@ function autoShowEndDuty(){
     );
 
     dutyCheckRunning = false;
+
     console.groupEnd();
   }
 }
-
 // ======================================================
 // 🔥 INIT DUTY CONTROL (CLEAN)
 // ======================================================
