@@ -2573,29 +2573,84 @@ function resetUpdateUI() {
 // ======================================================
 // 🔄 ACTIVATE → RELOAD
 // ======================================================
-    function notifyAndroidDuty(active){
+    async function notifyAndroidDuty(active){
 
   try{
 
     console.log(
-      "📱 notifyAndroidDuty:",
-      active
+      `📱 notifyAndroidDuty(${active})`
     );
 
-    if(window.Android){
+    // ============================================================
+    // 🔥 WAIT FOR BRIDGE
+    // ============================================================
+    const bridgeReady =
+      await waitForAndroidBridge();
 
-      Android.updateDutyState(
-        active
-      );
-
-      console.log(
-        "✅ Android.updateDutyState sent"
-      );
-
-    }else{
+    if(
+      !bridgeReady ||
+      !window.Android
+    ){
 
       console.warn(
         "❌ Android bridge missing"
+      );
+
+      return;
+    }
+
+    // ============================================================
+    // 🔥 FORCE PROFILE SYNC FIRST
+    // ============================================================
+    if(
+      window.userProfile &&
+      Android.saveUserProfile
+    ){
+
+      console.log(
+        "🚀 Syncing profile before duty..."
+      );
+
+      Android.saveUserProfile(
+        JSON.stringify(
+          window.userProfile
+        )
+      );
+
+      console.log(
+        "✅ PROFILE SENT TO APK"
+      );
+    }
+
+    // ============================================================
+    // 🔥 SEND PHONE
+    // ============================================================
+    if(
+      window.userProfile &&
+      window.userProfile.phone &&
+      Android.savePhone
+    ){
+
+      Android.savePhone(
+        window.userProfile.phone
+      );
+
+      console.log(
+        "📱 PHONE SENT TO APK"
+      );
+    }
+
+    // ============================================================
+    // 🔥 SEND DUTY STATE
+    // ============================================================
+    if(Android.updateDutyState){
+
+      Android.updateDutyState(
+        !!active
+      );
+
+      console.log(
+        `✅ Android.updateDutyState(${active}) sent`
       );
     }
 
