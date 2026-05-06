@@ -1197,7 +1197,48 @@ function hideLogin(){
   console.log("🔓 Login modal unlocked");
 }
 
+// ============================================================
+// 🔥 WAIT FOR ANDROID BRIDGE
+// ============================================================
+function waitForAndroidBridge(timeout = 8000){
 
+  return new Promise(resolve => {
+
+    const start = Date.now();
+
+    const timer = setInterval(() => {
+
+      const ready =
+        window.Android &&
+        typeof Android.saveUserProfile === "function";
+
+      if(ready){
+
+        clearInterval(timer);
+
+        console.log(
+          "✅ Android bridge READY"
+        );
+
+        resolve(true);
+
+        return;
+      }
+
+      if(Date.now() - start > timeout){
+
+        clearInterval(timer);
+
+        console.warn(
+          "❌ Android bridge timeout"
+        );
+
+        resolve(false);
+      }
+
+    }, 300);
+  });
+}
 // ============================================================
 // 🔥 LOAD PROFILE (FIXED SAFE LOGIN TRIGGER)
 // ============================================================
@@ -1243,7 +1284,7 @@ function loadProfile(){
     { phone }
   )
 
-    .then(profile => {
+    .then(async profile => {
 
       // ============================================================
       // 🔥 OFFLINE FALLBACK
@@ -1269,84 +1310,61 @@ function loadProfile(){
           // ============================================================
           try{
 
-  console.group(
-    "📱 ANDROID PROFILE BRIDGE"
-  );
+            const bridgeReady =
+              await waitForAndroidBridge();
 
-  console.log(
-    "window.Android:",
-    window.Android
-  );
+            console.group(
+              "📱 OFFLINE PROFILE BRIDGE"
+            );
 
-  console.log(
-    "typeof Android:",
-    typeof Android
-  );
+            console.log(
+              "window.Android:",
+              window.Android
+            );
 
-  console.log(
-    "Android object:",
-    Android
-  );
+            console.log(
+              "bridgeReady:",
+              bridgeReady
+            );
 
-  console.log(
-    "saveUserProfile exists:",
-    !!(
-      window.Android &&
-      Android.saveUserProfile
-    )
-  );
+            console.log(
+              "PROFILE:",
+              window.userProfile
+            );
 
-  console.log(
-    "savePhone exists:",
-    !!(
-      window.Android &&
-      Android.savePhone
-    )
-  );
+            if(
+              bridgeReady &&
+              window.Android &&
+              Android.saveUserProfile
+            ){
 
-  console.log(
-    "FINAL PROFILE OBJECT:",
-    finalProfile
-  );
+              Android.saveUserProfile(
+                JSON.stringify(
+                  window.userProfile
+                )
+              );
 
-  console.log(
-    "FINAL PROFILE JSON:",
-    JSON.stringify(finalProfile)
-  );
+              console.log(
+                "✅ OFFLINE PROFILE SENT TO APK"
+              );
 
-  if(
-    window.Android &&
-    Android.saveUserProfile
-  ){
+            }else{
 
-    console.log(
-      "🚀 CALLING saveUserProfile..."
-    );
+              console.warn(
+                "❌ Android bridge unavailable"
+              );
+            }
 
-    Android.saveUserProfile(
-      JSON.stringify(finalProfile)
-    );
+            console.groupEnd();
 
-    console.log(
-      "✅ PROFILE SENT TO APK"
-    );
+          }catch(err){
 
-  }else{
+            console.error(
+              "❌ OFFLINE PROFILE BRIDGE FAILED",
+              err
+            );
+          }
 
-    console.warn(
-      "❌ Android.saveUserProfile MISSING"
-    );
-  }
-
-  console.groupEnd();
-
-}catch(err){
-
-  console.error(
-    "❌ saveUserProfile failed",
-    err
-  );
-}
           // 🔥 FIX: prevent duplicate startApp
           if(!window.__appBootRequested){
 
@@ -1435,10 +1453,58 @@ function loadProfile(){
       // ============================================================
       try{
 
+        const bridgeReady =
+          await waitForAndroidBridge();
+
+        console.group(
+          "📱 ANDROID PROFILE BRIDGE"
+        );
+
+        console.log(
+          "window.Android:",
+          window.Android
+        );
+
+        console.log(
+          "bridgeReady:",
+          bridgeReady
+        );
+
+        console.log(
+          "saveUserProfile exists:",
+          !!(
+            window.Android &&
+            Android.saveUserProfile
+          )
+        );
+
+        console.log(
+          "savePhone exists:",
+          !!(
+            window.Android &&
+            Android.savePhone
+          )
+        );
+
+        console.log(
+          "FINAL PROFILE OBJECT:",
+          finalProfile
+        );
+
+        console.log(
+          "FINAL PROFILE JSON:",
+          JSON.stringify(finalProfile)
+        );
+
         if(
+          bridgeReady &&
           window.Android &&
           Android.saveUserProfile
         ){
+
+          console.log(
+            "🚀 CALLING saveUserProfile..."
+          );
 
           Android.saveUserProfile(
             JSON.stringify(finalProfile)
@@ -1448,47 +1514,34 @@ function loadProfile(){
             "✅ PROFILE SENT TO APK"
           );
 
+          // ============================================================
+          // 🔥 SEND PHONE
+          // ============================================================
+          if(Android.savePhone){
+
+            Android.savePhone(
+              finalProfile.phone
+            );
+
+            console.log(
+              "📱 PHONE SENT TO APK"
+            );
+          }
+
         }else{
 
           console.warn(
-            "⚠ Android bridge missing"
+            "❌ Android bridge unavailable"
           );
         }
+
+        console.groupEnd();
 
       }catch(err){
 
         console.error(
-          "❌ saveUserProfile failed",
+          "❌ PROFILE BRIDGE ERROR",
           err
-        );
-      }
-
-      // ============================================================
-      // 🔥 SEND PHONE TO APK
-      // ============================================================
-      try{
-
-        if(
-          window.Android &&
-          Android.savePhone
-        ){
-
-          Android.savePhone(
-            finalProfile.phone
-          );
-
-          console.log(
-            "📱 Phone sent to Android:",
-            finalProfile.phone
-          );
-
-        }
-
-      }catch(e){
-
-        console.error(
-          "❌ savePhone failed:",
-          e
         );
       }
 
