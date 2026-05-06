@@ -4018,13 +4018,37 @@ function showBestLocation() {
 }// ❌ LOCATION ERROR
 map.on('locationerror', function (e) {
 
-  console.error("❌ Location error:", e.message);
+  console.error(
+    "❌ Location error:",
+    e.message
+  );
 
-  alert("❌ GPS error. Enable location & retry.");
+  // ============================================================
+  // 🔥 RETRY INSTEAD OF FAILING IMMEDIATELY
+  // ============================================================
+  setTimeout(() => {
 
-  resetButton();
-});
-    
+    console.log(
+      "🔄 Retrying GPS..."
+    );
+
+    map.locate({
+
+      setView: true,
+
+      maxZoom: 19,
+
+      enableHighAccuracy: true,
+
+      timeout: 30000,
+
+      maximumAge: 0,
+
+      watch: true
+    });
+
+  }, 3000);
+});    
     /* 🔁 CENTER MAP */
     function centerMap() {
       map.setView([26.561, 89.507], 14);
@@ -10970,56 +10994,155 @@ if (!profile || !profile.rawName) {
     console.log("📍 Location set:", lat, lon);
   }
 
-  function tryGPS(){
+ function tryGPS(){
 
-    if (!navigator.geolocation) {
-      console.error("❌ Geolocation not supported");
-      return;
-    }
+  if (!navigator.geolocation) {
 
-    navigator.geolocation.getCurrentPosition(
+    console.error(
+      "❌ Geolocation not supported"
+    );
+
+    return;
+  }
+
+  console.log(
+    "📡 Starting 5 sec GPS scan..."
+  );
+
+  let bestPos = null;
+
+  let bestAcc = Infinity;
+
+  let gpsDone = false;
+
+  const watchId =
+    navigator.geolocation.watchPosition(
 
       function(pos){
-        const lat = pos.coords.latitude.toFixed(6);
-        const lon = pos.coords.longitude.toFixed(6);
-        fillLocation(lat, lon);
-      },
 
-      function(err){
-        console.warn("⚠ GPS failed:", err.message);
+        const acc =
+          pos.coords.accuracy;
 
-        // 🔥 FALLBACK
-        const lat = localStorage.getItem("lastLat");
-        const lon = localStorage.getItem("lastLon");
+        console.log(
+          "📍 GPS UPDATE:",
+          acc + "m"
+        );
 
-        if(lat && lon){
-          console.log("📴 Using last saved location");
-          fillLocation(lat, lon);
-        } else {
-          console.warn("❌ No fallback location available");
+        // =====================================================
+        // 🔥 KEEP BEST GPS
+        // =====================================================
+        if(acc < bestAcc){
+
+          bestAcc = acc;
+
+          bestPos = pos;
+
+          console.log(
+            "🏆 NEW BEST GPS:",
+            acc + "m"
+          );
         }
       },
 
+      function(err){
+
+        console.warn(
+          "⚠ GPS failed:",
+          err.message
+        );
+      },
+
       {
-        enableHighAccuracy: false,
+        enableHighAccuracy: true,
+
         timeout: 5000,
-        maximumAge: 600000
+
+        maximumAge: 0
       }
-
     );
-  }
 
-  // 🔥 IMPORTANT: Delay ensures modal + DOM ready
-  setTimeout(tryGPS, 300);
-
-  /* ===============================
-     TOTAL INIT
-  =============================== */
+  // =========================================================
+  // 🔥 COLLECT GPS FOR 5 SEC
+  // =========================================================
   setTimeout(() => {
-    calculateTotal();
-  }, 100);
 
-  console.groupEnd();
+    if(gpsDone) return;
+
+    gpsDone = true;
+
+    navigator.geolocation.clearWatch(
+      watchId
+    );
+
+    // =====================================================
+    // 🔥 BEST GPS FOUND
+    // =====================================================
+    if(bestPos){
+
+      const lat =
+        bestPos.coords.latitude.toFixed(6);
+
+      const lon =
+        bestPos.coords.longitude.toFixed(6);
+
+      const acc =
+        Math.round(bestPos.coords.accuracy);
+
+      console.log(
+        "✅ FINAL BEST GPS:",
+        lat,
+        lon,
+        acc + "m"
+      );
+
+      fillLocation(lat, lon);
+
+      return;
+    }
+
+    // =====================================================
+    // 🔥 FALLBACK TO LAST GPS
+    // =====================================================
+    const lat =
+      localStorage.getItem("lastLat");
+
+    const lon =
+      localStorage.getItem("lastLon");
+
+    if(lat && lon){
+
+      console.log(
+        "📴 Using fallback GPS"
+      );
+
+      fillLocation(lat, lon);
+
+    } else {
+
+      alert(
+        "❌ Could not get GPS location"
+      );
+    }
+
+  }, 5000);
+}
+
+// 🔥 IMPORTANT: Delay ensures modal + DOM ready
+setTimeout(
+  tryGPS,
+  300
+);
+
+/* ===============================
+   TOTAL INIT
+=============================== */
+setTimeout(() => {
+
+  calculateTotal();
+
+}, 100);
+
+console.groupEnd();
 }/* ============================================================
 🚨 DUTY SYSTEM
 ============================================================ */
