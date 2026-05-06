@@ -1269,36 +1269,84 @@ function loadProfile(){
           // ============================================================
           try{
 
-            if(
-              window.Android &&
-              Android.saveUserProfile
-            ){
+  console.group(
+    "📱 ANDROID PROFILE BRIDGE"
+  );
 
-              Android.saveUserProfile(
-                JSON.stringify(
-                  window.userProfile
-                )
-              );
+  console.log(
+    "window.Android:",
+    window.Android
+  );
 
-              console.log(
-                "✅ OFFLINE PROFILE SENT TO APK"
-              );
+  console.log(
+    "typeof Android:",
+    typeof Android
+  );
 
-            }else{
+  console.log(
+    "Android object:",
+    Android
+  );
 
-              console.warn(
-                "⚠ Android bridge missing"
-              );
-            }
+  console.log(
+    "saveUserProfile exists:",
+    !!(
+      window.Android &&
+      Android.saveUserProfile
+    )
+  );
 
-          }catch(err){
+  console.log(
+    "savePhone exists:",
+    !!(
+      window.Android &&
+      Android.savePhone
+    )
+  );
 
-            console.error(
-              "❌ saveUserProfile failed",
-              err
-            );
-          }
+  console.log(
+    "FINAL PROFILE OBJECT:",
+    finalProfile
+  );
 
+  console.log(
+    "FINAL PROFILE JSON:",
+    JSON.stringify(finalProfile)
+  );
+
+  if(
+    window.Android &&
+    Android.saveUserProfile
+  ){
+
+    console.log(
+      "🚀 CALLING saveUserProfile..."
+    );
+
+    Android.saveUserProfile(
+      JSON.stringify(finalProfile)
+    );
+
+    console.log(
+      "✅ PROFILE SENT TO APK"
+    );
+
+  }else{
+
+    console.warn(
+      "❌ Android.saveUserProfile MISSING"
+    );
+  }
+
+  console.groupEnd();
+
+}catch(err){
+
+  console.error(
+    "❌ saveUserProfile failed",
+    err
+  );
+}
           // 🔥 FIX: prevent duplicate startApp
           if(!window.__appBootRequested){
 
