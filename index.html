@@ -1217,41 +1217,102 @@ function loadProfile(){
 
   authFlowRunning = true;
 
-  const phone = localStorage.getItem("userPhone") || "";
+  const phone =
+    localStorage.getItem("userPhone") || "";
 
-  // 🔥 NO PHONE → SAFE SHOW (FIXED: removed timeout + guard added)
+  // ============================================================
+  // 🔥 NO PHONE
+  // ============================================================
   if(!phone){
 
-    if(!loginModalLocked && !loginShownOnce){
+    if(
+      !loginModalLocked &&
+      !loginShownOnce
+    ){
       loginShownOnce = true;
       showLogin();
     }
 
     authFlowRunning = false;
+
     return;
   }
 
-  safeBackend("GET_PROFILE", { phone })
+  safeBackend(
+    "GET_PROFILE",
+    { phone }
+  )
 
     .then(profile => {
 
+      // ============================================================
+      // 🔥 OFFLINE FALLBACK
+      // ============================================================
       if(!profile){
 
-        const saved = localStorage.getItem("userProfile");
+        const saved =
+          localStorage.getItem(
+            "userProfile"
+          );
 
         if(saved){
-          window.userProfile = JSON.parse(saved);
+
+          window.userProfile =
+            JSON.parse(saved);
+
           updateNetworkStatus("offline");
+
           applyRoleControl();
+
+          // ============================================================
+          // 🔥 SEND SAVED PROFILE TO APK
+          // ============================================================
+          try{
+
+            if(
+              window.Android &&
+              Android.saveUserProfile
+            ){
+
+              Android.saveUserProfile(
+                JSON.stringify(
+                  window.userProfile
+                )
+              );
+
+              console.log(
+                "✅ OFFLINE PROFILE SENT TO APK"
+              );
+
+            }else{
+
+              console.warn(
+                "⚠ Android bridge missing"
+              );
+            }
+
+          }catch(err){
+
+            console.error(
+              "❌ saveUserProfile failed",
+              err
+            );
+          }
 
           // 🔥 FIX: prevent duplicate startApp
           if(!window.__appBootRequested){
+
             window.__appBootRequested = true;
+
             startApp();
           }
 
         } else {
-          if(!loginModalLocked && !loginShownOnce){
+
+          if(
+            !loginModalLocked &&
+            !loginShownOnce
+          ){
             loginShownOnce = true;
             showLogin();
           }
@@ -1260,54 +1321,165 @@ function loadProfile(){
         return;
       }
 
+      // ============================================================
+      // 🔥 INVALID PROFILE
+      // ============================================================
       if(profile.error){
-        localStorage.removeItem("userPhone");
-        localStorage.removeItem("userProfile");
 
-        if(!loginModalLocked && !loginShownOnce){
+        localStorage.removeItem(
+          "userPhone"
+        );
+
+        localStorage.removeItem(
+          "userProfile"
+        );
+
+        if(
+          !loginModalLocked &&
+          !loginShownOnce
+        ){
           loginShownOnce = true;
           showLogin();
         }
+
         return;
       }
 
+      // ============================================================
+      // 🔥 FINAL PROFILE
+      // ============================================================
       const finalProfile = {
-        rawName: profile.name,
-        cleanName: profile.cleanName || cleanName(profile.name),
-        role: profile.role,
-        beat: profile.beat,
-        phone: profile.phone
+
+        rawName:
+          profile.name,
+
+        cleanName:
+          profile.cleanName ||
+          cleanName(profile.name),
+
+        role:
+          profile.role,
+
+        beat:
+          profile.beat,
+
+        phone:
+          profile.phone
       };
 
-      window.userProfile = finalProfile;
-      localStorage.setItem("userProfile", JSON.stringify(finalProfile));
+      // ============================================================
+      // 🔥 SAVE LOCAL
+      // ============================================================
+      window.userProfile =
+        finalProfile;
+
+      localStorage.setItem(
+        "userProfile",
+        JSON.stringify(finalProfile)
+      );
 
       updateNetworkStatus("online");
+
       applyRoleControl();
 
-      hideLogin();   // 🔥 IMPORTANT
+      // ============================================================
+      // 🔥 SEND PROFILE TO APK
+      // ============================================================
+      try{
+
+        if(
+          window.Android &&
+          Android.saveUserProfile
+        ){
+
+          Android.saveUserProfile(
+            JSON.stringify(finalProfile)
+          );
+
+          console.log(
+            "✅ PROFILE SENT TO APK"
+          );
+
+        }else{
+
+          console.warn(
+            "⚠ Android bridge missing"
+          );
+        }
+
+      }catch(err){
+
+        console.error(
+          "❌ saveUserProfile failed",
+          err
+        );
+      }
+
+      // ============================================================
+      // 🔥 SEND PHONE TO APK
+      // ============================================================
+      try{
+
+        if(
+          window.Android &&
+          Android.savePhone
+        ){
+
+          Android.savePhone(
+            finalProfile.phone
+          );
+
+          console.log(
+            "📱 Phone sent to Android:",
+            finalProfile.phone
+          );
+
+        }
+
+      }catch(e){
+
+        console.error(
+          "❌ savePhone failed:",
+          e
+        );
+      }
+
+      updateNetworkStatus("online");
+
+      applyRoleControl();
+
+      hideLogin();
 
       // 🔥 FIX: prevent duplicate startApp
       if(!window.__appBootRequested){
+
         window.__appBootRequested = true;
+
         startApp();
       }
+
+      console.log(
+        "✅ PROFILE LOADED"
+      );
 
     })
 
     .catch(() => {
-      if(!loginModalLocked && !loginShownOnce){
+
+      if(
+        !loginModalLocked &&
+        !loginShownOnce
+      ){
         loginShownOnce = true;
         showLogin();
       }
     })
 
     .finally(() => {
+
       authFlowRunning = false;
     });
-}
-
-// ============================================================
+}// ============================================================
 // 🔥 LOGIN (SAFE + CLEAN)
 // ============================================================
 function login(){
