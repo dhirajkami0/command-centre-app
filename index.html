@@ -1362,19 +1362,61 @@ function login(){
         phone: profile.phone
       };
 
+      // ============================================================
+      // 🔥 SAVE LOCAL
+      // ============================================================
       localStorage.setItem("userPhone", phone);
-      localStorage.setItem("userProfile", JSON.stringify(finalProfile));
+
+      localStorage.setItem(
+        "userProfile",
+        JSON.stringify(finalProfile)
+      );
 
       window.userProfile = finalProfile;
 
-      hideLogin();   // close modal
+      // ============================================================
+      // 🔥 SEND PHONE TO ANDROID
+      // ============================================================
+      try{
+
+        if(window.Android){
+
+          Android.savePhone(finalProfile.phone);
+
+          console.log(
+            "📱 Phone sent to Android:",
+            finalProfile.phone
+          );
+
+        }else{
+
+          console.warn(
+            "⚠ Android bridge not available"
+          );
+        }
+
+      }catch(e){
+
+        console.error(
+          "❌ Android bridge failed:",
+          e
+        );
+      }
+
+      // ============================================================
+      // 🔥 UI + APP START
+      // ============================================================
+      hideLogin();
 
       updateNetworkStatus("online");
+
       applyRoleControl();
 
       // 🔥 FIX: prevent duplicate startApp
       if(!window.__appBootRequested){
+
         window.__appBootRequested = true;
+
         startApp();
       }
 
@@ -1385,6 +1427,7 @@ function login(){
     .catch(err => {
 
       console.warn("⚠ Login error:", err);
+
       alert("⚠ Network error");
 
       // 🔁 RESET UI
@@ -1400,7 +1443,6 @@ function login(){
       authFlowRunning = false;
     });
 }
-
 // ============================================================
 // 🔥 SHOW LOGIN (FINAL HARDENED VERSION)
 // ============================================================
