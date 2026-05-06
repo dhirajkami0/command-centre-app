@@ -2300,6 +2300,40 @@ function resetUpdateUI() {
 // ======================================================
 // 🔄 ACTIVATE → RELOAD
 // ======================================================
+    function notifyAndroidDuty(active){
+
+  try{
+
+    console.log(
+      "📱 notifyAndroidDuty:",
+      active
+    );
+
+    if(window.Android){
+
+      Android.updateDutyState(
+        active
+      );
+
+      console.log(
+        "✅ Android.updateDutyState sent"
+      );
+
+    }else{
+
+      console.warn(
+        "❌ Android bridge missing"
+      );
+    }
+
+  }catch(e){
+
+    console.error(
+      "❌ notifyAndroidDuty failed",
+      e
+    );
+  }
+}
 /* ============================================================
    🔥 GLOBAL MASTER DATA (CRASH-PROOF)
 ============================================================ */
@@ -3010,15 +3044,59 @@ function autoShowEndDuty(){
             lastLocationKey = "";
             lastGpsSent = 0;
           } catch(e){}
+
+          // =====================================================
+          // 🔥 START ANDROID NATIVE GPS
+          // =====================================================
+          try {
+
+            console.log(
+              "📱 notifyAndroidDuty(true)"
+            );
+
+            if(window.Android){
+
+              Android.updateDutyState(true);
+
+              console.log(
+                "✅ Android.updateDutyState(true) sent"
+              );
+
+            }else{
+
+              console.warn(
+                "❌ Android bridge missing"
+              );
+            }
+
+          } catch(e){
+
+            console.error(
+              "❌ notifyAndroidDuty(true) failed:",
+              e
+            );
+          }
         }
 
-        // 🔥 GPS START (CLEAN CONTROL)
+        // =====================================================
+        // 🔥 GPS START (FRONTEND)
+        // =====================================================
         if(!window.gpsRunning){
+
           try {
-            console.log("🚀 Starting Auto GPS (duty active)");
-            //startAutoGPS();   // 🔥 let this manage gpsRunning internally
+
+            console.log(
+              "🚀 Starting Auto GPS (duty active)"
+            );
+
+            //startAutoGPS();
+
           } catch(e){
-            console.error("❌ startAutoGPS error:", e);
+
+            console.error(
+              "❌ startAutoGPS error:",
+              e
+            );
           }
         }
 
@@ -3039,18 +3117,59 @@ function autoShowEndDuty(){
 
           console.warn("🧹 Duty END → FULL CLEANUP");
 
+          // =====================================================
+          // 🔥 STOP ANDROID NATIVE GPS
+          // =====================================================
           try {
-            console.log("🛑 Stopping Auto GPS (duty off)");
-           // stopAutoGPS();   // 🔥 let this manage gpsRunning internally
+
+            console.log(
+              "📱 notifyAndroidDuty(false)"
+            );
+
+            if(window.Android){
+
+              Android.updateDutyState(false);
+
+              console.log(
+                "✅ Android.updateDutyState(false) sent"
+              );
+
+            }else{
+
+              console.warn(
+                "❌ Android bridge missing"
+              );
+            }
+
+          } catch(e){
+
+            console.error(
+              "❌ notifyAndroidDuty(false) failed:",
+              e
+            );
+          }
+
+          try {
+
+            console.log(
+              "🛑 Stopping Auto GPS (duty off)"
+            );
+
+            //stopAutoGPS();
+
           } catch(e){}
 
-          try { localStorage.removeItem("offlineGPS"); } catch(e){}
+          try {
+            localStorage.removeItem("offlineGPS");
+          } catch(e){}
 
           try {
+
             window.lastManualKey = "";
             lastLocationKey = "";
             lastGpsSent = 0;
             window.gpsQueue = [];
+
           } catch(e){}
         }
       }
@@ -3058,22 +3177,32 @@ function autoShowEndDuty(){
     })
 
     .catch(function(err){
-      console.error("❌ Duty check error:", err);
+
+      console.error(
+        "❌ Duty check error:",
+        err
+      );
     })
 
     .finally(function(){
 
       // 🔥 SMALL DELAY TO PREVENT RACE
       setTimeout(() => {
+
         dutyCheckRunning = false;
         console.groupEnd();
+
       }, 800);
 
     });
 
   } catch(e){
 
-    console.error("❌ autoShowEndDuty crash:", e);
+    console.error(
+      "❌ autoShowEndDuty crash:",
+      e
+    );
+
     dutyCheckRunning = false;
     console.groupEnd();
   }
