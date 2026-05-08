@@ -2072,20 +2072,6 @@ const dutyWait = setInterval(() => {
 
 }, 800);
 
-    // ============================================
-  // 🧹 RUN CLEANUP IMMEDIATELY
-  // ============================================
-  cleanupOldTracks();
-
-  // ============================================
-  // 🧹 AUTO RUN EVERY 24 HOURS
-  // ============================================
-  setInterval(
-
-    cleanupOldTracks,
-
-    24 * 60 * 60 * 1000
-  );
  
     console.log("✅ App initialized (FULL FIXED)");
 
@@ -2140,6 +2126,21 @@ const dutyWait = setInterval(() => {
         };
 
         window.firebaseReady = true;
+           // ============================================
+  // 🧹 RUN CLEANUP IMMEDIATELY
+  // ============================================
+  cleanupOldTracks();
+
+  // ============================================
+  // 🧹 AUTO RUN EVERY 24 HOURS
+  // ============================================
+  setInterval(
+
+    cleanupOldTracks,
+
+    24 * 60 * 60 * 1000
+  );
+ 
 
         if(typeof startChat === "function"){
           startChat();
