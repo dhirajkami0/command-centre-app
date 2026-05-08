@@ -11703,7 +11703,7 @@ document.getElementById('form-modal').style.display = 'none';
 
   console.groupEnd();
 }
-   function submitEndDuty(event) {
+ async function submitEndDuty(event) {
 
   console.group("🚨 submitEndDuty TRIGGERED");
 
@@ -11727,22 +11727,18 @@ document.getElementById('form-modal').style.display = 'none';
     const profile =
       window.userProfile;
 
-    if (!window.isDutyActive) {
-
-      console.warn("⚠ No active duty");
-
-      console.groupEnd();
-
-      return;
-    }
-
+    // ============================================================
+    // 🔥 VALIDATE PROFILE ONLY
+    // ============================================================
     if (
       !profile ||
       !profile.cleanName ||
       !profile.phone
     ) {
 
-      alert("❌ User not loaded properly");
+      alert(
+        "❌ User not loaded properly"
+      );
 
       console.groupEnd();
 
@@ -11752,15 +11748,16 @@ document.getElementById('form-modal').style.display = 'none';
     // ============================================================
     // 🔥 CONFIRM
     // ============================================================
-    if (
-      !window.originalConfirm
-        ? !confirm(
+    const confirmed =
+      window.originalConfirm
+        ? window.originalConfirm(
             "Submit report and end duty?"
           )
-        : !window.originalConfirm(
+        : confirm(
             "Submit report and end duty?"
-          )
-    ) {
+          );
+
+    if (!confirmed) {
 
       console.groupEnd();
 
@@ -11824,200 +11821,213 @@ document.getElementById('form-modal').style.display = 'none';
     );
 
     // ============================================================
-    // 🔥 BACKEND
+    // 🔥 BACKEND SAVE
     // ============================================================
-    callBackend(
-      "markDutyOutWithObs",
-      payload
-    )
-
-    .then(async function (msg) {
-
-      console.log(
-        "✅ Backend response:",
-        msg
+    const msg =
+      await callBackend(
+        "markDutyOutWithObs",
+        payload
       );
 
+    console.log(
+      "✅ Backend response:",
+      msg
+    );
+
+    if (
+      !msg ||
+      msg.error
+    ) {
+
+      throw new Error(
+        msg?.error ||
+        "Failed to end duty"
+      );
+    }
+
+    // ============================================================
+    // 🔥 FIRESTORE UPDATE
+    // ============================================================
+    try {
+
       if (
-        !msg ||
-        msg.error
+        window.fb &&
+        window.db &&
+        window.fb.doc &&
+        window.fb.setDoc
       ) {
 
-        throw new Error(
-          msg?.error ||
-          "Failed to end duty"
+        await window.fb.setDoc(
+
+          window.fb.doc(
+            window.db,
+            "live_staff",
+            profile.cleanName
+          ),
+
+          {
+
+            dutyActive:
+              false,
+
+            lastDutyEnd:
+              new Date().toISOString(),
+
+            updatedAt:
+              window.fb.serverTimestamp(),
+
+            status:
+              "OFF_DUTY"
+
+          },
+
+          {
+            merge: true
+          }
+        );
+
+        console.log(
+          "🔥 Firestore updated → dutyActive=false"
         );
       }
 
-      // ============================================================
-      // 🔥 FIRESTORE UPDATE
-      // ============================================================
-      try {
+    } catch (fireErr) {
 
-        if (
-          window.fb &&
-          window.db &&
-          window.fb.doc &&
-          window.fb.setDoc
-        ) {
+      console.error(
+        "❌ Firestore END DUTY failed",
+        fireErr
+      );
+    }
 
-          await window.fb.setDoc(
+    // ============================================================
+    // 🔥 UPDATE LOCAL STATE
+    // ============================================================
+    window.isDutyActive =
+      false;
 
-            window.fb.doc(
-              window.db,
-              "live_staff",
-              profile.cleanName
-            ),
+    // ============================================================
+    // 🔥 UPDATE BUTTON
+    // ============================================================
+    if (
+      typeof updateDutyButton ===
+      "function"
+    ) {
 
-            {
+      updateDutyButton();
+    }
 
-              dutyActive:
-                false,
+    // ============================================================
+    // 🔥 NOTIFY APK
+    // ============================================================
+    try {
 
-              lastDutyEnd:
-                new Date().toISOString(),
-
-              updatedAt:
-                window.fb.serverTimestamp(),
-
-              status:
-                "OFF_DUTY"
-
-            },
-
-            {
-              merge:true
-            }
-          );
-
-          console.log(
-            "🔥 Firestore updated → dutyActive=false"
-          );
-        }
-
-      } catch (fireErr) {
-
-        console.error(
-          "❌ Firestore END DUTY failed",
-          fireErr
-        );
-      }
-
-      // ============================================================
-      // 🔥 UPDATE LOCAL STATE
-      // ============================================================
-      window.isDutyActive =
-        false;
-
-      // ============================================================
-      // 🔥 NOTIFY APK
-      // ============================================================
-      try {
-
-        if (
-          typeof notifyAndroidDuty ===
-          "function"
-        ) {
-
-          notifyAndroidDuty(
-            false
-          );
-
-          console.log(
-            "📲 APK notified → duty OFF"
-          );
-        }
-
-      } catch (apkErr) {
-
-        console.error(
-          "❌ APK notify failed",
-          apkErr
-        );
-      }
-
-      // ============================================================
-      // 🔥 CLOSE MODAL
-      // ============================================================
-      closeEndDutyForm();
-
-      // ============================================================
-      // 🔄 VERIFY STATE
-      // ============================================================
-      setTimeout(() => {
-
-        autoShowEndDuty();
-
-      }, 500);
-
-      // ============================================================
-      // 🔄 REFRESH
-      // ============================================================
       if (
-        typeof refreshAll ===
+        typeof notifyAndroidDuty ===
         "function"
       ) {
 
-        refreshAll();
+        await notifyAndroidDuty(
+          false
+        );
+
+        console.log(
+          "📲 APK notified → duty OFF"
+        );
       }
 
-      // ============================================================
-      // 🔥 SUCCESS
-      // ============================================================
-      showToast(
-        "✅ Duty Ended Successfully"
-      );
-
-    })
-
-    // ============================================================
-    // ❌ ERROR
-    // ============================================================
-    .catch(function (err) {
+    } catch (apkErr) {
 
       console.error(
-        "❌ Error:",
-        err
+        "❌ APK notify failed",
+        apkErr
       );
-
-      alert(
-        "❌ " +
-        err.message
-      );
-
-      btn.innerHTML =
-        original;
-
-      btn.disabled =
-        false;
-
-    })
+    }
 
     // ============================================================
-    // 🔓 RESTORE BUTTON
+    // 🔥 REMOVE FROM MAP/UI
     // ============================================================
-    .finally(function () {
+    try {
 
-      setTimeout(() => {
+      if (
+        typeof removeStaffFromUI ===
+        "function"
+      ) {
 
-        btn.innerHTML =
-          original;
+        removeStaffFromUI(
+          profile.cleanName
+        );
+      }
 
-        btn.disabled =
-          false;
+    } catch(removeErr){
 
-      }, 300);
+      console.error(
+        "❌ removeStaffFromUI failed",
+        removeErr
+      );
+    }
 
-      console.groupEnd();
+    // ============================================================
+    // 🔥 CLOSE MODAL
+    // ============================================================
+    closeEndDutyForm();
 
-    });
+    // ============================================================
+    // 🔄 VERIFY STATE
+    // ============================================================
+    setTimeout(() => {
+
+      autoShowEndDuty();
+
+    }, 500);
+
+    // ============================================================
+    // 🔄 REFRESH
+    // ============================================================
+    if (
+      typeof refreshAll ===
+      "function"
+    ) {
+
+      refreshAll();
+    }
+
+    // ============================================================
+    // 🔥 SUCCESS
+    // ============================================================
+    showToast(
+      "✅ Duty Ended Successfully"
+    );
 
   } catch (err) {
 
     console.error(
-      "💥 CRASH:",
+      "❌ Error:",
       err
     );
+
+    alert(
+      "❌ " +
+      (err?.message || err)
+    );
+
+  } finally {
+
+    // ============================================================
+    // 🔓 RESTORE BUTTON
+    // ============================================================
+    const btn =
+      document.getElementById(
+        "confirmEndDutyBtn"
+      );
+
+    if (btn) {
+
+      btn.innerHTML =
+        "✅ SUBMIT & END DUTY";
+
+      btn.disabled =
+        false;
+    }
 
     console.groupEnd();
   }
