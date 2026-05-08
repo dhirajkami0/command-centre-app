@@ -2003,15 +2003,74 @@ async function startApp(){   // 🔥 MADE ASYNC (CRITICAL)
     // ======================================================
     // 🔥 DUTY CHECK
     // ======================================================
-    setTimeout(() => autoShowEndDuty(), 1500);
-    setTimeout(() => autoShowEndDuty(), 3000);
+    // ======================================================
+// 🔥 DUTY CHECK (WAIT FOR FIREBASE)
+// ======================================================
+const dutyWait = setInterval(() => {
 
-    setInterval(() => {
-      if(window.userProfile){
-        autoShowEndDuty();
-      }
-    }, 15000);
+  // 🔥 WAIT FOR FIREBASE
+  if(
+    !window.firebaseReady ||
+    !window.fb ||
+    !window.db
+  ){
 
+    console.log(
+      "⏳ Waiting Firebase..."
+    );
+
+    return;
+  }
+
+  // 🔥 WAIT FOR PROFILE
+  if(
+    !window.userProfile ||
+    !window.userProfile.cleanName
+  ){
+
+    console.log(
+      "⏳ Waiting userProfile..."
+    );
+
+    return;
+  }
+
+  // ======================================================
+  // ✅ READY
+  // ======================================================
+  clearInterval(dutyWait);
+
+  console.log(
+    "🔥 Firebase ready → starting duty checks"
+  );
+
+  // 🔥 INITIAL CHECKS
+  setTimeout(() => {
+
+    autoShowEndDuty();
+
+  }, 1000);
+
+  setTimeout(() => {
+
+    autoShowEndDuty();
+
+  }, 3000);
+
+  // 🔥 LOOP
+  setInterval(() => {
+
+    if(
+      window.userProfile &&
+      window.firebaseReady
+    ){
+
+      autoShowEndDuty();
+    }
+
+  }, 15000);
+
+}, 800);
     console.log("✅ App initialized (FULL FIXED)");
 
     // ======================================================
@@ -2024,10 +2083,21 @@ async function startApp(){   // 🔥 MADE ASYNC (CRITICAL)
         const { initializeApp } = await import("https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js");
 
         const {
-          getFirestore, collection, addDoc, onSnapshot,
-          query, orderBy, serverTimestamp, getDocs,
-          deleteDoc, doc, setDoc, updateDoc, arrayUnion
-        } = await import("https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js");
+  getFirestore,
+  collection,
+  addDoc,
+  onSnapshot,
+  query,
+  orderBy,
+  serverTimestamp,
+  getDocs,
+  getDoc,
+  deleteDoc,
+  doc,
+  setDoc,
+  updateDoc,
+  arrayUnion
+} = await import("https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js");
 
         const { getStorage, ref, uploadBytes, getDownloadURL }
           = await import("https://www.gstatic.com/firebasejs/10.12.0/firebase-storage.js");
@@ -2038,10 +2108,19 @@ async function startApp(){   // 🔥 MADE ASYNC (CRITICAL)
         window.storage = getStorage(app);
 
         window.fb = {
-          collection, addDoc, onSnapshot, query, orderBy,
-          serverTimestamp, getDocs, deleteDoc, doc,
-          setDoc, updateDoc, arrayUnion,
-          ref, uploadBytes, getDownloadURL
+  collection,
+  addDoc,
+  onSnapshot,
+  query,
+  orderBy,
+  serverTimestamp,
+  getDocs,
+  getDoc,
+  deleteDoc,
+  doc,
+  setDoc,
+  updateDoc,
+  arrayUnion,  ref, uploadBytes, getDownloadURL
         };
 
         window.firebaseReady = true;
@@ -3328,15 +3407,38 @@ async function autoShowEndDuty(){
   // =====================================================
   if(window.dutyCheckRunning === true){
 
-    console.warn("⛔ Skipping duplicate duty check");
+    console.warn(
+      "⛔ Skipping duplicate duty check"
+    );
 
     console.groupEnd();
+
     return;
   }
 
   window.dutyCheckRunning = true;
 
   try {
+
+    // =====================================================
+    // 🔥 FIREBASE READY CHECK
+    // =====================================================
+    if(
+      !window.firebaseReady ||
+      !window.fb ||
+      !window.db
+    ){
+
+      console.warn(
+        "⏳ Firebase not ready"
+      );
+
+      window.dutyCheckRunning = false;
+
+      console.groupEnd();
+
+      return;
+    }
 
     // =====================================================
     // 🔒 PROFILE CHECK
@@ -3346,11 +3448,14 @@ async function autoShowEndDuty(){
       !window.userProfile.cleanName
     ){
 
-      console.warn("⚠ userProfile missing");
+      console.warn(
+        "⚠ userProfile missing"
+      );
 
       window.dutyCheckRunning = false;
 
       console.groupEnd();
+
       return;
     }
 
@@ -3358,8 +3463,9 @@ async function autoShowEndDuty(){
     // 🔥 CLEAN NAME
     // =====================================================
     const cleanedName =
-      String(window.userProfile.cleanName || "")
-      .trim();
+      String(
+        window.userProfile.cleanName || ""
+      ).trim();
 
     console.log(
       "🔥 FIRESTORE DUTY CHECK:",
@@ -3376,21 +3482,24 @@ async function autoShowEndDuty(){
     // 🔥 FIRESTORE DOC
     // =====================================================
     const docRef =
-      firebase
-      .firestore()
-      .collection("live_staff")
-      .doc(cleanedName);
+      window.fb.doc(
+        window.db,
+        "live_staff",
+        cleanedName
+      );
 
     // =====================================================
     // 🔥 READ FIRESTORE
     // =====================================================
     const snap =
-      await docRef.get();
+      await window.fb.getDoc(
+        docRef
+      );
 
     // =====================================================
     // ❌ DOC MISSING
     // =====================================================
-    if(!snap.exists){
+    if(!snap.exists()){
 
       console.warn(
         "❌ Firestore document missing"
@@ -3421,9 +3530,13 @@ async function autoShowEndDuty(){
     // =====================================================
     // 🟢 DUTY ACTIVE
     // =====================================================
-    if(fireData.dutyActive === true){
+    if(
+      fireData.dutyActive === true
+    ){
 
-      console.log("🟢 DUTY ACTIVE");
+      console.log(
+        "🟢 DUTY ACTIVE"
+      );
 
       // =====================================================
       // 🔥 GLOBAL STATE
@@ -3447,38 +3560,40 @@ async function autoShowEndDuty(){
         // =====================================================
         // 🔥 CLEAR CACHE
         // =====================================================
-        try{
+        try {
 
           localStorage.removeItem(
             "offlineGPS"
           );
 
-        }catch(e){}
+        } catch(e){}
 
-        try{
+        try {
 
           window.lastManualKey = "";
           window.lastLocationKey = "";
           window.lastGpsSent = 0;
 
-        }catch(e){}
+        } catch(e){}
 
         // =====================================================
         // 🔥 START APK GPS
         // =====================================================
-        try{
+        try {
 
           console.log(
             "📱 notifyAndroidDuty(true)"
           );
 
-          await notifyAndroidDuty(true);
+          await notifyAndroidDuty(
+            true
+          );
 
           console.log(
             "✅ APK GPS STARTED"
           );
 
-        }catch(e){
+        } catch(e){
 
           console.error(
             "❌ notifyAndroidDuty(true) failed:",
@@ -3516,7 +3631,9 @@ async function autoShowEndDuty(){
     // =====================================================
     else {
 
-      console.log("🔴 DUTY INACTIVE");
+      console.log(
+        "🔴 DUTY INACTIVE"
+      );
 
       // =====================================================
       // 🔥 GLOBAL STATE
@@ -3546,7 +3663,9 @@ async function autoShowEndDuty(){
             "📱 notifyAndroidDuty(false)"
           );
 
-          await notifyAndroidDuty(false);
+          await notifyAndroidDuty(
+            false
+          );
 
           console.log(
             "✅ APK GPS STOPPED"
