@@ -14847,33 +14847,7 @@ function startDuty(event) {
   }
 
 })();
-    .catch(function (err) {
-
-      console.error("❌ Error:", err);
-      alert("❌ " + err.message);
-
-      // 🔥 RESET UI IF FAILED
-      window.__dutyUpdating = false;
-      window.isDutyActive = false;
-
-      updateDutyButton();
-
-      startBtn.innerHTML = originalText;
-      startBtn.disabled = false;
-
-    })
-
-    .finally(function () {
-
-      setTimeout(() => {
-        startDutySubmitting = false;
-        startBtn.innerHTML = "🚀 START DUTY";
-        startBtn.disabled = false;
-      }, 1200);
-
-      console.groupEnd();
-    });
-
+    
   } catch (err) {
     console.error("💥 CRASH:", err);
     console.groupEnd();
