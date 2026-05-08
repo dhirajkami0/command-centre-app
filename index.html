@@ -8672,8 +8672,20 @@ function loadStaff(){
 
           const s = docSnap.data();
 
-          if(!s) return;
+if(!s) return;
 
+// ======================================================
+// 🔴 HIDE OFF DUTY STAFF
+// ======================================================
+if(s.dutyActive !== true){
+
+  console.log(
+    "⛔ Hidden OFF duty:",
+    docSnap.id
+  );
+
+  return;
+}
           // ======================================================
           // 🔥 NORMALIZE
           // ======================================================
