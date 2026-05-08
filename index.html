@@ -11533,116 +11533,322 @@ document.getElementById('form-modal').style.display = 'none';
 
   console.groupEnd();
 }
-    function submitEndDuty(event) {
+   function submitEndDuty(event) {
 
   console.group("🚨 submitEndDuty TRIGGERED");
 
   try {
 
+    // ============================================================
     // 🔒 ONLY USER CLICK
+    // ============================================================
     if (!event || event.isTrusted !== true) {
+
       console.warn("⛔ Blocked auto trigger");
+
       console.groupEnd();
+
       return;
     }
 
-    const profile = window.userProfile;
+    // ============================================================
+    // 🔥 PROFILE
+    // ============================================================
+    const profile =
+      window.userProfile;
 
     if (!window.isDutyActive) {
+
       console.warn("⚠ No active duty");
+
       console.groupEnd();
+
       return;
     }
 
-    if (!profile || !profile.cleanName || !profile.phone) {
+    if (
+      !profile ||
+      !profile.cleanName ||
+      !profile.phone
+    ) {
+
       alert("❌ User not loaded properly");
+
       console.groupEnd();
+
       return;
     }
 
-    if (!window.originalConfirm 
-        ? !confirm("Submit report and end duty?")
-        : !window.originalConfirm("Submit report and end duty?")) {
+    // ============================================================
+    // 🔥 CONFIRM
+    // ============================================================
+    if (
+      !window.originalConfirm
+        ? !confirm(
+            "Submit report and end duty?"
+          )
+        : !window.originalConfirm(
+            "Submit report and end duty?"
+          )
+    ) {
+
       console.groupEnd();
+
       return;
     }
 
-    const btn = event.target;
+    // ============================================================
+    // 🔥 BUTTON
+    // ============================================================
+    const btn =
+      event.target;
 
     if (!btn) {
-      console.error("❌ Button not found");
+
+      console.error(
+        "❌ Button not found"
+      );
+
       console.groupEnd();
+
       return;
     }
 
-    const original = btn.innerHTML;
+    const original =
+      btn.innerHTML;
 
+    // ============================================================
     // 🔒 LOCK BUTTON
-    btn.innerHTML = "⏳ SAVING...";
-    btn.disabled = true;
+    // ============================================================
+    btn.innerHTML =
+      "⏳ SAVING...";
 
-    const obs = document.getElementById("ed-obs")?.value || "";
+    btn.disabled =
+      true;
 
+    // ============================================================
+    // 🔥 OBS
+    // ============================================================
+    const obs =
+      document.getElementById(
+        "ed-obs"
+      )?.value || "";
+
+    // ============================================================
+    // 🔥 PAYLOAD
+    // ============================================================
     const payload = {
+
       obs: obs,
-      leader: profile.cleanName,
-      phone: profile.phone
+
+      leader:
+        profile.cleanName,
+
+      phone:
+        profile.phone
     };
 
-    console.log("📤 PAYLOAD:", payload);
+    console.log(
+      "📤 PAYLOAD:",
+      payload
+    );
 
-    callBackend("markDutyOutWithObs", payload)
+    // ============================================================
+    // 🔥 BACKEND
+    // ============================================================
+    callBackend(
+      "markDutyOutWithObs",
+      payload
+    )
 
-    .then(function (msg) {
+    .then(async function (msg) {
 
-      console.log("✅ Backend response:", msg);
+      console.log(
+        "✅ Backend response:",
+        msg
+      );
 
-      if (!msg || msg.error) {
-        throw new Error(msg?.error || "Failed to end duty");
+      if (
+        !msg ||
+        msg.error
+      ) {
+
+        throw new Error(
+          msg?.error ||
+          "Failed to end duty"
+        );
       }
 
+      // ============================================================
+      // 🔥 FIRESTORE UPDATE
+      // ============================================================
+      try {
+
+        if (
+          window.fb &&
+          window.db &&
+          window.fb.doc &&
+          window.fb.setDoc
+        ) {
+
+          await window.fb.setDoc(
+
+            window.fb.doc(
+              window.db,
+              "live_staff",
+              profile.cleanName
+            ),
+
+            {
+
+              dutyActive:
+                false,
+
+              lastDutyEnd:
+                new Date().toISOString(),
+
+              updatedAt:
+                window.fb.serverTimestamp(),
+
+              status:
+                "OFF_DUTY"
+
+            },
+
+            {
+              merge:true
+            }
+          );
+
+          console.log(
+            "🔥 Firestore updated → dutyActive=false"
+          );
+        }
+
+      } catch (fireErr) {
+
+        console.error(
+          "❌ Firestore END DUTY failed",
+          fireErr
+        );
+      }
+
+      // ============================================================
+      // 🔥 UPDATE LOCAL STATE
+      // ============================================================
+      window.isDutyActive =
+        false;
+
+      // ============================================================
+      // 🔥 NOTIFY APK
+      // ============================================================
+      try {
+
+        if (
+          typeof notifyAndroidDuty ===
+          "function"
+        ) {
+
+          notifyAndroidDuty(
+            false
+          );
+
+          console.log(
+            "📲 APK notified → duty OFF"
+          );
+        }
+
+      } catch (apkErr) {
+
+        console.error(
+          "❌ APK notify failed",
+          apkErr
+        );
+      }
+
+      // ============================================================
       // 🔥 CLOSE MODAL
+      // ============================================================
       closeEndDutyForm();
 
-      // ⚠ DO NOT FORCE STATE HERE (let backend decide)
-      // window.isDutyActive = false; ❌ removed
-
-      // 🔄 VERIFY FROM BACKEND
+      // ============================================================
+      // 🔄 VERIFY STATE
+      // ============================================================
       setTimeout(() => {
+
         autoShowEndDuty();
+
       }, 500);
 
-      if (typeof refreshAll === "function") {
+      // ============================================================
+      // 🔄 REFRESH
+      // ============================================================
+      if (
+        typeof refreshAll ===
+        "function"
+      ) {
+
         refreshAll();
       }
 
-      showToast("✅ Duty Ended Successfully");
+      // ============================================================
+      // 🔥 SUCCESS
+      // ============================================================
+      showToast(
+        "✅ Duty Ended Successfully"
+      );
 
     })
 
+    // ============================================================
+    // ❌ ERROR
+    // ============================================================
     .catch(function (err) {
 
-      console.error("❌ Error:", err);
-      alert("❌ " + err.message);
+      console.error(
+        "❌ Error:",
+        err
+      );
 
-      btn.innerHTML = original;
-      btn.disabled = false;
+      alert(
+        "❌ " +
+        err.message
+      );
+
+      btn.innerHTML =
+        original;
+
+      btn.disabled =
+        false;
 
     })
 
+    // ============================================================
+    // 🔓 RESTORE BUTTON
+    // ============================================================
     .finally(function () {
 
-      // 🔓 restore safely
       setTimeout(() => {
-        btn.innerHTML = original;
-        btn.disabled = false;
+
+        btn.innerHTML =
+          original;
+
+        btn.disabled =
+          false;
+
       }, 300);
 
       console.groupEnd();
+
     });
 
   } catch (err) {
-    console.error("💥 CRASH:", err);
+
+    console.error(
+      "💥 CRASH:",
+      err
+    );
+
     console.groupEnd();
   }
 }
