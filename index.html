@@ -14474,40 +14474,173 @@ function startDuty(event) {
     // =====================================================
     // 🔥 BACKEND CALL
     // =====================================================
-    callBackend("START_DUTY", payload)
+   (async()=>{
 
-    .then(function (res) {
+  try {
 
-      console.log("🔥 BACKEND RESPONSE:", res);
+    if(!window.db || !window.fb){
 
-      if (!res || res.error) {
-        throw new Error(res?.error || "Failed to start duty");
+      throw new Error("Firebase not ready");
+    }
+
+    const {
+      doc,
+      setDoc,
+      updateDoc,
+      serverTimestamp,
+      arrayUnion
+    } = window.fb;
+
+    const cleanLeader =
+      cleanName(payload.leader);
+
+    const now =
+      new Date();
+
+    const liveRef =
+      doc(
+        window.db,
+        "live_staff",
+        cleanLeader
+      );
+
+    // =====================================================
+    // 🔥 LIVE STAFF UPDATE
+    // =====================================================
+    await setDoc(
+      liveRef,
+      {
+
+        cleanName: cleanLeader,
+
+        name:
+          payload.leader,
+
+        team:
+          payload.staff,
+
+        dutyType:
+          payload.type,
+
+        compartment:
+          payload.compt,
+
+        dutyActive: true,
+
+        phone:
+          payload.phone || "",
+
+        email:
+          payload.email || "",
+
+        beat:
+          document.getElementById("d-beat")?.value || "",
+
+        lastSeen:
+          now.toLocaleString(),
+
+        updatedAt:
+          serverTimestamp(),
+
+        type:"Staff"
+
+      },
+      { merge:true }
+    );
+
+    // =====================================================
+    // 🔥 TRACK DOCUMENT
+    // =====================================================
+    const today =
+      now.toISOString()
+      .split("T")[0];
+
+    const trackRef =
+      doc(
+        window.db,
+        "patrol_tracks",
+        `${cleanLeader}_${today}`
+      );
+
+    await setDoc(
+      trackRef,
+      {
+
+        cleanName:
+          cleanLeader,
+
+        name:
+          payload.leader,
+
+        dutyType:
+          payload.type,
+
+        dutyActive:true,
+
+        track:
+          arrayUnion(),
+
+        updatedAt:
+          serverTimestamp()
+
+      },
+      { merge:true }
+    );
+
+    console.log(
+      "🔥 FIRESTORE DUTY STARTED"
+    );
+
+    alert("✅ Duty Started");
+
+    // =====================================================
+    // 🔥 FINAL UI STATE
+    // =====================================================
+    window.isDutyActive = true;
+
+    window.__dutyChecked = true;
+
+    window.__dutyUpdating = false;
+
+    updateDutyButton();
+
+    setTimeout(()=>{
+
+      if(typeof autoShowEndDuty === "function"){
+
+        autoShowEndDuty();
       }
 
-      alert("✅ Duty Started");
+    },800);
 
-      // =====================================================
-      // 🔥 FINAL STATE APPLY
-      // =====================================================
-      window.isDutyActive = true;
-      window.__dutyChecked = true;
-      window.__dutyUpdating = false;
+    if(typeof closeDutyForm === "function"){
 
-      updateDutyButton(); // 🔥 SHOW END DUTY IMMEDIATELY
+      closeDutyForm();
+    }
 
-      // 🔁 BACKEND VERIFY (NO UI IMPACT)
-      setTimeout(() => {
-        if (typeof autoShowEndDuty === "function") {
-          autoShowEndDuty();
-        }
-      }, 800);
+  } catch(err){
 
-      if (typeof closeDutyForm === "function") {
-        closeDutyForm();
-      }
+    console.error(
+      "❌ Firestore start duty failed:",
+      err
+    );
 
-    })
+    alert(
+      "❌ " + err.message
+    );
 
+    window.__dutyUpdating = false;
+
+    window.isDutyActive = false;
+
+    updateDutyButton();
+
+    startBtn.innerHTML = originalText;
+
+    startBtn.disabled = false;
+  }
+
+})();
     .catch(function (err) {
 
       console.error("❌ Error:", err);
