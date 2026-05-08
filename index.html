@@ -8482,245 +8482,390 @@ function syncOfflineMoves(){
     }
 
     
- function loadStaff(){
+function loadStaff(){
 
-  callBackend("getMapData")
-  .then(function(data){
+  if(!window.db || !window.fb){
 
-    // 🔥 CLEAR ONLY WHEN DATA IS READY
-    staffLayer.clearLayers();
+    console.warn("⚠ Firebase not ready");
 
-    if(!data) return;
+    return;
+  }
 
-    const staff = data.filter(s=>s.type==="Staff");
+  const {
+    collection,
+    onSnapshot
+  } = window.fb;
 
-    /* 🔥 GROUP SAME LOCATION */
-    let groups = {};
+  const liveRef =
+    collection(window.db, "live_staff");
 
-    staff.forEach(s=>{
-      const key = Number(s.lat).toFixed(6)+","+Number(s.lon).toFixed(6);
-      if(!groups[key]) groups[key]=[];
-      groups[key].push(s);
-    });
+  onSnapshot(liveRef, async(snapshot)=>{
 
-    let colorIndex = 0;
-
-    Object.values(groups).forEach(group=>{
-
-      group.forEach((s,index)=>{
-
-        let track = Array.isArray(s.track) ? s.track : [];
-
-        /* 🔥 CLEAN TRACK */
-        let clean=[];
-        track.forEach(p=>{
-          if(!p) return;
-          if(clean.length===0 || 
-            Math.abs(clean[clean.length-1][0]-p[0])>1e-6 ||
-            Math.abs(clean[clean.length-1][1]-p[1])>1e-6){
-              clean.push(p);
-          }
-        });
-
-        // ✅ SAFE DEBUG (LIVE TRACK FORMAT)
-        if(clean.length){
-          console.log("🟢 LIVE first point:", clean[0]);
-        }
-
-        /* 🔥 LAST POSITION */
-        let lat = clean.length ? clean[clean.length-1][0] : s.lat;
-        let lon = clean.length ? clean[clean.length-1][1] : s.lon;
-
-        /* 🔥 SPREAD (FIXED OVERLAP) */
-        if(group.length>1){
-          const angle = (index/group.length)*Math.PI*2;
-          lat += Math.cos(angle)*0.00015;
-          lon += Math.sin(angle)*0.00015;
-        }
-
-        /* 🔥 DISTANCE */
-        let dist = 0;
-        for(let i=1;i<clean.length;i++){
-          dist += getDistance(clean[i-1],clean[i]);
-        }
-
-        /* 🔥 SPEED */
-        let speed = 0;
-        if(clean.length>1){
-          const d = getDistance(clean[clean.length-2],clean[clean.length-1]);
-          speed = d / (1/60);
-        }
-
-        const color = getColor(colorIndex++);
-
-        /* 🔥 ICON */
-        const icon = L.divIcon({
-          html:`
-          <div class="markerWrap">
-            <div class="radarPulse"></div>
-            <div class="markerCore">
-              <i class="fa-solid fa-person-military-pointing"
-                style="color:#00ff00;font-size:20px;"></i>
-            </div>
-          </div>`,
-          iconSize:[30,30],
-          iconAnchor:[15,15]
-        });
-
-        const team = (s.team && String(s.team).trim()) ? s.team : "N/A";
-        const duty = (s.dutyType && String(s.dutyType).trim()) ? s.dutyType : "N/A";
-
-        const popup = `
-        <div style="font-family:Segoe UI">
-          <b>👤 ${s.name}</b><br>
-          ${
-            s.mobile
-            ? `<a href="tel:${s.mobile}" style="color:#00e676;text-decoration:none;">
-               <i class="fa-solid fa-phone"></i> ${s.mobile}
-               </a>`
-            : "N/A"
-          }<br>
-
-          <hr>
-
-          👥 ${team}<br>
-          🧾 ${duty}<br>
-
-          <hr>
-
-          📊 Speed: ${speed.toFixed(1)} km/h<br>
-          📏 Distance: ${dist.toFixed(2)} km<br>
-          ⏱ ${s.lastSeen || "Unknown"}
-
-        </div>`;
-
-        const marker = L.marker([lat,lon],{
-          icon:icon,
-          zIndexOffset:3000
-        })
-        .bindPopup(popup,{
-          autoClose:false,
-          closeOnClick:false
-        })
-        .addTo(staffLayer);
-
-        marker.on('click',()=> activePopupId = s.name);
-
-        /* 🔥 TRACK DRAW */
-        if(clean.length>1){
-
-          const line = L.polyline(clean,{
-            color:color,
-            weight:2,
-            opacity:1
-          }).addTo(staffLayer);
-
-          if(L.polylineDecorator){
-            L.polylineDecorator(line,{
-              patterns:[{
-                offset:'5%',
-                repeat:'50px',
-                symbol:L.Symbol.arrowHead({
-                  pixelSize:10,
-                  pathOptions:{color:color}
-                })
-              }]
-            }).addTo(staffLayer);
-          }
-        }
-
-      });
-
-    });
-
-    // ======================================================
-    // 🔥 GRID UPDATE FROM STAFF TRACKS (UNCHANGED LOGIC)
-    // ======================================================
     try {
 
-      let tracks = [];
+      // 🔥 CLEAR ONLY WHEN DATA READY
+      staffLayer.clearLayers();
 
-      staff.forEach(s=>{
+      let staff = [];
 
-        let raw = Array.isArray(s.track) ? s.track : [];
-
-        let clean=[];
-
-        raw.forEach(p=>{
-          if(!p) return;
-          if(clean.length===0 || 
-            Math.abs(clean[clean.length-1][0]-p[0])>1e-6 ||
-            Math.abs(clean[clean.length-1][1]-p[1])>1e-6){
-              clean.push(p);
-          }
-        });
-
-        // ✅ SAFE DEBUG AGAIN
-        if(clean.length){
-          console.log("🟢 LIVE (grid) first point:", clean[0]);
-        }
-
-        if(clean.length > 1){
-          tracks.push({
-            track: clean
-          });
-        }
-
-      });
-
-      if(tracks.length && window.gridIndex){
-
-        console.log("🔥 GRID INPUT TRACKS:", tracks.length);
-
-        markVisitedHybrid(tracks);
-        saveToBackendDebounced();
-        const todayKey = "grid_" + getLocalDateStr();
+      snapshot.forEach(docSnap=>{
 
         try {
 
-          let data = JSON.parse(localStorage.getItem(todayKey) || "{}");
+          const s = docSnap.data();
 
-          Object.keys(data).forEach(id=>{
-            if(data[id] === true) data[id] = 1;
-            else data[id] = Number(data[id]) || 0;
-          });
+          if(!s) return;
 
-          window.gridCache = window.gridCache || {};
-          window.gridCache.today = data;
+          // ======================================================
+          // 🔥 NORMALIZE
+          // ======================================================
+          s.type = "Staff";
+
+          s.cleanName =
+            s.cleanName ||
+            docSnap.id;
+
+          s.name =
+            s.name ||
+            s.cleanName;
+
+          s.lat =
+            Number(s.lat || 0);
+
+          s.lon =
+            Number(s.lon || 0);
+
+          // ======================================================
+          // 🔥 LOAD TRACK
+          // ======================================================
+          s.track = [];
+
+          if(
+            Array.isArray(s.track)
+          ){
+            s.track = s.track;
+          }
+
+          staff.push(s);
 
         } catch(e){
-          console.warn("⚠ cache reload failed");
-        }
 
-        if(typeof updateMonthCache === "function"){
-          updateMonthCache();
-        }
-
-        if(typeof updatePrevMonthCache === "function"){
-          updatePrevMonthCache();
-        }
-
-        if(window.gridIndex && window.__gridCanvas){
-
-          renderGrid(
-            window.currentCoverageMode || "today",
-            window.currentBeat || "ALL"
+          console.error(
+            "❌ Staff parse error:",
+            e
           );
-
         }
 
-        console.log("✅ GRID UPDATED FROM STAFF TRACKS");
+      });
 
-      } else {
-        console.warn("⚠ No valid tracks for grid");
+      // ======================================================
+      // 🔥 LOAD PATROL TRACKS
+      // ======================================================
+      for(const s of staff){
+
+        try {
+
+          const today =
+            new Date()
+              .toISOString()
+              .split("T")[0];
+
+          const trackDocId =
+            `${s.cleanName}_${today}`;
+
+          const trackSnap =
+            await window.fb.getDocs(
+              window.fb.query(
+                collection(window.db, "patrol_tracks")
+              )
+            );
+
+          trackSnap.forEach(t=>{
+
+            if(t.id !== trackDocId) return;
+
+            const td = t.data();
+
+            if(
+              td &&
+              Array.isArray(td.track)
+            ){
+
+              s.track =
+                td.track.map(p=>[
+                  Number(p.lat),
+                  Number(p.lon)
+                ]);
+            }
+
+          });
+
+        } catch(e){
+
+          console.warn(
+            "⚠ Track load failed:",
+            s.cleanName
+          );
+        }
       }
 
+      // ======================================================
+      // 🔥 GROUP SAME LOCATION
+      // ======================================================
+      let groups = {};
+
+      staff.forEach(s=>{
+
+        const key =
+          Number(s.lat).toFixed(6)
+          + ","
+          + Number(s.lon).toFixed(6);
+
+        if(!groups[key]){
+          groups[key]=[];
+        }
+
+        groups[key].push(s);
+
+      });
+
+      let colorIndex = 0;
+
+      Object.values(groups).forEach(group=>{
+
+        group.forEach((s,index)=>{
+
+          let track =
+            Array.isArray(s.track)
+            ? s.track
+            : [];
+
+          // ======================================================
+          // 🔥 CLEAN TRACK
+          // ======================================================
+          let clean=[];
+
+          track.forEach(p=>{
+
+            if(!p) return;
+
+            if(
+              clean.length===0 ||
+              Math.abs(clean[clean.length-1][0]-p[0])>1e-6 ||
+              Math.abs(clean[clean.length-1][1]-p[1])>1e-6
+            ){
+              clean.push(p);
+            }
+
+          });
+
+          if(clean.length){
+
+            console.log(
+              "🟢 LIVE first point:",
+              clean[0]
+            );
+          }
+
+          // ======================================================
+          // 🔥 LAST POSITION
+          // ======================================================
+          let lat =
+            clean.length
+            ? clean[clean.length-1][0]
+            : s.lat;
+
+          let lon =
+            clean.length
+            ? clean[clean.length-1][1]
+            : s.lon;
+
+          // ======================================================
+          // 🔥 SPREAD OVERLAP
+          // ======================================================
+          if(group.length>1){
+
+            const angle =
+              (index/group.length)
+              * Math.PI * 2;
+
+            lat +=
+              Math.cos(angle)
+              * 0.00015;
+
+            lon +=
+              Math.sin(angle)
+              * 0.00015;
+          }
+
+          // ======================================================
+          // 🔥 DISTANCE
+          // ======================================================
+          let dist = 0;
+
+          for(let i=1;i<clean.length;i++){
+
+            dist += getDistance(
+              clean[i-1],
+              clean[i]
+            );
+          }
+
+          // ======================================================
+          // 🔥 SPEED
+          // ======================================================
+          let speed =
+            Number(s.speed || 0);
+
+          const color =
+            getColor(colorIndex++);
+
+          // ======================================================
+          // 🔥 ICON
+          // ======================================================
+          const icon =
+            L.divIcon({
+
+              html:`
+              <div class="markerWrap">
+                <div class="radarPulse"></div>
+                <div class="markerCore">
+                  <i class="fa-solid fa-person-military-pointing"
+                    style="color:#00ff00;font-size:20px;">
+                  </i>
+                </div>
+              </div>`,
+
+              iconSize:[30,30],
+              iconAnchor:[15,15]
+            });
+
+          const team =
+            (s.team && String(s.team).trim())
+            ? s.team
+            : "N/A";
+
+          const duty =
+            s.dutyActive === true
+            ? "ON DUTY"
+            : "OFF DUTY";
+
+          const popup = `
+          <div style="font-family:Segoe UI">
+
+            <b>👤 ${s.name}</b><br>
+
+            ${
+              s.phone
+              ? `
+                <a href="tel:${s.phone}"
+                   style="color:#00e676;text-decoration:none;">
+
+                  <i class="fa-solid fa-phone"></i>
+                  ${s.phone}
+
+                </a>
+              `
+              : "N/A"
+            }
+
+            <hr>
+
+            👥 ${team}<br>
+
+            🧾 ${duty}<br>
+
+            <hr>
+
+            📊 Speed:
+            ${speed.toFixed(1)} km/h<br>
+
+            📏 Distance:
+            ${dist.toFixed(2)} km<br>
+
+            ⏱
+            ${
+              s.lastSeen ||
+              "Unknown"
+            }
+
+          </div>`;
+
+          const marker =
+            L.marker([lat,lon],{
+
+              icon:icon,
+              zIndexOffset:3000
+            })
+
+            .bindPopup(popup,{
+
+              autoClose:false,
+              closeOnClick:false
+            })
+
+            .addTo(staffLayer);
+
+          marker.on(
+            'click',
+            ()=> activePopupId = s.name
+          );
+
+          // ======================================================
+          // 🔥 TRACK DRAW
+          // ======================================================
+          if(clean.length>1){
+
+            const line =
+              L.polyline(clean,{
+
+                color:color,
+                weight:2,
+                opacity:1
+
+              }).addTo(staffLayer);
+
+            if(L.polylineDecorator){
+
+              L.polylineDecorator(line,{
+
+                patterns:[{
+
+                  offset:'5%',
+                  repeat:'50px',
+
+                  symbol:
+                    L.Symbol.arrowHead({
+
+                      pixelSize:10,
+
+                      pathOptions:{
+                        color:color
+                      }
+                    })
+                }]
+              }).addTo(staffLayer);
+            }
+          }
+
+        });
+
+      });
+
+      console.log(
+        "✅ Firestore live staff loaded:",
+        staff.length
+      );
+
     } catch(e){
-      console.error("❌ Grid update error:", e);
+
+      console.error(
+        "❌ loadStaff crash:",
+        e
+      );
     }
 
-  })
-  .catch(err => console.error("❌ loadStaff error:", err));
+  });
 
 }/* ============================================================
    🚨 BLOCK 9 → INCIDENT + VILLAGE + PREDICTION
