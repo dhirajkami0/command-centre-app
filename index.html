@@ -3319,250 +3319,281 @@ function updateDutyUI(isActive){
 // ======================================================
 // 🔥 MAIN DUTY CHECK (FIXED)
 // ======================================================
-function autoShowEndDuty(){
+async function autoShowEndDuty(){
 
   console.group("🧠 autoShowEndDuty START");
 
-  if(dutyCheckRunning){
+  // =====================================================
+  // 🔒 PREVENT DUPLICATE CHECKS
+  // =====================================================
+  if(window.dutyCheckRunning === true){
+
     console.warn("⛔ Skipping duplicate duty check");
+
     console.groupEnd();
     return;
   }
 
-  dutyCheckRunning = true;
+  window.dutyCheckRunning = true;
 
   try {
 
+    // =====================================================
+    // 🔒 PROFILE CHECK
+    // =====================================================
     if(
       !window.userProfile ||
-      !window.userProfile.rawName
+      !window.userProfile.cleanName
     ){
-      dutyCheckRunning = false;
+
+      console.warn("⚠ userProfile missing");
+
+      window.dutyCheckRunning = false;
+
       console.groupEnd();
       return;
     }
 
+    // =====================================================
+    // 🔥 CLEAN NAME
+    // =====================================================
     const cleanedName =
-      window.userProfile.cleanName;
+      String(window.userProfile.cleanName || "")
+      .trim();
 
+    console.log(
+      "🔥 FIRESTORE DUTY CHECK:",
+      cleanedName
+    );
+
+    // =====================================================
+    // 🔥 PREVIOUS STATE
+    // =====================================================
     const wasActive =
       window.isDutyActive === true;
 
-    callBackend(
-      "checkDutyFromSheet",
-      {
-        leader: cleanedName
-      }
-    )
+    // =====================================================
+    // 🔥 FIRESTORE DOC
+    // =====================================================
+    const docRef =
+      firebase
+      .firestore()
+      .collection("live_staff")
+      .doc(cleanedName);
 
-    .then(async function(res){
+    // =====================================================
+    // 🔥 READ FIRESTORE
+    // =====================================================
+    const snap =
+      await docRef.get();
+
+    // =====================================================
+    // ❌ DOC MISSING
+    // =====================================================
+    if(!snap.exists){
+
+      console.warn(
+        "❌ Firestore document missing"
+      );
+
+      window.isDutyActive = false;
+
+      updateDutyButton();
 
       window.__dutyChecked = true;
 
+      return;
+    }
+
+    // =====================================================
+    // 🔥 FIRESTORE DATA
+    // =====================================================
+    const fireData =
+      snap.data() || {};
+
+    console.log(
+      "📦 FIRESTORE DATA:",
+      fireData
+    );
+
+    window.__dutyChecked = true;
+
+    // =====================================================
+    // 🟢 DUTY ACTIVE
+    // =====================================================
+    if(fireData.dutyActive === true){
+
+      console.log("🟢 DUTY ACTIVE");
+
       // =====================================================
-      // 🟢 ACTIVE DUTY
+      // 🔥 GLOBAL STATE
       // =====================================================
-      if(res && res.active){
+      window.isDutyActive = true;
 
-        window.isDutyActive = true;
+      // =====================================================
+      // 🔥 UPDATE BUTTON
+      // =====================================================
+      updateDutyButton();
 
-        updateDutyUI(true);
+      // =====================================================
+      // 🔥 ONLY ON TRANSITION
+      // =====================================================
+      if(!wasActive){
 
-        console.log(
-          "🟢 DUTY ACTIVE"
+        console.warn(
+          "🚀 Duty transitioned OFF → ON"
         );
 
         // =====================================================
-        // 🔥 ONLY ON TRANSITION
+        // 🔥 CLEAR CACHE
         // =====================================================
-        if(!wasActive){
+        try{
 
-          console.warn(
-            "🧹 Duty START → reset local session"
+          localStorage.removeItem(
+            "offlineGPS"
           );
 
-          try{
-            localStorage.removeItem(
-              "offlineGPS"
-            );
-          }catch(e){}
+        }catch(e){}
 
-          try{
+        try{
 
-            window.lastManualKey = "";
-            lastLocationKey = "";
-            lastGpsSent = 0;
+          window.lastManualKey = "";
+          window.lastLocationKey = "";
+          window.lastGpsSent = 0;
 
-          }catch(e){}
-
-          // =====================================================
-          // 🔥 WAIT FOR PROFILE + BRIDGE
-          // =====================================================
-          try{
-
-            let tries = 0;
-
-            while(
-              !window.userProfile &&
-              tries < 20
-            ){
-
-              console.log(
-                "⏳ Waiting for userProfile..."
-              );
-
-              await new Promise(r =>
-                setTimeout(r, 500)
-              );
-
-              tries++;
-            }
-
-            if(!window.userProfile){
-
-              console.warn(
-                "❌ userProfile still missing"
-              );
-
-              return;
-            }
-
-            console.log(
-              "✅ userProfile READY"
-            );
-
-            // =====================================================
-            // 🔥 START ANDROID NATIVE GPS
-            // =====================================================
-            await notifyAndroidDuty(true);
-
-          }catch(e){
-
-            console.error(
-              "❌ notifyAndroidDuty(true) failed:",
-              e
-            );
-          }
-        }
+        }catch(e){}
 
         // =====================================================
-        // 🔥 GPS START (FRONTEND)
+        // 🔥 START APK GPS
         // =====================================================
-        if(!window.gpsRunning){
+        try{
 
-          try {
+          console.log(
+            "📱 notifyAndroidDuty(true)"
+          );
 
-            console.log(
-              "🚀 Starting Auto GPS (duty active)"
-            );
+          await notifyAndroidDuty(true);
 
-            //startAutoGPS();
+          console.log(
+            "✅ APK GPS STARTED"
+          );
 
-          } catch(e){
+        }catch(e){
 
-            console.error(
-              "❌ startAutoGPS error:",
-              e
-            );
-          }
+          console.error(
+            "❌ notifyAndroidDuty(true) failed:",
+            e
+          );
         }
-
       }
 
       // =====================================================
-      // 🔴 DUTY NOT ACTIVE
+      // 🔥 FRONTEND GPS
       // =====================================================
-      else {
+      if(!window.gpsRunning){
 
-        window.isDutyActive = false;
+        try {
 
-        updateDutyUI(false);
+          console.log(
+            "🚀 Frontend GPS Ready"
+          );
 
-        console.log(
-          "🔴 DUTY INACTIVE"
+          // startAutoGPS();
+
+        } catch(e){
+
+          console.error(
+            "❌ startAutoGPS error:",
+            e
+          );
+        }
+      }
+
+    }
+
+    // =====================================================
+    // 🔴 DUTY OFF
+    // =====================================================
+    else {
+
+      console.log("🔴 DUTY INACTIVE");
+
+      // =====================================================
+      // 🔥 GLOBAL STATE
+      // =====================================================
+      window.isDutyActive = false;
+
+      // =====================================================
+      // 🔥 UPDATE BUTTON
+      // =====================================================
+      updateDutyButton();
+
+      // =====================================================
+      // 🔥 ONLY ON TRANSITION
+      // =====================================================
+      if(wasActive){
+
+        console.warn(
+          "🛑 Duty transitioned ON → OFF"
         );
 
         // =====================================================
-        // 🔥 ONLY ON TRANSITION
+        // 🔥 STOP APK GPS
         // =====================================================
-        if(wasActive){
+        try {
 
-          console.warn(
-            "🧹 Duty END → FULL CLEANUP"
+          console.log(
+            "📱 notifyAndroidDuty(false)"
           );
 
-          // =====================================================
-          // 🔥 STOP ANDROID NATIVE GPS
-          // =====================================================
-          try {
+          await notifyAndroidDuty(false);
 
-            console.log(
-              "📱 notifyAndroidDuty(false)"
-            );
+          console.log(
+            "✅ APK GPS STOPPED"
+          );
 
-            await notifyAndroidDuty(false);
+        } catch(e){
 
-          } catch(e){
-
-            console.error(
-              "❌ notifyAndroidDuty(false) failed:",
-              e
-            );
-          }
-
-          try {
-
-            console.log(
-              "🛑 Stopping Auto GPS (duty off)"
-            );
-
-            //stopAutoGPS();
-
-          } catch(e){}
-
-          try {
-
-            localStorage.removeItem(
-              "offlineGPS"
-            );
-
-          } catch(e){}
-
-          try {
-
-            window.lastManualKey = "";
-            lastLocationKey = "";
-            lastGpsSent = 0;
-            window.gpsQueue = [];
-
-          } catch(e){}
+          console.error(
+            "❌ notifyAndroidDuty(false) failed:",
+            e
+          );
         }
+
+        // =====================================================
+        // 🔥 STOP FRONTEND GPS
+        // =====================================================
+        try {
+
+          console.log(
+            "🛑 Frontend GPS stop"
+          );
+
+          // stopAutoGPS();
+
+        } catch(e){}
+
+        // =====================================================
+        // 🔥 CLEAR CACHE
+        // =====================================================
+        try {
+
+          localStorage.removeItem(
+            "offlineGPS"
+          );
+
+        } catch(e){}
+
+        try {
+
+          window.lastManualKey = "";
+          window.lastLocationKey = "";
+          window.lastGpsSent = 0;
+          window.gpsQueue = [];
+
+        } catch(e){}
       }
-
-    })
-
-    .catch(function(err){
-
-      console.error(
-        "❌ Duty check error:",
-        err
-      );
-    })
-
-    .finally(function(){
-
-      // =====================================================
-      // 🔥 SMALL DELAY TO PREVENT RACE
-      // =====================================================
-      setTimeout(() => {
-
-        dutyCheckRunning = false;
-
-        console.groupEnd();
-
-      }, 800);
-
-    });
+    }
 
   } catch(e){
 
@@ -3571,12 +3602,20 @@ function autoShowEndDuty(){
       e
     );
 
-    dutyCheckRunning = false;
+  } finally {
 
-    console.groupEnd();
+    // =====================================================
+    // 🔓 RELEASE LOCK
+    // =====================================================
+    setTimeout(() => {
+
+      window.dutyCheckRunning = false;
+
+      console.groupEnd();
+
+    }, 800);
   }
-}
-// ======================================================
+}// ======================================================
 // 🔥 INIT DUTY CONTROL (CLEAN)
 // ======================================================
 let dutyInitDone = false;
