@@ -11823,28 +11823,63 @@ document.getElementById('form-modal').style.display = 'none';
     // ============================================================
     // 🔥 BACKEND SAVE
     // ============================================================
-    const msg =
-      await callBackend(
-        "markDutyOutWithObs",
-        payload
-      );
+    // ============================================================
+// 🔥 BACKEND SAVE (OPTIONAL)
+// ============================================================
+let backendOk = true;
 
-    console.log(
-      "✅ Backend response:",
-      msg
+try {
+
+  const msg =
+    await callBackend(
+      "markDutyOutWithObs",
+      payload
     );
 
-    if (
-      !msg ||
-      msg.error
-    ) {
+  console.log(
+    "✅ Backend response:",
+    msg
+  );
 
-      throw new Error(
-        msg?.error ||
-        "Failed to end duty"
-      );
-    }
+  // ==========================================================
+  // 🔥 IGNORE OLD NO_ACTIVE_DUTY
+  // ==========================================================
+  if (
+    msg &&
+    msg.error === "NO_ACTIVE_DUTY"
+  ) {
 
+    console.warn(
+      "⚠ Backend says NO_ACTIVE_DUTY → ignored"
+    );
+
+    backendOk = false;
+  }
+
+  // ==========================================================
+  // 🔥 OTHER REAL ERRORS
+  // ==========================================================
+  else if (
+    !msg ||
+    (
+      msg.error &&
+      msg.error !== "NO_ACTIVE_DUTY"
+    )
+  ) {
+
+    throw new Error(
+      msg?.error ||
+      "Failed to end duty"
+    );
+  }
+
+} catch (backendErr) {
+
+  console.error(
+    "❌ Backend save failed:",
+    backendErr
+  );
+}
     // ============================================================
     // 🔥 FIRESTORE UPDATE
     // ============================================================
