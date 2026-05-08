@@ -8755,18 +8755,37 @@ if(s.dutyActive !== true){
             if(t.id !== trackDocId) return;
 
             const td = t.data();
+if(
+  td &&
+  Array.isArray(td.track)
+){
 
-            if(
-              td &&
-              Array.isArray(td.track)
-            ){
+  // ====================================================
+  // 🔥 FILTER ONLY CURRENT SESSION
+  // ====================================================
+  const activeSessionId =
+    s.sessionId || "";
 
-              s.track =
-                td.track.map(p=>[
-                  Number(p.lat),
-                  Number(p.lon)
-                ]);
-            }
+  const filtered =
+    td.track.filter(p=>
+
+      p &&
+      p.sessionId === activeSessionId
+    );
+
+  console.log(
+    "🎯 ACTIVE SESSION:",
+    activeSessionId,
+    "POINTS:",
+    filtered.length
+  );
+
+  s.track =
+    filtered.map(p=>[
+      Number(p.lat),
+      Number(p.lon)
+    ]);
+}
 
           });
 
