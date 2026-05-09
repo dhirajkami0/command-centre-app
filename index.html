@@ -565,8 +565,29 @@ text-shadow: 0 1px 3px rgba(0,0,0,0.8);
     }
 
    /* 🔥 WRAPPER */
-.markerWrap { position: relative; width: 30px; height: 30px; display: flex; align-items: center; justify-content: center; }
-.markerCore { font-size: 22px; color: white; text-shadow: 0 0 5px black; z-index: 3; }
+.markerWrap {
+
+  position: relative;
+
+  width: 30px;
+  height: 30px;
+
+  display: flex;
+
+  align-items: center;
+
+  justify-content: center;
+}
+.markerCore {
+
+  font-size: 22px;
+
+  color: white;
+
+  text-shadow: 0 0 5px black;
+
+  z-index: 3;
+}
 
 /* ============================================================
    🔥 ANIMATIONS, RADAR & RISK PULSES
@@ -596,10 +617,10 @@ text-shadow: 0 1px 3px rgba(0,0,0,0.8);
   top: 50%;
   left: 50%;
 
-  width: 12px;
-  height: 12px;
+  width: 14px;
+  height: 14px;
 
-  margin: -6px;
+  margin: -7px;
 
   border-radius: 50%;
 
@@ -607,22 +628,48 @@ text-shadow: 0 1px 3px rgba(0,0,0,0.8);
 
   z-index: 1;
 
-  border: 1.5px solid #ffcc00;
+  border: 2.5px solid #ffcc00;
 
-  opacity: 0.55;
+  box-shadow:
+    0 0 10px #ff9500,
+    0 0 20px rgba(255,149,0,0.7),
+    0 0 30px rgba(255,179,0,0.5);
 
-  animation: radarPulseWave 12s infinite ease-out;
+  animation:
+    radarPulseWave 2.2s infinite ease-out;
 }
-
 .radarPulse.delay1 { animation-delay: 0.6s; }
 .radarPulse.delay2 { animation-delay: 1.2s; }
 
 @keyframes radarPulseWave {
-  0% { transform: translate(-50%, -50%) scale(0.3); opacity: 1; border-width: 2.5px; }
-  50% { opacity: 0.6; }
-  100% { transform: translate(-50%, -50%) scale(2); opacity: 0; border-width: 1px; }
-}
-    .riskPulseRed {
+
+  0% {
+
+    transform:
+      translate(-50%, -50%)
+      scale(0.3);
+
+    opacity: 1;
+
+    border-width: 2.5px;
+  }
+
+  50% {
+
+    opacity: 0.6;
+  }
+
+  100% {
+
+    transform:
+      translate(-50%, -50%)
+      scale(4);
+
+    opacity: 0;
+
+    border-width: 1px;
+  }
+}    .riskPulseRed {
       border: 2px solid #ff3b30;
       box-shadow: 0 0 6px #ff3b30, 0 0 12px rgba(255, 59, 48, 0.5);
     }
@@ -9085,17 +9132,32 @@ const trackDocId =
 // 🔥 ICON (ALWAYS GREEN)
 // ==============================================
 const icon = L.divIcon({
-          html:`
-          <div class="markerWrap">
-            <div class="radarPulse"></div>
-            <div class="markerCore">
-              <i class="fa-solid fa-person-military-pointing"
-                style="color:#00ff00;font-size:20px;"></i>
-            </div>
-          </div>`,
-          iconSize:[30,30],
-          iconAnchor:[15,15]
-        });
+
+  html:`
+
+  <div class="markerWrap">
+
+    <div class="radarPulse"></div>
+
+    <div class="markerCore">
+
+      <i class="fa-solid fa-person-military-pointing"
+        style="
+          color:#00ff00;
+          font-size:20px;
+        ">
+      </i>
+
+    </div>
+
+  </div>
+
+  `,
+
+  iconSize:[30,30],
+
+  iconAnchor:[15,15]
+});
 // ==============================================
 // 🔥 TEAM
 // ==============================================
