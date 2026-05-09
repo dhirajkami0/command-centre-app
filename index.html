@@ -9331,19 +9331,17 @@ const popup = `
       ${
         s.phone
         ? `
-        <a
-          href="tel:${String(s.phone).trim()}"
-          onclick="window.location.href='tel:${String(s.phone).trim()}'"
-          style="
-            color:#00695c;
-            text-decoration:none;
-            font-weight:700;
-          ">
+     <a
+  href="tel:${String(s.phone).trim()}"
+  style="
+    color:#00695c;
+    text-decoration:none;
+    font-weight:700;
+  ">
 
-          ${s.phone}
+  📞 ${s.phone}
 
-        </a>
-        `
+</a> `
         : "N/A"
       }
 
