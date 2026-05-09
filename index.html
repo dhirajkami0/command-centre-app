@@ -12086,6 +12086,13 @@ function openDutyForm(){
   console.group("🚀 openDutyForm START");
   console.log("⏱ Time:", new Date().toLocaleTimeString());
 
+  // =====================================================
+  // 🔥 RESET FALSE START STATE
+  // =====================================================
+  window.__dutyUpdating = false;
+
+  startDutySubmitting = false;
+
   const modal = document.getElementById("duty-modal");
 
   if (!modal) {
@@ -12123,6 +12130,16 @@ function openDutyForm(){
 
   const dirSel = document.getElementById("d-dir");
   if (dirSel) dirSel.selectedIndex = 0;
+
+  // =====================================================
+  // 🔥 RESET DUTY TYPE
+  // =====================================================
+  const typeSel =
+    document.getElementById("d-type");
+
+  if(typeSel){
+    typeSel.selectedIndex = 0;
+  }
 
   dutyComptMap = {};
 
@@ -12175,17 +12192,26 @@ function openDutyForm(){
   beatSel.innerHTML = "";
 
   if (profile.role === "ADMIN") {
+
     ["East Garam","West Garam","East Poro","Range HQ"]
     .forEach(b=>{
+
       const o=document.createElement("option");
+
       o.value=b;
       o.innerHTML=b;
+
       beatSel.appendChild(o);
+
     });
+
   } else {
+
     const o=document.createElement("option");
+
     o.value=profile.beat||"";
     o.innerHTML=profile.beat||"";
+
     beatSel.appendChild(o);
   }
 
@@ -12196,73 +12222,183 @@ function openDutyForm(){
 
   if (leaderInput) {
 
-    const displayName = profile.rawName.trim(); // 🔥 FIXED
+    const displayName =
+      profile.rawName.trim();
 
-    leaderInput.value = displayName;
+    leaderInput.value =
+      displayName;
+
     leaderInput.readOnly = true;
-    leaderInput.dataset.lockedUser = displayName;
 
-    console.log("👤 Leader set:", displayName);
+    leaderInput.dataset.lockedUser =
+      displayName;
+
+    console.log(
+      "👤 Leader set:",
+      displayName
+    );
   }
 
   /* ================= EVENTS ================= */
   beatSel.onchange = () => {
+
     updateDutyStaff("BEAT_CHANGE");
+
     updateDutyCompt("BEAT_CHANGE");
   };
 
   /* ================= POST INIT ================= */
   setTimeout(() => {
-    setVal("d-id", "DUTY-" + Date.now());
-    setVal("d-date", new Date().toLocaleString());
 
-    updateDutyStaff("FROM_OPEN_DUTY");
-    updateDutyCompt("FROM_OPEN_DUTY");
+    setVal(
+      "d-id",
+      "DUTY-" + Date.now()
+    );
+
+    setVal(
+      "d-date",
+      new Date().toLocaleString()
+    );
+
+    updateDutyStaff(
+      "FROM_OPEN_DUTY"
+    );
+
+    updateDutyCompt(
+      "FROM_OPEN_DUTY"
+    );
+
   }, 150);
 
   /* ================= BUTTON FIX ================= */
-  const startBtn = document.getElementById("startDutyBtn");
+  const startBtn =
+    document.getElementById(
+      "startDutyBtn"
+    );
 
   if (startBtn) {
-    const newBtn = startBtn.cloneNode(true);
-    startBtn.parentNode.replaceChild(newBtn, startBtn);
+
+    // =================================================
+    // 🔥 FORCE CLEAN BUTTON STATE
+    // =================================================
+    startBtn.disabled = false;
+
+    startBtn.innerHTML =
+      "🚀 START DUTY";
+
+    const newBtn =
+      startBtn.cloneNode(true);
+
+    startBtn.parentNode.replaceChild(
+      newBtn,
+      startBtn
+    );
 
     newBtn.onclick = function(e) {
-      if (!e.isTrusted) return;
+
+      if (!e.isTrusted){
+        return;
+      }
 
       e.preventDefault();
+
       e.stopPropagation();
 
-      console.log("🔥 START DUTY CLICKED BY USER");
+      console.log(
+        "🔥 START DUTY CLICKED BY USER"
+      );
+
+      // =============================================
+      // 🔥 PREVENT AUTO TRIGGER
+      // =============================================
+      if(window.__dutyUpdating === true){
+
+        console.warn(
+          "⛔ Already updating"
+        );
+
+        return;
+      }
 
       if (typeof startDuty === "function") {
-          startDuty(e);
+
+        startDuty(e);
+
       } else {
-          console.error("❌ startDuty function is not defined!");
+
+        console.error(
+          "❌ startDuty function is not defined!"
+        );
       }
     };
 
-    console.log("✅ startDutyBtn safely rebound");
+    console.log(
+      "✅ startDutyBtn safely rebound"
+    );
   }
 
   console.groupEnd();
-}/* START DUTY (SECURE) */
-          /* START DUTY */
-          /* 🔥 FIXED START DUTY: CAPTURES AND STORES COMMA-SEPARATED STRINGS */
-          /* 🔥 FIXED: CLOSE DUTY MODAL FUNCTION */
-          function closeDutyForm() {
-            console.log("DIAGNOSIS: Closing Duty Register Modal");
+}
 
-            const modal = document.getElementById("duty-modal");
-            if (modal) {
-              modal.style.display = "none";
+/* =========================================================
+   🔥 CLOSE DUTY FORM
+========================================================= */
+function closeDutyForm() {
 
-              // Also close any open multi-select dropdowns to keep it clean
-              document.querySelectorAll(".options").forEach(opt => opt.style.display = "none");
-            } else {
-              console.error("DIAGNOSIS: Could not find element with ID 'duty-modal'");
-            }
-          }/* END DUTY (PERSON-SPECIFIC) */
+  console.log(
+    "DIAGNOSIS: Closing Duty Register Modal"
+  );
+
+  // =====================================================
+  // 🔥 RESET FALSE STATES
+  // =====================================================
+  window.__dutyUpdating = false;
+
+  startDutySubmitting = false;
+
+  const modal =
+    document.getElementById(
+      "duty-modal"
+    );
+
+  if (modal) {
+
+    modal.style.display = "none";
+
+    // ===============================================
+    // 🔥 CLOSE MULTI SELECTS
+    // ===============================================
+    document
+      .querySelectorAll(".options")
+      .forEach(opt => {
+
+        opt.style.display = "none";
+
+      });
+
+  } else {
+
+    console.error(
+      "DIAGNOSIS: Could not find element with ID 'duty-modal'"
+    );
+  }
+
+  // =====================================================
+  // 🔥 RESET BUTTON
+  // =====================================================
+  const startBtn =
+    document.getElementById(
+      "startDutyBtn"
+    );
+
+  if(startBtn){
+
+    startBtn.disabled = false;
+
+    startBtn.innerHTML =
+      "🚀 START DUTY";
+  }
+}/* END DUTY (PERSON-SPECIFIC) */
           /* ============================================================
              🔴 NEW 2-STEP DUTY END SYSTEM
           ============================================================ */
