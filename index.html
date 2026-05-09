@@ -9039,40 +9039,19 @@ const trackDocId =
             // ==============================================
 // 🔥 ICON (ALWAYS GREEN)
 // ==============================================
-const icon =
-  L.divIcon({
-
-    html:`
-    <div class="markerWrap">
-
-      <!-- 🔥 RADAR -->
-      <div class="radarPulse"></div>
-
-      <!-- 🔥 ICON -->
-      <div class="markerCore">
-
-        <i class="fa-solid fa-person-military-pointing"
-          style="
-            color:#00ff00;
-            font-size:20px;
-
-            filter:
-              drop-shadow(0 0 2px #000)
-              drop-shadow(0 0 6px rgba(0,255,0,0.95))
-              drop-shadow(0 0 12px rgba(0,255,0,0.75))
-              drop-shadow(0 0 18px rgba(0,255,0,0.45));
-
-            transform:translateZ(0);
-          ">
-        </i>
-
-      </div>
-
-    </div>`,
-
-    iconSize:[30,30],
-    iconAnchor:[15,15]
-  });// ==============================================
+const icon = L.divIcon({
+          html:`
+          <div class="markerWrap">
+            <div class="radarPulse"></div>
+            <div class="markerCore">
+              <i class="fa-solid fa-person-military-pointing"
+                style="color:#00ff00;font-size:20px;"></i>
+            </div>
+          </div>`,
+          iconSize:[30,30],
+          iconAnchor:[15,15]
+        });
+// ==============================================
 // 🔥 TEAM
 // ==============================================
 const team =
