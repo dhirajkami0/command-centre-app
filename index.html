@@ -9035,32 +9035,22 @@ function loadStaff(){
 // 🔥 ICON (ALWAYS GREEN)
 // ==============================================
 const icon =
-  L.divIcon({
+            L.divIcon({
 
-    html:`
-    <div class="markerWrap">
+              html:`
+              <div class="markerWrap">
+                <div class="radarPulse"></div>
+                <div class="markerCore">
+                  <i class="fa-solid fa-person-military-pointing"
+                    style="color:#00ff00;font-size:20px;">
+                  </i>
+                </div>
+              </div>`,
 
-      <div class="radarPulse"></div>
+              iconSize:[30,30],
+              iconAnchor:[15,15]
+            });
 
-      <div class="markerCore">
-
-        <i class="fa-solid fa-person-military-pointing"
-          style="
-            color:#00ff00;
-            font-size:20px;
-            filter:
-              drop-shadow(0 0 4px black)
-              drop-shadow(0 0 6px rgba(0,255,0,0.7));
-          ">
-        </i>
-
-      </div>
-
-    </div>`,
-
-    iconSize:[30,30],
-    iconAnchor:[15,15]
-  });
 // ==============================================
 // 🔥 TEAM
 // ==============================================
