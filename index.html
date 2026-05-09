@@ -15251,84 +15251,133 @@ function handleDutyAction(e){
   }
 }
         /* 🔥 FIXED START DUTY: CAPTURES DATA AND UPDATES BUTTON */
-    async function cleanupOldTracks(){
+    // ======================================================
+// 🧹 CLEAN OLD TRACKS
+// ======================================================
+async function cleanupOldTracks(){
 
-  try{
+  try {
+
+    // ==================================================
+    // 🔥 FIREBASE READY CHECK
+    // ==================================================
+    if(
+      !window.db ||
+      !window.fb
+    ){
+
+      console.warn(
+        "⚠ Firebase not ready for cleanup"
+      );
+
+      return;
+    }
 
     console.log(
-      "🧹 CLEANUP STARTED"
+      "🧹 Running old patrol track cleanup..."
     );
 
-    const now =
-      Date.now();
-
-    // ====================================================
-    // 60 DAYS
-    // ====================================================
-    const limit =
-      60 * 24 * 60 * 60 * 1000;
-
-    const snap =
-      await getDocs(
-        collection(
-          db,
-          "patrol_tracks"
-        )
+    // ==================================================
+    // 🔥 COLLECTION REF
+    // ==================================================
+    const trackRef =
+      window.fb.collection(
+        window.db,
+        "patrol_tracks"
       );
+
+    // ==================================================
+    // 🔥 LOAD DOCS
+    // ==================================================
+    const snap =
+      await window.fb.getDocs(
+        trackRef
+      );
+
+    if(snap.empty){
+
+      console.log(
+        "📭 No patrol tracks found"
+      );
+
+      return;
+    }
+
+    // ==================================================
+    // 🔥 DATE LIMIT
+    // ==================================================
+    const cutoff =
+      Date.now() -
+      (3 * 24 * 60 * 60 * 1000);
 
     let deleted = 0;
 
-    for(const d of snap.docs){
+    // ==================================================
+    // 🔥 LOOP DOCS
+    // ==================================================
+    for(const docSnap of snap.docs){
 
-      try{
+      try {
 
         const data =
-          d.data() || {};
+          docSnap.data();
 
-        const updatedAt =
-          Number(
-            data.updatedAt || 0
-          );
+        // ==============================================
+        // 🔥 EXTRACT DATE
+        // ==============================================
+        const parts =
+          String(docSnap.id)
+          .split("_");
 
-        // ================================================
-        // DELETE OLD DOC
-        // ================================================
+        const dateStr =
+          parts[parts.length - 1];
+
+        const docDate =
+          new Date(dateStr);
+
+        // ==============================================
+        // 🔥 INVALID DATE
+        // ==============================================
         if(
-          updatedAt > 0 &&
-          now - updatedAt > limit
+          isNaN(docDate.getTime())
+        ){
+          continue;
+        }
+
+        // ==============================================
+        // 🔥 DELETE OLD
+        // ==============================================
+        if(
+          docDate.getTime() < cutoff
         ){
 
-          console.log(
-            "🗑 deleting:",
-            d.id
-          );
-
-          await deleteDoc(
-            doc(
-              db,
-              "patrol_tracks",
-              d.id
-            )
+          await window.fb.deleteDoc(
+            docSnap.ref
           );
 
           deleted++;
+
+          console.log(
+            "🗑 Deleted old track:",
+            docSnap.id
+          );
         }
 
-      }catch(innerErr){
+      } catch(e){
 
-        console.error(
-          "❌ delete failed:",
-          d.id,
-          innerErr
+        console.warn(
+          "⚠ Failed deleting:",
+          docSnap.id,
+          e
         );
       }
     }
 
     console.log(
-      `✅ CLEANUP COMPLETE → ${deleted} deleted`
+      `✅ Cleanup complete | Deleted: ${deleted}`
     );
 
-  }catch(err){
+  } catch(err){
 
     console.error(
       "❌ cleanup crash",
