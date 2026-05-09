@@ -23,7 +23,7 @@
     t.style.borderRadius = "6px";
     t.style.zIndex = "999999";
     t.style.fontWeight = "bold";
-    t.style.boxShadow = "0 4px 10px rgba(0,0,0,0.5)";
+    t.style.boxShadow = "none";
 
     document.body.appendChild(t);
     setTimeout(()=>t.remove(),3000);
@@ -274,9 +274,8 @@ window.addEventListener("unhandledrejection", function (e) {
       max-height: 100vh !important;
 
       background: rgba(10, 25, 10, 0.4) !important;
-      backdrop-filter: blur(15px) saturate(180%);
-      -webkit-backdrop-filter: blur(15px) saturate(180%);
-      z-index: 4000;
+      /* 🔥 PERFORMANCE FIX */
+background: rgba(15, 20, 15, 0.92);z-index: 4000;
       color: white;
 
       border-right: 1px solid rgba(255, 255, 255, 0.2);
@@ -289,7 +288,7 @@ window.addEventListener("unhandledrejection", function (e) {
       padding: calc(75px + var(--sat)) 12px 15px 12px;
 
       /* 🔥 FORCED SCROLLBAR VISIBILITY */
-      overflow-y: scroll !important;
+      overflow-y: auto !important;
       overflow-x: hidden;
       box-sizing: border-box;
     }
@@ -325,7 +324,7 @@ window.addEventListener("unhandledrejection", function (e) {
 ============================================================ */
     .weather-drawer {
       background: rgba(255, 255, 255, 0.05) !important;
-      backdrop-filter: blur(6px);
+        background: rgba(25,25,25,0.95);
       border-radius: 10px;
       margin-top: 10px;
       overflow: hidden;
@@ -371,9 +370,8 @@ window.addEventListener("unhandledrejection", function (e) {
 
       background: rgba(46, 125, 50, 0.025);
 
-      backdrop-filter: blur(6px) saturate(100%);
-      -webkit-backdrop-filter: blur(6px) saturate(100%);
-
+     /* 🔥 PERFORMANCE FIX */
+background: rgba(20, 30, 20, 0.95);
       color: white;
       text-shadow: 0 1px 4px rgba(0, 0, 0, 0.9);
       border-radius: 12px;
@@ -410,7 +408,7 @@ window.addEventListener("unhandledrejection", function (e) {
       padding: 14px;
 
       background: rgba(255, 255, 255, 0.08);
-      backdrop-filter: blur(10px);
+      background: rgba(35,35,35,0.95);
 
       border: 1px solid rgba(255, 255, 255, 0.2);
       color: #fff;
@@ -447,9 +445,8 @@ window.addEventListener("unhandledrejection", function (e) {
       right: 15px;
       background: rgba(20, 20, 20, 0.04);
 
-      backdrop-filter: blur(8px) saturate(100%);
-      -webkit-backdrop-filter: blur(8px) saturate(100%);
-
+      /* 🔥 PERFORMANCE FIX */
+background: rgba(25, 25, 25, 0.94); 
       border: 1px solid rgba(255, 255, 255, 0.08);
       color: white;
       padding: 12px;
@@ -482,7 +479,7 @@ window.addEventListener("unhandledrejection", function (e) {
       border-radius: 50%;
 
       background: rgba(46, 125, 50, 0.35);
-      backdrop-filter: blur(12px);
+       background: rgba(30,30,30,0.96);
 
       border: 1px solid rgba(255, 255, 255, 0.2);
     }
@@ -543,7 +540,8 @@ window.addEventListener("unhandledrejection", function (e) {
       font-weight: 800 !important;
       font-size: 13px !important;
       text-align: center;
-      text-shadow: 2px 2px 0 #000, -2px -2px 0 #000, 2px -2px 0 #000, -2px 2px 0 #000, 0 0 10px #000;
+     /* 🔥 PERFORMANCE FIX */
+text-shadow: 0 1px 3px rgba(0,0,0,0.8);
       white-space: nowrap;
       pointer-events: none;
       z-index: 1000 !important;
@@ -573,26 +571,47 @@ window.addEventListener("unhandledrejection", function (e) {
 /* ============================================================
    🔥 ANIMATIONS, RADAR & RISK PULSES
 ============================================================ */
-.pulse { animation: pulse 1.6s infinite; }
+.pulse {
+  animation: pulse 4s infinite;
+  opacity: 0.85;
+}
 @keyframes pulse { 0% {transform:scale(1);opacity:1} 50% {transform:scale(1.3);opacity:.6} 100% {transform:scale(1);opacity:1} }
 
-.fireGlow { animation: fireGlow 1s infinite alternate; }
+.fireGlow {
+  opacity: 1;
+}
 @keyframes fireGlow { 0% {box-shadow:0 0 6px orange} 100% {box-shadow:0 0 18px red} }
 
 .highRisk { animation: blink 1s infinite; }
 @keyframes blink { 0%{background:red} 50%{background:yellow} 100%{background:red} }
 
+/* ============================================================
+   🚀 LIGHTWEIGHT RADAR PULSE (SMOOTH + LOW GPU)
+============================================================ */
+
 .radarPulse {
+
   position: absolute;
-  top: 50%; left: 50%;
-  width: 14px; height: 14px;
-  margin: -7px;
+
+  top: 50%;
+  left: 50%;
+
+  width: 12px;
+  height: 12px;
+
+  margin: -6px;
+
   border-radius: 50%;
+
   pointer-events: none;
+
   z-index: 1;
-  border: 2.5px solid #ffcc00;
-  box-shadow: 0 0 10px #ff9500, 0 0 20px rgba(255,149,0,0.7), 0 0 30px rgba(255,179,0,0.5);
-  animation: radarPulseWave 3.5s infinite ease-out;
+
+  border: 1.5px solid #ffcc00;
+
+  opacity: 0.55;
+
+  animation: radarPulseWave 12s infinite ease-out;
 }
 
 .radarPulse.delay1 { animation-delay: 0.6s; }
@@ -616,34 +635,58 @@ window.addEventListener("unhandledrejection", function (e) {
     /* ============================================================
    📡 SHARP RENDERING & GRID FIXES
 ============================================================ */
-    .sharpLayer {
-      pointer-events: auto !important;
-      shape-rendering: crispEdges;
-      filter: saturate(1.8) brightness(1.1) !important;
-      mix-blend-mode: screen;
-      stroke-width: 0;
-    }
+    /* ============================================================
+   🚀 ULTRA-SMOOTH MAP RENDERING (OPTIMIZED)
+============================================================ */
 
-  canvas.leaflet-zoom-animated {
-  image-rendering: auto !important;
+.sharpLayer {
+
+  pointer-events: auto !important;
+
+  shape-rendering: geometricPrecision;
+
+  stroke-width: 0;
+
+  opacity: 0.96;
+
+  will-change: transform;
 }
-    .compGlow {
-      filter: drop-shadow(0 0 8px rgba(255, 255, 255, 0.9));
-      stroke-linejoin: round;
-    }
 
-    .compactGrid {
-      filter: saturate(2) brightness(1.1);
-    }
+/* 🔥 SMOOTH LEAFLET CANVAS */
+canvas.leaflet-zoom-animated {
 
-    .visitedGlow {
-      filter: drop-shadow(0 0 6px #00ff00);
-    }
+  image-rendering: auto !important;
 
-    .unvisitedGlow {
-      filter: drop-shadow(0 0 6px #ff0000);
-    }
+  transform: translateZ(0);
 
+  backface-visibility: hidden;
+}
+
+/* 🔥 LIGHTWEIGHT COMPARTMENT STYLE */
+.compGlow {
+
+  stroke-linejoin: round;
+
+  opacity: 1;
+}
+
+/* 🔥 REMOVE GPU FILTERS */
+.compactGrid {
+
+  opacity: 1;
+}
+
+/* 🔥 VISITED AREA */
+.visitedGlow {
+
+  opacity: 0.92;
+}
+
+/* 🔥 UNVISITED AREA */
+.unvisitedGlow {
+
+  opacity: 0.92;
+}
     /* ============================================================
    📋 FORMS & DROPDOWNS
 ============================================================ */
@@ -885,7 +928,9 @@ window.addEventListener("unhandledrejection", function (e) {
     </div>
     <div class="weather-drawer" id="weatherDrawer" style="margin-top: 10px; background: rgba(255,255,255,0.05); border-radius: 8px; overflow: hidden;">
       <button class="weather-toggle" onclick="toggleWeatherDrawer()" style="width:100%; background:none; border:none; color:#4caf50; display:flex; justify-content:space-between; align-items:center; padding: 12px; cursor:pointer; font-weight:bold; font-size:13px;"> <span>
-        <i class="fa-solid fa-cloud-sun"></i> Weather Info</span> <i id="weatherChevron" class="fa-solid fa-chevron-down"></i> </button> <div class="weather-content" id="weatherContent" style="max-height: 0px; opacity: 0; overflow: hidden; transition: all 0.4s ease; padding: 0 12px;"> 
+        <i class="fa-solid fa-cloud-sun"></i> Weather Info</span> <i id="weatherChevron" class="fa-solid fa-chevron-down"></i> </button> <div class="weather-content" id="weatherContent" style="max-height: 0px; opacity: 0; overflow: hidden; transition:
+  opacity 0.4s ease,
+  max-height 0.4s ease; padding: 0 12px;"> 
           <div id="weatherNow" style="margin-top:5px;"></div> 
           <hr style="border:0; border-top:1px solid rgba(255,255,255,0.1); margin:8px 0;">
           <div id="todayForecast"></div> <hr style="border:0; border-top:1px solid rgba(255,255,255,0.1); margin:8px 0;">
@@ -2229,7 +2274,7 @@ window.addEventListener("load", function () {
         }
       }, 800);
 
-    }, 1800);
+  }, 600);
   }
 
 
@@ -9458,7 +9503,7 @@ ${
                     color: color,
                     weight: 4,
                     opacity: 0.85,
-                    smoothFactor: 3,
+                    smoothFactor: 0,
                     lineCap: "round",
                     lineJoin: "round"
                   }
