@@ -8869,14 +8869,19 @@ function loadStaff(){
 
           try {
 
-            const today =
-              new Date()
-                .toISOString()
-                .split("T")[0];
+           // ==================================================
+// 🔥 MONTH KEY
+// ==================================================
+const monthKey =
+  new Date()
+    .toISOString()
+    .slice(0,7);
 
-            const trackDocId =
-              `${s.cleanName}_${today}`;
-
+// ==================================================
+// 🔥 MONTHLY TRACK DOC
+// ==================================================
+const trackDocId =
+  `${s.cleanName}_${monthKey}`;
             const trackRef =
               window.fb.doc(
                 window.db,
@@ -15513,12 +15518,37 @@ function startDuty(event) {
       arrayUnion
     } = window.fb;
 
-    const cleanLeader =
-      cleanName(payload.leader);
+      const cleanLeader =
+  cleanName(payload.leader);
 
-    const now =
-      new Date();
+const now =
+  new Date();
 
+// =====================================================
+// 🔥 SESSION ID
+// =====================================================
+const sessionId =
+  `${cleanLeader}_${
+    Date.now()
+  }`;
+
+// =====================================================
+// 🔥 SAVE LOCALLY
+// =====================================================
+localStorage.setItem(
+  "sessionId",
+  sessionId
+);
+
+localStorage.setItem(
+  "dutyActive",
+  "true"
+);
+
+console.log(
+  "🟢 SESSION STARTED:",
+  sessionId
+);
     const liveRef =
       doc(
         window.db,
@@ -15530,91 +15560,194 @@ function startDuty(event) {
     // 🔥 LIVE STAFF UPDATE
     // =====================================================
     await setDoc(
-      liveRef,
-      {
+  liveRef,
+  {
 
-        cleanName: cleanLeader,
+    cleanName:
+      cleanLeader,
 
-        name:
-          payload.leader,
+    name:
+      payload.leader,
 
-        team:
-          payload.staff,
+    team:
+      payload.staff,
 
-        dutyType:
-          payload.type,
+    dutyType:
+      payload.type,
 
-        compartment:
-          payload.compt,
+    compartment:
+      payload.compt,
 
-        dutyActive: true,
+    // =================================================
+    // 🔥 DUTY ACTIVE
+    // =================================================
+    dutyActive: true,
 
-        phone:
-          payload.phone || "",
+    // =================================================
+    // 🔥 CURRENT SESSION
+    // =================================================
+    sessionId:
+      sessionId,
 
-        email:
-          payload.email || "",
+    // =================================================
+    // 🔥 CONTACT
+    // =================================================
+    phone:
+      payload.phone || "",
 
-        beat:
-          document.getElementById("d-beat")?.value || "",
+    email:
+      payload.email || "",
 
-        lastSeen:
-          now.toLocaleString(),
+    // =================================================
+    // 🔥 DUTY INFO
+    // =================================================
+    beat:
+      document.getElementById(
+        "d-beat"
+      )?.value || "",
 
-        updatedAt:
-          serverTimestamp(),
+    leader:
+      payload.leader || "",
 
-        type:"Staff"
+    source:
+      "AUTO_APP",
 
-      },
-      { merge:true }
-    );
+    status:
+      "ACTIVE",
 
+    // =================================================
+    // 🔥 LOCATION TIME
+    // =================================================
+    lastSeen:
+      now.toLocaleString(),
+
+    updatedAt:
+      serverTimestamp(),
+
+    timestamp:
+      now.toISOString(),
+
+    // =================================================
+    // 🔥 TYPE
+    // =================================================
+    type:
+      "Staff"
+
+  },
+
+  { merge:true }
+);
     // =====================================================
     // 🔥 TRACK DOCUMENT
     // =====================================================
-    const today =
+    // =====================================================
+// 🔥 MONTH KEY
+// =====================================================
+// =====================================================
+// 🔥 MONTH KEY
+// =====================================================
+const monthKey =
+  now.toISOString()
+  .slice(0,7);
+
+// =====================================================
+// 🔥 TRACK DOCUMENT
+// =====================================================
+const trackRef =
+  doc(
+    window.db,
+    "patrol_tracks",
+    `${cleanLeader}_${monthKey}`
+  );
+
+// =====================================================
+// 🔥 CREATE / UPDATE MONTHLY TRACK DOC
+// =====================================================
+await setDoc(
+
+  trackRef,
+
+  {
+
+    // ================================================
+    // 🔥 USER INFO
+    // ================================================
+    cleanName:
+      cleanLeader,
+
+    name:
+      payload.leader,
+
+    team:
+      payload.staff,
+
+    // ================================================
+    // 🔥 DUTY INFO
+    // ================================================
+    dutyType:
+      payload.type,
+
+    compartment:
+      payload.compt,
+
+    beat:
+      document.getElementById(
+        "d-beat"
+      )?.value || "",
+
+    leader:
+      payload.leader || "",
+
+    // ================================================
+    // 🔥 SESSION
+    // ================================================
+    dutyActive:
+      true,
+
+    sessionId:
+      sessionId,
+
+    // ================================================
+    // 🔥 MONTH ROTATION
+    // ================================================
+    month:
+      monthKey,
+
+    // ================================================
+    // 🔥 TRACK ARRAY
+    // ================================================
+  
+
+    // ================================================
+    // 🔥 STATUS
+    // ================================================
+    status:
+      "ACTIVE",
+
+    source:
+      "AUTO_APP",
+
+    // ================================================
+    // 🔥 TIME
+    // ================================================
+    updatedAt:
+      serverTimestamp(),
+
+    timestamp:
       now.toISOString()
-      .split("T")[0];
 
-    const trackRef =
-      doc(
-        window.db,
-        "patrol_tracks",
-        `${cleanLeader}_${today}`
-      );
+  },
 
-    await setDoc(
-      trackRef,
-      {
+  { merge:true }
+);
 
-        cleanName:
-          cleanLeader,
+console.log(
+  "🔥 FIRESTORE DUTY STARTED:",
+  cleanLeader,
+  monthKey
+);
 
-        name:
-          payload.leader,
-
-        dutyType:
-          payload.type,
-
-        dutyActive:true,
-
-        track:
-          arrayUnion(),
-
-        updatedAt:
-          serverTimestamp()
-
-      },
-      { merge:true }
-    );
-
-    console.log(
-      "🔥 FIRESTORE DUTY STARTED"
-    );
-
-    alert("✅ Duty Started");
-
+alert("✅ Duty Started");
     // =====================================================
     // 🔥 FINAL UI STATE
     // =====================================================
