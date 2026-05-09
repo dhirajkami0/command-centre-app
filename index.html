@@ -9054,11 +9054,49 @@ const icon = L.divIcon({
 // ==============================================
 // 🔥 TEAM
 // ==============================================
-const team =
-  (s.team &&
-   String(s.team).trim())
-  ? s.team
-  : "N/A";
+// ==============================================
+// 🔥 FIX TEAM
+// ==============================================
+let team = "N/A";
+
+try {
+
+  // 🔥 PRIMARY
+  if (
+    s.team &&
+    String(s.team).trim()
+  ) {
+
+    team =
+      String(s.team).trim();
+  }
+
+  // 🔥 FALLBACK
+  else if (
+    s.staff &&
+    String(s.staff).trim()
+  ) {
+
+    team =
+      String(s.staff).trim();
+  }
+
+  // 🔥 ARRAY SUPPORT
+  else if (
+    Array.isArray(s.staffNames)
+  ) {
+
+    team =
+      s.staffNames.join(", ");
+  }
+
+} catch(e){
+
+  console.warn(
+    "⚠ Team parse failed",
+    e
+  );
+}
 
 // ==============================================
 // 🔥 DUTY TYPE
@@ -9081,9 +9119,15 @@ const dutyArea =
 // ==============================================
 // 🔥 FIX SPEED
 // ==============================================
+// ==============================================
+// 🔥 FIX SPEED
+// ==============================================
 let liveSpeed =
   Number(s.speed || 0);
 
+// ==============================================
+// 🔥 INVALID SPEED
+// ==============================================
 if(
   isNaN(liveSpeed) ||
   liveSpeed < 0
@@ -9091,6 +9135,16 @@ if(
   liveSpeed = 0;
 }
 
+// ==============================================
+// 🔥 ROUND CLEANLY
+// ==============================================
+liveSpeed =
+  Math.max(
+    0,
+    Number(
+      liveSpeed.toFixed(1)
+    )
+  );
 // ==============================================
 // 🔥 FIX LAST UPDATE TIME
 // ==============================================
@@ -9307,7 +9361,15 @@ const popup = `
 
     <div>
       📊 Speed:
-      <b>${liveSpeed.toFixed(1)} km/h</b>
+      <b>
+
+${
+  liveSpeed < 1
+  ? "Stationary"
+  : `${liveSpeed.toFixed(1)} km/h`
+}
+
+</b>
     </div>
 
     <div>
