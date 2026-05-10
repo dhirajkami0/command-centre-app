@@ -5343,8 +5343,18 @@ function lineIntersect(lat1, lon1, lat2, lon2, lat3, lon3, lat4, lon4) {
 // 🟢 GRID / COVERAGE FULL SYSTEM (FINAL)
 // ============================================================
 
-// ===== GLOBAL STATE =====
-window.gridLayer = L.layerGroup();
+// ===== GLOBAL STATE =====// ======================================================
+// 🔥 GRID LAYER (AFFIXED GIS LAYER)
+// ======================================================
+window.gridLayer =
+
+  window.gridLayer ||
+
+  L.layerGroup([],{
+
+    pane:"gisPane"
+
+  });
 window.currentCoverageMode = "current";
 window.currentBeat = "ALL";
 
@@ -12179,7 +12189,18 @@ function show3MonthSummary(data){
 /* ============================================================
    🟩 GRID LAYER INIT (CLEAN)
 ============================================================ */
-window.gridLayer = window.gridLayer || L.layerGroup();
+// ======================================================
+// 🔥 GRID LAYER (AFFIXED GIS LAYER)
+// ======================================================
+window.gridLayer =
+
+  window.gridLayer ||
+
+  L.layerGroup([],{
+
+    pane:"gisPane"
+
+  });
 
 
 /* ============================================================
