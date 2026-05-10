@@ -210,29 +210,19 @@ window.addEventListener("unhandledrejection", function (e) {
       --sar: env(safe-area-inset-right);
     }
 
-   html,
-body,
-#map {
-  height: 100vh;
-  margin: 0;
-  padding: 0;
-  background: #111;
-  overflow: hidden;
-  font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
-  overscroll-behavior: none;
-  /* Prevents browser pull-to-refresh */
-}
+    html,
+    body,
+    #map {
+      height: 100vh;
+      margin: 0;
+      padding: 0;
+      background: #111;
+      overflow: hidden;
+      font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+      overscroll-behavior: none;
+      /* Prevents browser pull-to-refresh */
+    }
 
-#map {
-
-  width: 100vw;
-
-  height: 100vh;
-
-  position: relative;
-
-  background: #111;
-}
     /* Native App Polish: Prevent blue highlight boxes and text selection */
     * {
       -webkit-tap-highlight-color: transparent;
@@ -719,13 +709,9 @@ text-shadow: 0 1px 3px rgba(0,0,0,0.8);
 canvas.leaflet-zoom-animated {
 
   image-rendering:auto !important;
+}
 
-  backface-visibility:hidden;
-
-  transform:none !important;
-
-  will-change:auto !important;
-}/* ======================================================
+/* ======================================================
    🔥 RANGE / COMPARTMENT
 ====================================================== */
 
@@ -769,22 +755,16 @@ canvas.leaflet-zoom-animated {
    🔥 LEAFLET PERFORMANCE
 ====================================================== */
 
-/* ======================================================
-   🔥 SAFE LEAFLET PERFORMANCE
-====================================================== */
-
-/* ======================================================
-   🔥 STABLE LEAFLET RENDERING
-====================================================== */
-
 .leaflet-pane,
 .leaflet-layer,
 .leaflet-overlay-pane,
 .leaflet-map-pane,
 .leaflet-canvas-pane {
 
-  contain: layout style;
-}/* ======================================================
+  contain:strict;
+}
+
+/* ======================================================
    🔥 MOBILE TOUCH SMOOTHNESS
 ====================================================== */
 
@@ -2506,158 +2486,81 @@ window.addEventListener("load", function () {
   // ======================================================
   // 🔥 MAIN APP INIT
   // ======================================================
- console.log("🚀 App Started - Command Centre Initializing");
+  console.log("🚀 App Started - Command Centre Initializing");
 
-if (window.__APP_STARTED__) {
-  console.warn("⚠ App already started → skipping");
-  return;
-}
-
-window.__APP_STARTED__ = true;
-
-// ======================================================
-// 🔥 SAFE RANGE WAIT
-// ======================================================
-function waitForMapAndRenderer(){
-
-  // ==========================================
-  // 🔥 WAIT FOR MAP
-  // ==========================================
-  if(
-
-    !window.map ||
-
-    typeof window.map.addLayer !== "function"
-
-  ){
-
-    console.warn(
-      "⏳ Waiting for map..."
-    );
-
-    setTimeout(
-      waitForMapAndRenderer,
-      500
-    );
-
+  if (window.__APP_STARTED__) {
+    console.warn("⚠ App already started → skipping");
     return;
   }
 
-  // ==========================================
-  // 🔥 READY
-  // ==========================================
-  console.log(
-    "✅ Map ready → loading range"
-  );
+  window.__APP_STARTED__ = true;
 
-  loadRangeKML?.();
-}
 
-// ================= STATUS =================
-if (!navigator.onLine) {
-  updateNetworkStatus("offline");
-} else {
-  updateNetworkStatus("connecting");
-}
+  // ================= STATUS =================
+  if (!navigator.onLine) {
+    updateNetworkStatus("offline");
+  } else {
+    updateNetworkStatus("connecting");
+  }
 
-// ================= UI INIT =================
-try {
 
-  initResponsiveUI();
-
-} catch (e) {
-
-  console.warn(
-    "UI Init delayed:",
-    e
-  );
-}
-
-// ================= PROFILE FLOW =================
-const savedProfile =
-  localStorage.getItem(
-    "userProfile"
-  );
-
-if (savedProfile) {
-
+  // ================= UI INIT =================
   try {
-
-    const profile =
-      JSON.parse(savedProfile);
-
-    window.userProfile =
-      normalizeUserProfile(profile);
-
-    console.log(
-      "📴 OFFLINE MODE → APP STARTED"
-    );
-
-    applyRoleControl?.();
-
-    // ==========================================
-    // 🔥 START APP
-    // ==========================================
-    if (!window.__appBootRequested) {
-
-      window.__appBootRequested = true;
-
-      startApp?.();
-    }
-
-    initDutyControl?.();
-
-    // ==========================================
-    // 🔥 SAFE RANGE LOAD
-    // ==========================================
-    waitForMapAndRenderer();
-
-    loadCompartmentsFromSheet?.();
-
-    // ==========================================
-    // 🔥 SYNC OFFLINE
-    // ==========================================
-    if (navigator.onLine) {
-
-      try {
-
-        syncOfflineMoves?.();
-
-        syncOfflineSightings?.();
-
-      } catch (e) {
-
-        console.warn(
-          "⚠ Sync error:",
-          e
-        );
-      }
-    }
-
-    setTimeout(
-      refreshOnlineProfile,
-      2000
-    );
-
+    initResponsiveUI();
   } catch (e) {
+    console.warn("UI Init delayed:", e);
+  }
 
-    console.error(
-      "❌ Corrupt profile"
-    );
 
-    localStorage.removeItem(
-      "userProfile"
-    );
+  // ================= PROFILE FLOW =================
+  const savedProfile = localStorage.getItem("userProfile");
+
+  if (savedProfile) {
+
+    try {
+
+      const profile = JSON.parse(savedProfile);
+      window.userProfile = normalizeUserProfile(profile);
+
+      console.log("📴 OFFLINE MODE → APP STARTED");
+
+      applyRoleControl?.();
+
+      if (!window.__appBootRequested) {
+        window.__appBootRequested = true;
+        startApp?.();
+      }
+
+      initDutyControl?.();
+      loadRangeKML?.();
+      loadCompartmentsFromSheet?.();
+
+      if (navigator.onLine) {
+        try {
+          syncOfflineMoves?.();
+          syncOfflineSightings?.();
+        } catch (e) {
+          console.warn("⚠ Sync error:", e);
+        }
+      }
+
+      setTimeout(refreshOnlineProfile, 2000);
+
+    } catch (e) {
+
+      console.error("❌ Corrupt profile");
+
+      localStorage.removeItem("userProfile");
+      startOnlineLoginFlow();
+
+    }
+
+  } else {
 
     startOnlineLoginFlow();
 
   }
 
-} else {
-
-  startOnlineLoginFlow();
-
-}
 // ======================================================
 // 🔥 GPS WATCHDOG SYSTEM (PRODUCTION GRADE - FINAL)
 // ======================================================
@@ -3797,20 +3700,66 @@ setInterval(() => {
    // ======================================================
 // 🗺 MAP INIT (FINAL STABLE)
 // ======================================================
-    // ======================================================
-// 🔥 MAIN MAP INIT (UNIFIED GIS ENGINE)
-// ======================================================
-
 var map = L.map('map', {
-  center:[26.561, 89.507],
-  zoom:14,
-  zoomControl:false,
-  preferCanvas: true,
 
-  // 🔥 CRITICAL FIX (REMOVES GRID SEPARATION)
-  zoomAnimation: false,
-  fadeAnimation: false,
-  markerZoomAnimation: false
+  center:[26.561, 89.507],
+
+  zoom:14,
+
+  zoomControl:false,
+
+  // ==================================================
+  // 🔥 SINGLE CANVAS RENDER PIPELINE
+  // ==================================================
+  preferCanvas:true,
+
+  // ==================================================
+  // 🔥 REMOVE LAYER SEPARATION
+  // ==================================================
+  zoomAnimation:false,
+
+  fadeAnimation:false,
+
+  markerZoomAnimation:false,
+
+  // ==================================================
+  // 🔥 SMOOTHER TOUCH / PAN
+  // ==================================================
+  inertia:true,
+
+  inertiaDeceleration:3000,
+
+  inertiaMaxSpeed:1500,
+
+  // ==================================================
+  // 🔥 BETTER MOBILE PERFORMANCE
+  // ==================================================
+  updateWhenZooming:false,
+
+  updateWhenIdle:true
+
+});
+
+// ======================================================
+// 🔥 SINGLE GIS PANE
+// ======================================================
+map.createPane("gisPane");
+
+map.getPane("gisPane").style.zIndex =
+  450;
+
+map.getPane("gisPane").style.pointerEvents =
+  "auto";
+
+// ======================================================
+// 🔥 SHARED GIS RENDERER
+// ======================================================
+window.sharedRenderer = L.canvas({
+
+  pane:"gisPane",
+
+  padding:0.5
+
 });
 
 /* 🔥 BASE LAYERS LOAD */
@@ -3818,14 +3767,39 @@ esriSat.addTo(map);
 
 /* 🖱 CONTROLS */
 map.scrollWheelZoom.disable();
+
 map.tap = true;
 
-L.control.zoom({ position: 'topright' }).addTo(map);
+L.control.zoom({
+  position:'topright'
+}).addTo(map);
+// ======================================================
+// 🔥 SINGLE GIS PANE
+// ======================================================
+map.createPane("gisPane");
 
+map.getPane("gisPane").style.zIndex =
+  450;
+
+map.getPane("gisPane").style.pointerEvents =
+  "auto";
 // ======================================================
 // 🟩 GRID LAYER INIT
 // ======================================================
-window.gridLayer = window.gridLayer || L.layerGroup();
+    
+    // ======================================================
+// 🔥 GRID LAYER (AFFIXED GIS LAYER)
+// ======================================================
+window.gridLayer =
+
+  window.gridLayer ||
+
+  L.layerGroup([],{
+
+    pane:"gisPane"
+
+  });
+
 // ======================================================
 // 🔥 GRID ↔ MAP SYNC (SAFE + STABLE)
 // ======================================================
@@ -5094,7 +5068,6 @@ ${pct(data.health)} / 100
 // ==========================================
 
 // 🔥 GLOBAL (IMPORTANT)
-// 🔥 GLOBAL (IMPORTANT)
 window.rangeLayer = null;
 
 async function loadRangeKML(){
@@ -5128,16 +5101,37 @@ async function loadRangeKML(){
     // ======================================
     // 🔥 CREATE GLOBAL RANGE LAYER
     // ======================================
-    window.rangeLayer = L.geoJSON([], {
-      renderer: L.canvas(),
-      style: {
-        color: "#00e5ff",
-        weight: 1,
-        opacity: 0.8,
-        fillOpacity: 0.1
-      }
-    }).addTo(map);
+   // ======================================================
+// 🔥 RANGE / COMPARTMENT GIS LAYER
+// ======================================================
+window.rangeLayer = L.geoJSON([], {
 
+  // ====================================================
+  // 🔥 SAME GIS PANE
+  // ====================================================
+  pane:"gisPane",
+
+  // ====================================================
+  // 🔥 SHARED RENDERER
+  // ====================================================
+  renderer:
+    window.sharedRenderer,
+
+  // ====================================================
+  // 🔥 STYLE
+  // ====================================================
+  style:{
+
+    color:"#00e5ff",
+
+    weight:1,
+
+    opacity:0.8,
+
+    fillOpacity:0.1
+  }
+
+}).addTo(map);
     // ======================================
     // ⚡ CHUNK RENDER (NO FREEZE)
     // ======================================
@@ -5196,8 +5190,7 @@ setTimeout(() => {
     console.error("❌ loadRangeKML error:", e);
 
   }
-}
- function lineIntersectsBox(lat1, lon1, lat2, lon2, minLat, minLon, maxLat, maxLon) {
+}    function lineIntersectsBox(lat1, lon1, lat2, lon2, minLat, minLon, maxLat, maxLon) {
 
   const eps = 0.000001;
 
@@ -5293,11 +5286,9 @@ function lineIntersect(lat1, lon1, lat2, lon2, lat3, lon3, lat4, lon4) {
 // 🟢 GRID / COVERAGE FULL SYSTEM (FINAL)
 // ============================================================
 
-// ===== GLOBAL STATE =====// ======================================================
-// 🔥 GRID LAYER (AFFIXED GIS LAYER)
-// ======================================================
+// ===== GLOBAL STATE =====
 window.gridLayer = L.layerGroup();
-    window.currentCoverageMode = "current";
+window.currentCoverageMode = "current";
 window.currentBeat = "ALL";
 
 // ===== PANEL CONTROL =====
@@ -6740,7 +6731,17 @@ if(
   // ======================================================
   // 🔥 BEAT FILTER
   // ======================================================
-   // ==========================================
+  const selectedBeat =
+
+    window.currentBeat || "ALL";
+
+  if(
+    selectedBeat !== "ALL" &&
+    t.beat &&
+    t.beat !== selectedBeat
+  ){
+    continue;
+  }   // ==========================================
     // 🔥 CLEAN + NORMALIZE TRACK
     // ==========================================
     let pts = t.track.map(p => ({
@@ -12033,7 +12034,7 @@ function refreshAll() {
             weight: 3,
             opacity: 0.8
           },
-          renderer: window.sharedRenderer // 🔥 performance
+          renderer: L.canvas() // 🔥 performance
         }).addTo(riverLayer);
 
         console.log("✅ Rivers Loaded");
@@ -12131,10 +12132,8 @@ function show3MonthSummary(data){
 /* ============================================================
    🟩 GRID LAYER INIT (CLEAN)
 ============================================================ */
-// ======================================================
-// 🔥 GRID LAYER (AFFIXED GIS LAYER)
-// ======================================================
 window.gridLayer = window.gridLayer || L.layerGroup();
+
 
 /* ============================================================
    🎛 LAYER CONTROL (CLEAN VERSION)
@@ -13544,55 +13543,69 @@ function loadMapDataFirebase() {
 // ======================================================
 // 🔥 SHAPE-PRESERVING TRACK LIMIT
 // ======================================================
-if(
+clean = simplifyTrackShape(
 
-  window.staffTracks[
-    s.cleanName
-  ]
+  clean,
 
-){
+  400, // max points
 
-  try {
+  3    // min direction change
+);
 
-    window.staffTracks[
-      s.cleanName
-    ]
+if (clean.length > 1) {
 
-    .setLatLngs(clean)
+  // ====================================================
+  // 🔥 UPDATE EXISTING TRACK
+  // ====================================================
+  if (trackMap[s.id]) {
 
-    .setStyle({
+    trackMap[s.id]
 
-      color: color
+      .setLatLngs(clean)
 
-    });
+      .setStyle({
+        color: color
+      });
 
-  } catch(err){
-
-    console.warn(
-
-      "⚠ Corrupted track reset:",
-
-      s.cleanName
-
-    );
-
-    try {
-
-      staffLayer.removeLayer(
-
-        window.staffTracks[
-          s.cleanName
-        ]
-
-      );
-
-    } catch(e){}
-
-    delete window.staffTracks[
-      s.cleanName
-    ];
   }
-}
+
+  // ====================================================
+  // 🔥 CREATE NEW TRACK
+  // ====================================================
+  else {
+
+    const line = L.polyline(
+
+      clean,
+
+      {
+
+        // ==============================================
+        // 🔥 SHARED GIS SURFACE
+        // ==============================================
+        pane:"gisPane",
+
+        renderer:
+          window.sharedRenderer,
+
+        // ==============================================
+        // 🔥 STYLE
+        // ==============================================
+        color: color,
+
+        weight: 2,
+
+        opacity: 1,
+
+        smoothFactor: 0,
+
+        lineCap: "round",
+
+        lineJoin: "round"
+
+      }
+
+    ).addTo(staffLayer);
 
     // ==============================================
     // 🔥 STORE
@@ -13643,9 +13656,7 @@ if(
     }
   }
 }
-    });
 
- });
       /* 🔥 REMOVE OLD */
       Object.keys(markerMap).forEach(id => {
         if (!activeIds.has(id)) {
@@ -13990,283 +14001,98 @@ function normalizeUserProfile(profile){
 function startOnlineLoginFlow(){
 
   if(authFlowRunning){
-
-    console.warn(
-      "⛔ Auth flow already running"
-    );
-
+    console.warn("⛔ Auth flow already running");
     return;
   }
-
   authFlowRunning = true;
 
-  // ======================================================
-  // 🔥 SAFE RANGE WAIT
-  // ======================================================
-  function waitForMapAndRenderer(){
+  const phone = localStorage.getItem("userPhone") || "";
 
-    // ==========================================
-    // 🔥 WAIT FOR MAP
-    // ==========================================
-    if(
-
-      !window.map ||
-
-      typeof window.map.addLayer !== "function"
-
-    ){
-
-      console.warn(
-        "⏳ Waiting for map..."
-      );
-
-      setTimeout(
-        waitForMapAndRenderer,
-        500
-      );
-
-      return;
-    }
-
-    // ==========================================
-    // 🔥 READY
-    // ==========================================
-    console.log(
-      "✅ Map ready → loading range"
-    );
-
-    loadRangeKML?.();
-  }
-
-  const phone =
-    localStorage.getItem(
-      "userPhone"
-    ) || "";
-
-  // ======================================================
-  // 🔥 NO PHONE
-  // ======================================================
   if (!phone) {
-
-    if(
-
-      !loginModalLocked &&
-      !loginShownOnce
-
-    ){
-
+    if(!loginModalLocked && !loginShownOnce){
       loginShownOnce = true;
-
       showLogin();
     }
-
     authFlowRunning = false;
-
     return;
   }
 
-  // ======================================================
-  // 🔥 PROFILE LOAD
-  // ======================================================
-  callBackend(
-    "GET_PROFILE",
-    { phone: phone }
-  )
+  callBackend("GET_PROFILE", { phone: phone })
 
     .then(function (profile) {
 
-      if (
+      if (!profile || profile.error) {
+        localStorage.removeItem("userPhone");
 
-        !profile ||
-
-        profile.error
-
-      ){
-
-        localStorage.removeItem(
-          "userPhone"
-        );
-
-        if(
-
-          !loginModalLocked &&
-          !loginShownOnce
-
-        ){
-
+        if(!loginModalLocked && !loginShownOnce){
           loginShownOnce = true;
-
           showLogin();
         }
 
         authFlowRunning = false;
-
-        return Promise.reject(
-          "Invalid profile"
-        );
+        return Promise.reject("Invalid profile");
       }
 
-      // ==========================================
-      // 🔥 FIX PROFILE
-      // ==========================================
-      const fixedProfile =
-        normalizeUserProfile(
-          profile
-        );
+      const fixedProfile = normalizeUserProfile(profile);
 
-      window.userProfile =
-        fixedProfile;
+      window.userProfile = fixedProfile;
+      localStorage.setItem("userProfile", JSON.stringify(fixedProfile));
 
-      localStorage.setItem(
-
-        "userProfile",
-
-        JSON.stringify(
-          fixedProfile
-        )
-
-      );
-
-      updateNetworkStatus(
-        "online"
-      );
-
+      updateNetworkStatus("online");
       applyRoleControl?.();
 
-      // ==========================================
-      // 🔥 START APP
-      // ==========================================
+      // 🔥 FIX: prevent duplicate startApp
       if(!window.__appBootRequested){
-
         window.__appBootRequested = true;
-
         startApp?.();
       }
 
       initDutyControl?.();
 
-      return callBackend(
-        "updateVillageRisk"
-      );
+      return callBackend("updateVillageRisk");
     })
 
-    // ======================================================
-    // 🔥 CONE DATA
-    // ======================================================
     .then(function (coneData) {
-
-      if (!coneData)
-        return null;
-
-      window.coneVillages =
-        coneData;
-
-      return callBackend(
-        "getVillages"
-      );
+      if (!coneData) return null;
+      window.coneVillages = coneData;
+      return callBackend("getVillages");
     })
 
-    // ======================================================
-    // 🔥 FINAL START
-    // ======================================================
     .then(function (villageList) {
 
       if (villageList) {
-
-        window.villages =
-
-          (villageList || []).map(v => ({
-
-            name:
-              v.name ||
-              v.Village ||
-              "Unknown",
-
-            lat:
-              parseFloat(v.lat),
-
-            lon:
-              parseFloat(v.lon)
-
-          }));
+        window.villages = (villageList || []).map(v => ({
+          name: v.name || v.Village || "Unknown",
+          lat: parseFloat(v.lat),
+          lon: parseFloat(v.lon)
+        }));
       }
 
       refreshAll?.();
 
-      try {
+      try { hideSplash(); } catch(e){}
 
-        hideSplash();
-
-      } catch(e){}
-
-      // ==========================================
-      // 🔥 SAFE RANGE LOAD
-      // ==========================================
-      waitForMapAndRenderer();
-
-      setTimeout(
-        () => {
-          initEventListeners?.();
-        },
-        200
-      );
-
-      setTimeout(
-        () => {
-          startChat?.();
-        },
-        1500
-      );
-
-      setTimeout(
-        () => {
-          cleanOldMessages?.();
-        },
-        6000
-      );
+      setTimeout(() => { loadRangeKML?.(); }, 500);
+      setTimeout(() => { initEventListeners?.(); }, 200);
+      setTimeout(() => { startChat?.(); }, 1500);
+      setTimeout(() => { cleanOldMessages?.(); }, 6000);
 
     })
 
-    // ======================================================
-    // 🔥 FAIL
-    // ======================================================
     .catch(function (err) {
+      console.warn("⚠ startOnlineLoginFlow failed:", err);
+      updateNetworkStatus("offline");
 
-      console.warn(
-
-        "⚠ startOnlineLoginFlow failed:",
-
-        err
-
-      );
-
-      updateNetworkStatus(
-        "offline"
-      );
-
-      if(
-
-        !loginModalLocked &&
-        !loginShownOnce
-
-      ){
-
+      if(!loginModalLocked && !loginShownOnce){
         loginShownOnce = true;
-
         showLogin();
       }
-
     })
 
-    // ======================================================
-    // 🔥 END
-    // ======================================================
     .finally(() => {
-
       authFlowRunning = false;
-
     });
-} function hideSplash(){
+}  function hideSplash(){
 
   const splash = document.getElementById("splash-screen");
   if(!splash) return;
