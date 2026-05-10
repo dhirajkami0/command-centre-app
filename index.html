@@ -5326,35 +5326,31 @@ async function loadRangeKML(){
     // ======================================
     // 🔥 CREATE RANGE LAYER
     // ======================================
-    window.rangeLayer = L.geoJSON([], {
+window.rangeLayer = L.geoJSON([], {
 
-      // ====================================
-      // 🔥 GIS PIPELINE
-      // ====================================
-      pane:"gisPane",
+  // ====================================
+  // 🔥 SAME GIS PANE
+  // ====================================
+  pane:"gisPane",
 
-      renderer:
-        window.sharedRenderer,
+  // ====================================
+  // 🔥 STYLE
+  // ====================================
+  style:{
 
-      // ====================================
-      // 🔥 STYLE
-      // ====================================
-      style:{
+    color:"#00e5ff",
 
-        color:"#00e5ff",
+    weight:1,
 
-        weight:1,
+    opacity:0.8,
 
-        opacity:0.8,
+    fillOpacity:0.1,
 
-        fillOpacity:0.1,
+    smoothFactor:0
 
-        smoothFactor:0
+  }
 
-      }
-
-    }).addTo(map);
-
+}).addTo(map);
     // ======================================
     // ⚡ CHUNK RENDER
     // ======================================
