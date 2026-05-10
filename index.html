@@ -783,13 +783,7 @@ canvas.leaflet-zoom-animated {
 .leaflet-map-pane,
 .leaflet-canvas-pane {
 
-  contain:none !important;
-
-  will-change:auto !important;
-
-  transform-style:flat !important;
-
-  backface-visibility:hidden;
+  contain: layout style;
 }/* ======================================================
    🔥 MOBILE TOUCH SMOOTHNESS
 ====================================================== */
@@ -3808,75 +3802,31 @@ setInterval(() => {
 // ======================================================
 
 var map = L.map('map', {
-
   center:[26.561, 89.507],
-
   zoom:14,
-
   zoomControl:false,
+  preferCanvas: true,
 
-  // ==================================================
-  // 🔥 SIMPLE STABLE CANVAS
-  // ==================================================
-  preferCanvas:true,
-
-  // ==================================================
-  // 🔥 STABLE MOBILE RENDER
-  // ==================================================
-  zoomAnimation:false,
-
-  fadeAnimation:false,
-
-  markerZoomAnimation:false
-
+  // 🔥 CRITICAL FIX (REMOVES GRID SEPARATION)
+  zoomAnimation: false,
+  fadeAnimation: false,
+  markerZoomAnimation: false
 });
 
-// ======================================================
-// 🔥 GLOBAL MAP
-// ======================================================
-window.map = map;
-
-// ======================================================
-// 🔥 SIMPLE GIS PANE
-// ======================================================
-map.createPane("gisPane");
-
-map.getPane("gisPane").style.zIndex =
-  450;
-
-map.getPane("gisPane").style.pointerEvents =
-  "auto";
-
-// ======================================================
-// 🔥 BASE LAYER
-// ======================================================
+/* 🔥 BASE LAYERS LOAD */
 esriSat.addTo(map);
 
-// ======================================================
-// 🔥 CONTROLS
-// ======================================================
+/* 🖱 CONTROLS */
 map.scrollWheelZoom.disable();
-
 map.tap = true;
 
-L.control.zoom({
-
-  position:'topright'
-
-}).addTo(map);
+L.control.zoom({ position: 'topright' }).addTo(map);
 
 // ======================================================
-// 🔥 GRID LAYER
+// 🟩 GRID LAYER INIT
 // ======================================================
-window.gridLayer =
-
-  window.gridLayer ||
-
-  L.layerGroup([],{
-
-    pane:"gisPane"
-
-  });// ======================================================
+window.gridLayer = window.gridLayer || L.layerGroup();
+// ======================================================
 // 🔥 GRID ↔ MAP SYNC (SAFE + STABLE)
 // ======================================================
 
@@ -5346,16 +5296,8 @@ function lineIntersect(lat1, lon1, lat2, lon2, lat3, lon3, lat4, lon4) {
 // ===== GLOBAL STATE =====// ======================================================
 // 🔥 GRID LAYER (AFFIXED GIS LAYER)
 // ======================================================
-window.gridLayer =
-
-  window.gridLayer ||
-
-  L.layerGroup([],{
-
-    pane:"gisPane"
-
-  });
-window.currentCoverageMode = "current";
+window.gridLayer = L.layerGroup();
+    window.currentCoverageMode = "current";
 window.currentBeat = "ALL";
 
 // ===== PANEL CONTROL =====
@@ -12459,16 +12401,7 @@ function show3MonthSummary(data){
 // ======================================================
 // 🔥 GRID LAYER (AFFIXED GIS LAYER)
 // ======================================================
-window.gridLayer =
-
-  window.gridLayer ||
-
-  L.layerGroup([],{
-
-    pane:"gisPane"
-
-  });
-
+window.gridLayer = window.gridLayer || L.layerGroup();
 
 /* ============================================================
    🎛 LAYER CONTROL (CLEAN VERSION)
