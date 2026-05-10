@@ -10296,6 +10296,40 @@ ${
   </div>
 
 </div>`;
+
+    // ==============================================
+// 🔥 FINAL POSITION SAFETY
+// ==============================================
+lat = Number(lat);
+lon = Number(lon);
+
+if(
+
+  !isFinite(lat) ||
+  !isFinite(lon) ||
+
+  lat < -90 ||
+  lat > 90 ||
+
+  lon < -180 ||
+  lon > 180
+
+){
+
+  console.warn(
+
+    "⚠ Invalid marker position:",
+
+    s.cleanName,
+
+    lat,
+
+    lon
+
+  );
+
+  return;
+}
             // ==============================================
             // 🔥 MARKER CREATE/UPDATE
             // ==============================================
@@ -10349,60 +10383,255 @@ ${
            // ==============================================
 // 🔥 FINAL TRACK SAFETY
 // ==============================================
-clean = (clean || []).filter(p=>
+// ==============================================
+// 🔥 HARD TRACK VALIDATION
+// ==============================================
+clean = (clean || [])
 
-  Array.isArray(p) &&
-  p.length === 2 &&
+.filter(p=>{
 
-  isFinite(p[0]) &&
-  isFinite(p[1]) &&
+  // ==========================================
+  // 🔥 MUST BE ARRAY
+  // ==========================================
+  if(
+    !Array.isArray(p)
+  ){
+    return false;
+  }
 
-  p[0] !== 0 &&
-  p[1] !== 0 &&
+  // ==========================================
+  // 🔥 MUST HAVE 2 VALUES
+  // ==========================================
+  if(
+    p.length !== 2
+  ){
+    return false;
+  }
 
-  p[0] >= -90 &&
-  p[0] <= 90 &&
+  const lat =
+    Number(p[0]);
 
-  p[1] >= -180 &&
-  p[1] <= 180
+  const lon =
+    Number(p[1]);
 
-);
+  // ==========================================
+  // 🔥 INVALID NUMBERS
+  // ==========================================
+  if(
+
+    !isFinite(lat) ||
+    !isFinite(lon)
+
+  ){
+    return false;
+  }
+
+  // ==========================================
+  // 🔥 INVALID RANGE
+  // ==========================================
+  if(
+
+    lat < -90 ||
+    lat > 90 ||
+
+    lon < -180 ||
+    lon > 180
+
+  ){
+    return false;
+  }
+
+  // ==========================================
+  // 🔥 ZERO GPS
+  // ==========================================
+  if(
+    lat === 0 ||
+    lon === 0
+  ){
+    return false;
+  }
+
+  return true;
+
+})
 
 // ==============================================
-// 🔥 SHAPE PRESERVING LIMIT
+// 🔥 NORMALIZE
+// ==============================================
+.map(p=>[
+
+  Number(p[0]),
+
+  Number(p[1])
+
+]);
+
+// ==============================================
+// 🔥 REMOVE DUPLICATES
+// ==============================================
+clean = clean.filter((p,i,a)=>{
+
+  if(i === 0) return true;
+
+  return !(
+
+    p[0] === a[i-1][0] &&
+    p[1] === a[i-1][1]
+
+  );
+
+});
+
+// ==============================================
+// 🔥 SHAPE LIMIT
 // ==============================================
 clean = simplifyTrackShape(
 
   clean,
 
-  400, // max points
+  400,
 
-  3    // min direction change
+  3
 
 );
 
 // ==============================================
-// 🔥 TRACK DRAW
+// 🔥 FINAL SAFETY
 // ==============================================
 if(
 
-  Array.isArray(clean) &&
-  clean.length > 1
+  !Array.isArray(clean) ||
+
+  clean.length < 2
 
 ){
 
-  try {
+  // ==========================================
+  // 🔥 REMOVE CORRUPTED TRACK
+  // ==========================================
+  if(
 
-    // ==========================================
-    // 🔥 UPDATE EXISTING TRACK
-    // ==========================================
-    if(
+    window.staffTracks[
+      s.cleanName
+    ]
 
-      window.staffTracks[
-        s.cleanName
-      ]
+  ){
 
-    ){
+    try {
+
+      staffLayer.removeLayer(
+
+        window.staffTracks[
+          s.cleanName
+        ]
+
+      );
+
+    } catch(e){}
+
+    delete window.staffTracks[
+      s.cleanName
+    ];
+  }
+
+  return;
+}
+
+// ==============================================
+// 🔥 SAFE LATLNG VALIDATION
+// ==============================================
+try {
+
+  clean = clean.map(p=>{
+
+    const ll = L.latLng(
+
+      Number(p[0]),
+
+      Number(p[1])
+
+    );
+
+    return [
+
+      ll.lat,
+
+      ll.lng
+
+    ];
+
+  });
+
+} catch(err){
+
+  console.warn(
+
+    "⚠ Invalid LatLng:",
+
+    s.cleanName,
+
+    err
+
+  );
+
+  return;
+}
+
+// ==============================================
+// 🔥 SAFE BOUNDS TEST
+// ==============================================
+try {
+
+  const bounds =
+    L.latLngBounds(clean);
+
+  if(
+
+    !bounds ||
+    !bounds.isValid()
+
+  ){
+
+    console.warn(
+      "⚠ Invalid bounds:",
+      s.cleanName
+    );
+
+    return;
+  }
+
+} catch(err){
+
+  console.warn(
+
+    "⚠ Bounds failed:",
+
+    s.cleanName,
+
+    err
+
+  );
+
+  return;
+}
+
+// ==============================================
+// 🔥 TRACK DRAW
+// ==============================================
+try {
+
+  // ==========================================
+  // 🔥 UPDATE EXISTING
+  // ==========================================
+  if(
+
+    window.staffTracks[
+      s.cleanName
+    ]
+
+  ){
+
+    try {
 
       window.staffTracks[
         s.cleanName
@@ -10416,62 +10645,93 @@ if(
 
       });
 
-    }
+    } catch(err){
 
-    // ==========================================
-    // 🔥 CREATE NEW TRACK
-    // ==========================================
-    else {
+      console.warn(
 
-      window.staffTracks[
+        "⚠ Corrupted track reset:",
+
         s.cleanName
-      ] = L.polyline(
 
-        clean,
+      );
 
-        {
+      try {
 
-          // ====================================
-          // 🔥 SHARED GIS PIPELINE
-          // ====================================
-          pane:"gisPane",
+        staffLayer.removeLayer(
 
-          renderer:
-            window.sharedRenderer,
+          window.staffTracks[
+            s.cleanName
+          ]
 
-          // ====================================
-          // 🔥 STYLE
-          // ====================================
-          color: color,
+        );
 
-          weight: 2.5,
+      } catch(e){}
 
-          opacity: 0.80,
-
-          smoothFactor: 0,
-
-          lineCap: "round",
-
-          lineJoin: "round"
-
-        }
-
-      ).addTo(staffLayer);
-
+      delete window.staffTracks[
+        s.cleanName
+      ];
     }
-
-  } catch(err){
-
-    console.warn(
-
-      "⚠ Track render failed:",
-
-      s.cleanName,
-
-      err
-
-    );
   }
+
+  // ==========================================
+  // 🔥 CREATE NEW
+  // ==========================================
+  if(
+
+    !window.staffTracks[
+      s.cleanName
+    ]
+
+  ){
+
+    window.staffTracks[
+      s.cleanName
+    ] = L.polyline(
+
+      clean,
+
+      {
+
+        // ====================================
+        // 🔥 GIS PIPELINE
+        // ====================================
+        pane:"gisPane",
+
+        renderer:
+          window.sharedRenderer,
+
+        // ====================================
+        // 🔥 STYLE
+        // ====================================
+        color: color,
+
+        weight: 2.5,
+
+        opacity: 0.80,
+
+        smoothFactor: 0,
+
+        lineCap: "round",
+
+        lineJoin: "round"
+
+      }
+
+    ).addTo(staffLayer);
+
+  }
+
+} catch(err){
+
+  console.warn(
+
+    "⚠ Track render failed:",
+
+    s.cleanName,
+
+    err
+
+  );
 
 }
   });
