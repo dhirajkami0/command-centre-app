@@ -5358,39 +5358,216 @@ async function loadRangeKML(){
     // ======================================
     // ⚡ CHUNK RENDER
     // ======================================
-    let i = 0;
+let i = 0;
 
-    const chunkSize = 40;
+const chunkSize = 40;
 
-    function drawChunk(){
+function drawChunk(){
+
+  try {
+
+    const slice =
+
+      features.slice(
+
+        i,
+
+        i + chunkSize
+
+      );
+
+    // ======================================
+    // 🔥 SAFE FEATURE RENDER
+    // ======================================
+    slice.forEach(f=>{
 
       try {
 
-        const slice =
-          features.slice(
-            i,
-            i + chunkSize
-          );
+        // ==================================
+        // 🔥 BASIC VALIDATION
+        // ==================================
+        if(
+          !f ||
+          !f.geometry ||
+          !f.geometry.coordinates
+        ){
+          return;
+        }
 
-        slice.forEach(f=>{
+        const geom =
+          f.geometry;
 
-          try {
+        // ==================================
+        // 🔥 VALID GEOMETRY TYPES ONLY
+        // ==================================
+        if(
 
-            window.rangeLayer
-              .addData(f);
+          geom.type !== "Polygon" &&
 
-          } catch(err){
+          geom.type !== "MultiPolygon"
 
-            console.warn(
-              "⚠ Invalid feature skipped",
-              err
-            );
+        ){
+          return;
+        }
+
+        // ==================================
+        // 🔥 EXTRACT COORDS
+        // ==================================
+        let coords =
+          geom.coordinates;
+
+        if(
+
+          !Array.isArray(coords) ||
+
+          !coords.length
+
+        ){
+          return;
+        }
+
+        // ==================================
+        // 🔥 DEEP NUMBER VALIDATION
+        // ==================================
+        let valid = true;
+
+        function validate(arr){
+
+          if(!Array.isArray(arr)){
+            valid = false;
+            return;
           }
 
-        });
+          for(const x of arr){
 
-        i += chunkSize;
+            if(Array.isArray(x)){
 
+              validate(x);
+
+            } else {
+
+              if(
+                !isFinite(x)
+              ){
+                valid = false;
+                return;
+              }
+            }
+          }
+        }
+
+        validate(coords);
+
+        // ==================================
+        // 🔥 INVALID GEOMETRY
+        // ==================================
+        if(!valid){
+
+          console.warn(
+            "⚠ Invalid geometry skipped"
+          );
+
+          return;
+        }
+
+        // ==================================
+        // 🔥 SAFE RENDER
+        // ==================================
+        window.rangeLayer
+          .addData(f);
+
+      } catch(err){
+
+        console.warn(
+
+          "⚠ Invalid feature skipped",
+
+          err
+
+        );
+      }
+
+    });
+
+    i += chunkSize;
+
+    // ======================================
+    // 🔥 CONTINUE CHUNKS
+    // ======================================
+    if(i < features.length){
+
+      requestAnimationFrame(
+        drawChunk
+      );
+
+    }
+
+    // ======================================
+    // ✅ COMPLETE
+    // ======================================
+    else {
+
+      console.log(
+        "✅ GeoJSON render complete"
+      );
+
+      // ==================================
+      // 🔥 GRID INIT
+      // ==================================
+      setTimeout(()=>{
+
+        console.log(
+          "🧠 Grid init"
+        );
+
+        if(!loadGridFromCache()){
+
+          ensureGridReady();
+        }
+
+      },300);
+
+      // ==================================
+      // 🔥 SAFE FIT
+      // ==================================
+      try {
+
+        const bounds =
+
+          window.rangeLayer
+          .getBounds();
+
+        if(
+          bounds &&
+          bounds.isValid()
+        ){
+
+          map.fitBounds(
+            bounds,
+            {
+              padding:[10,10]
+            }
+          );
+        }
+
+      } catch(e){
+
+        console.warn(
+          "⚠ fitBounds skipped"
+        );
+      }
+    }
+
+  } catch(err){
+
+    console.error(
+
+      "❌ drawChunk failed",
+
+      err
+    );
+  }
+}
         // ==================================
         // 🔥 CONTINUE
         // ==================================
