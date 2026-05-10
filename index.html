@@ -2512,81 +2512,158 @@ window.addEventListener("load", function () {
   // ======================================================
   // 🔥 MAIN APP INIT
   // ======================================================
-  console.log("🚀 App Started - Command Centre Initializing");
+ console.log("🚀 App Started - Command Centre Initializing");
 
-  if (window.__APP_STARTED__) {
-    console.warn("⚠ App already started → skipping");
+if (window.__APP_STARTED__) {
+  console.warn("⚠ App already started → skipping");
+  return;
+}
+
+window.__APP_STARTED__ = true;
+
+// ======================================================
+// 🔥 SAFE RANGE WAIT
+// ======================================================
+function waitForMapAndRenderer(){
+
+  // ==========================================
+  // 🔥 WAIT FOR MAP
+  // ==========================================
+  if(
+
+    !window.map ||
+
+    typeof window.map.addLayer !== "function"
+
+  ){
+
+    console.warn(
+      "⏳ Waiting for map..."
+    );
+
+    setTimeout(
+      waitForMapAndRenderer,
+      500
+    );
+
     return;
   }
 
-  window.__APP_STARTED__ = true;
+  // ==========================================
+  // 🔥 READY
+  // ==========================================
+  console.log(
+    "✅ Map ready → loading range"
+  );
 
+  loadRangeKML?.();
+}
 
-  // ================= STATUS =================
-  if (!navigator.onLine) {
-    updateNetworkStatus("offline");
-  } else {
-    updateNetworkStatus("connecting");
-  }
+// ================= STATUS =================
+if (!navigator.onLine) {
+  updateNetworkStatus("offline");
+} else {
+  updateNetworkStatus("connecting");
+}
 
+// ================= UI INIT =================
+try {
 
-  // ================= UI INIT =================
+  initResponsiveUI();
+
+} catch (e) {
+
+  console.warn(
+    "UI Init delayed:",
+    e
+  );
+}
+
+// ================= PROFILE FLOW =================
+const savedProfile =
+  localStorage.getItem(
+    "userProfile"
+  );
+
+if (savedProfile) {
+
   try {
-    initResponsiveUI();
-  } catch (e) {
-    console.warn("UI Init delayed:", e);
-  }
 
+    const profile =
+      JSON.parse(savedProfile);
 
-  // ================= PROFILE FLOW =================
-  const savedProfile = localStorage.getItem("userProfile");
+    window.userProfile =
+      normalizeUserProfile(profile);
 
-  if (savedProfile) {
+    console.log(
+      "📴 OFFLINE MODE → APP STARTED"
+    );
 
-    try {
+    applyRoleControl?.();
 
-      const profile = JSON.parse(savedProfile);
-      window.userProfile = normalizeUserProfile(profile);
+    // ==========================================
+    // 🔥 START APP
+    // ==========================================
+    if (!window.__appBootRequested) {
 
-      console.log("📴 OFFLINE MODE → APP STARTED");
+      window.__appBootRequested = true;
 
-      applyRoleControl?.();
-
-      if (!window.__appBootRequested) {
-        window.__appBootRequested = true;
-        startApp?.();
-      }
-
-      initDutyControl?.();
-      loadRangeKML?.();
-      loadCompartmentsFromSheet?.();
-
-      if (navigator.onLine) {
-        try {
-          syncOfflineMoves?.();
-          syncOfflineSightings?.();
-        } catch (e) {
-          console.warn("⚠ Sync error:", e);
-        }
-      }
-
-      setTimeout(refreshOnlineProfile, 2000);
-
-    } catch (e) {
-
-      console.error("❌ Corrupt profile");
-
-      localStorage.removeItem("userProfile");
-      startOnlineLoginFlow();
-
+      startApp?.();
     }
 
-  } else {
+    initDutyControl?.();
+
+    // ==========================================
+    // 🔥 SAFE RANGE LOAD
+    // ==========================================
+    waitForMapAndRenderer();
+
+    loadCompartmentsFromSheet?.();
+
+    // ==========================================
+    // 🔥 SYNC OFFLINE
+    // ==========================================
+    if (navigator.onLine) {
+
+      try {
+
+        syncOfflineMoves?.();
+
+        syncOfflineSightings?.();
+
+      } catch (e) {
+
+        console.warn(
+          "⚠ Sync error:",
+          e
+        );
+      }
+    }
+
+    setTimeout(
+      refreshOnlineProfile,
+      2000
+    );
+
+  } catch (e) {
+
+    console.error(
+      "❌ Corrupt profile"
+    );
+
+    localStorage.removeItem(
+      "userProfile"
+    );
 
     startOnlineLoginFlow();
 
   }
 
+} else {
+
+  startOnlineLoginFlow();
+
+}
 // ======================================================
 // 🔥 GPS WATCHDOG SYSTEM (PRODUCTION GRADE - FINAL)
 // ======================================================
@@ -14607,98 +14684,283 @@ function normalizeUserProfile(profile){
 function startOnlineLoginFlow(){
 
   if(authFlowRunning){
-    console.warn("⛔ Auth flow already running");
+
+    console.warn(
+      "⛔ Auth flow already running"
+    );
+
     return;
   }
+
   authFlowRunning = true;
 
-  const phone = localStorage.getItem("userPhone") || "";
+  // ======================================================
+  // 🔥 SAFE RANGE WAIT
+  // ======================================================
+  function waitForMapAndRenderer(){
 
+    // ==========================================
+    // 🔥 WAIT FOR MAP
+    // ==========================================
+    if(
+
+      !window.map ||
+
+      typeof window.map.addLayer !== "function"
+
+    ){
+
+      console.warn(
+        "⏳ Waiting for map..."
+      );
+
+      setTimeout(
+        waitForMapAndRenderer,
+        500
+      );
+
+      return;
+    }
+
+    // ==========================================
+    // 🔥 READY
+    // ==========================================
+    console.log(
+      "✅ Map ready → loading range"
+    );
+
+    loadRangeKML?.();
+  }
+
+  const phone =
+    localStorage.getItem(
+      "userPhone"
+    ) || "";
+
+  // ======================================================
+  // 🔥 NO PHONE
+  // ======================================================
   if (!phone) {
-    if(!loginModalLocked && !loginShownOnce){
+
+    if(
+
+      !loginModalLocked &&
+      !loginShownOnce
+
+    ){
+
       loginShownOnce = true;
+
       showLogin();
     }
+
     authFlowRunning = false;
+
     return;
   }
 
-  callBackend("GET_PROFILE", { phone: phone })
+  // ======================================================
+  // 🔥 PROFILE LOAD
+  // ======================================================
+  callBackend(
+    "GET_PROFILE",
+    { phone: phone }
+  )
 
     .then(function (profile) {
 
-      if (!profile || profile.error) {
-        localStorage.removeItem("userPhone");
+      if (
 
-        if(!loginModalLocked && !loginShownOnce){
+        !profile ||
+
+        profile.error
+
+      ){
+
+        localStorage.removeItem(
+          "userPhone"
+        );
+
+        if(
+
+          !loginModalLocked &&
+          !loginShownOnce
+
+        ){
+
           loginShownOnce = true;
+
           showLogin();
         }
 
         authFlowRunning = false;
-        return Promise.reject("Invalid profile");
+
+        return Promise.reject(
+          "Invalid profile"
+        );
       }
 
-      const fixedProfile = normalizeUserProfile(profile);
+      // ==========================================
+      // 🔥 FIX PROFILE
+      // ==========================================
+      const fixedProfile =
+        normalizeUserProfile(
+          profile
+        );
 
-      window.userProfile = fixedProfile;
-      localStorage.setItem("userProfile", JSON.stringify(fixedProfile));
+      window.userProfile =
+        fixedProfile;
 
-      updateNetworkStatus("online");
+      localStorage.setItem(
+
+        "userProfile",
+
+        JSON.stringify(
+          fixedProfile
+        )
+
+      );
+
+      updateNetworkStatus(
+        "online"
+      );
+
       applyRoleControl?.();
 
-      // 🔥 FIX: prevent duplicate startApp
+      // ==========================================
+      // 🔥 START APP
+      // ==========================================
       if(!window.__appBootRequested){
+
         window.__appBootRequested = true;
+
         startApp?.();
       }
 
       initDutyControl?.();
 
-      return callBackend("updateVillageRisk");
+      return callBackend(
+        "updateVillageRisk"
+      );
     })
 
+    // ======================================================
+    // 🔥 CONE DATA
+    // ======================================================
     .then(function (coneData) {
-      if (!coneData) return null;
-      window.coneVillages = coneData;
-      return callBackend("getVillages");
+
+      if (!coneData)
+        return null;
+
+      window.coneVillages =
+        coneData;
+
+      return callBackend(
+        "getVillages"
+      );
     })
 
+    // ======================================================
+    // 🔥 FINAL START
+    // ======================================================
     .then(function (villageList) {
 
       if (villageList) {
-        window.villages = (villageList || []).map(v => ({
-          name: v.name || v.Village || "Unknown",
-          lat: parseFloat(v.lat),
-          lon: parseFloat(v.lon)
-        }));
+
+        window.villages =
+
+          (villageList || []).map(v => ({
+
+            name:
+              v.name ||
+              v.Village ||
+              "Unknown",
+
+            lat:
+              parseFloat(v.lat),
+
+            lon:
+              parseFloat(v.lon)
+
+          }));
       }
 
       refreshAll?.();
 
-      try { hideSplash(); } catch(e){}
+      try {
 
-      setTimeout(() => { loadRangeKML?.(); }, 500);
-      setTimeout(() => { initEventListeners?.(); }, 200);
-      setTimeout(() => { startChat?.(); }, 1500);
-      setTimeout(() => { cleanOldMessages?.(); }, 6000);
+        hideSplash();
+
+      } catch(e){}
+
+      // ==========================================
+      // 🔥 SAFE RANGE LOAD
+      // ==========================================
+      waitForMapAndRenderer();
+
+      setTimeout(
+        () => {
+          initEventListeners?.();
+        },
+        200
+      );
+
+      setTimeout(
+        () => {
+          startChat?.();
+        },
+        1500
+      );
+
+      setTimeout(
+        () => {
+          cleanOldMessages?.();
+        },
+        6000
+      );
 
     })
 
+    // ======================================================
+    // 🔥 FAIL
+    // ======================================================
     .catch(function (err) {
-      console.warn("⚠ startOnlineLoginFlow failed:", err);
-      updateNetworkStatus("offline");
 
-      if(!loginModalLocked && !loginShownOnce){
+      console.warn(
+
+        "⚠ startOnlineLoginFlow failed:",
+
+        err
+
+      );
+
+      updateNetworkStatus(
+        "offline"
+      );
+
+      if(
+
+        !loginModalLocked &&
+        !loginShownOnce
+
+      ){
+
         loginShownOnce = true;
+
         showLogin();
       }
+
     })
 
+    // ======================================================
+    // 🔥 END
+    // ======================================================
     .finally(() => {
+
       authFlowRunning = false;
+
     });
-}  function hideSplash(){
+} function hideSplash(){
 
   const splash = document.getElementById("splash-screen");
   if(!splash) return;
