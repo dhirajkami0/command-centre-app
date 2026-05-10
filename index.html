@@ -5126,6 +5126,7 @@ ${pct(data.health)} / 100
 // ==========================================
 
 // 🔥 GLOBAL (IMPORTANT)
+// 🔥 GLOBAL (IMPORTANT)
 window.rangeLayer = null;
 
 async function loadRangeKML(){
@@ -5135,109 +5136,336 @@ async function loadRangeKML(){
     console.log("🚀 Loading FAST GeoJSON...");
 
     // ======================================
+    // 🔥 MAP SAFETY
+    // ======================================
+    if(
+      !window.map ||
+      !window.sharedRenderer
+    ){
+
+      console.warn(
+        "⚠ Map/renderer not ready"
+      );
+
+      return;
+    }
+
+    // ======================================
     // 🔥 REMOVE OLD LAYER
     // ======================================
     if(window.rangeLayer){
-      map.removeLayer(window.rangeLayer);
+
+      try {
+
+        map.removeLayer(
+          window.rangeLayer
+        );
+
+      } catch(e){}
+
       window.rangeLayer = null;
     }
 
     // ======================================
     // 📥 FETCH DATA
     // ======================================
-    const res = await fetch("./kml/Compartments.json");
+    const res =
+      await fetch(
+        "./kml/Compartments.json"
+      );
 
     if(!res.ok){
-      throw new Error("❌ Failed to load GeoJSON");
+
+      throw new Error(
+        "❌ Failed to load GeoJSON"
+      );
     }
 
-    const data = await res.json();
-    const features = data.features || [];
-
-    console.log("📦 Features:", features.length);
+    const data =
+      await res.json();
 
     // ======================================
-    // 🔥 CREATE GLOBAL RANGE LAYER
+    // 🔥 SAFE FEATURES
     // ======================================
-   // ======================================================
-// 🔥 RANGE / COMPARTMENT GIS LAYER
-// ======================================================
-window.rangeLayer = L.geoJSON([], {
+    let features =
 
-  // ====================================================
-  // 🔥 SAME GIS PANE
-  // ====================================================
-  pane:"gisPane",
+      Array.isArray(data.features)
 
-  // ====================================================
-  // 🔥 SHARED RENDERER
-  // ====================================================
-  renderer:
-    window.sharedRenderer,
+      ? data.features
 
-  // ====================================================
-  // 🔥 STYLE
-  // ====================================================
-  style:{
+      : [];
 
-    color:"#00e5ff",
+    console.log(
+      "📦 Raw Features:",
+      features.length
+    );
 
-    weight:1,
-
-    opacity:0.8,
-
-    fillOpacity:0.1
-  }
-
-}).addTo(map);
     // ======================================
-    // ⚡ CHUNK RENDER (NO FREEZE)
+    // 🔥 FILTER INVALID GEOMETRY
+    // ======================================
+    features = features.filter(f=>{
+
+      try {
+
+        if(
+          !f ||
+          !f.geometry
+        ){
+          return false;
+        }
+
+        const geom =
+          f.geometry;
+
+        // ==================================
+        // 🔥 VALID TYPES
+        // ==================================
+        if(
+
+          geom.type !== "Polygon" &&
+
+          geom.type !== "MultiPolygon"
+
+        ){
+          return false;
+        }
+
+        // ==================================
+        // 🔥 COORDS EXIST
+        // ==================================
+        if(
+          !Array.isArray(
+            geom.coordinates
+          )
+        ){
+          return false;
+        }
+
+        // ==================================
+        // 🔥 FLATTEN
+        // ==================================
+        let pts = [];
+
+        if(
+          geom.type === "Polygon"
+        ){
+
+          pts =
+            geom.coordinates.flat();
+
+        } else {
+
+          pts =
+            geom.coordinates
+              .flat(2);
+        }
+
+        // ==================================
+        // 🔥 MIN POINTS
+        // ==================================
+        if(
+          pts.length < 4
+        ){
+          return false;
+        }
+
+        // ==================================
+        // 🔥 VALID NUMBERS
+        // ==================================
+        for(const p of pts){
+
+          if(
+            !Array.isArray(p) ||
+            p.length < 2
+          ){
+            return false;
+          }
+
+          const lon =
+            Number(p[0]);
+
+          const lat =
+            Number(p[1]);
+
+          if(
+
+            !isFinite(lat) ||
+            !isFinite(lon)
+
+          ){
+            return false;
+          }
+
+          if(
+
+            lat < -90 ||
+            lat > 90 ||
+
+            lon < -180 ||
+            lon > 180
+
+          ){
+            return false;
+          }
+        }
+
+        return true;
+
+      } catch(e){
+
+        return false;
+      }
+
+    });
+
+    console.log(
+      "✅ Valid Features:",
+      features.length
+    );
+
+    // ======================================
+    // 🔥 CREATE RANGE LAYER
+    // ======================================
+    window.rangeLayer = L.geoJSON([], {
+
+      // ====================================
+      // 🔥 GIS PIPELINE
+      // ====================================
+      pane:"gisPane",
+
+      renderer:
+        window.sharedRenderer,
+
+      // ====================================
+      // 🔥 STYLE
+      // ====================================
+      style:{
+
+        color:"#00e5ff",
+
+        weight:1,
+
+        opacity:0.8,
+
+        fillOpacity:0.1,
+
+        smoothFactor:0
+
+      }
+
+    }).addTo(map);
+
+    // ======================================
+    // ⚡ CHUNK RENDER
     // ======================================
     let i = 0;
+
     const chunkSize = 40;
 
     function drawChunk(){
 
-      const slice = features.slice(i, i + chunkSize);
+      try {
 
-      slice.forEach(f => {
-        window.rangeLayer.addData(f);
-      });
+        const slice =
+          features.slice(
+            i,
+            i + chunkSize
+          );
 
-      i += chunkSize;
+        slice.forEach(f=>{
 
-      if(i < features.length){
+          try {
 
-        requestAnimationFrame(drawChunk);
+            window.rangeLayer
+              .addData(f);
 
-      } else {
+          } catch(err){
 
-        console.log("✅ GeoJSON render complete");
-// 🔥 FORCE GRID AFTER DATA READY
-setTimeout(() => {
+            console.warn(
+              "⚠ Invalid feature skipped",
+              err
+            );
+          }
 
-  console.log("🧠 Grid init (cache or build)");
+        });
 
-  if(!loadGridFromCache()){
-    ensureGridReady();   // 🔥 build once
-  }
+        i += chunkSize;
 
-  // ❌ REMOVE AUTO RENDER
-  // renderGrid("current", "ALL");
+        // ==================================
+        // 🔥 CONTINUE
+        // ==================================
+        if(i < features.length){
 
-}, 300);        // ======================================
-        // 🎯 FIT MAP (SAFE)
-        // ======================================
-        try {
-          map.fitBounds(window.rangeLayer.getBounds(), {
-            padding: [10, 10]
-          });
-        } catch(e){}
+          requestAnimationFrame(
+            drawChunk
+          );
 
-        // ======================================
-        // 🔥 CRITICAL FIX: BUILD GRID AFTER LOAD
-        // ======================================
-       
+        }
+
+        // ==================================
+        // 🔥 COMPLETE
+        // ==================================
+        else {
+
+          console.log(
+            "✅ GeoJSON render complete"
+          );
+
+          // ================================
+          // 🔥 GRID INIT
+          // ================================
+          setTimeout(()=>{
+
+            console.log(
+              "🧠 Grid init"
+            );
+
+            if(
+              !loadGridFromCache()
+            ){
+
+              ensureGridReady();
+            }
+
+          },300);
+
+          // ================================
+          // 🔥 SAFE FIT
+          // ================================
+          try {
+
+            const bounds =
+
+              window.rangeLayer
+                .getBounds();
+
+            if(
+              bounds &&
+              bounds.isValid()
+            ){
+
+              map.fitBounds(
+                bounds,
+                {
+                  padding:[10,10]
+                }
+              );
+            }
+
+          } catch(e){
+
+            console.warn(
+              "⚠ fitBounds failed"
+            );
+          }
+        }
+
+      } catch(err){
+
+        console.error(
+          "❌ Chunk render failed",
+          err
+        );
       }
     }
 
@@ -5245,10 +5473,12 @@ setTimeout(() => {
 
   } catch(e){
 
-    console.error("❌ loadRangeKML error:", e);
-
+    console.error(
+      "❌ loadRangeKML error:",
+      e
+    );
   }
-}    function lineIntersectsBox(lat1, lon1, lat2, lon2, minLat, minLon, maxLat, maxLon) {
+}  function lineIntersectsBox(lat1, lon1, lat2, lon2, minLat, minLon, maxLat, maxLon) {
 
   const eps = 0.000001;
 
