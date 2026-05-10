@@ -9468,65 +9468,12 @@ const trackDocId =
                     activeSessionId
                   );
 
-                // ==============================================
-// 🔥 SAFE TRACK BUILD
-// ==============================================
-s.track =
-
-  filtered
-
-  .map(p=>{
-
-    const lat =
-      Number(p.lat);
-
-    const lon =
-      Number(p.lon);
-
-    // ==========================================
-    // 🔥 INVALID GPS
-    // ==========================================
-    if(
-
-      !isFinite(lat) ||
-      !isFinite(lon)
-
-    ){
-      return null;
-    }
-
-    // ==========================================
-    // 🔥 ZERO GPS
-    // ==========================================
-    if(
-
-      lat === 0 ||
-      lon === 0
-
-    ){
-      return null;
-    }
-
-    // ==========================================
-    // 🔥 RANGE SAFETY
-    // ==========================================
-    if(
-
-      lat < -90 ||
-      lat > 90 ||
-
-      lon < -180 ||
-      lon > 180
-
-    ){
-      return null;
-    }
-
-    return [lat, lon];
-
-  })
-
-  .filter(Boolean);              }
+                s.track =
+                  filtered.map(p=>[
+                    Number(p.lat),
+                    Number(p.lon)
+                  ]);
+              }
             }
 
           } catch(e){
@@ -10007,40 +9954,6 @@ ${
   </div>
 
 </div>`;
-
-    // ==============================================
-// 🔥 FINAL POSITION SAFETY
-// ==============================================
-lat = Number(lat);
-lon = Number(lon);
-
-if(
-
-  !isFinite(lat) ||
-  !isFinite(lon) ||
-
-  lat < -90 ||
-  lat > 90 ||
-
-  lon < -180 ||
-  lon > 180
-
-){
-
-  console.warn(
-
-    "⚠ Invalid marker position:",
-
-    s.cleanName,
-
-    lat,
-
-    lon
-
-  );
-
-  return;
-}
             // ==============================================
             // 🔥 MARKER CREATE/UPDATE
             // ==============================================
@@ -10091,64 +10004,51 @@ if(
             // ==============================================
             // 🔥 TRACK DRAW
             // ==============================================
-           // ==============================================
-// ==============================================
-// 🔥 TRACK DRAW (FINAL STABLE FIX)
-// ==============================================
+            if(clean.length > 1){
 
-// ==============================================
-// 🔥 HARD TRACK VALIDATION
-// ==============================================
-if(clean.length > 1){
+              if(
+                !window.staffTracks[
+                  s.cleanName
+                ]
+              ){
 
-  if(
-    !window.staffTracks[
-      s.cleanName
-    ]
-  ){
+                window.staffTracks[
+                  s.cleanName
+                ] = L.polyline(
 
-    window.staffTracks[
-      s.cleanName
-    ] = L.polyline(
+                  clean,
 
-      clean,
+                  {
+                    color: color,
+                    weight: 2.5,
+                    opacity: 0.80,
+                    smoothFactor: 0,
+                    lineCap: "round",
+                    lineJoin: "round"
+                  }
 
-      {
+                ).addTo(staffLayer);
 
-        color: color,
+              } else {
 
-        weight: 2.5,
+                window.staffTracks[
+                  s.cleanName
+                ]
 
-        opacity: 0.80,
+                .setLatLngs(clean)
 
-        smoothFactor: 0,
+                .setStyle({
+                  color: color
+                });
+              }
 
-        lineCap: "round",
-
-        lineJoin: "round"
-
-      }
-
-    ).addTo(staffLayer);
-
-  } else {
-
-    window.staffTracks[
-      s.cleanName
-    ]
-
-    .setLatLngs(clean)
-
-    .setStyle({
-      color: color
-    });
-  }
-
-}
+            }
 
           });
 
-        });            // ==================================================
+        });
+
+        // ==================================================
         // 🔥 REMOVE DEAD USERS
         // ==================================================
         Object.keys(
