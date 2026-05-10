@@ -721,6 +721,10 @@ canvas.leaflet-zoom-animated {
   image-rendering:auto !important;
 
   backface-visibility:hidden;
+
+  transform:none !important;
+
+  will-change:auto !important;
 }/* ======================================================
    🔥 RANGE / COMPARTMENT
 ====================================================== */
@@ -769,13 +773,23 @@ canvas.leaflet-zoom-animated {
    🔥 SAFE LEAFLET PERFORMANCE
 ====================================================== */
 
+/* ======================================================
+   🔥 STABLE LEAFLET RENDERING
+====================================================== */
+
 .leaflet-pane,
 .leaflet-layer,
 .leaflet-overlay-pane,
 .leaflet-map-pane,
 .leaflet-canvas-pane {
 
-  contain: layout style;
+  contain:none !important;
+
+  will-change:auto !important;
+
+  transform-style:flat !important;
+
+  backface-visibility:hidden;
 }/* ======================================================
    🔥 MOBILE TOUCH SMOOTHNESS
 ====================================================== */
@@ -3711,7 +3725,10 @@ setInterval(() => {
 
    // ======================================================
 // 🗺 MAP INIT (FINAL STABLE)
+// ======================================================// ======================================================
+// 🔥 MAIN MAP INIT (UNIFIED GIS ENGINE)
 // ======================================================
+
 var map = L.map('map', {
 
   center:[26.561, 89.507],
@@ -3726,7 +3743,7 @@ var map = L.map('map', {
   preferCanvas:true,
 
   // ==================================================
-  // 🔥 REMOVE LAYER SEPARATION
+  // 🔥 REMOVE LAYER SPLIT / DRIFT
   // ==================================================
   zoomAnimation:false,
 
@@ -3735,7 +3752,7 @@ var map = L.map('map', {
   markerZoomAnimation:false,
 
   // ==================================================
-  // 🔥 SMOOTHER TOUCH / PAN
+  // 🔥 SMOOTHER MOBILE PAN
   // ==================================================
   inertia:true,
 
@@ -3744,13 +3761,18 @@ var map = L.map('map', {
   inertiaMaxSpeed:1500,
 
   // ==================================================
-  // 🔥 BETTER MOBILE PERFORMANCE
+  // 🔥 MOBILE PERFORMANCE
   // ==================================================
   updateWhenZooming:false,
 
   updateWhenIdle:true
 
 });
+
+// ======================================================
+// 🔥 GLOBAL MAP
+// ======================================================
+window.map = map;
 
 // ======================================================
 // 🔥 SINGLE GIS PANE
@@ -3774,33 +3796,34 @@ window.sharedRenderer = L.canvas({
 
 });
 
-/* 🔥 BASE LAYERS LOAD */
+// ======================================================
+// 🔥 FORCE SINGLE RENDER PIPELINE
+// ======================================================
+map.getRenderer = function () {
+
+  return window.sharedRenderer;
+};
+
+// ======================================================
+// 🔥 BASE LAYER
+// ======================================================
 esriSat.addTo(map);
 
-/* 🖱 CONTROLS */
+// ======================================================
+// 🔥 CONTROLS
+// ======================================================
 map.scrollWheelZoom.disable();
 
 map.tap = true;
 
 L.control.zoom({
+
   position:'topright'
+
 }).addTo(map);
-// ======================================================
-// 🔥 SINGLE GIS PANE
-// ======================================================
-map.createPane("gisPane");
 
-map.getPane("gisPane").style.zIndex =
-  450;
-
-map.getPane("gisPane").style.pointerEvents =
-  "auto";
 // ======================================================
-// 🟩 GRID LAYER INIT
-// ======================================================
-    
-    // ======================================================
-// 🔥 GRID LAYER (AFFIXED GIS LAYER)
+// 🔥 GRID LAYER (AFFIXED)
 // ======================================================
 window.gridLayer =
 
@@ -3811,6 +3834,28 @@ window.gridLayer =
     pane:"gisPane"
 
   });
+
+// ======================================================
+// 🔥 FORCE MAP RESYNC AFTER LOAD
+// ======================================================
+setTimeout(()=>{
+
+  map.invalidateSize(true);
+
+},500);
+
+// ======================================================
+// 🔥 PAN/ZOOM STABILITY FIX
+// ======================================================
+map.on("moveend zoomend resize",()=>{
+
+  requestAnimationFrame(()=>{
+
+    map.invalidateSize(false);
+
+  });
+
+});
 
 // ======================================================
 // 🔥 GRID ↔ MAP SYNC (SAFE + STABLE)
@@ -12036,7 +12081,7 @@ function refreshAll() {
             weight: 3,
             opacity: 0.8
           },
-          renderer: L.canvas() // 🔥 performance
+          renderer: window.sharedRenderer // 🔥 performance
         }).addTo(riverLayer);
 
         console.log("✅ Rivers Loaded");
