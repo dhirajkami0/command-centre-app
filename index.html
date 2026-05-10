@@ -10623,56 +10623,71 @@ try {
   // ==========================================
   // 🔥 UPDATE EXISTING
   // ==========================================
-  if(
+ // ==========================================
+// 🔥 REMOVE OLD TRACK COMPLETELY
+// ==========================================
+if(
 
-    window.staffTracks[
-      s.cleanName
-    ]
+  window.staffTracks[
+    s.cleanName
+  ]
 
-  ){
+){
 
-    try {
+  try {
+
+    staffLayer.removeLayer(
 
       window.staffTracks[
         s.cleanName
       ]
 
-      .setLatLngs(clean)
+    );
 
-      .setStyle({
+  } catch(e){}
 
-        color: color
+  delete window.staffTracks[
+    s.cleanName
+  ];
+}
 
-      });
+// ==========================================
+// 🔥 CREATE FRESH TRACK
+// ==========================================
+window.staffTracks[
+  s.cleanName
+] = L.polyline(
 
-    } catch(err){
+  clean,
 
-      console.warn(
+  {
 
-        "⚠ Corrupted track reset:",
+    // ====================================
+    // 🔥 GIS PIPELINE
+    // ====================================
+    pane:"gisPane",
 
-        s.cleanName
+    renderer:
+      window.sharedRenderer,
 
-      );
+    // ====================================
+    // 🔥 STYLE
+    // ====================================
+    color: color,
 
-      try {
+    weight: 2.5,
 
-        staffLayer.removeLayer(
+    opacity: 0.80,
 
-          window.staffTracks[
-            s.cleanName
-          ]
+    smoothFactor: 0,
 
-        );
+    lineCap: "round",
 
-      } catch(e){}
+    lineJoin: "round"
 
-      delete window.staffTracks[
-        s.cleanName
-      ];
-    }
   }
 
+).addTo(staffLayer);
   // ==========================================
   // 🔥 CREATE NEW
   // ==========================================
