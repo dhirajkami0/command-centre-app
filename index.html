@@ -8833,35 +8833,64 @@ function getDistance(p1, p2){
 // ======================================================
 function getUserColor(name){
 
+  // ======================================================
+  // 🔥 HIGH-CONTRAST COLORS
+  // ======================================================
   const colors = [
 
-    "#ff1744",
-    "#00e676",
-    "#00b0ff",
-    "#ffea00",
-    "#d500f9",
-    "#ff9100",
-    "#64ffda",
-    "#c6ff00",
-    "#ff4081",
-    "#18ffff",
-    "#ff5252",
-    "#69f0ae"
-
+    "#ff1744", // red
+    "#2979ff", // blue
+    "#00c853", // green
+    "#ff9100", // orange
+    "#d500f9", // purple
+    "#00b8d4", // cyan
+    "#ffd600", // yellow
+    "#f50057", // pink
+    "#00e5ff", // aqua
+    "#76ff03", // lime
+    "#ff3d00", // deep orange
+    "#651fff", // indigo
+    "#00e676", // emerald
+    "#ffea00", // gold
+    "#aa00ff", // violet
+    "#304ffe", // royal blue
+    "#c6ff00", // neon lime
+    "#ff4081", // rose
+    "#18ffff", // bright cyan
+    "#ff6d00", // amber orange
+    "#7c4dff", // lavender
+    "#64dd17", // apple green
+    "#ff5252", // coral red
+    "#00bfa5", // teal
+    "#e040fb", // magenta
+    "#536dfe", // steel blue
+    "#aeea00", // fluorescent lime
+    "#ff7043", // salmon
+    "#40c4ff", // sky blue
+    "#69f0ae"  // mint
   ];
 
+  // ======================================================
+  // 🔥 HASH NAME
+  // ======================================================
   let hash = 0;
 
   for(let i=0;i<name.length;i++){
 
-    hash += name.charCodeAt(i);
+    hash =
+      ((hash << 5) - hash)
+      + name.charCodeAt(i);
+
+    hash |= 0;
   }
 
+  // ======================================================
+  // 🔥 STABLE COLOR
+  // ======================================================
   return colors[
-    hash % colors.length
+    Math.abs(hash) % colors.length
   ];
 }
-
 
 // ======================================================
 // 🔥 CLEAN GPS TRACK
@@ -9323,37 +9352,51 @@ liveSpeed =
       liveSpeed.toFixed(1)
     )
   );
+            // ==============================================
+// 🔥 AUTO STATIONARY
+// ==============================================
+const lastSeen =
+  Number(s.lastSeen || 0);
+
+const ageMs =
+  Date.now() - lastSeen;
+
+// ==================================================
+// 🔥 NO GPS FOR 60 SEC
+// → STATIONARY
+// ==================================================
+if(ageMs > 60000){
+
+  liveSpeed = 0;
+}
 // ==============================================
 // 🔥 FIX LAST UPDATE TIME
+// ==============================================// ==============================================
+// 🔥 LAST GPS TIME
 // ==============================================
 let liveTime = "Unknown";
 
 try {
 
-  if(s.updatedAt){
+  // ==================================================
+  // 🔥 GPS TIME
+  // ==================================================
+  if(s.time){
 
-    // 🔥 FIREBASE TIMESTAMP
-    if(typeof s.updatedAt.toDate === "function"){
-
-      liveTime =
-        s.updatedAt
-          .toDate()
-          .toLocaleString();
-
-    }
-
-    // 🔥 STRING
-    else {
-
-      liveTime =
-        String(s.updatedAt);
-    }
+    liveTime =
+      new Date(s.time)
+        .toLocaleString();
   }
 
+  // ==================================================
+  // 🔥 FALLBACK
+  // ==================================================
   else if(s.lastSeen){
 
     liveTime =
-      String(s.lastSeen);
+      new Date(
+        Number(s.lastSeen)
+      ).toLocaleString();
   }
 
 } catch(e){
