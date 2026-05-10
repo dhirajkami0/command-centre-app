@@ -9527,12 +9527,65 @@ const trackDocId =
                     activeSessionId
                   );
 
-                s.track =
-                  filtered.map(p=>[
-                    Number(p.lat),
-                    Number(p.lon)
-                  ]);
-              }
+                // ==============================================
+// 🔥 SAFE TRACK BUILD
+// ==============================================
+s.track =
+
+  filtered
+
+  .map(p=>{
+
+    const lat =
+      Number(p.lat);
+
+    const lon =
+      Number(p.lon);
+
+    // ==========================================
+    // 🔥 INVALID GPS
+    // ==========================================
+    if(
+
+      !isFinite(lat) ||
+      !isFinite(lon)
+
+    ){
+      return null;
+    }
+
+    // ==========================================
+    // 🔥 ZERO GPS
+    // ==========================================
+    if(
+
+      lat === 0 ||
+      lon === 0
+
+    ){
+      return null;
+    }
+
+    // ==========================================
+    // 🔥 RANGE SAFETY
+    // ==========================================
+    if(
+
+      lat < -90 ||
+      lat > 90 ||
+
+      lon < -180 ||
+      lon > 180
+
+    ){
+      return null;
+    }
+
+    return [lat, lon];
+
+  })
+
+  .filter(Boolean);              }
             }
 
           } catch(e){
@@ -10063,50 +10116,137 @@ ${
             // ==============================================
             // 🔥 TRACK DRAW
             // ==============================================
-            if(clean.length > 1){
+           // ==============================================
+// 🔥 FINAL TRACK SAFETY
+// ==============================================
+clean = (clean || []).filter(p=>
 
-              if(
-                !window.staffTracks[
-                  s.cleanName
-                ]
-              ){
+  Array.isArray(p) &&
+  p.length === 2 &&
 
-                window.staffTracks[
-                  s.cleanName
-                ] = L.polyline(
+  isFinite(p[0]) &&
+  isFinite(p[1]) &&
 
-                  clean,
+  p[0] !== 0 &&
+  p[1] !== 0 &&
 
-                  {
-                    color: color,
-                    weight: 2.5,
-                    opacity: 0.80,
-                    smoothFactor: 0,
-                    lineCap: "round",
-                    lineJoin: "round"
-                  }
+  p[0] >= -90 &&
+  p[0] <= 90 &&
 
-                ).addTo(staffLayer);
+  p[1] >= -180 &&
+  p[1] <= 180
 
-              } else {
+);
 
-                window.staffTracks[
-                  s.cleanName
-                ]
+// ==============================================
+// 🔥 SHAPE PRESERVING LIMIT
+// ==============================================
+clean = simplifyTrackShape(
 
-                .setLatLngs(clean)
+  clean,
 
-                .setStyle({
-                  color: color
-                });
-              }
+  400, // max points
 
-            }
+  3    // min direction change
 
-          });
+);
+
+// ==============================================
+// 🔥 TRACK DRAW
+// ==============================================
+if(
+
+  Array.isArray(clean) &&
+  clean.length > 1
+
+){
+
+  try {
+
+    // ==========================================
+    // 🔥 UPDATE EXISTING TRACK
+    // ==========================================
+    if(
+
+      window.staffTracks[
+        s.cleanName
+      ]
+
+    ){
+
+      window.staffTracks[
+        s.cleanName
+      ]
+
+      .setLatLngs(clean)
+
+      .setStyle({
+
+        color: color
+
+      });
+
+    }
+
+    // ==========================================
+    // 🔥 CREATE NEW TRACK
+    // ==========================================
+    else {
+
+      window.staffTracks[
+        s.cleanName
+      ] = L.polyline(
+
+        clean,
+
+        {
+
+          // ====================================
+          // 🔥 SHARED GIS PIPELINE
+          // ====================================
+          pane:"gisPane",
+
+          renderer:
+            window.sharedRenderer,
+
+          // ====================================
+          // 🔥 STYLE
+          // ====================================
+          color: color,
+
+          weight: 2.5,
+
+          opacity: 0.80,
+
+          smoothFactor: 0,
+
+          lineCap: "round",
+
+          lineJoin: "round"
+
+        }
+
+      ).addTo(staffLayer);
+
+    }
+
+  } catch(err){
+
+    console.warn(
+
+      "⚠ Track render failed:",
+
+      s.cleanName,
+
+      err
+
+    );
+  }
+
+}
+  });
 
         });
-
         // ==================================================
         // 🔥 REMOVE DEAD USERS
         // ==================================================
