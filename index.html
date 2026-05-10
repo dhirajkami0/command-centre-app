@@ -686,55 +686,95 @@ text-shadow: 0 1px 3px rgba(0,0,0,0.8);
    🚀 ULTRA-SMOOTH MAP RENDERING (OPTIMIZED)
 ============================================================ */
 
+/* ======================================================
+   🔥 UNIFIED GIS RENDERING
+====================================================== */
+
 .sharpLayer {
 
-  pointer-events: auto !important;
+  pointer-events:auto !important;
 
-  shape-rendering: geometricPrecision;
+  /* 🔥 smoother unified rendering */
+  shape-rendering:auto;
 
-  stroke-width: 0;
+  stroke-width:0;
 
-  opacity: 0.96;
-
-  will-change: transform;
+  opacity:0.96;
 }
 
-/* 🔥 SMOOTH LEAFLET CANVAS */
+/* ======================================================
+   🔥 SINGLE CANVAS SURFACE
+====================================================== */
+
 canvas.leaflet-zoom-animated {
 
-  image-rendering: auto !important;
-
-  transform: translateZ(0);
-
-  backface-visibility: hidden;
+  image-rendering:auto !important;
 }
 
-/* 🔥 LIGHTWEIGHT COMPARTMENT STYLE */
+/* ======================================================
+   🔥 RANGE / COMPARTMENT
+====================================================== */
+
 .compGlow {
 
-  stroke-linejoin: round;
+  stroke-linejoin:round;
 
-  opacity: 1;
+  stroke-linecap:round;
+
+  opacity:1;
 }
 
-/* 🔥 REMOVE GPU FILTERS */
+/* ======================================================
+   🔥 GRID
+====================================================== */
+
 .compactGrid {
 
-  opacity: 1;
+  opacity:1;
 }
 
-/* 🔥 VISITED AREA */
+/* ======================================================
+   🔥 VISITED GRID
+====================================================== */
+
 .visitedGlow {
 
-  opacity: 0.92;
+  opacity:0.92;
 }
 
-/* 🔥 UNVISITED AREA */
+/* ======================================================
+   🔥 UNVISITED GRID
+====================================================== */
+
 .unvisitedGlow {
 
-  opacity: 0.92;
+  opacity:0.92;
 }
-    /* ============================================================
+
+/* ======================================================
+   🔥 LEAFLET PERFORMANCE
+====================================================== */
+
+.leaflet-pane,
+.leaflet-layer,
+.leaflet-overlay-pane,
+.leaflet-map-pane,
+.leaflet-canvas-pane {
+
+  contain:strict;
+}
+
+/* ======================================================
+   🔥 MOBILE TOUCH SMOOTHNESS
+====================================================== */
+
+.leaflet-container {
+
+  touch-action:pan-x pan-y;
+
+  -webkit-tap-highlight-color:
+    transparent;
+}    /* ============================================================
    📋 FORMS & DROPDOWNS
 ============================================================ */
     .leader-only {
@@ -2853,7 +2893,243 @@ function resetUpdateUI() {
 /* ============================================================
    🔥 GLOBAL MASTER DATA (CRASH-PROOF)
 ============================================================ */
+// ======================================================
+// 🔥 BACKEND COVERAGE CACHE
+// ======================================================
+window.backendCoverageLoaded = false;
 
+window.gridCache = window.gridCache || {
+
+  today: {},
+  current: {},
+  prev: {}
+
+};/* ============================================================
+   🔥 LOAD FIRESTORE CUMULATIVE COVERAGE
+============================================================ */
+async function loadBackendCoverage(){
+
+  try {
+
+    console.log(
+      "☁ Loading backend coverage..."
+    );
+
+    if(!window.db){
+      console.error("❌ Firestore missing");
+      return;
+    }
+
+    // ======================================================
+    // 🔥 MONTH KEYS
+    // ======================================================
+    const now = new Date();
+
+    const currentMonth =
+      now.toISOString().slice(0,7);
+
+    const prevDate =
+      new Date(
+        now.getFullYear(),
+        now.getMonth()-1,
+        1
+      );
+
+    const prevMonth =
+      prevDate.getFullYear() +
+      "-" +
+      String(
+        prevDate.getMonth()+1
+      ).padStart(2,"0");
+
+    // ======================================================
+    // 🔥 RESET
+    // ======================================================
+    window.gridCache.current = {};
+    window.gridCache.prev = {};
+
+    // ======================================================
+    // 🔥 LOAD ALL TRACK DOCS
+    // ======================================================
+    const snap = await window.fb.getDocs(
+
+      window.fb.collection(
+        window.db,
+        "patrol_tracks"
+      )
+
+    );
+
+    if(snap.empty){
+
+      console.warn(
+        "⚠ No patrol tracks"
+      );
+
+      return;
+    }
+
+    // ======================================================
+    // 🔥 TEMP ARRAYS
+    // ======================================================
+    let currentTracks = [];
+    let prevTracks = [];
+
+    snap.forEach(docSnap=>{
+
+      try {
+
+        const d = docSnap.data();
+
+        if(
+          !d ||
+          !d.track ||
+          !Array.isArray(d.track)
+        ){
+          return;
+        }
+
+        const id =
+          docSnap.id || "";
+
+        // ==============================================
+        // 🔥 CURRENT MONTH
+        // ==============================================
+        if(
+          id.endsWith(currentMonth)
+        ){
+
+          currentTracks.push({
+
+            track:
+              d.track || [],
+
+            beat:
+              d.beat || "",
+
+            name:
+              d.name || "",
+
+            date:
+              d.updatedAt || new Date()
+
+          });
+        }
+
+        // ==============================================
+        // 🔥 PREVIOUS MONTH
+        // ==============================================
+        else if(
+          id.endsWith(prevMonth)
+        ){
+
+          prevTracks.push({
+
+            track:
+              d.track || [],
+
+            beat:
+              d.beat || "",
+
+            name:
+              d.name || "",
+
+            date:
+              d.updatedAt || new Date()
+
+          });
+        }
+
+      } catch(e){
+
+        console.warn(
+          "⚠ Track parse fail:",
+          e
+        );
+      }
+    });
+
+    console.log(
+      "📍 Current tracks:",
+      currentTracks.length
+    );
+
+    console.log(
+      "📍 Prev tracks:",
+      prevTracks.length
+    );
+
+    // ======================================================
+    // 🔥 PROCESS CURRENT
+    // ======================================================
+    let oldCache =
+      window.gridCache.today;
+
+    window.gridCache.today = {};
+
+    markVisitedHybrid(
+      currentTracks
+    );
+
+    window.gridCache.current = {
+
+      ...(window.gridCache.today || {})
+
+    };
+
+    // ======================================================
+    // 🔥 PROCESS PREV
+    // ======================================================
+    window.gridCache.today = {};
+
+    markVisitedHybrid(
+      prevTracks
+    );
+
+    window.gridCache.prev = {
+
+      ...(window.gridCache.today || {})
+
+    };
+
+    // ======================================================
+    // 🔥 RESTORE TODAY
+    // ======================================================
+    window.gridCache.today =
+      oldCache || {};
+
+    // ======================================================
+    // 🔥 DONE
+    // ======================================================
+    window.backendCoverageLoaded =
+      true;
+
+    console.log(
+      "✅ Backend coverage loaded"
+    );
+
+    console.log(
+      "📊 Current grids:",
+      Object.keys(
+        window.gridCache.current
+      ).length
+    );
+
+    console.log(
+      "📊 Prev grids:",
+      Object.keys(
+        window.gridCache.prev
+      ).length
+    );
+
+  } catch(e){
+
+    console.error(
+      "❌ loadBackendCoverage crash:",
+      e
+    );
+  }
+}
 // ✅ FORCE GLOBAL (never undefined)
 window.COMPT_MASTER = window.COMPT_MASTER || {
   "East Garam": [
@@ -3425,15 +3701,65 @@ setInterval(() => {
 // 🗺 MAP INIT (FINAL STABLE)
 // ======================================================
 var map = L.map('map', {
-  center:[26.561, 89.507],
-  zoom:14,
-  zoomControl:false,
-  preferCanvas: true,
 
-  // 🔥 CRITICAL FIX (REMOVES GRID SEPARATION)
-  zoomAnimation: false,
-  fadeAnimation: false,
-  markerZoomAnimation: false
+  center:[26.561, 89.507],
+
+  zoom:14,
+
+  zoomControl:false,
+
+  // ==================================================
+  // 🔥 SINGLE CANVAS RENDER PIPELINE
+  // ==================================================
+  preferCanvas:true,
+
+  // ==================================================
+  // 🔥 REMOVE LAYER SEPARATION
+  // ==================================================
+  zoomAnimation:false,
+
+  fadeAnimation:false,
+
+  markerZoomAnimation:false,
+
+  // ==================================================
+  // 🔥 SMOOTHER TOUCH / PAN
+  // ==================================================
+  inertia:true,
+
+  inertiaDeceleration:3000,
+
+  inertiaMaxSpeed:1500,
+
+  // ==================================================
+  // 🔥 BETTER MOBILE PERFORMANCE
+  // ==================================================
+  updateWhenZooming:false,
+
+  updateWhenIdle:true
+
+});
+
+// ======================================================
+// 🔥 SINGLE GIS PANE
+// ======================================================
+map.createPane("gisPane");
+
+map.getPane("gisPane").style.zIndex =
+  450;
+
+map.getPane("gisPane").style.pointerEvents =
+  "auto";
+
+// ======================================================
+// 🔥 SHARED GIS RENDERER
+// ======================================================
+window.sharedRenderer = L.canvas({
+
+  pane:"gisPane",
+
+  padding:0.5
+
 });
 
 /* 🔥 BASE LAYERS LOAD */
@@ -3441,14 +3767,38 @@ esriSat.addTo(map);
 
 /* 🖱 CONTROLS */
 map.scrollWheelZoom.disable();
+
 map.tap = true;
 
-L.control.zoom({ position: 'topright' }).addTo(map);
+L.control.zoom({
+  position:'topright'
+}).addTo(map);
+// ======================================================
+// 🔥 SINGLE GIS PANE
+// ======================================================
+map.createPane("gisPane");
 
+map.getPane("gisPane").style.zIndex =
+  450;
+
+map.getPane("gisPane").style.pointerEvents =
+  "auto";
 // ======================================================
 // 🟩 GRID LAYER INIT
 // ======================================================
-window.gridLayer = window.gridLayer || L.layerGroup();
+    
+    // ======================================================
+// 🔥 GRID LAYER (AFFIXED GIS LAYER)
+// ======================================================
+window.gridLayer =
+
+  window.gridLayer ||
+
+  L.layerGroup([],{
+
+    pane:"gisPane"
+
+  });
 
 // ======================================================
 // 🔥 GRID ↔ MAP SYNC (SAFE + STABLE)
@@ -4751,16 +5101,37 @@ async function loadRangeKML(){
     // ======================================
     // 🔥 CREATE GLOBAL RANGE LAYER
     // ======================================
-    window.rangeLayer = L.geoJSON([], {
-      renderer: L.canvas(),
-      style: {
-        color: "#00e5ff",
-        weight: 1,
-        opacity: 0.8,
-        fillOpacity: 0.1
-      }
-    }).addTo(map);
+   // ======================================================
+// 🔥 RANGE / COMPARTMENT GIS LAYER
+// ======================================================
+window.rangeLayer = L.geoJSON([], {
 
+  // ====================================================
+  // 🔥 SAME GIS PANE
+  // ====================================================
+  pane:"gisPane",
+
+  // ====================================================
+  // 🔥 SHARED RENDERER
+  // ====================================================
+  renderer:
+    window.sharedRenderer,
+
+  // ====================================================
+  // 🔥 STYLE
+  // ====================================================
+  style:{
+
+    color:"#00e5ff",
+
+    weight:1,
+
+    opacity:0.8,
+
+    fillOpacity:0.1
+  }
+
+}).addTo(map);
     // ======================================
     // ⚡ CHUNK RENDER (NO FREEZE)
     // ======================================
@@ -6305,17 +6676,72 @@ function markVisitedHybrid(tracks){
 
   console.log("🧪 Incoming tracks:", tracks);
 
-  let visitedGlobal = {};
+ let visitedGlobal = {};
 
-  for(let t of tracks){
+for(let t of tracks){
+// ======================================================
+// 🔥 BEAT FILTER
+// ======================================================
+const selectedBeat =
 
-    const dayStr = t.date
-      ? getLocalDateStr(new Date(t.date))
+  window.currentBeat || "ALL";
+
+if(
+  selectedBeat !== "ALL" &&
+  t.beat !== selectedBeat
+){
+  continue;
+}
+  // ======================================================
+  // 🔥 SAFE TRACK CHECK
+  // ======================================================
+  if(
+    !t ||
+    !t.track ||
+    !Array.isArray(t.track) ||
+    !t.track.length
+  ){
+    continue;
+  }
+
+  // ======================================================
+  // 🔥 SAFE DATE
+  // ======================================================
+  let dayStr;
+
+  try {
+
+    dayStr = t.date
+      ? getLocalDateStr(
+          new Date(t.date)
+        )
       : getLocalDateStr();
 
-    if(!t || !t.track || !t.track.length) continue;
+  } catch(e){
 
-    // ==========================================
+    console.warn(
+      "⚠ Invalid track date:",
+      t.date
+    );
+
+    dayStr =
+      getLocalDateStr();
+  }
+
+  // ======================================================
+  // 🔥 BEAT FILTER
+  // ======================================================
+  const selectedBeat =
+
+    window.currentBeat || "ALL";
+
+  if(
+    selectedBeat !== "ALL" &&
+    t.beat &&
+    t.beat !== selectedBeat
+  ){
+    continue;
+  }   // ==========================================
     // 🔥 CLEAN + NORMALIZE TRACK
     // ==========================================
     let pts = t.track.map(p => ({
@@ -6591,12 +7017,12 @@ function markVisitedHybrid(tracks){
     // ======================================================
     // 🔥 CURRENT / PREV (BACKEND)
     // ======================================================
-    if(window.gridCache?.current && window.gridCache?.prev){
-
-      renderGrid(mode, beat);
-      return;
-    }
-
+    if(
+  window.backendCoverageLoaded
+){
+  renderGrid(mode, beat);
+  return;
+}
     loadBackendCoverage()
       .then(() => {
         renderGrid(mode, beat);
@@ -6671,9 +7097,31 @@ function showGridPopup(cell, latlng){
       current = window.gridCache?.today || {};
     }
     else if(mode === "current"){
-      current = window.gridCache?.current || {};   // ✅ FIXED
-    }
-    else if(mode === "prev"){
+
+  // ======================================================
+  // 🔥 ENSURE CURRENT CACHE EXISTS
+  // ======================================================
+  if(
+    !window.gridCache ||
+    !window.gridCache.current
+  ){
+
+    console.warn(
+      "⚠ Current month cache missing"
+    );
+
+    window.gridCache =
+      window.gridCache || {};
+
+    window.gridCache.current = {};
+  }
+
+  // ======================================================
+  // 🔥 CURRENT MONTH CUMULATIVE
+  // ======================================================
+  current =
+    window.gridCache.current || {};
+}else if(mode === "prev"){
       current = window.gridCache?.prev || {};
     }
 
@@ -8022,15 +8470,27 @@ if(bestScore >= JOIN_THRESHOLD){
       window.herdLines[matchedHerd].setLatLngs(latlngs);
     } else {
 
-      window.herdLines[matchedHerd] = L.polyline(latlngs,{
-        color: color || "#ff3b30",
-        weight: 6,
-        opacity: 0.9,
-        smoothFactor: 1.5,
-        lineCap: "round",
-        lineJoin: "round"
-      }).addTo(elephantLayer);
+    window.herdLines[matchedHerd] = L.polyline(latlngs,{
 
+  pane:"gisPane",
+
+  renderer:
+    window.sharedRenderer,
+
+  color:
+    color || "#ff3b30",
+
+  weight:6,
+
+  opacity:0.9,
+
+  smoothFactor:0,
+
+  lineCap:"round",
+
+  lineJoin:"round"
+
+}).addTo(elephantLayer);
     }
 
   }
@@ -10332,13 +10792,24 @@ function loadPredictions() {
         const pts = groups[id];
         if (pts.length < 2) return;
 
-        L.polyline(pts, {
-          color: "#00c6ff",
-          weight: 5,
-          dashArray: '10,8',
-          opacity: 0.85
-        }).addTo(predictionLayer);
+       L.polyline(pts, {
 
+  pane:"gisPane",
+
+  renderer:
+    window.sharedRenderer,
+
+  color:"#00c6ff",
+
+  weight:5,
+
+  dashArray:'10,8',
+
+  opacity:0.85,
+
+  smoothFactor:0
+
+}).addTo(predictionLayer);
         const startIcon = L.divIcon({
           html: `
         <div style="position:relative">
@@ -13064,40 +13535,127 @@ function loadMapDataFirebase() {
           /* ===========================
              📍 TRACK UPDATE (NO FLICKER)
           =========================== */
-          if (clean.length > 1) {
+         // ======================================================
+// 🔥 STAFF TRACK RENDER (OPTIMIZED + AFFIXED)
+// ======================================================
 
-            if (trackMap[s.id]) {
+// 🔥 LIMIT TRACK POINTS
+// ======================================================
+// 🔥 SHAPE-PRESERVING TRACK LIMIT
+// ======================================================
+clean = simplifyTrackShape(
 
-              trackMap[s.id].setLatLngs(clean);
+  clean,
 
-            } else {
+  400, // max points
 
-              const line = L.polyline(clean, {
-                color: color,
-                weight: 2,
-                opacity: 1
-              }).addTo(staffLayer);
+  3    // min direction change
+);
 
-              trackMap[s.id] = line;
+if (clean.length > 1) {
 
-              if (L.polylineDecorator) {
-                L.polylineDecorator(line, {
-                  patterns: [{
-                    offset: '5%',
-                    repeat: '50px',
-                    symbol: L.Symbol.arrowHead({
-                      pixelSize: 10,
-                      pathOptions: { color: color }
-                    })
-                  }]
-                }).addTo(staffLayer);
-              }
-            }
-          }
+  // ====================================================
+  // 🔥 UPDATE EXISTING TRACK
+  // ====================================================
+  if (trackMap[s.id]) {
 
-        });
+    trackMap[s.id]
 
+      .setLatLngs(clean)
+
+      .setStyle({
+        color: color
       });
+
+  }
+
+  // ====================================================
+  // 🔥 CREATE NEW TRACK
+  // ====================================================
+  else {
+
+    const line = L.polyline(
+
+      clean,
+
+      {
+
+        // ==============================================
+        // 🔥 SHARED GIS SURFACE
+        // ==============================================
+        pane:"gisPane",
+
+        renderer:
+          window.sharedRenderer,
+
+        // ==============================================
+        // 🔥 STYLE
+        // ==============================================
+        color: color,
+
+        weight: 2,
+
+        opacity: 1,
+
+        smoothFactor: 0,
+
+        lineCap: "round",
+
+        lineJoin: "round"
+
+      }
+
+    ).addTo(staffLayer);
+
+    // ==============================================
+    // 🔥 STORE
+    // ==============================================
+    trackMap[s.id] = line;
+
+    // ==============================================
+    // 🔥 DIRECTION ARROWS
+    // ==============================================
+    if (L.polylineDecorator) {
+
+      L.polylineDecorator(
+
+        line,
+
+        {
+
+          patterns: [
+
+            {
+
+              offset:'5%',
+
+              repeat:'50px',
+
+              symbol:
+                L.Symbol.arrowHead({
+
+                  pixelSize:10,
+
+                  pathOptions:{
+
+                    color:color,
+
+                    weight:2
+
+                  }
+
+                })
+
+            }
+
+          ]
+
+        }
+
+      ).addTo(staffLayer);
+    }
+  }
+}
 
       /* 🔥 REMOVE OLD */
       Object.keys(markerMap).forEach(id => {
@@ -13118,6 +13676,173 @@ function loadMapDataFirebase() {
   });
 
 }
+
+  // ======================================================
+// 🔥 SMART TRACK SIMPLIFICATION
+// ======================================================
+function simplifyTrackShape(
+
+  points,
+
+  maxPoints = 400,
+
+  minAngle = 3
+
+){
+
+  try {
+
+    if(
+      !Array.isArray(points) ||
+      points.length < 3
+    ){
+      return points || [];
+    }
+
+    // ==================================================
+    // 🔥 KEEP FIRST POINT
+    // ==================================================
+    let result = [points[0]];
+
+    // ==================================================
+    // 🔥 ANGLE FUNCTION
+    // ==================================================
+    function getAngle(a,b,c){
+
+      const abx = b[1]-a[1];
+      const aby = b[0]-a[0];
+
+      const bcx = c[1]-b[1];
+      const bcy = c[0]-b[0];
+
+      const dot =
+        (abx*bcx) +
+        (aby*bcy);
+
+      const mag1 =
+        Math.sqrt(
+          abx*abx +
+          aby*aby
+        );
+
+      const mag2 =
+        Math.sqrt(
+          bcx*bcx +
+          bcy*bcy
+        );
+
+      if(
+        mag1 === 0 ||
+        mag2 === 0
+      ){
+        return 0;
+      }
+
+      let angle = Math.acos(
+
+        Math.min(
+          1,
+
+          Math.max(
+            -1,
+            dot/(mag1*mag2)
+          )
+        )
+
+      );
+
+      return angle * (180/Math.PI);
+    }
+
+    // ==================================================
+    // 🔥 KEEP SHAPE POINTS
+    // ==================================================
+    for(let i=1;i<points.length-1;i++){
+
+      const prev =
+        points[i-1];
+
+      const curr =
+        points[i];
+
+      const next =
+        points[i+1];
+
+      if(
+        !prev ||
+        !curr ||
+        !next
+      ){
+        continue;
+      }
+
+      const angle =
+        getAngle(
+          prev,
+          curr,
+          next
+        );
+
+      // ==============================================
+      // 🔥 KEEP SHARP TURNS
+      // ==============================================
+      if(
+        angle >= minAngle
+      ){
+
+        result.push(curr);
+      }
+    }
+
+    // ==================================================
+    // 🔥 KEEP LAST POINT
+    // ==================================================
+    result.push(
+      points[points.length-1]
+    );
+
+    // ==================================================
+    // 🔥 FINAL HARD LIMIT
+    // ==================================================
+    if(
+      result.length > maxPoints
+    ){
+
+      const step =
+        result.length / maxPoints;
+
+      let reduced = [];
+
+      for(
+        let i=0;
+        i<maxPoints;
+        i++
+      ){
+
+        reduced.push(
+
+          result[
+            Math.floor(i*step)
+          ]
+
+        );
+      }
+
+      result = reduced;
+    }
+
+    return result;
+
+  } catch(e){
+
+    console.warn(
+      "⚠ simplifyTrackShape failed",
+      e
+    );
+
+    return points || [];
+  }
+}                        
     function updateCompt(){
 
   const block = document.getElementById("f-block").value;
