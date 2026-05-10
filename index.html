@@ -210,19 +210,29 @@ window.addEventListener("unhandledrejection", function (e) {
       --sar: env(safe-area-inset-right);
     }
 
-    html,
-    body,
-    #map {
-      height: 100vh;
-      margin: 0;
-      padding: 0;
-      background: #111;
-      overflow: hidden;
-      font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
-      overscroll-behavior: none;
-      /* Prevents browser pull-to-refresh */
-    }
+   html,
+body,
+#map {
+  height: 100vh;
+  margin: 0;
+  padding: 0;
+  background: #111;
+  overflow: hidden;
+  font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+  overscroll-behavior: none;
+  /* Prevents browser pull-to-refresh */
+}
 
+#map {
+
+  width: 100vw;
+
+  height: 100vh;
+
+  position: relative;
+
+  background: #111;
+}
     /* Native App Polish: Prevent blue highlight boxes and text selection */
     * {
       -webkit-tap-highlight-color: transparent;
@@ -709,9 +719,9 @@ text-shadow: 0 1px 3px rgba(0,0,0,0.8);
 canvas.leaflet-zoom-animated {
 
   image-rendering:auto !important;
-}
 
-/* ======================================================
+  backface-visibility:hidden;
+}/* ======================================================
    🔥 RANGE / COMPARTMENT
 ====================================================== */
 
@@ -755,16 +765,18 @@ canvas.leaflet-zoom-animated {
    🔥 LEAFLET PERFORMANCE
 ====================================================== */
 
+/* ======================================================
+   🔥 SAFE LEAFLET PERFORMANCE
+====================================================== */
+
 .leaflet-pane,
 .leaflet-layer,
 .leaflet-overlay-pane,
 .leaflet-map-pane,
 .leaflet-canvas-pane {
 
-  contain:strict;
-}
-
-/* ======================================================
+  contain: layout style;
+}/* ======================================================
    🔥 MOBILE TOUCH SMOOTHNESS
 ====================================================== */
 
