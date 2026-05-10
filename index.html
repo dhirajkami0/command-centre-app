@@ -10099,223 +10099,56 @@ if(
 // ==============================================
 // 🔥 HARD TRACK VALIDATION
 // ==============================================
-clean = (clean || [])
-
-.filter(p=>{
-
-  if(!Array.isArray(p)){
-    return false;
-  }
-
-  if(p.length !== 2){
-    return false;
-  }
-
-  const lat = Number(p[0]);
-  const lon = Number(p[1]);
+if(clean.length > 1){
 
   if(
-    !isFinite(lat) ||
-    !isFinite(lon)
-  ){
-    return false;
-  }
-
-  if(
-    lat < -90 ||
-    lat > 90 ||
-    lon < -180 ||
-    lon > 180
-  ){
-    return false;
-  }
-
-  if(
-    lat === 0 ||
-    lon === 0
-  ){
-    return false;
-  }
-
-  return true;
-
-})
-
-.map(p=>[
-  Number(p[0]),
-  Number(p[1])
-]);
-
-// ==============================================
-// 🔥 REMOVE DUPLICATES
-// ==============================================
-clean = clean.filter((p,i,a)=>{
-
-  if(i === 0) return true;
-
-  return !(
-    p[0] === a[i-1][0] &&
-    p[1] === a[i-1][1]
-  );
-
-});
-
-// ==============================================
-// 🔥 SHAPE LIMIT
-// ==============================================
-clean = simplifyTrackShape(
-
-  clean,
-
-  300,
-
-  3
-
-);
-
-// ==============================================
-// 🔥 HARD LIMIT
-// ==============================================
-clean = clean.slice(-300);
-
-// ==============================================
-// 🔥 FINAL SAFETY
-// ==============================================
-if(
-  !Array.isArray(clean) ||
-  clean.length < 2
-){
-
-  if(
-    window.staffTracks[
+    !window.staffTracks[
       s.cleanName
     ]
   ){
 
-    try {
-
-      staffLayer.removeLayer(
-        window.staffTracks[
-          s.cleanName
-        ]
-      );
-
-    } catch(e){}
-
-    delete window.staffTracks[
+    window.staffTracks[
       s.cleanName
-    ];
+    ] = L.polyline(
+
+      clean,
+
+      {
+
+        color: color,
+
+        weight: 2.5,
+
+        opacity: 0.80,
+
+        smoothFactor: 0,
+
+        lineCap: "round",
+
+        lineJoin: "round"
+
+      }
+
+    ).addTo(staffLayer);
+
+  } else {
+
+    window.staffTracks[
+      s.cleanName
+    ]
+
+    .setLatLngs(clean)
+
+    .setStyle({
+      color: color
+    });
   }
 
-  return;
 }
 
-// ==============================================
-// 🔥 VALIDATE LATLNGS
-// ==============================================
-try {
+          });
 
-  clean = clean.map(p=>{
-
-    const ll = L.latLng(
-      Number(p[0]),
-      Number(p[1])
-    );
-
-    return [
-      ll.lat,
-      ll.lng
-    ];
-
-  });
-
-} catch(err){
-
-  console.warn(
-    "⚠ Invalid LatLng:",
-    s.cleanName
-  );
-
-  return;
-}
-
-// ==============================================
-// 🔥 REMOVE OLD TRACK
-// ==============================================
-if(
-  window.staffTracks[
-    s.cleanName
-  ]
-){
-
-  try {
-
-    staffLayer.removeLayer(
-
-      window.staffTracks[
-        s.cleanName
-      ]
-
-    );
-
-  } catch(e){}
-
-  delete window.staffTracks[
-    s.cleanName
-  ];
-}
-
-// ==============================================
-// 🔥 CREATE FRESH TRACK
-// ==============================================
-// ==============================================
-// 🔥 CREATE FRESH TRACK
-// ==============================================
-try {
-
-  window.staffTracks[
-    s.cleanName
-  ] = L.polyline(
-
-    clean,
-
-    {
-
-      // ====================================
-      // 🔥 SAME GIS PANE
-      // ====================================
-      pane:"gisPane",
-
-      // ====================================
-      // 🔥 SIMPLE STABLE STYLE
-      // ====================================
-      color: color,
-
-      weight: 2.5,
-
-      opacity: 0.80
-
-    }
-
-  ).addTo(staffLayer);
-
-} catch(err){
-
-  console.warn(
-
-    "⚠ Track render failed:",
-
-    s.cleanName,
-
-    err
-
-  );
-
-}   
-              });
-
-        });        
-            // ==================================================
+        });            // ==================================================
         // 🔥 REMOVE DEAD USERS
         // ==================================================
         Object.keys(
@@ -13811,69 +13644,55 @@ function loadMapDataFirebase() {
 // ======================================================
 // 🔥 SHAPE-PRESERVING TRACK LIMIT
 // ======================================================
-clean = simplifyTrackShape(
+if(
 
-  clean,
+  window.staffTracks[
+    s.cleanName
+  ]
 
-  400, // max points
+){
 
-  3    // min direction change
-);
+  try {
 
-if (clean.length > 1) {
+    window.staffTracks[
+      s.cleanName
+    ]
 
-  // ====================================================
-  // 🔥 UPDATE EXISTING TRACK
-  // ====================================================
-  if (trackMap[s.id]) {
+    .setLatLngs(clean)
 
-    trackMap[s.id]
+    .setStyle({
 
-      .setLatLngs(clean)
+      color: color
 
-      .setStyle({
-        color: color
-      });
+    });
 
+  } catch(err){
+
+    console.warn(
+
+      "⚠ Corrupted track reset:",
+
+      s.cleanName
+
+    );
+
+    try {
+
+      staffLayer.removeLayer(
+
+        window.staffTracks[
+          s.cleanName
+        ]
+
+      );
+
+    } catch(e){}
+
+    delete window.staffTracks[
+      s.cleanName
+    ];
   }
-
-  // ====================================================
-  // 🔥 CREATE NEW TRACK
-  // ====================================================
-  else {
-
-    const line = L.polyline(
-
-      clean,
-
-      {
-
-        // ==============================================
-        // 🔥 SHARED GIS SURFACE
-        // ==============================================
-        pane:"gisPane",
-
-        renderer:
-          window.sharedRenderer,
-
-        // ==============================================
-        // 🔥 STYLE
-        // ==============================================
-        color: color,
-
-        weight: 2,
-
-        opacity: 1,
-
-        smoothFactor: 0,
-
-        lineCap: "round",
-
-        lineJoin: "round"
-
-      }
-
-    ).addTo(staffLayer);
+}
 
     // ==============================================
     // 🔥 STORE
