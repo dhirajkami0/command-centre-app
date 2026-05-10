@@ -7806,7 +7806,78 @@ if (e.time && typeof e.time === "string") {
 }
 
 /* 🔥 FINAL AGE */
-const minutes = Math.max(0, Math.floor((now - parsedTs) / (1000 * 60)));   /* 🔍 DEBUG AGE (CRITICAL) */
+/* ======================================
+   🔥 FINAL AGE + AUTO REMOVE FIX
+====================================== */
+
+const diffMs =
+  now - parsedTs;
+
+/* 🔥 INVALID FUTURE TIME */
+if(diffMs < 0){
+
+  console.warn(
+    "⚠ Future sighting skipped:",
+    e.time
+  );
+
+  return;
+}
+
+/* 🔥 FINAL AGE */
+const minutes =
+  Math.floor(
+    diffMs / (1000 * 60)
+  );
+
+/* 🔥 REMOVE AFTER 24 HOURS */
+if(minutes >= 1440){
+
+  console.log(
+    "🗑 Removing expired sighting:",
+    key
+  );
+
+  /* 🔥 REMOVE MARKER */
+  if(window.sightingMarkers?.[key]){
+
+    elephantLayer.removeLayer(
+      window.sightingMarkers[key]
+    );
+
+    delete window.sightingMarkers[key];
+  }
+
+  /* 🔥 REMOVE HERD LINE */
+  if(window.herdLines?.[matchedHerd]){
+
+    elephantLayer.removeLayer(
+      window.herdLines[matchedHerd]
+    );
+
+    delete window.herdLines[matchedHerd];
+  }
+
+  /* 🔥 REMOVE HERD ARROW */
+  if(window.herdArrows?.[matchedHerd]){
+
+    elephantLayer.removeLayer(
+      window.herdArrows[matchedHerd]
+    );
+
+    delete window.herdArrows[matchedHerd];
+  }
+
+  /* 🔥 REMOVE TRACK */
+  if(window.herdTracks?.[matchedHerd]){
+
+    delete window.herdTracks[
+      matchedHerd
+    ];
+  }
+
+  return;
+}   /* 🔍 DEBUG AGE (CRITICAL) */
 
 console.log("🧪 -------- AGE DEBUG --------");
 
