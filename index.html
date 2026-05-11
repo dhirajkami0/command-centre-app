@@ -1301,14 +1301,8 @@ function waitForAndroidBridge(timeout = 8000){
     const timer = setInterval(() => {
 
       const ready =
-
         window.Android &&
-
-        typeof Android.saveUserProfile === "function" &&
-
-        typeof Android.savePhone === "function" &&
-
-        typeof Android.updateDutyState === "function";
+        typeof Android.saveUserProfile === "function";
 
       if(ready){
 
@@ -2188,17 +2182,16 @@ const dutyWait = setInterval(() => {
   addDoc,
   onSnapshot,
   query,
-  where,
   orderBy,
-  limit,
   serverTimestamp,
   getDocs,
   getDoc,
   deleteDoc,
   doc,
   setDoc,
-  updateDoc
-}= await import("https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js");
+  updateDoc,
+  arrayUnion
+} = await import("https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js");
 
         const { getStorage, ref, uploadBytes, getDownloadURL }
           = await import("https://www.gstatic.com/firebasejs/10.12.0/firebase-storage.js");
@@ -2213,20 +2206,17 @@ const dutyWait = setInterval(() => {
   addDoc,
   onSnapshot,
   query,
-  where,
   orderBy,
-  limit,
   serverTimestamp,
   getDocs,
   getDoc,
   deleteDoc,
   doc,
   setDoc,
- updateDoc,
-  ref,
-  uploadBytes,
-  getDownloadURL
-};
+  updateDoc,
+  arrayUnion,  ref, uploadBytes, getDownloadURL
+        };
+
         window.firebaseReady = true;
            // ============================================
   // 🧹 RUN CLEANUP IMMEDIATELY
@@ -9091,90 +9081,42 @@ const trackDocId =
                 trackDocId
               );
 
-           // ==================================================
-// 🔥 LOAD POINT SUBCOLLECTION
-// ==================================================
-s.track = [];
+            const trackSnap =
+              await window.fb.getDoc(
+                trackRef
+              );
 
-const activeSessionId =
-  s.sessionId || "";
+            s.track = [];
 
-// ==================================================
-// 🔥 POINTS COLLECTION
-// ==================================================
-const pointsRef =
-  window.fb.collection(
-    trackRef,
-    "points"
-  );
+            if(trackSnap.exists()){
 
-// ==================================================
-// 🔥 QUERY CURRENT SESSION
-// ==================================================
-const q =
-  window.fb.query(
+              const td =
+                trackSnap.data();
 
-    pointsRef,
+              if(
+                td &&
+                Array.isArray(td.track)
+              ){
 
-    window.fb.where(
-      "sessionId",
-      "==",
-      activeSessionId
-    ),
+                const activeSessionId =
+                  s.sessionId || "";
 
-    // ==============================================
-    // 🔥 ORDER BY TIME
-    // ==============================================
-    window.fb.orderBy(
-      "time",
-      "asc"
-    ),
+                const filtered =
+                  td.track.filter(p=>
 
-    // ==============================================
-    // 🔥 SAFETY LIMIT
-    // ==============================================
-    window.fb.limit(5000)
-  );
+                    p &&
+                    p.sessionId ===
+                    activeSessionId
+                  );
 
-// ==================================================
-// 🔥 GET TRACK POINTS
-// ==================================================
-const pointSnap =
-  await window.fb.getDocs(q);
+                s.track =
+                  filtered.map(p=>[
+                    Number(p.lat),
+                    Number(p.lon)
+                  ]);
+              }
+            }
 
-// ==================================================
-// 🔥 BUILD TRACK
-// ==================================================
-pointSnap.forEach(doc=>{
-
-  try {
-
-    const p =
-      doc.data();
-
-   if(
-  !p ||
-  p.lat == null ||
-  p.lon == null
-){
-  return;
-}  
-    s.track.push([
-
-      Number(p.lat),
-
-      Number(p.lon)
-
-    ]);
-
-  } catch(e){
-
-    console.warn(
-      "⚠ Point parse failed",
-      e
-    );
-  }
-});
           } catch(e){
 
             console.warn(
@@ -9204,219 +9146,566 @@ pointSnap.forEach(doc=>{
 
         });
 
-      // ==================================================
-// 🔥 DRAW STAFF
+        // ==================================================
+        // 🔥 DRAW STAFF
+        // ==================================================
+        Object.values(groups).forEach(group=>{
+
+          group.forEach((s,index)=>{
+
+            // ==============================================
+            // 🔥 CLEAN TRACK
+            // ==============================================
+            let clean =
+              cleanTrackPoints(
+                Array.isArray(s.track)
+                ? s.track
+                : []
+              );
+
+            // ==============================================
+            // 🔥 LAST POSITION
+            // ==============================================
+            let lat =
+              clean.length
+              ? clean[clean.length - 1][0]
+              : s.lat;
+
+            let lon =
+              clean.length
+              ? clean[clean.length - 1][1]
+              : s.lon;
+
+            // ==============================================
+            // 🔥 SPREAD OVERLAP
+            // ==============================================
+            if(group.length > 1){
+
+              const angle =
+                (index / group.length)
+                * Math.PI * 2;
+
+              lat +=
+                Math.cos(angle)
+                * 0.00012;
+
+              lon +=
+                Math.sin(angle)
+                * 0.00012;
+            }
+
+            // ==============================================
+            // 🔥 DISTANCE
+            // ==============================================
+            let dist = 0;
+
+            for(
+              let i=1;
+              i<clean.length;
+              i++
+            ){
+
+              dist += getDistance(
+                clean[i-1],
+                clean[i]
+              );
+            }
+
+            // ==============================================
+            // 🔥 SPEED
+            // ==============================================
+            const speed =
+              Number(s.speed || 0);
+
+            // ==============================================
+            // 🔥 STABLE COLOR
+            // ==============================================
+            const color =
+              getUserColor(
+                s.cleanName
+              );
+
+            // ==============================================
+            // 🔥 ICON
+            // ==============================================
+            // ==============================================
+// 🔥 ICON (ALWAYS GREEN)
+// ==============================================
+const icon = L.divIcon({
+
+  html:`
+
+  <div class="markerWrap">
+
+    <div class="radarPulse"></div>
+
+    <div class="markerCore">
+
+      <i class="fa-solid fa-person-military-pointing"
+        style="
+          color:#00ff00;
+          font-size:20px;
+        ">
+      </i>
+
+    </div>
+
+  </div>
+
+  `,
+
+  iconSize:[30,30],
+
+  iconAnchor:[15,15]
+});
+// ==============================================
+// 🔥 TEAM
+// ==============================================
+// ==============================================
+// 🔥 FIX TEAM
+// ==============================================
+let team = "N/A";
+
+try {
+
+  // 🔥 PRIMARY
+  if (
+    s.team &&
+    String(s.team).trim()
+  ) {
+
+    team =
+      String(s.team).trim();
+  }
+
+  // 🔥 FALLBACK
+  else if (
+    s.staff &&
+    String(s.staff).trim()
+  ) {
+
+    team =
+      String(s.staff).trim();
+  }
+
+  // 🔥 ARRAY SUPPORT
+  else if (
+    Array.isArray(s.staffNames)
+  ) {
+
+    team =
+      s.staffNames.join(", ");
+  }
+
+} catch(e){
+
+  console.warn(
+    "⚠ Team parse failed",
+    e
+  );
+}
+
+// ==============================================
+// 🔥 DUTY TYPE
+// ==============================================
+const dutyType =
+  (s.dutyType &&
+   String(s.dutyType).trim())
+  ? s.dutyType
+  : "Patrolling";
+
+// ==============================================
+// 🔥 DUTY AREA / COMPARTMENT
+// ==============================================
+const dutyArea =
+  (s.compartment &&
+   String(s.compartment).trim())
+  ? s.compartment
+  : "Not Assigned";
+
+// ==============================================
+// 🔥 FIX SPEED
+// ==============================================
+// ==============================================
+// 🔥 FIX SPEED
+// ==============================================
+let liveSpeed =
+  Number(s.speed || 0);
+
+// ==============================================
+// 🔥 INVALID SPEED
+// ==============================================
+if(
+  isNaN(liveSpeed) ||
+  liveSpeed < 0
+){
+  liveSpeed = 0;
+}
+
+// ==============================================
+// 🔥 ROUND CLEANLY
+// ==============================================
+liveSpeed =
+  Math.max(
+    0,
+    Number(
+      liveSpeed.toFixed(1)
+    )
+  );
+            // ==============================================
+// 🔥 AUTO STATIONARY
+// ==============================================
+const lastSeen =
+  Number(s.lastSeen || 0);
+
+const ageMs =
+  Date.now() - lastSeen;
+
 // ==================================================
-Object.values(groups).forEach(group=>{
+// 🔥 NO GPS FOR 60 SEC
+// → STATIONARY
+// ==================================================
+if(ageMs > 60000){
 
-  group.forEach((s,index)=>{
+  liveSpeed = 0;
+}
+// ==============================================
+// 🔥 FIX LAST UPDATE TIME
+// ==============================================// ==============================================
+// 🔥 LAST GPS TIME
+// ==============================================
+let liveTime = "Unknown";
 
-    // ==============================================
-    // 🔥 USE RAW TRACK (BYPASS CLEANER)
-    // ==============================================
-    let clean =
-      Array.isArray(s.track)
-        ? s.track
-        : [];
+try {
 
-    console.log(
-      "🛣 TRACK DEBUG",
-      s.cleanName,
-      "points:",
-      clean.length
-    );
+  // ==================================================
+  // 🔥 GPS TIME
+  // ==================================================
+  if(s.time){
 
-    // ==============================================
-    // 🔥 LAST POSITION
-    // ==============================================
-    let lat =
-      clean.length
-        ? clean[clean.length - 1][0]
-        : s.lat;
+    liveTime =
+      new Date(s.time)
+        .toLocaleString();
+  }
 
-    let lon =
-      clean.length
-        ? clean[clean.length - 1][1]
-        : s.lon;
+  // ==================================================
+  // 🔥 FALLBACK
+  // ==================================================
+  else if(s.lastSeen){
 
-    // ==============================================
-    // 🔥 SPREAD OVERLAP
-    // ==============================================
-    if(group.length > 1){
+    liveTime =
+      new Date(
+        Number(s.lastSeen)
+      ).toLocaleString();
+  }
 
-      const angle =
-        (index / group.length)
-        * Math.PI * 2;
+} catch(e){
 
-      lat +=
-        Math.cos(angle)
-        * 0.00012;
+  console.warn(
+    "⚠ Time parse failed"
+  );
+}
 
-      lon +=
-        Math.sin(angle)
-        * 0.00012;
-    }
+// ==============================================
+// 🔥 POPUP
+// ==============================================
+const popup = `
+<div style="
+  font-family:Segoe UI;
+  min-width:240px;
+  color:#111;
+">
 
-    // ==============================================
-    // 🔥 DISTANCE
-    // ==============================================
-    let dist = 0;
+  <!-- ===================================== -->
+  <!-- 🔥 HEADER -->
+  <!-- ===================================== -->
+  <div style="
+    display:flex;
+    align-items:center;
+    gap:10px;
+    margin-bottom:10px;
+  ">
 
-    for(
-      let i = 1;
-      i < clean.length;
-      i++
-    ){
+    <div style="
+      width:42px;
+      height:42px;
+      border-radius:50%;
+      background:#1b5e20;
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      color:white;
+      font-size:20px;
+      box-shadow:0 0 10px rgba(0,255,0,0.35);
+    ">
+      👮
+    </div>
 
-      dist += getDistance(
-        clean[i - 1],
-        clean[i]
-      );
-    }
+    <div>
 
-    // ==============================================
-    // 🔥 SPEED
-    // ==============================================
-    const speed =
-      Number(s.speed || 0);
-
-    // ==============================================
-    // 🔥 STABLE COLOR
-    // ==============================================
-    const color =
-      getUserColor(
-        s.cleanName
-      );
-
-    // ==============================================
-    // 🔥 TRACK KEY
-    // ==============================================
-    const trackKey =
-      `${s.cleanName}_${s.sessionId || "NOSESSION"}`;
-
-    // ==============================================
-    // 🔥 ICON
-    // ==============================================
-    const icon = L.divIcon({
-
-      html:`
-
-      <div class="markerWrap">
-
-        <div class="radarPulse"></div>
-
-        <div class="markerCore">
-
-          <i class="fa-solid fa-person-military-pointing"
-            style="
-              color:#00ff00;
-              font-size:20px;
-            ">
-          </i>
-
-        </div>
-
+      <div style="
+        font-size:16px;
+        font-weight:700;
+        color:#1b5e20;
+      ">
+        ${s.name}
       </div>
 
-      `,
+      <div style="
+        font-size:11px;
+        color:#666;
+      ">
+        LIVE PATROL STAFF
+      </div>
 
-      iconSize:[30,30],
+    </div>
 
-      iconAnchor:[15,15]
-    });
+  </div>
 
-    // ==============================================
-    // 🔥 MARKER CREATE / UPDATE
-    // ==============================================
-    if(
-      !window.staffMarkers[s.cleanName]
-    ){
+  <!-- ===================================== -->
+  <!-- 🔥 STATUS -->
+  <!-- ===================================== -->
+  <div style="
+    background:#e8f5e9;
+    border-left:5px solid #2e7d32;
+    padding:8px;
+    border-radius:8px;
+    margin-bottom:10px;
+  ">
 
-      window.staffMarkers[
-        s.cleanName
-      ] = L.marker(
+    <div style="
+      color:#1b5e20;
+      font-weight:700;
+      font-size:13px;
+    ">
+      🟢 DUTY TYPE
+    </div>
 
-        [lat, lon],
+    <div style="
+      margin-top:4px;
+      font-size:13px;
+      color:#222;
+    ">
+      ${dutyType}
+    </div>
 
-        {
-          icon,
-          zIndexOffset:3000
-        }
+  </div>
 
-      ).addTo(staffLayer);
+  <!-- ===================================== -->
+  <!-- 🔥 CONTACT -->
+  <!-- ===================================== -->
+  <div style="
+    margin-bottom:10px;
+    font-size:13px;
+    line-height:1.7;
+  ">
 
-    } else {
+    <div>
 
-      window.staffMarkers[
-        s.cleanName
-      ]
+      📞
 
-      .setLatLng([lat, lon])
+      ${
+        s.phone
+        ? `
+     <a
+  href="tel:${String(s.phone).trim()}"
+  style="
+    color:#00695c;
+    text-decoration:none;
+    font-weight:700;
+  ">
 
-      .setIcon(icon);
-    }
+ ${s.phone}
 
-    // ==============================================
-    // 🔥 FORCE REMOVE OLD TRACK
-    // ==============================================
-    if(
-      window.staffTracks[trackKey]
-    ){
+</a> `
+        : "N/A"
+      }
 
-      try {
+    </div>
 
-        staffLayer.removeLayer(
-          window.staffTracks[trackKey]
-        );
+    <div>
+      🧭 Beat:
+      <b>${s.beat || "N/A"}</b>
+    </div>
 
-      } catch(e){}
-    }
+    <div>
+      📍 Duty Area:
+      <b>${dutyArea}</b>
+    </div>
 
-    // ==============================================
-    // 🔥 DRAW POLYLINE
-    // ==============================================
-    if(clean.length > 1){
+  </div>
 
-      console.log(
-        "🛣 DRAWING TRACK:",
-        s.cleanName,
-        clean.length
-      );
+  <!-- ===================================== -->
+  <!-- 🔥 TEAM -->
+  <!-- ===================================== -->
+  <div style="
+    background:#f5f5f5;
+    border-radius:8px;
+    padding:8px;
+    margin-bottom:10px;
+  ">
 
-      window.staffTracks[
-        trackKey
-      ] = L.polyline(
+    <div style="
+      font-weight:700;
+      color:#37474f;
+      margin-bottom:5px;
+      font-size:13px;
+    ">
+      👥 Patrol Team
+    </div>
 
-        clean,
+    <div style="
+      font-size:12px;
+      color:#333;
+      line-height:1.5;
+      max-height:80px;
+      overflow-y:auto;
+      white-space:pre-wrap;
+    ">
+      ${team}
+    </div>
 
-        {
-          color: color,
+  </div>
 
-          weight: 4,
+  <!-- ===================================== -->
+  <!-- 🔥 LIVE STATS -->
+  <!-- ===================================== -->
+  <div style="
+    background:#fafafa;
+    border-radius:8px;
+    padding:8px;
+    font-size:12px;
+    line-height:1.8;
+  ">
 
-          opacity: 0.95,
+    <div>
+      📊 Speed:
+      <b>
 
-          smoothFactor: 1,
+${
+  liveSpeed < 1
+  ? "Stationary"
+  : `${liveSpeed.toFixed(1)} km/h`
+}
 
-          lineCap: "round",
+</b>
+    </div>
 
-          lineJoin: "round"
-        }
+    <div>
+      📏 Distance:
+      <b>${dist.toFixed(2)} km</b>
+    </div>
 
-      ).addTo(staffLayer);
+    <div>
+      🛰 Track Points:
+      <b>${clean.length}</b>
+    </div>
 
-    } else {
+    <div>
+      ⏱ Last Update:
+      <b>${liveTime}</b>
+    </div>
 
-      console.warn(
-        "⚠ NOT ENOUGH TRACK POINTS:",
-        s.cleanName,
-        clean.length
-      );
-    }
+  </div>
 
-  });
+</div>`;
+            // ==============================================
+            // 🔥 MARKER CREATE/UPDATE
+            // ==============================================
+            if(
+              !window.staffMarkers[
+                s.cleanName
+              ]
+            ){
 
-});
+              window.staffMarkers[
+                s.cleanName
+              ] = L.marker(
+
+                [lat, lon],
+
+                {
+                  icon,
+                  zIndexOffset:3000
+                }
+
+              )
+
+              .bindPopup(
+                popup,
+                {
+                  autoClose:false,
+                  closeOnClick:false
+                }
+              )
+
+              .addTo(staffLayer);
+
+            } else {
+
+              window.staffMarkers[
+                s.cleanName
+              ]
+
+              .setLatLng([lat, lon])
+
+              .setIcon(icon)
+
+              .setPopupContent(
+                popup
+              );
+            }
+
+            // ==============================================
+            // 🔥 TRACK DRAW
+            // ==============================================
+            if(clean.length > 1){
+
+              if(
+                !window.staffTracks[
+                  s.cleanName
+                ]
+              ){
+
+                window.staffTracks[
+                  s.cleanName
+                ] = L.polyline(
+
+                  clean,
+
+                  {
+                    color: color,
+                    weight: 2.5,
+                    opacity: 0.80,
+                    smoothFactor: 0,
+                    lineCap: "round",
+                    lineJoin: "round"
+                  }
+
+                ).addTo(staffLayer);
+
+              } else {
+
+                window.staffTracks[
+                  s.cleanName
+                ]
+
+                .setLatLngs(clean)
+
+                .setStyle({
+                  color: color
+                });
+              }
+
+            }
+
+          });
+
+        });
+
+        // ==================================================
+        // 🔥 REMOVE DEAD USERS
+        // ==================================================
         Object.keys(
           window.staffMarkers
         ).forEach(name=>{
