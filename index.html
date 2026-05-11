@@ -12616,22 +12616,169 @@ document.getElementById('form-modal').style.display = 'none';
     // ============================================================
     // 🔥 CONFIRM
     // ============================================================
-    const confirmed =
-      window.originalConfirm
-        ? window.originalConfirm(
-            "Submit report and end duty?"
-          )
-        : confirm(
-            "Submit report and end duty?"
-          );
+   // ============================================================
+// 🔥 CUSTOM CONFIRM TOAST
+// ============================================================
+const confirmed =
+  await new Promise((resolve) => {
 
-    if (!confirmed) {
+    // ========================================================
+    // 🔥 REMOVE OLD CONFIRM
+    // ========================================================
+    const old =
+      document.getElementById(
+        "customEndDutyConfirm"
+      );
 
-      console.groupEnd();
+    if (old) {
 
-      return;
+      old.remove();
     }
 
+    // ========================================================
+    // 🔥 OVERLAY
+    // ========================================================
+    const overlay =
+      document.createElement("div");
+
+    overlay.id =
+      "customEndDutyConfirm";
+
+    overlay.innerHTML = `
+
+      <div style="
+        position:fixed;
+        inset:0;
+        background:rgba(0,0,0,0.45);
+        z-index:999999;
+        display:flex;
+        align-items:center;
+        justify-content:center;
+        backdrop-filter:blur(3px);
+      ">
+
+        <div style="
+          width:min(92vw,360px);
+          background:#ffffff;
+          border-radius:18px;
+          padding:22px;
+          box-shadow:0 10px 35px rgba(0,0,0,0.25);
+          text-align:center;
+          animation:popIn .18s ease;
+        ">
+
+          <div style="
+            font-size:48px;
+            margin-bottom:12px;
+          ">
+            🚨
+          </div>
+
+          <div style="
+            font-size:20px;
+            font-weight:700;
+            color:#111827;
+            margin-bottom:10px;
+          ">
+            End Duty?
+          </div>
+
+          <div style="
+            font-size:14px;
+            color:#4b5563;
+            line-height:1.5;
+            margin-bottom:22px;
+          ">
+            Submit patrol report and end current duty session.
+          </div>
+
+          <div style="
+            display:flex;
+            gap:12px;
+          ">
+
+            <button id="cancelEndDutyBtn"
+              style="
+                flex:1;
+                border:none;
+                border-radius:12px;
+                padding:12px;
+                font-size:15px;
+                font-weight:700;
+                background:#e5e7eb;
+                color:#111827;
+                cursor:pointer;
+              ">
+              Cancel
+            </button>
+
+            <button id="confirmEndDutyToastBtn"
+              style="
+                flex:1;
+                border:none;
+                border-radius:12px;
+                padding:12px;
+                font-size:15px;
+                font-weight:700;
+                background:#dc2626;
+                color:white;
+                cursor:pointer;
+              ">
+              Submit & End
+            </button>
+
+          </div>
+
+        </div>
+
+      </div>
+    `;
+
+    document.body.appendChild(
+      overlay
+    );
+
+    // ========================================================
+    // 🔥 CANCEL
+    // ========================================================
+    document
+      .getElementById(
+        "cancelEndDutyBtn"
+      )
+      ?.addEventListener(
+        "click",
+        () => {
+
+          overlay.remove();
+
+          resolve(false);
+        }
+      );
+
+    // ========================================================
+    // 🔥 CONFIRM
+    // ========================================================
+    document
+      .getElementById(
+        "confirmEndDutyToastBtn"
+      )
+      ?.addEventListener(
+        "click",
+        () => {
+
+          overlay.remove();
+
+          resolve(true);
+        }
+      );
+  });
+
+if (!confirmed) {
+
+  console.groupEnd();
+
+  return;
+}
     // ============================================================
     // 🔥 BUTTON
     // ============================================================
