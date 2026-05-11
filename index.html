@@ -8899,15 +8899,60 @@ function cleanTrackPoints(track){
 
   let clean = [];
 
-  track.forEach(p=>{
+  // ==================================================
+  // 🔥 SAFETY
+  // ==================================================
+  if(
+    !Array.isArray(track)
+  ){
+    return clean;
+  }
+
+  // ==================================================
+  // 🔥 MAX SESSION LIMIT
+  // ==================================================
+  // FIRST 300 = NORMAL
+  // NEXT 200 = SHAPE BASED
+  // TOTAL = 500
+  // ==================================================
+  if(track.length > 500){
+
+    track =
+      track.slice(-500);
+  }
+
+  // ==================================================
+  // 🔥 HEADING HELPER
+  // ==================================================
+  function getHeading(a,b){
+
+    const dy =
+      b[0] - a[0];
+
+    const dx =
+      b[1] - a[1];
+
+    return (
+      Math.atan2(dy, dx)
+      * 180 / Math.PI
+    );
+  }
+
+  // ==================================================
+  // 🔥 PROCESS
+  // ==================================================
+  track.forEach((p,index)=>{
 
     if(
       !p ||
       !Array.isArray(p)
     ) return;
 
-    const lat = Number(p[0]);
-    const lon = Number(p[1]);
+    const lat =
+      Number(p[0]);
+
+    const lon =
+      Number(p[1]);
 
     if(
       isNaN(lat) ||
@@ -8933,35 +8978,94 @@ function cleanTrackPoints(track){
       );
 
     // ==================================================
-    // 🔥 IGNORE GPS DRIFT
+    // 🔥 IGNORE MICRO GPS DRIFT
     // ==================================================
     if(dist < 8){
       return;
     }
 
     // ==================================================
-    // 🔥 IGNORE TELEPORT JUMPS
+    // 🔥 IGNORE TELEPORT
     // ==================================================
     if(dist > 1500){
       return;
     }
 
-    clean.push([lat, lon]);
+    // ==================================================
+    // 🔥 FIRST 300 POINTS
+    // NORMAL FULL DETAIL
+    // ==================================================
+    if(clean.length < 300){
 
+      clean.push([lat, lon]);
+      return;
+    }
+
+    // ==================================================
+    // 🔥 SHAPE BASED MODE
+    // 300 → 500
+    // ==================================================
+
+    // NEED MINIMUM 2 PREVIOUS
+    if(clean.length < 2){
+
+      clean.push([lat, lon]);
+      return;
+    }
+
+    const prev =
+      clean[clean.length - 2];
+
+    // ==================================================
+    // 🔥 HEADING CHANGE
+    // ==================================================
+    const h1 =
+      getHeading(prev, last);
+
+    const h2 =
+      getHeading(last, [lat, lon]);
+
+    let turn =
+      Math.abs(h2 - h1);
+
+    if(turn > 180){
+      turn = 360 - turn;
+    }
+
+    // ==================================================
+    // 🔥 KEEP SHARP TURNS
+    // ==================================================
+    if(turn >= 10){
+
+      clean.push([lat, lon]);
+      return;
+    }
+
+    // ==================================================
+    // 🔥 KEEP LONG MOVEMENT
+    // ==================================================
+    if(dist >= 40){
+
+      clean.push([lat, lon]);
+      return;
+    }
+
+    // ==================================================
+    // 🔥 SKIP STRAIGHT SMALL MOVES
+    // ==================================================
   });
 
   // ==================================================
-  // 🔥 LIMIT TRACK SIZE
+  // 🔥 HARD FINAL LIMIT
   // ==================================================
-  if(clean.length > 300){
+  if(clean.length > 500){
 
     clean =
-      clean.slice(-300);
+      clean.slice(-500);
   }
 
   return clean;
 }
-
 
 // ======================================================
 // 🔥 LOAD STAFF
