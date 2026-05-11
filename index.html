@@ -1301,8 +1301,14 @@ function waitForAndroidBridge(timeout = 8000){
     const timer = setInterval(() => {
 
       const ready =
+
         window.Android &&
-        typeof Android.saveUserProfile === "function";
+
+        typeof Android.saveUserProfile === "function" &&
+
+        typeof Android.savePhone === "function" &&
+
+        typeof Android.updateDutyState === "function";
 
       if(ready){
 
