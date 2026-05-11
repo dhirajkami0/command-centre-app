@@ -2106,11 +2106,7 @@ const dutyWait = setInterval(() => {
     !window.fb ||
     !window.db
   ){
-
-    console.log(
-      "⏳ Waiting Firebase..."
-    );
-
+    console.log("⏳ Waiting Firebase...");
     return;
   }
 
@@ -2119,17 +2115,11 @@ const dutyWait = setInterval(() => {
     !window.userProfile ||
     !window.userProfile.cleanName
   ){
-
-    console.log(
-      "⏳ Waiting userProfile..."
-    );
-
+    console.log("⏳ Waiting userProfile...");
     return;
   }
 
-  // ======================================================
   // ✅ READY
-  // ======================================================
   clearInterval(dutyWait);
 
   console.log(
@@ -2149,7 +2139,7 @@ const dutyWait = setInterval(() => {
 
   }, 3000);
 
-  // 🔥 LOOP
+}, 800);  // 🔥 LOOP
  
 
 
