@@ -9081,42 +9081,91 @@ const trackDocId =
                 trackDocId
               );
 
-            const trackSnap =
-              await window.fb.getDoc(
-                trackRef
-              );
+           // ==================================================
+// 🔥 LOAD POINT SUBCOLLECTION
+// ==================================================
+s.track = [];
 
-            s.track = [];
+const activeSessionId =
+  s.sessionId || "";
 
-            if(trackSnap.exists()){
+// ==================================================
+// 🔥 POINTS COLLECTION
+// ==================================================
+const pointsRef =
+  window.fb.collection(
+    trackRef,
+    "points"
+  );
 
-              const td =
-                trackSnap.data();
+// ==================================================
+// 🔥 QUERY CURRENT SESSION
+// ==================================================
+const q =
+  window.fb.query(
 
-              if(
-                td &&
-                Array.isArray(td.track)
-              ){
+    pointsRef,
 
-                const activeSessionId =
-                  s.sessionId || "";
+    window.fb.where(
+      "sessionId",
+      "==",
+      activeSessionId
+    ),
 
-                const filtered =
-                  td.track.filter(p=>
+    // ==============================================
+    // 🔥 ORDER BY TIME
+    // ==============================================
+    window.fb.orderBy(
+      "time",
+      "asc"
+    ),
 
-                    p &&
-                    p.sessionId ===
-                    activeSessionId
-                  );
+    // ==============================================
+    // 🔥 SAFETY LIMIT
+    // ==============================================
+    window.fb.limit(5000)
+  );
 
-                s.track =
-                  filtered.map(p=>[
-                    Number(p.lat),
-                    Number(p.lon)
-                  ]);
-              }
-            }
+// ==================================================
+// 🔥 GET TRACK POINTS
+// ==================================================
+const pointSnap =
+  await window.fb.getDocs(q);
 
+// ==================================================
+// 🔥 BUILD TRACK
+// ==================================================
+pointSnap.forEach(doc=>{
+
+  try {
+
+    const p =
+      doc.data();
+
+    if(
+      !p ||
+      !p.lat ||
+      !p.lon
+    ){
+      return;
+    }
+
+    s.track.push([
+
+      Number(p.lat),
+
+      Number(p.lon)
+
+    ]);
+
+  } catch(e){
+
+    console.warn(
+      "⚠ Point parse failed",
+      e
+    );
+  }
+});
           } catch(e){
 
             console.warn(
