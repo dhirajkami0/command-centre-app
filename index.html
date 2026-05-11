@@ -9204,90 +9204,220 @@ pointSnap.forEach(doc=>{
 
         });
 
-        // ==================================================
-        // 🔥 DRAW STAFF
-        // ==================================================
-        Object.values(groups).forEach(group=>{
+      // ==================================================
+// 🔥 DRAW STAFF
+// ==================================================
+Object.values(groups).forEach(group=>{
 
-          group.forEach((s,index)=>{
+  group.forEach((s,index)=>{
 
-            // ==============================================
-            // 🔥 CLEAN TRACK
-            // ==============================================
-            let clean =
-              cleanTrackPoints(
-                Array.isArray(s.track)
-                ? s.track
-                : []
-              );
+    // ==============================================
+    // 🔥 USE RAW TRACK (BYPASS CLEANER)
+    // ==============================================
+    let clean =
+      Array.isArray(s.track)
+        ? s.track
+        : [];
 
-            // ==============================================
-            // 🔥 LAST POSITION
-            // ==============================================
-            let lat =
-              clean.length
-              ? clean[clean.length - 1][0]
-              : s.lat;
+    console.log(
+      "🛣 TRACK DEBUG",
+      s.cleanName,
+      "points:",
+      clean.length
+    );
 
-            let lon =
-              clean.length
-              ? clean[clean.length - 1][1]
-              : s.lon;
+    // ==============================================
+    // 🔥 LAST POSITION
+    // ==============================================
+    let lat =
+      clean.length
+        ? clean[clean.length - 1][0]
+        : s.lat;
 
-            // ==============================================
-            // 🔥 SPREAD OVERLAP
-            // ==============================================
-            if(group.length > 1){
+    let lon =
+      clean.length
+        ? clean[clean.length - 1][1]
+        : s.lon;
 
-              const angle =
-                (index / group.length)
-                * Math.PI * 2;
+    // ==============================================
+    // 🔥 SPREAD OVERLAP
+    // ==============================================
+    if(group.length > 1){
 
-              lat +=
-                Math.cos(angle)
-                * 0.00012;
+      const angle =
+        (index / group.length)
+        * Math.PI * 2;
 
-              lon +=
-                Math.sin(angle)
-                * 0.00012;
-            }
+      lat +=
+        Math.cos(angle)
+        * 0.00012;
 
-            // ==============================================
-            // 🔥 DISTANCE
-            // ==============================================
-            let dist = 0;
+      lon +=
+        Math.sin(angle)
+        * 0.00012;
+    }
 
-            for(
-              let i=1;
-              i<clean.length;
-              i++
-            ){
+    // ==============================================
+    // 🔥 DISTANCE
+    // ==============================================
+    let dist = 0;
 
-              dist += getDistance(
-                clean[i-1],
-                clean[i]
-              );
-            }
+    for(
+      let i = 1;
+      i < clean.length;
+      i++
+    ){
 
-            // ==============================================
-            // 🔥 SPEED
-            // ==============================================
-            const speed =
-              Number(s.speed || 0);
+      dist += getDistance(
+        clean[i - 1],
+        clean[i]
+      );
+    }
 
-            // ==============================================
-            // 🔥 STABLE COLOR
-            // ==============================================
-            const color =
-              getUserColor(
-                s.cleanName
-              );
+    // ==============================================
+    // 🔥 SPEED
+    // ==============================================
+    const speed =
+      Number(s.speed || 0);
 
-            // ==============================================
-            // 🔥 ICON
-            // ==============================================
-            // ==============================================
-// 🔥 ICON (ALWAYS GREEN)
+    // ==============================================
+    // 🔥 STABLE COLOR
+    // ==============================================
+    const color =
+      getUserColor(
+        s.cleanName
+      );
+
+    // ==============================================
+    // 🔥 TRACK KEY
+    // ==============================================
+    const trackKey =
+      `${s.cleanName}_${s.sessionId || "NOSESSION"}`;
+
+    // ==============================================
+    // 🔥 ICON
+    // ==============================================
+    const icon = L.divIcon({
+
+      html:`
+
+      <div class="markerWrap">
+
+        <div class="radarPulse"></div>
+
+        <div class="markerCore">
+
+          <i class="fa-solid fa-person-military-pointing"
+            style="
+              color:#00ff00;
+              font-size:20px;
+            ">
+          </i>
+
+        </div>
+
+      </div>
+
+      `,
+
+      iconSize:[30,30],
+
+      iconAnchor:[15,15]
+    });
+
+    // ==============================================
+    // 🔥 MARKER CREATE / UPDATE
+    // ==============================================
+    if(
+      !window.staffMarkers[s.cleanName]
+    ){
+
+      window.staffMarkers[
+        s.cleanName
+      ] = L.marker(
+
+        [lat, lon],
+
+        {
+          icon,
+          zIndexOffset:3000
+        }
+
+      ).addTo(staffLayer);
+
+    } else {
+
+      window.staffMarkers[
+        s.cleanName
+      ]
+
+      .setLatLng([lat, lon])
+
+      .setIcon(icon);
+    }
+
+    // ==============================================
+    // 🔥 FORCE REMOVE OLD TRACK
+    // ==============================================
+    if(
+      window.staffTracks[trackKey]
+    ){
+
+      try {
+
+        staffLayer.removeLayer(
+          window.staffTracks[trackKey]
+        );
+
+      } catch(e){}
+    }
+
+    // ==============================================
+    // 🔥 DRAW POLYLINE
+    // ==============================================
+    if(clean.length > 1){
+
+      console.log(
+        "🛣 DRAWING TRACK:",
+        s.cleanName,
+        clean.length
+      );
+
+      window.staffTracks[
+        trackKey
+      ] = L.polyline(
+
+        clean,
+
+        {
+          color: color,
+
+          weight: 4,
+
+          opacity: 0.95,
+
+          smoothFactor: 1,
+
+          lineCap: "round",
+
+          lineJoin: "round"
+        }
+
+      ).addTo(staffLayer);
+
+    } else {
+
+      console.warn(
+        "⚠ NOT ENOUGH TRACK POINTS:",
+        s.cleanName,
+        clean.length
+      );
+    }
+
+  });
+
+});
+        // 🔥 ICON (ALWAYS GREEN)
 // ==============================================
 const icon = L.divIcon({
 
