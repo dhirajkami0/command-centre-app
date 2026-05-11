@@ -9152,14 +9152,13 @@ pointSnap.forEach(doc=>{
     const p =
       doc.data();
 
-    if(
-      !p ||
-      !p.lat ||
-      !p.lon
-    ){
-      return;
-    }
-
+   if(
+  !p ||
+  p.lat == null ||
+  p.lon == null
+){
+  return;
+}  
     s.track.push([
 
       Number(p.lat),
