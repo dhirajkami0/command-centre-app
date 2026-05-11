@@ -2221,17 +2221,12 @@ const dutyWait = setInterval(() => {
            // ============================================
   // 🧹 RUN CLEANUP IMMEDIATELY
   // ============================================
-  cleanupOldTracks();
+
 
   // ============================================
   // 🧹 AUTO RUN EVERY 24 HOURS
   // ============================================
-  setInterval(
-
-    cleanupOldTracks,
-
-    24 * 60 * 60 * 1000
-  );
+  
  
 
         if(typeof startChat === "function"){
@@ -16309,137 +16304,6 @@ function handleDutyAction(e){
     // ======================================================
 // 🧹 CLEAN OLD TRACKS
 // ======================================================
-async function cleanupOldTracks(){
-
-  try {
-
-    // ==================================================
-    // 🔥 FIREBASE READY CHECK
-    // ==================================================
-    if(
-      !window.db ||
-      !window.fb
-    ){
-
-      console.warn(
-        "⚠ Firebase not ready for cleanup"
-      );
-
-      return;
-    }
-
-    console.log(
-      "🧹 Running old patrol track cleanup..."
-    );
-
-    // ==================================================
-    // 🔥 COLLECTION REF
-    // ==================================================
-    const trackRef =
-      window.fb.collection(
-        window.db,
-        "patrol_tracks"
-      );
-
-    // ==================================================
-    // 🔥 LOAD DOCS
-    // ==================================================
-    const snap =
-      await window.fb.getDocs(
-        trackRef
-      );
-
-    if(snap.empty){
-
-      console.log(
-        "📭 No patrol tracks found"
-      );
-
-      return;
-    }
-
-    // ==================================================
-    // 🔥 DATE LIMIT
-    // ==================================================
-    const cutoff =
-      Date.now() -
-      (60 * 24 * 60 * 60 * 1000);
-
-    let deleted = 0;
-
-    // ==================================================
-    // 🔥 LOOP DOCS
-    // ==================================================
-    for(const docSnap of snap.docs){
-
-      try {
-
-        const data =
-          docSnap.data();
-
-        // ==============================================
-        // 🔥 EXTRACT DATE
-        // ==============================================
-        const parts =
-          String(docSnap.id)
-          .split("_");
-
-        const dateStr =
-          parts[parts.length - 1];
-
-        const docDate =
-          new Date(dateStr);
-
-        // ==============================================
-        // 🔥 INVALID DATE
-        // ==============================================
-        if(
-          isNaN(docDate.getTime())
-        ){
-          continue;
-        }
-
-        // ==============================================
-        // 🔥 DELETE OLD
-        // ==============================================
-        if(
-          docDate.getTime() < cutoff
-        ){
-
-          await window.fb.deleteDoc(
-            docSnap.ref
-          );
-
-          deleted++;
-
-          console.log(
-            "🗑 Deleted old track:",
-            docSnap.id
-          );
-        }
-
-      } catch(e){
-
-        console.warn(
-          "⚠ Failed deleting:",
-          docSnap.id,
-          e
-        );
-      }
-    }
-
-    console.log(
-      `✅ Cleanup complete | Deleted: ${deleted}`
-    );
-
-  } catch(err){
-
-    console.error(
-      "❌ cleanup crash",
-      err
-    );
-  }
-}
           /* 🔥 FIXED START DUTY: CAPTURES DATA, SUBMITS, AND UPDATES BUTTON */
  let startDutySubmitting = false;
 
