@@ -180,10 +180,15 @@ async function cleanOldMessages(){
     
     // ===============================
     window.originalConfirm = window.confirm;
- window.previewKMLLayer = null;
-let markerMap = {};
-let trackMap = {};  
-    // 🔥 GLOBAL ERROR HANDLER
+window.previewKMLLayer = null;
+
+window.staffMarkers = {};
+window.staffTracks = {};
+window.staffDecorators = {};
+
+window.activeSessionMap = {};
+
+window.androidGpsAuthority = true;let trackMap = {};    // 🔥 GLOBAL ERROR HANDLER
 window.addEventListener("error", function (e) {
   console.error("💥 GLOBAL ERROR:", e.message, "at", e.filename, ":", e.lineno);
 });
@@ -8899,60 +8904,15 @@ function cleanTrackPoints(track){
 
   let clean = [];
 
-  // ==================================================
-  // 🔥 SAFETY
-  // ==================================================
-  if(
-    !Array.isArray(track)
-  ){
-    return clean;
-  }
-
-  // ==================================================
-  // 🔥 MAX SESSION LIMIT
-  // ==================================================
-  // FIRST 300 = NORMAL
-  // NEXT 200 = SHAPE BASED
-  // TOTAL = 500
-  // ==================================================
-  if(track.length > 500){
-
-    track =
-      track.slice(-500);
-  }
-
-  // ==================================================
-  // 🔥 HEADING HELPER
-  // ==================================================
-  function getHeading(a,b){
-
-    const dy =
-      b[0] - a[0];
-
-    const dx =
-      b[1] - a[1];
-
-    return (
-      Math.atan2(dy, dx)
-      * 180 / Math.PI
-    );
-  }
-
-  // ==================================================
-  // 🔥 PROCESS
-  // ==================================================
-  track.forEach((p,index)=>{
+  track.forEach(p=>{
 
     if(
       !p ||
       !Array.isArray(p)
     ) return;
 
-    const lat =
-      Number(p[0]);
-
-    const lon =
-      Number(p[1]);
+    const lat = Number(p[0]);
+    const lon = Number(p[1]);
 
     if(
       isNaN(lat) ||
@@ -8978,94 +8938,35 @@ function cleanTrackPoints(track){
       );
 
     // ==================================================
-    // 🔥 IGNORE MICRO GPS DRIFT
+    // 🔥 IGNORE GPS DRIFT
     // ==================================================
     if(dist < 8){
       return;
     }
 
     // ==================================================
-    // 🔥 IGNORE TELEPORT
+    // 🔥 IGNORE TELEPORT JUMPS
     // ==================================================
     if(dist > 1500){
       return;
     }
 
-    // ==================================================
-    // 🔥 FIRST 300 POINTS
-    // NORMAL FULL DETAIL
-    // ==================================================
-    if(clean.length < 300){
+    clean.push([lat, lon]);
 
-      clean.push([lat, lon]);
-      return;
-    }
-
-    // ==================================================
-    // 🔥 SHAPE BASED MODE
-    // 300 → 500
-    // ==================================================
-
-    // NEED MINIMUM 2 PREVIOUS
-    if(clean.length < 2){
-
-      clean.push([lat, lon]);
-      return;
-    }
-
-    const prev =
-      clean[clean.length - 2];
-
-    // ==================================================
-    // 🔥 HEADING CHANGE
-    // ==================================================
-    const h1 =
-      getHeading(prev, last);
-
-    const h2 =
-      getHeading(last, [lat, lon]);
-
-    let turn =
-      Math.abs(h2 - h1);
-
-    if(turn > 180){
-      turn = 360 - turn;
-    }
-
-    // ==================================================
-    // 🔥 KEEP SHARP TURNS
-    // ==================================================
-    if(turn >= 10){
-
-      clean.push([lat, lon]);
-      return;
-    }
-
-    // ==================================================
-    // 🔥 KEEP LONG MOVEMENT
-    // ==================================================
-    if(dist >= 40){
-
-      clean.push([lat, lon]);
-      return;
-    }
-
-    // ==================================================
-    // 🔥 SKIP STRAIGHT SMALL MOVES
-    // ==================================================
   });
 
   // ==================================================
-  // 🔥 HARD FINAL LIMIT
+  // 🔥 LIMIT TRACK SIZE
   // ==================================================
-  if(clean.length > 500){
+  if(clean.length > 300){
 
     clean =
-      clean.slice(-500);
+      clean.slice(-300);
   }
 
   return clean;
 }
+
 
 // ======================================================
 // 🔥 LOAD STAFF
@@ -9120,12 +9021,63 @@ function loadStaff(){
             // ==============================================
             // 🔴 HIDE OFF DUTY
             // ==============================================
-            if(
-              s.dutyActive !== true
-            ){
-              return;
-            }
+// ==============================================
+// 🔴 DUTY OFF CLEANUP
+// ==============================================
+if(s.dutyActive !== true){
 
+  // REMOVE MARKER
+  if(window.staffMarkers[s.cleanName]){
+
+    try{
+
+      staffLayer.removeLayer(
+        window.staffMarkers[s.cleanName]
+      );
+
+    }catch(e){}
+
+    delete window.staffMarkers[s.cleanName];
+  }
+
+  // REMOVE TRACK
+  if(window.staffTracks[s.cleanName]){
+
+    try{
+
+      staffLayer.removeLayer(
+        window.staffTracks[s.cleanName]
+      );
+
+    }catch(e){}
+
+    delete window.staffTracks[s.cleanName];
+  }
+
+  // REMOVE DECORATOR
+  if(window.staffDecorators[s.cleanName]){
+
+    try{
+
+      staffLayer.removeLayer(
+        window.staffDecorators[s.cleanName]
+      );
+
+    }catch(e){}
+
+    delete window.staffDecorators[s.cleanName];
+  }
+
+  // REMOVE SESSION CACHE
+  delete window.activeSessionMap[s.cleanName];
+
+  console.log(
+    "🧹 Duty OFF cleanup:",
+    s.cleanName
+  );
+
+  return;
+}
             s.type = "Staff";
 
             s.cleanName =
@@ -9165,6 +9117,22 @@ function loadStaff(){
 
           try {
 
+// ==============================================
+// 🔥 SESSION VALIDATION
+// ==============================================
+const currentSessionId =
+  String(s.sessionId || "").trim();
+
+if(!currentSessionId){
+
+  console.warn(
+    "⚠ Missing sessionId:",
+    s.cleanName
+  );
+
+  continue;
+}
+
            // ==================================================
 // 🔥 MONTH KEY
 // ==================================================
@@ -9189,7 +9157,41 @@ const trackDocId =
               await window.fb.getDoc(
                 trackRef
               );
+// ==============================================
+// 🔥 SESSION CHANGED
+// ==============================================
+if(
 
+  window.activeSessionMap[s.cleanName] &&
+
+  window.activeSessionMap[s.cleanName]
+  !== currentSessionId
+
+){
+
+  console.log(
+    "🔄 Session changed:",
+    s.cleanName
+  );
+
+  // REMOVE OLD TRACK
+  if(window.staffTracks[s.cleanName]){
+
+    try{
+
+      staffLayer.removeLayer(
+        window.staffTracks[s.cleanName]
+      );
+
+    }catch(e){}
+
+    delete window.staffTracks[s.cleanName];
+  }
+}
+
+// SAVE SESSION
+window.activeSessionMap[s.cleanName] =
+  currentSessionId;
             s.track = [];
 
             if(trackSnap.exists()){
@@ -9205,31 +9207,80 @@ const trackDocId =
                 const activeSessionId =
                   s.sessionId || "";
 
-                const filtered =
-                  td.track.filter(p=>
+                // ==============================================
+// 🔥 STRICT SESSION FILTER
+// ==============================================
+const filtered =
 
-                    p &&
-                    p.sessionId ===
-                    activeSessionId
-                  );
+  td.track.filter(p => {
 
-                s.track =
-                  filtered.map(p=>[
-                    Number(p.lat),
-                    Number(p.lon)
-                  ]);
-              }
-            }
+    // ==========================================
+    // 🔥 INVALID POINT
+    // ==========================================
+    if(!p){
+      return false;
+    }
 
-          } catch(e){
+    // ==========================================
+    // 🔥 SESSION FILTER
+    // ==========================================
+    if(
 
-            console.warn(
-              "⚠ Track load failed:",
-              s.cleanName
-            );
-          }
-        }
+      String(
+        p.sessionId || ""
+      ).trim()
 
+      !==
+
+      String(
+        activeSessionId || ""
+      ).trim()
+
+    ){
+      return false;
+    }
+
+    // ==========================================
+    // 🔥 VALID GPS ONLY
+    // ==========================================
+    const lat =
+      Number(p.lat);
+
+    const lon =
+      Number(p.lon);
+
+    if(
+      isNaN(lat) ||
+      isNaN(lon)
+    ){
+      return false;
+    }
+
+    // ==========================================
+    // 🔥 ZERO GPS REJECT
+    // ==========================================
+    if(
+      lat === 0 ||
+      lon === 0
+    ){
+      return false;
+    }
+
+    return true;
+  });
+
+// ==============================================
+// 🔥 FINAL TRACK
+// ==============================================
+s.track =
+
+  filtered.map(p => [
+
+    Number(p.lat),
+
+    Number(p.lon)
+
+  ]);
         // ==================================================
         // 🔥 GROUP OVERLAPPING USERS
         // ==================================================
@@ -9260,6 +9311,30 @@ const trackDocId =
             // ==============================================
             // 🔥 CLEAN TRACK
             // ==============================================
+// ==============================================
+// 🔥 EMPTY TRACK CLEANUP
+// ==============================================
+if(
+  !Array.isArray(s.track) ||
+  s.track.length === 0
+){
+
+  // REMOVE OLD TRACK
+  if(window.staffTracks[s.cleanName]){
+
+    try{
+
+      staffLayer.removeLayer(
+        window.staffTracks[s.cleanName]
+      );
+
+    }catch(e){}
+
+    delete window.staffTracks[s.cleanName];
+  }
+
+  return;
+}
             let clean =
               cleanTrackPoints(
                 Array.isArray(s.track)
