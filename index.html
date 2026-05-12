@@ -185,9 +185,9 @@ window.previewKMLLayer = null;
 window.staffMarkers = {};
 window.staffTracks = {};
 window.staffDecorators = {};
-
+window.lastTrackPointMap = {};
 window.activeSessionMap = {};
-
+window.trackInitialized = {};
 window.androidGpsAuthority = true;let trackMap = {};    // 🔥 GLOBAL ERROR HANDLER
 window.addEventListener("error", function (e) {
   console.error("💥 GLOBAL ERROR:", e.message, "at", e.filename, ":", e.lineno);
@@ -9070,7 +9070,9 @@ if(s.dutyActive !== true){
 
   // REMOVE SESSION CACHE
   delete window.activeSessionMap[s.cleanName];
+delete window.lastTrackPointMap[s.cleanName];
 
+delete window.trackInitialized[s.cleanName];
   console.log(
     "🧹 Duty OFF cleanup:",
     s.cleanName
@@ -9160,6 +9162,9 @@ const trackDocId =
 // ==============================================
 // 🔥 SESSION CHANGED
 // ==============================================
+// ==============================================
+// 🔥 SESSION CHANGED
+// ==============================================
 if(
 
   window.activeSessionMap[s.cleanName] &&
@@ -9174,7 +9179,9 @@ if(
     s.cleanName
   );
 
-  // REMOVE OLD TRACK
+  // ==========================================
+  // 🔥 REMOVE OLD TRACK
+  // ==========================================
   if(window.staffTracks[s.cleanName]){
 
     try{
@@ -9185,105 +9192,134 @@ if(
 
     }catch(e){}
 
-    delete window.staffTracks[s.cleanName];
+    // ======================================
+    // 🔥 CLEAR APPEND CACHE
+    // ======================================
+    delete window.lastTrackPointMap[
+      s.cleanName
+    ];
+
+    delete window.trackInitialized[
+      s.cleanName
+    ];
+
+    // ======================================
+    // 🔥 REMOVE POLYLINE
+    // ======================================
+    delete window.staffTracks[
+      s.cleanName
+    ];
   }
 }
 
-// SAVE SESSION
-window.activeSessionMap[s.cleanName] =
-  currentSessionId;
-            s.track = [];
-
-            if(trackSnap.exists()){
-
-              const td =
-                trackSnap.data();
-
-              if(
-                td &&
-                Array.isArray(td.track)
-              ){
-
-                const activeSessionId =
-                  s.sessionId || "";
-
-                // ==============================================
-// 🔥 STRICT SESSION FILTER
 // ==============================================
-const filtered =
-
-  td.track.filter(p => {
-
-    // ==========================================
-    // 🔥 INVALID POINT
-    // ==========================================
-    if(!p){
-      return false;
-    }
-
-    // ==========================================
-    // 🔥 SESSION FILTER
-    // ==========================================
-    if(
-
-      String(
-        p.sessionId || ""
-      ).trim()
-
-      !==
-
-      String(
-        activeSessionId || ""
-      ).trim()
-
-    ){
-      return false;
-    }
-
-    // ==========================================
-    // 🔥 VALID GPS ONLY
-    // ==========================================
-    const lat =
-      Number(p.lat);
-
-    const lon =
-      Number(p.lon);
-
-    if(
-      isNaN(lat) ||
-      isNaN(lon)
-    ){
-      return false;
-    }
-
-    // ==========================================
-    // 🔥 ZERO GPS REJECT
-    // ==========================================
-    if(
-      lat === 0 ||
-      lon === 0
-    ){
-      return false;
-    }
-
-    return true;
-  });
+// 🔥 SAVE SESSION ALWAYS
+// ==============================================
+window.activeSessionMap[
+  s.cleanName
+] = currentSessionId;
 
 // ==============================================
-// 🔥 FINAL TRACK
+// 🔥 RESET TRACK
 // ==============================================
-s.track =
+s.track = [];
 
-  filtered.map(p => [
+// ==============================================
+// 🔥 TRACK EXISTS
+// ==============================================
+if(trackSnap.exists()){
 
-    Number(p.lat),
+  const td =
+    trackSnap.data();
 
-    Number(p.lon)
+  if(
 
-  ]);
-                              }
+    td &&
 
-            }
+    Array.isArray(td.track)
+
+  ){
+
+    const activeSessionId =
+      s.sessionId || "";
+
+    // ==========================================
+    // 🔥 STRICT SESSION FILTER
+    // ==========================================
+    const filtered =
+
+      td.track.filter(p => {
+
+        // ======================================
+        // 🔥 INVALID POINT
+        // ======================================
+        if(!p){
+          return false;
+        }
+
+        // ======================================
+        // 🔥 SESSION FILTER
+        // ======================================
+        if(
+
+          String(
+            p.sessionId || ""
+          ).trim()
+
+          !==
+
+          String(
+            activeSessionId || ""
+          ).trim()
+
+        ){
+          return false;
+        }
+
+        // ======================================
+        // 🔥 VALID GPS ONLY
+        // ======================================
+        const lat =
+          Number(p.lat);
+
+        const lon =
+          Number(p.lon);
+
+        if(
+          isNaN(lat) ||
+          isNaN(lon)
+        ){
+          return false;
+        }
+
+        // ======================================
+        // 🔥 ZERO GPS REJECT
+        // ======================================
+        if(
+          lat === 0 ||
+          lon === 0
+        ){
+          return false;
+        }
+
+        return true;
+      });
+
+    // ==========================================
+    // 🔥 FINAL TRACK
+    // ==========================================
+    s.track =
+
+      filtered.map(p => [
+
+        Number(p.lat),
+
+        Number(p.lon)
+
+      ]);
+  }
+}                             }
+ }
 
           } catch(e){
 
@@ -9327,12 +9363,17 @@ s.track =
 // ==============================================
 // 🔥 EMPTY TRACK CLEANUP
 // ==============================================
+// ==============================================
+// 🔥 EMPTY TRACK CLEANUP
+// ==============================================
 if(
   !Array.isArray(s.track) ||
   s.track.length === 0
 ){
 
-  // REMOVE OLD TRACK
+  // ==========================================
+  // 🔥 REMOVE OLD TRACK
+  // ==========================================
   if(window.staffTracks[s.cleanName]){
 
     try{
@@ -9343,18 +9384,38 @@ if(
 
     }catch(e){}
 
-    delete window.staffTracks[s.cleanName];
+    // ======================================
+    // 🔥 REMOVE POLYLINE
+    // ======================================
+    delete window.staffTracks[
+      s.cleanName
+    ];
   }
+
+  // ==========================================
+  // 🔥 CLEAR APPEND CACHE
+  // ==========================================
+  delete window.lastTrackPointMap[
+    s.cleanName
+  ];
+
+  delete window.trackInitialized[
+    s.cleanName
+  ];
 
   return;
 }
-            let clean =
-              cleanTrackPoints(
-                Array.isArray(s.track)
-                ? s.track
-                : []
-              );
 
+// ==============================================
+// 🔥 CLEAN TRACK
+// ==============================================
+let clean =
+  cleanTrackPoints(
+    Array.isArray(s.track)
+    ? s.track
+    : []
+  );  
+            
             // ==============================================
             // 🔥 LAST POSITION
             // ==============================================
@@ -9853,43 +9914,102 @@ ${
             // ==============================================
             if(clean.length > 1){
 
-              if(
-                !window.staffTracks[
-                  s.cleanName
-                ]
-              ){
+  // ==========================================
+  // 🔥 FIRST DRAW
+  // ==========================================
+  if(
+    !window.staffTracks[
+      s.cleanName
+    ]
+  ){
 
-                window.staffTracks[
-                  s.cleanName
-                ] = L.polyline(
+    // CREATE FULL POLYLINE
+    window.staffTracks[
+      s.cleanName
+    ] = L.polyline(
 
-                  clean,
+      clean,
 
-                  {
-                    color: color,
-                    weight: 2.5,
-                    opacity: 0.80,
-                    smoothFactor: 0,
-                    lineCap: "round",
-                    lineJoin: "round"
-                  }
+      {
+        color: color,
+        weight: 2.5,
+        opacity: 0.80,
+        smoothFactor: 0,
+        lineCap: "round",
+        lineJoin: "round"
+      }
 
-                ).addTo(staffLayer);
+    ).addTo(staffLayer);
 
-              } else {
+    // SAVE LAST POINT
+    window.lastTrackPointMap[
+      s.cleanName
+    ] =
+      clean[clean.length - 1];
 
-                window.staffTracks[
-                  s.cleanName
-                ]
+    // TRACK READY
+    window.trackInitialized[
+      s.cleanName
+    ] = true;
 
-                .setLatLngs(clean)
+  }
 
-                .setStyle({
-                  color: color
-                });
-              }
+  // ==========================================
+  // 🔥 APPEND MODE
+  // ==========================================
+  else {
 
-            }
+    // LATEST GPS
+    const latest =
+      clean[clean.length - 1];
+
+    // LAST APPENDED GPS
+    const last =
+      window.lastTrackPointMap[
+        s.cleanName
+      ];
+
+    // ======================================
+    // 🔥 DUPLICATE PROTECTION
+    // ======================================
+    if(
+
+      !last ||
+
+      last[0] !== latest[0] ||
+
+      last[1] !== latest[1]
+
+    ){
+
+      // APPEND ONLY NEW POINT
+      window.staffTracks[
+        s.cleanName
+      ]
+
+      .addLatLng(latest);
+
+      // UPDATE COLOR
+      window.staffTracks[
+        s.cleanName
+      ]
+
+      .setStyle({
+        color: color
+      });
+
+      // SAVE LAST POINT
+      window.lastTrackPointMap[
+        s.cleanName
+      ] = latest;
+
+      console.log(
+        "➕ Segment appended:",
+        s.cleanName
+      );
+    }
+  }
+}
 
           });
 
