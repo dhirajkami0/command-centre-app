@@ -9281,6 +9281,19 @@ s.track =
     Number(p.lon)
 
   ]);
+                              }
+
+            }
+
+          } catch(e){
+
+            console.warn(
+              "⚠ Track load failed:",
+              s.cleanName,
+              e
+            );
+          }
+        }
         // ==================================================
         // 🔥 GROUP OVERLAPPING USERS
         // ==================================================
