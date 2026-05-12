@@ -9218,11 +9218,12 @@ if(
 window.activeSessionMap[
   s.cleanName
 ] = currentSessionId;
-
 // ==============================================
 // 🔥 RESET TRACK
 // ==============================================
 s.track = [];
+
+s.trackSegments = [];
 
 // ==============================================
 // 🔥 TRACK EXISTS
@@ -9317,7 +9318,64 @@ if(trackSnap.exists()){
         Number(p.lon)
 
       ]);
+
+    // ==========================================
+    // 🔥 SEGMENTED TRACKS
+    // ==========================================
+    const segments = [];
+
+    let currentSegment = [];
+
+    filtered.forEach(p => {
+
+      // ======================================
+      // 🔥 BREAK TRACK
+      // ======================================
+      if(
+
+        p.breakTrack === true &&
+
+        currentSegment.length > 0
+
+      ){
+
+        segments.push(
+          currentSegment
+        );
+
+        currentSegment = [];
+      }
+
+      // ======================================
+      // 🔥 APPEND POINT
+      // ======================================
+      currentSegment.push([
+
+        Number(p.lat),
+
+        Number(p.lon)
+
+      ]);
+    });
+
+    // ==========================================
+    // 🔥 PUSH LAST SEGMENT
+    // ==========================================
+    if(
+      currentSegment.length > 0
+    ){
+
+      segments.push(
+        currentSegment
+      );
     }
+
+    // ==========================================
+    // 🔥 SAVE SEGMENTS
+    // ==========================================
+    s.trackSegments =
+      segments;
+  }
 
 }
 
