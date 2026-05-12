@@ -9579,6 +9579,79 @@ const dutyArea =
 // ==============================================
 // 🔥 FIX SPEED
 // ==============================================
+            // ==============================================
+// 🔥 DUTY START TIME
+// ==============================================
+let dutyStarted = "Unknown";
+
+try {
+
+  if(s.sessionId){
+
+    const startMs =
+      Number(s.sessionId);
+
+    if(!isNaN(startMs)){
+
+      dutyStarted =
+        new Date(startMs)
+          .toLocaleString();
+    }
+  }
+
+} catch(e){
+
+  console.warn(
+    "⚠ Duty start parse failed"
+  );
+}
+
+// ==============================================
+// 🔥 DUTY DURATION
+// ==============================================
+let dutyDuration = "Unknown";
+
+try {
+
+  if(s.sessionId){
+
+    const startMs =
+      Number(s.sessionId);
+
+    if(!isNaN(startMs)){
+
+      const diffMs =
+        Date.now() - startMs;
+
+      const totalMin =
+        Math.floor(diffMs / 60000);
+
+      const hrs =
+        Math.floor(totalMin / 60);
+
+      const mins =
+        totalMin % 60;
+
+      if(hrs > 0){
+
+        dutyDuration =
+          `${hrs} hr ${mins} min`;
+      }
+
+      else {
+
+        dutyDuration =
+          `${mins} min`;
+      }
+    }
+  }
+
+} catch(e){
+
+  console.warn(
+    "⚠ Duty duration failed"
+  );
+}
 // ==============================================
 // 🔥 FIX SPEED
 // ==============================================
@@ -9854,11 +9927,20 @@ ${
       <b>${clean.length}</b>
     </div>
 
-    <div>
-      ⏱ Last Update:
-      <b>${liveTime}</b>
-    </div>
+   <div>
+  🟢 Duty Started:
+  <b>${dutyStarted}</b>
+</div>
 
+<div>
+  ⏳ Duty Duration:
+  <b>${dutyDuration}</b>
+</div>
+
+<div>
+  ⏱ Last GPS Update:
+  <b>${liveTime}</b>
+</div>
   </div>
 
 </div>`;
