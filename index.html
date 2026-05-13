@@ -13580,64 +13580,178 @@ try {
     // ============================================================
     // 🔥 FIRESTORE UPDATE
     // ============================================================
+        // ============================================================
+    // 🔥 FIRESTORE IMMEDIATE DUTY OFF
+    // FRONTEND IS SOURCE OF TRUTH
+    // ============================================================
     try {
 
-  if (
-    window.fb &&
-    window.db &&
-    window.fb.doc &&
-    window.fb.setDoc
-  ) {
+      if (
+        window.fb &&
+        window.db &&
+        window.fb.doc &&
+        window.fb.setDoc
+      ) {
 
-    await window.fb.setDoc(
+        // ========================================================
+        // 🔥 IMMEDIATE FIRESTORE STOP
+        // ========================================================
+        await window.fb.setDoc(
 
-      window.fb.doc(
-        window.db,
-        "live_staff",
-        profile.cleanName
-      ),
+          window.fb.doc(
+            window.db,
+            "live_staff",
+            profile.cleanName
+          ),
 
-     {
-   dutyActive:false,
+          {
 
-   status:"OFFLINE",
+            // ====================================================
+            // 🔥 DUTY STATE
+            // ====================================================
+            dutyActive: false,
 
-   sessionId:"",
+            status: "ENDED",
 
-   updatedAt:
-     window.fb.serverTimestamp(),
+            sessionId: "",
 
-   lastDutyEnd:
-     new Date().toISOString(),
+            updatedAt:
+              window.fb.serverTimestamp(),
 
-   lat:
-     window.fb.deleteField(),
+            lastDutyEnd:
+              new Date().toISOString(),
 
-   lon:
-     window.fb.deleteField(),
+            // ====================================================
+            // 🔥 REMOVE LIVE GPS
+            // ====================================================
+            lat:
+              window.fb.deleteField(),
 
-   speed:
-     window.fb.deleteField()
-},
+            lon:
+              window.fb.deleteField(),
 
-      {
-        merge: true
+            speed:
+              window.fb.deleteField(),
+
+            heading:
+              window.fb.deleteField(),
+
+            turnRate:
+              window.fb.deleteField(),
+
+            accuracy:
+              window.fb.deleteField(),
+
+            location:
+              window.fb.deleteField(),
+
+            timestamp:
+              window.fb.deleteField(),
+
+            time:
+              window.fb.deleteField(),
+
+            lastSeen:
+              window.fb.deleteField()
+
+          },
+
+          {
+            merge: true
+          }
+        );
+
+        console.log(
+          "🔥 FIRESTORE DUTY OFF WRITTEN"
+        );
+
+        // ========================================================
+        // 🔥 LOCAL STATE
+        // ========================================================
+        window.isDutyActive = false;
+
+        // ========================================================
+        // 🔥 REMOVE FROM MAP/UI IMMEDIATELY
+        // ========================================================
+        try {
+
+          if (
+            typeof removeStaffFromUI ===
+            "function"
+          ) {
+
+            removeStaffFromUI(
+              profile.cleanName
+            );
+
+            console.log(
+              "🗺 STAFF REMOVED FROM UI"
+            );
+          }
+
+        } catch(removeErr){
+
+          console.error(
+            "❌ removeStaffFromUI failed",
+            removeErr
+          );
+        }
+
+        // ========================================================
+        // 🔥 UPDATE BUTTON
+        // ========================================================
+        try {
+
+          if (
+            typeof updateDutyButton ===
+            "function"
+          ) {
+
+            updateDutyButton();
+          }
+
+        } catch(_: Error){}
+
+        // ========================================================
+        // 🔥 NOTIFY APK
+        // APK WILL STOP GPS VIA REALTIME WATCHER
+        // ========================================================
+        try {
+
+          if (
+            typeof notifyAndroidDuty ===
+            "function"
+          ) {
+
+            await notifyAndroidDuty(
+              false
+            );
+
+            console.log(
+              "📲 APK notified → duty OFF"
+            );
+          }
+
+        } catch (apkErr) {
+
+          console.error(
+            "❌ APK notify failed",
+            apkErr
+          );
+        }
+
+        console.log(
+          "🛑 DUTY FULLY ENDED"
+        );
       }
-    );
 
-    console.log(
-      "🔥 FRONTEND DUTY OFF WRITTEN"
-    );
-  }
+    } catch (fireErr) {
 
-} catch (fireErr) {
-
-  console.error(
-    "❌ Frontend END DUTY failed",
-    fireErr
-  );
-}
-
+      console.error(
+        "❌ Frontend END DUTY failed",
+        fireErr
+      );
+    }
     // ============================================================
     // 🔥 UPDATE LOCAL STATE
     // ============================================================
