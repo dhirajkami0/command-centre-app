@@ -183,13 +183,35 @@ async function cleanOldMessages(){
 window.previewKMLLayer = null;
 
 window.staffMarkers = {};
+
 window.staffTracks = {};
+
 window.staffDecorators = {};
-window.lastTrackPointMap = {};
+
+// ====================================================
+// 🔥 ACTIVE SESSION
+// ====================================================
 window.activeSessionMap = {};
-window.trackInitialized = {};
-window.androidGpsAuthority = true;let trackMap = {};    // 🔥 GLOBAL ERROR HANDLER
-window.addEventListener("error", function (e) {
+
+// ====================================================
+// 🔥 LIVE FIRESTORE POINT LISTENERS
+// ====================================================
+window.trackListeners = {};
+
+// ====================================================
+// 🔥 TRACK SEGMENTS
+// ====================================================
+window.trackSegments = {};
+window.trackPointCount = {};
+// ====================================================
+// 🔥 ANDROID GPS AUTHORITY
+// ====================================================
+window.androidGpsAuthority = true;
+
+// ====================================================
+// 🔥 OPTIONAL TRACK CACHE
+// ====================================================
+let trackMap = {};window.addEventListener("error", function (e) {
   console.error("💥 GLOBAL ERROR:", e.message, "at", e.filename, ":", e.lineno);
 });
 
@@ -9026,7 +9048,9 @@ function loadStaff(){
 // ==============================================
 if(s.dutyActive !== true){
 
-  // REMOVE MARKER
+  // ==========================================
+  // 🔥 REMOVE MARKER
+  // ==========================================
   if(window.staffMarkers[s.cleanName]){
 
     try{
@@ -9040,7 +9064,9 @@ if(s.dutyActive !== true){
     delete window.staffMarkers[s.cleanName];
   }
 
-  // REMOVE TRACK
+  // ==========================================
+  // 🔥 REMOVE TRACK
+  // ==========================================
   if(window.staffTracks[s.cleanName]){
 
     try{
@@ -9054,7 +9080,9 @@ if(s.dutyActive !== true){
     delete window.staffTracks[s.cleanName];
   }
 
-  // REMOVE DECORATOR
+  // ==========================================
+  // 🔥 REMOVE DECORATOR
+  // ==========================================
   if(window.staffDecorators[s.cleanName]){
 
     try{
@@ -9068,11 +9096,43 @@ if(s.dutyActive !== true){
     delete window.staffDecorators[s.cleanName];
   }
 
-  // REMOVE SESSION CACHE
-  delete window.activeSessionMap[s.cleanName];
-delete window.lastTrackPointMap[s.cleanName];
+  // ==========================================
+  // 🔥 REMOVE LIVE LISTENER
+  // VERY IMPORTANT
+  // ==========================================
+  if(
+    window.trackListeners[
+      s.cleanName
+    ]
+  ){
 
-delete window.trackInitialized[s.cleanName];
+    try{
+
+      window.trackListeners[
+        s.cleanName
+      ]();
+
+    }catch(e){}
+
+    delete window.trackListeners[
+      s.cleanName
+    ];
+  }
+
+  // ==========================================
+  // 🔥 REMOVE POINT CACHE
+  // ==========================================
+  delete window.trackPointCount[
+    s.cleanName
+  ];
+
+  // ==========================================
+  // 🔥 REMOVE SESSION CACHE
+  // ==========================================
+  delete window.activeSessionMap[
+    s.cleanName
+  ];
+
   console.log(
     "🧹 Duty OFF cleanup:",
     s.cleanName
@@ -9080,333 +9140,435 @@ delete window.trackInitialized[s.cleanName];
 
   return;
 }
-            s.type = "Staff";
 
-            s.cleanName =
-              s.cleanName ||
-              docSnap.id;
+s.type = "Staff";
 
-            s.name =
-              s.name ||
-              s.cleanName;
+s.cleanName =
+  s.cleanName ||
+  docSnap.id;
 
-            s.lat =
-              Number(s.lat || 0);
+s.name =
+  s.name ||
+  s.cleanName;
 
-            s.lon =
-              Number(s.lon || 0);
+s.lat =
+  Number(s.lat || 0);
 
-            activeUsers.add(
-              s.cleanName
-            );
+s.lon =
+  Number(s.lon || 0);
 
-            staff.push(s);
+activeUsers.add(
+  s.cleanName
+);
 
-          } catch(e){
+staff.push(s);
 
-            console.error(
-              "❌ Staff parse error:",
-              e
-            );
-          }
+} catch(e){
 
-        });
+  console.error(
+    "❌ Staff parse error:",
+    e
+  );
+}
 
+});
         // ==================================================
-        // 🔥 LOAD CURRENT SESSION TRACK ONLY
-        // ==================================================
-        for(const s of staff){
+// 🔥 LIVE SESSION STREAM
+// ==================================================
+for(const s of staff){
+
+  try {
+
+    const currentSessionId =
+      String(
+        s.sessionId || ""
+      ).trim();
+
+    if(!currentSessionId){
+
+      continue;
+    }
+
+    // ==============================================
+    // 🔥 SAME SESSION
+    // ==============================================
+    if(
+
+      window.activeSessionMap[
+        s.cleanName
+      ] === currentSessionId
+
+    ){
+
+      continue;
+    }
+
+    console.log(
+      "🛰 START SESSION STREAM:",
+      s.cleanName
+    );
+
+    // ==============================================
+    // 🔥 REMOVE OLD LISTENER
+    // ==============================================
+    if(
+      window.trackListeners[
+        s.cleanName
+      ]
+    ){
+
+      try{
+
+        window.trackListeners[
+          s.cleanName
+        ]();
+
+      }catch(e){}
+
+      delete window.trackListeners[
+        s.cleanName
+      ];
+    }
+
+    // ==============================================
+    // 🔥 REMOVE OLD TRACK
+    // ==============================================
+    if(
+      window.staffTracks[
+        s.cleanName
+      ]
+    ){
+
+      try{
+
+        staffLayer.removeLayer(
+
+          window.staffTracks[
+            s.cleanName
+          ]
+
+        );
+
+      }catch(e){}
+
+      delete window.staffTracks[
+        s.cleanName
+      ];
+    }
+
+    // ==============================================
+    // 🔥 SAVE ACTIVE SESSION
+    // ==============================================
+    window.activeSessionMap[
+      s.cleanName
+    ] = currentSessionId;
+
+    // ==============================================
+    // 🔥 POINTS COLLECTION
+    // ==============================================
+    const pointsRef =
+
+      collection(
+
+        window.db,
+
+        "patrol_tracks",
+
+        currentSessionId,
+
+        "points"
+      );
+
+    // ==============================================
+    // 🔥 LIVE POINT STREAM
+    // ==============================================
+    const unsubscribe =
+
+      onSnapshot(
+
+        pointsRef,
+
+        (pointSnap)=>{
 
           try {
 
-// ==============================================
-// 🔥 SESSION VALIDATION
-// ==============================================
-const currentSessionId =
-  String(s.sessionId || "").trim();
+           // ======================================
+// 🔥 SORTED POINTS
+// ======================================
+const points = [];
 
-if(!currentSessionId){
+pointSnap.forEach(doc=>{
 
-  console.warn(
-    "⚠ Missing sessionId:",
-    s.cleanName
-  );
+  const p =
+    doc.data();
 
-  continue;
-}
+  if(!p) return;
 
-           // ==================================================
-// 🔥 MONTH KEY
-// ==================================================
-const monthKey =
-  new Date()
-    .toISOString()
-    .slice(0,7);
+  const lat =
+    Number(p.lat);
 
-// ==================================================
-// 🔥 MONTHLY TRACK DOC
-// ==================================================
-const trackDocId =
-  `${s.cleanName}_${monthKey}`;
-            const trackRef =
-              window.fb.doc(
-                window.db,
-                "patrol_tracks",
-                trackDocId
-              );
-
-            const trackSnap =
-              await window.fb.getDoc(
-                trackRef
-              );
-// ==============================================
-// 🔥 SESSION CHANGED
-// ==============================================
-// ==============================================
-// 🔥 SESSION CHANGED
-// ==============================================
-if(
-
-  window.activeSessionMap[s.cleanName] &&
-
-  window.activeSessionMap[s.cleanName]
-  !== currentSessionId
-
-){
-
-  console.log(
-    "🔄 Session changed:",
-    s.cleanName
-  );
-
-  // ==========================================
-  // 🔥 REMOVE OLD TRACK
-  // ==========================================
-  if(window.staffTracks[s.cleanName]){
-
-    try{
-
-      staffLayer.removeLayer(
-        window.staffTracks[s.cleanName]
-      );
-
-    }catch(e){}
-
-    // ======================================
-    // 🔥 CLEAR APPEND CACHE
-    // ======================================
-    delete window.lastTrackPointMap[
-      s.cleanName
-    ];
-
-    delete window.trackInitialized[
-      s.cleanName
-    ];
-
-    // ======================================
-    // 🔥 REMOVE POLYLINE
-    // ======================================
-    delete window.staffTracks[
-      s.cleanName
-    ];
-  }
-}
-
-// ==============================================
-// 🔥 SAVE SESSION ALWAYS
-// ==============================================
-window.activeSessionMap[
-  s.cleanName
-] = currentSessionId;
-// ==============================================
-// 🔥 RESET TRACK
-// ==============================================
-s.track = [];
-
-s.trackSegments = [];
-
-// ==============================================
-// 🔥 TRACK EXISTS
-// ==============================================
-if(trackSnap.exists()){
-
-  const td =
-    trackSnap.data();
+  const lon =
+    Number(p.lon);
 
   if(
-
-    td &&
-
-    Array.isArray(td.track)
-
+    isNaN(lat) ||
+    isNaN(lon)
   ){
+    return;
+  }
 
-    const activeSessionId =
-      s.sessionId || "";
+  points.push({
 
-    // ==========================================
-    // 🔥 STRICT SESSION FILTER
-    // ==========================================
-    const filtered =
+    lat,
+    lon,
 
-      td.track.filter(p => {
+    time:
+      Number(
+        p.time || 0
+      ),
 
-        // ======================================
-        // 🔥 INVALID POINT
-        // ======================================
-        if(!p){
-          return false;
-        }
+    breakTrack:
+      p.breakTrack === true
+  });
+});
 
-        // ======================================
-        // 🔥 SESSION FILTER
-        // ======================================
-        if(
+// ======================================
+// 🔥 SORT
+// ======================================
+points.sort(
+  (a,b)=>
+    a.time - b.time
+);
 
-          String(
-            p.sessionId || ""
-          ).trim()
+// ======================================
+// 🔥 FIRST DRAW
+// ======================================
+if(
+  !window.staffTracks[
+    s.cleanName
+  ]
+){
 
-          !==
+  const color =
+    getUserColor(
+      s.cleanName
+    );
 
-          String(
-            activeSessionId || ""
-          ).trim()
+  let segments = [];
 
-        ){
-          return false;
-        }
+  let current = [];
 
-        // ======================================
-        // 🔥 VALID GPS ONLY
-        // ======================================
-        const lat =
-          Number(p.lat);
+  points.forEach(p=>{
 
-        const lon =
-          Number(p.lon);
-
-        if(
-          isNaN(lat) ||
-          isNaN(lon)
-        ){
-          return false;
-        }
-
-        // ======================================
-        // 🔥 ZERO GPS REJECT
-        // ======================================
-        if(
-          lat === 0 ||
-          lon === 0
-        ){
-          return false;
-        }
-
-        return true;
-      });
-
-    // ==========================================
-    // 🔥 FINAL TRACK
-    // ==========================================
-    s.track =
-
-      filtered.map(p => [
-
-        Number(p.lat),
-
-        Number(p.lon)
-
-      ]);
-
-    // ==========================================
-    // 🔥 SEGMENTED TRACKS
-    // ==========================================
-    const segments = [];
-
-    let currentSegment = [];
-
-    filtered.forEach(p => {
-
-      // ======================================
-      // 🔥 BREAK TRACK
-      // ======================================
-      if(
-
-        p.breakTrack === true &&
-
-        currentSegment.length > 0
-
-      ){
-
-        segments.push(
-          currentSegment
-        );
-
-        currentSegment = [];
-      }
-
-      // ======================================
-      // 🔥 APPEND POINT
-      // ======================================
-      currentSegment.push([
-
-        Number(p.lat),
-
-        Number(p.lon)
-
-      ]);
-    });
-
-    // ==========================================
-    // 🔥 PUSH LAST SEGMENT
-    // ==========================================
     if(
-      currentSegment.length > 0
+      p.breakTrack &&
+      current.length > 0
     ){
 
       segments.push(
-        currentSegment
+        current
       );
+
+      current = [];
     }
 
-    // ==========================================
-    // 🔥 SAVE SEGMENTS
-    // ==========================================
-    s.trackSegments =
-      segments;
+    current.push([
+      p.lat,
+      p.lon
+    ]);
+  });
+
+  if(current.length){
+
+    segments.push(current);
   }
+
+  const lines =
+
+    segments.map(seg =>
+
+      L.polyline(
+
+        seg,
+
+        {
+          color,
+          weight:2.5,
+          opacity:0.80,
+          smoothFactor:0,
+          lineCap:"round",
+          lineJoin:"round"
+        }
+      )
+    );
+
+  window.staffTracks[
+    s.cleanName
+  ] =
+
+    L.featureGroup(
+      lines
+    )
+
+    .addTo(staffLayer);
+
+  // ====================================
+  // 🔥 SAVE POINT COUNT
+  // ====================================
+  window.trackPointCount[
+    s.cleanName
+  ] = points.length;
 
 }
 
-          } catch(e){
+// ======================================
+// 🔥 APPEND MODE
+// ======================================
+else {
 
-            console.warn(
-              "⚠ Track load failed:",
-              s.cleanName,
-              e
-            );
-          }
+  const oldCount =
+
+    Number(
+
+      window.trackPointCount[
+        s.cleanName
+      ] || 0
+
+    );
+
+  // ====================================
+  // 🔥 NO NEW POINTS
+  // ====================================
+  if(
+    points.length <= oldCount
+  ){
+    return;
+  }
+
+  const newPoints =
+    points.slice(oldCount);
+
+  const trackGroup =
+
+    window.staffTracks[
+      s.cleanName
+    ];
+// ====================================
+// 🔥 GET LAST POLYLINE
+// ====================================
+let lastPolyline =
+
+  trackGroup._lastPolyline || null;
+
+// ====================================
+// 🔥 COLOR
+// ====================================
+const color =
+  getUserColor(
+    s.cleanName
+  );
+
+// ====================================
+// 🔥 APPEND NEW POINTS
+// ====================================
+newPoints.forEach(p=>{
+
+  // ==================================
+  // 🔥 BREAK TRACK
+  // ==================================
+  if(
+    p.breakTrack ||
+    !lastPolyline
+  ){
+
+    lastPolyline =
+
+      L.polyline(
+
+        [],
+
+        {
+          color,
+          weight:2.5,
+          opacity:0.80,
+          smoothFactor:0,
+          lineCap:"round",
+          lineJoin:"round"
         }
-        // ==================================================
-        // 🔥 GROUP OVERLAPPING USERS
-        // ==================================================
-        let groups = {};
+      )
 
-        staff.forEach(s=>{
+      .addTo(trackGroup);
 
-          const key =
-            Number(s.lat).toFixed(6)
-            + ","
-            + Number(s.lon).toFixed(6);
+    // ================================
+    // 🔥 SAVE LAST POLYLINE
+    // ================================
+    trackGroup._lastPolyline =
+      lastPolyline;
+  }
 
-          if(!groups[key]){
-            groups[key] = [];
-          }
+  // ==================================
+  // 🔥 APPEND POINT
+  // ==================================
+  lastPolyline.addLatLng([
+    p.lat,
+    p.lon
+  ]);
+});
 
-          groups[key].push(s);
+// ====================================
+// 🔥 SAVE COUNT
+// ====================================
+window.trackPointCount[
+  s.cleanName
+] = points.length;
 
-        });
+} catch(e){
+
+  console.error(
+    "❌ POINT STREAM ERROR:",
+    s.cleanName,
+    e
+  );
+}
+}
+);
+
+// ==============================================
+// 🔥 SAVE LISTENER
+// ==============================================
+window.trackListeners[
+  s.cleanName
+] = unsubscribe;
+
+} catch(e){
+
+  console.warn(
+    "⚠ SESSION STREAM FAIL:",
+    s.cleanName,
+    e
+  );
+}
+}
+
+// ==================================================
+// 🔥 GROUP OVERLAPPING USERS
+// ==================================================
+let groups = {};
+
+staff.forEach(s=>{
+
+  const key =
+    Number(s.lat).toFixed(6)
+    + ","
+    + Number(s.lon).toFixed(6);
+
+  if(!groups[key]){
+    groups[key] = [];
+  }
+
+  groups[key].push(s);
+
+});
 
         // ==================================================
         // 🔥 DRAW STAFF
@@ -9417,76 +9579,35 @@ if(trackSnap.exists()){
 
             // ==============================================
             // 🔥 CLEAN TRACK
-            // ==============================================
+            // ==============================================// ==============================================
+// 🔥 LIVE POSITION
 // ==============================================
-// 🔥 EMPTY TRACK CLEANUP
+let lat =
+  Number(s.lat || 0);
+
+let lon =
+  Number(s.lon || 0);
+
 // ==============================================
-// ==============================================
-// 🔥 EMPTY TRACK CLEANUP
+// 🔥 INVALID GPS
 // ==============================================
 if(
-  !Array.isArray(s.track) ||
-  s.track.length === 0
+  isNaN(lat) ||
+  isNaN(lon) ||
+  lat === 0 ||
+  lon === 0
 ){
-
-  // ==========================================
-  // 🔥 REMOVE OLD TRACK
-  // ==========================================
-  if(window.staffTracks[s.cleanName]){
-
-    try{
-
-      staffLayer.removeLayer(
-        window.staffTracks[s.cleanName]
-      );
-
-    }catch(e){}
-
-    // ======================================
-    // 🔥 REMOVE POLYLINE
-    // ======================================
-    delete window.staffTracks[
-      s.cleanName
-    ];
-  }
-
-  // ==========================================
-  // 🔥 CLEAR APPEND CACHE
-  // ==========================================
-  delete window.lastTrackPointMap[
-    s.cleanName
-  ];
-
-  delete window.trackInitialized[
-    s.cleanName
-  ];
 
   return;
 }
 
 // ==============================================
-// 🔥 CLEAN TRACK
+// 🔥 CLEAN PLACEHOLDER
 // ==============================================
-let clean =
-  cleanTrackPoints(
-    Array.isArray(s.track)
-    ? s.track
-    : []
-  );  
+let clean = [
+  [lat, lon]
+];         
             
-            // ==============================================
-            // 🔥 LAST POSITION
-            // ==============================================
-            let lat =
-              clean.length
-              ? clean[clean.length - 1][0]
-              : s.lat;
-
-            let lon =
-              clean.length
-              ? clean[clean.length - 1][1]
-              : s.lon;
-
             // ==============================================
             // 🔥 SPREAD OVERLAP
             // ==============================================
@@ -9647,8 +9768,11 @@ try {
   if(s.sessionId){
 
     const startMs =
-      Number(s.sessionId);
-
+  Number(
+    String(s.sessionId)
+      .split("_")
+      .pop()
+  );
     if(!isNaN(startMs)){
 
       dutyStarted =
@@ -9674,8 +9798,11 @@ try {
   if(s.sessionId){
 
     const startMs =
-      Number(s.sessionId);
-
+  Number(
+    String(s.sessionId)
+      .split("_")
+      .pop()
+  );
     if(!isNaN(startMs)){
 
       const diffMs =
@@ -9976,15 +10103,9 @@ ${
     </div>
 
     <div>
-      📏 Distance:
-      <b>${dist.toFixed(2)} km</b>
-    </div>
-
     <div>
-      🛰 Track Points:
-      <b>${clean.length}</b>
-    </div>
-
+  🛰 Live GPS Active
+</div>
    <div>
   🟢 Duty Started:
   <b>${dutyStarted}</b>
@@ -10049,270 +10170,7 @@ ${
               );
             }
 
-            // ==============================================
-            // 🔥 TRACK DRAW
-            // ==============================================
-            if(clean.length > 1){
-
-  // ==========================================
-  // 🔥 FIRST DRAW
-  // ==========================================
-  if(
-    !window.staffTracks[
-      s.cleanName
-    ]
-  ){
-
-    // CREATE FULL POLYLINE
-   // ====================================
-// 🔥 SEGMENTED POLYLINES
-// ====================================
-const fullTrack =
-  Array.isArray(s.track)
-    ? s.track
-    : [];
-    const segments =
-
-  Array.isArray(
-    s.trackSegments
-  ) &&
-
-  s.trackSegments.length > 0
-
-    ? s.trackSegments
-
-    : [fullTrack];
-
-// ====================================
-// 🔥 BUILD SEGMENTS
-// ====================================
-const segmentLines =
-
-  segments.map(seg =>
-
-    L.polyline(
-
-      seg,
-
-      {
-        color: color,
-        weight: 2.5,
-        opacity: 0.80,
-        smoothFactor: 0,
-        lineCap: "round",
-        lineJoin: "round"
-      }
-
-    )
-  );
-
-// ====================================
-// 🔥 GROUP
-// ====================================
-window.staffTracks[
-  s.cleanName
-] =
-
-  L.featureGroup(
-    segmentLines
-  )
-
-  .addTo(staffLayer);
-    // SAVE LAST POINT
-    window.lastTrackPointMap[
-      s.cleanName
-    ] =
-      clean[clean.length - 1];
-
-    // TRACK READY
-    window.trackInitialized[
-      s.cleanName
-    ] = true;
-
-  }
-
- // ==========================================
-// 🔥 APPEND MODE
-// ==========================================
-else {
-
-  // FULL FILTERED TRACK
-  const fullTrack =
-    Array.isArray(s.track)
-    ? s.track
-    : [];
-
-  // ======================================
-  // 🔥 REBUILD IF TRACK SIZE CHANGED
-  // ======================================
-  const currentPolyline =
-    window.staffTracks[
-      s.cleanName
-    ];
-
-  let existingCount = 0;
-
-try{
-
-  currentPolyline.eachLayer(layer => {
-
-    existingCount +=
-      layer.getLatLngs().length;
-  });
-
-}catch(e){}
-  // ======================================
-  // 🔥 OFFLINE SYNC HAPPENED
-  // → FULL REBUILD
-  // ======================================
-  if(
-    fullTrack.length >
-    existingCount + 1
-  ){
-
-    try{
-
-      staffLayer.removeLayer(
-        currentPolyline
-      );
-
-    }catch(e){}
-
-    // ====================================
-    // 🔥 REBUILD FULL TRACK
-    // ====================================
-  // ====================================
-// 🔥 REBUILD FULL TRACK
-// ====================================
-
-const rebuildSegments =
-
-  Array.isArray(s.trackSegments) &&
-  s.trackSegments.length > 0
-
-    ? s.trackSegments
-
-    : [fullTrack];
-
-const rebuildLines =
-
-  rebuildSegments.map(seg =>
-
-    L.polyline(
-
-      seg,
-
-      {
-        color: color,
-        weight: 2.5,
-        opacity: 0.80,
-        smoothFactor: 0,
-        lineCap: "round",
-        lineJoin: "round"
-      }
-
-    )
-
-  );
-
-window.staffTracks[
-  s.cleanName
-] =
-
-  L.featureGroup(
-    rebuildLines
-  )
-
-  .addTo(staffLayer); 
-    
-    console.log(
-      "♻ FULL TRACK REBUILT:",
-      s.cleanName
-    );
-  }
-
- // ====================================
-// 🔥 ALWAYS REBUILD SEGMENTS
-// ====================================
-else {
-
-  try{
-
-    staffLayer.removeLayer(
-      currentPolyline
-    );
-
-  }catch(e){}
-
-  // ==================================
-  // 🔥 SEGMENTS
-  // ==================================
-  const segments =
-
-    Array.isArray(
-      s.trackSegments
-    ) &&
-
-    s.trackSegments.length > 0
-
-      ? s.trackSegments
-
-      : [fullTrack];
-
-  // ==================================
-  // 🔥 BUILD SEGMENTS
-  // ==================================
-  const segmentLines =
-
-    segments.map(seg =>
-
-      L.polyline(
-
-        seg,
-
-        {
-          color: color,
-          weight: 2.5,
-          opacity: 0.80,
-          smoothFactor: 0,
-          lineCap: "round",
-          lineJoin: "round"
-        }
-
-      )
-    );
-
-  // ==================================
-  // 🔥 GROUP
-  // ==================================
-  window.staffTracks[
-    s.cleanName
-  ] =
-
-    L.featureGroup(
-      segmentLines
-    )
-
-    .addTo(staffLayer);
-
-  // ==================================
-  // 🔥 SAVE LAST POINT
-  // ==================================
-  window.lastTrackPointMap[
-    s.cleanName
-  ] =
-    fullTrack[
-      fullTrack.length - 1
-    ];
-
- console.log(
-  "♻ TRACK REBUILT:",
-  s.cleanName
-);
-} // END append else
-
-} // END clean.length > 1
-
+           
 } // END group.forEach callback body
 
 }); // END group.forEach
@@ -10324,61 +10182,125 @@ else {
 // ==================================================
 Object.keys(
   window.staffMarkers
-).forEach(name=>{         if(
-            activeUsers.has(name)
-          ) return;
+).forEach(name=>{
 
-          try {
+  // ================================================
+  // 🔥 STILL ACTIVE
+  // ================================================
+  if(
+    activeUsers.has(name)
+  ){
+    return;
+  }
 
-            if(
-              window.staffMarkers[name]
-            ){
+  try {
 
-              staffLayer.removeLayer(
-                window.staffMarkers[name]
-              );
+    console.log(
+      "🧹 Removing inactive staff:",
+      name
+    );
 
-              delete window.staffMarkers[name];
-            }
+    // ==============================================
+    // 🔥 REMOVE MARKER
+    // ==============================================
+    if(
+      window.staffMarkers[name]
+    ){
 
-            if(
-              window.staffTracks[name]
-            ){
+      try{
 
-              staffLayer.removeLayer(
-                window.staffTracks[name]
-              );
-
-              delete window.staffTracks[name];
-            }
-
-            if(
-              window.staffDecorators[name]
-            ){
-
-              staffLayer.removeLayer(
-                window.staffDecorators[name]
-              );
-
-              delete window.staffDecorators[name];
-            }
-
-          } catch(e){}
-        });
-
-        console.log(
-          "✅ Stable live staff loaded:",
-          staff.length
+        staffLayer.removeLayer(
+          window.staffMarkers[name]
         );
 
-           } catch(e){
+      }catch(e){}
 
-        console.error(
-          "❌ loadStaff crash:",
-          e
+      delete window.staffMarkers[name];
+    }
+
+    // ==============================================
+    // 🔥 REMOVE TRACK
+    // ==============================================
+    if(
+      window.staffTracks[name]
+    ){
+
+      try{
+
+        staffLayer.removeLayer(
+          window.staffTracks[name]
         );
-      }
-    } // END onSnapshot callback
+
+      }catch(e){}
+
+      delete window.staffTracks[name];
+    }
+
+    // ==============================================
+    // 🔥 REMOVE DECORATOR
+    // ==============================================
+    if(
+      window.staffDecorators[name]
+    ){
+
+      try{
+
+        staffLayer.removeLayer(
+          window.staffDecorators[name]
+        );
+
+      }catch(e){}
+
+      delete window.staffDecorators[name];
+    }
+
+    // ==============================================
+    // 🔥 REMOVE FIRESTORE LISTENER
+    // VERY IMPORTANT
+    // ==============================================
+    if(
+      window.trackListeners[name]
+    ){
+
+      try{
+
+        window.trackListeners[name]();
+
+      }catch(e){}
+
+      delete window.trackListeners[name];
+    }
+
+    // ==============================================
+    // 🔥 REMOVE SESSION CACHE
+    // ==============================================
+    delete window.activeSessionMap[name];
+
+  } catch(e){
+
+    console.warn(
+      "⚠ Dead user cleanup failed:",
+      name,
+      e
+    );
+  }
+});
+
+// ==================================================
+// 🔥 LIVE STAFF LOADED
+// ==================================================
+console.log(
+  "✅ Stable live staff loaded:",
+  staff.length
+);
+
+} catch(e){
+
+  console.error(
+    "❌ loadStaff crash:",
+    e
+  );
+}    } // END onSnapshot callback
 
   ); // END onSnapshot
 
@@ -13771,559 +13693,6 @@ document.querySelectorAll("#" + containerId + " input:checked")
 return el.value;
 });
 }
-    let firebaseUpdateScheduled = false;
-let firebaseBuffer = [];
-
-function loadMapDataFirebase() {
-
-  const ref = window.collection(window.db, "map_all");
-
-  window.onSnapshot(ref, (snapshot) => {
-
-    firebaseBuffer = snapshot;
-
-    // ==========================================
-    // 🔥 PREVENT RAPID MULTIPLE RENDERS
-    // ==========================================
-    if (firebaseUpdateScheduled) return;
-
-    firebaseUpdateScheduled = true;
-
-    requestAnimationFrame(() => {
-
-      firebaseUpdateScheduled = false;
-
-      const snap = firebaseBuffer;
-
-      let data = [];
-      let activeIds = new Set();
-
-      // ==========================================
-      // 🔥 SNAPSHOT LOOP
-      // ==========================================
-      snap.forEach(doc => {
-
-        const id = doc.id;
-        const d = doc.data();
-
-        if ((d.type || "").toLowerCase() !== "staff") {
-          return;
-        }
-
-        activeIds.add(id);
-
-        data.push({
-
-          id: id,
-
-          ...d,
-
-          type: "Staff",
-
-          lat: Number(d.lat),
-
-          lon: Number(d.lon),
-
-          track: Array.isArray(d.track)
-
-            ? d.track.map(p => [
-                Number(p.lat),
-                Number(p.lon)
-              ])
-
-            : []
-
-        });
-
-      });
-
-      if (!data.length) return;
-
-      const staff = data.filter(
-        s => s.type === "Staff"
-      );
-
-      // ==========================================
-      // 🔥 GROUP SAME LOCATION
-      // ==========================================
-      let groups = {};
-
-      staff.forEach(s => {
-
-        const key =
-          Number(s.lat).toFixed(6)
-          + ","
-          + Number(s.lon).toFixed(6);
-
-        if (!groups[key]) {
-          groups[key] = [];
-        }
-
-        groups[key].push(s);
-
-      });
-
-      let colorIndex = 0;
-
-      // ==========================================
-      // 🔥 GROUP LOOP
-      // ==========================================
-      Object.values(groups).forEach(group => {
-
-        group.forEach((s, index) => {
-
-          // ======================================
-          // 🔥 TRACK
-          // ======================================
-          let track =
-            Array.isArray(s.track)
-              ? s.track
-              : [];
-
-          // ======================================
-          // 🔥 CLEAN TRACK
-          // ======================================
-          let clean = [];
-
-          track.forEach(p => {
-
-            if (!p) return;
-
-            if (
-
-              clean.length === 0 ||
-
-              Math.abs(
-                clean[clean.length - 1][0] - p[0]
-              ) > 1e-6 ||
-
-              Math.abs(
-                clean[clean.length - 1][1] - p[1]
-              ) > 1e-6
-
-            ) {
-
-              clean.push(p);
-            }
-
-          });
-
-          // ======================================
-          // 🔥 LAST POSITION
-          // ======================================
-          let lat =
-            clean.length
-              ? clean[clean.length - 1][0]
-              : s.lat;
-
-          let lon =
-            clean.length
-              ? clean[clean.length - 1][1]
-              : s.lon;
-
-          // ======================================
-          // 🔥 SPREAD OVERLAP
-          // ======================================
-          if (group.length > 1) {
-
-            const angle =
-              (index / group.length)
-              * Math.PI * 2;
-
-            lat +=
-              Math.cos(angle)
-              * 0.00015;
-
-            lon +=
-              Math.sin(angle)
-              * 0.00015;
-          }
-
-          // ======================================
-          // 🔥 DISTANCE
-          // ======================================
-          let dist = 0;
-
-          for (
-            let i = 1;
-            i < clean.length;
-            i++
-          ) {
-
-            dist += getDistance(
-              clean[i - 1],
-              clean[i]
-            );
-          }
-
-          // ======================================
-          // 🔥 SPEED
-          // ======================================
-          let speed = 0;
-
-          if (clean.length > 1) {
-
-            const d =
-              getDistance(
-
-                clean[clean.length - 2],
-
-                clean[clean.length - 1]
-
-              );
-
-            speed = d / (1 / 60);
-          }
-
-          // ======================================
-          // 🔥 COLOR
-          // ======================================
-          const color =
-            getColor(colorIndex++);
-
-          // ======================================
-          // 🔥 ICON
-          // ======================================
-          const icon = L.divIcon({
-
-            html: `
-              <div class="markerWrap">
-
-                <div class="radarPulse"></div>
-
-                <div class="markerCore">
-
-                  <i class="fa-solid fa-person-military-pointing"
-                     style="
-                       color:#00ff00;
-                       font-size:12px;
-                     ">
-                  </i>
-
-                </div>
-
-              </div>
-            `,
-
-            iconSize: [22, 22],
-
-            iconAnchor: [11, 11]
-
-          });
-
-          // ======================================
-          // 🔥 POPUP
-          // ======================================
-          const popup = `
-
-            <div style="font-family:Segoe UI">
-
-              <b>👤 ${s.name}</b><br>
-
-              📞 ${
-                s.mobile
-                  ? `
-                    <a
-                      href="tel:${s.mobile}"
-                      title="Call ${s.name}"
-                      style="
-                        color:#00e676;
-                        font-size:15px;
-                        text-decoration:none;
-                      ">
-
-                      <i class="fa-solid fa-phone"></i>
-
-                      ${s.mobile}
-
-                    </a>
-                  `
-                  : "N/A"
-              }
-
-              <br>
-
-              <hr>
-
-              👥 ${s.team || "N/A"}<br>
-
-              🧾 ${s.dutyType || "N/A"}<br>
-
-              <hr>
-
-              📊 Speed:
-              ${speed.toFixed(1)} km/h<br>
-
-              📏 Distance:
-              ${dist.toFixed(2)} km<br>
-
-              ⏱ ${s.lastSeen || "Unknown"}
-
-            </div>
-          `;
-
-          // ======================================
-          // 🔥 MARKER UPDATE / CREATE
-          // ======================================
-          if (markerMap[s.id]) {
-
-            markerMap[s.id]
-              .setLatLng([lat, lon]);
-
-          }
-
-          else {
-
-            const marker =
-
-              L.marker(
-                [lat, lon],
-                {
-                  icon: icon,
-                  zIndexOffset: 3000
-                }
-              )
-
-              .bindPopup(
-                popup,
-                {
-                  autoClose: false,
-                  closeOnClick: false
-                }
-              )
-
-              .addTo(staffLayer);
-
-            marker.on(
-              "click",
-              () => activePopupId = s.name
-            );
-
-            markerMap[s.id] = marker;
-          }
-
-          // ======================================
-          // 🔥 TRACK UPDATE
-          // ======================================
-          if (
-
-            Array.isArray(clean) &&
-
-            clean.length > 1
-
-          ) {
-
-            // ==================================
-            // 🔥 REMOVE OLD TRACK
-            // ==================================
-            if (trackMap[s.id]) {
-
-              try {
-
-                staffLayer.removeLayer(
-                  trackMap[s.id]
-                );
-
-              } catch (e) {}
-
-              delete trackMap[s.id];
-            }
-
-            // ==================================
-            // 🔥 REMOVE OLD DECORATOR
-            // ==================================
-            if (
-
-              window.staffDecorators?.[s.id]
-
-            ) {
-
-              try {
-
-                staffLayer.removeLayer(
-                  window.staffDecorators[s.id]
-                );
-
-              } catch (e) {}
-
-              delete window.staffDecorators[s.id];
-            }
-
-            // ==================================
-            // 🔥 BUILD SEGMENTS
-            // ==================================
-            let segments = [];
-
-            if (
-
-              Array.isArray(
-                s.trackSegments
-              ) &&
-
-              s.trackSegments.length > 0
-
-            ) {
-
-              segments =
-                s.trackSegments;
-            }
-
-            else {
-
-              segments = [clean];
-            }
-
-            // ==================================
-            // 🔥 CREATE POLYLINES
-            // ==================================
-            const lines =
-
-              segments.map(seg =>
-
-                L.polyline(
-
-                  seg,
-
-                  {
-                    color: color,
-                    weight: 2,
-                    opacity: 1,
-                    smoothFactor: 0,
-                    lineCap: "round",
-                    lineJoin: "round"
-                  }
-
-                )
-              );
-
-            // ==================================
-            // 🔥 FEATURE GROUP
-            // ==================================
-            const lineGroup =
-
-              L.featureGroup(lines)
-
-                .addTo(staffLayer);
-
-            trackMap[s.id] =
-              lineGroup;
-
-            // ==================================
-            // 🔥 DECORATORS
-            // ==================================
-            if (L.polylineDecorator) {
-
-              const decorators = [];
-
-              lines.forEach(line => {
-
-                decorators.push(
-
-                  L.polylineDecorator(
-
-                    line,
-
-                    {
-                      patterns: [
-
-                        {
-                          offset: "5%",
-
-                          repeat: "50px",
-
-                          symbol:
-
-                            L.Symbol.arrowHead({
-
-                              pixelSize: 10,
-
-                              pathOptions: {
-                                color: color
-                              }
-
-                            })
-                        }
-                      ]
-                    }
-                  )
-                );
-
-              });
-
-              window.staffDecorators[
-                s.id
-              ] =
-
-                L.featureGroup(
-                  decorators
-                )
-
-                .addTo(staffLayer);
-
-            }
-
-          } // END TRACK UPDATE
-
-        }); // END group.forEach
-
-      }); // END groups.forEach
-
-      // ==========================================
-      // 🔥 REMOVE DEAD USERS
-      // ==========================================
-      Object.keys(markerMap).forEach(id => {
-
-        if (activeIds.has(id)) {
-          return;
-        }
-
-        try {
-
-          if (markerMap[id]) {
-
-            staffLayer.removeLayer(
-              markerMap[id]
-            );
-
-            delete markerMap[id];
-          }
-
-          if (trackMap[id]) {
-
-            staffLayer.removeLayer(
-              trackMap[id]
-            );
-
-            delete trackMap[id];
-          }
-
-          if (
-            window.staffDecorators?.[id]
-          ) {
-
-            staffLayer.removeLayer(
-              window.staffDecorators[id]
-            );
-
-            delete window.staffDecorators[id];
-          }
-
-        } catch (e) {
-
-          console.warn(
-            "Cleanup failed:",
-            id,
-            e
-          );
-        }
-
-      });
-
-    }); // END RAF
-
-  }); // END SNAPSHOT
-
-} // END FUNCTION    
     
  function updateCompt() {
 
