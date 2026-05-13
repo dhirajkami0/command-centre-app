@@ -9589,13 +9589,16 @@ newPoints.forEach(p=>{
 // ====================================
 // 🔥 SAVE COUNT
 // ====================================
+// ====================================
+// 🔥 SAVE COUNT
+// ====================================
 window.trackPointCount[
   s.cleanName
 ] = points.length;
 
-} catch(e){
+} // END append else
 
-  console.error(
+} catch(e){  console.error(
     "❌ POINT STREAM ERROR:",
     s.cleanName,
     e
