@@ -13597,24 +13597,28 @@ try {
         profile.cleanName
       ),
 
-      {
+     {
+   dutyActive:false,
 
-        // ==========================================
-        // 🔥 FRONTEND IMMEDIATE UI STATE
-        // ==========================================
-        dutyActive:
-          false,
+   status:"OFFLINE",
 
-        status:
-          "ENDING",
+   sessionId:"",
 
-        updatedAt:
-          window.fb.serverTimestamp(),
+   updatedAt:
+     window.fb.serverTimestamp(),
 
-        lastDutyEnd:
-          new Date().toISOString()
+   lastDutyEnd:
+     new Date().toISOString(),
 
-      },
+   lat:
+     window.fb.deleteField(),
+
+   lon:
+     window.fb.deleteField(),
+
+   speed:
+     window.fb.deleteField()
+},
 
       {
         merge: true
