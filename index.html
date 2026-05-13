@@ -10305,18 +10305,25 @@ else {
       fullTrack.length - 1
     ];
 
-  console.log(
-    "♻ TRACK REBUILT:",
-    s.cleanName
-  );
-}       // ==================================================
-        // 🔥 REMOVE DEAD USERS
-        // ==================================================
-        Object.keys(
-          window.staffMarkers
-        ).forEach(name=>{
+ console.log(
+  "♻ TRACK REBUILT:",
+  s.cleanName
+);
 
-          if(
+} // END append else
+
+} // END clean.length > 1
+
+}); // END group.forEach
+
+}); // END Object.values(groups).forEach
+
+// ==================================================
+// 🔥 REMOVE DEAD USERS
+// ==================================================
+Object.keys(
+  window.staffMarkers
+).forEach(name=>{         if(
             activeUsers.has(name)
           ) return;
 
