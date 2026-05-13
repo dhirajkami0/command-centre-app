@@ -13779,9 +13779,11 @@ function loadMapDataFirebase() {
 
   window.onSnapshot(ref, (snapshot) => {
 
-    firebaseBuffer = snapshot; // store latest snapshot
+    firebaseBuffer = snapshot;
 
-    // 🔥 PREVENT MULTIPLE RAPID UPDATES
+    // ==========================================
+    // 🔥 PREVENT RAPID MULTIPLE RENDERS
+    // ==========================================
     if (firebaseUpdateScheduled) return;
 
     firebaseUpdateScheduled = true;
@@ -13795,346 +13797,532 @@ function loadMapDataFirebase() {
       let data = [];
       let activeIds = new Set();
 
+      // ==========================================
+      // 🔥 SNAPSHOT LOOP
+      // ==========================================
       snap.forEach(doc => {
 
         const id = doc.id;
         const d = doc.data();
 
-        if ((d.type || "").toLowerCase() !== "staff") return;
+        if ((d.type || "").toLowerCase() !== "staff") {
+          return;
+        }
 
         activeIds.add(id);
 
         data.push({
+
           id: id,
+
           ...d,
+
           type: "Staff",
+
           lat: Number(d.lat),
+
           lon: Number(d.lon),
+
           track: Array.isArray(d.track)
-            ? d.track.map(p => [Number(p.lat), Number(p.lon)])
+
+            ? d.track.map(p => [
+                Number(p.lat),
+                Number(p.lon)
+              ])
+
             : []
+
         });
 
       });
 
       if (!data.length) return;
 
-      const staff = data.filter(s => s.type === "Staff");
+      const staff = data.filter(
+        s => s.type === "Staff"
+      );
 
-      /* 🔥 GROUP SAME LOCATION (UNCHANGED) */
+      // ==========================================
+      // 🔥 GROUP SAME LOCATION
+      // ==========================================
       let groups = {};
 
       staff.forEach(s => {
-        const key = Number(s.lat).toFixed(6) + "," + Number(s.lon).toFixed(6);
-        if (!groups[key]) groups[key] = [];
+
+        const key =
+          Number(s.lat).toFixed(6)
+          + ","
+          + Number(s.lon).toFixed(6);
+
+        if (!groups[key]) {
+          groups[key] = [];
+        }
+
         groups[key].push(s);
+
       });
 
       let colorIndex = 0;
 
+      // ==========================================
+      // 🔥 GROUP LOOP
+      // ==========================================
       Object.values(groups).forEach(group => {
 
         group.forEach((s, index) => {
 
-          let track = Array.isArray(s.track) ? s.track : [];
+          // ======================================
+          // 🔥 TRACK
+          // ======================================
+          let track =
+            Array.isArray(s.track)
+              ? s.track
+              : [];
 
-          /* 🔥 CLEAN TRACK (UNCHANGED) */
+          // ======================================
+          // 🔥 CLEAN TRACK
+          // ======================================
           let clean = [];
+
           track.forEach(p => {
+
             if (!p) return;
-            if (clean.length === 0 ||
-              Math.abs(clean[clean.length - 1][0] - p[0]) > 1e-6 ||
-              Math.abs(clean[clean.length - 1][1] - p[1]) > 1e-6) {
+
+            if (
+
+              clean.length === 0 ||
+
+              Math.abs(
+                clean[clean.length - 1][0] - p[0]
+              ) > 1e-6 ||
+
+              Math.abs(
+                clean[clean.length - 1][1] - p[1]
+              ) > 1e-6
+
+            ) {
+
               clean.push(p);
             }
+
           });
 
-          /* 🔥 LAST POSITION */
-          let lat = clean.length ? clean[clean.length - 1][0] : s.lat;
-          let lon = clean.length ? clean[clean.length - 1][1] : s.lon;
+          // ======================================
+          // 🔥 LAST POSITION
+          // ======================================
+          let lat =
+            clean.length
+              ? clean[clean.length - 1][0]
+              : s.lat;
 
-          /* 🔥 SPREAD (UNCHANGED) */
+          let lon =
+            clean.length
+              ? clean[clean.length - 1][1]
+              : s.lon;
+
+          // ======================================
+          // 🔥 SPREAD OVERLAP
+          // ======================================
           if (group.length > 1) {
-            const angle = (index / group.length) * Math.PI * 2;
-            lat += Math.cos(angle) * 0.00015;
-            lon += Math.sin(angle) * 0.00015;
+
+            const angle =
+              (index / group.length)
+              * Math.PI * 2;
+
+            lat +=
+              Math.cos(angle)
+              * 0.00015;
+
+            lon +=
+              Math.sin(angle)
+              * 0.00015;
           }
 
-          /* 🔥 DISTANCE + SPEED (UNCHANGED) */
+          // ======================================
+          // 🔥 DISTANCE
+          // ======================================
           let dist = 0;
-          for (let i = 1; i < clean.length; i++) {
-            dist += getDistance(clean[i - 1], clean[i]);
+
+          for (
+            let i = 1;
+            i < clean.length;
+            i++
+          ) {
+
+            dist += getDistance(
+              clean[i - 1],
+              clean[i]
+            );
           }
 
+          // ======================================
+          // 🔥 SPEED
+          // ======================================
           let speed = 0;
+
           if (clean.length > 1) {
-            const d = getDistance(clean[clean.length - 2], clean[clean.length - 1]);
+
+            const d =
+              getDistance(
+
+                clean[clean.length - 2],
+
+                clean[clean.length - 1]
+
+              );
+
             speed = d / (1 / 60);
           }
 
-          const color = getColor(colorIndex++);
+          // ======================================
+          // 🔥 COLOR
+          // ======================================
+          const color =
+            getColor(colorIndex++);
 
-          /* 🔥 ICON (UNCHANGED) */
+          // ======================================
+          // 🔥 ICON
+          // ======================================
           const icon = L.divIcon({
+
             html: `
-            <div class="markerWrap">
-              <div class="radarPulse"></div>
-              <div class="markerCore">
-                <i class="fa-solid fa-person-military-pointing"
-                  style="color:#00ff00;font-size:12px;"></i>
+              <div class="markerWrap">
+
+                <div class="radarPulse"></div>
+
+                <div class="markerCore">
+
+                  <i class="fa-solid fa-person-military-pointing"
+                     style="
+                       color:#00ff00;
+                       font-size:12px;
+                     ">
+                  </i>
+
+                </div>
+
               </div>
-            </div>`,
+            `,
+
             iconSize: [22, 22],
+
             iconAnchor: [11, 11]
+
           });
 
-          /* 🔥 POPUP (UNCHANGED) */
+          // ======================================
+          // 🔥 POPUP
+          // ======================================
           const popup = `
-          <div style="font-family:Segoe UI">
 
-            <b>👤 ${s.name}</b><br>
-          📞 ${
-  s.mobile
-    ? `<a href="tel:${s.mobile}" title="Call ${s.name}" 
-         style="color:#00e676;font-size:15px;text-decoration:none;">
-         <i class="fa-solid fa-phone"></i> ${s.mobile}
-       </a>`
-    : "N/A"
-}<br>
-            <hr>
+            <div style="font-family:Segoe UI">
 
-            👥 ${s.team || "N/A"}<br>
-            🧾 ${s.dutyType || "N/A"}<br>
+              <b>👤 ${s.name}</b><br>
 
-            <hr>
+              📞 ${
+                s.mobile
+                  ? `
+                    <a
+                      href="tel:${s.mobile}"
+                      title="Call ${s.name}"
+                      style="
+                        color:#00e676;
+                        font-size:15px;
+                        text-decoration:none;
+                      ">
 
-            📊 Speed: ${speed.toFixed(1)} km/h<br>
-            📏 Distance: ${dist.toFixed(2)} km<br>
-            ⏱ ${s.lastSeen || "Unknown"}
+                      <i class="fa-solid fa-phone"></i>
 
-          </div>`;
+                      ${s.mobile}
 
-          /* ===========================
-             🟢 UPDATE OR CREATE MARKER
-          =========================== */
+                    </a>
+                  `
+                  : "N/A"
+              }
+
+              <br>
+
+              <hr>
+
+              👥 ${s.team || "N/A"}<br>
+
+              🧾 ${s.dutyType || "N/A"}<br>
+
+              <hr>
+
+              📊 Speed:
+              ${speed.toFixed(1)} km/h<br>
+
+              📏 Distance:
+              ${dist.toFixed(2)} km<br>
+
+              ⏱ ${s.lastSeen || "Unknown"}
+
+            </div>
+          `;
+
+          // ======================================
+          // 🔥 MARKER UPDATE / CREATE
+          // ======================================
           if (markerMap[s.id]) {
 
-            markerMap[s.id].setLatLng([lat, lon]);
+            markerMap[s.id]
+              .setLatLng([lat, lon]);
 
-          } else {
+          }
 
-            const marker = L.marker([lat, lon], {
-              icon: icon,
-              zIndexOffset: 3000
-            })
-              .bindPopup(popup, {
-                autoClose: false,
-                closeOnClick: false
-              })
+          else {
+
+            const marker =
+
+              L.marker(
+                [lat, lon],
+                {
+                  icon: icon,
+                  zIndexOffset: 3000
+                }
+              )
+
+              .bindPopup(
+                popup,
+                {
+                  autoClose: false,
+                  closeOnClick: false
+                }
+              )
+
               .addTo(staffLayer);
 
-            marker.on('click', () => activePopupId = s.name);
+            marker.on(
+              "click",
+              () => activePopupId = s.name
+            );
 
             markerMap[s.id] = marker;
           }
 
-          /* ===========================
-   📍 TRACK UPDATE
-   (SEGMENTED + NO TELEPORT)
-=========================== */
-if (
+          // ======================================
+          // 🔥 TRACK UPDATE
+          // ======================================
+          if (
 
-  Array.isArray(clean) &&
+            Array.isArray(clean) &&
 
-  clean.length > 1
+            clean.length > 1
 
-) {
+          ) {
 
-  // ==========================================
-  // 🔥 REMOVE OLD TRACK
-  // ==========================================
-  if(trackMap[s.id]){
+            // ==================================
+            // 🔥 REMOVE OLD TRACK
+            // ==================================
+            if (trackMap[s.id]) {
 
-    try{
+              try {
 
-      staffLayer.removeLayer(
-        trackMap[s.id]
-      );
+                staffLayer.removeLayer(
+                  trackMap[s.id]
+                );
 
-    }catch(e){}
+              } catch (e) {}
 
-    delete trackMap[s.id];
-  }
+              delete trackMap[s.id];
+            }
 
-  // ==========================================
-  // 🔥 REMOVE OLD DECORATOR
-  // ==========================================
-  if(window.staffDecorators?.[s.id]){
+            // ==================================
+            // 🔥 REMOVE OLD DECORATOR
+            // ==================================
+            if (
 
-    try{
+              window.staffDecorators?.[s.id]
 
-      staffLayer.removeLayer(
-        window.staffDecorators[s.id]
-      );
+            ) {
 
-    }catch(e){}
+              try {
 
-    delete window.staffDecorators[s.id];
-  }
+                staffLayer.removeLayer(
+                  window.staffDecorators[s.id]
+                );
 
-  // ==========================================
-  // 🔥 BUILD SEGMENTS
-  // ==========================================
-  let segments = [];
+              } catch (e) {}
 
-  // ==========================================
-  // 🔥 USE breakTrack SEGMENTS
-  // ==========================================
-  if(
+              delete window.staffDecorators[s.id];
+            }
 
-    Array.isArray(s.trackSegments) &&
+            // ==================================
+            // 🔥 BUILD SEGMENTS
+            // ==================================
+            let segments = [];
 
-    s.trackSegments.length > 0
+            if (
 
-  ){
+              Array.isArray(
+                s.trackSegments
+              ) &&
 
-    segments = s.trackSegments;
-  }
+              s.trackSegments.length > 0
 
-  // ==========================================
-  // 🔥 FALLBACK
-  // ==========================================
-  else {
+            ) {
 
-    segments = [clean];
-  }
+              segments =
+                s.trackSegments;
+            }
 
-  // ==========================================
-  // 🔥 CREATE POLYLINES
-  // ==========================================
-  const lines = segments.map(seg =>
+            else {
 
-    L.polyline(
+              segments = [clean];
+            }
 
-      seg,
+            // ==================================
+            // 🔥 CREATE POLYLINES
+            // ==================================
+            const lines =
 
-      {
-        color: color,
-        weight: 2,
-        opacity: 1,
-        smoothFactor: 0,
-        lineCap: "round",
-        lineJoin: "round"
-      }
+              segments.map(seg =>
 
-    )
-  );
+                L.polyline(
 
-  // ==========================================
-  // 🔥 GROUP
-  // ==========================================
-  const group =
+                  seg,
 
-    L.featureGroup(lines)
-
-      .addTo(staffLayer);
-
-  trackMap[s.id] = group;
-
-  // ==================================
-// 🔥 DECORATORS
-// ==================================
-if(L.polylineDecorator){
-
-  const decorators = [];
-
-  segmentLines.forEach(line => {
-
-    decorators.push(
-
-      L.polylineDecorator(
-
-        line,
-
-        {
-          patterns: [
-
-            {
-              offset:'5%',
-
-              repeat:'50px',
-
-              symbol:
-                L.Symbol.arrowHead({
-
-                  pixelSize:10,
-
-                  pathOptions:{
-                    color:color
+                  {
+                    color: color,
+                    weight: 2,
+                    opacity: 1,
+                    smoothFactor: 0,
+                    lineCap: "round",
+                    lineJoin: "round"
                   }
 
-                })
+                )
+              );
+
+            // ==================================
+            // 🔥 FEATURE GROUP
+            // ==================================
+            const lineGroup =
+
+              L.featureGroup(lines)
+
+                .addTo(staffLayer);
+
+            trackMap[s.id] =
+              lineGroup;
+
+            // ==================================
+            // 🔥 DECORATORS
+            // ==================================
+            if (L.polylineDecorator) {
+
+              const decorators = [];
+
+              lines.forEach(line => {
+
+                decorators.push(
+
+                  L.polylineDecorator(
+
+                    line,
+
+                    {
+                      patterns: [
+
+                        {
+                          offset: "5%",
+
+                          repeat: "50px",
+
+                          symbol:
+
+                            L.Symbol.arrowHead({
+
+                              pixelSize: 10,
+
+                              pathOptions: {
+                                color: color
+                              }
+
+                            })
+                        }
+                      ]
+                    }
+                  )
+                );
+
+              });
+
+              window.staffDecorators[
+                s.id
+              ] =
+
+                L.featureGroup(
+                  decorators
+                )
+
+                .addTo(staffLayer);
+
             }
-          ]
-        }
-      )
-    );
-  });
 
-  window.staffDecorators[
-    s.cleanName
-  ] =
+          } // END TRACK UPDATE
 
-    L.featureGroup(
-      decorators
-    )
+        }); // END group.forEach
 
-    .addTo(staffLayer);
-}
-}
-      /* 🔥 REMOVE OLD */
+      }); // END groups.forEach
+
+      // ==========================================
+      // 🔥 REMOVE DEAD USERS
+      // ==========================================
       Object.keys(markerMap).forEach(id => {
-        if (!activeIds.has(id)) {
 
-          staffLayer.removeLayer(markerMap[id]);
-          delete markerMap[id];
+        if (activeIds.has(id)) {
+          return;
+        }
 
-         if (trackMap[id]) {
+        try {
 
-  try{
+          if (markerMap[id]) {
 
-    staffLayer.removeLayer(
-      trackMap[id]
-    );
+            staffLayer.removeLayer(
+              markerMap[id]
+            );
 
-  }catch(e){}
+            delete markerMap[id];
+          }
 
-  delete trackMap[id];
-}
+          if (trackMap[id]) {
 
-// ==========================================
-// 🔥 REMOVE DECORATORS
-// ==========================================
-if(window.staffDecorators?.[id]){
+            staffLayer.removeLayer(
+              trackMap[id]
+            );
 
-  try{
+            delete trackMap[id];
+          }
 
-    staffLayer.removeLayer(
-      window.staffDecorators[id]
-    );
+          if (
+            window.staffDecorators?.[id]
+          ) {
 
-  }catch(e){}
+            staffLayer.removeLayer(
+              window.staffDecorators[id]
+            );
 
-  delete window.staffDecorators[id];
-}     }
+            delete window.staffDecorators[id];
+          }
+
+        } catch (e) {
+
+          console.warn(
+            "Cleanup failed:",
+            id,
+            e
+          );
+        }
+
       });
 
-    }); // ✅ RAF END
+    }); // END RAF
 
-  });
+  }); // END SNAPSHOT
 
-}
-    function updateCompt(){
+} // END FUNCTION    function updateCompt(){
 
   const block = document.getElementById("f-block").value;
   const c = document.getElementById("f-compt");
