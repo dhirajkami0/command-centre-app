@@ -2215,6 +2215,7 @@ const dutyWait = setInterval(() => {
   getDocs,
   getDoc,
   deleteDoc,
+  deleteField,
   doc,
   setDoc,
   updateDoc,
@@ -2229,7 +2230,7 @@ const dutyWait = setInterval(() => {
         window.db = getFirestore(app);
         window.storage = getStorage(app);
 
-        window.fb = {
+      window.fb = {
   collection,
   addDoc,
   onSnapshot,
@@ -2239,12 +2240,15 @@ const dutyWait = setInterval(() => {
   getDocs,
   getDoc,
   deleteDoc,
+  deleteField,
   doc,
   setDoc,
   updateDoc,
-  arrayUnion,  ref, uploadBytes, getDownloadURL
-        };
-
+  arrayUnion,
+  ref,
+  uploadBytes,
+  getDownloadURL
+};
         window.firebaseReady = true;
            // ============================================
   // 🧹 RUN CLEANUP IMMEDIATELY
@@ -13624,37 +13628,35 @@ try {
             // ====================================================
             // 🔥 REMOVE LIVE GPS
             // ====================================================
-            lat:
-              firebase.firestore.FieldValue.delete(),
+                       lat:
+              window.fb.deleteField(),
 
             lon:
-            firebase.firestore.FieldValue.delete(),
+              window.fb.deleteField(),
 
             speed:
-              firebase.firestore.FieldValue.delete(),
+              window.fb.deleteField(),
 
             heading:
-              firebase.firestore.FieldValue.delete(),
+              window.fb.deleteField(),
 
             turnRate:
-             firebase.firestore.FieldValue.delete(),
+              window.fb.deleteField(),
 
             accuracy:
-              firebase.firestore.FieldValue.delete(),
+              window.fb.deleteField(),
 
             location:
-              firebase.firestore.FieldValue.delete(),
+              window.fb.deleteField(),
 
             timestamp:
-           firebase.firestore.FieldValue.delete(),
+              window.fb.deleteField(),
 
             time:
-              firebase.firestore.FieldValue.delete(),
+              window.fb.deleteField(),
 
             lastSeen:
-              firebase.firestore.FieldValue.delete()
-
-          },
+              window.fb.deleteField()},
 
           {
             merge: true
