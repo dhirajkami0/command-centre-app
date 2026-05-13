@@ -13770,7 +13770,8 @@ document.querySelectorAll("#" + containerId + " input:checked")
 ).map(function(el) {
 return el.value;
 });
-}let firebaseUpdateScheduled = false;
+}
+    let firebaseUpdateScheduled = false;
 let firebaseBuffer = [];
 
 function loadMapDataFirebase() {
@@ -14322,69 +14323,127 @@ function loadMapDataFirebase() {
 
   }); // END SNAPSHOT
 
-} // END FUNCTION    function updateCompt(){
+} // END FUNCTION    
+    
+ function updateCompt() {
 
-  const block = document.getElementById("f-block").value;
-  const c = document.getElementById("f-compt");
+  const block =
+    document.getElementById("f-block").value;
 
+  const c =
+    document.getElementById("f-compt");
+
+  if (!c) return;
+
+  // ==========================================
+  // 🔥 CLEAR OLD OPTIONS
+  // ==========================================
   c.innerHTML = "";
 
   let list = [];
 
-  if(block==="PORO"){
-    list=["PORO 3","PORO 4","PORO 8","PORO 9","PORO 2","PORO 7","PF","PORO 5","PORO 10"];
+  // ==========================================
+  // 🔥 PORO
+  // ==========================================
+  if (block === "PORO") {
+
+    list = [
+
+      "PORO 3",
+      "PORO 4",
+      "PORO 8",
+      "PORO 9",
+      "PORO 2",
+      "PORO 7",
+      "PF",
+      "PORO 5",
+      "PORO 10"
+
+    ];
   }
-  else if(block==="DPO"){
-    list=["DPO 1","DPO 2","DPO 5","DPO 6","DPO 9"];
+
+  // ==========================================
+  // 🔥 DPO
+  // ==========================================
+  else if (block === "DPO") {
+
+    list = [
+
+      "DPO 1",
+      "DPO 2",
+      "DPO 5",
+      "DPO 6",
+      "DPO 9"
+
+    ];
   }
- else if (block === "VILLAGE") {
-  list = [
-    "Fhoksadanga(Joler Tank)",
-    "Fhoksadanga(Satu Mill)",
-    "Police Camp",
-    "Barua Road",
-    "Kali Mandir",
-    "Royal Dhaba",
-    "Burir Dokan",
-    "Garam Bridge",
-    "RVK Road",
-    "Dakhal Busty",
-    "Poro Bus Stand",
-    "River Camp Road",
-    "Uttar Poro Busty",
-    "Dakshin Poro Busty",
-    "East Poro Beat",
-    "Near Fagu Chowpaty",
-    "Fagu Chowpaty (Poro)",
-    "Hindi School (Satkodali)",
-    "Chandan Dokan",
-    "Satkodali",
-    "Bagan Kona(Satkodali)",
-    "Dilip House(Bagan Kona School)",
-    "Nauka Ghat(Satkodali)",
-    "Shivmandir(Satkodali)",
-    "Dolapara",
-    "Dolapara Dotalabari",
-    "Jabrabasty(Chowpatty)",
-    "Neka Chowpaty",
-    "Ultaghar",
-    "Nisu Panchyat House",
-    "Bagan Chowpatty Jitpur",
-    "Bagan Office Road Division",
-    "Dangapara Primary School",
-    "Power House",
-    "Damanpur Division Ground Majherdabri",
-    "Dodiyar Bridge",
-    "Jitpur Central School",
-    "Naba Udayan Sporting Club Damanpur",
-    "Bat Talai Damanpur"
-  ];
-}
-  list.forEach(v=>{
-    const opt=document.createElement("option");
-    opt.textContent=v;
+
+  // ==========================================
+  // 🔥 VILLAGE
+  // ==========================================
+  else if (block === "VILLAGE") {
+
+    list = [
+
+      "Fhoksadanga(Joler Tank)",
+      "Fhoksadanga(Satu Mill)",
+      "Police Camp",
+      "Barua Road",
+      "Kali Mandir",
+      "Royal Dhaba",
+      "Burir Dokan",
+      "Garam Bridge",
+      "RVK Road",
+      "Dakhal Busty",
+      "Poro Bus Stand",
+      "River Camp Road",
+      "Uttar Poro Busty",
+      "Dakshin Poro Busty",
+      "East Poro Beat",
+      "Near Fagu Chowpaty",
+      "Fagu Chowpaty (Poro)",
+      "Hindi School (Satkodali)",
+      "Chandan Dokan",
+      "Satkodali",
+      "Bagan Kona(Satkodali)",
+      "Dilip House(Bagan Kona School)",
+      "Nauka Ghat(Satkodali)",
+      "Shivmandir(Satkodali)",
+      "Dolapara",
+      "Dolapara Dotalabari",
+      "Jabrabasty(Chowpatty)",
+      "Neka Chowpaty",
+      "Ultaghar",
+      "Nisu Panchyat House",
+      "Bagan Chowpatty Jitpur",
+      "Bagan Office Road Division",
+      "Dangapara Primary School",
+      "Power House",
+      "Damanpur Division Ground Majherdabri",
+      "Dodiyar Bridge",
+      "Jitpur Central School",
+      "Naba Udayan Sporting Club Damanpur",
+      "Bat Talai Damanpur"
+
+    ];
+  }
+
+  // ==========================================
+  // 🔥 BUILD OPTIONS
+  // ==========================================
+  list.forEach(v => {
+
+    const opt =
+      document.createElement("option");
+
+    opt.value = v;
+
+    opt.textContent = v;
+
     c.appendChild(opt);
+
   });
+
 }
 function generateAndShowReport(){
 
