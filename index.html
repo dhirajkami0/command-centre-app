@@ -3545,7 +3545,7 @@ async function autoShowEndDuty(){
   if(window.dutyCheckRunning === true){
 
     console.warn(
-      "⛔ Skipping duplicate duty check"
+      "⛔ Duplicate duty check blocked"
     );
 
     console.groupEnd();
@@ -3558,7 +3558,7 @@ async function autoShowEndDuty(){
   try {
 
     // =====================================================
-    // 🔥 FIREBASE READY CHECK
+    // 🔥 FIREBASE READY
     // =====================================================
     if(
       !window.firebaseReady ||
@@ -3570,15 +3570,11 @@ async function autoShowEndDuty(){
         "⏳ Firebase not ready"
       );
 
-      window.dutyCheckRunning = false;
-
-      console.groupEnd();
-
       return;
     }
 
     // =====================================================
-    // 🔒 PROFILE CHECK
+    // 🔥 PROFILE
     // =====================================================
     if(
       !window.userProfile ||
@@ -3589,24 +3585,24 @@ async function autoShowEndDuty(){
         "⚠ userProfile missing"
       );
 
-      window.dutyCheckRunning = false;
-
-      console.groupEnd();
-
       return;
     }
 
     // =====================================================
     // 🔥 CLEAN NAME
     // =====================================================
-    const cleanedName =
+    const cleanName =
+
       String(
         window.userProfile.cleanName || ""
-      ).trim();
+      )
+
+      .trim()
+      .toUpperCase();
 
     console.log(
-      "🔥 FIRESTORE DUTY CHECK:",
-      cleanedName
+      "🔥 DUTY CHECK:",
+      cleanName
     );
 
     // =====================================================
@@ -3616,33 +3612,44 @@ async function autoShowEndDuty(){
       window.isDutyActive === true;
 
     // =====================================================
-    // 🔥 FIRESTORE DOC
+    // 🔥 FIRESTORE REF
     // =====================================================
     const docRef =
+
       window.fb.doc(
+
         window.db,
+
         "live_staff",
-        cleanedName
+
+        cleanName
       );
 
     // =====================================================
     // 🔥 READ FIRESTORE
     // =====================================================
     const snap =
+
       await window.fb.getDoc(
         docRef
       );
 
     // =====================================================
-    // ❌ DOC MISSING
+    // ❌ NO DOC
     // =====================================================
     if(!snap.exists()){
 
       console.warn(
-        "❌ Firestore document missing"
+        "❌ live_staff missing"
       );
 
       window.isDutyActive = false;
+
+      window.currentSessionId = "";
+
+      localStorage.removeItem(
+        "sessionId"
+      );
 
       updateDutyButton();
 
@@ -3652,17 +3659,26 @@ async function autoShowEndDuty(){
     }
 
     // =====================================================
-    // 🔥 FIRESTORE DATA
+    // 🔥 DATA
     // =====================================================
     const fireData =
       snap.data() || {};
 
     console.log(
-      "📦 FIRESTORE DATA:",
+      "📦 FIRESTORE:",
       fireData
     );
 
     window.__dutyChecked = true;
+
+    // =====================================================
+    // 🔥 SESSION
+    // =====================================================
+    const firestoreSessionId =
+
+      String(
+        fireData.sessionId || ""
+      ).trim();
 
     // =====================================================
     // 🟢 DUTY ACTIVE
@@ -3675,55 +3691,95 @@ async function autoShowEndDuty(){
         "🟢 DUTY ACTIVE"
       );
 
-      // =====================================================
+      // =================================================
+      // 🔥 INVALID SESSION
+      // =================================================
+      if(!firestoreSessionId){
+
+        console.error(
+          "❌ Missing Firestore sessionId"
+        );
+
+        window.isDutyActive = false;
+
+        updateDutyButton();
+
+        return;
+      }
+
+      // =================================================
       // 🔥 GLOBAL STATE
-      // =====================================================
+      // =================================================
       window.isDutyActive = true;
 
-      // =====================================================
+      window.currentSessionId =
+        firestoreSessionId;
+
+      // =================================================
+      // 🔥 SAVE LOCAL SESSION
+      // =================================================
+      localStorage.setItem(
+        "sessionId",
+        firestoreSessionId
+      );
+
+      localStorage.setItem(
+        "dutyActive",
+        "true"
+      );
+
+      // =================================================
       // 🔥 UPDATE BUTTON
-      // =====================================================
+      // =================================================
       updateDutyButton();
 
-      // =====================================================
-      // 🔥 ONLY ON TRANSITION
-      // =====================================================
+      // =================================================
+      // 🔥 ONLY ON OFF → ON
+      // =================================================
       if(!wasActive){
 
         console.warn(
-          "🚀 Duty transitioned OFF → ON"
+          "🚀 OFF → ON transition"
         );
 
-        // =====================================================
-        // 🔥 CLEAR CACHE
-        // =====================================================
+        // =============================================
+        // 🔥 RESET GPS MEMORY
+        // =============================================
         try {
 
           localStorage.removeItem(
             "offlineGPS"
           );
 
-        } catch(e){}
+        } catch(_){}
 
         try {
 
           window.lastManualKey = "";
           window.lastLocationKey = "";
           window.lastGpsSent = 0;
+          window.gpsQueue = [];
 
-        } catch(e){}
+        } catch(_){}
 
-        // =====================================================
+        // =============================================
         // 🔥 START APK GPS
-        // =====================================================
+        // =============================================
         try {
 
           console.log(
-            "📱 notifyAndroidDuty(true)"
+            "📱 START APK GPS"
           );
 
+          // =========================================
+          // 🔥 SAME SESSION TO APK
+          // =========================================
           await notifyAndroidDuty(
-            true
+
+            true,
+
+            firestoreSessionId
+
           );
 
           console.log(
@@ -3739,15 +3795,15 @@ async function autoShowEndDuty(){
         }
       }
 
-      // =====================================================
-      // 🔥 FRONTEND GPS
-      // =====================================================
+      // =================================================
+      // 🔥 FRONTEND GPS STATE
+      // =================================================
       if(!window.gpsRunning){
 
         try {
 
           console.log(
-            "🚀 Frontend GPS Ready"
+            "🚀 FRONTEND GPS READY"
           );
 
           // startAutoGPS();
@@ -3755,12 +3811,11 @@ async function autoShowEndDuty(){
         } catch(e){
 
           console.error(
-            "❌ startAutoGPS error:",
+            "❌ Frontend GPS error:",
             e
           );
         }
       }
-
     }
 
     // =====================================================
@@ -3769,35 +3824,49 @@ async function autoShowEndDuty(){
     else {
 
       console.log(
-        "🔴 DUTY INACTIVE"
+        "🔴 DUTY OFF"
       );
 
-      // =====================================================
+      // =================================================
       // 🔥 GLOBAL STATE
-      // =====================================================
+      // =================================================
       window.isDutyActive = false;
 
-      // =====================================================
+      // =================================================
+      // 🔥 CLEAR SESSION
+      // =================================================
+      window.currentSessionId = "";
+
+      localStorage.removeItem(
+        "sessionId"
+      );
+
+      localStorage.setItem(
+        "dutyActive",
+        "false"
+      );
+
+      // =================================================
       // 🔥 UPDATE BUTTON
-      // =====================================================
+      // =================================================
       updateDutyButton();
 
-      // =====================================================
-      // 🔥 ONLY ON TRANSITION
-      // =====================================================
+      // =================================================
+      // 🔥 ONLY ON ON → OFF
+      // =================================================
       if(wasActive){
 
         console.warn(
-          "🛑 Duty transitioned ON → OFF"
+          "🛑 ON → OFF transition"
         );
 
-        // =====================================================
+        // =============================================
         // 🔥 STOP APK GPS
-        // =====================================================
+        // =============================================
         try {
 
           console.log(
-            "📱 notifyAndroidDuty(false)"
+            "📱 STOP APK GPS"
           );
 
           await notifyAndroidDuty(
@@ -3816,29 +3885,29 @@ async function autoShowEndDuty(){
           );
         }
 
-        // =====================================================
+        // =============================================
         // 🔥 STOP FRONTEND GPS
-        // =====================================================
+        // =============================================
         try {
 
           console.log(
-            "🛑 Frontend GPS stop"
+            "🛑 STOP FRONTEND GPS"
           );
 
           // stopAutoGPS();
 
-        } catch(e){}
+        } catch(_){}
 
-        // =====================================================
-        // 🔥 CLEAR CACHE
-        // =====================================================
+        // =============================================
+        // 🔥 CLEAR MEMORY
+        // =============================================
         try {
 
           localStorage.removeItem(
             "offlineGPS"
           );
 
-        } catch(e){}
+        } catch(_){}
 
         try {
 
@@ -3847,7 +3916,7 @@ async function autoShowEndDuty(){
           window.lastGpsSent = 0;
           window.gpsQueue = [];
 
-        } catch(e){}
+        } catch(_){}
       }
     }
 
@@ -13513,54 +13582,57 @@ try {
     // ============================================================
     try {
 
-      if (
-        window.fb &&
-        window.db &&
-        window.fb.doc &&
-        window.fb.setDoc
-      ) {
+  if (
+    window.fb &&
+    window.db &&
+    window.fb.doc &&
+    window.fb.setDoc
+  ) {
 
-        await window.fb.setDoc(
+    await window.fb.setDoc(
 
-          window.fb.doc(
-            window.db,
-            "live_staff",
-            profile.cleanName
-          ),
+      window.fb.doc(
+        window.db,
+        "live_staff",
+        profile.cleanName
+      ),
 
-          {
+      {
 
-            dutyActive:
-              false,
+        // ==========================================
+        // 🔥 FRONTEND IMMEDIATE UI STATE
+        // ==========================================
+        dutyActive:
+          false,
 
-            lastDutyEnd:
-              new Date().toISOString(),
+        status:
+          "ENDING",
 
-            updatedAt:
-              window.fb.serverTimestamp(),
+        updatedAt:
+          window.fb.serverTimestamp(),
 
-            status:
-              "OFF_DUTY"
+        lastDutyEnd:
+          new Date().toISOString()
 
-          },
+      },
 
-          {
-            merge: true
-          }
-        );
-
-        console.log(
-          "🔥 Firestore updated → dutyActive=false"
-        );
+      {
+        merge: true
       }
+    );
 
-    } catch (fireErr) {
+    console.log(
+      "🔥 FRONTEND DUTY OFF WRITTEN"
+    );
+  }
 
-      console.error(
-        "❌ Firestore END DUTY failed",
-        fireErr
-      );
-    }
+} catch (fireErr) {
+
+  console.error(
+    "❌ Frontend END DUTY failed",
+    fireErr
+  );
+}
 
     // ============================================================
     // 🔥 UPDATE LOCAL STATE
@@ -16645,37 +16717,24 @@ console.log(
 // ==================================================
 // 🔥 LOCAL MONTH KEY
 // ==================================================
-const currentDate =
-  new Date();
-
-const monthKey =
-  `${currentDate.getFullYear()}-${
-    String(
-      currentDate.getMonth() + 1
-    ).padStart(2,"0")
-  }`;// =====================================================
-// 🔥 TRACK DOCUMENT
-// =====================================================
 const trackRef =
   doc(
     window.db,
     "patrol_tracks",
-    `${cleanLeader}_${monthKey}`
+    sessionId
   );
-    // =====================================================
-// 🔥 CREATE / UPDATE MONTHLY TRACK DOC
-// =====================================================
+
 await setDoc(
 
   trackRef,
 
   {
 
-    // ================================================
-    // 🔥 USER INFO
-    // ================================================
     cleanName:
       cleanLeader,
+
+    rawName:
+      payload.leader,
 
     name:
       payload.leader,
@@ -16683,9 +16742,6 @@ await setDoc(
     team:
       payload.staff,
 
-    // ================================================
-    // 🔥 DUTY INFO
-    // ================================================
     dutyType:
       payload.type,
 
@@ -16700,55 +16756,36 @@ await setDoc(
     leader:
       payload.leader || "",
 
-    // ================================================
-    // 🔥 SESSION
-    // ================================================
     dutyActive:
       true,
 
     sessionId:
       sessionId,
 
-    // ================================================
-    // 🔥 MONTH ROTATION
-    // ================================================
-    month:
-      monthKey,
+    startedAt:
+      Date.now(),
 
-    // ================================================
-    // 🔥 TRACK ARRAY
-    // ================================================
-  
+    updatedAt:
+      Date.now(),
 
-    // ================================================
-    // 🔥 STATUS
-    // ================================================
     status:
       "ACTIVE",
 
     source:
       "AUTO_APP",
 
-    // ================================================
-    // 🔥 TIME
-    // ================================================
-    updatedAt:
-      serverTimestamp(),
-
-    timestamp:
-      now.toISOString()
+    type:
+      "Staff"
 
   },
 
   { merge:true }
 );
-
 console.log(
   "🔥 FIRESTORE DUTY STARTED:",
   cleanLeader,
-  monthKey
+  sessionId
 );
-
 alert("✅ Duty Started");
     // =====================================================
     // 🔥 FINAL UI STATE
