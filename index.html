@@ -10064,11 +10064,35 @@ ${
   ){
 
     // CREATE FULL POLYLINE
-    window.staffTracks[
-      s.cleanName
-    ] = L.polyline(
+   // ====================================
+// 🔥 SEGMENTED POLYLINES
+// ====================================
+const fullTrack =
+  Array.isArray(s.track)
+    ? s.track
+    : [];
+    const segments =
 
-      clean,
+  Array.isArray(
+    s.trackSegments
+  ) &&
+
+  s.trackSegments.length > 0
+
+    ? s.trackSegments
+
+    : [fullTrack];
+
+// ====================================
+// 🔥 BUILD SEGMENTS
+// ====================================
+const segmentLines =
+
+  segments.map(seg =>
+
+    L.polyline(
+
+      seg,
 
       {
         color: color,
@@ -10079,8 +10103,21 @@ ${
         lineJoin: "round"
       }
 
-    ).addTo(staffLayer);
+    )
+  );
 
+// ====================================
+// 🔥 GROUP
+// ====================================
+window.staffTracks[
+  s.cleanName
+] =
+
+  L.featureGroup(
+    segmentLines
+  )
+
+  .addTo(staffLayer);
     // SAVE LAST POINT
     window.lastTrackPointMap[
       s.cleanName
@@ -10094,68 +10131,185 @@ ${
 
   }
 
-  // ==========================================
-  // 🔥 APPEND MODE
-  // ==========================================
-  else {
+ // ==========================================
+// 🔥 APPEND MODE
+// ==========================================
+else {
 
-    // LATEST GPS
-    const latest =
-      clean[clean.length - 1];
+  // FULL FILTERED TRACK
+  const fullTrack =
+    Array.isArray(s.track)
+    ? s.track
+    : [];
 
-    // LAST APPENDED GPS
-    const last =
-      window.lastTrackPointMap[
-        s.cleanName
-      ];
+  // ======================================
+  // 🔥 REBUILD IF TRACK SIZE CHANGED
+  // ======================================
+  const currentPolyline =
+    window.staffTracks[
+      s.cleanName
+    ];
 
-    // ======================================
-    // 🔥 DUPLICATE PROTECTION
-    // ======================================
-    if(
+  let existingCount = 0;
 
-      !last ||
+try{
 
-      last[0] !== latest[0] ||
+  currentPolyline.eachLayer(layer => {
 
-      last[1] !== latest[1]
+    existingCount +=
+      layer.getLatLngs().length;
+  });
 
-    ){
+}catch(e){}
+  // ======================================
+  // 🔥 OFFLINE SYNC HAPPENED
+  // → FULL REBUILD
+  // ======================================
+  if(
+    fullTrack.length >
+    existingCount + 1
+  ){
 
-      // APPEND ONLY NEW POINT
-      window.staffTracks[
-        s.cleanName
-      ]
+    try{
 
-      .addLatLng(latest);
-
-      // UPDATE COLOR
-      window.staffTracks[
-        s.cleanName
-      ]
-
-      .setStyle({
-        color: color
-      });
-
-      // SAVE LAST POINT
-      window.lastTrackPointMap[
-        s.cleanName
-      ] = latest;
-
-      console.log(
-        "➕ Segment appended:",
-        s.cleanName
+      staffLayer.removeLayer(
+        currentPolyline
       );
-    }
+
+    }catch(e){}
+
+    // ====================================
+    // 🔥 REBUILD FULL TRACK
+    // ====================================
+  // ====================================
+// 🔥 REBUILD FULL TRACK
+// ====================================
+
+const rebuildSegments =
+
+  Array.isArray(s.trackSegments) &&
+  s.trackSegments.length > 0
+
+    ? s.trackSegments
+
+    : [fullTrack];
+
+const rebuildLines =
+
+  rebuildSegments.map(seg =>
+
+    L.polyline(
+
+      seg,
+
+      {
+        color: color,
+        weight: 2.5,
+        opacity: 0.80,
+        smoothFactor: 0,
+        lineCap: "round",
+        lineJoin: "round"
+      }
+
+    )
+
+  );
+
+window.staffTracks[
+  s.cleanName
+] =
+
+  L.featureGroup(
+    rebuildLines
+  )
+
+  .addTo(staffLayer); 
+    
+    console.log(
+      "♻ FULL TRACK REBUILT:",
+      s.cleanName
+    );
   }
-}
 
-          });
+ // ====================================
+// 🔥 ALWAYS REBUILD SEGMENTS
+// ====================================
+else {
 
-        });
+  try{
 
-        // ==================================================
+    staffLayer.removeLayer(
+      currentPolyline
+    );
+
+  }catch(e){}
+
+  // ==================================
+  // 🔥 SEGMENTS
+  // ==================================
+  const segments =
+
+    Array.isArray(
+      s.trackSegments
+    ) &&
+
+    s.trackSegments.length > 0
+
+      ? s.trackSegments
+
+      : [fullTrack];
+
+  // ==================================
+  // 🔥 BUILD SEGMENTS
+  // ==================================
+  const segmentLines =
+
+    segments.map(seg =>
+
+      L.polyline(
+
+        seg,
+
+        {
+          color: color,
+          weight: 2.5,
+          opacity: 0.80,
+          smoothFactor: 0,
+          lineCap: "round",
+          lineJoin: "round"
+        }
+
+      )
+    );
+
+  // ==================================
+  // 🔥 GROUP
+  // ==================================
+  window.staffTracks[
+    s.cleanName
+  ] =
+
+    L.featureGroup(
+      segmentLines
+    )
+
+    .addTo(staffLayer);
+
+  // ==================================
+  // 🔥 SAVE LAST POINT
+  // ==================================
+  window.lastTrackPointMap[
+    s.cleanName
+  ] =
+    fullTrack[
+      fullTrack.length - 1
+    ];
+
+  console.log(
+    "♻ TRACK REBUILT:",
+    s.cleanName
+  );
+}       // ==================================================
         // 🔥 REMOVE DEAD USERS
         // ==================================================
         Object.keys(
@@ -13775,43 +13929,158 @@ function loadMapDataFirebase() {
           }
 
           /* ===========================
-             📍 TRACK UPDATE (NO FLICKER)
-          =========================== */
-          if (clean.length > 1) {
+   📍 TRACK UPDATE
+   (SEGMENTED + NO TELEPORT)
+=========================== */
+if (
 
-            if (trackMap[s.id]) {
+  Array.isArray(clean) &&
 
-              trackMap[s.id].setLatLngs(clean);
+  clean.length > 1
 
-            } else {
+) {
 
-              const line = L.polyline(clean, {
-                color: color,
-                weight: 2,
-                opacity: 1
-              }).addTo(staffLayer);
+  // ==========================================
+  // 🔥 REMOVE OLD TRACK
+  // ==========================================
+  if(trackMap[s.id]){
 
-              trackMap[s.id] = line;
+    try{
 
-              if (L.polylineDecorator) {
-                L.polylineDecorator(line, {
-                  patterns: [{
-                    offset: '5%',
-                    repeat: '50px',
-                    symbol: L.Symbol.arrowHead({
-                      pixelSize: 10,
-                      pathOptions: { color: color }
-                    })
-                  }]
-                }).addTo(staffLayer);
-              }
+      staffLayer.removeLayer(
+        trackMap[s.id]
+      );
+
+    }catch(e){}
+
+    delete trackMap[s.id];
+  }
+
+  // ==========================================
+  // 🔥 REMOVE OLD DECORATOR
+  // ==========================================
+  if(window.staffDecorators?.[s.id]){
+
+    try{
+
+      staffLayer.removeLayer(
+        window.staffDecorators[s.id]
+      );
+
+    }catch(e){}
+
+    delete window.staffDecorators[s.id];
+  }
+
+  // ==========================================
+  // 🔥 BUILD SEGMENTS
+  // ==========================================
+  let segments = [];
+
+  // ==========================================
+  // 🔥 USE breakTrack SEGMENTS
+  // ==========================================
+  if(
+
+    Array.isArray(s.trackSegments) &&
+
+    s.trackSegments.length > 0
+
+  ){
+
+    segments = s.trackSegments;
+  }
+
+  // ==========================================
+  // 🔥 FALLBACK
+  // ==========================================
+  else {
+
+    segments = [clean];
+  }
+
+  // ==========================================
+  // 🔥 CREATE POLYLINES
+  // ==========================================
+  const lines = segments.map(seg =>
+
+    L.polyline(
+
+      seg,
+
+      {
+        color: color,
+        weight: 2,
+        opacity: 1,
+        smoothFactor: 0,
+        lineCap: "round",
+        lineJoin: "round"
+      }
+
+    )
+  );
+
+  // ==========================================
+  // 🔥 GROUP
+  // ==========================================
+  const group =
+
+    L.featureGroup(lines)
+
+      .addTo(staffLayer);
+
+  trackMap[s.id] = group;
+
+  // ==================================
+// 🔥 DECORATORS
+// ==================================
+if(L.polylineDecorator){
+
+  const decorators = [];
+
+  segmentLines.forEach(line => {
+
+    decorators.push(
+
+      L.polylineDecorator(
+
+        line,
+
+        {
+          patterns: [
+
+            {
+              offset:'5%',
+
+              repeat:'50px',
+
+              symbol:
+                L.Symbol.arrowHead({
+
+                  pixelSize:10,
+
+                  pathOptions:{
+                    color:color
+                  }
+
+                })
             }
-          }
+          ]
+        }
+      )
+    );
+  });
 
-        });
+  window.staffDecorators[
+    s.cleanName
+  ] =
 
-      });
+    L.featureGroup(
+      decorators
+    )
 
+    .addTo(staffLayer);
+}
       /* 🔥 REMOVE OLD */
       Object.keys(markerMap).forEach(id => {
         if (!activeIds.has(id)) {
@@ -13819,11 +14088,34 @@ function loadMapDataFirebase() {
           staffLayer.removeLayer(markerMap[id]);
           delete markerMap[id];
 
-          if (trackMap[id]) {
-            staffLayer.removeLayer(trackMap[id]);
-            delete trackMap[id];
-          }
-        }
+         if (trackMap[id]) {
+
+  try{
+
+    staffLayer.removeLayer(
+      trackMap[id]
+    );
+
+  }catch(e){}
+
+  delete trackMap[id];
+}
+
+// ==========================================
+// 🔥 REMOVE DECORATORS
+// ==========================================
+if(window.staffDecorators?.[id]){
+
+  try{
+
+    staffLayer.removeLayer(
+      window.staffDecorators[id]
+    );
+
+  }catch(e){}
+
+  delete window.staffDecorators[id];
+}     }
       });
 
     }); // ✅ RAF END
