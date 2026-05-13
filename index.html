@@ -203,6 +203,7 @@ window.trackListeners = {};
 // ====================================================
 window.trackSegments = {};
 window.trackPointCount = {};
+    window.trackDistanceMap = {};
 // ====================================================
 // 🔥 ANDROID GPS AUTHORITY
 // ====================================================
@@ -9118,20 +9119,26 @@ if(s.dutyActive !== true){
       s.cleanName
     ];
   }
+// ==========================================
+// 🔥 REMOVE POINT CACHE
+// ==========================================
+delete window.trackPointCount[
+  s.cleanName
+];
 
-  // ==========================================
-  // 🔥 REMOVE POINT CACHE
-  // ==========================================
-  delete window.trackPointCount[
-    s.cleanName
-  ];
+// ==========================================
+// 🔥 REMOVE DISTANCE CACHE
+// ==========================================
+delete window.trackDistanceMap[
+  s.cleanName
+];
 
-  // ==========================================
-  // 🔥 REMOVE SESSION CACHE
-  // ==========================================
-  delete window.activeSessionMap[
-    s.cleanName
-  ];
+// ==========================================
+// 🔥 REMOVE SESSION CACHE
+// ==========================================
+delete window.activeSessionMap[
+  s.cleanName
+];
 
   console.log(
     "🧹 Duty OFF cleanup:",
@@ -9231,54 +9238,72 @@ for(const s of staff){
     }
 
     // ==============================================
-    // 🔥 REMOVE OLD TRACK
-    // ==============================================
-    if(
+// 🔥 REMOVE OLD TRACK
+// ==============================================
+if(
+  window.staffTracks[
+    s.cleanName
+  ]
+){
+
+  try{
+
+    staffLayer.removeLayer(
+
       window.staffTracks[
         s.cleanName
       ]
-    ){
 
-      try{
+    );
 
-        staffLayer.removeLayer(
+  }catch(e){}
 
-          window.staffTracks[
-            s.cleanName
-          ]
+  delete window.staffTracks[
+    s.cleanName
+  ];
+}
 
-        );
+// ==============================================
+// 🔥 CLEAR OLD SESSION CACHE
+// VERY IMPORTANT
+// ==============================================
+delete window.trackPointCount[
+  s.cleanName
+];
 
-      }catch(e){}
+delete window.trackDistanceMap[
+  s.cleanName
+];
 
-      delete window.staffTracks[
-        s.cleanName
-      ];
-    }
-
-    // ==============================================
-    // 🔥 SAVE ACTIVE SESSION
-    // ==============================================
-    window.activeSessionMap[
-      s.cleanName
-    ] = currentSessionId;
-
+// ==============================================
+// 🔥 SAVE ACTIVE SESSION
+// ==============================================
+window.activeSessionMap[
+  s.cleanName
+] = currentSessionId;
     // ==============================================
     // 🔥 POINTS COLLECTION
     // ==============================================
-    const pointsRef =
+    const {
+  collection,
+  onSnapshot,
+  query,
+  orderBy
+} = window.fb;
 
-      collection(
+const pointsRef =
 
-        window.db,
+  query(
 
-        "patrol_tracks",
+    collection(
+      window.db,
+      "patrol_tracks",
+      currentSessionId,
+      "points"
+    ),
 
-        currentSessionId,
-
-        "points"
-      );
-
+    orderBy("time")
+  );
     // ==============================================
     // 🔥 LIVE POINT STREAM
     // ==============================================
@@ -9335,11 +9360,45 @@ pointSnap.forEach(doc=>{
 // ======================================
 // 🔥 SORT
 // ======================================
-points.sort(
-  (a,b)=>
-    a.time - b.time
-);
+// ======================================
+// 🔥 SESSION DISTANCE
+// ======================================
+let totalDistance = 0;
 
+for(
+  let i = 1;
+  i < points.length;
+  i++
+){
+
+  const prev =
+    points[i - 1];
+
+  const curr =
+    points[i];
+
+  // ====================================
+  // 🔥 BREAK TRACK
+  // ====================================
+  if(curr.breakTrack){
+
+    continue;
+  }
+
+  totalDistance += getDistance(
+
+    [prev.lat, prev.lon],
+
+    [curr.lat, curr.lon]
+  );
+}
+
+// ======================================
+// 🔥 SAVE DISTANCE
+// ======================================
+window.trackDistanceMap[
+  s.cleanName
+] = totalDistance;
 // ======================================
 // 🔥 FIRST DRAW
 // ======================================
@@ -9411,7 +9470,19 @@ if(
     )
 
     .addTo(staffLayer);
+// ====================================
+// 🔥 SAVE LAST POLYLINE
+// ====================================
+if(lines.length > 0){
 
+  window.staffTracks[
+    s.cleanName
+  ]._lastPolyline =
+
+    lines[
+      lines.length - 1
+    ];
+}
   // ====================================
   // 🔥 SAVE POINT COUNT
   // ====================================
@@ -9601,12 +9672,6 @@ if(
   return;
 }
 
-// ==============================================
-// 🔥 CLEAN PLACEHOLDER
-// ==============================================
-let clean = [
-  [lat, lon]
-];         
             
             // ==============================================
             // 🔥 SPREAD OVERLAP
@@ -9629,20 +9694,7 @@ let clean = [
             // ==============================================
             // 🔥 DISTANCE
             // ==============================================
-            let dist = 0;
-
-            for(
-              let i=1;
-              i<clean.length;
-              i++
-            ){
-
-              dist += getDistance(
-                clean[i-1],
-                clean[i]
-              );
-            }
-
+           
             // ==============================================
             // 🔥 SPEED
             // ==============================================
@@ -10103,26 +10155,41 @@ ${
     </div>
 
     <div>
+      📏 Distance Travelled:
+      <b>
+        ${
+          Number(
+            window.trackDistanceMap?.[
+              s.cleanName
+            ] || 0
+          ).toFixed(2)
+        } km
+      </b>
+    </div>
+
     <div>
-  🛰 Live GPS Active
-</div>
-   <div>
-  🟢 Duty Started:
-  <b>${dutyStarted}</b>
-</div>
+      🛰 Live GPS Active
+    </div>
 
-<div>
-  ⏳ Duty Duration:
-  <b>${dutyDuration}</b>
-</div>
+    <div>
+      🟢 Duty Started:
+      <b>${dutyStarted}</b>
+    </div>
 
-<div>
-  ⏱ Last GPS Update:
-  <b>${liveTime}</b>
-</div>
+    <div>
+      ⏳ Duty Duration:
+      <b>${dutyDuration}</b>
+    </div>
+
+    <div>
+      ⏱ Last GPS Update:
+      <b>${liveTime}</b>
+    </div>
+
   </div>
 
-</div>`;
+</div>`;           
+            
             // ==============================================
             // 🔥 MARKER CREATE/UPDATE
             // ==============================================
@@ -10270,7 +10337,13 @@ Object.keys(
 
       delete window.trackListeners[name];
     }
+delete window.trackPointCount[
+  name
+];
 
+delete window.trackDistanceMap[
+  name
+];
     // ==============================================
     // 🔥 REMOVE SESSION CACHE
     // ==============================================
