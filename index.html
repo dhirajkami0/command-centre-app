@@ -13918,7 +13918,52 @@ if (!confirmed) {
 
     btn.disabled =
       true;
+// ============================================================
+// ⚡ IMMEDIATE UI TRANSITION
+// ============================================================
 
+// 🔥 LOCAL DUTY OFF IMMEDIATELY
+window.isDutyActive = false;
+
+// 🔥 CLOSE MODAL IMMEDIATELY
+try{
+
+  closeEndDutyForm();
+
+}catch(e){}
+
+// 🔥 UPDATE DUTY BUTTON IMMEDIATELY
+try{
+
+  if(
+    typeof updateDutyButton ===
+    "function"
+  ){
+
+    updateDutyButton();
+  }
+
+}catch(e){}
+
+// 🔥 REMOVE STAFF FROM MAP IMMEDIATELY
+try{
+
+  if(
+    typeof removeStaffFromUI ===
+    "function"
+  ){
+
+    removeStaffFromUI(
+      profile.cleanName
+    );
+  }
+
+}catch(e){}
+
+// 🔥 FAST USER FEEDBACK
+showToast(
+  "⚡ Ending Duty..."
+);
     // ============================================================
     // 🔥 OBS
     // ============================================================
@@ -13950,334 +13995,123 @@ if (!confirmed) {
     // 🔥 BACKEND SAVE
     // ============================================================
     // ============================================================
-// 🔥 BACKEND SAVE (OPTIONAL)
+// 🚀 BACKGROUND FAST PARALLEL END DUTY
 // ============================================================
-let backendOk = true;
+Promise.allSettled([
 
-try {
+  // ========================================================
+  // 🔥 BACKEND SAVE
+  // ========================================================
+  callBackend(
+    "markDutyOutWithObs",
+    payload
+  ),
 
-  const msg =
-    await callBackend(
-      "markDutyOutWithObs",
-      payload
-    );
+  // ========================================================
+  // 🔥 FIRESTORE DUTY OFF
+  // ========================================================
+  window.fb.setDoc(
+
+    window.fb.doc(
+      window.db,
+      "live_staff",
+      profile.cleanName
+    ),
+
+    {
+
+      // ====================================================
+      // 🔥 DUTY STATE
+      // ====================================================
+      dutyActive:false,
+
+      status:"ENDED",
+
+      sessionId:"",
+
+      updatedAt:
+        window.fb.serverTimestamp(),
+
+      lastDutyEnd:
+        new Date().toISOString(),
+
+      // ====================================================
+      // 🔥 REMOVE LIVE GPS
+      // ====================================================
+      lat:
+        window.fb.deleteField(),
+
+      lon:
+        window.fb.deleteField(),
+
+      speed:
+        window.fb.deleteField(),
+
+      heading:
+        window.fb.deleteField(),
+
+      turnRate:
+        window.fb.deleteField(),
+
+      accuracy:
+        window.fb.deleteField(),
+
+      location:
+        window.fb.deleteField(),
+
+      timestamp:
+        window.fb.deleteField(),
+
+      time:
+        window.fb.deleteField(),
+
+      lastSeen:
+        window.fb.deleteField()
+
+    },
+
+    {
+      merge:true
+    }
+  ),
+
+  // ========================================================
+  // 🔥 APK STOP GPS
+  // ========================================================
+  notifyAndroidDuty(
+    false
+  )
+
+])
+
+.then(results => {
 
   console.log(
-    "✅ Backend response:",
-    msg
+    "✅ End duty background sync complete",
+    results
   );
 
-  // ==========================================================
-  // 🔥 IGNORE OLD NO_ACTIVE_DUTY
-  // ==========================================================
-  if (
-    msg &&
-    msg.error === "NO_ACTIVE_DUTY"
-  ) {
+})
 
-    console.warn(
-      "⚠ Backend says NO_ACTIVE_DUTY → ignored"
-    );
-
-    backendOk = false;
-  }
-
-  // ==========================================================
-  // 🔥 OTHER REAL ERRORS
-  // ==========================================================
-  else if (
-    !msg ||
-    (
-      msg.error &&
-      msg.error !== "NO_ACTIVE_DUTY"
-    )
-  ) {
-
-    throw new Error(
-      msg?.error ||
-      "Failed to end duty"
-    );
-  }
-
-} catch (backendErr) {
+.catch(err => {
 
   console.error(
-    "❌ Backend save failed:",
-    backendErr
+    "❌ End duty background sync failed",
+    err
   );
-}
-    // ============================================================
-    // 🔥 FIRESTORE UPDATE
-    // ============================================================
-        // ============================================================
-    // 🔥 FIRESTORE IMMEDIATE DUTY OFF
-    // FRONTEND IS SOURCE OF TRUTH
-    // ============================================================
-    try {
+});
 
-      if (
-        window.fb &&
-        window.db &&
-        window.fb.doc &&
-        window.fb.setDoc
-      ) {
+// ============================================================
+// ⚡ INSTANT SUCCESS FEEDBACK
+// ============================================================
+setTimeout(() => {
 
-        // ========================================================
-        // 🔥 IMMEDIATE FIRESTORE STOP
-        // ========================================================
-        await window.fb.setDoc(
+  showToast(
+    "✅ Duty Ended Successfully"
+  );
 
-          window.fb.doc(
-            window.db,
-            "live_staff",
-            profile.cleanName
-          ),
-
-          {
-
-            // ====================================================
-            // 🔥 DUTY STATE
-            // ====================================================
-            dutyActive: false,
-
-            status: "ENDED",
-
-            sessionId: "",
-
-            updatedAt:
-              window.fb.serverTimestamp(),
-
-            lastDutyEnd:
-              new Date().toISOString(),
-
-            // ====================================================
-            // 🔥 REMOVE LIVE GPS
-            // ====================================================
-                       lat:
-              window.fb.deleteField(),
-
-            lon:
-              window.fb.deleteField(),
-
-            speed:
-              window.fb.deleteField(),
-
-            heading:
-              window.fb.deleteField(),
-
-            turnRate:
-              window.fb.deleteField(),
-
-            accuracy:
-              window.fb.deleteField(),
-
-            location:
-              window.fb.deleteField(),
-
-            timestamp:
-              window.fb.deleteField(),
-
-            time:
-              window.fb.deleteField(),
-
-            lastSeen:
-              window.fb.deleteField()},
-
-          {
-            merge: true
-          }
-        );
-
-        console.log(
-          "🔥 FIRESTORE DUTY OFF WRITTEN"
-        );
-
-        // ========================================================
-        // 🔥 LOCAL STATE
-        // ========================================================
-        window.isDutyActive = false;
-
-        // ========================================================
-        // 🔥 REMOVE FROM MAP/UI IMMEDIATELY
-        // ========================================================
-        try {
-
-          if (
-            typeof removeStaffFromUI ===
-            "function"
-          ) {
-
-            removeStaffFromUI(
-              profile.cleanName
-            );
-
-            console.log(
-              "🗺 STAFF REMOVED FROM UI"
-            );
-          }
-
-        } catch(removeErr){
-
-          console.error(
-            "❌ removeStaffFromUI failed",
-            removeErr
-          );
-        }
-
-        // ========================================================
-        // 🔥 UPDATE BUTTON
-        // ========================================================
-        try {
-
-          if (
-            typeof updateDutyButton ===
-            "function"
-          ) {
-
-            updateDutyButton();
-          }
-
-        } catch(e){}
-
-        // ========================================================
-        // 🔥 NOTIFY APK
-        // APK WILL STOP GPS VIA REALTIME WATCHER
-        // ========================================================
-        try {
-
-          if (
-            typeof notifyAndroidDuty ===
-            "function"
-          ) {
-
-            await notifyAndroidDuty(
-              false
-            );
-
-            console.log(
-              "📲 APK notified → duty OFF"
-            );
-          }
-
-        } catch (apkErr) {
-
-          console.error(
-            "❌ APK notify failed",
-            apkErr
-          );
-        }
-
-        console.log(
-          "🛑 DUTY FULLY ENDED"
-        );
-      }
-
-    } catch (fireErr) {
-
-      console.error(
-        "❌ Frontend END DUTY failed",
-        fireErr
-      );
-    }
-    // ============================================================
-    // 🔥 UPDATE LOCAL STATE
-    // ============================================================
-    window.isDutyActive =
-      false;
-
-    // ============================================================
-    // 🔥 UPDATE BUTTON
-    // ============================================================
-    if (
-      typeof updateDutyButton ===
-      "function"
-    ) {
-
-      updateDutyButton();
-    }
-
-    // ============================================================
-    // 🔥 NOTIFY APK
-    // ============================================================
-    try {
-
-      if (
-        typeof notifyAndroidDuty ===
-        "function"
-      ) {
-
-        await notifyAndroidDuty(
-          false
-        );
-
-        console.log(
-          "📲 APK notified → duty OFF"
-        );
-      }
-
-    } catch (apkErr) {
-
-      console.error(
-        "❌ APK notify failed",
-        apkErr
-      );
-    }
-
-    // ============================================================
-    // 🔥 REMOVE FROM MAP/UI
-    // ============================================================
-    try {
-
-      if (
-        typeof removeStaffFromUI ===
-        "function"
-      ) {
-
-        removeStaffFromUI(
-          profile.cleanName
-        );
-      }
-
-    } catch(removeErr){
-
-      console.error(
-        "❌ removeStaffFromUI failed",
-        removeErr
-      );
-    }
-
-    // ============================================================
-    // 🔥 CLOSE MODAL
-    // ============================================================
-    closeEndDutyForm();
-
-    // ============================================================
-    // 🔄 VERIFY STATE
-    // ============================================================
-    setTimeout(() => {
-
-      autoShowEndDuty();
-
-    }, 500);
-
-    // ============================================================
-    // 🔄 REFRESH
-    // ============================================================
-    if (
-      typeof refreshAll ===
-      "function"
-    ) {
-
-      refreshAll();
-    }
-
-    // ============================================================
-    // 🔥 SUCCESS
-    // ============================================================
-    showToast(
-      "✅ Duty Ended Successfully"
-    );
-
+}, 600);
+    
   } catch (err) {
 
     console.error(
