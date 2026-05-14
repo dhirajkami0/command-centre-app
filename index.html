@@ -9411,19 +9411,9 @@ function cleanTrackPoints(track){
       );
 
     // ==================================================
-    // 🔥 IGNORE GPS DRIFT
-    // ==================================================
-    if(dist < 8){
-      return;
-    }
-
-    // ==================================================
-    // 🔥 IGNORE TELEPORT JUMPS
-    // ==================================================
-    if(dist > 1500){
-      return;
-    }
-
+   if(dist > 250){
+  return;
+}
     clean.push([lat, lon]);
 
   });
@@ -9995,11 +9985,69 @@ const color =
 newPoints.forEach(p=>{
 
   // ==================================
-  // 🔥 BREAK TRACK
+  // 🔥 NEW LATLNG
+  // ==================================
+  const latlng = [
+    p.lat,
+    p.lon
+  ];
+
+  // ==================================
+  // 🔥 GET LAST POINT
+  // ==================================
+  let lastLatLng = null;
+
+  try {
+
+    const arr =
+
+      lastPolyline
+        ?.getLatLngs?.();
+
+    if(
+      arr &&
+      arr.length
+    ){
+
+      lastLatLng =
+        arr[
+          arr.length - 1
+        ];
+    }
+
+  } catch(e){}
+
+  // ==================================
+  // 🔥 DISTANCE CHECK
+  // ==================================
+  let jumpDistance = 0;
+
+  if(lastLatLng){
+
+    jumpDistance =
+
+      map.distance(
+
+        [
+          lastLatLng.lat,
+          lastLatLng.lng
+        ],
+
+        latlng
+      );
+  }
+
+  // ==================================
+  // 🔥 START NEW SEGMENT
   // ==================================
   if(
+
     p.breakTrack ||
-    !lastPolyline
+
+    !lastPolyline ||
+
+    jumpDistance > 250
+
   ){
 
     lastPolyline =
@@ -10030,15 +10078,11 @@ newPoints.forEach(p=>{
   // ==================================
   // 🔥 APPEND POINT
   // ==================================
-  lastPolyline.addLatLng([
-    p.lat,
-    p.lon
-  ]);
+  lastPolyline.addLatLng(
+    latlng
+  );
 });
 
-// ====================================
-// 🔥 SAVE COUNT
-// ====================================
 // ====================================
 // 🔥 SAVE COUNT
 // ====================================
@@ -10048,7 +10092,9 @@ window.trackPointCount[
 
 } // END append else
 
-} catch(e){  console.error(
+} catch(e){
+
+  console.error(
     "❌ POINT STREAM ERROR:",
     s.cleanName,
     e
@@ -10073,7 +10119,6 @@ window.trackListeners[
   );
 }
 }
-
 // ==================================================
 // 🔥 GROUP OVERLAPPING USERS
 // ==================================================
@@ -10375,29 +10420,45 @@ try {
 // ==============================================
 // 🔥 FIX SPEED
 // ==============================================
-let liveSpeed =
-  Number(s.speed || 0);
+// ==============================================
+// 🔥 LIVE SPEED FIX
+// ==============================================
+let liveSpeed = 0;
 
-// ==============================================
-// 🔥 INVALID SPEED
-// ==============================================
-if(
-  isNaN(liveSpeed) ||
-  liveSpeed < 0
-){
+try {
+
+  liveSpeed =
+
+    parseFloat(
+      s.speed
+    );
+
+  if(
+    isNaN(liveSpeed) ||
+    !isFinite(liveSpeed) ||
+    liveSpeed < 0
+  ){
+
+    liveSpeed = 0;
+  }
+
+  // ============================================
+  // 🔥 ROUND CLEANLY
+  // ============================================
+  liveSpeed =
+
+    Math.max(
+      0,
+      Math.round(
+        liveSpeed * 10
+      ) / 10
+    );
+
+} catch(e){
+
   liveSpeed = 0;
-}
-
-// ==============================================
-// 🔥 ROUND CLEANLY
-// ==============================================
-liveSpeed =
-  Math.max(
-    0,
-    Number(
-      liveSpeed.toFixed(1)
-    )
-  );
+}          
+            
             // ==============================================
 // 🔥 AUTO STATIONARY
 // ==============================================
