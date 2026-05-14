@@ -1616,42 +1616,51 @@ function applyRoleControl(){
 // ============================================================
 // 🔥 GLOBAL STATE (STRONG LOCK)
 // ============================================================
+// ============================================================
+// 🔥 GLOBAL LOGIN STATE
+// ============================================================
 let loginUIShown = false;
+
 let loginInProgress = false;
+
 let authFlowRunning = false;
-let loginModalLocked = false;   // 🔥 NEW HARD LOCK
+
+let loginModalLocked = false;
+
 let isSyncRunning = false;
-let loginShownOnce = false;   // 🔥 master guard
-// ============================================================
-// 🔥 LOAD PROFILE (UNCHANGED LOGIC + HARD GUARD)
-// ============================================================
-
 
 // ============================================================
-// 🔥 LOGIN (STRONG RESET)
+// 🔥 LOGIN SESSION GUARDS
 // ============================================================
+let loginShownOnce = false;
+
+let loginCompleted = false;
+
 // ============================================================
-// 🔥 SHOW LOGIN (FINAL FIX — NO FLICKER EVER)
-// ============================================================
-// ============================================================
-// 🔓 HIDE LOGIN (NEW - REQUIRED)
+// 🔓 HIDE LOGIN
 // ============================================================
 function hideLogin(){
 
-  const modal = document.getElementById("loginModal");
+  const modal =
+    document.getElementById(
+      "loginModal"
+    );
 
   if(modal){
+
     modal.style.display = "none";
   }
 
-  // 🔓 unlock everything cleanly
-  loginModalLocked = false;
+  // ============================================================
+  // 🔥 ONLY HIDE UI
+  // DO NOT UNLOCK SESSION
+  // ============================================================
   loginUIShown = false;
 
-  console.log("🔓 Login modal unlocked");
-}
-
-// ============================================================
+  console.log(
+    "🔓 Login modal hidden"
+  );
+}// ============================================================
 // 🔥 WAIT FOR ANDROID BRIDGE
 // ============================================================
 function waitForAndroidBridge(timeout = 8000){
@@ -2037,22 +2046,58 @@ function loadProfile(){
 }// ============================================================
 // 🔥 LOGIN (SAFE + CLEAN)
 // ============================================================
+// ============================================================
+// 🔥 LOGIN
+// ============================================================
 function login(){
 
   console.log("🔐 login() called");
 
-  if(loginInProgress){
-    console.warn("⛔ Login already in progress");
+  // ============================================================
+  // 🔥 SESSION ALREADY LOGGED IN
+  // ============================================================
+  if(loginCompleted){
+
+    console.warn(
+      "⛔ Login already completed"
+    );
+
     return;
   }
 
-  const input = document.getElementById("loginPhone");
-  const btn   = document.getElementById("loginBtn");
+  // ============================================================
+  // 🔥 PREVENT DOUBLE LOGIN
+  // ============================================================
+  if(loginInProgress){
 
-  const phone = input ? input.value.trim() : "";
+    console.warn(
+      "⛔ Login already in progress"
+    );
+
+    return;
+  }
+
+  const input =
+    document.getElementById(
+      "loginPhone"
+    );
+
+  const btn =
+    document.getElementById(
+      "loginBtn"
+    );
+
+  const phone =
+    input
+      ? input.value.trim()
+      : "";
 
   if(phone.length < 10){
-    alert("Enter valid phone number");
+
+    alert(
+      "Enter valid phone number"
+    );
+
     return;
   }
 
@@ -2061,68 +2106,126 @@ function login(){
   // ============================================================
   // 🔥 UI UPDATE
   // ============================================================
-  btn.innerText = "⏳ Logging...";
-  btn.disabled = true;
-  input.disabled = true;
+  if(btn){
 
-  safeBackend("GET_PROFILE", { phone })
+    btn.innerText =
+      "⏳ Logging...";
+
+    btn.disabled = true;
+  }
+
+  if(input){
+
+    input.disabled = true;
+  }
+
+  safeBackend(
+    "GET_PROFILE",
+    { phone }
+  )
 
     .then(profile => {
 
+      // ========================================================
+      // ❌ LOGIN FAILED
+      // ========================================================
       if(!profile || profile.error){
 
         alert("❌ Login failed");
 
-        // 🔁 RESET UI
-        btn.innerText = "Login";
-        btn.disabled = false;
-        input.disabled = false;
+        if(btn){
+
+          btn.innerText = "Login";
+
+          btn.disabled = false;
+        }
+
+        if(input){
+
+          input.disabled = false;
+        }
 
         return;
       }
 
+      // ========================================================
+      // 🔥 PROFILE
+      // ========================================================
       const finalProfile = {
-        rawName: profile.name,
-        cleanName: profile.cleanName || cleanName(profile.name),
-        role: profile.role,
-        beat: profile.beat,
-        phone: profile.phone
+
+        rawName:
+          profile.name,
+
+        cleanName:
+
+          profile.cleanName ||
+
+          cleanName(
+            profile.name
+          ),
+
+        role:
+          profile.role,
+
+        beat:
+          profile.beat,
+
+        phone:
+          profile.phone
       };
 
-      // ============================================================
+      // ========================================================
       // 🔥 SAVE LOCAL
-      // ============================================================
-      localStorage.setItem("userPhone", phone);
-
+      // ========================================================
       localStorage.setItem(
-        "userProfile",
-        JSON.stringify(finalProfile)
+        "userPhone",
+        phone
       );
 
-      window.userProfile = finalProfile;
+      localStorage.setItem(
 
-      // ============================================================
+        "userProfile",
+
+        JSON.stringify(
+          finalProfile
+        )
+      );
+
+      // ========================================================
+      // 🔥 SAVE GLOBAL PROFILE
+      // ========================================================
+      window.userProfile =
+        finalProfile;
+
+      // ========================================================
+      // 🔥 HARD SESSION LOCK
+      // ========================================================
+      loginCompleted = true;
+
+      // ========================================================
       // 🔥 SEND PHONE TO ANDROID
-      // ============================================================
+      // ========================================================
       try{
 
         if(window.Android){
 
-          Android.savePhone(finalProfile.phone);
+          Android.savePhone(
+            finalProfile.phone
+          );
 
           console.log(
             "📱 Phone sent to Android:",
             finalProfile.phone
           );
 
-        }else{
+        } else {
 
           console.warn(
-            "⚠ Android bridge not available"
+            "⚠ Android bridge unavailable"
           );
         }
 
-      }catch(e){
+      } catch(e){
 
         console.error(
           "❌ Android bridge failed:",
@@ -2130,103 +2233,204 @@ function login(){
         );
       }
 
-      // ============================================================
-      // 🔥 UI + APP START
-      // ============================================================
+      // ========================================================
+      // 🔥 HIDE LOGIN
+      // ========================================================
       hideLogin();
 
-      updateNetworkStatus("online");
+      // ========================================================
+      // 🔥 NETWORK STATUS
+      // ========================================================
+      updateNetworkStatus(
+        "online"
+      );
 
+      // ========================================================
+      // 🔥 ROLE CONTROL
+      // ========================================================
       applyRoleControl();
 
-      // 🔥 FIX: prevent duplicate startApp
-      if(!window.__appBootRequested){
+      // ========================================================
+      // 🔥 SINGLE APP BOOT
+      // ========================================================
+      if(
+        !window.__appBootRequested
+      ){
 
-        window.__appBootRequested = true;
+        window.__appBootRequested =
+          true;
 
         startApp();
       }
 
-      console.log("✅ Login success");
-
+      console.log(
+        "✅ Login success"
+      );
     })
 
     .catch(err => {
 
-      console.warn("⚠ Login error:", err);
+      console.warn(
+        "⚠ Login error:",
+        err
+      );
 
-      alert("⚠ Network error");
+      alert(
+        "⚠ Network error"
+      );
 
+      // ========================================================
       // 🔁 RESET UI
-      btn.innerText = "Login";
-      btn.disabled = false;
-      input.disabled = false;
+      // ========================================================
+      if(btn){
 
+        btn.innerText =
+          "Login";
+
+        btn.disabled =
+          false;
+      }
+
+      if(input){
+
+        input.disabled =
+          false;
+      }
     })
 
     .finally(() => {
 
       loginInProgress = false;
+
       authFlowRunning = false;
     });
 }
+
 // ============================================================
-// 🔥 SHOW LOGIN (FINAL HARDENED VERSION)
+// 🔥 SHOW LOGIN
+// FINAL HARDENED VERSION
 // ============================================================
 function showLogin(){
 
-  console.log("🔐 showLogin called");
+  console.log(
+    "🔐 showLogin called"
+  );
 
-  const modal = document.getElementById("loginModal");
+  // ============================================================
+  // 🔥 SESSION ALREADY LOGGED IN
+  // ============================================================
+  if(loginCompleted){
+
+    console.warn(
+      "⛔ Login already completed"
+    );
+
+    return;
+  }
+
+  // ============================================================
+  // 🔥 USER PROFILE EXISTS
+  // ============================================================
+  if(window.userProfile){
+
+    console.warn(
+      "⛔ Already logged in"
+    );
+
+    return;
+  }
+
+  const modal =
+    document.getElementById(
+      "loginModal"
+    );
 
   if(!modal){
-    console.warn("⚠ loginModal not found");
+
+    console.warn(
+      "⚠ loginModal not found"
+    );
+
     return;
   }
 
-  if(window.userProfile){
-    console.warn("⛔ Already logged in → skip");
-    return;
-  }
-
+  // ============================================================
+  // 🔥 HARD MODAL LOCK
+  // ============================================================
   if(loginModalLocked){
-    console.warn("⛔ Modal locked → skip");
+
+    console.warn(
+      "⛔ Modal locked"
+    );
+
     return;
   }
 
+  // ============================================================
+  // 🔥 DOM VISIBILITY CHECK
+  // ============================================================
   const isVisible =
+
     modal.style.display === "flex" ||
+
     modal.style.display === "block" ||
-    modal.classList.contains("active") ||
+
+    modal.classList.contains(
+      "active"
+    ) ||
+
     modal.offsetParent !== null;
 
   if(isVisible){
-    console.warn("⚠ Modal already visible (DOM)");
+
+    console.warn(
+      "⚠ Modal already visible"
+    );
+
     loginModalLocked = true;
+
     return;
   }
 
+  // ============================================================
   // 🔥 LOCK FIRST
+  // ============================================================
   loginModalLocked = true;
 
-  modal.style.display = "flex";
   loginUIShown = true;
 
-  console.log("✅ Login modal shown");
+  // ============================================================
+  // 🔥 SHOW MODAL
+  // ============================================================
+  modal.style.display =
+    "flex";
 
-  const input = document.getElementById("loginPhone");
+  console.log(
+    "✅ Login modal shown"
+  );
+
+  // ============================================================
+  // 🔥 AUTO FOCUS
+  // ============================================================
+  const input =
+    document.getElementById(
+      "loginPhone"
+    );
 
   if(input){
+
     input.focus();
 
-    input.onkeypress = function(e){
-      if(e.key === "Enter"){
-        login();
-      }
-    };
+    input.onkeypress =
+      function(e){
+
+        if(e.key === "Enter"){
+
+          login();
+        }
+      };
   }
 }
-
 
 // ============================================================
 // 🔥 LOGOUT (UNCHANGED)
