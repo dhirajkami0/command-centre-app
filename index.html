@@ -227,6 +227,8 @@ window.addEventListener("unhandledrejection", function (e) {
 
   
   <style>
+
+    
     /* ============================================================
    📱 NATIVE MOBILE CORE & SAFE AREA (NOTCH) HANDLING
 ============================================================ */
@@ -896,6 +898,239 @@ canvas.leaflet-zoom-animated {
     font-size:12px;
   }
 }
+
+    /* ============================================================
+🧭 TACTICAL COMPASS HUD
+============================================================ */
+
+#tacticalCompass{
+
+  position:absolute;
+
+  top:calc(85px + var(--sat));
+
+  right:14px;
+
+  width:170px;
+  height:170px;
+
+  z-index:5000;
+
+  border-radius:50%;
+
+  background:
+    radial-gradient(
+      circle at center,
+      rgba(15,20,15,0.95),
+      rgba(5,10,5,0.92)
+    );
+
+  border:
+    1px solid rgba(120,255,120,0.15);
+
+  box-shadow:
+    0 0 30px rgba(0,255,120,0.08),
+    inset 0 0 25px rgba(0,255,120,0.05);
+
+  backdrop-filter:blur(18px);
+
+  overflow:hidden;
+}
+
+/* ============================================================
+🧭 RING
+============================================================ */
+
+#compassRing{
+
+  position:absolute;
+
+  inset:0;
+
+  border-radius:50%;
+
+  transition:transform 0.12s linear;
+
+  will-change:transform;
+}
+
+/* ============================================================
+🧭 CARDINALS
+============================================================ */
+
+#compassNorth,
+.cardinal{
+
+  position:absolute;
+
+  color:#d7ffd7;
+
+  font-weight:700;
+
+  font-size:14px;
+
+  text-shadow:
+    0 0 10px rgba(0,255,120,0.3);
+}
+
+#compassNorth{
+
+  top:10px;
+  left:50%;
+
+  transform:translateX(-50%);
+
+  color:#ff5252;
+}
+
+.east{
+  right:12px;
+  top:50%;
+  transform:translateY(-50%);
+}
+
+.south{
+  bottom:10px;
+  left:50%;
+  transform:translateX(-50%);
+}
+
+.west{
+  left:12px;
+  top:50%;
+  transform:translateY(-50%);
+}
+
+/* ============================================================
+🧭 CENTER
+============================================================ */
+
+#centerDot{
+
+  position:absolute;
+
+  top:50%;
+  left:50%;
+
+  width:14px;
+  height:14px;
+
+  transform:
+    translate(-50%,-50%);
+
+  border-radius:50%;
+
+  background:#00ff88;
+
+  box-shadow:
+    0 0 15px #00ff88,
+    0 0 35px rgba(0,255,136,0.4);
+
+  z-index:10;
+}
+
+/* ============================================================
+🧭 BEARING LINE
+============================================================ */
+
+#bearingLine{
+
+  position:absolute;
+
+  top:50%;
+  left:50%;
+
+  width:2px;
+  height:65px;
+
+  transform:
+    translateX(-50%);
+
+  transform-origin:
+    bottom center;
+
+  background:
+    linear-gradient(
+      to top,
+      rgba(0,255,120,0),
+      rgba(0,255,120,0.9)
+    );
+
+  border-radius:4px;
+}
+
+/* ============================================================
+🌀 CURVE ARC
+============================================================ */
+
+#curveArc{
+
+  position:absolute;
+
+  width:120px;
+  height:120px;
+
+  border-radius:50%;
+
+  top:50%;
+  left:50%;
+
+  transform:
+    translate(-50%,-50%);
+
+  border:
+    3px solid transparent;
+
+  border-top:
+    3px solid rgba(255,180,0,0.9);
+
+  opacity:0;
+
+  transition:0.25s;
+}
+
+/* ============================================================
+📊 INFO
+============================================================ */
+
+#compassInfo{
+
+  position:absolute;
+
+  bottom:12px;
+
+  width:100%;
+
+  text-align:center;
+
+  font-size:11px;
+
+  color:#d7ffd7;
+
+  text-shadow:
+    0 1px 4px rgba(0,0,0,0.9);
+}
+
+#headingText{
+
+  font-size:16px;
+
+  font-weight:700;
+
+  margin-bottom:4px;
+}
+
+#motionState{
+
+  color:#8cff8c;
+}
+
+#gpsQuality{
+
+  color:#ffcc66;
+
+  margin-top:2px;
+}
   </style>
 </head>
 <body>
@@ -1052,7 +1287,44 @@ canvas.leaflet-zoom-animated {
 </div> 
   
   <div id="map"></div>
+<!-- ============================================================
+🧭 TACTICAL COMPASS HUD
+============================================================ -->
+<div id="tacticalCompass">
 
+  <div id="compassRing">
+
+    <div id="compassNorth">N</div>
+
+    <div class="cardinal east">E</div>
+    <div class="cardinal south">S</div>
+    <div class="cardinal west">W</div>
+
+    <div id="bearingLine"></div>
+
+    <div id="centerDot"></div>
+
+    <div id="curveArc"></div>
+
+  </div>
+
+  <div id="compassInfo">
+
+    <div id="headingText">
+      N 0°
+    </div>
+
+    <div id="motionState">
+      STATIONARY
+    </div>
+
+    <div id="gpsQuality">
+      GPS HIGH
+    </div>
+
+  </div>
+
+</div>
   <!-- 📊 REPORT PANEL -->
 <div id="reportContainer"
   style="display:none; height:500px; margin-top:10px;">
@@ -9819,7 +10091,37 @@ if(
             // ==============================================
             const speed =
               Number(s.speed || 0);
+// ==============================================
+// 🧭 TACTICAL COMPASS UPDATE
+// ONLY CURRENT USER
+// ==============================================
+if(
 
+  s.cleanName ===
+  window.userProfile?.cleanName
+
+){
+
+  window.compassState.heading =
+
+    Number(s.heading || 0);
+
+  window.compassState.speed =
+
+    speed || 0;
+
+  window.compassState.gpsAccuracy =
+
+    Number(
+      s.accuracy || 999
+    );
+
+  window.compassState.cumulativeTurn =
+
+    Number(
+      s.cumulativeTurn || 0
+    );
+}
             // ==============================================
             // 🔥 STABLE COLOR
             // ==============================================
@@ -11135,7 +11437,25 @@ window.addEventListener("offline", () => {
   console.log("📴 Gone Offline");
   updateNetworkStatus("offline");
 });
+// ============================================================
+// 🌲 OFFLINE FOREST MODE
+// ============================================================
+window.addEventListener(
 
+  "offline",
+
+  () => {
+
+    document.body.classList.add(
+      "offlineForestMode"
+    );
+
+    showToast(
+      "🌲 OFFLINE FOREST MODE",
+      "warning"
+    );
+  }
+);
 // ==========================================
 // 🚀 APP LOAD (SPLASH)
 // ==========================================
@@ -16173,7 +16493,207 @@ document.addEventListener("click", (e)=>{
     menu.style.display = "none";
   }
 });  
-  
+  // ============================================================
+// 🧭 TACTICAL COMPASS ENGINE
+// ============================================================
+
+window.compassState = {
+
+  heading:0,
+  smoothHeading:0,
+
+  speed:0,
+
+  gpsAccuracy:999,
+
+  motion:"STATIONARY",
+
+  cumulativeTurn:0,
+
+  lastHeading:0,
+
+  gpsMode:"HIGH"
+};
+
+// ============================================================
+// 🧭 CARDINAL
+// ============================================================
+function getCardinal(deg){
+
+  const dirs = [
+
+    "N","NNE","NE","ENE",
+    "E","ESE","SE","SSE",
+    "S","SSW","SW","WSW",
+    "W","WNW","NW","NNW"
+  ];
+
+  return dirs[
+    Math.round(deg / 22.5) % 16
+  ];
+}
+
+// ============================================================
+// 🧭 MOTION STATE
+// ============================================================
+function detectMotionState(speed){
+
+  if(speed < 1){
+
+    return "STATIONARY";
+  }
+
+  if(speed < 8){
+
+    return "FOOT PATROL";
+  }
+
+  if(speed < 15){
+
+    return "BIKE PATROL";
+  }
+
+  return "VEHICLE";
+}
+
+// ============================================================
+// 🧭 COMPASS UPDATE
+// ============================================================
+function updateTacticalCompass(){
+
+  const s = window.compassState;
+
+  // ========================================================
+  // 🔥 SMOOTHING
+  // ========================================================
+  s.smoothHeading +=
+    (s.heading - s.smoothHeading)
+    * 0.08;
+
+  // ========================================================
+  // 🔥 ROTATE RING
+  // ========================================================
+  const ring =
+    document.getElementById(
+      "compassRing"
+    );
+
+  if(ring){
+
+    ring.style.transform =
+      `rotate(${-s.smoothHeading}deg)`;
+  }
+
+  // ========================================================
+  // 🔥 TEXT
+  // ========================================================
+  const headingText =
+    document.getElementById(
+      "headingText"
+    );
+
+  if(headingText){
+
+    headingText.innerText =
+
+      `${getCardinal(
+        s.smoothHeading
+      )} ${Math.round(
+        s.smoothHeading
+      )}°`;
+  }
+
+  // ========================================================
+  // 🔥 MOTION
+  // ========================================================
+  const motion =
+    document.getElementById(
+      "motionState"
+    );
+
+  if(motion){
+
+    motion.innerText =
+      detectMotionState(
+        s.speed
+      );
+  }
+
+  // ========================================================
+  // 🔥 GPS QUALITY
+  // ========================================================
+  const gps =
+    document.getElementById(
+      "gpsQuality"
+    );
+
+  if(gps){
+
+    if(s.gpsAccuracy < 10){
+
+      gps.innerText =
+        "GPS HIGH";
+
+      gps.style.color =
+        "#66ff99";
+
+    }else if(s.gpsAccuracy < 25){
+
+      gps.innerText =
+        "GPS MED";
+
+      gps.style.color =
+        "#ffcc66";
+
+    }else{
+
+      gps.innerText =
+        "GPS LOW";
+
+      gps.style.color =
+        "#ff6666";
+    }
+  }
+
+  // ========================================================
+  // 🌀 CURVE ARC
+  // ========================================================
+  const arc =
+    document.getElementById(
+      "curveArc"
+    );
+
+  if(arc){
+
+    if(
+      s.speed >= 12 &&
+      s.cumulativeTurn >= 20
+    ){
+
+      arc.style.opacity = "1";
+
+      arc.style.transform =
+
+        `translate(-50%,-50%)
+         rotate(${s.smoothHeading}deg)`;
+
+    }else{
+
+      arc.style.opacity = "0";
+    }
+  }
+
+  requestAnimationFrame(
+    updateTacticalCompass
+  );
+}
+
+// ============================================================
+// 🚀 START ENGINE
+// ============================================================
+requestAnimationFrame(
+  updateTacticalCompass
+);
   
   </script>
 
