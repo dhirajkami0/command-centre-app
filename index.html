@@ -2820,6 +2820,48 @@ function resetUpdateUI() {
     }
 
     // ============================================================
+    // 🔥 GET SESSION ID
+    // ============================================================
+    let sessionId =
+      localStorage.getItem(
+        "sessionId"
+      ) || "";
+
+    // ============================================================
+    // 🔥 SAFETY GENERATE SESSION
+    // ============================================================
+    if(
+      active &&
+      !sessionId
+    ){
+
+      const cleanLeader =
+        cleanName(
+          window.userProfile?.rawName ||
+          window.userProfile?.name ||
+          "UNKNOWN"
+        );
+
+      sessionId =
+        `${cleanLeader}_${Date.now()}`;
+
+      localStorage.setItem(
+        "sessionId",
+        sessionId
+      );
+
+      console.log(
+        "⚡ GENERATED FALLBACK SESSION:",
+        sessionId
+      );
+    }
+
+    console.log(
+      "🟢 SESSION TO APK:",
+      sessionId
+    );
+
+    // ============================================================
     // 🔥 FORCE PROFILE SYNC FIRST
     // ============================================================
     if(
@@ -2861,16 +2903,17 @@ function resetUpdateUI() {
     }
 
     // ============================================================
-    // 🔥 SEND DUTY STATE
+    // 🔥 SEND DUTY + SESSION
     // ============================================================
     if(Android.updateDutyState){
 
       Android.updateDutyState(
-        !!active
+        !!active,
+        sessionId
       );
 
       console.log(
-        `✅ Android.updateDutyState(${active}) sent`
+        `✅ Android.updateDutyState(${active}, ${sessionId}) sent`
       );
     }
 
