@@ -1639,6 +1639,9 @@ let loginCompleted = false;
 // ============================================================
 // 🔓 HIDE LOGIN
 // ============================================================
+// ============================================================
+// 🔓 HIDE LOGIN
+// ============================================================
 function hideLogin(){
 
   const modal =
@@ -1653,9 +1656,13 @@ function hideLogin(){
 
   // ============================================================
   // 🔥 ONLY HIDE UI
-  // DO NOT UNLOCK SESSION
   // ============================================================
   loginUIShown = false;
+
+  // ============================================================
+  // 🔥 KEEP MODAL LOCKED
+  // prevents reopen in same session
+  // ============================================================
 
   console.log(
     "🔓 Login modal hidden"
@@ -2310,14 +2317,15 @@ function login(){
 // 🔥 SHOW LOGIN
 // FINAL HARDENED VERSION
 // ============================================================
+// ============================================================
+// 🔥 SHOW LOGIN (FINAL DOUBLE-OPEN FIX)
+// ============================================================
 function showLogin(){
 
-  console.log(
-    "🔐 showLogin called"
-  );
+  console.log("🔐 showLogin called");
 
   // ============================================================
-  // 🔥 SESSION ALREADY LOGGED IN
+  // 🔥 HARD SESSION LOCK
   // ============================================================
   if(loginCompleted){
 
@@ -2329,12 +2337,36 @@ function showLogin(){
   }
 
   // ============================================================
-  // 🔥 USER PROFILE EXISTS
+  // 🔥 PROFILE EXISTS
   // ============================================================
   if(window.userProfile){
 
     console.warn(
       "⛔ Already logged in"
+    );
+
+    return;
+  }
+
+  // ============================================================
+  // 🔥 UI ALREADY SHOWN
+  // ============================================================
+  if(loginUIShown){
+
+    console.warn(
+      "⛔ Login UI already shown"
+    );
+
+    return;
+  }
+
+  // ============================================================
+  // 🔥 HARD MODAL LOCK
+  // ============================================================
+  if(loginModalLocked){
+
+    console.warn(
+      "⛔ Modal locked"
     );
 
     return;
@@ -2355,55 +2387,18 @@ function showLogin(){
   }
 
   // ============================================================
-  // 🔥 HARD MODAL LOCK
-  // ============================================================
-  if(loginModalLocked){
-
-    console.warn(
-      "⛔ Modal locked"
-    );
-
-    return;
-  }
-
-  // ============================================================
-  // 🔥 DOM VISIBILITY CHECK
-  // ============================================================
-  const isVisible =
-
-    modal.style.display === "flex" ||
-
-    modal.style.display === "block" ||
-
-    modal.classList.contains(
-      "active"
-    ) ||
-
-    modal.offsetParent !== null;
-
-  if(isVisible){
-
-    console.warn(
-      "⚠ Modal already visible"
-    );
-
-    loginModalLocked = true;
-
-    return;
-  }
-
-  // ============================================================
-  // 🔥 LOCK FIRST
+  // 🔥 LOCK IMMEDIATELY
   // ============================================================
   loginModalLocked = true;
 
   loginUIShown = true;
 
+  loginShownOnce = true;
+
   // ============================================================
   // 🔥 SHOW MODAL
   // ============================================================
-  modal.style.display =
-    "flex";
+  modal.style.display = "flex";
 
   console.log(
     "✅ Login modal shown"
@@ -2419,7 +2414,11 @@ function showLogin(){
 
   if(input){
 
-    input.focus();
+    setTimeout(() => {
+
+      input.focus();
+
+    }, 100);
 
     input.onkeypress =
       function(e){
@@ -2431,7 +2430,6 @@ function showLogin(){
       };
   }
 }
-
 // ============================================================
 // 🔥 LOGOUT (UNCHANGED)
 // ============================================================
