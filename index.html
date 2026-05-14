@@ -1146,13 +1146,6 @@ canvas.leaflet-zoom-animated {
   letter-spacing:0.4px;
 }
 
-#motionState{
-
-  color:#8cff8c;
-
-  font-size:8px;
-}
-
 #gpsQuality{
 
   color:#ffcc66;
@@ -1344,10 +1337,7 @@ canvas.leaflet-zoom-animated {
       N 0°
     </div>
 
-    <div id="motionState">
-      STATIONARY
-    </div>
-
+    
     <div id="gpsQuality">
       GPS HIGH
     </div>
@@ -16636,19 +16626,7 @@ function updateTacticalCompass(){
   // ========================================================
   // 🔥 MOTION
   // ========================================================
-  const motion =
-    document.getElementById(
-      "motionState"
-    );
-
-  if(motion){
-
-    motion.innerText =
-      detectMotionState(
-        s.speed
-      );
-  }
-
+ 
   // ========================================================
   // 🔥 GPS QUALITY
   // ========================================================
