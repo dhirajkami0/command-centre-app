@@ -2260,15 +2260,17 @@ function login(){
       // ========================================================
       // 🔥 SINGLE APP BOOT
       // ========================================================
-      if(
-        !window.__appBootRequested
-      ){
+      // ========================================================
+// 🔥 SINGLE APP BOOT
+// ========================================================
+if(!window.__APP_BOOTED_ONCE__){
 
-        window.__appBootRequested =
-          true;
+  window.__APP_BOOTED_ONCE__ = true;
 
-        startApp();
-      }
+  window.__LOGIN_JUST_FINISHED__ = true;
+
+  startApp();
+}
 
       console.log(
         "✅ Login success"
@@ -2996,9 +2998,9 @@ if (!window.__SW_CONTROLLER_BOUND__) {
         // ==================================================
         // 🔥 BUSY CONDITIONS
         // ==================================================
-       const justLoggedIn =
+ const justLoggedIn =
 
-  Date.now() - (window.__LOGIN_TIME__ || 0) < 30000;
+  Date.now() - (window.__LOGIN_TIME__ || 0) < 120000;
 
 const isBusy =
 
@@ -14817,6 +14819,26 @@ function startOnlineLoginFlow(){
   );
 
   // ============================================================
+  // 🔥 BLOCK IMMEDIATE POST-LOGIN REFRESH
+  // ============================================================
+  const justLoggedIn =
+
+    Date.now() -
+    (window.__LOGIN_TIME__ || 0)
+    < 20000;
+
+  if(justLoggedIn){
+
+    console.warn(
+      "⛔ Skipping refresh after login"
+    );
+
+    authFlowRunning = false;
+
+    return;
+  }
+
+  // ============================================================
   // 🔥 LOCAL PHONE
   // ============================================================
   const phone =
@@ -14939,12 +14961,9 @@ function startOnlineLoginFlow(){
     );
 
     // ==========================================================
-    // 🔥 LOGIN SESSION COMPLETE
+    // 🔥 LOGIN COMPLETE
     // ==========================================================
     loginCompleted = true;
-
-    window.__LOGIN_TIME__ =
-      Date.now();
 
     // ==========================================================
     // 🔥 NETWORK
@@ -14968,66 +14987,39 @@ function startOnlineLoginFlow(){
       );
     }
 
-    // ==========================================================
-    // 🔥 DO NOT START APP AGAIN
-    // APP ALREADY STARTED ELSEWHERE
-    // ==========================================================
     console.log(
-      "✅ Profile refreshed only"
+      "✅ Profile refresh completed"
     );
 
     // ==========================================================
-    // 🔥 CONTINUE FLOW
+    // 🔥 DO NOT RESTART APP
     // ==========================================================
-    return callBackend(
-      "updateVillageRisk"
-    );
+    return true;
   })
 
   // ============================================================
-  // 🔥 CONE DATA
+  // 🔥 SAFE UI REFRESH ONLY
   // ============================================================
-  .then(function(coneData){
+  .then(function(){
 
-    if(!coneData){
+    // 🔥 NEVER RUN DURING LOGIN WINDOW
+    const stillInLoginWindow =
 
-      return null;
-    }
+      Date.now() -
+      (window.__LOGIN_TIME__ || 0)
+      < 20000;
 
-    window.coneVillages =
-      coneData;
+    if(stillInLoginWindow){
 
-    return callBackend(
-      "getVillages"
-    );
-  })
+      console.warn(
+        "⛔ Heavy refresh skipped"
+      );
 
-  // ============================================================
-  // 🔥 VILLAGES
-  // ============================================================
-  .then(function(villageList){
-
-    if(villageList){
-
-      window.villages =
-
-        (villageList || []).map(v => ({
-
-          name:
-            v.name ||
-            v.Village ||
-            "Unknown",
-
-          lat:
-            parseFloat(v.lat),
-
-          lon:
-            parseFloat(v.lon)
-        }));
+      return;
     }
 
     // ==========================================================
-    // 🔥 SAFE REFRESH
+    // 🔥 LIGHT REFRESH ONLY
     // ==========================================================
     try{
 
@@ -15040,54 +15032,6 @@ function startOnlineLoginFlow(){
         e
       );
     }
-
-    // ==========================================================
-    // 🔥 HIDE SPLASH
-    // ==========================================================
-    try{
-
-      hideSplash();
-
-    }catch(e){}
-
-    // ==========================================================
-    // 🔥 SAFE DELAYED TASKS
-    // ==========================================================
-    setTimeout(() => {
-
-      try{
-
-        loadRangeKML?.();
-
-      }catch(e){}
-    }, 500);
-
-    setTimeout(() => {
-
-      try{
-
-        initEventListeners?.();
-
-      }catch(e){}
-    }, 200);
-
-    setTimeout(() => {
-
-      try{
-
-        startChat?.();
-
-      }catch(e){}
-    }, 1500);
-
-    setTimeout(() => {
-
-      try{
-
-        cleanOldMessages?.();
-
-      }catch(e){}
-    }, 6000);
 
   })
 
@@ -15136,7 +15080,8 @@ function startOnlineLoginFlow(){
       "✅ Auth flow complete"
     );
   });
-} function hideSplash(){
+}
+    function hideSplash(){
 
   const splash = document.getElementById("splash-screen");
   if(!splash) return;
