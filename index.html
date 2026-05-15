@@ -18994,9 +18994,19 @@ function startDuty(event) {
     // =====================================================
     // 🔥 IMMEDIATE UI UPDATE (NO WAIT)
     // =====================================================
-    window.__dutyUpdating = true;
-    updateDutyButton(); // shows ⏳
+   // =====================================================
+// 🔥 IMMEDIATE UI ACTIVE
+// =====================================================
+window.isDutyActive = true;
+window.__dutyUpdating = false;
+window.__dutyChecked = true;
 
+updateDutyButton();
+
+// 🔥 CLOSE FORM IMMEDIATELY
+if(typeof closeDutyForm === "function"){
+  closeDutyForm();
+}
     // =====================================================
     // 🔥 BACKEND CALL
     // =====================================================
@@ -19312,28 +19322,7 @@ alert("✅ Duty Started");
     // =====================================================
     // 🔥 FINAL UI STATE
     // =====================================================
-    window.isDutyActive = true;
-
-    window.__dutyChecked = true;
-
-    window.__dutyUpdating = false;
-
-    updateDutyButton();
-
-    setTimeout(()=>{
-
-      if(typeof autoShowEndDuty === "function"){
-
-        autoShowEndDuty();
-      }
-
-    },800);
-
-    if(typeof closeDutyForm === "function"){
-
-      closeDutyForm();
-    }
-
+    
   } catch(err){
 
     console.error(
