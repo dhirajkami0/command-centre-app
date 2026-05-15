@@ -2996,20 +2996,25 @@ if (!window.__SW_CONTROLLER_BOUND__) {
         // ==================================================
         // 🔥 BUSY CONDITIONS
         // ==================================================
-        const isBusy =
+       const justLoggedIn =
 
-          window.isFormOpen ||
+  Date.now() - (window.__LOGIN_TIME__ || 0) < 30000;
 
-          window.isUserTyping ||
+const isBusy =
 
-          window.isDutyActive ||
+  window.isFormOpen ||
 
-          loginUIShown ||
+  window.isUserTyping ||
 
-          loginInProgress ||
+  window.isDutyActive ||
 
-          !window.userProfile;
+  loginUIShown ||
 
+  loginInProgress ||
+
+  justLoggedIn ||
+
+  !window.userProfile;
         // ==================================================
         // 🔥 WAIT IF LOGIN / DUTY ACTIVE
         // ==================================================
@@ -14793,99 +14798,345 @@ function normalizeUserProfile(profile){
 // ================= ONLINE LOGIN FLOW =================
 function startOnlineLoginFlow(){
 
+  // ============================================================
+  // 🔒 HARD AUTH FLOW LOCK
+  // ============================================================
   if(authFlowRunning){
-    console.warn("⛔ Auth flow already running");
+
+    console.warn(
+      "⛔ Auth flow already running"
+    );
+
     return;
   }
+
   authFlowRunning = true;
 
-  const phone = localStorage.getItem("userPhone") || "";
+  console.log(
+    "🚀 startOnlineLoginFlow()"
+  );
 
-  if (!phone) {
-    if(!loginModalLocked && !loginShownOnce){
+  // ============================================================
+  // 🔥 LOCAL PHONE
+  // ============================================================
+  const phone =
+
+    localStorage.getItem(
+      "userPhone"
+    ) || "";
+
+  // ============================================================
+  // 🔴 NO PHONE
+  // ============================================================
+  if(!phone){
+
+    console.warn(
+      "⚠ No saved phone"
+    );
+
+    if(
+
+      !loginModalLocked &&
+
+      !loginShownOnce &&
+
+      !window.userProfile
+
+    ){
+
       loginShownOnce = true;
+
       showLogin();
     }
+
     authFlowRunning = false;
+
     return;
   }
 
-  callBackend("GET_PROFILE", { phone: phone })
+  // ============================================================
+  // 🔥 GET PROFILE
+  // ============================================================
+  callBackend(
 
-    .then(function (profile) {
+    "GET_PROFILE",
 
-      if (!profile || profile.error) {
-        localStorage.removeItem("userPhone");
+    {
+      phone: phone
+    }
 
-        if(!loginModalLocked && !loginShownOnce){
-          loginShownOnce = true;
-          showLogin();
-        }
+  )
 
-        authFlowRunning = false;
-        return Promise.reject("Invalid profile");
+  .then(function(profile){
+
+    // ==========================================================
+    // 🔴 INVALID PROFILE
+    // ==========================================================
+    if(
+
+      !profile ||
+
+      profile.error
+
+    ){
+
+      console.warn(
+        "⚠ Invalid profile"
+      );
+
+      localStorage.removeItem(
+        "userPhone"
+      );
+
+      localStorage.removeItem(
+        "userProfile"
+      );
+
+      window.userProfile = null;
+
+      if(
+
+        !loginModalLocked &&
+
+        !loginShownOnce
+
+      ){
+
+        loginShownOnce = true;
+
+        showLogin();
       }
 
-      const fixedProfile = normalizeUserProfile(profile);
+      authFlowRunning = false;
 
-      window.userProfile = fixedProfile;
-      localStorage.setItem("userProfile", JSON.stringify(fixedProfile));
+      return Promise.reject(
+        "Invalid profile"
+      );
+    }
 
-      updateNetworkStatus("online");
+    // ==========================================================
+    // 🔥 NORMALIZE PROFILE
+    // ==========================================================
+    const fixedProfile =
+
+      normalizeUserProfile(
+        profile
+      );
+
+    // ==========================================================
+    // 🔥 SAVE GLOBAL PROFILE
+    // ==========================================================
+    window.userProfile =
+      fixedProfile;
+
+    localStorage.setItem(
+
+      "userProfile",
+
+      JSON.stringify(
+        fixedProfile
+      )
+    );
+
+    // ==========================================================
+    // 🔥 LOGIN SESSION COMPLETE
+    // ==========================================================
+    loginCompleted = true;
+
+    window.__LOGIN_TIME__ =
+      Date.now();
+
+    // ==========================================================
+    // 🔥 NETWORK
+    // ==========================================================
+    updateNetworkStatus(
+      "online"
+    );
+
+    // ==========================================================
+    // 🔥 ROLE CONTROL
+    // ==========================================================
+    try{
+
       applyRoleControl?.();
 
-      // 🔥 FIX: prevent duplicate startApp
-      if(!window.__appBootRequested){
-        window.__appBootRequested = true;
-        startApp?.();
-      }
+    }catch(e){
 
-      initDutyControl?.();
+      console.warn(
+        "⚠ applyRoleControl failed",
+        e
+      );
+    }
 
-      return callBackend("updateVillageRisk");
-    })
+    // ==========================================================
+    // 🔥 DO NOT START APP AGAIN
+    // APP ALREADY STARTED ELSEWHERE
+    // ==========================================================
+    console.log(
+      "✅ Profile refreshed only"
+    );
 
-    .then(function (coneData) {
-      if (!coneData) return null;
-      window.coneVillages = coneData;
-      return callBackend("getVillages");
-    })
+    // ==========================================================
+    // 🔥 CONTINUE FLOW
+    // ==========================================================
+    return callBackend(
+      "updateVillageRisk"
+    );
+  })
 
-    .then(function (villageList) {
+  // ============================================================
+  // 🔥 CONE DATA
+  // ============================================================
+  .then(function(coneData){
 
-      if (villageList) {
-        window.villages = (villageList || []).map(v => ({
-          name: v.name || v.Village || "Unknown",
-          lat: parseFloat(v.lat),
-          lon: parseFloat(v.lon)
+    if(!coneData){
+
+      return null;
+    }
+
+    window.coneVillages =
+      coneData;
+
+    return callBackend(
+      "getVillages"
+    );
+  })
+
+  // ============================================================
+  // 🔥 VILLAGES
+  // ============================================================
+  .then(function(villageList){
+
+    if(villageList){
+
+      window.villages =
+
+        (villageList || []).map(v => ({
+
+          name:
+            v.name ||
+            v.Village ||
+            "Unknown",
+
+          lat:
+            parseFloat(v.lat),
+
+          lon:
+            parseFloat(v.lon)
         }));
-      }
+    }
+
+    // ==========================================================
+    // 🔥 SAFE REFRESH
+    // ==========================================================
+    try{
 
       refreshAll?.();
 
-      try { hideSplash(); } catch(e){}
+    }catch(e){
 
-      setTimeout(() => { loadRangeKML?.(); }, 500);
-      setTimeout(() => { initEventListeners?.(); }, 200);
-      setTimeout(() => { startChat?.(); }, 1500);
-      setTimeout(() => { cleanOldMessages?.(); }, 6000);
+      console.warn(
+        "⚠ refreshAll failed",
+        e
+      );
+    }
 
-    })
+    // ==========================================================
+    // 🔥 HIDE SPLASH
+    // ==========================================================
+    try{
 
-    .catch(function (err) {
-      console.warn("⚠ startOnlineLoginFlow failed:", err);
-      updateNetworkStatus("offline");
+      hideSplash();
 
-      if(!loginModalLocked && !loginShownOnce){
-        loginShownOnce = true;
-        showLogin();
-      }
-    })
+    }catch(e){}
 
-    .finally(() => {
-      authFlowRunning = false;
-    });
-}  function hideSplash(){
+    // ==========================================================
+    // 🔥 SAFE DELAYED TASKS
+    // ==========================================================
+    setTimeout(() => {
+
+      try{
+
+        loadRangeKML?.();
+
+      }catch(e){}
+    }, 500);
+
+    setTimeout(() => {
+
+      try{
+
+        initEventListeners?.();
+
+      }catch(e){}
+    }, 200);
+
+    setTimeout(() => {
+
+      try{
+
+        startChat?.();
+
+      }catch(e){}
+    }, 1500);
+
+    setTimeout(() => {
+
+      try{
+
+        cleanOldMessages?.();
+
+      }catch(e){}
+    }, 6000);
+
+  })
+
+  // ============================================================
+  // 🔴 FAILURE
+  // ============================================================
+  .catch(function(err){
+
+    console.warn(
+      "⚠ startOnlineLoginFlow failed:",
+      err
+    );
+
+    updateNetworkStatus(
+      "offline"
+    );
+
+    // ==========================================================
+    // 🔥 SHOW LOGIN SAFELY
+    // ==========================================================
+    if(
+
+      !window.userProfile &&
+
+      !loginModalLocked &&
+
+      !loginShownOnce
+
+    ){
+
+      loginShownOnce = true;
+
+      showLogin();
+    }
+
+  })
+
+  // ============================================================
+  // 🔓 FINALLY
+  // ============================================================
+  .finally(() => {
+
+    authFlowRunning = false;
+
+    console.log(
+      "✅ Auth flow complete"
+    );
+  });
+} function hideSplash(){
 
   const splash = document.getElementById("splash-screen");
   if(!splash) return;
