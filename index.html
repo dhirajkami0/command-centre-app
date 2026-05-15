@@ -2750,83 +2750,155 @@ const dutyWait = setInterval(() => {
     // ======================================================
     // 🔥 FIREBASE (UNCHANGED)
     // ======================================================
-    setTimeout(async () => {
+   // ======================================================
+// 🔥 FIREBASE INIT (IMMEDIATE)
+// ======================================================
+(async () => {
 
-      try {
+  try {
 
-        const { initializeApp } = await import("https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js");
+    console.log(
+      "🔥 STARTING FIREBASE INIT"
+    );
 
-        const {
-  getFirestore,
-  collection,
-  addDoc,
-  onSnapshot,
-  query,
-  orderBy,
-  serverTimestamp,
-  getDocs,
-  getDoc,
-  deleteDoc,
-  deleteField,
-  doc,
-  setDoc,
-  updateDoc,
-  arrayUnion
-} = await import("https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js");
+    // ==================================================
+    // 🔥 IMPORT FIREBASE APP
+    // ==================================================
+    const { initializeApp } =
 
-        const { getStorage, ref, uploadBytes, getDownloadURL }
-          = await import("https://www.gstatic.com/firebasejs/10.12.0/firebase-storage.js");
+      await import(
+        "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js"
+      );
 
-        const app = initializeApp(window.firebaseConfig);
+    // ==================================================
+    // 🔥 IMPORT FIRESTORE
+    // ==================================================
+    const {
 
-        window.db = getFirestore(app);
-        window.storage = getStorage(app);
+      getFirestore,
+      collection,
+      addDoc,
+      onSnapshot,
+      query,
+      orderBy,
+      serverTimestamp,
+      getDocs,
+      getDoc,
+      deleteDoc,
+      deleteField,
+      doc,
+      setDoc,
+      updateDoc,
+      arrayUnion
 
-      window.fb = {
-  collection,
-  addDoc,
-  onSnapshot,
-  query,
-  orderBy,
-  serverTimestamp,
-  getDocs,
-  getDoc,
-  deleteDoc,
-  deleteField,
-  doc,
-  setDoc,
-  updateDoc,
-  arrayUnion,
-  ref,
-  uploadBytes,
-  getDownloadURL
-};
-        window.firebaseReady = true;
-           // ============================================
-  // 🧹 RUN CLEANUP IMMEDIATELY
-  // ============================================
-  cleanupOldTracks();
+    } = await import(
 
-  // ============================================
-  // 🧹 AUTO RUN EVERY 24 HOURS
-  // ============================================
-  setInterval(
+      "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js"
+    );
 
-    cleanupOldTracks,
+    // ==================================================
+    // 🔥 IMPORT STORAGE
+    // ==================================================
+    const {
 
-    24 * 60 * 60 * 1000
-  );
- 
+      getStorage,
+      ref,
+      uploadBytes,
+      getDownloadURL
 
-        if(typeof startChat === "function"){
-          startChat();
-        }
+    } = await import(
 
-      } catch(e){
-        console.error("❌ Firebase load failed:", e);
-      }
+      "https://www.gstatic.com/firebasejs/10.12.0/firebase-storage.js"
+    );
 
-    }, 1500);
+    // ==================================================
+    // 🔥 INIT APP
+    // ==================================================
+    const app =
+
+      initializeApp(
+        window.firebaseConfig
+      );
+
+    // ==================================================
+    // 🔥 DATABASE
+    // ==================================================
+    window.db =
+
+      getFirestore(app);
+
+    // ==================================================
+    // 🔥 STORAGE
+    // ==================================================
+    window.storage =
+
+      getStorage(app);
+
+    // ==================================================
+    // 🔥 FIREBASE HELPERS
+    // ==================================================
+    window.fb = {
+
+      collection,
+      addDoc,
+      onSnapshot,
+      query,
+      orderBy,
+      serverTimestamp,
+      getDocs,
+      getDoc,
+      deleteDoc,
+      deleteField,
+      doc,
+      setDoc,
+      updateDoc,
+      arrayUnion,
+      ref,
+      uploadBytes,
+      getDownloadURL
+    };
+
+    // ==================================================
+    // 🔥 READY FLAG
+    // ==================================================
+    window.firebaseReady = true;
+
+    console.log(
+      "🔥 FIREBASE READY"
+    );
+
+    // ============================================
+    // 🧹 RUN CLEANUP IMMEDIATELY
+    // ============================================
+    cleanupOldTracks();
+
+    // ============================================
+    // 🧹 AUTO RUN EVERY 24 HOURS
+    // ============================================
+    setInterval(
+
+      cleanupOldTracks,
+
+      24 * 60 * 60 * 1000
+    );
+
+    // ==================================================
+    // 💬 START CHAT
+    // ==================================================
+    if(typeof startChat === "function"){
+
+      startChat();
+    }
+
+  } catch(e){
+
+    console.error(
+      "❌ Firebase load failed:",
+      e
+    );
+  }
+
+})();
 
   } catch(e){
     console.error("❌ startApp crash:", e);
