@@ -3076,32 +3076,7 @@ if (!window.__SW_CONTROLLER_BOUND__) {
       // ==================================================
       // 🔥 FAILSAFE
       // ==================================================
-      setTimeout(() => {
-
-        // ==============================================
-        // 🔥 DO NOT FORCE RELOAD DURING LOGIN
-        // ==============================================
-        if(
-
-          !window.__SW_REFRESHING__ &&
-
-          !loginUIShown &&
-
-          !loginInProgress &&
-
-          window.userProfile
-
-        ){
-
-          console.warn(
-            "⚠ Fallback reload"
-          );
-
-          location.reload();
-        }
-
-      }, 20000);
-
+     
     }
 
   );
