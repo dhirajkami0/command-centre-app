@@ -15666,32 +15666,150 @@ async function setOnline(){
 
   try {
 
-    const user = window.userProfile?.rawName;
+    // =====================================================
+    // 🔥 USER
+    // =====================================================
+    const user =
+      window.userProfile?.rawName;
+
     if(!user) return;
 
-    onlineRef = window.fb.doc(window.db, "online_users", user);
+    // =====================================================
+    // 🔥 FIRESTORE REF
+    // =====================================================
+    onlineRef =
 
-    await window.fb.setDoc(onlineRef, {
-      user,
-      lastSeen: Date.now(),
-      online: true
-    });
+      window.fb.doc(
+        window.db,
+        "online_users",
+        user
+      );
 
-    window.addEventListener("beforeunload", async () => {
-      await window.fb.setDoc(onlineRef, {
+    // =====================================================
+    // 🔥 SET ONLINE IMMEDIATELY
+    // =====================================================
+    await window.fb.setDoc(
+      onlineRef,
+      {
         user,
         lastSeen: Date.now(),
-        online: false
-      });
-    });
+        online:true
+      }
+    );
 
-    console.log("🟢 Online set");
+    console.log(
+      "🟢 ONLINE SET"
+    );
+
+    // =====================================================
+    // 🔥 HEARTBEAT
+    // =====================================================
+    if(window.onlineHeartbeat){
+
+      clearInterval(
+        window.onlineHeartbeat
+      );
+    }
+
+    window.onlineHeartbeat =
+
+      setInterval(async ()=>{
+
+        try {
+
+          await window.fb.setDoc(
+            onlineRef,
+            {
+              user,
+              lastSeen: Date.now(),
+              online:true
+            }
+          );
+
+          console.log(
+            "💓 ONLINE HEARTBEAT"
+          );
+
+        } catch(e){
+
+          console.error(
+            "❌ HEARTBEAT ERROR:",
+            e
+          );
+        }
+
+      }, 15000);
+
+    // =====================================================
+    // 🔥 APP CLOSE
+    // =====================================================
+    async function setOffline(){
+
+      try {
+
+        await window.fb.setDoc(
+          onlineRef,
+          {
+            user,
+            lastSeen: Date.now(),
+            online:false
+          }
+        );
+
+        console.log(
+          "🔴 OFFLINE SET"
+        );
+
+      } catch(e){
+
+        console.error(
+          "❌ OFFLINE ERROR:",
+          e
+        );
+      }
+    }
+
+    // =====================================================
+    // 🔥 TAB CLOSE
+    // =====================================================
+    window.addEventListener(
+      "beforeunload",
+      setOffline
+    );
+
+    // =====================================================
+    // 🔥 TAB HIDDEN
+    // =====================================================
+    document.addEventListener(
+      "visibilitychange",
+      ()=>{
+
+        if(document.hidden){
+
+          setOffline();
+
+        } else {
+
+          window.fb.setDoc(
+            onlineRef,
+            {
+              user,
+              lastSeen: Date.now(),
+              online:true
+            }
+          );
+        }
+      }
+    );
 
   } catch(e){
-    console.error("❌ setOnline error:", e);
+
+    console.error(
+      "❌ setOnline error:",
+      e
+    );
   }
 }
-
 
 // ================= LISTEN ONLINE =================
 function listenOnline(){
@@ -15700,29 +15818,80 @@ function listenOnline(){
 
   try {
 
-    const ref = window.fb.collection(window.db, "online_users");
+    const ref =
+      window.fb.collection(
+        window.db,
+        "online_users"
+      );
 
     window.fb.onSnapshot(ref, snap => {
 
       let statusText = "";
 
+      const now = Date.now();
+
       snap.forEach(doc => {
+
         const d = doc.data();
 
-        if(d.user !== window.userProfile.rawName){
-          statusText += `${d.user} - ${d.online ? "🟢 Online" : "Last seen: " + new Date(d.lastSeen).toLocaleTimeString()}<br>`;
+        // =========================================
+        // 🔥 SKIP SELF
+        // =========================================
+        if(
+          d.user ===
+          window.userProfile.rawName
+        ){
+          return;
+        }
+
+        // =========================================
+        // 🔥 LAST SEEN AGE
+        // =========================================
+        const age =
+
+          now - (
+            d.lastSeen || 0
+          );
+
+        // =========================================
+        // 🔥 ONLY RECENT USERS ONLINE
+        // =========================================
+        const isReallyOnline =
+
+          age < 45000;
+
+        // =========================================
+        // 🔥 SHOW ONLY ACTIVE USERS
+        // =========================================
+        if(isReallyOnline){
+
+          statusText += `
+            ${d.user}
+            - 🟢 Online<br>
+          `;
         }
       });
 
-      const box = document.getElementById("typingIndicator");
-      if(box && !box.innerText) box.innerHTML = statusText;
+      const box =
+        document.getElementById(
+          "typingIndicator"
+        );
+
+      if(box){
+
+        box.innerHTML = statusText;
+      }
+
     });
 
   } catch(e){
-    console.error("❌ listenOnline error:", e);
+
+    console.error(
+      "❌ listenOnline error:",
+      e
+    );
   }
-}
-async function initMic(){
+}async function initMic(){
   try{
     await navigator.mediaDevices.getUserMedia({ audio: true });
     console.log("🎤 Mic ready");
