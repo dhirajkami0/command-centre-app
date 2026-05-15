@@ -15543,14 +15543,65 @@ let onlineRef;
 
 
 // ================= SAFE CHECK =================
-function isFirebaseReady(){
-  if(!window.fb || !window.db){
-    console.error("❌ Firebase NOT READY");
-    return false;
-  }
-  return true;
-}
-// ================= BADGE =================
+// ================= FIREBASE READY =================
+async function waitForFirebaseReady(
+
+  timeout = 15000
+
+){
+
+  const start = Date.now();
+
+  return new Promise((resolve,reject)=>{
+
+    const timer = setInterval(()=>{
+
+      // ==========================================
+      // 🔥 READY
+      // ==========================================
+      if(
+
+        window.fb &&
+
+        window.db
+
+      ){
+
+        clearInterval(timer);
+
+        console.log(
+          "🔥 Firebase READY"
+        );
+
+        resolve(true);
+
+        return;
+      }
+
+      // ==========================================
+      // 🔥 TIMEOUT
+      // ==========================================
+      if(
+
+        Date.now() - start >
+
+        timeout
+
+      ){
+
+        clearInterval(timer);
+
+        reject(
+          new Error(
+            "Firebase init timeout"
+          )
+        );
+      }
+
+    },300);
+
+  });
+}// ================= BADGE =================
 function updateBadge(){
   const badge = document.getElementById("chatBadge");
   if(!badge) return;
@@ -17939,7 +17990,10 @@ function startDuty(event) {
 
     if(!window.db || !window.fb){
 
-      throw new Error("Firebase not ready");
+     // =====================================================
+// 🔥 WAIT FIREBASE READY
+// =====================================================
+await waitForFirebaseReady();
     }
 
     const {
