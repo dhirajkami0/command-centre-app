@@ -17345,187 +17345,15 @@ function handleDutyAction(e){
   console.log("🔥 BUTTON CLICK");
   console.log("👉 isDutyActive:", window.isDutyActive);
 
-  // ============================================================
-  // 🔴 END DUTY
-  // ============================================================
   if(window.isDutyActive){
-
     console.log("🔴 Opening END DUTY");
-
     openEndDutyForm();
-
-    return;
-  }
-
-  // ============================================================
-  // 🟢 START DUTY
-  // ============================================================
-  console.log("🟢 Opening START DUTY");
-
-  // ============================================================
-  // ⚡ INSTANT MARKER PRELOAD
-  // ============================================================
-  try{
-
-    navigator.geolocation.getCurrentPosition(
-
-      (pos)=>{
-
-        try{
-
-          const lat =
-            pos.coords.latitude;
-
-          const lon =
-            pos.coords.longitude;
-
-          const cleanName =
-            window.userProfile?.cleanName;
-
-          if(!cleanName){
-
-            openDutyForm();
-
-            return;
-          }
-
-          // ====================================================
-          // 🔥 REMOVE OLD MARKER
-          // ====================================================
-          if(window.staffMarkers?.[cleanName]){
-
-            try{
-
-              map.removeLayer(
-                window.staffMarkers[cleanName]
-              );
-
-            }catch(_){}
-          }
-
-          // ====================================================
-          // 🔥 CREATE INSTANT MARKER
-          // ====================================================
-          // ====================================================
-// 🔥 ORIGINAL LIVE ICON
-// ====================================================
-const icon = L.divIcon({
-
-  html:`
-
-  <div class="markerWrap">
-
-    <div class="radarPulse"></div>
-
-    <div class="markerCore">
-
-      <i class="fa-solid fa-person-military-pointing"
-        style="
-          color:#00ff00;
-          font-size:20px;
-        ">
-      </i>
-
-    </div>
-
-  </div>
-
-  `,
-
-  iconSize:[30,30],
-
-  iconAnchor:[15,15]
-});
-
-// ====================================================
-// 🔥 CREATE INSTANT MARKER
-// ====================================================
-const instantMarker =
-
-  L.marker(
-    [lat, lon],
-    {
-      icon,
-      zIndexOffset:9999
-    }
-  )
-
-  .addTo(map);
-          instantMarker.bindPopup(`
-
-            <div style="
-              font-family:Segoe UI;
-              font-size:12px;
-              line-height:1.5;
-            ">
-
-              <b>
-                ${cleanName}
-              </b>
-
-              <br>
-
-              🟢 Starting Duty...
-
-            </div>
-
-          `);
-
-          // ====================================================
-          // 🔥 SAVE GLOBAL
-          // ====================================================
-          window.staffMarkers[
-            cleanName
-          ] = instantMarker;
-
-          console.log(
-            "⚡ Instant marker shown"
-          );
-
-        }catch(err){
-
-          console.warn(
-            "⚠ Instant marker failed",
-            err
-          );
-        }
-
-        // ======================================================
-        // 🔥 OPEN DUTY FORM AFTER MARKER
-        // ======================================================
-        openDutyForm();
-      },
-
-      (err)=>{
-
-        console.warn(
-          "⚠ GPS preload failed",
-          err
-        );
-
-        // ======================================================
-        // 🔥 STILL OPEN DUTY FORM
-        // ======================================================
-        openDutyForm();
-      },
-
-      {
-        enableHighAccuracy:true,
-        timeout:4000,
-        maximumAge:0
-      }
-    );
-
-  }catch(err){
-
-    console.warn(
-      "⚠ Marker preload exception",
-      err
-    );
-
+  } else {
+    console.log("🟢 Opening START DUTY");
     openDutyForm();
   }
-}        /* 🔥 FIXED START DUTY: CAPTURES DATA AND UPDATES BUTTON */
+}
+       /* 🔥 FIXED START DUTY: CAPTURES DATA AND UPDATES BUTTON */
     // ======================================================
 // 🧹 CLEAN OLD TRACKS
 // ======================================================
@@ -17813,8 +17641,72 @@ console.log(
     // =====================================================
     // 🔥 LIVE STAFF UPDATE
     // =====================================================
-    await setDoc(
+    // =====================================================
+// 🔥 GET REAL GPS FIRST
+// =====================================================
+const gpsPosition =
+
+  await new Promise((resolve)=>{
+
+    try{
+
+      navigator.geolocation.getCurrentPosition(
+
+        (pos)=>{
+
+          resolve({
+
+            lat:
+              pos.coords.latitude,
+
+            lon:
+              pos.coords.longitude,
+
+            accuracy:
+              pos.coords.accuracy || 0
+          });
+        },
+
+        ()=>{
+
+          resolve(null);
+        },
+
+        {
+          enableHighAccuracy:true,
+          timeout:5000,
+          maximumAge:0
+        }
+      );
+
+    }catch(e){
+
+      resolve(null);
+    }
+  });
+
+// =====================================================
+// 🔥 REAL GPS
+// =====================================================
+const startLat =
+
+  gpsPosition?.lat || 0;
+
+const startLon =
+
+  gpsPosition?.lon || 0;
+
+const startAccuracy =
+
+  gpsPosition?.accuracy || 0;
+
+// =====================================================
+// 🔥 LIVE STAFF UPDATE
+// =====================================================
+await setDoc(
+
   liveRef,
+
   {
 
     cleanName:
@@ -17870,15 +17762,32 @@ console.log(
       "ACTIVE",
 
     // =================================================
+    // 🔥 REAL GPS IMMEDIATE
+    // =================================================
+    lat:
+      startLat,
+
+    lon:
+      startLon,
+
+    accuracy:
+      startAccuracy,
+
+    speed:0,
+
+    // =================================================
     // 🔥 LOCATION TIME
     // =================================================
     lastSeen:
-      now.toLocaleString(),
+      Date.now(),
 
     updatedAt:
       serverTimestamp(),
 
     timestamp:
+      now.toISOString(),
+
+    time:
       now.toISOString(),
 
     // =================================================
