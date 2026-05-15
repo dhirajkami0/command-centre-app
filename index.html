@@ -15613,7 +15613,34 @@ let lastMsgTime = 0;
 let typingTimer;
 let onlineRef;
 
+// =====================================================
+// 🔥 FIREBASE SAFE CHECK
+// =====================================================
+function isFirebaseReady(){
 
+  if(
+
+    !window.firebaseReady ||
+
+    !window.fb ||
+
+    !window.db
+
+  ){
+
+    console.warn(
+      "⏳ Firebase not ready"
+    );
+
+    return false;
+  }
+
+  return true;
+}
+
+// 🔥 GLOBAL
+window.isFirebaseReady =
+  isFirebaseReady;
 // ================= SAFE CHECK =================
 // ================= FIREBASE READY =================
 async function waitForFirebaseReady(
@@ -16024,34 +16051,121 @@ function listenOnline(){
 }
 
 // ================= SEND TEXT =================
+// ================= SEND TEXT =================
 async function sendMessage(){
 
   try {
 
-    const input = document.getElementById("chatInput");
-    const text = input.value.trim();
+    // ==================================================
+    // 🔥 FIREBASE READY
+    // ==================================================
+    if(!isFirebaseReady()){
+
+      alert(
+        "Chat initializing..."
+      );
+
+      return;
+    }
+
+    // ==================================================
+    // 🔥 USER
+    // ==================================================
+    if(!window.userProfile){
+
+      alert(
+        "Login required"
+      );
+
+      return;
+    }
+
+    // ==================================================
+    // 🔥 INPUT
+    // ==================================================
+    const input =
+
+      document.getElementById(
+        "chatInput"
+      );
+
+    if(!input){
+
+      console.error(
+        "❌ chatInput missing"
+      );
+
+      return;
+    }
+
+    const text =
+      input.value.trim();
+
     if(!text) return;
 
-    const col = getChatCollection();
-    if(!col) return;
+    // ==================================================
+    // 🔥 COLLECTION
+    // ==================================================
+    const col =
+      getChatCollection();
 
-    await window.fb.addDoc(col, {
-      type: "text",
-      text,
-      user: window.userProfile.rawName,
-      phone: window.userProfile.phone,
-      time: window.fb.serverTimestamp(),
-      status: "sent"
-    });
+    if(!col){
 
+      console.error(
+        "❌ Chat collection null"
+      );
+
+      return;
+    }
+
+    // ==================================================
+    // 🔥 SEND
+    // ==================================================
+    await window.fb.addDoc(
+
+      col,
+
+      {
+        type: "text",
+
+        text,
+
+        user:
+          window.userProfile.rawName,
+
+        phone:
+          window.userProfile.phone,
+
+        time:
+          window.fb.serverTimestamp(),
+
+        status: "sent"
+      }
+    );
+
+    // ==================================================
+    // 🔥 CLEAR
+    // ==================================================
     input.value = "";
-    console.log("✅ Message sent");
+
+    handleInputChange();
+
+    console.log(
+      "✅ Message sent"
+    );
 
   } catch(e){
-    console.error("❌ sendMessage:", e);
+
+    console.error(
+      "❌ sendMessage:",
+      e
+    );
+
+    alert(
+      "Message failed"
+    );
   }
 }
-
 
 // ================= IMAGE COMPRESS =================
 function compressImage(file){
@@ -16084,7 +16198,7 @@ async function sendLocation(){
 
   try {
 
-    if(!window.isFirebaseReady()){
+    if(!isFirebaseReady()){
       showToast("⏳ Firebase not ready", "warning");
       return;
     }
@@ -16216,226 +16330,437 @@ window.sendLocation = sendLocation;
 }
     
     // ================= SEND PHOTO =================
+// ================= SEND PHOTO =================
 async function sendPhoto(e){
 
   try {
 
-    const file = e.target.files[0];
-    if(!file) return;
+    // ==================================================
+    // 🔥 FIREBASE READY
+    // ==================================================
+    if(!isFirebaseReady()){
 
-    // 🔥 SAFER SOURCE DETECTION
-    const inputId = e.target.id || "";
-    const sourceAttr = e.target.getAttribute("data-source");
-
-    const isCamera =
-      sourceAttr === "camera" ||
-      inputId === "cameraInput" ||
-      (e.target.capture && e.target.capture !== "");
-
-    console.log("📸 Source detect:", {inputId, sourceAttr, isCamera});
-
-    // =========================
-    // 🖼 GALLERY → NO OVERLAY
-    // =========================
-    if(!isCamera){
-
-      const fileRef = window.fb.ref(
-        window.storage,
-        "chat_photos/" + Date.now() + ".jpg"
+      alert(
+        "Chat initializing..."
       );
 
-      await window.fb.uploadBytes(fileRef, file);
-
-      const url = await window.fb.getDownloadURL(fileRef);
-
-      await window.fb.addDoc(getChatCollection(), {
-        type: "image",
-        imageUrl: url,
-        user: window.userProfile.rawName,
-        phone: window.userProfile.phone,
-        time: window.fb.serverTimestamp(),
-        status: "sent"
-      });
-
-      console.log("🖼 Gallery photo sent (NO overlay)");
       return;
     }
 
+    // ==================================================
+    // 🔥 STORAGE READY
+    // ==================================================
+    if(
 
-    // =========================
-    // 📸 CAMERA → WITH ACCURATE GPS
-    // =========================
+      !window.storage ||
+
+      !window.fb ||
+
+      !window.db
+
+    ){
+
+      alert(
+        "Storage not ready"
+      );
+
+      return;
+    }
+
+    // ==================================================
+    // 🔥 FILE
+    // ==================================================
+    const file =
+      e?.target?.files?.[0];
+
+    if(!file){
+
+      console.warn(
+        "⚠ No photo selected"
+      );
+
+      return;
+    }
+
+    console.log(
+      "🖼 Photo selected:",
+      file.name
+    );
+
+    // ==================================================
+    // 🔥 SOURCE DETECT
+    // ==================================================
+    const inputId =
+      e.target.id || "";
+
+    const sourceAttr =
+      e.target.getAttribute(
+        "data-source"
+      );
+
+    const isCamera =
+
+      sourceAttr === "camera" ||
+
+      inputId === "cameraInput" ||
+
+      (
+        e.target.capture &&
+        e.target.capture !== ""
+      );
+
+    console.log(
+      "📸 Source:",
+      {
+        inputId,
+        sourceAttr,
+        isCamera
+      }
+    );
+
+    // ==================================================
+    // 🔥 FILE REF
+    // ==================================================
+    const fileName =
+
+      "chat_photos/" +
+
+      Date.now() +
+
+      ".jpg";
+
+    const fileRef =
+
+      window.fb.ref(
+        window.storage,
+        fileName
+      );
+
+    // ==================================================
+    // 🖼 GALLERY
+    // ==================================================
+    if(!isCamera){
+
+      console.log(
+        "🖼 Uploading gallery photo..."
+      );
+
+      // ==============================================
+      // 🔥 COMPRESS
+      // ==============================================
+      const compressed =
+
+        await compressImage(
+          file
+        );
+
+      // ==============================================
+      // 🔥 UPLOAD
+      // ==============================================
+      await window.fb.uploadBytes(
+
+        fileRef,
+
+        compressed || file
+      );
+
+      // ==============================================
+      // 🔥 URL
+      // ==============================================
+      const url =
+
+        await window.fb.getDownloadURL(
+          fileRef
+        );
+
+      // ==============================================
+      // 🔥 SAVE CHAT
+      // ==============================================
+      await window.fb.addDoc(
+
+        getChatCollection(),
+
+        {
+          type: "image",
+
+          imageUrl: url,
+
+          user:
+            window.userProfile.rawName,
+
+          phone:
+            window.userProfile.phone,
+
+          time:
+            window.fb.serverTimestamp(),
+
+          status: "sent"
+        }
+      );
+
+      console.log(
+        "✅ Gallery photo sent"
+      );
+
+      showToast(
+        "🖼 Photo sent"
+      );
+
+      // ==============================================
+      // 🔥 RESET INPUT
+      // ==============================================
+      e.target.value = "";
+
+      return;
+    }
+
+    // ==================================================
+    // 📷 CAMERA FLOW
+    // ==================================================
 
     let lat = null;
     let lng = null;
 
     try {
 
-      let bestPos = null;
-      let bestAcc = Infinity;
-      let count = 0;
+      const pos =
 
-      const pos = await new Promise((resolve, reject) => {
+        await new Promise(
 
-        const watchId = navigator.geolocation.watchPosition(
+          (resolve,reject)=>{
 
-          (p) => {
+            navigator.geolocation
+              .getCurrentPosition(
 
-            const acc = p.coords.accuracy;
-            console.log("📍 Photo GPS reading:", acc);
+                resolve,
 
-            count++;
+                reject,
 
-            if(acc < bestAcc){
-              bestAcc = acc;
-              bestPos = p;
-            }
-
-            // stop when good or enough samples
-            if(acc < 20 || count >= 4){
-              navigator.geolocation.clearWatch(watchId);
-              resolve(bestPos);
-            }
-
-          },
-
-          (err) => {
-            navigator.geolocation.clearWatch(watchId);
-            reject(err);
-          },
-
-          {
-            enableHighAccuracy: true,
-            maximumAge: 0,
-            timeout: 8000
+                {
+                  enableHighAccuracy:true,
+                  timeout:10000,
+                  maximumAge:0
+                }
+              );
           }
         );
 
-        // fallback timeout
-        setTimeout(()=>{
-          try{
-            navigator.geolocation.clearWatch(watchId);
-            if(bestPos){
-              resolve(bestPos);
-            } else {
-              reject("No GPS fix");
-            }
-          }catch(e){
-            reject(e);
-          }
-        }, 8000);
+      lat =
+        pos.coords.latitude
+          .toFixed(5);
 
-      });
-
-      lat = pos.coords.latitude.toFixed(5);
-      lng = pos.coords.longitude.toFixed(5);
-
-      console.log("📍 FINAL GPS:", lat, lng, "Acc:", pos.coords.accuracy);
+      lng =
+        pos.coords.longitude
+          .toFixed(5);
 
     } catch(err){
-      console.warn("⚠ GPS failed (overlay will still show name/time)");
+
+      console.warn(
+        "⚠ Camera GPS failed"
+      );
     }
 
+    const name =
 
-    const name = window.userProfile.rawName || "UNKNOWN";
-    const time = new Date().toLocaleString();
+      window.userProfile.rawName
+      || "UNKNOWN";
+
+    const time =
+
+      new Date()
+        .toLocaleString();
 
     const img = new Image();
-    const reader = new FileReader();
 
-    reader.onload = ev => img.src = ev.target.result;
+    const reader =
+      new FileReader();
+
+    reader.onload =
+      ev => img.src =
+        ev.target.result;
 
     img.onload = async () => {
 
-      const canvas = document.createElement("canvas");
-      const ctx = canvas.getContext("2d");
+      try {
 
-      canvas.width = img.width;
-      canvas.height = img.height;
+        const canvas =
+          document.createElement(
+            "canvas"
+          );
 
-      ctx.drawImage(img, 0, 0);
+        const ctx =
+          canvas.getContext("2d");
 
-      // =========================
-      // 🔥 OVERLAY (COLOR UPDATED ONLY)
-      // =========================
+        canvas.width =
+          img.width;
 
-      const scale = canvas.width / 400;
+        canvas.height =
+          img.height;
 
-      const fontSize = Math.max(14, Math.floor(18 * scale * 1));
-      const padding = Math.floor(10 * scale);
-      const lineHeight = Math.floor(fontSize * 1.3);
-
-      let lines = [];
-
-      if(lat && lng){
-        lines.push(`Lat: ${lat}`);
-        lines.push(`Lng: ${lng}`);
-      }
-
-      lines.push(time);
-
-      const boxHeight = lineHeight * (lines.length + 1) + padding * 2;
-
-      ctx.fillStyle = "rgba(0,0,0,0.6)";
-      ctx.fillRect(0, canvas.height - boxHeight, canvas.width, boxHeight);
-
-      // 🔥 CHANGED TEXT COLOR (better visibility)
-      ctx.fillStyle = "#00ffcc";  // 🔥 NEW COLOR
-      ctx.font = `bold ${fontSize}px Arial`;
-
-      ctx.textAlign = "left";
-
-      let y = canvas.height - boxHeight + lineHeight;
-
-      lines.forEach(line => {
-        ctx.fillText(line, padding, y);
-        y += lineHeight;
-      });
-
-      ctx.textAlign = "right";
-      ctx.fillText(`Clicked by: ${name}`, canvas.width - padding, canvas.height - padding);
-
-      ctx.textAlign = "left";
-
-      // =========================
-      // 🔥 UPLOAD
-      // =========================
-      canvas.toBlob(async blob => {
-
-        const fileRef = window.fb.ref(
-          window.storage,
-          "chat_photos/" + Date.now() + ".jpg"
+        ctx.drawImage(
+          img,
+          0,
+          0
         );
 
-        await window.fb.uploadBytes(fileRef, blob || file);
+        // ==========================================
+        // 🔥 OVERLAY
+        // ==========================================
+        ctx.fillStyle =
+          "rgba(0,0,0,0.6)";
 
-        const url = await window.fb.getDownloadURL(fileRef);
+        ctx.fillRect(
 
-        await window.fb.addDoc(getChatCollection(), {
-          type: "image",
-          imageUrl: url,
-          lat,
-          lng,
-          user: name,
-          phone: window.userProfile.phone,
-          time: window.fb.serverTimestamp(),
-          status: "sent"
-        });
+          0,
 
-        console.log("✅ Camera photo sent WITH accurate GPS overlay");
+          canvas.height - 140,
 
-      }, "image/jpeg", 0.75);
+          canvas.width,
 
+          140
+        );
+
+        ctx.fillStyle =
+          "#00ffcc";
+
+        ctx.font =
+          "bold 22px Arial";
+
+        let y =
+          canvas.height - 100;
+
+        if(lat && lng){
+
+          ctx.fillText(
+            `Lat: ${lat}`,
+            20,
+            y
+          );
+
+          y += 30;
+
+          ctx.fillText(
+            `Lng: ${lng}`,
+            20,
+            y
+          );
+
+          y += 30;
+        }
+
+        ctx.fillText(
+          time,
+          20,
+          y
+        );
+
+        y += 30;
+
+        ctx.fillText(
+          `Clicked by: ${name}`,
+          20,
+          y
+        );
+
+        // ==========================================
+        // 🔥 BLOB
+        // ==========================================
+        canvas.toBlob(
+
+          async blob => {
+
+            try {
+
+              await window.fb.uploadBytes(
+
+                fileRef,
+
+                blob || file
+              );
+
+              const url =
+
+                await window.fb.getDownloadURL(
+                  fileRef
+                );
+
+              await window.fb.addDoc(
+
+                getChatCollection(),
+
+                {
+                  type: "image",
+
+                  imageUrl: url,
+
+                  lat,
+
+                  lng,
+
+                  user:name,
+
+                  phone:
+                    window.userProfile.phone,
+
+                  time:
+                    window.fb.serverTimestamp(),
+
+                  status:"sent"
+                }
+              );
+
+              console.log(
+                "✅ Camera photo sent"
+              );
+
+              showToast(
+                "📸 Photo sent"
+              );
+
+              e.target.value = "";
+
+            } catch(uploadErr){
+
+              console.error(
+                "❌ Camera upload failed:",
+                uploadErr
+              );
+
+              alert(
+                "Camera upload failed"
+              );
+            }
+
+          },
+
+          "image/jpeg",
+
+          0.8
+        );
+
+      } catch(innerErr){
+
+        console.error(
+          "❌ Camera process error:",
+          innerErr
+        );
+      }
     };
 
     reader.readAsDataURL(file);
 
   } catch(e){
-    console.error("❌ sendPhoto crash:", e);
-    alert("Photo send failed");
+
+    console.error(
+      "❌ sendPhoto crash:",
+      e
+    );
+
+    alert(
+      "Photo send failed"
+    );
   }
-} 
-    function renderMessage(docId, m){
+}    function renderMessage(docId, m){
 
   const box = document.getElementById("chatMessages");
   if(!box) return;
@@ -16745,94 +17070,329 @@ async function adminDelete(docId){
 }// ================= REALTIME =================
 let chatUnsubscribe = null;
 
+// ================= REALTIME CHAT =================
+let chatUnsubscribe = null;
+
 function startChat(){
 
+  // ==================================================
+  // 🔥 FIREBASE READY
+  // ==================================================
   if(!isFirebaseReady()){
-    console.warn("⏳ Waiting Firebase...");
-    setTimeout(startChat, 1000);
+
+    console.warn(
+      "⏳ Waiting Firebase..."
+    );
+
+    setTimeout(
+      startChat,
+      1000
+    );
+
+    return;
+  }
+
+  // ==================================================
+  // 🔥 PROFILE READY
+  // ==================================================
+  if(
+
+    !window.userProfile ||
+
+    !window.userProfile.rawName
+
+  ){
+
+    console.warn(
+      "⏳ Waiting user profile..."
+    );
+
+    setTimeout(
+      startChat,
+      1000
+    );
+
     return;
   }
 
   try {
 
-    const col = getChatCollection();
-    if(!col) return;
+    // ==================================================
+    // 🔥 CHAT COLLECTION
+    // ==================================================
+    const col =
+      getChatCollection();
 
-    // 🔥 prevent duplicate listeners
-    if(window.chatUnsubscribe){
-      window.chatUnsubscribe();
-      window.chatUnsubscribe = null;
+    if(!col){
+
+      console.warn(
+        "❌ Chat collection null"
+      );
+
+      return;
     }
 
-    const q = window.fb.query(
-      col,
-      window.fb.orderBy("time", "asc")
-    );
+    // ==================================================
+    // 🔥 PREVENT DUPLICATE LISTENERS
+    // ==================================================
+    if(window.chatUnsubscribe){
 
-    window.chatUnsubscribe = window.fb.onSnapshot(q, snapshot => {
+      try {
 
-      const box = document.getElementById("chatMessages");
-      if(!box) return;
+        window.chatUnsubscribe();
 
-      box.innerHTML = "";
+      } catch(err){
 
-      const currentUser = window.userProfile?.rawName;
+        console.warn(
+          "⚠ unsubscribe failed"
+        );
+      }
 
-      snapshot.forEach(docSnap => {
+      window.chatUnsubscribe =
+        null;
+    }
 
-        const m = docSnap.data();
-        const docId = docSnap.id;
+    // ==================================================
+    // 🔥 QUERY
+    // ==================================================
+    const q =
 
-        // 🚫 skip deleted for me
-        if(m.deletedFor && m.deletedFor.includes(currentUser)){
-          return;
-        }
+      window.fb.query(
 
-        // 🔥 DELIVERY STATUS (safe)
-        if(m.status === "sent" && m.user !== currentUser){
-          window.fb.updateDoc(docSnap.ref, { status: "delivered" });
-        }
+        col,
 
-        // 🔥 FIXED PARAM ORDER
-        renderMessage(docId, m);
+        window.fb.orderBy(
+          "time",
+          "asc"
+        )
+      );
 
-        // 🔔 UNREAD + NOTIFICATION
-        if(m.time && m.time.seconds > lastMsgTime){
+    // ==================================================
+    // 🔥 REALTIME LISTENER
+    // ==================================================
+    window.chatUnsubscribe =
 
-          if(document.getElementById("chatUI").style.display !== "flex"){
-            unreadCount++;
-            updateBadge();
+      window.fb.onSnapshot(
+
+        q,
+
+        snapshot => {
+
+          try {
+
+            const box =
+
+              document.getElementById(
+                "chatMessages"
+              );
+
+            if(!box){
+
+              console.warn(
+                "❌ chatMessages missing"
+              );
+
+              return;
+            }
+
+            // ==========================================
+            // 🔥 CLEAR
+            // ==========================================
+            box.innerHTML = "";
+
+            const currentUser =
+
+              window.userProfile
+                ?.rawName;
+
+            // ==========================================
+            // 🔥 LOOP
+            // ==========================================
+            snapshot.forEach(docSnap => {
+
+              try {
+
+                const m =
+                  docSnap.data();
+
+                const docId =
+                  docSnap.id;
+
+                // ======================================
+                // 🚫 DELETED FOR ME
+                // ======================================
+                if(
+
+                  m.deletedFor &&
+
+                  m.deletedFor.includes(
+                    currentUser
+                  )
+
+                ){
+                  return;
+                }
+
+                // ======================================
+                // 🔥 DELIVERY STATUS
+                // ======================================
+                if(
+
+                  m.status === "sent" &&
+
+                  m.user !== currentUser
+
+                ){
+
+                  window.fb.updateDoc(
+
+                    docSnap.ref,
+
+                    {
+                      status:
+                        "delivered"
+                    }
+                  ).catch(()=>{});
+                }
+
+                // ======================================
+                // 🔥 RENDER
+                // ======================================
+                renderMessage(
+                  docId,
+                  m
+                );
+
+                // ======================================
+                // 🔔 NOTIFICATION
+                // ======================================
+                const msgTime =
+
+                  m.time?.seconds || 0;
+
+                if(
+
+                  msgTime >
+
+                  lastMsgTime
+
+                ){
+
+                  const chatUI =
+
+                    document.getElementById(
+                      "chatUI"
+                    );
+
+                  if(
+
+                    chatUI &&
+
+                    chatUI.style.display
+                      !== "flex"
+
+                  ){
+
+                    unreadCount++;
+
+                    updateBadge();
+                  }
+
+                  // ==============================
+                  // 🔥 NO SELF NOTIFICATION
+                  // ==============================
+                  if(
+
+                    m.user !== currentUser
+
+                  ){
+
+                    playNotification();
+                  }
+
+                  lastMsgTime =
+                    msgTime;
+                }
+
+                // ======================================
+                // 🔥 MARK READ
+                // ======================================
+                if(
+
+                  m.user !== currentUser &&
+
+                  m.status !== "read"
+
+                ){
+
+                  window.fb.updateDoc(
+
+                    docSnap.ref,
+
+                    {
+                      status:"read"
+                    }
+
+                  ).catch(()=>{});
+                }
+
+              } catch(innerErr){
+
+                console.error(
+                  "❌ Message render error:",
+                  innerErr
+                );
+              }
+
+            });
+
+            // ==========================================
+            // 🔽 SCROLL
+            // ==========================================
+            requestAnimationFrame(()=>{
+
+              box.scrollTop =
+                box.scrollHeight;
+            });
+
+          } catch(snapshotErr){
+
+            console.error(
+              "❌ Snapshot error:",
+              snapshotErr
+            );
           }
 
-          playNotification();
-          lastMsgTime = m.time.seconds;
+        },
+
+        error => {
+
+          console.error(
+            "❌ Chat listener failed:",
+            error
+          );
         }
+      );
 
-        // 🔥 MARK AS READ (only others)
-        if(m.user !== currentUser && m.status !== "read"){
-          window.fb.updateDoc(docSnap.ref, { status: "read" });
-        }
-
-      });
-
-      // 🔽 SCROLL FIX
-      setTimeout(()=>{
-        box.scrollTop = box.scrollHeight;
-      }, 50);
-
-    });
-
+    // ==================================================
     // 🔥 ONLINE SYSTEM
+    // ==================================================
     listenOnline();
+
     setOnline();
 
-    console.log("✅ Chat started (final)");
+    console.log(
+      "✅ Chat started"
+    );
 
   } catch(e){
-    console.error("❌ startChat:", e);
+
+    console.error(
+      "❌ startChat:",
+      e
+    );
   }
-}
-    function openImageViewer(url){
+}    function openImageViewer(url){
 
   let viewer = document.getElementById("imageViewer");
 
@@ -16889,57 +17449,236 @@ async function startVoice(){
 
   try {
 
-    if(window.isRecording) return;
+    // ==================================================
+    // 🔥 ALREADY RECORDING
+    // ==================================================
+    if(window.isRecording){
 
-    currentStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      console.warn(
+        "⚠ Already recording"
+      );
 
-    mediaRecorder = new MediaRecorder(currentStream);
+      return;
+    }
+
+    // ==================================================
+    // 🔥 CHECK SUPPORT
+    // ==================================================
+    if(
+
+      !navigator.mediaDevices ||
+
+      !navigator.mediaDevices.getUserMedia
+
+    ){
+
+      alert(
+        "Microphone not supported"
+      );
+
+      return;
+    }
+
+    // ==================================================
+    // 🔥 REQUEST MICROPHONE
+    // ==================================================
+    currentStream =
+
+      await navigator.mediaDevices.getUserMedia({
+
+        audio: {
+
+          echoCancellation: true,
+
+          noiseSuppression: true,
+
+          autoGainControl: true
+        }
+      });
+
+    console.log(
+      "🎤 Microphone granted"
+    );
+
+    // ==================================================
+    // 🔥 MIME TYPE (WEBVIEW SAFE)
+    // ==================================================
+    let mimeType = "";
+
+    if(
+
+      MediaRecorder.isTypeSupported(
+        "audio/webm"
+      )
+
+    ){
+
+      mimeType = "audio/webm";
+
+    } else if (
+
+      MediaRecorder.isTypeSupported(
+        "audio/mp4"
+      )
+
+    ){
+
+      mimeType = "audio/mp4";
+    }
+
+    // ==================================================
+    // 🔥 RECORDER
+    // ==================================================
+    mediaRecorder =
+
+      mimeType
+
+        ? new MediaRecorder(
+
+            currentStream,
+
+            { mimeType }
+          )
+
+        : new MediaRecorder(
+            currentStream
+          );
+
     audioChunks = [];
+
     window.isRecording = true;
 
-    // ================= UI START =================
-    const recDiv = document.getElementById("recordingIndicator");
-    const btn = document.getElementById("mainActionBtn");
+    // ==================================================
+    // 🔥 UI START
+    // ==================================================
+    const recDiv =
+
+      document.getElementById(
+        "recordingIndicator"
+      );
+
+    const btn =
+
+      document.getElementById(
+        "mainActionBtn"
+      );
 
     if(recDiv){
-      recDiv.style.display = "block";
-      recDiv.innerText = "🔴 Recording... 0s";
+
+      recDiv.style.display =
+        "block";
+
+      recDiv.innerText =
+        "🔴 Recording... 0s";
     }
 
     if(btn){
-      btn.style.background = "#d32f2f";
+
+      btn.style.background =
+        "#d32f2f";
+
       btn.innerText = "⏹";
     }
 
-    // ================= TIMER =================
+    // ==================================================
+    // 🔥 TIMER
+    // ==================================================
     recordSeconds = 0;
 
-    recordTimer = setInterval(()=>{
+    clearInterval(
+      recordTimer
+    );
+
+    recordTimer = setInterval(() => {
+
       recordSeconds++;
 
       if(recDiv){
-        recDiv.innerText = "🔴 Recording... " + recordSeconds + "s";
+
+        recDiv.innerText =
+
+          "🔴 Recording... "
+
+          + recordSeconds +
+
+          "s";
       }
 
     }, 1000);
 
-    // ================= DATA =================
+    // ==================================================
+    // 🔥 DATA EVENT
+    // ==================================================
     mediaRecorder.ondataavailable = e => {
-      if(e.data && e.data.size > 0){
-        audioChunks.push(e.data);
+
+      if(
+
+        e.data &&
+
+        e.data.size > 0
+
+      ){
+
+        audioChunks.push(
+          e.data
+        );
       }
     };
 
-    mediaRecorder.start();
+    // ==================================================
+    // 🔥 ERROR
+    // ==================================================
+    mediaRecorder.onerror = e => {
 
-    console.log("🎤 Recording started");
+      console.error(
+        "❌ Recorder error:",
+        e
+      );
+
+      stopVoice(true);
+    };
+
+    // ==================================================
+    // 🔥 START
+    // ==================================================
+    mediaRecorder.start(1000);
+
+    console.log(
+      "🎤 Recording started"
+    );
 
   } catch(e){
-    console.error("❌ startVoice:", e);
-    alert("Microphone permission denied");
+
+    console.error(
+      "❌ startVoice:",
+      e
+    );
+
+    // ==================================================
+    // 🔥 CLEANUP
+    // ==================================================
+    window.isRecording = false;
+
+    clearInterval(
+      recordTimer
+    );
+
+    try {
+
+      if(currentStream){
+
+        currentStream
+          .getTracks()
+          .forEach(t => t.stop());
+      }
+
+    } catch(err){}
+
+    alert(
+      "Microphone permission denied"
+    );
   }
 }
-
 
 // ================= STOP RECORD =================
 function stopVoice(){
@@ -16986,7 +17725,17 @@ function stopVoice(){
           console.warn("⚠ Empty audio skipped");
           return;
         }
+// ==================================================
+// 🔥 FIREBASE CHECK
+// ==================================================
+if(!isFirebaseReady()){
 
+  alert(
+    "Firebase not ready"
+  );
+
+  return;
+}
         const blob = new Blob(audioChunks, { type: "audio/webm" });
 
         const fileRef = window.fb.ref(
