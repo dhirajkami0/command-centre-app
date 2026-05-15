@@ -179,37 +179,51 @@ async function cleanOldMessages(){
   <script>
     
     // ===============================
-    window.originalConfirm = window.confirm;
+window.originalConfirm = window.confirm;
+
 window.previewKMLLayer = null;
 
+// ====================================================
+// 🔥 LIVE STAFF MARKERS
+// ====================================================
 window.staffMarkers = {};
 
+// ====================================================
+// 🔥 ONE USER = ONE POLYLINE
+// ====================================================
 window.staffTracks = {};
 
+// ====================================================
+// 🔥 OPTIONAL DECORATORS
+// ====================================================
 window.staffDecorators = {};
 
 // ====================================================
-// 🔥 ACTIVE SESSION
+// 🔥 ACTIVE LIVE SESSION
 // ====================================================
 window.activeSessionMap = {};
 
 // ====================================================
-// 🔥 LIVE FIRESTORE POINT LISTENERS
+// 🔥 FIRESTORE LIVE LISTENERS
 // ====================================================
 window.trackListeners = {};
 
 // ====================================================
-// 🔥 TRACK SEGMENTS
+// 🔥 POINT COUNT CACHE
+// USED FOR APPEND-ONLY MODE
 // ====================================================
-window.trackSegments = {};
 window.trackPointCount = {};
-    window.trackDistanceMap = {};
+
+// ====================================================
+// 🔥 DISTANCE CACHE
+// ====================================================
+window.trackDistanceMap = {};
+
 // ====================================================
 // 🔥 ANDROID GPS AUTHORITY
 // ====================================================
 window.androidGpsAuthority = true;
-
-// ====================================================
+    // ====================================================
 // 🔥 OPTIONAL TRACK CACHE
 // ====================================================
 let trackMap = {};window.addEventListener("error", function (e) {
@@ -10139,259 +10153,138 @@ for(
 // ======================================
 window.trackDistanceMap[
   s.cleanName
-] = totalDistance;
+] = totalDistance;// ======================================
+// 🔥 CONTINUOUS SINGLE POLYLINE SYSTEM
 // ======================================
-// 🔥 FIRST DRAW
+
+// ======================================
+// 🔥 CREATE POLYLINE FIRST TIME
 // ======================================
 if(
+
   !window.staffTracks[
     s.cleanName
   ]
+
 ){
 
   const color =
+
     getUserColor(
       s.cleanName
     );
 
-  let segments = [];
+  // ====================================
+  // 🔥 CREATE EMPTY POLYLINE
+  // ====================================
+  const polyline =
 
-  let current = [];
+    L.polyline(
 
-  points.forEach(p=>{
+      [],
 
-    if(
-      p.breakTrack &&
-      current.length > 0
-    ){
+      {
+        color,
+        weight:2.5,
+        opacity:0.80,
+        smoothFactor:0,
+        lineCap:"round",
+        lineJoin:"round"
+      }
 
-      segments.push(
-        current
-      );
-
-      current = [];
-    }
-
-    current.push([
-      p.lat,
-      p.lon
-    ]);
-  });
-
-  if(current.length){
-
-    segments.push(current);
-  }
-
-  const lines =
-
-    segments.map(seg =>
-
-      L.polyline(
-
-        seg,
-
-        {
-          color,
-          weight:2.5,
-          opacity:0.80,
-          smoothFactor:0,
-          lineCap:"round",
-          lineJoin:"round"
-        }
-      )
-    );
-
-  window.staffTracks[
-    s.cleanName
-  ] =
-
-    L.featureGroup(
-      lines
     )
 
     .addTo(staffLayer);
-// ====================================
-// 🔥 SAVE LAST POLYLINE
-// ====================================
-if(lines.length > 0){
 
+  // ====================================
+  // 🔥 SAVE POLYLINE
+  // ====================================
   window.staffTracks[
     s.cleanName
-  ]._lastPolyline =
+  ] = polyline;
 
-    lines[
-      lines.length - 1
-    ];
-}
   // ====================================
-  // 🔥 SAVE POINT COUNT
+  // 🔥 RESET COUNT
   // ====================================
   window.trackPointCount[
     s.cleanName
-  ] = points.length;
-
+  ] = 0;
 }
 
 // ======================================
-// 🔥 APPEND MODE
+// 🔥 GET OLD COUNT
 // ======================================
-else {
+const oldCount =
 
-  const oldCount =
+  Number(
 
-    Number(
+    window.trackPointCount[
+      s.cleanName
+    ] || 0
 
-      window.trackPointCount[
-        s.cleanName
-      ] || 0
+  );
 
-    );
+// ======================================
+// 🔥 NO NEW POINTS
+// ======================================
+if(
+  points.length <= oldCount
+){
+  return;
+}
+
+// ======================================
+// 🔥 GET ONLY NEW POINTS
+// ======================================
+const newPoints =
+
+  points.slice(oldCount);
+
+// ======================================
+// 🔥 GET POLYLINE
+// ======================================
+const polyline =
+
+  window.staffTracks[
+    s.cleanName
+  ];
+
+// ======================================
+// 🔥 APPEND NEW GPS POINTS
+// ======================================
+newPoints.forEach(p=>{
 
   // ====================================
-  // 🔥 NO NEW POINTS
+  // 🔥 INVALID GPS
   // ====================================
   if(
-    points.length <= oldCount
+
+    isNaN(p.lat) ||
+
+    isNaN(p.lon)
+
   ){
     return;
   }
 
-  const newPoints =
-    points.slice(oldCount);
+  // ====================================
+  // 🔥 APPEND TO EXISTING LINE
+  // ====================================
+  polyline.addLatLng([
 
-  const trackGroup =
-
-    window.staffTracks[
-      s.cleanName
-    ];
-// ====================================
-// 🔥 GET LAST POLYLINE
-// ====================================
-let lastPolyline =
-
-  trackGroup._lastPolyline || null;
-
-// ====================================
-// 🔥 COLOR
-// ====================================
-const color =
-  getUserColor(
-    s.cleanName
-  );
-
-// ====================================
-// 🔥 APPEND NEW POINTS
-// ====================================
-newPoints.forEach(p=>{
-
-  // ==================================
-  // 🔥 NEW LATLNG
-  // ==================================
-  const latlng = [
     p.lat,
     p.lon
-  ];
 
-  // ==================================
-  // 🔥 GET LAST POINT
-  // ==================================
-  let lastLatLng = null;
+  ]);
 
-  try {
-
-    const arr =
-
-      lastPolyline
-        ?.getLatLngs?.();
-
-    if(
-      arr &&
-      arr.length
-    ){
-
-      lastLatLng =
-        arr[
-          arr.length - 1
-        ];
-    }
-
-  } catch(e){}
-
-  // ==================================
-  // 🔥 DISTANCE CHECK
-  // ==================================
-  let jumpDistance = 0;
-
-  if(lastLatLng){
-
-    jumpDistance =
-
-      map.distance(
-
-        [
-          lastLatLng.lat,
-          lastLatLng.lng
-        ],
-
-        latlng
-      );
-  }
-
-  // ==================================
-  // 🔥 START NEW SEGMENT
-  // ==================================
-  if(
-
-    p.breakTrack ||
-
-    !lastPolyline ||
-
-    jumpDistance > 250
-
-  ){
-
-    lastPolyline =
-
-      L.polyline(
-
-        [],
-
-        {
-          color,
-          weight:2.5,
-          opacity:0.80,
-          smoothFactor:0,
-          lineCap:"round",
-          lineJoin:"round"
-        }
-      )
-
-      .addTo(trackGroup);
-
-    // ================================
-    // 🔥 SAVE LAST POLYLINE
-    // ================================
-    trackGroup._lastPolyline =
-      lastPolyline;
-  }
-
-  // ==================================
-  // 🔥 APPEND POINT
-  // ==================================
-  lastPolyline.addLatLng(
-    latlng
-  );
 });
 
-// ====================================
-// 🔥 SAVE COUNT
-// ====================================
+// ======================================
+// 🔥 SAVE POINT COUNT
+// ======================================
 window.trackPointCount[
   s.cleanName
 ] = points.length;
-
-} // END append else
 
 } catch(e){
 
