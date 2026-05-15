@@ -16625,6 +16625,7 @@ window.sendLocation =
     
     // ================= SEND PHOTO =================
 // ================= SEND PHOTO =================
+// ================= SEND PHOTO =================
 async function sendPhoto(e){
 
   try {
@@ -16731,11 +16732,23 @@ async function sendPhoto(e){
       );
 
     // ==================================================
-    // 🖼 GALLERY
+    // 🔥 USER
+    // ==================================================
+    const name =
+
+      window.userProfile?.rawName
+      || "UNKNOWN";
+
+    // ==================================================
+    // 🖼 GALLERY FLOW
     // ==================================================
     if(!isCamera){
 
       console.log(
+        "🖼 Uploading gallery photo..."
+      );
+
+      showToast(
         "🖼 Uploading gallery photo..."
       );
 
@@ -16779,8 +16792,7 @@ async function sendPhoto(e){
 
           imageUrl: url,
 
-          user:
-            window.userProfile.rawName,
+          user:name,
 
           phone:
             window.userProfile.phone,
@@ -16800,21 +16812,25 @@ async function sendPhoto(e){
         "🖼 Photo sent"
       );
 
-      // ==============================================
-      // 🔥 RESET INPUT
-      // ==============================================
       e.target.value = "";
 
       return;
     }
 
     // ==================================================
-    // 📷 CAMERA FLOW
+    // 📷 CAMERA FLOW (WEBVIEW SAFE)
     // ==================================================
+
+    showToast(
+      "📸 Processing camera photo..."
+    );
 
     let lat = null;
     let lng = null;
 
+    // ==================================================
+    // 🔥 GPS
+    // ==================================================
     try {
 
       const pos =
@@ -16832,7 +16848,9 @@ async function sendPhoto(e){
 
                 {
                   enableHighAccuracy:true,
+
                   timeout:10000,
+
                   maximumAge:0
                 }
               );
@@ -16854,194 +16872,78 @@ async function sendPhoto(e){
       );
     }
 
-    const name =
+    // ==================================================
+    // 🔥 COMPRESS
+    // ==================================================
+    const compressed =
 
-      window.userProfile.rawName
-      || "UNKNOWN";
+      await compressImage(
+        file
+      );
 
-    const time =
+    // ==================================================
+    // 🔥 UPLOAD DIRECT
+    // ==================================================
+    await window.fb.uploadBytes(
 
-      new Date()
-        .toLocaleString();
+      fileRef,
 
-    const img = new Image();
+      compressed || file
+    );
 
-    const reader =
-      new FileReader();
+    console.log(
+      "✅ Camera upload complete"
+    );
 
-    reader.onload =
-      ev => img.src =
-        ev.target.result;
+    // ==================================================
+    // 🔥 URL
+    // ==================================================
+    const url =
 
-    img.onload = async () => {
+      await window.fb.getDownloadURL(
+        fileRef
+      );
 
-      try {
+    // ==================================================
+    // 🔥 SAVE CHAT
+    // ==================================================
+    await window.fb.addDoc(
 
-        const canvas =
-          document.createElement(
-            "canvas"
-          );
+      getChatCollection(),
 
-        const ctx =
-          canvas.getContext("2d");
+      {
+        type: "image",
 
-        canvas.width =
-          img.width;
+        imageUrl: url,
 
-        canvas.height =
-          img.height;
+        lat,
 
-        ctx.drawImage(
-          img,
-          0,
-          0
-        );
+        lng,
 
-        // ==========================================
-        // 🔥 OVERLAY
-        // ==========================================
-        ctx.fillStyle =
-          "rgba(0,0,0,0.6)";
+        user:name,
 
-        ctx.fillRect(
+        phone:
+          window.userProfile.phone,
 
-          0,
+        time:
+          window.fb.serverTimestamp(),
 
-          canvas.height - 140,
-
-          canvas.width,
-
-          140
-        );
-
-        ctx.fillStyle =
-          "#00ffcc";
-
-        ctx.font =
-          "bold 22px Arial";
-
-        let y =
-          canvas.height - 100;
-
-        if(lat && lng){
-
-          ctx.fillText(
-            `Lat: ${lat}`,
-            20,
-            y
-          );
-
-          y += 30;
-
-          ctx.fillText(
-            `Lng: ${lng}`,
-            20,
-            y
-          );
-
-          y += 30;
-        }
-
-        ctx.fillText(
-          time,
-          20,
-          y
-        );
-
-        y += 30;
-
-        ctx.fillText(
-          `Clicked by: ${name}`,
-          20,
-          y
-        );
-
-        // ==========================================
-        // 🔥 BLOB
-        // ==========================================
-        canvas.toBlob(
-
-          async blob => {
-
-            try {
-
-              await window.fb.uploadBytes(
-
-                fileRef,
-
-                blob || file
-              );
-
-              const url =
-
-                await window.fb.getDownloadURL(
-                  fileRef
-                );
-
-              await window.fb.addDoc(
-
-                getChatCollection(),
-
-                {
-                  type: "image",
-
-                  imageUrl: url,
-
-                  lat,
-
-                  lng,
-
-                  user:name,
-
-                  phone:
-                    window.userProfile.phone,
-
-                  time:
-                    window.fb.serverTimestamp(),
-
-                  status:"sent"
-                }
-              );
-
-              console.log(
-                "✅ Camera photo sent"
-              );
-
-              showToast(
-                "📸 Photo sent"
-              );
-
-              e.target.value = "";
-
-            } catch(uploadErr){
-
-              console.error(
-                "❌ Camera upload failed:",
-                uploadErr
-              );
-
-              alert(
-                "Camera upload failed"
-              );
-            }
-
-          },
-
-          "image/jpeg",
-
-          0.8
-        );
-
-      } catch(innerErr){
-
-        console.error(
-          "❌ Camera process error:",
-          innerErr
-        );
+        status:"sent"
       }
-    };
+    );
 
-    reader.readAsDataURL(file);
+    console.log(
+      "✅ Camera photo sent"
+    );
+
+    showToast(
+      "📸 Photo sent"
+    );
+
+    // ==================================================
+    // 🔥 RESET
+    // ==================================================
+    e.target.value = "";
 
   } catch(e){
 
@@ -17054,7 +16956,7 @@ async function sendPhoto(e){
       "Photo send failed"
     );
   }
-}    function renderMessage(docId, m){
+}   function renderMessage(docId, m){
 
   const box = document.getElementById("chatMessages");
   if(!box) return;
