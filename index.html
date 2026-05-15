@@ -16194,135 +16194,429 @@ function compressImage(file){
     reader.readAsDataURL(file);
   });
 }
+// ================= SEND LOCATION =================
 async function sendLocation(){
 
   try {
 
+    // ==================================================
+    // 🔥 FIREBASE READY
+    // ==================================================
     if(!isFirebaseReady()){
-      showToast("⏳ Firebase not ready", "warning");
-      return;
-    }
 
-    if(!navigator.geolocation){
-      showToast("❌ GPS not supported", "error");
-      return;
-    }
-
-    showToast("📡 Getting accurate GPS...");
-
-    let bestPos = null;
-    let bestAccuracy = Infinity;
-    let readings = 0;
-
-    const finalPos = await new Promise((resolve, reject) => {
-
-      const watchId = navigator.geolocation.watchPosition(
-
-        (pos) => {
-
-          const acc = pos.coords.accuracy;
-
-          console.log("📍 Reading:", acc);
-
-          readings++;
-
-          if(acc < bestAccuracy){
-            bestAccuracy = acc;
-            bestPos = pos;
-          }
-
-          if(acc <= 15 || readings >= 5){
-            navigator.geolocation.clearWatch(watchId);
-            resolve(bestPos);
-          }
-
-        },
-
-        (err) => {
-          navigator.geolocation.clearWatch(watchId);
-          reject(err);
-        },
-
-        {
-          enableHighAccuracy: true,
-          maximumAge: 0,
-          timeout: 15000
-        }
+      showToast(
+        "⏳ Firebase not ready",
+        "warning"
       );
 
-      setTimeout(()=>{
-        try{
-          navigator.geolocation.clearWatch(watchId);
-          if(bestPos){
-            resolve(bestPos);
-          } else {
-            reject("Timeout no GPS");
+      return;
+    }
+
+    // ==================================================
+    // 🔥 USER READY
+    // ==================================================
+    if(!window.userProfile){
+
+      showToast(
+        "❌ Login required",
+        "error"
+      );
+
+      return;
+    }
+
+    // ==================================================
+    // 🔥 GPS SUPPORT
+    // ==================================================
+    if(!navigator.geolocation){
+
+      showToast(
+        "❌ GPS not supported",
+        "error"
+      );
+
+      return;
+    }
+
+    // ==================================================
+    // 🔥 LOADING
+    // ==================================================
+    showToast(
+      "📡 Getting accurate GPS..."
+    );
+
+    console.log(
+      "📡 Starting GPS"
+    );
+
+    let bestPos = null;
+
+    let bestAccuracy = Infinity;
+
+    let readings = 0;
+
+    let finished = false;
+
+    // ==================================================
+    // 🔥 GET BEST GPS
+    // ==================================================
+    const finalPos = await new Promise(
+
+      (resolve,reject)=>{
+
+        const safeResolve = value => {
+
+          if(finished) return;
+
+          finished = true;
+
+          try {
+
+            navigator.geolocation
+              .clearWatch(watchId);
+
+          } catch(err){}
+
+          resolve(value);
+        };
+
+        const safeReject = err => {
+
+          if(finished) return;
+
+          finished = true;
+
+          try {
+
+            navigator.geolocation
+              .clearWatch(watchId);
+
+          } catch(e){}
+
+          reject(err);
+        };
+
+        // ==============================================
+        // 🔥 WATCH
+        // ==============================================
+        const watchId =
+
+          navigator.geolocation
+            .watchPosition(
+
+              pos => {
+
+                try {
+
+                  const acc =
+                    pos.coords.accuracy;
+
+                  console.log(
+                    "📍 Reading:",
+                    acc
+                  );
+
+                  readings++;
+
+                  // ==================================
+                  // 🔥 BEST POSITION
+                  // ==================================
+                  if(
+
+                    acc < bestAccuracy
+
+                  ){
+
+                    bestAccuracy =
+                      acc;
+
+                    bestPos = pos;
+                  }
+
+                  // ==================================
+                  // 🔥 GOOD GPS
+                  // ==================================
+                  if(
+
+                    acc <= 15
+
+                  ){
+
+                    console.log(
+                      "✅ Excellent GPS"
+                    );
+
+                    safeResolve(
+                      bestPos
+                    );
+
+                    return;
+                  }
+
+                  // ==================================
+                  // 🔥 ENOUGH READINGS
+                  // ==================================
+                  if(
+
+                    readings >= 5
+
+                  ){
+
+                    console.log(
+                      "✅ Using best GPS"
+                    );
+
+                    safeResolve(
+                      bestPos
+                    );
+                  }
+
+                } catch(innerErr){
+
+                  console.error(
+                    "❌ GPS reading error:",
+                    innerErr
+                  );
+                }
+
+              },
+
+              err => {
+
+                console.error(
+                  "❌ GPS watch error:",
+                  err
+                );
+
+                safeReject(err);
+              },
+
+              {
+                enableHighAccuracy:true,
+
+                maximumAge:0,
+
+                timeout:15000
+              }
+            );
+
+        // ==============================================
+        // 🔥 HARD TIMEOUT
+        // ==============================================
+        setTimeout(() => {
+
+          try {
+
+            if(bestPos){
+
+              console.log(
+                "⏰ GPS timeout using best position"
+              );
+
+              safeResolve(
+                bestPos
+              );
+
+            } else {
+
+              safeReject(
+                {
+                  code:3,
+                  message:"GPS timeout"
+                }
+              );
+            }
+
+          } catch(timeoutErr){
+
+            safeReject(
+              timeoutErr
+            );
           }
-        }catch(e){
-          reject(e);
-        }
-      }, 10000);
 
-    });
+        }, 12000);
 
-    // =========================
-    // 📍 FINAL LOCATION
-    // =========================
-    const lat = Number(finalPos.coords.latitude.toFixed(6));
-    const lng = Number(finalPos.coords.longitude.toFixed(6));
-    const acc = Math.round(finalPos.coords.accuracy);
-
-    console.log("✅ FINAL:", lat, lng, "Acc:", acc);
-
-    // =========================
-    // 🔥 NEW: GRID MARKING
-    // =========================
-    try {
-      if(typeof markVisited === "function"){
-        markVisited(lat, lng);
-      } else {
-        console.warn("⚠ markVisited not found");
       }
-    } catch(e){
-      console.warn("⚠ Grid marking failed:", e);
+    );
+
+    // ==================================================
+    // 🔥 FINAL LOCATION
+    // ==================================================
+    const lat = Number(
+
+      finalPos.coords.latitude
+        .toFixed(6)
+    );
+
+    const lng = Number(
+
+      finalPos.coords.longitude
+        .toFixed(6)
+    );
+
+    const acc = Math.round(
+
+      finalPos.coords.accuracy
+    );
+
+    console.log(
+      "✅ FINAL GPS:",
+      lat,
+      lng,
+      "Acc:",
+      acc
+    );
+
+    // ==================================================
+    // 🔥 GRID MARKING
+    // ==================================================
+    try {
+
+      if(
+
+        typeof markVisited
+        === "function"
+
+      ){
+
+        markVisited(
+          lat,
+          lng
+        );
+
+      } else {
+
+        console.warn(
+          "⚠ markVisited missing"
+        );
+      }
+
+    } catch(gridErr){
+
+      console.warn(
+        "⚠ Grid marking failed:",
+        gridErr
+      );
     }
 
-    // =========================
-    // 🚫 REJECT VERY BAD GPS
-    // =========================
+    // ==================================================
+    // 🚫 VERY WEAK GPS
+    // ==================================================
     if(acc > 80){
-      showToast("⚠ Weak GPS (" + acc + "m)", "warning");
+
+      showToast(
+        "⚠ Weak GPS (" + acc + "m)",
+        "warning"
+      );
     }
 
-    // =========================
-    // 📤 SEND TO CHAT
-    // =========================
-    await window.fb.addDoc(getChatCollection(), {
-      type: "location",
-      lat: lat,
-      lng: lng,
-      accuracy: acc,
-      user: window.userProfile.rawName,
-      phone: window.userProfile.phone,
-      time: window.fb.serverTimestamp(),
-      status: "sent"
-    });
+    // ==================================================
+    // 🔥 COLLECTION
+    // ==================================================
+    const col =
+      getChatCollection();
 
-    showToast("📍 Location sent (" + acc + "m)");
+    if(!col){
+
+      showToast(
+        "❌ Chat unavailable",
+        "error"
+      );
+
+      return;
+    }
+
+    // ==================================================
+    // 📤 SEND TO CHAT
+    // ==================================================
+    await window.fb.addDoc(
+
+      col,
+
+      {
+        type: "location",
+
+        lat,
+
+        lng,
+
+        accuracy: acc,
+
+        mapUrl:
+          `https://maps.google.com/?q=${lat},${lng}`,
+
+        user:
+          window.userProfile.rawName,
+
+        phone:
+          window.userProfile.phone,
+
+        time:
+          window.fb.serverTimestamp(),
+
+        status:"sent"
+      }
+    );
+
+    // ==================================================
+    // 🔥 SUCCESS
+    // ==================================================
+    console.log(
+      "✅ Location sent"
+    );
+
+    showToast(
+      "📍 Location sent (" + acc + "m)"
+    );
 
   } catch(e){
 
-    console.error("❌ sendLocation:", e);
+    console.error(
+      "❌ sendLocation:",
+      e
+    );
 
-    showToast("❌ Location failed", "error");
+    let msg =
+      "❌ Location failed";
+
+    if(e?.code === 1){
+
+      msg =
+        "❌ GPS permission denied";
+
+    } else if (
+
+      e?.code === 2
+
+    ){
+
+      msg =
+        "❌ GPS unavailable";
+
+    } else if (
+
+      e?.code === 3
+
+    ){
+
+      msg =
+        "❌ GPS timeout";
+    }
+
+    showToast(
+      msg,
+      "error"
+    );
   }
 }
- // ================= SEND PHOTO =================
 
-// 🔥 MAKE GLOBAL
-window.sendLocation = sendLocation;
-
- // ================= SEND PHOTO =================
+// =====================================================
+// 🔥 GLOBAL
+// =====================================================
+window.sendLocation =
+  sendLocation;
+    
+    // ================= SEND PHOTO =================
 
     function closeActionMenu(){
   const m = document.getElementById("actionMenu");
