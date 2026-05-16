@@ -19123,16 +19123,7 @@ function startDuty(event) {
    // =====================================================
 // 🔥 IMMEDIATE UI ACTIVE
 // =====================================================
-window.isDutyActive = true;
-window.__dutyUpdating = false;
-window.__dutyChecked = true;
 
-updateDutyButton();
-
-// 🔥 CLOSE FORM IMMEDIATELY
-if(typeof closeDutyForm === "function"){
-  closeDutyForm();
-}
     // =====================================================
     // 🔥 BACKEND CALL
     // =====================================================
@@ -19200,49 +19191,154 @@ console.log(
     // =====================================================
 // 🔥 GET REAL GPS FIRST
 // =====================================================
+// =====================================================
+// 🔥 STABILIZED GPS ACQUISITION
+// GET 2-3 GPS READINGS
+// PICK BEST ACCURACY
+// =====================================================
+// =====================================================
+// 🔥 STABILIZED GPS ACQUISITION
+// =====================================================// =====================================================
+// 🔥 STABILIZED GPS ACQUISITION
+// =====================================================
 const gpsPosition =
 
   await new Promise((resolve)=>{
 
-    try{
+    try {
 
-      navigator.geolocation.getCurrentPosition(
+      const samples = [];
 
-        (pos)=>{
+      let resolved = false;
 
-          resolve({
+      const startedAt = Date.now();
 
-            lat:
-              pos.coords.latitude,
+      const watchId =
 
-            lon:
-              pos.coords.longitude,
+        navigator.geolocation.watchPosition(
 
-            accuracy:
-              pos.coords.accuracy || 0
-          });
-        },
+          (pos)=>{
 
-        ()=>{
+            try {
 
-          resolve(null);
-        },
+              const accuracy =
 
-        {
-          enableHighAccuracy:true,
-          timeout:5000,
-          maximumAge:0
-        }
+                Number(
+                  pos.coords.accuracy || 999
+                );
+
+              const lat =
+                Number(
+                  pos.coords.latitude
+                );
+
+              const lon =
+                Number(
+                  pos.coords.longitude
+                );
+
+              if(
+
+                isNaN(lat) ||
+                isNaN(lon) ||
+                lat === 0 ||
+                lon === 0
+
+              ){
+                return;
+              }
+
+              samples.push({
+
+                lat,
+                lon,
+                accuracy
+              });
+
+              console.log(
+
+                `📡 GPS SAMPLE ${
+                  samples.length
+                } → ${
+                  accuracy.toFixed(1)
+                }m`
+              );
+
+              // ===========================================
+              // 🔥 WAIT 3 SEC
+              // ===========================================
+              if(
+                Date.now() - startedAt >= 3000
+              ){
+
+                if(resolved){
+                  return;
+                }
+
+                resolved = true;
+
+                navigator.geolocation
+                  .clearWatch(watchId);
+
+                // =========================================
+                // 🔥 PICK BEST GPS
+                // =========================================
+                samples.sort(
+
+                  (a,b)=>
+
+                    a.accuracy -
+                    b.accuracy
+                );
+
+                resolve(
+                  samples[0] || null
+                );
+              }
+
+            } catch(e){
+
+              console.warn(
+                "⚠ GPS SAMPLE ERROR:",
+                e
+              );
+            }
+          },
+
+          ()=>{
+
+            if(resolved){
+              return;
+            }
+
+            resolved = true;
+
+            navigator.geolocation
+              .clearWatch(watchId);
+
+            resolve(null);
+          },
+
+          {
+            enableHighAccuracy:true,
+            timeout:8000,
+            maximumAge:0
+          }
+        );
+
+    } catch(e){
+
+      console.error(
+        "❌ GPS ACQUIRE FAILED:",
+        e
       );
-
-    }catch(e){
 
       resolve(null);
     }
   });
 
 // =====================================================
-// 🔥 REAL GPS
+// 🔥 BEST GPS FOUND
 // =====================================================
 const startLat =
 
@@ -19254,7 +19350,11 @@ const startLon =
 
 const startAccuracy =
 
-  gpsPosition?.accuracy || 0;
+  gpsPosition?.accuracy || 999;
+
+console.log(
+  `🎯 START GPS: ${startAccuracy.toFixed(1)}m`
+);
 
 // =====================================================
 // 🔥 LIVE STAFF UPDATE
@@ -19280,29 +19380,17 @@ await setDoc(
     compartment:
       payload.compt,
 
-    // =================================================
-    // 🔥 DUTY ACTIVE
-    // =================================================
     dutyActive: true,
 
-    // =================================================
-    // 🔥 CURRENT SESSION
-    // =================================================
     sessionId:
       sessionId,
 
-    // =================================================
-    // 🔥 CONTACT
-    // =================================================
     phone:
       payload.phone || "",
 
     email:
       payload.email || "",
 
-    // =================================================
-    // 🔥 DUTY INFO
-    // =================================================
     beat:
       document.getElementById(
         "d-beat"
@@ -19318,7 +19406,7 @@ await setDoc(
       "ACTIVE",
 
     // =================================================
-    // 🔥 REAL GPS IMMEDIATE
+    // 🔥 BEST GPS
     // =================================================
     lat:
       startLat,
@@ -19331,9 +19419,6 @@ await setDoc(
 
     speed:0,
 
-    // =================================================
-    // 🔥 LOCATION TIME
-    // =================================================
     lastSeen:
       Date.now(),
 
@@ -19346,9 +19431,6 @@ await setDoc(
     time:
       now.toISOString(),
 
-    // =================================================
-    // 🔥 TYPE
-    // =================================================
     type:
       "Staff"
 
@@ -19356,26 +19438,12 @@ await setDoc(
 
   { merge:true }
 );
-    
-    // =====================================================
-    // 🔥 TRACK DOCUMENT
-    // =====================================================
-    // =====================================================
-// 🔥 UPDATE ALL TEAM MEMBERS
+
 // =====================================================
-    // =====================================================
-// 🔥 MONTH KEY
+// 🔥 TRACK DOCUMENT
 // =====================================================
-// =====================================================
-// 🔥 MONTH KEY
-// =====================================================
-// ==================================================
-// 🔥 LOCAL MONTH KEY
-// ==================================================
-// ==================================================
-// 🔥 LOCAL MONTH KEY
-// ==================================================
 const trackRef =
+
   doc(
     window.db,
     "patrol_tracks",
@@ -19439,12 +19507,54 @@ await setDoc(
 
   { merge:true }
 );
+
 console.log(
   "🔥 FIRESTORE DUTY STARTED:",
   cleanLeader,
   sessionId
 );
-alert("✅ Duty Started");
+
+// =====================================================
+// 🔥 NOW DUTY REALLY STARTED
+// =====================================================
+window.isDutyActive = true;
+
+window.__dutyUpdating = false;
+
+window.__dutyChecked = true;
+
+// =====================================================
+// 🔥 UPDATE BUTTON NOW
+// =====================================================
+updateDutyButton();
+
+// =====================================================
+// 🔥 CLOSE FORM NOW
+// =====================================================
+if(typeof closeDutyForm === "function"){
+
+  closeDutyForm();
+}
+
+// =====================================================
+// 🔥 WAIT FOR MARKER VISUAL
+// =====================================================
+setTimeout(()=>{
+
+  startBtn.innerHTML =
+    "✅ Duty Started";
+
+  startBtn.disabled = false;
+
+  alert(
+    "✅ Duty Started Successfully"
+  );
+
+}, 1200);
+
+// =====================================================
+// 🔥 FINAL UI STATE
+// =====================================================
     // =====================================================
     // 🔥 FINAL UI STATE
     // =====================================================
