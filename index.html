@@ -11836,53 +11836,105 @@ function syncOfflineSightings(){
   });
 }
 /* ============================================================
-   🔥 AUTO TRIGGER ON INTERNET
+   🌐 SMART NETWORK ENGINE
 ============================================================ */
-// ==========================================
-// 🌐 NETWORK EVENTS (CLEAN + MERGED)
-// ==========================================
 
+let offlineTimer = null;
+
+// ============================================================
+// 🌐 ONLINE
+// ============================================================
 window.addEventListener("online", () => {
+
   console.log("🌐 Internet back → syncing all");
 
-  // 🔥 Update UI first
+  // ==========================================================
+  // 🔥 CANCEL FALSE OFFLINE TIMER
+  // ==========================================================
+  if(offlineTimer){
+
+    clearTimeout(offlineTimer);
+    offlineTimer = null;
+  }
+
+  // ==========================================================
+  // 🔥 REMOVE OFFLINE UI
+  // ==========================================================
+  document.body.classList.remove(
+    "offlineForestMode"
+  );
+
+  // ==========================================================
+  // 🔥 UPDATE UI
+  // ==========================================================
   updateNetworkStatus?.("connecting");
 
-  // ==========================================
+  // ==========================================================
   // 🔥 SYNC ALL OFFLINE DATA
-  // ==========================================
+  // ==========================================================
   syncOfflineMoves?.();
+
   syncOfflineSightings?.();
 
-  if (typeof syncOfflineData === "function") {
+  if(typeof syncOfflineData === "function"){
+
     syncOfflineData();
   }
 
-  // ==========================================
-  // 🔥 CRITICAL: GPS QUEUE FLUSH
-  // ==========================================
+  // ==========================================================
+  // 🔥 GPS FLUSH
+  // ==========================================================
   flushOfflineGPS?.();
 
-  // ==========================================
-  // 🔥 REFRESH PROFILE / STATE
-  // ==========================================
+  // ==========================================================
+  // 🔥 REFRESH PROFILE
+  // ==========================================================
   loadProfile?.();
 
-  console.log("✅ All offline data sync triggered");
+  console.log(
+    "✅ All offline data sync triggered"
+  );
 });
 
+// ============================================================
+// 📴 OFFLINE
+// ============================================================
 window.addEventListener("offline", () => {
-  console.log("📴 Gone Offline");
-  updateNetworkStatus("offline");
-});
-// ============================================================
-// 🌲 OFFLINE FOREST MODE
-// ============================================================
-window.addEventListener(
 
-  "offline",
+  console.log(
+    "📴 Possible offline detected"
+  );
 
-  () => {
+  // ==========================================================
+  // 🔥 PREVENT DUPLICATE TIMERS
+  // ==========================================================
+  if(offlineTimer){
+
+    clearTimeout(offlineTimer);
+  }
+
+  // ==========================================================
+  // 🔥 WAIT BEFORE DECLARING OFFLINE
+  // ==========================================================
+  offlineTimer = setTimeout(() => {
+
+    // ========================================================
+    // 🔥 DOUBLE CHECK
+    // ========================================================
+    if(navigator.onLine){
+
+      console.log(
+        "✅ False offline ignored"
+      );
+
+      return;
+    }
+
+    console.log(
+      "🌲 OFFLINE FOREST MODE CONFIRMED"
+    );
+
+    updateNetworkStatus?.("offline");
 
     document.body.classList.add(
       "offlineForestMode"
@@ -11892,8 +11944,9 @@ window.addEventListener(
       "🌲 OFFLINE FOREST MODE",
       "warning"
     );
-  }
-);
+
+  }, 5000);
+});
 // ==========================================
 // 🚀 APP LOAD (SPLASH)
 // ==========================================
