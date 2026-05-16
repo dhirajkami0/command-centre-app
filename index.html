@@ -9798,9 +9798,23 @@ function cleanTrackPoints(track){
       );
 
     // ==================================================
-   if(dist > 250){
-  return;
-}
+    // 🚫 LIGHT VISUAL TELEPORT FILTER
+    // FRONTEND ONLY
+    // APK ALREADY FILTERS GPS
+    // ==================================================
+    if(dist > 60){
+
+      console.warn(
+        "🚫 Frontend spike removed:",
+        dist
+      );
+
+      return;
+    }
+
+    // ==================================================
+    // 🔥 KEEP POINT
+    // ==================================================
     clean.push([lat, lon]);
 
   });
@@ -9816,7 +9830,6 @@ function cleanTrackPoints(track){
 
   return clean;
 }
-
 
 // ======================================================
 // 🔥 LOAD STAFF
@@ -10343,34 +10356,46 @@ const polyline =
 // ======================================
 // 🔥 APPEND NEW GPS POINTS
 // ======================================
-newPoints.forEach(p=>{
+// ======================================
+// 🔥 LIGHT FRONTEND VISUAL CLEANUP
+// APK ALREADY FILTERS GPS
+// ======================================
+const cleanedPoints =
 
-  // ====================================
-  // 🔥 INVALID GPS
-  // ====================================
+  cleanTrackPoints(
+
+    newPoints.map(p=>[
+      p.lat,
+      p.lon
+    ])
+
+  );
+
+// ======================================
+// 🔥 APPEND CLEANED POINTS
+// ======================================
+cleanedPoints.forEach(p=>{
+
   if(
-
-    isNaN(p.lat) ||
-
-    isNaN(p.lon)
-
+    !Array.isArray(p)
   ){
     return;
   }
 
-  // ====================================
-  // 🔥 APPEND TO EXISTING LINE
-  // ====================================
+  if(
+    isNaN(p[0]) ||
+    isNaN(p[1])
+  ){
+    return;
+  }
+
   polyline.addLatLng([
-
-    p.lat,
-    p.lon
-
+    p[0],
+    p[1]
   ]);
 
 });
-
-// ======================================
+            // ======================================
 // 🔥 SAVE POINT COUNT
 // ======================================
 window.trackPointCount[
