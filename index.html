@@ -9837,19 +9837,38 @@ function loadStaff(){
     onSnapshot
   } = window.fb;
 
-  const liveRef =
-    collection(
-      window.db,
-      "live_staff"
-    );
+ const liveRef =
+  collection(
+    window.db,
+    "live_staff"
+  );
 
-  onSnapshot(
+// ==========================================
+// 🔥 PREVENT DUPLICATE LISTENERS
+// ==========================================
+if(window.staffListenerActive === true){
 
-    liveRef,
+  console.log(
+    "⏸ loadStaff listener already active"
+  );
 
-    async(snapshot)=>{
+  return;
+}
 
-      try {
+window.staffListenerActive = true;
+
+console.log(
+  "🔥 Creating SINGLE live_staff listener"
+);
+
+// ==========================================
+// 🔥 CREATE REALTIME LISTENER
+// ==========================================
+window.staffUnsubscribe = onSnapshot(
+
+  liveRef,
+
+  async(snapshot)=>{     try {
 
         let activeUsers =
           new Set();
@@ -12720,7 +12739,12 @@ function submitKML(){
   /* 🔥 GLOBAL TIMERS (5 SEC FOR BOTH) */
 window.lastSightingsLoad = 0;
 window.lastStaffLoad = 0;
+// ======================================
+// 🔥 SINGLE STAFF LISTENER PROTECTION
+// ======================================
+window.staffListenerActive = false;
 
+window.staffUnsubscribe = null;
 const MIN_SIGHTING_VISIBLE_TIME = 5000; // 5 sec
 const MIN_STAFF_VISIBLE_TIME = 5000;    // 5 sec
 
