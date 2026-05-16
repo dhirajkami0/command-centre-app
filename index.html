@@ -9799,50 +9799,14 @@ function cleanTrackPoints(track){
     ) return;
 
     // ==================================================
-    // 🔥 FIRST POINT
-    // ==================================================
-    if(clean.length === 0){
-
-      clean.push([lat, lon]);
-      return;
-    }
-
-    const last =
-      clean[clean.length - 1];
-
-    const dist =
-      map.distance(
-        [last[0], last[1]],
-        [lat, lon]
-      );
-
-    // ==================================================
-    // 🚫 LIGHT VISUAL TELEPORT FILTER
-    // ==================================================
-  
-    // ==================================================
-    // 🔥 KEEP POINT
+    // 🔥 KEEP ALL APK-VALIDATED POINTS
     // ==================================================
     clean.push([lat, lon]);
 
   });
 
-  // ==================================================
-  // 🔥 SMART POLYLINE COMPRESSION
-  // PRESERVES ORIGINAL SHAPE
-  // ==================================================
-  if(clean.length > 500){
-
-    clean =
-      L.LineUtil.simplify(
-        clean,
-        0.00003
-      );
-  }
-
   return clean;
-}
-// ======================================================
+}// ======================================================
 // 🔥 LOAD STAFF
 // ======================================================
 function loadStaff(){
@@ -10509,21 +10473,58 @@ if(
             // ==============================================
             // 🔥 SPREAD OVERLAP
             // ==============================================
-            if(group.length > 1){
+           // ==================================================
+// 🔥 STABLE OVERLAP SPREAD ENGINE
+// PREVENTS:
+// ✅ side switching
+// ✅ dancing
+// ✅ backward-forward jumps
+// ✅ overlap flicker
+// ==================================================
+if(group.length > 1){
 
-              const angle =
-                (index / group.length)
-                * Math.PI * 2;
+  // ================================================
+  // 🔥 STABLE HASH FROM STAFF NAME
+  // ================================================
+  let hash = 0;
 
-              lat +=
-                Math.cos(angle)
-                * 0.00003;
+  const stableId =
 
-              lon +=
-                Math.sin(angle)
-                * 0.00003;
-            }
+    String(
+      s.cleanName || ""
+    );
 
+  for(
+    let i = 0;
+    i < stableId.length;
+    i++
+  ){
+
+    hash +=
+      stableId.charCodeAt(i);
+  }
+
+  // ================================================
+  // 🔥 FIXED ANGLE PER STAFF
+  // ================================================
+  const angle =
+
+    (hash % 360)
+    * Math.PI / 180;
+
+  // ================================================
+  // 🔥 SMALL STABLE OFFSET
+  // ================================================
+  const spread = 0.00003;
+
+  lat +=
+    Math.cos(angle)
+    * spread;
+
+  lon +=
+    Math.sin(angle)
+    * spread;
+}
             // ==============================================
             // 🔥 DISTANCE
             // ==============================================
