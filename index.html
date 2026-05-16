@@ -2663,9 +2663,6 @@ async function startApp(){   // 🔥 MADE ASYNC (CRITICAL)
           console.log("🎯 Grid ready");
           clearInterval(gridInitInterval);
 
-          setTimeout(() => {
-            renderGrid("current","ALL");   // 🔥 WILL NOW WORK
-          }, 200);
         }
 
       }, 600);
@@ -7182,11 +7179,33 @@ function markVisitedHybrid(tracks){
 
     // ==========================================
     // 🔥 CLEAN + NORMALIZE TRACK
-    // ==========================================
-    let pts = t.track.map(p => ({
-      lat: Number(p[0]),
-      lon: Number(p[1])
-    })).filter(p => !isNaN(p.lat) && !isNaN(p.lon));
+    // ==========================================// ==========================================
+// 🔥 CLEAN TRACK USING FRONTEND FILTER
+// ==========================================
+const cleanedTrack =
+
+  cleanTrackPoints(
+    t.track
+  );
+
+// ==========================================
+// 🔥 NORMALIZE
+// ==========================================
+let pts =
+
+  cleanedTrack.map(p => ({
+
+    lat: Number(p[0]),
+
+    lon: Number(p[1])
+
+  }))
+
+  .filter(p =>
+
+    !isNaN(p.lat) &&
+    !isNaN(p.lon)
+  );
 
     // 🔥 REMOVE BIG JUMPS (>500m)
     pts = pts.filter((p,i)=>{
@@ -9799,8 +9818,6 @@ function cleanTrackPoints(track){
 
     // ==================================================
     // 🚫 LIGHT VISUAL TELEPORT FILTER
-    // FRONTEND ONLY
-    // APK ALREADY FILTERS GPS
     // ==================================================
     if(dist > 60){
 
@@ -9820,17 +9837,20 @@ function cleanTrackPoints(track){
   });
 
   // ==================================================
-  // 🔥 LIMIT TRACK SIZE
+  // 🔥 SMART POLYLINE COMPRESSION
+  // PRESERVES ORIGINAL SHAPE
   // ==================================================
-  if(clean.length > 300){
+  if(clean.length > 500){
 
     clean =
-      clean.slice(-300);
+      L.LineUtil.simplify(
+        clean,
+        0.00003
+      );
   }
 
   return clean;
 }
-
 // ======================================================
 // 🔥 LOAD STAFF
 // ======================================================
@@ -10395,6 +10415,20 @@ cleanedPoints.forEach(p=>{
   ]);
 
 });
+
+// ==================================================
+// 🔥 GRID DETECTION FROM CLEANED POLYLINE
+// ==================================================
+markVisitedHybrid([{
+
+  track: cleanedPoints,
+
+  date:
+    new Date()
+      .toISOString()
+
+}]);
+            
             // ======================================
 // 🔥 SAVE POINT COUNT
 // ======================================
