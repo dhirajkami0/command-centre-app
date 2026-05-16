@@ -19268,7 +19268,7 @@ const gpsPosition =
               // 🔥 WAIT 3 SEC
               // ===========================================
               if(
-               Date.now() - startedAt >= 4000
+               Date.now() - startedAt >= 6000
               ){
 
                 if(resolved){
@@ -19325,7 +19325,49 @@ const gpsPosition =
             maximumAge:0
           }
         );
+// =====================================================
+// 🔥 HARD FALLBACK
+// NEVER FREEZE UI
+// =====================================================
+setTimeout(()=>{
 
+  if(resolved){
+    return;
+  }
+
+  resolved = true;
+
+  navigator.geolocation
+    .clearWatch(watchId);
+
+  console.warn(
+    "⚠ GPS TIMEOUT FALLBACK"
+  );
+
+  // ===============================================
+  // 🔥 PICK BEST AVAILABLE
+  // ===============================================
+  if(samples.length > 0){
+
+    samples.sort(
+
+      (a,b)=>
+
+        a.accuracy -
+        b.accuracy
+    );
+
+    resolve(samples[0]);
+
+    return;
+  }
+
+  // ===============================================
+  // 🔥 NO GPS
+  // ===============================================
+  resolve(null);
+
+}, 5000);
     } catch(e){
 
       console.error(
@@ -19581,6 +19623,7 @@ setTimeout(()=>{
     startBtn.innerHTML = originalText;
 
     startBtn.disabled = false;
+    startDutySubmitting = false;
   }
 
 })();
