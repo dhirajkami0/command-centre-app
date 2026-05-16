@@ -4983,8 +4983,8 @@ function showBestLocation() {
     return;
   }
 
-  const lat = Number(bestLocation.latlng.lat.toFixed(6));
-  const lng = Number(bestLocation.latlng.lng.toFixed(6));
+  const lat = Number(bestLocation.latlng.lat.toFixed(5));
+  const lng = Number(bestLocation.latlng.lng.toFixed(5));
   const acc = Math.round(bestLocation.accuracy);
 
   console.log("✅ Final location selected:", { lat, lng, acc });
@@ -5728,7 +5728,7 @@ function lineIntersect(lat1, lon1, lat2, lon2, lat3, lon3, lat4, lon4) {
   const latKey = Math.floor(lat / size) * size;
   const lonKey = Math.floor(lon / size) * size;
 
-  const id = latKey.toFixed(6) + "_" + lonKey.toFixed(6);
+  const id = latKey.toFixed(5) + "_" + lonKey.toFixed(5);
 
   const cell = window.gridIndex[id];
 
@@ -9819,16 +9819,7 @@ function cleanTrackPoints(track){
     // ==================================================
     // 🚫 LIGHT VISUAL TELEPORT FILTER
     // ==================================================
-    if(dist > 60){
-
-      console.warn(
-        "🚫 Frontend spike removed:",
-        dist
-      );
-
-      return;
-    }
-
+  
     // ==================================================
     // 🔥 KEEP POINT
     // ==================================================
@@ -10471,9 +10462,9 @@ let groups = {};
 staff.forEach(s=>{
 
   const key =
-    Number(s.lat).toFixed(6)
+    Number(s.lat).toFixed(5)
     + ","
-    + Number(s.lon).toFixed(6);
+    + Number(s.lon).toFixed(5);
 
   if(!groups[key]){
     groups[key] = [];
@@ -10526,11 +10517,11 @@ if(
 
               lat +=
                 Math.cos(angle)
-                * 0.00012;
+                * 0.00003;
 
               lon +=
                 Math.sin(angle)
-                * 0.00012;
+                * 0.00003;
             }
 
             // ==============================================
@@ -11117,17 +11108,15 @@ ${
 
             } else {
 
-              window.staffMarkers[
-                s.cleanName
-              ]
+             window.staffMarkers[
+  s.cleanName
+]
 
-              .setLatLng([lat, lon])
+.setLatLng([lat, lon])
 
-              .setIcon(icon)
-
-              .setPopupContent(
-                popup
-              );
+.setPopupContent(
+  popup
+);
             }
 
            
@@ -13706,10 +13695,10 @@ if (!profile || !profile.rawName) {
     if(bestPos){
 
       const lat =
-        bestPos.coords.latitude.toFixed(6);
+        bestPos.coords.latitude.toFixed(5);
 
       const lon =
-        bestPos.coords.longitude.toFixed(6);
+        bestPos.coords.longitude.toFixed(5);
 
       const acc =
         Math.round(bestPos.coords.accuracy);
@@ -15438,8 +15427,8 @@ async function runAutoGPSCycle(){
     return;
   }
 
-  const lat = +bestLocation.coords.latitude.toFixed(6);
-  const lon = +bestLocation.coords.longitude.toFixed(6);
+  const lat = +bestLocation.coords.latitude.toFixed(5);
+  const lon = +bestLocation.coords.longitude.toFixed(5);
   const acc = Math.round(bestLocation.coords.accuracy);
 
   console.log("✅ FINAL BEST:", lat, lon, "acc:", acc);
@@ -15512,7 +15501,7 @@ function sendGPS(lat, lon){
   // ============================================================
   // 🔥 2. DUPLICATE FILTER (same lat/lon)
   // ============================================================
-  const key = lat.toFixed(6) + "_" + lon.toFixed(6);
+  const key = lat.toFixed(5) + "_" + lon.toFixed(5);
 
   if(window.__lastGPSKey === key){
     console.log("⛔ Duplicate GPS skipped");
@@ -16581,13 +16570,13 @@ async function sendLocation(){
     const lat = Number(
 
       finalPos.coords.latitude
-        .toFixed(6)
+        .toFixed(5)
     );
 
     const lng = Number(
 
       finalPos.coords.longitude
-        .toFixed(6)
+        .toFixed(5)
     );
 
     const acc = Math.round(
