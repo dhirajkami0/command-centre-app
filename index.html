@@ -8955,17 +8955,35 @@ ${e.teamLeader || "Unknown"}<br>
   📞
 
   ${
-    e.phone
+    (
+      e.phone ||
+
+      window.userProfile?.phone
+    )
+
     ? `
     <a
-      href="tel:${String(e.phone).trim()}"
+      href="tel:${
+        String(
+
+          e.phone ||
+
+          window.userProfile?.phone
+
+        ).trim()
+      }"
+
       style="
         color:#00695c;
         text-decoration:none;
         font-weight:700;
       ">
 
-      ${e.phone}
+      ${
+        e.phone ||
+
+        window.userProfile?.phone
+      }
 
     </a>
     `
@@ -8973,7 +8991,6 @@ ${e.teamLeader || "Unknown"}<br>
   }
 
 </div>
-
   <br>
   <b>📍 Location:</b><br>
   <code>${lat.toFixed(5)}, ${lon.toFixed(5)} near ${e.village || "Unknown"}</code>
