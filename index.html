@@ -2897,7 +2897,7 @@ window.openCamera = function(){
 
   try{
 
-    closeActionMenu();
+window.closeActionMenu();
 
     const input =
       document.getElementById(
@@ -2938,7 +2938,7 @@ window.openGallery = function(){
 
   try{
 
-    closeActionMenu();
+   window.closeActionMenu();
 
     const input =
       document.getElementById(
@@ -2978,7 +2978,7 @@ window.openDocumentPicker = function(){
 
   try{
 
-    closeActionMenu();
+    window.closeActionMenu();
 
     const input =
       document.getElementById(
@@ -3014,7 +3014,7 @@ window.shareContact = async function(){
 
   try{
 
-    closeActionMenu();
+   window.closeActionMenu();
 
     if(
       !window.firebaseReady ||
@@ -3232,7 +3232,7 @@ document
 
     if(file){
 
-      await uploadChatImage(file);
+      await window.uploadChatImage(file);
     }
 
     e.target.value = "";
@@ -3253,7 +3253,7 @@ document
 
     if(file){
 
-      await uploadChatImage(file);
+      await window.uploadChatImage(file);
     }
 
     e.target.value = "";
@@ -3274,7 +3274,7 @@ document
 
     if(file){
 
-      await uploadChatDocument(file);
+      await window.uploadChatDocument(file);
     }
 
     e.target.value = "";
@@ -3358,8 +3358,29 @@ window.togglePhotoSubmenu = function(){
 
       : "block";
 };
+// =====================================================
+// 🔥 CLOSE ACTION MENU
+// =====================================================
+window.closeActionMenu = function(){
 
+  const menu =
+    document.getElementById(
+      "actionMenu"
+    );
 
+  const sub =
+    document.getElementById(
+      "photoSubmenu"
+    );
+
+  if(menu){
+    menu.style.display = "none";
+  }
+
+  if(sub){
+    sub.style.display = "none";
+  }
+};
 // =====================================================
 // 🔥 CLOSE MENU
 // =====================================================
@@ -16230,7 +16251,7 @@ async function markMessagesRead(){
 
   try {
 
-    const col = getChatCollection();
+    const col = window.getChatCollection();
     if(!col) return;
 
     const snapshot = await window.fb.getDocs(col);
@@ -16278,7 +16299,8 @@ function getChatCollection(){
   if(!isFirebaseReady()) return null;
   return window.fb.collection(window.db, "patrol_chat");
 }
-
+window.getChatCollection =
+  getChatCollection;
 function typing(){
 
   const el = document.getElementById("typingIndicator");
@@ -16591,7 +16613,7 @@ async function sendMessage(){
     // 🔥 COLLECTION
     // ==================================================
     const col =
-      getChatCollection();
+      window.getChatCollection();
 
     if(!col){
 
@@ -16998,7 +17020,7 @@ async function sendLocation(){
     // 🔥 COLLECTION
     // ==================================================
     const col =
-      getChatCollection();
+      window.getChatCollection();
 
     if(!col){
 
@@ -17108,7 +17130,8 @@ window.sendLocation =
 // ================= SEND PHOTO =================
 // ================= SEND PHOTO ================
 async function sendPhoto(event){
-
+window.closeActionMenu =
+  window.closeActionMenu || function(){};
   try {
 
     // ==================================================
@@ -17307,7 +17330,7 @@ async function sendPhoto(event){
       // ==============================================
       await window.fb.addDoc(
 
-        getChatCollection(),
+       window.getChatCollection(),
 
         {
           type: "image",
@@ -17342,7 +17365,7 @@ async function sendPhoto(event){
 
       }, 800);
 
-      closeActionMenu();
+      window.closeActionMenu();
 
       return;
     }
@@ -17554,7 +17577,7 @@ async function sendPhoto(event){
 
       await window.fb.addDoc(
 
-        getChatCollection(),
+        window.getChatCollection(),
 
         chatPayload
       );
@@ -17584,7 +17607,7 @@ async function sendPhoto(event){
     // ==================================================
     // 🔥 CLOSE MENU
     // ==================================================
-    closeActionMenu();
+    window.closeActionMenu();
 
   } catch(err){
 
@@ -17615,7 +17638,7 @@ async function sendPhoto(event){
     // 🔥 CLOSE MENU
     // ==============================================
     try{
-      closeActionMenu();
+      window.closeActionMenu();
     } catch(_){}
 
     // ==============================================
@@ -17996,7 +18019,7 @@ function startChat(){
     // 🔥 CHAT COLLECTION
     // ==================================================
     const col =
-      getChatCollection();
+     window.getChatCollection();
 
     if(!col){
 
@@ -18662,7 +18685,7 @@ async function shareContact(){
 
   try{
 
-    closeActionMenu();
+   window.closeActionMenu();
 
     if(!window.userProfile){
 
@@ -18673,7 +18696,7 @@ async function shareContact(){
 
     await window.fb.addDoc(
 
-      getChatCollection(),
+      window.getChatCollection(),
 
       {
 
@@ -18794,7 +18817,7 @@ document.addEventListener(
       !plusClick
     ){
 
-      closeActionMenu();
+      window.closeActionMenu();
     }
   }
 );
@@ -20552,7 +20575,7 @@ overflow:hidden;
       <!-- 📍 LOCATION -->
       <button onclick="
         sendLocation();
-        closeActionMenu();
+        window.closeActionMenu();
       " class="chatMenuBtn">
 
         📍 Location
@@ -20562,7 +20585,7 @@ overflow:hidden;
       <!-- 👤 CONTACT -->
       <button onclick="
         shareContact();
-        closeActionMenu();
+       window.closeActionMenu();
       " class="chatMenuBtn">
 
         👤 Contact
@@ -20572,7 +20595,7 @@ overflow:hidden;
       <!-- 📄 DOCUMENT -->
       <button onclick="
         openDocumentPicker();
-        closeActionMenu();
+       window.closeActionMenu();
       " class="chatMenuBtn">
 
         📄 Document
@@ -20601,7 +20624,7 @@ overflow:hidden;
         <!-- 📷 CAMERA -->
         <button onclick="
           openCamera();
-          closeActionMenu();
+         window.closeActionMenu();
         " class="chatSubBtn">
 
           📷 Camera
@@ -20611,7 +20634,7 @@ overflow:hidden;
         <!-- 🖼 GALLERY -->
         <button onclick="
           openGallery();
-          closeActionMenu();
+          window.closeActionMenu();
         " class="chatSubBtn">
 
           🖼 Gallery
@@ -20774,24 +20797,7 @@ z-index:9999999;
 <!-- ===================================================== -->
 <!-- 🔥 MENU HELPERS -->
 <!-- ===================================================== -->
-<script>
 
-// =====================================================
-// 🔥 TOGGLE PHOTO SUBMENU
-// =====================================================
-
-// =====================================================
-// 🔥 DOCUMENT PICKER
-// =====================================================
-// =====================================================
-// 🔥 IMAGE VIEWER
-// =====================================================
-
-// =====================================================
-// 🔥 CLOSE IMAGE VIEWER
-// =====================================================
-
-</script>
 
 <!-- ================= DELETE POPUP ================= -->
 <div id="deleteOverlay" onclick="closeDeletePopup()" style="
