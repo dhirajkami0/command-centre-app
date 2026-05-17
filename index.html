@@ -2881,7 +2881,510 @@ const dutyWait = setInterval(() => {
     console.log(
       "🔥 FIREBASE READY"
     );
+// =====================================================
+// 🔥 STRICT SINGLE MEDIA SYSTEM
+// =====================================================
 
+if(!window.__STRICT_MEDIA_SYSTEM__){
+
+window.__STRICT_MEDIA_SYSTEM__ = true;
+
+
+// =====================================================
+// 🔥 CAMERA ONLY
+// =====================================================
+window.openCamera = function(){
+
+  try{
+
+    closeActionMenu();
+
+    const input =
+      document.getElementById(
+        "cameraInput"
+      );
+
+    if(!input){
+      alert("Camera input missing");
+      return;
+    }
+
+    input.value = "";
+
+    input.setAttribute(
+      "capture",
+      "environment"
+    );
+
+    setTimeout(() => {
+
+      input.click();
+
+    }, 120);
+
+  }catch(err){
+
+    console.error(err);
+
+    alert("Camera failed");
+  }
+};
+
+
+// =====================================================
+// 🔥 GALLERY ONLY
+// =====================================================
+window.openGallery = function(){
+
+  try{
+
+    closeActionMenu();
+
+    const input =
+      document.getElementById(
+        "galleryInput"
+      );
+
+    if(!input){
+      alert("Gallery input missing");
+      return;
+    }
+
+    input.value = "";
+
+    input.removeAttribute(
+      "capture"
+    );
+
+    setTimeout(() => {
+
+      input.click();
+
+    }, 120);
+
+  }catch(err){
+
+    console.error(err);
+
+    alert("Gallery failed");
+  }
+};
+
+
+// =====================================================
+// 🔥 DOCUMENT PICKER
+// =====================================================
+window.openDocumentPicker = function(){
+
+  try{
+
+    closeActionMenu();
+
+    const input =
+      document.getElementById(
+        "documentInput"
+      );
+
+    if(!input){
+      alert("Document input missing");
+      return;
+    }
+
+    input.value = "";
+
+    setTimeout(() => {
+
+      input.click();
+
+    }, 120);
+
+  }catch(err){
+
+    console.error(err);
+
+    alert("Document picker failed");
+  }
+};
+
+
+// =====================================================
+// 🔥 CONTACT SHARE
+// =====================================================
+window.shareContact = async function(){
+
+  try{
+
+    closeActionMenu();
+
+    if(
+      !window.firebaseReady ||
+      !window.userProfile
+    ){
+      alert("Login required");
+      return;
+    }
+
+    await window.fb.addDoc(
+
+      window.fb.collection(
+        window.db,
+        "patrol_chat"
+      ),
+
+      {
+
+        type:"contact",
+
+        contactName:
+          window.userProfile.rawName,
+
+        contactPhone:
+          window.userProfile.phone,
+
+        user:
+          window.userProfile.rawName,
+
+        phone:
+          window.userProfile.phone,
+
+        time:
+          window.fb.serverTimestamp()
+      }
+    );
+
+    showToast("👤 Contact shared");
+
+  }catch(err){
+
+    console.error(err);
+
+    alert("Contact failed");
+  }
+};
+
+
+// =====================================================
+// 🔥 IMAGE UPLOAD
+// =====================================================
+window.uploadChatImage = async function(file){
+
+  try{
+
+    if(!file) return;
+
+    showToast("📤 Uploading photo...");
+
+    const filePath =
+
+      "chat_images/" +
+
+      Date.now() +
+
+      "_" +
+
+      file.name;
+
+    const storageRef =
+
+      window.fb.ref(
+        window.storage,
+        filePath
+      );
+
+    await window.fb.uploadBytes(
+      storageRef,
+      file
+    );
+
+    const downloadURL =
+
+      await window.fb.getDownloadURL(
+        storageRef
+      );
+
+    await window.fb.addDoc(
+
+      window.fb.collection(
+        window.db,
+        "patrol_chat"
+      ),
+
+      {
+
+        type:"image",
+
+        imageUrl:downloadURL,
+
+        fileName:file.name,
+
+        user:
+          window.userProfile?.rawName || "Unknown",
+
+        phone:
+          window.userProfile?.phone || "",
+
+        time:
+          window.fb.serverTimestamp()
+      }
+    );
+
+    showToast("✅ Photo sent");
+
+  }catch(err){
+
+    console.error(err);
+
+    alert("Photo upload failed");
+  }
+};
+
+
+// =====================================================
+// 🔥 DOCUMENT UPLOAD
+// =====================================================
+window.uploadChatDocument = async function(file){
+
+  try{
+
+    if(!file) return;
+
+    showToast("📤 Uploading document...");
+
+    const filePath =
+
+      "chat_docs/" +
+
+      Date.now() +
+
+      "_" +
+
+      file.name;
+
+    const storageRef =
+
+      window.fb.ref(
+        window.storage,
+        filePath
+      );
+
+    await window.fb.uploadBytes(
+      storageRef,
+      file
+    );
+
+    const downloadURL =
+
+      await window.fb.getDownloadURL(
+        storageRef
+      );
+
+    await window.fb.addDoc(
+
+      window.fb.collection(
+        window.db,
+        "patrol_chat"
+      ),
+
+      {
+
+        type:"document",
+
+        documentUrl:downloadURL,
+
+        fileName:file.name,
+
+        user:
+          window.userProfile?.rawName || "Unknown",
+
+        phone:
+          window.userProfile?.phone || "",
+
+        time:
+          window.fb.serverTimestamp()
+      }
+    );
+
+    showToast("✅ Document sent");
+  }
+  catch(err){
+
+    console.error(err);
+
+    alert("Document upload failed");
+  }
+};
+
+
+// =====================================================
+// 🔥 INPUT LISTENERS
+// =====================================================
+
+document
+.getElementById("cameraInput")
+?.addEventListener(
+
+  "change",
+
+  async function(e){
+
+    const file =
+      e.target.files?.[0];
+
+    if(file){
+
+      await uploadChatImage(file);
+    }
+
+    e.target.value = "";
+  }
+);
+
+
+document
+.getElementById("galleryInput")
+?.addEventListener(
+
+  "change",
+
+  async function(e){
+
+    const file =
+      e.target.files?.[0];
+
+    if(file){
+
+      await uploadChatImage(file);
+    }
+
+    e.target.value = "";
+  }
+);
+
+
+document
+.getElementById("documentInput")
+?.addEventListener(
+
+  "change",
+
+  async function(e){
+
+    const file =
+      e.target.files?.[0];
+
+    if(file){
+
+      await uploadChatDocument(file);
+    }
+
+    e.target.value = "";
+  }
+);
+
+
+// =====================================================
+// 🔥 IMAGE VIEWER
+// =====================================================
+window.openImageViewer = function(url){
+
+  const viewer =
+    document.getElementById(
+      "imageViewer"
+    );
+
+  const img =
+    document.getElementById(
+      "fullImage"
+    );
+
+  if(!viewer || !img){
+    return;
+  }
+
+  viewer.style.display = "flex";
+
+  img.src = url;
+
+  document.body.style.overflow =
+    "hidden";
+};
+
+
+// =====================================================
+// 🔥 CLOSE VIEWER
+// =====================================================
+window.closeImageViewer = function(){
+
+  const viewer =
+    document.getElementById(
+      "imageViewer"
+    );
+
+  const img =
+    document.getElementById(
+      "fullImage"
+    );
+
+  if(viewer){
+    viewer.style.display = "none";
+  }
+
+  if(img){
+    img.src = "";
+  }
+
+  document.body.style.overflow =
+    "auto";
+};
+
+
+// =====================================================
+// 🔥 PHOTO SUBMENU
+// =====================================================
+window.togglePhotoSubmenu = function(){
+
+  const menu =
+    document.getElementById(
+      "photoSubmenu"
+    );
+
+  if(!menu) return;
+
+  menu.style.display =
+
+    menu.style.display === "block"
+
+      ? "none"
+
+      : "block";
+};
+
+
+// =====================================================
+// 🔥 CLOSE MENU
+// =====================================================
+window.closeActionMenu = function(){
+
+  const menu =
+    document.getElementById(
+      "actionMenu"
+    );
+
+  const sub =
+    document.getElementById(
+      "photoSubmenu"
+    );
+
+  if(menu){
+    menu.style.display = "none";
+  }
+
+  if(sub){
+    sub.style.display = "none";
+  }
+};
+
+}
     // ============================================
     // 🧹 RUN CLEANUP IMMEDIATELY
     // ============================================
@@ -16598,10 +17101,7 @@ window.sendLocation =
     
     // ================= SEND PHOTO =================
 
-    function closeActionMenu(){
-  const m = document.getElementById("actionMenu");
-  if(m) m.style.display = "none";
-}
+ 
     
     // ================= SEND PHOTO =================
 // ================= SEND PHOTO =================
@@ -17766,45 +18266,8 @@ function startChat(){
       e
     );
   }
-}    function openImageViewer(url){
+}    
 
-  let viewer = document.getElementById("imageViewer");
-
-  // create if not exists
-  if(!viewer){
-    viewer = document.createElement("div");
-    viewer.id = "imageViewer";
-    viewer.style = `
-      position:fixed;
-      top:0;left:0;
-      width:100%;height:100%;
-      background:black;
-      display:flex;
-      flex-direction:column;
-      z-index:9999999;
-    `;
-
-    viewer.innerHTML = `
-      <div style="padding:10px;color:white;background:#111;">
-        <span onclick="closeImageViewer()" style="cursor:pointer;">⬅ Back</span>
-      </div>
-      <div style="flex:1;display:flex;justify-content:center;align-items:center;">
-        <img id="fullImage" style="max-width:100%;max-height:100%;">
-      </div>
-    `;
-
-    document.body.appendChild(viewer);
-  }
-
-  viewer.style.display = "flex";
-  document.getElementById("fullImage").src = url;
-}
-
-
-function closeImageViewer(){
-  const viewer = document.getElementById("imageViewer");
-  if(viewer) viewer.style.display = "none";
-}
 // ================= VOICE =================
 // ================= VOICE =================
 // ================= VOICE =================
@@ -18148,101 +18611,154 @@ if(!isFirebaseReady()){
   }
 }
 
-// ================= CAMERA =================
-function openCamera(){
+// =====================================================
+// 🔥 CAMERA ONLY
+// =====================================================
 
-  const input = document.getElementById("cameraInput");
 
-  if(!input){
-    console.error("❌ cameraInput not found");
-    alert("Camera not ready");
-    return;
+// =====================================================
+// 🔥 CONTACT SHARE
+// =====================================================
+async function shareContact(){
+
+  try{
+
+    closeActionMenu();
+
+    if(!window.userProfile){
+
+      alert("Login required");
+
+      return;
+    }
+
+    await window.fb.addDoc(
+
+      getChatCollection(),
+
+      {
+
+        type:"contact",
+
+        contactName:
+          window.userProfile.rawName,
+
+        contactPhone:
+          window.userProfile.phone,
+
+        user:
+          window.userProfile.rawName,
+
+        phone:
+          window.userProfile.phone,
+
+        time:
+          window.fb.serverTimestamp(),
+
+        status:"sent"
+      }
+    );
+
+    showToast(
+      "👤 Contact shared"
+    );
+
+  }catch(err){
+
+    console.error(
+      "❌ shareContact:",
+      err
+    );
+
+    alert(
+      "Contact failed"
+    );
   }
-
-  input.value = "";
-  input.click();
 }
 
 
-// ================= GALLERY =================
-function openGallery(){
+// =====================================================
+// 🔥 DOCUMENT PICKER
+// =====================================================
 
-  const input = document.getElementById("galleryInput");
-
-  if(!input){
-    console.error("❌ galleryInput not found");
-    alert("Gallery not ready");
-    return;
-  }
-
-  input.value = "";
-  input.click();
-}
+// =====================================================
+// 🔥 IMAGE VIEWER
+// =====================================================
 
 
-// ================= ACTION MENU =================
-function toggleActionMenu(){
-  const m = document.getElementById("actionMenu");
-  m.style.display = (m.style.display === "flex") ? "none" : "flex";
-}
-
-
-// ================= INPUT SWITCH =================
+// =====================================================
+// 🔥 TOGGLE ACTION MENU
+// =====================================================
+// =====================================================
+// 🔥 INPUT SWITCH
+// =====================================================
 function handleInputChange(){
-  const txt = document.getElementById("chatInput").value.trim();
-  const btn = document.getElementById("mainActionBtn");
 
-  if(window.isRecording) return; // 🔥 don't override during recording
+  const txt =
+    document.getElementById(
+      "chatInput"
+    )?.value?.trim();
 
-  btn.innerText = txt ? "➤" : "🎤";
-}
+  const btn =
+    document.getElementById(
+      "mainActionBtn"
+    );
 
-
-// ================= SMART BUTTON =================
-document.addEventListener("DOMContentLoaded", () => {
-
-  const btn = document.getElementById("mainActionBtn");
-  if(!btn) return;
-
-  // DESKTOP
-  btn.addEventListener("mousedown", startMainAction);
-  btn.addEventListener("mouseup", stopMainAction);
-
-  // MOBILE
-  btn.addEventListener("touchstart", startMainAction, { passive:false });
-  btn.addEventListener("touchend", stopMainAction, { passive:false });
-
-});
-
-
-// ================= START ACTION =================
-function startMainAction(e){
-
-  if(e) e.preventDefault(); // 🔥 fix mobile double trigger
-
-  const txt = document.getElementById("chatInput").value.trim();
-
-  // 👉 SEND MESSAGE
-  if(txt){
-    sendMessage();
+  if(
+    !btn ||
+    window.isRecording
+  ){
     return;
   }
 
-  // 👉 START VOICE
-  startVoice();
+  btn.innerText =
+    txt
+      ? "➤"
+      : "🎤";
 }
 
 
-// ================= STOP ACTION =================
-function stopMainAction(e){
+// =====================================================
+// 🔥 AUTO CLOSE MENU
+// =====================================================
+document.addEventListener(
 
-  if(e) e.preventDefault();
+  "click",
 
-  if(!window.isRecording) return;
+  (e)=>{
 
-  stopVoice();
-}
+    const menu =
+      document.getElementById(
+        "actionMenu"
+      );
 
+    const plus =
+      document.getElementById(
+        "plusBtn"
+      );
+
+    if(
+      !menu ||
+      !plus
+    ){
+      return;
+    }
+
+    const inside =
+      menu.contains(e.target);
+
+    const plusClick =
+      plus.contains(e.target);
+
+    if(
+      !inside &&
+      !plusClick
+    ){
+
+      closeActionMenu();
+    }
+  }
+);
 
 // ================= AUTO CLOSE MENU =================
 document.addEventListener("click", (e)=>{
@@ -20073,42 +20589,7 @@ overflow:hidden;
   <!-- 🔥 HIDDEN INPUTS -->
   <!-- ===================================================== -->
 
-  <!-- 📷 CAMERA -->
-  <input
-    type="file"
-    id="cameraInput"
-    accept="image/*"
-    capture="environment"
-    data-source="camera"
-    style="display:none"
-    onchange="sendPhoto(event)"
-  >
-
-  <!-- 🖼 GALLERY -->
-  <input
-    type="file"
-    id="galleryInput"
-    accept="image/*"
-    data-source="gallery"
-    style="display:none"
-    onchange="sendPhoto(event)"
-  >
-
-  <!-- 📄 DOCUMENT -->
-  <input
-    type="file"
-    id="documentInput"
-    accept="
-      .pdf,
-      .doc,
-      .docx,
-      .xls,
-      .xlsx,
-      .txt
-    "
-    style="display:none"
-    onchange="sendDocument(event)"
-  >
+  
 
 </div>
 
@@ -20259,97 +20740,17 @@ z-index:9999999;
 // =====================================================
 // 🔥 TOGGLE PHOTO SUBMENU
 // =====================================================
-function togglePhotoSubmenu(){
-
-  const menu =
-
-    document.getElementById(
-      "photoSubmenu"
-    );
-
-  if(!menu) return;
-
-  menu.style.display =
-
-    menu.style.display === "block"
-
-      ? "none"
-
-      : "block";
-}
 
 // =====================================================
 // 🔥 DOCUMENT PICKER
 // =====================================================
-function openDocumentPicker(){
-
-  const input =
-
-    document.getElementById(
-      "documentInput"
-    );
-
-  if(!input){
-
-    alert(
-      "Document picker missing"
-    );
-
-    return;
-  }
-
-  input.value = "";
-
-  input.click();
-}
-
 // =====================================================
 // 🔥 IMAGE VIEWER
 // =====================================================
-function openImageViewer(url){
-
-  const viewer =
-    document.getElementById(
-      "imageViewer"
-    );
-
-  const img =
-    document.getElementById(
-      "fullImage"
-    );
-
-  const downloadBtn =
-    document.getElementById(
-      "downloadImageBtn"
-    );
-
-  if(!viewer || !img) return;
-
-  viewer.style.display = "flex";
-
-  img.src = url;
-
-  if(downloadBtn){
-
-    downloadBtn.href = url;
-  }
-}
 
 // =====================================================
 // 🔥 CLOSE IMAGE VIEWER
 // =====================================================
-function closeImageViewer(){
-
-  const viewer =
-    document.getElementById(
-      "imageViewer"
-    );
-
-  if(viewer){
-
-    viewer.style.display = "none";
-  }
-}
 
 </script>
 
@@ -20411,5 +20812,30 @@ box-shadow:0 -4px 20px rgba(0,0,0,0.5);
   z-index:9999;
 ">
 </div>
+  <!-- ===================================================== -->
+<!-- 🔥 STRICT MEDIA INPUTS -->
+<!-- ===================================================== -->
+
+<input
+  id="cameraInput"
+  type="file"
+  accept="image/*"
+  capture="environment"
+  style="display:none"
+/>
+
+<input
+  id="galleryInput"
+  type="file"
+  accept="image/*"
+  style="display:none"
+/>
+
+<input
+  id="documentInput"
+  type="file"
+  accept=".pdf,.doc,.docx,.xls,.xlsx,.txt"
+  style="display:none"
+/>
 </body>
 </html>
