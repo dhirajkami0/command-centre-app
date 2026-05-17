@@ -16606,449 +16606,221 @@ window.sendLocation =
     // ================= SEND PHOTO =================
 // ================= SEND PHOTO =================
 // ================= SEND PHOTO =================
-async function sendPhoto(e){
+```js
+async function sendPhoto(event){
 
   try {
 
-    // ==================================================
-    // 🔥 FIREBASE READY
-    // ==================================================
     if(!isFirebaseReady()){
-
-      alert(
-        "Chat initializing..."
-      );
-
+      alert("Chat initializing...");
       return;
     }
 
-    // ==================================================
-    // 🔥 STORAGE READY
-    // ==================================================
-    if(
-
-      !window.storage ||
-
-      !window.fb ||
-
-      !window.db
-
-    ){
-
-      alert(
-        "Storage not ready"
-      );
-
+    if(!window.storage || !window.fb || !window.db){
+      alert("Storage not ready");
       return;
     }
 
-    // ==================================================
-    // 🔥 FILE
-    // ==================================================
     const file =
-      e?.target?.files?.[0];
+      event?.target?.files?.[0];
 
     if(!file){
-
-      console.warn(
-        "⚠ No photo selected"
-      );
-
+      console.warn("⚠ No photo selected");
       return;
     }
 
-    console.log(
-      "🖼 Photo selected:",
-      file.name
-    );
+    console.log("🖼 Photo selected:", file.name);
 
-    // ==================================================
-    // 🔥 SOURCE DETECT
-    // ==================================================
     const inputId =
-      e.target.id || "";
+      event.target.id || "";
 
     const sourceAttr =
-      e.target.getAttribute(
-        "data-source"
-      );
+      event.target.getAttribute("data-source");
 
     const isCamera =
-
       sourceAttr === "camera" ||
-
       inputId === "cameraInput" ||
-
       (
-        e.target.capture &&
-        e.target.capture !== ""
+        event.target.capture &&
+        event.target.capture !== ""
       );
 
-    console.log(
-      "📸 Source:",
-      {
-        inputId,
-        sourceAttr,
-        isCamera
-      }
+    console.log("📸 Source:", {
+      inputId,
+      sourceAttr,
+      isCamera
+    });
+
+    showToast(
+      isCamera
+        ? "📸 Uploading camera photo..."
+        : "🖼 Uploading gallery photo..."
     );
 
-    // ==================================================
-    // 🔥 FILE REF
-    // ==================================================
     const fileName =
-
       "chat_photos/" +
-
       Date.now() +
-
       ".jpg";
 
     const fileRef =
-
       window.fb.ref(
         window.storage,
         fileName
       );
 
-    // ==================================================
-    // 🔥 USER
-    // ==================================================
     const name =
-
       window.userProfile?.rawName
       || "UNKNOWN";
-
-    // ==================================================
-    // 🖼 GALLERY FLOW
-    // ==================================================
-    if(!isCamera){
-
-      console.log(
-        "🖼 Uploading gallery photo..."
-      );
-
-      showToast(
-        "🖼 Uploading gallery photo..."
-      );
-
-      // ==============================================
-      // 🔥 COMPRESS
-      // ==============================================
-      const compressed =
-
-        await compressImage(
-          file
-        );
-
-      // ==============================================
-      // 🔥 UPLOAD
-      // ==============================================
-      await window.fb.uploadBytes(
-
-        fileRef,
-
-        compressed || file
-      );
-
-      // ==============================================
-      // 🔥 URL
-      // ==============================================
-      const url =
-
-        await window.fb.getDownloadURL(
-          fileRef
-        );
-
-      // ==============================================
-      // 🔥 SAVE CHAT
-      // ==============================================
-      await window.fb.addDoc(
-
-        getChatCollection(),
-
-        {
-          type: "image",
-
-          imageUrl: url,
-
-          user:name,
-
-          phone:
-            window.userProfile.phone,
-
-          time:
-            window.fb.serverTimestamp(),
-
-          status: "sent"
-        }
-      );
-
-      console.log(
-        "✅ Gallery photo sent"
-      );
-
-      showToast(
-        "🖼 Photo sent"
-      );
-
-      e.target.value = "";
-
-      return;
-    }
-
-    // ==================================================
-    // 📷 CAMERA FLOW (WEBVIEW SAFE)
-    // ==================================================
-
-    showToast(
-      "📸 Processing camera photo..."
-    );
 
     let lat = null;
     let lng = null;
 
-    // ==================================================
-    // 🔥 GPS
-    // ==================================================
-    // ==================================================
-// 🔥 USE CENTRAL APK GPS CACHE
-// ==================================================
-try {
+    try {
 
-  const gps =
-    window.latestGps;
+      const gps = window.latestGps;
 
-  // ==============================================
-  // 🔥 VALID CACHE
-  // ==============================================
-  if(
+      if(gps?.lat && gps?.lng){
 
-    gps &&
+        lat = Number(gps.lat).toFixed(5);
+        lng = Number(gps.lng).toFixed(5);
 
-    gps.lat &&
+        console.log(
+          "📍 Using GPS:",
+          lat,
+          lng
+        );
+      }
 
-    gps.lng
+    } catch(gpsErr){
 
-  ){
+      console.warn(
+        "⚠ GPS attach failed",
+        gpsErr
+      );
+    }
 
-    lat = Number(
-      gps.lat
-    ).toFixed(5);
+    let uploadFile = file;
 
-    lng = Number(
-      gps.lng
-    ).toFixed(5);
+    try {
 
-    console.log(
-      "📍 Using APK GPS cache:",
-      lat,
-      lng
-    );
+      if(
+        !isCamera &&
+        file.size > 300000
+      ){
 
-  } else {
+        const compressed =
+          await compressImage(file);
 
-    console.warn(
-      "⚠ latestGps empty"
-    );
-  }
+        if(
+          compressed &&
+          compressed.size > 0
+        ){
+          uploadFile = compressed;
+        }
+      }
 
-} catch(err){
+    } catch(compressErr){
 
-  console.warn(
-    "⚠ APK GPS cache failed",
-    err
-  );
-}
-    
-// ==================================================
-// 🔥 CAMERA WEBVIEW SAFE
-// DO NOT COMPRESS CAMERA FILES
-// ==================================================
-let uploadFile = file;
-
-try {
-
-  // ==============================================
-  // 🔥 ONLY COMPRESS LARGE FILES
-  // ==============================================
-  if(
-
-    !isCamera &&
-
-    file.size > 300000
-
-  ){
-
-    console.log(
-      "🗜 Compressing gallery image"
-    );
-
-    const compressed =
-
-      await compressImage(
-        file
+      console.warn(
+        "⚠ Compression failed",
+        compressErr
       );
 
-    if(
-
-      compressed &&
-
-      compressed.size > 0
-
-    ){
-
-      uploadFile =
-        compressed;
+      uploadFile = file;
     }
-  }
 
-} catch(compressErr){
-
-  console.warn(
-    "⚠ Compression failed, using original file",
-    compressErr
-  );
-
-  uploadFile = file;
-}
-
-// ==================================================
-// 🔥 VALIDATE FILE
-// ==================================================
-if(
-
-  !uploadFile ||
-
-  uploadFile.size <= 0
-
-){
-
-  throw new Error(
-    "Invalid image file"
-  );
-}
-
-console.log(
-  "📤 Uploading image:",
-  uploadFile.size
-);
-
-// ==================================================
-// 🔥 UPLOAD
-// ==================================================
-await window.fb.uploadBytes(
-
-  fileRef,
-
-  uploadFile
-);
-
-console.log(
-  "✅ Upload complete"
-);
+    if(
+      !uploadFile ||
+      uploadFile.size <= 0
+    ){
+      throw new Error("Invalid image");
+    }
 
     console.log(
-      "✅ Camera upload complete"
+      "📤 Upload start:",
+      uploadFile.size
     );
 
-    // ==================================================
-    // 🔥 URL
-    // ==================================================
-    const url =
+    // 🔥 IMPORTANT
+    const uploadResult =
+      await window.fb.uploadBytes(
+        fileRef,
+        uploadFile
+      );
 
+    console.log(
+      "✅ Upload complete",
+      uploadResult
+    );
+
+    const url =
       await window.fb.getDownloadURL(
         fileRef
       );
 
-    // ==================================================
-    // 🔥 SAVE CHAT
-    // ==================================================
+    console.log(
+      "🌍 Download URL:",
+      url
+    );
+
     await window.fb.addDoc(
 
       getChatCollection(),
 
       {
         type: "image",
-
         imageUrl: url,
-
         lat,
-
         lng,
-
-        user:name,
-
-        phone:
-          window.userProfile.phone,
-
-        time:
-          window.fb.serverTimestamp(),
-
-        status:"sent"
+        user: name,
+        phone: window.userProfile.phone,
+        time: window.fb.serverTimestamp(),
+        status: "sent"
       }
     );
 
-    console.log(
-      "✅ Camera photo sent"
+    console.log("✅ Chat message saved");
+
+    showToast("📸 Photo sent");
+
+    // 🔥 RESET LATE
+    setTimeout(() => {
+
+      try{
+        event.target.value = "";
+      }catch(_){}
+
+    }, 1000);
+
+    closeActionMenu();
+
+  } catch(err){
+
+    console.error(
+      "❌ sendPhoto crash:",
+      err
     );
 
-    showToast(
-      "📸 Photo sent"
+    try{
+
+      if(event?.target){
+        event.target.value = "";
+      }
+
+    } catch(_){}
+
+    closeActionMenu();
+
+    alert(
+      "❌ Photo send failed\n\n" +
+      (
+        err?.message ||
+        "Camera upload error"
+      )
     );
-
-    // ==================================================
-    // 🔥 RESET
-    // ==================================================
-   // ==================================================
-// 🔥 RESET INPUT
-// ==================================================
-e.target.value = "";
-
-// ==================================================
-// 🔥 CLOSE MENU
-// ==================================================
-closeActionMenu();
-
-} catch(e){
-
-  console.error(
-    "❌ sendPhoto crash:",
-    e
-  );
-
-  // ==============================================
-  // 🔥 RESET INPUT
-  // ==============================================
-  try{
-
-    if(e?.target){
-
-      e.target.value = "";
-    }
-
-  } catch(resetErr){}
-
-  // ==============================================
-  // 🔥 CLOSE MENU
-  // ==============================================
-  closeActionMenu();
-
-  // ==============================================
-  // 🔥 USER ERROR
-  // ==============================================
-  alert(
-
-    "❌ Photo send failed\n\n" +
-
-    (
-      e?.message ||
-
-      "Camera upload error"
-    )
-  );
+  }
 }
-}
+```
   function renderMessage(docId, m){
 
   const box = document.getElementById("chatMessages");
