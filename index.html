@@ -2621,10 +2621,12 @@ window.openCamera = function(){
 
     input.value = "";
 
+    // 🔥 REMOVE CAMERA MODE
     input.removeAttribute(
       "capture"
     );
 
+    // 🔥 FORCE GALLERY SOURCE
     input.setAttribute(
       "data-source",
       "gallery"
@@ -17185,27 +17187,49 @@ async function sendPhoto(event){
       event.target.getAttribute(
         "data-source"
       );
+// ==================================================
+// 🔥 STRICT SOURCE DETECT
+// ==================================================
+const sourceAttr =
 
-    const isCamera =
+  event.target.getAttribute(
+    "data-source"
+  );
 
-      sourceAttr === "camera" ||
+const inputId =
+  event.target.id || "";
 
-      inputId === "cameraInput" ||
+// 🔥 STRICT CAMERA DETECTION
+// ==================================================
+// 🔥 STRICT SOURCE DETECT
+// ==================================================
+const sourceAttr =
 
-      (
-        event.target.capture &&
-        event.target.capture !== ""
-      );
+  event.target.getAttribute(
+    "data-source"
+  );
 
-    console.log(
-      "📸 Source:",
-      {
-        inputId,
-        sourceAttr,
-        isCamera
-      }
-    );
+const inputId =
+  event.target.id || "";
 
+// 🔥 STRICT CAMERA DETECTION
+const isCamera =
+
+  sourceAttr === "camera" ||
+
+  (
+    inputId === "cameraInput" &&
+    sourceAttr !== "gallery"
+  );
+
+console.log(
+  "📸 STRICT SOURCE:",
+  {
+    inputId,
+    sourceAttr,
+    isCamera
+  }
+);
     // ==================================================
     // 🔥 FILE REF
     // ==================================================
