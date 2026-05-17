@@ -11075,55 +11075,128 @@ ${
 
   </div>
 
-</div>`;            // ==============================================
-            // 🔥 MARKER CREATE/UPDATE
-            // ==============================================
-            if(
-              !window.staffMarkers[
-                s.cleanName
-              ]
-            ){
+</div>`;          // ==============================================
+// 🔥 MARKER CREATE/UPDATE
+// ==============================================
+if(
+  !window.staffMarkers[
+    s.cleanName
+  ]
+){
 
-              window.staffMarkers[
-                s.cleanName
-              ] = L.marker(
+  window.staffMarkers[
+    s.cleanName
+  ] = L.marker(
 
-                [lat, lon],
+    [lat, lon],
 
-                {
-                  icon,
-                  zIndexOffset:3000
-                }
+    {
+      icon,
+      zIndexOffset:3000
+    }
 
-              )
+  )
 
-              .bindPopup(
-                popup,
-                {
-                  autoClose:false,
-                  closeOnClick:false
-                }
-              )
+  .bindPopup(
+    popup,
+    {
+      autoClose:false,
+      closeOnClick:false
+    }
+  )
 
-              .addTo(staffLayer);
+  .addTo(staffLayer);
 
-            } else {
+} else {
 
-             window.staffMarkers[
-  s.cleanName
-]
+  window.staffMarkers[
+    s.cleanName
+  ]
 
-.setLatLng([lat, lon])
+  .setLatLng([lat, lon])
 
-.setPopupContent(
-  popup
-);
-            }
+  .setPopupContent(
+    popup
+  );
+}
 
-           
+// ==================================================
+// 🔥 SNAPSHOT CONTROLS DUTY BUTTON
+// ONLY CURRENT USER
+// ==================================================
+if(
+
+  cleanName(
+    s.cleanName || ""
+  ) ===
+
+  cleanName(
+
+    window.userProfile
+      ?.cleanName ||
+
+    window.userProfile
+      ?.name ||
+
+    ""
+  )
+
+){
+
+  // ==============================================
+  // 🔥 REAL DUTY STATE
+  // ==============================================
+  window.isDutyActive =
+    s.dutyActive === true;
+
+  // ==============================================
+  // 🔥 SNAPSHOT FINISHED
+  // ==============================================
+  window.__dutyUpdating = false;
+
+  window.__dutyChecked = true;
+
+  // ==============================================
+  // 🔥 UPDATE BUTTON NOW
+  // ==============================================
+  updateDutyButton();
+
+  console.log(
+    "✅ DUTY UI CONFIRMED FROM SNAPSHOT"
+  );
+
+  // ==============================================
+  // 🔥 SUCCESS FLOW
+  // ==============================================
+  if(startDutySubmitting){
+
+    startDutySubmitting = false;
+
+    setTimeout(()=>{
+
+      const startBtn =
+
+        document.getElementById(
+          "startDutyBtn"
+        );
+
+      if(startBtn){
+
+        startBtn.innerHTML =
+          "✅ Duty Started";
+
+        startBtn.disabled = false;
+      }
+
+      alert(
+        "✅ Duty Started Successfully"
+      );
+
+    }, 500);
+  }
+}
 
 }); // END group.forEach
-
 }); // END Object.values(groups).forEach
 
 // ==================================================
@@ -19099,7 +19172,15 @@ function startDuty(event) {
 
     // 🔒 LOCK PROCESS
     startDutySubmitting = true;
+    // =====================================================
+// 🔥 UI TRANSITION LOCK
+// =====================================================
+window.__dutyUpdating = true;
 
+// =====================================================
+// 🔥 SHOW TRANSITION UI
+// =====================================================
+updateDutyButton();
     const payload = {
       staff: staffString,
       type: document.getElementById("d-type")?.value || "",
@@ -19557,44 +19638,12 @@ console.log(
 );
 
 // =====================================================
-// 🔥 NOW DUTY REALLY STARTED
-// =====================================================
-window.isDutyActive = true;
-
-window.__dutyUpdating = false;
-
-window.__dutyChecked = true;
-
-// =====================================================
-// 🔥 UPDATE BUTTON NOW
-// =====================================================
-updateDutyButton();
-
-// =====================================================
 // 🔥 CLOSE FORM NOW
 // =====================================================
 if(typeof closeDutyForm === "function"){
 
   closeDutyForm();
 }
-
-// =====================================================
-// 🔥 WAIT FOR MARKER VISUAL
-// =====================================================
-setTimeout(()=>{
-
-  startBtn.innerHTML =
-    "✅ Duty Started";
-
-  startBtn.disabled = false;
-
-  startDutySubmitting = false;
-
-  alert(
-    "✅ Duty Started Successfully"
-  );
-
-}, 1200);
 
 // =====================================================
 // 🔥 FINAL UI STATE
