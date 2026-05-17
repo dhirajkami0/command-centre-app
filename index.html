@@ -8060,8 +8060,29 @@ localStorage.setItem(
   )
 );
 
-      console.log("✅ Saved grids:", Object.keys(data).length);
+      
+      // ======================================================
+// 🔥 LIVE GRID REPAINT
+// ======================================================
+try{
 
+  renderGrid(
+
+    window.__lastMode || "today",
+
+    document.getElementById(
+      "beatSelect"
+    )?.value || "ALL"
+  );
+
+}catch(err){
+
+  console.warn(
+    "⚠ renderGrid refresh fail",
+    err
+  );
+}
+console.log("✅ Saved grids:", Object.keys(data).length);
     } else {
       console.warn("⚠ No grids intersected");
     }
