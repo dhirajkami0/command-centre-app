@@ -17183,11 +17183,7 @@ async function sendPhoto(event){
     const inputId =
       event.target.id || "";
 
-    const sourceAttr =
-      event.target.getAttribute(
-        "data-source"
-      );
-// ==================================================
+   // ==================================================
 // 🔥 STRICT SOURCE DETECT
 // ==================================================
 const sourceAttr =
@@ -17200,15 +17196,23 @@ const inputId =
   event.target.id || "";
 
 // 🔥 STRICT CAMERA DETECTION
-// ==================================================
-// 🔥 STRICT SOURCE DETECT
-// ==================================================
-const sourceAttr =
+const isCamera =
 
-  event.target.getAttribute(
-    "data-source"
+  sourceAttr === "camera" ||
+
+  (
+    inputId === "cameraInput" &&
+    sourceAttr !== "gallery"
   );
 
+console.log(
+  "📸 STRICT SOURCE:",
+  {
+    inputId,
+    sourceAttr,
+    isCamera
+  }
+);
 const inputId =
   event.target.id || "";
 
