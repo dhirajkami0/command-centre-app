@@ -8608,10 +8608,7 @@ function loadSightings() {
     if(!data) return;
 
     window.sightingMarkers = window.sightingMarkers || {};
-    window.herdClusters = window.herdClusters || {};
-    window.herdTracks = window.herdTracks || {};
-    window.herdLines = window.herdLines || {};
-
+   
     const now = Date.now();
 
     data.forEach(function(e){
@@ -8697,9 +8694,23 @@ if (e.time && typeof e.time === "string") {
     }
 
     /* 🔥 FIX: FUTURE → YESTERDAY */
-    if (parsedTs > now) {
-      parsedTs -= 24 * 60 * 60 * 1000;
-    }
+   // ==========================================
+// 🔥 ONLY HANDLE SMALL FUTURE DRIFT
+// ==========================================
+const futureDiff =
+  parsedTs - now;
+
+if(
+
+  futureDiff > 0 &&
+
+  futureDiff < 6 * 60 * 60 * 1000
+
+){
+
+  parsedTs -=
+    24 * 60 * 60 * 1000;
+}
 
   } catch (err) {
     console.warn("⚠ Time parse failed:", e.time);
@@ -8740,7 +8751,6 @@ if(minutes >= 1440){
     key
   );
 
-  /* 🔥 REMOVE MARKER */
   if(window.sightingMarkers?.[key]){
 
     elephantLayer.removeLayer(
@@ -8750,36 +8760,9 @@ if(minutes >= 1440){
     delete window.sightingMarkers[key];
   }
 
-  /* 🔥 REMOVE HERD LINE */
-  if(window.herdLines?.[matchedHerd]){
-
-    elephantLayer.removeLayer(
-      window.herdLines[matchedHerd]
-    );
-
-    delete window.herdLines[matchedHerd];
-  }
-
-  /* 🔥 REMOVE HERD ARROW */
-  if(window.herdArrows?.[matchedHerd]){
-
-    elephantLayer.removeLayer(
-      window.herdArrows[matchedHerd]
-    );
-
-    delete window.herdArrows[matchedHerd];
-  }
-
-  /* 🔥 REMOVE TRACK */
-  if(window.herdTracks?.[matchedHerd]){
-
-    delete window.herdTracks[
-      matchedHerd
-    ];
-  }
-
   return;
-}   /* 🔍 DEBUG AGE (CRITICAL) */
+}
+      /* 🔍 DEBUG AGE (CRITICAL) */
 
 console.log("🧪 -------- AGE DEBUG --------");
 
@@ -8815,241 +8798,6 @@ if (
 /* 🔥 CONTINUE ORIGINAL FLOW */
 const lat = Number(e.lat);
 const lon = Number(e.lon);
-      /* ===============================
-         🧠 HERD MATCH
-      =============================== */
-
-    /* ===============================
-   🐘 HERD MATCH + CONTINUITY
-=============================== */
-
-const STRICT_THRESHOLD = 0.8;   // display confidence
-const SOFT_THRESHOLD   = 0.5;   // continuity threshold
-
-let matchedHerd = null;
-let bestScore = 0;
-
-/* 🔍 FIND BEST MATCH */
-Object.keys(window.herdClusters || {}).forEach(hid => {
-
-  const last = window.herdClusters[hid].last;
-
-  const score = calculateHerdScore(
-    {
-      lat,
-      lon,
-      time: parsedTs,
-      direction: e.direction,
-      count: e.count
-    },
-    last
-  );
-
-  if(score > bestScore){
-    bestScore = score;
-    matchedHerd = hid;
-  }
-
-});
-
-/* ===============================
-   🔥 HERD DECISION LOGIC
-=============================== */
-
-if(!matchedHerd){
-
-  matchedHerd = "HERD_" + Date.now() + "_" + Math.random();
-
-}
-else if(bestScore < SOFT_THRESHOLD){
-
-  // ❌ clearly different herd
-  matchedHerd = "HERD_" + Date.now() + "_" + Math.random();
-
-}
-// else if between 0.5–0.8 → keep same herd (continuity)
-// else if ≥0.8 → strong match
-
-/* ===============================
-   📦 STORE HERD DATA
-=============================== */
-
-if(!window.herdClusters) window.herdClusters = {};
-
-if(!window.herdClusters[matchedHerd]){
-
-  const herdIndex = Object.keys(window.herdClusters).length + 1;
-
-  window.herdClusters[matchedHerd] = {
-    id: matchedHerd,
-    name: "Herd " + herdIndex,
-    last: {},
-    members: []
-  };
-}
-
-/* 🔥 UPDATE LAST STATE */
-window.herdClusters[matchedHerd].last = {
-  lat,
-  lon,
-  time: parsedTs,
-  direction: e.direction || "",
-  count: e.count || 1
-};
-
-/* 🔥 TRACK MEMBERS */
-window.herdClusters[matchedHerd].members.push(e.id);
-
-/* ===============================
-   🧠 CONFIDENCE (DISPLAY ONLY)
-=============================== */
-
-let confidence = Math.round(bestScore * 100);
-
-if(bestScore <= 0){
-  confidence = 0;
-}
-
-/* 🔥 CAP */
-if(confidence > 95){
-  confidence = 95;
-}
-let color = "#ff3b30"; // default red
-let animation = "pulseStrong";
-let opacity = 1;
-
-/* 🔥 AGE-BASED VISUAL LOGIC */
-
-if(
-  status === "MOVED" ||
-  status.startsWith("DRIVEN")
-){
-  color = "#9e9e9e";
-  animation = "none";
-  opacity = 0.7;
-}
-else if(minutes > 360){ // >6 hr
-  color = "#9e9e9e";
-  animation = "none";
-  opacity = 0.7;
-}
-else if(minutes > 120){ // 2–6 hr
-  color = "#ff9800"; // orange
-  animation = "pulseMedium";
-}
-else {
-  color = "#ff3b30"; // red
-  animation = "pulseStrong";
-}
-
-/* ===============================
-   🧭 TRACK + DIRECTION (FINAL)
-=============================== */
-
-/* ===============================
-   🧭 TRACK + DIRECTION (FINAL CLEAN)
-=============================== */
-
-const JOIN_THRESHOLD = 0.6; // 🔥 only strong herd match will join
-
-if(!window.herdTracks) window.herdTracks = {};
-if(!window.herdLines) window.herdLines = {};
-if(!window.herdArrows) window.herdArrows = {};
-
-/* 🔥 ONLY JOIN IF SAME HERD (STRICT) */
-if(bestScore >= JOIN_THRESHOLD){
-
-  /* 🔥 INIT HERD TRACK */
-  if(!window.herdTracks[matchedHerd]){
-    window.herdTracks[matchedHerd] = [];
-  }
-
-  const track = window.herdTracks[matchedHerd];
-  const lastPoint = track[track.length - 1];
-
-  /* 🔥 ADD ONLY IF MOVED (LAT + LON) */
-  if(
-    !lastPoint ||
-    Math.abs(lastPoint.lat - lat) > 0.0001 ||
-    Math.abs(lastPoint.lon - lon) > 0.0001
-  ){
-    track.push({lat, lon, time: parsedTs});
-  }
-
-  /* 🔥 KEEP LAST 24 HOURS */
-  window.herdTracks[matchedHerd] =
-    track.filter(p => (Date.now() - p.time) < 86400000);
-
-  /* 🔥 SORT BY TIME (CRITICAL) */
-  window.herdTracks[matchedHerd].sort((a,b) => a.time - b.time);
-
-  const latlngs = window.herdTracks[matchedHerd].map(p => [p.lat, p.lon]);
-
-  /* ===============================
-     🔥 DRAW PROMINENT LINE
-  =============================== */
-
-  if(latlngs.length > 1){
-
-    if(window.herdLines[matchedHerd]){
-      window.herdLines[matchedHerd].setLatLngs(latlngs);
-    } else {
-
-      window.herdLines[matchedHerd] = L.polyline(latlngs,{
-        color: color || "#ff3b30",
-        weight: 6,
-        opacity: 0.9,
-        smoothFactor: 1.5,
-        lineCap: "round",
-        lineJoin: "round"
-      }).addTo(elephantLayer);
-
-    }
-
-  }
-
-  /* ===============================
-     🧭 DIRECTION ARROW (LATEST)
-  =============================== */
-
-  if(latlngs.length > 1){
-
-    const last = latlngs[latlngs.length - 1];
-    const prev = latlngs[latlngs.length - 2];
-
-    const dLat = last[0] - prev[0];
-    const dLon = last[1] - prev[1];
-
-    const angle = Math.atan2(dLat, dLon) * (180 / Math.PI);
-
-    /* 🔥 REMOVE OLD ARROW */
-    if(window.herdArrows[matchedHerd]){
-      elephantLayer.removeLayer(window.herdArrows[matchedHerd]);
-    }
-
-    /* 🔥 ARROW ICON */
-    const arrowIcon = L.divIcon({
-      className: '',
-      html: `
-        <div style="
-          transform: rotate(${angle}deg);
-          font-size: 20px;
-          color: ${color || "#ff3b30"};
-          text-shadow: 0 0 4px #000;
-        ">➤</div>
-      `
-    });
-
-    /* 🔥 ADD NEW ARROW */
-    window.herdArrows[matchedHerd] =
-      L.marker(last, {icon: arrowIcon, zIndexOffset: 6000})
-        .addTo(elephantLayer);
-
-  }
-
-} /* ===============================
-         🎨 UI STATE
-      =============================== */
 
 /* 🔥 DYNAMIC PULSE CONTROL */
 /* 🔥 DYNAMIC PULSE CONTROL */
@@ -9148,19 +8896,8 @@ const icon = L.divIcon({
         let ampm = h>=12?"PM":"AM";
         let hr = h%12 || 12;
         timeDisplay = `${hr}:${m} ${ampm}`;
-      }
+      }    
     /* ===============================
-   🐘 HERD INFO (SAFE)
-=============================== */
-
-const herdObj = window.herdClusters[matchedHerd] || {};
-
-const herdId = herdObj.id || matchedHerd;
-const herdLabel = herdObj.label || herdObj.name || matchedHerd || "H?";
-
-/* 🔥 FINAL — HERD SIZE = TOTAL SEEN ONLY *//* 🔥 FINAL FIX — READ FROM SHEET COLUMN */
-/* 🔥 FINAL FIX — HERD SIZE = TOTAL SEEN FROM BACKEND */
-const herdSize = parseInt(e.herd || 0);      /* ===============================
    🔥 FORMAT AGE → hr + min
 =============================== */
 
@@ -9172,51 +8909,7 @@ const ageFormatted = hrs > 0
   : `${mins} min`;
 
 
-/* ===============================
-   🧠 MATCHING HERDS (SAFE FINAL)
-=============================== */
 
-let matchingHerds = "";
-
-try {
-
-  let allScores = [];
-
-  Object.keys(window.herdClusters || {}).forEach(hid => {
-
-    const last = window.herdClusters[hid].last;
-
-    const score = calculateHerdScore(
-      {
-        lat,
-        lon,
-        time: parsedTs,
-        direction: e.direction,
-        count: e.count
-      },
-      last
-    );
-
-    allScores.push({hid, score});
-
-  });
-
-  /* 🔥 SORT */
-  allScores.sort((a,b) => b.score - a.score);
-
-  /* 🔥 EXCLUDE CURRENT HERD */
-  matchingHerds = allScores
-    .filter(s => s.hid !== matchedHerd && s.score > 0.4)
-    .slice(0,3)
-    .map(s => {
-      const label = window.herdClusters[s.hid]?.label || s.hid;
-      return `${label} (${Math.round(s.score * 100)}%)`;
-    })
-    .join(", ");
-
-} catch(err){
-  console.warn("Matching herd error:", err);
-}
 
 
 /* ===============================
@@ -9233,14 +8926,45 @@ const popup = `
   <hr>
 
   <b>🐘 Herd ID:</b> ${herdLabel}<br>
-  <b>👥 Herd Size:</b> ${herdSize}<br>
-  ${matchingHerds ? `<b>🧠 Matching Herds:</b> ${matchingHerds}<br>` : ""}
+ <b>👥 Herd Size:</b>
+${e.total_seen || 0}<br>
+
 
   <b>🧭 Movement:</b> ${movementText}<br>
   <b>⏱ Time of Sighting:</b> ${timeDisplay}<br>
   <b>⏱ Age of Sighting:</b> ${ageFormatted}<br>
 
-  <b>👤 Sighted by:</b> ${e.teamLeader || "Unknown"}<br>
+ <b>👤 Sighted by:</b>
+${e.teamLeader || "Unknown"}<br>
+
+<div style="
+  margin-top:6px;
+  margin-bottom:10px;
+  font-size:12px;
+  line-height:1.55;
+">
+
+  📞
+
+  ${
+    e.phone
+    ? `
+    <a
+      href="tel:${String(e.phone).trim()}"
+      style="
+        color:#00695c;
+        text-decoration:none;
+        font-weight:700;
+      ">
+
+      ${e.phone}
+
+    </a>
+    `
+    : "N/A"
+  }
+
+</div>
 
   <br>
   <b>📍 Location:</b><br>
@@ -9309,63 +9033,7 @@ const popup = `
    🧠 ADVANCED HERD MATCH SCORE (REBALANCED)
 =============================== */
 
-function calculateHerdScore(current, last){
-
-  const dist = getDistance(current.lat, current.lon, last.lat, last.lon);
-  const timeGap = Math.abs(current.time - last.time) / (1000 * 60);
-
-  /* 🔥 DISTANCE SCORE */
-  let distanceScore = 0;
-  if(dist < 500) distanceScore = 1;
-  else if(dist < 2000) distanceScore = 0.7;
-  else if(dist < 5000) distanceScore = 0.4;
-  else distanceScore = 0;
-
-  /* 🔥 TIME SCORE */
-  let timeScore = 0;
-  if(timeGap < 30) timeScore = 1;
-  else if(timeGap < 120) timeScore = 0.7;
-  else if(timeGap < 360) timeScore = 0.4;
-  else timeScore = 0;
-
-  /* 🔥 DIRECTION SCORE (INCREASED IMPORTANCE) */
-  let directionScore = 0.5;
-
-  if(current.direction && last.direction){
-    if(current.direction === last.direction){
-      directionScore = 1;
-    } else {
-      directionScore = 0.2; // harsher penalty
-    }
-  }
-
-  /* 🔥 COUNT SCORE (MOST IMPORTANT) */
-  let countScore = 0.5;
-
-  if(current.count && last.count){
-
-    const diff = Math.abs(current.count - last.count);
-    const maxVal = Math.max(current.count, last.count);
-
-    const similarity = 1 - (diff / maxVal);
-
-    if(similarity > 0.85) countScore = 1;
-    else if(similarity > 0.6) countScore = 0.75;
-    else if(similarity > 0.4) countScore = 0.4;
-    else countScore = 0.1;
-
-  }
-
-  /* 🔥 FINAL SCORE (NEW WEIGHTS) */
-  const score =
-    (distanceScore * 0.25) +
-    (timeScore * 0.20) +
-    (directionScore * 0.25) +
-    (countScore * 0.30);
-
-  return score;
-}    
-    
+  
     window.openMoveForm = function(id){
 
   console.log("🔥 openMoveForm CALLED with ID:", id);
@@ -11766,9 +11434,52 @@ function submitSightingForm(event){
 
     const total = m + f + uni + c;
 
-    const lat = document.getElementById("f-lat").value;
-    const lon = document.getElementById("f-lon").value;
+    // =====================================================
+// 🔥 USE CENTRAL APK GPS
+// =====================================================
+let lat =
+  document.getElementById("f-lat").value;
 
+let lon =
+  document.getElementById("f-lon").value;
+
+try {
+
+  const gps =
+    window.latestGps;
+
+  if(
+
+    gps &&
+
+    gps.lat &&
+
+    gps.lng
+
+  ){
+
+    lat =
+      Number(gps.lat)
+        .toFixed(5);
+
+    lon =
+      Number(gps.lng)
+        .toFixed(5);
+
+    console.log(
+      "📍 Using APK GPS:",
+      lat,
+      lon
+    );
+  }
+
+} catch(gpsErr){
+
+  console.warn(
+    "⚠ APK GPS unavailable",
+    gpsErr
+  );
+}
     const location = lat + "," + lon;
 
     const now = new Date();
