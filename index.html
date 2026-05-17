@@ -19874,7 +19874,13 @@ overflow:hidden;
     align-items:center;
   ">
     <b>📡 Patrol Chat</b>
-    <span onclick="toggleChat()" style="cursor:pointer;">✖</span>
+
+    <span
+      onclick="toggleChat()"
+      style="cursor:pointer;"
+    >
+      ✖
+    </span>
   </div>
 
   <!-- TYPING -->
@@ -19894,7 +19900,7 @@ overflow:hidden;
     flex-direction:column;
   "></div>
 
-  <!-- 🔴 RECORDING INDICATOR -->
+  <!-- 🔴 RECORDING -->
   <div id="recordingIndicator" style="
     display:none;
     color:#ff5252;
@@ -19906,7 +19912,9 @@ overflow:hidden;
     🔴 Recording...
   </div>
 
-  <!-- ================= INPUT ================= -->
+  <!-- ===================================================== -->
+  <!-- 🔥 INPUT -->
+  <!-- ===================================================== -->
   <div id="chatInputBox" style="
     display:flex;
     align-items:center;
@@ -19916,21 +19924,31 @@ overflow:hidden;
     position:relative;
   ">
 
-    <!-- ➕ BUTTON -->
-    <button id="plusBtn" onclick="toggleActionMenu()" style="
-      width:40px;height:40px;
-      border:none;
-      border-radius:50%;
-      background:#263238;
-      color:white;
-      font-size:18px;
-      flex-shrink:0;
-    ">➕</button>
+    <!-- ➕ -->
+    <button id="plusBtn"
+      onclick="toggleActionMenu()"
+      style="
+        width:40px;
+        height:40px;
+        border:none;
+        border-radius:50%;
+        background:#263238;
+        color:white;
+        font-size:18px;
+        flex-shrink:0;
+      ">
+
+      ➕
+
+    </button>
 
     <!-- INPUT -->
     <input id="chatInput"
       placeholder="Message..."
-      oninput="typing(); handleInputChange();"
+      oninput="
+        typing();
+        handleInputChange();
+      "
       style="
         flex:1;
         padding:10px 14px;
@@ -19940,58 +19958,164 @@ overflow:hidden;
         outline:none;
       ">
 
-    <!-- 🎤 / ➤ SMART BUTTON -->
+    <!-- 🎤 -->
     <button id="mainActionBtn"
       style="
-        width:40px;height:40px;
+        width:40px;
+        height:40px;
         border:none;
         border-radius:50%;
         background:#4caf50;
         color:white;
         font-size:18px;
         flex-shrink:0;
-        touch-action: manipulation; /* 🔥 mobile fix */
-      ">🎤</button>
+        touch-action:manipulation;
+      ">
 
-    <!-- FLOAT MENU -->
+      🎤
+
+    </button>
+
+    <!-- ================================================= -->
+    <!-- 🔥 PROFESSIONAL ACTION MENU -->
+    <!-- ================================================= -->
     <div id="actionMenu" style="
       display:none;
       position:absolute;
       bottom:60px;
       left:10px;
-      background:#1b5e20;
-      padding:10px;
-      border-radius:12px;
+      width:230px;
+      background:#1b1b1b;
+      border-radius:16px;
+      overflow:hidden;
       flex-direction:column;
-      gap:8px;
       z-index:9999999;
-      box-shadow:0 4px 10px rgba(0,0,0,0.5);
+      box-shadow:0 10px 25px rgba(0,0,0,0.55);
+      border:1px solid rgba(255,255,255,0.08);
     ">
 
-      <button onclick="sendLocation(); closeActionMenu()">📍 Location</button>
-      <button onclick="openCamera(); closeActionMenu()">📸 Camera</button>
-      <button onclick="openGallery(); closeActionMenu()">🖼 Gallery</button>
+      <!-- 📍 LOCATION -->
+      <button onclick="
+        sendLocation();
+        closeActionMenu();
+      " class="chatMenuBtn">
+
+        📍 Location
+
+      </button>
+
+      <!-- 👤 CONTACT -->
+      <button onclick="
+        shareContact();
+        closeActionMenu();
+      " class="chatMenuBtn">
+
+        👤 Contact
+
+      </button>
+
+      <!-- 📄 DOCUMENT -->
+      <button onclick="
+        openDocumentPicker();
+        closeActionMenu();
+      " class="chatMenuBtn">
+
+        📄 Document
+
+      </button>
+
+      <!-- 📸 PHOTO -->
+      <button onclick="
+        togglePhotoSubmenu();
+      " class="chatMenuBtn">
+
+        📸 Upload Photo
+
+      </button>
+
+      <!-- ============================================= -->
+      <!-- 📸 SUBMENU -->
+      <!-- ============================================= -->
+      <div id="photoSubmenu" style="
+        display:none;
+        background:#222;
+        border-top:
+          1px solid rgba(255,255,255,0.06);
+      ">
+
+        <!-- 📷 CAMERA -->
+        <button onclick="
+          openCamera();
+          closeActionMenu();
+        " class="chatSubBtn">
+
+          📷 Camera
+
+        </button>
+
+        <!-- 🖼 GALLERY -->
+        <button onclick="
+          openGallery();
+          closeActionMenu();
+        " class="chatSubBtn">
+
+          🖼 Gallery
+
+        </button>
+
+      </div>
 
     </div>
 
   </div>
 
-  <!-- HIDDEN INPUTS -->
-  <input type="file" id="cameraInput"
+  <!-- ===================================================== -->
+  <!-- 🔥 HIDDEN INPUTS -->
+  <!-- ===================================================== -->
+
+  <!-- 📷 CAMERA -->
+  <input
+    type="file"
+    id="cameraInput"
     accept="image/*"
     capture="environment"
+    data-source="camera"
     style="display:none"
-    onchange="sendPhoto(event)">
+    onchange="sendPhoto(event)"
+  >
 
-  <input type="file" id="galleryInput"
+  <!-- 🖼 GALLERY -->
+  <input
+    type="file"
+    id="galleryInput"
     accept="image/*"
+    data-source="gallery"
     style="display:none"
-    onchange="sendPhoto(event)">
+    onchange="sendPhoto(event)"
+  >
+
+  <!-- 📄 DOCUMENT -->
+  <input
+    type="file"
+    id="documentInput"
+    accept="
+      .pdf,
+      .doc,
+      .docx,
+      .xls,
+      .xlsx,
+      .txt
+    "
+    style="display:none"
+    onchange="sendDocument(event)"
+  >
 
 </div>
 
 
-<!-- ================= IMAGE VIEWER ================= -->
+<!-- ===================================================== -->
+<!-- 🔥 IMAGE VIEWER -->
+<!-- ===================================================== -->
 <div id="imageViewer" style="
 position:fixed;
 top:0;
@@ -20004,16 +20128,230 @@ flex-direction:column;
 z-index:9999999;
 ">
 
-  <div style="padding:12px;color:white;background:#111;">
-    <span onclick="closeImageViewer()" style="cursor:pointer;">⬅ Back</span>
+  <!-- TOP BAR -->
+  <div style="
+    padding:12px;
+    color:white;
+    background:#111;
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+  ">
+
+    <!-- BACK -->
+    <span
+      onclick="closeImageViewer()"
+      style="cursor:pointer;"
+    >
+      ⬅ Back
+    </span>
+
+    <!-- DOWNLOAD -->
+    <a
+      id="downloadImageBtn"
+      href=""
+      target="_blank"
+      download
+      style="
+        color:#4caf50;
+        text-decoration:none;
+        font-weight:bold;
+      "
+    >
+
+      ⬇ Download
+
+    </a>
+
   </div>
 
-  <div style="flex:1;display:flex;justify-content:center;align-items:center;">
-    <img id="fullImage" style="max-width:100%;max-height:100%;">
+  <!-- IMAGE -->
+  <div style="
+    flex:1;
+    display:flex;
+    justify-content:center;
+    align-items:center;
+    overflow:auto;
+  ">
+
+    <img
+      id="fullImage"
+      style="
+        max-width:100%;
+        max-height:100%;
+        object-fit:contain;
+        user-select:auto;
+        -webkit-user-drag:auto;
+      "
+    >
+
   </div>
 
 </div>
 
+
+<!-- ===================================================== -->
+<!-- 🔥 MENU STYLE -->
+<!-- ===================================================== -->
+<style>
+
+.chatMenuBtn{
+
+  width:100%;
+
+  border:none;
+
+  background:none;
+
+  color:white;
+
+  padding:15px;
+
+  text-align:left;
+
+  font-size:15px;
+
+  cursor:pointer;
+
+  border-bottom:
+    1px solid rgba(255,255,255,0.06);
+}
+
+.chatMenuBtn:hover{
+
+  background:
+    rgba(255,255,255,0.08);
+}
+
+.chatSubBtn{
+
+  width:100%;
+
+  border:none;
+
+  background:none;
+
+  color:#ddd;
+
+  padding:13px 15px 13px 30px;
+
+  text-align:left;
+
+  font-size:14px;
+
+  cursor:pointer;
+}
+
+.chatSubBtn:hover{
+
+  background:
+    rgba(255,255,255,0.06);
+}
+
+</style>
+
+
+<!-- ===================================================== -->
+<!-- 🔥 MENU HELPERS -->
+<!-- ===================================================== -->
+<script>
+
+// =====================================================
+// 🔥 TOGGLE PHOTO SUBMENU
+// =====================================================
+function togglePhotoSubmenu(){
+
+  const menu =
+
+    document.getElementById(
+      "photoSubmenu"
+    );
+
+  if(!menu) return;
+
+  menu.style.display =
+
+    menu.style.display === "block"
+
+      ? "none"
+
+      : "block";
+}
+
+// =====================================================
+// 🔥 DOCUMENT PICKER
+// =====================================================
+function openDocumentPicker(){
+
+  const input =
+
+    document.getElementById(
+      "documentInput"
+    );
+
+  if(!input){
+
+    alert(
+      "Document picker missing"
+    );
+
+    return;
+  }
+
+  input.value = "";
+
+  input.click();
+}
+
+// =====================================================
+// 🔥 IMAGE VIEWER
+// =====================================================
+function openImageViewer(url){
+
+  const viewer =
+    document.getElementById(
+      "imageViewer"
+    );
+
+  const img =
+    document.getElementById(
+      "fullImage"
+    );
+
+  const downloadBtn =
+    document.getElementById(
+      "downloadImageBtn"
+    );
+
+  if(!viewer || !img) return;
+
+  viewer.style.display = "flex";
+
+  img.src = url;
+
+  if(downloadBtn){
+
+    downloadBtn.href = url;
+  }
+}
+
+// =====================================================
+// 🔥 CLOSE IMAGE VIEWER
+// =====================================================
+function closeImageViewer(){
+
+  const viewer =
+    document.getElementById(
+      "imageViewer"
+    );
+
+  if(viewer){
+
+    viewer.style.display = "none";
+  }
+}
+
+</script>
 
 <!-- ================= DELETE POPUP ================= -->
 <div id="deleteOverlay" onclick="closeDeletePopup()" style="
