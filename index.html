@@ -8937,8 +8937,25 @@ WDPO-${
   .pop()
 }<br>
  <b>👥 Herd Size:</b>
-${e.total_seen || 0}<br>
 
+${
+  Number(
+
+    e.total_seen ||
+
+    e.total ||
+
+    e.count ||
+
+    (
+      Number(e.m || 0) +
+      Number(e.f || 0) +
+      Number(e.unidentified || 0) +
+      Number(e.calf || 0)
+    )
+
+  ) || 0
+}<br>
 
   <b>🧭 Movement:</b> ${movementText}<br>
   <b>⏱ Time of Sighting:</b> ${timeDisplay}<br>
