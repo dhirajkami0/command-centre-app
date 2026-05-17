@@ -8937,26 +8937,7 @@ WDPO-${
   .pop()
 }<br>
  <b>👥 Herd Size:</b>
-
-${
-  Number(
-
-    e.total_seen ||
-
-    e.total ||
-
-    e.count ||
-
-    (
-      Number(e.m || 0) +
-      Number(e.f || 0) +
-      Number(e.unidentified || 0) +
-      Number(e.calf || 0)
-    )
-
-  ) || 0
-}<br>
-
+${e.herd || 0}<br>
   <b>🧭 Movement:</b> ${movementText}<br>
   <b>⏱ Time of Sighting:</b> ${timeDisplay}<br>
   <b>⏱ Age of Sighting:</b> ${ageFormatted}<br>
@@ -11569,7 +11550,8 @@ try {
       remarks: document.getElementById("f-remarks").value,
 
       leader: leaderValue,
-
+phone:
+  window.userProfile?.phone || "",
       staff: "",
 
       lat: Number(lat),
