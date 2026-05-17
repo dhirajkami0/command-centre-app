@@ -2538,72 +2538,17 @@ if(!window.__STRICT_MEDIA_UI__){
   // =====================================================
   // 🔥 TOGGLE PHOTO SUBMENU
   // =====================================================
-  window.togglePhotoSubmenu = function(){
-
-    const menu =
-      document.getElementById(
-        "photoSubmenu"
-      );
-
-    if(!menu) return;
-
-    menu.style.display =
-
-      menu.style.display === "block"
-
-        ? "none"
-
-        : "block";
-  };
-
+  
   // =====================================================
   // 🔥 CAMERA
   // =====================================================
-window.openCamera = function(){
-
-  try{
-
-    window.closeActionMenu();
-
-    const input =
-      document.getElementById(
-        "cameraInput"
-      );
-
-    if(!input){
-      alert("Camera input missing");
-      return;
-    }
-
-    input.value = "";
-
-    input.setAttribute(
-      "capture",
-      "environment"
-    );
-
-    input.setAttribute(
-      "data-source",
-      "camera"
-    );
-
-    setTimeout(() => {
-
-      input.click();
-
-    }, 120);
-
-  }catch(err){
-
-    console.error(err);
-
-    alert("Camera failed");
-  }
-};
   // =====================================================
   // 🔥 GALLERY
   // =====================================================
-  window.openGallery = function(){
+ // =====================================================
+// 🔥 PHOTO PICKER
+// =====================================================
+window.openGallery = function(){
 
   try{
 
@@ -2615,21 +2560,22 @@ window.openCamera = function(){
       );
 
     if(!input){
-      alert("Gallery input missing");
+      alert("Photo input missing");
       return;
     }
 
     input.value = "";
 
-    // 🔥 REMOVE CAMERA MODE
-    input.removeAttribute(
-      "capture"
+    // 🔥 ALLOW NATIVE CAMERA + GALLERY
+    input.setAttribute(
+      "capture",
+      "environment"
     );
 
-    // 🔥 FORCE GALLERY SOURCE
+    // 🔥 GENERIC PICKER
     input.setAttribute(
       "data-source",
-      "gallery"
+      "picker"
     );
 
     setTimeout(() => {
@@ -2642,9 +2588,9 @@ window.openCamera = function(){
 
     console.error(err);
 
-    alert("Gallery failed");
+    alert("Photo picker failed");
   }
-};
+}; 
   // =====================================================
   // 🔥 DOCUMENT PICKER
   // =====================================================
@@ -20412,87 +20358,62 @@ overflow:hidden;
     <!-- ================================================= -->
     <!-- 🔥 PROFESSIONAL ACTION MENU -->
     <!-- ================================================= -->
-    <div id="actionMenu" style="
-      display:none;
-      position:absolute;
-      bottom:60px;
-      left:10px;
-      width:230px;
-      background:#1b1b1b;
-      border-radius:16px;
-      overflow:hidden;
-      flex-direction:column;
-      z-index:9999999;
-      box-shadow:0 10px 25px rgba(0,0,0,0.55);
-      border:1px solid rgba(255,255,255,0.08);
-    ">
-
-     <!-- 📍 LOCATION -->
-<button onclick="
-  sendLocation();
-  window.closeActionMenu();
-" class="chatMenuBtn">
-
-  📍 Location
-
-</button>
-
-<!-- 👤 CONTACT -->
-<button onclick="
-  shareContact();
-" class="chatMenuBtn">
-
-  👤 Contact
-
-</button>
-
-<!-- 📄 DOCUMENT -->
-<button onclick="
-  openDocumentPicker();
-" class="chatMenuBtn">
-
-  📄 Document
-
-</button>
-      <!-- 📸 PHOTO -->
-      <button onclick="
-        togglePhotoSubmenu();
-      " class="chatMenuBtn">
-
-        📸 Upload Photo
-
-      </button>
-
-      <!-- ============================================= -->
-      <!-- 📸 SUBMENU -->
-      <!-- ============================================= -->
-     <div id="photoSubmenu" style="
+   <!-- ================================================= -->
+<!-- 🔥 PROFESSIONAL ACTION MENU -->
+<!-- ================================================= -->
+<div id="actionMenu" style="
   display:none;
-  background:#222;
-  border-top:
-    1px solid rgba(255,255,255,0.06);
+  position:absolute;
+  bottom:60px;
+  left:10px;
+  width:230px;
+  background:#1b1b1b;
+  border-radius:16px;
+  overflow:hidden;
+  flex-direction:column;
+  z-index:9999999;
+  box-shadow:0 10px 25px rgba(0,0,0,0.55);
+  border:1px solid rgba(255,255,255,0.08);
 ">
 
-  <!-- 📷 CAMERA -->
+  <!-- 📍 LOCATION -->
   <button onclick="
-    openCamera();
-  " class="chatSubBtn">
+    sendLocation();
+    window.closeActionMenu();
+  " class="chatMenuBtn">
 
-    📷 Camera
+    📍 Location
 
   </button>
 
-  <!-- 🖼 GALLERY -->
+  <!-- 👤 CONTACT -->
   <button onclick="
-    openGallery();
-  " class="chatSubBtn">
+    shareContact();
+  " class="chatMenuBtn">
 
-    🖼 Gallery
+    👤 Contact
 
   </button>
 
+  <!-- 📄 DOCUMENT -->
+  <button onclick="
+    openDocumentPicker();
+  " class="chatMenuBtn">
+
+    📄 Document
+
+  </button>
+
+  <!-- 📸 PHOTO -->
+  <button onclick="
+  openGallery();
+" class="chatMenuBtn">
+
+  📸 Upload Photo
+
+</button>
 </div>
-      
+    
     </div>
 
   </div>
@@ -20616,30 +20537,6 @@ z-index:9999999;
     rgba(255,255,255,0.08);
 }
 
-.chatSubBtn{
-
-  width:100%;
-
-  border:none;
-
-  background:none;
-
-  color:#ddd;
-
-  padding:13px 15px 13px 30px;
-
-  text-align:left;
-
-  font-size:14px;
-
-  cursor:pointer;
-}
-
-.chatSubBtn:hover{
-
-  background:
-    rgba(255,255,255,0.06);
-}
 
 </style>
 
@@ -20723,9 +20620,9 @@ box-shadow:0 -4px 20px rgba(0,0,0,0.5);
   id="galleryInput"
   type="file"
   accept="image/*"
+  capture="environment"
   style="display:none"
 />
-
 <input
   id="documentInput"
   type="file"
