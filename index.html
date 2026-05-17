@@ -224,6 +224,24 @@ window.trackDistanceMap = {};
 // ====================================================
 window.androidGpsAuthority = true;
     // ====================================================
+// 🔥 CENTRAL LIVE GPS CACHE
+// APK + FIREBASE + UI USE THIS
+// ====================================================
+window.latestGps = {
+
+  lat:null,
+
+  lng:null,
+
+  accuracy:null,
+
+  speed:null,
+
+  heading:null,
+
+  time:null
+};
+    // ====================================================
 // 🔥 OPTIONAL TRACK CACHE
 // ====================================================
 let trackMap = {};window.addEventListener("error", function (e) {
@@ -11142,6 +11160,32 @@ if(
   )
 
 ){
+  // ==================================================
+// 🔥 UPDATE CENTRAL GPS CACHE
+// ==================================================
+window.latestGps = {
+
+  lat,
+
+  lng: lon,
+
+  accuracy:
+    s.accuracy || null,
+
+  speed:
+    s.speed || null,
+
+  heading:
+    s.heading || null,
+
+  time:
+    Date.now()
+};
+
+console.log(
+  "📍 latestGps updated",
+  window.latestGps
+);
 
   // ==============================================
   // 🔥 REAL DUTY STATE
@@ -17030,65 +17074,142 @@ async function sendPhoto(e){
     // ==================================================
     // 🔥 GPS
     // ==================================================
-    try {
+    // ==================================================
+// 🔥 USE CENTRAL APK GPS CACHE
+// ==================================================
+try {
 
-      const pos =
+  const gps =
+    window.latestGps;
 
-        await new Promise(
+  // ==============================================
+  // 🔥 VALID CACHE
+  // ==============================================
+  if(
 
-          (resolve,reject)=>{
+    gps &&
 
-            navigator.geolocation
-              .getCurrentPosition(
+    gps.lat &&
 
-                resolve,
+    gps.lng
 
-                reject,
+  ){
 
-                {
-                  enableHighAccuracy:true,
+    lat = Number(
+      gps.lat
+    ).toFixed(5);
 
-                  timeout:10000,
+    lng = Number(
+      gps.lng
+    ).toFixed(5);
 
-                  maximumAge:0
-                }
-              );
-          }
-        );
+    console.log(
+      "📍 Using APK GPS cache:",
+      lat,
+      lng
+    );
 
-      lat =
-        pos.coords.latitude
-          .toFixed(5);
+  } else {
 
-      lng =
-        pos.coords.longitude
-          .toFixed(5);
+    console.warn(
+      "⚠ latestGps empty"
+    );
+  }
 
-    } catch(err){
+} catch(err){
 
-      console.warn(
-        "⚠ Camera GPS failed"
-      );
+  console.warn(
+    "⚠ APK GPS cache failed",
+    err
+  );
+}
     }
+// ==================================================
+// 🔥 CAMERA WEBVIEW SAFE
+// DO NOT COMPRESS CAMERA FILES
+// ==================================================
+let uploadFile = file;
 
-    // ==================================================
-    // 🔥 COMPRESS
-    // ==================================================
+try {
+
+  // ==============================================
+  // 🔥 ONLY COMPRESS LARGE FILES
+  // ==============================================
+  if(
+
+    !isCamera &&
+
+    file.size > 300000
+
+  ){
+
+    console.log(
+      "🗜 Compressing gallery image"
+    );
+
     const compressed =
 
       await compressImage(
         file
       );
 
-    // ==================================================
-    // 🔥 UPLOAD DIRECT
-    // ==================================================
-    await window.fb.uploadBytes(
+    if(
 
-      fileRef,
+      compressed &&
 
-      compressed || file
-    );
+      compressed.size > 0
+
+    ){
+
+      uploadFile =
+        compressed;
+    }
+  }
+
+} catch(compressErr){
+
+  console.warn(
+    "⚠ Compression failed, using original file",
+    compressErr
+  );
+
+  uploadFile = file;
+}
+
+// ==================================================
+// 🔥 VALIDATE FILE
+// ==================================================
+if(
+
+  !uploadFile ||
+
+  uploadFile.size <= 0
+
+){
+
+  throw new Error(
+    "Invalid image file"
+  );
+}
+
+console.log(
+  "📤 Uploading image:",
+  uploadFile.size
+);
+
+// ==================================================
+// 🔥 UPLOAD
+// ==================================================
+await window.fb.uploadBytes(
+
+  fileRef,
+
+  uploadFile
+);
+
+console.log(
+  "✅ Upload complete"
+);
 
     console.log(
       "✅ Camera upload complete"
@@ -17142,19 +17263,55 @@ async function sendPhoto(e){
     // ==================================================
     // 🔥 RESET
     // ==================================================
-    e.target.value = "";
+   // ==================================================
+// 🔥 RESET INPUT
+// ==================================================
+e.target.value = "";
 
-  } catch(e){
+// ==================================================
+// 🔥 CLOSE MENU
+// ==================================================
+closeActionMenu();
 
-    console.error(
-      "❌ sendPhoto crash:",
-      e
-    );
+} catch(e){
 
-    alert(
-      "Photo send failed"
-    );
-  }
+  console.error(
+    "❌ sendPhoto crash:",
+    e
+  );
+
+  // ==============================================
+  // 🔥 RESET INPUT
+  // ==============================================
+  try{
+
+    if(e?.target){
+
+      e.target.value = "";
+    }
+
+  } catch(resetErr){}
+
+  // ==============================================
+  // 🔥 CLOSE MENU
+  // ==============================================
+  closeActionMenu();
+
+  // ==============================================
+  // 🔥 USER ERROR
+  // ==============================================
+  alert(
+
+    "❌ Photo send failed\n\n" +
+
+    (
+      e?.message ||
+
+      "Camera upload error"
+    )
+  );
+}
+}
 }   function renderMessage(docId, m){
 
   const box = document.getElementById("chatMessages");
