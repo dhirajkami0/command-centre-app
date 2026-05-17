@@ -7096,7 +7096,7 @@ function updateMonthCache(){
   window.gridCache = window.gridCache || {};
 
   // ❗ CHANGED LINE (IMPORTANT)
-  window.gridCache.localMonth = result;
+window.gridCache.current = result;
 
   console.log(
     "📅 Local month (fallback):",
