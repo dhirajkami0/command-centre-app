@@ -2889,6 +2889,26 @@ if(!window.__STRICT_MEDIA_SYSTEM__){
 
 window.__STRICT_MEDIA_SYSTEM__ = true;
 
+window.closeActionMenu = function(){
+
+  const menu =
+    document.getElementById(
+      "actionMenu"
+    );
+
+  const sub =
+    document.getElementById(
+      "photoSubmenu"
+    );
+
+  if(menu){
+    menu.style.display = "none";
+  }
+
+  if(sub){
+    sub.style.display = "none";
+  }
+};
 
 // =====================================================
 // 🔥 CAMERA ONLY
@@ -3364,26 +3384,6 @@ window.togglePhotoSubmenu = function(){
 // =====================================================
 // 🔥 CLOSE MENU
 // =====================================================
-window.closeActionMenu = function(){
-
-  const menu =
-    document.getElementById(
-      "actionMenu"
-    );
-
-  const sub =
-    document.getElementById(
-      "photoSubmenu"
-    );
-
-  if(menu){
-    menu.style.display = "none";
-  }
-
-  if(sub){
-    sub.style.display = "none";
-  }
-};
 }
     // ============================================
     // 🧹 RUN CLEANUP IMMEDIATELY
