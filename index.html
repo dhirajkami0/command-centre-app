@@ -8926,7 +8926,16 @@ const popup = `
 
   <hr>
 
-  <b>🐘 Herd ID:</b> ${herdLabel}<br>
+  <b>🆔 Sighting ID:</b>
+
+WDPO-${
+  String(
+    e.sighting_id || e.id || ""
+  )
+
+  .split("-")
+  .pop()
+}<br>
  <b>👥 Herd Size:</b>
 ${e.total_seen || 0}<br>
 
