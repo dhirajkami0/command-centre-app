@@ -17118,7 +17118,9 @@ window.sendLocation =
     // ================= SEND PHOTO =================
 // ================= SEND PHOTO =================
 // ================= SEND PHOTO ================
+// ================= SEND PHOTO =================
 async function sendPhoto(event){
+
   try {
 
     // ==================================================
@@ -17178,62 +17180,38 @@ async function sendPhoto(event){
     );
 
     // ==================================================
-    // 🔥 SOURCE DETECT
+    // 🔥 STRICT SOURCE DETECT
     // ==================================================
+    const sourceAttr =
+
+      event.target.getAttribute(
+        "data-source"
+      );
+
     const inputId =
       event.target.id || "";
 
-   // ==================================================
-// 🔥 STRICT SOURCE DETECT
-// ==================================================
-const sourceAttr =
+    // ==================================================
+    // 🔥 STRICT CAMERA DETECTION
+    // ==================================================
+    const isCamera =
 
-  event.target.getAttribute(
-    "data-source"
-  );
+      sourceAttr === "camera" ||
 
-const inputId =
-  event.target.id || "";
+      (
+        inputId === "cameraInput" &&
+        sourceAttr !== "gallery"
+      );
 
-// 🔥 STRICT CAMERA DETECTION
-const isCamera =
+    console.log(
+      "📸 STRICT SOURCE:",
+      {
+        inputId,
+        sourceAttr,
+        isCamera
+      }
+    );
 
-  sourceAttr === "camera" ||
-
-  (
-    inputId === "cameraInput" &&
-    sourceAttr !== "gallery"
-  );
-
-console.log(
-  "📸 STRICT SOURCE:",
-  {
-    inputId,
-    sourceAttr,
-    isCamera
-  }
-);
-const inputId =
-  event.target.id || "";
-
-// 🔥 STRICT CAMERA DETECTION
-const isCamera =
-
-  sourceAttr === "camera" ||
-
-  (
-    inputId === "cameraInput" &&
-    sourceAttr !== "gallery"
-  );
-
-console.log(
-  "📸 STRICT SOURCE:",
-  {
-    inputId,
-    sourceAttr,
-    isCamera
-  }
-);
     // ==================================================
     // 🔥 FILE REF
     // ==================================================
@@ -17295,6 +17273,7 @@ console.log(
             compressed &&
             compressed.size > 0
           ){
+
             uploadFile = compressed;
           }
         }
@@ -17343,7 +17322,7 @@ console.log(
       // ==============================================
       await window.fb.addDoc(
 
-       window.getChatCollection(),
+        window.getChatCollection(),
 
         {
           type: "image",
@@ -17370,14 +17349,22 @@ console.log(
         "🖼 Photo sent"
       );
 
+      // ==============================================
+      // 🔥 RESET INPUT
+      // ==============================================
       setTimeout(() => {
 
         try{
+
           event.target.value = "";
+
         } catch(_){}
 
       }, 800);
 
+      // ==============================================
+      // 🔥 CLOSE MENU
+      // ==============================================
       window.closeActionMenu();
 
       return;
@@ -17470,11 +17457,6 @@ console.log(
 
       // ==============================================
       // 🔥 FORCE ARRAY BUFFER
-      // fixes:
-      // Android live capture upload freeze
-      // empty uploads
-      // blob corruption
-      // webview file handle loss
       // ==============================================
       const buffer =
         await file.arrayBuffer();
@@ -17515,7 +17497,6 @@ console.log(
 
     // ==================================================
     // 🔥 UPLOAD WITH METADATA
-    // fixes Android camera upload issue
     // ==================================================
     const uploadResult =
 
@@ -17605,7 +17586,7 @@ console.log(
     );
 
     // ==================================================
-    // 🔥 RESET INPUT LATE
+    // 🔥 RESET INPUT
     // ==================================================
     setTimeout(() => {
 
@@ -17651,7 +17632,9 @@ console.log(
     // 🔥 CLOSE MENU
     // ==============================================
     try{
+
       window.closeActionMenu();
+
     } catch(_){}
 
     // ==============================================
@@ -17669,7 +17652,6 @@ console.log(
     );
   }
 }
-
 
 
   function renderMessage(docId, m){
