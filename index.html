@@ -18516,7 +18516,45 @@ async function startVoice(){
     );
   }
 }
+// =====================================================
+// 🔥 TOGGLE ACTION MENU
+// =====================================================
+window.toggleActionMenu = function(){
 
+  const menu =
+    document.getElementById(
+      "actionMenu"
+    );
+
+  if(!menu) return;
+
+  const open =
+    menu.style.display === "flex";
+
+  menu.style.display =
+
+    open
+
+      ? "none"
+
+      : "flex";
+
+  // ===============================================
+  // RESET PHOTO SUBMENU
+  // ===============================================
+  if(open){
+
+    const sub =
+      document.getElementById(
+        "photoSubmenu"
+      );
+
+    if(sub){
+
+      sub.style.display = "none";
+    }
+  }
+};
 // ================= STOP RECORD =================
 function stopVoice(){
 
