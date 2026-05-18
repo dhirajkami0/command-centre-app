@@ -6234,7 +6234,9 @@ setTimeout(() => {
   // ❌ REMOVE AUTO RENDER
   // renderGrid("current", "ALL");
 
-}, 300);        // ======================================
+}, 300);       
+        
+        // ======================================
         // 🎯 FIT MAP (SAFE)
         // ======================================
         try {
@@ -8337,15 +8339,30 @@ Object.keys(visited)
         "🎨 renderGrid()"
       );
 
-      renderGrid(
+     // ======================================================
+// 🔥 RENDER ONLY WHEN GRID VISIBLE
+// ======================================================
+if(window.gridVisible === true){
 
-        window.__lastMode || "today",
+  renderGrid(
 
-        document.getElementById(
-          "beatSelect"
-        )?.value || "ALL"
-      );
-    }
+    window.__lastMode ||
+
+    "today",
+
+    document.getElementById(
+      "beatSelect"
+    )?.value ||
+
+    "ALL"
+  );
+
+}else{
+
+  console.log(
+    "🟩 Grid hidden → render skipped"
+  );
+}
 
   } catch(err){
 
