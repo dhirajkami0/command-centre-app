@@ -7790,16 +7790,22 @@ function pointInPoly(lat, lng, coords){
   }
 
   console.log(
-  "🧪 Incoming tracks:",
-  tracks
-);
+    "🧪 Incoming tracks:",
+    tracks
+  );
 
-console.log(
-  "🔥 markVisitedHybrid CALLED"
-);
+  console.log(
+    "🔥 markVisitedHybrid CALLED"
+  );
 
-let visitedGlobal = {};
+  let visitedGlobal = {};
+
   for(let t of tracks){
+
+    console.log(
+      "🧪 Track Length:",
+      t.track?.length
+    );
 
     const dayStr = t.date
       ? getLocalDateStr(
@@ -7812,6 +7818,11 @@ let visitedGlobal = {};
       !t.track ||
       !t.track.length
     ){
+
+      console.warn(
+        "⚠ Invalid track object"
+      );
+
       continue;
     }
 
@@ -7823,6 +7834,11 @@ let visitedGlobal = {};
       cleanTrackPoints(
         t.track
       );
+
+    console.log(
+      "🧹 Cleaned Track:",
+      cleanedTrack.length
+    );
 
     // ==================================================
     // 🔥 NORMALIZE
@@ -7844,6 +7860,11 @@ let visitedGlobal = {};
         !isNaN(p.lat) &&
         !isNaN(p.lon)
       );
+
+    console.log(
+      "📍 Normalized Points:",
+      pts.length
+    );
 
     // ==================================================
     // 🔥 REMOVE HUGE GPS JUMPS
@@ -7872,7 +7893,17 @@ let visitedGlobal = {};
       return d < 500;
     });
 
+    console.log(
+      "🚶 Filtered Points:",
+      pts.length
+    );
+
     if(!pts.length){
+
+      console.warn(
+        "⚠ No valid points after cleanup"
+      );
+
       continue;
     }
 
@@ -7882,6 +7913,10 @@ let visitedGlobal = {};
     // 🔥 SINGLE POINT MODE
     // ==================================================
     if(pts.length === 1){
+
+      console.log(
+        "📌 Single Point Mode"
+      );
 
       const p = pts[0];
 
@@ -7921,6 +7956,11 @@ let visitedGlobal = {};
 
         visited[nearestId] = true;
         visitedGlobal[nearestId] = true;
+
+        console.log(
+          "📌 Single Point Grid:",
+          nearestId
+        );
       }
     }
 
@@ -7928,6 +7968,10 @@ let visitedGlobal = {};
     // 🔥 LINE MODE
     // ==================================================
     else {
+
+      console.log(
+        "📏 Line Mode"
+      );
 
       for(let i=1; i<pts.length; i++){
 
@@ -7951,6 +7995,11 @@ let visitedGlobal = {};
             (lon2-lon1) * 111000,
             2
           )
+        );
+
+        console.log(
+          "📏 Segment Distance:",
+          distMeters
         );
 
         let hit = false;
@@ -8019,6 +8068,11 @@ let visitedGlobal = {};
 
           const nearby =
             Array.from(nearbySet);
+
+          console.log(
+            "🧩 Nearby Cells:",
+            nearby.length
+          );
 
           for(const cell of nearby){
 
@@ -8124,6 +8178,10 @@ let visitedGlobal = {};
     // ==================================================
     if(Object.keys(visited).length === 0){
 
+      console.warn(
+        "⚠ Final Safety Triggered"
+      );
+
       const last =
         pts[pts.length - 1];
 
@@ -8224,9 +8282,7 @@ let visitedGlobal = {};
       };
 
       console.log(
-
-        "✅ Saved grids:",
-
+        "💾 Saved Daily Cache:",
         Object.keys(data).length
       );
     }
@@ -8244,6 +8300,10 @@ let visitedGlobal = {};
   // ==================================================
   if(typeof updateMonthCache === "function"){
 
+    console.log(
+      "📅 updateMonthCache()"
+    );
+
     updateMonthCache();
   }
 
@@ -8251,6 +8311,10 @@ let visitedGlobal = {};
   // 🔥 REBUILD PREVIOUS MONTH
   // ==================================================
   if(typeof updatePrevMonthCache === "function"){
+
+    console.log(
+      "🗂 updatePrevMonthCache()"
+    );
 
     updatePrevMonthCache();
   }
@@ -8261,6 +8325,10 @@ let visitedGlobal = {};
   try {
 
     if(window.__gridReady){
+
+      console.log(
+        "🎨 renderGrid()"
+      );
 
       renderGrid(
 
@@ -8282,8 +8350,13 @@ let visitedGlobal = {};
     );
   }
 
+  console.log(
+    "✅ visitedGlobal:",
+    visitedGlobal
+  );
+
   return visitedGlobal;
-}  
+}
     
     function applyMode(mode){
 
