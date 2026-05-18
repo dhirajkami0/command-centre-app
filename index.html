@@ -7428,7 +7428,7 @@ async function backfillKMLOnceBatched(){
       window.gridCache = window.gridCache || {};
       window.gridCache.today = {};
 
-      markVisitedHybrid([{
+     // markVisitedHybrid([{
         track: track,
         date: file.date
       }]);
@@ -10997,14 +10997,21 @@ cleanedPoints.forEach(p=>{
 // ==================================================
 markVisitedHybrid([{
 
-  track: cleanedPoints,
+  track:
+
+    points.map(p => [
+
+      p.lat,
+
+      p.lon
+
+    ]),
 
   date:
     new Date()
       .toISOString()
 
-}]);
-            
+}]);            
             // ======================================
 // 🔥 SAVE POINT COUNT
 // ======================================
