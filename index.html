@@ -6983,13 +6983,78 @@ function assignGridToBeat(rangeLayer){
 // 🧠 GRID CACHE (LIVE + MONTH)
 // ======================================================
 function renderGrid(mode = "today", beat = "ALL") {
+
   try {
 
-    if (!window.gridIndex || !window.gridMeta || !Object.keys(window.gridIndex).length) {
-      console.warn("⚠ Grid not ready (skip render)");
+    // =====================================================
+    // 🔥 START LOG
+    // =====================================================
+    console.log(
+      "🎨 renderGrid()"
+    );
+
+    console.log(
+      "📍 Mode:",
+      mode
+    );
+
+    console.log(
+      "🧭 Beat:",
+      beat
+    );
+
+    console.log(
+      "🔎 Zoom:",
+      map.getZoom()
+    );
+
+    // =====================================================
+    // 🔥 GRID HIDDEN
+    // =====================================================
+    if(window.gridVisible !== true){
+
+      console.log(
+        "🛑 Grid hidden → render skipped"
+      );
+
       return;
     }
 
+    // =====================================================
+    // 🔥 MAP MOVING
+    // =====================================================
+    if(window.gridMoving === true){
+
+      console.log(
+        "🛑 Map moving → render paused"
+      );
+
+      return;
+    }
+
+    // =====================================================
+    // 🔥 SAFETY
+    // =====================================================
+    if (
+
+      !window.gridIndex ||
+
+      !window.gridMeta ||
+
+      !Object.keys(window.gridIndex).length
+
+    ){
+
+      console.warn(
+        "⚠ Grid not ready"
+      );
+
+      return;
+    }
+
+    // =====================================================
+    // 🔥 ZOOM CONFIG
+    // =====================================================
     const zoom = map.getZoom();
 
     let alphaVisited = 0.6;
@@ -6998,232 +7063,488 @@ function renderGrid(mode = "today", beat = "ALL") {
     let borderWidth = 0.6;
 
     if (zoom < 13) {
+
       alphaVisited = 0.4;
+
       alphaUnvisited = 0.25;
+
       borderAlpha = 0.15;
+
       borderWidth = 0.3;
+
     } else if (zoom < 16) {
+
       borderAlpha = 0.25;
+
       borderWidth = 0.45;
+
     } else {
+
       alphaVisited = 0.7;
+
       alphaUnvisited = 0.5;
+
       borderAlpha = 0.45;
+
       borderWidth = 0.8;
     }
 
-    // ===============================
+    // =====================================================
     // 🔥 INIT CANVAS
-    // ===============================
+    // =====================================================
     if (!window.__gridCanvas) {
-      const pane = map.getPane("overlayPane");
-      const canvas = document.createElement("canvas");
+
+      console.log(
+        "🟩 Creating canvas layer"
+      );
+
+      const pane =
+        map.getPane("overlayPane");
+
+      const canvas =
+        document.createElement("canvas");
 
       canvas.style.position = "absolute";
+
       canvas.style.top = "0";
+
       canvas.style.left = "0";
+
       canvas.style.pointerEvents = "none";
+
       canvas.style.transformOrigin = "0 0";
-      canvas.className = "leaflet-zoom-animated";
+
+      canvas.className =
+        "leaflet-zoom-animated";
 
       pane.appendChild(canvas);
+
       window.__gridCanvas = canvas;
 
-      canvas.style.display = "block";
-      canvas.style.visibility = "visible";
-      canvas.style.opacity = "1";
+      map.on(
+        "move",
+        syncGridCanvas
+      );
 
-      map.on("move", syncGridCanvas);
+      map.on(
+        "resize",
+        () => {
 
-      map.on("resize", () => {
-        const size = map.getSize();
-        canvas.width = size.x;
-        canvas.height = size.y;
-        syncGridCanvas();
-      });
+          const size =
+            map.getSize();
 
-      map.on("moveend zoomend", () => {
-        renderGrid(window.__lastMode || "current", window.__lastBeat || "ALL");
-      });
+          canvas.width = size.x;
 
-      // =========================================================
-      // 🔥 CLICK HANDLER (UNCHANGED)
-      // =========================================================
-      if (!window.__gridClickAttached) {
+          canvas.height = size.y;
 
-        map.on("click", function(e) {
-          try {
+          syncGridCanvas();
+        }
+      );
 
-            const lat = e.latlng.lat;
-            const lng = e.latlng.lng;
+      map.on(
+        "moveend zoomend",
+        () => {
 
-            const baseLat = Math.floor(lat * 1000);
-            const baseLng = Math.floor(lng * 1000);
+          console.log(
+            "🧭 moveend/zoomend"
+          );
 
-            const candidates = [];
+          renderGrid(
 
-            for (let i = -1; i <= 1; i++) {
-              for (let j = -1; j <= 1; j++) {
+            window.__lastMode ||
+            "today",
 
-                const key = (baseLat + i) + "_" + (baseLng + j);
-
-                if (window.gridSpatialIndex && window.gridSpatialIndex[key]) {
-                  candidates.push(...window.gridSpatialIndex[key]);
-                }
-
-              }
-            }
-
-            for (const cell of candidates) {
-
-              if (!cell || !cell.coords) continue;
-
-              if (pointInPoly(lat, lng, cell.coords)) {
-
-                showGridPopup(cell, e.latlng);
-                return;
-              }
-            }
-
-          } catch (err) {
-            console.error("❌ Grid click error:", err);
-          }
-        });
-
-        window.__gridClickAttached = true;
-      }
+            window.__lastBeat ||
+            "ALL"
+          );
+        }
+      );
     }
 
+    // =====================================================
+    // 🔥 SAVE LAST MODE
+    // =====================================================
     window.__lastMode = mode;
+
     window.__lastBeat = beat;
 
-    const canvas = window.__gridCanvas;
-    const ctx = canvas.getContext("2d");
+    // =====================================================
+    // 🔥 CANVAS
+    // =====================================================
+    const canvas =
+      window.__gridCanvas;
 
-    const size = map.getSize();
+    const ctx =
+      canvas.getContext("2d");
+
+    const size =
+      map.getSize();
+
     canvas.width = size.x;
+
     canvas.height = size.y;
 
     syncGridCanvas();
 
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    ctx.clearRect(
+      0,
+      0,
+      canvas.width,
+      canvas.height
+    );
 
-    // ======================================================
-    // 🔥 UPDATED MODE HANDLING (ADDED PREV)
-    // ======================================================
-    // 🔥 ONLY THIS PART CHANGED
+    // =====================================================
+    // 🔥 MODE CACHE
+    // =====================================================
+    let current = {};
 
-// ======================================================
-// 🔥 FINAL MODE HANDLING (FIXED)
-// ======================================================
+    if(mode === "today"){
 
-let current = {};
+      current =
+        window.gridCache?.today || {};
+    }
 
-if(mode === "today"){
-  current = window.gridCache?.today || {};
-}
-else if(mode === "current"){
-  current = window.gridCache?.current || {};   // ✅ aligned
-}
-else if(mode === "prev"){
-  current = window.gridCache?.prev || {};      // ✅ aligned
-}
-    const bounds = map.getBounds();
+    else if(mode === "current"){
 
-    // ===============================
-    // 🔥 HEATMAP PREP
-    // ===============================
+      current =
+        window.gridCache?.current || {};
+    }
+
+    else if(mode === "prev"){
+
+      current =
+        window.gridCache?.prev || {};
+    }
+
+    // =====================================================
+    // 🔥 VIEWPORT
+    // =====================================================
+    const bounds =
+      map.getBounds();
+
+    // =====================================================
+    // 🔥 HEATMAP MAX
+    // =====================================================
     let maxCount = 1;
 
     Object.values(current).forEach(v => {
-      const c = (v === true) ? 1 : Number(v) || 0;
-      if (c > maxCount) maxCount = c;
+
+      const c =
+        (v === true)
+          ? 1
+          : Number(v) || 0;
+
+      if(c > maxCount){
+
+        maxCount = c;
+      }
     });
 
+    // =====================================================
+    // 🔥 HEAT COLOR
+    // =====================================================
     function getHeatColor(t){
+
       if(t < 0) t = 0;
+
       if(t > 1) t = 1;
 
-      const r = Math.floor(255 * t);
-      const g = Math.floor(255 * (1 - Math.abs(t - 0.5) * 2));
-      const b = Math.floor(255 * (1 - t));
+      const r =
+        Math.floor(255 * t);
+
+      const g =
+        Math.floor(
+
+          255 *
+
+          (1 - Math.abs(
+            t - 0.5
+          ) * 2)
+        );
+
+      const b =
+        Math.floor(
+          255 * (1 - t)
+        );
 
       return `rgb(${r},${g},${b})`;
     }
 
-    let countDrawn = 0;
+    // =====================================================
+    // 🔥 RENDER COUNTERS
+    // =====================================================
+    let renderedCount = 0;
 
-    for (const [id, cell] of Object.entries(window.gridIndex)) {
+    let skippedCount = 0;
 
-      if (!cell || !cell.coords || !cell.center) continue;
+    let visitedCount = 0;
 
-      const cLat =
+    let unvisitedCount = 0;
 
-  Array.isArray(cell.center)
-    ? cell.center[0]
-    : cell.center.lat;
+    // =====================================================
+    // 🔥 RENDER START TIME
+    // =====================================================
+    const startTime =
+      performance.now();
 
-const cLng =
+    // =====================================================
+    // 🔥 MAIN LOOP
+    // =====================================================
+    for (
 
-  Array.isArray(cell.center)
-    ? cell.center[1]
-    : cell.center.lng;
+      const [id, cell]
 
-if(
-  !bounds.contains([
-    cLat,
-    cLng
-  ])
-){
-  continue;
-}
+      of Object.entries(
+        window.gridIndex
+      )
 
-      if (beat !== "ALL" && cell.beat !== beat) continue;
+    ){
 
-      const raw = current[id];
-      const visitCount = (raw === true) ? 1 : Number(raw) || 0;
+      if(
 
-      let color = "#220000";
+        !cell ||
 
-      if (visitCount > 0) {
-        const intensity = visitCount / maxCount;
-        color = getHeatColor(intensity);
+        !cell.coords ||
+
+        !cell.center
+
+      ){
+        continue;
       }
 
-      ctx.fillStyle = color;
-      ctx.globalAlpha = visitCount === 0 ? alphaUnvisited : alphaVisited;
+      // =================================================
+      // 🔥 CENTER
+      // =================================================
+      const cLat =
 
-      const coords = cell.coords;
-      if (!coords || coords.length < 3) continue;
+        Array.isArray(cell.center)
+
+          ? cell.center[0]
+
+          : cell.center.lat;
+
+      const cLng =
+
+        Array.isArray(cell.center)
+
+          ? cell.center[1]
+
+          : cell.center.lng;
+
+      // =================================================
+      // 🔥 VIEWPORT CULLING
+      // =================================================
+      const point = L.latLng(
+        cLat,
+        cLng
+      );
+
+      if(
+
+        !bounds.contains(point)
+
+      ){
+
+        skippedCount++;
+
+        continue;
+      }
+
+      // =================================================
+      // 🔥 BEAT FILTER
+      // =================================================
+      if(
+
+        beat !== "ALL" &&
+
+        cell.beat !== beat
+
+      ){
+        continue;
+      }
+
+      // =================================================
+      // 🔥 VISITS
+      // =================================================
+      const raw =
+        current[id];
+
+      const visitCount =
+
+        (raw === true)
+
+          ? 1
+
+          : Number(raw) || 0;
+
+      if(visitCount > 0){
+
+        visitedCount++;
+
+      } else {
+
+        unvisitedCount++;
+      }
+
+      // =================================================
+      // 🔥 COLOR
+      // =================================================
+      let color = "#220000";
+
+      if(visitCount > 0){
+
+        const intensity =
+          visitCount / maxCount;
+
+        color =
+          getHeatColor(
+            intensity
+          );
+      }
+
+      // =================================================
+      // 🔥 STYLE
+      // =================================================
+      ctx.fillStyle = color;
+
+      ctx.globalAlpha =
+
+        visitCount === 0
+
+          ? alphaUnvisited
+
+          : alphaVisited;
+
+      // =================================================
+      // 🔥 POLYGON
+      // =================================================
+      const coords =
+        cell.coords;
+
+      if(
+
+        !coords ||
+
+        coords.length < 3
+
+      ){
+        continue;
+      }
 
       ctx.beginPath();
 
-      coords.forEach(([lat, lng], i) => {
-        const p = map.latLngToContainerPoint([lat, lng]);
-        if (i === 0) ctx.moveTo(p.x, p.y);
-        else ctx.lineTo(p.x, p.y);
-      });
+      coords.forEach(
+
+        ([lat, lng], i) => {
+
+          const p =
+
+            map.latLngToContainerPoint(
+              [lat, lng]
+            );
+
+          if(i === 0){
+
+            ctx.moveTo(
+              p.x,
+              p.y
+            );
+
+          } else {
+
+            ctx.lineTo(
+              p.x,
+              p.y
+            );
+          }
+        }
+      );
 
       ctx.closePath();
+
       ctx.fill();
 
-      if (zoom >= 10) {
-        ctx.strokeStyle = `rgba(0,255,255,${borderAlpha})`;
-        ctx.lineWidth = borderWidth;
+      // =================================================
+      // 🔥 BORDER
+      // =================================================
+      if(zoom >= 10){
+
+        ctx.strokeStyle =
+
+          `rgba(0,255,255,${borderAlpha})`;
+
+        ctx.lineWidth =
+          borderWidth;
+
         ctx.stroke();
       }
 
-      countDrawn++;
+      renderedCount++;
     }
 
+    // =====================================================
+    // 🔥 RESET ALPHA
+    // =====================================================
     ctx.globalAlpha = 1;
 
-    console.log("🟩 Grid drawn:", countDrawn, "| Max visits:", maxCount);
+    // =====================================================
+    // 🔥 RENDER TIME
+    // =====================================================
+    const elapsed =
+
+      Math.round(
+
+        performance.now()
+
+        - startTime
+      );
+
+    // =====================================================
+    // 🔥 FINAL LOGS
+    // =====================================================
+    console.log(
+      "🟩 Actually rendered:",
+      renderedCount
+    );
+
+    console.log(
+      "⏭ Skipped (viewport):",
+      skippedCount
+    );
+
+    console.log(
+      "🟢 Visible visited:",
+      visitedCount
+    );
+
+    console.log(
+      "🔴 Visible unvisited:",
+      unvisitedCount
+    );
+
+    console.log(
+      "🔥 Max visits:",
+      maxCount
+    );
+
+    console.log(
+      "⚡ Render time:",
+      elapsed + "ms"
+    );
+
+    console.log(
+      "✅ Grid render complete"
+    );
 
   } catch (e) {
-    console.error("❌ renderGrid crash:", e);
+
+    console.error(
+      "❌ renderGrid crash:",
+      e
+    );
   }
-}function syncGridCanvas() {
+}
+    function syncGridCanvas() {
   if (!window.__gridCanvas) return;
   // This calculates the offset from the top-left of the container to the map layer
   const topLeft = map.containerPointToLayerPoint([0, 0]);
@@ -9967,10 +10288,10 @@ function showGridStatus(data) {
     data.filter(d => !d.visited).length
   );
 
-  console.log(
-    "📍 Sample Data:",
-    data.slice(0, 5)
-  );
+  // =====================================================
+  // 🔥 REAL RENDER COUNT
+  // =====================================================
+  let renderedCount = 0;
 
   // =====================================================
   // 🔥 RESET ZOOM FLAG
@@ -10064,13 +10385,16 @@ function showGridStatus(data) {
 
       // =================================================
       // 🔥 VIEWPORT CULLING
-      // RENDER ONLY VISIBLE MAP AREA
+      // ONLY RENDER WHAT USER CAN SEE
       // =================================================
+      const point = L.latLng(
+        p.lat,
+        p.lon
+      );
+
       if(
 
-        !visibleBounds.contains(
-          [p.lat, p.lon]
-        )
+        !visibleBounds.contains(point)
 
       ){
         continue;
@@ -10106,6 +10430,8 @@ function showGridStatus(data) {
 
         smoothFactor: 0,
 
+        noClip: true,
+
         bubblingMouseEvents: false,
 
         color:
@@ -10137,6 +10463,11 @@ function showGridStatus(data) {
 
           : unvisitedLayer
       );
+
+      // =================================================
+      // 🔥 REAL RENDER COUNTER
+      // =================================================
+      renderedCount++;
     }
 
     // ===================================================
@@ -10180,17 +10511,15 @@ function showGridStatus(data) {
         }
 
         window.gridLayer.bringToFront();
-
-        console.log(
-          "🟢 Visited:",
-          visitedLayer.getLayers().length
-        );
-
-        console.log(
-          "🔴 Unvisited:",
-          unvisitedLayer.getLayers().length
-        );
       }
+
+      // =================================================
+      // 🔥 REAL FINAL LOG
+      // =================================================
+      console.log(
+        "🟩 Actually rendered:",
+        renderedCount
+      );
 
       // =================================================
       // 🔥 SAFE ZOOM
@@ -10199,7 +10528,7 @@ function showGridStatus(data) {
 
         !window.gridZoomDone &&
 
-        visitedLayer.getLayers().length > 0
+        renderedCount > 0
 
       ){
 
