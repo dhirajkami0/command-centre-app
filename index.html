@@ -6234,9 +6234,7 @@ setTimeout(() => {
   // ❌ REMOVE AUTO RENDER
   // renderGrid("current", "ALL");
 
-}, 300);       
-        
-        // ======================================
+}, 300);        // ======================================
         // 🎯 FIT MAP (SAFE)
         // ======================================
         try {
@@ -8338,52 +8336,28 @@ Object.keys(visited)
       console.log(
         "🎨 renderGrid()"
       );
-// ==================================================
-// 🔥 SAFE LIVE REPAINT
-// ==================================================
-try {
-
-  if(window.__gridReady){
-
-    console.log(
-      "🎨 renderGrid()"
-    );
-
-    // ==============================================
-    // 🔥 RENDER ONLY WHEN GRID VISIBLE
-    // ==============================================
-    if(window.gridVisible === true){
 
       renderGrid(
 
-        window.__lastMode ||
-
-        "today",
+        window.__lastMode || "today",
 
         document.getElementById(
           "beatSelect"
-        )?.value ||
-
-        "ALL"
-      );
-
-    } else {
-
-      console.log(
-        "🟩 Grid hidden → render skipped"
+        )?.value || "ALL"
       );
     }
+
+  } catch(err){
+
+    console.warn(
+
+      "⚠ renderGrid refresh fail",
+
+      err
+    );
   }
 
-} catch(err){
-
-  console.warn(
-
-    "⚠ renderGrid refresh fail",
-
-    err
-  );
-}  console.log(
+  console.log(
     "✅ visitedGlobal:",
     visitedGlobal
   );
@@ -19757,7 +19731,7 @@ function updateTacticalCompass(){
 requestAnimationFrame(
   updateTacticalCompass
 );
-  }  
+  
   </script>
 
   <div id="form-modal"
