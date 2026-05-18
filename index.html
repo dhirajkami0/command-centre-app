@@ -9801,29 +9801,71 @@ function loadGridFromCache(){
     // ===============================
    async function buildGridFromBounds(bounds, rangeLayer) {
 
-  console.log("🔲 Building FINAL STRICT CLIPPED grid...");
+  console.log(
+    "🔲 Building FINAL STRICT CLIPPED grid..."
+  );
 
   try {
 
+    // ==========================================
+    // 🔥 VALIDATION
+    // ==========================================
     if (!bounds || !rangeLayer) {
-      console.error("❌ Invalid inputs");
+
+      console.error(
+        "❌ Invalid inputs"
+      );
+
       return;
     }
 
+    // ==========================================
+    // 🔥 MAP BOUNDS
+    // ==========================================
+    const south =
+      bounds.getSouth();
+
+    const north =
+      bounds.getNorth();
+
+    const west =
+      bounds.getWest();
+
+    const east =
+      bounds.getEast();
+
+    // ==========================================
+    // 🔥 TRUE 100m GRID STEPS
+    // ==========================================
     const latStep = 0.0009;
 
-const lonStep =
-  latStep /
-  Math.cos(
-    ((south + north) / 2)
-    * Math.PI / 180
-  );  
+    const lonStep =
+
+      latStep /
+
+      Math.cos(
+
+        ((south + north) / 2)
+
+        * Math.PI / 180
+      );
+
+    console.log(
+      "📏 latStep:",
+      latStep
+    );
+
+    console.log(
+      "📏 lonStep:",
+      lonStep
+    );
+
     let count = 0;
 
     window.gridIndex = {};
 
     // ==========================================
-    // 🔥 1. EXTRACT POLYGONS
+    // 🔥 EXTRACT POLYGONS
     // ==========================================
     let allPolys = [];
 
@@ -9831,75 +9873,159 @@ const lonStep =
 
       if (!layer) return;
 
+      // ========================================
+      // 🔥 POLYGON
+      // ========================================
       if (layer instanceof L.Polygon) {
 
-        let latlngs = layer.getLatLngs();
-        const rings = Array.isArray(latlngs[0][0]) ? latlngs : [latlngs];
+        let latlngs =
+          layer.getLatLngs();
+
+        const rings =
+
+          Array.isArray(latlngs[0][0])
+
+            ? latlngs
+
+            : [latlngs];
 
         rings.forEach(ringSet => {
 
-          let coords = ringSet.map(ring => {
+          let coords =
 
-            let pts = ring.map(p => [p.lng, p.lat]);
+            ringSet.map(ring => {
 
-            // close polygon
-            if (
-              pts[0][0] !== pts[pts.length - 1][0] ||
-              pts[0][1] !== pts[pts.length - 1][1]
-            ) {
-              pts.push(pts[0]);
-            }
+              let pts =
 
-            return pts;
+                ring.map(p => [
 
-          }).filter(r => r.length >= 4);
+                  p.lng,
+                  p.lat
+
+                ]);
+
+              // ==================================
+              // 🔥 CLOSE POLYGON
+              // ==================================
+              if (
+
+                pts[0][0] !==
+                pts[pts.length - 1][0]
+
+                ||
+
+                pts[0][1] !==
+                pts[pts.length - 1][1]
+
+              ) {
+
+                pts.push(
+                  pts[0]
+                );
+              }
+
+              return pts;
+
+            })
+
+            .filter(
+              r => r.length >= 4
+            );
 
           if (coords.length) {
+
             try {
-              allPolys.push(turf.polygon(coords));
+
+              allPolys.push(
+
+                turf.polygon(
+                  coords
+                )
+              );
+
             } catch (e) {}
           }
 
         });
       }
 
-      if (layer.eachLayer) layer.eachLayer(extract);
+      // ========================================
+      // 🔥 CHILD LAYERS
+      // ========================================
+      if (layer.eachLayer) {
+
+        layer.eachLayer(
+          extract
+        );
+      }
     }
 
     extract(rangeLayer);
 
+    // ==========================================
+    // 🔥 NO POLYGONS
+    // ==========================================
     if (!allPolys.length) {
-      console.error("❌ No polygons found");
+
+      console.error(
+        "❌ No polygons found"
+      );
+
       return;
     }
 
     // ==========================================
-    // 🔥 2. UNION POLYGON
+    // 🔥 UNION
     // ==========================================
-    let unifiedRange = allPolys[0];
+    let unifiedRange =
+      allPolys[0];
 
-    for (let i = 1; i < allPolys.length; i++) {
+    for (
+
+      let i = 1;
+
+      i < allPolys.length;
+
+      i++
+
+    ) {
+
       try {
-        unifiedRange = turf.union(unifiedRange, allPolys[i]);
+
+        unifiedRange = turf.union(
+          unifiedRange,
+          allPolys[i]
+        );
+
       } catch (e) {}
     }
 
-    const unifiedBBox = turf.bbox(unifiedRange);
+    // ==========================================
+    // 🔥 BBOX
+    // ==========================================
+    const unifiedBBox =
 
-    const south = bounds.getSouth();
-    const north = bounds.getNorth();
-    const west = bounds.getWest();
-    const east = bounds.getEast();
-
-    const startLat =
-  Math.floor(south / latStep)
-  * latStep;
-    const startLon =
-  Math.floor(west / lonStep)
-  * lonStep;
+      turf.bbox(
+        unifiedRange
+      );
 
     // ==========================================
-    // 🔥 3. GRID BUILD (STRICT CLIP ONLY)
+    // 🔥 GRID START
+    // ==========================================
+    const startLat =
+
+      Math.floor(
+        south / latStep
+      ) * latStep;
+
+    const startLon =
+
+      Math.floor(
+        west / lonStep
+      ) * lonStep;
+
+    // ==========================================
+    // 🔥 GRID BUILD
     // ==========================================
     let lat = startLat;
 
@@ -9907,104 +10033,241 @@ const lonStep =
 
       let iterations = 0;
 
-      for (; lat < north; lat += latStep) {
-
       for (
-  let lon = startLon;
-  lon < east;
-  lon += lonStep
-) {
 
+        ;
+        lat < north;
+        lat += latStep
+
+      ) {
+
+        for (
+
+          let lon = startLon;
+
+          lon < east;
+
+          lon += lonStep
+
+        ) {
+
+          // ====================================
           // 🔥 FAST BBOX SKIP
+          // ====================================
           if (
-            lon > unifiedBBox[2] ||
-            lon + step < unifiedBBox[0] ||
-            lat > unifiedBBox[3] ||
-            lat + step < unifiedBBox[1]
-          ) continue;
 
+            lon > unifiedBBox[2]
+
+            ||
+
+            lon + lonStep <
+            unifiedBBox[0]
+
+            ||
+
+            lat > unifiedBBox[3]
+
+            ||
+
+            lat + latStep <
+            unifiedBBox[1]
+
+          ) {
+            continue;
+          }
+
+          // ====================================
+          // 🔥 CENTER
+          // ====================================
           const centerLat =
-  lat + latStep / 2;
 
-const centerLon =
-  lon + lonStep / 2;
-          const id = centerLat.toFixed(5) + "_" + centerLon.toFixed(5);
+            lat + latStep / 2;
 
-          const cellPoly = turf.polygon([[
-            [lon, lat],
-            [lon + lonStep, lat],
-            [lon + step, lat + step],
-            [lon, lat + step],
-            [lon, lat]
-          ]]);
+          const centerLon =
+
+            lon + lonStep / 2;
+
+          // ====================================
+          // 🔥 CLEAN ID
+          // ====================================
+          const id =
+
+            centerLat.toFixed(4)
+
+            + "_"
+
+            + centerLon.toFixed(4);
+
+          // ====================================
+          // 🔥 CELL POLYGON
+          // ====================================
+          const cellPoly =
+
+            turf.polygon([[
+
+              [lon, lat],
+
+              [lon + lonStep, lat],
+
+              [
+                lon + lonStep,
+                lat + latStep
+              ],
+
+              [
+                lon,
+                lat + latStep
+              ],
+
+              [lon, lat]
+
+            ]]);
 
           let clipped;
 
           try {
-            clipped = turf.intersect(cellPoly, unifiedRange);
+
+            clipped = turf.intersect(
+              cellPoly,
+              unifiedRange
+            );
+
           } catch (e) {
+
             continue;
           }
 
-          // ❌ STRICT: skip if no intersection
-          if (!clipped) continue;
+          // ====================================
+          // 🔥 STRICT CLIP
+          // ====================================
+          if (!clipped) {
+            continue;
+          }
 
-          // 🔥 remove tiny fragments
-          if (turf.area(clipped) < 30) continue;
+          // ====================================
+          // 🔥 REMOVE TINY FRAGMENTS
+          // ====================================
+          if (
 
-          // ==========================================
-          // 🔥 NORMALIZE GEOMETRY
-          // ==========================================
-          let geom = clipped.geometry;
+            turf.area(clipped)
+            < 30
 
-          if (geom.type === "MultiPolygon") {
+          ) {
+            continue;
+          }
+
+          // ====================================
+          // 🔥 NORMALIZE
+          // ====================================
+          let geom =
+            clipped.geometry;
+
+          if (
+
+            geom.type ===
+            "MultiPolygon"
+
+          ) {
+
             geom = {
+
               type: "Polygon",
-              coordinates: geom.coordinates[0]
+
+              coordinates:
+                geom.coordinates[0]
             };
           }
 
-          const coords = geom.coordinates[0].map(p => [p[1], p[0]]);
+          const coords =
 
-          if (!coords || coords.length < 4) continue;
+            geom.coordinates[0]
 
-          // ==========================================
-          // 🔥 FINAL STORE (CLEAN ONLY)
-          // ==========================================
+            .map(p => [
+
+              p[1],
+              p[0]
+
+            ]);
+
+          if (
+
+            !coords ||
+
+            coords.length < 4
+
+          ) {
+            continue;
+          }
+
+          // ====================================
+          // 🔥 FINAL STORE
+          // ====================================
           window.gridIndex[id] = {
+
             id,
-            coords, // ✅ ONLY coords (NO geo)
-            center: { lat: centerLat, lng: centerLon },
+
+            coords,
+
+            center: {
+
+              lat: centerLat,
+
+              lng: centerLon
+            },
+
             visited: false
           };
 
           count++;
 
-          // 🔥 NON-BLOCKING
-          if (++iterations % 200 === 0) {
-            await new Promise(r => setTimeout(r, 0));
+          // ====================================
+          // 🔥 NON BLOCKING
+          // ====================================
+          if (
+
+            ++iterations % 200 === 0
+
+          ) {
+
+            await new Promise(
+              r => setTimeout(r, 0)
+            );
           }
         }
 
-        await new Promise(r => setTimeout(r, 0));
+        await new Promise(
+          r => setTimeout(r, 0)
+        );
       }
 
+      // ========================================
+      // 🔥 META
+      // ========================================
       window.gridMeta = {
+
         latSize: latStep,
-lonSize: lonStep,
+
+        lonSize: lonStep,
+
         total: count
       };
 
-      console.log("✅ Grid built (STRICT CLIPPED):", count);
+      console.log(
+        "✅ Grid built (STRICT CLIPPED):",
+        count
+      );
     }
 
     await processRow();
 
   } catch (e) {
-    console.error("❌ buildGrid crash:", e);
+
+    console.error(
+      "❌ buildGrid crash:",
+      e
+    );
   }
-}
-    function clearKMLPreview(){
+} function clearKMLPreview(){
 
   const btn = document.getElementById("clearKMLBtn");
 
