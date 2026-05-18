@@ -7800,6 +7800,8 @@ function pointInPoly(lat, lng, coords){
   );
 
   let visitedGlobal = {};
+      window.__lastVisitedGrid =
+  window.__lastVisitedGrid || null;
 
   for(let t of tracks){
 
@@ -8254,16 +8256,40 @@ function pointInPoly(lat, lng, coords){
       }
 
       Object.keys(visited)
-        .forEach(id => {
+  .forEach(id => {
 
-          data[id] =
+    // ==========================================
+    // 🔥 TRUE GRID ENTRY COUNTING
+    // ==========================================
+    if(
 
-            (
-              Number(data[id])
-              || 0
-            ) + 1;
-        });
+      window.__lastVisitedGrid
+      !== id
+    ){
 
+      data[id] =
+
+        (
+          Number(data[id])
+          || 0
+        ) + 1;
+
+      window.__lastVisitedGrid =
+        id;
+
+      console.log(
+        "🚪 Grid Entry:",
+        id
+      );
+
+    } else {
+
+      console.log(
+        "⏸ Still inside grid:",
+        id
+      );
+    }
+  });
       localStorage.setItem(
 
         key,
