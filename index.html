@@ -2876,29 +2876,7 @@ try {
     // 🔥 BACKEND LOAD (BLOCKING — CRITICAL FIX)
     // ======================================================
     await loadBackendCoverage();   // 🔥 THIS FIXES YOUR ISSUE
-// ======================================================
-// 🔥 REBUILD HISTORY GRIDS
-// ======================================================
-try {
 
-  const mode =
-    window.__lastMode || "current";
-
-  console.log(
-    "♻ Rebuilding cached grids:",
-    mode
-  );
-
-  // 🔥 FORCE GRID REPAINT
-  applyMode(mode);
-
-} catch(err){
-
-  console.error(
-    "❌ Grid rebuild failed:",
-    err
-  );
-}
     // 🔥 LOCK CACHE (PREVENT OVERWRITE)
     window.__backendLoaded = true;
 
@@ -4785,45 +4763,7 @@ setInterval(() => {
       'https://tile.openweathermap.org/map/precipitation_new/{z}/{x}/{y}.png?appid=b928faa16c09eb3facb9e3238d2e59f8',
       { opacity: 0.6, maxZoom: 19 }
     );
-var cloudLayer = L.tileLayer(
 
-  'https://tile.openweathermap.org/map/clouds_new/{z}/{x}/{y}.png?appid=b928faa16c09eb3facb9e3238d2e59f8',
-
-  {
-    opacity: 0.5,
-    maxZoom: 19
-  }
-);
-
-var windLayer = L.tileLayer(
-
-  'https://tile.openweathermap.org/map/wind_new/{z}/{x}/{y}.png?appid=b928faa16c09eb3facb9e3238d2e59f8',
-
-  {
-    opacity: 0.5,
-    maxZoom: 19
-  }
-);
-
-var tempLayer = L.tileLayer(
-
-  'https://tile.openweathermap.org/map/temp_new/{z}/{x}/{y}.png?appid=b928faa16c09eb3facb9e3238d2e59f8',
-
-  {
-    opacity: 0.45,
-    maxZoom: 19
-  }
-);
-    window.weatherLayers = {
-
-  "🌧 Rain Radar": rainLayer,
-
-  "☁ Clouds": cloudLayer,
-
-  "🌀 Wind": windLayer,
-
-  "🌡 Temperature": tempLayer
-};
     /* 🌲 GEE FOREST */
     var geeForest = L.tileLayer(
       'https://earthengine.googleapis.com/v1/projects/glassy-bonsai-475802-m1/maps/ed63fa9503db0068415ce327ed101286-18029cd75bdf621254780198530b2768/tiles/{z}/{x}/{y}',
@@ -9732,233 +9672,97 @@ function openStatsPopup(name, latlng) {
     }
 
     /* 🟩 GRID */
- function showGridStatus(data) {
+  function showGridStatus(data) {
 
   console.log("📊 TOTAL CELLS:", data.length);
+  console.log("🟢 Visited:", data.filter(d => d.visited).length);
+  console.log("🔴 Unvisited:", data.filter(d => !d.visited).length);
 
-  console.log(
-    "🟢 Visited:",
-    data.filter(d => d.visited).length
-  );
+  console.log("📍 Sample Data:", data.slice(0, 5));
 
-  console.log(
-    "🔴 Unvisited:",
-    data.filter(d => !d.visited).length
-  );
-
-  console.log(
-    "📍 Sample Data:",
-    data.slice(0, 5)
-  );
-
-  // =====================================================
-  // 🔥 LIMIT EXTREME GRID LOAD
-  // =====================================================
+  // 🔥 LIMIT DATA (PREVENT FREEZE)
   if (data.length > 800) {
-
-    console.warn(
-      "⚠ Too many cells, limiting to 800"
-    );
-
+    console.warn("⚠ Too many cells, limiting to 800");
     data = data.slice(0, 800);
   }
 
-  // =====================================================
-  // 🔥 SAFE GRID LAYER
-  // =====================================================
-  window.gridLayer =
-    window.gridLayer ||
-    L.layerGroup();
-
-  // =====================================================
-  // 🔥 RESET ZOOM FLAG
-  // =====================================================
+  // 🔥 RESET ZOOM FLAG (IMPORTANT)
   window.gridZoomDone = false;
 
-  // =====================================================
-  // 🔥 CLEAR OLD GRID CONTENT
-  // =====================================================
   visitedLayer.clearLayers();
-
   unvisitedLayer.clearLayers();
 
-  // =====================================================
-  // 🔥 CLEAR MAIN GRID GROUP
-  // =====================================================
-  window.gridLayer.clearLayers();
-
-  // =====================================================
-  // 🔥 250m GRID SIZE
-  // =====================================================
+  // 🔥 FIX: 250m GRID OFFSET (was 50m before)
   const offset = 0.00225;
 
-  // =====================================================
-  // 🔥 BATCH RENDERING
-  // =====================================================
+  // 🔥 USE BATCH RENDER (PREVENT UI BLOCK)
   let i = 0;
-
   const batchSize = 100;
 
   function renderBatch() {
 
-    const end = Math.min(
-      i + batchSize,
-      data.length
-    );
+    const end = Math.min(i + batchSize, data.length);
 
     for (; i < end; i++) {
 
       const p = data[i];
 
-      if (!p.lat || !p.lon){
-        continue;
-      }
+      if (!p.lat || !p.lon) continue;
 
       if (i < 3) {
-
-        console.log(
-          `🧭 Cell ${i}:`,
-          p.lat,
-          p.lon,
-          "Visited:",
-          p.visited
-        );
+        console.log(`🧭 Cell ${i}:`, p.lat, p.lon, "Visited:", p.visited);
       }
 
-      // =================================================
-      // 🔥 GRID BOUNDS
-      // =================================================
       const bounds = [
-
-        [
-          p.lat - offset / 2,
-          p.lon - offset / 2
-        ],
-
-        [
-          p.lat + offset / 2,
-          p.lon + offset / 2
-        ]
+        [p.lat - offset / 2, p.lon - offset / 2],
+        [p.lat + offset / 2, p.lon + offset / 2]
       ];
 
-      const isVisited =
-        p.visited === true;
+      const isVisited = p.visited == true;
 
-      // =================================================
-      // 🔥 GRID STYLE
-      // =================================================
-      const rect = L.rectangle(bounds, {
-
-        color:
-          isVisited
-            ? "#00ff00"
-            : "#ff0000",
-
-        fillOpacity:
-          isVisited
-            ? 0.5
-            : 0.18,
-
+      L.rectangle(bounds, {
+        color: isVisited ? "#00ff00" : "#ff0000",
+        fillOpacity: isVisited ? 0.5 : 0.25,
         weight: 1
-      });
+      }).addTo(isVisited ? visitedLayer : unvisitedLayer);
 
-      // =================================================
-      // 🔥 ADD INTO VISITED/UNVISITED GROUP
-      // =================================================
-      rect.addTo(
-        isVisited
-          ? visitedLayer
-          : unvisitedLayer
-      );
     }
 
-    // ===================================================
-    // 🔥 CONTINUE BATCH
-    // ===================================================
     if (i < data.length) {
-
-      requestAnimationFrame(
-        renderBatch
-      );
-
+      requestAnimationFrame(renderBatch); // 🔥 smooth rendering
     } else {
 
-      // =================================================
-      // 🔥 FINALIZE INTO MAIN GRID GROUP
-      // =================================================
-      visitedLayer.addTo(
-        window.gridLayer
-      );
+      // 🔥 FINALIZE AFTER ALL BATCHES
+      visitedLayer.addTo(map);
+      unvisitedLayer.addTo(map);
 
-      unvisitedLayer.addTo(
-        window.gridLayer
-      );
+      visitedLayer.bringToFront();
+      unvisitedLayer.bringToFront();
 
-      console.log(
-        "🟢 Visited layer count:",
-        visitedLayer.getLayers().length
-      );
+      console.log("🟢 Visited layer count:", visitedLayer.getLayers().length);
+      console.log("🔴 Unvisited layer count:", unvisitedLayer.getLayers().length);
 
-      console.log(
-        "🔴 Unvisited layer count:",
-        unvisitedLayer.getLayers().length
-      );
+      // 🔥 SAFE ZOOM (ONLY ONCE + LIMITED)
+      if (unvisitedLayer.getLayers().length > 0 && !window.gridZoomDone) {
 
-      // =================================================
-      // 🔥 ONLY IF GRID TOGGLE ENABLED
-      // =================================================
-      if (
+        const bounds = unvisitedLayer.getBounds();
 
-        map.hasLayer(
-          window.gridLayer
-        )
+        console.log("🗺️ Bounds:", bounds);
 
-      ){
+        map.fitBounds(bounds, {
+          maxZoom: 14,   // 🔥 slightly reduced (more stable)
+          animate: false
+        });
 
-        window.gridLayer.bringToFront();
-
-        // ===============================================
-        // 🔥 SAFE ZOOM ONLY ONCE
-        // ===============================================
-        if (
-
-          unvisitedLayer.getLayers().length > 0
-          &&
-          !window.gridZoomDone
-
-        ){
-
-          const bounds =
-            unvisitedLayer.getBounds();
-
-          console.log(
-            "🗺️ Bounds:",
-            bounds
-          );
-
-          map.fitBounds(bounds, {
-
-            maxZoom: 14,
-
-            animate: false
-          });
-
-          window.gridZoomDone = true;
-        }
+        window.gridZoomDone = true;
       }
 
-      console.log(
-        "✅ Grid rendering completed"
-      );
     }
+
   }
 
-  // =====================================================
-  // 🔥 START RENDER
-  // =====================================================
-  renderBatch();
-}
-    /* ============================================================
+  renderBatch(); // 🔥 start batch rendering
+}/* ============================================================
        🐘 BLOCK 7 → ELEPHANT SYSTEM (FINAL)
     ============================================================ */
 function loadSightings() {
@@ -14579,263 +14383,130 @@ window.gridLayer = window.gridLayer || L.layerGroup();
 /* ============================================================
    🎛 LAYER CONTROL (CLEAN VERSION)
 ============================================================ */
-    var layerControl = L.control.layers(
-
-  // =====================================================
-  // 🛰 BASE MAPS
-  // =====================================================
+var layerControl = L.control.layers(
   {
     "🛰 Satellite": esriSat,
-
     "🗺 Google Hybrid": googleHybrid
   },
-
-  // =====================================================
-  // 📍 OVERLAYS
-  // =====================================================
   {
-
-    // 👮 STAFF
     "👮 Staff": staffLayer,
-
-    // 🐘 ELEPHANTS
     "🐘 Elephants": elephantLayer,
-
-    // 🚨 INCIDENTS / ALERTS
     "🚨 Alerts": incidentLayer,
-
-    // 📡 PREDICTION
     "📡 Prediction": predictionLayer,
-
-    // 🏡 VILLAGES
     "🏡 Villages": villageLayer,
-
-    // 🌱 PLANTATION
     "🌱 Plantation": plantationLayer,
 
-    // 🟩 COVERAGE GRID
+    // ✅ KEEP AS IS (DO NOT CHANGE STRUCTURE)
     "🟩 Coverage Grid": window.gridLayer
 
   },
-
-  // =====================================================
-  // ⚙ CONTROL OPTIONS
-  // =====================================================
-  {
-    collapsed: true
-  }
-
+  { collapsed: true }
 ).addTo(map);
 
 
-// =====================================================
-// 🔥 GLOBAL VISIBILITY FLAG
-// =====================================================
+// 🔥 GLOBAL VISIBILITY FLAG (CRITICAL FIX)
 window.gridVisible = false;
 
 
 /* ============================================================
-   ⚡ OVERLAY ADD (FINAL FIXED VERSION)
+   ⚡ OVERLAY ADD (CLEANED)
 ============================================================ */
 map.on('overlayadd', function (e) {
 
   try {
 
-    // ========================================================
-    // 🔥 SAFE LAYER NAME
-    // ========================================================
-    const layerName = e?.name || "";
+    if (!e || !e.name) return;
 
-    console.log(
-      "🧭 Layer Enabled:",
-      layerName
-    );
+    const layerName = String(e.name);
 
-    /* ========================================================
-       👮 STAFF
-    ======================================================== */
+    console.log("🧭 Layer Enabled:", layerName);
+
+    /* 👮 Staff */
     if (layerName === "👮 Staff") {
-
-      loadStaff?.();
-
-      return;
+      return loadStaff?.();
     }
 
-    /* ========================================================
-       🌱 PLANTATION
-    ======================================================== */
+    /* 🌱 Plantation */
     if (layerName === "🌱 Plantation") {
-
-      loadPlantationLayer?.();
-
-      return;
+      return loadPlantationLayer?.();
     }
 
-    /* ========================================================
-       🟩 COVERAGE GRID
-    ======================================================== */
-    if (
+    /* ============================================================
+       🟩 COVERAGE GRID (FIXED)
+    ============================================================ */
+    if (layerName === "🟩 Coverage Grid") {
 
-      layerName === "🟩 Coverage Grid"
+      console.log("📊 Coverage Grid ON");
 
-      ||
-
-      e.layer === window.gridLayer
-
-    ){
-
-      console.log(
-        "📊 Coverage Grid ENABLED"
-      );
-
-      // ====================================================
-      // 🔥 ENABLE GRID STATE
-      // ====================================================
+      // 🔥 ENABLE GRID
       window.gridVisible = true;
 
-      // ====================================================
-      // 🔥 SHOW COVERAGE PANEL
-      // ====================================================
+renderGrid(
+  window.currentCoverageMode || "today",
+  window.currentBeat || "ALL"
+);
+
+      // 🔥 SHOW PANEL
       showCoveragePanel?.();
 
-      // ====================================================
       // 🔥 SHOW CANVAS
-      // ====================================================
-      if(window.__gridCanvas){
-
-        window.__gridCanvas.style.display =
-          "block";
-
-        window.__gridCanvas.style.visibility =
-          "visible";
-
-        window.__gridCanvas.style.opacity =
-          "1";
+      if (window.__gridCanvas) {
+        window.__gridCanvas.style.display = "block";
+        window.__gridCanvas.style.visibility = "visible";
+        window.__gridCanvas.style.opacity = "1";
       }
 
-      // ====================================================
-      // 🔥 FORCE REBUILD FROM CACHE
-      // ====================================================
-      const mode =
-
-        window.__lastMode ||
-
-        window.currentCoverageMode ||
-
-        "current";
-
-      const beat =
-
-        window.currentBeat ||
-
-        document.getElementById(
-          "beatSelect"
-        )?.value ||
-
-        "ALL";
-
-      console.log(
-        "♻ Rebuilding Coverage:",
-        mode,
-        beat
+      // 🔥 FORCE RENDER
+      renderGrid(
+        window.currentCoverageMode || "today",
+        window.currentBeat || "ALL"
       );
-
-      // ====================================================
-      // 🔥 IMPORTANT
-      // ====================================================
-      applyMode(mode);
 
       return;
     }
 
   } catch (err) {
-
-    console.error(
-      "🔥 overlayadd crash:",
-      err
-    );
+    console.error("🔥 overlayadd crash:", err);
   }
 });
 
 
 /* ============================================================
-   🧹 OVERLAY REMOVE (FINAL FIXED VERSION)
+   🧹 OVERLAY REMOVE (CLEANED)
 ============================================================ */
 map.on('overlayremove', function (e) {
 
-  try {
+  const name = e.name;
 
-    const layerName =
-      e?.name || "";
+  console.log("🧹 Layer Disabled:", name);
 
-    console.log(
-      "🧹 Layer Disabled:",
-      layerName
-    );
-
-    /* ========================================================
-       🌱 PLANTATION
-    ======================================================== */
-    if (layerName === "🌱 Plantation") {
-
-      plantationLayer?.clearLayers?.();
-
-      return;
-    }
-
-    /* ========================================================
-       🟩 COVERAGE GRID
-    ======================================================== */
-    if (
-
-      layerName === "🟩 Coverage Grid"
-
-      ||
-
-      e.layer === window.gridLayer
-
-    ){
-
-      console.log(
-        "🧹 Coverage Grid OFF"
-      );
-
-      // ====================================================
-      // 🔥 DISABLE STATE
-      // ====================================================
-      window.gridVisible = false;
-
-      // ====================================================
-      // 🔥 CLOSE PANEL
-      // ====================================================
-      closeCoveragePanel?.();
-
-      // ====================================================
-      // 🔥 HIDE CANVAS
-      // ====================================================
-      if(window.__gridCanvas){
-
-        window.__gridCanvas.style.display =
-          "none";
-
-        window.__gridCanvas.style.visibility =
-          "hidden";
-
-        window.__gridCanvas.style.opacity =
-          "0";
-      }
-
-      return;
-    }
-
-  } catch(err){
-
-    console.error(
-      "🔥 overlayremove crash:",
-      err
-    );
+  /* 🌱 Plantation */
+  if (name === "🌱 Plantation") {
+    plantationLayer?.clearLayers?.();
   }
-});    /* ============================================================
+
+  /* ============================================================
+     🟩 GRID CLEANUP (FIXED)
+  ============================================================ */
+  if (name === "🟩 Coverage Grid") {
+
+    console.log("🧹 Clearing Coverage Grid");
+
+    // 🔥 DISABLE GRID
+    window.gridVisible = false;
+
+    // 🔥 CLOSE PANEL
+    closeCoveragePanel?.();
+
+    // ✅ HIDE CANVAS (HARD)
+    if (window.__gridCanvas) {
+      window.__gridCanvas.style.display = "none";
+      window.__gridCanvas.style.visibility = "hidden";
+      window.__gridCanvas.style.opacity = "0";
+    }
+  }
+
+});     /* ============================================================
              🐘 SIGHTING FORM SYSTEM (FINAL SAFE VERSION)
           ============================================================ */
 
