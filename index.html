@@ -8338,43 +8338,52 @@ Object.keys(visited)
       console.log(
         "🎨 renderGrid()"
       );
+// ==================================================
+// 🔥 SAFE LIVE REPAINT
+// ==================================================
+try {
 
-     // ======================================================
-// 🔥 RENDER ONLY WHEN GRID VISIBLE
-// ======================================================
-if(window.gridVisible === true){
+  if(window.__gridReady){
 
-  renderGrid(
-
-    window.__lastMode ||
-
-    "today",
-
-    document.getElementById(
-      "beatSelect"
-    )?.value ||
-
-    "ALL"
-  );
-
-}else{
-
-  console.log(
-    "🟩 Grid hidden → render skipped"
-  );
-}
-
-  } catch(err){
-
-    console.warn(
-
-      "⚠ renderGrid refresh fail",
-
-      err
+    console.log(
+      "🎨 renderGrid()"
     );
+
+    // ==============================================
+    // 🔥 RENDER ONLY WHEN GRID VISIBLE
+    // ==============================================
+    if(window.gridVisible === true){
+
+      renderGrid(
+
+        window.__lastMode ||
+
+        "today",
+
+        document.getElementById(
+          "beatSelect"
+        )?.value ||
+
+        "ALL"
+      );
+
+    } else {
+
+      console.log(
+        "🟩 Grid hidden → render skipped"
+      );
+    }
   }
 
-  console.log(
+} catch(err){
+
+  console.warn(
+
+    "⚠ renderGrid refresh fail",
+
+    err
+  );
+}  console.log(
     "✅ visitedGlobal:",
     visitedGlobal
   );
