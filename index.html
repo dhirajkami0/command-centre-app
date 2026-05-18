@@ -8788,46 +8788,51 @@ function showGridPopup(cell, latlng){
 
       html = `
 
-        <b>
-          ${title}
-          (${modeLabel})
-        </b>
+  <b>
+    ${title}
+    (${modeLabel})
+  </b>
 
-        <br><br>
+  <br><br>
 
-        Total Grids:
-        <b>${total}</b>
+  Total Grids:
+  <b>${total}</b>
 
-        <br>
+  <br>
 
-        Visited Grids:
-        <b>${visited}</b>
+  Visited Grids:
+  <b>${visited}</b>
 
-        <br>
+  <br>
 
-        Coverage:
-        <b>${coveragePct}%</b>
+  Area Covered:
+  <b>${(visited * 0.25).toFixed(2)} ha</b>
 
-        <br><br>
+  <br>
 
-        Total Visits:
-        <b>${totalVisits}</b>
+  Coverage:
+  <b>${coveragePct}%</b>
 
-        <br>
+  <br><br>
 
-        Avg Visits/Grid:
-        <b>${avgVisits}</b>
+  Total Visits:
+  <b>${totalVisits}</b>
 
-        <br>
+  <br>
 
-        Hotspots:
-        <b>${hotspots}</b>
+  Avg Visits/Grid:
+  <b>${avgVisits}</b>
 
-        <br>
+  <br>
 
-        Unvisited Area:
-        <b>${unvisitedPct}%</b>
-      `;
+  Hotspots:
+  <b>${hotspots}</b>
+
+  <br>
+
+  Unvisited Area:
+  <b>${((total - visited) * 0.25).toFixed(2)} ha (${unvisitedPct}%)</b>
+`;
     }
 
     // ==================================================
