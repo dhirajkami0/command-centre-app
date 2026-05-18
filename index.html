@@ -7031,10 +7031,6 @@ function renderGrid(mode = "today", beat = "ALL") {
 
     ){
 
-      console.warn(
-        "⚠ Grid not ready"
-      );
-
       return;
     }
 
@@ -7049,25 +7045,52 @@ function renderGrid(mode = "today", beat = "ALL") {
     );
 
     // =====================================================
+    // 🔥 VISUAL LOD SYSTEM
+    // =====================================================
+    let renderStep = 1;
+
+    if(zoom <= 11){
+
+      renderStep = 6;
+
+    } else if(zoom <= 13){
+
+      renderStep = 3;
+
+    } else if(zoom <= 15){
+
+      renderStep = 2;
+
+    } else {
+
+      renderStep = 1;
+    }
+
+    console.log(
+      "🧠 Render Step:",
+      renderStep
+    );
+
+    // =====================================================
     // 🔥 ZOOM STYLE CONFIG
     // =====================================================
-    let alphaVisited = 0.6;
+    let alphaVisited = 0.65;
 
-    let alphaUnvisited = 0.25;
+    let alphaUnvisited = 0.22;
 
-    let borderAlpha = 0.25;
+    let borderAlpha = 0.18;
 
-    let borderWidth = 0.4;
+    let borderWidth = 0.5;
 
     if(zoom >= 16){
 
-      alphaVisited = 0.75;
+      alphaVisited = 0.82;
 
-      alphaUnvisited = 0.45;
+      alphaUnvisited = 0.38;
 
-      borderAlpha = 0.45;
+      borderAlpha = 0.4;
 
-      borderWidth = 0.8;
+      borderWidth = 0.9;
     }
 
     // =====================================================
@@ -7094,6 +7117,9 @@ function renderGrid(mode = "today", beat = "ALL") {
       canvas.style.pointerEvents = "none";
 
       canvas.style.transformOrigin = "0 0";
+
+      canvas.style.imageRendering =
+        "pixelated";
 
       canvas.className =
         "leaflet-zoom-animated";
@@ -7124,25 +7150,22 @@ function renderGrid(mode = "today", beat = "ALL") {
           syncGridCanvas();
         }
       );
+
       map.on(
-  "moveend zoomend",
-  () => {
+        "moveend zoomend",
+        () => {
 
-    console.log(
-      "🧭 moveend/zoomend"
-    );
+          renderGrid(
 
-    renderGrid(
+            window.__lastMode ||
+            "today",
 
-      window.__lastMode ||
-      "today",
-
-      window.__lastBeat ||
-      "ALL"
-    );
-  }
-);
-  }
+            window.__lastBeat ||
+            "ALL"
+          );
+        }
+      );
+    }
 
     // =====================================================
     // 🔥 CANVAS
@@ -7151,7 +7174,12 @@ function renderGrid(mode = "today", beat = "ALL") {
       window.__gridCanvas;
 
     const ctx =
-      canvas.getContext("2d");
+      canvas.getContext(
+        "2d",
+        {
+          alpha: true
+        }
+      );
 
     const size =
       map.getSize();
@@ -7199,33 +7227,6 @@ function renderGrid(mode = "today", beat = "ALL") {
       map.getBounds();
 
     // =====================================================
-    // 🔥 LOD SYSTEM
-    // =====================================================
-    let renderStep = 1;
-
-    if(zoom <= 12){
-
-      renderStep = 6;
-
-    } else if(zoom <= 14){
-
-      renderStep = 3;
-
-    } else if(zoom <= 16){
-
-      renderStep = 2;
-
-    } else {
-
-      renderStep = 1;
-    }
-
-    console.log(
-      "🧠 Render Step:",
-      renderStep
-    );
-
-    // =====================================================
     // 🔥 MAX VISITS
     // =====================================================
     let maxCount = 1;
@@ -7244,7 +7245,7 @@ function renderGrid(mode = "today", beat = "ALL") {
     });
 
     // =====================================================
-    // 🔥 HEAT COLOR
+    // 🔥 CLEAN HEAT COLOR
     // =====================================================
     function getHeatColor(t){
 
@@ -7253,19 +7254,27 @@ function renderGrid(mode = "today", beat = "ALL") {
         Math.min(1, t)
       );
 
-      const r =
-        Math.floor(255 * t);
+      if(t <= 0){
 
-      const g =
-        Math.floor(
-          255 *
-          (1 - Math.abs(t - 0.5) * 2)
-        );
+        return "#111111";
+      }
 
-      const b =
-        Math.floor(255 * (1 - t));
+      if(t < 0.25){
 
-      return `rgb(${r},${g},${b})`;
+        return "#124d1f";
+      }
+
+      if(t < 0.5){
+
+        return "#1faa59";
+      }
+
+      if(t < 0.75){
+
+        return "#e6c229";
+      }
+
+      return "#ff5722";
     }
 
     // =====================================================
@@ -7396,7 +7405,8 @@ function renderGrid(mode = "today", beat = "ALL") {
       // ===================================================
       // 🔥 COLOR
       // ===================================================
-      let color = "#220000";
+      let color =
+        "#101010";
 
       if(visitCount > 0){
 
@@ -7404,7 +7414,9 @@ function renderGrid(mode = "today", beat = "ALL") {
           visitCount / maxCount;
 
         color =
-          getHeatColor(intensity);
+          getHeatColor(
+            intensity
+          );
       }
 
       // ===================================================
@@ -7454,15 +7466,15 @@ function renderGrid(mode = "today", beat = "ALL") {
           if(i === 0){
 
             ctx.moveTo(
-              p.x,
-              p.y
+              Math.round(p.x),
+              Math.round(p.y)
             );
 
           } else {
 
             ctx.lineTo(
-              p.x,
-              p.y
+              Math.round(p.x),
+              Math.round(p.y)
             );
           }
         }
@@ -7475,7 +7487,7 @@ function renderGrid(mode = "today", beat = "ALL") {
       // ===================================================
       // 🔥 BORDER
       // ===================================================
-      if(zoom >= 10){
+      if(zoom >= 13){
 
         ctx.strokeStyle =
 
