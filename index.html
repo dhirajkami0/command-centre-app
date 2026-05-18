@@ -7790,12 +7790,15 @@ function pointInPoly(lat, lng, coords){
   }
 
   console.log(
-    "🧪 Incoming tracks:",
-    tracks
-  );
+  "🧪 Incoming tracks:",
+  tracks
+);
 
-  let visitedGlobal = {};
+console.log(
+  "🔥 markVisitedHybrid CALLED"
+);
 
+let visitedGlobal = {};
   for(let t of tracks){
 
     const dayStr = t.date
