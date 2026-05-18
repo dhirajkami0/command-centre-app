@@ -8474,137 +8474,387 @@ function showGridPopup(cell, latlng){
 
   try {
 
-    const beat = cell.beat || "UNKNOWN";
-    const mode = window.__lastMode || "current";
+    const beat =
+      cell.beat || "UNKNOWN";
 
-    // 🔥 FIXED MODE MAPPING
-    let current;
+    const mode =
+      window.__lastMode || "current";
+
+    // ==================================================
+    // 🔥 ACTIVE CACHE
+    // ==================================================
+    let current = {};
 
     if(mode === "today"){
-      current = window.gridCache?.today || {};
-    }
-    else if(mode === "current"){
-      current = window.gridCache?.current || {};   // ✅ FIXED
-    }
-    else if(mode === "prev"){
-      current = window.gridCache?.prev || {};
+
+      current =
+        window.gridCache?.today || {};
+
+    } else if(mode === "current"){
+
+      current =
+        window.gridCache?.current || {};
+
+    } else if(mode === "prev"){
+
+      current =
+        window.gridCache?.prev || {};
     }
 
+    // ==================================================
+    // 🔥 MODE LABEL
+    // ==================================================
+    let modeLabel = "CURRENT";
+
+    if(mode === "today"){
+      modeLabel = "TODAY";
+    }
+    else if(mode === "prev"){
+      modeLabel = "PREV MONTH";
+    }
+
+    // ==================================================
+    // 🔥 GRID ID
+    // ==================================================
+    const idSafe =
+
+      cell.id ||
+
+      (
+        cell.center.lat.toFixed(5)
+        + "_"
+        +
+        cell.center.lng.toFixed(5)
+      );
+
+    // ==================================================
+    // 🔥 GRID VISITS
+    // ==================================================
+    const cellCount =
+
+      (current[idSafe] === true)
+
+        ? 1
+
+        : Number(current[idSafe]) || 0;
+
+    // ==================================================
+    // 🔥 SELECTED BEAT
+    // ==================================================
+    const selectedBeat =
+
+      document
+      .getElementById(
+        "beatSelect"
+      )
+      ?.value || "ALL";
+
+    // ==================================================
+    // 🔥 MACRO ANALYTICS
+    // ==================================================
     let total = 0;
     let visited = 0;
     let totalVisits = 0;
+    let hotspots = 0;
 
-    for (const [id, c] of Object.entries(window.gridIndex)) {
+    for(
 
-      if (!c) continue;
-      if (beat !== "ALL" && c.beat !== beat) continue;
+      const [id, c]
+
+      of
+
+      Object.entries(
+        window.gridIndex
+      )
+    ){
+
+      if(!c){
+        continue;
+      }
+
+      // ==============================================
+      // 🔥 BEAT FILTER
+      // ==============================================
+      if(
+
+        selectedBeat !== "ALL" &&
+
+        c.beat !== selectedBeat
+      ){
+        continue;
+      }
 
       total++;
 
-      const count = (current[id] === true) ? 1 : Number(current[id]) || 0;
+      const count =
 
-      if (count > 0){
+        (current[id] === true)
+
+          ? 1
+
+          : Number(current[id]) || 0;
+
+      if(count > 0){
+
         visited++;
+
         totalVisits += count;
-      }
-    }
 
-    const unvisited = total - visited;
-    const cellAreaHa = 0.25;
-
-    const visitedArea = (visited * cellAreaHa).toFixed(2);
-    const unvisitedArea = (unvisited * cellAreaHa).toFixed(2);
-
-    const visitedPct = total ? ((visited / total) * 100).toFixed(1) : 0;
-    const unvisitedPct = total ? ((unvisited / total) * 100).toFixed(1) : 0;
-
-    const avgVisits = total ? (totalVisits / total).toFixed(2) : 0;
-
-    const idSafe = cell.id || (
-      cell.center.lat.toFixed(5) + "_" +
-      cell.center.lng.toFixed(5)
-    );
-
-    const cellCount = (current[idSafe] === true) ? 1 : Number(current[idSafe]) || 0;
-
-    const selectedBeat = document.getElementById("beatSelect")?.value || "ALL";
-
-    let html = "";
-
-    if (selectedBeat === "ALL") {
-
-      let totalAll = 0, visitedAll = 0, visitsAll = 0;
-
-      for (const [id, c] of Object.entries(window.gridIndex)) {
-        if (!c) continue;
-
-        totalAll++;
-
-        const count = (current[id] === true) ? 1 : Number(current[id]) || 0;
-
-        if (count > 0){
-          visitedAll++;
-          visitsAll += count;
+        if(count > 6){
+          hotspots++;
         }
       }
-
-      const areaTotal = (totalAll * cellAreaHa).toFixed(2);
-      const visitedAreaAll = (visitedAll * cellAreaHa).toFixed(2);
-
-      const pctAll = totalAll ? ((visitedAll / totalAll) * 100).toFixed(1) : 0;
-      const avgAll = totalAll ? (visitsAll / totalAll).toFixed(2) : 0;
-
-      html += `
-        <b>🌍 TOTAL COVERAGE (${mode.toUpperCase()})</b><br>
-        Grids: <b>${totalAll}</b><br>
-        Covered: <b>${visitedAll}</b><br>
-        Area: <b>${visitedAreaAll}/${areaTotal} ha</b><br>
-        Coverage: <b>${pctAll}%</b><br>
-        Avg Visits: <b>${avgAll}</b>
-        <hr>
-      `;
-
-    } else {
-
-      let densityLabel = "Unvisited";
-
-      if(cellCount === 1) densityLabel = "Low";
-      else if(cellCount <= 3) densityLabel = "Medium";
-      else if(cellCount <= 6) densityLabel = "High";
-      else if(cellCount > 6) densityLabel = "Very High";
-
-      if (cellCount > 0) {
-
-        html = `
-          <b>🟢 VISITED AREA (${mode.toUpperCase()})</b><br><br>
-          Beat: <b>${beat}</b><br>
-          Visits: <b>${cellCount}</b><br>
-          Density: <b>${densityLabel}</b><br><br>
-
-          Coverage: <b>${visitedPct}%</b><br>
-          Avg Visits: <b>${avgVisits}</b>
-        `;
-
-      } else {
-
-        html = `
-          <b>🔴 UNVISITED AREA (${mode.toUpperCase()})</b><br><br>
-          Beat: <b>${beat}</b><br>
-          Pending: <b>${unvisited}</b><br>
-          Remaining: <b>${unvisitedPct}%</b>
-        `;
-      }
     }
 
-    L.popup({ maxWidth: 260 })
-      .setLatLng(latlng)
-      .setContent(html)
-      .openOn(map);
+    // ==================================================
+    // 🔥 COVERAGE
+    // ==================================================
+    const coveragePct =
 
-  } catch(e) {
-    console.error("❌ showGridPopup error:", e);
+      total
+
+        ? (
+            (visited / total)
+            * 100
+          ).toFixed(1)
+
+        : 0;
+
+    const unvisitedPct =
+
+      total
+
+        ? (
+            (
+              (total - visited)
+              / total
+            )
+            * 100
+          ).toFixed(1)
+
+        : 0;
+
+    const avgVisits =
+
+      total
+
+        ? (
+            totalVisits / total
+          ).toFixed(2)
+
+        : 0;
+
+    // ==================================================
+    // 🔥 MICRO ANALYTICS
+    // ==================================================
+    let densityLabel =
+      "Unvisited";
+
+    let statusLabel =
+      "No patrol coverage";
+
+    let heatLabel =
+      "COLD";
+
+    if(cellCount === 1){
+
+      densityLabel = "Low";
+
+      statusLabel =
+        "Light patrol movement";
+
+      heatLabel = "LOW";
+    }
+
+    else if(cellCount <= 3){
+
+      densityLabel = "Medium";
+
+      statusLabel =
+        "Regular patrol activity";
+
+      heatLabel = "MEDIUM";
+    }
+
+    else if(cellCount <= 6){
+
+      densityLabel = "High";
+
+      statusLabel =
+        "Active patrol corridor";
+
+      heatLabel = "HIGH";
+    }
+
+    else if(cellCount > 6){
+
+      densityLabel =
+        "Very High";
+
+      statusLabel =
+        "Heavy patrol corridor";
+
+      heatLabel =
+        "HOTSPOT";
+    }
+
+    // ==================================================
+    // 🔥 FINAL HTML
+    // ==================================================
+    let html = "";
+
+    // ==================================================
+    // 🟢 VISITED GRID
+    // ==================================================
+    if(cellCount > 0){
+
+      let visitLabel =
+        "Visits";
+
+      if(mode === "today"){
+
+        visitLabel =
+          "Visits Today";
+
+      } else if(mode === "current"){
+
+        visitLabel =
+          "Visits This Month";
+
+      } else if(mode === "prev"){
+
+        visitLabel =
+          "Visits Last Month";
+      }
+
+      html = `
+
+        <b>
+          🟢 GRID ANALYTICS
+          (${modeLabel})
+        </b>
+
+        <br><br>
+
+        Beat:
+        <b>${beat}</b>
+
+        <br><br>
+
+        Grid ID:
+        <br>
+
+        <b style="
+          font-size:11px;
+          word-break:break-all;
+        ">
+          ${idSafe}
+        </b>
+
+        <br><br>
+
+        ${visitLabel}:
+        <b>${cellCount}</b>
+
+        <br>
+
+        Density:
+        <b>${densityLabel}</b>
+
+        <br>
+
+        Status:
+        <b>${statusLabel}</b>
+
+        <br>
+
+        Heat Level:
+        <b>${heatLabel}</b>
+      `;
+    }
+
+    // ==================================================
+    // 🔴 UNVISITED GRID
+    // ==================================================
+    else {
+
+      const title =
+
+        selectedBeat === "ALL"
+
+          ? "🌍 RANGE SUMMARY"
+
+          : `📊 ${selectedBeat} SUMMARY`;
+
+      html = `
+
+        <b>
+          ${title}
+          (${modeLabel})
+        </b>
+
+        <br><br>
+
+        Total Grids:
+        <b>${total}</b>
+
+        <br>
+
+        Visited Grids:
+        <b>${visited}</b>
+
+        <br>
+
+        Coverage:
+        <b>${coveragePct}%</b>
+
+        <br><br>
+
+        Total Visits:
+        <b>${totalVisits}</b>
+
+        <br>
+
+        Avg Visits/Grid:
+        <b>${avgVisits}</b>
+
+        <br>
+
+        Hotspots:
+        <b>${hotspots}</b>
+
+        <br>
+
+        Unvisited Area:
+        <b>${unvisitedPct}%</b>
+      `;
+    }
+
+    // ==================================================
+    // 🔥 POPUP
+    // ==================================================
+    L.popup({
+
+      maxWidth: 280
+
+    })
+
+    .setLatLng(latlng)
+
+    .setContent(html)
+
+    .openOn(map);
+
   }
-} /* ============================================================
+
+  catch(e){
+
+    console.error(
+      "❌ showGridPopup error:",
+      e
+    );
+  }
+}/* ============================================================
    📅 PREVIOUS MONTH CACHE (DENSITY-AWARE + SAFE)
 ============================================================ */
 function updatePrevMonthCache(){
