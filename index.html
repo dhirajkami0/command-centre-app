@@ -8326,37 +8326,55 @@ Object.keys(visited)
     updatePrevMonthCache();
   }
 
-  // ==================================================
-  // 🔥 SAFE LIVE REPAINT
-  // ==================================================
-  try {
+ // ==================================================
+// 🔥 SAFE LIVE REPAINT
+// ==================================================
+try {
 
-    if(window.__gridReady){
+  // ==============================================
+  // 🔥 ONLY IF GRID TOGGLE ENABLED
+  // ==============================================
+  if(
 
-      console.log(
-        "🎨 renderGrid()"
-      );
+    window.__gridReady &&
 
-      renderGrid(
+    window.gridVisible === true
 
-        window.__lastMode || "today",
+  ){
 
-        document.getElementById(
-          "beatSelect"
-        )?.value || "ALL"
-      );
-    }
+    console.log(
+      "🎨 renderGrid()"
+    );
 
-  } catch(err){
+    renderGrid(
 
-    console.warn(
+      window.__lastMode ||
 
-      "⚠ renderGrid refresh fail",
+      "today",
 
-      err
+      document.getElementById(
+        "beatSelect"
+      )?.value ||
+
+      "ALL"
+    );
+
+  } else {
+
+    console.log(
+      "🟩 Grid hidden → render skipped"
     );
   }
 
+} catch(err){
+
+  console.warn(
+
+    "⚠ renderGrid refresh fail",
+
+    err
+  );
+}
   console.log(
     "✅ visitedGlobal:",
     visitedGlobal
