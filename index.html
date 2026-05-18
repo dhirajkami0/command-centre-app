@@ -4792,32 +4792,152 @@ setInterval(() => {
 
    // ======================================================
 // 🗺 MAP INIT (FINAL STABLE)
+// ======================================================// ======================================================
+// 🗺 MAIN MAP INIT (OPTIMIZED FOR GRID ENGINE)
 // ======================================================
 var map = L.map('map', {
-  center:[26.561, 89.507],
-  zoom:14,
-  zoomControl:false,
+
+  // ====================================================
+  // 📍 INITIAL VIEW
+  // ====================================================
+  center: [26.561, 89.507],
+
+  zoom: 14,
+
+  zoomControl: false,
+
+  // ====================================================
+  // 🔥 HUGE PERFORMANCE FIX
+  // ====================================================
   preferCanvas: true,
 
-  // 🔥 CRITICAL FIX (REMOVES GRID SEPARATION)
+  // ====================================================
+  // 🔥 CRITICAL GRID STABILITY FIX
+  // REMOVES GRID DRIFT / SEPARATION
+  // ====================================================
   zoomAnimation: false,
+
   fadeAnimation: false,
-  markerZoomAnimation: false
+
+  markerZoomAnimation: false,
+
+  // ====================================================
+  // 🔥 SMOOTHER MOBILE PAN
+  // ====================================================
+  inertia: true,
+
+  inertiaDeceleration: 3000,
+
+  inertiaMaxSpeed: 1500,
+
+  // ====================================================
+  // 🔥 BETTER MOBILE PERFORMANCE
+  // ====================================================
+  updateWhenZooming: false,
+
+  updateWhenIdle: true
 });
 
-/* 🔥 BASE LAYERS LOAD */
+
+// ======================================================
+// 🔥 GLOBAL GRID CANVAS RENDERER
+// MASSIVE PERFORMANCE FIX
+// ======================================================
+window.gridRenderer = L.canvas({
+
+  padding: 0.5,
+
+  tolerance: 8
+});
+
+
+// ======================================================
+// 🛰 BASE LAYER
+// ======================================================
 esriSat.addTo(map);
 
-/* 🖱 CONTROLS */
+
+// ======================================================
+// 🖱 CONTROLS
+// ======================================================
 map.scrollWheelZoom.disable();
+
 map.tap = true;
 
-L.control.zoom({ position: 'topright' }).addTo(map);
+
+// ======================================================
+// 🔍 ZOOM CONTROL
+// ======================================================
+L.control.zoom({
+
+  position: 'topright'
+
+}).addTo(map);
+
 
 // ======================================================
 // 🟩 GRID LAYER INIT
 // ======================================================
-window.gridLayer = window.gridLayer || L.layerGroup();
+window.gridLayer =
+
+  window.gridLayer ||
+
+  L.layerGroup();
+
+
+// ======================================================
+// 🟢 VISITED / 🔴 UNVISITED GROUPS
+// ======================================================
+window.visitedLayer =
+
+  window.visitedLayer ||
+
+  L.layerGroup();
+
+window.unvisitedLayer =
+
+  window.unvisitedLayer ||
+
+  L.layerGroup();
+
+
+// ======================================================
+// 🔥 GRID VISIBILITY FLAG
+// ======================================================
+window.gridVisible = false;
+
+
+// ======================================================
+// 🔥 PREVENT GRID LAG DURING MAP MOVEMENT
+// ======================================================
+map.on("movestart", function(){
+
+  if(window.gridLayer){
+
+    window.gridLayer.eachLayer(function(layer){
+
+      if(layer?.setStyle){
+
+        layer.setStyle({
+
+          smoothFactor: 0
+        });
+      }
+    });
+  }
+});
+
+
+// ======================================================
+// 🔥 OPTIONAL DEBUG
+// ======================================================
+console.log(
+  "🗺 Tactical Map Initialized"
+);
+
+console.log(
+  "🟩 Canvas Grid Renderer Ready"
+);
 
 // ======================================================
 // 🔥 GRID ↔ MAP SYNC (SAFE + STABLE)
@@ -9692,94 +9812,328 @@ function openStatsPopup(name, latlng) {
     /* 🟩 GRID */
   function showGridStatus(data) {
 
-  console.log("📊 TOTAL CELLS:", data.length);
-  console.log("🟢 Visited:", data.filter(d => d.visited).length);
-  console.log("🔴 Unvisited:", data.filter(d => !d.visited).length);
+  // =====================================================
+  // 🔥 SAFETY
+  // =====================================================
+  if(!Array.isArray(data)){
 
-  console.log("📍 Sample Data:", data.slice(0, 5));
+    console.warn(
+      "⚠ Invalid grid data"
+    );
 
-  // 🔥 LIMIT DATA (PREVENT FREEZE)
-  if (data.length > 800) {
-    console.warn("⚠ Too many cells, limiting to 800");
-    data = data.slice(0, 800);
+    return;
   }
 
-  // 🔥 RESET ZOOM FLAG (IMPORTANT)
+  // =====================================================
+  // 🔥 GRID HIDDEN → SKIP RENDER
+  // =====================================================
+  if(window.gridVisible !== true){
+
+    console.log(
+      "🟩 Grid hidden → skip rendering"
+    );
+
+    return;
+  }
+
+  // =====================================================
+  // 📊 DEBUG
+  // =====================================================
+  console.log(
+    "📊 TOTAL CELLS:",
+    data.length
+  );
+
+  console.log(
+    "🟢 Visited:",
+    data.filter(d => d.visited).length
+  );
+
+  console.log(
+    "🔴 Unvisited:",
+    data.filter(d => !d.visited).length
+  );
+
+  console.log(
+    "📍 Sample Data:",
+    data.slice(0, 5)
+  );
+
+  // =====================================================
+  // 🔥 PERFORMANCE LIMIT
+  // =====================================================
+  if(data.length > 2500){
+
+    console.warn(
+      "⚠ Grid limit applied:",
+      data.length
+    );
+
+    data = data.slice(0, 2500);
+  }
+
+  // =====================================================
+  // 🔥 RESET ZOOM FLAG
+  // =====================================================
   window.gridZoomDone = false;
 
+  // =====================================================
+  // 🔥 SAFE GRID GROUPS
+  // =====================================================
+  window.gridLayer =
+    window.gridLayer ||
+    L.layerGroup();
+
+  window.visitedLayer =
+    window.visitedLayer ||
+    L.layerGroup();
+
+  window.unvisitedLayer =
+    window.unvisitedLayer ||
+    L.layerGroup();
+
+  // =====================================================
+  // 🔥 CLEAR OLD LAYERS
+  // =====================================================
   visitedLayer.clearLayers();
+
   unvisitedLayer.clearLayers();
 
-  // 🔥 FIX: 250m GRID OFFSET (was 50m before)
+  window.gridLayer.clearLayers();
+
+  // =====================================================
+  // 🔥 250m GRID SIZE
+  // =====================================================
   const offset = 0.00225;
 
-  // 🔥 USE BATCH RENDER (PREVENT UI BLOCK)
+  // =====================================================
+  // 🔥 BATCH RENDER
+  // =====================================================
   let i = 0;
-  const batchSize = 100;
 
-  function renderBatch() {
+  const batchSize = 120;
 
-    const end = Math.min(i + batchSize, data.length);
+  function renderBatch(){
 
-    for (; i < end; i++) {
+    // ===================================================
+    // 🔥 GRID HIDDEN MID-RENDER
+    // ===================================================
+    if(window.gridVisible !== true){
+
+      console.log(
+        "🛑 Grid render cancelled"
+      );
+
+      return;
+    }
+
+    const end = Math.min(
+      i + batchSize,
+      data.length
+    );
+
+    for(; i < end; i++){
 
       const p = data[i];
 
-      if (!p.lat || !p.lon) continue;
-
-      if (i < 3) {
-        console.log(`🧭 Cell ${i}:`, p.lat, p.lon, "Visited:", p.visited);
+      if(
+        !p ||
+        !p.lat ||
+        !p.lon
+      ){
+        continue;
       }
 
+      // =================================================
+      // 🔥 GRID BOUNDS
+      // =================================================
       const bounds = [
-        [p.lat - offset / 2, p.lon - offset / 2],
-        [p.lat + offset / 2, p.lon + offset / 2]
+
+        [
+          p.lat - offset / 2,
+          p.lon - offset / 2
+        ],
+
+        [
+          p.lat + offset / 2,
+          p.lon + offset / 2
+        ]
       ];
 
-      const isVisited = p.visited == true;
+      const isVisited =
+        p.visited === true;
 
-      L.rectangle(bounds, {
-        color: isVisited ? "#00ff00" : "#ff0000",
-        fillOpacity: isVisited ? 0.5 : 0.25,
-        weight: 1
-      }).addTo(isVisited ? visitedLayer : unvisitedLayer);
+      // =================================================
+      // 🔥 CANVAS RECTANGLE
+      // =================================================
+      const rect = L.rectangle(bounds, {
 
+        // ===============================================
+        // 🔥 HUGE FIX
+        // ===============================================
+        renderer: window.gridRenderer,
+
+        interactive: false,
+
+        smoothFactor: 0,
+
+        bubblingMouseEvents: false,
+
+        // ===============================================
+        // 🎨 STYLE
+        // ===============================================
+        color:
+          isVisited
+            ? "#00ff00"
+            : "#ff0000",
+
+        fillColor:
+          isVisited
+            ? "#00ff00"
+            : "#ff0000",
+
+        fillOpacity:
+          isVisited
+            ? 0.42
+            : 0.10,
+
+        // ===============================================
+        // 🔥 CRITICAL
+        // ===============================================
+        weight: 0.3
+      });
+
+      // =================================================
+      // 🔥 ADD INTO GROUPS
+      // =================================================
+      rect.addTo(
+
+        isVisited
+
+          ? visitedLayer
+
+          : unvisitedLayer
+      );
     }
 
-    if (i < data.length) {
-      requestAnimationFrame(renderBatch); // 🔥 smooth rendering
+    // ===================================================
+    // 🔥 CONTINUE BATCH
+    // ===================================================
+    if(i < data.length){
+
+      requestAnimationFrame(
+        renderBatch
+      );
+
     } else {
 
-      // 🔥 FINALIZE AFTER ALL BATCHES
-      visitedLayer.addTo(map);
-      unvisitedLayer.addTo(map);
+      // =================================================
+      // 🔥 FINALIZE INTO MAIN GRID GROUP
+      // =================================================
+      visitedLayer.addTo(
+        window.gridLayer
+      );
 
-      visitedLayer.bringToFront();
-      unvisitedLayer.bringToFront();
+      unvisitedLayer.addTo(
+        window.gridLayer
+      );
 
-      console.log("🟢 Visited layer count:", visitedLayer.getLayers().length);
-      console.log("🔴 Unvisited layer count:", unvisitedLayer.getLayers().length);
+      // =================================================
+      // 🔥 ONLY SHOW IF ENABLED
+      // =================================================
+      if(
 
-      // 🔥 SAFE ZOOM (ONLY ONCE + LIMITED)
-      if (unvisitedLayer.getLayers().length > 0 && !window.gridZoomDone) {
+        window.gridVisible === true
 
-        const bounds = unvisitedLayer.getBounds();
+      ){
 
-        console.log("🗺️ Bounds:", bounds);
+        // ===============================================
+        // 🔥 SAFE MAP ADD
+        // ===============================================
+        if(
 
-        map.fitBounds(bounds, {
-          maxZoom: 14,   // 🔥 slightly reduced (more stable)
-          animate: false
-        });
+          !map.hasLayer(
+            window.gridLayer
+          )
 
-        window.gridZoomDone = true;
+        ){
+
+          window.gridLayer.addTo(
+            map
+          );
+        }
+
+        // ===============================================
+        // 🔥 FRONT
+        // ===============================================
+        window.gridLayer.bringToFront();
+
+        // ===============================================
+        // 📊 DEBUG
+        // ===============================================
+        console.log(
+          "🟢 Visited:",
+          visitedLayer.getLayers().length
+        );
+
+        console.log(
+          "🔴 Unvisited:",
+          unvisitedLayer.getLayers().length
+        );
       }
 
-    }
+      // =================================================
+      // 🔥 SAFE ZOOM
+      // =================================================
+      if(
 
+        !window.gridZoomDone &&
+
+        data.length > 0
+
+      ){
+
+        try {
+
+          const bounds =
+            visitedLayer.getBounds();
+
+          if(bounds.isValid()){
+
+            map.fitBounds(bounds, {
+
+              maxZoom: 14,
+
+              animate: false,
+
+              padding: [20, 20]
+            });
+
+            window.gridZoomDone = true;
+          }
+
+        } catch(err){
+
+          console.warn(
+            "⚠ fitBounds failed",
+            err
+          );
+        }
+      }
+
+      // =================================================
+      // ✅ DONE
+      // =================================================
+      console.log(
+        "✅ Grid render complete"
+      );
+    }
   }
 
-  renderBatch(); // 🔥 start batch rendering
+  // =====================================================
+  // 🚀 START RENDER
+  // =====================================================
+  renderBatch();
 }/* ============================================================
        🐘 BLOCK 7 → ELEPHANT SYSTEM (FINAL)
     ============================================================ */
