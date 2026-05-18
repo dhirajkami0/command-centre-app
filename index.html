@@ -9810,7 +9810,14 @@ function loadGridFromCache(){
       return;
     }
 
-    const step =0.0009; // ~50m
+    const latStep = 0.0009;
+
+const lonStep =
+  latStep /
+  Math.cos(
+    ((south + north) / 2)
+    * Math.PI / 180
+  );  
     let count = 0;
 
     window.gridIndex = {};
@@ -9884,8 +9891,12 @@ function loadGridFromCache(){
     const west = bounds.getWest();
     const east = bounds.getEast();
 
-    const startLat = Math.floor(south / step) * step;
-    const startLon = Math.floor(west / step) * step;
+    const startLat =
+  Math.floor(south / latStep)
+  * latStep;
+    const startLon =
+  Math.floor(west / lonStep)
+  * lonStep;
 
     // ==========================================
     // 🔥 3. GRID BUILD (STRICT CLIP ONLY)
@@ -9896,9 +9907,13 @@ function loadGridFromCache(){
 
       let iterations = 0;
 
-      for (; lat < north; lat += step) {
+      for (; lat < north; lat += latStep) {
 
-        for (let lon = startLon; lon < east; lon += step) {
+      for (
+  let lon = startLon;
+  lon < east;
+  lon += lonStep
+) {
 
           // 🔥 FAST BBOX SKIP
           if (
@@ -9908,14 +9923,16 @@ function loadGridFromCache(){
             lat + step < unifiedBBox[1]
           ) continue;
 
-          const centerLat = lat + step / 2;
-          const centerLon = lon + step / 2;
+          const centerLat =
+  lat + latStep / 2;
 
+const centerLon =
+  lon + lonStep / 2;
           const id = centerLat.toFixed(5) + "_" + centerLon.toFixed(5);
 
           const cellPoly = turf.polygon([[
             [lon, lat],
-            [lon + step, lat],
+            [lon + lonStep, lat],
             [lon + step, lat + step],
             [lon, lat + step],
             [lon, lat]
@@ -9973,7 +9990,8 @@ function loadGridFromCache(){
       }
 
       window.gridMeta = {
-        size: step,
+        latSize: latStep,
+lonSize: lonStep,
         total: count
       };
 
