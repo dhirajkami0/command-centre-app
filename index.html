@@ -2876,7 +2876,29 @@ try {
     // 🔥 BACKEND LOAD (BLOCKING — CRITICAL FIX)
     // ======================================================
     await loadBackendCoverage();   // 🔥 THIS FIXES YOUR ISSUE
+// ======================================================
+// 🔥 REBUILD HISTORY GRIDS
+// ======================================================
+try {
 
+  const mode =
+    window.__lastMode || "current";
+
+  console.log(
+    "♻ Rebuilding cached grids:",
+    mode
+  );
+
+  // 🔥 FORCE GRID REPAINT
+  applyMode(mode);
+
+} catch(err){
+
+  console.error(
+    "❌ Grid rebuild failed:",
+    err
+  );
+}
     // 🔥 LOCK CACHE (PREVENT OVERWRITE)
     window.__backendLoaded = true;
 
