@@ -1496,7 +1496,28 @@ window.gridCache = {
 
   prev:{}
 };
+// =====================================================
+// 🔥 POLYLINE TRACK STORAGE
+// =====================================================
+window.todayTracks = [];
 
+window.monthTracks = [];
+
+window.prevTracks = [];
+
+// =====================================================
+// 🔥 ACTIVE LIVE TRACK
+// =====================================================
+window.liveTrack = [];
+
+// =====================================================
+// 🔥 POLYLINE LAYER
+// =====================================================
+window.routeLayer =
+
+  window.routeLayer ||
+
+  L.layerGroup().addTo(map);
 window.__lastMode = "today";
 window.__gridReady = false;
 
@@ -2770,11 +2791,13 @@ async function startApp(){   // 🔥 MADE ASYNC (CRITICAL)
     }
 
     // ======================================================
-    // 🔥 CACHE LOAD (FIRST)
-    // ======================================================
-    loadCacheOnStart();
+// 🔥 CACHE LOAD (FIRST)
 // ======================================================
-// 🔥 MONTH ROLLOVER
+loadCacheOnStart();
+
+
+// ======================================================
+// 🔥 POLYLINE MONTH ROLLOVER
 // ======================================================
 try {
 
@@ -2790,261 +2813,267 @@ try {
       "coverage_month"
     );
 
+  // ===================================================
   // 🔥 FIRST RUN
+  // ===================================================
   if(!savedMonth){
 
     localStorage.setItem(
+
       "coverage_month",
+
       currentMonth
     );
   }
 
+  // ===================================================
   // 🔥 MONTH CHANGED
+  // ===================================================
   else if(savedMonth !== currentMonth){
 
     console.log(
-      "📆 Month rollover"
+      "📆 POLYLINE MONTH ROLLOVER"
     );
 
-    // CURRENT → PREV
+    // =================================================
+    // 🔥 CURRENT → PREV
+    // =================================================
     localStorage.setItem(
 
-      "grid_prev",
+      "prev_tracks",
 
       localStorage.getItem(
-        "grid_current"
-      ) || "{}"
+        "month_tracks"
+      ) || "[]"
     );
 
-    // CLEAR CURRENT
+    // =================================================
+    // 🔥 RESET CURRENT
+    // =================================================
     localStorage.setItem(
-      "grid_current",
-      "{}"
+
+      "month_tracks",
+
+      "[]"
     );
 
-    // CLEAR TODAY
+    // =================================================
+    // 🔥 RESET TODAY
+    // =================================================
     localStorage.setItem(
-      "grid_today",
-      "{}"
+
+      "today_tracks",
+
+      "[]"
     );
 
-    // SAVE NEW MONTH
+    // =================================================
+    // 🔥 SAVE NEW MONTH
+    // =================================================
     localStorage.setItem(
+
       "coverage_month",
+
       currentMonth
     );
   }
 
-  // 🔥 LOAD CACHE
-  window.gridCache.today =
+  // ===================================================
+  // 🔥 LOAD TODAY TRACKS
+  // ===================================================
+  window.todayTracks =
 
     JSON.parse(
+
       localStorage.getItem(
-        "grid_today"
-      ) || "{}"
+        "today_tracks"
+      ) || "[]"
     );
 
-  window.gridCache.current =
+  // ===================================================
+  // 🔥 LOAD CURRENT MONTH TRACKS
+  // ===================================================
+  window.monthTracks =
 
     JSON.parse(
+
       localStorage.getItem(
-        "grid_current"
-      ) || "{}"
+        "month_tracks"
+      ) || "[]"
     );
 
-  window.gridCache.prev =
+  // ===================================================
+  // 🔥 LOAD PREV TRACKS
+  // ===================================================
+  window.prevTracks =
 
     JSON.parse(
+
       localStorage.getItem(
-        "grid_prev"
-      ) || "{}"
+        "prev_tracks"
+      ) || "[]"
     );
+
+  // ===================================================
+  // 🔥 OPTIONAL DEBUG
+  // ===================================================
+  console.log(
+    "📅 TODAY TRACKS:",
+    window.todayTracks.length
+  );
+
+  console.log(
+    "🗓 CURRENT TRACKS:",
+    window.monthTracks.length
+  );
+
+  console.log(
+    "📚 PREV TRACKS:",
+    window.prevTracks.length
+  );
 
 }catch(err){
 
   console.warn(
-    "⚠ rollover fail",
+    "⚠ Polyline rollover fail",
     err
   );
 }
-    // 🔥 CLEAN OLD KEY (PERMANENT FIX)
-    if(window.gridCache){
-      delete window.gridCache.month;
-    }
 
-    // ======================================================
-    // 🔥 BACKEND LOAD (BLOCKING — CRITICAL FIX)
-    // ======================================================
-    await loadBackendCoverage();   // 🔥 THIS FIXES YOUR ISSUE
 
-    // 🔥 LOCK CACHE (PREVENT OVERWRITE)
-    window.__backendLoaded = true;
+// ======================================================
+// 🔥 BACKEND LOAD (BLOCKING — CRITICAL FIX)
+// ======================================================
+await loadBackendCoverage();
 
-    console.log("📡 Backend locked → no overwrite allowed");
+// 🔥 LOCK CACHE
+window.__backendLoaded = true;
 
-    // ======================================================
-    // 🧹 CLEAN OLD MONTH DATA (SAFE)
-    // ======================================================
-    setTimeout(() => {
+console.log(
+  "📡 Backend locked → no overwrite allowed"
+);
 
-      try {
 
-        const now = new Date();
-        now.setHours(0,0,0,0);
+// ======================================================
+// 🧹 CLEAN OLD MONTH DATA
+// ======================================================
+setTimeout(() => {
 
-        let kept = 0;
-        let removed = 0;
+  try {
 
-        Object.keys(localStorage).forEach(key => {
+    const now = new Date();
 
-          if(!key.startsWith("grid_")) return;
+    now.setHours(0,0,0,0);
 
-          const dateStr = key.replace("grid_", "");
-          const parts = dateStr.split("-");
-          if(parts.length !== 3) return;
+    let kept = 0;
 
-          const d = new Date(
-            Number(parts[0]),
-            Number(parts[1]) - 1,
-            Number(parts[2])
-          );
+    let removed = 0;
 
-          if(isNaN(d.getTime())) return;
+    Object.keys(localStorage).forEach(key => {
 
-          d.setHours(0,0,0,0);
+      // =================================================
+      // 🔥 REMOVE OLD TRACK CACHE
+      // =================================================
+      if(
 
-          const diffDays = Math.floor((now - d) / (1000 * 60 * 60 * 24));
+        key !== "today_tracks" &&
+        key !== "month_tracks" &&
+        key !== "prev_tracks"
 
-          if(diffDays <= 60){
-            kept++;
-          } else {
-            localStorage.removeItem(key);
-            removed++;
-            console.log("🧹 Removed:", key, "| Days:", diffDays);
-          }
-
-        });
-
-        console.log("📦 Grid retention → kept:", kept, "| removed:", removed);
-
-      } catch(e){
-        console.warn("⚠ Cleanup failed:", e);
-      }
-
-    }, 1000);
-
-    // ======================================================
-    // 🔥 OFFLINE CLEAN
-    // ======================================================
-    if(window.isDutyActive !== true){
-      try {
-        localStorage.removeItem("offlineGPS");
-        console.log("🧹 Cleared old offline GPS");
-      } catch(e){}
-    }
-
-    console.log("⚡ Phase 1 complete (UI fast)");
-
-    // ======================================================
-    // 🚀 PHASE 2 → DELAYED TASKS
-    // ======================================================
-    setTimeout(() => {
-      try {
-        cleanOldMessages();
-      } catch(e){
-        console.warn("⚠ cleanOldMessages failed");
-      }
-    }, 7000);
-
-    // ======================================================
-    // 🔥 GRID INIT + BACKFILL (UNCHANGED)
-    // ======================================================
-    setTimeout(() => {
-
-      let attempts = 0;
-
-      if(window.__gridInitStarted){
-        console.warn("⚠ Grid init already started");
+      ){
         return;
       }
 
-      window.__gridInitStarted = true;
+      kept++;
+    });
 
-      const gridInitInterval = setInterval(async () => {
+    console.log(
 
-        attempts++;
+      "📦 Track retention active",
 
-        if(!window.rangeLayer){
-          console.log("⏳ Waiting for rangeLayer...");
-          if(attempts > 10) clearInterval(gridInitInterval);
-          return;
-        }
+      "| kept:", kept,
 
-        // 🔥 LOAD FROM DB
-        if(!window.__gridLoadedFromCache){
+      "| removed:", removed
+    );
 
-          try {
-            const cached = await idbKeyval.get('full_grid_index');
+  } catch(e){
 
-            if(cached && Object.keys(cached).length){
+    console.warn(
+      "⚠ Cleanup failed:",
+      e
+    );
+  }
 
-              window.gridIndex = cached;
-              window.__gridReady = true;
-              window.__gridLoadedFromCache = true;
+}, 1000);
 
-              console.log("⚡ Grid loaded:", Object.keys(cached).length);
 
-              clearInterval(gridInitInterval);
-              return;
-            }
+// ======================================================
+// 🔥 OFFLINE CLEAN
+// ======================================================
+if(window.isDutyActive !== true){
 
-          } catch(e){
-            console.warn("⚠ IndexedDB load failed");
-          }
-        }
+  try {
 
-        // 🔥 BUILD GRID
-        if(!window.__gridLoadedFromCache && !window.__gridBuilding){
+    localStorage.removeItem(
+      "offlineGPS"
+    );
 
-          console.log("🔁 Building grid");
+    console.log(
+      "🧹 Cleared old offline GPS"
+    );
 
-          await ensureGridReady();
+  } catch(e){}
+}
 
-          try {
-            if(window.gridIndex && Object.keys(window.gridIndex).length){
-              await saveGridToDB(window.gridIndex);
-            }
-          } catch(e){
-            console.warn("⚠ DB save failed");
-          }
 
-          window.__gridLoadedFromCache = true;
-        }
+console.log(
+  "⚡ Phase 1 complete (UI fast)"
+);
 
-        // 🔥 READY
-        if(window.__gridReady){
 
-          console.log("🎯 Grid ready");
-          clearInterval(gridInitInterval);
+// ======================================================
+// 🚀 PHASE 2 → DELAYED TASKS
+// ======================================================
+setTimeout(() => {
 
-        }
+  try {
 
-      }, 600);
+    cleanOldMessages();
 
-    }, 1200);
+  } catch(e){
 
-    // ======================================================
-    // 🔥 DUTY CHECK
-    // ======================================================
-    // ======================================================
-// 🔥 DUTY CHECK (WAIT FOR FIREBASE)
+    console.warn(
+      "⚠ cleanOldMessages failed"
+    );
+  }
+
+}, 7000);
+
+
+// ======================================================
+// 🔥 DISABLE OLD GRID ENGINE
+// ======================================================
+window.__gridRenderingDisabled = true;
+
+console.log(
+  "🚫 Grid rendering disabled"
+);
+
+
+// ======================================================
+// 🔥 DUTY CHECK
 // ======================================================
 const dutyWait = setInterval(() => {
 
-  // 🔥 WAIT FOR FIREBASE
+  // ====================================================
+  // 🔥 WAIT FIREBASE
+  // ====================================================
   if(
+
     !window.firebaseReady ||
+
     !window.fb ||
+
     !window.db
   ){
 
@@ -3055,9 +3084,13 @@ const dutyWait = setInterval(() => {
     return;
   }
 
-  // 🔥 WAIT FOR PROFILE
+  // ====================================================
+  // 🔥 WAIT PROFILE
+  // ====================================================
   if(
+
     !window.userProfile ||
+
     !window.userProfile.cleanName
   ){
 
@@ -3068,16 +3101,18 @@ const dutyWait = setInterval(() => {
     return;
   }
 
-  // ======================================================
+  // ====================================================
   // ✅ READY
-  // ======================================================
+  // ====================================================
   clearInterval(dutyWait);
 
   console.log(
     "🔥 Firebase ready → starting duty checks"
   );
 
+  // ====================================================
   // 🔥 INITIAL CHECKS
+  // ====================================================
   setTimeout(() => {
 
     autoShowEndDuty();
@@ -3090,11 +3125,15 @@ const dutyWait = setInterval(() => {
 
   }, 3000);
 
+  // ====================================================
   // 🔥 LOOP
+  // ====================================================
   setInterval(() => {
 
     if(
+
       window.userProfile &&
+
       window.firebaseReady
     ){
 
@@ -3104,7 +3143,6 @@ const dutyWait = setInterval(() => {
   }, 15000);
 
 }, 800);
-
  
     console.log("✅ App initialized (FULL FIXED)");
 
@@ -6405,12 +6443,15 @@ localStorage.setItem(
   // ===============================
   // 🔥 LIVE RENDER
   // ===============================
-  if(map.hasLayer(window.gridLayer)){
-    renderGrid(
-      window.currentCoverageMode || "today",
-      window.currentBeat || "ALL"
-    );
-  }
+ if(window.routeLayer){
+
+  renderPatrolRoutes(
+
+    window.currentCoverageMode || "today",
+
+    window.currentBeat || "ALL"
+  );
+}
 }  // ===============================
 // 🔲 BUILD GRID (FINAL CORRECT)
 // ===============================
@@ -6453,7 +6494,7 @@ function showCoveragePanel(){
     window.__lastMode = mode;
 
     // 🔥 ALWAYS RENDER FROM CACHE
-    renderGrid(mode, beat);
+   // renderGrid(mode, beat);
 
   } catch(e){
     console.error("❌ showCoveragePanel error:", e);
@@ -6788,6 +6829,242 @@ function assignGridToBeat(rangeLayer){
   } catch(e){
     console.error("❌ assignGridToBeat error:", e);
   }
+}
+    
+    // =====================================================
+// 🔥 ASSIGN POLYLINE TO BEAT
+// =====================================================
+function assignTrackToBeat(points){
+
+  try {
+
+    if(
+
+      typeof turf === "undefined" ||
+
+      !Array.isArray(points) ||
+
+      !points.length
+    ){
+
+      return "UNKNOWN";
+    }
+
+    // =================================================
+    // 🔥 FIRST VALID POINT
+    // =================================================
+    const first =
+
+      points.find(p =>
+
+        p &&
+        !isNaN(p.lat) &&
+        !isNaN(p.lng)
+      );
+
+    if(!first){
+
+      return "UNKNOWN";
+    }
+
+    // =================================================
+    // 🔥 TURF POINT
+    // =================================================
+    const pt = turf.point([
+
+      Number(first.lng),
+
+      Number(first.lat)
+    ]);
+
+    // =================================================
+    // 🔥 RANGE LAYER
+    // =================================================
+    if(!window.rangeLayer){
+
+      return "UNKNOWN";
+    }
+
+    let detectedBeat = "UNKNOWN";
+
+    // =================================================
+    // 🔥 CHECK POLYGONS
+    // =================================================
+    window.rangeLayer.eachLayer(layer => {
+
+      try {
+
+        if(detectedBeat !== "UNKNOWN"){
+          return;
+        }
+
+        if(
+
+          !layer ||
+
+          !layer.getLatLngs
+        ){
+          return;
+        }
+
+        const props =
+
+          layer.feature?.properties || {};
+
+        const rawID =
+
+          String(
+
+            props.ID ||
+
+            props.Name ||
+
+            ""
+          )
+
+          .toUpperCase()
+          .trim();
+
+        // =============================================
+        // 🔥 LATLNGS
+        // =============================================
+        const latlngs =
+
+          layer.getLatLngs();
+
+        if(
+
+          !latlngs ||
+
+          !latlngs.length
+        ){
+          return;
+        }
+
+        // =============================================
+        // 🔥 NORMALIZE
+        // =============================================
+        const ring =
+
+          Array.isArray(
+            latlngs[0][0]
+          )
+
+          ? latlngs[0]
+
+          : latlngs;
+
+        let coords = [];
+
+        ring.forEach(p => {
+
+          if(
+
+            p &&
+            p.lat != null &&
+            p.lng != null
+          ){
+
+            coords.push([
+
+              p.lng,
+
+              p.lat
+            ]);
+          }
+        });
+
+        if(coords.length < 3){
+          return;
+        }
+
+        // =============================================
+        // 🔥 CLOSE POLYGON
+        // =============================================
+        const f = coords[0];
+
+        const l =
+          coords[coords.length - 1];
+
+        if(
+
+          f[0] !== l[0] ||
+
+          f[1] !== l[1]
+        ){
+
+          coords.push(f);
+        }
+
+        // =============================================
+        // 🔥 TURF POLYGON
+        // =============================================
+        const poly =
+
+          turf.polygon([
+            coords
+          ]);
+
+        // =============================================
+        // 🔥 POINT INSIDE
+        // =============================================
+        if(
+
+          turf.booleanPointInPolygon(
+            pt,
+            poly
+          )
+        ){
+
+          // =========================================
+          // 🔥 MATCH BEAT
+          // =========================================
+          for(
+
+            let key in
+            window.beatMap
+          ){
+
+            const matched =
+
+              window.beatMap[
+                key
+              ].some(v =>
+
+                v
+                  .replace(/\s+/g," ")
+                  .trim()
+
+                ===
+
+                rawID
+                  .replace(/\s+/g," ")
+                  .trim()
+              );
+
+            if(matched){
+
+              detectedBeat = key;
+
+              break;
+            }
+          }
+        }
+
+      } catch(e){}
+    });
+
+    return detectedBeat;
+
+  } catch(e){
+
+    console.error(
+      "❌ assignTrackToBeat:",
+      e
+    );
+
+    return "UNKNOWN";
+  }
 }// ======================================================
 // 🧠 GRID CACHE (LIVE + MONTH)
 // ======================================================
@@ -6852,9 +7129,14 @@ function renderGrid(mode = "today", beat = "ALL") {
       });
 
       map.on("moveend zoomend", () => {
-        renderGrid(window.__lastMode || "current", window.__lastBeat || "ALL");
-      });
 
+  renderPatrolRoutes(
+
+    window.__lastMode || "current",
+
+    window.__lastBeat || "ALL"
+  );
+});
       // =========================================================
       // 🔥 CLICK HANDLER (UNCHANGED)
       // =========================================================
@@ -7610,10 +7892,13 @@ async function ensureGridReady(){
         console.log("⚡ Grid loaded from cache:", size);
 
         // 🔥 DO NOT AUTO RENDER HERE (IMPORTANT)
-        if(window.gridVisible){
-          renderGrid("current", "ALL");
-        }
+       if(window.routeLayer){
 
+  renderPatrolRoutes(
+    "current",
+    "ALL"
+  );
+}
         return;
       }
 
@@ -7729,10 +8014,13 @@ async function ensureGridReady(){
     // ==========================================
     // 🔥 STEP 5: FINAL RENDER (ONLY IF ENABLED)
     // ==========================================
-    if(window.gridVisible){
-      renderGrid("current", "ALL");
-    }
+   if(window.routeLayer){
 
+  renderPatrolRoutes(
+    "current",
+    "ALL"
+  );
+}
   } catch(e){
     console.error("❌ Grid build failed:", e);
   }
@@ -7809,6 +8097,349 @@ function pointInPoly(lat, lng, coords){
   if(pointInPolygon(lat2, lon2, coords)) return true;
 
   return false;
+}
+
+
+    // =====================================================
+// 🔥 RENDER PATROL ROUTES
+// TODAY / CURRENT / PREV
+// BEAT-WISE POLYLINE ENGINE
+// =====================================================
+function renderPatrolRoutes(
+
+  mode = "today",
+
+  beat = "ALL"
+){
+
+  try {
+
+    console.log(
+      "🎨 renderPatrolRoutes:",
+      mode,
+      beat
+    );
+
+    // =================================================
+    // 🔥 SAVE LAST STATE
+    // =================================================
+    window.__lastMode = mode;
+
+    window.__lastBeat = beat;
+
+    // =================================================
+    // 🔥 SAFE ROUTE LAYER INIT
+    // =================================================
+    window.routeLayer =
+
+      window.routeLayer ||
+
+      L.layerGroup().addTo(map);
+
+    // =================================================
+    // 🔥 CLEAR OLD ROUTES
+    // =================================================
+    window.routeLayer.clearLayers();
+
+    // =================================================
+    // 🔥 DATASET
+    // =================================================
+    let tracks = [];
+
+    // =================================================
+    // 🔥 TODAY
+    // =================================================
+    if(mode === "today"){
+
+      tracks =
+        window.todayTracks || [];
+    }
+
+    // =================================================
+    // 🔥 CURRENT MONTH
+    // =================================================
+    else if(mode === "current"){
+
+      tracks =
+        window.monthTracks || [];
+    }
+
+    // =================================================
+    // 🔥 PREVIOUS MONTH
+    // =================================================
+    else if(mode === "prev"){
+
+      tracks =
+        window.prevTracks || [];
+    }
+
+    console.log(
+      "📦 Tracks Loaded:",
+      tracks.length
+    );
+
+    // =================================================
+    // 🔥 EMPTY
+    // =================================================
+    if(!tracks.length){
+
+      console.warn(
+        "⚠ No patrol tracks"
+      );
+
+      return;
+    }
+
+    // =================================================
+    // 🔥 ANALYTICS CACHE
+    // =================================================
+    let analytics = {};
+
+    if(mode === "today"){
+
+      analytics =
+        window.gridCache?.today || {};
+    }
+
+    else if(mode === "current"){
+
+      analytics =
+        window.gridCache?.month || {};
+    }
+
+    else if(mode === "prev"){
+
+      analytics =
+        window.gridCache?.prev || {};
+    }
+
+    // =================================================
+    // 🔥 DRAW COUNT
+    // =================================================
+    let drawn = 0;
+
+    // =================================================
+    // 🔥 DRAW TRACKS
+    // =================================================
+    tracks.forEach(track => {
+
+      try {
+
+        // =============================================
+        // 🔥 INVALID
+        // =============================================
+        if(!track){
+          return;
+        }
+
+        // =============================================
+        // 🔥 BEAT FILTER
+        // =============================================
+        if(
+
+          beat !== "ALL" &&
+
+          String(track.beat)
+            .trim()
+            .toUpperCase()
+
+          !==
+
+          String(beat)
+            .trim()
+            .toUpperCase()
+        ){
+
+          return;
+        }
+
+        // =============================================
+        // 🔥 INVALID POINTS
+        // =============================================
+        if(
+
+          !Array.isArray(
+            track.points
+          )
+
+        ){
+          return;
+        }
+
+        // =============================================
+        // 🔥 CLEAN LATLNGS
+        // =============================================
+        const latlngs =
+
+          track.points
+
+            .filter(p => {
+
+              return(
+
+                p &&
+
+                !isNaN(p.lat) &&
+
+                !isNaN(p.lng)
+              );
+            })
+
+            .map(p => [
+
+              Number(p.lat),
+
+              Number(p.lng)
+            ]);
+
+        // =============================================
+        // 🔥 TOO SMALL
+        // =============================================
+        if(latlngs.length < 2){
+
+          return;
+        }
+
+        // =============================================
+        // 🔥 ROUTE COLOR
+        // =============================================
+        let color = "#00ff88";
+
+        if(mode === "current"){
+
+          color = "#00d4ff";
+        }
+
+        else if(mode === "prev"){
+
+          color = "#ffaa00";
+        }
+
+        // =============================================
+        // 🔥 ROUTE
+        // =============================================
+        const polyline =
+
+          L.polyline(latlngs, {
+
+            renderer:
+              window.gridRenderer,
+
+            color,
+
+            weight: 4,
+
+            opacity: 0.85,
+
+            smoothFactor: 1
+          });
+
+        // =============================================
+        // 🔥 ANALYTICS
+        // =============================================
+        const coverage =
+
+          Object.keys(
+            analytics
+          ).length;
+
+        // =============================================
+        // 🔥 DISTANCE
+        // =============================================
+        let approxDistance =
+
+          (
+            latlngs.length * 0.08
+          ).toFixed(1);
+
+        // =============================================
+        // 🔥 POPUP
+        // =============================================
+        polyline.bindPopup(`
+
+          <div style="
+            min-width:230px;
+            font-family:Segoe UI;
+            line-height:1.55;
+          ">
+
+            <div style="
+              font-size:15px;
+              font-weight:700;
+              margin-bottom:6px;
+              color:#00e5ff;
+            ">
+              🌍 ${track.beat || "UNKNOWN"}
+            </div>
+
+            <hr>
+
+            <b>Mode:</b>
+            ${String(mode).toUpperCase()}<br>
+
+            <b>Staff:</b>
+            ${track.staff || "Unknown"}<br>
+
+            <b>Track Points:</b>
+            ${latlngs.length}<br>
+
+            <b>Approx Distance:</b>
+            ${approxDistance} km<br>
+
+            <b>Coverage:</b>
+            ${coverage} grids<br>
+
+            <b>Date:</b><br>
+            ${
+              track.date
+
+                ? new Date(
+                    track.date
+                  ).toLocaleString()
+
+                : "Unknown"
+            }
+
+          </div>
+        `);
+
+        // =============================================
+        // 🔥 ADD TO MAP
+        // =============================================
+        polyline.addTo(
+          window.routeLayer
+        );
+
+        drawn++;
+
+      } catch(e){
+
+        console.warn(
+          "⚠ Route draw fail:",
+          e
+        );
+      }
+    });
+
+    // =================================================
+    // 🔥 FINAL LOG
+    // =================================================
+    console.log(
+      "🛣 Routes Drawn:",
+      drawn
+    );
+
+    console.log(
+      "✅ Patrol routes rendered"
+    );
+
+  }catch(err){
+
+    console.error(
+      "❌ renderPatrolRoutes failed:",
+      err
+    );
+  }
 }
  // ===============================
 // 🔥 GLOBAL CACHE
@@ -8367,24 +8998,21 @@ Object.keys(visited)
   // ==================================================
   // 🔥 SAFE LIVE REPAINT
   // ==================================================
-  try {
+  if(window.__gridReady){
 
-    if(window.__gridReady){
+  console.log(
+    "🎨 renderPatrolRoutes()"
+  );
 
-      console.log(
-        "🎨 renderGrid()"
-      );
+  renderPatrolRoutes(
 
-      renderGrid(
+    window.__lastMode || "today",
 
-        window.__lastMode || "today",
-
-        document.getElementById(
-          "beatSelect"
-        )?.value || "ALL"
-      );
-    }
-
+    document.getElementById(
+      "beatSelect"
+    )?.value || "ALL"
+  );
+}
   } catch(err){
 
     console.warn(
@@ -8403,115 +9031,339 @@ Object.keys(visited)
   return visitedGlobal;
 }
     
-    function applyMode(mode){
+   // =====================================================
+// 🔥 APPLY MODE
+// POLYLINE ENGINE
+// =====================================================
+function applyMode(mode){
 
   try {
 
-    window.currentCoverageMode = mode || "today";
-    window.__lastMode = window.currentCoverageMode;
+    // =================================================
+    // 🔥 MODE
+    // =================================================
+    window.currentCoverageMode =
 
-    let beat = document.getElementById("beatSelect")?.value || "ALL";
+      mode || "today";
 
-    // ======================================================
-    // 🔥 FIX: INVALID BEAT → FALLBACK TO ALL
-    // ======================================================
-    if(beat !== "ALL" && !window.beatMap?.[beat]){
-      console.warn("⚠ Unknown beat:", beat, "→ fallback to ALL");
+    window.__lastMode =
+
+      window.currentCoverageMode;
+
+    // =================================================
+    // 🔥 BEAT
+    // =================================================
+    let beat =
+
+      document.getElementById(
+        "beatSelect"
+      )?.value || "ALL";
+
+    // =================================================
+    // 🔥 INVALID BEAT
+    // =================================================
+    if(
+
+      beat !== "ALL" &&
+
+      !window.beatMap?.[beat]
+    ){
+
+      console.warn(
+        "⚠ Unknown beat:",
+        beat,
+        "→ fallback to ALL"
+      );
+
       beat = "ALL";
     }
 
+    // =================================================
+    // 🔥 SAVE CURRENT BEAT
+    // =================================================
     window.currentBeat = beat;
 
-    const btnToday = document.getElementById("btnToday");
-    const btnCurrent = document.getElementById("btnCurrent");
-    const btnPrev = document.getElementById("btnPrev");
+    window.__lastBeat = beat;
 
-    if(btnToday && btnCurrent && btnPrev){
-      btnToday.style.background   = (mode === "today")   ? "#00e676" : "";
-      btnCurrent.style.background = (mode === "current") ? "#00e676" : "";
-      btnPrev.style.background    = (mode === "prev")    ? "#00e676" : "";
+    // =================================================
+    // 🔥 BUTTONS
+    // =================================================
+    const btnToday =
+
+      document.getElementById(
+        "btnToday"
+      );
+
+    const btnCurrent =
+
+      document.getElementById(
+        "btnCurrent"
+      );
+
+    const btnPrev =
+
+      document.getElementById(
+        "btnPrev"
+      );
+
+    // =================================================
+    // 🔥 RESET BUTTONS
+    // =================================================
+    if(
+
+      btnToday &&
+      btnCurrent &&
+      btnPrev
+    ){
+
+      btnToday.style.background =
+
+        mode === "today"
+
+          ? "#00e676"
+
+          : "";
+
+      btnCurrent.style.background =
+
+        mode === "current"
+
+          ? "#00e676"
+
+          : "";
+
+      btnPrev.style.background =
+
+        mode === "prev"
+
+          ? "#00e676"
+
+          : "";
     }
 
-    // ======================================================
-    // 🔥 TODAY (LOCAL)
-    // ======================================================
-    if(mode === "today"){
+    // =================================================
+    // 🔥 GRID RENDER DISABLED
+    // =================================================
+    window.__gridRenderingDisabled = true;
 
-      if(typeof updateTodayCache === "function"){
-        updateTodayCache();
-      }
+    // =================================================
+    // 🔥 TODAY CACHE
+    // =================================================
+    if(
 
-      renderGrid(mode, beat);
-      return;
+      mode === "today" &&
+
+      typeof updateTodayCache ===
+      "function"
+
+    ){
+
+      updateTodayCache();
     }
 
-    // ======================================================
-    // 🔥 CURRENT / PREV (BACKEND)
-    // ======================================================
-    if(window.gridCache?.current && window.gridCache?.prev){
+    // =================================================
+    // 🔥 SAFE ROUTE LAYER
+    // =================================================
+    window.routeLayer =
 
-      renderGrid(mode, beat);
-      return;
+      window.routeLayer ||
+
+      L.layerGroup().addTo(map);
+
+    // =================================================
+    // 🔥 RENDER POLYLINES
+    // =================================================
+    renderPatrolRoutes(
+      mode,
+      beat
+    );
+
+    // =================================================
+    // 🔥 OPTIONAL PANEL
+    // =================================================
+    if(
+
+      typeof showCoveragePanel ===
+      "function"
+
+    ){
+
+      showCoveragePanel();
     }
 
-    loadBackendCoverage()
-      .then(() => {
-        renderGrid(mode, beat);
-      });
+    // =================================================
+    // 🔥 ENSURE GRID READY
+    // ANALYTICS ONLY
+    // =================================================
+    if(
 
-    if(typeof ensureGridReady === "function"){
+      typeof ensureGridReady ===
+      "function"
+
+    ){
+
       ensureGridReady();
     }
 
-    console.log("🎛 Mode Applied:", mode, "| Beat:", beat);
+    // =================================================
+    // 🔥 LOG
+    // =================================================
+    console.log(
+
+      "🎛 Polyline Mode Applied:",
+
+      mode,
+
+      "| Beat:",
+
+      beat
+    );
 
   } catch(e){
-    console.error("❌ applyMode error:", e);
+
+    console.error(
+      "❌ applyMode error:",
+      e
+    );
   }
 }
-    function onBeatChange(){
+
+
+
+// =====================================================
+// 🔥 BEAT CHANGE
+// POLYLINE ENGINE
+// =====================================================
+function onBeatChange(){
 
   try {
 
-    let beat = document.getElementById("beatSelect")?.value || "ALL";
+    // =================================================
+    // 🔥 BEAT
+    // =================================================
+    let beat =
 
-    // ======================================================
-    // 🔥 SAME FIX HERE
-    // ======================================================
-    if(beat !== "ALL" && !window.beatMap?.[beat]){
-      console.warn("⚠ Unknown beat:", beat, "→ fallback to ALL");
+      document.getElementById(
+        "beatSelect"
+      )?.value || "ALL";
+
+    // =================================================
+    // 🔥 INVALID BEAT
+    // =================================================
+    if(
+
+      beat !== "ALL" &&
+
+      !window.beatMap?.[beat]
+    ){
+
+      console.warn(
+
+        "⚠ Unknown beat:",
+
+        beat,
+
+        "→ fallback to ALL"
+      );
+
       beat = "ALL";
     }
 
+    // =================================================
+    // 🔥 SAVE
+    // =================================================
     window.currentBeat = beat;
 
-    if(!window.currentCoverageMode){
-      window.currentCoverageMode = "today";
+    window.__lastBeat = beat;
+
+    // =================================================
+    // 🔥 DEFAULT MODE
+    // =================================================
+    if(
+
+      !window.currentCoverageMode
+    ){
+
+      window.currentCoverageMode =
+        "today";
     }
 
-    const mode = window.currentCoverageMode;
+    const mode =
+
+      window.currentCoverageMode;
+
     window.__lastMode = mode;
 
-    if(mode === "today"){
+    // =================================================
+    // 🔥 TODAY CACHE
+    // =================================================
+    if(
 
-      if(typeof updateTodayCache === "function"){
-        updateTodayCache();
-      }
+      mode === "today" &&
 
-      renderGrid(mode, beat);
-      return;
+      typeof updateTodayCache ===
+      "function"
+
+    ){
+
+      updateTodayCache();
     }
 
-    renderGrid(mode, beat);
+    // =================================================
+    // 🔥 GRID RENDER DISABLED
+    // =================================================
+    window.__gridRenderingDisabled = true;
 
-    if(typeof ensureGridReady === "function"){
+    // =================================================
+    // 🔥 SAFE ROUTE LAYER
+    // =================================================
+    window.routeLayer =
+
+      window.routeLayer ||
+
+      L.layerGroup().addTo(map);
+
+    // =================================================
+    // 🔥 RENDER POLYLINES
+    // =================================================
+    renderPatrolRoutes(
+      mode,
+      beat
+    );
+
+    // =================================================
+    // 🔥 ENSURE ANALYTICS
+    // =================================================
+    if(
+
+      typeof ensureGridReady ===
+      "function"
+
+    ){
+
       ensureGridReady();
     }
 
-    console.log("🎯 Beat Changed:", beat, "| Mode:", mode);
+    // =================================================
+    // 🔥 LOG
+    // =================================================
+    console.log(
+
+      "🎯 Beat Changed:",
+
+      beat,
+
+      "| Mode:",
+
+      mode
+    );
 
   } catch(e){
-    console.error("❌ onBeatChange error:", e);
+
+    console.error(
+      "❌ onBeatChange error:",
+      e
+    );
   }
 }
 function showGridPopup(cell, latlng){
@@ -9000,10 +9852,18 @@ function showGrid(){
     // ==========================================
     // 🔥 RENDER
     // ==========================================
-    if(typeof renderGrid === "function"){
-      renderGrid(mode, beat);
-    }
+    if(
 
+  typeof renderPatrolRoutes ===
+  "function"
+
+){
+
+  renderPatrolRoutes(
+    mode,
+    beat
+  );
+}
     console.log("📊 Grid shown → Mode:", mode, "| Beat:", beat);
 
   } catch(e){
@@ -11532,7 +12392,80 @@ if(
 
   return;
 }
+// ==============================================
+// 🔥 SAVE LIVE TRACK POINT
+// ==============================================
 
+// 🔥 INIT LIVE TRACK STORE
+window.liveTracks =
+
+  window.liveTracks || {};
+
+// 🔥 USER TRACK
+window.liveTracks[
+  s.cleanName
+] =
+
+  window.liveTracks[
+    s.cleanName
+  ] || [];
+
+// 🔥 LAST POINT
+const lastPoint =
+
+  window.liveTracks[
+    s.cleanName
+  ].slice(-1)[0];
+
+// ==============================================
+// 🔥 DUPLICATE FILTER
+// PREVENT SAME GPS SPAM
+// ==============================================
+if(
+
+  !lastPoint ||
+
+  Math.abs(
+    lastPoint.lat - lat
+  ) > 0.00002 ||
+
+  Math.abs(
+    lastPoint.lng - lon
+  ) > 0.00002
+){
+
+  // ============================================
+  // 🔥 APPEND POINT
+  // ============================================
+  window.liveTracks[
+    s.cleanName
+  ].push({
+
+    lat,
+
+    lng: lon,
+
+    time: Date.now(),
+
+    beat:
+      s.beat || "UNKNOWN"
+  });
+
+  // ============================================
+  // 🔥 SAFETY LIMIT
+  // ============================================
+  if(
+
+    window.liveTracks[
+      s.cleanName
+    ].length > 12000
+  ){
+
+    window.liveTracks[
+      s.cleanName
+    ].shift();
+  }
+}
             
             // ==============================================
             // 🔥 SPREAD OVERLAP
@@ -14642,11 +15575,12 @@ map.on('overlayadd', function (e) {
       // 🔥 ENABLE GRID
       window.gridVisible = true;
 
-renderGrid(
+renderPatrolRoutes(
+
   window.currentCoverageMode || "today",
+
   window.currentBeat || "ALL"
 );
-
       // 🔥 SHOW PANEL
       showCoveragePanel?.();
 
@@ -14658,12 +15592,14 @@ renderGrid(
       }
 
       // 🔥 FORCE RENDER
-      renderGrid(
-        window.currentCoverageMode || "today",
-        window.currentBeat || "ALL"
-      );
+     renderPatrolRoutes(
 
-      return;
+  window.currentCoverageMode || "today",
+
+  window.currentBeat || "ALL"
+);
+
+return;
     }
 
   } catch (err) {
@@ -15682,7 +16618,241 @@ showToast(
       "📤 PAYLOAD:",
       payload
     );
+// ============================================================
+// 🔥 FINALIZE LIVE TRACK SESSION
+// ============================================================
+// ======================================================
+// 🔥 FINALIZE LIVE TRACK SESSION
+// SAVE BEAT-WISE PERMANENT TRACKS
+// TODAY / CURRENT / PREV FLOW
+// ======================================================
+try {
 
+  // ====================================================
+  // 🔥 LIVE TRACK STORE
+  // ====================================================
+  window.liveTracks =
+    window.liveTracks || {};
+
+  // ====================================================
+  // 🔥 USER LIVE TRACK
+  // ====================================================
+  const liveTrack =
+
+    window.liveTracks[
+      profile.cleanName
+    ] || [];
+
+  // ====================================================
+  // 🔥 VALID TRACK
+  // ====================================================
+  if(liveTrack.length > 1){
+
+    // ==================================================
+    // 🔥 AUTO DETECT BEAT
+    // ==================================================
+    const detectedBeat =
+
+      assignTrackToBeat(
+        liveTrack
+      );
+
+    // ==================================================
+    // 🔥 SESSION TRACK
+    // ==================================================
+    const sessionTrack = {
+
+      // ================================================
+      // 🔥 SESSION
+      // ================================================
+      sessionId:
+
+        window.activeSessionId ||
+
+        ("SESSION_" + Date.now()),
+
+      // ================================================
+      // 🔥 AUTO GIS BEAT
+      // ================================================
+      beat:
+
+        detectedBeat ||
+
+        profile.beat ||
+
+        "UNKNOWN",
+
+      // ================================================
+      // 🔥 STAFF
+      // ================================================
+      staff:
+
+        profile.cleanName ||
+
+        "UNKNOWN",
+
+      // ================================================
+      // 🔥 PHONE
+      // ================================================
+      phone:
+
+        profile.phone ||
+
+        "",
+
+      // ================================================
+      // 🔥 DATE
+      // ================================================
+      date:
+
+        new Date().toISOString(),
+
+      // ================================================
+      // 🔥 MONTH
+      // ================================================
+      month:
+
+        new Date()
+          .toISOString()
+          .slice(0,7),
+
+      // ================================================
+      // 🔥 TOTAL POINTS
+      // ================================================
+      totalPoints:
+
+        liveTrack.length,
+
+      // ================================================
+      // 🔥 ROUTE POINTS
+      // ================================================
+      points:
+
+        [...liveTrack]
+    };
+
+    // ==================================================
+    // 🔥 INIT TODAY
+    // ==================================================
+    window.todayTracks =
+
+      window.todayTracks || [];
+
+    // ==================================================
+    // 🔥 SAVE TODAY
+    // ==================================================
+    window.todayTracks.push(
+      sessionTrack
+    );
+
+    // ==================================================
+    // 🔥 INIT MONTH
+    // ==================================================
+    window.monthTracks =
+
+      window.monthTracks || [];
+
+    // ==================================================
+    // 🔥 SAVE CURRENT MONTH
+    // ==================================================
+    window.monthTracks.push(
+      sessionTrack
+    );
+
+    // ==================================================
+    // 🔥 SAVE TODAY LOCAL
+    // ==================================================
+    localStorage.setItem(
+
+      "today_tracks",
+
+      JSON.stringify(
+        window.todayTracks
+      )
+    );
+
+    // ==================================================
+    // 🔥 SAVE MONTH LOCAL
+    // ==================================================
+    localStorage.setItem(
+
+      "month_tracks",
+
+      JSON.stringify(
+        window.monthTracks
+      )
+    );
+
+    // ==================================================
+    // 🔥 SAVE FIRESTORE
+    // ==================================================
+    try {
+
+      if(
+
+        window.fb &&
+        window.db
+      ){
+
+        window.fb.setDoc(
+
+          window.fb.doc(
+
+            window.db,
+
+            "patrol_tracks",
+
+            sessionTrack.sessionId
+          ),
+
+          sessionTrack
+        );
+
+        console.log(
+          "☁ Firestore route saved"
+        );
+      }
+
+    } catch(e){
+
+      console.warn(
+        "⚠ Firestore route save fail",
+        e
+      );
+    }
+
+    // ==================================================
+    // 🔥 LOG
+    // ==================================================
+    console.log(
+
+      "🛣 Session track saved",
+
+      "| Beat:",
+      sessionTrack.beat,
+
+      "| Points:",
+      sessionTrack.points.length,
+
+      "| Staff:",
+      sessionTrack.staff
+    );
+  }
+
+  // ====================================================
+  // 🔥 CLEAR LIVE TRACK
+  // ====================================================
+  delete window.liveTracks[
+    profile.cleanName
+  ];
+
+}catch(e){
+
+  console.warn(
+    "⚠ Live track finalize fail",
+    e
+  );
+}
     // ============================================================
     // 🔥 BACKEND SAVE
     // ============================================================
