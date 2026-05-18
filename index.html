@@ -9710,97 +9710,233 @@ function openStatsPopup(name, latlng) {
     }
 
     /* 🟩 GRID */
-  function showGridStatus(data) {
+ function showGridStatus(data) {
 
   console.log("📊 TOTAL CELLS:", data.length);
-  console.log("🟢 Visited:", data.filter(d => d.visited).length);
-  console.log("🔴 Unvisited:", data.filter(d => !d.visited).length);
 
-  console.log("📍 Sample Data:", data.slice(0, 5));
+  console.log(
+    "🟢 Visited:",
+    data.filter(d => d.visited).length
+  );
 
-  // 🔥 LIMIT DATA (PREVENT FREEZE)
+  console.log(
+    "🔴 Unvisited:",
+    data.filter(d => !d.visited).length
+  );
+
+  console.log(
+    "📍 Sample Data:",
+    data.slice(0, 5)
+  );
+
+  // =====================================================
+  // 🔥 LIMIT EXTREME GRID LOAD
+  // =====================================================
   if (data.length > 800) {
-    console.warn("⚠ Too many cells, limiting to 800");
+
+    console.warn(
+      "⚠ Too many cells, limiting to 800"
+    );
+
     data = data.slice(0, 800);
   }
 
-  // 🔥 RESET ZOOM FLAG (IMPORTANT)
+  // =====================================================
+  // 🔥 SAFE GRID LAYER
+  // =====================================================
+  window.gridLayer =
+    window.gridLayer ||
+    L.layerGroup();
+
+  // =====================================================
+  // 🔥 RESET ZOOM FLAG
+  // =====================================================
   window.gridZoomDone = false;
 
+  // =====================================================
+  // 🔥 CLEAR OLD GRID CONTENT
+  // =====================================================
   visitedLayer.clearLayers();
+
   unvisitedLayer.clearLayers();
 
-  // 🔥 FIX: 250m GRID OFFSET (was 50m before)
+  // =====================================================
+  // 🔥 CLEAR MAIN GRID GROUP
+  // =====================================================
+  window.gridLayer.clearLayers();
+
+  // =====================================================
+  // 🔥 250m GRID SIZE
+  // =====================================================
   const offset = 0.00225;
 
-  // 🔥 USE BATCH RENDER (PREVENT UI BLOCK)
+  // =====================================================
+  // 🔥 BATCH RENDERING
+  // =====================================================
   let i = 0;
+
   const batchSize = 100;
 
   function renderBatch() {
 
-    const end = Math.min(i + batchSize, data.length);
+    const end = Math.min(
+      i + batchSize,
+      data.length
+    );
 
     for (; i < end; i++) {
 
       const p = data[i];
 
-      if (!p.lat || !p.lon) continue;
+      if (!p.lat || !p.lon){
+        continue;
+      }
 
       if (i < 3) {
-        console.log(`🧭 Cell ${i}:`, p.lat, p.lon, "Visited:", p.visited);
+
+        console.log(
+          `🧭 Cell ${i}:`,
+          p.lat,
+          p.lon,
+          "Visited:",
+          p.visited
+        );
       }
 
+      // =================================================
+      // 🔥 GRID BOUNDS
+      // =================================================
       const bounds = [
-        [p.lat - offset / 2, p.lon - offset / 2],
-        [p.lat + offset / 2, p.lon + offset / 2]
+
+        [
+          p.lat - offset / 2,
+          p.lon - offset / 2
+        ],
+
+        [
+          p.lat + offset / 2,
+          p.lon + offset / 2
+        ]
       ];
 
-      const isVisited = p.visited == true;
+      const isVisited =
+        p.visited === true;
 
-      L.rectangle(bounds, {
-        color: isVisited ? "#00ff00" : "#ff0000",
-        fillOpacity: isVisited ? 0.5 : 0.25,
+      // =================================================
+      // 🔥 GRID STYLE
+      // =================================================
+      const rect = L.rectangle(bounds, {
+
+        color:
+          isVisited
+            ? "#00ff00"
+            : "#ff0000",
+
+        fillOpacity:
+          isVisited
+            ? 0.5
+            : 0.18,
+
         weight: 1
-      }).addTo(isVisited ? visitedLayer : unvisitedLayer);
+      });
 
+      // =================================================
+      // 🔥 ADD INTO VISITED/UNVISITED GROUP
+      // =================================================
+      rect.addTo(
+        isVisited
+          ? visitedLayer
+          : unvisitedLayer
+      );
     }
 
+    // ===================================================
+    // 🔥 CONTINUE BATCH
+    // ===================================================
     if (i < data.length) {
-      requestAnimationFrame(renderBatch); // 🔥 smooth rendering
+
+      requestAnimationFrame(
+        renderBatch
+      );
+
     } else {
 
-      // 🔥 FINALIZE AFTER ALL BATCHES
-      visitedLayer.addTo(map);
-      unvisitedLayer.addTo(map);
+      // =================================================
+      // 🔥 FINALIZE INTO MAIN GRID GROUP
+      // =================================================
+      visitedLayer.addTo(
+        window.gridLayer
+      );
 
-      visitedLayer.bringToFront();
-      unvisitedLayer.bringToFront();
+      unvisitedLayer.addTo(
+        window.gridLayer
+      );
 
-      console.log("🟢 Visited layer count:", visitedLayer.getLayers().length);
-      console.log("🔴 Unvisited layer count:", unvisitedLayer.getLayers().length);
+      console.log(
+        "🟢 Visited layer count:",
+        visitedLayer.getLayers().length
+      );
 
-      // 🔥 SAFE ZOOM (ONLY ONCE + LIMITED)
-      if (unvisitedLayer.getLayers().length > 0 && !window.gridZoomDone) {
+      console.log(
+        "🔴 Unvisited layer count:",
+        unvisitedLayer.getLayers().length
+      );
 
-        const bounds = unvisitedLayer.getBounds();
+      // =================================================
+      // 🔥 ONLY IF GRID TOGGLE ENABLED
+      // =================================================
+      if (
 
-        console.log("🗺️ Bounds:", bounds);
+        map.hasLayer(
+          window.gridLayer
+        )
 
-        map.fitBounds(bounds, {
-          maxZoom: 14,   // 🔥 slightly reduced (more stable)
-          animate: false
-        });
+      ){
 
-        window.gridZoomDone = true;
+        window.gridLayer.bringToFront();
+
+        // ===============================================
+        // 🔥 SAFE ZOOM ONLY ONCE
+        // ===============================================
+        if (
+
+          unvisitedLayer.getLayers().length > 0
+          &&
+          !window.gridZoomDone
+
+        ){
+
+          const bounds =
+            unvisitedLayer.getBounds();
+
+          console.log(
+            "🗺️ Bounds:",
+            bounds
+          );
+
+          map.fitBounds(bounds, {
+
+            maxZoom: 14,
+
+            animate: false
+          });
+
+          window.gridZoomDone = true;
+        }
       }
 
+      console.log(
+        "✅ Grid rendering completed"
+      );
     }
-
   }
 
-  renderBatch(); // 🔥 start batch rendering
-}/* ============================================================
+  // =====================================================
+  // 🔥 START RENDER
+  // =====================================================
+  renderBatch();
+}
+    /* ============================================================
        🐘 BLOCK 7 → ELEPHANT SYSTEM (FINAL)
     ============================================================ */
 function loadSightings() {
