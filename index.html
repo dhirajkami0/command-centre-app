@@ -14578,7 +14578,8 @@ window.gridLayer = window.gridLayer || L.layerGroup();
 
 /* ============================================================
    🎛 LAYER CONTROL (CLEAN VERSION)
-============================================================ */var layerControl = L.control.layers(
+============================================================ */
+    var layerControl = L.control.layers(
 
   // =====================================================
   // 🛰 BASE MAPS
@@ -14615,7 +14616,7 @@ window.gridLayer = window.gridLayer || L.layerGroup();
     // 🟩 COVERAGE GRID
     "🟩 Coverage Grid": window.gridLayer
 
-     },
+  },
 
   // =====================================================
   // ⚙ CONTROL OPTIONS
@@ -14627,109 +14628,214 @@ window.gridLayer = window.gridLayer || L.layerGroup();
 ).addTo(map);
 
 
-// 🔥 GLOBAL VISIBILITY FLAG (CRITICAL FIX)
+// =====================================================
+// 🔥 GLOBAL VISIBILITY FLAG
+// =====================================================
 window.gridVisible = false;
 
 
 /* ============================================================
-   ⚡ OVERLAY ADD (CLEANED)
+   ⚡ OVERLAY ADD (FINAL FIXED VERSION)
 ============================================================ */
 map.on('overlayadd', function (e) {
 
   try {
 
-    if (!e || !e.name) return;
+    // ========================================================
+    // 🔥 SAFE LAYER NAME
+    // ========================================================
+    const layerName = e?.name || "";
 
-    const layerName = String(e.name);
+    console.log(
+      "🧭 Layer Enabled:",
+      layerName
+    );
 
-    console.log("🧭 Layer Enabled:", layerName);
-
-    /* 👮 Staff */
+    /* ========================================================
+       👮 STAFF
+    ======================================================== */
     if (layerName === "👮 Staff") {
-      return loadStaff?.();
+
+      loadStaff?.();
+
+      return;
     }
 
-    /* 🌱 Plantation */
+    /* ========================================================
+       🌱 PLANTATION
+    ======================================================== */
     if (layerName === "🌱 Plantation") {
-      return loadPlantationLayer?.();
+
+      loadPlantationLayer?.();
+
+      return;
     }
 
-    /* ============================================================
-       🟩 COVERAGE GRID (FIXED)
-    ============================================================ */
-    if (layerName === "🟩 Coverage Grid") {
+    /* ========================================================
+       🟩 COVERAGE GRID
+    ======================================================== */
+    if (
 
-      console.log("📊 Coverage Grid ON");
+      layerName === "🟩 Coverage Grid"
 
-      // 🔥 ENABLE GRID
+      ||
+
+      e.layer === window.gridLayer
+
+    ){
+
+      console.log(
+        "📊 Coverage Grid ENABLED"
+      );
+
+      // ====================================================
+      // 🔥 ENABLE GRID STATE
+      // ====================================================
       window.gridVisible = true;
 
-renderGrid(
-  window.currentCoverageMode || "today",
-  window.currentBeat || "ALL"
-);
-
-      // 🔥 SHOW PANEL
+      // ====================================================
+      // 🔥 SHOW COVERAGE PANEL
+      // ====================================================
       showCoveragePanel?.();
 
+      // ====================================================
       // 🔥 SHOW CANVAS
-      if (window.__gridCanvas) {
-        window.__gridCanvas.style.display = "block";
-        window.__gridCanvas.style.visibility = "visible";
-        window.__gridCanvas.style.opacity = "1";
+      // ====================================================
+      if(window.__gridCanvas){
+
+        window.__gridCanvas.style.display =
+          "block";
+
+        window.__gridCanvas.style.visibility =
+          "visible";
+
+        window.__gridCanvas.style.opacity =
+          "1";
       }
 
-      // 🔥 FORCE RENDER
-      renderGrid(
-        window.currentCoverageMode || "today",
-        window.currentBeat || "ALL"
+      // ====================================================
+      // 🔥 FORCE REBUILD FROM CACHE
+      // ====================================================
+      const mode =
+
+        window.__lastMode ||
+
+        window.currentCoverageMode ||
+
+        "current";
+
+      const beat =
+
+        window.currentBeat ||
+
+        document.getElementById(
+          "beatSelect"
+        )?.value ||
+
+        "ALL";
+
+      console.log(
+        "♻ Rebuilding Coverage:",
+        mode,
+        beat
       );
+
+      // ====================================================
+      // 🔥 IMPORTANT
+      // ====================================================
+      applyMode(mode);
 
       return;
     }
 
   } catch (err) {
-    console.error("🔥 overlayadd crash:", err);
+
+    console.error(
+      "🔥 overlayadd crash:",
+      err
+    );
   }
 });
 
 
 /* ============================================================
-   🧹 OVERLAY REMOVE (CLEANED)
+   🧹 OVERLAY REMOVE (FINAL FIXED VERSION)
 ============================================================ */
 map.on('overlayremove', function (e) {
 
-  const name = e.name;
+  try {
 
-  console.log("🧹 Layer Disabled:", name);
+    const layerName =
+      e?.name || "";
 
-  /* 🌱 Plantation */
-  if (name === "🌱 Plantation") {
-    plantationLayer?.clearLayers?.();
-  }
+    console.log(
+      "🧹 Layer Disabled:",
+      layerName
+    );
 
-  /* ============================================================
-     🟩 GRID CLEANUP (FIXED)
-  ============================================================ */
-  if (name === "🟩 Coverage Grid") {
+    /* ========================================================
+       🌱 PLANTATION
+    ======================================================== */
+    if (layerName === "🌱 Plantation") {
 
-    console.log("🧹 Clearing Coverage Grid");
+      plantationLayer?.clearLayers?.();
 
-    // 🔥 DISABLE GRID
-    window.gridVisible = false;
-
-    // 🔥 CLOSE PANEL
-    closeCoveragePanel?.();
-
-    // ✅ HIDE CANVAS (HARD)
-    if (window.__gridCanvas) {
-      window.__gridCanvas.style.display = "none";
-      window.__gridCanvas.style.visibility = "hidden";
-      window.__gridCanvas.style.opacity = "0";
+      return;
     }
-  }
 
-});     /* ============================================================
+    /* ========================================================
+       🟩 COVERAGE GRID
+    ======================================================== */
+    if (
+
+      layerName === "🟩 Coverage Grid"
+
+      ||
+
+      e.layer === window.gridLayer
+
+    ){
+
+      console.log(
+        "🧹 Coverage Grid OFF"
+      );
+
+      // ====================================================
+      // 🔥 DISABLE STATE
+      // ====================================================
+      window.gridVisible = false;
+
+      // ====================================================
+      // 🔥 CLOSE PANEL
+      // ====================================================
+      closeCoveragePanel?.();
+
+      // ====================================================
+      // 🔥 HIDE CANVAS
+      // ====================================================
+      if(window.__gridCanvas){
+
+        window.__gridCanvas.style.display =
+          "none";
+
+        window.__gridCanvas.style.visibility =
+          "hidden";
+
+        window.__gridCanvas.style.opacity =
+          "0";
+      }
+
+      return;
+    }
+
+  } catch(err){
+
+    console.error(
+      "🔥 overlayremove crash:",
+      err
+    );
+  }
+});    /* ============================================================
              🐘 SIGHTING FORM SYSTEM (FINAL SAFE VERSION)
           ============================================================ */
 
