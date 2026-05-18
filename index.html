@@ -7773,83 +7773,110 @@ function pointInPoly(lat, lng, coords){
 }
  // ===============================
 // 🔥 GLOBAL CACHE
-// ===============================
-function markVisitedHybrid(tracks){
+// ===============================function markVisitedHybrid(tracks){
 
   if(!window.gridIndex || !window.gridMeta){
+
     console.warn("⚠ Grid not ready");
     return {};
   }
 
   // 🚫 BLOCK LIVE STAFF
   if(window.__fromLiveStaff === true){
+
     console.warn("⛔ Skip LIVE staff grid");
     return {};
   }
 
-  console.log("🧪 Incoming tracks:", tracks);
+  console.log(
+    "🧪 Incoming tracks:",
+    tracks
+  );
 
   let visitedGlobal = {};
 
   for(let t of tracks){
 
     const dayStr = t.date
-      ? getLocalDateStr(new Date(t.date))
+      ? getLocalDateStr(
+          new Date(t.date)
+        )
       : getLocalDateStr();
 
-    if(!t || !t.track || !t.track.length) continue;
+    if(
+      !t ||
+      !t.track ||
+      !t.track.length
+    ){
+      continue;
+    }
 
-    // ==========================================
-    // 🔥 CLEAN + NORMALIZE TRACK
-    // ==========================================// ==========================================
-// 🔥 CLEAN TRACK USING FRONTEND FILTER
-// ==========================================
-const cleanedTrack =
+    // ==================================================
+    // 🔥 CLEAN TRACK
+    // ==================================================
+    const cleanedTrack =
 
-  cleanTrackPoints(
-    t.track
-  );
+      cleanTrackPoints(
+        t.track
+      );
 
-// ==========================================
-// 🔥 NORMALIZE
-// ==========================================
-let pts =
+    // ==================================================
+    // 🔥 NORMALIZE
+    // ==================================================
+    let pts =
 
-  cleanedTrack.map(p => ({
+      cleanedTrack
 
-    lat: Number(p[0]),
+      .map(p => ({
 
-    lon: Number(p[1])
+        lat:Number(p[0]),
 
-  }))
+        lon:Number(p[1])
 
-  .filter(p =>
+      }))
 
-    !isNaN(p.lat) &&
-    !isNaN(p.lon)
-  );
+      .filter(p =>
 
-    // 🔥 REMOVE BIG JUMPS (>500m)
+        !isNaN(p.lat) &&
+        !isNaN(p.lon)
+      );
+
+    // ==================================================
+    // 🔥 REMOVE HUGE GPS JUMPS
+    // ==================================================
     pts = pts.filter((p,i)=>{
-      if(i===0) return true;
+
+      if(i === 0){
+        return true;
+      }
 
       const prev = pts[i-1];
 
       const d = Math.sqrt(
-        Math.pow((p.lat-prev.lat)*111000,2) +
-        Math.pow((p.lon-prev.lon)*111000,2)
+
+        Math.pow(
+          (p.lat - prev.lat) * 111000,
+          2
+        ) +
+
+        Math.pow(
+          (p.lon - prev.lon) * 111000,
+          2
+        )
       );
 
       return d < 500;
     });
 
-    if(pts.length === 0) continue;
+    if(!pts.length){
+      continue;
+    }
 
     let visited = {};
 
-    // ==========================================
-    // 🔥 SINGLE POINT HANDLING
-    // ==========================================
+    // ==================================================
+    // 🔥 SINGLE POINT MODE
+    // ==================================================
     if(pts.length === 1){
 
       const p = pts[0];
@@ -7859,92 +7886,187 @@ let pts =
 
       for(let id in window.gridIndex){
 
-        const cell = window.gridIndex[id];
-        if(!cell || !cell.center) continue;
+        const cell =
+          window.gridIndex[id];
 
-        const dLat = cell.center[0] - p.lat;
-        const dLon = cell.center[1] - p.lon;
+        if(
+          !cell ||
+          !cell.center
+        ){
+          continue;
+        }
 
-        const dist = dLat*dLat + dLon*dLon;
+        const dLat =
+          cell.center[0] - p.lat;
+
+        const dLon =
+          cell.center[1] - p.lon;
+
+        const dist =
+          dLat*dLat +
+          dLon*dLon;
 
         if(dist < minDist){
+
           minDist = dist;
           nearestId = id;
         }
       }
 
       if(nearestId){
+
         visited[nearestId] = true;
         visitedGlobal[nearestId] = true;
       }
     }
 
-    // ==========================================
-    // 🔥 LINE + HYBRID LOGIC
-    // ==========================================
+    // ==================================================
+    // 🔥 LINE MODE
+    // ==================================================
     else {
 
-      for(let i = 1; i < pts.length; i++){
+      for(let i=1; i<pts.length; i++){
 
         const p1 = pts[i-1];
         const p2 = pts[i];
 
         const lat1 = p1.lat;
         const lon1 = p1.lon;
+
         const lat2 = p2.lat;
         const lon2 = p2.lon;
 
         const distMeters = Math.sqrt(
-          Math.pow((lat2-lat1)*111000,2) +
-          Math.pow((lon2-lon1)*111000,2)
+
+          Math.pow(
+            (lat2-lat1) * 111000,
+            2
+          ) +
+
+          Math.pow(
+            (lon2-lon1) * 111000,
+            2
+          )
         );
 
         let hit = false;
 
-        // 🔥 NORMAL LINE CASE
+        // ==============================================
+        // 🔥 NORMAL LINE INTERSECTION
+        // ==============================================
         if(distMeters <= 200){
 
-          let nearbySet = new Set();
+          let nearbySet =
+            new Set();
 
-          const baseLat1 = Math.floor(lat1 * 1000);
-          const baseLng1 = Math.floor(lon1 * 1000);
-          const baseLat2 = Math.floor(lat2 * 1000);
-          const baseLng2 = Math.floor(lon2 * 1000);
+          const baseLat1 =
+            Math.floor(lat1 * 1000);
 
-          for(let lat = Math.min(baseLat1, baseLat2)-1; lat <= Math.max(baseLat1, baseLat2)+1; lat++){
-            for(let lng = Math.min(baseLng1, baseLng2)-1; lng <= Math.max(baseLng1, baseLng2)+1; lng++){
+          const baseLng1 =
+            Math.floor(lon1 * 1000);
 
-              const key = lat + "_" + lng;
+          const baseLat2 =
+            Math.floor(lat2 * 1000);
 
-              if(window.gridSpatialIndex && window.gridSpatialIndex[key]){
-                for(let cell of window.gridSpatialIndex[key]){
+          const baseLng2 =
+            Math.floor(lon2 * 1000);
+
+          for(
+
+            let lat =
+              Math.min(baseLat1, baseLat2)-1;
+
+            lat <=
+              Math.max(baseLat1, baseLat2)+1;
+
+            lat++
+          ){
+
+            for(
+
+              let lng =
+                Math.min(baseLng1, baseLng2)-1;
+
+              lng <=
+                Math.max(baseLng1, baseLng2)+1;
+
+              lng++
+            ){
+
+              const key =
+                lat + "_" + lng;
+
+              if(
+                window.gridSpatialIndex &&
+                window.gridSpatialIndex[key]
+              ){
+
+                for(
+
+                  let cell of
+                  window.gridSpatialIndex[key]
+                ){
+
                   nearbySet.add(cell);
                 }
               }
             }
           }
 
-          const nearby = Array.from(nearbySet);
+          const nearby =
+            Array.from(nearbySet);
 
-          for(let cell of nearby){
+          for(const cell of nearby){
 
-            if(!cell || !cell.coords || !cell.id) continue;
+            if(
+              !cell ||
+              !cell.coords ||
+              !cell.id
+            ){
+              continue;
+            }
 
-            if(lineIntersectsPolygon(
-              lat1, lon1,
-              lat2, lon2,
-              cell.coords
-            )){
-              visited[cell.id] = true;
-              visitedGlobal[cell.id] = true;
-              hit = true;
+            try {
+
+              const intersects =
+
+                lineIntersectsPolygon(
+
+                  lat1,
+                  lon1,
+
+                  lat2,
+                  lon2,
+
+                  cell.coords
+                );
+
+              if(intersects){
+
+                visited[cell.id] = true;
+                visitedGlobal[cell.id] = true;
+
+                hit = true;
+
+                console.log(
+                  "✅ GRID HIT:",
+                  cell.id
+                );
+              }
+
+            } catch(err){
+
+              console.warn(
+                "⚠ Intersection fail:",
+                err
+              );
             }
           }
         }
 
-        // ==========================================
-        // 🔥 FALLBACK (POINT MODE)
-        // ==========================================
+        // ==============================================
+        // 🔥 FALLBACK NEAREST GRID
+        // ==============================================
         if(!hit){
 
           let nearestId = null;
@@ -7952,152 +8074,214 @@ let pts =
 
           for(let id in window.gridIndex){
 
-            const cell = window.gridIndex[id];
-            if(!cell || !cell.center) continue;
+            const cell =
+              window.gridIndex[id];
 
-            const dLat = cell.center[0] - lat2;
-            const dLon = cell.center[1] - lon2;
+            if(
+              !cell ||
+              !cell.center
+            ){
+              continue;
+            }
 
-            const dist = dLat*dLat + dLon*dLon;
+            const dLat =
+              cell.center[0] - lat2;
+
+            const dLon =
+              cell.center[1] - lon2;
+
+            const dist =
+              dLat*dLat +
+              dLon*dLon;
 
             if(dist < minDist){
+
               minDist = dist;
               nearestId = id;
             }
           }
 
           if(nearestId){
+
             visited[nearestId] = true;
             visitedGlobal[nearestId] = true;
+
+            console.warn(
+              "⚡ Forced mapping:",
+              nearestId
+            );
           }
         }
       }
     }
 
-    // ==========================================
-    // 🔥 FINAL SAFETY (NEVER EMPTY)
-    // ==========================================
+    // ==================================================
+    // 🔥 FINAL SAFETY
+    // ==================================================
     if(Object.keys(visited).length === 0){
 
-      const last = pts[pts.length - 1];
+      const last =
+        pts[pts.length - 1];
 
       let nearestId = null;
       let minDist = Infinity;
 
       for(let id in window.gridIndex){
 
-        const cell = window.gridIndex[id];
-        if(!cell || !cell.center) continue;
+        const cell =
+          window.gridIndex[id];
 
-        const dLat = cell.center[0] - last.lat;
-        const dLon = cell.center[1] - last.lon;
+        if(
+          !cell ||
+          !cell.center
+        ){
+          continue;
+        }
 
-        const dist = dLat*dLat + dLon*dLon;
+        const dLat =
+          cell.center[0] - last.lat;
+
+        const dLon =
+          cell.center[1] - last.lon;
+
+        const dist =
+          dLat*dLat +
+          dLon*dLon;
 
         if(dist < minDist){
+
           minDist = dist;
           nearestId = id;
         }
       }
 
       if(nearestId){
+
         visited[nearestId] = true;
         visitedGlobal[nearestId] = true;
-        console.warn("⚡ Forced mapping:", nearestId);
+
+        console.warn(
+          "⚡ Final fallback:",
+          nearestId
+        );
       }
     }
 
-    // ==========================================
-    // 🔥 SAVE
-    // ==========================================
+    // ==================================================
+    // 🔥 SAVE DAILY
+    // ==================================================
     if(Object.keys(visited).length){
 
-      const key = "grid_" + dayStr;
+      const key =
+        "grid_" + dayStr;
 
       let data = {};
 
       try {
-        data = JSON.parse(localStorage.getItem(key) || "{}");
+
+        data = JSON.parse(
+
+          localStorage.getItem(key)
+          || "{}"
+        );
+
       } catch(e){
+
         data = {};
       }
 
-      Object.keys(visited).forEach(id => {
+      Object.keys(visited)
+        .forEach(id => {
 
-        if(window.gridIndex[id]){
-          
-        }
+          data[id] =
 
-        data[id] = (data[id] || 0) + 1;
-      });
+            (
+              Number(data[id])
+              || 0
+            ) + 1;
+        });
 
-      localStorage.setItem(key, JSON.stringify(data));
+      localStorage.setItem(
 
-      window.gridCache = window.gridCache || {};
-      window.gridCache.today = data;
-      // 🔥 LIVE CURRENT MONTH UPDATE
-window.gridCache.current =
-  window.gridCache.current || {};
+        key,
 
-Object.keys(visited)
-  .forEach(id => {
+        JSON.stringify(data)
+      );
 
-    window.gridCache.current[id] =
+      // ==============================================
+      // 🔥 UPDATE TODAY CACHE
+      // ==============================================
+      window.gridCache =
+        window.gridCache || {};
 
-      (
-        window.gridCache.current[id]
-        || 0
-      ) + 1;
-  });
+      window.gridCache.today = {
 
-// 🔥 SAVE CURRENT MONTH
-localStorage.setItem(
+        ...data
+      };
 
-  "grid_current",
+      console.log(
 
-  JSON.stringify(
-    window.gridCache.current
-  )
-);
+        "✅ Saved grids:",
 
-      
-      // ======================================================
-// 🔥 LIVE GRID REPAINT
-// ======================================================
-try{
+        Object.keys(data).length
+      );
+    }
 
-  renderGrid(
+    else {
 
-    window.__lastMode || "today",
-
-    document.getElementById(
-      "beatSelect"
-    )?.value || "ALL"
-  );
-
-}catch(err){
-
-  console.warn(
-    "⚠ renderGrid refresh fail",
-    err
-  );
-}
-console.log("✅ Saved grids:", Object.keys(data).length);
-    } else {
-      console.warn("⚠ No grids intersected");
+      console.warn(
+        "⚠ No grids intersected"
+      );
     }
   }
 
+  // ==================================================
+  // 🔥 REBUILD CURRENT MONTH
+  // ==================================================
   if(typeof updateMonthCache === "function"){
+
     updateMonthCache();
   }
 
+  // ==================================================
+  // 🔥 REBUILD PREVIOUS MONTH
+  // ==================================================
   if(typeof updatePrevMonthCache === "function"){
+
     updatePrevMonthCache();
   }
 
+  // ==================================================
+  // 🔥 SAFE LIVE REPAINT
+  // ==================================================
+  try {
+
+    if(window.__gridReady){
+
+      renderGrid(
+
+        window.__lastMode || "today",
+
+        document.getElementById(
+          "beatSelect"
+        )?.value || "ALL"
+      );
+    }
+
+  } catch(err){
+
+    console.warn(
+
+      "⚠ renderGrid refresh fail",
+
+      err
+    );
+  }
+
   return visitedGlobal;
-}    function applyMode(mode){
+}  
+    
+    function applyMode(mode){
 
   try {
 
