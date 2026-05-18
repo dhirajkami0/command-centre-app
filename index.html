@@ -7428,11 +7428,12 @@ async function backfillKMLOnceBatched(){
       window.gridCache = window.gridCache || {};
       window.gridCache.today = {};
 
-     // markVisitedHybrid([{
-        track: track,
-        date: file.date
-      }]);
-
+    /*
+markVisitedHybrid([{
+  track: track,
+  date: file.date
+}]);
+*/
       const dateKey = "grid_" + file.date;
 
       // ==========================================
