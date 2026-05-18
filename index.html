@@ -8254,42 +8254,75 @@ function pointInPoly(lat, lng, coords){
 
         data = {};
       }
+const visitedIds =
 
-      Object.keys(visited)
-  .forEach(id => {
+  Object.keys(visited);
 
-    // ==========================================
-    // 🔥 TRUE GRID ENTRY COUNTING
-    // ==========================================
-    if(
+// ==============================================
+// 🔥 CONTINUOUS VISUAL GRID SUPPORT
+// ==============================================
+for(const id of visitedIds){
 
-      window.__lastVisitedGrid
-      !== id
-    ){
+  // ============================================
+  // 🔥 FIRST GRID
+  // ============================================
+  if(
 
-      data[id] =
+    !window.__lastVisitedGrid
+  ){
 
-        (
-          Number(data[id])
-          || 0
-        ) + 1;
+    data[id] =
 
-      window.__lastVisitedGrid =
-        id;
+      (
+        Number(data[id]) || 0
+      ) + 1;
 
-      console.log(
-        "🚪 Grid Entry:",
-        id
-      );
+    window.__lastVisitedGrid =
+      id;
 
-    } else {
+    console.log(
+      "🚪 First Grid:",
+      id
+    );
 
-      console.log(
-        "⏸ Still inside grid:",
-        id
-      );
-    }
-  });
+    continue;
+  }
+
+  // ============================================
+  // 🔥 SAME GRID
+  // ============================================
+  if(
+
+    window.__lastVisitedGrid === id
+  ){
+
+    console.log(
+      "⏸ Same Grid:",
+      id
+    );
+
+    continue;
+  }
+
+  // ============================================
+  // 🔥 NEW GRID ENTRY
+  // ============================================
+  data[id] =
+
+    (
+      Number(data[id]) || 0
+    ) + 1;
+
+  console.log(
+    "➡ Grid Transition:",
+    window.__lastVisitedGrid,
+    "→",
+    id
+  );
+
+  window.__lastVisitedGrid =
+    id;
+}
       localStorage.setItem(
 
         key,
