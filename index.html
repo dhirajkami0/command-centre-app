@@ -6981,26 +6981,23 @@ function renderGrid(mode = "today", beat = "ALL") {
   try {
 
     // =====================================================
-    // 🔥 SAVE LAST MODE
+    // 🔥 SAVE LAST STATE
     // =====================================================
     window.__lastMode = mode;
 
     window.__lastBeat = beat;
 
-    // =====================================================
-    // 🔥 START LOG
-    // =====================================================
     console.log("🎨 renderGrid()");
     console.log("📍 Mode:", mode);
     console.log("🧭 Beat:", beat);
 
     // =====================================================
-    // 🔥 GRID HIDDEN
+    // 🔥 GRID DISABLED
     // =====================================================
     if(window.gridVisible !== true){
 
       console.log(
-        "🛑 Grid hidden → render skipped"
+        "🛑 Grid hidden"
       );
 
       return;
@@ -7012,7 +7009,7 @@ function renderGrid(mode = "today", beat = "ALL") {
     if(window.gridMoving === true){
 
       console.log(
-        "🛑 Map moving → render paused"
+        "🛑 Map moving"
       );
 
       return;
@@ -7037,7 +7034,8 @@ function renderGrid(mode = "today", beat = "ALL") {
     // =====================================================
     // 🔥 ZOOM
     // =====================================================
-    const zoom = map.getZoom();
+    const zoom =
+      map.getZoom();
 
     console.log(
       "🔎 Zoom:",
@@ -7045,17 +7043,21 @@ function renderGrid(mode = "today", beat = "ALL") {
     );
 
     // =====================================================
-    // 🔥 VISUAL LOD SYSTEM
+    // 🔥 VISUAL LOD
     // =====================================================
     let renderStep = 1;
 
-    if(zoom <= 11){
+    if(zoom <= 10){
+
+      renderStep = 8;
+
+    } else if(zoom <= 11){
 
       renderStep = 6;
 
     } else if(zoom <= 13){
 
-      renderStep = 3;
+      renderStep = 4;
 
     } else if(zoom <= 15){
 
@@ -7072,29 +7074,29 @@ function renderGrid(mode = "today", beat = "ALL") {
     );
 
     // =====================================================
-    // 🔥 ZOOM STYLE CONFIG
+    // 🔥 VISUAL STYLE
     // =====================================================
-    let alphaVisited = 0.65;
+    let alphaVisited = 0.55;
 
-    let alphaUnvisited = 0.22;
+    let alphaUnvisited = 0.16;
 
-    let borderAlpha = 0.18;
+    let borderAlpha = 0.10;
 
-    let borderWidth = 0.5;
+    let borderWidth = 0.45;
 
     if(zoom >= 16){
 
-      alphaVisited = 0.82;
+      alphaVisited = 0.75;
 
-      alphaUnvisited = 0.38;
+      alphaUnvisited = 0.28;
 
-      borderAlpha = 0.4;
+      borderAlpha = 0.22;
 
-      borderWidth = 0.9;
+      borderWidth = 0.7;
     }
 
     // =====================================================
-    // 🔥 INIT GRID CANVAS
+    // 🔥 INIT CANVAS
     // =====================================================
     if(!window.__gridCanvas){
 
@@ -7108,15 +7110,20 @@ function renderGrid(mode = "today", beat = "ALL") {
       const canvas =
         document.createElement("canvas");
 
-      canvas.style.position = "absolute";
+      canvas.style.position =
+        "absolute";
 
-      canvas.style.top = "0";
+      canvas.style.top =
+        "0";
 
-      canvas.style.left = "0";
+      canvas.style.left =
+        "0";
 
-      canvas.style.pointerEvents = "none";
+      canvas.style.pointerEvents =
+        "none";
 
-      canvas.style.transformOrigin = "0 0";
+      canvas.style.transformOrigin =
+        "0 0";
 
       canvas.style.imageRendering =
         "pixelated";
@@ -7126,10 +7133,11 @@ function renderGrid(mode = "today", beat = "ALL") {
 
       pane.appendChild(canvas);
 
-      window.__gridCanvas = canvas;
+      window.__gridCanvas =
+        canvas;
 
       // ===================================================
-      // 🔥 SYNC CANVAS
+      // 🔥 SYNC
       // ===================================================
       map.on(
         "move",
@@ -7143,9 +7151,11 @@ function renderGrid(mode = "today", beat = "ALL") {
           const size =
             map.getSize();
 
-          canvas.width = size.x;
+          canvas.width =
+            size.x;
 
-          canvas.height = size.y;
+          canvas.height =
+            size.y;
 
           syncGridCanvas();
         }
@@ -7177,16 +7187,18 @@ function renderGrid(mode = "today", beat = "ALL") {
       canvas.getContext(
         "2d",
         {
-          alpha: true
+          alpha:true
         }
       );
 
     const size =
       map.getSize();
 
-    canvas.width = size.x;
+    canvas.width =
+      size.x;
 
-    canvas.height = size.y;
+    canvas.height =
+      size.y;
 
     syncGridCanvas();
 
@@ -7206,15 +7218,13 @@ function renderGrid(mode = "today", beat = "ALL") {
 
       current =
         window.gridCache?.today || {};
-    }
 
-    else if(mode === "current"){
+    } else if(mode === "current"){
 
       current =
         window.gridCache?.month || {};
-    }
 
-    else if(mode === "prev"){
+    } else if(mode === "prev"){
 
       current =
         window.gridCache?.prev || {};
@@ -7231,11 +7241,15 @@ function renderGrid(mode = "today", beat = "ALL") {
     // =====================================================
     let maxCount = 1;
 
-    Object.values(current).forEach(v => {
+    Object.values(current)
+    .forEach(v => {
 
       const c =
+
         (v === true)
+
           ? 1
+
           : Number(v) || 0;
 
       if(c > maxCount){
@@ -7245,7 +7259,7 @@ function renderGrid(mode = "today", beat = "ALL") {
     });
 
     // =====================================================
-    // 🔥 CLEAN HEAT COLOR
+    // 🔥 CLEAN COLOR SCALE
     // =====================================================
     function getHeatColor(t){
 
@@ -7261,24 +7275,24 @@ function renderGrid(mode = "today", beat = "ALL") {
 
       if(t < 0.25){
 
-        return "#124d1f";
+        return "#155d27";
       }
 
       if(t < 0.5){
 
-        return "#1faa59";
+        return "#22aa55";
       }
 
       if(t < 0.75){
 
-        return "#e6c229";
+        return "#e0c13a";
       }
 
-      return "#ff5722";
+      return "#ff6a33";
     }
 
     // =====================================================
-    // 🔥 COUNTERS
+    // 🔥 STATS
     // =====================================================
     let renderedCount = 0;
 
@@ -7288,9 +7302,6 @@ function renderGrid(mode = "today", beat = "ALL") {
 
     let unvisitedCount = 0;
 
-    // =====================================================
-    // 🔥 TIMER
-    // =====================================================
     const startTime =
       performance.now();
 
@@ -7340,19 +7351,16 @@ function renderGrid(mode = "today", beat = "ALL") {
       }
 
       // ===================================================
-      // 🔥 CENTER
-      // ===================================================
-      const cLat =
-        cell.center.lat;
-
-      const cLng =
-        cell.center.lng;
-
-      // ===================================================
-      // 🔥 VIEWPORT CULLING
+      // 🔥 VIEWPORT
       // ===================================================
       const point =
-        L.latLng(cLat, cLng);
+
+        L.latLng(
+
+          cell.center.lat,
+
+          cell.center.lng
+        );
 
       if(
 
@@ -7411,7 +7419,9 @@ function renderGrid(mode = "today", beat = "ALL") {
       if(visitCount > 0){
 
         const intensity =
-          visitCount / maxCount;
+
+          visitCount /
+          maxCount;
 
         color =
           getHeatColor(
@@ -7422,7 +7432,8 @@ function renderGrid(mode = "today", beat = "ALL") {
       // ===================================================
       // 🔥 STYLE
       // ===================================================
-      ctx.fillStyle = color;
+      ctx.fillStyle =
+        color;
 
       ctx.globalAlpha =
 
@@ -7466,15 +7477,15 @@ function renderGrid(mode = "today", beat = "ALL") {
           if(i === 0){
 
             ctx.moveTo(
-              Math.round(p.x),
-              Math.round(p.y)
+              p.x,
+              p.y
             );
 
           } else {
 
             ctx.lineTo(
-              Math.round(p.x),
-              Math.round(p.y)
+              p.x,
+              p.y
             );
           }
         }
@@ -7487,11 +7498,10 @@ function renderGrid(mode = "today", beat = "ALL") {
       // ===================================================
       // 🔥 BORDER
       // ===================================================
-      if(zoom >= 13){
+      if(zoom >= 14){
 
         ctx.strokeStyle =
-
-          `rgba(0,255,255,${borderAlpha})`;
+          "rgba(0,255,255,0.10)";
 
         ctx.lineWidth =
           borderWidth;
@@ -7503,12 +7513,12 @@ function renderGrid(mode = "today", beat = "ALL") {
     }
 
     // =====================================================
-    // 🔥 RESET ALPHA
+    // 🔥 RESET
     // =====================================================
     ctx.globalAlpha = 1;
 
     // =====================================================
-    // 🔥 TIMER END
+    // 🔥 TIME
     // =====================================================
     const elapsed =
 
@@ -7520,7 +7530,7 @@ function renderGrid(mode = "today", beat = "ALL") {
       );
 
     // =====================================================
-    // 🔥 FINAL LOGS
+    // 🔥 LOGS
     // =====================================================
     console.log(
       "🟩 Actually rendered:",
@@ -7563,8 +7573,7 @@ function renderGrid(mode = "today", beat = "ALL") {
       e
     );
   }
-}    
-    function syncGridCanvas() {
+}    function syncGridCanvas() {
   if (!window.__gridCanvas) return;
   // This calculates the offset from the top-left of the container to the map layer
   const topLeft = map.containerPointToLayerPoint([0, 0]);
