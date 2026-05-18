@@ -1512,13 +1512,10 @@ window.liveTrack = [];
 
 // =====================================================
 // 🔥 POLYLINE LAYER
+// SAFE INIT
 // =====================================================
-window.routeLayer =
-
-  window.routeLayer ||
-
-  L.layerGroup().addTo(map);
-window.__lastMode = "today";
+window.routeLayer = null;
+    window.__lastMode = "today";
 window.__gridReady = false;
 
 
@@ -4869,33 +4866,191 @@ var tempLayer = L.tileLayer(
    // ======================================================
 // 🗺 MAP INIT (FINAL STABLE)
 // ======================================================
+// ======================================================
+// 🗺 MAP INIT (FINAL POLYLINE OPTIMIZED)
+// ======================================================
 var map = L.map('map', {
-  center:[26.561, 89.507],
-  zoom:14,
-  zoomControl:false,
+
+  // ====================================================
+  // 📍 INITIAL VIEW
+  // ====================================================
+  center: [26.561, 89.507],
+
+  zoom: 14,
+
+  zoomControl: false,
+
+  // ====================================================
+  // 🚀 PERFORMANCE
+  // ====================================================
   preferCanvas: true,
 
-  // 🔥 CRITICAL FIX (REMOVES GRID SEPARATION)
+  // ====================================================
+  // 🔥 STABILITY FIXES
+  // ====================================================
   zoomAnimation: false,
+
   fadeAnimation: false,
-  markerZoomAnimation: false
+
+  markerZoomAnimation: false,
+
+  // ====================================================
+  // 🔥 MOBILE PAN SMOOTHNESS
+  // ====================================================
+  inertia: true,
+
+  inertiaDeceleration: 3000,
+
+  inertiaMaxSpeed: 1500,
+
+  // ====================================================
+  // 🔥 RENDER OPTIMIZATION
+  // ====================================================
+  updateWhenZooming: false,
+
+  updateWhenIdle: true
 });
 
-/* 🔥 BASE LAYERS LOAD */
+
+// ======================================================
+// 🌍 MAKE GLOBAL
+// ======================================================
+window.map = map;
+
+
+// ======================================================
+// 🛰 BASE LAYER
+// ======================================================
 esriSat.addTo(map);
 
-/* 🖱 CONTROLS */
+
+// ======================================================
+// 🖱 CONTROLS
+// ======================================================
 map.scrollWheelZoom.disable();
+
 map.tap = true;
 
-L.control.zoom({ position: 'topright' }).addTo(map);
 
 // ======================================================
-// 🟩 GRID LAYER INIT
+// 🔍 ZOOM CONTROL
 // ======================================================
-window.gridLayer = window.gridLayer || L.layerGroup();
+L.control.zoom({
+
+  position: 'topright'
+
+}).addTo(map);
+
 
 // ======================================================
+// 🟩 GRID LAYER (HIDDEN ANALYTICS ONLY)
+// ======================================================
+window.gridLayer =
+
+  window.gridLayer ||
+
+  L.layerGroup();
+
+
+// ======================================================
+// 🛣 POLYLINE ROUTE LAYER
+// SAFE INIT (FIXED)
+// ======================================================
+if(!window.routeLayer){
+
+  window.routeLayer =
+
+    L.layerGroup().addTo(map);
+
+  console.log(
+    "🛣 Route layer initialized"
+  );
+}
+
+
+// ======================================================
+// 🟢 VISITED / 🔴 UNVISITED
+// HIDDEN ANALYTICS LAYERS
+// ======================================================
+window.visitedLayer =
+
+  window.visitedLayer ||
+
+  L.layerGroup();
+
+window.unvisitedLayer =
+
+  window.unvisitedLayer ||
+
+  L.layerGroup();
+
+
+// ======================================================
+// 🚫 DISABLE OLD GRID UI ENGINE
+// ======================================================
+window.__gridRenderingDisabled = true;
+
+window.gridVisible = false;
+
+
+// ======================================================
+// 🔥 SMOOTH ROUTE REPAINT
+// ======================================================
+map.on(
+
+  "moveend zoomend",
+
+  () => {
+
+    try {
+
+      if(
+
+        typeof renderPatrolRoutes ===
+        "function"
+
+      ){
+
+        console.log(
+          "🧭 map repaint"
+        );
+
+        renderPatrolRoutes(
+
+          window.__lastMode ||
+          "today",
+
+          window.__lastBeat ||
+          "ALL"
+        );
+      }
+
+    } catch(err){
+
+      console.warn(
+        "⚠ Route repaint fail",
+        err
+      );
+    }
+  }
+);
+
+
+// ======================================================
+// 🔥 OPTIONAL DEBUG
+// ======================================================
+console.log(
+  "🗺 Tactical Map Initialized"
+);
+
+console.log(
+  "🛣 Polyline Engine Active"
+);
+
+console.log(
+  "🚫 Grid UI Disabled"
+);
+    // ======================================================
 // 🔥 GRID ↔ MAP SYNC (SAFE + STABLE)
 // ======================================================
 
