@@ -8254,76 +8254,23 @@ function pointInPoly(lat, lng, coords){
 
         data = {};
       }
-const visitedIds =
+Object.keys(visited)
+  .forEach(id => {
 
-  Object.keys(visited);
-
-// ==============================================
-// 🔥 CONTINUOUS VISUAL GRID SUPPORT
-// ==============================================
-for(const id of visitedIds){
-
-  // ============================================
-  // 🔥 FIRST GRID
-  // ============================================
-  if(
-
-    !window.__lastVisitedGrid
-  ){
-
+    // ==========================================
+    // 🔥 PERSIST GRID FOREVER
+    // ==========================================
     data[id] =
 
       (
         Number(data[id]) || 0
       ) + 1;
 
-    window.__lastVisitedGrid =
-      id;
-
     console.log(
-      "🚪 First Grid:",
+      "💾 Saved Grid:",
       id
     );
-
-    continue;
-  }
-
-  // ============================================
-  // 🔥 SAME GRID
-  // ============================================
-  if(
-
-    window.__lastVisitedGrid === id
-  ){
-
-    console.log(
-      "⏸ Same Grid:",
-      id
-    );
-
-    continue;
-  }
-
-  // ============================================
-  // 🔥 NEW GRID ENTRY
-  // ============================================
-  data[id] =
-
-    (
-      Number(data[id]) || 0
-    ) + 1;
-
-  console.log(
-    "➡ Grid Transition:",
-    window.__lastVisitedGrid,
-    "→",
-    id
-  );
-
-  window.__lastVisitedGrid =
-    id;
-}
-      localStorage.setItem(
+  });      localStorage.setItem(
 
         key,
 
