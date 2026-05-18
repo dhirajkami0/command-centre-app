@@ -8126,7 +8126,7 @@ async function ensureGridReady(){
 
   const TARGET_GRID_SIZE =0.0009;
   const CACHE_KEY = "grid_cache_v1";
-  const MIN_VALID_GRID = 5000;
+  const MIN_VALID_GRID = 3000;
 
   // ==========================================
   // 🔥 PREVENT RE-BUILD IF ALREADY READY (CRITICAL FIX)
@@ -10092,11 +10092,11 @@ function loadGridFromCache(){
           // ====================================
           const id =
 
-            centerLat.toFixed(4)
+            centerLat.toFixed(5)
 
             + "_"
 
-            + centerLon.toFixed(4);
+            + centerLon.toFixed(5);
 
           // ====================================
           // 🔥 CELL POLYGON
