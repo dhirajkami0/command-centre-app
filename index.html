@@ -8995,35 +8995,36 @@ Object.keys(visited)
     updatePrevMonthCache();
   }
 
-  // ==================================================
-  // 🔥 SAFE LIVE REPAINT
-  // ==================================================
+ // ==================================================
+// 🔥 SAFE LIVE REPAINT
+// ==================================================
+try {
+
   if(window.__gridReady){
 
-  console.log(
-    "🎨 renderPatrolRoutes()"
-  );
+    console.log(
+      "🎨 renderPatrolRoutes()"
+    );
 
-  renderPatrolRoutes(
+    renderPatrolRoutes(
 
-    window.__lastMode || "today",
+      window.__lastMode || "today",
 
-    document.getElementById(
-      "beatSelect"
-    )?.value || "ALL"
-  );
-}
-  } catch(err){
-
-    console.warn(
-
-      "⚠ renderGrid refresh fail",
-
-      err
+      document.getElementById(
+        "beatSelect"
+      )?.value || "ALL"
     );
   }
 
-  console.log(
+}catch(err){
+
+  console.warn(
+
+    "⚠ renderPatrolRoutes refresh fail",
+
+    err
+  );
+} console.log(
     "✅ visitedGlobal:",
     visitedGlobal
   );
