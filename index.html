@@ -2844,34 +2844,161 @@ try {
       ) || "{}"
     );
 
-  window.gridCache.current =
+ try {
 
-    JSON.parse(
+  // =====================================================
+  // 🔥 CURRENT MONTH
+  // =====================================================
+  const currentMonth =
+
+    new Date()
+      .toISOString()
+      .slice(0,7);
+
+  // =====================================================
+  // 🔥 SAVED MONTH
+  // =====================================================
+  const savedMonth =
+
+    localStorage.getItem(
+      "coverage_month"
+    );
+
+  // =====================================================
+  // 🔥 FIRST RUN
+  // =====================================================
+  if(!savedMonth){
+
+    localStorage.setItem(
+
+      "coverage_month",
+
+      currentMonth
+    );
+  }
+
+  // =====================================================
+  // 🔥 MONTH CHANGED
+  // =====================================================
+  else if(savedMonth !== currentMonth){
+
+    console.log(
+      "📆 Month rollover"
+    );
+
+    // =================================================
+    // 🔥 MOVE CURRENT → PREV
+    // =================================================
+    localStorage.setItem(
+
+      "grid_prev",
+
       localStorage.getItem(
         "grid_current"
       ) || "{}"
     );
 
+    // =================================================
+    // 🔥 CLEAR CURRENT MONTH
+    // =================================================
+    localStorage.setItem(
+
+      "grid_current",
+
+      "{}"
+    );
+
+    // =================================================
+    // 🔥 CLEAR TODAY
+    // =================================================
+    localStorage.setItem(
+
+      "grid_today",
+
+      "{}"
+    );
+
+    // =================================================
+    // 🔥 SAVE NEW MONTH
+    // =================================================
+    localStorage.setItem(
+
+      "coverage_month",
+
+      currentMonth
+    );
+  }
+
+  // =====================================================
+  // 🔥 LOAD TODAY CACHE
+  // =====================================================
+  window.gridCache.today =
+
+    JSON.parse(
+
+      localStorage.getItem(
+        "grid_today"
+      ) || "{}"
+    );
+
+  // =====================================================
+  // 🔥 LOAD MONTH CACHE
+  // 🔥 FIXED (NO MORE current)
+  // =====================================================
+  window.gridCache.month =
+
+    JSON.parse(
+
+      localStorage.getItem(
+        "grid_current"
+      ) || "{}"
+    );
+
+  // =====================================================
+  // 🔥 LOAD PREVIOUS MONTH
+  // =====================================================
   window.gridCache.prev =
 
     JSON.parse(
+
       localStorage.getItem(
         "grid_prev"
       ) || "{}"
     );
 
+  // =====================================================
+  // 🔥 OPTIONAL DEBUG
+  // =====================================================
+  console.log(
+    "📦 Today cache:",
+    Object.keys(
+      window.gridCache.today
+    ).length
+  );
+
+  console.log(
+    "📅 Month cache:",
+    Object.keys(
+      window.gridCache.month
+    ).length
+  );
+
+  console.log(
+    "📚 Prev cache:",
+    Object.keys(
+      window.gridCache.prev
+    ).length
+  );
+
 }catch(err){
 
   console.warn(
+
     "⚠ rollover fail",
+
     err
   );
 }
-    // 🔥 CLEAN OLD KEY (PERMANENT FIX)
-    if(window.gridCache){
-      delete window.gridCache.month;
-    }
-
     // ======================================================
     // 🔥 BACKEND LOAD (BLOCKING — CRITICAL FIX)
     // ======================================================
@@ -6565,20 +6692,57 @@ window.gridCache.today =
 
 // 🔥 LIVE CURRENT MONTH UPDATE
 Object.keys(visited)
-  .forEach(id => {
+.forEach(id => {
 
-    window.gridCache.current =
-      window.gridCache.current || {};
+  // ==========================================
+  // 🔥 INIT CACHE
+  // ==========================================
+  window.gridCache.current =
 
+    window.gridCache.current || {};
+
+  // ==========================================
+  // 🔥 FIRST GRID ENTRY ONLY
+  // ==========================================
+  if(
+
+    window.__lastVisitedGrid !== id
+
+  ){
+
+    // ======================================
+    // 🔥 INCREMENT VISIT
+    // ======================================
     window.gridCache.current[id] =
 
       (
         window.gridCache.current[id]
         || 0
       ) + 1;
-  });
 
+    // ======================================
+    // 🔥 SAVE LAST GRID
+    // ======================================
+    window.__lastVisitedGrid = id;
+
+    console.log(
+      "🟢 GRID ENTER:",
+      id
+    );
+
+  } else {
+
+    console.log(
+      "⏸ SAME GRID:",
+      id
+    );
+  }
+});
+
+
+// ==========================================
 // 🔥 SAVE CURRENT MONTH
+// ==========================================
 localStorage.setItem(
 
   "grid_current",
@@ -6587,11 +6751,17 @@ localStorage.setItem(
     window.gridCache.current
   )
 );
-  if(typeof updateMonthCache === "function"){
-    updateMonthCache();
-  }
 
-  console.log("🟢 VISITED:", id);
+
+// ==========================================
+// 🔥 REBUILD MONTH CACHE
+// ==========================================
+if(typeof updateMonthCache === "function"){
+
+  updateMonthCache();
+}  
+     
+     console.log("🟢 VISITED:", id);
 
   // ===============================
   // 🔥 LIVE RENDER
@@ -6987,26 +7157,18 @@ function renderGrid(mode = "today", beat = "ALL") {
   try {
 
     // =====================================================
+    // 🔥 SAVE LAST MODE
+    // =====================================================
+    window.__lastMode = mode;
+
+    window.__lastBeat = beat;
+
+    // =====================================================
     // 🔥 START LOG
     // =====================================================
-    console.log(
-      "🎨 renderGrid()"
-    );
-
-    console.log(
-      "📍 Mode:",
-      mode
-    );
-
-    console.log(
-      "🧭 Beat:",
-      beat
-    );
-
-    console.log(
-      "🔎 Zoom:",
-      map.getZoom()
-    );
+    console.log("🎨 renderGrid()");
+    console.log("📍 Mode:", mode);
+    console.log("🧭 Beat:", beat);
 
     // =====================================================
     // 🔥 GRID HIDDEN
@@ -7033,9 +7195,9 @@ function renderGrid(mode = "today", beat = "ALL") {
     }
 
     // =====================================================
-    // 🔥 SAFETY
+    // 🔥 GRID READY
     // =====================================================
-    if (
+    if(
 
       !window.gridIndex ||
 
@@ -7053,36 +7215,31 @@ function renderGrid(mode = "today", beat = "ALL") {
     }
 
     // =====================================================
-    // 🔥 ZOOM CONFIG
+    // 🔥 ZOOM
     // =====================================================
     const zoom = map.getZoom();
 
+    console.log(
+      "🔎 Zoom:",
+      zoom
+    );
+
+    // =====================================================
+    // 🔥 ZOOM STYLE CONFIG
+    // =====================================================
     let alphaVisited = 0.6;
-    let alphaUnvisited = 0.4;
-    let borderAlpha = 0.35;
-    let borderWidth = 0.6;
 
-    if (zoom < 13) {
+    let alphaUnvisited = 0.25;
 
-      alphaVisited = 0.4;
+    let borderAlpha = 0.25;
 
-      alphaUnvisited = 0.25;
+    let borderWidth = 0.4;
 
-      borderAlpha = 0.15;
+    if(zoom >= 16){
 
-      borderWidth = 0.3;
+      alphaVisited = 0.75;
 
-    } else if (zoom < 16) {
-
-      borderAlpha = 0.25;
-
-      borderWidth = 0.45;
-
-    } else {
-
-      alphaVisited = 0.7;
-
-      alphaUnvisited = 0.5;
+      alphaUnvisited = 0.45;
 
       borderAlpha = 0.45;
 
@@ -7090,9 +7247,9 @@ function renderGrid(mode = "today", beat = "ALL") {
     }
 
     // =====================================================
-    // 🔥 INIT CANVAS
+    // 🔥 INIT GRID CANVAS
     // =====================================================
-    if (!window.__gridCanvas) {
+    if(!window.__gridCanvas){
 
       console.log(
         "🟩 Creating canvas layer"
@@ -7121,6 +7278,9 @@ function renderGrid(mode = "today", beat = "ALL") {
 
       window.__gridCanvas = canvas;
 
+      // ===================================================
+      // 🔥 SYNC CANVAS
+      // ===================================================
       map.on(
         "move",
         syncGridCanvas
@@ -7140,33 +7300,25 @@ function renderGrid(mode = "today", beat = "ALL") {
           syncGridCanvas();
         }
       );
-
       map.on(
-        "moveend zoomend",
-        () => {
+  "moveend zoomend",
+  () => {
 
-          console.log(
-            "🧭 moveend/zoomend"
-          );
+    console.log(
+      "🧭 moveend/zoomend"
+    );
 
-          renderGrid(
+    renderGrid(
 
-            window.__lastMode ||
-            "today",
+      window.__lastMode ||
+      "today",
 
-            window.__lastBeat ||
-            "ALL"
-          );
-        }
-      );
-    }
-
-    // =====================================================
-    // 🔥 SAVE LAST MODE
-    // =====================================================
-    window.__lastMode = mode;
-
-    window.__lastBeat = beat;
+      window.__lastBeat ||
+      "ALL"
+    );
+  }
+);
+  }
 
     // =====================================================
     // 🔥 CANVAS
@@ -7207,7 +7359,7 @@ function renderGrid(mode = "today", beat = "ALL") {
     else if(mode === "current"){
 
       current =
-        window.gridCache?.current || {};
+        window.gridCache?.month || {};
     }
 
     else if(mode === "prev"){
@@ -7223,7 +7375,34 @@ function renderGrid(mode = "today", beat = "ALL") {
       map.getBounds();
 
     // =====================================================
-    // 🔥 HEATMAP MAX
+    // 🔥 LOD SYSTEM
+    // =====================================================
+    let renderStep = 1;
+
+    if(zoom <= 12){
+
+      renderStep = 6;
+
+    } else if(zoom <= 14){
+
+      renderStep = 3;
+
+    } else if(zoom <= 16){
+
+      renderStep = 2;
+
+    } else {
+
+      renderStep = 1;
+    }
+
+    console.log(
+      "🧠 Render Step:",
+      renderStep
+    );
+
+    // =====================================================
+    // 🔥 MAX VISITS
     // =====================================================
     let maxCount = 1;
 
@@ -7245,33 +7424,28 @@ function renderGrid(mode = "today", beat = "ALL") {
     // =====================================================
     function getHeatColor(t){
 
-      if(t < 0) t = 0;
-
-      if(t > 1) t = 1;
+      t = Math.max(
+        0,
+        Math.min(1, t)
+      );
 
       const r =
         Math.floor(255 * t);
 
       const g =
         Math.floor(
-
           255 *
-
-          (1 - Math.abs(
-            t - 0.5
-          ) * 2)
+          (1 - Math.abs(t - 0.5) * 2)
         );
 
       const b =
-        Math.floor(
-          255 * (1 - t)
-        );
+        Math.floor(255 * (1 - t));
 
       return `rgb(${r},${g},${b})`;
     }
 
     // =====================================================
-    // 🔥 RENDER COUNTERS
+    // 🔥 COUNTERS
     // =====================================================
     let renderedCount = 0;
 
@@ -7282,24 +7456,44 @@ function renderGrid(mode = "today", beat = "ALL") {
     let unvisitedCount = 0;
 
     // =====================================================
-    // 🔥 RENDER START TIME
+    // 🔥 TIMER
     // =====================================================
     const startTime =
       performance.now();
 
     // =====================================================
+    // 🔥 GRID ENTRIES
+    // =====================================================
+    const entries =
+
+      Object.entries(
+        window.gridIndex
+      );
+
+    // =====================================================
     // 🔥 MAIN LOOP
     // =====================================================
-    for (
+    for(
 
-      const [id, cell]
+      let idx = 0;
 
-      of Object.entries(
-        window.gridIndex
-      )
+      idx < entries.length;
+
+      idx += renderStep
 
     ){
 
+      const [
+
+        id,
+
+        cell
+
+      ] = entries[idx];
+
+      // ===================================================
+      // 🔥 INVALID
+      // ===================================================
       if(
 
         !cell ||
@@ -7312,32 +7506,20 @@ function renderGrid(mode = "today", beat = "ALL") {
         continue;
       }
 
-      // =================================================
+      // ===================================================
       // 🔥 CENTER
-      // =================================================
+      // ===================================================
       const cLat =
-
-        Array.isArray(cell.center)
-
-          ? cell.center[0]
-
-          : cell.center.lat;
+        cell.center.lat;
 
       const cLng =
+        cell.center.lng;
 
-        Array.isArray(cell.center)
-
-          ? cell.center[1]
-
-          : cell.center.lng;
-
-      // =================================================
+      // ===================================================
       // 🔥 VIEWPORT CULLING
-      // =================================================
-      const point = L.latLng(
-        cLat,
-        cLng
-      );
+      // ===================================================
+      const point =
+        L.latLng(cLat, cLng);
 
       if(
 
@@ -7350,9 +7532,9 @@ function renderGrid(mode = "today", beat = "ALL") {
         continue;
       }
 
-      // =================================================
+      // ===================================================
       // 🔥 BEAT FILTER
-      // =================================================
+      // ===================================================
       if(
 
         beat !== "ALL" &&
@@ -7360,12 +7542,13 @@ function renderGrid(mode = "today", beat = "ALL") {
         cell.beat !== beat
 
       ){
+
         continue;
       }
 
-      // =================================================
+      // ===================================================
       // 🔥 VISITS
-      // =================================================
+      // ===================================================
       const raw =
         current[id];
 
@@ -7386,9 +7569,9 @@ function renderGrid(mode = "today", beat = "ALL") {
         unvisitedCount++;
       }
 
-      // =================================================
+      // ===================================================
       // 🔥 COLOR
-      // =================================================
+      // ===================================================
       let color = "#220000";
 
       if(visitCount > 0){
@@ -7397,14 +7580,12 @@ function renderGrid(mode = "today", beat = "ALL") {
           visitCount / maxCount;
 
         color =
-          getHeatColor(
-            intensity
-          );
+          getHeatColor(intensity);
       }
 
-      // =================================================
+      // ===================================================
       // 🔥 STYLE
-      // =================================================
+      // ===================================================
       ctx.fillStyle = color;
 
       ctx.globalAlpha =
@@ -7415,9 +7596,9 @@ function renderGrid(mode = "today", beat = "ALL") {
 
           : alphaVisited;
 
-      // =================================================
-      // 🔥 POLYGON
-      // =================================================
+      // ===================================================
+      // 🔥 COORDS
+      // ===================================================
       const coords =
         cell.coords;
 
@@ -7431,6 +7612,9 @@ function renderGrid(mode = "today", beat = "ALL") {
         continue;
       }
 
+      // ===================================================
+      // 🔥 DRAW
+      // ===================================================
       ctx.beginPath();
 
       coords.forEach(
@@ -7464,9 +7648,9 @@ function renderGrid(mode = "today", beat = "ALL") {
 
       ctx.fill();
 
-      // =================================================
+      // ===================================================
       // 🔥 BORDER
-      // =================================================
+      // ===================================================
       if(zoom >= 10){
 
         ctx.strokeStyle =
@@ -7488,7 +7672,7 @@ function renderGrid(mode = "today", beat = "ALL") {
     ctx.globalAlpha = 1;
 
     // =====================================================
-    // 🔥 RENDER TIME
+    // 🔥 TIMER END
     // =====================================================
     const elapsed =
 
@@ -7543,7 +7727,7 @@ function renderGrid(mode = "today", beat = "ALL") {
       e
     );
   }
-}
+}    
     function syncGridCanvas() {
   if (!window.__gridCanvas) return;
   // This calculates the offset from the top-left of the container to the map layer
@@ -7697,13 +7881,37 @@ function updateVisitedCache(newVisited){
 
       if(!id) return;
 
-      if(!todayData[id]){
-        todayData[id] = 1;
-        added++;
-      } else {
-        todayData[id] += 1;
-      }
+      if(
 
+  window.__lastVisitedGrid !== id
+
+){
+
+  if(!todayData[id]){
+
+    todayData[id] = 1;
+
+    added++;
+
+  } else {
+
+    todayData[id] += 1;
+  }
+
+  window.__lastVisitedGrid = id;
+
+  console.log(
+    "🟢 GRID ENTER:",
+    id
+  );
+
+} else {
+
+  console.log(
+    "⏸ SAME GRID:",
+    id
+  );
+}
     });
 
     try {
@@ -7797,7 +8005,7 @@ function getCoverageStats(mode = "today", beat = "ALL"){
   // ==========================================
   // 🔥 AREA CALCULATION
   // ==========================================
-  const step = window.gridMeta.size || 0.00045;
+  const step = window.gridMeta.size ||0.0009;
   const metersPerDeg = 111320;
 
   const cellAreaSqm = Math.pow(step * metersPerDeg, 2);
@@ -8071,7 +8279,7 @@ function getLocalDateStr(date = new Date()){
 // ======================================================
 async function ensureGridReady(){
 
-  const TARGET_GRID_SIZE = 0.00045;
+  const TARGET_GRID_SIZE =0.0009;
   const CACHE_KEY = "grid_cache_v1";
   const MIN_VALID_GRID = 5000;
 
@@ -8489,10 +8697,10 @@ function pointInPoly(lat, lng, coords){
         }
 
         const dLat =
-          cell.center[0] - p.lat;
+          cell.center.lat - p.lat;
 
         const dLon =
-          cell.center[1] - p.lon;
+          cell.center.lng - p.lon;
 
         const dist =
           dLat*dLat +
@@ -8560,7 +8768,7 @@ function pointInPoly(lat, lng, coords){
         // ==============================================
         // 🔥 NORMAL LINE INTERSECTION
         // ==============================================
-        if(distMeters <= 200){
+        if(distMeters <= 350){
 
           let nearbySet =
             new Set();
@@ -8696,10 +8904,10 @@ function pointInPoly(lat, lng, coords){
             }
 
             const dLat =
-              cell.center[0] - lat2;
+              cell.center.lat - lat2;
 
             const dLon =
-              cell.center[1] - lon2;
+              cell.center.lng - lon2;
 
             const dist =
               dLat*dLat +
@@ -8754,10 +8962,10 @@ function pointInPoly(lat, lng, coords){
         }
 
         const dLat =
-          cell.center[0] - last.lat;
+          cell.center.lat - last.lat;
 
         const dLon =
-          cell.center[1] - last.lon;
+          cell.center.lng - last.lon;
 
         const dist =
           dLat*dLat +
@@ -9380,7 +9588,7 @@ function showGridPopup(cell, latlng){
   <br>
 
   Area Covered:
-  <b>${(visited * 0.25).toFixed(2)} ha</b>
+  <b>${(visited * 1).toFixed(2)} ha</b>
 
   <br>
 
@@ -9672,7 +9880,7 @@ window.beatMap = {
 function loadGridFromCache(){
 
   const CACHE_KEY = "grid_cache_v1";
-  const TARGET_GRID_SIZE = 0.00045;
+  const TARGET_GRID_SIZE =0.0009;
 
   try {
 
@@ -9757,7 +9965,7 @@ function loadGridFromCache(){
       return;
     }
 
-    const step = 0.00045; // ~50m
+    const step =0.0009; // ~50m
     let count = 0;
 
     window.gridIndex = {};
@@ -10325,7 +10533,7 @@ function showGridStatus(data) {
   // =====================================================
   // 🔥 250m GRID SIZE
   // =====================================================
-  const offset = 0.00225;
+  const offset = 0.0009;
 
   // =====================================================
   // 🔥 BATCH RENDER
