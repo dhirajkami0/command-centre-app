@@ -12159,9 +12159,9 @@ let groups = {};
 staff.forEach(s=>{
 
   const key =
-    Number(s.lat).toFixed(5)
+    Number(s.lat).toFixed(4)
     + ","
-    + Number(s.lon).toFixed(5);
+    + Number(s.lon).toFixed(4);
 
   if(!groups[key]){
     groups[key] = [];
@@ -17378,7 +17378,7 @@ function sendGPS(lat, lon){
   // ============================================================
   // 🔥 2. DUPLICATE FILTER (same lat/lon)
   // ============================================================
-  const key = lat.toFixed(5) + "_" + lon.toFixed(5);
+  const key = lat.toFixed(4) + "_" + lon.toFixed(4);
 
   if(window.__lastGPSKey === key){
     console.log("⛔ Duplicate GPS skipped");
