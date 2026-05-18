@@ -4795,6 +4795,9 @@ setInterval(() => {
 // ======================================================// ======================================================
 // 🗺 MAIN MAP INIT (OPTIMIZED FOR GRID ENGINE)
 // ======================================================
+// ======================================================
+// 🗺 MAIN MAP INIT (ULTIMATE GRID-STABLE VERSION)
+// ======================================================
 var map = L.map('map', {
 
   // ====================================================
@@ -4813,7 +4816,6 @@ var map = L.map('map', {
 
   // ====================================================
   // 🔥 CRITICAL GRID STABILITY FIX
-  // REMOVES GRID DRIFT / SEPARATION
   // ====================================================
   zoomAnimation: false,
 
@@ -4831,17 +4833,21 @@ var map = L.map('map', {
   inertiaMaxSpeed: 1500,
 
   // ====================================================
-  // 🔥 BETTER MOBILE PERFORMANCE
+  // 🔥 REDUCE REDRAW CHAOS
   // ====================================================
   updateWhenZooming: false,
 
-  updateWhenIdle: true
+  updateWhenIdle: true,
+
+  // ====================================================
+  // 🔥 MOBILE GPU STABILITY
+  // ====================================================
+  preferCanvas: true
 });
 
 
 // ======================================================
 // 🔥 GLOBAL GRID CANVAS RENDERER
-// MASSIVE PERFORMANCE FIX
 // ======================================================
 window.gridRenderer = L.canvas({
 
@@ -4908,9 +4914,18 @@ window.gridVisible = false;
 
 
 // ======================================================
-// 🔥 PREVENT GRID LAG DURING MAP MOVEMENT
+// 🔥 GRID MOVEMENT LOCK
+// ======================================================
+window.gridMoving = false;
+
+
+// ======================================================
+// 🔥 MOVEMENT START
+// HIDE GRIDS DURING FAST PAN
 // ======================================================
 map.on("movestart", function(){
+
+  window.gridMoving = true;
 
   if(window.gridLayer){
 
@@ -4920,10 +4935,100 @@ map.on("movestart", function(){
 
         layer.setStyle({
 
-          smoothFactor: 0
+          opacity: 0,
+
+          fillOpacity: 0
         });
       }
     });
+  }
+});
+
+
+// ======================================================
+// 🔥 MOVEMENT END
+// REBUILD ONLY VISIBLE GRID
+// ======================================================
+map.on("moveend", function(){
+
+  window.gridMoving = false;
+
+  // ====================================================
+  // 🔥 GRID NOT ENABLED
+  // ====================================================
+  if(!window.gridVisible){
+    return;
+  }
+
+  // ====================================================
+  // 🔥 RESTORE GRID VISIBILITY
+  // ====================================================
+  if(window.gridLayer){
+
+    window.gridLayer.eachLayer(function(layer){
+
+      if(layer?.setStyle){
+
+        const fillColor =
+
+          layer.options.fillColor || "";
+
+        layer.setStyle({
+
+          opacity: 1,
+
+          fillOpacity:
+
+            fillColor === "#00ff00"
+
+              ? 0.42
+
+              : 0.10
+        });
+      }
+    });
+  }
+
+  // ====================================================
+  // 🔥 RENDER ONLY CURRENT VIEW
+  // ====================================================
+  renderGrid(
+
+    window.__lastMode || "today",
+
+    document.getElementById(
+      "beatSelect"
+    )?.value || "ALL"
+  );
+});
+
+
+// ======================================================
+// 🔥 ZOOM START
+// ======================================================
+map.on("zoomstart", function(){
+
+  window.gridMoving = true;
+});
+
+
+// ======================================================
+// 🔥 ZOOM END
+// ======================================================
+map.on("zoomend", function(){
+
+  window.gridMoving = false;
+
+  if(window.gridVisible){
+
+    renderGrid(
+
+      window.__lastMode || "today",
+
+      document.getElementById(
+        "beatSelect"
+      )?.value || "ALL"
+    );
   }
 });
 
@@ -4937,6 +5042,10 @@ console.log(
 
 console.log(
   "🟩 Canvas Grid Renderer Ready"
+);
+
+console.log(
+  "🚀 Grid Movement Optimization Enabled"
 );
 
 // ======================================================
@@ -9808,9 +9917,13 @@ function openStatsPopup(name, latlng) {
 
       summaryLayer.bringToFront();
     }
-
+// =====================================================
+// 🔥 GRID MOVEMENT LOCK
+// =====================================================
+window.gridMoving = false;
     /* 🟩 GRID */
-  function showGridStatus(data) {
+ /* 🟩 GRID */
+function showGridStatus(data) {
 
   // =====================================================
   // 🔥 SAFETY
@@ -9858,19 +9971,6 @@ function openStatsPopup(name, latlng) {
     "📍 Sample Data:",
     data.slice(0, 5)
   );
-
-  // =====================================================
-  // 🔥 PERFORMANCE LIMIT
-  // =====================================================
-  if(data.length > 2500){
-
-    console.warn(
-      "⚠ Grid limit applied:",
-      data.length
-    );
-
-    data = data.slice(0, 2500);
-  }
 
   // =====================================================
   // 🔥 RESET ZOOM FLAG
@@ -9927,10 +10027,28 @@ function openStatsPopup(name, latlng) {
       return;
     }
 
+    // ===================================================
+    // 🔥 MAP MOVING
+    // ===================================================
+    if(window.gridMoving === true){
+
+      console.log(
+        "🛑 Map moving → render paused"
+      );
+
+      return;
+    }
+
     const end = Math.min(
       i + batchSize,
       data.length
     );
+
+    // ===================================================
+    // 🔥 CURRENT VIEWPORT
+    // ===================================================
+    const visibleBounds =
+      map.getBounds();
 
     for(; i < end; i++){
 
@@ -9940,6 +10058,20 @@ function openStatsPopup(name, latlng) {
         !p ||
         !p.lat ||
         !p.lon
+      ){
+        continue;
+      }
+
+      // =================================================
+      // 🔥 VIEWPORT CULLING
+      // RENDER ONLY VISIBLE MAP AREA
+      // =================================================
+      if(
+
+        !visibleBounds.contains(
+          [p.lat, p.lon]
+        )
+
       ){
         continue;
       }
@@ -9968,9 +10100,6 @@ function openStatsPopup(name, latlng) {
       // =================================================
       const rect = L.rectangle(bounds, {
 
-        // ===============================================
-        // 🔥 HUGE FIX
-        // ===============================================
         renderer: window.gridRenderer,
 
         interactive: false,
@@ -9979,9 +10108,6 @@ function openStatsPopup(name, latlng) {
 
         bubblingMouseEvents: false,
 
-        // ===============================================
-        // 🎨 STYLE
-        // ===============================================
         color:
           isVisited
             ? "#00ff00"
@@ -9997,9 +10123,6 @@ function openStatsPopup(name, latlng) {
             ? 0.42
             : 0.10,
 
-        // ===============================================
-        // 🔥 CRITICAL
-        // ===============================================
         weight: 0.3
       });
 
@@ -10041,15 +10164,8 @@ function openStatsPopup(name, latlng) {
       // =================================================
       // 🔥 ONLY SHOW IF ENABLED
       // =================================================
-      if(
+      if(window.gridVisible === true){
 
-        window.gridVisible === true
-
-      ){
-
-        // ===============================================
-        // 🔥 SAFE MAP ADD
-        // ===============================================
         if(
 
           !map.hasLayer(
@@ -10063,14 +10179,8 @@ function openStatsPopup(name, latlng) {
           );
         }
 
-        // ===============================================
-        // 🔥 FRONT
-        // ===============================================
         window.gridLayer.bringToFront();
 
-        // ===============================================
-        // 📊 DEBUG
-        // ===============================================
         console.log(
           "🟢 Visited:",
           visitedLayer.getLayers().length
@@ -10089,7 +10199,7 @@ function openStatsPopup(name, latlng) {
 
         !window.gridZoomDone &&
 
-        data.length > 0
+        visitedLayer.getLayers().length > 0
 
       ){
 
