@@ -3925,6 +3925,10 @@ async function loadTracksByFilter(
 // 🔥 RENDER HISTORY TRACK
 // REAL SEGMENT SAFE VERSION
 // =====================================================
+// =====================================================
+// 🔥 RENDER HISTORICAL TRACK
+// FIXED NULL CRASH VERSION
+// =====================================================
 function renderHistoricalTrack(
   points
 ){
@@ -3935,9 +3939,7 @@ function renderHistoricalTrack(
     // 🔥 VALIDATE
     // ==================================================
     if(
-
       !Array.isArray(points) ||
-
       points.length < 2
     ){
       return;
@@ -3949,102 +3951,75 @@ function renderHistoricalTrack(
     points = [...points];
 
     // ==================================================
-    // 🔥 TIME SORT
-    // exact patrol continuity
+    // 🔥 SORT BY TIME
     // ==================================================
     points.sort(
-
       (a,b)=>
-
-        (a.time || 0)
-
-        -
-
+        (a.time || 0) -
         (b.time || 0)
     );
 
     // ==================================================
-    // 🔥 HARD POINT LIMIT
-    // prevents WebView freeze
+    // 🔥 LIMIT POINTS
     // ==================================================
     const MAX_POINTS = 300;
 
     if(points.length > MAX_POINTS){
 
       const step = Math.ceil(
-
-        points.length /
-
-        MAX_POINTS
+        points.length / MAX_POINTS
       );
 
       points = points.filter(
-
         (_,i)=>
-
           i % step === 0 ||
-
           i === points.length - 1
       );
     }
 
     // ==================================================
-    // 🔥 BUILD SINGLE LATLNG ARRAY
+    // 🔥 SAFE SEGMENTS
     // ==================================================
-    const latlngs = [];
+    const segments = [];
+
+    let currentSegment = [];
 
     // ==================================================
-    // 🔥 MAX SAFE GAP
-    // prevents fake teleport lines
+    // 🔥 GAP LIMIT
     // ==================================================
     const MAX_GAP = 0.0008;
 
     // ==================================================
     // 🔥 WALK POINTS
     // ==================================================
-    for(
+    for(let i = 0; i < points.length; i++){
 
-      let i = 0;
+      const p = points[i];
 
-      i < points.length;
-
-      i++
-    ){
-
-      const p =
-        points[i];
-
-      const prev =
-        points[i - 1];
+      const prev = points[i - 1];
 
       // ===============================================
-      // 🔥 INVALID
+      // 🔥 INVALID POINT
       // ===============================================
       if(
-
         !p ||
-
+        p.lat == null ||
+        p.lng == null ||
         isNaN(p.lat) ||
-
         isNaN(p.lng)
       ){
         continue;
       }
 
-      const lat =
-        Number(p.lat);
-
-      const lng =
-        Number(p.lng);
+      const lat = Number(p.lat);
+      const lng = Number(p.lng);
 
       // ===============================================
-      // 🔥 INVALID FINAL
+      // 🔥 RANGE CHECK
       // ===============================================
       if(
-
-        isNaN(lat) ||
-
-        isNaN(lng)
+        Math.abs(lat) > 90 ||
+        Math.abs(lng) > 180
       ){
         continue;
       }
@@ -4054,12 +4029,7 @@ function renderHistoricalTrack(
       // ===============================================
       if(i === 0){
 
-        latlngs.push([
-
-          lat,
-
-          lng
-        ]);
+        currentSegment.push([lat,lng]);
 
         continue;
       }
@@ -4068,22 +4038,20 @@ function renderHistoricalTrack(
       // 🔥 INVALID PREV
       // ===============================================
       if(
-
         !prev ||
-
+        prev.lat == null ||
+        prev.lng == null ||
         isNaN(prev.lat) ||
-
         isNaN(prev.lng)
       ){
 
-        latlngs.push(null);
+        if(currentSegment.length >= 2){
+          segments.push(currentSegment);
+        }
 
-        latlngs.push([
-
-          lat,
-
-          lng
-        ]);
+        currentSegment = [
+          [lat,lng]
+        ];
 
         continue;
       }
@@ -4092,56 +4060,74 @@ function renderHistoricalTrack(
       // 🔥 DISTANCE
       // ===============================================
       const dist = Math.hypot(
-
-        lat -
-
-        Number(prev.lat),
-
-        lng -
-
-        Number(prev.lng)
+        lat - Number(prev.lat),
+        lng - Number(prev.lng)
       );
 
       // ===============================================
-      // 🔥 HUGE GPS GAP
-      // break visual continuity
+      // 🔥 HUGE GPS JUMP
+      // BREAK LINE SAFELY
       // ===============================================
       if(dist > MAX_GAP){
 
-        latlngs.push(null);
+        if(currentSegment.length >= 2){
+          segments.push(currentSegment);
+        }
+
+        currentSegment = [];
       }
 
       // ===============================================
       // 🔥 APPEND
       // ===============================================
-      latlngs.push([
-
+      currentSegment.push([
         lat,
-
         lng
       ]);
     }
 
     // ==================================================
-    // 🔥 TOO SMALL
+    // 🔥 FINAL SEGMENT
     // ==================================================
-    if(latlngs.length < 2){
+    if(currentSegment.length >= 2){
+      segments.push(currentSegment);
+    }
+
+    // ==================================================
+    // 🔥 NOTHING VALID
+    // ==================================================
+    if(!segments.length){
+
+      console.warn(
+        "⚠ No valid segments"
+      );
+
       return;
     }
 
     // ==================================================
-    // 🔥 SINGLE FAST POLYLINE
+    // 🔥 ENSURE HISTORY LAYER
     // ==================================================
-    const line =
+    if(
+      window.map &&
+      !window.map.hasLayer(
+        window.historyLayer
+      )
+    ){
+      window.historyLayer.addTo(
+        window.map
+      );
+    }
 
-      L.polyline(
+    // ==================================================
+    // 🔥 RENDER SEGMENTS
+    // ==================================================
+    segments.forEach(seg => {
 
-        latlngs,
-
+      const line = L.polyline(
+        seg,
         {
-
-          renderer:
-            L.canvas(),
+          renderer: L.canvas(),
 
           color:"#00e676",
 
@@ -4151,109 +4137,68 @@ function renderHistoricalTrack(
 
           smoothFactor:3,
 
+          lineJoin:"round",
+
+          lineCap:"round",
+
           interactive:true
         }
       );
 
-    // ==================================================
-    // 🔥 ADD TO HISTORY
-    // ==================================================
-    line.addTo(
-      window.historyLayer
-    );
+      line.addTo(
+        window.historyLayer
+      );
 
-    // ==================================================
-    // 🔥 CLICK ANALYTICS POPUP
-    // ==================================================
-    line.on(
-
-      "click",
-
-      function(e){
+      // ===============================================
+      // 🔥 CLICK POPUP
+      // ===============================================
+      line.on("click", function(e){
 
         try{
 
           const key =
-
             `${window.currentHistoryMode}_${
               window.currentHistoryBeat
             }`;
 
           const a =
+            window.historyAnalytics?.[key];
 
-            window.historyAnalytics?.[
-              key
-            ];
-
-          if(!a){
-            return;
-          }
+          if(!a) return;
 
           let density = "LOW";
 
           if(a.repeatedGrids > 20){
-
             density = "HIGH";
           }
-
-          else if(
-            a.repeatedGrids > 8
-          ){
-
+          else if(a.repeatedGrids > 8){
             density = "MEDIUM";
           }
 
           const html = `
-
             <div style="
               font-size:13px;
               line-height:1.7;
               min-width:230px;
             ">
 
-              <b>🧭 Beat:</b>
-              ${a.beat}<br>
-
-              <b>📅 Mode:</b>
-              ${a.mode}<br>
-
-              <b>📍 Patrol Points:</b>
-              ${a.totalPoints}<br>
-
-              <b>🟩 Covered Grids:</b>
-              ${a.gridsCovered}<br>
-
-              <b>🟥 Unvisited:</b>
-              ${a.unvisitedGrids}<br>
-
-              <b>🔥 Repeat Patrol:</b>
-              ${a.repeatedGrids}<br>
-
-              <b>📏 Distance:</b>
-              ${a.estimatedDistance} km<br>
-
-              <b>📊 Coverage:</b>
-              ${a.coveragePercent}%<br>
-
-              <b>🔁 Density:</b>
-              ${density}
+              <b>🧭 Beat:</b> ${a.beat}<br>
+              <b>📅 Mode:</b> ${a.mode}<br>
+              <b>📍 Patrol Points:</b> ${a.totalPoints}<br>
+              <b>🟩 Covered Grids:</b> ${a.gridsCovered}<br>
+              <b>🟥 Unvisited:</b> ${a.unvisitedGrids}<br>
+              <b>🔥 Repeat Patrol:</b> ${a.repeatedGrids}<br>
+              <b>📏 Distance:</b> ${a.estimatedDistance} km<br>
+              <b>📊 Coverage:</b> ${a.coveragePercent}%<br>
+              <b>🔁 Density:</b> ${density}
 
             </div>
           `;
 
           L.popup()
-
-            .setLatLng(
-              e.latlng
-            )
-
-            .setContent(
-              html
-            )
-
-            .openOn(
-              window.map
-            );
+            .setLatLng(e.latlng)
+            .setContent(html)
+            .openOn(window.map);
 
         }catch(err){
 
@@ -4262,25 +4207,14 @@ function renderHistoricalTrack(
             err
           );
         }
-      }
+      });
+    });
+
+    console.log(
+      "✅ Historical track rendered:",
+      segments.length,
+      "segments"
     );
-
-    // ==================================================
-    // 🔥 ENSURE LAYER ON MAP
-    // ==================================================
-    if(
-
-      window.map &&
-
-      !window.map.hasLayer(
-        window.historyLayer
-      )
-    ){
-
-      window.historyLayer.addTo(
-        window.map
-      );
-    }
 
   }catch(err){
 
@@ -4289,7 +4223,7 @@ function renderHistoricalTrack(
       err
     );
   }
-}   
+}    
     window.__gridLoadedFromCache = false;
 let appStarted = false;
 
