@@ -1519,7 +1519,32 @@ async function saveGridToDB(gridData){
       return;
     }
 
-    await idbKeyval.set('full_grid_index', gridData);
+    const serializableGrid = {};
+
+Object.keys(gridData).forEach(id => {
+
+  const c = gridData[id];
+
+  serializableGrid[id] = {
+
+  id: c.id,
+
+  coords: c.coords,
+
+  center: c.center,
+
+  beat: c.beat || "UNKNOWN",
+
+  visited: c.visited || false
+};
+});
+
+await idbKeyval.set(
+
+  'full_grid_index',
+
+  serializableGrid
+);
     await idbKeyval.set('grid_timestamp', Date.now());
 
     console.log("💾 Grid saved:", Object.keys(gridData).length);
@@ -1531,28 +1556,320 @@ async function saveGridToDB(gridData){
 
 // 🔥 LOAD GRID
 async function loadGridFromDB(){
+
   try {
 
     if(typeof idbKeyval === "undefined"){
-      console.warn("⚠ idbKeyval not ready");
+
+      console.warn(
+        "⚠ idbKeyval not ready"
+      );
+
       return false;
     }
 
-    const cached = await idbKeyval.get('full_grid_index');
+    const cached =
+      await idbKeyval.get(
+        'full_grid_index'
+      );
 
-    if(cached && Object.keys(cached).length){
-      window.gridIndex = cached;
-      window.__gridReady = true;
-      console.log("⚡ Grid loaded:", Object.keys(cached).length);
-      return true;
+    if(
+      !cached ||
+      !Object.keys(cached).length
+    ){
+      return false;
     }
 
+    // ==========================================
+    // 🔥 RESET GRID
+    // ==========================================
+    window.gridIndex = {};
+
+    // ==========================================
+    // 🔥 REBUILD POLYGONS
+    // ==========================================
+    Object.keys(cached).forEach(id => {
+
+      const c = cached[id];
+
+      if(
+        !c ||
+        !c.coords
+      ){
+        return;
+      }
+
+      const poly = L.polygon(
+
+        c.coords,
+
+        {
+
+          renderer:
+            window.sharedRenderer,
+
+          interactive: false,
+
+          stroke: true,
+
+          color: "#333",
+
+          weight: 0.4,
+
+          opacity: 0.35,
+
+          fillColor: "#111",
+
+          fillOpacity: 0.04,
+
+          smoothFactor: 0
+        }
+      );
+
+      poly.addTo(
+        window.gridRootLayer
+      );
+
+      // ======================================
+      // 🔥 RESTORE VISITED STYLE
+      // ======================================
+      if(c.visited){
+
+        poly.setStyle({
+
+          fillColor: "#00ff88",
+
+          fillOpacity: 0.55,
+
+          color: "#00cc66",
+
+          opacity: 0.95,
+
+          weight: 0.7
+        });
+      }
+
+      // ======================================
+      // 🔥 FINAL STORE
+      // ======================================
+      window.gridIndex[id] = {
+
+  id: c.id,
+
+  coords: c.coords,
+
+  poly,
+
+  center: c.center,
+
+  beat:
+    c.beat || "UNKNOWN",
+        
+
+  visited:
+    c.visited || false,
+
+  rendered:
+    c.visited || false
+};
+    
+});
+
+    // ==========================================
+    // 🔥 FAST ARRAY CACHE
+    // ==========================================
+    window.gridCellArray =
+      Object.values(
+        window.gridIndex
+      );
+
+    window.__gridReady = true;
+
+    console.log(
+
+      "⚡ Grid rebuilt from DB:",
+
+      window.gridCellArray.length
+    );
+
+    return true;
+
   } catch(err){
-    console.warn("⚠ IndexedDB load failed", err);
+
+    console.warn(
+
+      "⚠ IndexedDB load failed",
+
+      err
+    );
   }
 
   return false;
-}    
+}
+// =====================================================
+// 🔥 RESET ALL GRID STYLES
+// =====================================================
+
+function resetGridStyles(){
+
+  if(!window.gridCellArray){
+    return;
+  }
+
+  for(const cell of window.gridCellArray){
+
+    if(!cell || !cell.poly){
+      continue;
+    }
+
+    cell.rendered = false;
+
+    cell.poly.setStyle({
+
+      fillColor: "#111",
+
+      fillOpacity: 0.04,
+
+      color: "#333",
+
+      opacity: 0.35,
+
+      weight: 0.4
+    });
+  }
+}
+
+    // =====================================================
+// 🔥 REPAINT GRID FROM CACHE
+// =====================================================
+
+function repaintCoverageGrid(
+  mode = "today",
+  beat = "ALL"
+){
+
+  try {
+
+    resetGridStyles();
+
+    let current = {};
+
+    if(mode === "today"){
+
+      current =
+        window.gridCache?.today || {};
+    }
+    else if(mode === "current"){
+
+      current =
+        window.gridCache?.current || {};
+    }
+    else if(mode === "prev"){
+
+      current =
+        window.gridCache?.prev || {};
+    }
+
+    Object.keys(current).forEach(id => {
+
+      if(!current[id]){
+        return;
+      }
+
+      const cell =
+        window.gridIndex?.[id];
+
+      if(!cell){
+        return;
+      }
+
+      if(
+        beat !== "ALL" &&
+        cell.beat !== beat
+      ){
+        return;
+      }
+
+      paintVisitedGrid(id);
+    });
+
+    if(GRID_DEBUG){
+
+      console.log(
+        "🎨 Coverage repainted:",
+        mode,
+        beat
+      );
+    }
+
+  } catch(e){
+
+    console.error(
+      "❌ repaintCoverageGrid:",
+      e
+    );
+  }
+}
+    // ====================================================
+// 🔥 INCREMENTAL GRID STYLE UPDATE
+// ====================================================
+
+function paintVisitedGrid(id){
+
+  const cell =
+    window.gridIndex?.[id];
+
+  // ================================================
+  // 🔥 SAFETY CHECK
+  // ================================================
+  if(
+    !cell ||
+    !cell.poly
+  ){
+    return;
+  }
+
+  // ================================================
+  // 🔥 SKIP DUPLICATE RENDER
+  // ================================================
+  if(cell.rendered){
+    return;
+  }
+
+  // ================================================
+  // 🔥 MARK RENDERED
+  // ================================================
+  cell.rendered = true;
+
+  cell.visited = true;
+
+  // ================================================
+  // 🔥 INCREMENTAL STYLE UPDATE ONLY
+  // ================================================
+  cell.poly.setStyle({
+
+    fillColor: "#00ff88",
+
+    fillOpacity: 0.55,
+
+    color: "#00cc66",
+
+    opacity: 0.95,
+
+    weight: 0.7
+  });
+
+  // ================================================
+  // 🔥 OPTIONAL DEBUG
+  // ================================================
+  if(GRID_DEBUG){
+
+    console.log(
+      "🟩 Grid painted:",
+      id
+    );
+  }
+}
     const DEBUG = false;
 
 function safeBackend(action, payload = {}) {
@@ -2981,28 +3298,23 @@ try {
         }
 
         // 🔥 LOAD FROM DB
-        if(!window.__gridLoadedFromCache){
+if(!window.__gridLoadedFromCache){
 
-          try {
-            const cached = await idbKeyval.get('full_grid_index');
+  const loaded =
+    await loadGridFromDB();
 
-            if(cached && Object.keys(cached).length){
+  if(loaded){
 
-              window.gridIndex = cached;
-              window.__gridReady = true;
-              window.__gridLoadedFromCache = true;
+    window.__gridLoadedFromCache =
+      true;
 
-              console.log("⚡ Grid loaded:", Object.keys(cached).length);
+    clearInterval(
+      gridInitInterval
+    );
 
-              clearInterval(gridInitInterval);
-              return;
-            }
-
-          } catch(e){
-            console.warn("⚠ IndexedDB load failed");
-          }
-        }
-
+    return;
+  }
+}
         // 🔥 BUILD GRID
         if(!window.__gridLoadedFromCache && !window.__gridBuilding){
 
@@ -6361,10 +6673,19 @@ function lineIntersect(lat1, lon1, lat2, lon2, lat3, lon3, lat4, lon4) {
 
   data[id] = true;
 
-  localStorage.setItem(
-  key,
-  JSON.stringify(data)
+  clearTimeout(
+  window.__gridSaveTimer
 );
+
+window.__gridSaveTimer =
+  setTimeout(() => {
+
+    localStorage.setItem(
+      key,
+      JSON.stringify(data)
+    );
+
+  }, 1200);
 
 window.gridCache =
   window.gridCache || {};
@@ -6434,32 +6755,54 @@ function showCoveragePanel(){
 
   try {
 
-    const panel = document.getElementById("coveragePanel");
+    const panel =
+      document.getElementById(
+        "coveragePanel"
+      );
 
     if(panel){
-      panel.style.display = "block";
-      panel.classList.remove("minimized");
+
+      panel.style.display =
+        "block";
+
+      panel.classList.remove(
+        "minimized"
+      );
     }
 
-    console.log("📊 Coverage Panel OPEN");
+    if(GRID_DEBUG){
 
-    // 🔥 ALWAYS PREPARE GRID
+      console.log(
+        "📊 Coverage Panel OPEN"
+      );
+    }
+
     ensureGridReady();
 
-    const mode = window.currentCoverageMode || "today";
-    const beat = document.getElementById("beatSelect")?.value || "ALL";
+    const mode =
+      window.currentCoverageMode
+      || "today";
 
-    // 🔥 sync mode globally (VERY IMPORTANT)
+    const beat =
+      document.getElementById(
+        "beatSelect"
+      )?.value || "ALL";
+
     window.__lastMode = mode;
 
-    // 🔥 ALWAYS RENDER FROM CACHE
-    renderGrid(mode, beat);
+    repaintCoverageGrid(
+      mode,
+      beat
+    );
 
   } catch(e){
-    console.error("❌ showCoveragePanel error:", e);
+
+    console.error(
+      "❌ showCoveragePanel error:",
+      e
+    );
   }
-}
-/* ============================================================
+}/* ============================================================
    🔴 CLOSE COVERAGE PANEL (CLEAN + SAFE)
 ============================================================ */
 function closeCoveragePanel(){
@@ -6791,8 +7134,14 @@ function assignGridToBeat(rangeLayer){
 }// ======================================================
 // 🧠 GRID CACHE (LIVE + MONTH)
 // ======================================================
-function renderGrid(mode = "today", beat = "ALL") {
-  try {
+function renderGrid(){
+
+  console.warn(
+    "⚠ renderGrid disabled"
+  );
+
+  return;
+}  try {
 
     if (!window.gridIndex || !window.gridMeta || !Object.keys(window.gridIndex).length) {
       console.warn("⚠ Grid not ready (skip render)");
@@ -7195,11 +7544,43 @@ function updateVisitedCache(newVisited){
     });
 
     try {
-      localStorage.setItem(key, JSON.stringify(todayData));
-    } catch(e){
-      console.warn("⚠ Cache save failed");
-    }
 
+  clearTimeout(
+    window.__gridSaveTimer
+  );
+
+  window.__gridSaveTimer =
+    setTimeout(() => {
+
+      try {
+
+        localStorage.setItem(
+          key,
+          JSON.stringify(todayData)
+        );
+
+        if(GRID_DEBUG){
+
+          console.log(
+            "💾 Grid cache saved"
+          );
+        }
+
+      } catch(e){
+
+        console.warn(
+          "⚠ Cache save failed"
+        );
+      }
+
+    }, 1200);
+
+} catch(e){
+
+  console.warn(
+    "⚠ Cache debounce failed"
+  );
+}
     // ==========================================
     // 🔥 MEMORY SYNC
     // ==========================================
@@ -7325,7 +7706,16 @@ function getCoverageStats(mode = "today", beat = "ALL"){
 // 🔥 GLOBAL CONTROL FLAGS
 // ==========================================
 let isBackfillRunning = false;
+// ==========================================
+// 🔥 GRID SAVE DEBOUNCE TIMER
+// ==========================================
+window.__gridSaveTimer = null;
 
+// ==========================================
+// 🔥 GRID DEBUG SWITCH
+// ==========================================
+const GRID_DEBUG = false;
+    
 async function backfillKMLOnceBatched(){
 
   const DONE_KEY = "kml_backfill_done_v3";
@@ -7610,10 +8000,17 @@ async function ensureGridReady(){
         console.log("⚡ Grid loaded from cache:", size);
 
         // 🔥 DO NOT AUTO RENDER HERE (IMPORTANT)
-        if(window.gridVisible){
-          renderGrid("current", "ALL");
-        }
+       if(window.gridVisible){
 
+  repaintCoverageGrid(
+
+    window.currentCoverageMode
+    || "current",
+
+    window.currentBeat
+    || "ALL"
+  );
+}
         return;
       }
 
@@ -7726,10 +8123,15 @@ async function ensureGridReady(){
     // ==========================================
     window.__gridReady = true;
 
-    // ==========================================
-    // 🔥 STEP 5: FINAL RENDER (ONLY IF ENABLED)
-    // ==========================================
-    if(window.gridVisible){
+// ==========================================
+// 🔥 FAST ARRAY CACHE
+// ==========================================
+window.gridCellArray =
+  Object.values(window.gridIndex);
+
+// ==========================================
+// 🔥 STEP 5: FINAL RENDER
+// ==========================================if(window.gridVisible){
       renderGrid("current", "ALL");
     }
 
@@ -7955,56 +8357,87 @@ function pointInPoly(lat, lng, coords){
     // ==================================================
     if(pts.length === 1){
 
-      console.log(
-        "📌 Single Point Mode"
-      );
+  if(GRID_DEBUG){
 
-      const p = pts[0];
+    console.log(
+      "📌 Single Point Mode"
+    );
+  }
 
-      let nearestId = null;
-      let minDist = Infinity;
+  const p = pts[0];
 
-      for(let id in window.gridIndex){
+  let nearestId = null;
 
-        const cell =
-          window.gridIndex[id];
+  let minDist = Infinity;
 
-        if(
-          !cell ||
-          !cell.center
-        ){
-          continue;
-        }
+  // ==========================================
+  // 🔥 FAST ITERATION
+  // ==========================================
+  for(const cell of window.gridCellArray){
 
-        const dLat =
-          cell.center[0] - p.lat;
-
-        const dLon =
-          cell.center[1] - p.lon;
-
-        const dist =
-          dLat*dLat +
-          dLon*dLon;
-
-        if(dist < minDist){
-
-          minDist = dist;
-          nearestId = id;
-        }
-      }
-
-      if(nearestId){
-
-        visited[nearestId] = true;
-        visitedGlobal[nearestId] = true;
-
-        console.log(
-          "📌 Single Point Grid:",
-          nearestId
-        );
-      }
+    if(
+      !cell ||
+      !cell.center
+    ){
+      continue;
     }
 
+    // ==========================================
+    // 🔥 HYBRID CENTER SUPPORT
+    // ==========================================
+    const cLat =
+
+      Array.isArray(cell.center)
+        ? cell.center[0]
+        : cell.center.lat;
+
+    const cLng =
+
+      Array.isArray(cell.center)
+        ? cell.center[1]
+        : cell.center.lng;
+
+    const dLat =
+      cLat - p.lat;
+
+    const dLon =
+      cLng - p.lon;
+
+    const dist =
+      dLat * dLat +
+      dLon * dLon;
+
+    if(dist < minDist){
+
+      minDist = dist;
+
+      nearestId = cell.id;
+    }
+  }
+
+  // ==========================================
+  // 🔥 APPLY VISIT
+  // ==========================================
+  if(nearestId){
+
+    visited[nearestId] = true;
+
+    visitedGlobal[nearestId] = true;
+
+    // ========================================
+    // 🔥 LIVE STYLE UPDATE
+    // ========================================
+    paintVisitedGrid(nearestId);
+
+    if(GRID_DEBUG){
+
+      console.log(
+        "📌 Single Point Grid:",
+        nearestId
+      );
+    }
+  }
+}
     // ==================================================
     // 🔥 LINE MODE
     // ==================================================
@@ -8038,11 +8471,13 @@ function pointInPoly(lat, lng, coords){
           )
         );
 
-        console.log(
-          "📏 Segment Distance:",
-          distMeters
-        );
+       if(GRID_DEBUG){
 
+  console.log(
+    "📏 Segment Distance:",
+    distMeters
+  );
+}
         let hit = false;
 
         // ==============================================
@@ -8143,8 +8578,13 @@ function pointInPoly(lat, lng, coords){
               if(intersects){
 
                 visited[cell.id] = true;
-                visitedGlobal[cell.id] = true;
 
+visitedGlobal[cell.id] = true;
+
+// ==========================================
+// 🔥 LIVE STYLE UPDATE
+// ==========================================
+paintVisitedGrid(cell.id);
                 hit = true;
 
                 console.log(
@@ -8171,46 +8611,64 @@ function pointInPoly(lat, lng, coords){
           let nearestId = null;
           let minDist = Infinity;
 
-          for(let id in window.gridIndex){
+        for(const cell of window.gridCellArray){
 
-            const cell =
-              window.gridIndex[id];
+  if(
+    !cell ||
+    !cell.center
+  ){
+    continue;
+  }
 
-            if(
-              !cell ||
-              !cell.center
-            ){
-              continue;
-            }
+  // ==========================================
+  // 🔥 HYBRID CENTER SUPPORT
+  // ==========================================
+  const cLat =
 
-            const dLat =
-              cell.center[0] - lat2;
+    Array.isArray(cell.center)
+      ? cell.center[0]
+      : cell.center.lat;
 
-            const dLon =
-              cell.center[1] - lon2;
+  const cLng =
 
-            const dist =
-              dLat*dLat +
-              dLon*dLon;
+    Array.isArray(cell.center)
+      ? cell.center[1]
+      : cell.center.lng;
 
-            if(dist < minDist){
+  const dLat =
+    cLat - lat2;
 
-              minDist = dist;
-              nearestId = id;
-            }
-          }
+  const dLon =
+    cLng - lon2;
 
-          if(nearestId){
+  const dist =
+    dLat * dLat +
+    dLon * dLon;
 
-            visited[nearestId] = true;
-            visitedGlobal[nearestId] = true;
+  if(dist < minDist){
 
-            console.warn(
-              "⚡ Forced mapping:",
-              nearestId
-            );
-          }
-        }
+    minDist = dist;
+
+    nearestId = cell.id;
+  }
+}
+
+if(nearestId){
+
+  visited[nearestId] = true;
+
+  visitedGlobal[nearestId] = true;
+
+  paintVisitedGrid(nearestId);
+
+  if(GRID_DEBUG){
+
+    console.warn(
+      "⚡ Forced mapping:",
+      nearestId
+    );
+  }
+}
       }
     }
 
@@ -8229,11 +8687,7 @@ function pointInPoly(lat, lng, coords){
       let nearestId = null;
       let minDist = Infinity;
 
-      for(let id in window.gridIndex){
-
-        const cell =
-          window.gridIndex[id];
-
+     for(const cell of window.gridCellArray){
         if(
           !cell ||
           !cell.center
@@ -8260,9 +8714,11 @@ function pointInPoly(lat, lng, coords){
 
       if(nearestId){
 
-        visited[nearestId] = true;
-        visitedGlobal[nearestId] = true;
+       visited[nearestId] = true;
 
+visitedGlobal[nearestId] = true;
+
+paintVisitedGrid(nearestId);
         console.warn(
           "⚡ Final fallback:",
           nearestId
@@ -8308,24 +8764,26 @@ Object.keys(visited)
       "💾 Saved Grid:",
       id
     );
-  });      localStorage.setItem(
+  });      clearTimeout(
+  window.__gridSaveTimer
+);
 
-        key,
+window.__gridSaveTimer =
+  setTimeout(() => {
 
-        JSON.stringify(data)
-      );
+    localStorage.setItem(
+      key,
+      JSON.stringify(data)
+    );
 
+  }, 1200);
       // ==============================================
       // 🔥 UPDATE TODAY CACHE
       // ==============================================
       window.gridCache =
         window.gridCache || {};
 
-      window.gridCache.today = {
-
-        ...data
-      };
-
+     window.gridCache.today = data;
       console.log(
         "💾 Saved Daily Cache:",
         Object.keys(data).length
@@ -8364,36 +8822,6 @@ Object.keys(visited)
     updatePrevMonthCache();
   }
 
-  // ==================================================
-  // 🔥 SAFE LIVE REPAINT
-  // ==================================================
-  try {
-
-    if(window.__gridReady){
-
-      console.log(
-        "🎨 renderGrid()"
-      );
-
-      renderGrid(
-
-        window.__lastMode || "today",
-
-        document.getElementById(
-          "beatSelect"
-        )?.value || "ALL"
-      );
-    }
-
-  } catch(err){
-
-    console.warn(
-
-      "⚠ renderGrid refresh fail",
-
-      err
-    );
-  }
 
   console.log(
     "✅ visitedGlobal:",
@@ -8407,111 +8835,285 @@ Object.keys(visited)
 
   try {
 
-    window.currentCoverageMode = mode || "today";
-    window.__lastMode = window.currentCoverageMode;
+    // ======================================================
+    // 🔥 ACTIVE MODE
+    // ======================================================
+    window.currentCoverageMode =
+      mode || "today";
 
-    let beat = document.getElementById("beatSelect")?.value || "ALL";
+    window.__lastMode =
+      window.currentCoverageMode;
+
+    let beat =
+      document.getElementById(
+        "beatSelect"
+      )?.value || "ALL";
 
     // ======================================================
-    // 🔥 FIX: INVALID BEAT → FALLBACK TO ALL
+    // 🔥 INVALID BEAT SAFETY
     // ======================================================
-    if(beat !== "ALL" && !window.beatMap?.[beat]){
-      console.warn("⚠ Unknown beat:", beat, "→ fallback to ALL");
+    if(
+      beat !== "ALL" &&
+      !window.beatMap?.[beat]
+    ){
+
+      console.warn(
+        "⚠ Unknown beat:",
+        beat,
+        "→ fallback to ALL"
+      );
+
       beat = "ALL";
     }
 
     window.currentBeat = beat;
 
-    const btnToday = document.getElementById("btnToday");
-    const btnCurrent = document.getElementById("btnCurrent");
-    const btnPrev = document.getElementById("btnPrev");
+    // ======================================================
+    // 🔥 BUTTON STATES
+    // ======================================================
+    const btnToday =
+      document.getElementById(
+        "btnToday"
+      );
 
-    if(btnToday && btnCurrent && btnPrev){
-      btnToday.style.background   = (mode === "today")   ? "#00e676" : "";
-      btnCurrent.style.background = (mode === "current") ? "#00e676" : "";
-      btnPrev.style.background    = (mode === "prev")    ? "#00e676" : "";
+    const btnCurrent =
+      document.getElementById(
+        "btnCurrent"
+      );
+
+    const btnPrev =
+      document.getElementById(
+        "btnPrev"
+      );
+
+    if(
+      btnToday &&
+      btnCurrent &&
+      btnPrev
+    ){
+
+      btnToday.style.background =
+        (mode === "today")
+        ? "#00e676"
+        : "";
+
+      btnCurrent.style.background =
+        (mode === "current")
+        ? "#00e676"
+        : "";
+
+      btnPrev.style.background =
+        (mode === "prev")
+        ? "#00e676"
+        : "";
     }
 
     // ======================================================
-    // 🔥 TODAY (LOCAL)
+    // 🔥 ENSURE GRID READY
     // ======================================================
-    if(mode === "today"){
-
-      if(typeof updateTodayCache === "function"){
-        updateTodayCache();
-      }
-
-      renderGrid(mode, beat);
-      return;
-    }
-
-    // ======================================================
-    // 🔥 CURRENT / PREV (BACKEND)
-    // ======================================================
-    if(window.gridCache?.current && window.gridCache?.prev){
-
-      renderGrid(mode, beat);
-      return;
-    }
-
-    loadBackendCoverage()
-      .then(() => {
-        renderGrid(mode, beat);
-      });
-
-    if(typeof ensureGridReady === "function"){
+    if(
+      typeof ensureGridReady
+      === "function"
+    ){
       ensureGridReady();
     }
 
-    console.log("🎛 Mode Applied:", mode, "| Beat:", beat);
+    // ======================================================
+    // 🔥 TODAY CACHE UPDATE
+    // ======================================================
+    if(
+      mode === "today" &&
+      typeof updateTodayCache
+      === "function"
+    ){
+
+      updateTodayCache();
+    }
+
+    // ======================================================
+    // 🔥 RESET RUNTIME FLAGS
+    // ======================================================
+    if(window.gridCellArray){
+
+      for(
+        const cell
+        of window.gridCellArray
+      ){
+
+        if(cell){
+
+          cell.rendered = false;
+        }
+      }
+    }
+
+    // ======================================================
+    // 🔥 BACKEND MODES
+    // ======================================================
+    if(
+      (mode === "current" ||
+       mode === "prev") &&
+
+      (
+        !window.gridCache?.current ||
+        !window.gridCache?.prev
+      )
+    ){
+
+      loadBackendCoverage()
+        .then(() => {
+
+          repaintCoverageGrid(
+            mode,
+            beat
+          );
+        });
+
+      return;
+    }
+
+    // ======================================================
+    // 🔥 INCREMENTAL REPAINT
+    // ======================================================
+    repaintCoverageGrid(
+      mode,
+      beat
+    );
+
+    if(GRID_DEBUG){
+
+      console.log(
+
+        "🎛 Mode Applied:",
+
+        mode,
+
+        "| Beat:",
+
+        beat
+      );
+    }
 
   } catch(e){
-    console.error("❌ applyMode error:", e);
+
+    console.error(
+      "❌ applyMode error:",
+      e
+    );
   }
 }
-    function onBeatChange(){
+
+
+      function onBeatChange(){
 
   try {
 
-    let beat = document.getElementById("beatSelect")?.value || "ALL";
+    let beat =
+      document.getElementById(
+        "beatSelect"
+      )?.value || "ALL";
 
     // ======================================================
-    // 🔥 SAME FIX HERE
+    // 🔥 INVALID BEAT SAFETY
     // ======================================================
-    if(beat !== "ALL" && !window.beatMap?.[beat]){
-      console.warn("⚠ Unknown beat:", beat, "→ fallback to ALL");
+    if(
+      beat !== "ALL" &&
+      !window.beatMap?.[beat]
+    ){
+
+      console.warn(
+        "⚠ Unknown beat:",
+        beat,
+        "→ fallback to ALL"
+      );
+
       beat = "ALL";
     }
 
     window.currentBeat = beat;
 
-    if(!window.currentCoverageMode){
-      window.currentCoverageMode = "today";
+    // ======================================================
+    // 🔥 DEFAULT MODE
+    // ======================================================
+    if(
+      !window.currentCoverageMode
+    ){
+      window.currentCoverageMode =
+        "today";
     }
 
-    const mode = window.currentCoverageMode;
+    const mode =
+      window.currentCoverageMode;
+
     window.__lastMode = mode;
 
-    if(mode === "today"){
-
-      if(typeof updateTodayCache === "function"){
-        updateTodayCache();
-      }
-
-      renderGrid(mode, beat);
-      return;
-    }
-
-    renderGrid(mode, beat);
-
-    if(typeof ensureGridReady === "function"){
+    // ======================================================
+    // 🔥 ENSURE GRID READY
+    // ======================================================
+    if(
+      typeof ensureGridReady
+      === "function"
+    ){
       ensureGridReady();
     }
 
-    console.log("🎯 Beat Changed:", beat, "| Mode:", mode);
+    // ======================================================
+    // 🔥 TODAY CACHE UPDATE
+    // ======================================================
+    if(
+      mode === "today" &&
+      typeof updateTodayCache
+      === "function"
+    ){
+
+      updateTodayCache();
+    }
+
+    // ======================================================
+    // 🔥 RESET RUNTIME FLAGS
+    // ======================================================
+    if(window.gridCellArray){
+
+      for(
+        const cell
+        of window.gridCellArray
+      ){
+
+        if(cell){
+
+          cell.rendered = false;
+        }
+      }
+    }
+
+    // ======================================================
+    // 🔥 INCREMENTAL REPAINT
+    // ======================================================
+    repaintCoverageGrid(
+      mode,
+      beat
+    );
+
+    if(GRID_DEBUG){
+
+      console.log(
+
+        "🎯 Beat Changed:",
+
+        beat,
+
+        "| Mode:",
+
+        mode
+      );
+    }
 
   } catch(e){
-    console.error("❌ onBeatChange error:", e);
+
+    console.error(
+      "❌ onBeatChange error:",
+      e
+    );
   }
 }
 function showGridPopup(cell, latlng){
@@ -8974,49 +9576,145 @@ function showGrid(){
 
   try {
 
-    const mode = window.currentCoverageMode || "current";
-    const beat = window.currentBeat || "ALL";
+    const mode =
+      window.currentCoverageMode
+      || "current";
+
+    const beat =
+      window.currentBeat
+      || "ALL";
 
     // ==========================================
-    // 🔥 ENSURE CACHE BEFORE RENDER
+    // 🔥 ENSURE CACHE
     // ==========================================
     if(mode === "today"){
-      updateTodayCache();
+
+      updateTodayCache?.();
     }
     else if(mode === "current"){
-      updateMonthCache();
+
+      updateMonthCache?.();
     }
     else if(mode === "prev"){
-      updatePrevMonthCache();
+
+      updatePrevMonthCache?.();
     }
 
     // ==========================================
-    // 🔥 ENSURE GRID READY
+    // 🔥 ENSURE GRID
     // ==========================================
-    if(typeof ensureGridReady === "function"){
+    if(
+      typeof ensureGridReady
+      === "function"
+    ){
       ensureGridReady();
     }
 
     // ==========================================
-    // 🔥 RENDER
+    // 🔥 ENABLE GRID
     // ==========================================
-    if(typeof renderGrid === "function"){
-      renderGrid(mode, beat);
+    window.gridVisible = true;
+
+    // ==========================================
+    // 🔥 RESET RUNTIME FLAGS
+    // ==========================================
+    if(window.gridCellArray){
+
+      for(
+        const cell
+        of window.gridCellArray
+      ){
+
+        if(cell){
+
+          cell.rendered = false;
+        }
+      }
     }
 
-    console.log("📊 Grid shown → Mode:", mode, "| Beat:", beat);
+    // ==========================================
+    // 🔥 INCREMENTAL REPAINT
+    // ==========================================
+    repaintCoverageGrid(
+      mode,
+      beat
+    );
+
+    if(GRID_DEBUG){
+
+      console.log(
+
+        "📊 Grid shown →",
+
+        mode,
+
+        beat
+      );
+    }
 
   } catch(e){
-    console.error("❌ showGrid error:", e);
+
+    console.error(
+      "❌ showGrid error:",
+      e
+    );
   }
-}function hideGrid(){
+}
+      
+      function hideGrid(){
 
-  if(window.gridLayer){
-    window.gridLayer.clearLayers();
+  try {
 
-    if(map.hasLayer(window.gridLayer)){
-      map.removeLayer(window.gridLayer);
+    window.gridVisible = false;
+
+    if(!window.gridCellArray){
+      return;
     }
+
+    // ==========================================
+    // 🔥 RESET TO DEFAULT STYLE
+    // ==========================================
+    for(
+      const cell
+      of window.gridCellArray
+    ){
+
+      if(
+        !cell ||
+        !cell.poly
+      ){
+        continue;
+      }
+
+      cell.rendered = false;
+
+      cell.poly.setStyle({
+
+        fillColor: "#111",
+
+        fillOpacity: 0.04,
+
+        color: "#333",
+
+        opacity: 0.35,
+
+        weight: 0.4
+      });
+    }
+
+    if(GRID_DEBUG){
+
+      console.log(
+        "🧹 Grid hidden"
+      );
+    }
+
+  } catch(e){
+
+    console.error(
+      "❌ hideGrid error:",
+      e
+    );
   }
 }// ===============================
 // 🔲 BUILD GRID (FINAL CORRECT)
@@ -9371,13 +10069,59 @@ function loadGridFromCache(){
           // ==========================================
           // 🔥 FINAL STORE (CLEAN ONLY)
           // ==========================================
-          window.gridIndex[id] = {
-            id,
-            coords, // ✅ ONLY coords (NO geo)
-            center: { lat: centerLat, lng: centerLon },
-            visited: false
-          };
+          // ==========================================
+// 🔥 CREATE POLYGON ONLY ONCE
+// ==========================================
 
+const poly = L.polygon(coords, {
+
+  renderer: window.sharedRenderer,
+
+  interactive: false,
+
+  stroke: true,
+
+  color: "#333",
+
+  weight: 0.4,
+
+  opacity: 0.35,
+
+  fillColor: "#111",
+
+  fillOpacity: 0.04,
+
+  smoothFactor: 0
+
+});
+
+// ==========================================
+// 🔥 ADD ONLY ONCE
+// ==========================================
+
+poly.addTo(window.gridRootLayer);
+
+// ==========================================
+// 🔥 STORE EVERYTHING
+// ==========================================
+
+window.gridIndex[id] = {
+
+  id,
+
+  coords, // 🔥 KEEP THIS
+
+  poly,
+
+  center: {
+    lat: centerLat,
+    lng: centerLon
+  },
+
+  visited: false,
+
+  rendered: false
+};
           count++;
 
           // 🔥 NON-BLOCKING
@@ -14637,34 +15381,51 @@ map.on('overlayadd', function (e) {
     ============================================================ */
     if (layerName === "🟩 Coverage Grid") {
 
-      console.log("📊 Coverage Grid ON");
+  console.log(
+    "📊 Coverage Grid ON"
+  );
 
-      // 🔥 ENABLE GRID
-      window.gridVisible = true;
+  // ==========================================
+  // 🔥 ENABLE GRID
+  // ==========================================
+  window.gridVisible = true;
 
-renderGrid(
-  window.currentCoverageMode || "today",
-  window.currentBeat || "ALL"
-);
+  // ==========================================
+  // 🔥 SHOW PANEL
+  // ==========================================
+  showCoveragePanel?.();
 
-      // 🔥 SHOW PANEL
-      showCoveragePanel?.();
+  // ==========================================
+  // 🔥 RESET FLAGS
+  // ==========================================
+  if(window.gridCellArray){
 
-      // 🔥 SHOW CANVAS
-      if (window.__gridCanvas) {
-        window.__gridCanvas.style.display = "block";
-        window.__gridCanvas.style.visibility = "visible";
-        window.__gridCanvas.style.opacity = "1";
+    for(
+      const cell
+      of window.gridCellArray
+    ){
+
+      if(cell){
+
+        cell.rendered = false;
       }
-
-      // 🔥 FORCE RENDER
-      renderGrid(
-        window.currentCoverageMode || "today",
-        window.currentBeat || "ALL"
-      );
-
-      return;
     }
+  }
+
+  // ==========================================
+  // 🔥 REPAINT
+  // ==========================================
+  repaintCoverageGrid(
+
+    window.currentCoverageMode
+    || "today",
+
+    window.currentBeat
+    || "ALL"
+  );
+
+  return;
+}
 
   } catch (err) {
     console.error("🔥 overlayadd crash:", err);
@@ -14689,23 +15450,28 @@ map.on('overlayremove', function (e) {
   /* ============================================================
      🟩 GRID CLEANUP (FIXED)
   ============================================================ */
-  if (name === "🟩 Coverage Grid") {
+ if (name === "🟩 Coverage Grid") {
 
-    console.log("🧹 Clearing Coverage Grid");
+  console.log(
+    "🧹 Clearing Coverage Grid"
+  );
 
-    // 🔥 DISABLE GRID
-    window.gridVisible = false;
+  // ==========================================
+  // 🔥 DISABLE GRID
+  // ==========================================
+  window.gridVisible = false;
 
-    // 🔥 CLOSE PANEL
-    closeCoveragePanel?.();
+  // ==========================================
+  // 🔥 CLOSE PANEL
+  // ==========================================
+  closeCoveragePanel?.();
 
-    // ✅ HIDE CANVAS (HARD)
-    if (window.__gridCanvas) {
-      window.__gridCanvas.style.display = "none";
-      window.__gridCanvas.style.visibility = "hidden";
-      window.__gridCanvas.style.opacity = "0";
-    }
-  }
+  // ==========================================
+  // 🔥 RESET STYLES
+  // ==========================================
+  hideGrid();
+}
+}
 
 });     /* ============================================================
              🐘 SIGHTING FORM SYSTEM (FINAL SAFE VERSION)
