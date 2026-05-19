@@ -1497,7 +1497,7 @@ window.gridCache = {
   prev:{}
 };
 
-window.__lastMode = "today";
+
 window.__gridReady = false;
 
 
@@ -6737,7 +6737,7 @@ function showCoveragePanel(){
         "beatSelect"
       )?.value || "ALL";
 
-    window.__lastMode = mode;
+    
 
     repaintCoverageGrid(
       mode,
@@ -8550,9 +8550,7 @@ function pointInPoly(lat, lng, coords){
     window.currentCoverageMode =
       mode || "today";
 
-    window.__lastMode =
-      window.currentCoverageMode;
-
+    
     let beat =
       document.getElementById(
         "beatSelect"
@@ -8754,7 +8752,7 @@ function pointInPoly(lat, lng, coords){
     const mode =
       window.currentCoverageMode;
 
-    window.__lastMode = mode;
+  
 
     // ======================================================
     // 🔥 ENSURE GRID READY
@@ -8871,9 +8869,7 @@ function showGridPopup(cell, latlng){
     // ==================================================
     // 🔥 ACTIVE MODE
     // ==================================================
-    const mode =
-      window.__lastMode || "current";
-
+    
     // ==================================================
     // 🔥 ACTIVE CACHE
     // ==================================================
