@@ -1796,7 +1796,7 @@ function paintVisitedGrid(id){
   cell.visited = true;
 
   // ================================================
-  // 🔥 STYLE UPDATE
+  // 🔥 STYLE UPDATE ONLY
   // ================================================
   try {
 
@@ -1824,36 +1824,6 @@ function paintVisitedGrid(id){
   }
 
   // ================================================
-  // 🔥 FORCE REDRAW
-  // ================================================
-  try {
-
-    if(cell.poly.redraw){
-
-      cell.poly.redraw();
-    }
-
-  } catch(e){}
-
-  // ================================================
-  // 🔥 FORCE CANVAS REFRESH
-  // ================================================
-  try {
-
-    const renderer =
-      cell.poly._renderer;
-
-    if(
-      renderer &&
-      renderer._redraw
-    ){
-
-      renderer._redraw();
-    }
-
-  } catch(e){}
-
-  // ================================================
   // 🔥 OPTIONAL DEBUG
   // ================================================
   if(GRID_DEBUG){
@@ -1864,9 +1834,6 @@ function paintVisitedGrid(id){
     );
   }
 }
-
-
-
 function repaintCoverageGrid(
 
   mode = "today",
@@ -1877,6 +1844,16 @@ function repaintCoverageGrid(
 
   try {
 
+    // =====================================
+    // 🔥 ACTIVE SET SAFETY
+    // =====================================
+    window.activePaintedGrids =
+      window.activePaintedGrids
+      || new Set();
+
+    // =====================================
+    // 🔥 SELECT CACHE
+    // =====================================
     let current = {};
 
     if(mode === "today"){
@@ -1898,7 +1875,7 @@ function repaintCoverageGrid(
     }
 
     // =====================================
-    // 🔥 BUILD NEXT TARGET SET
+    // 🔥 BUILD TARGET SET
     // =====================================
     const nextSet = new Set();
 
@@ -1911,7 +1888,10 @@ function repaintCoverageGrid(
       const cell =
         window.gridIndex?.[id];
 
-      if(!cell){
+      if(
+        !cell ||
+        !cell.poly
+      ){
         return;
       }
 
@@ -1934,8 +1914,10 @@ function repaintCoverageGrid(
     // =====================================
     // 🔥 REMOVE OLD ONLY
     // =====================================
-    window.activePaintedGrids.forEach(id => {
+    window.activePaintedGrids
+    .forEach(id => {
 
+      // still active
       if(nextSet.has(id)){
         return;
       }
@@ -1950,32 +1932,58 @@ function repaintCoverageGrid(
         return;
       }
 
+      // =================================
+      // 🔥 RESET FLAGS
+      // =================================
       cell.rendered = false;
 
-      cell.poly.setStyle({
+      cell.visited = false;
 
-        fillColor: "#111",
+      // =================================
+      // 🔥 RESET STYLE ONLY
+      // =================================
+      try {
 
-        fillOpacity: 0.04,
+        cell.poly.setStyle({
 
-        color: "#333",
+          fillColor: "#111",
 
-        opacity: 0.35,
+          fillOpacity: 0.04,
 
-        weight: 0.4
-      });
+          color: "#333",
+
+          opacity: 0.35,
+
+          weight: 0.4
+        });
+
+      } catch(e){}
     });
 
     // =====================================
-    // 🔥 ADD NEW ONLY
+    // 🔥 PAINT NEW ONLY
     // =====================================
     nextSet.forEach(id => {
 
+      // already painted
       if(
-        window.activePaintedGrids.has(id)
+        window.activePaintedGrids
+        .has(id)
       ){
         return;
       }
+
+      const cell =
+        window.gridIndex?.[id];
+
+      if(!cell){
+        return;
+      }
+
+      // =================================
+      // 🔥 FORCE FRESH PAINT
+      // =================================
+      cell.rendered = false;
 
       paintVisitedGrid(id);
     });
@@ -1986,16 +1994,22 @@ function repaintCoverageGrid(
     window.activePaintedGrids =
       nextSet;
 
-    console.log(
+    // =====================================
+    // 🔥 DEBUG
+    // =====================================
+    if(GRID_DEBUG){
 
-      "🎨 Optimized repaint:",
+      console.log(
 
-      mode,
+        "🎨 Optimized repaint:",
 
-      beat,
+        mode,
 
-      nextSet.size
-    );
+        beat,
+
+        nextSet.size
+      );
+    }
 
   }
 
