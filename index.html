@@ -7022,74 +7022,171 @@ function saveToBackendDebounced(){
     
 function assignGridToBeat(rangeLayer){
 
-  console.log("🎯 Assigning grid to beats (FINAL CORRECT)...");
+  console.log(
+    "🎯 Assigning grid with STRICT clipping..."
+  );
 
   try {
 
+    // ==========================================
+    // 🔥 SAFETY
+    // ==========================================
     if(typeof turf === "undefined"){
-      console.error("❌ Turf not loaded");
+
+      console.error(
+        "❌ Turf not loaded"
+      );
+
+      return;
+    }
+
+    if(
+      !window.gridIndex ||
+      !Object.keys(window.gridIndex).length
+    ){
+
+      console.warn(
+        "⚠ gridIndex empty"
+      );
+
       return;
     }
 
     let polygons = [];
 
+    // ==========================================
+    // 🔥 EXTRACT POLYGONS
+    // ==========================================
     function extract(layer){
 
-      if (!layer) return;
+      if(!layer) return;
 
-      // 🔥 traverse all nested layers
-      if (layer.eachLayer) {
+      // ======================================
+      // 🔥 NESTED
+      // ======================================
+      if(layer.eachLayer){
         layer.eachLayer(extract);
       }
 
-      // 🔥 polygon detection
-      if (layer.getLatLngs && typeof layer.getLatLngs === "function") {
+      // ======================================
+      // 🔥 POLYGON
+      // ======================================
+      if(
+        layer.getLatLngs &&
+        typeof layer.getLatLngs === "function"
+      ){
 
-        const p = layer.feature?.properties || {};
-        const rawID = (p.ID || p.Name || "").toUpperCase().trim();
+        const p =
+          layer.feature?.properties || {};
+
+        const rawID = (
+
+          p.ID ||
+          p.Name ||
+          ""
+
+        )
+        .toUpperCase()
+        .trim();
 
         let latlngs;
 
         try {
-          latlngs = layer.getLatLngs();
+
+          latlngs =
+            layer.getLatLngs();
+
         } catch(e){
           return;
         }
 
-        if(!latlngs || !latlngs.length) return;
+        if(
+          !latlngs ||
+          !latlngs.length
+        ){
+          return;
+        }
 
-        // 🔥 normalize Polygon + MultiPolygon
-        const rings = Array.isArray(latlngs[0][0]) ? latlngs.flat(1) : latlngs;
+        // ======================================
+        // 🔥 NORMALIZE MULTIPOLYGON
+        // ======================================
+        const rings =
+
+          Array.isArray(latlngs[0][0])
+
+            ? latlngs.flat(1)
+
+            : latlngs;
 
         rings.forEach(ring => {
 
-          if(!ring || ring.length < 3) return;
+          if(
+            !ring ||
+            ring.length < 3
+          ){
+            return;
+          }
 
           let coords = [];
 
           for(let pt of ring){
-            if(!pt || pt.lat == null || pt.lng == null) continue;
-            coords.push([pt.lng, pt.lat]); // 🔥 Turf format
+
+            if(
+              !pt ||
+              pt.lat == null ||
+              pt.lng == null
+            ){
+              continue;
+            }
+
+            coords.push([
+              pt.lng,
+              pt.lat
+            ]);
           }
 
-          if(coords.length < 3) return;
+          if(coords.length < 3){
+            return;
+          }
 
-          // 🔥 close ring
-          const f = coords[0];
-          const l = coords[coords.length - 1];
-          if(f[0] !== l[0] || f[1] !== l[1]){
-            coords.push(f);
+          // ====================================
+          // 🔥 CLOSE RING
+          // ====================================
+          const first = coords[0];
+          const last = coords[
+            coords.length - 1
+          ];
+
+          if(
+            first[0] !== last[0] ||
+            first[1] !== last[1]
+          ){
+            coords.push(first);
           }
 
           try {
 
-            const comp = (convertCompartment(rawID) || "")
-              .replace(/\s+/g," ")
-              .trim();
+            // ================================
+            // 🔥 NORMALIZE COMPARTMENT
+            // ================================
+            const comp = (
+
+              convertCompartment(rawID)
+              ||
+              ""
+
+            )
+            .replace(/\s+/g," ")
+            .trim();
 
             polygons.push({
+
               comp,
-              turfPoly: turf.polygon([coords])
+
+              turfPoly:
+                turf.polygon([
+                  coords
+                ])
             });
 
           } catch(e){}
@@ -7100,79 +7197,291 @@ function assignGridToBeat(rangeLayer){
     extract(rangeLayer);
 
     if(!polygons.length){
-      console.warn("⚠ No polygons");
+
+      console.warn(
+        "⚠ No polygons found"
+      );
+
       return;
     }
 
-    console.log("📐 Polygons:", polygons.length);
+    console.log(
+      "📐 Polygons:",
+      polygons.length
+    );
 
     // ==========================================
-    // 🔥 GRID LOOP
+    // 🔥 PREPARE BEAT POLYGONS
     // ==========================================
-    Object.values(window.gridIndex || {}).forEach(cell => {
+    let beatPolys = [];
 
-      if(!cell.center || !cell.coords){
-        cell.beat = "UNKNOWN";
+    polygons.forEach(p => {
+
+      if(!p.comp){
         return;
       }
 
-      const pt = turf.point([cell.center.lng, cell.center.lat]);
+      let beat = null;
 
-      let bestBeat = "UNKNOWN";
+      for(let key in window.beatMap){
 
-      // 🔥 FIX: convert coords to [lng, lat]
-      let cellPoly = null;
-      try {
-        const fixedCoords = cell.coords.map(p => [p[1], p[0]]);
-        cellPoly = turf.polygon([fixedCoords]);
-      } catch(e){}
+        const match =
+          window.beatMap[key]
+            .some(v =>
 
-      for(let poly of polygons){
+              v
+              .replace(/\s+/g," ")
+              .trim()
 
-        if(!poly.comp) continue;
+              ===
 
-        let beat = null;
+              p.comp
+            );
 
-        // 🔥 robust matching
-        for(let key in window.beatMap){
+        if(match){
 
-          const match = window.beatMap[key].some(v =>
-            v.replace(/\s+/g," ").trim() === poly.comp
-          );
+          beat = key;
 
-          if(match){
-            beat = key;
-            break;
-          }
+          break;
         }
+      }
 
-        if(!beat) continue;
+      if(beat){
+
+        beatPolys.push({
+
+          beat,
+
+          poly:
+            p.turfPoly
+        });
+      }
+    });
+
+    if(!beatPolys.length){
+
+      console.warn(
+        "⚠ No beat polygons matched"
+      );
+
+      return;
+    }
+
+    console.log(
+      "🎯 Beat polygons:",
+      beatPolys.length
+    );
+
+    // ==========================================
+    // 🔥 MAIN GRID LOOP
+    // ==========================================
+    Object.values(
+      window.gridIndex
+    ).forEach(cell => {
+
+      if(
+        !cell ||
+        !cell.coords
+      ){
+        return;
+      }
+
+      // ======================================
+      // 🔥 BUILD TURF CELL
+      // ======================================
+      let cellPoly;
+
+      try {
+
+        const fixed =
+          cell.coords.map(p => [
+
+            p[1],
+            p[0]
+          ]);
+
+        cellPoly =
+          turf.polygon([
+            fixed
+          ]);
+
+      } catch(e){
+        return;
+      }
+
+      let best = null;
+
+      let bestArea = 0;
+
+      // ======================================
+      // 🔥 STRICT CLIPPING
+      // ======================================
+      beatPolys.forEach(bp => {
 
         try {
 
-          // 🔥 PRIMARY: center check
-          if(turf.booleanPointInPolygon(pt, poly.turfPoly)){
-            bestBeat = beat;
-            break;
+          const clipped =
+            turf.intersect(
+
+              cellPoly,
+              bp.poly
+            );
+
+          if(!clipped){
+            return;
           }
 
-          // 🔥 FALLBACK: edge intersection
-          if(cellPoly && turf.booleanIntersects(cellPoly, poly.turfPoly)){
-            bestBeat = beat;
-            break;
+          // ==================================
+          // 🔥 REMOVE MICRO SLIVERS
+          // ==================================
+          const area =
+            turf.area(clipped);
+
+          if(area < 20){
+            return;
+          }
+
+          // ==================================
+          // 🔥 KEEP LARGEST OVERLAP
+          // ==================================
+          if(area > bestArea){
+
+            bestArea = area;
+
+            best = {
+
+              beat:
+                bp.beat,
+
+              geom:
+                clipped.geometry
+            };
           }
 
         } catch(e){}
+      });
+
+      // ======================================
+      // 🔥 APPLY STRICT GEOMETRY
+      // ======================================
+      if(best){
+
+        let geom =
+          best.geom;
+
+        // ==================================
+        // 🔥 HANDLE MULTIPOLYGON
+        // ==================================
+        if(
+          geom.type ===
+          "MultiPolygon"
+        ){
+
+          let maxArea = 0;
+
+          let maxPoly = null;
+
+          geom.coordinates
+            .forEach(g => {
+
+              try {
+
+                const a =
+                  turf.area({
+
+                    type:
+                      "Polygon",
+
+                    coordinates:
+                      g
+                  });
+
+                if(a > maxArea){
+
+                  maxArea = a;
+
+                  maxPoly = g;
+                }
+
+              } catch(e){}
+            });
+
+          if(maxPoly){
+
+            geom = {
+
+              type:
+                "Polygon",
+
+              coordinates:
+                maxPoly
+            };
+          }
+        }
+
+        // ==================================
+        // 🔥 FINAL LEAFLET COORDS
+        // ==================================
+        const finalCoords =
+
+          geom.coordinates[0]
+            .map(p => [
+
+              p[1],
+              p[0]
+            ]);
+
+        if(
+          !finalCoords ||
+          finalCoords.length < 4
+        ){
+          return;
+        }
+
+        // ==================================
+        // 🔥 UPDATE STORED COORDS
+        // ==================================
+        cell.coords =
+          finalCoords;
+
+        // ==================================
+        // 🔥 UPDATE POLYGON SHAPE
+        // ==================================
+        if(cell.poly){
+
+          try {
+
+            cell.poly.setLatLngs(
+              finalCoords
+            );
+
+          } catch(e){}
+        }
+
+        // ==================================
+        // 🔥 UPDATE BEAT
+        // ==================================
+        cell.beat =
+          best.beat;
       }
 
-      cell.beat = bestBeat;
+      else {
 
+        cell.beat =
+          "UNKNOWN";
+      }
     });
 
-    console.log("✅ Beat mapping COMPLETE");
+    console.log(
+      "✅ STRICT beat clipping COMPLETE"
+    );
 
   } catch(e){
-    console.error("❌ assignGridToBeat error:", e);
+
+    console.error(
+      "❌ assignGridToBeat error:",
+      e
+    );
   }
 }// ======================================================
 // 🧠 GRID CACHE (LIVE + MONTH)
