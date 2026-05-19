@@ -6533,18 +6533,7 @@ async function loadRangeKML(){
 
         console.log("✅ GeoJSON render complete");
 // 🔥 FORCE GRID AFTER DATA READY
-setTimeout(() => {
-
-  console.log("🧠 Grid init (cache or build)");
-
-  if(!loadGridFromCache()){
-    ensureGridReady();   // 🔥 build once
-  }
-
-  // ❌ REMOVE AUTO RENDER
-  // renderGrid("current", "ALL");
-
-}, 300);        // ======================================
+       // ======================================
         // 🎯 FIT MAP (SAFE)
         // ======================================
         try {
