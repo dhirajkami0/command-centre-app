@@ -7883,11 +7883,19 @@ window.gridCellArray =
   Object.values(window.gridIndex);
 
 // ==========================================
-// 🔥 STEP 5: FINAL RENDER
-// ==========================================if(window.gridVisible){
-      renderGrid("current", "ALL");
-    }
+// 🔥 STEP 5: FINAL REPAINT
+// ==========================================
+if(window.gridVisible){
 
+  repaintCoverageGrid(
+
+    window.currentCoverageMode
+    || "current",
+
+    window.currentBeat
+    || "ALL"
+  );
+}
   } catch(e){
     console.error("❌ Grid build failed:", e);
   }
