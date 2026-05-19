@@ -10445,7 +10445,7 @@ function loadGridFromCache(){
    async function buildGridFromBounds(bounds, rangeLayer){
 
   console.log(
-    "🔲 Building FINAL CENTER-LOCKED beat grid..."
+    "🔲 Building FINAL STABLE beat grid..."
   );
 
   try {
@@ -10758,69 +10758,7 @@ function loadGridFromCache(){
           const centerLon =
             lon + step / 2;
 
-          const centerPoint =
-            turf.point([
-
-              centerLon,
-              centerLat
-            ]);
-
           // ====================================
-          // 🔥 STRICT BEAT FIND
-          // ====================================
-          let matchedBeat =
-            null;
-
-          let matchedPoly =
-            null;
-
-          for(
-
-            const bp
-
-            of beatPolys
-
-          ){
-
-            try {
-
-              if(
-
-                turf.booleanPointInPolygon(
-
-                  centerPoint,
-
-                  bp.poly
-                )
-
-              ){
-
-                matchedBeat =
-                  bp.beat;
-
-                matchedPoly =
-                  bp.poly;
-
-                break;
-              }
-
-            } catch(e){}
-          }
-
-          // ====================================
-          // 🔥 MUST BELONG TO BEAT
-          // ====================================
-          if(
-  !matchedBeat ||
-  !matchedPoly
-){
-
-  matchedBeat =
-    "UNKNOWN";
-
-  matchedPoly =
-    unifiedRange;
-}// ====================================
           // 🔥 RAW CELL
           // ====================================
           const rawCell =
@@ -10839,6 +10777,62 @@ function loadGridFromCache(){
             ]]);
 
           // ====================================
+          // 🔥 FIND BEST BEAT
+          // ====================================
+          let matchedBeat =
+            "UNKNOWN";
+
+          let matchedPoly =
+            unifiedRange;
+
+          let bestArea = 0;
+
+          for(
+
+            const bp
+
+            of beatPolys
+
+          ){
+
+            try {
+
+              const overlap =
+                turf.intersect(
+
+                  rawCell,
+
+                  bp.poly
+                );
+
+              if(!overlap){
+                continue;
+              }
+
+              const overlapArea =
+                turf.area(
+                  overlap
+                );
+
+              if(
+                overlapArea >
+                bestArea
+              ){
+
+                bestArea =
+                  overlapArea;
+
+                matchedBeat =
+                  bp.beat;
+
+                matchedPoly =
+                  bp.poly;
+              }
+
+            } catch(e){}
+          }
+
+          // ====================================
           // 🔥 RANGE CLIP
           // ====================================
           let rangeClip;
@@ -10855,11 +10849,14 @@ function loadGridFromCache(){
 
           } catch(e){
 
-            continue;
+            rangeClip =
+              rawCell;
           }
 
           if(!rangeClip){
-            continue;
+
+            rangeClip =
+              rawCell;
           }
 
           // ====================================
@@ -10879,23 +10876,34 @@ function loadGridFromCache(){
 
           } catch(e){
 
-            continue;
+            beatClip =
+              rangeClip;
           }
 
           if(!beatClip){
-            continue;
+
+            beatClip =
+              rangeClip;
           }
 
           // ====================================
           // 🔥 AREA FILTER
           // ====================================
-          const area =
-            turf.area(
-              beatClip
-            );
+          let area = 0;
+
+          try {
+
+            area =
+              turf.area(
+                beatClip
+              );
+
+          } catch(e){}
 
           if(area < 25){
-            continue;
+
+            beatClip =
+              rangeClip;
           }
 
           // ====================================
@@ -10912,7 +10920,7 @@ function loadGridFromCache(){
             let largest =
               geom.coordinates[0];
 
-            let bestArea = 0;
+            let bestGeomArea = 0;
 
             geom.coordinates
               .forEach(g => {
@@ -10929,9 +10937,9 @@ function loadGridFromCache(){
                         g
                     });
 
-                  if(a > bestArea){
+                  if(a > bestGeomArea){
 
-                    bestArea =
+                    bestGeomArea =
                       a;
 
                     largest = g;
@@ -10970,7 +10978,7 @@ function loadGridFromCache(){
           }
 
           // ====================================
-          // 🔥 ID
+          // 🔥 STABLE ID
           // ====================================
           const id =
 
@@ -11029,7 +11037,8 @@ function loadGridFromCache(){
             },
 
             beat:
-  matchedBeat || "UNKNOWN",
+              matchedBeat,
+
             visited: false,
 
             rendered: false
@@ -11097,7 +11106,7 @@ function loadGridFromCache(){
       };
 
       console.log(
-        "✅ FINAL STRICT GRID:",
+        "✅ FINAL STABLE GRID:",
         count
       );
     }
