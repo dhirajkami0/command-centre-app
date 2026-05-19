@@ -7989,21 +7989,24 @@ function pointInPoly(lat, lng, coords){
 
     console.warn("⛔ Skip LIVE staff grid");
     return {};
-  }if(GRID_DEBUG){
+  }
 
-  console.log(
-    "🧪 Incoming tracks:",
-    tracks
-  );
-}
+  if(GRID_DEBUG){
+
+    console.log(
+      "🧪 Incoming tracks:",
+      tracks
+    );
+  }
 
   console.log(
     "🔥 markVisitedHybrid CALLED"
   );
 
   let visitedGlobal = {};
-      window.__lastVisitedGrid =
-  window.__lastVisitedGrid || null;
+
+  window.__lastVisitedGrid =
+    window.__lastVisitedGrid || null;
 
   for(let t of tracks){
 
@@ -8035,7 +8038,6 @@ function pointInPoly(lat, lng, coords){
     // 🔥 CLEAN TRACK
     // ==================================================
     const cleanedTrack =
-
       cleanTrackPoints(
         t.track
       );
@@ -8048,15 +8050,12 @@ function pointInPoly(lat, lng, coords){
     // ==================================================
     // 🔥 NORMALIZE
     // ==================================================
-    let pts =
-
-      cleanedTrack
+    let pts = cleanedTrack
 
       .map(p => ({
 
-        lat:Number(p[0]),
-
-        lon:Number(p[1])
+        lat: Number(p[0]),
+        lon: Number(p[1])
 
       }))
 
@@ -8074,13 +8073,13 @@ function pointInPoly(lat, lng, coords){
     // ==================================================
     // 🔥 REMOVE HUGE GPS JUMPS
     // ==================================================
-    pts = pts.filter((p,i)=>{
+    pts = pts.filter((p, i) => {
 
       if(i === 0){
         return true;
       }
 
-      const prev = pts[i-1];
+      const prev = pts[i - 1];
 
       const d = Math.sqrt(
 
@@ -8119,83 +8118,74 @@ function pointInPoly(lat, lng, coords){
     // ==================================================
     if(pts.length === 1){
 
-  if(GRID_DEBUG){
+      if(GRID_DEBUG){
 
-    console.log(
-      "📌 Single Point Mode"
-    );
-  }
+        console.log(
+          "📌 Single Point Mode"
+        );
+      }
 
-  const p = pts[0];
+      const p = pts[0];
 
-  let nearestId = null;
+      let nearestId = null;
+      let minDist = Infinity;
 
-  let minDist = Infinity;
+      for(const cell of window.gridCellArray){
 
-  // ==========================================
-  // 🔥 FAST ITERATION
-  // ==========================================
-for(const cell of window.gridCellArray){
+        if(
+          !cell ||
+          !cell.center
+        ){
+          continue;
+        }
 
-  if(
-    !cell ||
-    !cell.center
-  ){
-    continue;
-  }
+        const cLat =
 
-  const cLat =
+          Array.isArray(cell.center)
+            ? cell.center[0]
+            : cell.center.lat;
 
-    Array.isArray(cell.center)
-      ? cell.center[0]
-      : cell.center.lat;
+        const cLng =
 
-  const cLng =
+          Array.isArray(cell.center)
+            ? cell.center[1]
+            : cell.center.lng;
 
-    Array.isArray(cell.center)
-      ? cell.center[1]
-      : cell.center.lng;
+        const dLat =
+          cLat - p.lat;
 
-  const dLat =
-    cLat - last.lat;
+        const dLon =
+          cLng - p.lon;
 
-  const dLon =
-    cLng - last.lon;
+        const dist =
+          dLat * dLat +
+          dLon * dLon;
 
-  const dist =
-    dLat * dLat +
-    dLon * dLon;
+        if(dist < minDist){
 
-  if(dist < minDist){
+          minDist = dist;
+          nearestId = cell.id;
+        }
+      }
 
-    minDist = dist;
+      if(nearestId){
 
-    nearestId = cell.id;
-  }
-}
-  // ==========================================
-  // 🔥 APPLY VISIT
-  // ==========================================
-  if(nearestId){
+        visited[nearestId] = true;
 
-    visited[nearestId] = true;
+        visitedGlobal[nearestId] = true;
 
-    visitedGlobal[nearestId] = true;
+        paintVisitedGrid(nearestId);
 
-    // ========================================
-    // 🔥 LIVE STYLE UPDATE
-    // ========================================
-    paintVisitedGrid(nearestId);
+        if(GRID_DEBUG){
 
-    if(GRID_DEBUG){
-
-      console.log(
-        "📌 Single Point Grid:",
-        nearestId
-      );
+          console.log(
+            "📌 Single Point Grid:",
+            nearestId
+          );
+        }
+      }
     }
-  }
-}
+
     // ==================================================
     // 🔥 LINE MODE
     // ==================================================
@@ -8205,9 +8195,9 @@ for(const cell of window.gridCellArray){
         "📏 Line Mode"
       );
 
-      for(let i=1; i<pts.length; i++){
+      for(let i = 1; i < pts.length; i++){
 
-        const p1 = pts[i-1];
+        const p1 = pts[i - 1];
         const p2 = pts[i];
 
         const lat1 = p1.lat;
@@ -8219,23 +8209,24 @@ for(const cell of window.gridCellArray){
         const distMeters = Math.sqrt(
 
           Math.pow(
-            (lat2-lat1) * 111000,
+            (lat2 - lat1) * 111000,
             2
           ) +
 
           Math.pow(
-            (lon2-lon1) * 111000,
+            (lon2 - lon1) * 111000,
             2
           )
         );
 
-       if(GRID_DEBUG){
+        if(GRID_DEBUG){
 
-  console.log(
-    "📏 Segment Distance:",
-    distMeters
-  );
-}
+          console.log(
+            "📏 Segment Distance:",
+            distMeters
+          );
+        }
+
         let hit = false;
 
         // ==============================================
@@ -8243,8 +8234,7 @@ for(const cell of window.gridCellArray){
         // ==============================================
         if(distMeters <= 200){
 
-          let nearbySet =
-            new Set();
+          let nearbySet = new Set();
 
           const baseLat1 =
             Math.floor(lat1 * 1000);
@@ -8261,10 +8251,10 @@ for(const cell of window.gridCellArray){
           for(
 
             let lat =
-              Math.min(baseLat1, baseLat2)-1;
+              Math.min(baseLat1, baseLat2) - 1;
 
             lat <=
-              Math.max(baseLat1, baseLat2)+1;
+              Math.max(baseLat1, baseLat2) + 1;
 
             lat++
           ){
@@ -8272,10 +8262,10 @@ for(const cell of window.gridCellArray){
             for(
 
               let lng =
-                Math.min(baseLng1, baseLng2)-1;
+                Math.min(baseLng1, baseLng2) - 1;
 
               lng <=
-                Math.max(baseLng1, baseLng2)+1;
+                Math.max(baseLng1, baseLng2) + 1;
 
               lng++
             ){
@@ -8289,7 +8279,6 @@ for(const cell of window.gridCellArray){
               ){
 
                 for(
-
                   let cell of
                   window.gridSpatialIndex[key]
                 ){
@@ -8303,13 +8292,14 @@ for(const cell of window.gridCellArray){
           const nearby =
             Array.from(nearbySet);
 
-         if(GRID_DEBUG){
+          if(GRID_DEBUG){
 
-  console.log(
-    "🧩 Nearby Cells:",
-    nearby.length
-  );
-}
+            console.log(
+              "🧩 Nearby Cells:",
+              nearby.length
+            );
+          }
+
           for(const cell of nearby){
 
             if(
@@ -8339,12 +8329,10 @@ for(const cell of window.gridCellArray){
 
                 visited[cell.id] = true;
 
-visitedGlobal[cell.id] = true;
+                visitedGlobal[cell.id] = true;
 
-// ==========================================
-// 🔥 LIVE STYLE UPDATE
-// ==========================================
-paintVisitedGrid(cell.id);
+                paintVisitedGrid(cell.id);
+
                 hit = true;
 
                 console.log(
@@ -8371,60 +8359,61 @@ paintVisitedGrid(cell.id);
           let nearestId = null;
           let minDist = Infinity;
 
-       for(const cell of window.gridCellArray){
+          for(const cell of window.gridCellArray){
 
-  if(
-    !cell ||
-    !cell.center
-  ){
-    continue;
-  }
+            if(
+              !cell ||
+              !cell.center
+            ){
+              continue;
+            }
 
-  const cLat =
+            const cLat =
 
-    Array.isArray(cell.center)
-      ? cell.center[0]
-      : cell.center.lat;
+              Array.isArray(cell.center)
+                ? cell.center[0]
+                : cell.center.lat;
 
-  const cLng =
+            const cLng =
 
-    Array.isArray(cell.center)
-      ? cell.center[1]
-      : cell.center.lng;
+              Array.isArray(cell.center)
+                ? cell.center[1]
+                : cell.center.lng;
 
-  const dLat =
-    cLat - last.lat;
+            const dLat =
+              cLat - p2.lat;
 
-  const dLon =
-    cLng - last.lon;
+            const dLon =
+              cLng - p2.lon;
 
-  const dist =
-    dLat * dLat +
-    dLon * dLon;
+            const dist =
+              dLat * dLat +
+              dLon * dLon;
 
-  if(dist < minDist){
+            if(dist < minDist){
 
-    minDist = dist;
+              minDist = dist;
+              nearestId = cell.id;
+            }
+          }
 
-    nearestId = cell.id;
-  }
-}
-if(nearestId){
+          if(nearestId){
 
-  visited[nearestId] = true;
+            visited[nearestId] = true;
 
-  visitedGlobal[nearestId] = true;
+            visitedGlobal[nearestId] = true;
 
-  paintVisitedGrid(nearestId);
+            paintVisitedGrid(nearestId);
 
-  if(GRID_DEBUG){
+            if(GRID_DEBUG){
 
-    console.warn(
-      "⚡ Forced mapping:",
-      nearestId
-    );
-  }
-}
+              console.warn(
+                "⚡ Forced mapping:",
+                nearestId
+              );
+            }
+          }
+        }
       }
     }
 
@@ -8443,7 +8432,8 @@ if(nearestId){
       let nearestId = null;
       let minDist = Infinity;
 
-     for(const cell of window.gridCellArray){
+      for(const cell of window.gridCellArray){
+
         if(
           !cell ||
           !cell.center
@@ -8453,39 +8443,41 @@ if(nearestId){
 
         const cLat =
 
-  Array.isArray(cell.center)
-    ? cell.center[0]
-    : cell.center.lat;
+          Array.isArray(cell.center)
+            ? cell.center[0]
+            : cell.center.lat;
 
-const cLng =
+        const cLng =
 
-  Array.isArray(cell.center)
-    ? cell.center[1]
-    : cell.center.lng;
+          Array.isArray(cell.center)
+            ? cell.center[1]
+            : cell.center.lng;
 
-const dLat =
-  cLat - last.lat;
+        const dLat =
+          cLat - last.lat;
 
-const dLon =
-  cLng - last.lon;
+        const dLon =
+          cLng - last.lon;
+
         const dist =
-          dLat*dLat +
-          dLon*dLon;
+          dLat * dLat +
+          dLon * dLon;
 
         if(dist < minDist){
 
           minDist = dist;
-         nearestId = cell.id;
+          nearestId = cell.id;
         }
       }
 
       if(nearestId){
 
-       visited[nearestId] = true;
+        visited[nearestId] = true;
 
-visitedGlobal[nearestId] = true;
+        visitedGlobal[nearestId] = true;
 
-paintVisitedGrid(nearestId);
+        paintVisitedGrid(nearestId);
+
         console.warn(
           "⚡ Final fallback:",
           nearestId
@@ -8506,7 +8498,6 @@ paintVisitedGrid(nearestId);
       try {
 
         data = JSON.parse(
-
           localStorage.getItem(key)
           || "{}"
         );
@@ -8515,55 +8506,52 @@ paintVisitedGrid(nearestId);
 
         data = {};
       }
-Object.keys(visited)
-  .forEach(id => {
 
-    // ==========================================
-    // 🔥 PERSIST GRID FOREVER
-    // ==========================================
-    data[id] =
+      Object.keys(visited)
+        .forEach(id => {
 
-      (
-        Number(data[id]) || 0
-      ) + 1;
+          data[id] =
+            (
+              Number(data[id]) || 0
+            ) + 1;
 
-    console.log(
-      "💾 Saved Grid:",
-      id
-    );
-  });      clearTimeout(
-  window.__gridSaveTimer
-);
+          console.log(
+            "💾 Saved Grid:",
+            id
+          );
+        });
 
-window.__gridSaveTimer =
-  setTimeout(() => {
-
-    window.__gridSaveTimer =
-  setTimeout(() => {
-
-    try {
-
-      localStorage.setItem(
-        key,
-        JSON.stringify(data)
+      clearTimeout(
+        window.__gridSaveTimer
       );
 
-    } catch(e){
+      window.__gridSaveTimer =
+        setTimeout(() => {
 
-      console.warn(
-        "⚠ Grid save failed"
-      );
-    }
+          try {
 
-  }, 1200);
-  }, 1200);
+            localStorage.setItem(
+              key,
+              JSON.stringify(data)
+            );
+
+          } catch(e){
+
+            console.warn(
+              "⚠ Grid save failed"
+            );
+          }
+
+        }, 1200);
+
       // ==============================================
       // 🔥 UPDATE TODAY CACHE
       // ==============================================
       window.gridCache =
         window.gridCache || {};
 
-     window.gridCache.today = data;
+      window.gridCache.today = data;
+
       console.log(
         "💾 Saved Daily Cache:",
         Object.keys(data).length
@@ -8601,7 +8589,6 @@ window.__gridSaveTimer =
 
     updatePrevMonthCache();
   }
-
 
   console.log(
     "✅ visitedGlobal:",
