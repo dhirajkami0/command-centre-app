@@ -1877,14 +1877,6 @@ function repaintCoverageGrid(
 
   try {
 
-    // ================================================
-    // 🔥 RESET ALL GRID STYLES
-    // ================================================
-    resetGridStyles();
-
-    // ================================================
-    // 🔥 SELECT ACTIVE CACHE
-    // ================================================
     let current = {};
 
     if(mode === "today"){
@@ -1905,9 +1897,11 @@ function repaintCoverageGrid(
         window.gridCache?.prev || {};
     }
 
-    // ================================================
-    // 🔥 REPAINT VISITED
-    // ================================================
+    // =====================================
+    // 🔥 BUILD NEXT TARGET SET
+    // =====================================
+    const nextSet = new Set();
+
     Object.keys(current).forEach(id => {
 
       if(!current[id]){
@@ -1921,9 +1915,9 @@ function repaintCoverageGrid(
         return;
       }
 
-      // ============================================
+      // =================================
       // 🔥 BEAT FILTER
-      // ============================================
+      // =================================
       if(
 
         beat !== "ALL" &&
@@ -1934,23 +1928,74 @@ function repaintCoverageGrid(
         return;
       }
 
+      nextSet.add(id);
+    });
+
+    // =====================================
+    // 🔥 REMOVE OLD ONLY
+    // =====================================
+    window.activePaintedGrids.forEach(id => {
+
+      if(nextSet.has(id)){
+        return;
+      }
+
+      const cell =
+        window.gridIndex?.[id];
+
+      if(
+        !cell ||
+        !cell.poly
+      ){
+        return;
+      }
+
+      cell.rendered = false;
+
+      cell.poly.setStyle({
+
+        fillColor: "#111",
+
+        fillOpacity: 0.04,
+
+        color: "#333",
+
+        opacity: 0.35,
+
+        weight: 0.4
+      });
+    });
+
+    // =====================================
+    // 🔥 ADD NEW ONLY
+    // =====================================
+    nextSet.forEach(id => {
+
+      if(
+        window.activePaintedGrids.has(id)
+      ){
+        return;
+      }
+
       paintVisitedGrid(id);
     });
 
-    // ================================================
-    // 🔥 DEBUG
-    // ================================================
-    if(GRID_DEBUG){
+    // =====================================
+    // 🔥 SAVE ACTIVE SET
+    // =====================================
+    window.activePaintedGrids =
+      nextSet;
 
-      console.log(
+    console.log(
 
-        "🎨 Coverage repainted:",
+      "🎨 Optimized repaint:",
 
-        mode,
+      mode,
 
-        beat
-      );
-    }
+      beat,
+
+      nextSet.size
+    );
 
   }
 
@@ -1963,7 +2008,7 @@ function repaintCoverageGrid(
       e
     );
   }
-}    const DEBUG = false;
+}   const DEBUG = false;
 
 function safeBackend(action, payload = {}) {
 
