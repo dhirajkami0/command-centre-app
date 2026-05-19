@@ -2954,6 +2954,128 @@ async function appendTrackChunk(
     // =====================================================
 // 🔥 GET BEAT FROM GRID
 // =====================================================
+    // =====================================================
+// 🔥 GET NEAREST GRID ID
+// =====================================================
+function getNearestGridId(
+  lat,
+  lng
+){
+
+  try{
+
+    // ===============================================
+    // 🔥 GRID READY?
+    // ===============================================
+    if(
+      !window.gridIndex
+    ){
+
+      return null;
+    }
+
+    // ===============================================
+    // 🔥 INVALID GPS
+    // ===============================================
+    if(
+
+      isNaN(lat) ||
+
+      isNaN(lng)
+    ){
+
+      return null;
+    }
+
+    let nearestId = null;
+
+    let minDist = Infinity;
+
+    // ===============================================
+    // 🔥 SAFE SEARCH RADIUS
+    // ===============================================
+    const MAX_DISTANCE = 0.0035;
+
+    // ===============================================
+    // 🔥 WALK GRIDS
+    // ===============================================
+    Object.entries(
+
+      window.gridIndex
+
+    ).forEach(([id,cell]) => {
+
+      // ===========================================
+      // 🔥 INVALID CELL
+      // ===========================================
+      if(
+
+        !cell ||
+
+        !cell.center
+      ){
+        return;
+      }
+
+      const clat =
+        Number(
+          cell.center.lat
+        );
+
+      const clng =
+        Number(
+          cell.center.lng
+        );
+
+      if(
+
+        isNaN(clat) ||
+
+        isNaN(clng)
+      ){
+        return;
+      }
+
+      // ===========================================
+      // 🔥 DISTANCE
+      // ===========================================
+      const d = Math.hypot(
+
+        Number(lat) - clat,
+
+        Number(lng) - clng
+      );
+
+      // ===========================================
+      // 🔥 TOO FAR
+      // ===========================================
+      if(d > MAX_DISTANCE){
+        return;
+      }
+
+      // ===========================================
+      // 🔥 NEAREST
+      // ===========================================
+      if(d < minDist){
+
+        minDist = d;
+
+        nearestId = id;
+      }
+    });
+
+    return nearestId;
+
+  }catch(err){
+
+    console.error(
+      "❌ getNearestGridId failed:",
+      err
+    );
+
+    return null;
+  }
+}
 // =====================================================
 // 🔥 GET BEAT FROM GRID
 // SAFE GRID ENGINE VERSION
