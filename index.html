@@ -207,7 +207,13 @@ window.activeSessionMap = {};
 // 🔥 FIRESTORE LIVE LISTENERS
 // ====================================================
 window.trackListeners = {};
+// =====================================================
+// 🔥 LIVE TRACK SEGMENT
+// =====================================================
+window.currentTrackSegmentId =
+  "SEG_" + Date.now();
 
+window.lastTrackPointTime = 0;
 // ====================================================
 // 🔥 POINT COUNT CACHE
 // USED FOR APPEND-ONLY MODE
@@ -2883,56 +2889,268 @@ window.openGallery = function(){
     // =====================================================
 // 🔥 APPEND TRACK CHUNK
 // =====================================================
+// =====================================================
+// 🔥 APPEND TRACK CHUNK
+// REAL SEGMENT AWARE VERSION
+// =====================================================
 async function appendTrackChunk(
+
   sessionId,
+
   cleanName,
+
   beat,
+
   points
 ){
 
   try{
 
+    // ===============================================
+    // 🔥 VALIDATE
+    // ===============================================
     if(
+
       !window.trackDB ||
+
       !Array.isArray(points) ||
+
       !points.length
     ){
       return;
     }
 
+    // ===============================================
+    // 🔥 TRACK STORE
+    // ===============================================
     const tx =
+
       window.trackDB.transaction(
+
         ["track_points"],
+
         "readwrite"
       );
 
     const store =
+
       tx.objectStore(
         "track_points"
       );
 
+    // ===============================================
+    // 🔥 SAFE SESSION
+    // ===============================================
+    const safeSessionId =
+
+      String(
+
+        sessionId ||
+
+        "UNKNOWN_SESSION"
+
+      ).trim();
+
+    // ===============================================
+    // 🔥 SAFE BEAT
+    // ===============================================
+    const safeBeat =
+
+      String(
+
+        beat ||
+
+        "UNKNOWN"
+
+      ).trim();
+
+    // ===============================================
+    // 🔥 LIVE SEGMENT INIT
+    // ===============================================
+    if(
+
+      !window.currentTrackSegmentId
+    ){
+
+      window.currentTrackSegmentId =
+
+        "SEG_" + Date.now();
+    }
+
+    // ===============================================
+    // 🔥 LAST TIME INIT
+    // ===============================================
+    if(
+
+      !window.lastTrackPointTime
+    ){
+
+      window.lastTrackPointTime = 0;
+    }
+
+    // ===============================================
+    // 🔥 GAP LIMIT
+    // new REAL patrol segment
+    // ===============================================
+    const GAP_LIMIT =
+
+      1000 * 60 * 5;
+
+    // ===============================================
+    // 🔥 SAVE POINTS
+    // ===============================================
     points.forEach(p => {
 
+      // ===========================================
+      // 🔥 INVALID
+      // ===========================================
+      if(
+
+        !p ||
+
+        isNaN(p.lat) ||
+
+        isNaN(p.lng)
+      ){
+        return;
+      }
+
+      // ===========================================
+      // 🔥 SAFE TIME
+      // ===========================================
+      const pointTime =
+
+        p.time ||
+
+        Date.now();
+
+      // ===========================================
+      // 🔥 REAL SEGMENT BREAK
+      // ===========================================
+      if(
+
+        pointTime -
+
+        window.lastTrackPointTime >
+
+        GAP_LIMIT
+      ){
+
+        window.currentTrackSegmentId =
+
+          "SEG_" + pointTime;
+
+        console.log(
+
+          "🧩 New patrol segment:",
+
+          window.currentTrackSegmentId
+        );
+      }
+
+      // ===========================================
+      // 🔥 UPDATE LAST TIME
+      // ===========================================
+      window.lastTrackPointTime =
+        pointTime;
+
+      // ===========================================
+      // 🔥 DUPLICATE HASH
+      // ===========================================
+      const hash = [
+
+        safeSessionId,
+
+        Number(p.lat).toFixed(6),
+
+        Number(p.lng).toFixed(6),
+
+        Math.floor(
+          pointTime / 5000
+        )
+
+      ].join("_");
+
+      // ===========================================
+      // 🔥 CACHE INIT
+      // ===========================================
+      if(
+
+        !window.savedTrackPoints
+      ){
+
+        window.savedTrackPoints =
+          new Set();
+      }
+
+      // ===========================================
+      // 🔥 SKIP DUPLICATE
+      // ===========================================
+      if(
+
+        window.savedTrackPoints
+          .has(hash)
+      ){
+        return;
+      }
+
+      // ===========================================
+      // 🔥 SAVE HASH
+      // ===========================================
+      window.savedTrackPoints
+        .add(hash);
+
+      // ===========================================
+      // 🔥 SAVE POINT
+      // ===========================================
       store.add({
 
-        sessionId,
+        // =========================================
+        // 🔥 SESSION
+        // =========================================
+        sessionId:
+          safeSessionId,
 
-        cleanName,
+        // =========================================
+        // 🔥 REAL SEGMENT
+        // =========================================
+        segmentId:
 
-        beat,
+          window.currentTrackSegmentId,
 
-        lat:p.lat,
+        // =========================================
+        // 🔥 STAFF
+        // =========================================
+        cleanName:
+          cleanName || "UNKNOWN",
 
-        lng:p.lng,
+        // =========================================
+        // 🔥 BEAT
+        // =========================================
+        beat:
+          safeBeat,
 
+        // =========================================
+        // 🔥 GPS
+        // =========================================
+        lat:
+          Number(p.lat),
+
+        lng:
+          Number(p.lng),
+
+        // =========================================
+        // 🔥 TIME
+        // =========================================
         time:
-          p.time ||
-          Date.now()
+          pointTime
       });
     });
 
     console.log(
+
       "💾 Track chunk saved:",
+
       points.length
     );
 
@@ -2944,7 +3162,6 @@ async function appendTrackChunk(
     );
   }
 }
-
     // =====================================================
 // 🔥 LOAD TRACKS BY FILTER
 // =====================================================
@@ -3506,32 +3723,68 @@ async function loadTracksByFilter(
       }
 
       // ===============================================
-      // 🔥 GROUP BY SESSION
-      // ===============================================
-      const grouped = {};
+// 🔥 GROUP REAL TRACK SEGMENTS
+// prevents teleport lines
+// ===============================================
+const grouped = {};
 
-      filtered.forEach(p => {
+filtered.forEach(p => {
 
-        // ===========================================
-        // 🔥 SAFE SESSION
-        // ===========================================
-        const sessionId =
+  // ===========================================
+  // 🔥 SAFE SESSION
+  // ===========================================
+  const sessionId =
 
-          p.sessionId ||
+    String(
 
-          "UNKNOWN_SESSION";
+      p.sessionId ||
 
-        if(
-          !grouped[sessionId]
-        ){
+      "UNKNOWN_SESSION"
 
-          grouped[sessionId] = [];
-        }
+    ).trim();
 
-        grouped[sessionId]
-          .push(p);
-      });
+  // ===========================================
+  // 🔥 SAFE SEGMENT
+  // ===========================================
+  const segmentId =
 
+    String(
+
+      p.segmentId ||
+
+      "SEG_1"
+
+    ).trim();
+
+  // ===========================================
+  // 🔥 REAL TRACK KEY
+  // session + real segment
+  // ===========================================
+  const key = [
+
+    sessionId,
+
+    segmentId
+
+  ].join("_");
+
+  // ===========================================
+  // 🔥 INIT
+  // ===========================================
+  if(
+    !grouped[key]
+  ){
+
+    grouped[key] = [];
+  }
+
+  // ===========================================
+  // 🔥 PUSH POINT
+  // ===========================================
+  grouped[key]
+    .push(p);
+});
+      
       console.log(
 
         "🧩 Sessions:",
@@ -3614,6 +3867,10 @@ async function loadTracksByFilter(
 // 🔥 RENDER HISTORY TRACK
 // FULLY ALIGNED HISTORY RENDER ENGINE
 // =====================================================
+// =====================================================
+// 🔥 RENDER HISTORY TRACK
+// REAL SEGMENT SAFE VERSION
+// =====================================================
 function renderHistoricalTrack(
   points
 ){
@@ -3624,11 +3881,28 @@ function renderHistoricalTrack(
     // 🔥 VALIDATE
     // ===============================================
     if(
+
       !Array.isArray(points) ||
+
       points.length < 2
     ){
       return;
     }
+
+    // ===============================================
+    // 🔥 SAFE SORT
+    // exact patrol order
+    // ===============================================
+    points.sort(
+
+      (a,b)=>
+
+        (a.time || 0)
+
+        -
+
+        (b.time || 0)
+    );
 
     // ===============================================
     // 🔥 SAFE SEGMENT BUFFER
@@ -3636,10 +3910,150 @@ function renderHistoricalTrack(
     let segment = [];
 
     // ===============================================
-    // 🔥 MAX GAP
-    // prevents fake teleport lines
+    // 🔥 MAX SPATIAL GAP
+    // only impossible GPS jumps
     // ===============================================
-    const MAX_GAP = 0.003;
+    const MAX_GAP =
+      0.0008;
+
+    // ===============================================
+    // 🔥 POPUP HELPER
+    // ===============================================
+    function attachAnalyticsPopup(
+      line
+    ){
+
+      try{
+
+        if(!line){
+          return;
+        }
+
+        line.on(
+
+          "click",
+
+          function(e){
+
+            try{
+
+              // =====================================
+              // 🔥 ACTIVE ANALYTICS KEY
+              // =====================================
+              const key =
+
+                `${window.currentHistoryMode}_${
+                  window.currentHistoryBeat
+                }`;
+
+              // =====================================
+              // 🔥 ANALYTICS
+              // =====================================
+              const a =
+
+                window.historyAnalytics?.[
+                  key
+                ];
+
+              if(!a){
+                return;
+              }
+
+              // =====================================
+              // 🔥 DENSITY LABEL
+              // =====================================
+              let density = "LOW";
+
+              if(
+                a.repeatedGrids > 20
+              ){
+
+                density = "HIGH";
+              }
+
+              else if(
+                a.repeatedGrids > 8
+              ){
+
+                density = "MEDIUM";
+              }
+
+              // =====================================
+              // 🔥 POPUP
+              // =====================================
+              const html = `
+
+                <div style="
+                  font-size:13px;
+                  line-height:1.7;
+                  min-width:220px;
+                ">
+
+                  <b>🧭 Beat:</b>
+                  ${a.beat}<br>
+
+                  <b>📅 Mode:</b>
+                  ${a.mode}<br>
+
+                  <b>📍 Patrol Points:</b>
+                  ${a.totalPoints}<br>
+
+                  <b>🟩 Grids Covered:</b>
+                  ${a.gridsCovered}<br>
+
+                  <b>🟥 Unvisited:</b>
+                  ${a.unvisitedGrids}<br>
+
+                  <b>🔥 Repeat Patrol:</b>
+                  ${a.repeatedGrids}<br>
+
+                  <b>📏 Distance:</b>
+                  ${a.estimatedDistance} km<br>
+
+                  <b>⏱ Duration:</b>
+                  ${a.patrolDuration} h<br>
+
+                  <b>📊 Coverage:</b>
+                  ${a.coveragePercent}%<br>
+
+                  <b>🔁 Density:</b>
+                  ${density}
+
+                </div>
+              `;
+
+              L.popup()
+
+                .setLatLng(
+                  e.latlng
+                )
+
+                .setContent(
+                  html
+                )
+
+                .openOn(
+                  window.map
+                );
+
+            }catch(err){
+
+              console.error(
+                "❌ popup failed",
+                err
+              );
+            }
+          }
+        );
+
+      }catch(err){
+
+        console.error(
+          "❌ attachAnalyticsPopup failed",
+          err
+        );
+      }
+    }
 
     // ===============================================
     // 🔥 WALK TRACK POINTS
@@ -3653,7 +4067,8 @@ function renderHistoricalTrack(
       i++
     ){
 
-      const p = points[i];
+      const p =
+        points[i];
 
       const prev =
         points[i - 1];
@@ -3663,6 +4078,8 @@ function renderHistoricalTrack(
       // ===========================================
       if(
 
+        !p ||
+
         isNaN(p.lat) ||
 
         isNaN(p.lng)
@@ -3671,15 +4088,24 @@ function renderHistoricalTrack(
       }
 
       // ===========================================
+      // 🔥 SAFE GPS
+      // ===========================================
+      const lat =
+        Number(p.lat);
+
+      const lng =
+        Number(p.lng);
+
+      // ===========================================
       // 🔥 FIRST POINT
       // ===========================================
       if(i === 0){
 
         segment.push([
 
-          Number(p.lat),
+          lat,
 
-          Number(p.lng)
+          lng
         ]);
 
         continue;
@@ -3701,22 +4127,21 @@ function renderHistoricalTrack(
       }
 
       // ===========================================
-      // 🔥 DISTANCE GAP
+      // 🔥 DISTANCE
       // ===========================================
       const dist = Math.hypot(
 
-        Number(p.lat) -
+        lat -
 
         Number(prev.lat),
 
-        Number(p.lng) -
+        lng -
 
         Number(prev.lng)
       );
 
       // ===========================================
-      // 🔥 HUGE GAP?
-      // BREAK SEGMENT
+      // 🔥 IMPOSSIBLE GPS JUMP
       // ===========================================
       if(dist > MAX_GAP){
 
@@ -3726,7 +4151,7 @@ function renderHistoricalTrack(
         if(segment.length >= 2){
 
           // =======================================
-          // 🔥 SIMPLIFY TRACK
+          // 🔥 SIMPLIFY
           // =======================================
           const simplified =
 
@@ -3738,7 +4163,7 @@ function renderHistoricalTrack(
             );
 
           // =======================================
-          // 🔥 CREATE POLYLINE
+          // 🔥 CREATE LINE
           // =======================================
           const line =
 
@@ -3759,129 +4184,22 @@ function renderHistoricalTrack(
             );
 
           // =======================================
-          // 🔥 ADD TO HISTORY LAYER
+          // 🔥 ADD TO LAYER
           // =======================================
           line.addTo(
             window.historyLayer
           );
 
           // =======================================
-          // 🔥 ANALYTICS POPUP
+          // 🔥 POPUP
           // =======================================
-          line.on(
-
-            "click",
-
-            function(e){
-
-              try{
-
-                const key =
-
-                  `${window.currentHistoryMode}_${
-                    window.currentHistoryBeat
-                  }`;
-
-                const a =
-
-                  window.historyAnalytics?.[
-                    key
-                  ];
-
-                if(!a){
-                  return;
-                }
-
-                // ===============================
-                // 🔥 DENSITY LABEL
-                // ===============================
-                let density = "LOW";
-
-                if(
-                  a.repeatedGrids > 20
-                ){
-
-                  density = "HIGH";
-                }
-
-                else if(
-                  a.repeatedGrids > 8
-                ){
-
-                  density = "MEDIUM";
-                }
-
-                // ===============================
-                // 🔥 POPUP HTML
-                // ===============================
-                const html = `
-
-                  <div style="
-                    font-size:13px;
-                    line-height:1.7;
-                    min-width:220px;
-                  ">
-
-                    <b>🧭 Beat:</b>
-                    ${a.beat}<br>
-
-                    <b>📅 Mode:</b>
-                    ${a.mode}<br>
-
-                    <b>📍 Patrol Points:</b>
-                    ${a.totalPoints}<br>
-
-                    <b>🟩 Grids Covered:</b>
-                    ${a.gridsCovered}<br>
-
-                    <b>🟥 Unvisited:</b>
-                    ${a.unvisitedGrids}<br>
-
-                    <b>🔥 Repeat Patrol:</b>
-                    ${a.repeatedGrids}<br>
-
-                    <b>📏 Distance:</b>
-                    ${a.estimatedDistance} km<br>
-
-                    <b>⏱ Duration:</b>
-                    ${a.patrolDuration} h<br>
-
-                    <b>📊 Coverage:</b>
-                    ${a.coveragePercent}%<br>
-
-                    <b>🔁 Density:</b>
-                    ${density}
-
-                  </div>
-                `;
-
-                L.popup()
-
-                  .setLatLng(
-                    e.latlng
-                  )
-
-                  .setContent(
-                    html
-                  )
-
-                  .openOn(
-                    window.map
-                  );
-
-              }catch(err){
-
-                console.error(
-                  "❌ popup failed",
-                  err
-                );
-              }
-            }
+          attachAnalyticsPopup(
+            line
           );
         }
 
         // =========================================
-        // 🔥 START NEW SEGMENT
+        // 🔥 RESET SEGMENT
         // =========================================
         segment = [];
       }
@@ -3891,9 +4209,9 @@ function renderHistoricalTrack(
       // ===========================================
       segment.push([
 
-        Number(p.lat),
+        lat,
 
-        Number(p.lng)
+        lng
       ]);
     }
 
@@ -3903,7 +4221,7 @@ function renderHistoricalTrack(
     if(segment.length >= 2){
 
       // =============================================
-      // 🔥 SIMPLIFY FINAL
+      // 🔥 SIMPLIFY
       // =============================================
       const simplified =
 
@@ -3943,111 +4261,10 @@ function renderHistoricalTrack(
       );
 
       // =============================================
-      // 🔥 ANALYTICS POPUP
+      // 🔥 POPUP
       // =============================================
-      line.on(
-
-        "click",
-
-        function(e){
-
-          try{
-
-            const key =
-
-              `${window.currentHistoryMode}_${
-                window.currentHistoryBeat
-              }`;
-
-            const a =
-
-              window.historyAnalytics?.[
-                key
-              ];
-
-            if(!a){
-              return;
-            }
-
-            let density = "LOW";
-
-            if(
-              a.repeatedGrids > 20
-            ){
-
-              density = "HIGH";
-            }
-
-            else if(
-              a.repeatedGrids > 8
-            ){
-
-              density = "MEDIUM";
-            }
-
-            const html = `
-
-              <div style="
-                font-size:13px;
-                line-height:1.7;
-                min-width:220px;
-              ">
-
-                <b>🧭 Beat:</b>
-                ${a.beat}<br>
-
-                <b>📅 Mode:</b>
-                ${a.mode}<br>
-
-                <b>📍 Patrol Points:</b>
-                ${a.totalPoints}<br>
-
-                <b>🟩 Grids Covered:</b>
-                ${a.gridsCovered}<br>
-
-                <b>🟥 Unvisited:</b>
-                ${a.unvisitedGrids}<br>
-
-                <b>🔥 Repeat Patrol:</b>
-                ${a.repeatedGrids}<br>
-
-                <b>📏 Distance:</b>
-                ${a.estimatedDistance} km<br>
-
-                <b>⏱ Duration:</b>
-                ${a.patrolDuration} h<br>
-
-                <b>📊 Coverage:</b>
-                ${a.coveragePercent}%<br>
-
-                <b>🔁 Density:</b>
-                ${density}
-
-              </div>
-            `;
-
-            L.popup()
-
-              .setLatLng(
-                e.latlng
-              )
-
-              .setContent(
-                html
-              )
-
-              .openOn(
-                window.map
-              );
-
-          }catch(err){
-
-            console.error(
-              "❌ popup failed",
-              err
-            );
-          }
-        }
+      attachAnalyticsPopup(
+        line
       );
     }
 
@@ -4075,7 +4292,7 @@ function renderHistoricalTrack(
       err
     );
   }
-}    
+}
     window.__gridLoadedFromCache = false;
 let appStarted = false;
 
@@ -13886,18 +14103,22 @@ const cleanedPoints =
 
   cleanTrackPoints(
 
-    newPoints.map(p=>[
+    newPoints.map(p => [
+
       p.lat,
+
       p.lon
     ])
-
   );
 
 // ======================================
 // 🔥 APPEND CLEANED POINTS
 // ======================================
-cleanedPoints.forEach(p=>{
+cleanedPoints.forEach(p => {
 
+  // ====================================
+  // 🔥 INVALID
+  // ====================================
   if(
     !Array.isArray(p)
   ){
@@ -13905,46 +14126,113 @@ cleanedPoints.forEach(p=>{
   }
 
   if(
+
     isNaN(p[0]) ||
+
     isNaN(p[1])
   ){
     return;
   }
 
-  // ======================================
+  // ====================================
+  // 🔥 SAFE GPS
+  // ====================================
+  const lat =
+    Number(p[0]);
+
+  const lng =
+    Number(p[1]);
+
+  // ====================================
   // 🔥 LIVE MAP DRAW
-  // ======================================
+  // ====================================
   polyline.addLatLng([
-    p[0],
-    p[1]
+
+    lat,
+
+    lng
   ]);
 
-  // ======================================
-  // 🔥 SAVE POINT TO INDEXEDDB
-  // ======================================
- // ======================================
-// 🔥 SAVE POINT TO INDEXEDDB
-// ======================================
-appendTrackChunk(
+  // ====================================
+  // 🔥 CURRENT TIME
+  // ====================================
+  const pointTime =
+    Date.now();
 
-  currentSessionId,
+  // ====================================
+  // 🔥 REAL SEGMENT BREAK
+  // new patrol continuity
+  // ====================================
+  const GAP_LIMIT =
 
-  s.cleanName,
+    1000 * 60 * 5;
 
-  s.beat || "UNKNOWN",
+  // ====================================
+  // 🔥 LAST TIME INIT
+  // ====================================
+  if(
 
-  [
-    {
-      lat:p[0],
+    !window.lastTrackPointTime
+  ){
 
-      lng:p[1],
+    window.lastTrackPointTime =
+      pointTime;
+  }
 
-      time:
-        Date.now()
-    }
-  ]
-);
+  // ====================================
+  // 🔥 NEW REAL SEGMENT
+  // ====================================
+  if(
+
+    pointTime -
+
+    window.lastTrackPointTime >
+
+    GAP_LIMIT
+  ){
+
+    window.currentTrackSegmentId =
+
+      "SEG_" + pointTime;
+
+    console.log(
+
+      "🧩 New patrol segment:",
+
+      window.currentTrackSegmentId
+    );
+  }
+
+  // ====================================
+  // 🔥 UPDATE LAST TIME
+  // ====================================
+  window.lastTrackPointTime =
+    pointTime;
+
+  // ====================================
+  // 🔥 SAVE POINT
+  // ====================================
+  appendTrackChunk(
+
+    currentSessionId,
+
+    s.cleanName,
+
+    s.beat || "UNKNOWN",
+
+    [
+      {
+        lat,
+
+        lng,
+
+        time:
+          pointTime
+      }
+    ]
+  );
 });
+            
             // ==================================================
 // 🔥 GRID DETECTION FROM CLEANED POLYLINE
 // ==================================================
