@@ -13800,25 +13800,28 @@ cleanedPoints.forEach(p=>{
   // ======================================
   // 🔥 SAVE POINT TO INDEXEDDB
   // ======================================
-  appendTrackChunk(
+ // ======================================
+// 🔥 SAVE POINT TO INDEXEDDB
+// ======================================
+appendTrackChunk(
 
-    sessionId,
+  currentSessionId,
 
-    s.cleanName,
+  s.cleanName,
 
-    s.beat || "UNKNOWN",
+  s.beat || "UNKNOWN",
 
-    [
-      {
-        lat:p[0],
+  [
+    {
+      lat:p[0],
 
-        lng:p[1],
+      lng:p[1],
 
-        time:Date.now()
-      }
-    ]
-  );
-
+      time:
+        Date.now()
+    }
+  ]
+);
 });
             // ==================================================
 // 🔥 GRID DETECTION FROM CLEANED POLYLINE
