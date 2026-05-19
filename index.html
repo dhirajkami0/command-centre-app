@@ -7311,6 +7311,18 @@ function updateVisitedCache(newVisited){
     }
 
     // ==========================================
+    // 🔥 ENSURE CACHE
+    // ==========================================
+    window.gridCache =
+      window.gridCache || {};
+
+    window.gridCache.today =
+      window.gridCache.today || {};
+
+    window.gridCache.current =
+      window.gridCache.current || {};
+
+    // ==========================================
     // 🔥 STORAGE KEY
     // ==========================================
     const key =
@@ -7346,40 +7358,20 @@ function updateVisitedCache(newVisited){
     // ==========================================
     Object.keys(todayData).forEach(id => {
 
-      if(todayData[id] === true){
+      const num =
+        Number(todayData[id]);
 
-        todayData[id] = 1;
-      }
+      todayData[id] =
 
-      else{
-
-        const num =
-          Number(todayData[id]);
-
-        todayData[id] =
-
-          isNaN(num)
-            ? 0
-            : num;
-      }
+        isNaN(num)
+          ? 0
+          : num;
     });
-
-    // ==========================================
-    // 🔥 ENSURE MEMORY CACHE
-    // ==========================================
-    window.gridCache =
-      window.gridCache || {};
-
-    window.gridCache.today =
-      window.gridCache.today || {};
-
-    window.gridCache.current =
-      window.gridCache.current || {};
 
     let added = 0;
 
     // ==========================================
-    // 🔥 LIVE INCREMENTAL UPDATE
+    // 🔥 PROCESS VISITS
     // ==========================================
     Object.keys(newVisited).forEach(id => {
 
@@ -7388,7 +7380,7 @@ function updateVisitedCache(newVisited){
       }
 
       // ======================================
-      // 🔥 STORAGE UPDATE
+      // 🔥 STORAGE COUNT
       // ======================================
       todayData[id] =
 
@@ -7397,7 +7389,7 @@ function updateVisitedCache(newVisited){
         ) + 1;
 
       // ======================================
-      // 🔥 LIVE TODAY MEMORY
+      // 🔥 TODAY MEMORY
       // ======================================
       window.gridCache.today[id] =
 
@@ -7408,7 +7400,7 @@ function updateVisitedCache(newVisited){
         ) + 1;
 
       // ======================================
-      // 🔥 LIVE CURRENT MEMORY
+      // 🔥 CURRENT MEMORY
       // ======================================
       window.gridCache.current[id] =
 
@@ -7419,25 +7411,21 @@ function updateVisitedCache(newVisited){
         ) + 1;
 
       // ======================================
-      // 🔥 LIVE REALTIME PAINT
+      // 🔥 VISUAL CELL FLAGS
       // ======================================
-      if(
+      const cell =
+        window.gridIndex?.[id];
 
-        window.gridVisible &&
+      if(cell){
 
-        window.currentCoverageMode
-        === "today"
-
-      ){
-
-        paintVisitedGrid(id);
+        cell.visited = true;
       }
 
       added++;
     });
 
     // ==========================================
-    // 🔥 DEBOUNCED STORAGE SAVE
+    // 🔥 SAVE STORAGE (DEBOUNCED)
     // ==========================================
     try {
 
@@ -7483,6 +7471,41 @@ function updateVisitedCache(newVisited){
     }
 
     // ==========================================
+    // 🔥 LIVE REPAINT
+    // ==========================================
+    if(window.gridVisible){
+
+      repaintCoverageGrid(
+
+        window.currentCoverageMode
+        || "today",
+
+        window.currentBeat
+        || "ALL"
+      );
+    }
+
+    // ==========================================
+    // 🔥 LIVE POPUP REFRESH
+    // ==========================================
+    if(
+      window.__lastGridPopupCell &&
+      window.__lastGridPopupLatLng
+    ){
+
+      try {
+
+        showGridPopup(
+
+          window.__lastGridPopupCell,
+
+          window.__lastGridPopupLatLng
+        );
+
+      } catch(e){}
+    }
+
+    // ==========================================
     // 🔥 DEBUG
     // ==========================================
     if(GRID_DEBUG){
@@ -7495,14 +7518,21 @@ function updateVisitedCache(newVisited){
       console.log(
         "📊 Today grids:",
         Object.keys(
-          todayData
+          window.gridCache.today
         ).length
       );
 
       console.log(
-        "📊 Total visits:",
+        "📊 Current grids:",
+        Object.keys(
+          window.gridCache.current
+        ).length
+      );
+
+      console.log(
+        "📊 Today visits:",
         Object.values(
-          todayData
+          window.gridCache.today
         ).reduce(
           (a,b)=>a+b,
           0
@@ -7510,15 +7540,16 @@ function updateVisitedCache(newVisited){
       );
     }
 
-  } catch(e){
+  }
+
+  catch(e){
 
     console.error(
       "❌ updateVisitedCache error:",
       e
     );
   }
-}
-    /* ============================================================
+}    /* ============================================================
    📊 COVERAGE STATS (FULLY MODE-AWARE + DENSITY SAFE)
 ============================================================ */
 function getCoverageStats(mode = "today", beat = "ALL"){
