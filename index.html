@@ -3299,75 +3299,7 @@ try {
     // ======================================================
     // 🔥 GRID INIT + BACKFILL (UNCHANGED)
     // ======================================================
-    setTimeout(() => {
-
-      let attempts = 0;
-
-      if(window.__gridInitStarted){
-        console.warn("⚠ Grid init already started");
-        return;
-      }
-
-      window.__gridInitStarted = true;
-
-      const gridInitInterval = setInterval(async () => {
-
-        attempts++;
-
-        if(!window.rangeLayer){
-          console.log("⏳ Waiting for rangeLayer...");
-          if(attempts > 10) clearInterval(gridInitInterval);
-          return;
-        }
-
-        // 🔥 LOAD FROM DB
-if(!window.__gridLoadedFromCache){
-
-  const loaded =
-    await loadGridFromDB();
-
-  if(loaded){
-
-    window.__gridLoadedFromCache =
-      true;
-
-    clearInterval(
-      gridInitInterval
-    );
-
-    return;
-  }
-}
-        // 🔥 BUILD GRID
-        if(!window.__gridLoadedFromCache && !window.__gridBuilding){
-
-          console.log("🔁 Building grid");
-
-          await ensureGridReady();
-
-          try {
-            if(window.gridIndex && Object.keys(window.gridIndex).length){
-              await saveGridToDB(window.gridIndex);
-            }
-          } catch(e){
-            console.warn("⚠ DB save failed");
-          }
-
-          window.__gridLoadedFromCache = true;
-        }
-
-        // 🔥 READY
-        if(window.__gridReady){
-
-          console.log("🎯 Grid ready");
-          clearInterval(gridInitInterval);
-
-        }
-
-      }, 600);
-
-    }, 1200);
-
+   
     // ======================================================
     // 🔥 DUTY CHECK
     // ======================================================
