@@ -5704,6 +5704,177 @@ function buildHistoryAnalytics(
     );
   }
 }
+
+// =====================================================
+// 🔥 UPDATE COVERAGE PANEL FROM HISTORY
+// =====================================================
+function updateCoveragePanelFromHistory(){
+
+  try{
+
+    // ===============================================
+    // 🔥 ACTIVE KEY
+    // ===============================================
+    const key = [
+
+      window.currentHistoryMode ||
+
+      "today",
+
+      "_",
+
+      window.currentHistoryBeat ||
+
+      "ALL"
+
+    ].join("");
+
+    // ===============================================
+    // 🔥 ANALYTICS
+    // ===============================================
+    const a =
+
+      window.historyAnalytics?.[
+        key
+      ];
+
+    if(!a){
+
+      console.warn(
+        "⚠ No analytics found:",
+        key
+      );
+
+      return;
+    }
+
+    console.log(
+      "📊 Coverage panel sync:",
+      key,
+      a
+    );
+
+    // ===============================================
+    // 🔥 FIND PANEL
+    // ===============================================
+    const panel =
+
+      document.getElementById(
+        "coverageContent"
+      );
+
+    if(!panel){
+      return;
+    }
+
+    // ===============================================
+    // 🔥 APPEND HISTORY ANALYTICS
+    // ===============================================
+    let stats =
+
+      document.getElementById(
+        "historyCoverageStats"
+      );
+
+    // ===============================================
+    // 🔥 CREATE IF MISSING
+    // ===============================================
+    if(!stats){
+
+      stats =
+        document.createElement(
+          "div"
+        );
+
+      stats.id =
+        "historyCoverageStats";
+
+      stats.style.marginTop =
+        "10px";
+
+      stats.style.fontSize =
+        "12px";
+
+      stats.style.lineHeight =
+        "1.6";
+
+      stats.style.color =
+        "#fff";
+
+      panel.appendChild(
+        stats
+      );
+    }
+
+    // ===============================================
+    // 🔥 DENSITY
+    // ===============================================
+    let density = "LOW";
+
+    if(a.repeatedGrids > 20){
+
+      density = "HIGH";
+    }
+
+    else if(a.repeatedGrids > 8){
+
+      density = "MEDIUM";
+    }
+
+    // ===============================================
+    // 🔥 PANEL HTML
+    // ===============================================
+    stats.innerHTML = `
+
+      <hr style="
+        border:0;
+        border-top:1px solid rgba(255,255,255,0.15);
+        margin:8px 0;
+      ">
+
+      <b>📊 Patrol Analytics</b><br><br>
+
+      <b>🧭 Beat:</b>
+      ${a.beat}<br>
+
+      <b>📅 Mode:</b>
+      ${a.mode}<br>
+
+      <b>📍 Points:</b>
+      ${a.totalPoints}<br>
+
+      <b>🟩 Covered:</b>
+      ${a.gridsCovered}<br>
+
+      <b>🟥 Unvisited:</b>
+      ${a.unvisitedGrids}<br>
+
+      <b>📊 Coverage:</b>
+      ${a.coveragePercent}%<br>
+
+      <b>📏 Distance:</b>
+      ${a.estimatedDistance} km<br>
+
+      <b>🔥 Repeat Patrol:</b>
+      ${a.repeatedGrids}<br>
+
+      <b>🔁 Density:</b>
+      ${density}<br>
+
+      <b>⏱ Duration:</b>
+      ${a.patrolDuration} h
+    `;
+
+  }catch(err){
+
+    console.error(
+      "❌ updateCoveragePanelFromHistory failed",
+      err
+    );
+  }
+}
+
+    
     function showUpdateUI() {
 
   const banner = document.getElementById("updateBanner");
@@ -10882,29 +11053,42 @@ try {
 // 🔥 APPLY MODE
 // POLYLINE ENGINE
 // =====================================================
-function applyMode(mode){
+// =====================================================
+// 🔥 APPLY MODE
+// FULL HISTORY + ANALYTICS ENGINE
+// =====================================================
+async function applyMode(mode){
 
-  try {
+  try{
 
     // =================================================
-    // 🔥 MODE
+    // 🔥 SAFE MODE
     // =================================================
-    window.currentCoverageMode =
-
+    mode =
       mode || "today";
 
-    window.__lastMode =
+    // =================================================
+    // 🔥 SAVE MODE
+    // =================================================
+    window.currentCoverageMode =
+      mode;
 
-      window.currentCoverageMode;
+    window.currentHistoryMode =
+      mode;
+
+    window.__lastMode =
+      mode;
 
     // =================================================
-    // 🔥 BEAT
+    // 🔥 SAFE BEAT
     // =================================================
     let beat =
 
       document.getElementById(
         "beatSelect"
-      )?.value || "ALL";
+      )?.value ||
+
+      "ALL";
 
     // =================================================
     // 🔥 INVALID BEAT
@@ -10917,8 +11101,11 @@ function applyMode(mode){
     ){
 
       console.warn(
+
         "⚠ Unknown beat:",
+
         beat,
+
         "→ fallback to ALL"
       );
 
@@ -10926,11 +11113,16 @@ function applyMode(mode){
     }
 
     // =================================================
-    // 🔥 SAVE CURRENT BEAT
+    // 🔥 SAVE BEAT
     // =================================================
-    window.currentBeat = beat;
+    window.currentBeat =
+      beat;
 
-    window.__lastBeat = beat;
+    window.currentHistoryBeat =
+      beat;
+
+    window.__lastBeat =
+      beat;
 
     // =================================================
     // 🔥 BUTTONS
@@ -10956,77 +11148,100 @@ function applyMode(mode){
     // =================================================
     // 🔥 RESET BUTTONS
     // =================================================
-    if(
-
-      btnToday &&
-      btnCurrent &&
+    [
+      btnToday,
+      btnCurrent,
       btnPrev
-    ){
+    ].forEach(btn => {
+
+      if(!btn){
+        return;
+      }
+
+      btn.style.background =
+        "";
+
+      btn.style.color =
+        "#fff";
+    });
+
+    // =================================================
+    // 🔥 ACTIVE BUTTON
+    // =================================================
+    if(mode === "today" && btnToday){
 
       btnToday.style.background =
+        "#00e676";
 
-        mode === "today"
+      btnToday.style.color =
+        "#000";
+    }
 
-          ? "#00e676"
-
-          : "";
+    if(mode === "current" && btnCurrent){
 
       btnCurrent.style.background =
+        "#00e676";
 
-        mode === "current"
+      btnCurrent.style.color =
+        "#000";
+    }
 
-          ? "#00e676"
-
-          : "";
+    if(mode === "prev" && btnPrev){
 
       btnPrev.style.background =
+        "#00e676";
 
-        mode === "prev"
-
-          ? "#00e676"
-
-          : "";
+      btnPrev.style.color =
+        "#000";
     }
 
     // =================================================
-    // 🔥 GRID RENDER DISABLED
+    // 🔥 DISABLE GRID VISUALS
     // =================================================
-    window.__gridRenderingDisabled = true;
+    window.__gridRenderingDisabled =
+      true;
 
     // =================================================
-    // 🔥 TODAY CACHE
+    // 🔥 SAFE LAYERS
     // =================================================
-    if(
+    if(!window.routeLayer){
 
-      mode === "today" &&
+      window.routeLayer =
+        L.layerGroup().addTo(
+          window.map
+        );
+    }
 
-      typeof updateTodayCache ===
-      "function"
+    if(!window.historyLayer){
 
-    ){
-
-      updateTodayCache();
+      window.historyLayer =
+        L.layerGroup().addTo(
+          window.map
+        );
     }
 
     // =================================================
-    // 🔥 SAFE ROUTE LAYER
+    // 🔥 CLEAR OLD HISTORY
     // =================================================
-    window.routeLayer =
-
-      window.routeLayer ||
-
-      L.layerGroup().addTo(map);
+    clearHistoryLayer();
 
     // =================================================
-    // 🔥 RENDER POLYLINES
+    // 🔥 LOAD REAL HISTORY
     // =================================================
-    renderPatrolRoutes(
+    await loadTracksByFilter(
+
       mode,
+
       beat
     );
 
     // =================================================
-    // 🔥 OPTIONAL PANEL
+    // 🔥 UPDATE COVERAGE PANEL
+    // =================================================
+    updateCoveragePanelFromHistory();
+
+    // =================================================
+    // 🔥 ENSURE PANEL OPEN
     // =================================================
     if(
 
@@ -11040,7 +11255,7 @@ function applyMode(mode){
 
     // =================================================
     // 🔥 ENSURE GRID READY
-    // ANALYTICS ONLY
+    // analytics only
     // =================================================
     if(
 
@@ -11057,7 +11272,7 @@ function applyMode(mode){
     // =================================================
     console.log(
 
-      "🎛 Polyline Mode Applied:",
+      "🎛 History Mode Applied:",
 
       mode,
 
@@ -11066,33 +11281,34 @@ function applyMode(mode){
       beat
     );
 
-  } catch(e){
+  }catch(err){
 
     console.error(
-      "❌ applyMode error:",
-      e
+      "❌ applyMode failed:",
+      err
     );
   }
 }
 
 
-
-// =====================================================
+    // =====================================================
 // 🔥 BEAT CHANGE
-// POLYLINE ENGINE
+// FULL HISTORY ENGINE
 // =====================================================
-function onBeatChange(){
+async function onBeatChange(){
 
-  try {
+  try{
 
     // =================================================
-    // 🔥 BEAT
+    // 🔥 SAFE BEAT
     // =================================================
     let beat =
 
       document.getElementById(
         "beatSelect"
-      )?.value || "ALL";
+      )?.value ||
+
+      "ALL";
 
     // =================================================
     // 🔥 INVALID BEAT
@@ -11117,69 +11333,87 @@ function onBeatChange(){
     }
 
     // =================================================
-    // 🔥 SAVE
+    // 🔥 SAVE BEAT
     // =================================================
-    window.currentBeat = beat;
+    window.currentBeat =
+      beat;
 
-    window.__lastBeat = beat;
+    window.currentHistoryBeat =
+      beat;
+
+    window.__lastBeat =
+      beat;
 
     // =================================================
-    // 🔥 DEFAULT MODE
+    // 🔥 SAFE MODE
     // =================================================
-    if(
-
-      !window.currentCoverageMode
-    ){
-
-      window.currentCoverageMode =
-        "today";
-    }
-
     const mode =
 
-      window.currentCoverageMode;
+      window.currentCoverageMode ||
 
-    window.__lastMode = mode;
+      window.currentHistoryMode ||
+
+      "today";
 
     // =================================================
-    // 🔥 TODAY CACHE
+    // 🔥 SAVE MODE
     // =================================================
-    if(
+    window.currentCoverageMode =
+      mode;
 
-      mode === "today" &&
+    window.currentHistoryMode =
+      mode;
 
-      typeof updateTodayCache ===
-      "function"
+    window.__lastMode =
+      mode;
 
-    ){
+    // =================================================
+    // 🔥 DISABLE GRID VISUALS
+    // =================================================
+    window.__gridRenderingDisabled =
+      true;
 
-      updateTodayCache();
+    // =================================================
+    // 🔥 SAFE LAYERS
+    // =================================================
+    if(!window.routeLayer){
+
+      window.routeLayer =
+        L.layerGroup().addTo(
+          window.map
+        );
+    }
+
+    if(!window.historyLayer){
+
+      window.historyLayer =
+        L.layerGroup().addTo(
+          window.map
+        );
     }
 
     // =================================================
-    // 🔥 GRID RENDER DISABLED
+    // 🔥 CLEAR OLD HISTORY
     // =================================================
-    window.__gridRenderingDisabled = true;
+    clearHistoryLayer();
 
     // =================================================
-    // 🔥 SAFE ROUTE LAYER
+    // 🔥 LOAD FILTERED HISTORY
     // =================================================
-    window.routeLayer =
+    await loadTracksByFilter(
 
-      window.routeLayer ||
-
-      L.layerGroup().addTo(map);
-
-    // =================================================
-    // 🔥 RENDER POLYLINES
-    // =================================================
-    renderPatrolRoutes(
       mode,
+
       beat
     );
 
     // =================================================
-    // 🔥 ENSURE ANALYTICS
+    // 🔥 UPDATE PANEL
+    // =================================================
+    updateCoveragePanelFromHistory();
+
+    // =================================================
+    // 🔥 ENSURE ANALYTICS READY
     // =================================================
     if(
 
@@ -11205,11 +11439,11 @@ function onBeatChange(){
       mode
     );
 
-  } catch(e){
+  }catch(err){
 
     console.error(
-      "❌ onBeatChange error:",
-      e
+      "❌ onBeatChange failed:",
+      err
     );
   }
 }
