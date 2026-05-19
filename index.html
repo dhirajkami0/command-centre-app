@@ -13860,7 +13860,35 @@ function cleanTrackPoints(track){
   });
 
   return clean;
-}// ======================================================
+}
+    
+    
+// =====================================================
+// 🔥 NORMALIZE BEAT KEY
+// =====================================================
+function normalizeBeatKey(beat){
+
+  try{
+
+    if(!beat){
+      return "UNKNOWN";
+    }
+
+    return String(beat)
+
+      .trim()
+
+      .replace(/\s+/g,"_")
+
+      .toUpperCase();
+
+  }catch(err){
+
+    return "UNKNOWN";
+  }
+}    
+    
+    // ======================================================
 // 🔥 LOAD STAFF
 // ======================================================
 function loadStaff(){
@@ -14564,7 +14592,9 @@ cleanedPoints.forEach(p => {
 
       "current",
 
-      s.beat || "UNKNOWN",
+      normalizeBeatKey(
+  s.beat
+),
 
       currentSessionId,
 
