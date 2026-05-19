@@ -1766,77 +1766,6 @@ function resetGridStyles(){
 // 🔥 REPAINT GRID FROM CACHE
 // =====================================================
 
-function repaintCoverageGrid(
-  mode = "today",
-  beat = "ALL"
-){
-
-  try {
-
-    resetGridStyles();
-
-    let current = {};
-
-    if(mode === "today"){
-
-      current =
-        window.gridCache?.today || {};
-    }
-    else if(mode === "current"){
-
-      current =
-        window.gridCache?.current || {};
-    }
-    else if(mode === "prev"){
-
-      current =
-        window.gridCache?.prev || {};
-    }
-
-    Object.keys(current).forEach(id => {
-
-      if(!current[id]){
-        return;
-      }
-
-      const cell =
-        window.gridIndex?.[id];
-
-      if(!cell){
-        return;
-      }
-
-      if(
-        beat !== "ALL" &&
-        cell.beat !== beat
-      ){
-        return;
-      }
-
-      paintVisitedGrid(id);
-    });
-
-    if(GRID_DEBUG){
-
-      console.log(
-        "🎨 Coverage repainted:",
-        mode,
-        beat
-      );
-    }
-
-  } catch(e){
-
-    console.error(
-      "❌ repaintCoverageGrid:",
-      e
-    );
-  }
-}
-    // ====================================================
-// 🔥 INCREMENTAL GRID STYLE UPDATE
-// ====================================================
-
 function paintVisitedGrid(id){
 
   const cell =
@@ -1893,7 +1822,107 @@ function paintVisitedGrid(id){
     );
   }
 }
-    const DEBUG = false;
+
+
+
+
+function repaintCoverageGrid(
+
+  mode = "today",
+
+  beat = "ALL"
+
+){
+
+  try {
+
+    // ================================================
+    // 🔥 RESET ALL GRID STYLES
+    // ================================================
+    resetGridStyles();
+
+    // ================================================
+    // 🔥 SELECT ACTIVE CACHE
+    // ================================================
+    let current = {};
+
+    if(mode === "today"){
+
+      current =
+        window.gridCache?.today || {};
+    }
+
+    else if(mode === "current"){
+
+      current =
+        window.gridCache?.current || {};
+    }
+
+    else if(mode === "prev"){
+
+      current =
+        window.gridCache?.prev || {};
+    }
+
+    // ================================================
+    // 🔥 REPAINT VISITED
+    // ================================================
+    Object.keys(current).forEach(id => {
+
+      if(!current[id]){
+        return;
+      }
+
+      const cell =
+        window.gridIndex?.[id];
+
+      if(!cell){
+        return;
+      }
+
+      // ============================================
+      // 🔥 BEAT FILTER
+      // ============================================
+      if(
+
+        beat !== "ALL" &&
+
+        cell.beat !== beat
+
+      ){
+        return;
+      }
+
+      paintVisitedGrid(id);
+    });
+
+    // ================================================
+    // 🔥 DEBUG
+    // ================================================
+    if(GRID_DEBUG){
+
+      console.log(
+
+        "🎨 Coverage repainted:",
+
+        mode,
+
+        beat
+      );
+    }
+
+  }
+
+  catch(e){
+
+    console.error(
+
+      "❌ repaintCoverageGrid:",
+
+      e
+    );
+  }
+}    const DEBUG = false;
 
 function safeBackend(action, payload = {}) {
 
