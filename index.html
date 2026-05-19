@@ -1497,7 +1497,7 @@ window.gridCache = {
   prev:{}
 };
 
-window.__lastMode = "today";
+
 window.__gridReady = false;
 
 
@@ -6666,10 +6666,7 @@ localStorage.setItem(
     window.gridCache.current
   )
 );
-  if(typeof updateMonthCache === "function"){
-    updateMonthCache();
-  }
-
+  
   console.log("🟢 VISITED:", id);
 
   // ===============================
@@ -6704,7 +6701,11 @@ function showCoveragePanel(){
 
   try {
 
+    // ==========================================
+    // 🔥 PANEL
+    // ==========================================
     const panel =
+
       document.getElementById(
         "coveragePanel"
       );
@@ -6719,6 +6720,9 @@ function showCoveragePanel(){
       );
     }
 
+    // ==========================================
+    // 🔥 DEBUG
+    // ==========================================
     if(GRID_DEBUG){
 
       console.log(
@@ -6726,25 +6730,86 @@ function showCoveragePanel(){
       );
     }
 
-    ensureGridReady();
-
+    // ==========================================
+    // 🔥 ACTIVE MODE
+    // SINGLE SOURCE OF TRUTH
+    // ==========================================
     const mode =
+
       window.currentCoverageMode
       || "today";
 
+    // ==========================================
+    // 🔥 ACTIVE BEAT
+    // ==========================================
     const beat =
+
       document.getElementById(
         "beatSelect"
       )?.value || "ALL";
 
-    window.__lastMode = mode;
+    // ==========================================
+    // 🔥 STORE ACTIVE BEAT
+    // ==========================================
+    window.currentBeat = beat;
 
+    // ==========================================
+    // 🔥 GRID READY
+    // ONLY IF VISIBLE
+    // ==========================================
+    if(
+
+      window.gridVisible &&
+
+      typeof ensureGridReady
+      === "function"
+
+    ){
+
+      ensureGridReady();
+    }
+
+    // ==========================================
+    // 🔥 TODAY CACHE REFRESH
+    // ==========================================
+    if(
+
+      mode === "today" &&
+
+      typeof updateTodayCache
+      === "function"
+
+    ){
+
+      updateTodayCache();
+    }
+
+    // ==========================================
+    // 🔥 MONTH CACHE REFRESH
+    // ==========================================
+    else if(
+
+      mode === "current" &&
+
+      typeof updateMonthCache
+      === "function"
+
+    ){
+
+      updateMonthCache();
+    }
+
+    // ==========================================
+    // 🔥 REPAINT
+    // ==========================================
     repaintCoverageGrid(
       mode,
       beat
     );
 
-  } catch(e){
+  }
+
+  catch(e){
 
     console.error(
       "❌ showCoveragePanel error:",
@@ -7201,116 +7266,230 @@ function updateVisitedCache(newVisited){
     // ==========================================
     // 🔥 SAFETY
     // ==========================================
-    if(!newVisited || !Object.keys(newVisited).length){
-      console.log("⚠ No newVisited data");
+    if(
+      !newVisited ||
+      !Object.keys(newVisited).length
+    ){
+
+      if(GRID_DEBUG){
+
+        console.log(
+          "⚠ No newVisited data"
+        );
+      }
+
       return;
     }
 
-    const key = "grid_" + getLocalDateStr();
+    // ==========================================
+    // 🔥 STORAGE KEY
+    // ==========================================
+    const key =
+      "grid_" + getLocalDateStr();
 
+    // ==========================================
+    // 🔥 READ STORAGE
+    // ==========================================
     let todayData = {};
 
     try {
-      const raw = localStorage.getItem(key);
-      if(raw) todayData = JSON.parse(raw);
+
+      const raw =
+        localStorage.getItem(key);
+
+      if(raw){
+
+        todayData =
+          JSON.parse(raw);
+      }
+
     } catch(e){
-      console.warn("⚠ Today cache read failed");
+
+      console.warn(
+        "⚠ Today cache read failed"
+      );
+
       todayData = {};
     }
 
     // ==========================================
-    // 🔥 NORMALIZE (STRICT)
+    // 🔥 NORMALIZE STORAGE
     // ==========================================
     Object.keys(todayData).forEach(id => {
+
       if(todayData[id] === true){
+
         todayData[id] = 1;
-      } else {
-        const num = Number(todayData[id]);
-        todayData[id] = isNaN(num) ? 0 : num;
+      }
+
+      else{
+
+        const num =
+          Number(todayData[id]);
+
+        todayData[id] =
+
+          isNaN(num)
+            ? 0
+            : num;
       }
     });
+
+    // ==========================================
+    // 🔥 ENSURE MEMORY CACHE
+    // ==========================================
+    window.gridCache =
+      window.gridCache || {};
+
+    window.gridCache.today =
+      window.gridCache.today || {};
+
+    window.gridCache.current =
+      window.gridCache.current || {};
 
     let added = 0;
 
+    // ==========================================
+    // 🔥 LIVE INCREMENTAL UPDATE
+    // ==========================================
     Object.keys(newVisited).forEach(id => {
 
-      if(!id) return;
-
-      if(!todayData[id]){
-        todayData[id] = 1;
-        added++;
-      } else {
-        todayData[id] += 1;
+      if(!id){
+        return;
       }
 
+      // ======================================
+      // 🔥 STORAGE UPDATE
+      // ======================================
+      todayData[id] =
+
+        (
+          Number(todayData[id]) || 0
+        ) + 1;
+
+      // ======================================
+      // 🔥 LIVE TODAY MEMORY
+      // ======================================
+      window.gridCache.today[id] =
+
+        (
+          Number(
+            window.gridCache.today[id]
+          ) || 0
+        ) + 1;
+
+      // ======================================
+      // 🔥 LIVE CURRENT MEMORY
+      // ======================================
+      window.gridCache.current[id] =
+
+        (
+          Number(
+            window.gridCache.current[id]
+          ) || 0
+        ) + 1;
+
+      // ======================================
+      // 🔥 LIVE REALTIME PAINT
+      // ======================================
+      if(
+
+        window.gridVisible &&
+
+        window.currentCoverageMode
+        === "today"
+
+      ){
+
+        paintVisitedGrid(id);
+      }
+
+      added++;
     });
 
+    // ==========================================
+    // 🔥 DEBOUNCED STORAGE SAVE
+    // ==========================================
     try {
 
-  clearTimeout(
-    window.__gridSaveTimer
-  );
+      clearTimeout(
+        window.__gridSaveTimer
+      );
 
-  window.__gridSaveTimer =
-    setTimeout(() => {
+      window.__gridSaveTimer =
+        setTimeout(() => {
 
-      try {
+          try {
 
-        localStorage.setItem(
-          key,
-          JSON.stringify(todayData)
-        );
+            localStorage.setItem(
 
-        if(GRID_DEBUG){
+              key,
 
-          console.log(
-            "💾 Grid cache saved"
-          );
-        }
+              JSON.stringify(
+                todayData
+              )
+            );
 
-      } catch(e){
+            if(GRID_DEBUG){
 
-        console.warn(
-          "⚠ Cache save failed"
-        );
-      }
+              console.log(
+                "💾 Grid cache saved"
+              );
+            }
 
-    }, 1200);
+          } catch(e){
 
-} catch(e){
+            console.warn(
+              "⚠ Cache save failed"
+            );
+          }
 
-  console.warn(
-    "⚠ Cache debounce failed"
-  );
-}
-    // ==========================================
-    // 🔥 MEMORY SYNC
-    // ==========================================
-    window.gridCache = window.gridCache || {};
-    window.gridCache.today = todayData;
+        }, 1200);
 
-    // ==========================================
-    // 🔥 REBUILD CURRENT MONTH ONLY
-    // ==========================================
-    if(typeof updateMonthCache === "function"){
-      updateMonthCache();
+    } catch(e){
+
+      console.warn(
+        "⚠ Cache debounce failed"
+      );
     }
 
-    // ❌ DO NOT rebuild prev here (unnecessary)
+    // ==========================================
+    // 🔥 DEBUG
+    // ==========================================
+    if(GRID_DEBUG){
 
-    console.log("➕ Added new grids:", added);
-    console.log(
-      "📊 Today total grids:",
-      Object.keys(todayData).length,
-      "| Total visits:",
-      Object.values(todayData).reduce((a,b)=>a+b,0)
-    );
+      console.log(
+        "➕ Added grids:",
+        added
+      );
+
+      console.log(
+        "📊 Today grids:",
+        Object.keys(
+          todayData
+        ).length
+      );
+
+      console.log(
+        "📊 Total visits:",
+        Object.values(
+          todayData
+        ).reduce(
+          (a,b)=>a+b,
+          0
+        )
+      );
+    }
 
   } catch(e){
-    console.error("❌ updateVisitedCache error:", e);
+
+    console.error(
+      "❌ updateVisitedCache error:",
+      e
+    );
   }
 }
- /* ============================================================
+    /* ============================================================
    📊 COVERAGE STATS (FULLY MODE-AWARE + DENSITY SAFE)
 ============================================================ */
 function getCoverageStats(mode = "today", beat = "ALL"){
@@ -8344,20 +8523,32 @@ function pointInPoly(lat, lng, coords){
 
           if(nearestId){
 
-            visited[nearestId] = true;
+  // ==========================================
+  // 🔥 LEGACY FLAGS
+  // ==========================================
+  visited[nearestId] = true;
 
-            visitedGlobal[nearestId] = true;
+  visitedGlobal[nearestId] = true;
 
-            paintVisitedGrid(nearestId);
+  // ==========================================
+  // 🔥 CENTRAL CACHE UPDATE
+  // ==========================================
+  updateVisitedCache({
 
-            if(GRID_DEBUG){
+    [nearestId]: true
+  });
 
-              console.warn(
-                "⚡ Forced mapping:",
-                nearestId
-              );
-            }
-          }
+  // ==========================================
+  // 🔥 OPTIONAL DEBUG
+  // ==========================================
+  if(GRID_DEBUG){
+
+    console.log(
+      "⚡ Forced mapping:",
+      nearestId
+    );
+  }
+}          }
         }
       }
     }
@@ -8452,17 +8643,55 @@ function pointInPoly(lat, lng, coords){
         data = {};
       }
 
-      Object.keys(visited)
-        .forEach(id => {
+     Object.keys(visited)
+  .forEach(id => {
 
-          data[id] =
-            (
-              Number(data[id]) || 0
-            ) + 1;
+    // ==========================================
+    // 🔥 DAILY STORAGE
+    // ==========================================
+    data[id] =
 
-          
-        });
+      (
+        Number(data[id]) || 0
+      ) + 1;
 
+    // ==========================================
+    // 🔥 LIVE TODAY CACHE
+    // ==========================================
+    window.gridCache.today[id] =
+
+      (
+        Number(
+          window.gridCache.today[id]
+        ) || 0
+      ) + 1;
+
+    // ==========================================
+    // 🔥 LIVE CURRENT CACHE
+    // ==========================================
+    window.gridCache.current[id] =
+
+      (
+        Number(
+          window.gridCache.current[id]
+        ) || 0
+      ) + 1;
+
+    // ==========================================
+    // 🔥 LIVE PAINT
+    // ==========================================
+    if(
+
+      window.gridVisible &&
+
+      window.currentCoverageMode
+      === "today"
+
+    ){
+
+      paintVisitedGrid(id);
+    }
+});
       clearTimeout(
         window.__gridSaveTimer
       );
@@ -8491,8 +8720,6 @@ function pointInPoly(lat, lng, coords){
       // ==============================================
       window.gridCache =
         window.gridCache || {};
-
-      window.gridCache.today = data;
 
       console.log(
         "💾 Saved Daily Cache:",
@@ -8540,19 +8767,19 @@ function pointInPoly(lat, lng, coords){
   return visitedGlobal;
 }
     
-    function applyMode(mode){
+   function applyMode(mode){
 
   try {
 
     // ======================================================
-    // 🔥 ACTIVE MODE
+    // 🔥 SINGLE SOURCE OF TRUTH
     // ======================================================
     window.currentCoverageMode =
       mode || "today";
 
-    window.__lastMode =
-      window.currentCoverageMode;
-
+    // ======================================================
+    // 🔥 ACTIVE BEAT
+    // ======================================================
     let beat =
       document.getElementById(
         "beatSelect"
@@ -8562,20 +8789,30 @@ function pointInPoly(lat, lng, coords){
     // 🔥 INVALID BEAT SAFETY
     // ======================================================
     if(
+
       beat !== "ALL" &&
+
       !window.beatMap?.[beat]
+
     ){
 
       console.warn(
+
         "⚠ Unknown beat:",
+
         beat,
+
         "→ fallback to ALL"
       );
 
       beat = "ALL";
     }
 
-    window.currentBeat = beat;
+    // ======================================================
+    // 🔥 STORE ACTIVE BEAT
+    // ======================================================
+    window.currentBeat =
+      beat;
 
     // ======================================================
     // 🔥 BUTTON STATES
@@ -8595,48 +8832,82 @@ function pointInPoly(lat, lng, coords){
         "btnPrev"
       );
 
-    if(
-      btnToday &&
-      btnCurrent &&
-      btnPrev
-    ){
+    if(btnToday){
 
       btnToday.style.background =
-        (mode === "today")
+
+        mode === "today"
+
         ? "#00e676"
+
         : "";
+    }
+
+    if(btnCurrent){
 
       btnCurrent.style.background =
-        (mode === "current")
+
+        mode === "current"
+
         ? "#00e676"
+
         : "";
+    }
+
+    if(btnPrev){
 
       btnPrev.style.background =
-        (mode === "prev")
+
+        mode === "prev"
+
         ? "#00e676"
+
         : "";
     }
 
     // ======================================================
-    // 🔥 ENSURE GRID READY
+    // 🔥 GRID READY
     // ======================================================
     if(
+
+      window.gridVisible &&
+
       typeof ensureGridReady
       === "function"
+
     ){
+
       ensureGridReady();
     }
 
     // ======================================================
-    // 🔥 TODAY CACHE UPDATE
+    // 🔥 TODAY CACHE
     // ======================================================
     if(
+
       mode === "today" &&
+
       typeof updateTodayCache
       === "function"
+
     ){
 
       updateTodayCache();
+    }
+
+    // ======================================================
+    // 🔥 CURRENT CACHE
+    // ======================================================
+    else if(
+
+      mode === "current" &&
+
+      typeof updateMonthCache
+      === "function"
+
+    ){
+
+      updateMonthCache();
     }
 
     // ======================================================
@@ -8657,24 +8928,31 @@ function pointInPoly(lat, lng, coords){
     }
 
     // ======================================================
-    // 🔥 BACKEND MODES
+    // 🔥 BACKEND LOAD
     // ======================================================
     if(
+
       (mode === "current" ||
-       mode === "prev") &&
+       mode === "prev")
+
+      &&
 
       (
         !window.gridCache?.current ||
+
         !window.gridCache?.prev
       )
     ){
 
       loadBackendCoverage()
+
         .then(() => {
 
           repaintCoverageGrid(
-            mode,
-            beat
+
+            window.currentCoverageMode,
+
+            window.currentBeat
           );
         });
 
@@ -8682,11 +8960,13 @@ function pointInPoly(lat, lng, coords){
     }
 
     // ======================================================
-    // 🔥 INCREMENTAL REPAINT
+    // 🔥 FINAL REPAINT
     // ======================================================
     repaintCoverageGrid(
-      mode,
-      beat
+
+      window.currentCoverageMode,
+
+      window.currentBeat
     );
 
     if(GRID_DEBUG){
@@ -8695,15 +8975,17 @@ function pointInPoly(lat, lng, coords){
 
         "🎛 Mode Applied:",
 
-        mode,
+        window.currentCoverageMode,
 
         "| Beat:",
 
-        beat
+        window.currentBeat
       );
     }
 
-  } catch(e){
+  }
+
+  catch(e){
 
     console.error(
       "❌ applyMode error:",
@@ -8713,11 +8995,17 @@ function pointInPoly(lat, lng, coords){
 }
 
 
-      function onBeatChange(){
+
+
+function onBeatChange(){
 
   try {
 
+    // ======================================================
+    // 🔥 ACTIVE BEAT
+    // ======================================================
     let beat =
+
       document.getElementById(
         "beatSelect"
       )?.value || "ALL";
@@ -8726,20 +9014,30 @@ function pointInPoly(lat, lng, coords){
     // 🔥 INVALID BEAT SAFETY
     // ======================================================
     if(
+
       beat !== "ALL" &&
+
       !window.beatMap?.[beat]
+
     ){
 
       console.warn(
+
         "⚠ Unknown beat:",
+
         beat,
+
         "→ fallback to ALL"
       );
 
       beat = "ALL";
     }
 
-    window.currentBeat = beat;
+    // ======================================================
+    // 🔥 STORE ACTIVE BEAT
+    // ======================================================
+    window.currentBeat =
+      beat;
 
     // ======================================================
     // 🔥 DEFAULT MODE
@@ -8747,39 +9045,62 @@ function pointInPoly(lat, lng, coords){
     if(
       !window.currentCoverageMode
     ){
+
       window.currentCoverageMode =
         "today";
     }
 
     const mode =
+
       window.currentCoverageMode;
 
-    window.__lastMode = mode;
-
     // ======================================================
-    // 🔥 ENSURE GRID READY
+    // 🔥 GRID READY
     // ======================================================
     if(
+
+      window.gridVisible &&
+
       typeof ensureGridReady
       === "function"
+
     ){
+
       ensureGridReady();
     }
 
     // ======================================================
-    // 🔥 TODAY CACHE UPDATE
+    // 🔥 TODAY CACHE
     // ======================================================
     if(
+
       mode === "today" &&
+
       typeof updateTodayCache
       === "function"
+
     ){
 
       updateTodayCache();
     }
 
     // ======================================================
-    // 🔥 RESET RUNTIME FLAGS
+    // 🔥 CURRENT CACHE
+    // ======================================================
+    else if(
+
+      mode === "current" &&
+
+      typeof updateMonthCache
+      === "function"
+
+    ){
+
+      updateMonthCache();
+    }
+
+    // ======================================================
+    // 🔥 RESET FLAGS
     // ======================================================
     if(window.gridCellArray){
 
@@ -8796,11 +9117,13 @@ function pointInPoly(lat, lng, coords){
     }
 
     // ======================================================
-    // 🔥 INCREMENTAL REPAINT
+    // 🔥 FINAL REPAINT
     // ======================================================
     repaintCoverageGrid(
-      mode,
-      beat
+
+      window.currentCoverageMode,
+
+      window.currentBeat
     );
 
     if(GRID_DEBUG){
@@ -8809,15 +9132,17 @@ function pointInPoly(lat, lng, coords){
 
         "🎯 Beat Changed:",
 
-        beat,
+        window.currentBeat,
 
         "| Mode:",
 
-        mode
+        window.currentCoverageMode
       );
     }
 
-  } catch(e){
+  }
+
+  catch(e){
 
     console.error(
       "❌ onBeatChange error:",
@@ -8839,13 +9164,17 @@ function showGridPopup(cell, latlng){
     const cLat =
 
       Array.isArray(cell.center)
+
         ? cell.center[0]
+
         : cell.center?.lat;
 
     const cLng =
 
       Array.isArray(cell.center)
+
         ? cell.center[1]
+
         : cell.center?.lng;
 
     // ==================================================
@@ -8869,10 +9198,12 @@ function showGridPopup(cell, latlng){
       cell.beat || "UNKNOWN";
 
     // ==================================================
-    // 🔥 ACTIVE MODE
+    // 🔥 SINGLE SOURCE OF TRUTH
     // ==================================================
     const mode =
-      window.__lastMode || "current";
+
+      window.currentCoverageMode
+      || "today";
 
     // ==================================================
     // 🔥 ACTIVE CACHE
@@ -8901,12 +9232,12 @@ function showGridPopup(cell, latlng){
     // 🔥 MODE LABEL
     // ==================================================
     let modeLabel =
-      "CURRENT";
+      "TODAY";
 
-    if(mode === "today"){
+    if(mode === "current"){
 
       modeLabel =
-        "TODAY";
+        "CURRENT MONTH";
     }
 
     else if(mode === "prev"){
@@ -8929,15 +9260,12 @@ function showGridPopup(cell, latlng){
           ) || 0;
 
     // ==================================================
-    // 🔥 SELECTED BEAT
+    // 🔥 ACTIVE BEAT
     // ==================================================
     const selectedBeat =
 
-      document
-      .getElementById(
-        "beatSelect"
-      )
-      ?.value || "ALL";
+      window.currentBeat
+      || "ALL";
 
     // ==================================================
     // 🔥 MACRO ANALYTICS
@@ -9215,7 +9543,9 @@ function showGridPopup(cell, latlng){
         <br>
 
         Area Covered:
-        <b>${(visited * 0.25).toFixed(2)} ha</b>
+        <b>
+          ${(visited * 0.25).toFixed(2)} ha
+        </b>
 
         <br>
 
@@ -9241,11 +9571,14 @@ function showGridPopup(cell, latlng){
 
         Unvisited Area:
         <b>
+
           ${(
             (total - visited)
             * 0.25
           ).toFixed(2)} ha
+
           (${unvisitedPct}%)
+
         </b>
       `;
     }
@@ -9281,8 +9614,7 @@ function showGridPopup(cell, latlng){
       );
     }
   }
-}
-    
+}    
     /* ============================================================
    📅 PREVIOUS MONTH CACHE (DENSITY-AWARE + SAFE)
 ============================================================ */
