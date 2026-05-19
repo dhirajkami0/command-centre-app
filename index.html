@@ -8343,110 +8343,119 @@ async function ensureGridReady(){
   // ==========================================
   try {
 
-    const raw = localStorage.getItem(CACHE_KEY);
+  const raw = localStorage.getItem(CACHE_KEY);
 
-    if(raw){
+  if(raw){
 
-      const parsed = JSON.parse(raw);
-      const size = Object.keys(parsed?.grid || {}).length;
+    const parsed = JSON.parse(raw);
 
-      const sample = Object.values(parsed?.grid || {})[0];
+    const size =
+      Object.keys(
+        parsed?.grid || {}
+      ).length;
 
-      if(
-        parsed?.grid &&
-        parsed?.meta?.size === TARGET_GRID_SIZE &&
-        size > MIN_VALID_GRID &&
-        sample?.beat
-      ){
-        window.gridIndex = parsed.grid;
-        window.gridMeta = parsed.meta;
-
-        window.__gridReady = true;
-
-        console.log("⚡ Grid loaded from cache:", size);
-
-        // 🔥 DO NOT AUTO RENDER HERE (IMPORTANT)
-       if(window.gridVisible){
-
-  repaintCoverageGrid(
-
-    window.currentCoverageMode
-    || "current",if(window.gridVisible){
-
-  Object.keys(newVisited)
-  .forEach(id => {
-
-    const cell =
-      window.gridIndex?.[id];
-
-    if(!cell){
-      return;
-    }
-
-    // ======================================
-    // 🔥 BEAT FILTER
-    // ======================================
-    const activeBeat =
-
-      window.currentBeat
-      || "ALL";
+    const sample =
+      Object.values(
+        parsed?.grid || {}
+      )[0];
 
     if(
 
-      activeBeat !== "ALL" &&
+      parsed?.grid &&
 
-      cell.beat !== activeBeat
+      parsed?.meta?.size ===
+      TARGET_GRID_SIZE &&
+
+      size > MIN_VALID_GRID &&
+
+      sample?.beat
 
     ){
-      return;
-    }
 
-    // ======================================
-    // 🔥 FORCE LIVE PAINT
-    // ======================================
-    cell.rendered = false;
+      window.gridIndex =
+        parsed.grid;
 
-    paintVisitedGrid(id);
-  });
-}
+      window.gridMeta =
+        parsed.meta;
 
-    window.currentBeat
-    || "ALL"
-  );
-}
-        return;
+      window.__gridReady =
+        true;
+
+      console.log(
+        "⚡ Grid loaded from cache:",
+        size
+      );
+
+      // ======================================
+      // 🔥 OPTIONAL REPAINT
+      // ======================================
+      if(window.gridVisible){
+
+        repaintCoverageGrid(
+
+          window.currentCoverageMode
+          || "current",
+
+          window.currentBeat
+          || "ALL"
+        );
       }
 
-      console.warn("⚠ Cache invalid → rebuilding", size);
-    }
-
-  } catch(e){
-    console.warn("⚠ Cache load failed");
-  }
-
-  // ==========================================
-  // 🔥 RESET INVALID GRID
-  // ==========================================
-  window.gridIndex = {};
-  window.gridMeta = null;
-
-  console.log("🔁 Building NEW 50m grid...");
-
-  if (!window.rangeLayer) return;
-  if (!window.rangeLayer.getLayers().length) return;
-  if (typeof turf === "undefined") return;
-
-  window.__gridBuilding = true;
-
-  try {
-
-    const bounds = window.rangeLayer.getBounds();
-
-    if (!bounds || !bounds.isValid()) {
-      window.__gridBuilding = false;
       return;
     }
 
+    console.warn(
+      "⚠ Cache invalid → rebuilding",
+      size
+    );
+  }
+
+} catch(e){
+
+  console.warn(
+    "⚠ Cache load failed"
+  );
+}
+
+// ==========================================
+// 🔥 RESET INVALID GRID
+// ==========================================
+window.gridIndex = {};
+
+window.gridMeta = null;
+
+console.log(
+  "🔁 Building NEW 50m grid..."
+);
+
+if(!window.rangeLayer) return;
+
+if(
+  !window.rangeLayer
+    .getLayers()
+    .length
+) return;
+
+if(typeof turf === "undefined")
+  return;
+
+window.__gridBuilding = true;
+
+try {
+
+  const bounds =
+    window.rangeLayer.getBounds();
+
+  if(
+    !bounds ||
+    !bounds.isValid()
+  ){
+
+    window.__gridBuilding =
+      false;
+
+    return;
+  }
     // ==========================================
     // 🔥 STEP 1: BUILD GRID
     // ==========================================
