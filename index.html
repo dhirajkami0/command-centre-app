@@ -8832,18 +8832,35 @@ function showGridPopup(cell, latlng){
     }
 
     // ==================================================
+    // 🔥 ACTIVE GLOBAL STATE
+    // ==================================================
+    const mode =
+
+      window.currentCoverageMode
+      || "today";
+
+    const selectedBeat =
+
+      window.currentBeat
+      || "ALL";
+
+    // ==================================================
     // 🔥 SAFE CENTER SUPPORT
     // ==================================================
     const cLat =
 
       Array.isArray(cell.center)
+
         ? cell.center[0]
+
         : cell.center?.lat;
 
     const cLng =
 
       Array.isArray(cell.center)
+
         ? cell.center[1]
+
         : cell.center?.lng;
 
     // ==================================================
@@ -8864,14 +8881,11 @@ function showGridPopup(cell, latlng){
     // 🔥 SAFE BEAT
     // ==================================================
     const beat =
+
       cell.beat || "UNKNOWN";
 
     // ==================================================
-    // 🔥 ACTIVE MODE
-    // ==================================================
-    
-    // ==================================================
-    // 🔥 ACTIVE CACHE
+    // 🔥 MODE CACHE
     // ==================================================
     let current = {};
 
@@ -8896,13 +8910,12 @@ function showGridPopup(cell, latlng){
     // ==================================================
     // 🔥 MODE LABEL
     // ==================================================
-    let modeLabel =
-      "CURRENT";
+    let modeLabel = "TODAY";
 
-    if(mode === "today"){
+    if(mode === "current"){
 
       modeLabel =
-        "TODAY";
+        "CURRENT";
     }
 
     else if(mode === "prev"){
@@ -8912,7 +8925,7 @@ function showGridPopup(cell, latlng){
     }
 
     // ==================================================
-    // 🔥 GRID VISITS
+    // 🔥 CELL VISITS
     // ==================================================
     const cellCount =
 
@@ -8925,18 +8938,7 @@ function showGridPopup(cell, latlng){
           ) || 0;
 
     // ==================================================
-    // 🔥 SELECTED BEAT
-    // ==================================================
-    const selectedBeat =
-
-      document
-      .getElementById(
-        "beatSelect"
-      )
-      ?.value || "ALL";
-
-    // ==================================================
-    // 🔥 MACRO ANALYTICS
+    // 🔥 ANALYTICS
     // ==================================================
     let total = 0;
 
@@ -9003,7 +9005,7 @@ function showGridPopup(cell, latlng){
     }
 
     // ==================================================
-    // 🔥 COVERAGE
+    // 🔥 COVERAGE %
     // ==================================================
     const coveragePct =
 
@@ -9042,7 +9044,7 @@ function showGridPopup(cell, latlng){
         : 0;
 
     // ==================================================
-    // 🔥 MICRO ANALYTICS
+    // 🔥 DENSITY
     // ==================================================
     let densityLabel =
       "Unvisited";
@@ -9102,12 +9104,12 @@ function showGridPopup(cell, latlng){
     }
 
     // ==================================================
-    // 🔥 FINAL HTML
+    // 🔥 HTML
     // ==================================================
     let html = "";
 
     // ==================================================
-    // 🟢 VISITED GRID
+    // 🟢 VISITED
     // ==================================================
     if(cellCount > 0){
 
@@ -9123,13 +9125,13 @@ function showGridPopup(cell, latlng){
       else if(mode === "current"){
 
         visitLabel =
-          "Visits This Month";
+          "Visits Current";
       }
 
       else if(mode === "prev"){
 
         visitLabel =
-          "Visits Last Month";
+          "Visits Prev Month";
       }
 
       html = `
@@ -9179,7 +9181,7 @@ function showGridPopup(cell, latlng){
     }
 
     // ==================================================
-    // 🔴 UNVISITED GRID
+    // 🔴 UNVISITED
     // ==================================================
     else {
 
@@ -9210,15 +9212,10 @@ function showGridPopup(cell, latlng){
 
         <br>
 
-        Area Covered:
-        <b>${(visited * 0.25).toFixed(2)} ha</b>
-
-        <br>
-
         Coverage:
         <b>${coveragePct}%</b>
 
-        <br><br>
+        <br>
 
         Total Visits:
         <b>${totalVisits}</b>
@@ -9235,14 +9232,8 @@ function showGridPopup(cell, latlng){
 
         <br>
 
-        Unvisited Area:
-        <b>
-          ${(
-            (total - visited)
-            * 0.25
-          ).toFixed(2)} ha
-          (${unvisitedPct}%)
-        </b>
+        Unvisited:
+        <b>${unvisitedPct}%</b>
       `;
     }
 
@@ -9269,16 +9260,12 @@ function showGridPopup(cell, latlng){
 
   catch(e){
 
-    if(GRID_DEBUG){
-
-      console.error(
-        "❌ showGridPopup error:",
-        e
-      );
-    }
+    console.error(
+      "❌ showGridPopup error:",
+      e
+    );
   }
-}
-    
+}    
     /* ============================================================
    📅 PREVIOUS MONTH CACHE (DENSITY-AWARE + SAFE)
 ============================================================ */
