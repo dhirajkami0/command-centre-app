@@ -207,6 +207,24 @@ window.activeSessionMap = {};
 // 🔥 FIRESTORE LIVE LISTENERS
 // ====================================================
 window.trackListeners = {};
+
+    // =====================================================
+// 🔥 INSTANT REPLAY CACHE
+// MEMORY-BASED GIS REPLAY ENGINE
+// =====================================================
+window.trackReplayCache = {
+
+  today:{},
+
+  current:{},
+
+  prev:{}
+};
+
+// =====================================================
+// 🔥 CACHE READY FLAG
+// =====================================================
+window.replayCacheReady = false;
 // =====================================================
 // 🔥 LIVE TRACK SEGMENT
 // =====================================================
@@ -3168,9 +3186,309 @@ async function appendTrackChunk(
 // =====================================================
 // 🔥 LOAD TRACKS BY FILTER
 // =====================================================
+// =====================================================
+// 🔥 UPDATE REPLAY CACHE
+// =====================================================
+function updateReplayCache(
+
+  mode,
+
+  beat,
+
+  sessionId,
+
+  segmentId,
+
+  point
+){
+
+  try{
+
+    // ===============================================
+    // 🔥 VALIDATE
+    // ===============================================
+    if(
+
+      !mode ||
+
+      !beat ||
+
+      !point
+    ){
+      return;
+    }
+
+    // ===============================================
+    // 🔥 MODE INIT
+    // ===============================================
+    if(
+      !window.trackReplayCache[
+        mode
+      ]
+    ){
+
+      window.trackReplayCache[
+        mode
+      ] = {};
+    }
+
+    // ===============================================
+    // 🔥 BEAT INIT
+    // ===============================================
+    if(
+      !window.trackReplayCache[
+        mode
+      ][beat]
+    ){
+
+      window.trackReplayCache[
+        mode
+      ][beat] = [];
+    }
+
+    const bucket =
+
+      window.trackReplayCache[
+        mode
+      ][beat];
+
+    // ===============================================
+    // 🔥 FIND TRACK
+    // ===============================================
+    let track =
+
+      bucket.find(t =>
+
+        t.sessionId === sessionId &&
+
+        t.segmentId === segmentId
+      );
+
+    // ===============================================
+    // 🔥 CREATE TRACK
+    // ===============================================
+    if(!track){
+
+      track = {
+
+        sessionId,
+
+        segmentId,
+
+        beat,
+
+        points:[]
+      };
+
+      bucket.push(track);
+    }
+
+    // ===============================================
+    // 🔥 APPEND POINT
+    // ===============================================
+    track.points.push(point);
+
+  }catch(err){
+
+    console.error(
+      "❌ updateReplayCache failed",
+      err
+    );
+  }
+}
+
+    
     // =====================================================
 // 🔥 GET BEAT FROM GRID
 // =====================================================
+    // =====================================================
+// 🔥 REBUILD REPLAY CACHE FROM DB
+// RUN ONLY ON APP START
+// =====================================================
+async function rebuildReplayCacheFromDB(){
+
+  try{
+
+    console.log(
+      "📦 Rebuilding replay cache..."
+    );
+
+    if(!window.trackDB){
+      return;
+    }
+
+    // ===============================================
+    // 🔥 RESET CACHE
+    // ===============================================
+    window.trackReplayCache = {
+
+      today:{},
+
+      current:{},
+
+      prev:{}
+    };
+
+    // ===============================================
+    // 🔥 LOAD DB
+    // ===============================================
+    const tx =
+
+      window.trackDB.transaction(
+
+        ["track_points"],
+
+        "readonly"
+      );
+
+    const store =
+
+      tx.objectStore(
+        "track_points"
+      );
+
+    const request =
+      store.getAll();
+
+    request.onsuccess = function(){
+
+      const all =
+        request.result || [];
+
+      const now =
+        new Date();
+
+      const todayStart =
+        new Date(
+          now.getFullYear(),
+          now.getMonth(),
+          now.getDate()
+        ).getTime();
+
+      const currentStart =
+        new Date(
+          now.getFullYear(),
+          now.getMonth(),
+          1
+        ).getTime();
+
+      const prevStart =
+        new Date(
+          now.getFullYear(),
+          now.getMonth()-1,
+          1
+        ).getTime();
+
+      const prevEnd =
+        currentStart;
+
+      // ===========================================
+      // 🔥 WALK ALL POINTS
+      // ===========================================
+      all.forEach(p => {
+
+        if(
+          !p ||
+          isNaN(p.lat) ||
+          isNaN(p.lng)
+        ){
+          return;
+        }
+
+        const point = {
+
+          lat:p.lat,
+
+          lng:p.lng,
+
+          time:p.time
+        };
+
+        const beat =
+          p.beat || "UNKNOWN";
+
+        // =========================================
+        // 🔥 TODAY
+        // =========================================
+        if(p.time >= todayStart){
+
+          updateReplayCache(
+
+            "today",
+
+            beat,
+
+            p.sessionId,
+
+            p.segmentId,
+
+            point
+          );
+        }
+
+        // =========================================
+        // 🔥 CURRENT
+        // =========================================
+        if(p.time >= currentStart){
+
+          updateReplayCache(
+
+            "current",
+
+            beat,
+
+            p.sessionId,
+
+            p.segmentId,
+
+            point
+          );
+        }
+
+        // =========================================
+        // 🔥 PREV
+        // =========================================
+        if(
+
+          p.time >= prevStart &&
+
+          p.time < prevEnd
+        ){
+
+          updateReplayCache(
+
+            "prev",
+
+            beat,
+
+            p.sessionId,
+
+            p.segmentId,
+
+            point
+          );
+        }
+      });
+
+      // ===========================================
+      // 🔥 READY
+      // ===========================================
+      window.replayCacheReady =
+        true;
+
+      console.log(
+        "✅ Replay cache ready"
+      );
+    };
+
+  }catch(err){
+
+    console.error(
+      "❌ rebuildReplayCacheFromDB failed",
+      err
+    );
+  }
+}
     // =====================================================
 // 🔥 GET NEAREST GRID ID
 // =====================================================
@@ -3450,6 +3768,10 @@ function getBeatFromGrid(
 // 🔥 LOAD TRACKS BY FILTER
 // FULLY ALIGNED STABLE VERSION
 // =====================================================
+// =====================================================
+// 🔥 LOAD TRACKS FROM MEMORY CACHE
+// INSTANT GIS REPLAY
+// =====================================================
 async function loadTracksByFilter(
 
   mode = "today",
@@ -3459,393 +3781,125 @@ async function loadTracksByFilter(
 
   try{
 
-    // =================================================
-    // 🔥 SAVE ACTIVE FILTER
-    // =================================================
+    // ===============================================
+    // 🔥 CACHE READY?
+    // ===============================================
+    if(
+
+      !window.replayCacheReady
+    ){
+
+      console.warn(
+        "⚠ Replay cache not ready"
+      );
+
+      return;
+    }
+
+    // ===============================================
+    // 🔥 SAVE ACTIVE
+    // ===============================================
     window.currentHistoryMode =
       mode;
 
     window.currentHistoryBeat =
       beat;
 
-    // =================================================
-    // 🔥 CLEAR OLD HISTORY
-    // =================================================
+    // ===============================================
+    // 🔥 CLEAR
+    // ===============================================
     clearHistoryLayer();
 
-    // =================================================
-    // 🔥 DB READY?
-    // =================================================
-    if(!window.trackDB){
+    // ===============================================
+    // 🔥 CACHE
+    // ===============================================
+    const cache =
 
-      console.warn(
-        "⚠ trackDB not ready"
-      );
+      window.trackReplayCache[
+        mode
+      ];
 
+    if(!cache){
       return;
     }
 
-    // =================================================
-    // 🔥 GRID READY?
-    // =================================================
-    if(
-
-      !window.gridIndex ||
-
-      !Object.keys(
-        window.gridIndex
-      ).length
-    ){
-
-      console.warn(
-        "⚠ gridIndex missing"
-      );
-
-      return;
-    }
-
-    // =================================================
-    // 🔥 DATE RANGE
-    // =================================================
-    const now = new Date();
-
-    let start = 0;
-
-    let end =
-      Date.now();
+    // ===============================================
+    // 🔥 TRACKS
+    // ===============================================
+    let tracks = [];
 
     // ===============================================
-    // 🔥 TODAY
+    // 🔥 ALL BEATS
     // ===============================================
-    if(mode === "today"){
+    if(beat === "ALL"){
 
-      const d = new Date();
+      Object.values(cache)
 
-      d.setHours(
-        0,0,0,0
-      );
+        .forEach(arr => {
 
-      start = d.getTime();
-    }
-
-    // ===============================================
-    // 🔥 CURRENT MONTH
-    // ===============================================
-    else if(mode === "current"){
-
-      const d = new Date(
-
-        now.getFullYear(),
-
-        now.getMonth(),
-
-        1
-      );
-
-      start = d.getTime();
-    }
-
-    // ===============================================
-    // 🔥 PREV MONTH
-    // ===============================================
-    else if(mode === "prev"){
-
-      const d1 = new Date(
-
-        now.getFullYear(),
-
-        now.getMonth()-1,
-
-        1
-      );
-
-      const d2 = new Date(
-
-        now.getFullYear(),
-
-        now.getMonth(),
-
-        1
-      );
-
-      start = d1.getTime();
-
-      end = d2.getTime();
-    }
-
-    // =================================================
-    // 🔥 LOAD DB
-    // =================================================
-    const tx =
-      window.trackDB.transaction(
-        ["track_points"],
-        "readonly"
-      );
-
-    const store =
-      tx.objectStore(
-        "track_points"
-      );
-
-    const request =
-      store.getAll();
-
-    // =================================================
-    // 🔥 SUCCESS
-    // =================================================
-    request.onsuccess = function(){
-
-      const all =
-        request.result || [];
-
-      // ===============================================
-      // 🔥 FILTER TRACKS
-      // ===============================================
-      const filtered =
-
-        all.filter(p => {
-
-          // ===========================================
-          // 🔥 INVALID
-          // ===========================================
-          if(
-
-            !p ||
-
-            isNaN(p.lat) ||
-
-            isNaN(p.lng)
-          ){
-
-            return false;
-          }
-
-          // ===========================================
-          // 🔥 TIME FILTER
-          // ===========================================
-          if(
-
-            p.time < start ||
-
-            p.time > end
-          ){
-
-            return false;
-          }
-
-          // ===========================================
-          // 🔥 ALL RANGE
-          // ===========================================
-          if(
-            beat === "ALL"
-          ){
-
-            return true;
-          }
-
-          // ===========================================
-          // 🔥 GRID ENGINE BEAT
-          // ===========================================
-          const detectedBeat =
-
-            getBeatFromGrid(
-
-              Number(p.lat),
-
-              Number(p.lng)
-            );
-
-          // ===========================================
-          // 🔥 UNKNOWN
-          // ===========================================
-          if(
-            detectedBeat === "UNKNOWN"
-          ){
-
-            return false;
-          }
-
-          // ===========================================
-          // 🔥 MATCH
-          // ===========================================
-          return (
-            detectedBeat === beat
-          );
+          tracks.push(...arr);
         });
+    }
 
-      // ===============================================
-      // 🔥 EMPTY
-      // ===============================================
-      if(!filtered.length){
+    // ===============================================
+    // 🔥 SINGLE BEAT
+    // ===============================================
+    else{
 
-        console.warn(
-          "⚠ No filtered tracks"
+      tracks =
+        cache[beat] || [];
+    }
+
+    console.log(
+
+      "⚡ Instant replay:",
+
+      mode,
+
+      beat,
+
+      tracks.length
+    );
+
+    // ===============================================
+    // 🔥 RENDER
+    // ===============================================
+    requestAnimationFrame(() => {
+
+      tracks.forEach(track => {
+
+        renderHistoricalTrack(
+          track.points
         );
+      });
+    });
 
-        clearHistoryLayer();
+    // ===============================================
+    // 🔥 ANALYTICS ASYNC
+    // ===============================================
+    setTimeout(() => {
 
-        return;
-      }
+      const merged = [];
 
-      console.log(
+      tracks.forEach(t => {
 
-        "📦 Filtered tracks:",
-
-        filtered.length,
-
-        "| mode:", mode,
-
-        "| beat:", beat
-      );
-
-      // ===============================================
-      // 🔥 HARD CAP
-      // ===============================================
-      const MAX_RENDER_POINTS =
-        50000;
-
-      if(
-
-        filtered.length >
-
-        MAX_RENDER_POINTS
-      ){
-
-        console.warn(
-
-          "⚠ Render capped:",
-
-          filtered.length
+        merged.push(
+          ...t.points
         );
+      });
 
-        filtered.length =
-          MAX_RENDER_POINTS;
-      }
-
-      // ===============================================
-// 🔥 GROUP REAL TRACK SEGMENTS
-// prevents teleport lines
-// ===============================================
-const grouped = {};
-
-filtered.forEach(p => {
-
-  // ===========================================
-  // 🔥 SAFE SESSION
-  // ===========================================
-  const sessionId =
-
-    String(
-
-      p.sessionId ||
-
-      "UNKNOWN_SESSION"
-
-    ).trim();
-
-  // ===========================================
-  // 🔥 SAFE SEGMENT
-  // ===========================================
-  const segmentId =
-
-    String(
-
-      p.segmentId ||
-
-      "SEG_1"
-
-    ).trim();
-
-  // ===========================================
-  // 🔥 REAL TRACK KEY
-  // session + real segment
-  // ===========================================
-  const key = [
-
-    sessionId,
-
-    segmentId
-
-  ].join("_");
-
-  // ===========================================
-  // 🔥 INIT
-  // ===========================================
-  if(
-    !grouped[key]
-  ){
-
-    grouped[key] = [];
-  }
-
-  // ===========================================
-  // 🔥 PUSH POINT
-  // ===========================================
-  grouped[key]
-    .push(p);
-});
-      
-      console.log(
-
-        "🧩 Sessions:",
-
-        Object.keys(grouped).length
-      );
-
-      // ===============================================
-      // 🔥 SORT SESSION TRACKS
-      // ===============================================
-      Object.values(grouped)
-
-        .forEach(points => {
-
-          points.sort(
-
-            (a,b)=>
-
-              a.time - b.time
-          );
-        });
-
-      // ===============================================
-      // 🔥 RENDER ALL
-      // ===============================================
-      Object.values(grouped)
-
-        .forEach(points => {
-
-          renderHistoricalTrack(
-            points
-          );
-        });
-
-      // ===============================================
-      // 🔥 BUILD ANALYTICS
-      // ===============================================
       buildHistoryAnalytics(
 
-        filtered,
+        merged,
 
-        beat,
+        mode,
 
-        mode
+        beat
       );
 
-      console.log(
-        "📊 Analytics updated"
-      );
-    };
+      updateCoveragePanelFromHistory();
 
-    // =================================================
-    // ❌ ERROR
-    // =================================================
-    request.onerror = function(err){
-
-      console.error(
-        "❌ IndexedDB load failed",
-        err
-      );
-    };
+    }, 50);
 
   }catch(err){
 
@@ -4378,7 +4432,9 @@ console.log(
 // =====================================================
 // 🔥 INIT TRACK DATABASE
 // =====================================================
-await initTrackDB();
+    await initTrackDB();
+
+await rebuildReplayCacheFromDB();
 // ======================================================
 // 🚀 PHASE 2 → DELAYED TASKS
 // ======================================================
@@ -14350,121 +14406,212 @@ const cleanedPoints =
 // ======================================
 cleanedPoints.forEach(p => {
 
-  // ====================================
-  // 🔥 INVALID
-  // ====================================
-  if(
-    !Array.isArray(p)
-  ){
-    return;
-  }
+  try{
 
-  if(
+    // ====================================
+    // 🔥 INVALID
+    // ====================================
+    if(
+      !Array.isArray(p)
+    ){
+      return;
+    }
 
-    isNaN(p[0]) ||
+    if(
 
-    isNaN(p[1])
-  ){
-    return;
-  }
+      isNaN(p[0]) ||
 
-  // ====================================
-  // 🔥 SAFE GPS
-  // ====================================
-  const lat =
-    Number(p[0]);
+      isNaN(p[1])
+    ){
+      return;
+    }
 
-  const lng =
-    Number(p[1]);
+    // ====================================
+    // 🔥 SAFE GPS
+    // ====================================
+    const lat =
 
-  // ====================================
-  // 🔥 LIVE MAP DRAW
-  // ====================================
-  polyline.addLatLng([
+      Number(p[0]);
 
-    lat,
+    const lng =
 
-    lng
-  ]);
+      Number(p[1]);
 
-  // ====================================
-  // 🔥 CURRENT TIME
-  // ====================================
-  const pointTime =
-    Date.now();
+    // ====================================
+    // 🔥 INVALID FINAL
+    // ====================================
+    if(
 
-  // ====================================
-  // 🔥 REAL SEGMENT BREAK
-  // new patrol continuity
-  // ====================================
-  const GAP_LIMIT =
+      isNaN(lat) ||
 
-    1000 * 60 * 5;
+      isNaN(lng)
+    ){
+      return;
+    }
 
-  // ====================================
-  // 🔥 LAST TIME INIT
-  // ====================================
-  if(
+    // ====================================
+    // 🔥 CURRENT TIME
+    // ====================================
+    const pointTime =
+      Date.now();
 
-    !window.lastTrackPointTime
-  ){
+    // ====================================
+    // 🔥 GAP LIMIT
+    // ====================================
+    const GAP_LIMIT =
 
+      1000 * 60 * 5;
+
+    // ====================================
+    // 🔥 LAST TIME INIT
+    // ====================================
+    if(
+
+      !window.lastTrackPointTime
+    ){
+
+      window.lastTrackPointTime =
+        pointTime;
+    }
+
+    // ====================================
+    // 🔥 NEW REAL SEGMENT
+    // ====================================
+    if(
+
+      pointTime -
+
+      window.lastTrackPointTime >
+
+      GAP_LIMIT
+    ){
+
+      window.currentTrackSegmentId =
+
+        "SEG_" + pointTime;
+
+      console.log(
+
+        "🧩 New patrol segment:",
+
+        window.currentTrackSegmentId
+      );
+    }
+
+    // ====================================
+    // 🔥 UPDATE LAST TIME
+    // ====================================
     window.lastTrackPointTime =
       pointTime;
-  }
 
-  // ====================================
-  // 🔥 NEW REAL SEGMENT
-  // ====================================
-  if(
+    // ====================================
+    // 🔥 LIVE MAP DRAW
+    // ====================================
+    polyline.addLatLng([
 
-    pointTime -
+      lat,
 
-    window.lastTrackPointTime >
+      lng
+    ]);
 
-    GAP_LIMIT
-  ){
+    // ====================================
+    // 🔥 SAFE POINT
+    // ====================================
+    const point = {
 
-    window.currentTrackSegmentId =
+      lat,
 
-      "SEG_" + pointTime;
+      lng,
 
-    console.log(
+      time:
+        pointTime
+    };
 
-      "🧩 New patrol segment:",
+    // ====================================
+    // 🔥 SAVE TO INDEXEDDB
+    // ====================================
+    appendTrackChunk(
 
-      window.currentTrackSegmentId
+      currentSessionId,
+
+      s.cleanName,
+
+      s.beat || "UNKNOWN",
+
+      [point]
+    );
+
+    // ====================================
+    // 🔥 UPDATE TODAY CACHE
+    // ====================================
+    updateReplayCache(
+
+      "today",
+
+      s.beat || "UNKNOWN",
+
+      currentSessionId,
+
+      window.currentTrackSegmentId,
+
+      point
+    );
+
+    // ====================================
+    // 🔥 UPDATE CURRENT CACHE
+    // ====================================
+    updateReplayCache(
+
+      "current",
+
+      s.beat || "UNKNOWN",
+
+      currentSessionId,
+
+      window.currentTrackSegmentId,
+
+      point
+    );
+
+    // ====================================
+    // 🔥 UPDATE ALL CACHE
+    // ====================================
+    updateReplayCache(
+
+      "today",
+
+      "ALL",
+
+      currentSessionId,
+
+      window.currentTrackSegmentId,
+
+      point
+    );
+
+    // ====================================
+    // 🔥 UPDATE CURRENT ALL CACHE
+    // ====================================
+    updateReplayCache(
+
+      "current",
+
+      "ALL",
+
+      currentSessionId,
+
+      window.currentTrackSegmentId,
+
+      point
+    );
+
+  }catch(err){
+
+    console.error(
+      "❌ cleanedPoints replay update failed",
+      err
     );
   }
-
-  // ====================================
-  // 🔥 UPDATE LAST TIME
-  // ====================================
-  window.lastTrackPointTime =
-    pointTime;
-
-  // ====================================
-  // 🔥 SAVE POINT
-  // ====================================
-  appendTrackChunk(
-
-    currentSessionId,
-
-    s.cleanName,
-
-    s.beat || "UNKNOWN",
-
-    [
-      {
-        lat,
-
-        lng,
-
-        time:
-          pointTime
-      }
-    ]
-  );
 });
             
             // ==================================================
