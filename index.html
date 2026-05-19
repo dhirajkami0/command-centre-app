@@ -5172,7 +5172,12 @@ window.gridLayer = window.gridLayer || L.layerGroup();
 // ======================================================
 // 🔥 GRID ↔ MAP SYNC (SAFE + STABLE)
 // ======================================================
+// ==========================================
+// 🔥 PERSISTENT GRID ROOT LAYER
+// ==========================================
+window.gridRootLayer = L.layerGroup();
 
+window.gridRootLayer.addTo(map);
 // 🔻 Hide during zoom (extra safety)
 // ===============================
 // 🔥 GRID SYNC (CORRECT WAY)
