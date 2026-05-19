@@ -7989,12 +7989,13 @@ function pointInPoly(lat, lng, coords){
 
     console.warn("⛔ Skip LIVE staff grid");
     return {};
-  }
+  }if(GRID_DEBUG){
 
   console.log(
     "🧪 Incoming tracks:",
     tracks
   );
+}
 
   console.log(
     "🔥 markVisitedHybrid CALLED"
@@ -8134,48 +8135,44 @@ function pointInPoly(lat, lng, coords){
   // ==========================================
   // 🔥 FAST ITERATION
   // ==========================================
-  for(const cell of window.gridCellArray){
+for(const cell of window.gridCellArray){
 
-    if(
-      !cell ||
-      !cell.center
-    ){
-      continue;
-    }
-
-    // ==========================================
-    // 🔥 HYBRID CENTER SUPPORT
-    // ==========================================
-    const cLat =
-
-      Array.isArray(cell.center)
-        ? cell.center[0]
-        : cell.center.lat;
-
-    const cLng =
-
-      Array.isArray(cell.center)
-        ? cell.center[1]
-        : cell.center.lng;
-
-    const dLat =
-      cLat - p.lat;
-
-    const dLon =
-      cLng - p.lon;
-
-    const dist =
-      dLat * dLat +
-      dLon * dLon;
-
-    if(dist < minDist){
-
-      minDist = dist;
-
-      nearestId = cell.id;
-    }
+  if(
+    !cell ||
+    !cell.center
+  ){
+    continue;
   }
 
+  const cLat =
+
+    Array.isArray(cell.center)
+      ? cell.center[0]
+      : cell.center.lat;
+
+  const cLng =
+
+    Array.isArray(cell.center)
+      ? cell.center[1]
+      : cell.center.lng;
+
+  const dLat =
+    cLat - last.lat;
+
+  const dLon =
+    cLng - last.lon;
+
+  const dist =
+    dLat * dLat +
+    dLon * dLon;
+
+  if(dist < minDist){
+
+    minDist = dist;
+
+    nearestId = cell.id;
+  }
+}
   // ==========================================
   // 🔥 APPLY VISIT
   // ==========================================
@@ -8306,11 +8303,13 @@ function pointInPoly(lat, lng, coords){
           const nearby =
             Array.from(nearbySet);
 
-          console.log(
-            "🧩 Nearby Cells:",
-            nearby.length
-          );
+         if(GRID_DEBUG){
 
+  console.log(
+    "🧩 Nearby Cells:",
+    nearby.length
+  );
+}
           for(const cell of nearby){
 
             if(
@@ -8372,7 +8371,7 @@ paintVisitedGrid(cell.id);
           let nearestId = null;
           let minDist = Infinity;
 
-        for(const cell of window.gridCellArray){
+       for(const cell of window.gridCellArray){
 
   if(
     !cell ||
@@ -8381,9 +8380,6 @@ paintVisitedGrid(cell.id);
     continue;
   }
 
-  // ==========================================
-  // 🔥 HYBRID CENTER SUPPORT
-  // ==========================================
   const cLat =
 
     Array.isArray(cell.center)
@@ -8397,10 +8393,10 @@ paintVisitedGrid(cell.id);
       : cell.center.lng;
 
   const dLat =
-    cLat - lat2;
+    cLat - last.lat;
 
   const dLon =
-    cLng - lon2;
+    cLng - last.lon;
 
   const dist =
     dLat * dLat +
@@ -8413,7 +8409,6 @@ paintVisitedGrid(cell.id);
     nearestId = cell.id;
   }
 }
-
 if(nearestId){
 
   visited[nearestId] = true;
@@ -8456,12 +8451,23 @@ if(nearestId){
           continue;
         }
 
-        const dLat =
-          cell.center[0] - last.lat;
+        const cLat =
 
-        const dLon =
-          cell.center[1] - last.lon;
+  Array.isArray(cell.center)
+    ? cell.center[0]
+    : cell.center.lat;
 
+const cLng =
+
+  Array.isArray(cell.center)
+    ? cell.center[1]
+    : cell.center.lng;
+
+const dLat =
+  cLat - last.lat;
+
+const dLon =
+  cLng - last.lon;
         const dist =
           dLat*dLat +
           dLon*dLon;
@@ -8469,7 +8475,7 @@ if(nearestId){
         if(dist < minDist){
 
           minDist = dist;
-          nearestId = id;
+         nearestId = cell.id;
         }
       }
 
@@ -8532,11 +8538,24 @@ Object.keys(visited)
 window.__gridSaveTimer =
   setTimeout(() => {
 
-    localStorage.setItem(
-      key,
-      JSON.stringify(data)
-    );
+    window.__gridSaveTimer =
+  setTimeout(() => {
 
+    try {
+
+      localStorage.setItem(
+        key,
+        JSON.stringify(data)
+      );
+
+    } catch(e){
+
+      console.warn(
+        "⚠ Grid save failed"
+      );
+    }
+
+  }, 1200);
   }, 1200);
       // ==============================================
       // 🔥 UPDATE TODAY CACHE
