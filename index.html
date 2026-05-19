@@ -3944,8 +3944,14 @@ function renderHistoricalTrack(
     }
 
     // ===============================================
+    // 🔥 SAFE COPY
+    // prevents mutation
+    // ===============================================
+    points = [...points];
+
+    // ===============================================
     // 🔥 SAFE SORT
-    // exact patrol order
+    // exact patrol continuity
     // ===============================================
     points.sort(
 
@@ -3959,19 +3965,57 @@ function renderHistoricalTrack(
     );
 
     // ===============================================
-    // 🔥 SAFE SEGMENT BUFFER
+    // 🔥 HARD POINT LIMIT
+    // massive freeze protection
+    // ===============================================
+    const MAX_POINTS = 450;
+
+    if(points.length > MAX_POINTS){
+
+      const step = Math.ceil(
+
+        points.length /
+
+        MAX_POINTS
+      );
+
+      points = points.filter(
+
+        (_,i)=>
+
+          i % step === 0 ||
+
+          i === points.length - 1
+      );
+    }
+
+    // ===============================================
+    // 🔥 LIGHT SIMPLIFY
+    // ===============================================
+    points = points.filter(
+
+      (p,i)=>
+
+        i === 0 ||
+
+        i === points.length - 1 ||
+
+        i % 2 === 0
+    );
+
+    // ===============================================
+    // 🔥 SAFE SEGMENT
     // ===============================================
     let segment = [];
 
     // ===============================================
-    // 🔥 MAX SPATIAL GAP
-    // only impossible GPS jumps
+    // 🔥 MAX GPS GAP
+    // prevents teleport lines
     // ===============================================
-    const MAX_GAP =
-      0.0008;
+    const MAX_GAP = 0.0008;
 
     // ===============================================
-    // 🔥 POPUP HELPER
+    // 🔥 POPUP ATTACHER
     // ===============================================
     function attachAnalyticsPopup(
       line
@@ -3991,18 +4035,12 @@ function renderHistoricalTrack(
 
             try{
 
-              // =====================================
-              // 🔥 ACTIVE ANALYTICS KEY
-              // =====================================
               const key =
 
                 `${window.currentHistoryMode}_${
                   window.currentHistoryBeat
                 }`;
 
-              // =====================================
-              // 🔥 ANALYTICS
-              // =====================================
               const a =
 
                 window.historyAnalytics?.[
@@ -4013,14 +4051,9 @@ function renderHistoricalTrack(
                 return;
               }
 
-              // =====================================
-              // 🔥 DENSITY LABEL
-              // =====================================
               let density = "LOW";
 
-              if(
-                a.repeatedGrids > 20
-              ){
+              if(a.repeatedGrids > 20){
 
                 density = "HIGH";
               }
@@ -4032,9 +4065,6 @@ function renderHistoricalTrack(
                 density = "MEDIUM";
               }
 
-              // =====================================
-              // 🔥 POPUP
-              // =====================================
               const html = `
 
                 <div style="
@@ -4110,7 +4140,90 @@ function renderHistoricalTrack(
     }
 
     // ===============================================
-    // 🔥 WALK TRACK POINTS
+    // 🔥 SAFE RENDER
+    // ===============================================
+    function renderSegment(
+      seg
+    ){
+
+      try{
+
+        if(
+          !Array.isArray(seg) ||
+          seg.length < 2
+        ){
+          return;
+        }
+
+        // ===========================================
+        // 🔥 FINAL SIMPLIFY
+        // ===========================================
+        const simplified =
+
+          L.LineUtil.simplify(
+
+            seg,
+
+            0.00005
+          );
+
+        if(
+          simplified.length < 2
+        ){
+          return;
+        }
+
+        // ===========================================
+        // 🔥 CANVAS POLYLINE
+        // ===========================================
+        const line =
+
+          L.polyline(
+
+            simplified,
+
+            {
+
+              renderer:
+                L.canvas(),
+
+              color:"#00e676",
+
+              weight:2,
+
+              opacity:0.78,
+
+              smoothFactor:2,
+
+              interactive:true
+            }
+          );
+
+        // ===========================================
+        // 🔥 ADD TO HISTORY
+        // ===========================================
+        line.addTo(
+          window.historyLayer
+        );
+
+        // ===========================================
+        // 🔥 POPUP
+        // ===========================================
+        attachAnalyticsPopup(
+          line
+        );
+
+      }catch(err){
+
+        console.error(
+          "❌ renderSegment failed",
+          err
+        );
+      }
+    }
+
+    // ===============================================
+    // 🔥 WALK POINTS
     // ===============================================
     for(
 
@@ -4128,7 +4241,7 @@ function renderHistoricalTrack(
         points[i - 1];
 
       // ===========================================
-      // 🔥 INVALID POINT
+      // 🔥 INVALID
       // ===========================================
       if(
 
@@ -4141,9 +4254,6 @@ function renderHistoricalTrack(
         continue;
       }
 
-      // ===========================================
-      // 🔥 SAFE GPS
-      // ===========================================
       const lat =
         Number(p.lat);
 
@@ -4176,7 +4286,6 @@ function renderHistoricalTrack(
 
         isNaN(prev.lng)
       ){
-
         continue;
       }
 
@@ -4195,71 +4304,19 @@ function renderHistoricalTrack(
       );
 
       // ===========================================
-      // 🔥 IMPOSSIBLE GPS JUMP
+      // 🔥 HUGE GPS JUMP
       // ===========================================
       if(dist > MAX_GAP){
 
-        // =========================================
-        // 🔥 RENDER OLD SEGMENT
-        // =========================================
-        if(segment.length >= 2){
+        renderSegment(
+          segment
+        );
 
-          // =======================================
-          // 🔥 SIMPLIFY
-          // =======================================
-          const simplified =
-
-            L.LineUtil.simplify(
-
-              segment,
-
-              0.00005
-            );
-
-          // =======================================
-          // 🔥 CREATE LINE
-          // =======================================
-          const line =
-
-            L.polyline(
-
-              simplified,
-
-              {
-
-                color:"#00e676",
-
-                weight:3,
-
-                opacity:0.82,
-
-                smoothFactor:1
-              }
-            );
-
-          // =======================================
-          // 🔥 ADD TO LAYER
-          // =======================================
-          line.addTo(
-            window.historyLayer
-          );
-
-          // =======================================
-          // 🔥 POPUP
-          // =======================================
-          attachAnalyticsPopup(
-            line
-          );
-        }
-
-        // =========================================
-        // 🔥 RESET SEGMENT
-        // =========================================
         segment = [];
       }
 
       // ===========================================
-      // 🔥 APPEND POINT
+      // 🔥 APPEND
       // ===========================================
       segment.push([
 
@@ -4272,58 +4329,12 @@ function renderHistoricalTrack(
     // ===============================================
     // 🔥 FINAL SEGMENT
     // ===============================================
-    if(segment.length >= 2){
-
-      // =============================================
-      // 🔥 SIMPLIFY
-      // =============================================
-      const simplified =
-
-        L.LineUtil.simplify(
-
-          segment,
-
-          0.00005
-        );
-
-      // =============================================
-      // 🔥 CREATE LINE
-      // =============================================
-      const line =
-
-        L.polyline(
-
-          simplified,
-
-          {
-
-            color:"#00e676",
-
-            weight:3,
-
-            opacity:0.82,
-
-            smoothFactor:1
-          }
-        );
-
-      // =============================================
-      // 🔥 ADD TO LAYER
-      // =============================================
-      line.addTo(
-        window.historyLayer
-      );
-
-      // =============================================
-      // 🔥 POPUP
-      // =============================================
-      attachAnalyticsPopup(
-        line
-      );
-    }
+    renderSegment(
+      segment
+    );
 
     // ===============================================
-    // 🔥 ENSURE HISTORY LAYER
+    // 🔥 ENSURE LAYER
     // ===============================================
     if(
 
@@ -4346,7 +4357,7 @@ function renderHistoricalTrack(
       err
     );
   }
-}
+}  
     window.__gridLoadedFromCache = false;
 let appStarted = false;
 
