@@ -1599,37 +1599,60 @@ async function loadGridFromDB(){
         return;
       }
 
-      const poly = L.polygon(
+     const poly = L.polygon(
 
-        c.coords,
+  c.coords,
 
-        {
+  {
 
-          renderer:
-            window.sharedRenderer,
+    renderer:
+      window.sharedRenderer,
 
-          interactive: false,
+    // ======================================
+    // 🔥 ENABLE CLICK EVENTS
+    // ======================================
+    interactive: true,
 
-          stroke: true,
+    stroke: true,
 
-          color: "#333",
+    color: "#333",
 
-          weight: 0.4,
+    weight: 0.4,
 
-          opacity: 0.35,
+    opacity: 0.35,
 
-          fillColor: "#111",
+    fillColor: "#111",
 
-          fillOpacity: 0.04,
+    fillOpacity: 0.04,
 
-          smoothFactor: 0
-        }
-      );
+    smoothFactor: 0
+  }
+);
 
-      poly.addTo(
-        window.gridRootLayer
-      );
+// ==========================================
+// 🔥 GRID POPUP CLICK
+// ==========================================
+poly.on(
 
+  "click",
+
+  function(ev){
+
+    showGridPopup(
+
+      c,
+
+      ev.latlng
+    );
+  }
+);
+
+// ==========================================
+// 🔥 ADD TO ROOT LAYER
+// ==========================================
+poly.addTo(
+  window.gridRootLayer
+);
       // ======================================
       // 🔥 RESTORE VISITED STYLE
       // ======================================
@@ -9907,55 +9930,93 @@ function loadGridFromCache(){
 // 🔥 CREATE POLYGON ONLY ONCE
 // ==========================================
 
-const poly = L.polygon(coords, {
+const poly = L.polygon(
 
-  renderer: window.sharedRenderer,
+  coords,
 
-  interactive: false,
+  {
 
-  stroke: true,
+    renderer:
+      window.sharedRenderer,
 
-  color: "#333",
+    // ======================================
+    // 🔥 ENABLE POPUP CLICK
+    // ======================================
+    interactive: true,
 
-  weight: 0.4,
+    stroke: true,
 
-  opacity: 0.35,
+    color: "#333",
 
-  fillColor: "#111",
+    weight: 0.4,
 
-  fillOpacity: 0.04,
+    opacity: 0.35,
 
-  smoothFactor: 0
+    fillColor: "#111",
 
-});
+    fillOpacity: 0.04,
+
+    smoothFactor: 0
+  }
+);
 
 // ==========================================
-// 🔥 ADD ONLY ONCE
+// 🔥 STORE CELL FIRST
 // ==========================================
-
-poly.addTo(window.gridRootLayer);
-
-// ==========================================
-// 🔥 STORE EVERYTHING
-// ==========================================
-
-window.gridIndex[id] = {
+const cell = {
 
   id,
 
-  coords, // 🔥 KEEP THIS
+  coords,
 
   poly,
 
   center: {
+
     lat: centerLat,
+
     lng: centerLon
   },
+
+  beat: "UNKNOWN",
 
   visited: false,
 
   rendered: false
 };
+
+// ==========================================
+// 🔥 GRID POPUP CLICK
+// ==========================================
+poly.on(
+
+  "click",
+
+  function(ev){
+
+    showGridPopup(
+
+      cell,
+
+      ev.latlng
+    );
+  }
+);
+
+// ==========================================
+// 🔥 ADD ONLY ONCE
+// ==========================================
+poly.addTo(
+  window.gridRootLayer
+);
+
+// ==========================================
+// 🔥 STORE IN INDEX
+// ==========================================
+window.gridIndex[id] =
+  cell;
+          
+          
           count++;
 
           // 🔥 NON-BLOCKING
