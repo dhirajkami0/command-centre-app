@@ -10811,13 +10811,16 @@ function loadGridFromCache(){
           // 🔥 MUST BELONG TO BEAT
           // ====================================
           if(
-            !matchedBeat ||
-            !matchedPoly
-          ){
-            continue;
-          }
+  !matchedBeat ||
+  !matchedPoly
+){
 
-          // ====================================
+  matchedBeat =
+    "UNKNOWN";
+
+  matchedPoly =
+    unifiedRange;
+}// ====================================
           // 🔥 RAW CELL
           // ====================================
           const rawCell =
@@ -11026,8 +11029,7 @@ function loadGridFromCache(){
             },
 
             beat:
-              matchedBeat,
-
+  matchedBeat || "UNKNOWN",
             visited: false,
 
             rendered: false
