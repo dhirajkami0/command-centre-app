@@ -7023,7 +7023,7 @@ function saveToBackendDebounced(){
 function assignGridToBeat(rangeLayer){
 
   console.log(
-    "🎯 Assigning grid with STRICT clipping..."
+    "🎯 Assigning grid with FINAL STRICT clipping..."
   );
 
   try {
@@ -7055,7 +7055,7 @@ function assignGridToBeat(rangeLayer){
     let polygons = [];
 
     // ==========================================
-    // 🔥 EXTRACT POLYGONS
+    // 🔥 EXTRACT RANGE POLYGONS
     // ==========================================
     function extract(layer){
 
@@ -7108,7 +7108,7 @@ function assignGridToBeat(rangeLayer){
         }
 
         // ======================================
-        // 🔥 NORMALIZE MULTIPOLYGON
+        // 🔥 NORMALIZE
         // ======================================
         const rings =
 
@@ -7153,9 +7153,10 @@ function assignGridToBeat(rangeLayer){
           // 🔥 CLOSE RING
           // ====================================
           const first = coords[0];
-          const last = coords[
-            coords.length - 1
-          ];
+          const last =
+            coords[
+              coords.length - 1
+            ];
 
           if(
             first[0] !== last[0] ||
@@ -7211,7 +7212,7 @@ function assignGridToBeat(rangeLayer){
     );
 
     // ==========================================
-    // 🔥 PREPARE BEAT POLYGONS
+    // 🔥 BUILD BEAT POLYGONS
     // ==========================================
     let beatPolys = [];
 
@@ -7273,7 +7274,7 @@ function assignGridToBeat(rangeLayer){
     );
 
     // ==========================================
-    // 🔥 MAIN GRID LOOP
+    // 🔥 FINAL STRICT LOOP
     // ==========================================
     Object.values(
       window.gridIndex
@@ -7314,16 +7315,20 @@ function assignGridToBeat(rangeLayer){
       let bestArea = 0;
 
       // ======================================
-      // 🔥 STRICT CLIPPING
+      // 🔥 STRICT INTERSECTION
       // ======================================
       beatPolys.forEach(bp => {
 
         try {
 
+          // ==================================
+          // 🔥 CLIP
+          // ==================================
           const clipped =
             turf.intersect(
 
               cellPoly,
+
               bp.poly
             );
 
@@ -7332,17 +7337,46 @@ function assignGridToBeat(rangeLayer){
           }
 
           // ==================================
-          // 🔥 REMOVE MICRO SLIVERS
+          // 🔥 AREA FILTER
           // ==================================
           const area =
             turf.area(clipped);
 
-          if(area < 20){
+          if(area < 25){
             return;
           }
 
           // ==================================
-          // 🔥 KEEP LARGEST OVERLAP
+          // 🔥 CENTROID VALIDATION
+          // ==================================
+          let centroid;
+
+          try {
+
+            centroid =
+              turf.centroid(
+                clipped
+              );
+
+          } catch(e){
+            return;
+          }
+
+          if(
+
+            !turf.booleanPointInPolygon(
+
+              centroid,
+
+              bp.poly
+            )
+
+          ){
+            return;
+          }
+
+          // ==================================
+          // 🔥 KEEP LARGEST
           // ==================================
           if(area > bestArea){
 
@@ -7420,7 +7454,7 @@ function assignGridToBeat(rangeLayer){
         }
 
         // ==================================
-        // 🔥 FINAL LEAFLET COORDS
+        // 🔥 FINAL COORDS
         // ==================================
         const finalCoords =
 
@@ -7445,7 +7479,7 @@ function assignGridToBeat(rangeLayer){
           finalCoords;
 
         // ==================================
-        // 🔥 UPDATE POLYGON SHAPE
+        // 🔥 UPDATE LEAFLET SHAPE
         // ==================================
         if(cell.poly){
 
@@ -7459,7 +7493,7 @@ function assignGridToBeat(rangeLayer){
         }
 
         // ==================================
-        // 🔥 UPDATE BEAT
+        // 🔥 FINAL BEAT
         // ==================================
         cell.beat =
           best.beat;
@@ -7467,13 +7501,28 @@ function assignGridToBeat(rangeLayer){
 
       else {
 
+        // ==================================
+        // 🔥 REMOVE INVALID OVERFLOW
+        // ==================================
         cell.beat =
           "UNKNOWN";
+
+        if(cell.poly){
+
+          try {
+
+            window.gridRootLayer
+              ?.removeLayer(
+                cell.poly
+              );
+
+          } catch(e){}
+        }
       }
     });
 
     console.log(
-      "✅ STRICT beat clipping COMPLETE"
+      "✅ FINAL STRICT beat clipping COMPLETE"
     );
 
   } catch(e){
@@ -10393,18 +10442,27 @@ function loadGridFromCache(){
     // ===============================
     // 🔥 APPLY CACHE
     // ===============================
-   async function buildGridFromBounds(bounds, rangeLayer) {
+   async function buildGridFromBounds(bounds, rangeLayer){
 
   console.log(
-    "🔲 Building FINAL STRICT BEAT-CLIPPED grid..."
+    "🔲 Building FINAL CENTER-LOCKED beat grid..."
   );
 
   try {
 
-    if (!bounds || !rangeLayer) {
+    if(!bounds || !rangeLayer){
 
       console.error(
         "❌ Invalid inputs"
+      );
+
+      return;
+    }
+
+    if(typeof turf === "undefined"){
+
+      console.error(
+        "❌ Turf missing"
       );
 
       return;
@@ -10423,21 +10481,54 @@ function loadGridFromCache(){
 
     let beatPolys = [];
 
-    function extract(layer) {
+    // ==========================================
+    // 🔥 EXTRACT
+    // ==========================================
+    function extract(layer){
 
-      if (!layer) return;
+      if(!layer){
+        return;
+      }
+
+      // ======================================
+      // 🔥 NESTED
+      // ======================================
+      if(layer.eachLayer){
+        layer.eachLayer(extract);
+      }
 
       // ======================================
       // 🔥 POLYGON
       // ======================================
-      if (layer instanceof L.Polygon) {
+      if(layer instanceof L.Polygon){
 
-        let latlngs =
-          layer.getLatLngs();
+        let latlngs;
 
+        try {
+
+          latlngs =
+            layer.getLatLngs();
+
+        } catch(e){
+          return;
+        }
+
+        if(
+          !latlngs ||
+          !latlngs.length
+        ){
+          return;
+        }
+
+        // ======================================
+        // 🔥 MULTIPOLYGON
+        // ======================================
         const rings =
+
           Array.isArray(latlngs[0][0])
+
             ? latlngs
+
             : [latlngs];
 
         // ======================================
@@ -10464,7 +10555,8 @@ function loadGridFromCache(){
         // ======================================
         // 🔥 MAP TO BEAT
         // ======================================
-        let beat = "UNKNOWN";
+        let beat =
+          "UNKNOWN";
 
         for(let key in window.beatMap){
 
@@ -10492,7 +10584,7 @@ function loadGridFromCache(){
         }
 
         // ======================================
-        // 🔥 BUILD TURF POLY
+        // 🔥 BUILD POLYS
         // ======================================
         rings.forEach(ringSet => {
 
@@ -10503,14 +10595,13 @@ function loadGridFromCache(){
                 ring.map(p => [
 
                   p.lng,
-
                   p.lat
                 ]);
 
-              // ==================================
-              // 🔥 CLOSE RING
-              // ==================================
-              if (
+              // ================================
+              // 🔥 CLOSE
+              // ================================
+              if(
 
                 pts[0][0] !==
                 pts[pts.length - 1][0]
@@ -10520,16 +10611,18 @@ function loadGridFromCache(){
                 pts[0][1] !==
                 pts[pts.length - 1][1]
 
-              ) {
+              ){
 
-                pts.push(pts[0]);
+                pts.push(
+                  pts[0]
+                );
               }
 
               return pts;
 
             }).filter(r => r.length >= 4);
 
-          if (!coords.length){
+          if(!coords.length){
             return;
           }
 
@@ -10538,16 +10631,10 @@ function loadGridFromCache(){
             const turfPoly =
               turf.polygon(coords);
 
-            // ==================================
-            // 🔥 RANGE STORE
-            // ==================================
             allPolys.push(
               turfPoly
             );
 
-            // ==================================
-            // 🔥 BEAT STORE
-            // ==================================
             if(
               beat !== "UNKNOWN"
             ){
@@ -10556,46 +10643,26 @@ function loadGridFromCache(){
 
                 beat,
 
-                poly: turfPoly
+                poly:
+                  turfPoly
               });
             }
 
-          } catch (e) {}
+          } catch(e){}
         });
-      }
-
-      // ======================================
-      // 🔥 NESTED
-      // ======================================
-      if (layer.eachLayer){
-
-        layer.eachLayer(extract);
       }
     }
 
     extract(rangeLayer);
 
-    // ==========================================
-    // 🔥 SAFETY
-    // ==========================================
-    if (!allPolys.length) {
+    if(!allPolys.length){
 
       console.error(
-        "❌ No polygons found"
+        "❌ No polygons"
       );
 
       return;
     }
-
-    console.log(
-      "📐 Range polys:",
-      allPolys.length
-    );
-
-    console.log(
-      "🎯 Beat polys:",
-      beatPolys.length
-    );
 
     // ==========================================
     // 🔥 UNIFIED RANGE
@@ -10603,7 +10670,7 @@ function loadGridFromCache(){
     let unifiedRange =
       allPolys[0];
 
-    for (
+    for(
 
       let i = 1;
 
@@ -10626,9 +10693,9 @@ function loadGridFromCache(){
       } catch(e){}
     }
 
-    const unifiedBBox =
-      turf.bbox(unifiedRange);
-
+    // ==========================================
+    // 🔥 BOUNDS
+    // ==========================================
     const south =
       bounds.getSouth();
 
@@ -10654,15 +10721,15 @@ function loadGridFromCache(){
       ) * step;
 
     // ==========================================
-    // 🔥 GRID LOOP
+    // 🔥 LOOP
     // ==========================================
     let lat = startLat;
 
-    async function processRow() {
+    async function processRows(){
 
       let iterations = 0;
 
-      for (
+      for(
 
         ;
 
@@ -10672,7 +10739,7 @@ function loadGridFromCache(){
 
       ){
 
-        for (
+        for(
 
           let lon = startLon;
 
@@ -10683,48 +10750,77 @@ function loadGridFromCache(){
         ){
 
           // ====================================
-          // 🔥 FAST BBOX SKIP
+          // 🔥 CELL CENTER
           // ====================================
-          if (
-
-            lon > unifiedBBox[2]
-
-            ||
-
-            lon + step < unifiedBBox[0]
-
-            ||
-
-            lat > unifiedBBox[3]
-
-            ||
-
-            lat + step < unifiedBBox[1]
-
-          ){
-            continue;
-          }
-
           const centerLat =
             lat + step / 2;
 
           const centerLon =
             lon + step / 2;
 
-          const id =
+          const centerPoint =
+            turf.point([
 
-            centerLat.toFixed(5)
+              centerLon,
+              centerLat
+            ]);
 
-            + "_"
+          // ====================================
+          // 🔥 STRICT BEAT FIND
+          // ====================================
+          let matchedBeat =
+            null;
 
-            +
+          let matchedPoly =
+            null;
 
-            centerLon.toFixed(5);
+          for(
+
+            const bp
+
+            of beatPolys
+
+          ){
+
+            try {
+
+              if(
+
+                turf.booleanPointInPolygon(
+
+                  centerPoint,
+
+                  bp.poly
+                )
+
+              ){
+
+                matchedBeat =
+                  bp.beat;
+
+                matchedPoly =
+                  bp.poly;
+
+                break;
+              }
+
+            } catch(e){}
+          }
+
+          // ====================================
+          // 🔥 MUST BELONG TO BEAT
+          // ====================================
+          if(
+            !matchedBeat ||
+            !matchedPoly
+          ){
+            continue;
+          }
 
           // ====================================
           // 🔥 RAW CELL
           // ====================================
-          const cellPoly =
+          const rawCell =
             turf.polygon([[
 
               [lon, lat],
@@ -10742,14 +10838,14 @@ function loadGridFromCache(){
           // ====================================
           // 🔥 RANGE CLIP
           // ====================================
-          let clipped;
+          let rangeClip;
 
           try {
 
-            clipped =
+            rangeClip =
               turf.intersect(
 
-                cellPoly,
+                rawCell,
 
                 unifiedRange
               );
@@ -10759,131 +10855,132 @@ function loadGridFromCache(){
             continue;
           }
 
-          if(!clipped){
+          if(!rangeClip){
             continue;
           }
 
           // ====================================
-          // 🔥 REMOVE TINY
+          // 🔥 BEAT CLIP
           // ====================================
-          if(
-            turf.area(clipped) < 30
-          ){
+          let beatClip;
+
+          try {
+
+            beatClip =
+              turf.intersect(
+
+                rangeClip,
+
+                matchedPoly
+              );
+
+          } catch(e){
+
+            continue;
+          }
+
+          if(!beatClip){
             continue;
           }
 
           // ====================================
-          // 🔥 STRICT BEAT CLIP
+          // 🔥 AREA FILTER
           // ====================================
-          let finalBeat =
-            "UNKNOWN";
+          const area =
+            turf.area(
+              beatClip
+            );
 
-          let finalClip =
-            null;
-
-          let bestArea = 0;
-
-          for(
-
-            const bp
-
-            of beatPolys
-
-          ){
-
-            try {
-
-              const beatClip =
-                turf.intersect(
-
-                  clipped,
-
-                  bp.poly
-                );
-
-              if(!beatClip){
-                continue;
-              }
-
-              const area =
-                turf.area(
-                  beatClip
-                );
-
-              // ==============================
-              // 🔥 KEEP LARGEST
-              // ==============================
-              if(
-
-                area > bestArea
-
-                &&
-
-                area >= 20
-
-              ){
-
-                bestArea =
-                  area;
-
-                finalClip =
-                  beatClip;
-
-                finalBeat =
-                  bp.beat;
-              }
-
-            } catch(e){}
-          }
-
-          if(!finalClip){
+          if(area < 25){
             continue;
           }
 
-          clipped = finalClip;
-
           // ====================================
-          // 🔥 NORMALIZE GEOMETRY
+          // 🔥 NORMALIZE GEOM
           // ====================================
           let geom =
-            clipped.geometry;
+            beatClip.geometry;
 
           if(
             geom.type ===
             "MultiPolygon"
           ){
 
+            let largest =
+              geom.coordinates[0];
+
+            let bestArea = 0;
+
+            geom.coordinates
+              .forEach(g => {
+
+                try {
+
+                  const a =
+                    turf.area({
+
+                      type:
+                        "Polygon",
+
+                      coordinates:
+                        g
+                    });
+
+                  if(a > bestArea){
+
+                    bestArea =
+                      a;
+
+                    largest = g;
+                  }
+
+                } catch(e){}
+              });
+
             geom = {
 
-              type: "Polygon",
+              type:
+                "Polygon",
 
               coordinates:
-                geom.coordinates[0]
+                largest
             };
           }
 
+          // ====================================
+          // 🔥 FINAL COORDS
+          // ====================================
           const coords =
 
             geom.coordinates[0]
               .map(p => [
 
                 p[1],
-
                 p[0]
               ]);
 
           if(
-
             !coords ||
-
             coords.length < 4
-
           ){
             continue;
           }
 
           // ====================================
-          // 🔥 LEAFLET POLYGON
+          // 🔥 ID
+          // ====================================
+          const id =
+
+            centerLat.toFixed(5)
+
+            + "_"
+
+            +
+
+            centerLon.toFixed(5);
+
+          // ====================================
+          // 🔥 LEAFLET POLY
           // ====================================
           const poly =
             L.polygon(
@@ -10928,7 +11025,8 @@ function loadGridFromCache(){
               lng: centerLon
             },
 
-            beat: finalBeat,
+            beat:
+              matchedBeat,
 
             visited: false,
 
@@ -10939,15 +11037,11 @@ function loadGridFromCache(){
           // 🔥 POPUP
           // ====================================
           poly.on(
-
             "click",
-
             function(ev){
 
               showGridPopup(
-
                 cell,
-
                 ev.latlng
               );
             }
@@ -10971,7 +11065,7 @@ function loadGridFromCache(){
           // ====================================
           // 🔥 NON BLOCKING
           // ====================================
-          if (
+          if(
 
             ++iterations % 200 === 0
 
@@ -10979,14 +11073,14 @@ function loadGridFromCache(){
 
             await new Promise(r =>
 
-              setTimeout(r, 0)
+              setTimeout(r,0)
             );
           }
         }
 
         await new Promise(r =>
 
-          setTimeout(r, 0)
+          setTimeout(r,0)
         );
       }
 
@@ -11001,23 +11095,19 @@ function loadGridFromCache(){
       };
 
       console.log(
-
-        "✅ FINAL BEAT-CLIPPED GRID:",
-
+        "✅ FINAL STRICT GRID:",
         count
       );
     }
 
-    await processRow();
+    await processRows();
 
   }
 
   catch(e){
 
     console.error(
-
       "❌ buildGrid crash:",
-
       e
     );
   }
