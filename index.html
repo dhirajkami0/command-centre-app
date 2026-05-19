@@ -1773,8 +1773,35 @@ function repaintCoverageGrid(
 
   try {
 
+    // ==========================================
+    // 🔥 FORCE ACTIVE MODE
+    // ==========================================
+    window.currentCoverageMode =
+      mode;
+
+    window.currentBeat =
+      beat;
+
+    // ==========================================
+    // 🔥 REFRESH TODAY CACHE
+    // VERY IMPORTANT
+    // ==========================================
+    if(
+      mode === "today" &&
+      typeof updateTodayCache === "function"
+    ){
+
+      updateTodayCache();
+    }
+
+    // ==========================================
+    // 🔥 RESET OLD STYLES
+    // ==========================================
     resetGridStyles();
 
+    // ==========================================
+    // 🔥 ACTIVE CACHE
+    // ==========================================
     let current = {};
 
     if(mode === "today"){
@@ -1782,20 +1809,42 @@ function repaintCoverageGrid(
       current =
         window.gridCache?.today || {};
     }
+
     else if(mode === "current"){
 
       current =
         window.gridCache?.current || {};
     }
+
     else if(mode === "prev"){
 
       current =
         window.gridCache?.prev || {};
     }
 
+    // ==========================================
+    // 🔥 SAFETY
+    // ==========================================
+    if(!current){
+
+      console.warn(
+        "⚠ No cache for mode:",
+        mode
+      );
+
+      return;
+    }
+
+    // ==========================================
+    // 🔥 REPAINT VISITED
+    // ==========================================
     Object.keys(current).forEach(id => {
 
-      if(!current[id]){
+      const count =
+
+        Number(current[id]) || 0;
+
+      if(count <= 0){
         return;
       }
 
@@ -1806,6 +1855,9 @@ function repaintCoverageGrid(
         return;
       }
 
+      // ======================================
+      // 🔥 BEAT FILTER
+      // ======================================
       if(
         beat !== "ALL" &&
         cell.beat !== beat
@@ -1816,14 +1868,23 @@ function repaintCoverageGrid(
       paintVisitedGrid(id);
     });
 
-    if(GRID_DEBUG){
+    // ==========================================
+    // 🔥 DEBUG
+    // ==========================================
+    console.log(
 
-      console.log(
-        "🎨 Coverage repainted:",
-        mode,
-        beat
-      );
-    }
+      "🎨 Coverage repainted:",
+
+      mode,
+
+      "| Beat:",
+
+      beat,
+
+      "| Cells:",
+
+      Object.keys(current).length
+    );
 
   } catch(e){
 
@@ -1832,8 +1893,7 @@ function repaintCoverageGrid(
       e
     );
   }
-}
-    // ====================================================
+}    // ====================================================
 // 🔥 INCREMENTAL GRID STYLE UPDATE
 // ====================================================
 
