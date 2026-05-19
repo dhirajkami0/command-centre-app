@@ -1796,20 +1796,62 @@ function paintVisitedGrid(id){
   cell.visited = true;
 
   // ================================================
-  // 🔥 INCREMENTAL STYLE UPDATE ONLY
+  // 🔥 STYLE UPDATE
   // ================================================
-  cell.poly.setStyle({
+  try {
 
-    fillColor: "#00ff88",
+    cell.poly.setStyle({
 
-    fillOpacity: 0.55,
+      fillColor: "#00ff88",
 
-    color: "#00cc66",
+      fillOpacity: 0.55,
 
-    opacity: 0.95,
+      color: "#00cc66",
 
-    weight: 0.7
-  });
+      opacity: 0.95,
+
+      weight: 0.7
+    });
+
+  } catch(e){
+
+    console.warn(
+      "⚠ paint style failed:",
+      id
+    );
+
+    return;
+  }
+
+  // ================================================
+  // 🔥 FORCE REDRAW
+  // ================================================
+  try {
+
+    if(cell.poly.redraw){
+
+      cell.poly.redraw();
+    }
+
+  } catch(e){}
+
+  // ================================================
+  // 🔥 FORCE CANVAS REFRESH
+  // ================================================
+  try {
+
+    const renderer =
+      cell.poly._renderer;
+
+    if(
+      renderer &&
+      renderer._redraw
+    ){
+
+      renderer._redraw();
+    }
+
+  } catch(e){}
 
   // ================================================
   // 🔥 OPTIONAL DEBUG
@@ -1822,7 +1864,6 @@ function paintVisitedGrid(id){
     );
   }
 }
-
 
 
 
@@ -7831,18 +7872,44 @@ function updateVisitedCache(newVisited){
     // ==========================================
     // 🔥 LIVE REPAINT
     // ==========================================
-    if(window.gridVisible){
+   if(window.gridVisible){
 
-      repaintCoverageGrid(
+  Object.keys(newVisited)
+  .forEach(id => {
 
-        window.currentCoverageMode
-        || "today",
+    const cell =
+      window.gridIndex?.[id];
 
-        window.currentBeat
-        || "ALL"
-      );
+    if(!cell){
+      return;
     }
 
+    // ======================================
+    // 🔥 BEAT FILTER
+    // ======================================
+    const activeBeat =
+
+      window.currentBeat
+      || "ALL";
+
+    if(
+
+      activeBeat !== "ALL" &&
+
+      cell.beat !== activeBeat
+
+    ){
+      return;
+    }
+
+    // ======================================
+    // 🔥 FORCE LIVE PAINT
+    // ======================================
+    cell.rendered = false;
+
+    paintVisitedGrid(id);
+  });
+}
     // ==========================================
     // 🔥 LIVE POPUP REFRESH
     // ==========================================
@@ -8304,7 +8371,44 @@ async function ensureGridReady(){
   repaintCoverageGrid(
 
     window.currentCoverageMode
-    || "current",
+    || "current",if(window.gridVisible){
+
+  Object.keys(newVisited)
+  .forEach(id => {
+
+    const cell =
+      window.gridIndex?.[id];
+
+    if(!cell){
+      return;
+    }
+
+    // ======================================
+    // 🔥 BEAT FILTER
+    // ======================================
+    const activeBeat =
+
+      window.currentBeat
+      || "ALL";
+
+    if(
+
+      activeBeat !== "ALL" &&
+
+      cell.beat !== activeBeat
+
+    ){
+      return;
+    }
+
+    // ======================================
+    // 🔥 FORCE LIVE PAINT
+    // ======================================
+    cell.rendered = false;
+
+    paintVisitedGrid(id);
+  });
+}
 
     window.currentBeat
     || "ALL"
