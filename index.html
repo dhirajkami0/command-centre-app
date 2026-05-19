@@ -8340,11 +8340,7 @@ function pointInPoly(lat, lng, coords){
 
                 hit = true;
 
-                console.log(
-                  "✅ GRID HIT:",
-                  cell.id
-                );
-              }
+                }
 
             } catch(err){
 
@@ -8520,10 +8516,7 @@ function pointInPoly(lat, lng, coords){
               Number(data[id]) || 0
             ) + 1;
 
-          console.log(
-            "💾 Saved Grid:",
-            id
-          );
+          
         });
 
       clearTimeout(
@@ -15067,7 +15060,12 @@ function show3MonthSummary(data){
 /* ============================================================
    🟩 GRID LAYER INIT (CLEAN)
 ============================================================ */
-window.gridLayer = window.gridLayer || L.layerGroup();
+    /* ============================================================
+   🟩 PERSISTENT GRID ROOT LAYER
+============================================================ */
+window.gridRootLayer =
+  window.gridRootLayer ||
+  L.layerGroup();
 
 
 /* ============================================================
@@ -15107,7 +15105,7 @@ window.gridLayer = window.gridLayer || L.layerGroup();
     "🌱 Plantation": plantationLayer,
 
     // 🟩 COVERAGE GRID
-    "🟩 Coverage Grid": window.gridLayer
+    "🟩 Coverage Grid": window.gridRootLayer
 
      },
 
@@ -15132,75 +15130,123 @@ map.on('overlayadd', function (e) {
 
   try {
 
-    if (!e || !e.name) return;
-
-    const layerName = String(e.name);
-
-    console.log("🧭 Layer Enabled:", layerName);
-
-    /* 👮 Staff */
-    if (layerName === "👮 Staff") {
-      return loadStaff?.();
+    if (!e || !e.name) {
+      return;
     }
 
-    /* 🌱 Plantation */
-    if (layerName === "🌱 Plantation") {
-      return loadPlantationLayer?.();
+    const layerName =
+      String(e.name);
+
+    if(GRID_DEBUG){
+
+      console.log(
+        "🧭 Layer Enabled:",
+        layerName
+      );
     }
 
     /* ============================================================
-       🟩 COVERAGE GRID (FIXED)
+       👮 STAFF
     ============================================================ */
-    if (layerName === "🟩 Coverage Grid") {
+    if(layerName === "👮 Staff"){
 
-  console.log(
-    "📊 Coverage Grid ON"
-  );
+      loadStaff?.();
 
-  // ==========================================
-  // 🔥 ENABLE GRID
-  // ==========================================
-  window.gridVisible = true;
-
-  // ==========================================
-  // 🔥 SHOW PANEL
-  // ==========================================
-  showCoveragePanel?.();
-
-  // ==========================================
-  // 🔥 RESET FLAGS
-  // ==========================================
-  if(window.gridCellArray){
-
-    for(
-      const cell
-      of window.gridCellArray
-    ){
-
-      if(cell){
-
-        cell.rendered = false;
-      }
+      return;
     }
-  }
 
-  // ==========================================
-  // 🔥 REPAINT
-  // ==========================================
-  repaintCoverageGrid(
+    /* ============================================================
+       🌱 PLANTATION
+    ============================================================ */
+    if(layerName === "🌱 Plantation"){
 
-    window.currentCoverageMode
-    || "today",
+      loadPlantationLayer?.();
 
-    window.currentBeat
-    || "ALL"
-  );
+      return;
+    }
 
-  return;
-}
+    /* ============================================================
+       🟩 COVERAGE GRID
+       PERSISTENT LAYER MODE
+    ============================================================ */
+    if(layerName === "🟩 Coverage Grid"){
+
+      if(GRID_DEBUG){
+
+        console.log(
+          "📊 Coverage Grid ON"
+        );
+      }
+
+      // ==========================================
+      // 🔥 ENABLE GRID FLAG
+      // ==========================================
+      window.gridVisible = true;
+
+      // ==========================================
+      // 🔥 SHOW PANEL
+      // ==========================================
+      showCoveragePanel?.();
+
+      // ==========================================
+      // 🔥 ENSURE ROOT LAYER EXISTS
+      // ==========================================
+      
+
+      // ==========================================
+      // 🔥 RE-ATTACH ROOT LAYER
+      // ❌ DO NOT rebuild polygons
+      // ==========================================
+      if(
+
+        !map.hasLayer(
+          window.gridRootLayer
+        )
+
+      ){
+
+        window.gridRootLayer
+          .addTo(map);
+      }
+
+      // ==========================================
+      // 🔥 RESET RUNTIME FLAGS
+      // ==========================================
+      if(window.gridCellArray){
+
+        for(
+          const cell
+          of window.gridCellArray
+        ){
+
+          if(cell){
+
+            cell.rendered = false;
+          }
+        }
+      }
+
+      // ==========================================
+      // 🔥 STYLE-ONLY REPAINT
+      // ==========================================
+      repaintCoverageGrid(
+
+        window.currentCoverageMode
+        || "today",
+
+        window.currentBeat
+        || "ALL"
+      );
+
+      return;
+    }
 
   } catch (err) {
-    console.error("🔥 overlayadd crash:", err);
+
+    console.error(
+      "🔥 overlayadd crash:",
+      err
+    );
   }
 });
 
@@ -15212,8 +15258,13 @@ map.on('overlayremove', function (e) {
 
   const name = e.name;
 
-  console.log("🧹 Layer Disabled:", name);
+  if(GRID_DEBUG){
 
+  console.log(
+    "🧹 Layer Disabled:",
+    name
+  );
+}
   /* 🌱 Plantation */
   if (name === "🌱 Plantation") {
     plantationLayer?.clearLayers?.();
@@ -15222,14 +15273,14 @@ map.on('overlayremove', function (e) {
   /* ============================================================
      🟩 GRID CLEANUP (FIXED)
   ============================================================ */
- if (name === "🟩 Coverage Grid") {
+if (name === "🟩 Coverage Grid") {
 
   console.log(
-    "🧹 Clearing Coverage Grid"
+    "🧹 Hiding Coverage Grid"
   );
 
   // ==========================================
-  // 🔥 DISABLE GRID
+  // 🔥 DISABLE GRID FLAG
   // ==========================================
   window.gridVisible = false;
 
@@ -15239,11 +15290,26 @@ map.on('overlayremove', function (e) {
   closeCoveragePanel?.();
 
   // ==========================================
-  // 🔥 RESET STYLES
+  // 🔥 HIDE ROOT LAYER ONLY
+  // ❌ DO NOT clearLayers()
+  // ❌ DO NOT destroy polygons
   // ==========================================
-  hideGrid();
+  if(
+
+    window.gridRootLayer &&
+
+    map.hasLayer(
+      window.gridRootLayer
+    )
+
+  ){
+
+    map.removeLayer(
+      window.gridRootLayer
+    );
+  }
 }
-});     /* ============================================================
+});    /* ============================================================
              🐘 SIGHTING FORM SYSTEM (FINAL SAFE VERSION)
           ============================================================ */
 
