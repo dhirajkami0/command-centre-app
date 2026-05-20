@@ -11422,64 +11422,148 @@ function loadGridFromCache(){
 
     function extract(layer) {
 
-      if (!layer) return;
+  if (!layer) return;
 
-      if (layer instanceof L.Polygon) {
+  // ==========================================
+  // 🔥 NESTED LAYERS
+  // ==========================================
+  if (layer.eachLayer) {
+    layer.eachLayer(extract);
+  }
 
-        let latlngs = layer.getLatLngs();
-        const rings = Array.isArray(latlngs[0][0]) ? latlngs : [latlngs];
+  // ==========================================
+  // 🔥 POLYGON DETECTION
+  // ==========================================
+  if (layer instanceof L.Polygon) {
 
-        rings.forEach(ringSet => {
+    const props =
+      layer.feature?.properties || {};
 
-          let coords = ringSet.map(ring => {
+    const rawID =
+      (
+        props.ID ||
+        props.Name ||
+        ""
+      )
+      .toUpperCase()
+      .trim();
 
-            let pts = ring.map(p => [p.lng, p.lat]);
+    // ==========================================
+    // 🔥 NORMALIZED COMPARTMENT
+    // ==========================================
+    const compartment =
 
-            // close polygon
-            if (
-              pts[0][0] !== pts[pts.length - 1][0] ||
-              pts[0][1] !== pts[pts.length - 1][1]
-            ) {
-              pts.push(pts[0]);
-            }
+      convertCompartment(rawID)
+      .replace(/\s+/g, " ")
+      .trim();
 
-            return pts;
+    // ==========================================
+    // 🔥 FIND BEAT OWNER
+    // ==========================================
+    let beat = "UNKNOWN";
 
-          }).filter(r => r.length >= 4);
+    for (const key in window.beatMap) {
 
-          if (coords.length) {
-            try {
-              allPolys.push(turf.polygon(coords));
-            } catch (e) {}
-          }
+      const found =
+        window.beatMap[key]
+        .some(v =>
 
-        });
+          v.replace(/\s+/g, " ")
+          .trim()
+
+          === compartment
+        );
+
+      if(found){
+
+        beat = key;
+        break;
+      }
+    }
+
+    let latlngs =
+      layer.getLatLngs();
+
+    const rings =
+
+      Array.isArray(latlngs[0][0])
+
+      ? latlngs
+
+      : [latlngs];
+
+    rings.forEach(ringSet => {
+
+      let coords = ringSet.map(ring => {
+
+        let pts = ring.map(p => [
+
+          p.lng,
+          p.lat
+        ]);
+
+        // ======================================
+        // 🔥 CLOSE POLYGON
+        // ======================================
+        if (
+
+          pts[0][0] !==
+          pts[pts.length - 1][0]
+
+          ||
+
+          pts[0][1] !==
+          pts[pts.length - 1][1]
+
+        ) {
+
+          pts.push(pts[0]);
+        }
+
+        return pts;
+
+      }).filter(r => r.length >= 4);
+
+      if (!coords.length){
+        return;
       }
 
-      if (layer.eachLayer) layer.eachLayer(extract);
-    }
-
-    extract(rangeLayer);
-
-    if (!allPolys.length) {
-      console.error("❌ No polygons found");
-      return;
-    }
-
-    // ==========================================
-    // 🔥 2. UNION POLYGON
-    // ==========================================
-    let unifiedRange = allPolys[0];
-
-    for (let i = 1; i < allPolys.length; i++) {
       try {
-        unifiedRange = turf.union(unifiedRange, allPolys[i]);
-      } catch (e) {}
-    }
 
-    const unifiedBBox = turf.bbox(unifiedRange);
+        allPolys.push({
 
-    const south = bounds.getSouth();
+          compartment,
+
+          beat,
+
+          turfPoly:
+            turf.polygon(coords)
+
+        });
+
+      } catch(e){}
+    });
+  }
+}
+    // ==========================================
+// 🔥 EXTRACT COMPARTMENTS
+// ==========================================
+extract(rangeLayer);
+
+if(!allPolys.length){
+
+  console.warn(
+    "⚠ No compartment polygons extracted"
+  );
+
+  return;
+}
+
+console.log(
+  "📐 Compartments:",
+  allPolys.length
+);
+       const south = bounds.getSouth();
     const north = bounds.getNorth();
     const west = bounds.getWest();
     const east = bounds.getEast();
@@ -11500,14 +11584,7 @@ function loadGridFromCache(){
 
         for (let lon = startLon; lon < east; lon += step) {
 
-          // 🔥 FAST BBOX SKIP
-          if (
-            lon > unifiedBBox[2] ||
-            lon + step < unifiedBBox[0] ||
-            lat > unifiedBBox[3] ||
-            lat + step < unifiedBBox[1]
-          ) continue;
-
+         
           const centerLat = lat + step / 2;
           const centerLon = lon + step / 2;
 
@@ -11521,20 +11598,54 @@ function loadGridFromCache(){
             [lon, lat]
           ]]);
 
-          let clipped;
+         // ==========================================
+// 🔥 COMPARTMENT CLIP
+// ==========================================
+let clipped = null;
 
-          try {
-            clipped = turf.intersect(cellPoly, unifiedRange);
-          } catch (e) {
-            continue;
-          }
+let owningBeat = "UNKNOWN";
 
-          // ❌ STRICT: skip if no intersection
-          if (!clipped) continue;
+// ==========================================
+// 🔥 CLIP AGAINST COMPARTMENTS
+// ==========================================
+for(const comp of allPolys){
 
-          // 🔥 remove tiny fragments
-          if (turf.area(clipped) < 30) continue;
+  try {
 
+    const hit = turf.intersect(
+
+      cellPoly,
+
+      comp.turfPoly
+    );
+
+    if(!hit){
+      continue;
+    }
+
+    // ======================================
+    // 🔥 REMOVE TINY FRAGMENTS
+    // ======================================
+    if(turf.area(hit) < 30){
+      continue;
+    }
+
+    clipped = hit;
+
+    owningBeat =
+      comp.beat || "UNKNOWN";
+
+    break;
+
+  } catch(e){}
+}
+
+// ==========================================
+// 🔥 NO VALID CLIP
+// ==========================================
+if(!clipped){
+  continue;
+}
           // ==========================================
           // 🔥 NORMALIZE GEOMETRY
           // ==========================================
@@ -11606,7 +11717,7 @@ const cell = {
     lng: centerLon
   },
 
-  beat: "UNKNOWN",
+  beat: owningBeat,
 
   visited: false,
 
