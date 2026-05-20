@@ -13698,24 +13698,222 @@ cleanedPoints.forEach(p=>{
 // ==================================================
 // 🔥 GRID DETECTION FROM CLEANED POLYLINE
 // ==================================================
-markVisitedHybrid([{
+// ==================================================
+// 🔥 VALID MOVEMENT TRACK
+// PREVENT TELEPORT GRID POLLUTION
+// ==================================================
+const validTrack = [];
 
-  track:
+// ==================================================
+// 🔥 BUILD SAFE TRACK
+// ==================================================
+for(
 
-    points.map(p => [
+  let i = 0;
 
-      p.lat,
+  i < points.length;
 
-      p.lon
+  i++
 
-    ]),
+){
 
-  date:
-    new Date()
-      .toISOString()
+  const curr = points[i];
 
-}]);            
-            // ======================================
+  // ================================================
+  // 🔥 FIRST POINT
+  // ================================================
+  if(i === 0){
+
+    validTrack.push([
+
+      curr.lat,
+
+      curr.lon
+    ]);
+
+    continue;
+  }
+
+  // ================================================
+  // 🔥 PREVIOUS POINT
+  // ================================================
+  const prev =
+    points[i - 1];
+
+  // ================================================
+  // 🔥 INVALID GPS
+  // ================================================
+  if(
+
+    !prev ||
+
+    !curr ||
+
+    isNaN(prev.lat) ||
+
+    isNaN(prev.lon) ||
+
+    isNaN(curr.lat) ||
+
+    isNaN(curr.lon)
+
+  ){
+    continue;
+  }
+
+  // ================================================
+  // 🔥 DISTANCE METERS
+  // ================================================
+  const dist =
+
+    map.distance(
+
+      [prev.lat, prev.lon],
+
+      [curr.lat, curr.lon]
+    );
+
+  // ================================================
+  // 🔥 TIME DIFF
+  // ================================================
+  let timeDiffSec = 1;
+
+  try {
+
+    const prevTime =
+
+      Number(
+        prev.time ||
+        prev.timestamp ||
+        0
+      );
+
+    const currTime =
+
+      Number(
+        curr.time ||
+        curr.timestamp ||
+        0
+      );
+
+    if(
+
+      prevTime > 0 &&
+
+      currTime > prevTime
+
+    ){
+
+      timeDiffSec =
+
+        Math.max(
+
+          1,
+
+          (
+            currTime - prevTime
+          ) / 1000
+        );
+    }
+
+  } catch(e){}
+
+  // ================================================
+  // 🔥 SPEED KM/H
+  // ================================================
+  const speedKmh =
+
+    (dist / timeDiffSec)
+    * 3.6;
+
+  // ================================================
+  // 🔥 TELEPORT DETECTION
+  // ================================================
+  const invalidMovement =
+
+    // 🔥 HUGE JUMP
+    dist > 300 ||
+
+    // 🔥 IMPOSSIBLE SPEED
+    speedKmh > 120 ||
+
+    // 🔥 BAD VALUES
+    !isFinite(dist) ||
+
+    !isFinite(speedKmh);
+
+  // ================================================
+  // 🔥 INVALID SEGMENT
+  // ================================================
+  if(invalidMovement){
+
+    console.warn(
+
+      "⚠ TELEPORT BLOCKED",
+
+      {
+
+        distance:
+          Math.round(dist),
+
+        speed:
+          Math.round(speedKmh),
+
+        from:
+          [prev.lat, prev.lon],
+
+        to:
+          [curr.lat, curr.lon]
+      }
+    );
+
+    // ============================================
+    // 🔥 OPTIONAL VISUAL ONLY
+    // ============================================
+    try {
+
+      drawReconnectLine?.(
+
+        prev,
+
+        curr
+      );
+
+    } catch(e){}
+
+    // ============================================
+    // ❌ DO NOT ADD TO GRID TRACK
+    // ============================================
+    continue;
+  }
+
+  // ================================================
+  // ✅ VALID MOVEMENT
+  // ================================================
+  validTrack.push([
+
+    curr.lat,
+
+    curr.lon
+  ]);
+}
+
+// ==================================================
+// 🔥 GRID DETECTION ONLY FROM VALID TRACK
+// ==================================================
+if(validTrack.length > 1){
+
+  markVisitedHybrid([{
+
+    track:
+      validTrack,
+
+    date:
+      new Date()
+        .toISOString()
+
+  }]);
+}            // ======================================
 // 🔥 SAVE POINT COUNT
 // ======================================
 window.trackPointCount[
