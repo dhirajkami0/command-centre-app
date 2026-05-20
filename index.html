@@ -3298,308 +3298,458 @@ window.openGallery = function(){
   window.__gridLoadedFromCache = false;
 let appStarted = false;
 
-async function startApp(){   // 🔥 MADE ASYNC (CRITICAL)
+async function startApp(){   // 🔥 ASYNC
 
   if(appStarted) return;
+
   appStarted = true;
 
-  console.log("🚀 App Started - Command Centre Initializing");
+  console.log(
+    "🚀 App Started - Command Centre Initializing"
+  );
 
   try {
 
     // ======================================================
-    // 🔥 INIT DUTY STATE (IMPORTANT)
+    // 🔥 INIT DUTY STATE
     // ======================================================
     window.isDutyActive = false;
+
     window.__dutyChecked = false;
 
     // ======================================================
-    // ⚡ PHASE 1 → LIGHT + FAST (NO BLOCKING)
+    // 🔥 GRID FLAGS (LAZY MODE)
+    // ======================================================
+    window.gridVisible = false;
+
+    window.__backendLoaded = false;
+
+    window.currentCoverageMode =
+      window.currentCoverageMode
+      || "today";
+
+    window.currentBeat =
+      window.currentBeat
+      || "ALL";
+
+    // ======================================================
+    // 🔥 ENSURE CACHE
+    // ======================================================
+    window.gridCache =
+      window.gridCache || {
+
+        today:{},
+        current:{},
+        prev:{}
+      };
+
+    // ======================================================
+    // 🔥 ENSURE PENDING SYNC
+    // ======================================================
+    window.pendingGridSync =
+      window.pendingGridSync || {};
+
+    // ======================================================
+    // ⚡ PHASE 1 → LIGHT + FAST
     // ======================================================
     loadSightings();
 
     if(typeof initDutyControl === "function"){
+
       initDutyControl();
+
     } else {
-      console.warn("⚠ initDutyControl not found");
+
+      console.warn(
+        "⚠ initDutyControl not found"
+      );
     }
 
-    // 🔥 SAFETY: Ensure GPS is OFF initially
+    // ======================================================
+    // 🔥 SAFETY GPS OFF
+    // ======================================================
     if(window.gpsRunning){
-      console.warn("⚠ GPS was running unexpectedly → stopping");
-     // stopAutoGPS();
+
+      console.warn(
+        "⚠ GPS unexpectedly running"
+      );
+
+      // stopAutoGPS();
     }
 
     // ======================================================
-    // 🔥 CACHE LOAD (FIRST)
+    // 🔥 BACKEND LOAD FIRST
+    // SOURCE OF TRUTH
     // ======================================================
-    loadCacheOnStart();
-// ======================================================
-// 🔥 MONTH ROLLOVER
-// ======================================================
-try {
+    await loadBackendCoverage();
 
-  const currentMonth =
-
-    new Date()
-      .toISOString()
-      .slice(0,7);
-
-  const savedMonth =
-
-    localStorage.getItem(
-      "coverage_month"
-    );
-
-  // 🔥 FIRST RUN
-  if(!savedMonth){
-
-    localStorage.setItem(
-      "coverage_month",
-      currentMonth
-    );
-  }
-
-  // 🔥 MONTH CHANGED
-  else if(savedMonth !== currentMonth){
+    // ======================================================
+    // 🔥 LOCK BACKEND
+    // ======================================================
+    window.__backendLoaded = true;
 
     console.log(
-      "📆 Month rollover"
+      "📡 Backend authoritative"
     );
 
-    // CURRENT → PREV
-    localStorage.setItem(
+    // ======================================================
+    // 🔥 LOCAL FALLBACK CACHE
+    // ======================================================
+    loadCacheOnStart();
 
-      "grid_prev",
+    // ======================================================
+    // 🔥 OFFLINE RECOVERY
+    // ======================================================
+    mergeOfflineCache();
 
-      localStorage.getItem(
-        "grid_current"
-      ) || "{}"
-    );
+    // ======================================================
+    // 🔥 MONTH ROLLOVER
+    // ======================================================
+    try {
 
-    // CLEAR CURRENT
-    localStorage.setItem(
-      "grid_current",
-      "{}"
-    );
+      const currentMonth =
 
-    // CLEAR TODAY
-    localStorage.setItem(
-      "grid_today",
-      "{}"
-    );
+        new Date()
+          .toISOString()
+          .slice(0,7);
 
-    // SAVE NEW MONTH
-    localStorage.setItem(
-      "coverage_month",
-      currentMonth
-    );
-  }
+      const savedMonth =
 
-  // 🔥 LOAD CACHE
-  window.gridCache.today =
+        localStorage.getItem(
+          "coverage_month"
+        );
 
-    JSON.parse(
-      localStorage.getItem(
-        "grid_today"
-      ) || "{}"
-    );
+      // ==============================================
+      // 🔥 FIRST RUN
+      // ==============================================
+      if(!savedMonth){
 
-  window.gridCache.current =
+        localStorage.setItem(
 
-    JSON.parse(
-      localStorage.getItem(
-        "grid_current"
-      ) || "{}"
-    );
+          "coverage_month",
 
-  window.gridCache.prev =
+          currentMonth
+        );
+      }
 
-    JSON.parse(
-      localStorage.getItem(
-        "grid_prev"
-      ) || "{}"
-    );
+      // ==============================================
+      // 🔥 MONTH CHANGED
+      // ==============================================
+      else if(savedMonth !== currentMonth){
 
-}catch(err){
+        console.log(
+          "📆 Month rollover"
+        );
 
-  console.warn(
-    "⚠ rollover fail",
-    err
-  );
-}
-    // 🔥 CLEAN OLD KEY (PERMANENT FIX)
+        // ==========================================
+        // 🔥 CURRENT → PREV
+        // ==========================================
+        localStorage.setItem(
+
+          "grid_prev",
+
+          localStorage.getItem(
+            "grid_current"
+          ) || "{}"
+        );
+
+        // ==========================================
+        // 🔥 CLEAR CURRENT
+        // ==========================================
+        localStorage.setItem(
+          "grid_current",
+          "{}"
+        );
+
+        // ==========================================
+        // 🔥 CLEAR TODAY
+        // ==========================================
+        localStorage.setItem(
+          "grid_today",
+          "{}"
+        );
+
+        // ==========================================
+        // 🔥 SAVE NEW MONTH
+        // ==========================================
+        localStorage.setItem(
+
+          "coverage_month",
+
+          currentMonth
+        );
+      }
+
+    } catch(err){
+
+      console.warn(
+        "⚠ rollover fail",
+        err
+      );
+    }
+
+    // ======================================================
+    // 🔥 REMOVE OLD MONTH CACHE KEY
+    // ======================================================
     if(window.gridCache){
+
       delete window.gridCache.month;
     }
 
     // ======================================================
-    // 🔥 BACKEND LOAD (BLOCKING — CRITICAL FIX)
-    // ======================================================
-    await loadBackendCoverage();   // 🔥 THIS FIXES YOUR ISSUE
-
-    // 🔥 LOCK CACHE (PREVENT OVERWRITE)
-    window.__backendLoaded = true;
-
-    console.log("📡 Backend locked → no overwrite allowed");
-
-    // ======================================================
-    // 🧹 CLEAN OLD MONTH DATA (SAFE)
+    // 🧹 CLEAN OLD GRID CACHE
     // ======================================================
     setTimeout(() => {
 
       try {
 
         const now = new Date();
-        now.setHours(0,0,0,0);
+
+        now.setHours(
+          0,0,0,0
+        );
 
         let kept = 0;
+
         let removed = 0;
 
-        Object.keys(localStorage).forEach(key => {
+        Object.keys(localStorage)
+        .forEach(key => {
 
-          if(!key.startsWith("grid_")) return;
+          if(
+            !key.startsWith(
+              "grid_"
+            )
+          ){
+            return;
+          }
 
-          const dateStr = key.replace("grid_", "");
-          const parts = dateStr.split("-");
-          if(parts.length !== 3) return;
+          const dateStr =
+
+            key.replace(
+              "grid_",
+              ""
+            );
+
+          const parts =
+            dateStr.split("-");
+
+          if(parts.length !== 3){
+            return;
+          }
 
           const d = new Date(
+
             Number(parts[0]),
+
             Number(parts[1]) - 1,
+
             Number(parts[2])
           );
 
-          if(isNaN(d.getTime())) return;
-
-          d.setHours(0,0,0,0);
-
-          const diffDays = Math.floor((now - d) / (1000 * 60 * 60 * 24));
-
-          if(diffDays <= 60){
-            kept++;
-          } else {
-            localStorage.removeItem(key);
-            removed++;
-            console.log("🧹 Removed:", key, "| Days:", diffDays);
+          if(
+            isNaN(d.getTime())
+          ){
+            return;
           }
 
+          d.setHours(
+            0,0,0,0
+          );
+
+          const diffDays = Math.floor(
+
+            (now - d)
+
+            /
+
+            (1000 * 60 * 60 * 24)
+          );
+
+          if(diffDays <= 60){
+
+            kept++;
+          }
+
+          else {
+
+            localStorage.removeItem(
+              key
+            );
+
+            removed++;
+
+            console.log(
+              "🧹 Removed:",
+              key
+            );
+          }
         });
 
-        console.log("📦 Grid retention → kept:", kept, "| removed:", removed);
+        console.log(
+
+          "📦 Grid retention →",
+
+          "Kept:",
+          kept,
+
+          "| Removed:",
+          removed
+        );
 
       } catch(e){
-        console.warn("⚠ Cleanup failed:", e);
+
+        console.warn(
+          "⚠ Cleanup failed:",
+          e
+        );
       }
 
     }, 1000);
 
     // ======================================================
-    // 🔥 OFFLINE CLEAN
+    // 🔥 OFFLINE GPS CLEAN
     // ======================================================
     if(window.isDutyActive !== true){
+
       try {
-        localStorage.removeItem("offlineGPS");
-        console.log("🧹 Cleared old offline GPS");
+
+        localStorage.removeItem(
+          "offlineGPS"
+        );
+
+        console.log(
+          "🧹 Cleared offline GPS"
+        );
+
       } catch(e){}
     }
 
-    console.log("⚡ Phase 1 complete (UI fast)");
+    console.log(
+      "⚡ Phase 1 complete"
+    );
 
     // ======================================================
     // 🚀 PHASE 2 → DELAYED TASKS
     // ======================================================
     setTimeout(() => {
+
       try {
+
         cleanOldMessages();
+
       } catch(e){
-        console.warn("⚠ cleanOldMessages failed");
+
+        console.warn(
+          "⚠ cleanOldMessages failed"
+        );
       }
+
     }, 7000);
 
     // ======================================================
-    // 🔥 GRID INIT + BACKFILL (UNCHANGED)
-    // ======================================================
-   
-    // ======================================================
     // 🔥 DUTY CHECK
     // ======================================================
+    const dutyWait = setInterval(() => {
+
+      // ==============================================
+      // 🔥 WAIT FIREBASE
+      // ==============================================
+      if(
+
+        !window.firebaseReady ||
+
+        !window.fb ||
+
+        !window.db
+
+      ){
+
+        console.log(
+          "⏳ Waiting Firebase..."
+        );
+
+        return;
+      }
+
+      // ==============================================
+      // 🔥 WAIT PROFILE
+      // ==============================================
+      if(
+
+        !window.userProfile ||
+
+        !window.userProfile.cleanName
+
+      ){
+
+        console.log(
+          "⏳ Waiting userProfile..."
+        );
+
+        return;
+      }
+
+      // ==============================================
+      // ✅ READY
+      // ==============================================
+      clearInterval(dutyWait);
+
+      console.log(
+        "🔥 Firebase ready → duty checks"
+      );
+
+      // ==============================================
+      // 🔥 INITIAL CHECKS
+      // ==============================================
+      setTimeout(() => {
+
+        autoShowEndDuty();
+
+      }, 1000);
+
+      setTimeout(() => {
+
+        autoShowEndDuty();
+
+      }, 3000);
+
+      // ==============================================
+      // 🔥 LOOP
+      // ==============================================
+      setInterval(() => {
+
+        if(
+
+          window.userProfile &&
+
+          window.firebaseReady
+
+        ){
+
+          autoShowEndDuty();
+        }
+
+      }, 15000);
+
+    }, 800);
+
     // ======================================================
-// 🔥 DUTY CHECK (WAIT FOR FIREBASE)
+    // ✅ APP READY
+    // ======================================================
+    console.log(
+      "✅ App initialized (Lazy Grid Mode)"
+    );
+
+    // ======================================================
+    // 🔥 FIREBASE INIT
+    // KEEP EVERYTHING BELOW AS IS
+    // ======================================================
 // ======================================================
-const dutyWait = setInterval(() => {
+// 🔥 FIREBASE (UNCHANGED)
+// ======================================================
 
-  // 🔥 WAIT FOR FIREBASE
-  if(
-    !window.firebaseReady ||
-    !window.fb ||
-    !window.db
-  ){
-
-    console.log(
-      "⏳ Waiting Firebase..."
-    );
-
-    return;
-  }
-
-  // 🔥 WAIT FOR PROFILE
-  if(
-    !window.userProfile ||
-    !window.userProfile.cleanName
-  ){
-
-    console.log(
-      "⏳ Waiting userProfile..."
-    );
-
-    return;
-  }
-
-  // ======================================================
-  // ✅ READY
-  // ======================================================
-  clearInterval(dutyWait);
-
-  console.log(
-    "🔥 Firebase ready → starting duty checks"
-  );
-
-  // 🔥 INITIAL CHECKS
-  setTimeout(() => {
-
-    autoShowEndDuty();
-
-  }, 1000);
-
-  setTimeout(() => {
-
-    autoShowEndDuty();
-
-  }, 3000);
-
-  // 🔥 LOOP
-  setInterval(() => {
-
-    if(
-      window.userProfile &&
-      window.firebaseReady
-    ){
-
-      autoShowEndDuty();
-    }
-
-  }, 15000);
-
-}, 800);
-
- 
-    console.log("✅ App initialized (FULL FIXED)");
-
-    // ======================================================
-    // 🔥 FIREBASE (UNCHANGED)
-    // ======================================================
-   // ======================================================
+// ======================================================
 // 🔥 FIREBASE INIT (IMMEDIATE)
 // ======================================================
 (async () => {
@@ -3715,219 +3865,237 @@ const dutyWait = setInterval(() => {
     console.log(
       "🔥 FIREBASE READY"
     );
-/* =====================================================
-   🔥 FIREBASE MEDIA SYSTEM
-===================================================== */
 
-if(!window.__STRICT_MEDIA_FIREBASE__){
+    /* =====================================================
+       🔥 FIREBASE MEDIA SYSTEM
+    ===================================================== */
 
-  window.__STRICT_MEDIA_FIREBASE__ = true;
+    if(!window.__STRICT_MEDIA_FIREBASE__){
 
-  // =====================================================
-  // 🔥 CONTACT SHARE
-  // =====================================================
-  window.shareContact = async function(){
+      window.__STRICT_MEDIA_FIREBASE__ = true;
 
-    try{
+      // =====================================================
+      // 🔥 CONTACT SHARE
+      // =====================================================
+      window.shareContact = async function(){
 
-      window.closeActionMenu();
+        try{
 
-      if(
-        !window.firebaseReady ||
-        !window.userProfile
-      ){
-        alert("Login required");
-        return;
-      }
+          window.closeActionMenu();
 
-      await window.fb.addDoc(
+          if(
+            !window.firebaseReady ||
+            !window.userProfile
+          ){
+            alert("Login required");
+            return;
+          }
 
-        window.fb.collection(
-          window.db,
-          "patrol_chat"
-        ),
+          await window.fb.addDoc(
 
-        {
+            window.fb.collection(
+              window.db,
+              "patrol_chat"
+            ),
 
-          type:"contact",
+            {
 
-          contactName:
-            window.userProfile.rawName,
+              type:"contact",
 
-          contactPhone:
-            window.userProfile.phone,
+              contactName:
+                window.userProfile.rawName,
 
-          user:
-            window.userProfile.rawName,
+              contactPhone:
+                window.userProfile.phone,
 
-          phone:
-            window.userProfile.phone,
+              user:
+                window.userProfile.rawName,
 
-          time:
-            window.fb.serverTimestamp()
+              phone:
+                window.userProfile.phone,
+
+              time:
+                window.fb.serverTimestamp()
+            }
+          );
+
+          showToast("👤 Contact shared");
+
+        }catch(err){
+
+          console.error(err);
+
+          alert("Contact failed");
         }
-      );
+      };
 
-      showToast("👤 Contact shared");
+      // =====================================================
+      // 🔥 DOCUMENT UPLOAD
+      // =====================================================
+      window.uploadChatDocument = async function(file){
 
-    }catch(err){
+        try{
 
-      console.error(err);
+          if(!file) return;
 
-      alert("Contact failed");
-    }
-  };
+          if(file.size > 15000000){
 
-  // =====================================================
-  // 🔥 IMAGE UPLOAD
-  // =====================================================
-  
-  // =====================================================
-  // 🔥 DOCUMENT UPLOAD
-  // =====================================================
-  window.uploadChatDocument = async function(file){
+            alert(
+              "Document too large"
+            );
 
-    try{
+            return;
+          }
 
-      if(!file) return;
-if(file.size > 15000000){
+          showToast(
+            "📤 Uploading document..."
+          );
 
-  alert(
-    "Document too large"
-  );
+          const filePath =
 
-  return;
-}
-      showToast("📤 Uploading document...");
+            "chat_docs/" +
 
-      const filePath =
+            Date.now() +
 
-        "chat_docs/" +
+            "_" +
 
-        Date.now() +
+            file.name;
 
-        "_" +
+          const storageRef =
 
-        file.name;
+            window.fb.ref(
+              window.storage,
+              filePath
+            );
 
-      const storageRef =
+          await window.fb.uploadBytes(
+            storageRef,
+            file
+          );
 
-        window.fb.ref(
-          window.storage,
-          filePath
+          const downloadURL =
+
+            await window.fb.getDownloadURL(
+              storageRef
+            );
+
+          await window.fb.addDoc(
+
+            window.fb.collection(
+              window.db,
+              "patrol_chat"
+            ),
+
+            {
+
+              type:"document",
+
+              documentUrl:
+                downloadURL,
+
+              fileName:
+                file.name,
+
+              user:
+                window.userProfile?.rawName
+                || "Unknown",
+
+              phone:
+                window.userProfile?.phone
+                || "",
+
+              time:
+                window.fb.serverTimestamp()
+            }
+          );
+
+          showToast(
+            "✅ Document sent"
+          );
+
+        }catch(err){
+
+          console.error(err);
+
+          alert(
+            "Document upload failed"
+          );
+        }
+      };
+
+      // =====================================================
+      // 🔥 INPUT LISTENERS
+      // =====================================================
+      document
+        .getElementById(
+          "cameraInput"
+        )
+        ?.addEventListener(
+
+          "change",
+
+          async function(e){
+
+            const file =
+              e.target.files?.[0];
+
+            if(file){
+
+              await sendPhoto(e);
+            }
+
+            e.target.value = "";
+          }
         );
 
-      await window.fb.uploadBytes(
-        storageRef,
-        file
-      );
+      document
+        .getElementById(
+          "galleryInput"
+        )
+        ?.addEventListener(
 
-      const downloadURL =
+          "change",
 
-        await window.fb.getDownloadURL(
-          storageRef
+          async function(e){
+
+            const file =
+              e.target.files?.[0];
+
+            if(file){
+
+              await sendPhoto(e);
+            }
+
+            e.target.value = "";
+          }
         );
 
-      await window.fb.addDoc(
+      document
+        .getElementById(
+          "documentInput"
+        )
+        ?.addEventListener(
 
-        window.fb.collection(
-          window.db,
-          "patrol_chat"
-        ),
+          "change",
 
-        {
+          async function(e){
 
-          type:"document",
+            const file =
+              e.target.files?.[0];
 
-          documentUrl:downloadURL,
+            if(file){
 
-          fileName:file.name,
+              await window
+                .uploadChatDocument(
+                  file
+                );
+            }
 
-          user:
-            window.userProfile?.rawName || "Unknown",
-
-          phone:
-            window.userProfile?.phone || "",
-
-          time:
-            window.fb.serverTimestamp()
-        }
-      );
-
-      showToast("✅ Document sent");
-
-    }catch(err){
-
-      console.error(err);
-
-      alert("Document upload failed");
+            e.target.value = "";
+          }
+        );
     }
-  };
 
-  // =====================================================
-  // 🔥 INPUT LISTENERS
-  // =====================================================
-document
-  .getElementById("cameraInput")
-  ?.addEventListener(
-
-    "change",
-
-    async function(e){
-
-      const file =
-        e.target.files?.[0];
-
-      if(file){
-
-        await sendPhoto(e);
-      }
-
-      e.target.value = "";
-    }
-  );
-
-document
-  .getElementById("galleryInput")
-  ?.addEventListener(
-
-    "change",
-
-    async function(e){
-
-      const file =
-        e.target.files?.[0];
-
-      if(file){
-
-        await sendPhoto(e);
-      }
-
-      e.target.value = "";
-    }
-  );
-
-document
-  .getElementById("documentInput")
-  ?.addEventListener(
-
-    "change",
-
-    async function(e){
-
-      const file =
-        e.target.files?.[0];
-
-      if(file){
-
-        await window.uploadChatDocument(file);
-      }
-
-      e.target.value = "";
-    }
-  );
-} 
-    
     // ============================================
     // 🧹 RUN CLEANUP IMMEDIATELY
     // ============================================
@@ -3951,7 +4119,9 @@ document
       startChat();
     }
 
-  } catch(e){
+  }
+
+  catch(e){
 
     console.error(
       "❌ Firebase load failed:",
@@ -3960,12 +4130,27 @@ document
   }
 
 })();
+    // ⛔ DO NOT ADD:
+    // ensureGridReady()
+    // repaintCoverageGrid()
+    // grid rendering
+    // polygon creation
+    // coverage paint
 
-  } catch(e){
-    console.error("❌ startApp crash:", e);
+    // ⛔ GRID SYSTEM NOW LOADS ONLY FROM:
+    // showCoveragePanel()
+
   }
-} 
-console.log("🔥 NEW BUILD LOADED - VERSION 999");
+
+  catch(e){
+
+    console.error(
+      "❌ startApp crash:",
+      e
+    );
+  }
+}
+    console.log("🔥 NEW BUILD LOADED - VERSION 999");
 
 // ======================================================
 // 🚀 SMART SERVICE WORKER UPDATE SYSTEM (FINAL)
@@ -6918,7 +7103,7 @@ window.currentBeat = "ALL";
 /* ============================================================
    🟢 SHOW COVERAGE PANEL (CONTROLLED)
 ============================================================ */
-function showCoveragePanel(){
+async function showCoveragePanel(){
 
   try {
 
@@ -6953,7 +7138,6 @@ function showCoveragePanel(){
 
     // ==========================================
     // 🔥 ACTIVE MODE
-    // SINGLE SOURCE OF TRUTH
     // ==========================================
     const mode =
 
@@ -6975,23 +7159,35 @@ function showCoveragePanel(){
     window.currentBeat = beat;
 
     // ==========================================
-    // 🔥 GRID READY
-    // ONLY IF VISIBLE
+    // 🔥 GRID VISIBLE
+    // ==========================================
+    window.gridVisible = true;
+
+    // ==========================================
+    // 🔥 BUILD GRID ONLY NOW
     // ==========================================
     if(
-
-      window.gridVisible &&
-
       typeof ensureGridReady
       === "function"
-
     ){
 
-      ensureGridReady();
+      await ensureGridReady();
     }
 
     // ==========================================
-    // 🔥 TODAY CACHE REFRESH
+    // 🔥 GRID READY CHECK
+    // ==========================================
+    if(!window.__gridReady){
+
+      console.warn(
+        "⚠ Grid not ready"
+      );
+
+      return;
+    }
+
+    // ==========================================
+    // 🔥 TODAY REFRESH
     // ==========================================
     if(
 
@@ -7006,7 +7202,7 @@ function showCoveragePanel(){
     }
 
     // ==========================================
-    // 🔥 MONTH CACHE REFRESH
+    // 🔥 CURRENT REFRESH
     // ==========================================
     else if(
 
@@ -7037,46 +7233,125 @@ function showCoveragePanel(){
       e
     );
   }
-}/* ============================================================
-   🔴 CLOSE COVERAGE PANEL (CLEAN + SAFE)
-============================================================ */
+}
 function closeCoveragePanel(){
 
   try {
 
-    const panel = document.getElementById("coveragePanel");
+    // ==========================================
+    // 🔥 PANEL
+    // ==========================================
+    const panel =
+
+      document.getElementById(
+        "coveragePanel"
+      );
 
     if(panel){
-      panel.style.display = "none";
+
+      panel.style.display =
+        "none";
     }
 
-    console.log("🔴 Coverage Panel CLOSED");
+    // ==========================================
+    // 🔥 GRID HIDDEN
+    // ==========================================
+    window.gridVisible =
+      false;
 
-  } catch(e){
-    console.error("❌ closeCoveragePanel error:", e);
+    // ==========================================
+    // 🔥 OPTIONAL GRID CLEAR
+    // ==========================================
+    if(window.gridRootLayer){
+
+      try {
+
+        window.gridRootLayer
+          .clearLayers();
+
+      } catch(e){}
+    }
+
+    // ==========================================
+    // 🔥 DEBUG
+    // ==========================================
+    console.log(
+      "🔴 Coverage Panel CLOSED"
+    );
+
+  }
+
+  catch(e){
+
+    console.error(
+      "❌ closeCoveragePanel error:",
+      e
+    );
   }
 }
+    function toggleCoveragePanel(){
 
-/* ============================================================
-   🔽 TOGGLE PANEL MINIMIZE (UI ONLY)
-============================================================ */
-function toggleCoveragePanel(){
+  try {
 
-  const panel = document.getElementById("coveragePanel");
-  const icon = document.getElementById("coverageIcon");
+    const panel =
 
-  if(!panel || !icon) return;
+      document.getElementById(
+        "coveragePanel"
+      );
 
-  panel.classList.toggle("minimized");
+    const icon =
 
-  if(panel.classList.contains("minimized")){
-    icon.className = "fa-solid fa-chevron-up";
-  } else {
-    icon.className = "fa-solid fa-chevron-down";
+      document.getElementById(
+        "coverageIcon"
+      );
+
+    if(
+      !panel ||
+      !icon
+    ){
+      return;
+    }
+
+    // ==========================================
+    // 🔥 TOGGLE
+    // ==========================================
+    panel.classList.toggle(
+      "minimized"
+    );
+
+    // ==========================================
+    // 🔥 ICON
+    // ==========================================
+    if(
+
+      panel.classList.contains(
+        "minimized"
+      )
+
+    ){
+
+      icon.className =
+
+        "fa-solid fa-chevron-up";
+    }
+
+    else {
+
+      icon.className =
+
+        "fa-solid fa-chevron-down";
+    }
+
+  }
+
+  catch(e){
+
+    console.error(
+      "❌ toggleCoveragePanel:",
+      e
+    );
   }
 }
-
-
 /* ============================================================
    🟩 GRID CACHE (LIGHTWEIGHT ONLY)
 ============================================================ */
