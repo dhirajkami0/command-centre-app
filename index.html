@@ -3745,7 +3745,28 @@ async function startApp(){   // 🔥 ASYNC
     // 🔥 FIREBASE INIT
     // KEEP EVERYTHING BELOW AS IS
     // ======================================================
-// ======================================================
+
+    // ⛔ DO NOT ADD:
+    // ensureGridReady()
+    // repaintCoverageGrid()
+    // grid rendering
+    // polygon creation
+    // coverage paint
+
+    // ⛔ GRID SYSTEM NOW LOADS ONLY FROM:
+    // showCoveragePanel()
+
+  }
+
+  catch(e){
+
+    console.error(
+      "❌ startApp crash:",
+      e
+    );
+  }
+}
+    // ======================================================
 // 🔥 FIREBASE (UNCHANGED)
 // ======================================================
 
@@ -4130,26 +4151,6 @@ async function startApp(){   // 🔥 ASYNC
   }
 
 })();
-    // ⛔ DO NOT ADD:
-    // ensureGridReady()
-    // repaintCoverageGrid()
-    // grid rendering
-    // polygon creation
-    // coverage paint
-
-    // ⛔ GRID SYSTEM NOW LOADS ONLY FROM:
-    // showCoveragePanel()
-
-  }
-
-  catch(e){
-
-    console.error(
-      "❌ startApp crash:",
-      e
-    );
-  }
-}
     console.log("🔥 NEW BUILD LOADED - VERSION 999");
 
 // ======================================================
@@ -10878,65 +10879,181 @@ function showGridPopup(cell, latlng){
 ============================================================ */
 function updatePrevMonthCache(){
 
-  let result = {};
+  try {
 
-  const now = new Date();
+    // ==========================================
+    // 🔥 BACKEND IS MASTER
+    // ==========================================
+    if(window.__backendLoaded){
 
-  // 🔥 SAFE PREV MONTH (NO TIMEZONE BUG)
-  const prev = new Date(now.getFullYear(), now.getMonth() - 1, 1);
-  const year = prev.getFullYear();
-  const month = String(prev.getMonth() + 1).padStart(2, "0");
-  const prefix = year + "-" + month;
+      console.log(
+        "🔒 Backend authoritative → skipping prev overwrite"
+      );
 
-  Object.keys(localStorage).forEach(key => {
-
-    if(!key.startsWith("grid_" + prefix)) return;
-
-    try {
-
-      const raw = localStorage.getItem(key);
-      if(!raw) return;
-
-      const data = JSON.parse(raw);
-
-      Object.entries(data).forEach(([id, val]) => {
-
-        // 🔥 STRICT NORMALIZATION
-        let count;
-
-        if(val === true){
-          count = 1;
-        } else if(typeof val === "number"){
-          count = val;
-        } else {
-          count = Number(val);
-          if(isNaN(count)) count = 0;
-        }
-
-        if(!result[id]){
-          result[id] = count;
-        } else {
-          result[id] += count;
-        }
-
-      });
-
-    } catch(e){
-      console.warn("⚠ Prev cache read failed:", key);
+      return;
     }
-  });
 
-  window.gridCache = window.gridCache || {};
-  window.gridCache.prev = result;
+    // ==========================================
+    // 🔥 ENSURE CACHE
+    // ==========================================
+    window.gridCache =
+      window.gridCache || {};
 
-  console.log(
-    "📅 Prev month grids:",
-    Object.keys(result).length,
-    "| Total visits:",
-    Object.values(result).reduce((a,b)=>a+b,0)
-  );
+    // ==========================================
+    // 🔥 LOCAL RESULT
+    // ==========================================
+    let result = {};
+
+    // ==========================================
+    // 🔥 SAFE PREVIOUS MONTH
+    // ==========================================
+    const now = new Date();
+
+    const prev =
+      new Date(
+
+        now.getFullYear(),
+
+        now.getMonth() - 1,
+
+        1
+      );
+
+    const year =
+      prev.getFullYear();
+
+    const month =
+      String(
+        prev.getMonth() + 1
+      ).padStart(2, "0");
+
+    const prefix =
+      year + "-" + month;
+
+    // ==========================================
+    // 🔥 SCAN LOCAL STORAGE
+    // ==========================================
+    Object.keys(localStorage)
+      .forEach(key => {
+
+      if(
+        !key.startsWith(
+          "grid_" + prefix
+        )
+      ){
+        return;
+      }
+
+      try {
+
+        const raw =
+          localStorage.getItem(key);
+
+        if(!raw){
+          return;
+        }
+
+        const data =
+          JSON.parse(raw);
+
+        // ======================================
+        // 🔥 MERGE COUNTS
+        // ======================================
+        Object.entries(data)
+          .forEach(([id, val]) => {
+
+          let count = 0;
+
+          // ====================================
+          // 🔥 NORMALIZE
+          // ====================================
+          if(val === true){
+
+            count = 1;
+          }
+
+          else if(
+            typeof val === "number"
+          ){
+
+            count = val;
+          }
+
+          else {
+
+            count = Number(val);
+
+            if(isNaN(count)){
+
+              count = 0;
+            }
+          }
+
+          // ====================================
+          // 🔥 ADDITIVE MERGE
+          // ====================================
+          result[id] =
+
+            (
+              Number(result[id]) || 0
+            ) + count;
+        });
+
+      } catch(e){
+
+        console.warn(
+          "⚠ Prev cache read failed:",
+          key
+        );
+      }
+    });
+
+    // ==========================================
+    // 🔥 ONLY APPLY IF EMPTY
+    // ==========================================
+    if(
+
+      !window.gridCache.prev ||
+
+      !Object.keys(
+        window.gridCache.prev
+      ).length
+
+    ){
+
+      window.gridCache.prev =
+        result;
+
+      console.log(
+        "📦 Prev fallback applied"
+      );
+    }
+
+    // ==========================================
+    // 🔥 DEBUG
+    // ==========================================
+    console.log(
+
+      "📅 Prev month grids:",
+
+      Object.keys(result).length,
+
+      "| Total visits:",
+
+      Object.values(result)
+        .reduce((a,b)=>a+b,0)
+    );
+
+  }
+
+  catch(e){
+
+    console.error(
+      "❌ updatePrevMonthCache:",
+      e
+    );
+  }
 }
-
 /* ============================================================
    📊 GRID RENDER TRIGGER (MODE + BEAT SAFE)
 ============================================================ */
