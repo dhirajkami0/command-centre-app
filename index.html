@@ -9315,164 +9315,50 @@ function pointInPoly(lat, lng, coords){
 
 
 
-    function lineIntersectsPolygon(
+    function lineIntersectsPolygon(lat1, lon1, lat2, lon2, coords){
 
-  lat1,
-  lon1,
+  function intersect(a1x,a1y,a2x,a2y,b1x,b1y,b2x,b2y){
+    const det = (a2x-a1x)*(b2y-b1y)-(a2y-a1y)*(b2x-b1x);
+    if(det === 0) return false;
 
-  lat2,
-  lon2,
+    const t = ((b1x-a1x)*(b2y-b1y)-(b1y-a1y)*(b2x-b1x)) / det;
+    const u = ((b1x-a1x)*(a2y-a1y)-(b1y-a1y)*(a2x-a1x)) / det;
 
-  coords
-
-){
-
-  try {
-
-    // ==========================================
-    // 🔥 SAFETY
-    // ==========================================
-    if(
-      !coords ||
-      coords.length < 3
-    ){
-      return false;
-    }
-
-    // ==========================================
-    // 🔥 VALIDATE INPUTS
-    // ==========================================
-    if(
-
-      isNaN(lat1) ||
-      isNaN(lon1) ||
-
-      isNaN(lat2) ||
-      isNaN(lon2)
-
-    ){
-      return false;
-    }
-
-    // ==========================================
-    // 🔥 BUILD MOVEMENT LINE
-    // ==========================================
-    const line = turf.lineString([
-
-      [lon1, lat1],
-
-      [lon2, lat2]
-
-    ]);
-
-    // ==========================================
-    // 🔥 NORMALIZE POLYGON
-    // coords = [lat, lon]
-    // turf = [lon, lat]
-    // ==========================================
-    const polyCoords = [];
-
-    for(const p of coords){
-
-      if(
-        !p ||
-        p.length < 2
-      ){
-        continue;
-      }
-
-      const lat =
-        Number(p[0]);
-
-      const lon =
-        Number(p[1]);
-
-      if(
-        isNaN(lat) ||
-        isNaN(lon)
-      ){
-        continue;
-      }
-
-      polyCoords.push([
-
-        lon,
-        lat
-
-      ]);
-    }
-
-    // ==========================================
-    // 🔥 MINIMUM VALID POLYGON
-    // ==========================================
-    if(polyCoords.length < 3){
-      return false;
-    }
-
-    // ==========================================
-    // 🔥 CLOSE POLYGON
-    // ==========================================
-    const first =
-      polyCoords[0];
-
-    const last =
-      polyCoords[
-        polyCoords.length - 1
-      ];
-
-    if(
-
-      first[0] !== last[0] ||
-
-      first[1] !== last[1]
-
-    ){
-
-      polyCoords.push([
-
-        first[0],
-        first[1]
-
-      ]);
-    }
-
-    // ==========================================
-    // 🔥 BUILD POLYGON
-    // ==========================================
-    const polygon =
-      turf.polygon([
-        polyCoords
-      ]);
-
-    // ==========================================
-    // 🔥 TRUE GIS INTERSECTION
-    // ==========================================
-    const hit =
-      turf.booleanIntersects(
-
-        line,
-
-        polygon
-      );
-
-    // ==========================================
-    // 🔥 RETURN RESULT
-    // ==========================================
-    return hit === true;
-
+    return t>=0 && t<=1 && u>=0 && u<=1;
   }
 
-  catch(e){
+  function pointInPolygon(lat, lon, coords){
+    let inside = false;
 
-    console.warn(
+    for(let i=0, j=coords.length-1; i<coords.length; j=i++){
+      const xi = coords[i][1], yi = coords[i][0];
+      const xj = coords[j][1], yj = coords[j][0];
 
-      "⚠ lineIntersectsPolygon failed:",
+      const intersectCheck =
+        ((yi > lat) !== (yj > lat)) &&
+        (lon < (xj - xi) * (lat - yi) / (yj - yi + 1e-12) + xi);
 
-      e
-    );
+      if(intersectCheck) inside = !inside;
+    }
 
-    return false;
+    return inside;
   }
+
+  // 🔥 1. EDGE INTERSECTION
+  for(let i=0;i<coords.length;i++){
+    const [latA, lonA] = coords[i];
+    const [latB, lonB] = coords[(i+1)%coords.length];
+
+    if(intersect(lon1, lat1, lon2, lat2, lonA, latA, lonB, latB)){
+      return true;
+    }
+  }
+
+  // 🔥 2. FULLY INSIDE CHECK (CRITICAL FIX)
+  if(pointInPolygon(lat1, lon1, coords)) return true;
+  if(pointInPolygon(lat2, lon2, coords)) return true;
+
+  return false;
 }
  // ===============================
 // 🔥 GLOBAL CACHE
@@ -11536,148 +11422,64 @@ function loadGridFromCache(){
 
     function extract(layer) {
 
-  if (!layer) return;
+      if (!layer) return;
 
-  // ==========================================
-  // 🔥 NESTED LAYERS
-  // ==========================================
-  if (layer.eachLayer) {
-    layer.eachLayer(extract);
-  }
+      if (layer instanceof L.Polygon) {
 
-  // ==========================================
-  // 🔥 POLYGON DETECTION
-  // ==========================================
-  if (layer instanceof L.Polygon) {
+        let latlngs = layer.getLatLngs();
+        const rings = Array.isArray(latlngs[0][0]) ? latlngs : [latlngs];
 
-    const props =
-      layer.feature?.properties || {};
+        rings.forEach(ringSet => {
 
-    const rawID =
-      (
-        props.ID ||
-        props.Name ||
-        ""
-      )
-      .toUpperCase()
-      .trim();
+          let coords = ringSet.map(ring => {
 
-    // ==========================================
-    // 🔥 NORMALIZED COMPARTMENT
-    // ==========================================
-    const compartment =
+            let pts = ring.map(p => [p.lng, p.lat]);
 
-      convertCompartment(rawID)
-      .replace(/\s+/g, " ")
-      .trim();
+            // close polygon
+            if (
+              pts[0][0] !== pts[pts.length - 1][0] ||
+              pts[0][1] !== pts[pts.length - 1][1]
+            ) {
+              pts.push(pts[0]);
+            }
 
-    // ==========================================
-    // 🔥 FIND BEAT OWNER
-    // ==========================================
-    let beat = "UNKNOWN";
+            return pts;
 
-    for (const key in window.beatMap) {
+          }).filter(r => r.length >= 4);
 
-      const found =
-        window.beatMap[key]
-        .some(v =>
-
-          v.replace(/\s+/g, " ")
-          .trim()
-
-          === compartment
-        );
-
-      if(found){
-
-        beat = key;
-        break;
-      }
-    }
-
-    let latlngs =
-      layer.getLatLngs();
-
-    const rings =
-
-      Array.isArray(latlngs[0][0])
-
-      ? latlngs
-
-      : [latlngs];
-
-    rings.forEach(ringSet => {
-
-      let coords = ringSet.map(ring => {
-
-        let pts = ring.map(p => [
-
-          p.lng,
-          p.lat
-        ]);
-
-        // ======================================
-        // 🔥 CLOSE POLYGON
-        // ======================================
-        if (
-
-          pts[0][0] !==
-          pts[pts.length - 1][0]
-
-          ||
-
-          pts[0][1] !==
-          pts[pts.length - 1][1]
-
-        ) {
-
-          pts.push(pts[0]);
-        }
-
-        return pts;
-
-      }).filter(r => r.length >= 4);
-
-      if (!coords.length){
-        return;
-      }
-
-      try {
-
-        allPolys.push({
-
-          compartment,
-
-          beat,
-
-          turfPoly:
-            turf.polygon(coords)
+          if (coords.length) {
+            try {
+              allPolys.push(turf.polygon(coords));
+            } catch (e) {}
+          }
 
         });
+      }
 
-      } catch(e){}
-    });
-  }
-}
+      if (layer.eachLayer) layer.eachLayer(extract);
+    }
+
+    extract(rangeLayer);
+
+    if (!allPolys.length) {
+      console.error("❌ No polygons found");
+      return;
+    }
+
     // ==========================================
-// 🔥 EXTRACT COMPARTMENTS
-// ==========================================
-extract(rangeLayer);
+    // 🔥 2. UNION POLYGON
+    // ==========================================
+    let unifiedRange = allPolys[0];
 
-if(!allPolys.length){
+    for (let i = 1; i < allPolys.length; i++) {
+      try {
+        unifiedRange = turf.union(unifiedRange, allPolys[i]);
+      } catch (e) {}
+    }
 
-  console.warn(
-    "⚠ No compartment polygons extracted"
-  );
+    const unifiedBBox = turf.bbox(unifiedRange);
 
-  return;
-}
-
-console.log(
-  "📐 Compartments:",
-  allPolys.length
-);
-       const south = bounds.getSouth();
+    const south = bounds.getSouth();
     const north = bounds.getNorth();
     const west = bounds.getWest();
     const east = bounds.getEast();
@@ -11698,7 +11500,14 @@ console.log(
 
         for (let lon = startLon; lon < east; lon += step) {
 
-         
+          // 🔥 FAST BBOX SKIP
+          if (
+            lon > unifiedBBox[2] ||
+            lon + step < unifiedBBox[0] ||
+            lat > unifiedBBox[3] ||
+            lat + step < unifiedBBox[1]
+          ) continue;
+
           const centerLat = lat + step / 2;
           const centerLon = lon + step / 2;
 
@@ -11712,54 +11521,20 @@ console.log(
             [lon, lat]
           ]]);
 
-         // ==========================================
-// 🔥 COMPARTMENT CLIP
-// ==========================================
-let clipped = null;
+          let clipped;
 
-let owningBeat = "UNKNOWN";
+          try {
+            clipped = turf.intersect(cellPoly, unifiedRange);
+          } catch (e) {
+            continue;
+          }
 
-// ==========================================
-// 🔥 CLIP AGAINST COMPARTMENTS
-// ==========================================
-for(const comp of allPolys){
+          // ❌ STRICT: skip if no intersection
+          if (!clipped) continue;
 
-  try {
+          // 🔥 remove tiny fragments
+          if (turf.area(clipped) < 30) continue;
 
-    const hit = turf.intersect(
-
-      cellPoly,
-
-      comp.turfPoly
-    );
-
-    if(!hit){
-      continue;
-    }
-
-    // ======================================
-    // 🔥 REMOVE TINY FRAGMENTS
-    // ======================================
-    if(turf.area(hit) < 30){
-      continue;
-    }
-
-    clipped = hit;
-
-    owningBeat =
-      comp.beat || "UNKNOWN";
-
-    break;
-
-  } catch(e){}
-}
-
-// ==========================================
-// 🔥 NO VALID CLIP
-// ==========================================
-if(!clipped){
-  continue;
-}
           // ==========================================
           // 🔥 NORMALIZE GEOMETRY
           // ==========================================
@@ -11831,7 +11606,7 @@ const cell = {
     lng: centerLon
   },
 
-  beat: owningBeat,
+  beat: "UNKNOWN",
 
   visited: false,
 
