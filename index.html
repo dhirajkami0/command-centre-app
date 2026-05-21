@@ -2492,18 +2492,17 @@ function login(){
       // ========================================================
       // 🔥 PROFILE
       // ========================================================
+            // ============================================================
+      // 🔥 FINAL PROFILE
+      // ============================================================
       const finalProfile = {
 
         rawName:
           profile.name,
 
         cleanName:
-
           profile.cleanName ||
-
-          cleanName(
-            profile.name
-          ),
+          cleanName(profile.name),
 
         role:
           profile.role,
@@ -2512,9 +2511,20 @@ function login(){
           profile.beat,
 
         phone:
-          profile.phone
-      };
+          profile.phone,
 
+        // ============================================================
+        // 🌍 GIS HIERARCHY
+        // ============================================================
+        circle:
+          profile.circle || "",
+
+        division:
+          profile.division || "",
+
+        range:
+          profile.range || ""
+      };
       // ========================================================
       // 🔥 SAVE LOCAL
       // ========================================================
