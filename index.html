@@ -6991,15 +6991,17 @@ async function loadRangeKML(){
     // ======================================
     // 🔥 CREATE LAYER
     // ======================================
-    window.rangeLayer =
+   window.rangeLayer =
 
   L.geoJSON([], {
 
     // ======================================
-    // 🎨 RENDERER
+    // 🎨 CANVAS
     // ======================================
     renderer:
       L.canvas(),
+
+    interactive: true,
 
     // ======================================
     // 🎨 STYLE
@@ -7010,54 +7012,38 @@ async function loadRangeKML(){
         "#00e5ff",
 
       weight:
-        1,
+        2,
 
       opacity:
-        0.8,
+        1,
 
       fillOpacity:
-        0.1
+        0.25
     },
 
     // ======================================
-    // 🖱 FEATURE INTERACTION
+    // 🖱 FEATURE EVENTS
     // ======================================
     onEachFeature:
     function(feature, layer){
 
       try {
 
-        // ======================================
-        // 🔥 SAFE PROPERTIES
-        // ======================================
         const props =
           feature.properties || {};
 
-        // ======================================
-        // 🌳 RANGE
-        // ======================================
         const range =
 
           props.Range ||
 
-          props.range ||
-
           "Unknown Range";
 
-        // ======================================
-        // 🧭 BEAT
-        // ======================================
         const beat =
 
           props.Beat ||
 
-          props.beat ||
-
           "Unknown Beat";
 
-        // ======================================
-        // 📐 AREA
-        // ======================================
         const beatArea =
 
           Number(
@@ -7065,7 +7051,7 @@ async function loadRangeKML(){
           ).toFixed(2);
 
         // ======================================
-        // 👮 LIVE STAFF COUNT
+        // 👮 LIVE STAFF
         // ======================================
         let liveCount = 0;
 
@@ -7096,7 +7082,7 @@ async function loadRangeKML(){
         } catch(e){}
 
         // ======================================
-        // 🌿 HOVER TOOLTIP
+        // 🌿 TOOLTIP
         // ======================================
         layer.bindTooltip(
 
@@ -7109,45 +7095,50 @@ async function loadRangeKML(){
           `,
 
           {
+
             sticky: true,
-            direction: "top"
+
+            direction: "top",
+
+            permanent: false,
+
+            opacity: 0.95,
+
+            className:
+              "gisTooltip"
           }
 
         );
 
         // ======================================
-        // 🖱 HOVER EFFECT
+        // 🖱 HOVER
         // ======================================
         layer.on("mouseover", () => {
 
-          try {
+          layer.setStyle({
 
-            layer.setStyle({
+            weight: 3,
 
-              weight: 2,
+            fillOpacity: 0.4,
 
-              fillOpacity: 0.2
-            });
-
-          } catch(e){}
+            color: "#00ffff"
+          });
 
         });
 
         // ======================================
-        // 🖱 MOUSE OUT
+        // 🖱 OUT
         // ======================================
         layer.on("mouseout", () => {
 
-          try {
+          layer.setStyle({
 
-            layer.setStyle({
+            weight: 2,
 
-              weight: 1,
+            fillOpacity: 0.25,
 
-              fillOpacity: 0.1
-            });
-
-          } catch(e){}
+            color: "#00e5ff"
+          });
 
         });
 
@@ -7156,48 +7147,38 @@ async function loadRangeKML(){
         // ======================================
         layer.on("click", () => {
 
-          try {
+          layer.bindPopup(
 
-            layer.bindPopup(
+            `
+            <div style="
+              min-width:240px;
+              font-size:14px;
+              line-height:1.7;
+            ">
 
-              `
-              <div style="
-                min-width:240px;
-                font-size:14px;
-                line-height:1.6;
-              ">
+              <b>
+                🌳 ${range} Range
+              </b>
 
-                <b>
-                  🌳 ${range} Range
-                </b>
+              <br><br>
 
-                <br><br>
+              🧭 Beat:
+              ${beat}
 
-                🧭 <b>Beat:</b>
-                ${beat}
+              <br>
 
-                <br>
+              📐 Area:
+              ${beatArea} sq km
 
-                📐 <b>Area:</b>
-                ${beatArea} sq km
+              <br>
 
-                <br>
+              👮 Live Staff:
+              ${liveCount}
 
-                👮 <b>Live Staff:</b>
-                ${liveCount}
+            </div>
+            `
 
-              </div>
-              `
-
-            ).openPopup();
-
-          } catch(e){
-
-            console.warn(
-              "⚠ Popup failed",
-              e
-            );
-          }
+          ).openPopup();
 
         });
 
@@ -7210,8 +7191,7 @@ async function loadRangeKML(){
       }
     }
 
-  }).addTo(map);
-    // ======================================
+  }).addTo(map); // ======================================
     // ⚡ CHUNK RENDER
     // ======================================
     let i = 0;
@@ -25305,7 +25285,20 @@ z-index:9999999;
   background:
     rgba(255,255,255,0.08);
 }
+.gisTooltip{
 
+  background: rgba(0,0,0,0.85);
+
+  color: #fff;
+
+  border-radius: 8px;
+
+  border: 1px solid #00e5ff;
+
+  font-size: 13px;
+
+  padding: 6px 10px;
+}
 
 </style>
 
