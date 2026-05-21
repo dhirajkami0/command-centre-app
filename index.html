@@ -9185,30 +9185,250 @@ function pointInPoly(lat, lng, coords){
   // ==================================================
   // 🔥 DIRECT GRID HELPER
   // ==================================================
-  function getGridId(lat, lon){
+  // ==================================================
+// 🔥 SPATIAL GRID LOOKUP
+// ✅ compartment-safe
+// ✅ clipped-polygon-safe
+// ✅ tactical-edge-safe
+// ✅ ultra-fast
+// ==================================================
+function getGridId(lat, lon){
 
-    const latKey =
+  try {
 
-      Math.floor(
-        lat / size
-      ) * size;
+    // ==========================================
+    // 🔥 SAFETY
+    // ==========================================
+    if(
 
-    const lonKey =
+      isNaN(lat) ||
 
-      Math.floor(
-        lon / size
-      ) * size;
+      isNaN(lon)
 
-    return (
+    ){
+      return null;
+    }
 
-      latKey.toFixed(5)
+    // ==========================================
+    // 🔥 SPATIAL INDEX READY
+    // ==========================================
+    if(
+
+      !window.gridSpatialIndex ||
+
+      !window.gridIndex
+
+    ){
+      return null;
+    }
+
+    // ==========================================
+    // 🔥 SPATIAL BUCKET
+    // ==========================================
+    const bucketKey =
+
+      Math.floor(lat * 1000)
 
       + "_"
 
-      + lonKey.toFixed(5)
-    );
+      +
+
+      Math.floor(lon * 1000);
+
+    // ==========================================
+    // 🔥 CANDIDATES
+    // ==========================================
+    let nearby =
+
+      window.gridSpatialIndex[
+        bucketKey
+      ];
+
+    // ==========================================
+    // 🔥 EMPTY BUCKET
+    // ==========================================
+    if(
+
+      !nearby ||
+
+      !nearby.length
+
+    ){
+
+      // ======================================
+      // 🔥 SEARCH NEIGHBOR BUCKETS
+      // ======================================
+      nearby = [];
+
+      const baseLat =
+        Math.floor(lat * 1000);
+
+      const baseLon =
+        Math.floor(lon * 1000);
+
+      for(
+
+        let y = -1;
+
+        y <= 1;
+
+        y++
+
+      ){
+
+        for(
+
+          let x = -1;
+
+          x <= 1;
+
+          x++
+
+        ){
+
+          const k =
+
+            (baseLat + y)
+
+            + "_"
+
+            +
+
+            (baseLon + x);
+
+          if(
+
+            window.gridSpatialIndex[k]
+
+          ){
+
+            nearby.push(
+
+              ...window
+                .gridSpatialIndex[k]
+            );
+          }
+        }
+      }
+    }
+
+    // ==========================================
+    // 🔥 STILL EMPTY
+    // ==========================================
+    if(!nearby.length){
+      return null;
+    }
+
+    // ==========================================
+    // 🔥 TRUE POLYGON CHECK
+    // ==========================================
+    for(const cell of nearby){
+
+      if(
+
+        !cell ||
+
+        !cell.coords ||
+
+        !cell.id
+
+      ){
+        continue;
+      }
+
+      try {
+
+        if(
+
+          pointInPoly(
+
+            lat,
+
+            lon,
+
+            cell.coords
+          )
+
+        ){
+
+          return cell.id;
+        }
+
+      } catch(e){}
+    }
+
+    // ==========================================
+    // 🔥 FALLBACK NEAREST CENTER
+    // ==========================================
+    let bestId = null;
+
+    let minDist = Infinity;
+
+    for(const cell of nearby){
+
+      if(
+        !cell ||
+        !cell.center
+      ){
+        continue;
+      }
+
+      const cLat =
+
+        Array.isArray(
+          cell.center
+        )
+
+        ? cell.center[0]
+
+        : cell.center.lat;
+
+      const cLon =
+
+        Array.isArray(
+          cell.center
+        )
+
+        ? cell.center[1]
+
+        : cell.center.lng;
+
+      const d =
+
+        Math.pow(
+          cLat - lat,
+          2
+        )
+
+        +
+
+        Math.pow(
+          cLon - lon,
+          2
+        );
+
+      if(d < minDist){
+
+        minDist = d;
+
+        bestId = cell.id;
+      }
+    }
+
+    return bestId;
+
   }
 
+  catch(e){
+
+    console.warn(
+      "⚠ getGridId failed:",
+      e
+    );
+
+    return null;
+  }
+}
   // ==================================================
   // 🔥 LOOP TRACKS
   // ==================================================
@@ -9582,117 +9802,6 @@ function pointInPoly(lat, lng, coords){
       }
     }
 
-    // ==================================================
-    // 🔥 SAVE DAILY
-    // ==================================================
-    if(
-      Object.keys(visited).length
-    ){
-
-      const key =
-        "grid_" + dayStr;
-
-      let data = {};
-
-      try {
-
-        data = JSON.parse(
-
-          localStorage.getItem(key)
-
-          || "{}"
-        );
-
-      } catch(e){
-
-        data = {};
-      }
-
-      Object.keys(visited)
-
-      .forEach(id => {
-
-        // ==========================================
-        // 🔥 DAILY STORAGE
-        // ==========================================
-        data[id] =
-
-          (
-            Number(data[id])
-            || 0
-          ) + 1;
-
-        // ==========================================
-        // 🔥 TODAY CACHE
-        // ==========================================
-        window.gridCache.today[id] =
-
-          (
-            Number(
-              window.gridCache.today[id]
-            ) || 0
-          ) + 1;
-
-        // ==========================================
-        // 🔥 CURRENT CACHE
-        // ==========================================
-        window.gridCache.current[id] =
-
-          (
-            Number(
-              window.gridCache.current[id]
-            ) || 0
-          ) + 1;
-
-        // ==========================================
-        // 🔥 LIVE PAINT
-        // ==========================================
-        if(
-
-          window.gridVisible &&
-
-          window.currentCoverageMode
-          === "today"
-
-        ){
-
-          paintVisitedGrid(id);
-        }
-      });
-
-      // ==============================================
-      // 🔥 SAVE TIMER
-      // ==============================================
-      clearTimeout(
-        window.__gridSaveTimer
-      );
-
-      window.__gridSaveTimer =
-
-        setTimeout(() => {
-
-          try {
-
-            localStorage.setItem(
-
-              key,
-
-              JSON.stringify(data)
-            );
-
-          } catch(e){
-
-            console.warn(
-              "⚠ Grid save failed"
-            );
-          }
-
-        }, 1200);
-
-      console.log(
-        "💾 Saved Daily Cache:",
-        Object.keys(data).length
-      );
     }
 
     else {
