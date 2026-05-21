@@ -6756,7 +6756,7 @@ async function loadRangeKML(){
       .toUpperCase();
 
     // ======================================
-    // 🔥 NORMALIZE DIVISION
+    // 🔥 DIVISION
     // ======================================
     const division =
 
@@ -6767,7 +6767,7 @@ async function loadRangeKML(){
       .trim();
 
     // ======================================
-    // 🔥 NORMALIZE RANGE
+    // 🔥 RANGE
     // ======================================
     const range =
 
@@ -6801,7 +6801,7 @@ async function loadRangeKML(){
     );
 
     // ======================================
-    // 🌍 DECIDE URL
+    // 🌍 URL
     // ======================================
     let url = "";
 
@@ -6823,17 +6823,19 @@ async function loadRangeKML(){
     // ======================================
     else if(
 
-      role.includes("DFO")
+      role === "DFO" ||
+
+      role === "ADFO"
 
     ){
 
       // ======================================
-      // 🔥 SAFETY
+      // ❌ DIVISION MISSING
       // ======================================
       if(!division){
 
         console.error(
-          "❌ Missing division for DFO/ADFO"
+          "❌ Division missing for DFO/ADFO"
         );
 
         return;
@@ -6862,11 +6864,30 @@ async function loadRangeKML(){
     // ======================================
     else if(
 
-      division &&
+      role === "TEAM LEADER" ||
 
-      range
+      role === "STAFF"
 
     ){
+
+      // ======================================
+      // ❌ INVALID PROFILE
+      // ======================================
+      if(
+
+        !division ||
+
+        !range
+
+      ){
+
+        console.error(
+          "❌ Division/range missing:",
+          profile
+        );
+
+        return;
+      }
 
       url =
 
@@ -6895,20 +6916,20 @@ async function loadRangeKML(){
     }
 
     // ======================================
-    // ❌ INVALID PROFILE
+    // ❌ UNKNOWN ROLE
     // ======================================
     else {
 
       console.error(
-        "❌ Invalid GIS profile:",
-        profile
+        "❌ Unknown role:",
+        role
       );
 
       return;
     }
 
     // ======================================
-    // 📥 FINAL URL
+    // 📥 URL
     // ======================================
     console.log(
       "📥 URL:",
@@ -6933,7 +6954,7 @@ async function loadRangeKML(){
     }
 
     // ======================================
-    // 📥 FETCH DATA
+    // 📥 FETCH
     // ======================================
     const res =
       await fetch(url);
@@ -6954,7 +6975,7 @@ async function loadRangeKML(){
     }
 
     // ======================================
-    // 📦 JSON
+    // 📦 DATA
     // ======================================
     const data =
       await res.json();
@@ -6968,7 +6989,7 @@ async function loadRangeKML(){
     );
 
     // ======================================
-    // 🔥 CREATE RANGE LAYER
+    // 🔥 CREATE LAYER
     // ======================================
     window.rangeLayer =
 
@@ -7032,7 +7053,7 @@ async function loadRangeKML(){
         i += chunkSize;
 
         // ======================================
-        // 🔁 NEXT CHUNK
+        // 🔁 NEXT
         // ======================================
         if(i < features.length){
 
@@ -7085,9 +7106,6 @@ async function loadRangeKML(){
             );
           }
 
-          // ======================================
-          // ✅ READY
-          // ======================================
           console.log(
             "✅ GIS READY"
           );
@@ -7103,7 +7121,7 @@ async function loadRangeKML(){
     }
 
     // ======================================
-    // 🚀 START RENDER
+    // 🚀 START
     // ======================================
     drawChunk();
 
@@ -7116,7 +7134,7 @@ async function loadRangeKML(){
       e
     );
   }
-}   function lineIntersectsBox(lat1, lon1, lat2, lon2, minLat, minLon, maxLat, maxLon) {
+}  function lineIntersectsBox(lat1, lon1, lat2, lon2, minLat, minLon, maxLat, maxLon) {
 
   const eps = 0.000001;
 
