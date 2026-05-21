@@ -6991,7 +6991,7 @@ async function loadRangeKML(){
     // ======================================
     // 🔥 CREATE LAYER
     // ======================================
-  window.rangeLayer =
+ window.rangeLayer =
 
   L.geoJSON([], {
 
@@ -7001,24 +7001,33 @@ async function loadRangeKML(){
     renderer:
       L.canvas(),
 
+    // ======================================
+    // 🔥 INTERACTIVE
+    // ======================================
     interactive: true,
 
+    bubblingMouseEvents: true,
+
     // ======================================
-    // 🎨 ORIGINAL STYLE
+    // 🎨 STYLE
     // ======================================
     style: {
 
       color:
         "#00e5ff",
 
+      // 🔥 IMPORTANT
+      // bigger hit area
       weight:
-        1,
+        3,
 
       opacity:
         0.8,
 
+      // 🔥 IMPORTANT
+      // slightly visible for click detection
       fillOpacity:
-        0.1
+        0.12
     },
 
     // ======================================
@@ -7030,23 +7039,42 @@ async function loadRangeKML(){
       try {
 
         // ======================================
+        // 🔥 FORCE INTERACTIVE
+        // ======================================
+        layer.options.interactive =
+          true;
+
+        // ======================================
         // 🔥 SAFE PROPERTIES
         // ======================================
         const props =
           feature.properties || {};
 
+        // ======================================
+        // 🌳 RANGE
+        // ======================================
         const range =
 
           props.Range ||
 
+          props.range ||
+
           "Unknown Range";
 
+        // ======================================
+        // 🧭 BEAT
+        // ======================================
         const beat =
 
           props.Beat ||
 
+          props.beat ||
+
           "Unknown Beat";
 
+        // ======================================
+        // 📐 AREA
+        // ======================================
         const beatArea =
 
           Number(
@@ -7077,62 +7105,96 @@ async function loadRangeKML(){
                 ).trim() === beat
 
               ){
+
                 liveCount++;
               }
 
             });
 
-        } catch(e){}
+        } catch(e){
+
+          console.warn(
+            "⚠ liveCount failed",
+            e
+          );
+        }
 
         // ======================================
-        // 🖱 CLICK POPUP ONLY
+        // 🖱 CLICK / TOUCH
         // ======================================
-        layer.on("click", () => {
+        layer.on(
 
-          try {
+          "click touchstart",
 
-            layer.bindPopup(
+          function(e){
 
-              `
-              <div style="
-                min-width:240px;
-                font-size:14px;
-                line-height:1.7;
-              ">
+            try {
 
-                <b>
-                  🌳 ${range} Range
-                </b>
+              // ======================================
+              // 🔥 STOP PROPAGATION
+              // ======================================
+              if(e.originalEvent){
 
-                <br><br>
+                e.originalEvent.preventDefault();
 
-                🧭 Beat:
-                ${beat}
+                e.originalEvent.stopPropagation();
+              }
 
-                <br>
+              // ======================================
+              // 📍 POPUP
+              // ======================================
+              const popupHtml =
 
-                📐 Area:
-                ${beatArea} sq km
+                `
+                <div style="
+                  min-width:240px;
+                  font-size:14px;
+                  line-height:1.7;
+                ">
 
-                <br>
+                  <b style="
+                    font-size:16px;
+                    color:#00e5ff;
+                  ">
+                    🌳 ${range} Range
+                  </b>
 
-                👮 Live Staff:
-                ${liveCount}
+                  <br><br>
 
-              </div>
-              `
+                  🧭 <b>Beat:</b>
+                  ${beat}
 
-            ).openPopup();
+                  <br>
 
-          } catch(e){
+                  📐 <b>Area:</b>
+                  ${beatArea} sq km
 
-            console.warn(
-              "⚠ Popup failed",
-              e
-            );
+                  <br>
+
+                  👮 <b>Live Staff:</b>
+                  ${liveCount}
+
+                </div>
+                `;
+
+              // ======================================
+              // 🔥 OPEN POPUP
+              // ======================================
+              layer.bindPopup(
+                popupHtml
+              ).openPopup(
+                e.latlng
+              );
+
+            } catch(err){
+
+              console.warn(
+                "⚠ Popup failed",
+                err
+              );
+            }
           }
-
-        });
+        );
 
       } catch(e){
 
@@ -7143,8 +7205,7 @@ async function loadRangeKML(){
       }
     }
 
-  }).addTo(map);
-    
+  }).addTo(map);   
     // ======================================
     // ⚡ CHUNK RENDER
     // ======================================
