@@ -9131,18 +9131,37 @@ function pointInPoly(lat, lng, coords){
  // ===============================
 // 🔥 GLOBAL CACHE
 // ===============================
-    function markVisitedHybrid(tracks){
+ function markVisitedHybrid(tracks){
 
-  if(!window.gridIndex || !window.gridMeta){
+  // ==================================================
+  // 🔥 GRID READY
+  // ==================================================
+  if(
 
-    console.warn("⚠ Grid not ready");
+    !window.gridIndex ||
+
+    !window.gridMeta
+
+  ){
+
+    console.warn(
+      "⚠ Grid not ready"
+    );
+
     return {};
   }
 
+  // ==================================================
   // 🚫 BLOCK LIVE STAFF
-  if(window.__fromLiveStaff === true){
+  // ==================================================
+  if(
+    window.__fromLiveStaff === true
+  ){
 
-    console.warn("⛔ Skip LIVE staff grid");
+    console.warn(
+      "⛔ Skip LIVE staff grid"
+    );
+
     return {};
   }
 
@@ -9160,9 +9179,39 @@ function pointInPoly(lat, lng, coords){
 
   let visitedGlobal = {};
 
-  window.__lastVisitedGrid =
-    window.__lastVisitedGrid || null;
+  const size =
+    window.gridMeta.size;
 
+  // ==================================================
+  // 🔥 DIRECT GRID HELPER
+  // ==================================================
+  function getGridId(lat, lon){
+
+    const latKey =
+
+      Math.floor(
+        lat / size
+      ) * size;
+
+    const lonKey =
+
+      Math.floor(
+        lon / size
+      ) * size;
+
+    return (
+
+      latKey.toFixed(5)
+
+      + "_"
+
+      + lonKey.toFixed(5)
+    );
+  }
+
+  // ==================================================
+  // 🔥 LOOP TRACKS
+  // ==================================================
   for(let t of tracks){
 
     console.log(
@@ -9171,15 +9220,21 @@ function pointInPoly(lat, lng, coords){
     );
 
     const dayStr = t.date
+
       ? getLocalDateStr(
           new Date(t.date)
         )
+
       : getLocalDateStr();
 
     if(
+
       !t ||
+
       !t.track ||
+
       !t.track.length
+
     ){
 
       console.warn(
@@ -9193,6 +9248,7 @@ function pointInPoly(lat, lng, coords){
     // 🔥 CLEAN TRACK
     // ==================================================
     const cleanedTrack =
+
       cleanTrackPoints(
         t.track
       );
@@ -9210,6 +9266,7 @@ function pointInPoly(lat, lng, coords){
       .map(p => ({
 
         lat: Number(p[0]),
+
         lon: Number(p[1])
 
       }))
@@ -9217,6 +9274,7 @@ function pointInPoly(lat, lng, coords){
       .filter(p =>
 
         !isNaN(p.lat) &&
+
         !isNaN(p.lon)
       );
 
@@ -9239,12 +9297,16 @@ function pointInPoly(lat, lng, coords){
       const d = Math.sqrt(
 
         Math.pow(
-          (p.lat - prev.lat) * 111000,
+          (p.lat - prev.lat)
+          * 111000,
           2
-        ) +
+        )
+
+        +
 
         Math.pow(
-          (p.lon - prev.lon) * 111000,
+          (p.lon - prev.lon)
+          * 111000,
           2
         )
       );
@@ -9260,7 +9322,7 @@ function pointInPoly(lat, lng, coords){
     if(!pts.length){
 
       console.warn(
-        "⚠ No valid points after cleanup"
+        "⚠ No valid points"
       );
 
       continue;
@@ -9273,69 +9335,45 @@ function pointInPoly(lat, lng, coords){
     // ==================================================
     if(pts.length === 1){
 
-      if(GRID_DEBUG){
-
-        console.log(
-          "📌 Single Point Mode"
-        );
-      }
-
       const p = pts[0];
 
-      let nearestId = null;
-      let minDist = Infinity;
+      const id =
 
-      for(const cell of window.gridCellArray){
+        getGridId(
+          p.lat,
+          p.lon
+        );
+
+      if(
+        window.gridIndex[id]
+      ){
+
+        visited[id] = true;
+
+        visitedGlobal[id] = true;
+
+        updateVisitedCache({
+
+          [id]: true
+        });
 
         if(
-          !cell ||
-          !cell.center
+
+          window.gridVisible &&
+
+          window.currentCoverageMode
+          === "today"
+
         ){
-          continue;
+
+          paintVisitedGrid(id);
         }
-
-        const cLat =
-
-          Array.isArray(cell.center)
-            ? cell.center[0]
-            : cell.center.lat;
-
-        const cLng =
-
-          Array.isArray(cell.center)
-            ? cell.center[1]
-            : cell.center.lng;
-
-        const dLat =
-          cLat - p.lat;
-
-        const dLon =
-          cLng - p.lon;
-
-        const dist =
-          dLat * dLat +
-          dLon * dLon;
-
-        if(dist < minDist){
-
-          minDist = dist;
-          nearestId = cell.id;
-        }
-      }
-
-      if(nearestId){
-
-        visited[nearestId] = true;
-
-        visitedGlobal[nearestId] = true;
-
-        paintVisitedGrid(nearestId);
 
         if(GRID_DEBUG){
 
           console.log(
-            "📌 Single Point Grid:",
-            nearestId
+            "📌 Single Grid:",
+            id
           );
         }
       }
@@ -9347,10 +9385,14 @@ function pointInPoly(lat, lng, coords){
     else {
 
       console.log(
-        "📏 Line Mode"
+        "📏 Direct Traversal Mode"
       );
 
-      for(let i = 1; i < pts.length; i++){
+      for(
+        let i = 1;
+        i < pts.length;
+        i++
+      ){
 
         const p1 = pts[i - 1];
         const p2 = pts[i];
@@ -9361,229 +9403,138 @@ function pointInPoly(lat, lng, coords){
         const lat2 = p2.lat;
         const lon2 = p2.lon;
 
+        // ==============================================
+        // 🔥 SEGMENT DISTANCE
+        // ==============================================
         const distMeters = Math.sqrt(
 
           Math.pow(
-            (lat2 - lat1) * 111000,
+            (lat2 - lat1)
+            * 111000,
             2
-          ) +
+          )
+
+          +
 
           Math.pow(
-            (lon2 - lon1) * 111000,
+            (lon2 - lon1)
+            * 111000,
             2
           )
         );
 
+        // ==============================================
+        // 🔥 DYNAMIC STEP COUNT
+        // ==============================================
+        const steps = Math.max(
+
+          2,
+
+          Math.ceil(
+            distMeters / 6
+          )
+        );
+
+        // ==============================================
+        // 🔥 GRID TRAVERSAL
+        // ==============================================
+        for(
+          let s = 0;
+          s <= steps;
+          s++
+        ){
+
+          const t =
+            s / steps;
+
+          // ============================================
+          // 🔥 INTERPOLATED POINT
+          // ============================================
+          const lat =
+
+            lat1 +
+
+            (
+              (lat2 - lat1)
+              * t
+            );
+
+          const lon =
+
+            lon1 +
+
+            (
+              (lon2 - lon1)
+              * t
+            );
+
+          // ============================================
+          // 🔥 DIRECT GRID ID
+          // ============================================
+          const id =
+
+            getGridId(
+              lat,
+              lon
+            );
+
+          // ============================================
+          // 🔥 VALID GRID
+          // ============================================
+          if(
+            window.gridIndex[id]
+          ){
+
+            // ==========================================
+            // 🔥 VISITED
+            // ==========================================
+            visited[id] = true;
+
+            visitedGlobal[id] = true;
+
+            // ==========================================
+            // 🔥 CACHE
+            // ==========================================
+            updateVisitedCache({
+
+              [id]: true
+            });
+
+            // ==========================================
+            // 🔥 LIVE PAINT
+            // ==========================================
+            if(
+
+              window.gridVisible &&
+
+              window.currentCoverageMode
+              === "today"
+
+            ){
+
+              paintVisitedGrid(id);
+            }
+          }
+        }
+
         if(GRID_DEBUG){
 
           console.log(
-            "📏 Segment Distance:",
-            distMeters
+            "🛣 Traversed:",
+            distMeters,
+            "m"
           );
         }
-
-        let hit = false;
-
-        // ==============================================
-        // 🔥 NORMAL LINE INTERSECTION
-        // ==============================================
-        if(distMeters <= 200){
-
-          let nearbySet = new Set();
-
-          const baseLat1 =
-            Math.floor(lat1 * 1000);
-
-          const baseLng1 =
-            Math.floor(lon1 * 1000);
-
-          const baseLat2 =
-            Math.floor(lat2 * 1000);
-
-          const baseLng2 =
-            Math.floor(lon2 * 1000);
-
-          for(
-
-            let lat =
-              Math.min(baseLat1, baseLat2) - 1;
-
-            lat <=
-              Math.max(baseLat1, baseLat2) + 1;
-
-            lat++
-          ){
-
-            for(
-
-              let lng =
-                Math.min(baseLng1, baseLng2) - 1;
-
-              lng <=
-                Math.max(baseLng1, baseLng2) + 1;
-
-              lng++
-            ){
-
-              const key =
-                lat + "_" + lng;
-
-              if(
-                window.gridSpatialIndex &&
-                window.gridSpatialIndex[key]
-              ){
-
-                for(
-                  let cell of
-                  window.gridSpatialIndex[key]
-                ){
-
-                  nearbySet.add(cell);
-                }
-              }
-            }
-          }
-
-          const nearby =
-            Array.from(nearbySet);
-
-          if(GRID_DEBUG){
-
-            console.log(
-              "🧩 Nearby Cells:",
-              nearby.length
-            );
-          }
-
-          for(const cell of nearby){
-
-            if(
-              !cell ||
-              !cell.coords ||
-              !cell.id
-            ){
-              continue;
-            }
-
-            try {
-
-              const intersects =
-
-                lineIntersectsPolygon(
-
-                  lat1,
-                  lon1,
-
-                  lat2,
-                  lon2,
-
-                  cell.coords
-                );
-
-              if(intersects){
-
-                visited[cell.id] = true;
-
-                visitedGlobal[cell.id] = true;
-
-                paintVisitedGrid(cell.id);
-
-                hit = true;
-
-                }
-
-            } catch(err){
-
-              console.warn(
-                "⚠ Intersection fail:",
-                err
-              );
-            }
-          }
-        }
-
-        // ==============================================
-        // 🔥 FALLBACK NEAREST GRID
-        // ==============================================
-        if(!hit){
-
-          let nearestId = null;
-          let minDist = Infinity;
-
-          for(const cell of window.gridCellArray){
-
-            if(
-              !cell ||
-              !cell.center
-            ){
-              continue;
-            }
-
-            const cLat =
-
-              Array.isArray(cell.center)
-                ? cell.center[0]
-                : cell.center.lat;
-
-            const cLng =
-
-              Array.isArray(cell.center)
-                ? cell.center[1]
-                : cell.center.lng;
-
-            const dLat =
-              cLat - p2.lat;
-
-            const dLon =
-              cLng - p2.lon;
-
-            const dist =
-              dLat * dLat +
-              dLon * dLon;
-
-            if(dist < minDist){
-
-              minDist = dist;
-              nearestId = cell.id;
-            }
-          }
-
-          if(nearestId){
-
-  // ==========================================
-  // 🔥 LEGACY FLAGS
-  // ==========================================
-  visited[nearestId] = true;
-
-  visitedGlobal[nearestId] = true;
-
-  // ==========================================
-  // 🔥 CENTRAL CACHE UPDATE
-  // ==========================================
-  updateVisitedCache({
-
-    [nearestId]: true
-  });
-
-  // ==========================================
-  // 🔥 OPTIONAL DEBUG
-  // ==========================================
-  if(GRID_DEBUG){
-
-    console.log(
-      "⚡ Forced mapping:",
-      nearestId
-    );
-  }
-}          }
-        }
       }
-    
+    }
 
     // ==================================================
     // 🔥 FINAL SAFETY
     // ==================================================
-    if(Object.keys(visited).length === 0){
+    if(
+      Object.keys(visited).length
+      === 0
+    ){
 
       console.warn(
         "⚠ Final Safety Triggered"
@@ -9592,58 +9543,41 @@ function pointInPoly(lat, lng, coords){
       const last =
         pts[pts.length - 1];
 
-      let nearestId = null;
-      let minDist = Infinity;
+      const id =
 
-      for(const cell of window.gridCellArray){
+        getGridId(
+          last.lat,
+          last.lon
+        );
+
+      if(
+        window.gridIndex[id]
+      ){
+
+        visited[id] = true;
+
+        visitedGlobal[id] = true;
+
+        updateVisitedCache({
+
+          [id]: true
+        });
 
         if(
-          !cell ||
-          !cell.center
+
+          window.gridVisible &&
+
+          window.currentCoverageMode
+          === "today"
+
         ){
-          continue;
+
+          paintVisitedGrid(id);
         }
-
-        const cLat =
-
-          Array.isArray(cell.center)
-            ? cell.center[0]
-            : cell.center.lat;
-
-        const cLng =
-
-          Array.isArray(cell.center)
-            ? cell.center[1]
-            : cell.center.lng;
-
-        const dLat =
-          cLat - last.lat;
-
-        const dLon =
-          cLng - last.lon;
-
-        const dist =
-          dLat * dLat +
-          dLon * dLon;
-
-        if(dist < minDist){
-
-          minDist = dist;
-          nearestId = cell.id;
-        }
-      }
-
-      if(nearestId){
-
-        visited[nearestId] = true;
-
-        visitedGlobal[nearestId] = true;
-
-        paintVisitedGrid(nearestId);
 
         console.warn(
           "⚡ Final fallback:",
-          nearestId
+          id
         );
       }
     }
@@ -9651,7 +9585,9 @@ function pointInPoly(lat, lng, coords){
     // ==================================================
     // 🔥 SAVE DAILY
     // ==================================================
-    if(Object.keys(visited).length){
+    if(
+      Object.keys(visited).length
+    ){
 
       const key =
         "grid_" + dayStr;
@@ -9661,7 +9597,9 @@ function pointInPoly(lat, lng, coords){
       try {
 
         data = JSON.parse(
+
           localStorage.getItem(key)
+
           || "{}"
         );
 
@@ -9670,66 +9608,75 @@ function pointInPoly(lat, lng, coords){
         data = {};
       }
 
-     Object.keys(visited)
-  .forEach(id => {
+      Object.keys(visited)
 
-    // ==========================================
-    // 🔥 DAILY STORAGE
-    // ==========================================
-    data[id] =
+      .forEach(id => {
 
-      (
-        Number(data[id]) || 0
-      ) + 1;
+        // ==========================================
+        // 🔥 DAILY STORAGE
+        // ==========================================
+        data[id] =
 
-    // ==========================================
-    // 🔥 LIVE TODAY CACHE
-    // ==========================================
-    window.gridCache.today[id] =
+          (
+            Number(data[id])
+            || 0
+          ) + 1;
 
-      (
-        Number(
-          window.gridCache.today[id]
-        ) || 0
-      ) + 1;
+        // ==========================================
+        // 🔥 TODAY CACHE
+        // ==========================================
+        window.gridCache.today[id] =
 
-    // ==========================================
-    // 🔥 LIVE CURRENT CACHE
-    // ==========================================
-    window.gridCache.current[id] =
+          (
+            Number(
+              window.gridCache.today[id]
+            ) || 0
+          ) + 1;
 
-      (
-        Number(
-          window.gridCache.current[id]
-        ) || 0
-      ) + 1;
+        // ==========================================
+        // 🔥 CURRENT CACHE
+        // ==========================================
+        window.gridCache.current[id] =
 
-    // ==========================================
-    // 🔥 LIVE PAINT
-    // ==========================================
-    if(
+          (
+            Number(
+              window.gridCache.current[id]
+            ) || 0
+          ) + 1;
 
-      window.gridVisible &&
+        // ==========================================
+        // 🔥 LIVE PAINT
+        // ==========================================
+        if(
 
-      window.currentCoverageMode
-      === "today"
+          window.gridVisible &&
 
-    ){
+          window.currentCoverageMode
+          === "today"
 
-      paintVisitedGrid(id);
-    }
-});
+        ){
+
+          paintVisitedGrid(id);
+        }
+      });
+
+      // ==============================================
+      // 🔥 SAVE TIMER
+      // ==============================================
       clearTimeout(
         window.__gridSaveTimer
       );
 
       window.__gridSaveTimer =
+
         setTimeout(() => {
 
           try {
 
             localStorage.setItem(
+
               key,
+
               JSON.stringify(data)
             );
 
@@ -9742,12 +9689,6 @@ function pointInPoly(lat, lng, coords){
 
         }, 1200);
 
-      // ==============================================
-      // 🔥 UPDATE TODAY CACHE
-      // ==============================================
-      window.gridCache =
-        window.gridCache || {};
-
       console.log(
         "💾 Saved Daily Cache:",
         Object.keys(data).length
@@ -9757,15 +9698,18 @@ function pointInPoly(lat, lng, coords){
     else {
 
       console.warn(
-        "⚠ No grids intersected"
+        "⚠ No grids detected"
       );
     }
   }
 
   // ==================================================
-  // 🔥 REBUILD CURRENT MONTH
+  // 🔥 UPDATE MONTH CACHE
   // ==================================================
-  if(typeof updateMonthCache === "function"){
+  if(
+    typeof updateMonthCache
+    === "function"
+  ){
 
     console.log(
       "📅 updateMonthCache()"
@@ -9775,9 +9719,12 @@ function pointInPoly(lat, lng, coords){
   }
 
   // ==================================================
-  // 🔥 REBUILD PREVIOUS MONTH
+  // 🔥 UPDATE PREV CACHE
   // ==================================================
-  if(typeof updatePrevMonthCache === "function"){
+  if(
+    typeof updatePrevMonthCache
+    === "function"
+  ){
 
     console.log(
       "🗂 updatePrevMonthCache()"
