@@ -9128,10 +9128,250 @@ function pointInPoly(lat, lng, coords){
     return false;
   }
 }
+
+
+    // ==================================================
+// 🔥 GLOBAL SPATIAL GRID LOOKUP
+// ✅ compartment-safe
+// ✅ clipped-grid-safe
+// ✅ tactical-safe
+// ==================================================
+window.getGridId = function(lat, lon){
+
+  try {
+
+    // ==========================================
+    // 🔥 SAFETY
+    // ==========================================
+    if(
+
+      isNaN(lat) ||
+
+      isNaN(lon)
+
+    ){
+      return null;
+    }
+
+    // ==========================================
+    // 🔥 GRID READY
+    // ==========================================
+    if(
+
+      !window.gridSpatialIndex ||
+
+      !window.gridIndex
+
+    ){
+      return null;
+    }
+
+    // ==========================================
+    // 🔥 SPATIAL BUCKET
+    // ==========================================
+    const bucketKey =
+
+      Math.floor(lat * 1000)
+
+      + "_"
+
+      +
+
+      Math.floor(lon * 1000);
+
+    // ==========================================
+    // 🔥 CANDIDATES
+    // ==========================================
+    let nearby =
+
+      window.gridSpatialIndex[
+        bucketKey
+      ];
+
+    // ==========================================
+    // 🔥 SEARCH NEIGHBOR BUCKETS
+    // ==========================================
+    if(
+
+      !nearby ||
+
+      !nearby.length
+
+    ){
+
+      nearby = [];
+
+      const baseLat =
+        Math.floor(lat * 1000);
+
+      const baseLon =
+        Math.floor(lon * 1000);
+
+      for(
+
+        let y = -1;
+
+        y <= 1;
+
+        y++
+
+      ){
+
+        for(
+
+          let x = -1;
+
+          x <= 1;
+
+          x++
+
+        ){
+
+          const k =
+
+            (baseLat + y)
+
+            + "_"
+
+            +
+
+            (baseLon + x);
+
+          if(
+            window.gridSpatialIndex[k]
+          ){
+
+            nearby.push(
+
+              ...window
+                .gridSpatialIndex[k]
+            );
+          }
+        }
+      }
+    }
+
+    // ==========================================
+    // 🔥 EMPTY
+    // ==========================================
+    if(!nearby.length){
+      return null;
+    }
+
+    // ==========================================
+    // 🔥 TRUE POLYGON MATCH
+    // ==========================================
+    for(const cell of nearby){
+
+      if(
+
+        !cell ||
+
+        !cell.coords ||
+
+        !cell.id
+
+      ){
+        continue;
+      }
+
+      try {
+
+        if(
+
+          pointInPoly(
+
+            lat,
+
+            lon,
+
+            cell.coords
+          )
+
+        ){
+
+          return cell.id;
+        }
+
+      } catch(e){}
+    }
+
+    // ==========================================
+    // 🔥 FALLBACK NEAREST
+    // ==========================================
+    let bestId = null;
+
+    let minDist = Infinity;
+
+    for(const cell of nearby){
+
+      if(
+        !cell ||
+        !cell.center
+      ){
+        continue;
+      }
+
+      const cLat =
+
+        Array.isArray(
+          cell.center
+        )
+
+        ? cell.center[0]
+
+        : cell.center.lat;
+
+      const cLon =
+
+        Array.isArray(
+          cell.center
+        )
+
+        ? cell.center[1]
+
+        : cell.center.lng;
+
+      const d =
+
+        Math.pow(
+          cLat - lat,
+          2
+        )
+
+        +
+
+        Math.pow(
+          cLon - lon,
+          2
+        );
+
+      if(d < minDist){
+
+        minDist = d;
+
+        bestId = cell.id;
+      }
+    }
+
+    return bestId;
+
+  }
+
+  catch(e){
+
+    console.warn(
+      "⚠ getGridId failed:",
+      e
+    );
+
+    return null;
+  }
+};
  // ===============================
 // 🔥 GLOBAL CACHE
 // ===============================
- function markVisitedHybrid(tracks){
+function markVisitedHybrid(tracks){
 
   // ==================================================
   // 🔥 GRID READY
@@ -9184,229 +9424,6 @@ function pointInPoly(lat, lng, coords){
   );
 
   let visitedGlobal = {};
-
-  // ==================================================
-  // 🔥 SPATIAL GRID LOOKUP
-  // ==================================================
-  function getGridId(lat, lon){
-
-    try {
-
-      // ==========================================
-      // 🔥 SAFETY
-      // ==========================================
-      if(
-
-        isNaN(lat) ||
-
-        isNaN(lon)
-
-      ){
-        return null;
-      }
-
-      // ==========================================
-      // 🔥 SPATIAL BUCKET
-      // ==========================================
-      const bucketKey =
-
-        Math.floor(lat * 1000)
-
-        + "_"
-
-        +
-
-        Math.floor(lon * 1000);
-
-      // ==========================================
-      // 🔥 CANDIDATES
-      // ==========================================
-      let nearby =
-
-        window.gridSpatialIndex[
-          bucketKey
-        ];
-
-      // ==========================================
-      // 🔥 SEARCH NEIGHBOR BUCKETS
-      // ==========================================
-      if(
-
-        !nearby ||
-
-        !nearby.length
-
-      ){
-
-        nearby = [];
-
-        const baseLat =
-          Math.floor(lat * 1000);
-
-        const baseLon =
-          Math.floor(lon * 1000);
-
-        for(
-
-          let y = -1;
-
-          y <= 1;
-
-          y++
-
-        ){
-
-          for(
-
-            let x = -1;
-
-            x <= 1;
-
-            x++
-
-          ){
-
-            const k =
-
-              (baseLat + y)
-
-              + "_"
-
-              +
-
-              (baseLon + x);
-
-            if(
-              window.gridSpatialIndex[k]
-            ){
-
-              nearby.push(
-
-                ...window
-                  .gridSpatialIndex[k]
-              );
-            }
-          }
-        }
-      }
-
-      // ==========================================
-      // 🔥 EMPTY
-      // ==========================================
-      if(!nearby.length){
-        return null;
-      }
-
-      // ==========================================
-      // 🔥 TRUE POLYGON MATCH
-      // ==========================================
-      for(const cell of nearby){
-
-        if(
-
-          !cell ||
-
-          !cell.coords ||
-
-          !cell.id
-
-        ){
-          continue;
-        }
-
-        try {
-
-          if(
-
-            pointInPoly(
-
-              lat,
-
-              lon,
-
-              cell.coords
-            )
-
-          ){
-
-            return cell.id;
-          }
-
-        } catch(e){}
-      }
-
-      // ==========================================
-      // 🔥 FALLBACK NEAREST
-      // ==========================================
-      let bestId = null;
-
-      let minDist = Infinity;
-
-      for(const cell of nearby){
-
-        if(
-          !cell ||
-          !cell.center
-        ){
-          continue;
-        }
-
-        const cLat =
-
-          Array.isArray(
-            cell.center
-          )
-
-          ? cell.center[0]
-
-          : cell.center.lat;
-
-        const cLon =
-
-          Array.isArray(
-            cell.center
-          )
-
-          ? cell.center[1]
-
-          : cell.center.lng;
-
-        const d =
-
-          Math.pow(
-            cLat - lat,
-            2
-          )
-
-          +
-
-          Math.pow(
-            cLon - lon,
-            2
-          );
-
-        if(d < minDist){
-
-          minDist = d;
-
-          bestId = cell.id;
-        }
-      }
-
-      return bestId;
-
-    }
-
-    catch(e){
-
-      console.warn(
-        "⚠ getGridId failed:",
-        e
-      );
-
-      return null;
-    }
-  }
 
   // ==================================================
   // 🔥 LOOP TRACKS
@@ -9536,8 +9553,10 @@ function pointInPoly(lat, lng, coords){
 
       const id =
 
-        getGridId(
+        window.getGridId(
+
           p.lat,
+
           p.lon
         );
 
@@ -9629,8 +9648,10 @@ function pointInPoly(lat, lng, coords){
 
           const id =
 
-            getGridId(
+            window.getGridId(
+
               lat,
+
               lon
             );
 
@@ -9672,8 +9693,10 @@ function pointInPoly(lat, lng, coords){
 
       const id =
 
-        getGridId(
+        window.getGridId(
+
           last.lat,
+
           last.lon
         );
 
@@ -9742,8 +9765,7 @@ function pointInPoly(lat, lng, coords){
   );
 
   return visitedGlobal;
-}   
-   function applyMode(mode){
+}   function applyMode(mode){
 
   try {
 
