@@ -11892,6 +11892,9 @@ function assignGridToBeat(rangeLayer){
   }
 } 
 
+// ======================================================
+// 🎨 PAINT VISITED GRID
+// ======================================================
 function paintVisitedGrid(id){
 
   try {
@@ -11900,10 +11903,11 @@ function paintVisitedGrid(id){
     // 🔥 CELL LOOKUP
     // ==========================================
     const cell =
+
       window.gridIndex?.[id];
 
     // ==========================================
-    // 🔥 SAFETY
+    // 🔥 INVALID
     // ==========================================
     if(
 
@@ -11916,52 +11920,74 @@ function paintVisitedGrid(id){
     }
 
     // ==========================================
-    // 🔥 MAP SAFETY
+    // 🔥 GRID HIDDEN
+    // ==========================================
+    if(
+      window.gridVisible !== true
+    ){
+      return;
+    }
+
+    // ==========================================
+    // 🔥 ENSURE ROOT LAYER
     // ==========================================
     if(
 
-      !window.gridRootLayer ||
+      window.gridRootLayer &&
 
       !window.gridRootLayer.hasLayer(
         cell.poly
       )
 
     ){
+
+      try {
+
+        cell.poly.addTo(
+          window.gridRootLayer
+        );
+
+      } catch(e){}
+    }
+
+    // ==========================================
+    // 🔥 ALREADY PAINTED
+    // ==========================================
+    if(
+      cell.__painted === true
+    ){
       return;
     }
 
     // ==========================================
-    // 🔥 SKIP DUPLICATE RENDER
+    // 🔥 FLAGS
     // ==========================================
-    if(cell.rendered){
-      return;
-    }
-
-    // ==========================================
-    // 🔥 VISUAL FLAGS
-    // ==========================================
-    cell.rendered = true;
+    cell.__painted = true;
 
     cell.visited = true;
 
     // ==========================================
-    // 🔥 INCREMENTAL STYLE UPDATE
+    // 🔥 STYLE UPDATE
     // ==========================================
-    cell.poly.setStyle({
+    try {
 
-      fillColor: "#00ff88",
+      cell.poly.setStyle({
 
-      fillOpacity: 0.55,
+        fillColor:"#00ff88",
 
-      color: "#00cc66",
+        fillOpacity:0.55,
 
-      opacity: 0.95,
+        color:"#00cc66",
 
-      weight: 0.7
-    });
+        opacity:0.95,
+
+        weight:0.7
+      });
+
+    } catch(e){}
 
     // ==========================================
-    // 🔥 OPTIONAL FRONT LAYER
+    // 🔥 FRONT
     // ==========================================
     try {
 
@@ -11989,10 +12015,14 @@ function paintVisitedGrid(id){
       e
     );
   }
-} 
-    
-    
-    function repaintCoverageGrid(
+}
+
+
+
+// ======================================================
+// 🎨 REPAINT COVERAGE GRID
+// ======================================================
+function repaintCoverageGrid(
 
   mode = "today",
 
@@ -12003,7 +12033,7 @@ function paintVisitedGrid(id){
   try {
 
     // ==========================================
-    // 🔥 GRID READY CHECK
+    // 🔥 GRID READY
     // ==========================================
     if(
 
@@ -12023,11 +12053,6 @@ function paintVisitedGrid(id){
     }
 
     // ==========================================
-    // 🔥 RESET STYLES
-    // ==========================================
-    resetGridStyles();
-
-    // ==========================================
     // 🔥 STORE ACTIVE STATE
     // ==========================================
     window.currentCoverageMode =
@@ -12037,30 +12062,132 @@ function paintVisitedGrid(id){
       beat;
 
     // ==========================================
-    // 🔥 SELECT CACHE
+    // 🔥 CACHE SELECT
     // ==========================================
     let current = {};
 
     if(mode === "today"){
 
       current =
-        window.gridCache?.today || {};
+
+        window.gridCache?.today
+
+        || {};
     }
 
     else if(mode === "current"){
 
       current =
-        window.gridCache?.current || {};
+
+        window.gridCache?.current
+
+        || {};
     }
 
     else if(mode === "prev"){
 
       current =
-        window.gridCache?.prev || {};
+
+        window.gridCache?.prev
+
+        || {};
     }
 
     // ==========================================
-    // 🔥 EMPTY CACHE SAFETY
+    // 🔥 RESET ONLY PAINT FLAGS
+    // ==========================================
+    Object.values(
+
+      window.gridIndex || {}
+
+    ).forEach(cell => {
+
+      if(!cell){
+        return;
+      }
+
+      // ========================================
+      // 🔥 RESET PAINT FLAG
+      // ========================================
+      cell.__painted = false;
+
+      // ========================================
+      // 🔥 HIDE OTHER BEATS
+      // ========================================
+      if(
+
+        beat !== "ALL" &&
+
+        cell.beat !== beat
+
+      ){
+
+        try {
+
+          if(
+
+            window.gridRootLayer
+              ?.hasLayer(
+                cell.poly
+              )
+
+          ){
+
+            window.gridRootLayer
+              .removeLayer(
+                cell.poly
+              );
+          }
+
+        } catch(e){}
+
+        return;
+      }
+
+      // ========================================
+      // 🔥 SHOW VALID BEAT
+      // ========================================
+      try {
+
+        if(
+
+          !window.gridRootLayer
+            ?.hasLayer(
+              cell.poly
+            )
+
+        ){
+
+          cell.poly.addTo(
+            window.gridRootLayer
+          );
+        }
+
+      } catch(e){}
+
+      // ========================================
+      // 🔥 RESET STYLE
+      // ========================================
+      try {
+
+        cell.poly.setStyle({
+
+          fillColor:"#111",
+
+          fillOpacity:0.03,
+
+          color:"#333",
+
+          weight:0.35,
+
+          opacity:0.25
+        });
+
+      } catch(e){}
+    });
+
+    // ==========================================
+    // 🔥 EMPTY CACHE
     // ==========================================
     if(
 
@@ -12070,13 +12197,10 @@ function paintVisitedGrid(id){
 
     ){
 
-      if(GRID_DEBUG){
-
-        console.log(
-          "⚠ No coverage cache:",
-          mode
-        );
-      }
+      console.warn(
+        "⚠ Empty cache:",
+        mode
+      );
 
       return;
     }
@@ -12087,28 +12211,27 @@ function paintVisitedGrid(id){
     let painted = 0;
 
     Object.keys(current)
-      .forEach(id => {
 
-      // ======================================
-      // 🔥 INVALID ENTRY
-      // ======================================
+    .forEach(id => {
+
+      // ========================================
+      // 🔥 INVALID
+      // ========================================
       if(!current[id]){
         return;
       }
 
-      // ======================================
-      // 🔥 CELL LOOKUP
-      // ======================================
       const cell =
+
         window.gridIndex?.[id];
 
       if(!cell){
         return;
       }
 
-      // ======================================
+      // ========================================
       // 🔥 BEAT FILTER
-      // ======================================
+      // ========================================
       if(
 
         beat !== "ALL" &&
@@ -12119,11 +12242,9 @@ function paintVisitedGrid(id){
         return;
       }
 
-      // ======================================
-      // 🔥 FORCE REPAINT
-      // ======================================
-      cell.rendered = false;
-
+      // ========================================
+      // 🔥 PAINT
+      // ========================================
       paintVisitedGrid(id);
 
       painted++;
@@ -12132,22 +12253,19 @@ function paintVisitedGrid(id){
     // ==========================================
     // 🔥 DEBUG
     // ==========================================
-    if(GRID_DEBUG){
+    console.log(
 
-      console.log(
+      "🎨 Coverage repainted:",
 
-        "🎨 Coverage repainted →",
+      {
 
-        "Mode:",
         mode,
 
-        "| Beat:",
         beat,
 
-        "| Painted:",
         painted
-      );
-    }
+      }
+    );
 
   }
 
@@ -12156,12 +12274,11 @@ function paintVisitedGrid(id){
     console.error(
 
       "❌ repaintCoverageGrid:",
+
       e
     );
   }
-}
-
-    
+}    
     function clearKMLPreview(){
 
   const btn = document.getElementById("clearKMLBtn");
