@@ -6993,28 +6993,224 @@ async function loadRangeKML(){
     // ======================================
     window.rangeLayer =
 
-      L.geoJSON([], {
+  L.geoJSON([], {
 
-        renderer:
-          L.canvas(),
+    // ======================================
+    // 🎨 RENDERER
+    // ======================================
+    renderer:
+      L.canvas(),
 
-        style: {
+    // ======================================
+    // 🎨 STYLE
+    // ======================================
+    style: {
 
-          color:
-            "#00e5ff",
+      color:
+        "#00e5ff",
 
-          weight:
-            1,
+      weight:
+        1,
 
-          opacity:
-            0.8,
+      opacity:
+        0.8,
 
-          fillOpacity:
-            0.1
-        }
+      fillOpacity:
+        0.1
+    },
 
-      }).addTo(map);
+    // ======================================
+    // 🖱 FEATURE INTERACTION
+    // ======================================
+    onEachFeature:
+    function(feature, layer){
 
+      try {
+
+        // ======================================
+        // 🔥 SAFE PROPERTIES
+        // ======================================
+        const props =
+          feature.properties || {};
+
+        // ======================================
+        // 🌳 RANGE
+        // ======================================
+        const range =
+
+          props.Range ||
+
+          props.range ||
+
+          "Unknown Range";
+
+        // ======================================
+        // 🧭 BEAT
+        // ======================================
+        const beat =
+
+          props.Beat ||
+
+          props.beat ||
+
+          "Unknown Beat";
+
+        // ======================================
+        // 📐 AREA
+        // ======================================
+        const beatArea =
+
+          Number(
+            props.Beat_Ar || 0
+          ).toFixed(2);
+
+        // ======================================
+        // 👮 LIVE STAFF COUNT
+        // ======================================
+        let liveCount = 0;
+
+        try {
+
+          const liveStaff =
+            window.liveStaff || {};
+
+          Object.values(liveStaff)
+            .forEach(staff => {
+
+              if(
+
+                String(
+                  staff.range || ""
+                ).trim() === range &&
+
+                String(
+                  staff.beat || ""
+                ).trim() === beat
+
+              ){
+                liveCount++;
+              }
+
+            });
+
+        } catch(e){}
+
+        // ======================================
+        // 🌿 HOVER TOOLTIP
+        // ======================================
+        layer.bindTooltip(
+
+          `
+          🌳 ${range}
+
+          <br>
+
+          🧭 ${beat}
+          `,
+
+          {
+            sticky: true,
+            direction: "top"
+          }
+
+        );
+
+        // ======================================
+        // 🖱 HOVER EFFECT
+        // ======================================
+        layer.on("mouseover", () => {
+
+          try {
+
+            layer.setStyle({
+
+              weight: 2,
+
+              fillOpacity: 0.2
+            });
+
+          } catch(e){}
+
+        });
+
+        // ======================================
+        // 🖱 MOUSE OUT
+        // ======================================
+        layer.on("mouseout", () => {
+
+          try {
+
+            layer.setStyle({
+
+              weight: 1,
+
+              fillOpacity: 0.1
+            });
+
+          } catch(e){}
+
+        });
+
+        // ======================================
+        // 🖱 CLICK POPUP
+        // ======================================
+        layer.on("click", () => {
+
+          try {
+
+            layer.bindPopup(
+
+              `
+              <div style="
+                min-width:240px;
+                font-size:14px;
+                line-height:1.6;
+              ">
+
+                <b>
+                  🌳 ${range} Range
+                </b>
+
+                <br><br>
+
+                🧭 <b>Beat:</b>
+                ${beat}
+
+                <br>
+
+                📐 <b>Area:</b>
+                ${beatArea} sq km
+
+                <br>
+
+                👮 <b>Live Staff:</b>
+                ${liveCount}
+
+              </div>
+              `
+
+            ).openPopup();
+
+          } catch(e){
+
+            console.warn(
+              "⚠ Popup failed",
+              e
+            );
+          }
+
+        });
+
+      } catch(e){
+
+        console.warn(
+          "⚠ onEachFeature failed",
+          e
+        );
+      }
+    }
+
+  }).addTo(map);
     // ======================================
     // ⚡ CHUNK RENDER
     // ======================================
