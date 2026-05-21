@@ -6991,12 +6991,12 @@ async function loadRangeKML(){
     // ======================================
     // 🔥 CREATE LAYER
     // ======================================
-   window.rangeLayer =
+  window.rangeLayer =
 
   L.geoJSON([], {
 
     // ======================================
-    // 🎨 CANVAS
+    // 🎨 RENDERER
     // ======================================
     renderer:
       L.canvas(),
@@ -7004,7 +7004,7 @@ async function loadRangeKML(){
     interactive: true,
 
     // ======================================
-    // 🎨 STYLE
+    // 🎨 ORIGINAL STYLE
     // ======================================
     style: {
 
@@ -7012,13 +7012,13 @@ async function loadRangeKML(){
         "#00e5ff",
 
       weight:
-        2,
-
-      opacity:
         1,
 
+      opacity:
+        0.8,
+
       fillOpacity:
-        0.25
+        0.1
     },
 
     // ======================================
@@ -7029,6 +7029,9 @@ async function loadRangeKML(){
 
       try {
 
+        // ======================================
+        // 🔥 SAFE PROPERTIES
+        // ======================================
         const props =
           feature.properties || {};
 
@@ -7082,103 +7085,52 @@ async function loadRangeKML(){
         } catch(e){}
 
         // ======================================
-        // 🌿 TOOLTIP
-        // ======================================
-        layer.bindTooltip(
-
-          `
-          🌳 ${range}
-
-          <br>
-
-          🧭 ${beat}
-          `,
-
-          {
-
-            sticky: true,
-
-            direction: "top",
-
-            permanent: false,
-
-            opacity: 0.95,
-
-            className:
-              "gisTooltip"
-          }
-
-        );
-
-        // ======================================
-        // 🖱 HOVER
-        // ======================================
-        layer.on("mouseover", () => {
-
-          layer.setStyle({
-
-            weight: 3,
-
-            fillOpacity: 0.4,
-
-            color: "#00ffff"
-          });
-
-        });
-
-        // ======================================
-        // 🖱 OUT
-        // ======================================
-        layer.on("mouseout", () => {
-
-          layer.setStyle({
-
-            weight: 2,
-
-            fillOpacity: 0.25,
-
-            color: "#00e5ff"
-          });
-
-        });
-
-        // ======================================
-        // 🖱 CLICK POPUP
+        // 🖱 CLICK POPUP ONLY
         // ======================================
         layer.on("click", () => {
 
-          layer.bindPopup(
+          try {
 
-            `
-            <div style="
-              min-width:240px;
-              font-size:14px;
-              line-height:1.7;
-            ">
+            layer.bindPopup(
 
-              <b>
-                🌳 ${range} Range
-              </b>
+              `
+              <div style="
+                min-width:240px;
+                font-size:14px;
+                line-height:1.7;
+              ">
 
-              <br><br>
+                <b>
+                  🌳 ${range} Range
+                </b>
 
-              🧭 Beat:
-              ${beat}
+                <br><br>
 
-              <br>
+                🧭 Beat:
+                ${beat}
 
-              📐 Area:
-              ${beatArea} sq km
+                <br>
 
-              <br>
+                📐 Area:
+                ${beatArea} sq km
 
-              👮 Live Staff:
-              ${liveCount}
+                <br>
 
-            </div>
-            `
+                👮 Live Staff:
+                ${liveCount}
 
-          ).openPopup();
+              </div>
+              `
+
+            ).openPopup();
+
+          } catch(e){
+
+            console.warn(
+              "⚠ Popup failed",
+              e
+            );
+          }
 
         });
 
@@ -7191,7 +7143,9 @@ async function loadRangeKML(){
       }
     }
 
-  }).addTo(map); // ======================================
+  }).addTo(map);
+    
+    // ======================================
     // ⚡ CHUNK RENDER
     // ======================================
     let i = 0;
