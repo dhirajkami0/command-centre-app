@@ -2076,7 +2076,179 @@ function applyRoleControl(){
   // ============================================
   // ❌ UNKNOWN ROLE
   // ============================================
-  console.warn(
+  console.warn(function applyRoleControl(){
+
+  // ============================================================
+  // 🔥 NORMALIZE ROLE
+  // ============================================================
+  const role =
+
+    String(
+      window.userProfile?.role || ""
+    )
+
+    .trim()
+
+    .toUpperCase();
+
+  // ============================================================
+  // 🔥 UI GROUPS
+  // ============================================================
+  const leaderButtons =
+    document.querySelectorAll(
+      ".leader-only"
+    );
+
+  const adminButtons =
+    document.querySelectorAll(
+      ".admin-only"
+    );
+
+  const staffButtons =
+    document.querySelectorAll(
+      ".staff-only"
+    );
+
+  const dutyBtn =
+    document.getElementById(
+      "dutyMainBtn"
+    );
+
+  // ============================================================
+  // 🔴 ADMIN
+  // ============================================================
+  if(role === "ADMIN"){
+
+    leaderButtons.forEach(el => {
+      el.style.display = "flex";
+    });
+
+    adminButtons.forEach(el => {
+
+      if(el.id !== "clearKMLBtn"){
+
+        el.style.display = "flex";
+      }
+    });
+
+    staffButtons.forEach(el => {
+      el.style.display = "flex";
+    });
+
+    if(dutyBtn){
+      dutyBtn.style.display = "flex";
+    }
+  }
+
+  // ============================================================
+  // 🟣 DFO / ADFO
+  // ============================================================
+  else if(
+
+    role === "DFO" ||
+
+    role === "ADFO"
+
+  ){
+
+    // ======================================
+    // 🔥 DIVISION CONTROL
+    // ======================================
+    leaderButtons.forEach(el => {
+      el.style.display = "flex";
+    });
+
+    adminButtons.forEach(el => {
+
+      // 🔥 KEEP BLOCKED
+      if(el.id !== "clearKMLBtn"){
+
+        el.style.display = "flex";
+      }
+    });
+
+    staffButtons.forEach(el => {
+      el.style.display = "flex";
+    });
+
+    if(dutyBtn){
+      dutyBtn.style.display = "flex";
+    }
+  }
+
+  // ============================================================
+  // 🔵 TEAM LEADER
+  // ============================================================
+  else if(role === "TEAM LEADER"){
+
+    leaderButtons.forEach(el => {
+      el.style.display = "flex";
+    });
+
+    adminButtons.forEach(el => {
+      el.style.display = "none";
+    });
+
+    staffButtons.forEach(el => {
+      el.style.display = "flex";
+    });
+
+    if(dutyBtn){
+      dutyBtn.style.display = "flex";
+    }
+  }
+
+  // ============================================================
+  // 🟢 STAFF
+  // ============================================================
+  else if(role === "STAFF"){
+
+    leaderButtons.forEach(el => {
+      el.style.display = "none";
+    });
+
+    adminButtons.forEach(el => {
+      el.style.display = "none";
+    });
+
+    staffButtons.forEach(el => {
+      el.style.display = "flex";
+    });
+
+    if(dutyBtn){
+      dutyBtn.style.display = "flex";
+    }
+  }
+
+  // ============================================================
+  // ❌ BLOCK
+  // ============================================================
+  else {
+
+    leaderButtons.forEach(el => {
+      el.style.display = "none";
+    });
+
+    adminButtons.forEach(el => {
+      el.style.display = "none";
+    });
+
+    staffButtons.forEach(el => {
+      el.style.display = "none";
+    });
+
+    if(dutyBtn){
+      dutyBtn.style.display = "none";
+    }
+
+    console.warn(
+      "❌ Unknown role:",
+      role
+    );
+
+    alert("❌ Not authorized");
+  }
+}
     "❌ Unknown role:",
     role
   );
