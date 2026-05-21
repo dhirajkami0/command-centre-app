@@ -6614,97 +6614,262 @@ ${pct(data.health)} / 100
 // ==========================================
 
 // 🔥 GLOBAL (IMPORTANT)
-window.rangeLayer = null;
-
 async function loadRangeKML(){
 
   try {
 
-    console.log("🚀 Loading FAST GeoJSON...");
+    console.log(
+      "🚀 Loading GIS..."
+    );
+
+    // ======================================
+    // 🔥 PROFILE
+    // ======================================
+    const profile =
+      window.userProfile || {};
+
+    const role =
+      String(
+        profile.role || ""
+      ).toUpperCase();
+
+    const division =
+      String(
+        profile.division || ""
+      ).trim();
+
+    const range =
+      String(
+        profile.range || ""
+      ).trim();
+
+    // ======================================
+    // 🌍 DECIDE URL
+    // ======================================
+    let url = "";
+
+    // ======================================
+    // 🔥 ADMIN
+    // ======================================
+    if(role === "ADMIN"){
+
+      url =
+        "./geojson/master.geojson";
+
+      console.log(
+        "🌍 GLOBAL GIS"
+      );
+    }
+
+    // ======================================
+    // 🔥 DFO / ADFO
+    // ======================================
+    else if(
+
+      role === "DFO" ||
+
+      role === "ADFO"
+
+    ){
+
+      url =
+
+        "./geojson/"
+
+        +
+
+        division
+
+        +
+
+        "/master.geojson";
+
+      console.log(
+        "🌍 DIVISION GIS:",
+        division
+      );
+    }
+
+    // ======================================
+    // 🔥 STAFF / TEAM LEADER
+    // ======================================
+    else {
+
+      url =
+
+        "./geojson/"
+
+        +
+
+        division
+
+        +
+
+        "/"
+
+        +
+
+        range
+
+        +
+
+        ".geojson";
+
+      console.log(
+        "🎯 RANGE GIS:",
+        range
+      );
+    }
+
+    console.log(
+      "📥 URL:",
+      url
+    );
 
     // ======================================
     // 🔥 REMOVE OLD LAYER
     // ======================================
     if(window.rangeLayer){
-      map.removeLayer(window.rangeLayer);
-      window.rangeLayer = null;
+
+      try {
+
+        map.removeLayer(
+          window.rangeLayer
+        );
+
+      } catch(e){}
+
+      window.rangeLayer =
+        null;
     }
 
     // ======================================
     // 📥 FETCH DATA
     // ======================================
-    const res = await fetch("./kml/Compartments.json");
+    const res =
+      await fetch(url);
 
     if(!res.ok){
-      throw new Error("❌ Failed to load GeoJSON");
+
+      throw new Error(
+        "❌ Failed to load GeoJSON"
+      );
     }
 
-    const data = await res.json();
-    const features = data.features || [];
+    const data =
+      await res.json();
 
-    console.log("📦 Features:", features.length);
+    const features =
+      data.features || [];
 
-    // ======================================
-    // 🔥 CREATE GLOBAL RANGE LAYER
-    // ======================================
-    window.rangeLayer = L.geoJSON([], {
-      renderer: L.canvas(),
-      style: {
-        color: "#00e5ff",
-        weight: 1,
-        opacity: 0.8,
-        fillOpacity: 0.1
-      }
-    }).addTo(map);
+    console.log(
+      "📦 Features:",
+      features.length
+    );
 
     // ======================================
-    // ⚡ CHUNK RENDER (NO FREEZE)
+    // 🔥 CREATE RANGE LAYER
+    // ======================================
+    window.rangeLayer =
+
+      L.geoJSON([], {
+
+        renderer:
+          L.canvas(),
+
+        style: {
+
+          color:
+            "#00e5ff",
+
+          weight:
+            1,
+
+          opacity:
+            0.8,
+
+          fillOpacity:
+            0.1
+        }
+
+      }).addTo(map);
+
+    // ======================================
+    // ⚡ CHUNK RENDER
     // ======================================
     let i = 0;
+
     const chunkSize = 40;
 
     function drawChunk(){
 
-      const slice = features.slice(i, i + chunkSize);
+      const slice =
+
+        features.slice(
+          i,
+          i + chunkSize
+        );
 
       slice.forEach(f => {
-        window.rangeLayer.addData(f);
+
+        window.rangeLayer
+          .addData(f);
+
       });
 
       i += chunkSize;
 
       if(i < features.length){
 
-        requestAnimationFrame(drawChunk);
+        requestAnimationFrame(
+          drawChunk
+        );
 
       } else {
 
-        console.log("✅ GeoJSON render complete");
-// 🔥 FORCE GRID AFTER DATA READY
-       // ======================================
-        // 🎯 FIT MAP (SAFE)
+        console.log(
+          "✅ GeoJSON render complete"
+        );
+
+        // ======================================
+        // 🎯 FIT MAP
         // ======================================
         try {
-          map.fitBounds(window.rangeLayer.getBounds(), {
-            padding: [10, 10]
-          });
+
+          map.fitBounds(
+
+            window.rangeLayer
+              .getBounds(),
+
+            {
+              padding: [10,10]
+            }
+
+          );
+
         } catch(e){}
 
         // ======================================
-        // 🔥 CRITICAL FIX: BUILD GRID AFTER LOAD
+        // 🔥 GRID READY
         // ======================================
-       
+        console.log(
+          "✅ GIS READY"
+        );
       }
     }
 
     drawChunk();
 
-  } catch(e){
-
-    console.error("❌ loadRangeKML error:", e);
-
   }
-}    function lineIntersectsBox(lat1, lon1, lat2, lon2, minLat, minLon, maxLat, maxLon) {
+
+  catch(e){
+
+    console.error(
+      "❌ loadRangeKML error:",
+      e
+    );
+  }
+}   function lineIntersectsBox(lat1, lon1, lat2, lon2, minLat, minLon, maxLat, maxLon) {
 
   const eps = 0.000001;
 
