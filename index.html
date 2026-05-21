@@ -5672,224 +5672,386 @@ map.on('locationfound', function (e) {
 let lastGPSSentTime = 0;
 
 
-// 🧠 FINAL DISPLAY + DUTY LOGIC
-function showBestLocation() {
+// 🧠 FINAL DISPLAY + DUTY LOGICfunction showBestLocation() {
 
-  console.group("📍 showBestLocation FLOW START");
+  console.group(
+    "📍 showBestLocation"
+  );
 
-  console.log("👤 CLICKED USER:", window.userProfile);
+  const btn =
+    document.getElementById(
+      "locBtn"
+    );
 
-  const btn = document.getElementById("locBtn");
+  // ============================================
+  // ❌ NO LOCATION
+  // ============================================
+  if(!bestLocation){
 
-  if (!bestLocation) {
-    console.error("❌ No bestLocation found");
-    alert("❌ Could not get location");
+    console.error(
+      "❌ No bestLocation"
+    );
+
+    alert(
+      "❌ Could not get location"
+    );
+
     resetButton();
+
     console.groupEnd();
+
     return;
   }
 
-  const lat = Number(bestLocation.latlng.lat.toFixed(5));
-  const lng = Number(bestLocation.latlng.lng.toFixed(5));
-  const acc = Math.round(bestLocation.accuracy);
+  // ============================================
+  // 🔥 FINAL GPS
+  // ============================================
+  const lat =
 
-  console.log("✅ Final location selected:", { lat, lng, acc });
+    Number(
+      bestLocation.latlng.lat
+        .toFixed(5)
+    );
 
-  // ================= SHOW LOCATION =================
+  const lng =
+
+    Number(
+      bestLocation.latlng.lng
+        .toFixed(5)
+    );
+
+  const acc =
+
+    Math.round(
+      bestLocation.accuracy
+    );
+
+  console.log({
+
+    lat,
+    lng,
+    acc
+  });
+
+  // ============================================
+  // 🔥 SAVE CENTRAL CACHE
+  // ============================================
+  window.latestGps = {
+
+    lat,
+
+    lng,
+
+    accuracy: acc,
+
+    time: Date.now()
+  };
+
+  // ============================================
+  // 🔥 CLEAR OLD
+  // ============================================
   myLocationLayer.clearLayers();
 
-  L.circle(bestLocation.latlng, {
-    radius: bestLocation.accuracy / 2,
-    color: "#007bff",
-    fillOpacity: 0.2
-  }).addTo(myLocationLayer);
+  // ============================================
+  // 🔥 ACCURACY CIRCLE
+  // ============================================
+  L.circle(
 
-  L.marker(bestLocation.latlng)
-    .addTo(myLocationLayer)
-    .bindPopup(`
-      <div style="font-size:14px;">
-        <b>📍 Your Location</b><br><br>
-        <b>Latitude:</b><br>${lat}<br>
-        <b>Longitude:</b><br>${lng}<br>
-        <b>Accuracy:</b> ${acc} m<br><br>
-        <button onclick="copyCoords('${lat}', '${lng}')" 
-          style="padding:6px 10px;background:#1b5e20;color:#fff;border:none;border-radius:5px;">
-          📋 Copy Coordinates
-        </button>
-      </div>
-    `)
-    .openPopup();
+    bestLocation.latlng,
 
-  map.setView(bestLocation.latlng, 18);
+    {
+      radius:
+        bestLocation.accuracy / 2,
 
-  btn.innerText = "STOP LOCATION";
+      color:
+        "#007bff",
+
+      fillOpacity:
+        0.15
+    }
+
+  ).addTo(
+    myLocationLayer
+  );
+
+  // ============================================
+  // 🔥 MARKER
+  // ============================================
+  L.marker(
+
+    bestLocation.latlng
+
+  )
+
+  .addTo(
+    myLocationLayer
+  )
+
+  .bindPopup(
+
+    `
+    <div style="
+      font-size:14px;
+      line-height:1.6;
+      min-width:220px;
+    ">
+
+      <b style="
+        color:#000;
+        font-size:15px;
+      ">
+        📍 Your Location
+      </b>
+
+      <br><br>
+
+      <b>Latitude:</b>
+      <br>
+      ${lat}
+
+      <br><br>
+
+      <b>Longitude:</b>
+      <br>
+      ${lng}
+
+      <br><br>
+
+      <b>Accuracy:</b>
+      ${acc} m
+
+      <br><br>
+
+      <button
+
+        onclick="
+          copyCoords(
+            '${lat}',
+            '${lng}'
+          )
+        "
+
+        style="
+          padding:7px 12px;
+          background:#1b5e20;
+          color:#fff;
+          border:none;
+          border-radius:6px;
+          cursor:pointer;
+        "
+      >
+
+        📋 Copy Coordinates
+
+      </button>
+
+    </div>
+    `
+  )
+
+  .openPopup();
+
+  // ============================================
+  // 🔥 CENTER MAP
+  // ============================================
+  map.setView(
+
+    bestLocation.latlng,
+
+    18
+  );
+
+  // ============================================
+  // 🔥 BUTTON
+  // ============================================
+  btn.innerText =
+    "STOP LOCATION";
+
   btn.disabled = false;
 
-  // ================= USER CHECK =================
-  if (!window.userProfile || !window.userProfile.rawName) {
-    console.error("❌ userProfile missing → stop");
-    console.groupEnd();
-    return;
-  }
+  console.groupEnd();
+}// ❌ LOCATION ERROR
+// ============================================
+// 🔥 GPS ERROR RETRY CONTROL
+// ============================================
+window.gpsRetryCount = 0;
 
-  const leaderName = window.userProfile.rawName;
-  const leaderClean = window.userProfile.cleanName;
+// ============================================
+// ❌ LOCATION ERROR
+// ============================================
+map.on(
 
-  console.log("👤 USER:", leaderName);
+  "locationerror",
 
-  // ============================================================
-  // 🔥 STRONG DUPLICATE CONTROL (TIME + LOCATION)
-  // ============================================================
-  const now = Date.now();
+  function(e){
 
-  const locationKey = `${lat}_${lng}`;
+    console.error(
 
-  console.log("⏱ Last sent:", lastGPSSentTime, "| Now:", now);
-  console.log("📍 Last key:", window.lastManualKey, "| Current:", locationKey);
+      "❌ Location error:",
 
-  // ⛔ TIME BLOCK
-  if (now - lastGPSSentTime < 20000) {
-    console.warn("⏱ Skipped duplicate GPS (too soon)");
-    console.groupEnd();
-    return;
-  }
+      e.message
+    );
 
-  // ⛔ SAME LOCATION BLOCK
-  if (window.lastManualKey === locationKey) {
-    console.warn("⛔ Same location manual skip");
-    console.groupEnd();
-    return;
-  }
+    // ============================================
+    // 🔥 LIMIT RETRIES
+    // ============================================
+    if(
 
-  window.lastManualKey = locationKey;
+      window.gpsRetryCount >= 3
 
-  // ================= LIVE DUTY CHECK =================
-  console.log("🌐 Checking duty before GPS send...");
+    ){
 
-  callBackend("checkDutyFromSheet", {
-    leader: leaderClean
-  })
+      console.warn(
+        "⛔ GPS retry limit reached"
+      );
 
-  .then(res => {
+      alert(
+        "❌ Unable to get GPS.\n\nPlease check location settings."
+      );
 
-    console.log("📡 DUTY RESULT:", res);
+      resetButton();
 
-    // ================= VIEW ONLY MODE =================
-    if (!res || res.active !== true) {
+      window.gpsRetryCount = 0;
 
-      console.warn("👁 VIEW ONLY MODE → location shown only");
-
-      if (typeof showToast === "function") {
-        showToast("👁 View only mode (Not on duty)", "warning");
-      }
-
-      console.groupEnd();
       return;
     }
 
-    // ================= ACTIVE DUTY =================
-    console.log("🟢 ACTIVE DUTY → sending GPS");
-
-    lastGPSSentTime = now;
-
-    const gpsData = {
-      id: `${leaderClean}_${lat}_${lng}_${Math.floor(now/60000)}`, // 🔥 UNIQUE ID
-      name: leaderName,
-      cleanName: leaderClean,
-      phone: window.userProfile.phone || "",
-      source: "MANUAL_APP",
-      lat: lat,
-      lon: lng,
-      time: new Date().toISOString()
-    };
-
-    console.log("📤 FINAL GPS PAYLOAD:", JSON.stringify(gpsData, null, 2));
-
-    console.log("🌐 Calling SAVE_PATROL_GPS...");
-
-    callBackend("SAVE_PATROL_GPS", gpsData)
-
-    .then(res => {
-
-      console.log("📡 BACKEND RESPONSE:", res);
-
-      if (!res) {
-        console.warn("📴 NULL response → offline save");
-        saveOfflineGPS(gpsData);
-      }
-      else if (res.status !== "ok") {
-        console.warn("❌ Backend rejected:", res);
-        saveOfflineGPS(gpsData);
-      }
-      else {
-        console.log("✅ GPS saved in sheet successfully");
-
-        if (typeof showToast === "function") {
-          showToast("✅ GPS saved", "success");
-        }
-      }
-
-      console.groupEnd();
-
-    })
-
-    .catch(err => {
-
-      console.error("❌ Backend call failed:", err);
-
-      console.warn("📴 Saving offline due to error");
-      saveOfflineGPS(gpsData);
-
-      console.groupEnd();
-
-    });
-
-  })
-
-  .catch(err => {
-    console.error("❌ Duty check failed:", err);
-    console.groupEnd();
-  });
-}// ❌ LOCATION ERROR
-map.on('locationerror', function (e) {
-
-  console.error(
-    "❌ Location error:",
-    e.message
-  );
-
-  // ============================================================
-  // 🔥 RETRY INSTEAD OF FAILING IMMEDIATELY
-  // ============================================================
-  setTimeout(() => {
+    // ============================================
+    // 🔥 INCREMENT
+    // ============================================
+    window.gpsRetryCount++;
 
     console.log(
-      "🔄 Retrying GPS..."
+
+      "🔄 Retrying GPS...",
+
+      window.gpsRetryCount
     );
 
-    map.locate({
+    // ============================================
+    // 🔥 RETRY
+    // ============================================
+    setTimeout(() => {
 
-      setView: true,
+      map.locate({
 
-      maxZoom: 19,
+        setView: true,
 
-      enableHighAccuracy: true,
+        maxZoom: 19,
 
-      timeout: 30000,
+        enableHighAccuracy: true,
 
-      maximumAge: 0,
+        timeout: 30000,
 
-      watch: true
-    });
+        maximumAge: 0,
 
-  }, 3000);
-});    
-    /* 🔁 CENTER MAP */
-    function centerMap() {
-      map.setView([26.561, 89.507], 14);
+        watch: true
+      });
+
+    }, 3000);
+  }
+);
+
+// ============================================
+// ✅ RESET RETRIES ON SUCCESS
+// ============================================
+map.on(
+
+  "locationfound",
+
+  function(){
+
+    window.gpsRetryCount = 0;
+  }
+);    /* 🔁 CENTER MAP */
+   function centerMap(){
+
+  try {
+
+    // ============================================
+    // 🔥 RANGE LAYER AVAILABLE
+    // ============================================
+    if(
+
+      window.rangeLayer &&
+
+      window.rangeLayer.getBounds &&
+
+      window.rangeLayer.getBounds().isValid()
+
+    ){
+
+      map.fitBounds(
+
+        window.rangeLayer.getBounds(),
+
+        {
+          padding: [20, 20]
+        }
+
+      );
+
+      console.log(
+        "🗺 Centered to GIS bounds"
+      );
+
+      return;
     }
 
-    /* ============================================================
+    // ============================================
+    // 🔥 FALLBACK → MY GPS
+    // ============================================
+    if(
+
+      window.latestGps &&
+
+      window.latestGps.lat &&
+
+      window.latestGps.lng
+
+    ){
+
+      map.setView(
+
+        [
+          window.latestGps.lat,
+          window.latestGps.lng
+        ],
+
+        17
+      );
+
+      console.log(
+        "📍 Centered to latest GPS"
+      );
+
+      return;
+    }
+
+    // ============================================
+    // 🔥 FINAL FALLBACK
+    // ============================================
+    map.setView(
+
+      [26.561, 89.507],
+
+      12
+    );
+
+    console.log(
+      "🌍 Default center used"
+    );
+
+  }
+
+  catch(e){
+
+    console.warn(
+      "⚠ centerMap failed:",
+      e
+    );
+  }
+}   /* ============================================================
        🧱 BLOCK 3 → LAYERS DEFINITIONS
     ============================================================ */
 
