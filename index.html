@@ -1659,9 +1659,7 @@ poly.on(
 // ==========================================
 // 🔥 ADD TO ROOT LAYER
 // ==========================================
-poly.addTo(
-  window.gridRootLayer
-);
+
       // ======================================
       // 🔥 RESTORE VISITED STYLE
       // ======================================
@@ -1847,274 +1845,7 @@ function resetGridStyles(){
 // 🔥 REPAINT GRID FROM CACHE
 // =====================================================
 
-function paintVisitedGrid(id){
-
-  try {
-
-    // ==========================================
-    // 🔥 CELL LOOKUP
-    // ==========================================
-    const cell =
-      window.gridIndex?.[id];
-
-    // ==========================================
-    // 🔥 SAFETY
-    // ==========================================
-    if(
-
-      !cell ||
-
-      !cell.poly
-
-    ){
-      return;
-    }
-
-    // ==========================================
-    // 🔥 MAP SAFETY
-    // ==========================================
-    if(
-
-      !window.gridRootLayer ||
-
-      !window.gridRootLayer.hasLayer(
-        cell.poly
-      )
-
-    ){
-      return;
-    }
-
-    // ==========================================
-    // 🔥 SKIP DUPLICATE RENDER
-    // ==========================================
-    if(cell.rendered){
-      return;
-    }
-
-    // ==========================================
-    // 🔥 VISUAL FLAGS
-    // ==========================================
-    cell.rendered = true;
-
-    cell.visited = true;
-
-    // ==========================================
-    // 🔥 INCREMENTAL STYLE UPDATE
-    // ==========================================
-    cell.poly.setStyle({
-
-      fillColor: "#00ff88",
-
-      fillOpacity: 0.55,
-
-      color: "#00cc66",
-
-      opacity: 0.95,
-
-      weight: 0.7
-    });
-
-    // ==========================================
-    // 🔥 OPTIONAL FRONT LAYER
-    // ==========================================
-    try {
-
-      cell.poly.bringToFront();
-
-    } catch(e){}
-
-    // ==========================================
-    // 🔥 DEBUG
-    // ==========================================
-    if(GRID_DEBUG){
-
-      console.log(
-        "🟩 Grid painted:",
-        id
-      );
-    }
-
-  }
-
-  catch(e){
-
-    console.error(
-      "❌ paintVisitedGrid:",
-      e
-    );
-  }
-} 
-    
-    
-    function repaintCoverageGrid(
-
-  mode = "today",
-
-  beat = "ALL"
-
-){
-
-  try {
-
-    // ==========================================
-    // 🔥 GRID READY CHECK
-    // ==========================================
-    if(
-
-      !window.gridIndex ||
-
-      !Object.keys(
-        window.gridIndex
-      ).length
-
-    ){
-
-      console.warn(
-        "⚠ Grid index missing"
-      );
-
-      return;
-    }
-
-    // ==========================================
-    // 🔥 RESET STYLES
-    // ==========================================
-    resetGridStyles();
-
-    // ==========================================
-    // 🔥 STORE ACTIVE STATE
-    // ==========================================
-    window.currentCoverageMode =
-      mode;
-
-    window.currentBeat =
-      beat;
-
-    // ==========================================
-    // 🔥 SELECT CACHE
-    // ==========================================
-    let current = {};
-
-    if(mode === "today"){
-
-      current =
-        window.gridCache?.today || {};
-    }
-
-    else if(mode === "current"){
-
-      current =
-        window.gridCache?.current || {};
-    }
-
-    else if(mode === "prev"){
-
-      current =
-        window.gridCache?.prev || {};
-    }
-
-    // ==========================================
-    // 🔥 EMPTY CACHE SAFETY
-    // ==========================================
-    if(
-
-      !current ||
-
-      !Object.keys(current).length
-
-    ){
-
-      if(GRID_DEBUG){
-
-        console.log(
-          "⚠ No coverage cache:",
-          mode
-        );
-      }
-
-      return;
-    }
-
-    // ==========================================
-    // 🔥 REPAINT LOOP
-    // ==========================================
-    let painted = 0;
-
-    Object.keys(current)
-      .forEach(id => {
-
-      // ======================================
-      // 🔥 INVALID ENTRY
-      // ======================================
-      if(!current[id]){
-        return;
-      }
-
-      // ======================================
-      // 🔥 CELL LOOKUP
-      // ======================================
-      const cell =
-        window.gridIndex?.[id];
-
-      if(!cell){
-        return;
-      }
-
-      // ======================================
-      // 🔥 BEAT FILTER
-      // ======================================
-      if(
-
-        beat !== "ALL" &&
-
-        cell.beat !== beat
-
-      ){
-        return;
-      }
-
-      // ======================================
-      // 🔥 FORCE REPAINT
-      // ======================================
-      cell.rendered = false;
-
-      paintVisitedGrid(id);
-
-      painted++;
-    });
-
-    // ==========================================
-    // 🔥 DEBUG
-    // ==========================================
-    if(GRID_DEBUG){
-
-      console.log(
-
-        "🎨 Coverage repainted →",
-
-        "Mode:",
-        mode,
-
-        "| Beat:",
-        beat,
-
-        "| Painted:",
-        painted
-      );
-    }
-
-  }
-
-  catch(e){
-
-    console.error(
-
-      "❌ repaintCoverageGrid:",
-      e
-    );
-  }
-}const DEBUG = false;
+const DEBUG = false;
 
 function safeBackend(action, payload = {}) {
 
@@ -7155,22 +6886,35 @@ async function showCoveragePanel(){
       )?.value || "ALL";
 
     // ==========================================
-    // 🔥 STORE ACTIVE BEAT
+    // 🔥 STORE UI STATE
     // ==========================================
-    window.currentBeat = beat;
+    window.currentBeat =
+      beat;
+
+    window.currentCoverageMode =
+      mode;
 
     // ==========================================
-    // 🔥 GRID VISIBLE
+    // 🔥 ENABLE GRID
     // ==========================================
-    window.gridVisible = true;
+    window.gridVisible =
+      true;
 
     // ==========================================
-    // 🔥 BUILD GRID ONLY NOW
+    // 🔥 BUILD GRID ONLY ONCE
     // ==========================================
     if(
+
+      !window.__gridReady &&
+
       typeof ensureGridReady
       === "function"
+
     ){
+
+      console.log(
+        "🔲 Building grid..."
+      );
 
       await ensureGridReady();
     }
@@ -7188,7 +6932,7 @@ async function showCoveragePanel(){
     }
 
     // ==========================================
-    // 🔥 TODAY REFRESH
+    // 🔥 REFRESH TODAY CACHE
     // ==========================================
     if(
 
@@ -7203,7 +6947,7 @@ async function showCoveragePanel(){
     }
 
     // ==========================================
-    // 🔥 CURRENT REFRESH
+    // 🔥 REFRESH CURRENT CACHE
     // ==========================================
     else if(
 
@@ -7218,9 +6962,41 @@ async function showCoveragePanel(){
     }
 
     // ==========================================
-    // 🔥 REPAINT
+    // 🔥 REFRESH PREV CACHE
     // ==========================================
-    repaintCoverageGrid(
+    else if(
+
+      mode === "prev" &&
+
+      typeof updatePrevMonthCache
+      === "function"
+
+    ){
+
+      updatePrevMonthCache();
+    }
+
+    // ==========================================
+    // 🔥 ENSURE ROOT LAYER
+    // ==========================================
+    if(
+
+      window.gridRootLayer &&
+
+      !map.hasLayer(
+        window.gridRootLayer
+      )
+
+    ){
+
+      window.gridRootLayer
+        .addTo(map);
+    }
+
+    // ==========================================
+    // 🔥 RENDER GRID
+    // ==========================================
+    renderGrid(
       mode,
       beat
     );
@@ -7235,6 +7011,11 @@ async function showCoveragePanel(){
     );
   }
 }
+
+
+// ======================================================
+// 🔴 CLOSE COVERAGE PANEL
+// ======================================================
 function closeCoveragePanel(){
 
   try {
@@ -7255,23 +7036,45 @@ function closeCoveragePanel(){
     }
 
     // ==========================================
-    // 🔥 GRID HIDDEN
+    // 🔥 GRID HIDDEN FLAG
     // ==========================================
     window.gridVisible =
       false;
 
     // ==========================================
-    // 🔥 OPTIONAL GRID CLEAR
+    // 🔥 HIDE ROOT LAYER
+    // ❌ DO NOT clearLayers()
+    // ❌ DO NOT destroy polygons
     // ==========================================
-    if(window.gridRootLayer){
+    if(
 
-      try {
+      window.gridRootLayer &&
 
+      map.hasLayer(
         window.gridRootLayer
-          .clearLayers();
+      )
 
-      } catch(e){}
+    ){
+
+      map.removeLayer(
+        window.gridRootLayer
+      );
     }
+
+    // ==========================================
+    // 🔥 RESET RENDER FLAGS
+    // ==========================================
+    Object.values(
+
+      window.gridIndex || {}
+
+    ).forEach(cell => {
+
+      if(cell){
+
+        cell.rendered = false;
+      }
+    });
 
     // ==========================================
     // 🔥 DEBUG
@@ -7290,7 +7093,12 @@ function closeCoveragePanel(){
     );
   }
 }
-    function toggleCoveragePanel(){
+
+
+// ======================================================
+// 🔄 TOGGLE COVERAGE PANEL
+// ======================================================
+function toggleCoveragePanel(){
 
   try {
 
@@ -7352,8 +7160,7 @@ function closeCoveragePanel(){
       e
     );
   }
-}
-/* ============================================================
+}/* ============================================================
    🟩 GRID CACHE (LIGHTWEIGHT ONLY)
 ============================================================ */
 window.gridCache = window.gridCache || {
@@ -7870,442 +7677,6 @@ function saveToBackendDebounced(){
 // 🎯 ASSIGN GRID → BEAT (FINAL STABLE - NO GAP / NO OVERFLOW)
 // ======================================================
     
-function assignGridToBeat(rangeLayer){
-
-  console.log("🎯 Assigning grid to beats (FINAL CORRECT)...");
-
-  try {
-
-    if(typeof turf === "undefined"){
-      console.error("❌ Turf not loaded");
-      return;
-    }
-
-    let polygons = [];
-
-    function extract(layer){
-
-      if (!layer) return;
-
-      // 🔥 traverse all nested layers
-      if (layer.eachLayer) {
-        layer.eachLayer(extract);
-      }
-
-      // 🔥 polygon detection
-      if (layer.getLatLngs && typeof layer.getLatLngs === "function") {
-
-        const p = layer.feature?.properties || {};
-        const rawID = (p.ID || p.Name || "").toUpperCase().trim();
-
-        let latlngs;
-
-        try {
-          latlngs = layer.getLatLngs();
-        } catch(e){
-          return;
-        }
-
-        if(!latlngs || !latlngs.length) return;
-
-        // 🔥 normalize Polygon + MultiPolygon
-        const rings = Array.isArray(latlngs[0][0]) ? latlngs.flat(1) : latlngs;
-
-        rings.forEach(ring => {
-
-          if(!ring || ring.length < 3) return;
-
-          let coords = [];
-
-          for(let pt of ring){
-            if(!pt || pt.lat == null || pt.lng == null) continue;
-            coords.push([pt.lng, pt.lat]); // 🔥 Turf format
-          }
-
-          if(coords.length < 3) return;
-
-          // 🔥 close ring
-          const f = coords[0];
-          const l = coords[coords.length - 1];
-          if(f[0] !== l[0] || f[1] !== l[1]){
-            coords.push(f);
-          }
-
-          try {
-
-            const comp = (convertCompartment(rawID) || "")
-              .replace(/\s+/g," ")
-              .trim();
-
-            polygons.push({
-              comp,
-              turfPoly: turf.polygon([coords])
-            });
-
-          } catch(e){}
-        });
-      }
-    }
-
-    extract(rangeLayer);
-
-    if(!polygons.length){
-      console.warn("⚠ No polygons");
-      return;
-    }
-
-    console.log("📐 Polygons:", polygons.length);
-
-    // ==========================================
-    // 🔥 GRID LOOP
-    // ==========================================
-    Object.values(window.gridIndex || {}).forEach(cell => {
-
-      if(!cell.center || !cell.coords){
-        cell.beat = "UNKNOWN";
-        return;
-      }
-
-      const pt = turf.point([cell.center.lng, cell.center.lat]);
-
-      let bestBeat = "UNKNOWN";
-
-      // 🔥 FIX: convert coords to [lng, lat]
-      let cellPoly = null;
-      try {
-        const fixedCoords = cell.coords.map(p => [p[1], p[0]]);
-        cellPoly = turf.polygon([fixedCoords]);
-      } catch(e){}
-
-      for(let poly of polygons){
-
-        if(!poly.comp) continue;
-
-        let beat = null;
-
-        // 🔥 robust matching
-        for(let key in window.beatMap){
-
-          const match = window.beatMap[key].some(v =>
-            v.replace(/\s+/g," ").trim() === poly.comp
-          );
-
-          if(match){
-            beat = key;
-            break;
-          }
-        }
-
-        if(!beat) continue;
-
-        try {
-
-          // 🔥 PRIMARY: center check
-          if(turf.booleanPointInPolygon(pt, poly.turfPoly)){
-            bestBeat = beat;
-            break;
-          }
-
-          // 🔥 FALLBACK: edge intersection
-          if(cellPoly && turf.booleanIntersects(cellPoly, poly.turfPoly)){
-            bestBeat = beat;
-            break;
-          }
-
-        } catch(e){}
-      }
-
-      cell.beat = bestBeat;
-
-    });
-
-    console.log("✅ Beat mapping COMPLETE");
-
-  } catch(e){
-    console.error("❌ assignGridToBeat error:", e);
-  }
-}
-   function renderGrid(
-
-  mode = "today",
-
-  beat = "ALL"
-
-){
-
-  try {
-
-    // ==========================================
-    // 🔥 SAVE CURRENT UI STATE
-    // ==========================================
-    window.currentCoverageMode =
-      mode;
-
-    window.currentBeat =
-      beat;
-
-    // ==========================================
-    // 🔥 GRID READY
-    // ==========================================
-    if(
-
-      !window.gridIndex ||
-
-      !window.gridRootLayer
-
-    ){
-
-      console.warn(
-        "⚠ Grid not ready"
-      );
-
-      return;
-    }
-
-    // ==========================================
-    // 🔥 GRID HIDDEN
-    // ==========================================
-    if(
-      window.gridVisible !== true
-    ){
-
-      console.log(
-        "⏸ Grid hidden"
-      );
-
-      return;
-    }
-
-    // ==========================================
-    // 🔥 ACTIVE CACHE
-    // ==========================================
-    let activeCache = {};
-
-    // TODAY
-    if(mode === "today"){
-
-      activeCache =
-
-        window.gridCache?.today
-
-        || {};
-    }
-
-    // CURRENT MONTH
-    else if(
-      mode === "current"
-    ){
-
-      activeCache =
-
-        window.gridCache?.current
-
-        || {};
-    }
-
-    // PREVIOUS MONTH
-    else if(
-      mode === "previous"
-    ){
-
-      activeCache =
-
-        window.gridCache?.prev
-
-        ||
-
-        window.gridCache?.previous
-
-        || {};
-    }
-
-    // ==========================================
-    // 🔥 LOOP CELLS
-    // ==========================================
-    Object.values(
-
-      window.gridIndex || {}
-
-    ).forEach(cell => {
-
-      // ========================================
-      // 🔥 INVALID CELL
-      // ========================================
-      if(
-
-        !cell ||
-
-        !cell.poly
-
-      ){
-        return;
-      }
-
-      // ========================================
-      // 🔥 BEAT FILTER
-      // ========================================
-      const visible =
-
-        beat === "ALL"
-
-        ||
-
-        String(cell.beat)
-          .trim()
-          .toUpperCase()
-
-        ===
-
-        String(beat)
-          .trim()
-          .toUpperCase();
-
-      // ========================================
-      // 🔥 HIDE GRID
-      // ========================================
-      if(!visible){
-
-        if(cell.rendered){
-
-          try {
-
-            window.gridRootLayer
-              .removeLayer(
-                cell.poly
-              );
-
-          } catch(e){}
-
-          cell.rendered = false;
-        }
-
-        return;
-      }
-
-      // ========================================
-      // 🔥 SHOW GRID
-      // ========================================
-      if(!cell.rendered){
-
-        try {
-
-          cell.poly.addTo(
-            window.gridRootLayer
-          );
-
-          cell.rendered = true;
-
-        } catch(e){
-
-          console.warn(
-            "⚠ Grid add failed:",
-            cell.id
-          );
-        }
-      }
-
-      // ========================================
-      // 🔥 VISITED
-      // ========================================
-      const visited =
-
-        activeCache[
-          cell.id
-        ];
-
-      // ========================================
-      // 🔥 VISITED STYLE
-      // ========================================
-      if(visited){
-
-        // ======================================
-        // 🔥 SKIP SAME STYLE
-        // ======================================
-        if(
-          cell.__painted === true
-        ){
-          return;
-        }
-
-        cell.__painted = true;
-
-        try {
-
-          cell.poly.setStyle({
-
-            fillColor:"#00ff66",
-
-            fillOpacity:0.55,
-
-            color:"#00cc55",
-
-            weight:0.7,
-
-            opacity:0.9
-
-          });
-
-        } catch(e){}
-      }
-
-      // ========================================
-      // 🔥 UNVISITED STYLE
-      // ========================================
-      else {
-
-        // ======================================
-        // 🔥 SKIP SAME STYLE
-        // ======================================
-        if(
-          cell.__painted === false
-        ){
-          return;
-        }
-
-        cell.__painted = false;
-
-        try {
-
-          cell.poly.setStyle({
-
-            fillColor:"#111",
-
-            fillOpacity:0.04,
-
-            color:"#333",
-
-            weight:0.4,
-
-            opacity:0.35
-
-          });
-
-        } catch(e){}
-      }
-    });
-
-    console.log(
-
-      "✅ renderGrid:",
-
-      {
-
-        mode,
-
-        beat
-      }
-    );
-
-  } catch(e){
-
-    console.error(
-
-      "❌ renderGrid crash:",
-
-      e
-    );
-  }
-}  
     
   // ======================================================
 // 🧠 GRID CACHE (LIVE + MONTH)
@@ -12178,6 +11549,672 @@ window.gridIndex[id] =
     console.error("❌ buildGrid crash:", e);
   }
 }
+function assignGridToBeat(rangeLayer){
+
+  console.log("🎯 Assigning grid to beats (FINAL CORRECT)...");
+
+  try {
+
+    if(typeof turf === "undefined"){
+      console.error("❌ Turf not loaded");
+      return;
+    }
+
+    let polygons = [];
+
+    function extract(layer){
+
+      if (!layer) return;
+
+      // 🔥 traverse all nested layers
+      if (layer.eachLayer) {
+        layer.eachLayer(extract);
+      }
+
+      // 🔥 polygon detection
+      if (layer.getLatLngs && typeof layer.getLatLngs === "function") {
+
+        const p = layer.feature?.properties || {};
+        const rawID = (p.ID || p.Name || "").toUpperCase().trim();
+
+        let latlngs;
+
+        try {
+          latlngs = layer.getLatLngs();
+        } catch(e){
+          return;
+        }
+
+        if(!latlngs || !latlngs.length) return;
+
+        // 🔥 normalize Polygon + MultiPolygon
+        const rings = Array.isArray(latlngs[0][0]) ? latlngs.flat(1) : latlngs;
+
+        rings.forEach(ring => {
+
+          if(!ring || ring.length < 3) return;
+
+          let coords = [];
+
+          for(let pt of ring){
+            if(!pt || pt.lat == null || pt.lng == null) continue;
+            coords.push([pt.lng, pt.lat]); // 🔥 Turf format
+          }
+
+          if(coords.length < 3) return;
+
+          // 🔥 close ring
+          const f = coords[0];
+          const l = coords[coords.length - 1];
+          if(f[0] !== l[0] || f[1] !== l[1]){
+            coords.push(f);
+          }
+
+          try {
+
+            const comp = (convertCompartment(rawID) || "")
+              .replace(/\s+/g," ")
+              .trim();
+
+            polygons.push({
+              comp,
+              turfPoly: turf.polygon([coords])
+            });
+
+          } catch(e){}
+        });
+      }
+    }
+
+    extract(rangeLayer);
+
+    if(!polygons.length){
+      console.warn("⚠ No polygons");
+      return;
+    }
+
+    console.log("📐 Polygons:", polygons.length);
+
+    // ==========================================
+    // 🔥 GRID LOOP
+    // ==========================================
+    Object.values(window.gridIndex || {}).forEach(cell => {
+
+      if(!cell.center || !cell.coords){
+        cell.beat = "UNKNOWN";
+        return;
+      }
+
+      const pt = turf.point([cell.center.lng, cell.center.lat]);
+
+      let bestBeat = "UNKNOWN";
+
+      // 🔥 FIX: convert coords to [lng, lat]
+      let cellPoly = null;
+      try {
+        const fixedCoords = cell.coords.map(p => [p[1], p[0]]);
+        cellPoly = turf.polygon([fixedCoords]);
+      } catch(e){}
+
+      for(let poly of polygons){
+
+        if(!poly.comp) continue;
+
+        let beat = null;
+
+        // 🔥 robust matching
+        for(let key in window.beatMap){
+
+          const match = window.beatMap[key].some(v =>
+            v.replace(/\s+/g," ").trim() === poly.comp
+          );
+
+          if(match){
+            beat = key;
+            break;
+          }
+        }
+
+        if(!beat) continue;
+
+        try {
+
+          // 🔥 PRIMARY: center check
+          if(turf.booleanPointInPolygon(pt, poly.turfPoly)){
+            bestBeat = beat;
+            break;
+          }
+
+          // 🔥 FALLBACK: edge intersection
+          if(cellPoly && turf.booleanIntersects(cellPoly, poly.turfPoly)){
+            bestBeat = beat;
+            break;
+          }
+
+        } catch(e){}
+      }
+
+      cell.beat = bestBeat;
+
+    });
+
+    console.log("✅ Beat mapping COMPLETE");
+
+  } catch(e){
+    console.error("❌ assignGridToBeat error:", e);
+  }
+}
+  function renderGrid(
+
+  mode = "today",
+
+  beat = "ALL"
+
+){
+
+  try {
+
+    // ==========================================
+    // 🔥 SAVE UI STATE
+    // ==========================================
+    window.currentCoverageMode =
+      mode;
+
+    window.currentBeat =
+      beat;
+
+    // ==========================================
+    // 🔥 READY
+    // ==========================================
+    if(
+
+      !window.gridIndex ||
+
+      !window.gridRootLayer
+
+    ){
+
+      console.warn(
+        "⚠ Grid not ready"
+      );
+
+      return;
+    }
+
+    // ==========================================
+    // 🔥 HIDDEN
+    // ==========================================
+    if(
+      window.gridVisible !== true
+    ){
+      return;
+    }
+
+    // ==========================================
+    // 🔥 CACHE
+    // ==========================================
+    let activeCache = {};
+
+    if(mode === "today"){
+
+      activeCache =
+        window.gridCache?.today
+        || {};
+    }
+
+    else if(mode === "current"){
+
+      activeCache =
+        window.gridCache?.current
+        || {};
+    }
+
+    else if(mode === "prev"){
+
+      activeCache =
+        window.gridCache?.prev
+        || {};
+    }
+
+    // ==========================================
+    // 🔥 LOOP CELLS
+    // ==========================================
+    Object.values(
+
+      window.gridIndex || {}
+
+    ).forEach(cell => {
+
+      // ========================================
+      // 🔥 INVALID
+      // ========================================
+      if(
+        !cell ||
+        !cell.poly
+      ){
+        return;
+      }
+
+      // ========================================
+      // 🔥 BEAT FILTER
+      // ========================================
+      const visible =
+
+        beat === "ALL"
+
+        ||
+
+        String(cell.beat)
+          .trim()
+          .toUpperCase()
+
+        ===
+
+        String(beat)
+          .trim()
+          .toUpperCase();
+
+      // ========================================
+      // 🔥 REMOVE HIDDEN
+      // ========================================
+      if(!visible){
+
+        if(cell.rendered){
+
+          try {
+
+            window.gridRootLayer
+              .removeLayer(
+                cell.poly
+              );
+
+          } catch(e){}
+
+          cell.rendered = false;
+        }
+
+        return;
+      }
+
+      // ========================================
+      // 🔥 ADD ONLY WHEN NEEDED
+      // ========================================
+      if(!cell.rendered){
+
+        try {
+
+          cell.poly.addTo(
+            window.gridRootLayer
+          );
+
+          cell.rendered = true;
+
+        } catch(e){}
+      }
+
+      // ========================================
+      // 🔥 VISITED
+      // ========================================
+      const visited =
+
+        activeCache[
+          cell.id
+        ];
+
+      // ========================================
+      // 🔥 VISITED STYLE
+      // ========================================
+      if(visited){
+
+        // SKIP SAME STYLE
+        if(
+          cell.__painted === true
+        ){
+          return;
+        }
+
+        cell.__painted = true;
+
+        try {
+
+          cell.poly.setStyle({
+
+            fillColor:"#00ff66",
+
+            fillOpacity:0.55,
+
+            color:"#00cc55",
+
+            weight:0.7,
+
+            opacity:0.9
+
+          });
+
+        } catch(e){}
+      }
+
+      // ========================================
+      // 🔥 UNVISITED STYLE
+      // ========================================
+      else {
+
+        if(
+          cell.__painted === false
+        ){
+          return;
+        }
+
+        cell.__painted = false;
+
+        try {
+
+          cell.poly.setStyle({
+
+            fillColor:"#111",
+
+            fillOpacity:0.03,
+
+            color:"#333",
+
+            weight:0.35,
+
+            opacity:0.25
+
+          });
+
+        } catch(e){}
+      }
+    });
+
+    console.log(
+
+      "✅ renderGrid:",
+
+      mode,
+
+      beat
+    );
+
+  } catch(e){
+
+    console.error(
+      "❌ renderGrid crash:",
+      e
+    );
+  }
+} 
+
+function paintVisitedGrid(id){
+
+  try {
+
+    // ==========================================
+    // 🔥 CELL LOOKUP
+    // ==========================================
+    const cell =
+      window.gridIndex?.[id];
+
+    // ==========================================
+    // 🔥 SAFETY
+    // ==========================================
+    if(
+
+      !cell ||
+
+      !cell.poly
+
+    ){
+      return;
+    }
+
+    // ==========================================
+    // 🔥 MAP SAFETY
+    // ==========================================
+    if(
+
+      !window.gridRootLayer ||
+
+      !window.gridRootLayer.hasLayer(
+        cell.poly
+      )
+
+    ){
+      return;
+    }
+
+    // ==========================================
+    // 🔥 SKIP DUPLICATE RENDER
+    // ==========================================
+    if(cell.rendered){
+      return;
+    }
+
+    // ==========================================
+    // 🔥 VISUAL FLAGS
+    // ==========================================
+    cell.rendered = true;
+
+    cell.visited = true;
+
+    // ==========================================
+    // 🔥 INCREMENTAL STYLE UPDATE
+    // ==========================================
+    cell.poly.setStyle({
+
+      fillColor: "#00ff88",
+
+      fillOpacity: 0.55,
+
+      color: "#00cc66",
+
+      opacity: 0.95,
+
+      weight: 0.7
+    });
+
+    // ==========================================
+    // 🔥 OPTIONAL FRONT LAYER
+    // ==========================================
+    try {
+
+      cell.poly.bringToFront();
+
+    } catch(e){}
+
+    // ==========================================
+    // 🔥 DEBUG
+    // ==========================================
+    if(GRID_DEBUG){
+
+      console.log(
+        "🟩 Grid painted:",
+        id
+      );
+    }
+
+  }
+
+  catch(e){
+
+    console.error(
+      "❌ paintVisitedGrid:",
+      e
+    );
+  }
+} 
+    
+    
+    function repaintCoverageGrid(
+
+  mode = "today",
+
+  beat = "ALL"
+
+){
+
+  try {
+
+    // ==========================================
+    // 🔥 GRID READY CHECK
+    // ==========================================
+    if(
+
+      !window.gridIndex ||
+
+      !Object.keys(
+        window.gridIndex
+      ).length
+
+    ){
+
+      console.warn(
+        "⚠ Grid index missing"
+      );
+
+      return;
+    }
+
+    // ==========================================
+    // 🔥 RESET STYLES
+    // ==========================================
+    resetGridStyles();
+
+    // ==========================================
+    // 🔥 STORE ACTIVE STATE
+    // ==========================================
+    window.currentCoverageMode =
+      mode;
+
+    window.currentBeat =
+      beat;
+
+    // ==========================================
+    // 🔥 SELECT CACHE
+    // ==========================================
+    let current = {};
+
+    if(mode === "today"){
+
+      current =
+        window.gridCache?.today || {};
+    }
+
+    else if(mode === "current"){
+
+      current =
+        window.gridCache?.current || {};
+    }
+
+    else if(mode === "prev"){
+
+      current =
+        window.gridCache?.prev || {};
+    }
+
+    // ==========================================
+    // 🔥 EMPTY CACHE SAFETY
+    // ==========================================
+    if(
+
+      !current ||
+
+      !Object.keys(current).length
+
+    ){
+
+      if(GRID_DEBUG){
+
+        console.log(
+          "⚠ No coverage cache:",
+          mode
+        );
+      }
+
+      return;
+    }
+
+    // ==========================================
+    // 🔥 REPAINT LOOP
+    // ==========================================
+    let painted = 0;
+
+    Object.keys(current)
+      .forEach(id => {
+
+      // ======================================
+      // 🔥 INVALID ENTRY
+      // ======================================
+      if(!current[id]){
+        return;
+      }
+
+      // ======================================
+      // 🔥 CELL LOOKUP
+      // ======================================
+      const cell =
+        window.gridIndex?.[id];
+
+      if(!cell){
+        return;
+      }
+
+      // ======================================
+      // 🔥 BEAT FILTER
+      // ======================================
+      if(
+
+        beat !== "ALL" &&
+
+        cell.beat !== beat
+
+      ){
+        return;
+      }
+
+      // ======================================
+      // 🔥 FORCE REPAINT
+      // ======================================
+      cell.rendered = false;
+
+      paintVisitedGrid(id);
+
+      painted++;
+    });
+
+    // ==========================================
+    // 🔥 DEBUG
+    // ==========================================
+    if(GRID_DEBUG){
+
+      console.log(
+
+        "🎨 Coverage repainted →",
+
+        "Mode:",
+        mode,
+
+        "| Beat:",
+        beat,
+
+        "| Painted:",
+        painted
+      );
+    }
+
+  }
+
+  catch(e){
+
+    console.error(
+
+      "❌ repaintCoverageGrid:",
+      e
+    );
+  }
+}
+
+    
     function clearKMLPreview(){
 
   const btn = document.getElementById("clearKMLBtn");
@@ -17441,76 +17478,7 @@ function refreshAll() {
       console.error("❌ River load error:", err);
     });
 }
-    function load3MonthSummary(){
-
-  console.log("🚀 Loading 3 Month Summary...");
-
-  callBackend("getMultiMonthSummary")
-    .then(function(data){
-
-      console.log("📦 Summary Response:", data);
-
-      if(!data){
-        alert("❌ No data received");
-        return;
-      }
-
-      show3MonthSummary(data);
-
-    })
-    .catch(function(err){
-      console.error("❌ Summary error:", err);
-      alert("❌ Failed to load summary");
-    });
-}
-function show3MonthSummary(data){
-
-  function block(title, d){
-    if(!d) return "";
-
-    return `
-    <div style="margin-bottom:10px">
-
-      <b>${title}</b><br>
-
-      📡 ${d.totalTracks || 0} tracks<br>
-      📏 ${d.totalDistance || 0} km<br>
-      🟩 ${d.totalArea || 0} ha<br>
-      📊 ${d.coverage || 0}%<br>
-
-      <div style="font-size:11px;margin-top:4px">
-        ${Array.isArray(d.combined) ? d.combined.join("<br>") : ""}
-      </div>
-
-    </div>`;
-  }
-
-  const cmp = data?.comparison?.lastVsPrevious || {};
-
-  const html = `
-  <div style="font-family:Segoe UI;max-height:500px;overflow:auto">
-
-    <h3>📊 3-Month Summary</h3>
-
-    ${block("🟢 Current Month", data.current)}
-    ${block("🟡 Last Month", data.last)}
-    ${block("🔵 Previous Month", data.previous)}
-
-    <hr>
-
-    <b>📈 Last vs Previous</b><br>
-    Tracks: ${cmp.tracksDiff || 0}<br>
-    Distance: ${cmp.distanceDiff || 0} km<br>
-    Area: ${cmp.areaDiff || 0} ha<br>
-    Coverage: ${cmp.coverageDiff || 0}%<br>
-
-  </div>`;
-
-  L.popup()
-    .setLatLng(map.getCenter())
-    .setContent(html)
-    .openOn(map);
-}    /* ============================================================
+   /* ============================================================
        🎛 LAYER CONTROL (CLEAN + ORDERED)
     ============================================================ */
     /* ============================================================
@@ -17534,7 +17502,8 @@ window.gridRootLayer =
 
 /* ============================================================
    🎛 LAYER CONTROL (CLEAN VERSION)
-============================================================ */var layerControl = L.control.layers(
+============================================================ */
+    var layerControl = L.control.layers(
 
   // =====================================================
   // 🛰 BASE MAPS
@@ -17590,17 +17559,29 @@ window.gridVisible = false;
 /* ============================================================
    ⚡ OVERLAY ADD (CLEANED)
 ============================================================ */
-map.on('overlayadd', function (e) {
+/* ============================================================
+   ⚡ OVERLAY ADD (OPTIMIZED)
+============================================================ */
+map.on('overlayadd', async function (e) {
 
   try {
 
-    if (!e || !e.name) {
+    // ==========================================
+    // 🔥 SAFETY
+    // ==========================================
+    if (
+      !e ||
+      !e.name
+    ){
       return;
     }
 
     const layerName =
       String(e.name);
 
+    // ==========================================
+    // 🔥 DEBUG
+    // ==========================================
     if(GRID_DEBUG){
 
       console.log(
@@ -17612,7 +17593,9 @@ map.on('overlayadd', function (e) {
     /* ============================================================
        👮 STAFF
     ============================================================ */
-    if(layerName === "👮 Staff"){
+    if(
+      layerName === "👮 Staff"
+    ){
 
       loadStaff?.();
 
@@ -17622,7 +17605,9 @@ map.on('overlayadd', function (e) {
     /* ============================================================
        🌱 PLANTATION
     ============================================================ */
-    if(layerName === "🌱 Plantation"){
+    if(
+      layerName === "🌱 Plantation"
+    ){
 
       loadPlantationLayer?.();
 
@@ -17631,37 +17616,28 @@ map.on('overlayadd', function (e) {
 
     /* ============================================================
        🟩 COVERAGE GRID
-       PERSISTENT LAYER MODE
+       NEW FAST ARCHITECTURE
     ============================================================ */
-    if(layerName === "🟩 Coverage Grid"){
+    if(
+      layerName === "🟩 Coverage Grid"
+    ){
 
-      if(GRID_DEBUG){
-
-        console.log(
-          "📊 Coverage Grid ON"
-        );
-      }
-
-      // ==========================================
-      // 🔥 ENABLE GRID FLAG
-      // ==========================================
-      window.gridVisible = true;
+      console.log(
+        "📊 Coverage Grid ON"
+      );
 
       // ==========================================
-      // 🔥 SHOW PANEL
+      // 🔥 ENABLE GRID
       // ==========================================
-      showCoveragePanel?.();
+      window.gridVisible =
+        true;
 
       // ==========================================
-      // 🔥 ENSURE ROOT LAYER EXISTS
-      // ==========================================
-      
-
-      // ==========================================
-      // 🔥 RE-ATTACH ROOT LAYER
-      // ❌ DO NOT rebuild polygons
+      // 🔥 ENSURE ROOT LAYER
       // ==========================================
       if(
+
+        window.gridRootLayer &&
 
         !map.hasLayer(
           window.gridRootLayer
@@ -17674,26 +17650,60 @@ map.on('overlayadd', function (e) {
       }
 
       // ==========================================
-      // 🔥 RESET RUNTIME FLAGS
+      // 🔥 BUILD GRID ONLY ONCE
       // ==========================================
-      if(window.gridCellArray){
+      if(
 
-        for(
-          const cell
-          of window.gridCellArray
-        ){
+        !window.__gridReady &&
 
-          if(cell){
+        typeof ensureGridReady
+        === "function"
 
-            cell.rendered = false;
-          }
-        }
+      ){
+
+        console.log(
+          "🔲 Building coverage grid..."
+        );
+
+        await ensureGridReady();
       }
 
       // ==========================================
-      // 🔥 STYLE-ONLY REPAINT
+      // 🔥 GRID READY CHECK
       // ==========================================
-      repaintCoverageGrid(
+      if(!window.__gridReady){
+
+        console.warn(
+          "⚠ Grid not ready"
+        );
+
+        return;
+      }
+
+      // ==========================================
+      // 🔥 RESET RENDER FLAGS
+      // ==========================================
+      Object.values(
+
+        window.gridIndex || {}
+
+      ).forEach(cell => {
+
+        if(cell){
+
+          cell.rendered = false;
+        }
+      });
+
+      // ==========================================
+      // 🔥 SHOW PANEL
+      // ==========================================
+      showCoveragePanel?.();
+
+      // ==========================================
+      // 🔥 RENDER CURRENT STATE
+      // ==========================================
+      renderGrid(
 
         window.currentCoverageMode
         || "today",
@@ -17705,7 +17715,9 @@ map.on('overlayadd', function (e) {
       return;
     }
 
-  } catch (err) {
+  }
+
+  catch(err){
 
     console.error(
       "🔥 overlayadd crash:",
@@ -17716,64 +17728,121 @@ map.on('overlayadd', function (e) {
 
 
 /* ============================================================
-   🧹 OVERLAY REMOVE (CLEANED)
+   🧹 OVERLAY REMOVE (OPTIMIZED)
 ============================================================ */
 map.on('overlayremove', function (e) {
 
-  const name = e.name;
+  try {
 
-  if(GRID_DEBUG){
+    // ==========================================
+    // 🔥 SAFETY
+    // ==========================================
+    if(
+      !e ||
+      !e.name
+    ){
+      return;
+    }
 
-  console.log(
-    "🧹 Layer Disabled:",
-    name
-  );
-}
-  /* 🌱 Plantation */
-  if (name === "🌱 Plantation") {
-    plantationLayer?.clearLayers?.();
+    const name =
+      String(e.name);
+
+    // ==========================================
+    // 🔥 DEBUG
+    // ==========================================
+    if(GRID_DEBUG){
+
+      console.log(
+        "🧹 Layer Disabled:",
+        name
+      );
+    }
+
+    /* ============================================================
+       🌱 PLANTATION
+    ============================================================ */
+    if(
+      name === "🌱 Plantation"
+    ){
+
+      plantationLayer
+        ?.clearLayers?.();
+
+      return;
+    }
+
+    /* ============================================================
+       🟩 COVERAGE GRID
+       FAST HIDE MODE
+    ============================================================ */
+    if(
+      name === "🟩 Coverage Grid"
+    ){
+
+      console.log(
+        "🧹 Hiding Coverage Grid"
+      );
+
+      // ==========================================
+      // 🔥 DISABLE GRID
+      // ==========================================
+      window.gridVisible =
+        false;
+
+      // ==========================================
+      // 🔥 CLOSE PANEL
+      // ==========================================
+      closeCoveragePanel?.();
+
+      // ==========================================
+      // 🔥 REMOVE ROOT LAYER ONLY
+      // ❌ DO NOT clearLayers()
+      // ❌ DO NOT destroy polygons
+      // ==========================================
+      if(
+
+        window.gridRootLayer &&
+
+        map.hasLayer(
+          window.gridRootLayer
+        )
+
+      ){
+
+        map.removeLayer(
+          window.gridRootLayer
+        );
+      }
+
+      // ==========================================
+      // 🔥 RESET RENDER FLAGS
+      // ==========================================
+      Object.values(
+
+        window.gridIndex || {}
+
+      ).forEach(cell => {
+
+        if(cell){
+
+          cell.rendered = false;
+        }
+      });
+
+      return;
+    }
+
   }
 
-  /* ============================================================
-     🟩 GRID CLEANUP (FIXED)
-  ============================================================ */
-if (name === "🟩 Coverage Grid") {
+  catch(err){
 
-  console.log(
-    "🧹 Hiding Coverage Grid"
-  );
-
-  // ==========================================
-  // 🔥 DISABLE GRID FLAG
-  // ==========================================
-  window.gridVisible = false;
-
-  // ==========================================
-  // 🔥 CLOSE PANEL
-  // ==========================================
-  closeCoveragePanel?.();
-
-  // ==========================================
-  // 🔥 HIDE ROOT LAYER ONLY
-  // ❌ DO NOT clearLayers()
-  // ❌ DO NOT destroy polygons
-  // ==========================================
-  if(
-
-    window.gridRootLayer &&
-
-    map.hasLayer(
-      window.gridRootLayer
-    )
-
-  ){
-
-    map.removeLayer(
-      window.gridRootLayer
+    console.error(
+      "🔥 overlayremove crash:",
+      err
     );
   }
-}
-});    /* ============================================================
+});
+    /* ============================================================
              🐘 SIGHTING FORM SYSTEM (FINAL SAFE VERSION)
           ============================================================ */
 
@@ -20902,35 +20971,7 @@ async function sendLocation(){
     // ==================================================
     // 🔥 GRID MARKING
     // ==================================================
-    try {
-
-      if(
-
-        typeof markVisited
-        === "function"
-
-      ){
-
-        markVisited(
-          lat,
-          lng
-        );
-
-      } else {
-
-        console.warn(
-          "⚠ markVisited missing"
-        );
-      }
-
-    } catch(gridErr){
-
-      console.warn(
-        "⚠ Grid marking failed:",
-        gridErr
-      );
-    }
-
+    
     // ==================================================
     // 🚫 VERY WEAK GPS
     // ==================================================
