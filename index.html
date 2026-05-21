@@ -5658,23 +5658,28 @@ map.on('locationfound', function (e) {
   console.log("📍 GPS update → Accuracy:", acc);
 
   if (acc < bestAccuracy) {
+
     bestAccuracy = acc;
+
     bestLocation = e;
+
     console.log("⭐ New best location stored");
   }
 
-  const btn = document.getElementById("locBtn");
-  if(btn) btn.innerText = "Improving... (" + acc + "m)";
+  const btn =
+    document.getElementById(
+      "locBtn"
+    );
+
+  if(btn){
+
+    btn.innerText =
+      "Improving... (" + acc + "m)";
+  }
 });
 
-
-// 🔥 GLOBAL
-let lastGPSSentTime = 0;
-
-
-// 🧠 FINAL DISPLAY + DUTY LOGIC
-    
-    function showBestLocation() {
+// 🧠 FINAL DISPLAY
+function showBestLocation() {
 
   console.group(
     "📍 showBestLocation"
@@ -5704,7 +5709,6 @@ let lastGPSSentTime = 0;
 
     return;
   }
-
   // ============================================
   // 🔥 FINAL GPS
   // ============================================
