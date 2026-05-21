@@ -3424,25 +3424,38 @@ async function startApp(){   // 🔥 ASYNC
     // ==================================================
     // 🔥 IMPORT FIRESTORE
     // ==================================================
-    const {
+   const {
 
-      getFirestore,
-      collection,
-      query,
-      orderBy,
-      serverTimestamp,
-      getDocs,
-      getDoc,
-      deleteDoc,
-      deleteField,
-      doc,
-      setDoc,
-      updateDoc
+  getFirestore,
 
-    } = await import(
+  collection,
 
-      "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js"
-    );
+  query,
+
+  orderBy,
+
+  onSnapshot,
+
+  serverTimestamp,
+
+  getDocs,
+
+  getDoc,
+
+  deleteDoc,
+
+  deleteField,
+
+  doc,
+
+  setDoc,
+
+  updateDoc
+
+} = await import(
+
+  "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js"
+);
 
     // ==================================================
     // 🔥 IMPORT STORAGE
@@ -3485,24 +3498,38 @@ async function startApp(){   // 🔥 ASYNC
     // ==================================================
     // 🔥 FIREBASE HELPERS
     // ==================================================
-    window.fb = {
+  window.fb = {
 
-      collection,
-      query,
-      orderBy,
-      serverTimestamp,
-      getDocs,
-      getDoc,
-      deleteDoc,
-      deleteField,
-      doc,
-      setDoc,
-      updateDoc,
-      ref,
-      uploadBytes,
-      getDownloadURL
-    };
+  collection,
 
+  query,
+
+  orderBy,
+
+  onSnapshot,
+
+  serverTimestamp,
+
+  getDocs,
+
+  getDoc,
+
+  deleteDoc,
+
+  deleteField,
+
+  doc,
+
+  setDoc,
+
+  updateDoc,
+
+  ref,
+
+  uploadBytes,
+
+  getDownloadURL
+};
     // ==================================================
     // 🔥 READY FLAG
     // ==================================================
@@ -14627,7 +14654,7 @@ for(
   const invalidMovement =
 
     // 🔥 HUGE JUMP
-    dist > 300 ||
+    dist > 500 ||
 
     // 🔥 IMPOSSIBLE SPEED
     speedKmh > 120 ||
