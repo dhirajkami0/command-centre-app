@@ -19713,18 +19713,6 @@ function generateAndShowReport(){
 
     });
 }
-function normalizeUserProfile(profile){
-
-  if(!profile) return null;
-
-  return {
-    rawName: profile.rawName || profile.name,   // 🔥 FIX
-    cleanName: profile.cleanName || cleanName(profile.name),
-    role: profile.role,
-    beat: profile.beat,
-    phone: profile.phone
-  };
-}
 function updateNetworkStatus(status) {
 
   const el = document.getElementById("last-update"); 
@@ -19754,14 +19742,39 @@ function normalizeUserProfile(profile){
   if(!profile) return null;
 
   return {
-    rawName: profile.rawName || profile.name,
-    cleanName: profile.cleanName || cleanName(profile.name),
-    role: profile.role,
-    beat: profile.beat,
-    phone: profile.phone
+
+    // ======================================
+    // 🔥 EXISTING
+    // ======================================
+    rawName:
+      profile.rawName || profile.name,
+
+    cleanName:
+      profile.cleanName ||
+      cleanName(profile.name),
+
+    role:
+      profile.role,
+
+    beat:
+      profile.beat,
+
+    phone:
+      profile.phone,
+
+    // ======================================
+    // 🌍 NEW GIS FIELDS
+    // ======================================
+    circle:
+      profile.circle || "",
+
+    division:
+      profile.division || "",
+
+    range:
+      profile.range || ""
   };
 }
-
 
 // ================= APP START =================
 // ================= APP START =================
