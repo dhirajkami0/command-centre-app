@@ -6742,20 +6742,63 @@ async function loadRangeKML(){
     const profile =
       window.userProfile || {};
 
+    // ======================================
+    // 🔥 NORMALIZE ROLE
+    // ======================================
     const role =
+
       String(
         profile.role || ""
-      ).toUpperCase();
+      )
 
+      .trim()
+
+      .toUpperCase();
+
+    // ======================================
+    // 🔥 NORMALIZE DIVISION
+    // ======================================
     const division =
+
       String(
         profile.division || ""
-      ).trim();
+      )
 
+      .trim();
+
+    // ======================================
+    // 🔥 NORMALIZE RANGE
+    // ======================================
     const range =
+
       String(
         profile.range || ""
-      ).trim();
+      )
+
+      .trim();
+
+    // ======================================
+    // 🔍 DEBUG
+    // ======================================
+    console.log(
+      "👤 PROFILE:",
+      profile
+    );
+
+    console.log(
+      "🎭 ROLE:",
+      role
+    );
+
+    console.log(
+      "🌍 DIVISION:",
+      division
+    );
+
+    console.log(
+      "📍 RANGE:",
+      range
+    );
 
     // ======================================
     // 🌍 DECIDE URL
@@ -6763,7 +6806,7 @@ async function loadRangeKML(){
     let url = "";
 
     // ======================================
-    // 🔥 ADMIN
+    // 🔴 ADMIN
     // ======================================
     if(role === "ADMIN"){
 
@@ -6776,15 +6819,25 @@ async function loadRangeKML(){
     }
 
     // ======================================
-    // 🔥 DFO / ADFO
+    // 🟣 DFO / ADFO
     // ======================================
     else if(
 
-      role === "DFO" ||
-
-      role === "ADFO"
+      role.includes("DFO")
 
     ){
+
+      // ======================================
+      // 🔥 SAFETY
+      // ======================================
+      if(!division){
+
+        console.error(
+          "❌ Missing division for DFO/ADFO"
+        );
+
+        return;
+      }
 
       url =
 
@@ -6805,9 +6858,15 @@ async function loadRangeKML(){
     }
 
     // ======================================
-    // 🔥 STAFF / TEAM LEADER
+    // 🔵 TEAM LEADER / STAFF
     // ======================================
-    else {
+    else if(
+
+      division &&
+
+      range
+
+    ){
 
       url =
 
@@ -6835,6 +6894,22 @@ async function loadRangeKML(){
       );
     }
 
+    // ======================================
+    // ❌ INVALID PROFILE
+    // ======================================
+    else {
+
+      console.error(
+        "❌ Invalid GIS profile:",
+        profile
+      );
+
+      return;
+    }
+
+    // ======================================
+    // 📥 FINAL URL
+    // ======================================
     console.log(
       "📥 URL:",
       url
@@ -6863,13 +6938,24 @@ async function loadRangeKML(){
     const res =
       await fetch(url);
 
+    // ======================================
+    // ❌ FETCH FAIL
+    // ======================================
     if(!res.ok){
+
+      console.error(
+        "❌ GeoJSON fetch failed:",
+        url
+      );
 
       throw new Error(
         "❌ Failed to load GeoJSON"
       );
     }
 
+    // ======================================
+    // 📦 JSON
+    // ======================================
     const data =
       await res.json();
 
@@ -6917,61 +7003,108 @@ async function loadRangeKML(){
 
     function drawChunk(){
 
-      const slice =
+      try {
 
-        features.slice(
-          i,
-          i + chunkSize
-        );
+        const slice =
 
-      slice.forEach(f => {
-
-        window.rangeLayer
-          .addData(f);
-
-      });
-
-      i += chunkSize;
-
-      if(i < features.length){
-
-        requestAnimationFrame(
-          drawChunk
-        );
-
-      } else {
-
-        console.log(
-          "✅ GeoJSON render complete"
-        );
-
-        // ======================================
-        // 🎯 FIT MAP
-        // ======================================
-        try {
-
-          map.fitBounds(
-
-            window.rangeLayer
-              .getBounds(),
-
-            {
-              padding: [10,10]
-            }
-
+          features.slice(
+            i,
+            i + chunkSize
           );
 
-        } catch(e){}
+        slice.forEach(f => {
+
+          try {
+
+            window.rangeLayer
+              ?.addData(f);
+
+          } catch(e){
+
+            console.warn(
+              "⚠ Feature render failed",
+              e
+            );
+          }
+
+        });
+
+        i += chunkSize;
 
         // ======================================
-        // 🔥 GRID READY
+        // 🔁 NEXT CHUNK
         // ======================================
-        console.log(
-          "✅ GIS READY"
+        if(i < features.length){
+
+          requestAnimationFrame(
+            drawChunk
+          );
+
+        }
+
+        // ======================================
+        // ✅ COMPLETE
+        // ======================================
+        else {
+
+          console.log(
+            "✅ GeoJSON render complete"
+          );
+
+          // ======================================
+          // 🎯 FIT MAP
+          // ======================================
+          try {
+
+            const bounds =
+
+              window.rangeLayer
+                ?.getBounds?.();
+
+            if(
+
+              bounds &&
+
+              bounds.isValid?.()
+
+            ){
+
+              map.fitBounds(
+                bounds,
+                {
+                  padding: [10,10]
+                }
+              );
+            }
+
+          } catch(e){
+
+            console.warn(
+              "⚠ fitBounds failed",
+              e
+            );
+          }
+
+          // ======================================
+          // ✅ READY
+          // ======================================
+          console.log(
+            "✅ GIS READY"
+          );
+        }
+
+      } catch(e){
+
+        console.error(
+          "❌ drawChunk failed:",
+          e
         );
       }
     }
 
+    // ======================================
+    // 🚀 START RENDER
+    // ======================================
     drawChunk();
 
   }
