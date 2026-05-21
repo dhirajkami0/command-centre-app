@@ -1888,62 +1888,201 @@ function cleanName(n){
 } 
 function applyRoleControl(){
 
-  const role = (window.userProfile?.role || "").toUpperCase();
+  // ============================================
+  // 🔥 PROFILE
+  // ============================================
+  const profile =
+    window.userProfile || {};
 
-  const leaderButtons = document.querySelectorAll(".leader-only");
-  const adminButtons = document.querySelectorAll(".admin-only");
-  const staffButtons = document.querySelectorAll(".staff-only");
+  const role =
+    String(
+      profile.role || ""
+    ).toUpperCase();
 
-  const dutyBtn = document.getElementById("dutyMainBtn");
+  // ============================================
+  // 🔥 UI GROUPS
+  // ============================================
+  const leaderButtons =
+    document.querySelectorAll(
+      ".leader-only"
+    );
 
-  /* 🔴 ADMIN */
-  if(role === "ADMIN"){
+  const adminButtons =
+    document.querySelectorAll(
+      ".admin-only"
+    );
 
-    leaderButtons.forEach(el => el.style.display = "flex");
+  const staffButtons =
+    document.querySelectorAll(
+      ".staff-only"
+    );
+
+  const superAdminButtons =
+    document.querySelectorAll(
+      ".super-admin-only"
+    );
+
+  const divisionButtons =
+    document.querySelectorAll(
+      ".division-only"
+    );
+
+  const dutyBtn =
+    document.getElementById(
+      "dutyMainBtn"
+    );
+
+  // ============================================
+  // 🔥 HIDE EVERYTHING FIRST
+  // ============================================
+  [
+    ...leaderButtons,
+    ...adminButtons,
+    ...staffButtons,
+    ...superAdminButtons,
+    ...divisionButtons
+  ].forEach(el => {
+
+    el.style.display = "none";
+
+  });
+
+  if(dutyBtn){
+    dutyBtn.style.display = "none";
+  }
+
+  // ============================================
+  // 🔥 SUPER ADMIN
+  // ============================================
+  if(role === "SUPER_ADMIN"){
+
+    leaderButtons.forEach(el => {
+      el.style.display = "flex";
+    });
+
     adminButtons.forEach(el => {
-  if (el.id !== "clearKMLBtn") {
-    el.style.display = "flex";
-  }
-});
-    staffButtons.forEach(el => el.style.display = "flex");
+      el.style.display = "flex";
+    });
 
-    if(dutyBtn) dutyBtn.style.display = "flex";
-  }
+    staffButtons.forEach(el => {
+      el.style.display = "flex";
+    });
 
-  /* 🔵 TEAM LEADER */
-  else if(role === "TEAM LEADER"){
+    superAdminButtons.forEach(el => {
+      el.style.display = "flex";
+    });
 
-    leaderButtons.forEach(el => el.style.display = "flex");
-    adminButtons.forEach(el => el.style.display = "none");
-    staffButtons.forEach(el => el.style.display = "flex");
+    divisionButtons.forEach(el => {
+      el.style.display = "flex";
+    });
 
-    if(dutyBtn) dutyBtn.style.display = "flex";
-  }
+    if(dutyBtn){
+      dutyBtn.style.display = "flex";
+    }
 
-  /* 🟢 STAFF */
-  else if(role === "STAFF"){
-
-    leaderButtons.forEach(el => el.style.display = "none");
-    adminButtons.forEach(el => el.style.display = "none");
-    staffButtons.forEach(el => el.style.display = "flex");
-
-    /* 🔥 FIX: SHOW DUTY BUTTON FOR STAFF */
-    if(dutyBtn) dutyBtn.style.display = "flex";
+    return;
   }
 
-  /* ❌ BLOCK */
-  else {
+  // ============================================
+  // 🔥 DIVISION ADMIN
+  // ============================================
+  if(role === "DIVISION_ADMIN"){
 
-    leaderButtons.forEach(el => el.style.display = "none");
-    adminButtons.forEach(el => el.style.display = "none");
-    staffButtons.forEach(el => el.style.display = "none");
+    leaderButtons.forEach(el => {
+      el.style.display = "flex";
+    });
 
-    if(dutyBtn) dutyBtn.style.display = "none";
+    adminButtons.forEach(el => {
 
-    alert("❌ Not authorized");
+      // 🔥 KEEP HIDDEN
+      if(el.id === "clearKMLBtn"){
+        return;
+      }
+
+      el.style.display = "flex";
+    });
+
+    divisionButtons.forEach(el => {
+      el.style.display = "flex";
+    });
+
+    staffButtons.forEach(el => {
+      el.style.display = "flex";
+    });
+
+    if(dutyBtn){
+      dutyBtn.style.display = "flex";
+    }
+
+    return;
   }
-}  
-    // ================= LOAD PROFILE =================
+
+  // ============================================
+  // 🔥 RANGE OFFICER
+  // ============================================
+  if(role === "RANGE_OFFICER"){
+
+    leaderButtons.forEach(el => {
+      el.style.display = "flex";
+    });
+
+    staffButtons.forEach(el => {
+      el.style.display = "flex";
+    });
+
+    if(dutyBtn){
+      dutyBtn.style.display = "flex";
+    }
+
+    return;
+  }
+
+  // ============================================
+  // 🔥 TEAM LEADER
+  // ============================================
+  if(role === "TEAM_LEADER"){
+
+    leaderButtons.forEach(el => {
+      el.style.display = "flex";
+    });
+
+    staffButtons.forEach(el => {
+      el.style.display = "flex";
+    });
+
+    if(dutyBtn){
+      dutyBtn.style.display = "flex";
+    }
+
+    return;
+  }
+
+  // ============================================
+  // 🔥 STAFF
+  // ============================================
+  if(role === "STAFF"){
+
+    staffButtons.forEach(el => {
+      el.style.display = "flex";
+    });
+
+    if(dutyBtn){
+      dutyBtn.style.display = "flex";
+    }
+
+    return;
+  }
+
+  // ============================================
+  // ❌ UNKNOWN ROLE
+  // ============================================
+  console.warn(
+    "❌ Unknown role:",
+    role
+  );
+
+  alert("❌ Not authorized");
+}    // ================= LOAD PROFILE =================
 // ============================================================
 // 🔥 GLOBAL STATE (CRITICAL)
 // ============================================================
