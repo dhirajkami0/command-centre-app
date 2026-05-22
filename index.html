@@ -8465,6 +8465,9 @@ async function loadCompartments(){
     // ======================================================
 // 🟧 FILTER COMPARTMENTS
 // ======================================================
+// ======================================================
+// 🟧 FILTER COMPARTMENTS
+// ======================================================
 function renderFilteredCompartments(){
 
   try {
@@ -8479,7 +8482,7 @@ function renderFilteredCompartments(){
     }
 
     // ==================================================
-    // 🧹 CLEAR OLD
+    // 🧹 CLEAR
     // ==================================================
     window.compartmentLayer
       .clearLayers();
@@ -8492,103 +8495,59 @@ function renderFilteredCompartments(){
       window.allCompartmentFeatures || [];
 
     // ==================================================
-    // 🌍 DIVISION FILTER
+    // 🌍 CURRENT GIS BOUNDS
+    // ==================================================
+    let bounds = null;
+
+    try {
+
+      bounds =
+
+        window.rangeLayer
+          .getBounds();
+
+    } catch(e){
+
+      console.warn(
+        "⚠ bounds failed",
+        e
+      );
+    }
+
+    // ==================================================
+    // 🌍 SPATIAL FILTER
     // ==================================================
     if(
 
-      window.gisFilter.division &&
+      bounds &&
 
-      window.gisFilter.division !== "ALL"
+      bounds.isValid()
 
     ){
 
       filtered = filtered.filter(f => {
 
-        const props =
-          f.properties || {};
+        try {
 
-        return String(
+          const layer =
+            L.geoJSON(f);
 
-          props.Division ||
+          const b =
+            layer.getBounds();
 
-          props.division ||
+          return bounds.intersects(b);
 
-          ""
+        }
 
-        ).trim()
+        catch(e){
 
-        ===
-
-        window.gisFilter.division;
+          return false;
+        }
       });
     }
 
     // ==================================================
-    // 🌳 RANGE FILTER
-    // ==================================================
-    if(
-
-      window.gisFilter.range &&
-
-      window.gisFilter.range !== "ALL"
-
-    ){
-
-      filtered = filtered.filter(f => {
-
-        const props =
-          f.properties || {};
-
-        return String(
-
-          props.Range ||
-
-          props.range ||
-
-          ""
-
-        ).trim()
-
-        ===
-
-        window.gisFilter.range;
-      });
-    }
-
-    // ==================================================
-    // 🧭 BEAT FILTER
-    // ==================================================
-    if(
-
-      window.gisFilter.beat &&
-
-      window.gisFilter.beat !== "ALL"
-
-    ){
-
-      filtered = filtered.filter(f => {
-
-        const props =
-          f.properties || {};
-
-        return String(
-
-          props.Beat ||
-
-          props.beat ||
-
-          ""
-
-        ).trim()
-
-        ===
-
-        window.gisFilter.beat;
-      });
-    }
-
-    // ==================================================
-    // 🟧 COMPARTMENT FILTER
+    // 🟧 MANUAL COMPARTMENT FILTER
     // ==================================================
     if(
 
@@ -8678,6 +8637,9 @@ function renderFilteredCompartments(){
       }
     }
 
+    // ==================================================
+    // 🚀 START
+    // ==================================================
     drawChunk();
 
   }
@@ -8689,8 +8651,7 @@ function renderFilteredCompartments(){
       e
     );
   }
-}
-    // ======================================================
+}    // ======================================================
 // 🟧 COMPARTMENT BUTTONS
 // ======================================================
 // ======================================================
