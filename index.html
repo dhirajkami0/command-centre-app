@@ -1265,6 +1265,64 @@ NORTH REMAINS ABSOLUTE
 </button>
 
     </div>
+<!-- ========================================= -->
+<!-- 🌍 GIS FILTER PANEL -->
+<!-- ========================================= -->
+<div id="gisFilterPanel"
+  style="
+    display:none;
+    margin-top:10px;
+    background:rgba(255,255,255,0.06);
+    border-radius:12px;
+    padding:10px;
+  ">
+
+  <div style="
+    font-size:13px;
+    font-weight:bold;
+    color:#4caf50;
+    margin-bottom:8px;
+  ">
+    🌍 GIS FILTERS
+  </div>
+
+  <!-- DIVISION -->
+  <select id="divisionFilter"
+    style="
+      width:100%;
+      padding:10px;
+      border:none;
+      border-radius:8px;
+      margin-bottom:8px;
+      background:#111;
+      color:#fff;
+    ">
+
+    <option value="ALL">
+      All Divisions
+    </option>
+
+  </select>
+
+  <!-- RANGE -->
+  <select id="rangeFilter"
+    style="
+      width:100%;
+      padding:10px;
+      border:none;
+      border-radius:8px;
+      background:#111;
+      color:#fff;
+    ">
+
+    <option value="ALL">
+      All Ranges
+    </option>
+
+  </select>
+
+</div>
+    
     <div class="weather-drawer" id="weatherDrawer" style="margin-top: 10px; background: rgba(255,255,255,0.05); border-radius: 8px; overflow: hidden;">
       <button class="weather-toggle" onclick="toggleWeatherDrawer()" style="width:100%; background:none; border:none; color:#4caf50; display:flex; justify-content:space-between; align-items:center; padding: 12px; cursor:pointer; font-weight:bold; font-size:13px;"> <span>
         <i class="fa-solid fa-cloud-sun"></i> Weather Info</span> <i id="weatherChevron" class="fa-solid fa-chevron-down"></i> </button> <div class="weather-content" id="weatherContent" style="max-height: 0px; opacity: 0; overflow: hidden; transition:
@@ -1994,7 +2052,8 @@ function cleanName(n){
     .replace(/[^A-Z\s]/g,"")
     .replace(/\s+/g," ")
     .trim();
-} function applyRoleControl(){
+} 
+    function applyRoleControl(){
 
   // ============================================================
   // 🔥 NORMALIZE ROLE
@@ -2033,11 +2092,36 @@ function cleanName(n){
     );
 
   // ============================================================
+  // 🌍 GIS FILTER PANEL
+  // ============================================================
+  const gisPanel =
+
+    document.getElementById(
+      "gisFilterPanel"
+    );
+
+  const divisionFilter =
+
+    document.getElementById(
+      "divisionFilter"
+    );
+
+  const rangeFilter =
+
+    document.getElementById(
+      "rangeFilter"
+    );
+
+  // ============================================================
   // 🔴 ADMIN
   // ============================================================
   if(role === "ADMIN"){
 
+    // ======================================
+    // 🔥 BUTTONS
+    // ======================================
     leaderButtons.forEach(el => {
+
       el.style.display = "flex";
     });
 
@@ -2050,11 +2134,34 @@ function cleanName(n){
     });
 
     staffButtons.forEach(el => {
+
       el.style.display = "flex";
     });
 
     if(dutyBtn){
+
       dutyBtn.style.display = "flex";
+    }
+
+    // ======================================
+    // 🌍 GIS FILTERS
+    // ======================================
+    if(gisPanel){
+
+      gisPanel.style.display =
+        "block";
+    }
+
+    if(divisionFilter){
+
+      divisionFilter.style.display =
+        "block";
+    }
+
+    if(rangeFilter){
+
+      rangeFilter.style.display =
+        "block";
     }
   }
 
@@ -2070,15 +2177,15 @@ function cleanName(n){
   ){
 
     // ======================================
-    // 🔥 DIVISION CONTROL
+    // 🔥 BUTTONS
     // ======================================
     leaderButtons.forEach(el => {
+
       el.style.display = "flex";
     });
 
     adminButtons.forEach(el => {
 
-      // 🔥 KEEP BLOCKED
       if(el.id !== "clearKMLBtn"){
 
         el.style.display = "flex";
@@ -2086,11 +2193,41 @@ function cleanName(n){
     });
 
     staffButtons.forEach(el => {
+
       el.style.display = "flex";
     });
 
     if(dutyBtn){
+
       dutyBtn.style.display = "flex";
+    }
+
+    // ======================================
+    // 🌍 GIS FILTERS
+    // ======================================
+    if(gisPanel){
+
+      gisPanel.style.display =
+        "block";
+    }
+
+    // ======================================
+    // ❌ HIDE DIVISION FILTER
+    // DFO already inside division
+    // ======================================
+    if(divisionFilter){
+
+      divisionFilter.style.display =
+        "none";
+    }
+
+    // ======================================
+    // ✅ SHOW RANGE FILTER
+    // ======================================
+    if(rangeFilter){
+
+      rangeFilter.style.display =
+        "block";
     }
   }
 
@@ -2099,20 +2236,36 @@ function cleanName(n){
   // ============================================================
   else if(role === "TEAM LEADER"){
 
+    // ======================================
+    // 🔥 BUTTONS
+    // ======================================
     leaderButtons.forEach(el => {
+
       el.style.display = "flex";
     });
 
     adminButtons.forEach(el => {
+
       el.style.display = "none";
     });
 
     staffButtons.forEach(el => {
+
       el.style.display = "flex";
     });
 
     if(dutyBtn){
+
       dutyBtn.style.display = "flex";
+    }
+
+    // ======================================
+    // ❌ NO GIS FILTER PANEL
+    // ======================================
+    if(gisPanel){
+
+      gisPanel.style.display =
+        "none";
     }
   }
 
@@ -2121,20 +2274,36 @@ function cleanName(n){
   // ============================================================
   else if(role === "STAFF"){
 
+    // ======================================
+    // 🔥 BUTTONS
+    // ======================================
     leaderButtons.forEach(el => {
+
       el.style.display = "none";
     });
 
     adminButtons.forEach(el => {
+
       el.style.display = "none";
     });
 
     staffButtons.forEach(el => {
+
       el.style.display = "flex";
     });
 
     if(dutyBtn){
+
       dutyBtn.style.display = "flex";
+    }
+
+    // ======================================
+    // ❌ NO GIS FILTER PANEL
+    // ======================================
+    if(gisPanel){
+
+      gisPanel.style.display =
+        "none";
     }
   }
 
@@ -2143,20 +2312,36 @@ function cleanName(n){
   // ============================================================
   else {
 
+    // ======================================
+    // 🔥 HIDE ALL
+    // ======================================
     leaderButtons.forEach(el => {
+
       el.style.display = "none";
     });
 
     adminButtons.forEach(el => {
+
       el.style.display = "none";
     });
 
     staffButtons.forEach(el => {
+
       el.style.display = "none";
     });
 
     if(dutyBtn){
+
       dutyBtn.style.display = "none";
+    }
+
+    // ======================================
+    // ❌ HIDE GIS FILTER PANEL
+    // ======================================
+    if(gisPanel){
+
+      gisPanel.style.display =
+        "none";
     }
 
     console.warn(
@@ -2164,9 +2349,11 @@ function cleanName(n){
       role
     );
 
-    alert("❌ Not authorized");
+    alert(
+      "❌ Not authorized"
+    );
   }
-}   // ================= LOAD PROFILE =================
+}// ================= LOAD PROFILE =================
 // ============================================================
 // 🔥 GLOBAL STATE (CRITICAL)
 // ============================================================
@@ -6635,7 +6822,7 @@ ${pct(data.health)} / 100
 
 // 🔥 GLOBAL (IMPORTANT)
 // ======================================================
-// 🌍 GLOBAL GIS FILTER STATE
+// 🌍 GIS FILTER STATE
 // ======================================================
 window.gisFilter =
   window.gisFilter || {
@@ -6646,13 +6833,148 @@ window.gisFilter =
   };
 
 // ======================================================
-// 🌍 GIS FEATURES CACHE
+// 🌍 GIS CACHE
 // ======================================================
 window.allGISFeatures =
   window.allGISFeatures || [];
 
 // ======================================================
-// 🔥 FILTER + RENDER GIS
+// 🌍 POPULATE FILTERS
+// ======================================================
+function populateGISFilters(){
+
+  try {
+
+    const divSelect =
+
+      document.getElementById(
+        "divisionFilter"
+      );
+
+    const rangeSelect =
+
+      document.getElementById(
+        "rangeFilter"
+      );
+
+    if(
+      !divSelect ||
+      !rangeSelect
+    ){
+      return;
+    }
+
+    // ======================================
+    // 🧹 RESET
+    // ======================================
+    divSelect.innerHTML = `
+      <option value="ALL">
+        All Divisions
+      </option>
+    `;
+
+    rangeSelect.innerHTML = `
+      <option value="ALL">
+        All Ranges
+      </option>
+    `;
+
+    // ======================================
+    // 🔥 UNIQUE VALUES
+    // ======================================
+    const divisions =
+      new Set();
+
+    const ranges =
+      new Set();
+
+    (
+      window.allGISFeatures || []
+    )
+
+    .forEach(f => {
+
+      const props =
+        f.properties || {};
+
+      const d =
+
+        props.Division ||
+
+        props.division ||
+
+        "";
+
+      const r =
+
+        props.Range ||
+
+        props.range ||
+
+        "";
+
+      if(d){
+        divisions.add(d);
+      }
+
+      if(r){
+        ranges.add(r);
+      }
+    });
+
+    // ======================================
+    // 🌍 DIVISION OPTIONS
+    // ======================================
+    [...divisions]
+
+    .sort()
+
+    .forEach(d => {
+
+      divSelect.innerHTML +=
+
+      `
+      <option value="${d}">
+        ${d}
+      </option>
+      `;
+    });
+
+    // ======================================
+    // 🌍 RANGE OPTIONS
+    // ======================================
+    [...ranges]
+
+    .sort()
+
+    .forEach(r => {
+
+      rangeSelect.innerHTML +=
+
+      `
+      <option value="${r}">
+        ${r}
+      </option>
+      `;
+    });
+
+    console.log(
+      "✅ GIS filters populated"
+    );
+
+  }
+
+  catch(e){
+
+    console.error(
+      "❌ populateGISFilters failed",
+      e
+    );
+  }
+}
+
+// ======================================================
+// 🌍 FILTER + RENDER
 // ======================================================
 function renderFilteredGIS(){
 
@@ -6664,21 +6986,21 @@ function renderFilteredGIS(){
       return;
     }
 
-    // ==================================================
+    // ======================================
     // 🧹 CLEAR OLD
-    // ==================================================
+    // ======================================
     window.rangeLayer.clearLayers();
 
-    // ==================================================
+    // ======================================
     // 📦 FEATURES
-    // ==================================================
+    // ======================================
     let filtered =
 
       window.allGISFeatures || [];
 
-    // ==================================================
+    // ======================================
     // 🔥 DIVISION FILTER
-    // ==================================================
+    // ======================================
     if(
 
       window.gisFilter.division &&
@@ -6708,9 +7030,9 @@ function renderFilteredGIS(){
       });
     }
 
-    // ==================================================
+    // ======================================
     // 🔥 RANGE FILTER
-    // ==================================================
+    // ======================================
     if(
 
       window.gisFilter.range &&
@@ -6741,13 +7063,13 @@ function renderFilteredGIS(){
     }
 
     console.log(
-      "🎯 Rendering filtered GIS:",
+      "🎯 FILTERED GIS:",
       filtered.length
     );
 
-    // ==================================================
+    // ======================================
     // ⚡ CHUNK RENDER
-    // ==================================================
+    // ======================================
     let i = 0;
 
     const chunkSize = 40;
@@ -6777,7 +7099,6 @@ function renderFilteredGIS(){
               e
             );
           }
-
         });
 
         i += chunkSize;
@@ -6792,9 +7113,12 @@ function renderFilteredGIS(){
         else {
 
           console.log(
-            "✅ Filter render complete"
+            "✅ GIS RENDER COMPLETE"
           );
 
+          // ==============================
+          // 🔥 FIT BOUNDS
+          // ==============================
           try {
 
             const bounds =
@@ -6838,7 +7162,9 @@ function renderFilteredGIS(){
 
     drawChunk();
 
-  } catch(e){
+  }
+
+  catch(e){
 
     console.error(
       "❌ renderFilteredGIS failed",
@@ -6848,7 +7174,48 @@ function renderFilteredGIS(){
 }
 
 // ======================================================
-// 🔥 LOAD GIS
+// 🌍 FILTER EVENTS
+// ======================================================
+document
+
+.getElementById(
+  "divisionFilter"
+)
+
+?.addEventListener(
+
+  "change",
+
+  function(){
+
+    window.gisFilter.division =
+      this.value;
+
+    renderFilteredGIS();
+  }
+);
+
+document
+
+.getElementById(
+  "rangeFilter"
+)
+
+?.addEventListener(
+
+  "change",
+
+  function(){
+
+    window.gisFilter.range =
+      this.value;
+
+    renderFilteredGIS();
+  }
+);
+
+// ======================================================
+// 🚀 LOAD GIS
 // ======================================================
 async function loadRangeKML(){
 
@@ -7074,13 +7441,18 @@ async function loadRangeKML(){
     );
 
     // ======================================
-    // 🔥 CACHE FEATURES
+    // 🔥 CACHE
     // ======================================
     window.allGISFeatures =
       features;
 
     // ======================================
-    // 🔥 CREATE LAYER
+    // 🌍 FILTERS
+    // ======================================
+    populateGISFilters();
+
+    // ======================================
+    // 🔥 LAYER
     // ======================================
     window.rangeLayer =
 
@@ -7089,26 +7461,22 @@ async function loadRangeKML(){
         renderer:
           L.canvas(),
 
-        interactive: true,
+        interactive:true,
 
-        bubblingMouseEvents: false,
+        bubblingMouseEvents:false,
 
         // ==================================
         // 🎨 STYLE
         // ==================================
         style: {
 
-          color:
-            "#00e5ff",
+          color:"#00e5ff",
 
-          weight:
-            5,
+          weight:5,
 
-          opacity:
-            0.9,
+          opacity:0.9,
 
-          fillOpacity:
-            0.22
+          fillOpacity:0.22
         },
 
         // ==================================
