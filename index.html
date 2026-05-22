@@ -6944,6 +6944,101 @@ ${pct(data.health)} / 100
 // ======================================================
 // 🌍 GIS FILTER STATE
 // ======================================================
+    // ======================================================
+// 🌍 COMPARTMENT FILE REGISTRY
+// ======================================================
+
+window.compartmentRegistry = {
+
+  // ====================================================
+  // 🌍 BTR EAST
+  // ====================================================
+  BTR_E: {
+
+    // ==================================================
+    // 🌳 BUXADUAR RANGE
+    // ==================================================
+    BuxaDuar: {
+
+      // ================================================
+      // 🧭 BUXAROAD BEAT
+      // ================================================
+      Buxaroad: [
+
+        "N RVBK BL1.geojson",
+        "N RVBK BL2.geojson",
+        "N RVBK BL3.geojson",
+        "N RVBK BL4.geojson",
+        "N RVBK BL8.geojson",
+        "N RVBK BL9.geojson"
+
+      ],
+
+      // ================================================
+      // 🧭 CHUNABHATI BEAT
+      // ================================================
+      Chunabhati: [
+
+        "Chunabhati BL1.geojson",
+        "Chunabhati BL2.geojson",
+        "Chunabhati BL3.geojson"
+
+      ],
+
+      // ================================================
+      // 🧭 SANTARABARI BEAT
+      // ================================================
+      Santarabari: [
+
+        "Santarabari BL1.geojson",
+        "Santarabari BL2.geojson",
+        "Santarabari BL3.geojson",
+        "Santarabari BL4.geojson"
+
+      ],
+
+      // ================================================
+      // 🧭 TOBGAON BEAT
+      // ================================================
+      Tobgaon: [
+
+        "Tobgaon BL1.geojson",
+        "Tobgaon BL2.geojson",
+        "Tobgaon BL3.geojson",
+        "Tobgaon BL4.geojson"
+
+      ]
+
+    },
+
+    // ==================================================
+    // 🌳 OTHER RANGES
+    // ==================================================
+    Bholka: {},
+    Hatipota: {},
+    Jainti: {},
+    Kumargram: {},
+    NorthRydak: {},
+    SouthRydak: {}
+
+  },
+
+  // ====================================================
+  // 🌍 BTR WEST
+  // ====================================================
+  BTR_W: {
+
+    EastDamanpur: {},
+    EastRajabhatkhawa: {},
+    Hamiltonganj: {},
+    Nimati: {},
+    Pana: {},
+    WestDamanpur: {},
+    WestRajabhatkhawa: {}
+
+  }
+
+};
 // ======================================================
 // 🌍 ROLE BASED GIS FILTER INIT
 // ======================================================
@@ -8903,78 +8998,55 @@ async function loadRangeKML(){
 // =====================================================
 // 🏞 LOAD COMPARTMENTS FOR BEAT
 // =====================================================
+// ======================================================
+// 🌍 LOAD COMPARTMENTS FOR SELECTED BEAT
+// ======================================================
+// REGISTRY-BASED
+// FULLY ALIGNED WITH CURRENT STRUCTURE
+//
+// geojson/
+//   compartments/
+//     Division/
+//       Range/
+//         Beat/
+//           compartment files...
+//
+// NO compartment.geojson
+// NO index.json
+// NO extra creation needed
+// ======================================================
+
 async function loadCompartmentsForBeat(){
 
-  try {
+  try{
 
     console.log(
       "🏞 loadCompartmentsForBeat()"
     );
 
-    // =================================================
-    // 🔒 LOADING LOCK
-    // =================================================
-    if(window.loadingCompartments){
-
+    // ==================================================
+    // 🌍 SAFETY
+    // ==================================================
+    if(
+      !window.gisFilter
+    ){
       console.warn(
-        "⚠ Compartments already loading"
+        "❌ gisFilter missing"
       );
-
       return;
     }
 
-    window.loadingCompartments =
-      true;
-
-    // =================================================
-    // 🌍 FILTERS
-    // =================================================
+    // ==================================================
+    // 🌍 FILTER VALUES
+    // ==================================================
     const division =
-
-      String(
-        window.gisFilter?.division || ""
-      ).trim();
+      window.gisFilter.division;
 
     const range =
-
-      String(
-        window.gisFilter?.range || ""
-      ).trim();
+      window.gisFilter.range;
 
     const beat =
-
-      String(
-        window.gisFilter?.beat || ""
-      ).trim();
-
-    // =================================================
-    // ❌ SAFETY
-    // =================================================
-    if(
-
-      !division ||
-
-      !range ||
-
-      !beat ||
-
-      division === "ALL" ||
-
-      range === "ALL" ||
-
-      beat === "ALL"
-
-    ){
-
-      console.warn(
-        "⚠ Invalid GIS filter"
-      );
-
-      window.loadingCompartments =
-        false;
-
-      return;
-    }
+      window.gisFilter.beat;
 
     console.log(
       "🌍 Division:",
@@ -8991,233 +9063,333 @@ async function loadCompartmentsForBeat(){
       beat
     );
 
-    // =================================================
-    // 🧹 CLEAR OLD LAYER
-    // =================================================
-    try {
+    // ==================================================
+    // 🌍 VALIDATION
+    // ==================================================
+    if(
+      !division ||
+      !range ||
+      !beat ||
+      division === "ALL" ||
+      range === "ALL" ||
+      beat === "ALL"
+    ){
+      console.warn(
+        "⚠️ Invalid selection"
+      );
+      return;
+    }
 
-      if(window.compartmentLayer){
+    // ==================================================
+    // 🌍 REGISTRY LOOKUP
+    // ==================================================
+    const registry =
+      window.compartmentRegistry;
 
+    if(
+      !registry
+    ){
+      console.warn(
+        "❌ compartmentRegistry missing"
+      );
+      return;
+    }
+
+    const files =
+      registry?.[division]?.[range]?.[beat];
+
+    console.log(
+      "📂 Registry Files:",
+      files
+    );
+
+    // ==================================================
+    // 🌍 FILES SAFETY
+    // ==================================================
+    if(
+      !Array.isArray(files) ||
+      files.length === 0
+    ){
+      console.warn(
+        "⚠️ No compartment files found"
+      );
+
+      // clear old layers
+      if(
         window.compartmentLayer
-          .clearLayers();
+      ){
+        window.compartmentLayer.clearLayers();
       }
 
-    } catch(e){
-
-      console.warn(
-        "⚠ clearLayers failed",
-        e
-      );
-    }
-
-    // =================================================
-    // 🧹 RESET CACHE
-    // =================================================
-    window.allCompartmentFeatures =
-      [];
-
-    // =================================================
-    // 📥 URL
-    // =================================================
-    const url =
-
-      "./geojson/compartments/"
-
-      + encodeURIComponent(
-          division
-        )
-
-      + "/"
-
-      + encodeURIComponent(
-          range
-        )
-
-      + "/"
-
-      + encodeURIComponent(
-          beat
-        )
-
-      + "/"
-
-      + "compartment.geojson";
-
-    console.log(
-      "📥 URL:",
-      url
-    );
-
-    // =================================================
-    // 📥 FETCH
-    // =================================================
-    let res = null;
-
-    try {
-
-      res =
-        await fetch(
-          url,
-          {
-            cache:"no-cache"
-          }
-        );
-
-    } catch(fetchError){
-
-      console.error(
-        "❌ Fetch failed",
-        fetchError
-      );
-
-      window.loadingCompartments =
-        false;
-
-      return;
-    }
-
-    // =================================================
-    // ❌ NOT FOUND
-    // =================================================
-    if(
-
-      !res ||
-
-      !res.ok
-
-    ){
-
-      console.warn(
-        "❌ compartment.geojson missing"
-      );
-
-      window.loadingCompartments =
-        false;
-
-      return;
-    }
-
-    // =================================================
-    // 📦 JSON
-    // =================================================
-    let data = null;
-
-    try {
-
-      data =
-        await res.json();
-
-    } catch(jsonError){
-
-      console.error(
-        "❌ Invalid GeoJSON",
-        jsonError
-      );
-
-      window.loadingCompartments =
-        false;
-
-      return;
-    }
-
-    // =================================================
-    // ❌ INVALID STRUCTURE
-    // =================================================
-    if(
-
-      !data ||
-
-      !Array.isArray(
-        data.features
-      )
-
-    ){
-
-      console.warn(
-        "⚠ Invalid GeoJSON structure"
-      );
-
-      window.loadingCompartments =
-        false;
-
-      return;
-    }
-
-    // =================================================
-    // 📦 FEATURES
-    // =================================================
-    const features =
-      data.features || [];
-
-    console.log(
-      "📦 Features:",
-      features.length
-    );
-
-    // =================================================
-    // 🔥 CACHE
-    // =================================================
-    window.allCompartmentFeatures =
-      features;
-
-    // =================================================
-    // 🚀 RENDER
-    // =================================================
-    try {
-
-      renderFilteredCompartments();
-
-    } catch(renderError){
-
-      console.error(
-        "❌ renderFilteredCompartments failed",
-        renderError
-      );
-    }
-
-    // =================================================
-    // 🔄 BUTTONS
-    // =================================================
-    try {
+      window.allCompartmentFeatures = [];
 
       populateCompartmentButtons();
 
-    } catch(buttonError){
+      return;
+    }
 
+    // ==================================================
+    // 🌍 CLEAR OLD DATA
+    // ==================================================
+    if(
+      window.compartmentLayer
+    ){
+      window.compartmentLayer.clearLayers();
+    }
+
+    window.allCompartmentFeatures = [];
+
+    // ==================================================
+    // 🌍 LOOP FILES
+    // ==================================================
+    for(
+      const fileName of files
+    ){
+
+      try{
+
+        // ==============================================
+        // 🌍 URL
+        // ==============================================
+        const url =
+          `./geojson/compartments/${division}/${range}/${beat}/${fileName}`;
+
+        console.log(
+          "📥 Fetch:",
+          url
+        );
+
+        // ==============================================
+        // 🌍 FETCH
+        // ==============================================
+        const response =
+          await fetch(url);
+
+        if(
+          !response.ok
+        ){
+          console.warn(
+            "❌ Fetch failed:",
+            url
+          );
+          continue;
+        }
+
+        // ==============================================
+        // 🌍 JSON
+        // ==============================================
+        const geojson =
+          await response.json();
+
+        // ==============================================
+        // 🌍 FEATURE SAFETY
+        // ==============================================
+        if(
+          !geojson ||
+          !geojson.features ||
+          !Array.isArray(
+            geojson.features
+          )
+        ){
+          console.warn(
+            "⚠️ Invalid geojson:",
+            fileName
+          );
+          continue;
+        }
+
+        // ==============================================
+        // 🌍 STORE FEATURES
+        // ==============================================
+        geojson.features.forEach(
+
+          feature => {
+
+            try{
+
+              // ========================================
+              // 🌍 ENSURE PROPERTIES
+              // ========================================
+              if(
+                !feature.properties
+              ){
+                feature.properties = {};
+              }
+
+              // ========================================
+              // 🌍 STORE HIERARCHY
+              // ========================================
+              feature.properties.division =
+                division;
+
+              feature.properties.range =
+                range;
+
+              feature.properties.beat =
+                beat;
+
+              // ========================================
+              // 🌍 COMPARTMENT NAME
+              // ========================================
+              feature.properties.compartment =
+                fileName
+                  .replace(".geojson","");
+
+              // ========================================
+              // 🌍 PUSH
+              // ========================================
+              window.allCompartmentFeatures.push(
+                feature
+              );
+
+            }catch(err){
+              console.error(
+                "❌ Feature processing error",
+                err
+              );
+            }
+
+          }
+
+        );
+
+        // ==============================================
+        // 🌍 ADD TO MAP
+        // ==============================================
+        const layer =
+          L.geoJSON(
+            geojson,
+            {
+
+              style(){
+
+                return {
+
+                  color:"#ff9800",
+                  weight:2,
+                  fillOpacity:0.15
+
+                };
+
+              },
+
+              onEachFeature(
+                feature,
+                layer
+              ){
+
+                try{
+
+                  const p =
+                    feature.properties || {};
+
+                  const name =
+                    p.compartment ||
+                    "Compartment";
+
+                  layer.bindPopup(
+                    `
+                    <div style="
+                      font-size:12px;
+                    ">
+                      🌍 <b>${division}</b><br>
+                      🌳 <b>${range}</b><br>
+                      🧭 <b>${beat}</b><br>
+                      🟧 <b>${name}</b>
+                    </div>
+                    `
+                  );
+
+                }catch(err){
+                  console.error(
+                    err
+                  );
+                }
+
+              }
+
+            }
+          );
+
+        // ==============================================
+        // 🌍 CREATE LAYER GROUP
+        // ==============================================
+        if(
+          !window.compartmentLayer
+        ){
+          window.compartmentLayer =
+            L.layerGroup().addTo(map);
+        }
+
+        // ==============================================
+        // 🌍 ADD LAYER
+        // ==============================================
+        window.compartmentLayer.addLayer(
+          layer
+        );
+
+      }catch(err){
+
+        console.error(
+          "❌ File load failed",
+          fileName,
+          err
+        );
+
+      }
+
+    }
+
+    // ==================================================
+    // 🌍 FIT BOUNDS
+    // ==================================================
+    try{
+
+      if(
+        window.compartmentLayer &&
+        window.compartmentLayer.getLayers().length > 0
+      ){
+
+        const group =
+          L.featureGroup(
+            window.compartmentLayer.getLayers()
+          );
+
+        map.fitBounds(
+          group.getBounds(),
+          {
+            padding:[20,20]
+          }
+        );
+
+      }
+
+    }catch(err){
       console.error(
-        "❌ populateCompartmentButtons failed",
-        buttonError
+        "❌ fitBounds failed",
+        err
       );
     }
 
-    // =================================================
-    // 🔍 DEBUG
-    // =================================================
+    // ==================================================
+    // 🌍 UPDATE UI
+    // ==================================================
+    populateCompartmentButtons();
+
     console.log(
-      "✅ Compartments loaded successfully"
+      "✅ Compartments Loaded:",
+      window.allCompartmentFeatures.length
     );
 
-    // =================================================
-    // 🔓 UNLOCK
-    // =================================================
-    window.loadingCompartments =
-      false;
-
-  }
-
-  catch(e){
+  }catch(err){
 
     console.error(
-      "❌ loadCompartmentsForBeat fatal error",
-      e
+      "❌ loadCompartmentsForBeat crash",
+      err
     );
 
-    // =================================================
-    // 🔓 SAFETY UNLOCK
-    // =================================================
-    window.loadingCompartments =
-      false;
   }
+
 }// =====================================================
 // 🟧 FILTER COMPARTMENTS
 // =====================================================
