@@ -8523,27 +8523,31 @@ function renderFilteredCompartments(){
 
       bounds.isValid()
 
-    ){
+    ){filtered = filtered.filter(f => {
 
-      filtered = filtered.filter(f => {
+  try {
 
-        try {
+    const layer =
+      L.geoJSON(f);
 
-          const layer =
-            L.geoJSON(f);
+    const b =
+      layer.getBounds();
 
-          const b =
-            layer.getBounds();
+    // ==========================================
+    // 🔥 STRICT CENTER INSIDE CHECK
+    // ==========================================
+    const center =
+      b.getCenter();
 
-          return bounds.intersects(b);
+    return bounds.contains(center);
 
-        }
+  }
 
-        catch(e){
+  catch(e){
 
-          return false;
-        }
-      });
+    return false;
+  }
+});
     }
 
     // ==================================================
