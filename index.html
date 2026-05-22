@@ -1779,24 +1779,201 @@ function resetGridStyles(){
 
 const DEBUG = false;
 
-function safeBackend(action, payload = {}) {
+async function safeBackend(
+  action,
+  payload = {}
+){
 
-  return callBackend(action, payload)
+  try {
 
-    .then(res => {
-      if (!res) {
-        if (DEBUG) console.warn(`⚠ ${action}: empty`);
-        return null;
+    // ============================================================
+    // 🔥 ONLY LOGIN LOOKUP
+    // ============================================================
+    if(action !== "GET_PROFILE"){
+
+      if(DEBUG){
+
+        console.warn(
+          `⚠ Unsupported action: ${action}`
+        );
       }
-      return res;
-    })
 
-    .catch(err => {
-      if (DEBUG) console.warn(`⚠ ${action} failed:`, err.message);
       return null;
-    });
-}
-  
+    }
+
+    // ============================================================
+    // 🔥 WAIT FIREBASE
+    // ============================================================
+    let waitCount = 0;
+
+    while(
+
+      !window.firebaseReady &&
+
+      waitCount < 50
+
+    ){
+
+      await new Promise(resolve =>
+
+        setTimeout(
+          resolve,
+          200
+        )
+      );
+
+      waitCount++;
+    }
+
+    // ============================================================
+    // ❌ FIREBASE NOT READY
+    // ============================================================
+    if(!window.firebaseReady){
+
+      console.warn(
+        "❌ Firebase not ready"
+      );
+
+      return null;
+    }
+
+    // ============================================================
+    // 🔥 PHONE
+    // ============================================================
+    const phone =
+
+      String(
+        payload?.phone || ""
+      )
+
+      .replace(/\D/g, "")
+
+      .trim();
+
+    // ============================================================
+    // ❌ INVALID PHONE
+    // ============================================================
+    if(phone.length < 10){
+
+      return {
+        error: true
+      };
+    }
+
+    if(DEBUG){
+
+      console.log(
+        "📱 Firestore lookup:",
+        phone
+      );
+    }
+
+    // ============================================================
+    // 🔥 FIRESTORE QUERY
+    // ============================================================
+    const q =
+
+      window.fb.query(
+
+        window.fb.collection(
+          window.db,
+          "staff_profiles"
+        ),
+
+        window.fb.where(
+          "phone",
+          "==",
+          phone
+        )
+      );
+
+    // ============================================================
+    // 🔥 FETCH
+    // ============================================================
+    const snap =
+
+      await window.fb.getDocs(q);
+
+    // ============================================================
+    // ❌ USER NOT FOUND
+    // ============================================================
+    if(snap.empty){
+
+      console.warn(
+        "❌ User not found"
+      );
+
+      return {
+        error: true
+      };
+    }
+
+    // ============================================================
+    // 🔥 PROFILE
+    // ============================================================
+    const data =
+
+      snap.docs[0].data();
+
+    if(DEBUG){
+
+      console.log(
+        "✅ Firestore profile:",
+        data
+      );
+    }
+
+    // ============================================================
+    // 🔥 RETURN SAME STRUCTURE
+    // IMPORTANT:
+    // KEEP EXISTING FLOW SAME
+    // ============================================================
+    return {
+
+      name:
+        data.name || "",
+
+      cleanName:
+        data.cleanName ||
+
+        cleanName(
+          data.name
+        ),
+
+      role:
+        data.role || "STAFF",
+
+      beat:
+        data.beat || "",
+
+      phone:
+        data.phone || "",
+
+      // ============================================================
+      // 🌍 GIS HIERARCHY
+      // ============================================================
+      circle:
+        data.circle || "",
+
+      division:
+        data.division || "",
+
+      range:
+        data.range || ""
+    };
+
+  }
+
+  catch(err){
+
+    console.error(
+      `❌ ${action} failed:`,
+      err
+    );
+
+    return null;
+  }
+}  
 /* ===============================
    🔧 GLOBAL UTILITIES (BACKEND)
 =============================== */
@@ -3423,14 +3600,15 @@ async function startApp(){   // 🔥 ASYNC
 
     // ==================================================
     // 🔥 IMPORT FIRESTORE
-    // ==================================================
-   const {
+    // ==================================================const {
 
   getFirestore,
 
   collection,
 
   query,
+
+  where,
 
   orderBy,
 
@@ -3501,7 +3679,7 @@ async function startApp(){   // 🔥 ASYNC
   window.fb = {
 
   collection,
-
+where,
   query,
 
   orderBy,
