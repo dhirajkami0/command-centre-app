@@ -8471,6 +8471,9 @@ async function loadCompartments(){
 // ======================================================
 // 🟧 FILTER COMPARTMENTS
 // ======================================================
+// ======================================================
+// 🟧 FILTER COMPARTMENTS
+// ======================================================
 function renderFilteredCompartments(){
 
   try {
@@ -8487,13 +8490,12 @@ function renderFilteredCompartments(){
     // ==================================================
     // 🧹 CLEAR OLD
     // ==================================================
-    window.compartmentLayer
-      .clearLayers();
+    window.compartmentLayer.clearLayers();
 
     // ==================================================
-    // 📦 SOURCE
+    // 📦 ALL COMPARTMENTS
     // ==================================================
-    let filtered =
+    let compartments =
 
       window.allCompartmentFeatures || [];
 
@@ -8510,252 +8512,58 @@ function renderFilteredCompartments(){
     if(
       visibleGIS.length === 0
     ){
-
-      console.warn(
-        "⚠ No visible GIS features"
-      );
-
       return;
     }
 
     // ==================================================
-    // 🔥 STRICT POLYGON FILTER
+    // 🟧 FILTER BY INTERSECTION
     // ==================================================
-    filtered = filtered.filter(comp => {
+    const filtered =
 
-      try {
-
-        // ==============================================
-        // 🟧 COMPARTMENT CENTER
-        // ==============================================
-        const compLayer =
-
-          L.geoJSON(comp);
-
-        const compBounds =
-
-          compLayer.getBounds();
-
-        if(
-          !compBounds.isValid()
-        ){
-          return false;
-        }
-
-        const center =
-
-          compBounds.getCenter();
-
-        // ==============================================
-        // 🌍 CHECK INSIDE ANY VISIBLE GIS POLYGON
-        // ==============================================
-        return visibleGIS.some(gis => {
-
-          try {
-
-            let inside = false;
-
-            const gisLayer =
-
-              L.geoJSON(gis);
-
-            gisLayer.eachLayer(layer => {
-
-              // ========================================
-              // 🔥 POLYGON ONLY
-              // ========================================
-              if(
-
-                !(
-                  layer instanceof L.Polygon
-                )
-
-              ){
-                return;
-              }
-
-              // ========================================
-              // 🌍 LAT LNGS
-              // ========================================
-              const polygons =
-
-                layer.getLatLngs();
-
-              // ========================================
-              // 🔥 POINT IN POLYGON
-              // ========================================
-              function pointInRing(
-                point,
-                ring
-              ){
-
-                let x =
-                  point.lng;
-
-                let y =
-                  point.lat;
-
-                let inside =
-                  false;
-
-                for(
-
-                  let i = 0,
-                  j = ring.length - 1;
-
-                  i < ring.length;
-
-                  j = i++
-
-                ){
-
-                  const xi =
-                    ring[i].lng;
-
-                  const yi =
-                    ring[i].lat;
-
-                  const xj =
-                    ring[j].lng;
-
-                  const yj =
-                    ring[j].lat;
-
-                  const intersect =
-
-                    (
-
-                      (yi > y)
-
-                      !==
-
-                      (yj > y)
-
-                    )
-
-                    &&
-
-                    (
-
-                      x <
-
-                      (
-
-                        (xj - xi)
-
-                        *
-
-                        (y - yi)
-
-                      )
-
-                      /
-
-                      (
-
-                        yj - yi
-
-                      )
-
-                      +
-
-                      xi
-
-                    );
-
-                  if(intersect){
-
-                    inside =
-                      !inside;
-                  }
-                }
-
-                return inside;
-              }
-
-              // ========================================
-              // 🔥 MULTIPOLYGON SAFE
-              // ========================================
-              polygons.forEach(poly => {
-
-                const ring =
-
-                  Array.isArray(poly[0])
-
-                    ? poly[0]
-
-                    : poly;
-
-                if(
-
-                  pointInRing(
-                    center,
-                    ring
-                  )
-
-                ){
-
-                  inside = true;
-                }
-              });
-            });
-
-            return inside;
-
-          }
-
-          catch(e){
-
-            return false;
-          }
-        });
-
-      }
-
-      catch(e){
-
-        return false;
-      }
-    });
-
-    // ==================================================
-    // 🟧 MANUAL COMPARTMENT FILTER
-    // ==================================================
-    if(
-
-      window.gisFilter.compartment &&
-
-      window.gisFilter.compartment !== "ALL"
-
-    ){
-
-      filtered = filtered.filter(f => {
+      compartments.filter(comp => {
 
         try {
 
-          const props =
-            f.properties || {};
+          // ==============================================
+          // 🟧 COMPARTMENT BOUNDS
+          // ==============================================
+          const compLayer =
 
-          const name =
+            L.geoJSON(comp);
 
-            String(
+          const compBounds =
 
-              props.compartment ||
+            compLayer.getBounds();
 
-              props.Compartment ||
+          // ==============================================
+          // 🌍 CHECK AGAINST ALL VISIBLE GIS
+          // ==============================================
+          return visibleGIS.some(gis => {
 
-              props.name ||
+            try {
 
-              ""
+              const gisLayer =
 
-            ).trim();
+                L.geoJSON(gis);
 
-          return (
+              const gisBounds =
 
-            name ===
+                gisLayer.getBounds();
 
-            window.gisFilter.compartment
-          );
+              // ==========================================
+              // ✅ INTERSECTION TEST
+              // ==========================================
+              return gisBounds.intersects(
+                compBounds
+              );
+
+            }
+
+            catch(e){
+
+              return false;
+            }
+          });
 
         }
 
@@ -8764,69 +8572,88 @@ function renderFilteredCompartments(){
           return false;
         }
       });
+
+    // ==================================================
+    // 🟧 MANUAL COMPARTMENT FILTER
+    // ==================================================
+    let finalCompartments =
+      filtered;
+
+    if(
+
+      window.gisFilter.compartment &&
+
+      window.gisFilter.compartment !== "ALL"
+
+    ){
+
+      finalCompartments =
+
+        filtered.filter(f => {
+
+          try {
+
+            const props =
+              f.properties || {};
+
+            const name =
+
+              String(
+
+                props.compartment ||
+
+                props.Compartment ||
+
+                ""
+
+              ).trim();
+
+            return (
+
+              name ===
+
+              window.gisFilter.compartment
+            );
+
+          }
+
+          catch(e){
+
+            return false;
+          }
+        });
     }
 
     // ==================================================
-    // 🚀 FAST CHUNK RENDER
+    // 🚀 RENDER
     // ==================================================
-    let i = 0;
+    finalCompartments.forEach(f => {
 
-    const chunkSize = 120;
+      try {
 
-    function drawChunk(){
+        window.compartmentLayer
+          .addData(f);
 
-      const slice =
-
-        filtered.slice(
-          i,
-          i + chunkSize
-        );
-
-      slice.forEach(f => {
-
-        try {
-
-          window.compartmentLayer
-            .addData(f);
-
-        } catch(e){}
-      });
-
-      i += chunkSize;
-
-      // ================================================
-      // 🔄 CONTINUE
-      // ================================================
-      if(i < filtered.length){
-
-        requestAnimationFrame(
-          drawChunk
-        );
-      }
-
-      // ================================================
-      // ✅ COMPLETE
-      // ================================================
-      else {
-
-        try {
-
-          window.compartmentLayer
-            .bringToFront();
-
-        } catch(e){}
-
-        console.log(
-          "🟧 Compartments rendered:",
-          filtered.length
-        );
-      }
-    }
+      } catch(e){}
+    });
 
     // ==================================================
-    // 🚀 START
+    // 🔥 FRONT
     // ==================================================
-    drawChunk();
+    try {
+
+      window.compartmentLayer
+        .bringToFront();
+
+    } catch(e){}
+
+    // ==================================================
+    // 📊 DEBUG
+    // ==================================================
+    console.log(
+      "🟧 Compartments rendered:",
+      finalCompartments.length
+    );
 
   }
 
