@@ -1268,61 +1268,58 @@ NORTH REMAINS ABSOLUTE
 <!-- ========================================= -->
 <!-- 🌍 GIS FILTER PANEL -->
 <!-- ========================================= -->
-<div id="gisFilterPanel"
+<div
+  id="gisFilterPanel"
   style="
     display:none;
     margin-top:10px;
     background:rgba(255,255,255,0.06);
     border-radius:12px;
     padding:10px;
-  ">
+    backdrop-filter:blur(6px);
+  "
+>
 
-  <div style="
-    font-size:13px;
-    font-weight:bold;
-    color:#4caf50;
-    margin-bottom:8px;
-  ">
+  <!-- ===================================== -->
+  <!-- 🌍 TITLE -->
+  <!-- ===================================== -->
+  <div
+    style="
+      font-size:13px;
+      font-weight:bold;
+      color:#4caf50;
+      margin-bottom:10px;
+    "
+  >
     🌍 GIS FILTERS
   </div>
 
-  <!-- DIVISION -->
-  <select id="divisionFilter"
+  <!-- ===================================== -->
+  <!-- 🟦 DIVISION BUTTONS -->
+  <!-- ===================================== -->
+  <div
+    id="divisionButtons"
     style="
-      width:100%;
-      padding:10px;
-      border:none;
-      border-radius:8px;
-      margin-bottom:8px;
-      background:#111;
-      color:#fff;
-    ">
+      display:flex;
+      flex-wrap:wrap;
+      gap:8px;
+      margin-bottom:10px;
+    "
+  ></div>
 
-    <option value="ALL">
-      All Divisions
-    </option>
-
-  </select>
-
-  <!-- RANGE -->
-  <select id="rangeFilter"
+  <!-- ===================================== -->
+  <!-- 🟩 RANGE BUTTONS -->
+  <!-- ===================================== -->
+  <div
+    id="rangeButtons"
     style="
-      width:100%;
-      padding:10px;
-      border:none;
-      border-radius:8px;
-      background:#111;
-      color:#fff;
-    ">
+      display:flex;
+      flex-wrap:wrap;
+      gap:8px;
+    "
+  ></div>
 
-    <option value="ALL">
-      All Ranges
-    </option>
-
-  </select>
-
-</div>
-    
+</div>    
     <div class="weather-drawer" id="weatherDrawer" style="margin-top: 10px; background: rgba(255,255,255,0.05); border-radius: 8px; overflow: hidden;">
       <button class="weather-toggle" onclick="toggleWeatherDrawer()" style="width:100%; background:none; border:none; color:#4caf50; display:flex; justify-content:space-between; align-items:center; padding: 12px; cursor:pointer; font-weight:bold; font-size:13px;"> <span>
         <i class="fa-solid fa-cloud-sun"></i> Weather Info</span> <i id="weatherChevron" class="fa-solid fa-chevron-down"></i> </button> <div class="weather-content" id="weatherContent" style="max-height: 0px; opacity: 0; overflow: hidden; transition:
@@ -6839,51 +6836,178 @@ window.allGISFeatures =
   window.allGISFeatures || [];
 
 // ======================================================
-// 🌍 POPULATE FILTERS
+// 🌍 CREATE BUTTON
 // ======================================================
-function populateGISFilters(){
+function createGISButton(
+  text,
+  active = false
+){
+
+  return `
+    <button
+      class="gis-filter-btn"
+      data-value="${text}"
+      style="
+        padding:8px 14px;
+        border:none;
+        border-radius:10px;
+        cursor:pointer;
+        font-size:12px;
+        font-weight:bold;
+        background:
+          ${active
+            ? "#00e5ff"
+            : "rgba(255,255,255,0.12)"
+          };
+        color:
+          ${active
+            ? "#000"
+            : "#fff"
+          };
+      "
+    >
+      ${text}
+    </button>
+  `;
+}
+
+// ======================================================
+// 🌍 DIVISION BUTTONS
+// ======================================================
+function populateDivisionButtons(){
 
   try {
 
-    const divSelect =
+    const container =
 
       document.getElementById(
-        "divisionFilter"
+        "divisionButtons"
       );
 
-    const rangeSelect =
+    if(!container){
+      return;
+    }
+
+    const divisions =
+      new Set();
+
+    (
+      window.allGISFeatures || []
+    )
+
+    .forEach(f => {
+
+      const props =
+        f.properties || {};
+
+      const div =
+
+        props.Division ||
+
+        props.division;
+
+      if(div){
+
+        divisions.add(
+          String(div).trim()
+        );
+      }
+    });
+
+    // ======================================
+    // 🧹 RESET
+    // ======================================
+    container.innerHTML = "";
+
+    // ======================================
+    // 🌍 ALL BUTTON
+    // ======================================
+    container.innerHTML +=
+
+      createGISButton(
+        "ALL",
+        window.gisFilter.division === "ALL"
+      );
+
+    // ======================================
+    // 🌍 DIVISION BUTTONS
+    // ======================================
+    [...divisions]
+
+    .sort()
+
+    .forEach(div => {
+
+      container.innerHTML +=
+
+        createGISButton(
+          div,
+          window.gisFilter.division === div
+        );
+    });
+
+    // ======================================
+    // 🖱 EVENTS
+    // ======================================
+    container
+
+    .querySelectorAll(
+      ".gis-filter-btn"
+    )
+
+    .forEach(btn => {
+
+      btn.onclick = function(){
+
+        const div =
+          this.dataset.value;
+
+        window.gisFilter.division =
+          div;
+
+        window.gisFilter.range =
+          "ALL";
+
+        populateDivisionButtons();
+
+        populateRangeButtons();
+
+        renderFilteredGIS();
+      };
+    });
+
+  }
+
+  catch(e){
+
+    console.error(
+      "❌ populateDivisionButtons failed",
+      e
+    );
+  }
+}
+
+// ======================================================
+// 🌍 RANGE BUTTONS
+// ======================================================
+function populateRangeButtons(){
+
+  try {
+
+    const container =
 
       document.getElementById(
-        "rangeFilter"
+        "rangeButtons"
       );
 
-    if(
-      !divSelect ||
-      !rangeSelect
-    ){
+    if(!container){
       return;
     }
 
     // ======================================
     // 🧹 RESET
     // ======================================
-    divSelect.innerHTML = `
-      <option value="ALL">
-        All Divisions
-      </option>
-    `;
-
-    rangeSelect.innerHTML = `
-      <option value="ALL">
-        All Ranges
-      </option>
-    `;
-
-    // ======================================
-    // 🔥 UNIQUE VALUES
-    // ======================================
-    const divisions =
-      new Set();
+    container.innerHTML = "";
 
     const ranges =
       new Set();
@@ -6897,124 +7021,9 @@ function populateGISFilters(){
       const props =
         f.properties || {};
 
-      const d =
+      const div =
 
-        props.Division ||
-
-        props.division ||
-
-        "";
-
-      const r =
-
-        props.Range ||
-
-        props.range ||
-
-        "";
-
-      if(d){
-        divisions.add(d);
-      }
-
-      if(r){
-        ranges.add(r);
-      }
-    });
-
-    // ======================================
-    // 🌍 DIVISION OPTIONS
-    // ======================================
-    [...divisions]
-
-    .sort()
-
-    .forEach(d => {
-
-      divSelect.innerHTML +=
-
-      `
-      <option value="${d}">
-        ${d}
-      </option>
-      `;
-    });
-
-    // ======================================
-    // 🌍 RANGE OPTIONS
-    // ======================================
-    [...ranges]
-
-    .sort()
-
-    .forEach(r => {
-
-      rangeSelect.innerHTML +=
-
-      `
-      <option value="${r}">
-        ${r}
-      </option>
-      `;
-    });
-
-    console.log(
-      "✅ GIS filters populated"
-    );
-
-  }
-
-  catch(e){
-
-    console.error(
-      "❌ populateGISFilters failed",
-      e
-    );
-  }
-}
-
-// ======================================================
-// 🌍 FILTER + RENDER
-// ======================================================
-function renderFilteredGIS(){
-
-  try {
-
-    if(
-      !window.rangeLayer
-    ){
-      return;
-    }
-
-    // ======================================
-    // 🧹 CLEAR OLD
-    // ======================================
-    window.rangeLayer.clearLayers();
-
-    // ======================================
-    // 📦 FEATURES
-    // ======================================
-    let filtered =
-
-      window.allGISFeatures || [];
-
-    // ======================================
-    // 🔥 DIVISION FILTER
-    // ======================================
-    if(
-
-      window.gisFilter.division &&
-
-      window.gisFilter.division !== "ALL"
-
-    ){
-
-      filtered = filtered.filter(f => {
-
-        const props =
-          f.properties || {};
-
-        return String(
+        String(
 
           props.Division ||
 
@@ -7022,31 +7031,11 @@ function renderFilteredGIS(){
 
           ""
 
-        ).trim()
+        ).trim();
 
-        ===
+      const range =
 
-        window.gisFilter.division;
-      });
-    }
-
-    // ======================================
-    // 🔥 RANGE FILTER
-    // ======================================
-    if(
-
-      window.gisFilter.range &&
-
-      window.gisFilter.range !== "ALL"
-
-    ){
-
-      filtered = filtered.filter(f => {
-
-        const props =
-          f.properties || {};
-
-        return String(
+        String(
 
           props.Range ||
 
@@ -7054,166 +7043,91 @@ function renderFilteredGIS(){
 
           ""
 
-        ).trim()
+        ).trim();
 
-        ===
+      // ==================================
+      // 🔥 DIVISION MATCH
+      // ==================================
+      if(
 
-        window.gisFilter.range;
-      });
-    }
+        window.gisFilter.division === "ALL"
 
-    console.log(
-      "🎯 FILTERED GIS:",
-      filtered.length
-    );
+        ||
 
-    // ======================================
-    // ⚡ CHUNK RENDER
-    // ======================================
-    let i = 0;
+        div ===
+        window.gisFilter.division
 
-    const chunkSize = 40;
+      ){
 
-    function drawChunk(){
+        if(range){
 
-      try {
-
-        const slice =
-
-          filtered.slice(
-            i,
-            i + chunkSize
-          );
-
-        slice.forEach(f => {
-
-          try {
-
-            window.rangeLayer
-              ?.addData(f);
-
-          } catch(e){
-
-            console.warn(
-              "⚠ addData failed",
-              e
-            );
-          }
-        });
-
-        i += chunkSize;
-
-        if(i < filtered.length){
-
-          requestAnimationFrame(
-            drawChunk
-          );
+          ranges.add(range);
         }
-
-        else {
-
-          console.log(
-            "✅ GIS RENDER COMPLETE"
-          );
-
-          // ==============================
-          // 🔥 FIT BOUNDS
-          // ==============================
-          try {
-
-            const bounds =
-
-              window.rangeLayer
-                ?.getBounds?.();
-
-            if(
-
-              bounds &&
-
-              bounds.isValid?.()
-
-            ){
-
-              map.fitBounds(
-                bounds,
-                {
-                  padding:[10,10]
-                }
-              );
-            }
-
-          } catch(e){
-
-            console.warn(
-              "⚠ fitBounds failed",
-              e
-            );
-          }
-        }
-
-      } catch(e){
-
-        console.error(
-          "❌ drawChunk failed",
-          e
-        );
       }
-    }
+    });
 
-    drawChunk();
+    // ======================================
+    // 🌍 ALL BUTTON
+    // ======================================
+    container.innerHTML +=
+
+      createGISButton(
+        "ALL",
+        window.gisFilter.range === "ALL"
+      );
+
+    // ======================================
+    // 🌍 RANGE BUTTONS
+    // ======================================
+    [...ranges]
+
+    .sort()
+
+    .forEach(range => {
+
+      container.innerHTML +=
+
+        createGISButton(
+          range,
+          window.gisFilter.range === range
+        );
+    });
+
+    // ======================================
+    // 🖱 EVENTS
+    // ======================================
+    container
+
+    .querySelectorAll(
+      ".gis-filter-btn"
+    )
+
+    .forEach(btn => {
+
+      btn.onclick = function(){
+
+        const range =
+          this.dataset.value;
+
+        window.gisFilter.range =
+          range;
+
+        populateRangeButtons();
+
+        renderFilteredGIS();
+      };
+    });
 
   }
 
   catch(e){
 
     console.error(
-      "❌ renderFilteredGIS failed",
+      "❌ populateRangeButtons failed",
       e
     );
   }
 }
-
-// ======================================================
-// 🌍 FILTER EVENTS
-// ======================================================
-document
-
-.getElementById(
-  "divisionFilter"
-)
-
-?.addEventListener(
-
-  "change",
-
-  function(){
-
-    window.gisFilter.division =
-      this.value;
-
-    renderFilteredGIS();
-  }
-);
-
-document
-
-.getElementById(
-  "rangeFilter"
-)
-
-?.addEventListener(
-
-  "change",
-
-  function(){
-
-    window.gisFilter.range =
-      this.value;
-
-    renderFilteredGIS();
-  }
-);
-
 // ======================================================
 // 🚀 LOAD GIS
 // ======================================================
