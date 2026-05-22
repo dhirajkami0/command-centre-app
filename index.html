@@ -6634,6 +6634,222 @@ ${pct(data.health)} / 100
 // ==========================================
 
 // 🔥 GLOBAL (IMPORTANT)
+// ======================================================
+// 🌍 GLOBAL GIS FILTER STATE
+// ======================================================
+window.gisFilter =
+  window.gisFilter || {
+
+    division: "ALL",
+
+    range: "ALL"
+  };
+
+// ======================================================
+// 🌍 GIS FEATURES CACHE
+// ======================================================
+window.allGISFeatures =
+  window.allGISFeatures || [];
+
+// ======================================================
+// 🔥 FILTER + RENDER GIS
+// ======================================================
+function renderFilteredGIS(){
+
+  try {
+
+    if(
+      !window.rangeLayer
+    ){
+      return;
+    }
+
+    // ==================================================
+    // 🧹 CLEAR OLD
+    // ==================================================
+    window.rangeLayer.clearLayers();
+
+    // ==================================================
+    // 📦 FEATURES
+    // ==================================================
+    let filtered =
+
+      window.allGISFeatures || [];
+
+    // ==================================================
+    // 🔥 DIVISION FILTER
+    // ==================================================
+    if(
+
+      window.gisFilter.division &&
+
+      window.gisFilter.division !== "ALL"
+
+    ){
+
+      filtered = filtered.filter(f => {
+
+        const props =
+          f.properties || {};
+
+        return String(
+
+          props.Division ||
+
+          props.division ||
+
+          ""
+
+        ).trim()
+
+        ===
+
+        window.gisFilter.division;
+      });
+    }
+
+    // ==================================================
+    // 🔥 RANGE FILTER
+    // ==================================================
+    if(
+
+      window.gisFilter.range &&
+
+      window.gisFilter.range !== "ALL"
+
+    ){
+
+      filtered = filtered.filter(f => {
+
+        const props =
+          f.properties || {};
+
+        return String(
+
+          props.Range ||
+
+          props.range ||
+
+          ""
+
+        ).trim()
+
+        ===
+
+        window.gisFilter.range;
+      });
+    }
+
+    console.log(
+      "🎯 Rendering filtered GIS:",
+      filtered.length
+    );
+
+    // ==================================================
+    // ⚡ CHUNK RENDER
+    // ==================================================
+    let i = 0;
+
+    const chunkSize = 40;
+
+    function drawChunk(){
+
+      try {
+
+        const slice =
+
+          filtered.slice(
+            i,
+            i + chunkSize
+          );
+
+        slice.forEach(f => {
+
+          try {
+
+            window.rangeLayer
+              ?.addData(f);
+
+          } catch(e){
+
+            console.warn(
+              "⚠ addData failed",
+              e
+            );
+          }
+
+        });
+
+        i += chunkSize;
+
+        if(i < filtered.length){
+
+          requestAnimationFrame(
+            drawChunk
+          );
+        }
+
+        else {
+
+          console.log(
+            "✅ Filter render complete"
+          );
+
+          try {
+
+            const bounds =
+
+              window.rangeLayer
+                ?.getBounds?.();
+
+            if(
+
+              bounds &&
+
+              bounds.isValid?.()
+
+            ){
+
+              map.fitBounds(
+                bounds,
+                {
+                  padding:[10,10]
+                }
+              );
+            }
+
+          } catch(e){
+
+            console.warn(
+              "⚠ fitBounds failed",
+              e
+            );
+          }
+        }
+
+      } catch(e){
+
+        console.error(
+          "❌ drawChunk failed",
+          e
+        );
+      }
+    }
+
+    drawChunk();
+
+  } catch(e){
+
+    console.error(
+      "❌ renderFilteredGIS failed",
+      e
+    );
+  }
+}
+
+// ======================================================
+// 🔥 LOAD GIS
+// ======================================================
 async function loadRangeKML(){
 
   try {
@@ -6649,12 +6865,12 @@ async function loadRangeKML(){
       window.userProfile || {};
 
     // ======================================
-    // 🔥 NORMALIZE ROLE
+    // 🔥 ROLE
     // ======================================
     const role =
 
       String(
-        profile.role || ""
+        profile.role || "STAFF"
       )
 
       .trim()
@@ -6668,9 +6884,7 @@ async function loadRangeKML(){
 
       String(
         profile.division || ""
-      )
-
-      .trim();
+      ).trim();
 
     // ======================================
     // 🔥 RANGE
@@ -6679,13 +6893,8 @@ async function loadRangeKML(){
 
       String(
         profile.range || ""
-      )
+      ).trim();
 
-      .trim();
-
-    // ======================================
-    // 🔍 DEBUG
-    // ======================================
     console.log(
       "👤 PROFILE:",
       profile
@@ -6694,16 +6903,6 @@ async function loadRangeKML(){
     console.log(
       "🎭 ROLE:",
       role
-    );
-
-    console.log(
-      "🌍 DIVISION:",
-      division
-    );
-
-    console.log(
-      "📍 RANGE:",
-      range
     );
 
     // ======================================
@@ -6719,8 +6918,14 @@ async function loadRangeKML(){
       url =
         "./geojson/master.geojson";
 
+      window.gisFilter.division =
+        "ALL";
+
+      window.gisFilter.range =
+        "ALL";
+
       console.log(
-        "🌍 GLOBAL GIS"
+        "🌍 ADMIN GLOBAL GIS"
       );
     }
 
@@ -6735,13 +6940,10 @@ async function loadRangeKML(){
 
     ){
 
-      // ======================================
-      // ❌ DIVISION MISSING
-      // ======================================
       if(!division){
 
         console.error(
-          "❌ Division missing for DFO/ADFO"
+          "❌ Division missing"
         );
 
         return;
@@ -6759,6 +6961,12 @@ async function loadRangeKML(){
 
         "/master.geojson";
 
+      window.gisFilter.division =
+        "ALL";
+
+      window.gisFilter.range =
+        "ALL";
+
       console.log(
         "🌍 DIVISION GIS:",
         division
@@ -6766,19 +6974,10 @@ async function loadRangeKML(){
     }
 
     // ======================================
-    // 🔵 TEAM LEADER / STAFF
+    // 🔵 STAFF
     // ======================================
-    else if(
+    else {
 
-      role === "TEAM LEADER" ||
-
-      role === "STAFF"
-
-    ){
-
-      // ======================================
-      // ❌ INVALID PROFILE
-      // ======================================
       if(
 
         !division ||
@@ -6788,8 +6987,7 @@ async function loadRangeKML(){
       ){
 
         console.error(
-          "❌ Division/range missing:",
-          profile
+          "❌ Invalid staff profile"
         );
 
         return;
@@ -6815,35 +7013,24 @@ async function loadRangeKML(){
 
         ".geojson";
 
+      window.gisFilter.division =
+        "ALL";
+
+      window.gisFilter.range =
+        "ALL";
+
       console.log(
-        "🎯 RANGE GIS:",
-        range
+        "🎯 STAFF RANGE GIS"
       );
     }
 
-    // ======================================
-    // ❌ UNKNOWN ROLE
-    // ======================================
-    else {
-
-      console.error(
-        "❌ Unknown role:",
-        role
-      );
-
-      return;
-    }
-
-    // ======================================
-    // 📥 URL
-    // ======================================
     console.log(
       "📥 URL:",
       url
     );
 
     // ======================================
-    // 🔥 REMOVE OLD LAYER
+    // 🧹 REMOVE OLD
     // ======================================
     if(window.rangeLayer){
 
@@ -6865,18 +7052,10 @@ async function loadRangeKML(){
     const res =
       await fetch(url);
 
-    // ======================================
-    // ❌ FETCH FAIL
-    // ======================================
     if(!res.ok){
 
-      console.error(
-        "❌ GeoJSON fetch failed:",
-        url
-      );
-
       throw new Error(
-        "❌ Failed to load GeoJSON"
+        "❌ GeoJSON fetch failed"
       );
     }
 
@@ -6890,337 +7069,236 @@ async function loadRangeKML(){
       data.features || [];
 
     console.log(
-      "📦 Features:",
+      "📦 GIS Features:",
       features.length
     );
 
     // ======================================
+    // 🔥 CACHE FEATURES
+    // ======================================
+    window.allGISFeatures =
+      features;
+
+    // ======================================
     // 🔥 CREATE LAYER
     // ======================================
- window.rangeLayer =
+    window.rangeLayer =
 
-  L.geoJSON([], {
+      L.geoJSON([], {
 
-    // ======================================
-    // 🎨 RENDERER
-    // ======================================
-    renderer:
-      L.canvas(),
+        renderer:
+          L.canvas(),
 
-    // ======================================
-    // 🔥 INTERACTIVE
-    // ======================================
-    interactive: true,
+        interactive: true,
 
-    bubblingMouseEvents: true,
+        bubblingMouseEvents: false,
 
-    // ======================================
-    // 🎨 STYLE
-    // ======================================
-    style: {
+        // ==================================
+        // 🎨 STYLE
+        // ==================================
+        style: {
 
-      color:
-        "#00e5ff",
+          color:
+            "#00e5ff",
 
-      // 🔥 IMPORTANT
-      // bigger hit area
-      weight:
-        3,
+          weight:
+            5,
 
-      opacity:
-        0.8,
+          opacity:
+            0.9,
 
-      // 🔥 IMPORTANT
-      // slightly visible for click detection
-      fillOpacity:
-        0.12
-    },
+          fillOpacity:
+            0.22
+        },
 
-    // ======================================
-    // 🖱 FEATURE EVENTS
-    // ======================================
-    onEachFeature:
-    function(feature, layer){
+        // ==================================
+        // 🖱 EVENTS
+        // ==================================
+        onEachFeature:
+        function(feature, layer){
 
-      try {
+          try {
 
-        // ======================================
-        // 🔥 FORCE INTERACTIVE
-        // ======================================
-        layer.options.interactive =
-          true;
+            layer.options.interactive =
+              true;
 
-        // ======================================
-        // 🔥 SAFE PROPERTIES
-        // ======================================
-        const props =
-          feature.properties || {};
+            layer.bringToFront();
 
-        // ======================================
-        // 🌳 RANGE
-        // ======================================
-        const range =
+            layer.off();
 
-          props.Range ||
+            // ==============================
+            // 📦 PROPERTIES
+            // ==============================
+            const props =
+              feature.properties || {};
 
-          props.range ||
+            const range =
 
-          "Unknown Range";
+              props.Range ||
 
-        // ======================================
-        // 🧭 BEAT
-        // ======================================
-        const beat =
+              props.range ||
 
-          props.Beat ||
+              "Unknown";
 
-          props.beat ||
+            const beat =
 
-          "Unknown Beat";
+              props.Beat ||
 
-        // ======================================
-        // 📐 AREA
-        // ======================================
-        const beatArea =
+              props.beat ||
 
-          Number(
-            props.Beat_Ar || 0
-          ).toFixed(2);
+              "Unknown";
 
-        // ======================================
-        // 👮 LIVE STAFF
-        // ======================================
-        let liveCount = 0;
+            const beatArea =
 
-        try {
+              Number(
+                props.Beat_Ar || 0
+              ).toFixed(2);
 
-          const liveStaff =
-            window.liveStaff || {};
-
-          Object.values(liveStaff)
-            .forEach(staff => {
-
-              if(
-
-                String(
-                  staff.range || ""
-                ).trim() === range &&
-
-                String(
-                  staff.beat || ""
-                ).trim() === beat
-
-              ){
-
-                liveCount++;
-              }
-
-            });
-
-        } catch(e){
-
-          console.warn(
-            "⚠ liveCount failed",
-            e
-          );
-        }
-
-        // ======================================
-        // 🖱 CLICK / TOUCH
-        // ======================================
-        layer.on(
-
-          "click touchstart",
-
-          function(e){
+            // ==============================
+            // 👮 LIVE STAFF
+            // ==============================
+            let liveCount = 0;
 
             try {
 
-              // ======================================
-              // 🔥 STOP PROPAGATION
-              // ======================================
-              if(e.originalEvent){
+              const liveStaff =
+                window.liveStaff || {};
 
-                e.originalEvent.preventDefault();
+              Object.values(
+                liveStaff
+              ).forEach(staff => {
 
-                e.originalEvent.stopPropagation();
-              }
+                if(
 
-              // ======================================
-              // 📍 POPUP
-              // ======================================
-              const popupHtml =
+                  String(
+                    staff.range || ""
+                  ).trim()
 
-                `
-                <div style="
-                  min-width:240px;
-                  font-size:14px;
-                  line-height:1.2;
-                ">
+                  ===
 
-                  <b style="
-  font-size:16px;
-  color:#000;
-">
-🌳 ${range} Range
-                  </b>
+                  String(range).trim()
 
-                  <br><br>
+                  &&
 
-                  🧭 <b>Beat:</b>
-                  ${beat}
+                  String(
+                    staff.beat || ""
+                  ).trim()
 
-                  <br>
+                  ===
 
-                  📐 <b>Area:</b>
-                  ${beatArea} sq km
+                  String(beat).trim()
 
-                  <br>
+                ){
 
-                  👮 <b>Live Staff:</b>
-                  ${liveCount}
+                  liveCount++;
+                }
+              });
 
-                </div>
-                `;
-
-              // ======================================
-              // 🔥 OPEN POPUP
-              // ======================================
-              layer.bindPopup(
-                popupHtml
-              ).openPopup(
-                e.latlng
-              );
-
-            } catch(err){
+            } catch(e){
 
               console.warn(
-                "⚠ Popup failed",
-                err
+                "⚠ liveCount fail",
+                e
               );
             }
-          }
-        );
 
-      } catch(e){
+            // ==============================
+            // 🖱 CLICK
+            // ==============================
+            layer.on(
 
-        console.warn(
-          "⚠ onEachFeature failed",
-          e
-        );
-      }
-    }
+              "click",
 
-  }).addTo(map);   
-    // ======================================
-    // ⚡ CHUNK RENDER
-    // ======================================
-    let i = 0;
+              function(e){
 
-    const chunkSize = 40;
+                try {
 
-    function drawChunk(){
+                  if(e.originalEvent){
 
-      try {
+                    e.originalEvent
+                      .preventDefault();
 
-        const slice =
+                    e.originalEvent
+                      .stopPropagation();
+                  }
 
-          features.slice(
-            i,
-            i + chunkSize
-          );
+                  const popupHtml =
 
-        slice.forEach(f => {
+                    `
+                    <div style="
+                      min-width:240px;
+                      font-size:14px;
+                      line-height:1.4;
+                    ">
 
-          try {
+                      <div style="
+                        font-size:16px;
+                        font-weight:bold;
+                        margin-bottom:8px;
+                        color:#000;
+                      ">
+                        🌳 ${range}
+                      </div>
 
-            window.rangeLayer
-              ?.addData(f);
+                      🧭 <b>Beat:</b>
+                      ${beat}
 
-          } catch(e){
+                      <br>
 
-            console.warn(
-              "⚠ Feature render failed",
-              e
-            );
-          }
+                      📐 <b>Area:</b>
+                      ${beatArea} sq km
 
-        });
+                      <br>
 
-        i += chunkSize;
+                      👮 <b>Live Staff:</b>
+                      ${liveCount}
 
-        // ======================================
-        // 🔁 NEXT
-        // ======================================
-        if(i < features.length){
+                    </div>
+                    `;
 
-          requestAnimationFrame(
-            drawChunk
-          );
+                  layer.unbindPopup();
 
-        }
+                  layer.bindPopup(
+                    popupHtml,
+                    {
+                      autoPan:true,
+                      closeButton:true
+                    }
+                  );
 
-        // ======================================
-        // ✅ COMPLETE
-        // ======================================
-        else {
+                  layer.openPopup(
+                    e.latlng
+                  );
 
-          console.log(
-            "✅ GeoJSON render complete"
-          );
+                } catch(err){
 
-          // ======================================
-          // 🎯 FIT MAP
-          // ======================================
-          try {
-
-            const bounds =
-
-              window.rangeLayer
-                ?.getBounds?.();
-
-            if(
-
-              bounds &&
-
-              bounds.isValid?.()
-
-            ){
-
-              map.fitBounds(
-                bounds,
-                {
-                  padding: [10,10]
+                  console.warn(
+                    "⚠ Popup failed",
+                    err
+                  );
                 }
-              );
-            }
+              }
+            );
 
           } catch(e){
 
             console.warn(
-              "⚠ fitBounds failed",
+              "⚠ Feature setup failed",
               e
             );
           }
-
-          console.log(
-            "✅ GIS READY"
-          );
         }
 
-      } catch(e){
-
-        console.error(
-          "❌ drawChunk failed:",
-          e
-        );
-      }
-    }
+      }).addTo(map);
 
     // ======================================
-    // 🚀 START
+    // 🚀 INITIAL RENDER
     // ======================================
-    drawChunk();
+    renderFilteredGIS();
+
+    console.log(
+      "✅ GIS READY"
+    );
 
   }
 
@@ -7231,7 +7309,7 @@ async function loadRangeKML(){
       e
     );
   }
-}  function lineIntersectsBox(lat1, lon1, lat2, lon2, minLat, minLon, maxLat, maxLon) {
+} function lineIntersectsBox(lat1, lon1, lat2, lon2, minLat, minLon, maxLat, maxLon) {
 
   const eps = 0.000001;
 
