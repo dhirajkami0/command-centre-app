@@ -7424,7 +7424,10 @@ function renderFilteredGIS(){
     // 🧹 CLEAR OLD
     // ======================================
     window.rangeLayer.clearLayers();
+if(window.compartmentLayer){
 
+  window.compartmentLayer.clearLayers();
+}
     // ======================================
     // 📦 FEATURES
     // ======================================
@@ -8712,31 +8715,44 @@ async function loadRangeKML(){
                   // =====================================
                   // 🔥 FILTERS
                   // =====================================
-                  if(
+                 // =====================================
+// 🌍 DIVISION
+// =====================================
+window.gisFilter.division =
+  String(division).trim();
 
-                    role === "ADMIN"
+// =====================================
+// 🌳 RANGE
+// =====================================
+if(
 
-                    ||
+  role === "ADMIN"
 
-                    role === "DFO"
+  ||
 
-                    ||
+  role === "DFO"
 
-                    role === "ADFO"
+  ||
 
-                  ){
+  role === "ADFO"
 
-                    window.gisFilter.range =
-                      String(range).trim();
-                  }
+){
 
-                  window.gisFilter.beat =
-                    String(beat).trim();
+  window.gisFilter.range =
+    String(range).trim();
+}
 
-                  window.gisFilter.compartment =
-                    "ALL";
+// =====================================
+// 🧭 BEAT
+// =====================================
+window.gisFilter.beat =
+  String(beat).trim();
 
-                  // =====================================
+// =====================================
+// 🟧 RESET COMPARTMENT
+// =====================================
+window.gisFilter.compartment =
+  "ALL";                  // =====================================
                   // 🔄 UI
                   // =====================================
                   populateRangeButtons();
@@ -8749,7 +8765,7 @@ async function loadRangeKML(){
                   // 🏞 LOAD COMPARTMENTS
                   // =====================================
                   await loadCompartmentsForBeat();
-
+renderFilteredCompartments();
                   // =====================================
                   // 📋 POPUP
                   // =====================================
