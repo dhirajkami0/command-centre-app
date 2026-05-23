@@ -2581,30 +2581,47 @@ function loadProfile(){
   console.log("🔁 loadProfile() called");
 
   if(window.userProfile){
-    console.log("✅ Already logged in → skip loadProfile");
+
+    console.log(
+      "✅ Already logged in → skip loadProfile"
+    );
+
     return;
   }
 
   if(authFlowRunning){
-    console.warn("⛔ Skipping loadProfile (auth running)");
+
+    console.warn(
+      "⛔ Skipping loadProfile (auth running)"
+    );
+
     return;
   }
 
   authFlowRunning = true;
 
   const phone =
-    localStorage.getItem("userPhone") || "";
+
+    localStorage.getItem(
+      "userPhone"
+    ) || "";
 
   // ============================================================
   // 🔥 NO PHONE
   // ============================================================
+
   if(!phone){
 
     if(
+
       !loginModalLocked &&
+
       !loginShownOnce
+
     ){
+
       loginShownOnce = true;
+
       showLogin();
     }
 
@@ -2618,302 +2635,405 @@ function loadProfile(){
     { phone }
   )
 
-    .then(async profile => {
+  .then(async profile => {
 
-      // ============================================================
-      // 🔥 OFFLINE FALLBACK
-      // ============================================================
-      if(!profile){
+    // ============================================================
+    // 🔥 OFFLINE FALLBACK
+    // ============================================================
 
-        const saved =
-          localStorage.getItem(
-            "userProfile"
-          );
+    if(!profile){
 
-        if(saved){
+      const saved =
 
-          window.userProfile =
-            JSON.parse(saved);
-
-          updateNetworkStatus("offline");
-
-          applyRoleControl();
-
-          // ============================================================
-          // 🔥 SEND SAVED PROFILE TO APK
-          // ============================================================
-          try{
-
-            const bridgeReady =
-              await waitForAndroidBridge();
-
-            console.group(
-              "📱 OFFLINE PROFILE BRIDGE"
-            );
-
-            console.log(
-              "window.Android:",
-              window.Android
-            );
-
-            console.log(
-              "bridgeReady:",
-              bridgeReady
-            );
-
-            console.log(
-              "PROFILE:",
-              window.userProfile
-            );
-
-            if(
-              bridgeReady &&
-              window.Android &&
-              Android.saveUserProfile
-            ){
-
-              Android.saveUserProfile(
-                JSON.stringify(
-                  window.userProfile
-                )
-              );
-
-              console.log(
-                "✅ OFFLINE PROFILE SENT TO APK"
-              );
-
-            }else{
-
-              console.warn(
-                "❌ Android bridge unavailable"
-              );
-            }
-
-            console.groupEnd();
-
-          }catch(err){
-
-            console.error(
-              "❌ OFFLINE PROFILE BRIDGE FAILED",
-              err
-            );
-          }
-
-          // 🔥 FIX: prevent duplicate startApp
-          if(!window.__appBootRequested){
-
-            window.__appBootRequested = true;
-
-            startApp();
-          }
-
-        } else {
-
-          if(
-            !loginModalLocked &&
-            !loginShownOnce
-          ){
-            loginShownOnce = true;
-            showLogin();
-          }
-        }
-
-        return;
-      }
-
-      // ============================================================
-      // 🔥 INVALID PROFILE
-      // ============================================================
-      if(profile.error){
-
-        localStorage.removeItem(
-          "userPhone"
-        );
-
-        localStorage.removeItem(
+        localStorage.getItem(
           "userProfile"
         );
 
+      if(saved){
+
+        window.userProfile =
+
+          JSON.parse(saved);
+
+        // ======================================================
+        // 🔒 STAFF GIS LOCK
+        // ======================================================
+
+        const role =
+
+          String(
+            window.userProfile.role || ""
+          )
+          .trim()
+          .toUpperCase();
+
         if(
-          !loginModalLocked &&
-          !loginShownOnce
+
+          role === "STAFF"
+
+          ||
+
+          role === "TEAM LEADER"
+
         ){
-          loginShownOnce = true;
-          showLogin();
+
+          window.gisFilter = {
+
+            division:
+
+              String(
+                window.userProfile.division || ""
+              ).trim(),
+
+            range:
+
+              String(
+                window.userProfile.range || ""
+              ).trim(),
+
+            beat:"ALL",
+
+            compartment:"ALL"
+          };
+
+          console.log(
+            "🔒 OFFLINE STAFF GIS LOCK:",
+            window.gisFilter
+          );
         }
 
-        return;
-      }
-
-      // ============================================================
-      // 🔥 FINAL PROFILE
-      // ============================================================
-      const finalProfile = {
-
-        rawName:
-          profile.name,
-
-        cleanName:
-          profile.cleanName ||
-          cleanName(profile.name),
-
-        role:
-          profile.role,
-
-        beat:
-          profile.beat,
-
-        phone:
-          profile.phone
-      };
-
-      // ============================================================
-      // 🔥 SAVE LOCAL
-      // ============================================================
-      window.userProfile =
-        finalProfile;
-
-      localStorage.setItem(
-        "userProfile",
-        JSON.stringify(finalProfile)
-      );
-
-      updateNetworkStatus("online");
-
-      applyRoleControl();
-
-      // ============================================================
-      // 🔥 SEND PROFILE TO APK
-      // ============================================================
-      try{
-
-        const bridgeReady =
-          await waitForAndroidBridge();
-
-        console.group(
-          "📱 ANDROID PROFILE BRIDGE"
+        updateNetworkStatus(
+          "offline"
         );
 
-        console.log(
-          "window.Android:",
-          window.Android
-        );
+        applyRoleControl();
 
-        console.log(
-          "bridgeReady:",
-          bridgeReady
-        );
+        // ======================================================
+        // 📱 SEND OFFLINE PROFILE
+        // ======================================================
 
-        console.log(
-          "saveUserProfile exists:",
-          !!(
+        try{
+
+          const bridgeReady =
+
+            await waitForAndroidBridge();
+
+          if(
+
+            bridgeReady &&
+
             window.Android &&
+
             Android.saveUserProfile
-          )
-        );
 
-        console.log(
-          "savePhone exists:",
-          !!(
-            window.Android &&
-            Android.savePhone
-          )
-        );
+          ){
 
-        console.log(
-          "FINAL PROFILE OBJECT:",
-          finalProfile
-        );
+            Android.saveUserProfile(
 
-        console.log(
-          "FINAL PROFILE JSON:",
-          JSON.stringify(finalProfile)
-        );
-
-        if(
-          bridgeReady &&
-          window.Android &&
-          Android.saveUserProfile
-        ){
-
-          console.log(
-            "🚀 CALLING saveUserProfile..."
-          );
-
-          Android.saveUserProfile(
-            JSON.stringify(finalProfile)
-          );
-
-          console.log(
-            "✅ PROFILE SENT TO APK"
-          );
-
-          // ============================================================
-          // 🔥 SEND PHONE
-          // ============================================================
-          if(Android.savePhone){
-
-            Android.savePhone(
-              finalProfile.phone
+              JSON.stringify(
+                window.userProfile
+              )
             );
 
             console.log(
-              "📱 PHONE SENT TO APK"
+              "✅ OFFLINE PROFILE SENT"
             );
           }
 
-        }else{
+        } catch(err){
 
-          console.warn(
-            "❌ Android bridge unavailable"
+          console.error(
+            "❌ OFFLINE PROFILE BRIDGE FAILED",
+            err
           );
         }
 
-        console.groupEnd();
+        // ======================================================
+        // 🚀 START APP
+        // ======================================================
 
-      }catch(err){
+        if(!window.__appBootRequested){
 
-        console.error(
-          "❌ PROFILE BRIDGE ERROR",
-          err
-        );
+          window.__appBootRequested = true;
+
+          startApp();
+        }
+
+      } else {
+
+        if(
+
+          !loginModalLocked &&
+
+          !loginShownOnce
+
+        ){
+
+          loginShownOnce = true;
+
+          showLogin();
+        }
       }
 
-      updateNetworkStatus("online");
+      return;
+    }
 
-      applyRoleControl();
+    // ============================================================
+    // ❌ INVALID PROFILE
+    // ============================================================
 
-      hideLogin();
+    if(profile.error){
 
-      // 🔥 FIX: prevent duplicate startApp
-      if(!window.__appBootRequested){
-
-        window.__appBootRequested = true;
-
-        startApp();
-      }
-
-      console.log(
-        "✅ PROFILE LOADED"
+      localStorage.removeItem(
+        "userPhone"
       );
 
-    })
-
-    .catch(() => {
+      localStorage.removeItem(
+        "userProfile"
+      );
 
       if(
+
         !loginModalLocked &&
+
         !loginShownOnce
+
       ){
+
         loginShownOnce = true;
+
         showLogin();
       }
-    })
 
-    .finally(() => {
+      return;
+    }
 
-      authFlowRunning = false;
-    });
+    // ============================================================
+    // 🔥 FINAL PROFILE
+    // ============================================================
+
+    const finalProfile = {
+
+      rawName:
+        profile.name,
+
+      cleanName:
+
+        profile.cleanName ||
+
+        cleanName(
+          profile.name
+        ),
+
+      role:
+        profile.role,
+
+      beat:
+        profile.beat,
+
+      phone:
+        profile.phone,
+
+      circle:
+        profile.circle || "",
+
+      division:
+        profile.division || "",
+
+      range:
+        profile.range || ""
+    };
+
+    // ============================================================
+    // 🌍 NORMALIZE DIVISION
+    // ============================================================
+
+    if(
+      finalProfile.division ===
+      "BTR_W"
+    ){
+
+      finalProfile.division =
+        "BuxaTR_WEST";
+    }
+
+    if(
+      finalProfile.division ===
+      "BTR_E"
+    ){
+
+      finalProfile.division =
+        "BuxaTR_EAST";
+    }
+
+    // ============================================================
+    // 🔒 STAFF GIS LOCK
+    // ============================================================
+
+    const role =
+
+      String(
+        finalProfile.role || ""
+      )
+      .trim()
+      .toUpperCase();
+
+    if(
+
+      role === "STAFF"
+
+      ||
+
+      role === "TEAM LEADER"
+
+    ){
+
+      window.gisFilter = {
+
+        division:
+
+          String(
+            finalProfile.division || ""
+          ).trim(),
+
+        range:
+
+          String(
+            finalProfile.range || ""
+          ).trim(),
+
+        beat:"ALL",
+
+        compartment:"ALL"
+      };
+
+      console.log(
+        "🔒 STAFF GIS LOCK:",
+        window.gisFilter
+      );
+    }
+
+    // ============================================================
+    // 💾 SAVE PROFILE
+    // ============================================================
+
+    window.userProfile =
+      finalProfile;
+
+    localStorage.setItem(
+
+      "userProfile",
+
+      JSON.stringify(
+        finalProfile
+      )
+    );
+
+    updateNetworkStatus(
+      "online"
+    );
+
+    applyRoleControl();
+
+    // ============================================================
+    // 📱 SEND PROFILE TO APK
+    // ============================================================
+
+    try{
+
+      const bridgeReady =
+
+        await waitForAndroidBridge();
+
+      if(
+
+        bridgeReady &&
+
+        window.Android &&
+
+        Android.saveUserProfile
+
+      ){
+
+        Android.saveUserProfile(
+
+          JSON.stringify(
+            finalProfile
+          )
+        );
+
+        console.log(
+          "✅ PROFILE SENT TO APK"
+        );
+
+        if(Android.savePhone){
+
+          Android.savePhone(
+            finalProfile.phone
+          );
+
+          console.log(
+            "📱 PHONE SENT TO APK"
+          );
+        }
+      }
+
+    } catch(err){
+
+      console.error(
+        "❌ PROFILE BRIDGE ERROR",
+        err
+      );
+    }
+
+    updateNetworkStatus(
+      "online"
+    );
+
+    applyRoleControl();
+
+    hideLogin();
+
+    // ============================================================
+    // 🚀 START APP
+    // ============================================================
+
+    if(!window.__appBootRequested){
+
+      window.__appBootRequested = true;
+
+      startApp();
+    }
+
+    console.log(
+      "✅ PROFILE LOADED"
+    );
+
+  })
+
+  .catch(err => {
+
+    console.error(err);
+
+    if(
+
+      !loginModalLocked &&
+
+      !loginShownOnce
+
+    ){
+
+      loginShownOnce = true;
+
+      showLogin();
+    }
+
+  })
+
+  .finally(() => {
+
+    authFlowRunning = false;
+  });
 }// ============================================================
 // 🔥 LOGIN (SAFE + CLEAN)
 // ============================================================
@@ -3020,56 +3140,91 @@ function login(){
       }
 
       // ========================================================
-      // 🔥 PROFILE
-      // ========================================================
-            // ============================================================
       // 🔥 FINAL PROFILE
-      // ============================================================
-     const finalProfile = {
+      // ========================================================
+      const finalProfile = {
 
-  rawName:
-    profile.name,
+        rawName:
+          profile.name,
 
-  cleanName:
-    profile.cleanName ||
-    cleanName(profile.name),
+        cleanName:
+          profile.cleanName ||
+          cleanName(profile.name),
 
-  role:
-    profile.role,
+        role:
+          profile.role,
 
-  beat:
-    profile.beat,
+        beat:
+          profile.beat,
 
-  phone:
-    profile.phone,
+        phone:
+          profile.phone,
 
-  circle:
-    profile.circle || "",
+        circle:
+          profile.circle || "",
 
-  division:
-    profile.division || "",
+        division:
+          profile.division || "",
 
-  range:
-    profile.range || ""
-};
+        range:
+          profile.range || ""
+      };
 
-// ======================================
-// 🌍 NORMALIZE DIVISION
-// ======================================
+      // ========================================================
+      // 🌍 NORMALIZE DIVISION
+      // ========================================================
+      if(
+        finalProfile.division === "BTR_W"
+      ){
 
-if(
-  finalProfile.division === "BTR_W"
-){
-  finalProfile.division =
-    "BuxaTR_WEST";
-}
+        finalProfile.division =
+          "BuxaTR_WEST";
+      }
 
-if(
-  finalProfile.division === "BTR_E"
-){
-  finalProfile.division =
-    "BuxaTR_EAST";
-}
+      if(
+        finalProfile.division === "BTR_E"
+      ){
+
+        finalProfile.division =
+          "BuxaTR_EAST";
+      }
+
+      // ========================================================
+      // 🔒 STAFF GIS LOCK
+      // ========================================================
+      if(
+
+        finalProfile.role === "Staff"
+
+        ||
+
+        finalProfile.role === "TEAM LEADER"
+
+        ||
+
+        finalProfile.role === "Team Leader"
+
+      ){
+
+        window.gisFilter = {
+
+          division:
+            finalProfile.division || "ALL",
+
+          range:
+            finalProfile.range || "ALL",
+
+          beat:"ALL",
+
+          compartment:"ALL"
+        };
+
+        console.log(
+          "🔒 STAFF GIS LOCK:",
+          window.gisFilter
+        );
+      }
+
       // ========================================================
       // 🔥 SAVE LOCAL
       // ========================================================
@@ -3147,19 +3302,96 @@ if(
       applyRoleControl();
 
       // ========================================================
+      // 🔥 RENDER STAFF GIS
+      // ========================================================
+      setTimeout(async () => {
+
+        try {
+
+          if(
+            typeof renderFilteredGIS ===
+            "function"
+          ){
+
+            renderFilteredGIS();
+          }
+
+          // ====================================================
+          // 🔥 STAFF/TL RANGE GIS
+          // ====================================================
+          if(
+
+            window.userProfile
+
+            &&
+
+            (
+
+              window.userProfile.role ===
+              "Staff"
+
+              ||
+
+              window.userProfile.role ===
+              "TEAM LEADER"
+
+              ||
+
+              window.userProfile.role ===
+              "Team Leader"
+
+            )
+
+          ){
+
+            // ================================================
+            // 🔥 BEAT BUTTONS
+            // ================================================
+            if(
+              typeof populateBeatButtons ===
+              "function"
+            ){
+
+              populateBeatButtons();
+            }
+
+            // ================================================
+            // 🔥 RANGE COMPARTMENTS
+            // ================================================
+            if(
+              typeof loadCompartmentsForRange ===
+              "function"
+            ){
+
+              await loadCompartmentsForRange();
+            }
+
+            console.log(
+              "✅ Staff GIS Loaded"
+            );
+          }
+
+        } catch(e){
+
+          console.error(
+            "❌ GIS render failed",
+            e
+          );
+        }
+
+      }, 1500);
+
+      // ========================================================
       // 🔥 SINGLE APP BOOT
       // ========================================================
-      // ========================================================
-// 🔥 SINGLE APP BOOT
-// ========================================================
-if(!window.__APP_BOOTED_ONCE__){
+      if(!window.__APP_BOOTED_ONCE__){
 
-  window.__APP_BOOTED_ONCE__ = true;
+        window.__APP_BOOTED_ONCE__ = true;
 
-  window.__LOGIN_JUST_FINISHED__ = true;
+        window.__LOGIN_JUST_FINISHED__ = true;
 
-  startApp();
-}
+        startApp();
+      }
 
       console.log(
         "✅ Login success"
@@ -3203,7 +3435,6 @@ if(!window.__APP_BOOTED_ONCE__){
       authFlowRunning = false;
     });
 }
-
 // ============================================================
 // 🔥 SHOW LOGIN
 // FINAL HARDENED VERSION
@@ -3524,13 +3755,129 @@ async function startApp(){   // 🔥 ASYNC
     // 🔥 BACKEND LOAD FIRST
     // SOURCE OF TRUTH
     // ======================================================
-    await loadBackendCoverage();
-
     // ======================================================
-    // 🔥 LOCK BACKEND
-    // ======================================================
-    window.__backendLoaded = true;
+// 🔥 BACKEND LOAD FIRST
+// SOURCE OF TRUTH
+// ======================================================
+await loadBackendCoverage();
 
+// ======================================
+// 🔒 STAFF RANGE GIS
+// ======================================
+
+if(
+
+  window.userProfile &&
+
+  (
+
+    String(
+      window.userProfile.role || ""
+    )
+    .trim()
+    .toUpperCase()
+
+    ===
+
+    "STAFF"
+
+    ||
+
+    String(
+      window.userProfile.role || ""
+    )
+    .trim()
+    .toUpperCase()
+
+    ===
+
+    "TEAM LEADER"
+
+  )
+
+){
+
+  // ====================================
+  // 🔒 FORCE FILTER
+  // ====================================
+
+  window.gisFilter = {
+
+    division:
+
+      String(
+        window.userProfile.division || ""
+      ).trim(),
+
+    range:
+
+      String(
+        window.userProfile.range || ""
+      ).trim(),
+
+    beat:"ALL",
+
+    compartment:"ALL"
+  };
+
+  console.log(
+    "🔒 STAFF GIS:",
+    window.gisFilter
+  );
+
+  // ====================================
+  // 🎨 RANGE ONLY
+  // ====================================
+
+  if(
+    typeof renderFilteredGIS ===
+    "function"
+  ){
+
+    renderFilteredGIS();
+  }
+
+  // ====================================
+  // 📦 RANGE COMPARTMENTS
+  // ====================================
+
+  if(
+    typeof loadCompartmentsForRange ===
+    "function"
+  ){
+
+    await loadCompartmentsForRange();
+  }
+
+  // ====================================
+  // 🔘 BUTTONS
+  // ====================================
+
+  if(
+    typeof populateRangeButtons ===
+    "function"
+  ){
+
+    await populateRangeButtons();
+  }
+
+  if(
+    typeof populateBeatButtons ===
+    "function"
+  ){
+
+    await populateBeatButtons();
+  }
+
+  console.log(
+    "✅ STAFF RANGE GIS READY"
+  );
+}
+
+// ======================================================
+// 🔥 LOCK BACKEND
+// ======================================================
+window.__backendLoaded = true;
     console.log(
       "📡 Backend authoritative"
     );
@@ -7247,55 +7594,122 @@ async function populateDivisionButtons(){
         profile.role || ""
       ).trim().toUpperCase();
 
+    // =====================================
+    // 🧹 RESET
+    // =====================================
+
     container.innerHTML = "";
 
-    // =====================================
-    // RESET LOWER LEVELS
-    // =====================================
-
     rangeContainer.innerHTML = "";
+
     beatContainer.innerHTML = "";
+
     compartmentContainer.innerHTML = "";
 
-    rangeContainer.style.display = "none";
-    beatContainer.style.display = "none";
-    compartmentContainer.style.display = "none";
+    rangeContainer.style.display =
+      "none";
+
+    beatContainer.style.display =
+      "none";
+
+    compartmentContainer.style.display =
+      "none";
 
     // =====================================
-    // STAFF / TEAM LEADER
+    // 👮 STAFF / TEAM LEADER LOCK
     // =====================================
 
     if(
-      role === "STAFF" ||
+      role === "STAFF"
+      ||
       role === "TEAM LEADER"
     ){
 
+      // =================================
+      // 🔒 FORCE FILTERS
+      // =================================
+
       window.gisFilter.division =
-        String(profile.division || "").trim();
+        String(
+          profile.division || ""
+        ).trim();
+
+      window.gisFilter.range =
+        String(
+          profile.range || ""
+        ).trim();
+
+      window.gisFilter.beat =
+        "ALL";
+
+      window.gisFilter.compartment =
+        "ALL";
+
+      // =================================
+      // ❌ HIDE DIVISION BUTTONS
+      // =================================
+
+      container.style.display =
+        "none";
+
+      // =================================
+      // 🗺 RENDER RANGE ONLY
+      // =================================
+
+      renderFilteredGIS();
+
+      // =================================
+      // 📦 LOAD RANGE COMPARTMENTS
+      // =================================
+
+      await loadCompartmentsForRange();
+
+      // =================================
+      // 🔘 SHOW ONLY THEIR RANGE BUTTON
+      // =================================
 
       await populateRangeButtons();
+
+      // =================================
+      // 🔘 SHOW ONLY THEIR RANGE BEATS
+      // =================================
+
+      await populateBeatButtons();
 
       return;
     }
 
     // =====================================
-    // DFO / ADFO
+    // 👑 DFO / ADFO
     // =====================================
 
     if(
-      role === "DFO" ||
+      role === "DFO"
+      ||
       role === "ADFO"
     ){
 
       window.gisFilter.division =
-        String(profile.division || "").trim();
+        String(
+          profile.division || ""
+        ).trim();
+
+      container.style.display =
+        "none";
+
+      renderFilteredGIS();
 
       await populateRangeButtons();
 
       return;
     }
 
-    container.style.display = "flex";
+    // =====================================
+    // 👑 ADMIN
+    // =====================================
+
+    container.style.display =
+      "flex";
 
     const divisions =
       new Set();
@@ -7333,11 +7747,18 @@ async function populateDivisionButtons(){
         );
     });
 
+    // =====================================
+    // 👑 ADMIN CLICK
+    // =====================================
+
     container
-    .querySelectorAll(".gis-filter-btn")
+    .querySelectorAll(
+      ".gis-filter-btn"
+    )
     .forEach(btn => {
 
-      btn.onclick = async function(){
+      btn.onclick =
+      async function(){
 
         window.gisFilter.division =
           this.dataset.value;
@@ -7353,7 +7774,8 @@ async function populateDivisionButtons(){
 
         clearCompartmentLayer();
 
-        window.allCompartmentFeatures = [];
+        window.allCompartmentFeatures =
+          [];
 
         renderFilteredGIS();
 
@@ -7363,10 +7785,12 @@ async function populateDivisionButtons(){
 
   } catch(e){
 
-    console.error(e);
+    console.error(
+      "❌ populateDivisionButtons",
+      e
+    );
   }
-}  
-
+}
 
     async function loadCompartmentsForRange(){
 
@@ -8032,9 +8456,26 @@ async function populateRangeButtons(){
         "compartmentButtons"
       );
 
+    // =====================================
+    // 🧹 SAFETY
+    // =====================================
+
+    if(
+      !container ||
+      !beatContainer ||
+      !compartmentContainer
+    ){
+      return;
+    }
+
+    // =====================================
+    // 🧹 RESET
+    // =====================================
+
     container.innerHTML = "";
 
     beatContainer.innerHTML = "";
+
     compartmentContainer.innerHTML = "";
 
     beatContainer.style.display =
@@ -8043,9 +8484,123 @@ async function populateRangeButtons(){
     compartmentContainer.style.display =
       "none";
 
+    // =====================================
+    // 👤 USER
+    // =====================================
+
+    const profile =
+      window.userProfile || {};
+
+    const role =
+      String(
+        profile.role || ""
+      ).trim();
+
+    const isStaff =
+
+      role === "Staff"
+
+      ||
+
+      role === "TEAM LEADER"
+
+      ||
+
+      role === "Team Leader";
+
+    // =====================================
+    // 🔒 STAFF RANGE LOCK
+    // =====================================
+
+    if(isStaff){
+
+      const staffRange =
+        String(
+          profile.range || ""
+        ).trim();
+
+      const staffDivision =
+        String(
+          profile.division || ""
+        ).trim();
+
+      // =================================
+      // 🛑 INVALID
+      // =================================
+
+      if(
+        !staffRange ||
+        !staffDivision
+      ){
+
+        container.style.display =
+          "none";
+
+        return;
+      }
+
+      // =================================
+      // 🔒 FORCE GIS FILTER
+      // =================================
+
+      window.gisFilter.division =
+        staffDivision;
+
+      window.gisFilter.range =
+        staffRange;
+
+      // =================================
+      // 👁 SHOW ONLY STAFF RANGE
+      // =================================
+
+      container.style.display =
+        "flex";
+
+      container.innerHTML +=
+        createGISButton(
+          staffRange,
+          true
+        );
+
+      // =================================
+      // 🔒 DISABLE CLICK
+      // =================================
+
+      const btn =
+        container.querySelector(
+          ".gis-filter-btn"
+        );
+
+      if(btn){
+
+        btn.style.pointerEvents =
+          "none";
+
+        btn.style.opacity =
+          "1";
+      }
+
+      // =================================
+      // 📥 LOAD GIS
+      // =================================
+
+      renderFilteredGIS();
+
+      await loadCompartmentsForRange();
+
+      await populateBeatButtons();
+
+      return;
+    }
+
+    // =====================================
+    // 🛑 ADMIN INVALID
+    // =====================================
+
     if(
 
-      window.gisFilter.division === "ALL"
+      window.gisFilter.division ===
+      "ALL"
 
     ){
 
@@ -8054,6 +8609,10 @@ async function populateRangeButtons(){
 
       return;
     }
+
+    // =====================================
+    // 👑 ADMIN RANGE LIST
+    // =====================================
 
     container.style.display =
       "flex";
@@ -8103,15 +8662,23 @@ async function populateRangeButtons(){
       container.innerHTML +=
         createGISButton(
           range,
-          window.gisFilter.range === range
+          window.gisFilter.range ===
+          range
         );
     });
 
+    // =====================================
+    // 👑 ADMIN CLICK
+    // =====================================
+
     container
-    .querySelectorAll(".gis-filter-btn")
+    .querySelectorAll(
+      ".gis-filter-btn"
+    )
     .forEach(btn => {
 
-      btn.onclick = async function(){
+      btn.onclick =
+      async function(){
 
         window.gisFilter.range =
           this.dataset.value;
@@ -8127,7 +8694,7 @@ async function populateRangeButtons(){
         renderFilteredGIS();
 
         // =================================
-        // LOAD RANGE COMPARTMENTS
+        // 📥 LOAD RANGE COMPARTMENTS
         // =================================
 
         await loadCompartmentsForRange();
@@ -8138,9 +8705,12 @@ async function populateRangeButtons(){
 
   } catch(e){
 
-    console.error(e);
+    console.error(
+      "❌ populateRangeButtons",
+      e
+    );
   }
-}   // ======================================================
+}  // ======================================================
 // 🟨 BEAT BUTTONS
 // ======================================================
 // ======================================================
