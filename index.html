@@ -3025,32 +3025,34 @@ function login(){
             // ============================================================
       // 🔥 FINAL PROFILE
       // ============================================================
-      const finalProfile = {
+     const finalProfile = {
 
-        rawName:
-          profile.name,
+  rawName:
+    profile.name,
 
-        cleanName:
-          profile.cleanName ||
-          cleanName(profile.name),
+  cleanName:
+    profile.cleanName ||
+    cleanName(profile.name),
 
-        role:
-          profile.role,
+  role:
+    profile.role,
 
-        beat:
-          profile.beat,
+  beat:
+    profile.beat,
 
-        phone:
-          profile.phone,
+  phone:
+    profile.phone,
 
-        // ============================================================
-        // 🌍 GIS HIERARCHY
-        // ============================================================
-        circle:
-          profile.circle || "",
+  circle:
+    profile.circle || "",
 
-        division:
-          profile.division || "",
+  division:
+    profile.division || "",
+
+  range:
+    profile.range || ""
+};
+
 // ======================================
 // 🌍 NORMALIZE DIVISION
 // ======================================
@@ -3068,9 +3070,6 @@ if(
   finalProfile.division =
     "BuxaTR_EAST";
 }
-        range:
-          profile.range || ""
-      };
       // ========================================================
       // 🔥 SAVE LOCAL
       // ========================================================
