@@ -7357,122 +7357,133 @@ function populateDivisionButtons(){
   }
 }
     
-    function renderFilteredCompartments(){
+   function renderFilteredCompartments(){
 
   try {
 
-    // ==========================================
-    // 🏞 LAYER
-    // ==========================================
-    if(!window.compartmentLayer){
+    // =====================================
+    // 🧹 CLEAR OLD LAYER
+    // =====================================
 
-      window.compartmentLayer =
+    clearCompartmentLayer();
 
-        L.geoJSON([], {
+    // =====================================
+    // 🛑 NO DATA
+    // =====================================
 
-          renderer:
-            L.canvas(),
-
-          interactive:true,
-
-          bubblingMouseEvents:false,
-
-          style: {
-
-            color:"#00ff88",
-
-            weight:1,
-
-            opacity:0.8,
-
-            fillOpacity:0.18
-          }
-
-        }).addTo(map);
-    }
-
-    // ==========================================
-    // 🧹 CLEAR
-    // ==========================================
-    window.compartmentLayer.clearLayers();
-
-    // ==========================================
-    // 📦 FEATURES
-    // ==========================================
-    let features =
-      window.allCompartmentFeatures || [];
-
-    // ==========================================
-    // 🟧 FILTER
-    // ==========================================
     if(
 
-      window.gisFilter.compartment !==
-      "ALL"
+      !Array.isArray(
+        window.allCompartmentFeatures
+      ) ||
+
+      !window.allCompartmentFeatures.length
+
+    ){
+
+      return;
+    }
+
+    // =====================================
+    // 📦 FILTER
+    // =====================================
+
+    let features =
+
+      window.allCompartmentFeatures;
+
+    const selectedCompartment =
+
+      String(
+        window.gisFilter?.compartment || "ALL"
+      ).trim();
+
+    // =====================================
+    // 🎯 FILTER SINGLE
+    // =====================================
+
+    if(
+
+      selectedCompartment !== "ALL"
 
     ){
 
       features =
 
-        features.filter(f => {
+        features.filter(f =>
 
-          try {
+          String(
 
-            const props =
-              f.properties || {};
+            f.properties?.compartment || ""
 
-            const name =
+          ).trim()
 
-              String(
+          ===
 
-                props.compartment ||
-
-                props.Compartment ||
-
-                props.name ||
-
-                ""
-
-              ).trim();
-
-            return (
-
-              name ===
-
-              window.gisFilter.compartment
-
-            );
-
-          } catch(e){
-
-            return false;
-          }
-        });
+          selectedCompartment
+        );
     }
 
-    // ==========================================
-    // 📥 RENDER
-    // ==========================================
-    window.compartmentLayer.addData({
+    // =====================================
+    // 🛑 EMPTY
+    // =====================================
 
-      type:"FeatureCollection",
+    if(!features.length){
 
-      features
-    });
+      return;
+    }
 
-    console.log(
-      "🟩 Compartments Rendered:",
-      features.length
-    );
+    // =====================================
+    // 🎨 DRAW
+    // =====================================
 
-  }
+    window.compartmentLayer =
 
-  catch(e){
+      L.geoJSON(features,{
 
-    console.error(
-      "❌ renderFilteredCompartments failed",
-      e
-    );
+        style:{
+
+          color:"#00ff88",
+
+          weight:2,
+
+          fillOpacity:0.15
+        },
+
+        onEachFeature:function(
+          feature,
+          layer
+        ){
+
+          const name =
+
+            feature.properties?.compartment || "";
+
+          layer.bindTooltip(
+            String(name),
+            {
+              permanent:true,
+              direction:"center",
+              className:"compartment-label"
+            }
+          );
+
+          layer.on("click",function(){
+
+            window.gisFilter.compartment =
+              String(name).trim();
+
+            renderFilteredCompartments();
+
+            populateCompartmentButtons();
+          });
+        }
+
+      }).addTo(map);
+
+  } catch(e){
+
+    console.error(e);
   }
 }// ======================================================
 // 🌍 FILTER + RENDER GIS
@@ -8804,9 +8815,32 @@ async function loadRangeKML(){
 // ======================================================
 async function loadCompartmentsForBeat(){
 
-  try{
+  try {
 
-    let division =
+    // =====================================
+    // 🧹 CLEAR OLD COMPARTMENTS
+    // =====================================
+
+    if(window.compartmentLayer){
+
+      try {
+
+        map.removeLayer(
+          window.compartmentLayer
+        );
+
+      } catch(e){}
+    }
+
+    window.compartmentLayer = null;
+
+    window.allCompartmentFeatures = [];
+
+    // =====================================
+    // 📦 FILTER VALUES
+    // =====================================
+
+    const division =
       String(
         window.gisFilter?.division || ""
       ).trim();
@@ -8816,124 +8850,152 @@ async function loadCompartmentsForBeat(){
         window.gisFilter?.beat || ""
       ).trim();
 
-    // ======================================
-    // 🌍 NORMALIZE DIVISION
-    // ======================================
-    if(
-      division === "BuxaTR_WEST"
-    ){
-      division = "BTR_W";
-    }
+    // =====================================
+    // 🛑 SAFETY
+    // =====================================
 
     if(
-      division === "BuxaTR_EAST"
-    ){
-      division = "BTR_E";
-    }
 
-    // ======================================
-    // ❌ INVALID
-    // ======================================
-    if(
-      !division
-      ||
-      !beat
-      ||
-      division === "ALL"
-      ||
+      !division ||
+
+      !beat ||
+
+      division === "ALL" ||
+
       beat === "ALL"
+
     ){
 
       console.warn(
-        "⚠ Invalid compartment filter",
-        division,
-        beat
+        "⚠ compartment load skipped"
       );
+
+      renderFilteredCompartments();
 
       return;
     }
 
-    // ======================================
-    // 🧹 RESET
-    // ======================================
-    window.allCompartmentFeatures = [];
+    // =====================================
+    // 📥 URL
+    // =====================================
 
-    if(window.compartmentLayer){
-
-      window.compartmentLayer.clearLayers();
-    }
-
-    // ======================================
-    // 🌍 URL
-    // ======================================
     const url =
-      `./geojson/compartments/${division}/${encodeURIComponent(beat)}.geojson`;
+
+      `./geojson/compartments/${
+        division
+      }/${
+        encodeURIComponent(beat)
+      }.geojson`;
 
     console.log(
       "📥 Compartments URL:",
       url
     );
 
-    // ======================================
+    // =====================================
     // 📥 FETCH
-    // ======================================
-    const response =
+    // =====================================
+
+    const res =
       await fetch(url);
 
-    // ======================================
-    // ❌ MISSING
-    // ======================================
-    if(!response.ok){
+    // =====================================
+    // ❌ FILE MISSING
+    // =====================================
+
+    if(!res.ok){
 
       console.warn(
-        "⚠ Compartments not available"
+        "⚠ No compartment file:",
+        beat
       );
+
+      renderFilteredCompartments();
 
       return;
     }
 
-    // ======================================
-    // 📦 GEOJSON
-    // ======================================
-    const geojson =
-      await response.json();
+    // =====================================
+    // 📦 JSON
+    // =====================================
+
+    const data =
+      await res.json();
+
+    // =====================================
+    // 🛑 INVALID
+    // =====================================
 
     if(
-      !geojson
-      ||
+
+      !data ||
+
       !Array.isArray(
-        geojson.features
+        data.features
       )
+
     ){
 
       console.warn(
-        "⚠ Invalid compartment geojson"
+        "⚠ invalid compartment geojson"
       );
+
+      renderFilteredCompartments();
 
       return;
     }
 
-    // ======================================
+    // =====================================
     // ✅ STORE
-    // ======================================
+    // =====================================
+
     window.allCompartmentFeatures =
-      geojson.features;
+
+      data.features;
 
     console.log(
       "✅ Compartments Loaded:",
-      geojson.features.length
+      window.allCompartmentFeatures.length
     );
 
-  }
+    // =====================================
+    // 🎨 RENDER
+    // =====================================
 
-  catch(err){
+    renderFilteredCompartments();
 
-    console.error(
-      "❌ loadCompartmentsForBeat failed",
-      err
-    );
+    // =====================================
+    // 🔘 BUTTONS
+    // =====================================
+
+    populateCompartmentButtons();
+
+  } catch(e){
+
+    console.error(e);
+
+    window.allCompartmentFeatures = [];
+
+    renderFilteredCompartments();
   }
-}  function lineIntersectsBox(lat1, lon1, lat2, lon2, minLat, minLon, maxLat, maxLon) {
+}
+    function clearCompartmentLayer(){
+
+  try {
+
+    if(window.compartmentLayer){
+
+      map.removeLayer(
+        window.compartmentLayer
+      );
+    }
+
+  } catch(e){}
+
+  window.compartmentLayer = null;
+}
+    
+    function lineIntersectsBox(lat1, lon1, lat2, lon2, minLat, minLon, maxLat, maxLon) {
 
   const eps = 0.000001;
 
