@@ -7687,32 +7687,73 @@ async function populateDivisionButtons(){
       // 🎨 RENDER RANGE ONLY
       // =================================
 
-      renderFilteredGIS();
+     // =================================
+// 🎨 AUTO LOAD STAFF RANGE GIS
+// =================================
 
-      // =================================
-      // 📦 LOAD RANGE COMPARTMENTS
-      // =================================
+// RANGE MAP
+renderFilteredGIS();
 
-      await loadCompartmentsForRange();
+// RANGE COMPARTMENTS
+await loadCompartmentsForRange();
 
-      // =================================
-      // 🔘 SHOW RANGE BUTTONS
-      // =================================
+// RANGE BUTTON
+await populateRangeButtons();
 
-      await populateRangeButtons();
+// BEAT BUTTONS
+await populateBeatButtons();
 
-      // =================================
-      // 🔘 SHOW BEAT BUTTONS
-      // =================================
+// =================================
+// 🔥 AUTO LOAD ALL RANGE BEATS
+// =================================
 
-      await populateBeatButtons();
+window.gisFilter.beat = "ALL";
 
-      // =================================
-      // 🔘 SHOW COMPARTMENT BUTTONS
-      // =================================
+renderFilteredGIS();
 
-      await populateCompartmentButtons();
+// =================================
+// 🔥 AUTO SHOW COMPARTMENTS
+// =================================
 
+renderFilteredCompartments();
+
+// =================================
+// 🔥 AUTO SHOW BUTTONS
+// =================================
+
+document.getElementById(
+  "beatButtons"
+).style.display = "flex";
+
+document.getElementById(
+  "compartmentButtons"
+).style.display = "flex";
+
+// =================================
+// 🔥 CENTER MAP
+// =================================
+
+try {
+
+  if(
+    window.filteredGISLayer
+  ){
+
+    window.map.fitBounds(
+
+      window.filteredGISLayer
+      .getBounds(),
+
+      {
+        padding:[20,20]
+      }
+    );
+  }
+
+} catch(e){
+
+  console.warn(e);
+}
       return;
     }
 
