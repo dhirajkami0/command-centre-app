@@ -7848,16 +7848,58 @@ function renderFilteredGIS(){
     }
 
     // ======================================
-    // 🧭 BEAT
-    // ======================================
+// 🎯 COMPARTMENT MODE
+// ======================================
 
-    if(
+if(
 
-      window.gisFilter.beat &&
+  window.gisFilter.compartment &&
 
-      window.gisFilter.beat !== "ALL"
+  window.gisFilter.compartment !== "ALL"
 
-    ){
+){
+
+  // ====================================
+  // 🚫 HIDE GIS LAYER COMPLETELY
+  // ====================================
+
+  filtered = [];
+}
+
+// ======================================
+// 🧭 BEAT MODE
+// ======================================
+
+else if(
+
+  window.gisFilter.beat &&
+
+  window.gisFilter.beat !== "ALL"
+
+){
+
+  filtered = filtered.filter(f => {
+
+    const props =
+      f.properties || {};
+
+    return String(
+
+      props.Beat ||
+
+      props.beat ||
+
+      ""
+
+    ).trim()
+
+    ===
+
+    String(
+      window.gisFilter.beat
+    ).trim();
+  });
+}{
 
       filtered = filtered.filter(f => {
 
