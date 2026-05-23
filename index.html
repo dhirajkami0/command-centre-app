@@ -7524,11 +7524,16 @@ async function populateDivisionButtons(){
     console.error(e);
   }
 }
-   function renderFilteredCompartments(){
+
+    function renderFilteredCompartments(){
 
   try {
 
     clearCompartmentLayer();
+
+    // =====================================
+    // 🏞 CREATE LAYER
+    // =====================================
 
     if(
 
@@ -7554,6 +7559,10 @@ async function populateDivisionButtons(){
         }).addTo(window.map);
     }
 
+    // =====================================
+    // 🛑 SAFETY
+    // =====================================
+
     if(
 
       !Array.isArray(
@@ -7566,6 +7575,10 @@ async function populateDivisionButtons(){
 
       return;
     }
+
+    // =====================================
+    // 📦 FEATURES
+    // =====================================
 
     let features = [
 
@@ -7629,10 +7642,18 @@ async function populateDivisionButtons(){
         );
     }
 
+    // =====================================
+    // 🛑 EMPTY
+    // =====================================
+
     if(!features.length){
 
       return;
     }
+
+    // =====================================
+    // 📥 ADD
+    // =====================================
 
     window.compartmentLayer.addData({
 
@@ -7646,11 +7667,41 @@ async function populateDivisionButtons(){
       features.length
     );
 
+    // =====================================
+    // 🔥 FIT
+    // =====================================
+
+    try {
+
+      const bounds =
+
+        window.compartmentLayer
+          ?.getBounds?.();
+
+      if(
+
+        bounds &&
+
+        bounds.isValid?.()
+
+      ){
+
+        window.map.fitBounds(
+          bounds,
+          {
+            padding:[10,10]
+          }
+        );
+      }
+
+    } catch(e){}
+
   } catch(e){
 
     console.error(e);
   }
-}// ======================================================
+}
+  // ======================================================
 // 🌍 FILTER + RENDER GIS
 // ======================================================
 function renderFilteredGIS(){
@@ -7666,17 +7717,21 @@ function renderFilteredGIS(){
     // ======================================
     // 🧹 CLEAR OLD
     // ======================================
+
     window.rangeLayer.clearLayers();
+
     // ======================================
     // 📦 FEATURES
     // ======================================
+
     let filtered =
 
       window.allGISFeatures || [];
 
     // ======================================
-    // 🌍 DIVISION FILTER
+    // 🌍 DIVISION
     // ======================================
+
     if(
 
       window.gisFilter.division &&
@@ -7702,13 +7757,16 @@ function renderFilteredGIS(){
 
         ===
 
-        window.gisFilter.division;
+        String(
+          window.gisFilter.division
+        ).trim();
       });
     }
 
     // ======================================
-    // 🌍 RANGE FILTER
+    // 🌳 RANGE
     // ======================================
+
     if(
 
       window.gisFilter.range &&
@@ -7734,9 +7792,71 @@ function renderFilteredGIS(){
 
         ===
 
-        window.gisFilter.range;
+        String(
+          window.gisFilter.range
+        ).trim();
       });
     }
+
+    // ======================================
+    // 🧭 BEAT
+    // ======================================
+
+    if(
+
+      window.gisFilter.beat &&
+
+      window.gisFilter.beat !== "ALL"
+
+    ){
+
+      filtered = filtered.filter(f => {
+
+        const props =
+          f.properties || {};
+
+        return String(
+
+          props.Beat ||
+
+          props.beat ||
+
+          ""
+
+        ).trim()
+
+        ===
+
+        String(
+          window.gisFilter.beat
+        ).trim();
+      });
+    }
+
+    // ======================================
+    // 🛑 EMPTY
+    // ======================================
+
+    if(!filtered.length){
+
+      return;
+    }
+
+    // ======================================
+    // 📥 ADD
+    // ======================================
+
+    filtered.forEach(f => {
+
+      try {
+
+        window.rangeLayer.addData(f);
+
+      } catch(e){
+
+        console.warn(e);
+      }
+    });
 
     console.log(
       "🎯 FILTERED GIS:",
@@ -7744,134 +7864,33 @@ function renderFilteredGIS(){
     );
 
     // ======================================
-// 🌍 BEAT FILTER
-// ======================================
-if(
-
-  window.gisFilter.beat &&
-
-  window.gisFilter.beat !== "ALL"
-
-){
-
-  filtered = filtered.filter(f => {
-
-    const props =
-      f.properties || {};
-
-    return String(
-
-      props.Beat ||
-
-      props.beat ||
-
-      ""
-
-    ).trim()
-
-    ===
-
-    window.gisFilter.beat;
-  });
-}
+    // 🔥 FIT
     // ======================================
-    // ⚡ CHUNK RENDER
-    // ======================================
-    let i = 0;
 
-    const chunkSize = 40;
+    try {
 
-    function drawChunk(){
+      const bounds =
 
-      try {
+        window.rangeLayer
+          ?.getBounds?.();
 
-        const slice =
+      if(
 
-          filtered.slice(
-            i,
-            i + chunkSize
-          );
+        bounds &&
 
-        slice.forEach(f => {
+        bounds.isValid?.()
 
-          try {
+      ){
 
-            window.rangeLayer
-              ?.addData(f);
-
-          } catch(e){
-
-            console.warn(
-              "⚠ addData failed",
-              e
-            );
+        window.map.fitBounds(
+          bounds,
+          {
+            padding:[10,10]
           }
-        });
-
-        i += chunkSize;
-
-        if(i < filtered.length){
-
-          requestAnimationFrame(
-            drawChunk
-          );
-        }
-
-        else {
-
-          console.log(
-            "✅ GIS RENDER COMPLETE"
-          );
-
-          // ==============================
-          // 🔥 FIT BOUNDS
-          // ==============================
-          try {
-
-            const bounds =
-
-              window.rangeLayer
-                ?.getBounds?.();
-if(
-
-  !window.hasInitialGISFit &&
-
-  bounds &&
-
-  bounds.isValid?.()
-
-){
-
-  map.fitBounds(
-    bounds,
-    {
-      padding:[10,10]
-    }
-  );
-
-  window.hasInitialGISFit =
-    true;
-}
-
-          } catch(e){
-
-            console.warn(
-              "⚠ fitBounds failed",
-              e
-            );
-          }
-        }
-
-      } catch(e){
-
-        console.error(
-          "❌ drawChunk failed",
-          e
         );
       }
-    }
 
-    drawChunk();
+    } catch(e){}
 
   }
 
@@ -7882,8 +7901,7 @@ if(
       e
     );
   }
-}
-// ======================================================
+}// ======================================================
 // 🌍 RANGE BUTTONS
 // ======================================================
 // ======================================================
