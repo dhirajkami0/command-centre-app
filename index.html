@@ -7424,10 +7424,6 @@ function renderFilteredGIS(){
     // 🧹 CLEAR OLD
     // ======================================
     window.rangeLayer.clearLayers();
-if(window.compartmentLayer){
-
-  window.compartmentLayer.clearLayers();
-}
     // ======================================
     // 📦 FEATURES
     // ======================================
@@ -8100,6 +8096,10 @@ function populateBeatButtons(){
           // ==========================================
           await loadCompartmentsForBeat();
 
+renderFilteredCompartments();
+
+populateCompartmentButtons();
+
         } catch(e){
 
           console.error(
@@ -8420,9 +8420,10 @@ async function loadRangeKML(){
 
         range:
           "ALL",
-
-        beat:
-          "ALL",
+beat:
+  String(
+    profile.beat || ""
+  ).trim() || "ALL",
 
         compartment:
           "ALL"
@@ -8862,7 +8863,37 @@ renderFilteredCompartments();
     // 🚀 INITIAL RENDER
     // =====================================================
     renderFilteredGIS();
+// =====================================================
+// 🟧 INITIAL COMPARTMENT LOAD
+// =====================================================
+if(
 
+  window.gisFilter?.division &&
+
+  window.gisFilter?.beat &&
+
+  window.gisFilter.division !== "ALL" &&
+
+  window.gisFilter.beat !== "ALL"
+
+){
+
+  try {
+
+    await loadCompartmentsForBeat();
+
+    renderFilteredCompartments();
+
+    populateCompartmentButtons();
+
+  } catch(e){
+
+    console.warn(
+      "⚠ initial compartment load failed",
+      e
+    );
+  }
+}
     // =====================================================
     // 🏞 COMPARTMENT LAYER
     // =====================================================
