@@ -7164,6 +7164,9 @@ function createGISButton(
 // ======================================================
 // 🌍 DIVISION BUTTONS
 // ======================================================
+// ======================================================
+// 🌍 DIVISION BUTTONS
+// ======================================================
 function populateDivisionButtons(){
 
   try {
@@ -7221,6 +7224,9 @@ function populateDivisionButtons(){
 
     ){
 
+      window.gisFilter.division =
+        userDivision || "ALL";
+
       container.style.display =
         "none";
 
@@ -7228,7 +7234,29 @@ function populateDivisionButtons(){
     }
 
     // ==================================================
-    // 👁 SHOW
+    // 🟣 DFO / ADFO
+    // ==================================================
+    if(
+
+      role === "DFO"
+
+      ||
+
+      role === "ADFO"
+
+    ){
+
+      window.gisFilter.division =
+        userDivision || "ALL";
+
+      container.style.display =
+        "none";
+
+      return;
+    }
+
+    // ==================================================
+    // 🔴 ADMIN
     // ==================================================
     container.style.display =
       "flex";
@@ -7271,132 +7299,104 @@ function populateDivisionButtons(){
     });
 
     // ==================================================
-    // 🔴 ADMIN
+    // 🌍 ALL BUTTON
     // ==================================================
-    if(role === "ADMIN"){
+    container.innerHTML +=
 
-      // ================================================
-      // 🌍 ALL BUTTON
-      // ================================================
+      createGISButton(
+        "ALL",
+        window.gisFilter.division === "ALL"
+      );
+
+    // ==================================================
+    // 🌍 DIVISION BUTTONS
+    // ==================================================
+    [...divisions]
+
+    .sort()
+
+    .forEach(div => {
+
       container.innerHTML +=
 
         createGISButton(
-          "ALL",
-          window.gisFilter.division === "ALL"
+          div,
+          window.gisFilter.division === div
         );
+    });
 
-      // ================================================
-      // 🌍 DIVISIONS
-      // ================================================
-      [...divisions]
+    // ==================================================
+    // 🖱 EVENTS
+    // ==================================================
+    container
 
-      .sort()
+    .querySelectorAll(
+      ".gis-filter-btn"
+    )
 
-      .forEach(div => {
+    .forEach(btn => {
 
-        container.innerHTML +=
+      btn.onclick = async function(){
 
-          createGISButton(
-            div,
-            window.gisFilter.division === div
-          );
-      });
+        try {
 
-      // ================================================
-      // 🖱 EVENTS
-      // ================================================
-      container
+          // ==========================================
+          // 🌍 DIVISION
+          // ==========================================
+          window.gisFilter.division =
+            this.dataset.value;
 
-      .querySelectorAll(
-        ".gis-filter-btn"
-      )
+          // ==========================================
+          // 🔄 RESET LOWER
+          // ==========================================
+          window.gisFilter.range =
+            "ALL";
 
-      .forEach(btn => {
+          window.gisFilter.beat =
+            "ALL";
 
-        btn.onclick = function(){
+          window.gisFilter.compartment =
+            "ALL";
 
-          try {
+          // ==========================================
+          // 🧹 CLEAR COMPARTMENTS
+          // ==========================================
+          window.allCompartmentFeatures =
+            [];
 
-            // ==========================================
-            // 🌍 SET
-            // ==========================================
-            window.gisFilter.division =
-              this.dataset.value;
+          if(window.compartmentLayer){
 
-            // ==========================================
-            // 🔄 RESET LOWER
-            // ==========================================
-            window.gisFilter.range =
-              "ALL";
-
-            window.gisFilter.beat =
-              "ALL";
-
-            window.gisFilter.compartment =
-              "ALL";
-
-            // ==========================================
-            // 🧹 CLEAR COMPARTMENTS
-            // ==========================================
-            window.allCompartmentFeatures =
-              [];
-
-            if(window.compartmentLayer){
-
-              window.compartmentLayer
-                .clearLayers();
-            }
-
-            // ==========================================
-            // 🔄 UI
-            // ==========================================
-            populateDivisionButtons();
-
-            populateRangeButtons();
-
-            populateBeatButtons();
-
-            // ==========================================
-            // 🌍 GIS
-            // ==========================================
-            renderFilteredGIS();
-
-          } catch(e){
-
-            console.error(
-              "❌ division click failed",
-              e
-            );
+            window.compartmentLayer
+              .clearLayers();
           }
-        };
-      });
 
-      return;
-    }
+          // ==========================================
+          // 🔄 UI
+          // ==========================================
+          populateDivisionButtons();
 
-    // ==================================================
-    // 🟣 DFO / ADFO
-    // ==================================================
-    if(
+          populateRangeButtons();
 
-      role === "DFO"
+          populateBeatButtons();
 
-      ||
+          populateCompartmentButtons();
 
-      role === "ADFO"
+          // ==========================================
+          // 🌍 GIS
+          // ==========================================
+          renderFilteredGIS();
 
-    ){
+        }
 
-      container.innerHTML +=
+        catch(e){
 
-        createGISButton(
-          userDivision,
-          true
-        );
-
-      window.gisFilter.division =
-        userDivision;
-    }
+          console.error(
+            "❌ division click failed",
+            e
+          );
+        }
+      };
+    });
 
   }
 
@@ -7653,6 +7653,9 @@ if(
 // ======================================================
 // 🟩 RANGE BUTTONS
 // ======================================================
+// ======================================================
+// 🟩 RANGE BUTTONS
+// ======================================================
 function populateRangeButtons(){
 
   try {
@@ -7667,6 +7670,9 @@ function populateRangeButtons(){
       return;
     }
 
+    // ==================================================
+    // 👤 PROFILE
+    // ==================================================
     const profile =
       window.userProfile || {};
 
@@ -7690,6 +7696,36 @@ function populateRangeButtons(){
     // 🧹 RESET
     // ==================================================
     container.innerHTML = "";
+
+    // ==================================================
+    // 🔵 STAFF / TEAM LEADER
+    // ==================================================
+    if(
+
+      role === "STAFF"
+
+      ||
+
+      role === "TEAM LEADER"
+
+    ){
+
+      window.gisFilter.range =
+        userRange || "ALL";
+
+      container.style.display =
+        "none";
+
+      populateBeatButtons();
+
+      return;
+    }
+
+    // ==================================================
+    // 👁 SHOW
+    // ==================================================
+    container.style.display =
+      "flex";
 
     // ==================================================
     // 🌳 RANGE SET
@@ -7757,37 +7793,7 @@ function populateRangeButtons(){
     });
 
     // ==================================================
-    // 🔵 STAFF / TEAM LEADER
-    // ==================================================
-    if(
-
-      role === "STAFF"
-
-      ||
-
-      role === "TEAM LEADER"
-
-    ){
-
-      window.gisFilter.range =
-        userRange;
-
-      container.style.display =
-        "none";
-
-      populateBeatButtons();
-
-      return;
-    }
-
-    // ==================================================
-    // 👁 SHOW
-    // ==================================================
-    container.style.display =
-      "flex";
-
-    // ==================================================
-    // 🌍 ALL
+    // 🌍 ALL BUTTON
     // ==================================================
     container.innerHTML +=
 
@@ -7824,10 +7830,13 @@ function populateRangeButtons(){
 
     .forEach(btn => {
 
-      btn.onclick = function(){
+      btn.onclick = async function(){
 
         try {
 
+          // ==========================================
+          // 🌳 RANGE
+          // ==========================================
           window.gisFilter.range =
             this.dataset.value;
 
@@ -7841,7 +7850,7 @@ function populateRangeButtons(){
             "ALL";
 
           // ==========================================
-          // 🧹 CLEAR
+          // 🧹 CLEAR COMPARTMENTS
           // ==========================================
           window.allCompartmentFeatures =
             [];
@@ -7859,12 +7868,16 @@ function populateRangeButtons(){
 
           populateBeatButtons();
 
+          populateCompartmentButtons();
+
           // ==========================================
           // 🌍 GIS
           // ==========================================
           renderFilteredGIS();
 
-        } catch(e){
+        }
+
+        catch(e){
 
           console.error(
             "❌ range click failed",
@@ -8469,9 +8482,11 @@ async function loadRangeKML(){
         range:
           range,
 
-        beat:
-          "ALL",
-
+       beat:
+  String(
+    profile.beat || ""
+  ).trim() || "ALL",
+        
         compartment:
           "ALL"
       };
