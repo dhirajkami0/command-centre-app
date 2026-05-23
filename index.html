@@ -7362,16 +7362,38 @@ function populateDivisionButtons(){
   try {
 
     // =====================================
-    // 🧹 CLEAR OLD LAYER
+    // 🧹 REMOVE OLD
     // =====================================
 
-    clearCompartmentLayer();
+    try {
+
+      if(
+
+        window.compartmentLayer &&
+
+        window.map
+
+      ){
+
+        window.map.removeLayer(
+          window.compartmentLayer
+        );
+      }
+
+    } catch(e){
+
+      console.warn(e);
+    }
+
+    window.compartmentLayer = null;
 
     // =====================================
-    // 🛑 NO DATA
+    // 🛑 SAFETY
     // =====================================
 
     if(
+
+      !window.map ||
 
       !Array.isArray(
         window.allCompartmentFeatures
@@ -7381,26 +7403,32 @@ function populateDivisionButtons(){
 
     ){
 
+      console.warn(
+        "⚠ No compartment features"
+      );
+
       return;
     }
 
     // =====================================
-    // 📦 FILTER
+    // 📦 COPY
     // =====================================
 
-    let features =
+    let features = [
 
-      window.allCompartmentFeatures;
+      ...window.allCompartmentFeatures
+
+    ];
+
+    // =====================================
+    // 🎯 FILTER
+    // =====================================
 
     const selectedCompartment =
 
       String(
         window.gisFilter?.compartment || "ALL"
       ).trim();
-
-    // =====================================
-    // 🎯 FILTER SINGLE
-    // =====================================
 
     if(
 
@@ -7430,37 +7458,54 @@ function populateDivisionButtons(){
 
     if(!features.length){
 
+      console.warn(
+        "⚠ No filtered compartments"
+      );
+
       return;
     }
 
     // =====================================
-    // 🎨 DRAW
+    // 🎨 CREATE
     // =====================================
 
-    window.compartmentLayer =
+    const layer =
 
       L.geoJSON(features,{
 
-        style:{
+        style:function(){
 
-          color:"#00ff88",
+          return {
 
-          weight:2,
+            color:"#00ff88",
 
-          fillOpacity:0.15
+            weight:2,
+
+            fillColor:"#00ff88",
+
+            fillOpacity:0.15
+          };
         },
 
         onEachFeature:function(
           feature,
-          layer
+          leafletLayer
         ){
 
           const name =
 
-            feature.properties?.compartment || "";
+            String(
 
-          layer.bindTooltip(
-            String(name),
+              feature.properties?.compartment || ""
+
+            ).trim();
+
+          // ============================
+          // 🏷 TOOLTIP
+          // ============================
+
+          leafletLayer.bindTooltip(
+            name,
             {
               permanent:true,
               direction:"center",
@@ -7468,22 +7513,48 @@ function populateDivisionButtons(){
             }
           );
 
-          layer.on("click",function(){
+          // ============================
+          // 🖱 CLICK
+          // ============================
 
-            window.gisFilter.compartment =
-              String(name).trim();
+          leafletLayer.on(
+            "click",
+            function(){
 
-            renderFilteredCompartments();
+              window.gisFilter.compartment =
+                name;
 
-            populateCompartmentButtons();
-          });
+              renderFilteredCompartments();
+
+              populateCompartmentButtons();
+            }
+          );
         }
+      });
 
-      }).addTo(map);
+    // =====================================
+    // ➕ ADD
+    // =====================================
+
+    layer.addTo(window.map);
+
+    // =====================================
+    // 💾 STORE
+    // =====================================
+
+    window.compartmentLayer = layer;
+
+    console.log(
+      "✅ Compartments Rendered:",
+      features.length
+    );
 
   } catch(e){
 
-    console.error(e);
+    console.error(
+      "❌ compartment render failed",
+      e
+    );
   }
 }// ======================================================
 // 🌍 FILTER + RENDER GIS
