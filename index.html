@@ -3051,7 +3051,23 @@ function login(){
 
         division:
           profile.division || "",
+// ======================================
+// 🌍 NORMALIZE DIVISION
+// ======================================
 
+if(
+  finalProfile.division === "BTR_W"
+){
+  finalProfile.division =
+    "BuxaTR_WEST";
+}
+
+if(
+  finalProfile.division === "BTR_E"
+){
+  finalProfile.division =
+    "BuxaTR_EAST";
+}
         range:
           profile.range || ""
       };
@@ -22025,7 +22041,23 @@ function normalizeUserProfile(profile){
 
     division:
       profile.division || "",
+// ======================================
+// 🌍 NORMALIZE DIVISION
+// ======================================
 
+if(
+  finalProfile.division === "BTR_W"
+){
+  finalProfile.division =
+    "BuxaTR_WEST";
+}
+
+if(
+  finalProfile.division === "BTR_E"
+){
+  finalProfile.division =
+    "BuxaTR_EAST";
+}
     range:
       profile.range || ""
   };
