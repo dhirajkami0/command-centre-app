@@ -8895,12 +8895,27 @@ async function loadCompartmentsForBeat(){
     // 📦 FILTER VALUES
     // =====================================
 
-    const division =
+    let division =
 
-      String(
-        window.gisFilter?.division || ""
-      ).trim();
+  String(
+    window.gisFilter?.division || ""
+  ).trim();
 
+// =====================================
+// 🌍 NORMALIZE DIVISION
+// =====================================
+
+if(
+  division === "BuxaTR_WEST"
+){
+  division = "BTR_W";
+}
+
+if(
+  division === "BuxaTR_EAST"
+){
+  division = "BTR_E";
+}
     const beat =
 
       String(
