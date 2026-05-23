@@ -7355,6 +7355,125 @@ function populateDivisionButtons(){
   catch(e){
     console.error(e);
   }
+}
+    
+    function renderFilteredCompartments(){
+
+  try {
+
+    // ==========================================
+    // 🏞 LAYER
+    // ==========================================
+    if(!window.compartmentLayer){
+
+      window.compartmentLayer =
+
+        L.geoJSON([], {
+
+          renderer:
+            L.canvas(),
+
+          interactive:true,
+
+          bubblingMouseEvents:false,
+
+          style: {
+
+            color:"#00ff88",
+
+            weight:1,
+
+            opacity:0.8,
+
+            fillOpacity:0.18
+          }
+
+        }).addTo(map);
+    }
+
+    // ==========================================
+    // 🧹 CLEAR
+    // ==========================================
+    window.compartmentLayer.clearLayers();
+
+    // ==========================================
+    // 📦 FEATURES
+    // ==========================================
+    let features =
+      window.allCompartmentFeatures || [];
+
+    // ==========================================
+    // 🟧 FILTER
+    // ==========================================
+    if(
+
+      window.gisFilter.compartment !==
+      "ALL"
+
+    ){
+
+      features =
+
+        features.filter(f => {
+
+          try {
+
+            const props =
+              f.properties || {};
+
+            const name =
+
+              String(
+
+                props.compartment ||
+
+                props.Compartment ||
+
+                props.name ||
+
+                ""
+
+              ).trim();
+
+            return (
+
+              name ===
+
+              window.gisFilter.compartment
+
+            );
+
+          } catch(e){
+
+            return false;
+          }
+        });
+    }
+
+    // ==========================================
+    // 📥 RENDER
+    // ==========================================
+    window.compartmentLayer.addData({
+
+      type:"FeatureCollection",
+
+      features
+    });
+
+    console.log(
+      "🟩 Compartments Rendered:",
+      features.length
+    );
+
+  }
+
+  catch(e){
+
+    console.error(
+      "❌ renderFilteredCompartments failed",
+      e
+    );
+  }
 }// ======================================================
 // 🌍 FILTER + RENDER GIS
 // ======================================================
