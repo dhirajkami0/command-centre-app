@@ -7362,38 +7362,29 @@ function populateDivisionButtons(){
   try {
 
     // =====================================
-    // 🧹 REMOVE OLD
+    // 🧹 CLEAR OLD
     // =====================================
 
-    try {
+    clearCompartmentLayer();
 
-      if(
+    // =====================================
+    // 🛑 MAP SAFETY
+    // =====================================
 
-        window.compartmentLayer &&
+    if(!window.map){
 
-        window.map
+      console.warn(
+        "⚠ map missing"
+      );
 
-      ){
-
-        window.map.removeLayer(
-          window.compartmentLayer
-        );
-      }
-
-    } catch(e){
-
-      console.warn(e);
+      return;
     }
 
-    window.compartmentLayer = null;
-
     // =====================================
-    // 🛑 SAFETY
+    // 🛑 DATA SAFETY
     // =====================================
 
     if(
-
-      !window.map ||
 
       !Array.isArray(
         window.allCompartmentFeatures
@@ -7404,14 +7395,14 @@ function populateDivisionButtons(){
     ){
 
       console.warn(
-        "⚠ No compartment features"
+        "⚠ no compartment features"
       );
 
       return;
     }
 
     // =====================================
-    // 📦 COPY
+    // 📦 COPY FEATURES
     // =====================================
 
     let features = [
@@ -7421,7 +7412,7 @@ function populateDivisionButtons(){
     ];
 
     // =====================================
-    // 🎯 FILTER
+    // 🎯 SINGLE FILTER
     // =====================================
 
     const selectedCompartment =
@@ -7459,17 +7450,17 @@ function populateDivisionButtons(){
     if(!features.length){
 
       console.warn(
-        "⚠ No filtered compartments"
+        "⚠ no filtered compartments"
       );
 
       return;
     }
 
     // =====================================
-    // 🎨 CREATE
+    // 🎨 CREATE LAYER
     // =====================================
 
-    const layer =
+    window.compartmentLayer =
 
       L.geoJSON(features,{
 
@@ -7489,10 +7480,10 @@ function populateDivisionButtons(){
 
         onEachFeature:function(
           feature,
-          leafletLayer
+          layer
         ){
 
-          const name =
+          const compartmentName =
 
             String(
 
@@ -7500,12 +7491,12 @@ function populateDivisionButtons(){
 
             ).trim();
 
-          // ============================
+          // =========================
           // 🏷 TOOLTIP
-          // ============================
+          // =========================
 
-          leafletLayer.bindTooltip(
-            name,
+          layer.bindTooltip(
+            compartmentName,
             {
               permanent:true,
               direction:"center",
@@ -7513,16 +7504,16 @@ function populateDivisionButtons(){
             }
           );
 
-          // ============================
+          // =========================
           // 🖱 CLICK
-          // ============================
+          // =========================
 
-          leafletLayer.on(
+          layer.on(
             "click",
             function(){
 
               window.gisFilter.compartment =
-                name;
+                compartmentName;
 
               renderFilteredCompartments();
 
@@ -7533,16 +7524,16 @@ function populateDivisionButtons(){
       });
 
     // =====================================
-    // ➕ ADD
+    // ➕ ADD TO MAP
     // =====================================
 
-    layer.addTo(window.map);
+    window.compartmentLayer.addTo(
+      window.map
+    );
 
     // =====================================
-    // 💾 STORE
+    // ✅ DONE
     // =====================================
-
-    window.compartmentLayer = layer;
 
     console.log(
       "✅ Compartments Rendered:",
@@ -7552,7 +7543,7 @@ function populateDivisionButtons(){
   } catch(e){
 
     console.error(
-      "❌ compartment render failed",
+      "❌ renderFilteredCompartments",
       e
     );
   }
@@ -8889,21 +8880,14 @@ async function loadCompartmentsForBeat(){
   try {
 
     // =====================================
-    // 🧹 CLEAR OLD COMPARTMENTS
+    // 🧹 CLEAR OLD
     // =====================================
 
-    if(window.compartmentLayer){
+    clearCompartmentLayer();
 
-      try {
-
-        map.removeLayer(
-          window.compartmentLayer
-        );
-
-      } catch(e){}
-    }
-
-    window.compartmentLayer = null;
+    // =====================================
+    // ♻ RESET DATA
+    // =====================================
 
     window.allCompartmentFeatures = [];
 
@@ -8912,17 +8896,19 @@ async function loadCompartmentsForBeat(){
     // =====================================
 
     const division =
+
       String(
         window.gisFilter?.division || ""
       ).trim();
 
     const beat =
+
       String(
         window.gisFilter?.beat || ""
       ).trim();
 
     // =====================================
-    // 🛑 SAFETY
+    // 🛑 INVALID
     // =====================================
 
     if(
@@ -8971,13 +8957,13 @@ async function loadCompartmentsForBeat(){
       await fetch(url);
 
     // =====================================
-    // ❌ FILE MISSING
+    // ❌ MISSING FILE
     // =====================================
 
     if(!res.ok){
 
       console.warn(
-        "⚠ No compartment file:",
+        "⚠ compartment file missing:",
         beat
       );
 
@@ -8994,7 +8980,7 @@ async function loadCompartmentsForBeat(){
       await res.json();
 
     // =====================================
-    // 🛑 INVALID
+    // 🛑 INVALID JSON
     // =====================================
 
     if(
@@ -9017,7 +9003,7 @@ async function loadCompartmentsForBeat(){
     }
 
     // =====================================
-    // ✅ STORE
+    // 💾 STORE
     // =====================================
 
     window.allCompartmentFeatures =
@@ -9043,29 +9029,50 @@ async function loadCompartmentsForBeat(){
 
   } catch(e){
 
-    console.error(e);
+    console.error(
+      "❌ loadCompartmentsForBeat",
+      e
+    );
 
     window.allCompartmentFeatures = [];
 
-    renderFilteredCompartments();
+    clearCompartmentLayer();
   }
-}
-    function clearCompartmentLayer(){
+}  function clearCompartmentLayer(){
 
   try {
 
-    if(window.compartmentLayer){
+    // =====================================
+    // 🧹 REMOVE OLD LAYER
+    // =====================================
 
-      map.removeLayer(
+    if(
+
+      window.compartmentLayer &&
+
+      window.map
+
+    ){
+
+      window.map.removeLayer(
         window.compartmentLayer
       );
     }
 
-  } catch(e){}
+  } catch(e){
+
+    console.warn(
+      "⚠ clearCompartmentLayer",
+      e
+    );
+  }
+
+  // =====================================
+  // ♻ RESET
+  // =====================================
 
   window.compartmentLayer = null;
-}
-    
+}  
     function lineIntersectsBox(lat1, lon1, lat2, lon2, minLat, minLon, maxLat, maxLon) {
 
   const eps = 0.000001;
