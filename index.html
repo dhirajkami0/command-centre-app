@@ -7461,15 +7461,14 @@ async function populateDivisionButtons(){
 
       try {
 
-        const url =
-
-          `./geojson/compartments/${
-            folderDivision
-          }/${
-            encodeURIComponent(beat)
-          }.geojson`;
-
-        const res =
+        `./geojson/compartments/${
+  folderDivision
+}/${
+  encodeURIComponent(range)
+}/${
+  encodeURIComponent(beat)
+}.geojson`
+          const res =
           await fetch(url);
 
         if(!res.ok){
@@ -9253,14 +9252,42 @@ if(
     // 📥 URL
     // =====================================
 
-    const url =
+    // =====================================
+// 🌳 RANGE
+// =====================================
 
-      `./geojson/compartments/${
-        division
-      }/${
-        encodeURIComponent(beat)
-      }.geojson`;
+const range =
 
+  String(
+    window.gisFilter?.range || ""
+  ).trim();
+
+// =====================================
+// 🛑 INVALID
+// =====================================
+
+if(!range){
+
+  console.warn(
+    "⚠ range missing"
+  );
+
+  return;
+}
+
+// =====================================
+// 📥 URL
+// =====================================
+
+const url =
+
+  `./geojson/compartments/${
+    division
+  }/${
+    encodeURIComponent(range)
+  }/${
+    encodeURIComponent(beat)
+  }.geojson`;
     console.log(
       "📥 Compartments URL:",
       url
