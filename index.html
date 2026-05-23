@@ -7592,7 +7592,9 @@ async function populateDivisionButtons(){
     const role =
       String(
         profile.role || ""
-      ).trim().toUpperCase();
+      )
+      .trim()
+      .toUpperCase();
 
     // =====================================
     // 🧹 RESET
@@ -7626,24 +7628,53 @@ async function populateDivisionButtons(){
     ){
 
       // =================================
-      // 🔒 FORCE FILTERS
+      // 🌍 NORMALIZE DIVISION
       // =================================
 
-      window.gisFilter.division =
+      let division =
         String(
           profile.division || ""
         ).trim();
 
-      window.gisFilter.range =
-        String(
-          profile.range || ""
-        ).trim();
+      if(
+        division === "BTR_W"
+      ){
+        division =
+          "BuxaTR_WEST";
+      }
 
-      window.gisFilter.beat =
-        "ALL";
+      if(
+        division === "BTR_E"
+      ){
+        division =
+          "BuxaTR_EAST";
+      }
 
-      window.gisFilter.compartment =
-        "ALL";
+      // =================================
+      // 🔒 FORCE FILTERS
+      // =================================
+
+      window.gisFilter = {
+
+        division:
+          division,
+
+        range:
+          String(
+            profile.range || ""
+          ).trim(),
+
+        beat:
+          "ALL",
+
+        compartment:
+          "ALL"
+      };
+
+      console.log(
+        "🔒 STAFF GIS LOCK:",
+        window.gisFilter
+      );
 
       // =================================
       // ❌ HIDE DIVISION BUTTONS
@@ -7653,7 +7684,7 @@ async function populateDivisionButtons(){
         "none";
 
       // =================================
-      // 🗺 RENDER RANGE ONLY
+      // 🎨 RENDER RANGE ONLY
       // =================================
 
       renderFilteredGIS();
@@ -7665,16 +7696,22 @@ async function populateDivisionButtons(){
       await loadCompartmentsForRange();
 
       // =================================
-      // 🔘 SHOW ONLY THEIR RANGE BUTTON
+      // 🔘 SHOW RANGE BUTTONS
       // =================================
 
       await populateRangeButtons();
 
       // =================================
-      // 🔘 SHOW ONLY THEIR RANGE BEATS
+      // 🔘 SHOW BEAT BUTTONS
       // =================================
 
       await populateBeatButtons();
+
+      // =================================
+      // 🔘 SHOW COMPARTMENT BUTTONS
+      // =================================
+
+      await populateCompartmentButtons();
 
       return;
     }
@@ -7689,10 +7726,27 @@ async function populateDivisionButtons(){
       role === "ADFO"
     ){
 
-      window.gisFilter.division =
+      let division =
         String(
           profile.division || ""
         ).trim();
+
+      if(
+        division === "BTR_W"
+      ){
+        division =
+          "BuxaTR_WEST";
+      }
+
+      if(
+        division === "BTR_E"
+      ){
+        division =
+          "BuxaTR_EAST";
+      }
+
+      window.gisFilter.division =
+        division;
 
       container.style.display =
         "none";
@@ -7791,7 +7845,6 @@ async function populateDivisionButtons(){
     );
   }
 }
-
     async function loadCompartmentsForRange(){
 
   try {
