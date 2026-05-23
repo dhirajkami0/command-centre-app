@@ -7652,16 +7652,65 @@ async function populateDivisionButtons(){
     }
 
     // =====================================
-    // 📥 ADD
-    // =====================================
+// 🧹 HARD RESET FOR COMPARTMENT MODE
+// =====================================
 
-    window.compartmentLayer.addData({
+if(
 
-      type:"FeatureCollection",
+  window.gisFilter.compartment !== "ALL"
 
-      features
-    });
+){
 
+  try {
+
+    // remove old layer completely
+    if(
+
+      window.compartmentLayer &&
+
+      window.map
+
+    ){
+
+      window.map.removeLayer(
+        window.compartmentLayer
+      );
+    }
+
+  } catch(e){
+
+    console.warn(e);
+  }
+
+  // recreate fresh layer
+  window.compartmentLayer =
+
+    L.geoJSON([],{
+
+      style:{
+
+        color:"#00ff88",
+
+        weight:2,
+
+        fillColor:"#00ff88",
+
+        fillOpacity:0.15
+      }
+
+    }).addTo(window.map);
+}
+
+// =====================================
+// 📥 ADD FILTERED FEATURES
+// =====================================
+
+window.compartmentLayer.addData({
+
+  type:"FeatureCollection",
+
+  features
+});
     console.log(
       "✅ Compartments Rendered:",
       features.length
