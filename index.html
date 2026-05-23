@@ -22009,60 +22009,95 @@ function updateNetworkStatus(status) {
 // ================= PROFILE NORMALIZER =================
 function normalizeUserProfile(profile){
 
-  if(!profile) return null;
+  try {
 
-  return {
-
-    // ======================================
-    // 🔥 EXISTING
-    // ======================================
-    rawName:
-      profile.rawName || profile.name,
-
-    cleanName:
-      profile.cleanName ||
-      cleanName(profile.name),
-
-    role:
-      profile.role,
-
-    beat:
-      profile.beat,
-
-    phone:
-      profile.phone,
+    if(!profile){
+      return null;
+    }
 
     // ======================================
-    // 🌍 NEW GIS FIELDS
+    // 🌍 DIVISION
     // ======================================
-    circle:
-      profile.circle || "",
 
-    division:
-      profile.division || "",
-// ======================================
-// 🌍 NORMALIZE DIVISION
-// ======================================
+    let division =
 
-if(
-  finalProfile.division === "BTR_W"
-){
-  finalProfile.division =
-    "BuxaTR_WEST";
-}
+      String(
+        profile.division || ""
+      ).trim();
 
-if(
-  finalProfile.division === "BTR_E"
-){
-  finalProfile.division =
-    "BuxaTR_EAST";
-}
-    range:
-      profile.range || ""
-  };
-}
+    // ======================================
+    // 🌍 NORMALIZE DIVISION
+    // ======================================
 
-// ================= APP START =================
+    if(
+      division === "BTR_W"
+    ){
+      division =
+        "BuxaTR_WEST";
+    }
+
+    if(
+      division === "BTR_E"
+    ){
+      division =
+        "BuxaTR_EAST";
+    }
+
+    // ======================================
+    // ✅ FINAL PROFILE
+    // ======================================
+
+    return {
+
+      // ====================================
+      // 🔥 EXISTING
+      // ====================================
+
+      rawName:
+        profile.rawName ||
+        profile.name ||
+        "",
+
+      cleanName:
+        profile.cleanName ||
+
+        cleanName(
+          profile.name || ""
+        ),
+
+      role:
+        profile.role || "",
+
+      beat:
+        profile.beat || "",
+
+      phone:
+        profile.phone || "",
+
+      // ====================================
+      // 🌍 GIS
+      // ====================================
+
+      circle:
+        profile.circle || "",
+
+      division:
+        division,
+
+      range:
+        profile.range || ""
+    };
+
+  } catch(e){
+
+    console.error(
+      "❌ normalizeUserProfile failed",
+      e
+    );
+
+    return null;
+  }
+}// ================= APP START =================
 // ================= APP START =================
 
 
