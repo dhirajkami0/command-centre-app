@@ -7406,7 +7406,7 @@ function createGISButton(value, active=false){
     </button>
   `;
 }
-    function hideAllGISButtons(){
+ function hideAllGISButtons(){
 
   const divisionButtons =
     document.getElementById(
@@ -7429,23 +7429,35 @@ function createGISButton(value, active=false){
     );
 
   if(divisionButtons){
+
     divisionButtons.style.display =
       "none";
+
+    divisionButtons.innerHTML = "";
   }
 
   if(rangeButtons){
+
     rangeButtons.style.display =
       "none";
+
+    rangeButtons.innerHTML = "";
   }
 
   if(beatButtons){
+
     beatButtons.style.display =
       "none";
+
+    beatButtons.innerHTML = "";
   }
 
   if(compartmentButtons){
+
     compartmentButtons.style.display =
       "none";
+
+    compartmentButtons.innerHTML = "";
   }
 }
 
@@ -8000,21 +8012,50 @@ async function populateDivisionButtons(){
 
   try {
 
-    // =====================================
-    // 🧹 HIDE ALL
-    // =====================================
-
     hideAllGISButtons();
 
     const profile =
       window.userProfile || {};
 
+    // =====================================
+    // NORMALIZE
+    // =====================================
+
     const role =
+
       String(
         profile.role || ""
       )
       .trim()
       .toUpperCase();
+
+    const division =
+
+      normalizeDivision(
+        profile.division || ""
+      );
+
+    const range =
+
+      String(
+        profile.range || ""
+      )
+      .trim();
+
+    console.log(
+      "🧪 ROLE:",
+      role
+    );
+
+    console.log(
+      "🧪 DIVISION:",
+      division
+    );
+
+    console.log(
+      "🧪 RANGE:",
+      range
+    );
 
     // =====================================================
     // 👑 ADMIN
@@ -8022,10 +8063,20 @@ async function populateDivisionButtons(){
 
     if(role === "ADMIN"){
 
-      document.getElementById(
-        "divisionButtons"
-      ).style.display =
-        "flex";
+      console.log(
+        "👑 ADMIN FLOW"
+      );
+
+      const divisionButtons =
+        document.getElementById(
+          "divisionButtons"
+        );
+
+      if(divisionButtons){
+
+        divisionButtons.style.display =
+          "flex";
+      }
 
       return;
     }
@@ -8035,27 +8086,61 @@ async function populateDivisionButtons(){
     // =====================================================
 
     if(
+
       role === "DFO" ||
+
       role === "ADFO"
+
     ){
 
-      window.gisFilter.division =
+      console.log(
+        "🟣 DFO/ADFO FLOW"
+      );
 
-        normalizeDivision(
-          profile.division
-        );
+      // =====================================
+      // LOAD DIVISION MASTER
+      // =====================================
 
       await loadDivisionMaster(
-
-        profile.division
+        division
       );
+
+      // =====================================
+      // FILTER
+      // =====================================
+
+      window.gisFilter.division =
+        division;
+
+      window.gisFilter.range =
+        "ALL";
+
+      window.gisFilter.beat =
+        "ALL";
+
+      window.gisFilter.compartment =
+        "ALL";
+
+      // =====================================
+      // RENDER MAP
+      // =====================================
 
       renderFilteredGIS();
 
-      document.getElementById(
-        "rangeButtons"
-      ).style.display =
-        "flex";
+      // =====================================
+      // SHOW RANGE BUTTONS ONLY
+      // =====================================
+
+      const rangeButtons =
+        document.getElementById(
+          "rangeButtons"
+        );
+
+      if(rangeButtons){
+
+        rangeButtons.style.display =
+          "flex";
+      }
 
       await populateRangeButtons();
 
@@ -8066,65 +8151,45 @@ async function populateDivisionButtons(){
     // 👮 STAFF / TEAM LEADER
     // =====================================================
 
-    if(
-      role === "STAFF" ||
-      role === "TEAM LEADER"
-    ){
+    console.log(
+      "👮 STAFF FLOW"
+    );
 
-      window.gisFilter.division =
+    await loadRangeGIS(
+      division,
+      range
+    );
 
-        normalizeDivision(
-          profile.division
-        );
+    window.gisFilter.division =
+      division;
 
-      window.gisFilter.range =
+    window.gisFilter.range =
+      range;
 
-        String(
-          profile.range || ""
-        ).trim();
+    window.gisFilter.beat =
+      "ALL";
 
-      // =====================================
-      // 📥 LOAD RANGE GIS
-      // =====================================
+    window.gisFilter.compartment =
+      "ALL";
 
-      await loadRangeGIS(
+    await loadCompartmentsForRange();
 
-        profile.division,
+    renderFilteredGIS();
 
-        profile.range
-      );
+    renderFilteredCompartments();
 
-      // =====================================
-      // 📥 LOAD RANGE COMPARTMENTS
-      // =====================================
-
-      await loadCompartmentsForRange();
-
-      // =====================================
-      // 🎨 RENDER
-      // =====================================
-
-      renderFilteredGIS();
-
-      renderFilteredCompartments();
-
-      // =====================================
-      // 👁 SHOW BEAT BUTTONS
-      // =====================================
-
+    const beatButtons =
       document.getElementById(
         "beatButtons"
-      ).style.display =
+      );
+
+    if(beatButtons){
+
+      beatButtons.style.display =
         "flex";
-
-      // =====================================
-      // 🔘 LOAD BEAT BUTTONS
-      // =====================================
-
-      await populateBeatButtons();
-
-      return;
     }
+
+    await populateBeatButtons();
 
   } catch(e){
 
