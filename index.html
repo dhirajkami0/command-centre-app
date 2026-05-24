@@ -9357,6 +9357,10 @@ async function populateRangeButtons(){
 // 🟨 BEAT BUTTONS
 // ======================================================
 
+// ======================================================
+// 🟨 BEAT BUTTONS
+// ======================================================
+
 async function populateBeatButtons(){
 
   try {
@@ -9366,36 +9370,10 @@ async function populateBeatButtons(){
         "beatButtons"
       );
 
-    const compartmentContainer =
-      document.getElementById(
-        "compartmentButtons"
-      );
-
-    if(
-      !container ||
-      !compartmentContainer
-    ){
-      return;
-    }
-
-    // =====================================
-    // 🧹 RESET
-    // =====================================
-
     container.innerHTML = "";
 
-    compartmentContainer.innerHTML =
-      "";
-
     // =====================================
-    // ❌ HIDE COMPARTMENTS
-    // =====================================
-
-    compartmentContainer.style.display =
-      "none";
-
-    // =====================================
-    // 📦 UNIQUE BEATS
+    // 📦 GET BEATS
     // =====================================
 
     const beats =
@@ -9408,28 +9386,34 @@ async function populateBeatButtons(){
 
       try {
 
-        const beat =
-
+        let beat =
           String(
-
             f.properties?.Beat ||
-
             f.properties?.beat ||
-
             ""
-
           ).trim();
 
-        if(beat){
-
-          beats.add(beat);
+        if(!beat){
+          return;
         }
+
+        // ===============================
+        // 🌍 UI FORMAT
+        // ===============================
+
+        beat =
+          beat.replace(
+            /_/g,
+            "-"
+          );
+
+        beats.add(beat);
 
       } catch(e){}
     });
 
     // =====================================
-    // ❌ NO BEATS
+    // ❌ EMPTY
     // =====================================
 
     if(beats.size === 0){
@@ -9448,33 +9432,25 @@ async function populateBeatButtons(){
       "flex";
 
     // =====================================
-    // 🔘 BUILD BUTTONS
+    // 🔘 BUTTONS
     // =====================================
 
-    [...beats]
+    [
+      ...beats
+    ]
     .sort()
     .forEach(beat => {
 
       container.innerHTML +=
 
         createGISButton(
-
           beat,
-
-          normalizeBeatName(
-            window.gisFilter.beat
-          )
-
-          ===
-
-          normalizeBeatName(
-            beat
-          )
+          false
         );
     });
 
     // =====================================
-    // 🖱 CLICK EVENTS
+    // 🎯 CLICK
     // =====================================
 
     container
@@ -9486,68 +9462,82 @@ async function populateBeatButtons(){
       btn.onclick =
       async function(){
 
-        try {
+        // ===============================
+        // ♻ RESET BEAT BUTTONS
+        // ===============================
 
-          // ===============================
-          // 🌍 BEAT
-          // ===============================
+        container
+        .querySelectorAll(
+          ".gis-filter-btn"
+        )
+        .forEach(b => {
 
-          const beat =
-            this.dataset.value;
-
-          console.log(
-            "🟨 Beat Click:",
-            beat
+          b.classList.remove(
+            "active"
           );
 
-          // ===============================
-          // 🎯 FILTER
-          // ===============================
+          b.style.background =
+            "#2d2d2d";
+        });
 
-          window.gisFilter.beat =
-            beat;
+        // ===============================
+        // ❌ RESET RANGE ACTIVE UI
+        // ===============================
 
-          window.gisFilter.compartment =
-            "ALL";
+        document
+        .querySelectorAll(
+          "#rangeButtons .gis-filter-btn"
+        )
+        .forEach(b => {
 
-          // ===============================
-          // 🎨 RENDER GIS
-          // ===============================
-
-          renderFilteredGIS();
-
-          // ===============================
-          // 🎨 FILTER COMPARTMENTS
-          // ===============================
-
-          renderFilteredCompartments();
-
-          // ===============================
-          // 👁 SHOW COMPARTMENTS
-          // ===============================
-
-          compartmentContainer.style.display =
-            "flex";
-
-          // ===============================
-          // 🔘 BUILD COMPARTMENTS
-          // ===============================
-
-          await populateCompartmentButtons();
-
-          // ===============================
-          // 🔁 REFRESH ACTIVE UI
-          // ===============================
-
-          await populateBeatButtons();
-
-        } catch(e){
-
-          console.error(
-            "❌ Beat Click",
-            e
+          b.classList.remove(
+            "active"
           );
-        }
+
+          b.style.background =
+            "#2d2d2d";
+        });
+
+        // ===============================
+        // ✅ ACTIVE CURRENT
+        // ===============================
+
+        this.classList.add(
+          "active"
+        );
+
+        this.style.background =
+          "#2196f3";
+
+        // ===============================
+        // 🎯 FILTER
+        // ===============================
+
+        window.gisFilter.beat =
+
+          this.dataset.value;
+
+        window.gisFilter.compartment =
+          "ALL";
+
+        // ===============================
+        // 🗺 RENDER
+        // ===============================
+
+        renderFilteredGIS();
+
+        renderFilteredCompartments();
+
+        // ===============================
+        // 📦 COMP BUTTONS
+        // ===============================
+
+        await populateCompartmentButtons();
+
+        document.getElementById(
+          "compartmentButtons"
+        ).style.display =
+          "flex";
       };
     });
 
