@@ -7304,7 +7304,6 @@ function clearGISLayer(){
     console.warn(e);
   }
 }
-
 // ======================================================
 // 🧹 CLEAR COMPARTMENTS
 // ======================================================
@@ -7597,18 +7596,97 @@ function renderFilteredGIS(){
 
   try {
 
+    // ==========================================
+    // 🧹 CLEAR OLD
+    // ==========================================
+
     clearGISLayer();
+
+    // ==========================================
+    // 📦 FEATURES
+    // ==========================================
 
     let features = [
 
-      ...(
-        window.allGISFeatures || []
-      )
+      ...(window.allGISFeatures || [])
+
     ];
 
-    // ==================================================
-    // 🎯 BEAT FILTER
-    // ==================================================
+    // ==========================================
+    // 🌍 DIVISION FILTER
+    // ==========================================
+
+    if(
+
+      window.gisFilter.division !==
+      "ALL"
+
+    ){
+
+      features =
+        features.filter(f => {
+
+          const div =
+
+            normalizeDivision(
+
+              f.properties?.Division ||
+
+              f.properties?.division ||
+
+              ""
+
+            );
+
+          return (
+
+            div ===
+
+            normalizeDivision(
+              window.gisFilter.division
+            )
+          );
+        });
+    }
+
+    // ==========================================
+    // 🟩 RANGE FILTER
+    // ==========================================
+
+    if(
+
+      window.gisFilter.range !==
+      "ALL"
+
+    ){
+
+      features =
+        features.filter(f => {
+
+          const range =
+
+            String(
+
+              f.properties?.Range ||
+
+              f.properties?.range ||
+
+              ""
+
+            )
+            .trim();
+
+          return (
+
+            range ===
+            window.gisFilter.range
+          );
+        });
+    }
+
+    // ==========================================
+    // 🟨 BEAT FILTER
+    // ==========================================
 
     if(
 
@@ -7620,9 +7698,9 @@ function renderFilteredGIS(){
       features =
         features.filter(f => {
 
-          return (
+          const beat =
 
-            normalizeBeatName(
+            String(
 
               f.properties?.Beat ||
 
@@ -7631,30 +7709,32 @@ function renderFilteredGIS(){
               ""
 
             )
+            .trim();
 
-            ===
+          return (
 
-            normalizeBeatName(
-
-              window.gisFilter.beat
-
-            )
+            beat ===
+            window.gisFilter.beat
           );
         });
     }
 
-    // ==================================================
+    // ==========================================
     // ❌ EMPTY
-    // ==================================================
+    // ==========================================
 
     if(features.length === 0){
+
+      console.warn(
+        "⚠ No GIS features"
+      );
 
       return;
     }
 
-    // ==================================================
-    // 🎨 RENDER
-    // ==================================================
+    // ==========================================
+    // 🎨 NEW STANDALONE LAYER
+    // ==========================================
 
     window.gisLayer =
 
@@ -7662,25 +7742,36 @@ function renderFilteredGIS(){
 
         style:{
 
-          color:"#00ffff",
+          color:"#00e5ff",
 
-          weight:2,
+          weight:
 
-          fillOpacity:0.05
+            window.gisFilter.beat !==
+            "ALL"
+
+            ? 4
+            : 2,
+
+          fillOpacity:
+
+            window.gisFilter.beat !==
+            "ALL"
+
+            ? 0.15
+            : 0.08
         }
       })
       .addTo(window.map);
 
-    // ==================================================
+    // ==========================================
     // 🎯 FIT
-    // ==================================================
+    // ==========================================
 
     try {
 
       const bounds =
 
-        window.gisLayer
-        .getBounds();
+        window.gisLayer.getBounds();
 
       if(bounds.isValid()){
 
@@ -7694,6 +7785,11 @@ function renderFilteredGIS(){
 
     } catch(e){}
 
+    console.log(
+      "✅ GIS Rendered:",
+      features.length
+    );
+
   } catch(e){
 
     console.error(
@@ -7702,7 +7798,6 @@ function renderFilteredGIS(){
     );
   }
 }
-
 // ======================================================
 // 🎨 RENDER COMPARTMENTS
 // ======================================================
@@ -8694,10 +8789,7 @@ function renderFilteredGIS(){
     // 🧹 CLEAR OLD
     // ==========================================
 
-    if(window.rangeLayer){
-
-      window.rangeLayer.clearLayers();
-    }
+    clearGISLayer();
 
     // ==========================================
     // 📦 FEATURES
@@ -8706,6 +8798,7 @@ function renderFilteredGIS(){
     let features = [
 
       ...(window.allGISFeatures || [])
+
     ];
 
     // ==========================================
@@ -8722,27 +8815,26 @@ function renderFilteredGIS(){
       features =
         features.filter(f => {
 
-         const div =
+          const div =
 
-  normalizeDivision(
+            normalizeDivision(
 
-    f.properties?.Division ||
+              f.properties?.Division ||
 
-    f.properties?.division ||
+              f.properties?.division ||
 
-    ""
+              ""
 
-  );
+            );
 
-return (
+          return (
 
-  div ===
+            div ===
 
-  normalizeDivision(
-    window.gisFilter.division
-  )
-);
-        
+            normalizeDivision(
+              window.gisFilter.division
+            )
+          );
         });
     }
 
@@ -8830,35 +8922,35 @@ return (
     }
 
     // ==========================================
-    // 🎨 RENDER
+    // 🎨 CREATE NEW STANDALONE LAYER
     // ==========================================
 
-    window.rangeLayer.addData(features);
+    window.gisLayer =
 
-    // ==========================================
-    // 🎨 STYLE
-    // ==========================================
+      L.geoJSON(features,{
 
-    window.rangeLayer.setStyle({
+        style:{
 
-      color:"#00e5ff",
+          color:"#00e5ff",
 
-      weight:
+          weight:
 
-        window.gisFilter.beat !==
-        "ALL"
+            window.gisFilter.beat !==
+            "ALL"
 
-        ? 4
-        : 2,
+            ? 4
+            : 2,
 
-      fillOpacity:
+          fillOpacity:
 
-        window.gisFilter.beat !==
-        "ALL"
+            window.gisFilter.beat !==
+            "ALL"
 
-        ? 0.15
-        : 0.08
-    });
+            ? 0.15
+            : 0.08
+        }
+      })
+      .addTo(window.map);
 
     // ==========================================
     // 🎯 FIT
@@ -8867,11 +8959,12 @@ return (
     try {
 
       const bounds =
-        window.rangeLayer.getBounds();
+
+        window.gisLayer.getBounds();
 
       if(bounds.isValid()){
 
-        map.fitBounds(
+        window.map.fitBounds(
           bounds,
           {
             padding:[20,20]
@@ -8894,8 +8987,6 @@ return (
     );
   }
 }
-
-
 
 // ======================================================
 // 🌍 FILTER + RENDER COMPARTMENTS
