@@ -7731,7 +7731,21 @@ function renderFilteredGIS(){
 
       return;
     }
+// ==========================================
+// 🟧 COMPARTMENT MODE
+// ==========================================
 
+if(
+
+  window.gisFilter.compartment !==
+  "ALL"
+
+){
+
+  clearGISLayer();
+
+  return;
+}
     // ==========================================
     // 🎨 NEW STANDALONE LAYER
     // ==========================================
