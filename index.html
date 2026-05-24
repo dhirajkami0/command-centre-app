@@ -5698,6 +5698,11 @@ window.gridRootLayer.addTo(map);
 // ===============================
 // 🔥 GRID SYNC (CORRECT WAY)
 // ===============================
+    window.canvasRenderer =
+
+  L.canvas({
+    padding:0.5
+  });
 // ===============================
 // 🔥 GRID SYNC CORE (NEW)
 // ===============================
@@ -7864,7 +7869,8 @@ window.gisLayer =
 
   L.geoJSON(features,{
 
-    // ======================================
+    renderer:
+      window.canvasRenderer,    // ======================================
     // 🎨 STYLE
     // ======================================
 
@@ -8544,12 +8550,39 @@ layer.bindPopup(
 
       if(bounds.isValid()){
 
-        window.map.fitBounds(
-          bounds,
-          {
-            padding:[20,20]
-          }
-        );
+        // ==========================================
+// 🎯 FIT ONLY ON MAJOR NAVIGATION
+// ==========================================
+
+if(
+
+  !window.lastFitLevel ||
+
+  window.lastFitLevel !==
+
+  `${window.gisFilter.division}_${
+    window.gisFilter.range
+  }_${
+    window.gisFilter.beat
+  }`
+
+){
+
+  window.lastFitLevel =
+
+    `${window.gisFilter.division}_${
+      window.gisFilter.range
+    }_${
+      window.gisFilter.beat
+    }`;
+
+  window.map.fitBounds(
+    bounds,
+    {
+      padding:[20,20]
+    }
+  );
+}
       }
 
     } catch(e){}
@@ -9852,12 +9885,17 @@ function renderFilteredGIS(){
 
           fillOpacity:
 
-            window.gisFilter.beat !==
-            "ALL"
+  features.length > 200
 
-            ? 0.15
-            : 0.08
-        }
+  ? 0
+
+  :
+
+  window.gisFilter.beat !==
+  "ALL"
+
+  ? 0.12
+  : 0.05      }
       })
       .addTo(window.map);
 
