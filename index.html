@@ -8024,7 +8024,8 @@ async function populateDivisionButtons(){
 
       document.getElementById(
         "divisionButtons"
-      ).style.display = "flex";
+      ).style.display =
+        "flex";
 
       return;
     }
@@ -8053,7 +8054,8 @@ async function populateDivisionButtons(){
 
       document.getElementById(
         "rangeButtons"
-      ).style.display = "flex";
+      ).style.display =
+        "flex";
 
       await populateRangeButtons();
 
@@ -8093,7 +8095,7 @@ async function populateDivisionButtons(){
       );
 
       // =====================================
-      // 📥 LOAD ALL RANGE COMPARTMENTS
+      // 📥 LOAD RANGE COMPARTMENTS
       // =====================================
 
       await loadCompartmentsForRange();
@@ -8112,137 +8114,8 @@ async function populateDivisionButtons(){
 
       document.getElementById(
         "beatButtons"
-      ).style.display = "flex";
-
-      // =====================================
-      // 🔘 LOAD BEAT BUTTONS
-      // =====================================
-
-      await populateBeatButtons();
-
-      return;
-    }
-
-  } catch(e){
-
-    console.error(
-      "❌ async function initializeGISForRole(){
-
-  try {
-
-    // =====================================
-    // 🧹 HIDE ALL
-    // =====================================
-
-    hideAllGISButtons();
-
-    const profile =
-      window.userProfile || {};
-
-    const role =
-      String(
-        profile.role || ""
-      )
-      .trim()
-      .toUpperCase();
-
-    // =====================================================
-    // 👑 ADMIN
-    // =====================================================
-
-    if(role === "ADMIN"){
-
-      document.getElementById(
-        "divisionButtons"
-      ).style.display = "flex";
-
-      return;
-    }
-
-    // =====================================================
-    // 🟣 DFO / ADFO
-    // =====================================================
-
-    if(
-      role === "DFO" ||
-      role === "ADFO"
-    ){
-
-      window.gisFilter.division =
-
-        normalizeDivision(
-          profile.division
-        );
-
-      await loadDivisionMaster(
-
-        profile.division
-      );
-
-      renderFilteredGIS();
-
-      document.getElementById(
-        "rangeButtons"
-      ).style.display = "flex";
-
-      await populateRangeButtons();
-
-      return;
-    }
-
-    // =====================================================
-    // 👮 STAFF / TEAM LEADER
-    // =====================================================
-
-    if(
-      role === "STAFF" ||
-      role === "TEAM LEADER"
-    ){
-
-      window.gisFilter.division =
-
-        normalizeDivision(
-          profile.division
-        );
-
-      window.gisFilter.range =
-
-        String(
-          profile.range || ""
-        ).trim();
-
-      // =====================================
-      // 📥 LOAD RANGE GIS
-      // =====================================
-
-      await loadRangeGIS(
-
-        profile.division,
-
-        profile.range
-      );
-
-      // =====================================
-      // 📥 LOAD ALL RANGE COMPARTMENTS
-      // =====================================
-
-      await loadCompartmentsForRange();
-
-      // =====================================
-      // 🎨 RENDER
-      // =====================================
-
-      renderFilteredGIS();
-
-      renderFilteredCompartments();
-
-      // =====================================
-      // 👁 SHOW BEAT BUTTONS
-      // =====================================
-
-      document.getElementById(
-        "beatButtons"
-      ).style.display = "flex";
+      ).style.display =
+        "flex";
 
       // =====================================
       // 🔘 LOAD BEAT BUTTONS
@@ -8257,10 +8130,6 @@ async function populateDivisionButtons(){
 
     console.error(
       "❌ initializeGISForRole",
-      e
-    );
-  }
-}",
       e
     );
   }
