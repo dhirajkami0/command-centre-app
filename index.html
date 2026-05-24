@@ -7366,10 +7366,11 @@ window.allGISFeatures =
 
     const division =
 
-      String(
-        window.gisFilter.division || ""
-      ).trim();
+  normalizeDivision(
 
+    window.gisFilter.division || ""
+
+  );
     const range =
 
       String(
@@ -7640,7 +7641,46 @@ function hideLowerButtons(level){
   }
 }
 
+function normalizeDivision(value){
 
+  value =
+
+    String(value || "")
+    .trim()
+    .toUpperCase();
+
+  // =====================================
+  // 🌍 WEST
+  // =====================================
+
+  if(
+
+    value === "BUXATR_WEST" ||
+
+    value === "BTR_W"
+
+  ){
+
+    return "BTR_W";
+  }
+
+  // =====================================
+  // 🌍 EAST
+  // =====================================
+
+  if(
+
+    value === "BUXATR_EAST" ||
+
+    value === "BTR_E"
+
+  ){
+
+    return "BTR_E";
+  }
+
+  return value;
+}
 
 // ======================================================
 // 🎨 BUTTON HTML
@@ -7727,16 +7767,16 @@ async function populateDivisionButtons(){
 
     if(role === "ADMIN"){
 
-      const buttons = [
+      [
 
         "ALL",
 
         "BTR_W",
 
         "BTR_E"
-      ];
 
-      buttons.forEach(div => {
+      ]
+      .forEach(div => {
 
         container.innerHTML +=
 
@@ -7758,8 +7798,11 @@ async function populateDivisionButtons(){
 
       const division =
 
-        window.userProfile?.division ||
-        "";
+        normalizeDivision(
+
+          window.userProfile?.division || ""
+
+        );
 
       container.innerHTML +=
 
@@ -7806,7 +7849,9 @@ async function populateDivisionButtons(){
           // ====================================
 
           const division =
-            this.dataset.value;
+            normalizeDivision(
+              this.dataset.value
+            );
 
           // ====================================
           // ♻ RESET FILTERS
@@ -7827,46 +7872,56 @@ async function populateDivisionButtons(){
           // 👑 ADMIN ALL
           // ====================================
 
+          let url = "";
+
           if(division === "ALL"){
 
-            const res =
-              await fetch(
-                "./geojson/master.geojson"
-              );
-
-            const data =
-              await res.json();
-
-            window.allGISFeatures =
-              data.features || [];
-
-            window.allCompartmentFeatures =
-              [];
-
-            renderFilteredGIS();
-
-            if(window.compartmentLayer){
-
-              window.compartmentLayer.clearLayers();
-            }
-
-            hideLowerButtons(
-              "division"
-            );
-
-            return;
+            url =
+              "./geojson/master.geojson";
           }
 
           // ====================================
-          // 📥 DIVISION MASTER
+          // 🌍 DIVISION GIS
           // ====================================
 
-          await loadDivisionMaster(
-            division
+          else {
+
+            url =
+
+              `./geojson/${
+                division
+              }/master.geojson`;
+          }
+
+          console.log(
+            "📥 Division GIS:",
+            url
           );
+
+          const res =
+            await fetch(url);
+
+          if(!res.ok){
+
+            throw new Error(
+              "Division GIS missing"
+            );
+          }
+
+          const data =
+            await res.json();
+
+          window.allGISFeatures =
+            data.features || [];
+
+          // ====================================
+          // 🧹 CLEAR COMPARTMENTS
+          // ====================================
 
           window.allCompartmentFeatures =
             [];
+
+          clearCompartmentLayer();
 
           // ====================================
           // 🎨 RENDER
@@ -7874,33 +7929,41 @@ async function populateDivisionButtons(){
 
           renderFilteredGIS();
 
-          if(window.compartmentLayer){
-
-            window.compartmentLayer.clearLayers();
-          }
-
           // ====================================
           // 👁 RANGE BUTTONS
           // ====================================
 
-          document.getElementById(
-            "rangeButtons"
-          ).style.display =
-            "flex";
+          if(division !== "ALL"){
+
+            document.getElementById(
+              "rangeButtons"
+            ).style.display =
+              "flex";
+
+            await populateRangeButtons();
+          }
+
+          else {
+
+            document.getElementById(
+              "rangeButtons"
+            ).style.display =
+              "none";
+          }
 
           // ====================================
           // ❌ LOWER HIDE
           // ====================================
 
-          hideLowerButtons(
-            "range"
-          );
+          document.getElementById(
+            "beatButtons"
+          ).style.display =
+            "none";
 
-          // ====================================
-          // 🔘 BUILD RANGES
-          // ====================================
-
-          await populateRangeButtons();
+          document.getElementById(
+            "compartmentButtons"
+          ).style.display =
+            "none";
 
         } catch(e){
 
@@ -7917,7 +7980,6 @@ async function populateDivisionButtons(){
     );
   }
 }
-
 
 
 // ======================================================
@@ -8081,7 +8143,9 @@ async function populateRangeButtons(){
             this.dataset.value;
 
           const division =
-            window.gisFilter.division;
+            normalizeDivision(
+              window.gisFilter.division
+            );
 
           // ====================================
           // ♻ FILTERS
@@ -8097,13 +8161,37 @@ async function populateRangeButtons(){
             "ALL";
 
           // ====================================
-          // 📥 RANGE GIS
+          // 📥 RANGE GIS FETCH
           // ====================================
 
-          await loadRangeGIS(
-            division,
-            range
+          const url =
+
+            `./geojson/${
+              division
+            }/${
+              encodeURIComponent(range)
+            }.geojson`;
+
+          console.log(
+            "📥 Range GIS:",
+            url
           );
+
+          const res =
+            await fetch(url);
+
+          if(!res.ok){
+
+            throw new Error(
+              "Range GIS missing"
+            );
+          }
+
+          const data =
+            await res.json();
+
+          window.allGISFeatures =
+            data.features || [];
 
           // ====================================
           // 📦 LOAD COMPARTMENTS
@@ -8129,9 +8217,13 @@ async function populateRangeButtons(){
             "flex";
 
           // ====================================
-          // ❌ HIDE COMPARTMENTS
+          // ❌ HIDE COMP BUTTONS
           // ====================================
 
+          document.getElementById(
+            "compartmentButtons"
+          ).style.display =
+            "none";
 
           // ====================================
           // 🔘 BUILD BEATS
@@ -8153,7 +8245,7 @@ async function populateRangeButtons(){
       e
     );
   }
-} // ======================================================
+}// ======================================================
 // 🟨 BEAT BUTTONS
 // ======================================================
 // ======================================================
@@ -8205,24 +8297,27 @@ function renderFilteredGIS(){
       features =
         features.filter(f => {
 
-          const div =
+         const div =
 
-            String(
+  normalizeDivision(
 
-              f.properties?.Division ||
+    f.properties?.Division ||
 
-              f.properties?.division ||
+    f.properties?.division ||
 
-              ""
+    ""
 
-            )
-            .trim();
+  );
 
-          return (
+return (
 
-            div ===
-            window.gisFilter.division
-          );
+  div ===
+
+  normalizeDivision(
+    window.gisFilter.division
+  )
+);
+        
         });
     }
 
@@ -8992,10 +9087,11 @@ async function loadRangeKML(){
 
     const division =
 
-      String(
-        profile.division || ""
-      ).trim();
+  normalizeDivision(
 
+    window.gisFilter.division || ""
+
+  );
     const range =
 
       String(
