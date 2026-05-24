@@ -8379,10 +8379,18 @@ function renderFilteredGIS(){
 
   try {
 
+    // =====================================
+    // 🧹 CLEAR OLD
+    // =====================================
+
     if(window.gisLayer){
 
       window.gisLayer.remove();
     }
+
+    // =====================================
+    // 📦 FEATURES
+    // =====================================
 
     let features = [
 
@@ -8390,7 +8398,7 @@ function renderFilteredGIS(){
     ];
 
     // =====================================
-    // DIVISION FILTER
+    // 🎯 DIVISION FILTER
     // =====================================
 
     if(
@@ -8403,14 +8411,136 @@ function renderFilteredGIS(){
 
           const div =
             normalizeDivision(
+
               f.properties?.Division ||
+
               f.properties?.division ||
+
               ""
             );
 
           return (
+
             div ===
+
             normalizeDivision(
+              window.gisFilter.division
+            )
+          );
+        });
+    }
+
+    // =====================================
+    // 🎯 RANGE FILTER
+    // =====================================
+
+    if(
+      window.gisFilter.range !==
+      "ALL"
+    ){
+
+      features =
+        features.filter(f => {
+
+          return (
+
+            String(
+              f.properties?.Range ||
+
+              f.properties?.range ||
+
+              ""
+            ).trim()
+
+            ===
+
+            String(
+              window.gisFilter.range
+            ).trim()
+          );
+        });
+    }
+
+    // =====================================
+    // 🎯 BEAT FILTER
+    // =====================================
+
+    if(
+      window.gisFilter.beat !==
+      "ALL"
+    ){
+
+      features =
+        features.filter(f => {
+
+          return (
+
+            normalizeBeatName(
+
+              f.properties?.Beat ||
+
+              f.properties?.beat ||
+
+              ""
+
+            )
+
+            ===
+
+            normalizeBeatName(
+              window.gisFilter.beat
+            )
+          );
+        });
+    }
+
+    // =====================================
+    // 🎨 RENDER
+    // =====================================
+
+    window.gisLayer =
+
+      L.geoJSON(features,{
+
+        style:{
+
+          color:"#00ffff",
+
+          weight:2,
+
+          fillOpacity:0.08
+        }
+      })
+      .addTo(window.map);
+
+    // =====================================
+    // 🎯 FIT BOUNDS
+    // =====================================
+
+    try {
+
+      const bounds =
+        window.gisLayer.getBounds();
+
+      if(bounds.isValid()){
+
+        window.map.fitBounds(
+          bounds,
+          {
+            padding:[20,20]
+          }
+        );
+      }
+
+    } catch(e){}
+
+  } catch(e){
+
+    console.error(
+      "❌ renderFilteredGIS",
+      e
+    );
+  }
 }// ======================================================
 // 🌍 RANGE BUTTONS
 // ======================================================
@@ -8432,6 +8562,10 @@ async function populateRangeButtons(){
         "rangeButtons"
       );
 
+    if(!container){
+      return;
+    }
+
     container.innerHTML = "";
 
     const ranges =
@@ -8446,9 +8580,13 @@ async function populateRangeButtons(){
 
         const range =
           String(
+
             f.properties?.Range ||
+
             f.properties?.range ||
+
             ""
+
           ).trim();
 
         if(range){
@@ -8459,6 +8597,97 @@ async function populateRangeButtons(){
       } catch(e){}
     });
 
+    [...ranges]
+    .sort()
+    .forEach(range => {
+
+      container.innerHTML +=
+
+        createGISButton(
+          range,
+          false
+        );
+    });
+
+    container
+    .querySelectorAll(
+      ".gis-filter-btn"
+    )
+    .forEach(btn => {
+
+      btn.onclick =
+      async function(){
+
+        const range =
+          this.dataset.value;
+
+        // =================================
+        // 🎯 FILTERS
+        // =================================
+
+        window.gisFilter.range =
+          range;
+
+        window.gisFilter.beat =
+          "ALL";
+
+        window.gisFilter.compartment =
+          "ALL";
+
+        // =================================
+        // 📥 LOAD RANGE GIS
+        // =================================
+
+        await loadRangeGIS(
+
+          window.gisFilter.division,
+
+          range
+        );
+
+        // =================================
+        // 📥 LOAD ALL RANGE COMPARTMENTS
+        // =================================
+
+        await loadCompartmentsForRange();
+
+        // =================================
+        // 🎨 RENDER
+        // =================================
+
+        renderFilteredGIS();
+
+        renderFilteredCompartments();
+
+        // =================================
+        // 👁 SHOW BEAT BUTTONS
+        // =================================
+
+        document.getElementById(
+          "beatButtons"
+        ).style.display =
+          "flex";
+
+        document.getElementById(
+          "compartmentButtons"
+        ).style.display =
+          "none";
+
+        // =================================
+        // 🔘 LOAD BEAT BUTTONS
+        // =================================
+
+        await populateBeatButtons();
+      };
+    });
+
+  } catch(e){
+
+    console.error(
+      "❌ populateRangeButtons",
+      e
+    );
+  }
 } // ======================================================
 // 🟨 BEAT BUTTONS
 // ======================================================
@@ -8477,6 +8706,10 @@ async function populateBeatButtons(){
         "beatButtons"
       );
 
+    if(!container){
+      return;
+    }
+
     container.innerHTML = "";
 
     const beats =
@@ -8491,9 +8724,13 @@ async function populateBeatButtons(){
 
         const beat =
           String(
+
             f.properties?.Beat ||
+
             f.properties?.beat ||
+
             ""
+
           ).trim();
 
         if(beat){
@@ -8504,10 +8741,74 @@ async function populateBeatButtons(){
       } catch(e){}
     });
 
+    [...beats]
+    .sort()
+    .forEach(beat => {
+
+      container.innerHTML +=
+
+        createGISButton(
+          beat,
+          false
+        );
+    });
+
+    container
+    .querySelectorAll(
+      ".gis-filter-btn"
+    )
+    .forEach(btn => {
+
+      btn.onclick =
+      async function(){
+
+        // =================================
+        // 🎯 FILTER
+        // =================================
+
+        window.gisFilter.beat =
+
+          this.dataset.value;
+
+        window.gisFilter.compartment =
+          "ALL";
+
+        // =================================
+        // 🎨 RENDER
+        // =================================
+
+        renderFilteredGIS();
+
+        renderFilteredCompartments();
+
+        // =================================
+        // 👁 SHOW COMPARTMENTS
+        // =================================
+
+        document.getElementById(
+          "compartmentButtons"
+        ).style.display =
+          "flex";
+
+        // =================================
+        // 🔘 LOAD COMPARTMENT BUTTONS
+        // =================================
+
+        await populateCompartmentButtons();
+      };
+    });
+
+  } catch(e){
+
+    console.error(
+      "❌ populateBeatButtons",
+      e
+    );
+  }
 }// ======================================================
 // 🚀 LOAD GIS
 // ======================================================
-    async function populateCompartmentButtons(){
+   async function populateCompartmentButtons(){
 
   try {
 
@@ -8515,6 +8816,10 @@ async function populateBeatButtons(){
       document.getElementById(
         "compartmentButtons"
       );
+
+    if(!container){
+      return;
+    }
 
     container.innerHTML = "";
 
@@ -8530,31 +8835,119 @@ async function populateBeatButtons(){
 
         const beat =
           normalizeBeatName(
+
             f.properties?.beat ||
+
             ""
           );
 
         if(
+
           beat !==
+
           normalizeBeatName(
             window.gisFilter.beat
           )
+
         ){
           return;
         }
 
-}
-      async function startGISSystem(){
+        const name =
+          String(
 
-  try {
+            f.properties?.compartment ||
 
-    await initializeGISForRole();
+            ""
 
-    await populateDivisionButtons();
+          ).trim();
+
+        if(name){
+
+          compartments.add(name);
+        }
+
+      } catch(e){}
+    });
+
+    [...compartments]
+    .sort()
+    .forEach(name => {
+
+      container.innerHTML +=
+
+        createGISButton(
+          name,
+          false
+        );
+    });
+
+    container
+    .querySelectorAll(
+      ".gis-filter-btn"
+    )
+    .forEach(btn => {
+
+      btn.onclick =
+      function(){
+
+        // =================================
+        // 🎯 FILTER
+        // =================================
+
+        window.gisFilter.compartment =
+
+          this.dataset.value;
+
+        // =================================
+        // 🎨 RENDER
+        // =================================
+
+        renderFilteredCompartments();
+      };
+    });
 
   } catch(e){
 
-    console.error(e);
+    console.error(
+      "❌ populateCompartmentButtons",
+      e
+    );
+  }
+}
+     async function startGISSystem(){
+
+  try {
+
+    // =====================================
+    // 🚀 ROLE INIT
+    // =====================================
+
+    await initializeGISForRole();
+
+    // =====================================
+    // 👑 ADMIN ONLY
+    // =====================================
+
+    const role =
+
+      String(
+        window.userProfile?.role || ""
+      )
+      .trim()
+      .toUpperCase();
+
+    if(role === "ADMIN"){
+
+      await populateDivisionButtons();
+    }
+
+  } catch(e){
+
+    console.error(
+      "❌ startGISSystem",
+      e
+    );
   }
 }
 // ======================================================
