@@ -9531,81 +9531,121 @@ async function loadRangeKML(){
 
       await populateDivisionButtons();
     }
+// =====================================================
+// 🟣 DFO / ADFO
+// =====================================================
 
-    // =====================================================
-    // 🟣 DFO / ADFO
-    // =====================================================
+else if(
 
-    else if(
+  role === "DFO"
 
-      role === "DFO"
+  ||
 
-      ||
+  role === "ADFO"
 
-      role === "ADFO"
+){
 
-    ){
+  // ===============================================
+  // 👁 SHOW DIVISION BUTTON
+  // ===============================================
 
-      await populateDivisionButtons();
+  await populateDivisionButtons();
 
-      await populateRangeButtons();
+  // ===============================================
+  // 👁 SHOW RANGE BUTTONS
+  // ===============================================
 
-      document.getElementById(
-        "beatButtons"
-      ).style.display =
-        "none";
+  await populateRangeButtons();
 
-      document.getElementById(
-        "compartmentButtons"
-      ).style.display =
-        "none";
-    }
+  // ===============================================
+  // ❌ HIDE LOWER LEVELS
+  // ===============================================
 
-    // =====================================================
-    // 👮 STAFF / TEAM LEADER
-    // =====================================================
+  document.getElementById(
+    "beatButtons"
+  ).style.display =
+    "none";
 
-    else {
+  document.getElementById(
+    "compartmentButtons"
+  ).style.display =
+    "none";
 
-      // ===============================================
-      // 📦 LOAD RANGE COMPARTMENTS
-      // ===============================================
+  console.log(
+    "✅ DFO/ADFO UI READY"
+  );
+}
 
-      await loadCompartmentsForRange();
+// =====================================================
+// 👮 STAFF / TEAM LEADER
+// =====================================================
 
-      // ===============================================
-      // 🎨 RENDER RANGE GIS
-      // ===============================================
+else {
 
-      renderFilteredGIS();
+  // ===============================================
+  // 📦 LOAD ALL RANGE COMPARTMENTS
+  // ===============================================
 
-      // ===============================================
-      // 🎨 RENDER RANGE COMPARTMENTS
-      // ===============================================
+  await loadCompartmentsForRange();
 
-      renderFilteredCompartments();
+  // ===============================================
+  // 🎨 RANGE GIS
+  // ===============================================
 
-      // ===============================================
-      // 🔘 RANGE BUTTON
-      // ===============================================
+  renderFilteredGIS();
 
-      await populateRangeButtons();
+  // ===============================================
+  // 🎨 RANGE COMPARTMENTS
+  // ===============================================
 
-      // ===============================================
-      // 🔘 BEAT BUTTONS
-      // ===============================================
+  renderFilteredCompartments();
 
-      await populateBeatButtons();
+  // ===============================================
+  // 👁 STATIC RANGE BUTTON
+  // IMPORTANT:
+  // DO NOT USE populateRangeButtons()
+  // ===============================================
 
-      // ===============================================
-      // ❌ HIDE COMP BUTTONS INITIALLY
-      // ===============================================
+  const container =
 
-      document.getElementById(
-        "compartmentButtons"
-      ).style.display =
-        "none";
-    }
+    document.getElementById(
+      "rangeButtons"
+    );
+
+  container.innerHTML =
+
+    createGISButton(
+      range,
+      true
+    );
+
+  container.style.display =
+    "flex";
+
+  // ===============================================
+  // 🔘 BEAT BUTTONS
+  // ===============================================
+
+  await populateBeatButtons();
+
+  document.getElementById(
+    "beatButtons"
+  ).style.display =
+    "flex";
+
+  // ===============================================
+  // ❌ HIDE COMP BUTTONS INITIALLY
+  // ===============================================
+
+  document.getElementById(
+    "compartmentButtons"
+  ).style.display =
+    "none";
+
+  console.log(
+    "✅ STAFF UI READY"
+  );
+}
 
     console.log(
       "✅ GIS READY"
