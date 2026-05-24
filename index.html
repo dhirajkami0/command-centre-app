@@ -7798,7 +7798,12 @@ async function populateDivisionButtons(){
       e
     );
   }
-}async function loadCompartmentsForRange(){
+}
+    // ======================================================
+// 📦 LOAD ALL RANGE COMPARTMENTS
+// ======================================================
+
+async function loadCompartmentsForRange(){
 
   try {
 
@@ -7813,12 +7818,13 @@ async function populateDivisionButtons(){
     // =====================================
 
     const division =
+
       normalizeDivision(
         window.gisFilter.division
       );
 
     // =====================================
-    // 📦 GET BEATS
+    // 📦 UNIQUE BEATS
     // =====================================
 
     const beats =
@@ -7832,10 +7838,15 @@ async function populateDivisionButtons(){
       try {
 
         const beat =
+
           String(
+
             f.properties?.Beat ||
+
             f.properties?.beat ||
+
             ""
+
           ).trim();
 
         if(beat){
@@ -7854,25 +7865,38 @@ async function populateDivisionButtons(){
 
       try {
 
+        // =================================
+        // 🌍 REAL FILE NAME
+        // =================================
+
         const fileBeat =
 
-  String(beat || "")
+          getBeatFileName(
+            beat
+          );
 
-  .trim()
+        // =================================
+        // 🌍 URL
+        // =================================
 
-  .replace(/\s+/g,"-");
         const url =
 
           `./geojson/compartments/${
             division
           }/${
-            fileBeat
+            encodeURIComponent(
+              fileBeat
+            )
           }.geojson`;
 
         console.log(
           "📥 Compartments:",
           url
         );
+
+        // =================================
+        // 🌍 FETCH
+        // =================================
 
         const res =
           await fetch(url);
@@ -7890,6 +7914,10 @@ async function populateDivisionButtons(){
         const data =
           await res.json();
 
+        // =================================
+        // 🌍 FEATURES
+        // =================================
+
         if(
           Array.isArray(
             data.features
@@ -7904,12 +7932,24 @@ async function populateDivisionButtons(){
 
       } catch(e){
 
-        console.warn(e);
+        console.warn(
+          "⚠ compartment load fail:",
+          beat,
+          e
+        );
       }
     }
 
+    // =====================================
+    // 🎨 RENDER RANGE COMPARTMENTS
+    // =====================================
+
+    renderFilteredCompartments();
+
     console.log(
+
       "✅ Compartments Loaded:",
+
       window.allCompartmentFeatures.length
     );
 
