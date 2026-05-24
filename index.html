@@ -7731,28 +7731,34 @@ function renderFilteredGIS(){
 
       return;
     }
-// ==========================================
-// 🟧 COMPARTMENT MODE
-// ==========================================
 
-if(
-
-  window.gisFilter.compartment !==
-  "ALL"
-
-){
-
-  clearGISLayer();
-
-  return;
-}
     // ==========================================
-    // 🎨 NEW STANDALONE LAYER
+    // 🟧 COMPARTMENT MODE
+    // ==========================================
+
+    if(
+
+      window.gisFilter.compartment !==
+      "ALL"
+
+    ){
+
+      clearGISLayer();
+
+      return;
+    }
+
+    // ==========================================
+    // 🎨 GIS LAYER
     // ==========================================
 
     window.gisLayer =
 
       L.geoJSON(features,{
+
+        // ======================================
+        // 🎨 STYLE
+        // ======================================
 
         style:{
 
@@ -7773,6 +7779,205 @@ if(
 
             ? 0.15
             : 0.08
+        },
+
+        // ======================================
+        // 🧠 INTERACTION
+        // ======================================
+
+        onEachFeature:function(
+          feature,
+          layer
+        ){
+
+          // ====================================
+          // 🏷 TOOLTIP
+          // ====================================
+
+          layer.bindTooltip(
+
+            `
+
+              <div style="
+                font-size:12px;
+                line-height:1.6;
+              ">
+
+                <b>🌍 Division:</b>
+                ${
+                  feature.properties?.Division ||
+
+                  feature.properties?.division ||
+
+                  "-"
+                }
+
+                <br>
+
+                <b>🌳 Range:</b>
+                ${
+                  feature.properties?.Range ||
+
+                  feature.properties?.range ||
+
+                  "-"
+                }
+
+                <br>
+
+                <b>🟨 Beat:</b>
+                ${
+                  feature.properties?.Beat ||
+
+                  feature.properties?.beat ||
+
+                  "-"
+                }
+
+                <br>
+
+                <b>📐 Area:</b>
+                ${
+                  feature.properties?.Beat_Ar ||
+
+                  "-"
+                }
+
+              </div>
+
+            `,
+
+            {
+              sticky:true
+            }
+          );
+
+          // ====================================
+          // 📦 POPUP
+          // ====================================
+
+          layer.bindPopup(
+
+            `
+
+              <div style="
+                min-width:240px;
+                font-size:13px;
+                line-height:1.7;
+              ">
+
+                <div style="
+                  font-size:15px;
+                  font-weight:bold;
+                  color:#00e5ff;
+                  margin-bottom:10px;
+                ">
+                  🌍 GIS INFORMATION
+                </div>
+
+                <b>Division:</b>
+                ${
+                  feature.properties?.Division ||
+
+                  feature.properties?.division ||
+
+                  "-"
+                }
+
+                <br>
+
+                <b>Range:</b>
+                ${
+                  feature.properties?.Range ||
+
+                  feature.properties?.range ||
+
+                  "-"
+                }
+
+                <br>
+
+                <b>Beat:</b>
+                ${
+                  feature.properties?.Beat ||
+
+                  feature.properties?.beat ||
+
+                  "-"
+                }
+
+                <br>
+
+                <b>Beat Area:</b>
+                ${
+                  feature.properties?.Beat_Ar ||
+
+                  "-"
+                }
+
+                <br>
+
+                <b>SID:</b>
+                ${
+                  feature.properties?.SID ||
+                  "-"
+                }
+
+                <br>
+
+                <b>DID:</b>
+                ${
+                  feature.properties?.DID ||
+                  "-"
+                }
+
+                <br>
+
+                <b>RID:</b>
+                ${
+                  feature.properties?.RID ||
+                  "-"
+                }
+
+                <br>
+
+                <b>BID:</b>
+                ${
+                  feature.properties?.BID ||
+                  "-"
+                }
+
+              </div>
+
+            `
+          );
+
+          // ====================================
+          // ✨ HOVER EFFECT
+          // ====================================
+
+          layer.on(
+            "mouseover",
+            function(){
+
+              this.setStyle({
+
+                weight:5,
+
+                fillOpacity:0.35
+              });
+            }
+          );
+
+          layer.on(
+            "mouseout",
+            function(){
+
+              window.gisLayer.resetStyle(
+                this
+              );
+            }
+          );
         }
       })
       .addTo(window.map);
@@ -7811,8 +8016,7 @@ if(
       e
     );
   }
-}
-// ======================================================
+}// ======================================================
 // 🎨 RENDER COMPARTMENTS
 // ======================================================
 
@@ -7829,9 +8033,9 @@ function renderFilteredCompartments(){
       )
     ];
 
-    // ==================================================
-    // 🎯 BEAT FILTER
-    // ==================================================
+    // ==========================================
+    // 🟨 BEAT FILTER
+    // ==========================================
 
     if(
 
@@ -7862,9 +8066,9 @@ function renderFilteredCompartments(){
         });
     }
 
-    // ==================================================
-    // 🎯 COMP FILTER
-    // ==================================================
+    // ==========================================
+    // 🟧 COMP FILTER
+    // ==========================================
 
     if(
 
@@ -7897,14 +8101,18 @@ function renderFilteredCompartments(){
         });
     }
 
+    // ==========================================
+    // ❌ EMPTY
+    // ==========================================
+
     if(features.length === 0){
 
       return;
     }
 
-    // ==================================================
+    // ==========================================
     // 🎨 RENDER
-    // ==================================================
+    // ==========================================
 
     window.compartmentLayer =
 
@@ -7914,11 +8122,149 @@ function renderFilteredCompartments(){
 
           color:"#00ff88",
 
-          weight:1,
+          weight:2,
 
           fillColor:"#00ff88",
 
-          fillOpacity:0.18
+          fillOpacity:0.22
+        },
+
+        // ======================================
+        // 🧠 INTERACTION
+        // ======================================
+
+        onEachFeature:function(
+          feature,
+          layer
+        ){
+
+          // ====================================
+          // 🏷 TOOLTIP
+          // ====================================
+
+          layer.bindTooltip(
+
+            `
+
+              <div style="
+                font-size:12px;
+                line-height:1.6;
+              ">
+
+                <b>🟩 Compartment:</b>
+                ${
+                  feature.properties?.compartment ||
+                  "-"
+                }
+
+                <br>
+
+                <b>🟨 Beat:</b>
+                ${
+                  feature.properties?.beat ||
+                  "-"
+                }
+
+                <br>
+
+                <b>🌳 Range:</b>
+                ${
+                  feature.properties?.range ||
+                  "-"
+                }
+
+              </div>
+
+            `,
+
+            {
+              sticky:true
+            }
+          );
+
+          // ====================================
+          // 📦 POPUP
+          // ====================================
+
+          layer.bindPopup(
+
+            `
+
+              <div style="
+                min-width:240px;
+                font-size:13px;
+                line-height:1.7;
+              ">
+
+                <div style="
+                  font-size:15px;
+                  font-weight:bold;
+                  color:#00ff88;
+                  margin-bottom:10px;
+                ">
+                  🟩 COMPARTMENT INFO
+                </div>
+
+                <b>Compartment:</b>
+                ${
+                  feature.properties?.compartment ||
+                  "-"
+                }
+
+                <br>
+
+                <b>Beat:</b>
+                ${
+                  feature.properties?.beat ||
+                  "-"
+                }
+
+                <br>
+
+                <b>Range:</b>
+                ${
+                  feature.properties?.range ||
+                  "-"
+                }
+
+                <br>
+
+                <b>Division:</b>
+                ${
+                  feature.properties?.division ||
+                  "-"
+                }
+
+              </div>
+
+            `
+          );
+
+          // ====================================
+          // ✨ HOVER EFFECT
+          // ====================================
+
+          layer.on(
+            "mouseover",
+            function(){
+
+              this.setStyle({
+
+                weight:4,
+
+                fillOpacity:0.4
+              });
+            }
+          );
+
+          layer.on(
+            "mouseout",
+            function(){
+
+              window.compartmentLayer
+              .resetStyle(this);
+            }
+          );
         }
       })
       .addTo(window.map);
@@ -7930,8 +8276,7 @@ function renderFilteredCompartments(){
       e
     );
   }
-}
-    
+}    
     // ======================================================
 // 🌍 DIVISION BUTTONS
 // ======================================================
