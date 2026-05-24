@@ -7871,16 +7871,28 @@ async function populateDivisionButtons(){
       e
     );
   }
-}   async function loadCompartmentsForRange(){
+}async function loadCompartmentsForRange(){
 
   try {
 
+    // =====================================
+    // ♻ RESET
+    // =====================================
+
     window.allCompartmentFeatures = [];
+
+    // =====================================
+    // 🌍 DIVISION
+    // =====================================
 
     const division =
       normalizeDivision(
         window.gisFilter.division
       );
+
+    // =====================================
+    // 📦 GET BEATS
+    // =====================================
 
     const beats =
       new Set();
@@ -7907,49 +7919,86 @@ async function populateDivisionButtons(){
       } catch(e){}
     });
 
-}
-   function renderFilteredCompartments(){
+    // =====================================
+    // 📥 LOAD ALL BEAT FILES
+    // =====================================
 
-  try {
+    for(const beat of beats){
 
-    if(window.compartmentLayer){
+      try {
 
-      window.compartmentLayer.remove();
+        const fileBeat =
+          normalizeBeatName(
+            beat
+          );
+
+        const url =
+
+          `./geojson/compartments/${
+            division
+          }/${
+            fileBeat
+          }.geojson`;
+
+        console.log(
+          "📥 Compartments:",
+          url
+        );
+
+        const res =
+          await fetch(url);
+
+        if(!res.ok){
+
+          console.warn(
+            "⚠ Missing compartment file:",
+            beat
+          );
+
+          continue;
+        }
+
+        const data =
+          await res.json();
+
+        if(
+          Array.isArray(
+            data.features
+          )
+        ){
+
+          window.allCompartmentFeatures.push(
+
+            ...data.features
+          );
+        }
+
+      } catch(e){
+
+        console.warn(e);
+      }
     }
 
-    let features = [
+    console.log(
+      "✅ Compartments Loaded:",
+      window.allCompartmentFeatures.length
+    );
 
-      ...window.allCompartmentFeatures
-    ];
+  } catch(e){
 
-    // =====================================
-    // BEAT FILTER
-    // =====================================
-
-    if(
-      window.gisFilter.beat !==
-      "ALL"
-    ){
-
-      features =
-        features.filter(f => {
-
-          return (
-            normalizeBeatName(
-              f.properties?.beat ||
-              ""
-            )
-
-            ===
-
-            normalizeBeatName(
-              window.gisFilter.beat
+    console.error(
+      "❌ loadCompartmentsForRange",
+      e
+    );
+  }
 }
-
-
-                        async function initializeGISForRole(){
+    async function initializeGISForRole(){
 
   try {
+
+    // =====================================
+    // 🧹 HIDE ALL
+    // =====================================
 
     hideAllGISButtons();
 
@@ -7983,6 +8032,345 @@ async function populateDivisionButtons(){
     if(
       role === "DFO" ||
       role === "ADFO"
+    ){
+
+      window.gisFilter.division =
+
+        normalizeDivision(
+          profile.division
+        );
+
+      await loadDivisionMaster(
+
+        profile.division
+      );
+
+      renderFilteredGIS();
+
+      document.getElementById(
+        "rangeButtons"
+      ).style.display = "flex";
+
+      await populateRangeButtons();
+
+      return;
+    }
+
+    // =====================================================
+    // 👮 STAFF / TEAM LEADER
+    // =====================================================
+
+    if(
+      role === "STAFF" ||
+      role === "TEAM LEADER"
+    ){
+
+      window.gisFilter.division =
+
+        normalizeDivision(
+          profile.division
+        );
+
+      window.gisFilter.range =
+
+        String(
+          profile.range || ""
+        ).trim();
+
+      // =====================================
+      // 📥 LOAD RANGE GIS
+      // =====================================
+
+      await loadRangeGIS(
+
+        profile.division,
+
+        profile.range
+      );
+
+      // =====================================
+      // 📥 LOAD ALL RANGE COMPARTMENTS
+      // =====================================
+
+      await loadCompartmentsForRange();
+
+      // =====================================
+      // 🎨 RENDER
+      // =====================================
+
+      renderFilteredGIS();
+
+      renderFilteredCompartments();
+
+      // =====================================
+      // 👁 SHOW BEAT BUTTONS
+      // =====================================
+
+      document.getElementById(
+        "beatButtons"
+      ).style.display = "flex";
+
+      // =====================================
+      // 🔘 LOAD BEAT BUTTONS
+      // =====================================
+
+      await populateBeatButtons();
+
+      return;
+    }
+
+  } catch(e){
+
+    console.error(
+      "❌ async function initializeGISForRole(){
+
+  try {
+
+    // =====================================
+    // 🧹 HIDE ALL
+    // =====================================
+
+    hideAllGISButtons();
+
+    const profile =
+      window.userProfile || {};
+
+    const role =
+      String(
+        profile.role || ""
+      )
+      .trim()
+      .toUpperCase();
+
+    // =====================================================
+    // 👑 ADMIN
+    // =====================================================
+
+    if(role === "ADMIN"){
+
+      document.getElementById(
+        "divisionButtons"
+      ).style.display = "flex";
+
+      return;
+    }
+
+    // =====================================================
+    // 🟣 DFO / ADFO
+    // =====================================================
+
+    if(
+      role === "DFO" ||
+      role === "ADFO"
+    ){
+
+      window.gisFilter.division =
+
+        normalizeDivision(
+          profile.division
+        );
+
+      await loadDivisionMaster(
+
+        profile.division
+      );
+
+      renderFilteredGIS();
+
+      document.getElementById(
+        "rangeButtons"
+      ).style.display = "flex";
+
+      await populateRangeButtons();
+
+      return;
+    }
+
+    // =====================================================
+    // 👮 STAFF / TEAM LEADER
+    // =====================================================
+
+    if(
+      role === "STAFF" ||
+      role === "TEAM LEADER"
+    ){
+
+      window.gisFilter.division =
+
+        normalizeDivision(
+          profile.division
+        );
+
+      window.gisFilter.range =
+
+        String(
+          profile.range || ""
+        ).trim();
+
+      // =====================================
+      // 📥 LOAD RANGE GIS
+      // =====================================
+
+      await loadRangeGIS(
+
+        profile.division,
+
+        profile.range
+      );
+
+      // =====================================
+      // 📥 LOAD ALL RANGE COMPARTMENTS
+      // =====================================
+
+      await loadCompartmentsForRange();
+
+      // =====================================
+      // 🎨 RENDER
+      // =====================================
+
+      renderFilteredGIS();
+
+      renderFilteredCompartments();
+
+      // =====================================
+      // 👁 SHOW BEAT BUTTONS
+      // =====================================
+
+      document.getElementById(
+        "beatButtons"
+      ).style.display = "flex";
+
+      // =====================================
+      // 🔘 LOAD BEAT BUTTONS
+      // =====================================
+
+      await populateBeatButtons();
+
+      return;
+    }
+
+  } catch(e){
+
+    console.error(
+      "❌ initializeGISForRole",
+      e
+    );
+  }
+}",
+      e
+    );
+  }
+}
+    function renderFilteredCompartments(){
+
+  try {
+
+    // =====================================
+    // 🧹 CLEAR OLD
+    // =====================================
+
+    if(window.compartmentLayer){
+
+      window.compartmentLayer.remove();
+    }
+
+    // =====================================
+    // 📦 FEATURES
+    // =====================================
+
+    let features = [
+
+      ...window.allCompartmentFeatures
+    ];
+
+    // =====================================
+    // 🎯 BEAT FILTER
+    // =====================================
+
+    if(
+      window.gisFilter.beat !==
+      "ALL"
+    ){
+
+      features =
+        features.filter(f => {
+
+          return (
+
+            normalizeBeatName(
+
+              f.properties?.beat ||
+              ""
+
+            )
+
+            ===
+
+            normalizeBeatName(
+
+              window.gisFilter.beat
+
+            )
+          );
+        });
+    }
+
+    // =====================================
+    // 🎯 COMPARTMENT FILTER
+    // =====================================
+
+    if(
+      window.gisFilter.compartment !==
+      "ALL"
+    ){
+
+      features =
+        features.filter(f => {
+
+          return (
+
+            String(
+              f.properties?.compartment ||
+              ""
+            ).trim()
+
+            ===
+
+            String(
+              window.gisFilter.compartment
+            ).trim()
+          );
+        });
+    }
+
+    // =====================================
+    // 🎨 RENDER
+    // =====================================
+
+    window.compartmentLayer =
+
+      L.geoJSON(features,{
+
+        style:{
+
+          color:"#00ff88",
+
+          weight:1,
+
+          fillColor:"#00ff88",
+
+          fillOpacity:0.15
+        }
+      })
+      .addTo(window.map);
+
+  } catch(e){
+
+    console.error(
+      "❌ renderFilteredCompartments",
+      e
+    );
+  }
 }
   // ======================================================
 // 🌍 FILTER + RENDER GIS
