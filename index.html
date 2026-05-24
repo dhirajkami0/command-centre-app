@@ -7772,6 +7772,10 @@ async function populateDivisionButtons(){
         "divisionButtons"
       );
 
+    if(!container){
+      return;
+    }
+
     container.innerHTML = "";
 
     [
@@ -7799,7 +7803,75 @@ async function populateDivisionButtons(){
 
         const division =
           this.dataset.value;
-}    async function loadCompartmentsForRange(){
+
+        // =================================
+        // 🎯 FILTER RESET
+        // =================================
+
+        window.gisFilter = {
+
+          division:
+            division,
+
+          range:
+            "ALL",
+
+          beat:
+            "ALL",
+
+          compartment:
+            "ALL"
+        };
+
+        // =================================
+        // 📥 LOAD DIVISION GIS
+        // =================================
+
+        await loadDivisionMaster(
+          division
+        );
+
+        // =================================
+        // 🎨 RENDER
+        // =================================
+
+        renderFilteredGIS();
+
+        // =================================
+        // 👁 SHOW RANGE BUTTONS
+        // =================================
+
+        document.getElementById(
+          "rangeButtons"
+        ).style.display =
+          "flex";
+
+        document.getElementById(
+          "beatButtons"
+        ).style.display =
+          "none";
+
+        document.getElementById(
+          "compartmentButtons"
+        ).style.display =
+          "none";
+
+        // =================================
+        // 🔘 RANGE BUTTONS
+        // =================================
+
+        await populateRangeButtons();
+      };
+    });
+
+  } catch(e){
+
+    console.error(
+      "❌ populateDivisionButtons",
+      e
+    );
+  }
+}   async function loadCompartmentsForRange(){
 
   try {
 
