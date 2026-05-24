@@ -7480,7 +7480,25 @@ function createGISButton(value, active=false){
     const data =
       await res.json();
 
+    // =====================================
+    // 💾 STORE FEATURES
+    // =====================================
+
     window.allGISFeatures =
+      data.features || [];
+
+    console.log(
+      "✅ Division GIS Loaded:",
+      window.allGISFeatures.length
+    );
+
+  } catch(e){
+
+    console.error(
+      "❌ loadDivisionMaster",
+      e
+    );
+  }
 }
 
       async function loadRangeGIS(
