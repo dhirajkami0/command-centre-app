@@ -7861,16 +7861,189 @@ function renderFilteredGIS(){
 
       return;
     }
+// ==========================================
+// 📊 GLOBAL GIS STATS
+// ==========================================
 
-    // ==========================================
-    // 🎨 GIS LAYER
-    // ==========================================
+const allFeatures =
+
+  window.allGISFeatures || [];
+
+const divisions =
+  new Set();
+
+const ranges =
+  new Set();
+
+const beats =
+  new Set();
+
+let totalArea = 0;
+
+const areaTracker =
+  new Set();
+
+allFeatures.forEach(f => {
+
+  const p =
+    f.properties || {};
+
+  const div =
+
+    normalizeDivision(
+
+      p.Division ||
+
+      p.division ||
+
+      ""
+
+    );
+
+  const rng =
+
+    String(
+
+      p.Range ||
+
+      p.range ||
+
+      ""
+
+    ).trim();
+
+  const bt =
+
+    String(
+
+      p.Beat ||
+
+      p.beat ||
+
+      ""
+
+    ).trim();
+
+  const ar =
+
+    Number(
+
+      p.Beat_Ar ||
+
+      p.area ||
+
+      0
+
+    );
+
+  let include = true;
+
+  // ======================================
+  // 🌍 DIVISION
+  // ======================================
+
+  if(
+
+    window.gisFilter.division !==
+    "ALL"
+
+  ){
+
+    include =
+
+      div ===
+
+      normalizeDivision(
+        window.gisFilter.division
+      );
+  }
+
+  // ======================================
+  // 🌳 RANGE
+  // ======================================
+
+  if(
+
+    include &&
+
+    window.gisFilter.range !==
+    "ALL"
+
+  ){
+
+    include =
+
+      rng ===
+      window.gisFilter.range;
+  }
+
+  // ======================================
+  // 🟨 BEAT
+  // ======================================
+
+  if(
+
+    include &&
+
+    window.gisFilter.beat !==
+    "ALL"
+
+  ){
+
+    include =
+
+      bt ===
+      window.gisFilter.beat;
+  }
+
+  if(include){
+
+    if(div){
+
+      divisions.add(div);
+    }
+
+    if(rng){
+
+      ranges.add(rng);
+    }
+
+    if(bt){
+
+      beats.add(bt);
+    }
+
+    const areaKey =
+
+      `${div}_${rng}_${bt}`;
+
+    if(
+
+      !areaTracker.has(areaKey)
+
+    ){
+
+      areaTracker.add(areaKey);
+
+      totalArea += ar;
+    }
+  }
+});
+
+// ==========================================
+// 🎨 GIS LAYER
+// ==========================================
+
 window.gisLayer =
-
   L.geoJSON(features,{
 
     renderer:
-      window.canvasRenderer,    // ======================================
+  window.canvasRenderer,
+
+interactive:true,
+
+bubblingMouseEvents:false,
+    // ======================================
     // 🎨 STYLE
     // ======================================
 
@@ -7916,7 +8089,21 @@ window.gisLayer =
 
       const props =
         feature.properties || {};
+         // ====================================
+// 📐 AREA
+// ====================================
 
+const area =
+
+  Number(
+
+    props.Beat_Ar ||
+
+    props.area ||
+
+    0
+
+  ).toFixed(2);
       // ====================================
       // 🌍 NORMALIZED VALUES
       // ====================================
@@ -7945,14 +8132,7 @@ window.gisLayer =
 
         "-";
 
-      const area =
-
-        props.Beat_Ar ||
-
-        props.area ||
-
-        "-";
-
+      
       // ====================================
       // 🧠 SMART LEVEL DETECTION
       // ====================================
@@ -8093,192 +8273,7 @@ window.gisLayer =
         }
       );
 
-      // ====================================
-// 📊 GLOBAL CALCULATIONS
-// ====================================
-
-const allFeatures =
-
-  window.allGISFeatures || [];
-
-// ====================================
-// 🌍 UNIQUE DIVISIONS
-// ====================================
-
-const divisions =
-  new Set();
-
-const ranges =
-  new Set();
-
-const beats =
-  new Set();
-
-let totalArea = 0;
-
-const areaTracker =
-  new Set();
-
-// ====================================
-// 📦 LOOP
-// ====================================
-
-allFeatures.forEach(f => {
-
-  const p =
-    f.properties || {};
-
-  const div =
-
-    normalizeDivision(
-
-      p.Division ||
-
-      p.division ||
-
-      ""
-
-    );
-
-  const rng =
-
-    String(
-
-      p.Range ||
-
-      p.range ||
-
-      ""
-
-    ).trim();
-
-  const bt =
-
-    String(
-
-      p.Beat ||
-
-      p.beat ||
-
-      ""
-
-    ).trim();
-
-  const ar =
-
-    Number(
-
-      p.Beat_Ar ||
-
-      p.area ||
-
-      0
-
-    );
-
-  let include = true;
-
-  // ==================================
-  // 🌍 DIVISION FILTER
-  // ==================================
-
-  if(
-
-    window.gisFilter.division !==
-    "ALL"
-
-  ){
-
-    include =
-
-      div ===
-
-      normalizeDivision(
-        window.gisFilter.division
-      );
-  }
-
-  // ==================================
-  // 🌳 RANGE FILTER
-  // ==================================
-
-  if(
-
-    include &&
-
-    window.gisFilter.range !==
-    "ALL"
-
-  ){
-
-    include =
-
-      rng ===
-      window.gisFilter.range;
-  }
-
-  // ==================================
-  // 🟨 BEAT FILTER
-  // ==================================
-
-  if(
-
-    include &&
-
-    window.gisFilter.beat !==
-    "ALL"
-
-  ){
-
-    include =
-
-      bt ===
-      window.gisFilter.beat;
-  }
-
-  // ==================================
-  // 📊 COLLECT
-  // ==================================
-
-  if(include){
-
-    if(div){
-
-      divisions.add(div);
-    }
-
-    if(rng){
-
-      ranges.add(rng);
-    }
-
-    if(bt){
-
-      beats.add(bt);
-    }
-
-    const areaKey =
-
-  `${div}_${rng}_${bt}`;
-
-if(
-
-  !areaTracker.has(areaKey)
-
-){
-
-  areaTracker.add(areaKey);
-
-  totalArea += ar;
-}
-  }
-});
-
-// ====================================
-// 📦 SMART POPUP
-// ====================================
-
-let popupHTML =
+      let popupHTML =
 
   `
 
@@ -8492,8 +8487,36 @@ popupHTML += `</div>`;
 // 📦 BIND POPUP
 // ====================================
 
+// ====================================
+// 📦 POPUP
+// ====================================
+
 layer.bindPopup(
-  popupHTML
+  popupHTML,
+  {
+    maxWidth:320
+  }
+);
+
+// ====================================
+// 🖱 FORCE OPEN ON CLICK
+// ====================================
+
+layer.on(
+  "click",
+  function(e){
+
+    try {
+
+      this.openPopup(
+        e.latlng
+      );
+
+    } catch(err){
+
+      console.warn(err);
+    }
+  }
 );
       
       // ====================================
