@@ -8516,6 +8516,10 @@ async function loadCompartmentsForRange(){
 // 🌍 FILTER + RENDER COMPARTMENTS
 // ======================================================
 
+// ======================================================
+// 🌍 FILTER + RENDER COMPARTMENTS
+// ======================================================
+
 function renderFilteredCompartments(){
 
   try {
@@ -8532,18 +8536,25 @@ function renderFilteredCompartments(){
     }
 
     // =====================================
-    // ❌ NO RANGE SELECTED
-    // DIVISION VIEW SHOULD NOT
-    // SHOW COMPARTMENTS
+    // ❌ DIVISION LEVEL ONLY
+    // HIDE COMPARTMENTS
     // =====================================
 
     if(
-      window.gisFilter.range ===
-      "ALL"
+
+      window.gisFilter.range === "ALL"
+
+      &&
+
+      window.gisFilter.beat === "ALL"
+
+      &&
+
+      window.gisFilter.compartment === "ALL"
     ){
 
       console.log(
-        "🟫 Compartments Hidden (Division View)"
+        "🟫 Compartments Hidden"
       );
 
       return;
@@ -8561,38 +8572,8 @@ function renderFilteredCompartments(){
     ];
 
     // =====================================
-    // 🎯 BEAT FILTER
-    // =====================================
-
-    if(
-      window.gisFilter.beat !==
-      "ALL"
-    ){
-
-      features =
-        features.filter(f => {
-
-          return (
-
-            normalizeBeatName(
-
-              f.properties?.beat ||
-
-              ""
-
-            )
-
-            ===
-
-            normalizeBeatName(
-              window.gisFilter.beat
-            )
-          );
-        });
-    }
-
-    // =====================================
     // 🎯 COMPARTMENT FILTER
+    // HIGHEST PRIORITY
     // =====================================
 
     if(
@@ -8623,6 +8604,69 @@ function renderFilteredCompartments(){
     }
 
     // =====================================
+    // 🎯 BEAT FILTER
+    // =====================================
+
+    else if(
+      window.gisFilter.beat !==
+      "ALL"
+    ){
+
+      features =
+        features.filter(f => {
+
+          return (
+
+            normalizeBeatName(
+
+              f.properties?.beat ||
+
+              ""
+
+            )
+
+            ===
+
+            normalizeBeatName(
+              window.gisFilter.beat
+            )
+          );
+        });
+    }
+
+    // =====================================
+    // 🎯 RANGE MODE
+    // SHOW ALL RANGE COMPARTMENTS
+    // =====================================
+
+    else if(
+      window.gisFilter.range !==
+      "ALL"
+    ){
+
+      features =
+        features.filter(f => {
+
+          return (
+
+            String(
+
+              f.properties?.range ||
+
+              ""
+
+            ).trim()
+
+            ===
+
+            String(
+              window.gisFilter.range
+            ).trim()
+          );
+        });
+    }
+
+    // =====================================
     // ❌ EMPTY
     // =====================================
 
@@ -8643,10 +8687,10 @@ function renderFilteredCompartments(){
 
       L.geoJSON(features,{
 
-        style:function(feature){
+        style:function(){
 
           // ===============================
-          // 🌍 SINGLE COMPARTMENT VIEW
+          // 🌍 SINGLE COMPARTMENT
           // ===============================
 
           if(
@@ -8667,7 +8711,28 @@ function renderFilteredCompartments(){
           }
 
           // ===============================
-          // 🌍 BEAT / RANGE VIEW
+          // 🌍 BEAT VIEW
+          // ===============================
+
+          if(
+            window.gisFilter.beat !==
+            "ALL"
+          ){
+
+            return {
+
+              color:"#00ff88",
+
+              weight:2,
+
+              fillColor:"#00ff88",
+
+              fillOpacity:0.22
+            };
+          }
+
+          // ===============================
+          // 🌍 RANGE VIEW
           // ===============================
 
           return {
@@ -8692,7 +8757,7 @@ function renderFilteredCompartments(){
             const props =
               feature.properties || {};
 
-            const txt = `
+            layer.bindPopup(`
 
               <div style="
                 font-size:12px;
@@ -8701,38 +8766,26 @@ function renderFilteredCompartments(){
 
                 <b>Compartment:</b>
                 ${
-                  props.compartment ||
-                  "-"
+                  props.compartment || "-"
                 }
 
                 <br>
 
                 <b>Beat:</b>
                 ${
-                  props.beat ||
-                  "-"
+                  props.beat || "-"
                 }
 
                 <br>
 
                 <b>Range:</b>
                 ${
-                  props.range ||
-                  "-"
-                }
-
-                <br>
-
-                <b>Division:</b>
-                ${
-                  props.division ||
-                  "-"
+                  props.range || "-"
                 }
 
               </div>
-            `;
 
-            layer.bindPopup(txt);
+            `);
 
           } catch(e){}
         }
