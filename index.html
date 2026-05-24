@@ -7530,51 +7530,160 @@ async function loadRangeKML(){
     // 🔘 BUTTONS
     // ==================================================
 
-    await populateDivisionButtons();
+    // ==========================================
+// 👑 ADMIN
+// ==========================================
 
-    if(
+if(
 
-      role === "DFO"
+  role === "ADMIN"
 
-      ||
+){
 
-      role === "ADFO"
+  // ======================================
+  // 👁 DIVISION BUTTONS
+  // ======================================
 
-    ){
+  document.getElementById(
+    "divisionButtons"
+  ).style.display =
+    "flex";
 
-      document.getElementById(
-        "rangeButtons"
-      ).style.display =
-        "flex";
+  await populateDivisionButtons();
 
-      await populateRangeButtons();
-    }
+  // ======================================
+  // ❌ LOWER HIDE
+  // ======================================
 
-    if(
+  document.getElementById(
+    "rangeButtons"
+  ).style.display =
+    "none";
 
-      role === "STAFF"
+  document.getElementById(
+    "beatButtons"
+  ).style.display =
+    "none";
 
-      ||
+  document.getElementById(
+    "compartmentButtons"
+  ).style.display =
+    "none";
+}
 
-      role === "TEAM LEADER"
+// ==========================================
+// 🟣 DFO / ADFO
+// ==========================================
 
-    ){
+else if(
 
-      document.getElementById(
-        "rangeButtons"
-      ).style.display =
-        "flex";
+  role === "DFO"
 
-      document.getElementById(
-        "beatButtons"
-      ).style.display =
-        "flex";
+  ||
 
-      await populateRangeButtons();
+  role === "ADFO"
 
-      await populateBeatButtons();
-    }
+){
 
+  // ======================================
+  // 👁 DIVISION BUTTON
+  // ======================================
+
+  document.getElementById(
+    "divisionButtons"
+  ).style.display =
+    "flex";
+
+  await populateDivisionButtons();
+
+  // ======================================
+  // 👁 RANGE BUTTONS
+  // ======================================
+
+  document.getElementById(
+    "rangeButtons"
+  ).style.display =
+    "flex";
+
+  await populateRangeButtons();
+
+  // ======================================
+  // ❌ LOWER HIDE
+  // ======================================
+
+  document.getElementById(
+    "beatButtons"
+  ).style.display =
+    "none";
+
+  document.getElementById(
+    "compartmentButtons"
+  ).style.display =
+    "none";
+}
+
+// ==========================================
+// 👮 STAFF / TEAM LEADER
+// ==========================================
+
+else if(
+
+  role === "STAFF"
+
+  ||
+
+  role === "TEAM LEADER"
+
+){
+
+  // ======================================
+  // ❌ HIDE DIVISION BUTTONS
+  // ======================================
+
+  document.getElementById(
+    "divisionButtons"
+  ).style.display =
+    "none";
+
+  // ======================================
+  // 👁 RANGE BUTTON
+  // ======================================
+
+  document.getElementById(
+    "rangeButtons"
+  ).style.display =
+    "flex";
+
+  // ======================================
+  // 👁 BEAT BUTTONS
+  // ======================================
+
+  document.getElementById(
+    "beatButtons"
+  ).style.display =
+    "flex";
+
+  // ======================================
+  // ❌ HIDE COMP BUTTONS INITIALLY
+  // ======================================
+
+  document.getElementById(
+    "compartmentButtons"
+  ).style.display =
+    "none";
+
+  // ======================================
+  // 🔘 RANGE BUTTON
+  // ======================================
+
+  await populateRangeButtons();
+
+  // ======================================
+  // 🔘 BEAT BUTTONS
+  // ======================================
+
+  await populateBeatButtons();
+}
     console.log(
       "✅ GIS READY"
     );
