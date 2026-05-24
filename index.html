@@ -3760,119 +3760,12 @@ async function startApp(){   // 🔥 ASYNC
 // SOURCE OF TRUTH
 // ======================================================
 await loadBackendCoverage();
-await startGISSystem();
+await loadRangeKML();
 // ======================================
 // 🔒 STAFF RANGE GIS
 // ======================================
 
-if(
 
-  window.userProfile &&
-
-  (
-
-    String(
-      window.userProfile.role || ""
-    )
-    .trim()
-    .toUpperCase()
-
-    ===
-
-    "STAFF"
-
-    ||
-
-    String(
-      window.userProfile.role || ""
-    )
-    .trim()
-    .toUpperCase()
-
-    ===
-
-    "TEAM LEADER"
-
-  )
-
-){
-
-  // ====================================
-  // 🔒 FORCE FILTER
-  // ====================================
-
-  window.gisFilter = {
-
-    division:
-
-      String(
-        window.userProfile.division || ""
-      ).trim(),
-
-    range:
-
-      String(
-        window.userProfile.range || ""
-      ).trim(),
-
-    beat:"ALL",
-
-    compartment:"ALL"
-  };
-
-  console.log(
-    "🔒 STAFF GIS:",
-    window.gisFilter
-  );
-
-  // ====================================
-  // 🎨 RANGE ONLY
-  // ====================================
-
-  if(
-    typeof renderFilteredGIS ===
-    "function"
-  ){
-
-    renderFilteredGIS();
-  }
-
-  // ====================================
-  // 📦 RANGE COMPARTMENTS
-  // ====================================
-
-  if(
-    typeof loadCompartmentsForRange ===
-    "function"
-  ){
-
-    await loadCompartmentsForRange();
-  }
-
-  // ====================================
-  // 🔘 BUTTONS
-  // ====================================
-
-  if(
-    typeof populateRangeButtons ===
-    "function"
-  ){
-
-    await populateRangeButtons();
-  }
-
-  if(
-    typeof populateBeatButtons ===
-    "function"
-  ){
-
-    await populateBeatButtons();
-  }
-
-  console.log(
-    "✅ STAFF RANGE GIS READY"
-  );
-}
 
 // ======================================================
 // 🔥 LOCK BACKEND
@@ -9089,7 +8982,7 @@ async function loadRangeKML(){
 
   normalizeDivision(
 
-    window.gisFilter.division || ""
+    profile.division || ""
 
   );
     const range =
