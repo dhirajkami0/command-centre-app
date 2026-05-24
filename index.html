@@ -7979,50 +7979,408 @@ window.gisLayer =
       );
 
       // ====================================
-      // 📦 POPUP
-      // ====================================
+// 📊 GLOBAL CALCULATIONS
+// ====================================
 
-      let popupHTML =
+const allFeatures =
 
-        `
+  window.allGISFeatures || [];
 
-          <div style="
-            min-width:260px;
-            font-size:13px;
-            line-height:1.7;
-          ">
+// ====================================
+// 🌍 UNIQUE DIVISIONS
+// ====================================
 
-            <div style="
-              font-size:16px;
-              font-weight:bold;
-              color:#00e5ff;
-              margin-bottom:12px;
-              border-bottom:1px solid rgba(255,255,255,0.2);
-              padding-bottom:8px;
-            ">
-              ${levelTitle}
-            </div>
+const divisions =
+  new Set();
 
-        `;
+const ranges =
+  new Set();
 
-      Object.entries(props)
-      .forEach(([key,val]) => {
+const beats =
+  new Set();
 
-        popupHTML += `
+let totalArea = 0;
 
-          <b>${key}:</b>
-          ${val}
+const areaTracker =
+  new Set();
 
-          <br>
-        `;
-      });
+// ====================================
+// 📦 LOOP
+// ====================================
 
-      popupHTML += `</div>`;
+allFeatures.forEach(f => {
 
-      layer.bindPopup(
-        popupHTML
+  const p =
+    f.properties || {};
+
+  const div =
+
+    normalizeDivision(
+
+      p.Division ||
+
+      p.division ||
+
+      ""
+
+    );
+
+  const rng =
+
+    String(
+
+      p.Range ||
+
+      p.range ||
+
+      ""
+
+    ).trim();
+
+  const bt =
+
+    String(
+
+      p.Beat ||
+
+      p.beat ||
+
+      ""
+
+    ).trim();
+
+  const ar =
+
+    Number(
+
+      p.Beat_Ar ||
+
+      p.area ||
+
+      0
+
+    );
+
+  let include = true;
+
+  // ==================================
+  // 🌍 DIVISION FILTER
+  // ==================================
+
+  if(
+
+    window.gisFilter.division !==
+    "ALL"
+
+  ){
+
+    include =
+
+      div ===
+
+      normalizeDivision(
+        window.gisFilter.division
+      );
+  }
+
+  // ==================================
+  // 🌳 RANGE FILTER
+  // ==================================
+
+  if(
+
+    include &&
+
+    window.gisFilter.range !==
+    "ALL"
+
+  ){
+
+    include =
+
+      rng ===
+      window.gisFilter.range;
+  }
+
+  // ==================================
+  // 🟨 BEAT FILTER
+  // ==================================
+
+  if(
+
+    include &&
+
+    window.gisFilter.beat !==
+    "ALL"
+
+  ){
+
+    include =
+
+      bt ===
+      window.gisFilter.beat;
+  }
+
+  // ==================================
+  // 📊 COLLECT
+  // ==================================
+
+  if(include){
+
+    if(div){
+
+      divisions.add(div);
+    }
+
+    if(rng){
+
+      ranges.add(rng);
+    }
+
+    if(bt){
+
+      beats.add(bt);
+    }
+
+    const areaKey =
+
+  `${div}_${rng}_${bt}`;
+
+if(
+
+  !areaTracker.has(areaKey)
+
+){
+
+  areaTracker.add(areaKey);
+
+  totalArea += ar;
+}
+  }
+});
+
+// ====================================
+// 📦 SMART POPUP
+// ====================================
+
+let popupHTML =
+
+  `
+
+    <div style="
+      min-width:280px;
+      font-size:13px;
+      line-height:1.8;
+    ">
+
+      <div style="
+        font-size:17px;
+        font-weight:bold;
+        color:#00e5ff;
+        margin-bottom:12px;
+        border-bottom:
+        1px solid rgba(255,255,255,0.2);
+        padding-bottom:8px;
+      ">
+
+        ${levelTitle}
+
+      </div>
+
+  `;
+
+// ====================================
+// 👑 BTR MODE
+// ====================================
+
+if(
+
+  window.gisFilter.division ===
+  "ALL"
+
+){
+
+  popupHTML += `
+
+    <b>🌍 Total Divisions:</b>
+    ${divisions.size}
+
+    <br>
+
+    <b>🌳 Total Ranges:</b>
+    ${ranges.size}
+
+    <br>
+
+    <b>🟨 Total Beats:</b>
+    ${beats.size}
+
+    <br>
+
+    <b>📐 Total BTR Area:</b>
+    ${totalArea.toFixed(2)}
+
+    <br>
+  `;
+}
+
+// ====================================
+// 🌲 DIVISION MODE
+// ====================================
+
+else if(
+
+  window.gisFilter.range ===
+  "ALL"
+
+){
+
+  popupHTML += `
+
+    <b>🌍 Division:</b>
+    ${division}
+
+    <br>
+
+    <b>🌳 Total Ranges:</b>
+    ${ranges.size}
+
+    <br>
+
+    <b>🟨 Total Beats:</b>
+    ${beats.size}
+
+    <br>
+
+    <b>📐 Division Area:</b>
+    ${totalArea.toFixed(2)}
+
+    <br>
+  `;
+}
+
+// ====================================
+// 🌳 RANGE MODE
+// ====================================
+
+else if(
+
+  window.gisFilter.beat ===
+  "ALL"
+
+){
+
+  popupHTML += `
+
+    <b>🌳 Range:</b>
+    ${range}
+
+    <br>
+
+    <b>🟨 Total Beats:</b>
+    ${beats.size}
+
+    <br>
+
+    <b>📐 Range Area:</b>
+    ${totalArea.toFixed(2)}
+
+    <br>
+  `;
+}
+
+// ====================================
+// 🟨 BEAT MODE
+// ====================================
+
+else {
+
+  const totalCompartments =
+
+    (
+      window.allCompartmentFeatures || []
+    )
+    .filter(f => {
+
+      return (
+
+        normalizeBeatName(
+
+          f.properties?.beat || ""
+
+        )
+
+        ===
+
+        normalizeBeatName(
+          beat
+        )
       );
 
+    }).length;
+
+  popupHTML += `
+
+    <b>🟨 Beat:</b>
+    ${beat}
+
+    <br>
+
+    <b>📐 Beat Area:</b>
+    ${area}
+
+    <br>
+
+    <b>🟩 Compartments:</b>
+    ${totalCompartments}
+
+    <br>
+  `;
+}
+
+// ====================================
+// 📍 CENTER
+// ====================================
+
+try {
+
+  const center =
+
+    layer.getBounds().getCenter();
+
+  popupHTML += `
+
+    <hr style="
+      border-color:
+      rgba(255,255,255,0.15);
+    ">
+
+    <b>📍 Center:</b>
+
+    <br>
+
+    ${center.lat.toFixed(5)},
+    ${center.lng.toFixed(5)}
+
+    <br>
+  `;
+
+} catch(e){}
+
+// ====================================
+// 🔚 END
+// ====================================
+
+popupHTML += `</div>`;
+
+// ====================================
+// 📦 BIND POPUP
+// ====================================
+
+layer.bindPopup(
+  popupHTML
+);
+      
       // ====================================
       // ✨ HOVER EFFECT
       // ====================================
@@ -8046,9 +8404,12 @@ window.gisLayer =
 
           try {
 
-            window.gisLayer
-            .resetStyle(this);
+            if(window.gisLayer){
 
+  window.gisLayer.resetStyle(
+    this
+  );
+}
           } catch(e){}
         }
       );
