@@ -7855,21 +7855,24 @@ function renderFilteredGIS(){
     }
 
     // ==========================================
-    // 🟧 COMPARTMENT MODE
-    // ==========================================
+// 🟧 COMPARTMENT MODE
+// ==========================================
 
-    if(
+// KEEP GIS LAYER ACTIVE
+// DO NOT CLEAR GIS
+// COMPARTMENTS WILL RENDER ABOVE GIS
 
-      window.gisFilter.compartment !==
-      "ALL"
+if(
 
-    ){
+  window.gisFilter.compartment !==
+  "ALL"
 
-      clearGISLayer();
+){
 
-      return;
-    }
-
+  console.log(
+    "🟩 Compartment mode active"
+  );
+}
     // ==========================================
     // 📊 GLOBAL GIS STATS
     // ==========================================
@@ -9080,6 +9083,15 @@ function renderFilteredCompartments(){
         }
       })
       .addTo(window.map);
+    // ==========================================
+// 🔼 BRING TO FRONT
+// ==========================================
+
+try {
+
+  window.compartmentLayer.bringToFront();
+
+} catch(e){}
 
     // ==========================================
     // 🎯 FIT BOUNDS
