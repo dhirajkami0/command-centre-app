@@ -8403,6 +8403,10 @@ else if(
 // 🟨 BEAT MODE
 // ====================================
 
+// ====================================
+// 🟨 BEAT MODE
+// ====================================
+
 else {
 
   const totalCompartments =
@@ -8412,19 +8416,22 @@ else {
     )
     .filter(f => {
 
+      const compBeat =
+
+        f.properties?.Beat ||
+
+        f.properties?.beat ||
+
+        "";
+
       return (
 
-        normalizeBeatName(
-
-          f.properties?.beat || ""
-
-        )
+        normalizeBeatName(compBeat)
 
         ===
 
-        normalizeBeatName(
-          beat
-        )
+        normalizeBeatName(beat)
+
       );
 
     }).length;
@@ -8447,7 +8454,6 @@ else {
     <br>
   `;
 }
-
 // ====================================
 // 📍 CENTER
 // ====================================
@@ -8504,21 +8510,18 @@ layer.bindPopup(
 
 layer.on(
   "click",
-  function(e){
+  function(){
 
     try {
 
-      this.openPopup(
-        e.latlng
-      );
+      layer.openPopup();
 
     } catch(err){
 
       console.warn(err);
     }
   }
-);
-      
+);      
       // ====================================
       // ✨ HOVER EFFECT
       // ====================================
@@ -8630,7 +8633,15 @@ function renderFilteredCompartments(){
 
   try {
 
+    // ==========================================
+    // 🧹 CLEAR OLD
+    // ==========================================
+
     clearCompartmentLayer();
+
+    // ==========================================
+    // 📦 FEATURES
+    // ==========================================
 
     let features = [
 
@@ -8653,13 +8664,17 @@ function renderFilteredCompartments(){
       features =
         features.filter(f => {
 
+          const beat =
+
+            f.properties?.Beat ||
+
+            f.properties?.beat ||
+
+            "";
+
           return (
 
-            normalizeBeatName(
-
-              f.properties?.beat || ""
-
-            )
+            normalizeBeatName(beat)
 
             ===
 
@@ -8673,7 +8688,7 @@ function renderFilteredCompartments(){
     }
 
     // ==========================================
-    // 🟧 COMP FILTER
+    // 🟧 COMPARTMENT FILTER
     // ==========================================
 
     if(
@@ -8713,6 +8728,10 @@ function renderFilteredCompartments(){
 
     if(features.length === 0){
 
+      console.warn(
+        "⚠ No compartment features"
+      );
+
       return;
     }
 
@@ -8723,6 +8742,17 @@ function renderFilteredCompartments(){
     window.compartmentLayer =
 
       L.geoJSON(features,{
+
+        renderer:
+          window.canvasRenderer,
+
+        interactive:true,
+
+        bubblingMouseEvents:false,
+
+        // ======================================
+        // 🎨 STYLE
+        // ======================================
 
         style:{
 
@@ -8745,6 +8775,49 @@ function renderFilteredCompartments(){
         ){
 
           // ====================================
+          // 📦 PROPERTIES
+          // ====================================
+
+          const props =
+            feature.properties || {};
+
+          // ====================================
+          // 🏷 NORMALIZED VALUES
+          // ====================================
+
+          const compartment =
+
+            props.compartment ||
+
+            props.Compartment ||
+
+            "-";
+
+          const beat =
+
+            props.Beat ||
+
+            props.beat ||
+
+            "-";
+
+          const range =
+
+            props.Range ||
+
+            props.range ||
+
+            "-";
+
+          const division =
+
+            props.Division ||
+
+            props.division ||
+
+            "-";
+
+          // ====================================
           // 🏷 TOOLTIP
           // ====================================
 
@@ -8755,29 +8828,26 @@ function renderFilteredCompartments(){
               <div style="
                 font-size:12px;
                 line-height:1.6;
+                min-width:170px;
               ">
 
                 <b>🟩 Compartment:</b>
-                ${
-                  feature.properties?.compartment ||
-                  "-"
-                }
+                ${compartment}
 
                 <br>
 
                 <b>🟨 Beat:</b>
-                ${
-                  feature.properties?.beat ||
-                  "-"
-                }
+                ${beat}
 
                 <br>
 
                 <b>🌳 Range:</b>
-                ${
-                  feature.properties?.range ||
-                  "-"
-                }
+                ${range}
+
+                <br>
+
+                <b>🌍 Division:</b>
+                ${division}
 
               </div>
 
@@ -8789,61 +8859,119 @@ function renderFilteredCompartments(){
           );
 
           // ====================================
-          // 📦 POPUP
+          // 📦 POPUP HTML
           // ====================================
 
-          layer.bindPopup(
+          let popupHTML =
 
             `
 
               <div style="
-                min-width:240px;
+                min-width:260px;
                 font-size:13px;
-                line-height:1.7;
+                line-height:1.8;
               ">
 
                 <div style="
-                  font-size:15px;
+                  font-size:16px;
                   font-weight:bold;
                   color:#00ff88;
-                  margin-bottom:10px;
+                  margin-bottom:12px;
+                  border-bottom:
+                  1px solid rgba(255,255,255,0.2);
+                  padding-bottom:8px;
                 ">
+
                   🟩 COMPARTMENT INFO
+
                 </div>
 
-                <b>Compartment:</b>
-                ${
-                  feature.properties?.compartment ||
-                  "-"
-                }
+                <b>🟩 Compartment:</b>
+                ${compartment}
 
                 <br>
 
-                <b>Beat:</b>
-                ${
-                  feature.properties?.beat ||
-                  "-"
-                }
+                <b>🟨 Beat:</b>
+                ${beat}
 
                 <br>
 
-                <b>Range:</b>
-                ${
-                  feature.properties?.range ||
-                  "-"
-                }
+                <b>🌳 Range:</b>
+                ${range}
 
                 <br>
 
-                <b>Division:</b>
-                ${
-                  feature.properties?.division ||
-                  "-"
-                }
+                <b>🌍 Division:</b>
+                ${division}
 
-              </div>
+            `;
 
-            `
+          // ====================================
+          // 📍 CENTER COORDINATES
+          // ====================================
+
+          try {
+
+            const center =
+
+              layer
+              .getBounds()
+              .getCenter();
+
+            popupHTML += `
+
+              <hr style="
+                border-color:
+                rgba(255,255,255,0.15);
+              ">
+
+              <b>📍 Center:</b>
+
+              <br>
+
+              ${center.lat.toFixed(5)},
+              ${center.lng.toFixed(5)}
+
+            `;
+
+          } catch(e){}
+
+          // ====================================
+          // 🔚 END
+          // ====================================
+
+          popupHTML += `</div>`;
+
+          // ====================================
+          // 📦 BIND POPUP
+          // ====================================
+
+          layer.bindPopup(
+            popupHTML,
+            {
+              maxWidth:320
+            }
+          );
+
+          // ====================================
+          // 🖱 MOBILE + LAPTOP SAFE CLICK
+          // ====================================
+
+          layer.on(
+            "click",
+            function(e){
+
+              try {
+
+                L.DomEvent.stopPropagation(e);
+
+                layer.openPopup();
+
+              } catch(err){
+
+                console.warn(err);
+              }
+            }
           );
 
           // ====================================
@@ -8858,7 +8986,7 @@ function renderFilteredCompartments(){
 
                 weight:4,
 
-                fillOpacity:0.4
+                fillOpacity:0.40
               });
             }
           );
@@ -8867,13 +8995,31 @@ function renderFilteredCompartments(){
             "mouseout",
             function(){
 
-              window.compartmentLayer
-              .resetStyle(this);
+              try {
+
+                if(
+                  window.compartmentLayer
+                ){
+
+                  window.compartmentLayer
+                  .resetStyle(this);
+                }
+
+              } catch(e){}
             }
           );
         }
       })
       .addTo(window.map);
+
+    // ==========================================
+    // ✅ DONE
+    // ==========================================
+
+    console.log(
+      "✅ Compartments Rendered:",
+      features.length
+    );
 
   } catch(e){
 
@@ -8882,7 +9028,7 @@ function renderFilteredCompartments(){
       e
     );
   }
-}    
+}  
     // ======================================================
 // 🌍 DIVISION BUTTONS
 // ======================================================
