@@ -8099,475 +8099,393 @@ function renderFilteredGIS(){
     // 🎨 CREATE LAYER
     // ======================================================
 
-    window.gisLayer = L.geoJSON(
+    // ======================================================
+// 🎨 GIS PANE FIX
+// ======================================================
 
-      features,
+if(
 
-      {
+  !window.map.getPane(
+    "gisPane"
+  )
 
-        renderer:
-          window.canvasRenderer,
+){
 
-        interactive:true,
+  window.map.createPane(
+    "gisPane"
+  );
 
-        bubblingMouseEvents:false,
+  // ==============================================
+  // 🔥 FORCE FRONT
+  // ==============================================
 
-        smoothFactor:1.5,
+  window.map.getPane(
+    "gisPane"
+  ).style.zIndex = 650;
 
-        // ==================================================
-        // 🎨 STYLE
-        // ==================================================
+  // ==============================================
+  // 🔥 POINTER EVENTS
+  // ==============================================
 
-       style:function(feature){
+  window.map.getPane(
+    "gisPane"
+  ).style.pointerEvents = "auto";
+}
 
-  return {
+// ======================================================
+// 🎨 CREATE GIS LAYER
+// ======================================================
 
-    color:"#ff0000",
+window.gisLayer = L.geoJSON(
 
-    weight:5,
+  features,
 
-    opacity:1,
+  {
 
-    fillColor:"#ff0000",
+    pane:"gisPane",
 
-    fillOpacity:0.45
+    renderer:
+      window.canvasRenderer,
 
-  };
-},   // ==============================================
-          // 🌍 BTR
-          // ==============================================
+    interactive:true,
 
-          if(
+    bubblingMouseEvents:false,
 
-            window.gisFilter.division ===
-            "ALL"
+    smoothFactor:1,
 
-          ){
+    // ==================================================
+    // 🎨 STYLE
+    // ==================================================
 
-            color = "#00e5ff";
-          }
+    style:function(feature){
 
-          // ==============================================
-          // 🌲 DIVISION
-          // ==============================================
+      let color =
+        "#00e5ff";
 
-          else if(
+      let fill =
+        "#00e5ff";
 
-            window.gisFilter.range ===
-            "ALL"
+      // ==============================================
+      // 🌲 DIVISION
+      // ==============================================
 
-          ){
+      if(
 
-            color = "#00ff66";
-          }
+        window.gisFilter.division !==
+        "ALL"
 
-          // ==============================================
-          // 🌳 RANGE
-          // ==============================================
+      ){
 
-          else {
+        color =
+          "#00ff66";
 
-            color = "#ffaa00";
-          }
-
-          return {
-
-            color:color,
-
-            weight:
-
-              window.gisFilter.beat !==
-              "ALL"
-
-              ? (
-                  isMobile
-                  ? 2
-                  : 4
-                )
-
-              : (
-                  isMobile
-                  ? 1.5
-                  : 2
-                ),
-
-            fillOpacity:
-
-              window.gisFilter.beat !==
-              "ALL"
-
-              ? 0.18
-              : 0.08
-          };
-        },
-
-        // ==================================================
-        // 🧠 POPUP SYSTEM
-        // ==================================================
-
-        onEachFeature:function(
-          feature,
-          layer
-        ){
-
-          const props =
-            feature.properties || {};
-
-          // ==================================================
-          // 🌍 BASIC INFO
-          // ==================================================
-
-          const division =
-
-            props.Division ||
-
-            props.division ||
-
-            "-";
-
-          const range =
-
-            props.Range ||
-
-            props.range ||
-
-            "-";
-
-          const beat =
-
-            props.Beat ||
-
-            props.beat ||
-
-            "-";
-
-          // ==================================================
-          // 🔥 FIRESTORE ANALYTICS ONLY
-          // ==================================================
-
-          let analytics = {};
-
-          // ==================================================
-          // 👑 BTR
-          // ==================================================
-
-          if(
-
-            window.gisFilter.division ===
-            "ALL"
-
-          ){
-
-            analytics =
-
-              window.gisAnalytics.btr || {};
-          }
-
-          // ==================================================
-          // 🌲 DIVISION
-          // ==================================================
-
-          else if(
-
-            window.gisFilter.range ===
-            "ALL"
-
-          ){
-
-            analytics =
-
-              window.gisAnalytics
-              .divisions[
-                division
-              ] || {};
-          }
-
-          // ==================================================
-          // 🌳 RANGE
-          // ==================================================
-
-          else {
-
-            analytics =
-
-              window.gisAnalytics
-              .ranges[
-                range
-              ] || {};
-          }
-
-          // ==================================================
-          // 🧠 TITLE
-          // ==================================================
-
-          let title =
-            "🌍 GIS";
-
-          if(
-
-            window.gisFilter.division ===
-            "ALL"
-
-          ){
-
-            title =
-              "👑 BTR GIS";
-          }
-
-          else if(
-
-            window.gisFilter.range ===
-            "ALL"
-
-          ){
-
-            title =
-              "🌲 DIVISION GIS";
-          }
-
-          else if(
-
-            window.gisFilter.beat ===
-            "ALL"
-
-          ){
-
-            title =
-              "🌳 RANGE GIS";
-          }
-
-          else {
-
-            title =
-              "🟨 BEAT GIS";
-          }
-
-          // ==================================================
-          // 📦 POPUP
-          // ==================================================
-
-          let html = `
-
-          <div style="
-            min-width:290px;
-            line-height:1.8;
-            font-size:13px;
-          ">
-
-            <div style="
-              font-size:17px;
-              font-weight:bold;
-              color:#00e5ff;
-              margin-bottom:12px;
-              border-bottom:
-              1px solid rgba(255,255,255,0.2);
-              padding-bottom:8px;
-            ">
-
-              ${title}
-
-            </div>
-
-            <b>🌍 Division:</b>
-            ${division}
-
-            <br>
-
-            <b>🌳 Range:</b>
-            ${range}
-
-            <br>
-
-            <b>🟨 Beat:</b>
-            ${beat}
-
-            <br>
-
-            <hr>
-
-            <b>🌍 Total Divisions:</b>
-            ${divisions.size}
-
-            <br>
-
-            <b>🌳 Total Ranges:</b>
-            ${ranges.size}
-
-            <br>
-
-            <b>🟨 Total Beats:</b>
-            ${beats.size}
-
-            <br>
-
-            <hr>
-
-            <div style="
-              font-size:15px;
-              font-weight:bold;
-              color:#00ffcc;
-              margin-bottom:10px;
-            ">
-
-              📊 LIVE ANALYTICS
-
-            </div>
-
-            <b>📐 Total Area:</b>
-            ${Number(
-              analytics.Total_ha || 0
-            ).toFixed(2)} ha
-
-            <br>
-
-            <b>🔥 Fire Risk:</b>
-            ${analytics.Fire_Risk || "-"}
-
-            <br>
-
-            <b>🌳 Forest:</b>
-            ${Number(
-              analytics.Forest || 0
-            ).toFixed(2)}
-
-            <br>
-
-            <b>🌿 Bush:</b>
-            ${Number(
-              analytics.Bush || 0
-            ).toFixed(2)}
-
-            <br>
-
-            <b>🌊 Water:</b>
-            ${Number(
-              analytics.Water || 0
-            ).toFixed(2)}
-
-            <br>
-
-            <b>🏗 Built:</b>
-            ${Number(
-              analytics.Built || 0
-            ).toFixed(2)}
-
-            <br>
-
-            <b>🌱 NDVI:</b>
-            ${Number(
-              analytics.NDVI || 0
-            ).toFixed(2)}
-
-            <br>
-
-            <b>💧 Soil Moisture:</b>
-            ${Number(
-              analytics.Soil_Moisture || 0
-            ).toFixed(2)}
-
-            <br>
-
-            <b>🌧 Rainfall:</b>
-            ${Number(
-              analytics.Rainfall_mm || 0
-            ).toFixed(2)}
-
-            <br>
-
-            <b>🌡 Temperature:</b>
-            ${Number(
-              analytics.Temperature_C || 0
-            ).toFixed(2)}
-
-            <br>
-
-          </div>
-          `;
-
-          // ==================================================
-          // 📦 POPUP
-          // ==================================================
-
-          layer.bindPopup(
-            html,
-            {
-              maxWidth:340,
-              autoPan:true
-            }
-          );
-
-          // ==================================================
-          // 🖱 CLICK
-          // ==================================================
-
-          layer.on(
-            "click",
-            function(){
-
-              try {
-
-                layer.openPopup();
-
-              } catch(e){}
-            }
-          );
-
-          // ==================================================
-          // ✨ HOVER
-          // ==================================================
-
-          if(!isMobile){
-
-            layer.on(
-              "mouseover",
-              function(){
-
-                this.setStyle({
-
-                  weight:5,
-
-                  fillOpacity:0.30
-                });
-
-              }
-            );
-
-            layer.on(
-              "mouseout",
-              function(){
-
-                try {
-
-                  this.setStyle({
-
-                    weight:
-
-                      window.gisFilter.beat !==
-                      "ALL"
-
-                      ? 4
-                      : 2,
-
-                    fillOpacity:
-
-                      window.gisFilter.beat !==
-                      "ALL"
-
-                      ? 0.18
-                      : 0.08
-                  });
-
-                } catch(e){}
-              }
-            );
-          }
-
-        }
-
+        fill =
+          "#00ff66";
       }
 
-    ).addTo(window.map);
+      // ==============================================
+      // 🌳 RANGE
+      // ==============================================
 
+      if(
+
+        window.gisFilter.range !==
+        "ALL"
+
+      ){
+
+        color =
+          "#ffaa00";
+
+        fill =
+          "#ffaa00";
+      }
+
+      return {
+
+        color:color,
+
+        weight:
+
+          isMobile
+          ? 3
+          : 4,
+
+        opacity:1,
+
+        fillColor:fill,
+
+        fillOpacity:0.35
+      };
+    },
+
+    // ==================================================
+    // 🧠 POPUP SYSTEM
+    // ==================================================
+
+    onEachFeature:function(
+      feature,
+      layer
+    ){
+
+      // ==============================================
+      // 🔥 FORCE FRONT
+      // ==============================================
+
+      layer.bringToFront();
+
+      const props =
+        feature.properties || {};
+
+      const division =
+
+        props.Division ||
+
+        props.division ||
+
+        "-";
+
+      const range =
+
+        props.Range ||
+
+        props.range ||
+
+        "-";
+
+      const beat =
+
+        props.Beat ||
+
+        props.beat ||
+
+        "-";
+
+      // ==============================================
+      // 🔥 ANALYTICS
+      // ==============================================
+
+      let analytics = {};
+
+      // ==============================================
+      // 👑 BTR
+      // ==============================================
+
+      if(
+
+        window.gisFilter.division ===
+        "ALL"
+
+      ){
+
+        analytics =
+          window.gisAnalytics.btr || {};
+      }
+
+      // ==============================================
+      // 🌲 DIVISION
+      // ==============================================
+
+      else if(
+
+        window.gisFilter.range ===
+        "ALL"
+
+      ){
+
+        analytics =
+
+          window.gisAnalytics
+          .divisions[
+            division
+          ] || {};
+      }
+
+      // ==============================================
+      // 🌳 RANGE
+      // ==============================================
+
+      else {
+
+        analytics =
+
+          window.gisAnalytics
+          .ranges[
+            range
+          ] || {};
+      }
+
+      // ==============================================
+      // 🧠 TITLE
+      // ==============================================
+
+      let title =
+        "🌍 GIS";
+
+      if(
+
+        window.gisFilter.division ===
+        "ALL"
+
+      ){
+
+        title =
+          "👑 BTR GIS";
+      }
+
+      else if(
+
+        window.gisFilter.range ===
+        "ALL"
+
+      ){
+
+        title =
+          "🌲 DIVISION GIS";
+      }
+
+      else {
+
+        title =
+          "🌳 RANGE GIS";
+      }
+
+      // ==============================================
+      // 📦 POPUP
+      // ==============================================
+
+      const html = `
+
+      <div style="
+        min-width:260px;
+        line-height:1.7;
+        font-size:13px;
+      ">
+
+        <div style="
+          font-size:17px;
+          font-weight:bold;
+          color:#00e5ff;
+          margin-bottom:10px;
+        ">
+
+          ${title}
+
+        </div>
+
+        <b>🌍 Division:</b>
+        ${division}
+
+        <br>
+
+        <b>🌳 Range:</b>
+        ${range}
+
+        <br>
+
+        <b>🟨 Beat:</b>
+        ${beat}
+
+        <br><br>
+
+        <b>📐 Total Area:</b>
+        ${Number(
+          analytics.Total_ha || 0
+        ).toFixed(2)} ha
+
+        <br>
+
+        <b>🔥 Fire Risk:</b>
+        ${analytics.Fire_Risk || "-"}
+
+        <br>
+
+        <b>🌳 Forest:</b>
+        ${Number(
+          analytics.Forest || 0
+        ).toFixed(2)}
+
+        <br>
+
+        <b>🌊 Water:</b>
+        ${Number(
+          analytics.Water || 0
+        ).toFixed(2)}
+
+        <br>
+
+        <b>🌿 Bush:</b>
+        ${Number(
+          analytics.Bush || 0
+        ).toFixed(2)}
+
+      </div>
+      `;
+
+      // ==============================================
+      // 📦 POPUP
+      // ==============================================
+
+      layer.bindPopup(
+        html,
+        {
+          maxWidth:320,
+          autoPan:true
+        }
+      );
+
+      // ==============================================
+      // 🖱 CLICK
+      // ==============================================
+
+      layer.on(
+        "click",
+        function(e){
+
+          L.DomEvent.stopPropagation(e);
+
+          layer.openPopup();
+        }
+      );
+
+      // ==============================================
+      // ✨ HOVER
+      // ==============================================
+
+      if(!isMobile){
+
+        layer.on(
+          "mouseover",
+          function(){
+
+            this.setStyle({
+
+              weight:6,
+
+              fillOpacity:0.55
+            });
+          }
+        );
+
+        layer.on(
+          "mouseout",
+          function(){
+
+            this.setStyle({
+
+              weight:4,
+
+              fillOpacity:0.35
+            });
+          }
+        );
+      }
+
+    }
+
+  }
+
+).addTo(window.map);
     // ======================================================
     // 🎯 FIT BOUNDS
     // ======================================================
