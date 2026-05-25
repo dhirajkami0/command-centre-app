@@ -283,444 +283,371 @@ window.addEventListener("unhandledrejection", function (e) {
     /* ============================================================
    🌿 MAIN PANEL (GLASS) - SCROLLBAR & OVERFLOW FIX
 ============================================================ */
-    .panel {
-      display: flex !important;
-      flex-direction: column !important;
-      position: absolute;
-      top: 0;
-      left: 0;
-      width: 250px;
-      /* Use vh to ensure it respects the screen height */
-      height: auto !important;
-      max-height: 100vh !important;
-
-      background: rgba(10, 25, 10, 0.4) !important;
-      /* 🔥 PERFORMANCE FIX */
-background: rgba(15, 20, 15, 0.92);z-index: 4000;
-      color: white;
-
-      border-right: 1px solid rgba(255, 255, 255, 0.2);
-      border-bottom: 1px solid rgba(255, 255, 255, 0.2);
-      box-shadow: 0 10px 40px rgba(0, 0, 0, 0.5);
-
-      border-radius: 0 0 15px 0;
-      transition: transform 0.4s cubic-bezier(0.4, 0, 0.2, 1);
-
-      padding: calc(75px + var(--sat)) 12px 15px 12px;
-
-      /* 🔥 FORCED SCROLLBAR VISIBILITY */
-      overflow-y: auto !important;
-      overflow-x: hidden;
-      box-sizing: border-box;
-    }
-
-    /* 🔥 VISIBLE GLASS SCROLLBAR */
-    .panel::-webkit-scrollbar {
-      width: 6px;
-    }
-
-    .panel::-webkit-scrollbar-track {
-      background: rgba(255, 255, 255, 0.05);
-    }
-
-    .panel::-webkit-scrollbar-thumb {
-      background: rgba(165, 214, 167, 0.5);
-      /* Light Green Glass */
-      border-radius: 10px;
-      border: 1px solid rgba(255, 255, 255, 0.2);
-    }
-
-    /* 🔥 COLLAPSE STATE */
-    /* 🔥 COLLAPSE STATE (FIXED) */
-    .panel.collapsed {
-      transform: translateX(-260px);
-      /* MUST match panel width */
-    }
-
     /* ============================================================
-   🌦️ WEATHER DRAWER (GLASS)
+   🔥 GLOBAL MAP CLICK FIX
 ============================================================ */
-    /* ============================================================
-   🌦️ WEATHER DRAWER FIX (ALLOW FULL EXPANSION)
-============================================================ */
-    .weather-drawer {
-      background: rgba(255, 255, 255, 0.05) !important;
-        background: rgba(25,25,25,0.95);
-      border-radius: 10px;
-      margin-top: 10px;
-      overflow: hidden;
-      /* Clips the content when closed */
-      transition: all 0.4s ease-in-out;
-      flex-shrink: 0;
-      /* Prevents it from being squashed */
-    }
 
-    /* Expansion class toggled by JS */
-    .weather-drawer.expanded {
-      background: rgba(255, 255, 255, 0.15) !important;
-      max-height: 1000px !important;
-      /* High enough to fit everything */
-    }
+html,
+body,
+#map {
 
-    .weather-content {
-      padding: 0 12px 12px 12px;
-      color: #ffffff;
-      text-shadow: 0 1px 4px rgba(0, 0, 0, 0.8);
-      /* Ensures text is readable over map */
-      opacity: 0;
-      max-height: 0;
-      transition: all 0.4s ease-in-out;
-    }
+  width: 100%;
+  height: 100%;
 
-    .weather-drawer.expanded .weather-content {
-      opacity: 1;
-      max-height: 1000px;
-      padding-top: 10px;
-    }
+  margin: 0;
+  padding: 0;
 
-    /* ============================================================
-   🔘 PANEL TOGGLE BUTTON (GLASS FLOATING)
-============================================================ */
-    #panelToggle {
-      position: absolute;
-      top: calc(15px + var(--sat));
-      left: 15px;
-      width: 50px;
-      height: 50px;
-      z-index: 4005;
-
-      background: rgba(46, 125, 50, 0.025);
-
-     /* 🔥 PERFORMANCE FIX */
-background: rgba(20, 30, 20, 0.95);
-      color: white;
-      text-shadow: 0 1px 4px rgba(0, 0, 0, 0.9);
-      border-radius: 12px;
-      border: 1px solid rgba(255, 255, 255, 0.2);
-
-      display: flex;
-      align-items: center;
-      justify-content: center;
-
-      cursor: pointer;
-      transition: 0.3s;
-
-      box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
-    }
-
-    .toggle-active {
-      left: 220px !important;
-    }
-
-    #panelToggle:active {
-      transform: scale(0.9);
-    }
-
-    #panelToggle {
-      transition: left 0.35s ease, transform 0.2s ease;
-    }
-
-    /* ============================================================
-   🔘 BUTTONS (FULL GLASS STYLE)
-============================================================ */
-    .btn-center {
-      margin-top: 8px;
-      width: 100%;
-      padding: 14px;
-
-      background: rgba(255, 255, 255, 0.08);
-      background: rgba(35,35,35,0.95);
-
-      border: 1px solid rgba(255, 255, 255, 0.2);
-      color: #fff;
-
-      border-radius: 12px;
-
-      font-weight: 600;
-      letter-spacing: 1px;
-
-      cursor: pointer;
-
-      transition: 0.3s;
-
-      display: flex;
-      align-items: center;
-      justify-content: center;
-    }
-
-    .btn-center:hover {
-      background: rgba(76, 175, 80, 0.25);
-      border-color: rgba(76, 175, 80, 0.6);
-
-      transform: translateY(-2px);
-
-      box-shadow: 0 8px 25px rgba(0, 0, 0, 0.3);
-    }
-
-    /* ============================================================
-   🗺️ LEGEND (GLASS FLOATING CARD)
-============================================================ */
-    .legend {
-      position: absolute;
-      bottom: calc(25px + var(--sab));
-      right: 15px;
-      background: rgba(20, 20, 20, 0.04);
-
-      /* 🔥 PERFORMANCE FIX */
-background: rgba(25, 25, 25, 0.94); 
-      border: 1px solid rgba(255, 255, 255, 0.08);
-      color: white;
-      padding: 12px;
-
-      border-radius: 14px;
-
-      font-size: 12px;
-      z-index: 1000;
-
-      border: 1px solid rgba(255, 255, 255, 0.15);
-
-      max-width: 200px;
-      overflow: hidden;
-
-      box-shadow: 0 8px 30px rgba(0, 0, 0, 0.35);
-
-      transition: 0.3s;
-    }
-
-    /* Minimized FAB style */
-    .legend.minimized {
-      width: 44px;
-      height: 44px;
-      padding: 0;
-
-      display: flex;
-      align-items: center;
-      justify-content: center;
-
-      border-radius: 50%;
-
-      background: rgba(46, 125, 50, 0.35);
-       background: rgba(30,30,30,0.96);
-
-      border: 1px solid rgba(255, 255, 255, 0.2);
-    }
-
-    .legend-content {
-      transition: opacity 0.2s;
-    }
-
-    .legend.minimized .legend-content {
-      display: none;
-    }
-
-    #legendToggleBtn {
-      background: transparent;
-      border: none;
-      color: #a5d6a7;
-      cursor: pointer;
-      font-size: 18px;
-    }
-
-    .legend.minimized #legendToggleBtn {
-      color: white;
-    }
-@keyframes pulseFast {
-  0% { transform: translate(-50%, -50%) scale(1); opacity:0.5; }
-  70% { transform: translate(-50%, -50%) scale(2.2); opacity:0; }
-  100% { opacity:0; }
+  overflow: hidden;
 }
 
-@keyframes pulseSlow {
-  0% { transform: translate(-50%, -50%) scale(1); opacity:0.4; }
-  70% { transform: translate(-50%, -50%) scale(1.8); opacity:0; }
-  100% { opacity:0; }
-}
-    /* ============================================================
-   📍 LEAFLET FIXES & MARKERS
+/* ============================================================
+   🌍 MAP LAYER
 ============================================================ */
-    .leaflet-top,
-    .leaflet-bottom {
-      z-index: 3000 !important;
-    }
 
-    .leaflet-right {
-      right: 10px !important;
-    }
+#map {
 
-    .leaflet-top.leaflet-right {
-      top: calc(10px + var(--sat)) !important;
-    }
+  position: absolute !important;
 
-    .leaflet-div-icon {
-      background: transparent !important;
-      border: none !important;
-    }
+  inset: 0 !important;
 
-    .rangeLabel {
-      color: #ffffff !important;
-      font-weight: 800 !important;
-      font-size: 13px !important;
-      text-align: center;
-     /* 🔥 PERFORMANCE FIX */
-text-shadow: 0 1px 3px rgba(0,0,0,0.8);
-      white-space: nowrap;
-      pointer-events: none;
-      z-index: 1000 !important;
-    }
-  .highRisk {
-      animation: blink 1s infinite;
-    }
+  z-index: 1 !important;
 
-    @keyframes blink {
-      0% {
-        background: red
-      }
+  pointer-events: auto !important;
 
-      50% {
-        background: yellow
-      }
+  touch-action: auto !important;
+}
 
-      100% {
-        background: red
-      }
-    }
+/* ============================================================
+   🌿 MAIN PANEL
+============================================================ */
 
-   /* 🔥 WRAPPER */
-.markerWrap {
+.panel {
 
-  position: relative;
+  display: flex !important;
 
-  width: 30px;
-  height: 30px;
+  flex-direction: column !important;
+
+  position: absolute;
+
+  top: 0;
+  left: 0;
+
+  width: 250px;
+
+  height: auto !important;
+
+  max-height: 100vh !important;
+
+  background: rgba(15, 20, 15, 0.92);
+
+  color: white;
+
+  z-index: 4000;
+
+  pointer-events: auto !important;
+
+  border-right: 1px solid rgba(255,255,255,0.2);
+
+  border-bottom: 1px solid rgba(255,255,255,0.2);
+
+  box-shadow: 0 10px 40px rgba(0,0,0,0.5);
+
+  border-radius: 0 0 15px 0;
+
+  transition: transform 0.4s cubic-bezier(0.4,0,0.2,1);
+
+  padding: calc(75px + var(--sat)) 12px 15px 12px;
+
+  overflow-y: auto !important;
+
+  overflow-x: hidden;
+
+  box-sizing: border-box;
+}
+
+/* ============================================================
+   🔥 PANEL SCROLLBAR
+============================================================ */
+
+.panel::-webkit-scrollbar {
+
+  width: 6px;
+}
+
+.panel::-webkit-scrollbar-track {
+
+  background: rgba(255,255,255,0.05);
+}
+
+.panel::-webkit-scrollbar-thumb {
+
+  background: rgba(165,214,167,0.5);
+
+  border-radius: 10px;
+
+  border: 1px solid rgba(255,255,255,0.2);
+}
+
+/* ============================================================
+   🔥 COLLAPSE
+============================================================ */
+
+.panel.collapsed {
+
+  transform: translateX(-260px);
+}
+
+/* ============================================================
+   🌦 WEATHER DRAWER
+============================================================ */
+
+.weather-drawer {
+
+  background: rgba(25,25,25,0.95);
+
+  border-radius: 10px;
+
+  margin-top: 10px;
+
+  overflow: hidden;
+
+  transition: all 0.4s ease-in-out;
+
+  flex-shrink: 0;
+
+  pointer-events: auto !important;
+}
+
+.weather-drawer.expanded {
+
+  background: rgba(255,255,255,0.15) !important;
+
+  max-height: 1000px !important;
+}
+
+.weather-content {
+
+  padding: 0 12px 12px 12px;
+
+  color: #ffffff;
+
+  text-shadow: 0 1px 4px rgba(0,0,0,0.8);
+
+  opacity: 0;
+
+  max-height: 0;
+
+  transition: all 0.4s ease-in-out;
+}
+
+.weather-drawer.expanded .weather-content {
+
+  opacity: 1;
+
+  max-height: 1000px;
+
+  padding-top: 10px;
+}
+
+/* ============================================================
+   🔘 PANEL TOGGLE
+============================================================ */
+
+#panelToggle {
+
+  position: absolute;
+
+  top: calc(15px + var(--sat));
+
+  left: 15px;
+
+  width: 50px;
+
+  height: 50px;
+
+  z-index: 4005;
+
+  pointer-events: auto !important;
+
+  background: rgba(20,30,20,0.95);
+
+  color: white;
+
+  text-shadow: 0 1px 4px rgba(0,0,0,0.9);
+
+  border-radius: 12px;
+
+  border: 1px solid rgba(255,255,255,0.2);
 
   display: flex;
 
   align-items: center;
 
   justify-content: center;
+
+  cursor: pointer;
+
+  transition: left 0.35s ease, transform 0.2s ease;
+
+  box-shadow: 0 4px 20px rgba(0,0,0,0.3);
 }
-.markerCore {
 
-  font-size: 22px;
+.toggle-active {
 
-  color: white;
+  left: 220px !important;
+}
 
-  text-shadow: 0 0 5px black;
+#panelToggle:active {
 
-  z-index: 3;
+  transform: scale(0.9);
 }
 
 /* ============================================================
-   🔥 ANIMATIONS, RADAR & RISK PULSES
+   🔘 BUTTONS
 ============================================================ */
-.pulse {
-  animation: pulse 4s infinite;
-  opacity: 0.85;
-}
-@keyframes pulse { 0% {transform:scale(1);opacity:1} 50% {transform:scale(1.3);opacity:.6} 100% {transform:scale(1);opacity:1} }
 
-.fireGlow {
-  opacity: 1;
-}
-@keyframes fireGlow { 0% {box-shadow:0 0 6px orange} 100% {box-shadow:0 0 18px red} }
+.btn-center {
 
-.highRisk { animation: blink 1s infinite; }
-@keyframes blink { 0%{background:red} 50%{background:yellow} 100%{background:red} }
+  margin-top: 8px;
+
+  width: 100%;
+
+  padding: 14px;
+
+  background: rgba(35,35,35,0.95);
+
+  border: 1px solid rgba(255,255,255,0.2);
+
+  color: #fff;
+
+  border-radius: 12px;
+
+  font-weight: 600;
+
+  letter-spacing: 1px;
+
+  cursor: pointer;
+
+  transition: 0.3s;
+
+  display: flex;
+
+  align-items: center;
+
+  justify-content: center;
+
+  pointer-events: auto !important;
+}
+
+.btn-center:hover {
+
+  background: rgba(76,175,80,0.25);
+
+  border-color: rgba(76,175,80,0.6);
+
+  transform: translateY(-2px);
+
+  box-shadow: 0 8px 25px rgba(0,0,0,0.3);
+}
 
 /* ============================================================
-   🚀 LIGHTWEIGHT RADAR PULSE (SMOOTH + LOW GPU)
+   🗺 LEGEND
 ============================================================ */
 
-.radarPulse {
+.legend {
 
   position: absolute;
 
-  top: 50%;
-  left: 50%;
+  bottom: calc(25px + var(--sab));
 
-  width: 14px;
-  height: 14px;
+  right: 15px;
 
-  margin: -7px;
+  background: rgba(25,25,25,0.94);
+
+  border: 1px solid rgba(255,255,255,0.15);
+
+  color: white;
+
+  padding: 12px;
+
+  border-radius: 14px;
+
+  font-size: 12px;
+
+  z-index: 3500;
+
+  max-width: 200px;
+
+  overflow: hidden;
+
+  box-shadow: 0 8px 30px rgba(0,0,0,0.35);
+
+  transition: 0.3s;
+
+  pointer-events: auto !important;
+}
+
+.legend.minimized {
+
+  width: 44px;
+
+  height: 44px;
+
+  padding: 0;
+
+  display: flex;
+
+  align-items: center;
+
+  justify-content: center;
 
   border-radius: 50%;
 
-  pointer-events: none;
-
-  z-index: 1;
-
-  border: 2.5px solid #ffcc00;
-
-  box-shadow:
-    0 0 10px #ff9500,
-    0 0 20px rgba(255,149,0,0.7),
-    0 0 30px rgba(255,179,0,0.5);
-
-  animation:
-    radarPulseWave 2.2s infinite ease-out;
+  background: rgba(30,30,30,0.96);
 }
-.radarPulse.delay1 { animation-delay: 0.6s; }
-.radarPulse.delay2 { animation-delay: 1.2s; }
 
-@keyframes radarPulseWave {
-
-  0% {
-
-    transform:
-      translate(-50%, -50%)
-      scale(0.3);
-
-    opacity: 1;
-
-    border-width: 2.5px;
-  }
-
-  50% {
-
-    opacity: 0.6;
-  }
-
-  100% {
-
-    transform:
-      translate(-50%, -50%)
-      scale(4);
-
-    opacity: 0;
-
-    border-width: 1px;
-  }
-}    .riskPulseRed {
-      border: 2px solid #ff3b30;
-      box-shadow: 0 0 6px #ff3b30, 0 0 12px rgba(255, 59, 48, 0.5);
-    }
-
-    .riskPulseOrange {
-      border: 2px solid #ff9500;
-      box-shadow: 0 0 6px #ff9500, 0 0 12px rgba(255, 149, 0, 0.5);
-    }
-
-    /* ============================================================
-   📡 SHARP RENDERING & GRID FIXES
-============================================================ */
-    /* ============================================================
-   🚀 ULTRA-SMOOTH MAP RENDERING (OPTIMIZED)
+/* ============================================================
+   📍 LEAFLET FIX
 ============================================================ */
 
-.sharpLayer {
+.leaflet-container,
+.leaflet-pane,
+.leaflet-map-pane,
+.leaflet-overlay-pane,
+.leaflet-marker-pane,
+.leaflet-shadow-pane,
+.leaflet-popup-pane,
+.leaflet-tooltip-pane,
+.leaflet-interactive,
+.leaflet-pane canvas,
+.leaflet-pane svg,
+.leaflet-pane path {
 
   pointer-events: auto !important;
-
-  shape-rendering: geometricPrecision;
-
-  stroke-width: 0;
-
-  opacity: 0.96;
-
-  will-change: transform;
 }
 
-/* 🔥 SMOOTH LEAFLET CANVAS */
+/* ============================================================
+   🔥 LEAFLET Z-INDEX
+============================================================ */
+
+.leaflet-top,
+.leaflet-bottom {
+
+  z-index: 3000 !important;
+}
+
+.leaflet-overlay-pane {
+
+  z-index: 650 !important;
+
+  pointer-events: auto !important;
+}
+
+.leaflet-overlay-pane canvas {
+
+  pointer-events: auto !important;
+}
+
 canvas.leaflet-zoom-animated {
 
   image-rendering: auto !important;
@@ -728,147 +655,86 @@ canvas.leaflet-zoom-animated {
   transform: translateZ(0);
 
   backface-visibility: hidden;
+
+  pointer-events: auto !important;
 }
 
-/* 🔥 LIGHTWEIGHT COMPARTMENT STYLE */
-.compGlow {
-
-  stroke-linejoin: round;
-
-  opacity: 1;
-}
-
-/* 🔥 REMOVE GPU FILTERS */
-.compactGrid {
-
-  opacity: 1;
-}
-
-/* 🔥 VISITED AREA */
-.visitedGlow {
-
-  opacity: 0.92;
-}
-
-/* 🔥 UNVISITED AREA */
-.unvisitedGlow {
-
-  opacity: 0.92;
-}
-    /* ============================================================
-   📋 FORMS & DROPDOWNS
+/* ============================================================
+   🏷 RANGE LABELS
 ============================================================ */
-    .leader-only {
-  display: none;
+
+.rangeLabel {
+
+  color: #ffffff !important;
+
+  font-weight: 800 !important;
+
+  font-size: 13px !important;
+
+  text-align: center;
+
+  text-shadow: 0 1px 3px rgba(0,0,0,0.8);
+
+  white-space: nowrap;
+
+  pointer-events: none !important;
+
+  z-index: 1000 !important;
 }
 
-    #form-modal label {
-      display: block;
-      margin-top: 10px;
-      color: #333;
-    }
-
-    .multi-select {
-      position: relative;
-      margin-bottom: 10px;
-    }
-
-    .select-box {
-      background: #fff;
-      border: 1px solid #ccc;
-      padding: 12px;
-      border-radius: 8px;
-      cursor: pointer;
-      color: #111;
-      font-weight: 500;
-    }
-
-    .options {
-      display: none;
-      position: absolute;
-      width: 100%;
-      background: #fff;
-      border: 1px solid #ccc;
-      max-height: 220px;
-      overflow-y: auto;
-      z-index: 5000;
-      border-radius: 8px;
-      box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
-    }
-
-    .options label {
-      display: block;
-      padding: 12px;
-      cursor: pointer;
-      border-bottom: 1px solid #eee;
-      margin-top: 0 !important;
-      color: #333;
-    }
-
-    .options label:hover {
-      background: #f5f5f5;
-    }
-
-    /* ============================================================
-   📱 MOBILE-ONLY TWEAKS
+/* ============================================================
+   📱 MOBILE FIX
 ============================================================ */
-    @media (max-width: 600px) {
-      .panel {
-        width: 230px;
-      }
 
-      .toggle-active {
-        left: 190px !important;
-      }
+@media (max-width: 600px) {
 
-      .legend {
-        bottom: calc(10px + var(--sab));
-        right: 10px;
-        padding: 8px;
-        font-size: 10px;
-        max-width: 140px;
-      }
+  .panel {
 
-      #fab-container {
-        bottom: calc(340px + var(--sab)) !important;
-        right: 15px !important;
-        left: auto !important;
-      }
+    width: 230px;
+  }
 
-      body {
-        padding-bottom: var(--sab);
-      }
-    }
+  .toggle-active {
 
-    /* 🔵 BLUE BUTTON (Location) */
-    .btn-blue {
-      background: rgba(0, 77, 207, 0.25);
-      border: 1px solid rgba(0, 77, 207, 0.4);
-    }
+    left: 190px !important;
+  }
 
-    /* 🟢 GREEN BUTTON (Refresh / Action) */
-    .btn-green {
-      background: rgba(46, 125, 50, 0.25);
-      border: 1px solid rgba(46, 125, 50, 0.4);
-    }
+  .legend {
 
-    /* ✨ Optional Hover Enhancement */
-    .btn-blue:hover {
-      background: rgba(0, 77, 207, 0.45);
-    }
+    bottom: calc(10px + var(--sab));
 
-    .btn-green:hover {
-      background: rgba(46, 125, 50, 0.45);
-    }
-    #end-duty-modal {
+    right: 10px;
+
+    padding: 8px;
+
+    font-size: 10px;
+
+    max-width: 140px;
+  }
+
+  body {
+
+    padding-bottom: var(--sab);
+  }
+}
+
+/* ============================================================
+   🚨 MODALS
+============================================================ */
+
+#end-duty-modal {
+
   display: none;
+
   position: fixed;
-  inset: 0;
-  background: rgba(0,0,0,0.9);
-  z-index: 999999 !important;
-}
 
-   
+  inset: 0;
+
+  background: rgba(0,0,0,0.9);
+
+  z-index: 999999 !important;
+
+  pointer-events: auto !important;
+}
 /* ============================================================
 🧭 PROFESSIONAL TACTICAL COMPASS HUD
 TRUE NORTH LOCKED
@@ -8486,6 +8352,209 @@ window.gisLayer = L.geoJSON(
   }
 
 ).addTo(window.map);
+
+// ======================================================
+// 🔥 FORCE GIS FRONT
+// ======================================================
+
+window.gisLayer.bringToFront();
+
+// ======================================================
+// 🔥 HARD CLICK FIX
+// ======================================================
+
+setTimeout(()=>{
+
+  try {
+
+    // ==================================================
+    // 🌍 GIS PANE
+    // ==================================================
+
+    const pane =
+
+      window.map.getPane(
+        "gisPane"
+      );
+
+    if(pane){
+
+      pane.style.zIndex =
+        9999;
+
+      pane.style.pointerEvents =
+        "auto";
+
+      pane.style.display =
+        "block";
+    }
+
+    // ==================================================
+    // 🎨 OVERLAY PANE
+    // ==================================================
+
+    const overlayPane =
+
+      window.map.getPane(
+        "overlayPane"
+      );
+
+    if(overlayPane){
+
+      overlayPane.style.pointerEvents =
+        "auto";
+    }
+
+    // ==================================================
+    // 🖼 CANVAS FIX
+    // ==================================================
+
+    const canvases =
+
+      document.querySelectorAll(
+        ".leaflet-pane canvas"
+      );
+
+    canvases.forEach(canvas => {
+
+      canvas.style.pointerEvents =
+        "auto";
+
+      canvas.style.zIndex =
+        9999;
+    });
+
+    // ==================================================
+    // 🧠 SVG FIX
+    // ==================================================
+
+    const svgs =
+
+      document.querySelectorAll(
+        ".leaflet-pane svg"
+      );
+
+    svgs.forEach(svg => {
+
+      svg.style.pointerEvents =
+        "auto";
+
+      svg.style.zIndex =
+        9999;
+    });
+
+    // ==================================================
+    // 🌍 INTERACTIVE FIX
+    // ==================================================
+
+    const interactive =
+
+      document.querySelectorAll(
+        ".leaflet-interactive"
+      );
+
+    interactive.forEach(el => {
+
+      el.style.pointerEvents =
+        "auto";
+    });
+
+    // ==================================================
+    // 📦 MAP PANE FIX
+    // ==================================================
+
+    const mapPane =
+
+      document.querySelector(
+        ".leaflet-map-pane"
+      );
+
+    if(mapPane){
+
+      mapPane.style.pointerEvents =
+        "auto";
+    }
+
+    // ==================================================
+    // 📦 CONTAINER FIX
+    // ==================================================
+
+    const container =
+
+      document.querySelector(
+        ".leaflet-container"
+      );
+
+    if(container){
+
+      container.style.pointerEvents =
+        "auto";
+    }
+
+    // ==================================================
+    // 🚫 BLOCKING OVERLAYS FIX
+    // ==================================================
+
+    document
+      .querySelectorAll("*")
+      .forEach(el => {
+
+        try {
+
+          const s =
+            getComputedStyle(el);
+
+          // ==========================================
+          // 🔥 ONLY NON-PANEL OVERLAYS
+          // ==========================================
+
+          if(
+
+            s.position === "absolute" &&
+
+            parseInt(
+              s.zIndex || 0
+            ) > 5000 &&
+
+            !el.classList.contains(
+              "panel"
+            ) &&
+
+            el.id !==
+            "panelToggle" &&
+
+            !el.classList.contains(
+              "leaflet-pane"
+            )
+
+          ){
+
+            el.style.pointerEvents =
+              "none";
+          }
+
+        } catch(e){}
+      });
+
+    // ==================================================
+    // ✅ DONE
+    // ==================================================
+
+    console.log(
+      "✅ GIS CLICK FIX APPLIED"
+    );
+
+  }
+
+  catch(e){
+
+    console.warn(
+      "⚠ GIS click fix failed",
+      e
+    );
+  }
+
+},500);
     // ======================================================
     // 🎯 FIT BOUNDS
     // ======================================================
