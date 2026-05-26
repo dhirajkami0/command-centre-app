@@ -7767,6 +7767,789 @@ window.gisAnalyticsCache = {};
   }
 }
 
+// ============================================================
+// 🌍 ENTERPRISE SMART ANALYTICS PANEL
+// COMPARTMENT LEVEL AI ECOLOGICAL INTERPRETATION
+// MOBILE + DESKTOP
+// ============================================================
+
+async function showCompartmentAnalyticsPanel(compartmentName){
+
+  try {
+
+    // ========================================================
+    // 🔥 FIRESTORE
+    // ========================================================
+
+    const snap = await window.fb.getDoc(
+
+      window.fb.doc(
+        window.db,
+        "gis_compartment_analytics",
+        compartmentName
+      )
+
+    );
+
+    if(!snap.exists()){
+
+      console.warn(
+        "❌ No analytics found"
+      );
+
+      return;
+    }
+
+    const analytics =
+      snap.data();
+
+
+
+    // ========================================================
+    // 🌍 PANEL
+    // ========================================================
+
+    const panel =
+      document.getElementById(
+        "btrAnalyticsPanel"
+      );
+
+    const content =
+      document.getElementById(
+        "btrAnalyticsContent"
+      );
+
+
+
+    // ========================================================
+    // 🎨 HELPERS
+    // ========================================================
+
+    const sqkm = v =>
+
+      Number(v || 0)
+      .toFixed(2);
+
+
+
+    const pct = v =>
+
+      Number(v || 0)
+      .toFixed(2) + "%";
+
+
+
+    const num = v =>
+
+      Number(v || 0)
+      .toFixed(3);
+
+
+
+    // ========================================================
+    // 🔥 FIRE COLOR
+    // ========================================================
+
+    const fireColor =
+
+      analytics.Fire_Risk === "HIGH"
+      ? "#ff1744"
+
+      : analytics.Fire_Risk === "MEDIUM"
+      ? "#ff9800"
+
+      : "#00e676";
+
+
+
+    // ========================================================
+    // 🌿 NDVI INTERPRETATION
+    // ========================================================
+
+    let ndviMeaning = "";
+
+    if(analytics.NDVI > 0.7){
+
+      ndviMeaning =
+        "Very dense healthy vegetation";
+
+    }
+
+    else if(analytics.NDVI > 0.5){
+
+      ndviMeaning =
+        "Moderately healthy forest vegetation";
+
+    }
+
+    else if(analytics.NDVI > 0.3){
+
+      ndviMeaning =
+        "Grassland/open vegetation dominated";
+
+    }
+
+    else {
+
+      ndviMeaning =
+        "Sparse or degraded vegetation";
+
+    }
+
+
+
+    // ========================================================
+    // 💧 NDMI INTERPRETATION
+    // ========================================================
+
+    let ndmiMeaning = "";
+
+    let ndmiReco = "";
+
+    if(analytics.NDMI > 0.4){
+
+      ndmiMeaning =
+        "High vegetation moisture";
+
+      ndmiReco =
+        "Good ecological moisture condition";
+
+    }
+
+    else if(analytics.NDMI > 0.2){
+
+      ndmiMeaning =
+        "Moderate vegetation moisture";
+
+      ndmiReco =
+        "Monitor seasonal drying";
+
+    }
+
+    else {
+
+      ndmiMeaning =
+        "Dry vegetation condition";
+
+      ndmiReco =
+        "Fire line management advised";
+
+    }
+
+
+
+    // ========================================================
+    // 🌲 TREE DENSITY MEANING
+    // ========================================================
+
+    let densityMeaning = "";
+
+    if(
+      analytics.Tree_Density ===
+      "Very Dense"
+    ){
+
+      densityMeaning =
+        "Closed canopy forest";
+
+    }
+
+    else if(
+      analytics.Tree_Density ===
+      "Moderate"
+    ){
+
+      densityMeaning =
+        "Healthy forest structure";
+
+    }
+
+    else if(
+      analytics.Tree_Density ===
+      "Open"
+    ){
+
+      densityMeaning =
+        "Open canopy woodland";
+
+    }
+
+    else {
+
+      densityMeaning =
+        "Sparse canopy condition";
+
+    }
+
+
+
+    // ========================================================
+    // 🏗 BUILT-UP
+    // ========================================================
+
+    let builtMeaning = "";
+
+    if(analytics.Built_pct > 20){
+
+      builtMeaning =
+        "High human pressure zone";
+
+    }
+
+    else if(analytics.Built_pct > 5){
+
+      builtMeaning =
+        "Moderate infrastructure presence";
+
+    }
+
+    else {
+
+      builtMeaning =
+        "Very low settlement pressure";
+
+    }
+
+
+
+    // ========================================================
+    // 🌍 ECO HEALTH
+    // ========================================================
+
+    let ecoMeaning = "";
+
+    if(analytics.Eco_Health > 70){
+
+      ecoMeaning =
+        "Excellent ecosystem condition";
+
+    }
+
+    else if(analytics.Eco_Health > 50){
+
+      ecoMeaning =
+        "Healthy ecological condition";
+
+    }
+
+    else if(analytics.Eco_Health > 30){
+
+      ecoMeaning =
+        "Moderate ecological condition";
+
+    }
+
+    else {
+
+      ecoMeaning =
+        "Ecologically stressed landscape";
+
+    }
+
+
+
+    // ========================================================
+    // 📦 HTML
+    // ========================================================
+
+    content.innerHTML = `
+
+      <!-- ===================================================
+      🌍 HEADER
+      ==================================================== -->
+
+      <div style="
+        text-align:center;
+        margin-bottom:18px;
+      ">
+
+        <div style="
+          font-size:24px;
+          font-weight:900;
+          color:#00e5ff;
+        ">
+
+          🌍 ${analytics.Name || "-"}
+
+        </div>
+
+        <div style="
+          margin-top:6px;
+          font-size:12px;
+          opacity:0.7;
+        ">
+
+          Smart Ecological Intelligence
+
+        </div>
+
+      </div>
+
+
+
+      <!-- ===================================================
+      🔥 FIRE STATUS
+      ==================================================== -->
+
+      <div style="
+        background:${fireColor};
+
+        padding:14px;
+
+        border-radius:14px;
+
+        text-align:center;
+
+        margin-bottom:18px;
+
+        box-shadow:
+          0 0 15px ${fireColor};
+      ">
+
+        <div style="
+          font-size:22px;
+          font-weight:bold;
+        ">
+
+          🔥 ${analytics.Fire_Risk}
+
+        </div>
+
+        <div style="
+          margin-top:5px;
+          font-size:13px;
+        ">
+
+          ${
+            analytics.Fire_Risk === "HIGH"
+
+            ? "Dry vegetation and high fuel load detected"
+
+            : analytics.Fire_Risk === "MEDIUM"
+
+            ? "Moderate fire vulnerability"
+
+            : "Low fire susceptibility"
+          }
+
+        </div>
+
+      </div>
+
+
+
+      <!-- ===================================================
+      🌲 ECO HEALTH
+      ==================================================== -->
+
+      <div style="
+        background:rgba(255,255,255,0.04);
+
+        border-radius:14px;
+
+        padding:14px;
+
+        margin-bottom:14px;
+      ">
+
+        <div style="
+          color:#00e676;
+          font-size:18px;
+          font-weight:bold;
+          margin-bottom:10px;
+        ">
+          🌲 ECO HEALTH
+        </div>
+
+        <div style="
+          line-height:1.8;
+          font-size:14px;
+        ">
+
+          <b>Eco Health:</b>
+          ${num(analytics.Eco_Health)}
+
+          <br>
+
+          → ${ecoMeaning}
+
+          <hr style="
+            border-color:rgba(255,255,255,0.08);
+          ">
+
+          <b>Biomass:</b>
+          ${num(analytics.Biomass)}
+
+          <br>
+
+          → Moderate vegetation biomass storage
+
+          <br><br>
+
+          <b>Carbon:</b>
+          ${num(analytics.Carbon)}
+
+          <br>
+
+          → Ecosystem carbon sequestration potential
+
+        </div>
+
+      </div>
+
+
+
+      <!-- ===================================================
+      📊 SATELLITE
+      ==================================================== -->
+
+      <div style="
+        background:rgba(255,255,255,0.04);
+
+        border-radius:14px;
+
+        padding:14px;
+
+        margin-bottom:14px;
+      ">
+
+        <div style="
+          color:#ffd600;
+          font-size:18px;
+          font-weight:bold;
+          margin-bottom:10px;
+        ">
+          📊 SATELLITE ANALYSIS
+        </div>
+
+        <div style="
+          line-height:1.9;
+          font-size:14px;
+        ">
+
+          <b>NDVI:</b>
+          ${num(analytics.NDVI)}
+
+          <br>
+
+          → ${ndviMeaning}
+
+          <br><br>
+
+          <b>NDMI:</b>
+          ${num(analytics.NDMI)}
+
+          <br>
+
+          → ${ndmiMeaning}
+
+          <br>
+
+          → ${ndmiReco}
+
+        </div>
+
+      </div>
+
+
+
+      <!-- ===================================================
+      🌿 LANDCOVER
+      ==================================================== -->
+
+      <div style="
+        background:rgba(255,255,255,0.04);
+
+        border-radius:14px;
+
+        padding:14px;
+
+        margin-bottom:14px;
+      ">
+
+        <div style="
+          color:#40c4ff;
+          font-size:18px;
+          font-weight:bold;
+          margin-bottom:10px;
+        ">
+          🌿 LAND COVER
+        </div>
+
+        <div style="
+          line-height:1.9;
+          font-size:14px;
+        ">
+
+          <b>Total Area:</b>
+          ${sqkm(
+            analytics.Total_sqkm
+          )} sq km
+
+          <br><br>
+
+          <b>Dense Forest:</b>
+          ${sqkm(
+            analytics.Dense_Forest_ha / 100
+          )} sq km
+
+          (${pct(analytics.Dense_pct)})
+
+          <br>
+
+          → Dense canopy coverage
+
+          <br><br>
+
+          <b>Grassland:</b>
+          ${sqkm(
+            analytics.Grass_ha / 100
+          )} sq km
+
+          (${pct(analytics.Grass_pct)})
+
+          <br>
+
+          → Important herbivore habitat
+
+          <br><br>
+
+          <b>Bush/Scrub:</b>
+          ${sqkm(
+            analytics.Bush_ha / 100
+          )} sq km
+
+          (${pct(analytics.Bush_pct)})
+
+          <br>
+
+          → Secondary vegetation growth
+
+          <br><br>
+
+          <b>Built-up:</b>
+          ${sqkm(
+            analytics.Built_ha / 100
+          )} sq km
+
+          (${pct(analytics.Built_pct)})
+
+          <br>
+
+          → ${builtMeaning}
+
+          <br><br>
+
+          <b>Bare Land:</b>
+          ${sqkm(
+            analytics.Bare_ha / 100
+          )} sq km
+
+          (${pct(analytics.Bare_pct)})
+
+          <br>
+
+          → Exposed soil / erosion zones
+
+        </div>
+
+      </div>
+
+
+
+      <!-- ===================================================
+      🌍 TERRAIN
+      ==================================================== -->
+
+      <div style="
+        background:rgba(255,255,255,0.04);
+
+        border-radius:14px;
+
+        padding:14px;
+
+        margin-bottom:14px;
+      ">
+
+        <div style="
+          color:#ff80ab;
+          font-size:18px;
+          font-weight:bold;
+          margin-bottom:10px;
+        ">
+          ⛰ TERRAIN
+        </div>
+
+        <div style="
+          line-height:1.9;
+          font-size:14px;
+        ">
+
+          <b>Elevation:</b>
+          ${num(analytics.Elevation_m)} m
+
+          <br>
+
+          → Terrain elevation profile
+
+          <br><br>
+
+          <b>Slope:</b>
+          ${num(analytics.Slope_deg)}°
+
+          <br>
+
+          → ${
+            analytics.Slope_deg > 20
+
+            ? "Steep terrain"
+
+            : analytics.Slope_deg > 10
+
+            ? "Moderate terrain"
+
+            : "Relatively flat terrain"
+          }
+
+        </div>
+
+      </div>
+
+
+
+      <!-- ===================================================
+      🌲 TREE DENSITY
+      ==================================================== -->
+
+      <div style="
+        background:rgba(255,255,255,0.04);
+
+        border-radius:14px;
+
+        padding:14px;
+
+        margin-bottom:14px;
+      ">
+
+        <div style="
+          color:#69f0ae;
+          font-size:18px;
+          font-weight:bold;
+          margin-bottom:10px;
+        ">
+          🌲 FOREST STRUCTURE
+        </div>
+
+        <div style="
+          line-height:1.9;
+          font-size:14px;
+        ">
+
+          <b>Tree Density:</b>
+          ${analytics.Tree_Density}
+
+          <br>
+
+          → ${densityMeaning}
+
+        </div>
+
+      </div>
+
+
+
+      <!-- ===================================================
+      🧠 MANAGEMENT INSIGHT
+      ==================================================== -->
+
+      <div style="
+        background:
+          linear-gradient(
+            135deg,
+            rgba(0,229,255,0.12),
+            rgba(0,255,100,0.08)
+          );
+
+        border:
+          1px solid rgba(0,229,255,0.25);
+
+        border-radius:16px;
+
+        padding:16px;
+
+        margin-top:10px;
+      ">
+
+        <div style="
+          font-size:18px;
+          font-weight:bold;
+          color:#00e5ff;
+          margin-bottom:10px;
+        ">
+          🧠 MANAGEMENT INSIGHT
+        </div>
+
+        <div style="
+          font-size:14px;
+          line-height:1.9;
+        ">
+
+          ${
+            analytics.Fire_Risk === "HIGH"
+
+            ? "• Fire line strengthening recommended<br>• Dry fuel load detected<br>• Moisture stress observed"
+
+            : "• Ecological condition relatively stable"
+          }
+
+          <br><br>
+
+          ${
+            analytics.Dense_pct < 5
+
+            ? "• Canopy restoration possible<br>• Dense forest coverage low"
+
+            : "• Good canopy distribution observed"
+          }
+
+          <br><br>
+
+          ${
+            analytics.Built_pct > 10
+
+            ? "• Human pressure visible<br>• Monitor encroachment risk"
+
+            : "• Low anthropogenic disturbance"
+          }
+
+        </div>
+
+      </div>
+
+    `;
+
+
+
+    // ========================================================
+    // 🌍 SHOW
+    // ========================================================
+
+    panel.style.display =
+      "block";
+
+  }
+
+  catch(err){
+
+    console.error(
+      "❌ Analytics Panel Error",
+      err
+    );
+
+  }
+
+}
+    
 function normalizeDivision(value){
 
   value =
