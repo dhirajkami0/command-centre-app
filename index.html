@@ -5886,46 +5886,29 @@ async function showBTRAnalyticsPanel(){
 
 
     // =================================================
-    // FIRESTORE
-    // =================================================
+// LOAD ANALYTICS
+// =================================================
 
-  const doc = await window.db
-  .collection("gis_analytics_btr")
-  .doc("BTR_Circle")
-  .get();
+const d =
+  await loadBTRAnalytics();
 
+if(!d){
 
-    // =================================================
-    // NOT FOUND
-    // =================================================
+  container.innerHTML = `
 
-    if(!doc.exists){
+    <div style="
+      color:#ff5252;
+      padding:20px;
+      text-align:center;
+      font-weight:bold;
+    ">
+      ❌ BTR analytics not found
+    </div>
 
-      container.innerHTML = `
+  `;
 
-        <div style="
-          color:#ff5252;
-          padding:20px;
-          text-align:center;
-          font-weight:bold;
-        ">
-          ❌ BTR analytics not found
-        </div>
-
-      `;
-
-      return;
-    }
-
-
-
-    // =================================================
-    // DATA
-    // =================================================
-
-    const d = doc.data();
-
-
+  return;
+}
 
     console.log(
       "🔥 BTR ANALYTICS",
