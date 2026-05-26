@@ -27953,6 +27953,9 @@ window.openDutyForm = openDutyForm;
 🌍 BTR ENTERPRISE ANALYTICS PANEL
 FULL REPLACEMENT
 ========================================================= -->
+<!-- =========================================================
+🌍 BTR ANALYTICS PANEL
+========================================================= -->
 
 <div
   id="btrAnalyticsPanel"
@@ -27982,9 +27985,7 @@ FULL REPLACEMENT
   "
 >
 
-  <!-- =====================================================
-  HEADER
-  ====================================================== -->
+  <!-- HEADER -->
 
   <div style="
     display:flex;
@@ -28036,12 +28037,517 @@ FULL REPLACEMENT
 
   </div>
 
-  <!-- =====================================================
-  CONTENT
-  ====================================================== -->
+  <!-- CONTENT -->
 
   <div id="btrAnalyticsContent"></div>
 
 </div>
+
+<script>
+
+window.map.on(
+  "click",
+  async function(){
+
+    try {
+
+      // ===================================================
+      // ONLY WHEN ALL SELECTED
+      // ===================================================
+
+      if(
+
+        window.gisFilter?.division !==
+        "ALL"
+
+      ){
+
+        return;
+      }
+
+
+
+      // ===================================================
+      // PANEL
+      // ===================================================
+
+      const panel =
+        document.getElementById(
+          "btrAnalyticsPanel"
+        );
+
+      const content =
+        document.getElementById(
+          "btrAnalyticsContent"
+        );
+
+
+
+      panel.style.display = "block";
+
+
+
+      content.innerHTML = `
+
+        <div style="
+          padding:20px;
+          text-align:center;
+          color:#00e5ff;
+          font-size:14px;
+        ">
+          ⏳ Loading BTR Intelligence...
+        </div>
+
+      `;
+
+
+
+      // ===================================================
+      // FIRESTORE CHECK
+      // ===================================================
+
+      if(
+        typeof firebase === "undefined"
+      ){
+
+        throw new Error(
+          "Firebase SDK Missing"
+        );
+      }
+
+
+
+      if(
+        !firebase.apps.length
+      ){
+
+        throw new Error(
+          "Firebase Not Initialized"
+        );
+      }
+
+
+
+      // ===================================================
+      // LOAD FIRESTORE DATA
+      // ===================================================
+
+      const db =
+        firebase.firestore();
+
+
+
+      const doc =
+        await db
+        .collection(
+          "gis_analytics_btr"
+        )
+        .doc(
+          "BTR_Circle"
+        )
+        .get();
+
+
+
+      // ===================================================
+      // DOCUMENT CHECK
+      // ===================================================
+
+      if(!doc.exists){
+
+        content.innerHTML = `
+
+          <div style="
+            color:#ff5252;
+            padding:20px;
+            text-align:center;
+            font-size:14px;
+          ">
+            ❌ BTR analytics document not found
+          </div>
+
+        `;
+
+        return;
+      }
+
+
+
+      const d = doc.data();
+
+
+
+      console.log(
+        "🔥 BTR ANALYTICS:",
+        d
+      );
+
+
+
+      // ===================================================
+      // HELPERS
+      // ===================================================
+
+      function num(v){
+
+        if(
+          v === undefined ||
+          v === null
+        ){
+
+          return "N/A";
+        }
+
+        return Number(v)
+        .toFixed(2);
+      }
+
+
+
+      function section(
+        title,
+        icon
+      ){
+
+        return `
+
+          <div style="
+            margin-top:18px;
+            margin-bottom:10px;
+            font-size:18px;
+            font-weight:bold;
+            color:#00e5ff;
+            border-bottom:
+              1px solid rgba(255,255,255,0.15);
+            padding-bottom:6px;
+          ">
+            ${icon} ${title}
+          </div>
+
+        `;
+      }
+
+
+
+      function card(
+        field,
+        value,
+        meaning,
+        interpretation,
+        recommendation
+      ){
+
+        return `
+
+          <div style="
+            background:
+              rgba(255,255,255,0.04);
+
+            border:
+              1px solid rgba(255,255,255,0.08);
+
+            border-radius:14px;
+
+            padding:12px;
+
+            margin-bottom:12px;
+          ">
+
+            <div style="
+              font-size:15px;
+              font-weight:bold;
+              color:#00e5ff;
+              margin-bottom:6px;
+            ">
+              ${field}
+            </div>
+
+            <div style="
+              font-size:22px;
+              font-weight:bold;
+              color:white;
+              margin-bottom:8px;
+            ">
+              ${value}
+            </div>
+
+            <div style="
+              font-size:13px;
+              line-height:1.5;
+              opacity:0.9;
+              margin-bottom:8px;
+            ">
+              ${meaning}
+            </div>
+
+            <div style="
+              background:
+                rgba(0,229,255,0.08);
+
+              border-radius:10px;
+
+              padding:8px;
+
+              font-size:12px;
+
+              margin-bottom:8px;
+            ">
+              🔍 ${interpretation}
+            </div>
+
+            <div style="
+              background:
+                rgba(0,255,120,0.08);
+
+              border-radius:10px;
+
+              padding:8px;
+
+              font-size:12px;
+            ">
+              ✅ ${recommendation}
+            </div>
+
+          </div>
+
+        `;
+      }
+
+
+
+      // ===================================================
+      // BUILD UI
+      // ===================================================
+
+      let html = "";
+
+
+
+      html += section(
+        "Basic Information",
+        "📍"
+      );
+
+
+
+      html += card(
+        "Region",
+        d.Name,
+        "Administrative ecosystem landscape.",
+        "Entire BTR ecological landscape analysed.",
+        "Useful for large-scale planning."
+      );
+
+
+
+      html += card(
+        "Total Area",
+        num(d.Total_ha) + " ha",
+        "Total ecological mapped area.",
+        "Large protected ecosystem.",
+        "Landscape monitoring required."
+      );
+
+
+
+      html += card(
+        "Rainfall",
+        num(d.Rainfall_mm) + " mm",
+        "Average rainfall condition.",
+        d.Rainfall_Class,
+        "Water management planning advised."
+      );
+
+
+
+      html += section(
+        "Vegetation Intelligence",
+        "🌳"
+      );
+
+
+
+      html += card(
+        "NDVI",
+        num(d.NDVI),
+        "Vegetation greenness index.",
+        "Moderate-to-good vegetation health.",
+        "Maintain vegetation continuity."
+      );
+
+
+
+      html += card(
+        "NDMI",
+        num(d.NDMI),
+        "Vegetation moisture index.",
+        "Dry vegetation and fuel load detected.",
+        "Fire preparedness recommended."
+      );
+
+
+
+      html += card(
+        "Dense Forest",
+        num(d.Dense_Forest_ha) + " ha",
+        "High canopy forest region.",
+        "Dense canopy limited.",
+        "Canopy restoration possible."
+      );
+
+
+
+      html += card(
+        "Moderate Forest",
+        num(d.Moderate_Forest_ha) + " ha",
+        "Main forest vegetation zone.",
+        "Dominant ecological structure.",
+        "Protection priority area."
+      );
+
+
+
+      html += card(
+        "Grassland",
+        num(d.Grass_ha) + " ha",
+        "Open grass ecosystem.",
+        "Important herbivore habitat.",
+        "Maintain grassland ecology."
+      );
+
+
+
+      html += card(
+        "Built Area",
+        num(d.Built_ha) + " ha",
+        "Human settlement footprint.",
+        "Human pressure visible.",
+        "Encroachment monitoring advised."
+      );
+
+
+
+      html += card(
+        "Water Area",
+        num(d.Water_ha) + " ha",
+        "Permanent water bodies.",
+        "Low visible open water.",
+        "Wetland conservation important."
+      );
+
+
+
+      html += section(
+        "Ecological Intelligence",
+        "🌍"
+      );
+
+
+
+      html += card(
+        "Eco Health",
+        num(d.Eco_Health),
+        "Composite ecosystem stability score.",
+        "Moderate ecological condition.",
+        "Restoration can improve resilience."
+      );
+
+
+
+      html += card(
+        "Fire Risk",
+        d.Fire_Risk,
+        "Landscape fire vulnerability.",
+        "Dry fuel condition detected.",
+        "Fire line management advised."
+      );
+
+
+
+      html += card(
+        "Tree Density",
+        d.Tree_Density,
+        "Canopy closure density.",
+        "Sparse canopy landscape.",
+        "Afforestation opportunity exists."
+      );
+
+
+
+      html += card(
+        "Carbon Storage",
+        num(d.Carbon),
+        "Estimated carbon stock.",
+        "Major climate regulation ecosystem.",
+        "Carbon conservation valuable."
+      );
+
+
+
+      html += section(
+        "Terrain Intelligence",
+        "⛰"
+      );
+
+
+
+      html += card(
+        "Elevation",
+        num(d.Elevation_m) + " m",
+        "Terrain elevation.",
+        "Mixed foothill and plain terrain.",
+        "Terrain-sensitive planning required."
+      );
+
+
+
+      html += card(
+        "Slope",
+        num(d.Slope_deg) + "°",
+        "Terrain steepness.",
+        "Moderate slope variability.",
+        "Erosion monitoring recommended."
+      );
+
+
+
+      content.innerHTML = html;
+
+    }
+
+    catch(err){
+
+      console.error(
+        "❌ BTR ANALYTICS ERROR:",
+        err
+      );
+
+      document.getElementById(
+        "btrAnalyticsContent"
+      ).innerHTML = `
+
+        <div style="
+          color:#ff5252;
+          padding:20px;
+          text-align:center;
+          font-size:14px;
+          line-height:1.7;
+        ">
+
+          ❌ Failed to load analytics
+
+          <br><br>
+
+          ${err.message}
+
+        </div>
+
+      `;
+    }
+
+  }
+);
+
+</script>
 </body>
 </html>
