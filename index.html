@@ -8138,7 +8138,7 @@ async function renderFilteredGIS(){
 
         interactive:true,
 
-        bubblingMouseEvents:false,
+      
 
         smoothFactor:2,
 
@@ -8262,393 +8262,205 @@ async function renderFilteredGIS(){
           );
 
           // ====================================
-          // 👑 ALL BTR MODE
-          // ====================================
+// 👑 ALL BTR MODE
+// ====================================
 
-          if(
+if(
 
-            window.gisFilter.division ===
-            "ALL"
+  window.gisFilter.division ===
+  "ALL"
 
-          ){
+){
 
-            layer.off("click");
+  const openAnalyticsPopup =
+  async function(latlng){
 
-            layer.on(
-              "click",
-              async function(e){
+    try {
 
-                try {
+      const analytics =
+        await loadBTRAnalytics();
 
-                  // ==========================
-                  // 📥 FIRESTORE DATA
-                  // ==========================
+      if(!analytics){
+        return;
+      }
 
-                  const analytics =
+      const popupHTML = `
 
-                    await loadBTRAnalytics();
+        <div style="
+          min-width:${
+            isMobile
+            ? "240px"
+            : "360px"
+          };
 
-                  if(!analytics){
+          max-width:${
+            isMobile
+            ? "260px"
+            : "420px"
+          };
 
-                    return;
-                  }
+          color:white;
 
-                  // ==========================
-                  // 📦 POPUP HTML
-                  // ==========================
+          background:#050505;
 
-                  const popupHTML = `
+          border:
+          2px solid #00e5ff;
 
-                    <div style="
-                      min-width:${
-                        isMobile
-                        ? "240px"
-                        : "360px"
-                      };
+          border-radius:16px;
 
-                      max-width:${
-                        isMobile
-                        ? "260px"
-                        : "420px"
-                      };
+          padding:16px;
 
-                      color:white;
+          font-size:${
+            isMobile
+            ? "11px"
+            : "13px"
+          };
 
-                      background:#050505;
+          line-height:1.9;
+        ">
 
-                      border:
-                      2px solid #00e5ff;
+          <div style="
+            font-size:${
+              isMobile
+              ? "17px"
+              : "22px"
+            };
 
-                      border-radius:16px;
+            font-weight:bold;
 
-                      padding:16px;
+            color:#00e5ff;
 
-                      font-size:${
-                        isMobile
-                        ? "11px"
-                        : "13px"
-                      };
+            text-align:center;
 
-                      line-height:1.9;
+            margin-bottom:16px;
+          ">
 
-                      box-shadow:
-                      0 0 25px rgba(0,229,255,0.35);
-                    ">
+            🌍 BTR ANALYTICS
 
-                      <div style="
-                        font-size:${
-                          isMobile
-                          ? "17px"
-                          : "22px"
-                        };
+          </div>
 
-                        font-weight:bold;
+          <b>🔥 Fire Risk:</b>
+          ${analytics.Fire_Risk || "-"}
 
-                        color:#00e5ff;
+          <br>
 
-                        text-align:center;
+          <b>🌲 Eco Health:</b>
+          ${Number(
+            analytics.Eco_Health || 0
+          ).toFixed(2)}
 
-                        margin-bottom:16px;
-                      ">
+          <br>
 
-                        🌍 BTR ANALYTICS
+          <b>🌳 Canopy %:</b>
+          ${Number(
+            analytics.Canopy_pct || 0
+          ).toFixed(2)}%
 
-                      </div>
+          <br>
 
-                      <div style="
-                        border-top:
-                        1px solid rgba(255,255,255,0.15);
+          <b>🌿 Bush:</b>
+          ${Number(
+            analytics.Bush || 0
+          ).toFixed(2)}
 
-                        padding-top:12px;
-                      ">
+          <br>
 
-                        <b>🌍 Name:</b>
-                        ${analytics.Name || "-"}
+          <b>🏜 Bare:</b>
+          ${Number(
+            analytics.Bare || 0
+          ).toFixed(2)}
 
-                        <br>
+          <br>
 
-                        <b>🛰 Model:</b>
-                        ${analytics.Model_Version || "-"}
+          <b>🏢 Built:</b>
+          ${Number(
+            analytics.Built || 0
+          ).toFixed(2)}
 
-                        <br>
+          <br>
 
-                        <b>📅 Updated:</b>
-                        ${analytics.Updated_On || "-"}
+          <b>🌾 Crop:</b>
+          ${Number(
+            analytics.Crop || 0
+          ).toFixed(2)}
 
-                        <br>
+          <br>
 
-                        <b>🌍 Divisions:</b>
-                        ${divisions.size}
+          <b>💧 Water:</b>
+          ${Number(
+            analytics.Water || 0
+          ).toFixed(2)}
 
-                        <br>
+          <br>
 
-                        <b>🌳 Ranges:</b>
-                        ${ranges.size}
+          <b>📉 Degraded %:</b>
+          ${Number(
+            analytics.Degraded_pct || 0
+          ).toFixed(2)}%
 
-                        <br>
+        </div>
+      `;
 
-                        <b>🟨 Beats:</b>
-                        ${beats.size}
+      L.popup({
 
-                        <br>
+        maxWidth:
+          isMobile
+          ? 280
+          : 440,
 
-                        <b>📐 Total Area:</b>
-                        ${Number(
-                          analytics.Total_ha || 0
-                        ).toFixed(2)}
+        autoPan:true
 
-                        <hr>
+      })
+      .setLatLng(latlng)
+      .setContent(popupHTML)
+      .openOn(window.map);
 
-                        <b>🔥 Fire Risk:</b>
-                        ${analytics.Fire_Risk || "-"}
+    } catch(err){
 
-                        <br>
+      console.error(err);
+    }
+  };
 
-                        <b>🔥 Fire Pixels:</b>
-                        ${Number(
-                          analytics.Fire_Pixels || 0
-                        ).toLocaleString()}
+  // 💻 DESKTOP
 
-                        <br>
+  layer.on(
+    "click",
+    function(e){
 
-                        <b>🌲 Forest:</b>
-                        ${Number(
-                          analytics.Forest || 0
-                        ).toFixed(2)}
+      console.log(
+        "💻 CLICK WORKING"
+      );
 
-                        <br>
+      openAnalyticsPopup(
+        e.latlng
+      );
 
-                        <b>🌿 Grass:</b>
-                        ${Number(
-                          analytics.Grass || 0
-                        ).toFixed(2)}
+    }
+  );
 
-                        <br>
+  // 📱 MOBILE
 
-                        <b>🌱 Bush:</b>
-                        ${Number(
-                          analytics.Bush || 0
-                        ).toFixed(2)}
+  layer.on(
+    "touchstart",
+    function(e){
 
-                        <br>
+      console.log(
+        "📱 TOUCH WORKING"
+      );
 
-                        <b>🏜 Bare:</b>
-                        ${Number(
-                          analytics.Bare || 0
-                        ).toFixed(2)}
+      if(e.latlng){
 
-                        <br>
+        openAnalyticsPopup(
+          e.latlng
+        );
 
-                        <b>🏢 Built:</b>
-                        ${Number(
-                          analytics.Built || 0
-                        ).toFixed(2)}
+      }
 
-                        <br>
+    }
+  );
 
-                        <b>🌾 Crop:</b>
-                        ${Number(
-                          analytics.Crop || 0
-                        ).toFixed(2)}
-
-                        <br>
-
-                        <b>💧 Water:</b>
-                        ${Number(
-                          analytics.Water || 0
-                        ).toFixed(2)}
-
-                        <br>
-
-                        <b>💧 Water %:</b>
-                        ${Number(
-                          analytics.water_pct || 0
-                        ).toFixed(2)}%
-
-                        <hr>
-
-                        <b>🌳 Canopy %:</b>
-                        ${Number(
-                          analytics.Canopy_pct || 0
-                        ).toFixed(2)}%
-
-                        <br>
-
-                        <b>🌲 Dense %:</b>
-                        ${Number(
-                          analytics.Dense_pct || 0
-                        ).toFixed(2)}%
-
-                        <br>
-
-                        <b>📉 Degraded:</b>
-                        ${Number(
-                          analytics.Degraded || 0
-                        ).toFixed(2)}
-
-                        <br>
-
-                        <b>📉 Degraded %:</b>
-                        ${Number(
-                          analytics.Degraded_pct || 0
-                        ).toFixed(2)}%
-
-                        <br>
-
-                        <b>🌲 Eco Health:</b>
-                        ${Number(
-                          analytics.Eco_Health || 0
-                        ).toFixed(2)}
-
-                        <br>
-
-                        <b>🧪 Carbon:</b>
-                        ${Number(
-                          analytics.Carbon || 0
-                        ).toFixed(4)}
-
-                        <br>
-
-                        <b>🌿 Biomass:</b>
-                        ${Number(
-                          analytics.Biomass || 0
-                        ).toFixed(4)}
-
-                        <br>
-
-                        <b>📊 NDVI:</b>
-                        ${Number(
-                          analytics.NDVI || 0
-                        ).toFixed(4)}
-
-                        <br>
-
-                        <b>📊 NDMI:</b>
-                        ${Number(
-                          analytics.NDMI || 0
-                        ).toFixed(4)}
-
-                        <br>
-
-                        <b>🌧 Rainfall:</b>
-                        ${Number(
-                          analytics.Rainfall_mm || 0
-                        ).toFixed(2)}
-
-                        <br>
-
-                        <b>🌡 Temperature:</b>
-                        ${Number(
-                          analytics.Temperature_C || 0
-                        ).toFixed(2)}
-
-                        <br>
-
-                        <b>💧 Soil Moisture:</b>
-                        ${Number(
-                          analytics.Soil_Moisture || 0
-                        ).toFixed(4)}
-
-                        <br>
-
-                        <b>⛰ Elevation:</b>
-                        ${Number(
-                          analytics.Elevation_m || 0
-                        ).toFixed(2)} m
-
-                        <br>
-
-                        <b>📐 Slope:</b>
-                        ${Number(
-                          analytics.Slope_deg || 0
-                        ).toFixed(2)}
-
-                        <br>
-
-                        <b>🌳 Tree Density:</b>
-                        ${analytics.Tree_Density || "-"}
-
-                        <br>
-
-                        <b>📏 Height:</b>
-                        ${Number(
-                          analytics.Height_m || 0
-                        ).toFixed(2)} m
-
-                        <br>
-
-                        <b>📍 Latitude:</b>
-                        ${Number(
-                          analytics.Lat || 0
-                        ).toFixed(6)}
-
-                        <br>
-
-                        <b>📍 Longitude:</b>
-                        ${Number(
-                          analytics.Lon || 0
-                        ).toFixed(6)}
-
-                        <br>
-
-                        <b>🛰 Layer Type:</b>
-                        ${analytics.Layer_Type || "-"}
-
-                        <br>
-
-                        <b>🕒 Firestore Updated:</b>
-                        ${analytics.firestore_updated_at || "-"}
-
-                        <br>
-
-                        <b>📥 Imported:</b>
-                        ${analytics.imported_at || "-"}
-
-                      </div>
-
-                    </div>
-                  `;
-
-                  // ==========================
-                  // 📍 OPEN POPUP
-                  // ==========================
-
-                  L.popup({
-
-                    maxWidth:
-                      isMobile
-                      ? 280
-                      : 440,
-
-                    autoPan:true,
-
-                    closeButton:true
-
-                  })
-                  .setLatLng(
-                    e.latlng
-                  )
-                  .setContent(
-                    popupHTML
-                  )
-                  .openOn(
-                    window.map
-                  );
-
-                } catch(err){
-
-                  console.error(
-                    "❌ Popup Error",
-                    err
-                  );
-                }
-              }
-            );
-
-            return;
-          }
-
-          // ====================================
+  return;
+}          // ====================================
           // 🌲 NORMAL POPUPS
           // ====================================
 
@@ -8956,7 +8768,7 @@ function renderFilteredCompartments(){
 
         interactive:true,
 
-        bubblingMouseEvents:false,
+      
 
         smoothFactor:2,
 
