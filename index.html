@@ -538,15 +538,40 @@ background: rgba(25, 25, 25, 0.94);
     /* ============================================================
    📍 LEAFLET FIXES & MARKERS
 ============================================================ */
-    .leaflet-top,
-    .leaflet-bottom {
-      z-index: 3000 !important;
-    }
+   .leaflet-top,
+.leaflet-bottom {
+  z-index: 3000 !important;
+}
 
-    .leaflet-right {
-      right: 10px !important;
-    }
+/* =========================================
+🔥 LEAFLET POPUP FIX
+FOR FULLSCREEN ADMIN UI
+========================================= */
 
+.leaflet-popup-pane{
+  z-index:999999 !important;
+}
+
+.leaflet-popup{
+  z-index:999999 !important;
+}
+
+.leaflet-tooltip{
+  z-index:999999 !important;
+}
+
+.leaflet-pane{
+  z-index:400 !important;
+}
+
+.leaflet-top,
+.leaflet-bottom{
+  z-index:500 !important;
+}
+
+.leaflet-right {
+  right: 10px !important;
+}
     .leaflet-top.leaflet-right {
       top: calc(10px + var(--sat)) !important;
     }
@@ -7825,7 +7850,7 @@ async function renderFilteredGIS(){
     ];
 
     // ==========================================
-    // 📱 MOBILE CHECK
+    // 📱 MOBILE
     // ==========================================
 
     const isMobile =
@@ -8111,9 +8136,6 @@ async function renderFilteredGIS(){
 
       L.geoJSON(features,{
 
-        renderer:
-          window.canvasRenderer,
-
         interactive:true,
 
         bubblingMouseEvents:false,
@@ -8240,7 +8262,7 @@ async function renderFilteredGIS(){
           );
 
           // ====================================
-          // 👑 BTR ANALYTICS MODE
+          // 👑 ALL BTR MODE
           // ====================================
 
           if(
@@ -8258,22 +8280,13 @@ async function renderFilteredGIS(){
 
                 try {
 
-                  console.log(
-                    "🔥 BTR CLICK"
-                  );
-
                   // ==========================
-                  // 📥 LOAD FIRESTORE
+                  // 📥 FIRESTORE DATA
                   // ==========================
 
                   const analytics =
 
                     await loadBTRAnalytics();
-
-                  console.log(
-                    "📊 ANALYTICS:",
-                    analytics
-                  );
 
                   if(!analytics){
 
@@ -8281,7 +8294,7 @@ async function renderFilteredGIS(){
                   }
 
                   // ==========================
-                  // 📦 HTML
+                  // 📦 POPUP HTML
                   // ==========================
 
                   const popupHTML = `
@@ -8290,39 +8303,52 @@ async function renderFilteredGIS(){
                       min-width:${
                         isMobile
                         ? "240px"
-                        : "340px"
+                        : "360px"
                       };
 
                       max-width:${
                         isMobile
                         ? "260px"
-                        : "380px"
+                        : "420px"
                       };
 
                       color:white;
+
+                      background:#050505;
+
+                      border:
+                      2px solid #00e5ff;
+
+                      border-radius:16px;
+
+                      padding:16px;
+
                       font-size:${
                         isMobile
-                        ? "12px"
+                        ? "11px"
                         : "13px"
                       };
 
-                      line-height:1.8;
+                      line-height:1.9;
+
+                      box-shadow:
+                      0 0 25px rgba(0,229,255,0.35);
                     ">
 
                       <div style="
                         font-size:${
                           isMobile
-                          ? "16px"
-                          : "20px"
+                          ? "17px"
+                          : "22px"
                         };
 
                         font-weight:bold;
 
                         color:#00e5ff;
 
-                        margin-bottom:14px;
-
                         text-align:center;
+
+                        margin-bottom:16px;
                       ">
 
                         🌍 BTR ANALYTICS
@@ -8330,16 +8356,26 @@ async function renderFilteredGIS(){
                       </div>
 
                       <div style="
-                        background:
-                        rgba(0,229,255,0.08);
+                        border-top:
+                        1px solid rgba(255,255,255,0.15);
 
-                        border:
-                        1px solid rgba(0,229,255,0.25);
-
-                        border-radius:14px;
-
-                        padding:12px;
+                        padding-top:12px;
                       ">
+
+                        <b>🌍 Name:</b>
+                        ${analytics.Name || "-"}
+
+                        <br>
+
+                        <b>🛰 Model:</b>
+                        ${analytics.Model_Version || "-"}
+
+                        <br>
+
+                        <b>📅 Updated:</b>
+                        ${analytics.Updated_On || "-"}
+
+                        <br>
 
                         <b>🌍 Divisions:</b>
                         ${divisions.size}
@@ -8357,7 +8393,9 @@ async function renderFilteredGIS(){
                         <br>
 
                         <b>📐 Total Area:</b>
-                        ${totalArea.toFixed(2)}
+                        ${Number(
+                          analytics.Total_ha || 0
+                        ).toFixed(2)}
 
                         <hr>
 
@@ -8373,21 +8411,21 @@ async function renderFilteredGIS(){
 
                         <br>
 
-                        <b>🌲 Eco Health:</b>
+                        <b>🌲 Forest:</b>
                         ${Number(
-                          analytics.Eco_Health || 0
+                          analytics.Forest || 0
                         ).toFixed(2)}
 
                         <br>
 
-                        <b>🌳 Canopy %:</b>
+                        <b>🌿 Grass:</b>
                         ${Number(
-                          analytics.Canopy_pct || 0
-                        ).toFixed(2)}%
+                          analytics.Grass || 0
+                        ).toFixed(2)}
 
                         <br>
 
-                        <b>🌿 Bush:</b>
+                        <b>🌱 Bush:</b>
                         ${Number(
                           analytics.Bush || 0
                         ).toFixed(2)}
@@ -8415,9 +8453,23 @@ async function renderFilteredGIS(){
 
                         <br>
 
-                        <b>📉 Degraded %:</b>
+                        <b>💧 Water:</b>
                         ${Number(
-                          analytics.Degraded_pct || 0
+                          analytics.Water || 0
+                        ).toFixed(2)}
+
+                        <br>
+
+                        <b>💧 Water %:</b>
+                        ${Number(
+                          analytics.water_pct || 0
+                        ).toFixed(2)}%
+
+                        <hr>
+
+                        <b>🌳 Canopy %:</b>
+                        ${Number(
+                          analytics.Canopy_pct || 0
                         ).toFixed(2)}%
 
                         <br>
@@ -8429,10 +8481,128 @@ async function renderFilteredGIS(){
 
                         <br>
 
-                        <b>📏 Elevation:</b>
+                        <b>📉 Degraded:</b>
+                        ${Number(
+                          analytics.Degraded || 0
+                        ).toFixed(2)}
+
+                        <br>
+
+                        <b>📉 Degraded %:</b>
+                        ${Number(
+                          analytics.Degraded_pct || 0
+                        ).toFixed(2)}%
+
+                        <br>
+
+                        <b>🌲 Eco Health:</b>
+                        ${Number(
+                          analytics.Eco_Health || 0
+                        ).toFixed(2)}
+
+                        <br>
+
+                        <b>🧪 Carbon:</b>
+                        ${Number(
+                          analytics.Carbon || 0
+                        ).toFixed(4)}
+
+                        <br>
+
+                        <b>🌿 Biomass:</b>
+                        ${Number(
+                          analytics.Biomass || 0
+                        ).toFixed(4)}
+
+                        <br>
+
+                        <b>📊 NDVI:</b>
+                        ${Number(
+                          analytics.NDVI || 0
+                        ).toFixed(4)}
+
+                        <br>
+
+                        <b>📊 NDMI:</b>
+                        ${Number(
+                          analytics.NDMI || 0
+                        ).toFixed(4)}
+
+                        <br>
+
+                        <b>🌧 Rainfall:</b>
+                        ${Number(
+                          analytics.Rainfall_mm || 0
+                        ).toFixed(2)}
+
+                        <br>
+
+                        <b>🌡 Temperature:</b>
+                        ${Number(
+                          analytics.Temperature_C || 0
+                        ).toFixed(2)}
+
+                        <br>
+
+                        <b>💧 Soil Moisture:</b>
+                        ${Number(
+                          analytics.Soil_Moisture || 0
+                        ).toFixed(4)}
+
+                        <br>
+
+                        <b>⛰ Elevation:</b>
                         ${Number(
                           analytics.Elevation_m || 0
                         ).toFixed(2)} m
+
+                        <br>
+
+                        <b>📐 Slope:</b>
+                        ${Number(
+                          analytics.Slope_deg || 0
+                        ).toFixed(2)}
+
+                        <br>
+
+                        <b>🌳 Tree Density:</b>
+                        ${analytics.Tree_Density || "-"}
+
+                        <br>
+
+                        <b>📏 Height:</b>
+                        ${Number(
+                          analytics.Height_m || 0
+                        ).toFixed(2)} m
+
+                        <br>
+
+                        <b>📍 Latitude:</b>
+                        ${Number(
+                          analytics.Lat || 0
+                        ).toFixed(6)}
+
+                        <br>
+
+                        <b>📍 Longitude:</b>
+                        ${Number(
+                          analytics.Lon || 0
+                        ).toFixed(6)}
+
+                        <br>
+
+                        <b>🛰 Layer Type:</b>
+                        ${analytics.Layer_Type || "-"}
+
+                        <br>
+
+                        <b>🕒 Firestore Updated:</b>
+                        ${analytics.firestore_updated_at || "-"}
+
+                        <br>
+
+                        <b>📥 Imported:</b>
+                        ${analytics.imported_at || "-"}
 
                       </div>
 
@@ -8447,10 +8617,12 @@ async function renderFilteredGIS(){
 
                     maxWidth:
                       isMobile
-                      ? 260
-                      : 400,
+                      ? 280
+                      : 440,
 
-                    autoPan:true
+                    autoPan:true,
+
+                    closeButton:true
 
                   })
                   .setLatLng(
@@ -8477,7 +8649,7 @@ async function renderFilteredGIS(){
           }
 
           // ====================================
-          // 🌲 NORMAL DIVISION / RANGE / BEAT
+          // 🌲 NORMAL POPUPS
           // ====================================
 
           let popupHTML = `
@@ -8588,7 +8760,7 @@ async function renderFilteredGIS(){
       .addTo(window.map);
 
     // ==========================================
-    // 🎯 FIT
+    // 🎯 FIT BOUNDS
     // ==========================================
 
     try {
