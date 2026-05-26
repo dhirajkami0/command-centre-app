@@ -7236,7 +7236,11 @@ window.allCompartmentFeatures = [];
 window.gisLayer = null;
 
 window.compartmentLayer = null;
+// ============================================
+// 🌍 GIS ANALYTICS CACHE
+// ============================================
 
+window.gisAnalyticsCache = {};
 // ======================================================
 // 🌍 NORMALIZE DIVISION
 // ======================================================
@@ -7702,6 +7706,100 @@ else if(
   }
 }
 
+// =====================================================
+// 🌍 LOAD BTR ANALYTICS
+// =====================================================
+
+async function loadBTRAnalytics(){
+
+  try {
+
+    // =========================================
+    // 🔥 FIREBASE READY
+    // =========================================
+
+    if(!window.firebaseReady){
+
+      console.warn(
+        "⚠ Firebase not ready"
+      );
+
+      return null;
+    }
+
+    // =========================================
+    // 📦 CACHE RETURN
+    // =========================================
+
+    if(
+
+      window.gisAnalyticsCache?.BTR
+
+    ){
+
+      return window.gisAnalyticsCache.BTR;
+    }
+
+    // =========================================
+    // 📄 DOC REF
+    // =========================================
+
+    const ref = window.fb.doc(
+
+      window.db,
+
+      "gis_analytics_btr",
+
+      "BTR"
+    );
+
+    // =========================================
+    // 📥 FETCH
+    // =========================================
+
+    const snap =
+
+      await window.fb.getDoc(ref);
+
+    if(!snap.exists()){
+
+      console.warn(
+        "⚠ BTR analytics missing"
+      );
+
+      return null;
+    }
+
+    // =========================================
+    // 📦 DATA
+    // =========================================
+
+    const data = snap.data();
+
+    // =========================================
+    // 💾 CACHE
+    // =========================================
+
+    window.gisAnalyticsCache.BTR =
+      data;
+
+    console.log(
+      "✅ BTR analytics loaded"
+    );
+
+    return data;
+
+  } catch(e){
+
+    console.error(
+      "❌ loadBTRAnalytics",
+      e
+    );
+
+    return null;
+  }
+}
+    
 // ======================================================
 // 🎨 RENDER GIS
 // ======================================================
@@ -8328,40 +8426,357 @@ if(
       `;
 
           // ====================================
-          // 👑 BTR MODE
-          // ====================================
+// 👑 BTR MODE
+// ====================================
 
-          if(
+if(
 
-            window.gisFilter.division ===
-            "ALL"
+  window.gisFilter.division ===
+  "ALL"
 
-          ){
+){
 
-            popupHTML += `
+  // ==================================
+  // 🌍 BASIC GIS
+  // ==================================
 
-              <b>🌍 Total Divisions:</b>
-              ${divisions.size}
+  popupHTML += `
+
+    <div style="
+      background:
+      rgba(0,229,255,0.08);
+
+      border:
+      1px solid rgba(0,229,255,0.25);
+
+      border-radius:14px;
+
+      padding:12px;
+
+      margin-bottom:14px;
+    ">
+
+      <div style="
+        font-size:15px;
+        font-weight:bold;
+        color:#00e5ff;
+        margin-bottom:10px;
+      ">
+
+        🌍 BTR OVERVIEW
+
+      </div>
+
+      <div>
+
+        <b>🌍 Divisions:</b>
+        ${divisions.size}
+
+        <br>
+
+        <b>🌳 Ranges:</b>
+        ${ranges.size}
+
+        <br>
+
+        <b>🟨 Beats:</b>
+        ${beats.size}
+
+        <br>
+
+        <b>📐 Total Area:</b>
+        ${totalArea.toFixed(2)}
+
+      </div>
+
+    </div>
+  `;
+
+  // ==================================
+  // 🔥 CLICK LOAD ANALYTICS
+  // ==================================
+
+  layer.on(
+    "click",
+    async function(){
+
+      try {
+
+        // ==============================
+        // 📥 FIRESTORE DATA
+        // ==============================
+
+        const analytics =
+
+          await loadBTRAnalytics();
+
+        if(!analytics){
+
+          return;
+        }
+
+        // ==============================
+        // 📊 HTML
+        // ==============================
+
+        const analyticsHTML = `
+
+          <div style="
+            min-width:320px;
+            max-width:380px;
+            color:white;
+            font-size:13px;
+            line-height:1.7;
+          ">
+
+            <div style="
+              font-size:18px;
+              font-weight:bold;
+              color:#00e5ff;
+              margin-bottom:14px;
+              text-align:center;
+            ">
+
+              🌍 BTR ANALYTICS DASHBOARD
+
+            </div>
+
+            <!-- FOREST -->
+
+            <div style="
+              background:
+              rgba(76,175,80,0.12);
+
+              border:
+              1px solid rgba(76,175,80,0.25);
+
+              border-radius:12px;
+
+              padding:12px;
+
+              margin-bottom:12px;
+            ">
+
+              <div style="
+                color:#69f0ae;
+                font-weight:bold;
+                margin-bottom:8px;
+              ">
+
+                🌲 Forest Health
+
+              </div>
+
+              <b>🌿 Eco Health:</b>
+              ${Number(
+                analytics.Eco_Health || 0
+              ).toFixed(2)}
 
               <br>
 
-              <b>🌳 Total Ranges:</b>
-              ${ranges.size}
+              <b>🧪 Carbon:</b>
+              ${Number(
+                analytics.Carbon || 0
+              ).toFixed(2)}
 
               <br>
 
-              <b>🟨 Total Beats:</b>
-              ${beats.size}
+              <b>🌳 Canopy %:</b>
+              ${Number(
+                analytics.Canopy_pct || 0
+              ).toFixed(2)}%
+            </div>
+
+            <!-- FIRE -->
+
+            <div style="
+              background:
+              rgba(255,82,82,0.10);
+
+              border:
+              1px solid rgba(255,82,82,0.25);
+
+              border-radius:12px;
+
+              padding:12px;
+
+              margin-bottom:12px;
+            ">
+
+              <div style="
+                color:#ff8a80;
+                font-weight:bold;
+                margin-bottom:8px;
+              ">
+
+                🔥 Fire Monitoring
+
+              </div>
+
+              <b>🔥 Fire Pixels:</b>
+              ${Number(
+                analytics.Fire_Pixels || 0
+              ).toLocaleString()}
 
               <br>
 
-              <b>📐 Total BTR Area:</b>
-              ${totalArea.toFixed(2)}
+              <b>🚨 Fire Risk:</b>
+              ${analytics.Fire_Risk || "-"}
+
+            </div>
+
+            <!-- LAND COVER -->
+
+            <div style="
+              background:
+              rgba(255,193,7,0.10);
+
+              border:
+              1px solid rgba(255,193,7,0.25);
+
+              border-radius:12px;
+
+              padding:12px;
+
+              margin-bottom:12px;
+            ">
+
+              <div style="
+                color:#ffd54f;
+                font-weight:bold;
+                margin-bottom:8px;
+              ">
+
+                🌿 Land Cover
+
+              </div>
+
+              <b>🌱 Bush:</b>
+              ${Number(
+                analytics.Bush || 0
+              ).toFixed(2)}
 
               <br>
-            `;
-          }
 
+              <b>🏜 Bare:</b>
+              ${Number(
+                analytics.Bare || 0
+              ).toFixed(2)}
+
+              <br>
+
+              <b>🌾 Crop:</b>
+              ${Number(
+                analytics.Crop || 0
+              ).toFixed(2)}
+
+              <br>
+
+              <b>🏢 Built:</b>
+              ${Number(
+                analytics.Built || 0
+              ).toFixed(2)}
+
+            </div>
+
+            <!-- DEGRADATION -->
+
+            <div style="
+              background:
+              rgba(156,39,176,0.10);
+
+              border:
+              1px solid rgba(156,39,176,0.25);
+
+              border-radius:12px;
+
+              padding:12px;
+
+              margin-bottom:12px;
+            ">
+
+              <div style="
+                color:#ea80fc;
+                font-weight:bold;
+                margin-bottom:8px;
+              ">
+
+                📉 Degradation
+
+              </div>
+
+              <b>⚠ Degraded:</b>
+              ${Number(
+                analytics.Degraded || 0
+              ).toFixed(2)}
+
+              <br>
+
+              <b>📊 Degraded %:</b>
+              ${Number(
+                analytics.Degraded_pct || 0
+              ).toFixed(2)}%
+
+              <br>
+
+              <b>🌲 Dense %:</b>
+              ${Number(
+                analytics.Dense_pct || 0
+              ).toFixed(2)}%
+
+            </div>
+
+            <!-- TERRAIN -->
+
+            <div style="
+              background:
+              rgba(33,150,243,0.10);
+
+              border:
+              1px solid rgba(33,150,243,0.25);
+
+              border-radius:12px;
+
+              padding:12px;
+            ">
+
+              <div style="
+                color:#82b1ff;
+                font-weight:bold;
+                margin-bottom:8px;
+              ">
+
+                📏 Terrain
+
+              </div>
+
+              <b>⛰ Elevation:</b>
+              ${Number(
+                analytics.Elevation_m || 0
+              ).toFixed(2)} m
+
+            </div>
+
+          </div>
+        `;
+
+        // ==============================
+        // 📦 UPDATE POPUP
+        // ==============================
+
+        layer.setPopupContent(
+          analyticsHTML
+        );
+
+        layer.openPopup();
+
+      } catch(err){
+
+        console.error(err);
+      }
+    }
+  );
+}
           // ====================================
           // 🌲 DIVISION MODE
           // ====================================
