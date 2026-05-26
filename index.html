@@ -5806,6 +5806,22 @@ window.gridRootLayer.addTo(map);
 // ===============================
 // 🔥 GRID SYNC CORE (NEW)
 // ===============================
+    window.map.on(
+  "click",
+  function(){
+
+    if(
+
+      window.gisFilter?.division ===
+      "ALL"
+
+    ){
+
+      showBTRAnalyticsPanel();
+    }
+
+  }
+);
  /* ============================================================
        📊 RANGE BUTTON (SAFE)
     ============================================================ */
@@ -7338,6 +7354,418 @@ window.gisAnalyticsCache = {};
 // ======================================================
 // 🌍 NORMALIZE DIVISION
 // ======================================================
+    async function showBTRAnalyticsPanel(){
+
+  try {
+
+    const analytics =
+      await loadBTRAnalytics();
+
+    if(!analytics){
+      return;
+    }
+
+    const toSqKm = v =>
+
+      (
+        Number(v || 0) / 100
+      ).toFixed(2);
+
+    const panel =
+      document.getElementById(
+        "btrAnalyticsPanel"
+      );
+
+    const content =
+      document.getElementById(
+        "btrAnalyticsContent"
+      );
+
+    const fireColor =
+
+      analytics.Fire_Risk === "HIGH"
+      ? "#ff1744"
+
+      : analytics.Fire_Risk === "MEDIUM"
+      ? "#ff9800"
+
+      : "#00e676";
+
+    content.innerHTML = `
+
+      <!-- ===================================
+      🔥 RISK STATUS
+      ==================================== -->
+
+      <div style="
+        background:${fireColor};
+
+        padding:10px;
+
+        border-radius:12px;
+
+        text-align:center;
+
+        font-size:18px;
+
+        font-weight:bold;
+
+        margin-bottom:16px;
+      ">
+
+        🔥 FIRE RISK:
+        ${analytics.Fire_Risk || "-"}
+
+      </div>
+
+      <!-- ===================================
+      🌍 CORE
+      ==================================== -->
+
+      <div style="
+        margin-bottom:16px;
+      ">
+
+        <div style="
+          color:#00e5ff;
+          font-size:16px;
+          font-weight:bold;
+          margin-bottom:8px;
+        ">
+          🌍 CORE METRICS
+        </div>
+
+        <div style="
+          line-height:1.9;
+          font-size:13px;
+        ">
+
+          <b>Name:</b>
+          ${analytics.Name || "-"}
+
+          <br>
+
+          <b>Model:</b>
+          ${analytics.Model_Version || "-"}
+
+          <br>
+
+          <b>Total Area:</b>
+          ${toSqKm(
+            analytics.Total_ha
+          )} sq km
+
+          <br>
+
+          <b>Forest:</b>
+          ${toSqKm(
+            analytics.Forest
+          )} sq km
+
+          <br>
+
+          <b>Grass:</b>
+          ${toSqKm(
+            analytics.Grass
+          )} sq km
+
+          <br>
+
+          <b>Bush:</b>
+          ${toSqKm(
+            analytics.Bush
+          )} sq km
+
+          <br>
+
+          <b>Bare:</b>
+          ${toSqKm(
+            analytics.Bare
+          )} sq km
+
+          <br>
+
+          <b>Built:</b>
+          ${toSqKm(
+            analytics.Built
+          )} sq km
+
+          <br>
+
+          <b>Crop:</b>
+          ${toSqKm(
+            analytics.Crop
+          )} sq km
+
+          <br>
+
+          <b>Water:</b>
+          ${toSqKm(
+            analytics.Water
+          )} sq km
+
+        </div>
+
+      </div>
+
+      <!-- ===================================
+      🌲 ECOLOGY
+      ==================================== -->
+
+      <div style="
+        margin-bottom:16px;
+      ">
+
+        <div style="
+          color:#00e676;
+          font-size:16px;
+          font-weight:bold;
+          margin-bottom:8px;
+        ">
+          🌲 ECOLOGY
+        </div>
+
+        <div style="
+          line-height:1.9;
+          font-size:13px;
+        ">
+
+          <b>Eco Health:</b>
+          ${Number(
+            analytics.Eco_Health || 0
+          ).toFixed(2)}
+
+          <br>
+
+          <b>Health Score:</b>
+          ${analytics.Health_Score || 0}
+
+          <br>
+
+          <b>Canopy:</b>
+          ${Number(
+            analytics.Canopy_pct || 0
+          ).toFixed(2)}%
+
+          <br>
+
+          <b>Dense Forest:</b>
+          ${Number(
+            analytics.Dense_pct || 0
+          ).toFixed(2)}%
+
+          <br>
+
+          <b>Degraded:</b>
+          ${toSqKm(
+            analytics.Degraded
+          )} sq km
+
+          <br>
+
+          <b>Degraded %:</b>
+          ${Number(
+            analytics.Degraded_pct || 0
+          ).toFixed(2)}%
+
+          <br>
+
+          <b>Tree Density:</b>
+          ${analytics.Tree_Density || "-"}
+
+          <br>
+
+          <b>Biomass:</b>
+          ${Number(
+            analytics.Biomass || 0
+          ).toFixed(4)}
+
+          <br>
+
+          <b>Carbon:</b>
+          ${Number(
+            analytics.Carbon || 0
+          ).toFixed(4)}
+
+        </div>
+
+      </div>
+
+      <!-- ===================================
+      📊 SATELLITE
+      ==================================== -->
+
+      <div style="
+        margin-bottom:16px;
+      ">
+
+        <div style="
+          color:#ffd600;
+          font-size:16px;
+          font-weight:bold;
+          margin-bottom:8px;
+        ">
+          📊 SATELLITE INDICES
+        </div>
+
+        <div style="
+          line-height:1.9;
+          font-size:13px;
+        ">
+
+          <b>NDVI:</b>
+          ${Number(
+            analytics.NDVI || 0
+          ).toFixed(4)}
+
+          <br>
+
+          <b>NDMI:</b>
+          ${Number(
+            analytics.NDMI || 0
+          ).toFixed(4)}
+
+          <br>
+
+          <b>Fire Pixels:</b>
+          ${Number(
+            analytics.Fire_Pixels || 0
+          ).toLocaleString()}
+
+          <br>
+
+          <b>Soil Moisture:</b>
+          ${Number(
+            analytics.Soil_Moisture || 0
+          ).toFixed(4)}
+
+        </div>
+
+      </div>
+
+      <!-- ===================================
+      🌦 ENVIRONMENT
+      ==================================== -->
+
+      <div style="
+        margin-bottom:16px;
+      ">
+
+        <div style="
+          color:#40c4ff;
+          font-size:16px;
+          font-weight:bold;
+          margin-bottom:8px;
+        ">
+          🌦 ENVIRONMENT
+        </div>
+
+        <div style="
+          line-height:1.9;
+          font-size:13px;
+        ">
+
+          <b>Rainfall:</b>
+          ${Number(
+            analytics.Rainfall_mm || 0
+          ).toFixed(2)} mm
+
+          <br>
+
+          <b>Temperature:</b>
+          ${Number(
+            analytics.Temperature_C || 0
+          ).toFixed(2)} °C
+
+          <br>
+
+          <b>Elevation:</b>
+          ${Number(
+            analytics.Elevation_m || 0
+          ).toFixed(2)} m
+
+          <br>
+
+          <b>Slope:</b>
+          ${Number(
+            analytics.Slope_deg || 0
+          ).toFixed(2)}°
+
+          <br>
+
+          <b>Height:</b>
+          ${Number(
+            analytics.Height_m || 0
+          ).toFixed(2)} m
+
+        </div>
+
+      </div>
+
+      <!-- ===================================
+      📍 LOCATION
+      ==================================== -->
+
+      <div>
+
+        <div style="
+          color:#ff80ab;
+          font-size:16px;
+          font-weight:bold;
+          margin-bottom:8px;
+        ">
+          📍 LOCATION
+        </div>
+
+        <div style="
+          line-height:1.9;
+          font-size:13px;
+        ">
+
+          <b>Latitude:</b>
+          ${Number(
+            analytics.Lat || 0
+          ).toFixed(6)}
+
+          <br>
+
+          <b>Longitude:</b>
+          ${Number(
+            analytics.Lon || 0
+          ).toFixed(6)}
+
+          <br>
+
+          <b>Layer Type:</b>
+          ${analytics.Layer_Type || "-"}
+
+          <br>
+
+          <b>Updated:</b>
+          ${analytics.Updated_On || "-"}
+
+          <br>
+
+          <b>Imported:</b>
+          ${analytics.imported_at || "-"}
+
+        </div>
+
+      </div>
+
+    `;
+
+    panel.style.display =
+      "block";
+
+  } catch(err){
+
+    console.error(
+      "❌ Analytics Panel",
+      err
+    );
+  }
+}
 
 function normalizeDivision(value){
 
@@ -26033,6 +26461,110 @@ window.openDutyForm = openDutyForm;
   </div>
 
 </div>
+<!-- =========================================================
+🌍 BTR ENTERPRISE ANALYTICS PANEL
+========================================================= -->
 
+<div
+  id="btrAnalyticsPanel"
+  style="
+    display:none;
+
+    position:absolute;
+
+    top:85px;
+    right:12px;
+
+    width:min(360px,92vw);
+
+    max-height:75vh;
+
+    overflow-y:auto;
+
+    z-index:999999;
+
+    background:
+      linear-gradient(
+        180deg,
+        rgba(10,15,18,0.97),
+        rgba(5,8,10,0.98)
+      );
+
+    color:white;
+
+    border:
+      2px solid #00e5ff;
+
+    border-radius:18px;
+
+    padding:16px;
+
+    box-shadow:
+      0 0 25px rgba(0,229,255,0.35);
+
+    backdrop-filter:blur(10px);
+
+    font-family:
+      Arial,sans-serif;
+  "
+>
+
+  <!-- HEADER -->
+
+  <div style="
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+    margin-bottom:14px;
+  ">
+
+    <div>
+
+      <div style="
+        font-size:22px;
+        font-weight:bold;
+        color:#00e5ff;
+      ">
+        🌍 BTR ANALYTICS
+      </div>
+
+      <div style="
+        font-size:11px;
+        opacity:0.7;
+        margin-top:2px;
+      ">
+        Enterprise Intelligence Layer
+      </div>
+
+    </div>
+
+    <button
+      onclick="
+        document.getElementById(
+          'btrAnalyticsPanel'
+        ).style.display='none'
+      "
+      style="
+        background:#ff1744;
+        color:white;
+        border:none;
+        border-radius:10px;
+        width:34px;
+        height:34px;
+        cursor:pointer;
+        font-size:16px;
+        font-weight:bold;
+      "
+    >
+      ✕
+    </button>
+
+  </div>
+
+  <!-- CONTENT -->
+
+  <div id="btrAnalyticsContent"></div>
+
+</div>
 </body>
 </html>
