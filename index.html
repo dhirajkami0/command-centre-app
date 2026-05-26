@@ -5889,11 +5889,10 @@ async function showBTRAnalyticsPanel(){
     // FIRESTORE
     // =================================================
 
-    const doc = await firebase
-      .firestore()
-      .collection("gis_analytics_btr")
-      .doc("BTR_Circle")
-      .get();
+   const doc = await db
+  .collection("gis_analytics_btr")
+  .doc("BTR_Circle")
+  .get();
 
 
 
