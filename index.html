@@ -5816,6 +5816,8 @@ window.gridRootLayer.addTo(map);
 // FINAL VERSION
 // ======================================================
 
+window.map.off("click");
+
 window.map.on(
 
   "click",
@@ -5823,6 +5825,25 @@ window.map.on(
   async function(e){
 
     try{
+
+      // ==========================================
+      // 🔥 IMPORTANT
+      // IGNORE POLYGON CLICK BUBBLING
+      // ==========================================
+
+      if(
+
+        e.originalEvent &&
+        e.originalEvent._stopped
+
+      ){
+
+        console.log(
+          "⛔ MAP CLICK BLOCKED (polygon handled)"
+        );
+
+        return;
+      }
 
       // ==========================================
       // 🔒 ACTIVE CONTEXT
@@ -5841,32 +5862,14 @@ window.map.on(
       );
 
       // ==========================================
-      // ❌ ONLY EMPTY MAP CLICK
-      // ==========================================
-      // IMPORTANT:
-      // Polygon clicks already handled inside:
-      // - renderFilteredGIS()
-      // - renderFilteredCompartments()
-      //
-      // So this map click should ONLY
-      // handle empty background clicks.
-      // ==========================================
-
-      if(
-
-        e.originalEvent &&
-        e.originalEvent._stopped
-
-      ){
-
-        return;
-      }
-
-      // ==========================================
       // 🌍 BTR BACKGROUND CLICK
       // ==========================================
 
       if(level === "btr"){
+
+        console.log(
+          "🌍 EMPTY BTR BACKGROUND CLICK"
+        );
 
         await showBTRAnalyticsPanel(
 
@@ -5898,6 +5901,10 @@ window.map.on(
         let firestoreDivision =
           division;
 
+        // ======================================
+        // 🔥 NORMALIZE
+        // ======================================
+
         if(division === "BTR_W"){
 
           firestoreDivision =
@@ -5909,6 +5916,11 @@ window.map.on(
           firestoreDivision =
             "BuxaTR_EAST";
         }
+
+        console.log(
+          "🌍 EMPTY DIVISION BG CLICK:",
+          firestoreDivision
+        );
 
         await showBTRAnalyticsPanel(
 
@@ -5949,6 +5961,10 @@ window.map.on(
 
         let firestoreDivision =
           division;
+
+        // ======================================
+        // 🔥 NORMALIZE
+        // ======================================
 
         if(division === "BTR_W"){
 
@@ -6023,6 +6039,10 @@ window.map.on(
         let firestoreDivision =
           division;
 
+        // ======================================
+        // 🔥 NORMALIZE
+        // ======================================
+
         if(division === "BTR_W"){
 
           firestoreDivision =
@@ -6057,19 +6077,18 @@ window.map.on(
 
     }
 
-    catch(e){
+    catch(err){
 
       console.error(
         "❌ CENTRAL MAP CLICK",
-        e
+        err
       );
 
     }
 
   }
 
-);
-// =========================================================
+);// =========================================================
 // 🌍 MAP CLICK
 // KEEP THIS
 // =========================================================
