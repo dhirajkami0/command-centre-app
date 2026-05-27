@@ -5814,56 +5814,111 @@ window.gridRootLayer.addTo(map);
 // 🌍 MAP CLICK
 // KEEP THIS
 // =========================================================
+// ======================================================
+// 🌍 DYNAMIC ANALYTICS CLICK SYSTEM
+// BTR + DIVISION + RANGE
+// ======================================================
+
 window.map.on(
+
   "click",
-  function(){
 
-    const division =
-      window.gisFilter?.division;
+  async function(){
 
-    // =====================================
-    // ALL
-    // =====================================
+    try{
 
-    if(division === "ALL"){
+      // ==========================================
+      // FILTERS
+      // ==========================================
 
-      showBTRAnalyticsPanel(
-        "BTR_Circle"
+      const division =
+        String(
+          window.gisFilter?.division ||
+          "ALL"
+        );
+
+      const range =
+        String(
+          window.gisFilter?.range ||
+          "ALL"
+        );
+
+      // ==========================================
+      // ALL BTR
+      // ==========================================
+
+      if(
+
+        division === "ALL"
+
+      ){
+
+        await showBTRAnalyticsPanel(
+          "gis_analytics_btr",
+          "BTR_Circle"
+        );
+
+        return;
+      }
+
+      // ==========================================
+      // DIVISION ONLY
+      // ==========================================
+
+      if(
+
+        division !== "ALL" &&
+        range === "ALL"
+
+      ){
+
+        await showBTRAnalyticsPanel(
+
+          "gis_analytics_btr",
+
+          division
+
+        );
+
+        return;
+      }
+
+      // ==========================================
+      // RANGE LEVEL
+      // ==========================================
+
+      const rangeDocId =
+
+        `${division}_${range}`
+        .replace(/\s+/g,"_");
+
+      console.log(
+        "🛰 RANGE DOC:",
+        rangeDocId
+      );
+
+      await showBTRAnalyticsPanel(
+
+        "gis_range_analytics",
+
+        rangeDocId
+
       );
 
     }
 
-    // =====================================
-    // BTR EAST
-    // =====================================
+    catch(e){
 
-    else if(
-      division === "BTR_E"
-    ){
-
-      showBTRAnalyticsPanel(
-        "BTR_E"
-      );
-
-    }
-
-    // =====================================
-    // BTR WEST
-    // =====================================
-
-    else if(
-      division === "BTR_W"
-    ){
-
-      showBTRAnalyticsPanel(
-        "BTR_W"
+      console.error(
+        "❌ CLICK FLOW",
+        e
       );
 
     }
 
   }
-);
-    /* ============================================================
+
+);    /* ============================================================
        📊 RANGE BUTTON (SAFE)
     ============================================================ */
 // =====================================================
@@ -5874,7 +5929,10 @@ window.map.on(
 // =====================================================
 
 async function showBTRAnalyticsPanel(
-  analyticsDoc
+
+  collectionName,
+  documentId
+
 ){
 
   try{
@@ -5924,10 +5982,14 @@ async function showBTRAnalyticsPanel(
 // =================================================
 
 const d =
+ const d =
   await loadBTRAnalytics(
-  analyticsDoc
-);
 
+    collectionName,
+
+    documentId
+
+  );
 if(!d){
 
   container.innerHTML = `
@@ -9369,15 +9431,22 @@ else if(
 // 🌍 LOAD BTR ANALYTICS
 // =====================================================
 
+// ======================================================
+// 🌍 DYNAMIC ANALYTICS LOADER
+// ======================================================
+
 async function loadBTRAnalytics(
-  analyticsDoc
+
+  collectionName,
+  documentId
+
 ){
 
-  try {
+  try{
 
-    // =========================================
-    // 🔥 FIREBASE READY
-    // =========================================
+    // ==========================================
+    // FIREBASE READY
+    // ==========================================
 
     if(!window.firebaseReady){
 
@@ -9388,9 +9457,9 @@ async function loadBTRAnalytics(
       return null;
     }
 
-    // =========================================
-    // 📦 CACHE INIT
-    // =========================================
+    // ==========================================
+    // CACHE INIT
+    // ==========================================
 
     if(!window.gisAnalyticsCache){
 
@@ -9398,83 +9467,87 @@ async function loadBTRAnalytics(
 
     }
 
-    // =========================================
-    // 📦 CACHE RETURN
-    // =========================================
+    const cacheKey =
+
+      `${collectionName}_${documentId}`;
+
+    // ==========================================
+    // CACHE
+    // ==========================================
 
     if(
 
       window.gisAnalyticsCache[
-        analyticsDoc
+        cacheKey
       ]
 
     ){
 
       console.log(
-        "⚡ Analytics cache hit:",
-        analyticsDoc
+        "⚡ CACHE HIT:",
+        cacheKey
       );
 
       return window
         .gisAnalyticsCache[
-          analyticsDoc
+          cacheKey
         ];
     }
 
-    // =========================================
-    // 📄 DOC REF
-    // =========================================
+    // ==========================================
+    // FIRESTORE REF
+    // ==========================================
 
     const ref = window.fb.doc(
 
       window.db,
 
-      "gis_analytics_btr",
+      collectionName,
 
-      analyticsDoc
+      documentId
 
     );
 
-    // =========================================
-    // 📥 FETCH
-    // =========================================
+    // ==========================================
+    // FETCH
+    // ==========================================
 
     const snap =
 
       await window.fb.getDoc(ref);
 
-    // =========================================
-    // ❌ NOT FOUND
-    // =========================================
+    // ==========================================
+    // NOT FOUND
+    // ==========================================
 
     if(!snap.exists()){
 
       console.warn(
         "⚠ Analytics missing:",
-        analyticsDoc
+        documentId
       );
 
       return null;
     }
 
-    // =========================================
-    // 📦 DATA
-    // =========================================
+    // ==========================================
+    // DATA
+    // ==========================================
 
     const data =
       snap.data();
 
-    // =========================================
-    // 💾 CACHE SAVE
-    // =========================================
+    // ==========================================
+    // CACHE SAVE
+    // ==========================================
 
     window.gisAnalyticsCache[
-      analyticsDoc
+      cacheKey
     ] = data;
 
     console.log(
       "✅ Analytics loaded:",
-      analyticsDoc
+      cacheKey
     );
 
     return data;
@@ -9490,8 +9563,8 @@ async function loadBTRAnalytics(
 
     return null;
   }
-}    
-// ======================================================
+
+}// ======================================================
 // 🎨 RENDER GIS
 // ======================================================
 async function renderFilteredGIS(){
@@ -9731,9 +9804,14 @@ async function renderFilteredGIS(){
               try {
 
                 const analytics =
-                  await loadBTRAnalytics(
-  analyticsDoc
-);
+                 const d =
+  await loadBTRAnalytics(
+
+    collectionName,
+
+    documentId
+
+  );
 
                 if(!analytics){
                   return;
