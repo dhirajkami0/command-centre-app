@@ -9782,7 +9782,7 @@ async function loadBTRAnalytics(
   try{
 
     // ==========================================
-    // FIREBASE READY
+    // 🔥 FIREBASE READY
     // ==========================================
 
     if(!window.firebaseReady){
@@ -9795,21 +9795,87 @@ async function loadBTRAnalytics(
     }
 
     // ==========================================
-    // CACHE INIT
+    // 🔥 CACHE INIT
     // ==========================================
 
     if(!window.gisAnalyticsCache){
 
       window.gisAnalyticsCache = {};
-
     }
+
+    // ==========================================
+    // 🔥 SAFE VALUES
+    // ==========================================
+
+    collectionName =
+
+      String(
+        collectionName || ""
+      ).trim();
+
+    documentId =
+
+      String(
+        documentId || ""
+      ).trim();
+
+    // ==========================================
+    // ❌ INVALID
+    // ==========================================
+
+    if(
+
+      !collectionName ||
+
+      !documentId
+
+    ){
+
+      console.warn(
+        "⚠ Invalid analytics request",
+        collectionName,
+        documentId
+      );
+
+      return null;
+    }
+
+    // ==========================================
+    // 🔥 NORMALIZE DIVISION IDs
+    // ==========================================
+
+    if(documentId === "BTR_W"){
+
+      documentId =
+        "BuxaTR_WEST";
+    }
+
+    if(documentId === "BTR_E"){
+
+      documentId =
+        "BuxaTR_EAST";
+    }
+
+    // ==========================================
+    // 🔥 NORMALIZE WHITESPACE
+    // ==========================================
+
+    documentId =
+
+      documentId
+      .replace(/\s+/g,"_")
+      .trim();
+
+    // ==========================================
+    // 🔥 CACHE KEY
+    // ==========================================
 
     const cacheKey =
 
       `${collectionName}_${documentId}`;
 
     // ==========================================
-    // CACHE
+    // ⚡ CACHE HIT
     // ==========================================
 
     if(
@@ -9832,7 +9898,17 @@ async function loadBTRAnalytics(
     }
 
     // ==========================================
-    // FIRESTORE REF
+    // 🔥 DEBUG
+    // ==========================================
+
+    console.log(
+      "🌍 LOAD ANALYTICS:",
+      collectionName,
+      documentId
+    );
+
+    // ==========================================
+    // 🔥 FIRESTORE REF
     // ==========================================
 
     const ref = window.fb.doc(
@@ -9846,7 +9922,7 @@ async function loadBTRAnalytics(
     );
 
     // ==========================================
-    // FETCH
+    // 🔥 FETCH
     // ==========================================
 
     const snap =
@@ -9854,37 +9930,59 @@ async function loadBTRAnalytics(
       await window.fb.getDoc(ref);
 
     // ==========================================
-    // NOT FOUND
+    // ❌ NOT FOUND
     // ==========================================
 
     if(!snap.exists()){
 
       console.warn(
         "⚠ Analytics missing:",
-        documentId
+        cacheKey
       );
 
       return null;
     }
 
     // ==========================================
-    // DATA
+    // 🔥 DATA
     // ==========================================
 
     const data =
       snap.data();
 
     // ==========================================
-    // CACHE SAVE
+    // ❌ EMPTY
+    // ==========================================
+
+    if(!data){
+
+      console.warn(
+        "⚠ Empty analytics:",
+        cacheKey
+      );
+
+      return null;
+    }
+
+    // ==========================================
+    // 🔥 CACHE SAVE
     // ==========================================
 
     window.gisAnalyticsCache[
       cacheKey
     ] = data;
 
+    // ==========================================
+    // ✅ SUCCESS
+    // ==========================================
+
     console.log(
       "✅ Analytics loaded:",
       cacheKey
+    );
+
+    console.log(
+      data
     );
 
     return data;
