@@ -8326,7 +8326,24 @@ window.gisAnalyticsCache = {};
 // MOBILE + DESKTOP
 // ============================================================
 
-async function showCompartmentAnalyticsPanel(compartmentName){
+async function showCompartmentAnalyticsPanel(compartmentName){ 
+  // ========================================================
+// 🔒 CENTRAL POPUP AUTHORITY
+// ========================================================
+
+if(
+
+  window.activePopupContext?.level
+  !== "compartment"
+
+){
+
+  console.log(
+    "⛔ BLOCKED COMPARTMENT POPUP"
+  );
+
+  return;
+}
 
   try {
 
