@@ -5898,35 +5898,16 @@ window.map.on(
 
           ).trim();
 
-        let firestoreDivision =
-          division;
-
-        // ======================================
-        // 🔥 NORMALIZE
-        // ======================================
-
-        if(division === "BTR_W"){
-
-          firestoreDivision =
-            "BuxaTR_WEST";
-        }
-
-        if(division === "BTR_E"){
-
-          firestoreDivision =
-            "BuxaTR_EAST";
-        }
-
         console.log(
           "🌍 EMPTY DIVISION BG CLICK:",
-          firestoreDivision
+          division
         );
 
         await showBTRAnalyticsPanel(
 
           "gis_analytics_btr",
 
-          firestoreDivision
+          division
 
         );
 
@@ -5959,12 +5940,12 @@ window.map.on(
 
           ).trim();
 
+        // ======================================
+        // 🔥 DIVISION NORMALIZATION
+        // ======================================
+
         let firestoreDivision =
           division;
-
-        // ======================================
-        // 🔥 NORMALIZE
-        // ======================================
 
         if(division === "BTR_W"){
 
@@ -5978,11 +5959,35 @@ window.map.on(
             "BuxaTR_EAST";
         }
 
+        // ======================================
+        // 🔥 RANGE NORMALIZATION
+        // ======================================
+
+        const safeRange =
+
+          String(range || "")
+
+          // camelCase → underscore
+          .replace(
+            /([a-z])([A-Z])/g,
+            "$1_$2"
+          )
+
+          // spaces → underscore
+          .replace(/\s+/g,"_")
+
+          // cleanup
+          .replace(/__+/g,"_")
+
+          .trim();
+
+        // ======================================
+        // 🔥 FINAL DOC ID
+        // ======================================
+
         const rangeDocId =
 
-          `${firestoreDivision}_${range}`
-
-          .replace(/\s+/g,"_");
+          `${firestoreDivision}_${safeRange}`;
 
         console.log(
           "🛰 RANGE BG CLICK:",
@@ -6036,12 +6041,12 @@ window.map.on(
 
           ).trim();
 
+        // ======================================
+        // 🔥 DIVISION NORMALIZATION
+        // ======================================
+
         let firestoreDivision =
           division;
-
-        // ======================================
-        // 🔥 NORMALIZE
-        // ======================================
 
         if(division === "BTR_W"){
 
@@ -6055,11 +6060,51 @@ window.map.on(
             "BuxaTR_EAST";
         }
 
+        // ======================================
+        // 🔥 RANGE NORMALIZATION
+        // ======================================
+
+        const safeRange =
+
+          String(range || "")
+
+          .replace(
+            /([a-z])([A-Z])/g,
+            "$1_$2"
+          )
+
+          .replace(/\s+/g,"_")
+
+          .replace(/__+/g,"_")
+
+          .trim();
+
+        // ======================================
+        // 🔥 BEAT NORMALIZATION
+        // ======================================
+
+        const safeBeat =
+
+          String(beat || "")
+
+          .replace(
+            /([a-z])([A-Z])/g,
+            "$1_$2"
+          )
+
+          .replace(/\s+/g,"_")
+
+          .replace(/__+/g,"_")
+
+          .trim();
+
+        // ======================================
+        // 🔥 FINAL DOC ID
+        // ======================================
+
         const beatDocId =
 
-          `${firestoreDivision}_${range}_${beat}`
-
-          .replace(/\s+/g,"_");
+          `${firestoreDivision}_${safeRange}_${safeBeat}`;
 
         console.log(
           "🛰 BEAT BG CLICK:",
@@ -9841,13 +9886,25 @@ async function loadBTRAnalytics(
     }
 
     // ==========================================
-    // 🔥 NORMALIZE ONLY WHITESPACE
+    // 🔥 NORMALIZE DOCUMENT IDS
     // ==========================================
 
     documentId =
 
-      documentId
+      String(documentId || "")
+
+      // camelCase → underscore
+      .replace(
+        /([a-z])([A-Z])/g,
+        "$1_$2"
+      )
+
+      // spaces → underscore
       .replace(/\s+/g,"_")
+
+      // cleanup
+      .replace(/__+/g,"_")
+
       .trim();
 
     // ==========================================
