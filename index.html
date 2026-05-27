@@ -9389,16 +9389,36 @@ async function loadBTRAnalytics(
     }
 
     // =========================================
+    // 📦 CACHE INIT
+    // =========================================
+
+    if(!window.gisAnalyticsCache){
+
+      window.gisAnalyticsCache = {};
+
+    }
+
+    // =========================================
     // 📦 CACHE RETURN
     // =========================================
 
     if(
 
-      window.gisAnalyticsCache?.BTR
+      window.gisAnalyticsCache[
+        analyticsDoc
+      ]
 
     ){
 
-      return window.gisAnalyticsCache.BTR;
+      console.log(
+        "⚡ Analytics cache hit:",
+        analyticsDoc
+      );
+
+      return window
+        .gisAnalyticsCache[
+          analyticsDoc
+        ];
     }
 
     // =========================================
@@ -9411,7 +9431,8 @@ async function loadBTRAnalytics(
 
       "gis_analytics_btr",
 
-      "analyticsDoc"
+      analyticsDoc
+
     );
 
     // =========================================
@@ -9422,10 +9443,15 @@ async function loadBTRAnalytics(
 
       await window.fb.getDoc(ref);
 
+    // =========================================
+    // ❌ NOT FOUND
+    // =========================================
+
     if(!snap.exists()){
 
       console.warn(
-        "⚠ BTR analytics missing"
+        "⚠ Analytics missing:",
+        analyticsDoc
       );
 
       return null;
@@ -9435,22 +9461,27 @@ async function loadBTRAnalytics(
     // 📦 DATA
     // =========================================
 
-    const data = snap.data();
+    const data =
+      snap.data();
 
     // =========================================
-    // 💾 CACHE
+    // 💾 CACHE SAVE
     // =========================================
 
-    window.gisAnalyticsCache.BTR =
-      data;
+    window.gisAnalyticsCache[
+      analyticsDoc
+    ] = data;
 
     console.log(
-      "✅ BTR analytics loaded"
+      "✅ Analytics loaded:",
+      analyticsDoc
     );
 
     return data;
 
-  } catch(e){
+  }
+
+  catch(e){
 
     console.error(
       "❌ loadBTRAnalytics",
@@ -9459,8 +9490,7 @@ async function loadBTRAnalytics(
 
     return null;
   }
-}
-    
+}    
 // ======================================================
 // 🎨 RENDER GIS
 // ======================================================
