@@ -9721,19 +9721,25 @@ async function loadBTRAnalytics(
 }// ======================================================
 // 🎨 RENDER GIS
 // ======================================================
-async function renderFilteredGIS(){
+// ======================================================
+// 🌍 FILTER + RENDER GIS
+// FULL BUTTON AWARE CENTRAL ROUTER
+// NO POPUP SYSTEM HERE
+// ======================================================
+
+function renderFilteredGIS(){
 
   try {
 
-    // ==========================================
+    // ==================================================
     // 🧹 CLEAR OLD
-    // ==========================================
+    // ==================================================
 
     clearGISLayer();
 
-    // ==========================================
+    // ==================================================
     // 📦 FEATURES
-    // ==========================================
+    // ==================================================
 
     let features = [
 
@@ -9741,579 +9747,437 @@ async function renderFilteredGIS(){
 
     ];
 
-    // ==========================================
-    // 📱 MOBILE
-    // ==========================================
-
-    const isMobile =
-      L.Browser.mobile;
-
-    // ==========================================
+    // ==================================================
     // 🌍 DIVISION FILTER
-    // ==========================================
+    // ==================================================
 
     if(
 
-      window.gisFilter.division !==
-      "ALL"
+      window.gisFilter?.division &&
+      window.gisFilter.division !== "ALL"
 
     ){
 
+      const targetDivision =
+
+        normalizeDivision(
+          window.gisFilter.division
+        );
+
       features =
         features.filter(f => {
+
+          const props =
+            f.properties || {};
 
           const div =
 
             normalizeDivision(
 
-              f.properties?.Division ||
+              props.Division ||
 
-              f.properties?.division ||
+              props.division ||
 
               ""
 
             );
 
           return (
-
-            div ===
-
-            normalizeDivision(
-              window.gisFilter.division
-            )
-
+            div === targetDivision
           );
+
         });
+
     }
 
-    // ==========================================
-    // 🌳 RANGE FILTER
-    // ==========================================
+    // ==================================================
+    // 🟩 RANGE FILTER
+    // ==================================================
 
     if(
 
-      window.gisFilter.range !==
-      "ALL"
+      window.gisFilter?.range &&
+      window.gisFilter.range !== "ALL"
 
     ){
 
+      const targetRange =
+
+        String(
+          window.gisFilter.range
+        ).trim();
+
       features =
         features.filter(f => {
+
+          const props =
+            f.properties || {};
 
           const range =
 
             String(
 
-              f.properties?.Range ||
+              props.Range ||
 
-              f.properties?.range ||
+              props.range ||
 
               ""
 
             ).trim();
 
           return (
-
-            range ===
-            window.gisFilter.range
-
+            range === targetRange
           );
+
         });
+
     }
 
-    // ==========================================
+    // ==================================================
     // 🟨 BEAT FILTER
-    // ==========================================
+    // ==================================================
 
     if(
 
-      window.gisFilter.beat !==
-      "ALL"
+      window.gisFilter?.beat &&
+      window.gisFilter.beat !== "ALL"
 
     ){
 
+      const targetBeat =
+
+        String(
+          window.gisFilter.beat
+        ).trim();
+
       features =
         features.filter(f => {
+
+          const props =
+            f.properties || {};
 
           const beat =
 
             String(
 
-              f.properties?.Beat ||
+              props.Beat ||
 
-              f.properties?.beat ||
+              props.beat ||
 
               ""
 
             ).trim();
 
           return (
-
-            beat ===
-            window.gisFilter.beat
-
+            beat === targetBeat
           );
+
         });
+
     }
 
-    // ==========================================
+    // ==================================================
     // ❌ EMPTY
-    // ==========================================
+    // ==================================================
 
     if(features.length === 0){
 
       console.warn(
-        "⚠ No GIS features"
+        "⚠ No GIS features after filter"
       );
 
       return;
     }
 
-    // ==========================================
-    // 🎨 GIS LAYER
-    // ==========================================
+    // ==================================================
+    // 🎨 RENDER
+    // ==================================================
 
     window.gisLayer =
 
       L.geoJSON(features,{
 
-        pane:"overlayPane",
+        renderer:
+          window.canvasRenderer,
 
         interactive:true,
 
         smoothFactor:2,
 
-        style:{
+        style:function(feature){
 
-          color:"#00e5ff",
+          const level =
 
-          weight:
-            isMobile ? 2 : 3,
+            window.activePopupContext
+            ?.level ||
 
-          fillOpacity:0.12
+            "btr";
+
+          // ============================================
+          // STYLE
+          // ============================================
+
+          return {
+
+            color:
+
+              level === "range"
+
+              ? "#00e5ff"
+
+              :
+
+              level === "beat"
+
+              ? "#ff9800"
+
+              :
+
+              "#00e5ff",
+
+            weight:
+
+              level === "beat"
+
+              ? 4
+
+              :
+
+              level === "range"
+
+              ? 3
+
+              : 2,
+
+            fillOpacity:
+
+              level === "beat"
+
+              ? 0.12
+
+              :
+
+              level === "range"
+
+              ? 0.08
+
+              : 0.04
+          };
+
         },
 
-        // ======================================
-        // 🧠 FEATURE INTERACTION
-        // ======================================
+        // ==================================================
+        // 🧠 CENTRAL CLICK ROUTER
+        // ==================================================
 
         onEachFeature:function(
           feature,
           layer
         ){
 
-          const props =
-            feature.properties || {};
+          layer.on(
 
-          const division =
+            "click",
 
-            props.Division ||
+            async function(e){
 
-            props.division ||
+              try{
 
-            "-";
+                // ==========================================
+                // 🛑 STOP PROPAGATION
+                // ==========================================
 
-          const range =
+                L.DomEvent.stopPropagation(e);
 
-            props.Range ||
+                // ==========================================
+                // 🌍 ACTIVE POPUP LEVEL
+                // ==========================================
 
-            props.range ||
+                const level =
 
-            "-";
+                  window.activePopupContext
+                  ?.level ||
 
-          const beat =
+                  "btr";
 
-            props.Beat ||
+                console.log(
+                  "🎯 ACTIVE LEVEL:",
+                  level
+                );
 
-            props.beat ||
+                // ==========================================
+                // 📦 PROPERTIES
+                // ==========================================
 
-            "-";
+                const props =
+                  feature.properties || {};
 
-          const area =
+                const division =
 
-            Number(
+                  normalizeDivision(
 
-              props.Beat_Ar ||
+                    props.Division ||
 
-              props.area ||
+                    props.division ||
 
-              0
+                    ""
 
-            ).toFixed(2);
+                  );
 
-          // ====================================
-          // 👑 ALL MODE
-          // ====================================
+                const range =
 
-          if(
+                  String(
 
-            window.gisFilter.division ===
-            "ALL"
+                    props.Range ||
 
-          ){
+                    props.range ||
 
-            const openAnalyticsPopup =
-            async function(latlng){
+                    ""
 
-              try {
+                  ).trim();
 
-                const analytics =
-  await loadBTRAnalytics(
+                const beat =
 
-    collectionName,
+                  String(
 
-    documentId
+                    props.Beat ||
 
-  );
+                    props.beat ||
 
-                if(!analytics){
+                    ""
+
+                  ).trim();
+
+                // ==========================================
+                // 🌍 BTR LEVEL
+                // ==========================================
+
+                if(level === "btr"){
+
+                  console.log(
+                    "🌍 ROUTE → BTR"
+                  );
+
+                  await showBTRAnalyticsPanel(
+
+                    "gis_analytics_btr",
+
+                    "BTR_Circle"
+
+                  );
+
                   return;
                 }
 
-                const popupHTML = `
-
-                  <div style="
-                    min-width:${
-                      isMobile
-                      ? "240px"
-                      : "360px"
-                    };
-
-                    max-width:${
-                      isMobile
-                      ? "260px"
-                      : "420px"
-                    };
-
-                    background:#050505;
-
-                    color:white;
-
-                    border:
-                    2px solid #00e5ff;
-
-                    border-radius:16px;
-
-                    padding:16px;
-
-                    line-height:1.9;
-
-                    font-size:${
-                      isMobile
-                      ? "11px"
-                      : "13px"
-                    };
-
-                    box-shadow:
-                    0 0 25px rgba(0,229,255,0.35);
-                  ">
-
-                    <div style="
-                      font-size:${
-                        isMobile
-                        ? "17px"
-                        : "22px"
-                      };
-
-                      color:#00e5ff;
-
-                      font-weight:bold;
-
-                      text-align:center;
-
-                      margin-bottom:16px;
-                    ">
-
-                      🌍 BTR ANALYTICS
-
-                    </div>
-
-                    <b>🔥 Fire Risk:</b>
-                    ${analytics.Fire_Risk || "-"}
-
-                    <br>
-
-                    <b>🔥 Fire Pixels:</b>
-                    ${Number(
-                      analytics.Fire_Pixels || 0
-                    ).toLocaleString()}
-
-                    <br>
-
-                    <b>🌲 Eco Health:</b>
-                    ${Number(
-                      analytics.Eco_Health || 0
-                    ).toFixed(2)}
-
-                    <br>
-
-                    <b>🌳 Canopy %:</b>
-                    ${Number(
-                      analytics.Canopy_pct || 0
-                    ).toFixed(2)}%
-
-                    <br>
-
-                    <b>🌿 Bush:</b>
-                    ${Number(
-                      analytics.Bush || 0
-                    ).toFixed(2)}
-
-                    <br>
-
-                    <b>🏜 Bare:</b>
-                    ${Number(
-                      analytics.Bare || 0
-                    ).toFixed(2)}
-
-                    <br>
-
-                    <b>🏢 Built:</b>
-                    ${Number(
-                      analytics.Built || 0
-                    ).toFixed(2)}
-
-                    <br>
-
-                    <b>🌾 Crop:</b>
-                    ${Number(
-                      analytics.Crop || 0
-                    ).toFixed(2)}
-
-                    <br>
-
-                    <b>💧 Water:</b>
-                    ${Number(
-                      analytics.Water || 0
-                    ).toFixed(2)}
-
-                    <br>
-
-                    <b>📉 Degraded %:</b>
-                    ${Number(
-                      analytics.Degraded_pct || 0
-                    ).toFixed(2)}%
-
-                    <br>
-
-                    <b>🌲 Dense %:</b>
-                    ${Number(
-                      analytics.Dense_pct || 0
-                    ).toFixed(2)}%
-
-                    <br>
-
-                    <b>🧪 Carbon:</b>
-                    ${Number(
-                      analytics.Carbon || 0
-                    ).toFixed(4)}
-
-                    <br>
-
-                    <b>🌿 Biomass:</b>
-                    ${Number(
-                      analytics.Biomass || 0
-                    ).toFixed(4)}
-
-                    <br>
-
-                    <b>📊 NDVI:</b>
-                    ${Number(
-                      analytics.NDVI || 0
-                    ).toFixed(4)}
-
-                    <br>
-
-                    <b>📊 NDMI:</b>
-                    ${Number(
-                      analytics.NDMI || 0
-                    ).toFixed(4)}
-
-                    <br>
-
-                    <b>🌧 Rainfall:</b>
-                    ${Number(
-                      analytics.Rainfall_mm || 0
-                    ).toFixed(2)}
-
-                    <br>
-
-                    <b>🌡 Temperature:</b>
-                    ${Number(
-                      analytics.Temperature_C || 0
-                    ).toFixed(2)}
-
-                    <br>
-
-                    <b>💧 Soil Moisture:</b>
-                    ${Number(
-                      analytics.Soil_Moisture || 0
-                    ).toFixed(4)}
-
-                    <br>
-
-                    <b>⛰ Elevation:</b>
-                    ${Number(
-                      analytics.Elevation_m || 0
-                    ).toFixed(2)} m
-
-                  </div>
-                `;
-
-                L.popup({
-
-                  maxWidth:
-                    isMobile
-                    ? 280
-                    : 440,
-
-                  autoPan:true,
-
-                  closeButton:true
-
-                })
-                .setLatLng(latlng)
-                .setContent(popupHTML)
-                .openOn(window.map);
-
-              } catch(err){
-
-                console.error(
-                  "❌ Popup Error",
-                  err
-                );
-              }
-            };
-
-            // 💻 DESKTOP
-
-            layer.on(
-              "click",
-              function(e){
-
-                console.log(
-                  "💻 CLICK WORKING"
-                );
-
-                openAnalyticsPopup(
-                  e.latlng
-                );
-
-              }
-            );
-
-            // 📱 MOBILE
-
-            layer.on(
-              "touchstart",
-              function(e){
-
-                console.log(
-                  "📱 TOUCH WORKING"
-                );
-
-                if(e.latlng){
-
-                  openAnalyticsPopup(
-                    e.latlng
+                // ==========================================
+                // 🌍 DIVISION LEVEL
+                // ==========================================
+
+                if(level === "division"){
+
+                  console.log(
+                    "🌍 ROUTE → DIVISION:",
+                    division
                   );
 
+                  await showBTRAnalyticsPanel(
+
+                    "gis_analytics_btr",
+
+                    division
+
+                  );
+
+                  return;
+                }
+
+                // ==========================================
+                // 🟩 RANGE LEVEL
+                // ==========================================
+
+                if(level === "range"){
+
+                  const rangeDocId =
+
+                    `${division}_${range}`
+                    .replace(/\s+/g,"_");
+
+                  console.log(
+                    "🛰 ROUTE → RANGE:",
+                    rangeDocId
+                  );
+
+                  await showBTRAnalyticsPanel(
+
+                    "gis_range_analytics",
+
+                    rangeDocId
+
+                  );
+
+                  return;
+                }
+
+                // ==========================================
+                // 🟨 BEAT LEVEL
+                // ==========================================
+
+                if(level === "beat"){
+
+                  const beatDocId =
+
+                    `${division}_${range}_${beat}`
+                    .replace(/\s+/g,"_");
+
+                  console.log(
+                    "🛰 ROUTE → BEAT:",
+                    beatDocId
+                  );
+
+                  await showBeatAnalyticsPanel(
+
+                    beatDocId
+
+                  );
+
+                  return;
                 }
 
               }
-            );
 
-            return;
-          }
+              catch(err){
 
-          // ====================================
-          // 🌲 NORMAL MODE
-          // ====================================
+                console.error(
+                  "❌ GIS CLICK ROUTER",
+                  err
+                );
 
-          const popupHTML = `
-
-            <div style="
-              min-width:260px;
-              font-size:13px;
-              line-height:1.8;
-            ">
-
-              <div style="
-                font-size:17px;
-                font-weight:bold;
-                color:#00e5ff;
-                margin-bottom:12px;
-              ">
-
-                🌍 GIS INFORMATION
-
-              </div>
-
-              <b>🌍 Division:</b>
-              ${division}
-
-              <br>
-
-              <b>🌳 Range:</b>
-              ${range}
-
-              <br>
-
-              <b>🟨 Beat:</b>
-              ${beat}
-
-              <br>
-
-              <b>📐 Area:</b>
-              ${area}
-
-            </div>
-          `;
-
-          layer.bindPopup(
-            popupHTML,
-            {
-              maxWidth:320,
-              autoPan:true
-            }
-          );
-
-          layer.on(
-            "click",
-            function(){
-
-              layer.openPopup();
+              }
 
             }
+
           );
+
         }
 
       })
 
       .addTo(window.map);
 
-    // ==========================================
-    // 🔥 FORCE INTERACTION
-    // ==========================================
+    // ==================================================
+    // 🔼 FRONT
+    // ==================================================
 
-    window.gisLayer.bringToFront();
+    try {
 
-    window.gisLayer.eachLayer(layer=>{
+      window.gisLayer
+      .bringToFront();
 
-      if(layer._path){
+    } catch(e){}
 
-        layer._path.style.pointerEvents =
-          "auto";
-
-        layer._path.style.cursor =
-          "pointer";
-      }
-
-    });
-
-    // ==========================================
+    // ==================================================
     // 🎯 FIT
-    // ==========================================
+    // ==================================================
 
     try {
 
@@ -10330,22 +10194,27 @@ async function renderFilteredGIS(){
             animate:false
           }
         );
+
       }
 
     } catch(e){}
 
     console.log(
-      "✅ GIS Rendered:",
+      "✅ GIS RENDERED:",
       features.length
     );
 
-  } catch(e){
+  }
+
+  catch(e){
 
     console.error(
       "❌ renderFilteredGIS",
       e
     );
+
   }
+
 }// ======================================================
 // 🎨 RENDER COMPARTMENTS
 // ======================================================
