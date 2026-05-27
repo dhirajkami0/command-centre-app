@@ -6030,135 +6030,207 @@ window.map.on(
       // 🟨 BEAT BACKGROUND CLICK
       // ==========================================
 
-      if(level === "beat"){
+      // ==========================================
+// 🟨 BEAT BACKGROUND CLICK
+// ==========================================
 
-        const division =
+if(level === "beat"){
 
-          String(
+  const division =
 
-            window.gisFilter?.division ||
+    String(
 
-            ""
+      window.gisFilter?.division ||
 
-          ).trim();
+      ""
 
-        const range =
+    ).trim();
 
-          String(
+  const range =
 
-            window.gisFilter?.range ||
+    String(
 
-            ""
+      window.gisFilter?.range ||
 
-          ).trim();
+      ""
 
-        const beat =
+    ).trim();
 
-          String(
+  const beat =
 
-            window.gisFilter?.beat ||
+    String(
 
-            ""
+      window.gisFilter?.beat ||
 
-          ).trim();
+      ""
 
-        // ======================================
-        // 🔥 DIVISION NORMALIZATION
-        // ======================================
+    ).trim();
 
-        let firestoreDivision =
-          division;
+  // ======================================
+  // 🔥 DIVISION NORMALIZATION
+  // ======================================
 
-        if(division === "BTR_W"){
+  let firestoreDivision =
+    division;
 
-          firestoreDivision =
-            "BuxaTR_WEST";
-        }
+  if(division === "BTR_W"){
 
-        if(division === "BTR_E"){
+    firestoreDivision =
+      "BuxaTR_WEST";
+  }
 
-          firestoreDivision =
-            "BuxaTR_EAST";
-        }
+  if(division === "BTR_E"){
 
-        // ======================================
-        // 🔥 RANGE NORMALIZATION
-        // ======================================
+    firestoreDivision =
+      "BuxaTR_EAST";
+  }
 
-        let safeRange =
-          String(range || "").trim();
+  // ======================================
+  // 🔥 RANGE NORMALIZATION
+  // ======================================
 
-        safeRange =
+  let safeRange =
+    String(range || "").trim();
 
-          safeRange
+  safeRange =
 
-          .replace(
-            /^West([A-Z])/,
-            "West_$1"
-          )
+    safeRange
 
-          .replace(
-            /^East([A-Z])/,
-            "East_$1"
-          )
+    // WestDamanpur
+    .replace(
+      /^West([A-Z])/,
+      "West_$1"
+    )
 
-          .replace(
-            /^North([A-Z])/,
-            "North_$1"
-          )
+    // EastRajabhatkhawa
+    .replace(
+      /^East([A-Z])/,
+      "East_$1"
+    )
 
-          .replace(
-            /^South([A-Z])/,
-            "South_$1"
-          )
+    // NorthRydak
+    .replace(
+      /^North([A-Z])/,
+      "North_$1"
+    )
 
-          .replace(/\s+/g,"_")
+    // SouthRydak
+    .replace(
+      /^South([A-Z])/,
+      "South_$1"
+    )
 
-          .replace(/__+/g,"_")
+    .replace(/\s+/g,"_")
 
-          .trim();
+    .replace(/__+/g,"_")
 
-        // ======================================
-        // 🔥 BEAT NORMALIZATION
-        // ======================================
+    .trim();
 
-        const safeBeat =
+  // ======================================
+  // 🔥 BEAT NORMALIZATION
+  // IMPORTANT:
+  // MATCH FIRESTORE IDS EXACTLY
+  // ======================================
 
-          String(beat || "")
+  let safeBeat =
+    String(beat || "").trim();
 
-          .replace(
-            /([a-z])([A-Z])/g,
-            "$1_$2"
-          )
+  safeBeat =
 
-          .replace(/\s+/g,"_")
+    safeBeat
 
-          .replace(/__+/g,"_")
+    // PoroEast → Poro-East
+    .replace(
+      /^PoroEast$/i,
+      "Poro-East"
+    )
 
-          .trim();
+    // PoroWest → Poro-West
+    .replace(
+      /^PoroWest$/i,
+      "Poro-West"
+    )
 
-        // ======================================
-        // 🔥 FINAL DOC ID
-        // ======================================
+    // GaramEast → Garam-East
+    .replace(
+      /^GaramEast$/i,
+      "Garam-East"
+    )
 
-        const beatDocId =
+    // GaramWest → Garam-West
+    .replace(
+      /^GaramWest$/i,
+      "Garam-West"
+    )
 
-          `${firestoreDivision}_${safeRange}_${safeBeat}`;
+    // NimatiEast → Nimati-East
+    .replace(
+      /^NimatiEast$/i,
+      "Nimati-East"
+    )
 
-        console.log(
-          "🛰 BEAT BG CLICK:",
-          beatDocId
-        );
+    // NimatiWest → Nimati-West
+    .replace(
+      /^NimatiWest$/i,
+      "Nimati-West"
+    )
 
-        await showBeatAnalyticsPanel(
+    // EastDamanpur → East_Damanpur
+    .replace(
+      /^EastDamanpur$/i,
+      "East_Damanpur"
+    )
 
-          beatDocId
+    // WestDamanpur → West_Damanpur
+    .replace(
+      /^WestDamanpur$/i,
+      "West_Damanpur"
+    )
 
-        );
+    // EastRajabhatkhawa
+    .replace(
+      /^EastRajabhatkhawa$/i,
+      "East_Rajabhatkhawa"
+    )
 
-        return;
-      }
+    // NorthRydak
+    .replace(
+      /^NorthRydak$/i,
+      "North_Rydak"
+    )
 
+    // SouthRydak
+    .replace(
+      /^SouthRydak$/i,
+      "South_Rydak"
+    )
+
+    .trim();
+
+  // ======================================
+  // 🔥 FINAL DOC ID
+  // ======================================
+
+  const beatDocId =
+    safeBeat;
+
+  console.log(
+    "🛰 BEAT BG CLICK:",
+    beatDocId
+  );
+
+  // ======================================
+  // 🔥 LOAD PANEL
+  // ======================================
+
+  await showBeatAnalyticsPanel(
+
+    beatDocId
+
+  );
+
+  return;
+}
     }
 
     catch(err){
@@ -6210,7 +6282,96 @@ const popupLevel =
 
   "btr";
 
+// =================================================
+// 🔥 DYNAMIC PANEL CONFIG
+// =================================================
 
+let panelType =
+  "BTR";
+
+let panelEmoji =
+  "🌍";
+
+let panelCollection =
+  "BTR Intelligence";
+
+let ecosystemLabel =
+  "BTR landscape";
+
+let ecosystemType =
+  "landscape";
+
+if(popupLevel === "division"){
+
+  panelType =
+    "Division";
+
+  panelEmoji =
+    "🛰";
+
+  panelCollection =
+    "Division Intelligence";
+
+  ecosystemLabel =
+    "Division ecosystem";
+
+  ecosystemType =
+    "division";
+}
+
+if(popupLevel === "range"){
+
+  panelType =
+    "Range";
+
+  panelEmoji =
+    "🟩";
+
+  panelCollection =
+    "Range Intelligence";
+
+  ecosystemLabel =
+    "Range ecosystem";
+
+  ecosystemType =
+    "range";
+}
+
+if(popupLevel === "beat"){
+
+  panelType =
+    "Beat";
+
+  panelEmoji =
+    "🟨";
+
+  panelCollection =
+    "Beat Intelligence";
+
+  ecosystemLabel =
+    "Beat ecosystem";
+
+  ecosystemType =
+    "beat";
+}
+
+if(popupLevel === "compartment"){
+
+  panelType =
+    "Compartment";
+
+  panelEmoji =
+    "📦";
+
+  panelCollection =
+    "Compartment Intelligence";
+
+  ecosystemLabel =
+    "Compartment ecosystem";
+
+  ecosystemType =
+    "compartment";
+}
 
 // =================================================
 // 🔥 BLOCK WRONG POPUPS
@@ -6363,7 +6524,7 @@ if(
         font-weight:bold;
         font-size:15px;
       ">
-        ⏳ Loading BTR Intelligence...
+       ⏳ Loading ${panelCollection}...
       </div>
 
     `;
@@ -6392,7 +6553,7 @@ if(!d){
       text-align:center;
       font-weight:bold;
     ">
-      ❌ BTR analytics not found
+     ❌ ${panelCollection} not found
     </div>
 
   `;
@@ -6558,7 +6719,7 @@ if(!d){
           color:#00e5ff;
           margin-bottom:8px;
         ">
-          🌍 ${d.Name}
+          ${panelEmoji} ${d.Name}
         </div>
 
         <div style="
@@ -6566,9 +6727,10 @@ if(!d){
           opacity:0.82;
           line-height:1.6;
         ">
-          Enterprise ecological intelligence layer for
-          full BTR landscape analysis.
-        </div>
+         
+         Enterprise ecological intelligence layer for
+${ecosystemLabel} analysis.
+</div>
 
         <div style="
           margin-top:10px;
@@ -6979,10 +7141,10 @@ if(!d){
           color:#00e5ff;
           margin-bottom:10px;
         ">
-          🧠 AI Ecosystem Summary
+          🧠  ${panelType} Summary
         </div>
 
-        🌍 BTR landscape is primarily an
+        🌍 ${ecosystemLabel} is primarily an
         <b>open forest + grassland dominated ecosystem</b>
         with moderate ecological health.
 
