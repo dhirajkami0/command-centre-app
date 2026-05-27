@@ -4741,7 +4741,7 @@ try {
 
       initDutyControl?.();
       loadRangeKML?.();
-      loadCompartmentsFromSheet?.();
+      
 
       if (navigator.onLine) {
         try {
@@ -18866,59 +18866,6 @@ function openStatsPopup(name, latlng) {
     ============================================================ */
 
     /* 📍 LOAD COMPARTMENTS */
-    function loadCompartmentsFromSheet() {
-
-      compartmentLabelLayer.clearLayers();
-
-      callBackend("getCompartmentLocations")
-        .then(function (data) {
-
-          if (!data) return;
-
-          data.forEach(function (c) {
-
-            if (!c.lat || !c.lon) return;
-
-            const marker = L.marker([c.lat, c.lon], {
-              icon: L.divIcon({
-                className: 'rangeLabel',
-                html: `<div class="labelBox">${c.name}</div>`
-              })
-            }).addTo(compartmentLabelLayer);
-
-            marker.on('click', e => openStatsPopup(c.name, e.latlng));
-
-          });
-
-        });
-
-    }
-
-    /* 📊 SUMMARY */
-    function showCompartmentSummary(data) {
-
-      summaryLayer.clearLayers();
-
-      data.forEach(c => {
-
-        if (!c.polygon) return;
-
-        let fill = c.coverage >= 80 ? "#00ff00" :
-          c.coverage > 0 ? "#ffaa00" : "#ff0000";
-
-        L.polygon(c.polygon, {
-          color: "#fff",
-          fillColor: fill,
-          fillOpacity: 0.6
-        })
-          .bindPopup(`📍 ${c.name}<br>${c.coverage}%`)
-          .addTo(summaryLayer);
-
-      });
-
-      summaryLayer.bringToFront();
-    }
-
     /* 🟩 GRID */
  function showGridStatus(data) {
 
@@ -23493,7 +23440,6 @@ function refreshAll() {
   /* 🔥 KEEP EXISTING SAFE LOADS */
   loadIncidents();
   loadPredictions();
-  loadCompartmentsFromSheet();
 
   /* 🔥 STAFF (SIMPLIFIED — DIRECT LOAD) */
   loadStaff();
