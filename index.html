@@ -6232,6 +6232,83 @@ if(level === "beat"){
   );
   return;
 }
+
+      // ==========================================
+// 📦 COMPARTMENT BACKGROUND CLICK
+// ==========================================
+
+if(level === "compartment"){
+
+  const compartment =
+
+    String(
+
+      window.gisFilter?.compartment ||
+
+      ""
+
+    ).trim();
+
+  // ======================================
+  // ❌ INVALID
+  // ======================================
+
+  if(
+
+    !compartment ||
+
+    compartment === "ALL"
+
+  ){
+
+    console.warn(
+      "⚠ Invalid compartment"
+    );
+
+    return;
+  }
+
+  // ======================================
+  // 🔥 NORMALIZE
+  // IMPORTANT:
+  // Adma BL1
+  // → Adma_BL1
+  //
+  // C Rydak BL1
+  // → C_Rydak_BL1
+  // ======================================
+
+  let compartmentDocId =
+
+    compartment
+
+    // spaces → underscore
+    .replace(/\s+/g,"_")
+
+    // cleanup
+    .replace(/__+/g,"_")
+
+    .trim();
+
+  console.log(
+    "📦 COMPARTMENT BG CLICK:",
+    compartmentDocId
+  );
+
+  // ======================================
+  // 🔥 LOAD PANEL
+  // ======================================
+
+  await showBTRAnalyticsPanel(
+
+    "gis_compartment_analytics",
+
+    compartmentDocId
+
+  );
+
+  return;
+}
     }
 
     catch(err){
