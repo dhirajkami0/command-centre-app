@@ -5963,17 +5963,38 @@ window.map.on(
         // 🔥 RANGE NORMALIZATION
         // ======================================
 
-        const safeRange =
+        let safeRange =
+          String(range || "").trim();
 
-          String(range || "")
+        safeRange =
 
-          // camelCase → underscore
+          safeRange
+
+          // WestDamanpur
           .replace(
-            /([a-z])([A-Z])/g,
-            "$1_$2"
+            /^West([A-Z])/,
+            "West_$1"
           )
 
-          // spaces → underscore
+          // EastRajabhatkhawa
+          .replace(
+            /^East([A-Z])/,
+            "East_$1"
+          )
+
+          // NorthRydak
+          .replace(
+            /^North([A-Z])/,
+            "North_$1"
+          )
+
+          // SouthRydak
+          .replace(
+            /^South([A-Z])/,
+            "South_$1"
+          )
+
+          // spaces
           .replace(/\s+/g,"_")
 
           // cleanup
@@ -6064,13 +6085,31 @@ window.map.on(
         // 🔥 RANGE NORMALIZATION
         // ======================================
 
-        const safeRange =
+        let safeRange =
+          String(range || "").trim();
 
-          String(range || "")
+        safeRange =
+
+          safeRange
 
           .replace(
-            /([a-z])([A-Z])/g,
-            "$1_$2"
+            /^West([A-Z])/,
+            "West_$1"
+          )
+
+          .replace(
+            /^East([A-Z])/,
+            "East_$1"
+          )
+
+          .replace(
+            /^North([A-Z])/,
+            "North_$1"
+          )
+
+          .replace(
+            /^South([A-Z])/,
+            "South_$1"
           )
 
           .replace(/\s+/g,"_")
@@ -9886,23 +9925,18 @@ async function loadBTRAnalytics(
     }
 
     // ==========================================
-    // 🔥 NORMALIZE DOCUMENT IDS
+    // 🔥 ONLY SPACE NORMALIZATION
+    // IMPORTANT:
+    // DO NOT BREAK:
+    // BuxaTR_WEST
     // ==========================================
 
     documentId =
 
-      String(documentId || "")
+      documentId
 
-      // camelCase → underscore
-      .replace(
-        /([a-z])([A-Z])/g,
-        "$1_$2"
-      )
-
-      // spaces → underscore
       .replace(/\s+/g,"_")
 
-      // cleanup
       .replace(/__+/g,"_")
 
       .trim();
@@ -10020,10 +10054,6 @@ async function loadBTRAnalytics(
     console.log(
       "✅ Analytics loaded:",
       cacheKey
-    );
-
-    console.log(
-      data
     );
 
     return data;
