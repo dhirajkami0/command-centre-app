@@ -5933,7 +5933,133 @@ async function showBTRAnalyticsPanel(
   collectionName,
   documentId
 
+){ // =================================================
+// 🔒 CENTRAL POPUP AUTHORITY
+// =================================================
+
+const popupLevel =
+
+  window.activePopupContext?.level ||
+
+  "btr";
+
+
+
+// =================================================
+// 🔥 BLOCK WRONG POPUPS
+// =================================================
+
+if(
+
+  collectionName ===
+  "gis_analytics_btr"
+
 ){
+
+  // ---------------------------------------------
+  // ONLY BTR / DIVISION
+  // ---------------------------------------------
+
+  if(
+
+    popupLevel !== "btr" &&
+
+    popupLevel !== "division"
+
+  ){
+
+    console.log(
+      "⛔ BLOCKED BTR POPUP"
+    );
+
+    return;
+  }
+
+}
+
+
+
+// =================================================
+// RANGE BLOCK
+// =================================================
+
+if(
+
+  collectionName ===
+  "gis_range_analytics"
+
+){
+
+  if(
+
+    popupLevel !== "range"
+
+  ){
+
+    console.log(
+      "⛔ BLOCKED RANGE POPUP"
+    );
+
+    return;
+  }
+
+}
+
+
+
+// =================================================
+// BEAT BLOCK
+// =================================================
+
+if(
+
+  collectionName ===
+  "gis_beat_analytics"
+
+){
+
+  if(
+
+    popupLevel !== "beat"
+
+  ){
+
+    console.log(
+      "⛔ BLOCKED BEAT POPUP"
+    );
+
+    return;
+  }
+
+}
+
+
+
+// =================================================
+// COMPARTMENT BLOCK
+// =================================================
+
+if(
+
+  collectionName ===
+  "gis_compartment_analytics"
+
+){
+
+  if(
+
+    popupLevel !== "compartment"
+
+  ){
+
+    console.log(
+      "⛔ BLOCKED COMPARTMENT POPUP"
+    );
+
+    return;
+  }
+
+}
 
   try{
 
@@ -8140,6 +8266,18 @@ ${pct(data.health)} / 100
 // ======================================================
 // 🌍 GIS FILTER STATE
 // ======================================================
+  window.activePopupContext = {
+
+  level : "btr",
+
+  division : "ALL",
+
+  range : "ALL",
+
+  beat : "ALL",
+
+  compartment : "ALL"
+};
     // ======================================================
 // 🌍 COMPARTMENT FILE REGISTRY
 // ======================================================
@@ -11583,6 +11721,34 @@ async function populateDivisionButtons(){
           };
 
           // ====================================
+// 🌍 POPUP AUTHORITY
+// ====================================
+
+window.activePopupContext.level =
+
+  division === "ALL"
+
+  ? "btr"
+
+  : "division";
+
+window.activePopupContext.division =
+  division;
+
+window.activePopupContext.range =
+  "ALL";
+
+window.activePopupContext.beat =
+  "ALL";
+
+window.activePopupContext.compartment =
+  "ALL";
+
+console.log(
+  "🎯 POPUP LEVEL:",
+  window.activePopupContext.level
+);
+          // ====================================
           // 👑 ADMIN ALL
           // ====================================
 
@@ -12033,7 +12199,25 @@ async function populateRangeButtons(){
 
           window.gisFilter.range =
             range;
+// ====================================
+// 🌍 POPUP AUTHORITY
+// ====================================
 
+window.activePopupContext.level =
+  "range";
+
+window.activePopupContext.range =
+  range;
+
+window.activePopupContext.beat =
+  "ALL";
+
+window.activePopupContext.compartment =
+  "ALL";
+
+console.log(
+  "🎯 POPUP LEVEL: RANGE"
+);
           window.gisFilter.beat =
             "ALL";
 
@@ -12534,7 +12718,22 @@ async function populateBeatButtons(){
 
           window.gisFilter.beat =
             this.dataset.value;
+// ====================================
+// 🌍 POPUP AUTHORITY
+// ====================================
 
+window.activePopupContext.level =
+  "beat";
+
+window.activePopupContext.beat =
+  this.dataset.value;
+
+window.activePopupContext.compartment =
+  "ALL";
+
+console.log(
+  "🎯 POPUP LEVEL: BEAT"
+);
           // ====================================
           // 🟧 RESET COMPARTMENT
           // ====================================
@@ -12761,7 +12960,19 @@ async function populateCompartmentButtons(){
 
           window.gisFilter.compartment =
             this.dataset.value;
+ // ====================================
+// 🌍 POPUP AUTHORITY
+// ====================================
 
+window.activePopupContext.level =
+  "compartment";
+
+window.activePopupContext.compartment =
+  this.dataset.value;
+
+console.log(
+  "🎯 POPUP LEVEL: COMPARTMENT"
+);
           // ====================================
           // 🎨 RENDER
           // ====================================
