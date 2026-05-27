@@ -9727,6 +9727,12 @@ async function loadBTRAnalytics(
 // NO POPUP SYSTEM HERE
 // ======================================================
 
+// ======================================================
+// 🌍 FILTER + RENDER GIS
+// FULL BUTTON AWARE CENTRAL ROUTER
+// FULLY ALIGNED
+// ======================================================
+
 function renderFilteredGIS(){
 
   try {
@@ -9748,20 +9754,37 @@ function renderFilteredGIS(){
     ];
 
     // ==================================================
+    // 🌍 FILTERS
+    // ==================================================
+
+    const activeDivision =
+
+      String(
+        window.gisFilter?.division || "ALL"
+      );
+
+    const activeRange =
+
+      String(
+        window.gisFilter?.range || "ALL"
+      );
+
+    const activeBeat =
+
+      String(
+        window.gisFilter?.beat || "ALL"
+      );
+
+    // ==================================================
     // 🌍 DIVISION FILTER
     // ==================================================
 
-    if(
+    if(activeDivision !== "ALL"){
 
-      window.gisFilter?.division &&
-      window.gisFilter.division !== "ALL"
-
-    ){
-
-      const targetDivision =
+      const normalizedDivision =
 
         normalizeDivision(
-          window.gisFilter.division
+          activeDivision
         );
 
       features =
@@ -9770,7 +9793,7 @@ function renderFilteredGIS(){
           const props =
             f.properties || {};
 
-          const div =
+          const featureDivision =
 
             normalizeDivision(
 
@@ -9783,7 +9806,10 @@ function renderFilteredGIS(){
             );
 
           return (
-            div === targetDivision
+
+            featureDivision ===
+            normalizedDivision
+
           );
 
         });
@@ -9794,18 +9820,7 @@ function renderFilteredGIS(){
     // 🟩 RANGE FILTER
     // ==================================================
 
-    if(
-
-      window.gisFilter?.range &&
-      window.gisFilter.range !== "ALL"
-
-    ){
-
-      const targetRange =
-
-        String(
-          window.gisFilter.range
-        ).trim();
+    if(activeRange !== "ALL"){
 
       features =
         features.filter(f => {
@@ -9813,7 +9828,7 @@ function renderFilteredGIS(){
           const props =
             f.properties || {};
 
-          const range =
+          const featureRange =
 
             String(
 
@@ -9826,7 +9841,8 @@ function renderFilteredGIS(){
             ).trim();
 
           return (
-            range === targetRange
+            featureRange ===
+            activeRange
           );
 
         });
@@ -9837,18 +9853,7 @@ function renderFilteredGIS(){
     // 🟨 BEAT FILTER
     // ==================================================
 
-    if(
-
-      window.gisFilter?.beat &&
-      window.gisFilter.beat !== "ALL"
-
-    ){
-
-      const targetBeat =
-
-        String(
-          window.gisFilter.beat
-        ).trim();
+    if(activeBeat !== "ALL"){
 
       features =
         features.filter(f => {
@@ -9856,7 +9861,7 @@ function renderFilteredGIS(){
           const props =
             f.properties || {};
 
-          const beat =
+          const featureBeat =
 
             String(
 
@@ -9869,7 +9874,8 @@ function renderFilteredGIS(){
             ).trim();
 
           return (
-            beat === targetBeat
+            featureBeat ===
+            activeBeat
           );
 
         });
@@ -9883,14 +9889,14 @@ function renderFilteredGIS(){
     if(features.length === 0){
 
       console.warn(
-        "⚠ No GIS features after filter"
+        "⚠ No GIS features"
       );
 
       return;
     }
 
     // ==================================================
-    // 🎨 RENDER
+    // 🎨 CREATE LAYER
     // ==================================================
 
     window.gisLayer =
@@ -9913,23 +9919,19 @@ function renderFilteredGIS(){
 
             "btr";
 
-          // ============================================
-          // STYLE
-          // ============================================
-
           return {
 
             color:
 
-              level === "range"
-
-              ? "#00e5ff"
-
-              :
-
               level === "beat"
 
               ? "#ff9800"
+
+              :
+
+              level === "range"
+
+              ? "#00e5ff"
 
               :
 
@@ -9990,7 +9992,7 @@ function renderFilteredGIS(){
                 L.DomEvent.stopPropagation(e);
 
                 // ==========================================
-                // 🌍 ACTIVE POPUP LEVEL
+                // 🌍 ACTIVE LEVEL
                 // ==========================================
 
                 const level =
@@ -10012,9 +10014,13 @@ function renderFilteredGIS(){
                 const props =
                   feature.properties || {};
 
-                const division =
+                // ==========================================
+                // 🌍 RAW VALUES
+                // ==========================================
 
-                  normalizeDivision(
+                const rawDivision =
+
+                  String(
 
                     props.Division ||
 
@@ -10022,9 +10028,9 @@ function renderFilteredGIS(){
 
                     ""
 
-                  );
+                  ).trim();
 
-                const range =
+                const rawRange =
 
                   String(
 
@@ -10036,7 +10042,7 @@ function renderFilteredGIS(){
 
                   ).trim();
 
-                const beat =
+                const rawBeat =
 
                   String(
 
@@ -10077,14 +10083,14 @@ function renderFilteredGIS(){
 
                   console.log(
                     "🌍 ROUTE → DIVISION:",
-                    division
+                    rawDivision
                   );
 
                   await showBTRAnalyticsPanel(
 
                     "gis_analytics_btr",
 
-                    division
+                    rawDivision
 
                   );
 
@@ -10099,7 +10105,8 @@ function renderFilteredGIS(){
 
                   const rangeDocId =
 
-                    `${division}_${range}`
+                    `${rawDivision}_${rawRange}`
+
                     .replace(/\s+/g,"_");
 
                   console.log(
@@ -10126,7 +10133,8 @@ function renderFilteredGIS(){
 
                   const beatDocId =
 
-                    `${division}_${range}_${beat}`
+                    `${rawDivision}_${rawRange}_${rawBeat}`
+
                     .replace(/\s+/g,"_");
 
                   console.log(
@@ -10176,7 +10184,7 @@ function renderFilteredGIS(){
     } catch(e){}
 
     // ==================================================
-    // 🎯 FIT
+    // 🎯 FIT BOUNDS
     // ==================================================
 
     try {
@@ -10187,17 +10195,64 @@ function renderFilteredGIS(){
 
       if(bounds.isValid()){
 
+        // ==============================================
+        // 📱 MOBILE OFFSET FIT
+        // ==============================================
+
+        const isMobile =
+          window.innerWidth < 768;
+
         window.map.fitBounds(
+
           bounds,
+
           {
-            padding:[20,20],
-            animate:false
+
+            paddingTopLeft:
+
+              isMobile
+
+              ? [20,120]
+
+              : [20,20],
+
+            paddingBottomRight:
+
+              isMobile
+
+              ? [20,20]
+
+              : [20,20],
+
+            animate:false,
+
+            maxZoom:
+
+              activeBeat !== "ALL"
+
+              ? 15
+
+              :
+
+              activeRange !== "ALL"
+
+              ? 13
+
+              : 11
           }
+
         );
 
       }
 
-    } catch(e){}
+    } catch(e){
+
+      console.warn(
+        "⚠ Fit bounds failed",
+        e
+      );
+
+    }
 
     console.log(
       "✅ GIS RENDERED:",
