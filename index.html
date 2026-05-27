@@ -5806,6 +5806,7 @@ window.gridRootLayer.addTo(map);
 // ===============================
 // 🔥 GRID SYNC CORE (NEW)
 // ===============================
+    
   // =========================================================
 // 🌍 BTR MASTER ANALYTICS POPUP
 // =========================================================
@@ -6076,6 +6077,10 @@ window.map.on(
 // 🌍 DYNAMIC ANALYTICS CLICK SYSTEM
 // BTR + DIVISION + RANGE
 // ======================================================
+    // ======================================================
+// 🌍 FIRESTORE DIVISION MAP
+// ======================================================
+
 
     /* ============================================================
        📊 RANGE BUTTON (SAFE)
@@ -9903,6 +9908,65 @@ async function loadBTRAnalytics(
 // FINAL ENTERPRISE BUTTON AWARE VERSION
 // FULLY ALIGNED
 // ======================================================
+// ======================================================
+// 🌍 FIRESTORE DIVISION MAP
+// ======================================================
+
+function getFirestoreDivision(
+  division
+){
+
+  division =
+
+    String(division || "")
+    .trim()
+    .toUpperCase();
+
+  // ==============================================
+  // WEST
+  // ==============================================
+
+  if(
+
+    division === "BTR_W"
+
+    ||
+
+    division === "BUXATR_WEST"
+
+  ){
+
+    return "BuxaTR_WEST";
+  }
+
+  // ==============================================
+  // EAST
+  // ==============================================
+
+  if(
+
+    division === "BTR_E"
+
+    ||
+
+    division === "BUXATR_EAST"
+
+  ){
+
+    return "BuxaTR_EAST";
+  }
+
+  // ==============================================
+  // DEFAULT
+  // ==============================================
+
+  return division;
+}
+
+// ======================================================
+// 🌍 FILTER + RENDER GIS
+// FINAL ENTERPRISE VERSION
+// ======================================================
 
 function renderFilteredGIS(){
 
@@ -10229,9 +10293,20 @@ function renderFilteredGIS(){
 
                   ).trim();
 
+                // ==========================================
+                // 🌍 FIRESTORE DIVISION
+                // ==========================================
+
+                const firestoreDivision =
+
+                  getFirestoreDivision(
+                    rawDivision
+                  );
+
                 console.log({
 
                   rawDivision,
+                  firestoreDivision,
                   rawRange,
                   rawBeat
 
@@ -10242,10 +10317,6 @@ function renderFilteredGIS(){
                 // ==========================================
 
                 if(level === "btr"){
-
-                  console.log(
-                    "🌍 ROUTE → BTR"
-                  );
 
                   await showBTRAnalyticsPanel(
 
@@ -10264,26 +10335,6 @@ function renderFilteredGIS(){
 
                 if(level === "division"){
 
-                  let firestoreDivision =
-                    rawDivision;
-
-                  if(rawDivision === "BTR_W"){
-
-                    firestoreDivision =
-                      "BuxaTR_WEST";
-                  }
-
-                  if(rawDivision === "BTR_E"){
-
-                    firestoreDivision =
-                      "BuxaTR_EAST";
-                  }
-
-                  console.log(
-                    "🌍 ROUTE → DIVISION:",
-                    firestoreDivision
-                  );
-
                   await showBTRAnalyticsPanel(
 
                     "gis_analytics_btr",
@@ -10301,29 +10352,6 @@ function renderFilteredGIS(){
 
                 if(level === "range"){
 
-                  let firestoreDivision =
-                    rawDivision;
-
-                  // ======================================
-                  // 🔥 FIX NORMALIZED VALUES
-                  // ======================================
-
-                  if(rawDivision === "BTR_W"){
-
-                    firestoreDivision =
-                      "BuxaTR_WEST";
-                  }
-
-                  if(rawDivision === "BTR_E"){
-
-                    firestoreDivision =
-                      "BuxaTR_EAST";
-                  }
-
-                  // ======================================
-                  // 🛰 FINAL DOC ID
-                  // ======================================
-
                   const rangeDocId =
 
                     `${firestoreDivision}_${rawRange}`
@@ -10334,10 +10362,6 @@ function renderFilteredGIS(){
                     "🛰 FINAL RANGE DOC:",
                     rangeDocId
                   );
-
-                  // ======================================
-                  // 🌍 CENTRAL POPUP ENGINE
-                  // ======================================
 
                   await showBTRAnalyticsPanel(
 
@@ -10356,21 +10380,6 @@ function renderFilteredGIS(){
 
                 if(level === "beat"){
 
-                  let firestoreDivision =
-                    rawDivision;
-
-                  if(rawDivision === "BTR_W"){
-
-                    firestoreDivision =
-                      "BuxaTR_WEST";
-                  }
-
-                  if(rawDivision === "BTR_E"){
-
-                    firestoreDivision =
-                      "BuxaTR_EAST";
-                  }
-
                   const beatDocId =
 
                     `${firestoreDivision}_${rawRange}_${rawBeat}`
@@ -10378,7 +10387,7 @@ function renderFilteredGIS(){
                     .replace(/\s+/g,"_");
 
                   console.log(
-                    "🛰 BEAT DOC:",
+                    "🛰 FINAL BEAT DOC:",
                     beatDocId
                   );
 
@@ -10424,7 +10433,7 @@ function renderFilteredGIS(){
     } catch(e){}
 
     // ==================================================
-    // 🎯 PERFECT CENTER FIT
+    // 🎯 PERFECT VISUAL CENTER FIT
     // ==================================================
 
     try {
@@ -10437,10 +10446,6 @@ function renderFilteredGIS(){
 
         const isMobile =
           window.innerWidth < 768;
-
-        // ==============================================
-        // 📱 RIGHT PANEL OFFSET
-        // ==============================================
 
         const panel =
 
@@ -10462,10 +10467,6 @@ function renderFilteredGIS(){
           ? panel.offsetWidth + 40
 
           : 40;
-
-        // ==============================================
-        // 🌍 FIT BOUNDS
-        // ==============================================
 
         window.map.fitBounds(
 
