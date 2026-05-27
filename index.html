@@ -11296,27 +11296,25 @@ async function populateDivisionButtons(){
           // ====================================
 // 🌍 POPUP AUTHORITY
 // ====================================
+window.activePopupContext = {
 
-window.activePopupContext.level =
+  level :
 
-  division === "ALL"
+    division === "ALL"
 
-  ? "btr"
+    ? "btr"
 
-  : "division";
+    : "division",
 
-window.activePopupContext.division =
-  division;
+  division : division,
 
-window.activePopupContext.range =
-  "ALL";
+  range : "ALL",
 
-window.activePopupContext.beat =
-  "ALL";
+  beat : "ALL",
 
-window.activePopupContext.compartment =
-  "ALL";
+  compartment : "ALL"
 
+};
 console.log(
   "🎯 POPUP LEVEL:",
   window.activePopupContext.level
@@ -11776,18 +11774,19 @@ async function populateRangeButtons(){
 // 🌍 POPUP AUTHORITY
 // ====================================
 
-window.activePopupContext.level =
-  "range";
+window.activePopupContext = {
 
-window.activePopupContext.range =
-  range;
+  level : "range",
 
-window.activePopupContext.beat =
-  "ALL";
+  division : division,
 
-window.activePopupContext.compartment =
-  "ALL";
+  range : range,
 
+  beat : "ALL",
+
+  compartment : "ALL"
+
+};
 console.log(
   "🎯 POPUP LEVEL: RANGE"
 );
@@ -12488,17 +12487,22 @@ async function populateBeatButtons(){
 // ====================================
 // 🌍 POPUP AUTHORITY
 // ====================================
+window.activePopupContext = {
 
-window.activePopupContext.level =
-  "beat";
+  level : "beat",
 
-window.activePopupContext.beat =
-  this.dataset.value;
+  division :
+    window.gisFilter.division,
 
-window.activePopupContext.compartment =
-  "ALL";
+  range :
+    window.gisFilter.range,
 
-console.log(
+  beat :
+    this.dataset.value,
+
+  compartment : "ALL"
+
+};console.log(
   "🎯 POPUP LEVEL: BEAT"
 );
           // ====================================
@@ -12731,12 +12735,23 @@ async function populateCompartmentButtons(){
 // 🌍 POPUP AUTHORITY
 // ====================================
 
-window.activePopupContext.level =
-  "compartment";
+window.activePopupContext = {
 
-window.activePopupContext.compartment =
-  this.dataset.value;
+  level : "compartment",
 
+  division :
+    window.gisFilter.division,
+
+  range :
+    window.gisFilter.range,
+
+  beat :
+    window.gisFilter.beat,
+
+  compartment :
+    this.dataset.value
+
+};
 console.log(
   "🎯 POPUP LEVEL: COMPARTMENT"
 );
