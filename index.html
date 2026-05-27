@@ -5809,7 +5809,265 @@ window.gridRootLayer.addTo(map);
   // =========================================================
 // 🌍 BTR MASTER ANALYTICS POPUP
 // =========================================================
+// ======================================================
+// 🌍 CENTRAL MAP CLICK ROUTER
+// BUTTON AWARE
+// FINAL VERSION
+// ======================================================
 
+window.map.on(
+
+  "click",
+
+  async function(e){
+
+    try{
+
+      // ==========================================
+      // 🔒 ACTIVE CONTEXT
+      // ==========================================
+
+      const level =
+
+        window.activePopupContext
+        ?.level ||
+
+        "btr";
+
+      console.log(
+        "🎯 MAP CLICK LEVEL:",
+        level
+      );
+
+      // ==========================================
+      // ❌ ONLY EMPTY MAP CLICK
+      // ==========================================
+      // IMPORTANT:
+      // Polygon clicks already handled inside:
+      // - renderFilteredGIS()
+      // - renderFilteredCompartments()
+      //
+      // So this map click should ONLY
+      // handle empty background clicks.
+      // ==========================================
+
+      if(
+
+        e.originalEvent &&
+        e.originalEvent._stopped
+
+      ){
+
+        return;
+      }
+
+      // ==========================================
+      // 🌍 BTR BACKGROUND CLICK
+      // ==========================================
+
+      if(level === "btr"){
+
+        await showBTRAnalyticsPanel(
+
+          "gis_analytics_btr",
+
+          "BTR_Circle"
+
+        );
+
+        return;
+      }
+
+      // ==========================================
+      // 🌍 DIVISION BACKGROUND CLICK
+      // ==========================================
+
+      if(level === "division"){
+
+        const division =
+
+          String(
+
+            window.gisFilter?.division ||
+
+            ""
+
+          ).trim();
+
+        let firestoreDivision =
+          division;
+
+        if(division === "BTR_W"){
+
+          firestoreDivision =
+            "BuxaTR_WEST";
+        }
+
+        if(division === "BTR_E"){
+
+          firestoreDivision =
+            "BuxaTR_EAST";
+        }
+
+        await showBTRAnalyticsPanel(
+
+          "gis_analytics_btr",
+
+          firestoreDivision
+
+        );
+
+        return;
+      }
+
+      // ==========================================
+      // 🟩 RANGE BACKGROUND CLICK
+      // ==========================================
+
+      if(level === "range"){
+
+        const division =
+
+          String(
+
+            window.gisFilter?.division ||
+
+            ""
+
+          ).trim();
+
+        const range =
+
+          String(
+
+            window.gisFilter?.range ||
+
+            ""
+
+          ).trim();
+
+        let firestoreDivision =
+          division;
+
+        if(division === "BTR_W"){
+
+          firestoreDivision =
+            "BuxaTR_WEST";
+        }
+
+        if(division === "BTR_E"){
+
+          firestoreDivision =
+            "BuxaTR_EAST";
+        }
+
+        const rangeDocId =
+
+          `${firestoreDivision}_${range}`
+
+          .replace(/\s+/g,"_");
+
+        console.log(
+          "🛰 RANGE BG CLICK:",
+          rangeDocId
+        );
+
+        await showBTRAnalyticsPanel(
+
+          "gis_range_analytics",
+
+          rangeDocId
+
+        );
+
+        return;
+      }
+
+      // ==========================================
+      // 🟨 BEAT BACKGROUND CLICK
+      // ==========================================
+
+      if(level === "beat"){
+
+        const division =
+
+          String(
+
+            window.gisFilter?.division ||
+
+            ""
+
+          ).trim();
+
+        const range =
+
+          String(
+
+            window.gisFilter?.range ||
+
+            ""
+
+          ).trim();
+
+        const beat =
+
+          String(
+
+            window.gisFilter?.beat ||
+
+            ""
+
+          ).trim();
+
+        let firestoreDivision =
+          division;
+
+        if(division === "BTR_W"){
+
+          firestoreDivision =
+            "BuxaTR_WEST";
+        }
+
+        if(division === "BTR_E"){
+
+          firestoreDivision =
+            "BuxaTR_EAST";
+        }
+
+        const beatDocId =
+
+          `${firestoreDivision}_${range}_${beat}`
+
+          .replace(/\s+/g,"_");
+
+        console.log(
+          "🛰 BEAT BG CLICK:",
+          beatDocId
+        );
+
+        await showBeatAnalyticsPanel(
+
+          beatDocId
+
+        );
+
+        return;
+      }
+
+    }
+
+    catch(e){
+
+      console.error(
+        "❌ CENTRAL MAP CLICK",
+        e
+      );
+
+    }
+
+  }
+
+);
 // =========================================================
 // 🌍 MAP CLICK
 // KEEP THIS
