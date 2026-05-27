@@ -5814,24 +5814,56 @@ window.gridRootLayer.addTo(map);
 // 🌍 MAP CLICK
 // KEEP THIS
 // =========================================================
-
 window.map.on(
   "click",
   function(){
 
-    if(
+    const division =
+      window.gisFilter?.division;
 
-      window.gisFilter?.division ===
-      "ALL"
+    // =====================================
+    // ALL
+    // =====================================
 
+    if(division === "ALL"){
+
+      showBTRAnalyticsPanel(
+        "BTR_Circle"
+      );
+
+    }
+
+    // =====================================
+    // BTR EAST
+    // =====================================
+
+    else if(
+      division === "BTR_E"
     ){
 
-      showBTRAnalyticsPanel();
+      showBTRAnalyticsPanel(
+        "BTR_E"
+      );
+
+    }
+
+    // =====================================
+    // BTR WEST
+    // =====================================
+
+    else if(
+      division === "BTR_W"
+    ){
+
+      showBTRAnalyticsPanel(
+        "BTR_W"
+      );
 
     }
 
   }
-);/* ============================================================
+);
+    /* ============================================================
        📊 RANGE BUTTON (SAFE)
     ============================================================ */
 // =====================================================
@@ -5841,7 +5873,9 @@ window.map.on(
 // MOBILE FRIENDLY
 // =====================================================
 
-async function showBTRAnalyticsPanel(){
+async function showBTRAnalyticsPanel(
+  analyticsDoc
+){
 
   try{
 
@@ -5890,7 +5924,9 @@ async function showBTRAnalyticsPanel(){
 // =================================================
 
 const d =
-  await loadBTRAnalytics();
+  await loadBTRAnalytics(
+  analyticsDoc
+);
 
 if(!d){
 
@@ -9333,7 +9369,9 @@ else if(
 // 🌍 LOAD BTR ANALYTICS
 // =====================================================
 
-async function loadBTRAnalytics(){
+async function loadBTRAnalytics(
+  analyticsDoc
+){
 
   try {
 
@@ -9373,7 +9411,7 @@ async function loadBTRAnalytics(){
 
       "gis_analytics_btr",
 
-      "BTR_Circle"
+      "analyticsDoc"
     );
 
     // =========================================
@@ -9663,7 +9701,9 @@ async function renderFilteredGIS(){
               try {
 
                 const analytics =
-                  await loadBTRAnalytics();
+                  await loadBTRAnalytics(
+  analyticsDoc
+);
 
                 if(!analytics){
                   return;
