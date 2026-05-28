@@ -3400,81 +3400,151 @@ function login(){
       // ========================================================
       setTimeout(async () => {
 
-        try {
+  try {
 
-          if(
-            typeof renderFilteredGIS ===
-            "function"
-          ){
+    // ====================================================
+    // 🔥 RENDER GIS
+    // ====================================================
 
-            renderFilteredGIS();
-          }
+    if(
+      typeof renderFilteredGIS ===
+      "function"
+    ){
 
-          // ====================================================
-          // 🔥 STAFF/TL RANGE GIS
-          // ====================================================
-          if(
+      renderFilteredGIS();
+    }
 
-            window.userProfile
+    // ====================================================
+    // 🎯 AUTO CENTER MAP
+    // ====================================================
 
-            &&
+    try {
 
-            (
+      if(
 
-              window.userProfile.role ===
-              "Staff"
+        window.gisLayer &&
 
-              ||
+        window.gisLayer.getBounds &&
 
-              window.userProfile.role ===
-              "TEAM LEADER"
+        window.gisLayer.getLayers().length > 0
 
-              ||
+      ){
 
-              window.userProfile.role ===
-              "Team Leader"
+        const bounds =
 
-            )
+          window.gisLayer.getBounds();
 
-          ){
+        if(bounds.isValid()){
 
-            // ================================================
-            // 🔥 BEAT BUTTONS
-            // ================================================
-            if(
-              typeof populateBeatButtons ===
-              "function"
-            ){
+          window.map.fitBounds(
 
-              populateBeatButtons();
+            bounds,
+
+            {
+
+              padding:[40,40],
+
+              maxZoom:15,
+
+              animate:true
+
             }
 
-            // ================================================
-            // 🔥 RANGE COMPARTMENTS
-            // ================================================
-            if(
-              typeof loadCompartmentsForRange ===
-              "function"
-            ){
+          );
 
-              await loadCompartmentsForRange();
-            }
-
-            console.log(
-              "✅ Staff GIS Loaded"
-            );
-          }
-
-        } catch(e){
-
-          console.error(
-            "❌ GIS render failed",
-            e
+          console.log(
+            "🎯 MAP CENTERED TO GIS"
           );
         }
+      }
 
-      }, 1500);
+    } catch(e){
 
+      console.error(
+        "❌ fitBounds failed",
+        e
+      );
+    }
+
+    // ====================================================
+    // 🔥 STAFF/TL RANGE GIS
+    // ====================================================
+
+    if(
+
+      window.userProfile
+
+      &&
+
+      (
+
+        window.userProfile.role ===
+        "Staff"
+
+        ||
+
+        window.userProfile.role ===
+        "TEAM LEADER"
+
+        ||
+
+        window.userProfile.role ===
+        "Team Leader"
+
+      )
+
+    ){
+
+      // ================================================
+      // 🔥 BEAT BUTTONS
+      // ================================================
+
+      if(
+        typeof populateBeatButtons ===
+        "function"
+      ){
+
+        await populateBeatButtons();
+      }
+
+      // ================================================
+      // 🔥 RANGE COMPARTMENTS
+      // ================================================
+
+      if(
+        typeof loadCompartmentsForRange ===
+        "function"
+      ){
+
+        await loadCompartmentsForRange();
+      }
+
+      // ================================================
+      // 🎨 RENDER COMPARTMENTS
+      // ================================================
+
+      if(
+        typeof renderFilteredCompartments ===
+        "function"
+      ){
+
+        renderFilteredCompartments();
+      }
+
+      console.log(
+        "✅ Staff GIS Loaded"
+      );
+    }
+
+  } catch(e){
+
+    console.error(
+      "❌ GIS render failed",
+      e
+    );
+  }
+
+}, 1500);
       // ========================================================
       // 🔥 SINGLE APP BOOT
       // ========================================================
@@ -8286,29 +8356,31 @@ map.on(
     window.gpsRetryCount = 0;
   }
 );    /* 🔁 CENTER MAP */
-   function centerMap(){
+  function centerMap(){
 
   try {
 
     // ============================================
-    // 🔥 RANGE LAYER AVAILABLE
+    // 🔥 GIS LAYER AVAILABLE
     // ============================================
+
     if(
 
-      window.rangeLayer &&
+      window.gisLayer &&
 
-      window.rangeLayer.getBounds &&
+      window.gisLayer.getBounds &&
 
-      window.rangeLayer.getBounds().isValid()
+      window.gisLayer.getBounds().isValid()
 
     ){
 
       map.fitBounds(
 
-        window.rangeLayer.getBounds(),
+        window.gisLayer.getBounds(),
 
         {
-          padding: [20, 20]
+          padding: [20, 20],
+          maxZoom: 15
         }
 
       );
@@ -8323,6 +8395,7 @@ map.on(
     // ============================================
     // 🔥 FALLBACK → MY GPS
     // ============================================
+
     if(
 
       window.latestGps &&
@@ -8353,6 +8426,7 @@ map.on(
     // ============================================
     // 🔥 FINAL FALLBACK
     // ============================================
+
     map.setView(
 
       [26.561, 89.507],
@@ -8373,7 +8447,7 @@ map.on(
       e
     );
   }
-}   /* ============================================================
+}  /* ============================================================
        🧱 BLOCK 3 → LAYERS DEFINITIONS
     ============================================================ */
 
@@ -9897,7 +9971,7 @@ async function loadRangeKML(){
     // ==================================================
 
     renderFilteredGIS();
-
+centerMap();
     // ==================================================
     // 👮 STAFF LOAD COMPARTMENTS
     // ==================================================
@@ -11755,7 +11829,7 @@ async function populateDivisionButtons(){
       // ======================================
 
       renderFilteredGIS();
-
+centerMap();
       // ======================================
       // 👁 RANGE BUTTONS
       // ======================================
@@ -11931,7 +12005,7 @@ async function populateDivisionButtons(){
           // ====================================
 
           renderFilteredGIS();
-
+centerMap();
           // ====================================
           // 👁 RANGE BUTTONS
           // ====================================
@@ -12179,7 +12253,7 @@ async function populateRangeButtons(){
         // ====================================
 
         renderFilteredGIS();
-
+centerMap();
         // ====================================
         // 🎨 RENDER COMPARTMENTS
         // ====================================
@@ -12296,7 +12370,7 @@ async function populateRangeButtons(){
             // ================================
 
             renderFilteredGIS();
-
+centerMap();
             // ================================
             // 🎨 RENDER COMPARTMENTS
             // ================================
@@ -12530,7 +12604,7 @@ async function populateRangeButtons(){
           // ====================================
 
           renderFilteredGIS();
-
+centerMap();
           // ====================================
           // 🎨 RENDER COMPARTMENTS
           // ====================================
@@ -13203,7 +13277,7 @@ window.activePopupContext = {
           // ====================================
 
           renderFilteredGIS();
-
+centerMap();
           // ====================================
           // 🎨 RENDER COMPARTMENTS
           // ====================================
