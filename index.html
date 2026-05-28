@@ -11944,7 +11944,7 @@ async function populateRangeButtons(){
         "flex";
 
       // ======================================
-      // 🖱 RANGE RESTORE
+      // 🔘 AUTO ACTIVE
       // ======================================
 
       const rangeBtn =
@@ -11954,6 +11954,142 @@ async function populateRangeButtons(){
         );
 
       if(rangeBtn){
+
+        rangeBtn.style.background =
+          "#00c853";
+
+        // ====================================
+        // 🔥 FORCE RANGE FILTERS
+        // ====================================
+
+        window.gisFilter.range =
+          range;
+
+        window.gisFilter.beat =
+          "ALL";
+
+        window.gisFilter.compartment =
+          "ALL";
+
+        // ====================================
+        // 🌍 DIVISION
+        // ====================================
+
+        const division =
+
+          normalizeDivision(
+
+            window.gisFilter.division
+          );
+
+        // ====================================
+        // 🔥 FORCE RANGE POPUP MODE
+        // ====================================
+
+        window.activePopupContext = {
+
+          level : "range",
+
+          division : division,
+
+          range : range,
+
+          beat : "ALL",
+
+          compartment : "ALL"
+
+        };
+
+        console.log(
+          "🟩 STAFF RANGE MODE ENABLED"
+        );
+
+        console.log(
+          window.activePopupContext
+        );
+
+        // ====================================
+        // 📥 AUTO LOAD RANGE GIS
+        // ====================================
+
+        const url =
+
+          `./geojson/${
+            division
+          }/${
+            encodeURIComponent(range)
+          }.geojson`;
+
+        console.log(
+          "📥 Staff Range GIS:",
+          url
+        );
+
+        const res =
+          await fetch(url);
+
+        if(!res.ok){
+
+          throw new Error(
+            "Range GIS missing"
+          );
+        }
+
+        const data =
+          await res.json();
+
+        // ====================================
+        // 📦 GIS FEATURES
+        // ====================================
+
+        window.allGISFeatures =
+          data.features || [];
+
+        // ====================================
+        // 📦 LOAD COMPARTMENTS
+        // ====================================
+
+        await loadCompartmentsForRange();
+
+        // ====================================
+        // 🎨 RENDER GIS
+        // ====================================
+
+        renderFilteredGIS();
+
+        // ====================================
+        // 🎨 RENDER COMPARTMENTS
+        // ====================================
+
+        renderFilteredCompartments();
+
+        // ====================================
+        // 👁 SHOW BEATS
+        // ====================================
+
+        document.getElementById(
+          "beatButtons"
+        ).style.display =
+          "flex";
+
+        // ====================================
+        // ❌ HIDE COMPARTMENTS
+        // ====================================
+
+        document.getElementById(
+          "compartmentButtons"
+        ).style.display =
+          "none";
+
+        // ====================================
+        // 🔘 BUILD BEATS
+        // ====================================
+
+        await populateBeatButtons();
+
+        // ====================================
+        // 🖱 RANGE CLICK
+        // ====================================
 
         rangeBtn.onclick =
         async function(){
@@ -11968,8 +12104,11 @@ async function populateRangeButtons(){
               "#00c853";
 
             // ================================
-            // ♻ RESET FILTERS
+            // 🔥 FORCE RANGE FILTERS
             // ================================
+
+            window.gisFilter.range =
+              range;
 
             window.gisFilter.beat =
               "ALL";
@@ -11978,32 +12117,30 @@ async function populateRangeButtons(){
               "ALL";
 
             // ================================
-            // 🌍 DIVISION
+            // 🔥 FORCE RANGE POPUP MODE
             // ================================
 
-            const division =
+            window.activePopupContext = {
 
-              normalizeDivision(
+              level : "range",
 
-                window.gisFilter.division
-              );
+              division : division,
+
+              range : range,
+
+              beat : "ALL",
+
+              compartment : "ALL"
+
+            };
+
+            console.log(
+              "🎯 RANGE POPUP MODE ENABLED"
+            );
 
             // ================================
             // 📥 RANGE GIS
             // ================================
-
-            const url =
-
-              `./geojson/${
-                division
-              }/${
-                encodeURIComponent(range)
-              }.geojson`;
-
-            console.log(
-              "📥 Restore Range GIS:",
-              url
-            );
 
             const res =
               await fetch(url);
@@ -12019,14 +12156,14 @@ async function populateRangeButtons(){
               await res.json();
 
             // ================================
-            // 📦 RESTORE RANGE GIS
+            // 📦 GIS FEATURES
             // ================================
 
             window.allGISFeatures =
               data.features || [];
 
             // ================================
-            // 📦 RESTORE COMPARTMENTS
+            // 📦 COMPARTMENTS
             // ================================
 
             await loadCompartmentsForRange();
@@ -12044,7 +12181,16 @@ async function populateRangeButtons(){
             renderFilteredCompartments();
 
             // ================================
-            // 👁 HIDE COMP BUTTONS
+            // 👁 SHOW BEATS
+            // ================================
+
+            document.getElementById(
+              "beatButtons"
+            ).style.display =
+              "flex";
+
+            // ================================
+            // ❌ HIDE COMPARTMENTS
             // ================================
 
             document.getElementById(
@@ -12053,24 +12199,10 @@ async function populateRangeButtons(){
               "none";
 
             // ================================
-            // 🎯 RESET BEAT BUTTON UI
+            // 🔘 BUILD BEATS
             // ================================
 
-            const beatContainer =
-
-              document.getElementById(
-                "beatButtons"
-              );
-
-            beatContainer
-            .querySelectorAll(
-              ".gis-filter-btn"
-            )
-            .forEach(btn => {
-
-              btn.style.background =
-                "#2d2d2d";
-            });
+            await populateBeatButtons();
 
             console.log(
               "✅ Range Restored"
@@ -12198,31 +12330,34 @@ async function populateRangeButtons(){
 
           window.gisFilter.range =
             range;
-// ====================================
-// 🌍 POPUP AUTHORITY
-// ====================================
 
-window.activePopupContext = {
-
-  level : "range",
-
-  division : division,
-
-  range : range,
-
-  beat : "ALL",
-
-  compartment : "ALL"
-
-};
-console.log(
-  "🎯 POPUP LEVEL: RANGE"
-);
           window.gisFilter.beat =
             "ALL";
 
           window.gisFilter.compartment =
             "ALL";
+
+          // ====================================
+          // 🌍 POPUP AUTHORITY
+          // ====================================
+
+          window.activePopupContext = {
+
+            level : "range",
+
+            division : division,
+
+            range : range,
+
+            beat : "ALL",
+
+            compartment : "ALL"
+
+          };
+
+          console.log(
+            "🎯 POPUP LEVEL: RANGE"
+          );
 
           // ====================================
           // 📥 RANGE GIS
