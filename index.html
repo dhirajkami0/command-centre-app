@@ -11663,6 +11663,123 @@ async function populateDivisionButtons(){
           division,
           true
         );
+
+      // ======================================
+      // 🔥 FORCE DIVISION FILTER
+      // ======================================
+
+      window.gisFilter = {
+
+        division : division,
+
+        range : "ALL",
+
+        beat : "ALL",
+
+        compartment : "ALL"
+
+      };
+
+      // ======================================
+      // 🔥 FORCE DIVISION POPUP MODE
+      // ======================================
+
+      window.activePopupContext = {
+
+        level : "division",
+
+        division : division,
+
+        range : "ALL",
+
+        beat : "ALL",
+
+        compartment : "ALL"
+
+      };
+
+      console.log(
+        "🛰 DIVISION POPUP MODE ENABLED"
+      );
+
+      console.log(
+        window.activePopupContext
+      );
+
+      // ======================================
+      // 📥 AUTO LOAD DIVISION GIS
+      // ======================================
+
+      const url =
+
+        `./geojson/${
+          division
+        }/master.geojson`;
+
+      console.log(
+        "📥 Division GIS:",
+        url
+      );
+
+      const res =
+        await fetch(url);
+
+      if(!res.ok){
+
+        throw new Error(
+          "Division GIS missing"
+        );
+      }
+
+      const data =
+        await res.json();
+
+      // ======================================
+      // 📦 GIS FEATURES
+      // ======================================
+
+      window.allGISFeatures =
+        data.features || [];
+
+      // ======================================
+      // 🧹 CLEAR COMPARTMENTS
+      // ======================================
+
+      window.allCompartmentFeatures =
+        [];
+
+      clearCompartmentLayer();
+
+      // ======================================
+      // 🎨 RENDER
+      // ======================================
+
+      renderFilteredGIS();
+
+      // ======================================
+      // 👁 RANGE BUTTONS
+      // ======================================
+
+      document.getElementById(
+        "rangeButtons"
+      ).style.display =
+        "flex";
+
+      await populateRangeButtons();
+
+      // ======================================
+      // ❌ LOWER HIDE
+      // ======================================
+
+      document.getElementById(
+        "beatButtons"
+      ).style.display =
+        "none";
+
+      document.getElementById(
+        "compartmentButtons"
+      ).style.display =
+        "none";
     }
 
     // ==========================================
@@ -11722,31 +11839,34 @@ async function populateDivisionButtons(){
           };
 
           // ====================================
-// 🌍 POPUP AUTHORITY
-// ====================================
-window.activePopupContext = {
+          // 🌍 POPUP AUTHORITY
+          // ====================================
 
-  level :
+          window.activePopupContext = {
 
-    division === "ALL"
+            level :
 
-    ? "btr"
+              division === "ALL"
 
-    : "division",
+              ? "btr"
 
-  division : division,
+              : "division",
 
-  range : "ALL",
+            division : division,
 
-  beat : "ALL",
+            range : "ALL",
 
-  compartment : "ALL"
+            beat : "ALL",
 
-};
-console.log(
-  "🎯 POPUP LEVEL:",
-  window.activePopupContext.level
-);
+            compartment : "ALL"
+
+          };
+
+          console.log(
+            "🎯 POPUP LEVEL:",
+            window.activePopupContext.level
+          );
+
           // ====================================
           // 👑 ADMIN ALL
           // ====================================
@@ -11789,6 +11909,10 @@ console.log(
 
           const data =
             await res.json();
+
+          // ====================================
+          // 📦 GIS FEATURES
+          // ====================================
 
           window.allGISFeatures =
             data.features || [];
@@ -11859,7 +11983,6 @@ console.log(
     );
   }
 }
-
 
 // ======================================================
 // 🟩 RANGE BUTTONS
