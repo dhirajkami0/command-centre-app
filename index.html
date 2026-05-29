@@ -10919,12 +10919,21 @@ async function populateDivisionButtons(){
       // 🎨 STYLE UPDATE ONLY
       // ======================================
 
-      renderFilteredGIS();
+     // ====================================
+// 📦 LOAD RANGE COMPARTMENTS
+// ====================================
 
-      renderFilteredCompartments();
+await loadCompartmentsForRange();
 
-      centerMap();
+// ====================================
+// 🎨 STYLE UPDATE ONLY
+// ====================================
 
+renderFilteredGIS();
+
+renderFilteredCompartments();
+
+centerMap();
       // ======================================
       // 👁 RANGE BUTTONS
       // ======================================
@@ -11915,6 +11924,12 @@ function renderFilteredGIS(){
 
         ){
 
+          layer.setStyle({
+
+            weight : 6
+
+          });
+
           layer.bringToFront();
         }
 
@@ -11931,6 +11946,12 @@ function renderFilteredGIS(){
           beat === activeBeat
 
         ){
+
+          layer.setStyle({
+
+            weight : 7
+
+          });
 
           layer.bringToFront();
         }
@@ -12186,7 +12207,15 @@ function renderFilteredGIS(){
     window.compartmentLayer.setStyle(
       getCompartmentStyle
     );
+// ==================================================
+// 🔥 ENTIRE COMPARTMENT LAYER ALWAYS ABOVE GIS
+// ==================================================
 
+try {
+
+  window.compartmentLayer.bringToFront();
+
+} catch(e){}
     // ==================================================
     // 🔥 ACTIVE COMPARTMENT TO FRONT
     // ==================================================
