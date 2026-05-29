@@ -9751,26 +9751,92 @@ function normalizeBeatName(value){
 // 🧹 CLEAR GIS
 // ======================================================
 
+// ======================================================
+// 🧹 CLEAR GIS LAYER (HARD CLEAR)
+// ======================================================
+
 function clearGISLayer(){
 
   try {
 
     if(window.gisLayer){
 
+      // ==========================================
+      // 🔥 REMOVE ALL EVENTS
+      // ==========================================
+
+      try{
+
+        window.gisLayer.eachLayer(layer => {
+
+          try{
+            layer.off();
+          }catch(e){}
+
+        });
+
+      } catch(e){}
+
+      // ==========================================
+      // 🔥 REMOVE FROM MAP
+      // ==========================================
+
       window.map.removeLayer(
         window.gisLayer
       );
 
+      // ==========================================
+      // 🔥 DESTROY REFERENCE
+      // ==========================================
+
       window.gisLayer = null;
+
+      // ==========================================
+      // 🔥 FORCE CANVAS REFRESH
+      // CRITICAL FIX
+      // ==========================================
+
+      if(window.canvasRenderer){
+
+        try{
+
+          window.canvasRenderer._redrawBounds = null;
+
+          window.canvasRenderer._clear();
+
+          window.canvasRenderer._redraw();
+
+        } catch(e){}
+
+      }
+
+      // ==========================================
+      // 🔥 FORCE MAP REFRESH
+      // ==========================================
+
+      window.map.invalidateSize(false);
+
+      console.log(
+        "🧹 GIS layer hard cleared"
+      );
+
     }
 
-  } catch(e){
-
-    console.warn(e);
   }
+
+  catch(e){
+
+    console.warn(
+      "⚠ clearGISLayer",
+      e
+    );
+
+  }
+
 }
+
 // ======================================================
-// 🧹 CLEAR COMPARTMENTS
+// 🧹 CLEAR COMPARTMENTS (HARD CLEAR)
 // ======================================================
 
 function clearCompartmentLayer(){
@@ -9779,20 +9845,78 @@ function clearCompartmentLayer(){
 
     if(window.compartmentLayer){
 
+      // ==========================================
+      // 🔥 REMOVE EVENTS
+      // ==========================================
+
+      try{
+
+        window.compartmentLayer.eachLayer(layer => {
+
+          try{
+            layer.off();
+          }catch(e){}
+
+        });
+
+      } catch(e){}
+
+      // ==========================================
+      // 🔥 REMOVE FROM MAP
+      // ==========================================
+
       window.map.removeLayer(
         window.compartmentLayer
       );
 
+      // ==========================================
+      // 🔥 DESTROY REFERENCE
+      // ==========================================
+
       window.compartmentLayer = null;
+
+      // ==========================================
+      // 🔥 FORCE CANVAS REFRESH
+      // ==========================================
+
+      if(window.canvasRenderer){
+
+        try{
+
+          window.canvasRenderer._redrawBounds = null;
+
+          window.canvasRenderer._clear();
+
+          window.canvasRenderer._redraw();
+
+        } catch(e){}
+
+      }
+
+      // ==========================================
+      // 🔥 FORCE MAP REFRESH
+      // ==========================================
+
+      window.map.invalidateSize(false);
+
+      console.log(
+        "🧹 Compartment layer hard cleared"
+      );
+
     }
 
-  } catch(e){
-
-    console.warn(e);
   }
-}
 
-// ======================================================
+  catch(e){
+
+    console.warn(
+      "⚠ clearCompartmentLayer",
+      e
+    );
+
+  }
+
+}// ======================================================
 // 🔘 BUTTON UI
 // ======================================================
 
