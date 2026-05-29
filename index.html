@@ -11219,28 +11219,56 @@ centerMap();
         console.log(
           "🟩 STAFF RANGE MODE ENABLED"
         );
-// ====================================
-// 📦 ENSURE RANGE COMPARTMENTS LOADED
-// ====================================
 
-await loadCompartmentsForRange();
+        // ====================================
+        // 📦 LOAD RANGE COMPARTMENTS
+        // ====================================
+
+        await loadCompartmentsForRange();
+
+        // ====================================
+        // 🎨 STYLE UPDATE ONLY
+        // ====================================
+
         renderFilteredGIS();
 
         renderFilteredCompartments();
 
         centerMap();
 
+        // ====================================
+        // 👁 SHOW BEAT BUTTONS
+        // ====================================
+
         document.getElementById(
           "beatButtons"
         ).style.display =
           "flex";
 
+        // ====================================
+        // 🔘 BUILD BEAT BUTTONS
+        // ====================================
+
+        await populateBeatButtons();
+
+        // ====================================
+        // 👁 SHOW COMP BUTTONS
+        // ====================================
+
         document.getElementById(
           "compartmentButtons"
         ).style.display =
-          "none";
+          "flex";
 
-        await populateBeatButtons();
+        // ====================================
+        // 🔘 BUILD COMP BUTTONS
+        // ====================================
+
+        await populateCompartmentButtons();
+
+        // ====================================
+        // 🖱 RANGE CLICK
+        // ====================================
 
         rangeBtn.onclick =
         async function(){
@@ -11277,9 +11305,15 @@ await loadCompartmentsForRange();
               "🎯 RANGE POPUP MODE ENABLED"
             );
 
-            // ================================
+            // ====================================
+            // 📦 LOAD RANGE COMPARTMENTS
+            // ====================================
+
+            await loadCompartmentsForRange();
+
+            // ====================================
             // 🎨 STYLE UPDATE ONLY
-            // ================================
+            // ====================================
 
             renderFilteredGIS();
 
@@ -11287,30 +11321,53 @@ await loadCompartmentsForRange();
 
             centerMap();
 
+            // ====================================
+            // 👁 SHOW BEAT BUTTONS
+            // ====================================
+
             document.getElementById(
               "beatButtons"
             ).style.display =
               "flex";
 
+            // ====================================
+            // 🔘 BUILD BEAT BUTTONS
+            // ====================================
+
+            await populateBeatButtons();
+
+            // ====================================
+            // 👁 SHOW COMP BUTTONS
+            // ====================================
+
             document.getElementById(
               "compartmentButtons"
             ).style.display =
-              "none";
+              "flex";
 
-            await populateBeatButtons();
+            // ====================================
+            // 🔘 BUILD COMP BUTTONS
+            // ====================================
+
+            await populateCompartmentButtons();
 
             console.log(
               "✅ Range Restored"
             );
 
-          } catch(e){
+          }
+
+          catch(e){
 
             console.error(
               "❌ Range restore failed",
               e
             );
+
           }
+
         };
+
       }
 
       return;
@@ -11350,6 +11407,7 @@ await loadCompartmentsForRange();
 
         ranges.add(range);
       }
+
     });
 
     // ==========================================
@@ -11366,6 +11424,7 @@ await loadCompartmentsForRange();
           range,
           false
         );
+
     });
 
     container.style.display =
@@ -11394,6 +11453,7 @@ await loadCompartmentsForRange();
 
             b.style.background =
               "#2d2d2d";
+
           });
 
           this.style.background =
@@ -11407,6 +11467,10 @@ await loadCompartmentsForRange();
               window.gisFilter.division
             );
 
+          // ====================================
+          // 🟨 FILTERS
+          // ====================================
+
           window.gisFilter.range =
             range;
 
@@ -11415,6 +11479,10 @@ await loadCompartmentsForRange();
 
           window.gisFilter.compartment =
             "ALL";
+
+          // ====================================
+          // 🌍 POPUP AUTHORITY
+          // ====================================
 
           window.activePopupContext = {
 
@@ -11435,6 +11503,13 @@ await loadCompartmentsForRange();
           );
 
           // ====================================
+          // 📦 LOAD RANGE COMPARTMENTS
+          // CRITICAL FIX
+          // ====================================
+
+          await loadCompartmentsForRange();
+
+          // ====================================
           // 🎨 STYLE UPDATE ONLY
           // ====================================
 
@@ -11444,32 +11519,67 @@ await loadCompartmentsForRange();
 
           centerMap();
 
+          // ====================================
+          // 👁 SHOW BEAT BUTTONS
+          // ====================================
+
           document.getElementById(
             "beatButtons"
           ).style.display =
             "flex";
 
-          document.getElementById(
-            "compartmentButtons"
-          ).style.display =
-            "none";
+          // ====================================
+          // 🔘 BUILD BEAT BUTTONS
+          // ====================================
 
           await populateBeatButtons();
 
-        } catch(e){
+          // ====================================
+          // 👁 SHOW COMP BUTTONS
+          // ====================================
 
-          console.error(e);
+          document.getElementById(
+            "compartmentButtons"
+          ).style.display =
+            "flex";
+
+          // ====================================
+          // 🔘 BUILD COMP BUTTONS
+          // ====================================
+
+          await populateCompartmentButtons();
+
+          console.log(
+            "✅ Range Selected:",
+            range
+          );
+
         }
+
+        catch(e){
+
+          console.error(
+            "❌ Range click failed",
+            e
+          );
+
+        }
+
       };
+
     });
 
-  } catch(e){
+  }
+
+  catch(e){
 
     console.error(
       "❌ populateRangeButtons",
       e
     );
+
   }
+
 }// ======================================================
 // 🟨 BEAT BUTTONS
 // ======================================================
