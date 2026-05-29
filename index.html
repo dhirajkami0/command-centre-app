@@ -12295,6 +12295,13 @@ async function populateRangeButtons(){
         );
 
         // ====================================
+        // 🔥 HARD CLEAR BEFORE FETCH
+        // ====================================
+
+        clearCompartmentLayer();
+        clearGISLayer();
+
+        // ====================================
         // 📥 AUTO LOAD RANGE GIS
         // ====================================
 
@@ -12342,7 +12349,9 @@ async function populateRangeButtons(){
         // ====================================
 
         renderFilteredGIS();
-centerMap();
+
+        centerMap();
+
         // ====================================
         // 🎨 RENDER COMPARTMENTS
         // ====================================
@@ -12425,6 +12434,13 @@ centerMap();
             );
 
             // ================================
+            // 🔥 HARD CLEAR BEFORE FETCH
+            // ================================
+
+            clearCompartmentLayer();
+            clearGISLayer();
+
+            // ================================
             // 📥 RANGE GIS
             // ================================
 
@@ -12459,7 +12475,9 @@ centerMap();
             // ================================
 
             renderFilteredGIS();
-centerMap();
+
+            centerMap();
+
             // ================================
             // 🎨 RENDER COMPARTMENTS
             // ================================
@@ -12646,6 +12664,13 @@ centerMap();
           );
 
           // ====================================
+          // 🔥 HARD CLEAR BEFORE FETCH
+          // ====================================
+
+          clearCompartmentLayer();
+          clearGISLayer();
+
+          // ====================================
           // 📥 RANGE GIS
           // ====================================
 
@@ -12693,7 +12718,9 @@ centerMap();
           // ====================================
 
           renderFilteredGIS();
-centerMap();
+
+          centerMap();
+
           // ====================================
           // 🎨 RENDER COMPARTMENTS
           // ====================================
