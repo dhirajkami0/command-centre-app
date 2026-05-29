@@ -11103,7 +11103,8 @@ async function populateDivisionButtons(){
       e
     );
   }
-}async function populateRangeButtons(){
+}
+    async function populateRangeButtons(){
 
   try {
 
@@ -11209,7 +11210,11 @@ async function populateDivisionButtons(){
         console.log(
           "🟩 STAFF RANGE MODE ENABLED"
         );
+// ====================================
+// 📦 ENSURE RANGE COMPARTMENTS LOADED
+// ====================================
 
+await loadCompartmentsForRange();
         renderFilteredGIS();
 
         renderFilteredCompartments();
@@ -11508,7 +11513,6 @@ function renderFilteredGIS(){
 
     // ==================================================
     // 🌍 ACTIVE FILTERS
-    // STYLE ONLY
     // ==================================================
 
     const activeDivision =
@@ -11575,7 +11579,7 @@ function renderFilteredGIS(){
         ).trim();
 
       // ==============================================
-      // 🌍 DEFAULT ROOT STYLE
+      // 🌍 DEFAULT
       // ==============================================
 
       let color =
@@ -11627,9 +11631,9 @@ function renderFilteredGIS(){
         color =
           "#ffee00";
 
-        weight = 4;
+        weight = 5;
 
-        fillOpacity = 0.08;
+        fillOpacity = 0.10;
       }
 
       // ==============================================
@@ -11649,9 +11653,9 @@ function renderFilteredGIS(){
         color =
           "#ff9800";
 
-        weight = 5;
+        weight = 6;
 
-        fillOpacity = 0.12;
+        fillOpacity = 0.14;
       }
 
       return {
@@ -11665,7 +11669,7 @@ function renderFilteredGIS(){
     }
 
     // ==================================================
-    // 🔥 CREATE GIS LAYER ONLY ONCE
+    // 🔥 CREATE GIS LAYER ONCE
     // ==================================================
 
     if(!window.gisLayer){
@@ -11688,7 +11692,7 @@ function renderFilteredGIS(){
           style:getGISStyle,
 
           // ==========================================
-          // 🧠 CENTRAL CLICK ROUTER
+          // 🧠 CLICK ROUTER
           // ==========================================
 
           onEachFeature:function(
@@ -11844,28 +11848,14 @@ function renderFilteredGIS(){
 
         .addTo(window.map);
 
-      // ==============================================
-      // 🔼 FRONT
-      // ==============================================
-
-      try {
-
-        window.gisLayer
-        .bringToFront();
-
-      } catch(e){}
-
       console.log(
         "✅ Persistent GIS Layer Created"
       );
 
-      return;
     }
 
     // ==================================================
     // 🎨 STYLE UPDATE ONLY
-    // NO REMOVE
-    // NO RECREATE
     // ==================================================
 
     console.log(
@@ -11877,15 +11867,79 @@ function renderFilteredGIS(){
     );
 
     // ==================================================
-    // 🔼 FRONT
+    // 🔥 ACTIVE FEATURES TO FRONT
     // ==================================================
 
-    try {
+    window.gisLayer.eachLayer(layer => {
 
-      window.gisLayer
-      .bringToFront();
+      try {
 
-    } catch(e){}
+        const props =
+          layer.feature?.properties || {};
+
+        const range =
+
+          String(
+
+            props.Range ||
+
+            props.range ||
+
+            ""
+
+          ).trim();
+
+        const beat =
+
+          String(
+
+            props.Beat ||
+
+            props.beat ||
+
+            ""
+
+          ).trim();
+
+        // ==========================================
+        // 🟨 ACTIVE RANGE
+        // ==========================================
+
+        if(
+
+          activeRange !== "ALL"
+
+          &&
+
+          range === activeRange
+
+        ){
+
+          layer.bringToFront();
+        }
+
+        // ==========================================
+        // 🟧 ACTIVE BEAT
+        // ==========================================
+
+        if(
+
+          activeBeat !== "ALL"
+
+          &&
+
+          beat === activeBeat
+
+        ){
+
+          layer.bringToFront();
+        }
+
+      }
+
+      catch(e){}
+
+    });
 
     console.log(
       "✅ GIS STYLE UPDATED"
@@ -11902,8 +11956,8 @@ function renderFilteredGIS(){
 
   }
 
-}    
-    
+}
+
     function renderFilteredCompartments(){
 
   try {
@@ -11928,10 +11982,6 @@ function renderFilteredGIS(){
 
       return;
     }
-
-    // ==================================================
-    // 📱 MOBILE
-    // ==================================================
 
     const isMobile =
       L.Browser.mobile;
@@ -12025,7 +12075,7 @@ function renderFilteredGIS(){
           "#ff1744";
 
         weight =
-          isMobile ? 3 : 4;
+          isMobile ? 3 : 5;
       }
 
       return {
@@ -12042,7 +12092,7 @@ function renderFilteredGIS(){
     }
 
     // ==================================================
-    // 🔥 CREATE COMPARTMENT LAYER ONLY ONCE
+    // 🔥 CREATE LAYER ONCE
     // ==================================================
 
     if(!window.compartmentLayer){
@@ -12063,10 +12113,6 @@ function renderFilteredGIS(){
           smoothFactor:2,
 
           style:getCompartmentStyle,
-
-          // ==================================================
-          // 🧠 CLICK ROUTER ONLY
-          // ==================================================
 
           onEachFeature:function(
             feature,
@@ -12103,22 +12149,11 @@ function renderFilteredGIS(){
 
                   ){
 
-                    console.log(
-                      "⛔ BLOCKED COMPARTMENT"
-                    );
-
                     return;
                   }
 
-                  console.log(
-                    "🛰 COMP ROUTE:",
-                    compartment
-                  );
-
                   await showCompartmentAnalyticsPanel(
-
                     compartment
-
                   );
 
                 }
@@ -12142,52 +12177,61 @@ function renderFilteredGIS(){
 
         .addTo(window.map);
 
-      // ==================================================
-      // 🔼 FRONT
-      // ==================================================
-
-      try {
-
-        window.compartmentLayer
-        .bringToFront();
-
-      } catch(e){}
-
-      console.log(
-        "✅ Persistent compartment layer created"
-      );
-
-      return;
     }
 
     // ==================================================
     // 🎨 STYLE UPDATE ONLY
-    // NO REMOVE
-    // NO RECREATE
     // ==================================================
-
-    console.log(
-      "🎨 Updating compartment styles only"
-    );
 
     window.compartmentLayer.setStyle(
       getCompartmentStyle
     );
 
     // ==================================================
-    // 🔼 FRONT
+    // 🔥 ACTIVE COMPARTMENT TO FRONT
     // ==================================================
 
-    try {
+    window.compartmentLayer.eachLayer(layer => {
 
-      window.compartmentLayer
-      .bringToFront();
+      try {
 
-    } catch(e){}
+        const props =
+          layer.feature?.properties || {};
+
+        const comp =
+
+          String(
+
+            props.compartment ||
+
+            props.compartmen ||
+
+            ""
+
+          ).trim();
+
+        if(
+
+          window.gisFilter.compartment !== "ALL"
+
+          &&
+
+          comp ===
+          window.gisFilter.compartment
+
+        ){
+
+          layer.bringToFront();
+        }
+
+      }
+
+      catch(e){}
+
+    });
 
     console.log(
-      "✅ Compartment STYLE UPDATED:",
-      features.length
+      "✅ Compartment STYLE UPDATED"
     );
 
   }
@@ -12202,7 +12246,6 @@ function renderFilteredGIS(){
   }
 
 }
-
 
 // ======================================================
 // 🟨 BEAT BUTTONS
