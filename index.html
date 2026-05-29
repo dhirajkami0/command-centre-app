@@ -19671,16 +19671,10 @@ function openStatsPopup(name, latlng) {
 function loadSightings() {
 
   if(!window.sightingsInitialized){
-
     elephantLayer.clearLayers();
-
     window.sightingsInitialized = true;
-
   } else {
-
-    console.log(
-      "⏸ Keeping existing sighting markers"
-    );
+    console.log("⏸ Keeping existing sighting markers");
   }
 
   callBackend("getSightings")
@@ -19688,395 +19682,448 @@ function loadSightings() {
 
     if(!data) return;
 
-    window.sightingMarkers =
-      window.sightingMarkers || {};
-
+    window.sightingMarkers = window.sightingMarkers || {};
+   
     const now = Date.now();
 
-    /* =========================================
-       🔥 KEEP ONLY LAST 24 HOUR SIGHTINGS
-    ========================================= */
+    data.forEach(function(e){
 
-    const validSightings = data.filter(e => {
+  console.log("🧪 LAT LON:", e.lat, e.lon, "STATUS:", e.status);
 
-      if(!e.time) return false;
-
-      try {
-
-        let parsedTs = now;
-
-        let t =
-          String(e.time)
-          .trim()
-          .toUpperCase();
-
-        /* ===============================
-           🟢 CASE 1: AM / PM
-        =============================== */
-        if(
-          t.includes("AM") ||
-          t.includes("PM")
-        ){
-
-          if(!t.includes(" ")){
-            t = t.replace(
-              /(AM|PM)/,
-              " $1"
-            );
-          }
-
-          let [timePart, ampm] =
-            t.split(" ");
-
-          let [hh, mm] =
-            timePart
-            .split(":")
-            .map(Number);
-
-          if(
-            ampm === "PM" &&
-            hh !== 12
-          ){
-            hh += 12;
-          }
-
-          if(
-            ampm === "AM" &&
-            hh === 12
-          ){
-            hh = 0;
-          }
-
-          let d = new Date();
-
-          d.setHours(
-            hh,
-            mm,
-            0,
-            0
-          );
-
-          parsedTs =
-            d.getTime();
-        }
-
-        /* ===============================
-           🟢 CASE 2: HH:MM:SS
-        =============================== */
-        else if(
-          /^\d{2}:\d{2}:\d{2}$/
-          .test(t)
-        ){
-
-          let [hh, mm, ss] =
-            t.split(":")
-            .map(Number);
-
-          let d = new Date();
-
-          d.setHours(
-            hh,
-            mm,
-            ss,
-            0
-          );
-
-          parsedTs =
-            d.getTime();
-        }
-
-        /* ===============================
-           🟢 CASE 3: fallback
-        =============================== */
-        else {
-
-          let ts =
-            Date.parse(t);
-
-          if(!isNaN(ts)){
-            parsedTs = ts;
-          }
-        }
-
-        const diff =
-          now - parsedTs;
-
-        /* 🔥 ONLY KEEP < 24 HOURS */
-        return (
-          diff >= 0 &&
-          diff < 86400000
-        );
-
-      } catch(err){
-
-        console.warn(
-          "⚠ Invalid sighting time:",
-          e.time
-        );
-
-        return false;
-      }
-    });
-
-    /* =========================================
-       🔥 PROCESS ONLY VALID SIGHTINGS
-    ========================================= */
-
-    validSightings.forEach(function(e){
-
-      console.log(
-        "🧪 LAT LON:",
-        e.lat,
-        e.lon,
-        "STATUS:",
-        e.status
-      );
-
-      if(!e.lat || !e.lon){
-        return;
-      }
+  if(!e.lat || !e.lon) return;
+      if(!e.lat || !e.lon) return;
 
       const key = e.id;
 
-      const status =
-        String(
-          e.status || "ACTIVE"
-        )
-        .trim()
-        .toUpperCase();
+      const status = String(e.status || "ACTIVE")
+  .trim()
+  .toUpperCase();
 
+     /* 🔥 FINAL HARD FIX (NO DEPENDENCY ON ABOVE) */
+
+/* 🔥 FINAL HARD FIX — RELIABLE AGE */
+
+/* 🔥 FINAL HARD FIX — CORRECT AGE (NO 0 MIN BUG) */
+
+/* 🔥 FINAL AGE FIX — SUPPORTS ALL FORMATS */
+
+const now = Date.now();
+      
       let parsedTs = now;
 
-      try {
+if(!e.time || typeof e.time !== "string"){
+  console.warn("⚠ Invalid time → using NOW");
+  parsedTs = now;
+}
 
-        let t =
-          String(e.time || "")
-          .trim()
-          .toUpperCase();
+if (e.time && typeof e.time === "string") {
 
-        if(
-          t.includes("AM") ||
-          t.includes("PM")
-        ){
+  try {
 
-          if(!t.includes(" ")){
-            t = t.replace(
-              /(AM|PM)/,
-              " $1"
-            );
-          }
+    let t = e.time.trim().toUpperCase();
 
-          let [timePart, ampm] =
-            t.split(" ");
+    /* ===============================
+       🟢 CASE 1: AM / PM
+    =============================== */
+    if (t.includes("AM") || t.includes("PM")) {
 
-          let [hh, mm] =
-            timePart
-            .split(":")
-            .map(Number);
-
-          if(
-            ampm === "PM" &&
-            hh !== 12
-          ){
-            hh += 12;
-          }
-
-          if(
-            ampm === "AM" &&
-            hh === 12
-          ){
-            hh = 0;
-          }
-
-          let d = new Date();
-
-          d.setHours(
-            hh,
-            mm,
-            0,
-            0
-          );
-
-          parsedTs =
-            d.getTime();
-        }
-
-        else if(
-          /^\d{2}:\d{2}:\d{2}$/
-          .test(t)
-        ){
-
-          let [hh, mm, ss] =
-            t.split(":")
-            .map(Number);
-
-          let d = new Date();
-
-          d.setHours(
-            hh,
-            mm,
-            ss,
-            0
-          );
-
-          parsedTs =
-            d.getTime();
-        }
-
-      } catch(err){}
-
-      const diffMs =
-        now - parsedTs;
-
-      const minutes =
-        Math.floor(
-          diffMs / 60000
-        );
-
-      /* =========================================
-         🔥 REMOVE RESOLVED MARKERS
-      ========================================= */
-
-      if(status === "RESOLVED"){
-
-        if(
-          window.sightingMarkers[key]
-        ){
-
-          elephantLayer.removeLayer(
-            window.sightingMarkers[key]
-          );
-
-          delete
-            window.sightingMarkers[key];
-        }
-
-        return;
+      if (!t.includes(" ")) {
+        t = t.replace(/(AM|PM)/, " $1");
       }
 
-      const lat =
-        Number(e.lat);
+      let [timePart, ampm] = t.split(" ");
+      let [hh, mm] = timePart.split(":").map(Number);
 
-      const lon =
-        Number(e.lon);
+      if (ampm === "PM" && hh !== 12) hh += 12;
+      if (ampm === "AM" && hh === 12) hh = 0;
 
-      /* ===============================
-         🐘 ICON
+      let d = new Date();
+      d.setHours(hh, mm, 0, 0);
+      parsedTs = d.getTime();
+
+    }
+
+    /* ===============================
+       🟢 CASE 2: HH:MM:SS (YOUR DATA)
+    =============================== */
+    else if (/^\d{2}:\d{2}:\d{2}$/.test(t)) {
+
+      let [hh, mm, ss] = t.split(":").map(Number);
+
+      let d = new Date();
+      d.setHours(hh, mm, ss, 0);
+      parsedTs = d.getTime();
+
+    }
+
+    /* ===============================
+       🟢 CASE 3: fallback
+    =============================== */
+    else {
+
+      let ts = Date.parse(t);
+      if (!isNaN(ts)) {
+        parsedTs = ts;
+      }
+
+    }
+
+    /* 🔥 FIX: FUTURE → YESTERDAY */
+   // ==========================================
+// 🔥 ONLY HANDLE SMALL FUTURE DRIFT
+// ==========================================
+const futureDiff =
+  parsedTs - now;
+
+if(
+
+  futureDiff > 0 &&
+
+  futureDiff < 6 * 60 * 60 * 1000
+
+){
+
+  parsedTs -=
+    24 * 60 * 60 * 1000;
+}
+
+  } catch (err) {
+    console.warn("⚠ Time parse failed:", e.time);
+  }
+
+}
+
+/* 🔥 FINAL AGE */
+/* ======================================
+   🔥 FINAL AGE + AUTO REMOVE FIX
+====================================== */
+
+const diffMs =
+  now - parsedTs;
+
+/* 🔥 INVALID FUTURE TIME */
+if(diffMs < 0){
+
+  console.warn(
+    "⚠ Future sighting skipped:",
+    e.time
+  );
+
+  return;
+}
+
+/* 🔥 FINAL AGE */
+const minutes =
+  Math.floor(
+    diffMs / (1000 * 60)
+  );
+
+/* 🔥 REMOVE AFTER 24 HOURS */
+if(minutes >= 1440){
+
+  console.log(
+    "🗑 Removing expired sighting:",
+    key
+  );
+
+  if(window.sightingMarkers?.[key]){
+
+    elephantLayer.removeLayer(
+      window.sightingMarkers[key]
+    );
+
+    delete window.sightingMarkers[key];
+  }
+
+  return;
+}
+      /* 🔍 DEBUG AGE (CRITICAL) */
+
+console.log("🧪 -------- AGE DEBUG --------");
+
+console.log("🕒 RAW e.time:", e.time);
+
+console.log("🧠 Parsed Date:", new Date(parsedTs).toString());
+
+console.log("🕓 Current Time:", new Date(now).toString());
+
+console.log("⏱ Diff (ms):", now - parsedTs);
+
+console.log("⏱ Diff (min exact):", (now - parsedTs) / 60000);
+
+console.log("⏱ FINAL minutes:", minutes);
+
+console.log("🧪 --------------------------");   
+      
+      
+      /* 🔥 REMOVE LOGIC (UNCHANGED) */
+if (
+  status === "RESOLVED" ||
+  (minutes > 1440 && status === "ACTIVE")
+) {
+
+  if (window.sightingMarkers[key]) {
+    elephantLayer.removeLayer(window.sightingMarkers[key]);
+    delete window.sightingMarkers[key];
+  }
+
+  return;
+}
+
+/* 🔥 CONTINUE ORIGINAL FLOW */
+const lat = Number(e.lat);
+const lon = Number(e.lon);
+
+/* 🔥 DYNAMIC PULSE CONTROL */
+/* 🔥 DYNAMIC PULSE CONTROL */
+
+/* ===============================
+   🐘 ICON (USE STAFF RADAR SYSTEM)
+=============================== */
+let color = "#ff3b30";
+let opacity = 1;
+/* 🔥 FINAL FIX — STATUS OVERRIDES EVERYTHING */
+
+let pulseClass = "";
+let showPulse = true;
+
+/* 🔥 FIRST: STATUS CHECK (HIGHEST PRIORITY) */
+if(
+  status === "MOVED" ||
+  status.startsWith("DRIVEN")
+){
+  showPulse = false;
+  color = "#9e9e9e";
+  opacity = 0.7;
+}
+
+/* 🔥 ELSE: AGE BASED */
+else if(minutes <= 120){
+  pulseClass = "riskPulseRed";
+}
+else if(minutes <= 360){
+  pulseClass = "riskPulseOrange";
+}
+else{
+  showPulse = false;
+}
+/* 🔥 ICON */
+const icon = L.divIcon({
+  className:'',
+  html:`
+  <div class="markerWrap">
+
+    ${showPulse ? `
+      <div class="radarPulse ${pulseClass}"></div>
+      <div class="radarPulse delay1 ${pulseClass}"></div>
+      <div class="radarPulse delay2 ${pulseClass}"></div>
+    ` : ""}
+
+    <div class="markerCore">
+      <span style="
+        font-size:22px;
+        color:${showPulse ? color : "#9e9e9e"};
+        text-shadow:0 0 5px black;
+      ">
+        🐘
+      </span>
+    </div>
+
+  </div>`,
+  iconSize:[30,30],
+  iconAnchor:[15,15]
+}); /* ===============================
+         🧭 DIRECTION
       =============================== */
 
-      let color = "#ff3b30";
+      let movementText = "Unknown";
+      const rawDir = e.Direction || e.direction || "";
 
-      let pulseClass = "";
-
-      let showPulse = true;
-
-      if(
-        status === "MOVED" ||
-        status.startsWith("DRIVEN")
-      ){
-
-        showPulse = false;
-
-        color = "#9e9e9e";
+      if(rawDir){
+        const dirKey = String(rawDir).trim().replace(/\s+/g,"").toUpperCase();
+        const dirMap = {
+          N:"North", NE:"North-East",
+          E:"East", SE:"South-East",
+          S:"South", SW:"South-West",
+          W:"West", NW:"North-West"
+        };
+        movementText = dirMap[dirKey] || rawDir;
       }
 
-      else if(minutes <= 120){
+      /* 🔥 FIX: TIME DISPLAY (ADDED) */
+      let timeDisplay = "Unknown";
+      let rawTime = (e.time || e.timestamp || "").toString();
 
-        pulseClass =
-          "riskPulseRed";
+      if(rawTime.includes(":")){
+        let [h,m] = rawTime.split(":");
+        h = parseInt(h);
+        if(!isNaN(h)){
+          let ampm = h>=12?"PM":"AM";
+          let hr = h%12 || 12;
+          timeDisplay = `${hr}:${m} ${ampm}`;
+        }
       }
 
-      else if(minutes <= 360){
+      /* 🔥 ADD: BACKUP TIME DISPLAY */
+      if(timeDisplay === "Unknown" && !isNaN(parsedTs)){
+        const d = new Date(parsedTs);
+        let h = d.getHours();
+        let m = d.getMinutes().toString().padStart(2,'0');
+        let ampm = h>=12?"PM":"AM";
+        let hr = h%12 || 12;
+        timeDisplay = `${hr}:${m} ${ampm}`;
+      }    
+    /* ===============================
+   🔥 FORMAT AGE → hr + min
+=============================== */
 
-        pulseClass =
-          "riskPulseOrange";
+const hrs = Math.floor(minutes / 60);
+const mins = Math.floor(minutes % 60);
+
+const ageFormatted = hrs > 0
+  ? `${hrs} hr ${mins} min`
+  : `${mins} min`;
+
+
+
+
+
+/* ===============================
+   🪟 POPUP (FINAL FIXED)
+=============================== */
+
+const popup = `
+<div style="font-family:Segoe UI;min-width:220px">
+
+  <div style="color:${color};font-weight:bold">
+    🐘 ${status}
+  </div>
+
+  <hr>
+
+  <b>🆔 Sighting ID:</b>
+
+WDPO-${
+  String(
+    e.sighting_id || e.id || ""
+  )
+
+  .split("-")
+  .pop()
+}<br>
+ <b>👥 Herd Size:</b>
+${e.herd || 0}<br>
+  <b>🧭 Movement:</b> ${movementText}<br>
+  <b>⏱ Time of Sighting:</b> ${timeDisplay}<br>
+  <b>⏱ Age of Sighting:</b> ${ageFormatted}<br>
+
+ <b>👤 Sighted by:</b>
+${e.teamLeader || "Unknown"}<br>
+
+<div style="
+  margin-top:6px;
+  margin-bottom:10px;
+  font-size:12px;
+  line-height:1.55;
+">
+
+  📞
+
+  ${
+    (
+      e.phone ||
+
+      window.userProfile?.phone
+    )
+
+    ? `
+    <a
+      href="tel:${
+        String(
+
+          e.phone ||
+
+          window.userProfile?.phone
+
+        ).trim()
+      }"
+
+      style="
+        color:#00695c;
+        text-decoration:none;
+        font-weight:700;
+      ">
+
+      ${
+        e.phone ||
+
+        window.userProfile?.phone
       }
 
-      else {
+    </a>
+    `
+    : "N/A"
+  }
 
-        showPulse = false;
-      }
+</div>
+  <br>
+  <b>📍 Location:</b><br>
+  <code>${lat.toFixed(5)}, ${lon.toFixed(5)} near ${e.village || "Unknown"}</code>
 
-      const icon = L.divIcon({
+  <div style="margin-top:10px">
+    <button onclick="
+      event.stopPropagation();
+      openMoveForm('${e.id}')
+    " style="
+      background:#2e7d32;
+      color:white;
+      border:none;
+      width:100%;
+      padding:10px;
+      border-radius:6px;
+      cursor:pointer;
+      font-weight:bold;
+    ">
+      ✅ UPDATE STATUS
+    </button>
+  </div>
 
-        className:'',
+</div>`;
+      
+      
+     if(window.sightingMarkers[key]){
 
-        html:`
-        <div class="markerWrap">
+  const oldMarker = window.sightingMarkers[key];
 
-          ${showPulse ? `
-            <div class="radarPulse ${pulseClass}"></div>
-            <div class="radarPulse delay1 ${pulseClass}"></div>
-            <div class="radarPulse delay2 ${pulseClass}"></div>
-          ` : ""}
+  // 🔥 REMOVE OLD MARKER COMPLETELY (CRITICAL)
+  elephantLayer.removeLayer(oldMarker);
 
-          <div class="markerCore">
+  // 🔥 CREATE FRESH MARKER (NO DOM REUSE)
+  const newMarker = L.marker([lat,lon],{
+    icon:icon,
+    zIndexOffset:5000
+  })
+  .bindPopup(popup)
+  .addTo(elephantLayer);
 
-            <span style="
-              font-size:22px;
-              color:${showPulse ? color : "#9e9e9e"};
-              text-shadow:0 0 5px black;
-            ">
-              🐘
-            </span>
+  window.sightingMarkers[key] = newMarker;
 
-          </div>
+  return;
+}
+      const marker = L.marker([lat,lon],{
+        icon:icon,
+        zIndexOffset:5000
+      })
+      .bindPopup(popup)
+      .addTo(elephantLayer);
 
-        </div>`,
+      window.sightingMarkers[key] = marker;
 
-        iconSize:[30,30],
-
-        iconAnchor:[15,15]
-      });
-
-      /* =========================================
-         🔥 REMOVE OLD MARKER FIRST
-      ========================================= */
-
-      if(window.sightingMarkers[key]){
-
-        elephantLayer.removeLayer(
-          window.sightingMarkers[key]
-        );
-
-        delete
-          window.sightingMarkers[key];
-      }
-
-      /* =========================================
-         🔥 CREATE NEW MARKER
-      ========================================= */
-
-      const marker =
-        L.marker([lat,lon],{
-
-          icon:icon,
-
-          zIndexOffset:5000
-        })
-        .bindPopup(`
-          <div style="font-family:Segoe UI">
-
-            <b>🐘 ${status}</b><br>
-
-            <b>⏱ Age:</b>
-            ${minutes} min<br>
-
-            <b>📍 Location:</b><br>
-            ${lat.toFixed(5)},
-            ${lon.toFixed(5)}
-
-          </div>
-        `)
-        .addTo(elephantLayer);
-
-      window.sightingMarkers[key] =
-        marker;
     });
 
   });
 
-}
+}   
     
   /* ===============================
    🧠 ADVANCED HERD MATCH SCORE (WITH ELEPHANT COUNT)
