@@ -10475,10 +10475,41 @@ function renderFilteredGIS(){
   try {
 
     // ==================================================
-    // 🧹 CLEAR OLD
+    // 🧹 CLEAR OLD INSTANTLY TOGETHER
     // ==================================================
 
-    clearGISLayer();
+    try{
+
+      // 🔥 REMOVE COMPARTMENTS
+      if(window.compartmentLayer){
+
+        window.map.removeLayer(
+          window.compartmentLayer
+        );
+
+        window.compartmentLayer = null;
+      }
+
+      // 🔥 REMOVE GIS RANGE LAYER
+      if(window.gisLayer){
+
+        window.map.removeLayer(
+          window.gisLayer
+        );
+
+        window.gisLayer = null;
+      }
+
+    }
+
+    catch(e){
+
+      console.warn(
+        "⚠ Layer clear failed",
+        e
+      );
+
+    }
 
     // ==================================================
     // 📦 FEATURES
@@ -10726,15 +10757,7 @@ function renderFilteredGIS(){
 
               try{
 
-                // ==========================================
-                // 🛑 STOP PROPAGATION
-                // ==========================================
-
                 L.DomEvent.stopPropagation(e);
-
-                // ==========================================
-                // 🌍 ACTIVE LEVEL
-                // ==========================================
 
                 const level =
 
@@ -10743,21 +10766,8 @@ function renderFilteredGIS(){
 
                   "btr";
 
-                console.log(
-                  "🎯 ACTIVE LEVEL:",
-                  level
-                );
-
-                // ==========================================
-                // 📦 PROPERTIES
-                // ==========================================
-
                 const props =
                   feature.properties || {};
-
-                // ==========================================
-                // 🌍 RAW VALUES
-                // ==========================================
 
                 const rawDivision =
 
@@ -10795,108 +10805,56 @@ function renderFilteredGIS(){
 
                   ).trim();
 
-                // ==========================================
-                // 🌍 FIRESTORE DIVISION
-                // ==========================================
-
                 const firestoreDivision =
 
                   getFirestoreDivision(
                     rawDivision
                   );
 
-                console.log({
-
-                  rawDivision,
-                  firestoreDivision,
-                  rawRange,
-                  rawBeat
-
-                });
-
-                // ==========================================
-                // 🌍 BTR LEVEL
-                // ==========================================
-
                 if(level === "btr"){
 
                   await showBTRAnalyticsPanel(
-
                     "gis_analytics_btr",
-
                     "BTR_Circle"
-
                   );
 
                   return;
                 }
-
-                // ==========================================
-                // 🌍 DIVISION LEVEL
-                // ==========================================
 
                 if(level === "division"){
 
                   await showBTRAnalyticsPanel(
-
                     "gis_analytics_btr",
-
                     firestoreDivision
-
                   );
 
                   return;
                 }
-
-                // ==========================================
-                // 🟩 RANGE LEVEL
-                // ==========================================
 
                 if(level === "range"){
 
                   const rangeDocId =
 
                     `${firestoreDivision}_${rawRange}`
-
                     .replace(/\s+/g,"_");
 
-                  console.log(
-                    "🛰 FINAL RANGE DOC:",
-                    rangeDocId
-                  );
-
                   await showBTRAnalyticsPanel(
-
                     "gis_range_analytics",
-
                     rangeDocId
-
                   );
 
                   return;
                 }
-
-                // ==========================================
-                // 🟨 BEAT LEVEL
-                // ==========================================
 
                 if(level === "beat"){
 
                   const beatDocId =
 
                     `${firestoreDivision}_${rawRange}_${rawBeat}`
-
                     .replace(/\s+/g,"_");
 
-                  console.log(
-                    "🛰 FINAL BEAT DOC:",
-                    beatDocId
-                  );
-
                   await showBeatAnalyticsPanel(
-
                     beatDocId
-
                   );
 
                   return;
