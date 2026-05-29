@@ -11140,7 +11140,7 @@ function renderFilteredCompartments(){
     // 🧹 CLEAR OLD
     // ==================================================
 
-    clearCompartmentLayer();
+
 
     // ==================================================
     // 📦 FEATURES
@@ -11420,30 +11420,34 @@ function renderFilteredCompartments(){
 // ======================================================
 // 🌍 DIVISION BUTTONS
 // ======================================================
-  async function loadCompartmentsForRange(){
+ async function loadCompartmentsForRange(){
 
   try {
 
     // =====================================
-    // 🧹 CLEAR OLD
+    // 🔥 RESET MEMORY ONLY
+    // IMPORTANT:
+    // DO NOT CLEAR LAYERS HERE
+    // DO NOT RENDER HERE
     // =====================================
 
-    clearCompartmentLayer();
-
     window.allCompartmentFeatures = [];
-window.gisFilter.compartment =
-  "ALL";
+
+    window.gisFilter.compartment =
+      "ALL";
+
     // =====================================
     // 🌍 FILTERS
     // =====================================
 
     const division =
 
-  normalizeDivision(
+      normalizeDivision(
 
-    window.gisFilter.division || ""
+        window.gisFilter.division || ""
 
-  );
+      );
+
     const range =
 
       String(
@@ -11504,26 +11508,27 @@ window.gisFilter.compartment =
 
         const featureRange =
 
-  String(
+          String(
 
-    props.Range ||
+            props.Range ||
 
-    props.range ||
+            props.range ||
 
-    ""
+            ""
 
-  ).trim();
+          ).trim();
 
-if(
+        if(
 
-  beat &&
+          beat &&
 
-  featureRange === range
+          featureRange === range
 
-){
+        ){
 
-  beats.add(beat);
-}
+          beats.add(beat);
+        }
+
       } catch(e){}
     });
 
@@ -11601,28 +11606,42 @@ if(
             f.properties = {};
           }
 
+          // =================================
+          // 🔥 FORCE BEAT PROPERTY
+          // =================================
+
           f.properties.beat =
             beat;
+
         });
 
         // =================================
-        // 📦 STORE
+        // 📦 STORE IN MEMORY ONLY
         // =================================
 
         window.allCompartmentFeatures.push(
 
           ...data.features
+
         );
 
-      } catch(e){
+      }
+
+      catch(e){
 
         console.warn(
           "⚠ Compartment load failed:",
           beat,
           e
         );
+
       }
+
     }
+
+    // =====================================
+    // ✅ LOADED
+    // =====================================
 
     console.log(
       "✅ Range Compartments Loaded:",
@@ -11630,18 +11649,22 @@ if(
     );
 
     // =====================================
-    // 🎨 RENDER
+    // 🔥 IMPORTANT
+    // NO RENDER HERE
+    // NO CLEAR HERE
     // =====================================
 
-    renderFilteredCompartments();
+  }
 
-  } catch(e){
+  catch(e){
 
     console.error(
       "❌ loadCompartmentsForRange",
       e
     );
+
   }
+
 }
     
   // ======================================================
@@ -12295,13 +12318,6 @@ async function populateRangeButtons(){
         );
 
         // ====================================
-        // 🔥 HARD CLEAR BEFORE FETCH
-        // ====================================
-
-        clearCompartmentLayer();
-        clearGISLayer();
-
-        // ====================================
         // 📥 AUTO LOAD RANGE GIS
         // ====================================
 
@@ -12318,6 +12334,10 @@ async function populateRangeButtons(){
           url
         );
 
+        // ====================================
+        // 📥 FETCH FIRST
+        // ====================================
+
         const res =
           await fetch(url);
 
@@ -12332,31 +12352,45 @@ async function populateRangeButtons(){
           await res.json();
 
         // ====================================
-        // 📦 GIS FEATURES
+        // 📦 PREPARE GIS MEMORY
         // ====================================
 
         window.allGISFeatures =
           data.features || [];
 
         // ====================================
-        // 📦 LOAD COMPARTMENTS
+        // 📦 PREPARE COMPARTMENTS
         // ====================================
 
         await loadCompartmentsForRange();
 
         // ====================================
-        // 🎨 RENDER GIS
+        // 🔥 SINGLE FRAME SWAP
+        // IMPORTANT:
+        // CLEAR ONLY AFTER
+        // EVERYTHING READY
+        // ====================================
+
+        clearCompartmentLayer();
+        clearGISLayer();
+
+        // ====================================
+        // 🎨 RENDER NEW GIS
         // ====================================
 
         renderFilteredGIS();
 
-        centerMap();
-
         // ====================================
-        // 🎨 RENDER COMPARTMENTS
+        // 🎨 RENDER NEW COMPARTMENTS
         // ====================================
 
         renderFilteredCompartments();
+
+        // ====================================
+        // 🎯 CENTER
+        // ====================================
+
+        centerMap();
 
         // ====================================
         // 👁 SHOW BEATS
@@ -12434,14 +12468,7 @@ async function populateRangeButtons(){
             );
 
             // ================================
-            // 🔥 HARD CLEAR BEFORE FETCH
-            // ================================
-
-            clearCompartmentLayer();
-            clearGISLayer();
-
-            // ================================
-            // 📥 RANGE GIS
+            // 📥 FETCH FIRST
             // ================================
 
             const res =
@@ -12458,17 +12485,24 @@ async function populateRangeButtons(){
               await res.json();
 
             // ================================
-            // 📦 GIS FEATURES
+            // 📦 PREPARE GIS MEMORY
             // ================================
 
             window.allGISFeatures =
               data.features || [];
 
             // ================================
-            // 📦 COMPARTMENTS
+            // 📦 PREPARE COMPARTMENTS
             // ================================
 
             await loadCompartmentsForRange();
+
+            // ================================
+            // 🔥 SINGLE FRAME SWAP
+            // ================================
+
+            clearCompartmentLayer();
+            clearGISLayer();
 
             // ================================
             // 🎨 RENDER GIS
@@ -12476,13 +12510,17 @@ async function populateRangeButtons(){
 
             renderFilteredGIS();
 
-            centerMap();
-
             // ================================
             // 🎨 RENDER COMPARTMENTS
             // ================================
 
             renderFilteredCompartments();
+
+            // ================================
+            // 🎯 CENTER
+            // ================================
+
+            centerMap();
 
             // ================================
             // 👁 SHOW BEATS
@@ -12664,13 +12702,6 @@ async function populateRangeButtons(){
           );
 
           // ====================================
-          // 🔥 HARD CLEAR BEFORE FETCH
-          // ====================================
-
-          clearCompartmentLayer();
-          clearGISLayer();
-
-          // ====================================
           // 📥 RANGE GIS
           // ====================================
 
@@ -12687,6 +12718,10 @@ async function populateRangeButtons(){
             url
           );
 
+          // ====================================
+          // 📥 FETCH FIRST
+          // ====================================
+
           const res =
             await fetch(url);
 
@@ -12701,17 +12736,24 @@ async function populateRangeButtons(){
             await res.json();
 
           // ====================================
-          // 📦 GIS FEATURES
+          // 📦 PREPARE GIS MEMORY
           // ====================================
 
           window.allGISFeatures =
             data.features || [];
 
           // ====================================
-          // 📦 COMPARTMENTS
+          // 📦 PREPARE COMPARTMENTS
           // ====================================
 
           await loadCompartmentsForRange();
+
+          // ====================================
+          // 🔥 SINGLE FRAME SWAP
+          // ====================================
+
+          clearCompartmentLayer();
+          clearGISLayer();
 
           // ====================================
           // 🎨 RENDER GIS
@@ -12719,13 +12761,17 @@ async function populateRangeButtons(){
 
           renderFilteredGIS();
 
-          centerMap();
-
           // ====================================
           // 🎨 RENDER COMPARTMENTS
           // ====================================
 
           renderFilteredCompartments();
+
+          // ====================================
+          // 🎯 CENTER
+          // ====================================
+
+          centerMap();
 
           // ====================================
           // 👁 SHOW BEATS
@@ -12795,7 +12841,7 @@ function renderFilteredGIS(){
     // 🧹 CLEAR OLD
     // ==================================================
 
-    clearGISLayer();
+
 
     // ==================================================
     // 📦 FEATURES
