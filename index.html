@@ -11278,14 +11278,22 @@ centerMap();
             this.style.background =
               "#00c853";
 
-            window.gisFilter.range =
-              range;
+            // ====================================
+            // 🔥 RESET LOWER HIERARCHY
+            // ====================================
 
             window.gisFilter.beat =
               "ALL";
 
             window.gisFilter.compartment =
               "ALL";
+
+            // ====================================
+            // 🌳 RANGE FILTER
+            // ====================================
+
+            window.gisFilter.range =
+              range;
 
             window.activePopupContext = {
 
@@ -11381,6 +11389,7 @@ centerMap();
 
     // ==========================================
     // 📦 UNIQUE RANGES
+    // ONLY CURRENT DIVISION
     // ==========================================
 
     const ranges =
@@ -11391,13 +11400,52 @@ centerMap();
     )
     .forEach(f => {
 
+      const props =
+        f.properties || {};
+
+      // ======================================
+      // 🌍 FEATURE DIVISION
+      // ======================================
+
+      const featureDivision =
+
+        normalizeDivision(
+
+          props.Division ||
+
+          props.division ||
+
+          ""
+
+        );
+
+      // ======================================
+      // ❌ ONLY CURRENT DIVISION
+      // ======================================
+
+      if(
+
+        window.gisFilter.division !== "ALL"
+
+        &&
+
+        featureDivision !==
+        normalizeDivision(
+          window.gisFilter.division
+        )
+
+      ){
+
+        return;
+      }
+
       const range =
 
         String(
 
-          f.properties?.Range ||
+          props.Range ||
 
-          f.properties?.range ||
+          props.range ||
 
           ""
 
@@ -11468,17 +11516,21 @@ centerMap();
             );
 
           // ====================================
-          // 🟨 FILTERS
+          // 🔥 RESET LOWER HIERARCHY
           // ====================================
-
-          window.gisFilter.range =
-            range;
 
           window.gisFilter.beat =
             "ALL";
 
           window.gisFilter.compartment =
             "ALL";
+
+          // ====================================
+          // 🟨 RANGE FILTER
+          // ====================================
+
+          window.gisFilter.range =
+            range;
 
           // ====================================
           // 🌍 POPUP AUTHORITY
@@ -11504,7 +11556,6 @@ centerMap();
 
           // ====================================
           // 📦 LOAD RANGE COMPARTMENTS
-          // CRITICAL FIX
           // ====================================
 
           await loadCompartmentsForRange();
@@ -11728,9 +11779,9 @@ function renderFilteredGIS(){
         color =
           "#00ff88";
 
-        weight = 3;
+        weight = 4;
 
-        fillOpacity = 0.05;
+        fillOpacity = 0.06;
       }
 
       // ==============================================
@@ -11750,9 +11801,9 @@ function renderFilteredGIS(){
         color =
           "#ffee00";
 
-        weight = 5;
+        weight = 6;
 
-        fillOpacity = 0.10;
+        fillOpacity = 0.12;
       }
 
       // ==============================================
@@ -11770,11 +11821,11 @@ function renderFilteredGIS(){
       ){
 
         color =
-          "#ff9800";
+          "#ff6d00";
 
-        weight = 6;
+        weight = 8;
 
-        fillOpacity = 0.14;
+        fillOpacity = 0.22;
       }
 
       return {
@@ -11986,6 +12037,24 @@ function renderFilteredGIS(){
     );
 
     // ==================================================
+    // 🔥 RESET ALL Z-ORDER FIRST
+    // ==================================================
+
+    try {
+
+      window.gisLayer.eachLayer(layer => {
+
+        try {
+
+          layer.bringToBack();
+
+        } catch(e){}
+
+      });
+
+    } catch(e){}
+
+    // ==================================================
     // 🔥 ACTIVE FEATURES TO FRONT
     // ==================================================
 
@@ -11995,6 +12064,18 @@ function renderFilteredGIS(){
 
         const props =
           layer.feature?.properties || {};
+
+        const division =
+
+          normalizeDivision(
+
+            props.Division ||
+
+            props.division ||
+
+            ""
+
+          );
 
         const range =
 
@@ -12021,6 +12102,32 @@ function renderFilteredGIS(){
           ).trim();
 
         // ==========================================
+        // 🟩 ACTIVE DIVISION
+        // ==========================================
+
+        if(
+
+          activeDivision !== "ALL"
+
+          &&
+
+          division ===
+          normalizeDivision(
+            activeDivision
+          )
+
+        ){
+
+          layer.setStyle({
+
+            weight : 5
+
+          });
+
+          layer.bringToFront();
+        }
+
+        // ==========================================
         // 🟨 ACTIVE RANGE
         // ==========================================
 
@@ -12036,7 +12143,7 @@ function renderFilteredGIS(){
 
           layer.setStyle({
 
-            weight : 6
+            weight : 7
 
           });
 
@@ -12059,7 +12166,7 @@ function renderFilteredGIS(){
 
           layer.setStyle({
 
-            weight : 7
+            weight : 9
 
           });
 
@@ -12088,7 +12195,6 @@ function renderFilteredGIS(){
   }
 
 }
-
     function renderFilteredCompartments(){
 
   try {
