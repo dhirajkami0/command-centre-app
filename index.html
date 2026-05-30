@@ -12059,9 +12059,9 @@ function renderFilteredGIS(){
       });
 
     } catch(e){}
-
-   // ==================================================
+// ==================================================
 // 🔥 ACTIVE FEATURES TO FRONT
+// TRUE HIERARCHY PRIORITY
 // ==================================================
 
 window.gisLayer.eachLayer(layer => {
@@ -12107,11 +12107,93 @@ window.gisLayer.eachLayer(layer => {
 
       ).trim();
 
-    // ==========================================
-    // 🟩 ACTIVE DIVISION
-    // ==========================================
+    // =================================================
+    // 🟪 PRIORITY 1 — ACTIVE BEAT
+    // =================================================
 
     if(
+
+      activeBeat !== "ALL"
+
+      &&
+
+      beat === activeBeat
+
+    ){
+
+      layer.setStyle({
+
+        color : "#ff00ff",
+
+        weight : 6,
+
+        opacity : 1,
+
+        fillOpacity : 0.01,
+
+        dashArray : "8,5"
+
+      });
+
+      layer.bringToFront();
+
+      requestAnimationFrame(() => {
+
+        try {
+
+          layer.bringToFront();
+
+        } catch(e){}
+
+      });
+
+      return;
+    }
+
+    // =================================================
+    // 🟨 PRIORITY 2 — ACTIVE RANGE
+    // =================================================
+
+    if(
+
+      activeBeat === "ALL"
+
+      &&
+
+      activeRange !== "ALL"
+
+      &&
+
+      range === activeRange
+
+    ){
+
+      layer.setStyle({
+
+        weight : 4,
+
+        opacity : 1
+
+      });
+
+      layer.bringToFront();
+
+      return;
+    }
+
+    // =================================================
+    // 🟩 PRIORITY 3 — ACTIVE DIVISION
+    // =================================================
+
+    if(
+
+      activeBeat === "ALL"
+
+      &&
+
+      activeRange === "ALL"
+
+      &&
 
       activeDivision !== "ALL"
 
@@ -12126,59 +12208,15 @@ window.gisLayer.eachLayer(layer => {
 
       layer.setStyle({
 
-        weight : 3
+        weight : 3,
+
+        opacity : 0.9
 
       });
 
       layer.bringToFront();
-    }
 
-    // ==========================================
-    // 🟨 ACTIVE RANGE
-    // ==========================================
-
-    if(
-
-      activeRange !== "ALL"
-
-      &&
-
-      range === activeRange
-
-    ){
-
-      layer.setStyle({
-
-        weight : 4
-
-      });
-
-      layer.bringToFront();
-    }
-
-    // ==========================================
-    // 🟪 ACTIVE BEAT
-    // ==========================================
-
-    if(
-
-      activeBeat !== "ALL"
-
-      &&
-
-      beat === activeBeat
-
-    ){
-
-      layer.setStyle({
-
-        weight : 5,
-
-        dashArray : "6,4"
-
-      });
-
-      layer.bringToFront();
+      return;
     }
 
   }
