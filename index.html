@@ -12555,21 +12555,21 @@ try{
 
   // ==============================================
   // 🌍 DEFAULT COMPARTMENTS
-  // DISTINCT FROM RANGE
+  // DISTINCT BASE LAYER
   // ==============================================
 
   let color =
     "#ff9100";
 
   let weight =
-    isMobile ? 1.6 : 2.1;
+    isMobile ? 2.4 : 3.2;
 
   let fillOpacity =
-    0.006;
+    0.008;
 
   // ==============================================
   // 🟨 ACTIVE BEAT COMPARTMENTS
-  // HIGH CONTRAST OVER RANGE
+  // STRONG CONTRAST OVER RANGE
   // BELOW ACTIVE BEAT
   // ==============================================
 
@@ -12590,27 +12590,26 @@ try{
   ){
 
     // ==========================================
-    // 🔥 STRONG AMBER
+    // 🔥 DEEP ORANGE
     // ==========================================
 
     color =
-      "#ff6f00";
+      "#ff5e00";
 
     // ==========================================
-    // 🔥 STRONGER VISUAL SEPARATION
+    // 🔥 1.5x STRONGER
     // ==========================================
 
     weight =
-      isMobile ? 2.8 : 3.4;
+      isMobile ? 4.2 : 5.1;
 
     fillOpacity =
-      0.016;
+      0.022;
   }
 
   // ==============================================
-  // 🟥 ACTIVE COMPARTMENT
-  // ULTRA DISTINCT OVER ALL PARENTS
-  // BELOW ONLY ACTIVE BEAT BORDER
+  // 🟦 ACTIVE COMPARTMENT
+  // ULTRA DISTINCT FROM ALL PARENTS
   // ==============================================
 
   if(
@@ -12625,21 +12624,23 @@ try{
   ){
 
     // ==========================================
-    // 🔥 HIGH-CONTRAST RED-PINK
+    // 🔥 ELECTRIC CYAN-BLUE
+    // VERY DISTINCT FROM:
+    // green / yellow / magenta / orange
     // ==========================================
 
     color =
-      "#ff0055";
+      "#00e5ff";
 
     // ==========================================
-    // 🔥 VERY STRONG DISTINCTNESS
+    // 🔥 1.5x STRONGER
     // ==========================================
 
     weight =
-      isMobile ? 3.2 : 4.2;
+      isMobile ? 4.8 : 6.3;
 
     fillOpacity =
-      0.025;
+      0.032;
   }
 
   return {
