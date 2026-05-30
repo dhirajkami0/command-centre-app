@@ -89,7 +89,7 @@
 <!-- ✅ LOCAL ICONS -->
 <link rel="icon" type="image/png" href="icons/icon-192.png">
 <link rel="apple-touch-icon" sizes="180x180" href="icons/icon-192.png">
-<link rel="preload" as="image" href="./icons/splash.png">
+<link rel="preload" as="image" href="./icons/splash.webp">
 
 <!-- ✅ MANIFEST -->
 <link rel="manifest" href="manifest.json">
@@ -1282,14 +1282,20 @@ NORTH REMAINS ABSOLUTE
 ">
 
   <!-- ✅ SINGLE IMAGE ONLY (NO BLUR = NO FREEZE) -->
-  <img src="./icons/splash.png"
-       alt="GreenGuard Splash"
-       style="
-         width: 100%;
-         height: 100%;
-         object-fit: cover;
-         display: block;
-       " />
+ <img
+  src="./icons/splash.webp"
+  alt="GreenGuard Splash"
+  loading="eager"
+  decoding="async"
+  width="100%"
+  height="100%"
+  style="
+    width:100%;
+    height:100%;
+    object-fit:cover;
+    display:block;
+  "
+/>
 
   <!-- ✅ LIGHT TEXT (NO LAYOUT COST) -->
   <div style="
