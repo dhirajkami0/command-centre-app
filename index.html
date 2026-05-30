@@ -12217,6 +12217,24 @@ function renderFilteredGIS(){
         "⚠ No compartment features"
       );
 
+      // ==============================================
+      // 🔥 REMOVE OLD LAYER
+      // ==============================================
+
+      try {
+
+        if(window.compartmentLayer){
+
+          window.map.removeLayer(
+            window.compartmentLayer
+          );
+
+          window.compartmentLayer =
+            null;
+        }
+
+      } catch(e){}
+
       return;
     }
 
@@ -12290,7 +12308,7 @@ function renderFilteredGIS(){
           "#ffd54f";
 
         weight =
-          isMobile ? 2 : 3;
+          isMobile ? 3 : 4;
       }
 
       // ==============================================
@@ -12312,7 +12330,7 @@ function renderFilteredGIS(){
           "#ff1744";
 
         weight =
-          isMobile ? 3 : 5;
+          isMobile ? 4 : 6;
       }
 
       return {
@@ -12329,111 +12347,120 @@ function renderFilteredGIS(){
     }
 
     // ==================================================
-    // 🔥 CREATE LAYER ONCE
+    // 🔥 IMPORTANT FIX
+    // REMOVE OLD RANGE COMPARTMENTS
     // ==================================================
 
-    if(!window.compartmentLayer){
+    try {
 
-      console.log(
-        "🛰 Creating persistent compartment layer"
-      );
+      if(window.compartmentLayer){
 
-      window.compartmentLayer =
+        window.map.removeLayer(
+          window.compartmentLayer
+        );
 
-        L.geoJSON(features,{
+        window.compartmentLayer =
+          null;
+      }
 
-          renderer:
-            window.canvasRenderer,
+    } catch(e){}
 
-          interactive:true,
+    // ==================================================
+    // 🔥 CREATE NEW RANGE COMPARTMENT LAYER
+    // ==================================================
 
-          smoothFactor:2,
+    console.log(
+      "🛰 Rebuilding compartment layer"
+    );
 
-          style:getCompartmentStyle,
+    window.compartmentLayer =
 
-          onEachFeature:function(
-            feature,
-            layer
-          ){
+      L.geoJSON(features,{
 
-            const props =
-              feature.properties || {};
+        renderer:
+          window.canvasRenderer,
 
-            const compartment =
+        interactive:true,
 
-              props.compartment ||
+        smoothFactor:2,
 
-              props.compartmen ||
+        style:getCompartmentStyle,
 
-              props.Compartment ||
+        onEachFeature:function(
+          feature,
+          layer
+        ){
 
-              "-";
+          const props =
+            feature.properties || {};
 
-            layer.on(
+          const compartment =
 
-              "click",
+            props.compartment ||
 
-              async function(e){
+            props.compartmen ||
 
-                try{
+            props.Compartment ||
 
-                  L.DomEvent.stopPropagation(e);
+            "-";
 
-                  if(
+          layer.on(
 
-                    window.activePopupContext.level
-                    !== "compartment"
+            "click",
 
-                  ){
+            async function(e){
 
-                    return;
-                  }
+              try{
 
-                  await showCompartmentAnalyticsPanel(
-                    compartment
-                  );
+                L.DomEvent.stopPropagation(e);
 
+                if(
+
+                  window.activePopupContext.level
+                  !== "compartment"
+
+                ){
+
+                  return;
                 }
 
-                catch(err){
-
-                  console.error(
-                    "❌ COMP CLICK ROUTER",
-                    err
-                  );
-
-                }
+                await showCompartmentAnalyticsPanel(
+                  compartment
+                );
 
               }
 
-            );
+              catch(err){
 
-          }
+                console.error(
+                  "❌ COMP CLICK ROUTER",
+                  err
+                );
 
-        })
+              }
 
-        .addTo(window.map);
+            }
 
-    }
+          );
+
+        }
+
+      })
+
+      .addTo(window.map);
 
     // ==================================================
-    // 🎨 STYLE UPDATE ONLY
+    // 🔥 ENTIRE COMPARTMENT LAYER ABOVE GIS
     // ==================================================
 
-    window.compartmentLayer.setStyle(
-      getCompartmentStyle
-    );
-// ==================================================
-// 🔥 ENTIRE COMPARTMENT LAYER ALWAYS ABOVE GIS
-// ==================================================
+    try {
 
-try {
+      window.compartmentLayer.bringToFront();
 
-  window.compartmentLayer.bringToFront();
+    } catch(e){}
 
-} catch(e){}
     // ==================================================
-    // 🔥 ACTIVE COMPARTMENT TO FRONT
+    // 🔥 ACTIVE COMPARTMENT ABOVE ALL
     // ==================================================
 
     window.compartmentLayer.eachLayer(layer => {
@@ -12466,6 +12493,12 @@ try {
 
         ){
 
+          layer.setStyle({
+
+            weight : 7
+
+          });
+
           layer.bringToFront();
         }
 
@@ -12476,7 +12509,7 @@ try {
     });
 
     console.log(
-      "✅ Compartment STYLE UPDATED"
+      "✅ Compartment layer rebuilt"
     );
 
   }
@@ -12491,7 +12524,6 @@ try {
   }
 
 }
-
 // ======================================================
 // 🟨 BEAT BUTTONS
 // ======================================================
