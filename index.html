@@ -8866,16 +8866,13 @@ ${pct(data.health)} / 100
 // 🌍 GIS FILTER STATE
 // ======================================================
 
-window.gisFilter = {
-
-  division:"ALL",
-
-  range:"ALL",
-
-  beat:"ALL",
-
-  compartment:"ALL"
-};
+window.gisFilter =
+  window.gisFilter || {
+    division:"ALL",
+    range:"ALL",
+    beat:"ALL",
+    compartment:"ALL"
+  };
 
 // ======================================================
 // 🌍 GIS DATASETS
@@ -8889,9 +8886,20 @@ window.allCompartmentFeatures = [];
 // 🌍 ACTIVE LAYERS
 // ======================================================
 
-window.gisLayer = null;
+// ======================================================
+// 🌍 ENTERPRISE GIS HIERARCHY LAYERS
+// ======================================================
+
+window.rootLayer = null;
+
+window.divisionLayer = null;
+
+window.rangeLayer = null;
+
+window.beatLayer = null;
 
 window.compartmentLayer = null;
+
     
     window.gisFeatureLayers = [];
 
@@ -11656,15 +11664,36 @@ centerMap();
 // ======================================================
 // 🌍 FILTER + RENDER COMPARTMENTS
 // ======================================================
+// ======================================================
+// 🌍 ENTERPRISE GIS HIERARCHY RENDERER
+// FULLY ALIGNED WITH CURRENT SYSTEM
+// ======================================================
+
 function renderFilteredGIS(){
 
   try {
 
     // ==================================================
+    // 🌍 FILTERS
+    // ==================================================
+
+    const activeDivision =
+
+      window.gisFilter.division || "ALL";
+
+    const activeRange =
+
+      window.gisFilter.range || "ALL";
+
+    const activeBeat =
+
+      window.gisFilter.beat || "ALL";
+
+    // ==================================================
     // 📦 FEATURES
     // ==================================================
 
-    const features =
+    const allFeatures =
 
       window.allGISFeatures || [];
 
@@ -11672,7 +11701,7 @@ function renderFilteredGIS(){
     // ❌ EMPTY
     // ==================================================
 
-    if(features.length === 0){
+    if(allFeatures.length === 0){
 
       console.warn(
         "⚠ No GIS features"
@@ -11682,585 +11711,511 @@ function renderFilteredGIS(){
     }
 
     // ==================================================
-    // 🌍 ACTIVE FILTERS
+    // 🧹 CLEAR OLD LAYERS
     // ==================================================
 
-    const activeDivision =
+    try{
 
-      String(
-        window.gisFilter?.division || "ALL"
-      );
+      if(window.rootLayer){
 
-    const activeRange =
+        window.map.removeLayer(
+          window.rootLayer
+        );
 
-      String(
-        window.gisFilter?.range || "ALL"
-      );
+        window.rootLayer = null;
+      }
 
-    const activeBeat =
+    } catch(e){}
 
-      String(
-        window.gisFilter?.beat || "ALL"
-      );
+    try{
+
+      if(window.divisionLayer){
+
+        window.map.removeLayer(
+          window.divisionLayer
+        );
+
+        window.divisionLayer = null;
+      }
+
+    } catch(e){}
+
+    try{
+
+      if(window.rangeLayer){
+
+        window.map.removeLayer(
+          window.rangeLayer
+        );
+
+        window.rangeLayer = null;
+      }
+
+    } catch(e){}
+
+    try{
+
+      if(window.beatLayer){
+
+        window.map.removeLayer(
+          window.beatLayer
+        );
+
+        window.beatLayer = null;
+      }
+
+    } catch(e){}
 
     // ==================================================
-    // 🎨 STYLE ENGINE
+    // 🌍 ROOT LAYER
+    // ALWAYS LOWEST
     // ==================================================
 
-   function getGISStyle(feature){
+    window.rootLayer =
 
-  const props =
-    feature.properties || {};
+      L.geoJSON(allFeatures,{
 
-  const division =
+        renderer:
+          window.canvasRenderer,
 
-    normalizeDivision(
+        interactive:false,
 
-      props.Division ||
+        smoothFactor:2,
 
-      props.division ||
+        style:{
 
-      ""
+          color:"#00e5ff",
 
-    );
+          weight:6,
 
-  const range =
+          opacity:0.7,
 
-    String(
+          fillColor:"#00e5ff",
 
-      props.Range ||
+          fillOpacity:0.003,
 
-      props.range ||
+          lineJoin:"round",
 
-      ""
+          lineCap:"round"
 
-    ).trim();
+        }
 
-  const beat =
+      })
 
-    String(
+      .addTo(window.map);
 
-      props.Beat ||
-
-      props.beat ||
-
-      ""
-
-    ).trim();
-
-  // ==============================================
-  // 🌍 ROOT BTR
-  // THICKEST BASE PARENT
-  // ==============================================
-
-  let color =
-    "#00e5ff";
-
-  let weight = 6;
-
-  let fillOpacity = 0.004;
-
-  // ==============================================
-  // 🟩 DIVISION
-  // BROAD PARENT
-  // ==============================================
-
-  if(
-
-    activeDivision !== "ALL"
-
-    &&
-
-    division ===
-    normalizeDivision(
-      activeDivision
-    )
-
-  ){
-
-    color =
-      "#00ff88";
-
-    weight = 5;
-
-    fillOpacity = 0.008;
-  }
-
-  // ==============================================
-  // 🟨 RANGE
-  // CHILD OF DIVISION
-  // ==============================================
-
-  if(
-
-    activeRange !== "ALL"
-
-    &&
-
-    range === activeRange
-
-  ){
-
-    color =
-      "#ffd600";
-
-    weight = 3.8;
-
-    fillOpacity = 0.012;
-  }
-
-  // ==============================================
-  // 🟪 BEAT
-  // CHILD OF RANGE
-  // THINNER + BRIGHTER
-  // ==============================================
-
-  if(
-
-    activeBeat !== "ALL"
-
-    &&
-
-    beat === activeBeat
-
-  ){
-
-    color =
-      "#ff00ff";
-
-    weight = 2.2;
-
-    fillOpacity = 0.016;
-  }
-
-  return {
-
-    color,
-    weight,
-
-    opacity : 1,
-
-    fillOpacity,
-
-    fillColor : color,
-
-    lineJoin : "round",
-
-    lineCap : "round"
-
-  };
-
-}// ==================================================
-    // 🔥 CREATE GIS LAYER ONCE
+    // ==================================================
+    // 🟩 DIVISION LAYER
     // ==================================================
 
-    if(!window.gisLayer){
+    if(activeDivision !== "ALL"){
 
-      console.log(
-        "🛰 Creating persistent GIS layer"
-      );
+      const divisionFeatures =
 
-      window.gisLayer =
+        allFeatures.filter(f => {
 
-        L.geoJSON(features,{
+          const props =
+            f.properties || {};
 
-          renderer:
-            window.canvasRenderer,
+          const division =
 
-          interactive:true,
+            normalizeDivision(
 
-          smoothFactor:2,
+              props.Division ||
 
-          style:getGISStyle,
+              props.division ||
 
-          // ==========================================
-          // 🧠 CLICK ROUTER
-          // ==========================================
-
-          onEachFeature:function(
-            feature,
-            layer
-          ){
-
-            layer.on(
-
-              "click",
-
-              async function(e){
-
-                try{
-
-                  L.DomEvent.stopPropagation(e);
-
-                  const level =
-
-                    window.activePopupContext
-                    ?.level ||
-
-                    "btr";
-
-                  const props =
-                    feature.properties || {};
-
-                  const rawDivision =
-
-                    String(
-
-                      props.Division ||
-
-                      props.division ||
-
-                      ""
-
-                    ).trim();
-
-                  const rawRange =
-
-                    String(
-
-                      props.Range ||
-
-                      props.range ||
-
-                      ""
-
-                    ).trim();
-
-                  const rawBeat =
-
-                    String(
-
-                      props.Beat ||
-
-                      props.beat ||
-
-                      ""
-
-                    ).trim();
-
-                  const firestoreDivision =
-
-                    getFirestoreDivision(
-                      rawDivision
-                    );
-
-                  // ====================================
-                  // 🌍 BTR
-                  // ====================================
-
-                  if(level === "btr"){
-
-                    await showBTRAnalyticsPanel(
-                      "gis_analytics_btr",
-                      "BTR_Circle"
-                    );
-
-                    return;
-                  }
-
-                  // ====================================
-                  // 🌍 DIVISION
-                  // ====================================
-
-                  if(level === "division"){
-
-                    await showBTRAnalyticsPanel(
-                      "gis_analytics_btr",
-                      firestoreDivision
-                    );
-
-                    return;
-                  }
-
-                  // ====================================
-                  // 🌳 RANGE
-                  // ====================================
-
-                  if(level === "range"){
-
-                    const rangeDocId =
-
-                      `${firestoreDivision}_${rawRange}`
-                      .replace(/\s+/g,"_");
-
-                    await showBTRAnalyticsPanel(
-                      "gis_range_analytics",
-                      rangeDocId
-                    );
-
-                    return;
-                  }
-
-                  // ====================================
-                  // 🟨 BEAT
-                  // ====================================
-
-                  if(level === "beat"){
-
-                    const beatDocId =
-
-                      `${firestoreDivision}_${rawRange}_${rawBeat}`
-                      .replace(/\s+/g,"_");
-
-                    await showBeatAnalyticsPanel(
-                      beatDocId
-                    );
-
-                    return;
-                  }
-
-                }
-
-                catch(err){
-
-                  console.error(
-                    "❌ GIS CLICK ROUTER",
-                    err
-                  );
-
-                }
-
-              }
+              ""
 
             );
 
-          }
+          return (
 
-        })
+            division ===
+            normalizeDivision(
+              activeDivision
+            )
 
-        .addTo(window.map);
+          );
 
-      console.log(
-        "✅ Persistent GIS Layer Created"
-      );
+        });
+
+      if(divisionFeatures.length){
+
+        window.divisionLayer =
+
+          L.geoJSON(divisionFeatures,{
+
+            renderer:
+              window.canvasRenderer,
+
+            interactive:true,
+
+            smoothFactor:2,
+
+            style:{
+
+              color:"#00ff88",
+
+              weight:5,
+
+              opacity:0.9,
+
+              fillColor:"#00ff88",
+
+              fillOpacity:0.008,
+
+              lineJoin:"round",
+
+              lineCap:"round"
+
+            },
+
+            onEachFeature:function(
+              feature,
+              layer
+            ){
+
+              layer.on(
+
+                "click",
+
+                async function(e){
+
+                  try{
+
+                    L.DomEvent.stopPropagation(e);
+
+                    if(
+
+                      window.activePopupContext.level
+                      !== "division"
+
+                    ){
+
+                      return;
+                    }
+
+                    await showDivisionAnalyticsPanel();
+
+                  }
+
+                  catch(err){
+
+                    console.error(err);
+
+                  }
+
+                }
+
+              );
+
+            }
+
+          })
+
+          .addTo(window.map);
+
+      }
 
     }
 
     // ==================================================
-    // 🎨 STYLE UPDATE ONLY
+    // 🟨 RANGE LAYER
     // ==================================================
 
-    console.log(
-      "🎨 Updating GIS styles only"
-    );
+    if(activeRange !== "ALL"){
 
-    window.gisLayer.setStyle(
-      getGISStyle
-    );
+      const rangeFeatures =
+
+        allFeatures.filter(f => {
+
+          const props =
+            f.properties || {};
+
+          const range =
+
+            String(
+
+              props.Range ||
+
+              props.range ||
+
+              ""
+
+            ).trim();
+
+          return (
+
+            range === activeRange
+          );
+
+        });
+
+      if(rangeFeatures.length){
+
+        window.rangeLayer =
+
+          L.geoJSON(rangeFeatures,{
+
+            renderer:
+              window.canvasRenderer,
+
+            interactive:true,
+
+            smoothFactor:2,
+
+            style:{
+
+              color:"#ffd600",
+
+              weight:3.8,
+
+              opacity:1,
+
+              fillColor:"#ffd600",
+
+              fillOpacity:0.012,
+
+              lineJoin:"round",
+
+              lineCap:"round"
+
+            },
+
+            onEachFeature:function(
+              feature,
+              layer
+            ){
+
+              const props =
+                feature.properties || {};
+
+              const range =
+
+                props.Range ||
+
+                props.range ||
+
+                "-";
+
+              layer.on(
+
+                "click",
+
+                async function(e){
+
+                  try{
+
+                    L.DomEvent.stopPropagation(e);
+
+                    if(
+
+                      window.activePopupContext.level
+                      !== "range"
+
+                    ){
+
+                      return;
+                    }
+
+                    await showRangeAnalyticsPanel(
+                      range
+                    );
+
+                  }
+
+                  catch(err){
+
+                    console.error(err);
+
+                  }
+
+                }
+
+              );
+
+            }
+
+          })
+
+          .addTo(window.map);
+
+      }
+
+    }
 
     // ==================================================
-    // 🔥 RESET ALL Z-ORDER FIRST
+    // 🟪 BEAT LAYER
     // ==================================================
 
-    try {
+    if(activeBeat !== "ALL"){
 
-      window.gisLayer.eachLayer(layer => {
+      const beatFeatures =
 
-        try {
+        allFeatures.filter(f => {
 
-          layer.bringToBack();
+          const props =
+            f.properties || {};
 
-        } catch(e){}
+          const beat =
 
-      });
+            String(
+
+              props.Beat ||
+
+              props.beat ||
+
+              ""
+
+            ).trim();
+
+          return (
+
+            normalizeBeatName(beat)
+
+            ===
+
+            normalizeBeatName(
+              activeBeat
+            )
+
+          );
+
+        });
+
+      if(beatFeatures.length){
+
+        window.beatLayer =
+
+          L.geoJSON(beatFeatures,{
+
+            renderer:
+              window.canvasRenderer,
+
+            interactive:true,
+
+            smoothFactor:2,
+
+            style:{
+
+              color:"#ff00ff",
+
+              weight:2.2,
+
+              opacity:1,
+
+              fillColor:"#ff00ff",
+
+              fillOpacity:0.016,
+
+              lineJoin:"round",
+
+              lineCap:"round"
+
+            },
+
+            onEachFeature:function(
+              feature,
+              layer
+            ){
+
+              const props =
+                feature.properties || {};
+
+              const beat =
+
+                props.Beat ||
+
+                props.beat ||
+
+                "-";
+
+              layer.on(
+
+                "click",
+
+                async function(e){
+
+                  try{
+
+                    L.DomEvent.stopPropagation(e);
+
+                    if(
+
+                      window.activePopupContext.level
+                      !== "beat"
+
+                    ){
+
+                      return;
+                    }
+
+                    await showBeatAnalyticsPanel(
+                      beat
+                    );
+
+                  }
+
+                  catch(err){
+
+                    console.error(err);
+
+                  }
+
+                }
+
+              );
+
+            }
+
+          })
+
+          .addTo(window.map);
+
+      }
+
+    }
+
+    // ==================================================
+    // 🔥 FINAL Z-ORDER
+    // ==================================================
+
+    try{
+
+      if(window.rootLayer){
+
+        window.rootLayer.bringToBack();
+      }
+
+      if(window.divisionLayer){
+
+        window.divisionLayer.bringToFront();
+      }
+
+      if(window.rangeLayer){
+
+        window.rangeLayer.bringToFront();
+      }
+
+      if(window.beatLayer){
+
+        window.beatLayer.bringToFront();
+      }
+
+      if(window.compartmentLayer){
+
+        window.compartmentLayer.bringToFront();
+      }
 
     } catch(e){}
-// ==================================================
-// 🔥 ACTIVE FEATURES TO FRONT
-// TRUE NESTED HIERARCHY
-// ==================================================
 
-window.gisLayer.eachLayer(layer => {
+    // ==================================================
+    // ✅ DONE
+    // ==================================================
 
-  try {
-
-    const props =
-      layer.feature?.properties || {};
-
-    const division =
-
-      normalizeDivision(
-
-        props.Division ||
-
-        props.division ||
-
-        ""
-
-      );
-
-    const range =
-
-      String(
-
-        props.Range ||
-
-        props.range ||
-
-        ""
-
-      ).trim();
-
-    const beat =
-
-      String(
-
-        props.Beat ||
-
-        props.beat ||
-
-        ""
-
-      ).trim();
-
-    // =================================================
-    // 🌍 ROOT BTR
-    // =================================================
-
-    layer.setStyle({
-
-      lineJoin : "round",
-
-      lineCap : "round"
-
-    });
-
-    // =================================================
-    // 🟩 DIVISION
-    // BROADEST PARENT
-    // =================================================
-
-    if(
-
-      activeDivision !== "ALL"
-
-      &&
-
-      division ===
-      normalizeDivision(
-        activeDivision
-      )
-
-    ){
-
-      layer.setStyle({
-
-        color : "#00ff88",
-
-        weight : 5,
-
-        opacity : 0.9,
-
-        fillOpacity : 0.008,
-
-        fillColor : "#00ff88",
-
-        lineJoin : "round",
-
-        lineCap : "round"
-
-      });
-
-      layer.bringToFront();
-
-    }
-
-    // =================================================
-    // 🟨 RANGE
-    // CHILD OF DIVISION
-    // =================================================
-
-    if(
-
-      activeRange !== "ALL"
-
-      &&
-
-      range === activeRange
-
-    ){
-
-      layer.setStyle({
-
-        color : "#ffd600",
-
-        weight : 3.8,
-
-        opacity : 1,
-
-        fillOpacity : 0.012,
-
-        fillColor : "#ffd600",
-
-        lineJoin : "round",
-
-        lineCap : "round"
-
-      });
-
-      layer.bringToFront();
-
-    }
-
-    // =================================================
-    // 🟪 BEAT
-    // CHILD OF RANGE
-    // THINNER + BRIGHTER
-    // =================================================
-
-    if(
-
-      activeBeat !== "ALL"
-
-      &&
-
-      beat === activeBeat
-
-    ){
-
-      layer.setStyle({
-
-        color : "#ff00ff",
-
-        weight : 2.2,
-
-        opacity : 1,
-
-        fillOpacity : 0.016,
-
-        fillColor : "#ff00ff",
-
-        lineJoin : "round",
-
-        lineCap : "round"
-
-      });
-
-      // =============================================
-      // 🔥 ALWAYS TOPMOST
-      // =============================================
-
-      layer.bringToFront();
-
-      requestAnimationFrame(() => {
-
-        try {
-
-          layer.bringToFront();
-
-        } catch(e){}
-
-      });
-
-    }
-
-  }
-
-  catch(e){}
-
-});
     console.log(
-      "✅ GIS STYLE UPDATED"
+      "✅ Enterprise GIS hierarchy rendered"
     );
 
   }
