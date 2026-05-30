@@ -12398,283 +12398,361 @@ console.error("❌ renderFilteredGIS",e);
 }
 
 }
-   function renderFilteredCompartments(){
+  function renderFilteredCompartments(){
 
-  try {
+try {
 
-    // ==================================================
-    // 📦 FEATURES
-    // ==================================================
+// ==================================================
+// 📦 FEATURES
+// ==================================================
 
-    const features =
+const features =
+window.allCompartmentFeatures || [];
 
-      window.allCompartmentFeatures || [];
+// ==================================================
+// ❌ EMPTY
+// ==================================================
 
-    // ==================================================
-    // ❌ EMPTY
-    // ==================================================
+if(features.length === 0){
 
-    if(features.length === 0){
+console.warn("⚠ No compartment features");
 
-      return;
-    }
+// ==============================================
+// 🔥 REMOVE OLD LAYER
+// ==============================================
 
-    // ==================================================
-    // 🛰 UNIVERSAL TOOLTIP
-    // ==================================================
+try {
 
-    function bindUniversalTooltip(
-      feature,
-      layer
-    ){
+if(window.compartmentLayer){
 
-      try {
+window.map.removeLayer(window.compartmentLayer);
 
-        const props =
-          feature.properties || {};
+window.compartmentLayer = null;
 
-        const division =
+}
 
-          props.Division ||
+} catch(e){}
 
-          props.division ||
+return;
+}
 
-          "-";
+const isMobile = L.Browser.mobile;
 
-        const range =
+// ==================================================
+// 🎨 STYLE ENGINE
+// ==================================================
 
-          props.Range ||
+function getCompartmentStyle(feature){
 
-          props.range ||
+const props = feature.properties || {};
 
-          "-";
+const beat =
+String(
+props.Beat ||
+props.beat ||
+""
+).trim();
 
-        const beat =
+const compartment =
+String(
+props.compartment ||
+props.compartmen ||
+""
+).trim();
 
-          props.Beat ||
+// ==============================================
+// 🌍 DEFAULT COMPARTMENTS
+// ==============================================
 
-          props.beat ||
+let color = "#ff9100";
 
-          "-";
+let weight = isMobile ? 2.4 : 3.2;
 
-        const compartment =
+let fillOpacity = 0.008;
 
-          props.compartment ||
+// ==============================================
+// 🟨 ACTIVE BEAT COMPARTMENTS
+// ==============================================
 
-          props.compartmen ||
+if(
+window.gisFilter.beat !== "ALL"
+&&
+normalizeBeatName(beat)
+===
+normalizeBeatName(window.gisFilter.beat)
+){
 
-          "-";
+// ==========================================
+// 🔥 STRONG ORANGE
+// ==========================================
 
-        const tooltipHtml = `
+color = "#ff5e00";
 
-        <div class="gis-hover-card">
+weight = isMobile ? 4.2 : 5.1;
 
-          <div class="gis-hover-title">
-            GIS INSPECTION
-          </div>
+fillOpacity = 0.022;
 
-          <div class="gis-hover-row">
+}
 
-            <div class="gis-hover-label">
-              Division
-            </div>
+// ==============================================
+// 🟪 ACTIVE COMPARTMENT
+// ULTRA DISTINCT TACTICAL TARGET
+// ==============================================
 
-            <div class="gis-hover-value">
-              ${division}
-            </div>
+if(
+window.gisFilter.compartment !== "ALL"
+&&
+compartment === window.gisFilter.compartment
+){
 
-          </div>
+// ==========================================
+// 🔥 NEON VIOLET-WHITE
+// ==========================================
 
-          <div class="gis-hover-row">
+color = "#d500f9";
 
-            <div class="gis-hover-label">
-              Range
-            </div>
+// ==========================================
+// 🔥 MAXIMUM VISUAL ISOLATION
+// ==========================================
 
-            <div class="gis-hover-value">
-              ${range}
-            </div>
+weight = isMobile ? 5.5 : 7;
 
-          </div>
+fillOpacity = 0.045;
 
-          <div class="gis-hover-row">
+}
 
-            <div class="gis-hover-label">
-              Beat
-            </div>
+return {
 
-            <div class="gis-hover-value">
-              ${beat}
-            </div>
+color,
+weight,
 
-          </div>
+opacity : 1,
 
-          <div class="gis-hover-row">
+fillColor : color,
 
-            <div class="gis-hover-label">
-              Compartment
-            </div>
+fillOpacity,
 
-            <div class="gis-hover-value">
-              ${compartment}
-            </div>
+lineJoin : "round",
 
-          </div>
+lineCap : "round"
 
-        </div>
-        `;
+};
 
-        layer.bindTooltip(
+}
 
-          tooltipHtml,
+// ==================================================
+// 🔥 REMOVE OLD RANGE COMPARTMENTS
+// ==================================================
 
-          {
+try {
 
-            sticky:true,
+if(window.compartmentLayer){
 
-            direction:"top",
+window.map.removeLayer(window.compartmentLayer);
 
-            opacity:1,
+window.compartmentLayer = null;
 
-            permanent:false,
+}
 
-            interactive:false,
+} catch(e){}
 
-            className:
-              "gis-hover-tooltip",
+// ==================================================
+// 🔥 CREATE NEW RANGE COMPARTMENT LAYER
+// ==================================================
 
-            offset:[0,-10]
+console.log("🛰 Rebuilding compartment layer");
 
-          }
+window.compartmentLayer =
 
-        );
+L.geoJSON(features,{
 
-        // ==============================================
-        // 💻 DESKTOP
-        // ==============================================
+renderer : L.svg(),
 
-        layer.on(
+interactive : true,
 
-          "mouseover",
+smoothFactor : 2,
 
-          function(e){
+style : getCompartmentStyle,
 
-            try {
+onEachFeature(feature,layer){
 
-              this.openTooltip(
-                e.latlng
-              );
+const props = feature.properties || {};
 
-            } catch(err){}
+const compartment =
 
-          }
+props.compartment ||
+props.compartmen ||
+props.Compartment ||
+"-";
 
-        );
+// ==============================================
+// 🔥 ORIGINAL STYLE CACHE
+// ==============================================
 
-        layer.on(
+const originalStyle =
+getCompartmentStyle(feature);
 
-          "mousemove",
+// ==============================================
+// 🔥 HOVER ONLY
+// ==============================================
 
-          function(e){
+layer.on("mouseover",function(){
 
-            try {
+layer.setStyle({
+weight : originalStyle.weight + 1.2,
+fillOpacity : originalStyle.fillOpacity + 0.02
+});
 
-              this.openTooltip(
-                e.latlng
-              );
+layer.bringToFront();
 
-            } catch(err){}
+});
 
-          }
+layer.on("mouseout",function(){
 
-        );
+layer.setStyle(originalStyle);
 
-        layer.on(
+});
 
-          "mouseout",
+// ==============================================
+// 🔥 ORIGINAL CLICK LOGIC
+// ==============================================
 
-          function(){
+layer.on(
 
-            try {
+"click",
 
-              this.closeTooltip();
+async function(e){
 
-            } catch(err){}
+try{
 
-          }
+L.DomEvent.stopPropagation(e);
 
-        );
+if(
+window.activePopupContext.level
+!== "compartment"
+){
 
-        // ==============================================
-        // 📱 MOBILE
-        // ==============================================
+return;
 
-        layer.on(
+}
 
-          "touchstart",
+await showCompartmentAnalyticsPanel(
+compartment
+);
 
-          function(e){
+}
 
-            try {
+catch(err){
 
-              this.openTooltip(
-                e.latlng
-              );
+console.error(
+"❌ COMP CLICK ROUTER",
+err
+);
 
-            } catch(err){}
+}
 
-          }
+}
 
-        );
+);
 
-      }
+}
 
-      catch(e){
+})
 
-        console.warn(
-          "⚠ Tooltip bind failed",
-          e
-        );
+.addTo(window.map);
 
-      }
+// ==================================================
+// 🔥 ACTIVE COMPARTMENT ABOVE ALL
+// TRUE FEATURE-LEVEL Z-ORDER
+// ==================================================
 
-    }
+window.compartmentLayer.eachLayer(layer => {
 
-    // ==================================================
-    // 🔥 BIND TO EXISTING LAYER ONLY
-    // ==================================================
+try {
 
-    if(window.compartmentLayer){
+const props = layer.feature?.properties || {};
 
-      window.compartmentLayer.eachLayer(layer => {
+const comp =
 
-        try {
+String(
+props.compartment ||
+props.compartmen ||
+""
+).trim();
 
-          bindUniversalTooltip(
-            layer.feature,
-            layer
-          );
+// ==============================================
+// 🔥 SHARP RENDER FIX
+// ==============================================
 
-        } catch(e){}
+layer.setStyle({
 
-      });
+lineJoin : "round",
 
-    }
+lineCap : "round"
 
-    console.log(
-      "✅ Compartment hover ready"
-    );
+});
 
-  }
+// ==============================================
+// 🟥 ACTIVE COMPARTMENT
+// ==============================================
 
-  catch(e){
+if(
+window.gisFilter.compartment !== "ALL"
+&&
+comp === window.gisFilter.compartment
+){
 
-    console.error(
-      "❌ renderFilteredCompartments",
-      e
-    );
+layer.setStyle({
 
-  }
+color : "#d500f9",
+
+weight : 5,
+
+opacity : 1,
+
+fillColor : "#ff1744",
+
+fillOpacity : 0.010,
+
+lineJoin : "round",
+
+lineCap : "round"
+
+});
+
+// ==========================================
+// 🔥 TRUE TOPMOST
+// ==========================================
+
+layer.bringToFront();
+
+requestAnimationFrame(() => {
+
+try {
+
+layer.bringToFront();
+
+} catch(e){}
+
+});
+
+}
+
+}
+
+catch(e){}
+
+});
+
+console.log("✅ Compartment layer rebuilt");
+
+}
+
+catch(e){
+
+console.error("❌ renderFilteredCompartments",e);
+
+}
 
 }
 // ======================================================
