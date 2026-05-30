@@ -12108,48 +12108,45 @@ window.gisLayer.eachLayer(layer => {
       ).trim();
 
     // =================================================
-    // 🟪 PRIORITY 1 — ACTIVE BEAT
-    // =================================================
+// 🟪 PRIORITY 1 — ACTIVE BEAT
+// =================================================
 
-    if(
+if(
 
-      activeBeat !== "ALL"
+  activeBeat !== "ALL"
 
-      &&
+  &&
 
-      beat === activeBeat
+  beat === activeBeat
 
-    ){
+){
 
-      layer.setStyle({
+  layer.setStyle({
 
-        color : "#ff00ff",
+    color : "#ff00ff",
 
-        weight : 6,
+    weight : 5,
 
-        opacity : 1,
+    opacity : 1,
 
-        fillOpacity : 0.01,
+    fillOpacity : 0.01
 
-        dashArray : "8,5"
+  });
 
-      });
+  layer.bringToFront();
+
+  requestAnimationFrame(() => {
+
+    try {
 
       layer.bringToFront();
 
-      requestAnimationFrame(() => {
+    } catch(e){}
 
-        try {
+  });
 
-          layer.bringToFront();
-
-        } catch(e){}
-
-      });
-
-      return;
-    }
-
+  return;
+}
     // =================================================
     // 🟨 PRIORITY 2 — ACTIVE RANGE
     // =================================================
