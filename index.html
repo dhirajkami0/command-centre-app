@@ -12223,7 +12223,7 @@ function renderFilteredGIS(){
 
   color:"#ff00ff",
 
-  weight:1.8,
+  weight:2.5,
 
   opacity:1,
 
@@ -12524,125 +12524,135 @@ try{
     // 🎨 STYLE ENGINE
     // ==================================================
 
-    function getCompartmentStyle(feature){
+   function getCompartmentStyle(feature){
 
-      const props =
-        feature.properties || {};
+  const props =
+    feature.properties || {};
 
-      const beat =
+  const beat =
 
-        String(
+    String(
 
-          props.Beat ||
+      props.Beat ||
 
-          props.beat ||
+      props.beat ||
 
-          ""
+      ""
 
-        ).trim();
+    ).trim();
 
-      const compartment =
+  const compartment =
 
-        String(
+    String(
 
-          props.compartment ||
+      props.compartment ||
 
-          props.compartmen ||
+      props.compartmen ||
 
-          ""
+      ""
 
-        ).trim();
+    ).trim();
 
-      // ==============================================
-      // 🌍 DEFAULT COMPARTMENTS
-      // THINNEST BASE CHILD
-      // ==============================================
+  // ==============================================
+  // 🌍 DEFAULT COMPARTMENTS
+  // THINNEST BASE CHILD
+  // ==============================================
 
-      let color =
-        "#ff9800";
+  let color =
+    "#ff9800";
 
-      let weight =
-        isMobile ? 0.6 : 1;
+  let weight =
+    isMobile ? 0.8 : 1.2;
 
-      let fillOpacity =
-        0.003;
+  let fillOpacity =
+    0.003;
 
-      // ==============================================
-      // 🟨 ACTIVE BEAT COMPARTMENTS
-      // PARENT OF ACTIVE COMPARTMENT
-      // ==============================================
+  // ==============================================
+  // 🟨 ACTIVE BEAT COMPARTMENTS
+  // CONTRAST BELOW BEAT LAYER
+  // Beat layer = 2.5
+  // So keep slightly lower
+  // ==============================================
 
-      if(
+  if(
 
-        window.gisFilter.beat !== "ALL"
+    window.gisFilter.beat !== "ALL"
 
-        &&
+    &&
 
-        normalizeBeatName(beat)
+    normalizeBeatName(beat)
 
-        ===
+    ===
 
-        normalizeBeatName(
-          window.gisFilter.beat
-        )
+    normalizeBeatName(
+      window.gisFilter.beat
+    )
 
-      ){
+  ){
 
-        color =
-          "#ffb300";
+    color =
+      "#ffb300";
 
-        weight =
-          isMobile ? 1.4 : 1.8;
+    // ==========================================
+    // 🔥 SLIGHTLY BELOW BEAT WEIGHT
+    // ==========================================
 
-        fillOpacity =
-          0.006;
-      }
+    weight =
+      isMobile ? 1.8 : 2.2;
 
-      // ==============================================
-      // 🟥 ACTIVE COMPARTMENT
-      // THINNEST + BRIGHTEST
-      // ==============================================
+    fillOpacity =
+      0.008;
+  }
 
-      if(
+  // ==============================================
+  // 🟥 ACTIVE COMPARTMENT
+  // BRIGHTEST + SHARPEST
+  // SLIGHTLY BELOW ACTIVE BEAT
+  // ==============================================
 
-        window.gisFilter.compartment !== "ALL"
+  if(
 
-        &&
+    window.gisFilter.compartment !== "ALL"
 
-        compartment ===
-        window.gisFilter.compartment
+    &&
 
-      ){
+    compartment ===
+    window.gisFilter.compartment
 
-        color =
-          "#ff1744";
+  ){
 
-        weight =
-          isMobile ? 1.2 : 1.4;
+    color =
+      "#ff1744";
 
-        fillOpacity =
-          0.010;
-      }
+    // ==========================================
+    // 🔥 DISTINCT BUT BELOW BEAT 2.5
+    // ==========================================
 
-      return {
+    weight =
+      isMobile ? 2.0 : 2.35;
 
-        color,
-        weight,
+    fillOpacity =
+      0.012;
+  }
 
-        opacity : 1,
+  return {
 
-        fillColor : color,
+    color,
+    weight,
 
-        fillOpacity,
+    opacity : 1,
 
-        lineJoin : "round",
+    fillColor : color,
 
-        lineCap : "round"
+    fillOpacity,
 
-      };
+    lineJoin : "round",
 
-    }
+    lineCap : "round"
 
+  };
+
+}
     // ==================================================
     // 🔥 REMOVE OLD RANGE COMPARTMENTS
     // ==================================================
