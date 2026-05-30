@@ -8356,44 +8356,163 @@ map.on(
     window.gpsRetryCount = 0;
   }
 );    /* 🔁 CENTER MAP */
-  function centerMap(){
+ function centerMap(){
 
   try {
 
     // ============================================
-    // 🔥 GIS LAYER AVAILABLE
+    // 🎯 ACTIVE HIERARCHY LAYER
+    // ============================================
+
+    let activeLayer = null;
+
+    // ============================================
+    // 🟥 PRIORITY 1 — COMPARTMENT
     // ============================================
 
     if(
 
-      window.gisLayer &&
+      window.compartmentLayer &&
 
-      window.gisLayer.getBounds &&
+      window.gisFilter.compartment !== "ALL"
 
-      window.gisLayer.getBounds().isValid()
+      &&
+
+      window.compartmentLayer.getBounds
+
+      &&
+
+      window.compartmentLayer.getBounds().isValid()
 
     ){
 
+      activeLayer =
+        window.compartmentLayer;
+    }
+
+    // ============================================
+    // 🟪 PRIORITY 2 — BEAT
+    // ============================================
+
+    else if(
+
+      window.beatLayer &&
+
+      window.gisFilter.beat !== "ALL"
+
+      &&
+
+      window.beatLayer.getBounds
+
+      &&
+
+      window.beatLayer.getBounds().isValid()
+
+    ){
+
+      activeLayer =
+        window.beatLayer;
+    }
+
+    // ============================================
+    // 🟨 PRIORITY 3 — RANGE
+    // ============================================
+
+    else if(
+
+      window.rangeLayer &&
+
+      window.gisFilter.range !== "ALL"
+
+      &&
+
+      window.rangeLayer.getBounds
+
+      &&
+
+      window.rangeLayer.getBounds().isValid()
+
+    ){
+
+      activeLayer =
+        window.rangeLayer;
+    }
+
+    // ============================================
+    // 🟩 PRIORITY 4 — DIVISION
+    // ============================================
+
+    else if(
+
+      window.divisionLayer &&
+
+      window.gisFilter.division !== "ALL"
+
+      &&
+
+      window.divisionLayer.getBounds
+
+      &&
+
+      window.divisionLayer.getBounds().isValid()
+
+    ){
+
+      activeLayer =
+        window.divisionLayer;
+    }
+
+    // ============================================
+    // 🌍 PRIORITY 5 — ROOT
+    // ============================================
+
+    else if(
+
+      window.rootLayer &&
+
+      window.rootLayer.getBounds
+
+      &&
+
+      window.rootLayer.getBounds().isValid()
+
+    ){
+
+      activeLayer =
+        window.rootLayer;
+    }
+
+    // ============================================
+    // 🎯 CENTER TO ACTIVE LAYER
+    // ============================================
+
+    if(activeLayer){
+
       map.fitBounds(
 
-        window.gisLayer.getBounds(),
+        activeLayer.getBounds(),
 
         {
-          padding: [20, 20],
-          maxZoom: 15
+
+          padding:[20,20],
+
+          maxZoom:15,
+
+          animate:true
+
         }
 
       );
 
       console.log(
-        "🗺 Centered to GIS bounds"
+        "🗺 Centered to active hierarchy layer"
       );
 
       return;
     }
 
     // ============================================
-    // 🔥 FALLBACK → MY GPS
+    // 📍 FALLBACK → GPS
     // ============================================
 
     if(
@@ -8424,7 +8543,7 @@ map.on(
     }
 
     // ============================================
-    // 🔥 FINAL FALLBACK
+    // 🌍 FINAL FALLBACK
     // ============================================
 
     map.setView(
@@ -8432,6 +8551,7 @@ map.on(
       [26.561, 89.507],
 
       12
+
     );
 
     console.log(
@@ -8446,7 +8566,9 @@ map.on(
       "⚠ centerMap failed:",
       e
     );
+
   }
+
 }  /* ============================================================
        🧱 BLOCK 3 → LAYERS DEFINITIONS
     ============================================================ */
