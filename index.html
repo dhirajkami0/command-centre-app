@@ -11707,7 +11707,7 @@ function renderFilteredGIS(){
     // 🎨 STYLE ENGINE
     // ==================================================
 
-    function getGISStyle(feature){
+   function getGISStyle(feature){
 
   const props =
     feature.properties || {};
@@ -11749,7 +11749,7 @@ function renderFilteredGIS(){
     ).trim();
 
   // ==============================================
-  // 🌍 DEFAULT
+  // 🌍 DEFAULT MAP
   // ==============================================
 
   let color =
@@ -11757,12 +11757,12 @@ function renderFilteredGIS(){
 
   let weight = 1.2;
 
-  let fillOpacity = 0.01;
-
-  let dashArray = null;
+  let fillOpacity = 0.005;
 
   // ==============================================
   // 🟩 ACTIVE DIVISION
+  // PARENT LAYER
+  // BROADER + SOFTER
   // ==============================================
 
   if(
@@ -11781,13 +11781,15 @@ function renderFilteredGIS(){
     color =
       "#00ff88";
 
-    weight = 2.2;
+    weight = 5;
 
-    fillOpacity = 0.02;
+    fillOpacity = 0.015;
   }
 
   // ==============================================
   // 🟨 ACTIVE RANGE
+  // CHILD OF DIVISION
+  // SLIGHTLY THINNER
   // ==============================================
 
   if(
@@ -11803,13 +11805,14 @@ function renderFilteredGIS(){
     color =
       "#ffd600";
 
-    weight = 3.2;
+    weight = 4.5;
 
-    fillOpacity = 0.03;
+    fillOpacity = 0.02;
   }
 
   // ==============================================
   // 🟪 ACTIVE BEAT
+  // THINNER BUT BRIGHTER
   // ==============================================
 
   if(
@@ -11825,26 +11828,29 @@ function renderFilteredGIS(){
     color =
       "#ff00ff";
 
-    weight = 4.5;
+    weight = 3.2;
 
-    fillOpacity = 0.04;
-
-    dashArray = "6,4";
+    fillOpacity = 0.025;
   }
 
   return {
 
     color,
     weight,
-    fillOpacity,
-    dashArray,
 
-    fillColor : color
+    opacity : 1,
+
+    fillOpacity,
+
+    fillColor : color,
+
+    lineJoin : "round",
+
+    lineCap : "round"
 
   };
 
-}
-    // ==================================================
+} // ==================================================
     // 🔥 CREATE GIS LAYER ONCE
     // ==================================================
 
@@ -12108,47 +12114,61 @@ window.gisLayer.eachLayer(layer => {
       ).trim();
 
     // =================================================
-// 🟪 PRIORITY 1 — ACTIVE BEAT
-// =================================================
+    // 🟪 PRIORITY 1 — ACTIVE BEAT
+    // THINNER BUT BRIGHTER
+    // ALWAYS TOPMOST
+    // =================================================
 
-if(
+    if(
 
-  activeBeat !== "ALL"
+      activeBeat !== "ALL"
 
-  &&
+      &&
 
-  beat === activeBeat
+      beat === activeBeat
 
-){
+    ){
 
-  layer.setStyle({
+      layer.setStyle({
 
-    color : "#ff00ff",
+        color : "#ff00ff",
 
-    weight : 5,
+        weight : 3.2,
 
-    opacity : 1,
+        opacity : 1,
 
-    fillOpacity : 0.01
+        fillOpacity : 0.025,
 
-  });
+        fillColor : "#ff00ff",
 
-  layer.bringToFront();
+        lineJoin : "round",
 
-  requestAnimationFrame(() => {
+        lineCap : "round"
 
-    try {
+      });
+
+      // =============================================
+      // 🔥 TOPMOST PRIORITY
+      // =============================================
 
       layer.bringToFront();
 
-    } catch(e){}
+      requestAnimationFrame(() => {
 
-  });
+        try {
 
-  return;
-}
+          layer.bringToFront();
+
+        } catch(e){}
+
+      });
+
+      return;
+    }
+
     // =================================================
     // 🟨 PRIORITY 2 — ACTIVE RANGE
+    // MEDIUM PARENT
     // =================================================
 
     if(
@@ -12167,9 +12187,19 @@ if(
 
       layer.setStyle({
 
-        weight : 4,
+        color : "#ffd600",
 
-        opacity : 1
+        weight : 4.5,
+
+        opacity : 1,
+
+        fillOpacity : 0.02,
+
+        fillColor : "#ffd600",
+
+        lineJoin : "round",
+
+        lineCap : "round"
 
       });
 
@@ -12180,6 +12210,7 @@ if(
 
     // =================================================
     // 🟩 PRIORITY 3 — ACTIVE DIVISION
+    // BROADEST PARENT
     // =================================================
 
     if(
@@ -12205,9 +12236,19 @@ if(
 
       layer.setStyle({
 
-        weight : 3,
+        color : "#00ff88",
 
-        opacity : 0.9
+        weight : 5,
+
+        opacity : 0.9,
+
+        fillOpacity : 0.015,
+
+        fillColor : "#00ff88",
+
+        lineJoin : "round",
+
+        lineCap : "round"
 
       });
 
@@ -12220,8 +12261,7 @@ if(
 
   catch(e){}
 
-});
-    
+});    
     console.log(
       "✅ GIS STYLE UPDATED"
     );
@@ -12318,17 +12358,23 @@ if(
     ).trim();
 
   // ==============================================
-  // 🌍 DEFAULT
+  // 🌍 DEFAULT COMPARTMENTS
+  // THIN + SOFT
   // ==============================================
 
   let color =
     "#ff9800";
 
   let weight =
-    isMobile ? 1 : 1.5;
+    isMobile ? 0.8 : 1.2;
+
+  let fillOpacity =
+    0.004;
 
   // ==============================================
-  // 🟨 ACTIVE BEAT
+  // 🟨 ACTIVE BEAT COMPARTMENTS
+  // PARENT OF ACTIVE COMPARTMENT
+  // SLIGHTLY BROADER
   // ==============================================
 
   if(
@@ -12351,11 +12397,15 @@ if(
       "#ffb300";
 
     weight =
-      isMobile ? 2 : 2.8;
+      isMobile ? 2 : 2.6;
+
+    fillOpacity =
+      0.008;
   }
 
   // ==============================================
   // 🟥 ACTIVE COMPARTMENT
+  // THINNER BUT BRIGHTER
   // ==============================================
 
   if(
@@ -12373,7 +12423,10 @@ if(
       "#ff1744";
 
     weight =
-      isMobile ? 3 : 4;
+      isMobile ? 2.2 : 3;
+
+    fillOpacity =
+      0.012;
   }
 
   return {
@@ -12381,9 +12434,15 @@ if(
     color,
     weight,
 
+    opacity : 1,
+
     fillColor : color,
 
-    fillOpacity : 0.01
+    fillOpacity,
+
+    lineJoin : "round",
+
+    lineCap : "round"
 
   };
 
