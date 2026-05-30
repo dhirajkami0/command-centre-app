@@ -11833,6 +11833,172 @@ function renderFilteredGIS(){
     }
 
     // ==================================================
+    // 🛰 UNIVERSAL TOOLTIP HELPER
+    // ==================================================
+
+    function bindUniversalTooltip(
+      feature,
+      layer
+    ){
+
+      try {
+
+        const props =
+          feature.properties || {};
+
+        const division =
+
+          props.Division ||
+
+          props.division ||
+
+          "-";
+
+        const range =
+
+          props.Range ||
+
+          props.range ||
+
+          "-";
+
+        const beat =
+
+          props.Beat ||
+
+          props.beat ||
+
+          "-";
+
+        const compartment =
+
+          props.compartment ||
+
+          props.compartmen ||
+
+          "-";
+
+        // ==============================================
+        // 🧠 TOOLTIP HTML
+        // ==============================================
+
+        let tooltipHtml = `
+
+        <div style="
+          min-width:180px;
+          font-size:12px;
+          line-height:1.5;
+          padding:2px;
+        ">
+
+        <b>Division:</b>
+        ${division}
+
+        <br>
+
+        <b>Range:</b>
+        ${range}
+        `;
+
+        // ==============================================
+        // 🟨 OPTIONAL BEAT
+        // ==============================================
+
+        if(
+
+          beat &&
+          beat !== "-"
+
+        ){
+
+          tooltipHtml += `
+
+          <br>
+
+          <b>Beat:</b>
+          ${beat}
+          `;
+        }
+
+        // ==============================================
+        // 🟥 OPTIONAL COMPARTMENT
+        // ==============================================
+
+        if(
+
+          compartment &&
+          compartment !== "-"
+
+        ){
+
+          tooltipHtml += `
+
+          <br>
+
+          <b>Compartment:</b>
+          ${compartment}
+          `;
+        }
+
+        tooltipHtml += `
+
+        </div>
+        `;
+
+        // ==============================================
+        // 🛰 TOOLTIP
+        // ==============================================
+
+        layer.bindTooltip(
+
+          tooltipHtml,
+
+          {
+
+            sticky:true,
+
+            direction:"top",
+
+            opacity:0.96
+
+          }
+
+        );
+
+        // ==============================================
+        // 📱 MOBILE TOUCH SUPPORT
+        // ==============================================
+
+        layer.on(
+
+          "touchstart",
+
+          function(){
+
+            try{
+
+              layer.openTooltip();
+
+            } catch(e){}
+
+          }
+
+        );
+
+      }
+
+      catch(e){
+
+        console.warn(
+          "⚠ Tooltip bind failed",
+          e
+        );
+
+      }
+
+    }
+
+    // ==================================================
     // 🧹 CLEAR OLD LAYERS
     // ==================================================
 
@@ -11890,7 +12056,6 @@ function renderFilteredGIS(){
 
     // ==================================================
     // 🌍 ROOT LAYER
-    // ALWAYS LOWEST
     // ==================================================
 
     window.rootLayer =
@@ -11900,7 +12065,7 @@ function renderFilteredGIS(){
         renderer:
           window.canvasRenderer,
 
-        interactive:false,
+        interactive:true,
 
         smoothFactor:2,
 
@@ -11919,6 +12084,18 @@ function renderFilteredGIS(){
           lineJoin:"round",
 
           lineCap:"round"
+
+        },
+
+        onEachFeature:function(
+          feature,
+          layer
+        ){
+
+          bindUniversalTooltip(
+            feature,
+            layer
+          );
 
         }
 
@@ -11997,6 +12174,11 @@ function renderFilteredGIS(){
               feature,
               layer
             ){
+
+              bindUniversalTooltip(
+                feature,
+                layer
+              );
 
               layer.on(
 
@@ -12110,6 +12292,11 @@ function renderFilteredGIS(){
               layer
             ){
 
+              bindUniversalTooltip(
+                feature,
+                layer
+              );
+
               const props =
                 feature.properties || {};
 
@@ -12219,30 +12406,33 @@ function renderFilteredGIS(){
 
             smoothFactor:2,
 
-           style:{
+            style:{
 
-  color:"#ff00ff",
+              color:"#ff00ff",
 
-  weight:2.5,
+              weight:2.5,
 
-  opacity:1,
+              opacity:1,
 
-  fillColor:"#ff00ff",
+              fillColor:"#ff00ff",
 
-  fillOpacity:0.004,
+              fillOpacity:0.004,
 
-  lineJoin:"round",
+              lineJoin:"round",
 
-  lineCap:"round",
+              lineCap:"round"
 
-  dashArray:null
-
-},
+            },
 
             onEachFeature:function(
               feature,
               layer
             ){
+
+              bindUniversalTooltip(
+                feature,
+                layer
+              );
 
               const props =
                 feature.properties || {};
@@ -12305,154 +12495,88 @@ function renderFilteredGIS(){
     // 🔥 FINAL Z-ORDER
     // ==================================================
 
- // ==================================================
-// 🔥 FINAL ENTERPRISE Z-ORDER STACK
-// SHARP NESTED HIERARCHY
-// ==================================================
+    try{
 
-try{
+      if(window.rootLayer){
 
-  // ================================================
-  // 🌍 ROOT BTR
-  // ALWAYS LOWEST
-  // ================================================
-
-  if(window.rootLayer){
-
-    window.rootLayer.eachLayer(layer => {
-
-      try{
-
-        layer.bringToBack();
-
-      } catch(e){}
-
-    });
-
-  }
-
-  // ================================================
-  // 🟩 DIVISION
-  // ABOVE ROOT
-  // ================================================
-
-  if(window.divisionLayer){
-
-    window.divisionLayer.eachLayer(layer => {
-
-      try{
-
-        layer.bringToFront();
-
-      } catch(e){}
-
-    });
-
-  }
-
-  // ================================================
-  // 🟨 RANGE
-  // ABOVE DIVISION
-  // ================================================
-
-  if(window.rangeLayer){
-
-    window.rangeLayer.eachLayer(layer => {
-
-      try{
-
-        layer.bringToFront();
-
-      } catch(e){}
-
-    });
-
-  }
-
-  // ================================================
-  // 🟪 BEAT
-  // TRUE TACTICAL TOPMOST
-  // ================================================
-
-  if(window.beatLayer){
-
-    window.beatLayer.eachLayer(layer => {
-
-      try{
-
-        // ==========================================
-        // 🔥 FORCE SHARP VISIBILITY
-        // ==========================================
-
-        layer.setStyle({
-
-          color : "#ff00ff",
-
-          weight : 1.8,
-
-          opacity : 1,
-
-          fillColor : "#ff00ff",
-
-          fillOpacity : 0.004,
-
-          lineJoin : "round",
-
-          lineCap : "round"
-
-        });
-
-        // ==========================================
-        // 🔥 TRUE TOPMOST
-        // ==========================================
-
-        layer.bringToFront();
-
-        requestAnimationFrame(() => {
+        window.rootLayer.eachLayer(layer => {
 
           try{
-
-            layer.bringToFront();
-
+            layer.bringToBack();
           } catch(e){}
 
         });
 
       }
 
-      catch(e){}
+      if(window.divisionLayer){
 
-    });
+        window.divisionLayer.eachLayer(layer => {
 
-  }
+          try{
+            layer.bringToFront();
+          } catch(e){}
 
-  // ================================================
-  // 🟥 COMPARTMENT
-  // FINAL TOPMOST TACTICAL UNIT
-  // ================================================
+        });
 
-  if(window.compartmentLayer){
+      }
 
-    window.compartmentLayer.eachLayer(layer => {
+      if(window.rangeLayer){
 
-      try{
+        window.rangeLayer.eachLayer(layer => {
 
-        layer.bringToFront();
+          try{
+            layer.bringToFront();
+          } catch(e){}
 
-      } catch(e){}
+        });
 
-    });
+      }
 
-  }
+      if(window.beatLayer){
 
-} catch(e){
+        window.beatLayer.eachLayer(layer => {
 
-  console.warn(
-    "⚠ Z-order hierarchy failed",
-    e
-  );
+          try{
 
-}
+            layer.bringToFront();
+
+            requestAnimationFrame(() => {
+
+              try{
+                layer.bringToFront();
+              } catch(e){}
+
+            });
+
+          }
+
+          catch(e){}
+
+        });
+
+      }
+
+      if(window.compartmentLayer){
+
+        window.compartmentLayer.eachLayer(layer => {
+
+          try{
+            layer.bringToFront();
+          } catch(e){}
+
+        });
+
+      }
+
+    } catch(e){
+
+      console.warn(
+        "⚠ Z-order hierarchy failed",
+        e
+      );
+
+    }
 
     // ==================================================
     // ✅ DONE
@@ -12473,8 +12597,7 @@ try{
 
   }
 
-}
-   function renderFilteredCompartments(){
+}   function renderFilteredCompartments(){
 
   try {
 
@@ -12495,10 +12618,6 @@ try{
       console.warn(
         "⚠ No compartment features"
       );
-
-      // ==============================================
-      // 🔥 REMOVE OLD LAYER
-      // ==============================================
 
       try {
 
@@ -12524,141 +12643,124 @@ try{
     // 🎨 STYLE ENGINE
     // ==================================================
 
- function getCompartmentStyle(feature){
+    function getCompartmentStyle(feature){
 
-  const props =
-    feature.properties || {};
+      const props =
+        feature.properties || {};
 
-  const beat =
+      const beat =
 
-    String(
+        String(
 
-      props.Beat ||
+          props.Beat ||
 
-      props.beat ||
+          props.beat ||
 
-      ""
+          ""
 
-    ).trim();
+        ).trim();
 
-  const compartment =
+      const compartment =
 
-    String(
+        String(
 
-      props.compartment ||
+          props.compartment ||
 
-      props.compartmen ||
+          props.compartmen ||
 
-      ""
+          ""
 
-    ).trim();
+        ).trim();
 
-  // ==============================================
-  // 🌍 DEFAULT COMPARTMENTS
-  // ==============================================
+      // ==============================================
+      // 🌍 DEFAULT COMPARTMENTS
+      // ==============================================
 
-  let color =
-    "#ff9100";
+      let color =
+        "#ff9100";
 
-  let weight =
-    isMobile ? 2.4 : 3.2;
+      let weight =
+        isMobile ? 2.4 : 3.2;
 
-  let fillOpacity =
-    0.008;
+      let fillOpacity =
+        0.008;
 
-  // ==============================================
-  // 🟨 ACTIVE BEAT COMPARTMENTS
-  // ==============================================
+      // ==============================================
+      // 🟨 ACTIVE BEAT COMPARTMENTS
+      // ==============================================
 
-  if(
+      if(
 
-    window.gisFilter.beat !== "ALL"
+        window.gisFilter.beat !== "ALL"
 
-    &&
+        &&
 
-    normalizeBeatName(beat)
+        normalizeBeatName(beat)
 
-    ===
+        ===
 
-    normalizeBeatName(
-      window.gisFilter.beat
-    )
+        normalizeBeatName(
+          window.gisFilter.beat
+        )
 
-  ){
+      ){
 
-    // ==========================================
-    // 🔥 STRONG ORANGE
-    // ==========================================
+        color =
+          "#ff5e00";
 
-    color =
-      "#ff5e00";
+        weight =
+          isMobile ? 4.2 : 5.1;
 
-    weight =
-      isMobile ? 4.2 : 5.1;
+        fillOpacity =
+          0.022;
+      }
 
-    fillOpacity =
-      0.022;
-  }
+      // ==============================================
+      // 🟪 ACTIVE COMPARTMENT
+      // ==============================================
 
-  // ==============================================
-  // 🟪 ACTIVE COMPARTMENT
-  // ULTRA DISTINCT TACTICAL TARGET
-  // ==============================================
+      if(
 
-  if(
+        window.gisFilter.compartment !== "ALL"
 
-    window.gisFilter.compartment !== "ALL"
+        &&
 
-    &&
+        compartment ===
+        window.gisFilter.compartment
 
-    compartment ===
-    window.gisFilter.compartment
+      ){
 
-  ){
+        color =
+          "#d500f9";
 
-    // ==========================================
-    // 🔥 NEON VIOLET-WHITE
-    // VERY DISTINCT FROM:
-    // cyan
-    // green
-    // yellow
-    // magenta
-    // orange
-    // ==========================================
+        weight =
+          isMobile ? 5.5 : 7;
 
-    color =
-      "#d500f9";
+        fillOpacity =
+          0.045;
+      }
 
-    // ==========================================
-    // 🔥 MAXIMUM VISUAL ISOLATION
-    // ==========================================
+      return {
 
-    weight =
-      isMobile ? 5.5 : 7;
+        color,
+        weight,
 
-    fillOpacity =
-      0.045;
-  }
+        opacity : 1,
 
-  return {
+        fillColor : color,
 
-    color,
-    weight,
+        fillOpacity,
 
-    opacity : 1,
+        lineJoin : "round",
 
-    fillColor : color,
+        lineCap : "round"
 
-    fillOpacity,
+      };
 
-    lineJoin : "round",
+    }
 
-    lineCap : "round"
-
-  };
-
-} // ==================================================
-    // 🔥 REMOVE OLD RANGE COMPARTMENTS
+    // ==================================================
+    // 🧹 REMOVE OLD LAYER
     // ==================================================
 
     try {
@@ -12676,7 +12778,165 @@ try{
     } catch(e){}
 
     // ==================================================
-    // 🔥 CREATE NEW RANGE COMPARTMENT LAYER
+    // 🛰 TOOLTIP HELPER
+    // ==================================================
+
+    function bindUniversalTooltip(
+      feature,
+      layer
+    ){
+
+      try {
+
+        const props =
+          feature.properties || {};
+
+        const division =
+
+          props.Division ||
+
+          props.division ||
+
+          "-";
+
+        const range =
+
+          props.Range ||
+
+          props.range ||
+
+          "-";
+
+        const beat =
+
+          props.Beat ||
+
+          props.beat ||
+
+          "-";
+
+        const compartment =
+
+          props.compartment ||
+
+          props.compartmen ||
+
+          "-";
+
+        // ==============================================
+        // 🧠 TOOLTIP
+        // ==============================================
+
+        let tooltipHtml = `
+
+        <div style="
+          min-width:180px;
+          font-size:12px;
+          line-height:1.5;
+          padding:2px;
+        ">
+
+        <b>Division:</b>
+        ${division}
+
+        <br>
+
+        <b>Range:</b>
+        ${range}
+        `;
+
+        if(
+
+          beat &&
+          beat !== "-"
+
+        ){
+
+          tooltipHtml += `
+
+          <br>
+
+          <b>Beat:</b>
+          ${beat}
+          `;
+        }
+
+        if(
+
+          compartment &&
+          compartment !== "-"
+
+        ){
+
+          tooltipHtml += `
+
+          <br>
+
+          <b>Compartment:</b>
+          ${compartment}
+          `;
+        }
+
+        tooltipHtml += `
+
+        </div>
+        `;
+
+        // ==============================================
+        // 🛰 TOOLTIP
+        // ==============================================
+
+        layer.bindTooltip(
+
+          tooltipHtml,
+
+          {
+
+            sticky:true,
+
+            direction:"top",
+
+            opacity:0.96
+
+          }
+
+        );
+
+        // ==============================================
+        // 📱 MOBILE TOUCH SUPPORT
+        // ==============================================
+
+        layer.on(
+
+          "touchstart",
+
+          function(){
+
+            try{
+
+              layer.openTooltip();
+
+            } catch(e){}
+
+          }
+
+        );
+
+      }
+
+      catch(e){
+
+        console.warn(
+          "⚠ Tooltip failed",
+          e
+        );
+
+      }
+
+    }
+
+    // ==================================================
+    // 🛰 CREATE LAYER
     // ==================================================
 
     console.log(
@@ -12701,6 +12961,15 @@ try{
           layer
         ){
 
+          // ==========================================
+          // 🛰 UNIVERSAL TOOLTIP
+          // ==========================================
+
+          bindUniversalTooltip(
+            feature,
+            layer
+          );
+
           const props =
             feature.properties || {};
 
@@ -12713,6 +12982,10 @@ try{
             props.Compartment ||
 
             "-";
+
+          // ==========================================
+          // 🖱 CLICK ANALYTICS
+          // ==========================================
 
           layer.on(
 
@@ -12761,7 +13034,6 @@ try{
 
     // ==================================================
     // 🔥 ACTIVE COMPARTMENT ABOVE ALL
-    // TRUE FEATURE-LEVEL Z-ORDER
     // ==================================================
 
     window.compartmentLayer.eachLayer(layer => {
@@ -12796,7 +13068,7 @@ try{
         });
 
         // ==============================================
-        // 🟥 ACTIVE COMPARTMENT
+        // 🟪 ACTIVE COMPARTMENT
         // ==============================================
 
         if(
@@ -12814,13 +13086,13 @@ try{
 
             color : "#d500f9",
 
-           weight : 5,
+            weight : 5,
 
             opacity : 1,
 
-            fillColor : "#ff1744",
+            fillColor : "#d500f9",
 
-            fillOpacity : 0.010,
+            fillOpacity : 0.025,
 
             lineJoin : "round",
 
