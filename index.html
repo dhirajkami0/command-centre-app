@@ -301,7 +301,7 @@ background: rgba(15, 20, 15, 0.92);z-index: 4000;
 
       border-right: 1px solid rgba(255, 255, 255, 0.2);
       border-bottom: 1px solid rgba(255, 255, 255, 0.2);
-      box-shadow: 0 10px 40px rgba(0, 0, 0, 0.5);
+     box-shadow:none;
 
       border-radius: 0 0 15px 0;
       transition: transform 0.4s cubic-bezier(0.4, 0, 0.2, 1);
@@ -1007,7 +1007,6 @@ TRUE NORTH LOCKED
     0 0 16px rgba(0,255,120,0.06),
     inset 0 0 14px rgba(0,255,120,0.04);
 
-  backdrop-filter:blur(10px);
 
   overflow:hidden;
 
@@ -1370,7 +1369,7 @@ NORTH REMAINS ABSOLUTE
     background:rgba(255,255,255,0.06);
     border-radius:12px;
     padding:10px;
-    backdrop-filter:blur(6px);
+    
   "
 >
 
@@ -1547,7 +1546,7 @@ NORTH REMAINS ABSOLUTE
     border:1px solid rgba(255,255,255,0.2);
     background:rgba(46,125,50,0.4);
     color:white;
-    backdrop-filter:blur(10px);
+  
     font-weight:bold;
   ">
       📲 Install App
@@ -3846,11 +3845,48 @@ async function startApp(){   // 🔥 ASYNC
     "🚀 App Started - Command Centre Initializing"
   );
 
+  // ======================================================
+  // 🔥 REMOVE SPLASH FAST
+  // ======================================================
+
+  setTimeout(() => {
+
+    try {
+
+      const splash =
+
+        document.getElementById(
+          "splash-screen"
+        );
+
+      if(splash){
+
+        splash.style.transition =
+          "opacity 0.25s ease";
+
+        splash.style.opacity = "0";
+
+        setTimeout(() => {
+
+          try {
+
+            splash.remove();
+
+          } catch(e){}
+
+        },250);
+      }
+
+    } catch(e){}
+
+  },300);
+
   try {
 
     // ======================================================
     // 🔥 INIT DUTY STATE
     // ======================================================
+
     window.isDutyActive = false;
 
     window.__dutyChecked = false;
@@ -3858,6 +3894,7 @@ async function startApp(){   // 🔥 ASYNC
     // ======================================================
     // 🔥 GRID FLAGS (LAZY MODE)
     // ======================================================
+
     window.gridVisible = false;
 
     window.__backendLoaded = false;
@@ -3873,6 +3910,7 @@ async function startApp(){   // 🔥 ASYNC
     // ======================================================
     // 🔥 ENSURE CACHE
     // ======================================================
+
     window.gridCache =
       window.gridCache || {
 
@@ -3884,168 +3922,199 @@ async function startApp(){   // 🔥 ASYNC
     // ======================================================
     // 🔥 ENSURE PENDING SYNC
     // ======================================================
+
     window.pendingGridSync =
       window.pendingGridSync || {};
 
     // ======================================================
-    // ⚡ PHASE 1 → LIGHT + FAST
+    // ⚡ PHASE 1 → IMMEDIATE UI
     // ======================================================
-    loadSightings();
 
-    if(typeof initDutyControl === "function"){
+    requestAnimationFrame(() => {
 
-      initDutyControl();
+      try {
 
-    } else {
+        loadSightings();
 
-      console.warn(
-        "⚠ initDutyControl not found"
-      );
-    }
+      } catch(e){
+
+        console.warn(e);
+      }
+
+    });
+
+    // ======================================================
+    // 🔥 DUTY INIT
+    // ======================================================
+
+    setTimeout(() => {
+
+      try {
+
+        if(typeof initDutyControl === "function"){
+
+          initDutyControl();
+
+        }
+
+      } catch(e){
+
+        console.warn(e);
+      }
+
+    },100);
 
     // ======================================================
     // 🔥 SAFETY GPS OFF
     // ======================================================
+
     if(window.gpsRunning){
 
       console.warn(
         "⚠ GPS unexpectedly running"
       );
 
-      // stopAutoGPS();
     }
 
     // ======================================================
-    // 🔥 BACKEND LOAD FIRST
-    // SOURCE OF TRUTH
+    // 🚀 PHASE 2 → BACKEND LAZY
     // ======================================================
-    // ======================================================
-// 🔥 BACKEND LOAD FIRST
-// SOURCE OF TRUTH
-// ======================================================
-await loadBackendCoverage();
-await loadRangeKML();
-// ======================================
-// 🔒 STAFF RANGE GIS
-// ======================================
 
+    setTimeout(async () => {
 
+      try {
 
-// ======================================================
-// 🔥 LOCK BACKEND
-// ======================================================
-window.__backendLoaded = true;
-    console.log(
-      "📡 Backend authoritative"
-    );
+        console.log(
+          "📡 Loading backend..."
+        );
 
-    // ======================================================
-    // 🔥 LOCAL FALLBACK CACHE
-    // ======================================================
-    loadCacheOnStart();
+        // ==================================================
+        // 🔥 LOAD COVERAGE
+        // ==================================================
 
-    // ======================================================
-    // 🔥 OFFLINE RECOVERY
-    // ======================================================
-    mergeOfflineCache();
+        await loadBackendCoverage();
+
+        // ==================================================
+        // 🔥 LOAD KML
+        // ==================================================
+
+        await loadRangeKML();
+
+        // ==================================================
+        // 🔒 BACKEND LOCK
+        // ==================================================
+
+        window.__backendLoaded = true;
+
+        console.log(
+          "✅ Backend authoritative"
+        );
+
+        // ==================================================
+        // 🔥 LOCAL CACHE
+        // ==================================================
+
+        loadCacheOnStart();
+
+        mergeOfflineCache();
+
+      }
+
+      catch(err){
+
+        console.error(
+          "❌ Backend phase fail",
+          err
+        );
+      }
+
+    },200);
 
     // ======================================================
     // 🔥 MONTH ROLLOVER
     // ======================================================
-    try {
 
-      const currentMonth =
+    setTimeout(() => {
 
-        new Date()
-          .toISOString()
-          .slice(0,7);
+      try {
 
-      const savedMonth =
+        const currentMonth =
 
-        localStorage.getItem(
-          "coverage_month"
-        );
+          new Date()
+            .toISOString()
+            .slice(0,7);
 
-      // ==============================================
-      // 🔥 FIRST RUN
-      // ==============================================
-      if(!savedMonth){
-
-        localStorage.setItem(
-
-          "coverage_month",
-
-          currentMonth
-        );
-      }
-
-      // ==============================================
-      // 🔥 MONTH CHANGED
-      // ==============================================
-      else if(savedMonth !== currentMonth){
-
-        console.log(
-          "📆 Month rollover"
-        );
-
-        // ==========================================
-        // 🔥 CURRENT → PREV
-        // ==========================================
-        localStorage.setItem(
-
-          "grid_prev",
+        const savedMonth =
 
           localStorage.getItem(
-            "grid_current"
-          ) || "{}"
-        );
+            "coverage_month"
+          );
 
-        // ==========================================
-        // 🔥 CLEAR CURRENT
-        // ==========================================
-        localStorage.setItem(
-          "grid_current",
-          "{}"
-        );
+        // ==============================================
+        // 🔥 FIRST RUN
+        // ==============================================
 
-        // ==========================================
-        // 🔥 CLEAR TODAY
-        // ==========================================
-        localStorage.setItem(
-          "grid_today",
-          "{}"
-        );
+        if(!savedMonth){
 
-        // ==========================================
-        // 🔥 SAVE NEW MONTH
-        // ==========================================
-        localStorage.setItem(
+          localStorage.setItem(
 
-          "coverage_month",
+            "coverage_month",
 
-          currentMonth
+            currentMonth
+          );
+        }
+
+        // ==============================================
+        // 🔥 MONTH CHANGED
+        // ==============================================
+
+        else if(savedMonth !== currentMonth){
+
+          console.log(
+            "📆 Month rollover"
+          );
+
+          localStorage.setItem(
+
+            "grid_prev",
+
+            localStorage.getItem(
+              "grid_current"
+            ) || "{}"
+          );
+
+          localStorage.setItem(
+            "grid_current",
+            "{}"
+          );
+
+          localStorage.setItem(
+            "grid_today",
+            "{}"
+          );
+
+          localStorage.setItem(
+
+            "coverage_month",
+
+            currentMonth
+          );
+        }
+
+      } catch(err){
+
+        console.warn(
+          "⚠ rollover fail",
+          err
         );
       }
 
-    } catch(err){
-
-      console.warn(
-        "⚠ rollover fail",
-        err
-      );
-    }
+    },500);
 
     // ======================================================
-    // 🔥 REMOVE OLD MONTH CACHE KEY
+    // 🧹 CLEAN CACHE LAZY
     // ======================================================
-    if(window.gridCache){
 
-      delete window.gridCache.month;
-    }
-
-    // ======================================================
-    // 🧹 CLEAN OLD GRID CACHE
-    // ======================================================
     setTimeout(() => {
 
       try {
@@ -4125,11 +4194,6 @@ window.__backendLoaded = true;
             );
 
             removed++;
-
-            console.log(
-              "🧹 Removed:",
-              key
-            );
           }
         });
 
@@ -4152,143 +4216,107 @@ window.__backendLoaded = true;
         );
       }
 
-    }, 1000);
+    },2500);
 
     // ======================================================
     // 🔥 OFFLINE GPS CLEAN
     // ======================================================
-    if(window.isDutyActive !== true){
+
+    setTimeout(() => {
 
       try {
 
-        localStorage.removeItem(
-          "offlineGPS"
-        );
+        if(window.isDutyActive !== true){
 
-        console.log(
-          "🧹 Cleared offline GPS"
-        );
+          localStorage.removeItem(
+            "offlineGPS"
+          );
+
+          console.log(
+            "🧹 Cleared offline GPS"
+          );
+        }
 
       } catch(e){}
-    }
 
-    console.log(
-      "⚡ Phase 1 complete"
-    );
+    },1200);
 
     // ======================================================
-    // 🚀 PHASE 2 → DELAYED TASKS
+    // 🚀 FIREBASE WAIT LOOP
     // ======================================================
-    
 
-    // ======================================================
-    // 🔥 DUTY CHECK
-    // ======================================================
-    const dutyWait = setInterval(() => {
+    setTimeout(() => {
 
-      // ==============================================
-      // 🔥 WAIT FIREBASE
-      // ==============================================
-      if(
-
-        !window.firebaseReady ||
-
-        !window.fb ||
-
-        !window.db
-
-      ){
-
-        console.log(
-          "⏳ Waiting Firebase..."
-        );
-
-        return;
-      }
-
-      // ==============================================
-      // 🔥 WAIT PROFILE
-      // ==============================================
-      if(
-
-        !window.userProfile ||
-
-        !window.userProfile.cleanName
-
-      ){
-
-        console.log(
-          "⏳ Waiting userProfile..."
-        );
-
-        return;
-      }
-
-      // ==============================================
-      // ✅ READY
-      // ==============================================
-      clearInterval(dutyWait);
-
-      console.log(
-        "🔥 Firebase ready → duty checks"
-      );
-
-      // ==============================================
-      // 🔥 INITIAL CHECKS
-      // ==============================================
-      setTimeout(() => {
-
-        autoShowEndDuty();
-
-      }, 1000);
-
-      setTimeout(() => {
-
-        autoShowEndDuty();
-
-      }, 3000);
-
-      // ==============================================
-      // 🔥 LOOP
-      // ==============================================
-      setInterval(() => {
+      const dutyWait = setInterval(() => {
 
         if(
 
-          window.userProfile &&
+          !window.firebaseReady ||
 
-          window.firebaseReady
+          !window.fb ||
+
+          !window.db
 
         ){
 
-          autoShowEndDuty();
+          return;
         }
 
-      }, 15000);
+        if(
 
-    }, 800);
+          !window.userProfile ||
+
+          !window.userProfile.cleanName
+
+        ){
+
+          return;
+        }
+
+        clearInterval(dutyWait);
+
+        console.log(
+          "🔥 Firebase ready"
+        );
+
+        setTimeout(() => {
+
+          autoShowEndDuty();
+
+        },1000);
+
+        setTimeout(() => {
+
+          autoShowEndDuty();
+
+        },3000);
+
+        setInterval(() => {
+
+          if(
+
+            window.userProfile &&
+
+            window.firebaseReady
+
+          ){
+
+            autoShowEndDuty();
+          }
+
+        },15000);
+
+      },800);
+
+    },1000);
 
     // ======================================================
     // ✅ APP READY
     // ======================================================
+
     console.log(
-      "✅ App initialized (Lazy Grid Mode)"
+      "✅ App initialized (FAST MODE)"
     );
-
-    // ======================================================
-    // 🔥 FIREBASE INIT
-    // KEEP EVERYTHING BELOW AS IS
-    // ======================================================
-
-    // ⛔ DO NOT ADD:
-    // ensureGridReady()
-    // repaintCoverageGrid()
-    // grid rendering
-    // polygon creation
-    // coverage paint
-
-    // ⛔ GRID SYSTEM NOW LOADS ONLY FROM:
-    // showCoveragePanel()
 
   }
 
@@ -4299,13 +4327,19 @@ window.__backendLoaded = true;
       e
     );
   }
-}    // ======================================================
+}  // ======================================================
 // 🔥 FIREBASE (UNCHANGED)
 // ======================================================
 
 // ======================================================
 // 🔥 FIREBASE INIT (IMMEDIATE)
 // ======================================================
+// ======================================================
+// 🔥 FAST FIREBASE INIT
+// ======================================================
+
+setTimeout(() => {
+
 (async () => {
 
   try {
@@ -4315,71 +4349,99 @@ window.__backendLoaded = true;
     );
 
     // ==================================================
-    // 🔥 IMPORT FIREBASE APP
+    // 🚀 PARALLEL IMPORTS
     // ==================================================
-    const { initializeApp } =
 
-      await import(
+    const [
+
+      firebaseAppModule,
+
+      firestoreModule,
+
+      storageModule
+
+    ] = await Promise.all([
+
+      import(
         "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js"
-      );
+      ),
+
+      import(
+        "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js"
+      ),
+
+      import(
+        "https://www.gstatic.com/firebasejs/10.12.0/firebase-storage.js"
+      )
+
+    ]);
 
     // ==================================================
-    // 🔥 IMPORT FIRESTORE
+    // 🔥 FIREBASE APP
     // ==================================================
-    
+
     const {
 
-  getFirestore,
+      initializeApp
 
-  collection,
-
-  query,
-
-  where,
-
-  orderBy,
-
-  onSnapshot,
-
-  serverTimestamp,
-
-  getDocs,
-
-  getDoc,
-
-  deleteDoc,
-
-  deleteField,
-
-  doc,
-
-  setDoc,
-
-  updateDoc
-
-} = await import(
-
-  "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js"
-);
+    } = firebaseAppModule;
 
     // ==================================================
-    // 🔥 IMPORT STORAGE
+    // 🔥 FIRESTORE
     // ==================================================
+
+    const {
+
+      getFirestore,
+
+      collection,
+
+      query,
+
+      where,
+
+      orderBy,
+
+      onSnapshot,
+
+      serverTimestamp,
+
+      getDocs,
+
+      getDoc,
+
+      deleteDoc,
+
+      deleteField,
+
+      doc,
+
+      setDoc,
+
+      updateDoc
+
+    } = firestoreModule;
+
+    // ==================================================
+    // 🔥 STORAGE
+    // ==================================================
+
     const {
 
       getStorage,
+
       ref,
+
       uploadBytes,
+
       getDownloadURL
 
-    } = await import(
-
-      "https://www.gstatic.com/firebasejs/10.12.0/firebase-storage.js"
-    );
+    } = storageModule;
 
     // ==================================================
     // 🔥 INIT APP
     // ==================================================
+
     const app =
 
       initializeApp(
@@ -4389,6 +4451,7 @@ window.__backendLoaded = true;
     // ==================================================
     // 🔥 DATABASE
     // ==================================================
+
     window.db =
 
       getFirestore(app);
@@ -4396,6 +4459,7 @@ window.__backendLoaded = true;
     // ==================================================
     // 🔥 STORAGE
     // ==================================================
+
     window.storage =
 
       getStorage(app);
@@ -4403,55 +4467,76 @@ window.__backendLoaded = true;
     // ==================================================
     // 🔥 FIREBASE HELPERS
     // ==================================================
-  window.fb = {
 
-  collection,
-where,
-  query,
+    window.fb = {
 
-  orderBy,
+      collection,
 
-  onSnapshot,
+      where,
 
-  serverTimestamp,
+      query,
 
-  getDocs,
+      orderBy,
 
-  getDoc,
+      onSnapshot,
 
-  deleteDoc,
+      serverTimestamp,
 
-  deleteField,
+      getDocs,
 
-  doc,
+      getDoc,
 
-  setDoc,
+      deleteDoc,
 
-  updateDoc,
+      deleteField,
 
-  ref,
+      doc,
 
-  uploadBytes,
+      setDoc,
 
-  getDownloadURL
-};
+      updateDoc,
+
+      ref,
+
+      uploadBytes,
+
+      getDownloadURL
+    };
+
     // ==================================================
     // 🔥 READY FLAG
     // ==================================================
+
     window.firebaseReady = true;
 
     console.log(
       "🔥 FIREBASE READY"
     );
 
-    // ============================================
-    // 🧹 RUN CLEANUP IMMEDIATELY
-    // ============================================
-    cleanupOldTracks();
+    // ==================================================
+    // 🧹 DELAY CLEANUP
+    // ==================================================
 
-    // ============================================
-    // 🧹 AUTO RUN EVERY 24 HOURS
-    // ============================================
+    setTimeout(() => {
+
+      try {
+
+        cleanupOldTracks();
+
+      } catch(e){
+
+        console.warn(
+          "⚠ cleanupOldTracks fail",
+          e
+        );
+      }
+
+    },5000);
+
+    // ==================================================
+    // 🧹 AUTO CLEANUP
+    // ==================================================
+
     setInterval(
 
       cleanupOldTracks,
@@ -4469,7 +4554,10 @@ where,
     );
   }
 
-})();    console.log("🔥 NEW BUILD LOADED - VERSION 999");
+})();
+
+},500);
+    console.log("🔥 NEW BUILD LOADED - VERSION 999");
 
 // ======================================================
 // 🚀 SMART SERVICE WORKER UPDATE SYSTEM (FINAL)
@@ -11816,7 +11904,7 @@ if(
 
     padding:0 !important;
 
-    backdrop-filter:blur(8px);
+  
 
     pointer-events:none;
 
@@ -26090,7 +26178,7 @@ const confirmed =
         display:flex;
         align-items:center;
         justify-content:center;
-        backdrop-filter:blur(3px);
+      
       ">
 
         <div style="
@@ -29482,7 +29570,7 @@ KEEP THIS AS IS
     padding:16px;
     box-shadow:
       0 0 25px rgba(0,229,255,0.35);
-    backdrop-filter:blur(10px);
+    
     font-family:Arial,sans-serif;
   "
 >
