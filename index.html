@@ -12555,22 +12555,22 @@ try{
 
   // ==============================================
   // 🌍 DEFAULT COMPARTMENTS
-  // BASE CHILD LAYER
+  // DISTINCT FROM RANGE
   // ==============================================
 
   let color =
-    "#ff9800";
+    "#ff9100";
 
   let weight =
-    isMobile ? 1.2 : 1.6;
+    isMobile ? 1.6 : 2.1;
 
   let fillOpacity =
-    0.004;
+    0.006;
 
   // ==============================================
   // 🟨 ACTIVE BEAT COMPARTMENTS
+  // HIGH CONTRAST OVER RANGE
   // BELOW ACTIVE BEAT
-  // Beat = 2.5
   // ==============================================
 
   if(
@@ -12589,24 +12589,28 @@ try{
 
   ){
 
+    // ==========================================
+    // 🔥 STRONG AMBER
+    // ==========================================
+
     color =
-      "#ffb300";
+      "#ff6f00";
 
     // ==========================================
-    // 🔥 STRONGER CONTRAST
+    // 🔥 STRONGER VISUAL SEPARATION
     // ==========================================
 
     weight =
-      isMobile ? 2.1 : 2.35;
+      isMobile ? 2.8 : 3.4;
 
     fillOpacity =
-      0.010;
+      0.016;
   }
 
   // ==============================================
   // 🟥 ACTIVE COMPARTMENT
-  // BRIGHTEST + SHARPEST
-  // JUST BELOW BEAT 2.5
+  // ULTRA DISTINCT OVER ALL PARENTS
+  // BELOW ONLY ACTIVE BEAT BORDER
   // ==============================================
 
   if(
@@ -12620,18 +12624,22 @@ try{
 
   ){
 
+    // ==========================================
+    // 🔥 HIGH-CONTRAST RED-PINK
+    // ==========================================
+
     color =
-      "#ff1744";
+      "#ff0055";
 
     // ==========================================
-    // 🔥 VERY DISTINCT
+    // 🔥 VERY STRONG DISTINCTNESS
     // ==========================================
 
     weight =
-      isMobile ? 2.25 : 2.45;
+      isMobile ? 3.2 : 4.2;
 
     fillOpacity =
-      0.016;
+      0.025;
   }
 
   return {
@@ -12651,8 +12659,7 @@ try{
 
   };
 
-}
-    // ==================================================
+} // ==================================================
     // 🔥 REMOVE OLD RANGE COMPARTMENTS
     // ==================================================
 
