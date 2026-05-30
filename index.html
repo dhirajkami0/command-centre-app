@@ -11981,7 +11981,7 @@ const range =
 
   "-";
 
-const beat =
+let beat =
 
   props.Beat ||
 
@@ -11989,7 +11989,7 @@ const beat =
 
   "-";
 
-const compartment =
+let compartment =
 
   props.compartment ||
 
@@ -11998,6 +11998,49 @@ const compartment =
   props.Compartment ||
 
   "-";
+
+// ==================================================
+// 🔥 ACTIVE RANGE DETECTION
+// ==================================================
+
+const activeRange =
+
+  String(
+
+    window.gisFilter?.range ||
+
+    "ALL"
+
+  ).trim();
+
+const featureRange =
+
+  String(range).trim();
+
+const insideSelectedRange =
+
+  activeRange === "ALL"
+
+  ||
+
+  activeRange === ""
+
+  ||
+
+  featureRange === activeRange;
+
+// ==================================================
+// 🔥 OUTSIDE ACTIVE RANGE
+// ONLY HIGH LEVEL POPUP
+// ==================================================
+
+if(!insideSelectedRange){
+
+  beat = "-";
+
+  compartment = "-";
+
+}
 
 // ==================================================
 // 🔥 TOOLTIP HTML
@@ -12036,6 +12079,10 @@ let tooltipHtml = `
   </div>
 `;
 
+// ==================================================
+// 🟪 BEAT
+// ==================================================
+
 if(
   beat &&
   beat !== "-"
@@ -12056,6 +12103,10 @@ if(
   </div>
   `;
 }
+
+// ==================================================
+// 📦 COMPARTMENT
+// ==================================================
 
 if(
   compartment &&
@@ -12140,6 +12191,12 @@ requestAnimationFrame(() => {
 
       layer._path.style.cursor =
         "pointer";
+
+      layer._path.style.webkitTouchCallout =
+        "none";
+
+      layer._path.style.webkitUserSelect =
+        "none";
 
     }
 
@@ -12248,6 +12305,19 @@ layer.on(
     try {
 
       window.map.closeTooltip();
+
+    } catch(err){}
+
+  }
+);
+
+layer.on(
+  "click",
+  function(){
+
+    try {
+
+      this.closeTooltip();
 
     } catch(err){}
 
