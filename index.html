@@ -11782,7 +11782,359 @@ centerMap();
 // CENTRAL BUTTON AWARE ROUTER
 // NO POPUP SYSTEM HERE
 // ======================================================
+// ==================================================
+// 🎨 ENTERPRISE TOOLTIP CSS
+// ==================================================
 
+if(
+  !document.getElementById(
+    "enterprise-gis-tooltip-style"
+  )
+){
+
+  const style =
+    document.createElement("style");
+
+  style.id =
+    "enterprise-gis-tooltip-style";
+
+  style.innerHTML = `
+
+  .gis-hover-tooltip{
+
+    background:
+      rgba(12,12,12,0.78) !important;
+
+    border:none !important;
+
+    box-shadow:
+      0 4px 18px rgba(0,0,0,0.30) !important;
+
+    color:#ffffff !important;
+
+    border-radius:10px !important;
+
+    padding:0 !important;
+
+    backdrop-filter:blur(8px);
+
+    pointer-events:none;
+
+  }
+
+  .gis-hover-tooltip .leaflet-tooltip-content{
+
+    margin:0 !important;
+
+    padding:0 !important;
+
+  }
+
+  .gis-hover-card{
+
+    min-width:170px;
+
+    padding:8px 10px;
+
+    font-size:11px;
+
+    line-height:1.5;
+
+    font-weight:500;
+
+  }
+
+  .gis-hover-title{
+
+    color:#00e5ff;
+
+    font-size:12px;
+
+    font-weight:700;
+
+    margin-bottom:4px;
+
+  }
+
+  .gis-hover-row{
+
+    display:flex;
+
+    gap:6px;
+
+  }
+
+  .gis-hover-label{
+
+    color:#9e9e9e;
+
+    min-width:78px;
+
+    font-weight:600;
+
+  }
+
+  .gis-hover-value{
+
+    color:#ffffff;
+
+    font-weight:500;
+
+  }
+
+  .leaflet-tooltip-top:before,
+  .leaflet-tooltip-bottom:before,
+  .leaflet-tooltip-left:before,
+  .leaflet-tooltip-right:before{
+
+    display:none !important;
+
+  }
+
+  .leaflet-popup-tip-container{
+
+    display:none !important;
+
+  }
+
+  .leaflet-popup-content-wrapper{
+
+    background:transparent !important;
+
+    box-shadow:none !important;
+
+  }
+
+  `;
+
+  document.head.appendChild(
+    style
+  );
+
+}
+
+// ==================================================
+// 🛰 UNIVERSAL TOOLTIP
+// ==================================================
+
+function bindUniversalTooltip(
+  feature,
+  layer
+){
+
+  try {
+
+    const props =
+      feature.properties || {};
+
+    const division =
+
+      props.Division ||
+
+      props.division ||
+
+      "-";
+
+    const range =
+
+      props.Range ||
+
+      props.range ||
+
+      "-";
+
+    const beat =
+
+      props.Beat ||
+
+      props.beat ||
+
+      "-";
+
+    const compartment =
+
+      props.compartment ||
+
+      props.compartmen ||
+
+      props.Compartment ||
+
+      "-";
+
+    let tooltipHtml = `
+
+    <div class="gis-hover-card">
+
+      <div class="gis-hover-title">
+        GIS INSPECTION
+      </div>
+
+      <div class="gis-hover-row">
+
+        <div class="gis-hover-label">
+          Division
+        </div>
+
+        <div class="gis-hover-value">
+          ${division}
+        </div>
+
+      </div>
+
+      <div class="gis-hover-row">
+
+        <div class="gis-hover-label">
+          Range
+        </div>
+
+        <div class="gis-hover-value">
+          ${range}
+        </div>
+
+      </div>
+    `;
+
+    if(
+      beat &&
+      beat !== "-"
+    ){
+
+      tooltipHtml += `
+
+      <div class="gis-hover-row">
+
+        <div class="gis-hover-label">
+          Beat
+        </div>
+
+        <div class="gis-hover-value">
+          ${beat}
+        </div>
+
+      </div>
+      `;
+    }
+
+    if(
+      compartment &&
+      compartment !== "-"
+    ){
+
+      tooltipHtml += `
+
+      <div class="gis-hover-row">
+
+        <div class="gis-hover-label">
+          Compartment
+        </div>
+
+        <div class="gis-hover-value">
+          ${compartment}
+        </div>
+
+      </div>
+      `;
+    }
+
+    tooltipHtml += `
+    </div>
+    `;
+
+    layer.bindTooltip(
+
+      tooltipHtml,
+
+      {
+
+        sticky:true,
+
+        direction:"top",
+
+        opacity:1,
+
+        permanent:false,
+
+        interactive:false,
+
+        className:
+          "gis-hover-tooltip",
+
+        offset:[0,-10]
+
+      }
+
+    );
+
+    layer.on(
+      "mouseover",
+      function(e){
+
+        try {
+
+          this.openTooltip(
+            e.latlng
+          );
+
+        } catch(err){}
+
+      }
+    );
+
+    layer.on(
+      "mousemove",
+      function(e){
+
+        try {
+
+          this.openTooltip(
+            e.latlng
+          );
+
+        } catch(err){}
+
+      }
+    );
+
+    layer.on(
+      "mouseout",
+      function(){
+
+        try {
+
+          this.closeTooltip();
+
+        } catch(err){}
+
+      }
+    );
+
+    layer.on(
+      "touchstart",
+      function(e){
+
+        try {
+
+          this.openTooltip(
+            e.latlng
+          );
+
+        } catch(err){}
+
+      }
+    );
+
+  }
+
+  catch(e){
+
+    console.warn(
+      "⚠ Tooltip failed",
+      e
+    );
+
+  }
+
+}
 // ======================================================
 // 🌍 FILTER + RENDER COMPARTMENTS
 // ======================================================
@@ -11904,6 +12256,15 @@ lineCap:"round"
 
 onEachFeature(feature,layer){
 
+// ==================================================
+// 🛰 TOOLTIP INTEGRATION
+// ==================================================
+
+bindUniversalTooltip(
+feature,
+layer
+);
+
 const originalStyle = {
 color:"#00e5ff",
 weight:5,
@@ -11983,6 +12344,15 @@ lineCap:"round"
 },
 
 onEachFeature(feature,layer){
+
+// ==================================================
+// 🛰 TOOLTIP INTEGRATION
+// ==================================================
+
+bindUniversalTooltip(
+feature,
+layer
+);
 
 const originalStyle = {
 color:"#00ff88",
@@ -12094,6 +12464,15 @@ lineCap:"round"
 },
 
 onEachFeature(feature,layer){
+
+// ==================================================
+// 🛰 TOOLTIP INTEGRATION
+// ==================================================
+
+bindUniversalTooltip(
+feature,
+layer
+);
 
 const props =feature.properties || {};
 
@@ -12216,6 +12595,15 @@ dashArray
 },
 
 onEachFeature(feature,layer){
+
+// ==================================================
+// 🛰 TOOLTIP INTEGRATION
+// ==================================================
+
+bindUniversalTooltip(
+feature,
+layer
+);
 
 const props =feature.properties || {};
 
@@ -12407,6 +12795,7 @@ try {
 // ==================================================
 
 const features =
+
 window.allCompartmentFeatures || [];
 
 // ==================================================
@@ -12447,17 +12836,27 @@ function getCompartmentStyle(feature){
 const props = feature.properties || {};
 
 const beat =
+
 String(
+
 props.Beat ||
+
 props.beat ||
+
 ""
+
 ).trim();
 
 const compartment =
+
 String(
+
 props.compartment ||
+
 props.compartmen ||
+
 ""
+
 ).trim();
 
 // ==============================================
@@ -12475,11 +12874,17 @@ let fillOpacity = 0.008;
 // ==============================================
 
 if(
+
 window.gisFilter.beat !== "ALL"
+
 &&
+
 normalizeBeatName(beat)
+
 ===
+
 normalizeBeatName(window.gisFilter.beat)
+
 ){
 
 // ==========================================
@@ -12500,9 +12905,13 @@ fillOpacity = 0.022;
 // ==============================================
 
 if(
+
 window.gisFilter.compartment !== "ALL"
+
 &&
+
 compartment === window.gisFilter.compartment
+
 ){
 
 // ==========================================
@@ -12576,13 +12985,29 @@ style : getCompartmentStyle,
 
 onEachFeature(feature,layer){
 
+// ==================================================
+// 🛰 TOOLTIP INTEGRATION
+// ==================================================
+
+bindUniversalTooltip(
+feature,
+layer
+);
+
+// ==================================================
+// 🔥 ORIGINAL LOGIC
+// ==================================================
+
 const props = feature.properties || {};
 
 const compartment =
 
 props.compartment ||
+
 props.compartmen ||
+
 props.Compartment ||
+
 "-";
 
 // ==============================================
@@ -12590,6 +13015,7 @@ props.Compartment ||
 // ==============================================
 
 const originalStyle =
+
 getCompartmentStyle(feature);
 
 // ==============================================
@@ -12599,8 +13025,11 @@ getCompartmentStyle(feature);
 layer.on("mouseover",function(){
 
 layer.setStyle({
+
 weight : originalStyle.weight + 1.2,
+
 fillOpacity : originalStyle.fillOpacity + 0.02
+
 });
 
 layer.bringToFront();
@@ -12628,8 +13057,11 @@ try{
 L.DomEvent.stopPropagation(e);
 
 if(
+
 window.activePopupContext.level
+
 !== "compartment"
+
 ){
 
 return;
@@ -12637,7 +13069,9 @@ return;
 }
 
 await showCompartmentAnalyticsPanel(
+
 compartment
+
 );
 
 }
@@ -12645,8 +13079,11 @@ compartment
 catch(err){
 
 console.error(
+
 "❌ COMP CLICK ROUTER",
+
 err
+
 );
 
 }
@@ -12675,9 +13112,13 @@ const props = layer.feature?.properties || {};
 const comp =
 
 String(
+
 props.compartment ||
+
 props.compartmen ||
+
 ""
+
 ).trim();
 
 // ==============================================
@@ -12697,9 +13138,13 @@ lineCap : "round"
 // ==============================================
 
 if(
+
 window.gisFilter.compartment !== "ALL"
+
 &&
+
 comp === window.gisFilter.compartment
+
 ){
 
 layer.setStyle({
