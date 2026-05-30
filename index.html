@@ -12097,23 +12097,25 @@ function renderFilteredGIS(){
 
             smoothFactor:2,
 
-            style:{
+           style:{
 
-              color:"#ff00ff",
+  color:"#ff00ff",
 
-              weight:2.2,
+  weight:1.8,
 
-              opacity:1,
+  opacity:1,
 
-              fillColor:"#ff00ff",
+  fillColor:"#ff00ff",
 
-              fillOpacity:0.016,
+  fillOpacity:0.004,
 
-              lineJoin:"round",
+  lineJoin:"round",
 
-              lineCap:"round"
+  lineCap:"round",
 
-            },
+  dashArray:null
+
+},
 
             onEachFeature:function(
               feature,
@@ -12181,34 +12183,154 @@ function renderFilteredGIS(){
     // 🔥 FINAL Z-ORDER
     // ==================================================
 
-    try{
+ // ==================================================
+// 🔥 FINAL ENTERPRISE Z-ORDER STACK
+// SHARP NESTED HIERARCHY
+// ==================================================
 
-      if(window.rootLayer){
+try{
 
-        window.rootLayer.bringToBack();
+  // ================================================
+  // 🌍 ROOT BTR
+  // ALWAYS LOWEST
+  // ================================================
+
+  if(window.rootLayer){
+
+    window.rootLayer.eachLayer(layer => {
+
+      try{
+
+        layer.bringToBack();
+
+      } catch(e){}
+
+    });
+
+  }
+
+  // ================================================
+  // 🟩 DIVISION
+  // ABOVE ROOT
+  // ================================================
+
+  if(window.divisionLayer){
+
+    window.divisionLayer.eachLayer(layer => {
+
+      try{
+
+        layer.bringToFront();
+
+      } catch(e){}
+
+    });
+
+  }
+
+  // ================================================
+  // 🟨 RANGE
+  // ABOVE DIVISION
+  // ================================================
+
+  if(window.rangeLayer){
+
+    window.rangeLayer.eachLayer(layer => {
+
+      try{
+
+        layer.bringToFront();
+
+      } catch(e){}
+
+    });
+
+  }
+
+  // ================================================
+  // 🟪 BEAT
+  // TRUE TACTICAL TOPMOST
+  // ================================================
+
+  if(window.beatLayer){
+
+    window.beatLayer.eachLayer(layer => {
+
+      try{
+
+        // ==========================================
+        // 🔥 FORCE SHARP VISIBILITY
+        // ==========================================
+
+        layer.setStyle({
+
+          color : "#ff00ff",
+
+          weight : 1.8,
+
+          opacity : 1,
+
+          fillColor : "#ff00ff",
+
+          fillOpacity : 0.004,
+
+          lineJoin : "round",
+
+          lineCap : "round"
+
+        });
+
+        // ==========================================
+        // 🔥 TRUE TOPMOST
+        // ==========================================
+
+        layer.bringToFront();
+
+        requestAnimationFrame(() => {
+
+          try{
+
+            layer.bringToFront();
+
+          } catch(e){}
+
+        });
+
       }
 
-      if(window.divisionLayer){
+      catch(e){}
 
-        window.divisionLayer.bringToFront();
-      }
+    });
 
-      if(window.rangeLayer){
+  }
 
-        window.rangeLayer.bringToFront();
-      }
+  // ================================================
+  // 🟥 COMPARTMENT
+  // FINAL TOPMOST TACTICAL UNIT
+  // ================================================
 
-      if(window.beatLayer){
+  if(window.compartmentLayer){
 
-        window.beatLayer.bringToFront();
-      }
+    window.compartmentLayer.eachLayer(layer => {
 
-      if(window.compartmentLayer){
+      try{
 
-        window.compartmentLayer.bringToFront();
-      }
+        layer.bringToFront();
 
-    } catch(e){}
+      } catch(e){}
+
+    });
+
+  }
+
+} catch(e){
+
+  console.warn(
+    "⚠ Z-order hierarchy failed",
+    e
+  );
+
+}
 
     // ==================================================
     // ✅ DONE
