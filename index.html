@@ -12000,7 +12000,7 @@ let compartment =
   "-";
 
 // ==================================================
-// 🔥 ACTIVE RANGE DETECTION
+// 🔥 ACTIVE RANGE CONTROL
 // ==================================================
 
 const activeRange =
@@ -12079,10 +12079,6 @@ let tooltipHtml = `
   </div>
 `;
 
-// ==================================================
-// 🟪 BEAT
-// ==================================================
-
 if(
   beat &&
   beat !== "-"
@@ -12103,10 +12099,6 @@ if(
   </div>
   `;
 }
-
-// ==================================================
-// 📦 COMPARTMENT
-// ==================================================
 
 if(
   compartment &&
@@ -12189,14 +12181,14 @@ requestAnimationFrame(() => {
       layer._path.style.userSelect =
         "none";
 
-      layer._path.style.cursor =
-        "pointer";
+      layer._path.style.webkitUserSelect =
+        "none";
 
       layer._path.style.webkitTouchCallout =
         "none";
 
-      layer._path.style.webkitUserSelect =
-        "none";
+      layer._path.style.cursor =
+        "pointer";
 
     }
 
@@ -12351,7 +12343,6 @@ console.warn(
 }
 
 }
-
 // ==================================================
 // 🌍 GLOBAL TOOLTIP CLOSE
 // ==================================================
