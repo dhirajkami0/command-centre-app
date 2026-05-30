@@ -12524,7 +12524,7 @@ try{
     // 🎨 STYLE ENGINE
     // ==================================================
 
-   function getCompartmentStyle(feature){
+  function getCompartmentStyle(feature){
 
   const props =
     feature.properties || {};
@@ -12555,23 +12555,22 @@ try{
 
   // ==============================================
   // 🌍 DEFAULT COMPARTMENTS
-  // THINNEST BASE CHILD
+  // BASE CHILD LAYER
   // ==============================================
 
   let color =
     "#ff9800";
 
   let weight =
-    isMobile ? 0.8 : 1.2;
+    isMobile ? 1.2 : 1.6;
 
   let fillOpacity =
-    0.003;
+    0.004;
 
   // ==============================================
   // 🟨 ACTIVE BEAT COMPARTMENTS
-  // CONTRAST BELOW BEAT LAYER
-  // Beat layer = 2.5
-  // So keep slightly lower
+  // BELOW ACTIVE BEAT
+  // Beat = 2.5
   // ==============================================
 
   if(
@@ -12594,20 +12593,20 @@ try{
       "#ffb300";
 
     // ==========================================
-    // 🔥 SLIGHTLY BELOW BEAT WEIGHT
+    // 🔥 STRONGER CONTRAST
     // ==========================================
 
     weight =
-      isMobile ? 1.8 : 2.2;
+      isMobile ? 2.1 : 2.35;
 
     fillOpacity =
-      0.008;
+      0.010;
   }
 
   // ==============================================
   // 🟥 ACTIVE COMPARTMENT
   // BRIGHTEST + SHARPEST
-  // SLIGHTLY BELOW ACTIVE BEAT
+  // JUST BELOW BEAT 2.5
   // ==============================================
 
   if(
@@ -12625,14 +12624,14 @@ try{
       "#ff1744";
 
     // ==========================================
-    // 🔥 DISTINCT BUT BELOW BEAT 2.5
+    // 🔥 VERY DISTINCT
     // ==========================================
 
     weight =
-      isMobile ? 2.0 : 2.35;
+      isMobile ? 2.25 : 2.45;
 
     fillOpacity =
-      0.012;
+      0.016;
   }
 
   return {
