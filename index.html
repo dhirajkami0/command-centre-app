@@ -11786,178 +11786,171 @@ centerMap();
 // 🎨 ENTERPRISE TOOLTIP CSS
 // ==================================================
 
-if(
-  !document.getElementById(
-    "enterprise-gis-tooltip-style"
-  )
-){
+if(!document.getElementById("enterprise-gis-tooltip-style")){
 
-  const style =
-    document.createElement("style");
+const style = document.createElement("style");
 
-  style.id =
-    "enterprise-gis-tooltip-style";
+style.id = "enterprise-gis-tooltip-style";
 
-  style.innerHTML = `
+style.innerHTML = `
 
-  .gis-hover-tooltip{
+.gis-hover-tooltip{
 
-    background:
-      rgba(12,12,12,0.78) !important;
+background:
+  rgba(12,12,12,0.78) !important;
 
-    border:none !important;
+border:none !important;
 
-    box-shadow:
-      0 4px 18px rgba(0,0,0,0.30) !important;
+box-shadow:
+  0 4px 18px rgba(0,0,0,0.30) !important;
 
-    color:#ffffff !important;
+color:#ffffff !important;
 
-    border-radius:10px !important;
+border-radius:10px !important;
 
-    padding:0 !important;
+padding:0 !important;
 
-    backdrop-filter:blur(8px);
+backdrop-filter:blur(8px);
 
-    pointer-events:none;
+pointer-events:none;
 
-  }
+z-index:999999 !important;
 
-  .gis-hover-tooltip .leaflet-tooltip-content{
+}
 
-    margin:0 !important;
+.gis-hover-tooltip .leaflet-tooltip-content{
 
-    padding:0 !important;
+margin:0 !important;
 
-  }
+padding:0 !important;
 
-  .gis-hover-card{
+}
 
-    min-width:170px;
+.gis-hover-card{
 
-    padding:8px 10px;
+min-width:170px;
 
-    font-size:11px;
+padding:8px 10px;
 
-    line-height:1.5;
+font-size:11px;
 
-    font-weight:500;
+line-height:1.5;
 
-  }
+font-weight:500;
 
-  .gis-hover-title{
+}
 
-    color:#00e5ff;
+.gis-hover-title{
 
-    font-size:12px;
+color:#00e5ff;
 
-    font-weight:700;
+font-size:12px;
 
-    margin-bottom:4px;
+font-weight:700;
 
-  }
+margin-bottom:4px;
 
-  .gis-hover-row{
+}
 
-    display:flex;
+.gis-hover-row{
 
-    gap:6px;
+display:flex;
 
-  }
+gap:6px;
 
-  .gis-hover-label{
+}
 
-    color:#9e9e9e;
+.gis-hover-label{
 
-    min-width:78px;
+color:#9e9e9e;
 
-    font-weight:600;
+min-width:78px;
 
-  }
+font-weight:600;
 
-  .gis-hover-value{
+}
 
-    color:#ffffff;
+.gis-hover-value{
 
-    font-weight:500;
+color:#ffffff;
 
-  }
+font-weight:500;
 
-  .leaflet-tooltip-top:before,
-  .leaflet-tooltip-bottom:before,
-  .leaflet-tooltip-left:before,
-  .leaflet-tooltip-right:before{
+}
 
-    display:none !important;
+.leaflet-tooltip-top:before,
+.leaflet-tooltip-bottom:before,
+.leaflet-tooltip-left:before,
+.leaflet-tooltip-right:before{
 
-  }
+display:none !important;
 
-  .leaflet-popup-tip-container{
+}
 
-    display:none !important;
+.leaflet-popup-tip-container{
 
-  }
+display:none !important;
 
-  .leaflet-popup-content-wrapper{
+}
 
-    background:transparent !important;
+.leaflet-popup-content-wrapper{
 
-    box-shadow:none !important;
+background:transparent !important;
 
-  }
+box-shadow:none !important;
 
-  /* ==========================================
-     🔥 SVG MOBILE FOCUS FIX
-     ========================================== */
+}
 
-  .leaflet-interactive:focus{
+/* ==========================================
+🔥 SVG MOBILE FOCUS FIX
+========================================== */
 
-    outline:none !important;
+.leaflet-interactive{
 
-  }
+outline:none !important;
 
-  path.leaflet-interactive{
+}
 
-    outline:none !important;
+path.leaflet-interactive{
 
-  }
+outline:none !important;
 
-  .leaflet-container svg path{
+}
 
-    outline:none !important;
+.leaflet-container svg path{
 
-    -webkit-tap-highlight-color:
-      transparent !important;
+outline:none !important;
 
-    tap-highlight-color:
-      transparent !important;
+-webkit-tap-highlight-color:
+  transparent !important;
 
-  }
+tap-highlight-color:
+  transparent !important;
 
-  .leaflet-container a{
+}
 
-    outline:none !important;
+.leaflet-container a{
 
-  }
+outline:none !important;
 
-  .leaflet-container *{
+}
 
-    -webkit-focus-ring-color:
-      transparent !important;
+.leaflet-container *{
 
-  }
+-webkit-focus-ring-color:
+  transparent !important;
 
-  svg:focus,
-  path:focus{
+}
 
-    outline:none !important;
+svg,path{
 
-  }
+outline:none !important;
 
-  `;
+}
 
-  document.head.appendChild(
-    style
-  );
+`;
+
+document.head.appendChild(style);
 
 }
 
@@ -11965,278 +11958,327 @@ if(
 // 🛰 UNIVERSAL TOOLTIP
 // ==================================================
 
-function bindUniversalTooltip(
-  feature,
-  layer
+function bindUniversalTooltip(feature,layer){
+
+try {
+
+const props =
+  feature.properties || {};
+
+const division =
+
+  props.Division ||
+
+  props.division ||
+
+  "-";
+
+const range =
+
+  props.Range ||
+
+  props.range ||
+
+  "-";
+
+const beat =
+
+  props.Beat ||
+
+  props.beat ||
+
+  "-";
+
+const compartment =
+
+  props.compartment ||
+
+  props.compartmen ||
+
+  props.Compartment ||
+
+  "-";
+
+// ==================================================
+// 🔥 TOOLTIP HTML
+// ==================================================
+
+let tooltipHtml = `
+
+<div class="gis-hover-card">
+
+  <div class="gis-hover-title">
+    GIS INSPECTION
+  </div>
+
+  <div class="gis-hover-row">
+
+    <div class="gis-hover-label">
+      Division
+    </div>
+
+    <div class="gis-hover-value">
+      ${division}
+    </div>
+
+  </div>
+
+  <div class="gis-hover-row">
+
+    <div class="gis-hover-label">
+      Range
+    </div>
+
+    <div class="gis-hover-value">
+      ${range}
+    </div>
+
+  </div>
+`;
+
+if(
+  beat &&
+  beat !== "-"
 ){
+
+  tooltipHtml += `
+
+  <div class="gis-hover-row">
+
+    <div class="gis-hover-label">
+      Beat
+    </div>
+
+    <div class="gis-hover-value">
+      ${beat}
+    </div>
+
+  </div>
+  `;
+}
+
+if(
+  compartment &&
+  compartment !== "-"
+){
+
+  tooltipHtml += `
+
+  <div class="gis-hover-row">
+
+    <div class="gis-hover-label">
+      Compartment
+    </div>
+
+    <div class="gis-hover-value">
+      ${compartment}
+    </div>
+
+  </div>
+  `;
+}
+
+tooltipHtml += `
+</div>
+`;
+
+// ==================================================
+// 🔥 TOOLTIP BIND
+// ==================================================
+
+layer.bindTooltip(
+
+  tooltipHtml,
+
+  {
+
+    sticky:true,
+
+    direction:"top",
+
+    opacity:1,
+
+    permanent:false,
+
+    interactive:false,
+
+    className:
+      "gis-hover-tooltip",
+
+    offset:[0,-10]
+
+  }
+
+);
+
+// ==================================================
+// 🔥 REMOVE SVG MOBILE BOX
+// ==================================================
+
+requestAnimationFrame(() => {
 
   try {
 
-    const props =
-      feature.properties || {};
+    if(layer._path){
 
-    const division =
+      layer._path.setAttribute(
+        "tabindex",
+        "-1"
+      );
 
-      props.Division ||
+      layer._path.style.outline =
+        "none";
 
-      props.division ||
+      layer._path.style.webkitTapHighlightColor =
+        "transparent";
 
-      "-";
+      layer._path.style.tapHighlightColor =
+        "transparent";
 
-    const range =
+      layer._path.style.userSelect =
+        "none";
 
-      props.Range ||
+      layer._path.style.cursor =
+        "pointer";
 
-      props.range ||
-
-      "-";
-
-    const beat =
-
-      props.Beat ||
-
-      props.beat ||
-
-      "-";
-
-    const compartment =
-
-      props.compartment ||
-
-      props.compartmen ||
-
-      props.Compartment ||
-
-      "-";
-
-    let tooltipHtml = `
-
-    <div class="gis-hover-card">
-
-      <div class="gis-hover-title">
-        GIS INSPECTION
-      </div>
-
-      <div class="gis-hover-row">
-
-        <div class="gis-hover-label">
-          Division
-        </div>
-
-        <div class="gis-hover-value">
-          ${division}
-        </div>
-
-      </div>
-
-      <div class="gis-hover-row">
-
-        <div class="gis-hover-label">
-          Range
-        </div>
-
-        <div class="gis-hover-value">
-          ${range}
-        </div>
-
-      </div>
-    `;
-
-    if(
-      beat &&
-      beat !== "-"
-    ){
-
-      tooltipHtml += `
-
-      <div class="gis-hover-row">
-
-        <div class="gis-hover-label">
-          Beat
-        </div>
-
-        <div class="gis-hover-value">
-          ${beat}
-        </div>
-
-      </div>
-      `;
     }
 
-    if(
-      compartment &&
-      compartment !== "-"
-    ){
+  } catch(e){}
 
-      tooltipHtml += `
+});
 
-      <div class="gis-hover-row">
+// ==================================================
+// 🔥 OPEN TOOLTIP
+// ==================================================
 
-        <div class="gis-hover-label">
-          Compartment
-        </div>
+layer.on(
+  "mouseover",
+  function(e){
 
-        <div class="gis-hover-value">
-          ${compartment}
-        </div>
+    try {
 
-      </div>
-      `;
-    }
+      this.openTooltip(
+        e.latlng
+      );
 
-    tooltipHtml += `
-    </div>
-    `;
-
-    layer.bindTooltip(
-
-      tooltipHtml,
-
-      {
-
-        sticky:true,
-
-        direction:"top",
-
-        opacity:1,
-
-        permanent:false,
-
-        interactive:false,
-
-        className:
-          "gis-hover-tooltip",
-
-        offset:[0,-10]
-
-      }
-
-    );
-
-    // ==========================================
-    // 🔥 REMOVE SVG MOBILE BOX
-    // ==========================================
-
-    requestAnimationFrame(() => {
-
-      try {
-
-        if(layer._path){
-
-          layer._path.setAttribute(
-            "tabindex",
-            "-1"
-          );
-
-          layer._path.style.outline =
-            "none";
-
-          layer._path.style.webkitTapHighlightColor =
-            "transparent";
-
-          layer._path.style.tapHighlightColor =
-            "transparent";
-
-          layer._path.style.userSelect =
-            "none";
-
-        }
-
-      } catch(e){}
-
-    });
-
-    // ==========================================
-    // 🔥 TOOLTIP OPEN
-    // ==========================================
-
-    layer.on(
-      "mouseover",
-      function(e){
-
-        try {
-
-          this.openTooltip(
-            e.latlng
-          );
-
-        } catch(err){}
-
-      }
-    );
-
-    layer.on(
-      "mousemove",
-      function(e){
-
-        try {
-
-          this.openTooltip(
-            e.latlng
-          );
-
-        } catch(err){}
-
-      }
-    );
-
-    // ==========================================
-    // 🔥 TOOLTIP CLOSE
-    // ==========================================
-
-    layer.on(
-      "mouseout",
-      function(){
-
-        try {
-
-          this.closeTooltip();
-
-        } catch(err){}
-
-      }
-    );
-
-    layer.on(
-      "remove",
-      function(){
-
-        try {
-
-          this.closeTooltip();
-
-          this.unbindTooltip();
-
-        } catch(err){}
-
-      }
-    );
-
-    layer.on(
-      "touchstart",
-      function(e){
-
-        try {
-
-          this.openTooltip(
-            e.latlng
-          );
-
-        } catch(err){}
-
-      }
-    );
+    } catch(err){}
 
   }
+);
 
-  catch(e){
+layer.on(
+  "mousemove",
+  function(e){
 
-    console.warn(
-      "⚠ Tooltip failed",
-      e
-    );
+    try {
+
+      this.openTooltip(
+        e.latlng
+      );
+
+    } catch(err){}
 
   }
+);
+
+layer.on(
+  "touchstart",
+  function(e){
+
+    try {
+
+      window.map.closeTooltip();
+
+      this.openTooltip(
+        e.latlng
+      );
+
+    } catch(err){}
+
+  }
+);
+
+// ==================================================
+// 🔥 CLOSE TOOLTIP
+// ==================================================
+
+layer.on(
+  "mouseout",
+  function(){
+
+    try {
+
+      this.closeTooltip();
+
+    } catch(err){}
+
+  }
+);
+
+layer.on(
+  "touchend",
+  function(){
+
+    try {
+
+      this.closeTooltip();
+
+    } catch(err){}
+
+  }
+);
+
+layer.on(
+  "mouseup",
+  function(){
+
+    try {
+
+      this.closeTooltip();
+
+    } catch(err){}
+
+  }
+);
+
+layer.on(
+  "mousedown",
+  function(){
+
+    try {
+
+      window.map.closeTooltip();
+
+    } catch(err){}
+
+  }
+);
+
+layer.on(
+  "remove",
+  function(){
+
+    try {
+
+      this.closeTooltip();
+
+      this.unbindTooltip();
+
+    } catch(err){}
+
+  }
+);
+
+}
+
+catch(e){
+
+console.warn(
+  "⚠ Tooltip failed",
+  e
+);
+
+}
 
 }
 
@@ -12244,29 +12286,25 @@ function bindUniversalTooltip(
 // 🌍 GLOBAL TOOLTIP CLOSE
 // ==================================================
 
-if(
-  window.map &&
-  !window.__enterpriseTooltipCloseBound
-){
+if(window.map && !window.__enterpriseTooltipCloseBound){
 
-  window.__enterpriseTooltipCloseBound =
-    true;
+window.__enterpriseTooltipCloseBound = true;
 
-  window.map.on(
+window.map.on(
 
-    "click zoomstart movestart",
+"click zoomstart movestart dragstart layerremove",
 
-    function(){
+function(){
 
-      try {
+  try {
 
-        window.map.closeTooltip();
+    window.map.closeTooltip();
 
-      } catch(e){}
+  } catch(e){}
 
-    }
+}
 
-  );
+);
 
 }
 // ======================================================
@@ -12376,6 +12414,8 @@ renderer : L.svg(),
 
 interactive : true,
 
+bubblingMouseEvents : false,
+
 smoothFactor : 2,
 
 style:{
@@ -12465,6 +12505,8 @@ renderer : L.svg(),
 
 interactive : true,
 
+bubblingMouseEvents : false,
+
 smoothFactor : 2,
 
 style:{
@@ -12476,7 +12518,6 @@ fillOpacity:0.008,
 lineJoin:"round",
 lineCap:"round"
 },
-
 onEachFeature(feature,layer){
 
 // ==================================================
@@ -12585,6 +12626,8 @@ renderer : L.svg(),
 
 interactive : true,
 
+bubblingMouseEvents : false,
+
 smoothFactor : 2,
 
 style:{
@@ -12596,7 +12639,6 @@ fillOpacity:0.012,
 lineJoin:"round",
 lineCap:"round"
 },
-
 onEachFeature(feature,layer){
 
 // ==================================================
@@ -12714,6 +12756,8 @@ L.geoJSON(beatFeatures,{
 renderer : L.svg(),
 
 interactive : true,
+
+bubblingMouseEvents : false,
 
 smoothFactor : 2,
 
@@ -13113,6 +13157,8 @@ renderer : L.svg(),
 
 interactive : true,
 
+bubblingMouseEvents : false,
+
 smoothFactor : 2,
 
 style : getCompartmentStyle,
@@ -13127,7 +13173,6 @@ bindUniversalTooltip(
 feature,
 layer
 );
-
 // ==================================================
 // 🔥 ORIGINAL LOGIC
 // ==================================================
