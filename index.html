@@ -11749,20 +11749,20 @@ function renderFilteredGIS(){
     ).trim();
 
   // ==============================================
-  // 🌍 DEFAULT MAP
+  // 🌍 ROOT BTR
+  // THICKEST BASE PARENT
   // ==============================================
 
   let color =
     "#00e5ff";
 
-  let weight = 1.2;
+  let weight = 6;
 
-  let fillOpacity = 0.005;
+  let fillOpacity = 0.004;
 
   // ==============================================
-  // 🟩 ACTIVE DIVISION
-  // PARENT LAYER
-  // BROADER + SOFTER
+  // 🟩 DIVISION
+  // BROAD PARENT
   // ==============================================
 
   if(
@@ -11783,13 +11783,12 @@ function renderFilteredGIS(){
 
     weight = 5;
 
-    fillOpacity = 0.015;
+    fillOpacity = 0.008;
   }
 
   // ==============================================
-  // 🟨 ACTIVE RANGE
+  // 🟨 RANGE
   // CHILD OF DIVISION
-  // SLIGHTLY THINNER
   // ==============================================
 
   if(
@@ -11805,14 +11804,15 @@ function renderFilteredGIS(){
     color =
       "#ffd600";
 
-    weight = 4.5;
+    weight = 3.8;
 
-    fillOpacity = 0.02;
+    fillOpacity = 0.012;
   }
 
   // ==============================================
-  // 🟪 ACTIVE BEAT
-  // THINNER BUT BRIGHTER
+  // 🟪 BEAT
+  // CHILD OF RANGE
+  // THINNER + BRIGHTER
   // ==============================================
 
   if(
@@ -11830,7 +11830,7 @@ function renderFilteredGIS(){
 
     weight = 2.2;
 
-    fillOpacity = 0.025;
+    fillOpacity = 0.016;
   }
 
   return {
@@ -11850,7 +11850,7 @@ function renderFilteredGIS(){
 
   };
 
-} // ==================================================
+}// ==================================================
     // 🔥 CREATE GIS LAYER ONCE
     // ==================================================
 
@@ -12067,7 +12067,7 @@ function renderFilteredGIS(){
     } catch(e){}
 // ==================================================
 // 🔥 ACTIVE FEATURES TO FRONT
-// TRUE HIERARCHY PRIORITY
+// TRUE NESTED HIERARCHY
 // ==================================================
 
 window.gisLayer.eachLayer(layer => {
@@ -12114,114 +12114,23 @@ window.gisLayer.eachLayer(layer => {
       ).trim();
 
     // =================================================
-    // 🟪 PRIORITY 1 — ACTIVE BEAT
-    // THINNER BUT BRIGHTER
-    // ALWAYS TOPMOST
+    // 🌍 ROOT BTR
     // =================================================
 
-    if(
+    layer.setStyle({
 
-      activeBeat !== "ALL"
+      lineJoin : "round",
 
-      &&
+      lineCap : "round"
 
-      beat === activeBeat
-
-    ){
-
-      layer.setStyle({
-
-        color : "#ff00ff",
-
-        weight : 2.2,
-
-        opacity : 1,
-
-        fillOpacity : 0.025,
-
-        fillColor : "#ff00ff",
-
-        lineJoin : "round",
-
-        lineCap : "round"
-
-      });
-
-      // =============================================
-      // 🔥 TOPMOST PRIORITY
-      // =============================================
-
-      layer.bringToFront();
-
-      requestAnimationFrame(() => {
-
-        try {
-
-          layer.bringToFront();
-
-        } catch(e){}
-
-      });
-
-      return;
-    }
+    });
 
     // =================================================
-    // 🟨 PRIORITY 2 — ACTIVE RANGE
-    // MEDIUM PARENT
-    // =================================================
-
-    if(
-
-      activeBeat === "ALL"
-
-      &&
-
-      activeRange !== "ALL"
-
-      &&
-
-      range === activeRange
-
-    ){
-
-      layer.setStyle({
-
-        color : "#ffd600",
-
-        weight : 4.5,
-
-        opacity : 1,
-
-        fillOpacity : 0.02,
-
-        fillColor : "#ffd600",
-
-        lineJoin : "round",
-
-        lineCap : "round"
-
-      });
-
-      layer.bringToFront();
-
-      return;
-    }
-
-    // =================================================
-    // 🟩 PRIORITY 3 — ACTIVE DIVISION
+    // 🟩 DIVISION
     // BROADEST PARENT
     // =================================================
 
     if(
-
-      activeBeat === "ALL"
-
-      &&
-
-      activeRange === "ALL"
-
-      &&
 
       activeDivision !== "ALL"
 
@@ -12242,7 +12151,7 @@ window.gisLayer.eachLayer(layer => {
 
         opacity : 0.9,
 
-        fillOpacity : 0.015,
+        fillOpacity : 0.008,
 
         fillColor : "#00ff88",
 
@@ -12254,14 +12163,102 @@ window.gisLayer.eachLayer(layer => {
 
       layer.bringToFront();
 
-      return;
+    }
+
+    // =================================================
+    // 🟨 RANGE
+    // CHILD OF DIVISION
+    // =================================================
+
+    if(
+
+      activeRange !== "ALL"
+
+      &&
+
+      range === activeRange
+
+    ){
+
+      layer.setStyle({
+
+        color : "#ffd600",
+
+        weight : 3.8,
+
+        opacity : 1,
+
+        fillOpacity : 0.012,
+
+        fillColor : "#ffd600",
+
+        lineJoin : "round",
+
+        lineCap : "round"
+
+      });
+
+      layer.bringToFront();
+
+    }
+
+    // =================================================
+    // 🟪 BEAT
+    // CHILD OF RANGE
+    // THINNER + BRIGHTER
+    // =================================================
+
+    if(
+
+      activeBeat !== "ALL"
+
+      &&
+
+      beat === activeBeat
+
+    ){
+
+      layer.setStyle({
+
+        color : "#ff00ff",
+
+        weight : 2.2,
+
+        opacity : 1,
+
+        fillOpacity : 0.016,
+
+        fillColor : "#ff00ff",
+
+        lineJoin : "round",
+
+        lineCap : "round"
+
+      });
+
+      // =============================================
+      // 🔥 ALWAYS TOPMOST
+      // =============================================
+
+      layer.bringToFront();
+
+      requestAnimationFrame(() => {
+
+        try {
+
+          layer.bringToFront();
+
+        } catch(e){}
+
+      });
+
     }
 
   }
 
   catch(e){}
 
-});    
+});
     console.log(
       "✅ GIS STYLE UPDATED"
     );
@@ -12359,22 +12356,21 @@ window.gisLayer.eachLayer(layer => {
 
   // ==============================================
   // 🌍 DEFAULT COMPARTMENTS
-  // THIN + SOFT
+  // THINNEST BASE CHILD
   // ==============================================
 
   let color =
     "#ff9800";
 
   let weight =
-    isMobile ? 0.8 : 1.2;
+    isMobile ? 0.6 : 1;
 
   let fillOpacity =
-    0.004;
+    0.003;
 
   // ==============================================
   // 🟨 ACTIVE BEAT COMPARTMENTS
   // PARENT OF ACTIVE COMPARTMENT
-  // SLIGHTLY BROADER
   // ==============================================
 
   if(
@@ -12397,15 +12393,15 @@ window.gisLayer.eachLayer(layer => {
       "#ffb300";
 
     weight =
-      isMobile ? 2 : 2.6;
+      isMobile ? 1.4 : 1.8;
 
     fillOpacity =
-      0.008;
+      0.006;
   }
 
   // ==============================================
   // 🟥 ACTIVE COMPARTMENT
-  // THINNER BUT BRIGHTER
+  // THINNEST + BRIGHTEST
   // ==============================================
 
   if(
@@ -12423,10 +12419,10 @@ window.gisLayer.eachLayer(layer => {
       "#ff1744";
 
     weight =
-      isMobile ? 2.2 : 3;
+      isMobile ? 1.2 : 1.4;
 
     fillOpacity =
-      0.012;
+      0.010;
   }
 
   return {
@@ -12446,8 +12442,7 @@ window.gisLayer.eachLayer(layer => {
 
   };
 
-}
-    // ==================================================
+} // ==================================================
     // 🔥 IMPORTANT FIX
     // REMOVE OLD RANGE COMPARTMENTS
     // ==================================================
