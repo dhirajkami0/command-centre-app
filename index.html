@@ -11793,176 +11793,630 @@ centerMap();
 
 function renderFilteredGIS(){
 
+try {
+
+// ==================================================
+// 🌍 FILTERS
+// ==================================================
+
+const activeDivision =
+window.gisFilter.division || "ALL";
+
+const activeRange =
+window.gisFilter.range || "ALL";
+
+const activeBeat =
+window.gisFilter.beat || "ALL";
+
+// ==================================================
+// 📦 FEATURES
+// ==================================================
+
+const allFeatures =
+window.allGISFeatures || [];
+
+// ==================================================
+// ❌ EMPTY
+// ==================================================
+
+if(allFeatures.length === 0){
+
+console.warn("⚠ No GIS features");
+
+return;
+}
+
+// ==================================================
+// 🧹 CLEAR OLD LAYERS
+// ==================================================
+
+try{
+
+if(window.rootLayer){
+
+window.map.removeLayer(window.rootLayer);
+
+window.rootLayer = null;
+
+}
+
+} catch(e){}
+
+try{
+
+if(window.divisionLayer){
+
+window.map.removeLayer(window.divisionLayer);
+
+window.divisionLayer = null;
+
+}
+
+} catch(e){}
+
+try{
+
+if(window.rangeLayer){
+
+window.map.removeLayer(window.rangeLayer);
+
+window.rangeLayer = null;
+
+}
+
+} catch(e){}
+
+try{
+
+if(window.beatLayer){
+
+window.map.removeLayer(window.beatLayer);
+
+window.beatLayer = null;
+
+}
+
+} catch(e){}
+
+// ==================================================
+// 🌍 ROOT LAYER
+// ALWAYS LOWEST
+// ==================================================
+
+window.rootLayer =
+L.geoJSON(allFeatures,{
+
+renderer : L.svg(),
+
+interactive : true,
+
+smoothFactor : 2,
+
+style:{
+color:"#00e5ff",
+weight:5,
+opacity:0.7,
+fillColor:"#00e5ff",
+fillOpacity:0.003,
+lineJoin:"round",
+lineCap:"round"
+},
+
+onEachFeature(feature,layer){
+
+const originalStyle = {
+color:"#00e5ff",
+weight:5,
+opacity:0.7,
+fillColor:"#00e5ff",
+fillOpacity:0.003,
+lineJoin:"round",
+lineCap:"round"
+};
+
+layer.on("mouseover",function(){
+
+layer.setStyle({
+weight:7,
+opacity:1,
+fillOpacity:0.02
+});
+
+layer.bringToFront();
+
+});
+
+layer.on("mouseout",function(){
+
+layer.setStyle(originalStyle);
+
+});
+
+}
+
+})
+.addTo(window.map);
+
+// ==================================================
+// 🟩 DIVISION LAYER
+// ==================================================
+
+if(activeDivision !== "ALL"){
+
+const divisionFeatures =
+allFeatures.filter(f => {
+
+const props =f.properties || {};
+
+const division =
+normalizeDivision(
+props.Division ||
+props.division ||
+""
+);
+
+return (
+division === normalizeDivision(activeDivision)
+);
+
+});
+
+if(divisionFeatures.length){
+
+window.divisionLayer =
+L.geoJSON(divisionFeatures,{
+
+renderer : L.svg(),
+
+interactive : true,
+
+smoothFactor : 2,
+
+style:{
+color:"#00ff88",
+weight:4,
+opacity:0.9,
+fillColor:"#00ff88",
+fillOpacity:0.008,
+lineJoin:"round",
+lineCap:"round"
+},
+
+onEachFeature(feature,layer){
+
+const originalStyle = {
+color:"#00ff88",
+weight:4,
+opacity:0.9,
+fillColor:"#00ff88",
+fillOpacity:0.008,
+lineJoin:"round",
+lineCap:"round"
+};
+
+layer.on("mouseover",function(){
+
+layer.setStyle({
+weight:6,
+opacity:1,
+fillOpacity:0.03
+});
+
+layer.bringToFront();
+
+});
+
+layer.on("mouseout",function(){
+
+layer.setStyle(originalStyle);
+
+});
+
+layer.on(
+"click",
+async function(e){
+
+try{
+
+L.DomEvent.stopPropagation(e);
+
+if(
+window.activePopupContext.level
+!== "division"
+){
+return;
+}
+
+await showDivisionAnalyticsPanel();
+
+}
+catch(err){
+
+console.error(err);
+
+}
+
+}
+);
+
+}
+
+})
+.addTo(window.map);
+
+}
+
+}
+
+// ==================================================
+// 🟨 RANGE LAYER
+// ==================================================
+
+if(activeRange !== "ALL"){
+
+const rangeFeatures =
+allFeatures.filter(f => {
+
+const props =f.properties || {};
+
+const range =
+String(
+props.Range ||
+props.range ||
+""
+).trim();
+
+return (
+range === activeRange
+);
+
+});
+
+if(rangeFeatures.length){
+
+window.rangeLayer =
+L.geoJSON(rangeFeatures,{
+
+renderer : L.svg(),
+
+interactive : true,
+
+smoothFactor : 2,
+
+style:{
+color:"#ffd600",
+weight:3,
+opacity:1,
+fillColor:"#ffd600",
+fillOpacity:0.012,
+lineJoin:"round",
+lineCap:"round"
+},
+
+onEachFeature(feature,layer){
+
+const props =feature.properties || {};
+
+const range =
+props.Range ||
+props.range ||
+"-";
+
+const originalStyle = {
+color:"#ffd600",
+weight:3,
+opacity:1,
+fillColor:"#ffd600",
+fillOpacity:0.012,
+lineJoin:"round",
+lineCap:"round"
+};
+
+layer.on("mouseover",function(){
+
+layer.setStyle({
+weight:5,
+fillOpacity:0.04
+});
+
+layer.bringToFront();
+
+});
+
+layer.on("mouseout",function(){
+
+layer.setStyle(originalStyle);
+
+});
+
+layer.on(
+"click",
+async function(e){
+
+try{
+
+L.DomEvent.stopPropagation(e);
+
+if(
+window.activePopupContext.level
+!== "range"
+){
+return;
+}
+
+await showRangeAnalyticsPanel(
+range
+);
+
+}
+catch(err){
+
+console.error(err);
+
+}
+
+}
+);
+
+}
+
+})
+.addTo(window.map);
+
+}
+
+}
+
+// ==================================================
+// 🟪 BEAT LAYER
+// ==================================================
+
+if(activeBeat !== "ALL"){
+
+const beatFeatures =
+allFeatures.filter(f => {
+
+const props =f.properties || {};
+
+const beat =
+String(
+props.Beat ||
+props.beat ||
+""
+).trim();
+
+return (
+normalizeBeatName(beat)
+===
+normalizeBeatName(activeBeat)
+);
+
+});
+
+if(beatFeatures.length){
+
+window.beatLayer =
+L.geoJSON(beatFeatures,{
+
+renderer : L.svg(),
+
+interactive : true,
+
+smoothFactor : 2,
+
+style:{
+color:"#ff00ff",
+weight:2.5,
+opacity:1,
+fillColor:"#ff00ff",
+fillOpacity:0.004,
+lineJoin:"round",
+lineCap:"round",
+dashArray
+},
+
+onEachFeature(feature,layer){
+
+const props =feature.properties || {};
+
+const beat =
+props.Beat ||
+props.beat ||
+"-";
+
+const originalStyle = {
+color:"#ff00ff",
+weight:2.5,
+opacity:1,
+fillColor:"#ff00ff",
+fillOpacity:0.004,
+lineJoin:"round",
+lineCap:"round",
+dashArray
+};
+
+layer.on("mouseover",function(){
+
+layer.setStyle({
+weight:4,
+fillOpacity:0.03
+});
+
+layer.bringToFront();
+
+});
+
+layer.on("mouseout",function(){
+
+layer.setStyle(originalStyle);
+
+});
+
+layer.on(
+"click",
+async function(e){
+
+try{
+
+L.DomEvent.stopPropagation(e);
+
+if(
+window.activePopupContext.level
+!== "beat"
+){
+return;
+}
+
+await showBeatAnalyticsPanel(
+beat
+);
+
+}
+catch(err){
+
+console.error(err);
+
+}
+
+}
+);
+
+}
+
+})
+.addTo(window.map);
+
+}
+
+}
+
+// ==================================================
+// 🔥 FINAL Z-ORDER
+// ==================================================
+
+try{
+
+if(window.rootLayer){
+
+window.rootLayer.eachLayer(layer => {
+
+try{
+layer.bringToBack();
+} catch(e){}
+
+});
+
+}
+
+if(window.divisionLayer){
+
+window.divisionLayer.eachLayer(layer => {
+
+try{
+layer.bringToFront();
+} catch(e){}
+
+});
+
+}
+
+if(window.rangeLayer){
+
+window.rangeLayer.eachLayer(layer => {
+
+try{
+layer.bringToFront();
+} catch(e){}
+
+});
+
+}
+
+if(window.beatLayer){
+
+window.beatLayer.eachLayer(layer => {
+
+try{
+
+layer.setStyle({
+color : "#ff00ff",
+weight : 1.8,
+opacity : 1,
+fillColor : "#ff00ff",
+fillOpacity : 0.004,
+lineJoin : "round",
+lineCap : "round"
+});
+
+layer.bringToFront();
+
+requestAnimationFrame(() => {
+
+try{
+layer.bringToFront();
+} catch(e){}
+
+});
+
+}
+catch(e){}
+
+});
+
+}
+
+if(window.compartmentLayer){
+
+window.compartmentLayer.eachLayer(layer => {
+
+try{
+layer.bringToFront();
+} catch(e){}
+
+});
+
+}
+
+} catch(e){
+
+console.warn("⚠ Z-order hierarchy failed",e);
+
+}
+
+// ==================================================
+// ✅ DONE
+// ==================================================
+
+console.log("✅ Enterprise GIS hierarchy rendered");
+
+}
+
+catch(e){
+
+console.error("❌ renderFilteredGIS",e);
+
+}
+
+}
+   function renderFilteredCompartments(){
+
   try {
-
-    // ==================================================
-    // 🌍 FILTERS
-    // ==================================================
-
-    const activeDivision =
-
-      window.gisFilter.division || "ALL";
-
-    const activeRange =
-
-      window.gisFilter.range || "ALL";
-
-    const activeBeat =
-
-      window.gisFilter.beat || "ALL";
 
     // ==================================================
     // 📦 FEATURES
     // ==================================================
 
-    const allFeatures =
+    const features =
 
-      window.allGISFeatures || [];
+      window.allCompartmentFeatures || [];
 
     // ==================================================
     // ❌ EMPTY
     // ==================================================
 
-    if(allFeatures.length === 0){
-
-      console.warn(
-        "⚠ No GIS features"
-      );
+    if(features.length === 0){
 
       return;
-    }
-
-    // ==================================================
-    // 🎨 ENTERPRISE TOOLTIP CSS
-    // ==================================================
-
-    if(
-
-      !document.getElementById(
-        "enterprise-gis-tooltip-style"
-      )
-
-    ){
-
-      const style =
-        document.createElement("style");
-
-      style.id =
-        "enterprise-gis-tooltip-style";
-
-      style.innerHTML = `
-
-      .gis-hover-tooltip{
-
-        background:
-          rgba(12,12,12,0.78) !important;
-
-        border:none !important;
-
-        box-shadow:
-          0 4px 18px rgba(0,0,0,0.30) !important;
-
-        color:#ffffff !important;
-
-        border-radius:10px !important;
-
-        padding:0 !important;
-
-        backdrop-filter:blur(8px);
-
-        pointer-events:none;
-
-      }
-
-      .gis-hover-tooltip .leaflet-tooltip-content{
-
-        margin:0 !important;
-
-        padding:0 !important;
-
-      }
-
-      .gis-hover-card{
-
-        min-width:170px;
-
-        padding:8px 10px;
-
-        font-size:11px;
-
-        line-height:1.5;
-
-        font-weight:500;
-
-      }
-
-      .gis-hover-title{
-
-        color:#00e5ff;
-
-        font-size:12px;
-
-        font-weight:700;
-
-        margin-bottom:4px;
-
-      }
-
-      .gis-hover-row{
-
-        display:flex;
-
-        gap:6px;
-
-      }
-
-      .gis-hover-label{
-
-        color:#9e9e9e;
-
-        min-width:78px;
-
-        font-weight:600;
-
-      }
-
-      .gis-hover-value{
-
-        color:#ffffff;
-
-        font-weight:500;
-
-      }
-
-      .leaflet-tooltip-top:before,
-      .leaflet-tooltip-bottom:before,
-      .leaflet-tooltip-left:before,
-      .leaflet-tooltip-right:before{
-
-        display:none !important;
-
-      }
-
-      .leaflet-popup-tip-container{
-
-        display:none !important;
-
-      }
-
-      .leaflet-popup-content-wrapper{
-
-        background:transparent !important;
-
-        box-shadow:none !important;
-
-      }
-
-      `;
-
-      document.head.appendChild(
-        style
-      );
-
     }
 
     // ==================================================
@@ -12003,404 +12457,6 @@ function renderFilteredGIS(){
 
           "-";
 
-        let tooltipHtml = `
-
-        <div class="gis-hover-card">
-
-          <div class="gis-hover-title">
-            GIS INSPECTION
-          </div>
-
-          <div class="gis-hover-row">
-
-            <div class="gis-hover-label">
-              Division
-            </div>
-
-            <div class="gis-hover-value">
-              ${division}
-            </div>
-
-          </div>
-
-          <div class="gis-hover-row">
-
-            <div class="gis-hover-label">
-              Range
-            </div>
-
-            <div class="gis-hover-value">
-              ${range}
-            </div>
-
-          </div>
-        `;
-
-        if(
-          beat &&
-          beat !== "-"
-        ){
-
-          tooltipHtml += `
-
-          <div class="gis-hover-row">
-
-            <div class="gis-hover-label">
-              Beat
-            </div>
-
-            <div class="gis-hover-value">
-              ${beat}
-            </div>
-
-          </div>
-          `;
-        }
-
-        tooltipHtml += `
-        </div>
-        `;
-
-        layer.bindTooltip(
-
-          tooltipHtml,
-
-          {
-
-            sticky:true,
-
-            direction:"top",
-
-            opacity:1,
-
-            permanent:false,
-
-            interactive:false,
-
-            className:
-              "gis-hover-tooltip",
-
-            offset:[0,-10]
-
-          }
-
-        );
-
-        // ==============================================
-        // 💻 DESKTOP HOVER
-        // ==============================================
-
-        layer.on(
-
-          "mouseover",
-
-          function(e){
-
-            try {
-
-              this.openTooltip(
-                e.latlng
-              );
-
-            } catch(err){}
-
-          }
-
-        );
-
-        layer.on(
-
-          "mousemove",
-
-          function(e){
-
-            try {
-
-              this.openTooltip(
-                e.latlng
-              );
-
-            } catch(err){}
-
-          }
-
-        );
-
-        layer.on(
-
-          "mouseout",
-
-          function(){
-
-            try {
-
-              this.closeTooltip();
-
-            } catch(err){}
-
-          }
-
-        );
-
-        // ==============================================
-        // 📱 MOBILE TOUCH
-        // ==============================================
-
-        layer.on(
-
-          "touchstart",
-
-          function(e){
-
-            try {
-
-              this.openTooltip(
-                e.latlng
-              );
-
-            } catch(err){}
-
-          }
-
-        );
-
-      }
-
-      catch(e){
-
-        console.warn(
-          "⚠ Tooltip failed",
-          e
-        );
-
-      }
-
-    }
-
-    // ==================================================
-    // 🔥 CLICK OUTSIDE CLOSE
-    // ==================================================
-
-    try {
-
-      window.map.off(
-        "click",
-        window.__closeHoverTooltips
-      );
-
-    } catch(e){}
-
-    window.__closeHoverTooltips = function(){
-
-      try {
-
-        [
-          window.rootLayer,
-          window.divisionLayer,
-          window.rangeLayer,
-          window.beatLayer,
-          window.compartmentLayer
-        ]
-
-        .forEach(layerGroup => {
-
-          if(!layerGroup) return;
-
-          layerGroup.eachLayer(layer => {
-
-            try {
-
-              layer.closeTooltip();
-
-            } catch(e){}
-
-          });
-
-        });
-
-      } catch(e){}
-
-    };
-
-    window.map.on(
-      "click",
-      window.__closeHoverTooltips
-    );
-
-    // ==================================================
-    // 🧹 CLEAR OLD LAYERS
-    // ==================================================
-
-    try{
-
-      if(window.rootLayer){
-
-        window.map.removeLayer(
-          window.rootLayer
-        );
-
-        window.rootLayer = null;
-      }
-
-    } catch(e){}
-
-    try{
-
-      if(window.divisionLayer){
-
-        window.map.removeLayer(
-          window.divisionLayer
-        );
-
-        window.divisionLayer = null;
-      }
-
-    } catch(e){}
-
-    try{
-
-      if(window.rangeLayer){
-
-        window.map.removeLayer(
-          window.rangeLayer
-        );
-
-        window.rangeLayer = null;
-      }
-
-    } catch(e){}
-
-    try{
-
-      if(window.beatLayer){
-
-        window.map.removeLayer(
-          window.beatLayer
-        );
-
-        window.beatLayer = null;
-      }
-
-    } catch(e){}
-
-    // ==================================================
-    // 🌍 ROOT
-    // ==================================================
-
-    window.rootLayer =
-
-      L.geoJSON(allFeatures,{
-
-        renderer:L.svg(),
-
-        interactive:true,
-
-        smoothFactor:2,
-
-        bubblingMouseEvents:false,
-
-        style:{
-
-          color:"#00e5ff",
-
-          weight:5,
-
-          opacity:0.7,
-
-          fillColor:"#00e5ff",
-
-          fillOpacity:0.003,
-
-          lineJoin:"round",
-
-          lineCap:"round"
-
-        },
-
-        onEachFeature:function(
-          feature,
-          layer
-        ){
-
-          bindUniversalTooltip(
-            feature,
-            layer
-          );
-
-        }
-
-      })
-
-      .addTo(window.map);
-
-    console.log(
-      "✅ Enterprise GIS rendered"
-    );
-
-  }
-
-  catch(e){
-
-    console.error(
-      "❌ renderFilteredGIS",
-      e
-    );
-
-  }
-
-}
-   function renderFilteredCompartments(){
-
-  try {
-
-    const features =
-      window.allCompartmentFeatures || [];
-
-    if(features.length === 0){
-
-      try{
-
-        if(window.compartmentLayer){
-
-          window.map.removeLayer(
-            window.compartmentLayer
-          );
-
-          window.compartmentLayer =
-            null;
-        }
-
-      } catch(e){}
-
-      return;
-    }
-
-    const isMobile =
-      L.Browser.mobile;
-
-    // ==================================================
-    // 🛰 TOOLTIP BINDER
-    // ==================================================
-
-    function bindUniversalTooltip(
-      feature,
-      layer
-    ){
-
-      try {
-
-        const props =
-          feature.properties || {};
-
-        const division =
-          props.Division || "-";
-
-        const range =
-          props.Range || "-";
-
-        const beat =
-          props.Beat || "-";
-
         const compartment =
 
           props.compartment ||
@@ -12418,39 +12474,51 @@ function renderFilteredGIS(){
           </div>
 
           <div class="gis-hover-row">
+
             <div class="gis-hover-label">
               Division
             </div>
+
             <div class="gis-hover-value">
               ${division}
             </div>
+
           </div>
 
           <div class="gis-hover-row">
+
             <div class="gis-hover-label">
               Range
             </div>
+
             <div class="gis-hover-value">
               ${range}
             </div>
+
           </div>
 
           <div class="gis-hover-row">
+
             <div class="gis-hover-label">
               Beat
             </div>
+
             <div class="gis-hover-value">
               ${beat}
             </div>
+
           </div>
 
           <div class="gis-hover-row">
+
             <div class="gis-hover-label">
               Compartment
             </div>
+
             <div class="gis-hover-value">
               ${compartment}
             </div>
+
           </div>
 
         </div>
@@ -12481,54 +12549,82 @@ function renderFilteredGIS(){
 
         );
 
+        // ==============================================
+        // 💻 DESKTOP
+        // ==============================================
+
         layer.on(
+
           "mouseover",
+
           function(e){
 
-            try{
+            try {
+
               this.openTooltip(
                 e.latlng
               );
+
             } catch(err){}
 
           }
+
         );
 
         layer.on(
+
           "mousemove",
+
           function(e){
 
-            try{
+            try {
+
               this.openTooltip(
                 e.latlng
               );
+
             } catch(err){}
 
           }
+
         );
 
         layer.on(
+
           "mouseout",
+
           function(){
 
-            try{
+            try {
+
               this.closeTooltip();
+
             } catch(err){}
 
           }
+
         );
 
+        // ==============================================
+        // 📱 MOBILE
+        // ==============================================
+
         layer.on(
+
           "touchstart",
+
           function(e){
 
-            try{
+            try {
+
               this.openTooltip(
                 e.latlng
               );
+
             } catch(err){}
 
           }
+
         );
 
       }
@@ -12536,7 +12632,7 @@ function renderFilteredGIS(){
       catch(e){
 
         console.warn(
-          "⚠ Tooltip failed",
+          "⚠ Tooltip bind failed",
           e
         );
 
@@ -12545,164 +12641,25 @@ function renderFilteredGIS(){
     }
 
     // ==================================================
-    // 🎨 STYLE
+    // 🔥 BIND TO EXISTING LAYER ONLY
     // ==================================================
 
-    function getCompartmentStyle(feature){
+    if(window.compartmentLayer){
 
-      const props =
-        feature.properties || {};
+      window.compartmentLayer.eachLayer(layer => {
 
-      const beat =
-
-        String(
-
-          props.Beat ||
-
-          props.beat ||
-
-          ""
-
-        ).trim();
-
-      const compartment =
-
-        String(
-
-          props.compartment ||
-
-          props.compartmen ||
-
-          ""
-
-        ).trim();
-
-      let color =
-        "#ff9100";
-
-      let weight =
-        isMobile ? 2.4 : 3.2;
-
-      let fillOpacity =
-        0.008;
-
-      if(
-
-        window.gisFilter.beat !== "ALL"
-
-        &&
-
-        normalizeBeatName(beat)
-
-        ===
-
-        normalizeBeatName(
-          window.gisFilter.beat
-        )
-
-      ){
-
-        color =
-          "#ff5e00";
-
-        weight =
-          isMobile ? 4.2 : 5.1;
-
-        fillOpacity =
-          0.022;
-      }
-
-      if(
-
-        window.gisFilter.compartment !== "ALL"
-
-        &&
-
-        compartment ===
-        window.gisFilter.compartment
-
-      ){
-
-        color =
-          "#d500f9";
-
-        weight =
-          isMobile ? 5.5 : 7;
-
-        fillOpacity =
-          0.045;
-      }
-
-      return {
-
-        color,
-        weight,
-
-        opacity : 1,
-
-        fillColor : color,
-
-        fillOpacity,
-
-        lineJoin : "round",
-
-        lineCap : "round"
-
-      };
-
-    }
-
-    // ==================================================
-    // 🧹 REMOVE OLD
-    // ==================================================
-
-    try {
-
-      if(window.compartmentLayer){
-
-        window.map.removeLayer(
-          window.compartmentLayer
-        );
-
-        window.compartmentLayer =
-          null;
-      }
-
-    } catch(e){}
-
-    // ==================================================
-    // 🛰 CREATE
-    // ==================================================
-
-    window.compartmentLayer =
-
-      L.geoJSON(features,{
-
-        renderer:L.svg(),
-
-        interactive:true,
-
-        smoothFactor:2,
-
-        bubblingMouseEvents:false,
-
-        style:getCompartmentStyle,
-
-        onEachFeature:function(
-          feature,
-          layer
-        ){
+        try {
 
           bindUniversalTooltip(
-            feature,
+            layer.feature,
             layer
           );
 
-        }
+        } catch(e){}
 
-      })
+      });
 
-      .addTo(window.map);
+    }
 
     console.log(
       "✅ Compartment hover ready"
