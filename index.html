@@ -12148,7 +12148,11 @@ function renderFilteredGIS(){
             renderer:
               window.canvasRenderer,
 
-            interactive:true,
+            // ==========================================
+// 🟩 VISUAL OVERLAY ONLY
+// ==========================================
+
+interactive:false,
 
             smoothFactor:2,
 
@@ -12265,7 +12269,18 @@ function renderFilteredGIS(){
             renderer:
               window.canvasRenderer,
 
-            interactive:true,
+           // ==========================================
+// 🟨 INTERACTIVE ONLY
+// IF NO CHILD ACTIVE
+// ==========================================
+
+interactive:
+
+  activeBeat === "ALL"
+
+  &&
+
+  window.gisFilter.compartment === "ALL",
 
             smoothFactor:2,
 
@@ -12402,7 +12417,14 @@ function renderFilteredGIS(){
             renderer:
               window.canvasRenderer,
 
-            interactive:true,
+           // ==========================================
+// 🟪 INTERACTIVE ONLY
+// IF COMPARTMENT NOT ACTIVE
+// ==========================================
+
+interactive:
+
+  window.gisFilter.compartment === "ALL",
 
             smoothFactor:2,
 
