@@ -11833,7 +11833,7 @@ function renderFilteredGIS(){
     }
 
     // ==================================================
-    // 🛰 UNIVERSAL TOOLTIP HELPER
+    // 🛰 UNIVERSAL TOOLTIP
     // ==================================================
 
     function bindUniversalTooltip(
@@ -11888,7 +11888,7 @@ function renderFilteredGIS(){
           min-width:180px;
           font-size:12px;
           line-height:1.5;
-          padding:2px;
+          padding:4px;
         ">
 
         <b>Division:</b>
@@ -11899,10 +11899,6 @@ function renderFilteredGIS(){
         <b>Range:</b>
         ${range}
         `;
-
-        // ==============================================
-        // 🟨 OPTIONAL BEAT
-        // ==============================================
 
         if(
 
@@ -11919,10 +11915,6 @@ function renderFilteredGIS(){
           ${beat}
           `;
         }
-
-        // ==============================================
-        // 🟥 OPTIONAL COMPARTMENT
-        // ==============================================
 
         if(
 
@@ -11959,27 +11951,95 @@ function renderFilteredGIS(){
 
             direction:"top",
 
-            opacity:0.96
+            opacity:0.96,
+
+            permanent:false
 
           }
 
         );
 
         // ==============================================
-        // 📱 MOBILE TOUCH SUPPORT
+        // 💻 DESKTOP HOVER
+        // ==============================================
+
+        layer.on(
+
+          "mouseover",
+
+          function(e){
+
+            try {
+
+              this.openTooltip(
+                e.latlng
+              );
+
+            } catch(err){}
+
+          }
+
+        );
+
+        // ==============================================
+        // 💻 DESKTOP MOVE
+        // ==============================================
+
+        layer.on(
+
+          "mousemove",
+
+          function(e){
+
+            try {
+
+              this.openTooltip(
+                e.latlng
+              );
+
+            } catch(err){}
+
+          }
+
+        );
+
+        // ==============================================
+        // 💻 DESKTOP OUT
+        // ==============================================
+
+        layer.on(
+
+          "mouseout",
+
+          function(){
+
+            try {
+
+              this.closeTooltip();
+
+            } catch(err){}
+
+          }
+
+        );
+
+        // ==============================================
+        // 📱 MOBILE TOUCH
         // ==============================================
 
         layer.on(
 
           "touchstart",
 
-          function(){
+          function(e){
 
-            try{
+            try {
 
-              layer.openTooltip();
+              this.openTooltip(
+                e.latlng
+              );
 
-            } catch(e){}
+            } catch(err){}
 
           }
 
@@ -12063,7 +12123,7 @@ function renderFilteredGIS(){
       L.geoJSON(allFeatures,{
 
         renderer:
-          window.canvasRenderer,
+          L.svg(),
 
         interactive:true,
 
@@ -12148,11 +12208,7 @@ function renderFilteredGIS(){
             renderer:
               window.canvasRenderer,
 
-            // ==========================================
-// 🟩 VISUAL OVERLAY ONLY
-// ==========================================
-
-interactive:false,
+            interactive:false,
 
             smoothFactor:2,
 
@@ -12171,52 +12227,6 @@ interactive:false,
               lineJoin:"round",
 
               lineCap:"round"
-
-            },
-
-            onEachFeature:function(
-              feature,
-              layer
-            ){
-
-              bindUniversalTooltip(
-                feature,
-                layer
-              );
-
-              layer.on(
-
-                "click",
-
-                async function(e){
-
-                  try{
-
-                    L.DomEvent.stopPropagation(e);
-
-                    if(
-
-                      window.activePopupContext.level
-                      !== "division"
-
-                    ){
-
-                      return;
-                    }
-
-                    await showDivisionAnalyticsPanel();
-
-                  }
-
-                  catch(err){
-
-                    console.error(err);
-
-                  }
-
-                }
-
-              );
 
             }
 
@@ -12267,20 +12277,24 @@ interactive:false,
           L.geoJSON(rangeFeatures,{
 
             renderer:
-              window.canvasRenderer,
 
-           // ==========================================
-// 🟨 INTERACTIVE ONLY
-// IF NO CHILD ACTIVE
-// ==========================================
+              activeBeat === "ALL"
 
-interactive:
+              &&
 
-  activeBeat === "ALL"
+              window.gisFilter.compartment === "ALL"
 
-  &&
+              ? L.svg()
 
-  window.gisFilter.compartment === "ALL",
+              : window.canvasRenderer,
+
+            interactive:
+
+              activeBeat === "ALL"
+
+              &&
+
+              window.gisFilter.compartment === "ALL",
 
             smoothFactor:2,
 
@@ -12415,16 +12429,16 @@ interactive:
           L.geoJSON(beatFeatures,{
 
             renderer:
-              window.canvasRenderer,
 
-           // ==========================================
-// 🟪 INTERACTIVE ONLY
-// IF COMPARTMENT NOT ACTIVE
-// ==========================================
+              window.gisFilter.compartment === "ALL"
 
-interactive:
+              ? L.svg()
 
-  window.gisFilter.compartment === "ALL",
+              : window.canvasRenderer,
+
+            interactive:
+
+              window.gisFilter.compartment === "ALL",
 
             smoothFactor:2,
 
@@ -12514,7 +12528,7 @@ interactive:
     }
 
     // ==================================================
-    // 🔥 FINAL Z-ORDER
+    // 🔥 FINAL Z ORDER
     // ==================================================
 
     try{
@@ -12619,7 +12633,7 @@ interactive:
 
   }
 
-}   function renderFilteredCompartments(){
+} function renderFilteredCompartments(){
 
   try {
 
@@ -12695,7 +12709,7 @@ interactive:
         ).trim();
 
       // ==============================================
-      // 🌍 DEFAULT COMPARTMENTS
+      // 🌍 DEFAULT
       // ==============================================
 
       let color =
@@ -12708,7 +12722,7 @@ interactive:
         0.008;
 
       // ==============================================
-      // 🟨 ACTIVE BEAT COMPARTMENTS
+      // 🟨 ACTIVE BEAT
       // ==============================================
 
       if(
@@ -12782,7 +12796,7 @@ interactive:
     }
 
     // ==================================================
-    // 🧹 REMOVE OLD LAYER
+    // 🧹 REMOVE OLD
     // ==================================================
 
     try {
@@ -12800,7 +12814,7 @@ interactive:
     } catch(e){}
 
     // ==================================================
-    // 🛰 TOOLTIP HELPER
+    // 🛰 UNIVERSAL TOOLTIP
     // ==================================================
 
     function bindUniversalTooltip(
@@ -12846,7 +12860,7 @@ interactive:
           "-";
 
         // ==============================================
-        // 🧠 TOOLTIP
+        // 🧠 HTML
         // ==============================================
 
         let tooltipHtml = `
@@ -12855,7 +12869,7 @@ interactive:
           min-width:180px;
           font-size:12px;
           line-height:1.5;
-          padding:2px;
+          padding:4px;
         ">
 
         <b>Division:</b>
@@ -12918,27 +12932,95 @@ interactive:
 
             direction:"top",
 
-            opacity:0.96
+            opacity:0.96,
+
+            permanent:false
 
           }
 
         );
 
         // ==============================================
-        // 📱 MOBILE TOUCH SUPPORT
+        // 💻 DESKTOP ENTER
+        // ==============================================
+
+        layer.on(
+
+          "mouseover",
+
+          function(e){
+
+            try {
+
+              this.openTooltip(
+                e.latlng
+              );
+
+            } catch(err){}
+
+          }
+
+        );
+
+        // ==============================================
+        // 💻 DESKTOP MOVE
+        // ==============================================
+
+        layer.on(
+
+          "mousemove",
+
+          function(e){
+
+            try {
+
+              this.openTooltip(
+                e.latlng
+              );
+
+            } catch(err){}
+
+          }
+
+        );
+
+        // ==============================================
+        // 💻 DESKTOP LEAVE
+        // ==============================================
+
+        layer.on(
+
+          "mouseout",
+
+          function(){
+
+            try {
+
+              this.closeTooltip();
+
+            } catch(err){}
+
+          }
+
+        );
+
+        // ==============================================
+        // 📱 MOBILE TOUCH
         // ==============================================
 
         layer.on(
 
           "touchstart",
 
-          function(){
+          function(e){
 
-            try{
+            try {
 
-              layer.openTooltip();
+              this.openTooltip(
+                e.latlng
+              );
 
-            } catch(e){}
+            } catch(err){}
 
           }
 
@@ -12969,12 +13051,19 @@ interactive:
 
       L.geoJSON(features,{
 
+        // ==========================================
+        // 🔥 SVG RENDERER
+        // CRITICAL FIX
+        // ==========================================
+
         renderer:
-          window.canvasRenderer || L.canvas(),
+          L.svg(),
 
         interactive:true,
 
         smoothFactor:2,
+
+        bubblingMouseEvents:false,
 
         style:getCompartmentStyle,
 
@@ -12984,7 +13073,7 @@ interactive:
         ){
 
           // ==========================================
-          // 🛰 UNIVERSAL TOOLTIP
+          // 🛰 TOOLTIP
           // ==========================================
 
           bindUniversalTooltip(
@@ -13055,7 +13144,7 @@ interactive:
       .addTo(window.map);
 
     // ==================================================
-    // 🔥 ACTIVE COMPARTMENT ABOVE ALL
+    // 🔥 ACTIVE ABOVE ALL
     // ==================================================
 
     window.compartmentLayer.eachLayer(layer => {
@@ -13077,10 +13166,6 @@ interactive:
 
           ).trim();
 
-        // ==============================================
-        // 🔥 SHARP RENDER FIX
-        // ==============================================
-
         layer.setStyle({
 
           lineJoin : "round",
@@ -13088,10 +13173,6 @@ interactive:
           lineCap : "round"
 
         });
-
-        // ==============================================
-        // 🟪 ACTIVE COMPARTMENT
-        // ==============================================
 
         if(
 
@@ -13121,10 +13202,6 @@ interactive:
             lineCap : "round"
 
           });
-
-          // ==========================================
-          // 🔥 TRUE TOPMOST
-          // ==========================================
 
           layer.bringToFront();
 
