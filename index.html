@@ -12524,7 +12524,7 @@ try{
     // 🎨 STYLE ENGINE
     // ==================================================
 
-  function getCompartmentStyle(feature){
+ function getCompartmentStyle(feature){
 
   const props =
     feature.properties || {};
@@ -12555,7 +12555,6 @@ try{
 
   // ==============================================
   // 🌍 DEFAULT COMPARTMENTS
-  // DISTINCT BASE LAYER
   // ==============================================
 
   let color =
@@ -12569,8 +12568,6 @@ try{
 
   // ==============================================
   // 🟨 ACTIVE BEAT COMPARTMENTS
-  // STRONG CONTRAST OVER RANGE
-  // BELOW ACTIVE BEAT
   // ==============================================
 
   if(
@@ -12590,15 +12587,11 @@ try{
   ){
 
     // ==========================================
-    // 🔥 DEEP ORANGE
+    // 🔥 STRONG ORANGE
     // ==========================================
 
     color =
       "#ff5e00";
-
-    // ==========================================
-    // 🔥 1.5x STRONGER
-    // ==========================================
 
     weight =
       isMobile ? 4.2 : 5.1;
@@ -12608,8 +12601,8 @@ try{
   }
 
   // ==============================================
-  // 🟦 ACTIVE COMPARTMENT
-  // ULTRA DISTINCT FROM ALL PARENTS
+  // 🟪 ACTIVE COMPARTMENT
+  // ULTRA DISTINCT TACTICAL TARGET
   // ==============================================
 
   if(
@@ -12624,23 +12617,27 @@ try{
   ){
 
     // ==========================================
-    // 🔥 ELECTRIC CYAN-BLUE
+    // 🔥 NEON VIOLET-WHITE
     // VERY DISTINCT FROM:
-    // green / yellow / magenta / orange
+    // cyan
+    // green
+    // yellow
+    // magenta
+    // orange
     // ==========================================
 
     color =
-      "#00e5ff";
+      "#d500f9";
 
     // ==========================================
-    // 🔥 1.5x STRONGER
+    // 🔥 MAXIMUM VISUAL ISOLATION
     // ==========================================
 
     weight =
-      isMobile ? 4.8 : 6.3;
+      isMobile ? 5.5 : 7;
 
     fillOpacity =
-      0.032;
+      0.045;
   }
 
   return {
@@ -12815,9 +12812,9 @@ try{
 
           layer.setStyle({
 
-            color : "#ff1744",
+            color : "#d500f9",
 
-            weight : 1.6,
+           weight : 5,
 
             opacity : 1,
 
