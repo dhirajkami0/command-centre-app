@@ -11709,135 +11709,141 @@ function renderFilteredGIS(){
 
     function getGISStyle(feature){
 
-      const props =
-        feature.properties || {};
+  const props =
+    feature.properties || {};
 
-      const division =
+  const division =
 
-        normalizeDivision(
+    normalizeDivision(
 
-          props.Division ||
+      props.Division ||
 
-          props.division ||
+      props.division ||
 
-          ""
+      ""
 
-        );
+    );
 
-      const range =
+  const range =
 
-        String(
+    String(
 
-          props.Range ||
+      props.Range ||
 
-          props.range ||
+      props.range ||
 
-          ""
+      ""
 
-        ).trim();
+    ).trim();
 
-      const beat =
+  const beat =
 
-        String(
+    String(
 
-          props.Beat ||
+      props.Beat ||
 
-          props.beat ||
+      props.beat ||
 
-          ""
+      ""
 
-        ).trim();
+    ).trim();
 
-      // ==============================================
-      // 🌍 DEFAULT
-      // ==============================================
+  // ==============================================
+  // 🌍 DEFAULT
+  // ==============================================
 
-      let color =
-        "#00e5ff";
+  let color =
+    "#00e5ff";
 
-      let weight = 2;
+  let weight = 1.2;
 
-      let fillOpacity = 0.03;
+  let fillOpacity = 0.01;
 
-      // ==============================================
-      // 🟩 ACTIVE DIVISION
-      // ==============================================
+  let dashArray = null;
 
-      if(
+  // ==============================================
+  // 🟩 ACTIVE DIVISION
+  // ==============================================
 
-        activeDivision !== "ALL"
+  if(
 
-        &&
+    activeDivision !== "ALL"
 
-        division ===
-        normalizeDivision(
-          activeDivision
-        )
+    &&
 
-      ){
+    division ===
+    normalizeDivision(
+      activeDivision
+    )
 
-        color =
-          "#00ff88";
+  ){
 
-        weight = 4;
+    color =
+      "#00ff88";
 
-        fillOpacity = 0.06;
-      }
+    weight = 2.2;
 
-      // ==============================================
-      // 🟨 ACTIVE RANGE
-      // ==============================================
+    fillOpacity = 0.02;
+  }
 
-      if(
+  // ==============================================
+  // 🟨 ACTIVE RANGE
+  // ==============================================
 
-        activeRange !== "ALL"
+  if(
 
-        &&
+    activeRange !== "ALL"
 
-        range === activeRange
+    &&
 
-      ){
+    range === activeRange
 
-        color =
-          "#ffee00";
+  ){
 
-        weight = 6;
+    color =
+      "#ffd600";
 
-        fillOpacity = 0.12;
-      }
+    weight = 3.2;
 
-      // ==============================================
-      // 🟧 ACTIVE BEAT
-      // ==============================================
+    fillOpacity = 0.03;
+  }
 
-      if(
+  // ==============================================
+  // 🟪 ACTIVE BEAT
+  // ==============================================
 
-        activeBeat !== "ALL"
+  if(
 
-        &&
+    activeBeat !== "ALL"
 
-        beat === activeBeat
+    &&
 
-      ){
+    beat === activeBeat
 
-        color =
-          "#ff6d00";
+  ){
 
-        weight = 8;
+    color =
+      "#ff00ff";
 
-        fillOpacity = 0.22;
-      }
+    weight = 4.5;
 
-      return {
+    fillOpacity = 0.04;
 
-        color,
-        weight,
-        fillOpacity
+    dashArray = "6,4";
+  }
 
-      };
+  return {
 
-    }
+    color,
+    weight,
+    fillOpacity,
+    dashArray,
 
+    fillColor : color
+
+  };
+
+}
     // ==================================================
     // 🔥 CREATE GIS LAYER ONCE
     // ==================================================
@@ -12054,131 +12060,133 @@ function renderFilteredGIS(){
 
     } catch(e){}
 
-    // ==================================================
-    // 🔥 ACTIVE FEATURES TO FRONT
-    // ==================================================
+   // ==================================================
+// 🔥 ACTIVE FEATURES TO FRONT
+// ==================================================
 
-    window.gisLayer.eachLayer(layer => {
+window.gisLayer.eachLayer(layer => {
 
-      try {
+  try {
 
-        const props =
-          layer.feature?.properties || {};
+    const props =
+      layer.feature?.properties || {};
 
-        const division =
+    const division =
 
-          normalizeDivision(
+      normalizeDivision(
 
-            props.Division ||
+        props.Division ||
 
-            props.division ||
+        props.division ||
 
-            ""
+        ""
 
-          );
+      );
 
-        const range =
+    const range =
 
-          String(
+      String(
 
-            props.Range ||
+        props.Range ||
 
-            props.range ||
+        props.range ||
 
-            ""
+        ""
 
-          ).trim();
+      ).trim();
 
-        const beat =
+    const beat =
 
-          String(
+      String(
 
-            props.Beat ||
+        props.Beat ||
 
-            props.beat ||
+        props.beat ||
 
-            ""
+        ""
 
-          ).trim();
+      ).trim();
 
-        // ==========================================
-        // 🟩 ACTIVE DIVISION
-        // ==========================================
+    // ==========================================
+    // 🟩 ACTIVE DIVISION
+    // ==========================================
 
-        if(
+    if(
 
-          activeDivision !== "ALL"
+      activeDivision !== "ALL"
 
-          &&
+      &&
 
-          division ===
-          normalizeDivision(
-            activeDivision
-          )
+      division ===
+      normalizeDivision(
+        activeDivision
+      )
 
-        ){
+    ){
 
-          layer.setStyle({
+      layer.setStyle({
 
-            weight : 5
+        weight : 3
 
-          });
+      });
 
-          layer.bringToFront();
-        }
+      layer.bringToFront();
+    }
 
-        // ==========================================
-        // 🟨 ACTIVE RANGE
-        // ==========================================
+    // ==========================================
+    // 🟨 ACTIVE RANGE
+    // ==========================================
 
-        if(
+    if(
 
-          activeRange !== "ALL"
+      activeRange !== "ALL"
 
-          &&
+      &&
 
-          range === activeRange
+      range === activeRange
 
-        ){
+    ){
 
-          layer.setStyle({
+      layer.setStyle({
 
-            weight : 7
+        weight : 4
 
-          });
+      });
 
-          layer.bringToFront();
-        }
+      layer.bringToFront();
+    }
 
-        // ==========================================
-        // 🟧 ACTIVE BEAT
-        // ==========================================
+    // ==========================================
+    // 🟪 ACTIVE BEAT
+    // ==========================================
 
-        if(
+    if(
 
-          activeBeat !== "ALL"
+      activeBeat !== "ALL"
 
-          &&
+      &&
 
-          beat === activeBeat
+      beat === activeBeat
 
-        ){
+    ){
 
-          layer.setStyle({
+      layer.setStyle({
 
-            weight : 9
+        weight : 5,
 
-          });
+        dashArray : "6,4"
 
-          layer.bringToFront();
-        }
+      });
 
-      }
+      layer.bringToFront();
+    }
 
-      catch(e){}
+  }
 
-    });
+  catch(e){}
 
+});
+    
     console.log(
       "✅ GIS STYLE UPDATED"
     );
@@ -12245,107 +12253,106 @@ function renderFilteredGIS(){
     // 🎨 STYLE ENGINE
     // ==================================================
 
-    function getCompartmentStyle(feature){
+   function getCompartmentStyle(feature){
 
-      const props =
-        feature.properties || {};
+  const props =
+    feature.properties || {};
 
-      const beat =
+  const beat =
 
-        String(
+    String(
 
-          props.Beat ||
+      props.Beat ||
 
-          props.beat ||
+      props.beat ||
 
-          ""
+      ""
 
-        ).trim();
+    ).trim();
 
-      const compartment =
+  const compartment =
 
-        String(
+    String(
 
-          props.compartment ||
+      props.compartment ||
 
-          props.compartmen ||
+      props.compartmen ||
 
-          ""
+      ""
 
-        ).trim();
+    ).trim();
 
-      // ==============================================
-      // 🌍 DEFAULT
-      // ==============================================
+  // ==============================================
+  // 🌍 DEFAULT
+  // ==============================================
 
-      let color =
-        "#ff9800";
+  let color =
+    "#ff9800";
 
-      let weight =
-        isMobile ? 1.5 : 2;
+  let weight =
+    isMobile ? 1 : 1.5;
 
-      // ==============================================
-      // 🟨 ACTIVE BEAT
-      // ==============================================
+  // ==============================================
+  // 🟨 ACTIVE BEAT
+  // ==============================================
 
-      if(
+  if(
 
-        window.gisFilter.beat !== "ALL"
+    window.gisFilter.beat !== "ALL"
 
-        &&
+    &&
 
-        normalizeBeatName(beat)
+    normalizeBeatName(beat)
 
-        ===
+    ===
 
-        normalizeBeatName(
-          window.gisFilter.beat
-        )
+    normalizeBeatName(
+      window.gisFilter.beat
+    )
 
-      ){
+  ){
 
-        color =
-          "#ffd54f";
+    color =
+      "#ffb300";
 
-        weight =
-          isMobile ? 3 : 4;
-      }
+    weight =
+      isMobile ? 2 : 2.8;
+  }
 
-      // ==============================================
-      // 🟥 ACTIVE COMPARTMENT
-      // ==============================================
+  // ==============================================
+  // 🟥 ACTIVE COMPARTMENT
+  // ==============================================
 
-      if(
+  if(
 
-        window.gisFilter.compartment !== "ALL"
+    window.gisFilter.compartment !== "ALL"
 
-        &&
+    &&
 
-        compartment ===
-        window.gisFilter.compartment
+    compartment ===
+    window.gisFilter.compartment
 
-      ){
+  ){
 
-        color =
-          "#ff1744";
+    color =
+      "#ff1744";
 
-        weight =
-          isMobile ? 4 : 6;
-      }
+    weight =
+      isMobile ? 3 : 4;
+  }
 
-      return {
+  return {
 
-        color,
-        weight,
+    color,
+    weight,
 
-        fillColor:"transparent",
+    fillColor : color,
 
-        fillOpacity:0
+    fillOpacity : 0.01
 
-      };
+  };
 
-    }
-
+}
     // ==================================================
     // 🔥 IMPORTANT FIX
     // REMOVE OLD RANGE COMPARTMENTS
