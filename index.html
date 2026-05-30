@@ -11905,6 +11905,54 @@ if(
 
   }
 
+  /* ==========================================
+     🔥 SVG MOBILE FOCUS FIX
+     ========================================== */
+
+  .leaflet-interactive:focus{
+
+    outline:none !important;
+
+  }
+
+  path.leaflet-interactive{
+
+    outline:none !important;
+
+  }
+
+  .leaflet-container svg path{
+
+    outline:none !important;
+
+    -webkit-tap-highlight-color:
+      transparent !important;
+
+    tap-highlight-color:
+      transparent !important;
+
+  }
+
+  .leaflet-container a{
+
+    outline:none !important;
+
+  }
+
+  .leaflet-container *{
+
+    -webkit-focus-ring-color:
+      transparent !important;
+
+  }
+
+  svg:focus,
+  path:focus{
+
+    outline:none !important;
+
+  }
+
   `;
 
   document.head.appendChild(
@@ -12065,6 +12113,43 @@ function bindUniversalTooltip(
 
     );
 
+    // ==========================================
+    // 🔥 REMOVE SVG MOBILE BOX
+    // ==========================================
+
+    requestAnimationFrame(() => {
+
+      try {
+
+        if(layer._path){
+
+          layer._path.setAttribute(
+            "tabindex",
+            "-1"
+          );
+
+          layer._path.style.outline =
+            "none";
+
+          layer._path.style.webkitTapHighlightColor =
+            "transparent";
+
+          layer._path.style.tapHighlightColor =
+            "transparent";
+
+          layer._path.style.userSelect =
+            "none";
+
+        }
+
+      } catch(e){}
+
+    });
+
+    // ==========================================
+    // 🔥 TOOLTIP OPEN
+    // ==========================================
+
     layer.on(
       "mouseover",
       function(e){
@@ -12095,6 +12180,10 @@ function bindUniversalTooltip(
       }
     );
 
+    // ==========================================
+    // 🔥 TOOLTIP CLOSE
+    // ==========================================
+
     layer.on(
       "mouseout",
       function(){
@@ -12102,6 +12191,21 @@ function bindUniversalTooltip(
         try {
 
           this.closeTooltip();
+
+        } catch(err){}
+
+      }
+    );
+
+    layer.on(
+      "remove",
+      function(){
+
+        try {
+
+          this.closeTooltip();
+
+          this.unbindTooltip();
 
         } catch(err){}
 
@@ -12133,6 +12237,36 @@ function bindUniversalTooltip(
     );
 
   }
+
+}
+
+// ==================================================
+// 🌍 GLOBAL TOOLTIP CLOSE
+// ==================================================
+
+if(
+  window.map &&
+  !window.__enterpriseTooltipCloseBound
+){
+
+  window.__enterpriseTooltipCloseBound =
+    true;
+
+  window.map.on(
+
+    "click zoomstart movestart",
+
+    function(){
+
+      try {
+
+        window.map.closeTooltip();
+
+      } catch(e){}
+
+    }
+
+  );
 
 }
 // ======================================================
