@@ -14286,10 +14286,38 @@ async function populateBeatButtons(){
           "
         >
 
-          ${createGISButton(
-            beat,
-            false
-          )}
+          <!-- ================================= -->
+          <!-- 🔘 BEAT BUTTON -->
+          <!-- ================================= -->
+
+          <button
+
+            class="gis-filter-btn"
+
+            data-value="${beat}"
+
+            style="
+              border:none;
+
+              padding:8px 14px;
+
+              border-radius:8px;
+
+              cursor:pointer;
+
+              background:#1b3a5c;
+
+              color:#cfe8ff;
+
+              font-size:12px;
+
+              font-weight:bold;
+            "
+          >
+
+            ${beat}
+
+          </button>
 
           <!-- ================================= -->
           <!-- 👁 BEAT EYE -->
@@ -14443,12 +14471,27 @@ async function populateBeatButtons(){
           )
           .forEach(b => {
 
+            // ==================================
+            // 🔵 RESET BEAT COLOR
+            // ==================================
+
             b.style.background =
-              "#2d2d2d";
+              "#1b3a5c";
+
+            b.style.color =
+              "#cfe8ff";
+
           });
+
+          // ====================================
+          // 🟩 ACTIVE GREEN
+          // ====================================
 
           this.style.background =
             "#00c853";
+
+          this.style.color =
+            "white";
 
           // ====================================
           // 🟨 SET FILTER
@@ -14541,8 +14584,7 @@ async function populateBeatButtons(){
       e
     );
   }
-}
-    // ======================================================
+}// ======================================================
 // 🚀 LOAD GIS
 // ======================================================
 // ======================================================
@@ -14661,12 +14703,38 @@ async function populateCompartmentButtons(){
     .sort()
     .forEach(comp => {
 
-      container.innerHTML +=
+      container.innerHTML += `
 
-        createGISButton(
-          comp,
-          false
-        );
+        <button
+
+          class="gis-filter-btn"
+
+          data-value="${comp}"
+
+          style="
+            border:none;
+
+            padding:8px 14px;
+
+            border-radius:8px;
+
+            cursor:pointer;
+
+            background:#4e342e;
+
+            color:#ffccbc;
+
+            font-size:12px;
+
+            font-weight:bold;
+          "
+        >
+
+          ${comp}
+
+        </button>
+
+      `;
     });
 
     // ==========================================
@@ -14701,12 +14769,27 @@ async function populateCompartmentButtons(){
           )
           .forEach(b => {
 
+            // ================================
+            // 🟫 RESET COMP COLOR
+            // ================================
+
             b.style.background =
-              "#2d2d2d";
+              "#4e342e";
+
+            b.style.color =
+              "#ffccbc";
+
           });
+
+          // ====================================
+          // 🟩 ACTIVE GREEN
+          // ====================================
 
           this.style.background =
             "#00c853";
+
+          this.style.color =
+            "white";
 
           // ====================================
           // 🟧 ACTIVE FILTER
