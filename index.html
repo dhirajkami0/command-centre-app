@@ -11910,8 +11910,6 @@ if(
 
     padding:0 !important;
 
-  
-
     pointer-events:none;
 
   }
@@ -12274,6 +12272,25 @@ function bindUniversalTooltip(
       }
     );
 
+    layer.on(
+      "touchstart",
+      function(e){
+
+        try {
+
+          window.map.closeTooltip();
+
+          window.map.closePopup();
+
+          this.openTooltip(
+            e.latlng
+          );
+
+        } catch(err){}
+
+      }
+    );
+
     // ==========================================
     // 🔥 TOOLTIP CLOSE
     // ==========================================
@@ -12285,6 +12302,21 @@ function bindUniversalTooltip(
         try {
 
           this.closeTooltip();
+
+        } catch(err){}
+
+      }
+    );
+
+    layer.on(
+      "click",
+      function(){
+
+        try {
+
+          this.closeTooltip();
+
+          window.map.closePopup();
 
         } catch(err){}
 
@@ -12306,21 +12338,6 @@ function bindUniversalTooltip(
       }
     );
 
-    layer.on(
-      "touchstart",
-      function(e){
-
-        try {
-
-          this.openTooltip(
-            e.latlng
-          );
-
-        } catch(err){}
-
-      }
-    );
-
   }
 
   catch(e){
@@ -12335,7 +12352,7 @@ function bindUniversalTooltip(
 }
 
 // ==================================================
-// 🌍 GLOBAL TOOLTIP CLOSE
+// 🌍 GLOBAL TOOLTIP + POPUP CLOSE
 // ==================================================
 
 if(
@@ -12346,17 +12363,115 @@ if(
   window.__enterpriseTooltipCloseBound =
     true;
 
+  // ==========================================
+  // 🔥 SAFE CLOSE FUNCTION
+  // ==========================================
+
+  function closeEnterpriseGISPopups(){
+
+    try {
+
+      window.map.closeTooltip();
+
+    } catch(e){}
+
+    try {
+
+      window.map.closePopup();
+
+    } catch(e){}
+
+    try {
+
+      if(window.map._popup){
+
+        window.map.removeLayer(
+          window.map._popup
+        );
+
+      }
+
+    } catch(e){}
+
+  }
+
+  // ==========================================
+  // 🔥 MAP EVENTS
+  // ==========================================
+
   window.map.on(
 
-    "click zoomstart movestart",
+    "click zoomstart movestart dragstart resize layerremove",
 
     function(){
 
+      closeEnterpriseGISPopups();
+
+    }
+
+  );
+
+  // ==========================================
+  // 🔥 ESC KEY CLOSE
+  // ==========================================
+
+  document.addEventListener(
+
+    "keydown",
+
+    function(e){
+
+      if(e.key === "Escape"){
+
+        closeEnterpriseGISPopups();
+
+      }
+
+    }
+
+  );
+
+  // ==========================================
+  // 🔥 TOUCH CLOSE
+  // ==========================================
+
+  document.addEventListener(
+
+    "touchstart",
+
+    function(e){
+
       try {
 
-        window.map.closeTooltip();
+        if(
 
-      } catch(e){}
+          e.target.closest(
+            ".leaflet-tooltip"
+          )
+
+        ){
+          return;
+        }
+
+        if(
+
+          e.target.closest(
+            ".leaflet-popup"
+          )
+
+        ){
+          return;
+        }
+
+        closeEnterpriseGISPopups();
+
+      } catch(err){}
+
+    },
+
+    {
+
+      passive:true
 
     }
 
