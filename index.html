@@ -11996,10 +11996,6 @@ if(
 
   }
 
-  /* ==========================================
-     🔥 SVG MOBILE FOCUS FIX
-     ========================================== */
-
   .leaflet-interactive:focus{
 
     outline:none !important;
@@ -12053,11 +12049,14 @@ if(
 }
 
 // ==================================================
-// 🌍 ACTIVE MOBILE TOOLTIP
+// 🌍 GLOBAL MOBILE STATE
 // ==================================================
 
 window.__activeEnterpriseTooltipLayer =
   null;
+
+window.__mobileTooltipLocked =
+  false;
 
 // ==================================================
 // 🛰 UNIVERSAL TOOLTIP
@@ -12212,7 +12211,7 @@ function bindUniversalTooltip(
     );
 
     // ==========================================
-    // 🔥 REMOVE SVG MOBILE BOX
+    // 🔥 REMOVE MOBILE SVG BOX
     // ==========================================
 
     requestAnimationFrame(() => {
@@ -12238,6 +12237,12 @@ function bindUniversalTooltip(
           layer._path.style.userSelect =
             "none";
 
+          layer._path.style.webkitUserSelect =
+            "none";
+
+          layer._path.style.webkitTouchCallout =
+            "none";
+
         }
 
       } catch(e){}
@@ -12245,12 +12250,16 @@ function bindUniversalTooltip(
     });
 
     // ==========================================
-    // 🔥 TOOLTIP OPEN
+    // 🔥 DESKTOP HOVER
     // ==========================================
 
     layer.on(
       "mouseover",
       function(e){
+
+        if(L.Browser.mobile){
+          return;
+        }
 
         try {
 
@@ -12267,6 +12276,10 @@ function bindUniversalTooltip(
       "mousemove",
       function(e){
 
+        if(L.Browser.mobile){
+          return;
+        }
+
         try {
 
           this.openTooltip(
@@ -12278,8 +12291,25 @@ function bindUniversalTooltip(
       }
     );
 
+    layer.on(
+      "mouseout",
+      function(){
+
+        if(L.Browser.mobile){
+          return;
+        }
+
+        try {
+
+          this.closeTooltip();
+
+        } catch(err){}
+
+      }
+    );
+
     // ==========================================
-    // 🔥 MOBILE TOUCH FIX
+    // 🔥 MOBILE TOUCH ONLY
     // ==========================================
 
     layer.on(
@@ -12289,13 +12319,46 @@ function bindUniversalTooltip(
         try {
 
           // ==================================
-          // 🔥 CLOSE OLD ACTIVE TOOLTIP
+          // 🔥 STOP SYNTHETIC CLICK
+          // ==================================
+
+          if(e.originalEvent){
+
+            e.originalEvent.preventDefault();
+
+            e.originalEvent.stopPropagation();
+
+          }
+
+          // ==================================
+          // 🔥 LOCK DOUBLE TOUCH
+          // ==================================
+
+          if(
+            window.__mobileTooltipLocked
+          ){
+            return;
+          }
+
+          window.__mobileTooltipLocked =
+            true;
+
+          setTimeout(() => {
+
+            window.__mobileTooltipLocked =
+              false;
+
+          },250);
+
+          // ==================================
+          // 🔥 CLOSE OLD ACTIVE
           // ==================================
 
           if(
             window.__activeEnterpriseTooltipLayer
             &&
-            window.__activeEnterpriseTooltipLayer
+            window
+            .__activeEnterpriseTooltipLayer
             !== this
           ){
 
@@ -12347,40 +12410,8 @@ function bindUniversalTooltip(
     );
 
     // ==========================================
-    // 🔥 TOOLTIP CLOSE
+    // 🔥 REMOVE CLEANUP
     // ==========================================
-
-    layer.on(
-      "mouseout",
-      function(){
-
-        try {
-
-          this.closeTooltip();
-
-        } catch(err){}
-
-      }
-    );
-
-    layer.on(
-      "click",
-      function(){
-
-        try {
-
-          this.closeTooltip();
-
-          window.map.closePopup();
-
-          window
-          .__activeEnterpriseTooltipLayer =
-            null;
-
-        } catch(e){}
-
-      }
-    );
 
     layer.on(
       "remove",
@@ -12392,9 +12423,17 @@ function bindUniversalTooltip(
 
           this.unbindTooltip();
 
-          window
-          .__activeEnterpriseTooltipLayer =
-            null;
+          if(
+            window
+            .__activeEnterpriseTooltipLayer
+            === this
+          ){
+
+            window
+            .__activeEnterpriseTooltipLayer =
+              null;
+
+          }
 
         } catch(err){}
 
@@ -12415,7 +12454,7 @@ function bindUniversalTooltip(
 }
 
 // ==================================================
-// 🌍 GLOBAL TOOLTIP + POPUP CLOSE
+// 🌍 GLOBAL TOOLTIP CLOSE
 // ==================================================
 
 if(
@@ -12427,10 +12466,33 @@ if(
     true;
 
   // ==========================================
-  // 🔥 SAFE CLOSE FUNCTION
+  // 🔥 SAFE CLOSE
   // ==========================================
 
   function closeEnterpriseGISPopups(){
+
+    try {
+
+      if(
+        window
+        .__activeEnterpriseTooltipLayer
+      ){
+
+        try {
+
+          window
+          .__activeEnterpriseTooltipLayer
+          .closeTooltip();
+
+        } catch(err){}
+
+      }
+
+      window
+      .__activeEnterpriseTooltipLayer =
+        null;
+
+    } catch(e){}
 
     try {
 
@@ -12444,34 +12506,15 @@ if(
 
     } catch(e){}
 
-    try {
-
-      if(window.map._popup){
-
-        window.map.removeLayer(
-          window.map._popup
-        );
-
-      }
-
-    } catch(e){}
-
-    // ======================================
-    // 🔥 RESET ACTIVE TOOLTIP
-    // ======================================
-
-    window.__activeEnterpriseTooltipLayer =
-      null;
-
   }
 
   // ==========================================
-  // 🔥 MAP EVENTS
+  // 🔥 MAP CLOSE EVENTS
   // ==========================================
 
   window.map.on(
 
-    "click zoomstart movestart dragstart resize layerremove",
+    "zoomstart movestart dragstart resize layerremove",
 
     function(){
 
@@ -12482,7 +12525,80 @@ if(
   );
 
   // ==========================================
-  // 🔥 ESC KEY CLOSE
+  // 🔥 DESKTOP CLICK CLOSE
+  // ==========================================
+
+  if(!L.Browser.mobile){
+
+    window.map.on(
+      "click",
+      function(){
+
+        closeEnterpriseGISPopups();
+
+      }
+    );
+
+  }
+
+  // ==========================================
+  // 🔥 MOBILE TOUCH OUTSIDE CLOSE
+  // ==========================================
+
+  document.addEventListener(
+
+    "touchstart",
+
+    function(e){
+
+      try {
+
+        // ==============================
+        // 🔥 INSIDE SVG
+        // ==============================
+
+        if(
+          e.target.closest(
+            ".leaflet-interactive"
+          )
+        ){
+          return;
+        }
+
+        // ==============================
+        // 🔥 INSIDE TOOLTIP
+        // ==============================
+
+        if(
+          e.target.closest(
+            ".leaflet-tooltip"
+          )
+        ){
+          return;
+        }
+
+        // ==============================
+        // 🔥 CLOSE ALL
+        // ==============================
+
+        closeEnterpriseGISPopups();
+
+      }
+
+      catch(err){}
+
+    },
+
+    {
+
+      passive:false
+
+    }
+
+  );
+
+  // ==========================================
+  // 🔥 ESC CLOSE
   // ==========================================
 
   document.addEventListener(
@@ -12496,52 +12612,6 @@ if(
         closeEnterpriseGISPopups();
 
       }
-
-    }
-
-  );
-
-  // ==========================================
-  // 🔥 TOUCH CLOSE
-  // ==========================================
-
-  document.addEventListener(
-
-    "touchstart",
-
-    function(e){
-
-      try {
-
-        if(
-
-          e.target.closest(
-            ".leaflet-tooltip"
-          )
-
-        ){
-          return;
-        }
-
-        if(
-
-          e.target.closest(
-            ".leaflet-popup"
-          )
-
-        ){
-          return;
-        }
-
-        closeEnterpriseGISPopups();
-
-      } catch(err){}
-
-    },
-
-    {
-
-      passive:true
 
     }
 
