@@ -22984,8 +22984,30 @@ window.staffUnsubscribe = onSnapshot(
     // ==============================================
 // ==============================================
 // 🔴 DUTY OFF CLEANUP
+// ONLY EXPLICITLY OFF DUTY
 // ==============================================
-if(s.dutyActive !== true){
+
+if(
+
+  s.dutyActive === false
+
+  ||
+
+  String(
+    s.status || ""
+  )
+  .toUpperCase()
+  .trim() === "OFF_DUTY"
+
+){
+
+  console.warn(
+
+    "🧹 Duty OFF cleanup:",
+
+    s.cleanName
+
+  );
 
   // ==========================================
   // 🔥 REMOVE MARKER
@@ -23037,7 +23059,6 @@ if(s.dutyActive !== true){
 
   // ==========================================
   // 🔥 REMOVE LIVE LISTENER
-  // VERY IMPORTANT
   // ==========================================
   if(
     window.trackListeners[
@@ -23057,7 +23078,23 @@ if(s.dutyActive !== true){
       s.cleanName
     ];
   }
-// ==========================================
+
+  // ==========================================
+  // 🔥 REMOVE SESSION
+  // ==========================================
+  delete window.activeSessionMap[
+    s.cleanName
+  ];
+
+  // ==========================================
+  // 🔥 REMOVE DISTANCE CACHE
+  // ==========================================
+  delete window.trackDistanceMap[
+    s.cleanName
+  ];
+
+  return;
+}// ==========================================
 // 🔥 REMOVE POINT CACHE
 // ==========================================
 delete window.trackPointCount[
