@@ -22721,158 +22721,246 @@ window.staffListenerActive = true;
 
 console.log(
   "🔥 Creating SINGLE live_staff listener"
-);
-
-// ==========================================
-// 🔥 CREATE REALTIME LISTENER
-// ==========================================
-window.staffUnsubscribe = onSnapshot(
+);window.staffUnsubscribe = onSnapshot(
 
   liveRef,
 
-  async(snapshot)=>{     try {
+  async(snapshot)=>{
 
-        let activeUsers =
-          new Set();
+    try {
 
-        let staff = [];        // ==================================================
-        // 🔥 LIVE STAFF
-        // ==================================================
-        snapshot.forEach(docSnap=>{
+      let activeUsers =
+        new Set();
 
-  try {
+      let staff = [];
 
-    const s =
-      docSnap.data();
+      // ==================================================
+      // 🔥 LIVE STAFF
+      // ==================================================
+      snapshot.forEach(docSnap=>{
 
-    if(!s) return;
+        try {
 
-    // ==============================================
-    // 🔥 ROLE BASED VISIBILITY
-    // HARDENED ENTERPRISE VERSION
-    // ==============================================
+          const s =
+            docSnap.data();
 
-    const role =
+          if(!s) return;
 
-      String(
-        window.userProfile?.role || ""
-      )
-      .toUpperCase()
-      .trim();
+          // ==============================================
+          // 🔥 SAFE ROLE NORMALIZER
+          // ==============================================
 
-    // ==============================================
-    // 🔥 NORMALIZED MY DIVISION
-    // ==============================================
+          const role =
 
-    const myDivision =
+            String(
+              window.userProfile?.role || ""
+            )
+            .trim()
+            .toUpperCase();
 
-      normalizeDivision(
+          // ==============================================
+          // 🔥 NORMALIZED MY DIVISION
+          // ==============================================
 
-        String(
-          window.userProfile?.division || ""
-        )
+          const myDivision =
 
+            normalizeDivision(
+
+              String(
+                window.userProfile?.division || ""
+              )
+
+            );
+
+          // ==============================================
+          // 🔥 NORMALIZED MY RANGE
+          // ==============================================
+
+          const myRange =
+
+            String(
+              window.userProfile?.range || ""
+            )
+            .trim()
+            .toUpperCase();
+
+          // ==============================================
+          // 🔥 NORMALIZED STAFF DIVISION
+          // ==============================================
+
+          const staffDivision =
+
+            normalizeDivision(
+
+              String(
+                s.division || ""
+              )
+
+            );
+
+          // ==============================================
+          // 🔥 NORMALIZED STAFF RANGE
+          // ==============================================
+
+          const staffRange =
+
+            String(
+              s.range || ""
+            )
+            .trim()
+            .toUpperCase();
+
+          // ==============================================
+          // 👑 ADMIN
+          // ==============================================
+
+          if(role === "ADMIN"){
+
+            // ✅ SHOW ALL
+
+          }
+
+          // ==============================================
+          // 🟩 DFO / ADFO
+          // ==============================================
+
+          else if(
+
+            role === "DFO"
+
+            ||
+
+            role === "ADFO"
+
+          ){
+
+            // ============================================
+            // ❌ OUTSIDE DIVISION
+            // ============================================
+
+            if(
+              staffDivision !== myDivision
+            ){
+
+              return;
+            }
+
+          }
+
+          // ==============================================
+          // 👮 STAFF / TEAM LEADER / FG / FR
+          // ==============================================
+
+          else if(
+
+            role === "STAFF"
+
+            ||
+
+            role === "TEAM LEADER"
+
+            ||
+
+            role === "FG"
+
+            ||
+
+            role === "FR"
+
+          ){
+
+            // ============================================
+            // ❌ OUTSIDE RANGE
+            // ============================================
+
+            if(
+              staffRange !== myRange
+            ){
+
+              return;
+            }
+
+          }
+
+          // ==============================================
+          // ❌ UNKNOWN ROLE
+          // ==============================================
+
+          else {
+
+            return;
+          }
+
+          // ==============================================
+          // 🔴 HIDE OFF DUTY
+          // ==============================================
+
+          if(
+            s.dutyActive === false
+          ){
+            return;
+          }
+
+          // ==============================================
+          // 🔴 INVALID GPS
+          // ==============================================
+
+          if(
+
+            isNaN(s.lat)
+
+            ||
+
+            isNaN(s.lon)
+
+          ){
+
+            return;
+          }
+
+          // ==============================================
+          // ✅ ACTIVE USER
+          // ==============================================
+
+          activeUsers.add(
+            s.cleanName || s.name
+          );
+
+          // ==============================================
+          // ✅ PUSH STAFF
+          // ==============================================
+
+          staff.push(s);
+
+        }
+
+        catch(err){
+
+          console.error(
+            "❌ Staff render error:",
+            err
+          );
+        }
+
+      });
+
+      // ==================================================
+      // 🔥 CONTINUE ORIGINAL FLOW
+      // ==================================================
+
+    }
+
+    catch(err){
+
+      console.error(
+        "❌ staff snapshot failed:",
+        err
       );
-
-    // ==============================================
-    // 🔥 NORMALIZED MY RANGE
-    // ==============================================
-
-    const myRange =
-
-      String(
-        window.userProfile?.range || ""
-      )
-      .trim()
-      .toUpperCase();
-
-    // ==============================================
-    // 🔥 NORMALIZED STAFF DIVISION
-    // ==============================================
-
-    const staffDivision =
-
-      normalizeDivision(
-
-        String(
-          s.division || ""
-        )
-
-      );
-
-    // ==============================================
-    // 🔥 NORMALIZED STAFF RANGE
-    // ==============================================
-
-    const staffRange =
-
-      String(
-        s.range || ""
-      )
-      .trim()
-      .toUpperCase();
-
-    // ==============================================
-    // 👑 ADMIN
-    // ==============================================
-
-    if(role === "ADMIN"){
-
-      // ============================================
-      // ✅ SHOW ALL STAFF
-      // ============================================
-
     }
 
-    // ==============================================
-    // 🟩 DFO / ADFO
-    // ==============================================
+  }
 
-    else if(
-
-      role === "DFO"
-
-      ||
-
-      role === "ADFO"
-
-    ){
-
-      // ============================================
-      // ❌ OUTSIDE DIVISION
-      // ============================================
-
-      if(
-        staffDivision !== myDivision
-      ){
-
-        return;
-      }
-
-    }
-
-    // ==============================================
-    // 👮 STAFF / FR / FG / TEAM
-    // ==============================================
-
-    else {
-
-      // ============================================
-      // ❌ OUTSIDE RANGE
-      // ============================================
-
-      if(
-        staffRange !== myRange
-      ){
-
-        return;
-      }
-
-    }
-
-    // ==============================================
-    // 🔴 HIDE OFF DUTY
-    // ==============================================
+);
 // ==============================================
 // 🔴 DUTY OFF CLEANUP
 // ==============================================
