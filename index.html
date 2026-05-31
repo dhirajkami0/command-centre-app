@@ -5903,7 +5903,51 @@ setInterval(() => {
         errorTileUrl: 'https://tile.openstreetmap.org/0/0/0.png'
       }
     );
+// ======================================
+// 🌲 MAPBOX OUTDOORS
+// ENTERPRISE FOREST MAP
+// ======================================
 
+var mapboxOutdoors = L.tileLayer(
+
+  'https://api.mapbox.com/styles/v1/mapbox/outdoors-v12/tiles/{z}/{x}/{y}?access_token=pk.eyJ1IjoiZGhpcmFqa2FtaS1idHIiLCJhIjoiY21wdTNxcHBkMWN0ZzJzc2xicXBodWxpbyJ9.HWVd19T4BuEYq2d-hPIGkg',
+
+  {
+
+    attribution:
+      '© Mapbox © OpenStreetMap',
+
+    tileSize: 512,
+
+    zoomOffset: -1,
+
+    maxZoom: 22
+
+  }
+
+);
+// ======================================
+// 🛰 MAPBOX SATELLITE
+// ======================================
+
+var mapboxSatellite = L.tileLayer(
+
+  'https://api.mapbox.com/styles/v1/mapbox/satellite-streets-v12/tiles/{z}/{x}/{y}?access_token=pk.eyJ1IjoiZGhpcmFqa2FtaS1idHIiLCJhIjoiY21wdTNxcHBkMWN0ZzJzc2xicXBodWxpbyJ9.HWVd19T4BuEYq2d-hPIGkg',
+
+  {
+
+    attribution:
+      '© Mapbox © OpenStreetMap',
+
+    tileSize: 512,
+
+    zoomOffset: -1,
+
+    maxZoom: 22
+
+  }
+
+);
     /* 🌧 WEATHER RADAR */
     var rainLayer = L.tileLayer(
       'https://tile.openweathermap.org/map/precipitation_new/{z}/{x}/{y}.png?appid=b928faa16c09eb3facb9e3238d2e59f8',
@@ -5977,26 +6021,86 @@ var tempLayer = L.tileLayer(
    // ======================================================
 // 🗺 MAP INIT (FINAL STABLE)
 // ======================================================
-var map = L.map('map', {
-  center:[26.561, 89.507],
-  zoom:14,
-  zoomControl:false,
-  preferCanvas: true,
+// 🌍 MAP INITIALIZATION
+// ======================================================
 
-  // 🔥 CRITICAL FIX (REMOVES GRID SEPARATION)
-  zoomAnimation: false,
-  fadeAnimation: false,
-  markerZoomAnimation: false
+var map = L.map('map', {
+
+  center:[26.561, 89.507],
+
+  zoom:14,
+
+  zoomControl:false,
+
+  preferCanvas:true,
+
+  // 🔥 CRITICAL FIX
+  // REMOVES GRID SEPARATION
+  zoomAnimation:false,
+
+  fadeAnimation:false,
+
+  markerZoomAnimation:false
+
 });
 
-/* 🔥 BASE LAYERS LOAD */
-esriSat.addTo(map);
+// ======================================================
+// 🌲 DEFAULT BASE LAYER
+// ======================================================
 
-/* 🖱 CONTROLS */
+mapboxOutdoors.addTo(map);
+
+// ======================================================
+// 🖱 MAP CONTROLS
+// ======================================================
+
 map.scrollWheelZoom.disable();
+
 map.tap = true;
 
-L.control.zoom({ position: 'topright' }).addTo(map);
+// ======================================================
+// 🔍 ZOOM CONTROL
+// ======================================================
+
+L.control.zoom({
+
+  position:'topright'
+
+}).addTo(map);
+
+// ======================================================
+// 🌍 BASE MAP SWITCHER
+// ======================================================
+
+L.control.layers(
+
+  {
+
+    "🌲 Mapbox Outdoors":
+      mapboxOutdoors,
+
+    "🛰 Mapbox Satellite":
+      mapboxSatellite,
+
+    "🛰 ESRI Satellite":
+      esriSat,
+
+    "🌍 Google Hybrid":
+      googleHybrid
+
+  },
+
+  {},
+
+  {
+
+    collapsed:true,
+
+    position:'topright'
+
+  }
+
+).addTo(map);
 
 // ======================================================
 // 🟩 GRID LAYER INIT
