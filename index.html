@@ -1261,6 +1261,66 @@ NORTH REMAINS ABSOLUTE
 
   opacity:0.95;
 }
+
+
+    /* =========================================
+👁 GIS BUTTON WITH EYE
+========================================= */
+
+.gis-btn-wrap{
+
+  display:flex;
+
+  align-items:center;
+
+  gap:4px;
+
+  margin:2px;
+}
+
+/* =========================================
+🔘 MAIN GIS BUTTON
+========================================= */
+
+.gis-filter-btn{
+
+  flex:1;
+}
+
+/* =========================================
+👁 EYE BUTTON
+========================================= */
+
+.gis-eye-btn{
+
+  width:34px;
+
+  height:34px;
+
+  border:none;
+
+  border-radius:8px;
+
+  background:#1f1f1f;
+
+  color:white;
+
+  cursor:pointer;
+
+  font-size:16px;
+
+  transition:0.2s;
+}
+
+.gis-eye-btn:hover{
+
+  background:#333;
+}
+
+.gis-eye-btn:active{
+
+  transform:scale(0.92);
+}
   </style>
 </head>
 <body>
@@ -8449,7 +8509,94 @@ map.on(
 
     window.gpsRetryCount = 0;
   }
-);    /* 🔁 CENTER MAP */
+);   
+    
+    
+    // ==========================================
+// 👁 TOGGLE COMPARTMENT LAYER
+// ==========================================
+
+function toggleCompartmentLayer(btn){
+
+  try {
+
+    // ======================================
+    // ❌ NO LAYER
+    // ======================================
+
+    if(!window.compartmentLayer){
+
+      console.warn(
+        "⚠ No compartment layer"
+      );
+
+      return;
+    }
+
+    // ======================================
+    // 🙈 HIDE
+    // ======================================
+
+    if(window.compartmentLayerVisible){
+
+      window.map.removeLayer(
+        window.compartmentLayer
+      );
+
+      window.compartmentLayerVisible =
+        false;
+
+      // ====================================
+      // 👁 BUTTON ICON
+      // ====================================
+
+      if(btn){
+
+        btn.innerHTML = "🙈";
+      }
+
+      console.log(
+        "🙈 Compartments Hidden"
+      );
+    }
+
+    // ======================================
+    // 👁 SHOW
+    // ======================================
+
+    else {
+
+      window.compartmentLayer.addTo(
+        window.map
+      );
+
+      window.compartmentLayerVisible =
+        true;
+
+      // ====================================
+      // 👁 BUTTON ICON
+      // ====================================
+
+      if(btn){
+
+        btn.innerHTML = "👁";
+      }
+
+      console.log(
+        "👁 Compartments Visible"
+      );
+    }
+
+  }
+
+  catch(e){
+
+    console.error(
+      "❌ toggleCompartmentLayer",
+      e
+    );
+  }
+}/* 🔁 CENTER MAP */
  function centerMap(){
 
   try {
@@ -9097,7 +9244,11 @@ window.gisFilter =
 window.allGISFeatures = [];
 
 window.allCompartmentFeatures = [];
+// ==========================================
+// 👁 COMPARTMENT LAYER VISIBILITY
+// ==========================================
 
+window.compartmentLayerVisible = true;
 // ======================================================
 // 🌍 ACTIVE LAYERS
 // ======================================================
@@ -9994,34 +10145,98 @@ function createGISButton(
 
   return `
 
-    <button
+    <!-- ================================= -->
+    <!-- 🔘 GIS BUTTON WRAP -->
+    <!-- ================================= -->
 
-      class="gis-filter-btn"
-
-      data-value="${label}"
-
+    <div
+      class="gis-btn-wrap"
       style="
-        border:none;
-        padding:8px 14px;
-        border-radius:8px;
-        cursor:pointer;
-        background:${
-          active
-          ? "#00c853"
-          : "#2d2d2d"
-        };
-        color:white;
-        font-size:12px;
-        font-weight:bold;
+        display:flex;
+        align-items:center;
+        gap:4px;
       "
     >
 
-      ${label}
+      <!-- ================================= -->
+      <!-- 🔘 MAIN FILTER BUTTON -->
+      <!-- ================================= -->
 
-    </button>
+      <button
+
+        class="gis-filter-btn"
+
+        data-value="${label}"
+
+        style="
+          border:none;
+          padding:8px 14px;
+          border-radius:8px;
+          cursor:pointer;
+
+          background:${
+            active
+            ? "#00c853"
+            : "#2d2d2d"
+          };
+
+          color:white;
+
+          font-size:12px;
+
+          font-weight:bold;
+        "
+      >
+
+        ${label}
+
+      </button>
+
+      <!-- ================================= -->
+      <!-- 👁 COMPARTMENT TOGGLE -->
+      <!-- ================================= -->
+
+      <button
+
+        class="gis-eye-btn"
+
+        onclick="
+          event.stopPropagation();
+          toggleCompartmentLayer(this);
+        "
+
+        style="
+          border:none;
+
+          width:34px;
+          height:34px;
+
+          border-radius:8px;
+
+          cursor:pointer;
+
+          background:#1f1f1f;
+
+          color:white;
+
+          font-size:15px;
+
+          font-weight:bold;
+        "
+      >
+
+        ${
+          window.compartmentLayerVisible
+          ? "👁"
+          : "🙈"
+        }
+
+      </button>
+
+    </div>
+
   `;
 }
-
 // ======================================================
 // 🌍 LOAD GIS SYSTEM
 // ======================================================
