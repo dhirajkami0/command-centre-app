@@ -11875,7 +11875,6 @@ centerMap();
 // 🌍 FILTER + RENDER GIS
 // CENTRAL BUTTON AWARE ROUTER
 // NO POPUP SYSTEM HERE
-// ======================================================
 // ==================================================
 // 🎨 ENTERPRISE TOOLTIP CSS
 // ==================================================
@@ -12052,6 +12051,13 @@ if(
   );
 
 }
+
+// ==================================================
+// 🌍 ACTIVE MOBILE TOOLTIP
+// ==================================================
+
+window.__activeEnterpriseTooltipLayer =
+  null;
 
 // ==================================================
 // 🛰 UNIVERSAL TOOLTIP
@@ -12272,19 +12278,68 @@ function bindUniversalTooltip(
       }
     );
 
+    // ==========================================
+    // 🔥 MOBILE TOUCH FIX
+    // ==========================================
+
     layer.on(
       "touchstart",
       function(e){
 
         try {
 
-          window.map.closeTooltip();
+          // ==================================
+          // 🔥 CLOSE OLD ACTIVE TOOLTIP
+          // ==================================
 
-          window.map.closePopup();
+          if(
+            window.__activeEnterpriseTooltipLayer
+            &&
+            window.__activeEnterpriseTooltipLayer
+            !== this
+          ){
+
+            try {
+
+              window
+              .__activeEnterpriseTooltipLayer
+              .closeTooltip();
+
+            } catch(err){}
+
+          }
+
+          // ==================================
+          // 🔥 CLOSE EXISTING
+          // ==================================
+
+          try {
+
+            window.map.closeTooltip();
+
+          } catch(err){}
+
+          try {
+
+            window.map.closePopup();
+
+          } catch(err){}
+
+          // ==================================
+          // 🔥 OPEN CURRENT
+          // ==================================
 
           this.openTooltip(
             e.latlng
           );
+
+          // ==================================
+          // 🔥 STORE ACTIVE
+          // ==================================
+
+          window
+          .__activeEnterpriseTooltipLayer =
+            this;
 
         } catch(err){}
 
@@ -12318,7 +12373,11 @@ function bindUniversalTooltip(
 
           window.map.closePopup();
 
-        } catch(err){}
+          window
+          .__activeEnterpriseTooltipLayer =
+            null;
+
+        } catch(e){}
 
       }
     );
@@ -12332,6 +12391,10 @@ function bindUniversalTooltip(
           this.closeTooltip();
 
           this.unbindTooltip();
+
+          window
+          .__activeEnterpriseTooltipLayer =
+            null;
 
         } catch(err){}
 
@@ -12392,6 +12455,13 @@ if(
       }
 
     } catch(e){}
+
+    // ======================================
+    // 🔥 RESET ACTIVE TOOLTIP
+    // ======================================
+
+    window.__activeEnterpriseTooltipLayer =
+      null;
 
   }
 
