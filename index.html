@@ -20573,55 +20573,56 @@ if (isNaN(minutes)) {
 
   return;
 }
-        // ======================================================
-        // 🔥 HARD REMOVE AFTER 24 HOURS
-        // ======================================================
+     // ======================================================
+// 🔥 HARD REMOVE AFTER 48 HOURS
+// ======================================================
 
-        if (minutes >= 1440) {
+if (minutes >= 2880) {
 
-          console.log(
-            "🗑 Permanently removing expired sighting:",
-            key
-          );
-
-          // remove marker
-          if (
-            window.sightingMarkers?.[key]
-          ) {
-
-            elephantLayer.removeLayer(
-              window.sightingMarkers[key]
-            );
-
-            delete window.sightingMarkers[key];
-          }
-
-          // add to permanent ignore cache
-          expiredSet.add(key);
-
-         const alreadyExists =
-  window.expiredSightings.some(
-    x => x?.id === key
+  console.log(
+    "🗑 Permanently removing expired sighting:",
+    key
   );
 
-if (!alreadyExists) {
+  // remove marker
+  if (
+    window.sightingMarkers?.[key]
+  ) {
 
-  window.expiredSightings.push({
-    id: key,
-    ts: Date.now()
-  });
+    elephantLayer.removeLayer(
+      window.sightingMarkers[key]
+    );
 
+    delete window.sightingMarkers[key];
+  }
+
+  // add to permanent ignore cache
+  expiredSet.add(key);
+
+  const alreadyExists =
+    window.expiredSightings.some(
+      x => x?.id === key
+    );
+
+  if (!alreadyExists) {
+
+    window.expiredSightings.push({
+      id: key,
+      ts: Date.now()
+    });
+
+  }
+
+  // save
+  localStorage.setItem(
+    "expiredSightings",
+    JSON.stringify(
+      window.expiredSightings
+    )
+  );
+
+  return;
 }
-          // save
-          localStorage.setItem(
-            "expiredSightings",
-            JSON.stringify(
-              window.expiredSightings
-            )
-          );
-
-          return;
-        }
 
         // ======================================================
         // 🔍 DEBUG
@@ -20669,13 +20670,9 @@ if (!alreadyExists) {
         // 🔥 REMOVE LOGIC
         // ======================================================
 
-        if (
-          status === "RESOLVED" ||
-          (
-            minutes > 1440 &&
-            status === "ACTIVE"
-          )
-        ) {
+       if (
+  status === "RESOLVED"
+) {
 
           if (
             window.sightingMarkers[key]
@@ -20709,32 +20706,43 @@ if (!alreadyExists) {
         let showPulse = true;
 
         if (
-          status === "MOVED" ||
-          status.startsWith("DRIVEN")
-        ) {
+  status === "MOVED" ||
+  status.startsWith("DRIVEN")
+) {
 
-          showPulse = false;
-          color = "#9e9e9e";
-          opacity = 0.7;
-        }
+  showPulse = false;
+  color = "#9e9e9e";
+  opacity = 0.7;
+}
 
-        else if (minutes <= 120) {
+else if (minutes <= 120) {
 
-          pulseClass =
-            "riskPulseRed";
-        }
+  pulseClass =
+    "riskPulseRed";
+}
 
-        else if (minutes <= 360) {
+else if (minutes <= 360) {
 
-          pulseClass =
-            "riskPulseOrange";
-        }
+  pulseClass =
+    "riskPulseOrange";
+}
 
-        else {
+else {
 
-          showPulse = false;
-        }
+  showPulse = false;
 
+  // ==========================================
+  // 🔥 OLD HISTORICAL MARKER (24h+)
+  // ==========================================
+
+  if (minutes >= 1440) {
+
+    color = "#9e9e9e";
+    opacity = 0.45;
+
+  }
+
+}
         // ======================================================
         // 🔥 ICON
         // ======================================================
@@ -20992,11 +21000,15 @@ const popup = `
     </div>
 
     <div style="
-      margin-bottom:4px;
-    ">
-      <b>⏱ Time of Sighting:</b>
-      ${timeDisplay}
-    </div>
+  margin-bottom:4px;
+">
+  <b>📅 Sighting DateTime:</b>
+  ${
+    !isNaN(parsedTs)
+      ? new Date(parsedTs).toLocaleString()
+      : "Unknown"
+  }
+</div>
 
     <div style="
       margin-bottom:4px;
