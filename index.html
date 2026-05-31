@@ -5908,9 +5908,14 @@ setInterval(() => {
 // ENTERPRISE FOREST MAP
 // ======================================
 
-var mapboxOutdoors = L.tileLayer(
+// ======================================
+// 🌲 BTR TACTICAL COMMAND STYLE
+// CUSTOM MAPBOX STYLE
+// ======================================
 
-  'https://api.mapbox.com/styles/v1/mapbox/outdoors-v12/tiles/{z}/{x}/{y}?access_token=pk.eyJ1IjoiZGhpcmFqa2FtaS1idHIiLCJhIjoiY21wdTNxcHBkMWN0ZzJzc2xicXBodWxpbyJ9.HWVd19T4BuEYq2d-hPIGkg',
+var mapboxTactical = L.tileLayer(
+
+  'https://api.mapbox.com/styles/v1/dhirajkami-btr/cmpu5iy0r001901s65azh1i2y/tiles/{z}/{x}/{y}?access_token=pk.eyJ1IjoiZGhpcmFqa2FtaS1idHIiLCJhIjoiY21wdTNxcHBkMWN0ZzJzc2xicXBodWxpbyJ9.HWVd19T4BuEYq2d-hPIGkg',
 
   {
 
@@ -5921,7 +5926,13 @@ var mapboxOutdoors = L.tileLayer(
 
     zoomOffset: -1,
 
-    maxZoom: 22
+    maxZoom: 22,
+
+    crossOrigin: true,
+
+    updateWhenIdle: false,
+
+    keepBuffer: 8
 
   }
 
