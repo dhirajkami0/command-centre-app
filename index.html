@@ -22843,22 +22843,20 @@ window.staffUnsubscribe = onSnapshot(
 
       );
 
-    // ==============================================
-    // 🔥 NORMALIZED MY RANGE
+        // ==============================================
+    // 🔥 MY RANGE
     // ==============================================
 
     const myRange =
 
-      normalizeRange(
-
-        String(
-          window.userProfile?.range || ""
-        )
-
-      );
+      String(
+        window.userProfile?.range || ""
+      )
+      .trim()
+      .toUpperCase();
 
     // ==============================================
-    // 🔥 NORMALIZED STAFF DIVISION
+    // 🔥 STAFF DIVISION
     // ==============================================
 
     const staffDivision =
@@ -22872,18 +22870,16 @@ window.staffUnsubscribe = onSnapshot(
       );
 
     // ==============================================
-    // 🔥 NORMALIZED STAFF RANGE
+    // 🔥 STAFF RANGE
     // ==============================================
 
     const staffRange =
 
-      normalizeRange(
-
-        String(
-          s.range || ""
-        )
-
-      );
+      String(
+        s.range || ""
+      )
+      .trim()
+      .toUpperCase();
 
     // ==============================================
     // 🔥 VISIBILITY TEST
