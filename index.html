@@ -22879,6 +22879,30 @@ window.staffUnsubscribe = onSnapshot(
 // ==============================================
 if(s.dutyActive !== true){
 
+
+  console.log(
+
+  "🧪 MARKER LOOKUP",
+
+  {
+
+    cleanName:
+      s.cleanName,
+
+    normalized:
+      cleanName(
+        s.cleanName || ""
+      ),
+
+    existingKeys:
+
+      Object.keys(
+        window.staffMarkers || {}
+      )
+
+  }
+
+);
   // ==========================================
   // 🔥 REMOVE MARKER
   // ==========================================
