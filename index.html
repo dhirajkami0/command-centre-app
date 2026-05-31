@@ -22740,18 +22740,103 @@ window.staffUnsubscribe = onSnapshot(
         // ==================================================
         // 🔥 LIVE STAFF
         // ==================================================
-        snapshot.forEach(docSnap=>{
+       snapshot.forEach(docSnap=>{
 
-          try {
+  try {
 
-            const s =
-              docSnap.data();
+    const s =
+      docSnap.data();
 
-            if(!s) return;
+    if(!s) return;
 
-            // ==============================================
-            // 🔴 HIDE OFF DUTY
-            // ==============================================
+    // ==============================================
+    // 🔥 ROLE BASED VISIBILITY
+    // ==============================================
+
+    const role =
+
+      String(
+        window.userProfile?.role || ""
+      )
+      .toUpperCase()
+      .trim();
+
+    const myDivision =
+
+      String(
+        window.userProfile?.division || ""
+      )
+      .trim();
+
+    const myRange =
+
+      String(
+        window.userProfile?.range || ""
+      )
+      .trim();
+
+    const staffDivision =
+
+      String(
+        s.division || ""
+      )
+      .trim();
+
+    const staffRange =
+
+      String(
+        s.range || ""
+      )
+      .trim();
+
+    // ==============================================
+    // 👑 ADMIN
+    // ==============================================
+
+    if(role === "ADMIN"){
+
+      // show all
+    }
+
+    // ==============================================
+    // 🟩 DFO / ADFO
+    // ==============================================
+
+    else if(
+
+      role === "DFO"
+
+      ||
+
+      role === "ADFO"
+
+    ){
+
+      if(
+        staffDivision !== myDivision
+      ){
+        return;
+      }
+
+    }
+
+    // ==============================================
+    // 👮 STAFF
+    // ==============================================
+
+    else {
+
+      if(
+        staffRange !== myRange
+      ){
+        return;
+      }
+
+    }
+
+    // ==============================================
+    // 🔴 HIDE OFF DUTY
+    // ==============================================
 // ==============================================
 // 🔴 DUTY OFF CLEANUP
 // ==============================================
