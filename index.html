@@ -20436,26 +20436,71 @@ if (
       raw.includes("T")
     ) {
 
-      // ==================================
-      // 🔥 HANDLE FULL DATETIME
-      // ==================================
+     // ==================================
+// 🔥 SAFE FULL DATETIME PARSER
+// ==================================
 
-      let d = new Date(raw);
+let normalized =
+  raw.replace("T", " ");
 
-      if (!isNaN(d.getTime())) {
+let [datePart, timePart] =
+  normalized.split(" ");
 
-        parsedTs = d.getTime();
+if (!datePart || !timePart) {
 
-      } else {
+  console.warn(
+    "⚠ Invalid datetime:",
+    raw
+  );
 
-        console.warn(
-          "⚠ Invalid datetime:",
-          raw
-        );
+  return;
+}
 
-        return;
-      }
+// ==================================
+// 🔥 DATE
+// ==================================
 
+let [month, day, year] =
+  datePart.split("/").map(Number);
+
+// ==================================
+// 🔥 TIME
+// ==================================
+
+let [hh, mm, ss] =
+  timePart.split(":").map(Number);
+
+// ==================================
+// 🔥 BUILD SAFE DATE
+// ==================================
+
+let d = new Date(
+  year,
+  month - 1,
+  day,
+  hh,
+  mm,
+  ss || 0,
+  0
+);
+
+// ==================================
+// 🔥 VALIDATE
+// ==================================
+
+if (!isNaN(d.getTime())) {
+
+  parsedTs = d.getTime();
+
+} else {
+
+  console.warn(
+    "⚠ Invalid datetime:",
+    raw
+  );
+
+  return;
+}
     }
 
     // ======================================
