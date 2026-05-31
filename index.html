@@ -22742,7 +22742,7 @@ window.staffUnsubscribe = onSnapshot(
         let staff = [];        // ==================================================
         // 🔥 LIVE STAFF
         // ==================================================
-        snapshot.forEach(docSnap=>{
+      snapshot.forEach(docSnap=>{
 
   try {
 
@@ -22752,8 +22752,73 @@ window.staffUnsubscribe = onSnapshot(
     if(!s) return;
 
     // ==============================================
-    // 🔥 ROLE BASED VISIBILITY
-    // HARDENED ENTERPRISE VERSION
+    // 🔥 NORMALIZE FIRST
+    // VERY IMPORTANT
+    // ==============================================
+
+    s.type = "Staff";
+
+    s.cleanName =
+
+      cleanName(
+
+        s.cleanName ||
+
+        s.name ||
+
+        docSnap.id ||
+
+        ""
+
+      );
+
+    s.name =
+      s.name ||
+      s.cleanName;
+
+    s.lat =
+      Number(s.lat || 0);
+
+    s.lon =
+      Number(s.lon || 0);
+
+    // ==============================================
+    // 🔥 RAW DEBUG
+    // ==============================================
+
+    console.log(
+
+      "🧪 STAFF RAW:",
+
+      {
+
+        firestoreDocId:
+          docSnap.id,
+
+        cleanName:
+          s.cleanName,
+
+        name:
+          s.name,
+
+        division:
+          s.division,
+
+        range:
+          s.range,
+
+        dutyActive:
+          s.dutyActive,
+
+        sessionId:
+          s.sessionId
+
+      }
+
+    );
+
+    // ==============================================
+    // 🔥 VIEWER ROLE
     // ==============================================
 
     const role =
@@ -22784,11 +22849,13 @@ window.staffUnsubscribe = onSnapshot(
 
     const myRange =
 
-      String(
-        window.userProfile?.range || ""
-      )
-      .trim()
-      .toUpperCase();
+      normalizeRange(
+
+        String(
+          window.userProfile?.range || ""
+        )
+
+      );
 
     // ==============================================
     // 🔥 NORMALIZED STAFF DIVISION
@@ -22810,11 +22877,19 @@ window.staffUnsubscribe = onSnapshot(
 
     const staffRange =
 
-      String(
-        s.range || ""
-      )
-      .trim()
-      .toUpperCase();
+      normalizeRange(
+
+        String(
+          s.range || ""
+        )
+
+      );
+
+    // ==============================================
+    // 🔥 VISIBILITY TEST
+    // ==============================================
+
+    let visible = false;
 
     // ==============================================
     // 👑 ADMIN
@@ -22822,9 +22897,7 @@ window.staffUnsubscribe = onSnapshot(
 
     if(role === "ADMIN"){
 
-      // ============================================
-      // ✅ SHOW ALL STAFF
-      // ============================================
+      visible = true;
 
     }
 
@@ -22842,36 +22915,72 @@ window.staffUnsubscribe = onSnapshot(
 
     ){
 
-      // ============================================
-      // ❌ OUTSIDE DIVISION
-      // ============================================
-
-      if(
-        staffDivision !== myDivision
-      ){
-
-        return;
-      }
+      visible =
+        staffDivision === myDivision;
 
     }
 
     // ==============================================
-    // 👮 STAFF / FR / FG / TEAM
+    // 👮 ALL FIELD STAFF
     // ==============================================
 
     else {
 
-      // ============================================
-      // ❌ OUTSIDE RANGE
-      // ============================================
+      visible =
+        staffRange === myRange;
 
-      if(
-        staffRange !== myRange
-      ){
+    }
 
-        return;
+    // ==============================================
+    // 🔍 VISIBILITY DEBUG
+    // ==============================================
+
+    console.log(
+
+      "👁 VISIBILITY CHECK",
+
+      {
+
+        viewer:
+          window.userProfile?.cleanName,
+
+        viewerRole:
+          role,
+
+        viewerDivision:
+          myDivision,
+
+        viewerRange:
+          myRange,
+
+        staff:
+          s.cleanName,
+
+        staffDivision,
+
+        staffRange,
+
+        visible
+
       }
 
+    );
+
+    // ==============================================
+    // ❌ HIDDEN
+    // ==============================================
+
+    if(!visible){
+
+      console.warn(
+
+        "🚫 STAFF HIDDEN",
+
+        s.cleanName
+
+      );
+
+      return;
     }
 
     // ==============================================
