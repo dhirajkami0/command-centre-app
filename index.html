@@ -8515,87 +8515,99 @@ map.on(
     // ==========================================
 // 👁 TOGGLE COMPARTMENT LAYER
 // ==========================================
-
-function toggleCompartmentLayer(btn){
+function toggleRangeCompartments(
+  range,
+  btn
+){
 
   try {
 
     // ======================================
-    // ❌ NO LAYER
+    // 🙈 HIDE RANGE
     // ======================================
 
-    if(!window.compartmentLayer){
+    if(
+      !window.hiddenRanges.has(range)
+    ){
 
-      console.warn(
-        "⚠ No compartment layer"
-      );
+      window.hiddenRanges.add(range);
 
-      return;
+      btn.innerHTML = "🙈";
+
     }
 
     // ======================================
-    // 🙈 HIDE
-    // ======================================
-
-    if(window.compartmentLayerVisible){
-
-      window.map.removeLayer(
-        window.compartmentLayer
-      );
-
-      window.compartmentLayerVisible =
-        false;
-
-      // ====================================
-      // 👁 BUTTON ICON
-      // ====================================
-
-      if(btn){
-
-        btn.innerHTML = "🙈";
-      }
-
-      console.log(
-        "🙈 Compartments Hidden"
-      );
-    }
-
-    // ======================================
-    // 👁 SHOW
+    // 👁 SHOW RANGE
     // ======================================
 
     else {
 
-      window.compartmentLayer.addTo(
-        window.map
-      );
+      window.hiddenRanges.delete(range);
 
-      window.compartmentLayerVisible =
-        true;
+      btn.innerHTML = "👁";
 
-      // ====================================
-      // 👁 BUTTON ICON
-      // ====================================
-
-      if(btn){
-
-        btn.innerHTML = "👁";
-      }
-
-      console.log(
-        "👁 Compartments Visible"
-      );
     }
+
+    renderFilteredCompartments();
 
   }
 
   catch(e){
 
     console.error(
-      "❌ toggleCompartmentLayer",
+      "❌ toggleRangeCompartments",
       e
     );
+
   }
+
+}
+    function toggleBeatCompartments(
+  beat,
+  btn
+){
+
+  try {
+
+    // ======================================
+    // 🙈 HIDE BEAT
+    // ======================================
+
+    if(
+      !window.hiddenBeats.has(beat)
+    ){
+
+      window.hiddenBeats.add(beat);
+
+      btn.innerHTML = "🙈";
+
+    }
+
+    // ======================================
+    // 👁 SHOW BEAT
+    // ======================================
+
+    else {
+
+      window.hiddenBeats.delete(beat);
+
+      btn.innerHTML = "👁";
+
+    }
+
+    renderFilteredCompartments();
+
+  }
+
+  catch(e){
+
+    console.error(
+      "❌ toggleBeatCompartments",
+      e
+    );
+
+  }
+
 }/* 🔁 CENTER MAP */
  function centerMap(){
 
@@ -9279,7 +9291,15 @@ window.gisAnalyticsCache = {};
 // ======================================================
 // 🌍 NORMALIZE DIVISION
 // ======================================================
-    
+    // ==========================================
+// 👁 HIDDEN STATES
+// ==========================================
+
+window.hiddenRanges =
+  new Set();
+
+window.hiddenBeats =
+  new Set();
 // ============================================================
 // 🌍 ENTERPRISE SMART ANALYTICS PANEL
 // COMPARTMENT LEVEL AI ECOLOGICAL INTERPRETATION
@@ -10145,96 +10165,31 @@ function createGISButton(
 
   return `
 
-    <!-- ================================= -->
-    <!-- 🔘 GIS BUTTON WRAP -->
-    <!-- ================================= -->
+    <button
 
-    <div
-      class="gis-btn-wrap"
+      class="gis-filter-btn"
+
+      data-value="${label}"
+
       style="
-        display:flex;
-        align-items:center;
-        gap:4px;
+        border:none;
+        padding:8px 14px;
+        border-radius:8px;
+        cursor:pointer;
+        background:${
+          active
+          ? "#00c853"
+          : "#2d2d2d"
+        };
+        color:white;
+        font-size:12px;
+        font-weight:bold;
       "
     >
 
-      <!-- ================================= -->
-      <!-- 🔘 MAIN FILTER BUTTON -->
-      <!-- ================================= -->
+      ${label}
 
-      <button
-
-        class="gis-filter-btn"
-
-        data-value="${label}"
-
-        style="
-          border:none;
-          padding:8px 14px;
-          border-radius:8px;
-          cursor:pointer;
-
-          background:${
-            active
-            ? "#00c853"
-            : "#2d2d2d"
-          };
-
-          color:white;
-
-          font-size:12px;
-
-          font-weight:bold;
-        "
-      >
-
-        ${label}
-
-      </button>
-
-      <!-- ================================= -->
-      <!-- 👁 COMPARTMENT TOGGLE -->
-      <!-- ================================= -->
-
-      <button
-
-        class="gis-eye-btn"
-
-        onclick="
-          event.stopPropagation();
-          toggleCompartmentLayer(this);
-        "
-
-        style="
-          border:none;
-
-          width:34px;
-          height:34px;
-
-          border-radius:8px;
-
-          cursor:pointer;
-
-          background:#1f1f1f;
-
-          color:white;
-
-          font-size:15px;
-
-          font-weight:bold;
-        "
-      >
-
-        ${
-          window.compartmentLayerVisible
-          ? "👁"
-          : "🙈"
-        }
-
-      </button>
-
-    </div>
-
+    </button>
   `;
 }
 // ======================================================
@@ -11552,7 +11507,7 @@ centerMap();
     );
   }
 }
-    async function populateRangeButtons(){
+   async function populateRangeButtons(){
 
   try {
 
@@ -11604,12 +11559,50 @@ centerMap();
 
       container.innerHTML = "";
 
-      container.innerHTML =
+      // ======================================
+      // 👁 RANGE BUTTON + EYE
+      // ======================================
 
-        createGISButton(
-          range,
-          true
-        );
+      container.innerHTML = `
+
+        <div
+          style="
+            display:flex;
+            align-items:center;
+            gap:4px;
+          "
+        >
+
+          ${createGISButton(
+            range,
+            true
+          )}
+
+          <button
+
+            class="range-eye-btn"
+
+            data-range="${range}"
+
+            style="
+              border:none;
+              width:34px;
+              height:34px;
+              border-radius:8px;
+              cursor:pointer;
+              background:#1f1f1f;
+              color:white;
+              font-size:15px;
+            "
+          >
+
+            👁
+
+          </button>
+
+        </div>
+
+      `;
 
       container.style.display =
         "flex";
@@ -11619,6 +11612,89 @@ centerMap();
         container.querySelector(
           ".gis-filter-btn"
         );
+
+      // ======================================
+      // 👁 EYE BUTTON
+      // ======================================
+
+      const eyeBtn =
+
+        container.querySelector(
+          ".range-eye-btn"
+        );
+
+      if(eyeBtn){
+
+        eyeBtn.onclick =
+        function(e){
+
+          e.stopPropagation();
+
+          try {
+
+            // ================================
+            // 🔥 INIT
+            // ================================
+
+            if(
+              !window.hiddenRanges
+            ){
+
+              window.hiddenRanges =
+                new Set();
+
+            }
+
+            // ================================
+            // 🙈 HIDE
+            // ================================
+
+            if(
+              !window.hiddenRanges.has(range)
+            ){
+
+              window.hiddenRanges.add(
+                range
+              );
+
+              this.innerHTML = "🙈";
+
+            }
+
+            // ================================
+            // 👁 SHOW
+            // ================================
+
+            else {
+
+              window.hiddenRanges.delete(
+                range
+              );
+
+              this.innerHTML = "👁";
+
+            }
+
+            // ================================
+            // 🔄 RENDER
+            // ================================
+
+            renderFilteredCompartments();
+
+          }
+
+          catch(err){
+
+            console.error(
+              "❌ Range eye failed",
+              err
+            );
+
+          }
+
+        };
+
+      }
 
       if(rangeBtn){
 
@@ -11905,17 +11981,127 @@ centerMap();
     .sort()
     .forEach(range => {
 
-      container.innerHTML +=
+      container.innerHTML += `
 
-        createGISButton(
-          range,
-          false
-        );
+        <div
+          style="
+            display:flex;
+            align-items:center;
+            gap:4px;
+          "
+        >
+
+          ${createGISButton(
+            range,
+            false
+          )}
+
+          <button
+
+            class="range-eye-btn"
+
+            data-range="${range}"
+
+            style="
+              border:none;
+              width:34px;
+              height:34px;
+              border-radius:8px;
+              cursor:pointer;
+              background:#1f1f1f;
+              color:white;
+              font-size:15px;
+            "
+          >
+
+            👁
+
+          </button>
+
+        </div>
+
+      `;
 
     });
 
     container.style.display =
       "flex";
+
+    // ==========================================
+    // 👁 RANGE EYES
+    // ==========================================
+
+    container
+    .querySelectorAll(
+      ".range-eye-btn"
+    )
+    .forEach(btn => {
+
+      btn.onclick =
+      function(e){
+
+        e.stopPropagation();
+
+        try {
+
+          const range =
+            this.dataset.range;
+
+          if(
+            !window.hiddenRanges
+          ){
+
+            window.hiddenRanges =
+              new Set();
+
+          }
+
+          // ================================
+          // 🙈 HIDE
+          // ================================
+
+          if(
+            !window.hiddenRanges.has(range)
+          ){
+
+            window.hiddenRanges.add(
+              range
+            );
+
+            this.innerHTML = "🙈";
+
+          }
+
+          // ================================
+          // 👁 SHOW
+          // ================================
+
+          else {
+
+            window.hiddenRanges.delete(
+              range
+            );
+
+            this.innerHTML = "👁";
+
+          }
+
+          renderFilteredCompartments();
+
+        }
+
+        catch(err){
+
+          console.error(
+            "❌ Range eye failed",
+            err
+          );
+
+        }
+
+      };
+
+    });
 
     // ==========================================
     // 🖱 CLICK
@@ -13445,7 +13631,7 @@ console.error("❌ renderFilteredGIS",e);
 }
 
 }
-  function renderFilteredCompartments(){
+ function renderFilteredCompartments(){
 
 try {
 
@@ -13453,7 +13639,7 @@ try {
 // 📦 FEATURES
 // ==================================================
 
-const features =
+const allFeatures =
 
 window.allCompartmentFeatures || [];
 
@@ -13461,7 +13647,7 @@ window.allCompartmentFeatures || [];
 // ❌ EMPTY
 // ==================================================
 
-if(features.length === 0){
+if(allFeatures.length === 0){
 
 console.warn("⚠ No compartment features");
 
@@ -13474,6 +13660,124 @@ try {
 if(window.compartmentLayer){
 
 window.map.removeLayer(window.compartmentLayer);
+
+window.compartmentLayer = null;
+
+}
+
+} catch(e){}
+
+return;
+}
+
+// ==================================================
+// 👁 INIT HIDDEN STATES
+// ==================================================
+
+if(!window.hiddenRanges){
+
+window.hiddenRanges =
+  new Set();
+
+}
+
+if(!window.hiddenBeats){
+
+window.hiddenBeats =
+  new Set();
+
+}
+
+// ==================================================
+// 👁 FILTER HIDDEN
+// ==================================================
+
+const features =
+
+allFeatures.filter(f => {
+
+try {
+
+const props =
+  f.properties || {};
+
+const beat =
+
+  String(
+
+    props.beat ||
+
+    props.Beat ||
+
+    ""
+
+  ).trim();
+
+const range =
+
+  String(
+
+    props.range ||
+
+    props.Range ||
+
+    ""
+
+  ).trim();
+
+// ==============================================
+// 🙈 HIDDEN RANGE
+// ==============================================
+
+if(
+  window.hiddenRanges.has(range)
+){
+
+  return false;
+
+}
+
+// ==============================================
+// 🙈 HIDDEN BEAT
+// ==============================================
+
+if(
+  window.hiddenBeats.has(beat)
+){
+
+  return false;
+
+}
+
+return true;
+
+}
+
+catch(e){
+
+return true;
+
+}
+
+});
+
+// ==================================================
+// ❌ AFTER FILTER EMPTY
+// ==================================================
+
+if(features.length === 0){
+
+console.warn(
+  "⚠ All compartments hidden"
+);
+
+try {
+
+if(window.compartmentLayer){
+
+window.map.removeLayer(
+  window.compartmentLayer
+);
 
 window.compartmentLayer = null;
 
@@ -13972,12 +14276,50 @@ async function populateBeatButtons(){
     .sort()
     .forEach(beat => {
 
-      container.innerHTML +=
+      container.innerHTML += `
 
-        createGISButton(
-          beat,
-          false
-        );
+        <div
+          style="
+            display:flex;
+            align-items:center;
+            gap:4px;
+          "
+        >
+
+          ${createGISButton(
+            beat,
+            false
+          )}
+
+          <!-- ================================= -->
+          <!-- 👁 BEAT EYE -->
+          <!-- ================================= -->
+
+          <button
+
+            class="beat-eye-btn"
+
+            data-beat="${beat}"
+
+            style="
+              border:none;
+              width:34px;
+              height:34px;
+              border-radius:8px;
+              cursor:pointer;
+              background:#1f1f1f;
+              color:white;
+              font-size:15px;
+            "
+          >
+
+            👁
+
+          </button>
+
+        </div>
+
+      `;
     });
 
     // ==========================================
@@ -13986,6 +14328,95 @@ async function populateBeatButtons(){
 
     container.style.display =
       "flex";
+
+    // ==========================================
+    // 👁 BEAT EYE EVENTS
+    // ==========================================
+
+    container
+    .querySelectorAll(
+      ".beat-eye-btn"
+    )
+    .forEach(btn => {
+
+      btn.onclick =
+      function(e){
+
+        e.stopPropagation();
+
+        try {
+
+          const beat =
+            this.dataset.beat;
+
+          // ====================================
+          // 🔥 INIT
+          // ====================================
+
+          if(
+            !window.hiddenBeats
+          ){
+
+            window.hiddenBeats =
+              new Set();
+
+          }
+
+          // ====================================
+          // 🙈 HIDE
+          // ====================================
+
+          if(
+            !window.hiddenBeats.has(beat)
+          ){
+
+            window.hiddenBeats.add(
+              beat
+            );
+
+            this.innerHTML = "🙈";
+
+          }
+
+          // ====================================
+          // 👁 SHOW
+          // ====================================
+
+          else {
+
+            window.hiddenBeats.delete(
+              beat
+            );
+
+            this.innerHTML = "👁";
+
+          }
+
+          // ====================================
+          // 🔄 STYLE UPDATE ONLY
+          // ====================================
+
+          renderFilteredCompartments();
+
+          console.log(
+            "👁 Beat Compartment Toggle:",
+            beat
+          );
+
+        }
+
+        catch(err){
+
+          console.error(
+            "❌ Beat eye failed",
+            err
+          );
+
+        }
+
+      };
+
+    });
 
     // ==========================================
     // 🖱 CLICK EVENTS
@@ -14111,7 +14542,6 @@ async function populateBeatButtons(){
     );
   }
 }
-    
     // ======================================================
 // 🚀 LOAD GIS
 // ======================================================
