@@ -6059,7 +6059,7 @@ var map = L.map('map', {
 // 🌲 DEFAULT BASE LAYER
 // ======================================================
 
-mapboxOutdoors.addTo(map);
+mapboxTactical.addTo(map);
 
 // ======================================================
 // 🖱 MAP CONTROLS
@@ -6087,6 +6087,9 @@ L.control.layers(
 
   {
 
+    "🌲 Tactical Command":
+      mapboxTactical,
+
     "🌲 Mapbox Outdoors":
       mapboxOutdoors,
 
@@ -6112,7 +6115,6 @@ L.control.layers(
   }
 
 ).addTo(map);
-
 // ======================================================
 // 🟩 GRID LAYER INIT
 // ======================================================
