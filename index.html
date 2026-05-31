@@ -20285,8 +20285,21 @@ function loadSightings() {
       localStorage.getItem("expiredSightings") || "[]"
     );
 
-  const expiredSet =
-    new Set(window.expiredSightings);
+// ======================================================
+// 🔥 FIXED EXPIRED SET
+// ======================================================
+
+const expiredSet = new Set(
+  window.expiredSightings.map(obj => {
+
+    if (typeof obj === "string") {
+      return obj;
+    }
+
+    return obj.id;
+
+  })
+);
 
   // ======================================================
   // 🔥 CLEANUP OLD EXPIRED IDS (>7 DAYS)
@@ -20294,17 +20307,39 @@ function loadSightings() {
 
   const nowCleanup = Date.now();
 
-  window.expiredSightings =
-    window.expiredSightings.filter(obj => {
+  // ======================================================
+// 🔥 CLEAN OLD CACHE
+// ======================================================
 
-      if (typeof obj === "string") return true;
+window.expiredSightings =
+  window.expiredSightings.filter(obj => {
 
-      return (
-        nowCleanup - obj.ts <
-        7 * 24 * 60 * 60 * 1000
-      );
+    // ==========================================
+    // 🔥 LEGACY STRING SUPPORT
+    // ==========================================
 
-    });
+    if (typeof obj === "string") {
+      return false;
+    }
+
+    // ==========================================
+    // 🔥 INVALID OBJECT
+    // ==========================================
+
+    if (!obj?.id || !obj?.ts) {
+      return false;
+    }
+
+    // ==========================================
+    // 🔥 KEEP VALID 7 DAYS
+    // ==========================================
+
+    return (
+      nowCleanup - obj.ts <
+      7 * 24 * 60 * 60 * 1000
+    );
+
+  });
 
   localStorage.setItem(
     "expiredSightings",
@@ -20525,7 +20560,19 @@ function loadSightings() {
           Math.floor(
             diffMs / (1000 * 60)
           );
+// ==========================================
+// 🔥 INVALID TIME SAFETY
+// ==========================================
 
+if (isNaN(minutes)) {
+
+  console.warn(
+    "⚠ Invalid age calculation",
+    e.time
+  );
+
+  return;
+}
         // ======================================================
         // 🔥 HARD REMOVE AFTER 24 HOURS
         // ======================================================
@@ -20552,11 +20599,19 @@ function loadSightings() {
           // add to permanent ignore cache
           expiredSet.add(key);
 
-          window.expiredSightings.push({
-            id: key,
-            ts: Date.now()
-          });
+         const alreadyExists =
+  window.expiredSightings.some(
+    x => x?.id === key
+  );
 
+if (!alreadyExists) {
+
+  window.expiredSightings.push({
+    id: key,
+    ts: Date.now()
+  });
+
+}
           // save
           localStorage.setItem(
             "expiredSightings",
@@ -20839,130 +20894,282 @@ function loadSightings() {
             : `${mins} min`;
 
         // ======================================================
-        // 🔥 POPUP
-        // ======================================================
+// 🔥 POPUP
+// ======================================================
 
-        const popup = `
-        <div style="font-family:Segoe UI;min-width:220px">
+const popup = `
+<div style="
+  font-family:Segoe UI;
+  min-width:220px;
 
-          <div style="
-            color:${color};
-            font-weight:bold
-          ">
-            🐘 ${status}
-          </div>
+  background:#ffffff;
 
-          <hr>
+  border-radius:12px;
 
-          <b>🆔 Sighting ID:</b>
+  padding:10px;
 
-          WDPO-${
-            String(
-              e.sighting_id ||
-              e.id ||
-              ""
-            )
-            .split("-")
-            .pop()
-          }<br>
+  color:#111;
 
-          <b>👥 Herd Size:</b>
-          ${e.herd || 0}<br>
+  border:1px solid #e0e0e0;
 
-          <b>🧭 Movement:</b>
-          ${movementText}<br>
+  box-shadow:
+    0 4px 14px rgba(0,0,0,0.15);
+">
 
-          <b>⏱ Time of Sighting:</b>
-          ${timeDisplay}<br>
+  <!-- ===================================== -->
+  <!-- 🔥 HEADER -->
+  <!-- ===================================== -->
 
-          <b>⏱ Age of Sighting:</b>
-          ${ageFormatted}<br>
+  <div style="
+    color:${color};
 
-          <b>👤 Sighted by:</b>
-          ${e.teamLeader || "Unknown"}<br>
+    font-weight:700;
 
-          <div style="
-            margin-top:6px;
-            margin-bottom:10px;
-            font-size:12px;
-            line-height:1.55;
-          ">
+    font-size:14px;
 
-            📞
+    margin-bottom:8px;
 
-            ${
-              (
+    display:flex;
+
+    align-items:center;
+
+    gap:6px;
+  ">
+    🐘 ${status}
+  </div>
+
+  <div style="
+    height:1px;
+    background:#e0e0e0;
+    margin-bottom:10px;
+  "></div>
+
+  <!-- ===================================== -->
+  <!-- 🔥 MAIN DETAILS -->
+  <!-- ===================================== -->
+
+  <div style="
+    font-size:12px;
+    line-height:1.7;
+    color:#111;
+  ">
+
+    <div style="
+      margin-bottom:4px;
+    ">
+      <b>🆔 Sighting ID:</b>
+
+      <span style="
+        color:#1b5e20;
+        font-weight:700;
+      ">
+
+      WDPO-${
+        String(
+          e.sighting_id ||
+          e.id ||
+          ""
+        )
+        .split("-")
+        .pop()
+      }
+
+      </span>
+    </div>
+
+    <div style="
+      margin-bottom:4px;
+    ">
+      <b>👥 Herd Size:</b>
+      ${e.herd || 0}
+    </div>
+
+    <div style="
+      margin-bottom:4px;
+    ">
+      <b>🧭 Movement:</b>
+      ${movementText}
+    </div>
+
+    <div style="
+      margin-bottom:4px;
+    ">
+      <b>⏱ Time of Sighting:</b>
+      ${timeDisplay}
+    </div>
+
+    <div style="
+      margin-bottom:4px;
+    ">
+      <b>⏱ Age of Sighting:</b>
+      ${ageFormatted}
+    </div>
+
+    <div style="
+      margin-bottom:4px;
+    ">
+      <b>👤 Sighted by:</b>
+      ${e.teamLeader || "Unknown"}
+    </div>
+
+  </div>
+
+  <!-- ===================================== -->
+  <!-- 🔥 CONTACT -->
+  <!-- ===================================== -->
+
+  <div style="
+    margin-top:8px;
+
+    margin-bottom:10px;
+
+    font-size:12px;
+
+    line-height:1.55;
+
+    background:#ffffff;
+
+    border:1px solid #eeeeee;
+
+    border-radius:7px;
+
+    padding:6px;
+  ">
+
+    <div style="
+      color:#111;
+      font-weight:600;
+    ">
+
+      📞
+
+      ${
+        (
+          e.phone ||
+          window.userProfile?.phone
+        )
+
+          ? `
+          <a
+            href="tel:${
+              String(
                 e.phone ||
                 window.userProfile?.phone
-              )
+              ).trim()
+            }"
 
-                ? `
-                <a
-                  href="tel:${
-                    String(
-                      e.phone ||
-                      window.userProfile?.phone
-                    ).trim()
-                  }"
+            style="
+              color:#00695c;
+              text-decoration:none;
+              font-weight:700;
+            ">
 
-                  style="
-                    color:#00695c;
-                    text-decoration:none;
-                    font-weight:700;
-                  ">
-
-                  ${
-                    e.phone ||
-                    window.userProfile?.phone
-                  }
-
-                </a>
-                `
-
-                : "N/A"
+            ${
+              e.phone ||
+              window.userProfile?.phone
             }
 
-          </div>
+          </a>
+          `
 
-          <br>
+          : "N/A"
+      }
 
-          <b>📍 Location:</b><br>
+    </div>
 
-          <code>
-            ${lat.toFixed(5)},
-            ${lon.toFixed(5)}
-            near
-            ${e.village || "Unknown"}
-          </code>
+  </div>
 
-          <div style="margin-top:10px">
+  <!-- ===================================== -->
+  <!-- 🔥 LOCATION -->
+  <!-- ===================================== -->
 
-            <button
+  <div style="
+    background:#ffffff;
 
-              onclick="
-                event.stopPropagation();
-                openMoveForm('${e.id}')
-              "
+    border:1px solid #eeeeee;
 
-              style="
-                background:#2e7d32;
-                color:white;
-                border:none;
-                width:100%;
-                padding:10px;
-                border-radius:6px;
-                cursor:pointer;
-                font-weight:bold;
-              ">
+    border-radius:7px;
 
-              ✅ UPDATE STATUS
+    padding:6px;
 
-            </button>
+    margin-bottom:10px;
+  ">
 
-          </div>
+    <div style="
+      font-size:12px;
+      font-weight:700;
+      color:#37474f;
+      margin-bottom:5px;
+    ">
+      📍 Location
+    </div>
 
-        </div>`;
+    <code style="
+      display:block;
 
+      font-size:11px;
+
+      line-height:1.5;
+
+      color:#222;
+
+      white-space:normal;
+
+      word-break:break-word;
+    ">
+      ${lat.toFixed(5)},
+      ${lon.toFixed(5)}
+      near
+      ${e.village || "Unknown"}
+    </code>
+
+  </div>
+
+  <!-- ===================================== -->
+  <!-- 🔥 ACTION BUTTON -->
+  <!-- ===================================== -->
+
+  <div style="
+    margin-top:10px;
+  ">
+
+    <button
+
+      onclick="
+        event.stopPropagation();
+        openMoveForm('${e.id}')
+      "
+
+      style="
+        background:#2e7d32;
+
+        color:white;
+
+        border:none;
+
+        width:100%;
+
+        padding:10px;
+
+        border-radius:8px;
+
+        cursor:pointer;
+
+        font-weight:700;
+
+        font-size:12px;
+
+        box-shadow:
+          0 2px 6px rgba(46,125,50,0.25);
+      ">
+
+      ✅ UPDATE STATUS
+
+    </button>
+
+  </div>
+
+</div>`;
         // ======================================================
         // 🔥 UPDATE EXISTING MARKER
         // ======================================================
@@ -22744,6 +22951,17 @@ const popup = `
   font-size:12px;
   height:66%;
   overflow:hidden;
+
+  background:#ffffff;
+
+  border-radius:12px;
+
+  padding:10px;
+
+  box-shadow:
+    0 4px 14px rgba(0,0,0,0.15);
+
+  border:1px solid #e0e0e0;
 ">
 
   <!-- ===================================== -->
@@ -22786,6 +23004,7 @@ const popup = `
       <div style="
         font-size:10px;
         color:#666;
+        font-weight:600;
       ">
         LIVE PATROL STAFF
       </div>
@@ -22798,11 +23017,20 @@ const popup = `
   <!-- 🔥 STATUS -->
   <!-- ===================================== -->
   <div style="
-    background:#e8f5e9;
+    background:#ffffff;
+
     border-left:4px solid #2e7d32;
+
+    border:1px solid #d7e9d8;
+
     padding:6px;
+
     border-radius:7px;
+
     margin-bottom:8px;
+
+    box-shadow:
+      0 1px 4px rgba(0,0,0,0.08);
   ">
 
     <div style="
@@ -22818,6 +23046,7 @@ const popup = `
       font-size:12px;
       color:#222;
       line-height:1.35;
+      font-weight:600;
     ">
       ${dutyType}
     </div>
@@ -22830,10 +23059,22 @@ const popup = `
   <div style="
     margin-bottom:8px;
     font-size:12px;
-    line-height:1.55;
+    line-height:1.6;
+
+    background:#ffffff;
+
+    border:1px solid #eeeeee;
+
+    border-radius:7px;
+
+    padding:6px;
   ">
 
-    <div>
+    <div style="
+      margin-bottom:4px;
+      color:#111;
+      font-weight:600;
+    ">
 
       📞
 
@@ -22856,12 +23097,17 @@ const popup = `
 
     </div>
 
-    <div>
+    <div style="
+      margin-bottom:4px;
+      color:#111;
+    ">
       🧭 Beat:
       <b>${s.beat || "N/A"}</b>
     </div>
 
-    <div>
+    <div style="
+      color:#111;
+    ">
       📍 Duty Area:
       <b>${dutyArea}</b>
     </div>
@@ -22872,9 +23118,14 @@ const popup = `
   <!-- 🔥 TEAM -->
   <!-- ===================================== -->
   <div style="
-    background:#f5f5f5;
+    background:#ffffff;
+
+    border:1px solid #e0e0e0;
+
     border-radius:7px;
+
     padding:6px;
+
     margin-bottom:8px;
   ">
 
@@ -22894,6 +23145,7 @@ const popup = `
       max-height:65px;
       overflow-y:auto;
       white-space:pre-wrap;
+      font-weight:500;
     ">
       ${team}
     </div>
@@ -22904,14 +23156,24 @@ const popup = `
   <!-- 🔥 LIVE STATS -->
   <!-- ===================================== -->
   <div style="
-    background:#fafafa;
+    background:#ffffff;
+
+    border:1px solid #eeeeee;
+
     border-radius:7px;
+
     padding:6px;
+
     font-size:11px;
-    line-height:1.65;
+
+    line-height:1.7;
+
+    color:#111;
   ">
 
-    <div>
+    <div style="
+      margin-bottom:3px;
+    ">
       📊 Speed:
       <b>
 
@@ -22924,7 +23186,9 @@ ${
 </b>
     </div>
 
-    <div>
+    <div style="
+      margin-bottom:3px;
+    ">
       📏 Distance Travelled:
       <b>
         ${
@@ -22937,16 +23201,24 @@ ${
       </b>
     </div>
 
-    <div>
+    <div style="
+      margin-bottom:3px;
+      font-weight:600;
+      color:#1b5e20;
+    ">
       🛰 Live GPS Active
     </div>
 
-    <div>
+    <div style="
+      margin-bottom:3px;
+    ">
       🟢 Duty Started:
       <b>${dutyStarted}</b>
     </div>
 
-    <div>
+    <div style="
+      margin-bottom:3px;
+    ">
       ⏳ Duty Duration:
       <b>${dutyDuration}</b>
     </div>
@@ -22958,7 +23230,7 @@ ${
 
   </div>
 
-</div>`;          // ==============================================
+</div>`;       // ==============================================
 // 🔥 MARKER CREATE/UPDATE
 // ==============================================
 if(
