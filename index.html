@@ -20457,18 +20457,95 @@ if (!datePart || !timePart) {
 }
 
 // ==================================
-// 🔥 DATE
+// 🔥 SAFE DATE FORMAT DETECTION
 // ==================================
 
-let [month, day, year] =
-  datePart.split("/").map(Number);
+let year, month, day;
 
 // ==================================
-// 🔥 TIME
+// 🔥 YYYY-MM-DD
 // ==================================
 
-let [hh, mm, ss] =
+if (datePart.includes("-")) {
+
+  const parts =
+    datePart.split("-").map(Number);
+
+  if (parts.length !== 3) {
+
+    console.warn(
+      "⚠ Invalid datePart:",
+      datePart
+    );
+
+    return;
+  }
+
+  year = parts[0];
+  month = parts[1];
+  day = parts[2];
+
+}
+
+// ==================================
+// 🔥 MM/DD/YYYY
+// ==================================
+
+else if (datePart.includes("/")) {
+
+  const parts =
+    datePart.split("/").map(Number);
+
+  if (parts.length !== 3) {
+
+    console.warn(
+      "⚠ Invalid datePart:",
+      datePart
+    );
+
+    return;
+  }
+
+  month = parts[0];
+  day = parts[1];
+  year = parts[2];
+
+}
+
+// ==================================
+// 🔥 UNKNOWN FORMAT
+// ==================================
+
+else {
+
+  console.warn(
+    "⚠ Unsupported date format:",
+    datePart
+  );
+
+  return;
+}
+
+// ==================================
+// 🔥 SAFE TIME PARSER
+// ==================================
+
+const timeParts =
   timePart.split(":").map(Number);
+
+if (timeParts.length < 2) {
+
+  console.warn(
+    "⚠ Invalid timePart:",
+    timePart
+  );
+
+  return;
+}
+
+let hh = timeParts[0];
+let mm = timeParts[1];
+let ss = timeParts[2] || 0;
 
 // ==================================
 // 🔥 BUILD SAFE DATE
@@ -20480,7 +20557,7 @@ let d = new Date(
   day,
   hh,
   mm,
-  ss || 0,
+  ss,
   0
 );
 
@@ -20500,8 +20577,9 @@ if (!isNaN(d.getTime())) {
   );
 
   return;
+}  
+    
 }
-    }
 
     // ======================================
     // 🔥 AM / PM
