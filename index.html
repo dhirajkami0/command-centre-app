@@ -12020,19 +12020,6 @@ if(
 
   }
 
-  .leaflet-container a{
-
-    outline:none !important;
-
-  }
-
-  .leaflet-container *{
-
-    -webkit-focus-ring-color:
-      transparent !important;
-
-  }
-
   svg:focus,
   path:focus{
 
@@ -12049,7 +12036,7 @@ if(
 }
 
 // ==================================================
-// 🌍 GLOBAL MOBILE STATE
+// 🌍 GLOBAL STATE
 // ==================================================
 
 window.__activeEnterpriseTooltipLayer =
@@ -12057,6 +12044,67 @@ window.__activeEnterpriseTooltipLayer =
 
 window.__mobileTooltipLocked =
   false;
+
+// ==================================================
+// 🔥 SAFE FORCE CLOSE
+// ==================================================
+
+function closeEnterpriseTooltipFully(){
+
+  try {
+
+    if(
+      window.__activeEnterpriseTooltipLayer
+    ){
+
+      try {
+
+        window
+        .__activeEnterpriseTooltipLayer
+        .closeTooltip();
+
+      } catch(err){}
+
+      try {
+
+        if(
+          window
+          .__activeEnterpriseTooltipLayer
+          ._tooltip
+        ){
+
+          window.map.removeLayer(
+
+            window
+            .__activeEnterpriseTooltipLayer
+            ._tooltip
+
+          );
+
+        }
+
+      } catch(err){}
+
+    }
+
+  } catch(err){}
+
+  try {
+
+    window.map.closeTooltip();
+
+  } catch(err){}
+
+  try {
+
+    window.map.closePopup();
+
+  } catch(err){}
+
+  window.__activeEnterpriseTooltipLayer =
+    null;
+
+}
 
 // ==================================================
 // 🛰 UNIVERSAL TOOLTIP
@@ -12199,7 +12247,7 @@ function bindUniversalTooltip(
 
         permanent:false,
 
-        interactive:false,
+        interactive:true,
 
         className:
           "gis-hover-tooltip",
@@ -12211,7 +12259,7 @@ function bindUniversalTooltip(
     );
 
     // ==========================================
-    // 🔥 REMOVE MOBILE SVG BOX
+    // 🔥 SVG MOBILE FIX
     // ==========================================
 
     requestAnimationFrame(() => {
@@ -12231,16 +12279,7 @@ function bindUniversalTooltip(
           layer._path.style.webkitTapHighlightColor =
             "transparent";
 
-          layer._path.style.tapHighlightColor =
-            "transparent";
-
           layer._path.style.userSelect =
-            "none";
-
-          layer._path.style.webkitUserSelect =
-            "none";
-
-          layer._path.style.webkitTouchCallout =
             "none";
 
         }
@@ -12309,7 +12348,7 @@ function bindUniversalTooltip(
     );
 
     // ==========================================
-    // 🔥 MOBILE TOUCH ONLY
+    // 🔥 MOBILE TOUCH FIX
     // ==========================================
 
     layer.on(
@@ -12317,10 +12356,6 @@ function bindUniversalTooltip(
       function(e){
 
         try {
-
-          // ==================================
-          // 🔥 STOP SYNTHETIC CLICK
-          // ==================================
 
           if(e.originalEvent){
 
@@ -12330,9 +12365,9 @@ function bindUniversalTooltip(
 
           }
 
-          // ==================================
-          // 🔥 LOCK DOUBLE TOUCH
-          // ==================================
+          // ==============================
+          // 🔥 LOCK
+          // ==============================
 
           if(
             window.__mobileTooltipLocked
@@ -12350,61 +12385,42 @@ function bindUniversalTooltip(
 
           },250);
 
-          // ==================================
-          // 🔥 CLOSE OLD ACTIVE
-          // ==================================
+          // ==============================
+          // 🔥 SAME LAYER = CLOSE
+          // ==============================
 
           if(
-            window.__activeEnterpriseTooltipLayer
-            &&
             window
             .__activeEnterpriseTooltipLayer
-            !== this
+            === this
           ){
 
-            try {
+            closeEnterpriseTooltipFully();
 
-              window
-              .__activeEnterpriseTooltipLayer
-              .closeTooltip();
-
-            } catch(err){}
-
+            return;
           }
 
-          // ==================================
-          // 🔥 CLOSE EXISTING
-          // ==================================
+          // ==============================
+          // 🔥 CLOSE OLD
+          // ==============================
 
-          try {
+          closeEnterpriseTooltipFully();
 
-            window.map.closeTooltip();
-
-          } catch(err){}
-
-          try {
-
-            window.map.closePopup();
-
-          } catch(err){}
-
-          // ==================================
+          // ==============================
           // 🔥 OPEN CURRENT
-          // ==================================
+          // ==============================
 
           this.openTooltip(
             e.latlng
           );
 
-          // ==================================
-          // 🔥 STORE ACTIVE
-          // ==================================
-
           window
           .__activeEnterpriseTooltipLayer =
             this;
 
-        } catch(err){}
+        }
+
+        catch(err){}
 
       }
     );
@@ -12454,7 +12470,7 @@ function bindUniversalTooltip(
 }
 
 // ==================================================
-// 🌍 GLOBAL TOOLTIP CLOSE
+// 🌍 GLOBAL CLOSE SYSTEM
 // ==================================================
 
 if(
@@ -12466,50 +12482,7 @@ if(
     true;
 
   // ==========================================
-  // 🔥 SAFE CLOSE
-  // ==========================================
-
-  function closeEnterpriseGISPopups(){
-
-    try {
-
-      if(
-        window
-        .__activeEnterpriseTooltipLayer
-      ){
-
-        try {
-
-          window
-          .__activeEnterpriseTooltipLayer
-          .closeTooltip();
-
-        } catch(err){}
-
-      }
-
-      window
-      .__activeEnterpriseTooltipLayer =
-        null;
-
-    } catch(e){}
-
-    try {
-
-      window.map.closeTooltip();
-
-    } catch(e){}
-
-    try {
-
-      window.map.closePopup();
-
-    } catch(e){}
-
-  }
-
-  // ==========================================
-  // 🔥 MAP CLOSE EVENTS
+  // 🔥 MAP EVENTS
   // ==========================================
 
   window.map.on(
@@ -12518,7 +12491,7 @@ if(
 
     function(){
 
-      closeEnterpriseGISPopups();
+      closeEnterpriseTooltipFully();
 
     }
 
@@ -12534,7 +12507,7 @@ if(
       "click",
       function(){
 
-        closeEnterpriseGISPopups();
+        closeEnterpriseTooltipFully();
 
       }
     );
@@ -12553,10 +12526,6 @@ if(
 
       try {
 
-        // ==============================
-        // 🔥 INSIDE SVG
-        // ==============================
-
         if(
           e.target.closest(
             ".leaflet-interactive"
@@ -12564,10 +12533,6 @@ if(
         ){
           return;
         }
-
-        // ==============================
-        // 🔥 INSIDE TOOLTIP
-        // ==============================
 
         if(
           e.target.closest(
@@ -12577,11 +12542,7 @@ if(
           return;
         }
 
-        // ==============================
-        // 🔥 CLOSE ALL
-        // ==============================
-
-        closeEnterpriseGISPopups();
+        closeEnterpriseTooltipFully();
 
       }
 
@@ -12609,7 +12570,7 @@ if(
 
       if(e.key === "Escape"){
 
-        closeEnterpriseGISPopups();
+        closeEnterpriseTooltipFully();
 
       }
 
