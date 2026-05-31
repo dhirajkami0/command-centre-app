@@ -11284,6 +11284,16 @@ async function populateDivisionButtons(){
       };
 
       // ======================================
+      // 🔥 RESET EYE STATES
+      // ======================================
+
+      window.hiddenRanges =
+        new Set();
+
+      window.hiddenBeats =
+        new Set();
+
+      // ======================================
       // 🔥 FORCE DIVISION POPUP MODE
       // ======================================
 
@@ -11313,21 +11323,22 @@ async function populateDivisionButtons(){
       // 🎨 STYLE UPDATE ONLY
       // ======================================
 
-     // ====================================
-// 📦 LOAD RANGE COMPARTMENTS
-// ====================================
+      // ====================================
+      // 📦 LOAD RANGE COMPARTMENTS
+      // ====================================
 
-await loadCompartmentsForRange();
+      await loadCompartmentsForRange();
 
-// ====================================
-// 🎨 STYLE UPDATE ONLY
-// ====================================
+      // ====================================
+      // 🎨 STYLE UPDATE ONLY
+      // ====================================
 
-renderFilteredGIS();
+      renderFilteredGIS();
 
-renderFilteredCompartments();
+      renderFilteredCompartments();
 
-centerMap();
+      centerMap();
+
       // ======================================
       // 👁 RANGE BUTTONS
       // ======================================
@@ -11409,6 +11420,40 @@ centerMap();
 
             compartment:"ALL"
           };
+
+          // ====================================
+          // 🔥 RESET EYE STATES
+          // ====================================
+
+          window.hiddenRanges =
+            new Set();
+
+          window.hiddenBeats =
+            new Set();
+
+          // ====================================
+          // 🔥 RESET EYE ICONS
+          // ====================================
+
+          document
+          .querySelectorAll(
+            ".range-eye-btn"
+          )
+          .forEach(btn => {
+
+            btn.innerHTML = "👁";
+
+          });
+
+          document
+          .querySelectorAll(
+            ".beat-eye-btn"
+          )
+          .forEach(btn => {
+
+            btn.innerHTML = "👁";
+
+          });
 
           // ====================================
           // 🌍 POPUP AUTHORITY
@@ -11507,7 +11552,7 @@ centerMap();
     );
   }
 }
-   async function populateRangeButtons(){
+ async function populateRangeButtons(){
 
   try {
 
@@ -11596,7 +11641,11 @@ centerMap();
             "
           >
 
-            👁
+            ${
+              window.hiddenRanges?.has(range)
+              ? "🙈"
+              : "👁"
+            }
 
           </button>
 
@@ -11710,6 +11759,23 @@ centerMap();
         window.gisFilter.compartment =
           "ALL";
 
+        // ====================================
+        // 🔥 RESET CHILD EYES
+        // ====================================
+
+        window.hiddenBeats =
+          new Set();
+
+        document
+        .querySelectorAll(
+          ".beat-eye-btn"
+        )
+        .forEach(btn => {
+
+          btn.innerHTML = "👁";
+
+        });
+
         const division =
 
           normalizeDivision(
@@ -11802,6 +11868,23 @@ centerMap();
 
             window.gisFilter.compartment =
               "ALL";
+
+            // ====================================
+            // 🔥 RESET CHILD EYES
+            // ====================================
+
+            window.hiddenBeats =
+              new Set();
+
+            document
+            .querySelectorAll(
+              ".beat-eye-btn"
+            )
+            .forEach(btn => {
+
+              btn.innerHTML = "👁";
+
+            });
 
             // ====================================
             // 🌳 RANGE FILTER
@@ -11918,10 +12001,6 @@ centerMap();
       const props =
         f.properties || {};
 
-      // ======================================
-      // 🌍 FEATURE DIVISION
-      // ======================================
-
       const featureDivision =
 
         normalizeDivision(
@@ -11933,10 +12012,6 @@ centerMap();
           ""
 
         );
-
-      // ======================================
-      // ❌ ONLY CURRENT DIVISION
-      // ======================================
 
       if(
 
@@ -12014,7 +12089,11 @@ centerMap();
             "
           >
 
-            👁
+            ${
+              window.hiddenRanges?.has(range)
+              ? "🙈"
+              : "👁"
+            }
 
           </button>
 
@@ -12056,10 +12135,6 @@ centerMap();
 
           }
 
-          // ================================
-          // 🙈 HIDE
-          // ================================
-
           if(
             !window.hiddenRanges.has(range)
           ){
@@ -12071,10 +12146,6 @@ centerMap();
             this.innerHTML = "🙈";
 
           }
-
-          // ================================
-          // 👁 SHOW
-          // ================================
 
           else {
 
@@ -12149,6 +12220,23 @@ centerMap();
 
           window.gisFilter.compartment =
             "ALL";
+
+          // ====================================
+          // 🔥 RESET CHILD EYES
+          // ====================================
+
+          window.hiddenBeats =
+            new Set();
+
+          document
+          .querySelectorAll(
+            ".beat-eye-btn"
+          )
+          .forEach(btn => {
+
+            btn.innerHTML = "👁";
+
+          });
 
           // ====================================
           // 🟨 RANGE FILTER
@@ -14192,6 +14280,19 @@ async function populateBeatButtons(){
     container.innerHTML = "";
 
     // ==========================================
+    // 🔥 INIT
+    // ==========================================
+
+    if(
+      !window.hiddenBeats
+    ){
+
+      window.hiddenBeats =
+        new Set();
+
+    }
+
+    // ==========================================
     // 📦 UNIQUE BEATS
     // ==========================================
 
@@ -14341,7 +14442,11 @@ async function populateBeatButtons(){
             "
           >
 
-            👁
+            ${
+              window.hiddenBeats.has(beat)
+              ? "🙈"
+              : "👁"
+            }
 
           </button>
 
@@ -14376,19 +14481,6 @@ async function populateBeatButtons(){
 
           const beat =
             this.dataset.beat;
-
-          // ====================================
-          // 🔥 INIT
-          // ====================================
-
-          if(
-            !window.hiddenBeats
-          ){
-
-            window.hiddenBeats =
-              new Set();
-
-          }
 
           // ====================================
           // 🙈 HIDE
@@ -14494,6 +14586,13 @@ async function populateBeatButtons(){
             "white";
 
           // ====================================
+          // 🔥 RESET CHILD STATE
+          // ====================================
+
+          window.gisFilter.compartment =
+            "ALL";
+
+          // ====================================
           // 🟨 SET FILTER
           // ====================================
 
@@ -14526,11 +14625,12 @@ async function populateBeatButtons(){
           );
 
           // ====================================
-          // 🟧 RESET COMPARTMENT
+          // 🔥 RESET COMPARTMENT BUTTONS
           // ====================================
 
-          window.gisFilter.compartment =
-            "ALL";
+          document.getElementById(
+            "compartmentButtons"
+          ).innerHTML = "";
 
           // ====================================
           // 🎨 STYLE UPDATE ONLY
