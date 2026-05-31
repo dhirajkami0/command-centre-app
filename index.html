@@ -22735,12 +22735,10 @@ window.staffUnsubscribe = onSnapshot(
         let activeUsers =
           new Set();
 
-        let staff = [];
-
-        // ==================================================
+        let staff = [];        // ==================================================
         // 🔥 LIVE STAFF
         // ==================================================
-       snapshot.forEach(docSnap=>{
+        snapshot.forEach(docSnap=>{
 
   try {
 
@@ -22751,6 +22749,7 @@ window.staffUnsubscribe = onSnapshot(
 
     // ==============================================
     // 🔥 ROLE BASED VISIBILITY
+    // HARDENED ENTERPRISE VERSION
     // ==============================================
 
     const role =
@@ -22761,33 +22760,57 @@ window.staffUnsubscribe = onSnapshot(
       .toUpperCase()
       .trim();
 
+    // ==============================================
+    // 🔥 NORMALIZED MY DIVISION
+    // ==============================================
+
     const myDivision =
 
-      String(
-        window.userProfile?.division || ""
-      )
-      .trim();
+      normalizeDivision(
+
+        String(
+          window.userProfile?.division || ""
+        )
+
+      );
+
+    // ==============================================
+    // 🔥 NORMALIZED MY RANGE
+    // ==============================================
 
     const myRange =
 
       String(
         window.userProfile?.range || ""
       )
-      .trim();
+      .trim()
+      .toUpperCase();
+
+    // ==============================================
+    // 🔥 NORMALIZED STAFF DIVISION
+    // ==============================================
 
     const staffDivision =
 
-      String(
-        s.division || ""
-      )
-      .trim();
+      normalizeDivision(
+
+        String(
+          s.division || ""
+        )
+
+      );
+
+    // ==============================================
+    // 🔥 NORMALIZED STAFF RANGE
+    // ==============================================
 
     const staffRange =
 
       String(
         s.range || ""
       )
-      .trim();
+      .trim()
+      .toUpperCase();
 
     // ==============================================
     // 👑 ADMIN
@@ -22795,7 +22818,10 @@ window.staffUnsubscribe = onSnapshot(
 
     if(role === "ADMIN"){
 
-      // show all
+      // ============================================
+      // ✅ SHOW ALL STAFF
+      // ============================================
+
     }
 
     // ==============================================
@@ -22812,23 +22838,33 @@ window.staffUnsubscribe = onSnapshot(
 
     ){
 
+      // ============================================
+      // ❌ OUTSIDE DIVISION
+      // ============================================
+
       if(
         staffDivision !== myDivision
       ){
+
         return;
       }
 
     }
 
     // ==============================================
-    // 👮 STAFF
+    // 👮 STAFF / FR / FG / TEAM
     // ==============================================
 
     else {
 
+      // ============================================
+      // ❌ OUTSIDE RANGE
+      // ============================================
+
       if(
         staffRange !== myRange
       ){
+
         return;
       }
 
