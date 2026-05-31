@@ -22681,10 +22681,7 @@ function cleanTrackPoints(track){
 
   return clean;
 }
-    // ======================================================
-// 🔥 LOAD STAFF
-// ======================================================
-// ======================================================
+   // ======================================================
 // 🔥 LOAD STAFF
 // ======================================================
 function loadStaff(){
@@ -22742,7 +22739,7 @@ window.staffUnsubscribe = onSnapshot(
         let staff = [];        // ==================================================
         // 🔥 LIVE STAFF
         // ==================================================
-      snapshot.forEach(docSnap=>{
+        snapshot.forEach(docSnap=>{
 
   try {
 
@@ -22752,73 +22749,8 @@ window.staffUnsubscribe = onSnapshot(
     if(!s) return;
 
     // ==============================================
-    // 🔥 NORMALIZE FIRST
-    // VERY IMPORTANT
-    // ==============================================
-
-    s.type = "Staff";
-
-    s.cleanName =
-
-      cleanName(
-
-        s.cleanName ||
-
-        s.name ||
-
-        docSnap.id ||
-
-        ""
-
-      );
-
-    s.name =
-      s.name ||
-      s.cleanName;
-
-    s.lat =
-      Number(s.lat || 0);
-
-    s.lon =
-      Number(s.lon || 0);
-
-    // ==============================================
-    // 🔥 RAW DEBUG
-    // ==============================================
-
-    console.log(
-
-      "🧪 STAFF RAW:",
-
-      {
-
-        firestoreDocId:
-          docSnap.id,
-
-        cleanName:
-          s.cleanName,
-
-        name:
-          s.name,
-
-        division:
-          s.division,
-
-        range:
-          s.range,
-
-        dutyActive:
-          s.dutyActive,
-
-        sessionId:
-          s.sessionId
-
-      }
-
-    );
-
-    // ==============================================
-    // 🔥 VIEWER ROLE
+    // 🔥 ROLE BASED VISIBILITY
+    // HARDENED ENTERPRISE VERSION
     // ==============================================
 
     const role =
@@ -22843,8 +22775,8 @@ window.staffUnsubscribe = onSnapshot(
 
       );
 
-        // ==============================================
-    // 🔥 MY RANGE
+    // ==============================================
+    // 🔥 NORMALIZED MY RANGE
     // ==============================================
 
     const myRange =
@@ -22856,7 +22788,7 @@ window.staffUnsubscribe = onSnapshot(
       .toUpperCase();
 
     // ==============================================
-    // 🔥 STAFF DIVISION
+    // 🔥 NORMALIZED STAFF DIVISION
     // ==============================================
 
     const staffDivision =
@@ -22870,7 +22802,7 @@ window.staffUnsubscribe = onSnapshot(
       );
 
     // ==============================================
-    // 🔥 STAFF RANGE
+    // 🔥 NORMALIZED STAFF RANGE
     // ==============================================
 
     const staffRange =
@@ -22882,18 +22814,14 @@ window.staffUnsubscribe = onSnapshot(
       .toUpperCase();
 
     // ==============================================
-    // 🔥 VISIBILITY TEST
-    // ==============================================
-
-    let visible = false;
-
-    // ==============================================
     // 👑 ADMIN
     // ==============================================
 
     if(role === "ADMIN"){
 
-      visible = true;
+      // ============================================
+      // ✅ SHOW ALL STAFF
+      // ============================================
 
     }
 
@@ -22911,72 +22839,36 @@ window.staffUnsubscribe = onSnapshot(
 
     ){
 
-      visible =
-        staffDivision === myDivision;
+      // ============================================
+      // ❌ OUTSIDE DIVISION
+      // ============================================
+
+      if(
+        staffDivision !== myDivision
+      ){
+
+        return;
+      }
 
     }
 
     // ==============================================
-    // 👮 ALL FIELD STAFF
+    // 👮 STAFF / FR / FG / TEAM
     // ==============================================
 
     else {
 
-      visible =
-        staffRange === myRange;
+      // ============================================
+      // ❌ OUTSIDE RANGE
+      // ============================================
 
-    }
+      if(
+        staffRange !== myRange
+      ){
 
-    // ==============================================
-    // 🔍 VISIBILITY DEBUG
-    // ==============================================
-
-    console.log(
-
-      "👁 VISIBILITY CHECK",
-
-      {
-
-        viewer:
-          window.userProfile?.cleanName,
-
-        viewerRole:
-          role,
-
-        viewerDivision:
-          myDivision,
-
-        viewerRange:
-          myRange,
-
-        staff:
-          s.cleanName,
-
-        staffDivision,
-
-        staffRange,
-
-        visible
-
+        return;
       }
 
-    );
-
-    // ==============================================
-    // ❌ HIDDEN
-    // ==============================================
-
-    if(!visible){
-
-      console.warn(
-
-        "🚫 STAFF HIDDEN",
-
-        s.cleanName
-
-      );
-
-      return;
     }
 
     // ==============================================
@@ -22984,30 +22876,8 @@ window.staffUnsubscribe = onSnapshot(
     // ==============================================
 // ==============================================
 // 🔴 DUTY OFF CLEANUP
-// ONLY EXPLICITLY OFF DUTY
 // ==============================================
-
-if(
-
-  s.dutyActive === false
-
-  ||
-
-  String(
-    s.status || ""
-  )
-  .toUpperCase()
-  .trim() === "OFF_DUTY"
-
-){
-
-  console.warn(
-
-    "🧹 Duty OFF cleanup:",
-
-    s.cleanName
-
-  );
+if(s.dutyActive !== true){
 
   // ==========================================
   // 🔥 REMOVE MARKER
@@ -23059,6 +22929,7 @@ if(
 
   // ==========================================
   // 🔥 REMOVE LIVE LISTENER
+  // VERY IMPORTANT
   // ==========================================
   if(
     window.trackListeners[
@@ -23078,23 +22949,7 @@ if(
       s.cleanName
     ];
   }
-
-  // ==========================================
-  // 🔥 REMOVE SESSION
-  // ==========================================
-  delete window.activeSessionMap[
-    s.cleanName
-  ];
-
-  // ==========================================
-  // 🔥 REMOVE DISTANCE CACHE
-  // ==========================================
-  delete window.trackDistanceMap[
-    s.cleanName
-  ];
-
-  return;
-}// ==========================================
+// ==========================================
 // 🔥 REMOVE POINT CACHE
 // ==========================================
 delete window.trackPointCount[
