@@ -22736,7 +22736,8 @@ window.staffUnsubscribe = onSnapshot(
         let activeUsers =
           new Set();
 
-        let staff = [];        // ==================================================
+        let staff = [];     
+    // ==================================================
         // 🔥 LIVE STAFF
         // ==================================================
         snapshot.forEach(docSnap=>{
@@ -22852,24 +22853,88 @@ window.staffUnsubscribe = onSnapshot(
 
     }
 
-    // ==============================================
-    // 👮 STAFF / FR / FG / TEAM
-    // ==============================================
+   // ==============================================
+// 👮 STAFF / FR / FG / TEAM
+// ==============================================
 
-    else {
+else {
 
-      // ============================================
-      // ❌ OUTSIDE RANGE
-      // ============================================
+  // ============================================
+  // 🔥 SELF ALWAYS VISIBLE
+  // VERY IMPORTANT
+  // ============================================
 
-      if(
-        staffRange !== myRange
-      ){
+  const isSelf =
 
-        return;
+    cleanName(
+      s.cleanName ||
+
+      s.name ||
+
+      ""
+    )
+
+    ===
+
+    cleanName(
+
+      window.userProfile
+        ?.cleanName ||
+
+      window.userProfile
+        ?.name ||
+
+      ""
+
+    );
+
+  // ============================================
+  // ✅ SAME RANGE
+  // ============================================
+
+  const sameRange =
+
+    staffRange === myRange;
+
+  // ============================================
+  // ❌ HIDE ONLY IF:
+  // not self AND not same range
+  // ============================================
+
+  if(
+
+    !isSelf
+
+    &&
+
+    !sameRange
+
+  ){
+
+    console.warn(
+
+      "🚫 RANGE BLOCKED",
+
+      {
+
+        viewer:
+          window.userProfile?.cleanName,
+
+        myRange,
+
+        staff:
+          s.cleanName,
+
+        staffRange
+
       }
 
-    }
+    );
+
+    return;
+  }
+
+}
 
     // ==============================================
     // 🔴 HIDE OFF DUTY
