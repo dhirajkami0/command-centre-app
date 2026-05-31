@@ -2,7 +2,7 @@
    🔥 GREENGUARD SERVICE WORKER (SMART UPDATE)
 ========================================= */
 
-const CACHE_NAME = "greenguard-v34"; // 🔥 CHANGE EVERY UPDATE
+const CACHE_NAME = "greenguard-v35"; // 🔥 CHANGE EVERY UPDATE
 
 const APP_SHELL = [
   "./",
@@ -13,7 +13,7 @@ const APP_SHELL = [
   "./js/leaflet-omnivore.min.js",
   "./js/shp.js",
   "./js/leaflet-kml.js",
-   "./kml/Compartments.kml",
+  "./kml/Compartments.kml",
   "./css/images/layers.png",
   "./css/images/layers-2x.png",
   "./css/images/marker-icon.png",
@@ -30,9 +30,22 @@ self.addEventListener("install", event => {
 
   console.log("📦 SW Installing...");
 
+  // =====================================
+  // 🔥 FORCE IMMEDIATE UPDATE
+  // =====================================
+  self.skipWaiting();
+
   event.waitUntil(
+
     caches.open(CACHE_NAME)
-      .then(cache => cache.addAll(APP_SHELL))
+      .then(cache => {
+
+        console.log("📦 Caching App Shell");
+
+        return cache.addAll(APP_SHELL);
+
+      })
+
   );
 
 });
@@ -45,39 +58,68 @@ self.addEventListener("activate", event => {
   console.log("🚀 SW Activated");
 
   event.waitUntil(
+
     caches.keys().then(keys =>
+
       Promise.all(
+
         keys.map(key => {
+
           if (key !== CACHE_NAME) {
-            console.log("🧹 Deleting old cache:", key);
+
+            console.log(
+              "🧹 Deleting old cache:",
+              key
+            );
+
             return caches.delete(key);
+
           }
+
         })
+
       )
+
     )
+
   );
 
+  // =====================================
+  // 🔥 TAKE CONTROL IMMEDIATELY
+  // =====================================
   self.clients.claim();
+
 });
 
 /* =========================================
    🔄 SKIP WAITING (ON USER ACTION)
 ========================================= */
 self.addEventListener("message", event => {
-  if (event.data && event.data.action === "skipWaiting") {
+
+  if (
+    event.data &&
+    event.data.action === "skipWaiting"
+  ) {
+
+    console.log("⚡ Skip Waiting Triggered");
+
     self.skipWaiting();
+
   }
+
 });
 
 /* =========================================
-   🌐 FETCH (SMART STRATEGY)
+   🌐 FETCH
 ========================================= */
 self.addEventListener("fetch", event => {
 
   const req = event.request;
 
   /* ❌ Skip API */
-  if (req.url.includes("script.google.com")) return;
+  if (
+    req.url.includes("script.google.com")
+  ) return;
 
   /* ❌ Only GET */
   if (req.method !== "GET") return;
@@ -88,49 +130,95 @@ self.addEventListener("fetch", event => {
   if (req.mode === "navigate") {
 
     event.respondWith(
+
       fetch(req)
+
         .then(res => {
+
+          console.log(
+            "🌐 Fresh HTML:",
+            req.url
+          );
 
           const clone = res.clone();
 
-          caches.open(CACHE_NAME).then(cache => {
-            cache.put("./index.html", clone);
-          });
+          caches.open(CACHE_NAME)
+            .then(cache => {
+
+              cache.put(
+                "./index.html",
+                clone
+              );
+
+            });
 
           return res;
 
         })
-        .catch(() => caches.match("./index.html"))
+
+        .catch(() => {
+
+          console.log(
+            "📦 Offline HTML Cache Used"
+          );
+
+          return caches.match("./index.html");
+
+        })
+
     );
 
     return;
+
   }
 
   /* =========================================
-     📦 STATIC → CACHE FIRST + UPDATE
+     📦 STATIC FILES → NETWORK FIRST
   ========================================= */
   event.respondWith(
 
-    caches.match(req).then(cached => {
+    fetch(req)
 
-      const networkFetch = fetch(req)
-        .then(res => {
+      .then(res => {
 
-          if (res && res.status === 200) {
-            const clone = res.clone();
-            caches.open(CACHE_NAME).then(cache => {
+        // =====================================
+        // 🔥 VALID RESPONSE
+        // =====================================
+
+        if (
+          res &&
+          res.status === 200
+        ) {
+
+          const clone = res.clone();
+
+          caches.open(CACHE_NAME)
+            .then(cache => {
+
               cache.put(req, clone);
+
             });
-          }
 
-          return res;
+        }
 
-        })
-        .catch(() => cached);
+        return res;
 
-      return cached || networkFetch;
+      })
 
-    })
+      // =====================================
+      // 🔥 FALLBACK TO CACHE
+      // =====================================
+
+      .catch(() => {
+
+        console.log(
+          "📦 Cache Fallback:",
+          req.url
+        );
+
+        return caches.match(req);
+
+      })
 
   );
 
