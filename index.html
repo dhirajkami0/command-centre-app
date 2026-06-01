@@ -1321,6 +1321,25 @@ NORTH REMAINS ABSOLUTE
 
   transform:scale(0.92);
 }
+
+    .planet-popup .leaflet-popup-content-wrapper {
+
+  background:transparent !important;
+
+  box-shadow:none !important;
+
+  padding:0 !important;
+}
+
+.planet-popup .leaflet-popup-content {
+
+  margin:0 !important;
+}
+
+.planet-popup .leaflet-popup-tip {
+
+  background:white !important;
+}
   </style>
 </head>
 <body>
@@ -6391,7 +6410,9 @@ function(scene){
 
     L.popup({
 
-      maxWidth:260
+      maxWidth:280,
+
+      className:"planet-popup"
 
     })
 
@@ -6400,43 +6421,100 @@ function(scene){
     .setContent(`
 
       <div style="
-        width:220px;
+
+        width:240px;
+
+        background:white;
+
+        border-radius:14px;
+
+        overflow:hidden;
+
         color:#111;
+
         font-family:sans-serif;
+
+        box-shadow:
+          0 4px 18px rgba(0,0,0,0.35);
+
       ">
 
+        <!-- ========================== -->
+        <!-- 🛰 HEADER -->
+        <!-- ========================== -->
+
         <div style="
+
+          background:#0b5394;
+
+          color:white;
+
+          padding:10px 12px;
+
+          font-size:14px;
+
           font-weight:bold;
-          margin-bottom:8px;
-          color:#0b5394;
+
         ">
 
           🛰 Latest Planet Scene
 
         </div>
 
+        <!-- ========================== -->
+        <!-- 🛰 IMAGE -->
+        <!-- ========================== -->
+
         <img
           src="${thumbURL}"
+
           style="
+
             width:100%;
-            border-radius:8px;
-            border:1px solid #ddd;
+
+            display:block;
+
+            border-bottom:
+              1px solid #ddd;
+
           "
         >
 
-        <br><br>
+        <!-- ========================== -->
+        <!-- 📋 META -->
+        <!-- ========================== -->
 
-        <b>📅 Date:</b>
+        <div style="
 
-        <br>
+          padding:12px;
 
-        ${acquired}
+          font-size:13px;
 
-        <br><br>
+          line-height:1.5;
 
-        <b>☁ Cloud:</b>
+        ">
 
-        ${cloud}%
+          <div>
+
+            <b>📅 Date:</b>
+
+            <br>
+
+            ${acquired}
+
+          </div>
+
+          <br>
+
+          <div>
+
+            <b>☁ Cloud Cover:</b>
+
+            ${cloud}%
+
+          </div>
+
+        </div>
 
       </div>
     `)
@@ -6453,7 +6531,6 @@ function(scene){
     );
   }
 };
-
 // ======================================
 // 🛰 VERIFY LATEST PLANET
 // GIS-AWARE VERSION
