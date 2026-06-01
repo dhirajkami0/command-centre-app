@@ -5941,22 +5941,30 @@ var mapboxTactical = L.tileLayer(
 // 🛰 MAPBOX SATELLITE
 // ======================================
 
+// ======================================
+// 🛰 MAPBOX SATELLITE (STABLE LEAFLET)
+// ======================================
+
 var mapboxSatellite = L.tileLayer(
 
-  'https://api.mapbox.com/styles/v1/mapbox/satellite-streets-v12/tiles/{z}/{x}/{y}?access_token=pk.eyJ1IjoiZGhpcmFqa2FtaS1idHIiLCJhIjoiY21wdTNxcHBkMWN0ZzJzc2xicXBodWxpbyJ9.HWVd19T4BuEYq2d-hPIGkg',
+'https://api.mapbox.com/styles/v1/mapbox/satellite-v9/tiles/512/{z}/{x}/{y}?access_token=pk.eyJ1IjoiZGhpcmFqa2FtaS1idHIiLCJhIjoiY21wdTNxcHBkMWN0ZzJzc2xicXBodWxpbyJ9.HWVd19T4BuEYq2d-hPIGkg',
 
-  {
+{
+  attribution:
+    '© Mapbox © OpenStreetMap © Maxar',
 
-    attribution:
-      '© Mapbox © OpenStreetMap',
+  tileSize:512,
 
-    tileSize: 512,
+  zoomOffset:-1,
 
-    zoomOffset: -1,
+  maxZoom:22,
 
-    maxZoom: 22
+  crossOrigin:true,
 
-  }
+  updateWhenIdle:false,
+
+  keepBuffer:8
+}
 
 );
     /* 🌧 WEATHER RADAR */
