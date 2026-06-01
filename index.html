@@ -11880,18 +11880,34 @@ async function populateDivisionButtons(){
       // 🔥 FORCE DIVISION POPUP MODE
       // ======================================
 
-      window.activePopupContext = {
+    window.activePopupContext = {
 
-        level : "division",
+  level : "division",
 
-        division : division,
-        window.currentSelectedGeometry = {
+  division : division,
+
+  range : "ALL",
+
+  beat : "ALL",
+
+  compartment : "ALL"
+
+};
+
+// ====================================
+// 🌍 SAVE DIVISION AOI
+// ====================================
+
+window.currentSelectedGeometry = {
 
   type:"FeatureCollection",
 
   features:
 
-    window.allGISFeatures.filter(f => {
+    (
+      window.allGISFeatures || []
+    )
+    .filter(f => {
 
       const div = normalizeDivision(
 
@@ -11900,6 +11916,7 @@ async function populateDivisionButtons(){
         f.properties?.division ||
 
         ""
+
       );
 
       return (
@@ -11917,22 +11934,17 @@ console.log(
   "🌍 Division AOI saved"
 );
 
-        range : "ALL",
+console.log(
+  window.currentSelectedGeometry
+);
 
-        beat : "ALL",
+console.log(
+  "🛰 DIVISION POPUP MODE ENABLED"
+);
 
-        compartment : "ALL"
-
-      };
-
-      console.log(
-        "🛰 DIVISION POPUP MODE ENABLED"
-      );
-
-      console.log(
-        window.activePopupContext
-      );
-
+console.log(
+  window.activePopupContext
+);
       // ======================================
       // 🎨 STYLE UPDATE ONLY
       // ======================================
@@ -12397,16 +12409,34 @@ console.log(
             window.gisFilter.division
           );
 
-        window.activePopupContext = {
+       window.activePopupContext = {
 
-          level : "range",
-          window.currentSelectedGeometry = {
+  level : "range",
+
+  division : division,
+
+  range : range,
+
+  beat : "ALL",
+
+  compartment : "ALL"
+
+};
+
+// ====================================
+// 🌍 SAVE RANGE AOI
+// ====================================
+
+window.currentSelectedGeometry = {
 
   type:"FeatureCollection",
 
   features:
 
-    window.allGISFeatures.filter(f => {
+    (
+      window.allGISFeatures || []
+    )
+    .filter(f => {
 
       const r =
 
@@ -12428,21 +12458,9 @@ console.log(
   "🟩 Range AOI saved"
 );
 
-          division : division,
-
-          range : range,
-
-          beat : "ALL",
-
-          compartment : "ALL"
-
-        };
-
-        console.log(
-          "🟩 STAFF RANGE MODE ENABLED"
-        );
-
-        // ====================================
+console.log(
+  window.currentSelectedGeometry
+);        // ====================================
         // 📦 LOAD RANGE COMPARTMENTS
         // ====================================
 
