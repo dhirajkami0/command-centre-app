@@ -7424,224 +7424,13 @@ async function showBTRAnalyticsPanel(
   collectionName,
   documentId
 
-){ // =================================================
-// 🔒 CENTRAL POPUP AUTHORITY
-// =================================================
-
-const popupLevel =
-
-  window.activePopupContext?.level ||
-
-  "btr";
-
-// =================================================
-// 🔥 DYNAMIC PANEL CONFIG
-// =================================================
-
-let panelType =
-  "BTR";
-
-let panelEmoji =
-  "🌍";
-
-let panelCollection =
-  "BTR Intelligence";
-
-let ecosystemLabel =
-  "BTR landscape";
-
-let ecosystemType =
-  "landscape";
-
-if(popupLevel === "division"){
-
-  panelType =
-    "Division";
-
-  panelEmoji =
-    "🛰";
-
-  panelCollection =
-    "Division Intelligence";
-
-  ecosystemLabel =
-    "Division ecosystem";
-
-  ecosystemType =
-    "division";
-}
-
-if(popupLevel === "range"){
-
-  panelType =
-    "Range";
-
-  panelEmoji =
-    "🟩";
-
-  panelCollection =
-    "Range Intelligence";
-
-  ecosystemLabel =
-    "Range ecosystem";
-
-  ecosystemType =
-    "range";
-}
-
-if(popupLevel === "beat"){
-
-  panelType =
-    "Beat";
-
-  panelEmoji =
-    "🟨";
-
-  panelCollection =
-    "Beat Intelligence";
-
-  ecosystemLabel =
-    "Beat ecosystem";
-
-  ecosystemType =
-    "beat";
-}
-
-if(popupLevel === "compartment"){
-
-  panelType =
-    "Compartment";
-
-  panelEmoji =
-    "📦";
-
-  panelCollection =
-    "Compartment Intelligence";
-
-  ecosystemLabel =
-    "Compartment ecosystem";
-
-  ecosystemType =
-    "compartment";
-}
-
-// =================================================
-// 🔥 BLOCK WRONG POPUPS
-// =================================================
-
-if(
-
-  collectionName ===
-  "gis_analytics_btr"
-
 ){
-
-  // ---------------------------------------------
-  // ONLY BTR / DIVISION
-  // ---------------------------------------------
-
-  if(
-
-    popupLevel !== "btr" &&
-
-    popupLevel !== "division"
-
-  ){
-
-    console.log(
-      "⛔ BLOCKED BTR POPUP"
-    );
-
-    return;
-  }
-
-}
-
-
-
-// =================================================
-// RANGE BLOCK
-// =================================================
-
-if(
-
-  collectionName ===
-  "gis_range_analytics"
-
-){
-
-  if(
-
-    popupLevel !== "range"
-
-  ){
-
-    console.log(
-      "⛔ BLOCKED RANGE POPUP"
-    );
-
-    return;
-  }
-
-}
-
-
-
-// =================================================
-// BEAT BLOCK
-// =================================================
-
-if(
-
-  collectionName ===
-  "gis_beat_analytics"
-
-){
-
-  if(
-
-    popupLevel !== "beat"
-
-  ){
-
-    console.log(
-      "⛔ BLOCKED BEAT POPUP"
-    );
-
-    return;
-  }
-
-}
-
-
-
-// =================================================
-// COMPARTMENT BLOCK
-// =================================================
-
-if(
-
-  collectionName ===
-  "gis_compartment_analytics"
-
-){
-
-  if(
-
-    popupLevel !== "compartment"
-
-  ){
-
-    console.log(
-      "⛔ BLOCKED COMPARTMENT POPUP"
-    );
-
-    return;
-  }
-
-}
 
   try{
+
+    // =====================================================
+    // 🌍 PANEL ELEMENTS
+    // =====================================================
 
     const panel =
       document.getElementById(
@@ -7653,97 +7442,201 @@ if(
         "btrAnalyticsContent"
       );
 
+    panel.style.display =
+      "block";
 
-
-    // =================================================
-    // OPEN PANEL
-    // =================================================
-
-    panel.style.display = "block";
-
-
-
-    // =================================================
-    // LOADING
-    // =================================================
+    // =====================================================
+    // ⏳ LOADING
+    // =====================================================
 
     container.innerHTML = `
 
       <div style="
-        padding:25px;
+        padding:40px;
         text-align:center;
         color:#00e5ff;
-        font-weight:bold;
         font-size:15px;
+        font-weight:bold;
       ">
-       ⏳ Loading ${panelCollection}...
+
+        ⏳ Loading ecological intelligence...
+
       </div>
 
     `;
 
+    // =====================================================
+    // 🔥 LOAD FIRESTORE
+    // =====================================================
 
+    const d =
 
-    // =================================================
-// LOAD ANALYTICS
-// =================================================
+      await loadBTRAnalytics(
+        collectionName,
+        documentId
+      );
 
- const d =
-  await loadBTRAnalytics(
+    if(!d){
 
-    collectionName,
+      container.innerHTML = `
 
-    documentId
+        <div style="
+          padding:25px;
+          color:#ff5252;
+          font-weight:bold;
+          text-align:center;
+        ">
 
-  );
-if(!d){
+          ❌ Analytics not found
 
-  container.innerHTML = `
+        </div>
 
-    <div style="
-      color:#ff5252;
-      padding:20px;
-      text-align:center;
-      font-weight:bold;
-    ">
-     ❌ ${panelCollection} not found
-    </div>
+      `;
 
-  `;
-
-  return;
-}
+      return;
+    }
 
     console.log(
-      "🔥 BTR ANALYTICS",
+      "🌍 ANALYTICS:",
       d
     );
 
-
-
-    // =================================================
-    // HELPERS
-    // =================================================
+    // =====================================================
+    // 🔢 SAFE NUMBER
+    // =====================================================
 
     function num(v){
 
-      return Number(v || 0)
-      .toFixed(2);
+      return Number(
+        v || 0
+      ).toFixed(2);
 
     }
 
+    // =====================================================
+    // 🌍 PANEL TYPE
+    // =====================================================
 
+    let panelEmoji =
+      "🌍";
 
-    // =================================================
-    // ANALYTICS CARD
-    // =================================================
+    let panelTitle =
+      d.Compartment ||
+      d.Beat ||
+      d.Range ||
+      d.Division ||
+      "BTR";
 
-    function analyticsCard(
+    if(collectionName ===
+      "gis_compartment_analytics"
+    ){
+
+      panelEmoji = "📦";
+
+    }
+
+    if(collectionName ===
+      "gis_beat_analytics"
+    ){
+
+      panelEmoji = "🟨";
+
+    }
+
+    if(collectionName ===
+      "gis_range_analytics"
+    ){
+
+      panelEmoji = "🟩";
+
+    }
+
+    // =====================================================
+    // 🌿 DYNAMIC STATUS
+    // =====================================================
+
+    function getVegetationStatus(){
+
+      if(d.NDVI >= 0.7)
+        return "Dense healthy vegetation";
+
+      if(d.NDVI >= 0.5)
+        return "Moderately healthy vegetation";
+
+      if(d.NDVI >= 0.3)
+        return "Sparse vegetation";
+
+      return "Degraded vegetation condition";
+
+    }
+
+    // =====================================================
+    // 💧 WATER STATUS
+    // =====================================================
+
+    function getWaterStatus(){
+
+      if(d.Water_ha > 50)
+        return "Strong hydrological presence";
+
+      if(d.Water_ha > 10)
+        return "Moderate waterbody presence";
+
+      if(d.Water_ha > 1)
+        return "Limited open water detected";
+
+      return "Very low visible water presence";
+
+    }
+
+    // =====================================================
+    // 🏘 BUILT STATUS
+    // =====================================================
+
+    function getBuiltStatus(){
+
+      if(d.Built_ha > 50)
+        return "High human pressure";
+
+      if(d.Built_ha > 10)
+        return "Moderate settlement influence";
+
+      if(d.Built_ha > 1)
+        return "Low built-up footprint";
+
+      return "Minimal settlement pressure";
+
+    }
+
+    // =====================================================
+    // 🌳 ECO STATUS
+    // =====================================================
+
+    function getEcoStatus(){
+
+      if(d.Eco_Health > 80)
+        return "Excellent ecosystem stability";
+
+      if(d.Eco_Health > 60)
+        return "Healthy ecological condition";
+
+      if(d.Eco_Health > 40)
+        return "Moderate ecological condition";
+
+      return "Ecological stress detected";
+
+    }
+
+    // =====================================================
+    // 🌍 CARD UI
+    // =====================================================
+
+    function card(
 
       title,
       value,
-      meaning,
-      interpretation,
-      recommendation
+      subtitle,
+      color = "#00e5ff"
 
     ){
 
@@ -7756,19 +7649,19 @@ if(!d){
           border:
             1px solid rgba(255,255,255,0.08);
 
-          border-radius:16px;
+          border-radius:18px;
 
-          padding:14px;
+          padding:16px;
 
           margin-bottom:14px;
 
           box-shadow:
-            0 0 10px rgba(0,0,0,0.2);
+            0 0 12px rgba(0,0,0,0.25);
         ">
 
           <div style="
-            color:#00e5ff;
-            font-size:15px;
+            font-size:14px;
+            color:${color};
             font-weight:bold;
             margin-bottom:8px;
           ">
@@ -7776,57 +7669,20 @@ if(!d){
           </div>
 
           <div style="
-            font-size:24px;
+            font-size:28px;
             font-weight:bold;
-            margin-bottom:10px;
             color:white;
+            margin-bottom:10px;
           ">
             ${value}
           </div>
 
           <div style="
-            font-size:13px;
+            font-size:12px;
+            opacity:0.85;
             line-height:1.6;
-            opacity:0.92;
-            margin-bottom:10px;
           ">
-            ${meaning}
-          </div>
-
-          <div style="
-            background:
-              rgba(0,229,255,0.08);
-
-            border-radius:10px;
-
-            padding:10px;
-
-            font-size:12px;
-
-            margin-bottom:10px;
-
-            line-height:1.5;
-          ">
-
-            🔍 ${interpretation}
-
-          </div>
-
-          <div style="
-            background:
-              rgba(0,255,120,0.08);
-
-            border-radius:10px;
-
-            padding:10px;
-
-            font-size:12px;
-
-            line-height:1.5;
-          ">
-
-            ✅ ${recommendation}
-
+            ${subtitle}
           </div>
 
         </div>
@@ -7835,452 +7691,304 @@ if(!d){
 
     }
 
+    // =====================================================
+    // 🌍 LANDCOVER %
+    // =====================================================
 
+    const total =
+      Number(d.Total_ha || 1);
 
-    // =================================================
-    // HTML
-    // =================================================
+    function pct(v){
+
+      return (
+        (Number(v || 0) / total) * 100
+      ).toFixed(1);
+
+    }
+
+    // =====================================================
+    // 🌍 MAIN UI
+    // =====================================================
 
     container.innerHTML = `
 
-      <!-- ========================================= -->
-      <!-- HEADER -->
-      <!-- ========================================= -->
+      <!-- ================================================= -->
+      <!-- 🌍 HEADER -->
+      <!-- ================================================= -->
 
       <div style="
         background:
           linear-gradient(
             135deg,
-            rgba(0,229,255,0.15),
+            rgba(0,229,255,0.12),
             rgba(0,255,120,0.08)
           );
 
         border:
-          1px solid rgba(0,229,255,0.25);
+          1px solid rgba(0,229,255,0.2);
 
-        border-radius:18px;
+        border-radius:22px;
 
-        padding:16px;
+        padding:18px;
 
         margin-bottom:18px;
       ">
 
         <div style="
-          font-size:24px;
+          font-size:28px;
           font-weight:bold;
           color:#00e5ff;
           margin-bottom:8px;
         ">
-          ${panelEmoji} ${d.Name}
+
+          ${panelEmoji}
+          ${panelTitle}
+
         </div>
 
         <div style="
           font-size:13px;
-          opacity:0.82;
-          line-height:1.6;
+          line-height:1.7;
+          opacity:0.85;
         ">
-         
-         Enterprise ecological intelligence layer for
-${ecosystemLabel} analysis.
-</div>
+
+          Enterprise Dynamic World ecological intelligence layer.
+
+        </div>
 
         <div style="
-          margin-top:10px;
+          margin-top:12px;
           font-size:12px;
           opacity:0.7;
         ">
+
           Updated:
-          ${d.Updated_On}
+          ${d.Updated_On || "-"}
+
         </div>
 
       </div>
 
-
-
-      ${analyticsCard(
+      ${card(
 
         "📏 Total Area",
 
-        num(d.Total_ha) + " ha",
+        `${num(d.Total_ha)} ha`,
 
-        "Entire ecological landscape under analysis.",
-
-        "Large protected forest ecosystem with mixed terrain and vegetation zones.",
-
-        "Landscape-scale conservation monitoring recommended."
+        "Entire ecological landscape under analysis."
 
       )}
 
-
-
-      ${analyticsCard(
+      ${card(
 
         "🌿 NDVI",
 
         num(d.NDVI),
 
-        "Vegetation greenness and health indicator.",
+        getVegetationStatus(),
 
         d.NDVI > 0.6
-
-          ? "Dense healthy vegetation detected."
-
-          : d.NDVI > 0.4
-
-          ? "Moderate healthy vegetation."
-
-          : "Sparse/degraded vegetation condition.",
-
-        "Canopy continuity conservation important."
+          ? "#00ff99"
+          : "#ffcc00"
 
       )}
 
-
-
-      ${analyticsCard(
+      ${card(
 
         "💧 NDMI",
 
         num(d.NDMI),
 
-        "Vegetation moisture index.",
+        d.NDMI > 0.25
+          ? "Vegetation moisture remains stable."
+          : "Dry vegetation condition present.",
 
-        d.NDMI < 0.2
-
-          ? "Dry vegetation and fuel load present."
-
-          : "Moderate vegetation moisture.",
-
-        "Fire preparedness and water conservation advised."
+        "#4dd0e1"
 
       )}
 
-
-
-      ${analyticsCard(
+      ${card(
 
         "🌊 NDWI",
 
         num(d.NDWI),
 
-        "Surface water detection index.",
+        getWaterStatus(),
 
-        d.NDWI < 0
-
-          ? "Limited open water detected."
-
-          : "Surface water presence detected.",
-
-        "Wetland and waterbody conservation important."
+        "#4fc3f7"
 
       )}
 
-
-
-      ${analyticsCard(
+      ${card(
 
         "🏘 NDBI",
 
         num(d.NDBI),
 
-        "Built-up area detection index.",
+        getBuiltStatus(),
 
-        d.NDBI > 0
-
-          ? "Human settlement influence visible."
-
-          : "Landscape remains vegetation dominated.",
-
-        "Urban expansion monitoring advised."
+        "#ff8a65"
 
       )}
 
+      ${card(
 
+        "🌳 Tree Cover",
 
-      ${analyticsCard(
+        `${num(d.Trees_ha)} ha`,
 
-        "🔥 Fire Risk",
+        `${pct(d.Trees_ha)}% of landscape under tree dominance.`,
 
-        d.Fire_Risk,
-
-        "Composite wildfire vulnerability indicator.",
-
-        d.Fire_Risk === "HIGH"
-
-          ? "High fire susceptibility due to dry fuel load and sparse canopy."
-
-          : "Moderate fire exposure.",
-
-        "Fire line management and monitoring recommended."
+        "#00e676"
 
       )}
 
-
-
-      ${analyticsCard(
-
-        "🌳 Dense Forest",
-
-        num(d.Dense_Forest_ha) + " ha",
-
-        "High canopy forest cover.",
-
-        "Dense forest exists but limited compared to total landscape.",
-
-        "Canopy restoration opportunity present."
-
-      )}
-
-
-
-      ${analyticsCard(
-
-        "🌲 Moderate Forest",
-
-        num(d.Moderate_Forest_ha) + " ha",
-
-        "Main forest vegetation landscape.",
-
-        "Primary ecological habitat zone across BTR.",
-
-        "Protection priority area."
-
-      )}
-
-
-
-      ${analyticsCard(
+      ${card(
 
         "🌾 Grassland",
 
-        num(d.Grass_ha) + " ha",
+        `${num(d.Grass_ha)} ha`,
 
-        "Open grass ecosystem.",
+        `${pct(d.Grass_ha)}% grass ecosystem coverage.`,
 
-        "Important herbivore habitat and open vegetation landscape.",
-
-        "Grassland ecology maintenance recommended."
+        "#d4e157"
 
       )}
 
+      ${card(
 
+        "🌿 Shrub / Scrub",
 
-      ${analyticsCard(
+        `${num(d.Shrub_ha)} ha`,
 
-        "🌿 Bush / Scrub",
+        `${pct(d.Shrub_ha)}% secondary vegetation coverage.`,
 
-        num(d.Bush_ha) + " ha",
-
-        "Secondary scrub vegetation.",
-
-        "Possible regenerating or degraded vegetation patches.",
-
-        "Assisted ecological restoration possible."
+        "#81c784"
 
       )}
 
+      ${card(
 
+        "🌾 Crop Area",
 
-      ${analyticsCard(
+        `${num(d.Crop_ha)} ha`,
+
+        `${pct(d.Crop_ha)}% agricultural influence.`,
+
+        "#ffd54f"
+
+      )}
+
+      ${card(
 
         "🏘 Built Area",
 
-        num(d.Built_ha) + " ha",
+        `${num(d.Built_ha)} ha`,
 
-        "Human settlement/infrastructure footprint.",
+        `${pct(d.Built_ha)}% built footprint detected.`,
 
-        "Human pressure and land conversion visible.",
-
-        "Encroachment and development monitoring needed."
+        "#ff7043"
 
       )}
 
-
-
-      ${analyticsCard(
-
-        "🪨 Bare Land",
-
-        num(d.Bare_ha) + " ha",
-
-        "Exposed soil or rock surface.",
-
-        d.Bare_pct < 2
-
-          ? "Low erosion exposure."
-
-          : "Noticeable exposed land patches.",
-
-        "Soil stability monitoring advised."
-
-      )}
-
-
-
-      ${analyticsCard(
+      ${card(
 
         "🌊 Water Area",
 
-        num(d.Water_ha) + " ha",
+        `${num(d.Water_ha)} ha`,
 
-        "Permanent visible water bodies.",
+        `${pct(d.Water_ha)}% visible waterbody coverage.`,
 
-        "Limited visible open water detected in imagery.",
-
-        "Wetland conservation important."
+        "#29b6f6"
 
       )}
 
+      ${card(
 
+        "🪨 Bare Land",
 
-      ${analyticsCard(
+        `${num(d.Bare_ha)} ha`,
 
-        "🌧 Rainfall",
+        `${pct(d.Bare_ha)}% exposed land surface.`,
 
-        num(d.Rainfall_mm) + " mm",
-
-        "Estimated rainfall regime.",
-
-        d.Rainfall_Class,
-
-        "Climate-adaptive planning recommended."
+        "#bcaaa4"
 
       )}
 
-
-
-      ${analyticsCard(
+      ${card(
 
         "🌍 Eco Health",
 
         num(d.Eco_Health),
 
-        "Composite ecosystem stability indicator.",
+        getEcoStatus(),
 
         d.Eco_Health > 70
-
-          ? "Excellent ecosystem health."
-
-          : d.Eco_Health > 50
-
-          ? "Healthy ecosystem."
-
-          : d.Eco_Health > 30
-
-          ? "Moderate ecological condition."
-
-          : "Ecological stress detected.",
-
-        "Long-term restoration and monitoring beneficial."
+          ? "#00ff99"
+          : "#ffcc00"
 
       )}
 
-
-
-      ${analyticsCard(
+      ${card(
 
         "🌲 Tree Density",
 
-        d.Tree_Density,
+        d.Tree_Density || "Unknown",
 
-        "Forest canopy density classification.",
+        "Dynamic canopy density classification.",
 
-        "Sparse canopy distribution across landscape.",
-
-        "Afforestation opportunity exists."
+        "#66bb6a"
 
       )}
 
-
-
-      ${analyticsCard(
-
-        "🌱 Biomass",
-
-        num(d.Biomass),
-
-        "Estimated vegetation biomass.",
-
-        "Moderate-to-high vegetation productivity.",
-
-        "Carbon conservation important."
-
-      )}
-
-
-
-      ${analyticsCard(
-
-        "🌍 Carbon Storage",
-
-        num(d.Carbon),
-
-        "Estimated ecosystem carbon stock.",
-
-        "Major climate-regulating forest ecosystem.",
-
-        "Carbon conservation valuable for climate resilience."
-
-      )}
-
-
-
-      ${analyticsCard(
+      ${card(
 
         "⛰ Elevation",
 
-        num(d.Elevation_m) + " m",
+        `${num(d.Elevation_m)} m`,
 
-        "Average terrain elevation.",
+        "Average terrain elevation across landscape.",
 
-        "Mixed foothill and plain terrain structure.",
-
-        "Terrain-sensitive management needed."
+        "#b39ddb"
 
       )}
 
-
-
-      ${analyticsCard(
+      ${card(
 
         "📐 Slope",
 
-        num(d.Slope_deg) + "°",
+        `${num(d.Slope_deg)}°`,
 
-        "Terrain steepness.",
+        d.Slope_deg > 20
 
-        d.Slope_deg > 25
-
-          ? "Steep terrain region."
+          ? "Steep terrain ecosystem."
 
           : "Gentle terrain condition.",
 
-        "Erosion and runoff monitoring advisable."
+        "#9575cd"
 
       )}
 
-
-
-      <!-- ========================================= -->
-      <!-- FINAL AI SUMMARY -->
-      <!-- ========================================= -->
+      <!-- ================================================= -->
+      <!-- 🌍 FINAL ENTERPRISE SUMMARY -->
+      <!-- ================================================= -->
 
       <div style="
         background:
           linear-gradient(
             135deg,
-            rgba(255,80,80,0.08),
-            rgba(255,180,0,0.08)
+            rgba(255,255,255,0.05),
+            rgba(0,229,255,0.05)
           );
 
         border:
           1px solid rgba(255,255,255,0.08);
 
-        border-radius:18px;
+        border-radius:22px;
 
-        padding:16px;
+        padding:18px;
 
-        margin-top:10px;
+        margin-top:18px;
 
         line-height:1.8;
 
@@ -8291,39 +7999,38 @@ ${ecosystemLabel} analysis.
           font-size:18px;
           font-weight:bold;
           color:#00e5ff;
-          margin-bottom:10px;
+          margin-bottom:12px;
         ">
-          🧠  ${panelType} Summary
+
+          🧠 Enterprise Ecological Summary
+
         </div>
 
-        🌍 ${ecosystemLabel} is primarily an
-        <b>open forest + grassland dominated ecosystem</b>
-        with moderate ecological health.
+        🌍 Landscape currently shows
+        <b>${getEcoStatus()}</b>
+        with dominant
+        <b>${pct(d.Trees_ha)}% tree cover</b>.
 
         <br><br>
 
-        🔥 Fire vulnerability remains elevated due to:
-        low vegetation moisture,
-        sparse canopy structure,
-        and dry vegetation conditions.
+        🌿 Vegetation condition indicates:
+        <b>${getVegetationStatus()}</b>.
 
         <br><br>
 
-        🌳 Dense forest exists but remains limited compared to
-        total landscape extent.
+        💧 Hydrological analysis indicates:
+        <b>${getWaterStatus()}</b>.
 
         <br><br>
 
-        🐘 Grassland ecosystem continues to provide
-        major herbivore habitat support.
+        🏘 Human influence assessment:
+        <b>${getBuiltStatus()}</b>.
 
         <br><br>
 
-        🌱 Ecological restoration,
-        canopy improvement,
-        water conservation,
-        and fire management can significantly improve
-        long-term ecosystem resilience.
+        🌳 Dynamic World classification confirms
+        current landcover distribution using
+        Sentinel-2 10m ecological intelligence.
 
       </div>
 
@@ -8341,10 +8048,10 @@ ${ecosystemLabel} analysis.
 
       <div style="
         color:#ff5252;
-        font-weight:bold;
-        padding:20px;
+        padding:25px;
         text-align:center;
-        line-height:1.7;
+        font-weight:bold;
+        line-height:1.8;
       ">
 
         ❌ Failed to load analytics
@@ -8356,9 +8063,10 @@ ${ecosystemLabel} analysis.
       </div>
 
     `;
+
   }
+
 }
-    
 // ======================================================
 // 🔥 DUTY STATE GLOBALS
 // ======================================================
