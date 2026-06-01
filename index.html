@@ -6961,51 +6961,105 @@ window.gridRootLayer.addTo(map);
 // ===============================
 // 🔥 GRID SYNC CORE (NEW)
 // ===============================
-    function showPlanetThumb(scene){
+   function showPlanetThumb(scene){
 
-  const thumbURL =
+  try {
 
-    scene._links.thumbnail +
+    const thumbURL =
 
-    "?api_key=" +
+      scene._links.thumbnail +
 
-    PLANET_API_KEY;
+      "?api_key=" +
 
-  L.popup()
+      PLANET_API_KEY +
 
-    .setLatLng([
-      scene.geometry.coordinates[0][0][1],
-      scene.geometry.coordinates[0][0][0]
-    ])
+      "&t=" +
+
+      Date.now();
+
+    const center =
+      map.getCenter();
+
+    L.popup({
+
+      maxWidth:280,
+
+      autoPan:false,
+
+      className:"planet-popup"
+
+    })
+
+    .setLatLng(center)
 
     .setContent(`
 
-      <div style="width:220px">
+      <div style="
+        width:240px;
+        background:white;
+        border-radius:12px;
+        overflow:hidden;
+        box-shadow:
+          0 4px 18px rgba(0,0,0,0.35);
+        font-family:sans-serif;
+      ">
+
+        <div style="
+          background:#0b5394;
+          color:white;
+          padding:10px;
+          font-weight:bold;
+        ">
+
+          🛰 Latest Planet Scene
+
+        </div>
 
         <img
           src="${thumbURL}"
           style="
             width:100%;
-            border-radius:8px;
+            display:block;
           "
         >
 
-        <br><br>
+        <div style="
+          padding:10px;
+          color:#111;
+          font-size:13px;
+        ">
 
-        <b>Date:</b>
-        ${scene.properties.acquired}
+          <b>Date:</b>
 
-        <br>
+          <br>
 
-        <b>Cloud:</b>
-        ${(
-          scene.properties.cloud_cover * 100
-        ).toFixed(1)}%
+          ${scene.properties.acquired}
+
+          <br><br>
+
+          <b>Cloud:</b>
+
+          ${(
+            scene.properties.cloud_cover * 100
+          ).toFixed(1)}%
+
+        </div>
 
       </div>
+
     `)
 
     .openOn(map);
+
+  }
+
+  catch(err){
+
+    console.error(
+      "Planet popup failed",
+      err
+    );
+  }
 }
   // =========================================================
 // 🌍 BTR MASTER ANALYTICS POPUP
