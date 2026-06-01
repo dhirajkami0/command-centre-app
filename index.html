@@ -6164,7 +6164,52 @@ window.gridRootLayer.addTo(map);
 // ===============================
 // 🔥 GRID SYNC CORE (NEW)
 // ===============================
-    
+    function showPlanetThumb(scene){
+
+  const thumbURL =
+
+    scene._links.thumbnail +
+
+    "?api_key=" +
+
+    PLANET_API_KEY;
+
+  L.popup()
+
+    .setLatLng([
+      scene.geometry.coordinates[0][0][1],
+      scene.geometry.coordinates[0][0][0]
+    ])
+
+    .setContent(`
+
+      <div style="width:220px">
+
+        <img
+          src="${thumbURL}"
+          style="
+            width:100%;
+            border-radius:8px;
+          "
+        >
+
+        <br><br>
+
+        <b>Date:</b>
+        ${scene.properties.acquired}
+
+        <br>
+
+        <b>Cloud:</b>
+        ${(
+          scene.properties.cloud_cover * 100
+        ).toFixed(1)}%
+
+      </div>
+    `)
+
+    .openOn(map);
+}
   // =========================================================
 // 🌍 BTR MASTER ANALYTICS POPUP
 // =========================================================
