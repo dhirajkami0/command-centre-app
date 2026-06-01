@@ -12109,80 +12109,67 @@ async function populateDivisionButtons(){
         new Set();
 
       // ======================================
-      // 🔥 FORCE DIVISION POPUP MODE
+      // 🌍 POPUP AUTHORITY
       // ======================================
 
-    window.activePopupContext = {
+      window.activePopupContext = {
 
-  level : "division",
+        level : "division",
 
-  division : division,
+        division : division,
 
-  range : "ALL",
+        range : "ALL",
 
-  beat : "ALL",
+        beat : "ALL",
 
-  compartment : "ALL"
+        compartment : "ALL"
 
-};
+      };
 
-// ====================================
-// 🌍 SAVE DIVISION AOI
-// ====================================
+      // ====================================
+      // 🌍 SAVE DIVISION GEOMETRY
+      // ====================================
 
-// ====================================
-// 🌍 SAVE DIVISION GEOMETRY
-// ====================================
+      const matchingFeature =
 
-const matchingFeature =
+        (
+          window.allGISFeatures || []
+        )
+        .find(f => {
 
-  (
-    window.allGISFeatures || []
-  )
-  .find(f => {
+          const div = normalizeDivision(
 
-    const div = normalizeDivision(
+            f.properties?.Division ||
 
-      f.properties?.Division ||
+            f.properties?.division ||
 
-      f.properties?.division ||
+            ""
 
-      ""
+          );
 
-    );
+          return div === division;
 
-    return (
+        });
 
-      division === "ALL"
+      window.currentSelectedGeometry =
 
-      ||
+        matchingFeature?.geometry || null;
 
-      div === division
-    );
+      console.log(
+        "🌍 Division geometry saved"
+      );
 
-  });
+      console.log(
+        window.currentSelectedGeometry
+      );
 
-window.currentSelectedGeometry =
+      console.log(
+        "🛰 DIVISION POPUP MODE ENABLED"
+      );
 
-  matchingFeature?.geometry || null;
-
-console.log(
-  "🌍 Division geometry saved"
-);
-
-console.log(
-  window.currentSelectedGeometry
-);
-console.log(
-  "🛰 DIVISION POPUP MODE ENABLED"
-);
-
-console.log(
-  window.activePopupContext
-);
-      // ======================================
-      // 🎨 STYLE UPDATE ONLY
-      // ======================================
+      console.log(
+        window.activePopupContext
+      );
 
       // ====================================
       // 📦 LOAD RANGE COMPARTMENTS
@@ -12227,7 +12214,7 @@ console.log(
     }
 
     // ==========================================
-    // 🖱 CLICK
+    // 🖱 CLICK EVENTS
     // ==========================================
 
     container
@@ -12253,10 +12240,17 @@ console.log(
 
             b.style.background =
               "#2d2d2d";
+
+            b.style.color =
+              "white";
+
           });
 
           this.style.background =
             "#00c853";
+
+          this.style.color =
+            "white";
 
           // ====================================
           // 🌍 DIVISION
@@ -12346,7 +12340,69 @@ console.log(
           );
 
           // ====================================
-          // 🧹 RESET COMPARTMENTS ONLY
+          // 🌍 SAVE PLANET AOI
+          // ====================================
+
+          if(division === "ALL"){
+
+            // ================================
+            // 🌍 ENTIRE BTR
+            // ================================
+
+            window.currentSelectedGeometry =
+
+              window.rootLayer
+              ?.toGeoJSON()
+              ?.features?.[0]
+              ?.geometry || null;
+
+            console.log(
+              "🌍 ROOT AOI SAVED"
+            );
+          }
+
+          else {
+
+            // ================================
+            // 🟩 SINGLE DIVISION
+            // ================================
+
+            const matchingFeature =
+
+              (
+                window.allGISFeatures || []
+              )
+              .find(f => {
+
+                const div = normalizeDivision(
+
+                  f.properties?.Division ||
+
+                  f.properties?.division ||
+
+                  ""
+
+                );
+
+                return div === division;
+
+              });
+
+            window.currentSelectedGeometry =
+
+              matchingFeature?.geometry || null;
+
+            console.log(
+              "🟩 Division geometry saved"
+            );
+          }
+
+          console.log(
+            window.currentSelectedGeometry
+          );
+
+          // ====================================
+          // 🧹 RESET COMPARTMENTS
           // ====================================
 
           window.allCompartmentFeatures =
@@ -12398,9 +12454,17 @@ console.log(
           ).style.display =
             "none";
 
+          console.log(
+            "✅ Division Selected:",
+            division
+          );
+
         } catch(e){
 
-          console.error(e);
+          console.error(
+            "❌ Division click failed",
+            e
+          );
         }
       };
     });
@@ -12542,10 +12606,6 @@ console.log(
 
           try {
 
-            // ================================
-            // 🔥 INIT
-            // ================================
-
             if(
               !window.hiddenRanges
             ){
@@ -12554,10 +12614,6 @@ console.log(
                 new Set();
 
             }
-
-            // ================================
-            // 🙈 HIDE
-            // ================================
 
             if(
               !window.hiddenRanges.has(range)
@@ -12571,10 +12627,6 @@ console.log(
 
             }
 
-            // ================================
-            // 👁 SHOW
-            // ================================
-
             else {
 
               window.hiddenRanges.delete(
@@ -12584,10 +12636,6 @@ console.log(
               this.innerHTML = "👁";
 
             }
-
-            // ================================
-            // 🔄 RENDER
-            // ================================
 
             renderFilteredCompartments();
 
@@ -12644,62 +12692,60 @@ console.log(
             window.gisFilter.division
           );
 
-       window.activePopupContext = {
+        window.activePopupContext = {
 
-  level : "range",
+          level : "range",
 
-  division : division,
+          division : division,
 
-  range : range,
+          range : range,
 
-  beat : "ALL",
+          beat : "ALL",
 
-  compartment : "ALL"
+          compartment : "ALL"
 
-};
+        };
 
-// ====================================
-// 🌍 SAVE RANGE AOI
-// ====================================
+        // ====================================
+        // 🟩 SAVE RANGE GEOMETRY
+        // ====================================
 
-// ====================================
-// 🟩 SAVE RANGE GEOMETRY
-// ====================================
+        const matchingFeature =
 
-const matchingFeature =
+          (
+            window.allGISFeatures || []
+          )
+          .find(f => {
 
-  (
-    window.allGISFeatures || []
-  )
-  .find(f => {
+            const r =
 
-    const r =
+              String(
 
-      String(
+                f.properties?.Range ||
 
-        f.properties?.Range ||
+                f.properties?.range ||
 
-        f.properties?.range ||
+                ""
 
-        ""
+              ).trim();
 
-      ).trim();
+            return r === range;
 
-    return r === range;
+          });
 
-  });
+        window.currentSelectedGeometry =
 
-window.currentSelectedGeometry =
+          matchingFeature?.geometry || null;
 
-  matchingFeature?.geometry || null;
+        console.log(
+          "🟩 Range geometry saved"
+        );
 
-console.log(
-  "🟩 Range geometry saved"
-);
+        console.log(
+          window.currentSelectedGeometry
+        );
 
-console.log(
-  window.currentSelectedGeometry
-);     // ====================================
+        // ====================================
         // 📦 LOAD RANGE COMPARTMENTS
         // ====================================
 
@@ -12805,6 +12851,45 @@ console.log(
 
             };
 
+            // ====================================
+            // 🟩 SAVE RANGE GEOMETRY
+            // ====================================
+
+            const matchingFeature =
+
+              (
+                window.allGISFeatures || []
+              )
+              .find(f => {
+
+                const r =
+
+                  String(
+
+                    f.properties?.Range ||
+
+                    f.properties?.range ||
+
+                    ""
+
+                  ).trim();
+
+                return r === range;
+
+              });
+
+            window.currentSelectedGeometry =
+
+              matchingFeature?.geometry || null;
+
+            console.log(
+              "🟩 Range geometry saved"
+            );
+
+            console.log(
+              window.currentSelectedGeometry
+            );
+
             console.log(
               "🎯 RANGE POPUP MODE ENABLED"
             );
@@ -12885,7 +12970,6 @@ console.log(
 
     // ==========================================
     // 📦 UNIQUE RANGES
-    // ONLY CURRENT DIVISION
     // ==========================================
 
     const ranges =
@@ -13160,6 +13244,45 @@ console.log(
             compartment : "ALL"
 
           };
+
+          // ====================================
+          // 🟩 SAVE RANGE GEOMETRY
+          // ====================================
+
+          const matchingFeature =
+
+            (
+              window.allGISFeatures || []
+            )
+            .find(f => {
+
+              const r =
+
+                String(
+
+                  f.properties?.Range ||
+
+                  f.properties?.range ||
+
+                  ""
+
+                ).trim();
+
+              return r === range;
+
+            });
+
+          window.currentSelectedGeometry =
+
+            matchingFeature?.geometry || null;
+
+          console.log(
+            "🟩 Range geometry saved"
+          );
+
+          console.log(
+            window.currentSelectedGeometry
+          );
 
           console.log(
             "🎯 POPUP LEVEL: RANGE"
@@ -15523,58 +15646,55 @@ async function populateBeatButtons(){
           );
 
           // ====================================
-          // 🌍 SAVE BEAT AOI
+          // 🟨 SAVE BEAT GEOMETRY
           // ====================================
 
-         // ====================================
-// 🟨 SAVE BEAT GEOMETRY
-// ====================================
+          const matchingFeature =
 
-const matchingFeature =
+            (
+              window.allGISFeatures || []
+            )
+            .find(f => {
 
-  (
-    window.allGISFeatures || []
-  )
-  .find(f => {
+              const beatName =
 
-    const beatName =
+                String(
 
-      String(
+                  f.properties?.Beat ||
 
-        f.properties?.Beat ||
+                  f.properties?.beat ||
 
-        f.properties?.beat ||
+                  ""
 
-        ""
+                ).trim();
 
-      ).trim();
+              return (
 
-    return (
+                normalizeBeatName(
+                  beatName
+                )
 
-      normalizeBeatName(
-        beatName
-      )
+                ===
 
-      ===
+                normalizeBeatName(
+                  this.dataset.value
+                )
+              );
 
-      normalizeBeatName(
-        this.dataset.value
-      )
-    );
+            });
 
-  });
+          window.currentSelectedGeometry =
 
-window.currentSelectedGeometry =
+            matchingFeature?.geometry || null;
 
-  matchingFeature?.geometry || null;
+          console.log(
+            "🟨 Beat geometry saved"
+          );
 
-console.log(
-  "🟨 Beat geometry saved"
-);
+          console.log(
+            window.currentSelectedGeometry
+          );
 
-console.log(
-  window.currentSelectedGeometry
-);
           // ====================================
           // 🔥 RESET COMPARTMENT BUTTONS
           // ====================================
@@ -15663,7 +15783,6 @@ async function populateCompartmentButtons(){
 
     // ==========================================
     // 📦 UNIQUE COMPARTMENTS
-    // NO FEATURE FILTERING
     // ==========================================
 
     const comps =
@@ -15715,8 +15834,6 @@ async function populateCompartmentButtons(){
 
         // ======================================
         // ✅ ONLY CURRENT BEAT BUTTONS
-        // UI FILTER ONLY
-        // MAP NEVER FILTERED
         // ======================================
 
         if(
@@ -15876,10 +15993,10 @@ async function populateCompartmentButtons(){
           );
 
           // ====================================
-          // 🌍 SAVE COMPARTMENT AOI
+          // 📦 SAVE COMPARTMENT GEOMETRY
           // ====================================
 
-          window.currentSelectedGeometry =
+          const matchingFeature =
 
             (
               window.allCompartmentFeatures || []
@@ -15907,10 +16024,14 @@ async function populateCompartmentButtons(){
                 comp === this.dataset.value
               );
 
-            })?.geometry || null;
+            });
+
+          window.currentSelectedGeometry =
+
+            matchingFeature?.geometry || null;
 
           console.log(
-            "📦 Compartment AOI saved"
+            "📦 Compartment geometry saved"
           );
 
           console.log(
@@ -15922,6 +16043,13 @@ async function populateCompartmentButtons(){
           // ====================================
 
           renderFilteredCompartments();
+
+          centerMap();
+
+          console.log(
+            "✅ Compartment Selected:",
+            window.gisFilter.compartment
+          );
 
         }
 
