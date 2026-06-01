@@ -6682,16 +6682,17 @@ function showPlanetThumb(scene){
 
     map.closePopup();
 
-    L.popup({
+   L.popup({
 
-      maxWidth:280,
+  maxWidth:280,
 
-      autoPan:false,
+  autoPan:true,
 
-      className:"planet-popup"
+  keepInView:true,
 
-    })
+  className:"planet-popup"
 
+})
     .setLatLng(center)
 
     .setContent(`
