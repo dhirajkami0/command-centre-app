@@ -5944,7 +5944,7 @@ setInterval(() => {
 // ======================================
 
 const PLANET_API_KEY =
-  "YOUR_PLANET_API_KEY";
+  "PLAK9f176ec500b74a5d9dc1bc5ed0b14f22";
 
 // ======================================
 // 🛰 MAPBOX SATELLITE (STABLE LEAFLET)
@@ -6138,12 +6138,48 @@ L.control.layers(
 
 // ======================================
 // 🛰 PLANET SEARCH
+// GIS-AWARE VERSION
 // ======================================
 
 window.searchPlanetScenes =
-async function(){
+async function(aoiGeometry){
 
   try {
+
+    // ====================================
+    // ❌ NO GEOMETRY
+    // ====================================
+
+    if(!aoiGeometry){
+
+      console.warn(
+        "⚠ No AOI geometry"
+      );
+
+      return {
+        features:[]
+      };
+    }
+
+    // ====================================
+    // 📅 LAST 7 DAYS
+    // ====================================
+
+    const lastWeek =
+
+      new Date(
+
+        Date.now()
+
+        -
+
+        7 * 24 * 60 * 60 * 1000
+
+      ).toISOString();
+
+    // ====================================
+    // 🚀 PLANET SEARCH
+    // ====================================
 
     const res = await fetch(
 
@@ -6157,7 +6193,9 @@ async function(){
 
           "Authorization":
 
-            "Basic " +
+            "Basic "
+
+            +
 
             btoa(
               PLANET_API_KEY + ":"
@@ -6169,16 +6207,57 @@ async function(){
 
         body: JSON.stringify({
 
-          item_types:["PSScene"],
+          item_types:[
+            "PSScene"
+          ],
 
           filter:{
-            type:"RangeFilter",
 
-            field_name:"cloud_cover",
+            type:"AndFilter",
 
-            config:{
-              lte:0.2
-            }
+            config:[
+
+              // ============================
+              // 🌍 GEOMETRY FILTER
+              // ============================
+
+              {
+                type:"GeometryFilter",
+
+                field_name:"geometry",
+
+                config:aoiGeometry
+              },
+
+              // ============================
+              // ☁ CLOUD FILTER
+              // ============================
+
+              {
+                type:"RangeFilter",
+
+                field_name:"cloud_cover",
+
+                config:{
+                  lte:0.3
+                }
+              },
+
+              // ============================
+              // 📅 DATE FILTER
+              // ============================
+
+              {
+                type:"DateRangeFilter",
+
+                field_name:"acquired",
+
+                config:{
+                  gte:lastWeek
+                }
+              }
+
+            ]
           }
         })
       }
@@ -6187,12 +6266,18 @@ async function(){
     const data =
       await res.json();
 
+    // ====================================
+    // 🌍 SAVE
+    // ====================================
+
     window.planetData = data;
 
     console.log(
       "🛰 Planet scenes loaded:",
-      data.features.length
+      data?.features?.length || 0
     );
+
+    console.log(data);
 
     return data;
 
@@ -6204,6 +6289,10 @@ async function(){
       "❌ Planet search failed",
       err
     );
+
+    return {
+      features:[]
+    };
   }
 };
 
@@ -6216,6 +6305,23 @@ function(scene){
 
   try {
 
+    // ====================================
+    // ❌ INVALID
+    // ====================================
+
+    if(!scene){
+
+      console.warn(
+        "⚠ Invalid Planet scene"
+      );
+
+      return;
+    }
+
+    // ====================================
+    // 🛰 THUMB URL
+    // ====================================
+
     const thumbURL =
 
       scene._links.thumbnail +
@@ -6224,8 +6330,23 @@ function(scene){
 
       PLANET_API_KEY;
 
+    // ====================================
+    // 🌍 SAFE CENTROID
+    // ====================================
+
     const coords =
-      scene.geometry.coordinates[0];
+
+      scene.geometry
+      ?.coordinates?.[0];
+
+    if(!coords){
+
+      console.warn(
+        "⚠ Invalid geometry"
+      );
+
+      return;
+    }
 
     let lat = 0;
     let lng = 0;
@@ -6240,41 +6361,87 @@ function(scene){
     lat /= coords.length;
     lng /= coords.length;
 
-    L.popup()
+    // ====================================
+    // 📅 DATE
+    // ====================================
 
-      .setLatLng([lat,lng])
+    const acquired =
 
-      .setContent(`
+      scene.properties
+      ?.acquired ||
+
+      "Unknown";
+
+    // ====================================
+    // ☁ CLOUD
+    // ====================================
+
+    const cloud =
+
+      (
+        (
+          scene.properties
+          ?.cloud_cover || 0
+        ) * 100
+      ).toFixed(1);
+
+    // ====================================
+    // 🛰 POPUP
+    // ====================================
+
+    L.popup({
+
+      maxWidth:260
+
+    })
+
+    .setLatLng([lat,lng])
+
+    .setContent(`
+
+      <div style="
+        width:220px;
+        color:#111;
+        font-family:sans-serif;
+      ">
 
         <div style="
-          width:220px;
-          color:#111;
+          font-weight:bold;
+          margin-bottom:8px;
+          color:#0b5394;
         ">
 
-          <img
-            src="${thumbURL}"
-            style="
-              width:100%;
-              border-radius:8px;
-            "
-          >
-
-          <br><br>
-
-          <b>Date:</b>
-          ${scene.properties.acquired}
-
-          <br>
-
-          <b>Cloud:</b>
-          ${(
-            scene.properties.cloud_cover * 100
-          ).toFixed(1)}%
+          🛰 Latest Planet Scene
 
         </div>
-      `)
 
-      .openOn(map);
+        <img
+          src="${thumbURL}"
+          style="
+            width:100%;
+            border-radius:8px;
+            border:1px solid #ddd;
+          "
+        >
+
+        <br><br>
+
+        <b>📅 Date:</b>
+
+        <br>
+
+        ${acquired}
+
+        <br><br>
+
+        <b>☁ Cloud:</b>
+
+        ${cloud}%
+
+      </div>
+    `)
+
+    .openOn(map);
 
   }
 
@@ -6287,30 +6454,73 @@ function(scene){
   }
 };
 
-    window.verifyLatestPlanet =
+// ======================================
+// 🛰 VERIFY LATEST PLANET
+// GIS-AWARE VERSION
+// ======================================
+
+window.verifyLatestPlanet =
 async function(){
 
   try {
 
-    const data =
-      await searchPlanetScenes();
+    // ====================================
+    // ❌ NO AOI
+    // ====================================
 
     if(
-      data?.features?.length
+      !window.currentSelectedGeometry
     ){
 
-      showPlanetThumb(
-        data.features[0]
+      alert(
+        "Select Division / Range / Beat / Compartment first"
       );
 
+      return;
     }
 
-    else {
+    console.log(
+      "🌍 AOI:",
+      window.currentSelectedGeometry
+    );
+
+    // ====================================
+    // 🚀 SEARCH
+    // ====================================
+
+    const data =
+
+      await searchPlanetScenes(
+
+        window.currentSelectedGeometry
+      );
+
+    // ====================================
+    // ❌ NO SCENES
+    // ====================================
+
+    if(
+      !data?.features?.length
+    ){
 
       alert(
-        "No Planet scenes found"
+        "No recent Planet scenes found"
       );
+
+      return;
     }
+
+    // ====================================
+    // 🛰 SHOW LATEST
+    // ====================================
+
+    showPlanetThumb(
+      data.features[0]
+    );
+
+    console.log(
+      "✅ Planet scene displayed"
+    );
 
   }
 
@@ -9636,7 +9846,7 @@ window.compartmentLayerVisible = true;
 // ======================================================
 // 🌍 ACTIVE LAYERS
 // ======================================================
-
+window.currentSelectedGeometry = null;
 // ======================================================
 // 🌍 ENTERPRISE GIS HIERARCHY LAYERS
 // ======================================================
@@ -11675,6 +11885,37 @@ async function populateDivisionButtons(){
         level : "division",
 
         division : division,
+        window.currentSelectedGeometry = {
+
+  type:"FeatureCollection",
+
+  features:
+
+    window.allGISFeatures.filter(f => {
+
+      const div = normalizeDivision(
+
+        f.properties?.Division ||
+
+        f.properties?.division ||
+
+        ""
+      );
+
+      return (
+
+        division === "ALL"
+
+        ||
+
+        div === division
+      );
+    })
+};
+
+console.log(
+  "🌍 Division AOI saved"
+);
 
         range : "ALL",
 
@@ -12159,6 +12400,33 @@ async function populateDivisionButtons(){
         window.activePopupContext = {
 
           level : "range",
+          window.currentSelectedGeometry = {
+
+  type:"FeatureCollection",
+
+  features:
+
+    window.allGISFeatures.filter(f => {
+
+      const r =
+
+        String(
+
+          f.properties?.Range ||
+
+          f.properties?.range ||
+
+          ""
+
+        ).trim();
+
+      return r === range;
+    })
+};
+
+console.log(
+  "🟩 Range AOI saved"
+);
 
           division : division,
 
@@ -14998,6 +15266,58 @@ async function populateBeatButtons(){
           );
 
           // ====================================
+          // 🌍 SAVE BEAT AOI
+          // ====================================
+
+          window.currentSelectedGeometry = {
+
+            type:"FeatureCollection",
+
+            features:
+
+              (
+                window.allGISFeatures || []
+              )
+              .filter(f => {
+
+                const beatName =
+
+                  String(
+
+                    f.properties?.Beat ||
+
+                    f.properties?.beat ||
+
+                    ""
+
+                  ).trim();
+
+                return (
+
+                  normalizeBeatName(
+                    beatName
+                  )
+
+                  ===
+
+                  normalizeBeatName(
+                    this.dataset.value
+                  )
+                );
+
+              })
+
+          };
+
+          console.log(
+            "🟨 Beat AOI saved"
+          );
+
+          console.log(
+            window.currentSelectedGeometry
+          );
+
+          // ====================================
           // 🔥 RESET COMPARTMENT BUTTONS
           // ====================================
 
@@ -15295,6 +15615,48 @@ async function populateCompartmentButtons(){
 
           console.log(
             "🎯 POPUP LEVEL: COMPARTMENT"
+          );
+
+          // ====================================
+          // 🌍 SAVE COMPARTMENT AOI
+          // ====================================
+
+          window.currentSelectedGeometry =
+
+            (
+              window.allCompartmentFeatures || []
+            )
+            .find(f => {
+
+              const props =
+                f.properties || {};
+
+              const comp =
+
+                String(
+
+                  props.compartment ||
+
+                  props.compartmen ||
+
+                  props.Compartment ||
+
+                  ""
+
+                ).trim();
+
+              return (
+                comp === this.dataset.value
+              );
+
+            })?.geometry || null;
+
+          console.log(
+            "📦 Compartment AOI saved"
+          );
+
+          console.log(
+            window.currentSelectedGeometry
           );
 
           // ====================================
