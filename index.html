@@ -5917,30 +5917,7 @@ setInterval(() => {
 // 🌲 BTR TACTICAL COMMAND STYLE
 // ======================================
 
-var mapboxTactical = L.tileLayer(
 
-'https://api.mapbox.com/styles/v1/dhirajkami-btr/cmpu6y610002201s8bw1899f8/tiles/512/{z}/{x}/{y}?access_token=pk.eyJ1IjoiZGhpcmFqa2FtaS1idHIiLCJhIjoiY21wdTNxcHBkMWN0ZzJzc2xicXBodWxpbyJ9.HWVd19T4BuEYq2d-hPIGkg',
-
-{
-
-  attribution:
-    '© Mapbox © OpenStreetMap',
-
-  tileSize:512,
-
-  zoomOffset:-1,
-
-  maxZoom:22,
-
-  crossOrigin:true,
-
-  updateWhenIdle:false,
-
-  keepBuffer:8
-
-}
-
-);
 // ======================================
 // 🛰 MAPBOX SATELLITE
 // ======================================
@@ -6071,7 +6048,11 @@ var map = L.map('map', {
 // 🌲 DEFAULT BASE LAYER
 // ======================================================
 
-mapboxTactical.addTo(map);
+// ======================================================
+// 🌲 DEFAULT BASE LAYER
+// ======================================================
+
+esriSat.addTo(map);
 
 // ======================================================
 // 🖱 MAP CONTROLS
@@ -6099,18 +6080,17 @@ L.control.layers(
 
   {
 
-    "🌲 Tactical Command":
-      mapboxTactical,
-
-    
-    "🛰 Mapbox Satellite":
-      mapboxSatellite,
-
-    "🛰 ESRI Satellite":
+  
+  "🛰 ESRI Satellite":
       esriSat,
-
+    
     "🌍 Google Hybrid":
-      googleHybrid
+      googleHybrid,
+    "🛰 Mapbox Satellite":
+      mapboxSatellite
+
+  
+
 
   },
 
