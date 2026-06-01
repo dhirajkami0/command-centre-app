@@ -1322,7 +1322,7 @@ NORTH REMAINS ABSOLUTE
   transform:scale(0.92);
 }
 
-    .planet-popup .leaflet-popup-content-wrapper {
+ .planet-popup .leaflet-popup-content-wrapper {
 
   background:transparent !important;
 
@@ -1337,6 +1337,35 @@ NORTH REMAINS ABSOLUTE
 }
 
 .planet-popup .leaflet-popup-tip {
+
+  background:white !important;
+}
+
+/* ===================================== */
+/* 🛰 LOADING POPUP */
+/* ===================================== */
+
+.planet-loading-popup
+.leaflet-popup-content-wrapper {
+
+  background:white !important;
+
+  border-radius:12px;
+
+  box-shadow:
+    0 4px 18px rgba(0,0,0,0.3);
+
+  padding:0 !important;
+}
+
+.planet-loading-popup
+.leaflet-popup-content {
+
+  margin:0 !important;
+}
+
+.planet-loading-popup
+.leaflet-popup-tip {
 
   background:white !important;
 }
@@ -6542,6 +6571,21 @@ async function(){
   try {
 
     // ====================================
+    // 🔒 PREVENT MULTIPLE CLICKS
+    // ====================================
+
+    if(window.planetLoading){
+
+      console.log(
+        "⏳ Planet already loading..."
+      );
+
+      return;
+    }
+
+    window.planetLoading = true;
+
+    // ====================================
     // ❌ NO AOI
     // ====================================
 
@@ -6553,6 +6597,8 @@ async function(){
         "Select Division / Range / Beat / Compartment first"
       );
 
+      window.planetLoading = false;
+
       return;
     }
 
@@ -6560,6 +6606,45 @@ async function(){
       "🌍 AOI:",
       window.currentSelectedGeometry
     );
+
+    // ====================================
+    // 🛰 LOADING MESSAGE
+    // ====================================
+
+    const loadingPopup =
+
+      L.popup({
+
+        closeButton:false,
+
+        autoClose:false,
+
+        closeOnClick:false,
+
+        className:"planet-loading-popup"
+
+      })
+
+      .setLatLng(
+        map.getCenter()
+      )
+
+      .setContent(`
+
+        <div style="
+          padding:12px 18px;
+          font-family:sans-serif;
+          font-weight:bold;
+          color:#111;
+        ">
+
+          🛰 Loading latest Planet scene...
+
+        </div>
+
+      `)
+
+      .openOn(map);
 
     // ====================================
     // 🚀 SEARCH
@@ -6572,6 +6657,8 @@ async function(){
         window.currentSelectedGeometry
       );
 
+    console.log(data);
+
     // ====================================
     // ❌ NO SCENES
     // ====================================
@@ -6580,24 +6667,69 @@ async function(){
       !data?.features?.length
     ){
 
+      map.closePopup(
+        loadingPopup
+      );
+
       alert(
         "No recent Planet scenes found"
       );
+
+      window.planetLoading = false;
 
       return;
     }
 
     // ====================================
-    // 🛰 SHOW LATEST
+    // 🛰 LATEST SCENE
     // ====================================
 
-    showPlanetThumb(
-      data.features[0]
-    );
+    const scene =
+      data.features[0];
 
-    console.log(
-      "✅ Planet scene displayed"
-    );
+    // ====================================
+    // 🖼 PRELOAD IMAGE
+    // ====================================
+
+    const img = new Image();
+
+    img.onload = function(){
+
+      map.closePopup(
+        loadingPopup
+      );
+
+      showPlanetThumb(
+        scene
+      );
+
+      console.log(
+        "✅ Planet scene displayed"
+      );
+
+      window.planetLoading = false;
+    };
+
+    img.onerror = function(){
+
+      map.closePopup(
+        loadingPopup
+      );
+
+      alert(
+        "Planet thumbnail failed"
+      );
+
+      window.planetLoading = false;
+    };
+
+    img.src =
+
+      scene._links.thumbnail +
+
+      "?api_key=" +
+
+      PLANET_API_KEY;
 
   }
 
@@ -6608,6 +6740,8 @@ async function(){
     alert(
       "Planet verification failed"
     );
+
+    window.planetLoading = false;
   }
 };
 // ======================================================
