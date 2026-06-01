@@ -6286,6 +6286,43 @@ function(scene){
     );
   }
 };
+
+    window.verifyLatestPlanet =
+async function(){
+
+  try {
+
+    const data =
+      await searchPlanetScenes();
+
+    if(
+      data?.features?.length
+    ){
+
+      showPlanetThumb(
+        data.features[0]
+      );
+
+    }
+
+    else {
+
+      alert(
+        "No Planet scenes found"
+      );
+    }
+
+  }
+
+  catch(err){
+
+    console.error(err);
+
+    alert(
+      "Planet verification failed"
+    );
+  }
+};
 // ======================================================
 // 🟩 GRID LAYER INIT
 // ======================================================
