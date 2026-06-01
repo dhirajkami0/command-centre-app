@@ -1393,9 +1393,25 @@ NORTH REMAINS ABSOLUTE
     <button id="force-refresh-btn" class="admin-only btn-center btn-green" onclick="refreshAll()">
   FORCE REFRESH
 </button>
-<button id="dutyMainBtn" class="staff-only btn-center btn-green" onclick="handleDutyAction()">
-      <span id="dutyLabel">START DUTY</span>
-    </button>
+<button id="dutyMainBtn"
+  class="staff-only btn-center btn-green"
+  onclick="handleDutyAction()">
+
+  <span id="dutyLabel">
+    START DUTY
+  </span>
+
+</button>
+
+<!-- 🛰 PLANET BUTTON -->
+<button
+  class="btn-center btn-blue"
+  onclick="verifyLatestPlanet()"
+  style="margin-top:6px;">
+
+  🛰 VERIFY LATEST PLANET
+
+</button>
 
     <button class="btn-center staff-only"" onclick="openSightingForm()"
       style="background:#f9a825; margin-top: 8px; display: none;">
@@ -31455,17 +31471,7 @@ window.openDutyForm = openDutyForm;
 
     <h3>📡 Upload KML</h3>
 
-    <button
-  class="btn-center btn-blue"
-  onclick="verifyLatestPlanet()"
-  style="
-    margin-top:6px;
-  "
->
-
-  🛰 VERIFY LATEST PLANET
-
-</button>
+   
 
     <!-- 🔥 NEW: ANALYSIS MODE -->
     <select id="analysisMode" style="width:100%; padding:8px; margin-bottom:10px;">
