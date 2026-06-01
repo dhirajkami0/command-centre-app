@@ -9416,6 +9416,8 @@ ${pct(data.health)} / 100
     // ======================================================
 // 🌍 COMPARTMENT FILE REGISTRY
 // ======================================================
+    window.PLANET_API_KEY =
+  "PLAK9f176ec500b74a5d9dc1bc5ed0b14f22";
 // ======================================================
 // 🌍 GIS FILTER STATE
 // ======================================================
@@ -9470,6 +9472,7 @@ window.gisAnalyticsCache = {};
 // ======================================================
 // 🌍 NORMALIZE DIVISION
 // ======================================================
+    
     // ==========================================
 // 👁 HIDDEN STATES
 // ==========================================
@@ -9484,7 +9487,149 @@ window.hiddenBeats =
 // COMPARTMENT LEVEL AI ECOLOGICAL INTERPRETATION
 // MOBILE + DESKTOP
 // ============================================================
+window.searchPlanetScenes =
+async function(){
 
+  try {
+
+    const res = await fetch(
+
+      "https://api.planet.com/data/v1/quick-search",
+
+      {
+
+        method:"POST",
+
+        headers:{
+
+          "Authorization":
+
+            "Basic " +
+
+            btoa(
+              PLANET_API_KEY + ":"
+            ),
+
+          "Content-Type":
+            "application/json"
+        },
+
+        body: JSON.stringify({
+
+          item_types:["PSScene"],
+
+          filter:{
+            type:"RangeFilter",
+
+            field_name:"cloud_cover",
+
+            config:{
+              lte:0.2
+            }
+          }
+        })
+      }
+    );
+
+    const data =
+      await res.json();
+
+    window.planetData = data;
+
+    console.log(
+      "🛰 Planet scenes loaded:",
+      data.features.length
+    );
+
+    return data;
+
+  }
+
+  catch(err){
+
+    console.error(
+      "❌ Planet search failed",
+      err
+    );
+  }
+}
+
+
+    window.showPlanetThumb =
+function(scene){
+
+  try {
+
+    const thumbURL =
+
+      scene._links.thumbnail +
+
+      "?api_key=" +
+
+      PLANET_API_KEY;
+
+    const coords =
+      scene.geometry.coordinates[0];
+
+    let lat = 0;
+    let lng = 0;
+
+    coords.forEach(c => {
+
+      lng += c[0];
+      lat += c[1];
+
+    });
+
+    lat /= coords.length;
+    lng /= coords.length;
+
+    L.popup()
+
+      .setLatLng([lat,lng])
+
+      .setContent(`
+
+        <div style="
+          width:220px;
+          color:#111;
+        ">
+
+          <img
+            src="${thumbURL}"
+            style="
+              width:100%;
+              border-radius:8px;
+            "
+          >
+
+          <br><br>
+
+          <b>Date:</b>
+          ${scene.properties.acquired}
+
+          <br>
+
+          <b>Cloud:</b>
+          ${(
+            scene.properties.cloud_cover * 100
+          ).toFixed(1)}%
+
+        </div>
+      `)
+
+      .openOn(map);
+
+  }
+
+  catch(err){
+
+    console.error(
+      "❌ Planet popup failed",
+      err
+    );
+  }
+}
 async function showCompartmentAnalyticsPanel(compartmentName){ 
   // ========================================================
 // 🔒 CENTRAL POPUP AUTHORITY
