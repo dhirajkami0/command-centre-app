@@ -5923,31 +5923,11 @@ setInterval(() => {
 // ======================================
 
 // ======================================
-// 🛰 PLANET PREVIEW LAYER (DEFAULT)
+// 🛰 PLANET API CONFIG
 // ======================================
 
-const PLANET_API_KEY = "PLAK9f176ec500b74a5d9dc1bc5ed0b14f22";
-
-var planetLayer = L.tileLayer(
-
-  'https://tiles.planet.com/basemaps/v1/planet-tiles/global_monthly/{z}/{x}/{y}.png?api_key=' + PLANET_API_KEY,
-
-  {
-    attribution:
-      '© Planet Labs',
-
-    tileSize:256,
-
-    maxZoom:22,
-
-    crossOrigin:true,
-
-    updateWhenIdle:false,
-
-    keepBuffer:8
-  }
-
-);
+const PLANET_API_KEY =
+  "YOUR_PLANET_API_KEY";
 
 // ======================================
 // 🛰 MAPBOX SATELLITE (STABLE LEAFLET)
@@ -5976,7 +5956,10 @@ var mapboxSatellite = L.tileLayer(
 
 );
 
-/* 🌧 WEATHER RADAR */
+// ======================================
+// 🌧 WEATHER RADAR
+// ======================================
+
 var rainLayer = L.tileLayer(
   'https://tile.openweathermap.org/map/precipitation_new/{z}/{x}/{y}.png?appid=b928faa16c09eb3facb9e3238d2e59f8',
   {
@@ -6026,7 +6009,10 @@ window.weatherLayers = {
   "🌡 Temperature": tempLayer
 };
 
-/* 🌲 GEE FOREST */
+// ======================================
+// 🌲 GEE FOREST
+// ======================================
+
 var geeForest = L.tileLayer(
   'https://earthengine.googleapis.com/v1/projects/glassy-bonsai-475802-m1/maps/ed63fa9503db0068415ce327ed101286-18029cd75bdf621254780198530b2768/tiles/{z}/{x}/{y}',
   {
@@ -6037,7 +6023,10 @@ var geeForest = L.tileLayer(
   }
 );
 
-/* 🌿 FOREST LABELS */
+// ======================================
+// 🌿 FOREST LABELS
+// ======================================
+
 var forestHealthLabels = {
   1: "Water Body",
   2: "Bare Soil",
@@ -6052,9 +6041,9 @@ var forestHealthLabels = {
    🗺 BLOCK 2 → MAP INIT + UI CONTROLS
 ============================================================ */
 
-// ======================================================
+// ======================================
 // 🗺 MAP INIT (FINAL STABLE)
-// ======================================================
+// ======================================
 
 var map = L.map('map', {
 
@@ -6075,23 +6064,23 @@ var map = L.map('map', {
 
 });
 
-// ======================================================
-// 🛰 DEFAULT BASE LAYER = PLANET
-// ======================================================
+// ======================================
+// 🌍 DEFAULT BASE LAYER = ESRI
+// ======================================
 
-planetLayer.addTo(map);
+esriSat.addTo(map);
 
-// ======================================================
+// ======================================
 // 🖱 MAP CONTROLS
-// ======================================================
+// ======================================
 
 map.scrollWheelZoom.disable();
 
 map.tap = true;
 
-// ======================================================
+// ======================================
 // 🔍 ZOOM CONTROL
-// ======================================================
+// ======================================
 
 L.control.zoom({
 
@@ -6099,16 +6088,13 @@ L.control.zoom({
 
 }).addTo(map);
 
-// ======================================================
+// ======================================
 // 🌍 BASE MAP SWITCHER
-// ======================================================
+// ======================================
 
 L.control.layers(
 
   {
-
-    "🛰 Planet Preview":
-      planetLayer,
 
     "🛰 ESRI Satellite":
       esriSat,
@@ -6132,6 +6118,157 @@ L.control.layers(
   }
 
 ).addTo(map);
+
+// ======================================
+// 🛰 PLANET SEARCH
+// ======================================
+
+window.searchPlanetScenes =
+async function(){
+
+  try {
+
+    const res = await fetch(
+
+      "https://api.planet.com/data/v1/quick-search",
+
+      {
+
+        method:"POST",
+
+        headers:{
+
+          "Authorization":
+
+            "Basic " +
+
+            btoa(
+              PLANET_API_KEY + ":"
+            ),
+
+          "Content-Type":
+            "application/json"
+        },
+
+        body: JSON.stringify({
+
+          item_types:["PSScene"],
+
+          filter:{
+            type:"RangeFilter",
+
+            field_name:"cloud_cover",
+
+            config:{
+              lte:0.2
+            }
+          }
+        })
+      }
+    );
+
+    const data =
+      await res.json();
+
+    window.planetData = data;
+
+    console.log(
+      "🛰 Planet scenes loaded:",
+      data.features.length
+    );
+
+    return data;
+
+  }
+
+  catch(err){
+
+    console.error(
+      "❌ Planet search failed",
+      err
+    );
+  }
+};
+
+// ======================================
+// 🛰 PLANET THUMB POPUP
+// ======================================
+
+window.showPlanetThumb =
+function(scene){
+
+  try {
+
+    const thumbURL =
+
+      scene._links.thumbnail +
+
+      "?api_key=" +
+
+      PLANET_API_KEY;
+
+    const coords =
+      scene.geometry.coordinates[0];
+
+    let lat = 0;
+    let lng = 0;
+
+    coords.forEach(c => {
+
+      lng += c[0];
+      lat += c[1];
+
+    });
+
+    lat /= coords.length;
+    lng /= coords.length;
+
+    L.popup()
+
+      .setLatLng([lat,lng])
+
+      .setContent(`
+
+        <div style="
+          width:220px;
+          color:#111;
+        ">
+
+          <img
+            src="${thumbURL}"
+            style="
+              width:100%;
+              border-radius:8px;
+            "
+          >
+
+          <br><br>
+
+          <b>Date:</b>
+          ${scene.properties.acquired}
+
+          <br>
+
+          <b>Cloud:</b>
+          ${(
+            scene.properties.cloud_cover * 100
+          ).toFixed(1)}%
+
+        </div>
+      `)
+
+      .openOn(map);
+
+  }
+
+  catch(err){
+
+    console.error(
+      "❌ Planet popup failed",
+      err
+    );
+  }
+};
 // ======================================================
 // 🟩 GRID LAYER INIT
 // ======================================================
@@ -9487,149 +9624,7 @@ window.hiddenBeats =
 // COMPARTMENT LEVEL AI ECOLOGICAL INTERPRETATION
 // MOBILE + DESKTOP
 // ============================================================
-window.searchPlanetScenes =
-async function(){
 
-  try {
-
-    const res = await fetch(
-
-      "https://api.planet.com/data/v1/quick-search",
-
-      {
-
-        method:"POST",
-
-        headers:{
-
-          "Authorization":
-
-            "Basic " +
-
-            btoa(
-              PLANET_API_KEY + ":"
-            ),
-
-          "Content-Type":
-            "application/json"
-        },
-
-        body: JSON.stringify({
-
-          item_types:["PSScene"],
-
-          filter:{
-            type:"RangeFilter",
-
-            field_name:"cloud_cover",
-
-            config:{
-              lte:0.2
-            }
-          }
-        })
-      }
-    );
-
-    const data =
-      await res.json();
-
-    window.planetData = data;
-
-    console.log(
-      "🛰 Planet scenes loaded:",
-      data.features.length
-    );
-
-    return data;
-
-  }
-
-  catch(err){
-
-    console.error(
-      "❌ Planet search failed",
-      err
-    );
-  }
-}
-
-
-    window.showPlanetThumb =
-function(scene){
-
-  try {
-
-    const thumbURL =
-
-      scene._links.thumbnail +
-
-      "?api_key=" +
-
-      PLANET_API_KEY;
-
-    const coords =
-      scene.geometry.coordinates[0];
-
-    let lat = 0;
-    let lng = 0;
-
-    coords.forEach(c => {
-
-      lng += c[0];
-      lat += c[1];
-
-    });
-
-    lat /= coords.length;
-    lng /= coords.length;
-
-    L.popup()
-
-      .setLatLng([lat,lng])
-
-      .setContent(`
-
-        <div style="
-          width:220px;
-          color:#111;
-        ">
-
-          <img
-            src="${thumbURL}"
-            style="
-              width:100%;
-              border-radius:8px;
-            "
-          >
-
-          <br><br>
-
-          <b>Date:</b>
-          ${scene.properties.acquired}
-
-          <br>
-
-          <b>Cloud:</b>
-          ${(
-            scene.properties.cloud_cover * 100
-          ).toFixed(1)}%
-
-        </div>
-      `)
-
-      .openOn(map);
-
-  }
-
-  catch(err){
-
-    console.error(
-      "❌ Planet popup failed",
-      err
-    );
-  }
-}
 async function showCompartmentAnalyticsPanel(compartmentName){ 
   // ========================================================
 // 🔒 CENTRAL POPUP AUTHORITY
