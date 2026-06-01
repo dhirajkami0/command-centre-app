@@ -6569,6 +6569,116 @@ async function(){
       );
 
       // ==================================
+      // 🛰 REMOVE OLD LAYER
+      // ==================================
+
+      try {
+
+        if(window.planetLayer){
+
+          map.removeLayer(
+            window.planetLayer
+          );
+        }
+
+      } catch(e){
+
+        console.warn(
+          "⚠ Old Planet layer remove failed",
+          e
+        );
+      }
+
+      // ==================================
+      // 🛰 SCENE ID
+      // ==================================
+
+      const sceneId =
+        scene.id;
+
+      console.log(
+        "🛰 Scene ID:",
+        sceneId
+      );
+
+      // ==================================
+      // 🛰 TILE URL
+      // ==================================
+
+      const tileUrl =
+
+        `https://tiles.planet.com/data/v1/item-types/PSScene/items/${sceneId}/tiles/{z}/{x}/{y}.png?api_key=${PLANET_API_KEY}`;
+
+      console.log(
+        "🛰 Tile URL:",
+        tileUrl
+      );
+
+      // ==================================
+      // 🛰 CREATE TILE LAYER
+      // ==================================
+
+      window.planetLayer =
+
+        L.tileLayer(
+          tileUrl,
+          {
+            tileSize:256,
+
+            maxZoom:18,
+
+            opacity:0.82,
+
+            crossOrigin:true
+          }
+        );
+
+      // ==================================
+      // 🛰 TILE EVENTS
+      // ==================================
+
+      window.planetLayer.on(
+        "loading",
+        () => {
+
+          console.log(
+            "🛰 Planet tiles loading..."
+          );
+        }
+      );
+
+      window.planetLayer.on(
+        "load",
+        () => {
+
+          console.log(
+            "✅ Planet tiles loaded"
+          );
+        }
+      );
+
+      window.planetLayer.on(
+        "tileerror",
+        err => {
+
+          console.error(
+            "❌ Planet tile error",
+            err
+          );
+        }
+      );
+
+      // ==================================
+      // 🛰 ADD TO MAP
+      // ==================================
+
+      window.planetLayer.addTo(map);
+
+      console.log(
+        "🛰 Planet overlay added"
+      );
+
+      // ==================================
       // 🛰 SHOW POPUP
       // ==================================
 
@@ -6589,6 +6699,10 @@ async function(){
 
     };
 
+    // ====================================
+    // ❌ IMAGE FAIL
+    // ====================================
+
     img.onerror = function(){
 
       map.closePopup(
@@ -6602,6 +6716,10 @@ async function(){
       window.planetLoading =
         false;
     };
+
+    // ====================================
+    // 🖼 THUMB URL
+    // ====================================
 
     img.src =
 
