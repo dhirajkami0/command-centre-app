@@ -6665,6 +6665,8 @@ function showPlanetThumb(scene){
 
   try {
 
+    map.closePopup();
+
     const thumbURL =
 
       scene._links.thumbnail +
@@ -6680,19 +6682,18 @@ function showPlanetThumb(scene){
     const center =
       map.getCenter();
 
-    map.closePopup();
+    L.popup({
 
-   L.popup({
+      maxWidth:280,
 
-  maxWidth:280,
+      autoPan:true,
 
-  autoPan:true,
+      keepInView:true,
 
-  keepInView:true,
+      className:"planet-popup"
 
-  className:"planet-popup"
+    })
 
-})
     .setLatLng(center)
 
     .setContent(`
@@ -6758,10 +6759,8 @@ function showPlanetThumb(scene){
 
   catch(err){
 
-    console.error(
-      "Planet popup failed",
-      err
-    );
+    console.error(err);
+
   }
 }
   // =========================================================
