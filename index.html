@@ -6608,6 +6608,12 @@ async function(){
     );
 
     // ====================================
+    // 🗺 CENTER MAP FIRST
+    // ====================================
+
+    centerMap();
+
+    // ====================================
     // 🛰 LOADING MESSAGE
     // ====================================
 
@@ -6695,19 +6701,34 @@ async function(){
 
     img.onload = function(){
 
-      map.closePopup(
-        loadingPopup
+      // ==================================
+      // 🗺 WAIT FOR MAP MOVE END
+      // ==================================
+
+      map.once(
+
+        "moveend",
+
+        function(){
+
+          map.closePopup(
+            loadingPopup
+          );
+
+          showPlanetThumb(
+            scene
+          );
+
+          console.log(
+            "✅ Planet scene displayed"
+          );
+
+          window.planetLoading = false;
+
+        }
+
       );
 
-      showPlanetThumb(
-        scene
-      );
-
-      console.log(
-        "✅ Planet scene displayed"
-      );
-
-      window.planetLoading = false;
     };
 
     img.onerror = function(){
