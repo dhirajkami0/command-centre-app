@@ -1322,38 +1322,61 @@ NORTH REMAINS ABSOLUTE
   transform:scale(0.92);
 }
 
- .planet-popup .leaflet-popup-content-wrapper {
+/* ===================================== */
+/* 🛰 PLANET POPUP */
+/* ===================================== */
+
+.planet-popup{
+
+  z-index:999999 !important;
+}
+
+.planet-popup .leaflet-popup-content-wrapper {
 
   background:transparent !important;
 
   box-shadow:none !important;
 
   padding:0 !important;
+
+  overflow:visible !important;
+
+  border-radius:16px !important;
 }
 
 .planet-popup .leaflet-popup-content {
 
   margin:0 !important;
+
+  width:auto !important;
 }
 
 .planet-popup .leaflet-popup-tip {
 
   background:white !important;
+
+  box-shadow:
+    0 2px 8px rgba(0,0,0,0.25);
 }
 
 /* ===================================== */
 /* 🛰 LOADING POPUP */
 /* ===================================== */
 
+.planet-loading-popup{
+
+  z-index:999999 !important;
+}
+
 .planet-loading-popup
 .leaflet-popup-content-wrapper {
 
   background:white !important;
 
-  border-radius:12px;
+  border-radius:14px !important;
 
   box-shadow:
-    0 4px 18px rgba(0,0,0,0.3);
+    0 6px 22px rgba(0,0,0,0.35);
 
   padding:0 !important;
 }
@@ -1368,6 +1391,47 @@ NORTH REMAINS ABSOLUTE
 .leaflet-popup-tip {
 
   background:white !important;
+}
+
+/* ===================================== */
+/* 🛰 FORCE POPUP ABOVE ENTERPRISE UI */
+/* ===================================== */
+
+.leaflet-popup-pane{
+
+  z-index:999999 !important;
+}
+
+.leaflet-pane{
+
+  z-index:auto;
+}
+
+/* ===================================== */
+/* 🛰 SMOOTH IMAGE */
+/* ===================================== */
+
+.planet-popup img{
+
+  display:block;
+
+  width:100%;
+
+  transition:0.3s ease;
+
+  background:#ddd;
+}
+
+/* ===================================== */
+/* 🛰 MOBILE SAFE */
+/* ===================================== */
+
+@media(max-width:768px){
+
+  .planet-popup .leaflet-popup-content{
+
+    width:240px !important;
+  }
 }
   </style>
 </head>
@@ -6367,6 +6431,12 @@ function(scene){
     }
 
     // ====================================
+    // ❌ CLOSE OLD POPUPS
+    // ====================================
+
+    map.closePopup();
+
+    // ====================================
     // 🛰 THUMB URL
     // ====================================
 
@@ -6376,10 +6446,14 @@ function(scene){
 
       "?api_key=" +
 
-      PLANET_API_KEY;
+      PLANET_API_KEY +
+
+      "&t=" +
+
+      Date.now();
 
     // ====================================
-    // 🌍 SAFE CENTROID
+    // 🌍 SAFE GEOMETRY
     // ====================================
 
     const coords =
@@ -6395,6 +6469,10 @@ function(scene){
 
       return;
     }
+
+    // ====================================
+    // 🌍 CENTROID
+    // ====================================
 
     let lat = 0;
     let lng = 0;
@@ -6434,28 +6512,18 @@ function(scene){
       ).toFixed(1);
 
     // ====================================
-    // 🛰 POPUP
+    // 🛰 POPUP HTML
     // ====================================
 
-    L.popup({
-
-      maxWidth:280,
-
-      className:"planet-popup"
-
-    })
-
-    .setLatLng([lat,lng])
-
-    .setContent(`
+    const html = `
 
       <div style="
 
-        width:240px;
+        width:260px;
 
         background:white;
 
-        border-radius:14px;
+        border-radius:16px;
 
         overflow:hidden;
 
@@ -6464,7 +6532,7 @@ function(scene){
         font-family:sans-serif;
 
         box-shadow:
-          0 4px 18px rgba(0,0,0,0.35);
+          0 8px 24px rgba(0,0,0,0.4);
 
       ">
 
@@ -6478,9 +6546,9 @@ function(scene){
 
           color:white;
 
-          padding:10px 12px;
+          padding:12px 14px;
 
-          font-size:14px;
+          font-size:15px;
 
           font-weight:bold;
 
@@ -6503,8 +6571,9 @@ function(scene){
 
             display:block;
 
-            border-bottom:
-              1px solid #ddd;
+            background:#ddd;
+
+            min-height:180px;
 
           "
         >
@@ -6546,9 +6615,93 @@ function(scene){
         </div>
 
       </div>
-    `)
 
-    .openOn(map);
+    `;
+
+    // ====================================
+    // 🛰 CREATE POPUP
+    // ====================================
+
+    const popup =
+
+      L.popup({
+
+        maxWidth:320,
+
+        autoPan:true,
+
+        keepInView:true,
+
+        closeButton:true,
+
+        autoClose:true,
+
+        closeOnClick:false,
+
+        className:"planet-popup"
+
+      })
+
+      .setLatLng([lat,lng])
+
+      .setContent(html);
+
+    // ====================================
+    // 🛰 OPEN
+    // ====================================
+
+    popup.openOn(map);
+
+    // ====================================
+    // 🗺 SMOOTH CENTER
+    // ====================================
+
+    setTimeout(() => {
+
+      map.flyTo(
+
+        [lat,lng],
+
+        Math.max(
+          map.getZoom(),
+          13
+        ),
+
+        {
+
+          duration:1,
+
+          animate:true
+
+        }
+
+      );
+
+    },150);
+
+    // ====================================
+    // 🔥 FORCE TOP UI
+    // ====================================
+
+    setTimeout(() => {
+
+      const pane =
+
+        document.querySelector(
+          ".leaflet-popup-pane"
+        );
+
+      if(pane){
+
+        pane.style.zIndex =
+          "999999";
+      }
+
+    },250);
+
+    console.log(
+      "✅ Planet popup rendered"
+    );
 
   }
 
@@ -6571,7 +6724,7 @@ async function(){
   try {
 
     // ====================================
-    // 🔒 PREVENT MULTIPLE CLICKS
+    // 🔒 PREVENT MULTIPLE
     // ====================================
 
     if(window.planetLoading){
@@ -6584,6 +6737,12 @@ async function(){
     }
 
     window.planetLoading = true;
+
+    // ====================================
+    // ❌ CLOSE OLD POPUPS
+    // ====================================
+
+    map.closePopup();
 
     // ====================================
     // ❌ NO AOI
@@ -6608,13 +6767,13 @@ async function(){
     );
 
     // ====================================
-    // 🗺 CENTER MAP FIRST
+    // 🗺 CENTER FIRST
     // ====================================
 
     centerMap();
 
     // ====================================
-    // 🛰 LOADING MESSAGE
+    // 🛰 LOADING POPUP
     // ====================================
 
     const loadingPopup =
@@ -6638,10 +6797,11 @@ async function(){
       .setContent(`
 
         <div style="
-          padding:12px 18px;
+          padding:14px 20px;
           font-family:sans-serif;
           font-weight:bold;
           color:#111;
+          font-size:14px;
         ">
 
           🛰 Loading latest Planet scene...
@@ -6659,7 +6819,6 @@ async function(){
     const data =
 
       await searchPlanetScenes(
-
         window.currentSelectedGeometry
       );
 
@@ -6687,7 +6846,7 @@ async function(){
     }
 
     // ====================================
-    // 🛰 LATEST SCENE
+    // 🛰 LATEST
     // ====================================
 
     const scene =
@@ -6702,31 +6861,30 @@ async function(){
     img.onload = function(){
 
       // ==================================
-      // 🗺 WAIT FOR MAP MOVE END
+      // 🛰 REMOVE LOADER
       // ==================================
 
-      map.once(
+      map.closePopup(
+        loadingPopup
+      );
 
-        "moveend",
+      // ==================================
+      // 🛰 SHOW POPUP
+      // ==================================
 
-        function(){
+      showPlanetThumb(
+        scene
+      );
 
-          map.closePopup(
-            loadingPopup
-          );
+      // ==================================
+      // 🔓 UNLOCK
+      // ==================================
 
-          showPlanetThumb(
-            scene
-          );
+      window.planetLoading =
+        false;
 
-          console.log(
-            "✅ Planet scene displayed"
-          );
-
-          window.planetLoading = false;
-
-        }
-
+      console.log(
+        "✅ Planet scene displayed"
       );
 
     };
@@ -6741,7 +6899,8 @@ async function(){
         "Planet thumbnail failed"
       );
 
-      window.planetLoading = false;
+      window.planetLoading =
+        false;
     };
 
     img.src =
@@ -6750,7 +6909,11 @@ async function(){
 
       "?api_key=" +
 
-      PLANET_API_KEY;
+      PLANET_API_KEY +
+
+      "&t=" +
+
+      Date.now();
 
   }
 
@@ -6762,7 +6925,8 @@ async function(){
       "Planet verification failed"
     );
 
-    window.planetLoading = false;
+    window.planetLoading =
+      false;
   }
 };
 // ======================================================
