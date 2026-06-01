@@ -11898,46 +11898,49 @@ async function populateDivisionButtons(){
 // 🌍 SAVE DIVISION AOI
 // ====================================
 
-window.currentSelectedGeometry = {
+// ====================================
+// 🌍 SAVE DIVISION GEOMETRY
+// ====================================
 
-  type:"FeatureCollection",
+const matchingFeature =
 
-  features:
+  (
+    window.allGISFeatures || []
+  )
+  .find(f => {
 
-    (
-      window.allGISFeatures || []
-    )
-    .filter(f => {
+    const div = normalizeDivision(
 
-      const div = normalizeDivision(
+      f.properties?.Division ||
 
-        f.properties?.Division ||
+      f.properties?.division ||
 
-        f.properties?.division ||
+      ""
 
-        ""
+    );
 
-      );
+    return (
 
-      return (
+      division === "ALL"
 
-        division === "ALL"
+      ||
 
-        ||
+      div === division
+    );
 
-        div === division
-      );
-    })
-};
+  });
+
+window.currentSelectedGeometry =
+
+  matchingFeature?.geometry || null;
 
 console.log(
-  "🌍 Division AOI saved"
+  "🌍 Division geometry saved"
 );
 
 console.log(
   window.currentSelectedGeometry
 );
-
 console.log(
   "🛰 DIVISION POPUP MODE ENABLED"
 );
@@ -12427,40 +12430,44 @@ console.log(
 // 🌍 SAVE RANGE AOI
 // ====================================
 
-window.currentSelectedGeometry = {
+// ====================================
+// 🟩 SAVE RANGE GEOMETRY
+// ====================================
 
-  type:"FeatureCollection",
+const matchingFeature =
 
-  features:
+  (
+    window.allGISFeatures || []
+  )
+  .find(f => {
 
-    (
-      window.allGISFeatures || []
-    )
-    .filter(f => {
+    const r =
 
-      const r =
+      String(
 
-        String(
+        f.properties?.Range ||
 
-          f.properties?.Range ||
+        f.properties?.range ||
 
-          f.properties?.range ||
+        ""
 
-          ""
+      ).trim();
 
-        ).trim();
+    return r === range;
 
-      return r === range;
-    })
-};
+  });
+
+window.currentSelectedGeometry =
+
+  matchingFeature?.geometry || null;
 
 console.log(
-  "🟩 Range AOI saved"
+  "🟩 Range geometry saved"
 );
 
 console.log(
   window.currentSelectedGeometry
-);        // ====================================
+);     // ====================================
         // 📦 LOAD RANGE COMPARTMENTS
         // ====================================
 
@@ -15287,54 +15294,55 @@ async function populateBeatButtons(){
           // 🌍 SAVE BEAT AOI
           // ====================================
 
-          window.currentSelectedGeometry = {
+         // ====================================
+// 🟨 SAVE BEAT GEOMETRY
+// ====================================
 
-            type:"FeatureCollection",
+const matchingFeature =
 
-            features:
+  (
+    window.allGISFeatures || []
+  )
+  .find(f => {
 
-              (
-                window.allGISFeatures || []
-              )
-              .filter(f => {
+    const beatName =
 
-                const beatName =
+      String(
 
-                  String(
+        f.properties?.Beat ||
 
-                    f.properties?.Beat ||
+        f.properties?.beat ||
 
-                    f.properties?.beat ||
+        ""
 
-                    ""
+      ).trim();
 
-                  ).trim();
+    return (
 
-                return (
+      normalizeBeatName(
+        beatName
+      )
 
-                  normalizeBeatName(
-                    beatName
-                  )
+      ===
 
-                  ===
+      normalizeBeatName(
+        this.dataset.value
+      )
+    );
 
-                  normalizeBeatName(
-                    this.dataset.value
-                  )
-                );
+  });
 
-              })
+window.currentSelectedGeometry =
 
-          };
+  matchingFeature?.geometry || null;
 
-          console.log(
-            "🟨 Beat AOI saved"
-          );
+console.log(
+  "🟨 Beat geometry saved"
+);
 
-          console.log(
-            window.currentSelectedGeometry
-          );
-
+console.log(
+  window.currentSelectedGeometry
+);
           // ====================================
           // 🔥 RESET COMPARTMENT BUTTONS
           // ====================================
