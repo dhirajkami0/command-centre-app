@@ -6200,15 +6200,21 @@ var rainRadarLayer =
 
 L.tileLayer(
 
-  "https://tilecache.rainviewer.com/v2/radar/latest/256/{z}/{x}/{y}/2/1_1.png",
+  "https://tilecache.rainviewer.com/v2/radar/nowcast_512/{z}/{x}/{y}/2/1_1.png",
 
   {
 
     opacity:0.6,
 
-    maxZoom:18,
+    maxZoom:10,
 
-    zIndex:450
+    minZoom:0,
+
+    tileSize:256,
+
+    zIndex:450,
+
+    attribution:"RainViewer"
 
   }
 
@@ -27875,7 +27881,7 @@ if(map.getZoom() > 11){
 
             padding:[20,20],
 
-            maxZoom:13,
+            maxZoom:10,
 
             animate:true
           }
