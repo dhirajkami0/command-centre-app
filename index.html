@@ -6883,6 +6883,11 @@ async function processHistoryTrack(
 // FINAL FIRESTORE SAFE ENTERPRISE VERSION
 // ======================================
 
+// ======================================
+// 📜 APPEND INTO GEOMETRY HISTORY
+// FINAL FIRESTORE SAFE ENTERPRISE VERSION
+// ======================================
+
 async function appendTrackToGeometries(
 
   simplifiedLine
@@ -6947,16 +6952,71 @@ async function appendTrackToGeometries(
     // 📦 SAFE SOURCE COORDS
     // ==================================
 
-    const sourceCoords =
+    let sourceCoords =
 
       simplifiedLine.geometry
-      .coordinates
-      .map(pt => [
+      .coordinates || [];
 
-        Number(pt[0]),
+    // ==================================
+    // 🔥 FLATTEN SOURCE COORDS
+    // ==================================
 
-        Number(pt[1])
-      ]);
+    sourceCoords =
+
+      sourceCoords.map(pt => {
+
+        // NORMAL
+        if(
+
+          Array.isArray(pt) &&
+
+          typeof pt[0] === "number" &&
+
+          typeof pt[1] === "number"
+        ){
+
+          return [
+
+            Number(pt[0]),
+
+            Number(pt[1])
+          ];
+        }
+
+        // NESTED
+        else if(
+
+          Array.isArray(pt) &&
+
+          Array.isArray(pt[0])
+        ){
+
+          return [
+
+            Number(pt[0][0]),
+
+            Number(pt[0][1])
+          ];
+        }
+
+        return null;
+
+      })
+
+      .filter(Boolean);
+
+    // ==================================
+    // ❌ TOO SMALL
+    // ==================================
+
+    if(sourceCoords.length < 2){
+
+      console.warn(
+        "⚠ Invalid sourceCoords"
+      );
+
+      return;
+    }
 
     // ==================================
     // 🔄 LOOP FEATURES
@@ -7080,7 +7140,9 @@ async function appendTrackToGeometries(
             if(inside){
 
               currentSegment.push([
+
                 Number(pt[0]),
+
                 Number(pt[1])
               ]);
             }
@@ -7305,9 +7367,80 @@ async function appendTrackToGeometries(
         ){
 
           btrCoords =
-
             old.geometry.coordinates;
         }
+      }
+
+      // ==============================
+      // 🔥 FORCE SAFE LINESTRING
+      // ==============================
+
+      const safeLine = [];
+
+      for(const pt of sourceCoords){
+
+        // ==========================
+        // ✅ NORMAL POINT
+        // ==========================
+
+        if(
+
+          Array.isArray(pt) &&
+
+          typeof pt[0] === "number" &&
+
+          typeof pt[1] === "number"
+        ){
+
+          safeLine.push([
+
+            Number(pt[0]),
+
+            Number(pt[1])
+          ]);
+        }
+
+        // ==========================
+        // 🔥 NESTED POINT FIX
+        // ==========================
+
+        else if(
+
+          Array.isArray(pt) &&
+
+          Array.isArray(pt[0])
+        ){
+
+          const p = pt[0];
+
+          if(
+
+            typeof p[0] === "number" &&
+
+            typeof p[1] === "number"
+          ){
+
+            safeLine.push([
+
+              Number(p[0]),
+
+              Number(p[1])
+            ]);
+          }
+        }
+      }
+
+      // ==============================
+      // ❌ INVALID
+      // ==============================
+
+      if(safeLine.length < 2){
+
+        console.warn(
+          "⚠ Invalid safeLine"
+        );
+
+        return;
       }
 
       // ==============================
@@ -7315,13 +7448,7 @@ async function appendTrackToGeometries(
       // ==============================
 
       btrCoords.push(
-
-        sourceCoords.map(pt => [
-
-          Number(pt[0]),
-
-          Number(pt[1])
-        ])
+        safeLine
       );
 
       // ==============================
