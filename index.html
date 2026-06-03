@@ -11908,6 +11908,7 @@ async function populateDivisionButtons(){
       console.log(
         window.currentSelectedGeometry
       );
+      loadPolygonWeather();
 
       console.log(
         "🛰 DIVISION POPUP MODE ENABLED"
@@ -12146,7 +12147,7 @@ async function populateDivisionButtons(){
           console.log(
             window.currentSelectedGeometry
           );
-
+loadPolygonWeather();
           // ====================================
           // 🧹 RESET COMPARTMENTS
           // ====================================
@@ -12490,7 +12491,8 @@ async function populateDivisionButtons(){
         console.log(
           window.currentSelectedGeometry
         );
-
+// 🌦 LOAD POLYGON WEATHER
+loadPolygonWeather();
         // ====================================
         // 📦 LOAD RANGE COMPARTMENTS
         // ====================================
@@ -12635,7 +12637,8 @@ async function populateDivisionButtons(){
             console.log(
               window.currentSelectedGeometry
             );
-
+// 🌦 LOAD POLYGON WEATHER
+loadPolygonWeather();
             console.log(
               "🎯 RANGE POPUP MODE ENABLED"
             );
@@ -13030,6 +13033,7 @@ async function populateDivisionButtons(){
             window.currentSelectedGeometry
           );
 
+          loadPolygonWeather();
           console.log(
             "🎯 POPUP LEVEL: RANGE"
           );
@@ -15441,6 +15445,7 @@ async function populateBeatButtons(){
             window.currentSelectedGeometry
           );
 
+          loadPolygonWeather();
           // ====================================
           // 🔥 RESET COMPARTMENT BUTTONS
           // ====================================
@@ -15783,6 +15788,7 @@ async function populateCompartmentButtons(){
           console.log(
             window.currentSelectedGeometry
           );
+          loadPolygonWeather();
 
           // ====================================
           // 🎨 STYLE UPDATE ONLY
@@ -27152,7 +27158,219 @@ function submitKML(){
     /* ============================================================
        🌦 BLOCK 10 → WEATHER + REFRESH ENGINE
     ============================================================ */
+function getGeometryCenter(geojson){
 
+  try {
+
+    if(!geojson){
+      return null;
+    }
+
+    const layer =
+
+      L.geoJSON(geojson);
+
+    const bounds =
+
+      layer.getBounds();
+
+    const center =
+      bounds.getCenter();
+
+    return {
+
+      lat:center.lat,
+
+      lng:center.lng
+    };
+
+  }
+
+  catch(e){
+
+    console.error(
+      "❌ getGeometryCenter",
+      e
+    );
+
+    return null;
+  }
+}
+
+async function loadPolygonWeather(){
+
+  try {
+
+    // =====================================
+    // 🌍 AOI
+    // =====================================
+
+    const geo =
+
+      window.currentSelectedGeometry;
+
+    if(!geo){
+
+      console.warn(
+        "⚠ No polygon selected"
+      );
+
+      return;
+    }
+
+    // =====================================
+    // 📍 CENTER
+    // =====================================
+
+    const center =
+
+      getGeometryCenter(geo);
+
+    if(!center){
+
+      console.warn(
+        "⚠ No polygon center"
+      );
+
+      return;
+    }
+
+    console.log(
+      "🌦 Weather centroid:",
+      center
+    );
+
+    // =====================================
+    // 🌦 API
+    // =====================================
+
+    const url =
+
+      `https://api.openweathermap.org/data/2.5/forecast?lat=${center.lat}&lon=${center.lng}&appid=b928faa16c09eb3facb9e3238d2e59f8&units=metric`;
+
+    const res =
+      await fetch(url);
+
+    const data =
+      await res.json();
+
+    console.log(
+      "🌦 Polygon weather:",
+      data
+    );
+
+    // =====================================
+    // ❌ INVALID
+    // =====================================
+
+    if(!data?.list?.length){
+
+      console.warn(
+        "⚠ No weather data"
+      );
+
+      return;
+    }
+
+    // =====================================
+    // 🌤 CURRENT
+    // =====================================
+
+    const now =
+      data.list[0];
+
+    // =====================================
+    // 🌍 AREA LABEL
+    // =====================================
+
+    const label =
+
+      window.gisFilter.compartment !== "ALL"
+
+      ? window.gisFilter.compartment
+
+      : window.gisFilter.beat !== "ALL"
+
+      ? window.gisFilter.beat
+
+      : window.gisFilter.range !== "ALL"
+
+      ? window.gisFilter.range
+
+      : window.gisFilter.division !== "ALL"
+
+      ? window.gisFilter.division
+
+      : "BTR";
+
+    // =====================================
+    // 🌤 NOW UI
+    // =====================================
+
+    document.getElementById(
+      "weatherNow"
+    ).innerHTML = `
+
+      <div style="
+        padding:10px;
+        line-height:1.8;
+      ">
+
+        <div style="
+          font-size:15px;
+          font-weight:bold;
+          color:#4caf50;
+          margin-bottom:8px;
+        ">
+
+          🌍 ${label} Weather
+
+        </div>
+
+        🌡 Temp:
+        ${now.main.temp.toFixed(1)} °C
+
+        <br>
+
+        💧 Humidity:
+        ${now.main.humidity}%
+
+        <br>
+
+        ☁ Cloud:
+        ${now.clouds.all}%
+
+        <br>
+
+        🌧 Rain:
+        ${
+          now.rain?.["3h"] || 0
+        } mm
+
+        <br>
+
+        💨 Wind:
+        ${now.wind.speed} m/s
+
+        <br>
+
+        🧭 Condition:
+        ${now.weather[0].description}
+
+      </div>
+    `;
+
+  }
+
+  catch(err){
+
+    console.error(
+      "❌ loadPolygonWeather",
+      err
+    );
+  }
+}
+    
     /* =========================
        🌦 WEATHER SYSTEM (FINAL)
     ========================= */
