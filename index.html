@@ -1632,15 +1632,123 @@ NORTH REMAINS ABSOLUTE
   "
 ></div>
 </div>    
-    <div class="weather-drawer" id="weatherDrawer" style="margin-top: 10px; background: rgba(255,255,255,0.05); border-radius: 8px; overflow: hidden;">
-      <button class="weather-toggle" onclick="toggleWeatherDrawer()" style="width:100%; background:none; border:none; color:#4caf50; display:flex; justify-content:space-between; align-items:center; padding: 12px; cursor:pointer; font-weight:bold; font-size:13px;"> <span>
-        <i class="fa-solid fa-cloud-sun"></i> Weather Info</span> <i id="weatherChevron" class="fa-solid fa-chevron-down"></i> </button> <div class="weather-content" id="weatherContent" style="max-height: 0px; opacity: 0; overflow: hidden; transition:
-  opacity 0.4s ease,
-  max-height 0.4s ease; padding: 0 12px;"> 
-          <div id="weatherNow" style="margin-top:5px;"></div> 
-          <hr style="border:0; border-top:1px solid rgba(255,255,255,0.1); margin:8px 0;">
-          <div id="todayForecast"></div> <hr style="border:0; border-top:1px solid rgba(255,255,255,0.1); margin:8px 0;">
-          <div id="weekForecast"></div> </div> </div> </div>
+ <div class="weather-drawer"
+     id="weatherDrawer"
+     style="
+       margin-top:10px;
+       background:rgba(255,255,255,0.05);
+       border-radius:8px;
+       overflow:hidden;
+     ">
+
+  <!-- 🌦 TOGGLE -->
+  <button
+    class="weather-toggle"
+    onclick="toggleWeatherDrawer()"
+    style="
+      width:100%;
+      background:none;
+      border:none;
+      color:#4caf50;
+      display:flex;
+      justify-content:space-between;
+      align-items:center;
+      padding:12px;
+      cursor:pointer;
+      font-weight:bold;
+      font-size:13px;
+    "
+  >
+
+    <span>
+
+      <i class="fa-solid fa-cloud-sun"></i>
+
+      Weather Info
+
+    </span>
+
+    <i
+      id="weatherChevron"
+      class="fa-solid fa-chevron-down"
+    ></i>
+
+  </button>
+
+  <!-- 🌦 CONTENT -->
+  <div
+
+    class="weather-content"
+
+    id="weatherContent"
+
+    style="
+      max-height:0px;
+      opacity:0;
+      overflow:hidden;
+      transition:
+        opacity 0.4s ease,
+        max-height 0.4s ease;
+      padding:0 12px;
+    "
+  >
+
+    <!-- 🌤 CURRENT -->
+    <div
+      id="weatherNow"
+      style="margin-top:5px;"
+    ></div>
+
+    <hr style="
+      border:0;
+      border-top:
+        1px solid rgba(255,255,255,0.1);
+      margin:8px 0;
+    ">
+
+    <!-- ⏰ 18HR -->
+    <div id="todayForecast"></div>
+
+    <hr style="
+      border:0;
+      border-top:
+        1px solid rgba(255,255,255,0.1);
+      margin:8px 0;
+    ">
+
+    <!-- 📅 5DAY -->
+    <div id="weekForecast"></div>
+
+    <!-- 🌧 RADAR BUTTON -->
+    <button
+
+      id="radarBtn"
+
+      onclick="toggleRainRadar()"
+
+      style="
+        width:100%;
+        margin-top:10px;
+        margin-bottom:10px;
+        background:#0d47a1;
+        color:white;
+        border:none;
+        padding:10px;
+        border-radius:8px;
+        cursor:pointer;
+        font-weight:bold;
+      "
+    >
+
+      🌧 LIVE RAIN RADAR
+
+    </button>
+
+  </div>
+
+</div></div> </div>
+
+  
   <!-- 🟩 COVERAGE PANEL (FINAL CLEAN VERSION) -->
 <div id="coveragePanel" class="legend" style="display:none;">
 
@@ -6088,7 +6196,23 @@ var mapboxSatellite = L.tileLayer(
 // ======================================
 // 🌧 WEATHER RADAR
 // ======================================
+var rainRadarLayer =
 
+L.tileLayer(
+
+  "https://tilecache.rainviewer.com/v2/radar/latest/256/{z}/{x}/{y}/2/1_1.png",
+
+  {
+
+    opacity:0.6,
+
+    maxZoom:18,
+
+    zIndex:450
+
+  }
+
+);
 var rainLayer = L.tileLayer(
   'https://tile.openweathermap.org/map/precipitation_new/{z}/{x}/{y}.png?appid=b928faa16c09eb3facb9e3238d2e59f8',
   {
@@ -6137,7 +6261,7 @@ window.weatherLayers = {
 
   "🌡 Temperature": tempLayer
 };
-
+window.radarEnabled = false;
 // ======================================
 // 🌲 GEE FOREST
 // ======================================
@@ -27580,7 +27704,215 @@ async function loadPolygonWeather(){
     );
   }
 }
-    
+    function toggleRainRadar(){
+
+  try {
+
+    // =====================================
+    // 🌍 NO POLYGON
+    // =====================================
+
+    if(
+      !window.currentSelectedGeometry
+    ){
+
+      alert(
+        "Select Division / Range / Beat / Compartment first"
+      );
+
+      return;
+    }
+
+    // =====================================
+    // 🌧 TURN OFF
+    // =====================================
+
+    if(window.radarEnabled){
+
+      // REMOVE LAYER
+      if(
+        map.hasLayer(
+          rainRadarLayer
+        )
+      ){
+
+        map.removeLayer(
+          rainRadarLayer
+        );
+      }
+
+      // REMOVE AOI BORDER
+      if(
+        window.radarAOILayer
+      ){
+
+        map.removeLayer(
+          window.radarAOILayer
+        );
+
+        window.radarAOILayer =
+          null;
+      }
+
+      // RESET BUTTON
+      const btn =
+
+        document.getElementById(
+          "radarBtn"
+        );
+
+      if(btn){
+
+        btn.style.background =
+          "#0d47a1";
+
+        btn.innerHTML =
+          "🌧 LIVE RAIN RADAR";
+      }
+
+      window.radarEnabled =
+        false;
+
+      console.log(
+        "🌧 Radar OFF"
+      );
+
+      return;
+    }
+
+    // =====================================
+    // 🌧 TURN ON
+    // =====================================
+
+    // REMOVE OLD AOI
+    if(
+      window.radarAOILayer
+    ){
+
+      map.removeLayer(
+        window.radarAOILayer
+      );
+    }
+
+    // =====================================
+    // 🌍 AOI BORDER
+    // =====================================
+
+    window.radarAOILayer =
+
+      L.geoJSON(
+
+        window.currentSelectedGeometry,
+
+        {
+
+          style:{
+
+            color:"#00e676",
+
+            weight:3,
+
+            fill:false,
+
+            opacity:1
+          }
+        }
+
+      ).addTo(map);
+
+    // =====================================
+    // 🌧 RADAR
+    // =====================================
+
+    rainRadarLayer.addTo(map);
+
+    // =====================================
+    // 🎯 BUTTON ACTIVE
+    // =====================================
+
+    const btn =
+
+      document.getElementById(
+        "radarBtn"
+      );
+
+    if(btn){
+
+      btn.style.background =
+        "#1b5e20";
+
+      btn.innerHTML =
+        "✅ RADAR ACTIVE";
+    }
+
+    // =====================================
+    // 🌍 FIT TO AOI
+    // =====================================
+
+    try {
+
+      const bounds =
+
+        window.radarAOILayer
+        .getBounds();
+
+      if(
+        bounds &&
+        bounds.isValid()
+      ){
+
+        map.fitBounds(
+
+          bounds,
+
+          {
+
+            padding:[20,20],
+
+            maxZoom:13,
+
+            animate:true
+          }
+
+        );
+      }
+
+    }
+
+    catch(e){
+
+      console.warn(
+        "⚠ AOI fit failed",
+        e
+      );
+    }
+
+    // =====================================
+    // ✅ ENABLED
+    // =====================================
+
+    window.radarEnabled =
+      true;
+
+    console.log(
+      "🌧 Radar ON"
+    );
+
+    console.log(
+      "🌍 Radar AOI:",
+      window.currentSelectedGeometry
+    );
+
+  }
+
+  catch(err){
+
+    console.error(
+      "❌ Radar toggle failed",
+      err
+    );
+  }
+}
     /* =========================
        🌦 WEATHER SYSTEM (FINAL)
     ========================= */
