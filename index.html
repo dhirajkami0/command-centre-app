@@ -6199,11 +6199,11 @@ var mapboxSatellite = L.tileLayer(
 
 var rainLayer = L.tileLayer(
 
-  'https://tile.openweathermap.org/map/precipitation_new/{z}/{x}/{y}.png?appid=b928faa16c09eb3facb9e3238d2e59f8',
+  'https://tile.openweathermap.org/map/clouds_new/{z}/{x}/{y}.png?appid=b928faa16c09eb3facb9e3238d2e59f8',
 
   {
 
-    opacity:0.6,
+    opacity:0.95,
 
     maxZoom:19,
 
@@ -6212,7 +6212,6 @@ var rainLayer = L.tileLayer(
   }
 
 );
-
 var cloudLayer = L.tileLayer(
 
   'https://tile.openweathermap.org/map/clouds_new/{z}/{x}/{y}.png?appid=b928faa16c09eb3facb9e3238d2e59f8',
