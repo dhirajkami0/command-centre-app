@@ -6196,29 +6196,7 @@ var mapboxSatellite = L.tileLayer(
 // ======================================
 // 🌧 WEATHER RADAR
 // ======================================
-var rainRadarLayer =
 
-L.tileLayer(
-
-  "https://tilecache.rainviewer.com/v2/radar/nowcast_512/{z}/{x}/{y}/2/1_1.png",
-
-  {
-
-    opacity:0.6,
-
-    maxZoom:10,
-
-    minZoom:0,
-
-    tileSize:256,
-
-    zIndex:450,
-
-    attribution:"RainViewer"
-
-  }
-
-);
 var rainLayer = L.tileLayer(
 
   'https://tile.openweathermap.org/map/precipitation_new/{z}/{x}/{y}.png?appid=b928faa16c09eb3facb9e3238d2e59f8',
@@ -27838,7 +27816,7 @@ async function loadPolygonWeather(){
     // 🌧 RADAR
     // =====================================
 
-    rainRadarLayer.addTo(map);
+   rainLayer.addTo(map);
 
 // LIMIT RADAR ZOOM
 if(map.getZoom() > 11){
