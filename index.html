@@ -6890,6 +6890,11 @@ async function processHistoryTrack(
 // FIRESTORE SAFE
 // ======================================
 
+// ======================================
+// 📜 APPEND INTO GEOMETRY HISTORY
+// FINAL ENTERPRISE VERSION
+// ======================================
+
 async function appendTrackToGeometries(
 
   simplifiedLine
@@ -6937,6 +6942,7 @@ async function appendTrackToGeometries(
 
     // ==================================
     // 📦 SOURCE COORDS
+    // MUST BE [lng,lat]
     // ==================================
 
     let sourceCoords =
@@ -6945,7 +6951,7 @@ async function appendTrackToGeometries(
       .coordinates || [];
 
     // ==================================
-    // 🔥 FLATTEN
+    // 🔥 SAFE FLATTEN
     // ==================================
 
     sourceCoords =
@@ -6964,9 +6970,9 @@ async function appendTrackToGeometries(
 
           return [
 
-            Number(pt[0]),
+            Number(pt[0]), // lng
 
-            Number(pt[1])
+            Number(pt[1])  // lat
           ];
         }
 
@@ -6991,6 +6997,15 @@ async function appendTrackToGeometries(
       })
 
       .filter(Boolean);
+
+    // ==================================
+    // 🔥 DEBUG
+    // ==================================
+
+    console.log(
+      "🔥 sourceCoords",
+      sourceCoords
+    );
 
     // ==================================
     // ❌ INVALID
@@ -7111,6 +7126,8 @@ async function appendTrackToGeometries(
         ){
 
           const pt = sourceCoords[i];
+
+          // pt = [lng,lat]
 
           const inside =
 
@@ -7340,10 +7357,28 @@ async function appendTrackToGeometries(
       }
 
       // ==============================
+      // 🔥 DEBUG
+      // ==============================
+
+      console.log(
+        "🔥 safeLine",
+        safeLine
+      );
+
+      console.log(
+        "🔥 safeLine length",
+        safeLine.length
+      );
+
+      // ==============================
       // ❌ INVALID
       // ==============================
 
       if(safeLine.length < 2){
+
+        console.warn(
+          "❌ safeLine too small"
+        );
 
         return;
       }
@@ -7357,6 +7392,11 @@ async function appendTrackToGeometries(
         polyline.encode(
           safeLine
         );
+
+      console.log(
+        "🔥 encoded",
+        encoded
+      );
 
       // ==============================
       // ➕ APPEND
