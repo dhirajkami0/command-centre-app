@@ -6722,6 +6722,11 @@ async function processHistoryTrack(
 // 📜 APPEND INTO GEOMETRY HISTORY
 // ======================================
 
+// ======================================
+// 📜 APPEND INTO GEOMETRY HISTORY
+// ENTERPRISE VERSION
+// ======================================
+
 async function appendTrackToGeometries(
 
   simplifiedLine
@@ -6750,11 +6755,11 @@ async function appendTrackToGeometries(
 
     const allFeatures = [
 
-      ...(window.rangeFeatures || []),
+      ...(window.compartmentFeatures || []),
 
       ...(window.beatFeatures || []),
 
-      ...(window.compartmentFeatures || []),
+      ...(window.rangeFeatures || []),
 
       ...(window.divisionFeatures || [])
     ];
@@ -6767,9 +6772,17 @@ async function appendTrackToGeometries(
 
       try{
 
+        // ==============================
+        // ❌ INVALID
+        // ==============================
+
         if(
-          !feature?.geometry
+
+          !feature ||
+
+          !feature.geometry
         ){
+
           continue;
         }
 
@@ -6779,11 +6792,15 @@ async function appendTrackToGeometries(
 
         const poly = feature;
 
+        const props =
+
+          poly.properties || {};
+
         // ==============================
-        // 🔥 INTERSECTS?
+        // 🔥 FAST INTERSECT CHECK
         // ==============================
 
-        const hit =
+        const intersects =
 
           turf.booleanIntersects(
 
@@ -6792,18 +6809,14 @@ async function appendTrackToGeometries(
             poly
           );
 
-        if(!hit){
+        if(!intersects){
 
           continue;
         }
 
         // ==============================
-        // 🌍 NAME
+        // 🆔 GEOMETRY ID
         // ==============================
-
-        const props =
-
-          poly.properties || {};
 
         let geometryId = null;
 
@@ -6851,23 +6864,111 @@ async function appendTrackToGeometries(
             `division_${props.division}`;
         }
 
+        // ==============================
+        // ❌ NO ID
+        // ==============================
+
         if(!geometryId){
 
           continue;
         }
 
         // ==============================
-        // ✂ CLIP
+        // ✂ TRUE POLYGON CLIP
+        // ENTERPRISE VERSION
         // ==============================
 
-        const clipped =
+        let clippedCoords = [];
 
-          turf.bboxClip(
+        try{
 
-            simplifiedLine,
+          // ==================================
+          // 🔥 SEGMENT FILTERING
+          // ==================================
 
-            turf.bbox(poly)
+          const coords =
+
+            simplifiedLine.geometry
+            .coordinates;
+
+          let currentSegment = [];
+
+          for(let i=0;i<coords.length;i++){
+
+            const pt = coords[i];
+
+            const point =
+
+              turf.point(pt);
+
+            // ==============================
+            // 🌍 INSIDE POLYGON?
+            // ==============================
+
+            const inside =
+
+              turf.booleanPointInPolygon(
+
+                point,
+
+                poly
+              );
+
+            // ==============================
+            // ✅ INSIDE
+            // ==============================
+
+            if(inside){
+
+              currentSegment.push(pt);
+            }
+
+            // ==============================
+            // ❌ OUTSIDE
+            // ==============================
+
+            else{
+
+              // SAVE SEGMENT
+              if(
+
+                currentSegment.length >= 2
+              ){
+
+                clippedCoords.push(
+                  currentSegment
+                );
+              }
+
+              currentSegment = [];
+            }
+          }
+
+          // ==================================
+          // 📦 LAST SEGMENT
+          // ==================================
+
+          if(
+
+            currentSegment.length >= 2
+          ){
+
+            clippedCoords.push(
+              currentSegment
+            );
+          }
+
+        }
+
+        catch(clipErr){
+
+          console.warn(
+            "⚠ Polygon clip failed",
+            clipErr
           );
+
+          continue;
+        }
 
         // ==============================
         // ❌ EMPTY
@@ -6875,10 +6976,11 @@ async function appendTrackToGeometries(
 
         if(
 
-          !clipped?.geometry
-            ?.coordinates
-            ?.length
+          !clippedCoords ||
+
+          !clippedCoords.length
         ){
+
           continue;
         }
 
@@ -6902,24 +7004,26 @@ async function appendTrackToGeometries(
           );
 
         // ==============================
-        // 📥 LOAD EXISTING
+        // 📥 EXISTING
         // ==============================
 
         const snap =
 
-          await window.fb.getDoc(ref);
+          await window.fb.getDoc(
+            ref
+          );
 
-        let coords = [];
+        let existingCoords = [];
 
         // ==============================
-        // 📦 EXISTING
+        // 📦 LOAD OLD
         // ==============================
 
         if(snap.exists()){
 
           const old = snap.data();
 
-          coords =
+          existingCoords =
 
             old?.geometry
             ?.coordinates || [];
@@ -6929,10 +7033,8 @@ async function appendTrackToGeometries(
         // ➕ APPEND
         // ==============================
 
-        coords.push(
-
-          clipped.geometry
-          .coordinates
+        existingCoords.push(
+          ...clippedCoords
         );
 
         // ==============================
@@ -6951,8 +7053,13 @@ async function appendTrackToGeometries(
 
               type:"MultiLineString",
 
-              coordinates:coords
+              coordinates:
+                existingCoords
             },
+
+            geometryId,
+
+            monthKey,
 
             updatedAt:
               Date.now()
@@ -6962,20 +7069,123 @@ async function appendTrackToGeometries(
 
         console.log(
 
-          "✅ Appended:",
+          "✅ Geometry updated:",
 
           geometryId
         );
 
       }
 
-      catch(e){
+      catch(featureErr){
 
         console.warn(
-          "⚠ Geometry append failed",
-          e
+
+          "⚠ Feature processing failed",
+
+          featureErr
         );
       }
+    }
+
+    // ==================================
+    // 🌍 FULL BTR MASTER
+    // ==================================
+
+    try{
+
+      const btrRef =
+
+        window.fb.doc(
+
+          window.db,
+
+          "geometry_history",
+
+          monthKey,
+
+          "data",
+
+          "btr_ALL"
+        );
+
+      // ==============================
+      // 📥 EXISTING
+      // ==============================
+
+      const btrSnap =
+
+        await window.fb.getDoc(
+          btrRef
+        );
+
+      let btrCoords = [];
+
+      // ==============================
+      // 📦 LOAD OLD
+      // ==============================
+
+      if(btrSnap.exists()){
+
+        const old = btrSnap.data();
+
+        btrCoords =
+
+          old?.geometry
+          ?.coordinates || [];
+      }
+
+      // ==============================
+      // ➕ APPEND FULL TRACK
+      // ==============================
+
+      btrCoords.push(
+
+        simplifiedLine.geometry
+        .coordinates
+      );
+
+      // ==============================
+      // 💾 SAVE
+      // ==============================
+
+      await window.fb.setDoc(
+
+        btrRef,
+
+        {
+
+          type:"Feature",
+
+          geometry:{
+
+            type:"MultiLineString",
+
+            coordinates:
+              btrCoords
+          },
+
+          geometryId:"btr_ALL",
+
+          monthKey,
+
+          updatedAt:
+            Date.now()
+        }
+
+      );
+
+      console.log(
+        "✅ BTR history updated"
+      );
+
+    }
+
+    catch(btrErr){
+
+      console.warn(
+        "⚠ BTR append failed",
+        btrErr
+      );
     }
 
   }
