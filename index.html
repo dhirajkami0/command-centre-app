@@ -1552,8 +1552,7 @@ NORTH REMAINS ABSOLUTE
 
 </button>
     </div>
-    
-<!-- ========================================= -->
+    <!-- ========================================= -->
 <!-- 🌍 GIS FILTER PANEL -->
 <!-- ========================================= -->
 <div
@@ -1564,7 +1563,6 @@ NORTH REMAINS ABSOLUTE
     background:rgba(255,255,255,0.06);
     border-radius:12px;
     padding:10px;
-    
   "
 >
 
@@ -1606,32 +1604,76 @@ NORTH REMAINS ABSOLUTE
       gap:8px;
     "
   ></div>
-<!-- ===================================== -->
-<!-- 🟨 BEAT BUTTONS -->
-<!-- ===================================== -->
-<div
-  id="beatButtons"
-  style="
-    display:flex;
-    flex-wrap:wrap;
-    gap:8px;
-    margin-top:10px;
-  "
-></div>
 
-<!-- ===================================== -->
-<!-- 🟧 COMPARTMENT BUTTONS -->
-<!-- ===================================== -->
-<div
-  id="compartmentButtons"
-  style="
-    display:flex;
-    flex-wrap:wrap;
-    gap:8px;
-    margin-top:10px;
-  "
-></div>
-</div>    
+  <!-- ===================================== -->
+  <!-- 🟨 BEAT BUTTONS -->
+  <!-- ===================================== -->
+  <div
+    id="beatButtons"
+    style="
+      display:flex;
+      flex-wrap:wrap;
+      gap:8px;
+      margin-top:10px;
+    "
+  ></div>
+
+  <!-- ===================================== -->
+  <!-- 🟧 COMPARTMENT BUTTONS -->
+  <!-- ===================================== -->
+  <div
+    id="compartmentButtons"
+    style="
+      display:flex;
+      flex-wrap:wrap;
+      gap:8px;
+      margin-top:10px;
+    "
+  ></div>
+
+  <!-- ===================================== -->
+  <!-- 📜 HISTORY BUTTON -->
+  <!-- ===================================== -->
+  <button
+
+    id="historyBtn"
+
+    onclick="showMonthHistory()"
+
+    class="btn-center"
+
+    style="
+      margin-top:10px;
+      background:#4caf50;
+    "
+  >
+
+    📜 SHOW MONTH HISTORY
+
+  </button>
+
+  <!-- ===================================== -->
+  <!-- 🧹 CLEAR HISTORY -->
+  <!-- ===================================== -->
+  <button
+
+    id="clearHistoryBtn"
+
+    onclick="clearMonthHistory()"
+
+    class="btn-center"
+
+    style="
+      margin-top:6px;
+      background:#c62828;
+    "
+  >
+
+    🧹 CLEAR HISTORY
+
+  </button>
+
+</div>
  <div class="weather-drawer"
      id="weatherDrawer"
      style="
@@ -6363,7 +6405,43 @@ L.control.layers(
   }
 
 ).addTo(map);
+// ======================================
+// 📜 HISTORY CANVAS RENDERER
+// ======================================
 
+window.historyRenderer =
+
+  L.canvas({
+
+    padding:0.5
+  });
+
+// ======================================
+// 📜 HISTORY LAYER
+// ======================================
+
+window.historyLayer =
+
+  L.geoJSON(
+
+    null,
+
+    {
+
+      renderer:
+        window.historyRenderer,
+
+      style:{
+
+        color:"#00ff90",
+
+        weight:2,
+
+        opacity:0.75
+      }
+    }
+
+  ).addTo(map);
 // ======================================
 // 🛰 PLANET SEARCH
 // GIS-AWARE VERSION
@@ -6527,8 +6605,532 @@ async function(aoiGeometry){
 // ======================================
 // 🛰 PLANET THUMB POPUP
 // ======================================
+function clearMonthHistory(){
 
+  try{
 
+    if(window.historyLayer){
+
+      window.historyLayer.clearLayers();
+    }
+
+    console.log(
+      "🧹 History cleared"
+    );
+
+  }catch(err){
+
+    console.error(
+      "❌ clearMonthHistory",
+      err
+    );
+  }
+}
+// ======================================
+// 📜 PROCESS HISTORY TRACK
+// ======================================
+
+async function processHistoryTrack(
+
+  rawCoords
+
+){
+
+  try{
+
+    // ==================================
+    // ❌ INVALID
+    // ==================================
+
+    if(
+
+      !rawCoords ||
+
+      rawCoords.length < 2
+    ){
+
+      return;
+    }
+
+    // ==================================
+    // 🌍 RAW GEOJSON
+    // ==================================
+
+    const rawLine =
+
+      turf.lineString(
+
+        rawCoords.map(p => [
+
+          p.lng,
+          p.lat
+        ])
+      );
+
+    // ==================================
+    // ✨ DOUGLAS-PEUCKER
+    // ==================================
+
+    const simplified =
+
+      turf.simplify(
+
+        rawLine,
+
+        {
+
+          tolerance:0.00008,
+
+          highQuality:false,
+
+          mutate:false
+        }
+      );
+
+    console.log(
+
+      "✨ Simplified:",
+
+      rawCoords.length,
+
+      "→",
+
+      simplified.geometry
+      .coordinates.length
+    );
+
+    // ==================================
+    // 🌍 SAVE TO GEOMETRIES
+    // ==================================
+
+    await appendTrackToGeometries(
+
+      simplified
+    );
+
+  }
+
+  catch(err){
+
+    console.error(
+      "❌ processHistoryTrack",
+      err
+    );
+  }
+}
+    // ======================================
+// 📜 APPEND INTO GEOMETRY HISTORY
+// ======================================
+
+async function appendTrackToGeometries(
+
+  simplifiedLine
+
+){
+
+  try{
+
+    // ==================================
+    // 📅 MONTH KEY
+    // ==================================
+
+    const d = new Date();
+
+    const monthKey =
+
+      `${d.getFullYear()}_${
+        String(
+          d.getMonth()+1
+        ).padStart(2,"0")
+      }`;
+
+    // ==================================
+    // 🌍 ALL GIS FEATURES
+    // ==================================
+
+    const allFeatures = [
+
+      ...(window.rangeFeatures || []),
+
+      ...(window.beatFeatures || []),
+
+      ...(window.compartmentFeatures || []),
+
+      ...(window.divisionFeatures || [])
+    ];
+
+    // ==================================
+    // 🔄 LOOP FEATURES
+    // ==================================
+
+    for(const feature of allFeatures){
+
+      try{
+
+        if(
+          !feature?.geometry
+        ){
+          continue;
+        }
+
+        // ==============================
+        // 🌍 POLYGON
+        // ==============================
+
+        const poly = feature;
+
+        // ==============================
+        // 🔥 INTERSECTS?
+        // ==============================
+
+        const hit =
+
+          turf.booleanIntersects(
+
+            simplifiedLine,
+
+            poly
+          );
+
+        if(!hit){
+
+          continue;
+        }
+
+        // ==============================
+        // 🌍 NAME
+        // ==============================
+
+        const props =
+
+          poly.properties || {};
+
+        let geometryId = null;
+
+        // ==============================
+        // 📦 COMPARTMENT
+        // ==============================
+
+        if(props.compartment){
+
+          geometryId =
+
+            `compartment_${props.compartment}`;
+        }
+
+        // ==============================
+        // 🟨 BEAT
+        // ==============================
+
+        else if(props.beat){
+
+          geometryId =
+
+            `beat_${props.beat}`;
+        }
+
+        // ==============================
+        // 🟩 RANGE
+        // ==============================
+
+        else if(props.range){
+
+          geometryId =
+
+            `range_${props.range}`;
+        }
+
+        // ==============================
+        // 🟦 DIVISION
+        // ==============================
+
+        else if(props.division){
+
+          geometryId =
+
+            `division_${props.division}`;
+        }
+
+        if(!geometryId){
+
+          continue;
+        }
+
+        // ==============================
+        // ✂ CLIP
+        // ==============================
+
+        const clipped =
+
+          turf.bboxClip(
+
+            simplifiedLine,
+
+            turf.bbox(poly)
+          );
+
+        // ==============================
+        // ❌ EMPTY
+        // ==============================
+
+        if(
+
+          !clipped?.geometry
+            ?.coordinates
+            ?.length
+        ){
+          continue;
+        }
+
+        // ==============================
+        // 📜 DOC REF
+        // ==============================
+
+        const ref =
+
+          window.fb.doc(
+
+            window.db,
+
+            "geometry_history",
+
+            monthKey,
+
+            "data",
+
+            geometryId
+          );
+
+        // ==============================
+        // 📥 LOAD EXISTING
+        // ==============================
+
+        const snap =
+
+          await window.fb.getDoc(ref);
+
+        let coords = [];
+
+        // ==============================
+        // 📦 EXISTING
+        // ==============================
+
+        if(snap.exists()){
+
+          const old = snap.data();
+
+          coords =
+
+            old?.geometry
+            ?.coordinates || [];
+        }
+
+        // ==============================
+        // ➕ APPEND
+        // ==============================
+
+        coords.push(
+
+          clipped.geometry
+          .coordinates
+        );
+
+        // ==============================
+        // 💾 SAVE
+        // ==============================
+
+        await window.fb.setDoc(
+
+          ref,
+
+          {
+
+            type:"Feature",
+
+            geometry:{
+
+              type:"MultiLineString",
+
+              coordinates:coords
+            },
+
+            updatedAt:
+              Date.now()
+          }
+
+        );
+
+        console.log(
+
+          "✅ Appended:",
+
+          geometryId
+        );
+
+      }
+
+      catch(e){
+
+        console.warn(
+          "⚠ Geometry append failed",
+          e
+        );
+      }
+    }
+
+  }
+
+  catch(err){
+
+    console.error(
+      "❌ appendTrackToGeometries",
+      err
+    );
+  }
+}
+    async function showMonthHistory(){
+
+  try{
+
+    // ==============================
+    // 📅 MONTH
+    // ==============================
+
+    const d = new Date();
+
+    const monthKey =
+
+      `${d.getFullYear()}_${
+        String(
+          d.getMonth()+1
+        ).padStart(2,"0")
+      }`;
+
+    // ==============================
+    // 🌍 CURRENT FILTER
+    // ==============================
+
+    const g =
+      window.gisFilter || {};
+
+    let geometryId = "btr_ALL";
+
+    // ==============================
+    // 📦 COMPARTMENT
+    // ==============================
+
+    if(g.compartment !== "ALL"){
+
+      geometryId =
+
+        `compartment_${g.compartment}`;
+    }
+
+    // ==============================
+    // 🟨 BEAT
+    // ==============================
+
+    else if(g.beat !== "ALL"){
+
+      geometryId =
+
+        `beat_${g.beat}`;
+    }
+
+    // ==============================
+    // 🟩 RANGE
+    // ==============================
+
+    else if(g.range !== "ALL"){
+
+      geometryId =
+
+        `range_${g.range}`;
+    }
+
+    // ==============================
+    // 🟦 DIVISION
+    // ==============================
+
+    else if(g.division !== "ALL"){
+
+      geometryId =
+
+        `division_${g.division}`;
+    }
+
+    console.log(
+      "📜 Loading history:",
+      geometryId
+    );
+
+    // ==============================
+    // 📥 FETCH
+    // ==============================
+
+    const ref =
+
+      window.fb.doc(
+
+        window.db,
+
+        "geometry_history",
+
+        monthKey,
+
+        "data",
+
+        geometryId
+      );
+
+    const snap =
+
+      await window.fb.getDoc(ref);
+
+    // ==============================
+    // ❌ EMPTY
+    // ==============================
+
+    if(!snap.exists()){
+
+      alert(
+        "No history found"
+      );
+
+      return;
+    }
+
+    const geojson =
+      snap.data();
+
+    // ==============================
+    // 🧹 CLEAR OLD
+    // ==============================
+
+    window.historyLayer
+      .clearLayers();
+
+    // ==============================
+    // 🚀 RENDER
+    // ==============================
+
+    window.historyLayer
+      .addData(geojson);
+
+    console.log(
+      "✅ History rendered"
+    );
+
+  }
+
+  catch(err){
+
+    console.error(
+      "❌ showMonthHistory",
+      err
+    );
+  }
+}
 // ======================================
 // 🛰 VERIFY LATEST PLANET
 // GIS-AWARE VERSION
@@ -25508,6 +26110,56 @@ window.latestGps = {
     Date.now()
 };
 
+// ==================================================
+// 🔥 SESSION TRACK STORAGE
+// ==================================================
+if(
+
+  !window.lastTrackPoint ||
+
+  map.distance(
+
+    [
+
+      window.lastTrackPoint.lat,
+
+      window.lastTrackPoint.lng
+
+    ],
+
+    [
+
+      lat,
+
+      lon
+
+    ]
+
+  ) > 10
+
+){
+
+  const point = {
+
+    lat: lat,
+
+    lng: lon,
+
+    ts: Date.now()
+  };
+
+  window.sessionTrackPoints.push(
+    point
+  );
+
+  window.lastTrackPoint =
+    point;
+}
+
+console.log(
+  "📍 latestGps updated",
+  window.latestGps
+);
 console.log(
   "📍 latestGps updated",
   window.latestGps
@@ -29745,9 +30397,6 @@ Promise.allSettled([
 
     {
 
-      // ====================================================
-      // 🔥 DUTY STATE
-      // ====================================================
       dutyActive:false,
 
       status:"ENDED",
@@ -29760,9 +30409,6 @@ Promise.allSettled([
       lastDutyEnd:
         new Date().toISOString(),
 
-      // ====================================================
-      // 🔥 REMOVE LIVE GPS
-      // ====================================================
       lat:
         window.fb.deleteField(),
 
@@ -29805,10 +30451,18 @@ Promise.allSettled([
   // ========================================================
   notifyAndroidDuty(
     false
+  ),
+
+  // ========================================================
+  // 📜 PROCESS MONTH HISTORY
+  // ========================================================
+  processHistoryTrack(
+
+    window.sessionTrackPoints || []
+
   )
 
 ])
-
 .then(results => {
 
   console.log(
@@ -32147,6 +32801,13 @@ function startDuty(event) {
 
     // 🔒 LOCK PROCESS
     startDutySubmitting = true;
+    // =====================================================
+// 📜 RESET SESSION TRACK STORAGE
+// VERY IMPORTANT
+// =====================================================
+window.sessionTrackPoints = [];
+
+window.lastTrackPoint = null;
     // =====================================================
 // 🔥 UI TRANSITION LOCK
 // =====================================================
