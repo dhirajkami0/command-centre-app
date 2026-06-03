@@ -27695,7 +27695,7 @@ async function loadPolygonWeather(){
     );
   }
 }
-    function toggleRainRadar(){
+   function toggleRainRadar(){
 
   try {
 
@@ -27715,20 +27715,18 @@ async function loadPolygonWeather(){
     }
 
     // =====================================
-    // 🌧 TURN OFF
+    // 🌧 OFF MODE
     // =====================================
 
     if(window.radarEnabled){
 
-      // REMOVE LAYER
+      // REMOVE WEATHER LAYER
       if(
-        map.hasLayer(
-          rainRadarLayer
-        )
+        map.hasLayer(rainLayer)
       ){
 
         map.removeLayer(
-          rainRadarLayer
+          rainLayer
         );
       }
 
@@ -27754,13 +27752,14 @@ async function loadPolygonWeather(){
 
       if(btn){
 
-        btn.style.background =
-          "#0d47a1";
-
         btn.innerHTML =
           "🌧 LIVE RAIN RADAR";
+
+        btn.style.background =
+          "#0d47a1";
       }
 
+      // RESET STATE
       window.radarEnabled =
         false;
 
@@ -27772,7 +27771,7 @@ async function loadPolygonWeather(){
     }
 
     // =====================================
-    // 🌧 TURN ON
+    // 🌧 ON MODE
     // =====================================
 
     // REMOVE OLD AOI
@@ -27812,35 +27811,10 @@ async function loadPolygonWeather(){
       ).addTo(map);
 
     // =====================================
-    // 🌧 RADAR
+    // 🌧 WEATHER PRECIPITATION LAYER
     // =====================================
 
-   rainLayer.addTo(map);
-
-// LIMIT RADAR ZOOM
-if(map.getZoom() > 11){
-
-  map.setZoom(11);
-}
-
-    // =====================================
-    // 🎯 BUTTON ACTIVE
-    // =====================================
-
-    const btn =
-
-      document.getElementById(
-        "radarBtn"
-      );
-
-    if(btn){
-
-      btn.style.background =
-        "#1b5e20";
-
-      btn.innerHTML =
-        "✅ RADAR ACTIVE";
-    }
+    rainLayer.addTo(map);
 
     // =====================================
     // 🌍 FIT TO AOI
@@ -27866,7 +27840,7 @@ if(map.getZoom() > 11){
 
             padding:[20,20],
 
-            maxZoom:10,
+            maxZoom:11,
 
             animate:true
           }
@@ -27885,7 +27859,26 @@ if(map.getZoom() > 11){
     }
 
     // =====================================
-    // ✅ ENABLED
+    // 🎯 BUTTON ACTIVE
+    // =====================================
+
+    const btn =
+
+      document.getElementById(
+        "radarBtn"
+      );
+
+    if(btn){
+
+      btn.innerHTML =
+        "✅ RADAR ACTIVE";
+
+      btn.style.background =
+        "#1b5e20";
+    }
+
+    // =====================================
+    // ✅ ENABLE
     // =====================================
 
     window.radarEnabled =
@@ -27909,8 +27902,7 @@ if(map.getZoom() > 11){
       err
     );
   }
-}
-    /* =========================
+}  /* =========================
        🌦 WEATHER SYSTEM (FINAL)
     ========================= */
     function loadWeatherFull() {
