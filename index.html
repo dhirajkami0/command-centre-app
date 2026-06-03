@@ -7509,13 +7509,9 @@ async function toggleMonthHistory(){
   }
 }
     
-    async function showMonthHistory(){
+   async function showMonthHistory(){
 
   try{
-
-    // ==============================
-    // 📅 MONTH
-    // ==============================
 
     const d = new Date();
 
@@ -7528,88 +7524,41 @@ async function toggleMonthHistory(){
       }`;
 
     // ==============================
-    // 🌍 CURRENT FILTER
+    // 🌍 CURRENT GEOMETRY TYPE
     // ==============================
-
-    const g =
-      window.gisFilter || {};
 
     let geometryId = "btr_ALL";
 
-    // ==============================
-    // 📦 COMPARTMENT
-    // ==============================
-
-    if(g.compartment !== "ALL"){
+    if(window.currentHistoryGeometryId){
 
       geometryId =
-
-        `compartment_${g.compartment}`;
+        window.currentHistoryGeometryId;
     }
 
     // ==============================
-    // 🟨 BEAT
+    // 📥 LOAD
     // ==============================
-
-    else if(g.beat !== "ALL"){
-
-      geometryId =
-
-        `beat_${g.beat}`;
-    }
-
-    // ==============================
-    // 🟩 RANGE
-    // ==============================
-
-    else if(g.range !== "ALL"){
-
-      geometryId =
-
-        `range_${g.range}`;
-    }
-
-    // ==============================
-    // 🟦 DIVISION
-    // ==============================
-
-    else if(g.division !== "ALL"){
-
-      geometryId =
-
-        `division_${g.division}`;
-    }
-
-    console.log(
-      "📜 Loading history:",
-      geometryId
-    );
-
-    // ==============================
-    // 📥 FETCH
-    // ==============================
-
-    const ref =
-
-      window.fb.doc(
-
-        window.db,
-
-        "geometry_history",
-
-        monthKey,
-
-        "data",
-
-        geometryId
-      );
 
     const snap =
 
-      await window.fb.getDoc(ref);
+      await window.fb.getDoc(
+
+        window.fb.doc(
+
+          window.db,
+
+          "geometry_history",
+
+          monthKey,
+
+          "data",
+
+          geometryId
+        )
+      );
 
     // ==============================
-    // ❌ EMPTY
+    // ❌ NO DATA
     // ==============================
 
     if(!snap.exists()){
@@ -7621,25 +7570,54 @@ async function toggleMonthHistory(){
       return;
     }
 
-    const geojson =
-      snap.data();
-
     // ==============================
-    // 🧹 CLEAR OLD
+    // 📦 TRACKS
     // ==============================
 
-    window.historyLayer
-      .clearLayers();
+    const tracks =
+
+      snap.data()?.tracks || [];
 
     // ==============================
-    // 🚀 RENDER
+    // 🧹 CLEAR
     // ==============================
 
-    window.historyLayer
-      .addData(geojson);
+    window.historyLayer.clearLayers();
+
+    // ==============================
+    // 🔄 RENDER
+    // ==============================
+
+    tracks.forEach(t => {
+
+      const coords =
+        polyline.decode(t);
+
+      L.polyline(
+
+        coords,
+
+        {
+
+          renderer:
+            window.historyRenderer,
+
+          color:"#00ff90",
+
+          weight:2,
+
+          opacity:0.75
+
+        }
+
+      ).addTo(
+        window.historyLayer
+      );
+    });
 
     console.log(
-      "✅ History rendered"
+      "✅ History rendered:",
+      geometryId
     );
 
   }
