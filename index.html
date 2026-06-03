@@ -6822,6 +6822,11 @@ async function processHistoryTrack(
 // ENTERPRISE VERSION
 // ======================================
 
+// ======================================
+// 📜 APPEND INTO GEOMETRY HISTORY
+// FINAL ENTERPRISE VERSION
+// ======================================
+
 async function appendTrackToGeometries(
 
   simplifiedLine
@@ -6829,6 +6834,26 @@ async function appendTrackToGeometries(
 ){
 
   try{
+
+    // ==================================
+    // ❌ INVALID
+    // ==================================
+
+    if(
+
+      !simplifiedLine ||
+
+      !simplifiedLine.geometry ||
+
+      !simplifiedLine.geometry.coordinates
+    ){
+
+      console.warn(
+        "⚠ Invalid simplified line"
+      );
+
+      return;
+    }
 
     // ==================================
     // 📅 MONTH KEY
@@ -6881,10 +6906,6 @@ async function appendTrackToGeometries(
           continue;
         }
 
-        // ==============================
-        // 🌍 POLYGON
-        // ==============================
-
         const poly = feature;
 
         const props =
@@ -6892,7 +6913,7 @@ async function appendTrackToGeometries(
           poly.properties || {};
 
         // ==============================
-        // 🔥 FAST INTERSECT CHECK
+        // 🔥 FAST INTERSECT
         // ==============================
 
         const intersects =
@@ -6915,53 +6936,29 @@ async function appendTrackToGeometries(
 
         let geometryId = null;
 
-        // ==============================
-        // 📦 COMPARTMENT
-        // ==============================
-
         if(props.compartment){
 
           geometryId =
-
             `compartment_${props.compartment}`;
         }
-
-        // ==============================
-        // 🟨 BEAT
-        // ==============================
 
         else if(props.beat){
 
           geometryId =
-
             `beat_${props.beat}`;
         }
-
-        // ==============================
-        // 🟩 RANGE
-        // ==============================
 
         else if(props.range){
 
           geometryId =
-
             `range_${props.range}`;
         }
-
-        // ==============================
-        // 🟦 DIVISION
-        // ==============================
 
         else if(props.division){
 
           geometryId =
-
             `division_${props.division}`;
         }
-
-        // ==============================
-        // ❌ NO ID
-        // ==============================
 
         if(!geometryId){
 
@@ -6969,17 +6966,12 @@ async function appendTrackToGeometries(
         }
 
         // ==============================
-        // ✂ TRUE POLYGON CLIP
-        // ENTERPRISE VERSION
+        // ✂ POLYGON CLIP
         // ==============================
 
         let clippedCoords = [];
 
         try{
-
-          // ==================================
-          // 🔥 SEGMENT FILTERING
-          // ==================================
 
           const coords =
 
@@ -6988,17 +6980,20 @@ async function appendTrackToGeometries(
 
           let currentSegment = [];
 
-          for(let i=0;i<coords.length;i++){
+          for(
+
+            let i=0;
+
+            i<coords.length;
+
+            i++
+          ){
 
             const pt = coords[i];
 
             const point =
 
               turf.point(pt);
-
-            // ==============================
-            // 🌍 INSIDE POLYGON?
-            // ==============================
 
             const inside =
 
@@ -7009,22 +7004,21 @@ async function appendTrackToGeometries(
                 poly
               );
 
-            // ==============================
+            // ==========================
             // ✅ INSIDE
-            // ==============================
+            // ==========================
 
             if(inside){
 
               currentSegment.push(pt);
             }
 
-            // ==============================
+            // ==========================
             // ❌ OUTSIDE
-            // ==============================
+            // ==========================
 
             else{
 
-              // SAVE SEGMENT
               if(
 
                 currentSegment.length >= 2
@@ -7039,9 +7033,9 @@ async function appendTrackToGeometries(
             }
           }
 
-          // ==================================
+          // ==========================
           // 📦 LAST SEGMENT
-          // ==================================
+          // ==========================
 
           if(
 
@@ -7058,7 +7052,9 @@ async function appendTrackToGeometries(
         catch(clipErr){
 
           console.warn(
-            "⚠ Polygon clip failed",
+
+            "⚠ Clip failed",
+
             clipErr
           );
 
@@ -7230,14 +7226,38 @@ async function appendTrackToGeometries(
       }
 
       // ==============================
-      // ➕ APPEND FULL TRACK
+      // 📦 LINE COORDS
       // ==============================
 
-      btrCoords.push(
+      const lineCoords =
 
         simplifiedLine.geometry
-        .coordinates
-      );
+        .coordinates;
+
+      // ==============================
+      // ➕ SAFE APPEND
+      // ==============================
+
+      if(
+
+        Array.isArray(
+          lineCoords[0][0]
+        )
+
+      ){
+
+        btrCoords.push(
+          ...lineCoords
+        );
+
+      }
+
+      else{
+
+        btrCoords.push(
+          lineCoords
+        );
+      }
 
       // ==============================
       // 💾 SAVE
