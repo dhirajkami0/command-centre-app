@@ -27273,13 +27273,6 @@ async function loadPolygonWeather(){
     }
 
     // =====================================
-    // 🌤 CURRENT
-    // =====================================
-
-    const now =
-      data.list[0];
-
-    // =====================================
     // 🌍 AREA LABEL
     // =====================================
 
@@ -27304,8 +27297,11 @@ async function loadPolygonWeather(){
       : "BTR";
 
     // =====================================
-    // 🌤 NOW UI
+    // 🌤 CURRENT
     // =====================================
+
+    const now =
+      data.list[0];
 
     document.getElementById(
       "weatherNow"
@@ -27359,6 +27355,220 @@ async function loadPolygonWeather(){
 
       </div>
     `;
+
+    // =====================================
+    // ⏰ NEXT 18 HOURS
+    // =====================================
+
+    let todayHTML = `
+
+      <div style="
+        font-weight:bold;
+        color:#81c784;
+        margin-bottom:8px;
+      ">
+
+        ⏰ Next 18 Hours
+
+      </div>
+
+      <div style="
+        display:flex;
+        gap:8px;
+        overflow-x:auto;
+        padding-bottom:4px;
+      ">
+    `;
+
+    data.list
+    .slice(0,6)
+    .forEach(item => {
+
+      const t = new Date(
+        item.dt * 1000
+      );
+
+      todayHTML += `
+
+        <div style="
+          min-width:90px;
+          background:rgba(255,255,255,0.06);
+          border-radius:10px;
+          padding:8px;
+          text-align:center;
+          font-size:12px;
+        ">
+
+          <div style="
+            color:#aed581;
+            font-weight:bold;
+            margin-bottom:6px;
+          ">
+
+            ${t.toLocaleTimeString(
+              [],
+              {
+                hour:'numeric'
+              }
+            )}
+
+          </div>
+
+          🌡 ${item.main.temp.toFixed(0)}°
+
+          <br>
+
+          ☁ ${item.clouds.all}%
+
+          <br>
+
+          🌧 ${
+            item.rain?.["3h"] || 0
+          } mm
+
+          <br>
+
+          💨 ${item.wind.speed}
+
+        </div>
+      `;
+    });
+
+    todayHTML += `</div>`;
+
+    document.getElementById(
+      "todayForecast"
+    ).innerHTML =
+      todayHTML;
+
+    // =====================================
+    // 📅 NEXT 5 DAYS
+    // =====================================
+
+    const dailyMap = {};
+
+    data.list.forEach(item => {
+
+      const d = new Date(
+        item.dt * 1000
+      );
+
+      const key =
+        d.toDateString();
+
+      if(!dailyMap[key]){
+
+        dailyMap[key] = [];
+      }
+
+      dailyMap[key].push(item);
+
+    });
+
+    let weekHTML = `
+
+      <div style="
+        font-weight:bold;
+        color:#81c784;
+        margin-bottom:8px;
+      ">
+
+        📅 Next 5 Days
+
+      </div>
+    `;
+
+    Object.keys(dailyMap)
+    .slice(0,5)
+    .forEach(day => {
+
+      const arr =
+        dailyMap[day];
+
+      const avgTemp =
+
+        arr.reduce(
+          (a,b)=>a+b.main.temp,
+          0
+        ) / arr.length;
+
+      const avgCloud =
+
+        arr.reduce(
+          (a,b)=>a+b.clouds.all,
+          0
+        ) / arr.length;
+
+      const rain =
+
+        arr.reduce(
+          (a,b)=>
+
+            a +
+
+            (b.rain?.["3h"] || 0),
+
+          0
+        );
+
+      const condition =
+
+        arr[0]
+        .weather[0]
+        .description;
+
+      weekHTML += `
+
+        <div style="
+          background:
+            rgba(255,255,255,0.05);
+
+          border-radius:10px;
+
+          padding:10px;
+
+          margin-bottom:8px;
+
+          font-size:13px;
+
+          line-height:1.7;
+        ">
+
+          <div style="
+            color:#aed581;
+            font-weight:bold;
+            margin-bottom:4px;
+          ">
+
+            ${day}
+
+          </div>
+
+          🌡 Avg Temp:
+          ${avgTemp.toFixed(1)} °C
+
+          <br>
+
+          ☁ Avg Cloud:
+          ${avgCloud.toFixed(0)}%
+
+          <br>
+
+          🌧 Rain:
+          ${rain.toFixed(1)} mm
+
+          <br>
+
+          🧭 ${condition}
+
+        </div>
+      `;
+    });
+
+    document.getElementById(
+      "weekForecast"
+    ).innerHTML =
+      weekHTML;
 
   }
 
