@@ -6220,11 +6220,19 @@ L.tileLayer(
 
 );
 var rainLayer = L.tileLayer(
+
   'https://tile.openweathermap.org/map/precipitation_new/{z}/{x}/{y}.png?appid=b928faa16c09eb3facb9e3238d2e59f8',
+
   {
-    opacity: 0.6,
-    maxZoom: 19
+
+    opacity:0.6,
+
+    maxZoom:19,
+
+    zIndex:450
+
   }
+
 );
 
 var cloudLayer = L.tileLayer(
