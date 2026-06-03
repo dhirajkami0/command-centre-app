@@ -33166,13 +33166,15 @@ function startDuty(event) {
 
     // 🔒 LOCK PROCESS
     startDutySubmitting = true;
-    // =====================================================
-// 📜 RESET SESSION TRACK STORAGE
-// VERY IMPORTANT
-// =====================================================
+  // ========================================
+// 📜 SESSION TRACK STORAGE
+// ========================================
+
 window.sessionTrackPoints = [];
 
 window.lastTrackPoint = null;
+
+window.historyLoaded = false;
     // =====================================================
 // 🔥 UI TRANSITION LOCK
 // =====================================================
