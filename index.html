@@ -6878,6 +6878,11 @@ async function processHistoryTrack(
 // FINAL ENTERPRISE VERSION
 // ======================================
 
+// ======================================
+// 📜 APPEND INTO GEOMETRY HISTORY
+// FINAL FIRESTORE SAFE ENTERPRISE VERSION
+// ======================================
+
 async function appendTrackToGeometries(
 
   simplifiedLine
@@ -6896,7 +6901,10 @@ async function appendTrackToGeometries(
 
       !simplifiedLine.geometry ||
 
-      !simplifiedLine.geometry.coordinates
+      !Array.isArray(
+        simplifiedLine.geometry.coordinates
+      )
+
     ){
 
       console.warn(
@@ -6936,6 +6944,21 @@ async function appendTrackToGeometries(
     ];
 
     // ==================================
+    // 📦 SAFE SOURCE COORDS
+    // ==================================
+
+    const sourceCoords =
+
+      simplifiedLine.geometry
+      .coordinates
+      .map(pt => [
+
+        Number(pt[0]),
+
+        Number(pt[1])
+      ]);
+
+    // ==================================
     // 🔄 LOOP FEATURES
     // ==================================
 
@@ -6964,7 +6987,7 @@ async function appendTrackToGeometries(
           poly.properties || {};
 
         // ==============================
-        // 🔥 FAST INTERSECT
+        // 🔥 INTERSECTS
         // ==============================
 
         const intersects =
@@ -7017,17 +7040,12 @@ async function appendTrackToGeometries(
         }
 
         // ==============================
-        // ✂ POLYGON CLIP
+        // ✂ TRUE POLYGON CLIP
         // ==============================
 
-        let clippedCoords = [];
+        let clippedSegments = [];
 
         try{
-
-          const coords =
-
-            simplifiedLine.geometry
-            .coordinates;
 
           let currentSegment = [];
 
@@ -7035,12 +7053,12 @@ async function appendTrackToGeometries(
 
             let i=0;
 
-            i<coords.length;
+            i<sourceCoords.length;
 
             i++
           ){
 
-            const pt = coords[i];
+            const pt = sourceCoords[i];
 
             const point =
 
@@ -7061,7 +7079,10 @@ async function appendTrackToGeometries(
 
             if(inside){
 
-              currentSegment.push(pt);
+              currentSegment.push([
+                Number(pt[0]),
+                Number(pt[1])
+              ]);
             }
 
             // ==========================
@@ -7075,8 +7096,8 @@ async function appendTrackToGeometries(
                 currentSegment.length >= 2
               ){
 
-                clippedCoords.push(
-                  currentSegment
+                clippedSegments.push(
+                  [...currentSegment]
                 );
               }
 
@@ -7093,8 +7114,8 @@ async function appendTrackToGeometries(
             currentSegment.length >= 2
           ){
 
-            clippedCoords.push(
-              currentSegment
+            clippedSegments.push(
+              [...currentSegment]
             );
           }
 
@@ -7103,9 +7124,7 @@ async function appendTrackToGeometries(
         catch(clipErr){
 
           console.warn(
-
             "⚠ Clip failed",
-
             clipErr
           );
 
@@ -7118,9 +7137,7 @@ async function appendTrackToGeometries(
 
         if(
 
-          !clippedCoords ||
-
-          !clippedCoords.length
+          !clippedSegments.length
         ){
 
           continue;
@@ -7165,18 +7182,28 @@ async function appendTrackToGeometries(
 
           const old = snap.data();
 
-          existingCoords =
+          if(
 
-            old?.geometry
-            ?.coordinates || [];
+            old?.geometry?.coordinates &&
+
+            Array.isArray(
+              old.geometry.coordinates
+            )
+
+          ){
+
+            existingCoords =
+
+              old.geometry.coordinates;
+          }
         }
 
         // ==============================
-        // ➕ APPEND
+        // ➕ APPEND SEGMENTS
         // ==============================
 
         existingCoords.push(
-          ...clippedCoords
+          ...clippedSegments
         );
 
         // ==============================
@@ -7210,9 +7237,7 @@ async function appendTrackToGeometries(
         );
 
         console.log(
-
           "✅ Geometry updated:",
-
           geometryId
         );
 
@@ -7221,9 +7246,7 @@ async function appendTrackToGeometries(
       catch(featureErr){
 
         console.warn(
-
           "⚠ Feature processing failed",
-
           featureErr
         );
       }
@@ -7231,6 +7254,7 @@ async function appendTrackToGeometries(
 
     // ==================================
     // 🌍 FULL BTR MASTER
+    // FIRESTORE SAFE
     // ==================================
 
     try{
@@ -7270,45 +7294,35 @@ async function appendTrackToGeometries(
 
         const old = btrSnap.data();
 
-        btrCoords =
+        if(
 
-          old?.geometry
-          ?.coordinates || [];
+          old?.geometry?.coordinates &&
+
+          Array.isArray(
+            old.geometry.coordinates
+          )
+
+        ){
+
+          btrCoords =
+
+            old.geometry.coordinates;
+        }
       }
 
       // ==============================
-      // 📦 LINE COORDS
+      // ➕ APPEND SAFE LINESTRING
       // ==============================
 
-      const lineCoords =
+      btrCoords.push(
 
-        simplifiedLine.geometry
-        .coordinates;
+        sourceCoords.map(pt => [
 
-      // ==============================
-      // ➕ SAFE APPEND
-      // ==============================
+          Number(pt[0]),
 
-      if(
-
-        Array.isArray(
-          lineCoords[0][0]
-        )
-
-      ){
-
-        btrCoords.push(
-          ...lineCoords
-        );
-
-      }
-
-      else{
-
-        btrCoords.push(
-          lineCoords
-        );
-      }
+          Number(pt[1])
+        ])
+      );
 
       // ==============================
       // 💾 SAVE
@@ -7364,7 +7378,6 @@ async function appendTrackToGeometries(
     );
   }
 }
-
 async function toggleMonthHistory(){
 
   try{
