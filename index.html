@@ -1630,48 +1630,43 @@ NORTH REMAINS ABSOLUTE
       margin-top:10px;
     "
   ></div>
+<!-- ===================================== -->
+<!-- 📜 HISTORY TOGGLE -->
+<!-- ===================================== -->
+<button
 
-  <!-- ===================================== -->
-  <!-- 📜 HISTORY BUTTON -->
-  <!-- ===================================== -->
-  <button
+  id="historyBtn"
 
-    id="historyBtn"
+  onclick="toggleMonthHistory()"
 
-    onclick="showMonthHistory()"
+  class="btn-center"
 
-    class="btn-center"
+  style="
+    margin-top:10px;
+    background:#4caf50;
 
-    style="
-      margin-top:10px;
-      background:#4caf50;
-    "
-  >
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+    gap:10px;
+  "
+>
+
+  <span>
 
     📜 SHOW MONTH HISTORY
 
-  </button>
+  </span>
 
-  <!-- ===================================== -->
-  <!-- 🧹 CLEAR HISTORY -->
-  <!-- ===================================== -->
-  <button
+  <i
 
-    id="clearHistoryBtn"
+    id="historyEye"
 
-    onclick="clearMonthHistory()"
+    class="fa-solid fa-eye"
 
-    class="btn-center"
+  ></i>
 
-    style="
-      margin-top:6px;
-      background:#c62828;
-    "
-  >
-
-    🧹 CLEAR HISTORY
-
-  </button>
+</button>
 
 </div>
  <div class="weather-drawer"
@@ -6605,20 +6600,120 @@ async function(aoiGeometry){
 // ======================================
 // 🛰 PLANET THUMB POPUP
 // ======================================
+// ======================================
+// 🧹 CLEAR MONTH HISTORY
+// ENTERPRISE VERSION
+// ======================================
+
 function clearMonthHistory(){
 
   try{
+
+    // ==================================
+    // 📜 MAIN HISTORY LAYER
+    // ==================================
 
     if(window.historyLayer){
 
       window.historyLayer.clearLayers();
     }
 
+    // ==================================
+    // 📦 SEPARATE HISTORY LAYERS
+    // FUTURE SAFE
+    // ==================================
+
+    if(window.historyLayers){
+
+      Object.values(
+
+        window.historyLayers
+
+      ).forEach(layer => {
+
+        try{
+
+          if(
+
+            layer &&
+
+            map.hasLayer(layer)
+          ){
+
+            layer.clearLayers();
+          }
+
+        }
+
+        catch(e){
+
+          console.warn(
+            "⚠ Layer clear failed",
+            e
+          );
+        }
+      });
+    }
+
+    // ==================================
+    // 👁 RESET EYE ICON
+    // ==================================
+
+    const eye =
+
+      document.getElementById(
+        "historyEye"
+      );
+
+    if(eye){
+
+      eye.className =
+        "fa-solid fa-eye";
+    }
+
+    // ==================================
+    // 🎨 RESET BUTTON
+    // ==================================
+
+    const btn =
+
+      document.getElementById(
+        "historyBtn"
+      );
+
+    if(btn){
+
+      btn.style.background =
+        "#4caf50";
+    }
+
+    // ==================================
+    // ❌ RESET FLAGS
+    // ==================================
+
+    window.historyLoaded =
+      false;
+
+    // ==================================
+    // 🧠 OPTIONAL MEMORY CLEANUP
+    // ==================================
+
+    if(window.historyCache){
+
+      window.historyCache = {};
+    }
+
+    // ==================================
+    // ✅ LOG
+    // ==================================
+
     console.log(
       "🧹 History cleared"
     );
 
-  }catch(err){
+  }
+
+  catch(err){
 
     console.error(
       "❌ clearMonthHistory",
@@ -7198,6 +7293,66 @@ async function appendTrackToGeometries(
     );
   }
 }
+
+async function toggleMonthHistory(){
+
+  try{
+
+    // ==================================
+    // 👁 HISTORY ALREADY ACTIVE
+    // ==================================
+
+    if(window.historyLoaded){
+
+      clearMonthHistory();
+
+      return;
+    }
+
+    // ==================================
+    // 📜 LOAD HISTORY
+    // ==================================
+
+    await showMonthHistory();
+
+    // ==================================
+    // 👁 UPDATE EYE
+    // ==================================
+
+    const eye =
+
+      document.getElementById(
+        "historyEye"
+      );
+
+    if(eye){
+
+      eye.className =
+        "fa-solid fa-eye-slash";
+    }
+
+    // ==================================
+    // ✅ ACTIVE
+    // ==================================
+
+    window.historyLoaded =
+      true;
+
+    console.log(
+      "📜 History ON"
+    );
+
+  }
+
+  catch(err){
+
+    console.error(
+      "❌ toggleMonthHistory",
+      err
+    );
+  }
+}
+    
     async function showMonthHistory(){
 
   try{
