@@ -177,6 +177,20 @@ window.trackPointCount = {};
 // 🔥 DISTANCE CACHE
 // ====================================================
 window.trackDistanceMap = {};
+// ====================================================
+// 📜 HISTORY TRACK STORAGE
+// ====================================================
+
+window.sessionTrackPoints = [];
+
+window.lastTrackPoint = null;
+
+window.historyLoaded = false;
+
+// ====================================================
+// 📜 HISTORY LAYERS
+// ====================================================
+
 
 // ====================================================
 // 🔥 ANDROID GPS AUTHORITY
@@ -6412,7 +6426,7 @@ window.historyRenderer =
   });
 
 // ======================================
-// 📜 HISTORY LAYER
+// 📜 MAIN HISTORY LAYER
 // ======================================
 
 window.historyLayer =
@@ -6436,7 +6450,44 @@ window.historyLayer =
       }
     }
 
-  ).addTo(map);
+  );
+
+// ======================================
+// 📦 FUTURE SAFE HISTORY GROUPS
+// ======================================
+
+window.historyLayers = {
+
+  compartment:
+    L.layerGroup(),
+
+  beat:
+    L.layerGroup(),
+
+  range:
+    L.layerGroup(),
+
+  division:
+    L.layerGroup(),
+
+  btr:
+    L.layerGroup()
+};
+
+// ======================================
+// 📜 ADD HISTORY LAYERS TO MAP
+// ======================================
+
+window.historyLayer.addTo(map);
+
+Object.values(
+
+  window.historyLayers
+
+).forEach(layer => {
+
+  layer.addTo(map);
+});
 // ======================================
 // 🛰 PLANET SEARCH
 // GIS-AWARE VERSION
