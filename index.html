@@ -7034,7 +7034,44 @@ async function appendTrackToGeometries(
 
       ...(window.divisionFeatures || [])
     ];
+console.log("=================================");
+console.log("🧪 HISTORY WRITE DEBUG");
+console.log("=================================");
 
+console.log(
+  "compartmentFeatures:",
+  window.compartmentFeatures?.length
+);
+
+console.log(
+  "beatFeatures:",
+  window.beatFeatures?.length
+);
+
+console.log(
+  "rangeFeatures:",
+  window.rangeFeatures?.length
+);
+
+console.log(
+  "divisionFeatures:",
+  window.divisionFeatures?.length
+);
+
+console.log(
+  "allGISFeatures:",
+  window.allGISFeatures?.length
+);
+
+console.log(
+  "allCompartmentFeatures:",
+  window.allCompartmentFeatures?.length
+);
+
+console.log(
+  "TOTAL FEATURES:",
+  allFeatures.length
+);
     // ==================================
     // 🔄 LOOP FEATURES
     // ==================================
@@ -7054,6 +7091,10 @@ async function appendTrackToGeometries(
         const props =
 
           poly.properties || {};
+        console.log(
+  "🔍 FEATURE:",
+  props
+);
 
         // ==============================
         // 🔥 INTERSECTS
@@ -7067,6 +7108,10 @@ async function appendTrackToGeometries(
 
             poly
           );
+        console.log(
+  "🛰 INTERSECTS:",
+  intersects
+);
 
         if(!intersects){
 
@@ -7077,31 +7122,61 @@ async function appendTrackToGeometries(
         // 🆔 GEOMETRY ID
         // ==============================
 
-        let geometryId = null;
+       let geometryId = null;
 
-        if(props.compartment){
+const compartment =
 
-          geometryId =
-            `compartment_${props.compartment}`;
-        }
+  props.compartment ||
+  props.Compartment ||
+  props.compartmen ||
+  "";
 
-        else if(props.beat){
+const beat =
 
-          geometryId =
-            `beat_${props.beat}`;
-        }
+  props.beat ||
+  props.Beat ||
+  "";
 
-        else if(props.range){
+const range =
 
-          geometryId =
-            `range_${props.range}`;
-        }
+  props.range ||
+  props.Range ||
+  "";
 
-        else if(props.division){
+const division =
 
-          geometryId =
-            `division_${props.division}`;
-        }
+  props.division ||
+  props.Division ||
+  "";
+
+if(compartment){
+
+  geometryId =
+    `compartment_${compartment}`;
+}
+
+else if(beat){
+
+  geometryId =
+    `beat_${beat}`;
+}
+
+else if(range){
+
+  geometryId =
+    `range_${range}`;
+}
+
+else if(division){
+
+  geometryId =
+    `division_${division}`;
+}
+
+console.log(
+  "🆔 geometryId:",
+  geometryId
+);
 
         if(!geometryId){
 
@@ -7189,12 +7264,15 @@ async function appendTrackToGeometries(
         // ==============================
         // ❌ EMPTY
         // ==============================
+console.log(
+  "✂ clippedSegments:",
+  clippedSegments.length
+);
 
-        if(!clippedSegments.length){
+if(!clippedSegments.length){
 
-          continue;
-        }
-
+  continue;
+}
         // ==============================
         // 🔥 ENCODE SEGMENTS
         // ==============================
@@ -7274,11 +7352,16 @@ async function appendTrackToGeometries(
         );
 
         console.log(
+  "💾 SAVED:",
+  geometryId,
+  "segments:",
+  encodedSegments.length
+);
 
-          "✅ Geometry updated:",
-
-          geometryId
-        );
+console.log(
+  "✅ Geometry updated:",
+  geometryId
+);
 
       }
 
