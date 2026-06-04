@@ -12916,13 +12916,12 @@ async function populateDivisionButtons(){
       window.currentSelectedGeometry =
 
         matchingFeature?.geometry || null;
-      window.currentHistoryGeometryId =
-
-  division === "ALL"
-
-  ? "btr_ALL"
-
-  : `division_${division}`;
+    window.currentHistoryGeometryId =
+  `division_${
+    String(division)
+      .trim()
+      .replace(/\s+/g,"_")
+  }`;
 
       console.log(
         "🌍 Division geometry saved"
@@ -13157,9 +13156,12 @@ else {
 
     matchingFeature?.geometry || null;
 
-  window.currentHistoryGeometryId =
-
-    `division_${division}`;
+ window.currentHistoryGeometryId =
+  `division_${
+    String(division)
+      .trim()
+      .replace(/\s+/g,"_")
+  }`;
 
   console.log(
     "🟩 Division geometry saved"
@@ -13505,8 +13507,11 @@ window.currentSelectedGeometry =
   matchingFeature?.geometry || null;
 
 window.currentHistoryGeometryId =
-
-  `range_${range}`;
+  `range_${
+    String(range)
+      .trim()
+      .replace(/\s+/g,"_")
+  }`;
 
 console.log(
   "🟩 Range geometry saved"
@@ -13655,8 +13660,11 @@ loadPolygonWeather();
   matchingFeature?.geometry || null;
 
 window.currentHistoryGeometryId =
-
-  `range_${range}`;
+  `range_${
+    String(range)
+      .trim()
+      .replace(/\s+/g,"_")
+  }`;
 
 console.log(
   "🟩 Range geometry saved"
@@ -14054,8 +14062,11 @@ loadPolygonWeather();
   matchingFeature?.geometry || null;
 
 window.currentHistoryGeometryId =
-
-  `range_${range}`;
+  `range_${
+    String(range)
+      .trim()
+      .replace(/\s+/g,"_")
+  }`;
 
 console.log(
   "🟩 Range geometry saved"
@@ -16474,9 +16485,11 @@ async function populateBeatButtons(){
 // ====================================
 
 window.currentHistoryGeometryId =
-
-  `beat_${this.dataset.value}`;
-
+  `beat_${
+    String(this.dataset.value)
+      .trim()
+      .replace(/\s+/g,"_")
+  }`;
 console.log(
   "🟨 Beat geometry saved"
 );
@@ -16826,9 +16839,11 @@ async function populateCompartmentButtons(){
 // ====================================
 
 window.currentHistoryGeometryId =
-
-  `compartment_${this.dataset.value}`;
-
+  `compartment_${
+    String(this.dataset.value)
+      .trim()
+      .replace(/\s+/g,"_")
+  }`;
 console.log(
   "📦 Compartment geometry saved"
 );
