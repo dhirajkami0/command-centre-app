@@ -7024,16 +7024,14 @@ async function appendTrackToGeometries(
     // 🌍 GIS FEATURES
     // ==================================
 
-    const allFeatures = [
+   const allFeatures =
 
-      ...(window.compartmentFeatures || []),
+  window.allGISFeatures || [];
 
-      ...(window.beatFeatures || []),
-
-      ...(window.rangeFeatures || []),
-
-      ...(window.divisionFeatures || [])
-    ];
+console.log(
+  "TOTAL FEATURES:",
+  allFeatures.length
+);
 console.log("=================================");
 console.log("🧪 HISTORY WRITE DEBUG");
 console.log("=================================");
