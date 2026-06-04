@@ -6812,22 +6812,7 @@ async function processHistoryTrack(
     // ==================================
     // ✨ DOUGLAS-PEUCKER
     // ==================================
-
-   const simplified =
-
-  turf.simplify(
-
-    rawLine,
-
-    {
-
-      tolerance:0.00001,
-
-      highQuality:true,
-
-      mutate:false
-    }
-  );
+const simplified = rawLine;
 
     console.log(
 
