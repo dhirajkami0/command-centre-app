@@ -6813,21 +6813,21 @@ async function processHistoryTrack(
     // ✨ DOUGLAS-PEUCKER
     // ==================================
 
-    const simplified =
+   const simplified =
 
-      turf.simplify(
+  turf.simplify(
 
-        rawLine,
+    rawLine,
 
-        {
+    {
 
-          tolerance:0.00008,
+      tolerance:0.00001,
 
-          highQuality:false,
+      highQuality:true,
 
-          mutate:false
-        }
-      );
+      mutate:false
+    }
+  );
 
     console.log(
 
@@ -26634,7 +26634,7 @@ if(
 
     ]
 
-  ) > 10
+  ) > 3
 
 ){
 
