@@ -6426,27 +6426,7 @@ window.historyRenderer =
 // ======================================
 
 window.historyLayer =
-
-  L.geoJSON(
-
-    null,
-
-    {
-
-      renderer:
-        window.historyRenderer,
-
-      style:{
-
-        color:"#00ff90",
-
-        weight:4,
-
-        opacity:0.75
-      }
-    }
-
-  );
+  L.featureGroup();
 
 // ======================================
 // 📦 FUTURE SAFE HISTORY GROUPS
@@ -7765,37 +7745,36 @@ async function toggleMonthHistory(){
           return;
         }
 
-        L.polyline(
+       const line = L.polyline(
 
-          coords,
+  coords,
 
-          {
+  {
 
-            renderer:
-              window.historyRenderer,
+    renderer:
+      window.historyRenderer,
 
-            color:"#00ff90",
+    color:"#00ff90",
 
-            weight:2,
+    weight:4,
 
-            opacity:0.75,
+    opacity:0.9,
 
-            smoothFactor:0,
+    smoothFactor:0,
 
-            lineCap:"round",
+    lineCap:"round",
 
-            lineJoin:"round"
+    lineJoin:"round"
 
-          }
+  }
 
-        )
+);
 
-        .addTo(
-          window.historyLayer
-        );
+window.historyLayer.addLayer(
+  line
+);
 
-        rendered++;
-
+rendered++;
       }
 
       catch(err){
