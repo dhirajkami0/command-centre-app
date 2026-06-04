@@ -6860,692 +6860,287 @@ const simplified = rawLine;
 // FINAL ENTERPRISE VERSION
 // ======================================
 
-async function appendTrackToGeometries(
-
-  simplifiedLine
-
-){
-
-  try{
-
+async function appendTrackToGeometries(simplifiedLine) {
+  try {
     // ==================================
-    // ❌ INVALID
+    // ❌ INVALID SIMPLIFIED LINE CHECK
     // ==================================
-
-    if(
-
+    if (
       !simplifiedLine ||
-
       !simplifiedLine.geometry ||
-
-      !Array.isArray(
-        simplifiedLine.geometry.coordinates
-      )
-
-    ){
-
-      console.warn(
-        "⚠ Invalid simplified line"
-      );
-
+      !Array.isArray(simplifiedLine.geometry.coordinates)
+    ) {
+      console.warn("⚠ Invalid simplified line");
       return;
     }
 
     // ==================================
     // 📅 MONTH KEY
     // ==================================
-
     const d = new Date();
-
-    const monthKey =
-
-      `${d.getFullYear()}_${
-        String(
-          d.getMonth()+1
-        ).padStart(2,"0")
-      }`;
+    const monthKey = `${d.getFullYear()}_${String(d.getMonth() + 1).padStart(2, "0")}`;
 
     // ==================================
-    // 📦 SOURCE COORDS
-    // MUST BE [lng,lat]
+    // 📦 SOURCE COORDS (MUST BE [lng,lat])
     // ==================================
-
-    let sourceCoords =
-
-      simplifiedLine.geometry
-      .coordinates || [];
+    let sourceCoords = simplifiedLine.geometry.coordinates || [];
 
     // ==================================
     // 🔥 SAFE FLATTEN
     // ==================================
-
-    sourceCoords =
-
-      sourceCoords.map(pt => {
-
-        // NORMAL
-        if(
-
+    sourceCoords = sourceCoords
+      .map(pt => {
+        // NORMAL [lng, lat]
+        if (
           Array.isArray(pt) &&
-
           typeof pt[0] === "number" &&
-
           typeof pt[1] === "number"
-        ){
-
-          return [
-
-            Number(pt[0]), // lng
-
-            Number(pt[1])  // lat
-          ];
+        ) {
+          return [Number(pt[0]), Number(pt[1])];
         }
-
-        // NESTED
-        else if(
-
-          Array.isArray(pt) &&
-
-          Array.isArray(pt[0])
-        ){
-
-          return [
-
-            Number(pt[0][0]),
-
-            Number(pt[0][1])
-          ];
+        // NESTED [[lng, lat]]
+        else if (Array.isArray(pt) && Array.isArray(pt[0])) {
+          return [Number(pt[0][0]), Number(pt[0][1])];
         }
-
         return null;
-
       })
-
       .filter(Boolean);
 
     // ==================================
-    // 🔥 DEBUG
+    // 🔥 DEBUG SOURCE COORDS
     // ==================================
+    console.log("🔥 sourceCoords", sourceCoords);
 
-    console.log(
-      "🔥 sourceCoords",
-      sourceCoords
-    );
-
-    // ==================================
-    // ❌ INVALID
-    // ==================================
-
-    if(sourceCoords.length < 2){
-
-      console.warn(
-        "⚠ Invalid sourceCoords"
-      );
-
+    if (sourceCoords.length < 2) {
+      console.warn("⚠ Invalid sourceCoords (less than 2 points)");
       return;
     }
 
     // ==================================
-    // 🌍 GIS FEATURES
+    // 🌍 CONSOLIDATE GIS FEATURES
     // ==================================
+    console.log("=================================");
+    console.log("🧪 HISTORY WRITE DEBUG");
+    console.log("=================================");
+    console.log("window.allCompartmentFeatures:", window.allCompartmentFeatures?.length || 0);
+    console.log("window.beatFeatures:", window.beatFeatures?.length || 0);
+    console.log("window.rangeFeatures:", window.rangeFeatures?.length || 0);
+    console.log("window.divisionFeatures:", window.divisionFeatures?.length || 0);
+    console.log("window.allGISFeatures:", window.allGISFeatures?.length || 0);
 
-   const allFeatures =
+    // Combine all feature sets dynamically to prevent missing anything due to separation
+    const allFeatures = [
+      ...(window.allCompartmentFeatures || []),
+      ...(window.beatFeatures || []),
+      ...(window.rangeFeatures || []),
+      ...(window.divisionFeatures || []),
+      ...(window.allGISFeatures || [])
+    ];
 
-  window.allGISFeatures || [];
+    console.log("🚀 TOTAL COMBINED FEATURES TO PROCESS:", allFeatures.length);
+    console.log("=================================");
 
-console.log(
-  "TOTAL FEATURES:",
-  allFeatures.length
-);
-console.log("=================================");
-console.log("🧪 HISTORY WRITE DEBUG");
-console.log("=================================");
-
-console.log(
-  "compartmentFeatures:",
-  window.compartmentFeatures?.length
-);
-
-console.log(
-  "beatFeatures:",
-  window.beatFeatures?.length
-);
-
-console.log(
-  "rangeFeatures:",
-  window.rangeFeatures?.length
-);
-
-console.log(
-  "divisionFeatures:",
-  window.divisionFeatures?.length
-);
-
-console.log(
-  "allGISFeatures:",
-  window.allGISFeatures?.length
-);
-
-console.log(
-  "allCompartmentFeatures:",
-  window.allCompartmentFeatures?.length
-);
-
-console.log(
-  "TOTAL FEATURES:",
-  allFeatures.length
-);
     // ==================================
     // 🔄 LOOP FEATURES
     // ==================================
-
-    for(const feature of allFeatures){
-
-      try{
-
-        if(
-          !feature?.geometry
-        ){
+    for (const feature of allFeatures) {
+      try {
+        if (!feature?.geometry) {
           continue;
         }
 
         const poly = feature;
-
-        const props =
-
-          poly.properties || {};
-        console.log(
-  "🔍 FEATURE:",
-  props
-);
+        const props = poly.properties || {};
 
         // ==============================
         // 🔥 INTERSECTS
         // ==============================
+        const intersects = turf.booleanIntersects(simplifiedLine, poly);
 
-        const intersects =
-
-          turf.booleanIntersects(
-
-            simplifiedLine,
-
-            poly
-          );
-        console.log(
-  "🛰 INTERSECTS:",
-  intersects
-);
-
-        if(!intersects){
-
+        if (!intersects) {
           continue;
         }
 
+        console.log("🔍 INTERSECTED FEATURE PROPS:", props);
+
         // ==============================
-        // 🆔 GEOMETRY ID
+        // 🆔 SANITIZED GEOMETRY ID
         // ==============================
+        let geometryId = null;
 
-       let geometryId = null;
+        const compartment = props.compartment || props.Compartment || props.compartmen || "";
+        const beat = props.beat || props.Beat || "";
+        const range = props.range || props.Range || "";
+        const division = props.division || props.Division || "";
 
-const compartment =
+        // Normalize string spacing by converting spaces to underscores
+        if (compartment) {
+          const safeCompartment = String(compartment).trim().replace(/\s+/g, "_");
+          geometryId = `compartment_${safeCompartment}`;
+        } else if (beat) {
+          const safeBeat = String(beat).trim().replace(/\s+/g, "_");
+          geometryId = `beat_${safeBeat}`;
+        } else if (range) {
+          const safeRange = String(range).trim().replace(/\s+/g, "_");
+          geometryId = `range_${safeRange}`;
+        } else if (division) {
+          const safeDivision = String(division).trim().replace(/\s+/g, "_");
+          geometryId = `division_${safeDivision}`;
+        }
 
-  props.compartment ||
-  props.Compartment ||
-  props.compartmen ||
-  "";
+        console.log("🆔 generated geometryId:", geometryId);
 
-const beat =
-
-  props.beat ||
-  props.Beat ||
-  "";
-
-const range =
-
-  props.range ||
-  props.Range ||
-  "";
-
-const division =
-
-  props.division ||
-  props.Division ||
-  "";
-
-if(compartment){
-
-  geometryId =
-    `compartment_${compartment}`;
-}
-
-else if(beat){
-
-  geometryId =
-    `beat_${beat}`;
-}
-
-else if(range){
-
-  geometryId =
-    `range_${range}`;
-}
-
-else if(division){
-
-  geometryId =
-    `division_${division}`;
-}
-
-console.log(
-  "🆔 geometryId:",
-  geometryId
-);
-
-        if(!geometryId){
-
+        if (!geometryId) {
           continue;
         }
 
         // ==============================
         // ✂ CLIP SEGMENTS
         // ==============================
+        let clippedSegments = [];
+        let currentSegment = [];
 
-     // ==============================
-// ✂ CLIP SEGMENTS
-// NON-BREAKING VERSION
-// ==============================
+        for (let i = 0; i < sourceCoords.length; i++) {
+          const pt = sourceCoords[i];
+          const inside = turf.booleanPointInPolygon(turf.point(pt), poly);
 
-let clippedSegments = [];
+          if (inside) {
+            // polyline.encode expects [lat, lng]
+            currentSegment.push([Number(pt[1]), Number(pt[0])]);
+          } else {
+            if (currentSegment.length >= 2) {
+              clippedSegments.push([...currentSegment]);
+            }
+            currentSegment = [];
+          }
+        }
 
-// ======================================
-// 🔥 TRY NORMAL POINT CLIPPING
-// ======================================
+        if (currentSegment.length >= 2) {
+          clippedSegments.push([...currentSegment]);
+        }
 
-let currentSegment = [];
+        // ======================================
+        // 🔥 FALLBACK (Line intersects but points are missed)
+        // ======================================
+        if (intersects && clippedSegments.length === 0) {
+          console.warn("⚠ INTERSECTS BUT NO INSIDE POINTS FOUND FOR:", geometryId);
 
-for(
-  let i = 0;
-  i < sourceCoords.length;
-  i++
-){
+          const fallbackSeg = sourceCoords.map(pt => [
+            Number(pt[1]), // lat
+            Number(pt[0])  // lng
+          ]);
 
-  const pt = sourceCoords[i];
+          if (fallbackSeg.length >= 2) {
+            clippedSegments.push(fallbackSeg);
+            console.log("🛟 FALLBACK SEGMENT APPLIED FOR:", geometryId);
+          }
+        }
 
-  const inside =
+        if (!clippedSegments.length) {
+          continue;
+        }
 
-    turf.booleanPointInPolygon(
-
-      turf.point(pt),
-
-      poly
-
-    );
-
-  console.log(
-    "📍 POINT:",
-    pt,
-    "INSIDE:",
-    inside,
-    "GEOM:",
-    geometryId
-  );
-
-  if(inside){
-
-    currentSegment.push([
-
-      Number(pt[1]),
-      Number(pt[0])
-
-    ]);
-
-  }else{
-
-    if(
-      currentSegment.length >= 2
-    ){
-
-      clippedSegments.push([
-        ...currentSegment
-      ]);
-
-    }
-
-    currentSegment = [];
-  }
-}
-
-if(
-  currentSegment.length >= 2
-){
-
-  clippedSegments.push([
-    ...currentSegment
-  ]);
-
-}
-
-// ======================================
-// 🔥 FALLBACK
-// LINE INTERSECTS BUT NO SEGMENT FOUND
-// ======================================
-
-if(
-
-  intersects &&
-
-  clippedSegments.length === 0
-
-){
-
-  console.warn(
-
-    "⚠ INTERSECTS BUT NO INSIDE POINTS",
-
-    geometryId
-
-  );
-
-  // ====================================
-  // USE ENTIRE TRACK
-  // ====================================
-
-  const fallbackSeg =
-
-    sourceCoords.map(pt => [
-
-      Number(pt[1]),
-
-      Number(pt[0])
-
-    ]);
-
-  if(
-    fallbackSeg.length >= 2
-  ){
-
-    clippedSegments.push(
-      fallbackSeg
-    );
-
-    console.log(
-
-      "🛟 FALLBACK SEGMENT USED:",
-
-      geometryId
-
-    );
-  }
-}
-
-console.log(
-  "✂ clippedSegments:",
-  clippedSegments.length
-);
-
-if(
-  !clippedSegments.length
-){
-  continue;
-}
         // ==============================
         // 🔥 ENCODE SEGMENTS
         // ==============================
-
-        const encodedSegments =
-
-          clippedSegments.map(seg =>
-
-            polyline.encode(seg)
-          );
+        const encodedSegments = clippedSegments.map(seg => polyline.encode(seg));
 
         // ==============================
         // 📜 DOC REF
         // ==============================
-
-        const ref =
-
-          window.fb.doc(
-
-            window.db,
-
-            "geometry_history",
-
-            monthKey,
-
-            "data",
-
-            geometryId
-          );
+        const ref = window.fb.doc(
+          window.db,
+          "geometry_history",
+          monthKey,
+          "data",
+          geometryId
+        );
 
         // ==============================
-        // 📥 EXISTING
+        // 📥 FETCH EXISTING TRACKS
         // ==============================
-
-        const snap =
-
-          await window.fb.getDoc(
-            ref
-          );
-
+        const snap = await window.fb.getDoc(ref);
         let tracks = [];
 
-        if(snap.exists()){
-
-          tracks =
-            snap.data()?.tracks || [];
+        if (snap.exists()) {
+          tracks = snap.data()?.tracks || [];
         }
 
         // ==============================
-        // ➕ APPEND
+        // ➕ APPEND & SAVE
         // ==============================
+        tracks.push(...encodedSegments);
 
-        tracks.push(
-          ...encodedSegments
-        );
+        console.log(`🔥 WRITING DOC: ${geometryId} | TRACK COUNT: ${tracks.length}`);
 
-        // ==============================
-        // 💾 SAVE
-        // ==============================
+        await window.fb.setDoc(ref, {
+          geometryId,
+          monthKey,
+          tracks,
+          updatedAt: Date.now()
+        });
 
-        await window.fb.setDoc(
-
-          ref,
-
-          {
-
-            geometryId,
-
-            monthKey,
-
-            tracks,
-
-            updatedAt:
-              Date.now()
-          }
-
-        );
-
-        console.log(
-  "💾 SAVED:",
-  geometryId,
-  "segments:",
-  encodedSegments.length
-);
-
-console.log(
-  "✅ Geometry updated:",
-  geometryId
-);
-
-      }
-
-      catch(featureErr){
-
-        console.warn(
-          "⚠ Feature failed",
-          featureErr
-        );
+        console.log("💾 SAVED & UPDATED:", geometryId);
+      } catch (featureErr) {
+        console.warn("⚠ Feature processing failed", featureErr);
       }
     }
 
     // ==================================
-    // 🌍 FULL BTR MASTER
+    // 🌍 FULL BTR MASTER UPDATE
     // ==================================
+    try {
+      const btrRef = window.fb.doc(
+        window.db,
+        "geometry_history",
+        monthKey,
+        "data",
+        "btr_ALL"
+      );
 
-    try{
+      const btrSnap = await window.fb.getDoc(btrRef);
+      let btrTracks = [];
 
-      const btrRef =
-
-        window.fb.doc(
-
-          window.db,
-
-          "geometry_history",
-
-          monthKey,
-
-          "data",
-
-          "btr_ALL"
-        );
-
-      // ==============================
-      // 📥 EXISTING
-      // ==============================
-
-      const btrSnap =
-
-        await window.fb.getDoc(
-          btrRef
-        );
-
-      let tracks = [];
-
-      if(btrSnap.exists()){
-
-        tracks =
-          btrSnap.data()?.tracks || [];
+      if (btrSnap.exists()) {
+        btrTracks = btrSnap.data()?.tracks || [];
       }
 
-      // ==============================
-      // 🔥 SAFE LINE
-      // ==============================
-
+      // Prepare entire path in [lat, lng] format
       const safeLine = [];
-
-      for(const pt of sourceCoords){
-
-        if(
-
+      for (const pt of sourceCoords) {
+        if (
           Array.isArray(pt) &&
-
           typeof pt[0] === "number" &&
-
           typeof pt[1] === "number"
-        ){
-
-          safeLine.push([
-
-            Number(pt[1]), // lat
-
-            Number(pt[0])  // lng
-          ]);
+        ) {
+          safeLine.push([Number(pt[1]), Number(pt[0])]);
         }
       }
 
-      // ==============================
-      // 🔥 DEBUG
-      // ==============================
-
-      console.log(
-        "🔥 safeLine",
-        safeLine
-      );
-
-      console.log(
-        "🔥 safeLine length",
-        safeLine.length
-      );
-
-      // ==============================
-      // ❌ INVALID
-      // ==============================
-
-      if(safeLine.length < 2){
-
-        console.warn(
-          "❌ safeLine too small"
-        );
-
+      if (safeLine.length < 2) {
+        console.warn("❌ safeLine too small for btr_ALL master track");
         return;
       }
 
-      // ==============================
-      // 🔥 ENCODE
-      // ==============================
+      const encodedMaster = polyline.encode(safeLine);
+      btrTracks.push(encodedMaster);
 
-      const encoded =
+      console.log(`🔥 WRITING MASTER DOC: btr_ALL | TOTAL TRACKS: ${btrTracks.length}`);
 
-        polyline.encode(
-          safeLine
-        );
+      await window.fb.setDoc(btrRef, {
+        geometryId: "btr_ALL",
+        monthKey,
+        tracks: btrTracks,
+        updatedAt: Date.now()
+      });
 
-      console.log(
-        "🔥 encoded",
-        encoded
-      );
-
-      // ==============================
-      // ➕ APPEND
-      // ==============================
-
-      tracks.push(encoded);
-
-      // ==============================
-      // 💾 SAVE
-      // ==============================
-
-      await window.fb.setDoc(
-
-        btrRef,
-
-        {
-
-          geometryId:"btr_ALL",
-
-          monthKey,
-
-          tracks,
-
-          updatedAt:
-            Date.now()
-        }
-
-      );
-
-      console.log(
-        "✅ BTR history updated"
-      );
-
+      console.log("✅ BTR master history updated successfully");
+    } catch (btrErr) {
+      console.warn("⚠ BTR append failed", btrErr);
     }
 
-    catch(btrErr){
-
-      console.warn(
-        "⚠ BTR append failed",
-        btrErr
-      );
-    }
-
-  }
-
-  catch(err){
-
-    console.error(
-      "❌ appendTrackToGeometries",
-      err
-    );
+  } catch (err) {
+    console.error("❌ Critical error inside appendTrackToGeometries:", err);
   }
 }
 async function toggleMonthHistory(){
