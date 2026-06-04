@@ -7509,114 +7509,217 @@ async function toggleMonthHistory(){
   }
 }
     
-   async function showMonthHistory(){
+  async function showMonthHistory(){
 
   try{
 
+    // ==========================================
+    // 📅 CURRENT MONTH
+    // ==========================================
     const d = new Date();
 
     const monthKey =
 
       `${d.getFullYear()}_${
         String(
-          d.getMonth()+1
+          d.getMonth() + 1
         ).padStart(2,"0")
       }`;
 
-    // ==============================
-    // 🌍 CURRENT GEOMETRY TYPE
-    // ==============================
+    // ==========================================
+    // 🌍 CURRENT SELECTED GEOMETRY
+    // ==========================================
+    let geometryId =
 
-    let geometryId = "btr_ALL";
+      window.currentHistoryGeometryId ||
 
-    if(window.currentHistoryGeometryId){
+      "btr_ALL";
 
-      geometryId =
-        window.currentHistoryGeometryId;
-    }
+    console.log(
+      "📜 Loading History:",
+      geometryId
+    );
 
-    // ==============================
-    // 📥 LOAD
-    // ==============================
+    // ==========================================
+    // 🧹 CLEAR OLD HISTORY
+    // ==========================================
+    try{
+
+      window.historyLayer?.clearLayers();
+
+    }catch(e){}
+
+    // ==========================================
+    // 📥 LOAD DOCUMENT
+    // ==========================================
+    const docRef =
+
+      window.fb.doc(
+
+        window.db,
+
+        "geometry_history",
+
+        monthKey,
+
+        "data",
+
+        geometryId
+
+      );
 
     const snap =
 
       await window.fb.getDoc(
-
-        window.fb.doc(
-
-          window.db,
-
-          "geometry_history",
-
-          monthKey,
-
-          "data",
-
-          geometryId
-        )
+        docRef
       );
 
-    // ==============================
-    // ❌ NO DATA
-    // ==============================
-
+    // ==========================================
+    // ❌ NO HISTORY
+    // ==========================================
     if(!snap.exists()){
 
+      console.warn(
+        "⚠ No history document:",
+        geometryId
+      );
+
       alert(
-        "No history found"
+        "No history found for selected area"
       );
 
       return;
     }
 
-    // ==============================
+    // ==========================================
     // 📦 TRACKS
-    // ==============================
-
+    // ==========================================
     const tracks =
 
-      snap.data()?.tracks || [];
+      Array.isArray(
+        snap.data()?.tracks
+      )
 
-    // ==============================
-    // 🧹 CLEAR
-    // ==============================
+      ? snap.data().tracks
 
-    window.historyLayer.clearLayers();
-
-    // ==============================
-    // 🔄 RENDER
-    // ==============================
-
-    tracks.forEach(t => {
-
-      const coords =
-        polyline.decode(t);
-
-      L.polyline(
-
-        coords,
-
-        {
-
-          renderer:
-            window.historyRenderer,
-
-          color:"#00ff90",
-
-          weight:2,
-
-          opacity:0.75
-
-        }
-
-      ).addTo(
-        window.historyLayer
-      );
-    });
+      : [];
 
     console.log(
-      "✅ History rendered:",
+      "📦 Tracks Found:",
+      tracks.length
+    );
+
+    // ==========================================
+    // ❌ EMPTY TRACKS
+    // ==========================================
+    if(tracks.length === 0){
+
+      alert(
+        "No history tracks found"
+      );
+
+      return;
+    }
+
+    // ==========================================
+    // 🎨 RENDER
+    // ==========================================
+    let rendered = 0;
+
+    tracks.forEach(track => {
+
+      try{
+
+        if(
+          !track ||
+          typeof track !== "string"
+        ){
+          return;
+        }
+
+        const coords =
+          polyline.decode(track);
+
+        if(
+          !Array.isArray(coords) ||
+          coords.length < 2
+        ){
+          return;
+        }
+
+        L.polyline(
+
+          coords,
+
+          {
+
+            renderer:
+              window.historyRenderer,
+
+            color:"#00ff90",
+
+            weight:2,
+
+            opacity:0.75,
+
+            smoothFactor:0,
+
+            lineCap:"round",
+
+            lineJoin:"round"
+
+          }
+
+        )
+
+        .addTo(
+          window.historyLayer
+        );
+
+        rendered++;
+
+      }
+
+      catch(err){
+
+        console.warn(
+          "⚠ Track decode failed",
+          err
+        );
+
+      }
+
+    });
+
+    // ==========================================
+    // 🌍 FIT BOUNDS
+    // ==========================================
+    try{
+
+      const bounds =
+
+        window.historyLayer
+        .getBounds();
+
+      if(
+        bounds &&
+        bounds.isValid()
+      ){
+
+        map.fitBounds(
+          bounds,
+          {
+            padding:[20,20]
+          }
+        );
+      }
+
+    }catch(e){}
+
+    console.log(
+      "✅ History Rendered:",
+      rendered,
+      "Geometry:",
       geometryId
     );
 
@@ -7627,6 +7730,10 @@ async function toggleMonthHistory(){
     console.error(
       "❌ showMonthHistory",
       err
+    );
+
+    alert(
+      "Failed to load history"
     );
   }
 }
