@@ -7170,97 +7170,142 @@ console.log(
         // ✂ CLIP SEGMENTS
         // ==============================
 
-        let clippedSegments = [];
+     // ==============================
+// ✂ CLIP SEGMENTS
+// NON-BREAKING VERSION
+// ==============================
 
-        let currentSegment = [];
+let clippedSegments = [];
 
-        for(
+// ======================================
+// 🔥 TRY NORMAL POINT CLIPPING
+// ======================================
 
-          let i=0;
+let currentSegment = [];
 
-          i<sourceCoords.length;
+for(
+  let i = 0;
+  i < sourceCoords.length;
+  i++
+){
 
-          i++
-        ){
+  const pt = sourceCoords[i];
 
-          const pt = sourceCoords[i];
+  const inside =
 
-          // pt = [lng,lat]
+    turf.booleanPointInPolygon(
 
-          const inside =
+      turf.point(pt),
 
-            turf.booleanPointInPolygon(
+      poly
 
-              turf.point(pt),
+    );
 
-              poly
-            );
-console.log(
-  "📍 POINT:",
-  pt,
-  "INSIDE:",
-  inside,
-  "GEOM:",
-  geometryId
-);
-          // ============================
-          // ✅ INSIDE
-          // ============================
+  console.log(
+    "📍 POINT:",
+    pt,
+    "INSIDE:",
+    inside,
+    "GEOM:",
+    geometryId
+  );
 
-          if(inside){
+  if(inside){
 
-            currentSegment.push([
+    currentSegment.push([
 
-              Number(pt[1]), // lat
+      Number(pt[1]),
+      Number(pt[0])
 
-              Number(pt[0])  // lng
-            ]);
-          }
+    ]);
 
-          // ============================
-          // ❌ OUTSIDE
-          // ============================
+  }else{
 
-          else{
+    if(
+      currentSegment.length >= 2
+    ){
 
-            if(
+      clippedSegments.push([
+        ...currentSegment
+      ]);
 
-              currentSegment.length >= 2
-            ){
+    }
 
-              clippedSegments.push(
-                [...currentSegment]
-              );
-            }
+    currentSegment = [];
+  }
+}
 
-            currentSegment = [];
-          }
-        }
+if(
+  currentSegment.length >= 2
+){
 
-        // ==============================
-        // 📦 LAST SEGMENT
-        // ==============================
+  clippedSegments.push([
+    ...currentSegment
+  ]);
 
-        if(
+}
 
-          currentSegment.length >= 2
-        ){
+// ======================================
+// 🔥 FALLBACK
+// LINE INTERSECTS BUT NO SEGMENT FOUND
+// ======================================
 
-          clippedSegments.push(
-            [...currentSegment]
-          );
-        }
+if(
 
-        // ==============================
-        // ❌ EMPTY
-        // ==============================
+  intersects &&
+
+  clippedSegments.length === 0
+
+){
+
+  console.warn(
+
+    "⚠ INTERSECTS BUT NO INSIDE POINTS",
+
+    geometryId
+
+  );
+
+  // ====================================
+  // USE ENTIRE TRACK
+  // ====================================
+
+  const fallbackSeg =
+
+    sourceCoords.map(pt => [
+
+      Number(pt[1]),
+
+      Number(pt[0])
+
+    ]);
+
+  if(
+    fallbackSeg.length >= 2
+  ){
+
+    clippedSegments.push(
+      fallbackSeg
+    );
+
+    console.log(
+
+      "🛟 FALLBACK SEGMENT USED:",
+
+      geometryId
+
+    );
+  }
+}
+
 console.log(
   "✂ clippedSegments:",
   clippedSegments.length
 );
 
-if(!clippedSegments.length){
-
+if(
+  !clippedSegments.length
+){
   continue;
 }
         // ==============================
