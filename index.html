@@ -6864,72 +6864,129 @@ async function preloadAllCompartments(){
 
     window.allCompartmentFeatures = [];
 
-    const beats = new Set();
+    // =====================================
+    // UNIQUE BEAT + DIVISION PAIRS
+    // =====================================
 
-    (window.allGISFeatures || [])
+    const beatMap = new Map();
+
+    (
+      window.allGISFeatures || []
+    )
     .forEach(f => {
 
-      const props =
-        f.properties || {};
+      try{
 
-      const beat =
+        const props =
+          f.properties || {};
 
-        String(
-          props.Beat ||
-          props.beat ||
-          ""
-        ).trim();
+        const beat =
 
-      if(beat){
+          String(
 
-        beats.add(beat);
+            props.Beat ||
+
+            props.beat ||
+
+            ""
+
+          ).trim();
+
+        const rawDivision =
+
+          String(
+
+            props.Division ||
+
+            props.division ||
+
+            ""
+
+          ).trim();
+
+        if(
+          !beat ||
+          !rawDivision
+        ){
+          return;
+        }
+
+        let divisionFolder = "";
+
+        if(
+          rawDivision ===
+          "BuxaTR_WEST"
+        ){
+
+          divisionFolder =
+            "BTR_W";
+        }
+
+        else if(
+          rawDivision ===
+          "BuxaTR_EAST"
+        ){
+
+          divisionFolder =
+            "BTR_E";
+        }
+
+        else{
+
+          return;
+        }
+
+        beatMap.set(
+          beat,
+          divisionFolder
+        );
+
       }
 
+      catch(e){}
     });
 
     console.log(
       "📦 UNIQUE BEATS:",
-      beats.size
+      beatMap.size
     );
 
-    for(const beat of beats){
+    // =====================================
+    // LOAD EVERY BEAT FILE
+    // =====================================
+
+    for(
+      const [beat,divisionFolder]
+      of beatMap
+    ){
 
       try{
-
-        const division =
-
-          normalizeDivision(
-
-            window.gisFilter.division ===
-            "ALL"
-
-            ?
-
-            (
-
-              window.userProfile
-              ?.division || ""
-
-            )
-
-            :
-
-            window.gisFilter.division
-
-          );
 
         const url =
 
           `./geojson/compartments/${
-            division
+            divisionFolder
           }/${
-            encodeURIComponent(beat)
+            encodeURIComponent(
+              beat
+            )
           }.geojson`;
+
+        console.log(
+          "📥",
+          url
+        );
 
         const res =
           await fetch(url);
 
         if(!res.ok){
+
+          console.warn(
+            "⚠ Missing:",
+            url
+          );
+
           continue;
         }
 
@@ -6937,27 +6994,30 @@ async function preloadAllCompartments(){
           await res.json();
 
         if(
-          Array.isArray(
+          !data ||
+          !Array.isArray(
             data.features
           )
         ){
-
-          window.allCompartmentFeatures.push(
-            ...data.features
-          );
-
+          continue;
         }
 
-      }
-
-      catch(e){
-
-        console.warn(
-          "Compartment load failed",
-          beat
+        window.allCompartmentFeatures.push(
+          ...data.features
         );
 
       }
+
+      catch(err){
+
+        console.warn(
+          "⚠ Load failed:",
+          beat,
+          err
+        );
+
+      }
+
     }
 
     console.log(
@@ -6970,6 +7030,7 @@ async function preloadAllCompartments(){
   catch(err){
 
     console.error(
+      "❌ preloadAllCompartments",
       err
     );
 
