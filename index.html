@@ -6910,14 +6910,30 @@ async function appendTrackToGeometries(simplifiedLine){
       return;
     }
 
-    const compartments =
-      window.allCompartmentFeatures || [];
+   const compartments =
+  window.allCompartmentFeatures || [];
 
-    console.log(
-      "📦 Compartments:",
-      compartments.length
-    );
+console.log(
+  "📦 Compartments:",
+  compartments.length
+);
 
+console.log(
+  "COMPARTMENTS AVAILABLE:",
+  window.allCompartmentFeatures?.length
+);
+
+if(
+  !window.allCompartmentFeatures ||
+  window.allCompartmentFeatures.length === 0
+){
+
+  console.warn(
+    "❌ No compartment features loaded"
+  );
+
+  return;
+}
     for(const feature of compartments){
 
       try{
