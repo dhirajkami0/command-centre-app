@@ -6854,7 +6854,127 @@ const simplified = rawLine;
 // FINAL ENTERPRISE VERSION
 // FIRESTORE SAFE
 // ======================================
+async function preloadAllCompartments(){
 
+  try{
+
+    console.log(
+      "📦 PRELOADING ALL COMPARTMENTS"
+    );
+
+    window.allCompartmentFeatures = [];
+
+    const beats = new Set();
+
+    (window.allGISFeatures || [])
+    .forEach(f => {
+
+      const props =
+        f.properties || {};
+
+      const beat =
+
+        String(
+          props.Beat ||
+          props.beat ||
+          ""
+        ).trim();
+
+      if(beat){
+
+        beats.add(beat);
+      }
+
+    });
+
+    console.log(
+      "📦 UNIQUE BEATS:",
+      beats.size
+    );
+
+    for(const beat of beats){
+
+      try{
+
+        const division =
+
+          normalizeDivision(
+
+            window.gisFilter.division ===
+            "ALL"
+
+            ?
+
+            (
+
+              window.userProfile
+              ?.division || ""
+
+            )
+
+            :
+
+            window.gisFilter.division
+
+          );
+
+        const url =
+
+          `./geojson/compartments/${
+            division
+          }/${
+            encodeURIComponent(beat)
+          }.geojson`;
+
+        const res =
+          await fetch(url);
+
+        if(!res.ok){
+          continue;
+        }
+
+        const data =
+          await res.json();
+
+        if(
+          Array.isArray(
+            data.features
+          )
+        ){
+
+          window.allCompartmentFeatures.push(
+            ...data.features
+          );
+
+        }
+
+      }
+
+      catch(e){
+
+        console.warn(
+          "Compartment load failed",
+          beat
+        );
+
+      }
+    }
+
+    console.log(
+      "✅ PRELOAD COMPLETE:",
+      window.allCompartmentFeatures.length
+    );
+
+  }
+
+  catch(err){
+
+    console.error(
+      err
+    );
+
+  }
+}
 // ======================================
 // 📜 APPEND INTO GEOMETRY HISTORY
 // FINAL ENTERPRISE VERSION
@@ -12082,7 +12202,7 @@ async function loadRangeKML(){
     // ==================================================
     // 🎨 RENDER GIS
     // ==================================================
-
+await preloadAllCompartments();
     renderFilteredGIS();
 centerMap();
     // ==================================================
