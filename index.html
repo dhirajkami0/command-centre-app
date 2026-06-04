@@ -13117,6 +13117,13 @@ async function populateDivisionButtons(){
       window.currentSelectedGeometry =
 
         matchingFeature?.geometry || null;
+      window.currentHistoryGeometryId =
+
+  division === "ALL"
+
+  ? "btr_ALL"
+
+  : `division_${division}`;
 
       console.log(
         "🌍 Division geometry saved"
@@ -13307,60 +13314,58 @@ async function populateDivisionButtons(){
           // 🌍 SAVE PLANET AOI
           // ====================================
 
-          if(division === "ALL"){
+         if(division === "ALL"){
 
-            // ================================
-            // 🌍 ENTIRE BTR
-            // ================================
+  window.currentSelectedGeometry =
 
-            window.currentSelectedGeometry =
+    window.rootLayer
+    ?.toGeoJSON()
+    ?.features?.[0]
+    ?.geometry || null;
 
-              window.rootLayer
-              ?.toGeoJSON()
-              ?.features?.[0]
-              ?.geometry || null;
+  window.currentHistoryGeometryId =
+    "btr_ALL";
 
-            console.log(
-              "🌍 ROOT AOI SAVED"
-            );
-          }
+  console.log(
+    "🌍 ROOT AOI SAVED"
+  );
+}
 
-          else {
+else {
 
-            // ================================
-            // 🟩 SINGLE DIVISION
-            // ================================
+  const matchingFeature =
 
-            const matchingFeature =
+    (
+      window.allGISFeatures || []
+    )
+    .find(f => {
 
-              (
-                window.allGISFeatures || []
-              )
-              .find(f => {
+      const div = normalizeDivision(
 
-                const div = normalizeDivision(
+        f.properties?.Division ||
 
-                  f.properties?.Division ||
+        f.properties?.division ||
 
-                  f.properties?.division ||
+        ""
 
-                  ""
+      );
 
-                );
+      return div === division;
 
-                return div === division;
+    });
 
-              });
+  window.currentSelectedGeometry =
 
-            window.currentSelectedGeometry =
+    matchingFeature?.geometry || null;
 
-              matchingFeature?.geometry || null;
+  window.currentHistoryGeometryId =
 
-            console.log(
-              "🟩 Division geometry saved"
-            );
-          }
+    `division_${division}`;
 
+  console.log(
+    "🟩 Division geometry saved"
+  );
+}
           console.log(
             window.currentSelectedGeometry
           );
@@ -13696,14 +13701,17 @@ loadPolygonWeather();
             return r === range;
 
           });
+window.currentSelectedGeometry =
 
-        window.currentSelectedGeometry =
+  matchingFeature?.geometry || null;
 
-          matchingFeature?.geometry || null;
+window.currentHistoryGeometryId =
 
-        console.log(
-          "🟩 Range geometry saved"
-        );
+  `range_${range}`;
+
+console.log(
+  "🟩 Range geometry saved"
+);
 
         console.log(
           window.currentSelectedGeometry
@@ -13843,13 +13851,17 @@ loadPolygonWeather();
 
               });
 
-            window.currentSelectedGeometry =
+          window.currentSelectedGeometry =
 
-              matchingFeature?.geometry || null;
+  matchingFeature?.geometry || null;
 
-            console.log(
-              "🟩 Range geometry saved"
-            );
+window.currentHistoryGeometryId =
+
+  `range_${range}`;
+
+console.log(
+  "🟩 Range geometry saved"
+);
 
             console.log(
               window.currentSelectedGeometry
@@ -14240,11 +14252,15 @@ loadPolygonWeather();
 
           window.currentSelectedGeometry =
 
-            matchingFeature?.geometry || null;
+  matchingFeature?.geometry || null;
 
-          console.log(
-            "🟩 Range geometry saved"
-          );
+window.currentHistoryGeometryId =
+
+  `range_${range}`;
+
+console.log(
+  "🟩 Range geometry saved"
+);
 
           console.log(
             window.currentSelectedGeometry
@@ -16650,13 +16666,21 @@ async function populateBeatButtons(){
 
             });
 
-          window.currentSelectedGeometry =
+        window.currentSelectedGeometry =
 
-            matchingFeature?.geometry || null;
+  matchingFeature?.geometry || null;
 
-          console.log(
-            "🟨 Beat geometry saved"
-          );
+// ====================================
+// 📜 HISTORY GEOMETRY
+// ====================================
+
+window.currentHistoryGeometryId =
+
+  `beat_${this.dataset.value}`;
+
+console.log(
+  "🟨 Beat geometry saved"
+);
 
           console.log(
             window.currentSelectedGeometry
@@ -16994,14 +17018,21 @@ async function populateCompartmentButtons(){
 
             });
 
-          window.currentSelectedGeometry =
+       window.currentSelectedGeometry =
 
-            matchingFeature?.geometry || null;
+  matchingFeature?.geometry || null;
 
-          console.log(
-            "📦 Compartment geometry saved"
-          );
+// ====================================
+// 📜 HISTORY GEOMETRY
+// ====================================
 
+window.currentHistoryGeometryId =
+
+  `compartment_${this.dataset.value}`;
+
+console.log(
+  "📦 Compartment geometry saved"
+);
           console.log(
             window.currentSelectedGeometry
           );
