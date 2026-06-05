@@ -6756,7 +6756,17 @@ async function processHistoryTrack(
 
   rawCoords
 
-){
+)
+
+console.log(
+  "PROCESS HISTORY TRACK CALLED"
+);
+
+console.log(
+  "RAW POINTS:",
+  points?.length
+);
+{
 
   try{
 
@@ -6805,7 +6815,13 @@ const simplified = rawLine;
       simplified.geometry
       .coordinates.length
     );
+console.log(
+  "CALLING appendTrackToGeometries"
+);
 
+console.log(
+  simplifiedLine
+);
     // ==================================
     // 🌍 SAVE TO GEOMETRIES
     // ==================================
@@ -7046,6 +7062,19 @@ console.trace(
 
 async function appendTrackToGeometries(simplifiedLine){
 
+ console.log(
+    "🚀 appendTrackToGeometries START"
+  );
+
+  console.log(
+    "COMPARTMENTS AVAILABLE:",
+    window.allCompartmentFeatures?.length
+  );
+
+  console.log(
+    "SIMPLIFIED LINE:",
+    simplifiedLine
+  );
   try{
 
     if(
@@ -31151,6 +31180,16 @@ Promise.allSettled([
     }
   ),
 
+
+  console.log(
+  "END DUTY TRACK COUNT:",
+  window.sessionTrackPoints?.length
+);
+
+console.log(
+  "END DUTY TRACKS:",
+  window.sessionTrackPoints
+);
   // ========================================================
   // 🔥 APK STOP GPS
   // ========================================================
