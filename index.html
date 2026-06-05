@@ -6752,11 +6752,7 @@ function clearMonthHistory(){
 // 📜 PROCESS HISTORY TRACK
 // ======================================
 
-async function processHistoryTrack(
-
-  rawCoords
-
-){
+async function processHistoryTrack(rawCoords){
 
   console.log(
     "PROCESS HISTORY TRACK CALLED"
@@ -6764,93 +6760,60 @@ async function processHistoryTrack(
 
   try{
 
-    // ==================================
-    // DEBUG
-    // ==================================
-
-    console.log(
-      "RAW COORDS:",
-      rawCoords
-    );
-
-    console.log(
-      "RAW LENGTH:",
-      rawCoords?.length
-    );
-
-    // ==================================
-    // ❌ INVALID
-    // ==================================
-
     if(
-
       !Array.isArray(rawCoords) ||
-
       rawCoords.length < 2
-
     ){
+      console.warn(
+        "❌ Not enough track points"
+      );
+      return;
+    }
+
+    const coords =
+
+      rawCoords
+      .map(p => [
+
+        Number(p.lng),
+        Number(p.lat)
+
+      ])
+      .filter(pt =>
+
+        Number.isFinite(pt[0]) &&
+        Number.isFinite(pt[1])
+
+      );
+
+    if(coords.length < 2){
 
       console.warn(
-        "❌ processHistoryTrack skipped - insufficient points"
+        "❌ No valid coordinates"
       );
 
       return;
     }
 
-    // ==================================
-    // 🌍 RAW GEOJSON
-    // ==================================
-
-    const rawLine =
-
-      turf.lineString(
-
-        rawCoords.map(p => [
-
-          Number(p.lng),
-          Number(p.lat)
-
-        ])
-
-      );
-
-    // ==================================
-    // ✨ SIMPLIFIED
-    // ==================================
-
-    const simplified = rawLine;
-
     console.log(
+      "📍 Track points:",
+      coords.length
+    );
 
-      "✨ Simplified:",
-
-      rawCoords.length,
-
-      "→",
-
-      simplified.geometry
-      .coordinates.length
-
+    const line = turf.lineString(
+      coords
     );
 
     console.log(
-      "CALLING appendTrackToGeometries"
+      "📤 Sending to appendTrackToGeometries"
     );
-
-    console.log(
-      simplified
-    );
-
-    // ==================================
-    // 🌍 SAVE TO GEOMETRIES
-    // ==================================
 
     await appendTrackToGeometries(
-      simplified
+      line
     );
 
     console.log(
-      "✅ appendTrackToGeometries finished"
+      "✅ History processing complete"
     );
 
   }
