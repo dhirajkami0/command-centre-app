@@ -31360,10 +31360,24 @@ console.log(
       points.length
     );
 
-    await uploadPatrolKML(
-  sessionId,
-  points
-);
+    console.log(
+      "🔥 ABOUT TO UPLOAD KML",
+      sessionId,
+      points?.length
+    );
+
+    const kmlUrl =
+
+      await uploadPatrolKML(
+        sessionId,
+        points
+      );
+
+    console.log(
+      "🔥 KML URL:",
+      kmlUrl
+    );
+
     // ==============================================
     // 🔥 WRITE COVERAGE HISTORY
     // ==============================================
@@ -31395,7 +31409,10 @@ console.log(
           Date.now(),
 
         pointCount:
-          points.length
+          points.length,
+
+        kmlUrl:
+          kmlUrl || ""
 
       }
 
@@ -31414,6 +31431,7 @@ console.log(
       "❌ History write failed",
       err
     );
+
   }
 
 })()
