@@ -31103,6 +31103,15 @@ showToast(
     // ============================================================
     // 🔥 BACKEND SAVE
     // ============================================================
+     console.log(
+  "END DUTY TRACK COUNT:",
+  window.sessionTrackPoints?.length
+);
+
+console.log(
+  "END DUTY TRACKS:",
+  window.sessionTrackPoints
+);
     // ============================================================
 // 🚀 BACKGROUND FAST PARALLEL END DUTY
 // ============================================================
@@ -31179,15 +31188,7 @@ Promise.allSettled([
   ),
 
 
-  console.log(
-  "END DUTY TRACK COUNT:",
-  window.sessionTrackPoints?.length
-);
-
-console.log(
-  "END DUTY TRACKS:",
-  window.sessionTrackPoints
-);
+ 
   // ========================================================
   // 🔥 APK STOP GPS
   // ========================================================
