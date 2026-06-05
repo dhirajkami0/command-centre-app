@@ -31680,90 +31680,81 @@ ${coordinates}
     // APPS SCRIPT SYNC
     // ==========================================================
 
-    try{
+   try{
 
-      const response =
+  fetch(
 
-        await fetch(
+    window.APPS_SCRIPT_URL,
 
-          window.APPS_SCRIPT_URL,
+    {
 
-          {
+      method:"POST",
 
-            method : "POST",
+      body:JSON.stringify({
 
-            headers : {
+        action:
+          "SAVE_PATROL_KML",
 
-              "Content-Type":
-                "application/json"
+        monthKey,
 
-            },
+        sessionId,
 
-            body : JSON.stringify({
+        staffName:
+          profile.cleanName || "",
 
-              action :
-                "SAVE_PATROL_KML",
+        phone:
+          profile.phone || "",
 
-              sessionId,
+        division:
+          profile.division || "",
 
-              staffName :
-                profile.cleanName || "",
+        range:
+          profile.range || "",
 
-              phone :
-                profile.phone || "",
+        beat:
+          profile.beat || "",
 
-              division :
-                profile.division || "",
+        pointCount:
+          points.length,
 
-              range :
-                profile.range || "",
+        kmlUrl:
+          downloadUrl,
 
-              beat :
-                profile.beat || "",
+        createdAt:
+          now
 
-              pointCount :
-                points.length,
-
-              kmlUrl :
-                downloadUrl,
-
-              createdAt :
-                now
-
-            })
-
-          }
-
-        );
-
-      try{
-
-        const result =
-          await response.json();
-
-        console.log(
-          "📄 Apps Script Sync:",
-          result
-        );
-
-      }
-      catch(e){
-
-        console.warn(
-          "⚠ Apps Script response parse failed"
-        );
-
-      }
+      })
 
     }
-    catch(err){
 
-      console.error(
-        "❌ Apps Script Sync Failed",
-        err
-      );
+  )
+  .then(r => r.text())
+  .then(result => {
 
-    }
+    console.log(
+      "📄 Apps Script Sync:",
+      result
+    );
+
+  })
+  .catch(err => {
+
+    console.error(
+      "❌ Apps Script Sync Failed",
+      err
+    );
+
+  });
+
+}
+catch(err){
+
+  console.error(
+    "❌ Apps Script Launch Failed",
+    err
+  );
+
+}
 
     // ==========================================================
     // DONE
