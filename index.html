@@ -31524,38 +31524,66 @@ ${coordinates}
 </kml>`;
 }
 
-    async function uploadPatrolKML(
+   async function uploadPatrolKML(
   sessionId,
   points
 ){
 
   try{
 
+    // ==========================================================
+    // VALIDATE
+    // ==========================================================
+
     if(
-      !points ||
+      !Array.isArray(points) ||
       points.length < 2
     ){
+
+      console.warn(
+        "⚠ Not enough points for KML"
+      );
+
       return null;
     }
+
+    // ==========================================================
+    // PROFILE
+    // ==========================================================
 
     const profile =
       window.userProfile || {};
 
+    // ==========================================================
+    // DATE
+    // ==========================================================
+
+    const now =
+      Date.now();
+
     const d =
-      new Date();
+      new Date(now);
 
     const monthKey =
       `${d.getFullYear()}_${
         String(
-          d.getMonth()+1
+          d.getMonth() + 1
         ).padStart(2,"0")
       }`;
+
+    // ==========================================================
+    // GENERATE KML
+    // ==========================================================
 
     const kmlText =
 
       generateKMLFromTrack(
         points
       );
+
+    // ==========================================================
+    // STORAGE PATH
+    // ==========================================================
 
     const storageRef =
 
@@ -31567,6 +31595,10 @@ ${coordinates}
 
       );
 
+    // ==========================================================
+    // UPLOAD KML
+    // ==========================================================
+
     await firebaseStorage.uploadString(
 
       storageRef,
@@ -31577,12 +31609,20 @@ ${coordinates}
 
     );
 
+    // ==========================================================
+    // DOWNLOAD URL
+    // ==========================================================
+
     const downloadUrl =
 
       await firebaseStorage
       .getDownloadURL(
         storageRef
       );
+
+    // ==========================================================
+    // FIRESTORE SAVE
+    // ==========================================================
 
     await window.fb.setDoc(
 
@@ -31604,36 +31644,133 @@ ${coordinates}
 
         sessionId,
 
-        staffName:
+        staffName :
           profile.cleanName || "",
 
-        phone:
+        phone :
           profile.phone || "",
 
-        division:
+        division :
           profile.division || "",
 
-        range:
+        range :
           profile.range || "",
 
-        beat:
+        beat :
           profile.beat || "",
 
-        pointCount:
+        pointCount :
           points.length,
 
-        kmlUrl:
+        kmlUrl :
           downloadUrl,
 
-        createdAt:
-          Date.now()
+        createdAt :
+          now
 
       }
 
     );
 
     console.log(
-      "✅ KML Stored",
+      "✅ Firestore KML Saved"
+    );
+
+    // ==========================================================
+    // APPS SCRIPT SYNC
+    // ==========================================================
+
+    try{
+
+      const response =
+
+        await fetch(
+
+          window.APPS_SCRIPT_URL,
+
+          {
+
+            method : "POST",
+
+            headers : {
+
+              "Content-Type":
+                "application/json"
+
+            },
+
+            body : JSON.stringify({
+
+              action :
+                "SAVE_PATROL_KML",
+
+              sessionId,
+
+              staffName :
+                profile.cleanName || "",
+
+              phone :
+                profile.phone || "",
+
+              division :
+                profile.division || "",
+
+              range :
+                profile.range || "",
+
+              beat :
+                profile.beat || "",
+
+              pointCount :
+                points.length,
+
+              kmlUrl :
+                downloadUrl,
+
+              createdAt :
+                now
+
+            })
+
+          }
+
+        );
+
+      try{
+
+        const result =
+          await response.json();
+
+        console.log(
+          "📄 Apps Script Sync:",
+          result
+        );
+
+      }
+      catch(e){
+
+        console.warn(
+          "⚠ Apps Script response parse failed"
+        );
+
+      }
+
+    }
+    catch(err){
+
+      console.error(
+        "❌ Apps Script Sync Failed",
+        err
+      );
+
+    }
+
+    // ==========================================================
+    // DONE
+    // ==========================================================
+
+    console.log(
+      "✅ KML Stored:",
       downloadUrl
     );
 
@@ -31650,6 +31787,7 @@ ${coordinates}
 
     return null;
   }
+
 }
 function closeEndDutyForm() {
   const m = document.getElementById("end-duty-modal");
