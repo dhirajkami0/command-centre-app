@@ -6757,12 +6757,26 @@ async function processHistoryTrack(
   rawCoords
 
 ){
-  console.log(
-  "PROCESS HISTORY TRACK CALLED"
-);
 
+  console.log(
+    "PROCESS HISTORY TRACK CALLED"
+  );
 
   try{
+
+    // ==================================
+    // DEBUG
+    // ==================================
+
+    console.log(
+      "RAW COORDS:",
+      rawCoords
+    );
+
+    console.log(
+      "RAW LENGTH:",
+      rawCoords?.length
+    );
 
     // ==================================
     // ❌ INVALID
@@ -6770,10 +6784,15 @@ async function processHistoryTrack(
 
     if(
 
-      !rawCoords ||
+      !Array.isArray(rawCoords) ||
 
       rawCoords.length < 2
+
     ){
+
+      console.warn(
+        "❌ processHistoryTrack skipped - insufficient points"
+      );
 
       return;
     }
@@ -6788,15 +6807,18 @@ async function processHistoryTrack(
 
         rawCoords.map(p => [
 
-          p.lng,
-          p.lat
+          Number(p.lng),
+          Number(p.lat)
+
         ])
+
       );
 
     // ==================================
-    // ✨ DOUGLAS-PEUCKER
+    // ✨ SIMPLIFIED
     // ==================================
-const simplified = rawLine;
+
+    const simplified = rawLine;
 
     console.log(
 
@@ -6808,21 +6830,27 @@ const simplified = rawLine;
 
       simplified.geometry
       .coordinates.length
-    );
-console.log(
-  "CALLING appendTrackToGeometries"
-);
 
-console.log(
-  simplifiedLine
-);
+    );
+
+    console.log(
+      "CALLING appendTrackToGeometries"
+    );
+
+    console.log(
+      simplified
+    );
+
     // ==================================
     // 🌍 SAVE TO GEOMETRIES
     // ==================================
 
     await appendTrackToGeometries(
-
       simplified
+    );
+
+    console.log(
+      "✅ appendTrackToGeometries finished"
     );
 
   }
@@ -6833,9 +6861,10 @@ console.log(
       "❌ processHistoryTrack",
       err
     );
+
   }
-}
-    // ======================================
+
+}    // ======================================
 // 📜 APPEND INTO GEOMETRY HISTORY
 // ======================================
 
