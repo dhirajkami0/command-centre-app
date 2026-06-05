@@ -7269,30 +7269,12 @@ if(
           ]);
 
         }
-
-        if(
-          intersects &&
-          clippedSegments.length === 0
-        ){
-
-          clippedSegments.push(
-
-            sourceCoords.map(pt => [
-
-              Number(pt[1]),
-
-              Number(pt[0])
-
-            ])
-
-          );
-        }
-
-        if(
-          !clippedSegments.length
-        ){
-          continue;
-        }
+if(
+  clippedSegments.length === 0
+){
+  continue;
+}
+       
 
         const encodedSegments =
 
