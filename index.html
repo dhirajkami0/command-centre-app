@@ -7449,7 +7449,7 @@ async function toggleMonthHistory(){
   }
 }
     
-  async function showMonthHistory(){
+async function showMonthHistory(){
 
   try{
 
@@ -7468,7 +7468,7 @@ async function toggleMonthHistory(){
       }`;
 
     // ==========================================
-    // 🧹 CLEAR
+    // 🧹 CLEAR OLD HISTORY
     // ==========================================
 
     try{
@@ -7478,21 +7478,16 @@ async function toggleMonthHistory(){
     }catch(e){}
 
     // ==========================================
-    // 📦 LOAD ALL DOCS FOR MONTH
+    // 📦 LOAD MONTH HISTORY
     // ==========================================
 
     const colRef =
 
       window.fb.collection(
-
         window.db,
-
         "geometry_history",
-
         monthKey,
-
         "data"
-
       );
 
     const snap =
@@ -7503,15 +7498,13 @@ async function toggleMonthHistory(){
 
     if(snap.empty){
 
-      alert(
-        "No history found"
-      );
+      alert("No history found");
 
       return;
     }
 
     // ==========================================
-    // 🎯 CURRENT FILTERS
+    // 🎯 FILTERS
     // ==========================================
 
     const division =
@@ -7549,6 +7542,68 @@ async function toggleMonthHistory(){
     );
 
     // ==========================================
+    // 🛰 CURRENT VISIBLE COMPARTMENTS
+    // ==========================================
+
+    const visibleCompartments =
+      new Set();
+
+    try{
+
+      if(window.compartmentLayer){
+
+        window.compartmentLayer.eachLayer(
+          layer => {
+
+            try{
+
+              const props =
+                layer.feature?.properties || {};
+
+              const comp =
+
+                String(
+
+                  props.compartment ||
+
+                  props.compartmen ||
+
+                  props.Compartment ||
+
+                  ""
+
+                ).trim();
+
+              if(comp){
+
+                visibleCompartments.add(
+                  comp
+                );
+
+              }
+
+            }
+            catch(e){}
+
+          }
+        );
+
+      }
+
+    }
+    catch(e){
+
+      console.warn(e);
+
+    }
+
+    console.log(
+      "🛰 Visible Compartments:",
+      visibleCompartments.size,
+      [...visibleCompartments]
+    );
+
+    // ==========================================
     // 📦 COLLECT TRACKS
     // ==========================================
 
@@ -7561,9 +7616,39 @@ async function toggleMonthHistory(){
         const data =
           docSnap.data() || {};
 
-        // ==============================
-        // COMPARTMENT
-        // ==============================
+        const docCompartment =
+
+          String(
+            data.compartment || ""
+          ).trim();
+
+        // ======================================
+        // IF COMPARTMENTS ARE VISIBLE
+        // USE THEM AS MASTER FILTER
+        // ======================================
+
+        if(
+          visibleCompartments.size > 0
+        ){
+
+          if(
+            !visibleCompartments.has(
+              docCompartment
+            )
+          ){
+            return;
+          }
+
+          tracksToRender.push(
+            ...(data.tracks || [])
+          );
+
+          return;
+        }
+
+        // ======================================
+        // FALLBACK COMPARTMENT
+        // ======================================
 
         if(
           compartment &&
@@ -7578,14 +7663,15 @@ async function toggleMonthHistory(){
             tracksToRender.push(
               ...(data.tracks || [])
             );
+
           }
 
           return;
         }
 
-        // ==============================
-        // BEAT
-        // ==============================
+        // ======================================
+        // FALLBACK BEAT
+        // ======================================
 
         if(
           beat &&
@@ -7599,14 +7685,15 @@ async function toggleMonthHistory(){
             tracksToRender.push(
               ...(data.tracks || [])
             );
+
           }
 
           return;
         }
 
-        // ==============================
-        // RANGE
-        // ==============================
+        // ======================================
+        // FALLBACK RANGE
+        // ======================================
 
         if(
           range &&
@@ -7620,14 +7707,15 @@ async function toggleMonthHistory(){
             tracksToRender.push(
               ...(data.tracks || [])
             );
+
           }
 
           return;
         }
 
-        // ==============================
-        // DIVISION
-        // ==============================
+        // ======================================
+        // FALLBACK DIVISION
+        // ======================================
 
         if(
           division &&
@@ -7642,21 +7730,21 @@ async function toggleMonthHistory(){
             tracksToRender.push(
               ...(data.tracks || [])
             );
+
           }
 
           return;
         }
 
-        // ==============================
+        // ======================================
         // ALL
-        // ==============================
+        // ======================================
 
         tracksToRender.push(
           ...(data.tracks || [])
         );
 
       }
-
       catch(err){
 
         console.warn(err);
@@ -7716,28 +7804,29 @@ async function toggleMonthHistory(){
         const line =
 
           L.polyline(
-
             coords,
-
             {
-
-              renderer:
+              renderer :
                 window.historyRenderer,
 
-              color:"#00ff90",
+              color :
+                "#00ff90",
 
-              weight:4,
+              weight :
+                4,
 
-              opacity:0.9,
+              opacity :
+                0.9,
 
-              smoothFactor:0,
+              smoothFactor :
+                0,
 
-              lineCap:"round",
+              lineCap :
+                "round",
 
-              lineJoin:"round"
-
+              lineJoin :
+                "round"
             }
-
           );
 
         window.historyLayer.addLayer(
@@ -7747,7 +7836,6 @@ async function toggleMonthHistory(){
         rendered++;
 
       }
-
       catch(err){
 
         console.warn(
@@ -7792,7 +7880,6 @@ async function toggleMonthHistory(){
     );
 
   }
-
   catch(err){
 
     console.error(
