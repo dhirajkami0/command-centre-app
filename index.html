@@ -30779,6 +30779,79 @@ document.getElementById('form-modal').style.display = 'none';
 
   console.groupEnd();
 }
+
+
+    async function loadSessionPoints(
+  sessionId
+){
+
+  try{
+
+    const q =
+
+      window.fb.query(
+
+        window.fb.collection(
+          window.db,
+          "patrol_tracks",
+          sessionId,
+          "points"
+        ),
+
+        window.fb.orderBy(
+          "time"
+        )
+      );
+
+    const snap =
+
+      await window.fb.getDocs(q);
+
+    const points = [];
+
+    snap.forEach(doc=>{
+
+      const p = doc.data();
+
+      if(
+        isNaN(p?.lat) ||
+        isNaN(p?.lon)
+      ){
+        return;
+      }
+
+      points.push({
+
+        lat:Number(p.lat),
+
+        lng:Number(p.lon),
+
+        ts:Number(
+          p.time || 0
+        )
+      });
+
+    });
+
+    console.log(
+      "📍 Session points loaded:",
+      points.length
+    );
+
+    return points;
+
+  }
+
+  catch(err){
+
+    console.error(
+      "❌ loadSessionPoints",
+      err
+    );
+
+    return [];
+  }
+}
  async function submitEndDuty(event) {
 
   console.group("🚨 submitEndDuty TRIGGERED");
@@ -30824,6 +30897,15 @@ document.getElementById('form-modal').style.display = 'none';
     // ============================================================
     // 🔥 CONFIRM
     // ============================================================
+    const sessionId =
+
+  localStorage.getItem(
+    "sessionId"
+  ) ||
+
+  window.currentSessionId ||
+
+  "";
    // ============================================================
 // 🔥 CUSTOM CONFIRM TOAST
 // ============================================================
@@ -31100,10 +31182,7 @@ console.log(
   "END DUTY TRACKS:",
   window.sessionTrackPoints
 );
-    // ============================================================
-// 🚀 BACKGROUND FAST PARALLEL END DUTY
-// ============================================================
-Promise.allSettled([
+ Promise.allSettled([
 
   // ========================================================
   // 🔥 BACKEND SAVE
@@ -31175,23 +31254,94 @@ Promise.allSettled([
     }
   ),
 
+// ========================================================
+// 📜 CLOSE SESSION + HISTORY GENERATION
+// ========================================================
+(async()=>{
 
- 
-  // ========================================================
-  // 🔥 APK STOP GPS
-  // ========================================================
-  notifyAndroidDuty(
-    false
-  ),
+  try{
 
-  // ========================================================
-  // 📜 PROCESS MONTH HISTORY
-  // ========================================================
-  processHistoryTrack(
+    if(!sessionId){
 
-    window.sessionTrackPoints || []
+      console.warn(
+        "⚠ No sessionId available"
+      );
 
-  )
+      return;
+    }
+
+    console.log(
+      "📜 HISTORY SESSION:",
+      sessionId
+    );
+
+    // ==============================================
+    // 🔥 LOAD FULL TRACK FROM FIRESTORE
+    // ==============================================
+    const points =
+
+      await loadSessionPoints(
+        sessionId
+      );
+
+    console.log(
+      "📍 Loaded session points:",
+      points.length
+    );
+
+    // ==============================================
+    // 🔥 WRITE COVERAGE HISTORY
+    // ==============================================
+    await processHistoryTrack(
+      points
+    );
+
+    // ==============================================
+    // 🔥 CLOSE SESSION DOC
+    // ==============================================
+    await window.fb.updateDoc(
+
+      window.fb.doc(
+        window.db,
+        "patrol_tracks",
+        sessionId
+      ),
+
+      {
+
+        dutyActive:false,
+
+        status:"ENDED",
+
+        endedAt:
+          Date.now(),
+
+        updatedAt:
+          Date.now(),
+
+        pointCount:
+          points.length
+
+      }
+
+    );
+
+    console.log(
+      "✅ Patrol session closed:",
+      sessionId
+    );
+
+  }
+
+  catch(err){
+
+    console.error(
+      "❌ History write failed",
+      err
+    );
+  }
+
+})()
 
 ])
 .then(results => {
@@ -31202,13 +31352,13 @@ Promise.allSettled([
   );
 
 })
-
 .catch(err => {
 
   console.error(
     "❌ End duty background sync failed",
     err
   );
+
 });
 
 // ============================================================
@@ -33948,6 +34098,11 @@ await setDoc(
 
   {
 
+    // ====================================
+    // 🔥 SESSION
+    // ====================================
+    sessionId,
+
     cleanName:
       cleanLeader,
 
@@ -33957,6 +34112,26 @@ await setDoc(
     name:
       payload.leader,
 
+    leader:
+      payload.leader || "",
+
+    // ====================================
+    // 🔥 ORG
+    // ====================================
+    division:
+      profile.division || "",
+
+    range:
+      profile.range || "",
+
+    beat:
+      document.getElementById(
+        "d-beat"
+      )?.value || "",
+
+    // ====================================
+    // 🔥 DUTY
+    // ====================================
     team:
       payload.staff,
 
@@ -33966,40 +34141,70 @@ await setDoc(
     compartment:
       payload.compt,
 
-    beat:
-      document.getElementById(
-        "d-beat"
-      )?.value || "",
-
-    leader:
-      payload.leader || "",
+    compartments:
+      comptArray,
 
     dutyActive:
       true,
 
-    sessionId:
-      sessionId,
+    status:
+      "ACTIVE",
 
+    // ====================================
+    // 🔥 TIME
+    // ====================================
     startedAt:
       Date.now(),
+
+    endedAt:
+      null,
 
     updatedAt:
       Date.now(),
 
-    status:
-      "ACTIVE",
+    // ====================================
+    // 🔥 TRACK SUMMARY
+    // ====================================
+    pointCount:0,
 
+    monthKey:
+      new Date()
+      .toISOString()
+      .slice(0,7)
+      .replace("-","_"),
+
+    simplifiedTrack:[],
+
+    distanceKm:0,
+
+    // ====================================
+    // 🔥 GPS START
+    // ====================================
+    startLat:
+      startLat,
+
+    startLon:
+      startLon,
+
+    startAccuracy:
+      startAccuracy,
+
+    // ====================================
+    // 🔥 META
+    // ====================================
     source:
       "AUTO_APP",
 
     type:
-      "Staff"
+      "Staff",
+
+    createdAt:
+      serverTimestamp()
 
   },
 
   { merge:true }
 );
-
 console.log(
   "🔥 FIRESTORE DUTY STARTED:",
   cleanLeader,
