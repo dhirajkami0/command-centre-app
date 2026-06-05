@@ -31358,6 +31358,10 @@ console.log(
       points.length
     );
 
+    await uploadPatrolKML(
+  sessionId,
+  points
+);
     // ==============================================
     // 🔥 WRITE COVERAGE HISTORY
     // ==============================================
@@ -31473,6 +31477,178 @@ setTimeout(() => {
     }
 
     console.groupEnd();
+  }
+}
+    function generateKMLFromTrack(points){
+
+  const coordinates =
+
+    points
+    .filter(p =>
+      p &&
+      typeof p.lat === "number" &&
+      typeof p.lng === "number"
+    )
+    .map(p =>
+
+      `${p.lng},${p.lat},0`
+
+    )
+    .join("\n");
+
+  return `<?xml version="1.0" encoding="UTF-8"?>
+<kml xmlns="http://www.opengis.net/kml/2.2">
+
+<Document>
+
+<Placemark>
+
+<name>Patrol Track</name>
+
+<LineString>
+
+<tessellate>1</tessellate>
+
+<coordinates>
+
+${coordinates}
+
+</coordinates>
+
+</LineString>
+
+</Placemark>
+
+</Document>
+
+</kml>`;
+}
+
+    async function uploadPatrolKML(
+  sessionId,
+  points
+){
+
+  try{
+
+    if(
+      !points ||
+      points.length < 2
+    ){
+      return null;
+    }
+
+    const profile =
+      window.userProfile || {};
+
+    const d =
+      new Date();
+
+    const monthKey =
+      `${d.getFullYear()}_${
+        String(
+          d.getMonth()+1
+        ).padStart(2,"0")
+      }`;
+
+    const kmlText =
+
+      generateKMLFromTrack(
+        points
+      );
+
+    const storageRef =
+
+      firebaseStorage.ref(
+
+        window.storage,
+
+        `patrol_kml/${monthKey}/${sessionId}.kml`
+
+      );
+
+    await firebaseStorage.uploadString(
+
+      storageRef,
+
+      kmlText,
+
+      "raw"
+
+    );
+
+    const downloadUrl =
+
+      await firebaseStorage
+      .getDownloadURL(
+        storageRef
+      );
+
+    await window.fb.setDoc(
+
+      window.fb.doc(
+
+        window.db,
+
+        "patrol_kml",
+
+        monthKey,
+
+        "sessions",
+
+        sessionId
+
+      ),
+
+      {
+
+        sessionId,
+
+        staffName:
+          profile.cleanName || "",
+
+        phone:
+          profile.phone || "",
+
+        division:
+          profile.division || "",
+
+        range:
+          profile.range || "",
+
+        beat:
+          profile.beat || "",
+
+        pointCount:
+          points.length,
+
+        kmlUrl:
+          downloadUrl,
+
+        createdAt:
+          Date.now()
+
+      }
+
+    );
+
+    console.log(
+      "✅ KML Stored",
+      downloadUrl
+    );
+
+    return downloadUrl;
+
+  }
+
+  catch(err){
+
+    console.error(
+      "❌ uploadPatrolKML",
+      err
+    );
+
+    return null;
   }
 }
 function closeEndDutyForm() {
