@@ -4778,15 +4778,17 @@ setTimeout(() => {
 
     const {
 
-      getStorage,
+  getStorage,
 
-      ref,
+  ref,
 
-      uploadBytes,
+  uploadBytes,
 
-      getDownloadURL
+  uploadString,
 
-    } = storageModule;
+  getDownloadURL
+
+} = storageModule;
 
     // ==================================================
     // 🔥 INIT APP
@@ -4849,7 +4851,7 @@ setTimeout(() => {
       ref,
 
       uploadBytes,
-
+uploadString,
       getDownloadURL
     };
 
@@ -31587,91 +31589,82 @@ ${coordinates}
 
     const storageRef =
 
-      firebaseStorage.ref(
+  window.fb.ref(
 
-        window.storage,
+    window.storage,
 
-        `patrol_kml/${monthKey}/${sessionId}.kml`
+    `patrol_kml/${monthKey}/${sessionId}.kml`
 
-      );
+  );
 
-    // ==========================================================
-    // UPLOAD KML
-    // ==========================================================
+await window.fb.uploadString(
 
-    await firebaseStorage.uploadString(
+  storageRef,
 
-      storageRef,
+  kmlText,
 
-      kmlText,
+  "raw"
 
-      "raw"
+);
 
-    );
+const downloadUrl =
 
-    // ==========================================================
-    // DOWNLOAD URL
-    // ==========================================================
-
-    const downloadUrl =
-
-      await firebaseStorage
-      .getDownloadURL(
-        storageRef
-      );
-
+  await window.fb.getDownloadURL(
+    storageRef
+  );
     // ==========================================================
     // FIRESTORE SAVE
     // ==========================================================
 
-    await window.fb.setDoc(
+   await window.fb.setDoc(
 
-      window.fb.doc(
+  window.fb.doc(
 
-        window.db,
+    window.db,
 
-        "patrol_kml",
+    "patrol_kml",
 
-        monthKey,
+    monthKey,
 
-        "sessions",
+    "sessions",
 
-        sessionId
+    sessionId
 
-      ),
+  ),
 
-      {
+  {
 
-        sessionId,
+    monthKey,
 
-        staffName :
-          profile.cleanName || "",
+    sessionId,
 
-        phone :
-          profile.phone || "",
+    staffName :
+      profile.cleanName || "",
 
-        division :
-          profile.division || "",
+    phone :
+      profile.phone || "",
 
-        range :
-          profile.range || "",
+    division :
+      profile.division || "",
 
-        beat :
-          profile.beat || "",
+    range :
+      profile.range || "",
 
-        pointCount :
-          points.length,
+    beat :
+      profile.beat || "",
 
-        kmlUrl :
-          downloadUrl,
+    pointCount :
+      points.length,
 
-        createdAt :
-          now
+    kmlUrl :
+      downloadUrl,
 
-      }
+    createdAt :
+      now
 
-    );
+  }
 
+);
     console.log(
       "✅ Firestore KML Saved"
     );
