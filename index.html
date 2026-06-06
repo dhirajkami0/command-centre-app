@@ -30964,7 +30964,8 @@ function openDutyForm(){
     if (el) el.value = val;
   };
 
-  /* ================= BEAT ================= */
+
+
 // =====================================================
 // 🔥 DYNAMIC BEAT LOADING
 // =====================================================
@@ -30972,7 +30973,6 @@ function openDutyForm(){
 beatSel.innerHTML = "";
 
 const role =
-
   String(
     profile.role || ""
   )
@@ -30980,12 +30980,16 @@ const role =
   .toUpperCase();
 
 const allProfiles =
-  window.allStaffProfiles || [];
+  Array.isArray(
+    window.allStaffProfiles
+  )
+    ? window.allStaffProfiles
+    : [];
 
 let beats = [];
 
 // =====================================================
-// 🔥 ADMIN
+// 👑 ADMIN
 // =====================================================
 
 if(role === "ADMIN"){
@@ -31004,14 +31008,16 @@ if(role === "ADMIN"){
 
     )
 
-  ];
+  ]
+  .filter(Boolean)
+  .sort();
 
   beatSel.disabled = false;
 
 }
 
 // =====================================================
-// 🔥 DFO / ADFO
+// 🟣 DFO / ADFO
 // =====================================================
 
 else if(
@@ -31024,6 +31030,11 @@ else if(
 
 ){
 
+  const userDivision =
+    normalizeDivision(
+      profile.division || ""
+    );
+
   beats = [
 
     ...new Set(
@@ -31032,15 +31043,13 @@ else if(
 
       .filter(p =>
 
-        String(
+        normalizeDivision(
           p.division || ""
-        ).trim()
+        )
 
         ===
 
-        String(
-          profile.division || ""
-        ).trim()
+        userDivision
 
       )
 
@@ -31054,14 +31063,16 @@ else if(
 
     )
 
-  ];
+  ]
+  .filter(Boolean)
+  .sort();
 
   beatSel.disabled = false;
 
 }
 
 // =====================================================
-// 🔥 STAFF / TEAM LEADER
+// 👮 STAFF / TEAM LEADER
 // =====================================================
 
 else{
@@ -31072,23 +31083,18 @@ else{
       profile.beat || ""
     ).trim()
 
-  ];
+  ]
+  .filter(Boolean);
 
   beatSel.disabled = true;
 
 }
 
 // =====================================================
-// 🔥 RENDER
+// 🔥 RENDER OPTIONS
 // =====================================================
 
-beats
-
-.filter(Boolean)
-
-.sort()
-
-.forEach(beat => {
+beats.forEach(beat => {
 
   const option =
     document.createElement(
@@ -31111,10 +31117,32 @@ beats
 // 🔥 DEFAULT SELECTION
 // =====================================================
 
-if(profile.beat){
+if(role === "ADMIN"){
+
+  beatSel.selectedIndex = 0;
+
+}
+
+else if(
+
+  role.includes("DFO")
+
+  ||
+
+  role.includes("ADFO")
+
+){
+
+  beatSel.selectedIndex = 0;
+
+}
+
+else{
 
   beatSel.value =
-    profile.beat;
+    String(
+      profile.beat || ""
+    ).trim();
 
 }
 
