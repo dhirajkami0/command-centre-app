@@ -7051,7 +7051,7 @@ console.trace(
 
 async function appendTrackToGeometries(simplifiedLine){
 
- console.log(
+  console.log(
     "🚀 appendTrackToGeometries START"
   );
 
@@ -7064,6 +7064,7 @@ async function appendTrackToGeometries(simplifiedLine){
     "SIMPLIFIED LINE:",
     simplifiedLine
   );
+
   try{
 
     if(
@@ -7085,57 +7086,26 @@ async function appendTrackToGeometries(simplifiedLine){
         ).padStart(2,"0")
       }`;
 
-    let sourceCoords =
-      simplifiedLine.geometry.coordinates || [];
+    const compartments =
+      window.allCompartmentFeatures || [];
 
-    sourceCoords =
-      sourceCoords
-      .map(pt => {
+    console.log(
+      "📦 Compartments:",
+      compartments.length
+    );
 
-        if(
-          Array.isArray(pt) &&
-          typeof pt[0] === "number" &&
-          typeof pt[1] === "number"
-        ){
-          return [
-            Number(pt[0]),
-            Number(pt[1])
-          ];
-        }
+    if(
+      !window.allCompartmentFeatures ||
+      window.allCompartmentFeatures.length === 0
+    ){
 
-        return null;
+      console.warn(
+        "❌ No compartment features loaded"
+      );
 
-      })
-      .filter(Boolean);
-
-    if(sourceCoords.length < 2){
       return;
     }
 
-   const compartments =
-  window.allCompartmentFeatures || [];
-
-console.log(
-  "📦 Compartments:",
-  compartments.length
-);
-
-console.log(
-  "COMPARTMENTS AVAILABLE:",
-  window.allCompartmentFeatures?.length
-);
-
-if(
-  !window.allCompartmentFeatures ||
-  window.allCompartmentFeatures.length === 0
-){
-
-  console.warn(
-    "❌ No compartment features loaded"
-  );
-
-  return;
-}
     for(const feature of compartments){
 
       try{
@@ -7207,77 +7177,115 @@ if(
         const geometryId =
 
           `compartment_${
-            compartment
-              .replace(/\s+/g,"_")
+            compartment.replace(/\s+/g,"_")
           }`;
+
+        // =====================================================
+        // PERFECT CLIPPING
+        // =====================================================
 
         let clippedSegments = [];
 
-        let currentSegment = [];
+        const boundaryLine =
 
-        for(
-          let i=0;
-          i<sourceCoords.length;
-          i++
-        ){
+          turf.polygonToLine(
+            poly
+          );
 
-          const pt =
-            sourceCoords[i];
+        const splitResult =
 
-          const inside =
+          turf.lineSplit(
+            simplifiedLine,
+            boundaryLine
+          );
 
-            turf.booleanPointInPolygon(
+        const pieces =
+          splitResult.features || [];
 
-              turf.point(pt),
+        console.log(
+          "✂ Split pieces:",
+          pieces.length,
+          compartment
+        );
 
-              poly
+        for(const piece of pieces){
 
-            );
+          try{
 
-          if(inside){
-
-            currentSegment.push([
-
-              Number(pt[1]),
-
-              Number(pt[0])
-
-            ]);
-
-          }
-
-          else{
+            const coords =
+              piece.geometry?.coordinates;
 
             if(
-              currentSegment.length >= 2
+              !coords ||
+              coords.length < 2
             ){
-
-              clippedSegments.push([
-                ...currentSegment
-              ]);
-
+              continue;
             }
 
-            currentSegment = [];
+            const start =
+
+              turf.point(
+                coords[0]
+              );
+
+            const end =
+
+              turf.point(
+                coords[
+                  coords.length - 1
+                ]
+              );
+
+            const midpoint =
+
+              turf.midpoint(
+                start,
+                end
+              );
+
+            const inside =
+
+              turf.booleanPointInPolygon(
+                midpoint,
+                poly
+              );
+
+            if(!inside){
+              continue;
+            }
+
+            const latLngCoords =
+
+              coords.map(c => [
+
+                Number(c[1]),
+
+                Number(c[0])
+
+              ]);
+
+            clippedSegments.push(
+              latLngCoords
+            );
 
           }
+
+          catch(err){
+
+            console.warn(
+              "segment error",
+              err
+            );
+
+          }
+
         }
 
         if(
-          currentSegment.length >= 2
+          clippedSegments.length === 0
         ){
-
-          clippedSegments.push([
-            ...currentSegment
-          ]);
-
+          continue;
         }
-if(
-  clippedSegments.length === 0
-){
-  continue;
-}
-       
 
         const encodedSegments =
 
@@ -7351,7 +7359,9 @@ if(
 
         console.log(
           "💾 SAVED:",
-          geometryId
+          geometryId,
+          "| segments:",
+          clippedSegments.length
         );
 
       }
@@ -7363,6 +7373,7 @@ if(
         );
 
       }
+
     }
 
   }
@@ -7374,6 +7385,7 @@ if(
     );
 
   }
+
 }
 async function toggleMonthHistory(){
 
