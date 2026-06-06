@@ -7460,7 +7460,7 @@ async function showMonthHistory(){
 
       `${d.getFullYear()}_${
         String(
-          d.getMonth()+1
+          d.getMonth() + 1
         ).padStart(2,"0")
       }`;
 
@@ -7507,26 +7507,46 @@ async function showMonthHistory(){
     const division =
 
       String(
-        window.gisFilter.division || ""
+        window.gisFilter?.division || ""
       ).trim();
 
     const range =
 
       String(
-        window.gisFilter.range || ""
+        window.gisFilter?.range || ""
       ).trim();
 
     const beat =
 
       String(
-        window.gisFilter.beat || ""
+        window.gisFilter?.beat || ""
       ).trim();
 
     const compartment =
 
       String(
-        window.gisFilter.compartment || ""
+        window.gisFilter?.compartment || ""
       ).trim();
+
+    // ==========================================
+    // 🎯 ACTIVE BUTTON LEVEL
+    // ==========================================
+
+    const activeLevel =
+
+      String(
+
+        window.activePopupContext
+          ?.level || "btr"
+
+      )
+      .trim()
+      .toLowerCase();
+
+    console.log(
+      "🎯 HISTORY ACTIVE LEVEL:",
+      activeLevel
+    );
 
     console.log(
       "📜 FILTERS:",
@@ -7536,68 +7556,6 @@ async function showMonthHistory(){
         beat,
         compartment
       }
-    );
-
-    // ==========================================
-    // 🛰 CURRENT VISIBLE COMPARTMENTS
-    // ==========================================
-
-    const visibleCompartments =
-      new Set();
-
-    try{
-
-      if(window.compartmentLayer){
-
-        window.compartmentLayer.eachLayer(
-          layer => {
-
-            try{
-
-              const props =
-                layer.feature?.properties || {};
-
-              const comp =
-
-                String(
-
-                  props.compartment ||
-
-                  props.compartmen ||
-
-                  props.Compartment ||
-
-                  ""
-
-                ).trim();
-
-              if(comp){
-
-                visibleCompartments.add(
-                  comp
-                );
-
-              }
-
-            }
-            catch(e){}
-
-          }
-        );
-
-      }
-
-    }
-    catch(e){
-
-      console.warn(e);
-
-    }
-
-    console.log(
-      "🛰 Visible Compartments:",
-      visibleCompartments.size,
-      [...visibleCompartments]
     );
 
     // ==========================================
@@ -7613,47 +7571,23 @@ async function showMonthHistory(){
         const data =
           docSnap.data() || {};
 
-        const docCompartment =
-
-          String(
-            data.compartment || ""
-          ).trim();
-
         // ======================================
-        // IF COMPARTMENTS ARE VISIBLE
-        // USE THEM AS MASTER FILTER
+        // 🟧 COMPARTMENT MODE
         // ======================================
 
         if(
-          visibleCompartments.size > 0
+          activeLevel ===
+          "compartment"
         ){
 
-          if(
-            !visibleCompartments.has(
-              docCompartment
-            )
-          ){
-            return;
-          }
+          const docComp =
 
-          tracksToRender.push(
-            ...(data.tracks || [])
-          );
-
-          return;
-        }
-
-        // ======================================
-        // FALLBACK COMPARTMENT
-        // ======================================
-
-        if(
-          compartment &&
-          compartment !== "ALL"
-        ){
+            String(
+              data.compartment || ""
+            ).trim();
 
           if(
-            data.compartment ===
+            docComp ===
             compartment
           ){
 
@@ -7667,16 +7601,41 @@ async function showMonthHistory(){
         }
 
         // ======================================
-        // FALLBACK BEAT
+        // 🟨 BEAT MODE
         // ======================================
 
         if(
-          beat &&
-          beat !== "ALL"
+          activeLevel ===
+          "beat"
         ){
 
+          const docBeat =
+
+            String(
+              data.beat || ""
+            ).trim();
+
           if(
-            data.beat === beat
+
+            typeof normalizeBeatName
+            === "function"
+
+            ?
+
+            normalizeBeatName(
+              docBeat
+            )
+
+            ===
+
+            normalizeBeatName(
+              beat
+            )
+
+            :
+
+            docBeat === beat
+
           ){
 
             tracksToRender.push(
@@ -7689,16 +7648,22 @@ async function showMonthHistory(){
         }
 
         // ======================================
-        // FALLBACK RANGE
+        // 🟩 RANGE MODE
         // ======================================
 
         if(
-          range &&
-          range !== "ALL"
+          activeLevel ===
+          "range"
         ){
 
+          const docRange =
+
+            String(
+              data.range || ""
+            ).trim();
+
           if(
-            data.range === range
+            docRange === range
           ){
 
             tracksToRender.push(
@@ -7711,18 +7676,42 @@ async function showMonthHistory(){
         }
 
         // ======================================
-        // FALLBACK DIVISION
+        // 🟦 DIVISION MODE
         // ======================================
 
         if(
-          division &&
-          division !== "ALL"
+          activeLevel ===
+          "division"
         ){
 
-          if(
-            data.division ===
-            division
-          ){
+          const docDivision =
+
+            String(
+              data.division || ""
+            ).trim();
+
+          const match =
+
+            typeof normalizeDivision
+            === "function"
+
+            ?
+
+            normalizeDivision(
+              docDivision
+            )
+
+            ===
+
+            normalizeDivision(
+              division
+            )
+
+            :
+
+            docDivision === division;
+
+          if(match){
 
             tracksToRender.push(
               ...(data.tracks || [])
@@ -7734,7 +7723,7 @@ async function showMonthHistory(){
         }
 
         // ======================================
-        // ALL
+        // 🌍 BTR / ALL
         // ======================================
 
         tracksToRender.push(
@@ -7742,9 +7731,13 @@ async function showMonthHistory(){
         );
 
       }
+
       catch(err){
 
-        console.warn(err);
+        console.warn(
+          "History filter failed",
+          err
+        );
 
       }
 
@@ -7807,7 +7800,7 @@ async function showMonthHistory(){
                 window.historyRenderer,
 
               color :
-                   "#ff0000",
+                "#ff0000",
 
               weight :
                 4,
@@ -7833,6 +7826,7 @@ async function showMonthHistory(){
         rendered++;
 
       }
+
       catch(err){
 
         console.warn(
@@ -7845,7 +7839,7 @@ async function showMonthHistory(){
     }
 
     // ==========================================
-    // FIT
+    // 🎯 FIT HISTORY
     // ==========================================
 
     try{
@@ -7877,6 +7871,7 @@ async function showMonthHistory(){
     );
 
   }
+
   catch(err){
 
     console.error(
@@ -7886,8 +7881,7 @@ async function showMonthHistory(){
 
   }
 
-}
-// ======================================
+}// ======================================
 // 🛰 VERIFY LATEST PLANET
 // GIS-AWARE VERSION
 // ======================================
