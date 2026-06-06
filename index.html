@@ -7795,7 +7795,7 @@ async function showMonthHistory(){
                 window.historyRenderer,
 
               color :
-                "#00ff90",
+                   "#ff0000",
 
               weight :
                 4,
@@ -31500,7 +31500,7 @@ setTimeout(() => {
     console.groupEnd();
   }
 }
-    function generateKMLFromTrack(points){
+  function generateKMLFromTrack(points){
 
   const coordinates =
 
@@ -31522,9 +31522,23 @@ setTimeout(() => {
 
 <Document>
 
+<Style id="patrolStyle">
+
+  <LineStyle>
+
+    <color>ff0000ff</color>
+
+    <width>4</width>
+
+  </LineStyle>
+
+</Style>
+
 <Placemark>
 
 <name>Patrol Track</name>
+
+<styleUrl>#patrolStyle</styleUrl>
 
 <LineString>
 
