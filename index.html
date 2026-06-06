@@ -5832,9 +5832,11 @@ function callBackend(action, payload = {}) {
     return null;
   });
 }    
-  function updateDutyStaff(source = "UNKNOWN"){
+function updateDutyStaff(source = "UNKNOWN"){
 
   console.group("👮 updateDutyStaff");
+
+  console.log("📍 SOURCE:", source);
 
   const box =
     document.getElementById(
@@ -5842,7 +5844,13 @@ function callBackend(action, payload = {}) {
     );
 
   if(!box){
+
+    console.warn(
+      "⚠ staffOptions missing"
+    );
+
     console.groupEnd();
+
     return;
   }
 
@@ -5860,23 +5868,30 @@ function callBackend(action, payload = {}) {
 
   const beat =
     String(
-      document.getElementById("d-beat")?.value || ""
-    ).trim();
+      document.getElementById(
+        "d-beat"
+      )?.value || ""
+    )
+    .trim();
 
   const division =
-    String(
+    normalizeDivision(
       profile.division || ""
-    ).trim();
+    );
 
   const allProfiles =
-    window.allStaffProfiles || [];
+    Array.isArray(
+      window.allStaffProfiles
+    )
+      ? window.allStaffProfiles
+      : [];
 
   let staff = [];
 
   try{
 
     // =====================================
-    // ADMIN
+    // 👑 ADMIN
     // =====================================
 
     if(role === "ADMIN"){
@@ -5885,7 +5900,7 @@ function callBackend(action, payload = {}) {
     }
 
     // =====================================
-    // DFO / ADFO
+    // 🟣 DFO / ADFO
     // =====================================
 
     else if(
@@ -5900,9 +5915,9 @@ function callBackend(action, payload = {}) {
 
       staff = allProfiles.filter(p =>
 
-        String(
+        normalizeDivision(
           p.division || ""
-        ).trim()
+        )
 
         ===
 
@@ -5912,7 +5927,7 @@ function callBackend(action, payload = {}) {
     }
 
     // =====================================
-    // STAFF / TL
+    // 👮 STAFF / TEAM LEADER
     // =====================================
 
     else{
@@ -5921,7 +5936,8 @@ function callBackend(action, payload = {}) {
 
         String(
           p.beat || ""
-        ).trim()
+        )
+        .trim()
 
         ===
 
@@ -5939,6 +5955,7 @@ function callBackend(action, payload = {}) {
           String(
             p.name || ""
           ).trim()
+
         )
 
       )
@@ -5964,9 +5981,14 @@ function callBackend(action, payload = {}) {
           "input"
         );
 
-      input.type = "checkbox";
+      input.type =
+        "checkbox";
 
-      input.value = name;
+      input.value =
+        name;
+
+      input.checked =
+        false;
 
       label.appendChild(
         input
@@ -5999,16 +6021,20 @@ function callBackend(action, payload = {}) {
 
   catch(err){
 
-    console.error(err);
+    console.error(
+      "❌ updateDutyStaff",
+      err
+    );
 
   }
 
   console.groupEnd();
 }
-    
-function updateDutyCompt(source = "UNKNOWN"){
+    function updateDutyCompt(source = "UNKNOWN"){
 
   console.group("📦 updateDutyCompt");
+
+  console.log("📍 SOURCE:", source);
 
   const box =
     document.getElementById(
@@ -6016,7 +6042,13 @@ function updateDutyCompt(source = "UNKNOWN"){
     );
 
   if(!box){
+
+    console.warn(
+      "⚠ comptOptions missing"
+    );
+
     console.groupEnd();
+
     return;
   }
 
@@ -6034,23 +6066,30 @@ function updateDutyCompt(source = "UNKNOWN"){
 
   const beat =
     String(
-      document.getElementById("d-beat")?.value || ""
-    ).trim();
+      document.getElementById(
+        "d-beat"
+      )?.value || ""
+    )
+    .trim();
 
   const division =
-    String(
+    normalizeDivision(
       profile.division || ""
-    ).trim();
+    );
 
   const features =
-    window.allCompartmentFeatures || [];
+    Array.isArray(
+      window.allCompartmentFeatures
+    )
+      ? window.allCompartmentFeatures
+      : [];
 
   let compartments = [];
 
   try{
 
     // =====================================
-    // ADMIN
+    // 👑 ADMIN
     // =====================================
 
     if(role === "ADMIN"){
@@ -6060,7 +6099,7 @@ function updateDutyCompt(source = "UNKNOWN"){
     }
 
     // =====================================
-    // DFO / ADFO
+    // 🟣 DFO / ADFO
     // =====================================
 
     else if(
@@ -6077,9 +6116,15 @@ function updateDutyCompt(source = "UNKNOWN"){
 
         features.filter(f =>
 
-          String(
-            f.properties?.division || ""
-          ).trim()
+          normalizeDivision(
+
+            f.properties?.Division ||
+
+            f.properties?.division ||
+
+            ""
+
+          )
 
           ===
 
@@ -6089,7 +6134,7 @@ function updateDutyCompt(source = "UNKNOWN"){
     }
 
     // =====================================
-    // STAFF / TL
+    // 👮 STAFF / TEAM LEADER
     // =====================================
 
     else{
@@ -6099,8 +6144,15 @@ function updateDutyCompt(source = "UNKNOWN"){
         features.filter(f =>
 
           String(
-            f.properties?.beat || ""
-          ).trim()
+
+            f.properties?.Beat ||
+
+            f.properties?.beat ||
+
+            ""
+
+          )
+          .trim()
 
           ===
 
@@ -6117,8 +6169,11 @@ function updateDutyCompt(source = "UNKNOWN"){
 
           String(
 
-            f.properties
-              ?.compartment || ""
+            f.properties?.compartment ||
+
+            f.properties?.Compartment ||
+
+            ""
 
           ).trim()
 
@@ -6132,9 +6187,22 @@ function updateDutyCompt(source = "UNKNOWN"){
 
     .sort();
 
-    list.unshift(
-      "Village Area"
-    );
+    // =====================================
+    // 🏘 VILLAGE AREA
+    // =====================================
+
+    if(
+
+      !list.includes(
+        "Village Area"
+      )
+
+    ){
+
+      list.unshift(
+        "Village Area"
+      );
+    }
 
     const frag =
       document.createDocumentFragment();
@@ -6151,9 +6219,14 @@ function updateDutyCompt(source = "UNKNOWN"){
           "input"
         );
 
-      input.type = "checkbox";
+      input.type =
+        "checkbox";
 
-      input.value = comp;
+      input.value =
+        comp;
+
+      input.checked =
+        false;
 
       label.appendChild(
         input
@@ -6178,7 +6251,7 @@ function updateDutyCompt(source = "UNKNOWN"){
     );
 
     console.log(
-      "✅ Compartments:",
+      "✅ Compartments rendered:",
       list.length
     );
 
@@ -6186,12 +6259,16 @@ function updateDutyCompt(source = "UNKNOWN"){
 
   catch(err){
 
-    console.error(err);
+    console.error(
+      "❌ updateDutyCompt",
+      err
+    );
 
   }
 
   console.groupEnd();
-}/* ============================================================
+}
+    /* ============================================================
      📲 INSTALL PROMPT SYSTEM
   ============================================================ */
 
