@@ -25197,18 +25197,28 @@ window.staffUnsubscribe = onSnapshot(
 
       );
 
-    // ==============================================
-    // 🔥 NORMALIZED STAFF RANGE
-    // ==============================================
+   // ==============================================
+// 🔥 NORMALIZED STAFF RANGE
+// FROM staff_profiles
+// ==============================================
 
-    const staffRange =
+const profile =
 
-      String(
-        s.range || ""
-      )
-      .trim()
-      .toUpperCase();
+  window.staffProfiles?.[
+    cleanName(
+      s.cleanName ||
+      s.name ||
+      ""
+    )
+  ];
 
+const staffRange =
+
+  String(
+    profile?.range || ""
+  )
+  .trim()
+  .toUpperCase();
     // ==============================================
     // 👑 ADMIN
     // ==============================================
