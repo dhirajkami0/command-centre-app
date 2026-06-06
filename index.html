@@ -5879,6 +5879,13 @@ function updateDutyStaff(source = "UNKNOWN"){
       profile.division || ""
     );
 
+  const userRange =
+    String(
+      profile.range || ""
+    )
+    .trim()
+    .toUpperCase();
+
   const allProfiles =
     Array.isArray(
       window.allStaffProfiles
@@ -5932,18 +5939,49 @@ function updateDutyStaff(source = "UNKNOWN"){
 
     else{
 
-      staff = allProfiles.filter(p =>
+      if(
 
-        String(
-          p.beat || ""
-        )
-        .trim()
+        beat.toUpperCase()
 
         ===
 
-        beat
+        "RANGE HQ"
 
-      );
+      ){
+
+        staff = allProfiles.filter(p =>
+
+          String(
+            p.range || ""
+          )
+          .trim()
+          .toUpperCase()
+
+          ===
+
+          userRange
+
+        );
+
+      }
+
+      else{
+
+        staff = allProfiles.filter(p =>
+
+          String(
+            p.beat || ""
+          )
+          .trim()
+
+          ===
+
+          beat
+
+        );
+
+      }
+
     }
 
     const names = [
@@ -6030,6 +6068,7 @@ function updateDutyStaff(source = "UNKNOWN"){
 
   console.groupEnd();
 }
+
     function updateDutyCompt(source = "UNKNOWN"){
 
   console.group("📦 updateDutyCompt");
@@ -6076,6 +6115,13 @@ function updateDutyStaff(source = "UNKNOWN"){
     normalizeDivision(
       profile.division || ""
     );
+
+  const userRange =
+    String(
+      profile.range || ""
+    )
+    .trim()
+    .toUpperCase();
 
   const features =
     Array.isArray(
@@ -6131,6 +6177,7 @@ function updateDutyStaff(source = "UNKNOWN"){
           division
 
         );
+
     }
 
     // =====================================
@@ -6139,26 +6186,65 @@ function updateDutyStaff(source = "UNKNOWN"){
 
     else{
 
-      compartments =
+      if(
 
-        features.filter(f =>
+        beat.toUpperCase()
 
-          String(
+        ===
 
-            f.properties?.Beat ||
+        "RANGE HQ"
 
-            f.properties?.beat ||
+      ){
 
-            ""
+        compartments =
 
-          )
-          .trim()
+          features.filter(f =>
 
-          ===
+            String(
 
-          beat
+              f.properties?.Range ||
 
-        );
+              f.properties?.range ||
+
+              ""
+
+            )
+            .trim()
+            .toUpperCase()
+
+            ===
+
+            userRange
+
+          );
+
+      }
+
+      else{
+
+        compartments =
+
+          features.filter(f =>
+
+            String(
+
+              f.properties?.Beat ||
+
+              f.properties?.beat ||
+
+              ""
+
+            )
+            .trim()
+
+            ===
+
+            beat
+
+          );
+
+      }
+
     }
 
     const list = [
@@ -6187,10 +6273,6 @@ function updateDutyStaff(source = "UNKNOWN"){
 
     .sort();
 
-    // =====================================
-    // 🏘 VILLAGE AREA
-    // =====================================
-
     if(
 
       !list.includes(
@@ -6202,6 +6284,7 @@ function updateDutyStaff(source = "UNKNOWN"){
       list.unshift(
         "Village Area"
       );
+
     }
 
     const frag =
