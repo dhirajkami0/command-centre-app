@@ -25202,20 +25202,10 @@ window.staffUnsubscribe = onSnapshot(
 // FROM staff_profiles
 // ==============================================
 
-const profile =
-
-  window.staffProfiles?.[
-    cleanName(
-      s.cleanName ||
-      s.name ||
-      ""
-    )
-  ];
-
 const staffRange =
 
   String(
-    profile?.range || ""
+    s.range || ""
   )
   .trim()
   .toUpperCase();
@@ -31327,6 +31317,14 @@ console.log(
 
       lastDutyEnd:
         new Date().toISOString(),
+        // ========================================
+  // 🔥 REMOVE RANGE VISIBILITY DATA
+  // ========================================
+  range:
+    window.fb.deleteField(),
+
+  division:
+    window.fb.deleteField(),
 
       lat:
         window.fb.deleteField(),
@@ -34476,6 +34474,15 @@ await setDoc(
       document.getElementById(
         "d-beat"
       )?.value || "",
+        // ====================================
+    // 🔥 RANGE / DIVISION
+    // REQUIRED FOR STAFF VISIBILITY
+    // ====================================
+    division:
+      profile.division || "",
+
+    range:
+      profile.range || "",
 
     leader:
       payload.leader || "",
