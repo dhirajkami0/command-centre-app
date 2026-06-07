@@ -7829,7 +7829,7 @@ async function showMonthHistory(){
       ).trim();
 
     // ==========================================
-    // 🎯 ACTIVE BUTTON LEVEL
+    // 🎯 ACTIVE LEVEL
     // ==========================================
 
     const activeLevel =
@@ -7872,7 +7872,7 @@ async function showMonthHistory(){
           docSnap.data() || {};
 
         // ======================================
-        // 🟧 COMPARTMENT MODE
+        // 🟧 COMPARTMENT
         // ======================================
 
         if(
@@ -7887,8 +7887,7 @@ async function showMonthHistory(){
             ).trim();
 
           if(
-            docComp ===
-            compartment
+            docComp === compartment
           ){
 
             tracksToRender.push(
@@ -7901,7 +7900,7 @@ async function showMonthHistory(){
         }
 
         // ======================================
-        // 🟨 BEAT MODE
+        // 🟨 BEAT
         // ======================================
 
         if(
@@ -7915,7 +7914,7 @@ async function showMonthHistory(){
               data.beat || ""
             ).trim();
 
-          if(
+          const match =
 
             typeof normalizeBeatName
             === "function"
@@ -7934,9 +7933,9 @@ async function showMonthHistory(){
 
             :
 
-            docBeat === beat
+            docBeat === beat;
 
-          ){
+          if(match){
 
             tracksToRender.push(
               ...(data.tracks || [])
@@ -7948,7 +7947,7 @@ async function showMonthHistory(){
         }
 
         // ======================================
-        // 🟩 RANGE MODE
+        // 🟩 RANGE
         // ======================================
 
         if(
@@ -7976,7 +7975,7 @@ async function showMonthHistory(){
         }
 
         // ======================================
-        // 🟦 DIVISION MODE
+        // 🟦 DIVISION
         // ======================================
 
         if(
@@ -8023,7 +8022,7 @@ async function showMonthHistory(){
         }
 
         // ======================================
-        // 🌍 BTR / ALL
+        // 🌍 BTR
         // ======================================
 
         tracksToRender.push(
@@ -8060,6 +8059,25 @@ async function showMonthHistory(){
     }
 
     // ==========================================
+    // 🌍 CURRENT GEOMETRY
+    // ==========================================
+
+    const selectedGeometry =
+      window.currentSelectedGeometry;
+
+    const selectedFeature =
+
+      selectedGeometry
+
+      ? {
+          type : "Feature",
+          geometry : selectedGeometry,
+          properties : {}
+        }
+
+      : null;
+
+    // ==========================================
     // 🎨 RENDER
     // ==========================================
 
@@ -8089,6 +8107,52 @@ async function showMonthHistory(){
           coords.length < 2
         ){
           continue;
+        }
+
+        // ======================================
+        // 🔥 SPATIAL FILTER
+        // ======================================
+
+        if(selectedFeature){
+
+          try{
+
+            const geoLine =
+
+              turf.lineString(
+
+                coords.map(c => [
+
+                  Number(c[1]),
+                  Number(c[0])
+
+                ])
+
+              );
+
+            const intersects =
+
+              turf.booleanIntersects(
+                geoLine,
+                selectedFeature
+              );
+
+            if(!intersects){
+
+              continue;
+            }
+
+          }
+
+          catch(spatialErr){
+
+            console.warn(
+              "Spatial filter failed",
+              spatialErr
+            );
+
+          }
+
         }
 
         const line =
@@ -8139,7 +8203,7 @@ async function showMonthHistory(){
     }
 
     // ==========================================
-    // 🎯 FIT HISTORY
+    // 🎯 FIT
     // ==========================================
 
     try{
@@ -8163,7 +8227,9 @@ async function showMonthHistory(){
 
       }
 
-    }catch(e){}
+    }
+
+    catch(e){}
 
     console.log(
       "✅ Rendered:",
