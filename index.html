@@ -7382,7 +7382,7 @@ async function appendTrackToGeometries(simplifiedLine){
     const monthKey =
       `${d.getFullYear()}_${
         String(
-          d.getMonth()+1
+          d.getMonth() + 1
         ).padStart(2,"0")
       }`;
 
@@ -7481,105 +7481,103 @@ async function appendTrackToGeometries(simplifiedLine){
           }`;
 
         // =====================================================
-        // PERFECT CLIPPING
+        // SAFE POINT-BASED CLIPPING
         // =====================================================
 
         let clippedSegments = [];
 
-        const boundaryLine =
+        try{
 
-          turf.polygonToLine(
-            poly
-          );
+          const coords =
+            simplifiedLine.geometry.coordinates || [];
 
-        const splitResult =
+          let currentSegment = [];
 
-          turf.lineSplit(
-            simplifiedLine,
-            boundaryLine
-          );
+          for(const coord of coords){
 
-        const pieces =
-          splitResult.features || [];
+            try{
 
-        console.log(
-          "✂ Split pieces:",
-          pieces.length,
-          compartment
-        );
+              const inside =
 
-        for(const piece of pieces){
+                turf.booleanPointInPolygon(
 
-          try{
+                  turf.point(coord),
 
-            const coords =
-              piece.geometry?.coordinates;
+                  poly
 
-            if(
-              !coords ||
-              coords.length < 2
-            ){
-              continue;
+                );
+
+              if(inside){
+
+                currentSegment.push([
+
+                  Number(coord[1]),
+
+                  Number(coord[0])
+
+                ]);
+
+              }
+
+              else{
+
+                if(
+                  currentSegment.length >= 2
+                ){
+
+                  clippedSegments.push(
+                    [...currentSegment]
+                  );
+
+                }
+
+                currentSegment = [];
+
+              }
+
             }
 
-            const start =
+            catch(err){
 
-              turf.point(
-                coords[0]
+              console.warn(
+                "Point clip failed",
+                err
               );
 
-            const end =
-
-              turf.point(
-                coords[
-                  coords.length - 1
-                ]
-              );
-
-            const midpoint =
-
-              turf.midpoint(
-                start,
-                end
-              );
-
-            const inside =
-
-              turf.booleanPointInPolygon(
-                midpoint,
-                poly
-              );
-
-            if(!inside){
-              continue;
             }
-
-            const latLngCoords =
-
-              coords.map(c => [
-
-                Number(c[1]),
-
-                Number(c[0])
-
-              ]);
-
-            clippedSegments.push(
-              latLngCoords
-            );
 
           }
 
-          catch(err){
+          // =====================================
+          // SAVE LAST SEGMENT
+          // =====================================
 
-            console.warn(
-              "segment error",
-              err
+          if(
+            currentSegment.length >= 2
+          ){
+
+            clippedSegments.push(
+              [...currentSegment]
             );
 
           }
 
         }
+
+        catch(err){
+
+          console.warn(
+            "Clipping failed",
+            err
+          );
+
+        }
+
+        console.log(
+          "✂ Clipped Segments:",
+          clippedSegments.length,
+          compartment
+        );
 
         if(
           clippedSegments.length === 0
@@ -7619,7 +7617,9 @@ async function appendTrackToGeometries(simplifiedLine){
 
         let tracks = [];
 
-        if(snap.exists()){
+        if(
+          snap.exists()
+        ){
 
           tracks =
             snap.data()?.tracks || [];
@@ -7686,8 +7686,7 @@ async function appendTrackToGeometries(simplifiedLine){
 
   }
 
-}
-async function toggleMonthHistory(){
+}async function toggleMonthHistory(){
 
   try{
 
