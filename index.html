@@ -33281,17 +33281,20 @@ function updateCompt(){
 
         ).trim();
 
-      if(
+     const isAdmin =
+  !userRange;
 
-        userRange &&
+if(
 
-        featureRange !== userRange
+  !isAdmin &&
 
-      ){
+  featureRange !== userRange
 
-        return;
+){
 
-      }
+  return;
+
+}
 
       // ================================
       // COMPARTMENT ID
@@ -33503,15 +33506,8 @@ function updateCompt(){
 
     ).trim();
 
-  if(!userRange){
-
-    console.warn(
-      "⚠ User range not found"
-    );
-
-    return;
-  }
-
+const isAdmin =
+  !userRange;
   // =====================================
   // COLLECT BEATS
   // =====================================
@@ -33545,12 +33541,15 @@ function updateCompt(){
       // ONLY USER RANGE
       // =================================
 
-      if(
-        featureRange !== userRange
-      ){
-        return;
-      }
+     if(
 
+  !isAdmin &&
+
+  featureRange !== userRange
+
+){
+  return;
+}
       const beat =
 
         String(
@@ -33641,14 +33640,8 @@ function populateForestBlocks(){
 
     ).trim();
 
-  if(!userRange){
-
-    console.warn(
-      "⚠ User range not found"
-    );
-
-    return;
-  }
+ const isAdmin =
+  !userRange;
 
   // =====================================
   // COLLECT BLOCKS
@@ -33682,11 +33675,15 @@ function populateForestBlocks(){
 
         ).trim();
 
-      if(
-        featureRange !== userRange
-      ){
-        return;
-      }
+    if(
+
+  !isAdmin &&
+
+  featureRange !== userRange
+
+){
+  return;
+}
 
       // =================================
       // COMPARTMENT ID
