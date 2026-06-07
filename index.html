@@ -24911,35 +24911,133 @@ const popup = `
 =============================== */
 
   
-    window.openMoveForm = function(id){
+  window.openMoveForm = function(id){
 
-  console.log("🔥 openMoveForm CALLED with ID:", id);
+  console.log(
+    "🔥 openMoveForm CALLED with ID:",
+    id
+  );
 
-  const modal = document.getElementById("move-form-modal");
+  // 🔥 NEW
+  populateMoveRemarks();
 
-  if (!modal) {
-    console.error("❌ move-form-modal NOT FOUND");
+  const modal =
+    document.getElementById(
+      "move-form-modal"
+    );
+
+  if(!modal){
+
+    console.error(
+      "❌ move-form-modal NOT FOUND"
+    );
+
     return;
   }
 
-  // 🔥 RESET BUTTON STATE (CRITICAL FIX)
   setMoveLoading("reset");
 
-  document.getElementById("move-id").value = id;
+  document.getElementById(
+    "move-id"
+  ).value = id;
 
-  document.getElementById("move-depredation").value = "";
-  document.getElementById("move-involved").value = "";
-  document.getElementById("move-driving").value = "";
+  document.getElementById(
+    "move-depredation"
+  ).value = "";
+
+  document.getElementById(
+    "move-involved"
+  ).value = "";
+
+  document.getElementById(
+    "move-driving"
+  ).value = "";
 
   modal.style.display = "flex";
+
 }; /* 🔥 STATUS UPDATE */
+
+    function populateMoveRemarks(){
+
+  const remarks =
+    document.getElementById(
+      "move-remarks"
+    );
+
+  if(!remarks){
+    return;
+  }
+
+  remarks.innerHTML = `
+
+    <option value="Moved">
+      🟢 Moved
+    </option>
+
+    <option value="Resolved">
+      Resolved
+    </option>
+
+  `;
+
+  const compartments =
+    new Set();
+
+  (
+    window.allCompartmentFeatures || []
+  )
+  .forEach(f => {
+
+    try{
+
+      const id = String(
+
+        f.properties?.ID ||
+
+        ""
+
+      ).trim();
+
+      if(id){
+
+        compartments.add(id);
+
+      }
+
+    }catch(err){}
+
+  });
+
+  [...compartments]
+  .sort()
+  .forEach(comp => {
+
+    const opt =
+      document.createElement(
+        "option"
+      );
+
+    opt.value =
+      `Driven to ${comp}`;
+
+    opt.textContent =
+      `Driven to ${comp}`;
+
+    remarks.appendChild(
+      opt
+    );
+
+  });
+
+}
     /* 🔥 STATUS UPDATE */
     function closeMoveForm(){
   document.getElementById("move-form-modal").style.display = "none";
 }
     
     
-    /* 🔥 STATUS UPDATE */function submitMoveForm() {
+    /* 🔥 STATUS UPDATE */
+    function submitMoveForm() {
 
   console.group("🚀 submitMoveForm START");
 
@@ -27895,228 +27993,670 @@ console.log(
 }
 function submitSightingForm(event){
 
-  if(event) event.preventDefault();
+  if(event){
+    event.preventDefault();
+  }
 
-  setSubmitLoading(true); // ✅ START LOADING
+  setSubmitLoading(true);
 
-  try {
+  try{
+
+    // =====================================================
+    // SIGHTING ID
+    // =====================================================
 
     let sightingID;
 
-    if (window.isEditingSighting && window.currentSightingId) {
-      sightingID = window.currentSightingId;
-    } else {
+    if(
+
+      window.isEditingSighting &&
+
+      window.currentSightingId
+
+    ){
+
       sightingID =
-        "SIGHT-" +
-        Date.now() + "-" +
-        Math.floor(Math.random() * 10000);
+        window.currentSightingId;
+
     }
 
-    const m   = parseInt(document.getElementById("f-m").value) || 0;
-    const f   = parseInt(document.getElementById("f-f").value) || 0;
-    const uni = parseInt(document.getElementById("f-u").value) || 0;
-    const c   = parseInt(document.getElementById("f-c").value) || 0;
+    else{
 
-    const total = m + f + uni + c;
+      sightingID =
+
+        "SIGHT-" +
+
+        Date.now() +
+
+        "-" +
+
+        Math.floor(
+          Math.random() * 10000
+        );
+
+    }
 
     // =====================================================
-// 🔥 USE CENTRAL APK GPS
-// =====================================================
-let lat =
-  document.getElementById("f-lat").value;
+    // COUNTS
+    // =====================================================
 
-let lon =
-  document.getElementById("f-lon").value;
+    const m =
 
-try {
+      parseInt(
 
-  const gps =
-    window.latestGps;
+        document.getElementById(
+          "f-m"
+        ).value
 
-  if(
+      ) || 0;
 
-    gps &&
+    const f =
 
-    gps.lat &&
+      parseInt(
 
-    gps.lng
+        document.getElementById(
+          "f-f"
+        ).value
 
-  ){
+      ) || 0;
 
-    lat =
-      Number(gps.lat)
-        .toFixed(5);
+    const uni =
 
-    lon =
-      Number(gps.lng)
-        .toFixed(5);
+      parseInt(
+
+        document.getElementById(
+          "f-u"
+        ).value
+
+      ) || 0;
+
+    const calf =
+
+      parseInt(
+
+        document.getElementById(
+          "f-c"
+        ).value
+
+      ) || 0;
+
+    const total =
+
+      m +
+      f +
+      uni +
+      calf;
+
+    // =====================================================
+    // GPS
+    // =====================================================
+
+    let lat =
+
+      document.getElementById(
+        "f-lat"
+      ).value;
+
+    let lon =
+
+      document.getElementById(
+        "f-lon"
+      ).value;
+
+    try{
+
+      const gps =
+        window.latestGps;
+
+      if(
+
+        gps &&
+
+        gps.lat &&
+
+        gps.lng
+
+      ){
+
+        lat =
+
+          Number(
+            gps.lat
+          )
+          .toFixed(5);
+
+        lon =
+
+          Number(
+            gps.lng
+          )
+          .toFixed(5);
+
+        console.log(
+          "📍 Using APK GPS:",
+          lat,
+          lon
+        );
+
+      }
+
+    }
+
+    catch(gpsErr){
+
+      console.warn(
+        "⚠ APK GPS unavailable",
+        gpsErr
+      );
+
+    }
+
+    const location =
+      lat + "," + lon;
+
+    // =====================================================
+    // TIME
+    // =====================================================
+
+    const now =
+      new Date();
+
+    const time =
+
+      now.toLocaleTimeString(
+        "en-IN"
+      );
+
+    // =====================================================
+    // VALIDATION
+    // =====================================================
+
+    if(
+
+      !lat ||
+
+      !lon
+
+    ){
+
+      alert(
+        "❌ Location missing"
+      );
+
+      setSubmitLoading(
+        false
+      );
+
+      return;
+
+    }
+
+    const beat =
+
+      String(
+
+        document.getElementById(
+          "f-beat"
+        ).value || ""
+
+      ).trim();
+
+    const forestBlock =
+
+      String(
+
+        document.getElementById(
+          "f-block"
+        ).value || ""
+
+      ).trim();
+
+    const compt =
+
+      String(
+
+        document.getElementById(
+          "f-compt"
+        ).value || ""
+
+      ).trim();
+
+    if(
+
+      !beat ||
+
+      !compt
+
+    ){
+
+      alert(
+        "❌ Select Beat & Compartment"
+      );
+
+      setSubmitLoading(
+        false
+      );
+
+      return;
+
+    }
+
+    // =====================================================
+    // SAVE NEW CUSTOM VILLAGE
+    // =====================================================
+
+    if(
+
+      forestBlock ===
+      "VILLAGE"
+
+    ){
+
+      try{
+
+        const customVillages =
+
+          JSON.parse(
+
+            localStorage.getItem(
+              "customVillages"
+            ) || "[]"
+
+          );
+
+        if(
+
+          compt &&
+
+          !customVillages.includes(
+            compt
+          )
+
+        ){
+
+          customVillages.push(
+            compt
+          );
+
+          localStorage.setItem(
+
+            "customVillages",
+
+            JSON.stringify(
+              customVillages
+            )
+
+          );
+
+          console.log(
+
+            "🏡 New village saved:",
+
+            compt
+
+          );
+
+        }
+
+      }
+
+      catch(err){
+
+        console.warn(
+          "Village save failed",
+          err
+        );
+
+      }
+
+    }
+
+    // =====================================================
+    // TEAM LEADER
+    // =====================================================
+
+    const teamInput =
+
+      document.getElementById(
+        "f-team"
+      );
+
+    let leaderValue =
+
+      teamInput
+      ? teamInput.value
+      : "";
+
+    if(
+
+      !leaderValue ||
+
+      leaderValue.trim() === ""
+
+    ){
+
+      leaderValue =
+
+        window.userProfile?.name ||
+
+        "";
+
+    }
+
+    if(
+
+      leaderValue ===
+
+      window.userProfile?.cleanName ||
+
+      leaderValue ===
+
+      window.userProfile
+      ?.cleanName
+      ?.toUpperCase()
+
+    ){
+
+      leaderValue =
+
+        window.userProfile?.name ||
+
+        leaderValue;
+
+    }
+
+    leaderValue =
+
+      String(
+        leaderValue
+      ).trim();
 
     console.log(
-      "📍 Using APK GPS:",
-      lat,
-      lon
+      "👤 FINAL LEADER:",
+      leaderValue
     );
-  }
 
-} catch(gpsErr){
-
-  console.warn(
-    "⚠ APK GPS unavailable",
-    gpsErr
-  );
-}
-    const location = lat + "," + lon;
-
-    const now = new Date();
-    const time = now.toLocaleTimeString("en-IN");
-
-    /* 🔥 VALIDATION FIX */
-    if (!lat || !lon) {
-      alert("❌ Location missing");
-      setSubmitLoading(false);
-      return;
-    }
-
-    if (!document.getElementById("f-beat").value || !document.getElementById("f-compt").value) {
-      alert("❌ Select Beat & Compartment");
-      setSubmitLoading(false);
-      return;
-    }
-
-    const teamInput = document.getElementById("f-team");
-
-    let leaderValue = teamInput ? teamInput.value : "";
-
-    if (!leaderValue || leaderValue.trim() === "") {
-      leaderValue = window.userProfile?.name || "";
-    }
-
-    if (
-      leaderValue === window.userProfile?.cleanName ||
-      leaderValue === window.userProfile?.cleanName?.toUpperCase()
-    ) {
-      console.warn("⚠ Prevented cleanName overwrite → using UI name");
-      leaderValue = window.userProfile?.name || leaderValue;
-    }
-
-    leaderValue = String(leaderValue).trim();
-
-    console.log("👤 FINAL LEADER:", leaderValue);
+    // =====================================================
+    // PAYLOAD
+    // =====================================================
 
     const payload = {
 
-      sighting_id: sightingID,
-      parent_id: "",
-      beat: document.getElementById("f-beat").value,
-      forest_block: document.getElementById("f-block").value,
-      compt: document.getElementById("f-compt").value,
-      time: time,
+      sighting_id:
+        sightingID,
 
-      m: Number(m),
-      f: Number(f),
-      unidentified: Number(uni),
-      calf: Number(c),
+      parent_id:
+        "",
 
-      total_seen: total,
+      beat:
+        beat,
 
-      anticipated: "",
-      depredation: "",
-      involved: "",
-      driving: "",
+      forest_block:
+        forestBlock,
 
-      remarks: document.getElementById("f-remarks").value,
+      compt:
+        compt,
 
-      leader: leaderValue,
-phone:
-  window.userProfile?.phone || "",
-      staff: "",
+      time:
+        time,
 
-      lat: Number(lat),
-      lon: Number(lon),
+      m:
+        Number(m),
 
-      location: location,
+      f:
+        Number(f),
 
-      direction: document.getElementById("f-dir").value
+      unidentified:
+        Number(uni),
+
+      calf:
+        Number(calf),
+
+      total_seen:
+        total,
+
+      anticipated:
+        "",
+
+      depredation:
+        "",
+
+      involved:
+        "",
+
+      driving:
+        "",
+
+      remarks:
+
+        document
+        .getElementById(
+          "f-remarks"
+        )
+        .value,
+
+      leader:
+        leaderValue,
+
+      phone:
+
+        window.userProfile
+        ?.phone || "",
+
+      staff:
+        "",
+
+      lat:
+        Number(lat),
+
+      lon:
+        Number(lon),
+
+      location:
+        location,
+
+      direction:
+
+        document
+        .getElementById(
+          "f-dir"
+        )
+        .value
+
     };
 
-    console.log("📤 Payload:", payload);
+    console.log(
+      "📤 Payload:",
+      payload
+    );
 
-    const fileInput = document.getElementById("f-photo");
-    const file = fileInput ? fileInput.files[0] : null;
+    // =====================================================
+    // FILE
+    // =====================================================
 
-    function submitToServer(finalPayload){
+    const fileInput =
 
-      if (!navigator.onLine) {
+      document.getElementById(
+        "f-photo"
+      );
 
-        saveSightingOffline(finalPayload);
+    const file =
 
-        alert("📴 Saved offline. Will sync automatically.");
+      fileInput
+      ? fileInput.files[0]
+      : null;
 
-        setSubmitLoading(false);
+    // =====================================================
+    // SUBMIT
+    // =====================================================
+
+    function submitToServer(
+      finalPayload
+    ){
+
+      if(
+        !navigator.onLine
+      ){
+
+        saveSightingOffline(
+          finalPayload
+        );
+
+        alert(
+          "📴 Saved offline. Will sync automatically."
+        );
+
+        setSubmitLoading(
+          false
+        );
+
         return;
+
       }
 
-      callBackend("saveElephantSighting", finalPayload)
+      callBackend(
 
-        .then(function(){
+        "saveElephantSighting",
 
-          alert("✅ Submitted to Command Centre");
+        finalPayload
 
-          setSubmitLoading(false);
+      )
 
-          if (window.isEditingSighting) {
-            window.currentSightingId = sightingID;
-          } else {
-            window.currentSightingId = null;
-          }
+      .then(function(){
 
-          window.isEditingSighting = false;
+        alert(
+          "✅ Submitted to Command Centre"
+        );
 
-          if (typeof closeSightingForm === "function") {
-            closeSightingForm();
-          }
+        setSubmitLoading(
+          false
+        );
 
-          const form = document.getElementById("elephantForm");
-          if(form) form.reset();
+        if(
+          window.isEditingSighting
+        ){
 
-        })
+          window.currentSightingId =
+            sightingID;
 
-        .catch(function(err){
+        }
 
-          console.error("❌ Error:", err);
+        else{
 
-          saveSightingOffline(finalPayload);
+          window.currentSightingId =
+            null;
 
-          alert("⚠ Network issue → saved offline");
+        }
 
-          setSubmitLoading(false);
-        });
+        window.isEditingSighting =
+          false;
+
+        if(
+
+          typeof closeSightingForm ===
+
+          "function"
+
+        ){
+
+          closeSightingForm();
+
+        }
+
+        const form =
+
+          document.getElementById(
+            "elephantForm"
+          );
+
+        if(form){
+
+          form.reset();
+
+        }
+
+      })
+
+      .catch(function(err){
+
+        console.error(
+          "❌ Error:",
+          err
+        );
+
+        saveSightingOffline(
+          finalPayload
+        );
+
+        alert(
+          "⚠ Network issue → saved offline"
+        );
+
+        setSubmitLoading(
+          false
+        );
+
+      });
+
     }
+
+    // =====================================================
+    // PHOTO
+    // =====================================================
 
     if(file){
 
-      const reader = new FileReader();
+      const reader =
+        new FileReader();
 
-      reader.onloadend = function(){
-        payload.photo = reader.result;
-        submitToServer(payload);
+      reader.onloadend =
+      function(){
+
+        payload.photo =
+          reader.result;
+
+        submitToServer(
+          payload
+        );
+
       };
 
-      reader.readAsDataURL(file);
+      reader.readAsDataURL(
+        file
+      );
 
-    } else {
-
-      payload.photo = "";
-      submitToServer(payload);
     }
 
-  } catch (e) {
+    else{
 
-    console.error("❌ Crash:", e);
-    alert("❌ Form error: " + e.message);
+      payload.photo = "";
 
-    setSubmitLoading(false);
+      submitToServer(
+        payload
+      );
+
+    }
+
   }
+
+  catch(e){
+
+    console.error(
+      "❌ Crash:",
+      e
+    );
+
+    alert(
+      "❌ Form error: " +
+      e.message
+    );
+
+    setSubmitLoading(
+      false
+    );
+
+  }
+
 }    /* ============================================================
    🔥 OFFLINE SAVE
 ============================================================ */
@@ -30624,17 +31164,101 @@ function calculateTotal(){
 
   console.log("✅ Modal visible");
 
-  /* ===============================
-     🧹 RESET FORM
-  =============================== */
-  const form = document.getElementById("elephantForm");
+/* ===============================
+   🧹 RESET FORM
+=============================== */
+const form =
+  document.getElementById(
+    "elephantForm"
+  );
 
-  if (form) {
-    form.reset();
-    console.log("🧹 Form reset done");
-  }
+if(form){
 
-  /* ===============================
+  form.reset();
+
+  console.log(
+    "🧹 Form reset done"
+  );
+
+}
+
+// =====================================
+// 🔥 LOAD DYNAMIC BEATS
+// =====================================
+
+try{
+
+  populateSightingBeats();
+
+}
+
+catch(err){
+
+  console.warn(
+
+    "Beat population failed",
+
+    err
+
+  );
+
+}
+
+// =====================================
+// 🔥 LOAD DYNAMIC BLOCKS
+// =====================================
+
+try{
+
+  populateForestBlocks();
+
+}
+
+catch(err){
+
+  console.warn(
+
+    "Block population failed",
+
+    err
+
+  );
+
+}
+
+// =====================================
+// 🔥 LOAD DYNAMIC REMARKS
+// =====================================
+
+
+// =====================================
+// RESET COMPARTMENTS
+// =====================================
+
+const compInput =
+
+  document.getElementById(
+    "f-compt"
+  );
+
+if(compInput){
+
+  compInput.value = "";
+
+}
+
+const compList =
+
+  document.getElementById(
+    "f-compt-list"
+  );
+
+if(compList){
+
+  compList.innerHTML = "";
+
+} 
+         /* ===============================
      PROFILE
   =============================== */
   const profile = window.userProfile;
@@ -32464,65 +33088,58 @@ return el.value;
 });
 }
     
- function updateCompt() {
+function updateCompt(){
 
   const block =
-    document.getElementById("f-block").value;
+    document.getElementById(
+      "f-block"
+    )?.value;
 
-  const c =
-    document.getElementById("f-compt");
+  const input =
+    document.getElementById(
+      "f-compt"
+    );
 
-  if (!c) return;
+  const list =
+    document.getElementById(
+      "f-compt-list"
+    );
 
-  // ==========================================
-  // 🔥 CLEAR OLD OPTIONS
-  // ==========================================
-  c.innerHTML = "";
-
-  let list = [];
-
-  // ==========================================
-  // 🔥 PORO
-  // ==========================================
-  if (block === "PORO") {
-
-    list = [
-
-      "PORO 3",
-      "PORO 4",
-      "PORO 8",
-      "PORO 9",
-      "PORO 2",
-      "PORO 7",
-      "PF",
-      "PORO 5",
-      "PORO 10"
-
-    ];
+  if(
+    !input ||
+    !list
+  ){
+    return;
   }
 
-  // ==========================================
-  // 🔥 DPO
-  // ==========================================
-  else if (block === "DPO") {
+  // =====================================
+  // USER RANGE
+  // =====================================
 
-    list = [
+  const userRange =
+    String(
 
-      "DPO 1",
-      "DPO 2",
-      "DPO 5",
-      "DPO 6",
-      "DPO 9"
+      window.userProfile?.range ||
 
-    ];
-  }
+      ""
 
-  // ==========================================
-  // 🔥 VILLAGE
-  // ==========================================
-  else if (block === "VILLAGE") {
+    ).trim();
 
-    list = [
+  // =====================================
+  // RESET
+  // =====================================
+
+  input.value = "";
+
+  list.innerHTML = "";
+
+  // =====================================
+  // VILLAGE
+  // =====================================
+
+  if(block === "VILLAGE"){
+
+    const villages = [
 
       "Fhoksadanga(Joler Tank)",
       "Fhoksadanga(Satu Mill)",
@@ -32565,23 +33182,621 @@ return el.value;
       "Bat Talai Damanpur"
 
     ];
+
+    // =====================================
+    // USER ADDED VILLAGES
+    // =====================================
+
+    let customVillages = [];
+
+    try{
+
+      customVillages =
+
+        JSON.parse(
+
+          localStorage.getItem(
+            "customVillages"
+          ) || "[]"
+
+        );
+
+    }
+
+    catch(err){
+
+      console.warn(
+        "Village load failed",
+        err
+      );
+
+    }
+
+    const merged = [
+
+      ...new Set([
+
+        ...villages,
+
+        ...customVillages
+
+      ])
+
+    ];
+
+    merged
+    .sort()
+    .forEach(v => {
+
+      const opt =
+        document.createElement(
+          "option"
+        );
+
+      opt.value = v;
+
+      list.appendChild(
+        opt
+      );
+
+    });
+
+    console.log(
+      "🏡 Villages Loaded:",
+      merged.length
+    );
+
+    return;
   }
 
-  // ==========================================
-  // 🔥 BUILD OPTIONS
-  // ==========================================
-  list.forEach(v => {
+  // =====================================
+  // FOREST BLOCKS
+  // RANGE FILTERED
+  // =====================================
 
-    const opt =
-      document.createElement("option");
+  const compartments = [];
 
-    opt.value = v;
+  (
+    window.allCompartmentFeatures || []
+  )
+  .forEach(f => {
 
-    opt.textContent = v;
+    try{
 
-    c.appendChild(opt);
+      const props =
+        f.properties || {};
+
+      // ================================
+      // RANGE FILTER
+      // ================================
+
+      const featureRange =
+        String(
+
+          props.Range ||
+
+          props.range ||
+
+          ""
+
+        ).trim();
+
+      if(
+
+        userRange &&
+
+        featureRange !== userRange
+
+      ){
+
+        return;
+
+      }
+
+      // ================================
+      // COMPARTMENT ID
+      // ================================
+
+      const id =
+        String(
+
+          props.ID ||
+
+          ""
+
+        ).trim();
+
+      if(!id){
+
+        return;
+
+      }
+
+      // ================================
+      // DERIVE BLOCK
+      // ================================
+
+      let derivedBlock =
+        id;
+
+      derivedBlock =
+        derivedBlock.replace(
+          /\s*BL\s*\d+$/i,
+          ""
+        );
+
+      derivedBlock =
+        derivedBlock.replace(
+          /\d+$/g,
+          ""
+        );
+
+      derivedBlock =
+        derivedBlock.trim();
+
+      if(
+        derivedBlock !== block
+      ){
+        return;
+      }
+
+      compartments.push(
+        id
+      );
+
+    }
+
+    catch(err){
+
+      console.warn(
+        "Compartment parse failed",
+        err
+      );
+
+    }
 
   });
+
+  [...new Set(compartments)]
+  .sort()
+  .forEach(name => {
+
+    const opt =
+      document.createElement(
+        "option"
+      );
+
+    opt.value =
+      name;
+
+    list.appendChild(
+      opt
+    );
+
+  });
+
+  console.log(
+    "📦 Compartments Loaded:",
+    compartments.length,
+    "| Block:",
+    block,
+    "| Range:",
+    userRange
+  );
+
+}   function populateDrivingRemarks(){
+
+  const remarks =
+    document.getElementById(
+      "f-remarks"
+    );
+
+  if(!remarks){
+    return;
+  }
+
+  // =====================================
+  // KEEP FIRST 2 OPTIONS
+  // =====================================
+
+  remarks.innerHTML = `
+
+    <option value="Active">
+      🔴 Active
+    </option>
+
+    <option value="Moved">
+      🟢 Moved
+    </option>
+
+  `;
+
+  const compartments =
+    new Set();
+
+  (
+    window.allCompartmentFeatures || []
+  )
+  .forEach(f => {
+
+    try{
+
+      const id = String(
+
+        f.properties?.ID ||
+
+        ""
+
+      ).trim();
+
+      if(id){
+
+        compartments.add(
+          id
+        );
+
+      }
+
+    }
+
+    catch(err){}
+
+  });
+
+  [...compartments]
+  .sort()
+  .forEach(comp => {
+
+    const opt =
+      document.createElement(
+        "option"
+      );
+
+    opt.value =
+      `Driven to ${comp}`;
+
+    opt.textContent =
+      `Driven to ${comp}`;
+
+    remarks.appendChild(
+      opt
+    );
+
+  });
+
+  console.log(
+    "✅ Driving Remarks Loaded:",
+    compartments.size
+  );
+
+} 
+    
+  function populateSightingBeats(){
+
+  const beatSelect =
+    document.getElementById(
+      "f-beat"
+    );
+
+  if(!beatSelect){
+    return;
+  }
+
+  // =====================================
+  // RESET
+  // =====================================
+
+  beatSelect.innerHTML =
+    '<option value="">-- Select Beat --</option>';
+
+  // =====================================
+  // USER RANGE
+  // =====================================
+
+  const userRange =
+
+    String(
+
+      window.userProfile?.range ||
+
+      ""
+
+    ).trim();
+
+  if(!userRange){
+
+    console.warn(
+      "⚠ User range not found"
+    );
+
+    return;
+  }
+
+  // =====================================
+  // COLLECT BEATS
+  // =====================================
+
+  const beats =
+    new Set();
+
+  (
+    window.allGISFeatures || []
+  )
+  .forEach(f => {
+
+    try{
+
+      const props =
+        f.properties || {};
+
+      const featureRange =
+
+        String(
+
+          props.Range ||
+
+          props.range ||
+
+          ""
+
+        ).trim();
+
+      // =================================
+      // ONLY USER RANGE
+      // =================================
+
+      if(
+        featureRange !== userRange
+      ){
+        return;
+      }
+
+      const beat =
+
+        String(
+
+          props.Beat ||
+
+          props.beat ||
+
+          ""
+
+        ).trim();
+
+      if(beat){
+
+        beats.add(
+          beat
+        );
+
+      }
+
+    }
+
+    catch(err){}
+
+  });
+
+  // =====================================
+  // BUILD OPTIONS
+  // =====================================
+
+  [...beats]
+  .sort()
+  .forEach(beat => {
+
+    const opt =
+      document.createElement(
+        "option"
+      );
+
+    opt.value =
+      beat;
+
+    opt.textContent =
+      beat;
+
+    beatSelect.appendChild(
+      opt
+    );
+
+  });
+
+  console.log(
+    "✅ Sighting Beats Loaded:",
+    beats.size,
+    "| Range:",
+    userRange
+  );
+
+}
+function populateForestBlocks(){
+
+  const blockSelect =
+    document.getElementById(
+      "f-block"
+    );
+
+  if(!blockSelect){
+    return;
+  }
+
+  // =====================================
+  // RESET
+  // =====================================
+
+  blockSelect.innerHTML =
+    '<option value="">-- Select Block --</option>';
+
+  // =====================================
+  // USER RANGE
+  // =====================================
+
+  const userRange =
+    String(
+
+      window.userProfile?.range ||
+
+      ""
+
+    ).trim();
+
+  if(!userRange){
+
+    console.warn(
+      "⚠ User range not found"
+    );
+
+    return;
+  }
+
+  // =====================================
+  // COLLECT BLOCKS
+  // =====================================
+
+  const blocks =
+    new Set();
+
+  (
+    window.allCompartmentFeatures || []
+  )
+  .forEach(f => {
+
+    try{
+
+      const props =
+        f.properties || {};
+
+      // =================================
+      // RANGE FILTER
+      // =================================
+
+      const featureRange =
+        String(
+
+          props.Range ||
+
+          props.range ||
+
+          ""
+
+        ).trim();
+
+      if(
+        featureRange !== userRange
+      ){
+        return;
+      }
+
+      // =================================
+      // COMPARTMENT ID
+      // =================================
+
+      const id =
+        String(
+
+          props.ID ||
+
+          ""
+
+        ).trim();
+
+      if(!id){
+        return;
+      }
+
+      // =================================
+      // DERIVE BLOCK NAME
+      // =================================
+
+      let block = id;
+
+      block =
+        block.replace(
+          /\s*BL\s*\d+$/i,
+          ""
+        );
+
+      block =
+        block.replace(
+          /\d+$/g,
+          ""
+        );
+
+      block =
+        block.trim();
+
+      if(block){
+
+        blocks.add(
+          block
+        );
+
+      }
+
+    }
+
+    catch(err){
+
+      console.warn(
+        "Block parse failed",
+        err
+      );
+
+    }
+
+  });
+
+  // =====================================
+  // BUILD BLOCK OPTIONS
+  // =====================================
+
+  [...blocks]
+  .sort()
+  .forEach(block => {
+
+    const opt =
+      document.createElement(
+        "option"
+      );
+
+    opt.value =
+      block;
+
+    opt.textContent =
+      block;
+
+    blockSelect.appendChild(
+      opt
+    );
+
+  });
+
+  // =====================================
+  // ALWAYS ADD VILLAGE
+  // =====================================
+
+  const villageOpt =
+    document.createElement(
+      "option"
+    );
+
+  villageOpt.value =
+    "VILLAGE";
+
+  villageOpt.textContent =
+    "VILLAGE";
+
+  blockSelect.appendChild(
+    villageOpt
+  );
+
+  console.log(
+    "✅ Forest Blocks Loaded:",
+    blocks.size,
+    "| Range:",
+    userRange
+  );
 
 }
 function generateAndShowReport(){
@@ -34163,25 +35378,52 @@ style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; bac
 <input type="hidden" id="f-lon">
 
 <label><b>Beat</b></label>
-<select id="f-beat" required>
-<option value="">-- Select Beat --</option>
-<option>East Garam Beat</option>
-<option>West Garam Beat</option>
-<option>East Poro Beat</option>
-</select>
 
+<select
+  id="f-beat"
+  onchange="updateCompt()"
+  required
+  style="
+    width:100%;
+    padding:8px;
+    border:1px solid #ccc;
+    border-radius:6px;
+  "
+>
+
+  <option value="">
+    -- Select Beat --
+  </option>
+
+</select>
 <label><b>Forest Block</b></label>
 <select id="f-block" onchange="updateCompt()" required>
 <option value="">-- Select Block --</option>
-<option value="PORO">PORO</option>
-<option value="DPO">DPO</option>
 <option value="VILLAGE">VILLAGE</option>
 </select>
 
-<label><b>Compt</b></label>
-<select id="f-compt" required>
-<option value="">-- Select Block First --</option>
-</select>
+<label><b>Compt / Village</b></label>
+
+<input
+  id="f-compt"
+  list="f-compt-list"
+  placeholder="Select or type..."
+  required
+  style="
+    width:100%;
+    padding:8px;
+    border:1px solid #ccc;
+    border-radius:6px;
+  "
+>
+
+<datalist id="f-compt-list">
+
+  <option value="">
+    -- Select Block First --
+  </option>
+
+</datalist>
 
 <label><b>Time</b></label>
 <input type="time" id="f-time" required>
@@ -34215,26 +35457,18 @@ style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; bac
 <input type="number" id="f-total" readonly>
 
 <label><b>Driving Status / Remarks</b></label>
-<select id="f-remarks">
-<option value="Active">🔴 Active</option>
-<option value="Moved">🟢 Moved</option>
-<option>Driven to DPO 1</option>
-<option>Driven to DPO 2</option>
-<option>Driven to DPO 8</option> 
-<option>Driven to DPO 5</option>
-<option>Driven to DPO 6</option>
-<option>Driven to DPO 9</option>
-<option>Driven to PORO 2</option>
-<option>Driven to PORO 3</option>
-<option>Driven to PORO 4</option>
-<option>Driven to PORO 5</option>
-<option>Driven to PORO 7</option>
-<option>Driven to PORO 8</option>
-<option>Driven to PORO 9</option>
-<option>Driven to PORO 10</option>
-<option>Driven to PF</option>
-</select>
 
+<select id="f-remarks">
+
+  <option value="Active">
+    🔴 Active
+  </option>
+
+  <option value="Moved">
+    🟢 Moved
+  </option>
+
+</select>
 <label><b>Team Leader</b></label>
 <input type="text" id="f-team" readonly>
 
@@ -34321,30 +35555,25 @@ style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; bac
     </select>
 
     <label>Remarks</label>
-    <select id="move-remarks" style="width:100%; padding:8px; margin-top:5px; border-radius:6px;">
+    <select
+  id="move-remarks"
+  style="
+    width:100%;
+    padding:8px;
+    margin-top:5px;
+    border-radius:6px;
+  "
+>
 
-      <option value="Moved">🟢 Moved</option>
-  <option value="Resolved">Resolved</option> 
-      <option>Driven to DPO 1</option>
-      <option>Driven to DPO 2</option>
-       <option>Driven to DPO 8</option>
-      <option>Driven to DPO 5</option>
-      <option>Driven to DPO 6</option>
-      <option>Driven to DPO 9</option>
+  <option value="Moved">
+    🟢 Moved
+  </option>
 
-      <option>Driven to PORO 2</option>
-      <option>Driven to PORO 3</option>
-      <option>Driven to PORO 4</option>
-      <option>Driven to PORO 5</option>
-      <option>Driven to PORO 7</option>
-      <option>Driven to PORO 8</option>
-      <option>Driven to PORO 9</option>
-      <option>Driven to PORO 10</option>
- <option>Driven to PORO 11</option>
-      <option>Driven to PF</option>
+  <option value="Resolved">
+    Resolved
+  </option>
 
-    </select>
-
+</select>
     <button id="moveConfirmBtn" onclick="submitMoveForm()">✅ Confirm</button>
 <button onclick="closeMoveForm()">❌ Cancel</button>
   </div>
