@@ -33300,15 +33300,17 @@ if(
       // COMPARTMENT ID
       // ================================
 
-      const id =
-        String(
+     const id =
+  String(
 
-          props.ID ||
+    props.compartment ||
 
-          ""
+    props.ID ||
 
-        ).trim();
+    ""
 
+  ).trim();
+      
       if(!id){
 
         return;
@@ -33640,8 +33642,8 @@ function populateForestBlocks(){
 
     ).trim();
 
- const isAdmin =
-  !userRange;
+  const isAdmin =
+    !userRange;
 
   // =====================================
   // COLLECT BLOCKS
@@ -33667,30 +33669,34 @@ function populateForestBlocks(){
       const featureRange =
         String(
 
-          props.Range ||
-
           props.range ||
+
+          props.Range ||
 
           ""
 
         ).trim();
 
-    if(
+      if(
 
-  !isAdmin &&
+        !isAdmin &&
 
-  featureRange !== userRange
+        featureRange !== userRange
 
-){
-  return;
-}
+      ){
+
+        return;
+
+      }
 
       // =================================
-      // COMPARTMENT ID
+      // COMPARTMENT NAME
       // =================================
 
-      const id =
+      const compartment =
         String(
+
+          props.compartment ||
 
           props.ID ||
 
@@ -33698,15 +33704,18 @@ function populateForestBlocks(){
 
         ).trim();
 
-      if(!id){
+      if(!compartment){
+
         return;
+
       }
 
       // =================================
-      // DERIVE BLOCK NAME
+      // DERIVE BLOCK
       // =================================
 
-      let block = id;
+      let block =
+        compartment;
 
       block =
         block.replace(
@@ -33790,13 +33799,10 @@ function populateForestBlocks(){
 
   console.log(
     "✅ Forest Blocks Loaded:",
-    blocks.size,
-    "| Range:",
-    userRange
+    [...blocks]
   );
 
-}
-function generateAndShowReport(){
+}function generateAndShowReport(){
 
   const btn = document.getElementById("generateAndShowBtn");
 
