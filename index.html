@@ -31176,29 +31176,70 @@ else{
     updateDutyCompt("BEAT_CHANGE");
   };
 
-  /* ================= POST INIT ================= */
-  setTimeout(() => {
+ /* ================= POST INIT ================= */
+setTimeout(async () => {
 
-    setVal(
-      "d-id",
-      "DUTY-" + Date.now()
+  setVal(
+    "d-id",
+    "DUTY-" + Date.now()
+  );
+
+  setVal(
+    "d-date",
+    new Date().toLocaleString()
+  );
+
+  // =====================================
+  // 🔥 ENSURE COMPARTMENTS ARE LOADED
+  // =====================================
+
+  if(
+
+    !Array.isArray(
+      window.allCompartmentFeatures
+    )
+
+    ||
+
+    window.allCompartmentFeatures.length === 0
+
+  ){
+
+    console.log(
+      "📦 Duty Form → Loading compartments..."
     );
 
-    setVal(
-      "d-date",
-      new Date().toLocaleString()
-    );
+    try{
 
-    updateDutyStaff(
-      "FROM_OPEN_DUTY"
-    );
+      await preloadAllCompartments();
 
-    updateDutyCompt(
-      "FROM_OPEN_DUTY"
-    );
+    }
 
-  }, 150);
+    catch(err){
 
+      console.error(
+        "❌ preloadAllCompartments failed",
+        err
+      );
+
+    }
+
+  }
+
+  console.log(
+    "📦 Compartments Ready:",
+    window.allCompartmentFeatures?.length || 0
+  );
+
+  updateDutyStaff(
+    "FROM_OPEN_DUTY"
+  );
+
+  updateDutyCompt(
+    "FROM_OPEN_DUTY"
+  );
+
+}, 150);
   /* ================= BUTTON FIX ================= */
   const startBtn =
     document.getElementById(
