@@ -24957,7 +24957,7 @@ const popup = `
 
 }; /* 🔥 STATUS UPDATE */
 
-    function populateMoveRemarks(){
+  function populateMoveRemarks(){
 
   const remarks =
     document.getElementById(
@@ -24967,6 +24967,10 @@ const popup = `
   if(!remarks){
     return;
   }
+
+  // =====================================
+  // RESET DEFAULT OPTIONS
+  // =====================================
 
   remarks.innerHTML = `
 
@@ -24980,6 +24984,26 @@ const popup = `
 
   `;
 
+  // =====================================
+  // USER RANGE
+  // =====================================
+
+  const userRange =
+    String(
+
+      window.userProfile?.range ||
+
+      ""
+
+    ).trim();
+
+  const isAdmin =
+    !userRange;
+
+  // =====================================
+  // COLLECT COMPARTMENTS
+  // =====================================
+
   const compartments =
     new Set();
 
@@ -24990,23 +25014,69 @@ const popup = `
 
     try{
 
-      const id = String(
+      const props =
+        f.properties || {};
 
-        f.properties?.ID ||
+      const featureRange =
+        String(
 
-        ""
+          props.range ||
 
-      ).trim();
+          props.Range ||
 
-      if(id){
+          ""
 
-        compartments.add(id);
+        ).trim();
+
+      // ===============================
+      // RANGE FILTER
+      // ===============================
+
+      if(
+
+        !isAdmin &&
+
+        featureRange !== userRange
+
+      ){
+        return;
+      }
+
+      const compartment =
+        String(
+
+          props.compartment ||
+
+          props.ID ||
+
+          ""
+
+        ).trim();
+
+      if(compartment){
+
+        compartments.add(
+          compartment
+        );
 
       }
 
-    }catch(err){}
+    }
+
+    catch(err){
+
+      console.warn(
+        "Move remarks parse failed",
+        err
+      );
+
+    }
 
   });
+
+  // =====================================
+  // BUILD OPTIONS
+  // =====================================
 
   [...compartments]
   .sort()
@@ -25029,8 +25099,14 @@ const popup = `
 
   });
 
-}
-    /* 🔥 STATUS UPDATE */
+  console.log(
+    "✅ Move Remarks Loaded:",
+    compartments.size,
+    "| Range:",
+    userRange || "ADMIN"
+  );
+
+}  /* 🔥 STATUS UPDATE */
     function closeMoveForm(){
   document.getElementById("move-form-modal").style.display = "none";
 }
@@ -33389,7 +33465,7 @@ if(
     userRange
   );
 
-}   function populateDrivingRemarks(){
+}function populateDrivingRemarks(){
 
   const remarks =
     document.getElementById(
@@ -33401,7 +33477,7 @@ if(
   }
 
   // =====================================
-  // KEEP FIRST 2 OPTIONS
+  // DEFAULT OPTIONS
   // =====================================
 
   remarks.innerHTML = `
@@ -33416,6 +33492,26 @@ if(
 
   `;
 
+  // =====================================
+  // USER RANGE
+  // =====================================
+
+  const userRange =
+    String(
+
+      window.userProfile?.range ||
+
+      ""
+
+    ).trim();
+
+  const isAdmin =
+    !userRange;
+
+  // =====================================
+  // COLLECT COMPARTMENTS
+  // =====================================
+
   const compartments =
     new Set();
 
@@ -33426,27 +33522,73 @@ if(
 
     try{
 
-      const id = String(
+      const props =
+        f.properties || {};
 
-        f.properties?.ID ||
+      const featureRange =
+        String(
 
-        ""
+          props.range ||
 
-      ).trim();
+          props.Range ||
 
-      if(id){
+          ""
+
+        ).trim();
+
+      // ================================
+      // RANGE FILTER
+      // ================================
+
+      if(
+
+        !isAdmin &&
+
+        featureRange !== userRange
+
+      ){
+        return;
+      }
+
+      // ================================
+      // COMPARTMENT NAME
+      // ================================
+
+      const compartment =
+        String(
+
+          props.compartment ||
+
+          props.ID ||
+
+          ""
+
+        ).trim();
+
+      if(compartment){
 
         compartments.add(
-          id
+          compartment
         );
 
       }
 
     }
 
-    catch(err){}
+    catch(err){
+
+      console.warn(
+        "Driving remark parse failed",
+        err
+      );
+
+    }
 
   });
+
+  // =====================================
+  // ADD DRIVEN TO OPTIONS
+  // =====================================
 
   [...compartments]
   .sort()
@@ -33471,10 +33613,12 @@ if(
 
   console.log(
     "✅ Driving Remarks Loaded:",
-    compartments.size
+    compartments.size,
+    "| Range:",
+    userRange || "ADMIN"
   );
 
-} 
+}
     
   function populateSightingBeats(){
 
