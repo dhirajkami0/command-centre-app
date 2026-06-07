@@ -24957,7 +24957,7 @@ const popup = `
 
 }; /* 🔥 STATUS UPDATE */
 
-  function populateMoveRemarks(){
+function populateMoveRemarks(){
 
   const remarks =
     document.getElementById(
@@ -24990,11 +24990,7 @@ const popup = `
 
   const userRange =
     String(
-
-      window.userProfile?.range ||
-
-      ""
-
+      window.userProfile?.range || ""
     ).trim();
 
   const isAdmin =
@@ -25028,16 +25024,13 @@ const popup = `
 
         ).trim();
 
-      // ===============================
+      // ================================
       // RANGE FILTER
-      // ===============================
+      // ================================
 
       if(
-
         !isAdmin &&
-
         featureRange !== userRange
-
       ){
         return;
       }
@@ -25075,7 +25068,7 @@ const popup = `
   });
 
   // =====================================
-  // BUILD OPTIONS
+  // ADD DRIVEN TO OPTIONS
   // =====================================
 
   [...compartments]
