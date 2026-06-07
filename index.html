@@ -7355,16 +7355,6 @@ async function appendTrackToGeometries(simplifiedLine){
     "🚀 appendTrackToGeometries START"
   );
 
-  console.log(
-    "COMPARTMENTS AVAILABLE:",
-    window.allCompartmentFeatures?.length
-  );
-
-  console.log(
-    "SIMPLIFIED LINE:",
-    simplifiedLine
-  );
-
   try{
 
     if(
@@ -7395,14 +7385,11 @@ async function appendTrackToGeometries(simplifiedLine){
     );
 
     if(
-      !window.allCompartmentFeatures ||
-      window.allCompartmentFeatures.length === 0
+      compartments.length === 0
     ){
-
       console.warn(
         "❌ No compartment features loaded"
       );
-
       return;
     }
 
@@ -7433,17 +7420,11 @@ async function appendTrackToGeometries(simplifiedLine){
           poly.properties || {};
 
         const compartment =
-
           String(
-
             props.compartment ||
-
             props.Compartment ||
-
             props.compartmen ||
-
             ""
-
           ).trim();
 
         if(!compartment){
@@ -7451,7 +7432,6 @@ async function appendTrackToGeometries(simplifiedLine){
         }
 
         const beat =
-
           String(
             props.beat ||
             props.Beat ||
@@ -7459,7 +7439,6 @@ async function appendTrackToGeometries(simplifiedLine){
           ).trim();
 
         const range =
-
           String(
             props.range ||
             props.Range ||
@@ -7467,7 +7446,6 @@ async function appendTrackToGeometries(simplifiedLine){
           ).trim();
 
         const division =
-
           String(
             props.division ||
             props.Division ||
@@ -7475,90 +7453,95 @@ async function appendTrackToGeometries(simplifiedLine){
           ).trim();
 
         const geometryId =
-
           `compartment_${
-            compartment.replace(/\s+/g,"_")
+            compartment.replace(
+              /\s+/g,
+              "_"
+            )
           }`;
 
-        // =====================================================
-        // SAFE POINT-BASED CLIPPING
-        // =====================================================
+        // =====================================
+        // TRUE GEOMETRY CLIPPING
+        // =====================================
 
-        let clippedSegments = [];
+        const clippedSegments = [];
 
         try{
 
-          const coords =
-            simplifiedLine.geometry.coordinates || [];
+          const boundaryLine =
+            turf.polygonToLine(
+              poly
+            );
 
-          let currentSegment = [];
+          const splitResult =
+            turf.lineSplit(
+              simplifiedLine,
+              boundaryLine
+            );
 
-          for(const coord of coords){
+          const pieces =
+            splitResult?.features || [];
+
+          console.log(
+            "✂ Split pieces:",
+            pieces.length,
+            compartment
+          );
+
+          for(const piece of pieces){
 
             try{
 
-              const inside =
+              const coords =
+                piece.geometry
+                ?.coordinates;
 
-                turf.booleanPointInPolygon(
+              if(
+                !coords ||
+                coords.length < 2
+              ){
+                continue;
+              }
 
-                  turf.point(coord),
-
-                  poly
-
+              const midpoint =
+                turf.along(
+                  piece,
+                  turf.length(piece)/2
                 );
 
-              if(inside){
+              const inside =
+                turf.booleanPointInPolygon(
+                  midpoint,
+                  poly
+                );
 
-                currentSegment.push([
+              if(!inside){
+                continue;
+              }
 
-                  Number(coord[1]),
+              const latLngCoords =
+                coords.map(c => [
 
-                  Number(coord[0])
+                  Number(c[1]),
+
+                  Number(c[0])
 
                 ]);
 
-              }
-
-              else{
-
-                if(
-                  currentSegment.length >= 2
-                ){
-
-                  clippedSegments.push(
-                    [...currentSegment]
-                  );
-
-                }
-
-                currentSegment = [];
-
-              }
+              clippedSegments.push(
+                latLngCoords
+              );
 
             }
 
             catch(err){
 
               console.warn(
-                "Point clip failed",
+                "Piece validation failed",
                 err
               );
 
             }
-
-          }
-
-          // =====================================
-          // SAVE LAST SEGMENT
-          // =====================================
-
-          if(
-            currentSegment.length >= 2
-          ){
-
-            clippedSegments.push(
-              [...currentSegment]
-            );
 
           }
 
@@ -7567,14 +7550,15 @@ async function appendTrackToGeometries(simplifiedLine){
         catch(err){
 
           console.warn(
-            "Clipping failed",
+            "Line clipping failed",
             err
           );
 
+          continue;
         }
 
         console.log(
-          "✂ Clipped Segments:",
+          "✂ VALID SEGMENTS:",
           clippedSegments.length,
           compartment
         );
@@ -7586,31 +7570,20 @@ async function appendTrackToGeometries(simplifiedLine){
         }
 
         const encodedSegments =
-
-          clippedSegments.map(seg =>
-
-            polyline.encode(seg)
-
+          clippedSegments.map(
+            seg => polyline.encode(seg)
           );
 
         const ref =
-
           window.fb.doc(
-
             window.db,
-
             "geometry_history",
-
             monthKey,
-
             "data",
-
             geometryId
-
           );
 
         const snap =
-
           await window.fb.getDoc(
             ref
           );
@@ -7669,6 +7642,7 @@ async function appendTrackToGeometries(simplifiedLine){
       catch(err){
 
         console.warn(
+          "Compartment save failed",
           err
         );
 
@@ -7681,6 +7655,7 @@ async function appendTrackToGeometries(simplifiedLine){
   catch(err){
 
     console.error(
+      "appendTrackToGeometries failed",
       err
     );
 
