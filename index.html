@@ -7437,6 +7437,17 @@ async function appendTrackToGeometries(simplifiedLine, options = { sessionId: nu
     console.groupEnd(); 
   }
 }
+    function finalizeSessionLifecycle() {
+
+  window.currentSessionId = null;
+
+  if (window.localStorage) {
+
+    window.localStorage.removeItem(
+      "sessionId"
+    );
+  }
+}
     async function executeGreenGuardSelfHealingWorker() {
   const userProfile = window.userProfile || {};
   const userRole = String(userProfile.role || "STAFF").trim().toUpperCase();
