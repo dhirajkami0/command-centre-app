@@ -7022,7 +7022,10 @@ function clearMonthHistory(){
 // 📜 PROCESS HISTORY TRACK
 // ======================================
 
-async function processHistoryTrack(rawCoords){
+async function processHistoryTrack(
+  rawCoords,
+  sessionId
+){
 
   console.log(
     "PROCESS HISTORY TRACK CALLED"
@@ -7077,10 +7080,12 @@ async function processHistoryTrack(rawCoords){
     console.log(
       "📤 Sending to appendTrackToGeometries"
     );
-
-    await appendTrackToGeometries(
-      line
-    );
+await appendTrackToGeometries(
+  line,
+  {
+    sessionId
+  }
+);
 
     console.log(
       "✅ History processing complete"
@@ -7316,183 +7321,573 @@ console.trace(
 // FINAL ENTERPRISE VERSION
 // ======================================
 
-async function appendTrackToGeometries(simplifiedLine) {
-  console.group("🚀 appendTrackToGeometries CLIPPING ENGINE");
-  console.log("📥 START - Received line feature for evaluation.");
+async function appendTrackToGeometries(simplifiedLine, options = { sessionId: null, isRecoveryRun: false }) {
+  console.group("🚀 appendTrackToGeometries SHIFT-END STAGE");
+  const clipStart = performance.now();
+
+  const isRecoveryRun = options?.isRecoveryRun || false;
+  let sessionId = options?.sessionId || null;
+
+  if (!window.bench) {
+    window.bench = { 
+      clipTimes: [], docSizes: [], candidateCounts: [], 
+      candidatesExamined: 0, geometryIntersections: 0, intersectsTrue: 0, nonEmptyIntersections: 0,
+      jstsPureTime: 0 
+    };
+  }
+
+  if (!window.compartmentSpatialIndexReady || !window.compartmentSpatialIndex) {
+    console.error("❌ Spatial index layer map unavailable. Halting clipping execution.");
+    console.groupEnd();
+    throw new Error("🚨 SPATIAL RUNTIME CRASH: window.compartmentSpatialIndex has not finished loading.");
+  }
+
+  if (!simplifiedLine?.geometry?.coordinates || !Array.isArray(simplifiedLine.geometry.coordinates)) {
+    console.warn("❌ Aborted: Telemetry payload contains an invalid structure layout.");
+    console.groupEnd();
+    return;
+  }
+
+  const rawCoords = simplifiedLine.geometry.coordinates;
+  const historyCollectionRef = window.fb.collection(window.db, "history");
+  let targetDocRef;
+
+  if (sessionId && typeof sessionId === "string" && sessionId.trim() !== "") {
+    targetDocRef = window.fb.doc(window.db, "history", sessionId);
+  } else {
+    targetDocRef = window.fb.doc(historyCollectionRef);
+    sessionId = targetDocRef.id;
+    console.log(`🎲 Allocated unique transaction ID natively: [${sessionId}]`);
+  }
 
   try {
-    if (
-      !simplifiedLine ||
-      !simplifiedLine.geometry ||
-      !Array.isArray(simplifiedLine.geometry.coordinates)
-    ) {
-      console.warn("❌ Aborted: Invalid or empty simplifiedLine geometry structure.");
-      console.groupEnd();
-      return;
-    }
-
-    // ============================================================
-    // 🔍 INDEX ORDERING SCANNER & GEOJSON RE-ALIGNMENT
-    // ============================================================
-    const rawCoords = simplifiedLine.geometry.coordinates;
-    console.log("📋 RAW LINE COORDS FIRST 5:", JSON.stringify(rawCoords.slice(0, 5)));
-
-    let processedLineFeature;
-    const firstCoord = rawCoords[0];
-
-    // Regional Bounding Criteria (West Bengal Spatial Grid): Lat ~26.x, Lng ~89.x
-    const isFirstValueLatitude = (firstCoord[0] > 20 && firstCoord[0] < 28) && (firstCoord[1] > 85 && firstCoord[1] < 93);
-
-    if (isFirstValueLatitude) {
-      console.log("🔄 Verified layout: [Lat, Lng]. Re-mapping matrix to standard [Lng, Lat] axis for JSTS calculations...");
-      processedLineFeature = {
-        type: "Feature",
-        geometry: {
-          type: "LineString",
-          coordinates: rawCoords.map(c => [Number(c[1]), Number(c[0])])
-        }
-      };
-    } else {
-      console.log("↔️ Verified layout: Standard GeoJSON [Lng, Lat]. Proceeding directly into JSTS plane context.");
-      processedLineFeature = JSON.parse(JSON.stringify(simplifiedLine));
-    }
-
-    const d = new Date();
-    const monthKey = `${d.getFullYear()}_${String(d.getMonth() + 1).padStart(2, "0")}`;
-
-    const compartments = window.allCompartmentFeatures || [];
-    console.log(`📦 Loaded [${compartments.length}] compartment polygon feature boundary definitions.`);
-
-    if (compartments.length === 0) {
-      console.warn("❌ Aborted: window.allCompartmentFeatures layer context contains zero reference arrays.");
-      console.groupEnd();
-      return;
-    }
-
-    const geoJsonReader = new jsts.io.GeoJSONReader();
-    let processingMatches = 0;
-
-    // ============================================================
-    // 🔄 COMPARTMENT INTERSECTION MATCHING MATRIX
-    // ============================================================
-    for (const feature of compartments) {
-      try {
-        if (!feature || !feature.geometry) continue;
-
-        const props = feature.properties || {};
-        const compartment = String(props.compartment || props.Compartment || props.compartmen || "").trim();
-
-        if (!compartment) continue;
-
-        const beat = String(props.beat || props.Beat || "").trim();
-        const range = String(props.range || props.Range || "").trim();
-        const division = String(props.division || props.Division || "").trim();
-
-        const geometryId = `compartment_${compartment.replace(/\s+/g, "_")}`;
-        let clippedSegments = [];
-
-        // Build JSTS structural math instances
-        const lineGeom = geoJsonReader.read(processedLineFeature.geometry);
-        const polygonGeom = geoJsonReader.read(feature.geometry);
-
-        // Run structural fast bounding box collision assessment 
-        const intersects = lineGeom.intersects(polygonGeom);
-        if (!intersects) continue;
-
-        processingMatches++;
-        console.group(`✂️ HOOK: CLIPPING ACTIVE FRAGMENT FOR COMPARTMENT -> "${compartment}"`);
-
-        // Slice spatial topology cleanly against current structural boundary limits
-        const clipped = lineGeom.intersection(polygonGeom);
-        console.log(`📐 JSTS INTERSECTION FOOTPRINT TYPE: ${clipped.getGeometryType()} | IsEmpty: ${clipped.isEmpty()}`);
-
-        if (clipped.isEmpty()) {
-          console.log("⏩ Skipping: Extracted clip fragment yielded zero internal nodes.");
+    let existingData = null;
+    
+    if (isRecoveryRun) {
+      const existingSnap = await window.fb.getDoc(targetDocRef);
+      if (existingSnap.exists()) {
+        existingData = existingSnap.data();
+        if (existingData?.clipStatus === "SUCCESS") {
+          console.log(`⏩ Aborting Worker: Session [${sessionId}] is already complete.`);
           console.groupEnd();
-          continue;
+          return;
         }
-
-        const type = clipped.getGeometryType();
-
-        // Convert tracking arrays from JSTS projection layout (Y=Lat, X=Lng) back to standard [Lat, Lng] strings format
-        const processJstsCoordinates = (jstsCoords) => {
-          const out = [];
-          for (const c of jstsCoords) {
-            out.push([Number(c.y), Number(c.x)]);
-          }
-          return out;
-        };
-
-        // ============================================================
-        // 🔀 GEOMETRY COLLECTION PARSING DEEP UNPACKING
-        // ============================================================
-        if (type === "LineString") {
-          const coords = processJstsCoordinates(clipped.getCoordinates());
-          if (coords.length >= 2) {
-            clippedSegments.push(coords);
-          }
-        } 
-        else if (type === "MultiLineString") {
-          const count = clipped.getNumGeometries();
-          for (let i = 0; i < count; i++) {
-            const line = clipped.getGeometryN(i);
-            const coords = processJstsCoordinates(line.getCoordinates());
-            if (coords.length >= 2) {
-              clippedSegments.push(coords);
-            }
-          }
-        }
-
-        console.log(`✂️ INTERSECTION WORKFLOW OUTCOME: Generated [${clippedSegments.length}] clean spatial coordinates subsets.`);
-        
-        if (clippedSegments.length === 0) {
+        if (!existingData.rawTrackEncoded) {
+          console.error(`❌ FATAL CORRUPTION: Document [${sessionId}] is missing its raw track backup!`);
+          await window.fb.updateDoc(targetDocRef, { clipStatus: "CORRUPTED_FATAL", updatedAt: window.fb.serverTimestamp() });
           console.groupEnd();
-          continue;
+          return;
         }
-
-        // Re-encode processed array blocks back into standardized compressed string format
-        const encodedSegments = clippedSegments.map(seg => polyline.encode(seg));
-
-        // Pull previous records from target Firestore transaction block paths
-        const ref = window.fb.doc(window.db, "geometry_history", monthKey, "data", geometryId);
-        const snap = await window.fb.getDoc(ref);
-
-        let tracks = [];
-        if (snap.exists()) {
-          tracks = snap.data()?.tracks || [];
-        }
-
-        // Safely append new clipped tracks array coordinates elements 
-        tracks.push(...encodedSegments);
-
-        await window.fb.setDoc(ref, {
-          geometryId,
-          division,
-          range,
-          beat,
-          compartment,
-          monthKey,
-          tracks,
-          updatedAt: Date.now()
-        }, { merge: true });
-
-        console.log(`💾 CLIPPED RECORD SAVE SUCCESS -> Stored in path key: [${geometryId}]`);
+      } else {
+        console.warn(`⚠️ Aborting recovery: Source document [${sessionId}] is missing.`);
         console.groupEnd();
-
-      } catch (innerLoopErr) {
-        console.warn(`❌ Processing slipped for individual boundary polygon node [${feature.id || 'Unknown'}]:`, innerLoopErr);
-        if (typeof console.groupEnd === 'function') console.groupEnd();
+        return;
       }
     }
 
-    console.log(`🏁 FINISH - Mapping sync routine complete. Total geometric intersections committed to history records: ${processingMatches}`);
+    const d = new Date();
+    const fallbackMonthKey = `${d.getFullYear()}_${String(d.getMonth() + 1).padStart(2, "0")}`;
+
+    // ============================================================
+    // 🔍 1. COORDINATE ORDER RESOLUTION
+    // ============================================================
+    let incomingOrder = simplifiedLine.coordinateOrder;
+
+    if (!incomingOrder) {
+      const firstCoord = rawCoords?.[0];
+      const looksLikeLatLng = Array.isArray(firstCoord) && firstCoord.length >= 2 && firstCoord[0] > 20 && firstCoord[0] < 28 && firstCoord[1] > 85 && firstCoord[1] < 93;
+      incomingOrder = looksLikeLatLng ? "LAT_LNG" : "LNG_LAT";
+      console.log(`🧭 coordinateOrder missing. Auto-detected as [${incomingOrder}]`);
+    }
+
+    let canonicalLngLatCoords = [];
+    let canonicalLatLngCoords = [];
+
+    if (incomingOrder === "LAT_LNG") {
+      canonicalLngLatCoords = rawCoords.map(c => [Number(c[1]), Number(c[0])]);
+      canonicalLatLngCoords = rawCoords.map(c => [Number(c[0]), Number(c[1])]);
+    } else {
+      canonicalLngLatCoords = rawCoords.map(c => [Number(c[0]), Number(c[1])]);
+      canonicalLatLngCoords = rawCoords.map(c => [Number(c[1]), Number(c[0])]);
+    }
+
+    let minLat = Infinity, maxLat = -Infinity;
+    let minLng = Infinity, maxLng = -Infinity;
+
+    canonicalLatLngCoords.forEach(([lat, lng]) => {
+      if (lat < minLat) minLat = lat;
+      if (lat > maxLat) maxLat = lat;
+      if (lng < minLng) minLng = lng;
+      if (lng > maxLng) maxLng = lng;
+    });
+
+    const bboxPayload = { minLat, minLng, maxLat, maxLng };
+
+    // ============================================================
+    // 💾 STAGE 1: TRANSACTIONAL CREATION
+    // ============================================================
+    if (isRecoveryRun && existingData) {
+      await window.fb.updateDoc(targetDocRef, {
+        bbox: bboxPayload,
+        updatedAt: window.fb.serverTimestamp()
+      });
+    } else {
+      await window.fb.runTransaction(window.db, async (transaction) => {
+        const freshSnap = await transaction.get(targetDocRef);
+        if (!freshSnap.exists()) {
+          const initialPayload = {
+            sessionId: sessionId,
+            uid: window.fb.auth?.currentUser?.uid || "Unknown",
+            staffName: String(window.userProfile?.cleanName || "Unknown").trim(),
+            phone: String(window.userProfile?.phone || "").trim(),
+            division: String(window.userProfile?.division || "BTR_W").trim(),
+            range: String(window.userProfile?.range || "").trim(),
+            beat: String(window.userProfile?.beat || "").trim(),
+            monthKey: fallbackMonthKey,
+            bbox: bboxPayload,
+            coordinateOrder: "LAT_LNG",
+            rawTrackEncoded: polyline.encode(canonicalLatLngCoords),
+            clipStatus: "PENDING",
+            createdAt: window.fb.serverTimestamp(),
+            updatedAt: window.fb.serverTimestamp()
+          };
+          transaction.set(targetDocRef, initialPayload);
+        }
+      });
+    }
+
+    // ============================================================
+    // ✂️ STAGE 2: GEOMETRIC CALCULATIONS (RECURSIVE SUPPORT)
+    // ============================================================
+    const geoJsonReader = new jsts.io.GeoJSONReader();
+    const lineGeom = geoJsonReader.read({ type: "LineString", coordinates: canonicalLngLatCoords });
+    const lineEnvelope = lineGeom.getEnvelopeInternal();
+
+    const candidateFeatures = window.compartmentSpatialIndex.query(lineEnvelope).toArray();
+    window.bench.candidateCounts.push(candidateFeatures.length);
+
+    const embeddedTracksMap = {};
+    const crossedCompartmentsSet = new Set();
+
+    const extractCoords = (coords) => coords.map(c => [Number(c.y), Number(c.x)]);
+
+    const collectLineSegments = (geom, localCoordsArray) => {
+      if (!geom || geom.isEmpty()) return;
+      const geomType = geom.getGeometryType();
+
+      if (geomType === "LineString") {
+        const processed = extractCoords(geom.getCoordinates());
+        if (processed.length >= 2) localCoordsArray.push(processed);
+      } else if (geomType === "MultiLineString" || geomType === "GeometryCollection") {
+        const count = geom.getNumGeometries();
+        for (let i = 0; i < count; i++) {
+          collectLineSegments(geom.getGeometryN(i), localCoordsArray);
+        }
+      }
+    };
+
+    for (const candidate of candidateFeatures) {
+      window.bench.candidatesExamined++;
+      const { feature, polygonGeom } = candidate;
+      
+      const t1 = performance.now();
+      const isIntersecting = lineGeom.intersects(polygonGeom);
+      window.bench.jstsPureTime += (performance.now() - t1);
+
+      if (!isIntersecting) continue;
+      window.bench.geometryIntersections++;
+
+      const props = feature.properties || {};
+      const rawCompName = String(props.compartment || props.Compartment || props.compartmen || "").trim();
+      if (!rawCompName) continue;
+
+      window.bench.intersectsTrue++;
+
+      const t2 = performance.now();
+      const clipped = lineGeom.intersection(polygonGeom);
+      window.bench.jstsPureTime += (performance.now() - t2);
+
+      if (clipped.isEmpty()) continue;
+      window.bench.nonEmptyIntersections++;
+
+      const localCoordsArray = [];
+      collectLineSegments(clipped, localCoordsArray);
+
+      if (localCoordsArray.length > 0) {
+        const encodedStrings = localCoordsArray.map(seg => polyline.encode(seg));
+        const normalizedCompId = rawCompName.trim().toUpperCase().replace(/\s+/g, "_");
+        embeddedTracksMap[normalizedCompId] = encodedStrings;
+        crossedCompartmentsSet.add(rawCompName);
+      }
+    }
+
+    // ============================================================
+    // 💾 STAGE 3: COMMIT
+    // ============================================================
+    const mergeUpdatePayload = {
+      clipStatus: "SUCCESS",
+      updatedAt: window.fb.serverTimestamp()
+    };
+
+    if (crossedCompartmentsSet.size > 0) {
+      mergeUpdatePayload.compartments = Array.from(crossedCompartmentsSet);
+      mergeUpdatePayload.tracks = embeddedTracksMap;
+    }
+
+    await window.fb.updateDoc(targetDocRef, mergeUpdatePayload);
+    
+    const fullDocSnap = await window.fb.getDoc(targetDocRef);
+    window.bench.docSizes.push(new Blob([JSON.stringify(fullDocSnap.data())]).size);
+    window.bench.clipTimes.push(performance.now() - clipStart);
+
+    finalizeSessionLifecycle();
+    console.log(`🏁 FINISH - Sync routine complete for session [${sessionId}]`);
 
   } catch (err) {
-    console.error("❌ Critical processing failure intercepted on global geometry partitioning script pipeline:", err);
+    console.error("❌ CRITICAL RECOVERY FAULT:", err);
+    try {
+      await window.fb.updateDoc(window.fb.doc(window.db, "history", sessionId), {
+        clipStatus: "FAILED_CRASHED",
+        updatedAt: window.fb.serverTimestamp()
+      });
+    } catch(dbErr) {}
   } finally {
-    console.groupEnd();
+    console.groupEnd(); 
   }
 }
+    async function executeGreenGuardSelfHealingWorker() {
+  const userProfile = window.userProfile || {};
+  const userRole = String(userProfile.role || "STAFF").trim().toUpperCase();
+
+  // 🛡️ ROLE CLAMP: Recovery restricted to MANAGEMENT level accounts (ADMIN/DFO/ADFO).
+  // Field STAFF/TEAM_LEADER devices are completely excluded from this background process.
+  const isManagementRole = (
+    userRole === "ADMIN" || 
+    userRole === "DFO" || 
+    userRole === "ADFO"
+  );
+
+  if (!isManagementRole) {
+    return; 
+  }
+
+  if (!window.firebaseReady || !window.compartmentSpatialIndexReady) {
+    setTimeout(executeGreenGuardSelfHealingWorker, 15000);
+    return;
+  }
+
+  console.group("🛡️ GREENGUARD AUTOMATED SYSTEM DATA RECOVERY DAEMON");
+  
+  try {
+    const historyRef = window.fb.collection(window.db, "history");
+    const { Timestamp } = window.fb;
+
+    // 🛡️ FIXED: USE FIRESTORE TIMESTAMP BOUNDARIES FOR TYPE-SAFE QUERYING
+    const tenMinutesAgoMs = Date.now() - (10 * 60 * 1000);  
+    const thirtyMinutesAgoMs = Date.now() - (30 * 60 * 1000);
+
+    const activeTimeoutCutoff = Timestamp.fromMillis(tenMinutesAgoMs);
+    const abandonedLockTimeoutCutoff = Timestamp.fromMillis(thirtyMinutesAgoMs);
+
+    // Query 1: Fetch documents stuck in PENDING or FAILED_CRASHED states past the cooling threshold
+    const standardFaultQuery = window.fb.query(
+      historyRef,
+      window.fb.where("clipStatus", "in", ["PENDING", "FAILED_CRASHED"]),
+      window.fb.where("updatedAt", "<=", activeTimeoutCutoff)
+    );
+
+    // Query 2: Catch sessions abandoned mid-run in a permanent RECOVERING state
+    const abandonedLockQuery = window.fb.query(
+      historyRef,
+      window.fb.where("clipStatus", "==", "RECOVERING"),
+      window.fb.where("updatedAt", "<=", abandonedLockTimeoutCutoff)
+    );
+
+    const [standardSnap, abandonedSnap] = await Promise.all([
+      window.fb.getDocs(standardFaultQuery),
+      window.fb.getDocs(abandonedLockQuery)
+    ]);
+
+    const consolidatedDocuments = [...standardSnap.docs, ...abandonedSnap.docs];
+
+    if (consolidatedDocuments.length === 0) {
+      console.groupEnd();
+      setTimeout(executeGreenGuardSelfHealingWorker, 60000 * 5); // Check for faults every 5 minutes
+      return;
+    }
+
+    console.log(`🚨 Found [${consolidatedDocuments.length}] abandoned sessions. Acquiring atomic database transaction locks...`);
+
+    for (const docSnap of consolidatedDocuments) {
+      let isLockAcquired = false;
+
+      // Wrap state updates in a strict Firestore transaction loop to ensure atomic locking
+      await window.fb.runTransaction(window.db, async (transaction) => {
+        const freshSnapshot = await transaction.get(docSnap.ref);
+        if (!freshSnapshot.exists()) return;
+
+        const currentStatus = freshSnapshot.data()?.clipStatus;
+        const lastUpdated = freshSnapshot.data()?.updatedAt?.toMillis() || 0;
+
+        // Enforce lock eligibility criteria cleanly
+        const isEligibleStandard = (currentStatus === "PENDING" || currentStatus === "FAILED_CRASHED");
+        const isEligibleAbandoned = (currentStatus === "RECOVERING" && lastUpdated <= thirtyMinutesAgoMs);
+
+        if (!isEligibleStandard && !isEligibleAbandoned) {
+          throw new Error("Concurrency bypass: Document is already claimed by another active worker.");
+        }
+
+        transaction.update(docSnap.ref, {
+          clipStatus: "RECOVERING",
+          updatedAt: Timestamp.now()
+        });
+        isLockAcquired = true;
+      }).catch(() => {
+        isLockAcquired = false; 
+      });
+
+      if (!isLockAcquired) continue;
+
+      console.log(`🔧 Running automated repair for session document ID: [${docSnap.id}]`);
+      const data = docSnap.data();
+      const decodedCoordinates = polyline.decode(data.rawTrackEncoded);
+      
+      const rebuildGeometryPayload = {
+        type: "Feature",
+        coordinateOrder: "LAT_LNG", 
+        geometry: {
+          type: "LineString",
+          coordinates: decodedCoordinates
+        }
+      };
+
+      // 🛡️ FIXED: EXPLICIT SESSION ID PASSING TO AVOID GLOBAL STATE POLLUTION
+      await appendTrackToGeometries(rebuildGeometryPayload, {
+        sessionId: docSnap.id,
+        isRecoveryRun: true
+      });
+    }
+
+  } catch (workerError) {
+    console.error("❌ Background data worker run encountered an exception error:", workerError);
+  } finally {
+    console.groupEnd();
+    setTimeout(executeGreenGuardSelfHealingWorker, 60000 * 5);
+  }
+}
+    // =============================================================================
+// 📜 SHOW MONTH HISTORY (PRODUCTION-FROZEN)
+// =============================================================================
+
+async function showMonthHistory() {
+  try {
+    const d = new Date();
+    const monthKey = `${d.getFullYear()}_${String(d.getMonth() + 1).padStart(2, "0")}`;
+
+    console.group("🚨 [DEBUG] showMonthHistory EXECUTION TRACKER");
+
+    const division = String(window.gisFilter?.division || "").trim();
+    const range = String(window.gisFilter?.range || "").trim();
+    const beat = String(window.gisFilter?.beat || "").trim();
+    const compartment = String(window.gisFilter?.compartment || "").trim();
+    const activeLevel = String(window.activePopupContext?.level || "btr").trim().toLowerCase();
+
+    console.log("📍 ACTIVE INTERFACE FILTERS", { activeLevel, division, range, beat, compartment });
+
+    try {
+      if (window.historyLayer) {
+        window.historyLayer.clearLayers();
+        console.log("🧹 Cleared previous history map layers.");
+      }
+    } catch (e) {
+      console.warn("⚠️ Failed clearing history layer", e);
+    }
+
+    const historyRef = window.fb.collection(window.db, "history");
+    const q = window.fb.query(
+      historyRef,
+      window.fb.where("monthKey", "==", monthKey),
+      window.fb.where("clipStatus", "==", "SUCCESS")
+    );
+
+    const snap = await window.fb.getDocs(q);
+    if (snap.empty) {
+      alert("No history found in database for this period.");
+      console.groupEnd();
+      return;
+    }
+
+    const tracksToRender = [];
+    snap.forEach(docSnap => {
+      try {
+        const data = docSnap.data() || {};
+
+        // 🛡️ VIEWPORT BBOX OPTIMIZATION: Prune non-visible documents early
+        if (window.map && data.bbox) {
+          const mapBounds = window.map.getBounds();
+          const trackBox = L.latLngBounds([data.bbox.minLat, data.bbox.minLng], [data.bbox.maxLat, data.bbox.maxLng]);
+          if (!mapBounds.intersects(trackBox)) return;
+        }
+
+        const docDivision = String(data.division || "").trim();
+        const docRange = String(data.range || "").trim();
+        const docBeat = String(data.beat || "").trim();
+        const docCompartments = Array.isArray(data.compartments) ? data.compartments : [];
+        const tracksObject = data.tracks || {};
+
+        let includeDocument = false;
+        if (activeLevel === "compartment") {
+          includeDocument = docCompartments.some(c => String(c).trim().toUpperCase() === compartment.trim().toUpperCase());
+        } else if (activeLevel === "beat") {
+          includeDocument = typeof normalizeBeatName === "function" ? normalizeBeatName(docBeat) === normalizeBeatName(beat) : docBeat === beat;
+        } else if (activeLevel === "range") {
+          includeDocument = docRange === range;
+        } else if (activeLevel === "division") {
+          includeDocument = typeof normalizeDivision === "function" ? normalizeDivision(docDivision) === normalizeDivision(division) : docDivision === division;
+        } else {
+          includeDocument = true;
+        }
+
+        if (includeDocument) {
+          Object.values(tracksObject).forEach(segmentArray => {
+            if (Array.isArray(segmentArray)) tracksToRender.push(...segmentArray);
+          });
+        }
+      } catch (err) {
+        console.warn("❌ Skipped corrupt history document", err);
+      }
+    });
+
+    console.log(`📦 FINAL TRACK QUEUE BATCH COUNT: ${tracksToRender.length}`);
+
+    if (tracksToRender.length === 0) {
+      alert("No history tracks matched current logic query.");
+      console.groupEnd();
+      return;
+    }
+
+    const selectedGeometry = window.currentSelectedGeometry;
+    const selectedFeature = selectedGeometry ? { type: "Feature", geometry: selectedGeometry, properties: {} } : null;
+
+    let renderedCount = 0;
+    let currentIndex = 0;
+    const batchSize = 250;
+
+    // ============================================================
+    // ⚡ ASYNCHRONOUS BATCH RENDERING (requestAnimationFrame)
+    // ============================================================
+    function renderBatch() {
+      const end = Math.min(currentIndex + batchSize, tracksToRender.length);
+
+      for (; currentIndex < end; currentIndex++) {
+        try {
+          const encoded = tracksToRender[currentIndex];
+          if (!encoded || typeof encoded !== "string") continue;
+
+          const coords = polyline.decode(encoded);
+          if (!coords || coords.length < 2) continue;
+
+          if (selectedFeature) {
+            try {
+              const geoLine = turf.lineString(coords.map(c => [Number(c[1]), Number(c[0])]));
+              if (!turf.booleanIntersects(geoLine, selectedFeature)) continue;
+            } catch (e) {
+              console.warn("⚠️ Turf filter failed", e);
+            }
+          }
+
+          // 🛡️ FIXED: RENDERER FALLBACK SAFETY
+          const line = L.polyline(coords, {
+            renderer: window.historyRenderer || L.canvas({ padding: 0.5 }),
+            color: "#ff0000",
+            weight: 4,
+            opacity: 0.9,
+            smoothFactor: 0,
+            lineCap: "round",
+            lineJoin: "round"
+          });
+
+          if (!window.historyLayer) {
+            console.error("❌ historyLayer missing.");
+            return;
+          }
+          window.historyLayer.addLayer(line);
+          renderedCount++;
+        } catch (err) {
+          console.error(`❌ Failed rendering track ${currentIndex}`, err);
+        }
+      }
+
+      if (currentIndex < tracksToRender.length) {
+        requestAnimationFrame(renderBatch);
+      } else {
+        console.log(`✅ OPERATION SUMMARY: Rendered [${renderedCount}] track segments.`);
+        try {
+          const bounds = window.historyLayer.getBounds();
+          if (bounds && bounds.isValid()) map.fitBounds(bounds, { padding: [20, 20] });
+        } catch (e) {}
+        console.groupEnd();
+      }
+    }
+    
+    // Start the process
+    requestAnimationFrame(renderBatch);
+
+  } catch (err) {
+    console.error("❌ showMonthHistory failure", err);
+    try { console.groupEnd(); } catch (e) {}
+  }
+}
+    function compileGreenGuardLoadTestMetrics() {
+  const b = window.bench;
+  if (!b || b.clipTimes.length === 0) {
+    console.error("❌ No metrics caught in memory logs.");
+    return;
+  }
+
+  const getPercentilesData = (arr) => {
+    const sorted = [...arr].sort((x, y) => x - y);
+    const total = sorted.reduce((x, y) => x + y, 0);
+    return {
+      p50: sorted[Math.floor(sorted.length * 0.50)],
+      p90: sorted[Math.floor(sorted.length * 0.90)],
+      p95: sorted[Math.floor(sorted.length * 0.95)],
+      max: sorted[sorted.length - 1],
+      avg: total / sorted.length,
+      total: total
+    };
+  };
+
+  const clip = getPercentilesData(b.clipTimes);
+  const size = getPercentilesData(b.docSizes);
+  const cards = getPercentilesData(b.candidateCounts);
+
+  console.clear();
+  console.log("%c📊 GREENGUARD SIMULATION METRICS RUN REPORT", "font-size:16px; font-weight:bold; color:#00e5ff;");
+  
+  console.group(`📈 TOTAL SESSIONS PROCESSED : ${b.clipTimes.length}`);
+  console.log(`Average Segment Modification Storage Weight : ${size.avg.toFixed(2)} Bytes`);
+  console.log(`Total Pure JSTS Math Compute Time: ${b.jstsPureTime.toFixed(2)} ms`);
+  console.log(`Percentage of overall execution time spent in math engine: ${((b.jstsPureTime / clip.total) * 100).toFixed(1)}%`);
+  console.groupEnd();
+
+  console.group("⏱️ PIPELINE TRACK CLIPPING PERFORMANCE");
+  console.log(`P50 (Median)   : ${clip.p50.toFixed(2)} ms`);
+  console.log(`P90 (Heavy)    : ${clip.p90.toFixed(2)} ms`);
+  console.log(`P95 (Worst)    : ${clip.p95.toFixed(2)} ms`);
+  console.log(`Average Speed  : ${clip.avg.toFixed(2)} ms`);
+  console.groupEnd();
+
+  console.group("🎯 STRtree INDEX QUALITY RETRIEVAL RATIOS");
+  console.log(`P50 (Median Candidates)   : ${cards.p50} polygons`);
+  console.log(`Total BBox Candidates Run : ${b.candidatesExamined}`);
+  console.log(`🛡️ Geometry Intersections Checked : ${b.geometryIntersections}`); // 🛠️ FIXED LOG NAME MATCH
+  console.log(`Natively Intersected True : ${b.intersectsTrue}`);
+  console.log(`Valid Slices Extracted    : ${b.nonEmptyIntersections}`);
+  console.log(`🎯 Spatial Accuracy Efficiency Hit Ratio: ${(b.nonEmptyIntersections / Math.max(1, b.candidatesExamined) * 100).toFixed(1)}%`);
+  console.groupEnd();
+}
+
     async function toggleMonthHistory(){
 
   try{
@@ -7551,215 +7946,7 @@ async function appendTrackToGeometries(simplifiedLine) {
     );
   }
 }
-    async function showMonthHistory() {
-  try {
-    const d = new Date();
-    const monthKey = `${d.getFullYear()}_${String(d.getMonth() + 1).padStart(2, "0")}`;
-
-    console.group("🚨 [DEBUG] showMonthHistory EXECUTION TRACKER");
-    
-    // ============================================================
-    // 📊 1. CAPTURE ACTIVE UI FILTER CONTEXT
-    // ============================================================
-    const division = String(window.gisFilter?.division || "").trim();
-    const range = String(window.gisFilter?.range || "").trim();
-    const beat = String(window.gisFilter?.beat || "").trim();
-    const compartment = String(window.gisFilter?.compartment || "").trim();
-
-    const activeLevel = String(window.activePopupContext?.level || "btr").trim().toLowerCase();
-
-    console.log("📍 ACTIVE INTERFACE FILTERS:", {
-      activeLevel: activeLevel,
-      uiCompartment: `"${compartment}"`,
-      uiBeat: `"${beat}"`,
-      uiRange: `"${range}"`,
-      uiDivision: `"${division}"`
-    });
-
-    // Reset state map layers cleanly before executing queries
-    try {
-      if (window.historyLayer) {
-        window.historyLayer.clearLayers();
-        console.log("🧹 Cleared previous history map layers.");
-      }
-    } catch(e) {
-      console.warn("⚠️ Resetting map history layer failed:", e);
-    }
-
-    // Fetch the target database snapshot
-    const colRef = window.fb.collection(window.db, "geometry_history", monthKey, "data");
-    const snap = await window.fb.getDocs(colRef);
-
-    if (snap.empty) {
-      alert("No history found in database for this period.");
-      console.groupEnd();
-      return;
-    }
-
-    const tracksToRender = [];
-
-    // ============================================================
-    // 🔄 2. DOCUMENT FILTER PROCESSING LOOP
-    // ============================================================
-    snap.forEach(docSnap => {
-      try {
-        const data = docSnap.data() || {};
-        const docComp = String(data.compartment || "").trim();
-        const docBeat = String(data.beat || "").trim();
-        const docRange = String(data.range || "").trim();
-        const docDiv = String(data.division || "").trim();
-        const docTracksCount = data.tracks?.length || 0;
-
-        // 🟧 LEVEL CHECK: COMPARTMENT
-        if (activeLevel === "compartment") {
-          const stringMatch = (docComp === compartment);
-          console.log(`🧩 COMPARTMENT EVAL [${docSnap.id}]: UI="${compartment}" vs DOC="${docComp}" | Match: ${stringMatch} | Tracks: ${docTracksCount}`);
-          
-          if (stringMatch) {
-            console.log(`✅ ADDING TRACKS FROM COMPARTMENT: "${docComp}" | Count: ${docTracksCount}`);
-            tracksToRender.push(...(data.tracks || []));
-          }
-          return;
-        }
-
-        // 🟨 LEVEL CHECK: BEAT
-        if (activeLevel === "beat") {
-          const match = typeof normalizeBeatName === "function"
-            ? normalizeBeatName(docBeat) === normalizeBeatName(beat)
-            : docBeat === beat;
-          
-          if (match) {
-            console.log(`✅ ADDING TRACKS FROM BEAT: "${docBeat}" | Count: ${docTracksCount}`);
-            tracksToRender.push(...(data.tracks || []));
-          }
-          return;
-        }
-
-        // 🟩 LEVEL CHECK: RANGE
-        if (activeLevel === "range") {
-          if (docRange === range) {
-            console.log(`✅ ADDING TRACKS FROM RANGE: "${docRange}" | Count: ${docTracksCount}`);
-            tracksToRender.push(...(data.tracks || []));
-          }
-          return;
-        }
-
-        // 🟦 LEVEL CHECK: DIVISION
-        if (activeLevel === "division") {
-          const match = typeof normalizeDivision === "function"
-            ? normalizeDivision(docDiv) === normalizeDivision(division)
-            : docDiv === division;
-          
-          if (match) {
-            console.log(`✅ ADDING TRACKS FROM DIVISION: "${docDiv}" | Count: ${docTracksCount}`);
-            tracksToRender.push(...(data.tracks || []));
-          }
-          return;
-        }
-
-        // 🌍 FALLBACK: BTR GLOBAL MAP PROCESSING
-        console.log(`⚠️ FALLTHROUGH HANDLING (No level constraints intercepted doc): ${docSnap.id}`);
-        tracksToRender.push(...(data.tracks || []));
-
-      } catch(err) {
-        console.warn("❌ Individual history document verification skipped:", err);
-      }
-    });
-
-    // ============================================================
-    // 📦 3. INTERMEDIATE STATE VERIFICATION
-    // ============================================================
-    console.log(`📦 FINAL TRACK QUEUE BATCH COUNT: ${tracksToRender.length}`);
-
-    if (tracksToRender.length === 0) {
-      alert("No history tracks matched current logic query.");
-      console.groupEnd();
-      return;
-    }
-
-    // ============================================================
-    // 🌍 4. SPATIAL GEOMETRY MASKS PREPARATION
-    // ============================================================
-    const selectedGeometry = window.currentSelectedGeometry;
-    const selectedFeature = selectedGeometry 
-      ? { type: "Feature", geometry: selectedGeometry, properties: {} } 
-      : null;
-
-    console.log("🗺️ SELECTED FEATURE GEOMETRY CONTEXT:", selectedFeature);
-
-    // ============================================================
-    // 🎨 5. TRANSFORMATION AND RENDERING ENGINE
-    // ============================================================
-    let renderedCount = 0;
-    
-    for (let index = 0; index < tracksToRender.length; index++) {
-      const encoded = tracksToRender[index];
-      
-      try {
-        if (!encoded || typeof encoded !== "string") {
-          console.warn(`⏩ Track at position [${index}] skipped: Raw payload is not a valid encoded string.`);
-          continue;
-        }
-
-        const coords = polyline.decode(encoded);
-        if (!coords || coords.length < 2) {
-          console.warn(`⏩ Track at position [${index}] skipped: Decoded coordinate list array is empty or short.`);
-          continue;
-        }
-
-        // Perform Turf intersection sanity test if an active geographic boundaries mask is present
-        if (selectedFeature) {
-          try {
-            // Standard Turf calculations strictly expect Lon/Lat ordering parameters [c[1], c[0]]
-            const geoLine = turf.lineString(coords.map(c => [Number(c[1]), Number(c[0])]));
-            const intersects = turf.booleanIntersects(geoLine, selectedFeature);
-            
-            console.log(`🧪 SPATIAL TEST [Track Segment #${index}]: Intersection Outcome = ${intersects}`);
-            
-            if (!intersects) {
-              console.log(`⏩ Track [${index}] filtered out: Geographically drops outside targeted bounds.`);
-              continue; 
-            }
-          } catch(spatialErr) {
-            console.error(`❌ Turf execution crash running intersection mapping on track [${index}]:`, spatialErr);
-          }
-        }
-
-        // Build native Leaflet Map instances for passed strings
-        const line = L.polyline(coords, {
-          renderer: window.historyRenderer,
-          color: "#ff0000",
-          weight: 4,
-          opacity: 0.9,
-          smoothFactor: 0,
-          lineCap: "round",
-          lineJoin: "round"
-        });
-
-        window.historyLayer.addLayer(line);
-        renderedCount++;
-
-      } catch(err) {
-        console.error(`❌ Critical loop crash building history object [${index}]:`, err);
-      }
-    }
-
-    console.log(`✅ OPERATION SUMMARY: Successfully outputted [${renderedCount}] tracking layers onto global views.`);
-    console.groupEnd();
-
-    // Re-center display interface dynamically over active history geometries boundaries
-    try {
-      const bounds = window.historyLayer.getBounds();
-      if (bounds && bounds.isValid()) {
-        map.fitBounds(bounds, { padding: [20, 20] });
-      }
-    } catch(e) {}
-
-  } catch(err) {
-    console.error("❌ Critical breakdown on global showMonthHistory stream workflow:", err);
-    if (typeof console.groupEnd === 'function') console.groupEnd();
-  }
-}// ======================================
+   // ======================================
 // 🛰 VERIFY LATEST PLANET
 // GIS-AWARE VERSION
 // ======================================
@@ -32238,8 +32425,9 @@ console.log(
     // 🔥 WRITE COVERAGE HISTORY
     // ==============================================
     await processHistoryTrack(
-      points
-    );
+  points,
+  sessionId
+);
 
     // ==============================================
     // 🔥 CLOSE SESSION DOC
