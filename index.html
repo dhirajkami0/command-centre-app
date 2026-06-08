@@ -4688,227 +4688,109 @@ await loadAllStaffProfiles();
 // ======================================================
 
 setTimeout(() => {
-
-(async () => {
-
-  try {
-
-    console.log(
-      "🔥 STARTING FIREBASE INIT"
-    );
-
-    // ==================================================
-    // 🚀 PARALLEL IMPORTS
-    // ==================================================
-
-    const [
-
-      firebaseAppModule,
-
-      firestoreModule,
-
-      storageModule
-
-    ] = await Promise.all([
-
-      import(
-        "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js"
-      ),
-
-      import(
-        "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js"
-      ),
-
-      import(
-        "https://www.gstatic.com/firebasejs/10.12.0/firebase-storage.js"
-      )
-
-    ]);
-
-    // ==================================================
-    // 🔥 FIREBASE APP
-    // ==================================================
-
-    const {
-
-      initializeApp
-
-    } = firebaseAppModule;
-
-    // ==================================================
-    // 🔥 FIRESTORE
-    // ==================================================
-
-    const {
-
-      getFirestore,
-
-      collection,
-
-      query,
-
-      where,
-
-      orderBy,
-
-      onSnapshot,
-
-      serverTimestamp,
-
-      getDocs,
-
-      getDoc,
-
-      deleteDoc,
-
-      deleteField,
-
-      doc,
-
-      setDoc,
-
-      updateDoc
-
-    } = firestoreModule;
-
-    // ==================================================
-    // 🔥 STORAGE
-    // ==================================================
-
-    const {
-
-  getStorage,
-
-  ref,
-
-  uploadBytes,
-
-  uploadString,
-
-  getDownloadURL
-
-} = storageModule;
-
-    // ==================================================
-    // 🔥 INIT APP
-    // ==================================================
-
-    const app =
-
-      initializeApp(
-        window.firebaseConfig
-      );
-
-    // ==================================================
-    // 🔥 DATABASE
-    // ==================================================
-
-    window.db =
-
-      getFirestore(app);
-
-    // ==================================================
-    // 🔥 STORAGE
-    // ==================================================
-
-    window.storage =
-
-      getStorage(app);
-
-    // ==================================================
-    // 🔥 FIREBASE HELPERS
-    // ==================================================
-
-    window.fb = {
-
-      collection,
-
-      where,
-
-      query,
-
-      orderBy,
-
-      onSnapshot,
-
-      serverTimestamp,
-
-      getDocs,
-
-      getDoc,
-
-      deleteDoc,
-
-      deleteField,
-
-      doc,
-
-      setDoc,
-
-      updateDoc,
-
-      ref,
-
-      uploadBytes,
-uploadString,
-      getDownloadURL
-    };
-
-    // ==================================================
-    // 🔥 READY FLAG
-    // ==================================================
-
-    window.firebaseReady = true;
-
-    console.log(
-      "🔥 FIREBASE READY"
-    );
-
-    // ==================================================
-    // 🧹 DELAY CLEANUP
-    // ==================================================
-
-    setTimeout(() => {
-
-      try {
-
-        cleanupOldTracks();
-
-      } catch(e){
-
-        console.warn(
-          "⚠ cleanupOldTracks fail",
-          e
-        );
-      }
-
-    },5000);
-
-    // ==================================================
-    // 🧹 AUTO CLEANUP
-    // ==================================================
-
-    setInterval(
-
-      cleanupOldTracks,
-
-      24 * 60 * 60 * 1000
-    );
-
-  }
-
-  catch(e){
-
-    console.error(
-      "❌ Firebase load failed:",
-      e
-    );
-  }
-
-})();
-
-},500);
-    console.log("🔥 NEW BUILD LOADED - VERSION 999");
+  (async () => {
+    try {
+      console.log("🔥 STARTING FIREBASE INIT");
+
+      // ==================================================
+      // 🚀 PARALLEL IMPORTS
+      // ==================================================
+      const [firebaseAppModule, firestoreModule, storageModule] = await Promise.all([
+        import("https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js"),
+        import("https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js"),
+        import("https://www.gstatic.com/firebasejs/10.12.0/firebase-storage.js")
+      ]);
+
+      // ==================================================
+      // 🔥 FIREBASE APP
+      // ==================================================
+      const { initializeApp } = firebaseAppModule;
+
+      // ==================================================
+      // 🔥 FIRESTORE (Importing runTransaction here)
+      // ==================================================
+      const {
+        getFirestore,
+        collection,
+        query,
+        where,
+        orderBy,
+        onSnapshot,
+        serverTimestamp,
+        getDocs,
+        getDoc,
+        deleteDoc,
+        deleteField,
+        doc,
+        setDoc,
+        updateDoc,
+        runTransaction // <--- ADDED THIS IMPORT
+      } = firestoreModule;
+
+      // ==================================================
+      // 🔥 STORAGE
+      // ==================================================
+      const { getStorage, ref, uploadBytes, uploadString, getDownloadURL } = storageModule;
+
+      // ==================================================
+      // 🔥 INIT APP
+      // ==================================================
+      const app = initializeApp(window.firebaseConfig);
+
+      // ==================================================
+      // 🔥 DATABASE
+      // ==================================================
+      window.db = getFirestore(app);
+
+      // ==================================================
+      // 🔥 STORAGE
+      // ==================================================
+      window.storage = getStorage(app);
+
+      // ==================================================
+      // 🔥 FIREBASE HELPERS (Added runTransaction)
+      // ==================================================
+      window.fb = {
+        collection,
+        where,
+        query,
+        orderBy,
+        onSnapshot,
+        serverTimestamp,
+        getDocs,
+        getDoc,
+        deleteDoc,
+        deleteField,
+        doc,
+        setDoc,
+        updateDoc,
+        runTransaction, // <--- ADDED TO HELPER
+        ref,
+        uploadBytes,
+        uploadString,
+        getDownloadURL
+      };
+
+      // ==================================================
+      // 🔥 READY FLAG
+      // ==================================================
+      window.firebaseReady = true;
+      console.log("🔥 FIREBASE READY");
+
+      // ==================================================
+      // 🧹 CLEANUP TASKS
+      // ==================================================
+      setTimeout(() => {
+        try { cleanupOldTracks(); } catch(e) { console.warn("⚠ cleanupOldTracks fail", e); }
+      }, 5000);
+
+      setInterval(cleanupOldTracks, 24 * 60 * 60 * 1000);
+
+    } catch (e) {
+      console.error("❌ Firebase load failed:", e);
+    }
+  })();
+}, 500);    console.log("🔥 NEW BUILD LOADED - VERSION 999");
 
 // ======================================================
 // 🚀 SMART SERVICE WORKER UPDATE SYSTEM (FINAL)
