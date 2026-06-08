@@ -7391,31 +7391,22 @@ async function appendTrackToGeometries(simplifiedLine){
       return;
     }
 
+    const geoJsonReader =
+      new jsts.io.GeoJSONReader();
+
     for(const feature of compartments){
 
       try{
 
-        const poly = feature;
-
         if(
-          !poly ||
-          !poly.geometry
+          !feature ||
+          !feature.geometry
         ){
           continue;
         }
 
-        const intersects =
-          turf.booleanIntersects(
-            simplifiedLine,
-            poly
-          );
-
-        if(!intersects){
-          continue;
-        }
-
         const props =
-          poly.properties || {};
+          feature.properties || {};
 
         const compartment =
           String(
@@ -7458,86 +7449,119 @@ async function appendTrackToGeometries(simplifiedLine){
             )
           }`;
 
-        // =====================================
-        // TRUE GEOMETRY CLIPPING
-        // =====================================
-
-        const clippedSegments = [];
+        let clippedSegments = [];
 
         try{
 
-          const boundaryLine =
-            turf.polygonToLine(
-              poly
+          const lineGeom =
+            geoJsonReader.read(
+              simplifiedLine
             );
 
-          const splitResult =
-            turf.lineSplit(
-              simplifiedLine,
-              boundaryLine
+          const polygonGeom =
+            geoJsonReader.read(
+              feature
             );
 
-          const pieces =
-            splitResult?.features || [];
+          if(
+            !lineGeom.intersects(
+              polygonGeom
+            )
+          ){
+            continue;
+          }
+
+          const clipped =
+            lineGeom.intersection(
+              polygonGeom
+            );
+
+          if(
+            clipped.isEmpty()
+          ){
+            continue;
+          }
+
+          const type =
+            clipped.getGeometryType();
 
           console.log(
-            "✂ Split pieces:",
-            pieces.length,
-            compartment
+            "✂",
+            compartment,
+            type
           );
 
-          for(const piece of pieces){
+          if(
+            type === "LineString"
+          ){
 
-            try{
+            const coords = [];
 
-              const coords =
-                piece.geometry
-                ?.coordinates;
+            const seq =
+              clipped.getCoordinates();
 
-              if(
-                !coords ||
-                coords.length < 2
-              ){
-                continue;
-              }
+            for(const c of seq){
 
-              const midpoint =
-                turf.along(
-                  piece,
-                  turf.length(piece)/2
-                );
+              coords.push([
+                Number(c.y),
+                Number(c.x)
+              ]);
 
-              const inside =
-                turf.booleanPointInPolygon(
-                  midpoint,
-                  poly
-                );
+            }
 
-              if(!inside){
-                continue;
-              }
-
-              const latLngCoords =
-                coords.map(c => [
-
-                  Number(c[1]),
-
-                  Number(c[0])
-
-                ]);
+            if(
+              coords.length >= 2
+            ){
 
               clippedSegments.push(
-                latLngCoords
+                coords
               );
 
             }
 
-            catch(err){
+          }
 
-              console.warn(
-                "Piece validation failed",
-                err
-              );
+          else if(
+            type === "MultiLineString"
+          ){
+
+            const count =
+              clipped.getNumGeometries();
+
+            for(
+              let i = 0;
+              i < count;
+              i++
+            ){
+
+              const line =
+                clipped.getGeometryN(i);
+
+              const seq =
+                line.getCoordinates();
+
+              const coords = [];
+
+              for(
+                const c of seq
+              ){
+
+                coords.push([
+                  Number(c.y),
+                  Number(c.x)
+                ]);
+
+              }
+
+              if(
+                coords.length >= 2
+              ){
+
+                clippedSegments.push(
+                  coords
+                );
+
+              }
 
             }
 
@@ -7548,11 +7572,13 @@ async function appendTrackToGeometries(simplifiedLine){
         catch(err){
 
           console.warn(
-            "Line clipping failed",
+            "JSTS clipping failed",
+            compartment,
             err
           );
 
           continue;
+
         }
 
         console.log(
@@ -7569,7 +7595,8 @@ async function appendTrackToGeometries(simplifiedLine){
 
         const encodedSegments =
           clippedSegments.map(
-            seg => polyline.encode(seg)
+            seg =>
+              polyline.encode(seg)
           );
 
         const ref =
