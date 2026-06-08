@@ -7713,509 +7713,214 @@ async function appendTrackToGeometries(simplifiedLine){
       err
     );
   }
-}
-    
-async function showMonthHistory(){
-
-  try{
-
-    // ==========================================
-    // 📅 MONTH KEY
-    // ==========================================
-
+}async function showMonthHistory() {
+  try {
     const d = new Date();
+    const monthKey = `${d.getFullYear()}_${String(d.getMonth() + 1).padStart(2, "0")}`;
 
-    const monthKey =
+    console.group("🚨 [DEBUG] showMonthHistory EXECUTION TRACKER");
+    
+    // ============================================================
+    // 📊 1. CAPTURE ACTIVE UI FILTER CONTEXT
+    // ============================================================
+    const division = String(window.gisFilter?.division || "").trim();
+    const range = String(window.gisFilter?.range || "").trim();
+    const beat = String(window.gisFilter?.beat || "").trim();
+    const compartment = String(window.gisFilter?.compartment || "").trim();
 
-      `${d.getFullYear()}_${
-        String(
-          d.getMonth() + 1
-        ).padStart(2,"0")
-      }`;
+    const activeLevel = String(window.activePopupContext?.level || "btr").trim().toLowerCase();
 
-    // ==========================================
-    // 🧹 CLEAR OLD HISTORY
-    // ==========================================
+    console.log("📍 ACTIVE INTERFACE FILTERS:", {
+      activeLevel: activeLevel,
+      uiCompartment: `"${compartment}"`,
+      uiBeat: `"${beat}"`,
+      uiRange: `"${range}"`,
+      uiDivision: `"${division}"`
+    });
 
-    try{
-
-      window.historyLayer?.clearLayers();
-
-    }catch(e){}
-
-    // ==========================================
-    // 📦 LOAD MONTH HISTORY
-    // ==========================================
-
-    const colRef =
-
-      window.fb.collection(
-        window.db,
-        "geometry_history",
-        monthKey,
-        "data"
-      );
-
-    const snap =
-
-      await window.fb.getDocs(
-        colRef
-      );
-
-    if(snap.empty){
-
-      alert("No history found");
-
-      return;
+    // Reset state map layers cleanly before executing queries
+    try {
+      if (window.historyLayer) {
+        window.historyLayer.clearLayers();
+        console.log("🧹 Cleared previous history map layers.");
+      }
+    } catch(e) {
+      console.warn("⚠️ Resetting map history layer failed:", e);
     }
 
-    // ==========================================
-    // 🎯 FILTERS
-    // ==========================================
+    // Fetch the target database snapshot
+    const colRef = window.fb.collection(window.db, "geometry_history", monthKey, "data");
+    const snap = await window.fb.getDocs(colRef);
 
-    const division =
-
-      String(
-        window.gisFilter?.division || ""
-      ).trim();
-
-    const range =
-
-      String(
-        window.gisFilter?.range || ""
-      ).trim();
-
-    const beat =
-
-      String(
-        window.gisFilter?.beat || ""
-      ).trim();
-
-    const compartment =
-
-      String(
-        window.gisFilter?.compartment || ""
-      ).trim();
-
-    // ==========================================
-    // 🎯 ACTIVE LEVEL
-    // ==========================================
-
-    const activeLevel =
-
-      String(
-
-        window.activePopupContext
-          ?.level || "btr"
-
-      )
-      .trim()
-      .toLowerCase();
-
-    console.log(
-      "🎯 HISTORY ACTIVE LEVEL:",
-      activeLevel
-    );
-
-    console.log(
-      "📜 FILTERS:",
-      {
-        division,
-        range,
-        beat,
-        compartment
-      }
-    );
-
-    // ==========================================
-    // 📦 COLLECT TRACKS
-    // ==========================================
+    if (snap.empty) {
+      alert("No history found in database for this period.");
+      console.groupEnd();
+      return;
+    }
 
     const tracksToRender = [];
 
+    // ============================================================
+    // 🔄 2. DOCUMENT FILTER PROCESSING LOOP
+    // ============================================================
     snap.forEach(docSnap => {
+      try {
+        const data = docSnap.data() || {};
+        const docComp = String(data.compartment || "").trim();
+        const docBeat = String(data.beat || "").trim();
+        const docRange = String(data.range || "").trim();
+        const docDiv = String(data.division || "").trim();
+        const docTracksCount = data.tracks?.length || 0;
 
-      try{
-
-        const data =
-          docSnap.data() || {};
-
-        // ======================================
-        // 🟧 COMPARTMENT
-        // ======================================
-
-        if(
-          activeLevel ===
-          "compartment"
-        ){
-
-          const docComp =
-
-            String(
-              data.compartment || ""
-            ).trim();
-
-          if(
-            docComp === compartment
-          ){
-
-            tracksToRender.push(
-              ...(data.tracks || [])
-            );
-
+        // 🟧 LEVEL CHECK: COMPARTMENT
+        if (activeLevel === "compartment") {
+          const stringMatch = (docComp === compartment);
+          console.log(`🧩 COMPARTMENT EVAL [${docSnap.id}]: UI="${compartment}" vs DOC="${docComp}" | Match: ${stringMatch} | Tracks: ${docTracksCount}`);
+          
+          if (stringMatch) {
+            console.log(`✅ ADDING TRACKS FROM COMPARTMENT: "${docComp}" | Count: ${docTracksCount}`);
+            tracksToRender.push(...(data.tracks || []));
           }
-
           return;
         }
 
-        // ======================================
-        // 🟨 BEAT
-        // ======================================
-
-        if(
-          activeLevel ===
-          "beat"
-        ){
-
-          const docBeat =
-
-            String(
-              data.beat || ""
-            ).trim();
-
-          const match =
-
-            typeof normalizeBeatName
-            === "function"
-
-            ?
-
-            normalizeBeatName(
-              docBeat
-            )
-
-            ===
-
-            normalizeBeatName(
-              beat
-            )
-
-            :
-
-            docBeat === beat;
-
-          if(match){
-
-            tracksToRender.push(
-              ...(data.tracks || [])
-            );
-
+        // 🟨 LEVEL CHECK: BEAT
+        if (activeLevel === "beat") {
+          const match = typeof normalizeBeatName === "function"
+            ? normalizeBeatName(docBeat) === normalizeBeatName(beat)
+            : docBeat === beat;
+          
+          if (match) {
+            console.log(`✅ ADDING TRACKS FROM BEAT: "${docBeat}" | Count: ${docTracksCount}`);
+            tracksToRender.push(...(data.tracks || []));
           }
-
           return;
         }
 
-        // ======================================
-        // 🟩 RANGE
-        // ======================================
-
-        if(
-          activeLevel ===
-          "range"
-        ){
-
-          const docRange =
-
-            String(
-              data.range || ""
-            ).trim();
-
-          if(
-            docRange === range
-          ){
-
-            tracksToRender.push(
-              ...(data.tracks || [])
-            );
-
+        // 🟩 LEVEL CHECK: RANGE
+        if (activeLevel === "range") {
+          if (docRange === range) {
+            console.log(`✅ ADDING TRACKS FROM RANGE: "${docRange}" | Count: ${docTracksCount}`);
+            tracksToRender.push(...(data.tracks || []));
           }
-
           return;
         }
 
-        // ======================================
-        // 🟦 DIVISION
-        // ======================================
-
-        if(
-          activeLevel ===
-          "division"
-        ){
-
-          const docDivision =
-
-            String(
-              data.division || ""
-            ).trim();
-
-          const match =
-
-            typeof normalizeDivision
-            === "function"
-
-            ?
-
-            normalizeDivision(
-              docDivision
-            )
-
-            ===
-
-            normalizeDivision(
-              division
-            )
-
-            :
-
-            docDivision === division;
-
-          if(match){
-
-            tracksToRender.push(
-              ...(data.tracks || [])
-            );
-
+        // 🟦 LEVEL CHECK: DIVISION
+        if (activeLevel === "division") {
+          const match = typeof normalizeDivision === "function"
+            ? normalizeDivision(docDiv) === normalizeDivision(division)
+            : docDiv === division;
+          
+          if (match) {
+            console.log(`✅ ADDING TRACKS FROM DIVISION: "${docDiv}" | Count: ${docTracksCount}`);
+            tracksToRender.push(...(data.tracks || []));
           }
-
           return;
         }
 
-        // ======================================
-        // 🌍 BTR
-        // ======================================
+        // 🌍 FALLBACK: BTR GLOBAL MAP PROCESSING
+        console.log(`⚠️ FALLTHROUGH HANDLING (No level constraints intercepted doc): ${docSnap.id}`);
+        tracksToRender.push(...(data.tracks || []));
 
-        tracksToRender.push(
-          ...(data.tracks || [])
-        );
-
+      } catch(err) {
+        console.warn("❌ Individual history document verification skipped:", err);
       }
-
-      catch(err){
-
-        console.warn(
-          "History filter failed",
-          err
-        );
-
-      }
-
     });
 
-    console.log(
-      "📦 TRACKS FOUND:",
-      tracksToRender.length
-    );
+    // ============================================================
+    // 📦 3. INTERMEDIATE STATE VERIFICATION
+    // ============================================================
+    console.log(`📦 FINAL TRACK QUEUE BATCH COUNT: ${tracksToRender.length}`);
 
-    if(
-      tracksToRender.length === 0
-    ){
-
-      alert(
-        "No history tracks found"
-      );
-
+    if (tracksToRender.length === 0) {
+      alert("No history tracks matched current logic query.");
+      console.groupEnd();
       return;
     }
 
-    // ==========================================
-    // 🌍 CURRENT GEOMETRY
-    // ==========================================
-
-    const selectedGeometry =
-      window.currentSelectedGeometry;
-
-    const selectedFeature =
-
-      selectedGeometry
-
-      ? {
-          type : "Feature",
-          geometry : selectedGeometry,
-          properties : {}
-        }
-
+    // ============================================================
+    // 🌍 4. SPATIAL GEOMETRY MASKS PREPARATION
+    // ============================================================
+    const selectedGeometry = window.currentSelectedGeometry;
+    const selectedFeature = selectedGeometry 
+      ? { type: "Feature", geometry: selectedGeometry, properties: {} } 
       : null;
 
-    // ==========================================
-    // 🎨 RENDER
-    // ==========================================
+    console.log("🗺️ SELECTED FEATURE GEOMETRY CONTEXT:", selectedFeature);
 
-    let rendered = 0;
-
-    for(
-      const encoded of tracksToRender
-    ){
-
-      try{
-
-        if(
-          !encoded ||
-          typeof encoded !== "string"
-        ){
+    // ============================================================
+    // 🎨 5. TRANSFORMATION AND RENDERING ENGINE
+    // ============================================================
+    let renderedCount = 0;
+    
+    for (let index = 0; index < tracksToRender.length; index++) {
+      const encoded = tracksToRender[index];
+      
+      try {
+        if (!encoded || typeof encoded !== "string") {
+          console.warn(`⏩ Track at position [${index}] skipped: Raw payload is not a valid encoded string.`);
           continue;
         }
 
-        const coords =
-
-          polyline.decode(
-            encoded
-          );
-
-        if(
-          !coords ||
-          coords.length < 2
-        ){
+        const coords = polyline.decode(encoded);
+        if (!coords || coords.length < 2) {
+          console.warn(`⏩ Track at position [${index}] skipped: Decoded coordinate list array is empty or short.`);
           continue;
         }
 
-        // ======================================
-        // 🔥 SPATIAL FILTER
-        // ======================================
-
-        if(selectedFeature){
-
-          try{
-
-            const geoLine =
-
-              turf.lineString(
-
-                coords.map(c => [
-
-                  Number(c[1]),
-                  Number(c[0])
-
-                ])
-
-              );
-
-            const intersects =
-
-              turf.booleanIntersects(
-                geoLine,
-                selectedFeature
-              );
-
-            if(!intersects){
-
-              continue;
+        // Perform Turf intersection sanity test if an active geographic boundaries mask is present
+        if (selectedFeature) {
+          try {
+            // Standard Turf calculations strictly expect Lon/Lat ordering parameters [c[1], c[0]]
+            const geoLine = turf.lineString(coords.map(c => [Number(c[1]), Number(c[0])]));
+            const intersects = turf.booleanIntersects(geoLine, selectedFeature);
+            
+            console.log(`🧪 SPATIAL TEST [Track Segment #${index}]: Intersection Outcome = ${intersects}`);
+            
+            if (!intersects) {
+              console.log(`⏩ Track [${index}] filtered out: Geographically drops outside targeted bounds.`);
+              continue; 
             }
-
+          } catch(spatialErr) {
+            console.error(`❌ Turf execution crash running intersection mapping on track [${index}]:`, spatialErr);
           }
-
-          catch(spatialErr){
-
-            console.warn(
-              "Spatial filter failed",
-              spatialErr
-            );
-
-          }
-
         }
 
-        const line =
+        // Build native Leaflet Map instances for passed strings
+        const line = L.polyline(coords, {
+          renderer: window.historyRenderer,
+          color: "#ff0000",
+          weight: 4,
+          opacity: 0.9,
+          smoothFactor: 0,
+          lineCap: "round",
+          lineJoin: "round"
+        });
 
-          L.polyline(
-            coords,
-            {
-              renderer :
-                window.historyRenderer,
+        window.historyLayer.addLayer(line);
+        renderedCount++;
 
-              color :
-                "#ff0000",
-
-              weight :
-                4,
-
-              opacity :
-                0.9,
-
-              smoothFactor :
-                0,
-
-              lineCap :
-                "round",
-
-              lineJoin :
-                "round"
-            }
-          );
-
-        window.historyLayer.addLayer(
-          line
-        );
-
-        rendered++;
-
+      } catch(err) {
+        console.error(`❌ Critical loop crash building history object [${index}]:`, err);
       }
-
-      catch(err){
-
-        console.warn(
-          "decode failed",
-          err
-        );
-
-      }
-
     }
 
-    // ==========================================
-    // 🎯 FIT
-    // ==========================================
+    console.log(`✅ OPERATION SUMMARY: Successfully outputted [${renderedCount}] tracking layers onto global views.`);
+    console.groupEnd();
 
-    try{
-
-      const bounds =
-
-        window.historyLayer
-        .getBounds();
-
-      if(
-        bounds &&
-        bounds.isValid()
-      ){
-
-        map.fitBounds(
-          bounds,
-          {
-            padding:[20,20]
-          }
-        );
-
+    // Re-center display interface dynamically over active history geometries boundaries
+    try {
+      const bounds = window.historyLayer.getBounds();
+      if (bounds && bounds.isValid()) {
+        map.fitBounds(bounds, { padding: [20, 20] });
       }
+    } catch(e) {}
 
-    }
-
-    catch(e){}
-
-    console.log(
-      "✅ Rendered:",
-      rendered
-    );
-
+  } catch(err) {
+    console.error("❌ Critical breakdown on global showMonthHistory stream workflow:", err);
+    if (typeof console.groupEnd === 'function') console.groupEnd();
   }
-
-  catch(err){
-
-    console.error(
-      "❌ showMonthHistory",
-      err
-    );
-
-  }
-
 }// ======================================
 // 🛰 VERIFY LATEST PLANET
 // GIS-AWARE VERSION
