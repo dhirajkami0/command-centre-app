@@ -7675,6 +7675,44 @@ async function appendTrackToGeometries(simplifiedLine, options = { sessionId: nu
     setTimeout(executeGreenGuardSelfHealingWorker, 60000 * 5);
   }
 }
+    async function rebuildSpatialIndex() {
+  console.log("🛠 Rebuilding STRtree with JSTS Geometry objects...");
+  
+  // 1. Initialize fresh index
+  const newIndex = new jsts.index.strtree.STRtree();
+  const reader = new jsts.io.GeoJSONReader();
+  let count = 0;
+
+  // 2. Iterate and properly extract geometry
+  (window.allCompartmentFeatures || []).forEach((feature) => {
+    try {
+      // Extract the geometry part specifically
+      const geomData = feature.geometry;
+      if (!geomData) return;
+
+      // Create the JSTS geometry object
+      const jstsGeom = reader.read(geomData);
+      
+      // 🛡️ CRITICAL: The first argument MUST be the geometry's envelope
+      // The second argument is the data payload (feature)
+      if (jstsGeom && typeof jstsGeom.getEnvelopeInternal === 'function') {
+        newIndex.insert(jstsGeom.getEnvelopeInternal(), { 
+          feature: feature, 
+          polygonGeom: jstsGeom // <--- THIS is the geometry object
+        });
+        count++;
+      }
+    } catch (e) {
+      console.warn("⚠ Skipping invalid feature:", e);
+    }
+  });
+
+  // 3. Swap the index globally
+  window.compartmentSpatialIndex = newIndex;
+  window.compartmentSpatialIndexReady = true;
+  
+  console.log(`✅ STRtree Built Successfully! Inserted ${count} features.`);
+}
     // =============================================================================
 // 📜 SHOW MONTH HISTORY (PRODUCTION-FROZEN)
 // =============================================================================
