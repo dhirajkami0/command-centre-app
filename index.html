@@ -5934,54 +5934,23 @@ function updateDutyStaff(source = "UNKNOWN"){
     // =====================================
     // 👮 STAFF / TEAM LEADER
     // =====================================
+else{
 
-    else{
+  staff = allProfiles.filter(p =>
 
-      if(
+    String(
+      p.range || ""
+    )
+    .trim()
+    .toUpperCase()
 
-        beat.toUpperCase()
+    ===
 
-        ===
+    userRange
 
-        "RANGE HQ"
+  );
 
-      ){
-
-        staff = allProfiles.filter(p =>
-
-          String(
-            p.range || ""
-          )
-          .trim()
-          .toUpperCase()
-
-          ===
-
-          userRange
-
-        );
-
-      }
-
-      else{
-
-        staff = allProfiles.filter(p =>
-
-          String(
-            p.beat || ""
-          )
-          .trim()
-
-          ===
-
-          beat
-
-        );
-
-      }
-
-    }
-
+}
     const names = [
 
       ...new Set(
