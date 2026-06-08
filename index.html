@@ -7332,7 +7332,7 @@ async function appendTrackToGeometries(simplifiedLine) {
     }
 
     // ============================================================
-    // 🔍 FIXING THE DETECTOR: EXPLICIT BOUNDS PROFILE SANITY CHECK
+    // 🔍 INDEX ORDERING SCANNER & GEOJSON RE-ALIGNMENT
     // ============================================================
     const rawCoords = simplifiedLine.geometry.coordinates;
     console.log("📋 RAW LINE COORDS FIRST 5:", JSON.stringify(rawCoords.slice(0, 5)));
@@ -7340,12 +7340,11 @@ async function appendTrackToGeometries(simplifiedLine) {
     let processedLineFeature;
     const firstCoord = rawCoords[0];
 
-    // West Bengal / Alipurduar Context: Lat is around 26.x, Lng is around 89.x
-    // We check if index 0 is close to Lat (20-28) and index 1 is close to Lng (85-93)
+    // Regional Bounding Criteria (West Bengal Spatial Grid): Lat ~26.x, Lng ~89.x
     const isFirstValueLatitude = (firstCoord[0] > 20 && firstCoord[0] < 28) && (firstCoord[1] > 85 && firstCoord[1] < 93);
 
     if (isFirstValueLatitude) {
-      console.log("🔄 Verified: Array layout is [Lat, Lng]. Transforming to GeoJSON standard [Lng, Lat] for JSTS space...");
+      console.log("🔄 Verified layout: [Lat, Lng]. Re-mapping matrix to standard [Lng, Lat] axis for JSTS calculations...");
       processedLineFeature = {
         type: "Feature",
         geometry: {
@@ -7354,7 +7353,7 @@ async function appendTrackToGeometries(simplifiedLine) {
         }
       };
     } else {
-      console.log("↔️ Verified: Array layout is already standard [Lng, Lat]. Proceeding safely into JSTS space.");
+      console.log("↔️ Verified layout: Standard GeoJSON [Lng, Lat]. Proceeding directly into JSTS plane context.");
       processedLineFeature = JSON.parse(JSON.stringify(simplifiedLine));
     }
 
@@ -7362,10 +7361,10 @@ async function appendTrackToGeometries(simplifiedLine) {
     const monthKey = `${d.getFullYear()}_${String(d.getMonth() + 1).padStart(2, "0")}`;
 
     const compartments = window.allCompartmentFeatures || [];
-    console.log(`📦 Loaded [${compartments.length}] compartment polygon boundary configurations.`);
+    console.log(`📦 Loaded [${compartments.length}] compartment polygon feature boundary definitions.`);
 
     if (compartments.length === 0) {
-      console.warn("❌ Aborted: window.allCompartmentFeatures array contains zero nodes.");
+      console.warn("❌ Aborted: window.allCompartmentFeatures layer context contains zero reference arrays.");
       console.groupEnd();
       return;
     }
@@ -7373,6 +7372,9 @@ async function appendTrackToGeometries(simplifiedLine) {
     const geoJsonReader = new jsts.io.GeoJSONReader();
     let processingMatches = 0;
 
+    // ============================================================
+    // 🔄 COMPARTMENT INTERSECTION MATCHING MATRIX
+    // ============================================================
     for (const feature of compartments) {
       try {
         if (!feature || !feature.geometry) continue;
@@ -7389,34 +7391,30 @@ async function appendTrackToGeometries(simplifiedLine) {
         const geometryId = `compartment_${compartment.replace(/\s+/g, "_")}`;
         let clippedSegments = [];
 
-        // Parse normalized structures directly into the JSTS topology grid
+        // Build JSTS structural math instances
         const lineGeom = geoJsonReader.read(processedLineFeature.geometry);
         const polygonGeom = geoJsonReader.read(feature.geometry);
 
-        // 🧪 TOPO PLANE INTERSECTION CHECK
+        // Run structural fast bounding box collision assessment 
         const intersects = lineGeom.intersects(polygonGeom);
-        
-        if (!intersects) {
-          continue; // Disjoint components break early
-        }
+        if (!intersects) continue;
 
         processingMatches++;
-        console.group(`✂️ HOOK: CLIPPING INTERSECTION FOR COMPARTMENT -> "${compartment}"`);
-        console.log(`📊 GEOMETRY TYPE: ${feature.geometry.type}`);
+        console.group(`✂️ HOOK: CLIPPING ACTIVE FRAGMENT FOR COMPARTMENT -> "${compartment}"`);
 
-        // Compute strict geometric cut-out footprint inside polygon area boundaries
+        // Slice spatial topology cleanly against current structural boundary limits
         const clipped = lineGeom.intersection(polygonGeom);
-        console.log(`📐 JSTS OUTPUT TOPOLOGY: ${clipped.getGeometryType()} | IsEmpty: ${clipped.isEmpty()}`);
+        console.log(`📐 JSTS INTERSECTION FOOTPRINT TYPE: ${clipped.getGeometryType()} | IsEmpty: ${clipped.isEmpty()}`);
 
         if (clipped.isEmpty()) {
-          console.log("⏩ Skipping: Target fragment yields empty area map intersection.");
+          console.log("⏩ Skipping: Extracted clip fragment yielded zero internal nodes.");
           console.groupEnd();
           continue;
         }
 
         const type = clipped.getGeometryType();
 
-        // Maps JSTS plane outputs (Y=Lat, X=Lng) directly back to your standard database [Lat, Lng] configuration
+        // Convert tracking arrays from JSTS projection layout (Y=Lat, X=Lng) back to standard [Lat, Lng] strings format
         const processJstsCoordinates = (jstsCoords) => {
           const out = [];
           for (const c of jstsCoords) {
@@ -7426,7 +7424,7 @@ async function appendTrackToGeometries(simplifiedLine) {
         };
 
         // ============================================================
-        // 🔀 PARSE GEOMETRICAL SLICES
+        // 🔀 GEOMETRY COLLECTION PARSING DEEP UNPACKING
         // ============================================================
         if (type === "LineString") {
           const coords = processJstsCoordinates(clipped.getCoordinates());
@@ -7445,17 +7443,17 @@ async function appendTrackToGeometries(simplifiedLine) {
           }
         }
 
-        console.log(`✂️ VALID FRAGMENTS RETAINED FOR WRITE: ${clippedSegments.length}`);
+        console.log(`✂️ INTERSECTION WORKFLOW OUTCOME: Generated [${clippedSegments.length}] clean spatial coordinates subsets.`);
         
         if (clippedSegments.length === 0) {
           console.groupEnd();
           continue;
         }
 
-        // Encode coordinates array cleanly into Google polyline strings
+        // Re-encode processed array blocks back into standardized compressed string format
         const encodedSegments = clippedSegments.map(seg => polyline.encode(seg));
 
-        // Sync and append track chunks to Firestore
+        // Pull previous records from target Firestore transaction block paths
         const ref = window.fb.doc(window.db, "geometry_history", monthKey, "data", geometryId);
         const snap = await window.fb.getDoc(ref);
 
@@ -7464,6 +7462,7 @@ async function appendTrackToGeometries(simplifiedLine) {
           tracks = snap.data()?.tracks || [];
         }
 
+        // Safely append new clipped tracks array coordinates elements 
         tracks.push(...encodedSegments);
 
         await window.fb.setDoc(ref, {
@@ -7477,21 +7476,20 @@ async function appendTrackToGeometries(simplifiedLine) {
           updatedAt: Date.now()
         }, { merge: true });
 
-        console.log(`💾 STORAGE SUCCESS: Chunks committed to document key: [${geometryId}]`);
+        console.log(`💾 CLIPPED RECORD SAVE SUCCESS -> Stored in path key: [${geometryId}]`);
         console.groupEnd();
 
-      } catch (err) {
-        console.warn(`❌ Inner loop calculation slip on compartment boundary processing step:`, err);
+      } catch (innerLoopErr) {
+        console.warn(`❌ Processing slipped for individual boundary polygon node [${feature.id || 'Unknown'}]:`, innerLoopErr);
         if (typeof console.groupEnd === 'function') console.groupEnd();
       }
     }
 
-    console.log(`🏁 FINISH - Alignment pipeline complete. Total true intersections parsed: ${processingMatches}`);
+    console.log(`🏁 FINISH - Mapping sync routine complete. Total geometric intersections committed to history records: ${processingMatches}`);
 
   } catch (err) {
-    console.error("❌ Critical global loop error within appendTrackToGeometries runtime loop:", err);
-  } catch(e){}
-  finally {
+    console.error("❌ Critical processing failure intercepted on global geometry partitioning script pipeline:", err);
+  } finally {
     console.groupEnd();
   }
 }
@@ -7552,7 +7550,8 @@ async function appendTrackToGeometries(simplifiedLine) {
       err
     );
   }
-}async function showMonthHistory() {
+}
+    async function showMonthHistory() {
   try {
     const d = new Date();
     const monthKey = `${d.getFullYear()}_${String(d.getMonth() + 1).padStart(2, "0")}`;
