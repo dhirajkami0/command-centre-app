@@ -32871,7 +32871,7 @@ ${coordinates}
 </kml>`;
 }
 
-   async function uploadPatrolKML(
+ async function uploadPatrolKML(
   sessionId,
   points
 ){
@@ -32881,9 +32881,18 @@ ${coordinates}
     // ==========================================================
     // VALIDATE
     // ==========================================================
+    if(
+      !Array.isArray(points)
+    ){
+
+      console.warn(
+        "⚠ Invalid points array"
+      );
+
+      return null;
+    }
 
     if(
-      !Array.isArray(points) ||
       points.length < 2
     ){
 
@@ -32895,16 +32904,62 @@ ${coordinates}
     }
 
     // ==========================================================
+    // DISTANCE KM
+    // ==========================================================
+    let distanceKm = 0;
+
+    for(
+      let i = 1;
+      i < points.length;
+      i++
+    ){
+
+      const prev =
+        points[i - 1];
+
+      const curr =
+        points[i];
+
+      if(
+        !prev ||
+        !curr ||
+        isNaN(prev.lat) ||
+        isNaN(prev.lng) ||
+        isNaN(curr.lat) ||
+        isNaN(curr.lng)
+      ){
+        continue;
+      }
+
+      distanceKm += getDistance(
+
+        [prev.lat, prev.lng],
+
+        [curr.lat, curr.lng]
+
+      );
+    }
+
+    distanceKm =
+      Number(
+        distanceKm.toFixed(2)
+      );
+
+    console.log(
+      "📏 Distance:",
+      distanceKm,
+      "km"
+    );
+
+    // ==========================================================
     // PROFILE
     // ==========================================================
-
     const profile =
       window.userProfile || {};
 
     // ==========================================================
     // DATE
     // ==========================================================
-
     const now =
       Date.now();
 
@@ -32921,7 +32976,6 @@ ${coordinates}
     // ==========================================================
     // GENERATE KML
     // ==========================================================
-
     const kmlText =
 
       generateKMLFromTrack(
@@ -32931,85 +32985,87 @@ ${coordinates}
     // ==========================================================
     // STORAGE PATH
     // ==========================================================
-
     const storageRef =
 
-  window.fb.ref(
+      window.fb.ref(
 
-    window.storage,
+        window.storage,
 
-    `patrol_kml/${monthKey}/${sessionId}.kml`
+        `patrol_kml/${monthKey}/${sessionId}.kml`
 
-  );
+      );
 
-await window.fb.uploadString(
+    await window.fb.uploadString(
 
-  storageRef,
+      storageRef,
 
-  kmlText,
+      kmlText,
 
-  "raw"
+      "raw"
 
-);
+    );
 
-const downloadUrl =
+    const downloadUrl =
 
-  await window.fb.getDownloadURL(
-    storageRef
-  );
+      await window.fb.getDownloadURL(
+        storageRef
+      );
+
     // ==========================================================
     // FIRESTORE SAVE
     // ==========================================================
+    await window.fb.setDoc(
 
-   await window.fb.setDoc(
+      window.fb.doc(
 
-  window.fb.doc(
+        window.db,
 
-    window.db,
+        "patrol_kml",
 
-    "patrol_kml",
+        monthKey,
 
-    monthKey,
+        "sessions",
 
-    "sessions",
+        sessionId
 
-    sessionId
+      ),
 
-  ),
+      {
 
-  {
+        monthKey,
 
-    monthKey,
+        sessionId,
 
-    sessionId,
+        staffName :
+          profile.cleanName || "",
 
-    staffName :
-      profile.cleanName || "",
+        phone :
+          profile.phone || "",
 
-    phone :
-      profile.phone || "",
+        division :
+          profile.division || "",
 
-    division :
-      profile.division || "",
+        range :
+          profile.range || "",
 
-    range :
-      profile.range || "",
+        beat :
+          profile.beat || "",
 
-    beat :
-      profile.beat || "",
+        pointCount :
+          points.length,
 
-    pointCount :
-      points.length,
+        distanceKm,
 
-    kmlUrl :
-      downloadUrl,
+        kmlUrl :
+          downloadUrl,
 
-    createdAt :
-      now
+        createdAt :
+          now
 
-  }
+      }
 
-);
+    );
+
     console.log(
       "✅ Firestore KML Saved"
     );
@@ -33017,87 +33073,87 @@ const downloadUrl =
     // ==========================================================
     // APPS SCRIPT SYNC
     // ==========================================================
+    try{
 
-   try{
+      fetch(
 
-  fetch(
+        window.APPS_SCRIPT_URL,
 
-    window.APPS_SCRIPT_URL,
+        {
 
-    {
+          method:"POST",
 
-      method:"POST",
+          body:JSON.stringify({
 
-      body:JSON.stringify({
+            action:
+              "SAVE_PATROL_KML",
 
-        action:
-          "SAVE_PATROL_KML",
+            monthKey,
 
-        monthKey,
+            sessionId,
 
-        sessionId,
+            staffName:
+              profile.cleanName || "",
 
-        staffName:
-          profile.cleanName || "",
+            phone:
+              profile.phone || "",
 
-        phone:
-          profile.phone || "",
+            division:
+              profile.division || "",
 
-        division:
-          profile.division || "",
+            range:
+              profile.range || "",
 
-        range:
-          profile.range || "",
+            beat:
+              profile.beat || "",
 
-        beat:
-          profile.beat || "",
+            pointCount:
+              points.length,
 
-        pointCount:
-          points.length,
+            distanceKm,
 
-        kmlUrl:
-          downloadUrl,
+            kmlUrl:
+              downloadUrl,
 
-        createdAt:
-          now
+            createdAt:
+              now
+
+          })
+
+        }
+
+      )
+      .then(r => r.text())
+      .then(result => {
+
+        console.log(
+          "📄 Apps Script Sync:",
+          result
+        );
 
       })
+      .catch(err => {
+
+        console.error(
+          "❌ Apps Script Sync Failed",
+          err
+        );
+
+      });
 
     }
+    catch(err){
 
-  )
-  .then(r => r.text())
-  .then(result => {
+      console.error(
+        "❌ Apps Script Launch Failed",
+        err
+      );
 
-    console.log(
-      "📄 Apps Script Sync:",
-      result
-    );
-
-  })
-  .catch(err => {
-
-    console.error(
-      "❌ Apps Script Sync Failed",
-      err
-    );
-
-  });
-
-}
-catch(err){
-
-  console.error(
-    "❌ Apps Script Launch Failed",
-    err
-  );
-
-}
+    }
 
     // ==========================================================
     // DONE
     // ==========================================================
-
     console.log(
       "✅ KML Stored:",
       downloadUrl
