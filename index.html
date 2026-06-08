@@ -7182,11 +7182,12 @@ console.trace(
 
     }
 
-    console.log(
-      "✅ PRELOAD COMPLETE:",
-      window.allCompartmentFeatures.length
-    );
+console.log(
+  "✅ PRELOAD COMPLETE:",
+  window.allCompartmentFeatures.length
+);
 
+await rebuildSpatialIndex();
   }
 
   catch(err){
