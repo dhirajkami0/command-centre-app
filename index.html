@@ -7212,233 +7212,160 @@ async function appendTrackToGeometries(simplifiedLine, options = { sessionId: nu
   let sessionId = options?.sessionId || null;
 
   if (!window.bench) {
-    window.bench = { 
-      clipTimes: [], docSizes: [], candidateCounts: [], 
-      candidatesExamined: 0, geometryIntersections: 0, intersectsTrue: 0, nonEmptyIntersections: 0,
-      jstsPureTime: 0 
-    };
+    window.bench = { clipTimes: [], docSizes: [], candidateCounts: [], candidatesExamined: 0, geometryIntersections: 0, intersectsTrue: 0, nonEmptyIntersections: 0, jstsPureTime: 0 };
   }
 
+  // 🛡️ VALIDATE SPATIAL INDEX
   if (!window.compartmentSpatialIndexReady || !window.compartmentSpatialIndex) {
-    console.error("❌ Spatial index layer map unavailable. Halting clipping execution.");
-    console.groupEnd();
-    throw new Error("🚨 SPATIAL RUNTIME CRASH: window.compartmentSpatialIndex has not finished loading.");
+    throw new Error("🚨 SPATIAL RUNTIME CRASH: Spatial index unavailable");
   }
 
-  if (!simplifiedLine?.geometry?.coordinates || !Array.isArray(simplifiedLine.geometry.coordinates)) {
-    console.warn("❌ Aborted: Telemetry payload contains an invalid structure layout.");
-    console.groupEnd();
-    return;
-  }
-
+  if (!simplifiedLine?.geometry?.coordinates) return;
   const rawCoords = simplifiedLine.geometry.coordinates;
-  const historyCollectionRef = window.fb.collection(window.db, "history");
-  let targetDocRef;
 
-  if (sessionId && typeof sessionId === "string" && sessionId.trim() !== "") {
-    targetDocRef = window.fb.doc(window.db, "history", sessionId);
-  } else {
-    targetDocRef = window.fb.doc(historyCollectionRef);
-    sessionId = targetDocRef.id;
-    console.log(`🎲 Allocated unique transaction ID natively: [${sessionId}]`);
+  // 1. COORDINATE ORDER NORMALIZATION
+  let incomingOrder = simplifiedLine.coordinateOrder;
+  if (!incomingOrder) {
+    const firstCoord = rawCoords?.[0];
+    const looksLikeLatLng = Array.isArray(firstCoord) && firstCoord.length >= 2 && firstCoord[0] > 20 && firstCoord[0] < 28 && firstCoord[1] > 85 && firstCoord[1] < 93;
+    incomingOrder = looksLikeLatLng ? "LAT_LNG" : "LNG_LAT";
   }
+
+  let canonicalLngLatCoords = incomingOrder === "LAT_LNG" 
+    ? rawCoords.map(c => [Number(c[1]), Number(c[0])]) 
+    : rawCoords.map(c => [Number(c[0]), Number(c[1])]);
+
+  let minLat = Infinity, maxLat = -Infinity, minLng = Infinity, maxLng = -Infinity;
+  rawCoords.forEach(c => {
+    const lat = Number(incomingOrder === "LAT_LNG" ? c[0] : c[1]);
+    const lng = Number(incomingOrder === "LAT_LNG" ? c[1] : c[0]);
+    if (lat < minLat) minLat = lat; if (lat > maxLat) maxLat = lat;
+    if (lng < minLng) minLng = lng; if (lng > maxLng) maxLng = lng;
+  });
+
+  const historyCollectionRef = window.fb.collection(window.db, "history");
+  let targetDocRef = sessionId ? window.fb.doc(window.db, "history", sessionId) : window.fb.doc(historyCollectionRef);
+  if (!sessionId) sessionId = targetDocRef.id;
 
   try {
+    // 2. STAGE 1: TRANSACTIONAL CREATION
     let existingData = null;
-    
-    if (isRecoveryRun) {
-      const existingSnap = await window.fb.getDoc(targetDocRef);
-      if (existingSnap.exists()) {
-        existingData = existingSnap.data();
-        if (existingData?.clipStatus === "SUCCESS") {
-          console.log(`⏩ Aborting Worker: Session [${sessionId}] is already complete.`);
-          console.groupEnd();
-          return;
-        }
-        if (!existingData.rawTrackEncoded) {
-          console.error(`❌ FATAL CORRUPTION: Document [${sessionId}] is missing its raw track backup!`);
-          await window.fb.updateDoc(targetDocRef, { clipStatus: "CORRUPTED_FATAL", updatedAt: window.fb.serverTimestamp() });
-          console.groupEnd();
-          return;
-        }
-      } else {
-        console.warn(`⚠️ Aborting recovery: Source document [${sessionId}] is missing.`);
-        console.groupEnd();
-        return;
-      }
-    }
-
     const d = new Date();
     const fallbackMonthKey = `${d.getFullYear()}_${String(d.getMonth() + 1).padStart(2, "0")}`;
 
-    // ============================================================
-    // 🔍 1. COORDINATE ORDER RESOLUTION
-    // ============================================================
-    let incomingOrder = simplifiedLine.coordinateOrder;
-
-    if (!incomingOrder) {
-      const firstCoord = rawCoords?.[0];
-      const looksLikeLatLng = Array.isArray(firstCoord) && firstCoord.length >= 2 && firstCoord[0] > 20 && firstCoord[0] < 28 && firstCoord[1] > 85 && firstCoord[1] < 93;
-      incomingOrder = looksLikeLatLng ? "LAT_LNG" : "LNG_LAT";
-      console.log(`🧭 coordinateOrder missing. Auto-detected as [${incomingOrder}]`);
-    }
-
-    let canonicalLngLatCoords = [];
-    let canonicalLatLngCoords = [];
-
-    if (incomingOrder === "LAT_LNG") {
-      canonicalLngLatCoords = rawCoords.map(c => [Number(c[1]), Number(c[0])]);
-      canonicalLatLngCoords = rawCoords.map(c => [Number(c[0]), Number(c[1])]);
-    } else {
-      canonicalLngLatCoords = rawCoords.map(c => [Number(c[0]), Number(c[1])]);
-      canonicalLatLngCoords = rawCoords.map(c => [Number(c[1]), Number(c[0])]);
-    }
-
-    let minLat = Infinity, maxLat = -Infinity;
-    let minLng = Infinity, maxLng = -Infinity;
-
-    canonicalLatLngCoords.forEach(([lat, lng]) => {
-      if (lat < minLat) minLat = lat;
-      if (lat > maxLat) maxLat = lat;
-      if (lng < minLng) minLng = lng;
-      if (lng > maxLng) maxLng = lng;
+    await window.fb.runTransaction(window.db, async (transaction) => {
+      const freshSnap = await transaction.get(targetDocRef);
+      if (!freshSnap.exists()) {
+        transaction.set(targetDocRef, {
+          sessionId: sessionId,
+          uid: window.fb.auth?.currentUser?.uid || "Unknown",
+          staffName: String(window.userProfile?.cleanName || "Unknown").trim(),
+          phone: String(window.userProfile?.phone || "").trim(),
+          division: String(window.userProfile?.division || "BTR_W").trim(),
+          range: String(window.userProfile?.range || "").trim(),
+          beat: String(window.userProfile?.beat || "").trim(),
+          monthKey: fallbackMonthKey,
+          bbox: { minLat, minLng, maxLat, maxLng },
+          coordinateOrder: "LAT_LNG",
+          rawTrackEncoded: polyline.encode(canonicalLngLatCoords),
+          clipStatus: "PENDING",
+          createdAt: window.fb.serverTimestamp(),
+          updatedAt: window.fb.serverTimestamp()
+        });
+      } else {
+        existingData = freshSnap.data();
+      }
     });
 
-    const bboxPayload = { minLat, minLng, maxLat, maxLng };
-
-    // ============================================================
-    // 💾 STAGE 1: TRANSACTIONAL CREATION
-    // ============================================================
-    if (isRecoveryRun && existingData) {
-      await window.fb.updateDoc(targetDocRef, {
-        bbox: bboxPayload,
-        updatedAt: window.fb.serverTimestamp()
-      });
-    } else {
-      await window.fb.runTransaction(window.db, async (transaction) => {
-        const freshSnap = await transaction.get(targetDocRef);
-        if (!freshSnap.exists()) {
-          const initialPayload = {
-            sessionId: sessionId,
-            uid: window.fb.auth?.currentUser?.uid || "Unknown",
-            staffName: String(window.userProfile?.cleanName || "Unknown").trim(),
-            phone: String(window.userProfile?.phone || "").trim(),
-            division: String(window.userProfile?.division || "BTR_W").trim(),
-            range: String(window.userProfile?.range || "").trim(),
-            beat: String(window.userProfile?.beat || "").trim(),
-            monthKey: fallbackMonthKey,
-            bbox: bboxPayload,
-            coordinateOrder: "LAT_LNG",
-            rawTrackEncoded: polyline.encode(canonicalLatLngCoords),
-            clipStatus: "PENDING",
-            createdAt: window.fb.serverTimestamp(),
-            updatedAt: window.fb.serverTimestamp()
-          };
-          transaction.set(targetDocRef, initialPayload);
-        }
-      });
+    // 🛡️ RECOVERY SOURCE INTEGRITY CHECK
+    if (isRecoveryRun && !existingData) {
+      throw new Error(`Recovery source missing: ${sessionId}`);
     }
 
-    // ============================================================
-    // ✂️ STAGE 2: GEOMETRIC CALCULATIONS (RECURSIVE SUPPORT)
-    // ============================================================
+    // 3. AUTHORITY CONTEXT
+    const effectiveRange = String(isRecoveryRun ? existingData?.range : window.userProfile?.range || "").trim();
+    const effectiveDivision = String(isRecoveryRun ? existingData?.division : window.userProfile?.division || "").trim();
+
+    if (!effectiveRange || !effectiveDivision) {
+      throw new Error("Missing authority context - cannot authorize track storage.");
+    }
+
+    // 4. GEOMETRIC CLIPPING
     const geoJsonReader = new jsts.io.GeoJSONReader();
     const lineGeom = geoJsonReader.read({ type: "LineString", coordinates: canonicalLngLatCoords });
-    const lineEnvelope = lineGeom.getEnvelopeInternal();
-
-    const candidateFeatures = window.compartmentSpatialIndex.query(lineEnvelope).toArray();
-    window.bench.candidateCounts.push(candidateFeatures.length);
+    const candidateFeatures = window.compartmentSpatialIndex.query(lineGeom.getEnvelopeInternal()).toArray();
 
     const embeddedTracksMap = {};
     const crossedCompartmentsSet = new Set();
 
     const extractCoords = (coords) => coords.map(c => [Number(c.y), Number(c.x)]);
-
     const collectLineSegments = (geom, localCoordsArray) => {
       if (!geom || geom.isEmpty()) return;
       const geomType = geom.getGeometryType();
-
       if (geomType === "LineString") {
         const processed = extractCoords(geom.getCoordinates());
         if (processed.length >= 2) localCoordsArray.push(processed);
       } else if (geomType === "MultiLineString" || geomType === "GeometryCollection") {
-        const count = geom.getNumGeometries();
-        for (let i = 0; i < count; i++) {
-          collectLineSegments(geom.getGeometryN(i), localCoordsArray);
-        }
+        for (let i = 0; i < geom.getNumGeometries(); i++) collectLineSegments(geom.getGeometryN(i), localCoordsArray);
       }
     };
 
     for (const candidate of candidateFeatures) {
-      window.bench.candidatesExamined++;
       const { feature, polygonGeom } = candidate;
-      
-      const t1 = performance.now();
-      const isIntersecting = lineGeom.intersects(polygonGeom);
-      window.bench.jstsPureTime += (performance.now() - t1);
-
-      if (!isIntersecting) continue;
-      window.bench.geometryIntersections++;
+      if (!lineGeom.intersects(polygonGeom)) continue;
 
       const props = feature.properties || {};
-      const rawCompName = String(props.compartment || props.Compartment || props.compartmen || "").trim();
-      if (!rawCompName) continue;
+      const compRange = String(props.range || props.Range || "").trim();
+      const compDivision = String(props.division || props.Division || "").trim();
+      const compName = String(props.compartment || props.Compartment || props.compartmen || "").trim();
+      const compBeat = String(props.beat || props.Beat || "").trim();
 
-      window.bench.intersectsTrue++;
+      // Enforce Range Authorization
+      if (compRange !== effectiveRange || compDivision !== effectiveDivision) continue;
 
-      const t2 = performance.now();
       const clipped = lineGeom.intersection(polygonGeom);
-      window.bench.jstsPureTime += (performance.now() - t2);
-
       if (clipped.isEmpty()) continue;
-      window.bench.nonEmptyIntersections++;
 
       const localCoordsArray = [];
       collectLineSegments(clipped, localCoordsArray);
 
       if (localCoordsArray.length > 0) {
         const encodedStrings = localCoordsArray.map(seg => polyline.encode(seg));
-        const normalizedCompId = rawCompName.trim().toUpperCase().replace(/\s+/g, "_");
-        embeddedTracksMap[normalizedCompId] = encodedStrings;
-        crossedCompartmentsSet.add(rawCompName);
+        const normalizedCompId = compName.trim().toUpperCase().replace(/\s+/g, "_");
+        
+        // 5. FRAGMENT MERGING
+        if (!embeddedTracksMap[normalizedCompId]) {
+          embeddedTracksMap[normalizedCompId] = {
+            beat: compBeat,
+            range: compRange,
+            division: compDivision,
+            tracks: []
+          };
+        }
+        embeddedTracksMap[normalizedCompId].tracks.push(...encodedStrings);
+        crossedCompartmentsSet.add(compName);
       }
     }
 
-    // ============================================================
-    // 💾 STAGE 3: COMMIT
-    // ============================================================
-    const mergeUpdatePayload = {
+    // 6. COMMIT
+    await window.fb.updateDoc(targetDocRef, {
       clipStatus: "SUCCESS",
+      compartments: Array.from(crossedCompartmentsSet),
+      tracks: embeddedTracksMap,
       updatedAt: window.fb.serverTimestamp()
-    };
-
-    if (crossedCompartmentsSet.size > 0) {
-      mergeUpdatePayload.compartments = Array.from(crossedCompartmentsSet);
-      mergeUpdatePayload.tracks = embeddedTracksMap;
-    }
-
-    await window.fb.updateDoc(targetDocRef, mergeUpdatePayload);
-    
-    const fullDocSnap = await window.fb.getDoc(targetDocRef);
-    window.bench.docSizes.push(new Blob([JSON.stringify(fullDocSnap.data())]).size);
-    window.bench.clipTimes.push(performance.now() - clipStart);
+    });
 
     finalizeSessionLifecycle();
-    console.log(`🏁 FINISH - Sync routine complete for session [${sessionId}]`);
-
+    console.log(`🏁 FINISH - Saved [${crossedCompartmentsSet.size}] authorized segments.`);
   } catch (err) {
     console.error("❌ CRITICAL RECOVERY FAULT:", err);
     try {
-      await window.fb.updateDoc(window.fb.doc(window.db, "history", sessionId), {
-        clipStatus: "FAILED_CRASHED",
-        updatedAt: window.fb.serverTimestamp()
-      });
+      await window.fb.updateDoc(targetDocRef, { clipStatus: "FAILED_CRASHED", updatedAt: window.fb.serverTimestamp() });
     } catch(dbErr) {}
   } finally {
-    console.groupEnd(); 
+    console.groupEnd();
   }
-}
-    function finalizeSessionLifecycle() {
+}    function finalizeSessionLifecycle() {
 
   window.currentSessionId = null;
 
@@ -7626,14 +7553,7 @@ async function showMonthHistory() {
 
     console.log("📍 ACTIVE INTERFACE FILTERS", { activeLevel, division, range, beat, compartment });
 
-    try {
-      if (window.historyLayer) {
-        window.historyLayer.clearLayers();
-        console.log("🧹 Cleared previous history map layers.");
-      }
-    } catch (e) {
-      console.warn("⚠️ Failed clearing history layer", e);
-    }
+    if (window.historyLayer) window.historyLayer.clearLayers();
 
     const historyRef = window.fb.collection(window.db, "history");
     const q = window.fb.query(
@@ -7654,37 +7574,39 @@ async function showMonthHistory() {
       try {
         const data = docSnap.data() || {};
 
-        // 🛡️ VIEWPORT BBOX OPTIMIZATION: Prune non-visible documents early
+        // 🛡️ BBOX OPTIMIZATION (Disable if you need to debug missing data while zoomed out)
         if (window.map && data.bbox) {
           const mapBounds = window.map.getBounds();
           const trackBox = L.latLngBounds([data.bbox.minLat, data.bbox.minLng], [data.bbox.maxLat, data.bbox.maxLng]);
           if (!mapBounds.intersects(trackBox)) return;
         }
 
-        const docDivision = String(data.division || "").trim();
-        const docRange = String(data.range || "").trim();
-        const docBeat = String(data.beat || "").trim();
-        const docCompartments = Array.isArray(data.compartments) ? data.compartments : [];
         const tracksObject = data.tracks || {};
 
-        let includeDocument = false;
-        if (activeLevel === "compartment") {
-          includeDocument = docCompartments.some(c => String(c).trim().toUpperCase() === compartment.trim().toUpperCase());
-        } else if (activeLevel === "beat") {
-          includeDocument = typeof normalizeBeatName === "function" ? normalizeBeatName(docBeat) === normalizeBeatName(beat) : docBeat === beat;
-        } else if (activeLevel === "range") {
-          includeDocument = docRange === range;
-        } else if (activeLevel === "division") {
-          includeDocument = typeof normalizeDivision === "function" ? normalizeDivision(docDivision) === normalizeDivision(division) : docDivision === division;
-        } else {
-          includeDocument = true;
-        }
+        // ⚡ GRANULAR FILTERING
+        Object.entries(tracksObject).forEach(([compId, compObj]) => {
+          if (!compObj || !Array.isArray(compObj.tracks)) return;
 
-        if (includeDocument) {
-          Object.values(tracksObject).forEach(segmentArray => {
-            if (Array.isArray(segmentArray)) tracksToRender.push(...segmentArray);
-          });
-        }
+          let isMatch = false;
+
+          if (activeLevel === "compartment") {
+            const selectedCompId = compartment.trim().toUpperCase().replace(/\s+/g, "_");
+            isMatch = compId === selectedCompId;
+          } else if (activeLevel === "beat") {
+            const b = compObj.beat || "";
+            isMatch = typeof normalizeBeatName === "function" ? normalizeBeatName(b) === normalizeBeatName(beat) : b === beat;
+          } else if (activeLevel === "range") {
+            isMatch = compObj.range === range;
+          } else if (activeLevel === "division") {
+            const d = compObj.division || "";
+            isMatch = typeof normalizeDivision === "function" ? normalizeDivision(d) === normalizeDivision(division) : d === division;
+          } else {
+            isMatch = true;
+          }
+
+          if (isMatch) tracksToRender.push(...compObj.tracks);
+        });
+
       } catch (err) {
         console.warn("❌ Skipped corrupt history document", err);
       }
@@ -7698,16 +7620,17 @@ async function showMonthHistory() {
       return;
     }
 
+    // 🎯 DYNAMIC SPATIAL MASKING
+    const applySpatialMask = (activeLevel === "compartment");
     const selectedGeometry = window.currentSelectedGeometry;
-    const selectedFeature = selectedGeometry ? { type: "Feature", geometry: selectedGeometry, properties: {} } : null;
+    const selectedFeature = (applySpatialMask && selectedGeometry) 
+      ? { type: "Feature", geometry: selectedGeometry, properties: {} } 
+      : null;
 
     let renderedCount = 0;
     let currentIndex = 0;
     const batchSize = 250;
 
-    // ============================================================
-    // ⚡ ASYNCHRONOUS BATCH RENDERING (requestAnimationFrame)
-    // ============================================================
     function renderBatch() {
       const end = Math.min(currentIndex + batchSize, tracksToRender.length);
 
@@ -7719,6 +7642,7 @@ async function showMonthHistory() {
           const coords = polyline.decode(encoded);
           if (!coords || coords.length < 2) continue;
 
+          // 🛡️ Apply intersection check ONLY when compartment level is active
           if (selectedFeature) {
             try {
               const geoLine = turf.lineString(coords.map(c => [Number(c[1]), Number(c[0])]));
@@ -7728,32 +7652,23 @@ async function showMonthHistory() {
             }
           }
 
-          // 🛡️ FIXED: RENDERER FALLBACK SAFETY
           const line = L.polyline(coords, {
             renderer: window.historyRenderer || L.canvas({ padding: 0.5 }),
             color: "#ff0000",
             weight: 4,
-            opacity: 0.9,
-            smoothFactor: 0,
-            lineCap: "round",
-            lineJoin: "round"
+            opacity: 0.9
           });
 
-          if (!window.historyLayer) {
-            console.error("❌ historyLayer missing.");
-            return;
-          }
+          if (!window.historyLayer) return console.error("❌ historyLayer missing.");
           window.historyLayer.addLayer(line);
           renderedCount++;
-        } catch (err) {
-          console.error(`❌ Failed rendering track ${currentIndex}`, err);
-        }
+        } catch (err) {}
       }
 
       if (currentIndex < tracksToRender.length) {
         requestAnimationFrame(renderBatch);
       } else {
-        console.log(`✅ OPERATION SUMMARY: Rendered [${renderedCount}] track segments.`);
+        console.log(`✅ OPERATION SUMMARY: Rendered [${renderedCount}] tracks.`);
         try {
           const bounds = window.historyLayer.getBounds();
           if (bounds && bounds.isValid()) map.fitBounds(bounds, { padding: [20, 20] });
@@ -7761,16 +7676,12 @@ async function showMonthHistory() {
         console.groupEnd();
       }
     }
-    
-    // Start the process
     requestAnimationFrame(renderBatch);
-
   } catch (err) {
     console.error("❌ showMonthHistory failure", err);
-    try { console.groupEnd(); } catch (e) {}
+    console.groupEnd();
   }
-}
-    function compileGreenGuardLoadTestMetrics() {
+}    function compileGreenGuardLoadTestMetrics() {
   const b = window.bench;
   if (!b || b.clipTimes.length === 0) {
     console.error("❌ No metrics caught in memory logs.");
