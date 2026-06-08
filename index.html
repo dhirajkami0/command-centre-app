@@ -7316,345 +7316,184 @@ console.trace(
 // FINAL ENTERPRISE VERSION
 // ======================================
 
-async function appendTrackToGeometries(simplifiedLine){
+async function appendTrackToGeometries(simplifiedLine) {
+  console.group("🚀 appendTrackToGeometries CLIPPING ENGINE");
+  console.log("📥 START - Received line feature for evaluation.");
 
-  console.log(
-    "🚀 appendTrackToGeometries START"
-  );
-
-  try{
-
-    if(
+  try {
+    if (
       !simplifiedLine ||
       !simplifiedLine.geometry ||
-      !Array.isArray(
-        simplifiedLine.geometry.coordinates
-      )
-    ){
+      !Array.isArray(simplifiedLine.geometry.coordinates)
+    ) {
+      console.warn("❌ Aborted: Invalid or empty simplifiedLine geometry structure.");
+      console.groupEnd();
       return;
+    }
+
+    // ============================================================
+    // 🔍 FIXING THE DETECTOR: EXPLICIT BOUNDS PROFILE SANITY CHECK
+    // ============================================================
+    const rawCoords = simplifiedLine.geometry.coordinates;
+    console.log("📋 RAW LINE COORDS FIRST 5:", JSON.stringify(rawCoords.slice(0, 5)));
+
+    let processedLineFeature;
+    const firstCoord = rawCoords[0];
+
+    // West Bengal / Alipurduar Context: Lat is around 26.x, Lng is around 89.x
+    // We check if index 0 is close to Lat (20-28) and index 1 is close to Lng (85-93)
+    const isFirstValueLatitude = (firstCoord[0] > 20 && firstCoord[0] < 28) && (firstCoord[1] > 85 && firstCoord[1] < 93);
+
+    if (isFirstValueLatitude) {
+      console.log("🔄 Verified: Array layout is [Lat, Lng]. Transforming to GeoJSON standard [Lng, Lat] for JSTS space...");
+      processedLineFeature = {
+        type: "Feature",
+        geometry: {
+          type: "LineString",
+          coordinates: rawCoords.map(c => [Number(c[1]), Number(c[0])])
+        }
+      };
+    } else {
+      console.log("↔️ Verified: Array layout is already standard [Lng, Lat]. Proceeding safely into JSTS space.");
+      processedLineFeature = JSON.parse(JSON.stringify(simplifiedLine));
     }
 
     const d = new Date();
+    const monthKey = `${d.getFullYear()}_${String(d.getMonth() + 1).padStart(2, "0")}`;
 
-    const monthKey =
-      `${d.getFullYear()}_${
-        String(
-          d.getMonth() + 1
-        ).padStart(2,"0")
-      }`;
+    const compartments = window.allCompartmentFeatures || [];
+    console.log(`📦 Loaded [${compartments.length}] compartment polygon boundary configurations.`);
 
-    const compartments =
-      window.allCompartmentFeatures || [];
-
-    console.log(
-      "📦 Compartments:",
-      compartments.length
-    );
-
-    if(
-      compartments.length === 0
-    ){
-      console.warn(
-        "❌ No compartment features loaded"
-      );
+    if (compartments.length === 0) {
+      console.warn("❌ Aborted: window.allCompartmentFeatures array contains zero nodes.");
+      console.groupEnd();
       return;
     }
 
-    const geoJsonReader =
-      new jsts.io.GeoJSONReader();
+    const geoJsonReader = new jsts.io.GeoJSONReader();
+    let processingMatches = 0;
 
-    for(const feature of compartments){
+    for (const feature of compartments) {
+      try {
+        if (!feature || !feature.geometry) continue;
 
-      try{
+        const props = feature.properties || {};
+        const compartment = String(props.compartment || props.Compartment || props.compartmen || "").trim();
 
-        if(
-          !feature ||
-          !feature.geometry
-        ){
-          continue;
-        }
+        if (!compartment) continue;
 
-        const props =
-          feature.properties || {};
+        const beat = String(props.beat || props.Beat || "").trim();
+        const range = String(props.range || props.Range || "").trim();
+        const division = String(props.division || props.Division || "").trim();
 
-        const compartment =
-          String(
-            props.compartment ||
-            props.Compartment ||
-            props.compartmen ||
-            ""
-          ).trim();
-
-        if(!compartment){
-          continue;
-        }
-
-        const beat =
-          String(
-            props.beat ||
-            props.Beat ||
-            ""
-          ).trim();
-
-        const range =
-          String(
-            props.range ||
-            props.Range ||
-            ""
-          ).trim();
-
-        const division =
-          String(
-            props.division ||
-            props.Division ||
-            ""
-          ).trim();
-
-        const geometryId =
-          `compartment_${
-            compartment.replace(
-              /\s+/g,
-              "_"
-            )
-          }`;
-
+        const geometryId = `compartment_${compartment.replace(/\s+/g, "_")}`;
         let clippedSegments = [];
 
-        try{
+        // Parse normalized structures directly into the JSTS topology grid
+        const lineGeom = geoJsonReader.read(processedLineFeature.geometry);
+        const polygonGeom = geoJsonReader.read(feature.geometry);
 
-          const lineGeom =
-            geoJsonReader.read(
-              simplifiedLine
-            );
-
-          const polygonGeom =
-            geoJsonReader.read(
-              feature
-            );
-
-          if(
-            !lineGeom.intersects(
-              polygonGeom
-            )
-          ){
-            continue;
-          }
-
-          const clipped =
-            lineGeom.intersection(
-              polygonGeom
-            );
-
-          if(
-            clipped.isEmpty()
-          ){
-            continue;
-          }
-
-          const type =
-            clipped.getGeometryType();
-
-          console.log(
-            "✂",
-            compartment,
-            type
-          );
-
-          if(
-            type === "LineString"
-          ){
-
-            const coords = [];
-
-            const seq =
-              clipped.getCoordinates();
-
-            for(const c of seq){
-
-              coords.push([
-                Number(c.y),
-                Number(c.x)
-              ]);
-
-            }
-
-            if(
-              coords.length >= 2
-            ){
-
-              clippedSegments.push(
-                coords
-              );
-
-            }
-
-          }
-
-          else if(
-            type === "MultiLineString"
-          ){
-
-            const count =
-              clipped.getNumGeometries();
-
-            for(
-              let i = 0;
-              i < count;
-              i++
-            ){
-
-              const line =
-                clipped.getGeometryN(i);
-
-              const seq =
-                line.getCoordinates();
-
-              const coords = [];
-
-              for(
-                const c of seq
-              ){
-
-                coords.push([
-                  Number(c.y),
-                  Number(c.x)
-                ]);
-
-              }
-
-              if(
-                coords.length >= 2
-              ){
-
-                clippedSegments.push(
-                  coords
-                );
-
-              }
-
-            }
-
-          }
-
+        // 🧪 TOPO PLANE INTERSECTION CHECK
+        const intersects = lineGeom.intersects(polygonGeom);
+        
+        if (!intersects) {
+          continue; // Disjoint components break early
         }
 
-        catch(err){
+        processingMatches++;
+        console.group(`✂️ HOOK: CLIPPING INTERSECTION FOR COMPARTMENT -> "${compartment}"`);
+        console.log(`📊 GEOMETRY TYPE: ${feature.geometry.type}`);
 
-          console.warn(
-            "JSTS clipping failed",
-            compartment,
-            err
-          );
+        // Compute strict geometric cut-out footprint inside polygon area boundaries
+        const clipped = lineGeom.intersection(polygonGeom);
+        console.log(`📐 JSTS OUTPUT TOPOLOGY: ${clipped.getGeometryType()} | IsEmpty: ${clipped.isEmpty()}`);
 
-          continue;
-
-        }
-
-        console.log(
-          "✂ VALID SEGMENTS:",
-          clippedSegments.length,
-          compartment
-        );
-
-        if(
-          clippedSegments.length === 0
-        ){
+        if (clipped.isEmpty()) {
+          console.log("⏩ Skipping: Target fragment yields empty area map intersection.");
+          console.groupEnd();
           continue;
         }
 
-        const encodedSegments =
-          clippedSegments.map(
-            seg =>
-              polyline.encode(seg)
-          );
+        const type = clipped.getGeometryType();
 
-        const ref =
-          window.fb.doc(
-            window.db,
-            "geometry_history",
-            monthKey,
-            "data",
-            geometryId
-          );
+        // Maps JSTS plane outputs (Y=Lat, X=Lng) directly back to your standard database [Lat, Lng] configuration
+        const processJstsCoordinates = (jstsCoords) => {
+          const out = [];
+          for (const c of jstsCoords) {
+            out.push([Number(c.y), Number(c.x)]);
+          }
+          return out;
+        };
 
-        const snap =
-          await window.fb.getDoc(
-            ref
-          );
+        // ============================================================
+        // 🔀 PARSE GEOMETRICAL SLICES
+        // ============================================================
+        if (type === "LineString") {
+          const coords = processJstsCoordinates(clipped.getCoordinates());
+          if (coords.length >= 2) {
+            clippedSegments.push(coords);
+          }
+        } 
+        else if (type === "MultiLineString") {
+          const count = clipped.getNumGeometries();
+          for (let i = 0; i < count; i++) {
+            const line = clipped.getGeometryN(i);
+            const coords = processJstsCoordinates(line.getCoordinates());
+            if (coords.length >= 2) {
+              clippedSegments.push(coords);
+            }
+          }
+        }
+
+        console.log(`✂️ VALID FRAGMENTS RETAINED FOR WRITE: ${clippedSegments.length}`);
+        
+        if (clippedSegments.length === 0) {
+          console.groupEnd();
+          continue;
+        }
+
+        // Encode coordinates array cleanly into Google polyline strings
+        const encodedSegments = clippedSegments.map(seg => polyline.encode(seg));
+
+        // Sync and append track chunks to Firestore
+        const ref = window.fb.doc(window.db, "geometry_history", monthKey, "data", geometryId);
+        const snap = await window.fb.getDoc(ref);
 
         let tracks = [];
-
-        if(
-          snap.exists()
-        ){
-
-          tracks =
-            snap.data()?.tracks || [];
-
+        if (snap.exists()) {
+          tracks = snap.data()?.tracks || [];
         }
 
-        tracks.push(
-          ...encodedSegments
-        );
+        tracks.push(...encodedSegments);
 
-        await window.fb.setDoc(
-
-          ref,
-
-          {
-
-            geometryId,
-
-            division,
-
-            range,
-
-            beat,
-
-            compartment,
-
-            monthKey,
-
-            tracks,
-
-            updatedAt:
-              Date.now()
-
-          }
-
-        );
-
-        console.log(
-          "💾 SAVED:",
+        await window.fb.setDoc(ref, {
           geometryId,
-          "| segments:",
-          clippedSegments.length
-        );
+          division,
+          range,
+          beat,
+          compartment,
+          monthKey,
+          tracks,
+          updatedAt: Date.now()
+        }, { merge: true });
 
+        console.log(`💾 STORAGE SUCCESS: Chunks committed to document key: [${geometryId}]`);
+        console.groupEnd();
+
+      } catch (err) {
+        console.warn(`❌ Inner loop calculation slip on compartment boundary processing step:`, err);
+        if (typeof console.groupEnd === 'function') console.groupEnd();
       }
-
-      catch(err){
-
-        console.warn(
-          "Compartment save failed",
-          err
-        );
-
-      }
-
     }
 
+    console.log(`🏁 FINISH - Alignment pipeline complete. Total true intersections parsed: ${processingMatches}`);
+
+  } catch (err) {
+    console.error("❌ Critical global loop error within appendTrackToGeometries runtime loop:", err);
+  } catch(e){}
+  finally {
+    console.groupEnd();
   }
-
-  catch(err){
-
-    console.error(
-      "appendTrackToGeometries failed",
-      err
-    );
-
-  }
-
 }
     async function toggleMonthHistory(){
 
