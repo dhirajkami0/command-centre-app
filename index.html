@@ -8714,6 +8714,10 @@ async function getAnalyticsSummary(gridIds, monthKey) {
   // Calculate final unique visited count
   const visitedCells = uniqueVisitedCells.size;
 
+  console.log("📊 UNIQUE VISITED CELLS:", uniqueVisitedCells.size);
+  console.log("📊 TOTAL DISTANCE:", distanceMeters);
+  console.log("📊 TOTAL VISITS:", visitCount);
+
   return {
     compartments: gridIds.length,
     totalCells,
