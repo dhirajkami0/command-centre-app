@@ -8731,6 +8731,12 @@ if (!window.historyLayer) {
         requestAnimationFrame(renderBatch);
       } else {
         console.log(`✅ OPERATION SUMMARY: Rendered [${renderedCount}] tracks.`);
+    console.log(
+  "🔥 SHOWING POPUP",
+  analyticsSummary,
+  popupTitle
+);
+        
         showAnalyticsPopup(
   analyticsSummary,
   popupTitle
@@ -8749,7 +8755,9 @@ if (!window.historyLayer) {
   summary,
   title
 ){
-
+ console.log(
+    "🔥 POPUP FUNCTION CALLED"
+  );
   alert(
 
 `${title}
