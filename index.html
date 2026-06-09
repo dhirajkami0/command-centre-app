@@ -7261,7 +7261,7 @@ async function appendTrackToGeometries(simplifiedLine, options = { sessionId: nu
           uid: window.fb.auth?.currentUser?.uid || "Unknown",
           staffName: String(window.userProfile?.cleanName || "Unknown").trim(),
           phone: String(window.userProfile?.phone || "").trim(),
-          division: String(window.userProfile?.division || "BTR_W").trim(),
+          division: normalizeDivision(window.userProfile?.division || "BTR_W"), // Store normalized
           range: String(window.userProfile?.range || "").trim(),
           beat: String(window.userProfile?.beat || "").trim(),
           monthKey: fallbackMonthKey,
@@ -7284,13 +7284,13 @@ async function appendTrackToGeometries(simplifiedLine, options = { sessionId: nu
 
     // 3. AUTHORITY CONTEXT
     const effectiveRange = String(isRecoveryRun ? existingData?.range : window.userProfile?.range || "").trim();
-    const effectiveDivision = String(isRecoveryRun ? existingData?.division : window.userProfile?.division || "").trim();
+    const effectiveDivision = normalizeDivision(isRecoveryRun ? existingData?.division : window.userProfile?.division || "");
 
     if (!effectiveRange || !effectiveDivision) {
       throw new Error("Missing authority context - cannot authorize track storage.");
     }
 
-    // 4. GEOMETRIC CLIPPING (Forced loop for validation)
+    // 4. GEOMETRIC CLIPPING
     const geoJsonReader = new jsts.io.GeoJSONReader();
     const lineGeom = geoJsonReader.read({ type: "LineString", coordinates: canonicalLngLatCoords });
     
@@ -7313,10 +7313,11 @@ async function appendTrackToGeometries(simplifiedLine, options = { sessionId: nu
     for (const feature of allFeatures) {
       const props = feature.properties || {};
       const compRange = String(props.range || props.Range || "").trim();
-      const compDivision = String(props.division || props.Division || "").trim();
-      const compName = String(props.compartment || props.Compartment || props.compartmen || props.Beat || "").trim();
+      const compDivision = normalizeDivision(props.division || props.Division || "");
+      const compName = String(props.compartment || props.Compartment || props.compartmen || "").trim();
       const compBeat = String(props.beat || props.Beat || "").trim();
 
+      // Ensure compartment name exists and auth matches
       if (!compName) continue;
       if (compRange !== effectiveRange || compDivision !== effectiveDivision) continue;
 
@@ -7337,7 +7338,7 @@ async function appendTrackToGeometries(simplifiedLine, options = { sessionId: nu
         const encodedStrings = localCoordsArray.map(seg => polyline.encode(seg));
         const normalizedCompId = compName.trim().toUpperCase().replace(/\s+/g, "_");
         
-        // 5. FRAGMENT MERGING (Safe Object Structure)
+        // 5. FRAGMENT MERGING
         if (!embeddedTracksMap[normalizedCompId]) {
           embeddedTracksMap[normalizedCompId] = {
             beat: compBeat,
@@ -7368,6 +7369,13 @@ async function appendTrackToGeometries(simplifiedLine, options = { sessionId: nu
     } catch(dbErr) {}
   } finally {
     console.groupEnd();
+  }
+}
+
+function finalizeSessionLifecycle() {
+  window.currentSessionId = null;
+  if (window.localStorage) {
+    window.localStorage.removeItem("sessionId");
   }
 }
 
