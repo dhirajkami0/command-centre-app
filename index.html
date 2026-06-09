@@ -7278,7 +7278,7 @@ console.trace(
 
   }
 }
-    async function buildAndStoreMasterGrid() {
+async function buildAndStoreMasterGrid() {
   console.group(
     "🔲 BUILDING MASTER GRID"
   );
@@ -7357,13 +7357,13 @@ console.trace(
             ""
           );
 
+        // Stable gridId using hierarchy path instead of featureIndex
         const gridId =
           [
             division,
             range,
             beat,
-            compartment,
-            featureIndex
+            compartment
           ]
           .filter(Boolean)
           .join("_")
@@ -8343,8 +8343,7 @@ async function updateMonthlyAnalytics(
     setTimeout(executeGreenGuardSelfHealingWorker, 60000 * 5);
   }
 }
-   async function rebuildSpatialIndex() {
-
+async function rebuildSpatialIndex() {
   console.log(
     "🛠 Rebuilding STRtree with JSTS Geometry objects..."
   );
@@ -8420,13 +8419,13 @@ async function updateMonthlyAnalytics(
       const normalizedCompId =
         compartment;
 
+      // Stable gridId using hierarchy path instead of featureIndex
       const gridId =
         [
           division,
           range,
           beat,
-          compartment,
-          featureIndex
+          compartment
         ]
         .filter(Boolean)
         .join("_")
