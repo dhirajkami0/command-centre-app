@@ -7648,10 +7648,37 @@ async function appendTrackToGeometries(simplifiedLine, options = { sessionId: nu
     existingData
   }
 );
-    if (!effectiveRange || !effectiveDivision) {
-      throw new Error("Missing authority context - cannot authorize track storage.");
-    }
+if (
+  userRole === "DFO" ||
+  userRole === "ADFO"
+) {
 
+  if (!effectiveDivision) {
+
+    throw new Error(
+      "Missing division context."
+    );
+
+  }
+
+}
+
+else if (
+  userRole !== "ADMIN"
+) {
+
+  if (
+    !effectiveRange ||
+    !effectiveDivision
+  ) {
+
+    throw new Error(
+      "Missing authority context."
+    );
+
+  }
+
+}
     // 4. GEOMETRIC CLIPPING
     const geoJsonReader = new jsts.io.GeoJSONReader();
     const lineGeom = geoJsonReader.read({ type: "LineString", coordinates: canonicalLngLatCoords });
