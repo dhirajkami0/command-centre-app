@@ -7235,7 +7235,7 @@ async function buildAndStoreMasterGrid() {
     let totalGridCells = 0;
     let compartmentsSaved = 0;
 
-    for (const feature of allFeatures) {
+    for (const [featureIndex, feature] of allFeatures.entries()) {
       try {
         const props =
           feature?.properties || {};
@@ -7284,7 +7284,8 @@ async function buildAndStoreMasterGrid() {
             division,
             range,
             beat,
-            compartment
+            compartment,
+            featureIndex
           ]
           .filter(Boolean)
           .join("_")
