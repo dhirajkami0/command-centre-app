@@ -7379,13 +7379,7 @@ function finalizeSessionLifecycle() {
   }
 }
 
-function finalizeSessionLifecycle() {
-  window.currentSessionId = null;
-  if (window.localStorage) {
-    window.localStorage.removeItem("sessionId");
-  }
-}
-}
+
     async function executeGreenGuardSelfHealingWorker() {
   const userProfile = window.userProfile || {};
   const userRole = String(userProfile.role || "STAFF").trim().toUpperCase();
