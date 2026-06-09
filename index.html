@@ -7023,6 +7023,7 @@ async function preloadAllCompartments(){
 console.trace(
   "PRELOAD_COMPARTMENT_ CALLED"
 );
+
   try{
 
     console.log(
@@ -7187,12 +7188,34 @@ console.trace(
 
     }
 
-console.log(
-  "✅ PRELOAD COMPLETE:",
-  window.allCompartmentFeatures.length
-);
+    console.log(
+      "✅ PRELOAD COMPLETE:",
+      window.allCompartmentFeatures.length
+    );
 
-await rebuildSpatialIndex();
+    await rebuildSpatialIndex();
+
+    // 🔥 BACKGROUND ONLY
+    loadMasterGrid()
+    .then(() => {
+
+      console.log(
+        "✅ GRID LOADED",
+        Object.keys(
+          window.masterGrid || {}
+        ).length
+      );
+
+    })
+    .catch(err => {
+
+      console.error(
+        "❌ loadMasterGrid failed",
+        err
+      );
+
+    });
+
   }
 
   catch(err){
