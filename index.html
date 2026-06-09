@@ -7215,7 +7215,7 @@ async function appendTrackToGeometries(simplifiedLine, options = { sessionId: nu
     window.bench = { clipTimes: [], docSizes: [], candidateCounts: [], candidatesExamined: 0, geometryIntersections: 0, intersectsTrue: 0, nonEmptyIntersections: 0, jstsPureTime: 0 };
   }
 
-  // 🛡️ VALIDATE SPATIAL INDEX
+  // 🛡️ VALIDATE SPATIAL INDEX (Mandatory)
   if (!window.compartmentSpatialIndexReady || !window.compartmentSpatialIndex) {
     throw new Error("🚨 SPATIAL RUNTIME CRASH: Spatial index unavailable");
   }
@@ -7290,15 +7290,14 @@ async function appendTrackToGeometries(simplifiedLine, options = { sessionId: nu
       throw new Error("Missing authority context - cannot authorize track storage.");
     }
 
-    // 4. GEOMETRIC CLIPPING
+    // 4. GEOMETRIC CLIPPING (Forced loop for validation)
     const geoJsonReader = new jsts.io.GeoJSONReader();
     const lineGeom = geoJsonReader.read({ type: "LineString", coordinates: canonicalLngLatCoords });
-    const candidateFeatures = window.compartmentSpatialIndex.query(lineGeom.getEnvelopeInternal()).toArray();
-
+    
     const embeddedTracksMap = {};
     const crossedCompartmentsSet = new Set();
-
     const extractCoords = (coords) => coords.map(c => [Number(c.y), Number(c.x)]);
+    
     const collectLineSegments = (geom, localCoordsArray) => {
       if (!geom || geom.isEmpty()) return;
       const geomType = geom.getGeometryType();
@@ -7310,21 +7309,26 @@ async function appendTrackToGeometries(simplifiedLine, options = { sessionId: nu
       }
     };
 
-    for (const candidate of candidateFeatures) {
-      const { feature, polygonGeom } = candidate;
-      if (!lineGeom.intersects(polygonGeom)) continue;
-
+    const allFeatures = window.allCompartmentFeatures || [];
+    for (const feature of allFeatures) {
       const props = feature.properties || {};
       const compRange = String(props.range || props.Range || "").trim();
       const compDivision = String(props.division || props.Division || "").trim();
-      const compName = String(props.compartment || props.Compartment || props.compartmen || "").trim();
+      const compName = String(props.compartment || props.Compartment || props.compartmen || props.Beat || "").trim();
       const compBeat = String(props.beat || props.Beat || "").trim();
 
-      // Enforce Range Authorization
+      if (!compName) continue;
       if (compRange !== effectiveRange || compDivision !== effectiveDivision) continue;
 
+      let polygonGeom;
+      try {
+        polygonGeom = geoJsonReader.read(feature.geometry);
+      } catch (e) { continue; }
+
+      if (!lineGeom.intersects(polygonGeom)) continue;
+
       const clipped = lineGeom.intersection(polygonGeom);
-      if (clipped.isEmpty()) continue;
+      if (!clipped || clipped.isEmpty()) continue;
 
       const localCoordsArray = [];
       collectLineSegments(clipped, localCoordsArray);
@@ -7333,7 +7337,7 @@ async function appendTrackToGeometries(simplifiedLine, options = { sessionId: nu
         const encodedStrings = localCoordsArray.map(seg => polyline.encode(seg));
         const normalizedCompId = compName.trim().toUpperCase().replace(/\s+/g, "_");
         
-        // 5. FRAGMENT MERGING
+        // 5. FRAGMENT MERGING (Safe Object Structure)
         if (!embeddedTracksMap[normalizedCompId]) {
           embeddedTracksMap[normalizedCompId] = {
             beat: compBeat,
@@ -7365,16 +7369,14 @@ async function appendTrackToGeometries(simplifiedLine, options = { sessionId: nu
   } finally {
     console.groupEnd();
   }
-}    function finalizeSessionLifecycle() {
+}
 
+function finalizeSessionLifecycle() {
   window.currentSessionId = null;
-
   if (window.localStorage) {
-
-    window.localStorage.removeItem(
-      "sessionId"
-    );
+    window.localStorage.removeItem("sessionId");
   }
+}
 }
     async function executeGreenGuardSelfHealingWorker() {
   const userProfile = window.userProfile || {};
