@@ -8652,7 +8652,68 @@ async function showMonthHistory() {
     console.groupEnd();
   }
 }
+async function getAnalyticsSummary(gridIds, monthKey) {
+  let totalCells = 0;
+  let areaHa = 0;
+  let distanceMeters = 0;
+  let visitCount = 0;
+  
+  // Use a Set to ensure unique cell counting across aggregated compartments
+  const uniqueVisitedCells = new Set();
 
+  // 1. Calculate static totals from masterGrid immediately
+  for (const gridId of gridIds) {
+    const master = window.masterGrid?.[gridId];
+    if (master) {
+      totalCells += master.totalCells || 0;
+      areaHa += master.actualAreaHa || 0;
+    }
+  }
+
+  // 2. Fetch all analytics documents in parallel using Promise.allSettled
+  const promises = gridIds.map(gridId => 
+    window.fb.getDoc(
+      window.fb.doc(window.db, "analytics", monthKey, "compartments", gridId)
+    )
+  );
+
+  const results = await Promise.allSettled(promises);
+
+  // 3. Aggregate results from the batch
+  results.forEach(result => {
+    // Ensure the promise was fulfilled and the snapshot exists
+    if (
+      result.status !== "fulfilled" ||
+      !result.value ||
+      !result.value.exists()
+    ) {
+      return;
+    }
+
+    const a = result.value.data();
+      
+    // Track unique visited cells to prevent double-counting
+    Object.keys(a.visitedCells || {}).forEach(cellId => {
+      uniqueVisitedCells.add(cellId);
+    });
+
+    distanceMeters += a.distanceMeters || 0;
+    visitCount += a.visitCount || 0;
+  });
+
+  // Calculate final unique visited count
+  const visitedCells = uniqueVisitedCells.size;
+
+  return {
+    compartments: gridIds.length,
+    totalCells,
+    visitedCells,
+    areaHa,
+    distanceMeters,
+    visitCount,
+    coveragePercent: totalCells > 0 ? (visitedCells / totalCells) * 100 : 0
+  };
+}
 // 3. Updated showAnalyticsPopup with Close Button
 function showAnalyticsPopup(summary, title) {
   let panel = document.getElementById("analyticsPanel");
