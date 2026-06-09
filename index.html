@@ -7211,7 +7211,7 @@ async function buildAndStoreMasterGrid() {
 
   try {
 
-    const STEP = 0.00045;
+    const STEP = 0.00045; // 50m
 
     console.log(
       "📏 Grid Size:",
@@ -7223,34 +7223,22 @@ async function buildAndStoreMasterGrid() {
       window.allCompartmentFeatures || [];
 
     console.log(
-      "📦 Total Features Loaded:",
+      "📦 Total Features:",
       allFeatures.length
     );
 
     if (!allFeatures.length) {
 
       console.error(
-        "❌ No compartment features found."
+        "❌ No compartment features loaded"
       );
 
-      console.groupEnd();
       return;
     }
 
-    let batch =
-      window.fb.writeBatch(
-        window.db
-      );
-
-    let batchOps = 0;
-
-    let docCount = 0;
-
     let totalGridCells = 0;
+    let compartmentsSaved = 0;
 
-    // ==========================================
-    // FEATURE LOOP
-    // ==========================================
     for (const feature of allFeatures) {
 
       try {
@@ -7272,7 +7260,7 @@ async function buildAndStoreMasterGrid() {
         if (!compartment) {
 
           console.warn(
-            "⚠ Skipped feature without compartment"
+            "⚠ Missing compartment"
           );
 
           continue;
@@ -7303,12 +7291,6 @@ async function buildAndStoreMasterGrid() {
           `📍 ${compartment}`
         );
 
-        console.log({
-          beat,
-          range,
-          division
-        });
-
         const bbox =
           turf.bbox(feature);
 
@@ -7317,25 +7299,11 @@ async function buildAndStoreMasterGrid() {
         const maxLng = bbox[2];
         const maxLat = bbox[3];
 
-        console.log(
-          "📐 BBOX",
-          {
-            minLat,
-            minLng,
-            maxLat,
-            maxLng
-          }
-        );
+        const cells = [];
 
-        const cells = {};
+        let bboxChecked = 0;
+        let validCells = 0;
 
-        let compartmentCellCount = 0;
-
-        let bboxCellsChecked = 0;
-
-        // ==========================================
-        // GRID GENERATION
-        // ==========================================
         for (
           let lat = minLat;
           lat < maxLat;
@@ -7348,19 +7316,13 @@ async function buildAndStoreMasterGrid() {
             lng += STEP
           ) {
 
-            bboxCellsChecked++;
+            bboxChecked++;
 
             const centerLat =
-              lat + (STEP / 2);
+              lat + STEP / 2;
 
             const centerLng =
-              lng + (STEP / 2);
-
-            const pt =
-              turf.point([
-                centerLng,
-                centerLat
-              ]);
+              lng + STEP / 2;
 
             let inside = false;
 
@@ -7368,125 +7330,140 @@ async function buildAndStoreMasterGrid() {
 
               inside =
                 turf.booleanPointInPolygon(
-                  pt,
+                  turf.point([
+                    centerLng,
+                    centerLat
+                  ]),
                   feature
                 );
 
-            } catch (err) {
-
-              console.warn(
-                "⚠ PointInPolygon Error",
-                err
-              );
-            }
+            } catch(e) {}
 
             if (!inside) {
               continue;
             }
 
-            const cellId =
-              centerLat.toFixed(5) +
-              "_" +
-              centerLng.toFixed(5);
-
-            cells[cellId] = 1;
-
-            compartmentCellCount++;
+            validCells++;
             totalGridCells++;
+
+            const row =
+              Math.floor(
+                centerLat / STEP
+              );
+
+            const col =
+              Math.floor(
+                centerLng / STEP
+              );
+
+            cells.push(
+              `${row}_${col}`
+            );
           }
         }
 
         console.log(
-          "🔲 BBOX Candidates:",
-          bboxCellsChecked
+          "🔲 Candidates:",
+          bboxChecked
         );
 
         console.log(
           "✅ Valid Cells:",
-          compartmentCellCount
+          validCells
         );
 
-        const estimatedAreaHa =
-          (
-            compartmentCellCount *
-            0.25
-          ).toFixed(2);
+        const areaHa =
+          Number(
+            (
+              validCells * 0.25
+            ).toFixed(2)
+          );
 
-        console.log(
-          "🌳 Estimated Area (ha):",
-          estimatedAreaHa
-        );
-
-        const docRef =
+        const metadataRef =
           window.fb.doc(
             window.db,
             "grid_master",
             compartment
           );
 
-        batch.set(
-          docRef,
+        await window.fb.setDoc(
+          metadataRef,
           {
             compartment,
             beat,
             range,
             division,
             totalCells:
-              compartmentCellCount,
-            areaHa:
-              Number(
-                estimatedAreaHa
-              ),
+              validCells,
+            areaHa,
             gridSizeMeters: 50,
-            createdAt:
-              window.fb.serverTimestamp(),
-            cells
+            updatedAt:
+              window.fb.serverTimestamp()
           }
         );
 
-        batchOps++;
-        docCount++;
+        const CHUNK_SIZE = 500;
 
-        // ==========================================
-        // FIRESTORE LIMIT SAFETY
-        // ==========================================
-        if (batchOps >= 450) {
+        let shardIndex = 0;
 
-          console.log(
-            "💾 Committing batch..."
-          );
+        for (
+          let i = 0;
+          i < cells.length;
+          i += CHUNK_SIZE
+        ) {
 
-          await batch.commit();
+          shardIndex++;
 
-          batch =
-            window.fb.writeBatch(
-              window.db
+          const shard =
+            cells.slice(
+              i,
+              i + CHUNK_SIZE
             );
 
-          batchOps = 0;
+          const shardRef =
+            window.fb.doc(
+              window.db,
+              "grid_master",
+              compartment,
+              "cells",
+              `part_${String(
+                shardIndex
+              ).padStart(
+                3,
+                "0"
+              )}`
+            );
+
+          await window.fb.setDoc(
+            shardRef,
+            {
+              compartment,
+              shardIndex,
+              cells: shard
+            }
+          );
         }
+
+        console.log(
+          "💾 Metadata Saved"
+        );
+
+        console.log(
+          "💾 Shards:",
+          shardIndex
+        );
+
+        compartmentsSaved++;
 
         console.groupEnd();
 
-      } catch (featureErr) {
+      } catch(err) {
 
         console.error(
-          "❌ Feature Failed",
-          featureErr
+          "❌ Compartment Failed",
+          err
         );
       }
-    }
-
-    // ==========================================
-    // FINAL COMMIT
-    // ==========================================
-    if (batchOps > 0) {
-
-      console.log(
-        "💾 Final batch commit..."
-      );
-
-      await batch.commit();
     }
 
     const elapsed =
@@ -7503,16 +7480,17 @@ async function buildAndStoreMasterGrid() {
       "✅ GRID BUILD COMPLETE"
     );
 
-    console.log({
-      compartmentsSaved:
-        docCount,
+    console.table({
+      Compartments:
+        compartmentsSaved,
 
-      totalGridCells,
+      TotalCells:
+        totalGridCells,
 
-      gridSizeMeters:
+      GridSizeMeters:
         50,
 
-      elapsedMs:
+      ElapsedMs:
         elapsed
     });
 
@@ -7520,10 +7498,10 @@ async function buildAndStoreMasterGrid() {
       "━━━━━━━━━━━━━━━━━━"
     );
 
-  } catch (err) {
+  } catch(err) {
 
     console.error(
-      "❌ MASTER GRID BUILD FAILED",
+      "❌ GRID BUILD FAILED",
       err
     );
 
