@@ -8756,128 +8756,75 @@ function showAnalyticsPopup(
   title
 ){
 
-  try{
+  let panel =
+    document.getElementById(
+      "analyticsPanel"
+    );
 
-    // =====================================
-    // REMOVE OLD ANALYTICS POPUP
-    // =====================================
+  if(!panel){
 
-    if(
-      window.analyticsPopup &&
-      window.map.hasLayer(
-        window.analyticsPopup
-      )
-    ){
-
-      window.map.removeLayer(
-        window.analyticsPopup
+    panel =
+      document.createElement(
+        "div"
       );
 
-    }
+    panel.id =
+      "analyticsPanel";
 
-    // =====================================
-    // CREATE NEW POPUP
-    // =====================================
+    panel.style.cssText = `
+      position:absolute;
+      top:80px;
+      right:20px;
+      z-index:99999;
+      background:white;
+      padding:12px;
+      border-radius:8px;
+      box-shadow:0 2px 8px rgba(0,0,0,.3);
+      min-width:260px;
+      max-width:320px;
+      font-size:14px;
+    `;
 
-    window.analyticsPopup =
-
-      L.popup({
-
-        closeButton: true,
-
-        autoClose: false,
-
-        closeOnClick: false
-
-      })
-
-      .setLatLng(
-
-        window.map.getCenter()
-
-      )
-
-      .setContent(
-
-        `
-        <div
-          style="
-            min-width:220px;
-            line-height:1.5;
-            font-size:14px;
-          "
-        >
-
-          <b>${title}</b>
-
-          <br><br>
-
-          Compartments:
-          ${summary.compartments}
-
-          <br><br>
-
-          Area:
-          ${summary.areaHa.toFixed(2)} ha
-
-          <br><br>
-
-          Coverage:
-          ${summary.coveragePercent.toFixed(2)} %
-
-          <br><br>
-
-          Visited Cells:
-          ${summary.visitedCells}
-
-          <br><br>
-
-          Total Cells:
-          ${summary.totalCells}
-
-          <br><br>
-
-          Distance:
-          ${(
-            summary.distanceMeters / 1000
-          ).toFixed(2)} km
-
-          <br><br>
-
-          Visits:
-          ${summary.visitCount}
-
-        </div>
-        `
-
-      )
-
-      .addTo(
-        window.map
-      );
-
-    console.log(
-      "📊 Analytics popup added"
+    document.body.appendChild(
+      panel
     );
-
-    console.log(
-      "📊 Popup visible:",
-      window.map.hasLayer(
-        window.analyticsPopup
-      )
-    );
-
   }
 
-  catch(err){
+  panel.innerHTML = `
 
-    console.error(
-      "❌ showAnalyticsPopup failed",
-      err
-    );
+    <b>${title}</b>
+    <hr>
 
-  }
+    Compartments:
+    ${summary.compartments}
+    <br><br>
 
+    Area:
+    ${summary.areaHa.toFixed(2)} ha
+    <br><br>
+
+    Coverage:
+    ${summary.coveragePercent.toFixed(2)} %
+    <br><br>
+
+    Visited Cells:
+    ${summary.visitedCells}
+    <br><br>
+
+    Total Cells:
+    ${summary.totalCells}
+    <br><br>
+
+    Distance:
+    ${(
+      summary.distanceMeters / 1000
+    ).toFixed(2)} km
+    <br><br>
+
+    Visits:
+    ${summary.visitCount}
+
+  `;
 }
     async function getAnalyticsSummary(
   gridIds,
