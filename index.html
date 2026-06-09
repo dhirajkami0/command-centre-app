@@ -8686,22 +8686,22 @@ async function getAnalyticsSummary(gridIds, monthKey) {
 
   // 3. Aggregate results from the batch
   results.forEach((result, index) => {
-    // Ensure the promise was fulfilled and the snapshot exists
-    if (
-      result.status !== "fulfilled" ||
-      !result.value ||
-      !result.value.exists()
-    ) {
+    const gridId = gridIds[index];
+
+    // Debugging failed or missing analytics
+    if (result.status !== "fulfilled") {
+      console.warn("❌ Fetch failed", gridId);
+      return;
+    }
+
+    if (!result.value.exists()) {
+      console.warn("⚠ Analytics missing", gridId);
       return;
     }
 
     const snap = result.value;
-    const gridId = gridIds[index];
     const a = snap.data();
       
-    // DEBUG: Verify cell IDs
-    // console.log(gridId, Object.keys(a.visitedCells || {}).slice(0, 10));
-
     // Track unique visited cells using compartment-qualified IDs to prevent collisions
     Object.keys(a.visitedCells || {}).forEach(cellId => {
       uniqueVisitedCells.add(`${gridId}_${cellId}`);
