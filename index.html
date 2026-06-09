@@ -7629,28 +7629,9 @@ async function appendTrackToGeometries(simplifiedLine, options = { sessionId: nu
     }
 
     // 3. AUTHORITY CONTEXT
-   const effectiveRange =
-  String(
-    isRecoveryRun
-      ? (existingData?.range || "")
-      : (window.userProfile?.range || "")
-  ).trim();
-
-const effectiveDivision =
-  normalizeDivision(
-    isRecoveryRun
-      ? (existingData?.division || "")
-      : (window.userProfile?.division || "")
-  );
-
-const userRole =
-  String(
-    isRecoveryRun
-      ? (existingData?.role || "")
-      : (window.userProfile?.role || "")
-  )
-  .trim()
-  .toUpperCase();
+    const effectiveRange = String(isRecoveryRun ? (existingData?.range || "") : (window.userProfile?.range || "")).trim();
+    const effectiveDivision = normalizeDivision(isRecoveryRun ? (existingData?.division || "") : (window.userProfile?.division || ""));
+    const userRole = String(isRecoveryRun ? (existingData?.role || "") : (window.userProfile?.role || "")).trim().toUpperCase();
 
     if (!effectiveRange || !effectiveDivision) {
       throw new Error("Missing authority context - cannot authorize track storage.");
@@ -7677,6 +7658,10 @@ const userRole =
 
     // Use Spatial Index for query
     const candidates = window.compartmentSpatialIndex.query(lineGeom.getEnvelopeInternal()).toArray();
+    console.log("📦 Candidate Compartments:", candidates.length);
+    
+    const analyticsPromises = [];
+    const analyticsMap = {};
 
     for (const candidate of candidates) {
       const polygonGeom = candidate.polygonGeom;
@@ -7687,9 +7672,16 @@ const userRole =
       const compName = String(props.compartment || props.Compartment || props.compartmen || "").trim();
       const compBeat = String(props.beat || props.Beat || "").trim();
       const normalizedCompId = candidate.normalizedCompId || compName.trim().toUpperCase().replace(/\s+/g, "_");
+      const analyticsGridId = candidate.gridId;
 
       // Ensure compartment name exists
       if (!compName) continue;
+
+      // Safety check for gridId
+      if (!analyticsGridId) {
+        console.warn("⚠ Missing gridId", compName);
+        continue;
+      }
 
       // --- AUTHORIZATION LOGIC ---
       let authorized = false;
@@ -7705,6 +7697,7 @@ const userRole =
       if (!authorized) continue;
       // ---------------------------
 
+      window.bench.geometryIntersections++;
       let clipped;
       try {
         clipped = lineGeom.intersection(polygonGeom);
@@ -7713,6 +7706,9 @@ const userRole =
       }
 
       if (!clipped || clipped.isEmpty()) continue;
+      
+      window.bench.intersectsTrue++;
+      window.bench.nonEmptyIntersections++;
 
       const localCoordsArray = [];
       collectLineSegments(clipped, localCoordsArray);
@@ -7720,9 +7716,16 @@ const userRole =
       if (localCoordsArray.length > 0) {
         const encodedStrings = localCoordsArray.map(seg => polyline.encode(seg));
         
+        // Group analytics by gridId to prevent double-counting
+        if (!analyticsMap[analyticsGridId]) {
+          analyticsMap[analyticsGridId] = [];
+        }
+        analyticsMap[analyticsGridId].push(...localCoordsArray);
+        
         // 5. FRAGMENT MERGING
         if (!embeddedTracksMap[normalizedCompId]) {
           embeddedTracksMap[normalizedCompId] = {
+            gridId: analyticsGridId,
             beat: compBeat,
             range: compRange,
             division: compDivision,
@@ -7733,6 +7736,29 @@ const userRole =
         crossedCompartmentsSet.add(compName);
       }
     }
+
+    // Queue analytics updates
+    for (const [gridId, coords] of Object.entries(analyticsMap)) {
+      analyticsPromises.push(
+        updateMonthlyAnalytics(gridId, coords, fallbackMonthKey)
+      );
+    }
+
+    if (analyticsPromises.length) {
+      console.log("📊 Waiting Analytics:", analyticsPromises.length);
+      const results = await Promise.allSettled(analyticsPromises);
+      const failed = results.filter(r => r.status === "rejected");
+      if (failed.length) {
+        console.warn("⚠ Analytics failures:", failed.length);
+      } else {
+        console.log("✅ Analytics Updated");
+      }
+    }
+
+    console.log({
+      authorizedCompartments: crossedCompartmentsSet.size,
+      analyticsWrites: analyticsPromises.length
+    });
 
     // 6. COMMIT
     await window.fb.updateDoc(targetDocRef, {
@@ -7759,7 +7785,320 @@ function finalizeSessionLifecycle() {
   if (window.localStorage) {
     window.localStorage.removeItem("sessionId");
   }
-}    async function executeGreenGuardSelfHealingWorker() {
+}
+ function getTouchedCells(localCoordsArray) {
+
+  const STEP = 0.00045; // 50m
+
+  const touchedCells =
+    new Set();
+
+  let distanceMeters = 0;
+
+  try {
+
+    for (const seg of localCoordsArray) {
+
+      if (
+        !Array.isArray(seg) ||
+        seg.length < 2
+      ) {
+        continue;
+      }
+
+      // =====================================
+      // DISTANCE
+      // =====================================
+      const line =
+        turf.lineString(
+          seg.map(c => [
+            Number(c[1]),
+            Number(c[0])
+          ])
+        );
+
+      try {
+
+        distanceMeters +=
+          turf.length(
+            line,
+            {
+              units: "kilometers"
+            }
+          ) * 1000;
+
+      } catch(e){}
+
+      // =====================================
+      // CELL IDS
+      // =====================================
+      for (const pt of seg) {
+
+        const lat =
+          Number(pt[0]);
+
+        const lng =
+          Number(pt[1]);
+
+        if (
+          !Number.isFinite(lat) ||
+          !Number.isFinite(lng)
+        ) {
+          continue;
+        }
+
+        const row =
+          Math.round(
+            lat / STEP
+          );
+
+        const col =
+          Math.round(
+            lng / STEP
+          );
+
+        touchedCells.add(
+          `${row}_${col}`
+        );
+      }
+    }
+
+  } catch(err) {
+
+    console.error(
+      "❌ getTouchedCells failed",
+      err
+    );
+  }
+
+  return {
+
+    touchedCells,
+
+    distanceMeters:
+      Math.round(
+        distanceMeters
+      )
+  };
+}   
+async function updateMonthlyAnalytics(
+  gridId,
+  localCoordsArray,
+  monthKey
+) {
+
+  try {
+
+    if (
+      !gridId ||
+      !monthKey ||
+      !Array.isArray(
+        localCoordsArray
+      ) ||
+      !localCoordsArray.length
+    ) {
+
+      console.warn(
+        "⚠ Invalid analytics request"
+      );
+
+      return;
+    }
+
+    const {
+      touchedCells,
+      distanceMeters
+    } =
+      getTouchedCells(
+        localCoordsArray
+      );
+
+    if (
+      touchedCells.size === 0
+    ) {
+
+      console.warn(
+        "⚠ No touched cells"
+      );
+
+      return;
+    }
+
+    console.group(
+      `📊 ANALYTICS ${gridId}`
+    );
+
+    console.log({
+      touchedCells:
+        touchedCells.size,
+
+      distanceMeters
+    });
+
+    const analyticsRef =
+      window.fb.doc(
+
+        window.db,
+
+        "analytics",
+
+        monthKey,
+
+        "compartments",
+
+        gridId
+      );
+
+    const snap =
+      await window.fb.getDoc(
+        analyticsRef
+      );
+
+    let analytics = {
+
+      gridId,
+
+      monthKey,
+
+      distanceMeters: 0,
+
+      visitCount: 0,
+
+      visitedCells: {},
+
+      firstSeenAt:
+        window.fb.serverTimestamp(),
+
+      lastSeenAt:
+        window.fb.serverTimestamp(),
+
+      updatedAt:
+        window.fb.serverTimestamp()
+    };
+
+    if (
+      snap.exists()
+    ) {
+
+      analytics = {
+
+        ...analytics,
+
+        ...snap.data()
+      };
+    }
+
+    // ============================
+    // DISTANCE
+    // ============================
+
+    analytics.distanceMeters =
+
+      Number(
+        analytics.distanceMeters || 0
+      )
+
+      +
+
+      Number(
+        distanceMeters || 0
+      );
+
+    // ============================
+    // VISIT COUNT
+    // 1 patrol session
+    // ============================
+
+    analytics.visitCount =
+
+      Number(
+        analytics.visitCount || 0
+      )
+
+      +
+
+      1;
+
+    // ============================
+    // CELL INTENSITY
+    // ============================
+
+    if (
+      !analytics.visitedCells
+    ) {
+
+      analytics.visitedCells = {};
+    }
+
+    for (
+      const cellId
+      of touchedCells
+    ) {
+
+      analytics.visitedCells[
+        cellId
+      ] =
+
+      Number(
+        analytics.visitedCells[
+          cellId
+        ] || 0
+      )
+
+      +
+
+      1;
+    }
+
+    analytics.lastSeenAt =
+      window.fb.serverTimestamp();
+
+    analytics.updatedAt =
+      window.fb.serverTimestamp();
+
+    await window.fb.setDoc(
+
+      analyticsRef,
+
+      analytics,
+
+      {
+        merge: true
+      }
+    );
+
+    console.log(
+      "✅ Analytics Saved"
+    );
+
+    console.table({
+
+      gridId,
+
+      visitCount:
+        analytics.visitCount,
+
+      uniqueVisitedCells:
+        Object.keys(
+          analytics.visitedCells
+        ).length,
+
+      distanceMeters:
+        analytics.distanceMeters
+
+    });
+
+    console.groupEnd();
+
+  } catch(err) {
+
+    console.error(
+      "❌ updateMonthlyAnalytics failed",
+      err
+    );
+  }
+}
+  async function executeGreenGuardSelfHealingWorker() {
   const userProfile = window.userProfile || {};
   const userRole = String(userProfile.role || "STAFF").trim().toUpperCase();
 
@@ -7879,43 +8218,177 @@ function finalizeSessionLifecycle() {
     setTimeout(executeGreenGuardSelfHealingWorker, 60000 * 5);
   }
 }
-    async function rebuildSpatialIndex() {
-  console.log("🛠 Rebuilding STRtree with JSTS Geometry objects...");
-  
-  // 1. Initialize fresh index
-  const newIndex = new jsts.index.strtree.STRtree();
-  const reader = new jsts.io.GeoJSONReader();
+   async function rebuildSpatialIndex() {
+
+  console.log(
+    "🛠 Rebuilding STRtree with JSTS Geometry objects..."
+  );
+
+  const buildStart =
+    performance.now();
+
+  const newIndex =
+    new jsts.index.strtree.STRtree();
+
+  const reader =
+    new jsts.io.GeoJSONReader();
+
   let count = 0;
 
-  // 2. Iterate and properly extract geometry
-  (window.allCompartmentFeatures || []).forEach((feature) => {
-    try {
-      // Extract the geometry part specifically
-      const geomData = feature.geometry;
-      if (!geomData) return;
+  (
+    window.allCompartmentFeatures || []
+  )
+  .forEach((feature, featureIndex) => {
 
-      // Create the JSTS geometry object
-      const jstsGeom = reader.read(geomData);
-      
-      // 🛡️ CRITICAL: The first argument MUST be the geometry's envelope
-      // The second argument is the data payload (feature)
-      if (jstsGeom && typeof jstsGeom.getEnvelopeInternal === 'function') {
-        newIndex.insert(jstsGeom.getEnvelopeInternal(), { 
-          feature: feature, 
-          polygonGeom: jstsGeom // <--- THIS is the geometry object
-        });
-        count++;
+    try {
+
+      const geomData =
+        feature?.geometry;
+
+      if (!geomData) {
+
+        console.warn(
+          "⚠ Feature missing geometry",
+          featureIndex
+        );
+
+        return;
       }
-    } catch (e) {
-      console.warn("⚠ Skipping invalid feature:", e);
+
+      const props =
+        feature?.properties || {};
+
+      const compartment =
+        String(
+          props.compartment ||
+          props.Compartment ||
+          props.compartmen ||
+          ""
+        )
+        .trim()
+        .toUpperCase()
+        .replace(/\s+/g, "_");
+
+      const beat =
+        String(
+          props.beat ||
+          props.Beat ||
+          ""
+        )
+        .trim();
+
+      const range =
+        String(
+          props.range ||
+          props.Range ||
+          ""
+        )
+        .trim();
+
+      const division =
+        normalizeDivision(
+          props.division ||
+          props.Division ||
+          ""
+        );
+
+      const normalizedCompId =
+        compartment;
+
+      const gridId =
+        [
+          division,
+          range,
+          beat,
+          compartment,
+          featureIndex
+        ]
+        .filter(Boolean)
+        .join("_")
+        .toUpperCase()
+        .replace(/\s+/g, "_");
+
+      const jstsGeom =
+        reader.read(
+          geomData
+        );
+
+      if (
+        !jstsGeom ||
+        typeof jstsGeom.getEnvelopeInternal !==
+        "function"
+      ) {
+
+        console.warn(
+          "⚠ Invalid JSTS geometry",
+          featureIndex
+        );
+
+        return;
+      }
+
+      newIndex.insert(
+
+        jstsGeom.getEnvelopeInternal(),
+
+        {
+          feature,
+
+          polygonGeom:
+            jstsGeom,
+
+          normalizedCompId,
+
+          gridId,
+
+          featureIndex
+        }
+      );
+
+      count++;
+
+    } catch(e) {
+
+      console.warn(
+        "⚠ Skipping invalid feature:",
+        e
+      );
     }
   });
 
-  // 3. Swap the index globally
-  window.compartmentSpatialIndex = newIndex;
-  window.compartmentSpatialIndexReady = true;
-  
-  console.log(`✅ STRtree Built Successfully! Inserted ${count} features.`);
+  window.compartmentSpatialIndex =
+    newIndex;
+
+  window.compartmentSpatialIndexReady =
+    true;
+
+  const elapsed =
+    (
+      performance.now() -
+      buildStart
+    ).toFixed(0);
+
+  console.log(
+    "━━━━━━━━━━━━━━━━━━"
+  );
+
+  console.log(
+    "✅ STRtree Built Successfully!"
+  );
+
+  console.table({
+
+    insertedFeatures:
+      count,
+
+    elapsedMs:
+      elapsed
+
+  });
+
+  console.log(
+    "━━━━━━━━━━━━━━━━━━"
+  );
 }
     // =============================================================================
 // 📜 SHOW MONTH HISTORY (PRODUCTION-FROZEN)
