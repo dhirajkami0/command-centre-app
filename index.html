@@ -7261,9 +7261,10 @@ async function appendTrackToGeometries(simplifiedLine, options = { sessionId: nu
           uid: window.fb.auth?.currentUser?.uid || "Unknown",
           staffName: String(window.userProfile?.cleanName || "Unknown").trim(),
           phone: String(window.userProfile?.phone || "").trim(),
-          division: normalizeDivision(window.userProfile?.division || "BTR_W"), // Store normalized
+          division: normalizeDivision(window.userProfile?.division || "BTR_W"),
           range: String(window.userProfile?.range || "").trim(),
           beat: String(window.userProfile?.beat || "").trim(),
+          role: String(window.userProfile?.role || "").trim().toUpperCase(),
           monthKey: fallbackMonthKey,
           bbox: { minLat, minLng, maxLat, maxLng },
           coordinateOrder: "LAT_LNG",
@@ -7285,6 +7286,11 @@ async function appendTrackToGeometries(simplifiedLine, options = { sessionId: nu
     // 3. AUTHORITY CONTEXT
     const effectiveRange = String(isRecoveryRun ? existingData?.range : window.userProfile?.range || "").trim();
     const effectiveDivision = normalizeDivision(isRecoveryRun ? existingData?.division : window.userProfile?.division || "");
+    const userRole = String(
+      isRecoveryRun 
+        ? existingData?.role 
+        : window.userProfile?.role || ""
+    ).trim().toUpperCase();
 
     if (!effectiveRange || !effectiveDivision) {
       throw new Error("Missing authority context - cannot authorize track storage.");
@@ -7317,9 +7323,22 @@ async function appendTrackToGeometries(simplifiedLine, options = { sessionId: nu
       const compName = String(props.compartment || props.Compartment || props.compartmen || "").trim();
       const compBeat = String(props.beat || props.Beat || "").trim();
 
-      // Ensure compartment name exists and auth matches
+      // Ensure compartment name exists
       if (!compName) continue;
-      if (compRange !== effectiveRange || compDivision !== effectiveDivision) continue;
+
+      // --- AUTHORIZATION LOGIC ---
+      let authorized = false;
+      if (userRole === "ADMIN") {
+        authorized = true;
+      } else if (userRole === "DFO" || userRole === "ADFO") {
+        authorized = (compDivision === effectiveDivision);
+      } else {
+        // Staff / Team Leader
+        authorized = (compRange === effectiveRange && compDivision === effectiveDivision);
+      }
+
+      if (!authorized) continue;
+      // ---------------------------
 
       let polygonGeom;
       try {
@@ -7378,8 +7397,6 @@ function finalizeSessionLifecycle() {
     window.localStorage.removeItem("sessionId");
   }
 }
-
-
     async function executeGreenGuardSelfHealingWorker() {
   const userProfile = window.userProfile || {};
   const userRole = String(userProfile.role || "STAFF").trim().toUpperCase();
