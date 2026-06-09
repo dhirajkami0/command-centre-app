@@ -7196,25 +7196,51 @@ console.trace(
     await rebuildSpatialIndex();
 
     // 🔥 BACKGROUND ONLY
-    loadMasterGrid()
-    .then(() => {
+    if(
+      !window.masterGridLoading &&
+      !window.masterGrid
+    ){
+
+      window.masterGridLoading =
+        true;
+
+      loadMasterGrid()
+
+      .then(() => {
+
+        console.log(
+          "✅ GRID LOADED",
+          Object.keys(
+            window.masterGrid || {}
+          ).length
+        );
+
+      })
+
+      .catch(err => {
+
+        console.error(
+          "❌ loadMasterGrid failed",
+          err
+        );
+
+      })
+
+      .finally(() => {
+
+        window.masterGridLoading =
+          false;
+
+      });
+
+    }
+    else{
 
       console.log(
-        "✅ GRID LOADED",
-        Object.keys(
-          window.masterGrid || {}
-        ).length
+        "⏭ GRID already available"
       );
 
-    })
-    .catch(err => {
-
-      console.error(
-        "❌ loadMasterGrid failed",
-        err
-      );
-
-    });
+    }
 
   }
 
@@ -7227,7 +7253,6 @@ console.trace(
 
   }
 }
-
 async function buildAndStoreMasterGrid() {
   console.group(
     "🔲 BUILDING MASTER GRID"
