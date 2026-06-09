@@ -7697,7 +7697,12 @@ async function showMonthHistory() {
             opacity: 0.9
           });
 
-          if (!window.historyLayer) return console.error("❌ historyLayer missing.");
+if (!window.historyLayer) {
+  console.error(
+    "❌ historyLayer missing."
+  );
+  continue;
+}        
           window.historyLayer.addLayer(line);
           renderedCount++;
         } catch (err) {}
@@ -7707,10 +7712,7 @@ async function showMonthHistory() {
         requestAnimationFrame(renderBatch);
       } else {
         console.log(`✅ OPERATION SUMMARY: Rendered [${renderedCount}] tracks.`);
-        try {
-          const bounds = window.historyLayer.getBounds();
-          if (bounds && bounds.isValid()) map.fitBounds(bounds, { padding: [20, 20] });
-        } catch (e) {}
+        
         console.groupEnd();
       }
     }
