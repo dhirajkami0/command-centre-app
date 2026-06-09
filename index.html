@@ -7215,50 +7215,41 @@ console.trace(
     );
 
     await rebuildSpatialIndex();
-  window.__COMPARTMENTS_READY__ =
+
+    window.__COMPARTMENTS_READY__ =
       true;
+
     // 🔥 BACKGROUND ONLY
     if(
-  !window.masterGridLoading &&
-  (
-    !window.masterGrid ||
-    Object.keys(
-      window.masterGrid
-    ).length === 0
-  )
-){
+      !window.masterGridLoading &&
+      (
+        !window.masterGrid ||
+        Object.keys(
+          window.masterGrid
+        ).length === 0
+      )
+    ){
 
       window.masterGridLoading =
         true;
 
       loadMasterGrid()
 
-      .then(() => {
+        .catch(err => {
 
-        console.log(
-          "✅ GRID LOADED",
-          Object.keys(
-            window.masterGrid || {}
-          ).length
-        );
+          console.error(
+            "❌ loadMasterGrid failed",
+            err
+          );
 
-      })
+        })
 
-      .catch(err => {
+        .finally(() => {
 
-        console.error(
-          "❌ loadMasterGrid failed",
-          err
-        );
+          window.masterGridLoading =
+            false;
 
-      })
-
-      .finally(() => {
-
-        window.masterGridLoading =
-          false;
-
-      });
+        });
 
     }
     else{
@@ -7268,8 +7259,6 @@ console.trace(
       );
 
     }
-
-  
 
   }
 
@@ -7608,6 +7597,9 @@ console.trace(
 }
 
 async function loadMasterGrid() {
+  console.count(
+  "loadMasterGrid EXECUTED"
+);
   window.masterGrid = {};
 
   const snap =
