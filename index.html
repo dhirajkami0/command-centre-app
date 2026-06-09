@@ -8751,41 +8751,57 @@ if (!window.historyLayer) {
     console.groupEnd();
   }
 } 
-    function showAnalyticsPopup(
+function showAnalyticsPopup(
   summary,
   title
 ){
- console.log(
-    "🔥 POPUP FUNCTION CALLED"
-  );
-  alert(
 
-`${title}
+  if(
+    window.analyticsPopup
+  ){
+    window.map.removeLayer(
+      window.analyticsPopup
+    );
+  }
 
-Compartments:
-${summary.compartments}
+  window.analyticsPopup =
+    L.popup({
+      closeButton: true
+    })
+    .setLatLng(
+      window.map.getCenter()
+    )
+    .setContent(
+      `
+      <b>${title}</b><br><br>
 
-Area:
-${summary.areaHa.toFixed(2)} ha
+      Compartments:
+      ${summary.compartments}<br><br>
 
-Coverage:
-${summary.coveragePercent.toFixed(2)} %
+      Area:
+      ${summary.areaHa.toFixed(2)} ha<br><br>
 
-Visited Cells:
-${summary.visitedCells}
+      Coverage:
+      ${summary.coveragePercent.toFixed(2)} %<br><br>
 
-Total Cells:
-${summary.totalCells}
+      Visited Cells:
+      ${summary.visitedCells}<br><br>
 
-Distance:
-${(
-  summary.distanceMeters / 1000
-).toFixed(2)} km
+      Total Cells:
+      ${summary.totalCells}<br><br>
 
-Visits:
-${summary.visitCount}`
+      Distance:
+      ${(
+        summary.distanceMeters / 1000
+      ).toFixed(2)} km<br><br>
 
-  );
+      Visits:
+      ${summary.visitCount}
+      `
+    )
+    .openOn(
+      window.map
+    );
 
 }
     async function getAnalyticsSummary(
