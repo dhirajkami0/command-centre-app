@@ -8679,8 +8679,13 @@ async function getAnalyticsSummary(gridIds, monthKey) {
 
   const results = await Promise.allSettled(promises);
 
+  // DEBUG: Track found documents
+  const foundDocs = results.filter(r => r.status === "fulfilled" && r.value.exists());
+  console.log("📊 GRID COUNT:", gridIds.length);
+  console.log("📊 ANALYTICS DOCS FOUND:", foundDocs.length);
+
   // 3. Aggregate results from the batch
-  results.forEach(result => {
+  results.forEach((result, index) => {
     // Ensure the promise was fulfilled and the snapshot exists
     if (
       result.status !== "fulfilled" ||
@@ -8690,11 +8695,16 @@ async function getAnalyticsSummary(gridIds, monthKey) {
       return;
     }
 
-    const a = result.value.data();
+    const snap = result.value;
+    const gridId = gridIds[index];
+    const a = snap.data();
       
-    // Track unique visited cells to prevent double-counting
+    // DEBUG: Verify cell IDs
+    // console.log(gridId, Object.keys(a.visitedCells || {}).slice(0, 10));
+
+    // Track unique visited cells using compartment-qualified IDs to prevent collisions
     Object.keys(a.visitedCells || {}).forEach(cellId => {
-      uniqueVisitedCells.add(cellId);
+      uniqueVisitedCells.add(`${gridId}_${cellId}`);
     });
 
     distanceMeters += a.distanceMeters || 0;
