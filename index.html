@@ -7633,6 +7633,16 @@ async function appendTrackToGeometries(simplifiedLine, options = { sessionId: nu
     const effectiveDivision = normalizeDivision(isRecoveryRun ? (existingData?.division || "") : (window.userProfile?.division || ""));
     const userRole = String(isRecoveryRun ? (existingData?.role || "") : (window.userProfile?.role || "")).trim().toUpperCase();
 
+    console.log(
+  "🔍 Authority Context",
+  {
+    isRecoveryRun,
+    effectiveRange,
+    effectiveDivision,
+    userRole,
+    existingData
+  }
+);
     if (!effectiveRange || !effectiveDivision) {
       throw new Error("Missing authority context - cannot authorize track storage.");
     }
