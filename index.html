@@ -8513,7 +8513,18 @@ async function updateMonthlyAnalytics(
 // =============================================================================
 
 async function showMonthHistory() {
-  try {
+  try { 
+    if(
+  !window.masterGrid ||
+  Object.keys(
+    window.masterGrid
+  ).length === 0
+){
+  alert(
+    "Grid metadata still loading."
+  );
+  return;
+}
     const d = new Date();
     const monthKey = `${d.getFullYear()}_${String(d.getMonth() + 1).padStart(2, "0")}`;
 
@@ -8544,6 +8555,9 @@ async function showMonthHistory() {
     }
 
     const tracksToRender = [];
+
+    const selectedGridIds =
+  new Set();
     snap.forEach(docSnap => {
       try {
         const data = docSnap.data() || {};
@@ -8578,7 +8592,28 @@ async function showMonthHistory() {
             isMatch = true;
           }
 
-          if (isMatch) tracksToRender.push(...compObj.tracks);
+          if (isMatch) {
+
+  tracksToRender.push(
+    ...compObj.tracks
+  );
+
+ if(
+  compObj.gridId
+){
+  selectedGridIds.add(
+    compObj.gridId
+  );
+}
+else{
+
+  console.warn(
+    "⚠ Missing gridId",
+    compId
+  );
+
+}
+}
         });
 
       } catch (err) {
@@ -8587,12 +8622,60 @@ async function showMonthHistory() {
     });
 
     console.log(`📦 FINAL TRACK QUEUE BATCH COUNT: ${tracksToRender.length}`);
+    console.log(
+  "📊 Matching GridIds:",
+  selectedGridIds.size
+);
 
     if (tracksToRender.length === 0) {
       alert("No history tracks matched current logic query.");
       console.groupEnd();
       return;
     }
+// 🔥 ADD HERE
+if(
+  selectedGridIds.size === 0
+){
+  alert(
+    "No analytics found."
+  );
+  console.groupEnd();
+  return;
+}
+console.log(
+  "📊 GRID IDS",
+  Array.from(
+    selectedGridIds
+  )
+);
+const analyticsSummary =
+  await getAnalyticsSummary(
+    Array.from(
+      selectedGridIds
+    ),
+    monthKey
+  );
+
+console.table(
+  analyticsSummary
+);
+  const popupTitle =
+
+  activeLevel === "compartment"
+    ? compartment
+
+  : activeLevel === "beat"
+    ? beat
+
+  : activeLevel === "range"
+    ? range
+
+  : activeLevel === "division"
+    ? division
+
+  : "BTR";
+
+
 
     // 🎯 DYNAMIC SPATIAL MASKING
     const applySpatialMask = (activeLevel === "compartment");
@@ -8648,7 +8731,11 @@ if (!window.historyLayer) {
         requestAnimationFrame(renderBatch);
       } else {
         console.log(`✅ OPERATION SUMMARY: Rendered [${renderedCount}] tracks.`);
-        
+        showAnalyticsPopup(
+  analyticsSummary,
+  popupTitle
+);
+    
         console.groupEnd();
       }
     }
@@ -8657,7 +8744,134 @@ if (!window.historyLayer) {
     console.error("❌ showMonthHistory failure", err);
     console.groupEnd();
   }
-}    function compileGreenGuardLoadTestMetrics() {
+} 
+    function showAnalyticsPopup(
+  summary,
+  title
+){
+
+  alert(
+
+`${title}
+
+Compartments:
+${summary.compartments}
+
+Area:
+${summary.areaHa.toFixed(2)} ha
+
+Coverage:
+${summary.coveragePercent.toFixed(2)} %
+
+Visited Cells:
+${summary.visitedCells}
+
+Total Cells:
+${summary.totalCells}
+
+Distance:
+${(
+  summary.distanceMeters / 1000
+).toFixed(2)} km
+
+Visits:
+${summary.visitCount}`
+
+  );
+
+}
+    async function getAnalyticsSummary(
+  gridIds,
+  monthKey
+){
+
+  let totalCells = 0;
+  let visitedCells = 0;
+  let distanceMeters = 0;
+  let visitCount = 0;
+  let areaHa = 0;
+
+  for(
+    const gridId
+    of gridIds
+  ){
+
+    const master =
+      window.masterGrid?.[
+        gridId
+      ];
+
+    if(master){
+
+      totalCells +=
+        master.totalCells || 0;
+
+      areaHa +=
+        master.actualAreaHa || 0;
+    }
+
+    const snap =
+      await window.fb.getDoc(
+
+        window.fb.doc(
+          window.db,
+          "analytics",
+          monthKey,
+          "compartments",
+          gridId
+        )
+
+      );
+
+    if(!snap.exists()){
+      continue;
+    }
+
+    const a =
+      snap.data();
+
+    visitedCells +=
+      Object.keys(
+        a.visitedCells || {}
+      ).length;
+
+    distanceMeters +=
+      a.distanceMeters || 0;
+
+    visitCount +=
+      a.visitCount || 0;
+  }
+
+  return {
+
+    compartments:
+      gridIds.length,
+
+    totalCells,
+
+    visitedCells,
+
+    areaHa,
+
+    distanceMeters,
+
+    visitCount,
+
+    coveragePercent:
+
+      totalCells
+
+      ?
+
+      (
+        visitedCells /
+        totalCells
+      ) * 100
+
+      : 0
+  };
+}
+    function compileGreenGuardLoadTestMetrics() {
   const b = window.bench;
   if (!b || b.clipTimes.length === 0) {
     console.error("❌ No metrics caught in memory logs.");
