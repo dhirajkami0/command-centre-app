@@ -7790,6 +7790,13 @@ else if (
       const compName = String(props.compartment || props.Compartment || props.compartmen || "").trim();
       const compBeat = String(props.beat || props.Beat || "").trim();
       const normalizedCompId = candidate.normalizedCompId || compName.trim().toUpperCase().replace(/\s+/g, "_");
+      console.log(
+  "GRID CHECK",
+  {
+    compartment: compName,
+    gridId: candidate.gridId
+  }
+);
       const analyticsGridId = candidate.gridId;
 
       // Ensure compartment name exists
