@@ -7199,6 +7199,368 @@ await rebuildSpatialIndex();
 
   }
 }
+
+async function buildAndStoreMasterGrid() {
+
+  console.group(
+    "🔲 BUILDING MASTER GRID"
+  );
+
+  const buildStart =
+    performance.now();
+
+  try {
+
+    const STEP = 0.00045;
+
+    console.log(
+      "📏 Grid Size:",
+      STEP,
+      "(~50m)"
+    );
+
+    const allFeatures =
+      window.allCompartmentFeatures || [];
+
+    console.log(
+      "📦 Total Features Loaded:",
+      allFeatures.length
+    );
+
+    if (!allFeatures.length) {
+
+      console.error(
+        "❌ No compartment features found."
+      );
+
+      console.groupEnd();
+      return;
+    }
+
+    let batch =
+      window.fb.writeBatch(
+        window.db
+      );
+
+    let batchOps = 0;
+
+    let docCount = 0;
+
+    let totalGridCells = 0;
+
+    // ==========================================
+    // FEATURE LOOP
+    // ==========================================
+    for (const feature of allFeatures) {
+
+      try {
+
+        const props =
+          feature?.properties || {};
+
+        const compartment =
+          String(
+            props.compartment ||
+            props.Compartment ||
+            props.compartmen ||
+            ""
+          )
+          .trim()
+          .toUpperCase()
+          .replace(/\s+/g, "_");
+
+        if (!compartment) {
+
+          console.warn(
+            "⚠ Skipped feature without compartment"
+          );
+
+          continue;
+        }
+
+        const beat =
+          String(
+            props.beat ||
+            props.Beat ||
+            ""
+          ).trim();
+
+        const range =
+          String(
+            props.range ||
+            props.Range ||
+            ""
+          ).trim();
+
+        const division =
+          normalizeDivision(
+            props.division ||
+            props.Division ||
+            ""
+          );
+
+        console.group(
+          `📍 ${compartment}`
+        );
+
+        console.log({
+          beat,
+          range,
+          division
+        });
+
+        const bbox =
+          turf.bbox(feature);
+
+        const minLng = bbox[0];
+        const minLat = bbox[1];
+        const maxLng = bbox[2];
+        const maxLat = bbox[3];
+
+        console.log(
+          "📐 BBOX",
+          {
+            minLat,
+            minLng,
+            maxLat,
+            maxLng
+          }
+        );
+
+        const cells = {};
+
+        let compartmentCellCount = 0;
+
+        let bboxCellsChecked = 0;
+
+        // ==========================================
+        // GRID GENERATION
+        // ==========================================
+        for (
+          let lat = minLat;
+          lat < maxLat;
+          lat += STEP
+        ) {
+
+          for (
+            let lng = minLng;
+            lng < maxLng;
+            lng += STEP
+          ) {
+
+            bboxCellsChecked++;
+
+            const centerLat =
+              lat + (STEP / 2);
+
+            const centerLng =
+              lng + (STEP / 2);
+
+            const pt =
+              turf.point([
+                centerLng,
+                centerLat
+              ]);
+
+            let inside = false;
+
+            try {
+
+              inside =
+                turf.booleanPointInPolygon(
+                  pt,
+                  feature
+                );
+
+            } catch (err) {
+
+              console.warn(
+                "⚠ PointInPolygon Error",
+                err
+              );
+            }
+
+            if (!inside) {
+              continue;
+            }
+
+            const cellId =
+              centerLat.toFixed(5) +
+              "_" +
+              centerLng.toFixed(5);
+
+            cells[cellId] = 1;
+
+            compartmentCellCount++;
+            totalGridCells++;
+          }
+        }
+
+        console.log(
+          "🔲 BBOX Candidates:",
+          bboxCellsChecked
+        );
+
+        console.log(
+          "✅ Valid Cells:",
+          compartmentCellCount
+        );
+
+        const estimatedAreaHa =
+          (
+            compartmentCellCount *
+            0.25
+          ).toFixed(2);
+
+        console.log(
+          "🌳 Estimated Area (ha):",
+          estimatedAreaHa
+        );
+
+        const docRef =
+          window.fb.doc(
+            window.db,
+            "grid_master",
+            compartment
+          );
+
+        batch.set(
+          docRef,
+          {
+            compartment,
+            beat,
+            range,
+            division,
+            totalCells:
+              compartmentCellCount,
+            areaHa:
+              Number(
+                estimatedAreaHa
+              ),
+            gridSizeMeters: 50,
+            createdAt:
+              window.fb.serverTimestamp(),
+            cells
+          }
+        );
+
+        batchOps++;
+        docCount++;
+
+        // ==========================================
+        // FIRESTORE LIMIT SAFETY
+        // ==========================================
+        if (batchOps >= 450) {
+
+          console.log(
+            "💾 Committing batch..."
+          );
+
+          await batch.commit();
+
+          batch =
+            window.fb.writeBatch(
+              window.db
+            );
+
+          batchOps = 0;
+        }
+
+        console.groupEnd();
+
+      } catch (featureErr) {
+
+        console.error(
+          "❌ Feature Failed",
+          featureErr
+        );
+      }
+    }
+
+    // ==========================================
+    // FINAL COMMIT
+    // ==========================================
+    if (batchOps > 0) {
+
+      console.log(
+        "💾 Final batch commit..."
+      );
+
+      await batch.commit();
+    }
+
+    const elapsed =
+      (
+        performance.now() -
+        buildStart
+      ).toFixed(0);
+
+    console.log(
+      "━━━━━━━━━━━━━━━━━━"
+    );
+
+    console.log(
+      "✅ GRID BUILD COMPLETE"
+    );
+
+    console.log({
+      compartmentsSaved:
+        docCount,
+
+      totalGridCells,
+
+      gridSizeMeters:
+        50,
+
+      elapsedMs:
+        elapsed
+    });
+
+    console.log(
+      "━━━━━━━━━━━━━━━━━━"
+    );
+
+  } catch (err) {
+
+    console.error(
+      "❌ MASTER GRID BUILD FAILED",
+      err
+    );
+
+  } finally {
+
+    console.groupEnd();
+  }
+}
+    async function loadMasterGrid() {
+
+  window.masterGrid = {};
+
+  const snap =
+    await window.fb.getDocs(
+      window.fb.collection(
+        window.db,
+        "grid_master"
+      )
+    );
+
+  snap.forEach(doc => {
+
+    const data =
+      doc.data();
+
+    window.masterGrid[
+      data.compartment
+    ] = data;
+  });
+
+  console.log(
+    "✅ GRID LOADED",
+    Object.keys(
+      window.masterGrid
+    ).length
+  );
+}
 // ======================================
 // 📜 APPEND INTO GEOMETRY HISTORY
 // FINAL ENTERPRISE VERSION
