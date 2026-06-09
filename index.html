@@ -8723,8 +8723,7 @@ async function getAnalyticsSummary(gridIds, monthKey) {
     visitCount,
     coveragePercent: totalCells > 0 ? (visitedCells / totalCells) * 100 : 0
   };
-}
-// 3. Updated showAnalyticsPopup with Close Button
+}// 3. Updated showAnalyticsPopup with Close Button
 function showAnalyticsPopup(summary, title) {
   let panel = document.getElementById("analyticsPanel");
 
