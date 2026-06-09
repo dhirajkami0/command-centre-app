@@ -7201,7 +7201,6 @@ await rebuildSpatialIndex();
 }
 
 async function buildAndStoreMasterGrid() {
-
   console.group(
     "🔲 BUILDING MASTER GRID"
   );
@@ -7210,7 +7209,6 @@ async function buildAndStoreMasterGrid() {
     performance.now();
 
   try {
-
     const STEP = 0.00045; // 50m
 
     console.log(
@@ -7228,11 +7226,9 @@ async function buildAndStoreMasterGrid() {
     );
 
     if (!allFeatures.length) {
-
       console.error(
         "❌ No compartment features loaded"
       );
-
       return;
     }
 
@@ -7240,9 +7236,7 @@ async function buildAndStoreMasterGrid() {
     let compartmentsSaved = 0;
 
     for (const feature of allFeatures) {
-
       try {
-
         const props =
           feature?.properties || {};
 
@@ -7258,11 +7252,9 @@ async function buildAndStoreMasterGrid() {
           .replace(/\s+/g, "_");
 
         if (!compartment) {
-
           console.warn(
             "⚠ Missing compartment"
           );
-
           continue;
         }
 
@@ -7287,8 +7279,20 @@ async function buildAndStoreMasterGrid() {
             ""
           );
 
+        const gridId =
+          [
+            division,
+            range,
+            beat,
+            compartment
+          ]
+          .filter(Boolean)
+          .join("_")
+          .toUpperCase()
+          .replace(/\s+/g, "_");
+
         console.group(
-          `📍 ${compartment}`
+          `📍 ${gridId}`
         );
 
         const bbox =
@@ -7309,13 +7313,11 @@ async function buildAndStoreMasterGrid() {
           lat < maxLat;
           lat += STEP
         ) {
-
           for (
             let lng = minLng;
             lng < maxLng;
             lng += STEP
           ) {
-
             bboxChecked++;
 
             const centerLat =
@@ -7327,7 +7329,6 @@ async function buildAndStoreMasterGrid() {
             let inside = false;
 
             try {
-
               inside =
                 turf.booleanPointInPolygon(
                   turf.point([
@@ -7336,7 +7337,6 @@ async function buildAndStoreMasterGrid() {
                   ]),
                   feature
                 );
-
             } catch(e) {}
 
             if (!inside) {
@@ -7347,12 +7347,12 @@ async function buildAndStoreMasterGrid() {
             totalGridCells++;
 
             const row =
-              Math.floor(
+              Math.round(
                 centerLat / STEP
               );
 
             const col =
-              Math.floor(
+              Math.round(
                 centerLng / STEP
               );
 
@@ -7372,10 +7372,17 @@ async function buildAndStoreMasterGrid() {
           validCells
         );
 
-        const areaHa =
+        const estimatedAreaHa =
           Number(
             (
               validCells * 0.25
+            ).toFixed(2)
+          );
+
+        const actualAreaHa =
+          Number(
+            (
+              turf.area(feature) / 10000
             ).toFixed(2)
           );
 
@@ -7383,20 +7390,23 @@ async function buildAndStoreMasterGrid() {
           window.fb.doc(
             window.db,
             "grid_master",
-            compartment
+            gridId
           );
 
         await window.fb.setDoc(
           metadataRef,
           {
+            gridId,
             compartment,
             beat,
             range,
             division,
-            totalCells:
-              validCells,
-            areaHa,
+            bbox: { minLat, minLng, maxLat, maxLng },
+            totalCells: validCells,
+            estimatedAreaHa,
+            actualAreaHa,
             gridSizeMeters: 50,
+            gridVersion: 1,
             updatedAt:
               window.fb.serverTimestamp()
           }
@@ -7411,7 +7421,6 @@ async function buildAndStoreMasterGrid() {
           i < cells.length;
           i += CHUNK_SIZE
         ) {
-
           shardIndex++;
 
           const shard =
@@ -7424,7 +7433,7 @@ async function buildAndStoreMasterGrid() {
             window.fb.doc(
               window.db,
               "grid_master",
-              compartment,
+              gridId,
               "cells",
               `part_${String(
                 shardIndex
@@ -7437,6 +7446,7 @@ async function buildAndStoreMasterGrid() {
           await window.fb.setDoc(
             shardRef,
             {
+              gridId,
               compartment,
               shardIndex,
               cells: shard
@@ -7458,7 +7468,6 @@ async function buildAndStoreMasterGrid() {
         console.groupEnd();
 
       } catch(err) {
-
         console.error(
           "❌ Compartment Failed",
           err
@@ -7499,19 +7508,16 @@ async function buildAndStoreMasterGrid() {
     );
 
   } catch(err) {
-
     console.error(
       "❌ GRID BUILD FAILED",
       err
     );
-
   } finally {
-
     console.groupEnd();
   }
 }
-    async function loadMasterGrid() {
 
+async function loadMasterGrid() {
   window.masterGrid = {};
 
   const snap =
@@ -7523,12 +7529,11 @@ async function buildAndStoreMasterGrid() {
     );
 
   snap.forEach(doc => {
-
     const data =
       doc.data();
 
     window.masterGrid[
-      data.compartment
+      data.gridId
     ] = data;
   });
 
@@ -7538,8 +7543,7 @@ async function buildAndStoreMasterGrid() {
       window.masterGrid
     ).length
   );
-}
-// ======================================
+}// ======================================
 // 📜 APPEND INTO GEOMETRY HISTORY
 // FINAL ENTERPRISE VERSION
 // ======================================
