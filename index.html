@@ -8756,52 +8756,127 @@ function showAnalyticsPopup(
   title
 ){
 
-  if(
-    window.analyticsPopup
-  ){
-    window.map.removeLayer(
-      window.analyticsPopup
+  try{
+
+    // =====================================
+    // REMOVE OLD ANALYTICS POPUP
+    // =====================================
+
+    if(
+      window.analyticsPopup &&
+      window.map.hasLayer(
+        window.analyticsPopup
+      )
+    ){
+
+      window.map.removeLayer(
+        window.analyticsPopup
+      );
+
+    }
+
+    // =====================================
+    // CREATE NEW POPUP
+    // =====================================
+
+    window.analyticsPopup =
+
+      L.popup({
+
+        closeButton: true,
+
+        autoClose: false,
+
+        closeOnClick: false
+
+      })
+
+      .setLatLng(
+
+        window.map.getCenter()
+
+      )
+
+      .setContent(
+
+        `
+        <div
+          style="
+            min-width:220px;
+            line-height:1.5;
+            font-size:14px;
+          "
+        >
+
+          <b>${title}</b>
+
+          <br><br>
+
+          Compartments:
+          ${summary.compartments}
+
+          <br><br>
+
+          Area:
+          ${summary.areaHa.toFixed(2)} ha
+
+          <br><br>
+
+          Coverage:
+          ${summary.coveragePercent.toFixed(2)} %
+
+          <br><br>
+
+          Visited Cells:
+          ${summary.visitedCells}
+
+          <br><br>
+
+          Total Cells:
+          ${summary.totalCells}
+
+          <br><br>
+
+          Distance:
+          ${(
+            summary.distanceMeters / 1000
+          ).toFixed(2)} km
+
+          <br><br>
+
+          Visits:
+          ${summary.visitCount}
+
+        </div>
+        `
+
+      )
+
+      .addTo(
+        window.map
+      );
+
+    console.log(
+      "📊 Analytics popup added"
     );
+
+    console.log(
+      "📊 Popup visible:",
+      window.map.hasLayer(
+        window.analyticsPopup
+      )
+    );
+
   }
 
-  window.analyticsPopup =
-    L.popup({
-      closeButton: true
-    })
-    .setLatLng(
-      window.map.getCenter()
-    )
-    .setContent(
-      `
-      <b>${title}</b><br><br>
+  catch(err){
 
-      Compartments:
-      ${summary.compartments}<br><br>
-
-      Area:
-      ${summary.areaHa.toFixed(2)} ha<br><br>
-
-      Coverage:
-      ${summary.coveragePercent.toFixed(2)} %<br><br>
-
-      Visited Cells:
-      ${summary.visitedCells}<br><br>
-
-      Total Cells:
-      ${summary.totalCells}<br><br>
-
-      Distance:
-      ${(
-        summary.distanceMeters / 1000
-      ).toFixed(2)} km<br><br>
-
-      Visits:
-      ${summary.visitCount}
-      `
-    )
-    .openOn(
-      window.map
+    console.error(
+      "❌ showAnalyticsPopup failed",
+      err
     );
+
+  }
 
 }
     async function getAnalyticsSummary(
