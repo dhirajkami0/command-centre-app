@@ -8512,19 +8512,51 @@ async function updateMonthlyAnalytics(
 // 📜 SHOW MONTH HISTORY (PRODUCTION-FROZEN)
 // =============================================================================
 
+// 1. Helper to fetch all Grid IDs with robust normalization
+function getAnalyticsGridIds(activeLevel, filterValue) {
+    if (!window.masterGrid) return [];
+
+    const allGrids = Object.values(window.masterGrid);
+
+    switch (activeLevel) {
+        case "compartment":
+            // Robust normalization for compartment names
+            const norm = (val) => String(val || "").trim().toUpperCase().replace(/\s+/g, "_");
+            return allGrids
+                .filter(g => norm(g.compartment) === norm(filterValue))
+                .map(g => g.gridId);
+
+        case "beat":
+            return allGrids
+                .filter(g => typeof normalizeBeatName === "function" 
+                    ? normalizeBeatName(g.beat) === normalizeBeatName(filterValue) 
+                    : g.beat === filterValue)
+                .map(g => g.gridId);
+
+        case "range":
+            return allGrids
+                .filter(g => g.range === filterValue)
+                .map(g => g.gridId);
+
+        case "division":
+            return allGrids
+                .filter(g => typeof normalizeDivision === "function" 
+                    ? normalizeDivision(g.division) === normalizeDivision(filterValue) 
+                    : g.division === filterValue)
+                .map(g => g.gridId);
+
+        default:
+            return Object.keys(window.masterGrid);
+    }
+}
+
+// 2. Updated showMonthHistory
 async function showMonthHistory() {
   try { 
-    if(
-  !window.masterGrid ||
-  Object.keys(
-    window.masterGrid
-  ).length === 0
-){
-  alert(
-    "Grid metadata still loading."
-  );
-  return;
-}
+    if (!window.masterGrid || Object.keys(window.masterGrid).length === 0) {
+      alert("Grid metadata still loading.");
+      return;
+    }
     const d = new Date();
     const monthKey = `${d.getFullYear()}_${String(d.getMonth() + 1).padStart(2, "0")}`;
 
@@ -8536,7 +8568,12 @@ async function showMonthHistory() {
     const compartment = String(window.gisFilter?.compartment || "").trim();
     const activeLevel = String(window.activePopupContext?.level || "btr").trim().toLowerCase();
 
-    console.log("📍 ACTIVE INTERFACE FILTERS", { activeLevel, division, range, beat, compartment });
+    const filterValue = (activeLevel === "compartment") ? compartment : 
+                        (activeLevel === "beat") ? beat : 
+                        (activeLevel === "range") ? range : 
+                        (activeLevel === "division") ? division : "";
+
+    const analyticsGridIds = getAnalyticsGridIds(activeLevel, filterValue);
 
     if (window.historyLayer) window.historyLayer.clearLayers();
 
@@ -8548,141 +8585,36 @@ async function showMonthHistory() {
     );
 
     const snap = await window.fb.getDocs(q);
-    if (snap.empty) {
-      alert("No history found in database for this period.");
-      console.groupEnd();
-      return;
-    }
-
+    
     const tracksToRender = [];
-
-    const selectedGridIds =
-  new Set();
     snap.forEach(docSnap => {
-      try {
-        const data = docSnap.data() || {};
-
-        // 🛡️ BBOX OPTIMIZATION (Disable if you need to debug missing data while zoomed out)
-        if (window.map && data.bbox) {
-          const mapBounds = window.map.getBounds();
-          const trackBox = L.latLngBounds([data.bbox.minLat, data.bbox.minLng], [data.bbox.maxLat, data.bbox.maxLng]);
-          if (!mapBounds.intersects(trackBox)) return;
-        }
-
-        const tracksObject = data.tracks || {};
-
-        // ⚡ GRANULAR FILTERING
-        Object.entries(tracksObject).forEach(([compId, compObj]) => {
-          if (!compObj || !Array.isArray(compObj.tracks)) return;
-
-          let isMatch = false;
-
-          if (activeLevel === "compartment") {
-            const selectedCompId = compartment.trim().toUpperCase().replace(/\s+/g, "_");
-            isMatch = compId === selectedCompId;
-          } else if (activeLevel === "beat") {
-            const b = compObj.beat || "";
-            isMatch = typeof normalizeBeatName === "function" ? normalizeBeatName(b) === normalizeBeatName(beat) : b === beat;
-          } else if (activeLevel === "range") {
-            isMatch = compObj.range === range;
-          } else if (activeLevel === "division") {
-            const d = compObj.division || "";
-            isMatch = typeof normalizeDivision === "function" ? normalizeDivision(d) === normalizeDivision(division) : d === division;
-          } else {
-            isMatch = true;
-          }
-
-          if (isMatch) {
-
-  tracksToRender.push(
-    ...compObj.tracks
-  );
-
- if(
-  compObj.gridId
-){
-  selectedGridIds.add(
-    compObj.gridId
-  );
-}
-else{
-
-  console.warn(
-    "⚠ Missing gridId",
-    compId
-  );
-
-}
-}
-        });
-
-      } catch (err) {
-        console.warn("❌ Skipped corrupt history document", err);
+      const data = docSnap.data() || {};
+      if (window.map && data.bbox) {
+        const mapBounds = window.map.getBounds();
+        const trackBox = L.latLngBounds([data.bbox.minLat, data.bbox.minLng], [data.bbox.maxLat, data.bbox.maxLng]);
+        if (!mapBounds.intersects(trackBox)) return;
       }
+
+      Object.entries(data.tracks || {}).forEach(([compId, compObj]) => {
+        let isMatch = false;
+        if (activeLevel === "compartment") isMatch = compId === compartment.toUpperCase().replace(/\s+/g, "_");
+        else if (activeLevel === "beat") isMatch = (typeof normalizeBeatName === "function" ? normalizeBeatName(compObj.beat) : compObj.beat) === (typeof normalizeBeatName === "function" ? normalizeBeatName(beat) : beat);
+        else if (activeLevel === "range") isMatch = compObj.range === range;
+        else if (activeLevel === "division") isMatch = (typeof normalizeDivision === "function" ? normalizeDivision(compObj.division) : compObj.division) === (typeof normalizeDivision === "function" ? normalizeDivision(division) : division);
+        else isMatch = true;
+
+        if (isMatch && compObj.tracks) {
+          tracksToRender.push(...compObj.tracks);
+        }
+      });
     });
 
-    console.log(`📦 FINAL TRACK QUEUE BATCH COUNT: ${tracksToRender.length}`);
-    console.log(
-  "📊 Matching GridIds:",
-  selectedGridIds.size
-);
+    const analyticsSummary = await getAnalyticsSummary(analyticsGridIds, monthKey);
+    const popupTitle = (activeLevel === "compartment" ? compartment : activeLevel === "beat" ? beat : activeLevel === "range" ? range : activeLevel === "division" ? division : "BTR");
 
-    if (tracksToRender.length === 0) {
-      alert("No history tracks matched current logic query.");
-      console.groupEnd();
-      return;
-    }
-// 🔥 ADD HERE
-if(
-  selectedGridIds.size === 0
-){
-  alert(
-    "No analytics found."
-  );
-  console.groupEnd();
-  return;
-}
-console.log(
-  "📊 GRID IDS",
-  Array.from(
-    selectedGridIds
-  )
-);
-const analyticsSummary =
-  await getAnalyticsSummary(
-    Array.from(
-      selectedGridIds
-    ),
-    monthKey
-  );
-
-console.table(
-  analyticsSummary
-);
-  const popupTitle =
-
-  activeLevel === "compartment"
-    ? compartment
-
-  : activeLevel === "beat"
-    ? beat
-
-  : activeLevel === "range"
-    ? range
-
-  : activeLevel === "division"
-    ? division
-
-  : "BTR";
-
-
-
-    // 🎯 DYNAMIC SPATIAL MASKING
     const applySpatialMask = (activeLevel === "compartment");
     const selectedGeometry = window.currentSelectedGeometry;
-    const selectedFeature = (applySpatialMask && selectedGeometry) 
-      ? { type: "Feature", geometry: selectedGeometry, properties: {} } 
-      : null;
+    const selectedFeature = (applySpatialMask && selectedGeometry) ? { type: "Feature", geometry: selectedGeometry, properties: {} } : null;
 
     let renderedCount = 0;
     let currentIndex = 0;
@@ -8690,58 +8622,27 @@ console.table(
 
     function renderBatch() {
       const end = Math.min(currentIndex + batchSize, tracksToRender.length);
-
       for (; currentIndex < end; currentIndex++) {
         try {
           const encoded = tracksToRender[currentIndex];
           if (!encoded || typeof encoded !== "string") continue;
-
           const coords = polyline.decode(encoded);
-          if (!coords || coords.length < 2) continue;
-
-          // 🛡️ Apply intersection check ONLY when compartment level is active
           if (selectedFeature) {
-            try {
-              const geoLine = turf.lineString(coords.map(c => [Number(c[1]), Number(c[0])]));
-              if (!turf.booleanIntersects(geoLine, selectedFeature)) continue;
-            } catch (e) {
-              console.warn("⚠️ Turf filter failed", e);
-            }
+            const geoLine = turf.lineString(coords.map(c => [Number(c[1]), Number(c[0])]));
+            if (!turf.booleanIntersects(geoLine, selectedFeature)) continue;
           }
+          
+          // Safety check added here
+          if (!window.historyLayer) continue;
 
-          const line = L.polyline(coords, {
-            renderer: window.historyRenderer || L.canvas({ padding: 0.5 }),
-            color: "#ff0000",
-            weight: 2.7,
-            opacity: 0.8
-          });
-
-if (!window.historyLayer) {
-  console.error(
-    "❌ historyLayer missing."
-  );
-  continue;
-}        
+          const line = L.polyline(coords, { renderer: window.historyRenderer || L.canvas({ padding: 0.5 }), color: "#ff0000", weight: 2.7, opacity: 0.8 });
           window.historyLayer.addLayer(line);
           renderedCount++;
-        } catch (err) {}
+        } catch (e) {}
       }
-
-      if (currentIndex < tracksToRender.length) {
-        requestAnimationFrame(renderBatch);
-      } else {
-        console.log(`✅ OPERATION SUMMARY: Rendered [${renderedCount}] tracks.`);
-    console.log(
-  "🔥 SHOWING POPUP",
-  analyticsSummary,
-  popupTitle
-);
-        
-        showAnalyticsPopup(
-  analyticsSummary,
-  popupTitle
-);
-    
+      if (currentIndex < tracksToRender.length) requestAnimationFrame(renderBatch);
+      else {
+        showAnalyticsPopup(analyticsSummary, popupTitle);
         console.groupEnd();
       }
     }
@@ -8750,173 +8651,48 @@ if (!window.historyLayer) {
     console.error("❌ showMonthHistory failure", err);
     console.groupEnd();
   }
-} 
-function showAnalyticsPopup(
-  summary,
-  title
-){
+}
 
-  let panel =
-    document.getElementById(
-      "analyticsPanel"
-    );
+// 3. Updated showAnalyticsPopup with Close Button
+function showAnalyticsPopup(summary, title) {
+  let panel = document.getElementById("analyticsPanel");
 
-  if(!panel){
-
-    panel =
-      document.createElement(
-        "div"
-      );
-
-    panel.id =
-      "analyticsPanel";
-
+  if (!panel) {
+    panel = document.createElement("div");
+    panel.id = "analyticsPanel";
     panel.style.cssText = `
-      position:absolute;
-      top:80px;
-      right:20px;
-      z-index:99999;
-      background:white;
-      padding:12px;
-      border-radius:8px;
-      box-shadow:0 2px 8px rgba(0,0,0,.3);
-      min-width:260px;
-      max-width:320px;
-      font-size:14px;
-    `;
-
-    document.body.appendChild(
-      panel
-    );
+  position:fixed;
+  top:80px;
+  right:20px;
+  z-index:99999;
+  background:white;
+  padding:12px;
+  border-radius:8px;
+  box-shadow:0 2px 8px rgba(0,0,0,.3);
+  min-width:260px;
+  max-width:320px;
+  font-size:14px;
+`;
+    document.body.appendChild(panel);
   }
 
   panel.innerHTML = `
-
+    <div style="text-align:right; margin-bottom:8px;">
+        <button onclick="document.getElementById('analyticsPanel')?.remove();">✖</button>
+    </div>
     <b>${title}</b>
     <hr>
-
-    Compartments:
-    ${summary.compartments}
-    <br><br>
-
-    Area:
-    ${summary.areaHa.toFixed(2)} ha
-    <br><br>
-
-    Coverage:
-    ${summary.coveragePercent.toFixed(2)} %
-    <br><br>
-
-    Visited Cells:
-    ${summary.visitedCells}
-    <br><br>
-
-    Total Cells:
-    ${summary.totalCells}
-    <br><br>
-
-    Distance:
-    ${(
-      summary.distanceMeters / 1000
-    ).toFixed(2)} km
-    <br><br>
-
-    Visits:
-    ${summary.visitCount}
-
+    Compartments: ${summary.compartments}<br><br>
+    Area: ${summary.areaHa.toFixed(2)} ha<br><br>
+    Coverage: ${summary.coveragePercent.toFixed(2)} %<br><br>
+    Visited Cells: ${summary.visitedCells}<br><br>
+    Total Cells: ${summary.totalCells}<br><br>
+    Distance: ${(summary.distanceMeters / 1000).toFixed(2)} km<br><br>
+    Visits: ${summary.visitCount}
   `;
 }
-    async function getAnalyticsSummary(
-  gridIds,
-  monthKey
-){
 
-  let totalCells = 0;
-  let visitedCells = 0;
-  let distanceMeters = 0;
-  let visitCount = 0;
-  let areaHa = 0;
-
-  for(
-    const gridId
-    of gridIds
-  ){
-
-    const master =
-      window.masterGrid?.[
-        gridId
-      ];
-
-    if(master){
-
-      totalCells +=
-        master.totalCells || 0;
-
-      areaHa +=
-        master.actualAreaHa || 0;
-    }
-
-    const snap =
-      await window.fb.getDoc(
-
-        window.fb.doc(
-          window.db,
-          "analytics",
-          monthKey,
-          "compartments",
-          gridId
-        )
-
-      );
-
-    if(!snap.exists()){
-      continue;
-    }
-
-    const a =
-      snap.data();
-
-    visitedCells +=
-      Object.keys(
-        a.visitedCells || {}
-      ).length;
-
-    distanceMeters +=
-      a.distanceMeters || 0;
-
-    visitCount +=
-      a.visitCount || 0;
-  }
-
-  return {
-
-    compartments:
-      gridIds.length,
-
-    totalCells,
-
-    visitedCells,
-
-    areaHa,
-
-    distanceMeters,
-
-    visitCount,
-
-    coveragePercent:
-
-      totalCells
-
-      ?
-
-      (
-        visitedCells /
-        totalCells
-      ) * 100
-
-      : 0
-  };
-}
+   
     function compileGreenGuardLoadTestMetrics() {
   const b = window.bench;
   if (!b || b.clipTimes.length === 0) {
