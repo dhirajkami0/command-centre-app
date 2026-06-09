@@ -7284,13 +7284,28 @@ async function appendTrackToGeometries(simplifiedLine, options = { sessionId: nu
     }
 
     // 3. AUTHORITY CONTEXT
-    const effectiveRange = String(isRecoveryRun ? existingData?.range : window.userProfile?.range || "").trim();
-    const effectiveDivision = normalizeDivision(isRecoveryRun ? existingData?.division : window.userProfile?.division || "");
-    const userRole = String(
-      isRecoveryRun 
-        ? existingData?.role 
-        : window.userProfile?.role || ""
-    ).trim().toUpperCase();
+   const effectiveRange =
+  String(
+    isRecoveryRun
+      ? (existingData?.range || "")
+      : (window.userProfile?.range || "")
+  ).trim();
+
+const effectiveDivision =
+  normalizeDivision(
+    isRecoveryRun
+      ? (existingData?.division || "")
+      : (window.userProfile?.division || "")
+  );
+
+const userRole =
+  String(
+    isRecoveryRun
+      ? (existingData?.role || "")
+      : (window.userProfile?.role || "")
+  )
+  .trim()
+  .toUpperCase();
 
     if (!effectiveRange || !effectiveDivision) {
       throw new Error("Missing authority context - cannot authorize track storage.");
@@ -7315,13 +7330,18 @@ async function appendTrackToGeometries(simplifiedLine, options = { sessionId: nu
       }
     };
 
-    const allFeatures = window.allCompartmentFeatures || [];
-    for (const feature of allFeatures) {
-      const props = feature.properties || {};
+    // Use Spatial Index for query
+    const candidates = window.compartmentSpatialIndex.query(lineGeom.getEnvelopeInternal()).toArray();
+
+    for (const candidate of candidates) {
+      const polygonGeom = candidate.polygonGeom;
+      const props = candidate.feature?.properties || {};
+      
       const compRange = String(props.range || props.Range || "").trim();
       const compDivision = normalizeDivision(props.division || props.Division || "");
       const compName = String(props.compartment || props.Compartment || props.compartmen || "").trim();
       const compBeat = String(props.beat || props.Beat || "").trim();
+      const normalizedCompId = candidate.normalizedCompId || compName.trim().toUpperCase().replace(/\s+/g, "_");
 
       // Ensure compartment name exists
       if (!compName) continue;
@@ -7340,14 +7360,13 @@ async function appendTrackToGeometries(simplifiedLine, options = { sessionId: nu
       if (!authorized) continue;
       // ---------------------------
 
-      let polygonGeom;
+      let clipped;
       try {
-        polygonGeom = geoJsonReader.read(feature.geometry);
-      } catch (e) { continue; }
+        clipped = lineGeom.intersection(polygonGeom);
+      } catch (e) {
+        continue;
+      }
 
-      if (!lineGeom.intersects(polygonGeom)) continue;
-
-      const clipped = lineGeom.intersection(polygonGeom);
       if (!clipped || clipped.isEmpty()) continue;
 
       const localCoordsArray = [];
@@ -7355,7 +7374,6 @@ async function appendTrackToGeometries(simplifiedLine, options = { sessionId: nu
 
       if (localCoordsArray.length > 0) {
         const encodedStrings = localCoordsArray.map(seg => polyline.encode(seg));
-        const normalizedCompId = compName.trim().toUpperCase().replace(/\s+/g, "_");
         
         // 5. FRAGMENT MERGING
         if (!embeddedTracksMap[normalizedCompId]) {
@@ -7396,8 +7414,7 @@ function finalizeSessionLifecycle() {
   if (window.localStorage) {
     window.localStorage.removeItem("sessionId");
   }
-}
-    async function executeGreenGuardSelfHealingWorker() {
+}    async function executeGreenGuardSelfHealingWorker() {
   const userProfile = window.userProfile || {};
   const userRole = String(userProfile.role || "STAFF").trim().toUpperCase();
 
