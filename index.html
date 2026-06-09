@@ -7024,6 +7024,27 @@ console.trace(
   "PRELOAD_COMPARTMENT_ CALLED"
 );
 
+  if(
+    window.__COMPARTMENTS_READY__
+  ){
+    console.log(
+      "⏭ Compartments already loaded"
+    );
+    return;
+  }
+
+  if(
+    window.__COMPARTMENTS_LOADING__
+  ){
+    console.log(
+      "⏳ Compartments loading..."
+    );
+    return;
+  }
+
+  window.__COMPARTMENTS_LOADING__ =
+    true;
+
   try{
 
     console.log(
@@ -7194,12 +7215,18 @@ console.trace(
     );
 
     await rebuildSpatialIndex();
-
+  window.__COMPARTMENTS_READY__ =
+      true;
     // 🔥 BACKGROUND ONLY
     if(
-      !window.masterGridLoading &&
-      !window.masterGrid
-    ){
+  !window.masterGridLoading &&
+  (
+    !window.masterGrid ||
+    Object.keys(
+      window.masterGrid
+    ).length === 0
+  )
+){
 
       window.masterGridLoading =
         true;
@@ -7242,6 +7269,8 @@ console.trace(
 
     }
 
+  
+
   }
 
   catch(err){
@@ -7252,8 +7281,15 @@ console.trace(
     );
 
   }
+
+  finally{
+
+    window.__COMPARTMENTS_LOADING__ =
+      false;
+
+  }
 }
-async function buildAndStoreMasterGrid() {
+    async function buildAndStoreMasterGrid() {
   console.group(
     "🔲 BUILDING MASTER GRID"
   );
