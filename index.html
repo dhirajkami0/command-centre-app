@@ -12410,6 +12410,66 @@ function getLiveStaffCountForCurrentPolygon() {
 
   return cache.length;
 }
+
+    function getMonthlyStatusTitle() {
+
+  const level =
+    String(
+      window.activePopupContext?.level ||
+      "btr"
+    )
+    .toLowerCase();
+
+  if (level === "compartment") {
+
+    return (
+      String(
+        window.gisFilter?.compartment ||
+        "Compartment"
+      ).trim()
+      +
+      " MONTHLY STATUS"
+    );
+  }
+
+  if (level === "beat") {
+
+    return (
+      String(
+        window.gisFilter?.beat ||
+        "Beat"
+      ).trim()
+      +
+      " MONTHLY STATUS"
+    );
+  }
+
+  if (level === "range") {
+
+    return (
+      String(
+        window.gisFilter?.range ||
+        "Range"
+      ).trim()
+      +
+      " MONTHLY STATUS"
+    );
+  }
+
+  if (level === "division") {
+
+    return (
+      String(
+        window.gisFilter?.division ||
+        "Division"
+      ).trim()
+      +
+      " MONTHLY STATUS"
+    );
+  }
+
+  return "BTR MONTHLY STATUS";
+}
     async function updateMonthlyStatusCard() {
 
   try {
