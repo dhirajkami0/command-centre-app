@@ -1676,7 +1676,35 @@ NORTH REMAINS ABSOLUTE
   ></i>
 
 </button>
+<button
 
+  id="heatmapBtn"
+
+  onclick="toggleMonthlyHeatmap()"
+
+  class="btn-center"
+
+  style="
+    margin-top:10px;
+    background:#ff9800;
+
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+    gap:10px;
+  "
+>
+
+  <span>
+    🔥 MONTHLY HEATMAP
+  </span>
+
+  <i
+    id="heatmapEye"
+    class="fa-solid fa-eye"
+  ></i>
+
+</button>
 </div>
  <div class="weather-drawer"
      id="weatherDrawer"
@@ -6900,6 +6928,63 @@ function clearMonthHistory(){
     );
   }
 }
+
+ function clearMonthlyHeatmap(){
+
+  try{
+
+    if(
+      window.monthlyHeatmapLayer &&
+      window.map
+    ){
+
+      window.map.removeLayer(
+        window.monthlyHeatmapLayer
+      );
+    }
+
+    window.monthlyHeatmapLayer =
+      null;
+
+    window.heatmapLoaded =
+      false;
+
+    const eye =
+      document.getElementById(
+        "heatmapEye"
+      );
+
+    if(eye){
+
+      eye.className =
+        "fa-solid fa-eye";
+    }
+
+    const btn =
+      document.getElementById(
+        "heatmapBtn"
+      );
+
+    if(btn){
+
+      btn.style.background =
+        "#ff9800";
+    }
+
+    console.log(
+      "🧹 Heatmap cleared"
+    );
+
+  }
+
+  catch(err){
+
+    console.error(
+      "❌ clearMonthlyHeatmap",
+      err
+    );
+  }
+}
 // ======================================
 // 📜 PROCESS HISTORY TRACK
 // ======================================
@@ -8733,7 +8818,550 @@ async function getAnalyticsSummary(gridIds, monthKey) {
     visitCount,
     coveragePercent: totalCells > 0 ? (visitedCells / totalCells) * 100 : 0
   };
-}// 3. Updated showAnalyticsPopup with Close Button
+}
+  async function showMonthlyHeatmap() {
+
+  try {
+
+    if (!window.masterGrid) {
+
+      return false;
+    }
+
+    const d =
+      new Date();
+
+    const monthKey =
+      `${d.getFullYear()}_${String(
+        d.getMonth() + 1
+      ).padStart(2,"0")}`;
+
+    const division =
+      String(
+        window.gisFilter?.division || ""
+      ).trim();
+
+    const range =
+      String(
+        window.gisFilter?.range || ""
+      ).trim();
+
+    const beat =
+      String(
+        window.gisFilter?.beat || ""
+      ).trim();
+
+    const compartment =
+      String(
+        window.gisFilter?.compartment || ""
+      ).trim();
+
+    const activeLevel =
+      String(
+        window.activePopupContext?.level ||
+        "btr"
+      )
+      .trim()
+      .toLowerCase();
+
+    const filterValue =
+
+      activeLevel === "compartment"
+      ? compartment
+
+      : activeLevel === "beat"
+      ? beat
+
+      : activeLevel === "range"
+      ? range
+
+      : activeLevel === "division"
+      ? division
+
+      : "";
+
+    const analyticsGridIds =
+      getAnalyticsGridIds(
+        activeLevel,
+        filterValue
+      );
+
+    console.log(
+      "🔥 Heatmap Grid Count:",
+      analyticsGridIds.length
+    );
+
+    return await renderMonthlyHeatmap(
+      analyticsGridIds,
+      monthKey
+    );
+
+  }
+
+  catch(err){
+
+    console.error(
+      "❌ showMonthlyHeatmap",
+      err
+    );
+
+    return false;
+  }
+}
+ async function renderMonthlyHeatmap(
+  gridIds,
+  monthKey
+) {
+
+  try {
+
+    // ==================================
+    // GUARD
+    // ==================================
+
+    if(
+      !Array.isArray(gridIds) ||
+      gridIds.length === 0
+    ){
+
+      console.warn(
+        "⚠ No grids supplied"
+      );
+
+      return false;
+    }
+
+    // ==================================
+    // REMOVE OLD HEATMAP
+    // ==================================
+
+    if (
+      window.monthlyHeatmapLayer &&
+      window.map
+    ) {
+
+      window.map.removeLayer(
+        window.monthlyHeatmapLayer
+      );
+
+      window.monthlyHeatmapLayer =
+        null;
+    }
+
+    const STEP =
+      0.00045;
+
+    const cellIntensity =
+      {};
+
+    let maxCount = 1;
+
+    // ==================================
+    // LOAD ANALYTICS
+    // ==================================
+
+    const docs =
+      await Promise.allSettled(
+
+        gridIds.map(
+          gridId =>
+
+          window.fb.getDoc(
+
+            window.fb.doc(
+
+              window.db,
+
+              "analytics",
+
+              monthKey,
+
+              "compartments",
+
+              gridId
+            )
+          )
+        )
+      );
+
+    docs.forEach(result => {
+
+      if (
+        result.status !==
+        "fulfilled"
+      ) {
+        return;
+      }
+
+      if (
+        !result.value.exists()
+      ) {
+        return;
+      }
+
+      const data =
+        result.value.data();
+
+      Object.entries(
+        data.visitedCells || {}
+      )
+      .forEach(
+        ([cellId,count]) => {
+
+          cellIntensity[cellId] =
+
+            (
+              cellIntensity[cellId]
+              || 0
+            )
+
+            +
+
+            Number(
+              count || 0
+            );
+
+          if (
+            cellIntensity[cellId]
+            >
+            maxCount
+          ) {
+
+            maxCount =
+              cellIntensity[cellId];
+          }
+        }
+      );
+    });
+
+    const totalCells =
+      Object.keys(
+        cellIntensity
+      ).length;
+
+    console.log(
+      "🔥 Heat Cells:",
+      totalCells
+    );
+
+    // ==================================
+    // NO DATA
+    // ==================================
+
+    if (
+      totalCells === 0
+    ) {
+
+      console.warn(
+        "⚠ No heatmap data"
+      );
+
+      return false;
+    }
+
+    // ==================================
+    // POLYGON CONTEXT
+    // ==================================
+
+    const selectedGeometry =
+      window.currentSelectedGeometry;
+
+    const bounds =
+
+      selectedGeometry
+
+      ?
+
+      L.geoJSON(
+        selectedGeometry
+      ).getBounds()
+
+      :
+
+      window.map.getBounds();
+
+    const north =
+      bounds.getNorth();
+
+    const south =
+      bounds.getSouth();
+
+    const east =
+      bounds.getEast();
+
+    const west =
+      bounds.getWest();
+
+    // ==================================
+    // CANVAS
+    // ==================================
+
+    const canvas =
+      document.createElement(
+        "canvas"
+      );
+
+    canvas.width =
+      2048;
+
+    canvas.height =
+      2048;
+
+    const ctx =
+      canvas.getContext(
+        "2d"
+      );
+
+    const selectedFeature =
+
+      selectedGeometry
+
+      ?
+
+      {
+        type:"Feature",
+        geometry:
+          selectedGeometry,
+        properties:{}
+      }
+
+      :
+
+      null;
+
+    // ==================================
+    // FAST BBOX FILTER
+    // ==================================
+
+    let selectedBBox =
+      null;
+
+    if (
+      selectedFeature
+    ) {
+
+      selectedBBox =
+        turf.bbox(
+          selectedFeature
+        );
+    }
+
+    // ==================================
+    // DRAW CELLS
+    // ==================================
+
+    Object.entries(
+      cellIntensity
+    )
+    .forEach(
+      ([cellId,count]) => {
+
+        try {
+
+          const [
+            row,
+            col
+          ] =
+          cellId
+          .split("_")
+          .map(Number);
+
+          const lat =
+            row * STEP;
+
+          const lng =
+            col * STEP;
+
+          // ==========================
+          // FAST BBOX CLIP
+          // ==========================
+
+          if (
+            selectedBBox
+          ) {
+
+            if (
+
+              lng >
+              selectedBBox[2]
+
+              ||
+
+              lng + STEP <
+              selectedBBox[0]
+
+              ||
+
+              lat >
+              selectedBBox[3]
+
+              ||
+
+              lat + STEP <
+              selectedBBox[1]
+
+            ) {
+
+              return;
+            }
+          }
+
+          const ratio =
+
+            Math.log(
+              count + 1
+            )
+
+            /
+
+            Math.log(
+              maxCount + 1
+            );
+
+          const x =
+
+            (
+              (
+                lng - west
+              )
+
+              /
+
+              (
+                east - west
+              )
+            )
+
+            *
+
+            canvas.width;
+
+          const y =
+
+            (
+              (
+                north - lat
+              )
+
+              /
+
+              (
+                north - south
+              )
+            )
+
+            *
+
+            canvas.height;
+
+          const size =
+
+            Math.max(
+
+              2,
+
+              canvas.width
+
+              *
+
+              STEP
+
+              /
+
+              (
+                east - west
+              )
+            );
+
+          const r =
+            255;
+
+          const g =
+            Math.floor(
+              255 *
+              (
+                1 - ratio
+              )
+            );
+
+          ctx.fillStyle =
+            `rgba(
+              ${r},
+              ${g},
+              0,
+              0.75
+            )`;
+
+          ctx.fillRect(
+            x,
+            y,
+            size,
+            size
+          );
+
+        }
+
+        catch(e){}
+      }
+    );
+
+    // ==================================
+    // OVERLAY
+    // ==================================
+
+    const imageUrl =
+      canvas.toDataURL(
+        "image/png"
+      );
+
+    window.monthlyHeatmapLayer =
+
+      L.imageOverlay(
+        imageUrl,
+        bounds,
+        {
+          opacity:0.75
+        }
+      );
+
+    window.monthlyHeatmapLayer
+      .addTo(
+        window.map
+      );
+
+    // ==================================
+    // MEMORY CLEANUP
+    // ==================================
+
+    ctx.clearRect(
+      0,
+      0,
+      canvas.width,
+      canvas.height
+    );
+
+    canvas.width = 1;
+    canvas.height = 1;
+
+    console.log(
+      "🔥 MONTHLY HEATMAP READY"
+    );
+
+    return true;
+
+  }
+
+  catch(err){
+
+    console.error(
+      "❌ renderMonthlyHeatmap",
+      err
+    );
+
+    return false;
+  }
+} 
+    // 3. Updated showAnalyticsPopup with Close Button
 function showAnalyticsPopup(summary, title) {
   let panel = document.getElementById("analyticsPanel");
 
@@ -8881,7 +9509,57 @@ function showAnalyticsPopup(summary, title) {
     );
   }
 }
-   // ======================================
+   async function toggleMonthlyHeatmap(){
+
+  try{
+
+    if(
+      window.heatmapLoaded === true
+    ){
+
+      clearMonthlyHeatmap();
+
+      return;
+    }
+
+    const rendered =
+      await showMonthlyHeatmap();
+
+    if(
+      rendered !== true
+    ){
+
+      console.warn(
+        "⚠ No heatmap rendered"
+      );
+
+      return;
+    }
+
+    window.heatmapLoaded =
+      true;
+
+    const eye =
+      document.getElementById(
+        "heatmapEye"
+      );
+
+    if(eye){
+
+      eye.className =
+        "fa-solid fa-eye-slash";
+    }
+
+  }
+
+  catch(err){
+
+    console.error(
+      "❌ toggleMonthlyHeatmap",
+      err
+    );
+  }
+}// ======================================
 // 🛰 VERIFY LATEST PLANET
 // GIS-AWARE VERSION
 // ======================================
@@ -36801,6 +37479,8 @@ window.sessionTrackPoints = [];
 window.lastTrackPoint = null;
 
 window.historyLoaded = false;
+    window.heatmapLoaded = false;
+    window.monthlyHeatmapLayer = null;
     // =====================================================
 // 🔥 UI TRANSITION LOCK
 // =====================================================
