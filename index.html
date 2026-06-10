@@ -8176,6 +8176,233 @@ const col =
       )
   };
 }
+
+    async function updateMonthlyAnalyticsRebuild(
+  gridId,
+  localCoordsArray,
+  monthKey
+) {
+
+  try {
+
+    if (
+      !gridId ||
+      !monthKey ||
+      !Array.isArray(
+        localCoordsArray
+      ) ||
+      !localCoordsArray.length
+    ) {
+
+      return;
+    }
+
+    const {
+      touchedCells,
+      distanceMeters
+    } =
+      getTouchedCells(
+        localCoordsArray
+      );
+
+    if (
+      touchedCells.size === 0
+    ) {
+
+      return;
+    }
+
+    const analyticsRef =
+      window.fb.doc(
+
+        window.db,
+
+        "analytics_rebuild",
+
+        monthKey,
+
+        "compartments",
+
+        gridId
+
+      );
+
+    const snap =
+      await window.fb.getDoc(
+        analyticsRef
+      );
+
+    let analytics = {
+
+      gridId,
+
+      monthKey,
+
+      distanceMeters: 0,
+
+      visitCount: 0,
+
+      visitedCells: {},
+
+      previousCoveredCells: 0,
+
+      lastSessionAddedCells: 0,
+
+      totalCoveredCells: 0,
+
+      firstSeenAt:
+        window.fb.serverTimestamp(),
+
+      lastSeenAt:
+        window.fb.serverTimestamp(),
+
+      updatedAt:
+        window.fb.serverTimestamp()
+    };
+
+    if (
+      snap.exists()
+    ) {
+
+      analytics = {
+
+        ...analytics,
+
+        ...snap.data()
+      };
+    }
+
+    // ==========================
+    // DISTANCE
+    // ==========================
+
+    analytics.distanceMeters =
+
+      Number(
+        analytics.distanceMeters || 0
+      )
+
+      +
+
+      Number(
+        distanceMeters || 0
+      );
+
+    // ==========================
+    // VISITS
+    // ==========================
+
+    analytics.visitCount =
+
+      Number(
+        analytics.visitCount || 0
+      )
+
+      +
+
+      1;
+
+    // ==========================
+    // CELLS
+    // ==========================
+
+    if (
+      !analytics.visitedCells
+    ) {
+
+      analytics.visitedCells = {};
+    }
+
+    const previousCoveredCount =
+
+      Object.keys(
+        analytics.visitedCells
+      ).length;
+
+    let newlyAddedCells = 0;
+
+    for (
+      const cellId
+      of touchedCells
+    ) {
+
+      if (
+
+        analytics.visitedCells[
+          cellId
+        ] === undefined
+
+      ) {
+
+        newlyAddedCells++;
+      }
+
+      analytics.visitedCells[
+        cellId
+      ] =
+
+        Number(
+
+          analytics.visitedCells[
+            cellId
+          ] || 0
+
+        )
+
+        +
+
+        1;
+    }
+
+    const totalCoveredCount =
+
+      Object.keys(
+        analytics.visitedCells
+      ).length;
+
+    analytics.previousCoveredCells =
+      previousCoveredCount;
+
+    analytics.lastSessionAddedCells =
+      newlyAddedCells;
+
+    analytics.totalCoveredCells =
+      totalCoveredCount;
+
+    analytics.lastSeenAt =
+      window.fb.serverTimestamp();
+
+    analytics.updatedAt =
+      window.fb.serverTimestamp();
+
+    await window.fb.setDoc(
+
+      analyticsRef,
+
+      analytics,
+
+      {
+        merge: true
+      }
+
+    );
+
+    console.log(
+      "✅ REBUILD",
+      gridId,
+      totalCoveredCount
+    );
+
+  }
+
+  catch(err) {
+
+    console.error(
+      "❌ updateMonthlyAnalyticsRebuild",
+      err
+    );
+  }
+}
 async function updateMonthlyAnalytics(
   gridId,
   localCoordsArray,
