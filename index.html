@@ -1443,7 +1443,7 @@ NORTH REMAINS ABSOLUTE
   }
 }
 
-   #monthlyStatusCard {
+ #monthlyStatusCard {
 
   width: 170px;
 
@@ -1475,7 +1475,8 @@ NORTH REMAINS ABSOLUTE
 
   font-size: 12px;
 
-  margin-bottom: 40px;
+  /* 🔥 LOWER POSITION */
+  margin-bottom: 8px;
 
   margin-right: 6px;
 }
@@ -1504,6 +1505,7 @@ NORTH REMAINS ABSOLUTE
   font-size: 12px;
 }
 
+/* 🔥 BIGGER FIELD TEXT */
 .monthlyStatusRow {
 
   display: flex;
@@ -1512,14 +1514,19 @@ NORTH REMAINS ABSOLUTE
 
   align-items: center;
 
-  margin: 4px 0;
+  margin: 5px 0;
+
+  font-size: 14px;
 }
 
+/* 🔥 BIGGER VALUES */
 .monthlyStatusRow span:last-child {
 
   font-weight: bold;
 
   color: #ffe97a;
+
+  font-size: 15px;
 }
 
 @media (max-width:768px) {
@@ -1532,7 +1539,8 @@ NORTH REMAINS ABSOLUTE
 
     padding: 6px;
 
-    margin-bottom: 55px;
+    /* 🔥 JUST ABOVE ATTRIBUTION */
+    margin-bottom: 4px;
 
     margin-right: 2px;
   }
@@ -1545,6 +1553,13 @@ NORTH REMAINS ABSOLUTE
   .monthlyStatusRow {
 
     margin: 2px 0;
+
+    font-size: 12px;
+  }
+
+  .monthlyStatusRow span:last-child {
+
+    font-size: 13px;
   }
 }
   </style>
