@@ -9361,10 +9361,6 @@ async function renderMonthlyHeatmap(
       return false;
     }
 
-    // =====================================
-    // REMOVE OLD HEATMAP
-    // =====================================
-
     if (
       window.monthlyHeatmapLayer &&
       window.map
@@ -9390,10 +9386,6 @@ async function renderMonthlyHeatmap(
       {};
 
     let maxCount = 1;
-
-    // =====================================
-    // LOAD ANALYTICS
-    // =====================================
 
     const docs =
       await Promise.allSettled(
@@ -9422,10 +9414,7 @@ async function renderMonthlyHeatmap(
     let found = 0;
 
     docs.forEach(
-      (
-        result,
-        index
-      ) => {
+      result => {
 
         if (
 
@@ -9480,7 +9469,6 @@ async function renderMonthlyHeatmap(
               }
             }
           );
-
         }
       }
     );
@@ -9506,10 +9494,6 @@ async function renderMonthlyHeatmap(
 
       return false;
     }
-
-    // =====================================
-    // OPTIONAL COMPARTMENT CLIP
-    // =====================================
 
     const activeLevel =
       String(
@@ -9561,10 +9545,6 @@ async function renderMonthlyHeatmap(
       :
 
       null;
-
-    // =====================================
-    // DRAW CELLS DIRECTLY
-    // =====================================
 
     Object.entries(
       cellIntensity
@@ -9688,7 +9668,11 @@ async function renderMonthlyHeatmap(
 
             {
 
-              stroke: false,
+              stroke: true,
+
+             color: "#ffffff",
+weight: 0.2,
+opacity: 0.25,
 
               fillColor:
                 color,
