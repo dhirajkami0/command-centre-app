@@ -1442,6 +1442,93 @@ NORTH REMAINS ABSOLUTE
     width:240px !important;
   }
 }
+
+    #monthlyStatusCard {
+
+  width: 220px;
+
+  background:
+    rgba(
+      15,
+      20,
+      25,
+      0.92
+    );
+
+  color: white;
+
+  border-radius: 12px;
+
+  padding: 10px;
+
+  margin-top: 10px;
+
+  box-shadow:
+    0 4px 18px
+    rgba(
+      0,
+      0,
+      0,
+      0.35
+    );
+
+  backdrop-filter:
+    blur(8px);
+
+  font-size: 13px;
+}
+
+#monthlyStatusTitle {
+
+  text-align: center;
+
+  font-weight: 700;
+
+  color: #4fd1ff;
+
+  margin-bottom: 8px;
+
+  padding-bottom: 6px;
+
+  border-bottom:
+    1px solid
+    rgba(
+      255,
+      255,
+      255,
+      0.15
+    );
+}
+
+.monthlyStatusRow {
+
+  display: flex;
+
+  justify-content: space-between;
+
+  align-items: center;
+
+  margin: 5px 0;
+}
+
+.monthlyStatusRow span:last-child {
+
+  font-weight: bold;
+
+  color: #ffe97a;
+}
+
+@media (max-width:768px) {
+
+  #monthlyStatusCard {
+
+    width: 170px;
+
+    font-size: 11px;
+
+    padding: 8px;
+  }
+}
   </style>
 </head>
 <body>
@@ -12165,6 +12252,497 @@ setInterval(() => {
   }
 
 }  
+function getLiveStaffCountForCurrentPolygon() {
+
+  const level =
+
+    String(
+      window.activePopupContext?.level ||
+      "btr"
+    )
+    .toLowerCase();
+
+  const cache =
+
+    Object.values(
+      window.liveStaffCache || {}
+    );
+
+  // ====================================
+  // BTR
+  // ====================================
+
+  if (
+    level === "btr"
+  ) {
+
+    return cache.length;
+  }
+
+  // ====================================
+  // DIVISION
+  // ====================================
+
+  if (
+    level === "division"
+  ) {
+
+    return cache.filter(
+      s =>
+
+        normalizeDivision(
+          s.division || ""
+        )
+
+        ===
+
+        normalizeDivision(
+          window.gisFilter
+            ?.division || ""
+        )
+    ).length;
+  }
+
+  // ====================================
+  // RANGE
+  // ====================================
+
+  if (
+    level === "range"
+  ) {
+
+    return cache.filter(
+      s =>
+
+        String(
+          s.range || ""
+        ).trim()
+
+        ===
+
+        String(
+          window.gisFilter
+            ?.range || ""
+        ).trim()
+    ).length;
+  }
+
+  // ====================================
+  // BEAT
+  // ====================================
+
+  if (
+    level === "beat"
+  ) {
+
+    return cache.filter(
+      s =>
+
+        normalizeBeatName(
+          s.beat || ""
+        )
+
+        ===
+
+        normalizeBeatName(
+          window.gisFilter
+            ?.beat || ""
+        )
+    ).length;
+  }
+
+  // ====================================
+  // COMPARTMENT
+  // ====================================
+
+  if (
+    level === "compartment"
+  ) {
+
+    const geometry =
+      window.currentSelectedGeometry;
+
+    if (!geometry) {
+      return 0;
+    }
+
+    const polygon = {
+
+      type: "Feature",
+
+      geometry,
+
+      properties: {}
+    };
+
+    let count = 0;
+
+    cache.forEach(staff => {
+
+      try {
+
+        const point =
+          turf.point([
+
+            Number(staff.lng),
+
+            Number(staff.lat)
+
+          ]);
+
+        if (
+
+          turf.booleanPointInPolygon(
+            point,
+            polygon
+          )
+
+        ) {
+
+          count++;
+        }
+
+      } catch(e){}
+    });
+
+    return count;
+  }
+
+  return cache.length;
+}
+    async function updateMonthlyStatusCard() {
+
+  try {
+
+    if (
+      !document.getElementById(
+        "monthlyStatusCard"
+      )
+    ) {
+
+      return;
+    }
+
+    const d =
+      new Date();
+
+    const monthKey =
+      `${d.getFullYear()}_${String(
+        d.getMonth() + 1
+      ).padStart(2,"0")}`;
+
+    const level =
+      String(
+        window.activePopupContext?.level ||
+        "btr"
+      )
+      .toLowerCase();
+
+    const filterValue =
+
+      level === "compartment"
+
+      ? window.gisFilter?.compartment
+
+      : level === "beat"
+
+      ? window.gisFilter?.beat
+
+      : level === "range"
+
+      ? window.gisFilter?.range
+
+      : level === "division"
+
+      ? window.gisFilter?.division
+
+      : "";
+
+    const gridIds =
+      getAnalyticsGridIds(
+        level,
+        filterValue
+      );
+
+    const summary =
+      await getAnalyticsSummary(
+        gridIds,
+        monthKey
+      );
+
+    // =====================================
+    // 🔥 LIVE STAFF
+    // =====================================
+
+    const liveStaff =
+      getLiveStaffCountForCurrentPolygon();
+
+    const liveStaffEl =
+      document.getElementById(
+        "msLiveStaff"
+      );
+
+    if (liveStaffEl) {
+
+      liveStaffEl.textContent =
+        Number(
+          liveStaff
+        ).toLocaleString();
+
+      if (liveStaff === 0) {
+
+        liveStaffEl.style.color =
+          "#ff5b5b";
+
+      }
+
+      else if (
+        liveStaff < 3
+      ) {
+
+        liveStaffEl.style.color =
+          "#ffd54f";
+
+      }
+
+      else {
+
+        liveStaffEl.style.color =
+          "#4cff6d";
+
+      }
+
+    }
+
+    // =====================================
+    // 🔥 COVERED AREA
+    // =====================================
+
+    const coveredAreaHa =
+
+      summary.totalCells > 0
+
+      ?
+
+      (
+        summary.totalCovered /
+        summary.totalCells
+      ) *
+      summary.areaHa
+
+      :
+
+      0;
+
+    // =====================================
+    // 🔥 TITLE
+    // =====================================
+
+    const titleEl =
+      document.getElementById(
+        "monthlyStatusTitle"
+      );
+
+    if (titleEl) {
+
+      titleEl.textContent =
+        getMonthlyStatusTitle();
+
+    }
+
+    // =====================================
+    // 🔥 GRIDS VISITED
+    // =====================================
+
+    const cellsEl =
+      document.getElementById(
+        "msCells"
+      );
+
+    if (cellsEl) {
+
+      cellsEl.textContent =
+        Number(
+          summary.totalCovered
+        ).toLocaleString();
+
+    }
+
+    // =====================================
+    // 🔥 COMPARTMENTS
+    // =====================================
+
+    const compartmentsEl =
+      document.getElementById(
+        "msCompartments"
+      );
+
+    if (compartmentsEl) {
+
+      compartmentsEl.textContent =
+        Number(
+          summary.compartments
+        ).toLocaleString();
+
+    }
+
+    // =====================================
+    // 🔥 SESSIONS
+    // =====================================
+
+    const sessionsEl =
+      document.getElementById(
+        "msSessions"
+      );
+
+    if (sessionsEl) {
+
+      sessionsEl.textContent =
+        Number(
+          summary.visitCount
+        ).toLocaleString();
+
+    }
+
+    // =====================================
+    // 🔥 DISTANCE
+    // =====================================
+
+    const distanceEl =
+      document.getElementById(
+        "msDistance"
+      );
+
+    if (distanceEl) {
+
+      distanceEl.textContent =
+        (
+          summary.distanceMeters /
+          1000
+        ).toFixed(1)
+        + " km";
+
+    }
+
+    // =====================================
+    // 🔥 COVERED AREA
+    // =====================================
+
+    const areaEl =
+      document.getElementById(
+        "msArea"
+      );
+
+    if (areaEl) {
+
+      areaEl.textContent =
+        coveredAreaHa
+        .toFixed(1)
+        + " ha";
+
+    }
+
+    // =====================================
+    // 🔥 COVERAGE %
+    // =====================================
+
+    const coverageEl =
+      document.getElementById(
+        "msCoverage"
+      );
+
+    if (coverageEl) {
+
+      coverageEl.textContent =
+        summary.coveragePercent
+        .toFixed(1)
+        + " %";
+
+    }
+
+  }
+
+  catch(err) {
+
+    console.error(
+      "❌ Monthly Status",
+      err
+    );
+  }
+}
+    function addMonthlyStatusCard() {
+
+  const control =
+    L.control({
+      position: "topright"
+    });
+
+  control.onAdd = function () {
+
+    const div =
+      L.DomUtil.create(
+        "div",
+        "leaflet-control"
+      );
+
+    div.id =
+      "monthlyStatusCard";
+
+    div.innerHTML = `
+
+      <div id="monthlyStatusTitle">
+        BTR MONTHLY STATUS
+      </div>
+
+      <div class="monthlyStatusRow">
+        <span>Live Staff</span>
+        <span id="msLiveStaff">0</span>
+      </div>
+
+      <div class="monthlyStatusRow">
+        <span>Grids Visited</span>
+        <span id="msCells">0</span>
+      </div>
+
+      <div class="monthlyStatusRow">
+        <span>Compartments</span>
+        <span id="msCompartments">0</span>
+      </div>
+
+      <div class="monthlyStatusRow">
+        <span>Sessions</span>
+        <span id="msSessions">0</span>
+      </div>
+
+      <div class="monthlyStatusRow">
+        <span>Distance</span>
+        <span id="msDistance">0 km</span>
+      </div>
+
+      <div class="monthlyStatusRow">
+        <span>Covered</span>
+        <span id="msArea">0 ha</span>
+      </div>
+
+      <div class="monthlyStatusRow">
+        <span>Coverage</span>
+        <span id="msCoverage">0 %</span>
+      </div>
+
+    `;
+
+    L.DomEvent.disableClickPropagation(
+      div
+    );
+
+    return div;
+  };
+
+  control.addTo(map);
+
+  window.monthlyStatusControl =
+    control;
+}
     function addRangeStatsButton() {
 
       const control = L.control({ position: 'topright' });
@@ -12204,7 +12782,24 @@ setInterval(() => {
     }
 
     /* 🔥 INIT BUTTON AFTER MAP READY */
-    setTimeout(addRangeStatsButton, 1000);
+  setTimeout(() => {
+
+  addRangeStatsButton();
+
+  addMonthlyStatusCard();
+
+  updateMonthlyStatusCard();
+
+}, 1000);
+   setTimeout(() => {
+
+  window.monthlyStatusTimer =
+    setInterval(
+      updateMonthlyStatusCard,
+      5000
+    );
+
+}, 3000); 
 
     /* ============================================================
        📍 LOCATION
@@ -27226,6 +27821,8 @@ function syncOfflineMoves(){
 // ======================================================
 window.staffMarkers = window.staffMarkers || {};
 window.staffTracks = window.staffTracks || {};
+    window.liveStaffCache =
+  window.liveStaffCache || {};
 window.staffDecorators = window.staffDecorators || {};
 window.staffTrackCache = window.staffTrackCache || {};
 window.staffLastUpdate = window.staffLastUpdate || {};
@@ -27692,30 +28289,36 @@ console.log(
 // ==============================================
 if(s.dutyActive !== true){
 
+  // ==========================================
+  // 🔥 REMOVE LIVE STAFF CACHE
+  // ==========================================
+  delete window.liveStaffCache[
+    s.cleanName
+  ];
 
   console.log(
 
-  "🧪 MARKER LOOKUP",
+    "🧪 MARKER LOOKUP",
 
-  {
+    {
 
-    cleanName:
-      s.cleanName,
+      cleanName:
+        s.cleanName,
 
-    normalized:
-      cleanName(
-        s.cleanName || ""
-      ),
+      normalized:
+        cleanName(
+          s.cleanName || ""
+        ),
 
-    existingKeys:
+      existingKeys:
 
-      Object.keys(
-        window.staffMarkers || {}
-      )
+        Object.keys(
+          window.staffMarkers || {}
+        )
 
-  }
+    }
 
-);
+  );
   // ==========================================
   // 🔥 REMOVE MARKER
   // ==========================================
@@ -27830,6 +28433,42 @@ s.lat =
 
 s.lon =
   Number(s.lon || 0);
+
+// ==========================================
+// 🔥 LIVE STAFF CACHE
+// ==========================================
+window.liveStaffCache[
+  s.cleanName
+] = {
+
+  cleanName:
+    s.cleanName,
+
+  division:
+    s.division || "",
+
+  range:
+    s.range || "",
+
+  beat:
+    s.beat || "",
+
+  compartment:
+    s.compartment || "",
+
+  lat:
+    Number(
+      s.lat || 0
+    ),
+
+  lng:
+    Number(
+      s.lon || 0
+    ),
+
+  dutyActive:
+    s.dutyActive === true
+};
 
 activeUsers.add(
   s.cleanName
