@@ -8181,9 +8181,7 @@ async function updateMonthlyAnalytics(
   localCoordsArray,
   monthKey
 ) {
-
   try {
-
     if (
       !gridId ||
       !monthKey ||
@@ -8192,11 +8190,9 @@ async function updateMonthlyAnalytics(
       ) ||
       !localCoordsArray.length
     ) {
-
       console.warn(
         "⚠ Invalid analytics request"
       );
-
       return;
     }
 
@@ -8211,11 +8207,9 @@ async function updateMonthlyAnalytics(
     if (
       touchedCells.size === 0
     ) {
-
       console.warn(
         "⚠ No touched cells"
       );
-
       return;
     }
 
@@ -8226,21 +8220,15 @@ async function updateMonthlyAnalytics(
     console.log({
       touchedCells:
         touchedCells.size,
-
       distanceMeters
     });
 
     const analyticsRef =
       window.fb.doc(
-
         window.db,
-
         "analytics",
-
         monthKey,
-
         "compartments",
-
         gridId
       );
 
@@ -8250,23 +8238,18 @@ async function updateMonthlyAnalytics(
       );
 
     let analytics = {
-
       gridId,
-
       monthKey,
-
       distanceMeters: 0,
-
       visitCount: 0,
-
       visitedCells: {},
-
+      previousCoveredCells: 0,
+      lastSessionAddedCells: 0,
+      totalCoveredCells: 0,
       firstSeenAt:
         window.fb.serverTimestamp(),
-
       lastSeenAt:
         window.fb.serverTimestamp(),
-
       updatedAt:
         window.fb.serverTimestamp()
     };
@@ -8274,11 +8257,8 @@ async function updateMonthlyAnalytics(
     if (
       snap.exists()
     ) {
-
       analytics = {
-
         ...analytics,
-
         ...snap.data()
       };
     }
@@ -8288,62 +8268,85 @@ async function updateMonthlyAnalytics(
     // ============================
 
     analytics.distanceMeters =
-
       Number(
         analytics.distanceMeters || 0
       )
-
       +
-
       Number(
         distanceMeters || 0
       );
 
     // ============================
     // VISIT COUNT
-    // 1 patrol session
     // ============================
 
     analytics.visitCount =
-
       Number(
         analytics.visitCount || 0
       )
-
       +
-
       1;
 
     // ============================
-    // CELL INTENSITY
+    // COVERAGE PROGRESS
     // ============================
 
     if (
       !analytics.visitedCells
     ) {
-
       analytics.visitedCells = {};
     }
 
-    for (
-      const cellId
-      of touchedCells
-    ) {
+    const previousCoveredCount =
+      Object.keys(
+        analytics.visitedCells
+      ).length;
 
+    let newlyAddedCells = 0;
+for (
+  const cellId
+  of touchedCells
+) {
+
+  if (
+
+    analytics.visitedCells[
+      cellId
+    ] === undefined
+
+  ) {
+
+    newlyAddedCells++;
+  }
+
+  analytics.visitedCells[
+    cellId
+  ] =
+
+    Number(
       analytics.visitedCells[
         cellId
-      ] =
+      ] || 0
+    )
 
-      Number(
-        analytics.visitedCells[
-          cellId
-        ] || 0
-      )
+    +
 
-      +
+    1;
+}
 
-      1;
-    }
+    const totalCoveredCount =
+      Object.keys(
+        analytics.visitedCells
+      ).length;
+
+    analytics.previousCoveredCells =
+      previousCoveredCount;
+
+    analytics.lastSessionAddedCells =
+      newlyAddedCells;
+
+    analytics.totalCoveredCells =
+      totalCoveredCount;
 
     analytics.lastSeenAt =
       window.fb.serverTimestamp();
@@ -8352,11 +8355,8 @@ async function updateMonthlyAnalytics(
       window.fb.serverTimestamp();
 
     await window.fb.setDoc(
-
       analyticsRef,
-
       analytics,
-
       {
         merge: true
       }
@@ -8367,26 +8367,21 @@ async function updateMonthlyAnalytics(
     );
 
     console.table({
-
       gridId,
-
       visitCount:
         analytics.visitCount,
-
-      uniqueVisitedCells:
-        Object.keys(
-          analytics.visitedCells
-        ).length,
-
+      previousCoveredCells:
+        analytics.previousCoveredCells,
+      lastSessionAddedCells:
+        analytics.lastSessionAddedCells,
+      totalCoveredCells:
+        analytics.totalCoveredCells,
       distanceMeters:
         analytics.distanceMeters
-
     });
 
     console.groupEnd();
-
   } catch(err) {
-
     console.error(
       "❌ updateMonthlyAnalytics failed",
       err
@@ -8828,80 +8823,208 @@ async function showMonthHistory() {
     console.groupEnd();
   }
 }
-async function getAnalyticsSummary(gridIds, monthKey) {
-  let totalCells = 0;
-  let areaHa = 0;
-  let distanceMeters = 0;
-  let visitCount = 0;
-  
-  // Use a Set to ensure unique cell counting across aggregated compartments
-  const uniqueVisitedCells = new Set();
+async function getAnalyticsSummary(
+  gridIds,
+  monthKey
+) {
 
-  // 1. Calculate static totals from masterGrid immediately
+  let totalCells = 0;
+
+  let areaHa = 0;
+
+  let distanceMeters = 0;
+
+  let visitCount = 0;
+
+  let newlyCovered = 0;
+
+  const uniqueVisitedCells =
+    new Set();
+
   for (const gridId of gridIds) {
-    const master = window.masterGrid?.[gridId];
+
+    const master =
+      window.masterGrid?.[gridId];
+
     if (master) {
-      totalCells += master.totalCells || 0;
-      areaHa += master.actualAreaHa || 0;
+
+      totalCells +=
+        Number(
+          master.totalCells || 0
+        );
+
+      areaHa +=
+        Number(
+          master.actualAreaHa || 0
+        );
     }
   }
 
-  // 2. Fetch all analytics documents in parallel using Promise.allSettled
-  const promises = gridIds.map(gridId => 
-    window.fb.getDoc(
-      window.fb.doc(window.db, "analytics", monthKey, "compartments", gridId)
-    )
+  const promises =
+    gridIds.map(gridId =>
+
+      window.fb.getDoc(
+
+        window.fb.doc(
+
+          window.db,
+
+          "analytics",
+
+          monthKey,
+
+          "compartments",
+
+          gridId
+        )
+      )
+    );
+
+  const results =
+    await Promise.allSettled(
+      promises
+    );
+
+  const foundDocs =
+    results.filter(
+
+      r =>
+
+      r.status ===
+      "fulfilled"
+
+      &&
+
+      r.value.exists()
+    );
+
+  console.log(
+    "📊 GRID COUNT:",
+    gridIds.length
   );
 
-  const results = await Promise.allSettled(promises);
+  console.log(
+    "📊 ANALYTICS DOCS FOUND:",
+    foundDocs.length
+  );
 
-  // DEBUG: Track found documents
-  const foundDocs = results.filter(r => r.status === "fulfilled" && r.value.exists());
-  console.log("📊 GRID COUNT:", gridIds.length);
-  console.log("📊 ANALYTICS DOCS FOUND:", foundDocs.length);
+  results.forEach(
+    (
+      result,
+      index
+    ) => {
 
-  // 3. Aggregate results from the batch
-  results.forEach((result, index) => {
-    const gridId = gridIds[index];
+      const gridId =
+        gridIds[index];
 
-    // Debugging failed or missing analytics
-    if (result.status !== "fulfilled") {
-      console.warn("❌ Fetch failed", gridId);
-      return;
+      if (
+        result.status !==
+        "fulfilled"
+      ) {
+
+        console.warn(
+          "❌ Fetch failed",
+          gridId
+        );
+
+        return;
+      }
+
+      if (
+        !result.value.exists()
+      ) {
+
+        console.warn(
+          "⚠ Analytics missing",
+          gridId
+        );
+
+        return;
+      }
+
+      const a =
+        result.value.data();
+
+      Object.keys(
+        a.visitedCells || {}
+      )
+      .forEach(cellId => {
+
+        uniqueVisitedCells.add(
+          `${gridId}_${cellId}`
+        );
+      });
+
+      newlyCovered +=
+        Number(
+          a.lastSessionAddedCells || 0
+        );
+
+      distanceMeters +=
+        Number(
+          a.distanceMeters || 0
+        );
+
+      visitCount +=
+        Number(
+          a.visitCount || 0
+        );
     }
+  );
 
-    if (!result.value.exists()) {
-      console.warn("⚠ Analytics missing", gridId);
-      return;
-    }
+  const totalCovered =
+    uniqueVisitedCells.size;
 
-    const snap = result.value;
-    const a = snap.data();
-      
-    // Track unique visited cells using compartment-qualified IDs to prevent collisions
-    Object.keys(a.visitedCells || {}).forEach(cellId => {
-      uniqueVisitedCells.add(`${gridId}_${cellId}`);
-    });
+  const previouslyCovered =
+    Math.max(
+      0,
+      totalCovered -
+      newlyCovered
+    );
 
-    distanceMeters += a.distanceMeters || 0;
-    visitCount += a.visitCount || 0;
-  });
+  console.log(
+    "📊 TOTAL COVERED:",
+    totalCovered
+  );
 
-  // Calculate final unique visited count
-  const visitedCells = uniqueVisitedCells.size;
-
-  console.log("📊 UNIQUE VISITED CELLS:", uniqueVisitedCells.size);
-  console.log("📊 TOTAL DISTANCE:", distanceMeters);
-  console.log("📊 TOTAL VISITS:", visitCount);
+  console.log(
+    "📊 NEWLY COVERED:",
+    newlyCovered
+  );
 
   return {
-    compartments: gridIds.length,
+
+    compartments:
+      gridIds.length,
+
     totalCells,
-    visitedCells,
+
     areaHa,
+
     distanceMeters,
+
     visitCount,
-    coveragePercent: totalCells > 0 ? (visitedCells / totalCells) * 100 : 0
+
+    previouslyCovered,
+
+    newlyCovered,
+
+    totalCovered,
+
+    coveragePercent:
+
+      totalCells > 0
+
+      ?
+
+      (
+        totalCovered /
+        totalCells
+      ) * 100
+
+      :
+
+      0
   };
 }
   async function showMonthlyHeatmap() {
@@ -9478,44 +9601,133 @@ async function renderMonthlyHeatmap(
     return false;
   }
 }    // 3. Updated showAnalyticsPopup with Close Button
-function showAnalyticsPopup(summary, title) {
-  let panel = document.getElementById("analyticsPanel");
+function showAnalyticsPopup(
+  summary,
+  title
+) {
+
+  let panel =
+    document.getElementById(
+      "analyticsPanel"
+    );
 
   if (!panel) {
-    panel = document.createElement("div");
-    panel.id = "analyticsPanel";
+
+    panel =
+      document.createElement(
+        "div"
+      );
+
+    panel.id =
+      "analyticsPanel";
+
     panel.style.cssText = `
-  position:fixed;
-  top:80px;
-  right:20px;
-  z-index:99999;
-  background:white;
-  padding:12px;
-  border-radius:8px;
-  box-shadow:0 2px 8px rgba(0,0,0,.3);
-  min-width:260px;
-  max-width:320px;
-  font-size:14px;
-`;
-    document.body.appendChild(panel);
+      position:fixed;
+      top:80px;
+      right:20px;
+      z-index:99999;
+      background:white;
+      padding:12px;
+      border-radius:8px;
+      box-shadow:0 2px 8px rgba(0,0,0,.3);
+      min-width:300px;
+      max-width:360px;
+      font-size:14px;
+      line-height:1.6;
+    `;
+
+    document.body.appendChild(
+      panel
+    );
   }
 
   panel.innerHTML = `
-    <div style="text-align:right; margin-bottom:8px;">
-        <button onclick="document.getElementById('analyticsPanel')?.remove();">✖</button>
+
+    <div
+      style="
+        text-align:right;
+        margin-bottom:8px;
+      "
+    >
+      <button
+        onclick="
+          document
+          .getElementById(
+            'analyticsPanel'
+          )
+          ?.remove();
+        "
+      >
+        ✖
+      </button>
     </div>
-    <b>${title}</b>
+
+    <b>
+      Patrol Coverage Summary
+    </b>
+
     <hr>
-    Compartments: ${summary.compartments}<br><br>
-    Area: ${summary.areaHa.toFixed(2)} ha<br><br>
-    Coverage: ${summary.coveragePercent.toFixed(2)} %<br><br>
-    Visited Cells: ${summary.visitedCells}<br><br>
-    Total Cells: ${summary.totalCells}<br><br>
-    Distance: ${(summary.distanceMeters / 1000).toFixed(2)} km<br><br>
-    Visits: ${summary.visitCount}
+
+    <b>
+      ${title}
+    </b>
+
+    <br><br>
+
+    Compartments :
+    ${summary.compartments}
+
+    <br><br>
+
+    Patrol Area :
+    ${summary.areaHa.toFixed(2)}
+    ha
+
+    <br><br>
+
+    <b>
+      Coverage Achievement
+    </b>
+
+    <hr>
+
+    Previously Covered :
+    ${summary.previouslyCovered}
+    Grids
+
+    <br><br>
+
+    Newly Covered :
+    ${summary.newlyCovered}
+    Grids
+
+    <br><br>
+
+    Total Covered :
+    ${summary.totalCovered}
+    Grids
+
+    <br><br>
+
+    Area Coverage :
+    ${summary.coveragePercent.toFixed(2)}
+    %
+
+    <br><br>
+
+    Patrol Distance :
+    ${(
+      summary.distanceMeters /
+      1000
+    ).toFixed(2)}
+    km
+
+    <br><br>
+
+    Patrol Sessions :
+    ${summary.visitCount}
   `;
 }
-
    
     function compileGreenGuardLoadTestMetrics() {
   const b = window.bench;
