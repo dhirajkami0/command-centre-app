@@ -9382,9 +9382,11 @@ async function getAnalyticsSummary(
     Object.entries(cellIntensity).forEach(([cellId, count]) => {
       try {
         const [row, col] = cellId.split("_").map(Number);
-        const lat = row * STEP;
-        const lng = col * STEP;
+       const lat =
+  (row + 0.5) * STEP;
 
+const lng =
+  (col + 0.5) * STEP;
         // FAST BBOX CLIP
         if (selectedBBox) {
           if (lng > selectedBBox[2] || lng + STEP < selectedBBox[0] || lat > selectedBBox[3] || lat + STEP < selectedBBox[1]) {
@@ -9395,9 +9397,15 @@ async function getAnalyticsSummary(
         const ratio = Math.log(count + 1) / Math.log(maxCount + 1);
         const x = ((lng - west) / (east - west)) * canvas.width;
         const y = ((north - lat) / (north - south)) * canvas.height;
-        const size = Math.max(2, (canvas.width * STEP) / (east - west));
-
-        let color;
+        const size =
+  Math.max(
+    3,
+    (
+      canvas.width *
+      STEP /
+      (east - west)
+    ) + 2
+  );       let color;
         if (ratio < 0.20) color = "rgba(0,255,0,0.45)";
         else if (ratio < 0.40) color = "rgba(173,255,47,0.55)";
         else if (ratio < 0.60) color = "rgba(255,255,0,0.65)";
