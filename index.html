@@ -7998,7 +7998,11 @@ function finalizeSessionLifecycle() {
 }
  function getTouchedCells(localCoordsArray) {
 
-  const STEP = 0.00045; // 50m
+  const STEP =
+    0.00045; // 50m
+
+  const SAMPLE_STEP_KM =
+    0.025; // 25m sampling
 
   const touchedCells =
     new Set();
@@ -8017,8 +8021,9 @@ function finalizeSessionLifecycle() {
       }
 
       // =====================================
-      // DISTANCE
+      // LINE
       // =====================================
+
       const line =
         turf.lineString(
           seg.map(c => [
@@ -8027,50 +8032,130 @@ function finalizeSessionLifecycle() {
           ])
         );
 
+      // =====================================
+      // DISTANCE
+      // =====================================
+
+      let lengthKm = 0;
+
       try {
 
-        distanceMeters +=
+        lengthKm =
           turf.length(
             line,
             {
               units: "kilometers"
             }
-          ) * 1000;
+          );
 
-      } catch(e){}
+        distanceMeters +=
+          lengthKm * 1000;
+
+      } catch(e) {
+
+        continue;
+      }
 
       // =====================================
-      // CELL IDS
+      // DENSIFIED CELL SAMPLING
       // =====================================
-      for (const pt of seg) {
+
+      for (
+
+        let d = 0;
+
+        d <= lengthKm;
+
+        d += SAMPLE_STEP_KM
+
+      ) {
+
+        try {
+
+          const sample =
+            turf.along(
+              line,
+              d,
+              {
+                units:
+                  "kilometers"
+              }
+            );
+
+          const lng =
+            Number(
+              sample.geometry
+              .coordinates[0]
+            );
+
+          const lat =
+            Number(
+              sample.geometry
+              .coordinates[1]
+            );
+
+          if (
+            !Number.isFinite(lat) ||
+            !Number.isFinite(lng)
+          ) {
+            continue;
+          }
+
+          const row =
+            Math.round(
+              lat / STEP
+            );
+
+          const col =
+            Math.round(
+              lng / STEP
+            );
+
+          touchedCells.add(
+            `${row}_${col}`
+          );
+
+        } catch(e) {}
+      }
+
+      // =====================================
+      // GUARANTEE LAST POINT
+      // =====================================
+
+      try {
+
+        const last =
+          seg[
+            seg.length - 1
+          ];
 
         const lat =
-          Number(pt[0]);
+          Number(last[0]);
 
         const lng =
-          Number(pt[1]);
+          Number(last[1]);
 
         if (
-          !Number.isFinite(lat) ||
-          !Number.isFinite(lng)
+          Number.isFinite(lat) &&
+          Number.isFinite(lng)
         ) {
-          continue;
+
+          const row =
+            Math.round(
+              lat / STEP
+            );
+
+          const col =
+            Math.round(
+              lng / STEP
+            );
+
+          touchedCells.add(
+            `${row}_${col}`
+          );
         }
 
-        const row =
-          Math.round(
-            lat / STEP
-          );
-
-        const col =
-          Math.round(
-            lng / STEP
-          );
-
-        touchedCells.add(
-          `${row}_${col}`
-        );
-      }
+      } catch(e){}
     }
 
   } catch(err) {
@@ -8090,7 +8175,7 @@ function finalizeSessionLifecycle() {
         distanceMeters
       )
   };
-}   
+}
 async function updateMonthlyAnalytics(
   gridId,
   localCoordsArray,
@@ -8908,7 +8993,7 @@ async function getAnalyticsSummary(gridIds, monthKey) {
     return false;
   }
 }
- async function renderMonthlyHeatmap(
+async function renderMonthlyHeatmap(
   gridIds,
   monthKey
 ) {
@@ -9093,6 +9178,22 @@ async function getAnalyticsSummary(gridIds, monthKey) {
       bounds.getWest();
 
     // ==================================
+    // SAFETY
+    // ==================================
+
+    if(
+      east === west ||
+      north === south
+    ){
+
+      console.warn(
+        "⚠ Invalid bounds"
+      );
+
+      return false;
+    }
+
+    // ==================================
     // CANVAS
     // ==================================
 
@@ -9273,24 +9374,40 @@ async function getAnalyticsSummary(gridIds, monthKey) {
               )
             );
 
-          const r =
-            255;
+          let color;
 
-          const g =
-            Math.floor(
-              255 *
-              (
-                1 - ratio
-              )
-            );
+          if (ratio < 0.20) {
+
+            color =
+              "rgba(0,255,0,0.45)";
+
+          }
+          else if (ratio < 0.40) {
+
+            color =
+              "rgba(173,255,47,0.55)";
+
+          }
+          else if (ratio < 0.60) {
+
+            color =
+              "rgba(255,255,0,0.65)";
+
+          }
+          else if (ratio < 0.80) {
+
+            color =
+              "rgba(255,140,0,0.75)";
+
+          }
+          else {
+
+            color =
+              "rgba(255,0,0,0.90)";
+          }
 
           ctx.fillStyle =
-            `rgba(
-              ${r},
-              ${g},
-              0,
-              0.75
-            )`;
+            color;
 
           ctx.fillRect(
             x,
@@ -9320,7 +9437,7 @@ async function getAnalyticsSummary(gridIds, monthKey) {
         imageUrl,
         bounds,
         {
-          opacity:0.75
+          opacity: 1
         }
       );
 
@@ -9360,8 +9477,7 @@ async function getAnalyticsSummary(gridIds, monthKey) {
 
     return false;
   }
-} 
-    // 3. Updated showAnalyticsPopup with Close Button
+}    // 3. Updated showAnalyticsPopup with Close Button
 function showAnalyticsPopup(summary, title) {
   let panel = document.getElementById("analyticsPanel");
 
