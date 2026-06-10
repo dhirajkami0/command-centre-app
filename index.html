@@ -9326,7 +9326,7 @@ async function getAnalyticsSummary(
     const docs = await Promise.allSettled(
       gridIds.map(gridId =>
         window.fb.getDoc(
-          window.fb.doc(window.db, "analytics", monthKey, "compartments", gridId)
+          window.fb.doc(window.db, "analytics_rebuild", monthKey, "compartments", gridId)
         )
       )
     );
