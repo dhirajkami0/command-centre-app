@@ -9342,152 +9342,388 @@ async function getAnalyticsSummary(
     return false;
   }
 }
-async function renderMonthlyHeatmap(gridIds, monthKey) {
+async function renderMonthlyHeatmap(
+  gridIds,
+  monthKey
+) {
+
   try {
-    // ==================================
-    // GUARD
-    // ==================================
-    if (!Array.isArray(gridIds) || gridIds.length === 0) {
-      console.warn("⚠ No grids supplied");
+
+    if (
+      !Array.isArray(gridIds) ||
+      gridIds.length === 0
+    ) {
+
+      console.warn(
+        "⚠ No grids supplied"
+      );
+
       return false;
     }
 
-    // ==================================
+    // =====================================
     // REMOVE OLD HEATMAP
-    // ==================================
-    if (window.monthlyHeatmapLayer && window.map) {
-      window.map.removeLayer(window.monthlyHeatmapLayer);
-      window.monthlyHeatmapLayer = null;
+    // =====================================
+
+    if (
+      window.monthlyHeatmapLayer &&
+      window.map
+    ) {
+
+      window.map.removeLayer(
+        window.monthlyHeatmapLayer
+      );
+
+      window.monthlyHeatmapLayer =
+        null;
     }
 
-    const activeLevel = String(window.currentHeatmapLevel || "btr").toLowerCase();
-    const applySpatialMask = (activeLevel === "compartment");
-    const selectedGeometry = applySpatialMask ? window.currentSelectedGeometry : null;
+    window.monthlyHeatmapLayer =
+      L.layerGroup().addTo(
+        window.map
+      );
 
-    const STEP = 0.00045;
-    const cellIntensity = {};
+    const STEP =
+      0.00045;
+
+    const cellIntensity =
+      {};
+
     let maxCount = 1;
 
-    // ==================================
+    // =====================================
     // LOAD ANALYTICS
-    // ==================================
-    console.log("📊 GRID IDS", gridIds.slice(0, 20));
+    // =====================================
 
-    const docs = await Promise.allSettled(
-      gridIds.map(gridId =>
-        window.fb.getDoc(
-          window.fb.doc(window.db, "analytics_rebuild", monthKey, "compartments", gridId)
+    const docs =
+      await Promise.allSettled(
+
+        gridIds.map(gridId =>
+
+          window.fb.getDoc(
+
+            window.fb.doc(
+
+              window.db,
+
+              "analytics_rebuild",
+
+              monthKey,
+
+              "compartments",
+
+              gridId
+
+            )
+          )
         )
-      )
-    );
+      );
 
     let found = 0;
-    docs.forEach((result, index) => {
-      const gridId = gridIds[index];
-      const exists = result.status === "fulfilled" && result.value.exists();
 
-      if (exists) {
-        found++;
-        const data = result.value.data();
-        console.log("✅", gridId, Object.keys(data.visitedCells || {}).length);
+    docs.forEach(
+      (
+        result,
+        index
+      ) => {
 
-        // Populate Intensity
-        Object.entries(data.visitedCells || {}).forEach(([cellId, count]) => {
-          cellIntensity[cellId] = (cellIntensity[cellId] || 0) + Number(count || 0);
-          if (cellIntensity[cellId] > maxCount) maxCount = cellIntensity[cellId];
-        });
-      } else {
-        console.warn("❌ MISSING", gridId);
+        if (
+
+          result.status ===
+            "fulfilled"
+
+          &&
+
+          result.value.exists()
+
+        ) {
+
+          found++;
+
+          const data =
+            result.value.data();
+
+          Object.entries(
+            data.visitedCells || {}
+          )
+          .forEach(
+            ([cellId, count]) => {
+
+              cellIntensity[
+                cellId
+              ] =
+
+                (
+                  cellIntensity[
+                    cellId
+                  ] || 0
+                )
+
+                +
+
+                Number(
+                  count || 0
+                );
+
+              if (
+
+                cellIntensity[
+                  cellId
+                ] > maxCount
+
+              ) {
+
+                maxCount =
+                  cellIntensity[
+                    cellId
+                  ];
+              }
+            }
+          );
+
+        }
       }
-    });
+    );
 
-    console.log("FOUND DOCS:", found);
+    console.log(
+      "FOUND DOCS:",
+      found
+    );
 
-    const totalCells = Object.keys(cellIntensity).length;
-    console.log("🔥 Heat Cells:", totalCells);
+    const totalCells =
+      Object.keys(
+        cellIntensity
+      ).length;
 
-    if (totalCells === 0) {
-      console.warn("⚠ No heatmap data");
+    console.log(
+      "🔥 Heat Cells:",
+      totalCells
+    );
+
+    if (
+      totalCells === 0
+    ) {
+
       return false;
     }
 
-    // ==================================
-    // POLYGON CONTEXT & BOUNDS
-    // ==================================
-    const bounds = selectedGeometry
-      ? L.geoJSON(selectedGeometry).getBounds()
-      : window.map.getBounds();
+    // =====================================
+    // OPTIONAL COMPARTMENT CLIP
+    // =====================================
 
-    const north = bounds.getNorth();
-    const south = bounds.getSouth();
-    const east = bounds.getEast();
-    const west = bounds.getWest();
+    const activeLevel =
+      String(
+        window.currentHeatmapLevel ||
+        "btr"
+      )
+      .toLowerCase();
 
-    if (east === west || north === south) {
-      console.warn("⚠ Invalid bounds");
-      return false;
-    }
+    const selectedGeometry =
 
-    // ==================================
-    // CANVAS
-    // ==================================
-    const canvas = document.createElement("canvas");
-    canvas.width = 2048;
-    canvas.height = 2048;
-    const ctx = canvas.getContext("2d");
+      activeLevel ===
+      "compartment"
 
-    const selectedFeature = selectedGeometry ? { type: "Feature", geometry: selectedGeometry, properties: {} } : null;
-    let selectedBBox = selectedFeature ? turf.bbox(selectedFeature) : null;
+      ?
 
-    // ==================================
-    // DRAW CELLS
-    // ==================================
-    Object.entries(cellIntensity).forEach(([cellId, count]) => {
-      try {
-        const [row, col] = cellId.split("_").map(Number);
-        const lat = (row + 0.5) * STEP;
-        const lng = (col + 0.5) * STEP;
+      window.currentSelectedGeometry
 
-        // FAST BBOX CLIP
-        if (selectedBBox) {
-          if (lng > selectedBBox[2] || lng + STEP < selectedBBox[0] || lat > selectedBBox[3] || lat + STEP < selectedBBox[1]) {
-            return;
+      :
+
+      null;
+
+    const selectedFeature =
+
+      selectedGeometry
+
+      ?
+
+      {
+        type: "Feature",
+        geometry:
+          selectedGeometry,
+        properties: {}
+      }
+
+      :
+
+      null;
+
+    const selectedBBox =
+
+      selectedFeature
+
+      ?
+
+      turf.bbox(
+        selectedFeature
+      )
+
+      :
+
+      null;
+
+    // =====================================
+    // DRAW CELLS DIRECTLY
+    // =====================================
+
+    Object.entries(
+      cellIntensity
+    )
+    .forEach(
+      ([cellId, count]) => {
+
+        try {
+
+          const [
+            row,
+            col
+          ] =
+            cellId
+            .split("_")
+            .map(Number);
+
+          const south =
+            row * STEP;
+
+          const west =
+            col * STEP;
+
+          const north =
+            south + STEP;
+
+          const east =
+            west + STEP;
+
+          if (
+            selectedBBox
+          ) {
+
+            if (
+
+              east <
+                selectedBBox[0]
+
+              ||
+
+              west >
+                selectedBBox[2]
+
+              ||
+
+              north <
+                selectedBBox[1]
+
+              ||
+
+              south >
+                selectedBBox[3]
+
+            ) {
+
+              return;
+            }
           }
+
+          const ratio =
+
+            Math.log(
+              count + 1
+            )
+
+            /
+
+            Math.log(
+              maxCount + 1
+            );
+
+          let color;
+
+          if (
+            ratio < 0.20
+          ) {
+
+            color =
+              "rgba(0,255,0,0.45)";
+          }
+
+          else if (
+            ratio < 0.40
+          ) {
+
+            color =
+              "rgba(173,255,47,0.55)";
+          }
+
+          else if (
+            ratio < 0.60
+          ) {
+
+            color =
+              "rgba(255,255,0,0.65)";
+          }
+
+          else if (
+            ratio < 0.80
+          ) {
+
+            color =
+              "rgba(255,140,0,0.75)";
+          }
+
+          else {
+
+            color =
+              "rgba(255,0,0,0.90)";
+          }
+
+          L.rectangle(
+
+            [
+
+              [south, west],
+
+              [north, east]
+
+            ],
+
+            {
+
+              stroke: false,
+
+              fillColor:
+                color,
+
+              fillOpacity: 1
+
+            }
+
+          )
+          .addTo(
+            window
+            .monthlyHeatmapLayer
+          );
+
         }
 
-        const ratio = Math.log(count + 1) / Math.log(maxCount + 1);
-        const x = ((lng - west) / (east - west)) * canvas.width;
-        const y = ((north - lat) / (north - south)) * canvas.height;
-        const size = Math.max(3, (canvas.width * STEP / (east - west)) + 2);
+        catch(e) {}
+      }
+    );
 
-        let color;
-        if (ratio < 0.20) color = "rgba(0,255,0,0.45)";
-        else if (ratio < 0.40) color = "rgba(173,255,47,0.55)";
-        else if (ratio < 0.60) color = "rgba(255,255,0,0.65)";
-        else if (ratio < 0.80) color = "rgba(255,140,0,0.75)";
-        else color = "rgba(255,0,0,0.90)";
+    console.log(
+      "🔥 MONTHLY HEATMAP READY"
+    );
 
-        ctx.fillStyle = color;
-        ctx.fillRect(x - size / 2, y - size / 2, size + 2, size + 2);
-      } catch (e) {}
-    });
-
-    // ==================================
-    // OVERLAY
-    // ==================================
-    const imageUrl = canvas.toDataURL("image/png");
-    window.monthlyHeatmapLayer = L.imageOverlay(imageUrl, bounds, { opacity: 1 });
-    window.monthlyHeatmapLayer.addTo(window.map);
-
-    // Clean up
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
-    canvas.width = 1;
-    canvas.height = 1;
-
-    console.log("🔥 MONTHLY HEATMAP READY");
     return true;
-  } catch (err) {
-    console.error("❌ renderMonthlyHeatmap", err);
+
+  }
+
+  catch(err) {
+
+    console.error(
+      "❌ renderMonthlyHeatmap",
+      err
+    );
+
     return false;
   }
 }// 3. Updated showAnalyticsPopup with Close Button
