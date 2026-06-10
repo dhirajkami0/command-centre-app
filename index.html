@@ -8388,180 +8388,88 @@ for (
     );
   }
 }
-    async function rebuildAnalyticsFromHistory(
-  monthKey
-){
+   async function rebuildAnalyticsFromHistory(monthKey) {
+  try {
+    console.group("🔄 ANALYTICS REBUILD");
 
-  try{
+    const rebuildCache = {};
 
-    console.group(
-      "🔄 ANALYTICS REBUILD"
+    const historyRef = window.fb.collection(window.db, "history");
+
+    const q = window.fb.query(
+      historyRef,
+      window.fb.where("monthKey", "==", monthKey),
+      window.fb.where("clipStatus", "==", "SUCCESS")
     );
 
-    const rebuildCache =
-      {};
+    const snap = await window.fb.getDocs(q);
 
-    const historyRef =
-      window.fb.collection(
-        window.db,
-        "history"
-      );
+    console.log("📂 History Docs:", snap.size);
 
-    const q =
-      window.fb.query(
-        historyRef,
-        window.fb.where(
-          "monthKey",
-          "==",
-          monthKey
-        ),
-        window.fb.where(
-          "clipStatus",
-          "==",
-          "SUCCESS"
-        )
-      );
+    for (const docSnap of snap.docs) {
+      const data = docSnap.data() || {};
+      const tracks = data.tracks || {};
 
-    const snap =
-      await window.fb.getDocs(q);
+      for (const [gridId, compObj] of Object.entries(tracks)) {
+        try {
+          const encodedTracks = compObj.tracks || [];
+          const localCoordsArray = [];
 
-    console.log(
-      "📂 History Docs:",
-      snap.size
-    );
-
-    for(
-      const docSnap
-      of snap.docs
-    ){
-
-      const data =
-        docSnap.data() || {};
-
-      const tracks =
-        data.tracks || {};
-
-      for(
-        const [
-          gridId,
-          compObj
-        ]
-        of Object.entries(
-          tracks
-        )
-      ){
-
-        try{
-
-          if(
-            !rebuildCache[
-              gridId
-            ]
-          ){
-
-            rebuildCache[
-              gridId
-            ] = {
-
-              gridId,
-
-              monthKey,
-
-              distanceMeters:0,
-
-              visitCount:0,
-
-              visitedCells:{},
-
-              previousCoveredCells:0,
-
-              lastSessionAddedCells:0,
-
-              totalCoveredCells:0
-            };
-          }
-
-          const analytics =
-            rebuildCache[
-              gridId
-            ];
-
-          const encodedTracks =
-            compObj.tracks || [];
-
-          const localCoordsArray =
-            [];
-
-          for(
-            const encoded
-            of encodedTracks
-          ){
-
-            if(
-              !encoded ||
-              typeof encoded !==
-              "string"
-            ){
+          for (const encoded of encodedTracks) {
+            if (!encoded || typeof encoded !== "string") {
               continue;
             }
-
-            localCoordsArray.push(
-              polyline.decode(
-                encoded
-              )
-            );
+            localCoordsArray.push(polyline.decode(encoded));
           }
 
-          if(
-            !localCoordsArray.length
-          ){
+          if (!localCoordsArray.length) {
             continue;
           }
 
-          const {
-            touchedCells,
-            distanceMeters
-          } =
-            getTouchedCells(
-              localCoordsArray
-            );
+          // New Master Grid Logic
+          const masterEntry = Object.values(window.masterGrid || {}).find(
+            (g) =>
+              String(g.compartment || "").trim().toUpperCase() ===
+              String(gridId || "").trim().toUpperCase()
+          );
 
-          analytics.distanceMeters +=
-            distanceMeters;
-
-          analytics.visitCount +=
-            1;
-
-          for(
-            const cellId
-            of touchedCells
-          ){
-
-            analytics.visitedCells[
-              cellId
-            ] =
-
-              Number(
-                analytics
-                .visitedCells[
-                  cellId
-                ] || 0
-              )
-
-              +
-
-              1;
+          if (!masterEntry) {
+            console.warn("No master grid match", gridId);
+            continue;
           }
 
-        }
-
-        catch(err){
-
-          console.error(
-            "❌ Track rebuild failed",
-            gridId,
-            err
+          // Trigger Rebuild Update
+          await updateMonthlyAnalyticsRebuild(
+            masterEntry.gridId,
+            localCoordsArray,
+            monthKey
           );
+
+          // Maintain Cache for final write
+          if (!rebuildCache[masterEntry.gridId]) {
+            rebuildCache[masterEntry.gridId] = {
+              gridId: masterEntry.gridId,
+              monthKey,
+              distanceMeters: 0,
+              visitCount: 0,
+              visitedCells: {},
+              previousCoveredCells: 0,
+              lastSessionAddedCells: 0,
+              totalCoveredCells: 0,
+            };
+          }
+
+          const analytics = rebuildCache[masterEntry.gridId];
+          const { touchedCells, distanceMeters } = getTouchedCells(localCoordsArray);
+
+          analytics.distanceMeters += distanceMeters;
+          analytics.visitCount += 1;
+
+          for (const cellId of touchedCells) {
+            analytics.visitedCells[cellId] = Number(analytics.visitedCells[cellId] || 0) + 1;
+          }
+        } catch (err) {
+          console.error("❌ Track rebuild failed", gridId, err);
         }
       }
     }
@@ -8569,52 +8477,25 @@ for (
     // ==================================
     // WRITE REBUILD DATA
     // ==================================
-
-    for(
-      const analytics
-      of Object.values(
-        rebuildCache
-      )
-    ){
-
-      analytics.totalCoveredCells =
-        Object.keys(
-          analytics.visitedCells
-        ).length;
+    for (const analytics of Object.values(rebuildCache)) {
+      analytics.totalCoveredCells = Object.keys(analytics.visitedCells).length;
 
       await window.fb.setDoc(
-
         window.fb.doc(
-
           window.db,
-
           "analytics_rebuild",
-
           monthKey,
-
           "compartments",
-
           analytics.gridId
         ),
-
         analytics
       );
     }
 
-    console.log(
-      "✅ Rebuild Complete"
-    );
-
+    console.log("✅ Rebuild Complete");
     console.groupEnd();
-
-  }
-
-  catch(err){
-
-    console.error(
-      "❌ rebuildAnalyticsFromHistory",
-      err
-    );
+  } catch (err) {
+    console.error("❌ rebuildAnalyticsFromHistory", err);
   }
 }
   async function executeGreenGuardSelfHealingWorker() {
