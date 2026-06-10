@@ -9324,6 +9324,58 @@ async function getAnalyticsSummary(
     // LOAD ANALYTICS
     // ==================================
     const docs = await Promise.allSettled(
+      console.log(
+  "📊 GRID IDS",
+  gridIds.slice(0,20)
+);
+
+let found = 0;
+
+docs.forEach(
+  (result,index) => {
+
+    const gridId =
+      gridIds[index];
+
+    const exists =
+
+      result.status ===
+      "fulfilled"
+
+      &&
+
+      result.value.exists();
+
+    if(exists){
+
+      found++;
+
+      const data =
+        result.value.data();
+
+      console.log(
+        "✅",
+        gridId,
+        Object.keys(
+          data.visitedCells || {}
+        ).length
+      );
+
+    } else {
+
+      console.warn(
+        "❌ MISSING",
+        gridId
+      );
+    }
+
+  }
+);
+
+console.log(
+  "FOUND DOCS:",
+  found
+);
       gridIds.map(gridId =>
         window.fb.getDoc(
           window.fb.doc(window.db, "analytics_rebuild", monthKey, "compartments", gridId)
