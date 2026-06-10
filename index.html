@@ -9091,36 +9091,41 @@ async function getAnalyticsSummary(
 ) {
 
   let totalCells = 0;
-
   let areaHa = 0;
-
   let distanceMeters = 0;
-
   let visitCount = 0;
-
   let newlyCovered = 0;
 
   const uniqueVisitedCells =
     new Set();
+
+  // ==================================
+  // MASTER GRID TOTALS
+  // ==================================
 
   for (const gridId of gridIds) {
 
     const master =
       window.masterGrid?.[gridId];
 
-    if (master) {
-
-      totalCells +=
-        Number(
-          master.totalCells || 0
-        );
-
-      areaHa +=
-        Number(
-          master.actualAreaHa || 0
-        );
+    if (!master) {
+      continue;
     }
+
+    totalCells +=
+      Number(
+        master.totalCells || 0
+      );
+
+    areaHa +=
+      Number(
+        master.actualAreaHa || 0
+      );
   }
+
+  // ==================================
+  // LOAD ANALYTICS_REBUILD
+  // ==================================
 
   const promises =
     gridIds.map(gridId =>
@@ -9131,13 +9136,14 @@ async function getAnalyticsSummary(
 
           window.db,
 
-          "analytics",
+          "analytics_rebuild",
 
           monthKey,
 
           "compartments",
 
           gridId
+
         )
       )
     );
@@ -9149,15 +9155,9 @@ async function getAnalyticsSummary(
 
   const foundDocs =
     results.filter(
-
       r =>
-
-      r.status ===
-      "fulfilled"
-
-      &&
-
-      r.value.exists()
+        r.status === "fulfilled" &&
+        r.value.exists()
     );
 
   console.log(
@@ -9169,6 +9169,10 @@ async function getAnalyticsSummary(
     "📊 ANALYTICS DOCS FOUND:",
     foundDocs.length
   );
+
+  // ==================================
+  // AGGREGATE
+  // ==================================
 
   results.forEach(
     (
@@ -9204,35 +9208,40 @@ async function getAnalyticsSummary(
         return;
       }
 
-      const a =
-        result.value.data();
+      const analytics =
+        result.value.data() || {};
 
       Object.keys(
-        a.visitedCells || {}
+        analytics.visitedCells || {}
       )
       .forEach(cellId => {
 
         uniqueVisitedCells.add(
           `${gridId}_${cellId}`
         );
+
       });
 
       newlyCovered +=
         Number(
-          a.lastSessionAddedCells || 0
+          analytics.lastSessionAddedCells || 0
         );
 
       distanceMeters +=
         Number(
-          a.distanceMeters || 0
+          analytics.distanceMeters || 0
         );
 
       visitCount +=
         Number(
-          a.visitCount || 0
+          analytics.visitCount || 0
         );
     }
   );
+
+  // ==================================
+  // COVERAGE
+  // ==================================
 
   const totalCovered =
     uniqueVisitedCells.size;
@@ -9252,6 +9261,16 @@ async function getAnalyticsSummary(
   console.log(
     "📊 NEWLY COVERED:",
     newlyCovered
+  );
+
+  console.log(
+    "📊 DISTANCE (m):",
+    distanceMeters
+  );
+
+  console.log(
+    "📊 VISITS:",
+    visitCount
   );
 
   return {
@@ -9277,16 +9296,12 @@ async function getAnalyticsSummary(
 
       totalCells > 0
 
-      ?
+        ? (
+            totalCovered /
+            totalCells
+          ) * 100
 
-      (
-        totalCovered /
-        totalCells
-      ) * 100
-
-      :
-
-      0
+        : 0
   };
 }
 
