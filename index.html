@@ -1443,9 +1443,9 @@ NORTH REMAINS ABSOLUTE
   }
 }
 
-    #monthlyStatusCard {
+   #monthlyStatusCard {
 
-  width: 220px;
+  width: 170px;
 
   background:
     rgba(
@@ -1457,11 +1457,9 @@ NORTH REMAINS ABSOLUTE
 
   color: white;
 
-  border-radius: 12px;
+  border-radius: 10px;
 
-  padding: 10px;
-
-  margin-top: 10px;
+  padding: 8px;
 
   box-shadow:
     0 4px 18px
@@ -1475,7 +1473,11 @@ NORTH REMAINS ABSOLUTE
   backdrop-filter:
     blur(8px);
 
-  font-size: 13px;
+  font-size: 12px;
+
+  margin-bottom: 40px;
+
+  margin-right: 6px;
 }
 
 #monthlyStatusTitle {
@@ -1486,9 +1488,9 @@ NORTH REMAINS ABSOLUTE
 
   color: #4fd1ff;
 
-  margin-bottom: 8px;
+  margin-bottom: 6px;
 
-  padding-bottom: 6px;
+  padding-bottom: 5px;
 
   border-bottom:
     1px solid
@@ -1498,6 +1500,8 @@ NORTH REMAINS ABSOLUTE
       255,
       0.15
     );
+
+  font-size: 12px;
 }
 
 .monthlyStatusRow {
@@ -1508,7 +1512,7 @@ NORTH REMAINS ABSOLUTE
 
   align-items: center;
 
-  margin: 5px 0;
+  margin: 4px 0;
 }
 
 .monthlyStatusRow span:last-child {
@@ -1522,11 +1526,25 @@ NORTH REMAINS ABSOLUTE
 
   #monthlyStatusCard {
 
-    width: 170px;
+    width: 145px;
 
-    font-size: 11px;
+    font-size: 10px;
 
-    padding: 8px;
+    padding: 6px;
+
+    margin-bottom: 55px;
+
+    margin-right: 2px;
+  }
+
+  #monthlyStatusTitle {
+
+    font-size: 10px;
+  }
+
+  .monthlyStatusRow {
+
+    margin: 2px 0;
   }
 }
   </style>
@@ -12732,10 +12750,10 @@ function getLiveStaffCountForCurrentPolygon() {
 }
     function addMonthlyStatusCard() {
 
-  const control =
-    L.control({
-      position: "topright"
-    });
+ const control =
+  L.control({
+    position: "bottomright"
+  });
 
   control.onAdd = function () {
 
