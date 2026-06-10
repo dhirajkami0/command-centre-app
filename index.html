@@ -9294,7 +9294,7 @@ async function getAnalyticsSummary(
     return false;
   }
 }
- async function renderMonthlyHeatmap(gridIds, monthKey) {
+async function renderMonthlyHeatmap(gridIds, monthKey) {
   try {
     // ==================================
     // GUARD
@@ -9323,59 +9323,9 @@ async function getAnalyticsSummary(
     // ==================================
     // LOAD ANALYTICS
     // ==================================
+    console.log("📊 GRID IDS", gridIds.slice(0, 20));
+
     const docs = await Promise.allSettled(
-      console.log(
-  "📊 GRID IDS",
-  gridIds.slice(0,20)
-);
-
-let found = 0;
-
-docs.forEach(
-  (result,index) => {
-
-    const gridId =
-      gridIds[index];
-
-    const exists =
-
-      result.status ===
-      "fulfilled"
-
-      &&
-
-      result.value.exists();
-
-    if(exists){
-
-      found++;
-
-      const data =
-        result.value.data();
-
-      console.log(
-        "✅",
-        gridId,
-        Object.keys(
-          data.visitedCells || {}
-        ).length
-      );
-
-    } else {
-
-      console.warn(
-        "❌ MISSING",
-        gridId
-      );
-    }
-
-  }
-);
-
-console.log(
-  "FOUND DOCS:",
-  found
-);
       gridIds.map(gridId =>
         window.fb.getDoc(
           window.fb.doc(window.db, "analytics_rebuild", monthKey, "compartments", gridId)
@@ -9383,14 +9333,27 @@ console.log(
       )
     );
 
-    docs.forEach(result => {
-      if (result.status !== "fulfilled" || !result.value.exists()) return;
-      const data = result.value.data();
-      Object.entries(data.visitedCells || {}).forEach(([cellId, count]) => {
-        cellIntensity[cellId] = (cellIntensity[cellId] || 0) + Number(count || 0);
-        if (cellIntensity[cellId] > maxCount) maxCount = cellIntensity[cellId];
-      });
+    let found = 0;
+    docs.forEach((result, index) => {
+      const gridId = gridIds[index];
+      const exists = result.status === "fulfilled" && result.value.exists();
+
+      if (exists) {
+        found++;
+        const data = result.value.data();
+        console.log("✅", gridId, Object.keys(data.visitedCells || {}).length);
+
+        // Populate Intensity
+        Object.entries(data.visitedCells || {}).forEach(([cellId, count]) => {
+          cellIntensity[cellId] = (cellIntensity[cellId] || 0) + Number(count || 0);
+          if (cellIntensity[cellId] > maxCount) maxCount = cellIntensity[cellId];
+        });
+      } else {
+        console.warn("❌ MISSING", gridId);
+      }
     });
+
+    console.log("FOUND DOCS:", found);
 
     const totalCells = Object.keys(cellIntensity).length;
     console.log("🔥 Heat Cells:", totalCells);
@@ -9434,11 +9397,9 @@ console.log(
     Object.entries(cellIntensity).forEach(([cellId, count]) => {
       try {
         const [row, col] = cellId.split("_").map(Number);
-       const lat =
-  (row + 0.5) * STEP;
+        const lat = (row + 0.5) * STEP;
+        const lng = (col + 0.5) * STEP;
 
-const lng =
-  (col + 0.5) * STEP;
         // FAST BBOX CLIP
         if (selectedBBox) {
           if (lng > selectedBBox[2] || lng + STEP < selectedBBox[0] || lat > selectedBBox[3] || lat + STEP < selectedBBox[1]) {
@@ -9449,15 +9410,9 @@ const lng =
         const ratio = Math.log(count + 1) / Math.log(maxCount + 1);
         const x = ((lng - west) / (east - west)) * canvas.width;
         const y = ((north - lat) / (north - south)) * canvas.height;
-        const size =
-  Math.max(
-    3,
-    (
-      canvas.width *
-      STEP /
-      (east - west)
-    ) + 2
-  );       let color;
+        const size = Math.max(3, (canvas.width * STEP / (east - west)) + 2);
+
+        let color;
         if (ratio < 0.20) color = "rgba(0,255,0,0.45)";
         else if (ratio < 0.40) color = "rgba(173,255,47,0.55)";
         else if (ratio < 0.60) color = "rgba(255,255,0,0.65)";
@@ -9465,12 +9420,7 @@ const lng =
         else color = "rgba(255,0,0,0.90)";
 
         ctx.fillStyle = color;
-        ctx.fillRect(
-  x - size/2,
-  y - size/2,
-  size + 2,
-  size + 2
-);
+        ctx.fillRect(x - size / 2, y - size / 2, size + 2, size + 2);
       } catch (e) {}
     });
 
@@ -9481,6 +9431,7 @@ const lng =
     window.monthlyHeatmapLayer = L.imageOverlay(imageUrl, bounds, { opacity: 1 });
     window.monthlyHeatmapLayer.addTo(window.map);
 
+    // Clean up
     ctx.clearRect(0, 0, canvas.width, canvas.height);
     canvas.width = 1;
     canvas.height = 1;
@@ -9491,7 +9442,7 @@ const lng =
     console.error("❌ renderMonthlyHeatmap", err);
     return false;
   }
-} // 3. Updated showAnalyticsPopup with Close Button
+}// 3. Updated showAnalyticsPopup with Close Button
 function showAnalyticsPopup(
   summary,
   title
