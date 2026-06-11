@@ -7948,6 +7948,15 @@ async function loadMasterGrid() {
 async function buildHeatmapBoundary() {
 
   try {
+    console.log(
+  "HEATMAP LEVEL RAW",
+  window.currentHeatmapLevel
+);
+
+console.log(
+  "POPUP LEVEL RAW",
+  window.activePopupContext?.level
+);
 
     const level =
       String(
@@ -9902,6 +9911,19 @@ async function getAnalyticsSummary(
 
     async function showMonthlyHeatmap() {
   try {
+
+    console.log(
+  "ACTIVE POPUP LEVEL",
+  activeLevel
+);
+
+window.currentHeatmapLevel =
+  activeLevel;
+
+console.log(
+  "SET HEATMAP LEVEL",
+  window.currentHeatmapLevel
+);
     if (!window.masterGrid) {
       return false;
     }
