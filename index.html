@@ -35816,6 +35816,9 @@ console.log(
         points
       );
 
+    window.lastDutyKmlUrl =
+  kmlUrl || "";
+    
     console.log(
       "🔥 KML URL:",
       kmlUrl
@@ -35850,6 +35853,10 @@ try{
       points
 
   });
+
+  reportData.kmlUrl =
+  kmlUrl || "";
+  
   showDutyPerformanceReport(
     reportData
   );
@@ -36704,7 +36711,7 @@ const startedAt =
   }
 }
 
-  function showDutyPerformanceReport(
+ function showDutyPerformanceReport(
   data
 ){
 
@@ -36720,12 +36727,12 @@ const startedAt =
 
     );
 
- const remark =
+  const remark =
 
-  getDutyRemark(
-    data.dutyType,
-    data
-  );
+    getDutyRemark(
+      data.dutyType,
+      data
+    );
 
   const hideCoverage =
 
@@ -36908,6 +36915,60 @@ ${remark.text}
 
 </div>
 
+<hr>
+
+<div
+style="
+display:flex;
+gap:8px;
+margin-top:12px;
+"
+>
+
+<button
+
+onclick="window.open('${data.kmlUrl || ""}','_blank')"
+
+style="
+flex:1;
+padding:10px;
+border:none;
+border-radius:10px;
+background:#1976d2;
+color:white;
+font-weight:bold;
+cursor:pointer;
+"
+
+>
+
+📍 View KML
+
+</button>
+
+<button
+
+onclick="shareDutyKMLReport()"
+
+style="
+flex:1;
+padding:10px;
+border:none;
+border-radius:10px;
+background:#25D366;
+color:white;
+font-weight:bold;
+cursor:pointer;
+"
+
+>
+
+📤 WhatsApp
+
+</button>
+
+</div>
+
 <br>
 
 <div
@@ -36941,21 +37002,14 @@ text-align:center;
     return;
   }
 
+  window.currentDutyReport =
+    data;
+
   modal.innerHTML =
     html;
 
   modal.style.display =
     "block";
-
-  setTimeout(()=>{
-
-    if(modal){
-
-      modal.style.display =
-        "none";
-    }
-
-  }, 20000);
 
 }
   function generateKMLFromTrack(points){
@@ -37319,6 +37373,71 @@ ${coordinates}
     return null;
   }
 
+}
+
+   function shareDutyKMLReport(){
+
+  try{
+
+    const report =
+
+      window.currentDutyReport ||
+      {};
+
+    const kmlUrl =
+
+      report.kmlUrl || "";
+
+    const text =
+
+`🏆 Duty Performance Report
+
+👮 ${report.name || ""}
+
+📋 Duty Type:
+${report.dutyType || ""}
+
+🛰 Grids:
+${report.grids || 0}
+
+🌿 Area:
+${Number(
+  report.areaHa || 0
+).toFixed(1)} ha
+
+📏 Distance:
+${Number(
+  report.distanceKm || 0
+).toFixed(1)} km
+
+⏱ Duration:
+${report.durationText || ""}
+
+📍 Patrol KML:
+${kmlUrl}
+
+Generated from BTR Patrol Monitoring System`;
+
+    window.open(
+
+      "https://wa.me/?text=" +
+
+      encodeURIComponent(
+        text
+      ),
+
+      "_blank"
+    );
+
+  }
+
+  catch(err){
+
+    console.error(
+      "❌ shareDutyKMLReport",
+      err
+    );
+  }
 }
 function closeEndDutyForm() {
   const m = document.getElementById("end-duty-modal");
