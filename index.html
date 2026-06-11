@@ -9941,17 +9941,33 @@ async function renderMonthlyHeatmap(gridIds, monthKey) {
   try {
     let clipSuccess = 0;
     let clipFail = 0;
+    let intersectHits = 0;
 
     if (!Array.isArray(gridIds) || gridIds.length === 0) return false;
 
     // =====================================
-    // LOAD BOUNDARY FC
+    // LOAD & NORMALIZE BOUNDARY
     // =====================================
-    const boundaryFC = await buildHeatmapBoundary();
-    if (!boundaryFC || !boundaryFC.features) {
-      console.warn("⚠ Boundary missing or invalid");
+    const boundaryResult = await buildHeatmapBoundary();
+    
+    if (!boundaryResult) {
+      console.warn("⚠ Boundary missing");
       return false;
     }
+
+    // Diagnostic logs
+    console.log("BOUNDARY TYPE", boundaryResult.type);
+    console.log("BOUNDARY GEOMETRY", boundaryResult.geometry?.type);
+    console.log("BOUNDARY", boundaryResult);
+
+    // Normalize: Handle FeatureCollection, Feature, and raw Geometry
+    const boundaryFeatures = boundaryResult.type === "FeatureCollection"
+      ? boundaryResult.features
+      : boundaryResult.type === "Feature"
+        ? [boundaryResult]
+        : [turf.feature(boundaryResult)];
+
+    console.log("BOUNDARY FEATURES:", boundaryFeatures.length);
 
     if (window.monthlyHeatmapLayer && window.map) {
       window.map.removeLayer(window.monthlyHeatmapLayer);
@@ -9997,22 +10013,26 @@ async function renderMonthlyHeatmap(gridIds, monthKey) {
         ]]);
 
         let clipped = null;
-        try {
-          const boundaryFeatures = boundaryFC.features || [];
-          for (let i = 0; i < boundaryFeatures.length; i++) {
-            const boundaryPart = boundaryFeatures[i];
+        for (const boundaryPart of boundaryFeatures) {
+          try {
+            const intersects = turf.booleanIntersects(cellPolygon, boundaryPart);
             
-            // Optimization: Skip intersection if bbox doesn't overlap
-            if (!turf.booleanIntersects(cellPolygon, boundaryPart)) {
+            if (!intersects) {
               continue;
             }
 
-            clipped = turf.intersect(cellPolygon, boundaryPart);
-            if (clipped) break; // Found intersection, stop checking others
+            intersectHits++;
+
+            // Using FeatureCollection wrapper for Turf compatibility
+            clipped = turf.intersect(
+              turf.featureCollection([cellPolygon, boundaryPart])
+            );
+
+            if (clipped) break; 
+          } catch (err) {
+            clipFail++;
+            continue;
           }
-        } catch (err) {
-          clipFail++;
-          return;
         }
 
         if (!clipped) return;
@@ -10029,7 +10049,9 @@ async function renderMonthlyHeatmap(gridIds, monthKey) {
       }
     });
 
-    console.log("🔥 HEATMAP READY | Success:", clipSuccess, "Fail:", clipFail);
+    console.log("INTERSECT HITS:", intersectHits);
+    console.log("CLIP SUCCESS:", clipSuccess);
+    console.log("CLIP FAIL:", clipFail);
     console.log("FEATURE GROUP LAYERS COUNT:", window.monthlyHeatmapLayer.getLayers().length);
     
     return true;
