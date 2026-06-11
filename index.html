@@ -9944,6 +9944,15 @@ async function renderMonthlyHeatmap(gridIds, monthKey) {
 
     if (!Array.isArray(gridIds) || gridIds.length === 0) return false;
 
+    // =====================================
+    // LOAD BOUNDARY FC
+    // =====================================
+    const boundaryFC = await buildHeatmapBoundary();
+    if (!boundaryFC || !boundaryFC.features) {
+      console.warn("⚠ Boundary missing or invalid");
+      return false;
+    }
+
     if (window.monthlyHeatmapLayer && window.map) {
       window.map.removeLayer(window.monthlyHeatmapLayer);
       window.monthlyHeatmapLayer = null;
@@ -9973,7 +9982,7 @@ async function renderMonthlyHeatmap(gridIds, monthKey) {
     });
 
     // =====================================
-    // DRAW CELLS (Clipping Disabled for Test)
+    // DRAW CELLS WITH ITERATIVE CLIPPING
     // =====================================
     Object.entries(cellIntensity).forEach(([cellId, count]) => {
       try {
@@ -9987,8 +9996,26 @@ async function renderMonthlyHeatmap(gridIds, monthKey) {
           [west, south], [east, south], [east, north], [west, north], [west, south]
         ]]);
 
-        // TESTING: Bypass clipping to verify rendering pipeline
-        const clipped = cellPolygon;
+        let clipped = null;
+        try {
+          const boundaryFeatures = boundaryFC.features || [];
+          for (let i = 0; i < boundaryFeatures.length; i++) {
+            const boundaryPart = boundaryFeatures[i];
+            
+            // Optimization: Skip intersection if bbox doesn't overlap
+            if (!turf.booleanIntersects(cellPolygon, boundaryPart)) {
+              continue;
+            }
+
+            clipped = turf.intersect(cellPolygon, boundaryPart);
+            if (clipped) break; // Found intersection, stop checking others
+          }
+        } catch (err) {
+          clipFail++;
+          return;
+        }
+
+        if (!clipped) return;
         clipSuccess++;
 
         const ratio = Math.log(count + 1) / Math.log(maxCount + 1);
@@ -10003,8 +10030,6 @@ async function renderMonthlyHeatmap(gridIds, monthKey) {
     });
 
     console.log("🔥 HEATMAP READY | Success:", clipSuccess, "Fail:", clipFail);
-    
-    // Most important diagnostic: Check if the layer actually contains features on the map
     console.log("FEATURE GROUP LAYERS COUNT:", window.monthlyHeatmapLayer.getLayers().length);
     
     return true;
