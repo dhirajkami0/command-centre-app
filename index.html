@@ -7947,219 +7947,429 @@ async function loadMasterGrid() {
 }
   async function buildHeatmapBoundary() {
 
-  const level =
-    String(
-      window.currentHeatmapLevel ||
-      "btr"
-    )
-    .toLowerCase();
+  try {
 
-  const division =
-    String(
-      window.gisFilter?.division || ""
-    ).trim();
+    const level =
+      String(
+        window.currentHeatmapLevel ||
+        "btr"
+      )
+      .trim()
+      .toLowerCase();
 
-  const range =
-    String(
-      window.gisFilter?.range || ""
-    ).trim();
+    const division =
+      String(
+        window.gisFilter?.division || ""
+      ).trim();
 
-  const beat =
-    String(
-      window.gisFilter?.beat || ""
-    ).trim();
+    const range =
+      String(
+        window.gisFilter?.range || ""
+      ).trim();
 
-  const compartment =
-    String(
-      window.gisFilter?.compartment || ""
-    ).trim();
+    const beat =
+      String(
+        window.gisFilter?.beat || ""
+      ).trim();
 
-  const cacheKey =
+    const compartment =
+      String(
+        window.gisFilter?.compartment || ""
+      ).trim();
 
-    [
-      level,
-      division,
-      range,
-      beat,
-      compartment
-    ].join("|");
+    console.group(
+      "🔥 buildHeatmapBoundary"
+    );
 
-  if (
+    console.log(
+      "LEVEL:",
+      level
+    );
 
-    window.cachedHeatmapBoundaryKey ===
-    cacheKey
+    console.log(
+      "FILTER:",
+      {
+        division,
+        range,
+        beat,
+        compartment
+      }
+    );
 
-    &&
+    const cacheKey =
 
-    window.cachedHeatmapBoundary
+      [
+        level,
+        division,
+        range,
+        beat,
+        compartment
+      ].join("|");
 
-  ){
+    console.log(
+      "CACHE KEY:",
+      cacheKey
+    );
 
-    return window.cachedHeatmapBoundary;
-  }
+    if (
 
-  let features = [];
+      window.cachedHeatmapBoundaryKey ===
+      cacheKey
 
-  for(
+      &&
 
-    const feature of
-    (
-      window.allCompartmentFeatures || []
-    )
+      window.cachedHeatmapBoundary
 
-  ){
+    ){
 
-    const props =
-      feature.properties || {};
-
-    const fDivision =
-
-      normalizeDivision(
-
-        props.division ||
-        props.Division ||
-        ""
-
+      console.log(
+        "⚡ USING CACHED BOUNDARY"
       );
 
-    const fRange =
+      console.groupEnd();
 
-      String(
-        props.range ||
-        props.Range ||
-        ""
-      ).trim();
-
-    const fBeat =
-
-      String(
-        props.beat ||
-        props.Beat ||
-        ""
-      ).trim();
-
-    const fComp =
-
-      String(
-
-        props.compartment ||
-
-        props.Compartment ||
-
-        props.compartmen ||
-
-        ""
-
-      )
-      .trim();
-
-    let match = false;
-
-    if(level === "compartment"){
-
-      match =
-
-        fComp.toUpperCase()
-
-        ===
-
-        compartment.toUpperCase();
+      return window.cachedHeatmapBoundary;
     }
 
-    else if(level === "beat"){
+    let sourceFeatures = [];
 
-      match =
+    // ==========================================
+    // COMPARTMENT
+    // ==========================================
 
-        normalizeBeatName(
-          fBeat
-        )
+    if(
+      level === "compartment"
+    ){
 
-        ===
+      sourceFeatures =
+        window.allCompartmentFeatures || [];
 
-        normalizeBeatName(
-          beat
-        );
+      console.log(
+        "SOURCE: allCompartmentFeatures"
+      );
     }
 
-    else if(level === "range"){
-
-      match =
-        fRange === range;
-    }
-
-    else if(level === "division"){
-
-      match =
-
-        normalizeDivision(
-          fDivision
-        )
-
-        ===
-
-        normalizeDivision(
-          division
-        );
-    }
+    // ==========================================
+    // EVERYTHING ELSE
+    // ==========================================
 
     else {
 
-      match = true;
+      sourceFeatures =
+        window.allGISFeatures || [];
+
+      console.log(
+        "SOURCE: allGISFeatures"
+      );
     }
 
-    if(match){
+    console.log(
+      "SOURCE FEATURE COUNT:",
+      sourceFeatures.length
+    );
 
-      features.push(feature);
+    if(
+      sourceFeatures.length === 0
+    ){
+
+      console.warn(
+        "❌ Source dataset empty"
+      );
+
+      console.groupEnd();
+
+      return null;
     }
+
+    let features = [];
+
+    for(
+      const feature of sourceFeatures
+    ){
+
+      try {
+
+        const props =
+          feature.properties || {};
+
+        const fDivision =
+
+          normalizeDivision(
+
+            props.Division ||
+            props.division ||
+            ""
+
+          );
+
+        const fRange =
+
+          String(
+
+            props.Range ||
+            props.range ||
+            ""
+
+          ).trim();
+
+        const fBeat =
+
+          String(
+
+            props.Beat ||
+            props.beat ||
+            ""
+
+          ).trim();
+
+        const fComp =
+
+          String(
+
+            props.compartment ||
+
+            props.Compartment ||
+
+            props.compartmen ||
+
+            ""
+
+          ).trim();
+
+        let match = false;
+
+        if(
+          level === "compartment"
+        ){
+
+          match =
+
+            fComp.toUpperCase()
+
+            ===
+
+            compartment.toUpperCase();
+        }
+
+        else if(
+          level === "beat"
+        ){
+
+          match =
+
+            normalizeBeatName(
+              fBeat
+            )
+
+            ===
+
+            normalizeBeatName(
+              beat
+            );
+        }
+
+        else if(
+          level === "range"
+        ){
+
+          match =
+            fRange === range;
+        }
+
+        else if(
+          level === "division"
+        ){
+
+          match =
+
+            normalizeDivision(
+              fDivision
+            )
+
+            ===
+
+            normalizeDivision(
+              division
+            );
+        }
+
+        else {
+
+          match = true;
+        }
+
+        if(match){
+
+          features.push(
+            feature
+          );
+        }
+
+      }
+
+      catch(err){
+
+        console.warn(
+          "Feature parse failed",
+          err
+        );
+      }
+    }
+
+    console.log(
+      "MATCHED FEATURES:",
+      features.length
+    );
+
+    if(
+      features.length
+    ){
+
+      console.log(
+        "FIRST MATCH:",
+        features[0]
+      );
+    }
+
+    if(
+      !features.length
+    ){
+
+      console.warn(
+        "❌ NO MATCHING FEATURES"
+      );
+
+      console.groupEnd();
+
+      return null;
+    }
+
+    // ==========================================
+    // SINGLE FEATURE
+    // ==========================================
+
+    if(
+      features.length === 1
+    ){
+
+      console.log(
+        "✅ SINGLE FEATURE BOUNDARY"
+      );
+
+      window.cachedHeatmapBoundary =
+        features[0];
+
+      window.cachedHeatmapBoundaryKey =
+        cacheKey;
+
+      console.groupEnd();
+
+      return features[0];
+    }
+
+    // ==========================================
+    // UNION
+    // ==========================================
+
+    let merged =
+      features[0];
+
+    console.log(
+      "🔧 UNION START:",
+      features.length
+    );
+
+    for(
+      let i = 1;
+      i < features.length;
+      i++
+    ){
+
+      try {
+
+        const result =
+
+          turf.union(
+
+            turf.featureCollection([
+
+              merged,
+
+              features[i]
+
+            ])
+
+          );
+
+        if(result){
+
+          merged =
+            result;
+          console.log(
+            "✅ UNION",
+            i
+          );
+        }
+
+        else {
+
+          console.warn(
+            "⚠ UNION RETURNED NULL",
+            i
+          );
+        }
+
+      }
+
+      catch(err){
+
+        console.error(
+          "❌ UNION FAILED",
+          i,
+          err
+        );
+      }
+    }
+
+    if(
+      !merged
+    ){
+
+      console.error(
+        "❌ MERGED BOUNDARY NULL"
+      );
+
+      console.groupEnd();
+
+      return null;
+    }
+
+    window.cachedHeatmapBoundary =
+      merged;
+
+    window.cachedHeatmapBoundaryKey =
+      cacheKey;
+
+    console.log(
+      "✅ BOUNDARY BUILT"
+    );
+
+    console.groupEnd();
+
+    return merged;
+
   }
 
-  if(!features.length){
+  catch(err){
+
+    console.error(
+      "❌ buildHeatmapBoundary",
+      err
+    );
 
     return null;
   }
-
-  let merged =
-    features[0];
-
-  for(
-
-    let i = 1;
-
-    i < features.length;
-
-    i++
-
-  ){
-
-    try {
-
-      merged =
-
-        turf.union(
-
-          turf.featureCollection([
-
-            merged,
-
-            features[i]
-
-          ])
-
-        );
-
-    }
-
-    catch(e){}
-  }
-
-  window.cachedHeatmapBoundary =
-    merged;
-
-  window.cachedHeatmapBoundaryKey =
-    cacheKey;
-
-  return merged;
-}  
+}
     
     // ======================================
 // 📜 APPEND INTO GEOMETRY HISTORY
