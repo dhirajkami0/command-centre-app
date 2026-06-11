@@ -1665,6 +1665,17 @@ NORTH REMAINS ABSOLUTE
     font-size: 11px;
   }
 }
+    #dutyPerformanceModal{
+
+  pointer-events:none;
+
+}
+
+#dutyPerformanceCard{
+
+  pointer-events:auto;
+
+}
   </style>
 </head>
 <body>
@@ -35176,6 +35187,17 @@ if (!confirmed) {
 
     btn.disabled =
       true;
+    // ============================================================
+// 📋 CAPTURE DUTY TYPE BEFORE FORM CLOSES
+// ============================================================
+
+const dutyType =
+
+  document.getElementById(
+    "d-type"
+  )?.value ||
+
+  "Patrolling";
 // ============================================================
 // ⚡ IMMEDIATE UI TRANSITION
 // ============================================================
@@ -35403,6 +35425,38 @@ console.log(
 );
 
     // ==============================================
+// 🏆 BUILD DUTY PERFORMANCE REPORT
+// ==============================================
+
+try{
+
+  const reportData =
+
+  await buildDutyPerformanceReport({
+
+    sessionId,
+
+    dutyType,
+
+    leader:
+      profile.cleanName,
+
+    trackPoints:
+      points
+
+  });
+  showDutyPerformanceReport(
+    reportData
+  );
+
+}catch(reportErr){
+
+  console.error(
+    "❌ Performance report failed",
+    reportErr
+  );
+}
+    // ==============================================
     // 🔥 CLOSE SESSION DOC
     // ==============================================
     await window.fb.updateDoc(
@@ -35515,6 +35569,850 @@ setTimeout(() => {
 
     console.groupEnd();
   }
+}
+    function getPerformanceGrade(
+  score,
+  durationHours,
+  distanceKm
+){
+
+  if(
+    score >= 95 &&
+    durationHours >= 8 &&
+    distanceKm >= 10
+  ){
+
+    return {
+
+      title:
+        "FLYING STAR PATROL",
+
+      stars:
+        "⭐✨⭐✨⭐",
+
+      color:
+        "#ffd700"
+    };
+  }
+
+  if(score >= 80){
+
+    return {
+
+      title:
+        "EXTRAORDINARY",
+
+      stars:
+        "⭐⭐⭐⭐",
+
+      color:
+        "#ffb300"
+    };
+  }
+
+  if(score >= 60){
+
+    return {
+
+      title:
+        "EXCELLENT",
+
+      stars:
+        "⭐⭐⭐",
+
+      color:
+        "#4caf50"
+    };
+  }
+
+  if(score >= 40){
+
+    return {
+
+      title:
+        "GOOD",
+
+      stars:
+        "⭐⭐",
+
+      color:
+        "#2196f3"
+    };
+  }
+
+  if(score >= 20){
+
+    return {
+
+      title:
+        "SATISFACTORY",
+
+      stars:
+        "⭐",
+
+      color:
+        "#ff9800"
+    };
+  }
+
+  return {
+
+    title:
+      "MODERATE",
+
+    stars:
+      "🟡",
+
+    color:
+      "#f44336"
+  };
+}
+    function getDutyRemark(
+  dutyType
+){
+
+  const type =
+
+    String(
+      dutyType || ""
+    )
+    .toLowerCase();
+
+  if(
+    type.includes("foot")
+  ){
+
+    return {
+
+      icon:"🥾",
+
+      title:
+        "Foot Patrol Excellence",
+
+      text:
+        "Excellent ground coverage achieved through sustained field movement and field presence."
+    };
+  }
+
+  if(
+    type.includes("scan")
+  ){
+
+    return {
+
+      icon:"🔭",
+
+      title:
+        "Scanning Duty Achievement",
+
+      text:
+        "Effective surveillance coverage maintained through active monitoring effort."
+    };
+  }
+
+  if(
+    type.includes("vehicle")
+  ){
+
+    return {
+
+      icon:"🚙",
+
+      title:
+        "Vehicle Patrol Achievement",
+
+      text:
+        "Large area mobility achieved through effective route coverage."
+    };
+  }
+
+  if(
+    type.includes("depredation")
+  ){
+
+    return {
+
+      icon:"🐘",
+
+      title:
+        "Human-Wildlife Conflict Response",
+
+      text:
+        "Rapid response and field presence contributed to effective conflict management."
+    };
+  }
+
+  if(
+    type.includes("night")
+  ){
+
+    return {
+
+      icon:"🌙",
+
+      title:
+        "Night Patrol Achievement",
+
+      text:
+        "Strong vigilance maintained during high-risk operational hours."
+    };
+  }
+
+  if(
+    type.includes("elephant")
+  ){
+
+    return {
+
+      icon:"🐘",
+
+      title:
+        "Elephant Monitoring Achievement",
+
+      text:
+        "Field movement and surveillance support helped strengthen elephant monitoring efforts."
+    };
+  }
+
+  return {
+
+    icon:"🏅",
+
+    title:
+      "Duty Achievement",
+
+    text:
+      "Duty objectives completed successfully."
+  };
+}
+
+  async function buildDutyPerformanceReport({
+
+  sessionId,
+  dutyType,
+  leader,
+  trackPoints
+
+}){
+
+  try{
+
+    const trackSnap =
+
+      await window.fb.getDoc(
+
+        window.fb.doc(
+          window.db,
+          "patrol_tracks",
+          sessionId
+        )
+
+      );
+
+    const trackData =
+
+      trackSnap.exists()
+      ? trackSnap.data()
+      : {};
+
+    const storedDutyType =
+
+      String(
+        trackData.dutyType ||
+        dutyType ||
+        "Patrolling"
+      );
+
+    const startedAt =
+      Number(
+        trackData.startedAt || 0
+      );
+
+    const endedAt =
+      Date.now();
+
+    const durationHours =
+
+      Math.max(
+        0,
+        (endedAt - startedAt)
+        / 3600000
+      );
+
+    const totalMinutes =
+
+      Math.floor(
+        durationHours * 60
+      );
+
+    const hrs =
+      Math.floor(
+        totalMinutes / 60
+      );
+
+    const mins =
+      totalMinutes % 60;
+
+    const durationText =
+
+      `${hrs} hr ${mins} min`;
+
+    // =====================================
+    // DISTANCE
+    // =====================================
+
+    let distanceKm = 0;
+
+    for(
+      let i=1;
+      i<trackPoints.length;
+      i++
+    ){
+
+      distanceKm += getDistance(
+
+        [
+          trackPoints[i-1].lat,
+          trackPoints[i-1].lng
+        ],
+
+        [
+          trackPoints[i].lat,
+          trackPoints[i].lng
+        ]
+
+      );
+    }
+
+    // =====================================
+    // GRID COUNT
+    // =====================================
+
+    const coords =
+
+      trackPoints.map(p=>[
+        Number(p.lat),
+        Number(p.lng)
+      ]);
+
+    const {
+
+      touchedCells
+
+    } = getTouchedCells([
+      coords
+    ]);
+
+    const grids =
+      touchedCells.size;
+
+    // =====================================
+    // AREA
+    // =====================================
+
+    const areaHa =
+
+      Number(
+        (
+          grids * 0.25
+        ).toFixed(1)
+      );
+
+    // =====================================
+    // SCORE
+    // =====================================
+
+    let score = 0;
+
+    const type =
+
+      storedDutyType
+      .toLowerCase();
+
+    // =====================================
+    // FOOT / SCANNING
+    // =====================================
+
+    if(
+
+      type.includes("foot")
+
+      ||
+
+      type.includes("scan")
+
+    ){
+
+      const gridScore =
+
+        Math.min(
+          100,
+          (grids / 120) * 100
+        );
+
+      const areaScore =
+
+        Math.min(
+          100,
+          (areaHa / 100) * 100
+        );
+
+      const distanceScore =
+
+        Math.min(
+          100,
+          (distanceKm / 15) * 100
+        );
+
+      const durationScore =
+
+        Math.min(
+          100,
+          (durationHours / 8) * 100
+        );
+
+      score =
+
+        (
+          gridScore * 0.35
+        )
+
+        +
+
+        (
+          areaScore * 0.25
+        )
+
+        +
+
+        (
+          distanceScore * 0.25
+        )
+
+        +
+
+        (
+          durationScore * 0.15
+        );
+    }
+
+    // =====================================
+    // VEHICLE
+    // =====================================
+
+    else if(
+
+      type.includes(
+        "vehicle"
+      )
+
+    ){
+
+      const distanceScore =
+
+        Math.min(
+          100,
+          (distanceKm / 40) * 100
+        );
+
+      const durationScore =
+
+        Math.min(
+          100,
+          (durationHours / 8) * 100
+        );
+
+      const gridScore =
+
+        Math.min(
+          100,
+          (grids / 80) * 100
+        );
+
+      score =
+
+        (
+          distanceScore * 0.45
+        )
+
+        +
+
+        (
+          durationScore * 0.25
+        )
+
+        +
+
+        (
+          gridScore * 0.30
+        );
+    }
+
+    // =====================================
+    // DEPREDATION
+    // =====================================
+
+    else if(
+
+      type.includes(
+        "depredation"
+      )
+
+    ){
+
+      const distanceScore =
+
+        Math.min(
+          100,
+          (distanceKm / 20) * 100
+        );
+
+      const durationScore =
+
+        Math.min(
+          100,
+          (durationHours / 8) * 100
+        );
+
+      score =
+
+        (
+          distanceScore * 0.60
+        )
+
+        +
+
+        (
+          durationScore * 0.40
+        );
+    }
+
+    // =====================================
+    // OTHER DUTY
+    // =====================================
+
+    else{
+
+      score =
+
+        Math.min(
+          100,
+          (durationHours / 8) * 100
+        );
+    }
+
+    score =
+      Math.round(score);
+
+    return {
+
+      sessionId,
+
+      name:
+        leader,
+
+      dutyType:
+        storedDutyType,
+
+      grids,
+
+      areaHa,
+
+      distanceKm,
+
+      durationHours,
+
+      durationText,
+
+      score
+
+    };
+
+  }
+
+  catch(err){
+
+    console.error(
+      "❌ buildDutyPerformanceReport",
+      err
+    );
+
+    return {
+
+      name:
+        leader,
+
+      dutyType:
+        dutyType || "Patrolling",
+
+      grids:0,
+
+      areaHa:0,
+
+      distanceKm:0,
+
+      durationHours:0,
+
+      durationText:
+        "0 min",
+
+      score:0
+    };
+  }
+}
+
+  function showDutyPerformanceReport(
+  data
+){
+
+  const grade =
+
+    getPerformanceGrade(
+
+      data.score,
+
+      data.durationHours,
+
+      data.distanceKm
+
+    );
+
+  const remark =
+
+    getDutyRemark(
+      data.dutyType
+    );
+
+  const hideCoverage =
+
+    String(
+      data.dutyType
+    )
+    .toLowerCase()
+    .includes(
+      "depredation"
+    );
+
+  const html = `
+
+<div
+id="dutyPerformanceCard"
+style="
+position:relative;
+background:white;
+border-radius:16px;
+padding:16px;
+box-shadow:0 10px 30px rgba(0,0,0,.25);
+font-family:Arial,sans-serif;
+color:#111;
+"
+>
+
+<button
+onclick="
+document.getElementById(
+'dutyPerformanceModal'
+).style.display='none'
+"
+style="
+position:absolute;
+top:8px;
+right:8px;
+border:none;
+background:none;
+font-size:18px;
+font-weight:bold;
+cursor:pointer;
+color:#666;
+"
+>
+✕
+</button>
+
+<h2
+style="
+text-align:center;
+color:#2e7d32;
+margin-top:4px;
+margin-bottom:12px;
+"
+>
+
+🏆 DUTY PERFORMANCE REPORT
+
+</h2>
+
+<div
+style="
+text-align:center;
+font-size:24px;
+font-weight:bold;
+color:${grade.color};
+margin-bottom:12px;
+"
+>
+
+${grade.stars}
+
+<br>
+
+${grade.title}
+
+<br>
+
+${grade.stars}
+
+</div>
+
+<hr>
+
+<div style="margin:8px 0;">
+
+👮 ${data.name}
+
+</div>
+
+${
+!hideCoverage
+
+?
+
+`
+<div style="margin:8px 0;">
+
+🛰 Grids Visited :
+${data.grids}
+
+</div>
+
+<div style="margin:8px 0;">
+
+🌿 Area Covered :
+${Number(data.areaHa || 0).toFixed(1)} ha
+
+</div>
+`
+
+:
+
+""
+}
+
+<div style="margin:8px 0;">
+
+📏 Distance Covered :
+${Number(data.distanceKm || 0).toFixed(1)} km
+
+</div>
+
+<div style="margin:8px 0;">
+
+⏱ Duty Duration :
+${data.durationText}
+
+</div>
+
+<div style="margin:8px 0;">
+
+📋 Duty Type
+
+<br>
+
+<b>${data.dutyType}</b>
+
+</div>
+
+<hr>
+
+<div
+style="
+font-size:18px;
+font-weight:bold;
+margin:10px 0;
+"
+>
+
+🏅 Performance Score
+
+${data.score}/100
+
+</div>
+
+<hr>
+
+<div
+style="
+font-size:18px;
+font-weight:bold;
+margin-top:10px;
+"
+>
+
+${remark.icon}
+${remark.title}
+
+</div>
+
+<div
+style="
+margin-top:8px;
+line-height:1.5;
+"
+>
+
+${remark.text}
+
+</div>
+
+<br>
+
+<div
+style="
+font-weight:bold;
+color:#2e7d32;
+text-align:center;
+"
+>
+
+🌟 Thank you for your service.
+
+</div>
+
+</div>
+
+`;
+
+  const modal =
+
+    document.getElementById(
+      "dutyPerformanceModal"
+    );
+
+  if(!modal){
+
+    console.error(
+      "❌ dutyPerformanceModal not found"
+    );
+
+    return;
+  }
+
+  modal.innerHTML =
+    html;
+
+  modal.style.display =
+    "block";
+
+  setTimeout(()=>{
+
+    if(modal){
+
+      modal.style.display =
+        "none";
+    }
+
+  }, 20000);
+
 }
   function generateKMLFromTrack(points){
 
@@ -39711,6 +40609,19 @@ KEEP THIS AS IS
 
   <div id="btrAnalyticsContent"></div>
 
+</div>
+
+<div
+  id="dutyPerformanceModal"
+  style="
+    display:none;
+    position:fixed;
+    right:12px;
+    bottom:90px;
+    width:320px;
+    max-width:92vw;
+    z-index:999999;
+  ">
 </div>
 </body>
 </html>
