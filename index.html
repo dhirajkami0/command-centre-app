@@ -28715,6 +28715,51 @@ delete window.activeSessionMap[
   return;
 }
 
+// ==========================================
+// 🔥 ACTIVE GPS FILTER
+// ONLY USERS CURRENTLY SENDING LOCATION
+// ==========================================
+
+const lastSeen =
+  Number(s.lastSeen || 0);
+
+const lastGpsTime =
+  Number(
+    new Date(
+      s.time ||
+      s.timestamp ||
+      0
+    ).getTime()
+  );
+
+const latestActivity =
+  Math.max(
+    lastSeen,
+    lastGpsTime
+  );
+
+const ageMinutes =
+  latestActivity > 0
+    ? (
+        Date.now() -
+        latestActivity
+      ) / 60000
+    : 999999;
+
+// ==========================================
+// 🔥 IGNORE OLD RECORDS
+// ==========================================
+if(ageMinutes > 10){
+
+  console.warn(
+    "🚫 STALE STAFF REMOVED",
+    s.cleanName,
+    `${ageMinutes.toFixed(1)} min old`
+  );
+
+  return;
+}
+
 s.type = "Staff";
 
 s.cleanName =
