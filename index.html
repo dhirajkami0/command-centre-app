@@ -29114,50 +29114,7 @@ delete window.activeSessionMap[
   return;
 }
 
-// ==========================================
-// 🔥 ACTIVE GPS FILTER
-// ONLY USERS CURRENTLY SENDING LOCATION
-// ==========================================
 
-const lastSeen =
-  Number(s.lastSeen || 0);
-
-const lastGpsTime =
-  Number(
-    new Date(
-      s.time ||
-      s.timestamp ||
-      0
-    ).getTime()
-  );
-
-const latestActivity =
-  Math.max(
-    lastSeen,
-    lastGpsTime
-  );
-
-const ageMinutes =
-  latestActivity > 0
-    ? (
-        Date.now() -
-        latestActivity
-      ) / 60000
-    : 999999;
-
-// ==========================================
-// 🔥 IGNORE OLD RECORDS
-// ==========================================
-if(ageMinutes > 10){
-
-  console.warn(
-    "🚫 STALE STAFF REMOVED",
-    s.cleanName,
-    `${ageMinutes.toFixed(1)} min old`
-  );
-
-  return;
-}
 
 s.type = "Staff";
 
@@ -29178,24 +29135,45 @@ s.lon =
 // ==========================================
 // 🔥 LIVE STAFF CACHE
 // ==========================================
+// ==========================================
+// 🔥 LIVE STAFF CACHE
+// ONLY REAL LIVE STAFF RECORD
+// ==========================================
 window.liveStaffCache[
   s.cleanName
 ] = {
 
   cleanName:
-    s.cleanName,
+    String(
+      s.cleanName || ""
+    ).trim(),
+
+  name:
+    String(
+      s.name ||
+      s.cleanName ||
+      ""
+    ).trim(),
 
   division:
-    s.division || "",
+    String(
+      s.division || ""
+    ).trim(),
 
   range:
-    s.range || "",
+    String(
+      s.range || ""
+    ).trim(),
 
   beat:
-    s.beat || "",
+    String(
+      s.beat || ""
+    ).trim(),
 
   compartment:
-    s.compartment || "",
+    String(
+      s.compartment || ""
+    ).trim(),
 
   lat:
     Number(
@@ -29209,8 +29187,13 @@ window.liveStaffCache[
 
   dutyActive:
     s.dutyActive === true
+
 };
 
+// ==========================================
+// 🔥 ACTIVE USER LIST
+// ONLY REAL STAFF NAME
+// ==========================================
 activeUsers.add(
   s.cleanName
 );
