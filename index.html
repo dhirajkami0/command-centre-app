@@ -1443,7 +1443,11 @@ NORTH REMAINS ABSOLUTE
   }
 }
 
- #monthlyStatusCard {
+/* ===================================== */
+/* 📊 MONTHLY STATUS CARD
+/* ===================================== */
+
+#monthlyStatusCard {
 
   width: 170px;
 
@@ -1475,10 +1479,54 @@ NORTH REMAINS ABSOLUTE
 
   font-size: 12px;
 
-  /* 🔥 LOWER POSITION */
   margin-bottom: 8px;
 
   margin-right: 6px;
+
+  overflow: hidden;
+
+  transition:
+    width 0.25s ease,
+    padding 0.25s ease;
+}
+
+/* ===================================== */
+/* 📊 HEADER
+/* ===================================== */
+
+#monthlyStatusHeader {
+
+  position: relative;
+
+  display: flex;
+
+  justify-content: center;
+
+  align-items: center;
+}
+
+#monthlyStatusToggle {
+
+  position: absolute;
+
+  left: 0;
+
+  top: 0;
+
+  cursor: pointer;
+
+  color: #4fd1ff;
+
+  font-size: 13px;
+
+  padding: 2px 4px;
+
+  user-select: none;
+}
+
+#monthlyStatusToggle:hover {
+
+  color: white;
 }
 
 #monthlyStatusTitle {
@@ -1503,9 +1551,23 @@ NORTH REMAINS ABSOLUTE
     );
 
   font-size: 12px;
+
+  width: 100%;
 }
 
-/* 🔥 BIGGER FIELD TEXT */
+/* ===================================== */
+/* 📊 BODY
+/* ===================================== */
+
+#monthlyStatusBody {
+
+  display: block;
+}
+
+/* ===================================== */
+/* 📊 ROWS
+/* ===================================== */
+
 .monthlyStatusRow {
 
   display: flex;
@@ -1519,7 +1581,6 @@ NORTH REMAINS ABSOLUTE
   font-size: 14px;
 }
 
-/* 🔥 BIGGER VALUES */
 .monthlyStatusRow span:last-child {
 
   font-weight: bold;
@@ -1528,6 +1589,39 @@ NORTH REMAINS ABSOLUTE
 
   font-size: 15px;
 }
+
+/* ===================================== */
+/* 📊 COLLAPSED MODE
+/* ===================================== */
+
+#monthlyStatusCard.collapsed {
+
+  width: 95px;
+
+  padding: 6px;
+}
+
+#monthlyStatusCard.collapsed
+#monthlyStatusBody {
+
+  display: none;
+}
+
+#monthlyStatusCard.collapsed
+#monthlyStatusTitle {
+
+  border-bottom: none;
+
+  margin-bottom: 0;
+
+  padding-bottom: 0;
+
+  font-size: 11px;
+}
+
+/* ===================================== */
+/* 📱 MOBILE
+/* ===================================== */
 
 @media (max-width:768px) {
 
@@ -1539,7 +1633,6 @@ NORTH REMAINS ABSOLUTE
 
     padding: 6px;
 
-    /* 🔥 JUST ABOVE ATTRIBUTION */
     margin-bottom: 4px;
 
     margin-right: 2px;
@@ -1560,6 +1653,16 @@ NORTH REMAINS ABSOLUTE
   .monthlyStatusRow span:last-child {
 
     font-size: 13px;
+  }
+
+  #monthlyStatusCard.collapsed {
+
+    width: 85px;
+  }
+
+  #monthlyStatusToggle {
+
+    font-size: 11px;
   }
 }
   </style>
@@ -12765,10 +12868,10 @@ function getLiveStaffCountForCurrentPolygon() {
 }
     function addMonthlyStatusCard() {
 
- const control =
-  L.control({
-    position: "bottomright"
-  });
+  const control =
+    L.control({
+      position: "bottomright"
+    });
 
   control.onAdd = function () {
 
@@ -12783,45 +12886,65 @@ function getLiveStaffCountForCurrentPolygon() {
 
     div.innerHTML = `
 
-      <div id="monthlyStatusTitle">
-        BTR MONTHLY STATUS
+      <div id="monthlyStatusHeader">
+
+        <span
+          id="monthlyStatusToggle"
+          onclick="toggleMonthlyStatusCard()"
+          title="Collapse / Expand"
+        >
+
+          <i
+            id="monthlyStatusIcon"
+            class="fa-solid fa-chevron-down"
+          ></i>
+
+        </span>
+
+        <span id="monthlyStatusTitle">
+          BTR MONTHLY STATUS
+        </span>
+
       </div>
 
-      <div class="monthlyStatusRow">
-        <span>Live Staff</span>
-        <span id="msLiveStaff">0</span>
-      </div>
+      <div id="monthlyStatusBody">
 
-      <div class="monthlyStatusRow">
-        <span>Grids Visited</span>
-        <span id="msCells">0</span>
-      </div>
+        <div class="monthlyStatusRow">
+          <span>Live Staff</span>
+          <span id="msLiveStaff">0</span>
+        </div>
 
-      <div class="monthlyStatusRow">
-        <span>Compartments</span>
-        <span id="msCompartments">0</span>
-      </div>
+        <div class="monthlyStatusRow">
+          <span>Grids Visited</span>
+          <span id="msCells">0</span>
+        </div>
 
-      <div class="monthlyStatusRow">
-        <span>Sessions</span>
-        <span id="msSessions">0</span>
-      </div>
+        <div class="monthlyStatusRow">
+          <span>Compartments</span>
+          <span id="msCompartments">0</span>
+        </div>
 
-      <div class="monthlyStatusRow">
-        <span>Distance</span>
-        <span id="msDistance">0 km</span>
-      </div>
+        <div class="monthlyStatusRow">
+          <span>Sessions</span>
+          <span id="msSessions">0</span>
+        </div>
 
-      <div class="monthlyStatusRow">
-        <span>Covered</span>
-        <span id="msArea">0 ha</span>
-      </div>
+        <div class="monthlyStatusRow">
+          <span>Distance</span>
+          <span id="msDistance">0 km</span>
+        </div>
 
-      <div class="monthlyStatusRow">
-        <span>Coverage</span>
-        <span id="msCoverage">0 %</span>
-      </div>
+        <div class="monthlyStatusRow">
+          <span>Covered</span>
+          <span id="msArea">0 ha</span>
+        </div>
 
+        <div class="monthlyStatusRow">
+          <span>Coverage</span>
+          <span id="msCoverage">0 %</span>
+        </div>
+
+      </div>
     `;
 
     L.DomEvent.disableClickPropagation(
@@ -12835,6 +12958,73 @@ function getLiveStaffCountForCurrentPolygon() {
 
   window.monthlyStatusControl =
     control;
+}
+
+    function toggleMonthlyStatusCard() {
+
+  try {
+
+    const card =
+      document.getElementById(
+        "monthlyStatusCard"
+      );
+
+    const body =
+      document.getElementById(
+        "monthlyStatusBody"
+      );
+
+    const icon =
+      document.getElementById(
+        "monthlyStatusIcon"
+      );
+
+    if (
+      !card ||
+      !body ||
+      !icon
+    ) {
+      return;
+    }
+
+    card.classList.toggle(
+      "collapsed"
+    );
+
+    const collapsed =
+      card.classList.contains(
+        "collapsed"
+      );
+
+    if (collapsed) {
+
+      body.style.display =
+        "none";
+
+      icon.className =
+        "fa-solid fa-chevron-up";
+
+    }
+
+    else {
+
+      body.style.display =
+        "block";
+
+      icon.className =
+        "fa-solid fa-chevron-down";
+
+    }
+
+  }
+
+  catch(err) {
+
+    console.error(
+      "toggleMonthlyStatusCard",
+      err
+    );
+  }
 }
     function addRangeStatsButton() {
 
