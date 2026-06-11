@@ -9909,55 +9909,116 @@ async function getAnalyticsSummary(
   };
 }
 
-    async function showMonthlyHeatmap() {
+  async function showMonthlyHeatmap() {
+
   try {
 
-    console.log(
-  "ACTIVE POPUP LEVEL",
-  activeLevel
-);
-
-window.currentHeatmapLevel =
-  activeLevel;
-
-console.log(
-  "SET HEATMAP LEVEL",
-  window.currentHeatmapLevel
-);
     if (!window.masterGrid) {
+
       return false;
+
     }
 
     const d = new Date();
-    const monthKey = `${d.getFullYear()}_${String(d.getMonth() + 1).padStart(2, "0")}`;
 
-    const division = String(window.gisFilter?.division || "").trim();
-    const range = String(window.gisFilter?.range || "").trim();
-    const beat = String(window.gisFilter?.beat || "").trim();
-    const compartment = String(window.gisFilter?.compartment || "").trim();
-    const activeLevel = String(window.activePopupContext?.level || "btr").trim().toLowerCase();
+    const monthKey =
+      `${d.getFullYear()}_${String(
+        d.getMonth() + 1
+      ).padStart(2, "0")}`;
+
+    const division =
+      String(
+        window.gisFilter?.division || ""
+      ).trim();
+
+    const range =
+      String(
+        window.gisFilter?.range || ""
+      ).trim();
+
+    const beat =
+      String(
+        window.gisFilter?.beat || ""
+      ).trim();
+
+    const compartment =
+      String(
+        window.gisFilter?.compartment || ""
+      ).trim();
+
+    const activeLevel =
+      String(
+        window.activePopupContext?.level || "btr"
+      )
+      .trim()
+      .toLowerCase();
+
+    console.log(
+      "ACTIVE POPUP LEVEL",
+      activeLevel
+    );
+
+    window.currentHeatmapLevel =
+      activeLevel;
+
+    console.log(
+      "SET HEATMAP LEVEL",
+      window.currentHeatmapLevel
+    );
 
     const filterValue =
-      activeLevel === "compartment" ? compartment :
-      activeLevel === "beat" ? beat :
-      activeLevel === "range" ? range :
-      activeLevel === "division" ? division : "";
 
-    const analyticsGridIds = getAnalyticsGridIds(activeLevel, filterValue);
+      activeLevel === "compartment"
 
-    console.log("🔥 Heatmap Grid Count:", analyticsGridIds.length);
+        ? compartment
 
-    // Persist level for the renderer
-    window.currentHeatmapLevel = activeLevel;
+        : activeLevel === "beat"
+
+        ? beat
+
+        : activeLevel === "range"
+
+        ? range
+
+        : activeLevel === "division"
+
+        ? division
+
+        : "";
+
+    const analyticsGridIds =
+
+      getAnalyticsGridIds(
+        activeLevel,
+        filterValue
+      );
+
+    console.log(
+      "🔥 Heatmap Grid Count:",
+      analyticsGridIds.length
+    );
 
     return await renderMonthlyHeatmap(
+
       analyticsGridIds,
+
       monthKey
+
     );
-  } catch (err) {
-    console.error("❌ showMonthlyHeatmap", err);
-    return false;
+
   }
+
+  catch (err) {
+
+    console.error(
+      "❌ showMonthlyHeatmap",
+      err
+    );
+
+    return false;
+
+  }
+
 }
 async function renderMonthlyHeatmap(gridIds, monthKey) {
 
