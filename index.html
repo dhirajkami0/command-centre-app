@@ -7944,7 +7944,224 @@ async function loadMasterGrid() {
       window.masterGrid
     ).length
   );
-}// ======================================
+}
+  async function buildHeatmapBoundary() {
+
+  const level =
+    String(
+      window.currentHeatmapLevel ||
+      "btr"
+    )
+    .toLowerCase();
+
+  const division =
+    String(
+      window.gisFilter?.division || ""
+    ).trim();
+
+  const range =
+    String(
+      window.gisFilter?.range || ""
+    ).trim();
+
+  const beat =
+    String(
+      window.gisFilter?.beat || ""
+    ).trim();
+
+  const compartment =
+    String(
+      window.gisFilter?.compartment || ""
+    ).trim();
+
+  const cacheKey =
+
+    [
+      level,
+      division,
+      range,
+      beat,
+      compartment
+    ].join("|");
+
+  if (
+
+    window.cachedHeatmapBoundaryKey ===
+    cacheKey
+
+    &&
+
+    window.cachedHeatmapBoundary
+
+  ){
+
+    return window.cachedHeatmapBoundary;
+  }
+
+  let features = [];
+
+  for(
+
+    const feature of
+    (
+      window.allCompartmentFeatures || []
+    )
+
+  ){
+
+    const props =
+      feature.properties || {};
+
+    const fDivision =
+
+      normalizeDivision(
+
+        props.division ||
+        props.Division ||
+        ""
+
+      );
+
+    const fRange =
+
+      String(
+        props.range ||
+        props.Range ||
+        ""
+      ).trim();
+
+    const fBeat =
+
+      String(
+        props.beat ||
+        props.Beat ||
+        ""
+      ).trim();
+
+    const fComp =
+
+      String(
+
+        props.compartment ||
+
+        props.Compartment ||
+
+        props.compartmen ||
+
+        ""
+
+      )
+      .trim();
+
+    let match = false;
+
+    if(level === "compartment"){
+
+      match =
+
+        fComp.toUpperCase()
+
+        ===
+
+        compartment.toUpperCase();
+    }
+
+    else if(level === "beat"){
+
+      match =
+
+        normalizeBeatName(
+          fBeat
+        )
+
+        ===
+
+        normalizeBeatName(
+          beat
+        );
+    }
+
+    else if(level === "range"){
+
+      match =
+        fRange === range;
+    }
+
+    else if(level === "division"){
+
+      match =
+
+        normalizeDivision(
+          fDivision
+        )
+
+        ===
+
+        normalizeDivision(
+          division
+        );
+    }
+
+    else {
+
+      match = true;
+    }
+
+    if(match){
+
+      features.push(feature);
+    }
+  }
+
+  if(!features.length){
+
+    return null;
+  }
+
+  let merged =
+    features[0];
+
+  for(
+
+    let i = 1;
+
+    i < features.length;
+
+    i++
+
+  ){
+
+    try {
+
+      merged =
+
+        turf.union(
+
+          turf.featureCollection([
+
+            merged,
+
+            features[i]
+
+          ])
+
+        );
+
+    }
+
+    catch(e){}
+  }
+
+  window.cachedHeatmapBoundary =
+    merged;
+
+  window.cachedHeatmapBoundaryKey =
+    cacheKey;
+
+  return merged;
+}  
+    
+    // ======================================
 // 📜 APPEND INTO GEOMETRY HISTORY
 // FINAL ENTERPRISE VERSION
 // ======================================
@@ -9621,6 +9838,26 @@ async function renderMonthlyHeatmap(
 
     let maxCount = 1;
 
+    // =====================================
+    // LOAD BOUNDARY ONCE
+    // =====================================
+
+    const boundaryFeature =
+      await buildHeatmapBoundary();
+
+    if (!boundaryFeature) {
+
+      console.warn(
+        "⚠ Boundary missing"
+      );
+
+      return false;
+    }
+
+    // =====================================
+    // LOAD ANALYTICS
+    // =====================================
+
     const docs =
       await Promise.allSettled(
 
@@ -9729,56 +9966,9 @@ async function renderMonthlyHeatmap(
       return false;
     }
 
-    const activeLevel =
-      String(
-        window.currentHeatmapLevel ||
-        "btr"
-      )
-      .toLowerCase();
-
-    const selectedGeometry =
-
-      activeLevel ===
-      "compartment"
-
-      ?
-
-      window.currentSelectedGeometry
-
-      :
-
-      null;
-
-    const selectedFeature =
-
-      selectedGeometry
-
-      ?
-
-      {
-        type: "Feature",
-        geometry:
-          selectedGeometry,
-        properties: {}
-      }
-
-      :
-
-      null;
-
-    const selectedBBox =
-
-      selectedFeature
-
-      ?
-
-      turf.bbox(
-        selectedFeature
-      )
-
-      :
-
-      null;
+    // =====================================
+    // DRAW CELLS
+    // =====================================
 
     Object.entries(
       cellIntensity
@@ -9808,35 +9998,65 @@ async function renderMonthlyHeatmap(
           const east =
             west + STEP;
 
-          if (
-            selectedBBox
-          ) {
+          // ==========================
+          // CELL POLYGON
+          // ==========================
 
-            if (
+          const cellPolygon =
 
-              east <
-                selectedBBox[0]
+            turf.polygon([
 
-              ||
+              [
 
-              west >
-                selectedBBox[2]
+                [west, south],
 
-              ||
+                [east, south],
 
-              north <
-                selectedBBox[1]
+                [east, north],
 
-              ||
+                [west, north],
 
-              south >
-                selectedBBox[3]
+                [west, south]
 
-            ) {
+              ]
 
-              return;
-            }
+            ]);
+
+          // ==========================
+          // CLIP TO FOREST BOUNDARY
+          // ==========================
+
+          let clipped = null;
+
+          try {
+
+            clipped = turf.intersect(
+
+              turf.featureCollection([
+
+                cellPolygon,
+
+                boundaryFeature
+
+              ])
+
+            );
+
           }
+
+          catch(e){
+
+            return;
+          }
+
+          if(!clipped){
+
+            return;
+          }
+
+          // ==========================
+          // COLOR SCALE
+          // ==========================
 
           const ratio =
 
@@ -9890,40 +10110,43 @@ async function renderMonthlyHeatmap(
               "rgba(255,0,0,0.90)";
           }
 
-          L.rectangle(
+          // ==========================
+          // DRAW CLIPPED SHAPE
+          // ==========================
 
-            [
+          L.geoJSON(
 
-              [south, west],
-
-              [north, east]
-
-            ],
+            clipped,
 
             {
 
-              stroke: true,
+              style: () => ({
 
-             color: "#ffffff",
-weight: 0.2,
-opacity: 0.25,
+                stroke: true,
 
-              fillColor:
-                color,
+                color: "#ffffff",
 
-              fillOpacity: 1
+                weight: 0.2,
+
+                opacity: 0.25,
+
+                fillColor: color,
+
+                fillOpacity: 1
+
+              })
 
             }
 
           )
+
           .addTo(
-            window
-            .monthlyHeatmapLayer
+            window.monthlyHeatmapLayer
           );
 
         }
 
-        catch(e) {}
+        catch(e){}
       }
     );
 
@@ -9944,7 +10167,21 @@ opacity: 0.25,
 
     return false;
   }
-}// 3. Updated showAnalyticsPopup with Close Button
+}
+  function clearHeatmapBoundaryCache(){
+
+  window.cachedHeatmapBoundary =
+    null;
+
+  window.cachedHeatmapBoundaryKey =
+    null;
+
+  console.log(
+    "♻ Heatmap boundary cache cleared"
+  );
+}
+    
+    // 3. Updated showAnalyticsPopup with Close Button
 
    
     function compileGreenGuardLoadTestMetrics() {
@@ -14189,7 +14426,8 @@ ${pct(data.health)} / 100
 // ==========================================
 // 🚀 ULTRA FAST GEOJSON LOADER (PRO VERSION)
 // ==========================================
-
+window.cachedHeatmapBoundary = null;
+window.cachedHeatmapBoundaryKey = null;
 // 🔥 GLOBAL (IMPORTANT)
 // ======================================================
 // 🌍 GIS FILTER STATE
@@ -16247,7 +16485,7 @@ async function populateDivisionButtons(){
       // ======================================
       // 🔥 FORCE DIVISION FILTER
       // ======================================
-
+clearHeatmapBoundaryCache();
       window.gisFilter = {
 
         division : division,
@@ -16429,7 +16667,7 @@ async function populateDivisionButtons(){
             normalizeDivision(
               this.dataset.value
             );
-
+clearHeatmapBoundaryCache();
           // ====================================
           // ♻ RESET FILTERS
           // ====================================
@@ -16828,7 +17066,7 @@ loadPolygonWeather();
 
         rangeBtn.style.background =
           "#00c853";
-
+clearHeatmapBoundaryCache();
         window.gisFilter.range =
           range;
 
@@ -17010,7 +17248,7 @@ loadPolygonWeather();
             // ====================================
             // 🌳 RANGE FILTER
             // ====================================
-
+clearHeatmapBoundaryCache();
             window.gisFilter.range =
               range;
 
@@ -17372,7 +17610,7 @@ loadPolygonWeather();
 
           const range =
             this.dataset.value;
-
+clearHeatmapBoundaryCache();
           const division =
             normalizeDivision(
               window.gisFilter.division
@@ -19809,7 +20047,7 @@ async function populateBeatButtons(){
           // ====================================
           // 🟨 SET FILTER
           // ====================================
-
+clearHeatmapBoundaryCache();
           window.gisFilter.beat =
             this.dataset.value;
 
@@ -20166,7 +20404,7 @@ async function populateCompartmentButtons(){
           // ====================================
           // 🟧 ACTIVE FILTER
           // ====================================
-
+clearHeatmapBoundaryCache();
           window.gisFilter.compartment =
             this.dataset.value;
 
