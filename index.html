@@ -9960,125 +9960,373 @@ console.log(
   }
 }
 async function renderMonthlyHeatmap(gridIds, monthKey) {
+
   try {
+
     let clipSuccess = 0;
     let clipFail = 0;
     let intersectHits = 0;
 
-    if (!Array.isArray(gridIds) || gridIds.length === 0) return false;
-
-    // =====================================
-    // LOAD & NORMALIZE BOUNDARY
-    // =====================================
-    const boundaryResult = await buildHeatmapBoundary();
-    
-    if (!boundaryResult) {
-      console.warn("⚠ Boundary missing");
+    if (
+      !Array.isArray(gridIds) ||
+      gridIds.length === 0
+    ) {
       return false;
     }
 
-    // Diagnostic logs
-    console.log("BOUNDARY TYPE", boundaryResult.type);
-    console.log("BOUNDARY GEOMETRY", boundaryResult.geometry?.type);
-    console.log("BOUNDARY", boundaryResult);
+    // =====================================
+    // LOAD BOUNDARY
+    // =====================================
 
-    // Normalize: Handle FeatureCollection, Feature, and raw Geometry
-    const boundaryFeatures = boundaryResult.type === "FeatureCollection"
-      ? boundaryResult.features
-      : boundaryResult.type === "Feature"
-        ? [boundaryResult]
-        : [turf.feature(boundaryResult)];
+    const boundaryResult =
+      await buildHeatmapBoundary();
 
-    console.log("BOUNDARY FEATURES:", boundaryFeatures.length);
+    if (!boundaryResult) {
 
-    if (window.monthlyHeatmapLayer && window.map) {
-      window.map.removeLayer(window.monthlyHeatmapLayer);
-      window.monthlyHeatmapLayer = null;
+      console.warn(
+        "⚠ Boundary missing"
+      );
+
+      return false;
     }
 
-    window.monthlyHeatmapLayer = L.featureGroup().addTo(window.map);
+    const boundaryFeatures =
 
-    const STEP = 0.00045;
-    const cellIntensity = {};
-    let maxCount = 1;
+      boundaryResult.type ===
+      "FeatureCollection"
 
-    // Load data
-    const docs = await Promise.allSettled(
-      gridIds.map((gridId) =>
-        window.fb.getDoc(window.fb.doc(window.db, "analytics_rebuild", monthKey, "compartments", gridId))
-      )
+        ? boundaryResult.features
+
+        : boundaryResult.type ===
+          "Feature"
+
+          ? [boundaryResult]
+
+          : [turf.feature(
+              boundaryResult
+            )];
+
+    console.log(
+      "BOUNDARY FEATURES:",
+      boundaryFeatures.length
     );
 
-    docs.forEach((result) => {
-      if (result.status === "fulfilled" && result.value.exists()) {
-        const data = result.value.data();
-        Object.entries(data.visitedCells || {}).forEach(([cellId, count]) => {
-          cellIntensity[cellId] = (cellIntensity[cellId] || 0) + Number(count || 0);
-          if (cellIntensity[cellId] > maxCount) maxCount = cellIntensity[cellId];
-        });
+    // =====================================
+    // RESET LAYER
+    // =====================================
+
+    if (
+      window.monthlyHeatmapLayer &&
+      window.map
+    ) {
+
+      window.map.removeLayer(
+        window.monthlyHeatmapLayer
+      );
+
+      window.monthlyHeatmapLayer =
+        null;
+    }
+
+    window.monthlyHeatmapLayer =
+      L.featureGroup()
+      .addTo(window.map);
+
+    // =====================================
+    // LOAD ANALYTICS
+    // =====================================
+
+    const STEP =
+      0.00045;
+
+    const cellIntensity =
+      {};
+
+    let maxCount = 1;
+
+    const docs =
+      await Promise.allSettled(
+
+        gridIds.map(gridId =>
+
+          window.fb.getDoc(
+
+            window.fb.doc(
+
+              window.db,
+
+              "analytics_rebuild",
+
+              monthKey,
+
+              "compartments",
+
+              gridId
+
+            )
+          )
+        )
+      );
+
+    docs.forEach(result => {
+
+      if (
+        result.status ===
+          "fulfilled"
+
+        &&
+
+        result.value.exists()
+      ) {
+
+        const data =
+          result.value.data();
+
+        Object.entries(
+          data.visitedCells || {}
+        )
+        .forEach(
+          ([cellId, count]) => {
+
+            cellIntensity[
+              cellId
+            ] =
+
+              (
+                cellIntensity[
+                  cellId
+                ] || 0
+              )
+
+              +
+
+              Number(
+                count || 0
+              );
+
+            if (
+
+              cellIntensity[
+                cellId
+              ] > maxCount
+
+            ) {
+
+              maxCount =
+                cellIntensity[
+                  cellId
+                ];
+            }
+          }
+        );
       }
     });
 
-    // =====================================
-    // DRAW CELLS WITH ITERATIVE CLIPPING
-    // =====================================
-    Object.entries(cellIntensity).forEach(([cellId, count]) => {
-      try {
-        const [row, col] = cellId.split("_").map(Number);
-        const south = row * STEP;
-        const west = col * STEP;
-        const north = south + STEP;
-        const east = west + STEP;
+    console.log(
+      "🔥 Heat Cells:",
+      Object.keys(
+        cellIntensity
+      ).length
+    );
 
-        const cellPolygon = turf.polygon([[
-          [west, south], [east, south], [east, north], [west, north], [west, south]
-        ]]);
+    // =====================================
+    // DRAW CELLS
+    // =====================================
 
-        let clipped = null;
-        for (const boundaryPart of boundaryFeatures) {
-          try {
-            const intersects = turf.booleanIntersects(cellPolygon, boundaryPart);
-            
-            if (!intersects) {
-              continue;
+    Object.entries(
+      cellIntensity
+    )
+    .forEach(
+      ([cellId, count]) => {
+
+        try {
+
+          const [
+            row,
+            col
+          ] =
+            cellId
+            .split("_")
+            .map(Number);
+
+          const south =
+            row * STEP;
+
+          const west =
+            col * STEP;
+
+          const north =
+            south + STEP;
+
+          const east =
+            west + STEP;
+
+          const cellPolygon =
+            turf.polygon([
+              [
+                [west, south],
+                [east, south],
+                [east, north],
+                [west, north],
+                [west, south]
+              ]
+            ]);
+
+          let intersects =
+            false;
+
+          for (
+            const boundaryPart
+            of boundaryFeatures
+          ) {
+
+            try {
+
+              if (
+
+                turf.booleanIntersects(
+                  cellPolygon,
+                  boundaryPart
+                )
+
+              ) {
+
+                intersects =
+                  true;
+
+                intersectHits++;
+
+                break;
+              }
+
             }
 
-            intersectHits++;
+            catch(err) {}
+          }
 
-            // Using FeatureCollection wrapper for Turf compatibility
-            clipped = turf.intersect(
-              turf.featureCollection([cellPolygon, boundaryPart])
+          if (
+            !intersects
+          ) {
+            return;
+          }
+
+          clipSuccess++;
+
+          const ratio =
+
+            Math.log(
+              count + 1
+            )
+
+            /
+
+            Math.log(
+              maxCount + 1
             );
 
-            if (clipped) break; 
-          } catch (err) {
-            clipFail++;
-            continue;
+          let color;
+
+          if (
+            ratio < 0.20
+          ) {
+
+            color =
+              "rgba(0,255,0,0.45)";
           }
+
+          else if (
+            ratio < 0.40
+          ) {
+
+            color =
+              "rgba(173,255,47,0.55)";
+          }
+
+          else if (
+            ratio < 0.60
+          ) {
+
+            color =
+              "rgba(255,255,0,0.65)";
+          }
+
+          else if (
+            ratio < 0.80
+          ) {
+
+            color =
+              "rgba(255,140,0,0.75)";
+          }
+
+          else {
+
+            color =
+              "rgba(255,0,0,0.90)";
+          }
+
+          L.geoJSON(
+            cellPolygon,
+            {
+              style: () => ({
+                stroke: true,
+                color: "#ffffff",
+                weight: 0.2,
+                opacity: 0.25,
+                fillColor: color,
+                fillOpacity: 1
+              })
+            }
+          )
+          .addTo(
+            window.monthlyHeatmapLayer
+          );
+
         }
 
-        if (!clipped) return;
-        clipSuccess++;
+        catch(err) {
 
-        const ratio = Math.log(count + 1) / Math.log(maxCount + 1);
-        let color = ratio < 0.2 ? "rgba(0,255,0,0.45)" : ratio < 0.4 ? "rgba(173,255,47,0.55)" : ratio < 0.6 ? "rgba(255,255,0,0.65)" : ratio < 0.8 ? "rgba(255,140,0,0.75)" : "rgba(255,0,0,0.90)";
-
-        L.geoJSON(clipped, {
-          style: () => ({ stroke: true, color: "#ffffff", weight: 0.2, opacity: 0.25, fillColor: color, fillOpacity: 1 })
-        }).addTo(window.monthlyHeatmapLayer);
-      } catch (e) {
-        clipFail++;
+          clipFail++;
+        }
       }
-    });
+    );
 
-    console.log("INTERSECT HITS:", intersectHits);
-    console.log("CLIP SUCCESS:", clipSuccess);
-    console.log("CLIP FAIL:", clipFail);
-    console.log("FEATURE GROUP LAYERS COUNT:", window.monthlyHeatmapLayer.getLayers().length);
-    
+    console.log(
+      "INTERSECT HITS:",
+      intersectHits
+    );
+
+    console.log(
+      "CLIP SUCCESS:",
+      clipSuccess
+    );
+
+    console.log(
+      "CLIP FAIL:",
+      clipFail
+    );
+
+    console.log(
+      "FEATURE GROUP LAYERS COUNT:",
+      window.monthlyHeatmapLayer
+        .getLayers()
+        .length
+    );
+
+    console.log(
+      "🔥 MONTHLY HEATMAP READY"
+    );
+
     return true;
-  } catch (err) {
-    console.error("❌ renderMonthlyHeatmap", err);
+
+  }
+
+  catch(err) {
+
+    console.error(
+      "❌ renderMonthlyHeatmap",
+      err
+    );
+
     return false;
   }
 }
