@@ -35981,13 +35981,20 @@ setTimeout(() => {
   distanceKm
 ){
 
+  // =====================================
+  // ⭐ HIGHEST AWARD
+  // =====================================
+
   if(
     score >= 95 &&
-    durationHours >= 8 &&
+    durationHours >= 6 &&
     distanceKm >= 10
   ){
 
     return {
+
+      rank:
+        "🏆 ELITE PATROL",
 
       title:
         "FLYING STAR PATROL",
@@ -36000,9 +36007,16 @@ setTimeout(() => {
     };
   }
 
+  // =====================================
+  // ⭐ EXTRAORDINARY
+  // =====================================
+
   if(score >= 80){
 
     return {
+
+      rank:
+        "🏅 HIGH PERFORMANCE",
 
       title:
         "EXTRAORDINARY",
@@ -36011,13 +36025,20 @@ setTimeout(() => {
         "⭐⭐⭐⭐",
 
       color:
-        "#ffb300"
+        "#4caf50"
     };
   }
+
+  // =====================================
+  // ⭐ EXCELLENT
+  // =====================================
 
   if(score >= 60){
 
     return {
+
+      rank:
+        "🥇 STRONG PATROL",
 
       title:
         "EXCELLENT",
@@ -36026,13 +36047,20 @@ setTimeout(() => {
         "⭐⭐⭐",
 
       color:
-        "#4caf50"
+        "#2196f3"
     };
   }
+
+  // =====================================
+  // ⭐ GOOD
+  // =====================================
 
   if(score >= 40){
 
     return {
+
+      rank:
+        "🥈 ACTIVE PATROL",
 
       title:
         "GOOD",
@@ -36041,13 +36069,20 @@ setTimeout(() => {
         "⭐⭐",
 
       color:
-        "#2196f3"
+        "#ff9800"
     };
   }
+
+  // =====================================
+  // ⭐ SATISFACTORY
+  // =====================================
 
   if(score >= 20){
 
     return {
+
+      rank:
+        "🥉 BASIC PATROL",
 
       title:
         "SATISFACTORY",
@@ -36056,11 +36091,18 @@ setTimeout(() => {
         "⭐",
 
       color:
-        "#ff9800"
+        "#ff5722"
     };
   }
 
+  // =====================================
+  // ⭐ LOW
+  // =====================================
+
   return {
+
+    rank:
+      "⚠ IMPROVEMENT REQUIRED",
 
     title:
       "MODERATE",
@@ -36072,8 +36114,9 @@ setTimeout(() => {
       "#f44336"
   };
 }
-    function getDutyRemark(
-  dutyType
+   function getDutyRemark(
+  dutyType,
+  reportData = {}
 ){
 
   const type =
@@ -36082,6 +36125,39 @@ setTimeout(() => {
       dutyType || ""
     )
     .toLowerCase();
+
+  const grids =
+
+    Number(
+      reportData.grids || 0
+    );
+
+  const areaHa =
+
+    Number(
+      reportData.areaHa || 0
+    );
+
+  const distanceKm =
+
+    Number(
+      reportData.distanceKm || 0
+    );
+
+  const durationHours =
+
+    Number(
+      reportData.durationHours || 0
+    );
+
+  const durationText =
+
+    reportData.durationText ||
+    "0 min";
+
+  // =====================================
+  // FOOT PATROL
+  // =====================================
 
   if(
     type.includes("foot")
@@ -36095,9 +36171,18 @@ setTimeout(() => {
         "Foot Patrol Excellence",
 
       text:
-        "Excellent ground coverage achieved through sustained field movement and field presence."
+
+        `Outstanding patrol effort.
+
+You covered ${grids.toLocaleString()} grids across ${areaHa.toFixed(1)} ha while travelling ${distanceKm.toFixed(1)} km over ${durationText}.
+
+This patrol significantly contributed to forest coverage, surveillance and field presence.`
     };
   }
+
+  // =====================================
+  // SCANNING
+  // =====================================
 
   if(
     type.includes("scan")
@@ -36111,9 +36196,16 @@ setTimeout(() => {
         "Scanning Duty Achievement",
 
       text:
-        "Effective surveillance coverage maintained through active monitoring effort."
+
+        `Effective surveillance coverage maintained for ${durationText}.
+
+Field monitoring activity contributed to enhanced observation and protection efforts.`
     };
   }
+
+  // =====================================
+  // VEHICLE
+  // =====================================
 
   if(
     type.includes("vehicle")
@@ -36127,9 +36219,16 @@ setTimeout(() => {
         "Vehicle Patrol Achievement",
 
       text:
-        "Large area mobility achieved through effective route coverage."
+
+        `Large area mobility achieved through effective route coverage.
+
+A total travel distance of ${distanceKm.toFixed(1)} km helped strengthen patrol visibility and field monitoring.`
     };
   }
+
+  // =====================================
+  // DEPREDATION
+  // =====================================
 
   if(
     type.includes("depredation")
@@ -36143,9 +36242,16 @@ setTimeout(() => {
         "Human-Wildlife Conflict Response",
 
       text:
-        "Rapid response and field presence contributed to effective conflict management."
+
+        `Rapid field response maintained for ${durationText}.
+
+Patrol presence contributed towards conflict mitigation and public safety support.`
     };
   }
+
+  // =====================================
+  // NIGHT PATROL
+  // =====================================
 
   if(
     type.includes("night")
@@ -36159,9 +36265,16 @@ setTimeout(() => {
         "Night Patrol Achievement",
 
       text:
-        "Strong vigilance maintained during high-risk operational hours."
+
+        `Strong vigilance maintained during high-risk operational hours.
+
+Night field coverage helped strengthen forest protection and surveillance efforts.`
     };
   }
+
+  // =====================================
+  // ELEPHANT DUTY
+  // =====================================
 
   if(
     type.includes("elephant")
@@ -36175,9 +36288,14 @@ setTimeout(() => {
         "Elephant Monitoring Achievement",
 
       text:
-        "Field movement and surveillance support helped strengthen elephant monitoring efforts."
+
+        `Field movement and surveillance activity supported elephant monitoring operations and habitat protection.`
     };
   }
+
+  // =====================================
+  // DEFAULT
+  // =====================================
 
   return {
 
@@ -36187,10 +36305,12 @@ setTimeout(() => {
       "Duty Achievement",
 
     text:
-      "Duty objectives completed successfully."
+
+      `Duty objectives completed successfully.
+
+Coverage activity and field presence contributed to operational effectiveness.`
   };
 }
-
   async function buildDutyPerformanceReport({
 
   sessionId,
@@ -36600,11 +36720,12 @@ const startedAt =
 
     );
 
-  const remark =
+ const remark =
 
-    getDutyRemark(
-      data.dutyType
-    );
+  getDutyRemark(
+    data.dutyType,
+    data
+  );
 
   const hideCoverage =
 
