@@ -36228,10 +36228,28 @@ setTimeout(() => {
         "Patrolling"
       );
 
-    const startedAt =
-      Number(
-        trackData.startedAt || 0
-      );
+    const sessionStartFromId =
+  Number(
+    String(sessionId)
+      .split("_")
+      .pop()
+  );
+
+const startedAt =
+
+  Number.isFinite(
+    sessionStartFromId
+  )
+
+  ?
+
+  sessionStartFromId
+
+  :
+
+  Number(
+    trackData.startedAt || 0
+  );
 
     const endedAt =
       Date.now();
