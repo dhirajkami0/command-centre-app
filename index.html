@@ -28985,88 +28985,61 @@ console.log(
 // ==============================================
 if(s.dutyActive !== true){
 
-  // ==========================================
-  // 🔥 REMOVE LIVE STAFF CACHE
-  // ==========================================
   delete window.liveStaffCache[
     s.cleanName
   ];
 
-  console.log(
+  delete window.activeSessionMap[
+    s.cleanName
+  ];
 
-    "🧪 MARKER LOOKUP",
+  delete window.trackPointCount[
+    s.cleanName
+  ];
 
-    {
+  delete window.trackDistanceMap[
+    s.cleanName
+  ];
 
-      cleanName:
-        s.cleanName,
-
-      normalized:
-        cleanName(
-          s.cleanName || ""
-        ),
-
-      existingKeys:
-
-        Object.keys(
-          window.staffMarkers || {}
-        )
-
-    }
-
-  );
-  // ==========================================
-  // 🔥 REMOVE MARKER
-  // ==========================================
   if(window.staffMarkers[s.cleanName]){
 
     try{
-
       staffLayer.removeLayer(
         window.staffMarkers[s.cleanName]
       );
-
     }catch(e){}
 
-    delete window.staffMarkers[s.cleanName];
+    delete window.staffMarkers[
+      s.cleanName
+    ];
   }
 
-  // ==========================================
-  // 🔥 REMOVE TRACK
-  // ==========================================
   if(window.staffTracks[s.cleanName]){
 
     try{
-
       staffLayer.removeLayer(
         window.staffTracks[s.cleanName]
       );
-
     }catch(e){}
 
-    delete window.staffTracks[s.cleanName];
+    delete window.staffTracks[
+      s.cleanName
+    ];
   }
 
-  // ==========================================
-  // 🔥 REMOVE DECORATOR
-  // ==========================================
   if(window.staffDecorators[s.cleanName]){
 
     try{
-
       staffLayer.removeLayer(
         window.staffDecorators[s.cleanName]
       );
-
     }catch(e){}
 
-    delete window.staffDecorators[s.cleanName];
+    delete window.staffDecorators[
+      s.cleanName
+    ];
   }
 
-  // ==========================================
-  // 🔥 REMOVE LIVE LISTENER
-  // VERY IMPORTANT
-  // ==========================================
   if(
     window.trackListeners[
       s.cleanName
@@ -29085,26 +29058,6 @@ if(s.dutyActive !== true){
       s.cleanName
     ];
   }
-// ==========================================
-// 🔥 REMOVE POINT CACHE
-// ==========================================
-delete window.trackPointCount[
-  s.cleanName
-];
-
-// ==========================================
-// 🔥 REMOVE DISTANCE CACHE
-// ==========================================
-delete window.trackDistanceMap[
-  s.cleanName
-];
-
-// ==========================================
-// 🔥 REMOVE SESSION CACHE
-// ==========================================
-delete window.activeSessionMap[
-  s.cleanName
-];
 
   console.log(
     "🧹 Duty OFF cleanup:",
@@ -29114,46 +29067,75 @@ delete window.activeSessionMap[
   return;
 }
 
-
-
+// ==============================================
+// 🔥 NORMALIZE STAFF
+// ==============================================
 s.type = "Staff";
 
 s.cleanName =
-  s.cleanName ||
-  docSnap.id;
+  String(
+    s.cleanName ||
+    docSnap.id ||
+    ""
+  ).trim();
 
 s.name =
-  s.name ||
-  s.cleanName;
+  String(
+    s.name ||
+    s.cleanName
+  ).trim();
 
 s.lat =
-  Number(s.lat || 0);
+  Number(
+    s.lat || 0
+  );
 
 s.lon =
-  Number(s.lon || 0);
+  Number(
+    s.lon || 0
+  );
 
-// ==========================================
+// ==============================================
+// 🔥 REQUIRE REAL GPS
+// ONLY STAFF ACTUALLY SENDING GPS
+// ==============================================
+if(
+
+  isNaN(s.lat) ||
+
+  isNaN(s.lon) ||
+
+  s.lat === 0 ||
+
+  s.lon === 0
+
+){
+
+  delete window.liveStaffCache[
+    s.cleanName
+  ];
+
+  console.log(
+    "🚫 NO LIVE GPS:",
+    s.cleanName
+  );
+
+  return;
+}
+
+// ==============================================
 // 🔥 LIVE STAFF CACHE
-// ==========================================
-// ==========================================
-// 🔥 LIVE STAFF CACHE
-// ONLY REAL LIVE STAFF RECORD
-// ==========================================
+// ONLY GPS ACTIVE STAFF
+// ==============================================
 window.liveStaffCache[
   s.cleanName
 ] = {
 
   cleanName:
-    String(
-      s.cleanName || ""
-    ).trim(),
+    s.cleanName,
 
   name:
-    String(
-      s.name ||
-      s.cleanName ||
-      ""
-    ).trim(),
+    s.name,
 
   division:
     String(
@@ -29176,30 +29158,23 @@ window.liveStaffCache[
     ).trim(),
 
   lat:
-    Number(
-      s.lat || 0
-    ),
+    s.lat,
 
   lng:
-    Number(
-      s.lon || 0
-    ),
+    s.lon,
 
   dutyActive:
-    s.dutyActive === true
-
+    true
 };
 
-// ==========================================
+// ==============================================
 // 🔥 ACTIVE USER LIST
-// ONLY REAL STAFF NAME
-// ==========================================
+// ==============================================
 activeUsers.add(
   s.cleanName
 );
 
 staff.push(s);
-
 } catch(e){
 
   console.error(
