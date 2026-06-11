@@ -14726,7 +14726,11 @@ window.gisAnalyticsCache = {};
 // ======================================================
 // 🌍 NORMALIZE DIVISION
 // ======================================================
-    
+    window.TELEGRAM_BOT_TOKEN =
+  "7865241333:AAEEWmoF28Xgms7nxlZN-k8NWIHz-c_7ePQ";
+
+window.TELEGRAM_CHAT_ID =
+  "8054414837";
     // ==========================================
 // 👁 HIDDEN STATES
 // ==========================================
@@ -35856,7 +35860,15 @@ try{
 
   reportData.kmlUrl =
   kmlUrl || "";
-  
+
+
+  // =====================================
+// 📲 SEND TO TELEGRAM
+// =====================================
+
+await sendKMLToTelegram(
+  reportData
+);
   showDutyPerformanceReport(
     reportData
   );
@@ -37437,6 +37449,81 @@ Generated from BTR Patrol Monitoring System`;
       "❌ shareDutyKMLReport",
       err
     );
+  }
+}
+
+  async function sendKMLToTelegram(
+  report
+){
+
+  try{
+
+    const caption =
+
+`🏆 ${report.name}
+
+📋 ${report.dutyType}
+
+🛰 Grids: ${report.grids}
+
+🌿 Area: ${report.areaHa} ha
+
+📏 Distance: ${Number(
+  report.distanceKm || 0
+).toFixed(1)} km
+
+⏱ Duration: ${report.durationText}
+
+📊 Score: ${report.score}/100`;
+
+    const response =
+
+      await fetch(
+
+        `https://api.telegram.org/bot${window.TELEGRAM_BOT_TOKEN}/sendDocument`,
+
+        {
+
+          method:"POST",
+
+          headers:{
+            "Content-Type":
+              "application/json"
+          },
+
+          body:JSON.stringify({
+
+            chat_id:
+              window.TELEGRAM_CHAT_ID,
+
+            document:
+              report.kmlUrl,
+
+            caption
+
+          })
+
+        }
+
+      );
+
+    const result =
+      await response.json();
+
+    console.log(
+      "✅ KML sent to Telegram",
+      result
+    );
+
+  }
+
+  catch(err){
+
+    console.error(
+      "❌ Telegram KML send failed",
+      err
+    );
+
   }
 }
 function closeEndDutyForm() {
