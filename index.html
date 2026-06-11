@@ -7945,7 +7945,7 @@ async function loadMasterGrid() {
     ).length
   );
 }
-  async function buildHeatmapBoundary() {
+async function buildHeatmapBoundary() {
 
   try {
 
@@ -8033,10 +8033,6 @@ async function loadMasterGrid() {
 
     let sourceFeatures = [];
 
-    // ==========================================
-    // COMPARTMENT
-    // ==========================================
-
     if(
       level === "compartment"
     ){
@@ -8047,13 +8043,8 @@ async function loadMasterGrid() {
       console.log(
         "SOURCE: allCompartmentFeatures"
       );
-    }
 
-    // ==========================================
-    // EVERYTHING ELSE
-    // ==========================================
-
-    else {
+    } else {
 
       sourceFeatures =
         window.allGISFeatures || [];
@@ -8061,6 +8052,7 @@ async function loadMasterGrid() {
       console.log(
         "SOURCE: allGISFeatures"
       );
+
     }
 
     console.log(
@@ -8069,6 +8061,7 @@ async function loadMasterGrid() {
     );
 
     if(
+      !Array.isArray(sourceFeatures) ||
       sourceFeatures.length === 0
     ){
 
@@ -8081,13 +8074,20 @@ async function loadMasterGrid() {
       return null;
     }
 
-    let features = [];
+    const features = [];
 
     for(
       const feature of sourceFeatures
     ){
 
       try {
+
+        if(
+          !feature ||
+          !feature.geometry
+        ){
+          continue;
+        }
 
         const props =
           feature.properties || {};
@@ -8127,11 +8127,8 @@ async function loadMasterGrid() {
           String(
 
             props.compartment ||
-
             props.Compartment ||
-
             props.compartmen ||
-
             ""
 
           ).trim();
@@ -8149,6 +8146,7 @@ async function loadMasterGrid() {
             ===
 
             compartment.toUpperCase();
+
         }
 
         else if(
@@ -8166,6 +8164,7 @@ async function loadMasterGrid() {
             normalizeBeatName(
               beat
             );
+
         }
 
         else if(
@@ -8174,6 +8173,7 @@ async function loadMasterGrid() {
 
           match =
             fRange === range;
+
         }
 
         else if(
@@ -8191,11 +8191,13 @@ async function loadMasterGrid() {
             normalizeDivision(
               division
             );
+
         }
 
         else {
 
           match = true;
+
         }
 
         if(match){
@@ -8203,6 +8205,7 @@ async function loadMasterGrid() {
           features.push(
             feature
           );
+
         }
 
       }
@@ -8210,26 +8213,18 @@ async function loadMasterGrid() {
       catch(err){
 
         console.warn(
-          "Feature parse failed",
+          "⚠ Feature parse failed",
           err
         );
+
       }
+
     }
 
     console.log(
       "MATCHED FEATURES:",
       features.length
     );
-
-    if(
-      features.length
-    ){
-
-      console.log(
-        "FIRST MATCH:",
-        features[0]
-      );
-    }
 
     if(
       !features.length
@@ -8244,17 +8239,13 @@ async function loadMasterGrid() {
       return null;
     }
 
-    // ==========================================
+    // =====================================
     // SINGLE FEATURE
-    // ==========================================
+    // =====================================
 
     if(
       features.length === 1
     ){
-
-      console.log(
-        "✅ SINGLE FEATURE BOUNDARY"
-      );
 
       window.cachedHeatmapBoundary =
         features[0];
@@ -8262,101 +8253,43 @@ async function loadMasterGrid() {
       window.cachedHeatmapBoundaryKey =
         cacheKey;
 
+      console.log(
+        "✅ SINGLE FEATURE BOUNDARY"
+      );
+
       console.groupEnd();
 
       return features[0];
     }
 
-    // ==========================================
-    // UNION
-    // ==========================================
+    // =====================================
+    // MULTI FEATURE SAFE MODE
+    // NO TURF UNION
+    // =====================================
 
-    let merged =
-      features[0];
+    const boundary = {
 
-    console.log(
-      "🔧 UNION START:",
-      features.length
-    );
+      type:
+        "FeatureCollection",
 
-    for(
-      let i = 1;
-      i < features.length;
-      i++
-    ){
+      features
 
-      try {
-
-        const result =
-
-          turf.union(
-
-            turf.featureCollection([
-
-              merged,
-
-              features[i]
-
-            ])
-
-          );
-
-        if(result){
-
-          merged =
-            result;
-          console.log(
-            "✅ UNION",
-            i
-          );
-        }
-
-        else {
-
-          console.warn(
-            "⚠ UNION RETURNED NULL",
-            i
-          );
-        }
-
-      }
-
-      catch(err){
-
-        console.error(
-          "❌ UNION FAILED",
-          i,
-          err
-        );
-      }
-    }
-
-    if(
-      !merged
-    ){
-
-      console.error(
-        "❌ MERGED BOUNDARY NULL"
-      );
-
-      console.groupEnd();
-
-      return null;
-    }
+    };
 
     window.cachedHeatmapBoundary =
-      merged;
+      boundary;
 
     window.cachedHeatmapBoundaryKey =
       cacheKey;
 
     console.log(
-      "✅ BOUNDARY BUILT"
+      "✅ FEATURE COLLECTION BOUNDARY:",
+      features.length
     );
 
     console.groupEnd();
 
-    return merged;
+    return boundary;
 
   }
 
@@ -8368,9 +8301,10 @@ async function loadMasterGrid() {
     );
 
     return null;
+
   }
+
 }
-    
     // ======================================
 // 📜 APPEND INTO GEOMETRY HISTORY
 // FINAL ENTERPRISE VERSION
