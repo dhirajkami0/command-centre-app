@@ -9955,23 +9955,7 @@ async function renderMonthlyHeatmap(gridIds, monthKey) {
     const cellIntensity = {};
     let maxCount = 1;
 
-    // =====================================
-    // LOAD & FLATTEN BOUNDARY
-    // =====================================
-    const boundaryFC = await buildHeatmapBoundary();
-    if (!boundaryFC || !boundaryFC.features) return false;
-
-    // Flatten all features in the collection into one single geometry
-    // This solves the "Input geometry is not a valid Polygon" error
-    let combinedBoundary = boundaryFC.features[0];
-    for (let i = 1; i < boundaryFC.features.length; i++) {
-      try {
-        combinedBoundary = turf.union(combinedBoundary, boundaryFC.features[i]);
-      } catch (e) {
-        continue; // Skip invalid geometry fragments
-      }
-    }
-
+    // Load data
     const docs = await Promise.allSettled(
       gridIds.map((gridId) =>
         window.fb.getDoc(window.fb.doc(window.db, "analytics_rebuild", monthKey, "compartments", gridId))
@@ -9989,7 +9973,7 @@ async function renderMonthlyHeatmap(gridIds, monthKey) {
     });
 
     // =====================================
-    // DRAW CELLS
+    // DRAW CELLS (Clipping Disabled for Test)
     // =====================================
     Object.entries(cellIntensity).forEach(([cellId, count]) => {
       try {
@@ -10003,9 +9987,8 @@ async function renderMonthlyHeatmap(gridIds, monthKey) {
           [west, south], [east, south], [east, north], [west, north], [west, south]
         ]]);
 
-        let clipped = turf.intersect(cellPolygon, combinedBoundary);
-
-        if (!clipped) return;
+        // TESTING: Bypass clipping to verify rendering pipeline
+        const clipped = cellPolygon;
         clipSuccess++;
 
         const ratio = Math.log(count + 1) / Math.log(maxCount + 1);
@@ -10020,6 +10003,10 @@ async function renderMonthlyHeatmap(gridIds, monthKey) {
     });
 
     console.log("🔥 HEATMAP READY | Success:", clipSuccess, "Fail:", clipFail);
+    
+    // Most important diagnostic: Check if the layer actually contains features on the map
+    console.log("FEATURE GROUP LAYERS COUNT:", window.monthlyHeatmapLayer.getLayers().length);
+    
     return true;
   } catch (err) {
     console.error("❌ renderMonthlyHeatmap", err);
