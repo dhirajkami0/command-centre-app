@@ -9309,7 +9309,7 @@ async function showMonthHistory() {
       }
       if (currentIndex < tracksToRender.length) requestAnimationFrame(renderBatch);
       else {
-        showAnalyticsPopup(analyticsSummary, popupTitle);
+       
         console.groupEnd();
       }
     }
@@ -9945,133 +9945,7 @@ opacity: 0.25,
     return false;
   }
 }// 3. Updated showAnalyticsPopup with Close Button
-function showAnalyticsPopup(
-  summary,
-  title
-) {
 
-  let panel =
-    document.getElementById(
-      "analyticsPanel"
-    );
-
-  if (!panel) {
-
-    panel =
-      document.createElement(
-        "div"
-      );
-
-    panel.id =
-      "analyticsPanel";
-
-    panel.style.cssText = `
-      position:fixed;
-      top:80px;
-      right:20px;
-      z-index:99999;
-      background:white;
-      padding:12px;
-      border-radius:8px;
-      box-shadow:0 2px 8px rgba(0,0,0,.3);
-      min-width:300px;
-      max-width:360px;
-      font-size:14px;
-      line-height:1.6;
-    `;
-
-    document.body.appendChild(
-      panel
-    );
-  }
-
-  panel.innerHTML = `
-
-    <div
-      style="
-        text-align:right;
-        margin-bottom:8px;
-      "
-    >
-      <button
-        onclick="
-          document
-          .getElementById(
-            'analyticsPanel'
-          )
-          ?.remove();
-        "
-      >
-        ✖
-      </button>
-    </div>
-
-    <b>
-      Patrol Coverage Summary
-    </b>
-
-    <hr>
-
-    <b>
-      ${title}
-    </b>
-
-    <br><br>
-
-    Compartments :
-    ${summary.compartments}
-
-    <br><br>
-
-    Patrol Area :
-    ${summary.areaHa.toFixed(2)}
-    ha
-
-    <br><br>
-
-    <b>
-      Coverage Achievement
-    </b>
-
-    <hr>
-
-    Previously Covered :
-    ${summary.previouslyCovered}
-    Grids
-
-    <br><br>
-
-    Newly Covered :
-    ${summary.newlyCovered}
-    Grids
-
-    <br><br>
-
-    Total Covered :
-    ${summary.totalCovered}
-    Grids
-
-    <br><br>
-
-    Area Coverage :
-    ${summary.coveragePercent.toFixed(2)}
-    %
-
-    <br><br>
-
-    Patrol Distance :
-    ${(
-      summary.distanceMeters /
-      1000
-    ).toFixed(2)}
-    km
-
-    <br><br>
-
-    Patrol Sessions :
-    ${summary.visitCount}
-  `;
-}
    
     function compileGreenGuardLoadTestMetrics() {
   const b = window.bench;
@@ -12743,7 +12617,25 @@ console.log(
       :
 
       0;
+// =====================================
+// 🔥 TOTAL AREA
+// =====================================
 
+const totalAreaHa =
+
+  Number(
+    summary.areaHa || 0
+  );
+
+// =====================================
+// 🔥 TOTAL GRIDS
+// =====================================
+
+const totalGrids =
+
+  Number(
+    summary.totalCells || 0
+  );
     // =====================================
     // 🔥 TITLE
     // =====================================
@@ -12777,7 +12669,23 @@ console.log(
         ).toLocaleString();
 
     }
+// =====================================
+// 🔥 TOTAL GRIDS
+// =====================================
 
+const totalGridsEl =
+
+  document.getElementById(
+    "msTotalGrids"
+  );
+
+if(totalGridsEl){
+
+  totalGridsEl.textContent =
+
+    totalGrids.toLocaleString();
+
+}
     // =====================================
     // 🔥 COMPARTMENTS
     // =====================================
@@ -12853,6 +12761,26 @@ console.log(
     }
 
     // =====================================
+// 🔥 TOTAL AREA
+// =====================================
+
+const totalAreaEl =
+
+  document.getElementById(
+    "msTotalArea"
+  );
+
+if(totalAreaEl){
+
+  totalAreaEl.textContent =
+
+    totalAreaHa
+    .toFixed(1)
+
+    + " ha";
+
+}
+    // =====================================
     // 🔥 COVERAGE %
     // =====================================
 
@@ -12921,44 +12849,54 @@ console.log(
 
       </div>
 
-      <div id="monthlyStatusBody">
+     <div id="monthlyStatusBody">
 
-        <div class="monthlyStatusRow">
-          <span>Live Staff</span>
-          <span id="msLiveStaff">0</span>
-        </div>
+  <div class="monthlyStatusRow">
+    <span>Live Duty Team</span>
+    <span id="msLiveStaff">0</span>
+  </div>
 
-        <div class="monthlyStatusRow">
-          <span>Grids Visited</span>
-          <span id="msCells">0</span>
-        </div>
+  <div class="monthlyStatusRow">
+    <span>Total Grids</span>
+    <span id="msTotalGrids">0</span>
+  </div>
 
-        <div class="monthlyStatusRow">
-          <span>Compartments</span>
-          <span id="msCompartments">0</span>
-        </div>
+  <div class="monthlyStatusRow">
+    <span>Grids Visited</span>
+    <span id="msCells">0</span>
+  </div>
 
-        <div class="monthlyStatusRow">
-          <span>Sessions</span>
-          <span id="msSessions">0</span>
-        </div>
+  <div class="monthlyStatusRow">
+    <span>Patrol Area</span>
+    <span id="msArea">0 ha</span>
+  </div>
 
-        <div class="monthlyStatusRow">
-          <span>Distance</span>
-          <span id="msDistance">0 km</span>
-        </div>
+  <div class="monthlyStatusRow">
+    <span>Total Area</span>
+    <span id="msTotalArea">0 ha</span>
+  </div>
 
-        <div class="monthlyStatusRow">
-          <span>Covered</span>
-          <span id="msArea">0 ha</span>
-        </div>
+  <div class="monthlyStatusRow">
+    <span>Compartments</span>
+    <span id="msCompartments">0</span>
+  </div>
 
-        <div class="monthlyStatusRow">
-          <span>Coverage</span>
-          <span id="msCoverage">0 %</span>
-        </div>
+  <div class="monthlyStatusRow">
+    <span>Sessions</span>
+    <span id="msSessions">0</span>
+  </div>
 
-      </div>
+  <div class="monthlyStatusRow">
+    <span>Distance</span>
+    <span id="msDistance">0 km</span>
+  </div>
+
+  <div class="monthlyStatusRow">
+    <span>Coverage</span>
+    <span id="msCoverage">0 %</span>
+  </div>
+
+</div>
     `;
 
     L.DomEvent.disableClickPropagation(
