@@ -9939,73 +9939,54 @@ async function getAnalyticsSummary(
 }
 async function renderMonthlyHeatmap(gridIds, monthKey) {
   try {
-    // =====================================
-    // DIAGNOSTICS & SETUP
-    // =====================================
     let clipSuccess = 0;
     let clipFail = 0;
 
-    if (!Array.isArray(gridIds) || gridIds.length === 0) {
-      console.warn("⚠ No grids supplied");
-      return false;
-    }
+    if (!Array.isArray(gridIds) || gridIds.length === 0) return false;
 
     if (window.monthlyHeatmapLayer && window.map) {
       window.map.removeLayer(window.monthlyHeatmapLayer);
       window.monthlyHeatmapLayer = null;
     }
 
-    window.monthlyHeatmapLayer = L.featureGroup();
-    window.monthlyHeatmapLayer.addTo(window.map);
+    window.monthlyHeatmapLayer = L.featureGroup().addTo(window.map);
 
     const STEP = 0.00045;
     const cellIntensity = {};
     let maxCount = 1;
 
     // =====================================
-    // LOAD BOUNDARY ONCE
+    // LOAD & FLATTEN BOUNDARY
     // =====================================
-    const boundaryFeature = await buildHeatmapBoundary();
-    
-    // Diagnostic logs for boundary
-    console.log("BOUNDARY TYPE", boundaryFeature?.geometry?.type);
-    console.log("BOUNDARY", boundaryFeature);
+    const boundaryFC = await buildHeatmapBoundary();
+    if (!boundaryFC || !boundaryFC.features) return false;
 
-    if (!boundaryFeature) {
-      console.warn("⚠ Boundary missing");
-      return false;
+    // Flatten all features in the collection into one single geometry
+    // This solves the "Input geometry is not a valid Polygon" error
+    let combinedBoundary = boundaryFC.features[0];
+    for (let i = 1; i < boundaryFC.features.length; i++) {
+      try {
+        combinedBoundary = turf.union(combinedBoundary, boundaryFC.features[i]);
+      } catch (e) {
+        continue; // Skip invalid geometry fragments
+      }
     }
 
-    // =====================================
-    // LOAD ANALYTICS
-    // =====================================
     const docs = await Promise.allSettled(
       gridIds.map((gridId) =>
-        window.fb.getDoc(
-          window.fb.doc(window.db, "analytics_rebuild", monthKey, "compartments", gridId)
-        )
+        window.fb.getDoc(window.fb.doc(window.db, "analytics_rebuild", monthKey, "compartments", gridId))
       )
     );
 
-    let found = 0;
     docs.forEach((result) => {
       if (result.status === "fulfilled" && result.value.exists()) {
-        found++;
         const data = result.value.data();
         Object.entries(data.visitedCells || {}).forEach(([cellId, count]) => {
           cellIntensity[cellId] = (cellIntensity[cellId] || 0) + Number(count || 0);
-          if (cellIntensity[cellId] > maxCount) {
-            maxCount = cellIntensity[cellId];
-          }
+          if (cellIntensity[cellId] > maxCount) maxCount = cellIntensity[cellId];
         });
       }
     });
-
-    console.log("FOUND DOCS:", found);
-    const totalCells = Object.keys(cellIntensity).length;
-    console.log("🔥 Heat Cells:", totalCells);
-
-    if (totalCells === 0) return false;
 
     // =====================================
     // DRAW CELLS
@@ -10018,63 +9999,27 @@ async function renderMonthlyHeatmap(gridIds, monthKey) {
         const north = south + STEP;
         const east = west + STEP;
 
-        const cellPolygon = turf.polygon([
-          [
-            [west, south],
-            [east, south],
-            [east, north],
-            [west, north],
-            [west, south],
-          ],
-        ]);
+        const cellPolygon = turf.polygon([[
+          [west, south], [east, south], [east, north], [west, north], [west, south]
+        ]]);
 
-        let clipped = null;
-        try {
-          // Attempting direct arguments as per most common Turf versions
-          clipped = turf.intersect(cellPolygon, boundaryFeature);
-        } catch (e) {
-          clipFail++;
-          if (clipFail < 10) {
-            console.error("INTERSECT FAILED", e);
-            console.log("CELL", cellPolygon);
-            console.log("BOUNDARY", boundaryFeature);
-          }
-          return;
-        }
+        let clipped = turf.intersect(cellPolygon, combinedBoundary);
 
         if (!clipped) return;
         clipSuccess++;
 
         const ratio = Math.log(count + 1) / Math.log(maxCount + 1);
-        let color;
-        if (ratio < 0.20) color = "rgba(0,255,0,0.45)";
-        else if (ratio < 0.40) color = "rgba(173,255,47,0.55)";
-        else if (ratio < 0.60) color = "rgba(255,255,0,0.65)";
-        else if (ratio < 0.80) color = "rgba(255,140,0,0.75)";
-        else color = "rgba(255,0,0,0.90)";
+        let color = ratio < 0.2 ? "rgba(0,255,0,0.45)" : ratio < 0.4 ? "rgba(173,255,47,0.55)" : ratio < 0.6 ? "rgba(255,255,0,0.65)" : ratio < 0.8 ? "rgba(255,140,0,0.75)" : "rgba(255,0,0,0.90)";
 
         L.geoJSON(clipped, {
-          style: () => ({
-            stroke: true,
-            color: "#ffffff",
-            weight: 0.2,
-            opacity: 0.25,
-            fillColor: color,
-            fillOpacity: 1,
-          }),
+          style: () => ({ stroke: true, color: "#ffffff", weight: 0.2, opacity: 0.25, fillColor: color, fillOpacity: 1 })
         }).addTo(window.monthlyHeatmapLayer);
-      } catch (e) {}
+      } catch (e) {
+        clipFail++;
+      }
     });
 
-    // =====================================
-    // FINAL LOGS
-    // =====================================
-    console.log("CLIP SUCCESS", clipSuccess);
-    console.log("CLIP FAIL", clipFail);
-    console.log("LAYER COUNT", Object.keys(window.monthlyHeatmapLayer._layers || {}).length);
-    console.log("FEATURE GROUP SIZE", window.monthlyHeatmapLayer.getLayers().length);
-
-    console.log("🔥 MONTHLY HEATMAP READY");
+    console.log("🔥 HEATMAP READY | Success:", clipSuccess, "Fail:", clipFail);
     return true;
   } catch (err) {
     console.error("❌ renderMonthlyHeatmap", err);
