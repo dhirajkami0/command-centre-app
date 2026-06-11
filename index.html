@@ -9966,6 +9966,11 @@ async function renderMonthlyHeatmap(gridIds, monthKey) {
     // LOAD BOUNDARY ONCE
     // =====================================
     const boundaryFeature = await buildHeatmapBoundary();
+    
+    // Diagnostic logs for boundary
+    console.log("BOUNDARY TYPE", boundaryFeature?.geometry?.type);
+    console.log("BOUNDARY", boundaryFeature);
+
     if (!boundaryFeature) {
       console.warn("⚠ Boundary missing");
       return false;
@@ -10025,12 +10030,14 @@ async function renderMonthlyHeatmap(gridIds, monthKey) {
 
         let clipped = null;
         try {
-          // Note: If this fails, investigate your specific Turf version syntax
-          clipped = turf.intersect(turf.featureCollection([cellPolygon, boundaryFeature]));
+          // Attempting direct arguments as per most common Turf versions
+          clipped = turf.intersect(cellPolygon, boundaryFeature);
         } catch (e) {
           clipFail++;
           if (clipFail < 10) {
-            console.warn("INTERSECT FAILED", e);
+            console.error("INTERSECT FAILED", e);
+            console.log("CELL", cellPolygon);
+            console.log("BOUNDARY", boundaryFeature);
           }
           return;
         }
