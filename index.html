@@ -37458,6 +37458,18 @@ Generated from BTR Patrol Monitoring System`;
 
   try{
 
+    if(
+      !report ||
+      !report.kmlUrl
+    ){
+
+      console.warn(
+        "⚠ No KML URL available"
+      );
+
+      return;
+    }
+
     const caption =
 
 `🏆 ${report.name}
@@ -37476,6 +37488,56 @@ Generated from BTR Patrol Monitoring System`;
 
 📊 Score: ${report.score}/100`;
 
+    // =====================================
+    // DOWNLOAD KML FROM FIREBASE
+    // =====================================
+
+    const fileResponse =
+
+      await fetch(
+        report.kmlUrl
+      );
+
+    if(
+      !fileResponse.ok
+    ){
+
+      throw new Error(
+        "Failed to download KML"
+      );
+    }
+
+    const blob =
+
+      await fileResponse.blob();
+
+    // =====================================
+    // BUILD FORM DATA
+    // =====================================
+
+    const formData =
+      new FormData();
+
+    formData.append(
+      "chat_id",
+      window.TELEGRAM_CHAT_ID
+    );
+
+    formData.append(
+      "caption",
+      caption
+    );
+
+    formData.append(
+      "document",
+      blob,
+      `${report.name || "Patrol"}_${Date.now()}.kml`
+    );
+
+    // =====================================
+    // SEND TO TELEGRAM
+    // =====================================
+
     const response =
 
       await fetch(
@@ -37486,22 +37548,7 @@ Generated from BTR Patrol Monitoring System`;
 
           method:"POST",
 
-          headers:{
-            "Content-Type":
-              "application/json"
-          },
-
-          body:JSON.stringify({
-
-            chat_id:
-              window.TELEGRAM_CHAT_ID,
-
-            document:
-              report.kmlUrl,
-
-            caption
-
-          })
+          body:formData
 
         }
 
@@ -37510,10 +37557,23 @@ Generated from BTR Patrol Monitoring System`;
     const result =
       await response.json();
 
-    console.log(
-      "✅ KML sent to Telegram",
-      result
-    );
+    if(
+      result?.ok === true
+    ){
+
+      console.log(
+        "✅ KML sent to Telegram",
+        result
+      );
+
+    }else{
+
+      console.error(
+        "❌ Telegram Error",
+        result
+      );
+
+    }
 
   }
 
@@ -37525,6 +37585,7 @@ Generated from BTR Patrol Monitoring System`;
     );
 
   }
+
 }
 function closeEndDutyForm() {
   const m = document.getElementById("end-duty-modal");
