@@ -14651,7 +14651,18 @@ ${pct(data.health)} / 100
 // ==========================================
 window.cachedHeatmapBoundary = null;
 window.cachedHeatmapBoundaryKey = null;
-// 🔥 GLOBAL (IMPORTANT)
+
+    // 🔥 GLOBAL (IMPORTANT)
+
+    window.analyticsRealtime = {
+
+  sessionId: null,
+
+  unsubscribe: null,
+
+  lastProcessedPointId: -1
+
+};
 // ======================================================
 // 🌍 GIS FILTER STATE
 // ======================================================
@@ -41171,7 +41182,23 @@ console.log(
   cleanLeader,
   sessionId
 );
+// =====================================================
+// 🔥 START REALTIME ANALYTICS
+// =====================================================
 
+try {
+
+  startRealtimeAnalytics(
+    sessionId
+  );
+
+} catch(err){
+
+  console.error(
+    "❌ startRealtimeAnalytics",
+    err
+  );
+}
 // =====================================================
 // 🔥 CLOSE FORM NOW
 // =====================================================
@@ -41217,7 +41244,157 @@ if(typeof closeDutyForm === "function"){
     console.groupEnd();
   }
 }// ✅ FIX: properly closed startDuty
+async function startRealtimeAnalytics(
+  sessionId
+){
 
+  try{
+
+    if(!sessionId){
+
+      return;
+    }
+
+    // ==========================================
+    // 🔥 REMOVE OLD LISTENER
+    // ==========================================
+    if(
+      window.analyticsRealtimeUnsub
+    ){
+
+      try{
+
+        window.analyticsRealtimeUnsub();
+
+      }catch(e){}
+
+      window.analyticsRealtimeUnsub =
+        null;
+    }
+
+    console.log(
+      "🚀 REALTIME ANALYTICS START",
+      sessionId
+    );
+
+    let lastProcessedCount = 0;
+
+    const q =
+
+      window.fb.query(
+
+        window.fb.collection(
+          window.db,
+          "patrol_tracks",
+          sessionId,
+          "points"
+        ),
+
+        window.fb.orderBy(
+          "time"
+        )
+      );
+
+    window.analyticsRealtimeUnsub =
+
+      window.fb.onSnapshot(
+
+        q,
+
+        async(snap)=>{
+
+          try{
+
+            const points = [];
+
+            snap.forEach(doc=>{
+
+              const p =
+                doc.data();
+
+              if(
+                isNaN(p?.lat) ||
+                isNaN(p?.lon)
+              ){
+                return;
+              }
+
+              points.push({
+
+                lat:
+                  Number(p.lat),
+
+                lng:
+                  Number(p.lon),
+
+                ts:
+                  Number(
+                    p.time || 0
+                  )
+              });
+
+            });
+
+            // ====================================
+            // 🔥 NO NEW POINTS
+            // ====================================
+            if(
+              points.length <=
+              lastProcessedCount
+            ){
+
+              return;
+            }
+
+            console.log(
+              "📍 NEW GPS POINTS:",
+              points.length -
+              lastProcessedCount
+            );
+
+            lastProcessedCount =
+              points.length;
+
+            // ====================================
+            // 🔥 USE EXISTING LOGIC
+            // SAME AS END DUTY
+            // ====================================
+            await processHistoryTrack(
+              points,
+              sessionId
+            );
+
+            // ====================================
+            // 🔥 REFRESH CARD NOW
+            // ====================================
+            try{
+
+              updateMonthlyStatusCard();
+
+            }catch(e){}
+
+          }
+
+          catch(err){
+
+            console.error(
+              "❌ realtime analytics",
+              err
+            );
+          }
+        }
+      );
+
+  }
+
+  catch(err){
+
+    console.error(
+      "❌ startRealtimeAnalytics",
+      err
+    );
+  }
+}
 /* ✅ MOVED OUTSIDE (IMPORTANT) */
  function updateDutyButton(){
 
