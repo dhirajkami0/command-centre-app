@@ -12987,7 +12987,10 @@ function getLiveStaffCountForCurrentPolygon() {
   return "BTR MONTHLY STATUS";
 }
     async function updateMonthlyStatusCard() {
-
+console.log(
+  "📊 Monthly Status Refresh",
+  new Date().toLocaleTimeString()
+);
   try {
 
     if (
@@ -13407,6 +13410,63 @@ if(totalAreaEl){
     control;
 }
 
+function startMonthlyStatusCardRefresh() {
+
+  if (window.monthlyStatusRefreshTimer) {
+
+    clearInterval(
+      window.monthlyStatusRefreshTimer
+    );
+
+  }
+
+  window.monthlyStatusRefreshTimer =
+
+    setInterval(
+      async () => {
+
+        try {
+
+          await updateMonthlyStatusCard();
+
+        }
+
+        catch(err){
+
+          console.error(
+            "❌ Monthly Status Refresh",
+            err
+          );
+
+        }
+
+      },
+      10000
+    );
+
+  console.log(
+    "📊 Monthly Status Card Refresh Started"
+  );
+
+}
+
+    function stopMonthlyStatusCardRefresh() {
+
+  if (
+    window.monthlyStatusRefreshTimer
+  ) {
+
+    clearInterval(
+      window.monthlyStatusRefreshTimer
+    );
+
+    window.monthlyStatusRefreshTimer =
+      null;
+
+  }
+
+}
+    
     function toggleMonthlyStatusCard() {
 
   try {
@@ -13512,25 +13572,52 @@ if(totalAreaEl){
     }
 
     /* 🔥 INIT BUTTON AFTER MAP READY */
-  setTimeout(() => {
+ setTimeout(async () => {
 
   addRangeStatsButton();
 
   addMonthlyStatusCard();
 
-  updateMonthlyStatusCard();
+  await updateMonthlyStatusCard();
 
-}, 1000);
-   setTimeout(() => {
+  if (
+    window.monthlyStatusTimer
+  ) {
+
+    clearInterval(
+      window.monthlyStatusTimer
+    );
+
+  }
 
   window.monthlyStatusTimer =
     setInterval(
-      updateMonthlyStatusCard,
-      5000
+      async () => {
+
+        try {
+
+          await updateMonthlyStatusCard();
+
+        }
+
+        catch(err){
+
+          console.error(
+            "❌ Monthly Status Refresh",
+            err
+          );
+
+        }
+
+      },
+      10000
     );
 
-}, 3000); 
+  console.log(
+    "📊 Monthly Status Auto Refresh Started"
+  );
 
+}, 1000);
     /* ============================================================
        📍 LOCATION
     ============================================================ */// 📍 Layer for location
