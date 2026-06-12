@@ -36154,201 +36154,126 @@ setTimeout(() => {
       "#f44336"
   };
 }
-   function getDutyRemark(
-  dutyType,
-  reportData = {}
-){
+ function getDutyRemark(dutyType, reportData = {}) {
+  const type = String(dutyType || "").toLowerCase();
+  const score = Math.max(0, Math.min(100, Number(reportData.score || 0)));
+  const grids = Number(reportData.grids || 0);
+  const areaHa = Number(reportData.areaHa || 0);
+  const distanceKm = Number(reportData.distanceKm || 0);
+  const durationText = reportData.durationText || "0 min";
 
-  const type =
+  // Determine Tier
+  const tier =
+    score >= 96 ? "exceptional" :
+    score >= 86 ? "outstanding" :
+    score >= 71 ? "very_good" :
+    score >= 51 ? "good" :
+    score >= 31 ? "fair" :
+    score >= 11 ? "low" :
+    "very_low";
 
-    String(
-      dutyType || ""
-    )
-    .toLowerCase();
+  const gradeMap = {
+    exceptional: "A+",
+    outstanding: "A",
+    very_good: "B+",
+    good: "B",
+    fair: "C",
+    low: "D",
+    very_low: "E"
+  };
 
-  const grids =
+  const ratingMap = {
+    exceptional: "Exceptional",
+    outstanding: "Outstanding",
+    very_good: "Very Good",
+    good: "Good",
+    fair: "Fair",
+    low: "Needs Improvement",
+    very_low: "Minimal Activity"
+  };
 
-    Number(
-      reportData.grids || 0
-    );
+  const configs = {
+    foot: {
+      icon: "🥾",
+      exceptional: { title: "👑 Exceptional Foot Patrol", text: `Exceptional field performance demonstrated. Patrol coverage, movement and operational presence exceeded expected standards and represent a benchmark level of field activity.` },
+      outstanding: { title: "🏆 Outstanding Foot Patrol", text: `Exceptional field effort demonstrated. Coverage included ${grids.toLocaleString()} grids across ${areaHa.toFixed(1)} ha with a travel distance of ${distanceKm.toFixed(1)} km over ${durationText}. This level of field presence greatly strengthens surveillance and forest protection.` },
+      very_good: { title: "🌟 Very Good Foot Patrol", text: `Strong performance. You covered ${grids.toLocaleString()} grids and ${areaHa.toFixed(1)} ha over ${durationText}. Your field presence is consistent and effective.` },
+      good: { title: "✅ Good Foot Patrol", text: `Solid patrol effort. You managed ${areaHa.toFixed(1)} ha of coverage and ${distanceKm.toFixed(1)} km travel. Good monitoring progress.` },
+      fair: { title: "⚠️ Satisfactory Foot Patrol", text: `Basic objectives met. You covered ${areaHa.toFixed(1)} ha. Increasing patrol distance would further improve effectiveness.` },
+      low: { title: "⚠ Limited Foot Patrol Activity", text: `Patrol activity was recorded, however overall coverage and field presence remained below the expected level. Additional movement and area coverage would improve operational effectiveness.` },
+      very_low: { title: "🚫 Minimal Foot Patrol Activity", text: `Limited patrol activity was recorded during this duty period. Increasing field movement and area coverage during future patrols will help strengthen surveillance and operational effectiveness.` }
+    },
+    vehicle: {
+      icon: "🚙",
+      exceptional: { title: "👑 Exceptional Vehicle Patrol", text: `Exceptional route coverage and mobility demonstrated. Your patrol surpassed standard expectations for range and visibility.` },
+      outstanding: { title: "🏆 Outstanding Vehicle Patrol", text: `Exceptional route coverage of ${distanceKm.toFixed(1)} km over ${durationText}. High-efficiency mobility providing maximum surveillance across the range.` },
+      very_good: { title: "🌟 Highly Effective Vehicle Patrol", text: `Strong route coverage of ${distanceKm.toFixed(1)} km over ${durationText}, successfully monitoring key transit corridors.` },
+      good: { title: "✅ Good Vehicle Patrol", text: `Effective use of vehicle to maintain visibility, covering ${distanceKm.toFixed(1)} km over ${durationText}.` },
+      fair: { title: "⚠️ Moderate Vehicle Patrol", text: `Baseline mobility achieved. Expanding your route variety over ${durationText} would improve coverage outcomes.` },
+      low: { title: "⚠ Limited Vehicle Coverage", text: `Low distance covered (${distanceKm.toFixed(1)} km) during ${durationText}. Greater route distance is required for effective monitoring.` },
+      very_low: { title: "🚫 Minimal Vehicle Activity", text: `Minimal movement recorded during ${durationText}. Please expand your patrol perimeter to improve coverage.` }
+    },
+    scan: {
+      icon: "🔭",
+      exceptional: { title: "👑 Exceptional Surveillance", text: `Exceptional observation effort. Your diligence and focus represent a benchmark for field awareness and protection.` },
+      outstanding: { title: "🏆 Outstanding Surveillance Performance", text: `Exceptional observation effort throughout the ${durationText} duty. Your diligence significantly supports protection objectives.` },
+      very_good: { title: "🌟 Highly Effective Surveillance", text: `Strong scanning effort maintained over ${durationText}. Your monitoring provided excellent field awareness.` },
+      good: { title: "✅ Good Surveillance Coverage", text: `Effective monitoring activity contributed to field awareness during your ${durationText} shift.` },
+      fair: { title: "⚠️ Moderate Surveillance Activity", text: `Observation objectives partially met over ${durationText}. Increasing vigilance will enhance monitoring.` },
+      low: { title: "⚠ Limited Surveillance Activity", text: `Limited scanning effort recorded during ${durationText}. More active observation is required.` },
+      very_low: { title: "🚫 Minimal Surveillance Activity", text: `Minimal observation activity recorded during ${durationText}. Greater focus on scanning and monitoring is recommended.` }
+    },
+    night: {
+      icon: "🌙",
+      exceptional: { title: "👑 Exceptional Night Vigilance", text: `Exceptional performance during high-risk hours. Your commitment to security for ${durationText} sets the highest standard.` },
+      outstanding: { title: "🏆 Outstanding Night Vigilance", text: `Exceptional performance during high-risk hours. Your commitment to security for ${durationText} is vital.` },
+      very_good: { title: "🌟 Highly Effective Night Patrol", text: `Strong night surveillance maintained over ${durationText}, ensuring area protection and deterrence.` },
+      good: { title: "✅ Good Night Patrol", text: `Effective night monitoring contributed to security and observation objectives during ${durationText}.` },
+      fair: { title: "⚠️ Moderate Night Coverage", text: `Basic night coverage achieved over ${durationText}. More active patrol would strengthen outcomes.` },
+      low: { title: "⚠ Limited Night Patrol Activity", text: `Limited night activity during ${durationText}. Improved field coverage is recommended for safety.` },
+      very_low: { title: "🚫 Minimal Night Patrol Activity", text: `Minimal night presence recorded during ${durationText}. Increased nocturnal vigilance is critical.` }
+    },
+    depredation: {
+      icon: "🐘",
+      exceptional: { title: "👑 Exceptional Conflict Response", text: `Exceptional response effort. Your rapid and precise intervention was critical for mitigation and public safety.` },
+      outstanding: { title: "🏆 Outstanding Conflict Response", text: `Exceptional response effort. Your rapid intervention for ${durationText} was critical for successful mitigation.` },
+      very_good: { title: "🌟 Highly Effective Response", text: `Strong response effort provided timely support for public safety and conflict management over ${durationText}.` },
+      good: { title: "✅ Good Response Effort", text: `Solid presence helped in managing the situation and supporting mitigation objectives during ${durationText}.` },
+      fair: { title: "⚠️ Moderate Response Activity", text: `Response objectives partially met over ${durationText}. A more proactive approach is required for future incidents.` },
+      low: { title: "⚠ Limited Response Coverage", text: `Response efforts were limited during ${durationText}. Faster deployment is needed for future conflict incidents.` },
+      very_low: { title: "🚫 Minimal Response Activity", text: `Minimal response recorded during ${durationText}. Immediate improvement in deployment speed is required.` }
+    }
+  };
 
-  const areaHa =
-
-    Number(
-      reportData.areaHa || 0
-    );
-
-  const distanceKm =
-
-    Number(
-      reportData.distanceKm || 0
-    );
-
-  const durationHours =
-
-    Number(
-      reportData.durationHours || 0
-    );
-
-  const durationText =
-
-    reportData.durationText ||
-    "0 min";
-
-  // =====================================
-  // FOOT PATROL
-  // =====================================
-
-  if(
-    type.includes("foot")
-  ){
-
-    return {
-
-      icon:"🥾",
-
-      title:
-        "Foot Patrol Excellence",
-
-      text:
-
-        `Outstanding patrol effort.
-
-You covered ${grids.toLocaleString()} grids across ${areaHa.toFixed(1)} ha while travelling ${distanceKm.toFixed(1)} km over ${durationText}.
-
-This patrol significantly contributed to forest coverage, surveillance and field presence.`
-    };
+  // Determine configuration
+  let config;
+  if (type.includes("foot")) config = configs.foot;
+  else if (type.includes("vehicle")) config = configs.vehicle;
+  else if (type.includes("scan")) config = configs.scan;
+  else if (type.includes("night")) config = configs.night;
+  else if (type.includes("depredation") || type.includes("elephant")) config = configs.depredation;
+  else {
+      return { 
+          icon: "🏅", 
+          title: "Duty Achievement", 
+          text: `Duty completed with score: ${score}\n\nPerformance Score: ${score}/100\nGrade: ${gradeMap[tier]}`, 
+          score, 
+          grade: gradeMap[tier],
+          rating: ratingMap[tier],
+          tier 
+      };
   }
 
-  // =====================================
-  // SCANNING
-  // =====================================
-
-  if(
-    type.includes("scan")
-  ){
-
-    return {
-
-      icon:"🔭",
-
-      title:
-        "Scanning Duty Achievement",
-
-      text:
-
-        `Effective surveillance coverage maintained for ${durationText}.
-
-Field monitoring activity contributed to enhanced observation and protection efforts.`
-    };
-  }
-
-  // =====================================
-  // VEHICLE
-  // =====================================
-
-  if(
-    type.includes("vehicle")
-  ){
-
-    return {
-
-      icon:"🚙",
-
-      title:
-        "Vehicle Patrol Achievement",
-
-      text:
-
-        `Large area mobility achieved through effective route coverage.
-
-A total travel distance of ${distanceKm.toFixed(1)} km helped strengthen patrol visibility and field monitoring.`
-    };
-  }
-
-  // =====================================
-  // DEPREDATION
-  // =====================================
-
-  if(
-    type.includes("depredation")
-  ){
-
-    return {
-
-      icon:"🐘",
-
-      title:
-        "Human-Wildlife Conflict Response",
-
-      text:
-
-        `Rapid field response maintained for ${durationText}.
-
-Patrol presence contributed towards conflict mitigation and public safety support.`
-    };
-  }
-
-  // =====================================
-  // NIGHT PATROL
-  // =====================================
-
-  if(
-    type.includes("night")
-  ){
-
-    return {
-
-      icon:"🌙",
-
-      title:
-        "Night Patrol Achievement",
-
-      text:
-
-        `Strong vigilance maintained during high-risk operational hours.
-
-Night field coverage helped strengthen forest protection and surveillance efforts.`
-    };
-  }
-
-  // =====================================
-  // ELEPHANT DUTY
-  // =====================================
-
-  if(
-    type.includes("elephant")
-  ){
-
-    return {
-
-      icon:"🐘",
-
-      title:
-        "Elephant Monitoring Achievement",
-
-      text:
-
-        `Field movement and surveillance activity supported elephant monitoring operations and habitat protection.`
-    };
-  }
-
-  // =====================================
-  // DEFAULT
-  // =====================================
+  const data = config[tier];
 
   return {
-
-    icon:"🏅",
-
-    title:
-      "Duty Achievement",
-
-    text:
-
-      `Duty objectives completed successfully.
-
-Coverage activity and field presence contributed to operational effectiveness.`
+    icon: config.icon,
+    title: data.title,
+    text: `${data.text}\n\nPerformance Score: ${score}/100\nGrade: ${gradeMap[tier]}`,
+    score,
+    grade: gradeMap[tier],
+    rating: ratingMap[tier],
+    tier
   };
 }
 async function buildDutyPerformanceReport({
@@ -37637,20 +37562,17 @@ ${coordinates}
 
 }
 
-function shareDutyKMLReport(){
+function shareDutyKMLReport() {
 
-  try{
+  try {
 
     const report =
-
-      window.currentDutyReport ||
-      {};
+      window.currentDutyReport || {};
 
     const kmlUrl =
-
       report.kmlUrl || "";
 
-    if(!kmlUrl){
+    if (!kmlUrl) {
 
       alert(
         "❌ KML not available"
@@ -37665,29 +37587,48 @@ function shareDutyKMLReport(){
 
 ${kmlUrl}`;
 
-    window.open(
+    const whatsappUrl =
 
       "https://wa.me/?text=" +
 
-      encodeURIComponent(
-        text
-      ),
+      encodeURIComponent(text);
 
+    // =====================================
+    // MOBILE
+    // =====================================
+    if (
+      /Android|iPhone|iPad|iPod/i.test(
+        navigator.userAgent
+      )
+    ) {
+
+      window.location.href =
+        whatsappUrl;
+
+      return;
+    }
+
+    // =====================================
+    // DESKTOP
+    // =====================================
+    window.open(
+      whatsappUrl,
       "_blank"
-
     );
 
   }
 
-  catch(err){
+  catch (err) {
 
     console.error(
       "❌ shareDutyKMLReport",
       err
     );
 
+    alert(
+      "❌ Unable to open WhatsApp"
+    );
   }
-
 }
 
  async function sendDutyReportToAppsScript(
