@@ -40910,18 +40910,37 @@ console.log(
 
 try {
 
-  startRealtimeAnalytics(
+  console.log(
+    "🟢 STARTING REALTIME ENGINE",
     sessionId
+  );
+
+  await startRealtimeAnalytics();
+
+  console.log(
+    "✅ REALTIME ENGINE STARTED",
+    {
+      sessionId:
+        window.realtimeAnalyticsState
+          ?.sessionId,
+
+      timer:
+        !!window.realtimeAnalyticsState
+          ?.timer,
+
+      listener:
+        !!window.realtimeAnalyticsState
+          ?.unsubscribe
+    }
   );
 
 } catch(err){
 
   console.error(
-    "❌ startRealtimeAnalytics",
+    "❌ startRealtimeAnalytics FAILED",
     err
   );
-}
-// =====================================================
+}// =====================================================
 // 🔥 CLOSE FORM NOW
 // =====================================================
 if(typeof closeDutyForm === "function"){
@@ -40970,17 +40989,77 @@ async function startRealtimeAnalytics() {
 
   try {
 
+    // =====================================
+    // STARTUP DIAGNOSTICS
+    // =====================================
+
+    console.log(
+      "🚀 startRealtimeAnalytics ENTRY",
+      {
+        dutyActive:
+          window.isDutyActive,
+
+        currentSessionId:
+          window.currentSessionId,
+
+        localStorageSessionId:
+          localStorage.getItem(
+            "sessionId"
+          ),
+
+        timerExists:
+          !!window.realtimeAnalyticsState
+            ?.timer
+      }
+    );
+
+    // =====================================
+    // DUTY CHECK
+    // =====================================
+
     if (
       window.isDutyActive !== true
     ) {
-      return;
+
+      console.warn(
+        "⚠ Duty not active"
+      );
+
+      return false;
     }
+
+    // =====================================
+    // ENSURE STATE EXISTS
+    // =====================================
+
+    if (
+      !window.realtimeAnalyticsState
+    ) {
+
+      window.realtimeAnalyticsState = {
+
+        sessionId: null,
+
+        timer: null,
+
+        unsubscribe: null,
+
+        pendingPoints: []
+
+      };
+    }
+
+    // =====================================
+    // SESSION ID
+    // =====================================
 
     const sessionId =
 
       localStorage.getItem(
         "sessionId"
-      ) ||
+      )
+
+      ||
 
       window.currentSessionId;
 
@@ -40990,7 +41069,7 @@ async function startRealtimeAnalytics() {
         "⚠ No sessionId"
       );
 
-      return;
+      return false;
     }
 
     // =====================================
@@ -41002,16 +41081,47 @@ async function startRealtimeAnalytics() {
         .timer
     ) {
 
-      return;
+      console.log(
+        "⚠ Realtime already running",
+        sessionId
+      );
+
+      return true;
     }
 
-    window.realtimeAnalyticsState
+    // =====================================
+    // CLEAN STALE LISTENER
+    // =====================================
+
+    if (
+      window.realtimeAnalyticsState
+        ?.unsubscribe
+    ) {
+
+      try {
+
+        window
+          .realtimeAnalyticsState
+          .unsubscribe();
+
+      } catch(err){}
+
+      window
+        .realtimeAnalyticsState
+        .unsubscribe = null;
+    }
+
+    // =====================================
+    // RESET STATE
+    // =====================================
+
+    window
+      .realtimeAnalyticsState
       .sessionId =
       sessionId;
 
-  
-
-    window.realtimeAnalyticsState
+    window
+      .realtimeAnalyticsState
       .pendingPoints = [];
 
     console.log(
@@ -41028,15 +41138,21 @@ async function startRealtimeAnalytics() {
       window.fb.query(
 
         window.fb.collection(
+
           window.db,
+
           "patrol_tracks",
+
           sessionId,
+
           "points"
+
         ),
 
         window.fb.orderBy(
           "time"
         )
+
       );
 
     const unsubscribe =
@@ -41047,54 +41163,72 @@ async function startRealtimeAnalytics() {
 
         snap => {
 
-  if (
-    window.isDutyActive !== true
-  ) {
-    return;
-  }
+          if (
+            window.isDutyActive !== true
+          ) {
 
-  snap.docChanges().forEach(
-    change => {
+            return;
+          }
 
-      if (
-        change.type !==
-        "added"
-      ) {
-        return;
-      }
+          snap
+            .docChanges()
+            .forEach(change => {
 
-      const p =
-        change.doc.data();
+              if (
+                change.type !==
+                "added"
+              ) {
 
-      if (
-        isNaN(p?.lat) ||
-        isNaN(p?.lon)
-      ) {
-        return;
-      }
+                return;
+              }
 
-      window
-        .realtimeAnalyticsState
-        .pendingPoints
-        .push({
+              const p =
+                change.doc.data();
 
-          lat:
-            Number(p.lat),
+              if (
 
-          lng:
-            Number(p.lon),
+                isNaN(p?.lat)
 
-          ts:
-            Number(
-              p.time || 0
-            )
+                ||
 
-        });
+                isNaN(p?.lon)
 
-    }
-  );
+              ) {
 
-}
+                return;
+              }
+
+              window
+                .realtimeAnalyticsState
+                .pendingPoints
+                .push({
+
+                  lat:
+                    Number(p.lat),
+
+                  lng:
+                    Number(p.lon),
+
+                  ts:
+                    Number(
+                      p.time || 0
+                    )
+
+                });
+
+            });
+
+        },
+
+        err => {
+
+          console.error(
+            "❌ REALTIME LISTENER ERROR",
+            err
+          );
+
+        }
+
       );
 
     window
@@ -41118,6 +41252,25 @@ async function startRealtimeAnalytics() {
 
       );
 
+    console.log(
+      "✅ REALTIME ANALYTICS ACTIVE",
+      {
+        sessionId,
+
+        timerRunning:
+          !!window
+            .realtimeAnalyticsState
+            .timer,
+
+        listenerAttached:
+          !!window
+            .realtimeAnalyticsState
+            .unsubscribe
+      }
+    );
+
+    return true;
+
   }
 
   catch(err){
@@ -41126,9 +41279,10 @@ async function startRealtimeAnalytics() {
       "❌ startRealtimeAnalytics",
       err
     );
+
+    return false;
   }
 }
-
     async function processRealtimeAnalyticsBatch() {
 
   try {
