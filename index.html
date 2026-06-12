@@ -37485,7 +37485,7 @@ ${coordinates}
 
 }
 
-   function shareDutyKMLReport(){
+function shareDutyKMLReport(){
 
   try{
 
@@ -37498,35 +37498,20 @@ ${coordinates}
 
       report.kmlUrl || "";
 
+    if(!kmlUrl){
+
+      alert(
+        "❌ KML not available"
+      );
+
+      return;
+    }
+
     const text =
 
-`🏆 Duty Performance Report
+`📍 Patrol Track KML
 
-👮 ${report.name || ""}
-
-📋 Duty Type:
-${report.dutyType || ""}
-
-🛰 Grids:
-${report.grids || 0}
-
-🌿 Area:
-${Number(
-  report.areaHa || 0
-).toFixed(1)} ha
-
-📏 Distance:
-${Number(
-  report.distanceKm || 0
-).toFixed(1)} km
-
-⏱ Duration:
-${report.durationText || ""}
-
-📍 Patrol KML:
-${kmlUrl}
-
-Generated from BTR Patrol Monitoring System`;
+${kmlUrl}`;
 
     window.open(
 
@@ -37537,6 +37522,7 @@ Generated from BTR Patrol Monitoring System`;
       ),
 
       "_blank"
+
     );
 
   }
@@ -37547,7 +37533,9 @@ Generated from BTR Patrol Monitoring System`;
       "❌ shareDutyKMLReport",
       err
     );
+
   }
+
 }
 
  async function sendDutyReportToAppsScript(
