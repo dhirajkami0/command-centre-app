@@ -35549,8 +35549,7 @@ async function submitEndDuty(event) {
 
 stopRealtimeAnalytics();
   
-    window.sessionVisitedGrids =
-  new Set();
+  
     // ============================================================
     // 🔥 BUTTON
     // ============================================================
@@ -35704,6 +35703,9 @@ stopRealtimeAnalytics();
     .then(results => {
 
         finalizeSessionLifecycle();
+
+        window.sessionVisitedGrids =
+  new Set();
       console.log("✅ End duty background sync complete", results);
     })
     .catch(err => {
