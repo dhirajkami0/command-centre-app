@@ -35842,7 +35842,7 @@ console.log(
 
 try{
 
-  const reportData =
+ const reportData =
 
   await buildDutyPerformanceReport({
 
@@ -35858,8 +35858,30 @@ try{
 
   });
 
-  reportData.kmlUrl =
+reportData.kmlUrl =
   kmlUrl || "";
+
+// =====================================
+// 👤 PROFILE DETAILS
+// =====================================
+
+reportData.rawName =
+  profile.name || "";
+
+reportData.cleanName =
+  profile.cleanName || "";
+
+reportData.phone =
+  profile.phone || "";
+
+reportData.division =
+  profile.division || "";
+
+reportData.range =
+  profile.range || "";
+
+reportData.beat =
+  profile.beat || "";
 
 
   // =====================================
@@ -36329,7 +36351,7 @@ Night field coverage helped strengthen forest protection and surveillance effort
 Coverage activity and field presence contributed to operational effectiveness.`
   };
 }
-  async function buildDutyPerformanceReport({
+async function buildDutyPerformanceReport({
 
   sessionId,
   dutyType,
@@ -36367,37 +36389,106 @@ Coverage activity and field presence contributed to operational effectiveness.`
       );
 
     const sessionStartFromId =
-  Number(
-    String(sessionId)
-      .split("_")
-      .pop()
-  );
 
-const startedAt =
+      Number(
+        String(sessionId)
+          .split("_")
+          .pop()
+      );
 
-  Number.isFinite(
-    sessionStartFromId
-  )
+    const startedAt =
 
-  ?
+      Number.isFinite(
+        sessionStartFromId
+      )
 
-  sessionStartFromId
+      ?
 
-  :
+      sessionStartFromId
 
-  Number(
-    trackData.startedAt || 0
-  );
+      :
+
+      Number(
+        trackData.startedAt || 0
+      );
 
     const endedAt =
       Date.now();
 
+    // =====================================
+    // HUMAN READABLE TIMES
+    // =====================================
+
+    const startedDate =
+
+      new Date(
+        startedAt
+      );
+
+    const endedDate =
+
+      new Date(
+        endedAt
+      );
+
+    const dutyDate =
+
+      startedDate.toLocaleDateString(
+        "en-IN",
+        {
+
+          day:"2-digit",
+
+          month:"short",
+
+          year:"numeric"
+
+        }
+      );
+
+    const startedText =
+
+      startedDate.toLocaleTimeString(
+        "en-IN",
+        {
+
+          hour:"2-digit",
+
+          minute:"2-digit"
+
+        }
+      );
+
+    const endedText =
+
+      endedDate.toLocaleTimeString(
+        "en-IN",
+        {
+
+          hour:"2-digit",
+
+          minute:"2-digit"
+
+        }
+      );
+
+    // =====================================
+    // DURATION
+    // =====================================
+
     const durationHours =
 
       Math.max(
+
         0,
-        (endedAt - startedAt)
+
+        (
+          endedAt -
+          startedAt
+        )
+
         / 3600000
+
       );
 
     const totalMinutes =
@@ -36407,11 +36498,13 @@ const startedAt =
       );
 
     const hrs =
+
       Math.floor(
         totalMinutes / 60
       );
 
     const mins =
+
       totalMinutes % 60;
 
     const durationText =
@@ -36425,21 +36518,31 @@ const startedAt =
     let distanceKm = 0;
 
     for(
-      let i=1;
-      i<trackPoints.length;
+
+      let i = 1;
+
+      i < trackPoints.length;
+
       i++
+
     ){
 
       distanceKm += getDistance(
 
         [
-          trackPoints[i-1].lat,
-          trackPoints[i-1].lng
+
+          trackPoints[i - 1].lat,
+
+          trackPoints[i - 1].lng
+
         ],
 
         [
+
           trackPoints[i].lat,
+
           trackPoints[i].lng
+
         ]
 
       );
@@ -36451,10 +36554,17 @@ const startedAt =
 
     const coords =
 
-      trackPoints.map(p=>[
-        Number(p.lat),
-        Number(p.lng)
-      ]);
+      trackPoints.map(
+
+        p => [
+
+          Number(p.lat),
+
+          Number(p.lng)
+
+        ]
+
+      );
 
     const {
 
@@ -36474,9 +36584,13 @@ const startedAt =
     const areaHa =
 
       Number(
+
         (
           grids * 0.25
-        ).toFixed(1)
+        )
+
+        .toFixed(1)
+
       );
 
     // =====================================
@@ -36535,25 +36649,33 @@ const startedAt =
       score =
 
         (
+
           gridScore * 0.35
+
         )
 
         +
 
         (
+
           areaScore * 0.25
+
         )
 
         +
 
         (
+
           distanceScore * 0.25
+
         )
 
         +
 
         (
+
           durationScore * 0.15
+
         );
     }
 
@@ -36593,19 +36715,25 @@ const startedAt =
       score =
 
         (
+
           distanceScore * 0.45
+
         )
 
         +
 
         (
+
           durationScore * 0.25
+
         )
 
         +
 
         (
+
           gridScore * 0.30
+
         );
     }
 
@@ -36638,13 +36766,17 @@ const startedAt =
       score =
 
         (
+
           distanceScore * 0.60
+
         )
 
         +
 
         (
+
           durationScore * 0.40
+
         );
     }
 
@@ -36685,7 +36817,17 @@ const startedAt =
 
       durationText,
 
-      score
+      score,
+
+      dutyDate,
+
+      startedText,
+
+      endedText,
+
+      startedAt,
+
+      endedAt
 
     };
 
@@ -36717,11 +36859,21 @@ const startedAt =
       durationText:
         "0 min",
 
-      score:0
+      score:0,
+
+      dutyDate:"",
+
+      startedText:"",
+
+      endedText:"",
+
+      startedAt:0,
+
+      endedAt:0
+
     };
   }
 }
-
 function showDutyPerformanceReport(
   data
 ){
