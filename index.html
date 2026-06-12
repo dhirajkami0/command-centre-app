@@ -41451,53 +41451,101 @@ ${data.score}
     );
   }
 }
-    function stopRealtimeAnalytics() {
+  function stopRealtimeAnalytics() {
 
   try {
 
+    // =====================================
+    // STOP TIMER
+    // =====================================
+
     if (
-      window
-      .realtimeAnalyticsState
-      ?.timer
+      window.realtimeAnalyticsState?.timer
     ) {
 
       clearInterval(
-
-        window
-        .realtimeAnalyticsState
-        .timer
-
+        window.realtimeAnalyticsState.timer
       );
 
-      window
-        .realtimeAnalyticsState
-        .timer = null;
+      window.realtimeAnalyticsState.timer =
+        null;
     }
 
+    // =====================================
+    // REMOVE FIRESTORE LISTENER
+    // =====================================
+
     if (
-      window
-      .realtimeAnalyticsState
-      ?.unsubscribe
+      window.realtimeAnalyticsState?.unsubscribe
     ) {
 
-      window
-        .realtimeAnalyticsState
-        .unsubscribe();
+      try {
 
-      window
-        .realtimeAnalyticsState
+        window.realtimeAnalyticsState
+          .unsubscribe();
+
+      } catch(err) {
+
+        console.warn(
+          "⚠ unsubscribe failed",
+          err
+        );
+
+      }
+
+      window.realtimeAnalyticsState
         .unsubscribe = null;
+    }
+
+    // =====================================
+    // CLEAR SESSION DATA
+    // =====================================
+
+    if (
+      window.realtimeAnalyticsState
+    ) {
+
+      window.realtimeAnalyticsState
+        .sessionId = null;
+
+      window.realtimeAnalyticsState
+        .pendingPoints = [];
+
     }
 
     console.log(
       "🛑 REALTIME ANALYTICS STOPPED"
     );
 
+    console.table({
+
+      timer:
+        window.realtimeAnalyticsState
+          ?.timer,
+
+      unsubscribe:
+        !!window.realtimeAnalyticsState
+          ?.unsubscribe,
+
+      sessionId:
+        window.realtimeAnalyticsState
+          ?.sessionId,
+
+      pendingPoints:
+        window.realtimeAnalyticsState
+          ?.pendingPoints
+          ?.length || 0
+
+    });
+
   }
 
   catch(err){
 
-    console.error(err);
+    console.error(
+      "❌ stopRealtimeAnalytics",
+      err
+    );
   }
 }
 /* ✅ MOVED OUTSIDE (IMPORTANT) */
