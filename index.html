@@ -8601,9 +8601,26 @@ else if (
 }
 
 function finalizeSessionLifecycle() {
+
+  console.trace(
+    "🚨 finalizeSessionLifecycle CALLED"
+  );
+
+  if (window.startDutyInProgress === true) {
+
+    console.warn(
+      "⛔ finalizeSessionLifecycle blocked during startDuty"
+    );
+
+    return;
+  }
+
   window.currentSessionId = null;
+
   if (window.localStorage) {
-    window.localStorage.removeItem("sessionId");
+    window.localStorage.removeItem(
+      "sessionId"
+    );
   }
 }
  function getTouchedCells(localCoordsArray) {
@@ -40345,6 +40362,8 @@ function startDuty(event) {
 
     // 🔒 LOCK PROCESS
     startDutySubmitting = true;
+
+    window.startDutyInProgress = true;
   // ========================================
 // 📜 SESSION TRACK STORAGE
 // ========================================
@@ -40921,7 +40940,13 @@ console.log(
     dutyActive: window.isDutyActive
   }
 );
-  await startRealtimeAnalytics();
+
+await startRealtimeAnalytics();
+
+// =====================================
+// STARTUP COMPLETED SUCCESSFULLY
+// =====================================
+window.startDutyInProgress = false;
 console.log(
   "🔥 RETURNED FROM REALTIME START",
   {
@@ -40972,7 +40997,12 @@ console.log(
     }
   );
 
-} catch(err){
+}} catch(err){
+
+  // =====================================
+  // RELEASE STARTUP LOCK
+  // =====================================
+  window.startDutyInProgress = false;
 
   console.error(
     "❌ startRealtimeAnalytics FAILED",
@@ -40994,7 +41024,7 @@ if(typeof closeDutyForm === "function"){
     // =====================================================
     
   } catch(err){
-
+  window.startDutyInProgress = false;
     console.error(
       "❌ Firestore start duty failed:",
       err
@@ -41090,7 +41120,24 @@ async function startRealtimeAnalytics() {
     // =====================================
     // SESSION ID
     // =====================================
+console.log(
+  "🧪 SESSION DEBUG",
+  {
+    currentSessionId:
+      window.currentSessionId,
 
+    localStorageSessionId:
+      localStorage.getItem(
+        "sessionId"
+      ),
+
+    dutyActive:
+      window.isDutyActive,
+
+    startDutyInProgress:
+      window.startDutyInProgress
+  }
+);
     const sessionId =
 
       localStorage.getItem(
