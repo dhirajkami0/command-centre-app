@@ -41594,56 +41594,130 @@ async function updateRealtimePerformanceCard(){
 window.analyticsProcessing =
   false;
 
+window.analyticsProcessing = false;
+
 async function processRealtimeQueue() {
 
   try {
 
+    // =====================================
+    // ALREADY RUNNING
+    // =====================================
+
     if (
       window.analyticsProcessing
     ) {
+
+      console.warn(
+        "⏸ QUEUE ALREADY PROCESSING",
+        {
+          pending:
+            window.realtimeAnalyticsState
+              ?.pendingPoints
+              ?.length || 0
+        }
+      );
+
       return;
     }
+
+    // =====================================
+    // ENTRY LOG
+    // =====================================
+
+    console.log(
+      "🟢 ENTER processRealtimeQueue",
+      {
+        pending:
+          window.realtimeAnalyticsState
+            ?.pendingPoints
+            ?.length || 0,
+
+        processing:
+          window.analyticsProcessing,
+
+        duty:
+          window.isDutyActive,
+
+        session:
+          window.realtimeAnalyticsState
+            ?.sessionId
+      }
+    );
+
+    // =====================================
+    // DUTY CHECK
+    // =====================================
 
     if (
       window.isDutyActive !== true
     ) {
+
+      console.warn(
+        "⚠ Duty inactive"
+      );
+
       return;
     }
 
-    const queue =
+    // =====================================
+    // QUEUE CHECK
+    // =====================================
 
-      window
-        .realtimeAnalyticsState
+    const queue =
+      window.realtimeAnalyticsState
         ?.pendingPoints;
 
     if (
-      !Array.isArray(queue) ||
-      queue.length < 2
+      !Array.isArray(queue)
     ) {
+
+      console.warn(
+        "⚠ Queue missing"
+      );
+
       return;
     }
+
+    if (
+      queue.length < 2
+    ) {
+
+      console.log(
+        "⏸ Not enough points",
+        queue.length
+      );
+
+      return;
+    }
+
+    // =====================================
+    // LOCK
+    // =====================================
 
     window.analyticsProcessing =
       true;
 
-    while (
+    console.log(
+      "🔒 QUEUE LOCKED"
+    );
 
-      window
-        .realtimeAnalyticsState
+    // =====================================
+    // PROCESS UNTIL EMPTY
+    // =====================================
+
+    while (
+      window.realtimeAnalyticsState
         ?.pendingPoints
         ?.length >= 2
-
     ) {
 
       const available =
-
-        window
-          .realtimeAnalyticsState
+        window.realtimeAnalyticsState
           .pendingPoints
           .length;
 
       const batchSize =
-
         Math.min(
           50,
           available
@@ -41656,9 +41730,7 @@ async function processRealtimeQueue() {
       }
 
       const batch =
-
-        window
-          .realtimeAnalyticsState
+        window.realtimeAnalyticsState
           .pendingPoints
           .splice(
             0,
@@ -41667,19 +41739,38 @@ async function processRealtimeQueue() {
 
       console.log(
         "📦 PROCESSING BATCH",
-        batch.length
+        {
+          batchSize:
+            batch.length,
+
+          remaining:
+            window.realtimeAnalyticsState
+              .pendingPoints
+              .length
+        }
       );
 
       const sessionId =
-
-        window
-          .realtimeAnalyticsState
+        window.realtimeAnalyticsState
           .sessionId;
+
+      // =====================================
+      // ANALYTICS
+      // =====================================
 
       await processHistoryTrack(
         batch,
         sessionId
       );
+
+      console.log(
+        "✅ HISTORY COMPLETE",
+        batch.length
+      );
+
+      // =====================================
+      // LIVE TRACK CACHE
+      // =====================================
 
       if (
         !window.realtimePerformanceData
@@ -41690,10 +41781,21 @@ async function processRealtimeQueue() {
         };
       }
 
-      window
-        .realtimePerformanceData
+      window.realtimePerformanceData
         .trackPoints
         .push(...batch);
+
+      console.log(
+        "📍 TRACK CACHE",
+        window
+          .realtimePerformanceData
+          .trackPoints
+          .length
+      );
+
+      // =====================================
+      // MONTHLY CARD
+      // =====================================
 
       try {
 
@@ -41709,6 +41811,10 @@ async function processRealtimeQueue() {
         );
       }
 
+      // =====================================
+      // PERFORMANCE CARD
+      // =====================================
+
       try {
 
         await updateRealtimePerformanceCard();
@@ -41723,6 +41829,10 @@ async function processRealtimeQueue() {
         );
       }
     }
+
+    console.log(
+      "🏁 QUEUE EMPTY"
+    );
 
   }
 
@@ -41740,8 +41850,10 @@ async function processRealtimeQueue() {
     window.analyticsProcessing =
       false;
 
+    console.log(
+      "🔓 QUEUE UNLOCKED"
+    );
   }
-
 }
     function renderRealtimePerformanceCard(
   data
