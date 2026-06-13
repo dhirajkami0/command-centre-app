@@ -41047,21 +41047,24 @@ console.log(
   setTimeout(() => {
 
   console.log(
-    "🧪 5 SECOND CHECK",
-    {
-      dutyActive:
-        window.isDutyActive,
+  "🧪 5 SECOND CHECK",
+  {
+    dutyActive:
+      window.isDutyActive,
 
-      sessionId:
-        window.realtimeAnalyticsState?.sessionId,
+    sessionId:
+      window.realtimeAnalyticsState?.sessionId,
 
-      timer:
-        !!window.realtimeAnalyticsState?.timer,
+    listener:
+      !!window.realtimeAnalyticsState?.unsubscribe,
 
-      listener:
-        !!window.realtimeAnalyticsState?.unsubscribe
-    }
-  );
+    pending:
+      window.realtimeAnalyticsState?.pendingPoints?.length || 0,
+
+    processing:
+      !!window.analyticsProcessing
+  }
+);
 
 }, 5000);
   console.log(
@@ -41141,34 +41144,6 @@ async function startRealtimeAnalytics() {
 
   try {
 
-    // =====================================
-    // STARTUP DIAGNOSTICS
-    // =====================================
-
-    console.log(
-      "🚀 startRealtimeAnalytics ENTRY",
-      {
-        dutyActive:
-          window.isDutyActive,
-
-        currentSessionId:
-          window.currentSessionId,
-
-        localStorageSessionId:
-          localStorage.getItem(
-            "sessionId"
-          ),
-
-        timerExists:
-          !!window.realtimeAnalyticsState
-            ?.timer
-      }
-    );
-
-    // =====================================
-    // DUTY CHECK
-    // =====================================
-
     if (
       window.isDutyActive !== true
     ) {
@@ -41180,10 +41155,6 @@ async function startRealtimeAnalytics() {
       return false;
     }
 
-    // =====================================
-    // ENSURE STATE EXISTS
-    // =====================================
-
     if (
       !window.realtimeAnalyticsState
     ) {
@@ -41192,8 +41163,6 @@ async function startRealtimeAnalytics() {
 
         sessionId: null,
 
-        timer: null,
-
         unsubscribe: null,
 
         pendingPoints: []
@@ -41201,27 +41170,6 @@ async function startRealtimeAnalytics() {
       };
     }
 
-    // =====================================
-    // SESSION ID
-    // =====================================
-console.log(
-  "🧪 SESSION DEBUG",
-  {
-    currentSessionId:
-      window.currentSessionId,
-
-    localStorageSessionId:
-      localStorage.getItem(
-        "sessionId"
-      ),
-
-    dutyActive:
-      window.isDutyActive,
-
-    startDutyInProgress:
-      window.startDutyInProgress
-  }
-);
     const sessionId =
 
       localStorage.getItem(
@@ -41242,24 +41190,7 @@ console.log(
     }
 
     // =====================================
-    // PREVENT DUPLICATES
-    // =====================================
-
-    if (
-      window.realtimeAnalyticsState
-        .timer
-    ) {
-
-      console.log(
-        "⚠ Realtime already running",
-        sessionId
-      );
-
-      return true;
-    }
-
-    // =====================================
-    // CLEAN STALE LISTENER
+    // PREVENT DUPLICATE LISTENER
     // =====================================
 
     if (
@@ -41267,21 +41198,15 @@ console.log(
         ?.unsubscribe
     ) {
 
-      try {
+      console.log(
+        "⚠ Realtime already running"
+      );
 
-        window
-          .realtimeAnalyticsState
-          .unsubscribe();
-
-      } catch(err){}
-
-      window
-        .realtimeAnalyticsState
-        .unsubscribe = null;
+      return true;
     }
 
     // =====================================
-    // RESET STATE
+    // RESET
     // =====================================
 
     window
@@ -41297,10 +41222,6 @@ console.log(
       "🚀 REALTIME ANALYTICS START",
       sessionId
     );
-
-    // =====================================
-    // LIVE POINT LISTENER
-    // =====================================
 
     const pointsRef =
 
@@ -41330,62 +41251,89 @@ console.log(
 
         pointsRef,
 
-        snap => {
+        async snap => {
 
-          if (
-            window.isDutyActive !== true
-          ) {
+          try {
 
-            return;
+            if (
+              window.isDutyActive !== true
+            ) {
+              return;
+            }
+
+            let newPointCount = 0;
+
+            snap
+              .docChanges()
+              .forEach(change => {
+
+                if (
+                  change.type !==
+                  "added"
+                ) {
+                  return;
+                }
+
+                const p =
+                  change.doc.data();
+
+                if (
+
+                  isNaN(p?.lat)
+
+                  ||
+
+                  isNaN(p?.lon)
+
+                ) {
+
+                  return;
+                }
+
+                window
+                  .realtimeAnalyticsState
+                  .pendingPoints
+                  .push({
+
+                    lat:
+                      Number(p.lat),
+
+                    lng:
+                      Number(p.lon),
+
+                    ts:
+                      Number(
+                        p.time || 0
+                      )
+
+                  });
+
+                newPointCount++;
+
+              });
+
+            // =================================
+            // PROCESS IMMEDIATELY
+            // =================================
+
+            if (
+              newPointCount >= 2
+            ) {
+
+              await processRealtimeQueue();
+
+            }
+
           }
 
-          snap
-            .docChanges()
-            .forEach(change => {
+          catch(err){
 
-              if (
-                change.type !==
-                "added"
-              ) {
+            console.error(
+              "❌ SNAPSHOT PROCESS ERROR",
+              err
+            );
 
-                return;
-              }
-
-              const p =
-                change.doc.data();
-
-              if (
-
-                isNaN(p?.lat)
-
-                ||
-
-                isNaN(p?.lon)
-
-              ) {
-
-                return;
-              }
-
-              window
-                .realtimeAnalyticsState
-                .pendingPoints
-                .push({
-
-                  lat:
-                    Number(p.lat),
-
-                  lng:
-                    Number(p.lon),
-
-                  ts:
-                    Number(
-                      p.time || 0
-                    )
-
-                });
-
-            });
+          }
 
         },
 
@@ -41405,36 +41353,12 @@ console.log(
       .unsubscribe =
       unsubscribe;
 
-    // =====================================
-    // PROCESS EVERY 10 SEC
-    // =====================================
-
-    window
-      .realtimeAnalyticsState
-      .timer =
-
-      setInterval(
-
-        processRealtimeAnalyticsBatch,
-
-        10000
-
-      );
-
     console.log(
       "✅ REALTIME ANALYTICS ACTIVE",
       {
         sessionId,
-
-        timerRunning:
-          !!window
-            .realtimeAnalyticsState
-            .timer,
-
         listenerAttached:
-          !!window
-            .realtimeAnalyticsState
-            .unsubscribe
+          true
       }
     );
 
@@ -41452,97 +41376,7 @@ console.log(
     return false;
   }
 }
-    async function processRealtimeAnalyticsBatch() {
-
-  try {
-
-    if (
-      window.isDutyActive !== true
-    ) {
-
-      stopRealtimeAnalytics();
-
-      return;
-    }
-
-    const batch =
-
-      window
-      .realtimeAnalyticsState
-      .pendingPoints;
-
-    if (
-      !batch ||
-      batch.length < 2
-    ) {
-      return;
-    }
-
-    window
-      .realtimeAnalyticsState
-      .pendingPoints = [];
-
-    console.log(
-      "📦 PROCESSING BATCH",
-      batch.length
-    );
-
-    const sessionId =
-
-      window
-      .realtimeAnalyticsState
-      .sessionId;
-
-   await processHistoryTrack(
-  batch,
-  sessionId
-);
-
-// ===================================
-// ACCUMULATE TRACK
-// ===================================
-
-window.realtimePerformanceData
-  .trackPoints
-  .push(...batch);
-
-// ===================================
-// MONTHLY CARD
-// ===================================
-
-try {
-
-  updateMonthlyStatusCard();
-
-} catch(e){}
-
-// ===================================
-// PERFORMANCE CARD
-// ===================================
-
-try {
-
-  await updateRealtimePerformanceCard();
-
-} catch(e){
-
-  console.error(
-    "Realtime Performance Update Failed",
-    e
-  );
-
-}
-
-  }
-
-  catch(err){
-
-    console.error(
-      "❌ processRealtimeAnalyticsBatch",
-      err
-    );
-  }
-}
+   
 async function updateRealtimePerformanceCard(){
 
   try{
@@ -41617,6 +41451,297 @@ async function updateRealtimePerformanceCard(){
 
   }
 
+}
+    // =====================================================
+// 🔥 REALTIME QUEUE PROCESSOR
+// EVENT DRIVEN
+// NO TIMER
+// =====================================================
+
+window.analyticsProcessing =
+  false;
+
+async function processRealtimeQueue() {
+
+  try {
+
+    // =====================================
+    // PREVENT RE-ENTRY
+    // =====================================
+    if (
+      window.analyticsProcessing === true
+    ) {
+
+      return;
+    }
+
+    // =====================================
+    // DUTY CHECK
+    // =====================================
+    if (
+      window.isDutyActive !== true
+    ) {
+
+      return;
+    }
+
+    // =====================================
+    // STATE CHECK
+    // =====================================
+    if (
+      !window.realtimeAnalyticsState
+    ) {
+
+      console.warn(
+        "⚠ Missing realtimeAnalyticsState"
+      );
+
+      return;
+    }
+
+    // =====================================
+    // SESSION CHECK
+    // =====================================
+    const sessionId =
+
+      window
+        .realtimeAnalyticsState
+        ?.sessionId;
+
+    if (!sessionId) {
+
+      console.warn(
+        "⚠ Missing realtime session"
+      );
+
+      return;
+    }
+
+    // =====================================
+    // QUEUE CHECK
+    // =====================================
+    const queue =
+
+      window
+        .realtimeAnalyticsState
+        ?.pendingPoints;
+
+    if (
+      !Array.isArray(queue)
+    ) {
+
+      console.warn(
+        "⚠ Invalid queue"
+      );
+
+      return;
+    }
+
+    if (
+      queue.length < 2
+    ) {
+
+      return;
+    }
+
+    // =====================================
+    // LOCK PROCESSOR
+    // =====================================
+    window.analyticsProcessing =
+      true;
+
+    console.log(
+      "🚀 QUEUE START",
+      queue.length
+    );
+
+    // =====================================
+    // ENSURE PERFORMANCE STORAGE
+    // =====================================
+    if (
+      !window.realtimePerformanceData
+    ) {
+
+      window.realtimePerformanceData = {
+
+        trackPoints: []
+
+      };
+    }
+
+    if (
+      !Array.isArray(
+        window
+          .realtimePerformanceData
+          .trackPoints
+      )
+    ) {
+
+      window
+        .realtimePerformanceData
+        .trackPoints = [];
+    }
+
+    // =====================================
+    // PROCESS UNTIL EMPTY
+    // =====================================
+    while (
+
+      window.isDutyActive === true
+
+      &&
+
+      window
+        .realtimeAnalyticsState
+        ?.sessionId === sessionId
+
+      &&
+
+      window
+        .realtimeAnalyticsState
+        ?.pendingPoints
+        ?.length > 0
+
+    ) {
+
+      // ===================================
+      // TAKE NEXT CHUNK
+      // ===================================
+      const batch =
+
+        window
+          .realtimeAnalyticsState
+          .pendingPoints
+          .splice(
+            0,
+            50
+          );
+
+      if (
+        !batch ||
+        batch.length === 0
+      ) {
+
+        break;
+      }
+
+      console.log(
+        "📦 PROCESSING BATCH",
+        batch.length
+      );
+
+      try {
+
+        // ===============================
+        // HISTORY / ANALYTICS
+        // ===============================
+        await processHistoryTrack(
+          batch,
+          sessionId
+        );
+
+      }
+
+      catch(err){
+
+        console.error(
+          "❌ processHistoryTrack failed",
+          err
+        );
+      }
+
+      try {
+
+        // ===============================
+        // PERFORMANCE CACHE
+        // ===============================
+        window
+          .realtimePerformanceData
+          .trackPoints
+          .push(
+            ...batch
+          );
+
+      }
+
+      catch(err){
+
+        console.error(
+          "❌ track cache failed",
+          err
+        );
+      }
+
+      try {
+
+        updateMonthlyStatusCard();
+
+      }
+
+      catch(err){
+
+        console.error(
+          "❌ monthly card failed",
+          err
+        );
+      }
+
+      try {
+
+        await updateRealtimePerformanceCard();
+
+      }
+
+      catch(err){
+
+        console.error(
+          "❌ performance card failed",
+          err
+        );
+      }
+
+      console.log(
+        "✅ BATCH COMPLETE",
+        {
+          processed:
+            batch.length,
+
+          remaining:
+            window
+              .realtimeAnalyticsState
+              ?.pendingPoints
+              ?.length || 0
+        }
+      );
+    }
+
+    console.log(
+      "🏁 QUEUE EMPTY"
+    );
+
+  }
+
+  catch(err){
+
+    console.error(
+      "❌ processRealtimeQueue",
+      err
+    );
+
+  }
+
+  finally {
+
+    // =====================================
+    // ALWAYS RELEASE LOCK
+    // =====================================
+    window.analyticsProcessing =
+      false;
+
+    console.log(
+      "🔓 QUEUE UNLOCKED"
+    );
+  }
 }
     function renderRealtimePerformanceCard(
   data
@@ -41709,60 +41834,27 @@ ${data.score}
 `;
 
 }
-   async function flushRealtimeAnalytics() {
+  async function flushRealtimeAnalytics() {
 
   try {
 
-    const batch =
+    console.log(
+      "🏁 FINAL FLUSH START"
+    );
+
+    await processRealtimeQueue();
+
+    const remaining =
 
       window
-      .realtimeAnalyticsState
-      .pendingPoints;
-
-    if (
-      !batch ||
-      batch.length < 2
-    ) {
-      return;
-    }
+        .realtimeAnalyticsState
+        ?.pendingPoints
+        ?.length || 0;
 
     console.log(
-      "🏁 FINAL FLUSH",
-      batch.length
+      "🏁 FINAL FLUSH COMPLETE",
+      remaining
     );
-
-    const sessionId =
-
-      window
-      .realtimeAnalyticsState
-      .sessionId;
-
-    await processHistoryTrack(
-
-      batch,
-
-      sessionId
-
-    );
-
-    // ===================================
-    // ADD FINAL POINTS TO LIVE REPORT
-    // ===================================
-
-    if(
-      window.realtimePerformanceData
-    ){
-
-      window
-        .realtimePerformanceData
-        .trackPoints
-        .push(...batch);
-
-    }
-
-    window
-      .realtimeAnalyticsState
-      .pendingPoints = [];
 
   }
 
@@ -41773,91 +41865,96 @@ ${data.score}
       err
     );
   }
-}
-  function stopRealtimeAnalytics() {
+}function stopRealtimeAnalytics() {
 
   try {
 
-    // =====================================
-    // STOP TIMER
-    // =====================================
-
-    if (
-      window.realtimeAnalyticsState?.timer
-    ) {
-
-      clearInterval(
-        window.realtimeAnalyticsState.timer
-      );
-
-      window.realtimeAnalyticsState.timer =
-        null;
-    }
+    console.log(
+      "🛑 STOPPING REALTIME ANALYTICS"
+    );
 
     // =====================================
     // REMOVE FIRESTORE LISTENER
     // =====================================
 
     if (
-      window.realtimeAnalyticsState?.unsubscribe
+      window.realtimeAnalyticsState
+        ?.unsubscribe
     ) {
 
       try {
 
-        window.realtimeAnalyticsState
+        window
+          .realtimeAnalyticsState
           .unsubscribe();
 
-      } catch(err) {
+      }
+
+      catch(err){
 
         console.warn(
           "⚠ unsubscribe failed",
           err
         );
-
       }
 
-      window.realtimeAnalyticsState
-        .unsubscribe = null;
+      window
+        .realtimeAnalyticsState
+        .unsubscribe =
+        null;
     }
 
     // =====================================
-    // CLEAR SESSION DATA
+    // RESET PROCESSOR LOCK
+    // =====================================
+
+    window.analyticsProcessing =
+      false;
+
+    // =====================================
+    // CLEAR STATE
     // =====================================
 
     if (
       window.realtimeAnalyticsState
     ) {
 
-      window.realtimeAnalyticsState
-        .sessionId = null;
+      window
+        .realtimeAnalyticsState
+        .sessionId =
+        null;
 
-      window.realtimeAnalyticsState
-        .pendingPoints = [];
-
+      window
+        .realtimeAnalyticsState
+        .pendingPoints =
+        [];
     }
 
     console.log(
-      "🛑 REALTIME ANALYTICS STOPPED"
+      "✅ REALTIME ANALYTICS STOPPED"
     );
 
     console.table({
 
-      timer:
-        window.realtimeAnalyticsState
-          ?.timer,
-
-      unsubscribe:
-        !!window.realtimeAnalyticsState
-          ?.unsubscribe,
-
       sessionId:
-        window.realtimeAnalyticsState
+        window
+          .realtimeAnalyticsState
           ?.sessionId,
 
+      listener:
+        !!window
+          .realtimeAnalyticsState
+          ?.unsubscribe,
+
       pendingPoints:
-        window.realtimeAnalyticsState
+        window
+          .realtimeAnalyticsState
           ?.pendingPoints
-          ?.length || 0
+          ?.length || 0,
+
+      processing:
+        !!window
+          .analyticsProcessing
 
     });
 
