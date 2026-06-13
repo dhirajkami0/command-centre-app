@@ -41954,7 +41954,64 @@ ${data.score}
       "🏁 FINAL FLUSH START"
     );
 
-    await processRealtimeQueue();
+    const pending =
+
+      window
+        .realtimeAnalyticsState
+        ?.pendingPoints || [];
+
+    // =====================================
+    // NORMAL QUEUE FLUSH
+    // =====================================
+
+    if (
+      pending.length >= 2
+    ) {
+
+      await processRealtimeQueue();
+
+    }
+
+    // =====================================
+    // HANDLE FINAL SINGLE POINT
+    // =====================================
+
+    else if (
+      pending.length === 1
+    ) {
+
+      console.log(
+        "📍 FLUSHING FINAL POINT"
+      );
+
+      const sessionId =
+
+        window
+          .realtimeAnalyticsState
+          ?.sessionId;
+
+      const batch =
+        pending.splice(0, 1);
+
+      await processHistoryTrack(
+        batch,
+        sessionId
+      );
+
+      if (
+        !window.realtimePerformanceData
+      ) {
+
+        window.realtimePerformanceData = {
+          trackPoints: []
+        };
+      }
+
+      window
+        .realtimePerformanceData
+        .trackPoints
+        .push(...batch);
+    }
 
     const remaining =
 
