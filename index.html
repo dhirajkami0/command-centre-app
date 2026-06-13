@@ -41155,6 +41155,10 @@ async function startRealtimeAnalytics() {
       return false;
     }
 
+    // =====================================
+    // ENSURE STATE
+    // =====================================
+
     if (
       !window.realtimeAnalyticsState
     ) {
@@ -41190,7 +41194,7 @@ async function startRealtimeAnalytics() {
     }
 
     // =====================================
-    // PREVENT DUPLICATE LISTENER
+    // CLEAN OLD LISTENER
     // =====================================
 
     if (
@@ -41198,15 +41202,29 @@ async function startRealtimeAnalytics() {
         ?.unsubscribe
     ) {
 
-      console.log(
-        "⚠ Realtime already running"
-      );
+      try {
 
-      return true;
+        window
+          .realtimeAnalyticsState
+          .unsubscribe();
+
+      }
+
+      catch(err){
+
+        console.warn(
+          "⚠ Previous listener cleanup failed",
+          err
+        );
+      }
+
+      window
+        .realtimeAnalyticsState
+        .unsubscribe = null;
     }
 
     // =====================================
-    // RESET
+    // RESET SESSION
     // =====================================
 
     window
@@ -41216,12 +41234,17 @@ async function startRealtimeAnalytics() {
 
     window
       .realtimeAnalyticsState
-      .pendingPoints = [];
+      .pendingPoints =
+      [];
 
     console.log(
       "🚀 REALTIME ANALYTICS START",
       sessionId
     );
+
+    // =====================================
+    // POINTS QUERY
+    // =====================================
 
     const pointsRef =
 
@@ -41245,6 +41268,10 @@ async function startRealtimeAnalytics() {
 
       );
 
+    // =====================================
+    // LIVE LISTENER
+    // =====================================
+
     const unsubscribe =
 
       window.fb.onSnapshot(
@@ -41261,7 +41288,7 @@ async function startRealtimeAnalytics() {
               return;
             }
 
-            let newPointCount = 0;
+            let addedCount = 0;
 
             snap
               .docChanges()
@@ -41308,17 +41335,50 @@ async function startRealtimeAnalytics() {
 
                   });
 
-                newPointCount++;
+                addedCount++;
 
               });
 
-            // =================================
-            // PROCESS IMMEDIATELY
-            // =================================
+            if (
+              addedCount > 0
+            ) {
+
+              console.log(
+                "🔥 SNAPSHOT RECEIVED",
+                {
+                  addedCount,
+
+                  pending:
+                    window
+                      .realtimeAnalyticsState
+                      .pendingPoints
+                      .length
+                }
+              );
+            }
+
+            // =====================================
+            // IMPORTANT FIX
+            // CHECK QUEUE SIZE
+            // NOT SNAPSHOT SIZE
+            // =====================================
 
             if (
-              newPointCount >= 2
+
+              window
+                .realtimeAnalyticsState
+                .pendingPoints
+                .length >= 2
+
             ) {
+
+              console.log(
+                "🚀 CALLING processRealtimeQueue",
+                window
+                  .realtimeAnalyticsState
+                  .pendingPoints
+                  .length
+              );
 
               await processRealtimeQueue();
 
@@ -41348,6 +41408,10 @@ async function startRealtimeAnalytics() {
 
       );
 
+    // =====================================
+    // SAVE LISTENER
+    // =====================================
+
     window
       .realtimeAnalyticsState
       .unsubscribe =
@@ -41357,6 +41421,7 @@ async function startRealtimeAnalytics() {
       "✅ REALTIME ANALYTICS ACTIVE",
       {
         sessionId,
+
         listenerAttached:
           true
       }
@@ -41376,7 +41441,6 @@ async function startRealtimeAnalytics() {
     return false;
   }
 }
-   
 async function updateRealtimePerformanceCard(){
 
   try{
@@ -41465,61 +41529,18 @@ async function processRealtimeQueue() {
 
   try {
 
-    // =====================================
-    // PREVENT RE-ENTRY
-    // =====================================
     if (
-      window.analyticsProcessing === true
+      window.analyticsProcessing
     ) {
-
       return;
     }
 
-    // =====================================
-    // DUTY CHECK
-    // =====================================
     if (
       window.isDutyActive !== true
     ) {
-
       return;
     }
 
-    // =====================================
-    // STATE CHECK
-    // =====================================
-    if (
-      !window.realtimeAnalyticsState
-    ) {
-
-      console.warn(
-        "⚠ Missing realtimeAnalyticsState"
-      );
-
-      return;
-    }
-
-    // =====================================
-    // SESSION CHECK
-    // =====================================
-    const sessionId =
-
-      window
-        .realtimeAnalyticsState
-        ?.sessionId;
-
-    if (!sessionId) {
-
-      console.warn(
-        "⚠ Missing realtime session"
-      );
-
-      return;
-    }
-
-    // =====================================
-    // QUEUE CHECK
-    // =====================================
     const queue =
 
       window
@@ -41527,86 +41548,44 @@ async function processRealtimeQueue() {
         ?.pendingPoints;
 
     if (
-      !Array.isArray(queue)
-    ) {
-
-      console.warn(
-        "⚠ Invalid queue"
-      );
-
-      return;
-    }
-
-    if (
+      !Array.isArray(queue) ||
       queue.length < 2
     ) {
-
       return;
     }
 
-    // =====================================
-    // LOCK PROCESSOR
-    // =====================================
     window.analyticsProcessing =
       true;
 
-    console.log(
-      "🚀 QUEUE START",
-      queue.length
-    );
-
-    // =====================================
-    // ENSURE PERFORMANCE STORAGE
-    // =====================================
-    if (
-      !window.realtimePerformanceData
-    ) {
-
-      window.realtimePerformanceData = {
-
-        trackPoints: []
-
-      };
-    }
-
-    if (
-      !Array.isArray(
-        window
-          .realtimePerformanceData
-          .trackPoints
-      )
-    ) {
-
-      window
-        .realtimePerformanceData
-        .trackPoints = [];
-    }
-
-    // =====================================
-    // PROCESS UNTIL EMPTY
-    // =====================================
     while (
-
-      window.isDutyActive === true
-
-      &&
-
-      window
-        .realtimeAnalyticsState
-        ?.sessionId === sessionId
-
-      &&
 
       window
         .realtimeAnalyticsState
         ?.pendingPoints
-        ?.length > 0
+        ?.length >= 2
 
     ) {
 
-      // ===================================
-      // TAKE NEXT CHUNK
-      // ===================================
+      const available =
+
+        window
+          .realtimeAnalyticsState
+          .pendingPoints
+          .length;
+
+      const batchSize =
+
+        Math.min(
+          50,
+          available
+        );
+
+      if (
+        batchSize < 2
+      ) {
+        break;
+      }
+
       const batch =
 
         window
@@ -41614,63 +41593,38 @@ async function processRealtimeQueue() {
           .pendingPoints
           .splice(
             0,
-            50
+            batchSize
           );
-
-      if (
-        !batch ||
-        batch.length === 0
-      ) {
-
-        break;
-      }
 
       console.log(
         "📦 PROCESSING BATCH",
         batch.length
       );
 
-      try {
+      const sessionId =
 
-        // ===============================
-        // HISTORY / ANALYTICS
-        // ===============================
-        await processHistoryTrack(
-          batch,
-          sessionId
-        );
-
-      }
-
-      catch(err){
-
-        console.error(
-          "❌ processHistoryTrack failed",
-          err
-        );
-      }
-
-      try {
-
-        // ===============================
-        // PERFORMANCE CACHE
-        // ===============================
         window
-          .realtimePerformanceData
-          .trackPoints
-          .push(
-            ...batch
-          );
+          .realtimeAnalyticsState
+          .sessionId;
 
+      await processHistoryTrack(
+        batch,
+        sessionId
+      );
+
+      if (
+        !window.realtimePerformanceData
+      ) {
+
+        window.realtimePerformanceData = {
+          trackPoints: []
+        };
       }
 
-      catch(err){
-
-        console.error(
-          "❌ track cache failed",
-          err
-        );
-      }
+      window
+        .realtimePerformanceData
+        .trackPoints
+        .push(...batch);
 
       try {
 
@@ -41678,11 +41632,11 @@ async function processRealtimeQueue() {
 
       }
 
-      catch(err){
+      catch(e){
 
         console.error(
-          "❌ monthly card failed",
-          err
+          "❌ updateMonthlyStatusCard",
+          e
         );
       }
 
@@ -41692,32 +41646,14 @@ async function processRealtimeQueue() {
 
       }
 
-      catch(err){
+      catch(e){
 
         console.error(
-          "❌ performance card failed",
-          err
+          "❌ updateRealtimePerformanceCard",
+          e
         );
       }
-
-      console.log(
-        "✅ BATCH COMPLETE",
-        {
-          processed:
-            batch.length,
-
-          remaining:
-            window
-              .realtimeAnalyticsState
-              ?.pendingPoints
-              ?.length || 0
-        }
-      );
     }
-
-    console.log(
-      "🏁 QUEUE EMPTY"
-    );
 
   }
 
@@ -41732,16 +41668,11 @@ async function processRealtimeQueue() {
 
   finally {
 
-    // =====================================
-    // ALWAYS RELEASE LOCK
-    // =====================================
     window.analyticsProcessing =
       false;
 
-    console.log(
-      "🔓 QUEUE UNLOCKED"
-    );
   }
+
 }
     function renderRealtimePerformanceCard(
   data
