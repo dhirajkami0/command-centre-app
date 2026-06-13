@@ -36902,10 +36902,43 @@ margin-top:12px;
 <button
 
 onclick="
-window.open(
-'${data.kmlUrl || ""}',
-'_blank'
-)
+try{
+
+  const url =
+    window.currentDutyReport?.kmlUrl || '';
+
+  if(!url){
+
+    alert(
+      '❌ KML not available'
+    );
+
+    return;
+  }
+
+  const win =
+    window.open(
+      url,
+      '_blank'
+    );
+
+  if(!win){
+
+    window.location.href =
+      url;
+  }
+
+}
+catch(err){
+
+  console.error(
+    err
+  );
+
+  alert(
+    '❌ Unable to open KML'
+  );
+}
 "
 
 style="
@@ -36924,7 +36957,6 @@ cursor:pointer;
 📍 View KML
 
 </button>
-
 <button
 
 onclick="
@@ -37389,7 +37421,9 @@ function shareDutyKMLReport() {
       window.currentDutyReport || {};
 
     const kmlUrl =
-      report.kmlUrl || "";
+      String(
+        report.kmlUrl || ""
+      ).trim();
 
     if (!kmlUrl) {
 
@@ -37410,30 +37444,21 @@ ${kmlUrl}`;
 
       "https://wa.me/?text=" +
 
-      encodeURIComponent(text);
+      encodeURIComponent(
+        text
+      );
 
-    // =====================================
-    // MOBILE
-    // =====================================
-    if (
-      /Android|iPhone|iPad|iPod/i.test(
-        navigator.userAgent
-      )
-    ) {
+    const win =
+      window.open(
+        whatsappUrl,
+        "_blank"
+      );
+
+    if (!win) {
 
       window.location.href =
         whatsappUrl;
-
-      return;
     }
-
-    // =====================================
-    // DESKTOP
-    // =====================================
-    window.open(
-      whatsappUrl,
-      "_blank"
-    );
 
   }
 
@@ -37449,7 +37474,6 @@ ${kmlUrl}`;
     );
   }
 }
-
  async function sendDutyReportToAppsScript(
   report
 ){
