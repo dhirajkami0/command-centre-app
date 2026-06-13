@@ -14781,16 +14781,21 @@ window.realtimeAnalyticsState = {
 
   sessionId: null,
 
-  timer: null,
-
   unsubscribe: null,
 
-  pendingPoints: []
+  pendingPoints: [],
+
+  firstPendingAt: 0
 
 };
     window.realtimePerformanceData = {
   trackPoints: []
 };
+    const POINT_THRESHOLD = 8;
+
+const TIME_THRESHOLD = 30000;
+
+const BATCH_SIZE = 50;
 // ======================================================
 // 🌍 GIS FILTER STATE
 // ======================================================
@@ -41178,7 +41183,9 @@ async function startRealtimeAnalytics() {
 
         unsubscribe: null,
 
-        pendingPoints: []
+        pendingPoints: [],
+
+        firstPendingAt: 0
 
       };
 
@@ -41280,6 +41287,11 @@ async function startRealtimeAnalytics() {
       .pendingPoints =
       [];
 
+    window
+      .realtimeAnalyticsState
+      .firstPendingAt =
+      0;
+
     console.log(
       "🚀 REALTIME ANALYTICS START",
       sessionId
@@ -41369,21 +41381,34 @@ async function startRealtimeAnalytics() {
                   return;
                 }
 
+                if (
+
+                  window
+                    .realtimeAnalyticsState
+                    .pendingPoints
+                    .length === 0
+
+                ) {
+
+                  window
+                    .realtimeAnalyticsState
+                    .firstPendingAt =
+                    Date.now();
+
+                }
+
                 window
                   .realtimeAnalyticsState
                   .pendingPoints
                   .push({
 
-                    lat:
-                      Number(p.lat),
+                    lat: Number(p.lat),
 
-                    lng:
-                      Number(p.lon),
+                    lng: Number(p.lon),
 
-                    ts:
-                      Number(
-                        p.time || 0
-                      )
+                    ts: Number(
+                      p.time || 0
+                    )
 
                   });
 
@@ -41415,21 +41440,52 @@ async function startRealtimeAnalytics() {
             // QUEUE TRIGGER
             // =====================================
 
-            if (
+            const pendingCount =
 
               window
                 .realtimeAnalyticsState
                 .pendingPoints
-                .length >= 2
+                .length;
 
-            ) {
+            const queueAge =
+
+              pendingCount > 0
+
+                ?
+
+                Date.now() -
+
+                (
+                  window
+                    .realtimeAnalyticsState
+                    .firstPendingAt || 0
+                )
+
+                :
+
+                0;
+
+         if (
+
+  pendingCount >= POINT_THRESHOLD
+
+  ||
+
+  (
+    pendingCount > 0
+    &&
+    queueAge >= TIME_THRESHOLD
+  )
+
+)
+         {
 
               console.log(
                 "🚀 CALLING processRealtimeQueue",
-                window
-                  .realtimeAnalyticsState
-                  .pendingPoints
-                  .length
+                {
+                  pendingCount,
+                  queueAge
+                }
               );
 
               if (
@@ -41716,11 +41772,11 @@ async function processRealtimeQueue() {
           .pendingPoints
           .length;
 
-      const batchSize =
-        Math.min(
-          50,
-          available
-        );
+    const batchSize =
+  Math.min(
+    BATCH_SIZE,
+    available
+  );
 
       if (
         batchSize < 2
@@ -41827,6 +41883,26 @@ async function processRealtimeQueue() {
           e
         );
       }
+    }
+
+    // =====================================
+    // RESET QUEUE TIMER
+    // =====================================
+
+    if (
+
+      window
+        .realtimeAnalyticsState
+        ?.pendingPoints
+        ?.length === 0
+
+    ) {
+
+      window
+        .realtimeAnalyticsState
+        .firstPendingAt =
+        0;
+
     }
 
     console.log(
@@ -42096,6 +42172,16 @@ ${data.score}
         .realtimeAnalyticsState
         .pendingPoints =
         [];
+
+      window
+        .realtimeAnalyticsState
+        .firstPendingAt =
+        0;
+
+      window
+        .realtimeAnalyticsState
+        .unsubscribe =
+        null;
     }
 
     console.log(
@@ -42119,6 +42205,11 @@ ${data.score}
           .realtimeAnalyticsState
           ?.pendingPoints
           ?.length || 0,
+
+      firstPendingAt:
+        window
+          .realtimeAnalyticsState
+          ?.firstPendingAt || 0,
 
       processing:
         !!window
