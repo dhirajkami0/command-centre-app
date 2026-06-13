@@ -41142,7 +41142,16 @@ if(typeof closeDutyForm === "function"){
 }// ✅ FIX: properly closed startDuty
 async function startRealtimeAnalytics() {
 
+  console.assert(
+    typeof processRealtimeQueue === "function",
+    "❌ processRealtimeQueue missing"
+  );
+
   try {
+
+    // =====================================
+    // DUTY CHECK
+    // =====================================
 
     if (
       window.isDutyActive !== true
@@ -41172,7 +41181,12 @@ async function startRealtimeAnalytics() {
         pendingPoints: []
 
       };
+
     }
+
+    // =====================================
+    // SESSION
+    // =====================================
 
     const sessionId =
 
@@ -41194,12 +41208,38 @@ async function startRealtimeAnalytics() {
     }
 
     // =====================================
+    // PREVENT DUPLICATE LISTENER
+    // =====================================
+
+    if (
+
+      window.realtimeAnalyticsState
+        ?.sessionId === sessionId
+
+      &&
+
+      typeof
+      window.realtimeAnalyticsState
+        ?.unsubscribe === "function"
+
+    ) {
+
+      console.log(
+        "⏭ REALTIME ALREADY ACTIVE",
+        sessionId
+      );
+
+      return true;
+    }
+
+    // =====================================
     // CLEAN OLD LISTENER
     // =====================================
 
     if (
+      typeof
       window.realtimeAnalyticsState
-        ?.unsubscribe
+        ?.unsubscribe === "function"
     ) {
 
       try {
@@ -41216,21 +41256,24 @@ async function startRealtimeAnalytics() {
           "⚠ Previous listener cleanup failed",
           err
         );
+
       }
 
-      window
-        .realtimeAnalyticsState
-        .unsubscribe = null;
     }
 
     // =====================================
-    // RESET SESSION
+    // RESET STATE
     // =====================================
 
     window
       .realtimeAnalyticsState
       .sessionId =
       sessionId;
+
+    window
+      .realtimeAnalyticsState
+      .unsubscribe =
+      null;
 
     window
       .realtimeAnalyticsState
@@ -41243,7 +41286,7 @@ async function startRealtimeAnalytics() {
     );
 
     // =====================================
-    // POINTS QUERY
+    // QUERY
     // =====================================
 
     const pointsRef =
@@ -41269,7 +41312,7 @@ async function startRealtimeAnalytics() {
       );
 
     // =====================================
-    // LIVE LISTENER
+    // SNAPSHOT LISTENER
     // =====================================
 
     const unsubscribe =
@@ -41288,6 +41331,12 @@ async function startRealtimeAnalytics() {
               return;
             }
 
+            if (
+              !window.realtimeAnalyticsState
+            ) {
+              return;
+            }
+
             let addedCount = 0;
 
             snap
@@ -41295,8 +41344,7 @@ async function startRealtimeAnalytics() {
               .forEach(change => {
 
                 if (
-                  change.type !==
-                  "added"
+                  change.type !== "added"
                 ) {
                   return;
                 }
@@ -41306,11 +41354,15 @@ async function startRealtimeAnalytics() {
 
                 if (
 
-                  isNaN(p?.lat)
+                  !Number.isFinite(
+                    Number(p?.lat)
+                  )
 
                   ||
 
-                  isNaN(p?.lon)
+                  !Number.isFinite(
+                    Number(p?.lon)
+                  )
 
                 ) {
 
@@ -41349,18 +41401,18 @@ async function startRealtimeAnalytics() {
                   addedCount,
 
                   pending:
+
                     window
                       .realtimeAnalyticsState
                       .pendingPoints
                       .length
                 }
               );
+
             }
 
             // =====================================
-            // IMPORTANT FIX
-            // CHECK QUEUE SIZE
-            // NOT SNAPSHOT SIZE
+            // QUEUE TRIGGER
             // =====================================
 
             if (
@@ -41380,7 +41432,25 @@ async function startRealtimeAnalytics() {
                   .length
               );
 
-              await processRealtimeQueue();
+              if (
+
+                typeof
+                processRealtimeQueue ===
+                "function"
+
+              ) {
+
+                await processRealtimeQueue();
+
+              }
+
+              else {
+
+                console.error(
+                  "❌ processRealtimeQueue missing"
+                );
+
+              }
 
             }
 
@@ -41421,9 +41491,7 @@ async function startRealtimeAnalytics() {
       "✅ REALTIME ANALYTICS ACTIVE",
       {
         sessionId,
-
-        listenerAttached:
-          true
+        listenerAttached: true
       }
     );
 
@@ -41440,6 +41508,7 @@ async function startRealtimeAnalytics() {
 
     return false;
   }
+
 }
 async function updateRealtimePerformanceCard(){
 
