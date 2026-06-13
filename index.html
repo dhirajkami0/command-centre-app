@@ -29309,15 +29309,54 @@ window.liveStaffCache[
     ).trim(),
 
   lat:
-    s.lat,
+    Number(s.lat),
 
   lng:
-    s.lon,
+    Number(s.lon),
 
   dutyActive:
-    true
-};
+    s.dutyActive === true,
 
+  sessionId:
+    String(
+      s.sessionId || ""
+    ),
+
+  lastSeen:
+    Number(
+      s.lastSeen || 0
+    ),
+
+  speed:
+    Number(
+      s.speed || 0
+    ),
+
+  heading:
+    Number(
+      s.heading || 0
+    ),
+
+  accuracy:
+    Number(
+      s.accuracy || 0
+    ),
+
+  updatedAt:
+    Number(
+      s.updatedAt || 0
+    ),
+
+  dutyType:
+    String(
+      s.dutyType || ""
+    ),
+
+  team:
+    String(
+      s.team || ""
+    )
+};
 // ==============================================
 // 🔥 ACTIVE USER LIST
 // ==============================================
