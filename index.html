@@ -41772,11 +41772,26 @@ async function processRealtimeQueue() {
           .pendingPoints
           .length;
 
-    const batchSize =
+  let batchSize =
   Math.min(
     BATCH_SIZE,
     available
   );
+
+// Avoid leaving exactly 1 point behind
+if (
+
+  available > BATCH_SIZE
+
+  &&
+
+  available - batchSize === 1
+
+) {
+
+  batchSize++;
+
+}
 
       if (
         batchSize < 2
@@ -42056,22 +42071,11 @@ ${data.score}
     ) {
 
       console.log(
-        "📍 FLUSHING FINAL POINT"
+        "📍 STORING FINAL SINGLE POINT"
       );
-
-      const sessionId =
-
-        window
-          .realtimeAnalyticsState
-          ?.sessionId;
 
       const batch =
         pending.splice(0, 1);
-
-      await processHistoryTrack(
-        batch,
-        sessionId
-      );
 
       if (
         !window.realtimePerformanceData
@@ -42086,6 +42090,27 @@ ${data.score}
         .realtimePerformanceData
         .trackPoints
         .push(...batch);
+
+      console.log(
+        "ℹ Analytics skipped for single point"
+      );
+
+    }
+
+    // =====================================
+    // RESET QUEUE TIMER
+    // =====================================
+
+    if (
+      window
+        .realtimeAnalyticsState
+    ) {
+
+      window
+        .realtimeAnalyticsState
+        .firstPendingAt =
+        0;
+
     }
 
     const remaining =
