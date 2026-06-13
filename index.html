@@ -41542,7 +41542,71 @@ async function startRealtimeAnalytics() {
       .realtimeAnalyticsState
       .unsubscribe =
       unsubscribe;
+// =====================================
+// PERIODIC FLUSH TIMER
+// =====================================
 
+if (
+  window.realtimeAnalyticsState
+    ?.flushTimer
+) {
+
+  clearInterval(
+    window.realtimeAnalyticsState
+      .flushTimer
+  );
+
+}
+
+window.realtimeAnalyticsState.flushTimer =
+
+  setInterval(
+    async () => {
+
+      try {
+
+        if (
+          window.isDutyActive !== true
+        ) {
+          return;
+        }
+
+        const pending =
+
+          window
+            .realtimeAnalyticsState
+            ?.pendingPoints
+            ?.length || 0;
+
+        if (
+          pending >= 2
+        ) {
+
+          console.log(
+            "⏰ TIMER FLUSH",
+            pending
+          );
+
+          await processRealtimeQueue();
+
+        }
+
+      }
+
+      catch(err){
+
+        console.error(
+          "❌ TIMER FLUSH",
+          err
+        );
+
+      }
+
+    },
+
+    TIME_THRESHOLD
+
+  );
     console.log(
       "✅ REALTIME ANALYTICS ACTIVE",
       {
@@ -42174,6 +42238,33 @@ ${data.score}
     }
 
     // =====================================
+    // STOP PERIODIC FLUSH TIMER
+    // =====================================
+
+    if (
+      window.realtimeAnalyticsState
+        ?.flushTimer
+    ) {
+
+      clearInterval(
+
+        window
+          .realtimeAnalyticsState
+          .flushTimer
+
+      );
+
+      window
+        .realtimeAnalyticsState
+        .flushTimer =
+        null;
+
+      console.log(
+        "⏹ FLUSH TIMER STOPPED"
+      );
+    }
+
+    // =====================================
     // RESET PROCESSOR LOCK
     // =====================================
 
@@ -42207,6 +42298,11 @@ ${data.score}
         .realtimeAnalyticsState
         .unsubscribe =
         null;
+
+      window
+        .realtimeAnalyticsState
+        .flushTimer =
+        null;
     }
 
     console.log(
@@ -42224,6 +42320,11 @@ ${data.score}
         !!window
           .realtimeAnalyticsState
           ?.unsubscribe,
+
+      flushTimer:
+        !!window
+          .realtimeAnalyticsState
+          ?.flushTimer,
 
       pendingPoints:
         window
