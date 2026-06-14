@@ -7538,40 +7538,56 @@ console.trace(
     window.__COMPARTMENTS_READY__ =
       true;
 
-    // 🔥 BACKGROUND ONLY
-    if(
-      !window.masterGridLoading &&
-      (
-        !window.masterGrid ||
-        Object.keys(
-          window.masterGrid
-        ).length === 0
-      )
-    ){
+   // 🔥 BACKGROUND ONLY
+if(
+  !window.masterGridLoading &&
+  (
+    !window.masterGrid ||
+    Object.keys(
+      window.masterGrid
+    ).length === 0
+  )
+){
 
-      window.masterGridLoading =
-        true;
+  window.masterGridLoading =
+    true;
 
-      loadMasterGrid()
+  try{
 
-        .catch(err => {
+    await loadMasterGrid();
 
-          console.error(
-            "❌ loadMasterGrid failed",
-            err
-          );
+    console.log(
+      "✅ MASTER GRID LOADED"
+    );
 
-        })
+    await buildCellToGridLookup();
 
-        .finally(() => {
+    console.log(
+      "✅ CELL → GRID LOOKUP READY",
+      Object.keys(
+        window.cellToGridId || {}
+      ).length
+    );
 
-          window.masterGridLoading =
-            false;
+  }
 
-        });
+  catch(err){
 
-    }
-    else{
+    console.error(
+      "❌ Grid preload failed",
+      err
+    );
+
+  }
+
+  finally{
+
+    window.masterGridLoading =
+      false;
+
+  }
+
+} else{
 
       console.log(
         "⏭ GRID already available"
@@ -28797,7 +28813,65 @@ function cleanTrackPoints(track){
 
   return clean;
 }
+async function buildCellToGridLookup(){
 
+  console.log(
+    "🧩 BUILD CELL LOOKUP"
+  );
+
+  window.cellToGridId = {};
+
+  const gridSnap =
+    await window.fb.getDocs(
+      window.fb.collection(
+        window.db,
+        "grid_master"
+      )
+    );
+
+  for(
+    const gridDoc
+    of gridSnap.docs
+  ){
+
+    const gridId =
+      gridDoc.id;
+
+    const shardSnap =
+      await window.fb.getDocs(
+
+        window.fb.collection(
+          window.db,
+          "grid_master",
+          gridId,
+          "cells"
+        )
+      );
+
+    shardSnap.forEach(shard => {
+
+      const cells =
+        shard.data()?.cells || [];
+
+      cells.forEach(cellId => {
+
+        window.cellToGridId[
+          cellId
+        ] = gridId;
+
+      });
+
+    });
+
+  }
+
+  console.log(
+    "✅ CELL LOOKUP READY",
+    Object.keys(
+      window.cellToGridId
+    ).length
+  );
+}
    async function loadAllStaffProfiles(){
 
   try{
