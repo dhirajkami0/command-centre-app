@@ -8639,6 +8639,201 @@ function finalizeSessionLifecycle() {
     );
   }
 }
+    async function buildGridSpatialIndex(){
+
+  try{
+
+    console.log(
+      "🧩 BUILDING GRID SPATIAL INDEX"
+    );
+
+    if(
+      !window.gridIndex ||
+      !Object.keys(
+        window.gridIndex
+      ).length
+    ){
+
+      console.warn(
+        "⚠ gridIndex empty"
+      );
+
+      return false;
+    }
+
+    window.gridSpatialIndex = {};
+
+    let indexed = 0;
+
+    Object.values(
+      window.gridIndex
+    )
+    .forEach(cell => {
+
+      try{
+
+        if(
+          !cell ||
+          !cell.id ||
+          !Array.isArray(
+            cell.coords
+          ) ||
+          !cell.coords.length
+        ){
+          return;
+        }
+
+        let minLat = Infinity;
+        let maxLat = -Infinity;
+
+        let minLon = Infinity;
+        let maxLon = -Infinity;
+
+        cell.coords.forEach(p => {
+
+          const lat =
+            Number(p[0]);
+
+          const lon =
+            Number(p[1]);
+
+          if(
+            isNaN(lat) ||
+            isNaN(lon)
+          ){
+            return;
+          }
+
+          if(lat < minLat) minLat = lat;
+          if(lat > maxLat) maxLat = lat;
+
+          if(lon < minLon) minLon = lon;
+          if(lon > maxLon) maxLon = lon;
+
+        });
+
+        const minRow =
+          Math.floor(
+            minLat * 1000
+          );
+
+        const maxRow =
+          Math.floor(
+            maxLat * 1000
+          );
+
+        const minCol =
+          Math.floor(
+            minLon * 1000
+          );
+
+        const maxCol =
+          Math.floor(
+            maxLon * 1000
+          );
+
+        for(
+          let r = minRow;
+          r <= maxRow;
+          r++
+        ){
+
+          for(
+            let c = minCol;
+            c <= maxCol;
+            c++
+          ){
+
+            const bucketKey =
+
+              r + "_" + c;
+
+            if(
+              !window.gridSpatialIndex[
+                bucketKey
+              ]
+            ){
+
+              window.gridSpatialIndex[
+                bucketKey
+              ] = [];
+            }
+
+            window.gridSpatialIndex[
+              bucketKey
+            ].push({
+
+              id:
+                cell.id,
+
+              coords:
+                cell.coords,
+
+              center:
+                cell.center
+
+            });
+
+          }
+
+        }
+
+        indexed++;
+
+      }
+
+      catch(err){
+
+        console.warn(
+          "⚠ Grid index build error",
+          cell?.id,
+          err
+        );
+
+      }
+
+    });
+
+    window.gridCellArray =
+      Object.values(
+        window.gridIndex
+      );
+
+    window.__gridReady =
+      true;
+
+    console.log(
+      "✅ GRID SPATIAL INDEX READY"
+    );
+
+    console.table({
+
+      cells:
+        indexed,
+
+      buckets:
+        Object.keys(
+          window.gridSpatialIndex
+        ).length
+
+    });
+
+    return true;
+
+  }
+
+  catch(err){
+
+    console.error(
+      "❌ buildGridSpatialIndex",
+      err
+    );
+
+    return false;
+
+  }
+
+}
  function getTouchedCells(localCoordsArray) {
 
   const STEP =
@@ -29762,7 +29957,41 @@ if(
 const newPoints =
 
   points.slice(oldCount);
+for(const p of newPoints){
 
+  const cellId =
+
+    getAnalyticsCellId(
+
+      p.lat,
+
+      p.lon
+
+    );
+
+  const gridId =
+
+    window.cellToGridId?.[
+      cellId
+    ];
+
+  if(!gridId){
+    continue;
+  }
+
+  collectAnalyticsHit(
+
+    gridId,
+
+    cellId,
+
+    p.lat,
+
+    p.lon
+
+  );
+
+}
 // ======================================
 // 🔥 GET POLYLINE
 // ======================================
@@ -29789,82 +30018,6 @@ const cleanedPoints =
     ])
 
   );
-// ======================================
-// 🔥 ANALYTICS BUFFER
-// ONLY NEW GPS POINTS
-// ======================================
-
-cleanedPoints.forEach(p => {
-
-  try{
-
-    const lat =
-      Number(p[0]);
-
-    const lon =
-      Number(p[1]);
-
-    if(
-      isNaN(lat) ||
-      isNaN(lon)
-    ){
-      return;
-    }
-
-    // ==================================
-    // 🔥 GRID CELL
-    // ==================================
-    const cellId =
-
-      window.getGridId(
-        lat,
-        lon
-      );
-
-    if(!cellId){
-      return;
-    }
-
-    // ==================================
-    // 🔥 COMPARTMENT GRID
-    // ==================================
-    const gridId =
-
-      window.cellToGridId?.[
-        cellId
-      ];
-
-    if(!gridId){
-      return;
-    }
-
-    // ==================================
-    // 🔥 BUFFER
-    // ==================================
-    collectAnalyticsHit(
-
-      gridId,
-
-      cellId,
-
-      lat,
-
-      lon
-
-    );
-
-  }
-
-  catch(err){
-
-    console.warn(
-      "⚠ Analytics collect failed",
-      err
-    );
-
-  }
-
-});
 // ======================================
 // 🔥 APPEND CLEANED POINTS
 // ======================================
