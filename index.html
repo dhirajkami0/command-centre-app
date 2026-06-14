@@ -25822,39 +25822,7 @@ const newPoints =
 
 for(const p of newPoints){
 
-  // =========================
-  // HISTORY CACHE
-  // =========================
-
-  window.sessionTrackCache[
-    currentSessionId
-  ].push([
-
-    Number(p.lat),
-
-    Number(p.lon)
-
-  ]);
-
-  // =========================
-  // PERIODIC HISTORY BACKUP
-  // =========================
-
-  if(
-
-    window.sessionTrackCache[
-      currentSessionId
-    ].length % 25 === 0
-
-  ){
-
-    flushHistoryTrack(
-      currentSessionId
-    );
-
-  }
-
-  // =========================
+    // =========================
   // ANALYTICS
   // =========================
 
@@ -32136,22 +32104,7 @@ async function submitEndDuty(event) {
     // ============================================================
     const sessionId = localStorage.getItem("sessionId") || window.currentSessionId || "";
 
-    // ============================================================
-    // 🔥 FINAL HISTORY BACKUP
-    // ============================================================
-    try {
-      if(sessionId){
-        await flushHistoryTrack(
-          sessionId
-        );
-      }
-    } catch(err){
-      console.error(
-        "❌ Final history backup",
-        err
-      );
-    }
-
+  
     // ============================================================
     // 🔥 BUTTON
     // ============================================================
@@ -32247,7 +32200,90 @@ async function submitEndDuty(event) {
             console.warn("⚠ No sessionId available");
             return;
           }
+// ======================================
+// 🔥 BUILD FINAL HISTORY ONCE
+// ======================================
 
+const pointsSnap =
+  await window.fb.getDocs(
+
+    window.fb.query(
+
+      window.fb.collection(
+        window.db,
+        "patrol_tracks",
+        sessionId,
+        "points"
+      ),
+
+      window.fb.orderBy(
+        "time"
+      )
+
+    )
+
+  );
+
+const fullTrack = [];
+
+pointsSnap.forEach(doc => {
+
+  const p = doc.data();
+
+  if(
+
+    Number.isFinite(
+      Number(p?.lat)
+    )
+
+    &&
+
+    Number.isFinite(
+      Number(p?.lon)
+    )
+
+  ){
+
+    fullTrack.push({
+
+      lat:
+        Number(p.lat),
+
+      lng:
+        Number(p.lon)
+
+    });
+
+  }
+
+});
+
+console.log(
+  "📍 FINAL TRACK",
+  fullTrack.length
+);
+
+if(
+  fullTrack.length < 2
+){
+
+  throw new Error(
+    `Insufficient track points: ${fullTrack.length}`
+  );
+
+}
+
+console.table({
+  sessionId,
+  fullTrackPoints:
+    fullTrack.length
+});
+
+await processHistoryTrack(
+  fullTrack,
+  sessionId
+);
+        
           // ======================================
           // 🔥 LOAD HISTORY TRACK
           // ======================================
@@ -37133,71 +37169,16 @@ window.sessionVisitedGrids =
 window.realtimePerformanceData = {
   trackPoints: []
 };
-
-    // =====================================================
-// 🔥 HISTORY CACHE
 // =====================================================
+// 🔥 HISTORY STATE ONLY
+// =====================================================
+
 window.sessionTrackCache ??= {};
 
 window.sessionTrackCache[
   sessionId
 ] = [];
-
-// =====================================================
-// 🔥 HISTORY AUTO FLUSH
-// =====================================================
-if(
-  window.historyFlushTimer
-){
-
-  clearInterval(
-    window.historyFlushTimer
-  );
-
-}
-
-window.historyFlushTimer =
-
-  setInterval(
-
-    async ()=>{
-
-      try{
-
-        const activeSessionId =
-
-          window.currentSessionId ||
-
-          localStorage.getItem(
-            "sessionId"
-          );
-
-        if(
-          !activeSessionId
-        ){
-          return;
-        }
-
-        await flushHistoryTrack(
-          activeSessionId
-        );
-
-      }
-
-      catch(err){
-
-        console.error(
-          "❌ History auto flush",
-          err
-        );
-
-      }
-
-    },
-
-    60000
-
-  );
+   
 // =====================================================
 // 🔥 DUTY ACTIVE
 // =====================================================
@@ -38529,15 +38510,7 @@ if (
       // ANALYTICS
       // =====================================
 
-      await processHistoryTrack(
-        batch,
-        sessionId
-      );
-
-      console.log(
-        "✅ HISTORY COMPLETE",
-        batch.length
-      );
+     
 
       // =====================================
       // LIVE TRACK CACHE
