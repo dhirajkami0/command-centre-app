@@ -28689,7 +28689,16 @@ window.staffTracks = window.staffTracks || {};
 window.staffDecorators = window.staffDecorators || {};
 window.staffTrackCache = window.staffTrackCache || {};
 window.staffLastUpdate = window.staffLastUpdate || {};
+// ======================================
+// 🔥 ANALYTICS BUFFER
+// ======================================
+window.analyticsBuffer = {};
 
+// ======================================
+// 🔥 FLUSH LOCK
+// ======================================
+window.analyticsFlushRunning =
+  false;
 
 // ======================================================
 // 🔥 DISTANCE
@@ -31120,7 +31129,95 @@ console.log(
     /* ============================================================
    🚨 BLOCK 9 → INCIDENT + VILLAGE + PREDICTION
 ============================================================ */
+// ==================================================
+// 🔥 COLLECT ANALYTICS HITS
+// ==================================================
+function collectAnalyticsHit(
+  gridId,
+  cellId,
+  lat,
+  lon
+){
 
+  try{
+
+    if(
+      !gridId ||
+      !cellId
+    ){
+      return;
+    }
+
+    // ==========================================
+    // 🔥 CREATE GRID BUFFER
+    // ==========================================
+    if(
+      !window.analyticsBuffer[
+        gridId
+      ]
+    ){
+
+      window.analyticsBuffer[
+        gridId
+      ] = {
+
+        touchedCells:
+          new Set(),
+
+        localCoordsArray: []
+
+      };
+    }
+
+    // ==========================================
+    // 🔥 CELL
+    // ==========================================
+    window.analyticsBuffer[
+      gridId
+    ]
+    .touchedCells
+    .add(
+      cellId
+    );
+
+    // ==========================================
+    // 🔥 COORDS
+    // KEEP FOR EXISTING
+    // updateMonthlyAnalyticsRebuild()
+    // ==========================================
+    if(
+
+      !isNaN(lat) &&
+
+      !isNaN(lon)
+
+    ){
+
+      window.analyticsBuffer[
+        gridId
+      ]
+      .localCoordsArray
+      .push([
+
+        Number(lat),
+
+        Number(lon)
+
+      ]);
+    }
+
+  }
+
+  catch(err){
+
+    console.error(
+      "❌ collectAnalyticsHit",
+      err
+    );
+
+  }
+
+}
     /* =========================
        🚨 INCIDENT SYSTEM (FINAL)
     ========================= */
