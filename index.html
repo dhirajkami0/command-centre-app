@@ -31419,7 +31419,7 @@ console.log(
     /* ============================================================
    🚨 BLOCK 9 → INCIDENT + VILLAGE + PREDICTION
 ============================================================ */
-    async function flushHistoryTrack(
+  async function flushHistoryTrack(
   sessionId
 ){
 
@@ -31432,17 +31432,18 @@ console.log(
       ];
 
     if(
-      !track ||
+      !Array.isArray(track) ||
       track.length < 2
     ){
+
       return;
+
     }
 
-    const encoded =
-
-      polyline.encode(track);
-
-    await window.fb.setDoc(
+    // =====================================
+    // HISTORY DOC
+    // =====================================
+    const historyRef =
 
       window.fb.doc(
 
@@ -31452,17 +31453,71 @@ console.log(
 
         sessionId
 
-      ),
+      );
+
+    // =====================================
+    // LOAD EXISTING HISTORY
+    // =====================================
+    const historySnap =
+
+      await window.fb.getDoc(
+        historyRef
+      );
+
+    const existingEncoded =
+
+      historySnap.data()
+        ?.rawTrackEncoded || "";
+
+    // =====================================
+    // DECODE EXISTING
+    // =====================================
+    const existingTrack =
+
+      existingEncoded
+
+        ? polyline.decode(
+            existingEncoded
+          )
+
+        : [];
+
+    // =====================================
+    // MERGE OLD + NEW
+    // =====================================
+    const mergedTrack = [
+
+      ...existingTrack,
+
+      ...track
+
+    ];
+
+    // =====================================
+    // ENCODE MERGED
+    // =====================================
+    const mergedEncoded =
+
+      polyline.encode(
+        mergedTrack
+      );
+
+    // =====================================
+    // SAVE HISTORY
+    // =====================================
+    await window.fb.setDoc(
+
+      historyRef,
 
       {
 
         sessionId,
 
         rawTrackEncoded:
-          encoded,
+          mergedEncoded,
 
         pointCount:
-          track.length,
+          mergedTrack.length,
 
         updatedAt:
           window.fb.serverTimestamp()
@@ -31475,13 +31530,32 @@ console.log(
 
     );
 
+    // =====================================
+    // CLEAR FLUSHED CACHE
+    // IMPORTANT
+    // =====================================
+    window.sessionTrackCache[
+      sessionId
+    ] = [];
+
     console.log(
 
       "💾 HISTORY BACKUP",
 
-      sessionId,
+      {
 
-      track.length
+        sessionId,
+
+        oldPoints:
+          existingTrack.length,
+
+        newPoints:
+          track.length,
+
+        totalPoints:
+          mergedTrack.length
+
+      }
 
     );
 
@@ -31490,11 +31564,15 @@ console.log(
   catch(err){
 
     console.error(
+
       "❌ HISTORY BACKUP",
+
       err
+
     );
 
   }
+
 }
 // ==================================================
 // 🔥 COLLECT ANALYTICS HITS
@@ -41394,6 +41472,71 @@ window.sessionVisitedGrids =
 window.realtimePerformanceData = {
   trackPoints: []
 };
+
+    // =====================================================
+// 🔥 HISTORY CACHE
+// =====================================================
+window.sessionTrackCache ??= {};
+
+window.sessionTrackCache[
+  sessionId
+] = [];
+
+// =====================================================
+// 🔥 HISTORY AUTO FLUSH
+// =====================================================
+if(
+  window.historyFlushTimer
+){
+
+  clearInterval(
+    window.historyFlushTimer
+  );
+
+}
+
+window.historyFlushTimer =
+
+  setInterval(
+
+    async ()=>{
+
+      try{
+
+        const activeSessionId =
+
+          window.currentSessionId ||
+
+          localStorage.getItem(
+            "sessionId"
+          );
+
+        if(
+          !activeSessionId
+        ){
+          return;
+        }
+
+        await flushHistoryTrack(
+          activeSessionId
+        );
+
+      }
+
+      catch(err){
+
+        console.error(
+          "❌ History auto flush",
+          err
+        );
+
+      }
+
+    },
+
+    60000
+
+  );
 // =====================================================
 // 🔥 DUTY ACTIVE
 // =====================================================
