@@ -8482,9 +8482,6 @@ else if (
     // Use Spatial Index for query
     const candidates = window.compartmentSpatialIndex.query(lineGeom.getEnvelopeInternal()).toArray();
     console.log("📦 Candidate Compartments:", candidates.length);
-    
-    const analyticsPromises = [];
-    const analyticsMap = {};
 
     for (const candidate of candidates) {
       const polygonGeom = candidate.polygonGeom;
@@ -8544,57 +8541,53 @@ else if (
       collectLineSegments(clipped, localCoordsArray);
 
       if (localCoordsArray.length > 0) {
-        const encodedStrings = localCoordsArray.map(seg => polyline.encode(seg));
-        
-        // Group analytics by gridId to prevent double-counting
-        if (!analyticsMap[analyticsGridId]) {
-          analyticsMap[analyticsGridId] = [];
-        }
-        analyticsMap[analyticsGridId].push(...localCoordsArray);
-        
-        // 5. FRAGMENT MERGING
-        if (!embeddedTracksMap[normalizedCompId]) {
-          embeddedTracksMap[normalizedCompId] = {
-            gridId: analyticsGridId,
-            beat: compBeat,
-            range: compRange,
-            division: compDivision,
+
+        const encodedStrings =
+
+          localCoordsArray.map(
+            seg => polyline.encode(seg)
+          );
+
+        if (
+          !embeddedTracksMap[
+            normalizedCompId
+          ]
+        ) {
+
+          embeddedTracksMap[
+            normalizedCompId
+          ] = {
+
+            gridId:
+              analyticsGridId,
+
+            beat:
+              compBeat,
+
+            range:
+              compRange,
+
+            division:
+              compDivision,
+
             tracks: []
+
           };
         }
-        embeddedTracksMap[normalizedCompId].tracks.push(...encodedStrings);
-        crossedCompartmentsSet.add(compName);
+
+        embeddedTracksMap[
+          normalizedCompId
+        ]
+        .tracks
+        .push(
+          ...encodedStrings
+        );
+
+        crossedCompartmentsSet.add(
+          compName
+        );
       }
     }
-
-    // Queue analytics updates
-   for (const [gridId, coords] of Object.entries(analyticsMap)) {
-
-  analyticsPromises.push(
-    updateMonthlyAnalyticsRebuild(
-      gridId,
-      coords,
-      fallbackMonthKey
-    )
-  );
-
-}
-
-    if (analyticsPromises.length) {
-      console.log("📊 Waiting Analytics:", analyticsPromises.length);
-      const results = await Promise.allSettled(analyticsPromises);
-      const failed = results.filter(r => r.status === "rejected");
-      if (failed.length) {
-        console.warn("⚠ Analytics failures:", failed.length);
-      } else {
-        console.log("✅ Analytics Updated");
-      }
-    }
-
-    console.log({
-      authorizedCompartments: crossedCompartmentsSet.size,
-      analyticsWrites: analyticsPromises.length
-    });
 
     // 6. COMMIT
     await window.fb.updateDoc(targetDocRef, {
