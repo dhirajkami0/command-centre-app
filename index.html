@@ -29134,6 +29134,28 @@ async function buildCellToGridLookup(){
   }
 
 }
+    function getAnalyticsCellId(
+  lat,
+  lon
+){
+
+  const STEP =
+    0.00045;
+
+  const row =
+
+    Math.floor(
+      Number(lat) / STEP
+    );
+
+  const col =
+
+    Math.floor(
+      Number(lon) / STEP
+    );
+
+  return `${row}_${col}`;
+}
    // ======================================================
 // 🔥 LOAD STAFF
 // ======================================================
