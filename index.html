@@ -31239,7 +31239,14 @@ function collectAnalyticsHit(
         touchedCells:
           new Set(),
 
-        localCoordsArray: []
+        // ======================================
+        // IMPORTANT
+        // MATCHES appendTrackToGeometries()
+        // FORMAT
+        // ======================================
+        localCoordsArray: [
+          []
+        ]
 
       };
     }
@@ -31257,21 +31264,32 @@ function collectAnalyticsHit(
 
     // ==========================================
     // 🔥 COORDS
-    // KEEP FOR EXISTING
-    // updateMonthlyAnalyticsRebuild()
+    // FORMAT:
+    // [
+    //   [
+    //     [lat,lon],
+    //     [lat,lon]
+    //   ]
+    // ]
     // ==========================================
     if(
 
-      !isNaN(lat) &&
+      Number.isFinite(
+        Number(lat)
+      )
 
-      !isNaN(lon)
+      &&
+
+      Number.isFinite(
+        Number(lon)
+      )
 
     ){
 
       window.analyticsBuffer[
         gridId
       ]
-      .localCoordsArray
+      .localCoordsArray[0]
       .push([
 
         Number(lat),
@@ -31292,8 +31310,7 @@ function collectAnalyticsHit(
 
   }
 
-}
-   async function flushAnalyticsBuffer(){
+}async function flushAnalyticsBuffer(){
 
   if(
     window.analyticsFlushRunning
@@ -31327,6 +31344,11 @@ function collectAnalyticsHit(
     if(
       entries.length === 0
     ){
+
+      console.log(
+        "📭 Analytics buffer empty"
+      );
+
       return;
     }
 
@@ -31344,15 +31366,71 @@ function collectAnalyticsHit(
 
     ){
 
-      await updateMonthlyAnalyticsRebuild(
+      try{
 
-        gridId,
+        // ====================================
+        // NEED AT LEAST 2 POINTS
+        // ====================================
+        const segment =
 
-        data.localCoordsArray,
+          data
+          ?.localCoordsArray?.[0];
 
-        monthKey
+        if(
 
-      );
+          !Array.isArray(
+            segment
+          )
+
+          ||
+
+          segment.length < 2
+
+        ){
+
+          console.warn(
+
+            "⚠ Skip grid (insufficient points)",
+
+            gridId,
+
+            segment?.length || 0
+
+          );
+
+          continue;
+        }
+
+        await updateMonthlyAnalyticsRebuild(
+
+          gridId,
+
+          data.localCoordsArray,
+
+          monthKey
+
+        );
+
+        console.log(
+          "✅ Flushed",
+          gridId
+        );
+
+      }
+
+      catch(err){
+
+        console.error(
+
+          "❌ Grid flush failed",
+
+          gridId,
+
+          err
+
+        );
+
+      }
 
     }
 
