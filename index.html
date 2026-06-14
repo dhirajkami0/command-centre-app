@@ -29789,7 +29789,82 @@ const cleanedPoints =
     ])
 
   );
+// ======================================
+// 🔥 ANALYTICS BUFFER
+// ONLY NEW GPS POINTS
+// ======================================
 
+cleanedPoints.forEach(p => {
+
+  try{
+
+    const lat =
+      Number(p[0]);
+
+    const lon =
+      Number(p[1]);
+
+    if(
+      isNaN(lat) ||
+      isNaN(lon)
+    ){
+      return;
+    }
+
+    // ==================================
+    // 🔥 GRID CELL
+    // ==================================
+    const cellId =
+
+      window.getGridId(
+        lat,
+        lon
+      );
+
+    if(!cellId){
+      return;
+    }
+
+    // ==================================
+    // 🔥 COMPARTMENT GRID
+    // ==================================
+    const gridId =
+
+      window.cellToGridId?.[
+        cellId
+      ];
+
+    if(!gridId){
+      return;
+    }
+
+    // ==================================
+    // 🔥 BUFFER
+    // ==================================
+    collectAnalyticsHit(
+
+      gridId,
+
+      cellId,
+
+      lat,
+
+      lon
+
+    );
+
+  }
+
+  catch(err){
+
+    console.warn(
+      "⚠ Analytics collect failed",
+      err
+    );
+
+  }
+
+});
 // ======================================
 // 🔥 APPEND CLEANED POINTS
 // ======================================
@@ -31214,6 +31289,94 @@ function collectAnalyticsHit(
       "❌ collectAnalyticsHit",
       err
     );
+
+  }
+
+}
+   async function flushAnalyticsBuffer(){
+
+  if(
+    window.analyticsFlushRunning
+  ){
+    return;
+  }
+
+  window.analyticsFlushRunning =
+    true;
+
+  try{
+
+    const monthKey =
+
+      `${new Date().getFullYear()}_${
+        String(
+          new Date()
+            .getMonth() + 1
+        ).padStart(
+          2,
+          "0"
+        )
+      }`;
+
+    const entries =
+
+      Object.entries(
+        window.analyticsBuffer
+      );
+
+    if(
+      entries.length === 0
+    ){
+      return;
+    }
+
+    console.log(
+      "📤 FLUSHING",
+      entries.length,
+      "GRIDS"
+    );
+
+    for(
+
+      const [gridId,data]
+
+      of entries
+
+    ){
+
+      await updateMonthlyAnalyticsRebuild(
+
+        gridId,
+
+        data.localCoordsArray,
+
+        monthKey
+
+      );
+
+    }
+
+    window.analyticsBuffer = {};
+
+    console.log(
+      "✅ ANALYTICS FLUSH COMPLETE"
+    );
+
+  }
+
+  catch(err){
+
+    console.error(
+      "❌ flushAnalyticsBuffer",
+      err
+    );
+
+  }
+
+  finally{
+
+    window.analyticsFlushRunning =
+      false;
 
   }
 
