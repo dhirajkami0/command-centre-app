@@ -8589,13 +8589,39 @@ else if (
       }
     }
 
-    // 6. COMMIT
-    await window.fb.updateDoc(targetDocRef, {
-      clipStatus: "SUCCESS",
-      compartments: Array.from(crossedCompartmentsSet),
-      tracks: embeddedTracksMap,
-      updatedAt: window.fb.serverTimestamp()
-    });
+   // 6. COMMIT
+await window.fb.updateDoc(
+  targetDocRef,
+  {
+    clipStatus: "SUCCESS",
+
+    monthKey:
+      existingData?.monthKey ||
+      fallbackMonthKey,
+
+    bbox:
+      existingData?.bbox || {
+        minLat,
+        minLng,
+        maxLat,
+        maxLng
+      },
+
+    coordinateOrder:
+      "LAT_LNG",
+
+    compartments:
+      Array.from(
+        crossedCompartmentsSet
+      ),
+
+    tracks:
+      embeddedTracksMap,
+
+    updatedAt:
+      window.fb.serverTimestamp()
+  }
+);
 
   
     console.log(`🏁 FINISH - Saved [${crossedCompartmentsSet.size}] authorized segments.`);
