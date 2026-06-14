@@ -25817,15 +25817,25 @@ if(
 // ======================================
 // 🔥 GET ONLY NEW POINTS
 // ======================================
+// ======================================
+// 🔥 GET ONLY NEW POINTS
+// ======================================
 const newPoints =
   points.slice(oldCount);
 
+// ======================================
+// 🔥 ANALYTICS COUNTER
+// ======================================
+window.analyticsPointCounter ??= 0;
+
+// ======================================
+// 🔥 PROCESS NEW POINTS
+// ======================================
 for(const p of newPoints){
 
-    // =========================
+  // =========================
   // ANALYTICS
   // =========================
-
   const cellId =
 
     getAnalyticsCellId(
@@ -25843,6 +25853,7 @@ for(const p of newPoints){
     ];
 
   if(!gridId){
+
     continue;
   }
 
@@ -25857,6 +25868,48 @@ for(const p of newPoints){
     p.lon
 
   );
+}
+
+// ======================================
+// 🔥 COUNT NEW GPS POINTS
+// ======================================
+window.analyticsPointCounter +=
+  newPoints.length;
+
+// ======================================
+// 🔥 AUTO FLUSH EVERY 50 POINTS
+// ======================================
+if(
+
+  window.analyticsPointCounter >= 50
+
+){
+
+  console.log(
+
+    "📤 AUTO FLUSH",
+
+    window.analyticsPointCounter,
+
+    "POINTS"
+
+  );
+
+  window.analyticsPointCounter = 0;
+
+  flushAnalyticsBuffer()
+
+    .catch(err=>{
+
+      console.error(
+
+        "❌ AUTO FLUSH FAILED",
+
+        err
+
+      );
+
+    });
 }
 // ======================================
 // 🔥 GET POLYLINE
@@ -27469,7 +27522,8 @@ function collectAnalyticsHit(
 
   }
 
-}async function flushAnalyticsBuffer(){
+}
+    async function flushAnalyticsBuffer(){
 
   if(
     window.analyticsFlushRunning
@@ -32282,6 +32336,37 @@ console.table({
 await processHistoryTrack(
   fullTrack,
   sessionId
+);
+
+// ======================================
+// 🔥 FINAL ANALYTICS FLUSH
+// MUST COMPLETE BEFORE REPORTS
+// ======================================
+try{
+
+  await flushAnalyticsBuffer();
+
+  console.log(
+    "✅ FINAL ANALYTICS FLUSH COMPLETE"
+  );
+
+}catch(err){
+
+  console.error(
+    "❌ FINAL ANALYTICS FLUSH FAILED",
+    err
+  );
+}
+        
+// ======================================
+// 🔥 LOAD HISTORY TRACK
+// ======================================
+const historySnap = await window.fb.getDoc(
+  window.fb.doc(
+    window.db,
+    "history",
+    sessionId
+  )
 );
         
           // ======================================
