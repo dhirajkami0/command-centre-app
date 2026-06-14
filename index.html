@@ -180,7 +180,7 @@ window.sessionTrackPoints = [];
 window.lastTrackPoint = null;
 
 window.historyLoaded = false;
-
+window.sessionTrackCache ??= {};
 // ====================================================
 // 📜 HISTORY LAYERS
 // ====================================================
@@ -29770,6 +29770,15 @@ window.activeSessionMap[
   s.cleanName
 ] = currentSessionId;
     // ==============================================
+// 🔥 SESSION TRACK CACHE
+// ==============================================
+window.sessionTrackCache ??= {};
+
+window.sessionTrackCache[
+  currentSessionId
+] ??= [];
+
+    // ==============================================
     // 🔥 POINTS COLLECTION
     // ==============================================
     const {
@@ -29969,10 +29978,49 @@ if(
 // ======================================
 // 🔥 GET ONLY NEW POINTS
 // ======================================
+// ======================================
+// 🔥 GET ONLY NEW POINTS
+// ======================================
 const newPoints =
-
   points.slice(oldCount);
+
 for(const p of newPoints){
+
+  // =========================
+  // HISTORY CACHE
+  // =========================
+
+  window.sessionTrackCache[
+    currentSessionId
+  ].push([
+
+    Number(p.lat),
+
+    Number(p.lon)
+
+  ]);
+
+  // =========================
+  // PERIODIC HISTORY BACKUP
+  // =========================
+
+  if(
+
+    window.sessionTrackCache[
+      currentSessionId
+    ].length % 25 === 0
+
+  ){
+
+    flushHistoryTrack(
+      currentSessionId
+    );
+
+  }
+
+  // =========================
+  // ANALYTICS
+  // =========================
 
   const cellId =
 
@@ -29993,11 +30041,7 @@ for(const p of newPoints){
   if(!gridId){
     continue;
   }
-  console.log(
-    "📊 HIT",
-    gridId,
-    cellId
-  );
+
   collectAnalyticsHit(
 
     gridId,
@@ -30009,7 +30053,6 @@ for(const p of newPoints){
     p.lon
 
   );
-
 }
 // ======================================
 // 🔥 GET POLYLINE
@@ -31376,6 +31419,83 @@ console.log(
     /* ============================================================
    🚨 BLOCK 9 → INCIDENT + VILLAGE + PREDICTION
 ============================================================ */
+    async function flushHistoryTrack(
+  sessionId
+){
+
+  try{
+
+    const track =
+
+      window.sessionTrackCache?.[
+        sessionId
+      ];
+
+    if(
+      !track ||
+      track.length < 2
+    ){
+      return;
+    }
+
+    const encoded =
+
+      polyline.encode(track);
+
+    await window.fb.setDoc(
+
+      window.fb.doc(
+
+        window.db,
+
+        "history",
+
+        sessionId
+
+      ),
+
+      {
+
+        sessionId,
+
+        rawTrackEncoded:
+          encoded,
+
+        pointCount:
+          track.length,
+
+        updatedAt:
+          window.fb.serverTimestamp()
+
+      },
+
+      {
+        merge:true
+      }
+
+    );
+
+    console.log(
+
+      "💾 HISTORY BACKUP",
+
+      sessionId,
+
+      track.length
+
+    );
+
+  }
+
+  catch(err){
+
+    console.error(
+      "❌ HISTORY BACKUP",
+      err
+    );
+
+  }
+}
 // ==================================================
 // 🔥 COLLECT ANALYTICS HITS
 // ==================================================
@@ -36272,13 +36392,26 @@ async function submitEndDuty(event) {
     }
 
     // ============================================================
-    // 🔥 STOP REALTIME ANALYTICS
+    // 🔥 SESSION ID
     // ============================================================
-    await flushRealtimeAnalytics();
+    const sessionId = localStorage.getItem("sessionId") || window.currentSessionId || "";
 
-stopRealtimeAnalytics();
-  
-  
+    // ============================================================
+    // 🔥 FINAL HISTORY BACKUP
+    // ============================================================
+    try {
+      if(sessionId){
+        await flushHistoryTrack(
+          sessionId
+        );
+      }
+    } catch(err){
+      console.error(
+        "❌ Final history backup",
+        err
+      );
+    }
+
     // ============================================================
     // 🔥 BUTTON
     // ============================================================
@@ -36288,8 +36421,6 @@ stopRealtimeAnalytics();
       console.groupEnd();
       return;
     }
-
-    const original = btn.innerHTML;
 
     // ============================================================
     // 🔒 LOCK BUTTON
@@ -36338,11 +36469,6 @@ stopRealtimeAnalytics();
       phone: profile.phone
     };
 
-    // ============================================================
-    // 🔥 SESSION ID
-    // ============================================================
-    const sessionId = localStorage.getItem("sessionId") || window.currentSessionId || "";
-
     console.log("📤 PAYLOAD:", payload);
 
     // ============================================================
@@ -36382,11 +36508,56 @@ stopRealtimeAnalytics();
             return;
           }
 
-          const points = await loadSessionPoints(sessionId);
+          // ======================================
+          // 🔥 LOAD HISTORY TRACK
+          // ======================================
+          const historySnap = await window.fb.getDoc(
+            window.fb.doc(
+              window.db,
+              "history",
+              sessionId
+            )
+          );
+
+          if(!historySnap.exists()){
+            throw new Error(`History not found: ${sessionId}`);
+          }
+
+          const historyData =
+  historySnap.data() || {};
+
+const encoded =
+  String(
+    historyData.rawTrackEncoded || ""
+  );
+          const decoded = encoded ? polyline.decode(encoded) : [];
+
+          const points = decoded.map(coord => ({
+            lat: Number(coord[0]),
+            lng: Number(coord[1])
+          }));
+const endedAt =
+  Date.now();
           const kmlUrl = await uploadPatrolKML(sessionId, points);
           window.lastDutyKmlUrl = kmlUrl || "";
 
-          
+          await window.fb.updateDoc(
+            window.fb.doc(window.db, "history", sessionId),
+            {
+              pointCount: points.length,
+              kmlUrl: kmlUrl || "",
+             endedAt,
+              clipStatus: "READY"
+            }
+          ); 
+
+          console.table({
+            sessionId,
+            pointCount: points.length,
+            encodedLength: encoded.length,
+            decodedPoints: points.length,
+            kmlGenerated: !!kmlUrl
+          });
 
           try {
             const reportData = await buildDutyPerformanceReport({
@@ -36407,34 +36578,49 @@ stopRealtimeAnalytics();
             await sendDutyReportToAppsScript(reportData);
             showDutyPerformanceReport(reportData);
             window.realtimePerformanceData = {
-  trackPoints: []
-};
+              trackPoints: []
+            };
           } catch (reportErr) {
             console.error("❌ Performance report failed", reportErr);
           }
 
-          await window.fb.updateDoc(
-            window.fb.doc(window.db, "patrol_tracks", sessionId),
-            {
-              dutyActive: false,
-              status: "ENDED",
-              endedAt: Date.now(),
-              updatedAt: Date.now(),
-              pointCount: points.length,
-              kmlUrl: kmlUrl || ""
-            }
-          );
+         await window.fb.updateDoc(
+  window.fb.doc(
+    window.db,
+    "patrol_tracks",
+    sessionId
+  ),
+  {
+    dutyActive: false,
+    status: "ENDED",
+
+    endedAt,
+
+    updatedAt:
+      endedAt
+  }
+);
         } catch (err) {
           console.error("❌ History write failed", err);
         }
       })()
     ])
     .then(results => {
+      if(window.sessionTrackCache){
+        delete window.sessionTrackCache[sessionId];
+      }
+      
+      window.historyFlushInProgress = false;
 
-        finalizeSessionLifecycle();
+      window.realtimePerformanceData = {
+        trackPoints: []
+      };
 
-        window.sessionVisitedGrids =
-  new Set();
+      window.lastTrackPoint = null;
+
+      finalizeSessionLifecycle();
+
+      window.sessionVisitedGrids = new Set();
       console.log("✅ End duty background sync complete", results);
     })
     .catch(err => {
