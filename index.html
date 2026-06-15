@@ -10175,28 +10175,35 @@ async function showCompartmentVisitBreakdown(){
         Number(
           analytics.distanceMeters || 0
         ) / 1000;
+const displayDistance =
 
-      const displayDistance =
+  distanceKm >= 0.1
 
-        distanceKm > 0
+  ?
 
-        ?
+  distanceKm.toFixed(1)
 
-        distanceKm.toFixed(1)
+  :
 
-        :
+  distanceKm > 0
 
-        Number(
-          analytics.visitCount || 0
-        ) > 0
+  ?
 
-        ?
+  "<0.1"
 
-        "<0.1"
+  :
 
-        :
+  Number(
+    analytics.visitCount || 0
+  ) > 0
 
-        "0.0";
+  ?
+
+  "<0.1"
+
+  :
+
+  "0.0";
 
       console.log(
         "📏 BREAKDOWN DISTANCE",
