@@ -35576,7 +35576,14 @@ cursor:pointer;
 <button
 
 onclick="
-shareDutyKMLReport()
+navigator.share({
+
+  title:'Patrol Track KML',
+
+  text:
+    window.currentDutyReport?.kmlUrl || ''
+
+});
 "
 
 style="
@@ -36029,34 +36036,17 @@ ${coordinates}
 
 }
 
-function shareDutyKMLReport(){
+async function shareDutyKMLReport(){
 
   try{
 
-    alert(
-      "📤 WhatsApp button clicked"
-    );
-
     const report =
       window.currentDutyReport || {};
-
-    console.log(
-      "CURRENT REPORT",
-      report
-    );
 
     const kmlUrl =
       String(
         report.kmlUrl || ""
       ).trim();
-
-    alert(
-      "KML URL:\n" +
-      (
-        kmlUrl ||
-        "EMPTY"
-      )
-    );
 
     if(!kmlUrl){
 
@@ -36067,11 +36057,9 @@ function shareDutyKMLReport(){
       return;
     }
 
-    if(
-      navigator.share
-    ){
+    if(navigator.share){
 
-      navigator.share({
+      await navigator.share({
 
         title:
           "Patrol Track KML",
@@ -36082,36 +36070,14 @@ function shareDutyKMLReport(){
 
 ${kmlUrl}`
 
-      })
-
-      .then(() => {
-
-        console.log(
-          "✅ Share success"
-        );
-
-      })
-
-      .catch(err => {
-
-        console.error(
-          "Share failed",
-          err
-        );
-
-        alert(
-          "Share failed:\n" +
-          err.message
-        );
-
       });
 
       return;
     }
 
-    const whatsappUrl =
+    window.open(
 
-      "https://wa.me/?text=" +
+      "https://api.whatsapp.com/send?text=" +
 
       encodeURIComponent(
 
@@ -36119,24 +36085,22 @@ ${kmlUrl}`
 
 ${kmlUrl}`
 
-      );
+      ),
 
-    window.location.href =
-      whatsappUrl;
+      "_blank"
+
+    );
 
   }
 
   catch(err){
 
-    console.error(
-      "❌ shareDutyKMLReport",
-      err
-    );
+    console.error(err);
 
     alert(
-      err.message ||
-      "Unknown error"
+      "Unable to share"
     );
+
   }
 
 }
