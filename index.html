@@ -13327,7 +13327,6 @@ if(updatedAtEl){
   if(summary.latestUpdatedAt){
 
     const updatedDate =
-
       new Date(
         summary.latestUpdatedAt
       );
@@ -13335,7 +13334,11 @@ if(updatedAtEl){
     updatedAtEl.textContent =
 
       updatedDate.toLocaleDateString(
-        "en-IN"
+        "en-IN",
+        {
+          day:"2-digit",
+          month:"short"
+        }
       )
 
       + " "
@@ -13343,7 +13346,11 @@ if(updatedAtEl){
       +
 
       updatedDate.toLocaleTimeString(
-        "en-IN"
+        "en-IN",
+        {
+          hour:"2-digit",
+          minute:"2-digit"
+        }
       );
 
   }
