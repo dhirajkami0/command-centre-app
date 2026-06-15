@@ -36031,7 +36031,11 @@ ${coordinates}
 
 async function shareDutyKMLReport(){
 
+  alert("STEP 1");
+
   try{
+
+    alert("STEP 2");
 
     const report =
       window.currentDutyReport || {};
@@ -36041,36 +36045,35 @@ async function shareDutyKMLReport(){
         report.kmlUrl || ""
       ).trim();
 
-    if(!kmlUrl){
-
-      alert(
-        "❌ KML not available"
-      );
-
-      return;
-    }
+    alert(
+      "KML = " + kmlUrl
+    );
 
     await navigator.share({
 
       title:
-        "Patrol Track KML",
+        "Test",
 
       text:
-`📍 Patrol Track KML
-
-${kmlUrl}`
+        "Hello World"
 
     });
+
+    alert("STEP 3");
 
   }
 
   catch(err){
 
-    console.error(
-      "❌ shareDutyKMLReport",
-      err
+    alert(
+      "ERROR: " +
+      err.message
     );
+
+    console.error(err);
+
   }
+
 }
  async function sendDutyReportToAppsScript(
   report
