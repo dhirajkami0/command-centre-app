@@ -14935,93 +14935,18 @@ setTimeout(async () => {
   addMonthlyStatusCard();
 
   // =====================================
-  // ⏳ WAIT FOR GRID INFRASTRUCTURE
+  // 🚀 SHOW MONTHLY STATUS IMMEDIATELY
   // =====================================
 
-  const waitStart =
-    performance.now();
+  try {
 
-  while(
-
-    window.masterGridLoading
-
-    ||
-
-    (
-      !window.masterGrid
-
-      ||
-
-      Object.keys(
-        window.masterGrid
-      ).length === 0
-    )
-
-  ){
-
-    console.log(
-      "⏳ Waiting for master grid..."
-    );
-
-    await new Promise(
-      resolve =>
-        setTimeout(
-          resolve,
-          500
+    updateMonthlyStatusCard()
+      .catch(err =>
+        console.error(
+          "❌ Initial Monthly Status",
+          err
         )
-    );
-
-    // =================================
-    // SAFETY EXIT (30s)
-    // =================================
-
-    if(
-
-      performance.now()
-      -
-      waitStart
-
-      >
-
-      30000
-
-    ){
-
-      console.warn(
-        "⚠ Master grid wait timeout"
       );
-
-      break;
-    }
-
-  }
-
-  console.log(
-    "✅ Master Grid Ready:",
-    Object.keys(
-      window.masterGrid || {}
-    ).length
-  );
-
-  console.log(
-    "✅ Cell Lookup Ready:",
-    Object.keys(
-      window.cellToGridId || {}
-    ).length
-  );
-
-  console.log(
-    "✅ Compartments Ready:",
-    window.allCompartmentFeatures?.length || 0
-  );
-
-  // =====================================
-  // INITIAL UPDATE
-  // =====================================
-
-  try{
-
-    await updateMonthlyStatusCard();
 
   }
 
@@ -15035,7 +14960,107 @@ setTimeout(async () => {
   }
 
   // =====================================
-  // REFRESH TIMER
+  // ⏳ WAIT FOR GRID IN BACKGROUND
+  // =====================================
+
+  (async()=>{
+
+    const waitStart =
+      performance.now();
+
+    while(
+
+      window.masterGridLoading
+
+      ||
+
+      !window.masterGrid
+
+      ||
+
+      Object.keys(
+        window.masterGrid
+      ).length === 0
+
+    ){
+
+      console.log(
+        "⏳ Waiting for master grid..."
+      );
+
+      await new Promise(
+        resolve =>
+          setTimeout(
+            resolve,
+            500
+          )
+      );
+
+      if(
+
+        performance.now()
+        -
+        waitStart
+
+        >
+
+        30000
+
+      ){
+
+        console.warn(
+          "⚠ Master grid wait timeout"
+        );
+
+        return;
+
+      }
+
+    }
+
+    console.log(
+      "✅ Master Grid Ready:",
+      Object.keys(
+        window.masterGrid || {}
+      ).length
+    );
+
+    console.log(
+      "✅ Cell Lookup Ready:",
+      Object.keys(
+        window.cellToGridId || {}
+      ).length
+    );
+
+    console.log(
+      "✅ Compartments Ready:",
+      window.allCompartmentFeatures
+        ?.length || 0
+    );
+
+    // =================================
+    // REFRESH ONCE AFTER GRID READY
+    // =================================
+
+    try{
+
+      await updateMonthlyStatusCard();
+
+    }
+
+    catch(err){
+
+      console.error(
+        "❌ Grid Ready Refresh",
+        err
+      );
+
+    }
+
+  })();
+
+  // =====================================
+  // AUTO REFRESH
   // =====================================
 
   if(
@@ -15052,7 +15077,7 @@ setTimeout(async () => {
 
     setInterval(
 
-      async () => {
+      async()=>{
 
         try{
 
@@ -15079,7 +15104,7 @@ setTimeout(async () => {
     "📊 Monthly Status Auto Refresh Started"
   );
 
-}, 1000);
+},1000);
     /* ============================================================
        📍 LOCATION
     ============================================================ */// 📍 Layer for location
