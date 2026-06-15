@@ -32369,17 +32369,7 @@ const historySnap = await window.fb.getDoc(
   )
 );
         
-          // ======================================
-          // 🔥 LOAD HISTORY TRACK
-          // ======================================
-          const historySnap = await window.fb.getDoc(
-            window.fb.doc(
-              window.db,
-              "history",
-              sessionId
-            )
-          );
-
+       
           if(!historySnap.exists()){
             throw new Error(`History not found: ${sessionId}`);
           }
