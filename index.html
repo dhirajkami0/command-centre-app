@@ -9687,6 +9687,8 @@ async function getAnalyticsSummary(
   let visitCount = 0;
   let newlyCovered = 0;
 
+  let latestUpdatedAt = 0;
+
   const uniqueVisitedCells =
     new Set();
 
@@ -9802,6 +9804,40 @@ async function getAnalyticsSummary(
       const analytics =
         result.value.data() || {};
 
+      // ==========================
+      // UPDATED AT
+      // ==========================
+
+      const updatedAtMs =
+
+        analytics.updatedAt
+          ?.toMillis?.()
+
+        ||
+
+        (
+          analytics.updatedAt
+            ?.seconds
+          ? analytics.updatedAt.seconds * 1000
+          : 0
+        )
+
+        ||
+
+        0;
+
+      latestUpdatedAt = Math.max(
+
+        latestUpdatedAt,
+
+        updatedAtMs
+
+      );
+
+      // ==========================
+      // VISITED CELLS
+      // ==========================
+
       Object.keys(
         analytics.visitedCells || {}
       )
@@ -9813,15 +9849,27 @@ async function getAnalyticsSummary(
 
       });
 
+      // ==========================
+      // NEWLY COVERED
+      // ==========================
+
       newlyCovered +=
         Number(
           analytics.lastSessionAddedCells || 0
         );
 
+      // ==========================
+      // DISTANCE
+      // ==========================
+
       distanceMeters +=
         Number(
           analytics.distanceMeters || 0
         );
+
+      // ==========================
+      // VISITS
+      // ==========================
 
       visitCount +=
         Number(
@@ -9864,6 +9912,15 @@ async function getAnalyticsSummary(
     visitCount
   );
 
+  console.log(
+    "📊 LAST UPDATE:",
+    latestUpdatedAt
+      ? new Date(
+          latestUpdatedAt
+        ).toLocaleString()
+      : "N/A"
+  );
+
   return {
 
     compartments:
@@ -9883,6 +9940,8 @@ async function getAnalyticsSummary(
 
     totalCovered,
 
+    latestUpdatedAt,
+
     coveragePercent:
 
       totalCells > 0
@@ -9895,7 +9954,6 @@ async function getAnalyticsSummary(
         : 0
   };
 }
-
   async function showMonthlyHeatmap() {
 
   try {
@@ -12938,7 +12996,7 @@ function getLiveStaffCountForCurrentPolygon() {
 
   return "BTR MONTHLY STATUS";
 }
-    async function updateMonthlyStatusCard() {
+   async function updateMonthlyStatusCard() {
 
   try {
 
@@ -13004,10 +13062,12 @@ function getLiveStaffCountForCurrentPolygon() {
 
     const liveStaff =
       getLiveStaffCountForCurrentPolygon();
-console.log(
-  "LIVE STAFF RETURNED:",
-  liveStaff
-);
+
+    console.log(
+      "LIVE STAFF RETURNED:",
+      liveStaff
+    );
+
     const liveStaffEl =
       document.getElementById(
         "msLiveStaff"
@@ -13064,25 +13124,27 @@ console.log(
       :
 
       0;
-// =====================================
-// 🔥 TOTAL AREA
-// =====================================
 
-const totalAreaHa =
+    // =====================================
+    // 🔥 TOTAL AREA
+    // =====================================
 
-  Number(
-    summary.areaHa || 0
-  );
+    const totalAreaHa =
 
-// =====================================
-// 🔥 TOTAL GRIDS
-// =====================================
+      Number(
+        summary.areaHa || 0
+      );
 
-const totalGrids =
+    // =====================================
+    // 🔥 TOTAL GRIDS
+    // =====================================
 
-  Number(
-    summary.totalCells || 0
-  );
+    const totalGrids =
+
+      Number(
+        summary.totalCells || 0
+      );
+
     // =====================================
     // 🔥 TITLE
     // =====================================
@@ -13116,23 +13178,25 @@ const totalGrids =
         ).toLocaleString();
 
     }
-// =====================================
-// 🔥 TOTAL GRIDS
-// =====================================
 
-const totalGridsEl =
+    // =====================================
+    // 🔥 TOTAL GRIDS
+    // =====================================
 
-  document.getElementById(
-    "msTotalGrids"
-  );
+    const totalGridsEl =
 
-if(totalGridsEl){
+      document.getElementById(
+        "msTotalGrids"
+      );
 
-  totalGridsEl.textContent =
+    if(totalGridsEl){
 
-    totalGrids.toLocaleString();
+      totalGridsEl.textContent =
 
-}
+        totalGrids.toLocaleString();
+
+    }
+
     // =====================================
     // 🔥 COMPARTMENTS
     // =====================================
@@ -13208,25 +13272,26 @@ if(totalGridsEl){
     }
 
     // =====================================
-// 🔥 TOTAL AREA
-// =====================================
+    // 🔥 TOTAL AREA
+    // =====================================
 
-const totalAreaEl =
+    const totalAreaEl =
 
-  document.getElementById(
-    "msTotalArea"
-  );
+      document.getElementById(
+        "msTotalArea"
+      );
 
-if(totalAreaEl){
+    if(totalAreaEl){
 
-  totalAreaEl.textContent =
+      totalAreaEl.textContent =
 
-    totalAreaHa
-    .toFixed(1)
+        totalAreaHa
+        .toFixed(1)
 
-    + " ha";
+        + " ha";
 
-}
+    }
+
     // =====================================
     // 🔥 COVERAGE %
     // =====================================
@@ -13242,6 +13307,33 @@ if(totalAreaEl){
         summary.coveragePercent
         .toFixed(1)
         + " %";
+
+    }
+
+    // =====================================
+    // 🔥 UPDATED AT
+    // =====================================
+
+    const updatedAtEl =
+      document.getElementById(
+        "msUpdatedAt"
+      );
+
+    if(updatedAtEl){
+
+      updatedAtEl.textContent =
+
+        summary.latestUpdatedAt
+
+        ?
+
+        new Date(
+          summary.latestUpdatedAt
+        ).toLocaleTimeString()
+
+        :
+
+        "--";
 
     }
 
@@ -13342,7 +13434,10 @@ if(totalAreaEl){
     <span>Coverage</span>
     <span id="msCoverage">0 %</span>
   </div>
-
+<div class="monthlyStatusRow">
+  <span>Updated At</span>
+  <span id="msUpdatedAt">--</span>
+</div>
 </div>
     `;
 
@@ -27523,7 +27618,7 @@ function collectAnalyticsHit(
   }
 
 }
-    async function flushAnalyticsBuffer(){
+   async function flushAnalyticsBuffer(){
 
   if(
     window.analyticsFlushRunning
@@ -27551,7 +27646,7 @@ function collectAnalyticsHit(
     const entries =
 
       Object.entries(
-        window.analyticsBuffer
+        window.analyticsBuffer || {}
       );
 
     if(
@@ -27581,9 +27676,6 @@ function collectAnalyticsHit(
 
       try{
 
-        // ====================================
-        // NEED AT LEAST 2 POINTS
-        // ====================================
         const segment =
 
           data
@@ -27647,11 +27739,86 @@ function collectAnalyticsHit(
 
     }
 
+    // ====================================
+    // CLEAR BUFFER ONLY AFTER SUCCESS
+    // ====================================
+
     window.analyticsBuffer = {};
 
     console.log(
       "✅ ANALYTICS FLUSH COMPLETE"
     );
+
+    // ====================================
+    // REFRESH MONTHLY STATUS CARD
+    // ====================================
+
+    try{
+
+      if(
+
+        typeof updateMonthlyStatusCard
+        === "function"
+
+      ){
+
+        await updateMonthlyStatusCard();
+
+        console.log(
+          "📊 Monthly Status Updated"
+        );
+
+      }
+
+    }
+
+    catch(cardErr){
+
+      console.error(
+
+        "❌ Monthly Status Refresh Failed",
+
+        cardErr
+
+      );
+
+    }
+
+    // ====================================
+    // OPTIONAL HEATMAP REFRESH
+    // ONLY IF VISIBLE
+    // ====================================
+
+    try{
+
+      if(
+
+        window.currentHeatmapLevel
+
+        &&
+
+        typeof showMonthlyHeatmap
+        === "function"
+
+      ){
+
+        await showMonthlyHeatmap();
+
+      }
+
+    }
+
+    catch(heatErr){
+
+      console.warn(
+
+        "⚠ Heatmap refresh skipped",
+
+        heatErr
+
+      );
+
+    }
 
   }
 
