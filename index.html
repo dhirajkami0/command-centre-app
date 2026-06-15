@@ -13313,29 +13313,49 @@ function getLiveStaffCountForCurrentPolygon() {
     // =====================================
     // 🔥 UPDATED AT
     // =====================================
+// =====================================
+// 🔥 UPDATED AT
+// =====================================
 
-    const updatedAtEl =
-      document.getElementById(
-        "msUpdatedAt"
+const updatedAtEl =
+  document.getElementById(
+    "msUpdatedAt"
+  );
+
+if(updatedAtEl){
+
+  if(summary.latestUpdatedAt){
+
+    const updatedDate =
+
+      new Date(
+        summary.latestUpdatedAt
       );
 
-    if(updatedAtEl){
+    updatedAtEl.textContent =
 
-      updatedAtEl.textContent =
+      updatedDate.toLocaleDateString(
+        "en-IN"
+      )
 
-        summary.latestUpdatedAt
+      + " "
 
-        ?
+      +
 
-        new Date(
-          summary.latestUpdatedAt
-        ).toLocaleTimeString()
+      updatedDate.toLocaleTimeString(
+        "en-IN"
+      );
 
-        :
+  }
 
-        "--";
+  else {
 
-    }
+    updatedAtEl.textContent =
+      "--";
+
+  }
+
+}
 
   }
 
