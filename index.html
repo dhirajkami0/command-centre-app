@@ -7077,281 +7077,165 @@ await appendTrackToGeometries(
 // FINAL ENTERPRISE VERSION
 // FIRESTORE SAFE
 // ======================================
-async function preloadAllCompartments(){
+async function preloadAllCompartments() {
 
-console.trace(
-  "PRELOAD_COMPARTMENT_ CALLED"
-);
+  console.trace(
+    "PRELOAD_COMPARTMENT_ CALLED"
+  );
+
+  // =====================================
+  // ✅ ALREADY READY
+  // =====================================
 
   if(
     window.__COMPARTMENTS_READY__
   ){
+
     console.log(
       "⏭ Compartments already loaded"
     );
+
     return;
   }
+
+  // =====================================
+  // ⏳ LOAD IN PROGRESS
+  // RETURN SAME PROMISE
+  // =====================================
 
   if(
     window.__COMPARTMENTS_LOADING__
   ){
+
     console.log(
       "⏳ Compartments loading..."
     );
-    return;
+
+    return window.__COMPARTMENTS_PROMISE__;
   }
+
+  // =====================================
+  // 🚀 START NEW LOAD
+  // =====================================
 
   window.__COMPARTMENTS_LOADING__ =
     true;
 
-  try{
+  window.__COMPARTMENTS_PROMISE__ =
+  (async()=>{
 
-    console.log(
-      "📦 PRELOADING ALL COMPARTMENTS"
+    console.time(
+      "PRELOAD_COMPARTMENTS"
     );
+
+    try{
+      
+      console.log("📦 PRELOADING ALL COMPARTMENTS");
 
     window.allCompartmentFeatures = [];
 
     // =====================================
     // UNIQUE BEAT + DIVISION PAIRS
     // =====================================
-
     const beatMap = new Map();
 
-    (
-      window.allGISFeatures || []
-    )
-    .forEach(f => {
+    (window.allGISFeatures || []).forEach(f => {
+      try {
+        const props = f.properties || {};
+        const beat = String(props.Beat || props.beat || "").trim();
+        const rawDivision = String(props.Division || props.division || "").trim();
 
-      try{
-
-        const props =
-          f.properties || {};
-
-        const beat =
-
-          String(
-
-            props.Beat ||
-
-            props.beat ||
-
-            ""
-
-          ).trim();
-
-        const rawDivision =
-
-          String(
-
-            props.Division ||
-
-            props.division ||
-
-            ""
-
-          ).trim();
-
-        if(
-          !beat ||
-          !rawDivision
-        ){
-          return;
-        }
+        if (!beat || !rawDivision) return;
 
         let divisionFolder = "";
-
-        if(
-          rawDivision ===
-          "BuxaTR_WEST"
-        ){
-
-          divisionFolder =
-            "BTR_W";
-        }
-
-        else if(
-          rawDivision ===
-          "BuxaTR_EAST"
-        ){
-
-          divisionFolder =
-            "BTR_E";
-        }
-
-        else{
-
+        if (rawDivision === "BuxaTR_WEST") {
+          divisionFolder = "BTR_W";
+        } else if (rawDivision === "BuxaTR_EAST") {
+          divisionFolder = "BTR_E";
+        } else {
           return;
         }
 
-        beatMap.set(
-          beat,
-          divisionFolder
-        );
-
-      }
-
-      catch(e){}
+        beatMap.set(beat, divisionFolder);
+      } catch (e) {}
     });
 
-    console.log(
-      "📦 UNIQUE BEATS:",
-      beatMap.size
-    );
+    console.log("📦 UNIQUE BEATS:", beatMap.size);
 
     // =====================================
     // LOAD EVERY BEAT FILE
     // =====================================
-
-    for(
-      const [beat,divisionFolder]
-      of beatMap
-    ){
-
-      try{
-
-        const url =
-
-          `./geojson/compartments/${
-            divisionFolder
-          }/${
-            encodeURIComponent(
-              beat
-            )
-          }.geojson`;
-
-        console.log(
-          "📥",
-          url
-        );
-
-        const res =
-          await fetch(url);
-
-        if(!res.ok){
-
-          console.warn(
-            "⚠ Missing:",
-            url
-          );
-
-          continue;
+    const results = await Promise.all(
+      [...beatMap].map(async ([beat, divisionFolder]) => {
+        try {
+          const url = `./geojson/compartments/${divisionFolder}/${encodeURIComponent(beat)}.geojson`;
+          const res = await fetch(url);
+          if (!res.ok) return [];
+          const data = await res.json();
+          return data?.features || [];
+        } catch (e) {
+          return [];
         }
+      })
+    );
 
-        const data =
-          await res.json();
+    window.allCompartmentFeatures = results.flat();
+    
+    console.timeEnd("PRELOAD_COMPARTMENTS");
 
-        if(
-          !data ||
-          !Array.isArray(
-            data.features
-          )
-        ){
-          continue;
+    console.log("✅ PRELOAD COMPLETE:", window.allCompartmentFeatures.length);
+
+    window.__COMPARTMENTS_READY__ = true;
+
+    // background tasks
+    setTimeout(() => {
+      rebuildSpatialIndex().catch(console.error);
+    }, 0);
+
+    // 🔥 BACKGROUND ONLY GRID LOADING
+    if (!window.masterGridLoading && (!window.masterGrid || Object.keys(window.masterGrid).length === 0)) {
+      window.masterGridLoading = true;
+
+      setTimeout(async () => {
+        try {
+          await loadMasterGrid();
+          console.log("✅ MASTER GRID LOADED");
+          await buildCellToGridLookup();
+          console.log("✅ CELL → GRID LOOKUP READY", Object.keys(window.cellToGridId || {}).length);
+        } catch (err) {
+          console.error("❌ Grid preload failed", err);
+        } finally {
+          window.masterGridLoading = false;
         }
-
-        window.allCompartmentFeatures.push(
-          ...data.features
-        );
-
-      }
-
-      catch(err){
-
-        console.warn(
-          "⚠ Load failed:",
-          beat,
-          err
-        );
-
-      }
-
+      }, 0);
+    } else {
+      console.log("⏭ GRID already available");
     }
+     }
 
-    console.log(
-      "✅ PRELOAD COMPLETE:",
-      window.allCompartmentFeatures.length
-    );
+    catch(err){
 
-    await rebuildSpatialIndex();
-
-    window.__COMPARTMENTS_READY__ =
-      true;
-
-   // 🔥 BACKGROUND ONLY
-if(
-  !window.masterGridLoading &&
-  (
-    !window.masterGrid ||
-    Object.keys(
-      window.masterGrid
-    ).length === 0
-  )
-){
-
-  window.masterGridLoading =
-    true;
-
-  try{
-
-    await loadMasterGrid();
-
-    console.log(
-      "✅ MASTER GRID LOADED"
-    );
-
-    await buildCellToGridLookup();
-
-    console.log(
-      "✅ CELL → GRID LOOKUP READY",
-      Object.keys(
-        window.cellToGridId || {}
-      ).length
-    );
-
-  }
-
-  catch(err){
-
-    console.error(
-      "❌ Grid preload failed",
-      err
-    );
-
-  }
-
-  finally{
-
-    window.masterGridLoading =
-      false;
-
-  }
-
-} else{
-
-      console.log(
-        "⏭ GRID already available"
+      console.error(
+        "❌ preloadAllCompartments",
+        err
       );
 
     }
 
-  }
+    finally{
 
-  catch(err){
+      window.__COMPARTMENTS_LOADING__ =
+        false;
 
-    console.error(
-      "❌ preloadAllCompartments",
-      err
-    );
+      console.log(
+        "✅ PRELOAD FINISHED"
+      );
 
-  }
+    }
 
-  finally{
+  })();
 
-    window.__COMPARTMENTS_LOADING__ =
-      false;
-
-  }
+  return window.__COMPARTMENTS_PROMISE__;
 }
 async function buildAndStoreMasterGrid() {
   console.group(
@@ -16026,6 +15910,14 @@ ${pct(data.health)} / 100
 window.cachedHeatmapBoundary = null;
 window.cachedHeatmapBoundaryKey = null;
 
+window.__COMPARTMENTS_READY__ =
+  false;
+
+window.__COMPARTMENTS_LOADING__ =
+  false;
+
+window.__COMPARTMENTS_PROMISE__ =
+  null;
     // 🔥 GLOBAL (IMPORTANT)
 
  // =====================================================
@@ -17039,8 +16931,8 @@ function createGISButton(
 // ======================================================
 
 async function loadRangeKML(){
-console.trace(
-  "LOAD_RANGE_KML CALLED"
+console.time(
+  "LOAD_RANGE_KML_TOTAL"
 );
   try {
 
@@ -17174,9 +17066,41 @@ console.trace(
     // ==================================================
     // 🎨 RENDER GIS
     // ==================================================
-await preloadAllCompartments();
-    renderFilteredGIS();
+console.time(
+  "INITIAL_GIS_RENDER"
+);
+
+renderFilteredGIS();
+
 centerMap();
+
+console.timeEnd(
+  "INITIAL_GIS_RENDER"
+);
+
+// ====================================
+// 🔥 BACKGROUND COMPARTMENT PRELOAD
+// ====================================
+
+preloadAllCompartments()
+
+.then(()=>{
+
+  console.log(
+    "✅ BACKGROUND COMPARTMENTS READY:",
+    window.allCompartmentFeatures?.length
+  );
+
+})
+
+.catch(err=>{
+
+  console.error(
+    "❌ BACKGROUND PRELOAD FAILED",
+    err
+  );
+
+});
     // ==================================================
     // 👮 STAFF LOAD COMPARTMENTS
     // ==================================================
@@ -33091,53 +33015,84 @@ else{
   // =====================================
   // 🔥 ENSURE COMPARTMENTS ARE LOADED
   // =====================================
+// =====================================
+// ⏳ WAIT FOR EXISTING LOAD
+// =====================================
 
-  if(
+if(
+  window.__COMPARTMENTS_LOADING__
+){
 
-    !Array.isArray(
-      window.allCompartmentFeatures
-    )
+  console.warn(
+    "⏳ Waiting for compartment preload..."
+  );
 
-    ||
+  try{
 
-    window.allCompartmentFeatures.length === 0
+    await window.__COMPARTMENTS_PROMISE__;
 
-  ){
+  }
 
-    console.time(
-      "preloadAllCompartments"
-    );
+  catch(err){
 
-    console.warn(
-      "📦 Duty Form → Loading compartments..."
-    );
-
-    try{
-
-      await preloadAllCompartments();
-
-    }
-
-    catch(err){
-
-      console.error(
-        "❌ preloadAllCompartments failed",
-        err
-      );
-
-    }
-
-    console.timeEnd(
-      "preloadAllCompartments"
+    console.error(
+      "❌ Existing preload failed",
+      err
     );
 
   }
 
-  console.log(
-    "📦 Compartments Ready:",
-    window.allCompartmentFeatures?.length || 0
+}
+
+// =====================================
+// 📦 LOAD IF STILL EMPTY
+// =====================================
+
+if(
+
+  !Array.isArray(
+    window.allCompartmentFeatures
+  )
+
+  ||
+
+  window.allCompartmentFeatures.length === 0
+
+){
+
+  console.time(
+    "preloadAllCompartments"
   );
 
+  console.warn(
+    "📦 Duty Form → Loading compartments..."
+  );
+
+  try{
+
+    await preloadAllCompartments();
+
+  }
+
+  catch(err){
+
+    console.error(
+      "❌ preloadAllCompartments failed",
+      err
+    );
+
+  }
+
+  console.timeEnd(
+    "preloadAllCompartments"
+  );
+
+}
+
+console.log(
+  "📦 Compartments Ready:",
+  window.allCompartmentFeatures?.length || 0
+);
   // =====================================
   // 🔥 STAFF RENDER TIMER
   // =====================================
