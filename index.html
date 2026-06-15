@@ -13501,7 +13501,7 @@ function getLiveStaffCountForCurrentPolygon() {
   );
 
 }
-   async function updateMonthlyStatusCard() {
+  async function updateMonthlyStatusCard() {
 
   try {
 
@@ -13554,6 +13554,29 @@ function getLiveStaffCountForCurrentPolygon() {
         level,
         filterValue
       );
+
+    // =====================================
+    // 🔍 DEBUG
+    // =====================================
+
+    console.log(
+      "📦 Grid Count:",
+      gridIds?.length || 0
+    );
+
+    console.log(
+      "📦 Master Grid:",
+      Object.keys(
+        window.masterGrid || {}
+      ).length
+    );
+
+    console.log(
+      "📦 Cell Lookup:",
+      Object.keys(
+        window.cellToGridId || {}
+      ).length
+    );
 
     const summary =
       await getAnalyticsSummary(
@@ -13719,26 +13742,28 @@ function getLiveStaffCountForCurrentPolygon() {
         ).toLocaleString();
 
     }
-// =====================================
-// 🔥 SESSION LABEL
-// =====================================
 
-const sessionLabelEl =
-  document.getElementById(
-    "msSessionsLabel"
-  );
+    // =====================================
+    // 🔥 SESSION LABEL
+    // =====================================
 
-if(sessionLabelEl){
+    const sessionLabelEl =
+      document.getElementById(
+        "msSessionsLabel"
+      );
 
-  sessionLabelEl.textContent =
+    if(sessionLabelEl){
 
-    level === "compartment"
+      sessionLabelEl.textContent =
 
-    ? "Visits"
+        level === "compartment"
 
-    : "Patrol Activity";
+        ? "Visits"
 
-}
+        : "Patrol Activity";
+
+    }
+
     // =====================================
     // 🔥 SESSIONS
     // =====================================
@@ -13837,44 +13862,42 @@ if(sessionLabelEl){
     // =====================================
     // 🔥 UPDATED AT
     // =====================================
-// =====================================
-// 🔥 UPDATED AT
-// =====================================
 
-const updatedAtEl =
-  document.getElementById(
-    "msUpdatedAt"
-  );
-
-if(updatedAtEl){
-
-  if(summary.latestUpdatedAt){
-
-    updatedAtEl.textContent =
-
-      new Date(
-        summary.latestUpdatedAt
-      )
-      .toLocaleTimeString(
-        "en-IN",
-        {
-          hour:"2-digit",
-          minute:"2-digit",
-          second:"2-digit",
-          hour12:true
-        }
+    const updatedAtEl =
+      document.getElementById(
+        "msUpdatedAt"
       );
 
-  }
+    if(updatedAtEl){
 
-  else{
+      if(summary.latestUpdatedAt){
 
-    updatedAtEl.textContent =
-      "--";
+        updatedAtEl.textContent =
 
-  }
+          new Date(
+            summary.latestUpdatedAt
+          )
+          .toLocaleTimeString(
+            "en-IN",
+            {
+              hour:"2-digit",
+              minute:"2-digit",
+              second:"2-digit",
+              hour12:true
+            }
+          );
 
-}
+      }
+
+      else{
+
+        updatedAtEl.textContent =
+          "--";
+
+      }
+
+    }
+
   }
 
   catch(err) {
@@ -14708,17 +14731,119 @@ function startMonthlyStatusCardRefresh() {
     }
 
     /* 🔥 INIT BUTTON AFTER MAP READY */
- setTimeout(async () => {
+setTimeout(async () => {
 
   addRangeStatsButton();
 
   addMonthlyStatusCard();
 
-  await updateMonthlyStatusCard();
+  // =====================================
+  // ⏳ WAIT FOR GRID INFRASTRUCTURE
+  // =====================================
 
-  if (
+  const waitStart =
+    performance.now();
+
+  while(
+
+    window.masterGridLoading
+
+    ||
+
+    (
+      !window.masterGrid
+
+      ||
+
+      Object.keys(
+        window.masterGrid
+      ).length === 0
+    )
+
+  ){
+
+    console.log(
+      "⏳ Waiting for master grid..."
+    );
+
+    await new Promise(
+      resolve =>
+        setTimeout(
+          resolve,
+          500
+        )
+    );
+
+    // =================================
+    // SAFETY EXIT (30s)
+    // =================================
+
+    if(
+
+      performance.now()
+      -
+      waitStart
+
+      >
+
+      30000
+
+    ){
+
+      console.warn(
+        "⚠ Master grid wait timeout"
+      );
+
+      break;
+    }
+
+  }
+
+  console.log(
+    "✅ Master Grid Ready:",
+    Object.keys(
+      window.masterGrid || {}
+    ).length
+  );
+
+  console.log(
+    "✅ Cell Lookup Ready:",
+    Object.keys(
+      window.cellToGridId || {}
+    ).length
+  );
+
+  console.log(
+    "✅ Compartments Ready:",
+    window.allCompartmentFeatures?.length || 0
+  );
+
+  // =====================================
+  // INITIAL UPDATE
+  // =====================================
+
+  try{
+
+    await updateMonthlyStatusCard();
+
+  }
+
+  catch(err){
+
+    console.error(
+      "❌ Initial Monthly Status",
+      err
+    );
+
+  }
+
+  // =====================================
+  // REFRESH TIMER
+  // =====================================
+
+  if(
     window.monthlyStatusTimer
-  ) {
+  ){
 
     clearInterval(
       window.monthlyStatusTimer
@@ -14727,10 +14852,12 @@ function startMonthlyStatusCardRefresh() {
   }
 
   window.monthlyStatusTimer =
+
     setInterval(
+
       async () => {
 
-        try {
+        try{
 
           await updateMonthlyStatusCard();
 
@@ -14746,7 +14873,9 @@ function startMonthlyStatusCardRefresh() {
         }
 
       },
+
       10000
+
     );
 
   console.log(
