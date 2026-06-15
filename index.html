@@ -7201,6 +7201,12 @@ async function preloadAllCompartments() {
           await loadMasterGrid();
           console.log("✅ MASTER GRID LOADED");
           await buildCellToGridLookup();
+          window.__ANALYTICS_READY__ =
+  true;
+
+console.log(
+  "✅ ANALYTICS READY"
+);
           console.log("✅ CELL → GRID LOOKUP READY", Object.keys(window.cellToGridId || {}).length);
         } catch (err) {
           console.error("❌ Grid preload failed", err);
@@ -7209,8 +7215,43 @@ async function preloadAllCompartments() {
         }
       }, 0);
     } else {
-      console.log("⏭ GRID already available");
-    }
+
+  console.log(
+    "⏭ GRID already available"
+  );
+
+  if(
+
+    window.masterGrid
+
+    &&
+
+    Object.keys(
+      window.masterGrid
+    ).length > 0
+
+    &&
+
+    window.cellToGridId
+
+    &&
+
+    Object.keys(
+      window.cellToGridId
+    ).length > 0
+
+  ){
+
+    window.__ANALYTICS_READY__ =
+      true;
+
+    console.log(
+      "✅ ANALYTICS READY"
+    );
+
+  }
+
+}
      }
 
     catch(err){
@@ -7556,34 +7597,129 @@ async function buildAndStoreMasterGrid() {
 }
 
 async function loadMasterGrid() {
+
   console.count(
-  "loadMasterGrid EXECUTED"
-);
-  window.masterGrid = {};
+    "loadMasterGrid EXECUTED"
+  );
 
-  const snap =
-    await window.fb.getDocs(
-      window.fb.collection(
-        window.db,
-        "grid_master"
-      )
-    );
+  // =====================================
+  // ✅ ALREADY LOADED
+  // =====================================
 
-  snap.forEach(doc => {
-    const data =
-      doc.data();
+ if(
+  window.masterGrid
+  &&
+  Object.keys(
+    window.masterGrid
+  ).length > 0
+){
 
-    window.masterGrid[
-      data.gridId
-    ] = data;
-  });
+  window.__ANALYTICS_READY__ =
+    true;
 
   console.log(
-    "✅ GRID LOADED",
+    "⏭ MASTER GRID ALREADY LOADED:",
     Object.keys(
       window.masterGrid
     ).length
   );
+
+  return window.masterGrid;
+}
+
+  // =====================================
+  // ⏳ LOAD IN PROGRESS
+  // =====================================
+
+  if(
+    window.__MASTER_GRID_PROMISE__
+  ){
+
+    console.log(
+      "⏳ Waiting existing master grid load..."
+    );
+
+    return await
+      window.__MASTER_GRID_PROMISE__;
+  }
+
+  // =====================================
+  // 🚀 START LOAD
+  // =====================================
+
+  window.__MASTER_GRID_PROMISE__ =
+  (async()=>{
+
+    console.time(
+      "LOAD_MASTER_GRID"
+    );
+
+    try{
+
+      window.masterGrid = {};
+
+      const snap =
+
+        await window.fb.getDocs(
+
+          window.fb.collection(
+            window.db,
+            "grid_master"
+          )
+
+        );
+
+      snap.forEach(doc => {
+
+        const data =
+          doc.data() || {};
+
+        if(
+          data.gridId
+        ){
+
+          window.masterGrid[
+            data.gridId
+          ] = data;
+
+        }
+
+      });
+
+      console.log(
+        "✅ GRID LOADED",
+        Object.keys(
+          window.masterGrid
+        ).length
+      );
+
+      return window.masterGrid;
+
+    }
+
+    catch(err){
+
+      console.error(
+        "❌ loadMasterGrid",
+        err
+      );
+
+      throw err;
+
+    }
+
+    finally{
+
+      console.timeEnd(
+        "LOAD_MASTER_GRID"
+      );
+
+    }
+
+  })();
+
+  return await
+    window.__MASTER_GRID_PROMISE__;
 }
 async function buildHeatmapBoundary() {
 
@@ -13578,11 +13714,19 @@ function getLiveStaffCountForCurrentPolygon() {
       ).length
     );
 
-    const summary =
-      await getAnalyticsSummary(
-        gridIds,
-        monthKey
-      );
+   console.time(
+  "GET_ANALYTICS_SUMMARY"
+);
+
+const summary =
+  await getAnalyticsSummary(
+    gridIds,
+    monthKey
+  );
+
+console.timeEnd(
+  "GET_ANALYTICS_SUMMARY"
+);
 
     // =====================================
     // 🔥 LIVE STAFF
@@ -16048,7 +16192,11 @@ window.__COMPARTMENTS_LOADING__ =
 window.__COMPARTMENTS_PROMISE__ =
   null;
     // 🔥 GLOBAL (IMPORTANT)
+window.__MASTER_GRID_PROMISE__ =
+  null;
 
+window.__ANALYTICS_READY__ =
+  false;
  // =====================================================
 // 🔥 REALTIME ANALYTICS ENGINE
 // =====================================================
