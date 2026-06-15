@@ -36029,9 +36029,9 @@ ${coordinates}
 
 }
 
-function shareDutyKMLReport() {
+async function shareDutyKMLReport(){
 
-  try {
+  try{
 
     const report =
       window.currentDutyReport || {};
@@ -36041,7 +36041,7 @@ function shareDutyKMLReport() {
         report.kmlUrl || ""
       ).trim();
 
-    if (!kmlUrl) {
+    if(!kmlUrl){
 
       alert(
         "❌ KML not available"
@@ -36050,45 +36050,25 @@ function shareDutyKMLReport() {
       return;
     }
 
-    const text =
+    await navigator.share({
 
+      title:
+        "Patrol Track KML",
+
+      text:
 `📍 Patrol Track KML
 
-${kmlUrl}`;
+${kmlUrl}`
 
-    const whatsappUrl =
+    });
 
-      "https://wa.me/?text=" +
+  }
+  catch(err){
 
-      encodeURIComponent(
-        text
-      );
-
-    const win =
-      window.open(
-        whatsappUrl,
-        "_blank"
-      );
-
-    if (!win) {
-
-      window.location.href =
-        whatsappUrl;
-    }
+    console.error(err);
 
   }
 
-  catch (err) {
-
-    console.error(
-      "❌ shareDutyKMLReport",
-      err
-    );
-
-    alert(
-      "❌ Unable to open WhatsApp"
-    );
-  }
 }
  async function sendDutyReportToAppsScript(
   report
