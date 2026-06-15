@@ -12937,7 +12937,24 @@ function getLiveStaffCountForCurrentPolygon() {
   return cache.length;
 }
 
-    function getMonthlyStatusTitle() {
+   function getMonthlyStatusTitle() {
+
+  const now =
+    new Date();
+
+ const monthYear =
+  now.toLocaleString(
+    "en-IN",
+    {
+      month:"long"
+    }
+  ).toUpperCase()
+  +
+  "/"
+  +
+  String(
+    now.getFullYear()
+  ).slice(-2);
 
   const level =
     String(
@@ -12954,7 +12971,9 @@ function getLiveStaffCountForCurrentPolygon() {
         "Compartment"
       ).trim()
       +
-      " MONTHLY STATUS"
+      " MONTHLY STATUS - "
+      +
+      monthYear
     );
   }
 
@@ -12966,7 +12985,9 @@ function getLiveStaffCountForCurrentPolygon() {
         "Beat"
       ).trim()
       +
-      " MONTHLY STATUS"
+      " MONTHLY STATUS - "
+      +
+      monthYear
     );
   }
 
@@ -12978,7 +12999,9 @@ function getLiveStaffCountForCurrentPolygon() {
         "Range"
       ).trim()
       +
-      " MONTHLY STATUS"
+      " MONTHLY STATUS - "
+      +
+      monthYear
     );
   }
 
@@ -12990,11 +13013,18 @@ function getLiveStaffCountForCurrentPolygon() {
         "Division"
       ).trim()
       +
-      " MONTHLY STATUS"
+      " MONTHLY STATUS - "
+      +
+      monthYear
     );
   }
 
-  return "BTR MONTHLY STATUS";
+  return (
+    "BTR MONTHLY STATUS - "
+    +
+    monthYear
+  );
+
 }
    async function updateMonthlyStatusCard() {
 
@@ -13326,28 +13356,17 @@ if(updatedAtEl){
 
   if(summary.latestUpdatedAt){
 
-    const d =
-      new Date(
-        summary.latestUpdatedAt
-      );
-
     updatedAtEl.textContent =
 
-      d.toLocaleDateString(
-        "en-IN",
-        {
-          day:"2-digit",
-          month:"short"
-        }
+      new Date(
+        summary.latestUpdatedAt
       )
-
-      + " | " +
-
-      d.toLocaleTimeString(
+      .toLocaleTimeString(
         "en-IN",
         {
           hour:"2-digit",
           minute:"2-digit",
+          second:"2-digit",
           hour12:true
         }
       );
@@ -13362,7 +13381,6 @@ if(updatedAtEl){
   }
 
 }
-
   }
 
   catch(err) {
