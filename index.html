@@ -10198,6 +10198,22 @@ async function showCompartmentVisitBreakdown(){
 
         "0.0";
 
+      console.log(
+        "📏 BREAKDOWN DISTANCE",
+        {
+          gridId,
+          compartment:
+            master.compartment ||
+            gridId,
+          visitCount:
+            analytics.visitCount || 0,
+          distanceMeters:
+            analytics.distanceMeters || 0,
+          distanceKm,
+          displayDistance
+        }
+      );
+
       rows.push({
 
         gridId,
@@ -10232,6 +10248,26 @@ async function showCompartmentVisitBreakdown(){
 
         b.coverage -
         a.coverage
+
+    );
+
+    console.table(
+
+      rows.map(r => ({
+
+        compartment:
+          r.compartment,
+
+        visits:
+          r.visits,
+
+        distanceKm:
+          r.distanceKm,
+
+        displayDistance:
+          r.displayDistance
+
+      }))
 
     );
 
