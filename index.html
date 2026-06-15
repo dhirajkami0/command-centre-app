@@ -8224,8 +8224,54 @@ else if (
     const geoJsonReader = new jsts.io.GeoJSONReader();
     const lineGeom = geoJsonReader.read({ type: "LineString", coordinates: canonicalLngLatCoords });
     
-    const embeddedTracksMap = {};
-    const crossedCompartmentsSet = new Set();
+   const embeddedTracksMap = {};
+
+const crossedCompartmentsSet =
+  new Set();
+
+// =====================================
+// FULL GPS TRACK DISTANCE
+// =====================================
+
+function calculateDistanceKm(coords){
+
+  let km = 0;
+
+  for(
+    let i = 1;
+    i < coords.length;
+    i++
+  ){
+
+    km += getDistance(
+
+      [
+        coords[i - 1][1],
+        coords[i - 1][0]
+      ],
+
+      [
+        coords[i][1],
+        coords[i][0]
+      ]
+
+    );
+
+  }
+
+  return km;
+}
+
+const totalDistanceKm =
+
+  calculateDistanceKm(
+    canonicalLngLatCoords
+  );
+
+console.log(
+  "📏 TOTAL TRACK KM",
+  totalDistanceKm
+);
     const extractCoords = (coords) => coords.map(c => [Number(c.y), Number(c.x)]);
     
     const collectLineSegments = (geom, localCoordsArray) => {
@@ -8348,11 +8394,50 @@ else if (
         );
       }
     }
+let clippedDistanceKm = 0;
 
+Object.values(
+  embeddedTracksMap
+).forEach(comp => {
+
+  (comp.tracks || [])
+  .forEach(encoded => {
+
+    const pts =
+      polyline.decode(encoded);
+
+    for(
+      let i = 1;
+      i < pts.length;
+      i++
+    ){
+
+      clippedDistanceKm +=
+        getDistance(
+
+          pts[i - 1],
+
+          pts[i]
+
+        );
+    }
+
+  });
+
+});
+
+console.log(
+  "🌲 CLIPPED KM",
+  clippedDistanceKm
+);
    // 6. COMMIT
 await window.fb.updateDoc(
   targetDocRef,
   {
+
+    totalDistanceKm,
+
+    clippedDistanceKm,
     clipStatus: "SUCCESS",
 
     monthKey:
@@ -34639,6 +34724,24 @@ async function buildDutyPerformanceReport({
       ? trackSnap.data()
       : {};
 
+    const historySnap =
+
+      await window.fb.getDoc(
+
+        window.fb.doc(
+          window.db,
+          "history",
+          sessionId
+        )
+
+      );
+
+    const historyData =
+
+      historySnap.exists()
+      ? historySnap.data()
+      : {};
+
     const storedDutyType =
 
       String(
@@ -34776,35 +34879,38 @@ async function buildDutyPerformanceReport({
 
     let distanceKm = 0;
 
-    for(
+    const type =
 
-      let i = 1;
+      storedDutyType
+      .toLowerCase();
 
-      i < trackPoints.length;
+    if(
 
-      i++
+      type.includes("foot")
+
+      ||
+
+      type.includes("scan")
 
     ){
 
-      distanceKm += getDistance(
+      distanceKm =
 
-        [
+        Number(
+          historyData
+            ?.clippedDistanceKm || 0
+        );
 
-          trackPoints[i - 1].lat,
+    }
+    else{
 
-          trackPoints[i - 1].lng
+      distanceKm =
 
-        ],
+        Number(
+          historyData
+            ?.totalDistanceKm || 0
+        );
 
-        [
-
-          trackPoints[i].lat,
-
-          trackPoints[i].lng
-
-        ]
-
-      );
     }
 
     // =====================================
@@ -34857,11 +34963,6 @@ async function buildDutyPerformanceReport({
     // =====================================
 
     let score = 0;
-
-    const type =
-
-      storedDutyType
-      .toLowerCase();
 
     // =====================================
     // FOOT / SCANNING
