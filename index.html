@@ -36063,12 +36063,14 @@ ${kmlUrl}`
     });
 
   }
+
   catch(err){
 
-    console.error(err);
-
+    console.error(
+      "❌ shareDutyKMLReport",
+      err
+    );
   }
-
 }
  async function sendDutyReportToAppsScript(
   report
