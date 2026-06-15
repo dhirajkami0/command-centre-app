@@ -13556,165 +13556,12 @@ setInterval(() => {
   }
 
 }  
-function getLiveStaffCountForCurrentPolygon() {
+function getLiveStaffCountForCurrentPolygon(){
 
-  const level =
+  return getLiveStaffForCurrentPolygon()
+    .length;
 
-    String(
-      window.activePopupContext?.level ||
-      "btr"
-    )
-    .toLowerCase();
-
-  const cache =
-
-    Object.values(
-      window.liveStaffCache || {}
-    );
-
-  // ====================================
-  // BTR
-  // ====================================
-
-  if (
-    level === "btr"
-  ) {
-
-    return cache.length;
-  }
-
-  // ====================================
-  // DIVISION
-  // ====================================
-
-  if (
-    level === "division"
-  ) {
-
-    return cache.filter(
-      s =>
-
-        normalizeDivision(
-          s.division || ""
-        )
-
-        ===
-
-        normalizeDivision(
-          window.gisFilter
-            ?.division || ""
-        )
-    ).length;
-  }
-
-  // ====================================
-  // RANGE
-  // ====================================
-
-  if (
-    level === "range"
-  ) {
-
-    return cache.filter(
-      s =>
-
-        String(
-          s.range || ""
-        ).trim()
-
-        ===
-
-        String(
-          window.gisFilter
-            ?.range || ""
-        ).trim()
-    ).length;
-  }
-
-  // ====================================
-  // BEAT
-  // ====================================
-
-  if (
-    level === "beat"
-  ) {
-
-    return cache.filter(
-      s =>
-
-        normalizeBeatName(
-          s.beat || ""
-        )
-
-        ===
-
-        normalizeBeatName(
-          window.gisFilter
-            ?.beat || ""
-        )
-    ).length;
-  }
-
-  // ====================================
-  // COMPARTMENT
-  // ====================================
-
-  if (
-    level === "compartment"
-  ) {
-
-    const geometry =
-      window.currentSelectedGeometry;
-
-    if (!geometry) {
-      return 0;
-    }
-
-    const polygon = {
-
-      type: "Feature",
-
-      geometry,
-
-      properties: {}
-    };
-
-    let count = 0;
-
-    cache.forEach(staff => {
-
-      try {
-
-        const point =
-          turf.point([
-
-            Number(staff.lng),
-
-            Number(staff.lat)
-
-          ]);
-
-        if (
-
-          turf.booleanPointInPolygon(
-            point,
-            polygon
-          )
-
-        ) {
-
-          count++;
-        }
-
-      } catch(e){}
-    });
-
-    return count;
-  }
-
-  return cache.length;
 }
-
    function getMonthlyStatusTitle() {
 
   const now =
@@ -14371,19 +14218,187 @@ console.timeEnd(
     control;
 }
 
+function getLiveStaffForCurrentPolygon(){
 
+  const level =
+
+    String(
+      window.activePopupContext?.level ||
+      "btr"
+    )
+    .toLowerCase();
+
+  let staffList =
+
+    Object.values(
+      window.liveStaffCache || {}
+    )
+    .filter(
+      s => s?.dutyActive === true
+    );
+
+  // ====================================
+  // BTR
+  // ====================================
+
+  if(
+    level === "btr"
+  ){
+
+    return staffList;
+
+  }
+
+  // ====================================
+  // DIVISION
+  // ====================================
+
+  if(
+    level === "division"
+  ){
+
+    return staffList.filter(
+      s =>
+
+        normalizeDivision(
+          s.division || ""
+        )
+
+        ===
+
+        normalizeDivision(
+          window.gisFilter
+            ?.division || ""
+        )
+    );
+
+  }
+
+  // ====================================
+  // RANGE
+  // ====================================
+
+  if(
+    level === "range"
+  ){
+
+    return staffList.filter(
+      s =>
+
+        String(
+          s.range || ""
+        ).trim()
+
+        ===
+
+        String(
+          window.gisFilter
+            ?.range || ""
+        ).trim()
+    );
+
+  }
+
+  // ====================================
+  // BEAT
+  // ====================================
+
+  if(
+    level === "beat"
+  ){
+
+    return staffList.filter(
+      s =>
+
+        normalizeBeatName(
+          s.beat || ""
+        )
+
+        ===
+
+        normalizeBeatName(
+          window.gisFilter
+            ?.beat || ""
+        )
+    );
+
+  }
+
+  // ====================================
+  // COMPARTMENT
+  // ====================================
+
+  if(
+    level === "compartment"
+  ){
+
+    const geometry =
+      window.currentSelectedGeometry;
+
+    if(
+      !geometry
+    ){
+
+      return [];
+
+    }
+
+    const polygon = {
+
+      type:"Feature",
+
+      geometry,
+
+      properties:{}
+
+    };
+
+    return staffList.filter(
+      staff => {
+
+        try{
+
+          const point =
+            turf.point([
+
+              Number(
+                staff.lng
+              ),
+
+              Number(
+                staff.lat
+              )
+
+            ]);
+
+          return turf.booleanPointInPolygon(
+            point,
+            polygon
+          );
+
+        }
+
+        catch(e){
+
+          return false;
+
+        }
+
+      }
+    );
+
+  }
+
+  return staffList;
+
+}
    async function showMonthlyLiveStaff(){
 
   try{
 
-    const staffList =
+   const staffList =
 
-      Object.values(
-        window.liveStaffCache || {}
-      )
-      .filter(
-        s => s?.dutyActive === true
-      );
+  getLiveStaffForCurrentPolygon();
 
     staffList.sort(
       (a,b) => {
