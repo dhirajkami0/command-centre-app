@@ -1676,6 +1676,23 @@ NORTH REMAINS ABSOLUTE
   pointer-events:auto;
 
 }
+    .liveStaffTooltip{
+
+  background:#00d4ff !important;
+
+  color:#000 !important;
+
+  border:none !important;
+
+  border-radius:6px !important;
+
+  font-weight:700 !important;
+
+  padding:4px 8px !important;
+
+  box-shadow:none !important;
+
+}
   </style>
 </head>
 <body>
@@ -14327,6 +14344,36 @@ if(updatedAtEl){
   }
 
 }
+
+    function clearLiveStaffMarker(){
+
+  if(
+    window.liveStaffLocationMarker
+  ){
+
+    map.removeLayer(
+      window.liveStaffLocationMarker
+    );
+
+    window.liveStaffLocationMarker =
+      null;
+
+  }
+
+  if(
+    window.liveStaffHighlight
+  ){
+
+    map.removeLayer(
+      window.liveStaffHighlight
+    );
+
+    window.liveStaffHighlight =
+      null;
+
+  }
+
+}
 function zoomToLiveStaff(
   name,
   lat,
@@ -14345,17 +14392,21 @@ function zoomToLiveStaff(
       return;
     }
 
+    lat = Number(lat);
+    lng = Number(lng);
+
     map.flyTo(
-      [
-        Number(lat),
-        Number(lng)
-      ],
+      [lat,lng],
       18,
       {
         animate:true,
         duration:1.5
       }
     );
+
+    // ==========================
+    // REMOVE OLD MARKER
+    // ==========================
 
     if(
       window.liveStaffLocationMarker
@@ -14365,30 +14416,75 @@ function zoomToLiveStaff(
         window.liveStaffLocationMarker
       );
 
+      window.liveStaffLocationMarker =
+        null;
+
     }
+
+    // ==========================
+    // REMOVE OLD HIGHLIGHT
+    // ==========================
+
+    if(
+      window.liveStaffHighlight
+    ){
+
+      map.removeLayer(
+        window.liveStaffHighlight
+      );
+
+      window.liveStaffHighlight =
+        null;
+
+    }
+
+    // ==========================
+    // MARKER
+    // ==========================
 
     window.liveStaffLocationMarker =
 
       L.marker(
-        [
-          Number(lat),
-          Number(lng)
-        ]
+        [lat,lng]
       )
       .addTo(map);
 
-    window.liveStaffLocationMarker
-      .bindPopup(
+    // ==========================
+    // PERMANENT LABEL
+    // ==========================
 
-        `
-        <b>👤 ${name}</b>
-        <br>
-        📌 ${Number(lat).toFixed(6)},
-        ${Number(lng).toFixed(6)}
-        `
+    window.liveStaffLocationMarker
+      .bindTooltip(
+
+        `👤 ${name}`,
+
+        {
+          permanent:true,
+          direction:"top",
+          offset:[0,-10],
+          className:
+            "liveStaffTooltip"
+        }
 
       )
-      .openPopup();
+      .openTooltip();
+
+    // ==========================
+    // HIGHLIGHT CIRCLE
+    // ==========================
+
+    window.liveStaffHighlight =
+
+      L.circle(
+        [lat,lng],
+        {
+          radius:50,
+          color:"#00d4ff",
+          weight:3,
+          fillOpacity:0.15
+        }
+      )
+      .addTo(map);
 
   }
 
