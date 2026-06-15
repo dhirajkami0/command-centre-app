@@ -1449,7 +1449,7 @@ NORTH REMAINS ABSOLUTE
 
 #monthlyStatusCard {
 
-  width: 170px;
+  width: 200px;
 
   background:
     rgba(
@@ -13326,14 +13326,14 @@ if(updatedAtEl){
 
   if(summary.latestUpdatedAt){
 
-    const updatedDate =
+    const d =
       new Date(
         summary.latestUpdatedAt
       );
 
     updatedAtEl.textContent =
 
-      updatedDate.toLocaleDateString(
+      d.toLocaleDateString(
         "en-IN",
         {
           day:"2-digit",
@@ -13341,21 +13341,20 @@ if(updatedAtEl){
         }
       )
 
-      + " "
+      + " | " +
 
-      +
-
-      updatedDate.toLocaleTimeString(
+      d.toLocaleTimeString(
         "en-IN",
         {
           hour:"2-digit",
-          minute:"2-digit"
+          minute:"2-digit",
+          hour12:true
         }
       );
 
   }
 
-  else {
+  else{
 
     updatedAtEl.textContent =
       "--";
