@@ -32736,7 +32736,9 @@ console.groupEnd();
 let dutyComptMap = {}
 
 function openDutyForm(){
-
+console.time(
+  "OPEN_DUTY_FORM_TOTAL"
+);
   console.group("🚀 openDutyForm START");
   console.log("⏱ Time:", new Date().toLocaleTimeString());
 
@@ -33054,8 +33056,17 @@ else{
     updateDutyCompt("BEAT_CHANGE");
   };
 
- /* ================= POST INIT ================= */
-setTimeout(async () => {
+/* ================= POST INIT ================= */
+(async()=>{
+
+  console.time(
+    "DUTY_FORM_RENDER"
+  );
+
+  console.log(
+    "🚀 POST INIT START",
+    performance.now()
+  );
 
   setVal(
     "d-id",
@@ -33065,6 +33076,16 @@ setTimeout(async () => {
   setVal(
     "d-date",
     new Date().toLocaleString()
+  );
+
+  console.log(
+    "📦 Staff Profiles:",
+    window.allStaffProfiles?.length || 0
+  );
+
+  console.log(
+    "📦 Compartments:",
+    window.allCompartmentFeatures?.length || 0
   );
 
   // =====================================
@@ -33083,7 +33104,11 @@ setTimeout(async () => {
 
   ){
 
-    console.log(
+    console.time(
+      "preloadAllCompartments"
+    );
+
+    console.warn(
       "📦 Duty Form → Loading compartments..."
     );
 
@@ -33102,6 +33127,10 @@ setTimeout(async () => {
 
     }
 
+    console.timeEnd(
+      "preloadAllCompartments"
+    );
+
   }
 
   console.log(
@@ -33109,15 +33138,45 @@ setTimeout(async () => {
     window.allCompartmentFeatures?.length || 0
   );
 
+  // =====================================
+  // 🔥 STAFF RENDER TIMER
+  // =====================================
+
+  console.time(
+    "updateDutyStaff"
+  );
+
   updateDutyStaff(
     "FROM_OPEN_DUTY"
+  );
+
+  console.timeEnd(
+    "updateDutyStaff"
+  );
+
+  // =====================================
+  // 🔥 COMPARTMENT RENDER TIMER
+  // =====================================
+
+  console.time(
+    "updateDutyCompt"
   );
 
   updateDutyCompt(
     "FROM_OPEN_DUTY"
   );
 
-}, 150);
+  console.timeEnd(
+    "updateDutyCompt"
+  );
+
+  console.timeEnd(
+    "DUTY_FORM_RENDER"
+  );
+console.timeEnd(
+  "OPEN_DUTY_FORM_TOTAL"
+);
+})();
   /* ================= BUTTON FIX ================= */
   const startBtn =
     document.getElementById(
