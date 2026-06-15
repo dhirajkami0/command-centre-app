@@ -8793,7 +8793,7 @@ const col =
   };
 }
 
-    async function updateMonthlyAnalyticsRebuild(
+  async function updateMonthlyAnalyticsRebuild(
   gridId,
   localCoordsArray,
   monthKey
@@ -8820,6 +8820,24 @@ const col =
       getTouchedCells(
         localCoordsArray
       );
+
+    // ==========================================
+    // 🔍 DEBUG DISTANCE
+    // ==========================================
+
+    console.log(
+      "GRID DISTANCE DEBUG",
+      {
+        gridId,
+        distanceMeters,
+        touchedCells:
+          touchedCells.size,
+        segments:
+          localCoordsArray.length,
+        firstSegmentPoints:
+          localCoordsArray?.[0]?.length
+      }
+    );
 
     if (
       touchedCells.size === 0
@@ -8906,35 +8924,31 @@ const col =
 
     // ==========================
     // VISITS
+    // COUNT ONLY FIRST SESSION TOUCH
     // ==========================
 
-    // ==========================
-// VISITS
-// COUNT ONLY FIRST SESSION TOUCH
-// ==========================
+    if(
 
-if(
+      !window.sessionVisitedGrids.has(
+        gridId
+      )
 
-  !window.sessionVisitedGrids.has(
-    gridId
-  )
+    ){
 
-){
+      analytics.visitCount =
 
-  analytics.visitCount =
+        Number(
+          analytics.visitCount || 0
+        )
 
-    Number(
-      analytics.visitCount || 0
-    )
+        +
 
-    +
+        1;
 
-    1;
-
-  window.sessionVisitedGrids.add(
-    gridId
-  );
-}
+      window.sessionVisitedGrids.add(
+        gridId
+      );
+    }
 
     // ==========================
     // CELLS
