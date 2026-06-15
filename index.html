@@ -1676,7 +1676,7 @@ NORTH REMAINS ABSOLUTE
   pointer-events:auto;
 
 }
-    .liveStaffTooltip{
+   .liveStaffTooltip{
 
   background:#00d4ff !important;
 
@@ -10021,127 +10021,157 @@ async function showCompartmentVisitBreakdown(){
         filterValue
       );
 
+    if(
+      !gridIds?.length
+    ){
+      alert(
+        "No compartments found"
+      );
+      return;
+    }
+
+    const snaps =
+      await Promise.all(
+
+        gridIds.map(
+          async gridId => {
+
+            try{
+
+              const snap =
+                await window.fb.getDoc(
+
+                  window.fb.doc(
+
+                    window.db,
+
+                    "analytics_rebuild",
+
+                    monthKey,
+
+                    "compartments",
+
+                    gridId
+
+                  )
+
+                );
+
+              return {
+                gridId,
+                snap
+              };
+
+            }
+
+            catch(err){
+
+              console.error(
+                gridId,
+                err
+              );
+
+              return null;
+
+            }
+
+          }
+
+        )
+
+      );
+
     const rows = [];
 
-    for(const gridId of gridIds){
+    snaps.forEach(item=>{
 
-      try{
-
-        const snap =
-          await window.fb.getDoc(
-
-            window.fb.doc(
-
-              window.db,
-
-              "analytics_rebuild",
-
-              monthKey,
-
-              "compartments",
-
-              gridId
-
-            )
-
-          );
-
-        if(
-          !snap.exists()
-        ){
-          continue;
-        }
-
-        const analytics =
-          snap.data() || {};
-
-        const master =
-          window.masterGrid?.[
-            gridId
-          ];
-
-        if(
-          !master
-        ){
-          continue;
-        }
-
-        const totalCells =
-
-          Number(
-            master.totalCells || 0
-          );
-
-        const coveredCells =
-
-          Number(
-            analytics.totalCoveredCells || 0
-          );
-
-        const coverage =
-
-          totalCells > 0
-
-          ?
-
-          (
-            coveredCells /
-            totalCells
-          ) * 100
-
-          :
-
-          0;
-
-        rows.push({
-
-          gridId,
-
-          compartment:
-
-            master.compartment ||
-
-            gridId,
-
-          visits:
-
-            Number(
-              analytics.visitCount || 0
-            ),
-
-          coverage,
-
-          distanceKm:
-
-            (
-              Number(
-                analytics.distanceMeters || 0
-              )
-              /
-              1000
-            )
-
-        });
-
+      if(
+        !item ||
+        !item.snap?.exists()
+      ){
+        return;
       }
 
-      catch(err){
+      const {
+        gridId,
+        snap
+      } = item;
 
-        console.error(
-          gridId,
-          err
+      const analytics =
+        snap.data() || {};
+
+      const master =
+        window.masterGrid?.[
+          gridId
+        ];
+
+      if(
+        !master
+      ){
+        return;
+      }
+
+      const totalCells =
+        Number(
+          master.totalCells || 0
         );
 
-      }
+      const coveredCells =
+        Number(
+          analytics.totalCoveredCells || 0
+        );
 
-    }
+      const coverage =
+
+        totalCells > 0
+
+        ?
+
+        (
+          coveredCells /
+          totalCells
+        ) * 100
+
+        :
+
+        0;
+
+      rows.push({
+
+        gridId,
+
+        compartment:
+
+          master.compartment ||
+          gridId,
+
+        visits:
+
+          Number(
+            analytics.visitCount || 0
+          ),
+
+        coverage,
+
+        distanceKm:
+
+          Number(
+            analytics.distanceMeters || 0
+          ) / 1000
+
+      });
+
+    });
 
     rows.sort(
 
       (a,b)=>
 
         b.visits -
-        a.visits
+        a.visits ||
+
+        b.coverage -
+        a.coverage
 
     );
 
@@ -10157,10 +10187,17 @@ async function showCompartmentVisitBreakdown(){
       err
     );
 
+    alert(
+      "Failed to load compartment breakdown"
+    );
+
   }
 
 }
-    function renderCompartmentVisitBreakdown(
+
+
+
+function renderCompartmentVisitBreakdown(
   rows
 ){
 
@@ -10183,41 +10220,61 @@ async function showCompartmentVisitBreakdown(){
 <div style="
 position:fixed;
 inset:0;
-background:rgba(0,0,0,.45);
+background:rgba(0,0,0,.55);
 z-index:999999;
 display:flex;
 justify-content:center;
 align-items:center;
+padding:10px;
+box-sizing:border-box;
 ">
 
 <div style="
-width:min(95vw,900px);
-max-height:85vh;
-overflow:hidden;
+width:min(100%,950px);
+height:min(90vh,850px);
 background:#111827;
-border-radius:12px;
-color:white;
+border-radius:14px;
+overflow:hidden;
 display:flex;
 flex-direction:column;
+color:white;
+box-shadow:0 10px 30px rgba(0,0,0,.45);
 ">
 
 <div style="
-padding:12px;
-font-weight:700;
+padding:14px;
 display:flex;
 justify-content:space-between;
+align-items:center;
+border-bottom:1px solid rgba(255,255,255,.08);
+flex-shrink:0;
 ">
 
-<span>
-COMPARTMENT VISIT BREAKDOWN
-</span>
+<div style="
+font-size:16px;
+font-weight:700;
+">
+📊 COMPARTMENT VISIT BREAKDOWN
+</div>
 
 <button
 onclick="
-document.getElementById(
+document
+.getElementById(
 'visitBreakdownModal'
-).remove()
-">
+)
+?.remove()
+"
+style="
+background:#dc2626;
+border:none;
+color:white;
+padding:8px 12px;
+border-radius:8px;
+cursor:pointer;
+font-weight:700;
+"
+>
 ✕
 </button>
 
@@ -10225,18 +10282,24 @@ document.getElementById(
 
 <div style="
 padding:10px;
+border-bottom:1px solid rgba(255,255,255,.08);
+flex-shrink:0;
 ">
 
 <input
 
 id="visitBreakdownSearch"
 
-placeholder="Search compartment..."
+placeholder="🔍 Search compartment..."
 
 style="
 width:100%;
-padding:8px;
-border-radius:8px;
+padding:10px;
+border-radius:10px;
+border:none;
+outline:none;
+font-size:14px;
+box-sizing:border-box;
 "
 
 oninput="
@@ -10249,8 +10312,9 @@ filterCompartmentBreakdown()
 <div
 id="visitBreakdownBody"
 style="
-overflow:auto;
 flex:1;
+overflow:auto;
+-webkit-overflow-scrolling:touch;
 "
 >
 
@@ -10258,26 +10322,55 @@ flex:1;
 style="
 width:100%;
 border-collapse:collapse;
+table-layout:fixed;
+font-size:14px;
 "
 >
 
-<thead>
+<thead
+style="
+position:sticky;
+top:0;
+z-index:20;
+background:#1f2937;
+"
+>
 
 <tr>
 
-<th>
+<th style="
+width:45%;
+padding:12px 8px;
+text-align:left;
+border-bottom:1px solid rgba(255,255,255,.15);
+">
 Compartment
 </th>
 
-<th>
+<th style="
+width:15%;
+padding:12px 8px;
+text-align:center;
+border-bottom:1px solid rgba(255,255,255,.15);
+">
 Visits
 </th>
 
-<th>
+<th style="
+width:20%;
+padding:12px 8px;
+text-align:center;
+border-bottom:1px solid rgba(255,255,255,.15);
+">
 Coverage
 </th>
 
-<th>
+<th style="
+width:20%;
+padding:12px 8px;
+text-align:center;
+border-bottom:1px solid rgba(255,255,255,.15);
+">
 Distance
 </th>
 
@@ -10287,37 +10380,69 @@ Distance
 
 <tbody>
 
-${rows.map(r=>`
+${rows.map((r,i)=>`
 
 <tr
+
 class="visitRow"
 
-data-name="${r.compartment}"
+data-name="${String(
+  r.compartment
+).toLowerCase()}"
 
 onclick="
 jumpToCompartment(
-'${r.compartment}'
+'${String(
+  r.compartment
+).replace(
+  /'/g,
+  "\\'"
+)}'
 )
 "
 
 style="
 cursor:pointer;
+background:${
+  i % 2 === 0
+    ? "transparent"
+    : "rgba(255,255,255,.03)"
+};
 "
+
 >
 
-<td>
+<td style="
+padding:10px 8px;
+white-space:nowrap;
+overflow:hidden;
+text-overflow:ellipsis;
+border-bottom:1px solid rgba(255,255,255,.06);
+">
 ${r.compartment}
 </td>
 
-<td>
+<td style="
+padding:10px 8px;
+text-align:center;
+border-bottom:1px solid rgba(255,255,255,.06);
+">
 ${r.visits}
 </td>
 
-<td>
+<td style="
+padding:10px 8px;
+text-align:center;
+border-bottom:1px solid rgba(255,255,255,.06);
+">
 ${r.coverage.toFixed(1)}%
 </td>
 
-<td>
+<td style="
+padding:10px 8px;
+text-align:center;
+border-bottom:1px solid rgba(255,255,255,.06);
+">
 ${r.distanceKm.toFixed(1)} km
 </td>
 
@@ -10331,9 +10456,20 @@ ${r.distanceKm.toFixed(1)} km
 
 </div>
 
+<div style="
+padding:10px;
+font-size:12px;
+color:#9ca3af;
+border-top:1px solid rgba(255,255,255,.08);
+flex-shrink:0;
+">
+Total Compartments: ${rows.length}
 </div>
 
 </div>
+
+</div>
+
 `;
 
   document.body.appendChild(
@@ -10342,7 +10478,9 @@ ${r.distanceKm.toFixed(1)} km
 
 }
 
-    function filterCompartmentBreakdown(){
+
+
+function filterCompartmentBreakdown(){
 
   const q =
 
@@ -10350,8 +10488,9 @@ ${r.distanceKm.toFixed(1)} km
       .getElementById(
         "visitBreakdownSearch"
       )
-      .value
-      .toLowerCase();
+      ?.value
+      ?.toLowerCase()
+      ?.trim() || "";
 
   document
     .querySelectorAll(
@@ -10362,7 +10501,6 @@ ${r.distanceKm.toFixed(1)} km
       row.style.display =
 
         row.dataset.name
-          .toLowerCase()
           .includes(q)
 
         ?
@@ -10377,7 +10515,9 @@ ${r.distanceKm.toFixed(1)} km
 
 }
 
-    function jumpToCompartment(
+
+
+function jumpToCompartment(
   compartment
 ){
 
@@ -10387,14 +10527,24 @@ ${r.distanceKm.toFixed(1)} km
     )
     ?.remove();
 
+  window.gisFilter =
+    window.gisFilter || {};
+
   window.gisFilter.compartment =
     compartment;
 
-  openCompartmentPopup?.(
-    compartment
-  );
+  if(
+    typeof openCompartmentPopup ===
+    "function"
+  ){
+    openCompartmentPopup(
+      compartment
+    );
+  }
 
 }
+
+   
   async function showMonthlyHeatmap() {
 
   try {
@@ -14397,7 +14547,9 @@ function zoomToLiveStaff(
 
     map.flyTo(
       [lat,lng],
-      18,
+      window.innerWidth < 768
+        ? 16
+        : 17,
       {
         animate:true,
         duration:1.5
@@ -14408,9 +14560,7 @@ function zoomToLiveStaff(
     // REMOVE OLD MARKER
     // ==========================
 
-    if(
-      window.liveStaffLocationMarker
-    ){
+    if(window.liveStaffLocationMarker){
 
       map.removeLayer(
         window.liveStaffLocationMarker
@@ -14425,9 +14575,7 @@ function zoomToLiveStaff(
     // REMOVE OLD HIGHLIGHT
     // ==========================
 
-    if(
-      window.liveStaffHighlight
-    ){
+    if(window.liveStaffHighlight){
 
       map.removeLayer(
         window.liveStaffHighlight
@@ -14450,8 +14598,11 @@ function zoomToLiveStaff(
       .addTo(map);
 
     // ==========================
-    // PERMANENT LABEL
+    // TOOLTIP
     // ==========================
+
+    const isMobile =
+      window.innerWidth < 768;
 
     window.liveStaffLocationMarker
       .bindTooltip(
@@ -14459,15 +14610,21 @@ function zoomToLiveStaff(
         `👤 ${name}`,
 
         {
-          permanent:true,
+          permanent:!isMobile,
           direction:"top",
           offset:[0,-10],
           className:
             "liveStaffTooltip"
         }
 
-      )
-      .openTooltip();
+      );
+
+    if(!isMobile){
+
+      window.liveStaffLocationMarker
+        .openTooltip();
+
+    }
 
     // ==========================
     // HIGHLIGHT CIRCLE
@@ -14478,10 +14635,17 @@ function zoomToLiveStaff(
       L.circle(
         [lat,lng],
         {
-          radius:50,
+          radius:
+            isMobile
+              ? 30
+              : 50,
+
           color:"#00d4ff",
+
           weight:3,
+
           fillOpacity:0.15
+
         }
       )
       .addTo(map);
