@@ -9954,6 +9954,430 @@ async function getAnalyticsSummary(
         : 0
   };
 }
+async function showCompartmentVisitBreakdown(){
+
+  try{
+
+    const d =
+      new Date();
+
+    const monthKey =
+      `${d.getFullYear()}_${
+        String(
+          d.getMonth() + 1
+        ).padStart(
+          2,
+          "0"
+        )
+      }`;
+
+    const level =
+      String(
+        window.activePopupContext?.level ||
+        "btr"
+      )
+      .toLowerCase();
+
+    const filterValue =
+
+      level === "compartment"
+
+      ? window.gisFilter?.compartment
+
+      : level === "beat"
+
+      ? window.gisFilter?.beat
+
+      : level === "range"
+
+      ? window.gisFilter?.range
+
+      : level === "division"
+
+      ? window.gisFilter?.division
+
+      : "";
+
+    const gridIds =
+      getAnalyticsGridIds(
+        level,
+        filterValue
+      );
+
+    const rows = [];
+
+    for(const gridId of gridIds){
+
+      try{
+
+        const snap =
+          await window.fb.getDoc(
+
+            window.fb.doc(
+
+              window.db,
+
+              "analytics_rebuild",
+
+              monthKey,
+
+              "compartments",
+
+              gridId
+
+            )
+
+          );
+
+        if(
+          !snap.exists()
+        ){
+          continue;
+        }
+
+        const analytics =
+          snap.data() || {};
+
+        const master =
+          window.masterGrid?.[
+            gridId
+          ];
+
+        if(
+          !master
+        ){
+          continue;
+        }
+
+        const totalCells =
+
+          Number(
+            master.totalCells || 0
+          );
+
+        const coveredCells =
+
+          Number(
+            analytics.totalCoveredCells || 0
+          );
+
+        const coverage =
+
+          totalCells > 0
+
+          ?
+
+          (
+            coveredCells /
+            totalCells
+          ) * 100
+
+          :
+
+          0;
+
+        rows.push({
+
+          gridId,
+
+          compartment:
+
+            master.compartment ||
+
+            gridId,
+
+          visits:
+
+            Number(
+              analytics.visitCount || 0
+            ),
+
+          coverage,
+
+          distanceKm:
+
+            (
+              Number(
+                analytics.distanceMeters || 0
+              )
+              /
+              1000
+            )
+
+        });
+
+      }
+
+      catch(err){
+
+        console.error(
+          gridId,
+          err
+        );
+
+      }
+
+    }
+
+    rows.sort(
+
+      (a,b)=>
+
+        b.visits -
+        a.visits
+
+    );
+
+    renderCompartmentVisitBreakdown(
+      rows
+    );
+
+  }
+
+  catch(err){
+
+    console.error(
+      err
+    );
+
+  }
+
+}
+    function renderCompartmentVisitBreakdown(
+  rows
+){
+
+  document
+    .getElementById(
+      "visitBreakdownModal"
+    )
+    ?.remove();
+
+  const div =
+    document.createElement(
+      "div"
+    );
+
+  div.id =
+    "visitBreakdownModal";
+
+  div.innerHTML = `
+
+<div style="
+position:fixed;
+inset:0;
+background:rgba(0,0,0,.45);
+z-index:999999;
+display:flex;
+justify-content:center;
+align-items:center;
+">
+
+<div style="
+width:min(95vw,900px);
+max-height:85vh;
+overflow:hidden;
+background:#111827;
+border-radius:12px;
+color:white;
+display:flex;
+flex-direction:column;
+">
+
+<div style="
+padding:12px;
+font-weight:700;
+display:flex;
+justify-content:space-between;
+">
+
+<span>
+COMPARTMENT VISIT BREAKDOWN
+</span>
+
+<button
+onclick="
+document.getElementById(
+'visitBreakdownModal'
+).remove()
+">
+✕
+</button>
+
+</div>
+
+<div style="
+padding:10px;
+">
+
+<input
+
+id="visitBreakdownSearch"
+
+placeholder="Search compartment..."
+
+style="
+width:100%;
+padding:8px;
+border-radius:8px;
+"
+
+oninput="
+filterCompartmentBreakdown()
+"
+/>
+
+</div>
+
+<div
+id="visitBreakdownBody"
+style="
+overflow:auto;
+flex:1;
+"
+>
+
+<table
+style="
+width:100%;
+border-collapse:collapse;
+"
+>
+
+<thead>
+
+<tr>
+
+<th>
+Compartment
+</th>
+
+<th>
+Visits
+</th>
+
+<th>
+Coverage
+</th>
+
+<th>
+Distance
+</th>
+
+</tr>
+
+</thead>
+
+<tbody>
+
+${rows.map(r=>`
+
+<tr
+class="visitRow"
+
+data-name="${r.compartment}"
+
+onclick="
+jumpToCompartment(
+'${r.compartment}'
+)
+"
+
+style="
+cursor:pointer;
+"
+>
+
+<td>
+${r.compartment}
+</td>
+
+<td>
+${r.visits}
+</td>
+
+<td>
+${r.coverage.toFixed(1)}%
+</td>
+
+<td>
+${r.distanceKm.toFixed(1)} km
+</td>
+
+</tr>
+
+`).join("")}
+
+</tbody>
+
+</table>
+
+</div>
+
+</div>
+
+</div>
+`;
+
+  document.body.appendChild(
+    div
+  );
+
+}
+
+    function filterCompartmentBreakdown(){
+
+  const q =
+
+    document
+      .getElementById(
+        "visitBreakdownSearch"
+      )
+      .value
+      .toLowerCase();
+
+  document
+    .querySelectorAll(
+      ".visitRow"
+    )
+    .forEach(row=>{
+
+      row.style.display =
+
+        row.dataset.name
+          .toLowerCase()
+          .includes(q)
+
+        ?
+
+        ""
+
+        :
+
+        "none";
+
+    });
+
+}
+
+    function jumpToCompartment(
+  compartment
+){
+
+  document
+    .getElementById(
+      "visitBreakdownModal"
+    )
+    ?.remove();
+
+  window.gisFilter.compartment =
+    compartment;
+
+  openCompartmentPopup?.(
+    compartment
+  );
+
+}
   async function showMonthlyHeatmap() {
 
   try {
@@ -13244,7 +13668,26 @@ function getLiveStaffCountForCurrentPolygon() {
         ).toLocaleString();
 
     }
+// =====================================
+// 🔥 SESSION LABEL
+// =====================================
 
+const sessionLabelEl =
+  document.getElementById(
+    "msSessionsLabel"
+  );
+
+if(sessionLabelEl){
+
+  sessionLabelEl.textContent =
+
+    level === "compartment"
+
+    ? "Visits"
+
+    : "Patrol Activity";
+
+}
     // =====================================
     // 🔥 SESSIONS
     // =====================================
@@ -13391,7 +13834,7 @@ if(updatedAtEl){
     );
   }
 }
-    function addMonthlyStatusCard() {
+   function addMonthlyStatusCard() {
 
   const control =
     L.control({
@@ -13432,57 +13875,102 @@ if(updatedAtEl){
 
       </div>
 
-     <div id="monthlyStatusBody">
+      <div id="monthlyStatusBody">
 
-  <div class="monthlyStatusRow">
-    <span>Live Duty Team</span>
-    <span id="msLiveStaff">0</span>
-  </div>
+        <div class="monthlyStatusRow">
 
-  <div class="monthlyStatusRow">
-    <span>Total Grids</span>
-    <span id="msTotalGrids">0</span>
-  </div>
+          <span>
+            Live Duty Team
+          </span>
 
-  <div class="monthlyStatusRow">
-    <span>Grids Visited</span>
-    <span id="msCells">0</span>
-  </div>
+        <span
+  id="msLiveStaff"
+  onclick="
+  if(typeof showMonthlyLiveStaff==='function'){
+    showMonthlyLiveStaff();
+  }
+"
+  title="View Live Duty Team"
+  style="
+    cursor:pointer;
+    text-decoration:underline;
+    color:#7fdfff;
+    font-weight:700;
+  "
+>
+  0
+</span>
 
-  <div class="monthlyStatusRow">
-    <span>Patrolled Area</span>
-    <span id="msArea">0 ha</span>
-  </div>
+        </div>
 
-  <div class="monthlyStatusRow">
-    <span>Total Area</span>
-    <span id="msTotalArea">0 ha</span>
-  </div>
+        <div class="monthlyStatusRow">
+          <span>Total Grids</span>
+          <span id="msTotalGrids">0</span>
+        </div>
 
-  <div class="monthlyStatusRow">
-    <span>Compartments</span>
-    <span id="msCompartments">0</span>
-  </div>
+        <div class="monthlyStatusRow">
+          <span>Grids Visited</span>
+          <span id="msCells">0</span>
+        </div>
 
-  <div class="monthlyStatusRow">
-    <span>Sessions</span>
-    <span id="msSessions">0</span>
-  </div>
+        <div class="monthlyStatusRow">
+          <span>Patrolled Area</span>
+          <span id="msArea">0 ha</span>
+        </div>
 
-  <div class="monthlyStatusRow">
-    <span>Distance</span>
-    <span id="msDistance">0 km</span>
-  </div>
+        <div class="monthlyStatusRow">
+          <span>Total Area</span>
+          <span id="msTotalArea">0 ha</span>
+        </div>
 
-  <div class="monthlyStatusRow">
-    <span>Coverage</span>
-    <span id="msCoverage">0 %</span>
-  </div>
-<div class="monthlyStatusRow">
-  <span>Updated At</span>
-  <span id="msUpdatedAt">--</span>
-</div>
-</div>
+        <div class="monthlyStatusRow">
+          <span>Compartments</span>
+          <span id="msCompartments">0</span>
+        </div>
+
+        <div class="monthlyStatusRow">
+
+          <span id="msSessionsLabel">
+            Patrol Activity
+          </span>
+
+        <span
+  id="msSessions"
+ onclick="
+  if(typeof showCompartmentVisitBreakdown==='function'){
+    showCompartmentVisitBreakdown();
+  }
+"
+  title="View Compartment Visit Breakdown"
+  style="
+    cursor:pointer;
+    text-decoration:underline;
+    color:#7fdfff;
+    font-weight:700;
+  "
+>
+  0
+</span>
+
+        </div>
+
+        <div class="monthlyStatusRow">
+          <span>Distance</span>
+          <span id="msDistance">0 km</span>
+        </div>
+
+        <div class="monthlyStatusRow">
+          <span>Coverage</span>
+          <span id="msCoverage">0 %</span>
+        </div>
+
+        <div class="monthlyStatusRow">
+          <span>Updated At</span>
+          <span id="msUpdatedAt">--</span>
+        </div>
+
+      </div>
+
     `;
 
     L.DomEvent.disableClickPropagation(
@@ -13498,6 +13986,422 @@ if(updatedAtEl){
     control;
 }
 
+
+   async function showMonthlyLiveStaff(){
+
+  try{
+
+    const staffList =
+
+      Object.values(
+        window.liveStaffCache || {}
+      )
+      .filter(
+        s => s?.dutyActive === true
+      );
+
+    staffList.sort(
+      (a,b) => {
+
+        const ta =
+
+          Number(
+            a.updatedAt ||
+            a.lastSeen ||
+            0
+          );
+
+        const tb =
+
+          Number(
+            b.updatedAt ||
+            b.lastSeen ||
+            0
+          );
+
+        return tb - ta;
+
+      }
+    );
+
+    let html =
+
+      `
+      <div
+        style="
+          max-height:70vh;
+          overflow:auto;
+          padding:10px;
+          color:white;
+        "
+      >
+        <h3
+          style="
+            margin:0 0 12px 0;
+            text-align:center;
+          "
+        >
+          LIVE DUTY TEAM
+          (${staffList.length})
+        </h3>
+      `;
+
+    for(const staff of staffList){
+
+      let lastTime = "--";
+
+      try{
+
+        const ts =
+
+          Number(
+            staff.updatedAt ||
+            staff.lastSeen ||
+            0
+          );
+
+        if(ts){
+
+          lastTime =
+
+            new Date(ts)
+            .toLocaleTimeString(
+              "en-IN",
+              {
+                hour:"2-digit",
+                minute:"2-digit",
+                hour12:true
+              }
+            );
+
+        }
+
+      }
+
+      catch(e){}
+
+      html += `
+
+        <div
+          style="
+            padding:10px;
+            border-bottom:
+              1px solid #444;
+          "
+        >
+
+          <div>
+            👤
+            <b>
+              ${
+                staff.name
+                ||
+                staff.cleanName
+                ||
+                "Unknown"
+              }
+            </b>
+          </div>
+
+          ${
+            staff.division
+
+            ?
+
+            `
+            <div>
+              🏢 ${staff.division}
+            </div>
+            `
+
+            :
+
+            ""
+          }
+
+          ${
+            staff.range
+
+            ?
+
+            `
+            <div>
+              🌿 ${staff.range}
+            </div>
+            `
+
+            :
+
+            ""
+          }
+
+          ${
+            staff.beat
+
+            ?
+
+            `
+            <div>
+              📍 ${staff.beat}
+            </div>
+            `
+
+            :
+
+            ""
+          }
+
+          ${
+            staff.compartment
+
+            ?
+
+            `
+            <div>
+              🎯 Assigned Area:
+              ${staff.compartment}
+            </div>
+            `
+
+            :
+
+            ""
+          }
+
+          ${
+            staff.dutyType
+
+            ?
+
+            `
+            <div>
+              🚨 Duty:
+              ${staff.dutyType}
+            </div>
+            `
+
+            :
+
+            ""
+          }
+
+          <div>
+
+            📌 GPS:
+
+            <span
+
+              onclick='
+                zoomToLiveStaff(
+                  ${JSON.stringify(
+                    staff.name ||
+                    staff.cleanName ||
+                    "Staff"
+                  )},
+                  ${Number(
+                    staff.lat || 0
+                  )},
+                  ${Number(
+                    staff.lng || 0
+                  )}
+                )
+              '
+
+              style='
+                cursor:pointer;
+                color:#7fdfff;
+                text-decoration:underline;
+                font-weight:700;
+              '
+
+              title='Zoom to location'
+
+            >
+
+              ${Number(
+                staff.lat || 0
+              ).toFixed(6)},
+              ${Number(
+                staff.lng || 0
+              ).toFixed(6)}
+
+            </span>
+
+          </div>
+
+          <div>
+            🕒 ${lastTime}
+          </div>
+
+        </div>
+
+      `;
+    }
+
+    html += `</div>`;
+
+    const old =
+
+      document.getElementById(
+        "liveDutyTeamModal"
+      );
+
+    if(old){
+      old.remove();
+    }
+
+    const modal =
+      document.createElement(
+        "div"
+      );
+
+    modal.id =
+      "liveDutyTeamModal";
+
+    modal.innerHTML = `
+
+      <div
+        style="
+          position:fixed;
+          inset:0;
+          background:
+            rgba(0,0,0,.55);
+          z-index:999999;
+          display:flex;
+          justify-content:center;
+          align-items:center;
+        "
+      >
+
+        <div
+          style="
+            width:min(95vw,550px);
+            background:#1f2937;
+            border-radius:12px;
+            overflow:hidden;
+          "
+        >
+
+          <div
+            style="
+              padding:10px;
+              text-align:right;
+            "
+          >
+
+            <button
+              onclick="
+                document
+                  .getElementById(
+                    'liveDutyTeamModal'
+                  )
+                  ?.remove()
+              "
+            >
+              ✖
+            </button>
+
+          </div>
+
+          ${html}
+
+        </div>
+
+      </div>
+
+    `;
+
+    document.body.appendChild(
+      modal
+    );
+
+  }
+
+  catch(err){
+
+    console.error(
+      "❌ showMonthlyLiveStaff",
+      err
+    );
+
+  }
+
+}
+function zoomToLiveStaff(
+  name,
+  lat,
+  lng
+){
+
+  try{
+
+    document
+      .getElementById(
+        "liveDutyTeamModal"
+      )
+      ?.remove();
+
+    if(!window.map){
+      return;
+    }
+
+    map.flyTo(
+      [
+        Number(lat),
+        Number(lng)
+      ],
+      18,
+      {
+        animate:true,
+        duration:1.5
+      }
+    );
+
+    if(
+      window.liveStaffLocationMarker
+    ){
+
+      map.removeLayer(
+        window.liveStaffLocationMarker
+      );
+
+    }
+
+    window.liveStaffLocationMarker =
+
+      L.marker(
+        [
+          Number(lat),
+          Number(lng)
+        ]
+      )
+      .addTo(map);
+
+    window.liveStaffLocationMarker
+      .bindPopup(
+
+        `
+        <b>👤 ${name}</b>
+        <br>
+        📌 ${Number(lat).toFixed(6)},
+        ${Number(lng).toFixed(6)}
+        `
+
+      )
+      .openPopup();
+
+  }
+
+  catch(err){
+
+    console.error(
+      "❌ zoomToLiveStaff",
+      err
+    );
+
+  }
+
+}
 function startMonthlyStatusCardRefresh() {
 
   if (window.monthlyStatusRefreshTimer) {
