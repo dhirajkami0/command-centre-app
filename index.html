@@ -36029,16 +36029,21 @@ ${coordinates}
 
 }
 
-async function shareDutyKMLReport(){
-
-  alert("STEP 1");
+function shareDutyKMLReport(){
 
   try{
 
-    alert("STEP 2");
+    alert(
+      "📤 WhatsApp button clicked"
+    );
 
     const report =
       window.currentDutyReport || {};
+
+    console.log(
+      "CURRENT REPORT",
+      report
+    );
 
     const kmlUrl =
       String(
@@ -36046,35 +36051,98 @@ async function shareDutyKMLReport(){
       ).trim();
 
     alert(
-      "KML = " + kmlUrl
+      "KML URL:\n" +
+      (
+        kmlUrl ||
+        "EMPTY"
+      )
     );
 
-    await navigator.share({
+    if(!kmlUrl){
 
-      title:
-        "Test",
+      alert(
+        "❌ KML not available"
+      );
 
-      text:
-        "Hello World"
+      return;
+    }
 
-    });
+    if(
+      navigator.share
+    ){
 
-    alert("STEP 3");
+      navigator.share({
+
+        title:
+          "Patrol Track KML",
+
+        text:
+
+`📍 Patrol Track KML
+
+${kmlUrl}`
+
+      })
+
+      .then(() => {
+
+        console.log(
+          "✅ Share success"
+        );
+
+      })
+
+      .catch(err => {
+
+        console.error(
+          "Share failed",
+          err
+        );
+
+        alert(
+          "Share failed:\n" +
+          err.message
+        );
+
+      });
+
+      return;
+    }
+
+    const whatsappUrl =
+
+      "https://wa.me/?text=" +
+
+      encodeURIComponent(
+
+`📍 Patrol Track KML
+
+${kmlUrl}`
+
+      );
+
+    window.location.href =
+      whatsappUrl;
 
   }
 
   catch(err){
 
-    alert(
-      "ERROR: " +
-      err.message
+    console.error(
+      "❌ shareDutyKMLReport",
+      err
     );
 
-    console.error(err);
-
+    alert(
+      err.message ||
+      "Unknown error"
+    );
   }
 
 }
+
+window.shareDutyKMLReport =
+  shareDutyKMLReport;
  async function sendDutyReportToAppsScript(
   report
 ){
