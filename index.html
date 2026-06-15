@@ -10170,6 +10170,34 @@ async function showCompartmentVisitBreakdown(){
 
         0;
 
+      const distanceKm =
+
+        Number(
+          analytics.distanceMeters || 0
+        ) / 1000;
+
+      const displayDistance =
+
+        distanceKm > 0
+
+        ?
+
+        distanceKm.toFixed(1)
+
+        :
+
+        Number(
+          analytics.visitCount || 0
+        ) > 0
+
+        ?
+
+        "<0.1"
+
+        :
+
+        "0.0";
+
       rows.push({
 
         gridId,
@@ -10187,11 +10215,9 @@ async function showCompartmentVisitBreakdown(){
 
         coverage,
 
-        distanceKm:
+        distanceKm,
 
-          Number(
-            analytics.distanceMeters || 0
-          ) / 1000
+        displayDistance
 
       });
 
@@ -10228,7 +10254,6 @@ async function showCompartmentVisitBreakdown(){
   }
 
 }
-
 
 
 function renderCompartmentVisitBreakdown(
@@ -10477,7 +10502,7 @@ padding:10px 8px;
 text-align:center;
 border-bottom:1px solid rgba(255,255,255,.06);
 ">
-${r.distanceKm.toFixed(1)} km
+${r.displayDistance} km
 </td>
 
 </tr>
