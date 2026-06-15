@@ -14559,8 +14559,7 @@ console.timeEnd(
   }
 
 }
-
-    function clearLiveStaffMarker(){
+function clearLiveStaffMarker(){
 
   if(
     window.liveStaffLocationMarker
@@ -14625,7 +14624,9 @@ function zoomToLiveStaff(
     // REMOVE OLD MARKER
     // ==========================
 
-    if(window.liveStaffLocationMarker){
+    if(
+      window.liveStaffLocationMarker
+    ){
 
       map.removeLayer(
         window.liveStaffLocationMarker
@@ -14640,7 +14641,9 @@ function zoomToLiveStaff(
     // REMOVE OLD HIGHLIGHT
     // ==========================
 
-    if(window.liveStaffHighlight){
+    if(
+      window.liveStaffHighlight
+    ){
 
       map.removeLayer(
         window.liveStaffHighlight
@@ -14675,16 +14678,24 @@ function zoomToLiveStaff(
         `👤 ${name}`,
 
         {
-          permanent:!isMobile,
-          direction:"top",
-          offset:[0,-10],
+          permanent:
+            !isMobile,
+
+          direction:
+            "top",
+
+          offset:
+            [0,-10],
+
           className:
             "liveStaffTooltip"
         }
 
       );
 
-    if(!isMobile){
+    if(
+      !isMobile
+    ){
 
       window.liveStaffLocationMarker
         .openTooltip();
@@ -14705,15 +14716,43 @@ function zoomToLiveStaff(
               ? 30
               : 50,
 
-          color:"#00d4ff",
+          color:
+            "#00d4ff",
 
-          weight:3,
+          weight:
+            3,
 
-          fillOpacity:0.15
-
+          fillOpacity:
+            0.15
         }
       )
       .addTo(map);
+
+    // ==========================
+    // CLICK MARKER TO REMOVE
+    // ==========================
+
+    window.liveStaffLocationMarker.on(
+      "click",
+      () => {
+
+        clearLiveStaffMarker();
+
+      }
+    );
+
+    // ==========================
+    // CLICK CIRCLE TO REMOVE
+    // ==========================
+
+    window.liveStaffHighlight.on(
+      "click",
+      () => {
+
+        clearLiveStaffMarker();
+
+      }
+    );
 
   }
 
