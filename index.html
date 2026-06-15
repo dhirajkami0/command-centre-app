@@ -26132,16 +26132,55 @@ async function buildCellToGridLookup(){
     ).length
   );
 }
-   async function loadAllStaffProfiles(){
+  async function loadAllStaffProfiles(){
+
+  console.trace(
+    "LOAD_ALL_STAFF_PROFILES"
+  );
 
   try{
 
+    // =====================================
+    // 🔥 WAIT FOR FIREBASE
+    // =====================================
+
+    await waitForFirebaseReady();
+
+    if(
+
+      !window.fb ||
+
+      !window.db ||
+
+      !window.fb.getDocs
+
+    ){
+
+      console.error(
+        "❌ Firebase not ready"
+      );
+
+      return;
+    }
+
+    console.time(
+      "LOAD_STAFF_PROFILES"
+    );
+
+    console.log(
+      "📦 Loading staff_profiles..."
+    );
+
     const snap =
+
       await window.fb.getDocs(
 
         window.fb.collection(
+
           window.db,
+
           "staff_profiles"
+
         )
 
       );
@@ -26179,7 +26218,12 @@ async function buildCellToGridLookup(){
       window.allStaffProfiles.length
     );
 
+    console.timeEnd(
+      "LOAD_STAFF_PROFILES"
+    );
+
   }
+
   catch(err){
 
     console.error(
