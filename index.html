@@ -34569,8 +34569,7 @@ async function submitEndDuty(event) {
     // 🔥 SESSION ID
     // ============================================================
     const sessionId = localStorage.getItem("sessionId") || window.currentSessionId || "";
-const endedAt =
-  Date.now();
+    const endedAt = Date.now();
   
     // ============================================================
     // 🔥 BUTTON
@@ -34667,303 +34666,153 @@ const endedAt =
             console.warn("⚠ No sessionId available");
             return;
           }
-// ======================================
-// 🔥 BUILD FINAL HISTORY ONCE
-// ======================================
-
-const pointsSnap =
-  await window.fb.getDocs(
-
-    window.fb.query(
-
-      window.fb.collection(
-        window.db,
-        "patrol_tracks",
-        sessionId,
-        "points"
-      ),
-
-      window.fb.orderBy(
-        "time"
-      )
-
-    )
-
-  );
-
-const fullTrack = [];
-
-pointsSnap.forEach(doc => {
-
-  const p = doc.data();
-
-  if(
-
-    Number.isFinite(
-      Number(p?.lat)
-    )
-
-    &&
-
-    Number.isFinite(
-      Number(p?.lon)
-    )
-
-  ){
-
-    fullTrack.push({
-
-      lat:
-        Number(p.lat),
-
-      lng:
-        Number(p.lon)
-
-    });
-
-  }
-
-});
-
-console.log(
-  "📍 FINAL TRACK",
-  fullTrack.length
-);
-
-if(
-  fullTrack.length < 2
-){
-
-  throw new Error(
-    `Insufficient track points: ${fullTrack.length}`
-  );
-
-}
-
-console.table({
-  sessionId,
-  fullTrackPoints:
-    fullTrack.length
-});
-
-await processHistoryTrack(
-  fullTrack,
-  sessionId
-);
-
-// ======================================
-// 🔥 EARLY REPORT (IMMEDIATE)
-// ======================================
-let reportData = null;
-
-try{
-
-  reportData =
-    await buildDutyPerformanceReport({
-
-      sessionId,
-      dutyType,
-      leader: profile.cleanName,
-      trackPoints: fullTrack
-
-    });
-
-  window.currentDutyReport =
-    reportData;
-
-  showDutyPerformanceReport(
-    reportData
-  );
-
-}catch(err){
-
-  console.error(
-    "❌ Early report failed",
-    err
-  );
-
-}
-
-// ======================================
-// 🔥 FINAL ANALYTICS FLUSH
-// MUST COMPLETE BEFORE REPORTS
-// ======================================
-try{
-
-  await flushAnalyticsBuffer();
-
-  console.log(
-    "✅ FINAL ANALYTICS FLUSH COMPLETE"
-  );
-
-}catch(err){
-
-  console.error(
-    "❌ FINAL ANALYTICS FLUSH FAILED",
-    err
-  );
-}
-        
-// ======================================
-// 🔥 LOAD HISTORY TRACK
-// ======================================
-const historySnap = await window.fb.getDoc(
-  window.fb.doc(
-    window.db,
-    "history",
-    sessionId
-  )
-);
-        
-       
-         if(!historySnap.exists()){
-           throw new Error(`History not found: ${sessionId}`);
-         }
-
-         const historyData =
-  historySnap.data() || {};
-
-const encoded =
-  String(
-    historyData.rawTrackEncoded || ""
-  );
-         const decoded = encoded ? polyline.decode(encoded) : [];
-
-       const points = decoded.map(coord => ({
-  lat: Number(coord[0]),
-  lng: Number(coord[1])
-}));
-
-
-
-// ======================================
-// KML GENERATION IN BACKGROUND
-// ======================================
-
-const kmlUrl =
-  await uploadPatrolKML(
-    sessionId,
-    points
-  );
-
-window.lastDutyKmlUrl =
-  kmlUrl || "";
-
-await window.fb.updateDoc(
-
-  window.fb.doc(
-    window.db,
-    "history",
-    sessionId
-  ),
-
-  {
-    pointCount:
-      points.length,
-
-    kmlUrl:
-      kmlUrl || "",
-
-    endedAt
-  }
-
-);
-
-console.table({
-
-  sessionId,
-
-  pointCount:
-    points.length,
-
-  encodedLength:
-    encoded.length,
-
-  decodedPoints:
-    points.length,
-
-  kmlGenerated:
-    !!kmlUrl
-
-});
-
-// ======================================
-// UPDATE REPORT WITH KML
-// ======================================
-
-if(reportData){
-
-  reportData.kmlUrl =
-    kmlUrl || "";
-
-  window.currentDutyReport =
-    reportData;
-
-}
-
-// ======================================
-// TELEGRAM IN BACKGROUND
-// ======================================
-
-if(reportData){
-
-  sendDutyReportToAppsScript(
-    reportData
-  )
-  .catch(err => {
-
-    console.error(
-      "❌ Telegram send failed",
-      err
-    );
-
-  });
-
-}
-
-window.realtimePerformanceData = {
-  trackPoints: []
-};
-
-// ======================================
-// UPDATE PATROL TRACKS STATUS
-// ======================================
-await window.fb.updateDoc(
-  window.fb.doc(
-    window.db,
-    "patrol_tracks",
-    sessionId
-  ),
-  {
-    dutyActive: false,
-    status: "ENDED",
-
-    endedAt,
-
-    updatedAt:
-      endedAt
-  }
-);
+          // ======================================
+          // 🔥 BUILD FINAL HISTORY ONCE
+          // ======================================
+          const pointsSnap = await window.fb.getDocs(
+            window.fb.query(
+              window.fb.collection(window.db, "patrol_tracks", sessionId, "points"),
+              window.fb.orderBy("time")
+            )
+          );
+
+          const fullTrack = [];
+          pointsSnap.forEach(doc => {
+            const p = doc.data();
+            if (Number.isFinite(Number(p?.lat)) && Number.isFinite(Number(p?.lon))) {
+              fullTrack.push({
+                lat: Number(p.lat),
+                lng: Number(p.lon)
+              });
+            }
+          });
+
+          console.log("📍 FINAL TRACK", fullTrack.length);
+
+          if (fullTrack.length < 2) {
+            throw new Error(`Insufficient track points: ${fullTrack.length}`);
+          }
+
+          console.table({
+            sessionId,
+            fullTrackPoints: fullTrack.length
+          });
+
+          await processHistoryTrack(fullTrack, sessionId);
+
+          // ======================================
+          // 🔥 EARLY REPORT (IMMEDIATE)
+          // ======================================
+          let reportData = null;
+          try {
+            reportData = await buildDutyPerformanceReport({
+              sessionId,
+              dutyType,
+              leader: profile.cleanName,
+              trackPoints: fullTrack
+            });
+            window.currentDutyReport = reportData;
+            showDutyPerformanceReport(reportData);
+          } catch (err) {
+            console.error("❌ Early report failed", err);
+          }
+
+          // ======================================
+          // 🔥 FINAL ANALYTICS FLUSH
+          // ======================================
+          try {
+            await flushAnalyticsBuffer();
+            console.log("✅ FINAL ANALYTICS FLUSH COMPLETE");
+          } catch (err) {
+            console.error("❌ FINAL ANALYTICS FLUSH FAILED", err);
+          }
+          
+          // ======================================
+          // 🔥 LOAD HISTORY TRACK
+          // ======================================
+          const historySnap = await window.fb.getDoc(
+            window.fb.doc(window.db, "history", sessionId)
+          );
+          
+          if (!historySnap.exists()) {
+            throw new Error(`History not found: ${sessionId}`);
+          }
+
+          const historyData = historySnap.data() || {};
+          const encoded = String(historyData.rawTrackEncoded || "");
+          const decoded = encoded ? polyline.decode(encoded) : [];
+          const points = decoded.map(coord => ({
+            lat: Number(coord[0]),
+            lng: Number(coord[1])
+          }));
+
+          // ======================================
+          // KML GENERATION IN BACKGROUND
+          // ======================================
+          const kmlUrl = await uploadPatrolKML(sessionId, points);
+          window.lastDutyKmlUrl = kmlUrl || "";
+
+          await window.fb.updateDoc(
+            window.fb.doc(window.db, "history", sessionId),
+            {
+              pointCount: points.length,
+              kmlUrl: kmlUrl || "",
+              endedAt
+            }
+          );
+
+          console.table({
+            sessionId,
+            pointCount: points.length,
+            encodedLength: encoded.length,
+            decodedPoints: points.length,
+            kmlGenerated: !!kmlUrl
+          });
+
+          // ======================================
+          // UPDATE REPORT WITH KML
+          // ======================================
+          if (reportData) {
+            reportData.kmlUrl = kmlUrl || "";
+            window.currentDutyReport = reportData;
+          }
+
+          // ======================================
+          // TELEGRAM IN BACKGROUND
+          // ======================================
+          if (reportData) {
+            sendDutyReportToAppsScript(reportData).catch(err => {
+              console.error("❌ Telegram send failed", err);
+            });
+          }
+
+          window.realtimePerformanceData = { trackPoints: [] };
+
+          // ======================================
+          // UPDATE PATROL TRACKS STATUS
+          // ======================================
+          await window.fb.updateDoc(
+            window.fb.doc(window.db, "patrol_tracks", sessionId),
+            {
+              dutyActive: false,
+              status: "ENDED",
+              endedAt,
+              updatedAt: endedAt
+            }
+          );
         } catch (err) {
           console.error("❌ History write failed", err);
         }
       })()
     ])
     .then(results => {
-      if(window.sessionTrackCache){
+      if (window.sessionTrackCache) {
         delete window.sessionTrackCache[sessionId];
       }
-      
       window.historyFlushInProgress = false;
-
-      window.realtimePerformanceData = {
-        trackPoints: []
-      };
-
+      window.realtimePerformanceData = { trackPoints: [] };
       window.lastTrackPoint = null;
-
       finalizeSessionLifecycle();
-
       window.sessionVisitedGrids = new Set();
       console.log("✅ End duty background sync complete", results);
     })
@@ -34979,41 +34828,8 @@ await window.fb.updateDoc(
     console.error("❌ Error:", err);
     alert("❌ " + (err?.message || err));
   } finally {
-    const btn = document.getElementById("confirmEndDutyBtn") || document.querySelector("#confirmEndDutyToastBtn")?.parentElement?.parentElement?.parentElement?.querySelector("button:last-child");
-    if (btn) {
-      btn.innerHTML = "✅ SUBMIT & END DUTY";
-      btn.disabled = false;
-    }
-    console.groupEnd();
-  }
-}
-    
-      window.historyFlushInProgress = false;
-
-      window.realtimePerformanceData = {
-        trackPoints: []
-      };
-
-      window.lastTrackPoint = null;
-
-      finalizeSessionLifecycle();
-
-      window.sessionVisitedGrids = new Set();
-      console.log("✅ End duty background sync complete", results);
-    })
-    .catch(err => {
-      console.error("❌ End duty background sync failed", err);
-    });
-
-    setTimeout(() => {
-      showToast("✅ Duty Ended Successfully");
-    }, 1000);
-
-  } catch (err) {
-    console.error("❌ Error:", err);
-    alert("❌ " + (err?.message || err));
-  } finally {
-    const btn = document.getElementById("confirmEndDutyBtn") || document.querySelector("#confirmEndDutyToastBtn")?.parentElement?.parentElement?.parentElement?.querySelector("button:last-child");
+    const btn = document.getElementById("confirmEndDutyBtn") || 
+                document.querySelector("#confirmEndDutyToastBtn")?.parentElement?.parentElement?.parentElement?.querySelector("button:last-child");
     if (btn) {
       btn.innerHTML = "✅ SUBMIT & END DUTY";
       btn.disabled = false;
