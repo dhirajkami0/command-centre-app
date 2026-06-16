@@ -34295,10 +34295,10 @@ await processHistoryTrack(
 );
 
 // ======================================
-// 🔥 FINAL ANALYTICS FLUSH
-// MUST COMPLETE BEFORE REPORTS
+// FINAL ANALYTICS FLUSH
 // ======================================
-try{
+
+try {
 
   await flushAnalyticsBuffer();
 
@@ -34306,91 +34306,202 @@ try{
     "✅ FINAL ANALYTICS FLUSH COMPLETE"
   );
 
-}catch(err){
+} catch (err) {
 
   console.error(
     "❌ FINAL ANALYTICS FLUSH FAILED",
     err
   );
-}
-        
-// ======================================
-// 🔥 LOAD HISTORY TRACK
-// ======================================
-const historySnap = await window.fb.getDoc(
-  window.fb.doc(
-    window.db,
-    "history",
-    sessionId
-  )
-);
-        
-       
-          if(!historySnap.exists()){
-            throw new Error(`History not found: ${sessionId}`);
-          }
 
-          const historyData =
+}
+
+// ======================================
+// LOAD HISTORY
+// ======================================
+
+const historySnap =
+  await window.fb.getDoc(
+    window.fb.doc(
+      window.db,
+      "history",
+      sessionId
+    )
+  );
+
+if (!historySnap.exists()) {
+
+  throw new Error(
+    `History not found: ${sessionId}`
+  );
+
+}
+
+const historyData =
   historySnap.data() || {};
 
 const encoded =
   String(
     historyData.rawTrackEncoded || ""
   );
-          const decoded = encoded ? polyline.decode(encoded) : [];
 
-          const points = decoded.map(coord => ({
-            lat: Number(coord[0]),
-            lng: Number(coord[1])
-          }));
+const decoded =
+  encoded
+    ? polyline.decode(encoded)
+    : [];
+
+const points =
+  decoded.map(coord => ({
+    lat: Number(coord[0]),
+    lng: Number(coord[1])
+  }));
+
 const endedAt =
   Date.now();
-          const kmlUrl = await uploadPatrolKML(sessionId, points);
-          window.lastDutyKmlUrl = kmlUrl || "";
 
-          await window.fb.updateDoc(
-            window.fb.doc(window.db, "history", sessionId),
-            {
-              pointCount: points.length,
-              kmlUrl: kmlUrl || "",
-             endedAt
-            }
-          ); 
+// ======================================
+// KML GENERATION
+// ======================================
 
-          console.table({
-            sessionId,
-            pointCount: points.length,
-            encodedLength: encoded.length,
-            decodedPoints: points.length,
-            kmlGenerated: !!kmlUrl
-          });
+showToast(
+  "🗺️ Generating patrol KML..."
+);
 
-          try {
-            const reportData = await buildDutyPerformanceReport({
-              sessionId,
-              dutyType,
-              leader: profile.cleanName,
-              trackPoints: points
-            });
+const kmlUrl =
+  await uploadPatrolKML(
+    sessionId,
+    points
+  );
 
-            reportData.kmlUrl = kmlUrl || "";
-            reportData.rawName = profile.name || "";
-            reportData.cleanName = profile.cleanName || "";
-            reportData.phone = profile.phone || "";
-            reportData.division = profile.division || "";
-            reportData.range = profile.range || "";
-            reportData.beat = profile.beat || "";
+window.lastDutyKmlUrl =
+  kmlUrl || "";
 
-            await sendDutyReportToAppsScript(reportData);
-            showDutyPerformanceReport(reportData);
-            window.realtimePerformanceData = {
-              trackPoints: []
-            };
-          } catch (reportErr) {
-            console.error("❌ Performance report failed", reportErr);
-          }
+// ======================================
+// UPDATE HISTORY
+// ======================================
 
-         await window.fb.updateDoc(
+await window.fb.updateDoc(
+  window.fb.doc(
+    window.db,
+    "history",
+    sessionId
+  ),
+  {
+    pointCount:
+      points.length,
+
+    kmlUrl:
+      kmlUrl || "",
+
+    endedAt
+  }
+);
+
+console.table({
+
+  sessionId,
+
+  pointCount:
+    points.length,
+
+  encodedLength:
+    encoded.length,
+
+  decodedPoints:
+    points.length,
+
+  kmlGenerated:
+    !!kmlUrl
+
+});
+
+// ======================================
+// BUILD REPORT
+// ======================================
+
+let reportData = null;
+
+try {
+
+  reportData =
+    await buildDutyPerformanceReport({
+
+      sessionId,
+
+      dutyType,
+
+      leader:
+        profile.cleanName,
+
+      trackPoints:
+        points,
+
+      kmlUrl:
+        kmlUrl || ""
+
+    });
+
+  reportData.kmlUrl =
+    kmlUrl || "";
+
+  reportData.rawName =
+    profile.name || "";
+
+  reportData.cleanName =
+    profile.cleanName || "";
+
+  reportData.phone =
+    profile.phone || "";
+
+  reportData.division =
+    profile.division || "";
+
+  reportData.range =
+    profile.range || "";
+
+  reportData.beat =
+    profile.beat || "";
+
+  window.currentDutyReport =
+    reportData;
+
+  showDutyPerformanceReport(
+    reportData
+  );
+
+} catch (reportErr) {
+
+  console.error(
+    "❌ Performance report failed",
+    reportErr
+  );
+
+}
+
+// ======================================
+// TELEGRAM
+// ======================================
+
+if (reportData) {
+
+  sendDutyReportToAppsScript(
+    reportData
+  )
+  .catch(err => {
+
+    console.error(
+      "❌ Telegram send failed",
+      err
+    );
+
+  });
+
+}
+
+// ======================================
+// UPDATE PATROL TRACK STATUS
+// ======================================
+
+await window.fb.updateDoc(
   window.fb.doc(
     window.db,
     "patrol_tracks",
@@ -34398,6 +34509,7 @@ const endedAt =
   ),
   {
     dutyActive: false,
+
     status: "ENDED",
 
     endedAt,
@@ -34406,6 +34518,10 @@ const endedAt =
       endedAt
   }
 );
+
+window.realtimePerformanceData = {
+  trackPoints: []
+};
         } catch (err) {
           console.error("❌ History write failed", err);
         }
@@ -34715,7 +34831,8 @@ async function buildDutyPerformanceReport({
   sessionId,
   dutyType,
   leader,
-  trackPoints
+  trackPoints,
+  kmlUrl = ""
 
 }){
 
@@ -35172,39 +35289,31 @@ async function buildDutyPerformanceReport({
     score =
       Math.round(score);
 
-    return {
+   return {
 
-      sessionId,
+  sessionId,
+  name: leader,
+  dutyType: storedDutyType,
 
-      name:
-        leader,
+  grids,
+  areaHa,
+  distanceKm,
 
-      dutyType:
-        storedDutyType,
+  durationHours,
+  durationText,
 
-      grids,
+  score,
 
-      areaHa,
+  dutyDate,
+  startedText,
+  endedText,
 
-      distanceKm,
+  startedAt,
+  endedAt,
 
-      durationHours,
+  kmlUrl
 
-      durationText,
-
-      score,
-
-      dutyDate,
-
-      startedText,
-
-      endedText,
-
-      startedAt,
-
-      endedAt
-
-    };
+};
 
   }
 
@@ -35244,8 +35353,8 @@ async function buildDutyPerformanceReport({
 
       startedAt:0,
 
-      endedAt:0
-
+      endedAt:0,
+ kmlUrl
     };
   }
 }
