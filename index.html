@@ -1693,6 +1693,78 @@ NORTH REMAINS ABSOLUTE
   box-shadow:none !important;
 
 }
+    const gridRewardStyle =
+document.createElement("style");
+
+gridRewardStyle.innerHTML = `
+
+.flyingGridStar{
+
+  animation:
+    flyGridStar
+    2s ease forwards;
+
+}
+
+@keyframes flyGridStar{
+
+  0%{
+
+    opacity:0;
+
+    transform:
+      translateY(0)
+      scale(.5);
+
+  }
+
+  20%{
+
+    opacity:1;
+
+  }
+
+  100%{
+
+    opacity:0;
+
+    transform:
+      translateY(-150px)
+      scale(1.8);
+
+  }
+
+}
+
+.livePerformancePulse{
+
+  animation:
+    livePerformancePulse
+    .8s ease;
+
+}
+
+@keyframes livePerformancePulse{
+
+  0%{
+    transform:scale(1);
+  }
+
+  50%{
+    transform:scale(1.05);
+  }
+
+  100%{
+    transform:scale(1);
+  }
+
+}
+
+`;
+
+document.head.appendChild(
+  gridRewardStyle
+);
   </style>
 </head>
 <body>
@@ -9014,28 +9086,33 @@ const col =
 
     if(
 
-      !window.sessionVisitedGrids.has(
-        gridId
-      )
+    if(
 
-    ){
+  !window.sessionVisitedGrids.has(
+    gridId
+  )
 
-      analytics.visitCount =
+){
 
-        Number(
-          analytics.visitCount || 0
-        )
+  analytics.visitCount =
 
-        +
+    Number(
+      analytics.visitCount || 0
+    )
 
-        1;
+    +
 
-      window.sessionVisitedGrids.add(
-        gridId
-      );
-    }
+    1;
 
-    // ==========================
+  window.sessionVisitedGrids.add(
+    gridId
+  );
+
+  showGridCaptureReward(
+    gridId
+  );
+
+}// ==========================
     // CELLS
     // ==========================
 
@@ -10089,6 +10166,103 @@ async function getAnalyticsSummary(
 
         : 0
   };
+}
+function pulseLivePerformanceCard(){
+
+  const card =
+
+    document.getElementById(
+      "livePerformanceCard"
+    );
+
+  if(!card){
+    return;
+  }
+
+  card.classList.add(
+    "livePerformancePulse"
+  );
+
+  setTimeout(()=>{
+
+    card.classList.remove(
+      "livePerformancePulse"
+    );
+
+  },800);
+
+}
+
+    function showGridCaptureReward(gridId){
+
+  try{
+
+    if(navigator.vibrate){
+
+      navigator.vibrate(120);
+
+    }
+
+  }catch(e){}
+
+  const div =
+    document.createElement("div");
+
+  div.innerHTML = `
+
+  <div style="
+    position:fixed;
+    left:50%;
+    bottom:140px;
+    transform:translateX(-50%);
+    z-index:9999999;
+    pointer-events:none;
+    text-align:center;
+  ">
+
+    <div
+      class="flyingGridStar"
+      style="
+        font-size:42px;
+      "
+    >
+      ⭐
+    </div>
+
+    <div
+      style="
+        background:#16a34a;
+        color:white;
+        padding:10px 14px;
+        border-radius:18px;
+        font-weight:bold;
+        margin-top:6px;
+        box-shadow:
+        0 4px 12px rgba(0,0,0,.25);
+      "
+    >
+      🌿 +0.25 ha
+
+      <br>
+
+      🛰 ${gridId}
+    </div>
+
+  </div>
+
+  `;
+
+  document.body.appendChild(
+    div
+  );
+
+  setTimeout(()=>{
+
+    div.remove();
+
+  },2500);
+
+  pulseLivePerformanceCard();
 }
 async function showCompartmentVisitBreakdown(){
 
