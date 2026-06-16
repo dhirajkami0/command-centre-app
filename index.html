@@ -35716,30 +35716,83 @@ ${
 ?
 
 `
-<div style="margin:8px 0;">
 
-🛰 Grids Visited :
-${Number(
-  data.grids || 0
-).toLocaleString()}
+<div
+style="
+margin:8px 0;
+padding:10px;
+background:#f0fdf4;
+border-radius:10px;
+border:1px solid #bbf7d0;
+"
+>
+
+<div
+style="
+font-weight:bold;
+color:#166534;
+margin-bottom:8px;
+"
+>
+
+🌲 Patrol Coverage Summary
 
 </div>
 
-<div style="margin:8px 0;">
+<div style="margin:6px 0;">
+
+🛰 Session Grids Visited :
+<b>
+${Number(
+  data.sessionGridCount || 0
+).toLocaleString()}
+</b>
+
+</div>
+
+<div style="margin:6px 0;">
+
+⭐ New Monthly Grids :
+<b>
+${Number(
+  data.newMonthlyGridCount || 0
+).toLocaleString()}
+</b>
+
+</div>
+
+<div style="margin:6px 0;">
 
 🌿 Area Covered :
+<b>
 ${Number(
   data.areaHa || 0
-).toFixed(1)} ha
+).toFixed(1)}
+ha
+</b>
 
 </div>
+
+<div style="margin:6px 0;">
+
+📏 Distance Covered :
+<b>
+${Number(
+  data.distanceKm || 0
+).toFixed(1)}
+km
+</b>
+
+</div>
+
+</div>
+
 `
 
 :
 
 ""
 }
-
 <div style="margin:8px 0;">
 
 📏 Distance Covered :
@@ -36103,9 +36156,7 @@ ${coordinates}
 </Document>
 
 </kml>`;
-}
-
- async function uploadPatrolKML(
+}async function uploadPatrolKML(
   sessionId,
   points
 ){
@@ -36115,6 +36166,7 @@ ${coordinates}
     // ==========================================================
     // VALIDATE
     // ==========================================================
+
     if(
       !Array.isArray(points)
     ){
@@ -36140,6 +36192,7 @@ ${coordinates}
     // ==========================================================
     // DISTANCE KM
     // ==========================================================
+
     let distanceKm = 0;
 
     for(
@@ -36188,12 +36241,14 @@ ${coordinates}
     // ==========================================================
     // PROFILE
     // ==========================================================
+
     const profile =
       window.userProfile || {};
 
     // ==========================================================
     // DATE
     // ==========================================================
+
     const now =
       Date.now();
 
@@ -36208,17 +36263,88 @@ ${coordinates}
       }`;
 
     // ==========================================================
+    // DEBUG INPUT
+    // ==========================================================
+
+    console.log(
+      "🛰 KML POINT COUNT",
+      points.length
+    );
+
+    console.log(
+      "🛰 FIRST POINT",
+      points[0]
+    );
+
+    console.log(
+      "🛰 LAST POINT",
+      points[
+        points.length - 1
+      ]
+    );
+
+    // ==========================================================
     // GENERATE KML
     // ==========================================================
-    const kmlText =
 
+    const kmlText =
       generateKMLFromTrack(
         points
       );
 
     // ==========================================================
+    // DEBUG GENERATED KML
+    // ==========================================================
+
+    try{
+
+      const start =
+        kmlText.indexOf(
+          "<coordinates>"
+        );
+
+      const end =
+        kmlText.indexOf(
+          "</coordinates>"
+        );
+
+      const coordBlock =
+        kmlText.substring(
+          start,
+          end
+        );
+
+      console.log(
+        "🛰 GENERATED KML SAMPLE"
+      );
+
+      console.log(
+
+        coordBlock
+          .split("\n")
+          .filter(
+            x => x.trim()
+          )
+          .slice(0,10)
+          .join("\n")
+
+      );
+
+    }
+
+    catch(err){
+
+      console.warn(
+        "⚠ KML DEBUG FAILED",
+        err
+      );
+
+    }
+
+    // ==========================================================
     // STORAGE PATH
     // ==========================================================
+
     const storageRef =
 
       window.fb.ref(
@@ -36248,6 +36374,7 @@ ${coordinates}
     // ==========================================================
     // FIRESTORE SAVE
     // ==========================================================
+
     await window.fb.setDoc(
 
       window.fb.doc(
@@ -36307,6 +36434,7 @@ ${coordinates}
     // ==========================================================
     // APPS SCRIPT SYNC
     // ==========================================================
+
     try{
 
       fetch(
@@ -36376,6 +36504,7 @@ ${coordinates}
       });
 
     }
+
     catch(err){
 
       console.error(
@@ -36388,6 +36517,7 @@ ${coordinates}
     // ==========================================================
     // DONE
     // ==========================================================
+
     console.log(
       "✅ KML Stored:",
       downloadUrl
@@ -36406,7 +36536,6 @@ ${coordinates}
 
     return null;
   }
-
 }
 
 async function shareDutyKMLReport(){
