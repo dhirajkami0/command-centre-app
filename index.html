@@ -36009,21 +36009,58 @@ text-align:center;
     "block";
 
 }
-  function generateKMLFromTrack(points){
+ function generateKMLFromTrack(points){
 
   const coordinates =
 
     points
-    .filter(p =>
-      p &&
-      typeof p.lat === "number" &&
-      typeof p.lng === "number"
-    )
-    .map(p =>
 
-      `${p.lng},${p.lat},0`
-
+    .filter(
+      p =>
+        p &&
+        Number.isFinite(
+          Number(p.lat)
+        ) &&
+        Number.isFinite(
+          Number(p.lng)
+        )
     )
+
+    .map(p => {
+
+      let lat =
+        Number(p.lat);
+
+      let lng =
+        Number(p.lng);
+
+      // ===================================
+      // AUTO FIX REVERSED TRACKS
+      // If latitude looks like 89
+      // and longitude looks like 26
+      // swap them.
+      // ===================================
+
+      if(
+
+        Math.abs(lat) > 60 &&
+
+        Math.abs(lng) < 60
+
+      ){
+
+        const tmp = lat;
+
+        lat = lng;
+
+        lng = tmp;
+
+      }
+
+      return `${lng},${lat},0`;
+
+    })
+
     .join("\n");
 
   return `<?xml version="1.0" encoding="UTF-8"?>
