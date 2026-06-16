@@ -34987,11 +34987,7 @@ await window.fb.updateDoc(
     console.groupEnd();
   }
 }
-    .then(results => {
-      if(window.sessionTrackCache){
-        delete window.sessionTrackCache[sessionId];
-      }
-      
+    
       window.historyFlushInProgress = false;
 
       window.realtimePerformanceData = {
