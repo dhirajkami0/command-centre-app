@@ -1693,7 +1693,7 @@ NORTH REMAINS ABSOLUTE
   box-shadow:none !important;
 
 }
-    const gridRewardStyle =
+  const gridRewardStyle =
 document.createElement("style");
 
 gridRewardStyle.innerHTML = `
@@ -1709,53 +1709,21 @@ gridRewardStyle.innerHTML = `
 @keyframes flyGridStar{
 
   0%{
-
     opacity:0;
-
     transform:
       translateY(0)
       scale(.5);
-
   }
 
   20%{
-
     opacity:1;
-
   }
 
   100%{
-
     opacity:0;
-
     transform:
       translateY(-150px)
       scale(1.8);
-
-  }
-
-}
-
-.livePerformancePulse{
-
-  animation:
-    livePerformancePulse
-    .8s ease;
-
-}
-
-@keyframes livePerformancePulse{
-
-  0%{
-    transform:scale(1);
-  }
-
-  50%{
-    transform:scale(1.05);
-  }
-
-  100%{
-    transform:scale(1);
   }
 
 }
@@ -9083,10 +9051,7 @@ const col =
     // VISITS
     // COUNT ONLY FIRST SESSION TOUCH
     // ==========================
-
-  
-
-    if(
+if(
 
   !window.sessionVisitedGrids.has(
     gridId
@@ -9100,17 +9065,13 @@ const col =
       analytics.visitCount || 0
     )
 
-    +
-
-    1;
+    + 1;
 
   window.sessionVisitedGrids.add(
     gridId
   );
 
-  showGridCaptureReward(
-    gridId
-  );
+  showGridCaptureReward();
 
 }// ==========================
     // CELLS
@@ -10193,37 +10154,57 @@ function pulseLivePerformanceCard(){
 
 }
 
-    function showGridCaptureReward(gridId){
+  function showGridCaptureReward(){
 
   try{
 
-    if(navigator.vibrate){
-
-      navigator.vibrate(120);
-
-    }
+    navigator.vibrate?.(120);
 
   }catch(e){}
+
+  // ============================
+  // REMOVE OLD REWARD
+  // ============================
+
+  const old = document.getElementById(
+    "gridCaptureReward"
+  );
+
+  if(old){
+    old.remove();
+  }
+
+  const totalGrids =
+
+    window.sessionVisitedGrids?.size || 0;
 
   const div =
     document.createElement("div");
 
+  div.id =
+    "gridCaptureReward";
+
   div.innerHTML = `
 
-  <div style="
-    position:fixed;
-    left:50%;
-    bottom:140px;
-    transform:translateX(-50%);
-    z-index:9999999;
-    pointer-events:none;
-    text-align:center;
-  ">
+  <div
+    style="
+      position:fixed;
+      left:50%;
+      bottom:110px;
+      transform:translateX(-50%);
+      z-index:99999999;
+      width:min(90vw,320px);
+      pointer-events:none;
+      text-align:center;
+      font-family:Arial,sans-serif;
+    "
+  >
 
     <div
       class="flyingGridStar"
       style="
-        font-size:42px;
+        font-size:44px;
+        line-height:1;
       "
     >
       ⭐
@@ -10231,21 +10212,49 @@ function pulseLivePerformanceCard(){
 
     <div
       style="
-        background:#16a34a;
+        background:linear-gradient(
+          135deg,
+          #16a34a,
+          #15803d
+        );
         color:white;
-        padding:10px 14px;
         border-radius:18px;
-        font-weight:bold;
+        padding:12px;
         margin-top:6px;
         box-shadow:
-        0 4px 12px rgba(0,0,0,.25);
+          0 8px 24px rgba(0,0,0,.25);
       "
     >
-      🌿 +0.25 ha
 
-      <br>
+      <div
+        style="
+          font-size:16px;
+          font-weight:700;
+        "
+      >
+        ⭐ NEW GRID VISITED
+      </div>
 
-      🛰 ${gridId}
+      <div
+        style="
+          margin-top:6px;
+          font-size:15px;
+        "
+      >
+        🌿 Coverage +0.25 ha
+      </div>
+
+      <div
+        style="
+          margin-top:6px;
+          font-size:15px;
+          font-weight:bold;
+        "
+      >
+        🏆 Total Grids:
+        ${totalGrids}
+      </div>
+
     </div>
 
   </div>
@@ -10262,9 +10271,14 @@ function pulseLivePerformanceCard(){
 
   },2500);
 
-  pulseLivePerformanceCard();
+  try{
+
+    pulseLivePerformanceCard();
+
+  }catch(e){}
+
 }
-async function showCompartmentVisitBreakdown(){
+    async function showCompartmentVisitBreakdown(){
 
   try{
 
