@@ -35587,13 +35587,18 @@ cursor:pointer;
 
 📍 View KML
 
-</button><button
+</button>
+<button
 
 onclick="
 navigator.share({
   title:'Test',
   text:'Hello World'
-});
+})
+.then(()=>alert('SUCCESS'))
+.catch(e=>alert(
+  e.name + ': ' + e.message
+));
 "
 
 style="
@@ -35612,7 +35617,6 @@ cursor:pointer;
 TEST SHARE
 
 </button>
-
 <button
 
 onclick="
