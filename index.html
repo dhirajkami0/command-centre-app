@@ -9101,18 +9101,36 @@ if(
   // FIRST TIME THIS MONTH
   // ==========================
 
+ if(
+  isFirstVisitThisMonth
+){
+
+  window.newMonthlyGridsCaptured =
+
+    Number(
+      window.newMonthlyGridsCaptured || 0
+    ) + 1;
+
+  const monthlyCount =
+
+    window.newMonthlyGridsCaptured;
+
+  // ==================================
+  // 🏆 SHOW MILESTONE EVERY 5 NEW
+  // MONTHLY GRIDS
+  // ==================================
+
   if(
-    isFirstVisitThisMonth
+    monthlyCount > 0
+    &&
+    monthlyCount % 5 === 0
   ){
 
-    window.newMonthlyGridsCaptured =
-      Number(
-        window.newMonthlyGridsCaptured || 0
-      ) + 1;
+    showGridCaptureReward();
 
   }
 
-  showGridCaptureReward();
+}
 
 }// ==========================
     // CELLS
