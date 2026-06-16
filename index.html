@@ -35716,30 +35716,83 @@ ${
 ?
 
 `
-<div style="margin:8px 0;">
 
-🛰 Grids Visited :
-${Number(
-  data.grids || 0
-).toLocaleString()}
+<div
+style="
+margin:8px 0;
+padding:10px;
+background:#f0fdf4;
+border-radius:10px;
+border:1px solid #bbf7d0;
+"
+>
+
+<div
+style="
+font-weight:bold;
+color:#166534;
+margin-bottom:8px;
+"
+>
+
+🌲 Patrol Coverage Summary
 
 </div>
 
-<div style="margin:8px 0;">
+<div style="margin:6px 0;">
+
+🛰 Session Grids Visited :
+<b>
+${Number(
+  data.sessionGridCount || 0
+).toLocaleString()}
+</b>
+
+</div>
+
+<div style="margin:6px 0;">
+
+⭐ New Monthly Grids :
+<b>
+${Number(
+  data.newMonthlyGridCount || 0
+).toLocaleString()}
+</b>
+
+</div>
+
+<div style="margin:6px 0;">
 
 🌿 Area Covered :
+<b>
 ${Number(
   data.areaHa || 0
-).toFixed(1)} ha
+).toFixed(1)}
+ha
+</b>
 
 </div>
+
+<div style="margin:6px 0;">
+
+📏 Distance Covered :
+<b>
+${Number(
+  data.distanceKm || 0
+).toFixed(1)}
+km
+</b>
+
+</div>
+
+</div>
+
 `
 
 :
 
 ""
 }
-
 <div style="margin:8px 0;">
 
 📏 Distance Covered :
