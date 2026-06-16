@@ -34113,8 +34113,7 @@ async function submitEndDuty(event) {
     // 🔥 SESSION ID
     // ============================================================
     const sessionId = localStorage.getItem("sessionId") || window.currentSessionId || "";
-const endedAt =
-  Date.now();
+
   
     // ============================================================
     // 🔥 BUTTON
@@ -34296,39 +34295,6 @@ await processHistoryTrack(
 );
 
 // ======================================
-// 🔥 EARLY REPORT (IMMEDIATE)
-// ======================================
-let reportData = null;
-
-try{
-
-  reportData =
-    await buildDutyPerformanceReport({
-
-      sessionId,
-      dutyType,
-      leader: profile.cleanName,
-      trackPoints: fullTrack
-
-    });
-
-  window.currentDutyReport =
-    reportData;
-
-  showDutyPerformanceReport(
-    reportData
-  );
-
-}catch(err){
-
-  console.error(
-    "❌ Early report failed",
-    err
-  );
-
-}
-
-// ======================================
 // 🔥 FINAL ANALYTICS FLUSH
 // MUST COMPLETE BEFORE REPORTS
 // ======================================
@@ -34349,406 +34315,36 @@ try{
 }
         
 // ======================================
-// 🔥 USE ALREADY LOADED TRACK
+// 🔥 LOAD HISTORY TRACK
 // ======================================
-
-const points =
-  fullTrack;
-
-
-
-// ======================================
-// KML GENERATION IN BACKGROUND
-// ======================================
-
-const kmlUrl =
-  await uploadPatrolKML(
-    sessionId,
-    points
-  );
-
-window.lastDutyKmlUrl =
-  kmlUrl || "";
-
-await window.fb.updateDoc(
-
+const historySnap = await window.fb.getDoc(
   window.fb.doc(
     window.db,
     "history",
     sessionId
-  ),
-
-  {
-    pointCount:
-      points.length,
-
-    kmlUrl:
-      kmlUrl || "",
-
-    endedAt
-  }
-
+  )
 );
-
-console.table({
-
-  sessionId,
-
-  pointCount:
-    points.length,
-
-  kmlGenerated:
-    !!kmlUrl
-
-});
-
-// ======================================
-// UPDATE REPORT WITH KML
-// ======================================
-
-if(reportData){
-
-  reportData.kmlUrl =
-    kmlUrl || "";
-
-  window.currentDutyReport =
-    reportData;
-
-}
-async function submitEndDuty(event) {
-  console.group("🚨 submitEndDuty TRIGGERED");
-
-  try {
-    // ============================================================
-    // 🔒 ONLY USER CLICK
-    // ============================================================
-    if (!event || event.isTrusted !== true) {
-      console.warn("⛔ Blocked auto trigger");
-      console.groupEnd();
-      return;
-    }
-
-    // ============================================================
-    // 🔥 PROFILE
-    // ============================================================
-    const profile = window.userProfile;
-
-    // ============================================================
-    // 🔥 VALIDATE PROFILE ONLY
-    // ============================================================
-    if (!profile || !profile.cleanName || !profile.phone) {
-      alert("❌ User not loaded properly");
-      console.groupEnd();
-      return;
-    }
-
-    // ============================================================
-    // 🔥 CUSTOM CONFIRM TOAST
-    // ============================================================
-    const confirmed = await new Promise((resolve) => {
-      // ========================================================
-      // 🔥 REMOVE OLD CONFIRM
-      // ========================================================
-      const old = document.getElementById("customEndDutyConfirm");
-      if (old) {
-        old.remove();
-      }
-
-      // ========================================================
-      // 🔥 OVERLAY
-      // ========================================================
-      const overlay = document.createElement("div");
-      overlay.id = "customEndDutyConfirm";
-      overlay.innerHTML = `
-        <div style="
-          position:fixed;
-          inset:0;
-          background:rgba(0,0,0,0.45);
-          z-index:999999;
-          display:flex;
-          align-items:center;
-          justify-content:center;
-        ">
-          <div style="
-            width:min(92vw,360px);
-            background:#ffffff;
-            border-radius:18px;
-            padding:22px;
-            box-shadow:0 10px 35px rgba(0,0,0,0.25);
-            text-align:center;
-            animation:popIn .18s ease;
-          ">
-            <div style="
-              font-size:48px;
-              margin-bottom:12px;
-            ">
-              🚨
-            </div>
-            <div style="
-              font-size:20px;
-              font-weight:700;
-              color:#111827;
-              margin-bottom:10px;
-            ">
-              End Duty?
-            </div>
-            <div style="
-              font-size:14px;
-              color:#4b5563;
-              line-height:1.5;
-              margin-bottom:22px;
-            ">
-              Submit patrol report and end current duty session.
-            </div>
-            <div style="
-              display:flex;
-              gap:12px;
-            ">
-              <button id="cancelEndDutyBtn"
-                style="
-                  flex:1;
-                  border:none;
-                  border-radius:12px;
-                  padding:12px;
-                  font-size:15px;
-                  font-weight:700;
-                  background:#e5e7eb;
-                  color:#111827;
-                  cursor:pointer;
-                ">
-                Cancel
-              </button>
-              <button id="confirmEndDutyToastBtn"
-                style="
-                  flex:1;
-                  border:none;
-                  border-radius:12px;
-                  padding:12px;
-                  font-size:15px;
-                  font-weight:700;
-                  background:#dc2626;
-                  color:white;
-                  cursor:pointer;
-                ">
-                Submit & End
-              </button>
-            </div>
-          </div>
-        </div>
-      `;
-
-      document.body.appendChild(overlay);
-
-      // ========================================================
-      // 🔥 CANCEL
-      // ========================================================
-      document
-        .getElementById("cancelEndDutyBtn")
-        ?.addEventListener("click", () => {
-          overlay.remove();
-          resolve(false);
-        });
-
-      // ========================================================
-      // 🔥 CONFIRM
-      // ========================================================
-      document
-        .getElementById("confirmEndDutyToastBtn")
-        ?.addEventListener("click", () => {
-          overlay.remove();
-          resolve(true);
-        });
-    });
-
-    if (!confirmed) {
-      console.groupEnd();
-      return;
-    }
-
-    // ============================================================
-    // 🔥 SESSION ID
-    // ============================================================
-    const sessionId = localStorage.getItem("sessionId") || window.currentSessionId || "";
-    const endedAt = Date.now();
-  
-    // ============================================================
-    // 🔥 BUTTON
-    // ============================================================
-    const btn = event.target;
-    if (!btn) {
-      console.error("❌ Button not found");
-      console.groupEnd();
-      return;
-    }
-
-    // ============================================================
-    // 🔒 LOCK BUTTON
-    // ============================================================
-    btn.innerHTML = "⏳ SAVING...";
-    btn.disabled = true;
-
-    // ============================================================
-    // 📋 CAPTURE DUTY TYPE BEFORE FORM CLOSES
-    // ============================================================
-    const dutyType = document.getElementById("d-type")?.value || "Patrolling";
-
-    // ============================================================
-    // ⚡ IMMEDIATE UI TRANSITION
-    // ============================================================
-    window.isDutyActive = false;
-    try {
-      closeEndDutyForm();
-    } catch (e) {}
-
-    try {
-      if (typeof updateDutyButton === "function") {
-        updateDutyButton();
-      }
-    } catch (e) {}
-
-    try {
-      if (typeof removeStaffFromUI === "function") {
-        removeStaffFromUI(profile.cleanName);
-      }
-    } catch (e) {}
-
-    showToast("⚡ Ending Duty...");
-
-    // ============================================================
-    // 🔥 OBS
-    // ============================================================
-    const obs = document.getElementById("ed-obs")?.value || "";
-
-    // ============================================================
-    // 🔥 PAYLOAD
-    // ============================================================
-    const payload = {
-      obs: obs,
-      leader: profile.cleanName,
-      phone: profile.phone
-    };
-
-    console.log("📤 PAYLOAD:", payload);
-
-    // ============================================================
-    // 🔥 BACKEND SAVE
-    // ============================================================
-    Promise.allSettled([
-      callBackend("markDutyOutWithObs", payload),
-
-      window.fb.setDoc(
-        window.fb.doc(window.db, "live_staff", profile.cleanName),
-        {
-          dutyActive: false,
-          status: "ENDED",
-          sessionId: "",
-          updatedAt: window.fb.serverTimestamp(),
-          lastDutyEnd: new Date().toISOString(),
-          range: window.fb.deleteField(),
-          division: window.fb.deleteField(),
-          lat: window.fb.deleteField(),
-          lon: window.fb.deleteField(),
-          speed: window.fb.deleteField(),
-          heading: window.fb.deleteField(),
-          turnRate: window.fb.deleteField(),
-          accuracy: window.fb.deleteField(),
-          location: window.fb.deleteField(),
-          timestamp: window.fb.deleteField(),
-          time: window.fb.deleteField(),
-          lastSeen: window.fb.deleteField()
-        },
-        { merge: true }
-      ),
- 
-      (async () => {
-        try {
-          if (!sessionId) {
-            console.warn("⚠ No sessionId available");
-            return;
-          }
-          // ======================================
-          // 🔥 BUILD FINAL HISTORY ONCE
-          // ======================================
-          const pointsSnap = await window.fb.getDocs(
-            window.fb.query(
-              window.fb.collection(window.db, "patrol_tracks", sessionId, "points"),
-              window.fb.orderBy("time")
-            )
-          );
-
-          const fullTrack = [];
-          pointsSnap.forEach(doc => {
-            const p = doc.data();
-            if (Number.isFinite(Number(p?.lat)) && Number.isFinite(Number(p?.lon))) {
-              fullTrack.push({
-                lat: Number(p.lat),
-                lng: Number(p.lon)
-              });
-            }
-          });
-
-          console.log("📍 FINAL TRACK", fullTrack.length);
-
-          if (fullTrack.length < 2) {
-            throw new Error(`Insufficient track points: ${fullTrack.length}`);
-          }
-
-          console.table({
-            sessionId,
-            fullTrackPoints: fullTrack.length
-          });
-
-          await processHistoryTrack(fullTrack, sessionId);
-
-          // ======================================
-          // 🔥 EARLY REPORT (IMMEDIATE)
-          // ======================================
-          let reportData = null;
-          try {
-            reportData = await buildDutyPerformanceReport({
-              sessionId,
-              dutyType,
-              leader: profile.cleanName,
-              trackPoints: fullTrack
-            });
-            window.currentDutyReport = reportData;
-            showDutyPerformanceReport(reportData);
-          } catch (err) {
-            console.error("❌ Early report failed", err);
-          }
-
-          // ======================================
-          // 🔥 FINAL ANALYTICS FLUSH
-          // ======================================
-          try {
-            await flushAnalyticsBuffer();
-            console.log("✅ FINAL ANALYTICS FLUSH COMPLETE");
-          } catch (err) {
-            console.error("❌ FINAL ANALYTICS FLUSH FAILED", err);
-          }
-          
-          // ======================================
-          // 🔥 LOAD HISTORY TRACK
-          // ======================================
-          const historySnap = await window.fb.getDoc(
-            window.fb.doc(window.db, "history", sessionId)
-          );
-          
-          if (!historySnap.exists()) {
+        
+       
+          if(!historySnap.exists()){
             throw new Error(`History not found: ${sessionId}`);
           }
 
-          const historyData = historySnap.data() || {};
-          const encoded = String(historyData.rawTrackEncoded || "");
+          const historyData =
+  historySnap.data() || {};
+
+const encoded =
+  String(
+    historyData.rawTrackEncoded || ""
+  );
           const decoded = encoded ? polyline.decode(encoded) : [];
+
           const points = decoded.map(coord => ({
             lat: Number(coord[0]),
             lng: Number(coord[1])
           }));
-
-          // ======================================
-          // KML GENERATION IN BACKGROUND
-          // ======================================
+const endedAt =
+  Date.now();
           const kmlUrl = await uploadPatrolKML(sessionId, points);
           window.lastDutyKmlUrl = kmlUrl || "";
 
@@ -34757,9 +34353,9 @@ async function submitEndDuty(event) {
             {
               pointCount: points.length,
               kmlUrl: kmlUrl || "",
-              endedAt
+             endedAt
             }
-          );
+          ); 
 
           console.table({
             sessionId,
@@ -34769,50 +34365,67 @@ async function submitEndDuty(event) {
             kmlGenerated: !!kmlUrl
           });
 
-          // ======================================
-          // UPDATE REPORT WITH KML
-          // ======================================
-          if (reportData) {
-            reportData.kmlUrl = kmlUrl || "";
-            window.currentDutyReport = reportData;
-          }
-
-          // ======================================
-          // TELEGRAM IN BACKGROUND
-          // ======================================
-          if (reportData) {
-            sendDutyReportToAppsScript(reportData).catch(err => {
-              console.error("❌ Telegram send failed", err);
+          try {
+            const reportData = await buildDutyPerformanceReport({
+              sessionId,
+              dutyType,
+              leader: profile.cleanName,
+              trackPoints: points
             });
+
+            reportData.kmlUrl = kmlUrl || "";
+            reportData.rawName = profile.name || "";
+            reportData.cleanName = profile.cleanName || "";
+            reportData.phone = profile.phone || "";
+            reportData.division = profile.division || "";
+            reportData.range = profile.range || "";
+            reportData.beat = profile.beat || "";
+
+            await sendDutyReportToAppsScript(reportData);
+            showDutyPerformanceReport(reportData);
+            window.realtimePerformanceData = {
+              trackPoints: []
+            };
+          } catch (reportErr) {
+            console.error("❌ Performance report failed", reportErr);
           }
 
-          window.realtimePerformanceData = { trackPoints: [] };
+         await window.fb.updateDoc(
+  window.fb.doc(
+    window.db,
+    "patrol_tracks",
+    sessionId
+  ),
+  {
+    dutyActive: false,
+    status: "ENDED",
 
-          // ======================================
-          // UPDATE PATROL TRACKS STATUS
-          // ======================================
-          await window.fb.updateDoc(
-            window.fb.doc(window.db, "patrol_tracks", sessionId),
-            {
-              dutyActive: false,
-              status: "ENDED",
-              endedAt,
-              updatedAt: endedAt
-            }
-          );
+    endedAt,
+
+    updatedAt:
+      endedAt
+  }
+);
         } catch (err) {
           console.error("❌ History write failed", err);
         }
       })()
     ])
     .then(results => {
-      if (window.sessionTrackCache) {
+      if(window.sessionTrackCache){
         delete window.sessionTrackCache[sessionId];
       }
+      
       window.historyFlushInProgress = false;
-      window.realtimePerformanceData = { trackPoints: [] };
+
+      window.realtimePerformanceData = {
+        trackPoints: []
+      };
+
       window.lastTrackPoint = null;
+
       finalizeSessionLifecycle();
+
       window.sessionVisitedGrids = new Set();
       console.log("✅ End duty background sync complete", results);
     })
@@ -34828,8 +34441,7 @@ async function submitEndDuty(event) {
     console.error("❌ Error:", err);
     alert("❌ " + (err?.message || err));
   } finally {
-    const btn = document.getElementById("confirmEndDutyBtn") || 
-                document.querySelector("#confirmEndDutyToastBtn")?.parentElement?.parentElement?.parentElement?.querySelector("button:last-child");
+    const btn = document.getElementById("confirmEndDutyBtn") || document.querySelector("#confirmEndDutyToastBtn")?.parentElement?.parentElement?.parentElement?.querySelector("button:last-child");
     if (btn) {
       btn.innerHTML = "✅ SUBMIT & END DUTY";
       btn.disabled = false;
