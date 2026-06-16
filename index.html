@@ -34113,7 +34113,8 @@ async function submitEndDuty(event) {
     // 🔥 SESSION ID
     // ============================================================
     const sessionId = localStorage.getItem("sessionId") || window.currentSessionId || "";
-
+const endedAt =
+  Date.now();
   
     // ============================================================
     // 🔥 BUTTON
@@ -34295,6 +34296,39 @@ await processHistoryTrack(
 );
 
 // ======================================
+// 🔥 EARLY REPORT (IMMEDIATE)
+// ======================================
+let reportData = null;
+
+try{
+
+  reportData =
+    await buildDutyPerformanceReport({
+
+      sessionId,
+      dutyType,
+      leader: profile.cleanName,
+      trackPoints: fullTrack
+
+    });
+
+  window.currentDutyReport =
+    reportData;
+
+  showDutyPerformanceReport(
+    reportData
+  );
+
+}catch(err){
+
+  console.error(
+    "❌ Early report failed",
+    err
+  );
+
+}
+
+// ======================================
 // 🔥 FINAL ANALYTICS FLUSH
 // MUST COMPLETE BEFORE REPORTS
 // ======================================
@@ -34315,82 +34349,101 @@ try{
 }
         
 // ======================================
-// 🔥 LOAD HISTORY TRACK
+// 🔥 USE ALREADY LOADED TRACK
 // ======================================
-const historySnap = await window.fb.getDoc(
+
+const points =
+  fullTrack;
+
+
+
+// ======================================
+// KML GENERATION IN BACKGROUND
+// ======================================
+
+const kmlUrl =
+  await uploadPatrolKML(
+    sessionId,
+    points
+  );
+
+window.lastDutyKmlUrl =
+  kmlUrl || "";
+
+await window.fb.updateDoc(
+
   window.fb.doc(
     window.db,
     "history",
     sessionId
-  )
+  ),
+
+  {
+    pointCount:
+      points.length,
+
+    kmlUrl:
+      kmlUrl || "",
+
+    endedAt
+  }
+
 );
-        
-       
-          if(!historySnap.exists()){
-            throw new Error(`History not found: ${sessionId}`);
-          }
 
-          const historyData =
-  historySnap.data() || {};
+console.table({
 
-const encoded =
-  String(
-    historyData.rawTrackEncoded || ""
-  );
-          const decoded = encoded ? polyline.decode(encoded) : [];
+  sessionId,
 
-          const points = decoded.map(coord => ({
-            lat: Number(coord[0]),
-            lng: Number(coord[1])
-          }));
-const endedAt =
-  Date.now();
-          const kmlUrl = await uploadPatrolKML(sessionId, points);
-          window.lastDutyKmlUrl = kmlUrl || "";
+  pointCount:
+    points.length,
 
-          await window.fb.updateDoc(
-            window.fb.doc(window.db, "history", sessionId),
-            {
-              pointCount: points.length,
-              kmlUrl: kmlUrl || "",
-             endedAt
-            }
-          ); 
+  kmlGenerated:
+    !!kmlUrl
 
-          console.table({
-            sessionId,
-            pointCount: points.length,
-            encodedLength: encoded.length,
-            decodedPoints: points.length,
-            kmlGenerated: !!kmlUrl
-          });
+});
 
-          try {
-            const reportData = await buildDutyPerformanceReport({
-              sessionId,
-              dutyType,
-              leader: profile.cleanName,
-              trackPoints: points
-            });
+// ======================================
+// UPDATE REPORT WITH KML
+// ======================================
 
-            reportData.kmlUrl = kmlUrl || "";
-            reportData.rawName = profile.name || "";
-            reportData.cleanName = profile.cleanName || "";
-            reportData.phone = profile.phone || "";
-            reportData.division = profile.division || "";
-            reportData.range = profile.range || "";
-            reportData.beat = profile.beat || "";
+if(reportData){
 
-            await sendDutyReportToAppsScript(reportData);
-            showDutyPerformanceReport(reportData);
-            window.realtimePerformanceData = {
-              trackPoints: []
-            };
+  reportData.kmlUrl =
+    kmlUrl || "";
+
+  window.currentDutyReport =
+    reportData;
+
+}
+
+// ======================================
+// TELEGRAM IN BACKGROUND
+// ======================================
+
+if(reportData){
+
+  sendDutyReportToAppsScript(
+    reportData
+  )
+  .catch(err => {
+
+    console.error(
+      "❌ Telegram send failed",
+      err
+    );
+
+  });
+
+}
+
+window.realtimePerformanceData = {
+  trackPoints: []
+};
           } catch (reportErr) {
             console.error("❌ Performance report failed", reportErr);
           }
 
-         await window.fb.updateDoc(
+          await window.fb.updateDoc(
   window.fb.doc(
     window.db,
     "patrol_tracks",
