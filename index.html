@@ -9015,7 +9015,8 @@ const col =
       await window.fb.getDoc(
         analyticsRef
       );
-
+const isFirstVisitThisMonth =
+  !snap.exists();
     let analytics = {
 
       gridId,
@@ -9095,6 +9096,21 @@ if(
   window.sessionVisitedGrids.add(
     gridId
   );
+
+  // ==========================
+  // FIRST TIME THIS MONTH
+  // ==========================
+
+  if(
+    isFirstVisitThisMonth
+  ){
+
+    window.newMonthlyGridsCaptured =
+      Number(
+        window.newMonthlyGridsCaptured || 0
+      ) + 1;
+
+  }
 
   showGridCaptureReward();
 
@@ -10202,7 +10218,9 @@ function pulseLivePerformanceCard(){
   const totalGrids =
 
     window.sessionVisitedGrids?.size || 0;
+const newMonthlyGrids =
 
+  window.newMonthlyGridsCaptured || 0;
   const div =
     document.createElement("div");
 
@@ -16659,6 +16677,9 @@ const BATCH_SIZE = 50;
 
     window.sessionVisitedGrids =
   new Set();
+
+window.newMonthlyGridsCaptured =
+  0;
     // ======================================================
 // 🌍 COMPARTMENT FILE REGISTRY
 // ======================================================
@@ -34717,7 +34738,11 @@ window.realtimePerformanceData = {
 
       finalizeSessionLifecycle();
 
-      window.sessionVisitedGrids = new Set();
+      window.sessionVisitedGrids =
+  new Set();
+
+window.newMonthlyGridsCaptured =
+  0;
       console.log("✅ End duty background sync complete", results);
     })
     .catch(err => {
@@ -35248,7 +35273,31 @@ async function buildDutyPerformanceReport({
 
     const grids =
       touchedCells.size;
+// =====================================
+// SESSION GRID STATS
+// =====================================
 
+const sessionGridCount =
+
+  Number(
+    window.sessionVisitedGrids?.size || 0
+  );
+
+const newMonthlyGridCount =
+
+  Number(
+    window.newMonthlyGridsCaptured || 0
+  );
+
+console.log(
+  "📊 SESSION GRID COUNT",
+  sessionGridCount
+);
+
+console.log(
+  "📊 NEW MONTHLY GRID COUNT",
+  newMonthlyGridCount
+);
     // =====================================
     // AREA
     // =====================================
@@ -35464,13 +35513,18 @@ async function buildDutyPerformanceReport({
     score =
       Math.round(score);
 
-   return {
+  return {
 
   sessionId,
   name: leader,
   dutyType: storedDutyType,
 
   grids,
+
+  sessionGridCount,
+
+  newMonthlyGridCount,
+
   areaHa,
   distanceKm,
 
@@ -35489,7 +35543,6 @@ async function buildDutyPerformanceReport({
   kmlUrl
 
 };
-
   }
 
   catch(err){
@@ -35499,17 +35552,21 @@ async function buildDutyPerformanceReport({
       err
     );
 
-    return {
+   return {
 
-      name:
-        leader,
+  name:
+    leader,
 
-      dutyType:
-        dutyType || "Patrolling",
+  dutyType:
+    dutyType || "Patrolling",
 
-      grids:0,
+  grids:0,
 
-      areaHa:0,
+  sessionGridCount:0,
+
+  newMonthlyGridCount:0,
+
+  areaHa:0,
 
       distanceKm:0,
 
@@ -35532,8 +35589,7 @@ async function buildDutyPerformanceReport({
  kmlUrl
     };
   }
-}
-function showDutyPerformanceReport(
+}function showDutyPerformanceReport(
   data
 ){
 
@@ -35755,14 +35811,6 @@ km
 
 ""
 }
-<div style="margin:8px 0;">
-
-📏 Distance Covered :
-${Number(
-  data.distanceKm || 0
-).toFixed(1)} km
-
-</div>
 
 <div style="margin:8px 0;">
 
@@ -39673,8 +39721,16 @@ localStorage.setItem(
 // =====================================================
 window.currentSessionId =
   sessionId;
+
+// =====================================
+// SESSION GRID COUNTERS
+// =====================================
+
 window.sessionVisitedGrids =
   new Set();
+
+window.newMonthlyGridsCaptured =
+  0;
     // =====================================
 // RESET LIVE PERFORMANCE
 // =====================================
