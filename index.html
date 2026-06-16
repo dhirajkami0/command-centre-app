@@ -1693,37 +1693,62 @@ NORTH REMAINS ABSOLUTE
   box-shadow:none !important;
 
 }
-  const gridRewardStyle =
+const gridRewardStyle =
 document.createElement("style");
+
+gridRewardStyle.id =
+  "gridRewardStyle";
 
 gridRewardStyle.innerHTML = `
 
 .flyingGridStar{
 
+  display:inline-block;
+
+  will-change:
+    transform,
+    opacity;
+
   animation:
     flyGridStar
-    2s ease forwards;
+    2s ease-out forwards;
 
 }
 
 @keyframes flyGridStar{
 
   0%{
+
     opacity:0;
+
     transform:
-      translateY(0)
+      translate3d(
+        0,
+        0,
+        0
+      )
       scale(.5);
+
   }
 
-  20%{
+  15%{
+
     opacity:1;
+
   }
 
   100%{
+
     opacity:0;
+
     transform:
-      translateY(-150px)
-      scale(1.8);
+      translate3d(
+        0,
+        -180px,
+        0
+      )
+      scale(2);
+
   }
 
 }
