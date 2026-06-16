@@ -15270,48 +15270,10 @@ function startMonthlyStatusCardRefresh() {
     );
   }
 }
-    function addRangeStatsButton() {
-
-      const control = L.control({ position: 'topright' });
-
-      control.onAdd = function () {
-
-        const div = L.DomUtil.create('div', 'leaflet-bar leaflet-control');
-        div.style.zIndex = "9999";
-
-        div.innerHTML = `
-      <button id="rangeBtn" style="
-        background:white;
-        padding:10px 15px;
-        font-weight:bold;
-        border-radius:4px;
-        border:2px solid rgba(0,0,0,0.2);
-        cursor:pointer;">
-        📊 Range Stats
-      </button>`;
-
-        L.DomEvent.disableClickPropagation(div);
-
-        setTimeout(() => {
-          const btn = div.querySelector("#rangeBtn");
-          if (btn) {
-            btn.onclick = (e) => {
-              L.DomEvent.stopPropagation(e);
-              openRangePopup(map.getCenter());
-            };
-          }
-        }, 100);
-
-        return div;
-      };
-
-      control.addTo(map);
-    }
-
+    
     /* 🔥 INIT BUTTON AFTER MAP READY */
 setTimeout(async () => {
 
-  addRangeStatsButton();
 
   addMonthlyStatusCard();
 
