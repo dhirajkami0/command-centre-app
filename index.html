@@ -9023,33 +9023,98 @@ const col =
       );
 const isFirstVisitThisMonth =
   !snap.exists();
-    let analytics = {
 
-      gridId,
+// ==================================
+// GLOBAL UNIQUE GRID COUNTER
+// ==================================
 
-      monthKey,
+if(
+  isFirstVisitThisMonth
+){
 
-      distanceMeters: 0,
+  try{
 
-      visitCount: 0,
+    const summaryRef =
 
-      visitedCells: {},
+      window.fb.doc(
 
-      previousCoveredCells: 0,
+        window.db,
 
-      lastSessionAddedCells: 0,
+        "analytics_rebuild",
 
-      totalCoveredCells: 0,
+        monthKey,
 
-      firstSeenAt:
-        window.fb.serverTimestamp(),
+        "summary",
 
-      lastSeenAt:
-        window.fb.serverTimestamp(),
+        "global"
 
-      updatedAt:
-        window.fb.serverTimestamp()
-    };
+      );
+
+    await window.fb.setDoc(
+
+      summaryRef,
+
+      {
+
+        uniqueVisitedGrids:
+
+          window.fb.increment(1),
+
+        updatedAt:
+
+          window.fb.serverTimestamp()
+
+      },
+
+      {
+        merge:true
+      }
+
+    );
+
+  }
+
+  catch(err){
+
+    console.error(
+
+      "❌ GLOBAL GRID COUNTER",
+
+      err
+
+    );
+
+  }
+
+}
+
+let analytics = {
+
+  gridId,
+
+  monthKey,
+
+  distanceMeters: 0,
+
+  visitCount: 0,
+
+  visitedCells: {},
+
+  previousCoveredCells: 0,
+
+  lastSessionAddedCells: 0,
+
+  totalCoveredCells: 0,
+
+  firstSeenAt:
+    window.fb.serverTimestamp(),
+
+  lastSeenAt:
+    window.fb.serverTimestamp(),
+
+  updatedAt:
+    window.fb.serverTimestamp()
+};
 
     if (
       snap.exists()
@@ -9239,7 +9304,59 @@ if(
     );
   }
 }
+async function getMonthlyGlobalSummary(
+  monthKey
+){
 
+  try{
+
+    const snap =
+
+      await window.fb.getDoc(
+
+        window.fb.doc(
+
+          window.db,
+
+          "analytics_rebuild",
+
+          monthKey,
+
+          "summary",
+
+          "global"
+
+        )
+
+      );
+
+    if(!snap.exists()){
+
+      return {
+
+        uniqueVisitedGrids:0
+
+      };
+
+    }
+
+    return snap.data();
+
+  }
+
+  catch(err){
+
+    console.error(err);
+
+    return {
+
+      uniqueVisitedGrids:0
+
+    };
+
+  }
+
+}
    async function rebuildAnalyticsFromHistory(monthKey) {
   try {
     console.group("🔄 ANALYTICS REBUILD");
@@ -13992,7 +14109,11 @@ const summary =
     gridIds,
     monthKey
   );
+const globalSummary =
 
+  await getMonthlyGlobalSummary(
+    monthKey
+  );
 console.timeEnd(
   "GET_ANALYTICS_SUMMARY"
 );
@@ -14141,22 +14262,25 @@ console.timeEnd(
     // =====================================
     // 🔥 COMPARTMENTS
     // =====================================
+const compartmentsEl =
+  document.getElementById(
+    "msCompartments"
+  );
 
-    const compartmentsEl =
-      document.getElementById(
-        "msCompartments"
-      );
+if(compartmentsEl){
 
-    if (compartmentsEl) {
+  compartmentsEl.textContent =
 
-      compartmentsEl.textContent =
-        Number(
-          summary.compartments
-        ).toLocaleString();
+    `${Number(
+      globalSummary
+        ?.uniqueVisitedGrids || 0
+    ).toLocaleString()}
 
-    }
+    / ${Number(
+      summary.compartments || 0
+    ).toLocaleString()}`;
 
-    // =====================================
+}// =====================================
     // 🔥 SESSION LABEL
     // =====================================
 
