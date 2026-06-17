@@ -8495,14 +8495,21 @@ console.log(
   "🌲 CLIPPED KM",
   clippedDistanceKm
 );
-   // 6. COMMIT
+  // 6. COMMIT
 await window.fb.updateDoc(
   targetDocRef,
   {
 
+    // 🔥 SAVE CLEAN TRACK
+    rawTrackEncoded:
+      polyline.encode(
+        canonicalLngLatCoords
+      ),
+
     totalDistanceKm,
 
     clippedDistanceKm,
+
     clipStatus: "SUCCESS",
 
     monthKey:
@@ -8532,7 +8539,6 @@ await window.fb.updateDoc(
       window.fb.serverTimestamp()
   }
 );
-
   
     console.log(`🏁 FINISH - Saved [${crossedCompartmentsSet.size}] authorized segments.`);
   } catch (err) {
