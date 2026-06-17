@@ -10001,6 +10001,8 @@ async function getAnalyticsSummary(
 
   let latestUpdatedAt = 0;
 
+  let visitedCompartments = 0;
+
   const uniqueVisitedCells =
     new Set();
 
@@ -10113,6 +10115,12 @@ async function getAnalyticsSummary(
         return;
       }
 
+      // ==================================
+      // VISITED COMPARTMENT COUNT
+      // ==================================
+
+      visitedCompartments++;
+
       const analytics =
         result.value.data() || {};
 
@@ -10210,6 +10218,11 @@ async function getAnalyticsSummary(
   );
 
   console.log(
+    "📊 VISITED COMPARTMENTS:",
+    visitedCompartments
+  );
+
+  console.log(
     "📊 NEWLY COVERED:",
     newlyCovered
   );
@@ -10238,6 +10251,8 @@ async function getAnalyticsSummary(
     compartments:
       gridIds.length,
 
+    visitedCompartments,
+
     totalCells,
 
     areaHa,
@@ -10265,8 +10280,7 @@ async function getAnalyticsSummary(
 
         : 0
   };
-}
-function pulseLivePerformanceCard(){
+}function pulseLivePerformanceCard(){
 
   const card =
 
@@ -14233,8 +14247,7 @@ if(compartmentsEl){
   compartmentsEl.textContent =
 
     `${Number(
-      globalSummary
-        ?.uniqueVisitedGrids || 0
+      summary.visitedCompartments || 0
     ).toLocaleString()}
 
     / ${Number(
