@@ -34474,7 +34474,12 @@ pointsSnap.forEach(doc => {
         Number(p.lat),
 
       lng:
-        Number(p.lon)
+        Number(p.lon),
+
+      time:
+        Number(
+          p.time || 0
+        )
 
     });
 
@@ -34498,64 +34503,142 @@ if(
 }
 
 console.table({
+
   sessionId,
+
   fullTrackPoints:
     fullTrack.length
+
 });
+
+// ======================================
+// 🔥 TELEPORT FILTER
+// ======================================
+
 const cleanTrack = [];
 
-for(let i=0;i<fullTrack.length;i++){
+for(
+  let i = 0;
+  i < fullTrack.length;
+  i++
+){
 
-  const curr = fullTrack[i];
+  const curr =
+    fullTrack[i];
 
-  if(i===0){
+  // ==========================
+  // FIRST POINT
+  // ==========================
+  if(i === 0){
 
     cleanTrack.push(curr);
+
     continue;
   }
 
   const prev =
-    fullTrack[i-1];
+    fullTrack[i - 1];
 
   const dist =
+
     map.distance(
-      [prev.lat,prev.lng],
-      [curr.lat,curr.lng]
+
+      [prev.lat, prev.lng],
+
+      [curr.lat, curr.lng]
+
     );
 
-  const timeDiff =
+  const timeDiffSec =
 
     Math.max(
+
       1,
+
       (
         curr.time -
         prev.time
       ) / 1000
+
     );
 
   const speedKmh =
-    (dist/timeDiff)*3.6;
 
-  if(
-    dist > 500 ||
+    (dist / timeDiffSec)
+    * 3.6;
+
+  const isTeleport =
+
+    dist > 500
+
+    ||
+
     speedKmh > 120
-  ){
+
+    ||
+
+    !isFinite(dist)
+
+    ||
+
+    !isFinite(speedKmh);
+
+  if(isTeleport){
 
     console.warn(
-      "🚫 HISTORY TELEPORT",
-      dist
+
+      "🚫 HISTORY TELEPORT REMOVED",
+
+      {
+
+        distance:
+          Math.round(dist),
+
+        speed:
+          Math.round(speedKmh),
+
+        from:
+          [prev.lat, prev.lng],
+
+        to:
+          [curr.lat, curr.lng]
+
+      }
+
     );
 
     continue;
   }
 
   cleanTrack.push(curr);
-}
-await processHistoryTrack(
-  fullTrack,
-  sessionId
-);
 
+}
+
+console.table({
+
+  originalPoints:
+    fullTrack.length,
+
+  cleanedPoints:
+    cleanTrack.length,
+
+  removed:
+    fullTrack.length -
+    cleanTrack.length
+
+});
+
+// ======================================
+// 🔥 USE CLEAN TRACK
+// ======================================
+
+await processHistoryTrack(
+
+  cleanTrack,
+
+  sessionId
+
+);
 // ======================================
 // FINAL ANALYTICS FLUSH
 // ======================================
