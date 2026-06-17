@@ -14191,9 +14191,14 @@ console.timeEnd(
     if (cellsEl) {
 
       cellsEl.textContent =
-        Number(
-          summary.totalCovered
-        ).toLocaleString();
+
+  `${Number(
+    summary.totalCovered
+  ).toLocaleString()}
+
+  / ${Number(
+    summary.totalCells
+  ).toLocaleString()}`;
 
     }
 
