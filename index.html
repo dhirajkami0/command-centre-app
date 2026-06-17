@@ -34502,7 +34502,55 @@ console.table({
   fullTrackPoints:
     fullTrack.length
 });
+const cleanTrack = [];
 
+for(let i=0;i<fullTrack.length;i++){
+
+  const curr = fullTrack[i];
+
+  if(i===0){
+
+    cleanTrack.push(curr);
+    continue;
+  }
+
+  const prev =
+    fullTrack[i-1];
+
+  const dist =
+    map.distance(
+      [prev.lat,prev.lng],
+      [curr.lat,curr.lng]
+    );
+
+  const timeDiff =
+
+    Math.max(
+      1,
+      (
+        curr.time -
+        prev.time
+      ) / 1000
+    );
+
+  const speedKmh =
+    (dist/timeDiff)*3.6;
+
+  if(
+    dist > 500 ||
+    speedKmh > 120
+  ){
+
+    console.warn(
+      "🚫 HISTORY TELEPORT",
+      dist
+    );
+
+    continue;
+  }
+
+  cleanTrack.push(curr);
+}
 await processHistoryTrack(
   fullTrack,
   sessionId
