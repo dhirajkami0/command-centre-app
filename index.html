@@ -7661,7 +7661,7 @@ async function buildAndStoreMasterGrid() {
   }
 }
 
-async function loadMasterGrid() {
+async function loadMasterGrid(){
 
   console.count(
     "loadMasterGrid EXECUTED"
@@ -7671,26 +7671,25 @@ async function loadMasterGrid() {
   // ✅ ALREADY LOADED
   // =====================================
 
- if(
-  window.masterGrid
-  &&
-  Object.keys(
-    window.masterGrid
-  ).length > 0
-){
-
-  window.__ANALYTICS_READY__ =
-    true;
-
-  console.log(
-    "⏭ MASTER GRID ALREADY LOADED:",
+  if(
+    window.masterGrid &&
     Object.keys(
       window.masterGrid
-    ).length
-  );
+    ).length > 0
+  ){
 
-  return window.masterGrid;
-}
+    window.__ANALYTICS_READY__ =
+      true;
+
+    console.log(
+      "⏭ MASTER GRID ALREADY LOADED:",
+      Object.keys(
+        window.masterGrid
+      ).length
+    );
+
+    return window.masterGrid;
+  }
 
   // =====================================
   // ⏳ LOAD IN PROGRESS
@@ -7713,78 +7712,161 @@ async function loadMasterGrid() {
   // =====================================
 
   window.__MASTER_GRID_PROMISE__ =
-  (async()=>{
 
-    console.time(
-      "LOAD_MASTER_GRID"
-    );
+    (async()=>{
 
-    try{
-
-      window.masterGrid = {};
-
-      const snap =
-
-        await window.fb.getDocs(
-
-          window.fb.collection(
-            window.db,
-            "grid_master"
-          )
-
-        );
-
-      snap.forEach(doc => {
-
-        const data =
-          doc.data() || {};
-
-        if(
-          data.gridId
-        ){
-
-          window.masterGrid[
-            data.gridId
-          ] = data;
-
-        }
-
-      });
-
-      console.log(
-        "✅ GRID LOADED",
-        Object.keys(
-          window.masterGrid
-        ).length
-      );
-
-      return window.masterGrid;
-
-    }
-
-    catch(err){
-
-      console.error(
-        "❌ loadMasterGrid",
-        err
-      );
-
-      throw err;
-
-    }
-
-    finally{
-
-      console.timeEnd(
+      console.time(
         "LOAD_MASTER_GRID"
       );
 
-    }
+      try{
 
-  })();
+        // =====================================
+        // FIREBASE READY CHECK
+        // =====================================
+
+        if(
+          !window.fb
+        ){
+          throw new Error(
+            "window.fb missing"
+          );
+        }
+
+        if(
+          typeof window.fb.getDocs
+          !== "function"
+        ){
+          throw new Error(
+            "window.fb.getDocs missing"
+          );
+        }
+
+        if(
+          typeof window.fb.collection
+          !== "function"
+        ){
+          throw new Error(
+            "window.fb.collection missing"
+          );
+        }
+
+        if(
+          !window.db
+        ){
+          throw new Error(
+            "window.db missing"
+          );
+        }
+
+        console.log(
+          "FB EXISTS:",
+          !!window.fb
+        );
+
+        console.log(
+          "GETDOCS TYPE:",
+          typeof window.fb.getDocs
+        );
+
+        console.log(
+          "COLLECTION TYPE:",
+          typeof window.fb.collection
+        );
+
+        console.log(
+          "DB:",
+          window.db
+        );
+
+        window.masterGrid = {};
+
+        // =====================================
+        // LOAD GRID MASTER
+        // =====================================
+
+        const snap =
+
+          await window.fb.getDocs(
+
+            window.fb.collection(
+              window.db,
+              "grid_master"
+            )
+
+          );
+
+        console.log(
+          "GRID MASTER DOCS:",
+          snap.size
+        );
+
+        snap.forEach(doc => {
+
+          const data =
+            doc.data() || {};
+
+          if(
+            data.gridId
+          ){
+
+            window.masterGrid[
+              data.gridId
+            ] = data;
+
+          }
+
+        });
+
+        console.log(
+          "✅ GRID LOADED:",
+          Object.keys(
+            window.masterGrid
+          ).length
+        );
+
+        window.__ANALYTICS_READY__ =
+          true;
+
+        return window.masterGrid;
+
+      }
+
+      catch(err){
+
+        console.error(
+          "❌ loadMasterGrid",
+          err
+        );
+
+        window.__ANALYTICS_READY__ =
+          false;
+
+        throw err;
+
+      }
+
+      finally{
+
+        console.timeEnd(
+          "LOAD_MASTER_GRID"
+        );
+
+        // =====================================
+        // IMPORTANT
+        // CLEAR FAILED PROMISE
+        // =====================================
+
+        window.__MASTER_GRID_PROMISE__ =
+          null;
+
+      }
+
+    })();
 
   return await
     window.__MASTER_GRID_PROMISE__;
+
 }
 async function buildHeatmapBoundary() {
 
