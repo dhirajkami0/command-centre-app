@@ -13993,16 +13993,15 @@ function getLiveStaffCountForCurrentPolygon(){
   );
 
 }
-  async function updateMonthlyStatusCard() {
+ async function updateMonthlyStatusCard(){
 
-  try {
+  try{
 
-    if (
+    if(
       !document.getElementById(
         "monthlyStatusCard"
       )
-    ) {
-
+    ){
       return;
     }
 
@@ -14010,9 +14009,14 @@ function getLiveStaffCountForCurrentPolygon(){
       new Date();
 
     const monthKey =
-      `${d.getFullYear()}_${String(
-        d.getMonth() + 1
-      ).padStart(2,"0")}`;
+      `${d.getFullYear()}_${
+        String(
+          d.getMonth() + 1
+        ).padStart(
+          2,
+          "0"
+        )
+      }`;
 
     const level =
       String(
@@ -14041,6 +14045,16 @@ function getLiveStaffCountForCurrentPolygon(){
 
       : "";
 
+    // =====================================
+    // CACHE KEY
+    // =====================================
+
+    const cacheKey =
+
+      `${level}_${
+        filterValue || "all"
+      }`;
+
     const gridIds =
       getAnalyticsGridIds(
         level,
@@ -14048,137 +14062,96 @@ function getLiveStaffCountForCurrentPolygon(){
       );
 
     // =====================================
-    // 🔍 DEBUG
+    // CACHE LOOKUP
     // =====================================
 
-    console.log(
-      "📦 Grid Count:",
-      gridIds?.length || 0
-    );
+    const cached =
 
-    console.log(
-      "📦 Master Grid:",
-      Object.keys(
-        window.masterGrid || {}
-      ).length
-    );
-
-    console.log(
-      "📦 Cell Lookup:",
-      Object.keys(
-        window.cellToGridId || {}
-      ).length
-    );
-
-   console.time(
-  "GET_ANALYTICS_SUMMARY"
-);
-
-const summary =
-  await getAnalyticsSummary(
-    gridIds,
-    monthKey
-  );
-const globalSummary =
-
-  await getMonthlyGlobalSummary(
-    monthKey
-  );
-console.timeEnd(
-  "GET_ANALYTICS_SUMMARY"
-);
+      window.monthlyStatusCache?.[
+        cacheKey
+      ];
 
     // =====================================
-    // 🔥 LIVE STAFF
+    // ⚡ INSTANT CACHE PAINT
     // =====================================
 
-    const liveStaff =
-      getLiveStaffCountForCurrentPolygon();
+    if(cached){
 
-    console.log(
-      "LIVE STAFF RETURNED:",
-      liveStaff
-    );
-
-    const liveStaffEl =
-      document.getElementById(
-        "msLiveStaff"
+      renderMonthlyStatusCard(
+        cached,
+        level
       );
-
-    if (liveStaffEl) {
-
-      liveStaffEl.textContent =
-        Number(
-          liveStaff
-        ).toLocaleString();
-
-      if (liveStaff === 0) {
-
-        liveStaffEl.style.color =
-          "#ff5b5b";
-
-      }
-
-      else if (
-        liveStaff < 3
-      ) {
-
-        liveStaffEl.style.color =
-          "#ffd54f";
-
-      }
-
-      else {
-
-        liveStaffEl.style.color =
-          "#4cff6d";
-
-      }
 
     }
 
     // =====================================
-    // 🔥 COVERED AREA
+    // ⚡ USE CACHE IF FRESH (<30 SEC)
     // =====================================
 
-    const coveredAreaHa =
+    if(
 
-      summary.totalCells > 0
+      cached?.loadedAt
 
-      ?
+      &&
 
       (
-        summary.totalCovered /
-        summary.totalCells
-      ) *
-      summary.areaHa
+        Date.now() -
+        cached.loadedAt
+      ) < 30000
 
-      :
+    ){
 
-      0;
-
-    // =====================================
-    // 🔥 TOTAL AREA
-    // =====================================
-
-    const totalAreaHa =
-
-      Number(
-        summary.areaHa || 0
+      console.log(
+        "⚡ Monthly Status Cache Hit:",
+        cacheKey
       );
 
-    // =====================================
-    // 🔥 TOTAL GRIDS
-    // =====================================
+      return;
+    }
 
-    const totalGrids =
+    console.time(
+      "GET_ANALYTICS_SUMMARY"
+    );
 
-      Number(
-        summary.totalCells || 0
+    const summary =
+      await getAnalyticsSummary(
+
+        gridIds,
+
+        monthKey
+
       );
 
+    console.timeEnd(
+      "GET_ANALYTICS_SUMMARY"
+    );
+
     // =====================================
-    // 🔥 TITLE
+    // SAVE CACHE
+    // =====================================
+
+    window.monthlyStatusCache[
+      cacheKey
+    ] = {
+
+      ...summary,
+
+      loadedAt:
+        Date.now()
+
+    };
+
+    // =====================================
+    // FINAL PAINT
+    // =====================================
+
+    renderMonthlyStatusCard(
+      summary,
+      level
+    );
+
+    // =====================================
+    // TITLE
     // =====================================
 
     const titleEl =
@@ -14186,7 +14159,7 @@ console.timeEnd(
         "monthlyStatusTitle"
       );
 
-    if (titleEl) {
+    if(titleEl){
 
       titleEl.textContent =
         getMonthlyStatusTitle();
@@ -14194,68 +14167,7 @@ console.timeEnd(
     }
 
     // =====================================
-    // 🔥 GRIDS VISITED
-    // =====================================
-
-    const cellsEl =
-      document.getElementById(
-        "msCells"
-      );
-
-    if (cellsEl) {
-
-      cellsEl.textContent =
-
-  `${Number(
-    summary.totalCovered
-  ).toLocaleString()}
-
-  / ${Number(
-    summary.totalCells
-  ).toLocaleString()}`;
-
-    }
-
-    // =====================================
-    // 🔥 TOTAL GRIDS
-    // =====================================
-
-    const totalGridsEl =
-
-      document.getElementById(
-        "msTotalGrids"
-      );
-
-    if(totalGridsEl){
-
-      totalGridsEl.textContent =
-
-        totalGrids.toLocaleString();
-
-    }
-
-    // =====================================
-    // 🔥 COMPARTMENTS
-    // =====================================
-const compartmentsEl =
-  document.getElementById(
-    "msCompartments"
-  );
-
-if(compartmentsEl){
-
-  compartmentsEl.textContent =
-
-    `${Number(
-      summary.visitedCompartments || 0
-    ).toLocaleString()}
-
-    / ${Number(
-      summary.compartments || 0
-    ).toLocaleString()}`;
-
-}// =====================================
-    // 🔥 SESSION LABEL
+    // SESSION LABEL
     // =====================================
 
     const sessionLabelEl =
@@ -14276,102 +14188,54 @@ if(compartmentsEl){
     }
 
     // =====================================
-    // 🔥 SESSIONS
+    // LIVE STAFF
     // =====================================
 
-    const sessionsEl =
+    const liveStaff =
+      getLiveStaffCountForCurrentPolygon();
+
+    const liveStaffEl =
       document.getElementById(
-        "msSessions"
+        "msLiveStaff"
       );
 
-    if (sessionsEl) {
+    if(liveStaffEl){
 
-      sessionsEl.textContent =
+      liveStaffEl.textContent =
+
         Number(
-          summary.visitCount
+          liveStaff
         ).toLocaleString();
 
-    }
+      if(
+        liveStaff === 0
+      ){
 
-    // =====================================
-    // 🔥 DISTANCE
-    // =====================================
+        liveStaffEl.style.color =
+          "#ff5b5b";
 
-    const distanceEl =
-      document.getElementById(
-        "msDistance"
-      );
+      }
 
-    if (distanceEl) {
+      else if(
+        liveStaff < 3
+      ){
 
-      distanceEl.textContent =
-        (
-          summary.distanceMeters /
-          1000
-        ).toFixed(1)
-        + " km";
+        liveStaffEl.style.color =
+          "#ffd54f";
 
-    }
+      }
 
-    // =====================================
-    // 🔥 COVERED AREA
-    // =====================================
+      else{
 
-    const areaEl =
-      document.getElementById(
-        "msArea"
-      );
+        liveStaffEl.style.color =
+          "#4cff6d";
 
-    if (areaEl) {
-
-      areaEl.textContent =
-        coveredAreaHa
-        .toFixed(1)
-        + " ha";
+      }
 
     }
 
     // =====================================
-    // 🔥 TOTAL AREA
-    // =====================================
-
-    const totalAreaEl =
-
-      document.getElementById(
-        "msTotalArea"
-      );
-
-    if(totalAreaEl){
-
-      totalAreaEl.textContent =
-
-        totalAreaHa
-        .toFixed(1)
-
-        + " ha";
-
-    }
-
-    // =====================================
-    // 🔥 COVERAGE %
-    // =====================================
-
-    const coverageEl =
-      document.getElementById(
-        "msCoverage"
-      );
-
-    if (coverageEl) {
-
-      coverageEl.textContent =
-        summary.coveragePercent
-        .toFixed(1)
-        + " %";
-
-    }
-
-    // =====================================
-    // 🔥 UPDATED AT
+    // UPDATED AT
     // =====================================
 
     const updatedAtEl =
@@ -14381,13 +14245,16 @@ if(compartmentsEl){
 
     if(updatedAtEl){
 
-      if(summary.latestUpdatedAt){
+      if(
+        summary.latestUpdatedAt
+      ){
 
         updatedAtEl.textContent =
 
           new Date(
             summary.latestUpdatedAt
           )
+
           .toLocaleTimeString(
             "en-IN",
             {
@@ -14411,13 +14278,170 @@ if(compartmentsEl){
 
   }
 
-  catch(err) {
+  catch(err){
 
     console.error(
       "❌ Monthly Status",
       err
     );
+
   }
+
+}
+    function renderMonthlyStatusCard(
+  summary,
+  level
+){
+
+  if(!summary){
+    return;
+  }
+
+  const coveredAreaHa =
+
+    summary.totalCells > 0
+
+    ?
+
+    (
+      summary.totalCovered /
+      summary.totalCells
+    )
+
+    *
+
+    summary.areaHa
+
+    :
+
+    0;
+
+  document.getElementById(
+    "msCells"
+  )?.replaceChildren(
+
+    document.createTextNode(
+
+      `${Number(
+        summary.totalCovered
+      ).toLocaleString()}
+
+      / ${Number(
+        summary.totalCells
+      ).toLocaleString()}`
+
+    )
+
+  );
+
+  document.getElementById(
+    "msTotalGrids"
+  )?.replaceChildren(
+
+    document.createTextNode(
+
+      Number(
+        summary.totalCells
+      ).toLocaleString()
+
+    )
+
+  );
+
+  document.getElementById(
+    "msCompartments"
+  )?.replaceChildren(
+
+    document.createTextNode(
+
+      `${Number(
+        summary.visitedCompartments
+      ).toLocaleString()}
+
+      / ${Number(
+        summary.compartments
+      ).toLocaleString()}`
+
+    )
+
+  );
+
+  document.getElementById(
+    "msSessions"
+  )?.replaceChildren(
+
+    document.createTextNode(
+
+      Number(
+        summary.visitCount
+      ).toLocaleString()
+
+    )
+
+  );
+
+  document.getElementById(
+    "msDistance"
+  )?.replaceChildren(
+
+    document.createTextNode(
+
+      (
+        summary.distanceMeters
+        / 1000
+      ).toFixed(1)
+
+      + " km"
+
+    )
+
+  );
+
+  document.getElementById(
+    "msArea"
+  )?.replaceChildren(
+
+    document.createTextNode(
+
+      coveredAreaHa.toFixed(1)
+
+      + " ha"
+
+    )
+
+  );
+
+  document.getElementById(
+    "msTotalArea"
+  )?.replaceChildren(
+
+    document.createTextNode(
+
+      Number(
+        summary.areaHa || 0
+      ).toFixed(1)
+
+      + " ha"
+
+    )
+
+  );
+
+  document.getElementById(
+    "msCoverage"
+  )?.replaceChildren(
+
+    document.createTextNode(
+
+      summary.coveragePercent
+        .toFixed(1)
+
+      + " %"
+
+    )
+
+  );
+
 }
    function addMonthlyStatusCard() {
 
@@ -16818,7 +16842,7 @@ window.gisFilter =
     beat:"ALL",
     compartment:"ALL"
   };
-
+window.monthlyStatusCache ??= {};
 // ======================================================
 // 🌍 GIS DATASETS
 // ======================================================
