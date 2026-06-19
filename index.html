@@ -30147,6 +30147,203 @@ function collectAnalyticsHit(
   }
 
 }
+
+    async function updateMonthlyDistanceTotal(
+
+  trackSegments,
+  monthKey
+
+){
+
+  try{
+
+    if(
+
+      !Array.isArray(
+        trackSegments
+      )
+
+      ||
+
+      trackSegments.length === 0
+
+    ){
+
+      return;
+    }
+
+    let totalDistanceMeters = 0;
+
+    // ====================================
+    // 🔥 CALCULATE DISTANCE
+    // ====================================
+
+    for(
+
+      const segment of trackSegments
+
+    ){
+
+      if(
+
+        !Array.isArray(segment)
+
+        ||
+
+        segment.length < 2
+
+      ){
+
+        continue;
+      }
+
+      for(
+
+        let i = 1;
+
+        i < segment.length;
+
+        i++
+
+      ){
+
+        const prev =
+          segment[i - 1];
+
+        const curr =
+          segment[i];
+
+        if(
+
+          !Array.isArray(prev)
+
+          ||
+
+          !Array.isArray(curr)
+
+        ){
+
+          continue;
+        }
+
+        const dist =
+
+          map.distance(
+
+            [
+              Number(prev[0]),
+              Number(prev[1])
+            ],
+
+            [
+              Number(curr[0]),
+              Number(curr[1])
+            ]
+
+          );
+
+        if(
+
+          isFinite(dist)
+
+          &&
+
+          dist > 0
+
+        ){
+
+          totalDistanceMeters += dist;
+
+        }
+
+      }
+
+    }
+
+    if(
+      totalDistanceMeters <= 0
+    ){
+
+      return;
+    }
+
+    console.log(
+
+      "📏 ADDING DISTANCE",
+
+      (
+
+        totalDistanceMeters / 1000
+
+      ).toFixed(2),
+
+      "km"
+
+    );
+
+    const summaryRef =
+
+      window.fb.doc(
+
+        window.db,
+
+        "analytics_rebuild",
+
+        monthKey,
+
+        "summary",
+
+        "global"
+
+      );
+
+    await window.fb.setDoc(
+
+      summaryRef,
+
+      {
+
+        totalDistanceMeters:
+
+          window.fb.increment(
+            Math.round(
+              totalDistanceMeters
+            )
+          ),
+
+        rebuiltAt:
+          new Date()
+            .toISOString()
+
+      },
+
+      {
+        merge:true
+      }
+
+    );
+
+    console.log(
+
+      "✅ GLOBAL DISTANCE SAVED"
+
+    );
+
+  }
+
+  catch(err){
+
+    console.error(
+
+      "❌ updateMonthlyDistanceTotal",
+
+      err
+
+    );
+
+  }
+
+}
     /* =========================
        🚨 INCIDENT SYSTEM (FINAL)
     ========================= */
