@@ -30167,7 +30167,7 @@ function collectAnalyticsHit(
 
 }
 
-    async function updateMonthlyDistanceTotal(
+  async function updateMonthlyDistanceTotal(
 
   trackSegments,
   monthKey
@@ -30291,14 +30291,16 @@ function collectAnalyticsHit(
       "📏 ADDING DISTANCE",
 
       (
-
         totalDistanceMeters / 1000
-
       ).toFixed(2),
 
       "km"
 
     );
+
+    // ====================================
+    // 🔥 GLOBAL SUMMARY DOC
+    // ====================================
 
     const summaryRef =
 
@@ -30316,6 +30318,41 @@ function collectAnalyticsHit(
 
       );
 
+    // ====================================
+    // 🔥 LOAD EXISTING TOTAL
+    // ====================================
+
+    const snap =
+
+      await window.fb.getDoc(
+        summaryRef
+      );
+
+    const oldDistance =
+
+      Number(
+
+        snap.data()
+          ?.totalDistanceMeters
+
+        ||
+
+        0
+
+      );
+
+    const newDistance =
+
+      oldDistance +
+
+      Math.round(
+        totalDistanceMeters
+      );
+
+    // ====================================
+    // 🔥 SAVE UPDATED TOTAL
+    // ====================================
+
     await window.fb.setDoc(
 
       summaryRef,
@@ -30323,12 +30360,7 @@ function collectAnalyticsHit(
       {
 
         totalDistanceMeters:
-
-          window.fb.increment(
-            Math.round(
-              totalDistanceMeters
-            )
-          ),
+          newDistance,
 
         rebuiltAt:
           new Date()
@@ -30344,7 +30376,15 @@ function collectAnalyticsHit(
 
     console.log(
 
-      "✅ GLOBAL DISTANCE SAVED"
+      "✅ GLOBAL DISTANCE SAVED",
+
+      (
+
+        newDistance / 1000
+
+      ).toFixed(2),
+
+      "km"
 
     );
 
