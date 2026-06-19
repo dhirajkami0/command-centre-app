@@ -36451,11 +36451,35 @@ async function buildDutyPerformanceReport({
 
   try{
 
+    // =====================================================
+    // SAVE REPORT GLOBALLY
+    // =====================================================
+
     window.currentDutyReport = data;
 
     console.log(
-      "✅ currentDutyReport saved",
+      "✅ currentDutyReport SAVED",
       window.currentDutyReport
+    );
+
+    console.log(
+      "📍 KML URL",
+      data?.kmlUrl
+    );
+
+    console.log(
+      "📱 Android Bridge Available",
+      !!window.Android
+    );
+
+    console.log(
+      "📱 Android.shareText",
+      typeof Android?.shareText
+    );
+
+    console.log(
+      "📱 Android.openUrl",
+      typeof Android?.openUrl
     );
 
     const grade =
@@ -36473,7 +36497,7 @@ async function buildDutyPerformanceReport({
 
     const hideCoverage =
       String(
-        data.dutyType
+        data.dutyType || ""
       )
       .toLowerCase()
       .includes(
@@ -36560,7 +36584,7 @@ ${grade.stars}
 <hr>
 
 <div>
-👮 ${data.name}
+👮 ${data.name || "-"}
 </div>
 
 ${
@@ -36609,7 +36633,7 @@ ${Number(
 ${Number(
   data.areaHa || 0
 ).toFixed(1)}
-ha
+ ha
 </b>
 </div>
 
@@ -36619,7 +36643,7 @@ ha
 ${Number(
   data.distanceKm || 0
 ).toFixed(1)}
-km
+ km
 </b>
 </div>
 
@@ -36631,13 +36655,13 @@ km
 
 <div style="margin-top:10px;">
 ⏱ Duration :
-${data.durationText}
+${data.durationText || "-"}
 </div>
 
 <div style="margin-top:10px;">
 📋 Duty Type
 <br>
-<b>${data.dutyType}</b>
+<b>${data.dutyType || "-"}</b>
 </div>
 
 <hr>
@@ -36649,7 +36673,7 @@ font-weight:bold;
 "
 >
 🏅 Score :
-${data.score}/100
+${data.score || 0}/100
 </div>
 
 <hr>
@@ -36697,7 +36721,17 @@ margin-top:12px;
 >
 
 <button
-onclick="openDutyKML()"
+onclick="
+console.log(
+  '📍 VIEW KML CLICKED'
+);
+
+console.log(
+  window.currentDutyReport
+);
+
+openDutyKML();
+"
 style="
 flex:1;
 padding:10px;
@@ -36712,7 +36746,17 @@ font-weight:bold;
 </button>
 
 <button
-onclick="shareDutyKMLReport()"
+onclick="
+console.log(
+  '📤 SHARE KML CLICKED'
+);
+
+console.log(
+  window.currentDutyReport
+);
+
+shareDutyKMLReport();
+"
 style="
 flex:1;
 padding:10px;
@@ -36747,6 +36791,18 @@ font-weight:bold;
 
 </div>
 
+<br>
+
+<div
+style="
+text-align:center;
+font-weight:bold;
+color:#2e7d32;
+"
+>
+🌟 Thank you for your service.
+</div>
+
 </div>
 `;
 
@@ -36758,7 +36814,7 @@ font-weight:bold;
     if(!modal){
 
       console.error(
-        "❌ dutyPerformanceModal not found"
+        "❌ dutyPerformanceModal NOT FOUND"
       );
 
       return;
@@ -36775,16 +36831,13 @@ font-weight:bold;
     );
 
   }
-
   catch(err){
 
     console.error(
-      "❌ showDutyPerformanceReport",
+      "❌ showDutyPerformanceReport FAILED",
       err
     );
-
   }
-
 }
  function generateKMLFromTrack(points){
 
@@ -37264,161 +37317,19 @@ ${coordinates}
 
 async function shareDutyKMLReport(){
 
-  console.log(
-    "🔥 shareDutyKMLReport CALLED"
-  );
-
-  try{
-
-    const report =
-      window.currentDutyReport || {};
-
-    console.log(
-      "📊 REPORT:",
-      report
-    );
-
-    const kmlUrl =
-      String(
-        report.kmlUrl || ""
-      ).trim();
-
-    console.log(
-      "📍 KML URL:",
-      kmlUrl
-    );
-
-    if(!kmlUrl){
-
-      alert(
-        "❌ KML not available"
-      );
-
-      return;
-    }
-
-    // ==========================
-    // MOBILE SHARE API
-    // ==========================
-
-    if(
-      navigator.share
-    ){
-
-      try{
-
-        await navigator.share({
-
-          title:
-            "Patrol Track KML",
-
-          text:
-
-`📍 Patrol Track KML
-
-${kmlUrl}`
-
-        });
-
-        console.log(
-          "✅ SHARE SUCCESS"
-        );
-
-        return;
-
-      }
-
-      catch(err){
-
-        console.warn(
-          "⚠ Share cancelled/failed",
-          err
-        );
-
-      }
-
-    }
-
-    // ==========================
-    // WHATSAPP FALLBACK
-    // ==========================
-
-    const waUrl =
-
-      "https://wa.me/?text=" +
-
-      encodeURIComponent(
-
-`📍 Patrol Track KML
-
-${kmlUrl}`
-
-      );
-
-    console.log(
-      "📤 WA URL:",
-      waUrl
-    );
-
-    const win =
-      window.open(
-        waUrl,
-        "_blank"
-      );
-
-    if(win){
-
-      console.log(
-        "✅ WhatsApp opened"
-      );
-
-      return;
-    }
-
-    // ==========================
-    // FINAL FALLBACK
-    // ==========================
-
-    console.log(
-      "⚠ window.open blocked"
-    );
-
-    window.location.href =
-      waUrl;
-
-  }
-
-  catch(err){
-
-    console.error(
-      "❌ SHARE FAILED",
-      err
-    );
-
-    alert(
-      "Unable to share KML"
-    );
-
-  }
-
-}
-
-
-window.shareDutyKMLReport =
-  shareDutyKMLReport;
-
-
-    function openDutyKML(){
-
   try{
 
     const url =
+
       String(
-        window.currentDutyReport?.kmlUrl || ""
+
+        window.currentDutyReport
+          ?.kmlUrl || ""
+
       ).trim();
 
     console.log(
-      "📍 OPEN KML:",
+      "📤 SHARE URL",
       url
     );
 
@@ -37431,31 +37342,135 @@ window.shareDutyKMLReport =
       return;
     }
 
-    const win =
-      window.open(
-        url,
-        "_blank"
+    const text =
+
+`📍 Patrol Track KML
+
+${url}`;
+
+    if(
+
+      window.Android &&
+
+      typeof Android.shareText ===
+      "function"
+
+    ){
+
+      console.log(
+        "📱 USING APK SHARE"
       );
 
-    if(win){
+      Android.shareText(
+        text
+      );
+
       return;
     }
 
-    window.location.href =
-      url;
+    if(navigator.share){
+
+      await navigator.share({
+
+        title:
+          "Patrol Track KML",
+
+        text
+
+      });
+
+      return;
+    }
+
+    window.open(
+
+      "https://wa.me/?text=" +
+
+      encodeURIComponent(
+        text
+      ),
+
+      "_blank"
+
+    );
 
   }
-
   catch(err){
 
     console.error(err);
 
     alert(
-      "Unable to open KML"
+      "❌ Share failed"
+    );
+  }
+}
+
+
+window.shareDutyKMLReport =
+  shareDutyKMLReport;
+
+
+    function openDutyKML(){
+
+  try{
+
+    const url =
+
+      String(
+
+        window.currentDutyReport
+          ?.kmlUrl || ""
+
+      ).trim();
+
+    console.log(
+      "📍 OPEN KML",
+      url
+    );
+
+    if(!url){
+
+      alert(
+        "❌ KML not available"
+      );
+
+      return;
+    }
+
+    if(
+
+      window.Android &&
+
+      typeof Android.openUrl ===
+      "function"
+
+    ){
+
+      console.log(
+        "📱 USING APK OPENURL"
+      );
+
+      Android.openUrl(
+        url
+      );
+
+      return;
+    }
+
+    window.open(
+      url,
+      "_blank"
     );
 
   }
+  catch(err){
 
+    console.error(err);
+
+    alert(
+      "❌ Unable to open KML"
+    );
+  }
 }
 
 window.openDutyKML =
