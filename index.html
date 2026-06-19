@@ -14075,7 +14075,7 @@ function getLiveStaffCountForCurrentPolygon(){
   );
 
 }
- async function updateMonthlyStatusCard(){
+async function updateMonthlyStatusCard(){
 
   try{
 
@@ -14168,6 +14168,7 @@ function getLiveStaffCountForCurrentPolygon(){
 
     // =====================================
     // ⚡ USE CACHE IF FRESH (<30 SEC)
+    // BUT REFRESH GLOBAL DISTANCE
     // =====================================
 
     if(
@@ -14182,6 +14183,60 @@ function getLiveStaffCountForCurrentPolygon(){
       ) < 30000
 
     ){
+
+      try{
+
+        const summarySnap =
+
+          await window.fb.getDoc(
+
+            window.fb.doc(
+
+              window.db,
+
+              "analytics_rebuild",
+
+              monthKey,
+
+              "summary",
+
+              "global"
+
+            )
+
+          );
+
+        if(
+          summarySnap.exists()
+        ){
+
+          const globalData =
+            summarySnap.data() || {};
+
+          cached.totalDistanceMeters =
+
+            Number(
+              globalData
+                ?.totalDistanceMeters || 0
+            );
+
+          renderMonthlyStatusCard(
+            cached,
+            level
+          );
+
+        }
+
+      }
+
+      catch(e){
+
+        console.warn(
+          "⚠ Live distance refresh failed",
+          e
+        );
+
+      }
 
       console.log(
         "⚡ Monthly Status Cache Hit:",
@@ -14207,6 +14262,59 @@ function getLiveStaffCountForCurrentPolygon(){
     console.timeEnd(
       "GET_ANALYTICS_SUMMARY"
     );
+
+    // =====================================
+    // LOAD GLOBAL DISTANCE
+    // =====================================
+
+    try{
+
+      const summarySnap =
+
+        await window.fb.getDoc(
+
+          window.fb.doc(
+
+            window.db,
+
+            "analytics_rebuild",
+
+            monthKey,
+
+            "summary",
+
+            "global"
+
+          )
+
+        );
+
+      if(
+        summarySnap.exists()
+      ){
+
+        const globalData =
+          summarySnap.data() || {};
+
+        summary.totalDistanceMeters =
+
+          Number(
+            globalData
+              ?.totalDistanceMeters || 0
+          );
+
+      }
+
+    }
+
+    catch(e){
+
+      console.warn(
+        "⚠ Global distance load failed",
+        e
+      );
+
+    }
 
     // =====================================
     // SAVE CACHE
@@ -14369,8 +14477,7 @@ function getLiveStaffCountForCurrentPolygon(){
 
   }
 
-}
-    function renderMonthlyStatusCard(
+}    function renderMonthlyStatusCard(
   summary,
   level
 ){
@@ -14462,6 +14569,27 @@ function getLiveStaffCountForCurrentPolygon(){
 
   );
 
+  // =====================================
+  // 🔥 GLOBAL MONTHLY DISTANCE
+  // FALLBACK TO COMPARTMENT DISTANCE
+  // =====================================
+
+  const totalDistanceMeters =
+
+    Number(
+
+      summary.totalDistanceMeters
+
+      ??
+
+      summary.distanceMeters
+
+      ??
+
+      0
+
+    );
+
   document.getElementById(
     "msDistance"
   )?.replaceChildren(
@@ -14469,7 +14597,7 @@ function getLiveStaffCountForCurrentPolygon(){
     document.createTextNode(
 
       (
-        summary.distanceMeters
+        totalDistanceMeters
         / 1000
       ).toFixed(1)
 
@@ -16930,7 +17058,7 @@ window.monthlyStatusCache ??= {};
 // ======================================================
 
 window.allGISFeatures = [];
-
+window.distanceBuffer ??= [];
 window.allCompartmentFeatures = [];
 // ==========================================
 // 👁 COMPARTMENT LAYER VISIBILITY
@@ -29741,7 +29869,7 @@ function collectAnalyticsHit(
   }
 
 }
-   async function flushAnalyticsBuffer(){
+  async function flushAnalyticsBuffer(){
 
   if(
     window.analyticsFlushRunning
@@ -29772,6 +29900,10 @@ function collectAnalyticsHit(
         window.analyticsBuffer || {}
       );
 
+    // ====================================
+    // GRID ANALYTICS FLUSH
+    // ====================================
+
     if(
       entries.length === 0
     ){
@@ -29780,85 +29912,139 @@ function collectAnalyticsHit(
         "📭 Analytics buffer empty"
       );
 
-      return;
     }
+    else{
 
-    console.log(
-      "📤 FLUSHING",
-      entries.length,
-      "GRIDS"
-    );
+      console.log(
+        "📤 FLUSHING",
+        entries.length,
+        "GRIDS"
+      );
 
-    for(
+      for(
 
-      const [gridId,data]
+        const [gridId,data]
 
-      of entries
+        of entries
 
-    ){
+      ){
 
-      try{
+        try{
 
-        const segment =
+          const segment =
 
-          data
-          ?.localCoordsArray?.[0];
+            data
+            ?.localCoordsArray?.[0];
 
-        if(
+          if(
 
-          !Array.isArray(
-            segment
-          )
+            !Array.isArray(
+              segment
+            )
 
-          ||
+            ||
 
-          segment.length < 2
+            segment.length < 2
 
-        ){
+          ){
 
-          console.warn(
+            console.warn(
 
-            "⚠ Skip grid (insufficient points)",
+              "⚠ Skip grid (insufficient points)",
+
+              gridId,
+
+              segment?.length || 0
+
+            );
+
+            continue;
+          }
+
+          await updateMonthlyAnalyticsRebuild(
 
             gridId,
 
-            segment?.length || 0
+            data.localCoordsArray,
+
+            monthKey
 
           );
 
-          continue;
+          console.log(
+            "✅ Flushed",
+            gridId
+          );
+
         }
 
-        await updateMonthlyAnalyticsRebuild(
+        catch(err){
 
-          gridId,
+          console.error(
 
-          data.localCoordsArray,
+            "❌ Grid flush failed",
+
+            gridId,
+
+            err
+
+          );
+
+        }
+
+      }
+
+    }
+
+    // ====================================
+    // 🔥 GLOBAL DISTANCE UPDATE (ONCE)
+    // ====================================
+
+    try{
+
+      if(
+
+        Array.isArray(
+          window.distanceBuffer
+        )
+
+        &&
+
+        window.distanceBuffer.length > 0
+
+      ){
+
+        await updateMonthlyDistanceTotal(
+
+          window.distanceBuffer,
 
           monthKey
 
         );
 
         console.log(
-          "✅ Flushed",
-          gridId
-        );
 
-      }
+          "📏 Monthly Distance Updated",
 
-      catch(err){
-
-        console.error(
-
-          "❌ Grid flush failed",
-
-          gridId,
-
-          err
+          window.distanceBuffer.length
 
         );
 
+        window.distanceBuffer = [];
+
       }
+
+    }
+
+    catch(distanceErr){
+
+      console.error(
+
+        "❌ Distance Update Failed",
+
+        distanceErr
+
+      );
 
     }
 
@@ -29909,7 +30095,6 @@ function collectAnalyticsHit(
 
     // ====================================
     // OPTIONAL HEATMAP REFRESH
-    // ONLY IF VISIBLE
     // ====================================
 
     try{
