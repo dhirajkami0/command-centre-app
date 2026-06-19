@@ -36442,40 +36442,45 @@ async function buildDutyPerformanceReport({
 
   }
 
-}function showDutyPerformanceReport(
-  data
-){
+}function showDutyPerformanceReport(data){
 
-  const grade =
+  console.log(
+    "🏆 showDutyPerformanceReport CALLED",
+    data
+  );
 
-    getPerformanceGrade(
+  try{
 
-      data.score,
+    window.currentDutyReport = data;
 
-      data.durationHours,
-
-      data.distanceKm
-
+    console.log(
+      "✅ currentDutyReport saved",
+      window.currentDutyReport
     );
 
-  const remark =
+    const grade =
+      getPerformanceGrade(
+        data.score,
+        data.durationHours,
+        data.distanceKm
+      );
 
-    getDutyRemark(
-      data.dutyType,
-      data
-    );
+    const remark =
+      getDutyRemark(
+        data.dutyType,
+        data
+      );
 
-  const hideCoverage =
+    const hideCoverage =
+      String(
+        data.dutyType
+      )
+      .toLowerCase()
+      .includes(
+        "depredation"
+      );
 
-    String(
-      data.dutyType
-    )
-    .toLowerCase()
-    .includes(
-      "depredation"
-    );
-
-  const html = `
+    const html = `
 
 <div
 id="dutyPerformanceCard"
@@ -36493,13 +36498,11 @@ overflow-y:auto;
 >
 
 <button
-
 onclick="
 document.getElementById(
 'dutyPerformanceModal'
 ).style.display='none'
 "
-
 style="
 position:absolute;
 top:10px;
@@ -36512,31 +36515,19 @@ background:#f3f4f6;
 font-size:18px;
 font-weight:bold;
 cursor:pointer;
-color:#444;
-display:flex;
-align-items:center;
-justify-content:center;
-box-shadow:0 2px 6px rgba(0,0,0,.15);
-z-index:9999;
 "
-
 >
-
 ✕
-
 </button>
 
 <h2
 style="
 text-align:center;
 color:#2e7d32;
-margin-top:4px;
 margin-bottom:12px;
 "
 >
-
 🏆 DUTY PERFORMANCE REPORT
-
 </h2>
 
 <div
@@ -36553,133 +36544,100 @@ margin-bottom:12px;
 style="
 font-size:14px;
 color:#666;
-margin-bottom:4px;
 "
 >
-
 ${grade.rank || ""}
-
 </div>
 
 ${grade.stars}
-
 <br>
-
 ${grade.title}
-
 <br>
-
 ${grade.stars}
 
 </div>
 
 <hr>
 
-<div style="margin:8px 0;">
-
+<div>
 👮 ${data.name}
-
 </div>
 
 ${
 !hideCoverage
-
 ?
-
 `
-
 <div
 style="
-margin:8px 0;
+margin-top:10px;
 padding:10px;
 background:#f0fdf4;
 border-radius:10px;
-border:1px solid #bbf7d0;
 "
 >
 
 <div
 style="
 font-weight:bold;
-color:#166534;
 margin-bottom:8px;
 "
 >
-
 🌲 Patrol Coverage Summary
-
 </div>
 
-<div style="margin:6px 0;">
-
-🛰 Session Grids Visited :
+<div>
+🛰 Session Grids :
 <b>
 ${Number(
   data.sessionGridCount || 0
 ).toLocaleString()}
 </b>
-
 </div>
 
-<div style="margin:6px 0;">
-
+<div>
 ⭐ New Monthly Grids :
 <b>
 ${Number(
   data.newMonthlyGridCount || 0
 ).toLocaleString()}
 </b>
-
 </div>
 
-<div style="margin:6px 0;">
-
-🌿 Area Covered :
+<div>
+🌿 Area :
 <b>
 ${Number(
   data.areaHa || 0
 ).toFixed(1)}
 ha
 </b>
-
 </div>
 
-<div style="margin:6px 0;">
-
-📏 Distance Covered :
+<div>
+📏 Distance :
 <b>
 ${Number(
   data.distanceKm || 0
 ).toFixed(1)}
 km
 </b>
-
 </div>
 
 </div>
-
 `
-
 :
-
 ""
 }
 
-<div style="margin:8px 0;">
-
-⏱ Duty Duration :
+<div style="margin-top:10px;">
+⏱ Duration :
 ${data.durationText}
-
 </div>
 
-<div style="margin:8px 0;">
-
+<div style="margin-top:10px;">
 📋 Duty Type
-
 <br>
-
 <b>${data.dutyType}</b>
-
 </div>
 
 <hr>
@@ -36688,31 +36646,10 @@ ${data.durationText}
 style="
 font-size:18px;
 font-weight:bold;
-margin:10px 0;
 "
 >
-
-🏅 Performance Score
-
+🏅 Score :
 ${data.score}/100
-
-</div>
-
-<div
-style="
-margin-top:8px;
-padding:8px;
-background:#f0fdf4;
-border-radius:8px;
-font-size:13px;
-color:#166534;
-"
->
-
-📡 Duty report and KML track
-have already been sent to
-Telegram Control Room.
-
 </div>
 
 <hr>
@@ -36721,41 +36658,32 @@ Telegram Control Room.
 style="
 font-size:18px;
 font-weight:bold;
-margin-top:10px;
 "
 >
-
 ${remark.icon}
 ${remark.title}
-
 </div>
 
 <div
 style="
 margin-top:8px;
-line-height:1.5;
 white-space:pre-line;
 "
 >
-
 ${remark.text}
-
 </div>
 
 <hr>
 
 <div
 style="
-margin-top:8px;
 font-size:12px;
 color:#666;
 text-align:center;
 "
 >
-
 Session:
 ${data.sessionId || "-"}
-
 </div>
 
 <hr>
@@ -36769,47 +36697,7 @@ margin-top:12px;
 >
 
 <button
-
-onclick="
-try{
-
-  const url =
-    window.currentDutyReport?.kmlUrl || '';
-
-  if(!url){
-
-    alert(
-      '❌ KML not available'
-    );
-
-    return;
-  }
-
-  const win =
-    window.open(
-      url,
-      '_blank'
-    );
-
-  if(!win){
-
-    window.location.href =
-      url;
-  }
-
-}
-catch(err){
-
-  console.error(
-    err
-  );
-
-  alert(
-    '❌ Unable to open KML'
-  );
-}
-"
-
+onclick="openDutyKML()"
 style="
 flex:1;
 padding:10px;
@@ -36818,27 +36706,13 @@ border-radius:10px;
 background:#1976d2;
 color:white;
 font-weight:bold;
-cursor:pointer;
 "
-
 >
-
 📍 View KML
-
 </button>
+
 <button
-
-onclick="
-navigator.share({
-  title:'Test',
-  text:'Hello World'
-})
-.then(()=>alert('SUCCESS'))
-.catch(e=>alert(
-  e.name + ': ' + e.message
-));
-"
-
+onclick="shareDutyKMLReport()"
 style="
 flex:1;
 padding:10px;
@@ -36847,22 +36721,17 @@ border-radius:10px;
 background:#25D366;
 color:white;
 font-weight:bold;
-cursor:pointer;
 "
-
 >
-
-TEST SHARE
-
+📤 Share KML
 </button>
-<button
 
+<button
 onclick="
 document.getElementById(
 'dutyPerformanceModal'
 ).style.display='none'
 "
-
 style="
 flex:1;
 padding:10px;
@@ -36871,58 +36740,50 @@ border-radius:10px;
 background:#ef4444;
 color:white;
 font-weight:bold;
-cursor:pointer;
 "
-
 >
-
 ❌ Close
-
 </button>
 
 </div>
 
-<br>
-
-<div
-style="
-font-weight:bold;
-color:#2e7d32;
-text-align:center;
-"
->
-
-🌟 Thank you for your service.
-
 </div>
-
-</div>
-
 `;
 
-  const modal =
+    const modal =
+      document.getElementById(
+        "dutyPerformanceModal"
+      );
 
-    document.getElementById(
-      "dutyPerformanceModal"
+    if(!modal){
+
+      console.error(
+        "❌ dutyPerformanceModal not found"
+      );
+
+      return;
+    }
+
+    modal.innerHTML =
+      html;
+
+    modal.style.display =
+      "block";
+
+    console.log(
+      "✅ REPORT DISPLAYED"
     );
 
-  if(!modal){
-
-    console.error(
-      "❌ dutyPerformanceModal not found"
-    );
-
-    return;
   }
 
-  window.currentDutyReport =
-    data;
+  catch(err){
 
-  modal.innerHTML =
-    html;
+    console.error(
+      "❌ showDutyPerformanceReport",
+      err
+    );
 
-  modal.style.display =
-    "block";
+  }
 
 }
  function generateKMLFromTrack(points){
@@ -37403,15 +37264,29 @@ ${coordinates}
 
 async function shareDutyKMLReport(){
 
+  console.log(
+    "🔥 shareDutyKMLReport CALLED"
+  );
+
   try{
 
     const report =
       window.currentDutyReport || {};
 
+    console.log(
+      "📊 REPORT:",
+      report
+    );
+
     const kmlUrl =
       String(
         report.kmlUrl || ""
       ).trim();
+
+    console.log(
+      "📍 KML URL:",
+      kmlUrl
+    );
 
     if(!kmlUrl){
 
@@ -37422,27 +37297,55 @@ async function shareDutyKMLReport(){
       return;
     }
 
-    if(navigator.share){
+    // ==========================
+    // MOBILE SHARE API
+    // ==========================
 
-      await navigator.share({
+    if(
+      navigator.share
+    ){
 
-        title:
-          "Patrol Track KML",
+      try{
 
-        text:
+        await navigator.share({
+
+          title:
+            "Patrol Track KML",
+
+          text:
 
 `📍 Patrol Track KML
 
 ${kmlUrl}`
 
-      });
+        });
 
-      return;
+        console.log(
+          "✅ SHARE SUCCESS"
+        );
+
+        return;
+
+      }
+
+      catch(err){
+
+        console.warn(
+          "⚠ Share cancelled/failed",
+          err
+        );
+
+      }
+
     }
 
-    window.open(
+    // ==========================
+    // WHATSAPP FALLBACK
+    // ==========================
 
-      "https://api.whatsapp.com/send?text=" +
+    const waUrl =
+
+      "https://wa.me/?text=" +
 
       encodeURIComponent(
 
@@ -37450,11 +37353,96 @@ ${kmlUrl}`
 
 ${kmlUrl}`
 
-      ),
+      );
 
-      "_blank"
-
+    console.log(
+      "📤 WA URL:",
+      waUrl
     );
+
+    const win =
+      window.open(
+        waUrl,
+        "_blank"
+      );
+
+    if(win){
+
+      console.log(
+        "✅ WhatsApp opened"
+      );
+
+      return;
+    }
+
+    // ==========================
+    // FINAL FALLBACK
+    // ==========================
+
+    console.log(
+      "⚠ window.open blocked"
+    );
+
+    window.location.href =
+      waUrl;
+
+  }
+
+  catch(err){
+
+    console.error(
+      "❌ SHARE FAILED",
+      err
+    );
+
+    alert(
+      "Unable to share KML"
+    );
+
+  }
+
+}
+
+
+window.shareDutyKMLReport =
+  shareDutyKMLReport;
+
+
+    function openDutyKML(){
+
+  try{
+
+    const url =
+      String(
+        window.currentDutyReport?.kmlUrl || ""
+      ).trim();
+
+    console.log(
+      "📍 OPEN KML:",
+      url
+    );
+
+    if(!url){
+
+      alert(
+        "❌ KML not available"
+      );
+
+      return;
+    }
+
+    const win =
+      window.open(
+        url,
+        "_blank"
+      );
+
+    if(win){
+      return;
+    }
+
+    window.location.href =
+      url;
 
   }
 
@@ -37463,15 +37451,15 @@ ${kmlUrl}`
     console.error(err);
 
     alert(
-      "Unable to share"
+      "Unable to open KML"
     );
 
   }
 
 }
 
-window.shareDutyKMLReport =
-  shareDutyKMLReport;
+window.openDutyKML =
+  openDutyKML;
  async function sendDutyReportToAppsScript(
   report
 ){
