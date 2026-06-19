@@ -36129,36 +36129,67 @@ async function buildDutyPerformanceReport({
 
     }
 
-    // =====================================
-    // SESSION GRID STATS
-    // =====================================
+   // =====================================
+// SESSION GRID STATS
+// =====================================
 
-    const sessionGridCount =
+// Use actual decoded-track grids as authoritative
+// fallback because sessionVisitedGrids can be reset
+// before report generation.
 
-      Number(
-        window.sessionVisitedGrids?.size || 0
-      );
+const sessionGridCount =
 
-    const newMonthlyGridCount =
+  Math.max(
 
-      Number(
-        window.newMonthlyGridsCaptured || 0
-      );
+    Number(
+      grids || 0
+    ),
 
-    console.log(
-      "📊 TOTAL DUTY GRIDS",
-      grids
-    );
+    Number(
+      window.sessionVisitedGrids?.size || 0
+    )
 
-    console.log(
-      "📊 SESSION GRID COUNT",
-      sessionGridCount
-    );
+  );
 
-    console.log(
-      "📊 NEW MONTHLY GRID COUNT",
-      newMonthlyGridCount
-    );
+// Analytics redesign may not populate
+// newMonthlyGridsCaptured correctly.
+// Never show undefined.
+
+const newMonthlyGridCount =
+
+  Number(
+
+    window.newMonthlyGridsCaptured ??
+
+    0
+
+  );
+
+console.log(
+  "📊 TOTAL DUTY GRIDS",
+  grids
+);
+
+console.log(
+  "📊 SESSION GRID COUNT",
+  sessionGridCount
+);
+
+console.log(
+  "📊 NEW MONTHLY GRID COUNT",
+  newMonthlyGridCount
+);
+
+console.log(
+  "📊 DEBUG",
+  {
+    grids,
+    sessionVisited:
+      window.sessionVisitedGrids?.size,
+    newMonthly:
+      window.newMonthlyGridsCaptured
+  }
+);
 
     // =====================================
     // AREA
