@@ -28514,9 +28514,25 @@ validTrack.push([
 // ======================================
 // 🔥 MONTHLY DISTANCE BUFFER
 // ======================================
+// ======================================
+// 🔥 DISTANCE BUFFER
+// ONLY NEW POINTS
+// PREVENT RE-ADDING ENTIRE SESSION
+// ======================================
+
+const newTrack =
+
+  newPoints.map(p => [
+
+    p.lat,
+
+    p.lon
+
+  ]);
+
 if(
 
-  validTrack.length > 1
+  newTrack.length > 1
 
 ){
 
@@ -28524,7 +28540,7 @@ if(
 
   window.distanceBuffer.push(
 
-    [...validTrack]
+    newTrack
 
   );
 
