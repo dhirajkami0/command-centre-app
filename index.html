@@ -35473,29 +35473,19 @@ async function buildDutyPerformanceReport({
     // =====================================
 
     const startedDate =
-
-      new Date(
-        startedAt
-      );
+      new Date(startedAt);
 
     const endedDate =
-
-      new Date(
-        endedAt
-      );
+      new Date(endedAt);
 
     const dutyDate =
 
       startedDate.toLocaleDateString(
         "en-IN",
         {
-
           day:"2-digit",
-
           month:"short",
-
           year:"numeric"
-
         }
       );
 
@@ -35504,11 +35494,8 @@ async function buildDutyPerformanceReport({
       startedDate.toLocaleTimeString(
         "en-IN",
         {
-
           hour:"2-digit",
-
           minute:"2-digit"
-
         }
       );
 
@@ -35517,11 +35504,8 @@ async function buildDutyPerformanceReport({
       endedDate.toLocaleTimeString(
         "en-IN",
         {
-
           hour:"2-digit",
-
           minute:"2-digit"
-
         }
       );
 
@@ -35564,99 +35548,161 @@ async function buildDutyPerformanceReport({
 
       `${hrs} hr ${mins} min`;
 
-    // =====================================
-    // DISTANCE
-    // =====================================
-
-    let distanceKm = 0;
-
     const type =
 
       storedDutyType
       .toLowerCase();
 
-    if(
-
-      type.includes("foot")
-
-      ||
-
-      type.includes("scan")
-
-    ){
-
-      distanceKm =
-
-        Number(
-          historyData
-            ?.clippedDistanceKm || 0
-        );
-
-    }
-    else{
-
-      distanceKm =
-
-        Number(
-          historyData
-            ?.totalDistanceKm || 0
-        );
-
-    }
-
     // =====================================
-    // GRID COUNT
+    // DECODE AUTHORITATIVE TRACK
     // =====================================
 
-    const coords =
+    const encoded =
 
-      trackPoints.map(
-
-        p => [
-
-          Number(p.lat),
-
-          Number(p.lng)
-
-        ]
-
+      String(
+        historyData
+          ?.rawTrackEncoded || ""
       );
 
-    const {
+    const decoded =
 
-      touchedCells
+      encoded
+      ? polyline.decode(
+          encoded
+        )
+      : [];
 
-    } = getTouchedCells([
-      coords
-    ]);
+    console.log(
+      "📍 DECODED TRACK POINTS",
+      decoded.length
+    );
 
-    const grids =
-      touchedCells.size;
-// =====================================
-// SESSION GRID STATS
-// =====================================
+    // =====================================
+    // DISTANCE FROM ENCODED TRACK
+    // =====================================
 
-const sessionGridCount =
+    let distanceKm = 0;
 
-  Number(
-    window.sessionVisitedGrids?.size || 0
-  );
+    try{
 
-const newMonthlyGridCount =
+      if(
+        decoded.length > 1
+      ){
 
-  Number(
-    window.newMonthlyGridsCaptured || 0
-  );
+        const line =
+          turf.lineString(
 
-console.log(
-  "📊 SESSION GRID COUNT",
-  sessionGridCount
-);
+            decoded.map(
+              p => [
 
-console.log(
-  "📊 NEW MONTHLY GRID COUNT",
-  newMonthlyGridCount
-);
+                Number(p[1]), // lng
+
+                Number(p[0])  // lat
+
+              ]
+            )
+
+          );
+
+        distanceKm =
+
+          turf.length(
+            line,
+            {
+              units:"kilometers"
+            }
+          );
+
+      }
+
+    }catch(err){
+
+      console.error(
+        "❌ Distance calculation failed",
+        err
+      );
+
+    }
+
+    distanceKm =
+      Number(
+        distanceKm.toFixed(2)
+      );
+
+    console.log(
+      "📏 TRACK DISTANCE KM",
+      distanceKm
+    );
+
+    // =====================================
+    // GRID COUNT FROM ENCODED TRACK
+    // =====================================
+
+    let grids = 0;
+
+    try{
+
+      const coords =
+
+        decoded.map(
+          p => [
+
+            Number(p[0]), // lat
+
+            Number(p[1])  // lng
+
+          ]
+        );
+
+      const {
+        touchedCells
+      } = getTouchedCells([
+        coords
+      ]);
+
+      grids =
+        touchedCells.size;
+
+    }catch(err){
+
+      console.error(
+        "❌ Grid calculation failed",
+        err
+      );
+
+    }
+
+    // =====================================
+    // SESSION GRID STATS
+    // =====================================
+
+    const sessionGridCount =
+
+      Number(
+        window.sessionVisitedGrids?.size || 0
+      );
+
+    const newMonthlyGridCount =
+
+      Number(
+        window.newMonthlyGridsCaptured || 0
+      );
+
+    console.log(
+      "📊 TOTAL DUTY GRIDS",
+      grids
+    );
+
+    console.log(
+      "📊 SESSION GRID COUNT",
+      sessionGridCount
+    );
+
+    console.log(
+      "📊 NEW MONTHLY GRID COUNT",
+      newMonthlyGridCount
+    );
+
     // =====================================
     // AREA
     // =====================================
@@ -35724,34 +35770,27 @@ console.log(
       score =
 
         (
-
           gridScore * 0.35
-
         )
 
         +
 
         (
-
           areaScore * 0.25
-
         )
 
         +
 
         (
-
           distanceScore * 0.25
-
         )
 
         +
 
         (
-
           durationScore * 0.15
-
         );
+
     }
 
     // =====================================
@@ -35790,26 +35829,21 @@ console.log(
       score =
 
         (
-
           distanceScore * 0.45
-
         )
 
         +
 
         (
-
           durationScore * 0.25
-
         )
 
         +
 
         (
-
           gridScore * 0.30
-
         );
+
     }
 
     // =====================================
@@ -35841,18 +35875,15 @@ console.log(
       score =
 
         (
-
           distanceScore * 0.60
-
         )
 
         +
 
         (
-
           durationScore * 0.40
-
         );
+
     }
 
     // =====================================
@@ -35867,41 +35898,43 @@ console.log(
           100,
           (durationHours / 8) * 100
         );
+
     }
 
     score =
       Math.round(score);
 
-  return {
+    return {
 
-  sessionId,
-  name: leader,
-  dutyType: storedDutyType,
+      sessionId,
+      name: leader,
+      dutyType: storedDutyType,
 
-  grids,
+      grids,
 
-  sessionGridCount,
+      sessionGridCount,
 
-  newMonthlyGridCount,
+      newMonthlyGridCount,
 
-  areaHa,
-  distanceKm,
+      areaHa,
+      distanceKm,
 
-  durationHours,
-  durationText,
+      durationHours,
+      durationText,
 
-  score,
+      score,
 
-  dutyDate,
-  startedText,
-  endedText,
+      dutyDate,
+      startedText,
+      endedText,
 
-  startedAt,
-  endedAt,
+      startedAt,
+      endedAt,
 
-  kmlUrl
+      kmlUrl
 
-};
+    };
+
   }
 
   catch(err){
@@ -35911,21 +35944,21 @@ console.log(
       err
     );
 
-   return {
+    return {
 
-  name:
-    leader,
+      name:
+        leader,
 
-  dutyType:
-    dutyType || "Patrolling",
+      dutyType:
+        dutyType || "Patrolling",
 
-  grids:0,
+      grids:0,
 
-  sessionGridCount:0,
+      sessionGridCount:0,
 
-  newMonthlyGridCount:0,
+      newMonthlyGridCount:0,
 
-  areaHa:0,
+      areaHa:0,
 
       distanceKm:0,
 
@@ -35945,9 +35978,13 @@ console.log(
       startedAt:0,
 
       endedAt:0,
- kmlUrl
+
+      kmlUrl
+
     };
+
   }
+
 }function showDutyPerformanceReport(
   data
 ){
