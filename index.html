@@ -28501,17 +28501,36 @@ for(
   }
 
   // ================================================
-  // ✅ VALID MOVEMENT
-  // ================================================
-  validTrack.push([
+// ✅ VALID MOVEMENT
+// ================================================
+validTrack.push([
 
-    curr.lat,
+  curr.lat,
 
-    curr.lon
-  ]);
+  curr.lon
+]);
 }
 
-        // ======================================
+// ======================================
+// 🔥 MONTHLY DISTANCE BUFFER
+// ======================================
+if(
+
+  validTrack.length > 1
+
+){
+
+  window.distanceBuffer ??= [];
+
+  window.distanceBuffer.push(
+
+    [...validTrack]
+
+  );
+
+}
+
+// ======================================
 // 🔥 SAVE POINT COUNT
 // ======================================
 window.trackPointCount[
