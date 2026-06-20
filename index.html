@@ -35841,8 +35841,7 @@ window.newMonthlyGridsCaptured =
     rating: ratingMap[tier],
     tier
   };
-}
-async function buildDutyPerformanceReport({
+}async function buildDutyPerformanceReport({
 
   sessionId,
   dutyType,
@@ -36210,17 +36209,13 @@ console.log(
     // AREA
     // =====================================
 
-    const areaHa =
+   const areaHa =
 
-      Number(
-
-        (
-          grids * 0.25
-        )
-
-        .toFixed(1)
-
-      );
+Number(
+  (
+    coveredCells * 0.25
+  ).toFixed(1)
+);
 
     // =====================================
     // SCORE
