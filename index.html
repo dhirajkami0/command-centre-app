@@ -9099,6 +9099,29 @@ async function updateMonthlyAnalyticsRebuild(
             analyticsRef
           );
 
+        const summarySnap =
+          await transaction.get(
+            summaryRef
+          );
+
+        let summary = {
+          totalDistanceMeters: 0,
+          totalCovered: 0,
+          visitCount: 0,
+          visitedCompartments: 0,
+          latestUpdatedAt:
+            window.fb.serverTimestamp()
+        };
+
+        if (
+          summarySnap.exists()
+        ) {
+          summary = {
+            ...summary,
+            ...summarySnap.data()
+          };
+        }
+
         const isFirstVisitThisMonth =
           !snap.exists();
 
@@ -9142,19 +9165,6 @@ async function updateMonthlyAnalyticsRebuild(
           window.newMonthlyCompartmentIds.add(
             gridId
           );
-
-          transaction.set(
-            summaryRef,
-            {
-              uniqueVisitedGrids:
-                window.fb.increment(1),
-              updatedAt:
-                window.fb.serverTimestamp()
-            },
-            {
-              merge: true
-            }
-          );
         }
 
         // =====================================
@@ -9164,6 +9174,15 @@ async function updateMonthlyAnalyticsRebuild(
         analytics.distanceMeters =
           Number(
             analytics.distanceMeters || 0
+          )
+          +
+          Number(
+            distanceMeters || 0
+          );
+
+        summary.totalDistanceMeters =
+          Number(
+            summary.totalDistanceMeters || 0
           )
           +
           Number(
@@ -9190,6 +9209,12 @@ async function updateMonthlyAnalyticsRebuild(
           analytics.visitCount =
             Number(
               analytics.visitCount || 0
+            )
+            + 1;
+
+          summary.visitCount =
+            Number(
+              summary.visitCount || 0
             )
             + 1;
 
@@ -9227,19 +9252,17 @@ async function updateMonthlyAnalyticsRebuild(
             newlyAddedCells++;
 
             window.newMonthlyCellIds ??=
-  new Set();
+              new Set();
 
-if (
-  !window.newMonthlyCellIds.has(
-    cellId
-  )
-) {
-
-  window.newMonthlyCellIds.add(
-    cellId
-  );
-
-}
+            if (
+              !window.newMonthlyCellIds.has(
+                `${gridId}_${cellId}`
+              )
+            ) {
+              window.newMonthlyCellIds.add(
+                `${gridId}_${cellId}`
+              );
+            }
           }
 
           analytics.visitedCells[
@@ -9253,10 +9276,27 @@ if (
             + 1;
         }
 
+        if (
+          isFirstVisitThisMonth
+        ) {
+          summary.visitedCompartments =
+            Number(
+              summary.visitedCompartments || 0
+            )
+            + 1;
+        }
+
         const totalCoveredCount =
           Object.keys(
             analytics.visitedCells
           ).length;
+
+        summary.totalCovered =
+          Number(
+            summary.totalCovered || 0
+          )
+          +
+          newlyAddedCells;
 
         analytics.previousCoveredCells =
           previousCoveredCount;
@@ -9276,6 +9316,17 @@ if (
         transaction.set(
           analyticsRef,
           analytics,
+          {
+            merge: true
+          }
+        );
+
+        summary.latestUpdatedAt =
+          window.fb.serverTimestamp();
+
+        transaction.set(
+          summaryRef,
+          summary,
           {
             merge: true
           }
@@ -14210,7 +14261,64 @@ async function updateMonthlyStatusCard(){
         monthKey
 
       );
+try {
 
+  const summarySnap =
+
+    await window.fb.getDoc(
+
+      window.fb.doc(
+
+        window.db,
+
+        "analytics_rebuild",
+
+        monthKey,
+
+        "summary",
+
+        "global"
+
+      )
+
+    );
+
+  if(summarySnap.exists()){
+
+    const globalSummary =
+      summarySnap.data();
+
+    console.table({
+
+      rebuiltCovered:
+        summary.totalCovered,
+
+      summaryCovered:
+        globalSummary.totalCovered,
+
+      rebuiltVisits:
+        summary.visitCount,
+
+      summaryVisits:
+        globalSummary.visitCount,
+
+      rebuiltCompartments:
+        summary.visitedCompartments,
+
+      summaryCompartments:
+        globalSummary.visitedCompartments,
+
+      rebuiltDistance:
+        summary.distanceMeters,
+
+      summaryDistance:
+        globalSummary.totalDistanceMeters
+
+    });
+
+  }
+
+}catch(e){}
     console.timeEnd(
       "GET_ANALYTICS_SUMMARY"
     );
