@@ -36091,79 +36091,94 @@ async function buildDutyPerformanceReport({
       distanceKm
     );
 
-    // =====================================
-    // GRID COUNT FROM ENCODED TRACK
-    // =====================================
+   // =====================================
+// COVERAGE + GRID STATS
+// =====================================
 
-    let grids = 0;
+let coveredCells = 0;
 
-    try{
+let grids = 0;
 
-      const coords =
+try{
 
-        decoded.map(
-          p => [
+  const coords =
 
-            Number(p[0]), // lat
+    decoded.map(
+      p => [
 
-            Number(p[1])  // lng
+        Number(p[0]),
+        Number(p[1])
 
-          ]
-        );
+      ]
+    );
 
-      const {
-        touchedCells
-      } = getTouchedCells([
-        coords
-      ]);
+  const {
+    touchedCells
+  } = getTouchedCells([
+    coords
+  ]);
 
-      grids =
-        touchedCells.size;
+  coveredCells =
+    touchedCells.size;
 
-    }catch(err){
+  const uniqueGrids =
+    new Set();
 
-      console.error(
-        "❌ Grid calculation failed",
-        err
+  for(
+    const point of coords
+  ){
+
+    const gridId =
+      getGridId(
+        point[0],
+        point[1]
+      );
+
+    if(gridId){
+
+      uniqueGrids.add(
+        gridId
       );
 
     }
 
-   // =====================================
+  }
+
+  grids =
+    uniqueGrids.size;
+
+}
+catch(err){
+
+  console.error(
+    "❌ Grid calculation failed",
+    err
+  );
+
+}
+
+// =====================================
 // SESSION GRID STATS
 // =====================================
 
-// Use actual decoded-track grids as authoritative
-// fallback because sessionVisitedGrids can be reset
-// before report generation.
-
 const sessionGridCount =
-
-  Math.max(
-
-    Number(
-      grids || 0
-    ),
-
-    Number(
-      window.sessionVisitedGrids?.size || 0
-    )
-
-  );
-
-// Analytics redesign may not populate
-// newMonthlyGridsCaptured correctly.
-// Never show undefined.
+  grids;
 
 const newMonthlyGridCount =
 
   Number(
-
-    window.newMonthlyGridsCaptured ??
-
-    0
-
+    window.newMonthlyGridsCaptured ?? 0
   );
+
+console.log(
+  "📊 VISITED GRIDS",
+  grids
+);
+
+console.log(
+  "📊 COVERED CELLS",
+  coveredCells
+);
 
 console.log(
   "📊 TOTAL DUTY GRIDS",
