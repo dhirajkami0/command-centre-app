@@ -37211,15 +37211,19 @@ ${coordinates}
         phone :
           profile.phone || "",
 
-        division :
-          profile.division || "",
+       division :
+  profile.division ||
+  profile.range ||
+  "",
 
-        range :
-          profile.range || "",
+range :
+  profile.range || "",
 
-        beat :
-          profile.beat || "",
-
+beat :
+  profile.beat ||
+  profile.range ||
+  profile.division ||
+  "",
         pointCount :
           points.length,
 
@@ -37268,14 +37272,19 @@ ${coordinates}
             phone:
               profile.phone || "",
 
-            division:
-              profile.division || "",
+           division:
+  profile.division ||
+  profile.range ||
+  "",
 
-            range:
-              profile.range || "",
+range:
+  profile.range || "",
 
-            beat:
-              profile.beat || "",
+beat:
+  profile.beat ||
+  profile.range ||
+  profile.division ||
+  "",
 
             pointCount:
               points.length,
