@@ -9031,20 +9031,18 @@ const col =
   };
 }
 
- async function updateMonthlyAnalyticsRebuild(
+async function updateMonthlyAnalyticsRebuild(
   gridId,
   localCoordsArray,
   monthKey
-){
-
-  try{
-
-    if(
+) {
+  try {
+    if (
       !gridId ||
       !monthKey ||
       !Array.isArray(localCoordsArray) ||
       !localCoordsArray.length
-    ){
+    ) {
       return;
     }
 
@@ -9069,9 +9067,9 @@ const col =
       }
     );
 
-    if(
+    if (
       touchedCells.size === 0
-    ){
+    ) {
       return;
     }
 
@@ -9094,11 +9092,8 @@ const col =
       );
 
     await window.fb.runTransaction(
-
       window.db,
-
-      async(transaction)=>{
-
+      async (transaction) => {
         const snap =
           await transaction.get(
             analyticsRef
@@ -9108,46 +9103,29 @@ const col =
           !snap.exists();
 
         let analytics = {
-
           gridId,
-
           monthKey,
-
-          distanceMeters:0,
-
-          visitCount:0,
-
-          visitedCells:{},
-
-          previousCoveredCells:0,
-
-          lastSessionAddedCells:0,
-
-          totalCoveredCells:0,
-
+          distanceMeters: 0,
+          visitCount: 0,
+          visitedCells: {},
+          previousCoveredCells: 0,
+          lastSessionAddedCells: 0,
+          totalCoveredCells: 0,
           firstSeenAt:
             window.fb.serverTimestamp(),
-
           lastSeenAt:
             window.fb.serverTimestamp(),
-
           updatedAt:
             window.fb.serverTimestamp()
-
         };
 
-        if(
+        if (
           snap.exists()
-        ){
-
+        ) {
           analytics = {
-
             ...analytics,
-
             ...snap.data()
-
           };
-
         }
 
         // =====================================
@@ -9155,32 +9133,28 @@ const col =
         // FIRST TIME GRID VISITED THIS MONTH
         // =====================================
 
-        if(
+        if (
           isFirstVisitThisMonth
-        ){
+        ) {
+          window.newMonthlyCompartmentIds ??=
+            new Set();
 
-          transaction.set(
-
-            summaryRef,
-
-            {
-
-              uniqueVisitedGrids:
-
-                window.fb.increment(1),
-
-              updatedAt:
-
-                window.fb.serverTimestamp()
-
-            },
-
-            {
-              merge:true
-            }
-
+          window.newMonthlyCompartmentIds.add(
+            gridId
           );
 
+          transaction.set(
+            summaryRef,
+            {
+              uniqueVisitedGrids:
+                window.fb.increment(1),
+              updatedAt:
+                window.fb.serverTimestamp()
+            },
+            {
+              merge: true
+            }
+          );
         }
 
         // =====================================
@@ -9188,13 +9162,10 @@ const col =
         // =====================================
 
         analytics.distanceMeters =
-
           Number(
             analytics.distanceMeters || 0
           )
-
           +
-
           Number(
             distanceMeters || 0
           );
@@ -9204,92 +9175,85 @@ const col =
         // ONCE PER SESSION PER GRID
         // =====================================
 
-        if(
+        if (
           !window.sessionVisitedGrids
-        ){
-
+        ) {
           window.sessionVisitedGrids =
             new Set();
-
         }
 
-        if(
-
+        if (
           !window.sessionVisitedGrids.has(
             gridId
           )
-
-        ){
-
+        ) {
           analytics.visitCount =
-
             Number(
               analytics.visitCount || 0
             )
-
             + 1;
 
           window.sessionVisitedGrids.add(
             gridId
           );
-
         }
 
         // =====================================
         // VISITED CELLS
         // =====================================
 
-        if(
+        if (
           !analytics.visitedCells
-        ){
-
+        ) {
           analytics.visitedCells = {};
-
         }
 
         const previousCoveredCount =
-
           Object.keys(
             analytics.visitedCells
           ).length;
 
         let newlyAddedCells = 0;
 
-        for(
+        for (
           const cellId
           of touchedCells
-        ){
-
-          if(
-
+        ) {
+          if (
             analytics.visitedCells[
               cellId
             ] === undefined
-
-          ){
-
+          ) {
             newlyAddedCells++;
 
+            window.newMonthlyCellIds ??=
+  new Set();
+
+if (
+  !window.newMonthlyCellIds.has(
+    cellId
+  )
+) {
+
+  window.newMonthlyCellIds.add(
+    cellId
+  );
+
+}
           }
 
           analytics.visitedCells[
             cellId
           ] =
-
             Number(
-
               analytics.visitedCells[
                 cellId
               ] || 0
-
             )
-
             + 1;
-
         }
 
         const totalCoveredCount =
-
           Object.keys(
             analytics.visitedCells
           ).length;
@@ -9310,37 +9274,25 @@ const col =
           window.fb.serverTimestamp();
 
         transaction.set(
-
           analyticsRef,
-
           analytics,
-
           {
-            merge:true
+            merge: true
           }
-
         );
-
       }
-
     );
 
     console.log(
       "✅ REBUILD",
       gridId
     );
-
-  }
-
-  catch(err){
-
+  } catch (err) {
     console.error(
       "❌ updateMonthlyAnalyticsRebuild",
       err
     );
-
   }
-
 }
 async function getMonthlyGlobalSummary(
   monthKey
@@ -35842,55 +35794,42 @@ window.newMonthlyGridsCaptured =
     tier
   };
 }async function buildDutyPerformanceReport({
-
   sessionId,
   dutyType,
   leader,
   trackPoints,
   kmlUrl = ""
-
-}){
-
-  try{
-
+}) {
+  try {
     const trackSnap =
-
       await window.fb.getDoc(
-
         window.fb.doc(
           window.db,
           "patrol_tracks",
           sessionId
         )
-
       );
 
     const trackData =
-
       trackSnap.exists()
       ? trackSnap.data()
       : {};
 
     const historySnap =
-
       await window.fb.getDoc(
-
         window.fb.doc(
           window.db,
           "history",
           sessionId
         )
-
       );
 
     const historyData =
-
       historySnap.exists()
       ? historySnap.data()
       : {};
 
     const storedDutyType =
-
       String(
         trackData.dutyType ||
         dutyType ||
@@ -35898,7 +35837,6 @@ window.newMonthlyGridsCaptured =
       );
 
     const sessionStartFromId =
-
       Number(
         String(sessionId)
           .split("_")
@@ -35906,18 +35844,11 @@ window.newMonthlyGridsCaptured =
       );
 
     const startedAt =
-
       Number.isFinite(
         sessionStartFromId
       )
-
-      ?
-
-      sessionStartFromId
-
-      :
-
-      Number(
+      ? sessionStartFromId
+      : Number(
         trackData.startedAt || 0
       );
 
@@ -35935,33 +35866,30 @@ window.newMonthlyGridsCaptured =
       new Date(endedAt);
 
     const dutyDate =
-
       startedDate.toLocaleDateString(
         "en-IN",
         {
-          day:"2-digit",
-          month:"short",
-          year:"numeric"
+          day: "2-digit",
+          month: "short",
+          year: "numeric"
         }
       );
 
     const startedText =
-
       startedDate.toLocaleTimeString(
         "en-IN",
         {
-          hour:"2-digit",
-          minute:"2-digit"
+          hour: "2-digit",
+          minute: "2-digit"
         }
       );
 
     const endedText =
-
       endedDate.toLocaleTimeString(
         "en-IN",
         {
-          hour:"2-digit",
-          minute:"2-digit"
+          hour: "2-digit",
+          minute: "2-digit"
         }
       );
 
@@ -35970,42 +35898,32 @@ window.newMonthlyGridsCaptured =
     // =====================================
 
     const durationHours =
-
       Math.max(
-
         0,
-
         (
           endedAt -
           startedAt
         )
-
         / 3600000
-
       );
 
     const totalMinutes =
-
       Math.floor(
         durationHours * 60
       );
 
     const hrs =
-
       Math.floor(
         totalMinutes / 60
       );
 
     const mins =
-
       totalMinutes % 60;
 
     const durationText =
-
       `${hrs} hr ${mins} min`;
 
     const type =
-
       storedDutyType
       .toLowerCase();
 
@@ -36014,14 +35932,12 @@ window.newMonthlyGridsCaptured =
     // =====================================
 
     const encoded =
-
       String(
         historyData
           ?.rawTrackEncoded || ""
       );
 
     const decoded =
-
       encoded
       ? polyline.decode(
           encoded
@@ -36039,45 +35955,33 @@ window.newMonthlyGridsCaptured =
 
     let distanceKm = 0;
 
-    try{
-
-      if(
+    try {
+      if (
         decoded.length > 1
-      ){
-
+      ) {
         const line =
           turf.lineString(
-
             decoded.map(
               p => [
-
                 Number(p[1]), // lng
-
                 Number(p[0])  // lat
-
               ]
             )
-
           );
 
         distanceKm =
-
           turf.length(
             line,
             {
-              units:"kilometers"
+              units: "kilometers"
             }
           );
-
       }
-
-    }catch(err){
-
+    } catch (err) {
       console.error(
         "❌ Distance calculation failed",
         err
       );
-
     }
 
     distanceKm =
@@ -36090,132 +35994,101 @@ window.newMonthlyGridsCaptured =
       distanceKm
     );
 
-   // =====================================
-// COVERAGE + GRID STATS
-// =====================================
+    // =====================================
+    // COVERAGE + CELL + COMPARTMENT STATS
+    // =====================================
 
-let coveredCells = 0;
+    let sessionCellCount = 0;
+    let sessionCompartmentCount = 0;
 
-let grids = 0;
+    try {
+      const coords =
+        decoded.map(
+          p => [
+            Number(p[0]),
+            Number(p[1])
+          ]
+        );
 
-try{
+      const {
+        touchedCells
+      } = getTouchedCells([
+        coords
+      ]);
 
-  const coords =
+      sessionCellCount =
+        touchedCells.size;
 
-    decoded.map(
-      p => [
+      const compartmentSet =
+        new Set();
 
-        Number(p[0]),
-        Number(p[1])
+      for (
+        const cellId
+        of touchedCells
+      ) {
+        const compartmentId =
+          window.cellToGridId?.[
+            cellId
+          ];
 
-      ]
-    );
+        if (
+          compartmentId
+        ) {
+          compartmentSet.add(
+            compartmentId
+          );
+        }
+      }
 
-  const {
-    touchedCells
-  } = getTouchedCells([
-    coords
-  ]);
-
-  coveredCells =
-    touchedCells.size;
-
-  const uniqueGrids =
-    new Set();
-
-  for(
-    const point of coords
-  ){
-
-    const gridId =
-      getGridId(
-        point[0],
-        point[1]
+      sessionCompartmentCount =
+        compartmentSet.size;
+    } catch (err) {
+      console.error(
+        "❌ Coverage calculation failed",
+        err
       );
-
-    if(gridId){
-
-      uniqueGrids.add(
-        gridId
-      );
-
     }
 
-  }
+    // =====================================
+    // MONTHLY STATS
+    // =====================================
 
-  grids =
-    uniqueGrids.size;
+    const newMonthlyCellCount =
+      window.newMonthlyCellIds?.size || 0;
 
-}
-catch(err){
+    const newMonthlyCompartmentCount =
+      window.newMonthlyCompartmentIds?.size || 0;
 
-  console.error(
-    "❌ Grid calculation failed",
-    err
-  );
+    console.log(
+      "📊 SESSION CELLS",
+      sessionCellCount
+    );
 
-}
+    console.log(
+      "📊 SESSION COMPARTMENTS",
+      sessionCompartmentCount
+    );
 
-// =====================================
-// SESSION GRID STATS
-// =====================================
+    console.log(
+      "📊 NEW MONTHLY CELLS",
+      newMonthlyCellCount
+    );
 
-const sessionGridCount =
-  grids;
-
-const newMonthlyGridCount =
-
-  Number(
-    window.newMonthlyGridsCaptured ?? 0
-  );
-
-console.log(
-  "📊 VISITED GRIDS",
-  grids
-);
-
-console.log(
-  "📊 COVERED CELLS",
-  coveredCells
-);
-
-console.log(
-  "📊 TOTAL DUTY GRIDS",
-  grids
-);
-
-console.log(
-  "📊 SESSION GRID COUNT",
-  sessionGridCount
-);
-
-console.log(
-  "📊 NEW MONTHLY GRID COUNT",
-  newMonthlyGridCount
-);
-
-console.log(
-  "📊 DEBUG",
-  {
-    grids,
-    sessionVisited:
-      window.sessionVisitedGrids?.size,
-    newMonthly:
-      window.newMonthlyGridsCaptured
-  }
-);
+    console.log(
+      "📊 NEW MONTHLY COMPARTMENTS",
+      newMonthlyCompartmentCount
+    );
 
     // =====================================
     // AREA
     // =====================================
 
-   const areaHa =
-
-Number(
-  (
-    coveredCells * 0.25
-  ).toFixed(1)
-);
+    const areaHa =
+      Number(
+        (
+          sessionCellCount * 0.25
+        ).toFixed(1)
+      );
 
     // =====================================
     // SCORE
@@ -36227,192 +36100,127 @@ Number(
     // FOOT / SCANNING
     // =====================================
 
-    if(
-
+    if (
       type.includes("foot")
-
       ||
-
       type.includes("scan")
-
-    ){
-
+    ) {
       const gridScore =
-
         Math.min(
           100,
-          (grids / 120) * 100
+          (sessionCellCount / 120) * 100
         );
 
       const areaScore =
-
         Math.min(
           100,
           (areaHa / 100) * 100
         );
 
       const distanceScore =
-
         Math.min(
           100,
           (distanceKm / 15) * 100
         );
 
       const durationScore =
-
         Math.min(
           100,
           (durationHours / 8) * 100
         );
 
       score =
-
-        (
-          gridScore * 0.35
-        )
-
+        (gridScore * 0.35)
         +
-
-        (
-          areaScore * 0.25
-        )
-
+        (areaScore * 0.25)
         +
-
-        (
-          distanceScore * 0.25
-        )
-
+        (distanceScore * 0.25)
         +
-
-        (
-          durationScore * 0.15
-        );
-
+        (durationScore * 0.15);
     }
 
     // =====================================
     // VEHICLE
     // =====================================
 
-    else if(
-
-      type.includes(
-        "vehicle"
-      )
-
-    ){
-
+    else if (
+      type.includes("vehicle")
+    ) {
       const distanceScore =
-
         Math.min(
           100,
           (distanceKm / 40) * 100
         );
 
       const durationScore =
-
         Math.min(
           100,
           (durationHours / 8) * 100
         );
 
       const gridScore =
-
         Math.min(
           100,
-          (grids / 80) * 100
+          (sessionCellCount / 80) * 100
         );
 
       score =
-
-        (
-          distanceScore * 0.45
-        )
-
+        (distanceScore * 0.45)
         +
-
-        (
-          durationScore * 0.25
-        )
-
+        (durationScore * 0.25)
         +
-
-        (
-          gridScore * 0.30
-        );
-
+        (gridScore * 0.30);
     }
 
     // =====================================
     // DEPREDATION
     // =====================================
 
-    else if(
-
-      type.includes(
-        "depredation"
-      )
-
-    ){
-
+    else if (
+      type.includes("depredation")
+    ) {
       const distanceScore =
-
         Math.min(
           100,
           (distanceKm / 20) * 100
         );
 
       const durationScore =
-
         Math.min(
           100,
           (durationHours / 8) * 100
         );
 
       score =
-
-        (
-          distanceScore * 0.60
-        )
-
+        (distanceScore * 0.60)
         +
-
-        (
-          durationScore * 0.40
-        );
-
+        (durationScore * 0.40);
     }
 
     // =====================================
     // OTHER DUTY
     // =====================================
 
-    else{
-
+    else {
       score =
-
         Math.min(
           100,
           (durationHours / 8) * 100
         );
-
     }
 
     score =
       Math.round(score);
 
     return {
-
       sessionId,
       name: leader,
       dutyType: storedDutyType,
 
-      grids,
-
-      sessionGridCount,
-
-      newMonthlyGridCount,
+      sessionCellCount,
+      sessionCompartmentCount,
+      newMonthlyCellCount,
+      newMonthlyCompartmentCount,
 
       areaHa,
       distanceKm,
@@ -36430,60 +36238,38 @@ Number(
       endedAt,
 
       kmlUrl
-
     };
-
-  }
-
-  catch(err){
-
+  } catch (err) {
     console.error(
       "❌ buildDutyPerformanceReport",
       err
     );
 
     return {
+      name: leader,
+      dutyType: dutyType || "Patrolling",
 
-      name:
-        leader,
+      sessionCellCount: 0,
+      sessionCompartmentCount: 0,
+      newMonthlyCellCount: 0,
+      newMonthlyCompartmentCount: 0,
 
-      dutyType:
-        dutyType || "Patrolling",
+      areaHa: 0,
+      distanceKm: 0,
+      durationHours: 0,
+      durationText: "0 min",
+      score: 0,
 
-      grids:0,
-
-      sessionGridCount:0,
-
-      newMonthlyGridCount:0,
-
-      areaHa:0,
-
-      distanceKm:0,
-
-      durationHours:0,
-
-      durationText:
-        "0 min",
-
-      score:0,
-
-      dutyDate:"",
-
-      startedText:"",
-
-      endedText:"",
-
-      startedAt:0,
-
-      endedAt:0,
-
+      dutyDate: "",
+      startedText: "",
+      endedText: "",
+      startedAt: 0,
+      endedAt: 0,
       kmlUrl
-
     };
-
   }
-
-}function showDutyPerformanceReport(data){
+}
+    function showDutyPerformanceReport(data){
 
   console.log(
     "🏆 showDutyPerformanceReport CALLED",
@@ -40629,22 +40415,28 @@ window.currentSessionId =
   sessionId;
 
 // =====================================
-// SESSION GRID COUNTERS
+// SESSION ANALYTICS RESET
 // =====================================
 
 window.sessionVisitedGrids =
   new Set();
 
+window.newMonthlyCellIds =
+  new Set();
+
+window.newMonthlyCompartmentIds =
+  new Set();
+
 window.newMonthlyGridsCaptured =
   0;
-    // =====================================
+
+// =====================================
 // RESET LIVE PERFORMANCE
 // =====================================
 
 window.realtimePerformanceData = {
   trackPoints: []
-};
-// =====================================================
+};// =====================================================
 // 🔥 HISTORY STATE ONLY
 // =====================================================
 
