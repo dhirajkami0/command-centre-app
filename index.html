@@ -35613,13 +35613,22 @@ window.realtimePerformanceData = {
       window.lastTrackPoint = null;
 
       finalizeSessionLifecycle();
+// ======================================
+// RESET SESSION ANALYTICS
+// AFTER REPORT IS BUILT
+// ======================================
 
-      window.sessionVisitedGrids =
+window.sessionVisitedGrids =
+  new Set();
+
+window.newMonthlyCellIds =
+  new Set();
+
+window.newMonthlyCompartmentIds =
   new Set();
 
 window.newMonthlyGridsCaptured =
-  0;
-      console.log("✅ End duty background sync complete", results);
+  0;      console.log("✅ End duty background sync complete", results);
     })
     .catch(err => {
       console.error("❌ End duty background sync failed", err);
@@ -36320,62 +36329,102 @@ window.newMonthlyGridsCaptured =
     score =
       Math.round(score);
 
-    return {
-      sessionId,
-      name: leader,
-      dutyType: storedDutyType,
+return {
 
-      sessionCellCount,
-      sessionCompartmentCount,
-      newMonthlyCellCount,
-      newMonthlyCompartmentCount,
+  sessionId,
 
-      areaHa,
-      distanceKm,
+  name: leader,
 
-      durationHours,
-      durationText,
+  dutyType: storedDutyType,
 
-      score,
+  // =====================================
+  // UI COMPATIBILITY
+  // =====================================
 
-      dutyDate,
-      startedText,
-      endedText,
+  sessionGridCount:
+    sessionCompartmentCount,
 
-      startedAt,
-      endedAt,
+  newMonthlyGridCount:
+    newMonthlyCompartmentCount,
 
-      kmlUrl
-    };
-  } catch (err) {
+  sessionCellCount,
+
+  sessionCompartmentCount,
+
+  newMonthlyCellCount,
+
+  newMonthlyCompartmentCount,
+
+  areaHa,
+
+  distanceKm,
+
+  durationHours,
+
+  durationText,
+
+  score,
+
+  dutyDate,
+
+  startedText,
+
+  endedText,
+
+  startedAt,
+
+  endedAt,
+
+  kmlUrl
+
+};  } catch (err) {
     console.error(
       "❌ buildDutyPerformanceReport",
       err
     );
 
-    return {
-      name: leader,
-      dutyType: dutyType || "Patrolling",
+return {
 
-      sessionCellCount: 0,
-      sessionCompartmentCount: 0,
-      newMonthlyCellCount: 0,
-      newMonthlyCompartmentCount: 0,
+  name: leader,
 
-      areaHa: 0,
-      distanceKm: 0,
-      durationHours: 0,
-      durationText: "0 min",
-      score: 0,
+  dutyType:
+    dutyType || "Patrolling",
 
-      dutyDate: "",
-      startedText: "",
-      endedText: "",
-      startedAt: 0,
-      endedAt: 0,
-      kmlUrl
-    };
-  }
+  sessionGridCount: 0,
+
+  newMonthlyGridCount: 0,
+
+  sessionCellCount: 0,
+
+  sessionCompartmentCount: 0,
+
+  newMonthlyCellCount: 0,
+
+  newMonthlyCompartmentCount: 0,
+
+  areaHa: 0,
+
+  distanceKm: 0,
+
+  durationHours: 0,
+
+  durationText: "0 min",
+
+  score: 0,
+
+  dutyDate: "",
+
+  startedText: "",
+
+  endedText: "",
+
+  startedAt: 0,
+
+  endedAt: 0,
+
+  kmlUrl
+
+};  }
 }
     function showDutyPerformanceReport(data){
 
