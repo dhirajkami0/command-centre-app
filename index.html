@@ -8850,7 +8850,7 @@ function finalizeSessionLifecycle() {
   }
 
 }
- function getTouchedCells(localCoordsArray) {
+function getTouchedCells(localCoordsArray) {
 
   const STEP =
     0.00045; // 50m
@@ -8881,8 +8881,8 @@ function finalizeSessionLifecycle() {
       const line =
         turf.lineString(
           seg.map(c => [
-            Number(c[1]),
-            Number(c[0])
+            Number(c[1]), // lng
+            Number(c[0])  // lat
           ])
         );
 
@@ -8905,7 +8905,7 @@ function finalizeSessionLifecycle() {
         distanceMeters +=
           lengthKm * 1000;
 
-      } catch(e) {
+      } catch (e) {
 
         continue;
       }
@@ -8939,13 +8939,13 @@ function finalizeSessionLifecycle() {
           const lng =
             Number(
               sample.geometry
-              .coordinates[0]
+                .coordinates[0]
             );
 
           const lat =
             Number(
               sample.geometry
-              .coordinates[1]
+                .coordinates[1]
             );
 
           if (
@@ -8955,21 +8955,26 @@ function finalizeSessionLifecycle() {
             continue;
           }
 
-         const row =
-  Math.floor(
-    lat / STEP
-  );
+          const row =
+            Math.floor(
+              lat / STEP
+            );
 
-const col =
-  Math.floor(
-    lng / STEP
-  );
+          const col =
+            Math.floor(
+              lng / STEP
+            );
+
+          // =====================================
+          // CANONICAL CELL FORMAT
+          // col_row
+          // =====================================
 
           touchedCells.add(
-            `${row}_${col}`
+            `${col}_${row}`
           );
 
-        } catch(e) {}
+        } catch (e) {}
       }
 
       // =====================================
@@ -8994,25 +8999,25 @@ const col =
           Number.isFinite(lng)
         ) {
 
-         const row =
-  Math.floor(
-    lat / STEP
-  );
+          const row =
+            Math.floor(
+              lat / STEP
+            );
 
-const col =
-  Math.floor(
-    lng / STEP
-  );
+          const col =
+            Math.floor(
+              lng / STEP
+            );
 
           touchedCells.add(
-            `${row}_${col}`
+            `${col}_${row}`
           );
         }
 
-      } catch(e){}
+      } catch (e) {}
     }
 
-  } catch(err) {
+  } catch (err) {
 
     console.error(
       "❌ getTouchedCells failed",
@@ -9030,7 +9035,6 @@ const col =
       )
   };
 }
-
 async function updateMonthlyAnalyticsRebuild(
   gridId,
   localCoordsArray,
