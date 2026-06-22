@@ -9124,7 +9124,13 @@ async function updateMonthlyAnalyticsRebuild(
 
         const isFirstVisitThisMonth =
           !snap.exists();
+// =====================================
+// SESSION MONTHLY CONTRIBUTION COUNTERS
+// =====================================
 
+window.sessionNewMonthlyCellCount ??= 0;
+
+window.sessionNewMonthlyCompartmentCount ??= 0;
         let analytics = {
           gridId,
           monthKey,
@@ -9297,7 +9303,18 @@ async function updateMonthlyAnalyticsRebuild(
           )
           +
           newlyAddedCells;
+// =====================================
+// SESSION MONTHLY CONTRIBUTION
+// =====================================
 
+window.sessionNewMonthlyCellCount +=
+  newlyAddedCells;
+
+if (
+  isFirstVisitThisMonth
+) {
+  window.sessionNewMonthlyCompartmentCount++;
+}
         analytics.previousCoveredCells =
           previousCoveredCount;
 
@@ -36167,14 +36184,14 @@ window.newMonthlyGridsCaptured =
     }
 
     // =====================================
-    // MONTHLY STATS
+    // SESSION MONTHLY CONTRIBUTION
     // =====================================
 
-    const newMonthlyCellCount =
-      window.newMonthlyCellIds?.size || 0;
+    const sessionNewMonthlyCellCount =
+      window.sessionNewMonthlyCellCount || 0;
 
-    const newMonthlyCompartmentCount =
-      window.newMonthlyCompartmentIds?.size || 0;
+    const sessionNewMonthlyCompartmentCount =
+      window.sessionNewMonthlyCompartmentCount || 0;
 
     console.log(
       "📊 SESSION CELLS",
@@ -36187,13 +36204,13 @@ window.newMonthlyGridsCaptured =
     );
 
     console.log(
-      "📊 NEW MONTHLY CELLS",
-      newMonthlyCellCount
+      "📊 SESSION NEW MONTHLY CELLS",
+      sessionNewMonthlyCellCount
     );
 
     console.log(
-      "📊 NEW MONTHLY COMPARTMENTS",
-      newMonthlyCompartmentCount
+      "📊 SESSION NEW MONTHLY COMPARTMENTS",
+      sessionNewMonthlyCompartmentCount
     );
 
     // =====================================
@@ -36212,10 +36229,6 @@ window.newMonthlyGridsCaptured =
     // =====================================
 
     let score = 0;
-
-    // =====================================
-    // FOOT / SCANNING
-    // =====================================
 
     if (
       type.includes("foot")
@@ -36254,13 +36267,7 @@ window.newMonthlyGridsCaptured =
         (distanceScore * 0.25)
         +
         (durationScore * 0.15);
-    }
-
-    // =====================================
-    // VEHICLE
-    // =====================================
-
-    else if (
+    } else if (
       type.includes("vehicle")
     ) {
       const distanceScore =
@@ -36287,13 +36294,7 @@ window.newMonthlyGridsCaptured =
         (durationScore * 0.25)
         +
         (gridScore * 0.30);
-    }
-
-    // =====================================
-    // DEPREDATION
-    // =====================================
-
-    else if (
+    } else if (
       type.includes("depredation")
     ) {
       const distanceScore =
@@ -36312,13 +36313,7 @@ window.newMonthlyGridsCaptured =
         (distanceScore * 0.60)
         +
         (durationScore * 0.40);
-    }
-
-    // =====================================
-    // OTHER DUTY
-    // =====================================
-
-    else {
+    } else {
       score =
         Math.min(
           100,
@@ -36329,498 +36324,125 @@ window.newMonthlyGridsCaptured =
     score =
       Math.round(score);
 
-return {
-
-  sessionId,
-
-  name: leader,
-
-  dutyType: storedDutyType,
-
-  // =====================================
-  // UI COMPATIBILITY
-  // =====================================
-
-  sessionGridCount:
-    sessionCompartmentCount,
-
-  newMonthlyGridCount:
-    newMonthlyCompartmentCount,
-
-  sessionCellCount,
-
-  sessionCompartmentCount,
-
-  newMonthlyCellCount,
-
-  newMonthlyCompartmentCount,
-
-  areaHa,
-
-  distanceKm,
-
-  durationHours,
-
-  durationText,
-
-  score,
-
-  dutyDate,
-
-  startedText,
-
-  endedText,
-
-  startedAt,
-
-  endedAt,
-
-  kmlUrl
-
-};  } catch (err) {
+    return {
+      sessionId,
+      name: leader,
+      dutyType: storedDutyType,
+      sessionCellCount,
+      sessionCompartmentCount,
+      sessionNewMonthlyCellCount,
+      sessionNewMonthlyCompartmentCount,
+      // Backward Compatibility
+      sessionGridCount: sessionCompartmentCount,
+      newMonthlyGridCount: sessionNewMonthlyCompartmentCount,
+      areaHa,
+      distanceKm,
+      durationHours,
+      durationText,
+      score,
+      dutyDate,
+      startedText,
+      endedText,
+      startedAt,
+      endedAt,
+      kmlUrl
+    };
+  } catch (err) {
     console.error(
       "❌ buildDutyPerformanceReport",
       err
     );
 
-return {
-
-  name: leader,
-
-  dutyType:
-    dutyType || "Patrolling",
-
-  sessionGridCount: 0,
-
-  newMonthlyGridCount: 0,
-
-  sessionCellCount: 0,
-
-  sessionCompartmentCount: 0,
-
-  newMonthlyCellCount: 0,
-
-  newMonthlyCompartmentCount: 0,
-
-  areaHa: 0,
-
-  distanceKm: 0,
-
-  durationHours: 0,
-
-  durationText: "0 min",
-
-  score: 0,
-
-  dutyDate: "",
-
-  startedText: "",
-
-  endedText: "",
-
-  startedAt: 0,
-
-  endedAt: 0,
-
-  kmlUrl
-
-};  }
+    return {
+      name: leader,
+      dutyType: dutyType || "Patrolling",
+      sessionGridCount: 0,
+      newMonthlyGridCount: 0,
+      sessionCellCount: 0,
+      sessionCompartmentCount: 0,
+      sessionNewMonthlyCellCount: 0,
+      sessionNewMonthlyCompartmentCount: 0,
+      areaHa: 0,
+      distanceKm: 0,
+      durationHours: 0,
+      durationText: "0 min",
+      score: 0,
+      dutyDate: "",
+      startedText: "",
+      endedText: "",
+      startedAt: 0,
+      endedAt: 0,
+      kmlUrl
+    };
+  }
 }
-    function showDutyPerformanceReport(data){
-
-  console.log(
-    "🏆 showDutyPerformanceReport CALLED",
-    data
-  );
-
-  try{
-
-    // =====================================================
-    // SAVE REPORT GLOBALLY
-    // =====================================================
-
+   function showDutyPerformanceReport(data) {
+  try {
+    // Save report globally for KML functions
     window.currentDutyReport = data;
 
-    console.log(
-      "✅ currentDutyReport SAVED",
-      window.currentDutyReport
-    );
-
-    console.log(
-      "📍 KML URL",
-      data?.kmlUrl
-    );
-
-    console.log(
-      "📱 Android Bridge Available",
-      !!window.Android
-    );
-
-    console.log(
-      "📱 Android.shareText",
-      typeof Android?.shareText
-    );
-
-    console.log(
-      "📱 Android.openUrl",
-      typeof Android?.openUrl
-    );
-
-    const grade =
-      getPerformanceGrade(
-        data.score,
-        data.durationHours,
-        data.distanceKm
-      );
-
-    const remark =
-      getDutyRemark(
-        data.dutyType,
-        data
-      );
-
-    const hideCoverage =
-      String(
-        data.dutyType || ""
-      )
-      .toLowerCase()
-      .includes(
-        "depredation"
-      );
+    const grade = getPerformanceGrade(data.score, data.durationHours, data.distanceKm);
+    const remark = getDutyRemark(data.dutyType, data);
+    const hideCoverage = String(data.dutyType || "").toLowerCase().includes("depredation");
 
     const html = `
+    <div id="dutyPerformanceCard" style="position:relative; background:white; border-radius:16px; padding:16px; box-shadow:0 10px 30px rgba(0,0,0,.25); font-family:Arial,sans-serif; color:#111; max-height:85vh; overflow-y:auto;">
+      
+      <button onclick="document.getElementById('dutyPerformanceModal').style.display='none'" style="position:absolute; top:10px; right:10px; width:34px; height:34px; border:none; border-radius:50%; background:#f3f4f6; font-size:18px; font-weight:bold; cursor:pointer;">✕</button>
+      
+      <h2 style="text-align:center; color:#2e7d32; margin-bottom:12px;">🏆 DUTY PERFORMANCE REPORT</h2>
 
-<div
-id="dutyPerformanceCard"
-style="
-position:relative;
-background:white;
-border-radius:16px;
-padding:16px;
-box-shadow:0 10px 30px rgba(0,0,0,.25);
-font-family:Arial,sans-serif;
-color:#111;
-max-height:85vh;
-overflow-y:auto;
-"
->
+      <div style="text-align:center; font-size:24px; font-weight:bold; color:${grade.color}; margin-bottom:12px;">
+        <div style="font-size:14px; color:#666;">${grade.rank || ""}</div>
+        ${grade.stars}<br>${grade.title}<br>${grade.stars}
+      </div>
 
-<button
-onclick="
-document.getElementById(
-'dutyPerformanceModal'
-).style.display='none'
-"
-style="
-position:absolute;
-top:10px;
-right:10px;
-width:34px;
-height:34px;
-border:none;
-border-radius:50%;
-background:#f3f4f6;
-font-size:18px;
-font-weight:bold;
-cursor:pointer;
-"
->
-✕
-</button>
+      <hr>
 
-<h2
-style="
-text-align:center;
-color:#2e7d32;
-margin-bottom:12px;
-"
->
-🏆 DUTY PERFORMANCE REPORT
-</h2>
+      <div>👮 ${data.name || "-"}</div>
 
-<div
-style="
-text-align:center;
-font-size:24px;
-font-weight:bold;
-color:${grade.color};
-margin-bottom:12px;
-"
->
+      ${!hideCoverage ? `
+      <div style="margin-top:10px; padding:10px; background:#f0fdf4; border-radius:10px;">
+        <div style="font-weight:bold; margin-bottom:8px;">🌲 Patrol Coverage Summary</div>
+        <div>🛰 Session Cells: <b>${data.sessionCellCount?.toLocaleString() || 0}</b></div>
+        <div>🛰 Session Compartments: <b>${data.sessionCompartmentCount?.toLocaleString() || 0}</b></div>
+        <div style="color:#2e7d32;">✨ New Monthly Cells: <b>${data.sessionNewMonthlyCellCount?.toLocaleString() || 0}</b></div>
+        <div style="color:#2e7d32;">✨ New Monthly Compartments: <b>${data.sessionNewMonthlyCompartmentCount?.toLocaleString() || 0}</b></div>
+        <div>🌿 Area: <b>${Number(data.areaHa || 0).toFixed(1)} ha</b></div>
+        <div>📏 Distance: <b>${Number(data.distanceKm || 0).toFixed(1)} km</b></div>
+      </div>` : ""}
 
-<div
-style="
-font-size:14px;
-color:#666;
-"
->
-${grade.rank || ""}
-</div>
+      <div style="margin-top:10px;">⏱ Duration: ${data.durationText || "-"}</div>
+      <div style="margin-top:10px;">📋 Duty Type<br><b>${data.dutyType || "-"}</b></div>
+      
+      <hr>
+      <div style="font-size:18px; font-weight:bold;">🏅 Score: ${data.score || 0}/100</div>
+      <hr>
+      
+      <div style="font-size:18px; font-weight:bold;">${remark.icon} ${remark.title}</div>
+      <div style="margin-top:8px; white-space:pre-line;">${remark.text}</div>
 
-${grade.stars}
-<br>
-${grade.title}
-<br>
-${grade.stars}
+      <hr>
+      <div style="font-size:12px; color:#666; text-align:center;">Session: ${data.sessionId || "-"}</div>
+      <hr>
 
-</div>
+      <div style="display:flex; gap:8px; margin-top:12px;">
+        <button onclick="openDutyKML()" style="flex:1; padding:10px; border:none; border-radius:10px; background:#1976d2; color:white; font-weight:bold;">📍 View KML</button>
+        <button onclick="shareDutyKMLReport()" style="flex:1; padding:10px; border:none; border-radius:10px; background:#25D366; color:white; font-weight:bold;">📤 Share KML</button>
+        <button onclick="document.getElementById('dutyPerformanceModal').style.display='none'" style="flex:1; padding:10px; border:none; border-radius:10px; background:#ef4444; color:white; font-weight:bold;">❌ Close</button>
+      </div>
 
-<hr>
+      <br>
+      <div style="text-align:center; font-weight:bold; color:#2e7d32;">🌟 Thank you for your service.</div>
+    </div>`;
 
-<div>
-👮 ${data.name || "-"}
-</div>
-
-${
-!hideCoverage
-?
-`
-<div
-style="
-margin-top:10px;
-padding:10px;
-background:#f0fdf4;
-border-radius:10px;
-"
->
-
-<div
-style="
-font-weight:bold;
-margin-bottom:8px;
-"
->
-🌲 Patrol Coverage Summary
-</div>
-
-<div>
-🛰 Session Grids :
-<b>
-${Number(
-  data.sessionGridCount || 0
-).toLocaleString()}
-</b>
-</div>
-
-<div>
-⭐ New Monthly Grids :
-<b>
-${Number(
-  data.newMonthlyGridCount || 0
-).toLocaleString()}
-</b>
-</div>
-
-<div>
-🌿 Area :
-<b>
-${Number(
-  data.areaHa || 0
-).toFixed(1)}
- ha
-</b>
-</div>
-
-<div>
-📏 Distance :
-<b>
-${Number(
-  data.distanceKm || 0
-).toFixed(1)}
- km
-</b>
-</div>
-
-</div>
-`
-:
-""
-}
-
-<div style="margin-top:10px;">
-⏱ Duration :
-${data.durationText || "-"}
-</div>
-
-<div style="margin-top:10px;">
-📋 Duty Type
-<br>
-<b>${data.dutyType || "-"}</b>
-</div>
-
-<hr>
-
-<div
-style="
-font-size:18px;
-font-weight:bold;
-"
->
-🏅 Score :
-${data.score || 0}/100
-</div>
-
-<hr>
-
-<div
-style="
-font-size:18px;
-font-weight:bold;
-"
->
-${remark.icon}
-${remark.title}
-</div>
-
-<div
-style="
-margin-top:8px;
-white-space:pre-line;
-"
->
-${remark.text}
-</div>
-
-<hr>
-
-<div
-style="
-font-size:12px;
-color:#666;
-text-align:center;
-"
->
-Session:
-${data.sessionId || "-"}
-</div>
-
-<hr>
-
-<div
-style="
-display:flex;
-gap:8px;
-margin-top:12px;
-"
->
-
-<button
-onclick="
-console.log(
-  '📍 VIEW KML CLICKED'
-);
-
-console.log(
-  window.currentDutyReport
-);
-
-openDutyKML();
-"
-style="
-flex:1;
-padding:10px;
-border:none;
-border-radius:10px;
-background:#1976d2;
-color:white;
-font-weight:bold;
-"
->
-📍 View KML
-</button>
-
-<button
-onclick="
-console.log(
-  '📤 SHARE KML CLICKED'
-);
-
-console.log(
-  window.currentDutyReport
-);
-
-shareDutyKMLReport();
-"
-style="
-flex:1;
-padding:10px;
-border:none;
-border-radius:10px;
-background:#25D366;
-color:white;
-font-weight:bold;
-"
->
-📤 Share KML
-</button>
-
-<button
-onclick="
-document.getElementById(
-'dutyPerformanceModal'
-).style.display='none'
-"
-style="
-flex:1;
-padding:10px;
-border:none;
-border-radius:10px;
-background:#ef4444;
-color:white;
-font-weight:bold;
-"
->
-❌ Close
-</button>
-
-</div>
-
-<br>
-
-<div
-style="
-text-align:center;
-font-weight:bold;
-color:#2e7d32;
-"
->
-🌟 Thank you for your service.
-</div>
-
-</div>
-`;
-
-    const modal =
-      document.getElementById(
-        "dutyPerformanceModal"
-      );
-
-    if(!modal){
-
-      console.error(
-        "❌ dutyPerformanceModal NOT FOUND"
-      );
-
-      return;
+    const modal = document.getElementById("dutyPerformanceModal");
+    if (modal) {
+      modal.innerHTML = html;
+      modal.style.display = "block";
     }
-
-    modal.innerHTML =
-      html;
-
-    modal.style.display =
-      "block";
-
-    console.log(
-      "✅ REPORT DISPLAYED"
-    );
-
-  }
-  catch(err){
-
-    console.error(
-      "❌ showDutyPerformanceReport FAILED",
-      err
-    );
+  } catch (err) {
+    console.error("❌ showDutyPerformanceReport FAILED", err);
   }
 }
  function generateKMLFromTrack(points){
@@ -40578,6 +40200,21 @@ window.currentSessionId =
 window.sessionVisitedGrids =
   new Set();
 
+// =====================================
+// SESSION REPORT COUNTERS
+// =====================================
+
+window.sessionNewMonthlyCellCount =
+  0;
+
+window.sessionNewMonthlyCompartmentCount =
+  0;
+
+// =====================================
+// LEGACY MONTHLY TRACKERS
+// KEEP IF USED ELSEWHERE
+// =====================================
+
 window.newMonthlyCellIds =
   new Set();
 
@@ -40586,8 +40223,7 @@ window.newMonthlyCompartmentIds =
 
 window.newMonthlyGridsCaptured =
   0;
-
-// =====================================
+    // =====================================
 // RESET LIVE PERFORMANCE
 // =====================================
 
