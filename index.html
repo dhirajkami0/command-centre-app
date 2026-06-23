@@ -36516,78 +36516,63 @@ try {
 }
 function generateKMLFromTrack(points){
 
-  if(
-    !Array.isArray(points) ||
-    !points.length
-  ){
-    return `<?xml version="1.0" encoding="UTF-8"?>
-<kml xmlns="http://www.opengis.net/kml/2.2">
-<Document></Document>
-</kml>`;
-  }
-
   const coordinates =
 
-    points
+    (points || [])
 
-      .filter(p => {
+    .filter(p => {
 
-        if(!p) return false;
+      const lat = Number(
+        p?.lat
+      );
 
-        const lat =
-          Number(
-            p.lat
-          );
+      const lng = Number(
 
-        const lng =
-          Number(
-            p.lng ??
-            p.lon
-          );
+        p?.lng ??
 
-        return (
-          Number.isFinite(lat) &&
-          Number.isFinite(lng)
-        );
+        p?.lon ??
 
-      })
+        p?.longitude
+      );
 
-      .map(p => {
+      return (
 
-        let lat =
-          Number(
-            p.lat
-          );
+        Number.isFinite(lat) &&
 
-        let lng =
-          Number(
-            p.lng ??
-            p.lon
-          );
+        Number.isFinite(lng)
 
-        // ===================================
-        // AUTO FIX REVERSED COORDINATES
-        // ===================================
-        if(
+      );
 
-          Math.abs(lat) > 60 &&
+    })
 
-          Math.abs(lng) < 60
+    .map(p => {
 
-        ){
+      let lat = Number(
+        p.lat
+      );
 
-          const tmp = lat;
+      let lng = Number(
 
-          lat = lng;
+        p.lng ??
 
-          lng = tmp;
-        }
+        p.lon ??
 
-        return `${lng},${lat},0`;
+        p.longitude
+      );
 
-      })
+      // auto-fix reversed coordinates
+      if(
+        Math.abs(lat) > 60 &&
+        Math.abs(lng) < 60
+      ){
+        [lat,lng] = [lng,lat];
+      }
 
-      .join("\n");
+      return `${lng},${lat},0`;
+
+    })
+
+    .join("\n");
 
   return `<?xml version="1.0" encoding="UTF-8"?>
 <kml xmlns="http://www.opengis.net/kml/2.2">
@@ -36595,25 +36580,17 @@ function generateKMLFromTrack(points){
 <Document>
 
 <Style id="patrolStyle">
-
   <LineStyle>
-
     <color>ff0000ff</color>
-
     <width>3</width>
-
   </LineStyle>
-
 </Style>
 
 <Placemark>
-
 <name>Patrol Track</name>
-
 <styleUrl>#patrolStyle</styleUrl>
 
 <LineString>
-
 <tessellate>1</tessellate>
 
 <coordinates>
@@ -36627,8 +36604,7 @@ ${coordinates}
 </Document>
 
 </kml>`;
-}
-    async function uploadPatrolKML(
+}    async function uploadPatrolKML(
   sessionId,
   points
 ){
