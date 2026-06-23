@@ -35409,48 +35409,34 @@ try {
 }
 
 // ======================================
-// LOAD HISTORY
+// USE REAL TRACK FROM patrol_tracks
 // ======================================
 
-const historySnap =
-  await window.fb.getDoc(
-    window.fb.doc(
-      window.db,
-      "history",
-      sessionId
-    )
-  );
-
-if (!historySnap.exists()) {
-
-  throw new Error(
-    `History not found: ${sessionId}`
-  );
-
-}
-
-const historyData =
-  historySnap.data() || {};
-
-const encoded =
-  String(
-    historyData.rawTrackEncoded || ""
-  );
-
-const decoded =
-  encoded
-    ? polyline.decode(encoded)
-    : [];
-
 const points =
-  decoded.map(coord => ({
-    lat: Number(coord[0]),
-    lng: Number(coord[1])
+
+  cleanTrack.map(p => ({
+
+    lat:
+      Number(p.lat),
+
+    lng:
+      Number(
+        p.lng ?? p.lon
+      )
+
   }));
 
 const endedAt =
   Date.now();
 
+console.table({
+
+  sessionId,
+
+  patrolTrackPoints:
+    points.length
+
+});
 // ======================================
 // KML GENERATION
 // ======================================
@@ -35496,17 +35482,10 @@ console.table({
   pointCount:
     points.length,
 
-  encodedLength:
-    encoded.length,
-
-  decodedPoints:
-    points.length,
-
   kmlGenerated:
     !!kmlUrl
 
 });
-
 // ======================================
 // BUILD REPORT
 // ======================================
