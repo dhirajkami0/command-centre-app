@@ -36514,59 +36514,80 @@ try {
     console.error("❌ showDutyPerformanceReport FAILED", err);
   }
 }
- function generateKMLFromTrack(points){
+function generateKMLFromTrack(points){
+
+  if(
+    !Array.isArray(points) ||
+    !points.length
+  ){
+    return `<?xml version="1.0" encoding="UTF-8"?>
+<kml xmlns="http://www.opengis.net/kml/2.2">
+<Document></Document>
+</kml>`;
+  }
 
   const coordinates =
 
     points
 
-    .filter(
-      p =>
-        p &&
-        Number.isFinite(
-          Number(p.lat)
-        ) &&
-        Number.isFinite(
-          Number(p.lng)
-        )
-    )
+      .filter(p => {
 
-    .map(p => {
+        if(!p) return false;
 
-      let lat =
-        Number(p.lat);
+        const lat =
+          Number(
+            p.lat
+          );
 
-      let lng =
-        Number(p.lng);
+        const lng =
+          Number(
+            p.lng ??
+            p.lon
+          );
 
-      // ===================================
-      // AUTO FIX REVERSED TRACKS
-      // If latitude looks like 89
-      // and longitude looks like 26
-      // swap them.
-      // ===================================
+        return (
+          Number.isFinite(lat) &&
+          Number.isFinite(lng)
+        );
 
-      if(
+      })
 
-        Math.abs(lat) > 60 &&
+      .map(p => {
 
-        Math.abs(lng) < 60
+        let lat =
+          Number(
+            p.lat
+          );
 
-      ){
+        let lng =
+          Number(
+            p.lng ??
+            p.lon
+          );
 
-        const tmp = lat;
+        // ===================================
+        // AUTO FIX REVERSED COORDINATES
+        // ===================================
+        if(
 
-        lat = lng;
+          Math.abs(lat) > 60 &&
 
-        lng = tmp;
+          Math.abs(lng) < 60
 
-      }
+        ){
 
-      return `${lng},${lat},0`;
+          const tmp = lat;
 
-    })
+          lat = lng;
 
-    .join("\n");
+          lng = tmp;
+        }
+
+        return `${lng},${lat},0`;
+
+      })
+
+      .join("\n");
 
   return `<?xml version="1.0" encoding="UTF-8"?>
 <kml xmlns="http://www.opengis.net/kml/2.2">
@@ -36596,9 +36617,7 @@ try {
 <tessellate>1</tessellate>
 
 <coordinates>
-
 ${coordinates}
-
 </coordinates>
 
 </LineString>
@@ -36608,7 +36627,8 @@ ${coordinates}
 </Document>
 
 </kml>`;
-}async function uploadPatrolKML(
+}
+    async function uploadPatrolKML(
   sessionId,
   points
 ){
