@@ -36132,61 +36132,126 @@ window.newMonthlyGridsCaptured =
       distanceKm
     );
 
-    // =====================================
-    // COVERAGE + CELL + COMPARTMENT STATS
-    // =====================================
+   // =====================================
+// COVERAGE + CELL + COMPARTMENT STATS
+// =====================================
 
-    let sessionCellCount = 0;
-    let sessionCompartmentCount = 0;
+let sessionCellCount = 0;
+let sessionCompartmentCount = 0;
 
-    try {
-      const coords =
-        decoded.map(
-          p => [
-            Number(p[0]),
-            Number(p[1])
-          ]
-        );
+try {
 
-      const {
-        touchedCells
-      } = getTouchedCells([
-        coords
-      ]);
+  console.log(
+    "DECODED POINTS",
+    decoded.length
+  );
 
-      sessionCellCount =
-        touchedCells.size;
+  console.log(
+    "FIRST DECODED",
+    decoded[0]
+  );
 
-      const compartmentSet =
-        new Set();
+  console.log(
+    "LAST DECODED",
+    decoded[
+      decoded.length - 1
+    ]
+  );
 
-      for (
-        const cellId
-        of touchedCells
-      ) {
-        const compartmentId =
-          window.cellToGridId?.[
-            cellId
-          ];
+  const coords =
+    decoded.map(
+      p => [
+        Number(p[0]),
+        Number(p[1])
+      ]
+    );
 
-        if (
-          compartmentId
-        ) {
-          compartmentSet.add(
-            compartmentId
-          );
-        }
-      }
+  const {
+    touchedCells
+  } = getTouchedCells([
+    coords
+  ]);
 
-      sessionCompartmentCount =
-        compartmentSet.size;
-    } catch (err) {
-      console.error(
-        "❌ Coverage calculation failed",
-        err
+  sessionCellCount =
+    touchedCells.size;
+
+  const sampleCells =
+    [...touchedCells]
+      .slice(0,20);
+
+  console.log(
+    "TOUCHED SAMPLE",
+    sampleCells
+  );
+
+  const sample =
+    sampleCells[0];
+
+  console.log(
+    "SAMPLE LOOKUP",
+    sample,
+    window.cellToGridId?.[
+      sample
+    ]
+  );
+
+  const compartmentSet =
+    new Set();
+
+  let found = 0;
+  let missing = 0;
+
+  for (
+    const cellId
+    of touchedCells
+  ) {
+
+    const compartmentId =
+      window.cellToGridId?.[
+        cellId
+      ];
+
+    if (
+      compartmentId
+    ) {
+
+      found++;
+
+      compartmentSet.add(
+        compartmentId
       );
-    }
 
+    } else {
+
+      missing++;
+    }
+  }
+
+  console.log(
+    "FOUND",
+    found
+  );
+
+  console.log(
+    "MISSING",
+    missing
+  );
+
+  console.log(
+    "COMPARTMENTS",
+    compartmentSet.size
+  );
+
+  sessionCompartmentCount =
+    compartmentSet.size;
+
+} catch (err) {
+
+  console.error(
+    "❌ Coverage calculation failed",
+    err
+  );
+}
     // =====================================
     // SESSION MONTHLY CONTRIBUTION
     // =====================================
