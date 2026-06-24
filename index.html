@@ -35467,7 +35467,18 @@ const kmlUrl =
     sessionId,
     points
   );
+console.log(
+  "STEP C RESULT",
+  kmlUrl
+);
 
+if(!kmlUrl){
+
+  console.error(
+    "KML RETURNED NULL"
+  );
+
+}
 console.log(
   "STEP C - uploadPatrolKML DONE",
   kmlUrl
@@ -36609,21 +36620,21 @@ ${coordinates}
 </Document>
 
 </kml>`;
-}    async function uploadPatrolKML(
+}   async function uploadPatrolKML(
   sessionId,
   points
-){
-
-  try{
-
+) {
+  try {
     // ==========================================================
     // VALIDATE
     // ==========================================================
 
-    if(
+    if (
       !Array.isArray(points)
-    ){
-
+    ) {
+      console.error(
+        "KML FAIL: points not array"
+      );
       console.warn(
         "⚠ Invalid points array"
       );
@@ -36631,10 +36642,12 @@ ${coordinates}
       return null;
     }
 
-    if(
+    if (
       points.length < 2
-    ){
-
+    ) {
+      console.error(
+        "KML FAIL: less than 2 points"
+      );
       console.warn(
         "⚠ Not enough points for KML"
       );
@@ -36642,41 +36655,45 @@ ${coordinates}
       return null;
     }
 
+    console.table({
+      sessionId,
+      pointCount: points.length,
+      firstPoint: JSON.stringify(points[0]),
+      lastPoint: JSON.stringify(points[points.length - 1])
+    });
+
     // ==========================================================
     // DISTANCE KM
     // ==========================================================
 
     let distanceKm = 0;
 
-    for(
+    for (
       let i = 1;
       i < points.length;
       i++
-    ){
+    ) {
+      const prev = points[i - 1];
+      const curr = points[i];
 
-      const prev =
-        points[i - 1];
+      const prevLat = Number(prev?.lat);
+      const prevLng = Number(prev?.lng ?? prev?.lon ?? prev?.longitude);
 
-      const curr =
-        points[i];
+      const currLat = Number(curr?.lat);
+      const currLng = Number(curr?.lng ?? curr?.lon ?? curr?.longitude);
 
-      if(
-        !prev ||
-        !curr ||
-        isNaN(prev.lat) ||
-        isNaN(prev.lng) ||
-        isNaN(curr.lat) ||
-        isNaN(curr.lng)
-      ){
+      if (
+        !Number.isFinite(prevLat) ||
+        !Number.isFinite(prevLng) ||
+        !Number.isFinite(currLat) ||
+        !Number.isFinite(currLng)
+      ) {
         continue;
       }
 
       distanceKm += getDistance(
-
-        [prev.lat, prev.lng],
-
-        [curr.lat, curr.lng]
-
+        [prevLat, prevLng],
+        [currLat, currLng]
       );
     }
 
@@ -36712,7 +36729,7 @@ ${coordinates}
       `${d.getFullYear()}_${
         String(
           d.getMonth() + 1
-        ).padStart(2,"0")
+        ).padStart(2, "0")
       }`;
 
     // ==========================================================
@@ -36744,12 +36761,20 @@ ${coordinates}
       generateKMLFromTrack(
         points
       );
+console.log(
+  "KML SIZE",
+  kmlText.length
+);
 
+console.log(
+  "HAS COORDINATES",
+  kmlText.includes("<coordinates>")
+);
     // ==========================================================
     // DEBUG GENERATED KML
     // ==========================================================
 
-    try{
+    try {
 
       const start =
         kmlText.indexOf(
@@ -36778,14 +36803,13 @@ ${coordinates}
           .filter(
             x => x.trim()
           )
-          .slice(0,10)
+          .slice(0, 10)
           .join("\n")
 
       );
 
     }
-
-    catch(err){
+    catch (err) {
 
       console.warn(
         "⚠ KML DEBUG FAILED",
@@ -36850,34 +36874,35 @@ ${coordinates}
 
         sessionId,
 
-        staffName :
+        staffName:
           profile.cleanName || "",
 
-        phone :
+        phone:
           profile.phone || "",
 
-       division :
-  profile.division ||
-  profile.range ||
-  "",
+        division:
+          profile.division ||
+          profile.range ||
+          "",
 
-range :
-  profile.range || "",
+        range:
+          profile.range || "",
 
-beat :
-  profile.beat ||
-  profile.range ||
-  profile.division ||
-  "",
-        pointCount :
+        beat:
+          profile.beat ||
+          profile.range ||
+          profile.division ||
+          "",
+
+        pointCount:
           points.length,
 
         distanceKm,
 
-        kmlUrl :
+        kmlUrl:
           downloadUrl,
 
-        createdAt :
+        createdAt:
           now
 
       }
@@ -36892,7 +36917,7 @@ beat :
     // APPS SCRIPT SYNC
     // ==========================================================
 
-    try{
+    try {
 
       fetch(
 
@@ -36900,9 +36925,9 @@ beat :
 
         {
 
-          method:"POST",
+          method: "POST",
 
-          body:JSON.stringify({
+          body: JSON.stringify({
 
             action:
               "SAVE_PATROL_KML",
@@ -36917,19 +36942,19 @@ beat :
             phone:
               profile.phone || "",
 
-           division:
-  profile.division ||
-  profile.range ||
-  "",
+            division:
+              profile.division ||
+              profile.range ||
+              "",
 
-range:
-  profile.range || "",
+            range:
+              profile.range || "",
 
-beat:
-  profile.beat ||
-  profile.range ||
-  profile.division ||
-  "",
+            beat:
+              profile.beat ||
+              profile.range ||
+              profile.division ||
+              "",
 
             pointCount:
               points.length,
@@ -36947,27 +36972,26 @@ beat:
         }
 
       )
-      .then(r => r.text())
-      .then(result => {
+        .then(r => r.text())
+        .then(result => {
 
-        console.log(
-          "📄 Apps Script Sync:",
-          result
-        );
+          console.log(
+            "📄 Apps Script Sync:",
+            result
+          );
 
-      })
-      .catch(err => {
+        })
+        .catch(err => {
 
-        console.error(
-          "❌ Apps Script Sync Failed",
-          err
-        );
+          console.error(
+            "❌ Apps Script Sync Failed",
+            err
+          );
 
-      });
+        });
 
     }
-
-    catch(err){
+    catch (err) {
 
       console.error(
         "❌ Apps Script Launch Failed",
@@ -36988,12 +37012,16 @@ beat:
     return downloadUrl;
 
   }
-
-  catch(err){
+  catch (err) {
 
     console.error(
-      "❌ uploadPatrolKML",
-      err
+      "❌ uploadPatrolKML CRASH"
+    );
+
+    console.error(err);
+
+    console.error(
+      err?.stack
     );
 
     return null;
