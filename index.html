@@ -35224,11 +35224,10 @@ pointsSnap.forEach(doc => {
       lng:
         Number(p.lon),
 
-      time:
-        Number(
-          p.time || 0
-        )
-
+     time:
+  typeof p.time === "number"
+    ? p.time
+    : new Date(p.time).getTime()
     });
 
   }
