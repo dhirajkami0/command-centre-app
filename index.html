@@ -35380,12 +35380,17 @@ console.table({
 // 🔥 USE CLEAN TRACK
 // ======================================
 
+console.log(
+  "STEP A - processHistoryTrack START"
+);
+
 await processHistoryTrack(
-
   cleanTrack,
-
   sessionId
+);
 
+console.log(
+  "STEP A - processHistoryTrack DONE"
 );
 // ======================================
 // FINAL ANALYTICS FLUSH
@@ -35393,7 +35398,15 @@ await processHistoryTrack(
 
 try {
 
-  await flushAnalyticsBuffer();
+console.log(
+  "STEP B - flushAnalyticsBuffer START"
+);
+
+await flushAnalyticsBuffer();
+
+console.log(
+  "STEP B - flushAnalyticsBuffer DONE"
+);
 
   console.log(
     "✅ FINAL ANALYTICS FLUSH COMPLETE"
@@ -35445,11 +35458,20 @@ showToast(
   "🗺️ Generating patrol KML..."
 );
 
+console.log(
+  "STEP C - uploadPatrolKML START"
+);
+
 const kmlUrl =
   await uploadPatrolKML(
     sessionId,
     points
   );
+
+console.log(
+  "STEP C - uploadPatrolKML DONE",
+  kmlUrl
+);
 
 window.lastDutyKmlUrl =
   kmlUrl || "";
@@ -35493,7 +35515,9 @@ console.table({
 let reportData = null;
 
 try {
-
+console.log(
+  "STEP D - REPORT START"
+);
   reportData =
     await buildDutyPerformanceReport({
 
@@ -35539,7 +35563,9 @@ try {
   showDutyPerformanceReport(
     reportData
   );
-
+console.log(
+  "STEP D - REPORT SHOWN"
+);
 } catch (reportErr) {
 
   console.error(
