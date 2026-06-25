@@ -30115,7 +30115,11 @@ function collectAnalyticsHit(
 
             continue;
           }
-
+console.log("CALLING updateMonthlyAnalyticsRebuild", {
+  gridId,
+  monthKey,
+  points: data.localCoordsArray?.[0]?.length
+});
           await updateMonthlyAnalyticsRebuild(
 
             gridId,
@@ -30125,7 +30129,7 @@ function collectAnalyticsHit(
             monthKey
 
           );
-
+console.log("RETURNED updateMonthlyAnalyticsRebuild", gridId);
           console.log(
             "✅ Flushed",
             gridId
