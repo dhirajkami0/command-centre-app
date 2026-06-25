@@ -29962,6 +29962,12 @@ function collectAnalyticsHit(
         ]
 
       };
+
+      console.log(
+        "🆕 NEW ANALYTICS GRID",
+        gridId
+      );
+
     }
 
     // ==========================================
@@ -29977,13 +29983,6 @@ function collectAnalyticsHit(
 
     // ==========================================
     // 🔥 COORDS
-    // FORMAT:
-    // [
-    //   [
-    //     [lat,lon],
-    //     [lat,lon]
-    //   ]
-    // ]
     // ==========================================
     if(
 
@@ -30010,7 +30009,39 @@ function collectAnalyticsHit(
         Number(lon)
 
       ]);
+
     }
+
+    // ==========================================
+    // 🔥 DEBUG
+    // ==========================================
+    console.log(
+      "➕ BUFFER UPDATE",
+      {
+        gridId,
+
+        cellId,
+
+        points:
+          window.analyticsBuffer[
+            gridId
+          ]
+          .localCoordsArray[0]
+          .length,
+
+        cells:
+          window.analyticsBuffer[
+            gridId
+          ]
+          .touchedCells
+          .size,
+
+        totalBufferedGrids:
+          Object.keys(
+            window.analyticsBuffer
+          ).length
+      }
+    );
 
   }
 
@@ -35443,7 +35474,34 @@ try {
 console.log(
   "STEP B - flushAnalyticsBuffer START"
 );
+console.log("========== BEFORE FINAL FLUSH ==========");
 
+console.log(
+  "analyticsBuffer",
+  window.analyticsBuffer
+);
+
+console.log(
+  "analyticsBuffer keys",
+  Object.keys(window.analyticsBuffer || {})
+);
+
+Object.entries(window.analyticsBuffer || {}).forEach(
+([gridId,data])=>{
+
+  console.table({
+
+    gridId,
+
+    points:
+      data.localCoordsArray?.[0]?.length,
+
+    cells:
+      data.touchedCells?.size
+
+  });
+
+});
 await flushAnalyticsBuffer();
 
 console.log(
