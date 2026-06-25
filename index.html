@@ -11473,74 +11473,113 @@ async function renderMonthlyHeatmap(gridIds, monthKey) {
 
         try {
 
-          const [
-            row,
-            col
-          ] =
-            cellId
-            .split("_")
-            .map(Number);
+         // =====================================
+// BACKWARD-COMPATIBLE CELL DECODER
+// Supports BOTH:
+//   row_col (old)
+//   col_row (new)
+// =====================================
 
-          const south =
-            row * STEP;
+const parts =
+  cellId
+    .split("_")
+    .map(Number);
 
-          const west =
-            col * STEP;
+if (
+  parts.length !== 2 ||
+  parts.some(isNaN)
+) {
+  return;
+}
 
-          const north =
-            south + STEP;
+let cellPolygon = null;
+let intersects = false;
 
-          const east =
-            west + STEP;
+// =====================================
+// TRY OLD FORMAT
+// row_col
+// =====================================
 
-          const cellPolygon =
-            turf.polygon([
-              [
-                [west, south],
-                [east, south],
-                [east, north],
-                [west, north],
-                [west, south]
-              ]
-            ]);
+for (const mode of ["row_col", "col_row"]) {
 
-          let intersects =
-            false;
+  let row, col;
 
-          for (
-            const boundaryPart
-            of boundaryFeatures
-          ) {
+  if (mode === "row_col") {
 
-            try {
+    row = parts[0];
+    col = parts[1];
 
-              if (
+  } else {
 
-                turf.booleanIntersects(
-                  cellPolygon,
-                  boundaryPart
-                )
+    col = parts[0];
+    row = parts[1];
 
-              ) {
+  }
 
-                intersects =
-                  true;
+  const south =
+    row * STEP;
 
-                intersectHits++;
+  const west =
+    col * STEP;
 
-                break;
-              }
+  const north =
+    south + STEP;
 
-            }
+  const east =
+    west + STEP;
 
-            catch(err) {}
-          }
+  const polygon =
+    turf.polygon([
+      [
+        [west, south],
+        [east, south],
+        [east, north],
+        [west, north],
+        [west, south]
+      ]
+    ]);
 
-          if (
-            !intersects
-          ) {
-            return;
-          }
+  let ok = false;
+
+  for (const boundaryPart of boundaryFeatures) {
+
+    try {
+
+      if (
+        turf.booleanIntersects(
+          polygon,
+          boundaryPart
+        )
+      ) {
+
+        ok = true;
+        break;
+
+      }
+
+    } catch (e) {}
+
+  }
+
+  if (ok) {
+
+    cellPolygon = polygon;
+    intersects = true;
+    intersectHits++;
+
+    break;
+
+  }
+console.debug(
+  "Heatmap Cell",
+  cellId,
+  mode
+);
+}
+
+if (!intersects || !cellPolygon) {
+  return;
+}
 
           clipSuccess++;
 
