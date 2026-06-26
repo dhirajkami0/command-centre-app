@@ -18014,31 +18014,28 @@ if(
 function normalizeDivision(value){
 
   value =
-
     String(value || "")
-    .trim()
-    .toUpperCase();
+      .trim()
+      .toUpperCase();
 
   if(
-
     value === "BUXATR_WEST" ||
-
     value === "BTR_W"
-
   ){
-
     return "BTR_W";
   }
 
   if(
-
     value === "BUXATR_EAST" ||
-
     value === "BTR_E"
-
   ){
-
     return "BTR_E";
+  }
+
+  if(
+    value === "JALDAPARA"
+  ){
+    return "Jaldapara";
   }
 
   return value;
