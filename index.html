@@ -7143,23 +7143,13 @@ await appendTrackToGeometries(
 // FIRESTORE SAFE
 // ======================================
 async function preloadAllCompartments() {
-
-  console.trace(
-    "PRELOAD_COMPARTMENT_ CALLED"
-  );
+  console.trace("PRELOAD_COMPARTMENT_ CALLED");
 
   // =====================================
   // ✅ ALREADY READY
   // =====================================
-
-  if(
-    window.__COMPARTMENTS_READY__
-  ){
-
-    console.log(
-      "⏭ Compartments already loaded"
-    );
-
+  if (window.__COMPARTMENTS_READY__) {
+    console.log("⏭ Compartments already loaded");
     return;
   }
 
@@ -7167,178 +7157,138 @@ async function preloadAllCompartments() {
   // ⏳ LOAD IN PROGRESS
   // RETURN SAME PROMISE
   // =====================================
-
-  if(
-    window.__COMPARTMENTS_LOADING__
-  ){
-
-    console.log(
-      "⏳ Compartments loading..."
-    );
-
+  if (window.__COMPARTMENTS_LOADING__) {
+    console.log("⏳ Compartments loading...");
     return window.__COMPARTMENTS_PROMISE__;
   }
 
   // =====================================
   // 🚀 START NEW LOAD
   // =====================================
+  window.__COMPARTMENTS_LOADING__ = true;
 
-  window.__COMPARTMENTS_LOADING__ =
-    true;
+  window.__COMPARTMENTS_PROMISE__ = (async () => {
+    console.time("PRELOAD_COMPARTMENTS");
 
-  window.__COMPARTMENTS_PROMISE__ =
-  (async()=>{
-
-    console.time(
-      "PRELOAD_COMPARTMENTS"
-    );
-
-    try{
-      
+    try {
       console.log("📦 PRELOADING ALL COMPARTMENTS");
+      window.allCompartmentFeatures = [];
 
-    window.allCompartmentFeatures = [];
+      // =====================================
+      // UNIQUE BEAT + DIVISION PAIRS
+      // =====================================
+      const beatMap = new Map();
 
-    // =====================================
-    // UNIQUE BEAT + DIVISION PAIRS
-    // =====================================
-    const beatMap = new Map();
-
-    (window.allGISFeatures || []).forEach(f => {
-      try {
-        const props = f.properties || {};
-        const beat = String(props.Beat || props.beat || "").trim();
-        const rawDivision = String(props.Division || props.division || "").trim();
-
-        if (!beat || !rawDivision) return;
-
-        let divisionFolder = "";
-        if (rawDivision === "BuxaTR_WEST") {
-          divisionFolder = "BTR_W";
-        } else if (rawDivision === "BuxaTR_EAST") {
-          divisionFolder = "BTR_E";
-        } else {
-          return;
-        }
-
-        beatMap.set(beat, divisionFolder);
-      } catch (e) {}
-    });
-
-    console.log("📦 UNIQUE BEATS:", beatMap.size);
-
-    // =====================================
-    // LOAD EVERY BEAT FILE
-    // =====================================
-    const results = await Promise.all(
-      [...beatMap].map(async ([beat, divisionFolder]) => {
+      (window.allGISFeatures || []).forEach(f => {
         try {
-          const url = `./geojson/compartments/${divisionFolder}/${encodeURIComponent(beat)}.geojson`;
-          const res = await fetch(url);
-          if (!res.ok) return [];
-          const data = await res.json();
-          return data?.features || [];
-        } catch (e) {
-          return [];
-        }
-      })
-    );
+          const props = f.properties || {};
 
-    window.allCompartmentFeatures = results.flat();
-    
-    console.timeEnd("PRELOAD_COMPARTMENTS");
+          const beat = String(props.Beat || props.beat || "").trim();
+          if (!beat) {
+            return;
+          }
 
-    console.log("✅ PRELOAD COMPLETE:", window.allCompartmentFeatures.length);
+          const divisionFolder = normalizeDivision(props.Division || props.division || "");
+          if (!divisionFolder) {
+            return;
+          }
 
-    window.__COMPARTMENTS_READY__ = true;
+          const key = `${divisionFolder}|${beat}`;
+          beatMap.set(key, {
+            divisionFolder,
+            beat
+          });
+        } catch (e) {}
+      });
 
-    // background tasks
-    setTimeout(() => {
-      rebuildSpatialIndex().catch(console.error);
-    }, 0);
+      console.log("📦 UNIQUE BEATS:", beatMap.size);
 
-    // 🔥 BACKGROUND ONLY GRID LOADING
-    if (!window.masterGridLoading && (!window.masterGrid || Object.keys(window.masterGrid).length === 0)) {
-      window.masterGridLoading = true;
-
-      setTimeout(async () => {
-        try {
-          await loadMasterGrid();
-          console.log("✅ MASTER GRID LOADED");
-          await buildCellToGridLookup();
-          window.__ANALYTICS_READY__ =
-  true;
-
-console.log(
-  "✅ ANALYTICS READY"
-);
-          console.log("✅ CELL → GRID LOOKUP READY", Object.keys(window.cellToGridId || {}).length);
-        } catch (err) {
-          console.error("❌ Grid preload failed", err);
-        } finally {
-          window.masterGridLoading = false;
-        }
-      }, 0);
-    } else {
-
-  console.log(
-    "⏭ GRID already available"
-  );
-
-  if(
-
-    window.masterGrid
-
-    &&
-
-    Object.keys(
-      window.masterGrid
-    ).length > 0
-
-    &&
-
-    window.cellToGridId
-
-    &&
-
-    Object.keys(
-      window.cellToGridId
-    ).length > 0
-
-  ){
-
-    window.__ANALYTICS_READY__ =
-      true;
-
-    console.log(
-      "✅ ANALYTICS READY"
-    );
-
-  }
-
-}
-     }
-
-    catch(err){
-
-      console.error(
-        "❌ preloadAllCompartments",
-        err
+      // =====================================
+      // LOAD EVERY BEAT FILE
+      // =====================================
+      const results = await Promise.all(
+        [...beatMap.values()].map(async ({
+          divisionFolder,
+          beat
+        }) => {
+          try {
+            const url = `./geojson/compartments/${divisionFolder}/${encodeURIComponent(beat)}.geojson`;
+            const res = await fetch(url);
+            if (!res.ok) {
+              console.warn("⚠ Missing:", url);
+              return [];
+            }
+            const data = await res.json();
+            return data.features || [];
+          } catch (e) {
+            console.warn(
+              "⚠ Failed to load:",
+              divisionFolder,
+              beat,
+              e
+            );
+            return [];
+          }
+        })
       );
 
-    }
-
-    finally{
-
-      window.__COMPARTMENTS_LOADING__ =
-        false;
+      window.allCompartmentFeatures = results.flat();
 
       console.log(
-        "✅ PRELOAD FINISHED"
+        "📦 Loaded Compartments:",
+        window.allCompartmentFeatures.length
       );
 
-    }
+      console.table(
+        [...beatMap.values()]
+      );
 
+      console.timeEnd("PRELOAD_COMPARTMENTS");
+      console.log("✅ PRELOAD COMPLETE:", window.allCompartmentFeatures.length);
+
+      window.__COMPARTMENTS_READY__ = true;
+
+      // background tasks
+      setTimeout(() => {
+        rebuildSpatialIndex().catch(console.error);
+      }, 0);
+
+      // 🔥 BACKGROUND ONLY GRID LOADING
+      if (!window.masterGridLoading && (!window.masterGrid || Object.keys(window.masterGrid).length === 0)) {
+        window.masterGridLoading = true;
+
+        setTimeout(async () => {
+          try {
+            await loadMasterGrid();
+            console.log("✅ MASTER GRID LOADED");
+            await buildCellToGridLookup();
+            window.__ANALYTICS_READY__ = true;
+            console.log("✅ ANALYTICS READY");
+            console.log("✅ CELL → GRID LOOKUP READY", Object.keys(window.cellToGridId || {}).length);
+          } catch (err) {
+            console.error("❌ Grid preload failed", err);
+          } finally {
+            window.masterGridLoading = false;
+          }
+        }, 0);
+      } else {
+        console.log("⏭ GRID already available");
+        if (
+          window.masterGrid &&
+          Object.keys(window.masterGrid).length > 0 &&
+          window.cellToGridId &&
+          Object.keys(window.cellToGridId).length > 0
+        ) {
+          window.__ANALYTICS_READY__ = true;
+          console.log("✅ ANALYTICS READY");
+        }
+      }
+    } catch (err) {
+      console.error("❌ preloadAllCompartments", err);
+    } finally {
+      window.__COMPARTMENTS_LOADING__ = false;
+      console.log("✅ PRELOAD FINISHED");
+    }
   })();
 
   return window.__COMPARTMENTS_PROMISE__;
