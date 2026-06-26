@@ -14416,13 +14416,6 @@ try {
         const globalData =
           summarySnap.data() || {};
 
-        summary.totalDistanceMeters =
-
-          Number(
-            globalData
-              ?.totalDistanceMeters || 0
-          );
-
       }
 
     }
@@ -14693,22 +14686,11 @@ try {
   // 🔥 GLOBAL MONTHLY DISTANCE
   // FALLBACK TO COMPARTMENT DISTANCE
   // =====================================
+const totalDistanceMeters =
 
-  const totalDistanceMeters =
-
-    Number(
-
-      summary.totalDistanceMeters
-
-      ??
-
-      summary.distanceMeters
-
-      ??
-
-      0
-
-    );
+Number(
+  summary.distanceMeters || 0
+);
 
   document.getElementById(
     "msDistance"
