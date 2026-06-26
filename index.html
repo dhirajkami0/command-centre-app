@@ -19166,30 +19166,51 @@ async function populateDivisionButtons(){
     // 👑 ADMIN
     // ==========================================
 
-    if(role === "ADMIN"){
+  if(role === "ADMIN"){
 
-      [
+  const divisions = [
 
-        "ALL",
+    "ALL",
 
-        "BTR_W",
+    ...new Set(
 
-        "BTR_E"
+      (window.allGISFeatures || [])
 
-      ]
-      .forEach(div => {
+      .map(f =>
 
-        container.innerHTML +=
+        normalizeDivision(
 
-          createGISButton(
+          f.properties?.Division ||
 
-            div,
+          f.properties?.division ||
 
-            window.gisFilter.division
-            === div
-          );
-      });
-    }
+          ""
+
+        )
+
+      )
+
+      .filter(Boolean)
+
+    )
+
+  ];
+
+  divisions.forEach(div=>{
+
+    container.innerHTML +=
+
+      createGISButton(
+
+        div,
+
+        window.gisFilter.division === div
+
+      );
+
+  });
+
+}
 
     // ==========================================
     // 🟣 DFO / ADFO
