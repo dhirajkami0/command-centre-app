@@ -18018,27 +18018,46 @@ function normalizeDivision(value){
       .trim()
       .toUpperCase();
 
-  if(
-    value === "BUXATR_WEST" ||
-    value === "BTR_W"
-  ){
-    return "BTR_W";
-  }
+  const map = {
 
-  if(
-    value === "BUXATR_EAST" ||
-    value === "BTR_E"
-  ){
-    return "BTR_E";
-  }
+    // ======================================
+    // BUXA
+    // ======================================
 
-  if(
-    value === "JALDAPARA"
-  ){
-    return "Jaldapara";
-  }
+    "BUXATR_WEST" : "BTR_W",
+    "BTR_W" : "BTR_W",
 
-  return value;
+    "BUXATR_EAST" : "BTR_E",
+    "BTR_E" : "BTR_E",
+
+    // ======================================
+    // NORTH BENGAL DIVISIONS
+    // ======================================
+
+    "JALDAPARA" : "Jaldapara",
+    "GORUMARA" : "Gorumara",
+    "MAHANANDA" : "Mahananda",
+    "DARJEELING" : "Darjeeling",
+    "KALIMPONG" : "Kalimpong",
+    "KURSEONG" : "Kurseong",
+    "JALPAIGURI" : "Jalpaiguri",
+
+    // ======================================
+    // WILDLIFE
+    // ======================================
+
+    "NEORA VALLEY" : "NeoraValley",
+    "NEORAVALLEY" : "NeoraValley",
+
+    "JALDAPARA NATIONAL PARK" : "Jaldapara",
+    "GORUMARA NATIONAL PARK" : "Gorumara",
+
+    "BUXA TIGER RESERVE" : "BTR_W"
+
+  };
+
+  return map[value] || value;
+
 }
 
 // ======================================================
