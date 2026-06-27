@@ -610,31 +610,37 @@ Core.callAI = async function (
 
             );
 
-        const response = {
+      const response = {
 
-            success: true,
+    success:
 
-            timestamp:
+        result.success,
 
-                Date.now(),
+    timestamp:
 
-            requestId:
+        Date.now(),
 
-                request.id,
+    requestId:
 
-            intent:
+        request.id,
 
-                request.intent,
+    intent:
 
-            answer:
+        request.intent,
 
-                result,
+    answer:
 
-            cached:
+        result.reply,
 
-                false
+    raw:
 
-        };
+        result,
+
+    cached:
+
+        false
+
+};
 
         await Core.setCachedResponse(
 
