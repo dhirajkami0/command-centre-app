@@ -1769,16 +1769,18 @@ gridRewardStyle.innerHTML = `
 document.head.appendChild(
   gridRewardStyle
 );/*=========================================================
-  GREEN GUARD AI
+  GREENGUARD AI
 =========================================================*/
+
+/* Floating Button */
 
 .gg-ai-fab{
 
 position:fixed;
 
-bottom:20px;
+right:22px;
 
-right:20px;
+bottom:22px;
 
 width:64px;
 
@@ -1792,15 +1794,21 @@ background:#2e7d32;
 
 color:#fff;
 
-font-size:28px;
+font-size:30px;
 
 cursor:pointer;
 
-box-shadow:0 8px 24px rgba(0,0,0,.35);
+display:flex;
 
-z-index:999999;
+align-items:center;
+
+justify-content:center;
+
+box-shadow:0 10px 30px rgba(0,0,0,.45);
 
 transition:.25s;
+
+z-index:2147483647;
 
 }
 
@@ -1812,6 +1820,13 @@ background:#388e3c;
 
 }
 
+.gg-ai-fab:active{
+
+transform:scale(.95);
+
+}
+
+
 /*=========================================================
   OVERLAY
 =========================================================*/
@@ -1820,21 +1835,31 @@ background:#388e3c;
 
 position:fixed;
 
-inset:0;
+left:0;
 
-background:rgba(0,0,0,.45);
+top:0;
+
+right:0;
+
+bottom:0;
+
+display:none;
 
 align-items:center;
 
 justify-content:center;
 
-backdrop-filter:blur(3px);
+background:rgba(0,0,0,.45);
 
-z-index:999998;
+backdrop-filter:blur(4px);
+
+-webkit-backdrop-filter:blur(4px);
+
+z-index:2147483646;
 
 }
 
-/* SHOW ONLY WHEN OPEN */
+/* OPEN */
 
 .gg-ai-overlay:not([hidden]){
 
@@ -1842,13 +1867,14 @@ display:flex;
 
 }
 
-/* HIDE WHEN hidden ATTRIBUTE EXISTS */
+/* CLOSED */
 
 .gg-ai-overlay[hidden]{
 
 display:none !important;
 
 }
+
 
 /*=========================================================
   WINDOW
@@ -1858,11 +1884,7 @@ display:none !important;
 
 width:min(900px,95vw);
 
-height:min(720px,90vh);
-
-background:#101417;
-
-border-radius:18px;
+height:min(720px,92vh);
 
 display:flex;
 
@@ -1870,9 +1892,36 @@ flex-direction:column;
 
 overflow:hidden;
 
-box-shadow:0 20px 60px rgba(0,0,0,.5);
+background:#101417;
+
+border-radius:18px;
+
+box-shadow:0 25px 70px rgba(0,0,0,.55);
+
+animation:ggAiOpen .18s ease;
 
 }
+
+@keyframes ggAiOpen{
+
+from{
+
+opacity:0;
+
+transform:scale(.95);
+
+}
+
+to{
+
+opacity:1;
+
+transform:scale(1);
+
+}
+
+}
+
 
 /*=========================================================
   HEADER
@@ -1882,10 +1931,6 @@ box-shadow:0 20px 60px rgba(0,0,0,.5);
 
 height:64px;
 
-background:#1b5e20;
-
-color:#fff;
-
 display:flex;
 
 align-items:center;
@@ -1894,13 +1939,19 @@ justify-content:space-between;
 
 padding:0 18px;
 
-font-size:20px;
+background:#1b5e20;
 
-font-weight:bold;
+color:white;
+
+flex-shrink:0;
 
 }
 
 .gg-ai-title{
+
+font-size:20px;
+
+font-weight:700;
 
 display:flex;
 
@@ -1910,8 +1961,9 @@ gap:10px;
 
 }
 
+
 /*=========================================================
-  CLOSE
+  CLOSE BUTTON
 =========================================================*/
 
 .gg-ai-close{
@@ -1924,24 +1976,33 @@ border:none;
 
 border-radius:50%;
 
-background:none;
+background:transparent;
 
-color:#fff;
+color:white;
 
-font-size:26px;
+font-size:28px;
 
 cursor:pointer;
+
+transition:.2s;
 
 }
 
 .gg-ai-close:hover{
 
-background:rgba(255,255,255,.12);
+background:rgba(255,255,255,.15);
 
 }
 
+.gg-ai-close:active{
+
+transform:scale(.92);
+
+}
+
+
 /*=========================================================
-  CHAT
+  CHAT AREA
 =========================================================*/
 
 .gg-ai-messages{
@@ -1950,7 +2011,11 @@ flex:1;
 
 overflow-y:auto;
 
+overflow-x:hidden;
+
 padding:18px;
+
+background:#111;
 
 display:flex;
 
@@ -1958,9 +2023,12 @@ flex-direction:column;
 
 gap:14px;
 
-background:#111;
+scroll-behavior:smooth;
 
 }
+
+
+/* USER */
 
 .gg-user{
 
@@ -1968,35 +2036,13 @@ align-self:flex-end;
 
 max-width:78%;
 
+padding:12px 16px;
+
 background:#2e7d32;
 
-color:#fff;
-
-padding:12px 16px;
+color:white;
 
 border-radius:18px 18px 4px 18px;
-
-line-height:1.5;
-
-white-space:pre-wrap;
-
-word-break:break-word;
-
-}
-
-.gg-ai{
-
-align-self:flex-start;
-
-max-width:78%;
-
-background:#222;
-
-color:#fff;
-
-padding:12px 16px;
-
-border-radius:18px 18px 18px 4px;
 
 line-height:1.6;
 
@@ -2004,7 +2050,37 @@ white-space:pre-wrap;
 
 word-break:break-word;
 
+font-size:15px;
+
 }
+
+
+/* AI */
+
+.gg-ai{
+
+align-self:flex-start;
+
+max-width:78%;
+
+padding:12px 16px;
+
+background:#222;
+
+color:white;
+
+border-radius:18px 18px 18px 4px;
+
+line-height:1.7;
+
+white-space:pre-wrap;
+
+word-break:break-word;
+
+font-size:15px;
+
+}
+
 
 /*=========================================================
   THINKING
@@ -2014,15 +2090,18 @@ word-break:break-word;
 
 padding:10px 18px;
 
-background:#1b1b1b;
-
-color:#bbb;
-
-font-style:italic;
+background:#191919;
 
 border-top:1px solid rgba(255,255,255,.08);
 
+color:#bdbdbd;
+
+font-style:italic;
+
+flex-shrink:0;
+
 }
+
 
 /*=========================================================
   INPUT
@@ -2040,17 +2119,19 @@ background:#181818;
 
 border-top:1px solid rgba(255,255,255,.08);
 
+flex-shrink:0;
+
 }
 
 #ggAiPrompt{
 
 flex:1;
 
-resize:none;
-
 min-height:52px;
 
 max-height:150px;
+
+resize:none;
 
 padding:14px;
 
@@ -2060,13 +2141,15 @@ border-radius:14px;
 
 outline:none;
 
-font-size:15px;
-
 background:#262626;
 
-color:#fff;
+color:white;
+
+font-size:15px;
 
 font-family:inherit;
+
+line-height:1.5;
 
 }
 
@@ -2075,6 +2158,17 @@ font-family:inherit;
 color:#999;
 
 }
+
+#ggAiPrompt:focus{
+
+background:#303030;
+
+}
+
+
+/*=========================================================
+  SEND BUTTON
+=========================================================*/
 
 .gg-ai-send{
 
@@ -2086,7 +2180,7 @@ border-radius:14px;
 
 background:#2e7d32;
 
-color:#fff;
+color:white;
 
 font-size:24px;
 
@@ -2102,6 +2196,12 @@ background:#388e3c;
 
 }
 
+.gg-ai-send:active{
+
+transform:scale(.95);
+
+}
+
 .gg-ai-send:disabled{
 
 opacity:.5;
@@ -2109,6 +2209,32 @@ opacity:.5;
 cursor:not-allowed;
 
 }
+
+
+/*=========================================================
+  SCROLLBAR
+=========================================================*/
+
+.gg-ai-messages::-webkit-scrollbar{
+
+width:8px;
+
+}
+
+.gg-ai-messages::-webkit-scrollbar-thumb{
+
+background:#444;
+
+border-radius:6px;
+
+}
+
+.gg-ai-messages::-webkit-scrollbar-track{
+
+background:#1a1a1a;
+
+}
+
 
 /*=========================================================
   MOBILE
@@ -2122,6 +2248,10 @@ width:100vw;
 
 height:100vh;
 
+max-width:none;
+
+max-height:none;
+
 border-radius:0;
 
 }
@@ -2130,15 +2260,47 @@ border-radius:0;
 
 .gg-ai{
 
-max-width:90%;
+max-width:92%;
+
+font-size:14px;
 
 }
 
 .gg-ai-fab{
 
+right:16px;
+
 bottom:16px;
 
-right:16px;
+width:58px;
+
+height:58px;
+
+font-size:26px;
+
+}
+
+.gg-ai-header{
+
+height:58px;
+
+}
+
+.gg-ai-title{
+
+font-size:18px;
+
+}
+
+.gg-ai-input{
+
+padding:12px;
+
+}
+
+.gg-ai-send{
+
+width:56px;
 
 }
 
@@ -2146,6 +2308,77 @@ right:16px;
   </style>
 </head>
 <body>
+  <!--=========================================================
+  GREENGUARD AI CHAT
+==========================================================-->
+
+<div id="ggAiOverlay" class="gg-ai-overlay" hidden>
+
+    <div class="gg-ai-window">
+
+        <div class="gg-ai-header">
+
+            <div class="gg-ai-title">
+
+                🤖 GreenGuard AI
+
+            </div>
+
+            <button
+                id="ggAiClose"
+                class="gg-ai-close">
+
+                ✕
+
+            </button>
+
+        </div>
+
+        <div
+            id="ggAiMessages"
+            class="gg-ai-messages">
+
+        </div>
+
+        <div
+            id="ggAiThinking"
+            class="gg-ai-thinking"
+            hidden>
+
+            GreenGuard AI is thinking...
+
+        </div>
+
+        <div class="gg-ai-input">
+
+            <textarea
+                id="ggAiPrompt"
+                placeholder="Ask GreenGuard AI..."
+                rows="1"
+                autocomplete="off"></textarea>
+
+            <button
+                id="ggAiSend"
+                class="gg-ai-send">
+
+                ➤
+
+            </button>
+
+        </div>
+
+    </div>
+
+</div>
+
+<button
+    id="ggAiOpen"
+    class="gg-ai-fab"
+    title="GreenGuard AI">
+
+    🤖
+
+</button>
     <!-- 🔥 SPLASH SCREEN (PUT HERE — FIRST ELEMENT) -->
  <!-- 🔥 SPLASH SCREEN (FIRST ELEMENT IN BODY) -->
 <!-- 🔥 SPLASH SCREEN -->
@@ -40159,7 +40392,7 @@ OPEN
 
 openBtn.onclick = () => {
 
-    overlay.hidden = false;
+  overlay.removeAttribute("hidden");
 
     prompt.focus();
 
@@ -40171,7 +40404,7 @@ CLOSE
 
 closeBtn.onclick = () => {
 
-    overlay.hidden = true;
+  overlay.setAttribute("hidden","");
 
 };
 
@@ -43118,77 +43351,7 @@ KEEP THIS AS IS
 </div>
  
 
-<!--=========================================================
-  GREENGUARD AI CHAT
-==========================================================-->
 
-<div id="ggAiOverlay" class="gg-ai-overlay" hidden>
-
-    <div class="gg-ai-window">
-
-        <div class="gg-ai-header">
-
-            <div class="gg-ai-title">
-
-                🤖 GreenGuard AI
-
-            </div>
-
-            <button
-                id="ggAiClose"
-                class="gg-ai-close">
-
-                ✕
-
-            </button>
-
-        </div>
-
-        <div
-            id="ggAiMessages"
-            class="gg-ai-messages">
-
-        </div>
-
-        <div
-            id="ggAiThinking"
-            class="gg-ai-thinking"
-            hidden>
-
-            GreenGuard AI is thinking...
-
-        </div>
-
-        <div class="gg-ai-input">
-
-            <textarea
-                id="ggAiPrompt"
-                placeholder="Ask GreenGuard AI..."
-                rows="1"
-                autocomplete="off"></textarea>
-
-            <button
-                id="ggAiSend"
-                class="gg-ai-send">
-
-                ➤
-
-            </button>
-
-        </div>
-
-    </div>
-
-</div>
-
-<button
-    id="ggAiOpen"
-    class="gg-ai-fab"
-    title="GreenGuard AI">
-
-    🤖
-
-</button>
 
 </body>
 </html>
