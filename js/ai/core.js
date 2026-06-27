@@ -542,138 +542,35 @@
 
     };
 
-     /*----------------------------------------------------------
-      CALL AI
-    ----------------------------------------------------------*/
+    /*----------------------------------------------------------
+  CALL AI
+----------------------------------------------------------*/
 
-    Core.callAI = async function (
+Core.callAI = async function (
 
-        request
-
-    ) {
-
-        busy = true;
-
-        currentAbort = null;
-
-        try {
-
-            const cached =
-
-                await Core.getCachedResponse(
-
-                    request
-
-                );
-
-            if (
-
-                cached
-
-            ) {
-
-                responseCount++;
-
-                lastResponse =
-
-                    Config.clone(
-
-                        cached
-
-                    );
-
-                busy = false;
-
-                return cached;
-
-            }
-
-           if (
-
-    typeof window.callBackend
-
-    !== "function"
+    request
 
 ) {
 
-    throw new Error(
+    busy = true;
 
-        "callBackend() not found."
+    currentAbort = null;
 
-    );
+    try {
 
-}
+        const cached =
 
-const payload = {
+            await Core.getCachedResponse(
 
-    query:
-
-        request.query,
-
-    intent:
-
-        request.intent,
-
-    context:
-
-        Config.clone(
-
-            request.context
-
-        ),
-
-    options:
-
-        Config.clone(
-
-            request.options
-
-        )
-
-};
-
-const result =
-
-    await window.callBackend(
-
-        "askAI",
-
-        payload
-
-    );
-            const response = {
-
-                success: true,
-
-                timestamp:
-
-                    Date.now(),
-
-                requestId:
-
-                    request.id,
-
-                intent:
-
-                    request.intent,
-
-                answer:
-
-                    result,
-
-                cached:
-
-                    false
-
-            };
-
-            await Core.setCachedResponse(
-
-                request,
-
-                response
+                request
 
             );
+
+        if (
+
+            cached
+
+        ) {
 
             responseCount++;
 
@@ -681,46 +578,117 @@ const result =
 
                 Config.clone(
 
-                    response
+                    cached
 
                 );
 
             busy = false;
 
-            return response;
+            return cached;
 
         }
 
-        catch (err) {
+        if (
 
-            busy = false;
+            typeof window.callAI !== "function"
 
-            lastError = err;
+        ) {
 
-            Config.error(
+            throw new Error(
 
-                "Core.callAI",
-
-                err
+                "callAI() not found."
 
             );
 
-            return {
-
-                success: false,
-
-                error:
-
-                    err.message ||
-
-                    String(err)
-
-            };
-
         }
 
-    };
+        const result =
 
+            await window.callAI(
+
+                request
+
+            );
+
+        const response = {
+
+            success: true,
+
+            timestamp:
+
+                Date.now(),
+
+            requestId:
+
+                request.id,
+
+            intent:
+
+                request.intent,
+
+            answer:
+
+                result,
+
+            cached:
+
+                false
+
+        };
+
+        await Core.setCachedResponse(
+
+            request,
+
+            response
+
+        );
+
+        responseCount++;
+
+        lastResponse =
+
+            Config.clone(
+
+                response
+
+            );
+
+        busy = false;
+
+        return response;
+
+    }
+
+    catch (err) {
+
+        busy = false;
+
+        lastError = err;
+
+        Config.error(
+
+            "Core.callAI",
+
+            err
+
+        );
+
+        return {
+
+            success: false,
+
+            error:
+
+                err.message ||
+
+                String(err)
+
+        };
+
+    }
+
+};
      /*----------------------------------------------------------
       PUBLIC API
     ----------------------------------------------------------*/
