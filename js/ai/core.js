@@ -542,11 +542,7 @@
 
     };
 
-    /*----------------------------------------------------------
-  CALL AI
-----------------------------------------------------------*/
-
-Core.callAI = async function (
+   Core.callAI = async function (
 
     request
 
@@ -554,33 +550,14 @@ Core.callAI = async function (
 
     busy = true;
 
-    currentAbort = null;
-
     try {
 
         const cached =
-
             await Core.getCachedResponse(
-
                 request
-
             );
 
-        if (
-
-            cached
-
-        ) {
-
-            responseCount++;
-
-            lastResponse =
-
-                Config.clone(
-
-                    cached
-
-                );
+        if (cached) {
 
             busy = false;
 
@@ -588,57 +565,59 @@ Core.callAI = async function (
 
         }
 
+        //--------------------------------------------------
+        // FIRST CALL
+        //--------------------------------------------------
+
+        let result =
+            await window.callAI({
+
+                query:
+                    request.query,
+
+                intent:
+                    request.intent,
+
+                context:
+                    Config.clone(
+                        request.context
+                    ),
+
+                toolResults: {}
+
+            });
+
+        //--------------------------------------------------
+        // TOOL EXECUTION
+        //--------------------------------------------------
+
         if (
 
-            typeof window.callAI !== "function"
+            result.tool_calls &&
+
+            result.tool_calls.length
 
         ) {
 
-            throw new Error(
+            const toolResults = {};
 
-                "callAI() not found."
+            for (
 
-            );
+                const tool
 
-        }
+                of
 
-      let result =
+                result.tool_calls
 
-    await window.callAI(
+            ) {
 
-        request
+                try {
 
-    );
+                    if (
 
-/*----------------------------------------------------------
-  EXECUTE TOOL CALLS
-----------------------------------------------------------*/
+    !GreenGuardAI.Tools ||
 
-if (
-
-    Array.isArray(
-
-        result.tool_calls
-
-    ) &&
-
-    result.tool_calls.length > 0
-
-) {
-
-    const toolResults = {};
-
-    for (
-
-        const tool
-
-        of
-
-        result.tool_calls
-
-    ) {if (
-
-    !GreenGuardAI.Tools
+    typeof GreenGuardAI.Tools.execute !== "function"
 
 ) {
 
@@ -650,100 +629,90 @@ if (
 
 }
 
-if (
-
-    !GreenGuardAI.Tools.list()
-
-        .includes(
-
-            tool.name
-
-        )
-
-) {
-
-    throw new Error(
-
-        "Unknown tool: " +
-
-        tool.name
-
-    );
-
-}
-
 toolResults[
-
     tool.name
-
 ] =
 
 await GreenGuardAI
-
     .Tools
-
     .execute(
 
         tool.name,
 
-        tool.arguments ||
-
-        {}
+        tool.arguments || {}
 
     );
 
-    }
+                }
 
-    result =
+                catch (
 
-        await window.callAI({
+                    e
 
-            query:
+                ) {
 
-                request.query,
+                    toolResults[
+                        tool.name
+                    ] = {
 
-            intent:
+                        error:
 
-                request.intent,
+                            e.message
 
-            context:
+                    };
 
-                request.context,
+                }
 
-            toolResults
+            }
 
-        });
+            //--------------------------------------------------
+            // SECOND CALL
+            //--------------------------------------------------
 
-}
+            result =
+                await window.callAI({
+
+                    query:
+                        request.query,
+
+                    intent:
+                        request.intent,
+
+                    context:
+                        Config.clone(
+                            request.context
+                        ),
+
+                    toolResults
+
+                });
+
+        }
 
       const response = {
 
-    success:
-
-        result.success,
+    success: true,
 
     timestamp:
-
         Date.now(),
 
     requestId:
-
         request.id,
 
     intent:
-
         request.intent,
 
     answer:
+        result.reply ||
 
-        result.reply,
-
-    raw:
+        result.answer ||
 
         result,
 
-    cached:
+    raw:
+        result,
 
+    cached:
         false
 
 };
@@ -756,27 +725,19 @@ await GreenGuardAI
 
         );
 
-        responseCount++;
-
-        lastResponse =
-
-            Config.clone(
-
-                response
-
-            );
-
         busy = false;
 
         return response;
 
     }
 
-    catch (err) {
+    catch (
+
+        err
+
+    ) {
 
         busy = false;
-
-        lastError = err;
 
         Config.error(
 
@@ -792,9 +753,7 @@ await GreenGuardAI
 
             error:
 
-                err.message ||
-
-                String(err)
+                err.message
 
         };
 
