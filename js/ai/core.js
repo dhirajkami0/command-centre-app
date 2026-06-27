@@ -602,13 +602,119 @@ Core.callAI = async function (
 
         }
 
-        const result =
+      let result =
 
-            await window.callAI(
+    await window.callAI(
 
-                request
+        request
 
-            );
+    );
+
+/*----------------------------------------------------------
+  EXECUTE TOOL CALLS
+----------------------------------------------------------*/
+
+if (
+
+    Array.isArray(
+
+        result.tool_calls
+
+    ) &&
+
+    result.tool_calls.length > 0
+
+) {
+
+    const toolResults = {};
+
+    for (
+
+        const tool
+
+        of
+
+        result.tool_calls
+
+    ) {if (
+
+    !GreenGuardAI.Tools
+
+) {
+
+    throw new Error(
+
+        "Tools module not loaded."
+
+    );
+
+}
+
+if (
+
+    !GreenGuardAI.Tools.list()
+
+        .includes(
+
+            tool.name
+
+        )
+
+) {
+
+    throw new Error(
+
+        "Unknown tool: " +
+
+        tool.name
+
+    );
+
+}
+
+toolResults[
+
+    tool.name
+
+] =
+
+await GreenGuardAI
+
+    .Tools
+
+    .execute(
+
+        tool.name,
+
+        tool.arguments ||
+
+        {}
+
+    );
+
+    }
+
+    result =
+
+        await window.callAI({
+
+            query:
+
+                request.query,
+
+            intent:
+
+                request.intent,
+
+            context:
+
+                request.context,
+
+            toolResults
+
+        });
+
+}
 
       const response = {
 
