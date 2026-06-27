@@ -1,39 +1,51 @@
-async function callAI(request) {
+(function (window) {
 
-  const res = await fetch(
+    "use strict";
 
-    "https://askai-ugffgukzca-uc.a.run.app",
+    window.callAI = async function (request) {
 
-    {
+        const res = await fetch(
 
-      method: "POST",
+            "https://askai-ugffgukzca-uc.a.run.app",
 
-      headers: {
+            {
 
-        "Content-Type": "application/json"
+                method: "POST",
 
-      },
+                headers: {
 
-      body: JSON.stringify(request)
+                    "Content-Type": "application/json"
 
-    }
+                },
 
-  );
+                body: JSON.stringify(request)
 
-  const data = await res.json();
+            }
 
-  if (!res.ok || !data.success) {
+        );
 
-    throw new Error(
+        const data = await res.json();
 
-      data.error ||
+        if (
 
-      "AI request failed."
+            !res.ok ||
 
-    );
+            !data.success
 
-  }
+        ) {
 
-  return data;
+            throw new Error(
 
-}
+                data.error ||
+
+                "AI request failed."
+
+            );
+
+        }
+
+        return data;
+
+    };
+
+})(window);
