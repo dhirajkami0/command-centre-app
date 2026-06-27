@@ -206,13 +206,19 @@ Tools.register(
 
         }
 
-        return {
+        return await window.callBackend(
 
-            error:
+            "searchSpecies",
 
-                "searchSpecies not implemented"
+            {
 
-        };
+                name:
+
+                    args.name || ""
+
+            }
+
+        );
 
     }
 
@@ -244,13 +250,19 @@ Tools.register(
 
         }
 
-        return {
+        return await window.callBackend(
 
-            error:
+            "searchLegal",
 
-                "searchLegal not implemented"
+            {
 
-        };
+                query:
+
+                    args.query || ""
+
+            }
+
+        );
 
     }
 
