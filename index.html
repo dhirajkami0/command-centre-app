@@ -1704,71 +1704,8 @@ NORTH REMAINS ABSOLUTE
   box-shadow:none !important;
 
 }
-const gridRewardStyle =
-document.createElement("style");
 
-gridRewardStyle.id =
-  "gridRewardStyle";
-
-gridRewardStyle.innerHTML = `
-
-.flyingGridStar{
-
-  display:inline-block;
-
-  will-change:
-    transform,
-    opacity;
-
-  animation:
-    flyGridStar
-    2s ease-out forwards;
-
-}
-
-@keyframes flyGridStar{
-
-  0%{
-
-    opacity:0;
-
-    transform:
-      translate3d(
-        0,
-        0,
-        0
-      )
-      scale(.5);
-
-  }
-
-  15%{
-
-    opacity:1;
-
-  }
-
-  100%{
-
-    opacity:0;
-
-    transform:
-      translate3d(
-        0,
-        -180px,
-        0
-      )
-      scale(2);
-
-  }
-
-}
-
-`;
-
-document.head.appendChild(
-  gridRewardStyle
-);/*=========================================================
+    /*=========================================================
   GREENGUARD AI
 =========================================================*/
 
@@ -40383,7 +40320,31 @@ const thinking =
     document.getElementById(
         "ggAiThinking"
     );
+if(
 
+    !overlay ||
+
+    !openBtn ||
+
+    !closeBtn ||
+
+    !sendBtn ||
+
+    !prompt ||
+
+    !messages ||
+
+    !thinking
+
+){
+
+    console.error(
+        "GreenGuard AI UI not found."
+    );
+
+    return;
+
+}
 /*--------------------------------------------------
 OPEN
 --------------------------------------------------*/
@@ -40567,7 +40528,71 @@ prompt.addEventListener(
 );
 
 });
+const gridRewardStyle =
+document.createElement("style");
 
+gridRewardStyle.id =
+  "gridRewardStyle";
+
+gridRewardStyle.innerHTML = `
+
+.flyingGridStar{
+
+  display:inline-block;
+
+  will-change:
+    transform,
+    opacity;
+
+  animation:
+    flyGridStar
+    2s ease-out forwards;
+
+}
+
+@keyframes flyGridStar{
+
+  0%{
+
+    opacity:0;
+
+    transform:
+      translate3d(
+        0,
+        0,
+        0
+      )
+      scale(.5);
+
+  }
+
+  15%{
+
+    opacity:1;
+
+  }
+
+  100%{
+
+    opacity:0;
+
+    transform:
+      translate3d(
+        0,
+        -180px,
+        0
+      )
+      scale(2);
+
+  }
+
+}
+
+`;
+
+document.head.appendChild(
+  gridRewardStyle
+);
   
   </script>
 
