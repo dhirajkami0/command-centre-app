@@ -1,0 +1,367 @@
+/*!
+ * GreenGuard AI
+ * config.js
+ * Version: 1.0.0
+ * Production Safe
+ */
+
+(function (window) {
+
+    "use strict";
+
+    /*------------------------------------------------------------
+      Create Global Namespace
+    ------------------------------------------------------------*/
+
+    window.GreenGuardAI = window.GreenGuardAI || {};
+
+    /*------------------------------------------------------------
+      Prevent Double Loading
+    ------------------------------------------------------------*/
+
+    if (window.GreenGuardAI.Config) {
+
+        console.warn(
+            "[GreenGuardAI] Config already loaded."
+        );
+
+        return;
+
+    }
+
+    const GG = {};
+
+    /*------------------------------------------------------------
+      APP INFO
+    ------------------------------------------------------------*/
+
+    GG.APP = Object.freeze({
+
+        NAME: "GreenGuard Intelligence",
+
+        VERSION: "1.0.0",
+
+        BUILD: "2026.06.27",
+
+        AUTHOR: "GreenGuard",
+
+        ENVIRONMENT: "production"
+
+    });
+
+    /*------------------------------------------------------------
+      DEBUG
+    ------------------------------------------------------------*/
+
+    GG.DEBUG = Object.freeze({
+
+        ENABLED: false,
+
+        LOG_AI: false,
+
+        LOG_FIRESTORE: false,
+
+        LOG_ROUTER: false,
+
+        LOG_CONTEXT: false,
+
+        LOG_CACHE: false
+
+    });
+
+    /*------------------------------------------------------------
+      CLOUD FUNCTIONS
+    ------------------------------------------------------------*/
+
+    GG.API = Object.freeze({
+
+        ASK_AI: "askAI",
+
+        SEARCH: "searchAI",
+
+        EMBEDDING: "embeddingAI",
+
+        IMAGE: "imageAI"
+
+    });
+
+    /*------------------------------------------------------------
+      FIRESTORE COLLECTIONS
+    ------------------------------------------------------------*/
+
+    GG.COLLECTIONS = Object.freeze({
+
+        LIVE_STAFF: "live_staff",
+
+        PATROL_TRACKS: "patrol_tracks",
+
+        AI_SESSIONS: "ai_sessions",
+
+        AI_FEEDBACK: "ai_feedback",
+
+        KNOWLEDGE: "knowledge",
+
+        LEGAL_ACTS: "legal_acts",
+
+        JUDGMENTS: "judgments",
+
+        SPECIES: "species"
+
+    });
+
+    /*------------------------------------------------------------
+      CACHE
+    ------------------------------------------------------------*/
+
+    GG.CACHE = Object.freeze({
+
+        ENABLED: true,
+
+        DATABASE: "GG_AI_CACHE",
+
+        VERSION: 1,
+
+        STORE: "responses",
+
+        MAX_MEMORY_ITEMS: 100,
+
+        TTL: 30 * 60 * 1000
+
+    });
+
+    /*------------------------------------------------------------
+      CHAT
+    ------------------------------------------------------------*/
+
+    GG.CHAT = Object.freeze({
+
+        MAX_HISTORY: 20,
+
+        MAX_PROMPT_LENGTH: 12000,
+
+        MAX_RESPONSE_LENGTH: 40000,
+
+        STREAMING: true,
+
+        TEMPERATURE: 0.2
+
+    });
+
+    /*------------------------------------------------------------
+      CONTEXT
+    ------------------------------------------------------------*/
+
+    GG.CONTEXT = Object.freeze({
+
+        INCLUDE_USER: true,
+
+        INCLUDE_DUTY: true,
+
+        INCLUDE_MAP: true,
+
+        INCLUDE_GPS: true,
+
+        INCLUDE_PATROL: true,
+
+        INCLUDE_ANALYTICS: true,
+
+        INCLUDE_SIGHTINGS: true,
+
+        INCLUDE_SELECTION: true
+
+    });
+
+    /*------------------------------------------------------------
+      ROUTES
+    ------------------------------------------------------------*/
+
+    GG.ROUTES = Object.freeze({
+
+        GENERAL: "general",
+
+        OPERATIONAL: "operational",
+
+        LEGAL: "legal",
+
+        SPECIES: "species",
+
+        REPORT: "report",
+
+        GIS: "gis",
+
+        PATROL: "patrol",
+
+        ANALYTICS: "analytics"
+
+    });
+
+    /*------------------------------------------------------------
+      UI
+    ------------------------------------------------------------*/
+
+    GG.UI = Object.freeze({
+
+        PANEL_WIDTH: 420,
+
+        PANEL_MIN_WIDTH: 360,
+
+        PANEL_MAX_WIDTH: 550,
+
+        AUTO_SCROLL: true,
+
+        SHOW_TIMESTAMP: true,
+
+        ANIMATION: true
+
+    });
+
+    /*------------------------------------------------------------
+      PERFORMANCE
+    ------------------------------------------------------------*/
+
+    GG.PERFORMANCE = Object.freeze({
+
+        MAX_STAFF_CONTEXT: 200,
+
+        MAX_TRACK_POINTS: 300,
+
+        MAX_SIGHTINGS: 100,
+
+        MAX_COMPARTMENTS: 50,
+
+        DEBOUNCE_MS: 250
+
+    });
+
+    /*------------------------------------------------------------
+      SECURITY
+    ------------------------------------------------------------*/
+
+    GG.SECURITY = Object.freeze({
+
+        SANITIZE_HTML: true,
+
+        ESCAPE_MARKDOWN: true,
+
+        ALLOW_IMAGES: true,
+
+        ALLOW_HTML: false
+
+    });
+
+    /*------------------------------------------------------------
+      FIREBASE HELPERS
+    ------------------------------------------------------------*/
+
+    GG.getFirestore = function () {
+
+        return window.db || null;
+
+    };
+
+    GG.getFirebase = function () {
+
+        return window.fb || null;
+
+    };
+
+    /*------------------------------------------------------------
+      UTILITIES
+    ------------------------------------------------------------*/
+
+    GG.log = function (module, ...args) {
+
+        if (!GG.DEBUG.ENABLED)
+            return;
+
+        console.log("[AI][" + module + "]", ...args);
+
+    };
+
+    GG.warn = function (module, ...args) {
+
+        console.warn("[AI][" + module + "]", ...args);
+
+    };
+
+    GG.error = function (module, ...args) {
+
+        console.error("[AI][" + module + "]", ...args);
+
+    };
+
+    GG.isOnline = function () {
+
+        return navigator.onLine;
+
+    };
+
+    GG.now = function () {
+
+        return Date.now();
+
+    };
+
+    GG.sleep = function (ms) {
+
+        return new Promise(resolve => setTimeout(resolve, ms));
+
+    };
+
+    GG.uuid = function () {
+
+        if (window.crypto && window.crypto.randomUUID) {
+
+            return window.crypto.randomUUID();
+
+        }
+
+        return "ai_" +
+            Date.now() +
+            "_" +
+            Math.random()
+                .toString(36)
+                .slice(2, 10);
+
+    };
+
+    GG.clone = function (obj) {
+
+        return structuredClone
+            ? structuredClone(obj)
+            : JSON.parse(JSON.stringify(obj));
+
+    };
+
+    GG.isFunction = function (fn) {
+
+        return typeof fn === "function";
+
+    };
+
+    GG.exists = function (v) {
+
+        return v !== undefined &&
+               v !== null;
+
+    };
+
+    GG.noop = function () {};
+
+    /*------------------------------------------------------------
+      REGISTER MODULE
+    ------------------------------------------------------------*/
+
+    window.GreenGuardAI.Config = GG;
+
+    console.log(
+
+        "%cGreenGuard AI Config Loaded",
+
+        "color:#00aa00;font-weight:bold;",
+
+        GG.APP.VERSION
+
+    );
+
+})(window);
