@@ -148,7 +148,113 @@ Tools.register(
     }
 
 );
+/*----------------------------------------------------------
+  EXTRA BUILT-IN TOOLS
+----------------------------------------------------------*/
 
+Tools.register(
+
+    "getLocation",
+
+    async ()=>{
+
+        return GreenGuardAI
+            .Context
+            .getLocation();
+
+    }
+
+);
+
+Tools.register(
+
+    "getSelection",
+
+    async ()=>{
+
+        return GreenGuardAI
+            .Context
+            .getSelection();
+
+    }
+
+);
+
+Tools.register(
+
+    "searchSpecies",
+
+    async (
+
+        args = {}
+
+    )=>{
+
+        if(
+
+            typeof window.searchSpecies ===
+
+            "function"
+
+        ){
+
+            return await window.searchSpecies(
+
+                args.name || ""
+
+            );
+
+        }
+
+        return {
+
+            error:
+
+                "searchSpecies not implemented"
+
+        };
+
+    }
+
+);
+
+Tools.register(
+
+    "searchLegal",
+
+    async (
+
+        args = {}
+
+    )=>{
+
+        if(
+
+            typeof window.searchLegal ===
+
+            "function"
+
+        ){
+
+            return await window.searchLegal(
+
+                args.query || ""
+
+            );
+
+        }
+
+        return {
+
+            error:
+
+                "searchLegal not implemented"
+
+        };
+
+    }
+
+);
 /*----------------------------------------------------------
   EXPORT
 ----------------------------------------------------------*/
