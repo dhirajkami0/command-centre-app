@@ -1907,7 +1907,7 @@
             case INTENTS.STAFF:
 
                 context.profile =
-                   Context.getProfile()
+                   Context.getProfile();
 
                 context.liveStaff =
                     Context.getLiveStaff();
@@ -1916,11 +1916,11 @@
 
             case INTENTS.PATROL:
 
-                context.profile =
-                    Context.getUser();
+               context.profile =
+    Context.getProfile();
 
-                context.duty =
-                    Context.getDuty();
+context.duty =
+    Context.getDuty();
 
                 context.patrol =
                     Context.getPatrol();
@@ -1966,14 +1966,14 @@
             case INTENTS.SPECIES:
 
                 context.profile =
-                    Context.getUser();
+                     Context.getProfile();
 
                 break;
 
             case INTENTS.LEGAL:
 
                 context.profile =
-                    Context.getUser();
+                      Context.getProfile();
 
                 context.selection =
                     Context.getSelection();
@@ -1983,7 +1983,7 @@
             case INTENTS.REPORT:
 
                 context.profile =
-                    Context.getUser();
+                     Context.getProfile();
 
                 context.duty =
                     Context.getDuty();
@@ -2002,7 +2002,7 @@
             default:
 
                 context.profile =
-                    Context.getUser();
+                      Context.getProfile();
 
                 context.selection =
                     Context.getSelection();
