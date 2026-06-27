@@ -248,6 +248,82 @@ Tools.register(
     }
 
 );
+    Tools.register(
+
+    "getArea",
+
+    async (args = {}) => {
+
+        const name =
+            (args.name || "")
+            .trim()
+            .toUpperCase();
+
+        let feature = null;
+
+        feature =
+            (window.allCompartmentFeatures || [])
+            .find(f =>
+
+                String(
+                    f.properties.compartment ||
+                    f.properties.Compartment
+                )
+                .trim()
+                .toUpperCase() === name
+
+            );
+
+        if (!feature) {
+
+            feature =
+                (window.allGISFeatures || [])
+                .find(f =>
+
+                    String(
+                        f.properties.Range ||
+                        f.properties.range ||
+                        f.properties.Beat ||
+                        f.properties.beat ||
+                        f.properties.Division ||
+                        f.properties.division
+                    )
+                    .trim()
+                    .toUpperCase() === name
+
+                );
+        }
+
+        if (!feature) {
+
+            return {
+                success: false,
+                error: "Polygon not found."
+            };
+
+        }
+
+        const sqm =
+            turf.area(feature);
+
+        return {
+
+            success: true,
+
+            areaSqM:
+                sqm,
+
+            areaHa:
+                sqm / 10000,
+
+            areaSqKm:
+                sqm / 1000000
+
+        };
+
+    }
+
+);
 /*----------------------------------------------------------
   EXPORT
 ----------------------------------------------------------*/
