@@ -255,6 +255,73 @@ Tools.register(
     }
 
 );
+    /*----------------------------------------------------------
+  OPERATIONAL TOOLS
+----------------------------------------------------------*/
+
+Tools.register(
+
+    "getSightings",
+
+    async ()=>{
+
+        return await window.callBackend(
+
+            "getSightings"
+
+        );
+
+    }
+
+);
+
+Tools.register(
+
+    "getWeather",
+
+    async ()=>{
+
+        return await window.callBackend(
+
+            "getWeatherFull"
+
+        );
+
+    }
+
+);
+
+Tools.register(
+
+    "getVillages",
+
+    async ()=>{
+
+        return await window.callBackend(
+
+            "getVillages"
+
+        );
+
+    }
+
+);
+
+Tools.register(
+
+    "getMapData",
+
+    async ()=>{
+
+        return await window.callBackend(
+
+            "getMapData"
+
+        );
+
+    }
+
+);
 /*----------------------------------------------------------
   EXPORT
 ----------------------------------------------------------*/
