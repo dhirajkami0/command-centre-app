@@ -1,23 +1,39 @@
-async function askAI(prompt) {
+async function callAI(request) {
 
   const res = await fetch(
+
     "https://askai-ugffgukzca-uc.a.run.app",
+
     {
+
       method: "POST",
+
       headers: {
+
         "Content-Type": "application/json"
+
       },
-      body: JSON.stringify({
-        prompt
-      })
+
+      body: JSON.stringify(request)
+
     }
+
   );
 
   const data = await res.json();
 
-  if (!data.success) {
-    throw new Error(data.error);
+  if (!res.ok || !data.success) {
+
+    throw new Error(
+
+      data.error ||
+
+      "AI request failed."
+
+    );
+
   }
 
-  return data.reply;
+  return data;
+
 }
