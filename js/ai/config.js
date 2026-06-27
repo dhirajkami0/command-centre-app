@@ -265,30 +265,45 @@
 
     };
 
-    /*------------------------------------------------------------
+      /*----------------------------------------------------------
       UTILITIES
-    ------------------------------------------------------------*/
+    ----------------------------------------------------------*/
 
     GG.log = function (module, ...args) {
 
         if (!GG.DEBUG.ENABLED)
             return;
 
-        console.log("[AI][" + module + "]", ...args);
+        console.log(
+            "[AI][" + module + "]",
+            ...args
+        );
 
     };
+
+
 
     GG.warn = function (module, ...args) {
 
-        console.warn("[AI][" + module + "]", ...args);
+        console.warn(
+            "[AI][" + module + "]",
+            ...args
+        );
 
     };
+
+
 
     GG.error = function (module, ...args) {
 
-        console.error("[AI][" + module + "]", ...args);
+        console.error(
+            "[AI][" + module + "]",
+            ...args
+        );
 
     };
+
+
 
     GG.isOnline = function () {
 
@@ -296,42 +311,121 @@
 
     };
 
+
+
     GG.now = function () {
 
         return Date.now();
 
     };
 
+
+
     GG.sleep = function (ms) {
 
-        return new Promise(resolve => setTimeout(resolve, ms));
+        return new Promise(
+
+            resolve =>
+
+                setTimeout(
+
+                    resolve,
+
+                    ms
+
+                )
+
+        );
 
     };
 
+
+
+    /*----------------------------------------------------------
+      UUID
+    ----------------------------------------------------------*/
+
     GG.uuid = function () {
 
-        if (window.crypto && window.crypto.randomUUID) {
+        if (
+
+            window.crypto &&
+
+            typeof window.crypto.randomUUID === "function"
+
+        ) {
 
             return window.crypto.randomUUID();
 
         }
 
-        return "ai_" +
-            Date.now() +
-            "_" +
+        return [
+
+            "ai",
+
+            Date.now(),
+
             Math.random()
+
                 .toString(36)
-                .slice(2, 10);
+
+                .substring(2, 10)
+
+        ]
+
+        .join("_");
 
     };
 
-    GG.clone = function (obj) {
 
-        return structuredClone
-            ? structuredClone(obj)
-            : JSON.parse(JSON.stringify(obj));
+
+    /*----------------------------------------------------------
+      CLONE
+    ----------------------------------------------------------*/
+
+    GG.clone = function (value) {
+
+        try {
+
+            if (
+
+                typeof structuredClone ===
+
+                "function"
+
+            ) {
+
+                return structuredClone(
+
+                    value
+
+                );
+
+            }
+
+        }
+
+        catch (err) {}
+
+        try {
+
+            return JSON.parse(
+
+                JSON.stringify(value)
+
+            );
+
+        }
+
+        catch (err) {
+
+            return value;
+
+        }
 
     };
+
+
 
     GG.isFunction = function (fn) {
 
@@ -339,16 +433,23 @@
 
     };
 
-    GG.exists = function (v) {
 
-        return v !== undefined &&
-               v !== null;
+
+    GG.exists = function (value) {
+
+        return (
+
+            value !== undefined &&
+
+            value !== null
+
+        );
 
     };
 
-    GG.noop = function () {};
 
-    /*------------------------------------------------------------
+
+    GG.noop = function () {};    /*------------------------------------------------------------
       REGISTER MODULE
     ------------------------------------------------------------*/
 
