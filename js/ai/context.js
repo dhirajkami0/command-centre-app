@@ -79,12 +79,14 @@
 
         try {
 
-            ready = true;
+          await Cache.init();
 
-            Config.log(
-                "Context",
-                "Initialized"
-            );
+ready = true;
+
+Config.log(
+    "Context",
+    "Initialized"
+);
 
             return true;
 
@@ -358,12 +360,19 @@
   /*----------------------------------------------------------
   USER
 ----------------------------------------------------------*/
+/*----------------------------------------------------------
+  USER PROFILE
+----------------------------------------------------------*/
 
-Context.getUser = function () {
+Context.getProfile = function () {
 
-    return object(
+    return clone(
 
-        read("currentUser", {})
+        object(
+
+            read("userProfile", {})
+
+        )
 
     );
 
@@ -377,14 +386,35 @@ Context.getUser = function () {
 
 Context.getDuty = function () {
 
-    return object(
+    const sessions = object(
 
-        read("currentDuty", {})
+        read(
+            "activeSessionMap",
+            {}
+        )
 
     );
 
-};
+    return {
 
+        active:
+
+            !!read(
+                "isDutyActive",
+                false
+            ),
+
+        sessions:
+
+            clone(sessions),
+
+        sessionCount:
+
+            Object.keys(sessions).length
+
+    };
+
+};
 
 
 /*----------------------------------------------------------
@@ -403,32 +433,218 @@ Context.getSelection = function () {
 
 
 
+
+
 /*----------------------------------------------------------
   CURRENT LOCATION
 ----------------------------------------------------------*/
 
 Context.getLocation = function () {
 
+    const gps = object(
+
+        read("latestGps", {})
+
+    );
+
     return {
 
-        lat: number(
+        lat: number(gps.lat),
 
-            read("currentLatitude", 0)
+        lng: number(gps.lng),
 
-        ),
+        accuracy: number(gps.accuracy),
 
-        lng: number(
+        speed: number(gps.speed),
 
-            read("currentLongitude", 0)
+        heading: number(gps.heading),
 
+        timestamp: gps.timestamp || null
+
+    };
+
+};
+/*----------------------------------------------------------
+  LIVE STAFF
+----------------------------------------------------------*/
+
+Context.getLiveStaff = function () {
+
+    const markers = object(
+
+        read("staffMarkers", {})
+
+    );
+
+    return {
+
+        count: Object.keys(markers).length,
+
+        names: Object.keys(markers)
+
+    };
+
+};
+/*----------------------------------------------------------
+  PATROL
+----------------------------------------------------------*/
+
+Context.getPatrol = function () {
+
+    const tracks = object(
+
+        read(
+            "staffTracks",
+            {}
         )
+
+    );
+
+    const sessions = object(
+
+        read(
+            "activeSessionMap",
+            {}
+        )
+
+    );
+
+    return {
+
+        tracks:
+
+            Object.keys(tracks).length,
+
+        sessions:
+
+            Object.keys(sessions).length,
+
+        latestGps:
+
+            clone(
+
+                object(
+
+                    read(
+                        "latestGps",
+                        {}
+                    )
+
+                )
+
+            )
 
     };
 
 };
 
+    /*----------------------------------------------------------
+  GIS
+----------------------------------------------------------*/
+
+Context.getGIS = function () {
+
+    const features =
+
+        array(
+
+            read(
+
+                "allGISFeatures",
+
+                []
+
+            )
+
+        );
+
+    const compartments =
+
+        array(
+
+            read(
+
+                "allCompartmentFeatures",
+
+                []
+
+            )
+
+        );
+
+    return {
+
+        featureCount:
+
+            features.length,
+
+        compartmentCount:
+
+            compartments.length,
+
+        gridReady:
+
+            !!read(
+
+                "__gridReady",
+
+                false
+
+            )
+
+    };
 
 
+    
+};
+
+    /*----------------------------------------------------------
+  ANALYTICS
+----------------------------------------------------------*/
+
+Context.getAnalytics = function () {
+
+    return {
+
+        realtime:
+
+            clone(
+
+                object(
+
+                    read(
+
+                        "realtimeAnalyticsState",
+
+                        {}
+
+                    )
+
+                )
+
+            ),
+
+        monthly:
+
+            clone(
+
+                object(
+
+                    read(
+
+                        "monthlyStatusCache",
+
+                        {}
+
+                    )
+
+                )
+
+            )
+
+    };
+
+};
 /*----------------------------------------------------------
   DEVICE
 ----------------------------------------------------------*/
@@ -463,47 +679,109 @@ Context.getDevice = function () {
   SNAPSHOT
 ----------------------------------------------------------*/
 
-Context.snapshot = function () {
+Context.snapshot = async function () {
 
-    lastContext = {
+  lastContext = {
 
-        user:
+   profile:
 
-            Context.getUser(),
+    Context.getProfile(),
 
-        duty:
+    duty:
 
-            Context.getDuty(),
+        Context.getDuty(),
 
-        selection:
+    liveStaff:
 
-            Context.getSelection(),
+        Context.getLiveStaff(),
 
-        location:
+    patrol:
 
-            Context.getLocation(),
+        Context.getPatrol(),
 
-        device:
+    gis:
 
-            Context.getDevice(),
+        Context.getGIS(),
 
-        updated:
+    analytics:
 
-            timestamp()
+        Context.getAnalytics(),
 
-    };
+    selection:
 
-    lastUpdated =
+        Context.getSelection(),
 
-        lastContext.updated;
+    location:
 
-    return clone(
+        Context.getLocation(),
 
-        lastContext
+    device:
 
-    );
+        Context.getDevice(),
+
+    updated:
+
+        timestamp()
 
 };
+  lastUpdated =
+    lastContext.updated;
+
+await cacheSet(
+    "context_snapshot",
+    lastContext,
+    10000
+);
+
+return clone(
+    lastContext
+);
+};
+    Context.updated = function () {
+
+    return lastUpdated;
+
+};
+/*----------------------------------------------------------
+  REFRESH
+----------------------------------------------------------*/
+
+Context.refresh = async function () {
+
+    Context.reset();
+
+    return await Context.snapshot();
+
+};
+    /*----------------------------------------------------------
+  AUTO INITIALIZE
+----------------------------------------------------------*/
+
+Context.init()
+
+    .then(() => {
+
+        Config.log(
+
+            "Context",
+
+            "Ready"
+
+        );
+
+    })
+
+    .catch((err) => {
+
+        Config.error(
+
+            "Context",
+
+            err
+
+        );
+
+    });
     /*----------------------------------------------------------
       Register
     ----------------------------------------------------------*/
