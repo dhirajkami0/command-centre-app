@@ -689,7 +689,7 @@ await GreenGuardAI
 
         }
 
-      const response = {
+     const response = {
 
     success: true,
 
@@ -703,16 +703,39 @@ await GreenGuardAI
         request.intent,
 
     answer:
+
         result.reply ||
 
         result.answer ||
 
-        result,
+        result.content ||
+
+        result.message ||
+
+        (
+
+            typeof result === "string"
+
+                ? result
+
+                : JSON.stringify(
+
+                    result,
+
+                    null,
+
+                    2
+
+                )
+
+        ),
 
     raw:
+
         result,
 
     cached:
+
         false
 
 };
