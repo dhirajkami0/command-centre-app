@@ -1907,7 +1907,7 @@
             case INTENTS.STAFF:
 
                 context.profile =
-                    Context.getUser();
+                   Context.getProfile()
 
                 context.liveStaff =
                     Context.getLiveStaff();
