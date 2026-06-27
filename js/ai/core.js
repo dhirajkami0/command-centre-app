@@ -588,58 +588,59 @@
 
             }
 
-            const fn =
+           if (
 
-                window.callBackend ||
+    typeof window.callBackend
 
-                window.callCloudFunction ||
+    !== "function"
 
-                null;
+) {
 
-            if (!fn) {
+    throw new Error(
 
-                throw new Error(
+        "callBackend() not found."
 
-                    "AI backend not available."
+    );
 
-                );
+}
 
-            }
+const payload = {
 
-            const payload = {
+    query:
 
-                query:
+        request.query,
 
-                    request.query,
+    intent:
 
-                intent:
+        request.intent,
 
-                    request.intent,
+    context:
 
-             context:
+        Config.clone(
 
-    Config.clone(
+            request.context
 
-        request.context
+        ),
 
-    ),
+    options:
 
-                options:
+        Config.clone(
 
-                    request.options
+            request.options
 
-            };
+        )
 
-            const result =
+};
 
-                await fn(
+const result =
 
-                    "askAI",
+    await window.callBackend(
 
-                    payload
+        "askAI",
 
-                );
+        payload
 
+    );
             const response = {
 
                 success: true,
