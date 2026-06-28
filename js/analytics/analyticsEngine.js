@@ -11,6 +11,7 @@
     AnalyticsEngine.rangeIndex = {};
     AnalyticsEngine.divisionIndex = {};
     AnalyticsEngine.staffIndex = {};
+    AnalyticsEngine.compartmentIndex = {};
     AnalyticsEngine.loaded = false;
     AnalyticsEngine.loading = false;
     AnalyticsEngine.lastLoaded = 0;
@@ -23,6 +24,7 @@
         AnalyticsEngine.rangeIndex = {};
         AnalyticsEngine.divisionIndex = {};
         AnalyticsEngine.staffIndex = {};
+        AnalyticsEngine.compartmentIndex = {};
         AnalyticsEngine.loaded = false;
         AnalyticsEngine.lastLoaded = 0;
         window.analyticsDataset = [];
@@ -123,11 +125,13 @@
         AnalyticsEngine.beatIndex = {};
         AnalyticsEngine.rangeIndex = {};
         AnalyticsEngine.divisionIndex = {};
+        AnalyticsEngine.compartmentIndex = {};
 
         dataset.forEach(row => {
             const beat = String(row.beat || "").toUpperCase();
             const range = String(row.range || "").toUpperCase();
             const division = String(row.division || "").toUpperCase();
+            const compKey = String(row.compartment || "").trim().toUpperCase().replace(/\s+/g, "_");
 
             if (beat) {
                 (AnalyticsEngine.beatIndex[beat] ||= []).push(row);
@@ -137,6 +141,9 @@
             }
             if (division) {
                 (AnalyticsEngine.divisionIndex[division] ||= []).push(row);
+            }
+            if (compKey) {
+                AnalyticsEngine.compartmentIndex[compKey] = row;
             }
         });
     };
@@ -157,13 +164,7 @@
 
         await AnalyticsEngine.mergeStaffProfiles(dataset, datasetMap);
         await AnalyticsEngine.mergeLiveStaff(dataset, datasetMap);
-      await AnalyticsEngine.mergeHistory(
-
-    dataset,
-
-    datasetMap
-
-);
+        await AnalyticsEngine.mergeHistory(dataset, datasetMap);
 
         console.log("✅ Base Dataset Built:", dataset.length);
         return dataset;
@@ -300,177 +301,79 @@
             console.error("❌ mergeLiveStaff", err);
         }
     };
-/*----------------------------------------------------------
-MERGE HISTORY
-----------------------------------------------------------*/
 
-AnalyticsEngine.mergeHistory = async function (
+    /*----------------------------------------------------------
+    MERGE HISTORY
+    ----------------------------------------------------------*/
+    AnalyticsEngine.mergeHistory = async function (dataset, datasetMap) {
+        try {
+            console.log("📜 Loading history...");
+            const snap = await window.fb.getDocs(window.fb.collection(window.db, "history"));
 
-    dataset,
-    datasetMap
+            snap.forEach(doc => {
+                const history = doc.data() || {};
+                const compartments = Array.isArray(history.compartments) ? history.compartments : [];
 
-){
+                compartments.forEach(name => {
+                    const key = String(name).trim().toUpperCase().replace(/\s+/g, "_");
+                    const row = AnalyticsEngine.compartmentIndex[key];
 
-    try{
+                    if (!row) return;
 
-        console.log(
-            "📜 Loading history..."
-        );
+                   row.patrolHistory.push({
 
-        const snap =
+    sessionId:
+        history.sessionId || doc.id,
 
-            await window.fb.getDocs(
+    staff:
+        history.staffName ||
+        history.cleanName ||
+        history.user ||
+        "",
 
-                window.fb.collection(
+    dutyType:
+        history.dutyType || "",
 
-                    window.db,
+    range:
+        history.range || "",
 
-                    "history"
+    beat:
+        history.beat || "",
 
-                )
+    startTime:
+        history.startTime || null,
 
-            );
+    endTime:
+        history.endTime || null,
 
-        snap.forEach(doc=>{
+    duration:
+        Number(
+            history.duration || 0
+        ),
 
-            const history =
-                doc.data() || {};
+    distanceMeters:
+        Number(
+            history.distanceMeters || 0
+        ),
 
-            const compartments =
+    compartments:
+        compartments.length,
 
-                Array.isArray(
-                    history.compartments
-                )
+    clipStatus:
+        history.clipStatus || "",
 
-                ?
+    completed:
+        history.completed === true
 
-                history.compartments
-
-                :
-
-                [];
-
-            compartments.forEach(name=>{
-
-                const compartment =
-
-                    String(name)
-                    .trim()
-                    .toUpperCase();
-
-                const row =
-
-                    AnalyticsEngine.dataset.find(
-
-                        r=>
-
-                        String(
-                            r.compartment
-                        )
-                        .trim()
-                        .toUpperCase()
-
-                        ===
-
-                        compartment
-
-                    );
-
-                if(
-                    !row
-                ){
-                    return;
-                }
-
-                row.patrolHistory.push({
-
-                    sessionId:
-
-                        history.sessionId ||
-
-                        doc.id,
-
-                    staff:
-
-                        history.staffName ||
-
-                        history.cleanName ||
-
-                        history.user ||
-
-                        "",
-
-                    dutyType:
-
-                        history.dutyType ||
-
-                        "",
-
-                    startTime:
-
-                        history.startTime ||
-
-                        null,
-
-                    endTime:
-
-                        history.endTime ||
-
-                        null,
-
-                    duration:
-
-                        history.duration ||
-
-                        0,
-
-                    distanceMeters:
-
-                        Number(
-
-                            history.distanceMeters ||
-
-                            0
-
-                        ),
-
-                    clipStatus:
-
-                        history.clipStatus ||
-
-                        "",
-
-                    raw:
-
-                        history
-
+});
                 });
-
             });
+            console.log("✅ history merged.");
+        } catch (err) {
+            console.error("❌ mergeHistory", err);
+        }
+    };
 
-        });
-
-        console.log(
-
-            "✅ history merged."
-
-        );
-
-    }
-
-    catch(err){
-
-        console.error(
-
-            "❌ mergeHistory",
-
-            err
-
-        );
-
-    }
-
-};
     /*----------------------------------------------------------
     REFRESH
     ----------------------------------------------------------*/
