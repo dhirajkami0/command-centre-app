@@ -604,98 +604,63 @@ Context.getGIS = function () {
 
 Context.getAnalytics = function () {
 
-    const realtime =
-        clone(
-            object(
-                read(
-                    "realtimeAnalyticsState",
-                    {}
-                )
-            )
-        );
-
-    const cache =
-        clone(
-            object(
-                read(
-                    "monthlyStatusCache",
-                    {}
-                )
-            )
-        );
-
-    const sel = Context.getSelection() || {};
-
-    let key = "btr_all";
-
-    if (
-        sel.level === "division" &&
-        sel.division &&
-        sel.division !== "ALL"
-    ) {
-
-        key =
-            "division_" +
-            String(sel.division)
-                .trim()
-                .toLowerCase()
-                .replace(/\s+/g, "_");
-
-    }
-    else if (
-        sel.level === "range" &&
-        sel.range &&
-        sel.range !== "ALL"
-    ) {
-
-        key =
-            "range_" +
-            String(sel.range)
-                .trim()
-                .toLowerCase()
-                .replace(/\s+/g, "_");
-
-    }
-    else if (
-        sel.level === "beat" &&
-        sel.beat &&
-        sel.beat !== "ALL"
-    ) {
-
-        key =
-            "beat_" +
-            String(sel.beat)
-                .trim()
-                .toLowerCase()
-                .replace(/\s+/g, "_");
-
-    }
-    else if (
-        sel.level === "compartment" &&
-        sel.compartment
-    ) {
-
-        key =
-            "compartment_" +
-            String(sel.compartment)
-                .trim()
-                .toLowerCase()
-                .replace(/\s+/g, "_");
-
-    }
+    const engine =
+        window.GreenGuardAI
+            ?.AnalyticsEngine;
 
     return {
 
-        realtime,
+        realtime:
+
+            clone(
+
+                object(
+
+                    read(
+
+                        "realtimeAnalyticsState",
+
+                        {}
+
+                    )
+
+                )
+
+            ),
 
         monthly:
+
             clone(
+
                 object(
-                    cache[key] ||
-                    cache.btr_all ||
-                    {}
+
+                    read(
+
+                        "monthlyStatusCache",
+
+                        {}
+
+                    )
+
                 )
-            )
+
+            ),
+
+        engineLoaded:
+
+            !!engine?.isLoaded?.(),
+
+        engineStats:
+
+            engine?.getStats?.() ||
+
+            {},
+
+        summary:
+
+            engine?.getSummary?.() ||
+
+            {}
 
     };
 
@@ -1839,8 +1804,22 @@ Context.snapshot = async function () {
     analytics:
 
         Context.getAnalytics(),
+analyticsSummary:
 
-    selection:
+    window.GreenGuardAI
+        ?.AnalyticsEngine
+        ?.getSummary?.() ||
+
+    {},
+
+analyticsStats:
+
+    window.GreenGuardAI
+        ?.AnalyticsEngine
+        ?.getStats?.() ||
+
+    {},
+      selection:
 
         Context.getSelection(),
 
