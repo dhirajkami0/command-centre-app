@@ -595,36 +595,48 @@ Core.callAI = async function (request) {
 
                 ) {
 
-                    const response = {
+const formatted =
 
-                        success: true,
+    window.GreenGuardAI.Formatter
 
-                        timestamp:
-                            Date.now(),
+        ? window.GreenGuardAI.Formatter.format(
 
-                        requestId:
-                            request.id,
+              analytics.result
 
-                        intent:
-                            "analytics",
+          )
 
-                        answer:
+        : analytics.result;
 
-                            analytics.result,
+const response = {
 
-                        raw:
+    success: true,
 
-                            analytics,
+    timestamp:
+        Date.now(),
 
-                        cached:
+    requestId:
+        request.id,
 
-                            false,
+    intent:
+        "analytics",
 
-                        local:
+    answer:
 
-                            true
+        formatted,
 
-                    };
+    raw:
+
+        analytics.result,
+
+    cached:
+
+        false,
+
+    local:
+
+        true
+
+};
 
                     await Core.setCachedResponse(
 
