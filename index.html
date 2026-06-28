@@ -11041,300 +11041,139 @@ const newMonthlyGrids =
   }catch(e){}
 
 }
-    async function showCompartmentVisitBreakdown(){
+   async function showCompartmentVisitBreakdown() {
+  try {
+    const d = new Date();
+    const monthKey = `${d.getFullYear()}_${String(d.getMonth() + 1).padStart(
+      2,
+      "0"
+    )}`;
 
-  try{
-
-    const d =
-      new Date();
-
-    const monthKey =
-      `${d.getFullYear()}_${
-        String(
-          d.getMonth() + 1
-        ).padStart(
-          2,
-          "0"
-        )
-      }`;
-
-    const level =
-      String(
-        window.activePopupContext?.level ||
-        "btr"
-      )
-      .toLowerCase();
+    const level = String(
+      window.activePopupContext?.level || "btr"
+    ).toLowerCase();
 
     const filterValue =
-
       level === "compartment"
+        ? window.gisFilter?.compartment
+        : level === "beat"
+        ? window.gisFilter?.beat
+        : level === "range"
+        ? window.gisFilter?.range
+        : level === "division"
+        ? window.gisFilter?.division
+        : "";
 
-      ? window.gisFilter?.compartment
+    const gridIds = getAnalyticsGridIds(level, filterValue);
 
-      : level === "beat"
-
-      ? window.gisFilter?.beat
-
-      : level === "range"
-
-      ? window.gisFilter?.range
-
-      : level === "division"
-
-      ? window.gisFilter?.division
-
-      : "";
-
-    const gridIds =
-      getAnalyticsGridIds(
-        level,
-        filterValue
-      );
-
-    if(
-      !gridIds?.length
-    ){
-      alert(
-        "No compartments found"
-      );
+    if (!gridIds?.length) {
+      alert("No compartments found");
       return;
     }
 
-    const snaps =
-      await Promise.all(
-
-        gridIds.map(
-          async gridId => {
-
-            try{
-
-              const snap =
-                await window.fb.getDoc(
-
-                  window.fb.doc(
-
-                    window.db,
-
-                    "analytics_rebuild",
-
-                    monthKey,
-
-                    "compartments",
-
-                    gridId
-
-                  )
-
-                );
-
-              return {
-                gridId,
-                snap
-              };
-
-            }
-
-            catch(err){
-
-              console.error(
-                gridId,
-                err
-              );
-
-              return null;
-
-            }
-
-          }
-
-        )
-
-      );
+    const snaps = await Promise.all(
+      gridIds.map(async (gridId) => {
+        try {
+          const snap = await window.fb.getDoc(
+            window.fb.doc(window.db, "analytics_rebuild", monthKey, "compartments", gridId)
+          );
+          return {
+            gridId,
+            snap,
+          };
+        } catch (err) {
+          console.error(gridId, err);
+          return null;
+        }
+      })
+    );
 
     const rows = [];
 
-    snaps.forEach(item=>{
-
-      if(
-        !item ||
-        !item.snap?.exists()
-      ){
+    snaps.forEach((item) => {
+      if (!item || !item.snap?.exists()) {
         return;
       }
 
-      const {
-        gridId,
-        snap
-      } = item;
+      const { gridId, snap } = item;
 
-      const analytics =
-        snap.data() || {};
+      const analytics = snap.data() || {};
 
-      const master =
-        window.masterGrid?.[
-          gridId
-        ];
+      const master = window.masterGrid?.[gridId];
 
-      if(
-        !master
-      ){
+      if (!master) {
         return;
       }
 
-      const totalCells =
-        Number(
-          master.totalCells || 0
-        );
+      const totalCells = Number(master.totalCells || 0);
 
-      const coveredCells =
-        Number(
-          analytics.totalCoveredCells || 0
-        );
-
-      const coverage =
-
-        totalCells > 0
-
-        ?
-
-        (
-          coveredCells /
-          totalCells
-        ) * 100
-
-        :
-
-        0;
-
-      const distanceKm =
-
-        Number(
-          analytics.distanceMeters || 0
-        ) / 1000;
-const displayDistance =
-
-  distanceKm >= 0.1
-
-  ?
-
-  distanceKm.toFixed(1)
-
-  :
-
-  distanceKm > 0
-
-  ?
-
-  "<0.1"
-
-  :
-
-  Number(
-    analytics.visitCount || 0
-  ) > 0
-
-  ?
-
-  "<0.1"
-
-  :
-
-  "0.0";
-
-      console.log(
-        "📏 BREAKDOWN DISTANCE",
-        {
-          gridId,
-          compartment:
-            master.compartment ||
-            gridId,
-          visitCount:
-            analytics.visitCount || 0,
-          distanceMeters:
-            analytics.distanceMeters || 0,
-          distanceKm,
-          displayDistance
-        }
+      const coveredCells = Number(
+        analytics.totalCovered ||
+        Object.keys(analytics.visitedCells || {}).length ||
+        0
       );
 
-      rows.push({
+      const coverage = totalCells > 0 ? (coveredCells / totalCells) * 100 : 0;
 
+      const distanceKm = Number(analytics.distanceMeters || 0) / 1000;
+      const displayDistance =
+        distanceKm >= 0.1
+          ? distanceKm.toFixed(1)
+          : distanceKm > 0
+          ? "<0.1"
+          : Number(analytics.visitCount || 0) > 0
+          ? "<0.1"
+          : "0.0";
+
+      console.log("📏 BREAKDOWN DISTANCE", {
         gridId,
-
-        compartment:
-
-          master.compartment ||
-          gridId,
-
-        visits:
-
-          Number(
-            analytics.visitCount || 0
-          ),
-
-        coverage,
-
+        compartment: master.compartment || gridId,
+        visitCount: analytics.visitCount || 0,
+        distanceMeters: analytics.distanceMeters || 0,
         distanceKm,
-
-        displayDistance
-
+        displayDistance,
       });
 
+      rows.push({
+        gridId,
+        compartment: master.compartment || gridId,
+        visits: Number(analytics.visitCount || 0),
+        coveredCells,
+        totalCells,
+        coverage,
+        distanceKm,
+        displayDistance,
+        distanceMeters: Number(analytics.distanceMeters || 0),
+        newlyCovered: Number(analytics.lastSessionAddedCells || 0),
+        totalCovered: coveredCells,
+        updatedAt:
+          analytics.updatedAt?.toMillis?.() ||
+          (analytics.updatedAt?.seconds ? analytics.updatedAt.seconds * 1000 : 0),
+      });
     });
 
     rows.sort(
-
-      (a,b)=>
-
-        b.visits -
-        a.visits ||
-
-        b.coverage -
-        a.coverage
-
+      (a, b) => b.visits - a.visits || b.coverage - a.coverage
     );
 
     console.table(
-
-      rows.map(r => ({
-
-        compartment:
-          r.compartment,
-
-        visits:
-          r.visits,
-
-        distanceKm:
-          r.distanceKm,
-
-        displayDistance:
-          r.displayDistance
-
+      rows.map((r) => ({
+        compartment: r.compartment,
+        visits: r.visits,
+        distanceKm: r.distanceKm,
+        displayDistance: r.displayDistance,
       }))
-
     );
 
-    renderCompartmentVisitBreakdown(
-      rows
-    );
-
+    window.compartmentVisitBreakdown = rows;
+    window.compartmentVisitBreakdownLoaded = Date.now();
+    
+    renderCompartmentVisitBreakdown(rows);
+  } catch (err) {
+    console.error(err);
+    alert("Failed to load compartment breakdown");
   }
-
-  catch(err){
-
-    console.error(
-      err
-    );
-
-    alert(
-      "Failed to load compartment breakdown"
-    );
-
-  }
-
 }
-
-
 function renderCompartmentVisitBreakdown(
   rows
 ){
