@@ -106,7 +106,45 @@ Tools.register(
     }
 
 );
+Tools.register(
 
+    "getCompartmentVisitBreakdown",
+
+    async () => {
+
+        if (
+
+            !window.compartmentVisitBreakdown ||
+
+            !window.compartmentVisitBreakdown.length
+
+        ) {
+
+            await showCompartmentVisitBreakdown();
+
+        }
+
+        return {
+
+            generatedAt:
+
+                window.compartmentVisitBreakdownLoaded ||
+
+                Date.now(),
+
+            totalCompartments:
+
+                window.compartmentVisitBreakdown.length,
+
+            ranking:
+
+                window.compartmentVisitBreakdown
+
+        };
+
+    }
+
+);
 Tools.register(
 
     "getPatrol",
