@@ -828,6 +828,10 @@ Context.getCoverage = function () {
   MONTHLY STATUS
 ----------------------------------------------------------*/
 
+/*----------------------------------------------------------
+  MONTHLY STATUS
+----------------------------------------------------------*/
+
 Context.getMonthlyStatus = function () {
 
     const cache =
@@ -840,8 +844,12 @@ Context.getMonthlyStatus = function () {
             )
         );
 
-    // Current selected area
-    const sel = Context.getSelection() || {};
+    // -------------------------------------
+    // Determine cache key from selection
+    // -------------------------------------
+
+    const sel =
+        Context.getSelection() || {};
 
     let key = "btr_all";
 
@@ -901,6 +909,10 @@ Context.getMonthlyStatus = function () {
 
     }
 
+    // -------------------------------------
+    // Selected analytics
+    // -------------------------------------
+
     const monthly =
         object(
             cache[key] ||
@@ -908,75 +920,233 @@ Context.getMonthlyStatus = function () {
             {}
         );
 
-    return {
+    // -------------------------------------
+    // Live Staff
+    // -------------------------------------
 
-        liveStaff:
-            number(
+    let liveStaff = 0;
+
+    try {
+
+        if (
+            typeof window.getLiveStaffCountForCurrentPolygon ===
+            "function"
+        ) {
+
+            liveStaff =
+                Number(
+                    window.getLiveStaffCountForCurrentPolygon()
+                ) || 0;
+
+        }
+        else {
+
+            liveStaff =
+                Number(
+                    monthly.liveStaff ||
+                    monthly.staff ||
+                    0
+                );
+
+        }
+
+    }
+    catch {
+
+        liveStaff =
+            Number(
                 monthly.liveStaff ||
                 monthly.staff ||
                 0
-            ),
+            );
+
+    }
+
+    // -------------------------------------
+    // Return
+    // -------------------------------------
+
+    return {
+
+        liveStaff:
+
+            liveStaff,
 
         patrolSessions:
+
             number(
+
+                monthly.visitCount ||
+
                 monthly.sessions ||
+
                 monthly.patrolSessions ||
+
                 0
+
             ),
 
         patrolDistanceKm:
+
             number(
-                monthly.distanceKm ||
+
                 (
-                    monthly.distanceMeters
-                        ? monthly.distanceMeters / 1000
-                        : monthly.distance || 0
-                )
+
+                    monthly.totalDistanceMeters ||
+
+                    monthly.distanceMeters ||
+
+                    monthly.distance ||
+
+                    0
+
+                ) / 1000
+
             ),
 
         visitedCells:
+
             number(
+
+                monthly.totalCovered ||
+
                 monthly.visitedCells ||
+
                 monthly.cells ||
+
                 0
+
             ),
 
         totalCells:
+
             number(
+
                 monthly.totalCells ||
+
                 0
+
             ),
 
         areaCoveredHa:
+
             number(
+
                 monthly.areaCoveredHa ||
+
                 monthly.areaHa ||
+
                 monthly.area ||
+
                 0
+
             ),
 
         compartmentsVisited:
+
             number(
+
                 monthly.visitedCompartments ||
+
                 monthly.compartmentsVisited ||
+
                 monthly.compartments ||
+
                 0
+
+            ),
+
+        totalCompartments:
+
+            number(
+
+                monthly.compartments ||
+
+                0
+
             ),
 
         coverage:
+
             number(
+
+                monthly.coveragePercent ||
+
                 monthly.coverage ||
+
                 0
+
+            ),
+
+        newlyCovered:
+
+            number(
+
+                monthly.newlyCovered ||
+
+                0
+
+            ),
+
+        previouslyCovered:
+
+            number(
+
+                monthly.previouslyCovered ||
+
+                0
+
+            ),
+
+        totalCovered:
+
+            number(
+
+                monthly.totalCovered ||
+
+                0
+
+            ),
+
+        totalDistanceMeters:
+
+            number(
+
+                monthly.totalDistanceMeters ||
+
+                monthly.distanceMeters ||
+
+                0
+
+            ),
+
+        visitCount:
+
+            number(
+
+                monthly.visitCount ||
+
+                0
+
             ),
 
         updated:
-            monthly.updated ||
+
+            monthly.latestUpdatedAt ||
+
             monthly.updatedAt ||
-            null
+
+            monthly.updated ||
+
+            null,
+
+        raw:
+
+            clone(monthly)
 
     };
 
-};    /*----------------------------------------------------------
+};   /*----------------------------------------------------------
   PATROL RANKING
 ----------------------------------------------------------*/
 
