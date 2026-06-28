@@ -57,77 +57,79 @@ Formatter.format = function (result) {
         result.intent
     ) {
 
-        switch (
+      switch (
 
-            String(
-                result.intent
-            ).toLowerCase()
+    String(
+        result.intent
+    ).toLowerCase()
 
-        ) {
+) {
 
-            case "mostvisited":
-                return formatMostVisited(result);
+    case "mostvisited":
+        return formatMostVisited(result);
 
-            case "leastvisited":
-                return formatLeastVisited(result);
+    case "leastvisited":
+        return formatLeastVisited(result);
 
-            case "highestcoverage":
-                return formatHighestCoverage(result);
+    case "highestcoverage":
+        return formatHighestCoverage(result);
 
-            case "highestbeatcoverage":
-                return formatHighestBeatCoverage(result);
+    case "highestbeatcoverage":
+        return formatHighestBeatCoverage(result);
 
-            case "highestrangecoverage":
-                return formatHighestRangeCoverage(result);
+    case "highestrangecoverage":
+        return formatHighestRangeCoverage(result);
 
-            case "highestdivisioncoverage":
-                return formatHighestDivisionCoverage(result);
+    case "highestdivisioncoverage":
+        return formatHighestDivisionCoverage(result);
 
-            case "inactive":
-            case "nopatrol":
-                return formatNoPatrol(result);
+    case "inactive":
+    case "nopatrol":
+        return formatNoPatrol(result);
 
-            case "highestdistance":
-                return formatHighestDistance(result);
+    case "highestdistance":
+        return formatHighestDistance(result);
 
-            case "topstaff":
-                return formatTopStaff(result);
+    case "topstaff":
+        return formatTopStaff(result);
 
-            case "patrolranking":
-                return formatPatrolRanking(result);
+    case "patrolranking":
+        return formatPatrolRanking(result);
 
-            case "beatranking":
-                return formatBeatRanking(result);
+    case "beatranking":
+        return formatBeatRanking(result);
 
-            case "rangeranking":
-                return formatRangeRanking(result);
+    case "rangeranking":
+        return formatRangeRanking(result);
 
-            case "divisionranking":
-                return formatDivisionRanking(result);
+    case "divisionranking":
+        return formatDivisionRanking(result);
 
-            case "ranking":
-                return formatRanking(result);
+    case "ranking":
+        return formatRanking(result);
 
-            case "statistics":
-                return formatStatistics(result);
-case "highestdistance":
-    return formatHighestDistance(result);
-            case "summary":
-                return formatSummary(result);
+    case "statistics":
+        return formatStatistics(result);
 
-            case "staffsearch":
-                return formatStaffSearch(result);
+    case "summary":
+        return formatSummary(result);
 
-            case "session":
-                return formatSession(result);
+    case "staffsearch":
+        return formatStaffSearch(result);
 
-            case "search":
-                return formatSearch(result);
+    case "session":
+        return formatSession(result);
 
-            default:
-                break;
+    case "drawpatrol":
+        return formatSession(result);
 
-        }
+    case "search":
+        return formatSearch(result);
+
+    default:
+        break;
+
+}
 
     }
 
