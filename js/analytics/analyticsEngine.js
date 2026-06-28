@@ -358,31 +358,33 @@ AnalyticsEngine.query = function (query) {
 
     }
 
-    if (
+   if (
 
-        /\btoday'?s patrol\b|\btoday patrol\b/i.test(
+    /\b(latest|last|today'?s|today)\s+patrol\b/i.test(
 
-            originalQuery
+        originalQuery
 
-        )
+    )
 
-    ) {
+) {
 
-        return {
+    return {
 
-            intent: "session",
+        intent: "session",
 
-            type: "patrol",
+        type: "patrol",
 
-            confidence: 1,
+        confidence: 1,
 
-            data:
+        data:
 
-                AnalyticsEngine.queryLatestSession()
+            AnalyticsEngine.queryLatestSession()
 
-        };
+    };
 
-    }
+}
+
+       
 
     const patrolByName =
 
@@ -1010,21 +1012,25 @@ AnalyticsEngine.querySession = function (search) {
 LATEST SESSION
 ----------------------------------------------------------*/
 
-AnalyticsEngine.queryLatestSession = function(){
+/*----------------------------------------------------------
+LATEST SESSION
+----------------------------------------------------------*/
+
+AnalyticsEngine.queryLatestSession = function () {
 
     const sessions =
 
         Object.values(
 
-            AnalyticsEngine.sessionIndex
+            AnalyticsEngine.latestSessionIndex
 
         );
 
-    if(
+    if (
 
         !sessions.length
 
-    ){
+    ) {
 
         return null;
 
@@ -1032,7 +1038,7 @@ AnalyticsEngine.queryLatestSession = function(){
 
     sessions.sort(
 
-        (a,b)=>
+        (a, b) =>
 
             Number(
 
@@ -1065,7 +1071,6 @@ AnalyticsEngine.queryLatestSession = function(){
     return sessions[0];
 
 };
-
     /*----------------------------------------------------------
 DRAW PATROL TRACK
 ----------------------------------------------------------*/
@@ -1122,7 +1127,11 @@ AnalyticsEngine.drawPatrolTrack = function(session){
 OPEN PATROL
 ----------------------------------------------------------*/
 
-AnalyticsEngine.openPatrol = function(search){
+/*----------------------------------------------------------
+OPEN PATROL
+----------------------------------------------------------*/
+
+AnalyticsEngine.openPatrol = function (search) {
 
     const session =
 
@@ -1132,29 +1141,27 @@ AnalyticsEngine.openPatrol = function(search){
 
         );
 
-    if(
+    if (
 
         !session
 
-    ){
+    ) {
 
         return {
 
-            success:false,
+            success: false,
 
-            error:"Patrol session not found."
+            error: "Patrol session not found."
 
         };
 
     }
 
-    return
+    return AnalyticsEngine.drawPatrolTrack(
 
-        AnalyticsEngine.drawPatrolTrack(
+        session
 
-            session
-
-        );
+    );
 
 };
     AnalyticsEngine.queryTopStaff = () => {
