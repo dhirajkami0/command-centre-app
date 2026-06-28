@@ -986,24 +986,23 @@ Context.getMonthlyStatus = function () {
 
             ),
 
-        patrolDistanceKm:
+      patrolDistanceKm:
 
-            number(
+    number(
 
-                (
+        (
 
-                    monthly.totalDistanceMeters ||
+            monthly.distanceMeters ||
 
-                    monthly.distanceMeters ||
+            monthly.totalDistanceMeters ||
 
-                    monthly.distance ||
+            monthly.distance ||
 
-                    0
+            0
 
-                ) / 1000
+        ) / 1000
 
-            ),
-
+    ),
         visitedCells:
 
             number(
