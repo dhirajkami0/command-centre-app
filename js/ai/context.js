@@ -645,6 +645,878 @@ Context.getAnalytics = function () {
     };
 
 };
+    /*----------------------------------------------------------
+  COVERAGE
+----------------------------------------------------------*/
+
+Context.getCoverage = function () {
+
+    const analytics =
+        clone(
+            object(
+                read(
+                    "realtimeAnalyticsState",
+                    {}
+                )
+            )
+        );
+
+    const monthly =
+        clone(
+            object(
+                read(
+                    "monthlyStatusCache",
+                    {}
+                )
+            )
+        );
+
+    return {
+
+        gridsVisited:
+
+            number(
+
+                analytics.visitedCells ||
+
+                monthly.visitedCells ||
+
+                monthly.cells ||
+
+                0
+
+            ),
+
+        totalGrids:
+
+            number(
+
+                analytics.totalCells ||
+
+                monthly.totalCells ||
+
+                monthly.grids ||
+
+                0
+
+            ),
+
+        coveragePercent:
+
+            number(
+
+                analytics.coverage ||
+
+                monthly.coverage ||
+
+                0
+
+            ),
+
+        compartmentsVisited:
+
+            number(
+
+                analytics.compartmentsVisited ||
+
+                monthly.compartmentsVisited ||
+
+                monthly.compartments ||
+
+                0
+
+            ),
+
+        totalCompartments:
+
+            number(
+
+                analytics.totalCompartments ||
+
+                monthly.totalCompartments ||
+
+                0
+
+            ),
+
+        areaCoveredHa:
+
+            number(
+
+                analytics.areaCoveredHa ||
+
+                monthly.areaCoveredHa ||
+
+                monthly.area ||
+
+                0
+
+            ),
+
+        totalAreaHa:
+
+            number(
+
+                analytics.totalAreaHa ||
+
+                monthly.totalAreaHa ||
+
+                0
+
+            )
+
+    };
+
+};
+
+/*----------------------------------------------------------
+  MONTHLY STATUS
+----------------------------------------------------------*/
+
+Context.getMonthlyStatus = function () {
+
+    const monthly =
+        clone(
+            object(
+                read(
+                    "monthlyStatusCache",
+                    {}
+                )
+            )
+        );
+
+    return {
+
+        liveStaff:
+
+            number(
+
+                monthly.liveStaff ||
+
+                0
+
+            ),
+
+        patrolSessions:
+
+            number(
+
+                monthly.sessions ||
+
+                0
+
+            ),
+
+        patrolDistanceKm:
+
+            number(
+
+                monthly.distance ||
+
+                0
+
+            ),
+
+        visitedCells:
+
+            number(
+
+                monthly.visitedCells ||
+
+                monthly.cells ||
+
+                0
+
+            ),
+
+        totalCells:
+
+            number(
+
+                monthly.totalCells ||
+
+                0
+
+            ),
+
+        areaCoveredHa:
+
+            number(
+
+                monthly.areaCoveredHa ||
+
+                monthly.area ||
+
+                0
+
+            ),
+
+        compartmentsVisited:
+
+            number(
+
+                monthly.compartmentsVisited ||
+
+                monthly.compartments ||
+
+                0
+
+            ),
+
+        coverage:
+
+            number(
+
+                monthly.coverage ||
+
+                0
+
+            ),
+
+        updated:
+
+            monthly.updated ||
+
+            monthly.updatedAt ||
+
+            null
+
+    };
+
+};
+    /*----------------------------------------------------------
+  PATROL RANKING
+----------------------------------------------------------*/
+
+Context.getPatrolRanking = function () {
+
+    const tracks =
+        object(
+            read(
+                "staffTracks",
+                {}
+            )
+        );
+
+    const analytics =
+        clone(
+            object(
+                read(
+                    "realtimeAnalyticsState",
+                    {}
+                )
+            )
+        );
+
+    const ranking = [];
+
+    Object.keys(tracks).forEach(name => {
+
+        const info =
+            object(
+                analytics[name]
+            );
+
+        ranking.push({
+
+            staff: name,
+
+            distanceKm:
+                number(
+                    info.distanceKm ||
+                    info.distance ||
+                    0
+                ),
+
+            visitedCells:
+                number(
+                    info.visitedCells ||
+                    0
+                ),
+
+            compartments:
+                number(
+                    info.compartments ||
+                    info.compartmentsVisited ||
+                    0
+                ),
+
+            areaHa:
+                number(
+                    info.areaHa ||
+                    info.areaCoveredHa ||
+                    0
+                )
+
+        });
+
+    });
+
+    ranking.sort(
+
+        (a,b)=>
+
+            b.distanceKm-
+
+            a.distanceKm
+
+    );
+
+    return {
+
+        total:
+
+            ranking.length,
+
+        ranking
+
+    };
+
+};
+
+/*----------------------------------------------------------
+  HEATMAP
+----------------------------------------------------------*/
+
+Context.getHeatmap = function () {
+
+    return {
+
+        enabled:
+
+            !!read(
+
+                "heatmapEnabled",
+
+                false
+
+            ),
+
+        gridReady:
+
+            !!read(
+
+                "__gridReady",
+
+                false
+
+            ),
+
+        visitedCells:
+
+            number(
+
+                read(
+
+                    "visitedGridCount",
+
+                    0
+
+                )
+
+            ),
+
+        totalCells:
+
+            number(
+
+                read(
+
+                    "totalGridCount",
+
+                    0
+
+                )
+
+            ),
+
+        layers:
+
+            number(
+
+                array(
+
+                    read(
+
+                        "heatmapLayers",
+
+                        []
+
+                    )
+
+                ).length
+
+            )
+
+    };
+
+};
+    /*----------------------------------------------------------
+  COMPARE MONTHS
+----------------------------------------------------------*/
+
+Context.compareMonths = function (args = {}) {
+
+    const monthly =
+        clone(
+            object(
+                read(
+                    "monthlyStatusCache",
+                    {}
+                )
+            )
+        );
+
+    return {
+
+        month1:
+
+            args.month1 ||
+
+            null,
+
+        month2:
+
+            args.month2 ||
+
+            null,
+
+        current:
+
+            monthly,
+
+        message:
+
+            "Comparison requires archived monthly data."
+
+    };
+
+};
+
+/*----------------------------------------------------------
+  DAILY REPORT
+----------------------------------------------------------*/
+
+Context.generateDailyReport = function () {
+
+    const patrol =
+        Context.getPatrol();
+
+    const coverage =
+        Context.getCoverage();
+
+    const live =
+        Context.getLiveStaff();
+
+    return {
+
+        generated:
+
+            new Date().toISOString(),
+
+        liveStaff:
+
+            live.count,
+
+        patrolSessions:
+
+            patrol.sessions,
+
+        patrolTracks:
+
+            patrol.tracks,
+
+        gridsVisited:
+
+            coverage.gridsVisited,
+
+        coverage:
+
+            coverage.coveragePercent,
+
+        compartmentsVisited:
+
+            coverage.compartmentsVisited,
+
+        areaCoveredHa:
+
+            coverage.areaCoveredHa
+
+    };
+
+};
+
+/*----------------------------------------------------------
+  MONTHLY REPORT
+----------------------------------------------------------*/
+
+Context.generateMonthlyReport = function () {
+
+    const monthly =
+        Context.getMonthlyStatus();
+
+    return {
+
+        generated:
+
+            new Date().toISOString(),
+
+        report:
+
+            monthly
+
+    };
+
+};
+
+/*----------------------------------------------------------
+  DFO BRIEFING
+----------------------------------------------------------*/
+
+Context.generateDFOBriefing = function () {
+
+    return {
+
+        generated:
+
+            new Date().toISOString(),
+
+        liveStaff:
+
+            Context.getLiveStaff(),
+
+        patrol:
+
+            Context.getPatrol(),
+
+        coverage:
+
+            Context.getCoverage(),
+
+        monthly:
+
+            Context.getMonthlyStatus(),
+
+        selection:
+
+            Context.getSelection()
+
+    };
+
+};
+    /*----------------------------------------------------------
+  COURT SEARCH
+----------------------------------------------------------*/
+
+Context.searchCourtCases = function (args = {}) {
+
+    return {
+
+        query:
+
+            args.query || "",
+
+        source:
+
+            "Court database not connected.",
+
+        results: []
+
+    };
+
+};
+
+/*----------------------------------------------------------
+  RESEARCH SEARCH
+----------------------------------------------------------*/
+
+Context.searchResearch = function (args = {}) {
+
+    return {
+
+        query:
+
+            args.query || "",
+
+        source:
+
+            "Research database not connected.",
+
+        papers: []
+
+    };
+
+};
+
+/*----------------------------------------------------------
+  ELEPHANT PREDICTION
+----------------------------------------------------------*/
+
+Context.predictElephantMovement = function () {
+
+    const sightings =
+
+        clone(
+
+            object(
+
+                read(
+
+                    "latestSightings",
+
+                    {}
+
+                )
+
+            )
+
+        );
+
+    return {
+
+        basedOn:
+
+            sightings,
+
+        prediction:
+
+            "Prediction engine not connected."
+
+    };
+
+};
+
+/*----------------------------------------------------------
+  PATROL PRIORITY
+----------------------------------------------------------*/
+
+Context.predictPatrolPriority = function () {
+
+    return {
+
+        recommendation:
+
+            "Priority engine not connected.",
+
+        areas: []
+
+    };
+
+};
+
+/*----------------------------------------------------------
+  SYSTEM HEALTH
+----------------------------------------------------------*/
+
+Context.systemHealth = function () {
+
+    return {
+
+        profile:
+
+            true,
+
+        duty:
+
+            true,
+
+        patrol:
+
+            true,
+
+        analytics:
+
+            true,
+
+        gis:
+
+            true,
+
+        coverage:
+
+            true,
+
+        monthly:
+
+            true,
+
+        liveStaff:
+
+            true,
+
+        weather:
+
+            typeof window.callBackend === "function",
+
+        ai:
+
+            true,
+
+        cache:
+
+            Context.isReady(),
+
+        online:
+
+            navigator.onLine
+
+    };
+
+};
+
+/*----------------------------------------------------------
+  AI DIAGNOSTICS
+----------------------------------------------------------*/
+
+Context.runDiagnostics = function () {
+
+    const tests = [
+
+        {
+
+            name:
+
+                "Profile",
+
+            ok:
+
+                !!Context.getProfile()
+
+        },
+
+        {
+
+            name:
+
+                "Duty",
+
+            ok:
+
+                true
+
+        },
+
+        {
+
+            name:
+
+                "Live Staff",
+
+            ok:
+
+                Context.getLiveStaff().count >= 0
+
+        },
+
+        {
+
+            name:
+
+                "Patrol",
+
+            ok:
+
+                Context.getPatrol().tracks >= 0
+
+        },
+
+        {
+
+            name:
+
+                "GIS",
+
+            ok:
+
+                Context.getGIS().featureCount >= 0
+
+        },
+
+        {
+
+            name:
+
+                "Coverage",
+
+            ok:
+
+                true
+
+        },
+
+        {
+
+            name:
+
+                "Monthly",
+
+            ok:
+
+                true
+
+        },
+
+        {
+
+            name:
+
+                "Analytics",
+
+            ok:
+
+                true
+
+        }
+
+    ];
+
+    const passed =
+
+        tests.filter(
+
+            t => t.ok
+
+        ).length;
+
+    return {
+
+        generated:
+
+            new Date()
+
+            .toISOString(),
+
+        passed,
+
+        failed:
+
+            tests.length -
+
+            passed,
+
+        total:
+
+            tests.length,
+
+        status:
+
+            passed ===
+
+            tests.length
+
+                ? "OPERATIONAL"
+
+                : "WARNING",
+
+        tests,
+
+        system:
+
+            Context.systemHealth()
+
+    };
+
+};
 /*----------------------------------------------------------
   DEVICE
 ----------------------------------------------------------*/
