@@ -40351,22 +40351,24 @@ OPEN
 
 openBtn.onclick = () => {
 
-  overlay.removeAttribute("hidden");
+    overlay.removeAttribute("hidden");
+
+    openBtn.hidden = true;      // Hide floating button
 
     prompt.focus();
 
 };
-
 /*--------------------------------------------------
 CLOSE
 --------------------------------------------------*/
 
 closeBtn.onclick = () => {
 
-  overlay.setAttribute("hidden","");
+    overlay.setAttribute("hidden","");
+
+    openBtn.hidden = false;     // Show floating button again
 
 };
-
 /*--------------------------------------------------
 MESSAGE
 --------------------------------------------------*/
