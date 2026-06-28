@@ -1860,7 +1860,7 @@
 
             normalizeQuery(query);
 if(
-   /most visited|least visited|top compartment|top compartments|ranking|rank|highest coverage|lowest coverage|most patrol|patrol ranking/i.test(query)
+   /most visited|least visited|top compartment|top compartments|ranking|rank|highest coverage|lowest coverage|most patrol|patrol ranking|no patrol|without patrol|never visited|unvisited|inactive/i.test(query)
 ){
 
     return {
@@ -2061,9 +2061,9 @@ Router.resolveTools = function(query, intent){
             tools.push("getMonthlyStatus");
         }
 
-        if(
-            /most visited|least visited|top compartment|top compartments|ranking|rank|highest coverage|lowest coverage|most patrol|patrol ranking/i.test(query)
-        ){
+       if(
+    /most visited|least visited|top compartment|top compartments|ranking|rank|highest coverage|lowest coverage|most patrol|patrol ranking|no patrol|without patrol|never visited|unvisited|inactive/i.test(query)
+){
             tools.push(
                 "getCompartmentVisitBreakdown"
             );
