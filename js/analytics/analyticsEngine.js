@@ -129,19 +129,109 @@ AnalyticsEngine.queryInactiveCompartments = function () {
     /*----------------------------------------------------------
     LOAD ANALYTICS DATASET
     ----------------------------------------------------------*/
-    AnalyticsEngine.load = async function () {
-        if (AnalyticsEngine.loading || AnalyticsEngine.loaded) return AnalyticsEngine.dataset;
-        AnalyticsEngine.loading = true;
-        try {
-            console.time("AnalyticsEngine.build");
-            AnalyticsEngine.dataset = await AnalyticsEngine.build();
-            window.analyticsDataset = AnalyticsEngine.dataset;
-            AnalyticsEngine.loaded = true;
-            AnalyticsEngine.lastLoaded = Date.now();
-            console.timeEnd("AnalyticsEngine.build");
-            return AnalyticsEngine.dataset;
-        } finally { AnalyticsEngine.loading = false; }
-    };
+AnalyticsEngine.load = async function () {
+
+    if (
+
+        AnalyticsEngine.loading
+
+    ) {
+
+        return AnalyticsEngine.dataset;
+
+    }
+
+    if (
+
+        AnalyticsEngine.loaded
+
+    ) {
+
+        return AnalyticsEngine.dataset;
+
+    }
+
+    AnalyticsEngine.loading = true;
+
+    try {
+
+        AnalyticsEngine.sessionIndex = {};
+
+        AnalyticsEngine.latestSessionIndex = {};
+
+        AnalyticsEngine.staffIndex = {};
+
+        AnalyticsEngine.searchIndex = {};
+
+        AnalyticsEngine.compartmentIndex = {};
+
+        AnalyticsEngine.beatIndex = {};
+
+        AnalyticsEngine.rangeIndex = {};
+
+        AnalyticsEngine.divisionIndex = {};
+
+        console.time(
+
+            "AnalyticsEngine.build"
+
+        );
+
+        AnalyticsEngine.dataset =
+
+            await AnalyticsEngine.build();
+
+        window.analyticsDataset =
+
+            AnalyticsEngine.dataset;
+
+        AnalyticsEngine.loaded = true;
+
+        AnalyticsEngine.lastLoaded =
+
+            Date.now();
+
+        console.timeEnd(
+
+            "AnalyticsEngine.build"
+
+        );
+
+        console.log(
+
+            "Sessions:",
+
+            Object.keys(
+
+                AnalyticsEngine.sessionIndex
+
+            ).length
+
+        );
+
+        console.log(
+
+            "Latest:",
+
+            Object.keys(
+
+                AnalyticsEngine.latestSessionIndex
+
+            ).length
+
+        );
+
+        return AnalyticsEngine.dataset;
+
+    }
+
+    finally {
+
+        AnalyticsEngine.loading = false;
+
+    }
+
+};
 
     AnalyticsEngine.buildMaster = function () {
         const dataset = [];
@@ -254,13 +344,79 @@ AnalyticsEngine.queryInactiveCompartments = function () {
                     AnalyticsEngine.sessionIndex[t.sessionId] = t;
                     
                     // Improvement 4: Build latest session index
-                    const key = String(t.cleanName || t.name || "").toUpperCase();
-                    if (key) {
-                        const old = AnalyticsEngine.latestSessionIndex[key];
-                        if (!old || Number(t.updatedAt || 0) > Number(old.updatedAt || 0)) {
-                            AnalyticsEngine.latestSessionIndex[key] = t;
-                        }
-                    }
+                  const key = String(
+
+    t.cleanName ||
+
+    t.staff ||
+
+    t.staffName ||
+
+    t.leader ||
+
+    t.name ||
+
+    ""
+
+)
+.trim()
+.toUpperCase();
+
+if (
+
+    key
+
+) {
+
+    const old =
+
+        AnalyticsEngine.latestSessionIndex[
+            key
+        ];
+
+    const newTime =
+
+        Number(
+
+            t.updatedAt ||
+
+            t.endTime ||
+
+            t.startTime ||
+
+            0
+
+        );
+
+    const oldTime =
+
+        Number(
+
+            old?.updatedAt ||
+
+            old?.endTime ||
+
+            old?.startTime ||
+
+            0
+
+        );
+
+    if (
+
+        !old ||
+
+        newTime > oldTime
+
+    ) {
+
+        AnalyticsEngine.latestSessionIndex[
+            key
+        ] = t;
+
+    }
+
+}
                 }
                 const comps = Array.isArray(t.compartments) ? t.compartments : (t.compartment ? [t.compartment] : []);
                 comps.forEach(name => {
