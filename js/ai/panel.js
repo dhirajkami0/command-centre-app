@@ -560,27 +560,49 @@ sendButton.disabled = true;
 
             ) {
 
-              const answer =
+let answer;
 
-    typeof result.answer ===
+if (
 
-    "string"
+    window.GreenGuardAI.Formatter
 
-        ? result.answer
+) {
 
-        : result.answer?.text ||
+    answer =
 
-          result.answer?.message ||
+        window.GreenGuardAI.Formatter.format(
 
-          JSON.stringify(
+            result.answer
 
-              result.answer,
+        );
 
-              null,
+}
 
-              2
+else {
 
-          );
+    answer =
+
+        typeof result.answer ===
+
+        "string"
+
+            ? result.answer
+
+            : result.answer?.text ||
+
+              result.answer?.message ||
+
+              JSON.stringify(
+
+                  result.answer,
+
+                  null,
+
+                  2
+
+              );
+
+}
 
 const msg =
 
@@ -592,7 +614,7 @@ const msg =
 
     );
 
-              Render.enableCopy(
+Render.enableCopy(
 
     msg,
 
