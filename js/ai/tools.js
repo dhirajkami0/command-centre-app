@@ -324,6 +324,225 @@ Tools.register(
     }
 
 );
+    /*----------------------------------------------------------
+  ADVANCED OPERATIONAL TOOLS
+----------------------------------------------------------*/
+
+Tools.register(
+
+    "getMonthlyStatus",
+
+    async ()=>{
+
+        return GreenGuardAI
+            .Context
+            .getMonthlyStatus();
+
+    }
+
+);
+
+Tools.register(
+
+    "compareMonths",
+
+    async (args={})=>{
+
+        return GreenGuardAI
+            .Context
+            .compareMonths(args);
+
+    }
+
+);
+
+Tools.register(
+
+    "getCoverage",
+
+    async ()=>{
+
+        return GreenGuardAI
+            .Context
+            .getCoverage();
+
+    }
+
+);
+
+Tools.register(
+
+    "getHeatmap",
+
+    async ()=>{
+
+        return GreenGuardAI
+            .Context
+            .getHeatmap();
+
+    }
+
+);
+
+Tools.register(
+
+    "getPatrolRanking",
+
+    async ()=>{
+
+        return GreenGuardAI
+            .Context
+            .getPatrolRanking();
+
+    }
+
+);
+
+/*----------------------------------------------------------
+  REPORTS
+----------------------------------------------------------*/
+
+Tools.register(
+
+    "generateDailyReport",
+
+    async ()=>{
+
+        return GreenGuardAI
+            .Context
+            .generateDailyReport();
+
+    }
+
+);
+
+Tools.register(
+
+    "generateMonthlyReport",
+
+    async ()=>{
+
+        return GreenGuardAI
+            .Context
+            .generateMonthlyReport();
+
+    }
+
+);
+
+Tools.register(
+
+    "generateDFOBriefing",
+
+    async ()=>{
+
+        return GreenGuardAI
+            .Context
+            .generateDFOBriefing();
+
+    }
+
+);
+
+/*----------------------------------------------------------
+  LEGAL
+----------------------------------------------------------*/
+
+Tools.register(
+
+    "searchCourtCases",
+
+    async (args={})=>{
+
+        return GreenGuardAI
+            .Context
+            .searchCourtCases(args);
+
+    }
+
+);
+
+/*----------------------------------------------------------
+  RESEARCH
+----------------------------------------------------------*/
+
+Tools.register(
+
+    "searchResearch",
+
+    async (args={})=>{
+
+        return GreenGuardAI
+            .Context
+            .searchResearch(args);
+
+    }
+
+);
+
+/*----------------------------------------------------------
+  WILDLIFE
+----------------------------------------------------------*/
+
+Tools.register(
+
+    "predictElephantMovement",
+
+    async ()=>{
+
+        return GreenGuardAI
+            .Context
+            .predictElephantMovement();
+
+    }
+
+);
+
+Tools.register(
+
+    "predictPatrolPriority",
+
+    async ()=>{
+
+        return GreenGuardAI
+            .Context
+            .predictPatrolPriority();
+
+    }
+
+);
+
+/*----------------------------------------------------------
+  SYSTEM
+----------------------------------------------------------*/
+
+Tools.register(
+
+    "runDiagnostics",
+
+    async ()=>{
+
+        return GreenGuardAI
+            .Context
+            .runDiagnostics();
+
+    }
+
+);
+
+Tools.register(
+
+    "systemHealth",
+
+    async ()=>{
+
+        return GreenGuardAI
+            .Context
+            .systemHealth();
+
+    }
+
+);
 /*----------------------------------------------------------
   EXPORT
 ----------------------------------------------------------*/
