@@ -604,42 +604,97 @@ Context.getGIS = function () {
 
 Context.getAnalytics = function () {
 
+    const realtime =
+        clone(
+            object(
+                read(
+                    "realtimeAnalyticsState",
+                    {}
+                )
+            )
+        );
+
+    const cache =
+        clone(
+            object(
+                read(
+                    "monthlyStatusCache",
+                    {}
+                )
+            )
+        );
+
+    const sel = Context.getSelection() || {};
+
+    let key = "btr_all";
+
+    if (
+        sel.level === "division" &&
+        sel.division &&
+        sel.division !== "ALL"
+    ) {
+
+        key =
+            "division_" +
+            String(sel.division)
+                .trim()
+                .toLowerCase()
+                .replace(/\s+/g, "_");
+
+    }
+    else if (
+        sel.level === "range" &&
+        sel.range &&
+        sel.range !== "ALL"
+    ) {
+
+        key =
+            "range_" +
+            String(sel.range)
+                .trim()
+                .toLowerCase()
+                .replace(/\s+/g, "_");
+
+    }
+    else if (
+        sel.level === "beat" &&
+        sel.beat &&
+        sel.beat !== "ALL"
+    ) {
+
+        key =
+            "beat_" +
+            String(sel.beat)
+                .trim()
+                .toLowerCase()
+                .replace(/\s+/g, "_");
+
+    }
+    else if (
+        sel.level === "compartment" &&
+        sel.compartment
+    ) {
+
+        key =
+            "compartment_" +
+            String(sel.compartment)
+                .trim()
+                .toLowerCase()
+                .replace(/\s+/g, "_");
+
+    }
+
     return {
 
-        realtime:
-
-            clone(
-
-                object(
-
-                    read(
-
-                        "realtimeAnalyticsState",
-
-                        {}
-
-                    )
-
-                )
-
-            ),
+        realtime,
 
         monthly:
-
             clone(
-
                 object(
-
-                    read(
-
-                        "monthlyStatusCache",
-
-                        {}
-
-                    )
-
+                    cache[key] ||
+                    cache.btr_all ||
+                    {}
                 )
-
             )
 
     };
@@ -775,7 +830,7 @@ Context.getCoverage = function () {
 
 Context.getMonthlyStatus = function () {
 
-    const monthly =
+    const cache =
         clone(
             object(
                 read(
@@ -785,106 +840,143 @@ Context.getMonthlyStatus = function () {
             )
         );
 
+    // Current selected area
+    const sel = Context.getSelection() || {};
+
+    let key = "btr_all";
+
+    if (
+        sel.level === "division" &&
+        sel.division &&
+        sel.division !== "ALL"
+    ) {
+
+        key =
+            "division_" +
+            String(sel.division)
+                .trim()
+                .toLowerCase()
+                .replace(/\s+/g, "_");
+
+    }
+    else if (
+        sel.level === "range" &&
+        sel.range &&
+        sel.range !== "ALL"
+    ) {
+
+        key =
+            "range_" +
+            String(sel.range)
+                .trim()
+                .toLowerCase()
+                .replace(/\s+/g, "_");
+
+    }
+    else if (
+        sel.level === "beat" &&
+        sel.beat &&
+        sel.beat !== "ALL"
+    ) {
+
+        key =
+            "beat_" +
+            String(sel.beat)
+                .trim()
+                .toLowerCase()
+                .replace(/\s+/g, "_");
+
+    }
+    else if (
+        sel.level === "compartment" &&
+        sel.compartment
+    ) {
+
+        key =
+            "compartment_" +
+            String(sel.compartment)
+                .trim()
+                .toLowerCase()
+                .replace(/\s+/g, "_");
+
+    }
+
+    const monthly =
+        object(
+            cache[key] ||
+            cache.btr_all ||
+            {}
+        );
+
     return {
 
         liveStaff:
-
             number(
-
                 monthly.liveStaff ||
-
+                monthly.staff ||
                 0
-
             ),
 
         patrolSessions:
-
             number(
-
                 monthly.sessions ||
-
+                monthly.patrolSessions ||
                 0
-
             ),
 
         patrolDistanceKm:
-
             number(
-
-                monthly.distance ||
-
-                0
-
+                monthly.distanceKm ||
+                (
+                    monthly.distanceMeters
+                        ? monthly.distanceMeters / 1000
+                        : monthly.distance || 0
+                )
             ),
 
         visitedCells:
-
             number(
-
                 monthly.visitedCells ||
-
                 monthly.cells ||
-
                 0
-
             ),
 
         totalCells:
-
             number(
-
                 monthly.totalCells ||
-
                 0
-
             ),
 
         areaCoveredHa:
-
             number(
-
                 monthly.areaCoveredHa ||
-
+                monthly.areaHa ||
                 monthly.area ||
-
                 0
-
             ),
 
         compartmentsVisited:
-
             number(
-
+                monthly.visitedCompartments ||
                 monthly.compartmentsVisited ||
-
                 monthly.compartments ||
-
                 0
-
             ),
 
         coverage:
-
             number(
-
                 monthly.coverage ||
-
                 0
-
             ),
 
         updated:
-
             monthly.updated ||
-
             monthly.updatedAt ||
-
             null
 
     };
 
-};
-    /*----------------------------------------------------------
+};    /*----------------------------------------------------------
   PATROL RANKING
 ----------------------------------------------------------*/
 
