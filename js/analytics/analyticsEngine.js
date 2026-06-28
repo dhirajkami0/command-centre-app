@@ -286,34 +286,431 @@
         stats: ["monthly summary", "dashboard", "analytics overview", "btr statistics"]
     };
 
-    AnalyticsEngine.query = function(query) {
-        // Bug 3 Fix: Preserve original case for regex
-        const originalQuery = String(query || "");
-        const lowerQuery = originalQuery.toLowerCase();
-        
-        const sessionMatch = originalQuery.match(/[A-Z ]+_[0-9]{10,}/i);
-        
-        // Use lowerQuery for non-session logic
-        let queryForKeywords = lowerQuery;
+    AnalyticsEngine.query = function (query) {
 
-        if (sessionMatch) return { intent: "session", type: "patrol", confidence: 1, data: AnalyticsEngine.querySession(sessionMatch[0]) };
+    const originalQuery =
+        String(query || "").trim();
 
-        if (matches(queryForKeywords, AnalyticsEngine.keywords.mostVisited)) return { intent: "mostVisited", type: "analytics", confidence: 1, data: AnalyticsEngine.rank(AnalyticsEngine.dataset, "visits")[0] };
-        if (matches(queryForKeywords, AnalyticsEngine.keywords.leastVisited)) return { intent: "leastVisited", type: "analytics", confidence: 1, data: AnalyticsEngine.dataset.filter(r => r.visits > 0).sort((a, b) => a.visits - b.visits) };
-        if (matches(queryForKeywords, AnalyticsEngine.keywords.coverage)) return { intent: "highestCoverage", type: "analytics", confidence: 1, data: AnalyticsEngine.rank(AnalyticsEngine.dataset, "coverage")[0] };
-        if (matches(queryForKeywords, AnalyticsEngine.keywords.inactive)) return { intent: "inactive", type: "analytics", confidence: 1, data: AnalyticsEngine.queryInactiveCompartments() };
-        if (matches(queryForKeywords, AnalyticsEngine.keywords.distance)) return { intent: "highestDistance", type: "analytics", confidence: 1, data: AnalyticsEngine.rank(AnalyticsEngine.dataset, "patrolDistanceKm")[0] };
-        if (matches(queryForKeywords, AnalyticsEngine.keywords.staff)) return { intent: "topStaff", type: "analytics", confidence: 1, data: AnalyticsEngine.queryTopStaff() };
-        if (matches(queryForKeywords, AnalyticsEngine.keywords.stats)) return { intent: "statistics", type: "analytics", confidence: 1, data: AnalyticsEngine.summary.global };
-        
-        if (matches(queryForKeywords, ["beat ranking"])) return { intent: "ranking", level: "beat", data: AnalyticsEngine.rank(Object.values(AnalyticsEngine.summary.beat), "visits") };
-        if (matches(queryForKeywords, ["who", "where is", "staff"])) return { intent: "staffSearch", data: AnalyticsEngine.queryStaff(queryForKeywords.replace(/who|where is|staff/g, "").trim()) };
+    const q =
+        originalQuery.toLowerCase();
 
-        const searchKey = normalizeKey(queryForKeywords);
-        const result = Object.entries(AnalyticsEngine.searchIndex).find(([k]) => k.includes(searchKey.replace(/_/g, "")));
-        return result ? { intent: "search", type: result[1].type, data: result[1].data } : null;
-    };
+    const sessionMatch =
+        originalQuery.match(
+            /[A-Z ]+_[0-9]{10,}/i
+        );
 
+    if (sessionMatch) {
+
+        return {
+
+            intent: "session",
+
+            type: "patrol",
+
+            confidence: 1,
+
+            data:
+                AnalyticsEngine.querySession(
+                    sessionMatch[0]
+                )
+
+        };
+
+    }
+
+    /*--------------------------------------------------
+      HIGHEST COVERAGE
+    --------------------------------------------------*/
+
+    if (
+
+        q.includes("highest coverage") ||
+
+        q.includes("best coverage")
+
+    ) {
+
+        if (q.includes("beat")) {
+
+            return {
+
+                intent: "highestBeatCoverage",
+
+                type: "analytics",
+
+                confidence: 1,
+
+                data:
+
+                    AnalyticsEngine.rank(
+
+                        Object.values(
+                            AnalyticsEngine.summary.beat
+                        ),
+
+                        "coverage"
+
+                    )[0]
+
+            };
+
+        }
+
+        if (q.includes("range")) {
+
+            return {
+
+                intent: "highestRangeCoverage",
+
+                type: "analytics",
+
+                confidence: 1,
+
+                data:
+
+                    AnalyticsEngine.rank(
+
+                        Object.values(
+                            AnalyticsEngine.summary.range
+                        ),
+
+                        "coverage"
+
+                    )[0]
+
+            };
+
+        }
+
+        if (q.includes("division")) {
+
+            return {
+
+                intent: "highestDivisionCoverage",
+
+                type: "analytics",
+
+                confidence: 1,
+
+                data:
+
+                    AnalyticsEngine.rank(
+
+                        Object.values(
+                            AnalyticsEngine.summary.division
+                        ),
+
+                        "coverage"
+
+                    )[0]
+
+            };
+
+        }
+
+        return {
+
+            intent: "highestCoverage",
+
+            type: "analytics",
+
+            confidence: 1,
+
+            data:
+
+                AnalyticsEngine.rank(
+
+                    AnalyticsEngine.dataset,
+
+                    "coverage"
+
+                )[0]
+
+        };
+
+    }
+
+    /*--------------------------------------------------
+      MOST VISITED
+    --------------------------------------------------*/
+
+    if (
+
+        q.includes("most visited") ||
+
+        q.includes("highest visit")
+
+    ) {
+
+        return {
+
+            intent: "mostVisited",
+
+            type: "analytics",
+
+            confidence: 1,
+
+            data:
+
+                AnalyticsEngine.rank(
+
+                    AnalyticsEngine.dataset,
+
+                    "visits"
+
+                )[0]
+
+        };
+
+    }
+
+    /*--------------------------------------------------
+      NO PATROL
+    --------------------------------------------------*/
+
+    if (
+
+        q.includes("no patrol") ||
+
+        q.includes("inactive") ||
+
+        q.includes("never visited")
+
+    ) {
+
+        return {
+
+            intent: "inactive",
+
+            type: "analytics",
+
+            confidence: 1,
+
+            data:
+
+                AnalyticsEngine.dataset.filter(
+
+                    r =>
+
+                        r.visits === 0 &&
+
+                        r.tracks.length === 0
+
+                )
+
+        };
+
+    }
+
+    /*--------------------------------------------------
+      PATROL RANKING
+    --------------------------------------------------*/
+
+    if (
+
+        q.includes("patrol ranking") ||
+
+        q.includes("show patrol ranking")
+
+    ) {
+
+        return {
+
+            intent: "patrolRanking",
+
+            type: "analytics",
+
+            confidence: 1,
+
+            data:
+
+                AnalyticsEngine.rank(
+
+                    AnalyticsEngine.dataset,
+
+                    "patrolDistanceKm"
+
+                )
+
+        };
+
+    }
+
+    /*--------------------------------------------------
+      BEAT RANKING
+    --------------------------------------------------*/
+
+    if (
+
+        q.includes("beat ranking")
+
+    ) {
+
+        return {
+
+            intent: "beatRanking",
+
+            type: "analytics",
+
+            confidence: 1,
+
+            data:
+
+                AnalyticsEngine.rank(
+
+                    Object.values(
+                        AnalyticsEngine.summary.beat
+                    ),
+
+                    "coverage"
+
+                )
+
+        };
+
+    }
+
+    /*--------------------------------------------------
+      RANGE RANKING
+    --------------------------------------------------*/
+
+    if (
+
+        q.includes("range ranking")
+
+    ) {
+
+        return {
+
+            intent: "rangeRanking",
+
+            type: "analytics",
+
+            confidence: 1,
+
+            data:
+
+                AnalyticsEngine.rank(
+
+                    Object.values(
+                        AnalyticsEngine.summary.range
+                    ),
+
+                    "coverage"
+
+                )
+
+        };
+
+    }
+
+    /*--------------------------------------------------
+      DIVISION RANKING
+    --------------------------------------------------*/
+
+    if (
+
+        q.includes("division ranking")
+
+    ) {
+
+        return {
+
+            intent: "divisionRanking",
+
+            type: "analytics",
+
+            confidence: 1,
+
+            data:
+
+                AnalyticsEngine.rank(
+
+                    Object.values(
+                        AnalyticsEngine.summary.division
+                    ),
+
+                    "coverage"
+
+                )
+
+        };
+
+    }
+
+    /*--------------------------------------------------
+      STAFF SEARCH
+    --------------------------------------------------*/
+
+    if (
+
+        q.includes("who") ||
+
+        q.includes("where is") ||
+
+        q.includes("staff")
+
+    ) {
+
+        return {
+
+            intent: "staffSearch",
+
+            data:
+
+                AnalyticsEngine.queryStaff(
+
+                    q.replace(
+
+                        /who|where is|staff/g,
+
+                        ""
+
+                    ).trim()
+
+                )
+
+        };
+
+    }
+
+    /*--------------------------------------------------
+      SEARCH INDEX
+    --------------------------------------------------*/
+
+    const searchKey =
+        normalizeKey(q);
+
+    const result =
+        Object.entries(
+            AnalyticsEngine.searchIndex
+        ).find(
+
+            ([k]) =>
+
+                k.includes(
+                    searchKey
+                )
+
+        );
+
+    if (result) {
+
+        return {
+
+            intent: "search",
+
+            type: result[1].type,
+
+            data: result[1].data
+
+        };
+
+    }
+
+    return null;
+
+};
     AnalyticsEngine.queryStaff = (name) => {
         name = name.toUpperCase();
         return Object.entries(AnalyticsEngine.staffIndex).filter(([k]) => k.includes(name)).flatMap(([, r]) => r);
