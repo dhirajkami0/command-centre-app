@@ -320,29 +320,164 @@ AnalyticsEngine.queryInactiveCompartments = function () {
     const q =
         originalQuery.toLowerCase();
 
-    const sessionMatch =
-        originalQuery.match(
-            /[A-Z ]+_[0-9]{10,}/i
-        );
+  /*----------------------------------------------------------
+PATROL SESSION
+----------------------------------------------------------*/
 
-    if (sessionMatch) {
+const sessionMatch =
+
+    originalQuery.match(
+
+        /[A-Z ]+_[0-9]{6,}/i
+
+    );
+
+if (
+
+    sessionMatch
+
+){
+
+    return {
+
+        intent: "session",
+
+        type: "patrol",
+
+        confidence: 1,
+
+        data:
+
+            AnalyticsEngine.querySession(
+
+                sessionMatch[0]
+
+            )
+
+    };
+
+}
+
+if(
+
+    /\btoday'?s patrol\b|\btoday patrol\b/i.test(
+
+        originalQuery
+
+    )
+
+){
+
+    return {
+
+        intent: "session",
+
+        type: "patrol",
+
+        confidence: 1,
+
+        data:
+
+            AnalyticsEngine.queryLatestSession()
+
+    };
+
+}
+const patrolByName =
+
+    originalQuery.match(
+
+        /(show|latest|open|draw)\s+(.+?)\s+patrol/i
+
+    );
+
+if(
+
+    patrolByName
+
+){
+
+    const action =
+
+        patrolByName[1]
+        .toLowerCase();
+
+    const search =
+
+        patrolByName[2];
+
+    if(
+
+        action === "draw"
+
+    ){
 
         return {
 
-            intent: "session",
+            intent:"drawPatrol",
 
-            type: "patrol",
+            type:"patrol",
 
-            confidence: 1,
+            confidence:1,
 
             data:
-                AnalyticsEngine.querySession(
-                    sessionMatch[0]
+
+                AnalyticsEngine.openPatrol(
+
+                    search
+
                 )
 
         };
 
     }
+
+    return {
+
+        intent:"session",
+
+        type:"patrol",
+
+        confidence:1,
+
+        data:
+
+            AnalyticsEngine.querySession(
+
+                search
+
+            )
+
+    };
+
+});
+
+if(
+
+    patrolByName
+
+){
+
+    return {
+
+        intent: "session",
+
+        type: "patrol",
+
+        confidence: 1,
+
+        data:
+
+            AnalyticsEngine.querySession(
+
+                patrolByName[2]
+
+            )
+
+    };
+
+}
+    
 
     /*--------------------------------------------------
       HIGHEST COVERAGE
@@ -737,27 +872,271 @@ if (
     };
 
     // Bug 2 Fix: Support both exact ID and search by name
-    AnalyticsEngine.querySession = function (search) {
-        search = String(search || "").trim().toUpperCase();
+AnalyticsEngine.querySession = function (search) {
 
-        // Exact session ID
-        if (AnalyticsEngine.sessionIndex[search]) {
-            return AnalyticsEngine.sessionIndex[search];
-        }
+    search = String(
+        search || ""
+    )
+    .trim()
+    .toUpperCase();
 
-        // Search by staff name
-        const sessions = Object.values(AnalyticsEngine.sessionIndex).filter(session => {
-            return String(session.cleanName || session.name || "").toUpperCase().includes(search);
-        });
+    if (
+        !search
+    ) {
+        return null;
+    }
 
-        if (sessions.length) {
-            sessions.sort((a, b) => Number(b.updatedAt || 0) - Number(a.updatedAt || 0));
-            return sessions[0];
-        }
+    if (
+
+        AnalyticsEngine.sessionIndex[search]
+
+    ){
+
+        return AnalyticsEngine.sessionIndex[
+            search
+        ];
+
+    }
+
+    const sessions =
+
+        Object.values(
+
+            AnalyticsEngine.sessionIndex
+
+        );
+
+    const matches =
+
+        sessions.filter(
+
+            s =>
+
+                String(
+
+                    s.sessionId ||
+
+                    ""
+
+                )
+                .toUpperCase()
+                .includes(search)
+
+                ||
+
+                String(
+
+                    s.cleanName ||
+
+                    s.staff ||
+
+                    s.name ||
+
+                    ""
+
+                )
+                .toUpperCase()
+                .includes(search)
+
+        );
+
+    if(
+
+        !matches.length
+
+    ){
 
         return null;
+
+    }
+
+    matches.sort(
+
+        (a,b)=>
+
+            Number(
+
+                b.updatedAt ||
+
+                b.endTime ||
+
+                b.startTime ||
+
+                0
+
+            )
+
+            -
+
+            Number(
+
+                a.updatedAt ||
+
+                a.endTime ||
+
+                a.startTime ||
+
+                0
+
+            )
+
+    );
+
+    return matches[0];
+
+};
+
+/*----------------------------------------------------------
+LATEST SESSION
+----------------------------------------------------------*/
+
+AnalyticsEngine.queryLatestSession = function(){
+
+    const sessions =
+
+        Object.values(
+
+            AnalyticsEngine.sessionIndex
+
+        );
+
+    if(
+
+        !sessions.length
+
+    ){
+
+        return null;
+
+    }
+
+    sessions.sort(
+
+        (a,b)=>
+
+            Number(
+
+                b.updatedAt ||
+
+                b.endTime ||
+
+                b.startTime ||
+
+                0
+
+            )
+
+            -
+
+            Number(
+
+                a.updatedAt ||
+
+                a.endTime ||
+
+                a.startTime ||
+
+                0
+
+            )
+
+    );
+
+    return sessions[0];
+
+};
+
+    /*----------------------------------------------------------
+DRAW PATROL TRACK
+----------------------------------------------------------*/
+
+AnalyticsEngine.drawPatrolTrack = function(session){
+
+    if(
+
+        !session
+
+    ){
+
+        return {
+
+            success:false,
+
+            error:"Patrol session not found."
+
+        };
+
+    }
+
+    if(
+
+        typeof window.drawPatrolTrack === "function"
+
+    ){
+
+        window.drawPatrolTrack(
+
+            session
+
+        );
+
+    }
+
+    return {
+
+        success:true,
+
+        action:"drawPatrolTrack",
+
+        sessionId:
+
+            session.sessionId,
+
+        session
+
     };
 
+};
+
+/*----------------------------------------------------------
+OPEN PATROL
+----------------------------------------------------------*/
+
+AnalyticsEngine.openPatrol = function(search){
+
+    const session =
+
+        AnalyticsEngine.querySession(
+
+            search
+
+        );
+
+    if(
+
+        !session
+
+    ){
+
+        return {
+
+            success:false,
+
+            error:"Patrol session not found."
+
+        };
+
+    }
+
+    return
+
+        AnalyticsEngine.drawPatrolTrack(
+
+            session
+
+        );
+
+};
     AnalyticsEngine.queryTopStaff = () => {
         const staff = {};
         AnalyticsEngine.dataset.forEach(row => {
