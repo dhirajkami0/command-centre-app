@@ -805,7 +805,20 @@
 
         "realtime analytics",
 
-        "analytics summary"
+        "analytics summary",
+        "most visited",
+"least visited",
+"top compartment",
+"top compartments",
+"ranking",
+"rank",
+"visit ranking",
+"compartment ranking",
+"highest coverage",
+"lowest coverage",
+"top 10",
+"most patrol",
+"patrol ranking"
 
     ];
 
@@ -1846,7 +1859,20 @@
         query =
 
             normalizeQuery(query);
+if(
+   /most visited|least visited|top compartment|top compartments|ranking|rank|highest coverage|lowest coverage|most patrol|patrol ranking/i.test(query)
+){
 
+    return {
+        query,
+        intent: INTENTS.ANALYTICS,
+        score: 999,
+        scores:{
+            analytics:999
+        }
+    };
+
+}
         const scores =
 
             scoreIntent(query);
@@ -2021,7 +2047,33 @@ context.duty =
 
     };
 
+Router.resolveTools = function(query, intent){
 
+    query = normalizeQuery(query);
+
+    const tools = [];
+
+    if(intent === INTENTS.ANALYTICS){
+
+        if(
+            /monthly|coverage|analytics|statistics|summary/.test(query)
+        ){
+            tools.push("getMonthlyStatus");
+        }
+
+        if(
+            /most visited|least visited|top compartment|top compartments|ranking|rank|highest coverage|lowest coverage|most patrol|patrol ranking/i.test(query)
+        ){
+            tools.push(
+                "getCompartmentVisitBreakdown"
+            );
+        }
+
+    }
+
+    return [...new Set(tools)];
+
+};
 
     /*----------------------------------------------------------
       ROUTE
@@ -2041,16 +2093,18 @@ context.duty =
 
             );
 
-        result.context =
+result.context =
+    await Router.buildContext(
+        result.intent
+    );
 
-            await Router.buildContext(
+result.tools =
+    Router.resolveTools(
+        query,
+        result.intent
+    );
 
-                result.intent
-
-            );
-
-        return result;
-
+return result;
     };
 
      /*----------------------------------------------------------
