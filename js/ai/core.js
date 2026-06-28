@@ -542,20 +542,14 @@
 
     };
 
-   Core.callAI = async function (
-
-    request
-
-) {
+Core.callAI = async function (request) {
 
     busy = true;
 
     try {
 
         const cached =
-            await Core.getCachedResponse(
-                request
-            );
+            await Core.getCachedResponse(request);
 
         if (cached) {
 
@@ -565,9 +559,111 @@
 
         }
 
-        //--------------------------------------------------
-        // FIRST CALL
-        //--------------------------------------------------
+        /*------------------------------------------
+        LOCAL ANALYTICS ENGINE
+        ------------------------------------------*/
+
+        if (
+
+            request.route?.intent === "analytics"
+
+        ) {
+
+            try {
+
+                const analytics =
+
+                    await GreenGuardAI.Tools.execute(
+
+                        "analyticsQuery",
+
+                        {
+
+                            query:
+
+                                request.query
+
+                        }
+
+                    );
+
+                if (
+
+                    analytics?.success &&
+
+                    analytics?.result
+
+                ) {
+
+                    const response = {
+
+                        success: true,
+
+                        timestamp:
+                            Date.now(),
+
+                        requestId:
+                            request.id,
+
+                        intent:
+                            "analytics",
+
+                        answer:
+
+                            analytics.result,
+
+                        raw:
+
+                            analytics,
+
+                        cached:
+
+                            false,
+
+                        local:
+
+                            true
+
+                    };
+
+                    await Core.setCachedResponse(
+
+                        request,
+
+                        response
+
+                    );
+
+                    busy = false;
+
+                    responseCount++;
+
+                    lastResponse =
+                        Config.clone(response);
+
+                    return response;
+
+                }
+
+            }
+
+            catch (err) {
+
+                console.error(
+
+                    "AnalyticsEngine failed",
+
+                    err
+
+                );
+
+            }
+
+        }
+
+        /*------------------------------------------
+        CLOUD AI
+        ------------------------------------------*/
 
         let result =
             await window.callAI({
@@ -586,10 +682,6 @@
                 toolResults: {}
 
             });
-
-        //--------------------------------------------------
-        // TOOL EXECUTION
-        //--------------------------------------------------
 
         if (
 
@@ -613,50 +705,27 @@
 
                 try {
 
-                    if (
+                    toolResults[
+                        tool.name
+                    ] =
 
-    !GreenGuardAI.Tools ||
+                    await GreenGuardAI.Tools.execute(
 
-    typeof GreenGuardAI.Tools.execute !== "function"
+                        tool.name,
 
-) {
+                        tool.arguments || {}
 
-    throw new Error(
-
-        "Tools module not loaded."
-
-    );
-
-}
-
-toolResults[
-    tool.name
-] =
-
-await GreenGuardAI
-    .Tools
-    .execute(
-
-        tool.name,
-
-        tool.arguments || {}
-
-    );
+                    );
 
                 }
 
-                catch (
-
-                    e
-
-                ) {
+                catch (e) {
 
                     toolResults[
                         tool.name
                     ] = {
 
                         error:
-
                             e.message
 
                     };
@@ -664,10 +733,6 @@ await GreenGuardAI
                 }
 
             }
-
-            //--------------------------------------------------
-            // SECOND CALL
-            //--------------------------------------------------
 
             result =
                 await window.callAI({
@@ -689,56 +754,57 @@ await GreenGuardAI
 
         }
 
-     const response = {
+        const response = {
 
-    success: true,
+            success: true,
 
-    timestamp:
-        Date.now(),
+            timestamp:
+                Date.now(),
 
-    requestId:
-        request.id,
+            requestId:
+                request.id,
 
-    intent:
-        request.intent,
+            intent:
+                request.intent,
 
-    answer:
+            answer:
 
-        result.reply ||
+                result.reply ||
 
-        result.answer ||
+                result.answer ||
 
-        result.content ||
+                result.content ||
 
-        result.message ||
+                result.message ||
 
-        (
+                (
 
-            typeof result === "string"
+                    typeof result === "string"
 
-                ? result
+                        ? result
 
-                : JSON.stringify(
+                        : JSON.stringify(
 
-                    result,
+                            result,
 
-                    null,
+                            null,
 
-                    2
+                            2
 
-                )
+                        )
 
-        ),
+                ),
 
-    raw:
+            raw:
+                result,
 
-        result,
+            cached:
+                false,
 
-    cached:
+            local:
+                false
 
-        false
-
-};
+        };
 
         await Core.setCachedResponse(
 
@@ -750,17 +816,20 @@ await GreenGuardAI
 
         busy = false;
 
+        responseCount++;
+
+        lastResponse =
+            Config.clone(response);
+
         return response;
 
     }
 
-    catch (
-
-        err
-
-    ) {
+    catch (err) {
 
         busy = false;
+
+        lastError = err;
 
         Config.error(
 
@@ -775,7 +844,6 @@ await GreenGuardAI
             success: false,
 
             error:
-
                 err.message
 
         };
