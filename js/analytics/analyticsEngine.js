@@ -47,6 +47,32 @@
             records: AnalyticsEngine.dataset.length
         };
     };
+    /*----------------------------------------------------------
+INACTIVE COMPARTMENTS
+----------------------------------------------------------*/
+
+AnalyticsEngine.queryInactiveCompartments = function () {
+
+    return AnalyticsEngine.dataset.filter(
+
+        row =>
+
+            Number(
+                row.coverage || 0
+            ) === 0
+
+    ).sort(
+
+        (a, b) =>
+
+            a.compartment.localeCompare(
+                b.compartment
+            )
+
+    );
+
+};
+
     AnalyticsEngine.getSummary = function () { return AnalyticsEngine.summary; };
     AnalyticsEngine.getSession = function(sessionId) { return AnalyticsEngine.sessionIndex[sessionId] || null; };
 
@@ -464,43 +490,37 @@
 
     }
 
-    /*--------------------------------------------------
-      NO PATROL
-    --------------------------------------------------*/
+   /*--------------------------------------------------
+  NO PATROL
+--------------------------------------------------*/
 
-    if (
+if (
 
-        q.includes("no patrol") ||
+    q.includes("no patrol") ||
 
-        q.includes("inactive") ||
+    q.includes("inactive") ||
 
-        q.includes("never visited")
+    q.includes("never visited") ||
 
-    ) {
+    q.includes("unvisited")
 
-        return {
+) {
 
-            intent: "inactive",
+    return {
 
-            type: "analytics",
+        intent: "inactive",
 
-            confidence: 1,
+        type: "analytics",
 
-            data:
+        confidence: 1,
 
-                AnalyticsEngine.dataset.filter(
+        data:
 
-                    r =>
+            AnalyticsEngine.queryInactiveCompartments()
 
-                        r.visits === 0 &&
+    };
 
-                        r.tracks.length === 0
-
-                )
-
-        };
-
-    }
+}
 
     /*--------------------------------------------------
       PATROL RANKING
