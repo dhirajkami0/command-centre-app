@@ -312,7 +312,7 @@ AnalyticsEngine.queryInactiveCompartments = function () {
         stats: ["monthly summary", "dashboard", "analytics overview", "btr statistics"]
     };
 
-    AnalyticsEngine.query = function (query) {
+AnalyticsEngine.query = function (query) {
 
     const originalQuery =
         String(query || "").trim();
@@ -320,109 +320,130 @@ AnalyticsEngine.queryInactiveCompartments = function () {
     const q =
         originalQuery.toLowerCase();
 
-  /*----------------------------------------------------------
-PATROL SESSION
-----------------------------------------------------------*/
+    /*----------------------------------------------------------
+      PATROL SESSION
+    ----------------------------------------------------------*/
 
-const sessionMatch =
+    const sessionMatch =
 
-    originalQuery.match(
+        originalQuery.match(
 
-        /[A-Z ]+_[0-9]{6,}/i
+            /[A-Z ]+_[0-9]{6,}/i
 
-    );
+        );
 
-if (
+    if (
 
-    sessionMatch
+        sessionMatch
 
-){
-
-    return {
-
-        intent: "session",
-
-        type: "patrol",
-
-        confidence: 1,
-
-        data:
-
-            AnalyticsEngine.querySession(
-
-                sessionMatch[0]
-
-            )
-
-    };
-
-}
-
-if(
-
-    /\btoday'?s patrol\b|\btoday patrol\b/i.test(
-
-        originalQuery
-
-    )
-
-){
-
-    return {
-
-        intent: "session",
-
-        type: "patrol",
-
-        confidence: 1,
-
-        data:
-
-            AnalyticsEngine.queryLatestSession()
-
-    };
-
-}
-const patrolByName =
-
-    originalQuery.match(
-
-        /(show|latest|open|draw)\s+(.+?)\s+patrol/i
-
-    );
-
-if(
-
-    patrolByName
-
-){
-
-    const action =
-
-        patrolByName[1]
-        .toLowerCase();
-
-    const search =
-
-        patrolByName[2];
-
-    if(
-
-        action === "draw"
-
-    ){
+    ) {
 
         return {
 
-            intent:"drawPatrol",
+            intent: "session",
 
-            type:"patrol",
+            type: "patrol",
 
-            confidence:1,
+            confidence: 1,
 
             data:
 
-                AnalyticsEngine.openPatrol(
+                AnalyticsEngine.querySession(
+
+                    sessionMatch[0]
+
+                )
+
+        };
+
+    }
+
+    if (
+
+        /\btoday'?s patrol\b|\btoday patrol\b/i.test(
+
+            originalQuery
+
+        )
+
+    ) {
+
+        return {
+
+            intent: "session",
+
+            type: "patrol",
+
+            confidence: 1,
+
+            data:
+
+                AnalyticsEngine.queryLatestSession()
+
+        };
+
+    }
+
+    const patrolByName =
+
+        originalQuery.match(
+
+            /(show|latest|open|draw)\s+(.+?)\s+patrol/i
+
+        );
+
+    if (
+
+        patrolByName
+
+    ) {
+
+        const action =
+
+            patrolByName[1]
+                .toLowerCase();
+
+        const search =
+
+            patrolByName[2];
+
+        if (
+
+            action === "draw"
+
+        ) {
+
+            return {
+
+                intent: "drawPatrol",
+
+                type: "patrol",
+
+                confidence: 1,
+
+                data:
+
+                    AnalyticsEngine.openPatrol(
+
+                        search
+
+                    )
+
+            };
+
+        }
+
+        return {
+
+            intent: "session",
+
+            type: "patrol",
+
+            confidence: 1,
+
+            data:
+
+                AnalyticsEngine.querySession(
 
                     search
 
@@ -432,56 +453,9 @@ if(
 
     }
 
-    return {
-
-        intent:"session",
-
-        type:"patrol",
-
-        confidence:1,
-
-        data:
-
-            AnalyticsEngine.querySession(
-
-                search
-
-            )
-
-    };
-
-});
-
-if(
-
-    patrolByName
-
-){
-
-    return {
-
-        intent: "session",
-
-        type: "patrol",
-
-        confidence: 1,
-
-        data:
-
-            AnalyticsEngine.querySession(
-
-                patrolByName[2]
-
-            )
-
-    };
-
-}
-    
-
-    /*--------------------------------------------------
+    /*----------------------------------------------------------
       HIGHEST COVERAGE
-    --------------------------------------------------*/
+    ----------------------------------------------------------*/
 
     if (
 
@@ -491,7 +465,11 @@ if(
 
     ) {
 
-        if (q.includes("beat")) {
+        if (
+
+            q.includes("beat")
+
+        ) {
 
             return {
 
@@ -506,7 +484,9 @@ if(
                     AnalyticsEngine.rank(
 
                         Object.values(
+
                             AnalyticsEngine.summary.beat
+
                         ),
 
                         "coverage"
@@ -517,7 +497,11 @@ if(
 
         }
 
-        if (q.includes("range")) {
+        if (
+
+            q.includes("range")
+
+        ) {
 
             return {
 
@@ -532,7 +516,9 @@ if(
                     AnalyticsEngine.rank(
 
                         Object.values(
+
                             AnalyticsEngine.summary.range
+
                         ),
 
                         "coverage"
@@ -543,7 +529,11 @@ if(
 
         }
 
-        if (q.includes("division")) {
+        if (
+
+            q.includes("division")
+
+        ) {
 
             return {
 
@@ -558,7 +548,9 @@ if(
                     AnalyticsEngine.rank(
 
                         Object.values(
+
                             AnalyticsEngine.summary.division
+
                         ),
 
                         "coverage"
@@ -591,9 +583,9 @@ if(
 
     }
 
-    /*--------------------------------------------------
+    /*----------------------------------------------------------
       MOST VISITED
-    --------------------------------------------------*/
+    ----------------------------------------------------------*/
 
     if (
 
@@ -625,41 +617,41 @@ if(
 
     }
 
-   /*--------------------------------------------------
-  NO PATROL
---------------------------------------------------*/
+    /*----------------------------------------------------------
+      NO PATROL
+    ----------------------------------------------------------*/
 
-if (
+    if (
 
-    q.includes("no patrol") ||
+        q.includes("no patrol") ||
 
-    q.includes("inactive") ||
+        q.includes("inactive") ||
 
-    q.includes("never visited") ||
+        q.includes("never visited") ||
 
-    q.includes("unvisited")
+        q.includes("unvisited")
 
-) {
+    ) {
 
-    return {
+        return {
 
-        intent: "inactive",
+            intent: "inactive",
 
-        type: "analytics",
+            type: "analytics",
 
-        confidence: 1,
+            confidence: 1,
 
-        data:
+            data:
 
-            AnalyticsEngine.queryInactiveCompartments()
+                AnalyticsEngine.queryInactiveCompartments()
 
-    };
+        };
 
-}
+    }
 
-    /*--------------------------------------------------
+    /*----------------------------------------------------------
       PATROL RANKING
-    --------------------------------------------------*/
+    ----------------------------------------------------------*/
 
     if (
 
@@ -691,9 +683,9 @@ if (
 
     }
 
-    /*--------------------------------------------------
+    /*----------------------------------------------------------
       BEAT RANKING
-    --------------------------------------------------*/
+    ----------------------------------------------------------*/
 
     if (
 
@@ -714,7 +706,9 @@ if (
                 AnalyticsEngine.rank(
 
                     Object.values(
+
                         AnalyticsEngine.summary.beat
+
                     ),
 
                     "coverage"
@@ -725,9 +719,9 @@ if (
 
     }
 
-    /*--------------------------------------------------
+    /*----------------------------------------------------------
       RANGE RANKING
-    --------------------------------------------------*/
+    ----------------------------------------------------------*/
 
     if (
 
@@ -748,7 +742,9 @@ if (
                 AnalyticsEngine.rank(
 
                     Object.values(
+
                         AnalyticsEngine.summary.range
+
                     ),
 
                     "coverage"
@@ -759,9 +755,9 @@ if (
 
     }
 
-    /*--------------------------------------------------
+    /*----------------------------------------------------------
       DIVISION RANKING
-    --------------------------------------------------*/
+    ----------------------------------------------------------*/
 
     if (
 
@@ -782,7 +778,9 @@ if (
                 AnalyticsEngine.rank(
 
                     Object.values(
+
                         AnalyticsEngine.summary.division
+
                     ),
 
                     "coverage"
@@ -793,9 +791,9 @@ if (
 
     }
 
-    /*--------------------------------------------------
+    /*----------------------------------------------------------
       STAFF SEARCH
-    --------------------------------------------------*/
+    ----------------------------------------------------------*/
 
     if (
 
@@ -810,6 +808,10 @@ if (
         return {
 
             intent: "staffSearch",
+
+            type: "analytics",
+
+            confidence: 1,
 
             data:
 
@@ -829,35 +831,53 @@ if (
 
     }
 
-    /*--------------------------------------------------
+    /*----------------------------------------------------------
       SEARCH INDEX
-    --------------------------------------------------*/
+    ----------------------------------------------------------*/
 
     const searchKey =
-        normalizeKey(q);
+
+        normalizeKey(
+
+            q
+
+        );
 
     const result =
+
         Object.entries(
+
             AnalyticsEngine.searchIndex
+
         ).find(
 
             ([k]) =>
 
                 k.includes(
+
                     searchKey
+
                 )
 
         );
 
-    if (result) {
+    if (
+
+        result
+
+    ) {
 
         return {
 
             intent: "search",
 
-            type: result[1].type,
+            type:
 
-            data: result[1].data
+                result[1].type,
+
+            data:
+
+                result[1].data
 
         };
 
