@@ -11,11 +11,14 @@
     AnalyticsEngine.rangeIndex = {};
     AnalyticsEngine.divisionIndex = {};
     AnalyticsEngine.staffIndex = {};
+    AnalyticsEngine.sessionIndex = {};
+    AnalyticsEngine.latestSessionIndex = {}; // Added for Improvement 4
     AnalyticsEngine.compartmentIndex = {};
+    AnalyticsEngine.searchIndex = {};
     AnalyticsEngine.loaded = false;
     AnalyticsEngine.loading = false;
     AnalyticsEngine.lastLoaded = 0;
-    AnalyticsEngine.version = "1.0.0";
+    AnalyticsEngine.version = "2.0.0";
 
     AnalyticsEngine.clear = function () {
         AnalyticsEngine.dataset = [];
@@ -24,20 +27,17 @@
         AnalyticsEngine.rangeIndex = {};
         AnalyticsEngine.divisionIndex = {};
         AnalyticsEngine.staffIndex = {};
+        AnalyticsEngine.sessionIndex = {};
+        AnalyticsEngine.latestSessionIndex = {}; // Added for Improvement 4
         AnalyticsEngine.compartmentIndex = {};
+        AnalyticsEngine.searchIndex = {};
         AnalyticsEngine.loaded = false;
         AnalyticsEngine.lastLoaded = 0;
         window.analyticsDataset = [];
     };
 
-    AnalyticsEngine.getDataset = function () {
-        return AnalyticsEngine.dataset;
-    };
-
-    AnalyticsEngine.isLoaded = function () {
-        return AnalyticsEngine.loaded;
-    };
-
+    AnalyticsEngine.getDataset = function () { return AnalyticsEngine.dataset; };
+    AnalyticsEngine.isLoaded = function () { return AnalyticsEngine.loaded; };
     AnalyticsEngine.getStats = function () {
         return {
             loaded: AnalyticsEngine.loaded,
@@ -47,15 +47,64 @@
             records: AnalyticsEngine.dataset.length
         };
     };
+    AnalyticsEngine.getSummary = function () { return AnalyticsEngine.summary; };
+    AnalyticsEngine.getSession = function(sessionId) { return AnalyticsEngine.sessionIndex[sessionId] || null; };
+
+    // Improvement 4: Helper for latest session
+    AnalyticsEngine.getLatestSession = function(cleanName){
+        return AnalyticsEngine.latestSessionIndex[
+            String(cleanName || "")
+                .toUpperCase()
+        ] || null;
+    };
+
+    /*----------------------------------------------------------
+    UTILITIES: MATCHES, RANK, AND INDEXING
+    ----------------------------------------------------------*/
+    function matches(query, terms) { return terms.some(term => query.includes(term)); }
+    function normalizeKey(value) { return String(value || "").trim().toUpperCase().replace(/[\s_-]+/g, ""); }
+
+    AnalyticsEngine.rank = function(items, field, descending = true) {
+        return [...items].sort((a, b) => {
+            return descending
+                ? Number(b[field] || 0) - Number(a[field] || 0)
+                : Number(a[field] || 0) - Number(b[field] || 0);
+        });
+    };
+
+    AnalyticsEngine.indexRow = function(row) {
+        const beat = String(row.beat || "").toUpperCase();
+        const range = String(row.range || "").toUpperCase();
+        const division = String(row.division || "").toUpperCase();
+        const compKey = String(row.compartment || "").trim().toUpperCase().replace(/\s+/g, "_");
+
+        if (beat) (AnalyticsEngine.beatIndex[beat] ||= []).push(row);
+        if (range) (AnalyticsEngine.rangeIndex[range] ||= []).push(row);
+        if (division) (AnalyticsEngine.divisionIndex[division] ||= []).push(row);
+        if (compKey) AnalyticsEngine.compartmentIndex[compKey] = row;
+    };
+
+    AnalyticsEngine.buildBaseIndexes = function(dataset) {
+        AnalyticsEngine.beatIndex = {};
+        AnalyticsEngine.rangeIndex = {};
+        AnalyticsEngine.divisionIndex = {};
+        AnalyticsEngine.compartmentIndex = {};
+        dataset.forEach(AnalyticsEngine.indexRow);
+    };
+
+    AnalyticsEngine.buildSearchIndexes = function() {
+        AnalyticsEngine.searchIndex = {};
+        Object.entries(AnalyticsEngine.beatIndex).forEach(([k, v]) => AnalyticsEngine.searchIndex[k] = { type: "beat", data: v });
+        Object.entries(AnalyticsEngine.rangeIndex).forEach(([k, v]) => AnalyticsEngine.searchIndex[k] = { type: "range", data: v });
+        Object.entries(AnalyticsEngine.divisionIndex).forEach(([k, v]) => AnalyticsEngine.searchIndex[k] = { type: "division", data: v });
+        Object.entries(AnalyticsEngine.compartmentIndex).forEach(([k, v]) => AnalyticsEngine.searchIndex[v.compartment.toUpperCase()] = { type: "compartment", data: v });
+    };
 
     /*----------------------------------------------------------
     LOAD ANALYTICS DATASET
     ----------------------------------------------------------*/
     AnalyticsEngine.load = async function () {
-        if (AnalyticsEngine.loading || AnalyticsEngine.loaded) {
-            return AnalyticsEngine.dataset;
-        }
-
+        if (AnalyticsEngine.loading || AnalyticsEngine.loaded) return AnalyticsEngine.dataset;
         AnalyticsEngine.loading = true;
         try {
             console.time("AnalyticsEngine.build");
@@ -64,53 +113,21 @@
             AnalyticsEngine.loaded = true;
             AnalyticsEngine.lastLoaded = Date.now();
             console.timeEnd("AnalyticsEngine.build");
-            console.log("✅ Analytics Dataset Ready:", AnalyticsEngine.dataset.length, "records");
             return AnalyticsEngine.dataset;
-        } finally {
-            AnalyticsEngine.loading = false;
-        }
+        } finally { AnalyticsEngine.loading = false; }
     };
 
-    /*----------------------------------------------------------
-    BUILD MASTER DATASET
-    ----------------------------------------------------------*/
     AnalyticsEngine.buildMaster = function () {
-        console.log("📦 Building Master Dataset...");
         const dataset = [];
         const datasetMap = {};
         const masterGrid = window.masterGrid || {};
-        const gridIds = Object.keys(masterGrid);
-
-        for (const gridId of gridIds) {
+        for (const gridId of Object.keys(masterGrid)) {
             const g = masterGrid[gridId] || {};
             const row = {
-                gridId,
-                compartment: g.compartment || "",
-                beat: g.beat || "",
-                range: g.range || "",
-                division: g.division || "",
-                circle: g.circle || "",
-                areaHa: Number(g.actualAreaHa || 0),
-                totalCells: Number(g.totalCells || 0),
-                coveredCells: 0,
-                coverage: 0,
-                visits: 0,
-                patrolDistanceKm: 0,
-                updatedAt: null,
-                analytics: {},
-                liveStaff: [],
-                assignedStaff: [],
-                patrolHistory: [],
-                tracks: [],
-                summary: {
-                    patrols: 0,
-                    patrolDistanceKm: 0,
-                    liveStaff: 0,
-                    assignedStaff: 0,
-                    coveredCells: 0,
-                    totalCells: 0,
-                    coverage: 0
-                }
+                gridId, compartment: g.compartment || "", beat: g.beat || "", range: g.range || "", division: g.division || "",
+                totalCells: Number(g.totalCells || 0), coveredCells: 0, coverage: 0, visits: 0, patrolDistanceKm: 0,
+                analytics: {}, liveStaff: [], assignedStaff: [], patrolHistory: [], tracks: [],
+                summary: { patrols: 0, patrolDistanceKm: 0, liveStaff: 0, assignedStaff: 0, coveredCells: 0, totalCells: 0, coverage: 0 }
             };
             dataset.push(row);
             datasetMap[gridId] = row;
@@ -118,269 +135,236 @@
         return { dataset, datasetMap };
     };
 
-    /*----------------------------------------------------------
-    BUILD INDEXES
-    ----------------------------------------------------------*/
-    AnalyticsEngine.buildIndexes = function (dataset) {
-        AnalyticsEngine.beatIndex = {};
-        AnalyticsEngine.rangeIndex = {};
-        AnalyticsEngine.divisionIndex = {};
-        AnalyticsEngine.compartmentIndex = {};
-
-        dataset.forEach(row => {
-            const beat = String(row.beat || "").toUpperCase();
-            const range = String(row.range || "").toUpperCase();
-            const division = String(row.division || "").toUpperCase();
-            const compKey = String(row.compartment || "").trim().toUpperCase().replace(/\s+/g, "_");
-
-            if (beat) {
-                (AnalyticsEngine.beatIndex[beat] ||= []).push(row);
-            }
-            if (range) {
-                (AnalyticsEngine.rangeIndex[range] ||= []).push(row);
-            }
-            if (division) {
-                (AnalyticsEngine.divisionIndex[division] ||= []).push(row);
-            }
-            if (compKey) {
-                AnalyticsEngine.compartmentIndex[compKey] = row;
-            }
-        });
-    };
-
-    /*----------------------------------------------------------
-    BUILD DATASET (Main Orchestrator)
-    ----------------------------------------------------------*/
     AnalyticsEngine.build = async function () {
-        console.log("🚀 Building Analytics Dataset...");
-
         const { dataset, datasetMap } = AnalyticsEngine.buildMaster();
         AnalyticsEngine.datasetMap = datasetMap;
 
+        AnalyticsEngine.buildBaseIndexes(dataset);
+
         await AnalyticsEngine.mergeAnalytics(dataset, datasetMap);
-
-        // Build hierarchy indexes BEFORE staff merge
-        AnalyticsEngine.buildIndexes(dataset);
-
         await AnalyticsEngine.mergeStaffProfiles(dataset, datasetMap);
         await AnalyticsEngine.mergeLiveStaff(dataset, datasetMap);
         await AnalyticsEngine.mergeHistory(dataset, datasetMap);
+        await AnalyticsEngine.mergePatrolTracks(dataset, datasetMap);
 
-        console.log("✅ Base Dataset Built:", dataset.length);
+        AnalyticsEngine.buildSearchIndexes();
+        AnalyticsEngine.dataset = dataset;
+        AnalyticsEngine.aggregate();
         return dataset;
     };
 
     /*----------------------------------------------------------
-    MERGE ANALYTICS DATA (WITH BATCHING)
+    MERGE FUNCTIONS
     ----------------------------------------------------------*/
     AnalyticsEngine.mergeAnalytics = async function (dataset, datasetMap) {
         try {
-            const d = new Date();
-            const monthKey = `${d.getFullYear()}_${String(d.getMonth() + 1).padStart(2, "0")}`;
-            console.log("📥 Loading analytics_rebuild...");
-
+            const monthKey = `${new Date().getFullYear()}_${String(new Date().getMonth() + 1).padStart(2, "0")}`;
             const gridIds = Object.keys(datasetMap);
-            const BATCH = 40;
-
-            for (let i = 0; i < gridIds.length; i += BATCH) {
-                const batchIds = gridIds.slice(i, i + BATCH);
-                const promises = batchIds.map(gridId =>
-                    window.fb.getDoc(window.fb.doc(window.db, "analytics_rebuild", monthKey, "compartments", gridId))
-                );
-
-                const snaps = await Promise.allSettled(promises);
-
-                snaps.forEach((result, index) => {
-                    if (result.status !== "fulfilled" || !result.value.exists()) return;
-
-                    const analytics = result.value.data() || {};
-                    const gridId = batchIds[index];
-                    const row = datasetMap[gridId];
-
-                    if (!row) return;
-
-                    row.coveredCells = Number(analytics.totalCovered || Object.keys(analytics.visitedCells || {}).length || 0);
-                    row.visits = Number(analytics.visitCount || 0);
-                    row.coverage = row.totalCells > 0 ? (row.coveredCells / row.totalCells) * 100 : 0;
-                    row.patrolDistanceKm = Number(analytics.distanceMeters || 0) / 1000;
-                    row.updatedAt = analytics.updatedAt?.toMillis?.() || (analytics.updatedAt?.seconds ? analytics.updatedAt.seconds * 1000 : 0);
-                    
-                    row.summary.coveredCells = row.coveredCells;
-                    row.summary.totalCells = row.totalCells;
-                    row.summary.coverage = row.coverage;
-                    row.summary.patrols = row.visits;
-                    row.summary.patrolDistanceKm = row.patrolDistanceKm;
+            for (let i = 0; i < gridIds.length; i += 40) {
+                const batch = gridIds.slice(i, i + 40);
+                const snaps = await Promise.allSettled(batch.map(id => window.fb.getDoc(window.fb.doc(window.db, "analytics_rebuild", monthKey, "compartments", id))));
+                snaps.forEach((res, idx) => {
+                    if (res.status === "fulfilled" && res.value.exists()) {
+                        const row = datasetMap[batch[idx]];
+                        const a = res.value.data();
+                        row.visits = Number(a.visitCount || 0);
+                        row.coveredCells = Number(a.totalCovered || Object.keys(a.visitedCells || {}).length || 0);
+                        row.coverage = row.totalCells > 0 ? (row.coveredCells / row.totalCells) * 100 : 0;
+                        row.patrolDistanceKm = Number(a.distanceMeters || 0) / 1000;
+                        Object.assign(row.summary, { coveredCells: row.coveredCells, totalCells: row.totalCells, coverage: row.coverage, patrols: row.visits, patrolDistanceKm: row.patrolDistanceKm });
+                    }
                 });
             }
-            console.log("✅ analytics_rebuild merged.");
-        } catch (err) {
-            console.error("Analytics merge failed", err);
-        }
+        } catch (err) { console.error("Analytics merge failed", err); }
     };
 
-    /*----------------------------------------------------------
-    MERGE STAFF PROFILES (WITH INDEXING)
-    ----------------------------------------------------------*/
     AnalyticsEngine.mergeStaffProfiles = async function (dataset, datasetMap) {
         try {
-            console.log("👥 Loading staff_profiles...");
-            
-            const beatIndex = AnalyticsEngine.beatIndex;
-
+            AnalyticsEngine.staffIndex = {};
             const snap = await window.fb.getDocs(window.fb.collection(window.db, "staff_profiles"));
-
             snap.forEach(doc => {
                 const staff = doc.data() || {};
-                const beat = String(staff.beat || "").trim().toUpperCase();
-                const rows = beatIndex[beat] || [];
-
-                rows.forEach(row => {
+                (AnalyticsEngine.beatIndex[String(staff.beat || "").trim().toUpperCase()] || []).forEach(row => {
                     row.summary.assignedStaff++;
-                    row.assignedStaff.push({
-                        name: staff.name || doc.id,
-                        cleanName: staff.cleanName || "",
-                        role: staff.role || "",
-                        phone: staff.phone || "",
-                        beat: staff.beat || "",
-                        range: staff.range || "",
-                        division: staff.division || ""
-                    });
-
-                    const key = String(staff.cleanName || staff.name || doc.id).trim().toUpperCase();
-                    if (!AnalyticsEngine.staffIndex[key]) {
-                        AnalyticsEngine.staffIndex[key] = [];
-                    }
-                    AnalyticsEngine.staffIndex[key].push(row);
+                    row.assignedStaff.push({ name: staff.name || doc.id, role: staff.role || "", phone: staff.phone || "" });
+                    (AnalyticsEngine.staffIndex[String(staff.cleanName || staff.name || doc.id).trim().toUpperCase()] ||= []).push(row);
                 });
             });
-            console.log("✅ staff_profiles merged.");
-        } catch (err) {
-            console.error("staff_profiles merge failed", err);
-        }
+        } catch (err) { console.error("staff_profiles merge failed", err); }
     };
 
-    /*----------------------------------------------------------
-    MERGE LIVE STAFF
-    ----------------------------------------------------------*/
     AnalyticsEngine.mergeLiveStaff = async function (dataset, datasetMap) {
         try {
-            console.log("🛰 Loading live_staff...");
             const snap = await window.fb.getDocs(window.fb.collection(window.db, "live_staff"));
-
             snap.forEach(doc => {
                 const live = doc.data() || {};
-                const cleanName = String(live.cleanName || live.name || doc.id).trim().toUpperCase();
-
-                const rows = AnalyticsEngine.staffIndex[cleanName] || [];
-
-                rows.forEach(row => {
-                    row.liveStaff.push({
-                        id: doc.id,
-                        cleanName,
-                        rawName: live.rawName || live.name || "",
-                        role: live.role || "",
-                        phone: live.phone || "",
-                        dutyActive: Boolean(live.dutyActive),
-                        beat: live.beat || "",
-                        range: live.range || "",
-                        division: live.division || "",
-                        compartment: live.compartment || "",
-                        latitude: Number(live.lat || live.latitude || 0),
-                        longitude: Number(live.lng || live.longitude || 0),
-                        speed: Number(live.speed || 0),
-                        heading: Number(live.heading || 0),
-                        accuracy: Number(live.accuracy || 0),
-                        fixTime: live.fixTime || null,
-                        updatedAt: live.updatedAt || null
-                    });
+                (AnalyticsEngine.staffIndex[String(live.cleanName || live.name || doc.id).trim().toUpperCase()] || []).forEach(row => {
+                    row.liveStaff.push(live);
                     row.summary.liveStaff++;
                 });
             });
-            console.log("✅ live_staff merged.");
-        } catch (err) {
-            console.error("❌ mergeLiveStaff", err);
-        }
+        } catch (err) { console.error("❌ mergeLiveStaff", err); }
     };
 
-    /*----------------------------------------------------------
-    MERGE HISTORY
-    ----------------------------------------------------------*/
     AnalyticsEngine.mergeHistory = async function (dataset, datasetMap) {
         try {
-            console.log("📜 Loading history...");
             const snap = await window.fb.getDocs(window.fb.collection(window.db, "history"));
-
             snap.forEach(doc => {
-                const history = doc.data() || {};
-                const compartments = Array.isArray(history.compartments) ? history.compartments : [];
-
-                compartments.forEach(name => {
-                    const key = String(name).trim().toUpperCase().replace(/\s+/g, "_");
-                    const row = AnalyticsEngine.compartmentIndex[key];
-
-                    if (!row) return;
-
-                   row.patrolHistory.push({
-
-    sessionId:
-        history.sessionId || doc.id,
-
-    staff:
-        history.staffName ||
-        history.cleanName ||
-        history.user ||
-        "",
-
-    dutyType:
-        history.dutyType || "",
-
-    range:
-        history.range || "",
-
-    beat:
-        history.beat || "",
-
-    startTime:
-        history.startTime || null,
-
-    endTime:
-        history.endTime || null,
-
-    duration:
-        Number(
-            history.duration || 0
-        ),
-
-    distanceMeters:
-        Number(
-            history.distanceMeters || 0
-        ),
-
-    compartments:
-        compartments.length,
-
-    clipStatus:
-        history.clipStatus || "",
-
-    completed:
-        history.completed === true
-
-});
+                const h = doc.data() || {};
+                (h.compartments || []).forEach(name => {
+                    const row = AnalyticsEngine.compartmentIndex[String(name).trim().toUpperCase().replace(/\s+/g, "_")];
+                    if (row) row.patrolHistory.push(h);
                 });
             });
-            console.log("✅ history merged.");
-        } catch (err) {
-            console.error("❌ mergeHistory", err);
-        }
+        } catch (err) { console.error("❌ mergeHistory", err); }
+    };
+
+    AnalyticsEngine.mergePatrolTracks = async function (dataset, datasetMap) {
+        try {
+            const snap = await window.fb.getDocs(window.fb.collection(window.db, "patrol_tracks"));
+            snap.forEach(doc => {
+                const t = doc.data() || {};
+                if (t.sessionId) {
+                    AnalyticsEngine.sessionIndex[t.sessionId] = t;
+                    
+                    // Improvement 4: Build latest session index
+                    const key = String(t.cleanName || t.name || "").toUpperCase();
+                    if (key) {
+                        const old = AnalyticsEngine.latestSessionIndex[key];
+                        if (!old || Number(t.updatedAt || 0) > Number(old.updatedAt || 0)) {
+                            AnalyticsEngine.latestSessionIndex[key] = t;
+                        }
+                    }
+                }
+                const comps = Array.isArray(t.compartments) ? t.compartments : (t.compartment ? [t.compartment] : []);
+                comps.forEach(name => {
+                    const row = AnalyticsEngine.compartmentIndex[String(name).trim().toUpperCase().replace(/\s+/g, "_")];
+                    if (row) row.tracks.push(t);
+                });
+            });
+        } catch (err) { console.error("❌ mergePatrolTracks", err); }
     };
 
     /*----------------------------------------------------------
-    REFRESH
+    AGGREGATION
     ----------------------------------------------------------*/
-    AnalyticsEngine.refresh = async function () {
-        AnalyticsEngine.clear();
-        return await AnalyticsEngine.load();
+    AnalyticsEngine.aggregate = function () {
+        const d = AnalyticsEngine.dataset;
+        const beat = {}, range = {}, division = {};
+        d.forEach(row => {
+            aggregateLevel(beat, row.beat, row);
+            aggregateLevel(range, row.range, row);
+            aggregateLevel(division, row.division, row);
+        });
+
+        const totalC = d.reduce((s, r) => s + r.coveredCells, 0);
+        const totalA = d.reduce((s, r) => s + r.totalCells, 0);
+
+        AnalyticsEngine.summary = {
+            beat, range, division, generatedAt: Date.now(),
+            global: AnalyticsEngine.queryStatistics(totalC, totalA)
+        };
     };
 
+    function aggregateLevel(target, key, row) {
+        key = String(key || "").trim();
+        if (!key) return;
+        target[key] ||= { name: key, compartments: 0, visits: 0, coveredCells: 0, totalCells: 0, patrolDistanceKm: 0, assignedStaff: 0, liveStaff: 0, patrolSessions: 0, completedPatrols: 0, coverage: 0 };
+        const i = target[key];
+        i.compartments++; i.visits += row.visits; i.coveredCells += row.coveredCells; i.totalCells += row.totalCells; i.patrolDistanceKm += row.patrolDistanceKm;
+        i.assignedStaff += row.assignedStaff.length; i.liveStaff += row.liveStaff.length; i.patrolSessions += row.tracks.length; i.completedPatrols += row.patrolHistory.length;
+        i.coverage = i.totalCells > 0 ? (i.coveredCells / i.totalCells) * 100 : 0;
+    }
+
+    /*----------------------------------------------------------
+    QUERY ENGINE
+    ----------------------------------------------------------*/
+    AnalyticsEngine.keywords = {
+        mostVisited: ["most visited", "highest visit"], leastVisited: ["least visited"],
+        coverage: ["highest coverage", "best coverage"], inactive: ["inactive", "no patrol", "never visited"],
+        distance: ["highest distance", "farthest patrol"], staff: ["top staff", "best staff"],
+        stats: ["monthly summary", "dashboard", "analytics overview", "btr statistics"]
+    };
+
+    AnalyticsEngine.query = function(query) {
+        // Bug 3 Fix: Preserve original case for regex
+        const originalQuery = String(query || "");
+        const lowerQuery = originalQuery.toLowerCase();
+        
+        const sessionMatch = originalQuery.match(/[A-Z ]+_[0-9]{10,}/i);
+        
+        // Use lowerQuery for non-session logic
+        let queryForKeywords = lowerQuery;
+
+        if (sessionMatch) return { intent: "session", type: "patrol", confidence: 1, data: AnalyticsEngine.querySession(sessionMatch[0]) };
+
+        if (matches(queryForKeywords, AnalyticsEngine.keywords.mostVisited)) return { intent: "mostVisited", type: "analytics", confidence: 1, data: AnalyticsEngine.rank(AnalyticsEngine.dataset, "visits")[0] };
+        if (matches(queryForKeywords, AnalyticsEngine.keywords.leastVisited)) return { intent: "leastVisited", type: "analytics", confidence: 1, data: AnalyticsEngine.dataset.filter(r => r.visits > 0).sort((a, b) => a.visits - b.visits) };
+        if (matches(queryForKeywords, AnalyticsEngine.keywords.coverage)) return { intent: "highestCoverage", type: "analytics", confidence: 1, data: AnalyticsEngine.rank(AnalyticsEngine.dataset, "coverage")[0] };
+        if (matches(queryForKeywords, AnalyticsEngine.keywords.inactive)) return { intent: "inactive", type: "analytics", confidence: 1, data: AnalyticsEngine.queryInactiveCompartments() };
+        if (matches(queryForKeywords, AnalyticsEngine.keywords.distance)) return { intent: "highestDistance", type: "analytics", confidence: 1, data: AnalyticsEngine.rank(AnalyticsEngine.dataset, "patrolDistanceKm")[0] };
+        if (matches(queryForKeywords, AnalyticsEngine.keywords.staff)) return { intent: "topStaff", type: "analytics", confidence: 1, data: AnalyticsEngine.queryTopStaff() };
+        if (matches(queryForKeywords, AnalyticsEngine.keywords.stats)) return { intent: "statistics", type: "analytics", confidence: 1, data: AnalyticsEngine.summary.global };
+        
+        if (matches(queryForKeywords, ["beat ranking"])) return { intent: "ranking", level: "beat", data: AnalyticsEngine.rank(Object.values(AnalyticsEngine.summary.beat), "visits") };
+        if (matches(queryForKeywords, ["who", "where is", "staff"])) return { intent: "staffSearch", data: AnalyticsEngine.queryStaff(queryForKeywords.replace(/who|where is|staff/g, "").trim()) };
+
+        const searchKey = normalizeKey(queryForKeywords);
+        const result = Object.entries(AnalyticsEngine.searchIndex).find(([k]) => k.includes(searchKey.replace(/_/g, "")));
+        return result ? { intent: "search", type: result[1].type, data: result[1].data } : null;
+    };
+
+    AnalyticsEngine.queryStaff = (name) => {
+        name = name.toUpperCase();
+        return Object.entries(AnalyticsEngine.staffIndex).filter(([k]) => k.includes(name)).flatMap(([, r]) => r);
+    };
+
+    // Bug 2 Fix: Support both exact ID and search by name
+    AnalyticsEngine.querySession = function (search) {
+        search = String(search || "").trim().toUpperCase();
+
+        // Exact session ID
+        if (AnalyticsEngine.sessionIndex[search]) {
+            return AnalyticsEngine.sessionIndex[search];
+        }
+
+        // Search by staff name
+        const sessions = Object.values(AnalyticsEngine.sessionIndex).filter(session => {
+            return String(session.cleanName || session.name || "").toUpperCase().includes(search);
+        });
+
+        if (sessions.length) {
+            sessions.sort((a, b) => Number(b.updatedAt || 0) - Number(a.updatedAt || 0));
+            return sessions[0];
+        }
+
+        return null;
+    };
+
+    AnalyticsEngine.queryTopStaff = () => {
+        const staff = {};
+        AnalyticsEngine.dataset.forEach(row => {
+            row.tracks.forEach(t => {
+                if(!t.cleanName) return;
+                const item = staff[t.cleanName] ||= { name: t.cleanName, patrols: 0, distanceKm: 0 };
+                item.patrols++;
+                item.distanceKm += Number(t.distanceKm || 0);
+            });
+        });
+        return AnalyticsEngine.rank(Object.values(staff), "distanceKm");
+    };
+
+    AnalyticsEngine.queryStatistics = (totalCovered, totalCells) => {
+        const d = AnalyticsEngine.dataset;
+        return {
+            compartments: d.length, visited: d.filter(r => r.visits > 0).length, inactive: d.filter(r => r.visits === 0).length,
+            totalVisits: d.reduce((a, b) => a + b.visits, 0), totalDistanceKm: d.reduce((a, b) => a + b.patrolDistanceKm, 0),
+            liveStaff: d.reduce((a, b) => a + b.liveStaff.length, 0), assignedStaff: d.reduce((a, b) => a + b.assignedStaff.length, 0),
+            completedPatrols: d.reduce((a, b) => a + b.patrolHistory.length, 0), activePatrols: d.reduce((a, b) => a + b.tracks.length, 0),
+            coveragePercent: totalCells > 0 ? (totalCovered / totalCells) * 100 : 0
+        };
+    };
+
+    AnalyticsEngine.refresh = async () => { AnalyticsEngine.clear(); return await AnalyticsEngine.load(); };
     window.GreenGuardAI.AnalyticsEngine = AnalyticsEngine;
 })(window);
