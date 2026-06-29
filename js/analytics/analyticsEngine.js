@@ -11,6 +11,7 @@
     AnalyticsEngine.rangeIndex = {};
     AnalyticsEngine.divisionIndex = {};
     AnalyticsEngine.staffIndex = {};
+    AnalyticsEngine.staffSearchIndex = {};
     AnalyticsEngine.sessionIndex = {};
     AnalyticsEngine.latestSessionIndex = {}; // Added for Improvement 4
     AnalyticsEngine.compartmentIndex = {};
@@ -23,6 +24,7 @@
     AnalyticsEngine.clear = function () {
         AnalyticsEngine.dataset = [];
         AnalyticsEngine.datasetMap = {};
+        AnalyticsEngine.staffSearchIndex = {};
         AnalyticsEngine.beatIndex = {};
         AnalyticsEngine.rangeIndex = {};
         AnalyticsEngine.divisionIndex = {};
@@ -294,33 +296,436 @@ AnalyticsEngine.load = async function () {
         } catch (err) { console.error("Analytics merge failed", err); }
     };
 
-    AnalyticsEngine.mergeStaffProfiles = async function (dataset, datasetMap) {
-        try {
-            AnalyticsEngine.staffIndex = {};
-            const snap = await window.fb.getDocs(window.fb.collection(window.db, "staff_profiles"));
-            snap.forEach(doc => {
-                const staff = doc.data() || {};
-                (AnalyticsEngine.beatIndex[String(staff.beat || "").trim().toUpperCase()] || []).forEach(row => {
-                    row.summary.assignedStaff++;
-                    row.assignedStaff.push({ name: staff.name || doc.id, role: staff.role || "", phone: staff.phone || "" });
-                    (AnalyticsEngine.staffIndex[String(staff.cleanName || staff.name || doc.id).trim().toUpperCase()] ||= []).push(row);
-                });
-            });
-        } catch (err) { console.error("staff_profiles merge failed", err); }
-    };
+   /*----------------------------------------------------------
+MERGE STAFF PROFILES
+----------------------------------------------------------*/
 
-    AnalyticsEngine.mergeLiveStaff = async function (dataset, datasetMap) {
-        try {
-            const snap = await window.fb.getDocs(window.fb.collection(window.db, "live_staff"));
-            snap.forEach(doc => {
-                const live = doc.data() || {};
-                (AnalyticsEngine.staffIndex[String(live.cleanName || live.name || doc.id).trim().toUpperCase()] || []).forEach(row => {
-                    row.liveStaff.push(live);
-                    row.summary.liveStaff++;
-                });
+AnalyticsEngine.mergeStaffProfiles = async function () {
+
+    try {
+
+        AnalyticsEngine.staffIndex = {};
+
+        AnalyticsEngine.staffSearchIndex = {};
+
+        const snap =
+            await window.fb.getDocs(
+
+                window.fb.collection(
+
+                    window.db,
+
+                    "staff_profiles"
+
+                )
+
+            );
+
+        snap.forEach(doc => {
+
+            const s =
+                doc.data() || {};
+
+            const cleanName =
+                String(
+
+                    s.cleanName ||
+
+                    s.name ||
+
+                    doc.id ||
+
+                    ""
+
+                )
+                .trim()
+                .toUpperCase();
+
+            if (!cleanName) {
+                return;
+            }
+
+            const profile = {
+
+                id:
+                    doc.id,
+
+                cleanName,
+
+                name:
+                    s.name || "",
+
+                designation:
+                    s.designation || "",
+
+                role:
+                    s.role || "",
+
+                phone:
+                    s.phone || "",
+
+                email:
+                    s.email || "",
+
+                beat:
+                    s.beat || "",
+
+                range:
+                    s.range || "",
+
+                division:
+                    s.division || "",
+
+                circle:
+                    s.circle || "",
+
+                station:
+                    s.station || "",
+
+                employeeId:
+                    s.employeeId || "",
+
+                live:
+                    null,
+
+                latestPatrol:
+                    null,
+
+                patrols:
+                    [],
+
+                analytics: {
+
+                    patrols: 0,
+
+                    distanceKm: 0,
+
+                    coverage: 0,
+
+                    visits: 0
+
+                },
+
+                assignedCompartments:
+                    []
+
+            };
+
+            AnalyticsEngine.staffIndex[
+                cleanName
+            ] = profile;
+
+            /*----------------------------------
+            SEARCH INDEX
+            ----------------------------------*/
+
+            [
+
+                cleanName,
+
+                profile.name,
+
+                profile.designation,
+
+                profile.role,
+
+                profile.phone,
+
+                profile.email,
+
+                profile.beat,
+
+                profile.range,
+
+                profile.division,
+
+                profile.circle,
+
+                profile.station,
+
+                profile.employeeId
+
+            ]
+
+            .filter(Boolean)
+
+            .forEach(value => {
+
+                const key =
+
+                    normalizeKey(
+                        value
+                    );
+
+                if (!key) {
+                    return;
+                }
+
+                (
+
+                    AnalyticsEngine.staffSearchIndex[
+                        key
+                    ] ||= []
+
+                ).push(profile);
+
             });
-        } catch (err) { console.error("❌ mergeLiveStaff", err); }
-    };
+
+            /*----------------------------------
+            ASSIGNED COMPARTMENTS
+            ----------------------------------*/
+
+            const beatKey =
+
+                String(
+
+                    profile.beat || ""
+
+                )
+                .trim()
+                .toUpperCase();
+
+            const rows =
+
+                AnalyticsEngine.beatIndex[
+                    beatKey
+                ] || [];
+
+            rows.forEach(row => {
+
+                row.summary.assignedStaff++;
+
+                row.assignedStaff.push({
+
+                    cleanName:
+                        profile.cleanName,
+
+                    name:
+                        profile.name,
+
+                    designation:
+                        profile.designation,
+
+                    role:
+                        profile.role,
+
+                    phone:
+                        profile.phone,
+
+                    beat:
+                        profile.beat,
+
+                    range:
+                        profile.range,
+
+                    division:
+                        profile.division
+
+                });
+
+                profile.assignedCompartments.push(
+
+                    row.compartment
+
+                );
+
+            });
+
+        });
+
+        console.log(
+
+            "✅ Staff Profiles:",
+
+            Object.keys(
+
+                AnalyticsEngine.staffIndex
+
+            ).length
+
+        );
+
+    }
+
+    catch (err) {
+
+        console.error(
+
+            "❌ mergeStaffProfiles",
+
+            err
+
+        );
+
+    }
+
+};
+
+/*----------------------------------------------------------
+MERGE LIVE STAFF
+----------------------------------------------------------*/
+
+AnalyticsEngine.mergeLiveStaff = async function () {
+
+    try {
+
+        const snap =
+            await window.fb.getDocs(
+
+                window.fb.collection(
+
+                    window.db,
+
+                    "live_staff"
+
+                )
+
+            );
+
+        snap.forEach(doc => {
+
+            const live =
+                doc.data() || {};
+
+            const cleanName =
+
+                String(
+
+                    live.cleanName ||
+
+                    live.name ||
+
+                    doc.id ||
+
+                    ""
+
+                )
+                .trim()
+                .toUpperCase();
+
+            if (!cleanName) {
+                return;
+            }
+
+            const profile =
+                AnalyticsEngine.staffIndex[
+                    cleanName
+                ];
+
+            if (!profile) {
+                return;
+            }
+
+            profile.live = {
+
+                latitude:
+                    Number(
+                        live.latitude ||
+                        live.lat ||
+                        0
+                    ),
+
+                longitude:
+                    Number(
+                        live.longitude ||
+                        live.lng ||
+                        live.lon ||
+                        0
+                    ),
+
+                accuracy:
+                    Number(
+                        live.accuracy ||
+                        0
+                    ),
+
+                speed:
+                    Number(
+                        live.speed ||
+                        0
+                    ),
+
+                heading:
+                    Number(
+                        live.heading ||
+                        0
+                    ),
+
+                location:
+                    live.location || "",
+
+                dutyActive:
+                    !!live.dutyActive,
+
+                dutyType:
+                    live.dutyType || "",
+
+                sessionId:
+                    live.sessionId || "",
+
+                battery:
+                    live.battery || "",
+
+                updatedAt:
+
+                    live.updatedAt ||
+
+                    live.timestamp ||
+
+                    live.lastUpdate ||
+
+                    0,
+
+                raw:
+                    live
+
+            };
+
+            /*----------------------------------
+            UPDATE BEAT SUMMARY
+            ----------------------------------*/
+
+            const rows =
+
+                AnalyticsEngine.beatIndex[
+                    String(
+                        profile.beat || ""
+                    )
+                    .trim()
+                    .toUpperCase()
+                ] || [];
+
+            rows.forEach(row => {
+
+                row.liveStaff.push(profile);
+
+                row.summary.liveStaff++;
+
+            });
+
+        });
+
+        console.log(
+
+            "✅ Live Staff merged"
+
+        );
+
+    }
+
+    catch (err) {
+
+        console.error(
+
+            "❌ mergeLiveStaff",
+
+            err
+
+        );
+
+    }
+
+};
 
     AnalyticsEngine.mergeHistory = async function (dataset, datasetMap) {
         try {
@@ -335,97 +740,288 @@ AnalyticsEngine.load = async function () {
         } catch (err) { console.error("❌ mergeHistory", err); }
     };
 
-    AnalyticsEngine.mergePatrolTracks = async function (dataset, datasetMap) {
-        try {
-            const snap = await window.fb.getDocs(window.fb.collection(window.db, "patrol_tracks"));
-            snap.forEach(doc => {
-                const t = doc.data() || {};
-                if (t.sessionId) {
-                    AnalyticsEngine.sessionIndex[t.sessionId] = t;
-                    
-                    // Improvement 4: Build latest session index
-                  const key = String(
+ /*----------------------------------------------------------
+MERGE PATROL TRACKS
+----------------------------------------------------------*/
 
-    t.cleanName ||
+AnalyticsEngine.mergePatrolTracks = async function () {
 
-    t.staff ||
+    try {
 
-    t.staffName ||
+        const snap =
 
-    t.leader ||
+            await window.fb.getDocs(
 
-    t.name ||
+                window.fb.collection(
 
-    ""
+                    window.db,
 
-)
-.trim()
-.toUpperCase();
+                    "patrol_tracks"
 
-if (
+                )
 
-    key
+            );
 
-) {
+        snap.forEach(doc => {
 
-    const old =
+            const patrol =
+                doc.data() || {};
 
-        AnalyticsEngine.latestSessionIndex[
-            key
-        ];
+            const cleanName =
 
-    const newTime =
+                String(
 
-        Number(
+                    patrol.cleanName ||
 
-            t.updatedAt ||
+                    patrol.staff ||
 
-            t.endTime ||
+                    patrol.staffName ||
 
-            t.startTime ||
+                    patrol.name ||
 
-            0
+                    ""
+
+                )
+                .trim()
+                .toUpperCase();
+
+            if (
+
+                patrol.sessionId
+
+            ) {
+
+                AnalyticsEngine.sessionIndex[
+                    patrol.sessionId
+                ] = patrol;
+
+            }
+
+            if (
+
+                cleanName
+
+            ) {
+
+                const old =
+
+                    AnalyticsEngine.latestSessionIndex[
+                        cleanName
+                    ];
+
+                const newTime =
+
+                    Number(
+
+                        patrol.updatedAt ||
+
+                        patrol.endTime ||
+
+                        patrol.startTime ||
+
+                        0
+
+                    );
+
+                const oldTime =
+
+                    Number(
+
+                        old?.updatedAt ||
+
+                        old?.endTime ||
+
+                        old?.startTime ||
+
+                        0
+
+                    );
+
+                if (
+
+                    !old ||
+
+                    newTime > oldTime
+
+                ) {
+
+                    AnalyticsEngine.latestSessionIndex[
+                        cleanName
+                    ] = patrol;
+
+                }
+
+            }
+
+            const profile =
+
+                AnalyticsEngine.staffIndex[
+                    cleanName
+                ];
+
+            if (
+
+                profile
+
+            ) {
+
+                profile.patrols.push(
+                    patrol
+                );
+
+                if (
+
+                    !profile.latestPatrol ||
+
+                    Number(
+
+                        patrol.updatedAt ||
+
+                        patrol.endTime ||
+
+                        patrol.startTime ||
+
+                        0
+
+                    )
+
+                    >
+
+                    Number(
+
+                        profile.latestPatrol.updatedAt ||
+
+                        profile.latestPatrol.endTime ||
+
+                        profile.latestPatrol.startTime ||
+
+                        0
+
+                    )
+
+                ) {
+
+                    profile.latestPatrol =
+                        patrol;
+
+                }
+
+                profile.analytics.patrols++;
+
+                profile.analytics.distanceKm +=
+
+                    Number(
+
+                        patrol.distanceKm ||
+
+                        patrol.distance ||
+
+                        0
+
+                    );
+
+                profile.analytics.coverage +=
+
+                    Number(
+
+                        patrol.coverage ||
+
+                        0
+
+                    );
+
+                profile.analytics.visits +=
+
+                    Number(
+
+                        patrol.visits ||
+
+                        1
+
+                    );
+
+            }
+
+            const compartments =
+
+                Array.isArray(
+
+                    patrol.compartments
+
+                )
+
+                ?
+
+                patrol.compartments
+
+                :
+
+                (
+
+                    patrol.compartment
+
+                    ?
+
+                    [
+
+                        patrol.compartment
+
+                    ]
+
+                    :
+
+                    []
+
+                );
+
+            compartments.forEach(name => {
+
+                const row =
+
+                    AnalyticsEngine.compartmentIndex[
+                        String(name)
+                        .trim()
+                        .toUpperCase()
+                        .replace(/\s+/g, "_")
+                    ];
+
+                if (
+
+                    row
+
+                ) {
+
+                    row.tracks.push(
+                        patrol
+                    );
+
+                }
+
+            });
+
+        });
+
+        console.log(
+
+            "✅ Patrol Tracks merged"
 
         );
-
-    const oldTime =
-
-        Number(
-
-            old?.updatedAt ||
-
-            old?.endTime ||
-
-            old?.startTime ||
-
-            0
-
-        );
-
-    if (
-
-        !old ||
-
-        newTime > oldTime
-
-    ) {
-
-        AnalyticsEngine.latestSessionIndex[
-            key
-        ] = t;
 
     }
 
-}
-                }
-                const comps = Array.isArray(t.compartments) ? t.compartments : (t.compartment ? [t.compartment] : []);
-                comps.forEach(name => {
-                    const row = AnalyticsEngine.compartmentIndex[String(name).trim().toUpperCase().replace(/\s+/g, "_")];
-                    if (row) row.tracks.push(t);
-                });
-            });
-        } catch (err) { console.error("❌ mergePatrolTracks", err); }
-    };
+    catch (err) {
+
+        console.error(
+
+            "❌ mergePatrolTracks",
+
+            err
+
+        );
+
+    }
+
+};
 
     /*----------------------------------------------------------
     AGGREGATION
@@ -953,42 +1549,57 @@ AnalyticsEngine.query = function (query) {
       STAFF SEARCH
     ----------------------------------------------------------*/
 
-    if (
+/*----------------------------------------------------------
+STAFF KNOWLEDGE
+----------------------------------------------------------*/
 
-        q.includes("who") ||
+/*----------------------------------------------------------
+STAFF KNOWLEDGE
+----------------------------------------------------------*/
 
-        q.includes("where is") ||
+if (
 
-        q.includes("staff")
+    /\bwho\b/i.test(originalQuery) ||
 
-    ) {
+    /\bstaff\b/i.test(originalQuery) ||
 
-        return {
+    /\bprofile\b/i.test(originalQuery) ||
 
-            intent: "staffSearch",
+    /\bphone\b/i.test(originalQuery) ||
 
-            type: "analytics",
+    /\bcontact\b/i.test(originalQuery) ||
 
-            confidence: 1,
+    /\bteam leader\b/i.test(originalQuery) ||
 
-            data:
+    /\bbanasahayak\b/i.test(originalQuery) ||
 
-                AnalyticsEngine.queryStaff(
+    /\brange\b/i.test(originalQuery) ||
 
-                    q.replace(
+    /\bbeat\b/i.test(originalQuery) ||
 
-                        /who|where is|staff/g,
+    /\bdivision\b/i.test(originalQuery) ||
 
-                        ""
+    /\bworks\b/i.test(originalQuery) ||
 
-                    ).trim()
+    /\bworking\b/i.test(originalQuery)
 
-                )
+) {
 
-        };
+    return {
 
-    }
+        intent: "staffSearch",
 
+        type: "staff",
+
+        confidence: 1,
+
+        data: AnalyticsEngine.queryStaff(
+            originalQuery
+        )
+
+    };
+
+}
     /*----------------------------------------------------------
       SEARCH INDEX
     ----------------------------------------------------------*/
@@ -1044,123 +1655,206 @@ AnalyticsEngine.query = function (query) {
     return null;
 
 };
-    AnalyticsEngine.queryStaff = (name) => {
-        name = name.toUpperCase();
-        return Object.entries(AnalyticsEngine.staffIndex).filter(([k]) => k.includes(name)).flatMap(([, r]) => r);
-    };
+/*----------------------------------------------------------
+STAFF KNOWLEDGE ENGINE
+----------------------------------------------------------*/
 
-    // Bug 2 Fix: Support both exact ID and search by name
-AnalyticsEngine.querySession = function (search) {
+AnalyticsEngine.queryStaff = function (query) {
 
-    search = String(
-        search || ""
-    )
-    .trim()
-    .toUpperCase();
+    query = String(query || "")
+        .trim()
+        .toUpperCase();
 
-    if (
-        !search
-    ) {
-        return null;
+    if (!query) {
+        return [];
     }
 
-    if (
+    query = query
+        .replace(/\bWHO\s+IS\b/g, "")
+        .replace(/\bSHOW\b/g, "")
+        .replace(/\bPROFILE\b/g, "")
+        .replace(/\bPHONE\b/g, "")
+        .replace(/\bNUMBER\b/g, "")
+        .replace(/\bCONTACT\b/g, "")
+        .replace(/\bOF\b/g, "")
+        .replace(/\bLIST\b/g, "")
+        .replace(/\bALL\b/g, "")
+        .replace(/\bSTAFF\b/g, "")
+        .replace(/\bWORKS\b/g, "")
+        .replace(/\bWORKING\b/g, "")
+        .replace(/\bIN\b/g, "")
+        .replace(/\bAT\b/g, "")
+        .replace(/\s+/g, " ")
+        .trim();
 
-        AnalyticsEngine.sessionIndex[search]
+    const q = normalizeKey(query);
 
-    ){
+    const result = [];
 
-        return AnalyticsEngine.sessionIndex[
-            search
+    const seen = {};
+
+    Object.values(
+        AnalyticsEngine.staffIndex
+    ).forEach(profile => {
+
+        const values = [
+
+            profile.cleanName,
+
+            profile.name,
+
+            profile.designation,
+
+            profile.role,
+
+            profile.phone,
+
+            profile.email,
+
+            profile.beat,
+
+            profile.range,
+
+            profile.division,
+
+            profile.circle,
+
+            profile.station,
+
+            profile.employeeId
+
         ];
 
-    }
+        const hit = values.some(value => {
 
-    const sessions =
+            if (!value) {
 
-        Object.values(
+                return false;
 
-            AnalyticsEngine.sessionIndex
+            }
+
+            return normalizeKey(value)
+                .includes(q);
+
+        });
+
+        if (!hit) {
+
+            return;
+
+        }
+
+        if (
+
+            seen[
+                profile.cleanName
+            ]
+
+        ) {
+
+            return;
+
+        }
+
+        seen[
+            profile.cleanName
+        ] = true;
+
+        result.push(profile);
+
+    });
+
+    if (
+
+        result.length
+
+    ) {
+
+        return result.sort(
+
+            (a, b) =>
+
+                a.name.localeCompare(
+                    b.name
+                )
 
         );
 
-    const matches =
+    }
 
-        sessions.filter(
+    const search =
 
-            s =>
+        AnalyticsEngine.staffSearchIndex[
+            q
+        ];
 
-                String(
+    if (
 
-                    s.sessionId ||
+        search
 
-                    ""
+    ) {
 
-                )
-                .toUpperCase()
-                .includes(search)
+        return search;
+
+    }
+
+    const fuzzy = [];
+
+    Object.entries(
+
+        AnalyticsEngine.staffSearchIndex
+
+    ).forEach(
+
+        ([key, list]) => {
+
+            if (
+
+                key.includes(q)
 
                 ||
 
-                String(
+                q.includes(key)
 
-                    s.cleanName ||
+            ) {
 
-                    s.staff ||
+                list.forEach(profile => {
 
-                    s.name ||
+                    if (
 
-                    ""
+                        !seen[
+                            profile.cleanName
+                        ]
 
-                )
-                .toUpperCase()
-                .includes(search)
+                    ) {
 
-        );
+                        seen[
+                            profile.cleanName
+                        ] = true;
 
-    if(
+                        fuzzy.push(
+                            profile
+                        );
 
-        !matches.length
+                    }
 
-    ){
+                });
 
-        return null;
+            }
 
-    }
-
-    matches.sort(
-
-        (a,b)=>
-
-            Number(
-
-                b.updatedAt ||
-
-                b.endTime ||
-
-                b.startTime ||
-
-                0
-
-            )
-
-            -
-
-            Number(
-
-                a.updatedAt ||
-
-                a.endTime ||
-
-                a.startTime ||
-
-                0
-
-            )
+        }
 
     );
 
-    return matches[0];
+    return fuzzy.sort(
+
+        (a, b) =>
+
+            a.name.localeCompare(
+                b.name
+            )
+
+    );
 
 };
 
