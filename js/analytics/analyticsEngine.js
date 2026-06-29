@@ -352,12 +352,75 @@ AnalyticsEngine.mergeStaffProfiles = async function () {
 
                 cleanName,
 
-                name:
-                    s.name || "",
+              /*----------------------------------
+NAME + DESIGNATION NORMALIZATION
+----------------------------------*/
 
-                designation:
-                    s.designation || "",
+name: (function () {
 
+    const raw =
+        String(
+            s.name || ""
+        ).trim();
+
+    if (!raw) {
+
+        return "";
+
+    }
+
+    if (
+
+        s.designation
+
+    ) {
+
+        return raw;
+
+    }
+
+    const parts =
+
+        raw.split(",");
+
+    return parts[0].trim();
+
+})(),
+
+designation: (function () {
+
+    if (
+
+        s.designation
+
+    ) {
+
+        return s.designation;
+
+    }
+
+    const raw =
+        String(
+            s.name || ""
+        ).trim();
+
+    if (
+
+        raw.indexOf(",") === -1
+
+    ) {
+
+        return "";
+
+    }
+
+    return raw
+        .split(",")
+        .slice(1)
+        .join(",")
+        .trim();
+
+})(),
                 role:
                     s.role || "",
 
