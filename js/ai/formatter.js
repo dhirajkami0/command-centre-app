@@ -11,11 +11,8 @@
 window.GreenGuardAI =
     window.GreenGuardAI || {};
 
-if (
-    window.GreenGuardAI.Formatter
-) {
-    return;
-}
+// Allow overwrite during development
+window.GreenGuardAI.Formatter = null;
 
 const Formatter = {};
 
