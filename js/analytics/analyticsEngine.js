@@ -1633,147 +1633,108 @@ STAFF KNOWLEDGE
 /*----------------------------------------------------------
 STAFF KNOWLEDGE
 ----------------------------------------------------------*/
+/*----------------------------------------------------------
+STAFF KNOWLEDGE
+----------------------------------------------------------*/
 
-const staffProfile =
-
+let staffProfile =
     AnalyticsEngine.queryStaff(
         originalQuery
     );
 
-if (
+/*----------------------------------
+Fallback:
+try only person's name
+----------------------------------*/
 
-    staffProfile.length
+if (!staffProfile.length) {
 
-) {
+    const cleaned =
 
-    if (
+        originalQuery
 
-        /\b(phone|mobile|contact)\b/i.test(
-            originalQuery
-        )
+           .replace(/\b(WHO|IS|SHOW|PROFILE|DETAILS|TELL|ME|ABOUT|PHONE|PH|PHNO|MOBILE|CONTACT|CELL|TEL|TELEPHONE|NUMBER|NO|EMAIL|BEAT|RANGE|DIVISION|ROLE|DESIGNATION|OF|THE|WHAT|WHICH|POSTED|IN)\b/g," ")
 
-    ) {
+            .replace(/\s+/g, " ")
+
+            .trim();
+
+    if (cleaned) {
+
+        staffProfile =
+
+            AnalyticsEngine.queryStaff(
+                cleaned
+            );
+
+    }
+
+}
+
+if (staffProfile.length) {
+
+    if (/\b(phone|mobile|contact|number|no)\b/i.test(originalQuery)) {
 
         return {
-
             intent: "staffPhone",
-
             type: "staff",
-
             confidence: 1,
-
             data: staffProfile
-
         };
 
     }
 
-    if (
-
-        /\bemail\b/i.test(
-            originalQuery
-        )
-
-    ) {
+    if (/\bemail\b/i.test(originalQuery)) {
 
         return {
-
             intent: "staffEmail",
-
             type: "staff",
-
             confidence: 1,
-
             data: staffProfile
-
         };
 
     }
 
-    if (
-
-        /\bbeat\b/i.test(
-            originalQuery
-        )
-
-    ) {
+    if (/\bbeat\b/i.test(originalQuery)) {
 
         return {
-
             intent: "staffBeat",
-
             type: "staff",
-
             confidence: 1,
-
             data: staffProfile
-
         };
 
     }
 
-    if (
-
-        /\brange\b/i.test(
-            originalQuery
-        )
-
-    ) {
+    if (/\brange\b/i.test(originalQuery)) {
 
         return {
-
             intent: "staffRange",
-
             type: "staff",
-
             confidence: 1,
-
             data: staffProfile
-
         };
 
     }
 
-    if (
-
-        /\bdivision\b/i.test(
-            originalQuery
-        )
-
-    ) {
+    if (/\bdivision\b/i.test(originalQuery)) {
 
         return {
-
             intent: "staffDivision",
-
             type: "staff",
-
             confidence: 1,
-
             data: staffProfile
-
         };
 
     }
 
-    if (
-
-        /\b(role|designation|team leader|forester|forest guard|banasahayak)\b/i.test(
-            originalQuery
-        )
-
-    ) {
+    if (/\b(role|designation|team leader|forester|forest guard|banasahayak)\b/i.test(originalQuery)) {
 
         return {
-
             intent: "staffRole",
-
             type: "staff",
-
             confidence: 1,
-
             data: staffProfile
-
         };
 
     }
@@ -1781,16 +1742,15 @@ if (
     return {
 
         intent: "staffProfile",
-
         type: "staff",
-
         confidence: 1,
-
         data: staffProfile
 
     };
 
 }
+
+
     /*----------------------------------------------------------
       SEARCH INDEX
     ----------------------------------------------------------*/
@@ -1853,42 +1813,32 @@ STAFF KNOWLEDGE ENGINE
 AnalyticsEngine.queryStaff = function (query) {
 
     query = String(query || "")
-        .trim()
-        .toUpperCase();
+        .toUpperCase()
+
+        .replace(
+            /\b(WHO|IS|SHOW|PROFILE|DETAILS|TELL|ME|ABOUT|PHONE|MOBILE|CONTACT|NUMBER|NO|EMAIL|BEAT|RANGE|DIVISION|ROLE|DESIGNATION|OF|THE|WHAT|WHICH|POSTED|IN)\b/g,
+            " "
+        )
+
+        .replace(/\s+/g, " ")
+
+        .trim();
 
     if (!query) {
         return [];
     }
 
-    query = query
-        .replace(/\bWHO\s+IS\b/g, "")
-        .replace(/\bSHOW\b/g, "")
-        .replace(/\bPROFILE\b/g, "")
-        .replace(/\bPHONE\b/g, "")
-        .replace(/\bNUMBER\b/g, "")
-        .replace(/\bCONTACT\b/g, "")
-        .replace(/\bOF\b/g, "")
-        .replace(/\bLIST\b/g, "")
-        .replace(/\bALL\b/g, "")
-        .replace(/\bSTAFF\b/g, "")
-        .replace(/\bWORKS\b/g, "")
-        .replace(/\bWORKING\b/g, "")
-        .replace(/\bIN\b/g, "")
-        .replace(/\bAT\b/g, "")
-        .replace(/\s+/g, " ")
-        .trim();
+    const words = query
+        .split(" ")
+        .filter(Boolean);
 
-    const q = normalizeKey(query);
+    return Object.values(
 
-    const result = [];
-
-    const seen = {};
-
-    Object.values(
         AnalyticsEngine.staffIndex
-    ).forEach(profile => {
 
-        const values = [
+    ).filter(profile => {
+
+        const text = [
 
             profile.cleanName,
 
@@ -1900,152 +1850,27 @@ AnalyticsEngine.queryStaff = function (query) {
 
             profile.phone,
 
-            profile.email,
-
             profile.beat,
 
             profile.range,
 
             profile.division,
 
-            profile.circle,
+            profile.circle
 
-            profile.station,
+        ]
 
-            profile.employeeId
+        .join(" ")
 
-        ];
+        .toUpperCase();
 
-        const hit = values.some(value => {
+        return words.every(
 
-            if (!value) {
-
-                return false;
-
-            }
-
-            return normalizeKey(value)
-                .includes(q);
-
-        });
-
-        if (!hit) {
-
-            return;
-
-        }
-
-        if (
-
-            seen[
-                profile.cleanName
-            ]
-
-        ) {
-
-            return;
-
-        }
-
-        seen[
-            profile.cleanName
-        ] = true;
-
-        result.push(profile);
-
-    });
-
-    if (
-
-        result.length
-
-    ) {
-
-        return result.sort(
-
-            (a, b) =>
-
-                a.name.localeCompare(
-                    b.name
-                )
+            w => text.includes(w)
 
         );
 
-    }
-
-    const search =
-
-        AnalyticsEngine.staffSearchIndex[
-            q
-        ];
-
-    if (
-
-        search
-
-    ) {
-
-        return search;
-
-    }
-
-    const fuzzy = [];
-
-    Object.entries(
-
-        AnalyticsEngine.staffSearchIndex
-
-    ).forEach(
-
-        ([key, list]) => {
-
-            if (
-
-                key.includes(q)
-
-                ||
-
-                q.includes(key)
-
-            ) {
-
-                list.forEach(profile => {
-
-                    if (
-
-                        !seen[
-                            profile.cleanName
-                        ]
-
-                    ) {
-
-                        seen[
-                            profile.cleanName
-                        ] = true;
-
-                        fuzzy.push(
-                            profile
-                        );
-
-                    }
-
-                });
-
-            }
-
-        }
-
-    );
-
-    return fuzzy.sort(
-
-        (a, b) =>
-
-            a.name.localeCompare(
-                b.name
-            )
-
-    );
+    });
 
 };
 
