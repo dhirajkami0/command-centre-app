@@ -1637,15 +1637,62 @@ STAFF KNOWLEDGE
 STAFF KNOWLEDGE
 ----------------------------------------------------------*/
 
+/*----------------------------------------------------------
+STAFF KNOWLEDGE + SUB INTENT
+----------------------------------------------------------*/
+
+const staffSubIntent = (function () {
+
+    if (/\b(phone|mobile|contact|cell|tel|telephone|number|no)\b/i.test(originalQuery))
+        return "staffPhone";
+
+    if (/\b(email|mail)\b/i.test(originalQuery))
+        return "staffEmail";
+if (/\bduty\b/i.test(originalQuery))
+    return "staffDuty";
+
+if (/\blocation|where\b/i.test(originalQuery))
+    return "staffLocation";
+
+if (/\bpatrol\b/i.test(originalQuery))
+    return "staffPatrol";
+    if (/\b(role|designation|post)\b/i.test(originalQuery))
+        return "staffRole";
+
+    if (/\bbeat\b/i.test(originalQuery))
+        return "staffBeat";
+
+    if (/\brange\b/i.test(originalQuery))
+        return "staffRange";
+
+    if (/\bdivision\b/i.test(originalQuery))
+        return "staffDivision";
+
+    if (/\b(circle)\b/i.test(originalQuery))
+        return "staffCircle";
+
+    if (/\b(station)\b/i.test(originalQuery))
+        return "staffStation";
+
+   if (/\b(employee|employee id|emp|emp id|id)\b/i.test(originalQuery))
+        return "staffEmployeeId";
+
+    return "staffProfile";
+
+})();
+
+/*-----------------------------------------
+Try full query first
+-----------------------------------------*/
+
 let staffProfile =
     AnalyticsEngine.queryStaff(
         originalQuery
     );
 
-/*----------------------------------
-Fallback:
-try only person's name
-----------------------------------*/
+/*-----------------------------------------
+Extract only person's name
+-----------------------------------------*/
 
 if (!staffProfile.length) {
 
@@ -1653,16 +1700,18 @@ if (!staffProfile.length) {
 
         originalQuery
 
-           .replace(/\b(WHO|IS|SHOW|PROFILE|DETAILS|TELL|ME|ABOUT|PHONE|PH|PHNO|MOBILE|CONTACT|CELL|TEL|TELEPHONE|NUMBER|NO|EMAIL|BEAT|RANGE|DIVISION|ROLE|DESIGNATION|OF|THE|WHAT|WHICH|POSTED|IN)\b/g," ")
+        .replace(
+            /\b(phone|mobile|contact|cell|tel|telephone|number|no|email|mail|beat|range|division|role|designation|post|profile|details|show|tell|about|who|what|which|where|is|of|the|posted|in|employee|emp|id)\b/gi,
+            " "
+        )
 
-            .replace(/\s+/g, " ")
+        .replace(/\s+/g, " ")
 
-            .trim();
+        .trim();
 
     if (cleaned) {
 
         staffProfile =
-
             AnalyticsEngine.queryStaff(
                 cleaned
             );
@@ -1673,83 +1722,19 @@ if (!staffProfile.length) {
 
 if (staffProfile.length) {
 
-    if (/\b(phone|mobile|contact|number|no)\b/i.test(originalQuery)) {
-
-        return {
-            intent: "staffPhone",
-            type: "staff",
-            confidence: 1,
-            data: staffProfile
-        };
-
-    }
-
-    if (/\bemail\b/i.test(originalQuery)) {
-
-        return {
-            intent: "staffEmail",
-            type: "staff",
-            confidence: 1,
-            data: staffProfile
-        };
-
-    }
-
-    if (/\bbeat\b/i.test(originalQuery)) {
-
-        return {
-            intent: "staffBeat",
-            type: "staff",
-            confidence: 1,
-            data: staffProfile
-        };
-
-    }
-
-    if (/\brange\b/i.test(originalQuery)) {
-
-        return {
-            intent: "staffRange",
-            type: "staff",
-            confidence: 1,
-            data: staffProfile
-        };
-
-    }
-
-    if (/\bdivision\b/i.test(originalQuery)) {
-
-        return {
-            intent: "staffDivision",
-            type: "staff",
-            confidence: 1,
-            data: staffProfile
-        };
-
-    }
-
-    if (/\b(role|designation|team leader|forester|forest guard|banasahayak)\b/i.test(originalQuery)) {
-
-        return {
-            intent: "staffRole",
-            type: "staff",
-            confidence: 1,
-            data: staffProfile
-        };
-
-    }
-
     return {
 
-        intent: "staffProfile",
+        intent: staffSubIntent,
+
         type: "staff",
+
         confidence: 1,
+
         data: staffProfile
 
     };
 
 }
-
 
     /*----------------------------------------------------------
       SEARCH INDEX
@@ -1816,9 +1801,11 @@ AnalyticsEngine.queryStaff = function (query) {
         .toUpperCase()
 
         .replace(
-            /\b(WHO|IS|SHOW|PROFILE|DETAILS|TELL|ME|ABOUT|PHONE|MOBILE|CONTACT|NUMBER|NO|EMAIL|BEAT|RANGE|DIVISION|ROLE|DESIGNATION|OF|THE|WHAT|WHICH|POSTED|IN)\b/g,
+            /\b(WHO|IS|SHOW|PROFILE|DETAILS|TELL|ME|ABOUT|PHONE|PH|PHNO|MOBILE|CONTACT|CELL|TEL|TELEPHONE|NUMBER|NO|EMAIL|MAIL|BEAT|RANGE|DIVISION|ROLE|DESIGNATION|POST|STATION|CIRCLE|EMPLOYEE|EMP|ID|OF|THE|WHAT|WHICH|WHERE|POSTED|IN)\b/g,
             " "
         )
+
+        .replace(/[^A-Z0-9 ]/g, " ")
 
         .replace(/\s+/g, " ")
 
@@ -1828,52 +1815,33 @@ AnalyticsEngine.queryStaff = function (query) {
         return [];
     }
 
-    const words = query
-        .split(" ")
-        .filter(Boolean);
+    const words = query.split(" ").filter(Boolean);
 
-    return Object.values(
-
-        AnalyticsEngine.staffIndex
-
-    ).filter(profile => {
+    return Object.values(AnalyticsEngine.staffIndex).filter(profile => {
 
         const text = [
-
             profile.cleanName,
-
             profile.name,
-
             profile.designation,
-
             profile.role,
-
             profile.phone,
-
+            profile.email,
             profile.beat,
-
             profile.range,
-
             profile.division,
-
-            profile.circle
-
+            profile.circle,
+            profile.station,
+            profile.employeeId
         ]
-
+        .filter(Boolean)
         .join(" ")
-
         .toUpperCase();
 
-        return words.every(
-
-            w => text.includes(w)
-
-        );
+        return words.every(word => text.includes(word));
 
     });
 
 };
-
 /*----------------------------------------------------------
 LATEST SESSION
 ----------------------------------------------------------*/
