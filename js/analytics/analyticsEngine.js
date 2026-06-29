@@ -1640,24 +1640,20 @@ STAFF KNOWLEDGE
 /*----------------------------------------------------------
 STAFF KNOWLEDGE + SUB INTENT
 ----------------------------------------------------------*/
-
 const staffSubIntent = (function () {
+
+    /* Contact */
 
     if (/\b(phone|mobile|contact|cell|tel|telephone|number|no)\b/i.test(originalQuery))
         return "staffPhone";
 
     if (/\b(email|mail)\b/i.test(originalQuery))
         return "staffEmail";
-if (/\bduty\b/i.test(originalQuery))
-    return "staffDuty";
 
-if (/\blocation|where\b/i.test(originalQuery))
-    return "staffLocation";
+    /* Administrative posting */
 
-if (/\bpatrol\b/i.test(originalQuery))
-    return "staffPatrol";
-    if (/\b(role|designation|post)\b/i.test(originalQuery))
-        return "staffRole";
+    if (/\b(posted|posting)\b/i.test(originalQuery))
+        return "staffPosting";
 
     if (/\bbeat\b/i.test(originalQuery))
         return "staffBeat";
@@ -1668,13 +1664,35 @@ if (/\bpatrol\b/i.test(originalQuery))
     if (/\bdivision\b/i.test(originalQuery))
         return "staffDivision";
 
-    if (/\b(circle)\b/i.test(originalQuery))
+    if (/\bcircle\b/i.test(originalQuery))
         return "staffCircle";
 
-    if (/\b(station)\b/i.test(originalQuery))
+    if (/\bstation\b/i.test(originalQuery))
         return "staffStation";
 
-   if (/\b(employee|employee id|emp|emp id|id)\b/i.test(originalQuery))
+    /* Role */
+
+    if (/\b(role|designation|post)\b/i.test(originalQuery))
+        return "staffRole";
+
+    /* Duty */
+
+    if (/\bduty\b/i.test(originalQuery))
+        return "staffDuty";
+
+    /* Live GPS */
+
+    if (/\b(location|gps|live|where now|current location)\b/i.test(originalQuery))
+        return "staffLocation";
+
+    /* Patrol */
+
+    if (/\bpatrol\b/i.test(originalQuery))
+        return "staffPatrol";
+
+    /* Employee */
+
+    if (/\b(employee|employee id|emp id|emp|id)\b/i.test(originalQuery))
         return "staffEmployeeId";
 
     return "staffProfile";
