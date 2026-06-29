@@ -326,157 +326,168 @@ AnalyticsEngine.mergeStaffProfiles = async function () {
             const s =
                 doc.data() || {};
 
-            const cleanName =
-                String(
+          const cleanName =
+    String(
 
-                    s.cleanName ||
+        s.cleanName ||
 
-                    s.name ||
+        s.name ||
 
-                    doc.id ||
+        doc.id ||
 
-                    ""
+        ""
 
-                )
-                .trim()
-                .toUpperCase();
+    )
+    .trim()
+    .toUpperCase();
 
-            if (!cleanName) {
-                return;
-            }
+if (!cleanName) {
 
-            const profile = {
+    return;
 
-                id:
-                    doc.id,
+}
 
-                cleanName,
-
-              /*----------------------------------
-NAME + DESIGNATION NORMALIZATION
+/*----------------------------------
+NORMALIZE NAME + DESIGNATION
 ----------------------------------*/
 
-name: (function () {
+const rawName =
+    String(
+        s.name || ""
+    ).trim();
 
-    const raw =
-        String(
-            s.name || ""
-        ).trim();
+let profileName =
+    rawName;
 
-    if (!raw) {
+let profileDesignation =
+    String(
+        s.designation || ""
+    ).trim();
 
-        return "";
+if (
 
-    }
+    !profileDesignation &&
 
-    if (
+    rawName.includes(",")
 
-        s.designation
-
-    ) {
-
-        return raw;
-
-    }
+) {
 
     const parts =
+        rawName.split(",");
 
-        raw.split(",");
+    profileName =
+        parts.shift().trim();
 
-    return parts[0].trim();
+    profileDesignation =
+        parts.join(",").trim();
 
-})(),
+}
 
-designation: (function () {
+const profile = {
 
-    if (
+    id:
+        doc.id,
 
-        s.designation
+    cleanName,
 
-    ) {
+    name:
+        profileName,
 
-        return s.designation;
+    designation:
+        profileDesignation,
 
-    }
+    role:
+        s.role || "",
 
-    const raw =
-        String(
-            s.name || ""
-        ).trim();
+    phone:
+        s.phone || "",
 
-    if (
+    email:
+        s.email || "",
 
-        raw.indexOf(",") === -1
+    beat:
+        s.beat || "",
 
-    ) {
+    range:
+        s.range || "",
 
-        return "";
+    division:
+        s.division || "",
 
-    }
+    circle:
+        s.circle || "",
 
-    return raw
-        .split(",")
-        .slice(1)
-        .join(",")
-        .trim();
+    station:
+        s.station || "",
 
-})(),
-                role:
-                    s.role || "",
+    employeeId:
+        s.employeeId || "",
 
-                phone:
-                    s.phone || "",
+    live:
+        null,
 
-                email:
-                    s.email || "",
+    latestPatrol:
+        null,
 
-                beat:
-                    s.beat || "",
+    patrols:
+        [],
 
-                range:
-                    s.range || "",
+    analytics: {
 
-                division:
-                    s.division || "",
+        patrols: 0,
 
-                circle:
-                    s.circle || "",
+        distanceKm: 0,
 
-                station:
-                    s.station || "",
+        coverage: 0,
 
-                employeeId:
-                    s.employeeId || "",
+        visits: 0
 
-                live:
-                    null,
+    },
 
-                latestPatrol:
-                    null,
+    assignedCompartments:
+        []
 
-                patrols:
-                    [],
+};
 
-                analytics: {
+AnalyticsEngine.staffIndex[
+    cleanName
+] = profile;
 
-                    patrols: 0,
+/*----------------------------------
+DEBUG
+----------------------------------*/
 
-                    distanceKm: 0,
+if (
 
-                    coverage: 0,
+    cleanName ===
 
-                    visits: 0
+    "SACHIN CHHETRI"
 
-                },
+) {
 
-                assignedCompartments:
-                    []
+    console.log(
 
-            };
+        "NORMALIZED STAFF",
 
-            AnalyticsEngine.staffIndex[
-                cleanName
-            ] = profile;
+        {
+
+            rawName,
+
+            profileName,
+
+            profileDesignation,
+
+            profile
+
+        }
+
+    );
+
+}
+
+/*----------------------------------
+SEARCH INDEX
+----------------------------------*/
 
             /*----------------------------------
             SEARCH INDEX
