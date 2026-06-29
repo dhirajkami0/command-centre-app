@@ -2075,38 +2075,101 @@ Router.resolveTools = function(query, intent){
 
 };
 
-    /*----------------------------------------------------------
-      ROUTE
-    ----------------------------------------------------------*/
+/*----------------------------------------------------------
+ROUTE
+----------------------------------------------------------*/
 
-    Router.route = async function (
+Router.route = async function (query) {
 
-        query
+    const result =
+
+        Router.detectIntent(query);
+
+    result.context =
+
+        await Router.buildContext(
+
+            result.intent
+
+        );
+
+    result.tools =
+
+        Router.resolveTools(
+
+            query,
+
+            result.intent
+
+        );
+
+    /*--------------------------------------
+    LOCAL ANALYTICS ENGINE
+    --------------------------------------*/
+
+    if (
+
+        window.GreenGuardAI.AnalyticsEngine
 
     ) {
 
-        const result =
+        try {
 
-            Router.detectIntent(
+            if (
 
-                query
+                !window.GreenGuardAI.AnalyticsEngine.isLoaded()
+
+            ) {
+
+                await window.GreenGuardAI.AnalyticsEngine.load();
+
+            }
+
+            const local =
+
+                window.GreenGuardAI.AnalyticsEngine.query(
+
+                    query
+
+                );
+
+            if (
+
+                local
+
+            ) {
+
+                result.local = true;
+
+                result.localResult = local;
+
+                result.intent =
+
+                    local.intent ||
+
+                    result.intent;
+
+            }
+
+        }
+
+        catch (err) {
+
+            console.error(
+
+                "Local Analytics Query",
+
+                err
 
             );
 
-result.context =
-    await Router.buildContext(
-        result.intent
-    );
+        }
 
-result.tools =
-    Router.resolveTools(
-        query,
-        result.intent
-    );
+    }
 
-return result;
-    };
+    return result;
 
+};
      /*----------------------------------------------------------
       RESET
     ----------------------------------------------------------*/
