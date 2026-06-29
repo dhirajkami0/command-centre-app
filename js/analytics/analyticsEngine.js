@@ -1630,46 +1630,163 @@ STAFF KNOWLEDGE
 /*----------------------------------------------------------
 STAFF KNOWLEDGE
 ----------------------------------------------------------*/
+/*----------------------------------------------------------
+STAFF KNOWLEDGE
+----------------------------------------------------------*/
+
+const staffProfile =
+
+    AnalyticsEngine.queryStaff(
+        originalQuery
+    );
 
 if (
 
-    /\bwho\b/i.test(originalQuery) ||
-
-    /\bstaff\b/i.test(originalQuery) ||
-
-    /\bprofile\b/i.test(originalQuery) ||
-
-    /\bphone\b/i.test(originalQuery) ||
-
-    /\bcontact\b/i.test(originalQuery) ||
-
-    /\bteam leader\b/i.test(originalQuery) ||
-
-    /\bbanasahayak\b/i.test(originalQuery) ||
-
-    /\brange\b/i.test(originalQuery) ||
-
-    /\bbeat\b/i.test(originalQuery) ||
-
-    /\bdivision\b/i.test(originalQuery) ||
-
-    /\bworks\b/i.test(originalQuery) ||
-
-    /\bworking\b/i.test(originalQuery)
+    staffProfile.length
 
 ) {
 
+    if (
+
+        /\b(phone|mobile|contact)\b/i.test(
+            originalQuery
+        )
+
+    ) {
+
+        return {
+
+            intent: "staffPhone",
+
+            type: "staff",
+
+            confidence: 1,
+
+            data: staffProfile
+
+        };
+
+    }
+
+    if (
+
+        /\bemail\b/i.test(
+            originalQuery
+        )
+
+    ) {
+
+        return {
+
+            intent: "staffEmail",
+
+            type: "staff",
+
+            confidence: 1,
+
+            data: staffProfile
+
+        };
+
+    }
+
+    if (
+
+        /\bbeat\b/i.test(
+            originalQuery
+        )
+
+    ) {
+
+        return {
+
+            intent: "staffBeat",
+
+            type: "staff",
+
+            confidence: 1,
+
+            data: staffProfile
+
+        };
+
+    }
+
+    if (
+
+        /\brange\b/i.test(
+            originalQuery
+        )
+
+    ) {
+
+        return {
+
+            intent: "staffRange",
+
+            type: "staff",
+
+            confidence: 1,
+
+            data: staffProfile
+
+        };
+
+    }
+
+    if (
+
+        /\bdivision\b/i.test(
+            originalQuery
+        )
+
+    ) {
+
+        return {
+
+            intent: "staffDivision",
+
+            type: "staff",
+
+            confidence: 1,
+
+            data: staffProfile
+
+        };
+
+    }
+
+    if (
+
+        /\b(role|designation|team leader|forester|forest guard|banasahayak)\b/i.test(
+            originalQuery
+        )
+
+    ) {
+
+        return {
+
+            intent: "staffRole",
+
+            type: "staff",
+
+            confidence: 1,
+
+            data: staffProfile
+
+        };
+
+    }
+
     return {
 
-        intent: "staffSearch",
+        intent: "staffProfile",
 
         type: "staff",
 
         confidence: 1,
 
-        data: AnalyticsEngine.queryStaff(
-            originalQuery
-        )
+        data: staffProfile
 
     };
 
