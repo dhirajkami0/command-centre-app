@@ -128,6 +128,27 @@ case "staffdivision":
 case "staffrole":
     return formatStaffRole(result);
 
+case "staffposting":
+    return formatStaffPosting(result);
+
+case "stafflocation":
+    return formatStaffLocation(result);
+
+case "staffpatrol":
+    return formatStaffPatrol(result);
+
+case "staffduty":
+    return formatStaffDuty(result);
+
+case "staffcircle":
+    return formatStaffCircle(result);
+
+case "staffstation":
+    return formatStaffStation(result);
+
+case "staffemployeeid":
+    return formatStaffEmployeeId(result);
+
 case "staffprofile":
 case "staffsearch":
     return formatStaffProfile(result);
@@ -1481,6 +1502,228 @@ function formatStaffRole(r){
         "",
 
         p.role || p.designation || "-"
+
+    ].join("\n");
+
+}
+    function formatStaffPosting(r){
+
+    const p = r.data?.[0];
+
+    if(!p){
+        return "❌ Staff not found.";
+    }
+
+    return [
+
+        "📍 POSTING DETAILS",
+
+        "",
+
+        p.name,
+
+        "",
+
+        "Beat : " + (p.beat || "-"),
+
+        "Range : " + (p.range || "-"),
+
+        "Division : " + (p.division || "-"),
+
+        "Circle : " + (p.circle || "-")
+
+    ].join("\n");
+
+}
+
+    function formatStaffLocation(r){
+
+    const p = r.data?.[0];
+
+    if(!p){
+        return "❌ Staff not found.";
+    }
+
+    const live = p.live || {};
+
+    return [
+
+        "📡 LIVE LOCATION",
+
+        "",
+
+        p.name,
+
+        "",
+
+        "Latitude : " + (live.lat ?? "-"),
+
+        "Longitude : " + (live.lon ?? "-"),
+
+        "Accuracy : " + (live.accuracy ?? "-"),
+
+        "Speed : " + (live.speed ?? "-"),
+
+        "Last Update : " + (live.updatedAt || "-")
+
+    ].join("\n");
+
+}
+    function formatStaffPatrol(r){
+
+    const p = r.data?.[0];
+
+    if(!p){
+        return "❌ Staff not found.";
+    }
+
+    const patrol = p.latestPatrol || {};
+
+    return [
+
+        "🛰 LATEST PATROL",
+
+        "",
+
+        p.name,
+
+        "",
+
+        "Session : " + (patrol.sessionId || "-"),
+
+        "Beat : " + (patrol.beat || "-"),
+
+        "Compartment : " + (patrol.compartment || "-"),
+
+        "Distance : " + Number(patrol.distanceKm || 0).toFixed(2) + " km"
+
+    ].join("\n");
+
+}
+    function formatStaffCircle(r){
+
+    const p = r.data?.[0];
+
+    if(!p){
+        return "❌ Staff not found.";
+    }
+
+    return [
+
+        "⭕ CIRCLE",
+
+        "",
+
+        p.name,
+
+        "",
+
+        p.circle || "-"
+
+    ].join("\n");
+
+}
+    function formatStaffStation(r){
+
+    const p = r.data?.[0];
+
+    if(!p){
+        return "❌ Staff not found.";
+    }
+
+    return [
+
+        "🏢 STATION",
+
+        "",
+
+        p.name,
+
+        "",
+
+        p.station || "-"
+
+    ].join("\n");
+
+}
+    function formatStaffEmployeeId(r){
+
+    const p = r.data?.[0];
+
+    if(!p){
+        return "❌ Staff not found.";
+    }
+
+    return [
+
+        "🆔 EMPLOYEE ID",
+
+        "",
+
+        p.name,
+
+        "",
+
+        p.employeeId || "-"
+
+    ].join("\n");
+
+}
+    /*----------------------------------------------------------
+STAFF DUTY
+----------------------------------------------------------*/
+
+function formatStaffDuty(r){
+
+    const p = r.data?.[0];
+
+    if(!p){
+        return "❌ Staff not found.";
+    }
+
+    const live = p.live || {};
+
+    return [
+
+        "🟢 DUTY STATUS",
+
+        "",
+
+        p.name,
+
+        "",
+
+        "Status : " +
+
+        (
+
+            live.dutyActive
+
+                ? "Active"
+
+                : "Inactive"
+
+        ),
+
+        "Duty Type : " +
+
+        (
+
+            live.dutyType ||
+
+            "-"
+
+        ),
+
+        "Started : " +
+
+        (
+
+            live.startedAt ||
+
+            "-"
+
+        )
 
     ].join("\n");
 
