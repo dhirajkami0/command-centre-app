@@ -113,10 +113,27 @@ Formatter.format = function (result) {
 
     case "summary":
         return formatSummary(result);
+case "staffphone":
+    return formatStaffPhone(result);
 
-    case "staffsearch":
-        return formatStaffSearch(result);
+case "staffemail":
+    return formatStaffEmail(result);
 
+case "staffbeat":
+    return formatStaffBeat(result);
+
+case "staffrange":
+    return formatStaffRange(result);
+
+case "staffdivision":
+    return formatStaffDivision(result);
+
+case "staffrole":
+    return formatStaffRole(result);
+
+case "staffprofile":
+case "staffsearch":
+    return formatStaffProfile(result);
     case "session":
         return formatSession(result);
 
@@ -976,7 +993,7 @@ STAFF SEARCH
 STAFF SEARCH
 ----------------------------------------------------------*/
 
-function formatStaffSearch(r){
+function formatStaffProfile(r){
 
     const rows =
 
@@ -1302,6 +1319,173 @@ function formatStaffSearch(r){
     );
 
     return txt;
+
+}
+    /*----------------------------------------------------------
+STAFF PHONE
+----------------------------------------------------------*/
+
+function formatStaffPhone(r){
+
+    const p = r.data?.[0];
+
+    if(!p){
+        return "❌ Staff not found.";
+    }
+
+    return [
+
+        "📞 PHONE NUMBER",
+
+        "",
+
+        p.name,
+
+        "",
+
+        p.phone || "Not Available"
+
+    ].join("\n");
+
+}
+
+/*----------------------------------------------------------
+STAFF EMAIL
+----------------------------------------------------------*/
+
+function formatStaffEmail(r){
+
+    const p = r.data?.[0];
+
+    if(!p){
+        return "❌ Staff not found.";
+    }
+
+    return [
+
+        "📧 EMAIL",
+
+        "",
+
+        p.name,
+
+        "",
+
+        p.email || "Not Available"
+
+    ].join("\n");
+
+}
+
+/*----------------------------------------------------------
+STAFF BEAT
+----------------------------------------------------------*/
+
+function formatStaffBeat(r){
+
+    const p = r.data?.[0];
+
+    if(!p){
+        return "❌ Staff not found.";
+    }
+
+    return [
+
+        "📍 BEAT",
+
+        "",
+
+        p.name,
+
+        "",
+
+        p.beat || "-"
+
+    ].join("\n");
+
+}
+
+/*----------------------------------------------------------
+STAFF RANGE
+----------------------------------------------------------*/
+
+function formatStaffRange(r){
+
+    const p = r.data?.[0];
+
+    if(!p){
+        return "❌ Staff not found.";
+    }
+
+    return [
+
+        "🌲 RANGE",
+
+        "",
+
+        p.name,
+
+        "",
+
+        p.range || "-"
+
+    ].join("\n");
+
+}
+
+/*----------------------------------------------------------
+STAFF DIVISION
+----------------------------------------------------------*/
+
+function formatStaffDivision(r){
+
+    const p = r.data?.[0];
+
+    if(!p){
+        return "❌ Staff not found.";
+    }
+
+    return [
+
+        "🗺 DIVISION",
+
+        "",
+
+        p.name,
+
+        "",
+
+        p.division || "-"
+
+    ].join("\n");
+
+}
+
+/*----------------------------------------------------------
+STAFF ROLE
+----------------------------------------------------------*/
+
+function formatStaffRole(r){
+
+    const p = r.data?.[0];
+
+    if(!p){
+        return "❌ Staff not found.";
+    }
+
+    return [
+
+        "👤 ROLE",
+
+        "",
+
+        p.name,
+
+        "",
+
+        p.role || p.designation || "-"
+
+    ].join("\n");
 
 }
 /*----------------------------------------------------------
