@@ -972,10 +972,19 @@ function formatStatistics(r){
 STAFF SEARCH
 ----------------------------------------------------------*/
 
+/*----------------------------------------------------------
+STAFF SEARCH
+----------------------------------------------------------*/
+
 function formatStaffSearch(r){
 
     const rows =
-        r.data || [];
+
+        Array.isArray(r.data)
+
+            ? r.data
+
+            : [];
 
     if(
 
@@ -983,42 +992,310 @@ function formatStaffSearch(r){
 
     ){
 
-        return
-
-            "No matching staff found.";
+        return "❌ No matching staff found.";
 
     }
 
+    /*--------------------------------------------------
+    SINGLE PROFILE
+    --------------------------------------------------*/
+
+    if(
+
+        rows.length === 1
+
+    ){
+
+        const p = rows[0];
+
+        const live =
+            p.live || {};
+
+        const analytics =
+            p.analytics || {};
+
+        const patrol =
+            p.latestPatrol || {};
+
+        return [
+
+            "👤 STAFF PROFILE",
+
+            "",
+
+            "Name : " +
+            (p.name || "-"),
+
+            "Designation : " +
+            (p.designation || "-"),
+
+            "Role : " +
+            (p.role || "-"),
+
+            "Division : " +
+            (p.division || "-"),
+
+            "Range : " +
+            (p.range || "-"),
+
+            "Beat : " +
+            (p.beat || "-"),
+
+            "Phone : " +
+            (p.phone || "-"),
+
+            "Email : " +
+            (p.email || "-"),
+
+            "",
+
+            "Duty : " +
+
+            (
+
+                live.dutyActive
+
+                    ? "🟢 Active"
+
+                    : "⚪ Inactive"
+
+            ),
+
+            "Duty Type : " +
+
+            (
+
+                live.dutyType ||
+
+                "-"
+
+            ),
+
+            "Current Location : " +
+
+            (
+
+                live.location ||
+
+                "-"
+
+            ),
+
+            "Battery : " +
+
+            (
+
+                live.battery ||
+
+                "-"
+
+            ),
+
+            "",
+
+            "Today's Patrols : " +
+
+            (
+
+                analytics.patrols ||
+
+                0
+
+            ),
+
+            "Today's Distance : " +
+
+            Number(
+
+                analytics.distanceKm ||
+
+                0
+
+            ).toFixed(2)
+
+            +
+
+            " km",
+
+            "Coverage : " +
+
+            Number(
+
+                analytics.coverage ||
+
+                0
+
+            ).toFixed(2)
+
+            +
+
+            "%",
+
+            "Visits : " +
+
+            (
+
+                analytics.visits ||
+
+                0
+
+            ),
+
+            "",
+
+            "Latest Patrol : " +
+
+            (
+
+                patrol.sessionId ||
+
+                "-"
+
+            ),
+
+            "Assigned Compartments : " +
+
+            (
+
+                p.assignedCompartments?.length ||
+
+                0
+
+            )
+
+        ].join("\n");
+
+    }
+
+    /*--------------------------------------------------
+    MULTIPLE STAFF
+    --------------------------------------------------*/
+
     let txt =
-        "👮 Staff Search\n\n";
+
+        "👥 STAFF LIST\n\n";
 
     rows.forEach(
 
-        row=>{
+        (p,i)=>{
 
             txt +=
 
-                "• " +
+                (i+1)+". "+
 
                 (
 
-                    row.compartment ||
+                    p.name ||
 
                     "-"
 
-                ) +
+                )+
 
-                " (" +
+                "\n";
+
+            txt +=
+
+                "   Designation : "+
 
                 (
 
-                    row.beat ||
+                    p.designation ||
 
                     "-"
 
-                ) +
+                )+
 
-                ")\n";
+                "\n";
+
+            txt +=
+
+                "   Role : "+
+
+                (
+
+                    p.role ||
+
+                    "-"
+
+                )+
+
+                "\n";
+
+            txt +=
+
+                "   Beat : "+
+
+                (
+
+                    p.beat ||
+
+                    "-"
+
+                )+
+
+                "\n";
+
+            txt +=
+
+                "   Range : "+
+
+                (
+
+                    p.range ||
+
+                    "-"
+
+                )+
+
+                "\n";
+
+            txt +=
+
+                "   Division : "+
+
+                (
+
+                    p.division ||
+
+                    "-"
+
+                )+
+
+                "\n";
+
+            txt +=
+
+                "   Phone : "+
+
+                (
+
+                    p.phone ||
+
+                    "-"
+
+                )+
+
+                "\n";
+
+            txt +=
+
+                "   Status : "+
+
+                (
+
+                    p.live?.dutyActive
+
+                    ?
+
+                    "🟢 Active"
+
+                    :
+
+                    "⚪ Inactive"
+
+                )+
+
+                "\n\n";
 
         }
 
@@ -1027,7 +1304,6 @@ function formatStaffSearch(r){
     return txt;
 
 }
-
 /*----------------------------------------------------------
 SESSION
 ----------------------------------------------------------*/
