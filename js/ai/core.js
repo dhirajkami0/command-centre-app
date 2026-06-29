@@ -559,262 +559,65 @@ Core.callAI = async function (request) {
 
         }
 
-        /*------------------------------------------
-        LOCAL ANALYTICS ENGINE
-        ------------------------------------------*/
+/*------------------------------------------
+LOCAL ANALYTICS ENGINE
+------------------------------------------*/
 
-        if (
+if (
 
-            request.route?.intent === "analytics"
+    request.route?.local &&
 
-        ) {
+    request.route?.localResult
 
-            try {
+) {
 
-                const analytics =
+    try {
 
-                    await GreenGuardAI.Tools.execute(
+        const formatted =
 
-                        "analyticsQuery",
+            window.GreenGuardAI.Formatter
 
-                        {
+                ? window.GreenGuardAI.Formatter.format(
 
-                            query:
+                    request.route.localResult
 
-                                request.query
+                )
 
-                        }
-
-                    );
-
-                if (
-
-                    analytics?.success &&
-
-                    analytics?.result
-
-                ) {
-
-const formatted =
-
-    window.GreenGuardAI.Formatter
-
-        ? window.GreenGuardAI.Formatter.format(
-
-              analytics.result
-
-          )
-
-        : analytics.result;
-
-const response = {
-
-    success: true,
-
-    timestamp:
-        Date.now(),
-
-    requestId:
-        request.id,
-
-    intent:
-        "analytics",
-
-    answer:
-
-        formatted,
-
-    raw:
-
-        analytics.result,
-
-    cached:
-
-        false,
-
-    local:
-
-        true
-
-};
-
-                    await Core.setCachedResponse(
-
-                        request,
-
-                        response
-
-                    );
-
-                    busy = false;
-
-                    responseCount++;
-
-                    lastResponse =
-                        Config.clone(response);
-
-                    return response;
-
-                }
-
-            }
-
-            catch (err) {
-
-                console.error(
-
-                    "AnalyticsEngine failed",
-
-                    err
-
-                );
-
-            }
-
-        }
-
-        /*------------------------------------------
-        CLOUD AI
-        ------------------------------------------*/
-
-        let result =
-            await window.callAI({
-
-                query:
-                    request.query,
-
-                intent:
-                    request.intent,
-
-                context:
-                    Config.clone(
-                        request.context
-                    ),
-
-                toolResults: {}
-
-            });
-
-        if (
-
-            result.tool_calls &&
-
-            result.tool_calls.length
-
-        ) {
-
-            const toolResults = {};
-
-            for (
-
-                const tool
-
-                of
-
-                result.tool_calls
-
-            ) {
-
-                try {
-
-                    toolResults[
-                        tool.name
-                    ] =
-
-                    await GreenGuardAI.Tools.execute(
-
-                        tool.name,
-
-                        tool.arguments || {}
-
-                    );
-
-                }
-
-                catch (e) {
-
-                    toolResults[
-                        tool.name
-                    ] = {
-
-                        error:
-                            e.message
-
-                    };
-
-                }
-
-            }
-
-            result =
-                await window.callAI({
-
-                    query:
-                        request.query,
-
-                    intent:
-                        request.intent,
-
-                    context:
-                        Config.clone(
-                            request.context
-                        ),
-
-                    toolResults
-
-                });
-
-        }
+                : request.route.localResult;
 
         const response = {
 
             success: true,
 
             timestamp:
+
                 Date.now(),
 
             requestId:
+
                 request.id,
 
             intent:
-                request.intent,
+
+                request.route.localResult.intent ||
+
+                request.route.intent,
 
             answer:
 
-                result.reply ||
-
-                result.answer ||
-
-                result.content ||
-
-                result.message ||
-
-                (
-
-                    typeof result === "string"
-
-                        ? result
-
-                        : JSON.stringify(
-
-                            result,
-
-                            null,
-
-                            2
-
-                        )
-
-                ),
+                formatted,
 
             raw:
-                result,
+
+                request.route.localResult,
 
             cached:
+
                 false,
 
             local:
-                false
+
+                true
 
         };
 
@@ -831,11 +634,194 @@ const response = {
         responseCount++;
 
         lastResponse =
-            Config.clone(response);
+
+            Config.clone(
+
+                response
+
+            );
 
         return response;
 
     }
+
+    catch (err) {
+
+        console.error(
+
+            "Local Analytics Engine",
+
+            err
+
+        );
+
+    }
+
+}
+
+/*------------------------------------------
+CLOUD AI
+------------------------------------------*/
+
+let result =
+    await window.callAI({
+
+        query:
+            request.query,
+
+        intent:
+            request.intent,
+
+        context:
+            Config.clone(
+                request.context
+            ),
+
+        toolResults: {}
+
+    });
+
+if (
+
+    result.tool_calls &&
+
+    result.tool_calls.length
+
+) {
+
+    const toolResults = {};
+
+    for (
+
+        const tool
+
+        of
+
+        result.tool_calls
+
+    ) {
+
+        try {
+
+            toolResults[
+                tool.name
+            ] =
+
+            await GreenGuardAI.Tools.execute(
+
+                tool.name,
+
+                tool.arguments || {}
+
+            );
+
+        }
+
+        catch (e) {
+
+            toolResults[
+                tool.name
+            ] = {
+
+                error:
+                    e.message
+
+            };
+
+        }
+
+    }
+
+    result =
+        await window.callAI({
+
+            query:
+                request.query,
+
+            intent:
+                request.intent,
+
+            context:
+                Config.clone(
+                    request.context
+                ),
+
+            toolResults
+
+        });
+
+}
+
+const response = {
+
+    success: true,
+
+    timestamp:
+        Date.now(),
+
+    requestId:
+        request.id,
+
+    intent:
+        request.intent,
+
+    answer:
+
+        result.reply ||
+
+        result.answer ||
+
+        result.content ||
+
+        result.message ||
+
+        (
+
+            typeof result === "string"
+
+                ? result
+
+                : JSON.stringify(
+
+                    result,
+
+                    null,
+
+                    2
+
+                )
+
+        ),
+
+    raw:
+        result,
+
+    cached:
+        false,
+
+    local:
+        false
+
+};
+
+await Core.setCachedResponse(
+
+    request,
+
+    response
+
+);
+
+busy = false;
+
+responseCount++;
+
+lastResponse =
+    Config.clone(response);
+
+return response;
+
+
 
     catch (err) {
 
