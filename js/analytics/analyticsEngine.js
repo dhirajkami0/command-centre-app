@@ -1456,33 +1456,39 @@ let staffProfile =
     AnalyticsEngine.queryStaff(
         originalQuery
     );
+
     /*----------------------------------------------------------
+STAFF STRENGTH KEYWORDS
+----------------------------------------------------------*/
+
+const strengthIntent =
+    /\b(staff\s+strength|strength|manpower|workforce|employee\s+strength|designation.?wise|role.?wise|staff\s+distribution|designation\s+distribution|role\s+distribution|how\s+many|count|total)\b/i;
+const listIntent =
+    /\b(show|list|display|give|fetch|find|who\s+are|which)\b/i;
+const summaryIntent =
+
+    strengthIntent.test(
+
+        originalQuery
+
+    );
+
+const listingIntent =
+
+    listIntent.test(
+
+        originalQuery
+
+    );
+/*----------------------------------------------------------
 STAFF STRENGTH SEARCH
 ----------------------------------------------------------*/
 
-const upperQuery =
-    originalQuery.toUpperCase();
-
-const strengthWords =
-
-    /\b(
-        STAFF|
-        TEAM\s*LEADER|
-        ADMIN|
-        ADFO|
-        ACTIVE\s+STAFF|
-        INACTIVE\s+STAFF|
-        STAFF\s+STRENGTH|
-        STRENGTH|
-        MANPOWER|
-        WORKFORCE
-    )\b/ix;
-
 if (
 
-    strengthWords.test(
-        upperQuery
-    )
+    summaryIntent ||
+
+    listingIntent
 
 ) {
 
@@ -1493,7 +1499,55 @@ if (
                 originalQuery
             );
 
+    /*----------------------------------
+    Designation
+    ----------------------------------*/
+
+    for (
+
+        const code in
+
+        AnalyticsEngine.designationAliases
+
+    ) {
+
+        const aliases =
+
+            AnalyticsEngine
+                .designationAliases[
+                    code
+                ];
+
+        if (
+
+            aliases.some(
+
+                a =>
+
+                upperQuery.includes(a)
+
+            )
+
+        ) {
+
+            filters.designation =
+                code;
+
+            break;
+
+        }
+
+    }
+
+    /*----------------------------------
+    Active / Inactive
+    ----------------------------------*/
+
     if (
+
+        /\bON\s+DUTY\b/i.test(
+            originalQuery
+        ) ||
 
         /\bACTIVE\b/i.test(
             originalQuery
@@ -1501,11 +1555,16 @@ if (
 
     ) {
 
-        filters.dutyActive = true;
+        filters.dutyActive =
+            true;
 
     }
 
     if (
+
+        /\bOFF\s+DUTY\b/i.test(
+            originalQuery
+        ) ||
 
         /\bINACTIVE\b/i.test(
             originalQuery
@@ -1513,9 +1572,88 @@ if (
 
     ) {
 
-        filters.dutyActive = false;
+        filters.dutyActive =
+            false;
 
     }
+
+    /*----------------------------------
+    Role Wise
+    ----------------------------------*/
+
+    if (
+
+        /\bROLE.?WISE\b/i.test(
+            originalQuery
+        )
+
+    ) {
+
+        return {
+
+            intent:
+
+                "roleWiseStrength",
+
+            type:
+
+                "staff",
+
+            confidence:
+
+                1,
+
+            data:
+
+                AnalyticsEngine
+                    .getStaffStrengthSummary(
+                        filters
+                    )
+
+        };
+
+    }
+
+    /*----------------------------------
+    Designation Wise
+    ----------------------------------*/
+
+    if (
+
+        /\bDESIGNATION.?WISE\b/i.test(
+            originalQuery
+        )
+
+    ) {
+
+        return {
+
+            intent:
+
+                "designationWiseStrength",
+
+            type:
+
+                "staff",
+
+            confidence:
+
+                1,
+
+            data:
+
+                AnalyticsEngine
+                    .getStaffStrengthSummary(
+                        filters
+                    )
+
+        };
+
+    }
+
+    /*----------------------------------
+    Default
+    ----------------------------------*/
 
     return {
 
@@ -1540,8 +1678,7 @@ if (
 
     };
 
-}
-    /*----------------------------------------------------------
+}    /*----------------------------------------------------------
 DESIGNATION SEARCH
 ----------------------------------------------------------*/
 
@@ -1585,17 +1722,7 @@ for (
 if (
 
     requestedDesignation &&
-
-    /\b(
-how many|
-count|
-list|
-show|
-show all|
-all|
-every|
-designation.?wise
-)\b/ix.test(
+/\b(how\s+many|count|list|show|show\s+all|all|every|designation.?wise)\b/i.test(
         originalQuery
     )
 
@@ -3151,6 +3278,140 @@ AnalyticsEngine.getStaffStrengthSummary = function(filters){
             rows
 
     };
+
+};
+    /*----------------------------------------------------------
+ROLE WISE SUMMARY
+----------------------------------------------------------*/
+
+AnalyticsEngine.getRoleWiseSummary = function(filters){
+
+    filters =
+        filters || {};
+
+    const rows =
+        AnalyticsEngine.queryStaffStrength(
+            filters
+        );
+
+    const roles = {};
+
+    rows.forEach(function(p){
+
+        const role =
+            AnalyticsEngine.normalizeRole(
+                p.role
+            );
+
+        if(!roles[role]){
+
+            roles[role] = {
+
+                role : role,
+
+                total : 0,
+
+                active : 0,
+
+                inactive : 0,
+
+                staff : []
+
+            };
+
+        }
+
+        roles[role].total++;
+
+        if(p.dutyActive){
+
+            roles[role].active++;
+
+        }else{
+
+            roles[role].inactive++;
+
+        }
+
+        roles[role].staff.push(p);
+
+    });
+
+    return Object
+        .values(roles)
+        .sort(function(a,b){
+
+            return b.total-a.total;
+
+        });
+
+};
+
+
+/*----------------------------------------------------------
+DESIGNATION WISE SUMMARY
+----------------------------------------------------------*/
+
+AnalyticsEngine.getDesignationWiseSummary = function(filters){
+
+    filters =
+        filters || {};
+
+    const rows =
+        AnalyticsEngine.queryStaffStrength(
+            filters
+        );
+
+    const designations = {};
+
+    rows.forEach(function(p){
+
+        const d =
+            AnalyticsEngine.normalizeDesignation(
+                p.designation
+            );
+
+        if(!designations[d]){
+
+            designations[d] = {
+
+                designation : d,
+
+                total : 0,
+
+                active : 0,
+
+                inactive : 0,
+
+                staff : []
+
+            };
+
+        }
+
+        designations[d].total++;
+
+        if(p.dutyActive){
+
+            designations[d].active++;
+
+        }else{
+
+            designations[d].inactive++;
+
+        }
+
+        designations[d].staff.push(p);
+
+    });
+
+    return Object
+        .values(designations)
+        .sort(function(a,b){
+
+            return b.total-a.total;
+
+        });
 
 };
 /*----------------------------------------------------------
