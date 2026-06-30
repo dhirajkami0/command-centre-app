@@ -1486,9 +1486,15 @@ STAFF STRENGTH SEARCH
 
 if (
 
-    summaryIntent ||
+    !requestedDesignation &&
 
-    listingIntent
+    (
+
+        summaryIntent ||
+
+        listingIntent
+
+    )
 
 ) {
 
@@ -1705,13 +1711,18 @@ for (
 
     if (
 
-        aliases.some(alias =>
+        aliases.some(
+
+            alias =>
+
             designationQuery.includes(alias)
+
         )
 
     ) {
 
-        requestedDesignation = code;
+        requestedDesignation =
+            code;
 
         break;
 
@@ -1721,33 +1732,36 @@ for (
 
 if (
 
-    requestedDesignation &&
-/\b(how\s+many|count|list|show|show\s+all|all|every|designation.?wise)\b/i.test(
-        originalQuery
-    )
+    requestedDesignation
 
 ) {
 
     const filters =
-        AnalyticsEngine.extractJurisdictionFilters(
-            originalQuery
-        );
+
+        AnalyticsEngine
+            .extractJurisdictionFilters(
+                originalQuery
+            );
 
     filters.designation =
         requestedDesignation;
 
     return {
 
-        intent: "designationSummary",
+        intent:
+            "designationSummary",
 
-        type: "staff",
+        type:
+            "staff",
 
-        confidence: 1,
+        confidence:
+            1,
 
         data:
-            AnalyticsEngine.getDesignationSummary(
-                filters
-            )
+            AnalyticsEngine
+                .getDesignationSummary(
+                    filters
+                )
 
     };
 
