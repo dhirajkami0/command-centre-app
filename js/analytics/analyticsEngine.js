@@ -20,8 +20,25 @@
     AnalyticsEngine.loading = false;
     AnalyticsEngine.lastLoaded = 0;
     AnalyticsEngine.version = "2.0.0";
+/*----------------------------------------------------------
+GIS RESOLVER ENGINE
+----------------------------------------------------------*/
 
-    AnalyticsEngine.clear = function () {
+AnalyticsEngine.gisHierarchy = {
+
+    circles : {},
+
+    divisions : {},
+
+    ranges : {},
+
+    beats : {},
+
+    compartments : {}
+
+};
+
+AnalyticsEngine.gisSearchIndex = {};    AnalyticsEngine.clear = function () {
         AnalyticsEngine.dataset = [];
         AnalyticsEngine.datasetMap = {};
         AnalyticsEngine.staffSearchIndex = {};
@@ -49,6 +66,236 @@
             records: AnalyticsEngine.dataset.length
         };
     };
+
+    /*----------------------------------------------------------
+BUILD GIS HIERARCHY
+----------------------------------------------------------*/
+
+AnalyticsEngine.buildGISHierarchy = function(){
+
+    AnalyticsEngine.gisHierarchy = {
+
+        circles : {},
+
+        divisions : {},
+
+        ranges : {},
+
+        beats : {},
+
+        compartments : {}
+
+    };
+
+    AnalyticsEngine.gisSearchIndex = {};
+
+    const features =
+        window.allGISFeatures ||
+
+        window.allCompartmentFeatures ||
+
+        [];
+
+    features.forEach(function(feature){
+
+        const p =
+            feature.properties || {};
+
+        const circle =
+            String(
+                p.circle ||
+                p.Circle ||
+                "BTR"
+            ).trim();
+
+        const division =
+            String(
+                p.division ||
+                p.Division ||
+                ""
+            ).trim();
+
+        const range =
+            String(
+                p.range ||
+                p.Range ||
+                ""
+            ).trim();
+
+        const beat =
+            String(
+                p.beat ||
+                p.Beat ||
+                ""
+            ).trim();
+
+        const compartment =
+            String(
+
+                p.compartment ||
+
+                p.Compartment ||
+
+                ""
+
+            ).trim();
+
+        if(circle){
+
+            AnalyticsEngine.gisHierarchy
+                .circles[circle] = {
+
+                name : circle
+
+            };
+
+        }
+
+        if(division){
+
+            AnalyticsEngine.gisHierarchy
+                .divisions[division] = {
+
+                name :
+
+                    division,
+
+                circle :
+
+                    circle
+
+            };
+
+        }
+
+        if(range){
+
+            AnalyticsEngine.gisHierarchy
+                .ranges[range] = {
+
+                name :
+
+                    range,
+
+                division :
+
+                    division,
+
+                circle :
+
+                    circle
+
+            };
+
+        }
+
+        if(beat){
+
+            AnalyticsEngine.gisHierarchy
+                .beats[beat] = {
+
+                name :
+
+                    beat,
+
+                range :
+
+                    range,
+
+                division :
+
+                    division,
+
+                circle :
+
+                    circle
+
+            };
+
+        }
+
+        if(compartment){
+
+            AnalyticsEngine.gisHierarchy
+                .compartments[compartment] = {
+
+                name :
+
+                    compartment,
+
+                beat :
+
+                    beat,
+
+                range :
+
+                    range,
+
+                division :
+
+                    division,
+
+                circle :
+
+                    circle
+
+            };
+
+        }
+
+    });
+
+    console.log(
+
+        "✅ GIS Hierarchy Built",
+
+        {
+
+            circles :
+
+                Object.keys(
+
+                    AnalyticsEngine.gisHierarchy.circles
+
+                ).length,
+
+            divisions :
+
+                Object.keys(
+
+                    AnalyticsEngine.gisHierarchy.divisions
+
+                ).length,
+
+            ranges :
+
+                Object.keys(
+
+                    AnalyticsEngine.gisHierarchy.ranges
+
+                ).length,
+
+            beats :
+
+                Object.keys(
+
+                    AnalyticsEngine.gisHierarchy.beats
+
+                ).length,
+
+            compartments :
+
+                Object.keys(
+
+                    AnalyticsEngine.gisHierarchy.compartments
+
+                ).length
+
+        }
+
+    );
+
+};
     /*----------------------------------------------------------
 INACTIVE COMPARTMENTS
 ----------------------------------------------------------*/
@@ -258,7 +505,7 @@ AnalyticsEngine.load = async function () {
         AnalyticsEngine.datasetMap = datasetMap;
 
         AnalyticsEngine.buildBaseIndexes(dataset);
-
+AnalyticsEngine.buildGISHierarchy();
         await AnalyticsEngine.mergeAnalytics(dataset, datasetMap);
         await AnalyticsEngine.mergeStaffProfiles(dataset, datasetMap);
         await AnalyticsEngine.mergeLiveStaff(dataset, datasetMap);
