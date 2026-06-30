@@ -1787,28 +1787,15 @@ const staffSubIntent = (function () {
         return "staffLocation";
     }
 
-    /* Patrol */
+  /* Patrol */
 
-    if (
-        /\b(
-            patrol|
-            latest patrol|
-            last patrol|
-            patrol session|
-            session|
-            track|
-           route|
-            patrol distance|
-            distance|
-            point count|
-            started|
-            ended|
-            simplified track
-        )\b/ix.test(originalQuery)
-    ) {
-        return "staffPatrol";
-    }
-
+if (
+    /\b(patrol|latest patrol|last patrol|patrol session|session|track|route|patrol distance|distance|point count|started|ended|simplified track)\b/i.test(
+        originalQuery
+    )
+) {
+    return "staffPatrol";
+}
     /* Team */
 
     if (
