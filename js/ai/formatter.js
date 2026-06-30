@@ -131,7 +131,9 @@ case "staffdesignation":
 case "designationsummary":
 
     return formatDesignationSummary(result);
+case "staffstrength":
 
+    return formatStaffStrengthSummary(result);
 case "staffrole":
 
     return formatStaffRole(result);
@@ -306,6 +308,202 @@ function formatPatrolCompartments(r){
             : "No compartment data"
 
     ].join("\n");
+
+}
+
+    /*----------------------------------------------------------
+STAFF STRENGTH SUMMARY
+----------------------------------------------------------*/
+
+function formatStaffStrengthSummary(result){
+
+    const data =
+        result.data || {};
+
+    const staff =
+        Array.isArray(
+            data.staff
+        )
+        ? data.staff
+        : [];
+
+    if(!staff.length){
+
+        return "❌ No matching staff found.";
+
+    }
+
+    const first =
+        staff[0];
+
+    const out = [];
+
+    out.push(
+        "👥 STAFF STRENGTH"
+    );
+
+    out.push("");
+
+    if(first.circle){
+
+        out.push(
+            "Circle : " +
+            first.circle
+        );
+
+    }
+
+    if(first.division){
+
+        out.push(
+            "Division : " +
+            first.division
+        );
+
+    }
+
+    if(first.range){
+
+        out.push(
+            "Range : " +
+            first.range
+        );
+
+    }
+
+    if(first.beat){
+
+        out.push(
+            "Beat : " +
+            first.beat
+        );
+
+    }
+
+    out.push("");
+
+    out.push(
+        "Total Staff : " +
+        (
+            data.total || 0
+        )
+    );
+
+    out.push(
+        "Active : " +
+        (
+            data.active || 0
+        )
+    );
+
+    out.push(
+        "Inactive : " +
+        (
+            data.inactive || 0
+        )
+    );
+
+    out.push("");
+
+    out.push(
+        "ROLE SUMMARY"
+    );
+
+    out.push("");
+
+    Object.entries(
+
+        data.roles || {}
+
+    ).forEach(function(r){
+
+        out.push(
+
+            r[0] +
+
+            " : " +
+
+            r[1]
+
+        );
+
+    });
+
+    out.push("");
+
+    out.push(
+        "DESIGNATION SUMMARY"
+    );
+
+    out.push("");
+
+    Object.entries(
+
+        data.designations || {}
+
+    ).forEach(function(d){
+
+        out.push(
+
+            d[0] +
+
+            " : " +
+
+            d[1]
+
+        );
+
+    });
+
+    out.push("");
+
+    out.push(
+        "STAFF"
+    );
+
+    out.push("");
+
+    staff.forEach(function(p,index){
+
+        out.push(
+
+            (index+1)+". "+
+
+            (p.name || "-")
+
+        );
+
+        out.push(
+
+            "   " +
+
+            (
+                p.designation || "-"
+            ) +
+
+            " | " +
+
+            (
+                p.role || "-"
+            )
+
+        );
+
+        out.push(
+
+            "   " +
+
+            (
+                p.beat || "-"
+            )
+
+        );
+
+        out.push("");
+
+    });
+
+    return out.join("\n");
 
 }
     function formatStaffDesignation(r){
