@@ -1457,6 +1457,91 @@ let staffProfile =
         originalQuery
     );
     /*----------------------------------------------------------
+STAFF STRENGTH SEARCH
+----------------------------------------------------------*/
+
+const upperQuery =
+    originalQuery.toUpperCase();
+
+const strengthWords =
+
+    /\b(
+        STAFF|
+        TEAM\s*LEADER|
+        ADMIN|
+        ADFO|
+        ACTIVE\s+STAFF|
+        INACTIVE\s+STAFF|
+        STAFF\s+STRENGTH|
+        STRENGTH|
+        MANPOWER|
+        WORKFORCE
+    )\b/ix;
+
+if (
+
+    strengthWords.test(
+        upperQuery
+    )
+
+) {
+
+    const filters =
+
+        AnalyticsEngine
+            .extractRoleFilters(
+                originalQuery
+            );
+
+    if (
+
+        /\bACTIVE\b/i.test(
+            originalQuery
+        )
+
+    ) {
+
+        filters.dutyActive = true;
+
+    }
+
+    if (
+
+        /\bINACTIVE\b/i.test(
+            originalQuery
+        )
+
+    ) {
+
+        filters.dutyActive = false;
+
+    }
+
+    return {
+
+        intent:
+
+            "staffStrength",
+
+        type:
+
+            "staff",
+
+        confidence:
+
+            1,
+
+        data:
+
+            AnalyticsEngine
+                .getStaffStrengthSummary(
+                    filters
+                )
+
+    };
+
+}
+    /*----------------------------------------------------------
 DESIGNATION SEARCH
 ----------------------------------------------------------*/
 
@@ -2680,6 +2765,392 @@ AnalyticsEngine.extractJurisdictionFilters = function(query){
     }
 
     return filters;
+
+};
+
+    /*----------------------------------------------------------
+ROLE ALIASES
+----------------------------------------------------------*/
+
+AnalyticsEngine.roleAliases = {
+
+    ADMIN : [
+        "ADMIN",
+        "ADMINISTRATOR"
+    ],
+
+    ADFO : [
+        "ADFO"
+    ],
+
+    TEAM_LEADER : [
+        "TEAM LEADER",
+        "TEAMLEADER",
+        "LEADER",
+        "TEAM"
+    ],
+
+    STAFF : [
+        "STAFF",
+        "FOREST STAFF"
+    ]
+
+};
+
+
+/*----------------------------------------------------------
+NORMALIZE ROLE
+----------------------------------------------------------*/
+
+AnalyticsEngine.normalizeRole = function(value){
+
+    value =
+        String(value || "")
+        .trim()
+        .toUpperCase();
+
+    for(
+
+        const code in
+        AnalyticsEngine.roleAliases
+
+    ){
+
+        if(
+
+            AnalyticsEngine
+                .roleAliases[
+                    code
+                ]
+                .includes(
+                    value
+                )
+
+        ){
+
+            return code;
+
+        }
+
+    }
+
+    return value;
+
+};
+
+
+/*----------------------------------------------------------
+EXTRACT ROLE FILTER
+----------------------------------------------------------*/
+
+AnalyticsEngine.extractRoleFilters = function(query){
+
+    query =
+        String(query || "")
+        .toUpperCase();
+
+    const filters =
+
+        AnalyticsEngine
+            .extractJurisdictionFilters(
+                query
+            );
+
+    for(
+
+        const code in
+        AnalyticsEngine.roleAliases
+
+    ){
+
+        const aliases =
+            AnalyticsEngine
+                .roleAliases[
+                    code
+                ];
+
+        if(
+
+            aliases.some(
+
+                a =>
+                query.includes(a)
+
+            )
+
+        ){
+
+            filters.role =
+                code;
+
+            break;
+
+        }
+
+    }
+
+    return filters;
+
+};
+
+
+/*----------------------------------------------------------
+QUERY STAFF STRENGTH
+----------------------------------------------------------*/
+
+AnalyticsEngine.queryStaffStrength = function(filters){
+
+    filters =
+        filters || {};
+
+    return Object
+        .values(
+
+            AnalyticsEngine.staffIndex
+
+        )
+        .filter(function(p){
+
+            if(
+
+                filters.role &&
+
+                AnalyticsEngine
+                    .normalizeRole(
+
+                        p.role
+
+                    )
+
+                !==
+
+                filters.role
+
+            ){
+
+                return false;
+
+            }
+
+            if(
+
+                filters.designation &&
+
+                AnalyticsEngine
+                    .normalizeDesignation(
+
+                        p.designation
+
+                    )
+
+                !==
+
+                filters.designation
+
+            ){
+
+                return false;
+
+            }
+
+            if(
+
+                filters.circle &&
+
+                String(
+                    p.circle || ""
+                ).toUpperCase()
+
+                !==
+
+                String(
+                    filters.circle
+                ).toUpperCase()
+
+            ){
+
+                return false;
+
+            }
+
+            if(
+
+                filters.division &&
+
+                String(
+                    p.division || ""
+                ).toUpperCase()
+
+                !==
+
+                String(
+                    filters.division
+                ).toUpperCase()
+
+            ){
+
+                return false;
+
+            }
+
+            if(
+
+                filters.range &&
+
+                String(
+                    p.range || ""
+                ).toUpperCase()
+
+                !==
+
+                String(
+                    filters.range
+                ).toUpperCase()
+
+            ){
+
+                return false;
+
+            }
+
+            if(
+
+                filters.beat &&
+
+                String(
+                    p.beat || ""
+                ).toUpperCase()
+
+                !==
+
+                String(
+                    filters.beat
+                ).toUpperCase()
+
+            ){
+
+                return false;
+
+            }
+
+            if(
+
+                filters.compartment &&
+
+                String(
+                    p.compartment || ""
+                ).toUpperCase()
+
+                !==
+
+                String(
+                    filters.compartment
+                ).toUpperCase()
+
+            ){
+
+                return false;
+
+            }
+
+            if(
+
+                typeof filters.dutyActive ===
+                "boolean"
+
+            ){
+
+                if(
+
+                    !!p.dutyActive
+                    !==
+                    filters.dutyActive
+
+                ){
+
+                    return false;
+
+                }
+
+            }
+
+            return true;
+
+        });
+
+};
+
+
+/*----------------------------------------------------------
+STAFF STRENGTH SUMMARY
+----------------------------------------------------------*/
+
+AnalyticsEngine.getStaffStrengthSummary = function(filters){
+
+    const rows =
+
+        AnalyticsEngine
+            .queryStaffStrength(
+                filters
+            );
+
+    const roles = {};
+
+    const designations = {};
+
+    rows.forEach(function(p){
+
+        const role =
+
+            AnalyticsEngine
+                .normalizeRole(
+                    p.role
+                );
+
+        roles[role] =
+            (
+                roles[role] || 0
+            ) + 1;
+
+        const desig =
+
+            AnalyticsEngine
+                .normalizeDesignation(
+                    p.designation
+                );
+
+        designations[desig] =
+            (
+                designations[desig] || 0
+            ) + 1;
+
+    });
+
+    return {
+
+        total :
+            rows.length,
+
+        active :
+            rows.filter(
+                x => x.dutyActive
+            ).length,
+
+        inactive :
+            rows.filter(
+                x => !x.dutyActive
+            ).length,
+
+        roles :
+            roles,
+
+        designations :
+            designations,
+
+        staff :
+            rows
+
+    };
 
 };
 /*----------------------------------------------------------
