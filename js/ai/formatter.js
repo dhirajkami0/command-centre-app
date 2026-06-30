@@ -155,9 +155,8 @@ case "staffsearch":
     case "session":
         return formatSession(result);
 
-    case "drawpatrol":
-        return formatSession(result);
-
+   case "drawpatrol":
+    return formatStaffPatrol(result);
     case "search":
         return formatSearch(result);
 
