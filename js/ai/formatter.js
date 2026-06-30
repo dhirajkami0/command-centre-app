@@ -135,11 +135,80 @@ case "stafflocation":
     return formatStaffLocation(result);
 
 case "staffpatrol":
+
     return formatStaffPatrol(result);
 
-case "staffduty":
-    return formatStaffDuty(result);
+case "patroldistance":
 
+    return formatPatrolDistance(result);
+
+case "patroldutytype":
+
+    return formatPatrolDutyType(result);
+
+case "patrolsession":
+
+    return formatPatrolSession(result);
+
+case "patrolpointcount":
+
+    return formatPatrolPointCount(result);
+
+case "patrolstarted":
+
+    return formatPatrolStarted(result);
+
+case "patrolended":
+
+    return formatPatrolEnded(result);
+
+case "patrolduration":
+
+    return formatPatrolDuration(result);
+
+case "patrolstatus":
+
+    return formatPatrolStatus(result);
+
+case "patrolsource":
+
+    return formatPatrolSource(result);
+
+case "patrolleader":
+
+    return formatPatrolLeader(result);
+
+case "patrolteam":
+
+    return formatPatrolTeam(result);
+
+case "patrolbeat":
+
+    return formatPatrolBeat(result);
+
+case "patrolrange":
+
+    return formatPatrolRange(result);
+
+case "patroldivision":
+
+    return formatPatrolDivision(result);
+
+case "patrolcompartment":
+
+    return formatPatrolCompartment(result);
+
+case "patrolcompartments":
+
+    return formatPatrolCompartments(result);
+
+case "patroltrack":
+
+    return formatPatrolTrack(result);
+
+case "staffduty":
+
+    return formatStaffDuty(result);
 case "staffcircle":
     return formatStaffCircle(result);
 
@@ -155,8 +224,9 @@ case "staffsearch":
     case "session":
         return formatSession(result);
 
-   case "drawpatrol":
-    return formatStaffPatrol(result);
+  case "drawpatrol":
+
+    return formatDrawPatrol(result);
     case "search":
         return formatSearch(result);
 
@@ -196,7 +266,41 @@ case "staffsearch":
 };/*----------------------------------------------------------
 MOST VISITED
 ----------------------------------------------------------*/
+function formatPatrolCompartments(r){
 
+    const p =
+        r.data?.[0];
+
+    if(!p){
+        return "❌ Staff not found.";
+    }
+
+    const compartments =
+        p.patrolCompartments ||
+        p.latestPatrol?.compartments ||
+        [];
+
+    return [
+
+        "📍 VISITED COMPARTMENTS",
+
+        "",
+
+        "Name : " +
+        (p.name || "-"),
+
+        "",
+
+        Array.isArray(compartments) &&
+        compartments.length
+
+            ? compartments.join("\n")
+
+            : "No compartment data"
+
+    ].join("\n");
+
+}
 function formatMostVisited(r){
 
     const d =
@@ -1665,10 +1769,25 @@ function formatStaffPatrol(r){
         patrol.beat ||
         "-";
 
+    const range =
+        p.range ||
+        patrol.range ||
+        "-";
+
+    const division =
+        p.division ||
+        patrol.division ||
+        "-";
+
     const compartment =
         p.compartment ||
         patrol.compartment ||
         "-";
+
+    const compartments =
+        p.patrolCompartments ||
+        patrol.compartments ||
+        [];
 
     const started =
         p.patrolStartedAt ||
@@ -1679,6 +1798,41 @@ function formatStaffPatrol(r){
         p.patrolEndedAt ||
         patrol.endedAt ||
         "-";
+
+    const status =
+        p.patrolStatus ||
+        p.status ||
+        patrol.status ||
+        "-";
+
+    const dutyType =
+        p.patrolDutyType ||
+        p.dutyType ||
+        patrol.dutyType ||
+        "-";
+
+    const pointCount =
+        p.patrolPointCount ??
+        patrol.pointCount ??
+        0;
+
+    const source =
+        p.patrolSource ||
+        p.source ||
+        patrol.source ||
+        "-";
+
+    const updated =
+        p.updatedAt ||
+        patrol.updatedAt ||
+        p.lastSeen ||
+        "-";
+
+    const track =
+        p.patrolTrack ||
+        patrol.simplifiedTrack ||
+        patrol.track ||
+        [];
 
     return [
 
@@ -1699,9 +1853,12 @@ function formatStaffPatrol(r){
         ),
 
         "Duty Type : " +
-        (
-            p.dutyType || "-"
-        ),
+        dutyType,
+
+        "Status : " +
+        status,
+
+        "",
 
         "Leader : " +
         leader,
@@ -1709,15 +1866,13 @@ function formatStaffPatrol(r){
         "Team : " +
         team,
 
+        "",
+
         "Division : " +
-        (
-            p.division || "-"
-        ),
+        division,
 
         "Range : " +
-        (
-            p.range || "-"
-        ),
+        range,
 
         "Beat : " +
         beat,
@@ -1733,6 +1888,9 @@ function formatStaffPatrol(r){
         "Patrol Distance : " +
         distance.toFixed(2) +
         " km",
+
+        "Point Count : " +
+        pointCount,
 
         "Started : " +
         started,
@@ -1769,21 +1927,28 @@ function formatStaffPatrol(r){
             p.accuracy ?? "-"
         ),
 
-        "Status : " +
-        (
-            p.status || "-"
-        ),
+        "",
 
         "Source : " +
-        (
-            p.source || "-"
-        ),
+        source,
 
         "Last Updated : " +
+        updated,
+
+        "",
+
+        "Visited Compartments : " +
         (
-            p.updatedAt ||
-            p.lastSeen ||
-            "-"
+            Array.isArray(compartments)
+                ? compartments.join(", ")
+                : "-"
+        ),
+
+        "Track Points : " +
+        (
+            Array.isArray(track)
+                ? track.length
+                : 0
         )
 
     ].join("\n");
@@ -1858,7 +2023,357 @@ function formatStaffPatrol(r){
     ].join("\n");
 
 }
-    /*----------------------------------------------------------
+    function formatPatrolDistance(r){
+
+    const p=r.data?.[0];
+
+    if(!p) return "❌ Staff not found.";
+
+    return [
+
+        "🚶 PATROL DISTANCE",
+
+        "",
+
+        "Name : "+p.name,
+
+        "",
+
+        "Distance : "+Number(
+            p.patrolDistanceKm ??
+            p.latestPatrol?.distanceKm ??
+            0
+        ).toFixed(2)+" km"
+
+    ].join("\n");
+
+}
+    function formatPatrolSession(r){
+
+    const p=r.data?.[0];
+
+    if(!p) return "❌ Staff not found.";
+
+    return [
+
+        "🛰 PATROL SESSION",
+
+        "",
+
+        "Name : "+p.name,
+
+        "",
+
+        "Session : "+(
+            p.patrolSessionId ??
+            p.latestPatrol?.sessionId ??
+            "-"
+        )
+
+    ].join("\n");
+
+}
+    function formatPatrolPointCount(r){
+
+    const p=r.data?.[0];
+
+    if(!p) return "❌ Staff not found.";
+
+    return [
+
+        "📍 PATROL POINTS",
+
+        "",
+
+        "Name : "+p.name,
+
+        "",
+
+        "Point Count : "+(
+            p.patrolPointCount ??
+            p.latestPatrol?.pointCount ??
+            0
+        )
+
+    ].join("\n");
+
+}
+
+    function formatPatrolStarted(r){
+
+    const p=r.data?.[0];
+
+    if(!p) return "❌ Staff not found.";
+
+    return [
+
+        "▶ PATROL START",
+
+        "",
+
+        "Name : "+p.name,
+
+        "",
+
+        "Started : "+(
+            p.patrolStartedAt ??
+            p.latestPatrol?.startedAt ??
+            "-"
+        )
+
+    ].join("\n");
+
+}
+    
+    function formatPatrolEnded(r){
+
+    const p=r.data?.[0];
+
+    if(!p) return "❌ Staff not found.";
+
+    return [
+
+        "⏹ PATROL END",
+
+        "",
+
+        "Name : "+p.name,
+
+        "",
+
+        "Ended : "+(
+            p.patrolEndedAt ??
+            p.latestPatrol?.endedAt ??
+            "-"
+        )
+
+    ].join("\n");
+
+}
+    
+    function formatPatrolStatus(r){
+
+    const p=r.data?.[0];
+
+    if(!p) return "❌ Staff not found.";
+
+    return [
+
+        "🟢 PATROL STATUS",
+
+        "",
+
+        "Name : "+p.name,
+
+        "",
+
+        "Status : "+(
+            p.patrolStatus ??
+            p.status ??
+            "-"
+        )
+
+    ].join("\n");
+
+}
+    function formatPatrolSource(r){
+
+    const p=r.data?.[0];
+
+    if(!p) return "❌ Staff not found.";
+
+    return [
+
+        "📡 PATROL SOURCE",
+
+        "",
+
+        "Name : "+p.name,
+
+        "",
+
+        "Source : "+(
+            p.patrolSource ??
+            p.source ??
+            "-"
+        )
+
+    ].join("\n");
+
+}
+    
+    function formatPatrolLeader(r){
+
+    const p=r.data?.[0];
+
+    if(!p) return "❌ Staff not found.";
+
+    return [
+
+        "👮 PATROL LEADER",
+
+        "",
+
+        "Leader : "+(
+            p.patrolLeader ??
+            p.leader ??
+            "-"
+        )
+
+    ].join("\n");
+
+}
+    
+    function formatPatrolTeam(r){
+
+    const p=r.data?.[0];
+
+    if(!p) return "❌ Staff not found.";
+
+    return [
+
+        "👥 PATROL TEAM",
+
+        "",
+
+        "Team : "+(
+            p.patrolTeam ??
+            p.team ??
+            "-"
+        )
+
+    ].join("\n");
+
+}
+    
+    function formatPatrolBeat(r){
+
+    const p=r.data?.[0];
+
+    if(!p) return "❌ Staff not found.";
+
+    return "📍 Beat : "+(
+        p.beat ??
+        p.latestPatrol?.beat ??
+        "-"
+    );
+
+}
+    
+    function formatPatrolRange(r){
+
+    const p=r.data?.[0];
+
+    if(!p) return "❌ Staff not found.";
+
+    return "🌲 Range : "+(
+        p.range ??
+        p.latestPatrol?.range ??
+        "-"
+    );
+
+}
+    
+    function formatPatrolDivision(r){
+
+    const p=r.data?.[0];
+
+    if(!p) return "❌ Staff not found.";
+
+    return "🗺 Division : "+(
+        p.division ??
+        p.latestPatrol?.division ??
+        "-"
+    );
+
+}
+    
+    function formatPatrolCompartment(r){
+
+    const p=r.data?.[0];
+
+    if(!p) return "❌ Staff not found.";
+
+    return "📍 Compartment : "+(
+        p.compartment ??
+        p.latestPatrol?.compartment ??
+        "-"
+    );
+
+}
+    
+    function formatPatrolTrack(r){
+
+    const p=r.data?.[0];
+
+    if(!p) return "❌ Staff not found.";
+
+    return [
+
+        "🛰 TRACK",
+
+        "",
+
+        "Track Points : "+(
+
+            Array.isArray(p.patrolTrack)
+
+                ? p.patrolTrack.length
+
+                : 0
+
+        )
+
+    ].join("\n");
+
+}
+    
+    function formatPatrolDutyType(r){
+
+    const p=r.data?.[0];
+
+    if(!p) return "❌ Staff not found.";
+
+    return [
+
+        "🟢 DUTY TYPE",
+
+        "",
+
+        "Duty Type : "+(
+            p.patrolDutyType ??
+            p.dutyType ??
+            "-"
+        )
+
+    ].join("\n");
+
+}
+    function formatPatrolDuration(r){
+
+    const p=r.data?.[0];
+
+    if(!p) return "❌ Staff not found.";
+
+    return [
+
+        "⏱ PATROL DURATION",
+
+        "",
+
+        "Started : "+(
+            p.patrolStartedAt ??
+            "-"
+        ),
+
+        "Ended : "+(
+            p.patrolEndedAt ??
+            "-"
+        )
+
+    ].join("\n");
+
+}/*----------------------------------------------------------
 STAFF DUTY
 ----------------------------------------------------------*/
 
@@ -2115,7 +2630,78 @@ function formatSession(r){
     ].join("\n");
 
 }
+/*----------------------------------------------------------
+DRAW PATROL
+----------------------------------------------------------*/
 
+/*----------------------------------------------------------
+DRAW PATROL
+----------------------------------------------------------*/
+
+function formatDrawPatrol(r){
+
+    let p = null;
+
+    if(Array.isArray(r.data)){
+
+        p = r.data[0];
+
+    }
+    else{
+
+        p = r.data || r;
+
+    }
+
+    if(!p){
+
+        return "🛰 Patrol track opened.";
+
+    }
+
+    const patrol =
+        p.latestPatrol || p;
+
+    return [
+
+        "🛰 PATROL TRACK",
+
+        "",
+
+        "Drawing patrol for",
+
+        "",
+
+        p.name ||
+        patrol.name ||
+        "-",
+
+        "",
+
+        "Session : " +
+        (
+            p.patrolSessionId ||
+            patrol.sessionId ||
+            "-"
+        ),
+
+        "Beat : " +
+        (
+            p.beat ||
+            patrol.beat ||
+            "-"
+        ),
+
+        "Compartment : " +
+        (
+            p.compartment ||
+            patrol.compartment ||
+            "-"
+        )
+
+    ].join("\n");
+
+}
 /*----------------------------------------------------------
 SEARCH
 ----------------------------------------------------------*/
