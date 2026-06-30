@@ -690,71 +690,94 @@ AnalyticsEngine.mergeLiveStaff = async function () {
                 return;
             }
 
-            profile.live = {
+// ======================================
+// KEEP RAW LIVE OBJECT
+// ======================================
 
-                latitude:
-                    Number(
-                        live.latitude ||
-                        live.lat ||
-                        0
-                    ),
+profile.live = live;
 
-                longitude:
-                    Number(
-                        live.longitude ||
-                        live.lng ||
-                        live.lon ||
-                        0
-                    ),
+// ======================================
+// MERGE LIVE STAFF INTO PROFILE
+// ======================================
 
-                accuracy:
-                    Number(
-                        live.accuracy ||
-                        0
-                    ),
+Object.assign(profile, {
 
-                speed:
-                    Number(
-                        live.speed ||
-                        0
-                    ),
+    dutyActive:
+        !!live.dutyActive,
 
-                heading:
-                    Number(
-                        live.heading ||
-                        0
-                    ),
+    dutyType:
+        live.dutyType || "",
 
-                location:
-                    live.location || "",
+    status:
+        live.status || "",
 
-                dutyActive:
-                    !!live.dutyActive,
+    lat:
+        Number(
+            live.lat ??
+            live.latitude ??
+            0
+        ),
 
-                dutyType:
-                    live.dutyType || "",
+    lon:
+        Number(
+            live.lon ??
+            live.lng ??
+            live.longitude ??
+            0
+        ),
 
-                sessionId:
-                    live.sessionId || "",
+    location:
+        live.location || "",
 
-                battery:
-                    live.battery || "",
+    speed:
+        Number(
+            live.speed || 0
+        ),
 
-                updatedAt:
+    heading:
+        Number(
+            live.heading || 0
+        ),
 
-                    live.updatedAt ||
+    accuracy:
+        Number(
+            live.accuracy || 0
+        ),
 
-                    live.timestamp ||
+    battery:
+        live.battery ?? "",
 
-                    live.lastUpdate ||
+    sessionId:
+        live.sessionId || "",
 
-                    0,
+    source:
+        live.source || "",
 
-                raw:
-                    live
+    team:
+        live.team || "",
 
-            };
+    leader:
+        live.leader || "",
 
+    compartment:
+        live.compartment || "",
+
+    lastSeen:
+        Number(
+            live.lastSeen || 0
+        ),
+
+    updatedAt:
+
+        live.updatedAt ||
+
+        live.timestamp ||
+
+        live.lastUpdate ||
+
+        0
+
+});
             /*----------------------------------
             UPDATE BEAT SUMMARY
             ----------------------------------*/
