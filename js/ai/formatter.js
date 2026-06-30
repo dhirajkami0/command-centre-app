@@ -1534,15 +1534,13 @@ function formatStaffRole(r){
 
 }
 
-    function formatStaffLocation(r){
+   function formatStaffLocation(r){
 
     const p = r.data?.[0];
 
     if(!p){
         return "❌ Staff not found.";
     }
-
-    const live = p.live || {};
 
     return [
 
@@ -1554,15 +1552,64 @@ function formatStaffRole(r){
 
         "",
 
-        "Latitude : " + (live.lat ?? "-"),
+        "Location : " +
+        (
+            p.location ||
+            (
+                p.lat && p.lon
+                    ? `${p.lat}, ${p.lon}`
+                    : "-"
+            )
+        ),
 
-        "Longitude : " + (live.lon ?? "-"),
+        "Latitude : " +
+        (
+            p.lat ?? "-"
+        ),
 
-        "Accuracy : " + (live.accuracy ?? "-"),
+        "Longitude : " +
+        (
+            p.lon ?? "-"
+        ),
 
-        "Speed : " + (live.speed ?? "-"),
+        "Accuracy : " +
+        (
+            p.accuracy ?? "-"
+        ),
 
-        "Last Update : " + (live.updatedAt || "-")
+        "Speed : " +
+        Number(
+            p.speed || 0
+        ).toFixed(1)
+        +
+        " km/h",
+
+        "Heading : " +
+        Number(
+            p.heading || 0
+        ).toFixed(0)
+        +
+        "°",
+
+        "Status : " +
+        (
+            p.status || "-"
+        ),
+
+        "Source : " +
+        (
+            p.source || "-"
+        ),
+
+        "Session : " +
+        (
+            p.sessionId || "-"
+        ),
+
+        "Updated : " +
+        (
+            p.updatedAt || "-"
+        )
 
     ].join("\n");
 
@@ -1575,7 +1622,8 @@ function formatStaffRole(r){
         return "❌ Staff not found.";
     }
 
-    const patrol = p.latestPatrol || {};
+    const patrol =
+        p.latestPatrol || {};
 
     return [
 
@@ -1587,13 +1635,66 @@ function formatStaffRole(r){
 
         "",
 
-        "Session : " + (patrol.sessionId || "-"),
+        "Duty : " +
+        (
+            p.dutyActive
+                ? "🟢 Active"
+                : "⚪ Inactive"
+        ),
 
-        "Beat : " + (patrol.beat || "-"),
+        "Duty Type : " +
+        (
+            p.dutyType || "-"
+        ),
 
-        "Compartment : " + (patrol.compartment || "-"),
+        "Leader : " +
+        (
+            p.leader || "-"
+        ),
 
-        "Distance : " + Number(patrol.distanceKm || 0).toFixed(2) + " km"
+        "Team : " +
+        (
+            p.team || "-"
+        ),
+
+        "Current Compartment : " +
+        (
+            p.compartment || "-"
+        ),
+
+        "",
+
+        "Latest Session : " +
+        (
+            patrol.sessionId || "-"
+        ),
+
+        "Beat : " +
+        (
+            patrol.beat || "-"
+        ),
+
+        "Patrol Compartment : " +
+        (
+            patrol.compartment || "-"
+        ),
+
+        "Distance : " +
+        Number(
+            patrol.distanceKm || 0
+        ).toFixed(2)
+        +
+        " km",
+
+        "Started : " +
+        (
+            patrol.startedAt || "-"
+        ),
+
+        "Ended : " +
+        (
+            patrol.endedAt || "-"
+        )
 
     ].join("\n");
 
@@ -1679,8 +1780,6 @@ function formatStaffDuty(r){
         return "❌ Staff not found.";
     }
 
-    const live = p.live || {};
-
     return [
 
         "🟢 DUTY STATUS",
@@ -1691,36 +1790,71 @@ function formatStaffDuty(r){
 
         "",
 
-        "Status : " +
-
+        "Duty : " +
         (
-
-            live.dutyActive
-
-                ? "Active"
-
-                : "Inactive"
-
+            p.dutyActive
+                ? "🟢 Active"
+                : "⚪ Inactive"
         ),
 
         "Duty Type : " +
-
         (
+            p.dutyType || "-"
+        ),
 
-            live.dutyType ||
+        "Status : " +
+        (
+            p.status || "-"
+        ),
 
-            "-"
+        "Leader : " +
+        (
+            p.leader || "-"
+        ),
 
+        "Team : " +
+        (
+            p.team || "-"
+        ),
+
+        "Compartment : " +
+        (
+            p.compartment || "-"
+        ),
+
+        "Division : " +
+        (
+            p.division || "-"
+        ),
+
+        "Range : " +
+        (
+            p.range || "-"
+        ),
+
+        "Beat : " +
+        (
+            p.beat || "-"
+        ),
+
+        "Session : " +
+        (
+            p.sessionId || "-"
         ),
 
         "Started : " +
-
         (
+            p.startedAt || "-"
+        ),
 
-            live.startedAt ||
+        "Last Seen : " +
+        (
+            p.lastSeen || "-"
+        ),
 
-            "-"
-
+        "Updated : " +
+        (
+            p.updatedAt || "-"
         )
 
     ].join("\n");
