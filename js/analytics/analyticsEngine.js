@@ -2521,7 +2521,15 @@ DESIGNATION ALIASES
 DESIGNATION ALIASES
 ----------------------------------------------------------*/
 
+/*----------------------------------------------------------
+DESIGNATION ALIASES
+----------------------------------------------------------*/
+
 AnalyticsEngine.designationAliases = {
+
+    /*----------------------------------
+    FOREST RANGER
+    ----------------------------------*/
 
     FR : [
 
@@ -2535,15 +2543,27 @@ AnalyticsEngine.designationAliases = {
 
     ],
 
+    /*----------------------------------
+    DEPUTY RANGER
+    ----------------------------------*/
+
     DR : [
 
         "DR",
+
+        "DR/FR",
+
+        "DR-FR",
 
         "DEPUTY RANGER",
 
         "DEPUTY RANGERS"
 
     ],
+
+    /*----------------------------------
+    FOREST GUARD
+    ----------------------------------*/
 
     FG : [
 
@@ -2557,6 +2577,10 @@ AnalyticsEngine.designationAliases = {
 
     ],
 
+    /*----------------------------------
+    BANASHRAMIK
+    ----------------------------------*/
+
     BS : [
 
         "BS",
@@ -2567,19 +2591,31 @@ AnalyticsEngine.designationAliases = {
 
     ],
 
+    /*----------------------------------
+    BANASAHAYAK
+    ----------------------------------*/
+
     BNS : [
 
         "BNS",
 
         "BANASAHAYAK",
 
-        "BANA SAHAYAK",
-
         "BANASAHAYK",
+
+        "BANASAYAHAK",
+
+        "BANASHAYAK",
+
+        "BANA SAHAYAK",
 
         "BANA SAHAYK"
 
     ],
+
+    /*----------------------------------
+    ARANYA SATHI
+    ----------------------------------*/
 
     AS : [
 
@@ -2593,6 +2629,10 @@ AnalyticsEngine.designationAliases = {
 
     ],
 
+    /*----------------------------------
+    FOREST VOLUNTEER
+    ----------------------------------*/
+
     FV : [
 
         "FV",
@@ -2605,6 +2645,30 @@ AnalyticsEngine.designationAliases = {
 
     ],
 
+    /*----------------------------------
+    DL
+    ----------------------------------*/
+
+    DL : [
+
+        "DL"
+
+    ],
+
+    /*----------------------------------
+    PDL
+    ----------------------------------*/
+
+    PDL : [
+
+        "PDL"
+
+    ],
+
+    /*----------------------------------
+    DRIVER
+    ----------------------------------*/
+
     DRIVER : [
 
         "DRIVER",
@@ -2615,8 +2679,7 @@ AnalyticsEngine.designationAliases = {
 
     ]
 
-};
-/*----------------------------------------------------------
+};/*----------------------------------------------------------
 JURISDICTION ALIASES
 ----------------------------------------------------------*/
 
@@ -2700,45 +2763,147 @@ AnalyticsEngine.jurisdictionAliases = {
 /*----------------------------------------------------------
 NORMALIZE DESIGNATION
 ----------------------------------------------------------*/
+/*----------------------------------------------------------
+NORMALIZE DESIGNATION
+----------------------------------------------------------*/
 
 AnalyticsEngine.normalizeDesignation = function(value){
 
     value =
         String(value || "")
         .toUpperCase()
-        .trim();
+        .trim()
+        .replace(/\./g,"")
+        .replace(/\s+/g," ");
 
-    for(
+    if(!value){
+        return "";
+    }
 
-        const code in
-        AnalyticsEngine.designationAliases
+    /*----------------------------------
+    FR
+    ----------------------------------*/
 
+    if(
+        value === "FR" ||
+        value === "FOREST RANGER" ||
+        value === "FOREST RANGERS"
     ){
+        return "FR";
+    }
 
-        const aliases =
-            AnalyticsEngine
-            .designationAliases[
-                code
-            ];
+    /*----------------------------------
+    DR
+    ----------------------------------*/
 
-        if(
+    if(
+        value === "DR" ||
+        value === "DR/FR" ||
+        value === "DEPUTY RANGER" ||
+        value === "DEPUTY RANGERS"
+    ){
+        return "DR";
+    }
 
-            aliases.includes(
-                value
-            )
+    /*----------------------------------
+    FG
+    ----------------------------------*/
 
-        ){
+    if(
+        value === "FG" ||
+        value === "FOREST GUARD" ||
+        value === "FOREST GUARDS"
+    ){
+        return "FG";
+    }
 
-            return code;
+    /*----------------------------------
+    BS
+    ----------------------------------*/
 
-        }
+    if(
+        value === "BS" ||
+        value === "BANASHRAMIK" ||
+        value === "BANA SHRAMIK"
+    ){
+        return "BS";
+    }
 
+    /*----------------------------------
+    BNS
+    ----------------------------------*/
+
+    if(
+        value === "BNS" ||
+        value === "BANASAHAYAK" ||
+        value === "BANASAHAYK" ||
+        value === "BANASAYAHAK" ||
+        value === "BANASHAYAK" ||
+        value === "BANA SAHAYAK" ||
+        value === "BANA SAHAYK"
+    ){
+        return "BNS";
+    }
+
+    /*----------------------------------
+    AS
+    ----------------------------------*/
+
+    if(
+        value === "AS" ||
+        value === "ARANYA SATHI" ||
+        value === "ARANYASATHI"
+    ){
+        return "AS";
+    }
+
+    /*----------------------------------
+    FV
+    ----------------------------------*/
+
+    if(
+        value === "FV" ||
+        value === "FOREST VOLUNTEER" ||
+        value === "FOREST VOLUNTEERS"
+    ){
+        return "FV";
+    }
+
+    /*----------------------------------
+    DL
+    ----------------------------------*/
+
+    if(
+        value === "DL"
+    ){
+        return "DL";
+    }
+
+    /*----------------------------------
+    PDL
+    ----------------------------------*/
+
+    if(
+        value === "PDL"
+    ){
+        return "PDL";
+    }
+
+    /*----------------------------------
+    DRIVER
+    ----------------------------------*/
+
+    if(
+        value === "DRIVER" ||
+        value === "VEHICLE DRIVER" ||
+        value === "VEHICLE DRIVERS"
+    ){
+        return "DRIVER";
     }
 
     return value;
 
 };
-
 /*----------------------------------------------------------
 MATCH JURISDICTION
 Returns the ACTUAL stored Firestore value
