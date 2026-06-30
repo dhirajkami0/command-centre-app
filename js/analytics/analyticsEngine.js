@@ -962,81 +962,115 @@ AnalyticsEngine.mergePatrolTracks = async function () {
 
             ) {
 
-                profile.patrols.push(
-                    patrol
-                );
+               profile.patrols.push(patrol);
 
-                if (
+const patrolTime = Number(
+    patrol.updatedAt ??
+    patrol.startedAt ??
+    patrol.createdAt ??
+    0
+);
 
-                    !profile.latestPatrol ||
+const latestTime = Number(
+    profile.latestPatrol?.updatedAt ??
+    profile.latestPatrol?.startedAt ??
+    profile.latestPatrol?.createdAt ??
+    0
+);
 
-                    Number(
+if (
 
-                        patrol.updatedAt ||
+    !profile.latestPatrol ||
 
-                        patrol.endTime ||
+    patrolTime > latestTime
 
-                        patrol.startTime ||
+){
 
-                        0
+    profile.latestPatrol = patrol;
 
-                    )
+    Object.assign(profile,{
 
-                    >
+        patrolSessionId :
+            patrol.sessionId || "",
 
-                    Number(
+        patrolStatus :
+            patrol.status || "",
 
-                        profile.latestPatrol.updatedAt ||
+        patrolDutyActive :
+            !!patrol.dutyActive,
 
-                        profile.latestPatrol.endTime ||
+        patrolDutyType :
+            patrol.dutyType || "",
 
-                        profile.latestPatrol.startTime ||
+        patrolStartedAt :
+            patrol.startedAt || null,
 
-                        0
+        patrolEndedAt :
+            patrol.endedAt || null,
 
-                    )
+        patrolCreatedAt :
+            patrol.createdAt || null,
 
-                ) {
+        patrolUpdatedAt :
+            patrol.updatedAt || null,
 
-                    profile.latestPatrol =
-                        patrol;
+        patrolDistanceKm :
+            Number(
+                patrol.distanceKm || 0
+            ),
 
-                }
+        patrolPointCount :
+            Number(
+                patrol.pointCount || 0
+            ),
 
-                profile.analytics.patrols++;
+        patrolSource :
+            patrol.source || "",
 
-                profile.analytics.distanceKm +=
+        patrolLeader :
+            patrol.leader || "",
 
-                    Number(
+        patrolTeam :
+            patrol.team || "",
 
-                        patrol.distanceKm ||
+        patrolBeat :
+            patrol.beat || "",
 
-                        patrol.distance ||
+        patrolRange :
+            patrol.range || "",
 
-                        0
+        patrolDivision :
+            patrol.division || "",
 
-                    );
+        patrolCompartment :
+            patrol.compartment || "",
 
-                profile.analytics.coverage +=
+        patrolCompartments :
+            patrol.compartments || [],
 
-                    Number(
+        patrolTrack :
+            patrol.simplifiedTrack || [],
 
-                        patrol.coverage ||
+        patrolTrackPoints :
+            patrol.points || []
 
-                        0
+    });
 
-                    );
+}
 
-                profile.analytics.visits +=
+profile.analytics.patrols++;
 
-                    Number(
+profile.analytics.distanceKm += Number(
+    patrol.distanceKm || 0
+);
 
-                        patrol.visits ||
+profile.analytics.coverage += Number(
+    patrol.coverage || 0
+);
 
-                        1
-
-                    );
-
+profile.analytics.visits += Number(
+    patrol.visits || 1
+);
             }
 
             const compartments =
