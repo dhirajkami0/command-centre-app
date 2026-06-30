@@ -3502,86 +3502,6 @@ MATCH JURISDICTION
 Returns the ACTUAL stored Firestore value
 ----------------------------------------------------------*/
 
-AnalyticsEngine.matchJurisdiction = function(type, query){
-
-    query =
-        String(query || "")
-        .toUpperCase();
-
-    const aliases =
-        AnalyticsEngine.jurisdictionAliases[type] || {};
-
-    const fieldMap = {
-
-        circles : "circle",
-
-        divisions : "division",
-
-        ranges : "range",
-
-        beats : "beat"
-
-    };
-
-    const field =
-        fieldMap[type];
-
-    for(const canonical in aliases){
-
-        const list =
-            aliases[canonical];
-
-        const matched =
-
-            list.some(function(alias){
-
-                return AnalyticsEngine.placeMatches(
-
-                    query,
-
-                    alias
-
-                );
-
-            });
-
-        if(!matched){
-
-            continue;
-
-        }
-
-        const profile =
-
-            Object.values(
-
-                AnalyticsEngine.staffIndex
-
-            ).find(function(p){
-
-                return AnalyticsEngine.placeMatches(
-
-                    p[field],
-
-                    canonical
-
-                );
-
-            });
-
-        if(profile){
-
-            return profile[field];
-
-        }
-
-        return canonical;
-
-    }
-
-    return null;
-
-};
 /*----------------------------------------------------------
 QUERY DESIGNATION
 ----------------------------------------------------------*/
@@ -3636,8 +3556,7 @@ AnalyticsEngine.queryDesignation = function(filters){
             /*----------------------------------
             CIRCLE
             ----------------------------------*/
-
-          const gis =
+const gis =
 
     AnalyticsEngine.resolveJurisdiction(
 
@@ -3649,7 +3568,7 @@ if(
 
     gis.circle &&
 
-    profile.circle !== gis.circle
+    p.circle !== gis.circle
 
 ){
 
@@ -3661,7 +3580,7 @@ if(
 
     gis.division &&
 
-    profile.division !== gis.division
+    p.division !== gis.division
 
 ){
 
@@ -3673,7 +3592,7 @@ if(
 
     gis.range &&
 
-    profile.range !== gis.range
+    p.range !== gis.range
 
 ){
 
@@ -3685,7 +3604,7 @@ if(
 
     gis.beat &&
 
-    profile.beat !== gis.beat
+    p.beat !== gis.beat
 
 ){
 
@@ -3697,7 +3616,7 @@ if(
 
     gis.compartment &&
 
-    profile.compartment !== gis.compartment
+    p.compartment !== gis.compartment
 
 ){
 
@@ -4019,112 +3938,209 @@ AnalyticsEngine.extractRoleFilters = function(query){
 QUERY STAFF STRENGTH
 ----------------------------------------------------------*/
 
+/*----------------------------------------------------------
+STAFF STRENGTH QUERY
+----------------------------------------------------------*/
+
 AnalyticsEngine.queryStaffStrength = function(filters){
 
     filters =
         filters || {};
 
+    /*----------------------------------
+    Resolve GIS hierarchy
+    ----------------------------------*/
+
+    const gis =
+
+        AnalyticsEngine.resolveJurisdiction(
+
+            JSON.stringify(filters)
+
+        );
+
     return Object
+
         .values(
+
             AnalyticsEngine.staffIndex
+
         )
-        .filter(function(p){
 
-            /* ROLE */
+        .filter(function(profile){
+
+            /*----------------------------------
+            ROLE
+            ----------------------------------*/
 
             if(
+
                 filters.role &&
-                AnalyticsEngine.normalizeRole(p.role) !==
-                AnalyticsEngine.normalizeRole(filters.role)
+
+                AnalyticsEngine.normalizeRole(
+
+                    profile.role
+
+                ) !==
+
+                AnalyticsEngine.normalizeRole(
+
+                    filters.role
+
+                )
+
             ){
+
                 return false;
+
             }
 
-            /* DESIGNATION */
+            /*----------------------------------
+            DESIGNATION
+            ----------------------------------*/
 
             if(
+
                 filters.designation &&
-                AnalyticsEngine.normalizeDesignation(p.designation) !==
-                AnalyticsEngine.normalizeDesignation(filters.designation)
-            ){
-                return false;
-            }
 
-            /* CIRCLE */
+                AnalyticsEngine.normalizeDesignation(
 
-            if(
-                filters.circle &&
-                !AnalyticsEngine.placeMatches(
-                    p.circle,
-                    filters.circle
+                    profile.designation
+
+                ) !==
+
+                AnalyticsEngine.normalizeDesignation(
+
+                    filters.designation
+
                 )
+
             ){
+
                 return false;
+
             }
 
-            /* DIVISION */
+            /*----------------------------------
+            CIRCLE
+            ----------------------------------*/
 
             if(
-                filters.division &&
-                !AnalyticsEngine.placeMatches(
-                    p.division,
-                    filters.division
-                )
+
+                gis.circle &&
+
+                profile.circle !==
+
+                gis.circle
+
             ){
+
                 return false;
+
             }
 
-            /* RANGE */
+            /*----------------------------------
+            DIVISION
+            ----------------------------------*/
 
             if(
-                filters.range &&
-                !AnalyticsEngine.placeMatches(
-                    p.range,
-                    filters.range
-                )
+
+                gis.division &&
+
+                profile.division !==
+
+                gis.division
+
             ){
+
                 return false;
+
             }
 
-            /* BEAT */
+            /*----------------------------------
+            RANGE
+            ----------------------------------*/
 
             if(
-                filters.beat &&
-                !AnalyticsEngine.placeMatches(
-                    p.beat,
-                    filters.beat
-                )
+
+                gis.range &&
+
+                profile.range !==
+
+                gis.range
+
             ){
+
                 return false;
+
             }
 
-            /* COMPARTMENT */
+            /*----------------------------------
+            BEAT
+            ----------------------------------*/
 
             if(
-                filters.compartment &&
-                !AnalyticsEngine.placeMatches(
-                    p.compartment,
-                    filters.compartment
-                )
+
+                gis.beat &&
+
+                profile.beat !==
+
+                gis.beat
+
             ){
+
                 return false;
+
             }
 
-            /* DUTY */
+            /*----------------------------------
+            COMPARTMENT
+            ----------------------------------*/
 
             if(
-                typeof filters.dutyActive === "boolean" &&
-                !!p.dutyActive !== filters.dutyActive
+
+                gis.compartment &&
+
+                profile.compartment !==
+
+                gis.compartment
+
             ){
+
                 return false;
+
+            }
+
+            /*----------------------------------
+            DUTY
+            ----------------------------------*/
+
+            if(
+
+                typeof filters.dutyActive ===
+                "boolean"
+
+            ){
+
+                if(
+
+                    !!profile.dutyActive !==
+
+                    filters.dutyActive
+
+                ){
+
+                    return false;
+
+                }
+
             }
 
             return true;
 
         });
 
-};
-/*----------------------------------------------------------
+};/*----------------------------------------------------------
 STAFF STRENGTH SUMMARY
 ----------------------------------------------------------*/
 
