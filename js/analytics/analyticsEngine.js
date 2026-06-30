@@ -3451,173 +3451,97 @@ AnalyticsEngine.queryStaffStrength = function(filters){
 
     return Object
         .values(
-
             AnalyticsEngine.staffIndex
-
         )
         .filter(function(p){
 
-            if(
+            /* ROLE */
 
+            if(
                 filters.role &&
-
-                AnalyticsEngine
-                    .normalizeRole(
-
-                        p.role
-
-                    )
-
-                !==
-
-                filters.role
-
+                AnalyticsEngine.normalizeRole(p.role) !==
+                AnalyticsEngine.normalizeRole(filters.role)
             ){
-
                 return false;
-
             }
 
-            if(
+            /* DESIGNATION */
 
+            if(
                 filters.designation &&
-
-                AnalyticsEngine
-                    .normalizeDesignation(
-
-                        p.designation
-
-                    )
-
-                !==
-
-                filters.designation
-
+                AnalyticsEngine.normalizeDesignation(p.designation) !==
+                AnalyticsEngine.normalizeDesignation(filters.designation)
             ){
-
                 return false;
-
             }
 
-            if(
+            /* CIRCLE */
 
+            if(
                 filters.circle &&
-
-                String(
-                    p.circle || ""
-                ).toUpperCase()
-
-                !==
-
-                String(
+                !AnalyticsEngine.placeMatches(
+                    p.circle,
                     filters.circle
-                ).toUpperCase()
-
+                )
             ){
-
                 return false;
-
             }
 
-            if(
+            /* DIVISION */
 
+            if(
                 filters.division &&
-
-                String(
-                    p.division || ""
-                ).toUpperCase()
-
-                !==
-
-                String(
+                !AnalyticsEngine.placeMatches(
+                    p.division,
                     filters.division
-                ).toUpperCase()
-
+                )
             ){
-
                 return false;
-
             }
 
-            if(
+            /* RANGE */
 
+            if(
                 filters.range &&
-
-                String(
-                    p.range || ""
-                ).toUpperCase()
-
-                !==
-
-                String(
+                !AnalyticsEngine.placeMatches(
+                    p.range,
                     filters.range
-                ).toUpperCase()
-
+                )
             ){
-
                 return false;
-
             }
 
-            if(
+            /* BEAT */
 
+            if(
                 filters.beat &&
-
-                String(
-                    p.beat || ""
-                ).toUpperCase()
-
-                !==
-
-                String(
+                !AnalyticsEngine.placeMatches(
+                    p.beat,
                     filters.beat
-                ).toUpperCase()
-
+                )
             ){
-
                 return false;
-
             }
 
-            if(
+            /* COMPARTMENT */
 
+            if(
                 filters.compartment &&
-
-                String(
-                    p.compartment || ""
-                ).toUpperCase()
-
-                !==
-
-                String(
+                !AnalyticsEngine.placeMatches(
+                    p.compartment,
                     filters.compartment
-                ).toUpperCase()
-
+                )
             ){
-
                 return false;
-
             }
 
+            /* DUTY */
+
             if(
-
-                typeof filters.dutyActive ===
-                "boolean"
-
+                typeof filters.dutyActive === "boolean" &&
+                !!p.dutyActive !== filters.dutyActive
             ){
-
-                if(
-
-                    !!p.dutyActive
-                    !==
-                    filters.dutyActive
-
-                ){
-
-                    return false;
-
-                }
-
+                return false;
             }
 
             return true;
@@ -3625,8 +3549,6 @@ AnalyticsEngine.queryStaffStrength = function(filters){
         });
 
 };
-
-
 /*----------------------------------------------------------
 STAFF STRENGTH SUMMARY
 ----------------------------------------------------------*/
