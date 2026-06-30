@@ -2741,6 +2741,7 @@ AnalyticsEngine.normalizeDesignation = function(value){
 
 /*----------------------------------------------------------
 MATCH JURISDICTION
+Returns the ACTUAL stored Firestore value
 ----------------------------------------------------------*/
 
 AnalyticsEngine.matchJurisdiction = function(type, query){
@@ -2749,37 +2750,84 @@ AnalyticsEngine.matchJurisdiction = function(type, query){
         String(query || "")
         .toUpperCase();
 
-    const groups =
+    const aliases =
         AnalyticsEngine.jurisdictionAliases[type] || {};
 
-    for(const actual in groups){
+    const fieldMap = {
 
-        const aliases =
-            groups[actual];
+        circles : "circle",
 
-        if(
+        divisions : "division",
 
-            aliases.some(alias =>
+        ranges : "range",
 
-                query.includes(
+        beats : "beat"
 
-                    alias.toUpperCase()
+    };
 
-                )
+    const field =
+        fieldMap[type];
 
-            )
+    for(const canonical in aliases){
 
-        ){
+        const list =
+            aliases[canonical];
 
-            return actual;
+        const matched =
+
+            list.some(function(alias){
+
+                return AnalyticsEngine.placeMatches(
+
+                    query,
+
+                    alias
+
+                );
+
+            });
+
+        if(!matched){
+
+            continue;
 
         }
+
+        const profile =
+
+            Object.values(
+
+                AnalyticsEngine.staffIndex
+
+            ).find(function(p){
+
+                return AnalyticsEngine.placeMatches(
+
+                    p[field],
+
+                    canonical
+
+                );
+
+            });
+
+        if(profile){
+
+            return profile[field];
+
+        }
+
+        return canonical;
 
     }
 
     return null;
 
 };
+/*----------------------------------------------------------
+QUERY DESIGNATION
+----------------------------------------------------------*/
+
 /*----------------------------------------------------------
 QUERY DESIGNATION
 ----------------------------------------------------------*/
@@ -2792,11 +2840,11 @@ AnalyticsEngine.queryDesignation = function(filters){
     const designation =
 
         AnalyticsEngine
-        .normalizeDesignation(
+            .normalizeDesignation(
 
-            filters.designation
+                filters.designation
 
-        );
+            );
 
     return Object
         .values(
@@ -2806,122 +2854,140 @@ AnalyticsEngine.queryDesignation = function(filters){
         )
         .filter(function(p){
 
+            /*----------------------------------
+            DESIGNATION
+            ----------------------------------*/
+
             if(
 
                 designation &&
 
                 AnalyticsEngine
-                .normalizeDesignation(
+                    .normalizeDesignation(
 
-                    p.designation
+                        p.designation
 
-                ) !== designation
+                    ) !== designation
 
             ){
 
                 return false;
 
             }
+
+            /*----------------------------------
+            CIRCLE
+            ----------------------------------*/
 
             if(
 
                 filters.circle &&
 
-                String(
-                    p.circle || ""
-                ).toUpperCase()
+                !AnalyticsEngine.placeMatches(
 
-                !==
+                    p.circle,
 
-                String(
                     filters.circle
-                ).toUpperCase()
+
+                )
 
             ){
 
                 return false;
 
             }
+
+            /*----------------------------------
+            DIVISION
+            ----------------------------------*/
 
             if(
 
                 filters.division &&
 
-                String(
-                    p.division || ""
-                ).toUpperCase()
+                !AnalyticsEngine.placeMatches(
 
-                !==
+                    p.division,
 
-                String(
                     filters.division
-                ).toUpperCase()
+
+                )
 
             ){
 
                 return false;
 
             }
+
+            /*----------------------------------
+            RANGE
+            ----------------------------------*/
 
             if(
 
                 filters.range &&
 
-                String(
-                    p.range || ""
-                ).toUpperCase()
+                !AnalyticsEngine.placeMatches(
 
-                !==
+                    p.range,
 
-                String(
                     filters.range
-                ).toUpperCase()
+
+                )
 
             ){
 
                 return false;
 
             }
+
+            /*----------------------------------
+            BEAT
+            ----------------------------------*/
 
             if(
 
                 filters.beat &&
 
-                String(
-                    p.beat || ""
-                ).toUpperCase()
+                !AnalyticsEngine.placeMatches(
 
-                !==
+                    p.beat,
 
-                String(
                     filters.beat
-                ).toUpperCase()
+
+                )
 
             ){
 
                 return false;
 
             }
+
+            /*----------------------------------
+            COMPARTMENT
+            ----------------------------------*/
 
             if(
 
                 filters.compartment &&
 
-                String(
-                    p.compartment || ""
-                ).toUpperCase()
+                !AnalyticsEngine.placeMatches(
 
-                !==
+                    p.compartment,
 
-                String(
                     filters.compartment
-                ).toUpperCase()
+
+                )
 
             ){
 
                 return false;
 
             }
+
+            /*----------------------------------
+            DUTY STATUS
+            ----------------------------------*/
 
             if(
 
@@ -2943,19 +3009,31 @@ AnalyticsEngine.queryDesignation = function(filters){
 
             }
 
+            /*----------------------------------
+            ROLE
+            ----------------------------------*/
+
             if(
 
                 filters.role &&
 
                 String(
+
                     p.role || ""
-                ).toUpperCase()
+
+                )
+                .trim()
+                .toUpperCase()
 
                 !==
 
                 String(
-                    filters.role
-                ).toUpperCase()
+
+                    filters.role || ""
+
+                )
+                .trim()
+                .toUpperCase()
 
             ){
 
@@ -2968,7 +3046,6 @@ AnalyticsEngine.queryDesignation = function(filters){
         });
 
 };
-
 
 /*----------------------------------------------------------
 DESIGNATION SUMMARY
