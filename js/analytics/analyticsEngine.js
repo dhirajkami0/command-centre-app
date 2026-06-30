@@ -1697,60 +1697,141 @@ STAFF KNOWLEDGE
 /*----------------------------------------------------------
 STAFF KNOWLEDGE + SUB INTENT
 ----------------------------------------------------------*/
+/*----------------------------------------------------------
+STAFF KNOWLEDGE + SUB INTENT
+----------------------------------------------------------*/
+
 const staffSubIntent = (function () {
+
+    /* Profile */
+
+    if (
+        /\b(profile|details|information|about|who is)\b/i.test(originalQuery)
+    ) {
+        return "staffProfile";
+    }
 
     /* Contact */
 
-    if (/\b(phone|mobile|contact|cell|tel|telephone|number|no)\b/i.test(originalQuery))
+    if (
+        /\b(phone|mobile|contact|cell|tel|telephone|number|no)\b/i.test(originalQuery)
+    ) {
         return "staffPhone";
+    }
 
-    if (/\b(email|mail)\b/i.test(originalQuery))
+    if (
+        /\b(email|mail)\b/i.test(originalQuery)
+    ) {
         return "staffEmail";
+    }
 
-    /* Administrative posting */
+    /* Posting */
 
-    if (/\b(posted|posting)\b/i.test(originalQuery))
+    if (
+        /\b(posting|posted|place of posting|where posted|posting details)\b/i.test(originalQuery)
+    ) {
         return "staffPosting";
+    }
 
-    if (/\bbeat\b/i.test(originalQuery))
+    if (
+        /\bbeat\b/i.test(originalQuery)
+    ) {
         return "staffBeat";
+    }
 
-    if (/\brange\b/i.test(originalQuery))
+    if (
+        /\brange\b/i.test(originalQuery)
+    ) {
         return "staffRange";
+    }
 
-    if (/\bdivision\b/i.test(originalQuery))
+    if (
+        /\bdivision\b/i.test(originalQuery)
+    ) {
         return "staffDivision";
+    }
 
-    if (/\bcircle\b/i.test(originalQuery))
+    if (
+        /\bcircle\b/i.test(originalQuery)
+    ) {
         return "staffCircle";
+    }
 
-    if (/\bstation\b/i.test(originalQuery))
+    if (
+        /\bstation\b/i.test(originalQuery)
+    ) {
         return "staffStation";
+    }
 
     /* Role */
 
-    if (/\b(role|designation|post)\b/i.test(originalQuery))
+    if (
+        /\b(role|designation|rank|post)\b/i.test(originalQuery)
+    ) {
         return "staffRole";
+    }
 
     /* Duty */
 
-    if (/\bduty\b/i.test(originalQuery))
+    if (
+        /\b(duty|on duty|off duty|working|status)\b/i.test(originalQuery)
+    ) {
         return "staffDuty";
+    }
 
-    /* Live GPS */
+    /* Live Location */
 
-    if (/\b(location|gps|live|where now|current location)\b/i.test(originalQuery))
+    if (
+        /\b(where|location|gps|coordinates|current location|live location|latitude|longitude|lat|lon|accuracy|speed|heading)\b/i.test(originalQuery)
+    ) {
         return "staffLocation";
+    }
 
     /* Patrol */
 
-    if (/\bpatrol\b/i.test(originalQuery))
+    if (
+        /\b(
+            patrol|
+            latest patrol|
+            last patrol|
+            patrol session|
+            session|
+            track|
+           route|
+            patrol distance|
+            distance|
+            point count|
+            started|
+            ended|
+            simplified track
+        )\b/ix.test(originalQuery)
+    ) {
         return "staffPatrol";
+    }
+
+    /* Team */
+
+    if (
+        /\b(team|leader|team leader)\b/i.test(originalQuery)
+    ) {
+        return "staffTeam";
+    }
+
+    /* Device */
+
+    if (
+        /\b(source|battery)\b/i.test(originalQuery)
+    ) {
+        return "staffDevice";
+    }
 
     /* Employee */
 
-    if (/\b(employee|employee id|emp id|emp|id)\b/i.test(originalQuery))
+    if (
+        /\b(employee|employee id|emp id|emp|id)\b/i.test(originalQuery)
+    ) {
         return "staffEmployeeId";
+    }
 
     return "staffProfile";
 
