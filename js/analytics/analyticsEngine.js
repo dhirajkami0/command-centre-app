@@ -1202,6 +1202,77 @@ AnalyticsEngine.query = function (query) {
 
     const q =
         originalQuery.toLowerCase();
+/*----------------------------------------------------------
+DESIGNATION DETECTION
+----------------------------------------------------------*/
+
+const upperQuery =
+    originalQuery.toUpperCase();
+
+let requestedDesignation =
+    null;
+
+const designationAliases =
+    AnalyticsEngine.designationAliases || {};
+
+for (
+
+    const code in designationAliases
+
+) {
+
+    const aliases =
+        designationAliases[code];
+
+    if (
+
+        aliases.some(function(alias){
+
+            alias =
+                String(alias)
+                .toUpperCase();
+
+            if (
+
+                alias.length <= 3
+
+            ) {
+
+                return new RegExp(
+
+                    "\\b" +
+
+                    alias +
+
+                    "\\b"
+
+                ).test(
+
+                    upperQuery
+
+                );
+
+            }
+
+            return upperQuery.includes(
+
+                alias
+
+            );
+
+        })
+
+    ) {
+
+        requestedDesignation =
+            code;
+
+        break;
+
+    }
+
+}
+    
 const staffSubIntent = (function () {
 
     /* Profile */
@@ -1456,7 +1527,72 @@ let staffProfile =
     AnalyticsEngine.queryStaff(
         originalQuery
     );
+/*----------------------------------------------------------
+DESIGNATION SEARCH
+----------------------------------------------------------*/
 
+if (
+
+    requestedDesignation
+
+) {
+
+    const filters =
+
+        AnalyticsEngine
+            .extractJurisdictionFilters(
+                originalQuery
+            );
+
+    filters.designation =
+        requestedDesignation;
+
+    if (
+
+        /\bON\s+DUTY\b/i.test(
+            originalQuery
+        )
+
+    ) {
+
+        filters.dutyActive =
+            true;
+
+    }
+
+    if (
+
+        /\bOFF\s+DUTY\b/i.test(
+            originalQuery
+        )
+
+    ) {
+
+        filters.dutyActive =
+            false;
+
+    }
+
+    return {
+
+        intent:
+            "designationSummary",
+
+        type:
+            "staff",
+
+        confidence:
+            1,
+
+        data:
+            AnalyticsEngine
+                .getDesignationSummary(
+                    filters
+                )
+
+    };
+
+}
     /*----------------------------------------------------------
 STAFF STRENGTH KEYWORDS
 ----------------------------------------------------------*/
@@ -1679,87 +1815,6 @@ return {
 
             AnalyticsEngine
                 .getStaffStrengthSummary(
-                    filters
-                )
-
-    };
-
-}    /*----------------------------------------------------------
-DESIGNATION SEARCH
-----------------------------------------------------------*/
-
-const designationQuery =
-
-    originalQuery.toUpperCase();
-
-const designationAliases =
-
-    AnalyticsEngine.designationAliases || {};
-
-let requestedDesignation = null;
-
-/* Find designation */
-
-for (
-
-    const code in designationAliases
-
-) {
-
-    const aliases =
-        designationAliases[code];
-
-    if (
-
-        aliases.some(
-
-            alias =>
-
-            designationQuery.includes(alias)
-
-        )
-
-    ) {
-
-        requestedDesignation =
-            code;
-
-        break;
-
-    }
-
-}
-
-if (
-
-    requestedDesignation
-
-) {
-
-    const filters =
-
-        AnalyticsEngine
-            .extractJurisdictionFilters(
-                originalQuery
-            );
-
-    filters.designation =
-        requestedDesignation;
-
-    return {
-
-        intent:
-            "designationSummary",
-
-        type:
-            "staff",
-
-        confidence:
-            1,
-
-        data:
-            AnalyticsEngine
-                .getDesignationSummary(
                     filters
                 )
 
