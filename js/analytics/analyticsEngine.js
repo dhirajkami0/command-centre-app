@@ -1269,50 +1269,37 @@ AnalyticsEngine.query = function (query) {
 
        
 
-    const patrolByName =
+const patrolByName =
+    originalQuery.match(
+        /(show|latest|last|open|draw)\s+patrol(?:\s+of)?\s+(.+)/i
+    );
 
-        originalQuery.match(
+if (patrolByName) {
 
-            /(show|latest|open|draw)\s+(.+?)\s+patrol/i
+    const action =
+        patrolByName[1].toLowerCase();
 
+    const staffName =
+        patrolByName[2].trim();
+
+    const staff =
+        AnalyticsEngine.queryStaff(
+            staffName
         );
 
-    if (
+    if (staff.length) {
 
-        patrolByName
-
-    ) {
-
-        const action =
-
-            patrolByName[1]
-                .toLowerCase();
-
-        const search =
-
-            patrolByName[2];
-
-        if (
-
-            action === "draw"
-
-        ) {
+        if (action === "draw") {
 
             return {
 
                 intent: "drawPatrol",
 
-                type: "patrol",
+                type: "staff",
 
                 confidence: 1,
 
-                data:
-
-                    AnalyticsEngine.openPatrol(
-
-                        search
-
-                    )
+                data: staff
 
             };
 
@@ -1320,24 +1307,36 @@ AnalyticsEngine.query = function (query) {
 
         return {
 
-            intent: "session",
+            intent: "staffPatrol",
 
-            type: "patrol",
+            type: "staff",
 
             confidence: 1,
 
-            data:
-
-                AnalyticsEngine.querySession(
-
-                    search
-
-                )
+            data: staff
 
         };
 
     }
 
+    const session =
+        AnalyticsEngine.querySession(
+            staffName
+        );
+
+    return {
+
+        intent: "session",
+
+        type: "patrol",
+
+        confidence: 1,
+
+        data: session
+
+    };
+
+}
     /*----------------------------------------------------------
       HIGHEST COVERAGE
     ----------------------------------------------------------*/
