@@ -1263,15 +1263,35 @@ const staffSubIntent = (function () {
     ) {
         return "staffStation";
     }
+/*--------------------------------------------------
+DESIGNATION
+--------------------------------------------------*/
 
-    /* Role */
+if (
+    /\b(designation|designation name)\b/i.test(originalQuery)
+) {
+    return "staffDesignation";
+}
 
-    if (
-        /\b(role|designation|rank|post)\b/i.test(originalQuery)
-    ) {
-        return "staffRole";
-    }
+/*--------------------------------------------------
+ROLE
+--------------------------------------------------*/
 
+if (
+    /\b(role|user role|permission|access level)\b/i.test(originalQuery)
+) {
+    return "staffRole";
+}
+
+/*--------------------------------------------------
+RANK / POST
+--------------------------------------------------*/
+
+if (
+    /\b(rank|post)\b/i.test(originalQuery)
+) {
+    return "staffDesignation";
+}
     /* Duty */
 
     if (
