@@ -134,6 +134,14 @@ case "designationsummary":
 case "staffstrength":
 
     return formatStaffStrengthSummary(result);
+
+     case "rolewisestrength":
+
+    return formatRoleWiseStrength(result);
+
+case "designationwisestrength":
+
+    return formatDesignationWiseStrength(result);         
 case "staffrole":
 
     return formatStaffRole(result);
@@ -506,6 +514,137 @@ function formatStaffStrengthSummary(result){
     return out.join("\n");
 
 }
+
+    
+    /*----------------------------------------------------------
+ROLE WISE STAFF
+----------------------------------------------------------*/
+
+function formatRoleWiseStrength(result){
+
+    const rows =
+
+        Array.isArray(result.data)
+
+            ? result.data
+
+            : [];
+
+    if(!rows.length){
+
+        return "❌ No matching staff found.";
+
+    }
+
+    const out = [];
+
+    out.push(
+        "👥 ROLE WISE STAFF"
+    );
+
+    out.push("");
+
+    rows.forEach(function(r){
+
+        out.push(
+
+            r.role +
+
+            " : " +
+
+            r.total
+
+        );
+
+        out.push(
+
+            "   Active : " +
+
+            r.active
+
+        );
+
+        out.push(
+
+            "   Inactive : " +
+
+            r.inactive
+
+        );
+
+        out.push("");
+
+    });
+
+    return out.join("\n");
+
+}
+
+
+/*----------------------------------------------------------
+DESIGNATION WISE STAFF
+----------------------------------------------------------*/
+
+function formatDesignationWiseStrength(result){
+
+    const rows =
+
+        Array.isArray(result.data)
+
+            ? result.data
+
+            : [];
+
+    if(!rows.length){
+
+        return "❌ No matching staff found.";
+
+    }
+
+    const out = [];
+
+    out.push(
+        "👮 DESIGNATION WISE STAFF"
+    );
+
+    out.push("");
+
+    rows.forEach(function(r){
+
+        out.push(
+
+            r.designation +
+
+            " : " +
+
+            r.total
+
+        );
+
+        out.push(
+
+            "   Active : " +
+
+            r.active
+
+        );
+
+        out.push(
+
+            "   Inactive : " +
+
+            r.inactive
+
+        );
+
+        out.push("");
+
+    });
+
+    return out.join("\n");
+
+}
+    
     function formatStaffDesignation(r){
 
     const p =
