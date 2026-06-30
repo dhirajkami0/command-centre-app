@@ -127,9 +127,14 @@ case "staffdivision":
 case "staffdesignation":
 
     return formatStaffDesignation(result);
-case "staffrole":
-    return formatStaffRole(result);
 
+case "designationsummary":
+
+    return formatDesignationSummary(result);
+
+case "staffrole":
+
+    return formatStaffRole(result);
 case "staffposting":
     return formatStaffPosting(result);
 
@@ -1624,7 +1629,103 @@ function formatStaffDivision(r){
     ].join("\n");
 
 }
+/*----------------------------------------------------------
+DESIGNATION SUMMARY
+----------------------------------------------------------*/
 
+function formatDesignationSummary(result){
+
+    const data =
+        result.data || {};
+
+    const staff =
+        Array.isArray(data.staff)
+            ? data.staff
+            : [];
+
+    if(!staff.length){
+
+        return "❌ No matching staff found.";
+
+    }
+
+    const first =
+        staff[0];
+
+    const designation =
+        first.designation || "-";
+
+    const lines = [];
+
+    lines.push("👮 DESIGNATION SUMMARY");
+
+    lines.push("");
+
+    lines.push(
+        "Designation : " +
+        designation
+    );
+
+    if(first.circle){
+
+        lines.push(
+            "Circle : " +
+            first.circle
+        );
+
+    }
+
+    if(first.division){
+
+        lines.push(
+            "Division : " +
+            first.division
+        );
+
+    }
+
+    if(first.range){
+
+        lines.push(
+            "Range : " +
+            first.range
+        );
+
+    }
+
+    if(first.beat){
+
+        lines.push(
+            "Beat : " +
+            first.beat
+        );
+
+    }
+
+    lines.push("");
+
+    lines.push(
+        "Total : " +
+        data.total
+    );
+
+    lines.push("");
+
+    staff.forEach(function(s,index){
+
+        lines.push(
+
+            (index+1)+". "+
+
+            (s.name || "-")
+
+        );
+
+    });
+
+    return lines.join("\n");
+
+}
 /*----------------------------------------------------------
 STAFF ROLE
 ----------------------------------------------------------*/
