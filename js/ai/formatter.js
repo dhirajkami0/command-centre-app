@@ -1014,330 +1014,339 @@ STAFF SEARCH
 function formatStaffProfile(r){
 
     const rows =
-
         Array.isArray(r.data)
-
             ? r.data
-
             : [];
 
-    if(
-
-        !rows.length
-
-    ){
-
+    if(!rows.length){
         return "❌ No matching staff found.";
-
     }
 
     /*--------------------------------------------------
     SINGLE PROFILE
     --------------------------------------------------*/
 
-if (
+    if(rows.length === 1){
 
-    rows.length === 1
+        const p =
+            rows[0];
 
-){
+        const analytics =
+            p.analytics || {};
 
-    const p = rows[0];
+        const patrol =
+            p.latestPatrol || {};
 
-    const analytics =
-        p.analytics || {};
+        const dutyStatus =
+            p.dutyActive
+                ? "🟢 Active"
+                : "⚪ Inactive";
 
-    const patrol =
-        p.latestPatrol || {};
+        const leader =
+            p.leader ||
+            p.patrolLeader ||
+            patrol.leader ||
+            "-";
 
-    const dutyStatus =
-        p.dutyActive
-            ? "🟢 Active"
-            : "⚪ Inactive";
+        const team =
+            p.team ||
+            p.patrolTeam ||
+            patrol.team ||
+            "-";
 
-    return [
+        const session =
+            p.patrolSessionId ||
+            patrol.sessionId ||
+            p.sessionId ||
+            "-";
 
-        "👤 STAFF PROFILE",
+        const started =
+            p.patrolStartedAt ||
+            patrol.startedAt ||
+            p.startedAt ||
+            "-";
 
-        "",
+        const ended =
+            p.patrolEndedAt ||
+            patrol.endedAt ||
+            "-";
 
-        "Name : " +
-        (p.name || "-"),
+        const distance =
+            Number(
+                p.patrolDistanceKm ??
+                patrol.distanceKm ??
+                analytics.distanceKm ??
+                0
+            );
 
-        "Designation : " +
-        (p.designation || "-"),
+        const beat =
+            p.beat ||
+            patrol.beat ||
+            "-";
 
-        "Role : " +
-        (p.role || "-"),
+        const compartment =
+            p.compartment ||
+            patrol.compartment ||
+            "-";
 
-        "Division : " +
-        (p.division || "-"),
+        const updated =
+            p.updatedAt ||
+            patrol.updatedAt ||
+            p.lastSeen ||
+            "-";
 
-        "Range : " +
-        (p.range || "-"),
+        return [
 
-        "Beat : " +
-        (p.beat || "-"),
+            "👤 STAFF PROFILE",
 
-        "Phone : " +
-        (p.phone || "-"),
+            "",
 
-        "Email : " +
-        (p.email || "-"),
+            "Name : " +
+            (p.name || "-"),
 
-        "",
+            "Designation : " +
+            (p.designation || "-"),
 
-        "Duty : " +
-        dutyStatus,
+            "Role : " +
+            (p.role || "-"),
 
-        "Duty Type : " +
-        (
-            p.dutyType || "-"
-        ),
+            "Division : " +
+            (p.division || "-"),
 
-        "Current Location : " +
-        (
-            p.location ||
+            "Range : " +
+            (p.range || "-"),
+
+            "Beat : " +
+            beat,
+
+            "Phone : " +
+            (p.phone || "-"),
+
+            "Email : " +
+            (p.email || "-"),
+
+            "",
+
+            "Duty : " +
+            dutyStatus,
+
+            "Duty Type : " +
             (
-                p.lat && p.lon
-                    ? `${p.lat}, ${p.lon}`
-                    : "-"
+                p.dutyType || "-"
+            ),
+
+            "Status : " +
+            (
+                p.status ||
+                patrol.status ||
+                "-"
+            ),
+
+            "",
+
+            "Leader : " +
+            leader,
+
+            "Team : " +
+            team,
+
+            "Compartment : " +
+            compartment,
+
+            "Session : " +
+            session,
+
+            "",
+
+            "Current Location : " +
+            (
+                p.location ||
+                (
+                    p.lat != null &&
+                    p.lon != null
+                        ? `${p.lat}, ${p.lon}`
+                        : "-"
+                )
+            ),
+
+            "Latitude : " +
+            (
+                p.lat ?? "-"
+            ),
+
+            "Longitude : " +
+            (
+                p.lon ?? "-"
+            ),
+
+            "Speed : " +
+            Number(
+                p.speed || 0
+            ).toFixed(1) +
+            " km/h",
+
+            "Heading : " +
+            Number(
+                p.heading || 0
+            ).toFixed(0) +
+            "°",
+
+            "Accuracy : " +
+            (
+                p.accuracy ?? "-"
+            ),
+
+            "Battery : " +
+            (
+                p.battery ?? "-"
+            ),
+
+            "Source : " +
+            (
+                p.source || "-"
+            ),
+
+            "Started : " +
+            started,
+
+            "Ended : " +
+            ended,
+
+            "Updated : " +
+            updated,
+
+            "",
+
+            "Today's Patrols : " +
+            (
+                analytics.patrols || 0
+            ),
+
+            "Today's Distance : " +
+            distance.toFixed(2) +
+            " km",
+
+            "Coverage : " +
+            Number(
+                analytics.coverage || 0
+            ).toFixed(2) +
+            "%",
+
+            "Visits : " +
+            (
+                analytics.visits || 0
+            ),
+
+            "",
+
+            "Latest Patrol : " +
+            session,
+
+            "Assigned Compartments : " +
+            (
+                p.assignedCompartments?.length ||
+                p.compartments?.length ||
+                0
             )
-        ),
 
-        "Battery : " +
-        (
-            p.battery ?? "-"
-        ),
+        ].join("\n");
 
-        "Speed : " +
-        Number(
-            p.speed || 0
-        ).toFixed(1)
-        +
-        " km/h",
-
-        "Heading : " +
-        Number(
-            p.heading || 0
-        ).toFixed(0)
-        +
-        "°",
-
-        "Accuracy : " +
-        (
-            p.accuracy ?? "-"
-        ),
-
-        "Status : " +
-        (
-            p.status || "-"
-        ),
-
-        "Source : " +
-        (
-            p.source || "-"
-        ),
-
-        "Session : " +
-        (
-            p.sessionId || "-"
-        ),
-
-        "Leader : " +
-        (
-            p.leader || "-"
-        ),
-
-        "Team : " +
-        (
-            p.team || "-"
-        ),
-
-        "Compartment : " +
-        (
-            p.compartment || "-"
-        ),
-
-        "",
-
-        "Today's Patrols : " +
-        (
-            analytics.patrols || 0
-        ),
-
-        "Today's Distance : " +
-        Number(
-            analytics.distanceKm || 0
-        ).toFixed(2)
-        +
-        " km",
-
-        "Coverage : " +
-        Number(
-            analytics.coverage || 0
-        ).toFixed(2)
-        +
-        "%",
-
-        "Visits : " +
-        (
-            analytics.visits || 0
-        ),
-
-        "",
-
-        "Latest Patrol : " +
-        (
-            patrol.sessionId || "-"
-        ),
-
-        "Assigned Compartments : " +
-        (
-            p.assignedCompartments?.length || 0
-        )
-
-    ].join("\n");
-
-}
+    }
 
     /*--------------------------------------------------
     MULTIPLE STAFF
     --------------------------------------------------*/
 
     let txt =
-
         "👥 STAFF LIST\n\n";
 
-    rows.forEach(
+    rows.forEach((p,i)=>{
 
-        (p,i)=>{
+        const patrol =
+            p.latestPatrol || {};
 
-            txt +=
+        const beat =
+            p.beat ||
+            patrol.beat ||
+            "-";
 
-                (i+1)+". "+
+        const duty =
+            p.dutyActive
+                ? "🟢 Active"
+                : "⚪ Inactive";
 
-                (
+        txt +=
+            (i+1) +
+            ". " +
+            (
+                p.name ||
+                "-"
+            ) +
+            "\n";
 
-                    p.name ||
+        txt +=
+            "   Designation : " +
+            (
+                p.designation ||
+                "-"
+            ) +
+            "\n";
 
-                    "-"
+        txt +=
+            "   Role : " +
+            (
+                p.role ||
+                "-"
+            ) +
+            "\n";
 
-                )+
+        txt +=
+            "   Division : " +
+            (
+                p.division ||
+                "-"
+            ) +
+            "\n";
 
-                "\n";
+        txt +=
+            "   Range : " +
+            (
+                p.range ||
+                "-"
+            ) +
+            "\n";
 
-            txt +=
+        txt +=
+            "   Beat : " +
+            beat +
+            "\n";
 
-                "   Designation : "+
+        txt +=
+            "   Phone : " +
+            (
+                p.phone ||
+                "-"
+            ) +
+            "\n";
 
-                (
+        txt +=
+            "   Duty : " +
+            duty +
+            "\n";
 
-                    p.designation ||
+        txt +=
+            "   Duty Type : " +
+            (
+                p.dutyType ||
+                "-"
+            ) +
+            "\n\n";
 
-                    "-"
-
-                )+
-
-                "\n";
-
-            txt +=
-
-                "   Role : "+
-
-                (
-
-                    p.role ||
-
-                    "-"
-
-                )+
-
-                "\n";
-
-            txt +=
-
-                "   Beat : "+
-
-                (
-
-                    p.beat ||
-
-                    "-"
-
-                )+
-
-                "\n";
-
-            txt +=
-
-                "   Range : "+
-
-                (
-
-                    p.range ||
-
-                    "-"
-
-                )+
-
-                "\n";
-
-            txt +=
-
-                "   Division : "+
-
-                (
-
-                    p.division ||
-
-                    "-"
-
-                )+
-
-                "\n";
-
-            txt +=
-
-                "   Phone : "+
-
-                (
-
-                    p.phone ||
-
-                    "-"
-
-                )+
-
-                "\n";
-
-            txt +=
-
-                "   Status : "+
-
-                (
-
-                    p.live?.dutyActive
-
-                    ?
-
-                    "🟢 Active"
-
-                    :
-
-                    "⚪ Inactive"
-
-                )+
-
-                "\n\n";
-
-        }
-
-    );
+    });
 
     return txt;
 
-}
-    /*----------------------------------------------------------
+}    /*----------------------------------------------------------
 STAFF PHONE
 ----------------------------------------------------------*/
 
@@ -1614,9 +1623,10 @@ function formatStaffRole(r){
     ].join("\n");
 
 }
-    function formatStaffPatrol(r){
+function formatStaffPatrol(r){
 
-    const p = r.data?.[0];
+    const p =
+        r.data?.[0];
 
     if(!p){
         return "❌ Staff not found.";
@@ -1625,13 +1635,60 @@ function formatStaffRole(r){
     const patrol =
         p.latestPatrol || {};
 
+    const distance =
+        Number(
+            p.patrolDistanceKm ??
+            patrol.distanceKm ??
+            p.analytics?.distanceKm ??
+            0
+        );
+
+    const leader =
+        p.leader ||
+        p.patrolLeader ||
+        patrol.leader ||
+        "-";
+
+    const team =
+        p.team ||
+        p.patrolTeam ||
+        patrol.team ||
+        "-";
+
+    const session =
+        p.patrolSessionId ||
+        patrol.sessionId ||
+        p.sessionId ||
+        "-";
+
+    const beat =
+        p.beat ||
+        patrol.beat ||
+        "-";
+
+    const compartment =
+        p.compartment ||
+        patrol.compartment ||
+        "-";
+
+    const started =
+        p.patrolStartedAt ||
+        patrol.startedAt ||
+        "-";
+
+    const ended =
+        p.patrolEndedAt ||
+        patrol.endedAt ||
+        "-";
+
     return [
 
         "🛰 LATEST PATROL",
 
         "",
 
-        p.name,
+        "Name : " +
+        (p.name || "-"),
 
         "",
 
@@ -1648,52 +1705,86 @@ function formatStaffRole(r){
         ),
 
         "Leader : " +
-        (
-            p.leader || "-"
-        ),
+        leader,
 
         "Team : " +
+        team,
+
+        "Division : " +
         (
-            p.team || "-"
+            p.division || "-"
         ),
 
-        "Current Compartment : " +
+        "Range : " +
         (
-            p.compartment || "-"
+            p.range || "-"
         ),
+
+        "Beat : " +
+        beat,
+
+        "Current Compartment : " +
+        compartment,
 
         "",
 
         "Latest Session : " +
-        (
-            patrol.sessionId || "-"
-        ),
+        session,
 
-        "Beat : " +
-        (
-            patrol.beat || "-"
-        ),
-
-        "Patrol Compartment : " +
-        (
-            patrol.compartment || "-"
-        ),
-
-        "Distance : " +
-        Number(
-            patrol.distanceKm || 0
-        ).toFixed(2)
-        +
+        "Patrol Distance : " +
+        distance.toFixed(2) +
         " km",
 
         "Started : " +
-        (
-            patrol.startedAt || "-"
-        ),
+        started,
 
         "Ended : " +
+        ended,
+
+        "",
+
+        "Latitude : " +
         (
-            patrol.endedAt || "-"
+            p.lat ?? "-"
+        ),
+
+        "Longitude : " +
+        (
+            p.lon ?? "-"
+        ),
+
+        "Speed : " +
+        Number(
+            p.speed || 0
+        ).toFixed(1) +
+        " km/h",
+
+        "Heading : " +
+        Number(
+            p.heading || 0
+        ).toFixed(0) +
+        "°",
+
+        "Accuracy : " +
+        (
+            p.accuracy ?? "-"
+        ),
+
+        "Status : " +
+        (
+            p.status || "-"
+        ),
+
+        "Source : " +
+        (
+            p.source || "-"
+        ),
+
+        "Last Updated : " +
+        (
+            p.updatedAt ||
+            p.lastSeen ||
+            "-"
         )
 
     ].join("\n");
@@ -1774,11 +1865,55 @@ STAFF DUTY
 
 function formatStaffDuty(r){
 
-    const p = r.data?.[0];
+    const p =
+        r.data?.[0];
 
     if(!p){
         return "❌ Staff not found.";
     }
+
+    const patrol =
+        p.latestPatrol || {};
+
+    const leader =
+        p.leader ||
+        p.patrolLeader ||
+        patrol.leader ||
+        "-";
+
+    const team =
+        p.team ||
+        p.patrolTeam ||
+        patrol.team ||
+        "-";
+
+    const session =
+        p.patrolSessionId ||
+        patrol.sessionId ||
+        p.sessionId ||
+        "-";
+
+    const started =
+        p.patrolStartedAt ||
+        patrol.startedAt ||
+        p.startedAt ||
+        "-";
+
+    const updated =
+        p.updatedAt ||
+        patrol.updatedAt ||
+        p.lastSeen ||
+        "-";
+
+    const compartment =
+        p.compartment ||
+        patrol.compartment ||
+        "-";
+
+    const beat =
+        p.beat ||
+        patrol.beat ||
+        "-";
 
     return [
 
@@ -1786,7 +1921,8 @@ function formatStaffDuty(r){
 
         "",
 
-        p.name,
+        "Name : " +
+        (p.name || "-"),
 
         "",
 
@@ -1804,23 +1940,20 @@ function formatStaffDuty(r){
 
         "Status : " +
         (
-            p.status || "-"
+            p.status ||
+            patrol.status ||
+            "-"
         ),
+
+        "",
 
         "Leader : " +
-        (
-            p.leader || "-"
-        ),
+        leader,
 
         "Team : " +
-        (
-            p.team || "-"
-        ),
+        team,
 
-        "Compartment : " +
-        (
-            p.compartment || "-"
-        ),
+        "",
 
         "Division : " +
         (
@@ -1833,19 +1966,18 @@ function formatStaffDuty(r){
         ),
 
         "Beat : " +
-        (
-            p.beat || "-"
-        ),
+        beat,
+
+        "Compartment : " +
+        compartment,
+
+        "",
 
         "Session : " +
-        (
-            p.sessionId || "-"
-        ),
+        session,
 
         "Started : " +
-        (
-            p.startedAt || "-"
-        ),
+        started,
 
         "Last Seen : " +
         (
@@ -1853,8 +1985,40 @@ function formatStaffDuty(r){
         ),
 
         "Updated : " +
+        updated,
+
+        "",
+
+        "Latitude : " +
         (
-            p.updatedAt || "-"
+            p.lat ?? "-"
+        ),
+
+        "Longitude : " +
+        (
+            p.lon ?? "-"
+        ),
+
+        "Speed : " +
+        Number(
+            p.speed || 0
+        ).toFixed(1) +
+        " km/h",
+
+        "Heading : " +
+        Number(
+            p.heading || 0
+        ).toFixed(0) +
+        "°",
+
+        "Accuracy : " +
+        (
+            p.accuracy ?? "-"
+        ),
+
+        "Source : " +
+        (
+            p.source || "-"
         )
 
     ].join("\n");
