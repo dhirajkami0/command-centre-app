@@ -297,6 +297,345 @@ AnalyticsEngine.buildGISHierarchy = function(){
 
 };
     /*----------------------------------------------------------
+NORMALIZE GIS KEY
+----------------------------------------------------------*/
+
+AnalyticsEngine.normalizeGISKey = function(value){
+
+    value =
+        String(value || "")
+        .trim()
+
+        /* Split CamelCase */
+
+        .replace(
+            /([a-z])([A-Z])/g,
+            "$1 $2"
+        )
+
+        /* Hyphen */
+
+        .replace(
+            /[-_]/g,
+            " "
+        )
+
+        /* Upper */
+
+        .toUpperCase()
+
+        /* Remove punctuation */
+
+        .replace(
+            /[^A-Z0-9 ]/g,
+            " "
+        )
+
+        /* Remove suffixes */
+
+        .replace(
+            /\b(BEAT|RANGE|DIVISION|CIRCLE|COMPARTMENT)\b/g,
+            " "
+        )
+
+        /* Collapse */
+
+        .replace(
+            /\s+/g,
+            " "
+        )
+
+        .trim();
+
+    return value;
+
+};
+    /*----------------------------------------------------------
+CREATE SEARCH KEYS
+----------------------------------------------------------*/
+
+AnalyticsEngine.createGISKeys = function(value){
+
+    const keys =
+        new Set();
+
+    const canonical =
+
+        AnalyticsEngine.normalizeGISKey(
+            value
+        );
+
+    if(!canonical){
+
+        return [];
+
+    }
+
+    keys.add(canonical);
+
+    /*----------------------------------
+    Reverse words
+    ----------------------------------*/
+
+    const words =
+        canonical.split(" ");
+
+    if(words.length > 1){
+
+        keys.add(
+
+            words
+                .slice()
+                .reverse()
+                .join(" ")
+
+        );
+
+    }
+
+    /*----------------------------------
+    Remove spaces
+    ----------------------------------*/
+
+    keys.add(
+
+        canonical.replace(
+            /\s+/g,
+            ""
+        )
+
+    );
+
+    /*----------------------------------
+    Hyphen
+    ----------------------------------*/
+
+    keys.add(
+
+        canonical.replace(
+            /\s+/g,
+            "-"
+        )
+
+    );
+
+    return Array.from(keys);
+
+};
+
+    /*----------------------------------------------------------
+BUILD GIS SEARCH INDEX
+----------------------------------------------------------*/
+
+AnalyticsEngine.buildGISSearchIndex = function(){
+
+    AnalyticsEngine.gisSearchIndex = {};
+
+    [
+
+        "circles",
+
+        "divisions",
+
+        "ranges",
+
+        "beats",
+
+        "compartments"
+
+    ]
+
+    .forEach(function(level){
+
+        Object.values(
+
+            AnalyticsEngine.gisHierarchy[level]
+
+        )
+
+        .forEach(function(item){
+
+            AnalyticsEngine
+
+                .createGISKeys(
+
+                    item.name
+
+                )
+
+                .forEach(function(key){
+
+                    AnalyticsEngine
+                        .gisSearchIndex[key] = {
+
+                        level :
+
+                            level,
+
+                        value :
+
+                            item.name,
+
+                        data :
+
+                            item
+
+                    };
+
+                });
+
+        });
+
+    });
+
+    console.log(
+
+        "✅ GIS Search Index",
+
+        Object.keys(
+
+            AnalyticsEngine.gisSearchIndex
+
+        ).length
+
+    );
+
+};
+
+    
+    /*----------------------------------------------------------
+RESOLVE JURISDICTION
+----------------------------------------------------------*/
+
+/*----------------------------------------------------------
+ENRICH STAFF PROFILE FROM GIS
+----------------------------------------------------------*/
+
+AnalyticsEngine.enrichStaffProfile = function(profile){
+
+    if(!profile){
+
+        return profile;
+
+    }
+
+    /*----------------------------------
+    Already complete
+    ----------------------------------*/
+
+    if(
+
+        profile.circle &&
+
+        profile.division &&
+
+        profile.range &&
+
+        profile.beat
+
+    ){
+
+        return profile;
+
+    }
+
+    let gis = null;
+
+    /*----------------------------------
+    Try Beat
+    ----------------------------------*/
+
+    if(
+
+        profile.beat &&
+
+        AnalyticsEngine.gisHierarchy.beats[
+            profile.beat
+        ]
+
+    ){
+
+        gis =
+
+            AnalyticsEngine
+                .gisHierarchy
+                .beats[
+                    profile.beat
+                ];
+
+    }
+
+    /*----------------------------------
+    Try Compartment
+    ----------------------------------*/
+
+    if(
+
+        !gis &&
+
+        profile.compartment &&
+
+        AnalyticsEngine
+            .gisHierarchy
+            .compartments[
+                profile.compartment
+            ]
+
+    ){
+
+        gis =
+
+            AnalyticsEngine
+                .gisHierarchy
+                .compartments[
+                    profile.compartment
+                ];
+
+    }
+
+    if(!gis){
+
+        return profile;
+
+    }
+
+    profile.circle =
+
+        profile.circle ||
+
+        gis.circle ||
+
+        "";
+
+    profile.division =
+
+        profile.division ||
+
+        gis.division ||
+
+        "";
+
+    profile.range =
+
+        profile.range ||
+
+        gis.range ||
+
+        "";
+
+    profile.beat =
+
+        profile.beat ||
+
+        gis.beat ||
+
+        "";
+
+    return profile;
+
+};
+    
+    /*----------------------------------------------------------
 INACTIVE COMPARTMENTS
 ----------------------------------------------------------*/
 
@@ -506,6 +845,7 @@ AnalyticsEngine.load = async function () {
 
         AnalyticsEngine.buildBaseIndexes(dataset);
 AnalyticsEngine.buildGISHierarchy();
+        AnalyticsEngine.buildGISSearchIndex();
         await AnalyticsEngine.mergeAnalytics(dataset, datasetMap);
         await AnalyticsEngine.mergeStaffProfiles(dataset, datasetMap);
         await AnalyticsEngine.mergeLiveStaff(dataset, datasetMap);
@@ -699,7 +1039,9 @@ const profile = {
 AnalyticsEngine.staffIndex[
     cleanName
 ] = profile;
-
+AnalyticsEngine.enrichStaffProfile(
+    profile
+);
 /*----------------------------------
 DEBUG
 ----------------------------------*/
@@ -1233,75 +1575,79 @@ if (
 
 ){
 
-    profile.latestPatrol = patrol;
+profile.latestPatrol = patrol;
 
-    Object.assign(profile,{
+Object.assign(profile,{
 
-        patrolSessionId :
-            patrol.sessionId || "",
+    patrolSessionId :
+        patrol.sessionId || "",
 
-        patrolStatus :
-            patrol.status || "",
+    patrolStatus :
+        patrol.status || "",
 
-        patrolDutyActive :
-            !!patrol.dutyActive,
+    patrolDutyActive :
+        !!patrol.dutyActive,
 
-        patrolDutyType :
-            patrol.dutyType || "",
+    patrolDutyType :
+        patrol.dutyType || "",
 
-        patrolStartedAt :
-            patrol.startedAt || null,
+    patrolStartedAt :
+        patrol.startedAt || null,
 
-        patrolEndedAt :
-            patrol.endedAt || null,
+    patrolEndedAt :
+        patrol.endedAt || null,
 
-        patrolCreatedAt :
-            patrol.createdAt || null,
+    patrolCreatedAt :
+        patrol.createdAt || null,
 
-        patrolUpdatedAt :
-            patrol.updatedAt || null,
+    patrolUpdatedAt :
+        patrol.updatedAt || null,
 
-        patrolDistanceKm :
-            Number(
-                patrol.distanceKm || 0
-            ),
+    patrolDistanceKm :
+        Number(
+            patrol.distanceKm || 0
+        ),
 
-        patrolPointCount :
-            Number(
-                patrol.pointCount || 0
-            ),
+    patrolPointCount :
+        Number(
+            patrol.pointCount || 0
+        ),
 
-        patrolSource :
-            patrol.source || "",
+    patrolSource :
+        patrol.source || "",
 
-        patrolLeader :
-            patrol.leader || "",
+    patrolLeader :
+        patrol.leader || "",
 
-        patrolTeam :
-            patrol.team || "",
+    patrolTeam :
+        patrol.team || "",
 
-        patrolBeat :
-            patrol.beat || "",
+    patrolBeat :
+        patrol.beat || "",
 
-        patrolRange :
-            patrol.range || "",
+    patrolRange :
+        patrol.range || "",
 
-        patrolDivision :
-            patrol.division || "",
+    patrolDivision :
+        patrol.division || "",
 
-        patrolCompartment :
-            patrol.compartment || "",
+    patrolCompartment :
+        patrol.compartment || "",
 
-        patrolCompartments :
-            patrol.compartments || [],
+    patrolCompartments :
+        patrol.compartments || [],
 
-        patrolTrack :
-            patrol.simplifiedTrack || [],
+    patrolTrack :
+        patrol.simplifiedTrack || [],
 
-        patrolTrackPoints :
-            patrol.points || []
+    patrolTrackPoints :
+        patrol.points || []
 
-    });
+});
+
+AnalyticsEngine.enrichStaffProfile(
+    profile
+);
 
 }
 
@@ -3291,112 +3637,73 @@ AnalyticsEngine.queryDesignation = function(filters){
             CIRCLE
             ----------------------------------*/
 
-            if(
+          const gis =
 
-                filters.circle &&
+    AnalyticsEngine.resolveJurisdiction(
 
-                !AnalyticsEngine.placeMatches(
+        JSON.stringify(filters)
 
-                    p.circle,
+    );
 
-                    filters.circle
+if(
 
-                )
+    gis.circle &&
 
-            ){
+    profile.circle !== gis.circle
 
-                return false;
+){
 
-            }
+    return false;
 
-            /*----------------------------------
-            DIVISION
-            ----------------------------------*/
+}
 
-            if(
+if(
 
-                filters.division &&
+    gis.division &&
 
-                !AnalyticsEngine.placeMatches(
+    profile.division !== gis.division
 
-                    p.division,
+){
 
-                    filters.division
+    return false;
 
-                )
+}
 
-            ){
+if(
 
-                return false;
+    gis.range &&
 
-            }
+    profile.range !== gis.range
 
-            /*----------------------------------
-            RANGE
-            ----------------------------------*/
+){
 
-            if(
+    return false;
 
-                filters.range &&
+}
 
-                !AnalyticsEngine.placeMatches(
+if(
 
-                    p.range,
+    gis.beat &&
 
-                    filters.range
+    profile.beat !== gis.beat
 
-                )
+){
 
-            ){
+    return false;
 
-                return false;
+}
 
-            }
+if(
 
-            /*----------------------------------
-            BEAT
-            ----------------------------------*/
+    gis.compartment &&
 
-            if(
+    profile.compartment !== gis.compartment
 
-                filters.beat &&
+){
 
-                !AnalyticsEngine.placeMatches(
+    return false;
 
-                    p.beat,
-
-                    filters.beat
-
-                )
-
-            ){
-
-                return false;
-
-            }
-
-            /*----------------------------------
-            COMPARTMENT
-            ----------------------------------*/
-
-            if(
-
-                filters.compartment &&
-
-                !AnalyticsEngine.placeMatches(
-
-                    p.compartment,
-
-                    filters.compartment
-
-                )
-
-            ){
-
-                return false;
-
-            }
-
+}
             /*----------------------------------
             DUTY STATUS
             ----------------------------------*/
@@ -3570,162 +3877,18 @@ AnalyticsEngine.placeMatches = function(query, place){
 /*----------------------------------------------------------
 EXTRACT JURISDICTION FILTERS
 ----------------------------------------------------------*/
-
-AnalyticsEngine.extractJurisdictionFilters = function(query){
-
-    const upperQuery =
-        String(query || "")
-        .toUpperCase();
-
-    const filters = {};
-
-    /*----------------------------------
-    CIRCLE (Alias)
-    ----------------------------------*/
-
-    const circle =
-
-        AnalyticsEngine.matchJurisdiction(
-
-            "circles",
-
-            upperQuery
-
-        );
-
-    if(circle){
-
-        filters.circle =
-            circle;
-
-    }
-
-    /*----------------------------------
-    DIVISION (Alias)
-    ----------------------------------*/
-
-    const division =
-
-        AnalyticsEngine.matchJurisdiction(
-
-            "divisions",
-
-            upperQuery
-
-        );
-
-    if(division){
-
-        filters.division =
-            division;
-
-    }
-
-    /*----------------------------------
-    RANGE (Alias)
-    ----------------------------------*/
-
-    const range =
-
-        AnalyticsEngine.matchJurisdiction(
-
-            "ranges",
-
-            upperQuery
-
-        );
-
-    if(range){
-
-        filters.range =
-            range;
-
-    }
-
-    /*----------------------------------
-    BEAT + COMPARTMENT
-    ----------------------------------*/
-
-    Object.values(
-
-        AnalyticsEngine.staffIndex
-
-    ).forEach(function(p){
-
-        if(
-
-            !filters.beat &&
-
-            AnalyticsEngine.placeMatches(
-
-                upperQuery,
-
-                p.beat
-
-            )
-
-        ){
-
-            filters.beat =
-                p.beat;
-
-        }
-
-        if(
-
-            !filters.compartment &&
-
-            AnalyticsEngine.placeMatches(
-
-                upperQuery,
-
-                p.compartment
-
-            )
-
-        ){
-
-            filters.compartment =
-                p.compartment;
-
-        }
-
-    });
-
-    /*----------------------------------
-    DUTY
-    ----------------------------------*/
-
-    if(
-
-        /\bON\s+DUTY\b/i.test(
-            upperQuery
-        )
-
-    ){
-
-        filters.dutyActive =
-            true;
-
-    }
-
-    if(
-
-        /\bOFF\s+DUTY\b/i.test(
-            upperQuery
-        )
-
-    ){
-
-        filters.dutyActive =
-            false;
-
-    }
-
-    return filters;
+/*----------------------------------------------------------
+EXTRACT JURISDICTION FILTERS
+----------------------------------------------------------*/
+
+AnalyticsEngine.extractJurisdictionFilters =
+function(query){
+
+    return AnalyticsEngine.resolveJurisdiction(
+        query
+    );
 
 };
-
     /*----------------------------------------------------------
 ROLE ALIASES
 ----------------------------------------------------------*/
