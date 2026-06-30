@@ -1202,7 +1202,303 @@ AnalyticsEngine.query = function (query) {
 
     const q =
         originalQuery.toLowerCase();
+const staffSubIntent = (function () {
 
+    /* Profile */
+
+    if (
+        /\b(profile|details|information|about|who is)\b/i.test(originalQuery)
+    ) {
+        return "staffProfile";
+    }
+
+    /* Contact */
+
+    if (
+        /\b(phone|mobile|contact|cell|tel|telephone|number|no)\b/i.test(originalQuery)
+    ) {
+        return "staffPhone";
+    }
+
+    if (
+        /\b(email|mail)\b/i.test(originalQuery)
+    ) {
+        return "staffEmail";
+    }
+
+    /* Posting */
+
+    if (
+        /\b(posting|posted|place of posting|where posted|posting details)\b/i.test(originalQuery)
+    ) {
+        return "staffPosting";
+    }
+
+    if (
+        /\bbeat\b/i.test(originalQuery)
+    ) {
+        return "staffBeat";
+    }
+
+    if (
+        /\brange\b/i.test(originalQuery)
+    ) {
+        return "staffRange";
+    }
+
+    if (
+        /\bdivision\b/i.test(originalQuery)
+    ) {
+        return "staffDivision";
+    }
+
+    if (
+        /\bcircle\b/i.test(originalQuery)
+    ) {
+        return "staffCircle";
+    }
+
+    if (
+        /\bstation\b/i.test(originalQuery)
+    ) {
+        return "staffStation";
+    }
+
+    /* Role */
+
+    if (
+        /\b(role|designation|rank|post)\b/i.test(originalQuery)
+    ) {
+        return "staffRole";
+    }
+
+    /* Duty */
+
+    if (
+        /\b(duty|on duty|off duty|working|status)\b/i.test(originalQuery)
+    ) {
+        return "staffDuty";
+    }
+
+    /* Live Location */
+
+    if (
+        /\b(where|location|gps|coordinates|current location|live location|latitude|longitude|lat|lon|accuracy|speed|heading)\b/i.test(originalQuery)
+    ) {
+        return "staffLocation";
+    }
+
+     /*--------------------------------------------------
+    PATROL SUB INTENTS
+    --------------------------------------------------*/
+
+    if (
+        /\b(distance|covered|coverage|km|kilometre|kilometer|walked|travelled|traveled)\b/i.test(originalQuery)
+    ) {
+        return "patrolDistance";
+    }
+
+    if (
+        /\b(duty type|patrol type|type)\b/i.test(originalQuery)
+    ) {
+        return "patrolDutyType";
+    }
+
+    if (
+        /\b(session id|session)\b/i.test(originalQuery)
+    ) {
+        return "patrolSession";
+    }
+
+    if (
+        /\b(point count|points|track points|gps points)\b/i.test(originalQuery)
+    ) {
+        return "patrolPointCount";
+    }
+
+    if (
+        /\b(start|started|start time|begin|beginning)\b/i.test(originalQuery)
+    ) {
+        return "patrolStarted";
+    }
+
+    if (
+        /\b(end|ended|finish|finished|end time|completed)\b/i.test(originalQuery)
+    ) {
+        return "patrolEnded";
+    }
+
+    if (
+        /\b(duration|time taken|patrol duration)\b/i.test(originalQuery)
+    ) {
+        return "patrolDuration";
+    }
+
+    if (
+        /\b(status|patrol status)\b/i.test(originalQuery)
+    ) {
+        return "patrolStatus";
+    }
+
+    if (
+        /\b(source|device source)\b/i.test(originalQuery)
+    ) {
+        return "patrolSource";
+    }
+
+    if (
+        /\b(team)\b/i.test(originalQuery)
+    ) {
+        return "patrolTeam";
+    }
+
+    if (
+        /\b(leader|team leader)\b/i.test(originalQuery)
+    ) {
+        return "patrolLeader";
+    }
+
+    if (
+        /\b(beat)\b/i.test(originalQuery)
+    ) {
+        return "patrolBeat";
+    }
+
+    if (
+        /\b(range)\b/i.test(originalQuery)
+    ) {
+        return "patrolRange";
+    }
+
+    if (
+        /\b(division)\b/i.test(originalQuery)
+    ) {
+        return "patrolDivision";
+    }
+
+    if (
+        /\b(compartment|current compartment)\b/i.test(originalQuery)
+    ) {
+        return "patrolCompartment";
+    }
+
+    if (
+        /\b(compartments|visited compartments)\b/i.test(originalQuery)
+    ) {
+        return "patrolCompartments";
+    }
+
+    if (
+        /\b(track|route|path|trajectory|simplified track)\b/i.test(originalQuery)
+    ) {
+        return "patrolTrack";
+    }
+
+    if (
+        /\b(latest patrol|last patrol|patrol)\b/i.test(originalQuery)
+    ) {
+        return "staffPatrol";
+    }
+    
+    /* Team */
+
+    if (
+        /\b(team|leader|team leader)\b/i.test(originalQuery)
+    ) {
+        return "staffTeam";
+    }
+
+    /* Device */
+
+    if (
+        /\b(source|battery)\b/i.test(originalQuery)
+    ) {
+        return "staffDevice";
+    }
+
+    /* Employee */
+
+    if (
+        /\b(employee|employee id|emp id|emp|id)\b/i.test(originalQuery)
+    ) {
+        return "staffEmployeeId";
+    }
+
+    return "staffProfile";
+
+})();
+
+/*-----------------------------------------
+Try full query first
+-----------------------------------------*/
+
+let staffProfile =
+    AnalyticsEngine.queryStaff(
+        originalQuery
+    );
+
+/*-----------------------------------------
+Extract only person's name
+-----------------------------------------*/
+
+if (!staffProfile.length) {
+
+    const cleaned =
+
+        originalQuery
+
+        .replace(
+            /\b(phone|mobile|contact|cell|tel|telephone|number|no|email|mail|beat|range|division|role|designation|post|profile|details|show|tell|about|who|what|which|where|is|of|the|posted|in|employee|emp|id)\b/gi,
+            " "
+        )
+
+        .replace(/\s+/g, " ")
+
+        .trim();
+
+    if (cleaned) {
+
+        staffProfile =
+            AnalyticsEngine.queryStaff(
+                cleaned
+            );
+if (
+    staffProfile.length &&
+    staffSubIntent === "staffPatrol"
+) {
+
+    return {
+
+        intent: "staffPatrol",
+
+        type: "staff",
+
+        confidence: 1,
+
+        data: staffProfile
+
+    };
+
+}
+    }
+
+}
+
+if (staffProfile.length) {
+
+    return {
+
+        intent: staffSubIntent,
+
+        type: "staff",
+
+        confidence: 1,
+
+        data: staffProfile
+
+    };
+
+}
       /*----------------------------------------------------------
       PATROL SESSION
     ----------------------------------------------------------*/
@@ -1246,86 +1542,35 @@ AnalyticsEngine.query = function (query) {
     ----------------------------------------------------------*/
 
     const patrolByName =
-
         originalQuery.match(
-
-            /\b(show|latest|last|open|draw)\s+(?:latest\s+|last\s+)?patrol(?:\s+(?:of|for))?\s+(.+)$/i
-
+            /\b(show|draw|open|latest|last)\b.*?\bpatrol\b(?:\s+(?:of|for))?\s+(.+)$/i
         );
 
-    if (
-
-        patrolByName
-
-    ) {
+    if (patrolByName) {
 
         const action =
-
             patrolByName[1]
                 .toLowerCase();
 
         const staffName =
-
             patrolByName[2]
                 .trim();
 
         const staff =
-
             AnalyticsEngine.queryStaff(
-
                 staffName
-
             );
 
-        if (
-
-            staff.length
-
-        ) {
-
-            if (
-
-                action === "draw"
-
-            ) {
-
-                return {
-
-                    intent: "drawPatrol",
-
-                    type: "staff",
-
-                    confidence: 1,
-
-                    data: staff
-
-                };
-
-            }
-
-            if (
-
-                action === "open"
-
-            ) {
-
-                return {
-
-                    intent: "openPatrol",
-
-                    type: "staff",
-
-                    confidence: 1,
-
-                    data: staff
-
-                };
-
-            }
+        if (staff.length) {
 
             return {
 
-                intent: "staffPatrol",
+                intent:
+                    action === "draw"
+                        ? "drawPatrol"
+                        : action === "open"
+                        ? "openPatrol"
+                        : "staffPatrol",
 
                 type: "staff",
 
@@ -1338,18 +1583,11 @@ AnalyticsEngine.query = function (query) {
         }
 
         const session =
-
             AnalyticsEngine.querySession(
-
                 staffName
-
             );
 
-        if (
-
-            session
-
-        ) {
+        if (session) {
 
             return {
 
@@ -1403,9 +1641,7 @@ AnalyticsEngine.query = function (query) {
 
             data:
 
-                AnalyticsEngine.queryLatestSession()
-
-        };
+AnalyticsEngine.queryLatestSession()        };
 
     }
     /*----------------------------------------------------------
@@ -1771,183 +2007,7 @@ STAFF KNOWLEDGE + SUB INTENT
 STAFF KNOWLEDGE + SUB INTENT
 ----------------------------------------------------------*/
 
-const staffSubIntent = (function () {
 
-    /* Profile */
-
-    if (
-        /\b(profile|details|information|about|who is)\b/i.test(originalQuery)
-    ) {
-        return "staffProfile";
-    }
-
-    /* Contact */
-
-    if (
-        /\b(phone|mobile|contact|cell|tel|telephone|number|no)\b/i.test(originalQuery)
-    ) {
-        return "staffPhone";
-    }
-
-    if (
-        /\b(email|mail)\b/i.test(originalQuery)
-    ) {
-        return "staffEmail";
-    }
-
-    /* Posting */
-
-    if (
-        /\b(posting|posted|place of posting|where posted|posting details)\b/i.test(originalQuery)
-    ) {
-        return "staffPosting";
-    }
-
-    if (
-        /\bbeat\b/i.test(originalQuery)
-    ) {
-        return "staffBeat";
-    }
-
-    if (
-        /\brange\b/i.test(originalQuery)
-    ) {
-        return "staffRange";
-    }
-
-    if (
-        /\bdivision\b/i.test(originalQuery)
-    ) {
-        return "staffDivision";
-    }
-
-    if (
-        /\bcircle\b/i.test(originalQuery)
-    ) {
-        return "staffCircle";
-    }
-
-    if (
-        /\bstation\b/i.test(originalQuery)
-    ) {
-        return "staffStation";
-    }
-
-    /* Role */
-
-    if (
-        /\b(role|designation|rank|post)\b/i.test(originalQuery)
-    ) {
-        return "staffRole";
-    }
-
-    /* Duty */
-
-    if (
-        /\b(duty|on duty|off duty|working|status)\b/i.test(originalQuery)
-    ) {
-        return "staffDuty";
-    }
-
-    /* Live Location */
-
-    if (
-        /\b(where|location|gps|coordinates|current location|live location|latitude|longitude|lat|lon|accuracy|speed|heading)\b/i.test(originalQuery)
-    ) {
-        return "staffLocation";
-    }
-
-  /* Patrol */
-
-if (
-    /\b(patrol|latest patrol|last patrol|patrol session|session|track|route|patrol distance|distance|point count|started|ended|simplified track)\b/i.test(
-        originalQuery
-    )
-) {
-    return "staffPatrol";
-}
-    /* Team */
-
-    if (
-        /\b(team|leader|team leader)\b/i.test(originalQuery)
-    ) {
-        return "staffTeam";
-    }
-
-    /* Device */
-
-    if (
-        /\b(source|battery)\b/i.test(originalQuery)
-    ) {
-        return "staffDevice";
-    }
-
-    /* Employee */
-
-    if (
-        /\b(employee|employee id|emp id|emp|id)\b/i.test(originalQuery)
-    ) {
-        return "staffEmployeeId";
-    }
-
-    return "staffProfile";
-
-})();
-
-/*-----------------------------------------
-Try full query first
------------------------------------------*/
-
-let staffProfile =
-    AnalyticsEngine.queryStaff(
-        originalQuery
-    );
-
-/*-----------------------------------------
-Extract only person's name
------------------------------------------*/
-
-if (!staffProfile.length) {
-
-    const cleaned =
-
-        originalQuery
-
-        .replace(
-            /\b(phone|mobile|contact|cell|tel|telephone|number|no|email|mail|beat|range|division|role|designation|post|profile|details|show|tell|about|who|what|which|where|is|of|the|posted|in|employee|emp|id)\b/gi,
-            " "
-        )
-
-        .replace(/\s+/g, " ")
-
-        .trim();
-
-    if (cleaned) {
-
-        staffProfile =
-            AnalyticsEngine.queryStaff(
-                cleaned
-            );
-
-    }
-
-}
-
-if (staffProfile.length) {
-
-    return {
-
-        intent: staffSubIntent,
-
-        type: "staff",
-
-        confidence: 1,
-
-        data: staffProfile
-
-    };
-
-}
 
     /*----------------------------------------------------------
       SEARCH INDEX
@@ -2049,9 +2109,18 @@ AnalyticsEngine.queryStaff = function (query) {
         .filter(Boolean)
         .join(" ")
         .toUpperCase();
+if (
+    String(profile.cleanName || "")
+        .toUpperCase()
+        .includes(query)
+) {
+    return true;
+}const score =
+    words.filter(
+        w => text.includes(w)
+    ).length;
 
-        return words.every(word => text.includes(word));
-
+return score >= Math.min(2, words.length);
     });
 
 };
