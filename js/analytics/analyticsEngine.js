@@ -1203,7 +1203,7 @@ AnalyticsEngine.query = function (query) {
     const q =
         originalQuery.toLowerCase();
 
-    /*----------------------------------------------------------
+      /*----------------------------------------------------------
       PATROL SESSION
     ----------------------------------------------------------*/
 
@@ -1241,59 +1241,91 @@ AnalyticsEngine.query = function (query) {
 
     }
 
-   if (
+    /*----------------------------------------------------------
+      PATROL OF SPECIFIC STAFF
+    ----------------------------------------------------------*/
 
-    /\b(latest|last|today'?s|today)\s+patrol\b/i.test(
+    const patrolByName =
 
-        originalQuery
+        originalQuery.match(
 
-    )
+            /\b(show|latest|last|open|draw)\s+(?:latest\s+|last\s+)?patrol(?:\s+(?:of|for))?\s+(.+)$/i
 
-) {
-
-    return {
-
-        intent: "session",
-
-        type: "patrol",
-
-        confidence: 1,
-
-        data:
-
-            AnalyticsEngine.queryLatestSession()
-
-    };
-
-}
-
-       
-
-const patrolByName =
-    originalQuery.match(
-        /(show|latest|last|open|draw)\s+patrol(?:\s+of)?\s+(.+)/i
-    );
-
-if (patrolByName) {
-
-    const action =
-        patrolByName[1].toLowerCase();
-
-    const staffName =
-        patrolByName[2].trim();
-
-    const staff =
-        AnalyticsEngine.queryStaff(
-            staffName
         );
 
-    if (staff.length) {
+    if (
 
-        if (action === "draw") {
+        patrolByName
+
+    ) {
+
+        const action =
+
+            patrolByName[1]
+                .toLowerCase();
+
+        const staffName =
+
+            patrolByName[2]
+                .trim();
+
+        const staff =
+
+            AnalyticsEngine.queryStaff(
+
+                staffName
+
+            );
+
+        if (
+
+            staff.length
+
+        ) {
+
+            if (
+
+                action === "draw"
+
+            ) {
+
+                return {
+
+                    intent: "drawPatrol",
+
+                    type: "staff",
+
+                    confidence: 1,
+
+                    data: staff
+
+                };
+
+            }
+
+            if (
+
+                action === "open"
+
+            ) {
+
+                return {
+
+                    intent: "openPatrol",
+
+                    type: "staff",
+
+                    confidence: 1,
+
+                    data: staff
+
+                };
+
+            }
 
             return {
 
-                intent: "drawPatrol",
+                intent: "staffPatrol",
 
                 type: "staff",
 
@@ -1305,38 +1337,77 @@ if (patrolByName) {
 
         }
 
+        const session =
+
+            AnalyticsEngine.querySession(
+
+                staffName
+
+            );
+
+        if (
+
+            session
+
+        ) {
+
+            return {
+
+                intent: "session",
+
+                type: "patrol",
+
+                confidence: 1,
+
+                data: session
+
+            };
+
+        }
+
         return {
 
             intent: "staffPatrol",
 
             type: "staff",
 
-            confidence: 1,
+            confidence: 0,
 
-            data: staff
+            data: []
 
         };
 
     }
 
-    const session =
-        AnalyticsEngine.querySession(
-            staffName
-        );
+    /*----------------------------------------------------------
+      GENERIC LATEST PATROL
+    ----------------------------------------------------------*/
 
-    return {
+    if (
 
-        intent: "session",
+        /\b(latest|last|today'?s|today)\s+patrol\b/i.test(
 
-        type: "patrol",
+            originalQuery
 
-        confidence: 1,
+        )
 
-        data: session
+    ) {
 
-    };
+        return {
 
-}
+            intent: "session",
+
+            type: "patrol",
+
+            confidence: 1,
+
+            data:
+
+                AnalyticsEngine.queryLatestSession()
+
+        };
+
+    }
     /*----------------------------------------------------------
       HIGHEST COVERAGE
     ----------------------------------------------------------*/
