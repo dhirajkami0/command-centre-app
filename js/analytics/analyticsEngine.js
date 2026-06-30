@@ -2616,7 +2616,87 @@ AnalyticsEngine.designationAliases = {
     ]
 
 };
+/*----------------------------------------------------------
+JURISDICTION ALIASES
+----------------------------------------------------------*/
 
+AnalyticsEngine.jurisdictionAliases = {
+
+    ranges : {
+
+        "WEST DAMANPUR" : [
+
+            "WEST DAMANPUR",
+
+            "WESTDAMANPUR",
+
+            "WEST DAMANPUR RANGE",
+
+            "WDPO",
+
+            "WDP"
+
+        ],
+
+        "EAST DAMANPUR" : [
+
+            "EAST DAMANPUR",
+
+            "EASTDAMANPUR",
+
+            "EAST DAMANPUR RANGE",
+
+            "EDPO",
+
+            "EDP"
+
+        ]
+
+    },
+
+    divisions : {
+
+        "BTR_W" : [
+
+            "BTR_W",
+
+            "BTR WEST",
+
+            "BTRWEST",
+
+            "WEST DIVISION"
+
+        ],
+
+        "BTR_E" : [
+
+            "BTR_E",
+
+            "BTR EAST",
+
+            "BTREAST",
+
+            "EAST DIVISION"
+
+        ]
+
+    },
+
+    circles : {
+
+        "BTR" : [
+
+            "BTR",
+
+            "BUXA TIGER RESERVE",
+
+            "BUXA"
+
+        ]
+
+    }
+
+};
 /*----------------------------------------------------------
 NORMALIZE DESIGNATION
 ----------------------------------------------------------*/
@@ -2659,7 +2739,47 @@ AnalyticsEngine.normalizeDesignation = function(value){
 
 };
 
+/*----------------------------------------------------------
+MATCH JURISDICTION
+----------------------------------------------------------*/
 
+AnalyticsEngine.matchJurisdiction = function(type, query){
+
+    query =
+        String(query || "")
+        .toUpperCase();
+
+    const groups =
+        AnalyticsEngine.jurisdictionAliases[type] || {};
+
+    for(const actual in groups){
+
+        const aliases =
+            groups[actual];
+
+        if(
+
+            aliases.some(alias =>
+
+                query.includes(
+
+                    alias.toUpperCase()
+
+                )
+
+            )
+
+        ){
+
+            return actual;
+
+        }
+
+    }
+
+    return null;
+
+};
 /*----------------------------------------------------------
 QUERY DESIGNATION
 ----------------------------------------------------------*/
@@ -2902,74 +3022,157 @@ AnalyticsEngine.getDesignationSummary = function(filters){
     };
 
 };
+/*----------------------------------------------------------
+NORMALIZE PLACE NAME
+----------------------------------------------------------*/
 
-    /*----------------------------------------------------------
+AnalyticsEngine.normalizePlaceName = function(value){
+
+    return String(value || "")
+
+        .toUpperCase()
+
+        .replace(/[-_]/g," ")
+
+        .replace(/\b(BEAT|RANGE|DIVISION|CIRCLE)\b/g," ")
+
+        .replace(/\s+/g," ")
+
+        .trim();
+
+};
+
+
+/*----------------------------------------------------------
+PLACE MATCH
+----------------------------------------------------------*/
+
+AnalyticsEngine.placeMatches = function(query, place){
+
+    const q =
+        AnalyticsEngine.normalizePlaceName(query);
+
+    const p =
+        AnalyticsEngine.normalizePlaceName(place);
+
+    if(!p){
+        return false;
+    }
+
+    if(q.includes(p)){
+        return true;
+    }
+
+    const qWords =
+        q.split(" ").filter(Boolean);
+
+    const pWords =
+        p.split(" ").filter(Boolean);
+
+    return pWords.every(
+
+        word =>
+
+            qWords.includes(word)
+
+    );
+
+};
+/*----------------------------------------------------------
 EXTRACT JURISDICTION FILTERS
 ----------------------------------------------------------*/
 
 AnalyticsEngine.extractJurisdictionFilters = function(query){
 
-    query =
+    const upperQuery =
         String(query || "")
         .toUpperCase();
 
     const filters = {};
 
+    /*----------------------------------
+    CIRCLE (Alias)
+    ----------------------------------*/
+
+    const circle =
+
+        AnalyticsEngine.matchJurisdiction(
+
+            "circles",
+
+            upperQuery
+
+        );
+
+    if(circle){
+
+        filters.circle =
+            circle;
+
+    }
+
+    /*----------------------------------
+    DIVISION (Alias)
+    ----------------------------------*/
+
+    const division =
+
+        AnalyticsEngine.matchJurisdiction(
+
+            "divisions",
+
+            upperQuery
+
+        );
+
+    if(division){
+
+        filters.division =
+            division;
+
+    }
+
+    /*----------------------------------
+    RANGE (Alias)
+    ----------------------------------*/
+
+    const range =
+
+        AnalyticsEngine.matchJurisdiction(
+
+            "ranges",
+
+            upperQuery
+
+        );
+
+    if(range){
+
+        filters.range =
+            range;
+
+    }
+
+    /*----------------------------------
+    BEAT + COMPARTMENT
+    ----------------------------------*/
+
     Object.values(
+
         AnalyticsEngine.staffIndex
+
     ).forEach(function(p){
 
         if(
 
-            !filters.circle &&
-            p.circle &&
-            query.includes(
-                String(p.circle).toUpperCase()
-            )
-
-        ){
-
-            filters.circle =
-                p.circle;
-
-        }
-
-        if(
-
-            !filters.division &&
-            p.division &&
-            query.includes(
-                String(p.division).toUpperCase()
-            )
-
-        ){
-
-            filters.division =
-                p.division;
-
-        }
-
-        if(
-
-            !filters.range &&
-            p.range &&
-            query.includes(
-                String(p.range).toUpperCase()
-            )
-
-        ){
-
-            filters.range =
-                p.range;
-
-        }
-
-        if(
-
             !filters.beat &&
-            p.beat &&
-            query.includes(
-                String(p.beat).toUpperCase()
+
+            AnalyticsEngine.placeMatches(
+
+                upperQuery,
+
+                p.beat
+
             )
 
         ){
@@ -2982,9 +3185,13 @@ AnalyticsEngine.extractJurisdictionFilters = function(query){
         if(
 
             !filters.compartment &&
-            p.compartment &&
-            query.includes(
-                String(p.compartment).toUpperCase()
+
+            AnalyticsEngine.placeMatches(
+
+                upperQuery,
+
+                p.compartment
+
             )
 
         ){
@@ -2996,23 +3203,33 @@ AnalyticsEngine.extractJurisdictionFilters = function(query){
 
     });
 
+    /*----------------------------------
+    DUTY
+    ----------------------------------*/
+
     if(
 
-        /\bON DUTY\b/i.test(query)
+        /\bON\s+DUTY\b/i.test(
+            upperQuery
+        )
 
     ){
 
-        filters.dutyActive = true;
+        filters.dutyActive =
+            true;
 
     }
 
     if(
 
-        /\bOFF DUTY\b/i.test(query)
+        /\bOFF\s+DUTY\b/i.test(
+            upperQuery
+        )
 
     ){
 
-        filters.dutyActive = false;
+        filters.dutyActive =
+            false;
 
     }
 
