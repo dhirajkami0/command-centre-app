@@ -1589,28 +1589,28 @@ if (
 
     ) {
 
-        return {
+return {
 
-            intent:
+    intent:
 
-                "roleWiseStrength",
+        "roleWiseStrength",
 
-            type:
+    type:
 
-                "staff",
+        "staff",
 
-            confidence:
+    confidence:
 
-                1,
+        1,
 
-            data:
+    data:
 
-                AnalyticsEngine
-                    .getStaffStrengthSummary(
-                        filters
-                    )
+        AnalyticsEngine
+            .getRoleWiseSummary(
+                filters
+            )
 
-        };
+};
 
     }
 
@@ -1626,28 +1626,28 @@ if (
 
     ) {
 
-        return {
+return {
 
-            intent:
+    intent:
 
-                "designationWiseStrength",
+        "designationWiseStrength",
 
-            type:
+    type:
 
-                "staff",
+        "staff",
 
-            confidence:
+    confidence:
 
-                1,
+        1,
 
-            data:
+    data:
 
-                AnalyticsEngine
-                    .getStaffStrengthSummary(
-                        filters
-                    )
+        AnalyticsEngine
+            .getDesignationWiseSummary(
+                filters
+            )
 
-        };
+};
 
     }
 
