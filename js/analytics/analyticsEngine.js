@@ -1456,7 +1456,90 @@ let staffProfile =
     AnalyticsEngine.queryStaff(
         originalQuery
     );
+    /*----------------------------------------------------------
+DESIGNATION SEARCH
+----------------------------------------------------------*/
 
+const designationQuery =
+
+    originalQuery.toUpperCase();
+
+const designationAliases =
+
+    AnalyticsEngine.designationAliases || {};
+
+let requestedDesignation = null;
+
+/* Find designation */
+
+for (
+
+    const code in designationAliases
+
+) {
+
+    const aliases =
+        designationAliases[code];
+
+    if (
+
+        aliases.some(alias =>
+            designationQuery.includes(alias)
+        )
+
+    ) {
+
+        requestedDesignation = code;
+
+        break;
+
+    }
+
+}
+
+if (
+
+    requestedDesignation &&
+
+    /\b(
+how many|
+count|
+list|
+show|
+show all|
+all|
+every|
+designation.?wise
+)\b/ix.test(
+        originalQuery
+    )
+
+) {
+
+    const filters =
+        AnalyticsEngine.extractJurisdictionFilters(
+            originalQuery
+        );
+
+    filters.designation =
+        requestedDesignation;
+
+    return {
+
+        intent: "designationSummary",
+
+        type: "staff",
+
+        confidence: 1,
+
+        data:
+            AnalyticsEngine.getDesignationSummary(
+                filters
+            )
+
+    };
+
+}
 /*-----------------------------------------
 Extract only person's name
 -----------------------------------------*/
@@ -1515,224 +1598,6 @@ if (staffProfile.length) {
         confidence: 1,
 
         data: staffProfile
-
-    };
-
-}
-
-    /*----------------------------------------------------------
-DESIGNATION SEARCH
-----------------------------------------------------------*/
-
-const designationQuery =
-
-    originalQuery.toUpperCase();
-
-const designationAliases =
-
-    AnalyticsEngine.designationAliases || {};
-
-let requestedDesignation = null;
-
-/* Find designation */
-
-for (
-
-    const code in designationAliases
-
-) {
-
-    const aliases =
-        designationAliases[code];
-
-    if (
-
-        aliases.some(alias =>
-            designationQuery.includes(alias)
-        )
-
-    ) {
-
-        requestedDesignation = code;
-
-        break;
-
-    }
-
-}
-
-if (
-
-    requestedDesignation
-
-) {
-
-    const filters = {
-
-        designation:
-
-            requestedDesignation
-
-    };
-
-    /* Circle */
-
-    Object.values(
-        AnalyticsEngine.staffIndex
-    ).some(function (p) {
-
-        if (
-
-            p.circle &&
-
-            designationQuery.includes(
-                String(p.circle).toUpperCase()
-            )
-
-        ) {
-
-            filters.circle =
-                p.circle;
-
-            return true;
-
-        }
-
-        return false;
-
-    });
-
-    /* Division */
-
-    Object.values(
-        AnalyticsEngine.staffIndex
-    ).some(function (p) {
-
-        if (
-
-            p.division &&
-
-            designationQuery.includes(
-                String(p.division).toUpperCase()
-            )
-
-        ) {
-
-            filters.division =
-                p.division;
-
-            return true;
-
-        }
-
-        return false;
-
-    });
-
-    /* Range */
-
-    Object.values(
-        AnalyticsEngine.staffIndex
-    ).some(function (p) {
-
-        if (
-
-            p.range &&
-
-            designationQuery.includes(
-                String(p.range).toUpperCase()
-            )
-
-        ) {
-
-            filters.range =
-                p.range;
-
-            return true;
-
-        }
-
-        return false;
-
-    });
-
-    /* Beat */
-
-    Object.values(
-        AnalyticsEngine.staffIndex
-    ).some(function (p) {
-
-        if (
-
-            p.beat &&
-
-            designationQuery.includes(
-                String(p.beat).toUpperCase()
-            )
-
-        ) {
-
-            filters.beat =
-                p.beat;
-
-            return true;
-
-        }
-
-        return false;
-
-    });
-
-    /* On Duty */
-
-    if (
-
-        /\bON DUTY\b/i.test(
-            originalQuery
-        )
-
-    ) {
-
-        filters.dutyActive =
-            true;
-
-    }
-
-    /* Off Duty */
-
-    if (
-
-        /\bOFF DUTY\b/i.test(
-            originalQuery
-        )
-
-    ) {
-
-        filters.dutyActive =
-            false;
-
-    }
-
-    return {
-
-        intent:
-
-            "designationSummary",
-
-        type:
-
-            "staff",
-
-        confidence:
-
-            1,
-
-        data:
-
-            AnalyticsEngine
-                .getDesignationSummary(
-                    filters
-                )
 
     };
 
@@ -2698,6 +2563,123 @@ AnalyticsEngine.getDesignationSummary = function(filters){
             rows
 
     };
+
+};
+
+    /*----------------------------------------------------------
+EXTRACT JURISDICTION FILTERS
+----------------------------------------------------------*/
+
+AnalyticsEngine.extractJurisdictionFilters = function(query){
+
+    query =
+        String(query || "")
+        .toUpperCase();
+
+    const filters = {};
+
+    Object.values(
+        AnalyticsEngine.staffIndex
+    ).forEach(function(p){
+
+        if(
+
+            !filters.circle &&
+            p.circle &&
+            query.includes(
+                String(p.circle).toUpperCase()
+            )
+
+        ){
+
+            filters.circle =
+                p.circle;
+
+        }
+
+        if(
+
+            !filters.division &&
+            p.division &&
+            query.includes(
+                String(p.division).toUpperCase()
+            )
+
+        ){
+
+            filters.division =
+                p.division;
+
+        }
+
+        if(
+
+            !filters.range &&
+            p.range &&
+            query.includes(
+                String(p.range).toUpperCase()
+            )
+
+        ){
+
+            filters.range =
+                p.range;
+
+        }
+
+        if(
+
+            !filters.beat &&
+            p.beat &&
+            query.includes(
+                String(p.beat).toUpperCase()
+            )
+
+        ){
+
+            filters.beat =
+                p.beat;
+
+        }
+
+        if(
+
+            !filters.compartment &&
+            p.compartment &&
+            query.includes(
+                String(p.compartment).toUpperCase()
+            )
+
+        ){
+
+            filters.compartment =
+                p.compartment;
+
+        }
+
+    });
+
+    if(
+
+        /\bON DUTY\b/i.test(query)
+
+    ){
+
+        filters.dutyActive = true;
+
+    }
+
+    if(
+
+        /\bOFF DUTY\b/i.test(query)
+
+    ){
+
+        filters.dutyActive = false;
+
+    }
+
+    return filters;
 
 };
 /*----------------------------------------------------------
