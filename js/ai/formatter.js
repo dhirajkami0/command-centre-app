@@ -124,7 +124,9 @@ case "staffrange":
 
 case "staffdivision":
     return formatStaffDivision(result);
+case "staffdesignation":
 
+    return formatStaffDesignation(result);
 case "staffrole":
     return formatStaffRole(result);
 
@@ -297,6 +299,40 @@ function formatPatrolCompartments(r){
             ? compartments.join("\n")
 
             : "No compartment data"
+
+    ].join("\n");
+
+}
+    function formatStaffDesignation(r){
+
+    const p =
+        r.data?.[0];
+
+    if(!p){
+
+        return "❌ Staff not found.";
+
+    }
+
+    return [
+
+        "👤 DESIGNATION",
+
+        "",
+
+        "Name : " +
+        (
+            p.name ||
+            "-"
+        ),
+
+        "",
+
+        "Designation : " +
+        (
+            p.designation ||
+            "-"
+        )
 
     ].join("\n");
 
@@ -1595,10 +1631,13 @@ STAFF ROLE
 
 function formatStaffRole(r){
 
-    const p = r.data?.[0];
+    const p =
+        r.data?.[0];
 
     if(!p){
+
         return "❌ Staff not found.";
+
     }
 
     return [
@@ -1607,11 +1646,19 @@ function formatStaffRole(r){
 
         "",
 
-        p.name,
+        "Name : " +
+        (
+            p.name ||
+            "-"
+        ),
 
         "",
 
-        p.role || p.designation || "-"
+        "Role : " +
+        (
+            p.role ||
+            "-"
+        )
 
     ].join("\n");
 
