@@ -2517,49 +2517,105 @@ LATEST SESSION
 DESIGNATION ALIASES
 ----------------------------------------------------------*/
 
+/*----------------------------------------------------------
+DESIGNATION ALIASES
+----------------------------------------------------------*/
+
 AnalyticsEngine.designationAliases = {
 
     FR : [
+
         "FR",
+
         "FOREST RANGER",
+
         "FOREST RANGERS",
+
         "RANGER"
+
     ],
 
-    BS : [
-        "BS",
-        "BANASAHAYAK",
-        "BANASAHAYK",
-        "BANASAHAYAKS"
+    DR : [
+
+        "DR",
+
+        "DEPUTY RANGER",
+
+        "DEPUTY RANGERS"
+
     ],
 
     FG : [
+
         "FG",
-        "FORESTER",
+
         "FOREST GUARD",
-        "FOREST GUARDS"
+
+        "FOREST GUARDS",
+
+        "GUARD"
+
+    ],
+
+    BS : [
+
+        "BS",
+
+        "BANASHRAMIK",
+
+        "BANA SHRAMIK"
+
+    ],
+
+    BNS : [
+
+        "BNS",
+
+        "BANASAHAYAK",
+
+        "BANA SAHAYAK",
+
+        "BANASAHAYK",
+
+        "BANA SAHAYK"
+
     ],
 
     AS : [
+
         "AS",
-        "ASSISTANT"
+
+        "ARANYA SATHI",
+
+        "ARANYASATHI",
+
+        "ARANYA-SATHI"
+
     ],
 
     FV : [
-        "FV",
-        "FOREST VOLUNTEER"
-    ],
 
-    DL : [
-        "DL"
+        "FV",
+
+        "FOREST VOLUNTEER",
+
+        "FOREST VOLUNTEERS",
+
+        "VOLUNTEER"
+
     ],
 
     DRIVER : [
-        "DRIVER"
+
+        "DRIVER",
+
+        "VEHICLE DRIVER",
+
+        "VEHICLE DRIVERS"
+
     ]
 
 };
-
 
 /*----------------------------------------------------------
 NORMALIZE DESIGNATION
