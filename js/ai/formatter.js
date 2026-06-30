@@ -1035,172 +1035,170 @@ function formatStaffProfile(r){
     SINGLE PROFILE
     --------------------------------------------------*/
 
-    if(
+if (
 
-        rows.length === 1
+    rows.length === 1
 
-    ){
+){
 
-        const p = rows[0];
+    const p = rows[0];
 
-        const live =
-            p.live || {};
+    const analytics =
+        p.analytics || {};
 
-        const analytics =
-            p.analytics || {};
+    const patrol =
+        p.latestPatrol || {};
 
-        const patrol =
-            p.latestPatrol || {};
+    const dutyStatus =
+        p.dutyActive
+            ? "🟢 Active"
+            : "⚪ Inactive";
 
-        return [
+    return [
 
-            "👤 STAFF PROFILE",
+        "👤 STAFF PROFILE",
 
-            "",
+        "",
 
-            "Name : " +
-            (p.name || "-"),
+        "Name : " +
+        (p.name || "-"),
 
-            "Designation : " +
-            (p.designation || "-"),
+        "Designation : " +
+        (p.designation || "-"),
 
-            "Role : " +
-            (p.role || "-"),
+        "Role : " +
+        (p.role || "-"),
 
-            "Division : " +
-            (p.division || "-"),
+        "Division : " +
+        (p.division || "-"),
 
-            "Range : " +
-            (p.range || "-"),
+        "Range : " +
+        (p.range || "-"),
 
-            "Beat : " +
-            (p.beat || "-"),
+        "Beat : " +
+        (p.beat || "-"),
 
-            "Phone : " +
-            (p.phone || "-"),
+        "Phone : " +
+        (p.phone || "-"),
 
-            "Email : " +
-            (p.email || "-"),
+        "Email : " +
+        (p.email || "-"),
 
-            "",
+        "",
 
-            "Duty : " +
+        "Duty : " +
+        dutyStatus,
 
+        "Duty Type : " +
+        (
+            p.dutyType || "-"
+        ),
+
+        "Current Location : " +
+        (
+            p.location ||
             (
-
-                live.dutyActive
-
-                    ? "🟢 Active"
-
-                    : "⚪ Inactive"
-
-            ),
-
-            "Duty Type : " +
-
-            (
-
-                live.dutyType ||
-
-                "-"
-
-            ),
-
-            "Current Location : " +
-
-            (
-
-                live.location ||
-
-                "-"
-
-            ),
-
-            "Battery : " +
-
-            (
-
-                live.battery ||
-
-                "-"
-
-            ),
-
-            "",
-
-            "Today's Patrols : " +
-
-            (
-
-                analytics.patrols ||
-
-                0
-
-            ),
-
-            "Today's Distance : " +
-
-            Number(
-
-                analytics.distanceKm ||
-
-                0
-
-            ).toFixed(2)
-
-            +
-
-            " km",
-
-            "Coverage : " +
-
-            Number(
-
-                analytics.coverage ||
-
-                0
-
-            ).toFixed(2)
-
-            +
-
-            "%",
-
-            "Visits : " +
-
-            (
-
-                analytics.visits ||
-
-                0
-
-            ),
-
-            "",
-
-            "Latest Patrol : " +
-
-            (
-
-                patrol.sessionId ||
-
-                "-"
-
-            ),
-
-            "Assigned Compartments : " +
-
-            (
-
-                p.assignedCompartments?.length ||
-
-                0
-
+                p.lat && p.lon
+                    ? `${p.lat}, ${p.lon}`
+                    : "-"
             )
+        ),
 
-        ].join("\n");
+        "Battery : " +
+        (
+            p.battery ?? "-"
+        ),
 
-    }
+        "Speed : " +
+        Number(
+            p.speed || 0
+        ).toFixed(1)
+        +
+        " km/h",
+
+        "Heading : " +
+        Number(
+            p.heading || 0
+        ).toFixed(0)
+        +
+        "°",
+
+        "Accuracy : " +
+        (
+            p.accuracy ?? "-"
+        ),
+
+        "Status : " +
+        (
+            p.status || "-"
+        ),
+
+        "Source : " +
+        (
+            p.source || "-"
+        ),
+
+        "Session : " +
+        (
+            p.sessionId || "-"
+        ),
+
+        "Leader : " +
+        (
+            p.leader || "-"
+        ),
+
+        "Team : " +
+        (
+            p.team || "-"
+        ),
+
+        "Compartment : " +
+        (
+            p.compartment || "-"
+        ),
+
+        "",
+
+        "Today's Patrols : " +
+        (
+            analytics.patrols || 0
+        ),
+
+        "Today's Distance : " +
+        Number(
+            analytics.distanceKm || 0
+        ).toFixed(2)
+        +
+        " km",
+
+        "Coverage : " +
+        Number(
+            analytics.coverage || 0
+        ).toFixed(2)
+        +
+        "%",
+
+        "Visits : " +
+        (
+            analytics.visits || 0
+        ),
+
+        "",
+
+        "Latest Patrol : " +
+        (
+            patrol.sessionId || "-"
+        ),
+
+        "Assigned Compartments : " +
+        (
+            p.assignedCompartments?.length || 0
+        )
+
+    ].join("\n");
+
+}
 
     /*--------------------------------------------------
     MULTIPLE STAFF
