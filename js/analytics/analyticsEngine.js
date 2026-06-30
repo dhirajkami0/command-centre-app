@@ -1519,6 +1519,226 @@ if (staffProfile.length) {
     };
 
 }
+
+    /*----------------------------------------------------------
+DESIGNATION SEARCH
+----------------------------------------------------------*/
+
+const designationQuery =
+
+    originalQuery.toUpperCase();
+
+const designationAliases =
+
+    AnalyticsEngine.designationAliases || {};
+
+let requestedDesignation = null;
+
+/* Find designation */
+
+for (
+
+    const code in designationAliases
+
+) {
+
+    const aliases =
+        designationAliases[code];
+
+    if (
+
+        aliases.some(alias =>
+            designationQuery.includes(alias)
+        )
+
+    ) {
+
+        requestedDesignation = code;
+
+        break;
+
+    }
+
+}
+
+if (
+
+    requestedDesignation
+
+) {
+
+    const filters = {
+
+        designation:
+
+            requestedDesignation
+
+    };
+
+    /* Circle */
+
+    Object.values(
+        AnalyticsEngine.staffIndex
+    ).some(function (p) {
+
+        if (
+
+            p.circle &&
+
+            designationQuery.includes(
+                String(p.circle).toUpperCase()
+            )
+
+        ) {
+
+            filters.circle =
+                p.circle;
+
+            return true;
+
+        }
+
+        return false;
+
+    });
+
+    /* Division */
+
+    Object.values(
+        AnalyticsEngine.staffIndex
+    ).some(function (p) {
+
+        if (
+
+            p.division &&
+
+            designationQuery.includes(
+                String(p.division).toUpperCase()
+            )
+
+        ) {
+
+            filters.division =
+                p.division;
+
+            return true;
+
+        }
+
+        return false;
+
+    });
+
+    /* Range */
+
+    Object.values(
+        AnalyticsEngine.staffIndex
+    ).some(function (p) {
+
+        if (
+
+            p.range &&
+
+            designationQuery.includes(
+                String(p.range).toUpperCase()
+            )
+
+        ) {
+
+            filters.range =
+                p.range;
+
+            return true;
+
+        }
+
+        return false;
+
+    });
+
+    /* Beat */
+
+    Object.values(
+        AnalyticsEngine.staffIndex
+    ).some(function (p) {
+
+        if (
+
+            p.beat &&
+
+            designationQuery.includes(
+                String(p.beat).toUpperCase()
+            )
+
+        ) {
+
+            filters.beat =
+                p.beat;
+
+            return true;
+
+        }
+
+        return false;
+
+    });
+
+    /* On Duty */
+
+    if (
+
+        /\bON DUTY\b/i.test(
+            originalQuery
+        )
+
+    ) {
+
+        filters.dutyActive =
+            true;
+
+    }
+
+    /* Off Duty */
+
+    if (
+
+        /\bOFF DUTY\b/i.test(
+            originalQuery
+        )
+
+    ) {
+
+        filters.dutyActive =
+            false;
+
+    }
+
+    return {
+
+        intent:
+
+            "designationSummary",
+
+        type:
+
+            "staff",
+
+        confidence:
+
+            1,
+
+        data:
+
+            AnalyticsEngine
+                .getDesignationSummary(
+                    filters
+                )
+
+    };
+
+}
+
+
       /*----------------------------------------------------------
       PATROL SESSION
     ----------------------------------------------------------*/
@@ -2147,7 +2367,339 @@ return score >= Math.min(2, words.length);
 /*----------------------------------------------------------
 LATEST SESSION
 ----------------------------------------------------------*/
+/*----------------------------------------------------------
+DESIGNATION ALIASES
+----------------------------------------------------------*/
 
+AnalyticsEngine.designationAliases = {
+
+    FR : [
+        "FR",
+        "FOREST RANGER",
+        "FOREST RANGERS",
+        "RANGER"
+    ],
+
+    BS : [
+        "BS",
+        "BANASAHAYAK",
+        "BANASAHAYK",
+        "BANASAHAYAKS"
+    ],
+
+    FG : [
+        "FG",
+        "FORESTER",
+        "FOREST GUARD",
+        "FOREST GUARDS"
+    ],
+
+    AS : [
+        "AS",
+        "ASSISTANT"
+    ],
+
+    FV : [
+        "FV",
+        "FOREST VOLUNTEER"
+    ],
+
+    DL : [
+        "DL"
+    ],
+
+    DRIVER : [
+        "DRIVER"
+    ]
+
+};
+
+
+/*----------------------------------------------------------
+NORMALIZE DESIGNATION
+----------------------------------------------------------*/
+
+AnalyticsEngine.normalizeDesignation = function(value){
+
+    value =
+        String(value || "")
+        .toUpperCase()
+        .trim();
+
+    for(
+
+        const code in
+        AnalyticsEngine.designationAliases
+
+    ){
+
+        const aliases =
+            AnalyticsEngine
+            .designationAliases[
+                code
+            ];
+
+        if(
+
+            aliases.includes(
+                value
+            )
+
+        ){
+
+            return code;
+
+        }
+
+    }
+
+    return value;
+
+};
+
+
+/*----------------------------------------------------------
+QUERY DESIGNATION
+----------------------------------------------------------*/
+
+AnalyticsEngine.queryDesignation = function(filters){
+
+    filters =
+        filters || {};
+
+    const designation =
+
+        AnalyticsEngine
+        .normalizeDesignation(
+
+            filters.designation
+
+        );
+
+    return Object
+        .values(
+
+            AnalyticsEngine.staffIndex
+
+        )
+        .filter(function(p){
+
+            if(
+
+                designation &&
+
+                AnalyticsEngine
+                .normalizeDesignation(
+
+                    p.designation
+
+                ) !== designation
+
+            ){
+
+                return false;
+
+            }
+
+            if(
+
+                filters.circle &&
+
+                String(
+                    p.circle || ""
+                ).toUpperCase()
+
+                !==
+
+                String(
+                    filters.circle
+                ).toUpperCase()
+
+            ){
+
+                return false;
+
+            }
+
+            if(
+
+                filters.division &&
+
+                String(
+                    p.division || ""
+                ).toUpperCase()
+
+                !==
+
+                String(
+                    filters.division
+                ).toUpperCase()
+
+            ){
+
+                return false;
+
+            }
+
+            if(
+
+                filters.range &&
+
+                String(
+                    p.range || ""
+                ).toUpperCase()
+
+                !==
+
+                String(
+                    filters.range
+                ).toUpperCase()
+
+            ){
+
+                return false;
+
+            }
+
+            if(
+
+                filters.beat &&
+
+                String(
+                    p.beat || ""
+                ).toUpperCase()
+
+                !==
+
+                String(
+                    filters.beat
+                ).toUpperCase()
+
+            ){
+
+                return false;
+
+            }
+
+            if(
+
+                filters.compartment &&
+
+                String(
+                    p.compartment || ""
+                ).toUpperCase()
+
+                !==
+
+                String(
+                    filters.compartment
+                ).toUpperCase()
+
+            ){
+
+                return false;
+
+            }
+
+            if(
+
+                typeof filters.dutyActive ===
+                "boolean"
+
+            ){
+
+                if(
+
+                    !!p.dutyActive !==
+                    filters.dutyActive
+
+                ){
+
+                    return false;
+
+                }
+
+            }
+
+            if(
+
+                filters.role &&
+
+                String(
+                    p.role || ""
+                ).toUpperCase()
+
+                !==
+
+                String(
+                    filters.role
+                ).toUpperCase()
+
+            ){
+
+                return false;
+
+            }
+
+            return true;
+
+        });
+
+};
+
+
+/*----------------------------------------------------------
+DESIGNATION SUMMARY
+----------------------------------------------------------*/
+
+AnalyticsEngine.getDesignationSummary = function(filters){
+
+    const rows =
+
+        AnalyticsEngine
+        .queryDesignation(
+
+            filters
+
+        );
+
+    const summary = {};
+
+    rows.forEach(function(p){
+
+        const d =
+
+            AnalyticsEngine
+            .normalizeDesignation(
+
+                p.designation
+
+            );
+
+        summary[d] =
+            (
+                summary[d] || 0
+            ) + 1;
+
+    });
+
+    return {
+
+        total :
+
+            rows.length,
+
+        summary :
+
+            summary,
+
+        staff :
+
+            rows
+
+    };
+
+};
 /*----------------------------------------------------------
 LATEST SESSION
 ----------------------------------------------------------*/
