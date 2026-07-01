@@ -141,17 +141,8 @@ Core.init = async function () {
         await Router.init();
 
         /*----------------------------------
-          Analytics Controller
+          Core Ready
         ----------------------------------*/
-
-        if (
-            window.GreenGuardAI.Controller
-        ) {
-
-            await window.GreenGuardAI.Controller
-                .ensureAnalyticsReady();
-
-        }
 
         ready = true;
 
@@ -178,7 +169,6 @@ Core.init = async function () {
     }
 
 };
-
     /*----------------------------------------------------------
       STATUS
     ----------------------------------------------------------*/
