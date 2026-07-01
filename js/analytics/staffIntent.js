@@ -106,16 +106,31 @@ AnalyticsEngine.detectStaffIntent = function (query) {
     STAFF STRENGTH
     ----------------------------------*/
 
-    if (
+/*----------------------------------
+STAFF STRENGTH
+----------------------------------*/
 
-        /\b(HOW MANY|COUNT|TOTAL|STRENGTH|NUMBER OF)\b/.test(text)
+if (
 
-    ) {
+    /\b(
+        HOW MANY|
+        COUNT|
+        TOTAL|
+        STRENGTH|
+        NUMBER OF|
+        TEAM LEADER|
+        TEAM LEADERS|
+        ACTIVE STAFF|
+        INACTIVE STAFF|
+        STAFF STRENGTH|
+        STAFF COUNT
+    )\b/ix.test(text)
 
-        return AnalyticsEngine.STAFF_INTENTS.STAFF_STRENGTH;
+) {
 
-    }
+    return AnalyticsEngine.STAFF_INTENTS.STAFF_STRENGTH;
 
+}
     /*----------------------------------
     STAFF ANALYTICS
     ----------------------------------*/
