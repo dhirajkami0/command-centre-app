@@ -2186,7 +2186,7 @@ if (
     };
 
 }
-    /*----------------------------------------------------------
+/*----------------------------------------------------------
 STAFF DIRECTORY LIST
 ----------------------------------------------------------*/
 
@@ -2196,82 +2196,97 @@ if (/\b(all staff|staff list|list all staff|show all staff)\b/i.test(originalQue
 
     const text = upperQuery;
 
-    /*-------------------------------
+    /*----------------------------------
     Circle
-    -------------------------------*/
+    ----------------------------------*/
 
-    if (/\b(BTR|BUXA|BUXA TIGER RESERVE)\b/.test(text)) {
+    Object.keys(AnalyticsEngine.gisHierarchy.circles || {}).some(function (name) {
 
-        filters.circle = "BTR";
+        if (
+            text.includes(name.toUpperCase()) ||
+            AnalyticsEngine.normalizeGISKey(text)
+                .includes(AnalyticsEngine.normalizeGISKey(name))
+        ) {
+            filters.circle = name;
+            return true;
+        }
 
-    }
+        return false;
 
-    /*-------------------------------
+    });
+
+    /*----------------------------------
     Division
-    -------------------------------*/
+    ----------------------------------*/
 
-    Object.keys(AnalyticsEngine.divisionIndex || {}).some(function(name){
+    Object.keys(AnalyticsEngine.divisionIndex || {}).some(function (name) {
 
-        if (text.includes(name.toUpperCase())) {
-
+        if (
+            text.includes(name.toUpperCase()) ||
+            AnalyticsEngine.normalizeGISKey(text)
+                .includes(AnalyticsEngine.normalizeGISKey(name))
+        ) {
             filters.division = name;
-
             return true;
-
         }
 
         return false;
 
     });
 
-    /*-------------------------------
+    /*----------------------------------
     Range
-    -------------------------------*/
+    ----------------------------------*/
 
-    Object.keys(AnalyticsEngine.rangeIndex || {}).some(function(name){
+    Object.keys(AnalyticsEngine.rangeIndex || {}).some(function (name) {
 
-        if (text.includes(name.toUpperCase())) {
-
+        if (
+            text.includes(name.toUpperCase()) ||
+            AnalyticsEngine.normalizeGISKey(text)
+                .includes(AnalyticsEngine.normalizeGISKey(name))
+        ) {
             filters.range = name;
-
             return true;
-
         }
 
         return false;
 
     });
 
-    /*-------------------------------
+    /*----------------------------------
     Beat
-    -------------------------------*/
+    ----------------------------------*/
 
-    Object.keys(AnalyticsEngine.beatIndex || {}).some(function(name){
+    Object.keys(AnalyticsEngine.beatIndex || {}).some(function (name) {
 
-        if (text.includes(name.toUpperCase())) {
-
+        if (
+            text.includes(name.toUpperCase()) ||
+            AnalyticsEngine.normalizeGISKey(text)
+                .includes(AnalyticsEngine.normalizeGISKey(name))
+        ) {
             filters.beat = name;
-
             return true;
-
         }
 
         return false;
 
     });
 
-    /*-------------------------------
+    /*----------------------------------
     Designation
-    -------------------------------*/
+    ----------------------------------*/
 
     for (const code in AnalyticsEngine.designationAliases) {
 
+        const aliases =
+            AnalyticsEngine.designationAliases[code];
+
         if (
+            aliases.some(function (a) {
 
-            AnalyticsEngine.designationAliases[code]
+                return text.includes(a.toUpperCase());
 
-                .some(a => text.includes(a.toUpperCase()))
-
+            })
         ) {
 
             filters.designation = code;
@@ -2282,17 +2297,46 @@ if (/\b(all staff|staff list|list all staff|show all staff)\b/i.test(originalQue
 
     }
 
-    /*-------------------------------
-    Duty
-    -------------------------------*/
+    /*----------------------------------
+    Role
+    ----------------------------------*/
 
-    if (/\bON\s+DUTY\b/i.test(originalQuery))
+    for (const role in AnalyticsEngine.roleAliases) {
+
+        const aliases =
+            AnalyticsEngine.roleAliases[role];
+
+        if (
+            aliases.some(function (a) {
+
+                return text.includes(a.toUpperCase());
+
+            })
+        ) {
+
+            filters.role = role;
+
+            break;
+
+        }
+
+    }
+
+    /*----------------------------------
+    Duty
+    ----------------------------------*/
+
+    if (/\bON\s+DUTY\b/i.test(originalQuery)) {
 
         filters.dutyActive = true;
 
-    if (/\bOFF\s+DUTY\b/i.test(originalQuery))
+    }
+
+    if (/\bOFF\s+DUTY\b/i.test(originalQuery)) {
 
         filters.dutyActive = false;
+
+    }
 
     return {
 
