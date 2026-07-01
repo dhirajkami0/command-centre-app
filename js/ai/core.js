@@ -663,6 +663,10 @@ if (
 CLOUD AI
 ------------------------------------------*/
 
+/*------------------------------------------
+CLOUD AI
+------------------------------------------*/
+
 let result =
     await window.callAI({
 
@@ -672,15 +676,9 @@ let result =
         intent:
             request.intent,
 
-        context:
-            Config.clone(
-                request.context
-            ),
-
         toolResults: {}
 
     });
-
 if (
 
     result.tool_calls &&
@@ -732,23 +730,18 @@ if (
 
     }
 
-    result =
-        await window.callAI({
+result =
+    await window.callAI({
 
-            query:
-                request.query,
+        query:
+            request.query,
 
-            intent:
-                request.intent,
+        intent:
+            request.intent,
 
-            context:
-                Config.clone(
-                    request.context
-                ),
+        toolResults
 
-            toolResults
-
-        });
+    });
 
 }
 
