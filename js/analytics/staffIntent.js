@@ -176,5 +176,109 @@ if (
     return AnalyticsEngine.STAFF_INTENTS.UNKNOWN;
 
 };
+    /*----------------------------------------------------------
+BUILD STAFF INTENT
+----------------------------------------------------------*/
 
+AnalyticsEngine.buildStaffIntent = function (query) {
+
+    const intent =
+        AnalyticsEngine.detectStaffIntent(query);
+
+    const entities =
+        AnalyticsEngine.extractStaffEntities(query);
+
+    const confidence =
+        AnalyticsEngine.calculateConfidence(
+            intent,
+            entities,
+            query
+        );
+
+    return {
+
+        source: "local",
+
+        domain: "staff",
+
+        intent,
+
+        entities,
+
+        confidence,
+
+        query
+
+    };
+
+};
+/*----------------------------------------------------------
+GET STAFF INTENT
+----------------------------------------------------------*/
+
+/*----------------------------------------------------------
+CALCULATE CONFIDENCE
+----------------------------------------------------------*/
+
+AnalyticsEngine.calculateConfidence = function (
+
+    intent,
+
+    entities,
+
+    query
+
+) {
+
+    let score = 0;
+
+    if (
+
+        intent !==
+
+        AnalyticsEngine.STAFF_INTENTS.UNKNOWN
+
+    ) {
+
+        score += 0.60;
+
+    }
+
+    if (
+
+        entities.staff
+
+    ) {
+
+        score += 0.25;
+
+    }
+
+    if (
+
+        entities.beat ||
+
+        entities.range ||
+
+        entities.division
+
+    ) {
+
+        score += 0.10;
+
+    }
+
+    if (
+
+        query.length > 5
+
+    ) {
+
+        score += 0.05;
+
+    }
+
+    return Math.min(score,1);
+
+};
 })(window);
