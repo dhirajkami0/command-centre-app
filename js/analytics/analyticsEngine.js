@@ -2196,14 +2196,90 @@ if (
 
 ) {
 
-    const filters =
+const filters = {};
 
-        AnalyticsEngine.extractRoleFilters(
+    /*----------------------------------
+Circle
+----------------------------------*/
 
-            originalQuery
+for (const name in (AnalyticsEngine.circleIndex || {})) {
 
-        );
+    if (upperQuery.includes(name.toUpperCase())) {
 
+        filters.circle = name;
+
+        break;
+
+    }
+
+}
+
+/*----------------------------------
+Division
+----------------------------------*/
+
+for (const name in (AnalyticsEngine.divisionIndex || {})) {
+
+    if (upperQuery.includes(name.toUpperCase())) {
+
+        filters.division = name;
+
+        break;
+
+    }
+
+}
+
+/*----------------------------------
+Range
+----------------------------------*/
+
+for (const name in (AnalyticsEngine.rangeIndex || {})) {
+
+    if (upperQuery.includes(name.toUpperCase())) {
+
+        filters.range = name;
+
+        break;
+
+    }
+
+}
+
+/*----------------------------------
+Beat
+----------------------------------*/
+
+for (const name in (AnalyticsEngine.beatIndex || {})) {
+
+    if (upperQuery.includes(name.toUpperCase())) {
+
+        filters.beat = name;
+
+        break;
+
+    }
+
+}
+
+/*----------------------------------
+Designation
+----------------------------------*/
+
+for (const code in (AnalyticsEngine.designationAliases || {})) {
+
+    const aliases =
+        AnalyticsEngine.designationAliases[code];
+
+    if (aliases.some(a => upperQuery.includes(a))) {
+
+        filters.designation = code;
+
+        break;
+
+    }
+
+}
     /*----------------------------------
     Designation
     ----------------------------------*/
@@ -3896,93 +3972,6 @@ EXTRACT JURISDICTION FILTERS
 EXTRACT JURISDICTION FILTERS
 ----------------------------------------------------------*/
 
-AnalyticsEngine.extractJurisdictionFilters = function (query) {
-
-    query =
-        String(query || "")
-        .toUpperCase();
-
-    const filters = {};
-
-    /*----------------------------------
-    Circle
-    ----------------------------------*/
-
-    const circles =
-        AnalyticsEngine.circleIndex || {};
-
-    for (const name in circles) {
-
-        if (query.includes(name.toUpperCase())) {
-
-            filters.circle = name;
-
-            break;
-
-        }
-
-    }
-
-    /*----------------------------------
-    Division
-    ----------------------------------*/
-
-    const divisions =
-        AnalyticsEngine.divisionIndex || {};
-
-    for (const name in divisions) {
-
-        if (query.includes(name.toUpperCase())) {
-
-            filters.division = name;
-
-            break;
-
-        }
-
-    }
-
-    /*----------------------------------
-    Range
-    ----------------------------------*/
-
-    const ranges =
-        AnalyticsEngine.rangeIndex || {};
-
-    for (const name in ranges) {
-
-        if (query.includes(name.toUpperCase())) {
-
-            filters.range = name;
-
-            break;
-
-        }
-
-    }
-
-    /*----------------------------------
-    Beat
-    ----------------------------------*/
-
-    const beats =
-        AnalyticsEngine.beatIndex || {};
-
-    for (const name in beats) {
-
-        if (query.includes(name.toUpperCase())) {
-
-            filters.beat = name;
-
-            break;
-
-        }
-
-    }
-
-    return filters;
-
-};
 /*----------------------------------------------------------
 QUERY STAFF STRENGTH
 ----------------------------------------------------------*/
