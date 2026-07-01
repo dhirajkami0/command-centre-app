@@ -166,16 +166,15 @@ AnalyticsEngine.queryStaffProfile = function (
 
     return {
 
-        success: true,
+    success: true,
 
-        intent:
-            "staffProfile",
+    type: "staff",
 
-        profile:
-            profile
+    intent: "staffProfile",
 
-    };
+    profile: profile
 
+};
 };
 
 /*=========================================================
@@ -221,5 +220,217 @@ console.log(
     "color:#2E8B57;font-weight:bold;"
 
 );
+/*=========================================================
+ PHONE
+=========================================================*/
 
+AnalyticsEngine.getPhone = function (name) {
+
+    const s =
+        AnalyticsEngine.findStaff(name);
+
+    if (!s)
+        return "";
+
+    return (
+
+        s.phone ||
+
+        s.mobile ||
+
+        s.mobileNo ||
+
+        s.phoneNumber ||
+
+        ""
+
+    );
+
+};
+
+/*=========================================================
+ DESIGNATION
+=========================================================*/
+
+AnalyticsEngine.getDesignation = function (name) {
+
+    const s =
+        AnalyticsEngine.findStaff(name);
+
+    if (!s)
+        return "";
+
+    return (
+
+        s.designation ||
+
+        s.post ||
+
+        s.rank ||
+
+        ""
+
+    );
+
+};
+
+/*=========================================================
+ ROLE
+=========================================================*/
+
+AnalyticsEngine.getRole = function (name) {
+
+    const s =
+        AnalyticsEngine.findStaff(name);
+
+    if (!s)
+        return "";
+
+    return (
+
+        s.role ||
+
+        ""
+
+    );
+
+};
+
+/*=========================================================
+ BEAT
+=========================================================*/
+
+AnalyticsEngine.getBeat = function (name) {
+
+    const s =
+        AnalyticsEngine.findStaff(name);
+
+    if (!s)
+        return "";
+
+    return (
+
+        s.beat ||
+
+        ""
+
+    );
+
+};
+
+/*=========================================================
+ RANGE
+=========================================================*/
+
+AnalyticsEngine.getRange = function (name) {
+
+    const s =
+        AnalyticsEngine.findStaff(name);
+
+    if (!s)
+        return "";
+
+    return (
+
+        s.range ||
+
+        ""
+
+    );
+
+};
+
+/*=========================================================
+ DIVISION
+=========================================================*/
+
+AnalyticsEngine.getDivision = function (name) {
+
+    const s =
+        AnalyticsEngine.findStaff(name);
+
+    if (!s)
+        return "";
+
+    return (
+
+        s.division ||
+
+        ""
+
+    );
+
+};
+
+/*=========================================================
+ POSTING
+=========================================================*/
+
+AnalyticsEngine.getPosting = function (name) {
+
+    const s =
+        AnalyticsEngine.findStaff(name);
+
+    if (!s)
+        return "";
+
+    return {
+
+        beat:
+
+            s.beat || "",
+
+        range:
+
+            s.range || "",
+
+        division:
+
+            s.division || ""
+
+    };
+
+};
+
+    /*=========================================================
+ PROFILE SUMMARY
+=========================================================*/
+
+AnalyticsEngine.getProfileSummary = function (name) {
+
+    const s =
+        AnalyticsEngine.findStaff(name);
+
+    if (!s)
+        return null;
+
+    return {
+
+        name:
+            s.name || s.staffName || "",
+
+        designation:
+            s.designation || "",
+
+        role:
+            s.role || "",
+
+        beat:
+            s.beat || "",
+
+        range:
+            s.range || "",
+
+        division:
+            s.division || "",
+
+        phone:
+            s.phone ||
+            s.mobile ||
+            s.mobileNo ||
+            ""
+
+    };
+
+};
 })(window);
