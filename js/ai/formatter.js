@@ -517,7 +517,80 @@ function formatStaffStrengthSummary(result){
 
 }
 
-    
+   /*----------------------------------------------------------
+STAFF DIRECTORY
+----------------------------------------------------------*/
+
+function formatStaffDirectory(result){
+
+    const data = result.data || {};
+
+    const rows = data.rows || [];
+
+    if(!rows.length){
+
+        return "❌ No staff found.";
+
+    }
+
+    const out = [];
+
+    out.push("👥 STAFF DIRECTORY");
+    out.push("");
+
+    rows.forEach(function(s,index){
+
+        out.push(
+
+            (index+1)+". " +
+
+            (s.name || "Unknown")
+
+        );
+
+        out.push(
+
+            "   👤 " +
+
+            (s.designation || "-")
+
+        );
+
+        out.push(
+
+            "   📍 " +
+
+            (s.circle || "-") +
+
+            " → " +
+
+            (s.division || "-") +
+
+            " → " +
+
+            (s.range || "-") +
+
+            " → " +
+
+            (s.beat || "-")
+
+        );
+
+        out.push("");
+
+    });
+
+    out.push(
+
+        "Total Staff : " +
+
+        rows.length
+
+    );
+
+    return out.join("\n");
+
+} 
     /*----------------------------------------------------------
 ROLE WISE STAFF
 ----------------------------------------------------------*/
