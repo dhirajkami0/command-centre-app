@@ -442,7 +442,11 @@
 
         value,
 
-        ttl = Config.CACHE.TTL
+       ttl =
+
+    Config.CACHE.INTENT_TTL ||
+
+    Config.CACHE.TTL;
 
     ) {
 
@@ -986,10 +990,13 @@ Cache.normalizeIntentKey = function (query) {
 
             .replace(/\s+/g, "_")
 
-            .replace(/[^\w]/g, "");
+            .replace(/[^\w]+/g, "_")
+
+            .replace(/^_+|_+$/g, "")
+
+            .replace(/_+/g, "_");
 
 };
-
 /*----------------------------------------------------------
  GET INTENT
 ----------------------------------------------------------*/
@@ -1022,8 +1029,11 @@ Cache.setIntent = async function (
 
     intent,
 
-    ttl = Config.CACHE.TTL
+ttl =
 
+    Config.CACHE.INTENT_TTL ||
+
+    Config.CACHE.TTL;
 ) {
 
     const key =
