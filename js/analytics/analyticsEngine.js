@@ -4233,7 +4233,178 @@ AnalyticsEngine.queryStaffStrength = function(filters){
 
         });
 
-};/*----------------------------------------------------------
+};
+    
+    /*----------------------------------------------------------
+STAFF DIRECTORY
+----------------------------------------------------------*/
+
+AnalyticsEngine.queryStaffDirectory = function (filters = {}) {
+
+    let rows =
+        Object.values(
+            AnalyticsEngine.staffIndex || {}
+        );
+
+    /*----------------------------------
+    Circle
+    ----------------------------------*/
+
+    if (filters.circle) {
+
+        rows = rows.filter(function (s) {
+
+            return String(
+                s.circle || ""
+            ).toUpperCase() ===
+            String(filters.circle).toUpperCase();
+
+        });
+
+    }
+
+    /*----------------------------------
+    Division
+    ----------------------------------*/
+
+    if (filters.division) {
+
+        rows = rows.filter(function (s) {
+
+            return String(
+                s.division || ""
+            ).toUpperCase() ===
+            String(filters.division).toUpperCase();
+
+        });
+
+    }
+
+    /*----------------------------------
+    Range
+    ----------------------------------*/
+
+    if (filters.range) {
+
+        rows = rows.filter(function (s) {
+
+            return String(
+                s.range || ""
+            ).toUpperCase() ===
+            String(filters.range).toUpperCase();
+
+        });
+
+    }
+
+    /*----------------------------------
+    Beat
+    ----------------------------------*/
+
+    if (filters.beat) {
+
+        rows = rows.filter(function (s) {
+
+            return String(
+                s.beat || ""
+            ).toUpperCase() ===
+            String(filters.beat).toUpperCase();
+
+        });
+
+    }
+
+    /*----------------------------------
+    Designation
+    ----------------------------------*/
+
+    if (filters.designation) {
+
+        rows = rows.filter(function (s) {
+
+            return String(
+                s.designationCode ||
+                s.designation ||
+                ""
+            ).toUpperCase() ===
+            String(filters.designation).toUpperCase();
+
+        });
+
+    }
+
+    /*----------------------------------
+    Role
+    ----------------------------------*/
+
+    if (filters.role) {
+
+        rows = rows.filter(function (s) {
+
+            return String(
+                s.role || ""
+            ).toUpperCase() ===
+            String(filters.role).toUpperCase();
+
+        });
+
+    }
+
+    /*----------------------------------
+    Duty
+    ----------------------------------*/
+
+    if (filters.dutyActive === true) {
+
+        rows = rows.filter(function (s) {
+
+            return !!s.dutyActive;
+
+        });
+
+    }
+
+    if (filters.dutyActive === false) {
+
+        rows = rows.filter(function (s) {
+
+            return !s.dutyActive;
+
+        });
+
+    }
+
+    /*----------------------------------
+    Sort
+    ----------------------------------*/
+
+    rows.sort(function (a, b) {
+
+        return String(
+            a.name || ""
+        ).localeCompare(
+            String(
+                b.name || ""
+            )
+        );
+
+    });
+
+    /*----------------------------------
+    Result
+    ----------------------------------*/
+
+    return {
+
+        total: rows.length,
+
+        rows: rows
+
+    };
+
+};
+    
+    /*----------------------------------------------------------
 STAFF STRENGTH SUMMARY
 ----------------------------------------------------------*/
 
