@@ -2260,24 +2260,23 @@ if (
 
     }
 
-    return {
+   return {
 
-        intent: "staffDirectory",
+    intent: "staffDirectory",
 
-        type: "staff",
+    type: "staff",
 
-        confidence: 1,
+    confidence: 1,
 
-        data:
+    data:
 
-            AnalyticsEngine.queryStaffStrength(
+        AnalyticsEngine.queryStaffDirectory(
 
-                filters
+            filters
 
-            )
+        )
 
-    };
-
+};
 }
     /*----------------------------------------------------------
 STAFF STRENGTH KEYWORDS
