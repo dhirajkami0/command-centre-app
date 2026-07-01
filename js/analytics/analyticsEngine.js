@@ -2187,6 +2187,99 @@ if (
 
 }
     /*----------------------------------------------------------
+STAFF DIRECTORY LIST
+----------------------------------------------------------*/
+
+if (
+
+    /\b(all staff|staff list|list all staff|show all staff)\b/i.test(originalQuery)
+
+) {
+
+    const filters =
+
+        AnalyticsEngine.extractRoleFilters(
+
+            originalQuery
+
+        );
+
+    /*----------------------------------
+    Designation
+    ----------------------------------*/
+
+    for (
+
+        const code in AnalyticsEngine.designationAliases
+
+    ) {
+
+        const aliases =
+
+            AnalyticsEngine.designationAliases[code];
+
+        if (
+
+            aliases.some(
+
+                a => upperQuery.includes(a)
+
+            )
+
+        ) {
+
+            filters.designation = code;
+
+            break;
+
+        }
+
+    }
+
+    /*----------------------------------
+    Duty
+    ----------------------------------*/
+
+    if (
+
+        /\bON\s+DUTY\b/i.test(originalQuery)
+
+    ) {
+
+        filters.dutyActive = true;
+
+    }
+
+    if (
+
+        /\bOFF\s+DUTY\b/i.test(originalQuery)
+
+    ) {
+
+        filters.dutyActive = false;
+
+    }
+
+    return {
+
+        intent: "staffDirectory",
+
+        type: "staff",
+
+        confidence: 1,
+
+        data:
+
+            AnalyticsEngine.queryStaffStrength(
+
+                filters
+
+            )
+
+    };
+
+}
+    /*----------------------------------------------------------
 STAFF STRENGTH KEYWORDS
 ----------------------------------------------------------*/
 
