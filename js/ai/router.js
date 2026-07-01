@@ -2102,70 +2102,52 @@ Router.route = async function (query) {
             result.intent
 
         );
+/*--------------------------------------
+LOCAL ANALYTICS ENGINE
+--------------------------------------*/
 
-    /*--------------------------------------
-    LOCAL ANALYTICS ENGINE
-    --------------------------------------*/
+if (window.GreenGuardAI.Controller) {
 
-    if (
+    try {
 
-        window.GreenGuardAI.AnalyticsEngine
+        const local =
 
-    ) {
+            await window.GreenGuardAI.Controller.ask(query);
 
-        try {
+        if (
 
-            if (
+            local &&
+            local.success
 
-                !window.GreenGuardAI.AnalyticsEngine.isLoaded()
+        ) {
 
-            ) {
+            result.local = true;
 
-                await window.GreenGuardAI.AnalyticsEngine.load();
+            result.localResult = local;
 
-            }
+            result.intent =
 
-            const local =
+                local.intent ||
 
-                window.GreenGuardAI.AnalyticsEngine.query(
-
-                    query
-
-                );
-
-            if (
-
-                local
-
-            ) {
-
-                result.local = true;
-
-                result.localResult = local;
-
-                result.intent =
-
-                    local.intent ||
-
-                    result.intent;
-
-            }
-
-        }
-
-        catch (err) {
-
-            console.error(
-
-                "Local Analytics Query",
-
-                err
-
-            );
+                result.intent;
 
         }
 
     }
+
+    catch (err) {
+
+        console.error(
+
+            "Controller",
+
+            err
+
+        );
+
+    }
+
+}
 
     return result;
 
