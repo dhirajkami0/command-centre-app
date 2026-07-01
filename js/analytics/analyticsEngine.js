@@ -717,37 +717,63 @@ AnalyticsEngine.queryInactiveCompartments = function () {
     /*----------------------------------------------------------
     LOAD ANALYTICS DATASET
     ----------------------------------------------------------*/
+/*----------------------------------------------------------
+LOAD ANALYTICS DATASET
+----------------------------------------------------------*/
+
 AnalyticsEngine.load = async function () {
 
-    if (
+    /*----------------------------------
+      Already Loaded
+    ----------------------------------*/
 
-        AnalyticsEngine.loading
+    if (AnalyticsEngine.loaded) {
 
-    ) {
+        return AnalyticsEngine.dataset;
+
+    }
+
+    /*----------------------------------
+      Another Build Running
+    ----------------------------------*/
+
+    if (AnalyticsEngine.loading) {
+
+        while (AnalyticsEngine.loading) {
+
+            await new Promise(resolve =>
+                setTimeout(resolve, 100)
+            );
+
+        }
 
         return AnalyticsEngine.dataset;
 
     }
 
-    if (
-
-        AnalyticsEngine.loaded
-
-    ) {
-
-        return AnalyticsEngine.dataset;
-
-    }
+    /*----------------------------------
+      Start Loading
+    ----------------------------------*/
 
     AnalyticsEngine.loading = true;
 
     try {
+
+        /*----------------------------------
+          Reset Indexes
+        ----------------------------------*/
+
+        AnalyticsEngine.dataset = [];
+
+        AnalyticsEngine.datasetMap = {};
 
         AnalyticsEngine.sessionIndex = {};
 
         AnalyticsEngine.latestSessionIndex = {};
 
         AnalyticsEngine.staffIndex = {};
+
+        AnalyticsEngine.staffSearchIndex = {};
 
         AnalyticsEngine.searchIndex = {};
 
@@ -759,57 +785,88 @@ AnalyticsEngine.load = async function () {
 
         AnalyticsEngine.divisionIndex = {};
 
+        AnalyticsEngine.gisHierarchy = {};
+
+        AnalyticsEngine.gisSearchIndex = {};
+
         console.time(
-
             "AnalyticsEngine.build"
-
         );
 
-        AnalyticsEngine.dataset =
+        /*----------------------------------
+          Build Analytics
+        ----------------------------------*/
 
+        AnalyticsEngine.dataset =
             await AnalyticsEngine.build();
 
         window.analyticsDataset =
-
             AnalyticsEngine.dataset;
+
+        /*----------------------------------
+          Build Complete
+        ----------------------------------*/
 
         AnalyticsEngine.loaded = true;
 
         AnalyticsEngine.lastLoaded =
-
             Date.now();
 
         console.timeEnd(
-
             "AnalyticsEngine.build"
-
         );
 
         console.log(
+            "✅ Analytics Loaded"
+        );
 
+        console.log(
+            "Dataset:",
+            AnalyticsEngine.dataset.length
+        );
+
+        console.log(
             "Sessions:",
-
             Object.keys(
-
                 AnalyticsEngine.sessionIndex
-
             ).length
-
         );
 
         console.log(
-
-            "Latest:",
-
+            "Latest Sessions:",
             Object.keys(
-
                 AnalyticsEngine.latestSessionIndex
-
             ).length
+        );
 
+        console.log(
+            "Staff:",
+            Object.keys(
+                AnalyticsEngine.staffIndex
+            ).length
+        );
+
+        console.log(
+            "GIS:",
+            Object.keys(
+                AnalyticsEngine.gisSearchIndex
+            ).length
         );
 
         return AnalyticsEngine.dataset;
+
+    }
+
+    catch (err) {
+
+        AnalyticsEngine.loaded = false;
+
+        console.error(
+            "❌ AnalyticsEngine.load",
+            err
+        );
+
+        throw err;
 
     }
 
@@ -819,9 +876,7 @@ AnalyticsEngine.load = async function () {
 
     }
 
-};
-
-    AnalyticsEngine.buildMaster = function () {
+};    AnalyticsEngine.buildMaster = function () {
         const dataset = [];
         const datasetMap = {};
         const masterGrid = window.masterGrid || {};
@@ -840,24 +895,58 @@ AnalyticsEngine.load = async function () {
     };
 
     AnalyticsEngine.build = async function () {
-        const { dataset, datasetMap } = AnalyticsEngine.buildMaster();
-        AnalyticsEngine.datasetMap = datasetMap;
 
-        AnalyticsEngine.buildBaseIndexes(dataset);
-AnalyticsEngine.buildGISHierarchy();
-        AnalyticsEngine.buildGISSearchIndex();
-        await AnalyticsEngine.mergeAnalytics(dataset, datasetMap);
-        await AnalyticsEngine.mergeStaffProfiles(dataset, datasetMap);
-        await AnalyticsEngine.mergeLiveStaff(dataset, datasetMap);
-        await AnalyticsEngine.mergeHistory(dataset, datasetMap);
-        await AnalyticsEngine.mergePatrolTracks(dataset, datasetMap);
+    const {
+        dataset,
+        datasetMap
+    } = AnalyticsEngine.buildMaster();
 
-        AnalyticsEngine.buildSearchIndexes();
-        AnalyticsEngine.dataset = dataset;
-        AnalyticsEngine.aggregate();
-        return dataset;
-    };
+    AnalyticsEngine.datasetMap =
+        datasetMap;
 
+    AnalyticsEngine.buildBaseIndexes(
+        dataset
+    );
+
+    AnalyticsEngine.buildGISHierarchy();
+
+    AnalyticsEngine.buildGISSearchIndex();
+
+    await AnalyticsEngine.mergeAnalytics(
+        dataset,
+        datasetMap
+    );
+
+    await AnalyticsEngine.mergeStaffProfiles(
+        dataset,
+        datasetMap
+    );
+
+    await AnalyticsEngine.mergeLiveStaff(
+        dataset,
+        datasetMap
+    );
+
+    await AnalyticsEngine.mergeHistory(
+        dataset,
+        datasetMap
+    );
+
+    await AnalyticsEngine.mergePatrolTracks(
+        dataset,
+        datasetMap
+    );
+
+    AnalyticsEngine.buildSearchIndexes();
+
+    AnalyticsEngine.dataset =
+        dataset;
+
+    AnalyticsEngine.aggregate();
+
+    return dataset;
+
+};
     /*----------------------------------------------------------
     MERGE FUNCTIONS
     ----------------------------------------------------------*/
