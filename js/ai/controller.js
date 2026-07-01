@@ -1,20 +1,48 @@
-GreenGuardAI.Controller = {};
+(function (window) {
 
-GreenGuardAI.Controller.ask = async function(query){
+"use strict";
 
-    await ensureAnalyticsReady();
+window.GreenGuardAI = window.GreenGuardAI || {};
 
-    query = AnalyticsEngine.normalizeQuery(query);
+const Controller = {};
 
-    const intent =
-        AnalyticsEngine.detectIntent(query);
+Controller.ensureAnalyticsReady = async function () {
 
-    const entities =
-        AnalyticsEngine.extractEntities(query);
+    const AE = window.GreenGuardAI.AnalyticsEngine;
 
-    const result =
-        AnalyticsEngine.route(intent,entities);
+    if (AE.loaded) return;
 
-    return Formatter.format(result);
+    if (AE.loading) {
+
+        while (AE.loading) {
+            await new Promise(r => setTimeout(r,100));
+        }
+
+        return;
+
+    }
+
+    await AE.build();
 
 };
+
+Controller.ask = async function (query) {
+
+    await Controller.ensureAnalyticsReady();
+
+    query =
+        window.GreenGuardAI.AnalyticsEngine.normalizeQuery(query);
+
+    const intent =
+        window.GreenGuardAI.AnalyticsEngine.detectStaffIntent(query);
+
+    const result =
+        window.GreenGuardAI.AnalyticsEngine.routeStaffIntent(query);
+
+    return result;
+
+};
+
+window.GreenGuardAI.Controller = Controller;
+
+})(window);
