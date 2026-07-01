@@ -13,8 +13,11 @@ const AnalyticsEngine =
 STAFF ROUTER
 ----------------------------------------------------------*/
 
-AnalyticsEngine.routeStaffIntent =
-function (query) {
+/*----------------------------------------------------------
+STAFF ROUTER
+----------------------------------------------------------*/
+
+AnalyticsEngine.routeStaffIntent = function (query) {
 
     const intent =
         AnalyticsEngine.detectStaffIntent(
@@ -29,7 +32,7 @@ function (query) {
     console.group("👥 STAFF ROUTER");
 
     console.log(
-        "Query :",
+        "Query:",
         query
     );
 
@@ -43,15 +46,15 @@ function (query) {
         filters
     );
 
-    let result = null;
+    let result;
 
     switch (intent) {
 
         /*----------------------------------
-        Staff Directory
+        STAFF DIRECTORY
         ----------------------------------*/
 
-        case "staffDirectory":
+        case AnalyticsEngine.STAFF_INTENTS.STAFF_DIRECTORY:
 
             result =
                 AnalyticsEngine.queryStaffDirectory(
@@ -61,10 +64,10 @@ function (query) {
             break;
 
         /*----------------------------------
-        Staff Profile
+        STAFF PROFILE
         ----------------------------------*/
 
-        case "staffProfile":
+        case AnalyticsEngine.STAFF_INTENTS.STAFF_PROFILE:
 
             result =
                 AnalyticsEngine.queryStaffProfile(
@@ -74,10 +77,10 @@ function (query) {
             break;
 
         /*----------------------------------
-        Staff Strength
+        STAFF STRENGTH
         ----------------------------------*/
 
-        case "staffStrength":
+        case AnalyticsEngine.STAFF_INTENTS.STAFF_STRENGTH:
 
             result =
                 AnalyticsEngine.queryStaffStrength(
@@ -87,72 +90,157 @@ function (query) {
             break;
 
         /*----------------------------------
-        Live Staff
+        LIVE STAFF
         ----------------------------------*/
 
-        case "liveStaff":
+        case AnalyticsEngine.STAFF_INTENTS.LIVE_STAFF:
 
-            result =
-                AnalyticsEngine.queryLiveStaff(
-                    filters
-                );
+            if (AnalyticsEngine.queryLiveStaff) {
+
+                result =
+                    AnalyticsEngine.queryLiveStaff(
+                        filters
+                    );
+
+            } else {
+
+                result = {
+
+                    success: false,
+
+                    intent: "liveStaff",
+
+                    message:
+                        "Live Staff module not installed."
+
+                };
+
+            }
 
             break;
 
         /*----------------------------------
-        Staff Location
+        STAFF LOCATION
         ----------------------------------*/
 
-        case "staffLocation":
+        case AnalyticsEngine.STAFF_INTENTS.STAFF_LOCATION:
 
-            result =
-                AnalyticsEngine.queryStaffLocation(
-                    filters
-                );
+            if (AnalyticsEngine.queryStaffLocation) {
+
+                result =
+                    AnalyticsEngine.queryStaffLocation(
+                        filters
+                    );
+
+            } else {
+
+                result = {
+
+                    success: false,
+
+                    intent: "staffLocation",
+
+                    message:
+                        "Staff Location module not installed."
+
+                };
+
+            }
 
             break;
 
         /*----------------------------------
-        Staff Patrol
+        STAFF PATROL
         ----------------------------------*/
 
-        case "staffPatrol":
+        case AnalyticsEngine.STAFF_INTENTS.STAFF_PATROL:
 
-            result =
-                AnalyticsEngine.queryStaffPatrol(
-                    filters
-                );
+            if (AnalyticsEngine.queryStaffPatrol) {
+
+                result =
+                    AnalyticsEngine.queryStaffPatrol(
+                        filters
+                    );
+
+            } else {
+
+                result = {
+
+                    success: false,
+
+                    intent: "staffPatrol",
+
+                    message:
+                        "Staff Patrol module not installed."
+
+                };
+
+            }
 
             break;
 
         /*----------------------------------
-        Staff Contact
+        STAFF CONTACT
         ----------------------------------*/
 
-        case "staffContact":
+        case AnalyticsEngine.STAFF_INTENTS.STAFF_CONTACT:
 
-            result =
-                AnalyticsEngine.queryStaffContact(
-                    filters
-                );
+            if (AnalyticsEngine.queryStaffContact) {
+
+                result =
+                    AnalyticsEngine.queryStaffContact(
+                        filters
+                    );
+
+            } else {
+
+                result = {
+
+                    success: false,
+
+                    intent: "staffContact",
+
+                    message:
+                        "Staff Contact module not installed."
+
+                };
+
+            }
 
             break;
 
         /*----------------------------------
-        Staff Analytics
+        STAFF ANALYTICS
         ----------------------------------*/
 
-        case "staffAnalytics":
+        case AnalyticsEngine.STAFF_INTENTS.STAFF_ANALYTICS:
 
-            result =
-                AnalyticsEngine.queryStaffAnalytics(
-                    filters
-                );
+            if (AnalyticsEngine.queryStaffAnalytics) {
+
+                result =
+                    AnalyticsEngine.queryStaffAnalytics(
+                        filters
+                    );
+
+            } else {
+
+                result = {
+
+                    success: false,
+
+                    intent: "staffAnalytics",
+
+                    message:
+                        "Staff Analytics module not installed."
+
+                };
+
+            }
 
             break;
 
         /*----------------------------------
-        Unknown
+        UNKNOWN
         ----------------------------------*/
 
         default:
@@ -166,7 +254,7 @@ function (query) {
                 message:
                     "Unknown staff intent.",
 
-                filters: filters
+                filters
 
             };
 
@@ -185,14 +273,12 @@ function (query) {
 
         type: "staff",
 
-        intent: intent,
+        intent,
 
-        filters: filters,
+        filters,
 
         data: result
 
     };
 
 };
-
-})(window);
