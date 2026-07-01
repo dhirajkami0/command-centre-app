@@ -28,53 +28,39 @@ AnalyticsEngine.findStaff = function (name) {
         .trim()
         .toUpperCase();
 
-    if (!name)
-        return null;
-
-    /*----------------------------------
-      Exact cleanName
-    ----------------------------------*/
-
-    if (
-        AnalyticsEngine.staffIndex &&
-        AnalyticsEngine.staffIndex[name]
-    ) {
-
-        return AnalyticsEngine.staffIndex[name];
-
-    }
-
-    /*----------------------------------
-      Partial Search
-    ----------------------------------*/
+    if (!name) return null;
 
     const staff =
-
         Object.values(
             AnalyticsEngine.staffIndex || {}
         );
 
+    console.log("Searching:", name);
+    console.log("Total Staff:", staff.length);
+
+    /*----------------------------------
+      Exact Match
+    ----------------------------------*/
+
     for (const s of staff) {
 
-        const clean =
+        const fields = [
 
-            String(
+            s.cleanName,
+            s.name,
+            s.staffName,
+            s.profileName,
+            s.rawName,
+            s.fullName,
+            s.id
 
-                s.cleanName ||
+        ]
+        .filter(Boolean)
+        .map(v => String(v).toUpperCase());
 
-                s.name ||
+        if (fields.includes(name)) {
 
-                ""
-
-            )
-
-            .toUpperCase();
-
-        if (
-
-            clean.includes(name)
-
-        ) {
+            console.log("✅ Exact Match", s);
 
             return s;
 
@@ -82,10 +68,41 @@ AnalyticsEngine.findStaff = function (name) {
 
     }
 
+    /*----------------------------------
+      Partial Match
+    ----------------------------------*/
+
+    for (const s of staff) {
+
+        const fields = [
+
+            s.cleanName,
+            s.name,
+            s.staffName,
+            s.profileName,
+            s.rawName,
+            s.fullName,
+            s.id
+
+        ]
+        .filter(Boolean)
+        .map(v => String(v).toUpperCase());
+
+        if (fields.some(v => v.includes(name))) {
+
+            console.log("✅ Partial Match", s);
+
+            return s;
+
+        }
+
+    }
+
+    console.log("❌ Staff Not Found");
+
     return null;
 
 };
-
 /*=========================================================
  QUERY STAFF PROFILE
 =========================================================*/
