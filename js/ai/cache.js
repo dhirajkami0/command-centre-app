@@ -966,7 +966,185 @@ Cache.touch = async function(key){
     return true;
 
 };
+/*=========================================================
+ INTENT CACHE API
+=========================================================*/
 
+/*----------------------------------------------------------
+ NORMALIZE INTENT KEY
+----------------------------------------------------------*/
+
+Cache.normalizeIntentKey = function (query) {
+
+    return "GG_INTENT_" +
+
+        String(query || "")
+
+            .trim()
+
+            .toUpperCase()
+
+            .replace(/\s+/g, "_")
+
+            .replace(/[^\w]/g, "");
+
+};
+
+/*----------------------------------------------------------
+ GET INTENT
+----------------------------------------------------------*/
+
+Cache.getIntent = async function (query) {
+
+    const key =
+
+        Cache.normalizeIntentKey(
+
+            query
+
+        );
+
+    return await Cache.get(
+
+        key
+
+    );
+
+};
+
+/*----------------------------------------------------------
+ SET INTENT
+----------------------------------------------------------*/
+
+Cache.setIntent = async function (
+
+    query,
+
+    intent,
+
+    ttl = Config.CACHE.TTL
+
+) {
+
+    const key =
+
+        Cache.normalizeIntentKey(
+
+            query
+
+        );
+
+    return await Cache.set(
+
+        key,
+
+        intent,
+
+        ttl
+
+    );
+
+};
+
+/*----------------------------------------------------------
+ REMOVE INTENT
+----------------------------------------------------------*/
+
+Cache.removeIntent = async function (
+
+    query
+
+) {
+
+    const key =
+
+        Cache.normalizeIntentKey(
+
+            query
+
+        );
+
+    return await Cache.remove(
+
+        key
+
+    );
+
+};
+
+/*----------------------------------------------------------
+ CLEAR INTENT CACHE
+----------------------------------------------------------*/
+
+Cache.clearIntentCache = async function () {
+
+    const keys =
+
+        Cache.keys()
+
+            .filter(
+
+                k =>
+
+                k.startsWith(
+
+                    "GG_INTENT_"
+
+                )
+
+            );
+
+    for (
+
+        const key of keys
+
+    ) {
+
+        await Cache.remove(
+
+            key
+
+        );
+
+    }
+
+    return true;
+
+};
+
+/*----------------------------------------------------------
+ INTENT CACHE STATS
+----------------------------------------------------------*/
+
+Cache.getIntentStats = function () {
+
+    const keys =
+
+        Cache.keys()
+
+            .filter(
+
+                k =>
+
+                k.startsWith(
+
+                    "GG_INTENT_"
+
+                )
+
+            );
+
+    return {
+
+        total:
+
+            keys.length,
+
+        keys
+
+    };
+
+};
     /*----------------------------------------------------------
       READY
     ----------------------------------------------------------*/
