@@ -436,19 +436,15 @@
       SET
     ----------------------------------------------------------*/
 
-    Cache.set = async function (
+   Cache.set = async function (
 
-        key,
+    key,
 
-        value,
+    value,
 
-       ttl =
+    ttl = Config.CACHE.TTL
 
-    Config.CACHE.INTENT_TTL ||
-
-    Config.CACHE.TTL;
-
-    ) {
+) {
 
         try {
 
