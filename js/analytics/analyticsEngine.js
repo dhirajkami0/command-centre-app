@@ -2194,71 +2194,85 @@ if (/\b(all staff|staff list|list all staff|show all staff)\b/i.test(originalQue
 
     const filters = {};
 
-    /*----------------------------------
+    const text = upperQuery;
+
+    /*-------------------------------
     Circle
-    ----------------------------------*/
+    -------------------------------*/
 
-    Object.keys(AnalyticsEngine.gisHierarchy.circles || {}).forEach(function (name) {
+    if (/\b(BTR|BUXA|BUXA TIGER RESERVE)\b/.test(text)) {
 
-        if (upperQuery.includes(name.toUpperCase())) {
+        filters.circle = "BTR";
 
-            filters.circle = name;
+    }
 
-        }
-
-    });
-
-    /*----------------------------------
+    /*-------------------------------
     Division
-    ----------------------------------*/
+    -------------------------------*/
 
-    Object.keys(AnalyticsEngine.gisHierarchy.divisions || {}).forEach(function (name) {
+    Object.keys(AnalyticsEngine.divisionIndex || {}).some(function(name){
 
-        if (upperQuery.includes(name.toUpperCase())) {
+        if (text.includes(name.toUpperCase())) {
 
             filters.division = name;
 
+            return true;
+
         }
+
+        return false;
 
     });
 
-    /*----------------------------------
+    /*-------------------------------
     Range
-    ----------------------------------*/
+    -------------------------------*/
 
-    Object.keys(AnalyticsEngine.gisHierarchy.ranges || {}).forEach(function (name) {
+    Object.keys(AnalyticsEngine.rangeIndex || {}).some(function(name){
 
-        if (upperQuery.includes(name.toUpperCase())) {
+        if (text.includes(name.toUpperCase())) {
 
             filters.range = name;
 
+            return true;
+
         }
+
+        return false;
 
     });
 
-    /*----------------------------------
+    /*-------------------------------
     Beat
-    ----------------------------------*/
+    -------------------------------*/
 
-    Object.keys(AnalyticsEngine.gisHierarchy.beats || {}).forEach(function (name) {
+    Object.keys(AnalyticsEngine.beatIndex || {}).some(function(name){
 
-        if (upperQuery.includes(name.toUpperCase())) {
+        if (text.includes(name.toUpperCase())) {
 
             filters.beat = name;
 
+            return true;
+
         }
+
+        return false;
 
     });
 
-    /*----------------------------------
+    /*-------------------------------
     Designation
-    ----------------------------------*/
+    -------------------------------*/
 
     for (const code in AnalyticsEngine.designationAliases) {
 
-        const aliases = AnalyticsEngine.designationAliases[code];
+        if (
 
-        if (aliases.some(a => upperQuery.includes(a))) {
+            AnalyticsEngine.designationAliases[code]
+
+                .some(a => text.includes(a.toUpperCase()))
+
+        ) {
 
             filters.designation = code;
 
@@ -2268,21 +2282,17 @@ if (/\b(all staff|staff list|list all staff|show all staff)\b/i.test(originalQue
 
     }
 
-    /*----------------------------------
+    /*-------------------------------
     Duty
-    ----------------------------------*/
+    -------------------------------*/
 
-    if (/\bON\s+DUTY\b/i.test(originalQuery)) {
+    if (/\bON\s+DUTY\b/i.test(originalQuery))
 
         filters.dutyActive = true;
 
-    }
-
-    if (/\bOFF\s+DUTY\b/i.test(originalQuery)) {
+    if (/\bOFF\s+DUTY\b/i.test(originalQuery))
 
         filters.dutyActive = false;
-
-    }
 
     return {
 
