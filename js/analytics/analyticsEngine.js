@@ -4118,7 +4118,7 @@ AnalyticsEngine.queryStaffStrength = function(filters){
 
 };
     
-    /*----------------------------------------------------------
+ /*----------------------------------------------------------
 STAFF DIRECTORY
 ----------------------------------------------------------*/
 
@@ -4128,6 +4128,11 @@ AnalyticsEngine.queryStaffDirectory = function (filters = {}) {
         Object.values(
             AnalyticsEngine.staffIndex || {}
         );
+
+    console.log("==================================");
+    console.log("STAFF DIRECTORY");
+    console.log("FILTERS :", filters);
+    console.log("INITIAL :", rows.length);
 
     /*----------------------------------
     Circle
@@ -4139,10 +4144,16 @@ AnalyticsEngine.queryStaffDirectory = function (filters = {}) {
 
             return String(
                 s.circle || ""
-            ).toUpperCase() ===
-            String(filters.circle).toUpperCase();
+            ).trim().toUpperCase() ===
+            String(filters.circle).trim().toUpperCase();
 
         });
+
+        console.log(
+            "After Circle:",
+            filters.circle,
+            rows.length
+        );
 
     }
 
@@ -4156,10 +4167,16 @@ AnalyticsEngine.queryStaffDirectory = function (filters = {}) {
 
             return String(
                 s.division || ""
-            ).toUpperCase() ===
-            String(filters.division).toUpperCase();
+            ).trim().toUpperCase() ===
+            String(filters.division).trim().toUpperCase();
 
         });
+
+        console.log(
+            "After Division:",
+            filters.division,
+            rows.length
+        );
 
     }
 
@@ -4173,10 +4190,16 @@ AnalyticsEngine.queryStaffDirectory = function (filters = {}) {
 
             return String(
                 s.range || ""
-            ).toUpperCase() ===
-            String(filters.range).toUpperCase();
+            ).trim().toUpperCase() ===
+            String(filters.range).trim().toUpperCase();
 
         });
+
+        console.log(
+            "After Range:",
+            filters.range,
+            rows.length
+        );
 
     }
 
@@ -4190,10 +4213,16 @@ AnalyticsEngine.queryStaffDirectory = function (filters = {}) {
 
             return String(
                 s.beat || ""
-            ).toUpperCase() ===
-            String(filters.beat).toUpperCase();
+            ).trim().toUpperCase() ===
+            String(filters.beat).trim().toUpperCase();
 
         });
+
+        console.log(
+            "After Beat:",
+            filters.beat,
+            rows.length
+        );
 
     }
 
@@ -4209,10 +4238,16 @@ AnalyticsEngine.queryStaffDirectory = function (filters = {}) {
                 s.designationCode ||
                 s.designation ||
                 ""
-            ).toUpperCase() ===
-            String(filters.designation).toUpperCase();
+            ).trim().toUpperCase() ===
+            String(filters.designation).trim().toUpperCase();
 
         });
+
+        console.log(
+            "After Designation:",
+            filters.designation,
+            rows.length
+        );
 
     }
 
@@ -4226,10 +4261,16 @@ AnalyticsEngine.queryStaffDirectory = function (filters = {}) {
 
             return String(
                 s.role || ""
-            ).toUpperCase() ===
-            String(filters.role).toUpperCase();
+            ).trim().toUpperCase() ===
+            String(filters.role).trim().toUpperCase();
 
         });
+
+        console.log(
+            "After Role:",
+            filters.role,
+            rows.length
+        );
 
     }
 
@@ -4245,6 +4286,11 @@ AnalyticsEngine.queryStaffDirectory = function (filters = {}) {
 
         });
 
+        console.log(
+            "After Duty ON:",
+            rows.length
+        );
+
     }
 
     if (filters.dutyActive === false) {
@@ -4254,6 +4300,11 @@ AnalyticsEngine.queryStaffDirectory = function (filters = {}) {
             return !s.dutyActive;
 
         });
+
+        console.log(
+            "After Duty OFF:",
+            rows.length
+        );
 
     }
 
@@ -4273,6 +4324,15 @@ AnalyticsEngine.queryStaffDirectory = function (filters = {}) {
 
     });
 
+    console.log(
+        "FINAL:",
+        rows.length
+    );
+
+    console.table(rows);
+
+    console.log("==================================");
+
     /*----------------------------------
     Result
     ----------------------------------*/
@@ -4285,8 +4345,7 @@ AnalyticsEngine.queryStaffDirectory = function (filters = {}) {
 
     };
 
-};
-    
+};    
     /*----------------------------------------------------------
 STAFF STRENGTH SUMMARY
 ----------------------------------------------------------*/
