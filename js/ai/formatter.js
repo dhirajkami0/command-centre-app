@@ -523,10 +523,11 @@ STAFF DIRECTORY
 
 function formatStaffDirectory(result){
 
-    const data = result.data || {};
+const rows = Array.isArray(result.data)
 
-    const rows = data.rows || [];
+    ? result.data
 
+    : [];
     if(!rows.length){
 
         return "❌ No staff found.";
