@@ -146,17 +146,19 @@ AnalyticsEngine.queryStaffProfile = function (
 
     if (!profile) {
 
-        return {
+       return {
 
-            success: false,
+    success: false,
 
-            intent:
-                "staffProfile",
+    type: "staff",
 
-            message:
-                "Staff not found."
+    intent: "staffProfile",
 
-        };
+    data: [],
+
+    message: "Staff not found."
+
+};
 
     }
 
@@ -164,7 +166,7 @@ AnalyticsEngine.queryStaffProfile = function (
       Success
     ----------------------------------*/
 
-    return {
+  return {
 
     success: true,
 
@@ -172,7 +174,11 @@ AnalyticsEngine.queryStaffProfile = function (
 
     intent: "staffProfile",
 
-    profile: profile
+    data: [
+
+        profile
+
+    ]
 
 };
 };
