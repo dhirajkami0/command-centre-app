@@ -560,105 +560,106 @@ Core.callAI = async function (request) {
         }
 
 /*------------------------------------------
-LOCAL ANALYTICS ENGINE
+LOCAL AI CONTROLLER
 ------------------------------------------*/
 
-if (
+try {
 
-    request.route?.local &&
+    const controller =
+        window.GreenGuardAI.Controller;
 
-    request.route?.localResult
+    if (controller) {
 
-) {
+        const localResult =
+            await controller.ask(
+                request.query
+            );
 
-    try {
+        if (
 
-        const formatted =
+            localResult &&
+            localResult.success
 
-            window.GreenGuardAI.Formatter
+        ) {
 
-                ? window.GreenGuardAI.Formatter.format(
+            const formatted =
 
-                    request.route.localResult
+                window.GreenGuardAI.Formatter
 
-                )
+                    ? window.GreenGuardAI.Formatter.format(
 
-                : request.route.localResult;
+                        localResult
 
-        const response = {
+                    )
 
-            success: true,
+                    : localResult;
 
-            timestamp:
+            const response = {
 
-                Date.now(),
+                success: true,
 
-            requestId:
+                timestamp:
+                    Date.now(),
 
-                request.id,
+                requestId:
+                    request.id,
 
-            intent:
+                intent:
 
-                request.route.localResult.intent ||
+                    localResult.intent ||
 
-                request.route.intent,
+                    request.intent,
 
-            answer:
+                answer:
 
-                formatted,
+                    formatted,
 
-            raw:
+                raw:
 
-                request.route.localResult,
+                    localResult,
 
-            cached:
+                cached: false,
 
-                false,
+                local: true
 
-            local:
+            };
 
-                true
+            await Core.setCachedResponse(
 
-        };
-
-        await Core.setCachedResponse(
-
-            request,
-
-            response
-
-        );
-
-        busy = false;
-
-        responseCount++;
-
-        lastResponse =
-
-            Config.clone(
+                request,
 
                 response
 
             );
 
-        return response;
+            busy = false;
 
-    }
+            responseCount++;
 
-    catch (err) {
+            lastResponse =
+                Config.clone(
+                    response
+                );
 
-        console.error(
+            return response;
 
-            "Local Analytics Engine",
-
-            err
-
-        );
+        }
 
     }
 
 }
 
+catch (err) {
+
+    console.error(
+
+        "Controller",
+
+        err
+
+    );
+
+}
 /*------------------------------------------
 CLOUD AI
 ------------------------------------------*/
