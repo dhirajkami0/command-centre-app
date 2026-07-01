@@ -207,30 +207,61 @@ EXTRACT ROLE
 
 AnalyticsEngine.extractRole = function (query) {
 
-    const text =
-        AnalyticsEngine.normalizeQuery(query);
+    query = String(query || "").toLowerCase();
 
-    const aliases =
-        AnalyticsEngine.roleAliases || {};
+    const roles = [
 
-    for (const code in aliases) {
+        {
+            value: "TEAM LEADER",
+            keywords: [
+                "team leader",
+                "team leaders",
+                "tl",
+                "leader",
+                "leaders"
+            ]
+        },
 
-        const list =
-            aliases[code];
+        {
+            value: "ADMIN",
+            keywords: [
+                "admin",
+                "administrator"
+            ]
+        },
 
-        for (let i = 0; i < list.length; i++) {
+        {
+            value: "DFO",
+            keywords: [
+                "dfo"
+            ]
+        },
 
-            if (
+        {
+            value: "ADFO",
+            keywords: [
+                "adfo"
+            ]
+        },
 
-                text.includes(
+        {
+            value: "STAFF",
+            keywords: [
+                "staff",
+                "employee",
+                "employees"
+            ]
+        }
 
-                    String(list[i]).toUpperCase()
+    ];
 
-                )
+    for (const role of roles) {
 
-            ) {
+        for (const keyword of role.keywords) {
 
-                return code;
+            if (query.includes(keyword)) {
+
+                return role.value;
 
             }
 
@@ -241,7 +272,7 @@ AnalyticsEngine.extractRole = function (query) {
     return "";
 
 };
-/*----------------------------------------------------------
+    /*----------------------------------------------------------
 EXTRACT DUTY STATUS
 ----------------------------------------------------------*/
 
