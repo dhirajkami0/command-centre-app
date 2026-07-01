@@ -39,7 +39,7 @@
 
         NAME: "GreenGuard Intelligence",
 
-        VERSION: "1.0.0",
+        VERSION: "2.0.0",
 
         BUILD: "2026.06.27",
 
@@ -84,7 +84,25 @@
         IMAGE: "imageAI"
 
     });
+GG.AI = Object.freeze({
 
+    ENABLED: true,
+
+    PROVIDER: "OpenAI",
+
+    MODEL: "gpt-5.5",
+
+    INTENT_CONFIDENCE: 0.90,
+
+    MAX_RETRIES: 2,
+
+    REQUEST_TIMEOUT: 15000,
+
+    CACHE_INTENTS: true,
+
+    CACHE_RESPONSES: false
+
+});
     /*------------------------------------------------------------
       FIRESTORE COLLECTIONS
     ------------------------------------------------------------*/
@@ -108,27 +126,71 @@
         SPECIES: "species"
 
     });
+GG.INTENT = Object.freeze({
 
+    LOCAL_ENABLED: true,
+
+    AI_FALLBACK: true,
+
+    UNKNOWN_THRESHOLD: 0.60,
+
+    HIGH_CONFIDENCE: 0.90,
+
+    MIN_AI_CONFIDENCE: 0.75
+
+});
+GG.ROUTER = Object.freeze({
+
+    DEFAULT_DOMAIN: "staff",
+
+    ENABLE_AI_ROUTING: true,
+
+    ENABLE_MULTI_INTENT: true
+
+});
+    GG.ANALYTICS = Object.freeze({
+
+    AUTO_LOAD: true,
+
+    AUTO_REFRESH: false,
+
+    REFRESH_INTERVAL: 60000,
+
+    BUILD_ON_STARTUP: true
+
+});
     /*------------------------------------------------------------
       CACHE
     ------------------------------------------------------------*/
 
-    GG.CACHE = Object.freeze({
+GG.CACHE = Object.freeze({
 
-        ENABLED: true,
+    ENABLED: true,
 
-        DATABASE: "GG_AI_CACHE",
+    DATABASE: "GG_AI_CACHE",
 
-        VERSION: 1,
+    VERSION: 1,
 
-        STORE: "responses",
+    STORE: "responses",
 
-        MAX_MEMORY_ITEMS: 100,
+    MAX_MEMORY_ITEMS: 100,
 
-        TTL: 30 * 60 * 1000
+    TTL: 30 * 60 * 1000,
 
-    });
+    /* Intent Cache */
 
+    INTENT_TTL: 24 * 60 * 60 * 1000,
+
+    /* Response Cache */
+
+    RESPONSE_TTL: 30 * 60 * 1000,
+
+    /* Context Cache */
+
+    CONTEXT_TTL: 5 * 60 * 1000
+
+});
+    
     /*------------------------------------------------------------
       CHAT
     ------------------------------------------------------------*/
