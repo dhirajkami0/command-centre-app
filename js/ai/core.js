@@ -115,46 +115,69 @@
       INITIALIZATION
     ----------------------------------------------------------*/
 
-    Core.init = async function () {
+Core.init = async function () {
 
-        if (ready)
-            return true;
+    if (ready)
+        return true;
 
-        try {
+    try {
 
-            await Cache.init();
+        /*----------------------------------
+          Cache
+        ----------------------------------*/
 
-            await Context.init();
+        await Cache.init();
 
-            await Router.init();
+        /*----------------------------------
+          Context
+        ----------------------------------*/
 
-            ready = true;
+        await Context.init();
 
-            Config.log(
-                "Core",
-                "Initialized"
-            );
+        /*----------------------------------
+          Router
+        ----------------------------------*/
 
-            return true;
+        await Router.init();
+
+        /*----------------------------------
+          Analytics Controller
+        ----------------------------------*/
+
+        if (
+            window.GreenGuardAI.Controller
+        ) {
+
+            await window.GreenGuardAI.Controller
+                .ensureAnalyticsReady();
 
         }
 
-        catch (err) {
+        ready = true;
 
-            lastError = err;
+        Config.log(
+            "Core",
+            "Initialized"
+        );
 
-            Config.error(
-                "Core.init",
-                err
-            );
+        return true;
 
-            return false;
+    }
 
-        }
+    catch (err) {
 
-    };
+        lastError = err;
 
+        Config.error(
+            "Core.init",
+            err
+        );
 
+        return false;
+
+    }
+
+};
 
     /*----------------------------------------------------------
       STATUS
