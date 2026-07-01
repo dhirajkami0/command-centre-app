@@ -2190,119 +2190,75 @@ if (
 STAFF DIRECTORY LIST
 ----------------------------------------------------------*/
 
-if (
+if (/\b(all staff|staff list|list all staff|show all staff)\b/i.test(originalQuery)) {
 
-    /\b(all staff|staff list|list all staff|show all staff)\b/i.test(originalQuery)
-
-) {
-
-const filters = {};
+    const filters = {};
 
     /*----------------------------------
-Circle
-----------------------------------*/
+    Circle
+    ----------------------------------*/
 
-for (const name in (AnalyticsEngine.circleIndex || {})) {
+    Object.keys(AnalyticsEngine.gisHierarchy.circles || {}).forEach(function (name) {
 
-    if (upperQuery.includes(name.toUpperCase())) {
+        if (upperQuery.includes(name.toUpperCase())) {
 
-        filters.circle = name;
+            filters.circle = name;
 
-        break;
+        }
 
-    }
+    });
 
-}
+    /*----------------------------------
+    Division
+    ----------------------------------*/
 
-/*----------------------------------
-Division
-----------------------------------*/
+    Object.keys(AnalyticsEngine.gisHierarchy.divisions || {}).forEach(function (name) {
 
-for (const name in (AnalyticsEngine.divisionIndex || {})) {
+        if (upperQuery.includes(name.toUpperCase())) {
 
-    if (upperQuery.includes(name.toUpperCase())) {
+            filters.division = name;
 
-        filters.division = name;
+        }
 
-        break;
+    });
 
-    }
+    /*----------------------------------
+    Range
+    ----------------------------------*/
 
-}
+    Object.keys(AnalyticsEngine.gisHierarchy.ranges || {}).forEach(function (name) {
 
-/*----------------------------------
-Range
-----------------------------------*/
+        if (upperQuery.includes(name.toUpperCase())) {
 
-for (const name in (AnalyticsEngine.rangeIndex || {})) {
+            filters.range = name;
 
-    if (upperQuery.includes(name.toUpperCase())) {
+        }
 
-        filters.range = name;
+    });
 
-        break;
+    /*----------------------------------
+    Beat
+    ----------------------------------*/
 
-    }
+    Object.keys(AnalyticsEngine.gisHierarchy.beats || {}).forEach(function (name) {
 
-}
+        if (upperQuery.includes(name.toUpperCase())) {
 
-/*----------------------------------
-Beat
-----------------------------------*/
+            filters.beat = name;
 
-for (const name in (AnalyticsEngine.beatIndex || {})) {
+        }
 
-    if (upperQuery.includes(name.toUpperCase())) {
+    });
 
-        filters.beat = name;
-
-        break;
-
-    }
-
-}
-
-/*----------------------------------
-Designation
-----------------------------------*/
-
-for (const code in (AnalyticsEngine.designationAliases || {})) {
-
-    const aliases =
-        AnalyticsEngine.designationAliases[code];
-
-    if (aliases.some(a => upperQuery.includes(a))) {
-
-        filters.designation = code;
-
-        break;
-
-    }
-
-}
     /*----------------------------------
     Designation
     ----------------------------------*/
 
-    for (
+    for (const code in AnalyticsEngine.designationAliases) {
 
-        const code in AnalyticsEngine.designationAliases
+        const aliases = AnalyticsEngine.designationAliases[code];
 
-    ) {
-
-        const aliases =
-
-            AnalyticsEngine.designationAliases[code];
-
-        if (
-
-            aliases.some(
-
-                a => upperQuery.includes(a)
-
-            )
-
-        ) {
+        if (aliases.some(a => upperQuery.includes(a))) {
 
             filters.designation = code;
 
@@ -2316,43 +2272,30 @@ for (const code in (AnalyticsEngine.designationAliases || {})) {
     Duty
     ----------------------------------*/
 
-    if (
-
-        /\bON\s+DUTY\b/i.test(originalQuery)
-
-    ) {
+    if (/\bON\s+DUTY\b/i.test(originalQuery)) {
 
         filters.dutyActive = true;
 
     }
 
-    if (
-
-        /\bOFF\s+DUTY\b/i.test(originalQuery)
-
-    ) {
+    if (/\bOFF\s+DUTY\b/i.test(originalQuery)) {
 
         filters.dutyActive = false;
 
     }
 
-   return {
+    return {
 
-    intent: "staffDirectory",
+        intent: "staffDirectory",
 
-    type: "staff",
+        type: "staff",
 
-    confidence: 1,
+        confidence: 1,
 
-    data:
+        data: AnalyticsEngine.queryStaffDirectory(filters)
 
-        AnalyticsEngine.queryStaffDirectory(
+    };
 
-            filters
-
-        )
-
-};
 }
     /*----------------------------------------------------------
 STAFF STRENGTH KEYWORDS
@@ -2370,14 +2313,9 @@ const summaryIntent =
 
     );
 
-const listingIntent =
-
-    listIntent.test(
-
-        originalQuery
-
-    );
-/*----------------------------------------------------------
+const listingIntent = false;
+    
+    /*----------------------------------------------------------
 STAFF STRENGTH SEARCH
 ----------------------------------------------------------*/
 
