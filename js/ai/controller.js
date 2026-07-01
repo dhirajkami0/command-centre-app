@@ -104,7 +104,7 @@ Controller.ensureAnalyticsReady = async function () {
 
     await Controller.waitForFirebase();
 
-    await AE.build();
+    await AE.load();
 
     return AE.loaded;
 
