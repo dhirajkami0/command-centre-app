@@ -1795,6 +1795,46 @@ AnalyticsEngine.query = function (query) {
 
     const q =
         originalQuery.toLowerCase();
+    /*----------------------------------------------------------
+NEW STAFF ROUTER
+----------------------------------------------------------*/
+
+const staffIntent =
+    AnalyticsEngine.detectStaffIntent(
+        originalQuery
+    );
+
+if (staffIntent !== "unknown") {
+
+    const result =
+        AnalyticsEngine.routeStaffIntent(
+            originalQuery
+        );
+
+    if (
+        result &&
+        result.success
+    ) {
+
+        return {
+
+            intent:
+                result.intent,
+
+            type:
+                "staff",
+
+            confidence:
+                1,
+
+            data:
+                result.data
+
+        };
+
+    }
+
+}
 /*----------------------------------------------------------
 DESIGNATION DETECTION
 ----------------------------------------------------------*/
