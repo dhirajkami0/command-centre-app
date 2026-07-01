@@ -4175,6 +4175,26 @@ AnalyticsEngine.queryStaffStrength = function(filters){
  /*----------------------------------------------------------
 STAFF DIRECTORY
 ----------------------------------------------------------*/
+/*----------------------------------------------------------
+STAFF DIRECTORY
+Purpose:
+Return a filtered list of staff.
+
+Supported Filters
+
+{
+    circle,
+    division,
+    range,
+    beat,
+    designation,
+    role,
+    dutyActive,
+    dutyType,
+    leader,
+    team
+}
+----------------------------------------------------------*/
 
 AnalyticsEngine.queryStaffDirectory = function (filters = {}) {
 
@@ -4183,31 +4203,27 @@ AnalyticsEngine.queryStaffDirectory = function (filters = {}) {
             AnalyticsEngine.staffIndex || {}
         );
 
-    console.log("==================================");
-    console.log("STAFF DIRECTORY");
-    console.log("FILTERS :", filters);
-    console.log("INITIAL :", rows.length);
-
     /*----------------------------------
     Circle
     ----------------------------------*/
 
     if (filters.circle) {
 
-        rows = rows.filter(function (s) {
+        const value =
+            String(filters.circle)
+            .trim()
+            .toUpperCase();
 
-            return String(
-                s.circle || ""
-            ).trim().toUpperCase() ===
-            String(filters.circle).trim().toUpperCase();
+        rows =
+            rows.filter(function (s) {
 
-        });
+                return String(
+                    s.circle || ""
+                )
+                .trim()
+                .toUpperCase() === value;
 
-        console.log(
-            "After Circle:",
-            filters.circle,
-            rows.length
-        );
+            });
 
     }
 
@@ -4217,20 +4233,21 @@ AnalyticsEngine.queryStaffDirectory = function (filters = {}) {
 
     if (filters.division) {
 
-        rows = rows.filter(function (s) {
+        const value =
+            String(filters.division)
+            .trim()
+            .toUpperCase();
 
-            return String(
-                s.division || ""
-            ).trim().toUpperCase() ===
-            String(filters.division).trim().toUpperCase();
+        rows =
+            rows.filter(function (s) {
 
-        });
+                return String(
+                    s.division || ""
+                )
+                .trim()
+                .toUpperCase() === value;
 
-        console.log(
-            "After Division:",
-            filters.division,
-            rows.length
-        );
+            });
 
     }
 
@@ -4240,20 +4257,21 @@ AnalyticsEngine.queryStaffDirectory = function (filters = {}) {
 
     if (filters.range) {
 
-        rows = rows.filter(function (s) {
+        const value =
+            String(filters.range)
+            .trim()
+            .toUpperCase();
 
-            return String(
-                s.range || ""
-            ).trim().toUpperCase() ===
-            String(filters.range).trim().toUpperCase();
+        rows =
+            rows.filter(function (s) {
 
-        });
+                return String(
+                    s.range || ""
+                )
+                .trim()
+                .toUpperCase() === value;
 
-        console.log(
-            "After Range:",
-            filters.range,
-            rows.length
-        );
+            });
 
     }
 
@@ -4263,20 +4281,21 @@ AnalyticsEngine.queryStaffDirectory = function (filters = {}) {
 
     if (filters.beat) {
 
-        rows = rows.filter(function (s) {
+        const value =
+            String(filters.beat)
+            .trim()
+            .toUpperCase();
 
-            return String(
-                s.beat || ""
-            ).trim().toUpperCase() ===
-            String(filters.beat).trim().toUpperCase();
+        rows =
+            rows.filter(function (s) {
 
-        });
+                return String(
+                    s.beat || ""
+                )
+                .trim()
+                .toUpperCase() === value;
 
-        console.log(
-            "After Beat:",
-            filters.beat,
-            rows.length
-        );
+            });
 
     }
 
@@ -4286,22 +4305,26 @@ AnalyticsEngine.queryStaffDirectory = function (filters = {}) {
 
     if (filters.designation) {
 
-        rows = rows.filter(function (s) {
+        const value =
+            AnalyticsEngine.normalizeDesignation(
+                filters.designation
+            );
 
-            return String(
-                s.designationCode ||
-                s.designation ||
-                ""
-            ).trim().toUpperCase() ===
-            String(filters.designation).trim().toUpperCase();
+        rows =
+            rows.filter(function (s) {
 
-        });
+                return AnalyticsEngine
+                    .normalizeDesignation(
 
-        console.log(
-            "After Designation:",
-            filters.designation,
-            rows.length
-        );
+                        s.designation ||
+
+                        s.designationCode ||
+
+                        ""
+
+                    ) === value;
+
+            });
 
     }
 
@@ -4311,54 +4334,121 @@ AnalyticsEngine.queryStaffDirectory = function (filters = {}) {
 
     if (filters.role) {
 
-        rows = rows.filter(function (s) {
+        const value =
+            AnalyticsEngine.normalizeRole(
+                filters.role
+            );
 
-            return String(
-                s.role || ""
-            ).trim().toUpperCase() ===
-            String(filters.role).trim().toUpperCase();
+        rows =
+            rows.filter(function (s) {
 
-        });
+                return AnalyticsEngine
+                    .normalizeRole(
 
-        console.log(
-            "After Role:",
-            filters.role,
-            rows.length
-        );
+                        s.role || ""
+
+                    ) === value;
+
+            });
 
     }
 
     /*----------------------------------
-    Duty
+    Duty Active
     ----------------------------------*/
 
     if (filters.dutyActive === true) {
 
-        rows = rows.filter(function (s) {
+        rows =
+            rows.filter(function (s) {
 
-            return !!s.dutyActive;
+                return !!s.dutyActive;
 
-        });
-
-        console.log(
-            "After Duty ON:",
-            rows.length
-        );
+            });
 
     }
 
     if (filters.dutyActive === false) {
 
-        rows = rows.filter(function (s) {
+        rows =
+            rows.filter(function (s) {
 
-            return !s.dutyActive;
+                return !s.dutyActive;
 
-        });
+            });
 
-        console.log(
-            "After Duty OFF:",
-            rows.length
-        );
+    }
+
+    /*----------------------------------
+    Duty Type
+    ----------------------------------*/
+
+    if (filters.dutyType) {
+
+        const value =
+            String(filters.dutyType)
+            .trim()
+            .toUpperCase();
+
+        rows =
+            rows.filter(function (s) {
+
+                return String(
+                    s.dutyType || ""
+                )
+                .trim()
+                .toUpperCase() === value;
+
+            });
+
+    }
+
+    /*----------------------------------
+    Team Leader
+    ----------------------------------*/
+
+    if (filters.leader) {
+
+        const value =
+            String(filters.leader)
+            .trim()
+            .toUpperCase();
+
+        rows =
+            rows.filter(function (s) {
+
+                return String(
+                    s.leader || ""
+                )
+                .trim()
+                .toUpperCase() === value;
+
+            });
+
+    }
+
+    /*----------------------------------
+    Team
+    ----------------------------------*/
+
+    if (filters.team) {
+
+        const value =
+            String(filters.team)
+            .trim()
+            .toUpperCase();
+
+        rows =
+            rows.filter(function (s) {
+
+                return String(
+                    s.team || ""
+                )
+                .trim()
+                .toUpperCase()
+                .includes(value);
+
+            });
 
     }
 
@@ -4371,21 +4461,14 @@ AnalyticsEngine.queryStaffDirectory = function (filters = {}) {
         return String(
             a.name || ""
         ).localeCompare(
+
             String(
                 b.name || ""
             )
+
         );
 
     });
-
-    console.log(
-        "FINAL:",
-        rows.length
-    );
-
-    console.table(rows);
-
-    console.log("==================================");
 
     /*----------------------------------
     Result
@@ -4393,14 +4476,17 @@ AnalyticsEngine.queryStaffDirectory = function (filters = {}) {
 
     return {
 
+        success: true,
+
         total: rows.length,
 
-        rows: rows
+        rows: rows,
+
+        filters: filters
 
     };
 
-};    
-    /*----------------------------------------------------------
+};    /*----------------------------------------------------------
 STAFF STRENGTH SUMMARY
 ----------------------------------------------------------*/
 
