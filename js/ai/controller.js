@@ -128,19 +128,97 @@ Controller.normalizeQuery = function (query) {
 
 Controller.buildIntent = function (query) {
 
-    const intent = window.GreenGuardAI
-        .AnalyticsEngine
-        .buildStaffIntent(
-            query
-        );
+    const intent =
+
+        window.GreenGuardAI
+            .AnalyticsEngine
+            .buildStaffIntent(
+
+                query
+
+            );
 
     intent.domain =
+
+        intent.domain ||
+
         window.GreenGuardAI
             .Config
             .ROUTER
             .DEFAULT_DOMAIN;
 
     return intent;
+
+};
+
+/*=========================================================
+ GET CACHED INTENT
+=========================================================*/
+
+Controller.getCachedIntent = async function (
+
+    query
+
+) {
+
+    const Cache =
+        window.GreenGuardAI.Cache;
+
+    if (
+
+        !Cache ||
+
+        typeof Cache.getIntent !== "function"
+
+    ) {
+
+        return null;
+
+    }
+
+    return await Cache.getIntent(
+
+        query
+
+    );
+
+};
+
+/*=========================================================
+ SET CACHED INTENT
+=========================================================*/
+
+Controller.setCachedIntent = async function (
+
+    query,
+
+    intent
+
+) {
+
+    const Cache =
+        window.GreenGuardAI.Cache;
+
+    if (
+
+        !Cache ||
+
+        typeof Cache.setIntent !== "function"
+
+    ) {
+
+        return;
+
+    }
+
+    await Cache.setIntent(
+
+        query,
+
+        intent
+
+    );
+
 };
 
 /*=========================================================
@@ -153,9 +231,6 @@ Controller.ask = async function (query) {
 
     const AE =
         window.GreenGuardAI.AnalyticsEngine;
-
-    const Cache =
-        window.GreenGuardAI.Cache;
 
     const Config =
         window.GreenGuardAI.Config;
@@ -180,24 +255,13 @@ Controller.ask = async function (query) {
       Intent Cache
     ------------------------------------------*/
 
-    let intent = null;
+    let intent =
 
-    if (
+        await Controller.getCachedIntent(
 
-        Cache &&
-        Cache.getIntent
+            query
 
-    ) {
-
-        intent =
-
-            await Cache.getIntent(
-
-                query
-
-            );
-
-    }
+        );
 
     if (intent) {
 
@@ -257,22 +321,13 @@ Controller.ask = async function (query) {
 
         );
 
-        if (
+        await Controller.setCachedIntent(
 
-            Cache &&
-            Cache.setIntent
+            query,
 
-        ) {
+            intent
 
-            await Cache.setIntent(
-
-                query,
-
-                intent
-
-            );
-
-        }
+        );
 
         console.groupEnd();
 
@@ -386,15 +441,11 @@ Controller.ask = async function (query) {
 
     if (
 
-        intent.success !== false &&
-
-        Cache &&
-
-        Cache.setIntent
+        intent.success !== false
 
     ) {
 
-        await Cache.setIntent(
+        await Controller.setCachedIntent(
 
             query,
 
