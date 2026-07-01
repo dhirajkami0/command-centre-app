@@ -123,42 +123,26 @@ Controller.normalizeQuery = function (query) {
 
 
 /*=========================================================
- GET LOCAL INTENT
+ BUILD INTENT
 =========================================================*/
 
-Controller.getLocalIntent = function (query) {
+Controller.buildIntent = function (query) {
 
-    const AE =
-        window.GreenGuardAI.AnalyticsEngine;
+    const intent = window.GreenGuardAI
+        .AnalyticsEngine
+        .buildStaffIntent(
+            query
+        );
 
-    const intent =
-        AE.detectStaffIntent(query);
+    intent.domain =
+        window.GreenGuardAI
+            .Config
+            .ROUTER
+            .DEFAULT_DOMAIN;
 
-    const entities =
-        AE.extractStaffEntities(query);
-
-    const confidence =
-        AE.calculateConfidence
-            ? AE.calculateConfidence(
-                intent,
-                entities,
-                query
-            )
-            : 0.50;
-
-    return {
-
-        source: "local",
-
-        intent,
-
-        entities,
-
-        confidence
-
-    };
-
+    return intent;
 };
+
 /*=========================================================
  ASK
 =========================================================*/
@@ -172,6 +156,9 @@ Controller.ask = async function (query) {
 
     const Cache =
         window.GreenGuardAI.Cache;
+
+    const Config =
+        window.GreenGuardAI.Config;
 
     /*------------------------------------------
       Normalize Query
@@ -222,19 +209,9 @@ Controller.ask = async function (query) {
 
         console.groupEnd();
 
-        /*
-            Temporary
-
-            Router still works
-            using query.
-
-            We will change
-            this later.
-        */
-
         return AE.routeStaffIntent(
 
-            query
+            intent
 
         );
 
@@ -246,7 +223,7 @@ Controller.ask = async function (query) {
 
     intent =
 
-        Controller.getLocalIntent(
+        Controller.buildIntent(
 
             query
 
@@ -266,7 +243,11 @@ Controller.ask = async function (query) {
 
     if (
 
-        intent.confidence >= 0.90
+        intent.confidence >=
+
+        Config
+            .INTENT
+            .HIGH_CONFIDENCE
 
     ) {
 
@@ -297,7 +278,7 @@ Controller.ask = async function (query) {
 
         return AE.routeStaffIntent(
 
-            query
+            intent
 
         );
 
@@ -313,19 +294,83 @@ Controller.ask = async function (query) {
 
     );
 
-    intent =
+    if (
 
-        await window.callAI({
+        !window.GreenGuardAI.AI ||
 
-            action:
+        typeof window.GreenGuardAI.AI.detectIntent !== "function"
 
-                "intent",
+    ) {
 
-            question:
+        console.warn(
+
+            "AI Provider unavailable."
+
+        );
+
+        intent =
+
+            Controller.buildIntent(
 
                 query
 
-        });
+            );
+
+    }
+    else {
+
+        intent =
+
+            await window.GreenGuardAI
+                .AI
+                .detectIntent(
+
+                    query
+
+                );
+
+    }
+
+    /*------------------------------------------
+      Validate AI Response
+    ------------------------------------------*/
+
+    if (
+
+        !intent ||
+
+        typeof intent !== "object" ||
+
+        !intent.intent ||
+
+        intent.confidence <
+
+            Config
+                .INTENT
+                .MIN_AI_CONFIDENCE
+
+    ) {
+
+        intent =
+
+            Controller.buildIntent(
+
+                query
+
+            );
+
+    }
+
+    /*------------------------------------------
+      Normalize AI Response
+    ------------------------------------------*/
+
+    intent.source =
+        intent.source || "ai";
+
+    intent.domain =
+        intent.domain ||
+        Config.ROUTER.DEFAULT_DOMAIN;
 
     console.log(
 
@@ -335,9 +380,16 @@ Controller.ask = async function (query) {
 
     );
 
+    /*------------------------------------------
+      Cache Intent
+    ------------------------------------------*/
+
     if (
 
+        intent.success !== false &&
+
         Cache &&
+
         Cache.setIntent
 
     ) {
@@ -356,45 +408,12 @@ Controller.ask = async function (query) {
 
     return AE.routeStaffIntent(
 
-        query
+        intent
 
     );
 
 };
-    /*----------------------------------
-      AI Intent
-    ----------------------------------*/
 
-    console.log(
-        "🟡 Calling AI..."
-    );
-
-    const ai =
-
-        await window.callAI({
-
-            action: "intent",
-
-            question: query
-
-        });
-
-    window.GreenGuardAI.Cache
-        ?.setIntent?.(
-            query,
-            ai
-        );
-
-    console.log(
-        "AI Intent:",
-        ai
-    );
-
-    return window.GreenGuardAI
-        .AnalyticsEngine
-        .routeStaffIntent(query);
-
-};
 /*=========================================================
  REGISTER
 =========================================================*/
