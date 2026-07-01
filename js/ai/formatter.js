@@ -136,8 +136,8 @@ case "staffstrength":
     return formatStaffStrengthSummary(result);
 case "staffdirectory":
 
-    return formatStaffStrengthSummary(result);
-     case "rolewisestrength":
+    return formatStaffDirectory(result);
+          case "rolewisestrength":
 
     return formatRoleWiseStrength(result);
 
