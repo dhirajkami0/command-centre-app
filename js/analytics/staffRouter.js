@@ -9,276 +9,253 @@ const AnalyticsEngine =
     window.GreenGuardAI.AnalyticsEngine =
     window.GreenGuardAI.AnalyticsEngine || {};
 
-/*----------------------------------------------------------
-STAFF ROUTER
-----------------------------------------------------------*/
+/*=========================================================
+STAFF ROUTES
+=========================================================*/
 
-/*----------------------------------------------------------
-STAFF ROUTER
-----------------------------------------------------------*/
+AnalyticsEngine.STAFF_ROUTES = {
 
-AnalyticsEngine.routeStaffIntent = function (query) {
+    [AnalyticsEngine.STAFF_INTENTS.STAFF_DIRECTORY]:
+        AnalyticsEngine.queryStaffDirectory,
 
-    const intent =
-        AnalyticsEngine.detectStaffIntent(
-            query
-        );
+    [AnalyticsEngine.STAFF_INTENTS.STAFF_PROFILE]:
+        AnalyticsEngine.queryStaffProfile,
 
-    const filters =
-        AnalyticsEngine.extractStaffEntities(
-            query
-        );
+    [AnalyticsEngine.STAFF_INTENTS.STAFF_STRENGTH]:
+        AnalyticsEngine.queryStaffStrength,
 
-    console.group("👥 STAFF ROUTER");
+    [AnalyticsEngine.STAFF_INTENTS.LIVE_STAFF]:
+        AnalyticsEngine.queryLiveStaff,
 
-    console.log(
-        "Query:",
-        query
+    [AnalyticsEngine.STAFF_INTENTS.STAFF_LOCATION]:
+        AnalyticsEngine.queryStaffLocation,
+
+    [AnalyticsEngine.STAFF_INTENTS.STAFF_PATROL]:
+        AnalyticsEngine.queryStaffPatrol,
+
+    [AnalyticsEngine.STAFF_INTENTS.STAFF_CONTACT]:
+        AnalyticsEngine.queryStaffContact,
+
+    [AnalyticsEngine.STAFF_INTENTS.STAFF_ANALYTICS]:
+        AnalyticsEngine.queryStaffAnalytics
+
+};
+
+/*=========================================================
+ROUTE STAFF INTENT
+=========================================================*/
+
+AnalyticsEngine.routeStaffIntent = function (
+
+    request
+
+) {
+
+    console.group(
+
+        "👥 STAFF ROUTER"
+
     );
 
     console.log(
-        "Intent:",
-        intent
+
+        "Request:",
+
+        request
+
     );
 
-    console.log(
-        "Filters:",
-        filters
-    );
+    /*----------------------------------
+    VALIDATE REQUEST
+    ----------------------------------*/
 
-    let result;
+    if (
 
-    switch (intent) {
+        !request ||
 
-        /*----------------------------------
-        STAFF DIRECTORY
-        ----------------------------------*/
+        typeof request !== "object"
 
-        case AnalyticsEngine.STAFF_INTENTS.STAFF_DIRECTORY:
+    ) {
 
-            result =
-                AnalyticsEngine.queryStaffDirectory(
-                    filters
-                );
+        console.groupEnd();
 
-            break;
+        return {
 
-        /*----------------------------------
-        STAFF PROFILE
-        ----------------------------------*/
+            success: false,
 
-        case AnalyticsEngine.STAFF_INTENTS.STAFF_PROFILE:
+            source: "router",
 
-            result =
-                AnalyticsEngine.queryStaffProfile(
-                    filters
-                );
+            domain: "staff",
 
-            break;
+            intent: "unknown",
 
-        /*----------------------------------
-        STAFF STRENGTH
-        ----------------------------------*/
+            confidence: 0,
 
-        case AnalyticsEngine.STAFF_INTENTS.STAFF_STRENGTH:
+            entities: {},
 
-            result =
-                AnalyticsEngine.queryStaffStrength(
-                    filters
-                );
-
-            break;
-
-        /*----------------------------------
-        LIVE STAFF
-        ----------------------------------*/
-
-        case AnalyticsEngine.STAFF_INTENTS.LIVE_STAFF:
-
-            if (AnalyticsEngine.queryLiveStaff) {
-
-                result =
-                    AnalyticsEngine.queryLiveStaff(
-                        filters
-                    );
-
-            } else {
-
-                result = {
-
-                    success: false,
-
-                    intent: "liveStaff",
-
-                    message:
-                        "Live Staff module not installed."
-
-                };
-
-            }
-
-            break;
-
-        /*----------------------------------
-        STAFF LOCATION
-        ----------------------------------*/
-
-        case AnalyticsEngine.STAFF_INTENTS.STAFF_LOCATION:
-
-            if (AnalyticsEngine.queryStaffLocation) {
-
-                result =
-                    AnalyticsEngine.queryStaffLocation(
-                        filters
-                    );
-
-            } else {
-
-                result = {
-
-                    success: false,
-
-                    intent: "staffLocation",
-
-                    message:
-                        "Staff Location module not installed."
-
-                };
-
-            }
-
-            break;
-
-        /*----------------------------------
-        STAFF PATROL
-        ----------------------------------*/
-
-        case AnalyticsEngine.STAFF_INTENTS.STAFF_PATROL:
-
-            if (AnalyticsEngine.queryStaffPatrol) {
-
-                result =
-                    AnalyticsEngine.queryStaffPatrol(
-                        filters
-                    );
-
-            } else {
-
-                result = {
-
-                    success: false,
-
-                    intent: "staffPatrol",
-
-                    message:
-                        "Staff Patrol module not installed."
-
-                };
-
-            }
-
-            break;
-
-        /*----------------------------------
-        STAFF CONTACT
-        ----------------------------------*/
-
-        case AnalyticsEngine.STAFF_INTENTS.STAFF_CONTACT:
-
-            if (AnalyticsEngine.queryStaffContact) {
-
-                result =
-                    AnalyticsEngine.queryStaffContact(
-                        filters
-                    );
-
-            } else {
-
-                result = {
-
-                    success: false,
-
-                    intent: "staffContact",
-
-                    message:
-                        "Staff Contact module not installed."
-
-                };
-
-            }
-
-            break;
-
-        /*----------------------------------
-        STAFF ANALYTICS
-        ----------------------------------*/
-
-        case AnalyticsEngine.STAFF_INTENTS.STAFF_ANALYTICS:
-
-            if (AnalyticsEngine.queryStaffAnalytics) {
-
-                result =
-                    AnalyticsEngine.queryStaffAnalytics(
-                        filters
-                    );
-
-            } else {
-
-                result = {
-
-                    success: false,
-
-                    intent: "staffAnalytics",
-
-                    message:
-                        "Staff Analytics module not installed."
-
-                };
-
-            }
-
-            break;
-
-        /*----------------------------------
-        UNKNOWN
-        ----------------------------------*/
-
-        default:
-
-            result = {
+            data: {
 
                 success: false,
 
-                intent: "unknown",
-
                 message:
-                    "Unknown staff intent.",
+                    "Invalid intent request."
+
+            }
+
+        };
+
+    }
+
+    /*----------------------------------
+    DESTRUCTURE REQUEST
+    ----------------------------------*/
+
+    const {
+
+        source,
+
+        domain,
+
+        intent,
+
+        confidence,
+
+        entities = {}
+
+    } = request;
+
+    const filters = entities;
+
+    /*----------------------------------
+    MODULE MISSING
+    ----------------------------------*/
+
+    function moduleMissing(message) {
+
+        return {
+
+            success: false,
+
+            source,
+
+            domain,
+
+            intent,
+
+            confidence,
+
+            entities: filters,
+
+            message
+
+        };
+
+    }
+
+    /*----------------------------------
+    ROUTE LOOKUP
+    ----------------------------------*/
+
+    const handler =
+
+        AnalyticsEngine.STAFF_ROUTES[
+
+            intent
+
+        ];
+
+    let result = null;
+
+    /*----------------------------------
+    UNKNOWN INTENT
+    ----------------------------------*/
+
+    if (
+
+        intent ===
+
+        AnalyticsEngine.STAFF_INTENTS.UNKNOWN
+
+    ) {
+
+        result =
+
+            moduleMissing(
+
+                "Unknown staff intent."
+
+            );
+
+    }
+
+    /*----------------------------------
+    MODULE NOT INSTALLED
+    ----------------------------------*/
+
+    else if (
+
+        typeof handler !== "function"
+
+    ) {
+
+        result =
+
+            moduleMissing(
+
+                "Module not installed for intent: " +
+
+                intent
+
+            );
+
+    }
+
+    /*----------------------------------
+    EXECUTE MODULE
+    ----------------------------------*/
+
+    else {
+
+        result =
+
+            handler(
 
                 filters
 
-            };
+            );
 
     }
 
     console.log(
+
         "Result:",
+
         result
+
     );
 
     console.groupEnd();
 
     return {
 
-        success: true,
+        success:
 
-        type: "staff",
+            result.success,
+
+        source,
+
+        domain,
 
         intent,
 
-        filters,
+        confidence,
+
+        entities: filters,
 
         data: result
 
     };
 
 };
+
+})(window);
