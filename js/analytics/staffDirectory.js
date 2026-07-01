@@ -42,7 +42,7 @@ function (filters = {}) {
     );
 
     console.log(
-        "Filters :",
+        "Filters:",
         filters
     );
 
@@ -56,7 +56,7 @@ function (filters = {}) {
         );
 
     console.log(
-        "Initial Staff :",
+        "Initial Staff:",
         rows.length
     );
 
@@ -89,19 +89,27 @@ function (filters = {}) {
     });
 
     console.log(
-        "Final Staff :",
+        "Final Staff:",
         rows.length
     );
 
     console.groupEnd();
 
+    /*----------------------------------
+    Standard Response
+    ----------------------------------*/
+
     return {
 
         success: true,
 
+        type: "staff",
+
+        intent: "staffDirectory",
+
         total: rows.length,
 
-        rows: rows,
+        data: rows,
 
         filters: filters
 
@@ -142,8 +150,206 @@ function (
 
     }
 
+    /*----------------------------------
+    Staff
+    ----------------------------------*/
+
+    if (filters.staff) {
+
+        rows = rows.filter(function (r) {
+
+            return String(
+
+                r.cleanName ||
+
+                r.name ||
+
+                ""
+
+            )
+
+            .toUpperCase()
+
+            .includes(
+
+                String(filters.staff)
+
+                .toUpperCase()
+
+            );
+
+        });
+
+    }
+
+    /*----------------------------------
+    Division
+    ----------------------------------*/
+
+    if (filters.division) {
+
+        rows = rows.filter(function (r) {
+
+            return String(
+
+                r.division || ""
+
+            ).toUpperCase()
+
+            ===
+
+            String(
+
+                filters.division
+
+            ).toUpperCase();
+
+        });
+
+    }
+
+    /*----------------------------------
+    Range
+    ----------------------------------*/
+
+    if (filters.range) {
+
+        rows = rows.filter(function (r) {
+
+            return String(
+
+                r.range || ""
+
+            ).toUpperCase()
+
+            ===
+
+            String(
+
+                filters.range
+
+            ).toUpperCase();
+
+        });
+
+    }
+
+    /*----------------------------------
+    Beat
+    ----------------------------------*/
+
+    if (filters.beat) {
+
+        rows = rows.filter(function (r) {
+
+            return String(
+
+                r.beat || ""
+
+            ).toUpperCase()
+
+            ===
+
+            String(
+
+                filters.beat
+
+            ).toUpperCase();
+
+        });
+
+    }
+
+    /*----------------------------------
+    Designation
+    ----------------------------------*/
+
+    if (filters.designation) {
+
+        rows = rows.filter(function (r) {
+
+            return String(
+
+                r.designation || ""
+
+            ).toUpperCase()
+
+            ===
+
+            String(
+
+                filters.designation
+
+            ).toUpperCase();
+
+        });
+
+    }
+
+    /*----------------------------------
+    Role
+    ----------------------------------*/
+
+    if (filters.role) {
+
+        rows = rows.filter(function (r) {
+
+            return String(
+
+                r.role || ""
+
+            ).toUpperCase()
+
+            ===
+
+            String(
+
+                filters.role
+
+            ).toUpperCase();
+
+        });
+
+    }
+
+    /*----------------------------------
+    Duty
+    ----------------------------------*/
+
+    if (
+
+        filters.dutyActive !== null &&
+
+        filters.dutyActive !== undefined
+
+    ) {
+
+        rows = rows.filter(function (r) {
+
+            return Boolean(
+
+                r.dutyActive
+
+            ) === Boolean(
+
+                filters.dutyActive
+
+            );
+
+        });
+
+    }
+
     return rows;
 
 };
+
+console.log(
+
+    "%cStaff Directory Module Loaded",
+
+    "color:#1976D2;font-weight:bold;"
+
+);
 
 })(window);
