@@ -167,67 +167,200 @@ Controller.ask = async function (query) {
 
     await Controller.ensureAnalyticsReady();
 
+    const AE =
+        window.GreenGuardAI.AnalyticsEngine;
+
+    const Cache =
+        window.GreenGuardAI.Cache;
+
+    /*------------------------------------------
+      Normalize Query
+    ------------------------------------------*/
+
     query =
         Controller.normalizeQuery(query);
 
-    /*----------------------------------
+    console.group(
+        "🧠 GreenGuard AI"
+    );
+
+    console.log(
+        "Query:",
+        query
+    );
+
+    /*------------------------------------------
       Intent Cache
-    ----------------------------------*/
+    ------------------------------------------*/
 
-    const cache =
-        window.GreenGuardAI.Cache
-            ?.getIntent?.(query);
+    let intent = null;
 
-    if (cache) {
+    if (
+
+        Cache &&
+        Cache.getIntent
+
+    ) {
+
+        intent =
+
+            await Cache.getIntent(
+
+                query
+
+            );
+
+    }
+
+    if (intent) {
 
         console.log(
             "🟢 Intent Cache Hit"
         );
 
-        return window.GreenGuardAI
-            .AnalyticsEngine
-            .routeStaffIntent(query);
+        console.log(intent);
+
+        console.groupEnd();
+
+        /*
+            Temporary
+
+            Router still works
+            using query.
+
+            We will change
+            this later.
+        */
+
+        return AE.routeStaffIntent(
+
+            query
+
+        );
 
     }
 
-    /*----------------------------------
+    /*------------------------------------------
       Local Intent
-    ----------------------------------*/
+    ------------------------------------------*/
 
-    const local =
-        Controller.getLocalIntent(query);
+    intent =
+
+        Controller.getLocalIntent(
+
+            query
+
+        );
 
     console.log(
+
         "Local Intent:",
-        local
+
+        intent
+
     );
 
-    /*----------------------------------
+    /*------------------------------------------
       High Confidence
-    ----------------------------------*/
+    ------------------------------------------*/
 
     if (
 
-        local.confidence >= 0.90
+        intent.confidence >= 0.90
 
     ) {
 
         console.log(
+
             "🟢 Local Intent Accepted"
+
         );
 
-        window.GreenGuardAI.Cache
-            ?.setIntent?.(
+        if (
+
+            Cache &&
+            Cache.setIntent
+
+        ) {
+
+            await Cache.setIntent(
+
                 query,
-                local
+
+                intent
+
             );
 
-        return window.GreenGuardAI
-            .AnalyticsEngine
-            .routeStaffIntent(query);
+        }
+
+        console.groupEnd();
+
+        return AE.routeStaffIntent(
+
+            query
+
+        );
 
     }
 
+    /*------------------------------------------
+      AI Intent
+    ------------------------------------------*/
+
+    console.log(
+
+        "🟡 AI Intent Detection"
+
+    );
+
+    intent =
+
+        await window.callAI({
+
+            action:
+
+                "intent",
+
+            question:
+
+                query
+
+        });
+
+    console.log(
+
+        "AI Intent:",
+
+        intent
+
+    );
+
+    if (
+
+        Cache &&
+        Cache.setIntent
+
+    ) {
+
+        await Cache.setIntent(
+
+            query,
+
+            intent
+
+        );
+
+    }
+
+    console.groupEnd();
+
+    return AE.routeStaffIntent(
+
+        query
+
+    );
+
+};
     /*----------------------------------
       AI Intent
     ----------------------------------*/
