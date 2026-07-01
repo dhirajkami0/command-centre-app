@@ -3892,128 +3892,87 @@ EXTRACT JURISDICTION FILTERS
 EXTRACT JURISDICTION FILTERS
 ----------------------------------------------------------*/
 
-AnalyticsEngine.extractJurisdictionFilters =
-function(query){
-
-    return AnalyticsEngine.resolveJurisdiction(
-        query
-    );
-
-};
-    /*----------------------------------------------------------
-ROLE ALIASES
-----------------------------------------------------------*/
-
-AnalyticsEngine.roleAliases = {
-
-    ADMIN : [
-        "ADMIN",
-        "ADMINISTRATOR"
-    ],
-
-    ADFO : [
-        "ADFO"
-    ],
-
-    TEAM_LEADER : [
-        "TEAM LEADER",
-        "TEAMLEADER",
-        "LEADER",
-        "TEAM"
-    ],
-
-    STAFF : [
-        "STAFF",
-        "FOREST STAFF"
-    ]
-
-};
-
-
 /*----------------------------------------------------------
-NORMALIZE ROLE
+EXTRACT JURISDICTION FILTERS
 ----------------------------------------------------------*/
 
-AnalyticsEngine.normalizeRole = function(value){
-
-    value =
-        String(value || "")
-        .trim()
-        .toUpperCase();
-
-    for(
-
-        const code in
-        AnalyticsEngine.roleAliases
-
-    ){
-
-        if(
-
-            AnalyticsEngine
-                .roleAliases[
-                    code
-                ]
-                .includes(
-                    value
-                )
-
-        ){
-
-            return code;
-
-        }
-
-    }
-
-    return value;
-
-};
-
-
-/*----------------------------------------------------------
-EXTRACT ROLE FILTER
-----------------------------------------------------------*/
-
-AnalyticsEngine.extractRoleFilters = function(query){
+AnalyticsEngine.extractJurisdictionFilters = function (query) {
 
     query =
         String(query || "")
         .toUpperCase();
 
-    const filters =
+    const filters = {};
 
-        AnalyticsEngine
-            .extractJurisdictionFilters(
-                query
-            );
+    /*----------------------------------
+    Circle
+    ----------------------------------*/
 
-    for(
+    const circles =
+        AnalyticsEngine.circleIndex || {};
 
-        const code in
-        AnalyticsEngine.roleAliases
+    for (const name in circles) {
 
-    ){
+        if (query.includes(name.toUpperCase())) {
 
-        const aliases =
-            AnalyticsEngine
-                .roleAliases[
-                    code
-                ];
+            filters.circle = name;
 
-        if(
+            break;
 
-            aliases.some(
+        }
 
-                a =>
-                query.includes(a)
+    }
 
-            )
+    /*----------------------------------
+    Division
+    ----------------------------------*/
 
-        ){
+    const divisions =
+        AnalyticsEngine.divisionIndex || {};
 
-            filters.role =
-                code;
+    for (const name in divisions) {
+
+        if (query.includes(name.toUpperCase())) {
+
+            filters.division = name;
+
+            break;
+
+        }
+
+    }
+
+    /*----------------------------------
+    Range
+    ----------------------------------*/
+
+    const ranges =
+        AnalyticsEngine.rangeIndex || {};
+
+    for (const name in ranges) {
+
+        if (query.includes(name.toUpperCase())) {
+
+            filters.range = name;
+
+            break;
+
+        }
+
+    }
+
+    /*----------------------------------
+    Beat
+    ----------------------------------*/
+
+    const beats =
+        AnalyticsEngine.beatIndex || {};
+
+    for (const name in beats) {
+
+        if (query.includes(name.toUpperCase())) {
+
+            filters.beat = name;
 
             break;
 
@@ -4024,8 +3983,6 @@ AnalyticsEngine.extractRoleFilters = function(query){
     return filters;
 
 };
-
-
 /*----------------------------------------------------------
 QUERY STAFF STRENGTH
 ----------------------------------------------------------*/
