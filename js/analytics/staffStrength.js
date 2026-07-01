@@ -15,67 +15,147 @@ if (!AnalyticsEngine)
  STAFF STRENGTH
 =========================================================*/
 
+/*=========================================================
+ STAFF STRENGTH
+=========================================================*/
+
 AnalyticsEngine.queryStaffStrength = function (filters = {}) {
+
+    /*----------------------------------
+      Ensure Analytics Loaded
+    ----------------------------------*/
+
+    if (!AnalyticsEngine.loaded) {
+
+        console.warn(
+            "⚠ Analytics not loaded. Call AnalyticsEngine.load() first."
+        );
+
+        return {
+
+            success: false,
+
+            intent: "staffStrength",
+
+            message:
+                "Analytics Engine is not loaded."
+
+        };
+
+    }
 
     console.log(
         "👥 STAFF STRENGTH"
     );
 
+    console.log(
+        "Filters:",
+        filters
+    );
+
     let staff =
+
         Object.values(
+
             AnalyticsEngine.staffIndex || {}
+
         );
+
+    console.log(
+        "Initial Staff:",
+        staff.length
+    );
+
+    /*----------------------------------
+      Division
+    ----------------------------------*/
 
     if (filters.division) {
 
         staff = staff.filter(s =>
-            String(s.division || "")
-            .toUpperCase() ===
-            String(filters.division)
-            .toUpperCase()
+
+            String(
+                s.division || ""
+            ).toUpperCase() ===
+
+            String(
+                filters.division
+            ).toUpperCase()
+
         );
 
     }
+
+    /*----------------------------------
+      Range
+    ----------------------------------*/
 
     if (filters.range) {
 
         staff = staff.filter(s =>
-            String(s.range || "")
-            .toUpperCase() ===
-            String(filters.range)
-            .toUpperCase()
+
+            String(
+                s.range || ""
+            ).toUpperCase() ===
+
+            String(
+                filters.range
+            ).toUpperCase()
+
         );
 
     }
 
+    /*----------------------------------
+      Beat
+    ----------------------------------*/
+
     if (filters.beat) {
 
         staff = staff.filter(s =>
-            String(s.beat || "")
-            .toUpperCase() ===
-            String(filters.beat)
-            .toUpperCase()
+
+            String(
+                s.beat || ""
+            ).toUpperCase() ===
+
+            String(
+                filters.beat
+            ).toUpperCase()
+
         );
 
     }
 
     const designation = {};
+
     const role = {};
 
     let dutyActive = 0;
 
+    /*----------------------------------
+      Count
+    ----------------------------------*/
+
     for (const s of staff) {
 
         const d =
-            s.designation || "UNKNOWN";
+
+            s.designation ||
+
+            "UNKNOWN";
 
         designation[d] =
+
             (designation[d] || 0) + 1;
 
         const r =
-            s.role || "UNKNOWN";
+
+            s.role ||
+
+            "UNKNOWN";
 
         role[r] =
+
             (role[r] || 0) + 1;
 
         if (s.dutyActive)
@@ -83,30 +163,35 @@ AnalyticsEngine.queryStaffStrength = function (filters = {}) {
 
     }
 
+    console.log(
+        "Final Staff:",
+        staff.length
+    );
+
     return {
 
         success: true,
 
-        intent:
-            "staffStrength",
+        type: "staff",
 
-        total:
-            staff.length,
+        intent: "staffStrength",
 
-        active:
-            dutyActive,
+        total: staff.length,
+
+        active: dutyActive,
 
         inactive:
             staff.length - dutyActive,
 
         designation,
 
-        role
+        role,
+
+        filters
 
     };
 
 };
-
 /*=========================================================
  ROLE COUNT
 =========================================================*/
