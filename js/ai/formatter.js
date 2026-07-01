@@ -330,65 +330,11 @@ function formatStaffStrengthSummary(result){
     const data =
         result.data || {};
 
-    const staff =
-        Array.isArray(
-            data.staff
-        )
-        ? data.staff
-        : [];
-
-    if(!staff.length){
-
-        return "❌ No matching staff found.";
-
-    }
-
-    const first =
-        staff[0];
-
     const out = [];
 
     out.push(
         "👥 STAFF STRENGTH"
     );
-
-    out.push("");
-
-    if(first.circle){
-
-        out.push(
-            "Circle : " +
-            first.circle
-        );
-
-    }
-
-    if(first.division){
-
-        out.push(
-            "Division : " +
-            first.division
-        );
-
-    }
-
-    if(first.range){
-
-        out.push(
-            "Range : " +
-            first.range
-        );
-
-    }
-
-    if(first.beat){
-
-        out.push(
-            "Beat : " +
-            first.beat
-        );
-
-    }
 
     out.push("");
 
@@ -423,7 +369,7 @@ function formatStaffStrengthSummary(result){
 
     Object.entries(
 
-        data.roles || {}
+        data.role || {}
 
     ).forEach(function(r){
 
@@ -449,7 +395,7 @@ function formatStaffStrengthSummary(result){
 
     Object.entries(
 
-        data.designations || {}
+        data.designation || {}
 
     ).forEach(function(d){
 
@@ -462,54 +408,6 @@ function formatStaffStrengthSummary(result){
             d[1]
 
         );
-
-    });
-
-    out.push("");
-
-    out.push(
-        "STAFF"
-    );
-
-    out.push("");
-
-    staff.forEach(function(p,index){
-
-        out.push(
-
-            (index+1)+". "+
-
-            (p.name || "-")
-
-        );
-
-        out.push(
-
-            "   " +
-
-            (
-                p.designation || "-"
-            ) +
-
-            " | " +
-
-            (
-                p.role || "-"
-            )
-
-        );
-
-        out.push(
-
-            "   " +
-
-            (
-                p.beat || "-"
-            )
-
-        );
-
-        out.push("");
 
     });
 
