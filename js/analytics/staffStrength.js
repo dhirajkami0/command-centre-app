@@ -8,43 +8,47 @@ window.GreenGuardAI =
 const AnalyticsEngine =
     window.GreenGuardAI.AnalyticsEngine;
 
-if (!AnalyticsEngine)
+if (!AnalyticsEngine) {
+
+    console.error(
+        "AnalyticsEngine not loaded."
+    );
+
     return;
 
-/*=========================================================
- STAFF STRENGTH
-=========================================================*/
+}
 
 /*=========================================================
  STAFF STRENGTH
 =========================================================*/
 
-AnalyticsEngine.queryStaffStrength = function (filters = {}) {
+AnalyticsEngine.queryStaffStrength =
+function (filters = {}) {
 
     /*----------------------------------
-      Ensure Analytics Loaded
+      Analytics Ready
     ----------------------------------*/
 
     if (!AnalyticsEngine.loaded) {
-
-        console.warn(
-            "⚠ Analytics not loaded. Call AnalyticsEngine.load() first."
-        );
 
         return {
 
             success: false,
 
+            type: "staff",
+
             intent: "staffStrength",
 
+            data: {},
+
             message:
-                "Analytics Engine is not loaded."
+                "Analytics Engine not loaded."
 
         };
 
     }
 
-    console.log(
+    console.group(
         "👥 STAFF STRENGTH"
     );
 
@@ -53,17 +57,18 @@ AnalyticsEngine.queryStaffStrength = function (filters = {}) {
         filters
     );
 
-    let staff =
+    /*----------------------------------
+      Dataset
+    ----------------------------------*/
 
+    let rows =
         Object.values(
-
             AnalyticsEngine.staffIndex || {}
-
         );
 
     console.log(
         "Initial Staff:",
-        staff.length
+        rows.length
     );
 
     /*----------------------------------
@@ -72,17 +77,19 @@ AnalyticsEngine.queryStaffStrength = function (filters = {}) {
 
     if (filters.division) {
 
-        staff = staff.filter(s =>
+        rows = rows.filter(function (s) {
 
-            String(
+            return String(
                 s.division || ""
-            ).toUpperCase() ===
+            ).toUpperCase()
+
+            ===
 
             String(
                 filters.division
-            ).toUpperCase()
+            ).toUpperCase();
 
-        );
+        });
 
     }
 
@@ -92,17 +99,19 @@ AnalyticsEngine.queryStaffStrength = function (filters = {}) {
 
     if (filters.range) {
 
-        staff = staff.filter(s =>
+        rows = rows.filter(function (s) {
 
-            String(
+            return String(
                 s.range || ""
-            ).toUpperCase() ===
+            ).toUpperCase()
+
+            ===
 
             String(
                 filters.range
-            ).toUpperCase()
+            ).toUpperCase();
 
-        );
+        });
 
     }
 
@@ -112,61 +121,131 @@ AnalyticsEngine.queryStaffStrength = function (filters = {}) {
 
     if (filters.beat) {
 
-        staff = staff.filter(s =>
+        rows = rows.filter(function (s) {
 
-            String(
+            return String(
                 s.beat || ""
-            ).toUpperCase() ===
+            ).toUpperCase()
+
+            ===
 
             String(
                 filters.beat
-            ).toUpperCase()
+            ).toUpperCase();
 
-        );
+        });
 
     }
+
+    /*----------------------------------
+      Designation
+    ----------------------------------*/
+
+    if (filters.designation) {
+
+        rows = rows.filter(function (s) {
+
+            return String(
+                s.designation || ""
+            ).toUpperCase()
+
+            ===
+
+            String(
+                filters.designation
+            ).toUpperCase();
+
+        });
+
+    }
+
+    /*----------------------------------
+      Role
+    ----------------------------------*/
+
+    if (filters.role) {
+
+        rows = rows.filter(function (s) {
+
+            return String(
+                s.role || ""
+            ).toUpperCase()
+
+            ===
+
+            String(
+                filters.role
+            ).toUpperCase();
+
+        });
+
+    }
+
+    /*----------------------------------
+      Duty
+    ----------------------------------*/
+
+    if (
+
+        filters.dutyActive !== null &&
+
+        filters.dutyActive !== undefined
+
+    ) {
+
+        rows = rows.filter(function (s) {
+
+            return Boolean(
+                s.dutyActive
+            ) === Boolean(
+                filters.dutyActive
+            );
+
+        });
+
+    }
+
+    /*----------------------------------
+      Summary
+    ----------------------------------*/
 
     const designation = {};
 
     const role = {};
 
-    let dutyActive = 0;
+    let active = 0;
 
-    /*----------------------------------
-      Count
-    ----------------------------------*/
-
-    for (const s of staff) {
+    rows.forEach(function (s) {
 
         const d =
-
             s.designation ||
-
             "UNKNOWN";
 
         designation[d] =
-
             (designation[d] || 0) + 1;
 
         const r =
-
             s.role ||
-
             "UNKNOWN";
 
         role[r] =
-
             (role[r] || 0) + 1;
 
         if (s.dutyActive)
-            dutyActive++;
+            active++;
 
-    }
+    });
 
     console.log(
         "Final Staff:",
-        staff.length
+        rows.length
     );
+
+    console.groupEnd();
+
+    /*----------------------------------
+      Standard Response
+    ----------------------------------*/
 
     return {
 
@@ -176,36 +255,54 @@ AnalyticsEngine.queryStaffStrength = function (filters = {}) {
 
         intent: "staffStrength",
 
-        total: staff.length,
+        data: {
 
-        active: dutyActive,
+            total:
+                rows.length,
 
-        inactive:
-            staff.length - dutyActive,
+            active:
+                active,
 
-        designation,
+            inactive:
+                rows.length - active,
 
-        role,
+            designation:
+                designation,
 
-        filters
+            role:
+                role
+
+        },
+
+        filters:
+            filters
 
     };
 
 };
+
 /*=========================================================
  ROLE COUNT
 =========================================================*/
 
-AnalyticsEngine.countByRole = function (role) {
+AnalyticsEngine.countByRole =
+function (role) {
 
     return Object.values(
         AnalyticsEngine.staffIndex || {}
-    ).filter(s =>
-        String(s.role || "")
-        .toUpperCase() ===
-        String(role)
-        .toUpperCase()
-    ).length;
+    ).filter(function (s) {
+
+        return String(
+            s.role || ""
+        ).toUpperCase()
+
+        ===
+
+        String(
+            role
+        ).toUpperCase();
+
+    }).length;
 
 };
 
@@ -213,16 +310,24 @@ AnalyticsEngine.countByRole = function (role) {
  DESIGNATION COUNT
 =========================================================*/
 
-AnalyticsEngine.countByDesignation = function (designation) {
+AnalyticsEngine.countByDesignation =
+function (designation) {
 
     return Object.values(
         AnalyticsEngine.staffIndex || {}
-    ).filter(s =>
-        String(s.designation || "")
-        .toUpperCase() ===
-        String(designation)
-        .toUpperCase()
-    ).length;
+    ).filter(function (s) {
+
+        return String(
+            s.designation || ""
+        ).toUpperCase()
+
+        ===
+
+        String(
+            designation
+        ).toUpperCase();
+
+    }).length;
 
 };
 
@@ -230,12 +335,16 @@ AnalyticsEngine.countByDesignation = function (designation) {
  ACTIVE STAFF
 =========================================================*/
 
-AnalyticsEngine.countDutyActive = function () {
+AnalyticsEngine.countDutyActive =
+function () {
 
     return Object.values(
         AnalyticsEngine.staffIndex || {}
-    ).filter(s => s.dutyActive)
-    .length;
+    ).filter(function (s) {
+
+        return s.dutyActive;
+
+    }).length;
 
 };
 
@@ -243,19 +352,21 @@ AnalyticsEngine.countDutyActive = function () {
  DIVISION COUNT
 =========================================================*/
 
-AnalyticsEngine.countByDivision = function () {
+AnalyticsEngine.countByDivision =
+function () {
 
     const result = {};
 
     Object.values(
         AnalyticsEngine.staffIndex || {}
-    ).forEach(s => {
+    ).forEach(function (s) {
 
-        const d =
-            s.division || "UNKNOWN";
+        const key =
+            s.division ||
+            "UNKNOWN";
 
-        result[d] =
-            (result[d] || 0) + 1;
+        result[key] =
+            (result[key] || 0) + 1;
 
     });
 
@@ -267,19 +378,21 @@ AnalyticsEngine.countByDivision = function () {
  RANGE COUNT
 =========================================================*/
 
-AnalyticsEngine.countByRange = function () {
+AnalyticsEngine.countByRange =
+function () {
 
     const result = {};
 
     Object.values(
         AnalyticsEngine.staffIndex || {}
-    ).forEach(s => {
+    ).forEach(function (s) {
 
-        const r =
-            s.range || "UNKNOWN";
+        const key =
+            s.range ||
+            "UNKNOWN";
 
-        result[r] =
-            (result[r] || 0) + 1;
+        result[key] =
+            (result[key] || 0) + 1;
 
     });
 
@@ -291,19 +404,21 @@ AnalyticsEngine.countByRange = function () {
  BEAT COUNT
 =========================================================*/
 
-AnalyticsEngine.countByBeat = function () {
+AnalyticsEngine.countByBeat =
+function () {
 
     const result = {};
 
     Object.values(
         AnalyticsEngine.staffIndex || {}
-    ).forEach(s => {
+    ).forEach(function (s) {
 
-        const b =
-            s.beat || "UNKNOWN";
+        const key =
+            s.beat ||
+            "UNKNOWN";
 
-        result[b] =
-            (result[b] || 0) + 1;
+        result[key] =
+            (result[key] || 0) + 1;
 
     });
 
@@ -312,8 +427,11 @@ AnalyticsEngine.countByBeat = function () {
 };
 
 console.log(
+
     "%cStaff Strength Module Loaded",
+
     "color:#1E90FF;font-weight:bold;"
+
 );
 
 })(window);
