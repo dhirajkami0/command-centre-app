@@ -2,441 +2,854 @@
 
 "use strict";
 
-window.GreenGuardAI =
+/*=========================================================
+ GREENGUARD AI
+=========================================================*/
+
+const GG =
+    window.GreenGuardAI =
     window.GreenGuardAI || {};
 
-const AnalyticsEngine =
-    window.GreenGuardAI.AnalyticsEngine;
+/*=========================================================
+ DEPENDENCIES
+=========================================================*/
 
-if (!AnalyticsEngine) {
+const StaffConstants =
+    GG.StaffConstants;
 
-    console.error(
-        "AnalyticsEngine not loaded."
+const StaffEntities =
+    GG.StaffEntities;
+
+if (
+
+    !StaffConstants
+
+) {
+
+    throw new Error(
+
+        "StaffConstants not loaded."
+
     );
 
-    return;
+}
+
+if (
+
+    !StaffEntities
+
+) {
+
+    throw new Error(
+
+        "StaffEntities not loaded."
+
+    );
 
 }
 
 /*=========================================================
- STAFF PROFILE MODULE
+ MODULE
 =========================================================*/
 
-AnalyticsEngine.findStaff = function (name) {
+const StaffProfile = {};
 
-    name = String(name || "")
-        .trim()
-        .toUpperCase();
+/*=========================================================
+ VERSION
+=========================================================*/
 
-    if (!name) return null;
+StaffProfile.VERSION =
 
-    const staff =
-        Object.values(
-            AnalyticsEngine.staffIndex || {}
+    "1.0.0";
+
+/*=========================================================
+ STATUS
+=========================================================*/
+
+StaffProfile.loaded =
+
+    false;
+
+StaffProfile.loading =
+
+    false;
+
+/*=========================================================
+ CACHE
+=========================================================*/
+
+StaffProfile.cache =
+
+    new Map();
+
+StaffProfile.lastRequest =
+
+    null;
+
+StaffProfile.lastResult =
+
+    null;
+
+/*=========================================================
+ CLEAR CACHE
+=========================================================*/
+
+StaffProfile.clearCache = function () {
+
+    StaffProfile.cache.clear();
+
+};
+
+/*=========================================================
+ CREATE RESPONSE
+=========================================================*/
+
+StaffProfile.createResponse = function (
+
+    request = {}
+
+) {
+
+    return {
+
+        success:
+
+            false,
+
+        source:
+
+            "LOCAL",
+
+        module:
+
+            "StaffProfile",
+
+        intent:
+
+            StaffConstants.INTENTS.STAFF_PROFILE,
+
+        confidence:
+
+            request.confidence ||
+
+            0,
+
+        query:
+
+            request.originalQuery ||
+
+            "",
+
+        staff:
+
+            null,
+
+        data:
+
+            null,
+
+        message:
+
+            "",
+
+        warnings:
+
+            [],
+
+        errors:
+
+            [],
+
+        metadata: {
+
+            version:
+
+                StaffProfile.VERSION,
+
+            createdAt:
+
+                Date.now(),
+
+            executionTime:
+
+                0
+
+        }
+
+    };
+
+};
+
+/*=========================================================
+ INITIALIZE
+=========================================================*/
+
+StaffProfile.initialize = function () {
+
+    StaffProfile.loaded =
+
+        true;
+
+    StaffProfile.loading =
+
+        false;
+
+    return true;
+
+};/*=========================================================
+ QUERY STAFF PROFILE
+=========================================================*/
+
+StaffProfile.queryStaffProfile = function (
+
+    request
+
+) {
+
+    const started =
+
+        Date.now();
+
+    /*----------------------------------
+      Create Response
+    ----------------------------------*/
+
+    const response =
+
+        StaffProfile.createResponse(
+
+            request
+
         );
 
-    console.log("Searching:", name);
-    console.log("Total Staff:", staff.length);
+    StaffProfile.lastRequest =
+
+        request;
 
     /*----------------------------------
-      Exact Match
+      Find Staff
     ----------------------------------*/
 
-    for (const s of staff) {
+    const staff =
 
-        const fields = [
+        StaffProfile.findStaff(
 
-            s.cleanName,
-            s.name,
-            s.staffName,
-            s.profileName,
-            s.rawName,
-            s.fullName,
-            s.id
+            request
 
-        ]
-        .filter(Boolean)
-        .map(v => String(v).toUpperCase());
+        );
 
-        if (fields.includes(name)) {
+    if (
 
-            console.log("✅ Exact Match", s);
+        !staff
 
-            return s;
+    ) {
 
-        }
+        response.message =
+
+            "Staff not found.";
+
+        response.metadata.executionTime =
+
+            Date.now() -
+
+            started;
+
+        return response;
 
     }
 
     /*----------------------------------
-      Partial Match
+      Build Profile
     ----------------------------------*/
 
-    for (const s of staff) {
+    response.staff =
 
-        const fields = [
+        staff;
 
-            s.cleanName,
-            s.name,
-            s.staffName,
-            s.profileName,
-            s.rawName,
-            s.fullName,
-            s.id
+    response.data =
 
-        ]
-        .filter(Boolean)
-        .map(v => String(v).toUpperCase());
+        StaffProfile.buildProfile(
 
-        if (fields.some(v => v.includes(name))) {
+            staff
 
-            console.log("✅ Partial Match", s);
+        );
 
-            return s;
+    response.success =
 
-        }
+        true;
+
+    response.message =
+
+        "Staff profile found.";
+
+    response.metadata.executionTime =
+
+        Date.now() -
+
+        started;
+
+    StaffProfile.lastResult =
+
+        response;
+
+    return response;
+
+};/*=========================================================
+ FIND STAFF
+=========================================================*/
+
+StaffProfile.findStaff = function (
+
+    request
+
+) {
+
+    /*----------------------------------
+      Validate
+    ----------------------------------*/
+
+    if (
+
+        !request ||
+
+        typeof request !== "object"
+
+    ) {
+
+        return null;
 
     }
 
-    console.log("❌ Staff Not Found");
+    /*----------------------------------
+      Parameters
+    ----------------------------------*/
+
+    if (
+
+        request.parameters &&
+
+        request.parameters.staff
+
+    ) {
+
+        return request.parameters.staff;
+
+    }
+
+    /*----------------------------------
+      Staff Entity
+    ----------------------------------*/
+
+    if (
+
+        request.entities &&
+
+        Array.isArray(
+
+            request.entities.staff
+
+        ) &&
+
+        request.entities.staff.length > 0
+
+    ) {
+
+        return request.entities.staff[0];
+
+    }
+
+    /*----------------------------------
+      Phone Entity
+    ----------------------------------*/
+
+    if (
+
+        request.entities &&
+
+        Array.isArray(
+
+            request.entities.phones
+
+        ) &&
+
+        request.entities.phones.length > 0
+
+    ) {
+
+        return request.entities.phones[0];
+
+    }
+
+    /*----------------------------------
+      Role Entity
+    ----------------------------------*/
+
+    if (
+
+        request.entities &&
+
+        Array.isArray(
+
+            request.entities.roles
+
+        ) &&
+
+        request.entities.roles.length > 0
+
+    ) {
+
+        return request.entities.roles[0];
+
+    }
+
+    /*----------------------------------
+      Posting Entity
+    ----------------------------------*/
+
+    if (
+
+        request.entities &&
+
+        Array.isArray(
+
+            request.entities.posting
+
+        ) &&
+
+        request.entities.posting.length > 0
+
+    ) {
+
+        return request.entities.posting[0];
+
+    }
+
+    /*----------------------------------
+      Team Entity
+    ----------------------------------*/
+
+    if (
+
+        request.entities &&
+
+        Array.isArray(
+
+            request.entities.team
+
+        ) &&
+
+        request.entities.team.length > 0
+
+    ) {
+
+        return request.entities.team[0];
+
+    }
+
+    /*----------------------------------
+      Duty Entity
+    ----------------------------------*/
+
+    if (
+
+        request.entities &&
+
+        Array.isArray(
+
+            request.entities.duty
+
+        ) &&
+
+        request.entities.duty.length > 0
+
+    ) {
+
+        return request.entities.duty[0];
+
+    }
+
+    /*----------------------------------
+      GPS Entity
+    ----------------------------------*/
+
+    if (
+
+        request.entities &&
+
+        Array.isArray(
+
+            request.entities.gps
+
+        ) &&
+
+        request.entities.gps.length > 0
+
+    ) {
+
+        return request.entities.gps[0];
+
+    }
 
     return null;
 
 };
-/*=========================================================
- QUERY STAFF PROFILE
+    /*=========================================================
+ BUILD PROFILE
 =========================================================*/
 
-AnalyticsEngine.queryStaffProfile = function (
+StaffProfile.buildProfile = function (
 
-    filters = {}
+    staff
 
 ) {
 
-    console.log(
-        "👤 STAFF PROFILE"
-    );
-
-    console.log(
-        "Filters:",
-        filters
-    );
-
-    let profile = null;
-
     /*----------------------------------
-      Search by Name
+      Validate
     ----------------------------------*/
 
-    if (filters.staff) {
+    if (
 
-        profile =
+        !staff ||
 
-            AnalyticsEngine.findStaff(
+        typeof staff !== "object"
 
-                filters.staff
+    ) {
 
-            );
+        return null;
 
     }
 
-    /*----------------------------------
-      No Match
-    ----------------------------------*/
+    return {
 
-    if (!profile) {
+        /*----------------------------------
+          Identity
+        ----------------------------------*/
 
-       return {
+        identity: {
 
-    success: false,
+            cleanName:
 
-    type: "staff",
+                staff.identity?.cleanName || "",
 
-    intent: "staffProfile",
+            rawName:
 
-    data: [],
+                staff.identity?.rawName || "",
 
-    message: "Staff not found."
+            name:
+
+                staff.identity?.name || "",
+
+            phone:
+
+                staff.identity?.phone || "",
+
+            email:
+
+                staff.identity?.email || "",
+
+            role:
+
+                staff.identity?.role || "",
+
+            designation:
+
+                staff.identity?.designation || "",
+
+            type:
+
+                staff.identity?.type || ""
+
+        },
+
+        /*----------------------------------
+          Posting
+        ----------------------------------*/
+
+        posting: {
+
+            circle:
+
+                staff.posting?.circle || "",
+
+            division:
+
+                staff.posting?.division || "",
+
+            range:
+
+                staff.posting?.range || "",
+
+            beat:
+
+                staff.posting?.beat || ""
+
+        },
+
+        /*----------------------------------
+          Assignment
+        ----------------------------------*/
+
+        assignment: {
+
+            assignedCompartment:
+
+                staff.assignment?.assignedCompartment || "",
+
+            dutyType:
+
+                staff.assignment?.dutyType || "",
+
+            dutyActive:
+
+                staff.assignment?.dutyActive || false,
+
+            status:
+
+                staff.assignment?.status || "",
+
+            leader:
+
+                staff.assignment?.leader || "",
+
+            team:
+
+                staff.assignment?.team || ""
+
+        },
+
+        /*----------------------------------
+          Duty
+        ----------------------------------*/
+
+        duty: {
+
+            dutyType:
+
+                staff.duty?.dutyType || "",
+
+            dutyActive:
+
+                staff.duty?.dutyActive || false,
+
+            status:
+
+                staff.duty?.status || "",
+
+            lastDutyEnd:
+
+                staff.duty?.lastDutyEnd || ""
+
+        },
+
+        /*----------------------------------
+          Location
+        ----------------------------------*/
+
+        location: {
+
+            location:
+
+                staff.location?.location || "",
+
+            lat:
+
+                staff.location?.lat ?? null,
+
+            lon:
+
+                staff.location?.lon ?? null
+
+        },
+
+        /*----------------------------------
+          GPS
+        ----------------------------------*/
+
+        gps: {
+
+            accuracy:
+
+                staff.gps?.accuracy ?? null,
+
+            heading:
+
+                staff.gps?.heading ?? null,
+
+            speed:
+
+                staff.gps?.speed ?? null,
+
+            lastSeen:
+
+                staff.gps?.lastSeen ?? null,
+
+            timestamp:
+
+                staff.gps?.timestamp ?? null,
+
+            updatedAt:
+
+                staff.gps?.updatedAt ?? null,
+
+            turnAngle:
+
+                staff.gps?.turnAngle ?? null,
+
+            turnRate:
+
+                staff.gps?.turnRate ?? null
+
+        },
+
+        /*----------------------------------
+          Team
+        ----------------------------------*/
+
+        teamInfo: {
+
+            leader:
+
+                staff.teamInfo?.leader || "",
+
+            team:
+
+                staff.teamInfo?.team || ""
+
+        },
+
+        /*----------------------------------
+          Tracking
+        ----------------------------------*/
+
+        tracking: {
+
+            sessionId:
+
+                staff.tracking?.sessionId || "",
+
+            source:
+
+                staff.tracking?.source || "",
+
+            id:
+
+                staff.tracking?.id || ""
+
+        },
+
+        /*----------------------------------
+          Analytics
+        ----------------------------------*/
+
+        analytics: {
+
+            pointCount:
+
+                staff.analytics?.pointCount || 0,
+
+            distanceKm:
+
+                staff.analytics?.distanceKm || 0,
+
+            startedAt:
+
+                staff.analytics?.startedAt || null,
+
+            endedAt:
+
+                staff.analytics?.endedAt || null,
+
+            monthKey:
+
+                staff.analytics?.monthKey || "",
+
+            compartments:
+
+                staff.analytics?.compartments || [],
+
+            simplifiedTrack:
+
+                staff.analytics?.simplifiedTrack || [],
+
+            startLat:
+
+                staff.analytics?.startLat ?? null,
+
+            startLon:
+
+                staff.analytics?.startLon ?? null,
+
+            startAccuracy:
+
+                staff.analytics?.startAccuracy ?? null
+
+        },
+
+        /*----------------------------------
+          Metadata
+        ----------------------------------*/
+
+        metadata: {
+
+            confidence:
+
+                staff.metadata?.confidence ?? 1,
+
+            valid:
+
+                staff.metadata?.valid ?? true,
+
+            source:
+
+                staff.metadata?.source || "",
+
+            documentId:
+
+                staff.metadata?.documentId || ""
+
+        }
+
+    };
 
 };
-
-    }
-
-    /*----------------------------------
-      Success
-    ----------------------------------*/
-
-  return {
-
-    success: true,
-
-    type: "staff",
-
-    intent: "staffProfile",
-
-    data: [
-
-        profile
-
-    ]
-
-};
-};
-
-/*=========================================================
- PROFILE EXISTS
+    /*=========================================================
+ REGISTER
 =========================================================*/
 
-AnalyticsEngine.hasProfile = function (
+GG.queryStaffProfile = function (
 
-    name
+    request
 
 ) {
 
-    return !!AnalyticsEngine.findStaff(
+    return StaffProfile.queryStaffProfile(
 
-        name
+        request
 
     );
 
 };
 
 /*=========================================================
- GET PROFILE
+ INITIALIZE
 =========================================================*/
 
-AnalyticsEngine.getProfile = function (
+StaffProfile.initialize();
 
-    name
+/*=========================================================
+ EXPORT
+=========================================================*/
 
-) {
+GG.StaffProfile =
 
-    return AnalyticsEngine.findStaff(
-
-        name
-
-    );
-
-};
+    StaffProfile;
 
 console.log(
 
-    "%cStaff Profile Module Loaded",
+    "%cStaff Profile Loaded",
 
-    "color:#2E8B57;font-weight:bold;"
+    "color:#008000;font-weight:bold;"
 
 );
-/*=========================================================
- PHONE
-=========================================================*/
 
-AnalyticsEngine.getPhone = function (name) {
-
-    const s =
-        AnalyticsEngine.findStaff(name);
-
-    if (!s)
-        return "";
-
-    return (
-
-        s.phone ||
-
-        s.mobile ||
-
-        s.mobileNo ||
-
-        s.phoneNumber ||
-
-        ""
-
-    );
-
-};
-
-/*=========================================================
- DESIGNATION
-=========================================================*/
-
-AnalyticsEngine.getDesignation = function (name) {
-
-    const s =
-        AnalyticsEngine.findStaff(name);
-
-    if (!s)
-        return "";
-
-    return (
-
-        s.designation ||
-
-        s.post ||
-
-        s.rank ||
-
-        ""
-
-    );
-
-};
-
-/*=========================================================
- ROLE
-=========================================================*/
-
-AnalyticsEngine.getRole = function (name) {
-
-    const s =
-        AnalyticsEngine.findStaff(name);
-
-    if (!s)
-        return "";
-
-    return (
-
-        s.role ||
-
-        ""
-
-    );
-
-};
-
-/*=========================================================
- BEAT
-=========================================================*/
-
-AnalyticsEngine.getBeat = function (name) {
-
-    const s =
-        AnalyticsEngine.findStaff(name);
-
-    if (!s)
-        return "";
-
-    return (
-
-        s.beat ||
-
-        ""
-
-    );
-
-};
-
-/*=========================================================
- RANGE
-=========================================================*/
-
-AnalyticsEngine.getRange = function (name) {
-
-    const s =
-        AnalyticsEngine.findStaff(name);
-
-    if (!s)
-        return "";
-
-    return (
-
-        s.range ||
-
-        ""
-
-    );
-
-};
-
-/*=========================================================
- DIVISION
-=========================================================*/
-
-AnalyticsEngine.getDivision = function (name) {
-
-    const s =
-        AnalyticsEngine.findStaff(name);
-
-    if (!s)
-        return "";
-
-    return (
-
-        s.division ||
-
-        ""
-
-    );
-
-};
-
-/*=========================================================
- POSTING
-=========================================================*/
-
-AnalyticsEngine.getPosting = function (name) {
-
-    const s =
-        AnalyticsEngine.findStaff(name);
-
-    if (!s)
-        return "";
-
-    return {
-
-        beat:
-
-            s.beat || "",
-
-        range:
-
-            s.range || "",
-
-        division:
-
-            s.division || ""
-
-    };
-
-};
-
-    /*=========================================================
- PROFILE SUMMARY
-=========================================================*/
-
-AnalyticsEngine.getProfileSummary = function (name) {
-
-    const s =
-        AnalyticsEngine.findStaff(name);
-
-    if (!s)
-        return null;
-
-    return {
-
-        name:
-            s.name || s.staffName || "",
-
-        designation:
-            s.designation || "",
-
-        role:
-            s.role || "",
-
-        beat:
-            s.beat || "",
-
-        range:
-            s.range || "",
-
-        division:
-            s.division || "",
-
-        phone:
-            s.phone ||
-            s.mobile ||
-            s.mobileNo ||
-            ""
-
-    };
-
-};
 })(window);
