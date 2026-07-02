@@ -2635,6 +2635,9 @@ AnalyticsEngine.openPatrol = function (search) {
 /*=========================================================
  BUILD INTENT
 =========================================================*/
+/*=========================================================
+ BUILD INTENT
+=========================================================*/
 
 AnalyticsEngine.buildIntent = function (
 
@@ -2653,62 +2656,91 @@ AnalyticsEngine.buildIntent = function (
         Reports
     */
 
-    // Staff
+    /*----------------------------------
+      STAFF
+    ----------------------------------*/
 
-   const staff =
+    const staff =
 
-    AnalyticsEngine.buildStaffIntent(
-        query
-    );
+        AnalyticsEngine.buildStaffIntent(
 
-if (
+            query
 
-    staff.confidence >= 0.80
+        );
 
-) {
+    if (
 
-    return staff;
+        staff.confidence >= 0.80
 
-}
+    ) {
 
-/*
-Future
-
-const wildlife =
-    AnalyticsEngine.buildWildlifeIntent(query);
-
-if (wildlife.confidence >= 0.80)
-    return wildlife;
-
-const gis =
-    AnalyticsEngine.buildGISIntent(query);
-
-if (gis.confidence >= 0.80)
-    return gis;
-
-const legal =
-    AnalyticsEngine.buildLegalIntent(query);
-
-if (legal.confidence >= 0.80)
-    return legal;
-*/
-
-return staff;
+        return staff;
 
     }
 
-    /*
-    const wildlife =
-        AnalyticsEngine.buildWildlifeIntent(query);
+    /*----------------------------------
+      FUTURE DOMAINS
+    ----------------------------------
 
-    if (wildlife.confidence >= 0.80)
+    const wildlife =
+
+        AnalyticsEngine.buildWildlifeIntent(
+
+            query
+
+        );
+
+    if (
+
+        wildlife.confidence >= 0.80
+
+    ) {
+
         return wildlife;
 
-    const gis =
-        AnalyticsEngine.buildGISIntent(query);
+    }
 
-    ...
-    */
+    const gis =
+
+        AnalyticsEngine.buildGISIntent(
+
+            query
+
+        );
+
+    if (
+
+        gis.confidence >= 0.80
+
+    ) {
+
+        return gis;
+
+    }
+
+    const legal =
+
+        AnalyticsEngine.buildLegalIntent(
+
+            query
+
+        );
+
+    if (
+
+        legal.confidence >= 0.80
+
+    ) {
+
+        return legal;
+
+    }
+
+    ----------------------------------*/
+
+    /*----------------------------------
+      DEFAULT
+    ----------------------------------*/
 
     return staff;
 
