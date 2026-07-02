@@ -248,6 +248,10 @@ AI.buildIntentPrompt = function (
  CALL API
 =========================================================*/
 
+/*=========================================================
+ CALL API
+=========================================================*/
+
 AI.callAPI = async function (
 
     payload
@@ -262,39 +266,96 @@ AI.callAPI = async function (
 
     );
 
-    /*
-        Phase 3
+    /*----------------------------------
+      Call Detect Intent API
+    ----------------------------------*/
 
-        Cloud Function
+    const response =
 
-        will replace this.
-    */
+        await fetch(
 
-    return {
+            GG.Config
+                .API
+                .DETECT_INTENT,
 
-        success: true,
+            {
 
-        source: "ai",
+                method: "POST",
 
-        domain:
+                headers: {
 
-    GG.Config
-        .ROUTER
-        .DEFAULT_DOMAIN,
-        intent: "unknown",
+                    "Content-Type":
+                        "application/json"
 
-        entities: {},
+                },
 
-        confidence: 0,
+                body: JSON.stringify({
 
-        provider: AI.PROVIDER,
+                    query:
 
-        raw: null
+                        payload.question
 
-    };
+                })
+
+            }
+
+        );
+
+    /*----------------------------------
+      Parse Response
+    ----------------------------------*/
+
+    const data =
+
+        await response.json();
+
+    /*----------------------------------
+      HTTP Error
+    ----------------------------------*/
+
+    if (
+
+        !response.ok
+
+    ) {
+
+        throw new Error(
+
+            data.error ||
+
+            "Detect Intent API failed."
+
+        );
+
+    }
+
+    /*----------------------------------
+      API Error
+    ----------------------------------*/
+
+    if (
+
+        data.success === false
+
+    ) {
+
+        throw new Error(
+
+            data.error ||
+
+            "AI request failed."
+
+        );
+
+    }
+
+    /*----------------------------------
+      Success
+    ----------------------------------*/
+
+    return data;
 
 };
-
 /*=========================================================
  VALIDATE RESPONSE
 =========================================================*/
