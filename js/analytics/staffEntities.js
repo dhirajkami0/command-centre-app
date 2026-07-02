@@ -4165,156 +4165,4214 @@ StaffEntities.normalizeStaffDocuments = function (
     return normalizedDocuments;
 
 };
+
+ /*=========================================================
+ BUILD INDEX MAPS
+=========================================================*/
+
+StaffEntities.buildIndexMaps = function () {
+
+    /*----------------------------------
+      Validate Staff Collection
+    ----------------------------------*/
+
+    if (
+
+        !Array.isArray(
+
+            StaffEntities.staff
+
+        )
+
+    ) {
+
+        throw new Error(
+
+            "Staff collection not available."
+
+        );
+
+    }
+
+    /*----------------------------------
+      Local Reference
+    ----------------------------------*/
+
+    const indexes =
+
+        StaffEntities.index;
+
+    /*----------------------------------
+      Clear Existing Indexes
+    ----------------------------------*/
+
+    Object.keys(
+
+        indexes
+
+    )
+
+    .forEach(
+
+        function (
+
+            key
+
+        ) {
+
+            indexes[key].clear();
+
+        }
+
+    );
+
+    /*----------------------------------
+      Helper
+    ----------------------------------*/
+
+    function add(
+
+        map,
+
+        key,
+
+        staff
+
+    ) {
+
+        if (
+
+            key === null ||
+
+            key === undefined
+
+        ) {
+
+            return;
+
+        }
+
+        const value =
+
+            String(
+
+                key
+
+            )
+
+            .trim()
+
+            .toUpperCase();
+
+        if (
+
+            value.length === 0
+
+        ) {
+
+            return;
+
+        }
+
+        if (
+
+            !map.has(
+
+                value
+
+            )
+
+        ) {
+
+            map.set(
+
+                value,
+
+                []
+
+            );
+
+        }
+
+        map
+
+            .get(
+
+                value
+
+            )
+
+            .push(
+
+                staff
+
+            );
+
+    }
+/*=========================================================
+ CREATE EXTRACTION RESULT
+=========================================================*/
+
+StaffEntities.createExtractionResult = function (
+
+    query = ""
+
+) {
+
+    /*----------------------------------
+      Normalize Query
+    ----------------------------------*/
+
+    const originalQuery =
+
+        typeof query === "string"
+
+            ? query
+
+            : "";
+
+    const normalizedQuery =
+
+        originalQuery
+
+            .trim()
+
+            .toUpperCase();
+
+    /*----------------------------------
+      Build Result
+    ----------------------------------*/
+
+    return {
+
+        /*=================================
+          Query
+        =================================*/
+
+        originalQuery,
+
+        normalizedQuery,
+
+        /*=================================
+          Entities
+        =================================*/
+
+        entities: {
+
+            staff: [],
+
+            phones: [],
+
+            roles: [],
+
+            designations: [],
+
+            posting: [],
+
+            team: [],
+
+            duty: [],
+
+            gps: []
+
+        },
+
+        /*=================================
+          Keywords
+        =================================*/
+
+        keywords: [],
+
+        /*=================================
+          Intent Candidates
+        =================================*/
+
+        intents: [],
+
+        /*=================================
+          Confidence
+        =================================*/
+
+        confidence: 0,
+
+        /*=================================
+          Validation
+        =================================*/
+
+        warnings: [],
+
+        errors: [],
+
+        /*=================================
+          Statistics
+        =================================*/
+
+        stats: {
+
+            totalEntities: 0,
+
+            uniqueStaff: 0,
+
+            executionTime: 0
+
+        },
+
+        /*=================================
+          Metadata
+        =================================*/
+
+        metadata: {
+
+            version:
+
+                StaffEntities.VERSION,
+
+            timestamp:
+
+                Date.now(),
+
+            source:
+
+                StaffConstants.DOMAIN
+
+        }
+
+    };
+
+};
+    /*----------------------------------
+      Build All Indexes
+    ----------------------------------*/
+
+    StaffEntities.staff.forEach(
+
+        function (
+
+            staff
+
+        ) {
+
+            if (
+
+                !staff
+
+            ) {
+
+                return;
+
+            }
+
+            /*==============================
+              Identity
+            ==============================*/
+
+            add(
+
+                indexes.byCleanName,
+
+                staff.identity.cleanName,
+
+                staff
+
+            );
+
+            add(
+
+                indexes.byName,
+
+                staff.identity.name,
+
+                staff
+
+            );
+
+            add(
+
+                indexes.byPhone,
+
+                staff.identity.phone,
+
+                staff
+
+            );
+
+            /*==============================
+              Role
+            ==============================*/
+
+            add(
+
+                indexes.byRole,
+
+                staff.identity.role,
+
+                staff
+
+            );
+
+            add(
+
+                indexes.byDesignation,
+
+                staff.identity.designation,
+
+                staff
+
+            );
+
+            /*==============================
+              Posting
+            ==============================*/
+
+            add(
+
+                indexes.byCircle,
+
+                staff.posting.circle,
+
+                staff
+
+            );
+
+            add(
+
+                indexes.byDivision,
+
+                staff.posting.division,
+
+                staff
+
+            );
+
+            add(
+
+                indexes.byRange,
+
+                staff.posting.range,
+
+                staff
+
+            );
+
+            add(
+
+                indexes.byBeat,
+
+                staff.posting.beat,
+
+                staff
+
+            );
+
+            add(
+
+                indexes.byCompartment,
+
+                staff.assignment.assignedCompartment,
+
+                staff
+
+            );
+
+            /*==============================
+              Team
+            ==============================*/
+
+            add(
+
+                indexes.byLeader,
+
+                staff.assignment.leader,
+
+                staff
+
+            );
+
+            add(
+
+                indexes.byTeam,
+
+                staff.assignment.team,
+
+                staff
+
+            );
+
+        }
+
+    );
+
+    /*----------------------------------
+      Summary
+    ----------------------------------*/
+
+    console.group(
+
+        "🧠 Staff Index Maps"
+
+    );
+
+    console.log(
+
+        "Staff:",
+
+        StaffEntities.staff.length
+
+    );
+
+    console.log(
+
+        "Clean Names:",
+
+        indexes.byCleanName.size
+
+    );
+
+    console.log(
+
+        "Names:",
+
+        indexes.byName.size
+
+    );
+
+    console.log(
+
+        "Phones:",
+
+        indexes.byPhone.size
+
+    );
+
+    console.log(
+
+        "Roles:",
+
+        indexes.byRole.size
+
+    );
+
+    console.log(
+
+        "Designations:",
+
+        indexes.byDesignation.size
+
+    );
+
+    console.log(
+
+        "Circles:",
+
+        indexes.byCircle.size
+
+    );
+
+    console.log(
+
+        "Divisions:",
+
+        indexes.byDivision.size
+
+    );
+
+    console.log(
+
+        "Ranges:",
+
+        indexes.byRange.size
+
+    );
+
+    console.log(
+
+        "Beats:",
+
+        indexes.byBeat.size
+
+    );
+
+    console.log(
+
+        "Compartments:",
+
+        indexes.byCompartment.size
+
+    );
+
+    console.log(
+
+        "Leaders:",
+
+        indexes.byLeader.size
+
+    );
+
+    console.log(
+
+        "Teams:",
+
+        indexes.byTeam.size
+
+    );
+
+    console.groupEnd();
+
+    /*----------------------------------
+      Return
+    ----------------------------------*/
+
+    return StaffEntities.index;
+
+};
+
+ /*=========================================================
+ BUILD SEARCH CACHE
+=========================================================*/
+
+StaffEntities.buildSearchCache = function () {
+
+    /*----------------------------------
+      Validate Staff Collection
+    ----------------------------------*/
+
+    if (
+
+        !Array.isArray(
+
+            StaffEntities.staff
+
+        )
+
+    ) {
+
+        throw new Error(
+
+            "Staff collection not available."
+
+        );
+
+    }
+
+    /*----------------------------------
+      Cache Reference
+    ----------------------------------*/
+
+    const cache =
+
+        StaffEntities.cache.search;
+
+    /*----------------------------------
+      Clear Existing Cache
+    ----------------------------------*/
+
+    cache.clear();
+
+    /*----------------------------------
+      Build Cache
+    ----------------------------------*/
+
+    StaffEntities.staff.forEach(
+
+        function (
+
+            staff
+
+        ) {
+
+            if (
+
+                !staff ||
+
+                !staff.search ||
+
+                !Array.isArray(
+
+                    staff.search.tokens
+
+                )
+
+            ) {
+
+                return;
+
+            }
+
+            staff.search.tokens.forEach(
+
+                function (
+
+                    token
+
+                ) {
+
+                    if (
+
+                        token === null ||
+
+                        token === undefined
+
+                    ) {
+
+                        return;
+
+                    }
+
+                    const key =
+
+                        String(
+
+                            token
+
+                        )
+
+                        .trim()
+
+                        .toUpperCase();
+
+                    if (
+
+                        key.length === 0
+
+                    ) {
+
+                        return;
+
+                    }
+
+                    if (
+
+                        !cache.has(
+
+                            key
+
+                        )
+
+                    ) {
+
+                        cache.set(
+
+                            key,
+
+                            []
+
+                        );
+
+                    }
+
+                    cache
+
+                        .get(
+
+                            key
+
+                        )
+
+                        .push(
+
+                            staff
+
+                        );
+
+                }
+
+            );
+
+        }
+
+    );
+
+    /*----------------------------------
+      Summary
+    ----------------------------------*/
+
+    console.group(
+
+        "🧠 Staff Search Cache"
+
+    );
+
+    console.log(
+
+        "Tokens:",
+
+        cache.size
+
+    );
+
+    console.groupEnd();
+
+    /*----------------------------------
+      Return
+    ----------------------------------*/
+
+    return cache;
+
+};
+ /*=========================================================
+ BUILD ENTITY CACHE
+=========================================================*/
+
+StaffEntities.buildEntityCache = function () {
+
+    /*----------------------------------
+      Validate Staff Collection
+    ----------------------------------*/
+
+    if (
+
+        !Array.isArray(
+
+            StaffEntities.staff
+
+        )
+
+    ) {
+
+        throw new Error(
+
+            "Staff collection not available."
+
+        );
+
+    }
+
+    /*----------------------------------
+      Cache Reference
+    ----------------------------------*/
+
+    const cache =
+
+        StaffEntities.cache.entities;
+
+    /*----------------------------------
+      Clear Existing Cache
+    ----------------------------------*/
+
+    cache.clear();
+
+    /*----------------------------------
+      Helper
+    ----------------------------------*/
+
+    function add(
+
+        key,
+
+        staff
+
+    ) {
+
+        if (
+
+            key === null ||
+
+            key === undefined
+
+        ) {
+
+            return;
+
+        }
+
+        const value =
+
+            String(
+
+                key
+
+            )
+
+            .trim()
+
+            .toUpperCase();
+
+        if (
+
+            value.length === 0
+
+        ) {
+
+            return;
+
+        }
+
+        if (
+
+            !cache.has(
+
+                value
+
+            )
+
+        ) {
+
+            cache.set(
+
+                value,
+
+                staff
+
+            );
+
+        }
+
+    }
+
+    /*----------------------------------
+      Build Cache
+    ----------------------------------*/
+
+    StaffEntities.staff.forEach(
+
+        function (
+
+            staff
+
+        ) {
+
+            if (
+
+                !staff
+
+            ) {
+
+                return;
+
+            }
+
+            /*==============================
+              Document
+            ==============================*/
+
+            add(
+
+                staff.id,
+
+                staff
+
+            );
+
+            if (
+
+                staff.documentInfo
+
+            ) {
+
+                add(
+
+                    staff.documentInfo.id,
+
+                    staff
+
+                );
+
+            }
+
+            /*==============================
+              Identity
+            ==============================*/
+
+            if (
+
+                staff.identity
+
+            ) {
+
+                add(
+
+                    staff.identity.cleanName,
+
+                    staff
+
+                );
+
+                add(
+
+                    staff.identity.name,
+
+                    staff
+
+                );
+
+                add(
+
+                    staff.identity.rawName,
+
+                    staff
+
+                );
+
+                add(
+
+                    staff.identity.phone,
+
+                    staff
+
+                );
+
+                add(
+
+                    staff.identity.email,
+
+                    staff
+
+                );
+
+            }
+
+            /*==============================
+              Tracking
+            ==============================*/
+
+            if (
+
+                staff.tracking
+
+            ) {
+
+                add(
+
+                    staff.tracking.sessionId,
+
+                    staff
+
+                );
+
+            }
+
+        }
+
+    );
+
+    /*----------------------------------
+      Summary
+    ----------------------------------*/
+
+    console.group(
+
+        "🧠 Staff Entity Cache"
+
+    );
+
+    console.log(
+
+        "Entities:",
+
+        cache.size
+
+    );
+
+    console.groupEnd();
+
+    /*----------------------------------
+      Return
+    ----------------------------------*/
+
+    return cache;
+
+};
 /*=========================================================
  PUBLIC API
 =========================================================*/
 
-StaffEntities.buildIndex =
-    async function () {
+/*=========================================================
+ BUILD STAFF INDEX
+=========================================================*/
 
-        throw new Error(
+StaffEntities.buildIndex = async function () {
 
-            "buildIndex() not implemented."
+    /*----------------------------------
+      Prevent Duplicate Build
+    ----------------------------------*/
 
-        );
+    if (
 
-    };
-
-StaffEntities.extract =
-    function (
-
-        query
+        StaffEntities.loading
 
     ) {
 
-        throw new Error(
+        return StaffEntities.waitUntilLoaded();
 
-            "extract() not implemented."
+    }
+
+    /*----------------------------------
+      Start
+    ----------------------------------*/
+
+    StaffEntities.startLoading();
+
+    console.group(
+
+        "🧠 Building Staff Index"
+
+    );
+
+    try {
+
+        /*----------------------------------
+          Reset
+        ----------------------------------*/
+
+        StaffEntities.clear();
+
+        /*----------------------------------
+          Load Staff Profiles
+        ----------------------------------*/
+
+        const staff =
+
+            await StaffEntities.loadStaffProfiles();
+
+        /*----------------------------------
+          Store Staff
+        ----------------------------------*/
+
+        StaffEntities.staff =
+
+            Array.isArray(
+
+                staff
+
+            )
+
+                ? staff
+
+                : [];
+
+        /*----------------------------------
+          Build Lookup Maps
+        ----------------------------------*/
+
+        StaffEntities.buildIndexMaps();
+
+        /*----------------------------------
+          Build Search Cache
+        ----------------------------------*/
+
+        StaffEntities.buildSearchCache();
+
+        /*----------------------------------
+          Build Entity Cache
+        ----------------------------------*/
+
+        StaffEntities.buildEntityCache();
+
+        /*----------------------------------
+          Mark Build Complete
+        ----------------------------------*/
+
+        StaffEntities.markBuilt();
+
+        StaffEntities.finishLoading();
+
+        /*----------------------------------
+          Summary
+        ----------------------------------*/
+
+        console.log(
+
+            "Staff:",
+
+            StaffEntities.staff.length
 
         );
 
-    };
+        console.log(
 
-StaffEntities.extractNames =
-    function (
+            "Clean Names:",
 
-        query
+            StaffEntities.index.byCleanName.size
+
+        );
+
+        console.log(
+
+            "Phones:",
+
+            StaffEntities.index.byPhone.size
+
+        );
+
+        console.log(
+
+            "Roles:",
+
+            StaffEntities.index.byRole.size
+
+        );
+
+        console.log(
+
+            "Search Tokens:",
+
+            StaffEntities.cache.search.size
+
+        );
+
+        console.log(
+
+            "Entity Cache:",
+
+            StaffEntities.cache.entities.size
+
+        );
+
+        console.log(
+
+            "✅ Staff Index Ready"
+
+        );
+
+        console.groupEnd();
+
+        /*----------------------------------
+          Return
+        ----------------------------------*/
+
+        return StaffEntities.staff;
+
+    }
+
+    catch (
+
+        error
 
     ) {
 
-        throw new Error(
+        /*----------------------------------
+          Fail
+        ----------------------------------*/
 
-            "extractNames() not implemented."
+        StaffEntities.failLoading();
+
+        console.groupEnd();
+
+        console.error(
+
+            "[StaffEntities] Index build failed.",
+
+            error
 
         );
 
-    };
+        throw error;
 
-StaffEntities.extractPhones =
-    function (
+    }
 
-        query
+};
+
+/*=========================================================
+EXTRACT
+Master Staff Extraction Engine
+=========================================================*/
+
+StaffEntities.extract = function (
+
+    query
+
+) {
+
+    /*----------------------------------
+      Validate Query
+    ----------------------------------*/
+
+    if (
+
+        typeof query !== "string"
 
     ) {
 
-        throw new Error(
+        return {
 
-            "extractPhones() not implemented."
+            query: "",
 
-        );
+            normalizedQuery: "",
 
-    };
+            results: [],
 
-StaffEntities.extractRoles =
-    function (
+            count: 0
 
-        query
+        };
 
-    ) {
+    }
 
-        throw new Error(
+    /*----------------------------------
+      Normalize
+    ----------------------------------*/
 
-            "extractRoles() not implemented."
-
-        );
-
-    };
-
-StaffEntities.extractDesignations =
-    function (
+    const normalizedQuery =
 
         query
 
+            .trim()
+
+            .toUpperCase();
+
+    if (
+
+        normalizedQuery.length === 0
+
     ) {
 
-        throw new Error(
+        return {
 
-            "extractDesignations() not implemented."
+            query,
+
+            normalizedQuery,
+
+            results: [],
+
+            count: 0
+
+        };
+
+    }
+
+    /*----------------------------------
+      Ensure Index Ready
+    ----------------------------------*/
+
+    if (
+
+        !StaffEntities.index
+
+    ) {
+
+        console.warn(
+
+            "[StaffEntities] Index not built."
 
         );
 
+        return {
+
+            query,
+
+            normalizedQuery,
+
+            results: [],
+
+            count: 0
+
+        };
+
+    }
+
+    /*----------------------------------
+      Result Collection
+    ----------------------------------*/
+
+    const merged =
+
+        new Map();
+
+    function add(
+
+        list,
+
+        source
+
+    ) {
+
+        if (
+
+            !Array.isArray(
+
+                list
+
+            )
+
+        ) {
+
+            return;
+
+        }
+
+        list.forEach(
+
+            function (
+
+                staff
+
+            ) {
+
+                if (
+
+                    !staff
+
+                ) {
+
+                    return;
+
+                }
+
+                const id =
+
+                    staff.id ||
+
+                    staff.identity?.cleanName ||
+
+                    Math.random().toString();
+
+                if (
+
+                    !merged.has(
+
+                        id
+
+                    )
+
+                ) {
+
+                    staff.__score = 0;
+
+                    staff.__sources = [];
+
+                    merged.set(
+
+                        id,
+
+                        staff
+
+                    );
+
+                }
+
+                const obj =
+
+                    merged.get(id);
+
+                obj.__score++;
+
+                obj.__sources.push(
+
+                    source
+
+                );
+
+            }
+
+        );
+
+    }
+
+    /*----------------------------------
+      Search Every Extractor
+    ----------------------------------*/
+
+    add(
+
+        StaffEntities.extractNames(
+
+            normalizedQuery
+
+        ),
+
+        "name"
+
+    );
+
+    add(
+
+        StaffEntities.extractPhones(
+
+            normalizedQuery
+
+        ),
+
+        "phone"
+
+    );
+
+    add(
+
+        StaffEntities.extractRoles(
+
+            normalizedQuery
+
+        ),
+
+        "role"
+
+    );
+
+    add(
+
+        StaffEntities.extractDesignations(
+
+            normalizedQuery
+
+        ),
+
+        "designation"
+
+    );
+
+    add(
+
+        StaffEntities.extractPosting(
+
+            normalizedQuery
+
+        ),
+
+        "posting"
+
+    );
+
+    add(
+
+        StaffEntities.extractTeam(
+
+            normalizedQuery
+
+        ),
+
+        "team"
+
+    );
+
+    add(
+
+        StaffEntities.extractDuty(
+
+            normalizedQuery
+
+        ),
+
+        "duty"
+
+    );
+
+    add(
+
+        StaffEntities.extractGPS(
+
+            normalizedQuery
+
+        ),
+
+        "gps"
+
+    );
+
+    /*----------------------------------
+      Convert
+    ----------------------------------*/
+
+    const results =
+
+        Array.from(
+
+            merged.values()
+
+        );
+
+    /*----------------------------------
+      Rank
+    ----------------------------------*/
+
+    results.sort(
+
+        function (
+
+            a,
+
+            b
+
+        ) {
+
+            if (
+
+                b.__score !==
+
+                a.__score
+
+            ) {
+
+                return (
+
+                    b.__score -
+
+                    a.__score
+
+                );
+
+            }
+
+            return (
+
+                String(
+
+                    a.identity?.cleanName ||
+
+                    ""
+
+                )
+
+                >
+
+                String(
+
+                    b.identity?.cleanName ||
+
+                    ""
+
+                )
+
+            )
+
+                ? 1
+
+                : -1;
+
+        }
+
+    );
+
+    /*----------------------------------
+      Cleanup
+    ----------------------------------*/
+
+    results.forEach(
+
+        function (
+
+            staff
+
+        ) {
+
+            delete staff.__score;
+
+            delete staff.__sources;
+
+        }
+
+    );
+
+    /*----------------------------------
+      Return
+    ----------------------------------*/
+
+    return {
+
+        query,
+
+        normalizedQuery,
+
+        results,
+
+        count:
+
+            results.length
+
     };
 
-StaffEntities.extractPosting =
-    function (
+};
+/*=========================================================
+ EXTRACT NAMES
+=========================================================*/
+
+StaffEntities.extractNames = function (
+
+    query
+
+) {
+
+    /*----------------------------------
+      Validate
+    ----------------------------------*/
+
+    if (
+
+        typeof query !== "string"
+
+    ) {
+
+        return [];
+
+    }
+
+    /*----------------------------------
+      Normalize Query
+    ----------------------------------*/
+
+    const search =
 
         query
 
+            .trim()
+
+            .toUpperCase();
+
+    if (
+
+        search.length === 0
+
     ) {
 
-        throw new Error(
+        return [];
 
-            "extractPosting() not implemented."
+    }
+
+    /*----------------------------------
+      Local References
+    ----------------------------------*/
+
+    const {
+
+        byCleanName,
+
+        byName
+
+    } =
+
+        StaffEntities.index;
+
+    /*----------------------------------
+      Result Collection
+    ----------------------------------*/
+
+    const results =
+
+        new Map();
+
+    /*----------------------------------
+      Helper
+    ----------------------------------*/
+
+    function addList(
+
+        list
+
+    ) {
+
+        if (
+
+            !Array.isArray(
+
+                list
+
+            )
+
+        ) {
+
+            return;
+
+        }
+
+        list.forEach(
+
+            function (
+
+                staff
+
+            ) {
+
+                if (
+
+                    !staff
+
+                ) {
+
+                    return;
+
+                }
+
+                results.set(
+
+                    staff.id,
+
+                    staff
+
+                );
+
+            }
 
         );
 
-    };
+    }
 
-StaffEntities.extractTeam =
-    function (
+    /*----------------------------------
+      Exact Match
+    ----------------------------------*/
+
+    addList(
+
+        byCleanName.get(
+
+            search
+
+        )
+
+    );
+
+    addList(
+
+        byName.get(
+
+            search
+
+        )
+
+    );
+
+    /*----------------------------------
+      Partial Match
+    ----------------------------------*/
+
+    byCleanName.forEach(
+
+        function (
+
+            value,
+
+            key
+
+        ) {
+
+            if (
+
+                key.includes(
+
+                    search
+
+                )
+
+            ) {
+
+                addList(
+
+                    value
+
+                );
+
+            }
+
+        }
+
+    );
+
+    byName.forEach(
+
+        function (
+
+            value,
+
+            key
+
+        ) {
+
+            if (
+
+                key.includes(
+
+                    search
+
+                )
+
+            ) {
+
+                addList(
+
+                    value
+
+                );
+
+            }
+
+        }
+
+    );
+
+    /*----------------------------------
+      Return
+    ----------------------------------*/
+
+    return Array.from(
+
+        results.values()
+
+    );
+
+};
+/*=========================================================
+ EXTRACT PHONES
+=========================================================*/
+
+StaffEntities.extractPhones = function (
+
+    query
+
+) {
+
+    /*----------------------------------
+      Validate Query
+    ----------------------------------*/
+
+    if (
+
+        typeof query !== "string"
+
+    ) {
+
+        return [];
+
+    }
+
+    /*----------------------------------
+      Normalize
+    ----------------------------------*/
+
+    const search =
 
         query
 
+            .replace(
+
+                /\D/g,
+
+                ""
+
+            )
+
+            .trim();
+
+    if (
+
+        search.length === 0
+
     ) {
 
-        throw new Error(
+        return [];
 
-            "extractTeam() not implemented."
+    }
+
+    /*----------------------------------
+      Index
+    ----------------------------------*/
+
+    const phoneIndex =
+
+        StaffEntities.index.byPhone;
+
+    /*----------------------------------
+      Result Collection
+    ----------------------------------*/
+
+    const results =
+
+        new Map();
+
+    /*----------------------------------
+      Helper
+    ----------------------------------*/
+
+    function addList(
+
+        list
+
+    ) {
+
+        if (
+
+            !Array.isArray(
+
+                list
+
+            )
+
+        ) {
+
+            return;
+
+        }
+
+        list.forEach(
+
+            function (
+
+                staff
+
+            ) {
+
+                if (
+
+                    !staff
+
+                ) {
+
+                    return;
+
+                }
+
+                results.set(
+
+                    staff.id,
+
+                    staff
+
+                );
+
+            }
 
         );
 
-    };
+    }
 
-StaffEntities.extractDuty =
-    function (
+    /*----------------------------------
+      Exact Match
+    ----------------------------------*/
+
+    addList(
+
+        phoneIndex.get(
+
+            search
+
+        )
+
+    );
+
+    /*----------------------------------
+      Partial Match
+    ----------------------------------*/
+
+    phoneIndex.forEach(
+
+        function (
+
+            value,
+
+            key
+
+        ) {
+
+            if (
+
+                key.includes(
+
+                    search
+
+                )
+
+            ) {
+
+                addList(
+
+                    value
+
+                );
+
+            }
+
+        }
+
+    );
+
+    /*----------------------------------
+      Return
+    ----------------------------------*/
+
+    return Array.from(
+
+        results.values()
+
+    );
+
+};
+/*=========================================================
+ EXTRACT ROLES
+=========================================================*/
+
+StaffEntities.extractRoles = function (
+
+    query
+
+) {
+
+    /*----------------------------------
+      Validate Query
+    ----------------------------------*/
+
+    if (
+
+        typeof query !== "string"
+
+    ) {
+
+        return [];
+
+    }
+
+    /*----------------------------------
+      Normalize
+    ----------------------------------*/
+
+    const search =
 
         query
 
+            .trim()
+
+            .toUpperCase();
+
+    if (
+
+        search.length === 0
+
     ) {
 
-        throw new Error(
+        return [];
 
-            "extractDuty() not implemented."
+    }
+
+    /*----------------------------------
+      Role Index
+    ----------------------------------*/
+
+    const roleIndex =
+
+        StaffEntities.index.byRole;
+
+    /*----------------------------------
+      Results
+    ----------------------------------*/
+
+    const results =
+
+        new Map();
+
+    /*----------------------------------
+      Helper
+    ----------------------------------*/
+
+    function addList(
+
+        list
+
+    ) {
+
+        if (
+
+            !Array.isArray(
+
+                list
+
+            )
+
+        ) {
+
+            return;
+
+        }
+
+        list.forEach(
+
+            function (
+
+                staff
+
+            ) {
+
+                if (
+
+                    !staff
+
+                ) {
+
+                    return;
+
+                }
+
+                results.set(
+
+                    staff.id,
+
+                    staff
+
+                );
+
+            }
 
         );
 
-    };
+    }
 
-StaffEntities.extractGPS =
-    function (
+    /*----------------------------------
+      Exact Match
+    ----------------------------------*/
+
+    addList(
+
+        roleIndex.get(
+
+            search
+
+        )
+
+    );
+
+    /*----------------------------------
+      Partial Match
+    ----------------------------------*/
+
+    roleIndex.forEach(
+
+        function (
+
+            value,
+
+            key
+
+        ) {
+
+            if (
+
+                key.includes(
+
+                    search
+
+                )
+
+            ) {
+
+                addList(
+
+                    value
+
+                );
+
+            }
+
+        }
+
+    );
+
+    /*----------------------------------
+      Synonym Match
+    ----------------------------------*/
+
+    if (
+
+        StaffConstants.SYNONYMS &&
+
+        StaffConstants.SYNONYMS.ROLE
+
+    ) {
+
+        StaffConstants.SYNONYMS.ROLE.forEach(
+
+            function (
+
+                synonym
+
+            ) {
+
+                if (
+
+                    synonym.includes(
+
+                        search
+
+                    )
+
+                ) {
+
+                    addList(
+
+                        roleIndex.get(
+
+                            synonym
+
+                        )
+
+                    );
+
+                }
+
+            }
+
+        );
+
+    }
+
+    /*----------------------------------
+      Return
+    ----------------------------------*/
+
+    return Array.from(
+
+        results.values()
+
+    );
+
+};
+/*=========================================================
+ EXTRACT DESIGNATIONS
+=========================================================*/
+
+StaffEntities.extractDesignations = function (
+
+    query
+
+) {
+
+    /*----------------------------------
+      Validate Query
+    ----------------------------------*/
+
+    if (
+
+        typeof query !== "string"
+
+    ) {
+
+        return [];
+
+    }
+
+    /*----------------------------------
+      Normalize Query
+    ----------------------------------*/
+
+    const search =
 
         query
 
+            .trim()
+
+            .toUpperCase();
+
+    if (
+
+        search.length === 0
+
     ) {
 
-        throw new Error(
+        return [];
 
-            "extractGPS() not implemented."
+    }
+
+    /*----------------------------------
+      Designation Index
+    ----------------------------------*/
+
+    const designationIndex =
+
+        StaffEntities.index.byDesignation;
+
+    /*----------------------------------
+      Result Collection
+    ----------------------------------*/
+
+    const results =
+
+        new Map();
+
+    /*----------------------------------
+      Helper
+    ----------------------------------*/
+
+    function addList(
+
+        list
+
+    ) {
+
+        if (
+
+            !Array.isArray(
+
+                list
+
+            )
+
+        ) {
+
+            return;
+
+        }
+
+        list.forEach(
+
+            function (
+
+                staff
+
+            ) {
+
+                if (
+
+                    !staff
+
+                ) {
+
+                    return;
+
+                }
+
+                results.set(
+
+                    staff.id,
+
+                    staff
+
+                );
+
+            }
 
         );
 
-    };
+    }
 
+    /*----------------------------------
+      Exact Match
+    ----------------------------------*/
+
+    addList(
+
+        designationIndex.get(
+
+            search
+
+        )
+
+    );
+
+    /*----------------------------------
+      Partial Match
+    ----------------------------------*/
+
+    designationIndex.forEach(
+
+        function (
+
+            value,
+
+            key
+
+        ) {
+
+            if (
+
+                key.includes(
+
+                    search
+
+                )
+
+            ) {
+
+                addList(
+
+                    value
+
+                );
+
+            }
+
+        }
+
+    );
+
+    /*----------------------------------
+      Designation Alias Match
+    ----------------------------------*/
+
+    if (
+
+        StaffConstants.DESIGNATION_ALIASES &&
+
+        typeof StaffConstants.DESIGNATION_ALIASES === "object"
+
+    ) {
+
+        Object.entries(
+
+            StaffConstants.DESIGNATION_ALIASES
+
+        )
+
+        .forEach(
+
+            function (
+
+                [
+
+                    designation,
+
+                    aliases
+
+                ]
+
+            ) {
+
+                if (
+
+                    designation
+
+                        .toUpperCase()
+
+                        .includes(
+
+                            search
+
+                        )
+
+                ) {
+
+                    addList(
+
+                        designationIndex.get(
+
+                            designation
+
+                                .toUpperCase()
+
+                        )
+
+                    );
+
+                }
+
+                if (
+
+                    Array.isArray(
+
+                        aliases
+
+                    )
+
+                ) {
+
+                    aliases.forEach(
+
+                        function (
+
+                            alias
+
+                        ) {
+
+                            if (
+
+                                String(
+
+                                    alias
+
+                                )
+
+                                .toUpperCase()
+
+                                .includes(
+
+                                    search
+
+                                )
+
+                            ) {
+
+                                addList(
+
+                                    designationIndex.get(
+
+                                        designation
+
+                                            .toUpperCase()
+
+                                    )
+
+                                );
+
+                            }
+
+                        }
+
+                    );
+
+                }
+
+            }
+
+        );
+
+    }
+
+    /*----------------------------------
+      StaffConstants.DESIGNATIONS Match
+    ----------------------------------*/
+
+    if (
+
+        StaffConstants.DESIGNATIONS
+
+    ) {
+
+        Object.values(
+
+            StaffConstants.DESIGNATIONS
+
+        )
+
+        .forEach(
+
+            function (
+
+                designation
+
+            ) {
+
+                const value =
+
+                    String(
+
+                        designation
+
+                    )
+
+                    .toUpperCase();
+
+                if (
+
+                    value.includes(
+
+                        search
+
+                    )
+
+                ) {
+
+                    addList(
+
+                        designationIndex.get(
+
+                            value
+
+                        )
+
+                    );
+
+                }
+
+            }
+
+        );
+
+    }
+
+    /*----------------------------------
+      Return
+    ----------------------------------*/
+
+    return Array.from(
+
+        results.values()
+
+    );
+
+};
+
+/*=========================================================
+ EXTRACT POSTING
+=========================================================*/
+
+StaffEntities.extractPosting = function (
+
+    query
+
+) {
+
+    /*----------------------------------
+      Validate Query
+    ----------------------------------*/
+
+    if (
+
+        typeof query !== "string"
+
+    ) {
+
+        return [];
+
+    }
+
+    /*----------------------------------
+      Normalize Query
+    ----------------------------------*/
+
+    const search =
+
+        query
+
+            .trim()
+
+            .toUpperCase();
+
+    if (
+
+        search.length === 0
+
+    ) {
+
+        return [];
+
+    }
+
+    /*----------------------------------
+      Local References
+    ----------------------------------*/
+
+    const {
+
+        byCircle,
+
+        byDivision,
+
+        byRange,
+
+        byBeat,
+
+        byCompartment
+
+    } =
+
+        StaffEntities.index;
+
+    /*----------------------------------
+      Result Collection
+    ----------------------------------*/
+
+    const results =
+
+        new Map();
+
+    /*----------------------------------
+      Helper
+    ----------------------------------*/
+
+    function addList(
+
+        list
+
+    ) {
+
+        if (
+
+            !Array.isArray(
+
+                list
+
+            )
+
+        ) {
+
+            return;
+
+        }
+
+        list.forEach(
+
+            function (
+
+                staff
+
+            ) {
+
+                if (
+
+                    !staff
+
+                ) {
+
+                    return;
+
+                }
+
+                results.set(
+
+                    staff.id,
+
+                    staff
+
+                );
+
+            }
+
+        );
+
+    }
+
+    /*=====================================================
+      Circle
+    =====================================================*/
+
+    addList(
+
+        byCircle.get(
+
+            search
+
+        )
+
+    );
+
+    byCircle.forEach(
+
+        function (
+
+            value,
+
+            key
+
+        ) {
+
+            if (
+
+                key.includes(
+
+                    search
+
+                )
+
+            ) {
+
+                addList(
+
+                    value
+
+                );
+
+            }
+
+        }
+
+    );
+
+    /*=====================================================
+      Division
+    =====================================================*/
+
+    addList(
+
+        byDivision.get(
+
+            search
+
+        )
+
+    );
+
+    byDivision.forEach(
+
+        function (
+
+            value,
+
+            key
+
+        ) {
+
+            if (
+
+                key.includes(
+
+                    search
+
+                )
+
+            ) {
+
+                addList(
+
+                    value
+
+                );
+
+            }
+
+        }
+
+    );
+
+    /*=====================================================
+      Range
+    =====================================================*/
+
+    addList(
+
+        byRange.get(
+
+            search
+
+        )
+
+    );
+
+    byRange.forEach(
+
+        function (
+
+            value,
+
+            key
+
+        ) {
+
+            if (
+
+                key.includes(
+
+                    search
+
+                )
+
+            ) {
+
+                addList(
+
+                    value
+
+                );
+
+            }
+
+        }
+
+    );
+
+    /*=====================================================
+      Beat
+    =====================================================*/
+
+    addList(
+
+        byBeat.get(
+
+            search
+
+        )
+
+    );
+
+    byBeat.forEach(
+
+        function (
+
+            value,
+
+            key
+
+        ) {
+
+            if (
+
+                key.includes(
+
+                    search
+
+                )
+
+            ) {
+
+                addList(
+
+                    value
+
+                );
+
+            }
+
+        }
+
+    );
+
+    /*=====================================================
+      Compartment
+    =====================================================*/
+
+    addList(
+
+        byCompartment.get(
+
+            search
+
+        )
+
+    );
+
+    byCompartment.forEach(
+
+        function (
+
+            value,
+
+            key
+
+        ) {
+
+            if (
+
+                key.includes(
+
+                    search
+
+                )
+
+            ) {
+
+                addList(
+
+                    value
+
+                );
+
+            }
+
+        }
+
+    );
+
+    /*----------------------------------
+      Return
+    ----------------------------------*/
+
+    return Array.from(
+
+        results.values()
+
+    );
+
+};
+
+/*=========================================================
+ EXTRACT TEAM
+=========================================================*/
+
+StaffEntities.extractTeam = function (
+
+    query
+
+) {
+
+    /*----------------------------------
+      Validate Query
+    ----------------------------------*/
+
+    if (
+
+        typeof query !== "string"
+
+    ) {
+
+        return [];
+
+    }
+
+    /*----------------------------------
+      Normalize Query
+    ----------------------------------*/
+
+    const search =
+
+        query
+
+            .trim()
+
+            .toUpperCase();
+
+    if (
+
+        search.length === 0
+
+    ) {
+
+        return [];
+
+    }
+
+    /*----------------------------------
+      Local References
+    ----------------------------------*/
+
+    const {
+
+        byLeader,
+
+        byTeam
+
+    } =
+
+        StaffEntities.index;
+
+    /*----------------------------------
+      Result Collection
+    ----------------------------------*/
+
+    const results =
+
+        new Map();
+
+    /*----------------------------------
+      Helper
+    ----------------------------------*/
+
+    function addList(
+
+        list
+
+    ) {
+
+        if (
+
+            !Array.isArray(
+
+                list
+
+            )
+
+        ) {
+
+            return;
+
+        }
+
+        list.forEach(
+
+            function (
+
+                staff
+
+            ) {
+
+                if (
+
+                    !staff
+
+                ) {
+
+                    return;
+
+                }
+
+                results.set(
+
+                    staff.id,
+
+                    staff
+
+                );
+
+            }
+
+        );
+
+    }
+
+    /*=====================================================
+      Leader
+    =====================================================*/
+
+    addList(
+
+        byLeader.get(
+
+            search
+
+        )
+
+    );
+
+    byLeader.forEach(
+
+        function (
+
+            value,
+
+            key
+
+        ) {
+
+            if (
+
+                key.includes(
+
+                    search
+
+                )
+
+            ) {
+
+                addList(
+
+                    value
+
+                );
+
+            }
+
+        }
+
+    );
+
+    /*=====================================================
+      Team
+    =====================================================*/
+
+    addList(
+
+        byTeam.get(
+
+            search
+
+        )
+
+    );
+
+    byTeam.forEach(
+
+        function (
+
+            value,
+
+            key
+
+        ) {
+
+            if (
+
+                key.includes(
+
+                    search
+
+                )
+
+            ) {
+
+                addList(
+
+                    value
+
+                );
+
+            }
+
+        }
+
+    );
+
+    /*=====================================================
+      Team Member Search
+    =====================================================*/
+
+    StaffEntities.staff.forEach(
+
+        function (
+
+            staff
+
+        ) {
+
+            if (
+
+                !staff ||
+
+                !staff.assignment ||
+
+                !staff.assignment.team
+
+            ) {
+
+                return;
+
+            }
+
+            const members =
+
+                String(
+
+                    staff.assignment.team
+
+                )
+
+                .toUpperCase();
+
+            if (
+
+                members.includes(
+
+                    search
+
+                )
+
+            ) {
+
+                results.set(
+
+                    staff.id,
+
+                    staff
+
+                );
+
+            }
+
+        }
+
+    );
+
+    /*----------------------------------
+      Return
+    ----------------------------------*/
+
+    return Array.from(
+
+        results.values()
+
+    );
+
+};
+
+/*=========================================================
+ EXTRACT DUTY
+=========================================================*/
+
+StaffEntities.extractDuty = function (
+
+    query
+
+) {
+
+    /*----------------------------------
+      Validate Query
+    ----------------------------------*/
+
+    if (
+
+        typeof query !== "string"
+
+    ) {
+
+        return [];
+
+    }
+
+    /*----------------------------------
+      Normalize Query
+    ----------------------------------*/
+
+    const search =
+
+        query
+
+            .trim()
+
+            .toUpperCase();
+
+    if (
+
+        search.length === 0
+
+    ) {
+
+        return [];
+
+    }
+
+    /*----------------------------------
+      Result Collection
+    ----------------------------------*/
+
+    const results =
+
+        new Map();
+
+    /*----------------------------------
+      Helper
+    ----------------------------------*/
+
+    function add(
+
+        staff
+
+    ) {
+
+        if (
+
+            !staff
+
+        ) {
+
+            return;
+
+        }
+
+        results.set(
+
+            staff.id,
+
+            staff
+
+        );
+
+    }
+
+    /*----------------------------------
+      Search Staff
+    ----------------------------------*/
+
+    StaffEntities.staff.forEach(
+
+        function (
+
+            staff
+
+        ) {
+
+            if (
+
+                !staff ||
+
+                !staff.assignment
+
+            ) {
+
+                return;
+
+            }
+
+            const assignment =
+
+                staff.assignment;
+
+            /*==============================
+              Duty Type
+            ==============================*/
+
+            const dutyType =
+
+                String(
+
+                    assignment.dutyType ||
+
+                    ""
+
+                )
+
+                .toUpperCase();
+
+            /*==============================
+              Status
+            ==============================*/
+
+            const status =
+
+                String(
+
+                    assignment.status ||
+
+                    ""
+
+                )
+
+                .toUpperCase();
+
+            /*==============================
+              Duty Active
+            ==============================*/
+
+            const dutyActive =
+
+                Boolean(
+
+                    assignment.dutyActive
+
+                );
+
+            /*==============================
+              Exact Duty Type
+            ==============================*/
+
+            if (
+
+                dutyType === search
+
+            ) {
+
+                add(
+
+                    staff
+
+                );
+
+            }
+
+            /*==============================
+              Partial Duty Type
+            ==============================*/
+
+            if (
+
+                dutyType.includes(
+
+                    search
+
+                )
+
+            ) {
+
+                add(
+
+                    staff
+
+                );
+
+            }
+
+            /*==============================
+              Status
+            ==============================*/
+
+            if (
+
+                status === search
+
+            ) {
+
+                add(
+
+                    staff
+
+                );
+
+            }
+
+            if (
+
+                status.includes(
+
+                    search
+
+                )
+
+            ) {
+
+                add(
+
+                    staff
+
+                );
+
+            }
+
+            /*==============================
+              Active Duty
+            ==============================*/
+
+            if (
+
+                dutyActive &&
+
+                (
+
+                    search === "ACTIVE" ||
+
+                    search === "ON DUTY" ||
+
+                    search === "DUTY ACTIVE" ||
+
+                    search === "PATROLLING"
+
+                )
+
+            ) {
+
+                add(
+
+                    staff
+
+                );
+
+            }
+
+            /*==============================
+              Inactive Duty
+            ==============================*/
+
+            if (
+
+                !dutyActive &&
+
+                (
+
+                    search === "INACTIVE" ||
+
+                    search === "OFF DUTY" ||
+
+                    search === "DUTY ENDED"
+
+                )
+
+            ) {
+
+                add(
+
+                    staff
+
+                );
+
+            }
+
+        }
+
+    );
+
+    /*----------------------------------
+      Duty Type Synonyms
+    ----------------------------------*/
+
+    if (
+
+        StaffConstants.DUTY_TYPES
+
+    ) {
+
+        Object.values(
+
+            StaffConstants.DUTY_TYPES
+
+        )
+
+        .forEach(
+
+            function (
+
+                duty
+
+            ) {
+
+                const value =
+
+                    String(
+
+                        duty
+
+                    )
+
+                    .toUpperCase();
+
+                if (
+
+                    value.includes(
+
+                        search
+
+                    )
+
+                    ||
+
+                    search.includes(
+
+                        value
+
+                    )
+
+                ) {
+
+                    StaffEntities.staff.forEach(
+
+                        function (
+
+                            staff
+
+                        ) {
+
+                            if (
+
+                                !staff ||
+
+                                !staff.assignment
+
+                            ) {
+
+                                return;
+
+                            }
+
+                            if (
+
+                                String(
+
+                                    staff.assignment.dutyType ||
+
+                                    ""
+
+                                )
+
+                                .toUpperCase() === value
+
+                            ) {
+
+                                add(
+
+                                    staff
+
+                                );
+
+                            }
+
+                        }
+
+                    );
+
+                }
+
+            }
+
+        );
+
+    }
+
+    /*----------------------------------
+      Return
+    ----------------------------------*/
+
+    return Array.from(
+
+        results.values()
+
+    );
+
+};
+/*=========================================================
+ EXTRACT GPS
+=========================================================*/
+
+StaffEntities.extractGPS = function (
+
+    query
+
+) {
+
+    /*----------------------------------
+      Validate Query
+    ----------------------------------*/
+
+    if (
+
+        typeof query !== "string"
+
+    ) {
+
+        return [];
+
+    }
+
+    /*----------------------------------
+      Normalize Query
+    ----------------------------------*/
+
+    const search =
+
+        query
+
+            .trim()
+
+            .toUpperCase();
+
+    if (
+
+        search.length === 0
+
+    ) {
+
+        return [];
+
+    }
+
+    /*----------------------------------
+      Results
+    ----------------------------------*/
+
+    const results =
+
+        new Map();
+
+    /*----------------------------------
+      Helper
+    ----------------------------------*/
+
+    function add(
+
+        staff
+
+    ) {
+
+        if (
+
+            !staff
+
+        ) {
+
+            return;
+
+        }
+
+        results.set(
+
+            staff.id,
+
+            staff
+
+        );
+
+    }
+
+    /*----------------------------------
+      Search All Staff
+    ----------------------------------*/
+
+    StaffEntities.staff.forEach(
+
+        function (
+
+            staff
+
+        ) {
+
+            if (
+
+                !staff
+
+            ) {
+
+                return;
+
+            }
+
+            const gps =
+
+                staff.gps ||
+
+                {};
+
+            const location =
+
+                staff.location ||
+
+                {};
+
+            const tracking =
+
+                staff.tracking ||
+
+                {};
+
+            /*==============================
+              Latitude
+            ==============================*/
+
+            if (
+
+                location.lat !== null &&
+
+                String(
+
+                    location.lat
+
+                )
+
+                .toUpperCase()
+
+                .includes(
+
+                    search
+
+                )
+
+            ) {
+
+                add(
+
+                    staff
+
+                );
+
+            }
+
+            /*==============================
+              Longitude
+            ==============================*/
+
+            if (
+
+                location.lon !== null &&
+
+                String(
+
+                    location.lon
+
+                )
+
+                .toUpperCase()
+
+                .includes(
+
+                    search
+
+                )
+
+            ) {
+
+                add(
+
+                    staff
+
+                );
+
+            }
+
+            /*==============================
+              Location String
+            ==============================*/
+
+            if (
+
+                location.location &&
+
+                String(
+
+                    location.location
+
+                )
+
+                .toUpperCase()
+
+                .includes(
+
+                    search
+
+                )
+
+            ) {
+
+                add(
+
+                    staff
+
+                );
+
+            }
+
+            /*==============================
+              Accuracy
+            ==============================*/
+
+            if (
+
+                gps.accuracy !== null &&
+
+                String(
+
+                    gps.accuracy
+
+                )
+
+                .includes(
+
+                    search
+
+                )
+
+            ) {
+
+                add(
+
+                    staff
+
+                );
+
+            }
+
+            /*==============================
+              Speed
+            ==============================*/
+
+            if (
+
+                gps.speed !== null &&
+
+                String(
+
+                    gps.speed
+
+                )
+
+                .includes(
+
+                    search
+
+                )
+
+            ) {
+
+                add(
+
+                    staff
+
+                );
+
+            }
+
+            /*==============================
+              Heading
+            ==============================*/
+
+            if (
+
+                gps.heading !== null &&
+
+                String(
+
+                    gps.heading
+
+                )
+
+                .includes(
+
+                    search
+
+                )
+
+            ) {
+
+                add(
+
+                    staff
+
+                );
+
+            }
+
+            /*==============================
+              GPS Source
+            ==============================*/
+
+            if (
+
+                tracking.source &&
+
+                String(
+
+                    tracking.source
+
+                )
+
+                .toUpperCase()
+
+                .includes(
+
+                    search
+
+                )
+
+            ) {
+
+                add(
+
+                    staff
+
+                );
+
+            }
+
+            /*==============================
+              Session ID
+            ==============================*/
+
+            if (
+
+                tracking.sessionId &&
+
+                String(
+
+                    tracking.sessionId
+
+                )
+
+                .toUpperCase()
+
+                .includes(
+
+                    search
+
+                )
+
+            ) {
+
+                add(
+
+                    staff
+
+                );
+
+            }
+
+            /*==============================
+              GPS Status
+            ==============================*/
+
+            if (
+
+                search === "GPS"
+
+            ) {
+
+                if (
+
+                    location.lat !== null &&
+
+                    location.lon !== null
+
+                ) {
+
+                    add(
+
+                        staff
+
+                    );
+
+                }
+
+            }
+
+            if (
+
+                search === "GPS ACTIVE"
+
+            ) {
+
+                if (
+
+                    location.lat !== null &&
+
+                    location.lon !== null
+
+                ) {
+
+                    add(
+
+                        staff
+
+                    );
+
+                }
+
+            }
+
+            if (
+
+                search === "GPS INACTIVE"
+
+            ) {
+
+                if (
+
+                    location.lat === null ||
+
+                    location.lon === null
+
+                ) {
+
+                    add(
+
+                        staff
+
+                    );
+
+                }
+
+            }
+
+            /*==============================
+              Moving
+            ==============================*/
+
+            if (
+
+                search === "MOVING"
+
+            ) {
+
+                if (
+
+                    Number(
+
+                        gps.speed ||
+
+                        0
+
+                    ) > 0
+
+                ) {
+
+                    add(
+
+                        staff
+
+                    );
+
+                }
+
+            }
+
+            /*==============================
+              Stationary
+            ==============================*/
+
+            if (
+
+                search === "STATIONARY"
+
+            ) {
+
+                if (
+
+                    Number(
+
+                        gps.speed ||
+
+                        0
+
+                    ) <= 0
+
+                ) {
+
+                    add(
+
+                        staff
+
+                    );
+
+                }
+
+            }
+
+        }
+
+    );
+
+    /*----------------------------------
+      Return
+    ----------------------------------*/
+
+    return Array.from(
+
+        results.values()
+
+    );
+
+};
 /*=========================================================
  REGISTER
 =========================================================*/
