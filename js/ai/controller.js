@@ -393,13 +393,35 @@ Controller.ask = async function (query) {
         }
         else {
 
-            intent =
+intent = await AI.detectIntent(query);
 
-                await AI.detectIntent(
+if (
 
-                    query
+    !intent ||
 
-                );
+    intent.success === false ||
+
+    intent.confidence <
+
+    Config.INTENT.MIN_AI_CONFIDENCE
+
+) {
+
+    console.warn(
+
+        "Low AI confidence. Falling back to local intent."
+
+    );
+
+    intent =
+
+        Controller.buildIntent(
+
+            query
+
+        );
+
+}
 
         }
 
