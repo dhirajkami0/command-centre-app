@@ -4440,6 +4440,8 @@ StaffEntities.createExtractionResult = function (
     };
 
 };
+
+ 
     /*----------------------------------
       Build All Indexes
     ----------------------------------*/
@@ -4725,7 +4727,2416 @@ StaffEntities.createExtractionResult = function (
     return StaffEntities.index;
 
 };
+/*=========================================================
+ EXTRACT STAFF ENTITIES
+=========================================================*/
 
+StaffEntities.extractStaffEntities = function (
+
+    result
+
+) {
+
+    /*----------------------------------
+      Validate Result
+    ----------------------------------*/
+
+    if (
+
+        !result ||
+
+        typeof result !== "object"
+
+    ) {
+
+        return result;
+
+    }
+
+    const query =
+
+        result.normalizedQuery;
+
+    if (
+
+        !query
+
+    ) {
+
+        return result;
+
+    }
+
+    const matches =
+
+        [];
+
+    const seen =
+
+        new Set();
+
+    /*----------------------------------
+      Match Helper
+    ----------------------------------*/
+
+    function addMatch(
+
+        staff
+
+    ) {
+
+        if (
+
+            !staff ||
+
+            !staff.identity
+
+        ) {
+
+            return;
+
+        }
+
+        const key =
+
+            staff.identity.cleanName;
+
+        if (
+
+            seen.has(
+
+                key
+
+            )
+
+        ) {
+
+            return;
+
+        }
+
+        seen.add(
+
+            key
+
+        );
+
+        matches.push(
+
+            staff
+
+        );
+
+    }
+
+    /*----------------------------------
+      Search Staff
+    ----------------------------------*/
+
+    StaffEntities.staff.forEach(
+
+        function (
+
+            staff
+
+        ) {
+
+            if (
+
+                !staff ||
+
+                !staff.search ||
+
+                !Array.isArray(
+
+                    staff.search.tokens
+
+                )
+
+            ) {
+
+                return;
+
+            }
+
+            const found =
+
+                staff.search.tokens.some(
+
+                    function (
+
+                        token
+
+                    ) {
+
+                        return (
+
+                            token &&
+
+                            query.includes(
+
+                                token
+
+                            )
+
+                        );
+
+                    }
+
+                );
+
+            if (
+
+                found
+
+            ) {
+
+                addMatch(
+
+                    staff
+
+                );
+
+            }
+
+        }
+
+    );
+
+    /*----------------------------------
+      Save Result
+    ----------------------------------*/
+
+    result.entities.staff =
+
+        matches;
+
+    result.stats.uniqueStaff =
+
+        matches.length;
+
+    result.stats.totalEntities +=
+
+        matches.length;
+
+    return result;
+
+};
+ /*=========================================================
+ EXTRACT PHONE ENTITIES
+=========================================================*/
+
+StaffEntities.extractPhoneEntities = function (
+
+    result
+
+) {
+
+    /*----------------------------------
+      Validate
+    ----------------------------------*/
+
+    if (
+
+        !result ||
+
+        typeof result !== "object"
+
+    ) {
+
+        return result;
+
+    }
+
+    const query =
+
+        result.normalizedQuery;
+
+    if (
+
+        !query
+
+    ) {
+
+        return result;
+
+    }
+
+    const matches = [];
+
+    const seen = new Set();
+
+    /*----------------------------------
+      Search Staff
+    ----------------------------------*/
+
+    StaffEntities.staff.forEach(
+
+        function (
+
+            staff
+
+        ) {
+
+            if (
+
+                !staff ||
+
+                !staff.identity
+
+            ) {
+
+                return;
+
+            }
+
+            const phone =
+
+                String(
+
+                    staff.identity.phone ||
+
+                    ""
+
+                ).trim();
+
+            if (
+
+                phone === ""
+
+            ) {
+
+                return;
+
+            }
+
+            if (
+
+                !query.includes(
+
+                    phone
+
+                )
+
+            ) {
+
+                return;
+
+            }
+
+            if (
+
+                seen.has(
+
+                    phone
+
+                )
+
+            ) {
+
+                return;
+
+            }
+
+            seen.add(
+
+                phone
+
+            );
+
+            matches.push(
+
+                staff
+
+            );
+
+        }
+
+    );
+
+    /*----------------------------------
+      Save Result
+    ----------------------------------*/
+
+    result.entities.phones =
+
+        matches;
+
+    result.stats.phoneMatches =
+
+        matches.length;
+
+    result.stats.totalEntities +=
+
+        matches.length;
+
+    return result;
+
+};
+ /*=========================================================
+ EXTRACT ROLE ENTITIES
+=========================================================*/
+
+StaffEntities.extractRoleEntities = function (
+
+    result
+
+) {
+
+    /*----------------------------------
+      Validate
+    ----------------------------------*/
+
+    if (
+
+        !result ||
+
+        typeof result !== "object"
+
+    ) {
+
+        return result;
+
+    }
+
+    const query =
+
+        result.normalizedQuery;
+
+    if (
+
+        !query
+
+    ) {
+
+        return result;
+
+    }
+
+    const matches = [];
+
+    const seen = new Set();
+
+    /*----------------------------------
+      Helper
+    ----------------------------------*/
+
+    function addRole(
+
+        staff
+
+    ) {
+
+        if (
+
+            !staff ||
+
+            !staff.identity
+
+        ) {
+
+            return;
+
+        }
+
+        const key =
+
+            staff.identity.cleanName;
+
+        if (
+
+            seen.has(
+
+                key
+
+            )
+
+        ) {
+
+            return;
+
+        }
+
+        seen.add(
+
+            key
+
+        );
+
+        matches.push(
+
+            staff
+
+        );
+
+    }
+
+    /*----------------------------------
+      Search Roles
+    ----------------------------------*/
+
+    StaffEntities.staff.forEach(
+
+        function (
+
+            staff
+
+        ) {
+
+            if (
+
+                !staff ||
+
+                !staff.identity
+
+            ) {
+
+                return;
+
+            }
+
+            const role =
+
+                String(
+
+                    staff.identity.role ||
+
+                    ""
+
+                )
+
+                .trim()
+
+                .toUpperCase();
+
+            if (
+
+                !role
+
+            ) {
+
+                return;
+
+            }
+
+            if (
+
+                query.includes(
+
+                    role
+
+                )
+
+            ) {
+
+                addRole(
+
+                    staff
+
+                );
+
+                return;
+
+            }
+
+            if (
+
+                StaffConstants.SYNONYMS &&
+
+                Array.isArray(
+
+                    StaffConstants.SYNONYMS[
+
+                        role
+
+                    ]
+
+                )
+
+            ) {
+
+                const found =
+
+                    StaffConstants
+
+                        .SYNONYMS[
+
+                            role
+
+                        ]
+
+                        .some(
+
+                            function (
+
+                                synonym
+
+                            ) {
+
+                                return query.includes(
+
+                                    String(
+
+                                        synonym
+
+                                    )
+
+                                    .toUpperCase()
+
+                                );
+
+                            }
+
+                        );
+
+                if (
+
+                    found
+
+                ) {
+
+                    addRole(
+
+                        staff
+
+                    );
+
+                }
+
+            }
+
+        }
+
+    );
+
+    /*----------------------------------
+      Save Result
+    ----------------------------------*/
+
+    result.entities.roles =
+
+        matches;
+
+    result.stats.roleMatches =
+
+        matches.length;
+
+    result.stats.totalEntities +=
+
+        matches.length;
+
+    return result;
+
+};
+ /*=========================================================
+ EXTRACT POSTING ENTITIES
+=========================================================*/
+
+StaffEntities.extractPostingEntities = function (
+
+    result
+
+) {
+
+    /*----------------------------------
+      Validate
+    ----------------------------------*/
+
+    if (
+
+        !result ||
+
+        typeof result !== "object"
+
+    ) {
+
+        return result;
+
+    }
+
+    const query =
+
+        result.normalizedQuery;
+
+    if (
+
+        !query
+
+    ) {
+
+        return result;
+
+    }
+
+    const matches = [];
+
+    const seen = new Set();
+
+    /*----------------------------------
+      Helper
+    ----------------------------------*/
+
+    function addPosting(
+
+        staff
+
+    ) {
+
+        if (
+
+            !staff ||
+
+            !staff.identity
+
+        ) {
+
+            return;
+
+        }
+
+        const key =
+
+            staff.identity.cleanName;
+
+        if (
+
+            seen.has(
+
+                key
+
+            )
+
+        ) {
+
+            return;
+
+        }
+
+        seen.add(
+
+            key
+
+        );
+
+        matches.push(
+
+            staff
+
+        );
+
+    }
+
+    /*----------------------------------
+      Search Posting
+    ----------------------------------*/
+
+    StaffEntities.staff.forEach(
+
+        function (
+
+            staff
+
+        ) {
+
+            if (
+
+                !staff ||
+
+                !staff.posting
+
+            ) {
+
+                return;
+
+            }
+
+            const posting =
+
+                staff.posting;
+
+            const fields = [
+
+                posting.circle,
+
+                posting.division,
+
+                posting.range,
+
+                posting.beat,
+
+                staff.assignment ?
+
+                    staff.assignment.assignedCompartment :
+
+                    ""
+
+            ];
+
+            const found =
+
+                fields.some(
+
+                    function (
+
+                        value
+
+                    ) {
+
+                        if (
+
+                            !value
+
+                        ) {
+
+                            return false;
+
+                        }
+
+                        return query.includes(
+
+                            String(
+
+                                value
+
+                            )
+
+                            .trim()
+
+                            .toUpperCase()
+
+                        );
+
+                    }
+
+                );
+
+            if (
+
+                found
+
+            ) {
+
+                addPosting(
+
+                    staff
+
+                );
+
+            }
+
+        }
+
+    );
+
+    /*----------------------------------
+      Save Result
+    ----------------------------------*/
+
+    result.entities.posting =
+
+        matches;
+
+    result.stats.postingMatches =
+
+        matches.length;
+
+    result.stats.totalEntities +=
+
+        matches.length;
+
+    return result;
+
+};
+ /*=========================================================
+ EXTRACT TEAM ENTITIES
+=========================================================*/
+
+StaffEntities.extractTeamEntities = function (
+
+    result
+
+) {
+
+    /*----------------------------------
+      Validate
+    ----------------------------------*/
+
+    if (
+
+        !result ||
+
+        typeof result !== "object"
+
+    ) {
+
+        return result;
+
+    }
+
+    const query =
+
+        result.normalizedQuery;
+
+    if (
+
+        !query
+
+    ) {
+
+        return result;
+
+    }
+
+    const matches = [];
+
+    const seen = new Set();
+
+    /*----------------------------------
+      Helper
+    ----------------------------------*/
+
+    function addTeam(
+
+        staff
+
+    ) {
+
+        if (
+
+            !staff ||
+
+            !staff.identity
+
+        ) {
+
+            return;
+
+        }
+
+        const key =
+
+            staff.identity.cleanName;
+
+        if (
+
+            seen.has(
+
+                key
+
+            )
+
+        ) {
+
+            return;
+
+        }
+
+        seen.add(
+
+            key
+
+        );
+
+        matches.push(
+
+            staff
+
+        );
+
+    }
+
+    /*----------------------------------
+      Search Team
+    ----------------------------------*/
+
+    StaffEntities.staff.forEach(
+
+        function (
+
+            staff
+
+        ) {
+
+            if (
+
+                !staff ||
+
+                !staff.teamInfo
+
+            ) {
+
+                return;
+
+            }
+
+            const values = [
+
+                staff.teamInfo.leader,
+
+                staff.teamInfo.team
+
+            ];
+
+            const found =
+
+                values.some(
+
+                    function (
+
+                        value
+
+                    ) {
+
+                        if (
+
+                            !value
+
+                        ) {
+
+                            return false;
+
+                        }
+
+                        return query.includes(
+
+                            String(
+
+                                value
+
+                            )
+
+                            .trim()
+
+                            .toUpperCase()
+
+                        );
+
+                    }
+
+                );
+
+            if (
+
+                found
+
+            ) {
+
+                addTeam(
+
+                    staff
+
+                );
+
+            }
+
+        }
+
+    );
+
+    /*----------------------------------
+      Save Result
+    ----------------------------------*/
+
+    result.entities.team =
+
+        matches;
+
+    result.stats.teamMatches =
+
+        matches.length;
+
+    result.stats.totalEntities +=
+
+        matches.length;
+
+    return result;
+
+};
+ /*=========================================================
+ EXTRACT DUTY ENTITIES
+=========================================================*/
+
+StaffEntities.extractDutyEntities = function (
+
+    result
+
+) {
+
+    /*----------------------------------
+      Validate
+    ----------------------------------*/
+
+    if (
+
+        !result ||
+
+        typeof result !== "object"
+
+    ) {
+
+        return result;
+
+    }
+
+    const query =
+
+        result.normalizedQuery;
+
+    if (
+
+        !query
+
+    ) {
+
+        return result;
+
+    }
+
+    const matches = [];
+
+    const seen =
+
+        new Set();
+
+    /*----------------------------------
+      Helper
+    ----------------------------------*/
+
+    function addDuty(
+
+        staff
+
+    ) {
+
+        if (
+
+            !staff ||
+
+            !staff.identity
+
+        ) {
+
+            return;
+
+        }
+
+        const key =
+
+            staff.identity.cleanName;
+
+        if (
+
+            seen.has(
+
+                key
+
+            )
+
+        ) {
+
+            return;
+
+        }
+
+        seen.add(
+
+            key
+
+        );
+
+        matches.push(
+
+            staff
+
+        );
+
+    }
+
+    /*----------------------------------
+      Search Duty
+    ----------------------------------*/
+
+    StaffEntities.staff.forEach(
+
+        function (
+
+            staff
+
+        ) {
+
+            if (
+
+                !staff
+
+            ) {
+
+                return;
+
+            }
+
+            const values = [
+
+                staff.assignment ?
+
+                    staff.assignment.dutyType :
+
+                    "",
+
+                staff.assignment ?
+
+                    String(
+
+                        staff.assignment.dutyActive
+
+                    ) :
+
+                    "",
+
+                staff.assignment ?
+
+                    staff.assignment.status :
+
+                    "",
+
+                staff.duty ?
+
+                    staff.duty.lastDutyEnd :
+
+                    ""
+
+            ];
+
+            const found =
+
+                values.some(
+
+                    function (
+
+                        value
+
+                    ) {
+
+                        if (
+
+                            value === null ||
+
+                            value === undefined ||
+
+                            value === ""
+
+                        ) {
+
+                            return false;
+
+                        }
+
+                        return query.includes(
+
+                            String(
+
+                                value
+
+                            )
+
+                            .trim()
+
+                            .toUpperCase()
+
+                        );
+
+                    }
+
+                );
+
+            if (
+
+                found
+
+            ) {
+
+                addDuty(
+
+                    staff
+
+                );
+
+            }
+
+        }
+
+    );
+
+    /*----------------------------------
+      Save Result
+    ----------------------------------*/
+
+    result.entities.duty =
+
+        matches;
+
+    result.stats.dutyMatches =
+
+        matches.length;
+
+    result.stats.totalEntities +=
+
+        matches.length;
+
+    return result;
+
+};
+/*=========================================================
+ EXTRACT GPS ENTITIES
+=========================================================*/
+
+StaffEntities.extractGPSEntities = function (
+
+    result
+
+) {
+
+    /*----------------------------------
+      Validate
+    ----------------------------------*/
+
+    if (
+
+        !result ||
+
+        typeof result !== "object"
+
+    ) {
+
+        return result;
+
+    }
+
+    const query =
+
+        result.normalizedQuery;
+
+    if (
+
+        !query
+
+    ) {
+
+        return result;
+
+    }
+
+    const matches = [];
+
+    const seen =
+
+        new Set();
+
+    /*----------------------------------
+      Helper
+    ----------------------------------*/
+
+    function addGPS(
+
+        staff
+
+    ) {
+
+        if (
+
+            !staff ||
+
+            !staff.identity
+
+        ) {
+
+            return;
+
+        }
+
+        const key =
+
+            staff.identity.cleanName;
+
+        if (
+
+            seen.has(
+
+                key
+
+            )
+
+        ) {
+
+            return;
+
+        }
+
+        seen.add(
+
+            key
+
+        );
+
+        matches.push(
+
+            staff
+
+        );
+
+    }
+
+    /*----------------------------------
+      Search GPS
+    ----------------------------------*/
+
+    StaffEntities.staff.forEach(
+
+        function (
+
+            staff
+
+        ) {
+
+            if (
+
+                !staff
+
+            ) {
+
+                return;
+
+            }
+
+            const values = [
+
+                staff.location ?
+
+                    staff.location.location :
+
+                    "",
+
+                staff.location ?
+
+                    String(
+
+                        staff.location.lat
+
+                    ) :
+
+                    "",
+
+                staff.location ?
+
+                    String(
+
+                        staff.location.lon
+
+                    ) :
+
+                    "",
+
+                staff.gps ?
+
+                    String(
+
+                        staff.gps.accuracy
+
+                    ) :
+
+                    "",
+
+                staff.gps ?
+
+                    String(
+
+                        staff.gps.speed
+
+                    ) :
+
+                    "",
+
+                staff.gps ?
+
+                    String(
+
+                        staff.gps.heading
+
+                    ) :
+
+                    "",
+
+                staff.gps ?
+
+                    String(
+
+                        staff.gps.turnRate
+
+                    ) :
+
+                    "",
+
+                staff.gps ?
+
+                    String(
+
+                        staff.gps.turnAngle
+
+                    ) :
+
+                    "",
+
+                staff.gps ?
+
+                    String(
+
+                        staff.gps.lastSeen
+
+                    ) :
+
+                    "",
+
+                staff.gps ?
+
+                    String(
+
+                        staff.gps.timestamp
+
+                    ) :
+
+                    "",
+
+                staff.gps ?
+
+                    String(
+
+                        staff.gps.updatedAt
+
+                    ) :
+
+                    ""
+
+            ];
+
+            const found =
+
+                values.some(
+
+                    function (
+
+                        value
+
+                    ) {
+
+                        if (
+
+                            value === null ||
+
+                            value === undefined ||
+
+                            value === ""
+
+                        ) {
+
+                            return false;
+
+                        }
+
+                        return query.includes(
+
+                            String(
+
+                                value
+
+                            )
+
+                            .trim()
+
+                            .toUpperCase()
+
+                        );
+
+                    }
+
+                );
+
+            if (
+
+                found
+
+            ) {
+
+                addGPS(
+
+                    staff
+
+                );
+
+            }
+
+        }
+
+    );
+
+    /*----------------------------------
+      Save Result
+    ----------------------------------*/
+
+    result.entities.gps =
+
+        matches;
+
+    result.stats.gpsMatches =
+
+        matches.length;
+
+    result.stats.totalEntities +=
+
+        matches.length;
+
+    return result;
+
+};
+ /*=========================================================
+ EXTRACT KEYWORDS
+=========================================================*/
+
+StaffEntities.extractKeywords = function (
+
+    result
+
+) {
+
+    /*----------------------------------
+      Validate
+    ----------------------------------*/
+
+    if (
+
+        !result ||
+
+        typeof result !== "object"
+
+    ) {
+
+        return result;
+
+    }
+
+    const query =
+
+        result.normalizedQuery;
+
+    if (
+
+        !query
+
+    ) {
+
+        return result;
+
+    }
+
+    result.keywords = [];
+
+    const seen =
+
+        new Set();
+
+    const keywordGroups =
+
+        StaffConstants.KEYWORDS || {};
+
+    /*----------------------------------
+      Scan Keyword Groups
+    ----------------------------------*/
+
+    Object.keys(
+
+        keywordGroups
+
+    ).forEach(
+
+        function (
+
+            group
+
+        ) {
+
+            const words =
+
+                keywordGroups[
+
+                    group
+
+                ];
+
+            if (
+
+                !Array.isArray(
+
+                    words
+
+                )
+
+            ) {
+
+                return;
+
+            }
+
+            words.forEach(
+
+                function (
+
+                    word
+
+                ) {
+
+                    const keyword =
+
+                        String(
+
+                            word
+
+                        )
+
+                        .trim()
+
+                        .toUpperCase();
+
+                    if (
+
+                        keyword === ""
+
+                    ) {
+
+                        return;
+
+                    }
+
+                    if (
+
+                        !query.includes(
+
+                            keyword
+
+                        )
+
+                    ) {
+
+                        return;
+
+                    }
+
+                    if (
+
+                        seen.has(
+
+                            keyword
+
+                        )
+
+                    ) {
+
+                        return;
+
+                    }
+
+                    seen.add(
+
+                        keyword
+
+                    );
+
+                    result.keywords.push({
+
+                        group,
+
+                        keyword
+
+                    });
+
+                }
+
+            );
+
+        }
+
+    );
+
+    /*----------------------------------
+      Statistics
+    ----------------------------------*/
+
+    result.stats.keywordMatches =
+
+        result.keywords.length;
+
+    result.stats.totalEntities +=
+
+        result.keywords.length;
+
+    return result;
+
+};
+ /*=========================================================
+ CALCULATE EXTRACTION CONFIDENCE
+=========================================================*/
+
+StaffEntities.calculateExtractionConfidence = function (
+
+    result
+
+) {
+
+    /*----------------------------------
+      Validate
+    ----------------------------------*/
+
+    if (
+
+        !result ||
+
+        typeof result !== "object"
+
+    ) {
+
+        return result;
+
+    }
+
+    if (
+
+        !result.stats
+
+    ) {
+
+        result.stats = {};
+
+    }
+
+    const C =
+
+        StaffConstants.CONFIDENCE;
+
+    let score = 0;
+
+    /*----------------------------------
+      Staff Match
+    ----------------------------------*/
+
+    if (
+
+        result.stats.uniqueStaff > 0
+
+    ) {
+
+        score +=
+
+            C.STAFF_NAME;
+
+    }
+
+    /*----------------------------------
+      Phone Match
+    ----------------------------------*/
+
+    if (
+
+        result.stats.phoneMatches > 0
+
+    ) {
+
+        score +=
+
+            C.PHONE;
+
+    }
+
+    /*----------------------------------
+      Role Match
+    ----------------------------------*/
+
+    if (
+
+        result.stats.roleMatches > 0
+
+    ) {
+
+        score +=
+
+            C.ROLE;
+
+    }
+
+    /*----------------------------------
+      Posting Match
+    ----------------------------------*/
+
+    if (
+
+        result.stats.postingMatches > 0
+
+    ) {
+
+        score +=
+
+            C.BEAT;
+
+    }
+
+    /*----------------------------------
+      Team Match
+    ----------------------------------*/
+
+    if (
+
+        result.stats.teamMatches > 0
+
+    ) {
+
+        score +=
+
+            C.TEAM;
+
+    }
+
+    /*----------------------------------
+      Duty Match
+    ----------------------------------*/
+
+    if (
+
+        result.stats.dutyMatches > 0
+
+    ) {
+
+        score +=
+
+            C.MULTIPLE_ENTITIES;
+
+    }
+
+    /*----------------------------------
+      GPS Match
+    ----------------------------------*/
+
+    if (
+
+        result.stats.gpsMatches > 0
+
+    ) {
+
+        score +=
+
+            C.MULTIPLE_ENTITIES;
+
+    }
+
+    /*----------------------------------
+      Keyword Bonus
+    ----------------------------------*/
+
+    const keywordCount =
+
+        result.stats.keywordMatches ||
+
+        0;
+
+    if (
+
+        keywordCount > 0
+
+    ) {
+
+        score +=
+
+            C.PRIMARY_KEYWORD;
+
+    }
+
+    if (
+
+        keywordCount > 1
+
+    ) {
+
+        score +=
+
+            C.SECONDARY_KEYWORD;
+
+    }
+
+    if (
+
+        keywordCount > 2
+
+    ) {
+
+        score +=
+
+            C.EXTRA_KEYWORD;
+
+    }
+
+    /*----------------------------------
+      Multi Entity Bonus
+    ----------------------------------*/
+
+    if (
+
+        result.stats.totalEntities > 2
+
+    ) {
+
+        score +=
+
+            C.MULTIPLE_ENTITIES;
+
+    }
+
+    /*----------------------------------
+      Clamp
+    ----------------------------------*/
+
+    score =
+
+        Math.max(
+
+            0,
+
+            Math.min(
+
+                1,
+
+                score
+
+            )
+
+        );
+
+    /*----------------------------------
+      Save
+    ----------------------------------*/
+
+    result.confidence =
+
+        Number(
+
+            score.toFixed(
+
+                3
+
+            )
+
+        );
+
+    result.metadata.confidence =
+
+        result.confidence;
+
+    return result;
+
+};
+ /*=========================================================
+ FINALIZE EXTRACTION
+=========================================================*/
+
+StaffEntities.finalizeExtraction = function (
+
+    result
+
+) {
+
+    /*----------------------------------
+      Validate
+    ----------------------------------*/
+
+    if (
+
+        !result ||
+
+        typeof result !== "object"
+
+    ) {
+
+        return result;
+
+    }
+
+    /*----------------------------------
+      Ensure Objects
+    ----------------------------------*/
+
+    result.entities =
+        result.entities || {};
+
+    result.parameters =
+        result.parameters || {};
+
+    result.metadata =
+        result.metadata || {};
+
+    result.stats =
+        result.stats || {};
+
+    result.keywords =
+        result.keywords || [];
+
+    /*----------------------------------
+      Primary Staff
+    ----------------------------------*/
+
+    if (
+
+        Array.isArray(
+
+            result.entities.staff
+
+        ) &&
+
+        result.entities.staff.length > 0
+
+    ) {
+
+        result.parameters.staff =
+
+            result.entities.staff[0];
+
+    }
+
+    /*----------------------------------
+      Counts
+    ----------------------------------*/
+
+    result.metadata.staffCount =
+
+        result.entities.staff
+            ? result.entities.staff.length
+            : 0;
+
+    result.metadata.phoneCount =
+
+        result.entities.phones
+            ? result.entities.phones.length
+            : 0;
+
+    result.metadata.roleCount =
+
+        result.entities.roles
+            ? result.entities.roles.length
+            : 0;
+
+    result.metadata.postingCount =
+
+        result.entities.posting
+            ? result.entities.posting.length
+            : 0;
+
+    result.metadata.teamCount =
+
+        result.entities.team
+            ? result.entities.team.length
+            : 0;
+
+    result.metadata.dutyCount =
+
+        result.entities.duty
+            ? result.entities.duty.length
+            : 0;
+
+    result.metadata.gpsCount =
+
+        result.entities.gps
+            ? result.entities.gps.length
+            : 0;
+
+    result.metadata.keywordCount =
+
+        result.keywords.length;
+
+    /*----------------------------------
+      Total Matches
+    ----------------------------------*/
+
+    result.metadata.totalMatches =
+
+        result.metadata.staffCount +
+
+        result.metadata.phoneCount +
+
+        result.metadata.roleCount +
+
+        result.metadata.postingCount +
+
+        result.metadata.teamCount +
+
+        result.metadata.dutyCount +
+
+        result.metadata.gpsCount;
+
+    /*----------------------------------
+      Success
+    ----------------------------------*/
+
+    result.success =
+
+        result.metadata.totalMatches > 0 ||
+
+        result.metadata.keywordCount > 0;
+
+    /*----------------------------------
+      Source
+    ----------------------------------*/
+
+    result.source =
+
+        "LOCAL";
+
+    /*----------------------------------
+      Engine
+    ----------------------------------*/
+
+    result.metadata.engine =
+
+        "StaffEntities";
+
+    result.metadata.version =
+
+        StaffEntities.VERSION;
+
+    result.metadata.finishedAt =
+
+        Date.now();
+
+    /*----------------------------------
+      Freeze
+    ----------------------------------*/
+
+    Object.freeze(
+
+        result.entities
+
+    );
+
+    Object.freeze(
+
+        result.parameters
+
+    );
+
+    Object.freeze(
+
+        result.stats
+
+    );
+
+    Object.freeze(
+
+        result.metadata
+
+    );
+
+    return result;
+
+};
+ /*=========================================================
+ EXTRACT
+=========================================================*/
+
+StaffEntities.extract = function (
+
+    query
+
+) {
+
+    /*----------------------------------
+      Validate
+    ----------------------------------*/
+
+    if (
+
+        typeof query !== "string"
+
+    ) {
+
+        query = "";
+
+    }
+
+    query =
+
+        query.trim();
+
+    /*----------------------------------
+      Cache
+    ----------------------------------*/
+
+    if (
+
+        StaffEntities.cache.search.has(
+
+            query
+
+        )
+
+    ) {
+
+        return StaffEntities.cache.search.get(
+
+            query
+
+        );
+
+    }
+
+    /*----------------------------------
+      Create Result
+    ----------------------------------*/
+
+    let result =
+
+        StaffEntities.createExtractionResult(
+
+            query
+
+        );
+
+    /*----------------------------------
+      Staff
+    ----------------------------------*/
+
+    result =
+
+        StaffEntities.extractStaffEntities(
+
+            result
+
+        );
+
+    /*----------------------------------
+      Phone
+    ----------------------------------*/
+
+    result =
+
+        StaffEntities.extractPhoneEntities(
+
+            result
+
+        );
+
+    /*----------------------------------
+      Role
+    ----------------------------------*/
+
+    result =
+
+        StaffEntities.extractRoleEntities(
+
+            result
+
+        );
+
+    /*----------------------------------
+      Posting
+    ----------------------------------*/
+
+    result =
+
+        StaffEntities.extractPostingEntities(
+
+            result
+
+        );
+
+    /*----------------------------------
+      Team
+    ----------------------------------*/
+
+    result =
+
+        StaffEntities.extractTeamEntities(
+
+            result
+
+        );
+
+    /*----------------------------------
+      Duty
+    ----------------------------------*/
+
+    result =
+
+        StaffEntities.extractDutyEntities(
+
+            result
+
+        );
+
+    /*----------------------------------
+      GPS
+    ----------------------------------*/
+
+    result =
+
+        StaffEntities.extractGPSEntities(
+
+            result
+
+        );
+
+    /*----------------------------------
+      Keywords
+    ----------------------------------*/
+
+    result =
+
+        StaffEntities.extractKeywords(
+
+            result
+
+        );
+
+    /*----------------------------------
+      Confidence
+    ----------------------------------*/
+
+    result =
+
+        StaffEntities.calculateExtractionConfidence(
+
+            result
+
+        );
+
+    /*----------------------------------
+      Finalize
+    ----------------------------------*/
+
+    result =
+
+        StaffEntities.finalizeExtraction(
+
+            result
+
+        );
+
+    /*----------------------------------
+      Cache
+    ----------------------------------*/
+
+    StaffEntities.cache.search.set(
+
+        query,
+
+        result
+
+    );
+
+    return result;
+
+};
  /*=========================================================
  BUILD SEARCH CACHE
 =========================================================*/
