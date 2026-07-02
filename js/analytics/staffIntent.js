@@ -2673,6 +2673,428 @@ StaffIntent.needsAI = function (
     return true;
 
 };
+
+ /*=========================================================
+ ROUTE
+=========================================================*/
+
+StaffIntent.route = async function (
+
+    result
+
+) {
+
+    /*----------------------------------
+      Validate
+    ----------------------------------*/
+
+    if (
+
+        !result
+
+    ) {
+
+        throw new Error(
+
+            "Intent result missing."
+
+        );
+
+    }
+
+    /*----------------------------------
+      AI Fallback
+    ----------------------------------*/
+
+    if (
+
+        result.requiresAI
+
+    ) {
+
+        return {
+
+            success: true,
+
+            ai: true,
+
+            action: "AI",
+
+            result
+
+        };
+
+    }
+
+    /*----------------------------------
+      Router
+    ----------------------------------*/
+
+    const router =
+
+        window.GreenGuardAI
+
+            ?.StaffRouter;
+
+    if (
+
+        !router
+
+    ) {
+
+        throw new Error(
+
+            "StaffRouter not loaded."
+
+        );
+
+    }
+
+    /*----------------------------------
+      Intent
+    ----------------------------------*/
+
+    switch (
+
+        result.intent
+
+    ) {
+
+        /*==================================
+          PROFILE
+        ==================================*/
+
+        case StaffConstants.INTENTS.STAFF_PROFILE:
+
+            return await router.profile(
+
+                result
+
+            );
+
+        case StaffConstants.INTENTS.STAFF_CONTACT:
+
+            return await router.contact(
+
+                result
+
+            );
+
+        case StaffConstants.INTENTS.STAFF_ROLE:
+
+            return await router.role(
+
+                result
+
+            );
+
+        case StaffConstants.INTENTS.STAFF_DESIGNATION:
+
+            return await router.designation(
+
+                result
+
+            );
+
+        case StaffConstants.INTENTS.STAFF_IDENTITY:
+
+            return await router.identity(
+
+                result
+
+            );
+
+        /*==================================
+          POSTING
+        ==================================*/
+
+        case StaffConstants.INTENTS.STAFF_POSTING:
+
+            return await router.posting(
+
+                result
+
+            );
+
+        case StaffConstants.INTENTS.STAFF_BEAT:
+
+            return await router.beat(
+
+                result
+
+            );
+
+        case StaffConstants.INTENTS.STAFF_RANGE:
+
+            return await router.range(
+
+                result
+
+            );
+
+        case StaffConstants.INTENTS.STAFF_DIVISION:
+
+            return await router.division(
+
+                result
+
+            );
+
+        case StaffConstants.INTENTS.STAFF_CIRCLE:
+
+            return await router.circle(
+
+                result
+
+            );
+
+        case StaffConstants.INTENTS.STAFF_COMPARTMENT:
+
+            return await router.compartment(
+
+                result
+
+            );
+
+        /*==================================
+          LOCATION
+        ==================================*/
+
+        case StaffConstants.INTENTS.STAFF_LOCATION:
+
+            return await router.location(
+
+                result
+
+            );
+
+        case StaffConstants.INTENTS.STAFF_GPS:
+
+            return await router.gps(
+
+                result
+
+            );
+
+        case StaffConstants.INTENTS.STAFF_COORDINATES:
+
+            return await router.coordinates(
+
+                result
+
+            );
+
+        case StaffConstants.INTENTS.STAFF_CURRENT_POSITION:
+
+            return await router.currentPosition(
+
+                result
+
+            );
+
+        case StaffConstants.INTENTS.STAFF_LAST_LOCATION:
+
+            return await router.lastLocation(
+
+                result
+
+            );
+
+        /*==================================
+          DUTY
+        ==================================*/
+
+        case StaffConstants.INTENTS.STAFF_DUTY:
+
+            return await router.duty(
+
+                result
+
+            );
+
+        case StaffConstants.INTENTS.STAFF_DUTY_STATUS:
+
+            return await router.dutyStatus(
+
+                result
+
+            );
+
+        case StaffConstants.INTENTS.STAFF_DUTY_TYPE:
+
+            return await router.dutyType(
+
+                result
+
+            );
+
+        case StaffConstants.INTENTS.STAFF_DUTY_ACTIVE:
+
+            return await router.dutyActive(
+
+                result
+
+            );
+
+        /*==================================
+          TEAM
+        ==================================*/
+
+        case StaffConstants.INTENTS.STAFF_TEAM:
+
+            return await router.team(
+
+                result
+
+            );
+
+        case StaffConstants.INTENTS.STAFF_LEADER:
+
+            return await router.leader(
+
+                result
+
+            );
+
+        /*==================================
+          STATUS
+        ==================================*/
+
+        case StaffConstants.INTENTS.STAFF_STATUS:
+
+            return await router.status(
+
+                result
+
+            );
+
+        case StaffConstants.INTENTS.STAFF_ONLINE:
+
+            return await router.online(
+
+                result
+
+            );
+
+        case StaffConstants.INTENTS.STAFF_OFFLINE:
+
+            return await router.offline(
+
+                result
+
+            );
+
+        /*==================================
+          CONTROL ROOM
+        ==================================*/
+
+        case StaffConstants.INTENTS.WHO_IS_ON_DUTY:
+
+            return await router.whoIsOnDuty(
+
+                result
+
+            );
+
+        case StaffConstants.INTENTS.WHO_IS_PATROLLING:
+
+            return await router.whoIsPatrolling(
+
+                result
+
+            );
+
+        case StaffConstants.INTENTS.WHO_IS_OFFLINE:
+
+            return await router.whoIsOffline(
+
+                result
+
+            );
+
+        case StaffConstants.INTENTS.WHO_IS_NEAREST:
+
+            return await router.nearest(
+
+                result
+
+            );
+
+        case StaffConstants.INTENTS.WHO_HAS_OLD_GPS:
+
+            return await router.oldGps(
+
+                result
+
+            );
+
+        case StaffConstants.INTENTS.WHO_HAS_POOR_ACCURACY:
+
+            return await router.lowAccuracy(
+
+                result
+
+            );
+
+        case StaffConstants.INTENTS.WHO_STOPPED_MOVING:
+
+            return await router.noMovement(
+
+                result
+
+            );
+
+        /*==================================
+          ANALYTICS
+        ==================================*/
+
+        case StaffConstants.INTENTS.STAFF_STRENGTH:
+
+            return await router.strength(
+
+                result
+
+            );
+
+        case StaffConstants.INTENTS.STAFF_STATISTICS:
+
+            return await router.statistics(
+
+                result
+
+            );
+
+        case StaffConstants.INTENTS.DUTY_SUMMARY:
+
+            return await router.dutySummary(
+
+                result
+
+            );
+
+        /*==================================
+          DEFAULT
+        ==================================*/
+
+        default:
+
+            return {
+
+                success: false,
+
+                ai: true,
+
+                action: "AI",
+
+                reason: "Unknown intent.",
+
+                result
+
+            };
+
+    }
+
+};
     /*=========================================================
  DETECT STAFF INTENT
 =========================================================*/
