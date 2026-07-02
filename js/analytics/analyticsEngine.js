@@ -2674,110 +2674,298 @@ AnalyticsEngine.normalizeQuery = function (
  BUILD INTENT
 =========================================================*/
 
+/*=========================================================
+ BUILD INTENT
+=========================================================*/
+
 AnalyticsEngine.buildIntent = function (
 
     query
 
 ) {
 
-    /*
-        Future
-
-        Staff
-        Wildlife
-        GIS
-        Patrol
-        Legal
-        Reports
-    */
+    const GG =
+        window.GreenGuardAI;
 
     /*----------------------------------
       STAFF
     ----------------------------------*/
 
-    const staff =
-
-        AnalyticsEngine.buildStaffIntent(
-
-            query
-
-        );
-
     if (
 
-        staff.confidence >= 0.80
+        GG.StaffIntent &&
+
+        typeof GG.StaffIntent.detect ===
+
+        "function"
 
     ) {
 
-        return staff;
+        const staff =
+
+            GG.StaffIntent.detect(
+
+                query
+
+            );
+
+        if (
+
+            staff &&
+
+            staff.confidence >= 0.80
+
+        ) {
+
+            return staff;
+
+        }
 
     }
 
     /*----------------------------------
-      FUTURE DOMAINS
-    ----------------------------------
-
-    const wildlife =
-
-        AnalyticsEngine.buildWildlifeIntent(
-
-            query
-
-        );
-
-    if (
-
-        wildlife.confidence >= 0.80
-
-    ) {
-
-        return wildlife;
-
-    }
-
-    const gis =
-
-        AnalyticsEngine.buildGISIntent(
-
-            query
-
-        );
-
-    if (
-
-        gis.confidence >= 0.80
-
-    ) {
-
-        return gis;
-
-    }
-
-    const legal =
-
-        AnalyticsEngine.buildLegalIntent(
-
-            query
-
-        );
-
-    if (
-
-        legal.confidence >= 0.80
-
-    ) {
-
-        return legal;
-
-    }
-
+      WILDLIFE
     ----------------------------------*/
+
+    if (
+
+        GG.WildlifeIntent &&
+
+        typeof GG.WildlifeIntent.detect ===
+
+        "function"
+
+    ) {
+
+        const wildlife =
+
+            GG.WildlifeIntent.detect(
+
+                query
+
+            );
+
+        if (
+
+            wildlife &&
+
+            wildlife.confidence >= 0.80
+
+        ) {
+
+            return wildlife;
+
+        }
+
+    }
+
+    /*----------------------------------
+      GIS
+    ----------------------------------*/
+
+    if (
+
+        GG.GISIntent &&
+
+        typeof GG.GISIntent.detect ===
+
+        "function"
+
+    ) {
+
+        const gis =
+
+            GG.GISIntent.detect(
+
+                query
+
+            );
+
+        if (
+
+            gis &&
+
+            gis.confidence >= 0.80
+
+        ) {
+
+            return gis;
+
+        }
+
+    }
+
+    /*----------------------------------
+      PATROL
+    ----------------------------------*/
+
+    if (
+
+        GG.PatrolIntent &&
+
+        typeof GG.PatrolIntent.detect ===
+
+        "function"
+
+    ) {
+
+        const patrol =
+
+            GG.PatrolIntent.detect(
+
+                query
+
+            );
+
+        if (
+
+            patrol &&
+
+            patrol.confidence >= 0.80
+
+        ) {
+
+            return patrol;
+
+        }
+
+    }
+
+    /*----------------------------------
+      LEGAL
+    ----------------------------------*/
+
+    if (
+
+        GG.LegalIntent &&
+
+        typeof GG.LegalIntent.detect ===
+
+        "function"
+
+    ) {
+
+        const legal =
+
+            GG.LegalIntent.detect(
+
+                query
+
+            );
+
+        if (
+
+            legal &&
+
+            legal.confidence >= 0.80
+
+        ) {
+
+            return legal;
+
+        }
+
+    }
+
+    /*----------------------------------
+      ANALYTICS
+    ----------------------------------*/
+
+    if (
+
+        GG.AnalyticsIntent &&
+
+        typeof GG.AnalyticsIntent.detect ===
+
+        "function"
+
+    ) {
+
+        const analytics =
+
+            GG.AnalyticsIntent.detect(
+
+                query
+
+            );
+
+        if (
+
+            analytics &&
+
+            analytics.confidence >= 0.80
+
+        ) {
+
+            return analytics;
+
+        }
+
+    }
+
+    /*----------------------------------
+      REPORT
+    ----------------------------------*/
+
+    if (
+
+        GG.ReportIntent &&
+
+        typeof GG.ReportIntent.detect ===
+
+        "function"
+
+    ) {
+
+        const report =
+
+            GG.ReportIntent.detect(
+
+                query
+
+            );
+
+        if (
+
+            report &&
+
+            report.confidence >= 0.80
+
+        ) {
+
+            return report;
+
+        }
+
+    }
 
     /*----------------------------------
       DEFAULT
     ----------------------------------*/
 
-    return staff;
+    return {
+
+        success: false,
+
+        source: "local",
+
+        provider: "AnalyticsEngine",
+
+        domain: "general",
+
+        intent: "unknown",
+
+        confidence: 0,
+
+        entities: {},
+
+        data: {
+
+            message: "Intent not recognized."
+
+        }
+
+    };
 
 };
    /*=========================================================
