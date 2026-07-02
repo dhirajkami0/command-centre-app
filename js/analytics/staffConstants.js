@@ -501,25 +501,82 @@ StaffConstants.ROLES = Object.freeze({
  DESIGNATIONS
 =========================================================*/
 
+/*=========================================================
+ DESIGNATIONS
+=========================================================*/
+
 StaffConstants.DESIGNATIONS = Object.freeze({
 
-    FOREST_RANGER:
-        "Forest Ranger",
+    /*----------------------------------
+      Forest Field Staff
+    ----------------------------------*/
 
-    DEPUTY_RANGER:
-        "Deputy Ranger",
+    BS:
+        "BS",
 
-    FORESTER:
-        "Forester",
+    FG:
+        "FG",
+
+    DL:
+        "DL",
+
+    PDL:
+        "PDL",
+
+    DR:
+        "DR",
+
+    FR:
+        "FR",
+
+    DR_FR:
+        "DR/FR",
+
+    AS:
+        "AS",
+
+    FV:
+        "FV",
 
     BANASAHAYAK:
-        "Banasahayak",
+        "BANASAHAYAK",
 
-    FOREST_GUARD:
-        "Forest Guard",
+    BANASAHAYK:
+        "BANASAHAYK",
+
+    BANASAYAHAK:
+        "BANASAYAHAK",
 
     WATCHER:
-        "Watcher"
+        "WATCHER",
+
+    DRIVER:
+        "DRIVER",
+
+    ORDELY:
+        "ORDELY",
+
+    /*----------------------------------
+      Officers
+    ----------------------------------*/
+
+    DFO:
+        "DFO",
+
+    ADFO:
+        "ADFO",
+
+    CCF:
+        "CCF",
+
+    FD:
+        "FD",
+
+    IFS:
+        "IFS",
+
+    WBFS:
+        "WBFS"
 
 });
 /*=========================================================
@@ -1741,6 +1798,71 @@ StaffConstants.CONFIDENCE = Object.freeze({
         0.75
 
 });
+ /*=========================================================
+ SEARCH PRIORITY
+=========================================================*/
+
+StaffConstants.SEARCH_PRIORITY = Object.freeze([
+
+    /*----------------------------------
+      Highest Priority
+    ----------------------------------*/
+
+    StaffConstants.FIELDS.CLEAN_NAME,
+
+    StaffConstants.FIELDS.NAME,
+
+    StaffConstants.FIELDS.PHONE,
+
+    /*----------------------------------
+      Staff Identity
+    ----------------------------------*/
+
+    StaffConstants.FIELDS.ROLE,
+
+    StaffConstants.FIELDS.DESIGNATION,
+
+    /*----------------------------------
+      Administrative Hierarchy
+    ----------------------------------*/
+
+    StaffConstants.FIELDS.BEAT,
+
+    StaffConstants.FIELDS.RANGE,
+
+    StaffConstants.FIELDS.DIVISION,
+
+    StaffConstants.FIELDS.CIRCLE,
+
+    StaffConstants.FIELDS.COMPARTMENT,
+
+    /*----------------------------------
+      Team
+    ----------------------------------*/
+
+    StaffConstants.FIELDS.LEADER,
+
+    StaffConstants.FIELDS.TEAM,
+
+    /*----------------------------------
+      Duty
+    ----------------------------------*/
+
+    StaffConstants.FIELDS.DUTY_TYPE,
+
+    StaffConstants.FIELDS.STATUS,
+
+    /*----------------------------------
+      GPS
+    ----------------------------------*/
+
+    StaffConstants.FIELDS.LOCATION,
+
+    StaffConstants.FIELDS.LAT,
+
+    StaffConstants.FIELDS.LON
+
+]);
 /*=========================================================
  STAFF STATUS
 =========================================================*/
