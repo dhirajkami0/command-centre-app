@@ -1,289 +1,386 @@
 (function (window) {
 
-    "use strict";
+"use strict";
 
+/*=========================================================
+ GREENGUARD
+=========================================================*/
+
+const GG =
     window.GreenGuardAI =
-        window.GreenGuardAI || {};
+    window.GreenGuardAI || {};
 
-    const AnalyticsEngine =
-        window.GreenGuardAI.AnalyticsEngine = window.GreenGuardAI.AnalyticsEngine || {};
+/*=========================================================
+ DEPENDENCIES
+=========================================================*/
 
-    /*----------------------------------------------------------
-    NORMALIZE QUERY
-    ----------------------------------------------------------*/
-    AnalyticsEngine.normalizeQuery = function (query) {
-        return String(query || "")
-            .trim()
-            .toUpperCase();
-    };
+const StaffConstants =
+    GG.StaffConstants;
 
-    /*----------------------------------------------------------
-    HAS VALUE
-    ----------------------------------------------------------*/
-    AnalyticsEngine.hasValue = function (value) {
-        return value !== undefined &&
-               value !== null &&
-               String(value).trim() !== "";
-    };
+if (!StaffConstants) {
 
-    /*----------------------------------------------------------
-    STAFF ENTITY EXTRACTION
-    ----------------------------------------------------------*/
-    AnalyticsEngine.extractStaffEntities = function (query) {
-        const filters = {
-            staff: AnalyticsEngine.extractStaff(query),
-            circle: AnalyticsEngine.extractCircle(query),
-            division: AnalyticsEngine.extractDivision(query),
-            range: AnalyticsEngine.extractRange(query),
-            beat: AnalyticsEngine.extractBeat(query),
-            designation: AnalyticsEngine.extractDesignation(query),
-            role: AnalyticsEngine.extractRole(query),
-            dutyActive: AnalyticsEngine.extractDuty(query),
-            dutyType: AnalyticsEngine.extractDutyType(query),
-            leader: AnalyticsEngine.extractLeader(query),
-            team: AnalyticsEngine.extractTeam(query),
-            compartment: AnalyticsEngine.extractCompartment(query),
-            date: AnalyticsEngine.extractDate(query)
-        };
+    throw new Error(
 
-        console.log("🧩 Staff Entities", filters);
+        "StaffConstants not loaded."
 
-        return filters;
-    };
+    );
 
-    /*----------------------------------------------------------
-    EXTRACT STAFF
-    ----------------------------------------------------------*/
-    AnalyticsEngine.extractStaff = function (query) {
-        const text = AnalyticsEngine.normalizeQuery(query);
-        const index = AnalyticsEngine.staffSearchIndex || {};
+}
 
-        let best = "";
-        let bestLength = 0;
+/*=========================================================
+ MODULE
+=========================================================*/
 
-        Object.keys(index).forEach(function (key) {
-            if (text.includes(key)) {
-                if (key.length > bestLength) {
-                    best = key;
-                    bestLength = key.length;
-                }
-            }
-        });
+const StaffEntities = {};
 
-        if (!best) {
-            return "";
-        }
-        return index[best];
-    };
+/*=========================================================
+ VERSION
+=========================================================*/
 
-    /*----------------------------------------------------------
-    EXTRACT CIRCLE
-    ----------------------------------------------------------*/
-    AnalyticsEngine.extractCircle = function (query) {
-        const text = AnalyticsEngine.normalizeQuery(query);
-        const index = AnalyticsEngine.circleIndex || {};
+StaffEntities.VERSION =
+    "1.0.0";
 
-        let result = "";
+/*=========================================================
+ INITIALIZATION
+=========================================================*/
 
-        Object.keys(index).some(function (name) {
-            if (text.includes(String(name).toUpperCase())) {
-                result = name;
-                return true;
-            }
-            return false;
-        });
+StaffEntities.loaded =
+    false;
 
-        return result;
-    };
+StaffEntities.loading =
+    false;
 
-    /*----------------------------------------------------------
-    EXTRACT DIVISION
-    ----------------------------------------------------------*/
-    AnalyticsEngine.extractDivision = function (query) {
-        const text = AnalyticsEngine.normalizeQuery(query);
-        const index = AnalyticsEngine.divisionIndex || {};
+/*=========================================================
+ STAFF DATA
+=========================================================*/
 
-        let result = "";
+StaffEntities.staff = [];
 
-        Object.keys(index).some(function (name) {
-            if (text.includes(String(name).toUpperCase())) {
-                result = name;
-                return true;
-            }
-            return false;
-        });
+/*=========================================================
+ LOOKUP INDEXES
+=========================================================*/
 
-        return result;
-    };
+StaffEntities.index = {
 
-    /*----------------------------------------------------------
-    EXTRACT RANGE
-    ----------------------------------------------------------*/
-    AnalyticsEngine.extractRange = function (query) {
-        const text = AnalyticsEngine.normalizeQuery(query);
-        const index = AnalyticsEngine.rangeIndex || {};
+    /*----------------------------------
+      Staff
+    ----------------------------------*/
 
-        let result = "";
+    byCleanName:
+        new Map(),
 
-        Object.keys(index).some(function (name) {
-            if (text.includes(String(name).toUpperCase())) {
-                result = name;
-                return true;
-            }
-            return false;
-        });
+    byName:
+        new Map(),
 
-        return result;
-    };
+    byPhone:
+        new Map(),
 
-    /*----------------------------------------------------------
-    EXTRACT BEAT
-    ----------------------------------------------------------*/
-    AnalyticsEngine.extractBeat = function (query) {
-        const text = AnalyticsEngine.normalizeQuery(query);
-        const index = AnalyticsEngine.beatIndex || {};
+    /*----------------------------------
+      Role
+    ----------------------------------*/
 
-        let result = "";
-        let longest = 0;
+    byRole:
+        new Map(),
 
-        Object.keys(index).forEach(function (name) {
-            const upper = String(name).toUpperCase();
-            if (text.includes(upper)) {
-                if (upper.length > longest) {
-                    longest = upper.length;
-                    result = name;
-                }
-            }
-        });
+    byDesignation:
+        new Map(),
 
-        return result;
-    };
+    /*----------------------------------
+      Posting
+    ----------------------------------*/
 
-    /*----------------------------------------------------------
-    PLACEHOLDER EXTRACTORS
-    ----------------------------------------------------------*/
-    /*----------------------------------------------------------
-EXTRACT DESIGNATION
-----------------------------------------------------------*/
+    byBeat:
+        new Map(),
 
-AnalyticsEngine.extractDesignation = function (query) {
+    byRange:
+        new Map(),
 
-    const text =
-        AnalyticsEngine.normalizeQuery(query);
+    byDivision:
+        new Map(),
 
-    const aliases =
-        AnalyticsEngine.designationAliases || {};
+    byCircle:
+        new Map(),
 
-    for (const code in aliases) {
+    byCompartment:
+        new Map(),
 
-        const list = aliases[code];
+    /*----------------------------------
+      Team
+    ----------------------------------*/
 
-        for (let i = 0; i < list.length; i++) {
+    byLeader:
+        new Map(),
 
-            if (
+    byTeam:
+        new Map()
 
-                text.includes(
+};
 
-                    String(list[i]).toUpperCase()
+/*=========================================================
+ CACHE
+=========================================================*/
 
-                )
+StaffEntities.cache = {
 
-            ) {
+    entities:
 
-                return code;
+        new Map(),
 
-            }
+    search:
 
-        }
+        new Map()
+
+};
+
+/*=========================================================
+ UTILITIES
+=========================================================*/
+
+StaffEntities.clear = function () {
+
+    StaffEntities.staff = [];
+
+    Object.keys(
+
+        StaffEntities.index
+
+    )
+
+    .forEach(
+
+        key =>
+
+            StaffEntities.index[key].clear()
+
+    );
+
+    StaffEntities.cache.entities.clear();
+
+    StaffEntities.cache.search.clear();
+
+    StaffEntities.loaded = false;
+
+};
+
+/*=========================================================
+ STATUS
+=========================================================*/
+
+StaffEntities.isLoaded = function () {
+
+    return StaffEntities.loaded;
+
+};
+
+StaffEntities.isLoading = function () {
+
+    return StaffEntities.loading;
+
+};
+/*=========================================================
+ INITIALIZATION
+=========================================================*/
+
+StaffEntities.initialize = async function () {
+
+    if (StaffEntities.loaded) {
+
+        return true;
 
     }
 
-    return "";
+    if (StaffEntities.loading) {
 
-};
-    /*----------------------------------------------------------
-EXTRACT ROLE
-----------------------------------------------------------*/
-
-AnalyticsEngine.extractRole = function (query) {
-
-    query = String(query || "").toLowerCase();
-
-    const roles = [
-
-        {
-            value: "TEAM LEADER",
-            keywords: [
-                "team leader",
-                "team leaders",
-                "tl",
-                "leader",
-                "leaders"
-            ]
-        },
-
-        {
-            value: "ADMIN",
-            keywords: [
-                "admin",
-                "administrator"
-            ]
-        },
-
-        {
-            value: "DFO",
-            keywords: [
-                "dfo"
-            ]
-        },
-
-        {
-            value: "ADFO",
-            keywords: [
-                "adfo"
-            ]
-        },
-
-        {
-            value: "STAFF",
-            keywords: [
-                "staff",
-                "employee",
-                "employees"
-            ]
-        }
-
-    ];
-
-    for (const role of roles) {
-
-        for (const keyword of role.keywords) {
-
-            if (query.includes(keyword)) {
-
-                return role.value;
-
-            }
-
-        }
+        return StaffEntities.waitUntilLoaded();
 
     }
 
-    return "";
+    return await StaffEntities.buildIndex();
 
 };
-    /*----------------------------------------------------------
-EXTRACT DUTY STATUS
-----------------------------------------------------------*/
 
-AnalyticsEngine.extractDuty = function (query) {
+/*=========================================================
+ WAIT UNTIL INDEX IS READY
+=========================================================*/
 
-    const text =
-        AnalyticsEngine.normalizeQuery(query);
+StaffEntities.waitUntilLoaded = function () {
+
+    return new Promise(
+
+        (resolve, reject) => {
+
+            const started =
+                Date.now();
+
+            const timeout =
+                15000;
+
+            const timer =
+                setInterval(
+
+                    function () {
+
+                        if (
+
+                            StaffEntities.loaded
+
+                        ) {
+
+                            clearInterval(
+
+                                timer
+
+                            );
+
+                            resolve(true);
+
+                            return;
+
+                        }
+
+                        if (
+
+                            !StaffEntities.loading
+
+                        ) {
+
+                            clearInterval(
+
+                                timer
+
+                            );
+
+                            resolve(false);
+
+                            return;
+
+                        }
+
+                        if (
+
+                            Date.now() -
+
+                            started >
+
+                            timeout
+
+                        ) {
+
+                            clearInterval(
+
+                                timer
+
+                            );
+
+                            reject(
+
+                                new Error(
+
+                                    "StaffEntities initialization timeout."
+
+                                )
+
+                            );
+
+                        }
+
+                    },
+
+                    100
+
+                );
+
+        }
+
+    );
+
+};
+
+/*=========================================================
+ START LOADING
+=========================================================*/
+
+StaffEntities.startLoading = function () {
+
+    StaffEntities.loading =
+        true;
+
+    StaffEntities.loaded =
+        false;
+
+};
+
+/*=========================================================
+ FINISH LOADING
+=========================================================*/
+
+StaffEntities.finishLoading = function () {
+
+    StaffEntities.loading =
+        false;
+
+    StaffEntities.loaded =
+        true;
+
+};
+
+/*=========================================================
+ FAIL LOADING
+=========================================================*/
+
+StaffEntities.failLoading = function () {
+
+    StaffEntities.loading =
+        false;
+
+    StaffEntities.loaded =
+        false;
+
+};
+
+/*=========================================================
+ RESET
+=========================================================*/
+
+StaffEntities.reset = function () {
+
+    StaffEntities.clear();
+
+};
+
+/*=========================================================
+ LAST BUILD
+=========================================================*/
+
+StaffEntities.lastBuild =
+    0;
+
+/*=========================================================
+ INDEX VERSION
+=========================================================*/
+
+StaffEntities.indexVersion =
+    1;
+
+/*=========================================================
+ SHOULD REBUILD
+=========================================================*/
+
+StaffEntities.shouldRebuild = function (
+
+    maxAge =
+
+        5 *
+
+        60 *
+
+        1000
+
+) {
 
     if (
 
-        /\b(ON DUTY|ACTIVE|LIVE|CURRENT DUTY)\b/.test(text)
+        !StaffEntities.loaded
 
     ) {
 
@@ -291,357 +388,671 @@ AnalyticsEngine.extractDuty = function (query) {
 
     }
 
-    if (
+    return (
 
-        /\b(OFF DUTY|INACTIVE)\b/.test(text)
+        Date.now() -
 
-    ) {
+        StaffEntities.lastBuild >
 
-        return false;
+        maxAge
 
-    }
-
-    return null;
+    );
 
 };
-  /*----------------------------------------------------------
-EXTRACT DUTY TYPE
-----------------------------------------------------------*/
 
-AnalyticsEngine.extractDutyType = function (query) {
+/*=========================================================
+ MARK REBUILD
+=========================================================*/
 
-    const text =
-        AnalyticsEngine.normalizeQuery(query);
+StaffEntities.markBuilt = function () {
 
-    if (
-
-        text.includes("FOOT")
-
-    ) {
-
-        return "Foot Patrolling";
-
-    }
-
-    if (
-
-        text.includes("VEHICLE")
-
-    ) {
-
-        return "Vehicle Patrolling";
-
-    }
-
-    if (
-
-        text.includes("DEPREDATION")
-
-    ) {
-
-        return "Depredation Duty";
-
-    }
-
-    if (
-
-        text.includes("ENQUIRY")
-
-    ) {
-
-        return "Enquiry";
-
-    }
-
-    if (
-
-        text.includes("NAKA")
-
-    ) {
-
-        return "Naka Duty";
-
-    }
-
-    return "";
+    StaffEntities.lastBuild =
+        Date.now();
 
 };
-  /*----------------------------------------------------------
-EXTRACT LEADER
-----------------------------------------------------------*/
+  /*=========================================================
+ FIREBASE
+=========================================================*/
 
-AnalyticsEngine.extractLeader = function (query) {
+StaffEntities.getFirebase = function () {
 
-    const text =
-        AnalyticsEngine.normalizeQuery(query);
+    return window.fb || null;
 
-    const rows =
-        Object.values(
-            AnalyticsEngine.staffIndex || {}
+};
+
+/*=========================================================
+ FIRESTORE
+=========================================================*/
+
+StaffEntities.getFirestore = function () {
+
+    return window.db || null;
+
+};
+
+/*=========================================================
+ VALIDATE FIREBASE
+=========================================================*/
+
+StaffEntities.validateFirebase = function () {
+
+    const fb =
+        StaffEntities.getFirebase();
+
+    const db =
+        StaffEntities.getFirestore();
+
+    if (!fb) {
+
+        throw new Error(
+
+            "Firebase SDK not initialized."
+
         );
 
-    let best = "";
-    let longest = 0;
+    }
 
-    rows.forEach(function (staff) {
+    if (!db) {
 
-        if (!staff.name) return;
+        throw new Error(
 
-        const name =
-            AnalyticsEngine.normalizeQuery(
-                staff.name
-            );
+            "Firestore not initialized."
 
-        if (
+        );
 
-            text.includes(name)
+    }
 
-        ){
+    if (
 
-            if (
+        typeof fb.collection !== "function"
 
-                /TEAM|UNDER|LEADER/i.test(text)
+    ) {
 
-            ){
+        throw new Error(
 
-                if (
+            "Firebase collection() unavailable."
 
-                    name.length > longest
+        );
 
-                ){
+    }
 
-                    longest = name.length;
+    if (
 
-                    best = staff.cleanName || staff.name;
+        typeof fb.getDocs !== "function"
 
-                }
+    ) {
+
+        throw new Error(
+
+            "Firebase getDocs() unavailable."
+
+        );
+
+    }
+
+    return {
+
+        fb,
+
+        db
+
+    };
+
+};
+
+/*=========================================================
+ GET COLLECTION
+=========================================================*/
+
+StaffEntities.getCollection = function (
+
+    collectionName
+
+) {
+
+    const {
+
+        fb,
+
+        db
+
+    } =
+
+        StaffEntities.validateFirebase();
+
+    return fb.collection(
+
+        db,
+
+        collectionName
+
+    );
+
+};
+
+/*=========================================================
+ STAFF PROFILES COLLECTION
+=========================================================*/
+
+StaffEntities.getStaffProfilesCollection = function () {
+
+    return StaffEntities.getCollection(
+
+        StaffConstants
+            .COLLECTIONS
+            .STAFF_PROFILES
+
+    );
+
+};
+
+/*=========================================================
+ LIVE STAFF COLLECTION
+=========================================================*/
+
+StaffEntities.getLiveStaffCollection = function () {
+
+    return StaffEntities.getCollection(
+
+        StaffConstants
+            .COLLECTIONS
+            .LIVE_STAFF
+
+    );
+
+};
+
+/*=========================================================
+ PATROL TRACKS COLLECTION
+=========================================================*/
+
+StaffEntities.getPatrolTracksCollection = function () {
+
+    return StaffEntities.getCollection(
+
+        StaffConstants
+            .COLLECTIONS
+            .PATROL_TRACKS
+
+    );
+
+};
+  /*=========================================================
+ LOAD COLLECTION
+=========================================================*/
+
+StaffEntities.loadCollection = async function (
+
+    collectionReference
+
+) {
+
+    const {
+
+        fb
+
+    } =
+
+        StaffEntities.validateFirebase();
+
+    if (
+
+        !collectionReference
+
+    ) {
+
+        throw new Error(
+
+            "Firestore collection reference missing."
+
+        );
+
+    }
+
+    const snapshot =
+
+        await fb.getDocs(
+
+            collectionReference
+
+        );
+
+    if (
+
+        !snapshot
+
+    ) {
+
+        throw new Error(
+
+            "Unable to load Firestore collection."
+
+        );
+
+    }
+
+    return snapshot;
+
+};
+  /*=========================================================
+ LOAD STAFF PROFILES
+=========================================================*/
+
+StaffEntities.loadStaffProfiles =
+async function () {
+
+    console.group(
+
+        "🧠 Loading Staff Profiles"
+
+    );
+
+    try {
+
+        /*----------------------------------
+          Get Collection
+        ----------------------------------*/
+
+        const collection =
+
+            StaffEntities
+                .getStaffProfilesCollection();
+
+        /*----------------------------------
+          Load Snapshot
+        ----------------------------------*/
+
+        const snapshot =
+
+            await StaffEntities
+                .loadCollection(
+
+                    collection
+
+                );
+
+        /*----------------------------------
+          Convert Snapshot
+        ----------------------------------*/
+
+        const staff =
+
+            [];
+
+        snapshot.forEach(
+
+            function (doc) {
+
+                staff.push({
+
+                    id:
+                        doc.id,
+
+                    data:
+                        doc.data()
+
+                });
 
             }
 
-        }
-
-    });
-
-    return best;
-
-};
-  /*----------------------------------------------------------
-EXTRACT TEAM
-----------------------------------------------------------*/
-
-AnalyticsEngine.extractTeam = function (query) {
-
-    const text =
-        AnalyticsEngine.normalizeQuery(query);
-
-    const rows =
-        Object.values(
-            AnalyticsEngine.staffIndex || {}
         );
 
-    let best = "";
-    let longest = 0;
+        console.log(
 
-    rows.forEach(function (staff) {
+            "Profiles Loaded:",
 
-        if (!staff.team) return;
-
-        const team =
-            AnalyticsEngine.normalizeQuery(
-                staff.team
-            );
-
-        if (
-
-            text.includes(team)
-
-        ){
-
-            if (
-
-                team.length > longest
-
-            ){
-
-                longest = team.length;
-
-                best = staff.team;
-
-            }
-
-        }
-
-    });
-
-    return best;
-
-};
-  
-  /*----------------------------------------------------------
-EXTRACT COMPARTMENT
-----------------------------------------------------------*/
-
-AnalyticsEngine.extractCompartment = function (query) {
-
-    const text =
-        AnalyticsEngine.normalizeQuery(query);
-
-    const rows =
-        Object.values(
-            AnalyticsEngine.staffIndex || {}
-        );
-
-    const seen = {};
-
-    let best = "";
-    let longest = 0;
-
-    rows.forEach(function (staff) {
-
-        const c =
-            String(
-                staff.compartment || ""
-            ).trim();
-
-        if (!c) return;
-
-        if (seen[c]) return;
-
-        seen[c] = true;
-
-        const upper =
-            c.toUpperCase();
-
-        if (
-
-            text.includes(upper)
-
-        ){
-
-            if (
-
-                upper.length > longest
-
-            ){
-
-                longest = upper.length;
-
-                best = c;
-
-            }
-
-        }
-
-    });
-
-    return best;
-
-};
-  /*----------------------------------------------------------
-EXTRACT DATE
-----------------------------------------------------------*/
-
-AnalyticsEngine.extractDate = function (query) {
-
-    const text =
-        AnalyticsEngine.normalizeQuery(query);
-
-    if (text.includes("TODAY")) {
-
-        return {
-
-            type: "today"
-
-        };
-
-    }
-
-    if (text.includes("YESTERDAY")) {
-
-        return {
-
-            type: "yesterday"
-
-        };
-
-    }
-
-    if (
-
-        text.includes("THIS WEEK")
-
-    ){
-
-        return {
-
-            type: "thisWeek"
-
-        };
-
-    }
-
-    if (
-
-        text.includes("LAST WEEK")
-
-    ){
-
-        return {
-
-            type: "lastWeek"
-
-        };
-
-    }
-
-    if (
-
-        text.includes("THIS MONTH")
-
-    ){
-
-        return {
-
-            type: "thisMonth"
-
-        };
-
-    }
-
-    if (
-
-        text.includes("LAST MONTH")
-
-    ){
-
-        return {
-
-            type: "lastMonth"
-
-        };
-
-    }
-
-    const m =
-        text.match(
-
-            /\b(\d{4})-(\d{2})-(\d{2})\b/
+            staff.length
 
         );
 
-    if (m) {
+        /*----------------------------------
+          Normalize
+        ----------------------------------*/
 
-        return {
+return StaffEntities.normalizeStaffDocuments(
+    staff
+);
+    }
 
-            type: "date",
+    catch (err) {
 
-            value: m[0]
+        console.error(
 
-        };
+            err
+
+        );
+
+        throw err;
 
     }
 
-    return null;
+    finally {
+
+        console.groupEnd();
+
+    }
 
 };
+
+  /*=========================================================
+ NORMALIZE STAFF DOCUMENT
+=========================================================*/
+
+/*=========================================================
+ NORMALIZE STAFF DOCUMENT
+=========================================================*/
+
+StaffEntities.normalizeStaffDocument = function (
+
+    staffDoc
+
+) {
+
+    /*----------------------------------
+      Input Validation
+    ----------------------------------*/
+
+    if (
+
+        !staffDoc ||
+
+        typeof staffDoc !== "object"
+
+    ) {
+
+        console.warn(
+
+            "[StaffEntities] Invalid staff document.",
+
+            staffDoc
+
+        );
+
+        return null;
+
+    }
+
+    if (
+
+        !("data" in staffDoc)
+
+    ) {
+
+        console.warn(
+
+            "[StaffEntities] Missing Firestore data.",
+
+            staffDoc
+
+        );
+
+        return null;
+
+    }
+
+    if (
+
+        !staffDoc.data ||
+
+        typeof staffDoc.data !== "object"
+
+    ) {
+
+        console.warn(
+
+            "[StaffEntities] Invalid Firestore document data.",
+
+            staffDoc
+
+        );
+
+        return null;
+
+    }
+
+    /*----------------------------------
+      Firestore Document
+    ----------------------------------*/
+
+    const id =
+
+        staffDoc.id ||
+
+        "";
+
+    const data =
+
+        staffDoc.data;
+
+    /*----------------------------------
+      Constants
+    ----------------------------------*/
+
+    const FIELDS =
+        StaffConstants.FIELDS;
+
+    const ROLES =
+        StaffConstants.ROLES;
+
+    const DESIGNATIONS =
+        StaffConstants.DESIGNATIONS;
+
+    const DUTY_TYPES =
+        StaffConstants.DUTY_TYPES;
+
+    /*----------------------------------
+      Local Variables
+    ----------------------------------*/
+
+    const normalized = {};
+
+    const errors = [];
+
+    const warnings = [];
+
+    /*----------------------------------
+      Context
+    ----------------------------------*/
+
+    const context = {
+
+        id,
+
+        data,
+
+        normalized,
+
+        errors,
+
+        warnings,
+
+        fields: FIELDS,
+
+        roles: ROLES,
+
+        designations: DESIGNATIONS,
+
+        dutyTypes: DUTY_TYPES
+
+    };
+
+    /*
+    =========================================================
+    NEXT STEP
+
+    Field Extraction
+
+    context.normalized
+
+    =========================================================
+    */
+
+    return context;
+
+};
+/*=========================================================
+ PUBLIC API
+=========================================================*/
+
+StaffEntities.buildIndex =
+    async function () {
+
+        throw new Error(
+
+            "buildIndex() not implemented."
+
+        );
+
+    };
+
+StaffEntities.extract =
+    function (
+
+        query
+
+    ) {
+
+        throw new Error(
+
+            "extract() not implemented."
+
+        );
+
+    };
+
+StaffEntities.extractNames =
+    function (
+
+        query
+
+    ) {
+
+        throw new Error(
+
+            "extractNames() not implemented."
+
+        );
+
+    };
+
+StaffEntities.extractPhones =
+    function (
+
+        query
+
+    ) {
+
+        throw new Error(
+
+            "extractPhones() not implemented."
+
+        );
+
+    };
+
+StaffEntities.extractRoles =
+    function (
+
+        query
+
+    ) {
+
+        throw new Error(
+
+            "extractRoles() not implemented."
+
+        );
+
+    };
+
+StaffEntities.extractDesignations =
+    function (
+
+        query
+
+    ) {
+
+        throw new Error(
+
+            "extractDesignations() not implemented."
+
+        );
+
+    };
+
+StaffEntities.extractPosting =
+    function (
+
+        query
+
+    ) {
+
+        throw new Error(
+
+            "extractPosting() not implemented."
+
+        );
+
+    };
+
+StaffEntities.extractTeam =
+    function (
+
+        query
+
+    ) {
+
+        throw new Error(
+
+            "extractTeam() not implemented."
+
+        );
+
+    };
+
+StaffEntities.extractDuty =
+    function (
+
+        query
+
+    ) {
+
+        throw new Error(
+
+            "extractDuty() not implemented."
+
+        );
+
+    };
+
+StaffEntities.extractGPS =
+    function (
+
+        query
+
+    ) {
+
+        throw new Error(
+
+            "extractGPS() not implemented."
+
+        );
+
+    };
+
+/*=========================================================
+ REGISTER
+=========================================================*/
+
+GG.StaffEntities =
+    StaffEntities;
+
+console.log(
+
+    "%cStaff Entities Loaded",
+
+    "color:#008000;font-weight:bold;"
+
+);
+
 })(window);
