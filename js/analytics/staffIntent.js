@@ -1450,6 +1450,194 @@ StaffIntent.detectDutyIntent = function (
     return result;
 
 };
+
+ /*=========================================================
+ DETECT TEAM INTENT
+=========================================================*/
+
+StaffIntent.detectTeamIntent = function (
+
+    result
+
+) {
+
+    /*----------------------------------
+      Validate
+    ----------------------------------*/
+
+    if (
+
+        !result ||
+
+        !result.entities
+
+    ) {
+
+        return result;
+
+    }
+
+    const staff =
+
+        result.entities.staff ||
+
+        [];
+
+    if (
+
+        staff.length === 0
+
+    ) {
+
+        return result;
+
+    }
+
+    const query =
+
+        result.normalizedQuery;
+
+    const INTENTS =
+
+        StaffConstants.INTENTS;
+
+    const KEYWORDS =
+
+        StaffConstants.KEYWORDS;
+
+    /*----------------------------------
+      Helper
+    ----------------------------------*/
+
+    function hasKeyword(
+
+        list
+
+    ) {
+
+        if (
+
+            !Array.isArray(
+
+                list
+
+            )
+
+        ) {
+
+            return false;
+
+        }
+
+        return list.some(
+
+            function (
+
+                word
+
+            ) {
+
+                return query.includes(
+
+                    String(
+
+                        word
+
+                    )
+
+                    .toUpperCase()
+
+                );
+
+            }
+
+        );
+
+    }
+
+    /*----------------------------------
+      Team
+    ----------------------------------*/
+
+    if (
+
+        hasKeyword(
+
+            KEYWORDS.STAFF_TEAM
+
+        )
+
+    ) {
+
+        result.intent =
+
+            INTENTS.STAFF_TEAM;
+
+        result.parameters.staff =
+
+            staff[0];
+
+        result.parameters.team =
+
+            staff[0].teamInfo.team;
+
+        result.confidence =
+
+            Math.max(
+
+                result.confidence,
+
+                0.97
+
+            );
+
+        return result;
+
+    }
+
+    /*----------------------------------
+      Team Leader
+    ----------------------------------*/
+
+    if (
+
+        hasKeyword(
+
+            KEYWORDS.STAFF_LEADER
+
+        )
+
+    ) {
+
+        result.intent =
+
+            INTENTS.STAFF_LEADER;
+
+        result.parameters.staff =
+
+            staff[0];
+
+        result.parameters.leader =
+
+            staff[0].teamInfo.leader;
+
+        result.confidence =
+
+            Math.max(
+
+                result.confidence,
+
+                0.98
+
+            );
+
+        return result;
+
+    }
+
+    return result;
+
+};
     /*=========================================================
  CALCULATE CONFIDENCE
 =========================================================*/
