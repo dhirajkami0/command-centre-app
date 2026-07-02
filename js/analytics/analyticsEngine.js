@@ -2639,6 +2639,10 @@ AnalyticsEngine.openPatrol = function (search) {
  NORMALIZE QUERY
 =========================================================*/
 
+/*=========================================================
+ NORMALIZE QUERY
+=========================================================*/
+
 AnalyticsEngine.normalizeQuery = function (
 
     query
@@ -2664,6 +2668,7 @@ AnalyticsEngine.normalizeQuery = function (
         .replace(/[?]+$/g, "");
 
 };
+
 
 /*=========================================================
  BUILD INTENT
