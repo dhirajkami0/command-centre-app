@@ -1168,7 +1168,257 @@ StaffEntities.getArray = function (
 /*=========================================================
  NORMALIZE STAFF DOCUMENT
 =========================================================*/
+/*=========================================================
+ EXTRACT IDENTITY FIELDS
+=========================================================*/
 
+StaffEntities.extractIdentityFields = function (
+
+    context
+
+) {
+
+    /*----------------------------------
+      Validate Context
+    ----------------------------------*/
+
+    if (
+
+        !context ||
+
+        typeof context !== "object"
+
+    ) {
+
+        return null;
+
+    }
+
+    if (
+
+        !context.data ||
+
+        typeof context.data !== "object"
+
+    ) {
+
+        return context;
+
+    }
+
+    if (
+
+        !context.identity ||
+
+        typeof context.identity !== "object"
+
+    ) {
+
+        context.identity = {};
+
+    }
+
+    if (
+
+        !context.fields ||
+
+        typeof context.fields !== "object"
+
+    ) {
+
+        throw new Error(
+
+            "StaffConstants.FIELDS not available."
+
+        );
+
+    }
+
+/*----------------------------------
+  Name Extraction
+----------------------------------*/
+
+const FIELDS =
+
+    context.fields;
+
+/*
+------------------------------------
+Clean Name
+------------------------------------
+*/
+
+StaffEntities.setField(
+
+    context.identity,
+
+    "cleanName",
+
+    StaffEntities.getString(
+
+        context,
+
+        FIELDS.CLEAN_NAME
+
+    )
+
+);
+
+/*
+------------------------------------
+Display Name
+------------------------------------
+*/
+
+StaffEntities.setField(
+
+    context.identity,
+
+    "name",
+
+    StaffEntities.getString(
+
+        context,
+
+        FIELDS.NAME
+
+    )
+
+);
+
+/*
+------------------------------------
+Raw Name
+------------------------------------
+*/
+
+StaffEntities.setField(
+
+    context.identity,
+
+    "rawName",
+
+    StaffEntities.getString(
+
+        context,
+
+        FIELDS.RAW_NAME
+
+    )
+
+);
+ /*----------------------------------
+  Contact Extraction
+----------------------------------*/
+
+const FIELDS =
+
+    context.fields;
+/*----------------------------------
+  Identity Field Mapping
+----------------------------------*/
+
+const identityFields = [
+
+    {
+
+        target: "cleanName",
+
+        source: FIELDS.CLEAN_NAME
+
+    },
+
+    {
+
+        target: "name",
+
+        source: FIELDS.NAME
+
+    },
+
+    {
+
+        target: "rawName",
+
+        source: FIELDS.RAW_NAME
+
+    },
+
+    {
+
+        target: "phone",
+
+        source: FIELDS.PHONE
+
+    },
+
+    {
+
+        target: "email",
+
+        source: FIELDS.EMAIL
+
+    },
+
+    {
+
+        target: "role",
+
+        source: FIELDS.ROLE
+
+    },
+
+    {
+
+        target: "designation",
+
+        source: FIELDS.DESIGNATION
+
+    },
+
+    {
+
+        target: "type",
+
+        source: FIELDS.TYPE
+
+    }
+
+];
+ /*----------------------------------
+  Extract Identity Fields
+----------------------------------*/
+
+identityFields.forEach(
+
+    function (
+
+        field
+
+    ) {
+
+        StaffEntities.setField(
+
+            context.identity,
+
+            field.target,
+
+            StaffEntities.getString(
+
+                context,
+
+                field.source
+
+            )
+
+        );
+
+    }
+
+);
+    return context;
+
+};
 /*=========================================================
  NORMALIZE STAFF DOCUMENT
 =========================================================*/
