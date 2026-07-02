@@ -77,39 +77,63 @@
   CLOUD FUNCTIONS
 ------------------------------------------------------------*/
 
-GG.API = Object.freeze({
+/*------------------------------------------------------------
+  CLOUD FUNCTIONS
+------------------------------------------------------------*/
 
-    /*----------------------------------
-      New AI APIs
-    ----------------------------------*/
+/*------------------------------------------------------------
+  CLOUD FUNCTIONS
+------------------------------------------------------------*/
 
-    ASK:
-        "ask",
+GG.API = (() => {
 
-    DETECT_INTENT:
-        "detectIntent",
+    const BASE =
 
-    /*----------------------------------
-      Legacy (temporary)
-    ----------------------------------*/
+        "https://us-central1-command-centre-86f62.cloudfunctions.net";
 
-    ASK_AI:
-        "askAI",
+    return Object.freeze({
 
-    /*----------------------------------
-      Future
-    ----------------------------------*/
+        BASE,
 
-    SEARCH:
-        "searchAI",
+        /*----------------------------------
+          New AI APIs
+        ----------------------------------*/
 
-    EMBEDDING:
-        "embeddingAI",
+        ASK:
 
-    IMAGE:
-        "imageAI"
+            BASE + "/ask",
 
-});
+        DETECT_INTENT:
+
+            BASE + "/detectIntent",
+
+        /*----------------------------------
+          Legacy (Temporary)
+        ----------------------------------*/
+
+        ASK_AI:
+
+            "https://askai-ugffgukzca-uc.a.run.app",
+
+        /*----------------------------------
+          Future
+        ----------------------------------*/
+
+        SEARCH:
+
+            BASE + "/searchAI",
+
+        EMBEDDING:
+
+            BASE + "/embeddingAI",
+
+        IMAGE:
+
+            BASE + "/imageAI"
+
+    });
+
+})();
     GG.AI = Object.freeze({
 
     ENABLED: true,
