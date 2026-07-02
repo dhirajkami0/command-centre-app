@@ -2,71 +2,331 @@
 
 "use strict";
 
-window.GreenGuardAI =
-    window.GreenGuardAI || {};
-
-const AnalyticsEngine =
-    window.GreenGuardAI.AnalyticsEngine =
-    window.GreenGuardAI.AnalyticsEngine || {};
-
 /*=========================================================
-STAFF ROUTES
+ GREENGUARD AI
 =========================================================*/
 
-AnalyticsEngine.STAFF_ROUTES = {
+const GG =
+    window.GreenGuardAI =
+    window.GreenGuardAI || {};
 
-    [AnalyticsEngine.STAFF_INTENTS.STAFF_DIRECTORY]:
-        AnalyticsEngine.queryStaffDirectory,
+/*=========================================================
+ DEPENDENCIES
+=========================================================*/
 
-    [AnalyticsEngine.STAFF_INTENTS.STAFF_PROFILE]:
-        AnalyticsEngine.queryStaffProfile,
+const StaffConstants =
+    GG.StaffConstants;
 
-    [AnalyticsEngine.STAFF_INTENTS.STAFF_STRENGTH]:
-        AnalyticsEngine.queryStaffStrength,
+const StaffEntities =
+    GG.StaffEntities;
 
-    [AnalyticsEngine.STAFF_INTENTS.LIVE_STAFF]:
-        AnalyticsEngine.queryLiveStaff,
+const StaffIntent =
+    GG.StaffIntent;
 
-    [AnalyticsEngine.STAFF_INTENTS.STAFF_LOCATION]:
-        AnalyticsEngine.queryStaffLocation,
+if (
 
-    [AnalyticsEngine.STAFF_INTENTS.STAFF_PATROL]:
-        AnalyticsEngine.queryStaffPatrol,
+    !StaffConstants
 
-    [AnalyticsEngine.STAFF_INTENTS.STAFF_CONTACT]:
-        AnalyticsEngine.queryStaffContact,
+) {
 
-    [AnalyticsEngine.STAFF_INTENTS.STAFF_ANALYTICS]:
-        AnalyticsEngine.queryStaffAnalytics
+    throw new Error(
+
+        "StaffConstants not loaded."
+
+    );
+
+}
+
+if (
+
+    !StaffEntities
+
+) {
+
+    throw new Error(
+
+        "StaffEntities not loaded."
+
+    );
+
+}
+
+if (
+
+    !StaffIntent
+
+) {
+
+    throw new Error(
+
+        "StaffIntent not loaded."
+
+    );
+
+}
+
+/*=========================================================
+ MODULE
+=========================================================*/
+
+const StaffRouter = {};
+
+/*=========================================================
+ VERSION
+=========================================================*/
+
+StaffRouter.VERSION =
+    "2.0.0";
+
+/*=========================================================
+ STATUS
+=========================================================*/
+
+StaffRouter.loaded =
+    false;
+
+StaffRouter.loading =
+    false;
+
+/*=========================================================
+ CACHE
+=========================================================*/
+
+StaffRouter.cache =
+    new Map();
+
+StaffRouter.lastRequest =
+    null;
+
+StaffRouter.lastResponse =
+    null;
+
+/*=========================================================
+ ROUTES
+=========================================================*/
+
+StaffRouter.routes =
+    new Map();
+
+/*=========================================================
+ REGISTER ROUTE
+=========================================================*/
+
+StaffRouter.register = function (
+
+    intent,
+
+    handler
+
+) {
+
+    if (
+
+        typeof intent !== "string"
+
+    ) {
+
+        return;
+
+    }
+
+    if (
+
+        typeof handler !== "function"
+
+    ) {
+
+        return;
+
+    }
+
+    StaffRouter.routes.set(
+
+        intent,
+
+        handler
+
+    );
 
 };
 
 /*=========================================================
-ROUTE STAFF INTENT
+ GET ROUTE
 =========================================================*/
 
-AnalyticsEngine.routeStaffIntent = function (
+StaffRouter.getRoute = function (
+
+    intent
+
+) {
+
+    return (
+
+        StaffRouter.routes.get(
+
+            intent
+
+        ) ||
+
+        null
+
+    );
+
+};
+
+/*=========================================================
+ HAS ROUTE
+=========================================================*/
+
+StaffRouter.hasRoute = function (
+
+    intent
+
+) {
+
+    return StaffRouter.routes.has(
+
+        intent
+
+    );
+
+};
+
+/*=========================================================
+ CLEAR CACHE
+=========================================================*/
+
+StaffRouter.clearCache = function () {
+
+    StaffRouter.cache.clear();
+
+};
+
+/*=========================================================
+ INITIALIZE
+=========================================================*/
+
+StaffRouter.initialize = function () {
+
+    StaffRouter.loaded =
+        true;
+
+    StaffRouter.loading =
+        false;
+
+    return true;
+
+};
+    /*=========================================================
+ CREATE RESPONSE
+=========================================================*/
+
+StaffRouter.createResponse = function (
+
+    request = {}
+
+) {
+
+    return {
+
+        success:
+
+            false,
+
+        source:
+
+            "LOCAL",
+
+        domain:
+
+            StaffConstants.DOMAIN,
+
+        intent:
+
+            request.intent ||
+
+            StaffConstants.INTENTS.UNKNOWN,
+
+        confidence:
+
+            request.confidence ||
+
+            0,
+
+        query:
+
+            request.originalQuery ||
+
+            "",
+
+        entities:
+
+            request.entities ||
+
+            {},
+
+        parameters:
+
+            request.parameters ||
+
+            {},
+
+        data:
+
+            null,
+
+        message:
+
+            "",
+
+        warnings:
+
+            [],
+
+        errors:
+
+            [],
+
+        metadata: {
+
+            version:
+
+                StaffRouter.VERSION,
+
+            router:
+
+                "StaffRouter",
+
+            startedAt:
+
+                Date.now(),
+
+            executionTime:
+
+                0
+
+        }
+
+    };
+
+};
+
+ /*=========================================================
+ ROUTE
+=========================================================*/
+
+StaffRouter.route = async function (
 
     request
 
 ) {
 
-    console.group(
+    const started =
 
-        "👥 STAFF ROUTER"
-
-    );
-
-    console.log(
-
-        "Request:",
-
-        request
-
-    );
+        Date.now();
 
     /*----------------------------------
-    VALIDATE REQUEST
+      Validate
     ----------------------------------*/
 
     if (
@@ -77,185 +337,370 @@ AnalyticsEngine.routeStaffIntent = function (
 
     ) {
 
-        console.groupEnd();
-
         return {
 
             success: false,
 
-            source: "router",
-
-            domain: "staff",
-
-            intent: "unknown",
-
-            confidence: 0,
-
-            entities: {},
-
-            data: {
-
-                success: false,
-
-                message:
-                    "Invalid intent request."
-
-            }
+            message: "Invalid router request."
 
         };
 
     }
 
     /*----------------------------------
-    DESTRUCTURE REQUEST
+      Create Response
     ----------------------------------*/
 
-    const {
+    const response =
 
-        source,
+        StaffRouter.createResponse(
 
-        domain,
+            request
 
-        intent,
+        );
 
-        confidence,
+    StaffRouter.lastRequest =
 
-        entities = {}
-
-    } = request;
-
-    const filters = entities;
+        request;
 
     /*----------------------------------
-    MODULE MISSING
-    ----------------------------------*/
-
-    function moduleMissing(message) {
-
-        return {
-
-            success: false,
-
-            source,
-
-            domain,
-
-            intent,
-
-            confidence,
-
-            entities: filters,
-
-            message
-
-        };
-
-    }
-
-    /*----------------------------------
-    ROUTE LOOKUP
+      Resolve Handler
     ----------------------------------*/
 
     const handler =
 
-        AnalyticsEngine.STAFF_ROUTES[
+        StaffRouter.getRoute(
 
-            intent
+            request.intent
 
-        ];
-
-    let result = null;
-
-    /*----------------------------------
-    UNKNOWN INTENT
-    ----------------------------------*/
+        );
 
     if (
 
-        intent ===
-
-        AnalyticsEngine.STAFF_INTENTS.UNKNOWN
+        !handler
 
     ) {
 
-        result =
+        response.message =
 
-            moduleMissing(
+            "No route registered for intent.";
 
-                "Unknown staff intent."
+        response.errors.push(
+
+            request.intent
+
+        );
+
+        response.metadata.executionTime =
+
+            Date.now() -
+
+            started;
+
+        return response;
+
+    }
+
+    try {
+
+        /*----------------------------------
+          Execute Handler
+        ----------------------------------*/
+
+        const result =
+
+            await handler(
+
+                request
 
             );
+
+        if (
+
+            result &&
+
+            typeof result === "object"
+
+        ) {
+
+            Object.assign(
+
+                response,
+
+                result
+
+            );
+
+        }
+
+        response.success =
+
+            true;
+
+    }
+
+    catch (
+
+        error
+
+    ) {
+
+        response.success =
+
+            false;
+
+        response.message =
+
+            error.message;
+
+        response.errors.push(
+
+            error
+
+        );
 
     }
 
     /*----------------------------------
-    MODULE NOT INSTALLED
+      Finish
     ----------------------------------*/
 
-    else if (
+    response.metadata.executionTime =
 
-        typeof handler !== "function"
+        Date.now() -
 
-    ) {
+        started;
 
-        result =
+    StaffRouter.lastResponse =
 
-            moduleMissing(
+        response;
 
-                "Module not installed for intent: " +
+    StaffRouter.cache.set(
 
-                intent
+        request.originalQuery ||
 
-            );
+        "",
 
-    }
-
-    /*----------------------------------
-    EXECUTE MODULE
-    ----------------------------------*/
-
-    else {
-
-        result =
-
-            handler(
-
-                filters
-
-            );
-
-    }
-
-    console.log(
-
-        "Result:",
-
-        result
+        response
 
     );
 
-    console.groupEnd();
-
-    return {
-
-        success:
-
-            result.success,
-
-        source,
-
-        domain,
-
-        intent,
-
-        confidence,
-
-        entities: filters,
-
-        data: result
-
-    };
+    return response;
 
 };
+    /*=========================================================
+ REGISTER ROUTES
+=========================================================*/
+
+StaffRouter.registerRoutes = function () {
+
+    const INTENTS =
+
+        StaffConstants.INTENTS;
+
+    /*----------------------------------
+      Staff Directory
+    ----------------------------------*/
+
+    StaffRouter.register(
+
+        INTENTS.STAFF_DIRECTORY,
+
+        GG.queryStaffDirectory
+
+    );
+
+    /*----------------------------------
+      Staff Profile
+    ----------------------------------*/
+
+    StaffRouter.register(
+
+        INTENTS.STAFF_PROFILE,
+
+        GG.queryStaffProfile
+
+    );
+
+    /*----------------------------------
+      Staff Contact
+    ----------------------------------*/
+
+    StaffRouter.register(
+
+        INTENTS.STAFF_CONTACT,
+
+        GG.queryStaffContact
+
+    );
+
+    /*----------------------------------
+      Staff Posting
+    ----------------------------------*/
+
+    StaffRouter.register(
+
+        INTENTS.STAFF_POSTING,
+
+        GG.queryStaffPosting
+
+    );
+
+    /*----------------------------------
+      Staff Location
+    ----------------------------------*/
+
+    StaffRouter.register(
+
+        INTENTS.STAFF_LOCATION,
+
+        GG.queryStaffLocation
+
+    );
+
+    /*----------------------------------
+      Staff Team
+    ----------------------------------*/
+
+    StaffRouter.register(
+
+        INTENTS.STAFF_TEAM,
+
+        GG.queryStaffTeam
+
+    );
+
+    /*----------------------------------
+      Team Leader
+    ----------------------------------*/
+
+    StaffRouter.register(
+
+        INTENTS.STAFF_LEADER,
+
+        GG.queryStaffLeader
+
+    );
+
+    /*----------------------------------
+      Duty
+    ----------------------------------*/
+
+    StaffRouter.register(
+
+        INTENTS.STAFF_DUTY,
+
+        GG.queryStaffDuty
+
+    );
+
+    /*----------------------------------
+      GPS
+    ----------------------------------*/
+
+    StaffRouter.register(
+
+        INTENTS.STAFF_GPS,
+
+        GG.queryStaffGPS
+
+    );
+
+    /*----------------------------------
+      Analytics
+    ----------------------------------*/
+
+    StaffRouter.register(
+
+        INTENTS.STAFF_ANALYTICS,
+
+        GG.queryStaffAnalytics
+
+    );
+
+    /*----------------------------------
+      Strength
+    ----------------------------------*/
+
+    StaffRouter.register(
+
+        INTENTS.STAFF_STRENGTH,
+
+        GG.queryStaffStrength
+
+    );
+
+};
+    /*=========================================================
+ INITIALIZE ROUTER
+=========================================================*/
+
+StaffRouter.initializeRouter = function () {
+
+    if (
+
+        StaffRouter.loaded
+
+    ) {
+
+        return true;
+
+    }
+
+    if (
+
+        StaffRouter.loading
+
+    ) {
+
+        return false;
+
+    }
+
+    StaffRouter.loading =
+
+        true;
+
+    /*----------------------------------
+      Register All Routes
+    ----------------------------------*/
+
+    StaffRouter.registerRoutes();
+
+    /*----------------------------------
+      Ready
+    ----------------------------------*/
+
+    StaffRouter.loaded =
+
+        true;
+
+    StaffRouter.loading =
+
+        false;
+
+    console.log(
+
+        "✅ StaffRouter Ready"
+
+    );
+
+    return true;
+
+};
+
+/*=========================================================
+ AUTO INITIALIZE
+=========================================================*/
+
+StaffRouter.initializeRouter();
+
+/*=========================================================
+ EXPORT
+=========================================================*/
+
+GG.StaffRouter =
+
+    StaffRouter;
 
 })(window);
