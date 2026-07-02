@@ -1329,6 +1329,44 @@ ASSIGNMENT: Object.freeze([
 ])
 
 });
+
+ /*-----------------------------------------------------
+ Tracking
+-----------------------------------------------------*/
+
+TRACKING: Object.freeze([
+
+    {
+
+        target: "id",
+
+        source: StaffConstants.FIELDS.ID,
+
+        type: "string"
+
+    },
+
+    {
+
+        target: "sessionId",
+
+        source: StaffConstants.FIELDS.SESSION_ID,
+
+        type: "string"
+
+    },
+
+    {
+
+        target: "source",
+
+        source: StaffConstants.FIELDS.SOURCE,
+
+        type: "string"
+
+    }
+
+]),
  /*=========================================================
  KEYWORDS
 =========================================================*/
