@@ -1168,317 +1168,47 @@ StaffEntities.getArray = function (
 /*=========================================================
  NORMALIZE STAFF DOCUMENT
 =========================================================*/
-/*=========================================================
- EXTRACT IDENTITY FIELDS
-=========================================================*/
-
-StaffEntities.extractIdentityFields = function (
-
-    context
-
-) {
-
-    /*----------------------------------
-      Validate Context
-    ----------------------------------*/
-
-    if (
-
-        !context ||
-
-        typeof context !== "object"
-
-    ) {
-
-        return null;
-
-    }
-
-    if (
-
-        !context.data ||
-
-        typeof context.data !== "object"
-
-    ) {
-
-        return context;
-
-    }
-
-    if (
-
-        !context.identity ||
-
-        typeof context.identity !== "object"
-
-    ) {
-
-        context.identity = {};
-
-    }
-
-    if (
-
-        !context.fields ||
-
-        typeof context.fields !== "object"
-
-    ) {
-
-        throw new Error(
-
-            "StaffConstants.FIELDS not available."
-
-        );
-
-    }
-
-/*----------------------------------
-  Name Extraction
-----------------------------------*/
-
-const FIELDS =
-
-    context.fields;
-
-/*
-------------------------------------
-Clean Name
-------------------------------------
-*/
-
-StaffEntities.setField(
-
-    context.identity,
-
-    "cleanName",
-
-    StaffEntities.getString(
-
-        context,
-
-        FIELDS.CLEAN_NAME
-
-    )
-
-);
-
-/*
-------------------------------------
-Display Name
-------------------------------------
-*/
-
-StaffEntities.setField(
-
-    context.identity,
-
-    "name",
-
-    StaffEntities.getString(
-
-        context,
-
-        FIELDS.NAME
-
-    )
-
-);
-
-/*
-------------------------------------
-Raw Name
-------------------------------------
-*/
-
-StaffEntities.setField(
-
-    context.identity,
-
-    "rawName",
-
-    StaffEntities.getString(
-
-        context,
-
-        FIELDS.RAW_NAME
-
-    )
-
-);
- /*----------------------------------
-  Contact Extraction
-----------------------------------*/
-
-const FIELDS =
-
-    context.fields;
-/*----------------------------------
-  Identity Field Mapping
-----------------------------------*/
-
-const identityFields = [
-
-    {
-
-        target: "cleanName",
-
-        source: FIELDS.CLEAN_NAME
-
-    },
-
-    {
-
-        target: "name",
-
-        source: FIELDS.NAME
-
-    },
-
-    {
-
-        target: "rawName",
-
-        source: FIELDS.RAW_NAME
-
-    },
-
-    {
-
-        target: "phone",
-
-        source: FIELDS.PHONE
-
-    },
-
-    {
-
-        target: "email",
-
-        source: FIELDS.EMAIL
-
-    },
-
-    {
-
-        target: "role",
-
-        source: FIELDS.ROLE
-
-    },
-
-    {
-
-        target: "designation",
-
-        source: FIELDS.DESIGNATION
-
-    },
-
-    {
-
-        target: "type",
-
-        source: FIELDS.TYPE
-
-    }
-
-];
- /*----------------------------------
-  Extract Identity Fields
-----------------------------------*/
-
-identityFields.forEach(
-
-    function (
-
-        field
-
-    ) {
-
-        StaffEntities.setField(
-
-            context.identity,
-
-            field.target,
-
-            StaffEntities.getString(
-
-                context,
-
-                field.source
-
-            )
-
-        );
-
-    }
-
-);
-    return context;
-
-};
-
  /*=========================================================
- EXTRACT POSTING FIELDS
+ GENERIC FIELD EXTRACTOR
 =========================================================*/
 
-StaffEntities.extractPostingFields = function (
+StaffEntities.extractFields = function (
 
-    context
+    context,
+
+    target,
+
+    mappings
 
 ) {
 
     /*----------------------------------
-      Validate Context
+      Validate
     ----------------------------------*/
 
     if (
 
         !context ||
 
-        typeof context !== "object"
+        !target ||
+
+        !Array.isArray(
+
+            mappings
+
+        )
 
     ) {
 
-        return null;
-
-    }
-
-    if (
-
-        !context.posting ||
-
-        typeof context.posting !== "object"
-
-    ) {
-
-        context.posting = {};
-
-    }
-
-    if (
-
-        !context.fieldMaps ||
-
-        !context.fieldMaps.POSTING
-
-    ) {
-
-        throw new Error(
-
-            "StaffConstants.FIELD_MAPS.POSTING not available."
-
-        );
+        return;
 
     }
 
     /*----------------------------------
-      Extract Posting Fields
+      Loop Through Mapping
     ----------------------------------*/
 
-    context.fieldMaps.POSTING.forEach(
+    mappings.forEach(
 
         function (
 
@@ -1566,7 +1296,7 @@ StaffEntities.extractPostingFields = function (
 
             StaffEntities.setField(
 
-                context.posting,
+                target,
 
                 field.target,
 
@@ -1577,6 +1307,624 @@ StaffEntities.extractPostingFields = function (
         }
 
     );
+
+};
+/*=========================================================
+ EXTRACT IDENTITY FIELDS
+=========================================================*/
+
+StaffEntities.extractIdentityFields = function (
+
+    context
+
+) {
+
+    /*----------------------------------
+      Validate Context
+    ----------------------------------*/
+
+    if (
+
+        !context ||
+
+        typeof context !== "object"
+
+    ) {
+
+        return null;
+
+    }
+
+    if (
+
+        !context.data ||
+
+        typeof context.data !== "object"
+
+    ) {
+
+        return context;
+
+    }
+
+    if (
+
+        !context.identity ||
+
+        typeof context.identity !== "object"
+
+    ) {
+
+        context.identity = {};
+
+    }
+
+    if (
+
+        !context.fieldMaps ||
+
+        !context.fieldMaps.IDENTITY
+
+    ) {
+
+        throw new Error(
+
+            "StaffConstants.FIELD_MAPS.IDENTITY not available."
+
+        );
+
+    }
+
+    /*----------------------------------
+      Generic Extraction
+    ----------------------------------*/
+
+    StaffEntities.extractFields(
+
+        context,
+
+        context.identity,
+
+        context.fieldMaps.IDENTITY
+
+    );
+
+    /*----------------------------------
+      Return Context
+    ----------------------------------*/
+
+    return context;
+
+};
+ /*=========================================================
+ EXTRACT POSTING FIELDS
+=========================================================*/
+
+/*=========================================================
+ EXTRACT POSTING FIELDS
+=========================================================*/
+
+StaffEntities.extractPostingFields = function (
+
+    context
+
+) {
+
+    /*----------------------------------
+      Validate Context
+    ----------------------------------*/
+
+    if (
+
+        !context ||
+
+        typeof context !== "object"
+
+    ) {
+
+        return null;
+
+    }
+
+    if (
+
+        !context.data ||
+
+        typeof context.data !== "object"
+
+    ) {
+
+        return context;
+
+    }
+
+    if (
+
+        !context.posting ||
+
+        typeof context.posting !== "object"
+
+    ) {
+
+        context.posting = {};
+
+    }
+
+    if (
+
+        !context.fieldMaps ||
+
+        !context.fieldMaps.POSTING
+
+    ) {
+
+        throw new Error(
+
+            "StaffConstants.FIELD_MAPS.POSTING not available."
+
+        );
+
+    }
+
+    /*----------------------------------
+      Generic Extraction
+    ----------------------------------*/
+
+    StaffEntities.extractFields(
+
+        context,
+
+        context.posting,
+
+        context.fieldMaps.POSTING
+
+    );
+
+    /*----------------------------------
+      Return Context
+    ----------------------------------*/
+
+    return context;
+
+};/*=========================================================
+ EXTRACT DUTY FIELDS
+=========================================================*/
+
+StaffEntities.extractDutyFields = function (
+
+    context
+
+) {
+
+    /*----------------------------------
+      Validate Context
+    ----------------------------------*/
+
+    if (
+
+        !context ||
+
+        typeof context !== "object"
+
+    ) {
+
+        return null;
+
+    }
+
+    if (
+
+        !context.data ||
+
+        typeof context.data !== "object"
+
+    ) {
+
+        return context;
+
+    }
+
+    if (
+
+        !context.duty ||
+
+        typeof context.duty !== "object"
+
+    ) {
+
+        context.duty = {};
+
+    }
+
+    if (
+
+        !context.fieldMaps ||
+
+        !context.fieldMaps.DUTY
+
+    ) {
+
+        throw new Error(
+
+            "StaffConstants.FIELD_MAPS.DUTY not available."
+
+        );
+
+    }
+
+    /*----------------------------------
+      Generic Extraction
+    ----------------------------------*/
+
+    StaffEntities.extractFields(
+
+        context,
+
+        context.duty,
+
+        context.fieldMaps.DUTY
+
+    );
+
+    /*----------------------------------
+      Return Context
+    ----------------------------------*/
+
+    return context;
+
+};
+/*=========================================================
+ EXTRACT ASSIGNMENT FIELDS
+=========================================================*/
+
+StaffEntities.extractAssignmentFields = function (
+
+    context
+
+) {
+
+    /*----------------------------------
+      Validate Context
+    ----------------------------------*/
+
+    if (
+
+        !context ||
+
+        typeof context !== "object"
+
+    ) {
+
+        return null;
+
+    }
+
+    if (
+
+        !context.data ||
+
+        typeof context.data !== "object"
+
+    ) {
+
+        return context;
+
+    }
+
+    /*----------------------------------
+      Assignment Object
+    ----------------------------------*/
+
+    if (
+
+        !context.assignment ||
+
+        typeof context.assignment !== "object"
+
+    ) {
+
+        context.assignment = {};
+
+    }
+
+    /*----------------------------------
+      Validate Field Map
+    ----------------------------------*/
+
+    if (
+
+        !context.fieldMaps ||
+
+        !context.fieldMaps.ASSIGNMENT
+
+    ) {
+
+        throw new Error(
+
+            "StaffConstants.FIELD_MAPS.ASSIGNMENT not available."
+
+        );
+
+    }
+
+    /*----------------------------------
+      Generic Extraction
+    ----------------------------------*/
+
+    StaffEntities.extractFields(
+
+        context,
+
+        context.assignment,
+
+        context.fieldMaps.ASSIGNMENT
+
+    );
+
+    /*----------------------------------
+      Return Context
+    ----------------------------------*/
+
+    return context;
+
+};
+ /*=========================================================
+ EXTRACT LOCATION FIELDS
+=========================================================*/
+
+StaffEntities.extractLocationFields = function (
+
+    context
+
+) {
+
+    /*----------------------------------
+      Validate Context
+    ----------------------------------*/
+
+    if (
+
+        !context ||
+
+        typeof context !== "object"
+
+    ) {
+
+        return null;
+
+    }
+
+    if (
+
+        !context.data ||
+
+        typeof context.data !== "object"
+
+    ) {
+
+        return context;
+
+    }
+
+    if (
+
+        !context.location ||
+
+        typeof context.location !== "object"
+
+    ) {
+
+        context.location = {};
+
+    }
+
+    if (
+
+        !context.fieldMaps ||
+
+        !context.fieldMaps.LOCATION
+
+    ) {
+
+        throw new Error(
+
+            "StaffConstants.FIELD_MAPS.LOCATION not available."
+
+        );
+
+    }
+
+    /*----------------------------------
+      Generic Extraction
+    ----------------------------------*/
+
+    StaffEntities.extractFields(
+
+        context,
+
+        context.location,
+
+        context.fieldMaps.LOCATION
+
+    );
+
+    /*----------------------------------
+      Return Context
+    ----------------------------------*/
+
+    return context;
+
+};
+ /*=========================================================
+ EXTRACT GPS FIELDS
+=========================================================*/
+
+StaffEntities.extractGPSFields = function (
+
+    context
+
+) {
+
+    /*----------------------------------
+      Validate Context
+    ----------------------------------*/
+
+    if (
+
+        !context ||
+
+        typeof context !== "object"
+
+    ) {
+
+        return null;
+
+    }
+
+    if (
+
+        !context.data ||
+
+        typeof context.data !== "object"
+
+    ) {
+
+        return context;
+
+    }
+
+    if (
+
+        !context.gps ||
+
+        typeof context.gps !== "object"
+
+    ) {
+
+        context.gps = {};
+
+    }
+
+    if (
+
+        !context.fieldMaps ||
+
+        !context.fieldMaps.GPS
+
+    ) {
+
+        throw new Error(
+
+            "StaffConstants.FIELD_MAPS.GPS not available."
+
+        );
+
+    }
+
+    /*----------------------------------
+      Generic Extraction
+    ----------------------------------*/
+
+    StaffEntities.extractFields(
+
+        context,
+
+        context.gps,
+
+        context.fieldMaps.GPS
+
+    );
+
+    /*----------------------------------
+      Return Context
+    ----------------------------------*/
+
+    return context;
+
+};
+ /*=========================================================
+ EXTRACT TEAM FIELDS
+=========================================================*/
+
+StaffEntities.extractTeamFields = function (
+
+    context
+
+) {
+
+    /*----------------------------------
+      Validate Context
+    ----------------------------------*/
+
+    if (
+
+        !context ||
+
+        typeof context !== "object"
+
+    ) {
+
+        return null;
+
+    }
+
+    if (
+
+        !context.data ||
+
+        typeof context.data !== "object"
+
+    ) {
+
+        return context;
+
+    }
+
+    if (
+
+        !context.teamInfo ||
+
+        typeof context.teamInfo !== "object"
+
+    ) {
+
+        context.teamInfo = {};
+
+    }
+
+    if (
+
+        !context.fieldMaps ||
+
+        !context.fieldMaps.TEAM
+
+    ) {
+
+        throw new Error(
+
+            "StaffConstants.FIELD_MAPS.TEAM not available."
+
+        );
+
+    }
+
+    /*----------------------------------
+      Generic Extraction
+    ----------------------------------*/
+
+    StaffEntities.extractFields(
+
+        context,
+
+        context.teamInfo,
+
+        context.fieldMaps.TEAM
+
+    );
+
+    /*----------------------------------
+      Return Context
+    ----------------------------------*/
 
     return context;
 
@@ -1890,12 +2238,24 @@ const posting = {
 
     range: "",
 
-    beat: "",
-
-    compartment: ""
+    beat: ""
 
 };
+const assignment = {
 
+    assignedCompartment: "",
+
+    dutyType: "",
+
+    dutyActive: false,
+
+    status: "",
+
+    leader: "",
+
+    team: ""
+
+};
 /*
 ------------------------------------
 Duty
@@ -2048,7 +2408,7 @@ const context = {
     identity,
 
     posting,
-
+assignment,
     duty,
 
     location,
