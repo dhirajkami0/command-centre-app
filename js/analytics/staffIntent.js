@@ -564,7 +564,15 @@ StaffIntent.detect = function (
         result
 
     );
+/*----------------------------------
+  Analytics Intent
+----------------------------------*/
 
+StaffIntent.detectAnalyticsIntent(
+
+    result
+
+);
     /*----------------------------------
       Confidence
     ----------------------------------*/
@@ -1003,12 +1011,11 @@ StaffIntent.detectPostingIntent = function (
     return result;
 
 };
-
-    /*=========================================================
- DETECT POSTING INTENT
+/*=========================================================
+ DETECT DUTY INTENT
 =========================================================*/
 
-StaffIntent.detectPostingIntent = function (
+StaffIntent.detectDutyIntent = function (
 
     result
 
@@ -1109,14 +1116,14 @@ StaffIntent.detectPostingIntent = function (
     }
 
     /*----------------------------------
-      Circle
+      Generic Duty
     ----------------------------------*/
 
     if (
 
         hasKeyword(
 
-            KEYWORDS.STAFF_CIRCLE
+            KEYWORDS.STAFF_DUTY
 
         )
 
@@ -1124,562 +1131,15 @@ StaffIntent.detectPostingIntent = function (
 
         result.intent =
 
-            INTENTS.STAFF_CIRCLE;
+            INTENTS.STAFF_DUTY;
 
         result.parameters.staff =
 
             staff[0];
 
-        result.parameters.circle =
+        result.parameters.duty =
 
-            staff[0].posting.circle;
-
-        result.confidence =
-
-            Math.max(
-
-                result.confidence,
-
-                0.96
-
-            );
-
-        return result;
-
-    }
-
-    /*----------------------------------
-      Division
-    ----------------------------------*/
-
-    if (
-
-        hasKeyword(
-
-            KEYWORDS.STAFF_DIVISION
-
-        )
-
-    ) {
-
-        result.intent =
-
-            INTENTS.STAFF_DIVISION;
-
-        result.parameters.staff =
-
-            staff[0];
-
-        result.parameters.division =
-
-            staff[0].posting.division;
-
-        result.confidence =
-
-            Math.max(
-
-                result.confidence,
-
-                0.96
-
-            );
-
-        return result;
-
-    }
-
-    /*----------------------------------
-      Range
-    ----------------------------------*/
-
-    if (
-
-        hasKeyword(
-
-            KEYWORDS.STAFF_RANGE
-
-        )
-
-    ) {
-
-        result.intent =
-
-            INTENTS.STAFF_RANGE;
-
-        result.parameters.staff =
-
-            staff[0];
-
-        result.parameters.range =
-
-            staff[0].posting.range;
-
-        result.confidence =
-
-            Math.max(
-
-                result.confidence,
-
-                0.96
-
-            );
-
-        return result;
-
-    }
-
-    /*----------------------------------
-      Beat
-    ----------------------------------*/
-
-    if (
-
-        hasKeyword(
-
-            KEYWORDS.STAFF_BEAT
-
-        )
-
-    ) {
-
-        result.intent =
-
-            INTENTS.STAFF_BEAT;
-
-        result.parameters.staff =
-
-            staff[0];
-
-        result.parameters.beat =
-
-            staff[0].posting.beat;
-
-        result.confidence =
-
-            Math.max(
-
-                result.confidence,
-
-                0.96
-
-            );
-
-        return result;
-
-    }
-
-    /*----------------------------------
-      Compartment
-    ----------------------------------*/
-
-    if (
-
-        hasKeyword(
-
-            KEYWORDS.STAFF_COMPARTMENT
-
-        )
-
-    ) {
-
-        result.intent =
-
-            INTENTS.STAFF_COMPARTMENT;
-
-        result.parameters.staff =
-
-            staff[0];
-
-        result.parameters.compartment =
-
-            staff[0].assignment.assignedCompartment;
-
-        result.confidence =
-
-            Math.max(
-
-                result.confidence,
-
-                0.96
-
-            );
-
-        return result;
-
-    }
-
-    /*----------------------------------
-      Area
-    ----------------------------------*/
-
-    if (
-
-        hasKeyword(
-
-            KEYWORDS.STAFF_AREA
-
-        )
-
-    ) {
-
-        result.intent =
-
-            INTENTS.STAFF_AREA;
-
-        result.parameters.staff =
-
-            staff[0];
-
-        result.parameters.area =
-
-            staff[0].assignment.assignedCompartment;
-
-        result.confidence =
-
-            Math.max(
-
-                result.confidence,
-
-                0.95
-
-            );
-
-        return result;
-
-    }
-
-    /*----------------------------------
-      Generic Posting
-    ----------------------------------*/
-
-    if (
-
-        hasKeyword(
-
-            KEYWORDS.STAFF_POSTING
-
-        )
-
-    ) {
-
-        result.intent =
-
-            INTENTS.STAFF_POSTING;
-
-        result.parameters.staff =
-
-            staff[0];
-
-        result.confidence =
-
-            Math.max(
-
-                result.confidence,
-
-                0.90
-
-            );
-
-        return result;
-
-    }
-
-    return result;
-
-};
-    /*=========================================================
- DETECT GPS INTENT
-=========================================================*/
-
-StaffIntent.detectGPSIntent = function (
-
-    result
-
-) {
-
-    /*----------------------------------
-      Validate
-    ----------------------------------*/
-
-    if (
-
-        !result ||
-
-        !result.entities
-
-    ) {
-
-        return result;
-
-    }
-
-    const staff =
-
-        result.entities.staff ||
-
-        [];
-
-    if (
-
-        staff.length === 0
-
-    ) {
-
-        return result;
-
-    }
-
-    const query =
-
-        result.normalizedQuery;
-
-    const INTENTS =
-
-        StaffConstants.INTENTS;
-
-    const KEYWORDS =
-
-        StaffConstants.KEYWORDS;
-
-    /*----------------------------------
-      Helper
-    ----------------------------------*/
-
-    function hasKeyword(
-
-        list
-
-    ) {
-
-        if (
-
-            !Array.isArray(
-
-                list
-
-            )
-
-        ) {
-
-            return false;
-
-        }
-
-        return list.some(
-
-            function (
-
-                word
-
-            ) {
-
-                return query.includes(
-
-                    String(
-
-                        word
-
-                    )
-
-                    .toUpperCase()
-
-                );
-
-            }
-
-        );
-
-    }
-
-    /*----------------------------------
-      GPS Query
-    ----------------------------------*/
-
-    if (
-
-        hasKeyword(
-
-            KEYWORDS.STAFF_GPS
-
-        )
-
-    ) {
-
-        result.intent =
-
-            INTENTS.STAFF_GPS;
-
-        result.parameters.staff =
-
-            staff[0];
-
-        result.confidence =
-
-            Math.max(
-
-                result.confidence,
-
-                0.98
-
-            );
-
-        return result;
-
-    }
-
-    /*----------------------------------
-      Location Query
-    ----------------------------------*/
-
-    if (
-
-        hasKeyword(
-
-            KEYWORDS.STAFF_LOCATION
-
-        )
-
-    ) {
-
-        result.intent =
-
-            INTENTS.STAFF_LOCATION;
-
-        result.parameters.staff =
-
-            staff[0];
-
-        result.confidence =
-
-            Math.max(
-
-                result.confidence,
-
-                0.98
-
-            );
-
-        return result;
-
-    }
-
-    /*----------------------------------
-      Coordinates
-    ----------------------------------*/
-
-    if (
-
-        query.includes(
-
-            "COORDINATE"
-
-        ) ||
-
-        query.includes(
-
-            "LAT"
-
-        ) ||
-
-        query.includes(
-
-            "LON"
-
-        )
-
-    ) {
-
-        result.intent =
-
-            INTENTS.STAFF_COORDINATES;
-
-        result.parameters.staff =
-
-            staff[0];
-
-        result.confidence =
-
-            Math.max(
-
-                result.confidence,
-
-                0.98
-
-            );
-
-        return result;
-
-    }
-
-    /*----------------------------------
-      Current Position
-    ----------------------------------*/
-
-    if (
-
-        query.includes(
-
-            "CURRENT"
-
-        ) &&
-
-        query.includes(
-
-            "POSITION"
-
-        )
-
-    ) {
-
-        result.intent =
-
-            INTENTS.STAFF_CURRENT_POSITION;
-
-        result.parameters.staff =
-
-            staff[0];
-
-        result.confidence =
-
-            Math.max(
-
-                result.confidence,
-
-                0.98
-
-            );
-
-        return result;
-
-    }
-
-    /*----------------------------------
-      Last Location
-    ----------------------------------*/
-
-    if (
-
-        query.includes(
-
-            "LAST"
-
-        ) &&
-
-        query.includes(
-
-            "LOCATION"
-
-        )
-
-    ) {
-
-        result.intent =
-
-            INTENTS.STAFF_LAST_LOCATION;
-
-        result.parameters.staff =
-
-            staff[0];
+            staff[0].assignment;
 
         result.confidence =
 
@@ -1696,14 +1156,14 @@ StaffIntent.detectGPSIntent = function (
     }
 
     /*----------------------------------
-      Who Is Nearest
+      Duty Status
     ----------------------------------*/
 
     if (
 
-        query.includes(
+        hasKeyword(
 
-            "NEAREST"
+            KEYWORDS.STAFF_DUTY_STATUS
 
         )
 
@@ -1711,11 +1171,15 @@ StaffIntent.detectGPSIntent = function (
 
         result.intent =
 
-            INTENTS.WHO_IS_NEAREST;
+            INTENTS.STAFF_DUTY_STATUS;
 
         result.parameters.staff =
 
-            staff;
+            staff[0];
+
+        result.parameters.status =
+
+            staff[0].assignment.status;
 
         result.confidence =
 
@@ -1723,7 +1187,7 @@ StaffIntent.detectGPSIntent = function (
 
                 result.confidence,
 
-                0.95
+                0.98
 
             );
 
@@ -1732,20 +1196,60 @@ StaffIntent.detectGPSIntent = function (
     }
 
     /*----------------------------------
-      Old GPS
+      Duty Type
+    ----------------------------------*/
+
+    if (
+
+        hasKeyword(
+
+            KEYWORDS.STAFF_DUTY_TYPE
+
+        )
+
+    ) {
+
+        result.intent =
+
+            INTENTS.STAFF_DUTY_TYPE;
+
+        result.parameters.staff =
+
+            staff[0];
+
+        result.parameters.dutyType =
+
+            staff[0].assignment.dutyType;
+
+        result.confidence =
+
+            Math.max(
+
+                result.confidence,
+
+                0.98
+
+            );
+
+        return result;
+
+    }
+
+    /*----------------------------------
+      Duty Active
     ----------------------------------*/
 
     if (
 
         query.includes(
 
-            "OLD GPS"
+            "ACTIVE"
 
         ) ||
 
         query.includes(
 
-            "STALE GPS"
+            "ON DUTY"
 
         )
 
@@ -1753,7 +1257,53 @@ StaffIntent.detectGPSIntent = function (
 
         result.intent =
 
-            INTENTS.WHO_HAS_OLD_GPS;
+            INTENTS.STAFF_DUTY_ACTIVE;
+
+        result.parameters.staff =
+
+            staff[0];
+
+        result.parameters.dutyActive =
+
+            staff[0].assignment.dutyActive;
+
+        result.confidence =
+
+            Math.max(
+
+                result.confidence,
+
+                0.98
+
+            );
+
+        return result;
+
+    }
+
+    /*----------------------------------
+      Who Is On Duty
+    ----------------------------------*/
+
+    if (
+
+        query.includes(
+
+            "WHO"
+
+        ) &&
+
+        query.includes(
+
+            "ON DUTY"
+
+        )
+
+    ) {
+
+        result.intent =
+
+            INTENTS.WHO_IS_ON_DUTY;
 
         result.parameters.staff =
 
@@ -1767,27 +1317,9 @@ StaffIntent.detectGPSIntent = function (
 
                     return (
 
-                        s.gps &&
+                        s.assignment &&
 
-                        s.gps.lastSeen &&
-
-                        (
-
-                            Date.now() -
-
-                            Number(
-
-                                s.gps.lastSeen
-
-                            )
-
-                        ) >
-
-                        10 *
-
-                        60 *
-
-                        1000
+                        s.assignment.dutyActive === true
 
                     );
 
@@ -1801,7 +1333,7 @@ StaffIntent.detectGPSIntent = function (
 
                 result.confidence,
 
-                0.95
+                0.98
 
             );
 
@@ -1810,144 +1342,20 @@ StaffIntent.detectGPSIntent = function (
     }
 
     /*----------------------------------
-      Poor Accuracy
+      Who Is Patrolling
     ----------------------------------*/
 
     if (
 
         query.includes(
 
-            "ACCURACY"
-
-        )
-
-    ) {
-
-        result.intent =
-
-            INTENTS.WHO_HAS_POOR_ACCURACY;
-
-        result.parameters.staff =
-
-            staff.filter(
-
-                function (
-
-                    s
-
-                ) {
-
-                    return (
-
-                        Number(
-
-                            s.gps
-
-                                ?.accuracy ||
-
-                            0
-
-                        ) >
-
-                        25
-
-                    );
-
-                }
-
-            );
-
-        result.confidence =
-
-            Math.max(
-
-                result.confidence,
-
-                0.95
-
-            );
-
-        return result;
-
-    }
-
-    /*----------------------------------
-      Moving
-    ----------------------------------*/
-
-    if (
-
-        query.includes(
-
-            "MOVING"
-
-        )
-
-    ) {
-
-        result.intent =
-
-            INTENTS.MOVING_STAFF;
-
-        result.parameters.staff =
-
-            staff.filter(
-
-                function (
-
-                    s
-
-                ) {
-
-                    return (
-
-                        Number(
-
-                            s.gps
-
-                                ?.speed ||
-
-                            0
-
-                        ) >
-
-                        0
-
-                    );
-
-                }
-
-            );
-
-        result.confidence =
-
-            Math.max(
-
-                result.confidence,
-
-                0.94
-
-            );
-
-        return result;
-
-    }
-
-    /*----------------------------------
-      Stationary
-    ----------------------------------*/
-
-    if (
-
-        query.includes(
-
-            "STATIONARY"
+            "PATROLLING"
 
         ) ||
 
         query.includes(
 
-            "STOPPED"
+            "PATROL"
 
         )
 
@@ -1955,7 +1363,7 @@ StaffIntent.detectGPSIntent = function (
 
         result.intent =
 
-            INTENTS.STATIONARY_STAFF;
+            INTENTS.WHO_IS_PATROLLING;
 
         result.parameters.staff =
 
@@ -1969,17 +1377,9 @@ StaffIntent.detectGPSIntent = function (
 
                     return (
 
-                        Number(
+                        s.assignment &&
 
-                            s.gps
-
-                                ?.speed ||
-
-                            0
-
-                        ) <=
-
-                        0
+                        s.assignment.dutyActive === true
 
                     );
 
@@ -1993,7 +1393,7 @@ StaffIntent.detectGPSIntent = function (
 
                 result.confidence,
 
-                0.94
+                0.97
 
             );
 
@@ -2002,12 +1402,55 @@ StaffIntent.detectGPSIntent = function (
     }
 
     /*----------------------------------
-      No Match
+      Duty End
     ----------------------------------*/
+
+    if (
+
+        query.includes(
+
+            "LAST DUTY"
+
+        ) ||
+
+        query.includes(
+
+            "LAST END"
+
+        )
+
+    ) {
+
+        result.intent =
+
+            INTENTS.STAFF_LAST_DUTY;
+
+        result.parameters.staff =
+
+            staff[0];
+
+        result.parameters.lastDutyEnd =
+
+            staff[0].duty.lastDutyEnd;
+
+        result.confidence =
+
+            Math.max(
+
+                result.confidence,
+
+                0.96
+
+            );
+
+        return result;
+
+    }
 
     return result;
 
-};/*=========================================================
+};
+    /*=========================================================
  CALCULATE CONFIDENCE
 =========================================================*/
 
@@ -2328,6 +1771,335 @@ StaffIntent.calculateConfidence = function (
     }
 
     return score;
+
+};
+ /*=========================================================
+ DETECT ANALYTICS INTENT
+=========================================================*/
+
+StaffIntent.detectAnalyticsIntent = function (
+
+    result
+
+) {
+
+    if (
+
+        !result ||
+
+        !result.entities
+
+    ) {
+
+        return result;
+
+    }
+
+    const query =
+
+        result.normalizedQuery;
+
+    const INTENTS =
+
+        StaffConstants.INTENTS;
+
+    const KEYWORDS =
+
+        StaffConstants.KEYWORDS;
+
+    function hasKeyword(
+
+        list
+
+    ) {
+
+        if (
+
+            !Array.isArray(
+
+                list
+
+            )
+
+        ) {
+
+            return false;
+
+        }
+
+        return list.some(
+
+            function (
+
+                word
+
+            ) {
+
+                return query.includes(
+
+                    String(
+
+                        word
+
+                    ).toUpperCase()
+
+                );
+
+            }
+
+        );
+
+    }
+
+    /*----------------------------------
+      Staff Strength
+    ----------------------------------*/
+
+    if (
+
+        hasKeyword(
+
+            KEYWORDS.STAFF_STRENGTH
+
+        )
+
+    ) {
+
+        result.intent =
+
+            INTENTS.STAFF_STRENGTH;
+
+        result.confidence =
+
+            Math.max(
+
+                result.confidence,
+
+                0.98
+
+            );
+
+        return result;
+
+    }
+
+    /*----------------------------------
+      Statistics
+    ----------------------------------*/
+
+    if (
+
+        hasKeyword(
+
+            KEYWORDS.STAFF_STATISTICS
+
+        )
+
+    ) {
+
+        result.intent =
+
+            INTENTS.STAFF_STATISTICS;
+
+        result.confidence =
+
+            Math.max(
+
+                result.confidence,
+
+                0.98
+
+            );
+
+        return result;
+
+    }
+
+    /*----------------------------------
+      Duty Summary
+    ----------------------------------*/
+
+    if (
+
+        query.includes(
+
+            "DUTY SUMMARY"
+
+        ) ||
+
+        query.includes(
+
+            "SUMMARY"
+
+        )
+
+    ) {
+
+        result.intent =
+
+            INTENTS.DUTY_SUMMARY;
+
+        result.confidence =
+
+            Math.max(
+
+                result.confidence,
+
+                0.96
+
+            );
+
+        return result;
+
+    }
+
+    /*----------------------------------
+      Active Staff Count
+    ----------------------------------*/
+
+    if (
+
+        query.includes(
+
+            "ACTIVE STAFF"
+
+        ) ||
+
+        query.includes(
+
+            "ACTIVE COUNT"
+
+        )
+
+    ) {
+
+        result.intent =
+
+            INTENTS.ACTIVE_STAFF_COUNT;
+
+        result.confidence =
+
+            Math.max(
+
+                result.confidence,
+
+                0.97
+
+            );
+
+        return result;
+
+    }
+
+    /*----------------------------------
+      Team Leaders
+    ----------------------------------*/
+
+    if (
+
+        query.includes(
+
+            "TEAM LEADER"
+
+        ) ||
+
+        query.includes(
+
+            "TEAM LEADERS"
+
+        )
+
+    ) {
+
+        result.intent =
+
+            INTENTS.TEAM_LEADER_LIST;
+
+        result.confidence =
+
+            Math.max(
+
+                result.confidence,
+
+                0.96
+
+            );
+
+        return result;
+
+    }
+
+    /*----------------------------------
+      Moving Staff
+    ----------------------------------*/
+
+    if (
+
+        query.includes(
+
+            "MOVING"
+
+        )
+
+    ) {
+
+        result.intent =
+
+            INTENTS.MOVING_STAFF;
+
+        result.confidence =
+
+            Math.max(
+
+                result.confidence,
+
+                0.95
+
+            );
+
+        return result;
+
+    }
+
+    /*----------------------------------
+      Stationary Staff
+    ----------------------------------*/
+
+    if (
+
+        query.includes(
+
+            "STATIONARY"
+
+        ) ||
+
+        query.includes(
+
+            "STOPPED"
+
+        )
+
+    ) {
+
+        result.intent =
+
+            INTENTS.STATIONARY_STAFF;
+
+        result.confidence =
+
+            Math.max(
+
+                result.confidence,
+
+                0.95
+
+            );
+
+        return result;
+
+    }
+
+    return result;
 
 };
 /*=========================================================
