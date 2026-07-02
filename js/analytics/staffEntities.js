@@ -737,6 +737,437 @@ return StaffEntities.normalizeStaffDocuments(
   /*=========================================================
  NORMALIZE STAFF DOCUMENT
 =========================================================*/
+/*=========================================================
+ GET FIELD
+=========================================================*/
+
+StaffEntities.getField = function (
+
+    context,
+
+    field,
+
+    defaultValue = ""
+
+) {
+
+    if (
+
+        !context ||
+
+        !context.data
+
+    ) {
+
+        return defaultValue;
+
+    }
+
+    const value =
+
+        context.data[field];
+
+    if (
+
+        value === undefined ||
+
+        value === null
+
+    ) {
+
+        return defaultValue;
+
+    }
+
+    return value;
+
+};
+
+/*=========================================================
+ HAS FIELD
+=========================================================*/
+
+StaffEntities.hasField = function (
+
+    context,
+
+    field
+
+) {
+
+    if (
+
+        !context ||
+
+        !context.data
+
+    ) {
+
+        return false;
+
+    }
+
+    return Object.prototype.hasOwnProperty.call(
+
+        context.data,
+
+        field
+
+    );
+
+};
+ /*=========================================================
+ SET FIELD
+=========================================================*/
+
+StaffEntities.setField = function (
+
+    target,
+
+    field,
+
+    value
+
+) {
+
+    if (
+
+        !target ||
+
+        typeof target !== "object"
+
+    ) {
+
+        return false;
+
+    }
+
+    if (
+
+        typeof field !== "string" ||
+
+        field.trim() === ""
+
+    ) {
+
+        return false;
+
+    }
+
+    target[field] = value;
+
+    return true;
+
+};
+ /*=========================================================
+ GET STRING
+=========================================================*/
+
+StaffEntities.getString = function (
+
+    context,
+
+    field,
+
+    defaultValue = ""
+
+) {
+
+    const value =
+
+        StaffEntities.getField(
+
+            context,
+
+            field,
+
+            defaultValue
+
+        );
+
+    if (
+
+        value === null ||
+
+        value === undefined
+
+    ) {
+
+        return defaultValue;
+
+    }
+
+    return String(
+
+        value
+
+    ).trim();
+
+};
+ /*=========================================================
+ GET NUMBER
+=========================================================*/
+
+StaffEntities.getNumber = function (
+
+    context,
+
+    field,
+
+    defaultValue = 0
+
+) {
+
+    const value =
+
+        StaffEntities.getField(
+
+            context,
+
+            field,
+
+            defaultValue
+
+        );
+
+    if (
+
+        value === null ||
+
+        value === undefined ||
+
+        value === ""
+
+    ) {
+
+        return defaultValue;
+
+    }
+
+    const number =
+
+        Number(value);
+
+    if (
+
+        Number.isNaN(
+
+            number
+
+        )
+
+    ) {
+
+        return defaultValue;
+
+    }
+
+    return number;
+
+};
+ /*=========================================================
+ GET BOOLEAN
+=========================================================*/
+
+StaffEntities.getBoolean = function (
+
+    context,
+
+    field,
+
+    defaultValue = false
+
+) {
+
+    const value =
+
+        StaffEntities.getField(
+
+            context,
+
+            field,
+
+            defaultValue
+
+        );
+
+    if (
+
+        value === null ||
+
+        value === undefined
+
+    ) {
+
+        return defaultValue;
+
+    }
+
+    /*----------------------------------
+      Already Boolean
+    ----------------------------------*/
+
+    if (
+
+        typeof value === "boolean"
+
+    ) {
+
+        return value;
+
+    }
+
+    /*----------------------------------
+      Number
+    ----------------------------------*/
+
+    if (
+
+        typeof value === "number"
+
+    ) {
+
+        return value !== 0;
+
+    }
+
+    /*----------------------------------
+      String
+    ----------------------------------*/
+
+    if (
+
+        typeof value === "string"
+
+    ) {
+
+        switch (
+
+            value
+
+                .trim()
+
+                .toLowerCase()
+
+        ) {
+
+            case "true":
+
+            case "yes":
+
+            case "y":
+
+            case "1":
+
+            case "active":
+
+            case "enabled":
+
+                return true;
+
+            case "false":
+
+            case "no":
+
+            case "n":
+
+            case "0":
+
+            case "inactive":
+
+            case "disabled":
+
+                return false;
+
+        }
+
+    }
+
+    return defaultValue;
+
+};
+ /*=========================================================
+ GET ARRAY
+=========================================================*/
+
+StaffEntities.getArray = function (
+
+    context,
+
+    field,
+
+    defaultValue = []
+
+) {
+
+    const value =
+
+        StaffEntities.getField(
+
+            context,
+
+            field,
+
+            defaultValue
+
+        );
+
+    /*----------------------------------
+      Missing
+    ----------------------------------*/
+
+    if (
+
+        value === null ||
+
+        value === undefined
+
+    ) {
+
+        return [
+
+            ...defaultValue
+
+        ];
+
+    }
+
+    /*----------------------------------
+      Already Array
+    ----------------------------------*/
+
+    if (
+
+        Array.isArray(
+
+            value
+
+        )
+
+    ) {
+
+        return [
+
+            ...value
+
+        ];
+
+    }
+
+    /*----------------------------------
+      Single Value
+    ----------------------------------*/
+
+    return [
+
+        value
+
+    ];
+
+};
+/*=========================================================
+ NORMALIZE STAFF DOCUMENT
+=========================================================*/
 
 /*=========================================================
  NORMALIZE STAFF DOCUMENT
@@ -810,81 +1241,440 @@ StaffEntities.normalizeStaffDocument = function (
 
     }
 
+/*----------------------------------
+  Firestore Document Extraction
+----------------------------------*/
+
+const id =
+
+    typeof staffDoc.id === "string"
+
+        ? staffDoc.id
+
+        : "";
+
+const data =
+
+    staffDoc.data;
+
+/*----------------------------------
+  Firestore Metadata
+----------------------------------*/
+
+const documentId =
+    id;
+
+const documentData =
+    data;
+
+/*----------------------------------
+  Firestore State
+----------------------------------*/
+
+const hasId =
+
+    documentId.length > 0;
+
+const hasData =
+
+    Object.keys(
+
+        documentData
+
+    ).length > 0;
+
+/*----------------------------------
+  Basic Document Info
+----------------------------------*/
+
+const documentInfo = {
+
+    id:
+
+        documentId,
+
+    hasId,
+
+    hasData
+
+};
     /*----------------------------------
-      Firestore Document
+      Firestore Document Extraction
     ----------------------------------*/
 
     const id =
 
-        staffDoc.id ||
+        typeof staffDoc.id === "string"
 
-        "";
+            ? staffDoc.id
+
+            : "";
 
     const data =
 
         staffDoc.data;
 
     /*----------------------------------
-      Constants
+      Firestore Metadata
     ----------------------------------*/
 
-    const FIELDS =
-        StaffConstants.FIELDS;
+    const documentId =
+        id;
 
-    const ROLES =
-        StaffConstants.ROLES;
-
-    const DESIGNATIONS =
-        StaffConstants.DESIGNATIONS;
-
-    const DUTY_TYPES =
-        StaffConstants.DUTY_TYPES;
+    const documentData =
+        data;
 
     /*----------------------------------
-      Local Variables
+      Firestore State
     ----------------------------------*/
 
-    const normalized = {};
+    const hasId =
 
-    const errors = [];
+        documentId.length > 0;
 
-    const warnings = [];
+    const hasData =
+
+        Object.keys(
+
+            documentData
+
+        ).length > 0;
+
+    /*----------------------------------
+      Basic Document Info
+    ----------------------------------*/
+
+    const documentInfo = {
+
+        id:
+
+            documentId,
+
+        hasId,
+
+        hasData
+
+    };
+
+    /*=====================================================
+      CONSTANTS START HERE
+    =====================================================*/
+
+/*----------------------------------
+  Local References
+----------------------------------*/
+
+const {
+
+    FIELDS,
+
+    ROLES,
+
+    DESIGNATIONS,
+
+    DESIGNATION_ALIASES,
+
+    DUTY_TYPES,
+
+    STATUS,
+
+    SEARCH_PRIORITY,
+
+    ENTITY_TYPES,
+
+    KEYWORDS,
+
+    SYNONYMS,
+
+    COLLECTIONS
+
+} = StaffConstants;
+
+/*----------------------------------
+  Local Helper Objects
+----------------------------------*/
+
+/*
+------------------------------------
+Normalized Firestore Record
+------------------------------------
+*/
+
+const normalized = {};
+
+/*
+------------------------------------
+Validation
+------------------------------------
+*/
+
+const errors = [];
+
+const warnings = [];
+
+/*
+------------------------------------
+Entity Collection
+------------------------------------
+*/
+
+const entities = [];
+
+/*
+------------------------------------
+Metadata
+------------------------------------
+*/
+
+const metadata = {
+
+    confidence: 1.0,
+
+    valid: true,
+
+    source: "",
+
+    documentId: id
+
+};
+
+/*
+------------------------------------
+Identity
+------------------------------------
+*/
+
+const identity = {
+
+    cleanName: "",
+
+    rawName: "",
+
+    name: "",
+
+    phone: "",
+
+    email: "",
+
+    role: "",
+
+    designation: "",
+
+    type: ""
+
+};
+
+/*
+------------------------------------
+Posting
+------------------------------------
+*/
+
+const posting = {
+
+    circle: "",
+
+    division: "",
+
+    range: "",
+
+    beat: "",
+
+    compartment: ""
+
+};
+
+/*
+------------------------------------
+Duty
+------------------------------------
+*/
+
+const duty = {
+
+    dutyType: "",
+
+    dutyActive: false,
+
+    status: "",
+
+    lastDutyEnd: ""
+
+};
+
+/*
+------------------------------------
+Location
+------------------------------------
+*/
+
+const location = {
+
+    location: "",
+
+    lat: null,
+
+    lon: null
+
+};
+
+/*
+------------------------------------
+GPS
+------------------------------------
+*/
+
+const gps = {
+
+    accuracy: null,
+
+    heading: null,
+
+    speed: null,
+
+    lastSeen: null,
+
+    timestamp: null,
+
+    updatedAt: null,
+
+    turnAngle: null,
+
+    turnRate: null
+
+};
+
+/*
+------------------------------------
+Team
+------------------------------------
+*/
+
+const teamInfo = {
+
+    leader: "",
+
+    team: ""
+
+};
+
+/*
+------------------------------------
+Tracking
+------------------------------------
+*/
+
+const tracking = {
+
+    sessionId: "",
+
+    source: "",
+
+    id: ""
+
+};
+
+/*
+------------------------------------
+Analytics
+------------------------------------
+*/
+
+const analytics = {
+
+    pointCount: 0,
+
+    distanceKm: 0,
+
+    startedAt: null,
+
+    endedAt: null,
+
+    monthKey: "",
+
+    compartments: [],
+
+    simplifiedTrack: [],
+
+    startLat: null,
+
+    startLon: null,
+
+    startAccuracy: null
+
+};
+    /*=====================================================
+      CONTEXT START HERE
+    =====================================================*/
 
     /*----------------------------------
       Context
     ----------------------------------*/
 
-    const context = {
+   /*----------------------------------
+  Context
+----------------------------------*/
 
-        id,
+const context = {
 
-        data,
+    id,
 
-        normalized,
+    data,
 
-        errors,
+    documentInfo,
 
-        warnings,
+    normalized,
 
-        fields: FIELDS,
+    errors,
 
-        roles: ROLES,
+    warnings,
 
-        designations: DESIGNATIONS,
+    entities,
 
-        dutyTypes: DUTY_TYPES
+    metadata,
 
-    };
+    identity,
+
+    posting,
+
+    duty,
+
+    location,
+
+    gps,
+
+    teamInfo,
+
+    tracking,
+
+    analytics,
+
+    fields: FIELDS,
+
+    roles: ROLES,
+
+    designations: DESIGNATIONS,
+
+    aliases: DESIGNATION_ALIASES,
+
+    dutyTypes: DUTY_TYPES,
+
+    entityTypes: ENTITY_TYPES,
+
+    keywords: KEYWORDS,
+
+    synonyms: SYNONYMS
+
+};
 
     /*
-    =========================================================
+    =====================================================
+
     NEXT STEP
 
     Field Extraction
 
-    context.normalized
-
-    =========================================================
+    =====================================================
     */
 
     return context;
