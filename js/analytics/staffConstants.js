@@ -1326,10 +1326,107 @@ ASSIGNMENT: Object.freeze([
         type: "string"
     }
 
-])
+]),
+/*-----------------------------------------------------
+  Location
+-----------------------------------------------------*/
 
+LOCATION: Object.freeze([
 
+    {
+        target: "location",
+        source: StaffConstants.FIELDS.LOCATION,
+        type: "string"
+    },
 
+    {
+        target: "lat",
+        source: StaffConstants.FIELDS.LAT,
+        type: "number"
+    },
+
+    {
+        target: "lon",
+        source: StaffConstants.FIELDS.LON,
+        type: "number"
+    }
+
+]),
+
+/*-----------------------------------------------------
+  GPS
+-----------------------------------------------------*/
+
+GPS: Object.freeze([
+
+    {
+        target: "accuracy",
+        source: StaffConstants.FIELDS.ACCURACY,
+        type: "number"
+    },
+
+    {
+        target: "speed",
+        source: StaffConstants.FIELDS.SPEED,
+        type: "number"
+    },
+
+    {
+        target: "heading",
+        source: StaffConstants.FIELDS.HEADING,
+        type: "number"
+    },
+
+    {
+        target: "turnRate",
+        source: StaffConstants.FIELDS.TURN_RATE,
+        type: "number"
+    },
+
+    {
+        target: "turnAngle",
+        source: StaffConstants.FIELDS.TURN_ANGLE,
+        type: "number"
+    },
+
+    {
+        target: "lastSeen",
+        source: StaffConstants.FIELDS.LAST_SEEN,
+        type: "raw"
+    },
+
+    {
+        target: "updatedAt",
+        source: StaffConstants.FIELDS.UPDATED_AT,
+        type: "raw"
+    }
+
+]),
+ /*-----------------------------------------------------
+  Team
+-----------------------------------------------------*/
+
+TEAM: Object.freeze([
+
+    {
+        target: "leader",
+        source: StaffConstants.FIELDS.LEADER,
+        type: "string"
+    },
+
+    {
+        target: "team",
+        source: StaffConstants.FIELDS.TEAM,
+        type: "string"
+    },
+
+    {
+        target: "teamMembers",
+        source: StaffConstants.FIELDS.TEAM_MEMBERS,
+        type: "array"
+    }
+
+]),
  /*-----------------------------------------------------
  Tracking
 -----------------------------------------------------*/
