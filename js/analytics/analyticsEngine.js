@@ -1888,42 +1888,7 @@ AnalyticsEngine.query = function (query) {
 NEW STAFF ROUTER
 ----------------------------------------------------------*/
 
-const staffIntent =
-    AnalyticsEngine.detectStaffIntent(
-        originalQuery
-    );
 
-if (staffIntent !== "unknown") {
-
-    const result =
-        AnalyticsEngine.routeStaffIntent(
-            originalQuery
-        );
-
-    if (
-        result &&
-        result.success
-    ) {
-
-        return {
-
-            intent:
-                result.intent,
-
-            type:
-                "staff",
-
-            confidence:
-                1,
-
-            data:
-                result.data
-
-        };
-
-    }
-
-}
 
 
       /*----------------------------------------------------------
@@ -2667,7 +2632,231 @@ AnalyticsEngine.openPatrol = function (search) {
             coveragePercent: totalCells > 0 ? (totalCovered / totalCells) * 100 : 0
         };
     };
+/*=========================================================
+ BUILD INTENT
+=========================================================*/
 
-    AnalyticsEngine.refresh = async () => { AnalyticsEngine.clear(); return await AnalyticsEngine.load(); };
+AnalyticsEngine.buildIntent = function (
+
+    query
+
+) {
+
+    /*
+        Future
+
+        Staff
+        Wildlife
+        GIS
+        Patrol
+        Legal
+        Reports
+    */
+
+    // Staff
+
+   const staff =
+
+    AnalyticsEngine.buildStaffIntent(
+        query
+    );
+
+if (
+
+    staff.confidence >= 0.80
+
+) {
+
+    return staff;
+
+}
+
+/*
+Future
+
+const wildlife =
+    AnalyticsEngine.buildWildlifeIntent(query);
+
+if (wildlife.confidence >= 0.80)
+    return wildlife;
+
+const gis =
+    AnalyticsEngine.buildGISIntent(query);
+
+if (gis.confidence >= 0.80)
+    return gis;
+
+const legal =
+    AnalyticsEngine.buildLegalIntent(query);
+
+if (legal.confidence >= 0.80)
+    return legal;
+*/
+
+return staff;
+
+    }
+
+    /*
+    const wildlife =
+        AnalyticsEngine.buildWildlifeIntent(query);
+
+    if (wildlife.confidence >= 0.80)
+        return wildlife;
+
+    const gis =
+        AnalyticsEngine.buildGISIntent(query);
+
+    ...
+    */
+
+    return staff;
+
+};
+    /*=========================================================
+ ROUTE INTENT
+=========================================================*/
+
+AnalyticsEngine.routeIntent = function (
+
+    request
+
+) {
+
+    if (
+
+        !request ||
+
+        typeof request !== "object"
+
+    ) {
+
+        return {
+
+            success: false,
+
+            source: "router",
+
+            domain: "system",
+
+            intent: "unknown",
+
+            confidence: 0,
+
+            entities: {},
+
+            data: {
+
+                success: false,
+
+                message: "Invalid intent request."
+
+            }
+
+        };
+
+    }
+
+    switch (
+
+        request.domain
+
+    ) {
+
+        case "staff":
+
+            return AnalyticsEngine.routeStaffIntent(
+
+                request
+
+            );
+
+        /*
+        Future
+
+        case "wildlife":
+
+            return AnalyticsEngine.routeWildlifeIntent(
+                request
+            );
+
+        case "gis":
+
+            return AnalyticsEngine.routeGISIntent(
+                request
+            );
+
+        case "patrol":
+
+            return AnalyticsEngine.routePatrolIntent(
+                request
+            );
+
+        case "legal":
+
+            return AnalyticsEngine.routeLegalIntent(
+                request
+            );
+        */
+
+        default:
+
+            return {
+
+                success: false,
+
+                source: "router",
+
+                domain:
+
+                    request.domain ||
+
+                    "unknown",
+
+                intent:
+
+                    request.intent ||
+
+                    "unknown",
+
+                confidence:
+
+                    request.confidence ||
+
+                    0,
+
+                entities:
+
+                    request.entities ||
+
+                    {},
+
+                data: {
+
+                    success: false,
+
+                    message:
+
+                        "Unknown domain."
+
+                }
+
+            };
+
+    }
+
+};
+
+/*=========================================================
+ REFRESH
+=========================================================*/
+
+AnalyticsEngine.refresh = async function () {
+
+    AnalyticsEngine.clear();
+
+    return await AnalyticsEngine.load();
+
+};   
     window.GreenGuardAI.AnalyticsEngine = AnalyticsEngine;
 })(window);
