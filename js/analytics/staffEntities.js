@@ -1929,6 +1929,101 @@ StaffEntities.extractTeamFields = function (
     return context;
 
 };
+ /*=========================================================
+ EXTRACT TRACKING FIELDS
+=========================================================*/
+
+StaffEntities.extractTrackingFields = function (
+
+    context
+
+) {
+
+    /*----------------------------------
+      Validate Context
+    ----------------------------------*/
+
+    if (
+
+        !context ||
+
+        typeof context !== "object"
+
+    ) {
+
+        return null;
+
+    }
+
+    if (
+
+        !context.data ||
+
+        typeof context.data !== "object"
+
+    ) {
+
+        return context;
+
+    }
+
+    /*----------------------------------
+      Tracking Object
+    ----------------------------------*/
+
+    if (
+
+        !context.tracking ||
+
+        typeof context.tracking !== "object"
+
+    ) {
+
+        context.tracking = {};
+
+    }
+
+    /*----------------------------------
+      Validate Field Map
+    ----------------------------------*/
+
+    if (
+
+        !context.fieldMaps ||
+
+        !context.fieldMaps.TRACKING
+
+    ) {
+
+        throw new Error(
+
+            "StaffConstants.FIELD_MAPS.TRACKING not available."
+
+        );
+
+    }
+
+    /*----------------------------------
+      Generic Extraction
+    ----------------------------------*/
+
+    StaffEntities.extractFields(
+
+        context,
+
+        context.tracking,
+
+        context.fieldMaps.TRACKING
+
+    );
+
+    /*----------------------------------
+      Return Context
+    ----------------------------------*/
+
+    return context;
+
+};
 /*=========================================================
  NORMALIZE STAFF DOCUMENT
 =========================================================*/
