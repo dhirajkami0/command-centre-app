@@ -1025,11 +1025,12 @@ Cache.setIntent = async function (
 
     intent,
 
-ttl =
+    ttl =
 
-    Config.CACHE.INTENT_TTL ||
+        Config.CACHE.INTENT_TTL ||
 
-    Config.CACHE.TTL;
+        Config.CACHE.TTL
+
 ) {
 
     const key =
@@ -1051,7 +1052,6 @@ ttl =
     );
 
 };
-
 /*----------------------------------------------------------
  REMOVE INTENT
 ----------------------------------------------------------*/
