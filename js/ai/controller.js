@@ -1,8 +1,7 @@
 (function (window) {
-
 "use strict";
 
-window.GreenGuardAI =
+const GG = window.GreenGuardAI =
     window.GreenGuardAI || {};
 
 const Controller = {};
@@ -64,7 +63,7 @@ Controller.waitForFirebase = async function () {
 Controller.ensureAnalyticsReady = async function () {
 
     const AE =
-        window.GreenGuardAI.AnalyticsEngine;
+        GG.AnalyticsEngine;
 
     if (!AE) {
 
@@ -104,7 +103,9 @@ Controller.ensureAnalyticsReady = async function () {
 
     await Controller.waitForFirebase();
 
-    await AE.load();
+    if (GG.Config.ANALYTICS.AUTO_LOAD) {
+        await AE.load();
+    }
 
     return AE.loaded;
 
@@ -115,7 +116,7 @@ Controller.ensureAnalyticsReady = async function () {
 
 Controller.normalizeQuery = function (query) {
 
-    return window.GreenGuardAI
+    return GG
         .AnalyticsEngine
         .normalizeQuery(query);
 
@@ -130,9 +131,9 @@ Controller.buildIntent = function (query) {
 
     const intent =
 
-        window.GreenGuardAI
+        GG
             .AnalyticsEngine
-            .buildStaffIntent(
+            .buildIntent(
 
                 query
 
@@ -142,7 +143,7 @@ Controller.buildIntent = function (query) {
 
         intent.domain ||
 
-        window.GreenGuardAI
+        GG
             .Config
             .ROUTER
             .DEFAULT_DOMAIN;
@@ -162,7 +163,7 @@ Controller.getCachedIntent = async function (
 ) {
 
     const Cache =
-        window.GreenGuardAI.Cache;
+        GG.Cache;
 
     if (
 
@@ -197,7 +198,7 @@ Controller.setCachedIntent = async function (
 ) {
 
     const Cache =
-        window.GreenGuardAI.Cache;
+        GG.Cache;
 
     if (
 
@@ -222,18 +223,38 @@ Controller.setCachedIntent = async function (
 };
 
 /*=========================================================
+ ROUTE INTENT
+=========================================================*/
+
+Controller.routeIntent = function (
+
+    intent
+
+) {
+
+    return GG
+        .AnalyticsEngine
+        .routeIntent(
+
+            intent
+
+        );
+
+};
+
+/*=========================================================
  ASK
 =========================================================*/
 
 Controller.ask = async function (query) {
 
+    const AI =
+        GG.AI;
+
     await Controller.ensureAnalyticsReady();
 
-    const AE =
-        window.GreenGuardAI.AnalyticsEngine;
-
     const Config =
-        window.GreenGuardAI.Config;
+        GG.Config;
 
     /*------------------------------------------
       Normalize Query
@@ -246,122 +267,44 @@ Controller.ask = async function (query) {
         "🧠 GreenGuard AI"
     );
 
-    console.log(
-        "Query:",
-        query
-    );
-
-    /*------------------------------------------
-      Intent Cache
-    ------------------------------------------*/
-
-    let intent =
-
-        await Controller.getCachedIntent(
-
-            query
-
-        );
-
-    if (intent) {
+    try {
 
         console.log(
-            "🟢 Intent Cache Hit"
-        );
-
-        console.log(intent);
-
-        console.groupEnd();
-
-        return AE.routeStaffIntent(
-
-            intent
-
-        );
-
-    }
-
-    /*------------------------------------------
-      Local Intent
-    ------------------------------------------*/
-
-    intent =
-
-        Controller.buildIntent(
-
+            "Query:",
             query
-
         );
 
-    console.log(
+        /*------------------------------------------
+          Intent Cache
+        ------------------------------------------*/
 
-        "Local Intent:",
+        let intent =
 
-        intent
+            await Controller.getCachedIntent(
 
-    );
+                query
 
-    /*------------------------------------------
-      High Confidence
-    ------------------------------------------*/
+            );
 
-    if (
+        if (intent) {
 
-        intent.confidence >=
+            console.log(
+                "🟢 Intent Cache Hit"
+            );
 
-        Config
-            .INTENT
-            .HIGH_CONFIDENCE
+            console.log(intent);
 
-    ) {
+            return Controller.routeIntent(
 
-        console.log(
+                intent
 
-            "🟢 Local Intent Accepted"
+            );
 
-        );
+        }
 
-        await Controller.setCachedIntent(
-
-            query,
-
-            intent
-
-        );
-
-        console.groupEnd();
-
-        return AE.routeStaffIntent(
-
-            intent
-
-        );
-
-    }
-
-    /*------------------------------------------
-      AI Intent
-    ------------------------------------------*/
-
-    console.log(
-
-        "🟡 AI Intent Detection"
-
-    );
-
-    if (
-
-        !window.GreenGuardAI.AI ||
-
-        typeof window.GreenGuardAI.AI.detectIntent !== "function"
-
-    ) {
-
-        console.warn(
-
-            "AI Provider unavailable."
-
-        );
+        /*------------------------------------------
+          Local Intent
+        ------------------------------------------*/
 
         intent =
 
@@ -371,97 +314,179 @@ Controller.ask = async function (query) {
 
             );
 
-    }
-    else {
+        console.log(
 
-        intent =
+            "Local Intent:",
 
-            await window.GreenGuardAI
-                .AI
-                .detectIntent(
+            intent
+
+        );
+
+        /*------------------------------------------
+          High Confidence
+        ------------------------------------------*/
+
+        if (
+
+            intent.confidence >=
+
+            Config
+                .INTENT
+                .HIGH_CONFIDENCE
+
+        ) {
+
+            console.log(
+
+                "🟢 Local Intent Accepted"
+
+            );
+
+            await Controller.setCachedIntent(
+
+                query,
+
+                intent
+
+            );
+
+            return Controller.routeIntent(
+
+                intent
+
+            );
+
+        }
+
+        /*------------------------------------------
+          AI Intent
+        ------------------------------------------*/
+
+        console.log(
+
+            "🟡 AI Intent Detection"
+
+        );
+
+        if (
+
+            !AI ||
+
+            typeof AI.detectIntent !== "function"
+
+        ) {
+
+            console.warn(
+
+                "AI Provider unavailable."
+
+            );
+
+            intent =
+
+                Controller.buildIntent(
 
                     query
 
                 );
 
-    }
+        }
+        else {
 
-    /*------------------------------------------
-      Validate AI Response
-    ------------------------------------------*/
+            intent =
 
-    if (
+                await AI.detectIntent(
 
-        !intent ||
+                    query
 
-        typeof intent !== "object" ||
+                );
 
-        !intent.intent ||
+        }
 
-        intent.confidence <
+        /*------------------------------------------
+          Normalize AI Response
+        ------------------------------------------*/
 
-            Config
-                .INTENT
-                .MIN_AI_CONFIDENCE
+        intent.source =
+            intent.source || "ai";
 
-    ) {
+        intent.domain =
+            intent.domain ||
+            Config.ROUTER.DEFAULT_DOMAIN;
 
-        intent =
+        console.log(
 
-            Controller.buildIntent(
+            "AI Intent:",
 
-                query
+            intent
+
+        );
+
+        /*------------------------------------------
+          Cache Intent
+        ------------------------------------------*/
+
+        if (
+
+            intent.success !== false
+
+        ) {
+
+            await Controller.setCachedIntent(
+
+                query,
+
+                intent
 
             );
 
-    }
+        }
 
-    /*------------------------------------------
-      Normalize AI Response
-    ------------------------------------------*/
-
-    intent.source =
-        intent.source || "ai";
-
-    intent.domain =
-        intent.domain ||
-        Config.ROUTER.DEFAULT_DOMAIN;
-
-    console.log(
-
-        "AI Intent:",
-
-        intent
-
-    );
-
-    /*------------------------------------------
-      Cache Intent
-    ------------------------------------------*/
-
-    if (
-
-        intent.success !== false
-
-    ) {
-
-        await Controller.setCachedIntent(
-
-            query,
+        return Controller.routeIntent(
 
             intent
 
         );
 
     }
+    catch (err) {
 
-    console.groupEnd();
+        console.error(
 
-    return AE.routeStaffIntent(
+            err
 
-        intent
+        );
 
-    );
+        return {
+
+            success: false,
+
+            source: "controller",
+
+            domain: "system",
+
+            intent: "error",
+
+            confidence: 0,
+
+            entities: {},
+
+            data: {
+
+                success: false,
+
+                message: err.message
+
+            }
+
+        };
+
+    }
+    finally {
+
+        console.groupEnd();
+
+    }
 
 };
 
@@ -469,7 +494,7 @@ Controller.ask = async function (query) {
  REGISTER
 =========================================================*/
 
-window.GreenGuardAI.Controller =
+GG.Controller =
     Controller;
 
 console.log(
