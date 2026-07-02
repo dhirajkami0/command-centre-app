@@ -1419,6 +1419,168 @@ identityFields.forEach(
     return context;
 
 };
+
+ /*=========================================================
+ EXTRACT POSTING FIELDS
+=========================================================*/
+
+StaffEntities.extractPostingFields = function (
+
+    context
+
+) {
+
+    /*----------------------------------
+      Validate Context
+    ----------------------------------*/
+
+    if (
+
+        !context ||
+
+        typeof context !== "object"
+
+    ) {
+
+        return null;
+
+    }
+
+    if (
+
+        !context.posting ||
+
+        typeof context.posting !== "object"
+
+    ) {
+
+        context.posting = {};
+
+    }
+
+    if (
+
+        !context.fieldMaps ||
+
+        !context.fieldMaps.POSTING
+
+    ) {
+
+        throw new Error(
+
+            "StaffConstants.FIELD_MAPS.POSTING not available."
+
+        );
+
+    }
+
+    /*----------------------------------
+      Extract Posting Fields
+    ----------------------------------*/
+
+    context.fieldMaps.POSTING.forEach(
+
+        function (
+
+            field
+
+        ) {
+
+            let value;
+
+            switch (
+
+                field.type
+
+            ) {
+
+                case "string":
+
+                    value =
+
+                        StaffEntities.getString(
+
+                            context,
+
+                            field.source
+
+                        );
+
+                    break;
+
+                case "number":
+
+                    value =
+
+                        StaffEntities.getNumber(
+
+                            context,
+
+                            field.source
+
+                        );
+
+                    break;
+
+                case "boolean":
+
+                    value =
+
+                        StaffEntities.getBoolean(
+
+                            context,
+
+                            field.source
+
+                        );
+
+                    break;
+
+                case "array":
+
+                    value =
+
+                        StaffEntities.getArray(
+
+                            context,
+
+                            field.source
+
+                        );
+
+                    break;
+
+                default:
+
+                    value =
+
+                        StaffEntities.getField(
+
+                            context,
+
+                            field.source
+
+                        );
+
+            }
+
+            StaffEntities.setField(
+
+                context.posting,
+
+                field.target,
+
+                value
+
+            );
+
+        }
+
+    );
+
+    return context;
+
+};
 /*=========================================================
  NORMALIZE STAFF DOCUMENT
 =========================================================*/
@@ -1900,6 +2062,7 @@ const context = {
     analytics,
 
     fields: FIELDS,
+    fieldMaps: StaffConstants.FIELD_MAPS,
 
     roles: ROLES,
 
