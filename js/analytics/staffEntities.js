@@ -2024,6 +2024,102 @@ StaffEntities.extractTrackingFields = function (
     return context;
 
 };
+
+ /*=========================================================
+ EXTRACT ANALYTICS FIELDS
+=========================================================*/
+
+StaffEntities.extractAnalyticsFields = function (
+
+    context
+
+) {
+
+    /*----------------------------------
+      Validate Context
+    ----------------------------------*/
+
+    if (
+
+        !context ||
+
+        typeof context !== "object"
+
+    ) {
+
+        return null;
+
+    }
+
+    if (
+
+        !context.data ||
+
+        typeof context.data !== "object"
+
+    ) {
+
+        return context;
+
+    }
+
+    /*----------------------------------
+      Analytics Object
+    ----------------------------------*/
+
+    if (
+
+        !context.analytics ||
+
+        typeof context.analytics !== "object"
+
+    ) {
+
+        context.analytics = {};
+
+    }
+
+    /*----------------------------------
+      Validate Field Map
+    ----------------------------------*/
+
+    if (
+
+        !context.fieldMaps ||
+
+        !context.fieldMaps.ANALYTICS
+
+    ) {
+
+        throw new Error(
+
+            "StaffConstants.FIELD_MAPS.ANALYTICS not available."
+
+        );
+
+    }
+
+    /*----------------------------------
+      Generic Extraction
+    ----------------------------------*/
+
+    StaffEntities.extractFields(
+
+        context,
+
+        context.analytics,
+
+        context.fieldMaps.ANALYTICS
+
+    );
+
+    /*----------------------------------
+      Return Context
+    ----------------------------------*/
+
+    return context;
+
+};
 /*=========================================================
  NORMALIZE STAFF DOCUMENT
 =========================================================*/
