@@ -162,6 +162,9 @@ AI.detectIntent = async function (
 /*=========================================================
  ASK AI
 =========================================================*/
+/*=========================================================
+ ASK AI
+=========================================================*/
 
 AI.ask = async function (
 
@@ -171,58 +174,102 @@ AI.ask = async function (
 
     AI.init();
 
-    const response =
-
-        await fetch(
-
-            GG.Config
-                .API
-                .ASK,
-
-            {
-
-                method: "POST",
-
-                headers: {
-
-                    "Content-Type":
-                        "application/json"
-
-                },
-
-                body: JSON.stringify({
-
-                    question
-
-                })
-
-            }
-
-        );
-
-    const data =
-
-        await response.json();
-
     if (
 
-        !response.ok ||
+        typeof question !== "string" ||
 
-        data.success === false
+        !question.trim()
 
     ) {
 
         throw new Error(
 
-            data.error ||
-
-            "AI request failed."
+            "Question is required."
 
         );
 
     }
 
-    return data;
+    try {
+
+        const response =
+
+            await fetch(
+
+                GG.Config
+                    .API
+                    .ASK,
+
+                {
+
+                    method: "POST",
+
+                    headers: {
+
+                        "Content-Type":
+                            "application/json"
+
+                    },
+
+                    body: JSON.stringify({
+
+                        question:
+
+                            question.trim()
+
+                    })
+
+                }
+
+            );
+
+        const data =
+
+            await response.json();
+
+        if (
+
+            !response.ok ||
+
+            data.success === false
+
+        ) {
+
+            throw new Error(
+
+                data.error ||
+
+                "AI request failed."
+
+            );
+
+        }
+
+        return data;
+
+    }
+
+    catch (err) {
+
+        if (
+
+            GG.Config?.DEBUG?.ENABLED
+
+        ) {
+
+            console.error(
+
+                "[AI.ask]",
+
+                err
+
+            );
+
+        }
+
+        throw err;
+
+    }
 
 };
 /*=========================================================
