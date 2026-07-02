@@ -73,18 +73,25 @@
       CLOUD FUNCTIONS
     ------------------------------------------------------------*/
 
-    GG.API = Object.freeze({
+ GG.API = Object.freeze({
 
-        ASK_AI: "askAI",
+    ASK_AI:
+        "askAI",
 
-        SEARCH: "searchAI",
+    DETECT_INTENT:
+        "detectIntent",
 
-        EMBEDDING: "embeddingAI",
+    SEARCH:
+        "searchAI",
 
-        IMAGE: "imageAI"
+    EMBEDDING:
+        "embeddingAI",
 
-    });
-GG.AI = Object.freeze({
+    IMAGE:
+        "imageAI"
+
+});
+    GG.AI = Object.freeze({
 
     ENABLED: true,
 
