@@ -1367,6 +1367,124 @@ TRACKING: Object.freeze([
     }
 
 ]),
+
+ /*-----------------------------------------------------
+ Analytics
+-----------------------------------------------------*/
+
+ANALYTICS: Object.freeze([
+
+    {
+
+        target: "distanceKm",
+
+        source: StaffConstants.FIELDS.DISTANCE_KM,
+
+        type: "number"
+
+    },
+
+    {
+
+        target: "pointCount",
+
+        source: StaffConstants.FIELDS.POINT_COUNT,
+
+        type: "number"
+
+    },
+
+    {
+
+        target: "startedAt",
+
+        source: StaffConstants.FIELDS.STARTED_AT,
+
+        type: "number"
+
+    },
+
+    {
+
+        target: "endedAt",
+
+        source: StaffConstants.FIELDS.ENDED_AT,
+
+        type: "number"
+
+    },
+
+    {
+
+        target: "monthKey",
+
+        source: StaffConstants.FIELDS.MONTH_KEY,
+
+        type: "string"
+
+    },
+
+    {
+
+        target: "compartments",
+
+        source: StaffConstants.FIELDS.COMPARTMENTS,
+
+        type: "array"
+
+    },
+
+    {
+
+        target: "simplifiedTrack",
+
+        source: StaffConstants.FIELDS.SIMPLIFIED_TRACK,
+
+        type: "array"
+
+    },
+
+    {
+
+        target: "startLat",
+
+        source: StaffConstants.FIELDS.START_LAT,
+
+        type: "number"
+
+    },
+
+    {
+
+        target: "startLon",
+
+        source: StaffConstants.FIELDS.START_LON,
+
+        type: "number"
+
+    },
+
+    {
+
+        target: "startAccuracy",
+
+        source: StaffConstants.FIELDS.START_ACCURACY,
+
+        type: "number"
+
+    },
+
+    {
+
+        target: "createdAt",
+
+        source: StaffConstants.FIELDS.CREATED_AT,
+
+        type: "raw"
+
+    }
+
+]),
  /*=========================================================
  KEYWORDS
 =========================================================*/
