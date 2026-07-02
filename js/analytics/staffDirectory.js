@@ -2,353 +2,865 @@
 
 "use strict";
 
-window.GreenGuardAI =
+/*=========================================================
+ GREENGUARD AI
+=========================================================*/
+
+const GG =
+    window.GreenGuardAI =
     window.GreenGuardAI || {};
 
-const AnalyticsEngine =
-    window.GreenGuardAI.AnalyticsEngine =
-    window.GreenGuardAI.AnalyticsEngine || {};
+/*=========================================================
+ DEPENDENCIES
+=========================================================*/
 
-/*----------------------------------------------------------
-STAFF DIRECTORY
+const StaffConstants =
+    GG.StaffConstants;
 
-Purpose
+const StaffEntities =
+    GG.StaffEntities;
 
-Return a filtered list of staff.
+if (
 
-Supported Filters
+    !StaffConstants
 
-{
-    staff,
-    circle,
-    division,
-    range,
-    beat,
-    designation,
-    role,
-    dutyActive,
-    dutyType,
-    leader,
-    team,
-    compartment
+) {
+
+    throw new Error(
+
+        "StaffConstants not loaded."
+
+    );
+
 }
-----------------------------------------------------------*/
 
-AnalyticsEngine.queryStaffDirectory =
-function (filters = {}) {
+if (
 
-    console.group(
-        "👥 STAFF DIRECTORY"
+    !StaffEntities
+
+) {
+
+    throw new Error(
+
+        "StaffEntities not loaded."
+
     );
 
-    console.log(
-        "Filters:",
-        filters
-    );
+}
 
-    /*----------------------------------
-    Dataset
-    ----------------------------------*/
+/*=========================================================
+ MODULE
+=========================================================*/
 
-    let rows =
-        Object.values(
-            AnalyticsEngine.staffIndex || {}
-        );
+const StaffDirectory = {};
 
-    console.log(
-        "Initial Staff:",
-        rows.length
-    );
+/*=========================================================
+ VERSION
+=========================================================*/
 
-    /*----------------------------------
-    Apply Filters
-    ----------------------------------*/
+StaffDirectory.VERSION =
 
-    rows =
-        AnalyticsEngine.applyDirectoryFilters(
-            rows,
-            filters
-        );
+    "1.0.0";
 
-    /*----------------------------------
-    Sort
-    ----------------------------------*/
+/*=========================================================
+ STATUS
+=========================================================*/
 
-    rows.sort(function (a, b) {
+StaffDirectory.loaded =
 
-        return String(
-            a.name || ""
-        ).localeCompare(
+    false;
 
-            String(
-                b.name || ""
-            )
+StaffDirectory.loading =
 
-        );
+    false;
 
-    });
+/*=========================================================
+ CACHE
+=========================================================*/
 
-    console.log(
-        "Final Staff:",
-        rows.length
-    );
+StaffDirectory.cache =
 
-    console.groupEnd();
+    new Map();
 
-    /*----------------------------------
-    Standard Response
-    ----------------------------------*/
+StaffDirectory.lastRequest =
+
+    null;
+
+StaffDirectory.lastResult =
+
+    null;
+
+/*=========================================================
+ CLEAR CACHE
+=========================================================*/
+
+StaffDirectory.clearCache = function () {
+
+    StaffDirectory.cache.clear();
+
+};
+
+/*=========================================================
+ CREATE RESPONSE
+=========================================================*/
+
+StaffDirectory.createResponse = function (
+
+    request = {}
+
+) {
 
     return {
 
-        success: true,
+        success:
 
-        type: "staff",
+            false,
 
-        intent: "staffDirectory",
+        source:
 
-        total: rows.length,
+            "LOCAL",
 
-        data: rows,
+        module:
 
-        filters: filters
+            "StaffDirectory",
+
+        intent:
+
+            StaffConstants.INTENTS.STAFF_DIRECTORY,
+
+        confidence:
+
+            request.confidence ||
+
+            0,
+
+        query:
+
+            request.originalQuery ||
+
+            "",
+
+        filters:
+
+            request.parameters ||
+
+            {},
+
+        staff:
+
+            [],
+
+        total:
+
+            0,
+
+        message:
+
+            "",
+
+        warnings:
+
+            [],
+
+        errors:
+
+            [],
+
+        metadata: {
+
+            version:
+
+                StaffDirectory.VERSION,
+
+            createdAt:
+
+                Date.now(),
+
+            executionTime:
+
+                0
+
+        }
 
     };
 
 };
 
-/*----------------------------------------------------------
-FILTER PIPELINE
-----------------------------------------------------------*/
+/*=========================================================
+ INITIALIZE
+=========================================================*/
 
-AnalyticsEngine.applyDirectoryFilters =
-function (
+StaffDirectory.initialize = function () {
 
-    rows,
+    StaffDirectory.loaded =
 
-    filters
+        true;
 
-){
+    StaffDirectory.loading =
+
+        false;
+
+    return true;
+
+};
+    /*=========================================================
+ QUERY STAFF DIRECTORY
+=========================================================*/
+
+StaffDirectory.queryStaffDirectory = function (
+
+    request
+
+) {
+
+    const started =
+
+        Date.now();
+
+    /*----------------------------------
+      Create Response
+    ----------------------------------*/
+
+    const response =
+
+        StaffDirectory.createResponse(
+
+            request
+
+        );
+
+    StaffDirectory.lastRequest =
+
+        request;
+
+    /*----------------------------------
+      Filter Staff
+    ----------------------------------*/
+
+    const staff =
+
+        StaffDirectory.filterStaff(
+
+            request
+
+        );
+
+    /*----------------------------------
+      Build Directory
+    ----------------------------------*/
+
+    response.staff =
+
+        StaffDirectory.buildDirectory(
+
+            staff
+
+        );
+
+    response.total =
+
+        response.staff.length;
+
+    response.success =
+
+        true;
+
+    response.message =
+
+        response.total +
+
+        " staff found.";
+
+    response.metadata.executionTime =
+
+        Date.now() -
+
+        started;
+
+    StaffDirectory.lastResult =
+
+        response;
+
+    return response;
+
+};
+    /*=========================================================
+ FILTER STAFF
+=========================================================*/
+
+StaffDirectory.filterStaff = function (
+
+    request
+
+) {
+
+    /*----------------------------------
+      Validate
+    ----------------------------------*/
 
     if (
 
-        !Array.isArray(rows)
+        !request ||
 
-    ){
+        typeof request !== "object"
+
+    ) {
 
         return [];
 
     }
 
-    if (
+    const parameters =
 
-        !filters
+        request.parameters ||
 
-    ){
+        {};
 
-        return rows;
+    let staff =
 
-    }
+        [
 
-    /*----------------------------------
-    Staff
-    ----------------------------------*/
+            ...StaffEntities.staff
 
-    if (filters.staff) {
-
-        rows = rows.filter(function (r) {
-
-            return String(
-
-                r.cleanName ||
-
-                r.name ||
-
-                ""
-
-            )
-
-            .toUpperCase()
-
-            .includes(
-
-                String(filters.staff)
-
-                .toUpperCase()
-
-            );
-
-        });
-
-    }
+        ];
 
     /*----------------------------------
-    Division
-    ----------------------------------*/
-
-    if (filters.division) {
-
-        rows = rows.filter(function (r) {
-
-            return String(
-
-                r.division || ""
-
-            ).toUpperCase()
-
-            ===
-
-            String(
-
-                filters.division
-
-            ).toUpperCase();
-
-        });
-
-    }
-
-    /*----------------------------------
-    Range
-    ----------------------------------*/
-
-    if (filters.range) {
-
-        rows = rows.filter(function (r) {
-
-            return String(
-
-                r.range || ""
-
-            ).toUpperCase()
-
-            ===
-
-            String(
-
-                filters.range
-
-            ).toUpperCase();
-
-        });
-
-    }
-
-    /*----------------------------------
-    Beat
-    ----------------------------------*/
-
-    if (filters.beat) {
-
-        rows = rows.filter(function (r) {
-
-            return String(
-
-                r.beat || ""
-
-            ).toUpperCase()
-
-            ===
-
-            String(
-
-                filters.beat
-
-            ).toUpperCase();
-
-        });
-
-    }
-
-    /*----------------------------------
-    Designation
-    ----------------------------------*/
-
-    if (filters.designation) {
-
-        rows = rows.filter(function (r) {
-
-            return String(
-
-                r.designation || ""
-
-            ).toUpperCase()
-
-            ===
-
-            String(
-
-                filters.designation
-
-            ).toUpperCase();
-
-        });
-
-    }
-
-    /*----------------------------------
-    Role
-    ----------------------------------*/
-
-    if (filters.role) {
-
-        rows = rows.filter(function (r) {
-
-            return String(
-
-                r.role || ""
-
-            ).toUpperCase()
-
-            ===
-
-            String(
-
-                filters.role
-
-            ).toUpperCase();
-
-        });
-
-    }
-
-    /*----------------------------------
-    Duty
+      Role
     ----------------------------------*/
 
     if (
 
-        filters.dutyActive !== null &&
-
-        filters.dutyActive !== undefined
+        parameters.role
 
     ) {
 
-        rows = rows.filter(function (r) {
+        const role =
 
-            return Boolean(
+            String(
 
-                r.dutyActive
+                parameters.role
 
-            ) === Boolean(
+            )
 
-                filters.dutyActive
+            .trim()
+
+            .toUpperCase();
+
+        staff =
+
+            staff.filter(
+
+                function (
+
+                    s
+
+                ) {
+
+                    return (
+
+                        String(
+
+                            s.identity.role ||
+
+                            ""
+
+                        )
+
+                        .toUpperCase() ===
+
+                        role
+
+                    );
+
+                }
 
             );
 
-        });
+    }
+
+    /*----------------------------------
+      Division
+    ----------------------------------*/
+
+    if (
+
+        parameters.division
+
+    ) {
+
+        const division =
+
+            String(
+
+                parameters.division
+
+            )
+
+            .trim()
+
+            .toUpperCase();
+
+        staff =
+
+            staff.filter(
+
+                function (
+
+                    s
+
+                ) {
+
+                    return (
+
+                        String(
+
+                            s.posting.division ||
+
+                            ""
+
+                        )
+
+                        .toUpperCase() ===
+
+                        division
+
+                    );
+
+                }
+
+            );
 
     }
 
-    return rows;
+    /*----------------------------------
+      Range
+    ----------------------------------*/
+
+    if (
+
+        parameters.range
+
+    ) {
+
+        const range =
+
+            String(
+
+                parameters.range
+
+            )
+
+            .trim()
+
+            .toUpperCase();
+
+        staff =
+
+            staff.filter(
+
+                function (
+
+                    s
+
+                ) {
+
+                    return (
+
+                        String(
+
+                            s.posting.range ||
+
+                            ""
+
+                        )
+
+                        .toUpperCase() ===
+
+                        range
+
+                    );
+
+                }
+
+            );
+
+    }
+
+    /*----------------------------------
+      Beat
+    ----------------------------------*/
+
+    if (
+
+        parameters.beat
+
+    ) {
+
+        const beat =
+
+            String(
+
+                parameters.beat
+
+            )
+
+            .trim()
+
+            .toUpperCase();
+
+        staff =
+
+            staff.filter(
+
+                function (
+
+                    s
+
+                ) {
+
+                    return (
+
+                        String(
+
+                            s.posting.beat ||
+
+                            ""
+
+                        )
+
+                        .toUpperCase() ===
+
+                        beat
+
+                    );
+
+                }
+
+            );
+
+    }
+
+    /*----------------------------------
+      Duty Active
+    ----------------------------------*/
+
+    if (
+
+        typeof parameters.dutyActive ===
+
+        "boolean"
+
+    ) {
+
+        staff =
+
+            staff.filter(
+
+                function (
+
+                    s
+
+                ) {
+
+                    return (
+
+                        s.assignment.dutyActive ===
+
+                        parameters.dutyActive
+
+                    );
+
+                }
+
+            );
+
+    }
+
+    /*----------------------------------
+      Team Leader
+    ----------------------------------*/
+
+    if (
+
+        parameters.leader
+
+    ) {
+
+        const leader =
+
+            String(
+
+                parameters.leader
+
+            )
+
+            .trim()
+
+            .toUpperCase();
+
+        staff =
+
+            staff.filter(
+
+                function (
+
+                    s
+
+                ) {
+
+                    return (
+
+                        String(
+
+                            s.teamInfo.leader ||
+
+                            ""
+
+                        )
+
+                        .toUpperCase() ===
+
+                        leader
+
+                    );
+
+                }
+
+            );
+
+    }
+
+    return staff;
+
+};/*=========================================================
+ BUILD DIRECTORY
+=========================================================*/
+
+StaffDirectory.buildDirectory = function (
+
+    staffList
+
+) {
+
+    /*----------------------------------
+      Validate
+    ----------------------------------*/
+
+    if (
+
+        !Array.isArray(
+
+            staffList
+
+        )
+
+    ) {
+
+        return [];
+
+    }
+
+    /*----------------------------------
+      Build
+    ----------------------------------*/
+
+    return staffList.map(
+
+        function (
+
+            staff
+
+        ) {
+
+            return {
+
+                /*--------------------------
+                  Identity
+                --------------------------*/
+
+                cleanName:
+
+                    staff.identity.cleanName,
+
+                rawName:
+
+                    staff.identity.rawName,
+
+                name:
+
+                    staff.identity.name,
+
+                phone:
+
+                    staff.identity.phone,
+
+                email:
+
+                    staff.identity.email,
+
+                role:
+
+                    staff.identity.role,
+
+                designation:
+
+                    staff.identity.designation,
+
+                type:
+
+                    staff.identity.type,
+
+                /*--------------------------
+                  Posting
+                --------------------------*/
+
+                circle:
+
+                    staff.posting.circle,
+
+                division:
+
+                    staff.posting.division,
+
+                range:
+
+                    staff.posting.range,
+
+                beat:
+
+                    staff.posting.beat,
+
+                compartment:
+
+                    staff.assignment.assignedCompartment,
+
+                /*--------------------------
+                  Duty
+                --------------------------*/
+
+                dutyType:
+
+                    staff.assignment.dutyType,
+
+                dutyActive:
+
+                    staff.assignment.dutyActive,
+
+                status:
+
+                    staff.assignment.status,
+
+                /*--------------------------
+                  Team
+                --------------------------*/
+
+                leader:
+
+                    staff.teamInfo.leader,
+
+                team:
+
+                    staff.teamInfo.team,
+
+                /*--------------------------
+                  GPS
+                --------------------------*/
+
+                location:
+
+                    staff.location.location,
+
+                lat:
+
+                    staff.location.lat,
+
+                lon:
+
+                    staff.location.lon,
+
+                accuracy:
+
+                    staff.gps.accuracy,
+
+                speed:
+
+                    staff.gps.speed,
+
+                heading:
+
+                    staff.gps.heading,
+
+                lastSeen:
+
+                    staff.gps.lastSeen,
+
+                /*--------------------------
+                  Tracking
+                --------------------------*/
+
+                sessionId:
+
+                    staff.tracking.sessionId,
+
+                source:
+
+                    staff.tracking.source,
+
+                /*--------------------------
+                  Analytics
+                --------------------------*/
+
+                distanceKm:
+
+                    staff.analytics.distanceKm,
+
+                pointCount:
+
+                    staff.analytics.pointCount
+
+            };
+
+        }
+
+    );
+
+};/*=========================================================
+ REGISTER
+=========================================================*/
+
+GG.queryStaffDirectory = function (
+
+    request
+
+) {
+
+    return StaffDirectory.queryStaffDirectory(
+
+        request
+
+    );
 
 };
 
+/*=========================================================
+ INITIALIZE
+=========================================================*/
+
+StaffDirectory.initialize();
+
+/*=========================================================
+ EXPORT
+=========================================================*/
+
+GG.StaffDirectory =
+
+    StaffDirectory;
+
 console.log(
 
-    "%cStaff Directory Module Loaded",
+    "%cStaff Directory Loaded",
 
-    "color:#1976D2;font-weight:bold;"
+    "color:#008000;font-weight:bold;"
 
 );
 
