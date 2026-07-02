@@ -1190,6 +1190,108 @@ UPDATED_AT:
         "shareLocation"
 
 });
+
+ /*=========================================================
+ FIELD MAPS
+=========================================================*/
+
+StaffConstants.FIELD_MAPS = Object.freeze({
+
+    /*-----------------------------------------------------
+      Identity
+    -----------------------------------------------------*/
+
+    IDENTITY: Object.freeze([
+
+        {
+            target: "cleanName",
+            source: StaffConstants.FIELDS.CLEAN_NAME,
+            type: "string"
+        },
+
+        {
+            target: "name",
+            source: StaffConstants.FIELDS.NAME,
+            type: "string"
+        },
+
+        {
+            target: "rawName",
+            source: StaffConstants.FIELDS.RAW_NAME,
+            type: "string"
+        },
+
+        {
+            target: "phone",
+            source: StaffConstants.FIELDS.PHONE,
+            type: "string"
+        },
+
+        {
+            target: "email",
+            source: StaffConstants.FIELDS.EMAIL,
+            type: "string"
+        },
+
+        {
+            target: "role",
+            source: StaffConstants.FIELDS.ROLE,
+            type: "string"
+        },
+
+        {
+            target: "designation",
+            source: StaffConstants.FIELDS.DESIGNATION,
+            type: "string"
+        },
+
+        {
+            target: "type",
+            source: StaffConstants.FIELDS.TYPE,
+            type: "string"
+        }
+
+    ]),
+
+    /*-----------------------------------------------------
+      Posting
+    -----------------------------------------------------*/
+
+    POSTING: Object.freeze([
+
+        {
+            target: "circle",
+            source: StaffConstants.FIELDS.CIRCLE,
+            type: "string"
+        },
+
+        {
+            target: "division",
+            source: StaffConstants.FIELDS.DIVISION,
+            type: "string"
+        },
+
+        {
+            target: "range",
+            source: StaffConstants.FIELDS.RANGE,
+            type: "string"
+        },
+
+        {
+            target: "beat",
+            source: StaffConstants.FIELDS.BEAT,
+            type: "string"
+        },
+
+        {
+            target: "compartment",
+            source: StaffConstants.FIELDS.COMPARTMENT,
+            type: "string"
+        }
+
+    ])
+
+});
  /*=========================================================
  KEYWORDS
 =========================================================*/
