@@ -74,6 +74,10 @@ AI.init = function () {
  DETECT INTENT
 =========================================================*/
 
+/*=========================================================
+ DETECT INTENT
+=========================================================*/
+
 AI.detectIntent = async function (
 
     query
@@ -82,64 +86,79 @@ AI.detectIntent = async function (
 
     AI.init();
 
-    /*----------------------------------
-      Build Prompt
-    ----------------------------------*/
+    try {
 
-    const prompt =
+        /*----------------------------------
+          Build Prompt
+        ----------------------------------*/
 
-        AI.buildIntentPrompt(
+        const prompt =
 
-            query
+            AI.buildIntentPrompt(
 
-        );
+                query
 
-    /*----------------------------------
-      Call AI
-    ----------------------------------*/
+            );
 
-    const response =
+        /*----------------------------------
+          Call API
+        ----------------------------------*/
 
-        await AI.callAPI(
+        const response =
 
-            prompt
+            await AI.callAPI(
 
-        );
+                prompt
 
-    /*----------------------------------
-      Validate
-    ----------------------------------*/
+            );
 
-    if (
+        /*----------------------------------
+          Validate
+        ----------------------------------*/
 
-        !AI.validateResponse(
+        if (
+
+            !AI.validateResponse(
+
+                response
+
+            )
+
+        ) {
+
+            throw new Error(
+
+                "Invalid AI response."
+
+            );
+
+        }
+
+        /*----------------------------------
+          Normalize
+        ----------------------------------*/
+
+        return AI.normalizeIntent(
 
             response
-
-        )
-
-    ) {
-
-        throw new Error(
-
-            "Invalid AI response."
 
         );
 
     }
 
-    /*----------------------------------
-      Normalize
-    ----------------------------------*/
+    catch (err) {
 
-    return AI.normalizeIntent(
+        console.error(
 
-        response
+            err
 
-    );
+        );
+
+        throw err;
+
+    }
 
 };
-
 /*=========================================================
  ASK AI
 =========================================================*/
