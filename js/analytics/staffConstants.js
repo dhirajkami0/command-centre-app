@@ -1283,13 +1283,50 @@ StaffConstants.FIELD_MAPS = Object.freeze({
             type: "string"
         },
 
-        {
-            target: "compartment",
-            source: StaffConstants.FIELDS.COMPARTMENT,
-            type: "string"
-        }
 
-    ])
+    ]),/*-----------------------------------------------------
+  Assignment
+-----------------------------------------------------*/
+
+ASSIGNMENT: Object.freeze([
+
+    {
+        target: "assignedCompartment",
+        source: StaffConstants.FIELDS.COMPARTMENT,
+        type: "string"
+    },
+
+    {
+        target: "dutyType",
+        source: StaffConstants.FIELDS.DUTY_TYPE,
+        type: "string"
+    },
+
+    {
+        target: "dutyActive",
+        source: StaffConstants.FIELDS.DUTY_ACTIVE,
+        type: "boolean"
+    },
+
+    {
+        target: "status",
+        source: StaffConstants.FIELDS.STATUS,
+        type: "string"
+    },
+
+    {
+        target: "leader",
+        source: StaffConstants.FIELDS.LEADER,
+        type: "string"
+    },
+
+    {
+        target: "team",
+        source: StaffConstants.FIELDS.TEAM,
+        type: "string"
+    }
+
+])
 
 });
  /*=========================================================
