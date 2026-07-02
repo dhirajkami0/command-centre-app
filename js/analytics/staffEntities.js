@@ -3591,63 +3591,7 @@ const documentInfo = {
     hasData
 
 };
-    /*----------------------------------
-      Firestore Document Extraction
-    ----------------------------------*/
-
-    const id =
-
-        typeof staffDoc.id === "string"
-
-            ? staffDoc.id
-
-            : "";
-
-    const data =
-
-        staffDoc.data;
-
-    /*----------------------------------
-      Firestore Metadata
-    ----------------------------------*/
-
-    const documentId =
-        id;
-
-    const documentData =
-        data;
-
-    /*----------------------------------
-      Firestore State
-    ----------------------------------*/
-
-    const hasId =
-
-        documentId.length > 0;
-
-    const hasData =
-
-        Object.keys(
-
-            documentData
-
-        ).length > 0;
-
-    /*----------------------------------
-      Basic Document Info
-    ----------------------------------*/
-
-    const documentInfo = {
-
-        id:
-
-            documentId,
-
-        hasId,
-
-        hasData
-
-    };
+   
 
     /*=====================================================
       CONSTANTS START HERE
