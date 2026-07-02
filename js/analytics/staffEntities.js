@@ -2038,6 +2038,1430 @@ StaffEntities.extractAnalyticsFields = function (
     return context;
 
 };
+
+ /*=========================================================
+ VALIDATE NORMALIZED DATA
+=========================================================*/
+
+StaffEntities.validateNormalizedData = function (
+
+    context
+
+) {
+
+    /*----------------------------------
+      Validate Context
+    ----------------------------------*/
+
+    if (
+
+        !context ||
+
+        typeof context !== "object"
+
+    ) {
+
+        throw new Error(
+
+            "Validation context missing."
+
+        );
+
+    }
+
+    /*----------------------------------
+      Local References
+    ----------------------------------*/
+
+    const {
+
+        identity,
+
+        posting,
+
+        assignment,
+
+        location,
+
+        gps,
+
+        tracking,
+
+        analytics,
+
+        errors,
+
+        warnings,
+
+        metadata
+
+    } = context;
+
+    /*----------------------------------
+      Identity
+    ----------------------------------*/
+
+    if (
+
+        !identity.cleanName
+
+    ) {
+
+        errors.push(
+
+            "Missing cleanName."
+
+        );
+
+    }
+
+    if (
+
+        !identity.name
+
+    ) {
+
+        warnings.push(
+
+            "Missing display name."
+
+        );
+
+    }
+
+    if (
+
+        !identity.role
+
+    ) {
+
+        warnings.push(
+
+            "Missing role."
+
+        );
+
+    }
+
+    if (
+
+        !identity.designation
+
+    ) {
+
+        warnings.push(
+
+            "Missing designation."
+
+        );
+
+    }
+
+    /*----------------------------------
+      Posting
+    ----------------------------------*/
+
+    if (
+
+        !posting.circle
+
+    ) {
+
+        warnings.push(
+
+            "Missing circle."
+
+        );
+
+    }
+
+    if (
+
+        !posting.division
+
+    ) {
+
+        warnings.push(
+
+            "Missing division."
+
+        );
+
+    }
+
+    if (
+
+        !posting.range
+
+    ) {
+
+        warnings.push(
+
+            "Missing range."
+
+        );
+
+    }
+
+    if (
+
+        !posting.beat
+
+    ) {
+
+        warnings.push(
+
+            "Missing beat."
+
+        );
+
+    }
+
+    /*----------------------------------
+      Assignment
+    ----------------------------------*/
+
+    if (
+
+        assignment.dutyActive &&
+
+        !assignment.dutyType
+
+    ) {
+
+        warnings.push(
+
+            "Duty active without duty type."
+
+        );
+
+    }
+
+    /*----------------------------------
+      GPS
+    ----------------------------------*/
+
+    if (
+
+        location.lat !== null &&
+
+        (
+
+            location.lat < -90 ||
+
+            location.lat > 90
+
+        )
+
+    ) {
+
+        errors.push(
+
+            "Latitude out of range."
+
+        );
+
+    }
+
+    if (
+
+        location.lon !== null &&
+
+        (
+
+            location.lon < -180 ||
+
+            location.lon > 180
+
+        )
+
+    ) {
+
+        errors.push(
+
+            "Longitude out of range."
+
+        );
+
+    }
+
+    if (
+
+        gps.accuracy !== null &&
+
+        gps.accuracy < 0
+
+    ) {
+
+        warnings.push(
+
+            "Invalid GPS accuracy."
+
+        );
+
+    }
+
+    if (
+
+        gps.speed !== null &&
+
+        gps.speed < 0
+
+    ) {
+
+        warnings.push(
+
+            "Invalid speed."
+
+        );
+
+    }
+
+    /*----------------------------------
+      Tracking
+    ----------------------------------*/
+
+    if (
+
+        assignment.dutyActive &&
+
+        !tracking.sessionId
+
+    ) {
+
+        warnings.push(
+
+            "Active duty without session."
+
+        );
+
+    }
+
+    /*----------------------------------
+      Analytics
+    ----------------------------------*/
+
+    if (
+
+        analytics.distanceKm < 0
+
+    ) {
+
+        warnings.push(
+
+            "Negative distance."
+
+        );
+
+    }
+
+    if (
+
+        analytics.pointCount < 0
+
+    ) {
+
+        warnings.push(
+
+            "Negative point count."
+
+        );
+
+    }
+
+    /*----------------------------------
+      Metadata
+    ----------------------------------*/
+
+    metadata.valid =
+
+        errors.length === 0;
+
+    metadata.errorCount =
+
+        errors.length;
+
+    metadata.warningCount =
+
+        warnings.length;
+
+    metadata.confidence =
+
+        metadata.valid
+
+            ? 1
+
+            : 0;
+
+    /*----------------------------------
+      Return Context
+    ----------------------------------*/
+
+    return context;
+
+};
+
+ /*=========================================================
+ BUILD SEARCH TOKENS
+=========================================================*/
+
+StaffEntities.buildSearchTokens = function (
+
+    context
+
+) {
+
+    /*----------------------------------
+      Validate Context
+    ----------------------------------*/
+
+    if (
+
+        !context ||
+
+        typeof context !== "object"
+
+    ) {
+
+        throw new Error(
+
+            "Search token context missing."
+
+        );
+
+    }
+
+    /*----------------------------------
+      Create Token Store
+    ----------------------------------*/
+
+    const tokens =
+
+        new Set();
+
+    /*----------------------------------
+      Helper
+    ----------------------------------*/
+
+    function add(value) {
+
+        if (
+
+            value === null ||
+
+            value === undefined
+
+        ) {
+
+            return;
+
+        }
+
+        const text =
+
+            String(value)
+
+                .trim()
+
+                .toUpperCase();
+
+        if (
+
+            text.length === 0
+
+        ) {
+
+            return;
+
+        }
+
+        tokens.add(
+
+            text
+
+        );
+
+    }
+
+    /*----------------------------------
+      Helper (Split Words)
+    ----------------------------------*/
+
+    function addWords(value) {
+
+        if (
+
+            !value
+
+        ) {
+
+            return;
+
+        }
+
+        String(value)
+
+            .toUpperCase()
+
+            .split(
+
+                /[\s,._()/\\-]+/
+
+            )
+
+            .forEach(
+
+                add
+
+            );
+
+    };
+
+    /*=====================================================
+      Identity
+    =====================================================*/
+
+    add(
+
+        context.identity.cleanName
+
+    );
+
+    add(
+
+        context.identity.name
+
+    );
+
+    add(
+
+        context.identity.rawName
+
+    );
+
+    add(
+
+        context.identity.phone
+
+    );
+
+    add(
+
+        context.identity.email
+
+    );
+
+    add(
+
+        context.identity.role
+
+    );
+
+    add(
+
+        context.identity.designation
+
+    );
+
+    add(
+
+        context.identity.type
+
+    );
+
+    addWords(
+
+        context.identity.cleanName
+
+    );
+
+    addWords(
+
+        context.identity.name
+
+    );
+
+    addWords(
+
+        context.identity.rawName
+
+    );
+
+    /*=====================================================
+      Posting
+    =====================================================*/
+
+    add(
+
+        context.posting.circle
+
+    );
+
+    add(
+
+        context.posting.division
+
+    );
+
+    add(
+
+        context.posting.range
+
+    );
+
+    add(
+
+        context.posting.beat
+
+    );
+
+    addWords(
+
+        context.posting.circle
+
+    );
+
+    addWords(
+
+        context.posting.division
+
+    );
+
+    addWords(
+
+        context.posting.range
+
+    );
+
+    addWords(
+
+        context.posting.beat
+
+    );
+
+    /*=====================================================
+      Assignment
+    =====================================================*/
+
+    add(
+
+        context.assignment.assignedCompartment
+
+    );
+
+    add(
+
+        context.assignment.dutyType
+
+    );
+
+    add(
+
+        context.assignment.status
+
+    );
+
+    add(
+
+        context.assignment.leader
+
+    );
+
+    add(
+
+        context.assignment.team
+
+    );
+
+    addWords(
+
+        context.assignment.assignedCompartment
+
+    );
+
+    addWords(
+
+        context.assignment.leader
+
+    );
+
+    addWords(
+
+        context.assignment.team
+
+    );
+
+    /*=====================================================
+      Location
+    =====================================================*/
+
+    add(
+
+        context.location.location
+
+    );
+
+    addWords(
+
+        context.location.location
+
+    );
+
+    /*=====================================================
+      Team
+    =====================================================*/
+
+    add(
+
+        context.teamInfo.leader
+
+    );
+
+    add(
+
+        context.teamInfo.team
+
+    );
+
+    addWords(
+
+        context.teamInfo.leader
+
+    );
+
+    addWords(
+
+        context.teamInfo.team
+
+    );
+
+    /*=====================================================
+      Tracking
+    =====================================================*/
+
+    add(
+
+        context.tracking.sessionId
+
+    );
+
+    add(
+
+        context.tracking.source
+
+    );
+
+    add(
+
+        context.tracking.id
+
+    );
+
+    /*=====================================================
+      Analytics
+    =====================================================*/
+
+    add(
+
+        context.analytics.monthKey
+
+    );
+
+    /*=====================================================
+      Boolean Flags
+    =====================================================*/
+
+    if (
+
+        context.assignment.dutyActive
+
+    ) {
+
+        add(
+
+            "DUTY_ACTIVE"
+
+        );
+
+    }
+
+    else {
+
+        add(
+
+            "DUTY_INACTIVE"
+
+        );
+
+    }
+
+    /*=====================================================
+      Numeric Tokens
+    =====================================================*/
+
+    if (
+
+        context.location.lat !== null
+
+    ) {
+
+        add(
+
+            context.location.lat
+
+        );
+
+    }
+
+    if (
+
+        context.location.lon !== null
+
+    ) {
+
+        add(
+
+            context.location.lon
+
+        );
+
+    }
+
+    /*=====================================================
+      Search Priority
+    =====================================================*/
+
+    context.search = {
+
+        tokens:
+
+            Array.from(
+
+                tokens
+
+            ),
+
+        priority:
+
+            StaffConstants
+
+                .SEARCH_PRIORITY
+
+    };
+
+    /*----------------------------------
+      Return Context
+    ----------------------------------*/
+
+    return context;
+
+};
+
+ /*=========================================================
+ BUILD ALIASES
+=========================================================*/
+
+StaffEntities.buildAliases = function (
+
+    context
+
+) {
+
+    /*----------------------------------
+      Validate Context
+    ----------------------------------*/
+
+    if (
+
+        !context ||
+
+        typeof context !== "object"
+
+    ) {
+
+        throw new Error(
+
+            "Alias context missing."
+
+        );
+
+    }
+
+    /*----------------------------------
+      Alias Store
+    ----------------------------------*/
+
+    const aliases =
+
+        new Set();
+
+    /*----------------------------------
+      Helper
+    ----------------------------------*/
+
+    function add(value) {
+
+        if (
+
+            value === null ||
+
+            value === undefined
+
+        ) {
+
+            return;
+
+        }
+
+        const text =
+
+            String(value)
+
+                .trim()
+
+                .toUpperCase();
+
+        if (
+
+            !text
+
+        ) {
+
+            return;
+
+        }
+
+        aliases.add(
+
+            text
+
+        );
+
+    }
+
+    /*----------------------------------
+      Helper (Words)
+    ----------------------------------*/
+
+    function addWords(value) {
+
+        if (
+
+            !value
+
+        ) {
+
+            return;
+
+        }
+
+        String(value)
+
+            .toUpperCase()
+
+            .split(
+
+                /[\s,._()/\\-]+/
+
+            )
+
+            .forEach(
+
+                add
+
+            );
+
+    }
+
+    /*=====================================================
+      Identity
+    =====================================================*/
+
+    add(
+
+        context.identity.cleanName
+
+    );
+
+    add(
+
+        context.identity.name
+
+    );
+
+    add(
+
+        context.identity.rawName
+
+    );
+
+    addWords(
+
+        context.identity.cleanName
+
+    );
+
+    addWords(
+
+        context.identity.name
+
+    );
+
+    addWords(
+
+        context.identity.rawName
+
+    );
+
+    /*=====================================================
+      Role
+    =====================================================*/
+
+    add(
+
+        context.identity.role
+
+    );
+
+    addWords(
+
+        context.identity.role
+
+    );
+
+    /*=====================================================
+      Designation
+    =====================================================*/
+
+    add(
+
+        context.identity.designation
+
+    );
+
+    addWords(
+
+        context.identity.designation
+
+    );
+
+    /*----------------------------------
+      Designation Aliases
+    ----------------------------------*/
+
+    if (
+
+        context.aliases &&
+
+        typeof context.aliases === "object"
+
+    ) {
+
+        const list =
+
+            context.aliases[
+                context.identity.designation
+            ];
+
+        if (
+
+            Array.isArray(
+
+                list
+
+            )
+
+        ) {
+
+            list.forEach(
+
+                add
+
+            );
+
+        }
+
+    }
+
+    /*=====================================================
+      Posting
+    =====================================================*/
+
+    [
+
+        context.posting.circle,
+
+        context.posting.division,
+
+        context.posting.range,
+
+        context.posting.beat,
+
+        context.assignment.assignedCompartment
+
+    ]
+
+    .forEach(
+
+        function (
+
+            value
+
+        ) {
+
+            add(
+
+                value
+
+            );
+
+            addWords(
+
+                value
+
+            );
+
+        }
+
+    );
+
+    /*=====================================================
+      Team
+    =====================================================*/
+
+    [
+
+        context.assignment.leader,
+
+        context.assignment.team,
+
+        context.teamInfo.leader,
+
+        context.teamInfo.team
+
+    ]
+
+    .forEach(
+
+        function (
+
+            value
+
+        ) {
+
+            add(
+
+                value
+
+            );
+
+            addWords(
+
+                value
+
+            );
+
+        }
+
+    );
+
+    /*=====================================================
+      Duty
+    =====================================================*/
+
+    add(
+
+        context.assignment.dutyType
+
+    );
+
+    add(
+
+        context.assignment.status
+
+    );
+
+    addWords(
+
+        context.assignment.dutyType
+
+    );
+
+    addWords(
+
+        context.assignment.status
+
+    );
+
+    /*=====================================================
+      Contact
+    =====================================================*/
+
+    add(
+
+        context.identity.phone
+
+    );
+
+    add(
+
+        context.identity.email
+
+    );
+
+    /*=====================================================
+      Tracking
+    =====================================================*/
+
+    add(
+
+        context.tracking.sessionId
+
+    );
+
+    add(
+
+        context.tracking.source
+
+    );
+
+    /*=====================================================
+      Location
+    =====================================================*/
+
+    add(
+
+        context.location.location
+
+    );
+
+    addWords(
+
+        context.location.location
+
+    );
+
+    /*=====================================================
+      Save
+    =====================================================*/
+
+    context.aliasList =
+
+        Array.from(
+
+            aliases
+
+        );
+
+    /*----------------------------------
+      Return
+    ----------------------------------*/
+
+    return context;
+
+};
+
+ /*=========================================================
+ BUILD CANONICAL STAFF OBJECT
+=========================================================*/
+
+StaffEntities.buildCanonicalStaffObject = function (
+
+    context
+
+) {
+
+    /*----------------------------------
+      Validate Context
+    ----------------------------------*/
+
+    if (
+
+        !context ||
+
+        typeof context !== "object"
+
+    ) {
+
+        throw new Error(
+
+            "Canonical context missing."
+
+        );
+
+    }
+
+    /*----------------------------------
+      Build Canonical Object
+    ----------------------------------*/
+
+    context.normalized = Object.freeze({
+
+        /*=================================
+          Firestore
+        =================================*/
+
+        id:
+            context.id,
+
+        documentInfo:
+            context.documentInfo,
+
+        /*=================================
+          Identity
+        =================================*/
+
+        identity:
+            Object.freeze({
+
+                ...context.identity
+
+            }),
+
+        /*=================================
+          Posting
+        =================================*/
+
+        posting:
+            Object.freeze({
+
+                ...context.posting
+
+            }),
+
+        /*=================================
+          Assignment
+        =================================*/
+
+        assignment:
+            Object.freeze({
+
+                ...context.assignment
+
+            }),
+
+        /*=================================
+          Location
+        =================================*/
+
+        location:
+            Object.freeze({
+
+                ...context.location
+
+            }),
+
+        /*=================================
+          GPS
+        =================================*/
+
+        gps:
+            Object.freeze({
+
+                ...context.gps
+
+            }),
+
+        /*=================================
+          Team
+        =================================*/
+
+        team:
+            Object.freeze({
+
+                ...context.teamInfo
+
+            }),
+
+        /*=================================
+          Tracking
+        =================================*/
+
+        tracking:
+            Object.freeze({
+
+                ...context.tracking
+
+            }),
+
+        /*=================================
+          Analytics
+        =================================*/
+
+        analytics:
+            Object.freeze({
+
+                ...context.analytics
+
+            }),
+
+        /*=================================
+          Search
+        =================================*/
+
+        search:
+            Object.freeze({
+
+                ...context.search
+
+            }),
+
+        /*=================================
+          Aliases
+        =================================*/
+
+        aliases:
+
+            Object.freeze(
+
+                [...context.aliasList]
+
+            ),
+
+        /*=================================
+          Validation
+        =================================*/
+
+        metadata:
+            Object.freeze({
+
+                ...context.metadata
+
+            }),
+
+        errors:
+
+            Object.freeze(
+
+                [...context.errors]
+
+            ),
+
+        warnings:
+
+            Object.freeze(
+
+                [...context.warnings]
+
+            ),
+
+        entities:
+
+            Object.freeze(
+
+                [...context.entities]
+
+            )
+
+    });
+
+    /*----------------------------------
+      Return Context
+    ----------------------------------*/
+
+    return context;
+
+};
 /*=========================================================
  NORMALIZE STAFF DOCUMENT
 =========================================================*/
@@ -2560,6 +3984,185 @@ assignment,
     */
 
     return context;
+
+};
+
+ /*=========================================================
+ NORMALIZE STAFF DOCUMENTS
+=========================================================*/
+
+StaffEntities.normalizeStaffDocuments = function (
+
+    staffDocuments
+
+) {
+
+    /*----------------------------------
+      Validate Input
+    ----------------------------------*/
+
+    if (
+
+        !Array.isArray(
+
+            staffDocuments
+
+        )
+
+    ) {
+
+        console.warn(
+
+            "[StaffEntities] Invalid staff document list.",
+
+            staffDocuments
+
+        );
+
+        return [];
+
+    }
+
+    /*----------------------------------
+      Output
+    ----------------------------------*/
+
+    const normalizedDocuments = [];
+
+    /*----------------------------------
+      Statistics
+    ----------------------------------*/
+
+    let totalDocuments = 0;
+
+    let normalizedCount = 0;
+
+    let skippedCount = 0;
+
+    /*----------------------------------
+      Normalize
+    ----------------------------------*/
+
+    staffDocuments.forEach(
+
+        function (
+
+            staffDoc,
+
+            index
+
+        ) {
+
+            totalDocuments++;
+
+            try {
+
+                const normalized =
+
+                    StaffEntities
+                        .normalizeStaffDocument(
+
+                            staffDoc
+
+                        );
+
+                if (
+
+                    !normalized
+
+                ) {
+
+                    skippedCount++;
+
+                    return;
+
+                }
+
+                normalizedDocuments.push(
+
+                    normalized
+
+                );
+
+                normalizedCount++;
+
+            }
+
+            catch (
+
+                error
+
+            ) {
+
+                skippedCount++;
+
+                console.error(
+
+                    "[StaffEntities] Failed to normalize document.",
+
+                    {
+
+                        index,
+
+                        id:
+
+                            staffDoc?.id ||
+
+                            "",
+
+                        error
+
+                    }
+
+                );
+
+            }
+
+        }
+
+    );
+
+    /*----------------------------------
+      Summary
+    ----------------------------------*/
+
+    console.group(
+
+        "🧠 Staff Normalization"
+
+    );
+
+    console.log(
+
+        "Total:",
+
+        totalDocuments
+
+    );
+
+    console.log(
+
+        "Normalized:",
+
+        normalizedCount
+
+    );
+
+    console.log(
+
+        "Skipped:",
+
+        skippedCount
+
+    );
+
+    console.groupEnd();
+
+    /*----------------------------------
+      Return
+    ----------------------------------*/
+
+    return normalizedDocuments;
 
 };
 /*=========================================================
