@@ -558,7 +558,15 @@ StaffIntent.detect = function (
         result
 
     );
+/*----------------------------------
+  Team Intent
+----------------------------------*/
 
+StaffIntent.detectTeamIntent(
+
+    result
+
+);
     StaffIntent.detectGPSIntent(
 
         result
