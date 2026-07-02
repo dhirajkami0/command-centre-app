@@ -112,19 +112,11 @@ STAFF STRENGTH
 
 if (
 
-    /\b(
-        HOW MANY|
-        COUNT|
-        TOTAL|
-        STRENGTH|
-        NUMBER OF|
-        TEAM LEADER|
-        TEAM LEADERS|
-        ACTIVE STAFF|
-        INACTIVE STAFF|
-        STAFF STRENGTH|
-        STAFF COUNT
-    )\b/ix.test(text)
+    /\b(HOW MANY|COUNT|TOTAL|STRENGTH|NUMBER OF|TEAM LEADER|TEAM LEADERS|ACTIVE STAFF|INACTIVE STAFF|STAFF STRENGTH|STAFF COUNT)\b/i.test(
+
+        text
+
+    )
 
 ) {
 
