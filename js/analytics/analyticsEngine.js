@@ -2745,21 +2745,21 @@ AnalyticsEngine.buildIntent = function (
     return staff;
 
 };
-    /*=========================================================
+   /*=========================================================
  ROUTE INTENT
 =========================================================*/
 
 AnalyticsEngine.routeIntent = function (
 
-    request
+    intent
 
 ) {
 
     if (
 
-        !request ||
+        !intent ||
 
-        typeof request !== "object"
+        typeof intent !== "object"
 
     ) {
 
@@ -2771,7 +2771,7 @@ AnalyticsEngine.routeIntent = function (
 
             domain: "system",
 
-            intent: "unknown",
+            intent: "invalid",
 
             confidence: 0,
 
@@ -2781,7 +2781,7 @@ AnalyticsEngine.routeIntent = function (
 
                 success: false,
 
-                message: "Invalid intent request."
+                message: "Invalid intent."
 
             }
 
@@ -2791,85 +2791,217 @@ AnalyticsEngine.routeIntent = function (
 
     switch (
 
-        request.domain
+        intent.domain
 
     ) {
+
+        /*=================================================
+          STAFF
+        =================================================*/
 
         case "staff":
 
             return AnalyticsEngine.routeStaffIntent(
 
-                request
+                intent
 
             );
 
-        /*
-        Future
+        /*=================================================
+          WILDLIFE
+        =================================================*/
 
         case "wildlife":
 
-            return AnalyticsEngine.routeWildlifeIntent(
-                request
-            );
+            if (
+
+                typeof AnalyticsEngine.routeWildlifeIntent ===
+
+                "function"
+
+            ) {
+
+                return AnalyticsEngine.routeWildlifeIntent(
+
+                    intent
+
+                );
+
+            }
+
+            break;
+
+        /*=================================================
+          GIS
+        =================================================*/
 
         case "gis":
 
-            return AnalyticsEngine.routeGISIntent(
-                request
-            );
+            if (
+
+                typeof AnalyticsEngine.routeGISIntent ===
+
+                "function"
+
+            ) {
+
+                return AnalyticsEngine.routeGISIntent(
+
+                    intent
+
+                );
+
+            }
+
+            break;
+
+        /*=================================================
+          PATROL
+        =================================================*/
 
         case "patrol":
 
-            return AnalyticsEngine.routePatrolIntent(
-                request
-            );
+            if (
+
+                typeof AnalyticsEngine.routePatrolIntent ===
+
+                "function"
+
+            ) {
+
+                return AnalyticsEngine.routePatrolIntent(
+
+                    intent
+
+                );
+
+            }
+
+            break;
+
+        /*=================================================
+          LEGAL
+        =================================================*/
 
         case "legal":
 
-            return AnalyticsEngine.routeLegalIntent(
-                request
-            );
-        */
+            if (
 
-        default:
+                typeof AnalyticsEngine.routeLegalIntent ===
+
+                "function"
+
+            ) {
+
+                return AnalyticsEngine.routeLegalIntent(
+
+                    intent
+
+                );
+
+            }
+
+            break;
+
+        /*=================================================
+          ANALYTICS
+        =================================================*/
+
+        case "analytics":
+
+            if (
+
+                typeof AnalyticsEngine.routeAnalyticsIntent ===
+
+                "function"
+
+            ) {
+
+                return AnalyticsEngine.routeAnalyticsIntent(
+
+                    intent
+
+                );
+
+            }
+
+            break;
+
+        /*=================================================
+          REPORT
+        =================================================*/
+
+        case "report":
+
+            if (
+
+                typeof AnalyticsEngine.routeReportIntent ===
+
+                "function"
+
+            ) {
+
+                return AnalyticsEngine.routeReportIntent(
+
+                    intent
+
+                );
+
+            }
+
+            break;
+
+        /*=================================================
+          GENERAL
+        =================================================*/
+
+        case "general":
 
             return {
 
-                success: false,
+                success: true,
 
-                source: "router",
+                source:
 
-                domain:
+                    intent.source ||
 
-                    request.domain ||
+                    "router",
 
-                    "unknown",
+                provider:
+
+                    intent.provider ||
+
+                    "local",
+
+                domain: "general",
 
                 intent:
 
-                    request.intent ||
+                    intent.intent ||
 
-                    "unknown",
+                    "general",
 
                 confidence:
 
-                    request.confidence ||
+                    intent.confidence ||
 
-                    0,
+                    1,
 
                 entities:
 
-                    request.entities ||
+                    intent.entities ||
 
                     {},
 
                 data: {
 
-                    success: false,
+                    success: true,
 
-                    message:
+                    answer:
 
-                        "Unknown domain."
+                        intent.answer ||
+
+                        "I understand your question."
 
                 }
 
@@ -2877,8 +3009,67 @@ AnalyticsEngine.routeIntent = function (
 
     }
 
-};
+    /*=====================================================
+      UNKNOWN DOMAIN
+    =====================================================*/
 
+    return {
+
+        success: false,
+
+        source: "router",
+
+        provider:
+
+            intent.provider ||
+
+            "local",
+
+        domain:
+
+            intent.domain ||
+
+            "unknown",
+
+        intent:
+
+            intent.intent ||
+
+            "unknown",
+
+        confidence:
+
+            intent.confidence ||
+
+            0,
+
+        entities:
+
+            intent.entities ||
+
+            {},
+
+        data: {
+
+            success: false,
+
+            message:
+
+                "Unknown domain: " +
+
+                (
+
+                    intent.domain ||
+
+                    "unknown"
+
+                )
+
+        }
+
+    };
+
+};
 /*=========================================================
  REFRESH
 =========================================================*/
