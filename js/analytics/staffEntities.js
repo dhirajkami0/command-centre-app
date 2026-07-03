@@ -3916,18 +3916,117 @@ assignment,
     synonyms: SYNONYMS
 
 };
+/*
+=====================================================
 
-    /*
-    =====================================================
+NEXT STEP
 
-    NEXT STEP
+Field Extraction
 
-    Field Extraction
+=====================================================
+*/
 
-    =====================================================
-    */
+/*----------------------------------
+  Extract Identity
+----------------------------------*/
 
-    return context;
+StaffEntities.extractIdentityFields(
+    context
+);
+
+/*----------------------------------
+  Extract Posting
+----------------------------------*/
+
+StaffEntities.extractPostingFields(
+    context
+);
+
+/*----------------------------------
+  Extract Assignment
+----------------------------------*/
+
+StaffEntities.extractAssignmentFields(
+    context
+);
+
+/*----------------------------------
+  Extract Location
+----------------------------------*/
+
+StaffEntities.extractLocationFields(
+    context
+);
+
+/*----------------------------------
+  Extract GPS
+----------------------------------*/
+
+StaffEntities.extractGPSFields(
+    context
+);
+
+/*----------------------------------
+  Extract Team
+----------------------------------*/
+
+StaffEntities.extractTeamFields(
+    context
+);
+
+/*----------------------------------
+  Extract Tracking
+----------------------------------*/
+
+StaffEntities.extractTrackingFields(
+    context
+);
+
+/*----------------------------------
+  Extract Analytics
+----------------------------------*/
+
+StaffEntities.extractAnalyticsFields(
+    context
+);
+
+/*----------------------------------
+  Validate
+----------------------------------*/
+
+StaffEntities.validateNormalizedData(
+    context
+);
+
+/*----------------------------------
+  Build Search Tokens
+----------------------------------*/
+
+StaffEntities.buildSearchTokens(
+    context
+);
+
+/*----------------------------------
+  Build Aliases
+----------------------------------*/
+
+StaffEntities.buildAliases(
+    context
+);
+
+/*----------------------------------
+  Build Canonical Staff
+----------------------------------*/
+
+StaffEntities.buildCanonicalStaffObject(
+    context
+);
+
+/*----------------------------------
+  Return Canonical Staff
+----------------------------------*/
+
+return context.normalized;
 
 };
 
