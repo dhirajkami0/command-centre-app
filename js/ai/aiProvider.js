@@ -190,89 +190,55 @@ AI.ask = async function (
 
     }
 
-    try {
+    /*----------------------------------
+      Core
+    ----------------------------------*/
 
-        const response =
+    const Core =
 
-            await fetch(
+        GG.Core;
 
-                GG.Config
-                    .API
-                    .ASK,
+    if (
 
-                {
+        !Core ||
 
-                    method: "POST",
+        typeof Core.buildRequest !== "function" ||
 
-                    headers: {
+        typeof Core.callAI !== "function"
 
-                        "Content-Type":
-                            "application/json"
+    ) {
 
-                    },
+        throw new Error(
 
-                    body: JSON.stringify({
+            "AI Core unavailable."
 
-                        question:
-
-                            question.trim()
-
-                    })
-
-                }
-
-            );
-
-        const data =
-
-            await response.json();
-
-        if (
-
-            !response.ok ||
-
-            data.success === false
-
-        ) {
-
-            throw new Error(
-
-                data.error ||
-
-                "AI request failed."
-
-            );
-
-        }
-
-        return data;
+        );
 
     }
 
-    catch (err) {
+    /*----------------------------------
+      Build Request
+    ----------------------------------*/
 
-        if (
+    const request =
 
-            GG.Config?.DEBUG?.ENABLED
+        await Core.buildRequest(
 
-        ) {
+            question.trim()
 
-            console.error(
+        );
 
-                "[AI.ask]",
+    /*----------------------------------
+      Execute Through Core
+    ----------------------------------*/
 
-                err
+    return await Core.callAI(
 
-            );
+        request
 
-        }
+    );
 
-        throw err;
-
-    }
-
-};
-/*=========================================================
+};/*=========================================================
  SEARCH
 =========================================================*/
 
