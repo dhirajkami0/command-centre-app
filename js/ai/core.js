@@ -651,7 +651,7 @@ CLOUD AI
 ------------------------------------------*/
 
 let result =
-    window.callAI({
+    await window.callAI({
 
     query: request.query,
 
