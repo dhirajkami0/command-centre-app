@@ -651,17 +651,19 @@ CLOUD AI
 ------------------------------------------*/
 
 let result =
-    await window.callAI({
+    window.callAI({
 
-        query:
-            request.query,
+    query: request.query,
 
-        intent:
-            request.intent,
+    intent:
 
-        toolResults: {}
+        request.detectedIntent ||
 
-    });
+        request.intent,
+
+    toolResults: {}
+
+});
 if (
 
     result.tool_calls &&
