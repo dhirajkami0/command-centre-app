@@ -575,107 +575,76 @@ Core.callAI = async function (request) {
 /*------------------------------------------
 LOCAL AI CONTROLLER
 ------------------------------------------*/
+/*------------------------------------------
+LOCAL CONTROLLER
+------------------------------------------*/
 
-try {
+const Controller =
 
-    const controller =
-        window.GreenGuardAI.Controller;
+    window.GreenGuardAI.Controller;
 
-    if (controller) {
+if (
 
-        const localResult =
-            await controller.ask(
-                request.query
-            );
+    !Controller ||
 
-        if (
+    typeof Controller.ask !==
 
-            localResult &&
-            localResult.success
+    "function"
 
-        ) {
+) {
 
-            const formatted =
+    throw new Error(
 
-                window.GreenGuardAI.Formatter
-
-                    ? window.GreenGuardAI.Formatter.format(
-
-                        localResult
-
-                    )
-
-                    : localResult;
-
-            const response = {
-
-                success: true,
-
-                timestamp:
-                    Date.now(),
-
-                requestId:
-                    request.id,
-
-                intent:
-
-                    localResult.intent ||
-
-                    request.intent,
-
-                answer:
-
-                    formatted,
-
-                raw:
-
-                    localResult,
-
-                cached: false,
-
-                local: true
-
-            };
-
-            await Core.setCachedResponse(
-
-                request,
-
-                response
-
-            );
-
-            busy = false;
-
-            responseCount++;
-
-            lastResponse =
-                Config.clone(
-                    response
-                );
-
-            return response;
-
-        }
-
-    }
-
-}
-
-catch (err) {
-
-    console.error(
-
-        "Controller",
-
-        err
+        "Controller unavailable."
 
     );
 
 }
+
+const localResponse =
+
+    await Controller.ask(
+
+        request
+
+    );
+
 /*------------------------------------------
-CLOUD AI
+LOCAL SUCCESS
 ------------------------------------------*/
+
+if (
+
+    localResponse &&
+
+    localResponse.success &&
+
+    localResponse.local !== false
+
+){
+
+   await Core.setCachedResponse(
+
+    request,
+
+    localResponse
+
+);
+    busy = false;
+
+    responseCount++;
+
+   lastResponse =
+
+    Config.clone(
+
+        localResponse
+
+    );
+  return localResponse;
+
+}
+
 
 /*------------------------------------------
 CLOUD AI
@@ -826,8 +795,7 @@ responseCount++;
 lastResponse =
     Config.clone(response);
 
-return response;
-
+return response; 
     }
 
     catch (err) {
