@@ -567,11 +567,14 @@ StaffIntent.detectTeamIntent(
     result
 
 );
-    StaffIntent.detectGPSIntent(
+    /*----------------------------------
+  GPS Intent
+  (Temporarily Disabled)
+----------------------------------*/
 
-        result
-
-    );
+// StaffIntent.detectGPSIntent(
+//     result
+// );
 /*----------------------------------
   Analytics Intent
 ----------------------------------*/
