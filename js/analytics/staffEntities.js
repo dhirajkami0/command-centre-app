@@ -1294,6 +1294,68 @@ StaffEntities.extractFields = function (
 
             }
 
+            /*----------------------------------
+              DEBUG
+            ----------------------------------*/
+
+            console.group(
+
+                "🧠 Staff Field Extraction"
+
+            );
+
+            console.log(
+
+                "SOURCE :",
+
+                field.source
+
+            );
+
+            console.log(
+
+                "TARGET :",
+
+                field.target
+
+            );
+
+            console.log(
+
+                "TYPE :",
+
+                field.type
+
+            );
+
+            console.log(
+
+                "VALUE :",
+
+                value
+
+            );
+
+            console.log(
+
+                "BEFORE :",
+
+                JSON.parse(
+
+                    JSON.stringify(
+
+                        target
+
+                    )
+
+                )
+
+            );
+
+            /*----------------------------------
+              Copy Value
+            ----------------------------------*/
+
             StaffEntities.setField(
 
                 target,
@@ -1304,12 +1366,33 @@ StaffEntities.extractFields = function (
 
             );
 
+            /*----------------------------------
+              DEBUG
+            ----------------------------------*/
+
+            console.log(
+
+                "AFTER :",
+
+                JSON.parse(
+
+                    JSON.stringify(
+
+                        target
+
+                    )
+
+                )
+
+            );
+
+            console.groupEnd();
+
         }
 
     );
 
-};
-/*=========================================================
+};/*=========================================================
  EXTRACT IDENTITY FIELDS
 =========================================================*/
 
