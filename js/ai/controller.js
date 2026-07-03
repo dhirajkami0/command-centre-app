@@ -111,48 +111,6 @@ Controller.ensureAnalyticsReady = async function () {
 
 };
 /*=========================================================
- NORMALIZE QUERY
-=========================================================*/
-
-Controller.normalizeQuery = function (query) {
-
-    return GG
-        .AnalyticsEngine
-        .normalizeQuery(query);
-
-};
-
-
-/*=========================================================
- BUILD INTENT
-=========================================================*/
-
-Controller.buildIntent = function (query) {
-
-    const intent =
-
-        GG
-            .AnalyticsEngine
-            .buildIntent(
-
-                query
-
-            );
-
-    intent.domain =
-
-        intent.domain ||
-
-        GG
-            .Config
-            .ROUTER
-            .DEFAULT_DOMAIN;
-
-    return intent;
-
-};
-
-/*=========================================================
  GET CACHED INTENT
 =========================================================*/
 
@@ -219,26 +177,6 @@ Controller.setCachedIntent = async function (
         intent
 
     );
-
-};
-
-/*=========================================================
- ROUTE INTENT
-=========================================================*/
-
-Controller.routeIntent = function (
-
-    intent
-
-) {
-
-    return GG
-        .AnalyticsEngine
-        .routeIntent(
-
-            intent
-
-        );
 
 };
 
