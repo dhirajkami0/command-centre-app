@@ -208,16 +208,51 @@ StaffRouter.clearCache = function () {
 
 StaffRouter.initialize = function () {
 
-    StaffRouter.loaded =
-        true;
+    if (
 
-    StaffRouter.loading =
-        false;
+        StaffRouter.loaded
+
+    ) {
+
+        return true;
+
+    }
+
+    if (
+
+        StaffRouter.loading
+
+    ) {
+
+        return false;
+
+    }
+
+    StaffRouter.loading = true;
+
+    /*----------------------------------
+      Register Routes
+    ----------------------------------*/
+
+    StaffRouter.registerRoutes();
+
+    /*----------------------------------
+      Ready
+    ----------------------------------*/
+
+    StaffRouter.loaded = true;
+
+    StaffRouter.loading = false;
+
+    console.log(
+
+        "✅ StaffRouter Ready"
+
+    );
 
     return true;
 
-};
-    /*=========================================================
+};    /*=========================================================
  CREATE RESPONSE
 =========================================================*/
 
@@ -634,66 +669,15 @@ StaffRouter.registerRoutes = function () {
     /*=========================================================
  INITIALIZE ROUTER
 =========================================================*/
-
-StaffRouter.initializeRouter = function () {
-
-    if (
-
-        StaffRouter.loaded
-
-    ) {
-
-        return true;
-
-    }
-
-    if (
-
-        StaffRouter.loading
-
-    ) {
-
-        return false;
-
-    }
-
-    StaffRouter.loading =
-
-        true;
-
-    /*----------------------------------
-      Register All Routes
-    ----------------------------------*/
-
-    StaffRouter.registerRoutes();
-
-    /*----------------------------------
-      Ready
-    ----------------------------------*/
-
-    StaffRouter.loaded =
-
-        true;
-
-    StaffRouter.loading =
-
-        false;
-
-    console.log(
-
-        "✅ StaffRouter Ready"
-
-    );
-
-    return true;
-
-};
-
 /*=========================================================
  AUTO INITIALIZE
 =========================================================*/
 
-StaffRouter.initializeRouter();
+StaffRouter.initialize();
+
+/*=========================================================
+ AUTO INITIALIZE
+=========================================================*/
 
 /*=========================================================
  EXPORT
