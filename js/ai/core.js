@@ -562,7 +562,9 @@ Core.callAI = async function (request) {
     try {
 
         const cached =
-            await Core.getCachedResponse(request);
+            await Core.getCachedResponse(
+                request
+            );
 
         if (cached) {
 
@@ -572,232 +574,283 @@ Core.callAI = async function (request) {
 
         }
 
-/*------------------------------------------
-LOCAL AI CONTROLLER
-------------------------------------------*/
-/*------------------------------------------
-LOCAL CONTROLLER
-------------------------------------------*/
+        /*------------------------------------------
+          LOCAL AI CONTROLLER
+        ------------------------------------------*/
 
-const Controller =
+        const Controller =
 
-    window.GreenGuardAI.Controller;
+            window.GreenGuardAI.Controller;
 
-if (
+        if (
 
-    !Controller ||
+            !Controller ||
 
-    typeof Controller.ask !==
+            typeof Controller.ask !==
+            "function"
 
-    "function"
+        ) {
 
-) {
+            throw new Error(
 
-    throw new Error(
-
-        "Controller unavailable."
-
-    );
-
-}
-
-const localResponse =
-
-    await Controller.ask(
-
-        request
-
-    );
-
-/*------------------------------------------
-LOCAL SUCCESS
-------------------------------------------*/
-
-if (
-
-    localResponse &&
-
-    localResponse.success &&
-
-    localResponse.local !== false
-
-){
-
-   await Core.setCachedResponse(
-
-    request,
-
-    localResponse
-
-);
-    busy = false;
-
-    responseCount++;
-
-   lastResponse =
-
-    Config.clone(
-
-        localResponse
-
-    );
-  return localResponse;
-
-}
-
-
-/*------------------------------------------
-CLOUD AI
-------------------------------------------*/
-
-let result =
-    await window.callAI({
-
-    query: request.query,
-
-    intent:
-
-        request.detectedIntent ||
-
-        request.intent,
-
-    toolResults: {}
-
-});
-if (
-
-    result.tool_calls &&
-
-    result.tool_calls.length
-
-) {
-
-    const toolResults = {};
-
-    for (
-
-        const tool
-
-        of
-
-        result.tool_calls
-
-    ) {
-
-        try {
-
-            toolResults[
-                tool.name
-            ] =
-
-            await GreenGuardAI.Tools.execute(
-
-                tool.name,
-
-                tool.arguments || {}
+                "Controller unavailable."
 
             );
 
         }
 
-        catch (e) {
+        const localResponse =
 
-            toolResults[
-                tool.name
-            ] = {
+            await Controller.ask(
 
-                error:
-                    e.message
+                request
 
-            };
+            );
+
+        /*------------------------------------------
+          LOCAL SUCCESS
+        ------------------------------------------*/
+
+        if (
+
+            localResponse &&
+
+            localResponse.success &&
+
+            localResponse.local !== false
+
+        ) {
+
+            /*----------------------------------
+              Normalize Local Response
+            ----------------------------------*/
+
+            localResponse.answer =
+
+                localResponse.formatted?.markdown ||
+
+                localResponse.formatted?.html ||
+
+                localResponse.message ||
+
+                "";
+
+            localResponse.cached =
+
+                false;
+
+            localResponse.timestamp =
+
+                Date.now();
+
+            localResponse.requestId =
+
+                request.id;
+
+            localResponse.raw =
+
+                localResponse.raw ||
+
+                localResponse;
+
+            /*----------------------------------
+              Cache
+            ----------------------------------*/
+
+            await Core.setCachedResponse(
+
+                request,
+
+                localResponse
+
+            );
+
+            busy = false;
+
+            responseCount++;
+
+            lastResponse =
+
+                Config.clone(
+
+                    localResponse
+
+                );
+
+            return localResponse;
 
         }
 
-    }
+        /*------------------------------------------
+          CLOUD AI
+        ------------------------------------------*/
 
-result =
-    await window.callAI({
+        let result =
 
-        query:
-            request.query,
+            await window.callAI({
 
-        intent:
-            request.intent,
+                query:
 
-        toolResults
+                    request.query,
 
-    });
+                intent:
 
-}
+                    request.detectedIntent ||
 
-const response = {
+                    request.intent,
 
-    success: true,
+                toolResults: {}
 
-    timestamp:
-        Date.now(),
+            });
 
-    requestId:
-        request.id,
+        if (
 
-    intent:
-        request.intent,
+            result.tool_calls &&
 
-    answer:
+            result.tool_calls.length
 
-        result.reply ||
+        ) {
 
-        result.answer ||
+            const toolResults = {};
 
-        result.content ||
+            for (
 
-        result.message ||
+                const tool of
 
-        (
+                result.tool_calls
 
-            typeof result === "string"
+            ) {
 
-                ? result
+                try {
 
-                : JSON.stringify(
+                    toolResults[
+                        tool.name
+                    ] =
 
-                    result,
+                    await GreenGuardAI.Tools.execute(
 
-                    null,
+                        tool.name,
 
-                    2
+                        tool.arguments || {}
 
-                )
+                    );
 
-        ),
+                }
 
-    raw:
-        result,
+                catch (e) {
 
-    cached:
-        false,
+                    toolResults[
+                        tool.name
+                    ] = {
 
-    local:
-        false
+                        error:
 
-};
+                            e.message
 
-await Core.setCachedResponse(
+                    };
 
-    request,
+                }
 
-    response
+            }
 
-);
+            result =
 
-busy = false;
+                await window.callAI({
 
-responseCount++;
+                    query:
 
-lastResponse =
-    Config.clone(response);
+                        request.query,
 
-return response; 
+                    intent:
+
+                        request.intent,
+
+                    toolResults
+
+                });
+
+        }
+
+        const response = {
+
+            success: true,
+
+            timestamp:
+
+                Date.now(),
+
+            requestId:
+
+                request.id,
+
+            intent:
+
+                request.intent,
+
+            answer:
+
+                result.reply ||
+
+                result.answer ||
+
+                result.content ||
+
+                result.message ||
+
+                (
+
+                    typeof result === "string"
+
+                        ? result
+
+                        : JSON.stringify(
+
+                            result,
+
+                            null,
+
+                            2
+
+                        )
+
+                ),
+
+            raw:
+
+                result,
+
+            cached:
+
+                false,
+
+            local:
+
+                false
+
+        };
+
+        await Core.setCachedResponse(
+
+            request,
+
+            response
+
+        );
+
+        busy = false;
+
+        responseCount++;
+
+        lastResponse =
+
+            Config.clone(
+
+                response
+
+            );
+
+        return response;
+
     }
 
     catch (err) {
@@ -826,8 +879,7 @@ return response;
 
     }
 
-};
-     /*----------------------------------------------------------
+};     /*----------------------------------------------------------
       PUBLIC API
     ----------------------------------------------------------*/
 
