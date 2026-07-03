@@ -2106,49 +2106,6 @@ Router.route = async function (query) {
 LOCAL ANALYTICS ENGINE
 --------------------------------------*/
 
-if (window.GreenGuardAI.Controller) {
-
-    try {
-
-        const local =
-
-            await window.GreenGuardAI.Controller.ask(query);
-
-        if (
-
-            local &&
-            local.success
-
-        ) {
-
-            result.local = true;
-
-            result.localResult = local;
-
-            result.intent =
-
-                local.intent ||
-
-                result.intent;
-
-        }
-
-    }
-
-    catch (err) {
-
-        console.error(
-
-            "Controller",
-
-            err
-
-        );
-
-    }
-
-}
-
     return result;
 
 };
