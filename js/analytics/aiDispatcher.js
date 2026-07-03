@@ -203,7 +203,7 @@ AIDispatcher.initialize = function () {
  MASTER DISPATCH
 =========================================================*/
 
-AIDispatcher.dispatch = function (
+AIDispatcher.dispatch = async function (
 
     intent
 
