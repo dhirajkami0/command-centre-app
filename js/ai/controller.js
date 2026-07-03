@@ -1,454 +1,331 @@
 (function (window) {
 "use strict";
 
-const GG = window.GreenGuardAI =
+/*=========================================================
+ NAMESPACE
+=========================================================*/
+
+const GG =
+    window.GreenGuardAI =
     window.GreenGuardAI || {};
 
+/*=========================================================
+ PREVENT DOUBLE LOADING
+=========================================================*/
+
+if (
+    GG.Controller
+) {
+    console.warn(
+        "[GreenGuardAI] Controller already loaded."
+    );
+    return;
+}
+
+/*=========================================================
+ MODULE
+=========================================================*/
+
 const Controller = {};
+
+/*=========================================================
+ VERSION
+=========================================================*/
+
+Controller.VERSION =
+    "2.0.0";
+
+/*=========================================================
+ STATUS
+=========================================================*/
+
+Controller.initialized =
+    false;
+
+/*=========================================================
+ INITIALIZE
+=========================================================*/
+
+Controller.init = function () {
+    if (
+        Controller.initialized
+    ) {
+        return true;
+    }
+    Controller.initialized =
+        true;
+    console.log(
+        "%cGreenGuard Controller Ready",
+        "color:#008000;font-weight:bold;"
+    );
+    return true;
+};
 
 /*=========================================================
  WAIT FOR FIREBASE
 =========================================================*/
 
 Controller.waitForFirebase = async function () {
-
-    const timeout = 15000;
-
-    const started = Date.now();
-
+    Controller.init();
+    const timeout =
+        15000;
+    const started =
+        Date.now();
     while (true) {
-
         if (
-
             window.fb &&
             window.db &&
-            typeof window.fb.getDocs === "function"
-
+            typeof window.fb.getDocs ===
+            "function"
         ) {
-
             return true;
-
         }
-
         if (
-
-            Date.now() - started >
-
+            Date.now() -
+            started >
             timeout
-
         ) {
-
             throw new Error(
-
                 "Firebase initialization timeout."
-
             );
-
         }
-
         await new Promise(
-
-            resolve => setTimeout(resolve, 100)
-
+            resolve =>
+                setTimeout(
+                    resolve,
+                    100
+                )
         );
-
     }
-
 };
 
 /*=========================================================
  ENSURE ANALYTICS READY
 =========================================================*/
 
-Controller.ensureAnalyticsReady = async function () {
-
-    const AE =
+Controller.ensureAnalyticsReady =
+async function () {
+    Controller.init();
+    const Analytics =
         GG.AnalyticsEngine;
-
-    if (!AE) {
-
+    if (
+        !Analytics
+    ) {
         throw new Error(
-
             "AnalyticsEngine not loaded."
-
         );
-
     }
-
-    if (AE.loaded) {
-
+    /*----------------------------------
+      Already Ready
+    ----------------------------------*/
+    if (
+        Analytics.loaded
+    ) {
         return true;
-
     }
-
-    if (AE.loading) {
-
-        while (AE.loading) {
-
+    /*----------------------------------
+      Already Loading
+    ----------------------------------*/
+    if (
+        Analytics.loading
+    ) {
+        while (
+            Analytics.loading
+        ) {
             await new Promise(
-
-                resolve => setTimeout(resolve, 100)
-
+                resolve =>
+                    setTimeout(
+                        resolve,
+                        100
+                    )
             );
-
         }
-
-        return AE.loaded;
-
+        return Analytics.loaded;
     }
-
-    /*------------------------------------------
-      Wait until Firebase is ready
-    ------------------------------------------*/
-
+    /*----------------------------------
+      Wait Firebase
+    ----------------------------------*/
     await Controller.waitForFirebase();
-
-    if (GG.Config.ANALYTICS.AUTO_LOAD) {
-        await AE.load();
-    }
-
-    return AE.loaded;
-
-};
-/*=========================================================
- GET CACHED INTENT
-=========================================================*/
-
-Controller.getCachedIntent = async function (
-
-    query
-
-) {
-
-    const Cache =
-        GG.Cache;
-
+    /*----------------------------------
+      Auto Load
+    ----------------------------------*/
     if (
-
-        !Cache ||
-
-        typeof Cache.getIntent !== "function"
-
+        GG.Config
+            .ANALYTICS
+            .AUTO_LOAD
     ) {
-
-        return null;
-
+        await Analytics.load();
     }
-
-    return await Cache.getIntent(
-
-        query
-
-    );
-
-};
-
-/*=========================================================
- SET CACHED INTENT
-=========================================================*/
-
-Controller.setCachedIntent = async function (
-
-    query,
-
-    intent
-
-) {
-
-    const Cache =
-        GG.Cache;
-
-    if (
-
-        !Cache ||
-
-        typeof Cache.setIntent !== "function"
-
-    ) {
-
-        return;
-
-    }
-
-    await Cache.setIntent(
-
-        query,
-
-        intent
-
-    );
-
+    return Analytics.loaded;
 };
 
 /*=========================================================
  ASK
 =========================================================*/
 
-Controller.ask = async function (query) {
-
-    const AI =
-        GG.AI;
-
-    await Controller.ensureAnalyticsReady();
-
-    const Config =
-        GG.Config;
-
-    /*------------------------------------------
-      Normalize Query
-    ------------------------------------------*/
-
-    query =
-        Controller.normalizeQuery(query);
-
+Controller.ask = async function (
+    request
+) {
+    Controller.init();
     console.group(
-        "🧠 GreenGuard AI"
+        "🧠 GreenGuard Controller"
     );
-
     try {
-
-        console.log(
-            "Query:",
-            query
-        );
-
-        /*------------------------------------------
-          Intent Cache
-        ------------------------------------------*/
-
-        let intent =
-
-            await Controller.getCachedIntent(
-
-                query
-
+        /*----------------------------------
+          Validate Request
+        ----------------------------------*/
+        if (
+            !request ||
+            typeof request !==
+            "object"
+        ) {
+            throw new Error(
+                "Invalid request."
             );
-
-        if (intent) {
-
-            console.log(
-                "🟢 Intent Cache Hit"
-            );
-
-            console.log(intent);
-
-            return Controller.routeIntent(
-
-                intent
-
-            );
-
         }
-
-        /*------------------------------------------
-          Local Intent
-        ------------------------------------------*/
-
-        intent =
-
-            Controller.buildIntent(
-
-                query
-
+        if (
+            !request.query
+        ) {
+            throw new Error(
+                "Request query missing."
             );
-
-        console.log(
-
-            "Local Intent:",
-
-            intent
-
-        );
-
-        /*------------------------------------------
-          High Confidence
-        ------------------------------------------*/
-
+        }
+        /*----------------------------------
+          Ensure Analytics
+        ----------------------------------*/
+        await Controller.ensureAnalyticsReady();
+        /*----------------------------------
+          Detect Intent
+        ----------------------------------*/
+        const IntentManager =
+            GG.IntentManager;
+        if (
+            !IntentManager ||
+            typeof IntentManager.detect !==
+            "function"
+        ) {
+            throw new Error(
+                "IntentManager unavailable."
+            );
+        }
+        const intent =
+            await IntentManager.detect(
+                request.query
+            );
         if (
 
-            intent.confidence >=
-
-            Config
-                .INTENT
-                .HIGH_CONFIDENCE
-
-        ) {
-
-            console.log(
-
-                "🟢 Local Intent Accepted"
-
-            );
-
-            await Controller.setCachedIntent(
-
-                query,
-
-                intent
-
-            );
-
-            return Controller.routeIntent(
-
-                intent
-
-            );
-
-        }
-
-        /*------------------------------------------
-          AI Intent
-        ------------------------------------------*/
-
-        console.log(
-
-            "🟡 AI Intent Detection"
-
-        );
-
-        if (
-
-            !AI ||
-
-            typeof AI.detectIntent !== "function"
-
-        ) {
-
-            console.warn(
-
-                "AI Provider unavailable."
-
-            );
-
-            intent =
-
-                Controller.buildIntent(
-
-                    query
-
-                );
-
-        }
-        else {
-
-intent = await AI.detectIntent(query);
-
-if (
-
-    !intent ||
-
-    intent.success === false ||
-
-    intent.confidence <
-
-    Config.INTENT.MIN_AI_CONFIDENCE
+    GG.Config?.DEBUG?.ENABLED
 
 ) {
 
-    console.warn(
+    console.log(
 
-        "Low AI confidence. Falling back to local intent."
+        "Unified Intent:",
+
+        intent
 
     );
 
-    intent =
-
-        Controller.buildIntent(
-
-            query
-
-        );
-
 }
-
-        }
-
-        /*------------------------------------------
-          Normalize AI Response
-        ------------------------------------------*/
-
-        intent.source =
-            intent.source || "ai";
-
-        intent.domain =
-            intent.domain ||
-            Config.ROUTER.DEFAULT_DOMAIN;
-
-        console.log(
-
-            "AI Intent:",
-
-            intent
-
-        );
-
-        /*------------------------------------------
-          Cache Intent
-        ------------------------------------------*/
-
+        /*----------------------------------
+          Save Intent
+        ----------------------------------*/
+        request.detectedIntent =
+            intent;
+        /*----------------------------------
+          Dispatcher
+        ----------------------------------*/
+        const Dispatcher =
+            GG.AIDispatcher;
         if (
-
-            intent.success !== false
-
+            !Dispatcher ||
+            typeof Dispatcher.dispatch !==
+            "function"
         ) {
-
-            await Controller.setCachedIntent(
-
-                query,
-
-                intent
-
+            throw new Error(
+                "Dispatcher unavailable."
             );
-
+        }
+        const response =
+            await Dispatcher.dispatch(
+                intent
+            );
+        
+        if (GG.Config?.DEBUG?.ENABLED) {
+            console.log("Dispatcher Response:", response);
         }
 
-        return Controller.routeIntent(
+        /*----------------------------------
+          Local Success
+        ----------------------------------*/
+        if (
+            response &&
+            response.success
+        ) {
+            response.local =
+                true;
+            response.intent =
+                intent.intent;
+            response.detectedIntent =
+                intent;
+            return response;
+        }
+        /*----------------------------------
+          Cloud Required
+        ----------------------------------*/
+       return {
 
-            intent
+    success: false,
 
-        );
+    local: false,
 
-    }
-    catch (err) {
+    reason: "cloud",
 
-        console.error(
+    intent:
 
-            err
+        intent?.intent ||
 
-        );
+        "unknown",
 
-        return {
+    detectedIntent:
 
-            success: false,
+        intent ||
 
-            source: "controller",
+        null,
 
-            domain: "system",
+    message:
 
-            intent: "error",
-
-            confidence: 0,
-
-            entities: {},
-
-            data: {
-
-                success: false,
-
-                message: err.message
-
-            }
-
-        };
-
-    }
-    finally {
-
-        console.groupEnd();
-
-    }
+        "Requires cloud reasoning."
 
 };
+    }
+    catch (err) {
+        console.error(
+            err
+        );
+        return {
+            success: false,
+            local: false,
+            source:
+                "controller",
+            message:
+                err.message,
+            error:
+                err
+        };
+    }
+    finally {
+        console.groupEnd();
+    }
+};
+
+/* Note: In Core.callAI(), update the invocation as follows:
+window.callAI({
+    query: request.query,
+    intent: request.detectedIntent || request.intent,
+    toolResults: {}
+});
+*/
 
 /*=========================================================
  REGISTER
@@ -458,11 +335,7 @@ GG.Controller =
     Controller;
 
 console.log(
-
     "%cGreenGuard AI Controller Loaded",
-
     "color:#008000;font-weight:bold;"
-
 );
-
 })(window);
