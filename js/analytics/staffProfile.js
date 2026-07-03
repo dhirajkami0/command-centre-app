@@ -335,7 +335,59 @@ StaffProfile.findStaff = function (
         return request.parameters.staff;
 
     }
+/*----------------------------------
+  Staff Name
+----------------------------------*/
 
+if (
+
+    request.entities &&
+
+    request.entities.name
+
+) {
+
+    const cleanName =
+
+        String(
+
+            request.entities.name
+
+        )
+
+        .trim()
+
+        .toUpperCase();
+
+    const byName =
+
+        GreenGuardAI
+            .StaffEntities
+            .index
+            .byCleanName
+            .get(
+
+                cleanName
+
+            );
+
+    if (
+
+        Array.isArray(
+
+            byName
+
+        ) &&
+
+        byName.length > 0
+
+    ) {
+
+        return byName[0];
+
+    }
+
+}
     /*----------------------------------
       Staff Entity
     ----------------------------------*/
