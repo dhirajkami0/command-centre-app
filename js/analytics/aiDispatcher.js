@@ -205,13 +205,37 @@ AIDispatcher.initialize = function () {
 
 AIDispatcher.dispatch = function (
 
-    query
+    intent
 
 ) {
 
     const started =
 
         Date.now();
+
+    /*----------------------------------
+      Validate Intent
+    ----------------------------------*/
+
+    if (
+
+        !intent ||
+
+        typeof intent !== "object"
+
+    ) {
+
+        return {
+
+            success: false,
+
+            message:
+
+                "Invalid intent."
+
+        };
+
+    }
 
     /*----------------------------------
       Create Response
@@ -221,30 +245,21 @@ AIDispatcher.dispatch = function (
 
         AIDispatcher.createResponse(
 
-            query
+            intent.query || ""
 
         );
+
+    /*----------------------------------
+      Save State
+    ----------------------------------*/
 
     AIDispatcher.lastQuery =
 
-        query;
-
-    /*----------------------------------
-      Detect Staff Intent
-    ----------------------------------*/
-
-    const intent =
-
-        StaffIntent.detect(
-
-            query
-
-        );
+        intent.query || "";
 
     AIDispatcher.lastIntent =
 
         intent;
-
     /*----------------------------------
       Route By Domain
     ----------------------------------*/
@@ -1537,18 +1552,17 @@ AIDispatcher.dispatchAnalytics = function (
 
 GG.dispatchAI = function (
 
-    query
+    intent
 
 ) {
 
     return AIDispatcher.dispatch(
 
-        query
+        intent
 
     );
 
 };
-
 /*=========================================================
  EXPORT
 =========================================================*/
