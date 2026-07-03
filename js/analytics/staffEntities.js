@@ -4435,137 +4435,6 @@ StaffEntities.buildIndexMaps = function () {
             );
 
     }
-/*=========================================================
- CREATE EXTRACTION RESULT
-=========================================================*/
-
-StaffEntities.createExtractionResult = function (
-
-    query = ""
-
-) {
-
-    /*----------------------------------
-      Normalize Query
-    ----------------------------------*/
-
-    const originalQuery =
-
-        typeof query === "string"
-
-            ? query
-
-            : "";
-
-    const normalizedQuery =
-
-        originalQuery
-
-            .trim()
-
-            .toUpperCase();
-
-    /*----------------------------------
-      Build Result
-    ----------------------------------*/
-
-    return {
-
-        /*=================================
-          Query
-        =================================*/
-
-        originalQuery,
-
-        normalizedQuery,
-
-        /*=================================
-          Entities
-        =================================*/
-
-        entities: {
-
-            staff: [],
-
-            phones: [],
-
-            roles: [],
-
-            designations: [],
-
-            posting: [],
-
-            team: [],
-
-            duty: [],
-
-            gps: []
-
-        },
-
-        /*=================================
-          Keywords
-        =================================*/
-
-        keywords: [],
-
-        /*=================================
-          Intent Candidates
-        =================================*/
-
-        intents: [],
-
-        /*=================================
-          Confidence
-        =================================*/
-
-        confidence: 0,
-
-        /*=================================
-          Validation
-        =================================*/
-
-        warnings: [],
-
-        errors: [],
-
-        /*=================================
-          Statistics
-        =================================*/
-
-        stats: {
-
-            totalEntities: 0,
-
-            uniqueStaff: 0,
-
-            executionTime: 0
-
-        },
-
-        /*=================================
-          Metadata
-        =================================*/
-
-        metadata: {
-
-            version:
-
-                StaffEntities.VERSION,
-
-            timestamp:
-
-                Date.now(),
-
-            source:
-
-                StaffConstants.DOMAIN
-
-        }
-
-    };
-
-};
 
  
     /*----------------------------------
@@ -4853,6 +4722,139 @@ StaffEntities.createExtractionResult = function (
     return StaffEntities.index;
 
 };
+
+ /*=========================================================
+ CREATE EXTRACTION RESULT
+=========================================================*/
+
+StaffEntities.createExtractionResult = function (
+
+    query = ""
+
+) {
+
+    /*----------------------------------
+      Normalize Query
+    ----------------------------------*/
+
+    const originalQuery =
+
+        typeof query === "string"
+
+            ? query
+
+            : "";
+
+    const normalizedQuery =
+
+        originalQuery
+
+            .trim()
+
+            .toUpperCase();
+
+    /*----------------------------------
+      Build Result
+    ----------------------------------*/
+
+    return {
+
+        /*=================================
+          Query
+        =================================*/
+
+        originalQuery,
+
+        normalizedQuery,
+
+        /*=================================
+          Entities
+        =================================*/
+
+        entities: {
+
+            staff: [],
+
+            phones: [],
+
+            roles: [],
+
+            designations: [],
+
+            posting: [],
+
+            team: [],
+
+            duty: [],
+
+            gps: []
+
+        },
+
+        /*=================================
+          Keywords
+        =================================*/
+
+        keywords: [],
+
+        /*=================================
+          Intent Candidates
+        =================================*/
+
+        intents: [],
+
+        /*=================================
+          Confidence
+        =================================*/
+
+        confidence: 0,
+
+        /*=================================
+          Validation
+        =================================*/
+
+        warnings: [],
+
+        errors: [],
+
+        /*=================================
+          Statistics
+        =================================*/
+
+        stats: {
+
+            totalEntities: 0,
+
+            uniqueStaff: 0,
+
+            executionTime: 0
+
+        },
+
+        /*=================================
+          Metadata
+        =================================*/
+
+        metadata: {
+
+            version:
+
+                StaffEntities.VERSION,
+
+            timestamp:
+
+                Date.now(),
+
+            source:
+
+                StaffConstants.DOMAIN
+
+        }
+
+    };
+
+};
+
 /*=========================================================
  EXTRACT STAFF ENTITIES
 =========================================================*/
