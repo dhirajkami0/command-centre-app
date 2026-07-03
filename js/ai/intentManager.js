@@ -1124,18 +1124,13 @@ IntentManager.getStats = function () {
 =========================================================*/
 
 GG.IntentManager =
-
     IntentManager;
-
-/*=========================================================
- READY
-=========================================================*/
 
 console.log(
 
     "%cGreenGuard Intent Manager Loaded",
 
-    "color:#009688;font-weight:bold;"
+    "color:#008000;font-weight:bold;"
 
 );
 
