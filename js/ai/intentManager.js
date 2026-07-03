@@ -356,6 +356,10 @@ IntentManager.setCachedIntent = async function (
  DETECT LOCAL INTENT
 =========================================================*/
 
+/*=========================================================
+ DETECT LOCAL INTENT
+=========================================================*/
+
 IntentManager.detectLocal = function (
 
     query
@@ -398,9 +402,13 @@ IntentManager.detectLocal = function (
 
     ];
 
-    let bestIntent = null;
+    let bestIntent =
 
-    let bestConfidence = 0;
+        null;
+
+    let bestConfidence =
+
+        0;
 
     /*----------------------------------
       Execute Local Detectors
@@ -506,11 +514,25 @@ IntentManager.detectLocal = function (
 
             source: "local",
 
-            confidence: 0,
+            provider:
 
-            domain: "unknown",
+                "IntentManager",
 
-            intent: "unknown",
+            query:
+
+                query,
+
+            confidence:
+
+                0,
+
+            domain:
+
+                "unknown",
+
+            intent:
+
+                "unknown",
 
             entities: {}
 
@@ -519,7 +541,7 @@ IntentManager.detectLocal = function (
     }
 
     /*----------------------------------
-      Metadata
+      Normalize Metadata
     ----------------------------------*/
 
     bestIntent.success =
@@ -533,6 +555,36 @@ IntentManager.detectLocal = function (
     bestIntent.provider =
 
         "IntentManager";
+
+    bestIntent.query =
+
+        query;
+
+    bestIntent.domain =
+
+        bestIntent.domain ||
+
+        "unknown";
+
+    bestIntent.intent =
+
+        bestIntent.intent ||
+
+        "unknown";
+
+    bestIntent.entities =
+
+        bestIntent.entities ||
+
+        {};
+
+    bestIntent.confidence =
+
+        Number(
+
+            bestIntent.confidence || 0
+
+        );
 
     /*----------------------------------
       Debug
@@ -553,6 +605,10 @@ IntentManager.detectLocal = function (
         );
 
     }
+
+    /*----------------------------------
+      Return
+    ----------------------------------*/
 
     return bestIntent;
 
@@ -888,6 +944,10 @@ IntentManager.detect = async function (
  MERGE INTENT
 =========================================================*/
 
+/*=========================================================
+ MERGE INTENT
+=========================================================*/
+
 IntentManager.mergeIntent = function (
 
     localIntent,
@@ -931,16 +991,18 @@ IntentManager.mergeIntent = function (
     }
 
     /*----------------------------------
-      AI Wins
+      Merge
     ----------------------------------*/
 
-    return {
+    const merged = {
 
         success:
 
             aiIntent.success !== false,
 
         source:
+
+            aiIntent.source ||
 
             "ai",
 
@@ -950,25 +1012,37 @@ IntentManager.mergeIntent = function (
 
             "AI",
 
+        query:
+
+            localIntent.query ||
+
+            aiIntent.query ||
+
+            "",
+
         domain:
 
             aiIntent.domain ||
 
-            localIntent.domain,
+            localIntent.domain ||
+
+            "unknown",
 
         intent:
 
             aiIntent.intent ||
 
-            localIntent.intent,
+            localIntent.intent ||
+
+            "unknown",
 
         confidence:
 
             Number(
 
-                aiIntent.confidence ||
+                aiIntent.confidence ??
 
-                localIntent.confidence ||
+                localIntent.confidence ??
 
                 0
 
@@ -976,13 +1050,9 @@ IntentManager.mergeIntent = function (
 
         entities: {
 
-            ...
+            ...(localIntent.entities || {}),
 
-            localIntent.entities,
-
-            ...
-
-            aiIntent.entities
+            ...(aiIntent.entities || {})
 
         },
 
@@ -994,8 +1064,13 @@ IntentManager.mergeIntent = function (
 
     };
 
-};
+    /*----------------------------------
+      Return
+    ----------------------------------*/
 
+    return merged;
+
+};
 /*=========================================================
  CLEAR CACHE
 =========================================================*/
