@@ -384,7 +384,15 @@ StaffFormatter.formatProfile = function (
     const profile =
 
         response.data;
+console.log(
+    "FORMAT PROFILE",
+    profile
+);
 
+console.log(
+    "IDENTITY",
+    profile.identity
+);
     /*----------------------------------
       Markdown
     ----------------------------------*/
