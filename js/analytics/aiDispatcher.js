@@ -203,6 +203,10 @@ AIDispatcher.initialize = function () {
  MASTER DISPATCH
 =========================================================*/
 
+/*=========================================================
+ MASTER DISPATCH
+=========================================================*/
+
 AIDispatcher.dispatch = async function (
 
     intent
@@ -260,6 +264,7 @@ AIDispatcher.dispatch = async function (
     AIDispatcher.lastIntent =
 
         intent;
+
     /*----------------------------------
       Route By Domain
     ----------------------------------*/
@@ -278,7 +283,7 @@ AIDispatcher.dispatch = async function (
 
             raw =
 
-                AIDispatcher.dispatchStaff(
+                await AIDispatcher.dispatchStaff(
 
                     intent
 
@@ -290,7 +295,7 @@ AIDispatcher.dispatch = async function (
 
             raw =
 
-                AIDispatcher.dispatchGIS(
+                await AIDispatcher.dispatchGIS(
 
                     intent
 
@@ -302,7 +307,7 @@ AIDispatcher.dispatch = async function (
 
             raw =
 
-                AIDispatcher.dispatchWildlife(
+                await AIDispatcher.dispatchWildlife(
 
                     intent
 
@@ -314,7 +319,7 @@ AIDispatcher.dispatch = async function (
 
             raw =
 
-                AIDispatcher.dispatchFire(
+                await AIDispatcher.dispatchFire(
 
                     intent
 
@@ -326,7 +331,7 @@ AIDispatcher.dispatch = async function (
 
             raw =
 
-                AIDispatcher.dispatchPatrol(
+                await AIDispatcher.dispatchPatrol(
 
                     intent
 
@@ -338,7 +343,7 @@ AIDispatcher.dispatch = async function (
 
             raw =
 
-                AIDispatcher.dispatchAnalytics(
+                await AIDispatcher.dispatchAnalytics(
 
                     intent
 
@@ -370,13 +375,17 @@ AIDispatcher.dispatch = async function (
 
         "staff"
 
-            ? StaffFormatter.format(
+            ?
+
+            StaffFormatter.format(
 
                 raw
 
             )
 
-            : raw;
+            :
+
+            raw;
 
     /*----------------------------------
       Build Response
@@ -422,11 +431,17 @@ AIDispatcher.dispatch = async function (
 
     return response;
 
-};/*=========================================================
+};
+ 
+ /*=========================================================
  DISPATCH STAFF
 =========================================================*/
 
-AIDispatcher.dispatchStaff = function (
+/*=========================================================
+ DISPATCH STAFF
+=========================================================*/
+
+AIDispatcher.dispatchStaff = async function (
 
     intent
 
@@ -457,12 +472,68 @@ AIDispatcher.dispatchStaff = function (
     }
 
     /*----------------------------------
+      Dependencies
+    ----------------------------------*/
+
+    const StaffRouter =
+
+        GG.StaffRouter;
+
+    const StaffFormatter =
+
+        GG.StaffFormatter;
+
+    if (
+
+        !StaffRouter ||
+
+        typeof StaffRouter.route !==
+
+        "function"
+
+    ) {
+
+        return {
+
+            success: false,
+
+            message:
+
+                "StaffRouter unavailable."
+
+        };
+
+    }
+
+    if (
+
+        !StaffFormatter ||
+
+        typeof StaffFormatter.format !==
+
+        "function"
+
+    ) {
+
+        return {
+
+            success: false,
+
+            message:
+
+                "StaffFormatter unavailable."
+
+        };
+
+    }
+
+    /*----------------------------------
       Route Request
     ----------------------------------*/
 
     const routed =
 
-        StaffRouter.route(
+        await StaffRouter.route(
 
             intent
 
@@ -505,6 +576,28 @@ AIDispatcher.dispatchStaff = function (
         );
 
     /*----------------------------------
+      Formatter Failed
+    ----------------------------------*/
+
+    if (
+
+        !formatted
+
+    ) {
+
+        return {
+
+            success: false,
+
+            message:
+
+                "Staff formatter failed."
+
+        };
+
+    }
+
+    /*----------------------------------
       Return
     ----------------------------------*/
 
@@ -512,7 +605,11 @@ AIDispatcher.dispatchStaff = function (
 
         success:
 
-            formatted.success,
+            true,
+
+        source:
+
+            "LOCAL",
 
         domain:
 
@@ -526,33 +623,51 @@ AIDispatcher.dispatchStaff = function (
 
             intent.confidence,
 
+        entities:
+
+            intent.entities ||
+
+            {},
+
         data:
 
             routed,
 
         markdown:
 
-            formatted.markdown,
+            formatted.markdown ||
+
+            "",
 
         html:
 
-            formatted.html,
+            formatted.html ||
+
+            "",
 
         cards:
 
-            formatted.cards,
+            formatted.cards ||
+
+            [],
 
         tables:
 
-            formatted.tables,
+            formatted.tables ||
+
+            [],
 
         sections:
 
-            formatted.sections,
+            formatted.sections ||
+
+            [],
 
         message:
 
-            formatted.message
+            formatted.message ||
+
+            ""
 
     };
 
