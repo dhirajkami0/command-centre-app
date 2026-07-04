@@ -10917,37 +10917,6 @@ StaffEntities.extractGPS = function (
  AUTO INITIALIZE
 =========================================================*/
 
-(async function () {
-
-    try {
-
-        await StaffEntities.initialize();
-
-        console.log(
-
-            "✅ StaffEntities Initialized"
-
-        );
-
-    }
-
-    catch (
-
-        err
-
-    ) {
-
-        console.error(
-
-            "❌ StaffEntities Initialization Failed",
-
-            err
-
-        );
-
-    }
-
-})();
 
 /*=========================================================
  REGISTER
