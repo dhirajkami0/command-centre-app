@@ -3071,445 +3071,287 @@ StaffIntent.route = async function (
 =========================================================*/
 
 StaffIntent.detectStaffIntent = function (
-
     result
-
 ) {
-
     /*----------------------------------
       Validate
     ----------------------------------*/
-
     if (
-
         !result ||
-
         !result.entities
-
     ) {
-
         return result;
-
     }
 
     const staff =
-
         result.entities.staff ||
-
         [];
 
     if (
-
         staff.length === 0
-
     ) {
-
         return result;
-
     }
 
     const query =
-
         result.normalizedQuery;
 
+    console.log(
+        "=============================="
+    );
+    console.log(
+        "detectStaffIntent() START"
+    );
+    console.log(
+        "Query:",
+        query
+    );
+    console.log(
+        "Staff:",
+        staff
+    );
+    console.log(
+        "=============================="
+    );
+
     const INTENTS =
-
         StaffConstants.INTENTS;
-
     const KEYWORDS =
-
         StaffConstants.KEYWORDS;
 
     /*----------------------------------
       Helper
     ----------------------------------*/
-
     function hasKeyword(
-
         list
-
     ) {
-
         if (
-
             !Array.isArray(
-
                 list
-
             )
-
         ) {
-
             return false;
-
         }
-
         return list.some(
-
             function (
-
                 word
-
             ) {
-
                 return query.includes(
-
                     String(
-
                         word
-
                     )
-
                     .toUpperCase()
-
                 );
-
             }
-
         );
-
     }
 
     /*----------------------------------
       Staff Profile
     ----------------------------------*/
+    console.log(
+        "Checking STAFF_PROFILE..."
+    );
+    console.log(
+        hasKeyword(
+            KEYWORDS.STAFF_PROFILE
+        )
+    );
+    if (
+        hasKeyword(
+            KEYWORDS.STAFF_PROFILE
+        )
+    ) {
+        console.log(
+            "✅ STAFF_PROFILE MATCH"
+        );
+        result.intent =
+            INTENTS.STAFF_PROFILE;
+        result.parameters.staff =
+            staff[0];
+        result.confidence =
+            0.98;
+        return result;
+    }
 
-  /*----------------------------------
-  Staff Profile
-----------------------------------*/
-
-if (
-
-    hasKeyword(
-
-        KEYWORDS.STAFF_PROFILE
-
-    ) ||
-
-    hasKeyword(
-
-        KEYWORDS.STAFF_CONTACT
-
-    ) ||
-
-    hasKeyword(
-
-        KEYWORDS.STAFF_ROLE
-
-    ) ||
-
-    hasKeyword(
-
-        KEYWORDS.STAFF_DESIGNATION
-
-    )
-
-) {
-
-    result.intent =
-
-        INTENTS.STAFF_PROFILE;
-
-    result.parameters.staff =
-
-        staff[0];
-
-    result.confidence =
-
-        1.00;
-
-    return result;
-
-}    /*----------------------------------
+    /*----------------------------------
       Contact
     ----------------------------------*/
-
-    if (
-
+    console.log(
+        "Checking STAFF_CONTACT..."
+    );
+    console.log(
         hasKeyword(
-
             KEYWORDS.STAFF_CONTACT
-
         )
-
+    );
+    if (
+        hasKeyword(
+            KEYWORDS.STAFF_CONTACT
+        )
     ) {
-
+        console.log(
+            "✅ STAFF_CONTACT MATCH"
+        );
         result.intent =
-
             INTENTS.STAFF_CONTACT;
-
         result.parameters.staff =
-
             staff[0];
-
         result.confidence =
-
             0.98;
-
         return result;
-
     }
 
     /*----------------------------------
       Location
     ----------------------------------*/
-
     if (
-
         hasKeyword(
-
             KEYWORDS.STAFF_LOCATION
-
         )
-
     ) {
-
         result.intent =
-
             INTENTS.STAFF_LOCATION;
-
         result.parameters.staff =
-
             staff[0];
-
         result.confidence =
-
             0.98;
-
         return result;
-
     }
 
     /*----------------------------------
       GPS
     ----------------------------------*/
-
     if (
-
         hasKeyword(
-
             KEYWORDS.STAFF_GPS
-
         )
-
     ) {
-
         result.intent =
-
             INTENTS.STAFF_GPS;
-
         result.parameters.staff =
-
             staff[0];
-
         result.confidence =
-
             0.98;
-
         return result;
-
     }
 
     /*----------------------------------
       Posting
     ----------------------------------*/
-
     if (
-
         hasKeyword(
-
             KEYWORDS.STAFF_POSTING
-
         )
-
     ) {
-
         result.intent =
-
             INTENTS.STAFF_POSTING;
-
         result.parameters.staff =
-
             staff[0];
-
         result.confidence =
-
             0.96;
-
         return result;
-
     }
 
     /*----------------------------------
       Duty
     ----------------------------------*/
-
     if (
-
         hasKeyword(
-
             KEYWORDS.STAFF_DUTY
-
         )
-
     ) {
-
         result.intent =
-
             INTENTS.STAFF_DUTY;
-
         result.parameters.staff =
-
             staff[0];
-
         result.confidence =
-
             0.96;
-
         return result;
-
     }
 
     /*----------------------------------
       Team
     ----------------------------------*/
-
     if (
-
         hasKeyword(
-
             KEYWORDS.STAFF_TEAM
-
         )
-
     ) {
-
         result.intent =
-
             INTENTS.STAFF_TEAM;
-
         result.parameters.staff =
-
             staff[0];
-
         result.confidence =
-
             0.95;
-
         return result;
-
     }
 
     /*----------------------------------
       Status
     ----------------------------------*/
-
     if (
-
         hasKeyword(
-
             KEYWORDS.STAFF_STATUS
-
         )
-
     ) {
-
         result.intent =
-
             INTENTS.STAFF_STATUS;
-
         result.parameters.staff =
-
             staff[0];
-
         result.confidence =
-
             0.95;
-
         return result;
-
     }
 
     /*----------------------------------
       Role
     ----------------------------------*/
-
     if (
-
         hasKeyword(
-
             KEYWORDS.STAFF_ROLE
-
         )
-
     ) {
-
         result.intent =
-
             INTENTS.STAFF_ROLE;
-
         result.parameters.staff =
-
             staff[0];
-
         result.confidence =
-
             0.95;
-
         return result;
-
     }
 
     /*----------------------------------
       Designation
     ----------------------------------*/
-
     if (
-
         hasKeyword(
-
             KEYWORDS.STAFF_DESIGNATION
-
         )
-
     ) {
-
         result.intent =
-
             INTENTS.STAFF_DESIGNATION;
-
         result.parameters.staff =
-
             staff[0];
-
         result.confidence =
-
             0.95;
-
         return result;
-
     }
 
     /*----------------------------------
       Search Fallback
     ----------------------------------*/
-
+    console.log(
+        "❌ NO LOCAL MATCH"
+    );
     result.intent =
-
         INTENTS.STAFF_SEARCH;
-
     result.parameters.staff =
-
         staff[0];
-
     result.confidence =
-
         0.80;
-
     return result;
-
-};
-/*=========================================================
+};/*=========================================================
  INITIALIZE
 =========================================================*/
 
