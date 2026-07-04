@@ -218,7 +218,7 @@ AIDispatcher.dispatch = async function (
         Date.now();
 
     /*----------------------------------
-      Validate Intent
+      Validate
     ----------------------------------*/
 
     if (
@@ -253,23 +253,19 @@ AIDispatcher.dispatch = async function (
 
         );
 
-    /*----------------------------------
-      Save State
-    ----------------------------------*/
+    AIDispatcher.lastIntent =
+
+        intent;
 
     AIDispatcher.lastQuery =
 
         intent.query || "";
 
-    AIDispatcher.lastIntent =
-
-        intent;
-
     /*----------------------------------
-      Route By Domain
+      Route
     ----------------------------------*/
 
-    let raw =
+    let routed =
 
         null;
 
@@ -281,9 +277,9 @@ AIDispatcher.dispatch = async function (
 
         case "staff":
 
-            raw =
+            routed =
 
-                await AIDispatcher.dispatchStaff(
+                await GG.StaffRouter.route(
 
                     intent
 
@@ -293,9 +289,9 @@ AIDispatcher.dispatch = async function (
 
         case "gis":
 
-            raw =
+            routed =
 
-                await AIDispatcher.dispatchGIS(
+                await GG.GISRouter.route(
 
                     intent
 
@@ -305,9 +301,9 @@ AIDispatcher.dispatch = async function (
 
         case "wildlife":
 
-            raw =
+            routed =
 
-                await AIDispatcher.dispatchWildlife(
+                await GG.WildlifeRouter.route(
 
                     intent
 
@@ -317,9 +313,9 @@ AIDispatcher.dispatch = async function (
 
         case "fire":
 
-            raw =
+            routed =
 
-                await AIDispatcher.dispatchFire(
+                await GG.FireRouter.route(
 
                     intent
 
@@ -329,9 +325,9 @@ AIDispatcher.dispatch = async function (
 
         case "patrol":
 
-            raw =
+            routed =
 
-                await AIDispatcher.dispatchPatrol(
+                await GG.PatrolRouter.route(
 
                     intent
 
@@ -341,9 +337,9 @@ AIDispatcher.dispatch = async function (
 
         case "analytics":
 
-            raw =
+            routed =
 
-                await AIDispatcher.dispatchAnalytics(
+                await GG.AnalyticsRouter.route(
 
                     intent
 
@@ -353,7 +349,7 @@ AIDispatcher.dispatch = async function (
 
         default:
 
-            raw = {
+            return {
 
                 success: false,
 
@@ -366,29 +362,71 @@ AIDispatcher.dispatch = async function (
     }
 
     /*----------------------------------
-      Format Result
+      Router Failed
     ----------------------------------*/
 
-    const formatted =
+    if (
 
-        intent.domain ===
+        !routed ||
 
-        "staff"
+        !routed.success
 
-            ?
+    ) {
 
-            StaffFormatter.format(
+        return routed;
 
-                raw
-
-            )
-
-            :
-
-            raw;
+    }
 
     /*----------------------------------
-      Build Response
+      Formatter
+    ----------------------------------*/
+
+    let formatted =
+
+        routed;
+
+    switch (
+
+        intent.domain
+
+    ) {
+
+        case "staff":
+
+            formatted =
+
+                GG.StaffFormatter.format(
+
+                    routed
+
+                );
+
+            break;
+
+        case "gis":
+
+            if (
+
+                GG.GISFormatter
+
+            ) {
+
+                formatted =
+
+                    GG.GISFormatter.format(
+
+                        routed
+
+                    );
+
+            }
+
+            break;
+
+    }
+
+    /*----------------------------------
+      Unified Response
     ----------------------------------*/
 
     response.success =
@@ -407,17 +445,49 @@ AIDispatcher.dispatch = async function (
 
         intent.confidence;
 
+    response.data =
+
+        routed.data;
+
     response.raw =
 
-        raw;
+        routed;
 
     response.formatted =
 
         formatted;
 
+    response.answer =
+
+        formatted.markdown ||
+
+        formatted.html ||
+
+        formatted.message ||
+
+        "";
+
     response.message =
 
         formatted.message;
+
+    response.cards =
+
+        formatted.cards ||
+
+        [];
+
+    response.tables =
+
+        formatted.tables ||
+
+        [];
+
+    response.sections =
+
+        formatted.sections ||
+
+        [];
 
     response.metadata.executionTime =
 
@@ -431,8 +501,7 @@ AIDispatcher.dispatch = async function (
 
     return response;
 
-};
- 
+}; 
  /*=========================================================
  DISPATCH STAFF
 =========================================================*/
@@ -551,15 +620,21 @@ AIDispatcher.dispatchStaff = async function (
 
     ) {
 
-        return routed || {
+        return (
 
-            success: false,
+            routed ||
 
-            message:
+            {
 
-                "Staff router failed."
+                success: false,
 
-        };
+                message:
+
+                    "Staff router failed."
+
+            }
+
+        );
 
     }
 
@@ -581,7 +656,9 @@ AIDispatcher.dispatchStaff = async function (
 
     if (
 
-        !formatted
+        !formatted ||
+
+        formatted.success !== true
 
     ) {
 
@@ -629,9 +706,15 @@ AIDispatcher.dispatchStaff = async function (
 
             {},
 
+        /*----------------------------------
+          IMPORTANT
+        ----------------------------------*/
+
         data:
 
-            routed,
+            routed.data ||
+
+            null,
 
         markdown:
 
@@ -667,7 +750,13 @@ AIDispatcher.dispatchStaff = async function (
 
             formatted.message ||
 
-            ""
+            "",
+
+        metadata:
+
+            routed.metadata ||
+
+            {}
 
     };
 
@@ -675,7 +764,7 @@ AIDispatcher.dispatchStaff = async function (
  DISPATCH GIS
 =========================================================*/
 
-AIDispatcher.dispatchGIS = function (
+AIDispatcher.dispatchGIS = async function (
 
     intent
 
@@ -706,14 +795,24 @@ AIDispatcher.dispatchGIS = function (
     }
 
     /*----------------------------------
-      GIS Module Check
+      Dependencies
     ----------------------------------*/
+
+    const GISRouter =
+
+        GG.GISRouter;
+
+    const GISFormatter =
+
+        GG.GISFormatter;
 
     if (
 
-        typeof GG.GISRouter !==
+        !GISRouter ||
 
-        "object"
+        typeof GISRouter.route !==
+
+        "function"
 
     ) {
 
@@ -721,33 +820,21 @@ AIDispatcher.dispatchGIS = function (
 
             success: false,
 
-            domain:
-
-                "gis",
-
-            intent:
-
-                intent.intent,
-
-            confidence:
-
-                intent.confidence,
-
             message:
 
-                "GIS AI module is not installed."
+                "GISRouter unavailable."
 
         };
 
     }
 
     /*----------------------------------
-      Route
+      Route Request
     ----------------------------------*/
 
     const routed =
 
-        GG.GISRouter.route(
+        await GISRouter.route(
 
             intent
 
@@ -765,20 +852,26 @@ AIDispatcher.dispatchGIS = function (
 
     ) {
 
-        return routed || {
+        return (
 
-            success: false,
+            routed ||
 
-            message:
+            {
 
-                "GIS router failed."
+                success: false,
 
-        };
+                message:
+
+                    "GIS router failed."
+
+            }
+
+        );
 
     }
 
     /*----------------------------------
-      Formatter
+      Format Response
     ----------------------------------*/
 
     let formatted =
@@ -787,9 +880,9 @@ AIDispatcher.dispatchGIS = function (
 
     if (
 
-        GG.GISFormatter &&
+        GISFormatter &&
 
-        typeof GG.GISFormatter.format ===
+        typeof GISFormatter.format ===
 
         "function"
 
@@ -797,11 +890,35 @@ AIDispatcher.dispatchGIS = function (
 
         formatted =
 
-            GG.GISFormatter.format(
+            GISFormatter.format(
 
                 routed
 
             );
+
+    }
+
+    /*----------------------------------
+      Formatter Failed
+    ----------------------------------*/
+
+    if (
+
+        !formatted ||
+
+        formatted.success !== true
+
+    ) {
+
+        return {
+
+            success: false,
+
+            message:
+
+                "GIS formatter failed."
+
+        };
 
     }
 
@@ -813,7 +930,11 @@ AIDispatcher.dispatchGIS = function (
 
         success:
 
-            formatted.success,
+            true,
+
+        source:
+
+            "LOCAL",
 
         domain:
 
@@ -827,9 +948,21 @@ AIDispatcher.dispatchGIS = function (
 
             intent.confidence,
 
+        entities:
+
+            intent.entities ||
+
+            {},
+
+        /*----------------------------------
+          IMPORTANT
+        ----------------------------------*/
+
         data:
 
-            routed,
+            routed.data ||
+
+            null,
 
         markdown:
 
@@ -865,7 +998,13 @@ AIDispatcher.dispatchGIS = function (
 
             formatted.message ||
 
-            ""
+            "",
+
+        metadata:
+
+            routed.metadata ||
+
+            {}
 
     };
 
