@@ -8004,98 +8004,105 @@ StaffEntities.extract = function (
 
     const merged =
 
-        new Map();
+    new Map();
 
-    function add(
+function add(
 
-        list,
+    list,
 
-        source
+    source
+
+) {
+
+    if (
+
+        !Array.isArray(
+
+            list
+
+        )
 
     ) {
 
-        if (
+        return;
 
-            !Array.isArray(
+    }
 
-                list
+    list.forEach(
 
-            )
+        function (
+
+            staff
 
         ) {
 
-            return;
+            if (
 
-        }
-
-        list.forEach(
-
-            function (
-
-                staff
+                !staff
 
             ) {
 
-                if (
+                return;
 
-                    !staff
+            }
 
-                ) {
+            const id =
 
-                    return;
+                staff.id ||
 
-                }
+                staff.identity?.cleanName ||
 
-                const id =
+                Math.random().toString();
 
-                    staff.id ||
+            if (
 
-                    staff.identity?.cleanName ||
+                !merged.has(
 
-                    Math.random().toString();
+                    id
 
-                if (
+                )
 
-                    !merged.has(
+            ) {
 
-                        id
+                merged.set(
 
-                    )
+                    id,
 
-                ) {
+                    {
 
-                    staff.__score = 0;
+                        staff,
 
-                    staff.__sources = [];
+                        score: 0,
 
-                    merged.set(
+                        sources: []
 
-                        id,
-
-                        staff
-
-                    );
-
-                }
-
-                const obj =
-
-                    merged.get(id);
-
-                obj.__score++;
-
-                obj.__sources.push(
-
-                    source
+                    }
 
                 );
 
             }
 
-        );
+            const obj =
 
-    }
+                merged.get(
 
+                    id
+
+                );
+
+            obj.score++;
+
+            obj.sources.push(
+
+                source
+
+            );
+
+        }
+
+    );
+
+}
     /*----------------------------------
       Search Every Extractor
     ----------------------------------*/
