@@ -1661,7 +1661,19 @@ StaffEntities.extractAssignmentFields = function (
         context.fieldMaps.ASSIGNMENT
 
     );
+/*----------------------------------
+  Canonical Defaults
+----------------------------------*/
 
+if (
+
+    context.assignment.lastDutyEnd === undefined
+
+) {
+
+    context.assignment.lastDutyEnd = null;
+
+}
     /*----------------------------------
       Return Context
     ----------------------------------*/
