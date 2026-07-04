@@ -1315,6 +1315,12 @@ ASSIGNMENT: Object.freeze([
     },
 
     {
+        target: "lastDutyEnd",
+        source: StaffConstants.FIELDS.LAST_DUTY_END,
+        type: "raw"
+    },
+
+    {
         target: "leader",
         source: StaffConstants.FIELDS.LEADER,
         type: "string"
@@ -1326,8 +1332,7 @@ ASSIGNMENT: Object.freeze([
         type: "string"
     }
 
-]),
-/*-----------------------------------------------------
+])/*-----------------------------------------------------
   Location
 -----------------------------------------------------*/
 
