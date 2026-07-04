@@ -1620,47 +1620,110 @@ StaffConstants.KEYWORDS = Object.freeze({
 
     ],
 
+   /*----------------------------------
+  Profile
+----------------------------------*/
+
+STAFF_PROFILE: [
+
     /*----------------------------------
       Profile
     ----------------------------------*/
 
-    STAFF_PROFILE: [
-
-        "PROFILE",
-        "DETAILS",
-        "INFORMATION",
-        "INFO",
-        "WHO IS",
-        "ABOUT"
-
-    ],
-
-    STAFF_CONTACT: [
-
-        "PHONE",
-        "MOBILE",
-        "CONTACT",
-        "NUMBER",
-        "CALL"
-
-    ],
-
-    STAFF_ROLE: [
-
-        "ROLE",
-        "PERMISSION"
-
-    ],
-
-    STAFF_DESIGNATION: [
-
-        "DESIGNATION",
-        "POST",
-        "RANK"
-
-    ],
+    "PROFILE",
+    "SHOW PROFILE",
+    "VIEW PROFILE",
+    "OPEN PROFILE",
+    "STAFF PROFILE",
+    "OFFICER PROFILE",
 
     /*----------------------------------
+      Identity
+    ----------------------------------*/
+
+    "WHO IS",
+    "IDENTITY",
+    "NAME",
+    "FULL NAME",
+    "DISPLAY NAME",
+
+    /*----------------------------------
+      Information
+    ----------------------------------*/
+
+    "DETAIL",
+    "DETAILS",
+    "INFORMATION",
+    "INFO",
+    "ABOUT",
+    "GENERAL INFORMATION",
+    "STAFF INFORMATION",
+    "OFFICER INFORMATION"
+
+],
+
+STAFF_CONTACT: [
+
+    /*----------------------------------
+      Phone
+    ----------------------------------*/
+
+    "PHONE",
+    "PHONE NUMBER",
+    "MOBILE",
+    "MOBILE NUMBER",
+    "CONTACT",
+    "CONTACT NUMBER",
+    "NUMBER",
+    "CALL",
+
+    /*----------------------------------
+      Email
+    ----------------------------------*/
+
+    "EMAIL",
+    "EMAIL ADDRESS"
+
+],
+
+STAFF_ROLE: [
+
+    "ROLE",
+    "USER ROLE",
+    "ACCESS LEVEL",
+    "PERMISSION",
+    "AUTHORITY"
+
+],
+
+STAFF_DESIGNATION: [
+
+    "DESIGNATION",
+    "RANK",
+    "POST",
+
+    /*----------------------------------
+      Forest Department
+    ----------------------------------*/
+
+    "FR",
+    "FG",
+    "AS",
+    "BS",
+    "DL",
+    "DR",
+    "FV",
+
+    "BANASAHAYAK",
+    "BANASAYAHAK",
+    "BANASAHAYK",
+
+    "FORESTER",
+    "FOREST GUARD",
+    "DRIVER",
+    "WATCHER"
+
+],    /*----------------------------------
       Posting
     ----------------------------------*/
 
