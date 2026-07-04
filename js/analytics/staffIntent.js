@@ -3174,33 +3174,53 @@ StaffIntent.detectStaffIntent = function (
       Staff Profile
     ----------------------------------*/
 
-    if (
+  /*----------------------------------
+  Staff Profile
+----------------------------------*/
 
-        hasKeyword(
+if (
 
-            KEYWORDS.STAFF_PROFILE
+    hasKeyword(
 
-        )
+        KEYWORDS.STAFF_PROFILE
 
-    ) {
+    ) ||
 
-        result.intent =
+    hasKeyword(
 
-            INTENTS.STAFF_PROFILE;
+        KEYWORDS.STAFF_CONTACT
 
-        result.parameters.staff =
+    ) ||
 
-            staff[0];
+    hasKeyword(
 
-        result.confidence =
+        KEYWORDS.STAFF_ROLE
 
-            0.98;
+    ) ||
 
-        return result;
+    hasKeyword(
 
-    }
+        KEYWORDS.STAFF_DESIGNATION
 
-    /*----------------------------------
+    )
+
+) {
+
+    result.intent =
+
+        INTENTS.STAFF_PROFILE;
+
+    result.parameters.staff =
+
+        staff[0];
+
+    result.confidence =
+
+        1.00;
+
+    return result;
+
+}    /*----------------------------------
       Contact
     ----------------------------------*/
 
