@@ -3347,6 +3347,9 @@ StaffEntities.buildAliases = function (
  /*=========================================================
  BUILD CANONICAL STAFF OBJECT
 =========================================================*/
+/*=========================================================
+ BUILD CANONICAL STAFF OBJECT
+=========================================================*/
 
 StaffEntities.buildCanonicalStaffObject = function (
 
@@ -3388,7 +3391,11 @@ StaffEntities.buildCanonicalStaffObject = function (
             context.id,
 
         documentInfo:
-            context.documentInfo,
+            Object.freeze({
+
+                ...context.documentInfo
+
+            }),
 
         /*=================================
           Identity
@@ -3449,7 +3456,7 @@ StaffEntities.buildCanonicalStaffObject = function (
           Team
         =================================*/
 
-        team:
+        teamInfo:
             Object.freeze({
 
                 ...context.teamInfo
@@ -3494,7 +3501,6 @@ StaffEntities.buildCanonicalStaffObject = function (
         =================================*/
 
         aliases:
-
             Object.freeze(
 
                 [...context.aliasList]
@@ -3513,7 +3519,6 @@ StaffEntities.buildCanonicalStaffObject = function (
             }),
 
         errors:
-
             Object.freeze(
 
                 [...context.errors]
@@ -3521,7 +3526,6 @@ StaffEntities.buildCanonicalStaffObject = function (
             ),
 
         warnings:
-
             Object.freeze(
 
                 [...context.warnings]
@@ -3529,7 +3533,6 @@ StaffEntities.buildCanonicalStaffObject = function (
             ),
 
         entities:
-
             Object.freeze(
 
                 [...context.entities]
@@ -3544,8 +3547,7 @@ StaffEntities.buildCanonicalStaffObject = function (
 
     return context;
 
-};
-/*=========================================================
+};/*=========================================================
  NORMALIZE STAFF DOCUMENT
 =========================================================*/
 
