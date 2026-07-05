@@ -283,6 +283,9 @@ function () {
 /*=========================================================
   MERGE LIVE STAFF DOCUMENT
 =========================================================*/
+/*=========================================================
+  MERGE LIVE STAFF DOCUMENT
+=========================================================*/
 
 StaffHydrator.mergeLiveStaffDocument =
 
@@ -298,7 +301,11 @@ function (
 
     if (
 
-        !normalized
+        !normalized ||
+
+        typeof normalized !==
+
+        "object"
 
     ) {
 
@@ -328,91 +335,84 @@ function (
 
     /*----------------------------------
       Clone Canonical Staff
+      (Never modify frozen object)
     ----------------------------------*/
 
-    const staff =
+    let staff;
 
-        structuredClone(
+    try {
 
-            canonical
+        staff =
+
+            structuredClone(
+
+                canonical
+
+            );
+
+    }
+
+    catch (
+
+        error
+
+    ) {
+
+        console.error(
+
+            "Failed to clone staff:",
+
+            canonical.identity?.cleanName,
+
+            error
 
         );
+
+        statistics.failed++;
+
+        return false;
+
+    }
 
     /*----------------------------------
       Identity
     ----------------------------------*/
 
-    if (
+    staff.identity.rawName =
 
-        live.rawName
+        live.rawName ||
 
-    ) {
+        staff.identity.rawName;
 
-        staff.identity.rawName =
+    staff.identity.name =
 
-            live.rawName;
+        live.name ||
 
-    }
+        staff.identity.name;
 
-    if (
+    staff.identity.phone =
 
-        live.name
+        live.phone ||
 
-    ) {
+        staff.identity.phone;
 
-        staff.identity.name =
+    staff.identity.email =
 
-            live.name;
+        live.email ||
 
-    }
+        staff.identity.email;
 
-    if (
+    staff.identity.role =
 
-        live.phone
+        live.role ||
 
-    ) {
+        staff.identity.role;
 
-        staff.identity.phone =
+    staff.identity.designation =
 
-            live.phone;
+        live.designation ||
 
-    }
-
-    if (
-
-        live.email
-
-    ) {
-
-        staff.identity.email =
-
-            live.email;
-
-    }
-
-    if (
-
-        live.role
-
-    ) {
-
-        staff.identity.role =
-
-            live.role;
-
-    }
-
-    if (
-
-        live.designation
-
-    ) {
-
-        staff.identity.designation =
-
-            live.designation;
-
-    }
+        staff.identity.designation;
 
     /*----------------------------------
       Posting
@@ -491,6 +491,44 @@ function (
         staff.assignment.lastDutyEnd;
 
     /*----------------------------------
+      Duty
+    ----------------------------------*/
+
+    if (
+
+        staff.duty
+
+    ) {
+
+        staff.duty.dutyType =
+
+            live.dutyType ||
+
+            staff.duty.dutyType;
+
+        staff.duty.dutyActive =
+
+            Boolean(
+
+                live.dutyActive
+
+            );
+
+        staff.duty.status =
+
+            live.status ||
+
+            staff.duty.status;
+
+        staff.duty.lastDutyEnd =
+
+            live.lastDutyEnd ||
+
+            staff.duty.lastDutyEnd;
+
+    }
+
+    /*----------------------------------
       Location
     ----------------------------------*/
 
@@ -558,6 +596,18 @@ function (
 
         staff.gps.turnRate;
 
+    if (
+
+        "turnAngle" in live
+
+    ) {
+
+        staff.gps.turnAngle =
+
+            live.turnAngle;
+
+    }
+
     /*----------------------------------
       Tracking
     ----------------------------------*/
@@ -585,6 +635,39 @@ function (
         );
 
     /*----------------------------------
+      Analytics
+    ----------------------------------*/
+
+    if (
+
+        staff.analytics
+
+    ) {
+
+        staff.analytics.updatedAt =
+
+            live.updatedAt ||
+
+            staff.analytics.updatedAt;
+    }
+
+    /*----------------------------------
+      Metadata
+    ----------------------------------*/
+
+    if (
+
+        staff.metadata
+
+    ) {
+
+        staff.metadata.source =
+
+            "LIVE_STAFF";
+
+    }
+
+    /*----------------------------------
       Cache Merged Copy
     ----------------------------------*/
 
@@ -598,9 +681,17 @@ function (
 
     statistics.hydratedStaff++;
 
+    console.log(
+
+        "✔ Hydrated:",
+
+        staff.identity.cleanName
+
+    );
+
     return true;
 
-};  /*=========================================================
+}; /*=========================================================
   MERGE LIVE STAFF DOCUMENT
 =========================================================*/
 
