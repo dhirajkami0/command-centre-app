@@ -733,6 +733,324 @@ StaffIntent.detect = function (
     return result;
 
 };
+
+ /*=========================================================
+ DETECT POSTING INTENT
+=========================================================*/
+
+StaffIntent.detectPostingIntent = function (
+
+    result
+
+) {
+
+    /*----------------------------------
+      Validate
+    ----------------------------------*/
+
+    if (
+
+        !result ||
+
+        !result.entities
+
+    ) {
+
+        return result;
+
+    }
+
+    const staff =
+
+        result.entities.staff ||
+
+        [];
+
+    if (
+
+        staff.length === 0
+
+    ) {
+
+        return result;
+
+    }
+
+    const query =
+
+        result.normalizedQuery;
+
+    const INTENTS =
+
+        StaffConstants.INTENTS;
+
+    const KEYWORDS =
+
+        StaffConstants.KEYWORDS;
+
+    /*----------------------------------
+      Helper
+    ----------------------------------*/
+
+    function hasKeyword(
+
+        list
+
+    ) {
+
+        if (
+
+            !Array.isArray(
+
+                list
+
+            )
+
+        ) {
+
+            return false;
+
+        }
+
+        return list.some(
+
+            function (
+
+                word
+
+            ) {
+
+                return query.includes(
+
+                    String(
+
+                        word
+
+                    )
+
+                    .toUpperCase()
+
+                );
+
+            }
+
+        );
+
+    }
+
+    /*----------------------------------
+      Staff Posting
+    ----------------------------------*/
+
+    if (
+
+        hasKeyword(
+
+            KEYWORDS.STAFF_POSTING
+
+        )
+
+    ) {
+
+        result.intent =
+
+            INTENTS.STAFF_POSTING;
+
+        result.parameters.staff =
+
+            staff[0];
+
+        result.parameters.posting =
+
+            staff[0].posting ||
+
+            null;
+
+        result.confidence =
+
+            Math.max(
+
+                result.confidence,
+
+                0.97
+
+            );
+
+        return result;
+
+    }
+
+    /*----------------------------------
+      Beat
+    ----------------------------------*/
+
+    if (
+
+        hasKeyword(
+
+            KEYWORDS.STAFF_BEAT
+
+        )
+
+    ) {
+
+        result.intent =
+
+            INTENTS.STAFF_BEAT;
+
+        result.parameters.staff =
+
+            staff[0];
+
+        result.parameters.beat =
+
+            staff[0].posting?.beat ||
+
+            null;
+
+        result.confidence =
+
+            Math.max(
+
+                result.confidence,
+
+                0.98
+
+            );
+
+        return result;
+
+    }
+
+    /*----------------------------------
+      Range
+    ----------------------------------*/
+
+    if (
+
+        hasKeyword(
+
+            KEYWORDS.STAFF_RANGE
+
+        )
+
+    ) {
+
+        result.intent =
+
+            INTENTS.STAFF_RANGE;
+
+        result.parameters.staff =
+
+            staff[0];
+
+        result.parameters.range =
+
+            staff[0].posting?.range ||
+
+            null;
+
+        result.confidence =
+
+            Math.max(
+
+                result.confidence,
+
+                0.98
+
+            );
+
+        return result;
+
+    }
+
+    /*----------------------------------
+      Division
+    ----------------------------------*/
+
+    if (
+
+        hasKeyword(
+
+            KEYWORDS.STAFF_DIVISION
+
+        )
+
+    ) {
+
+        result.intent =
+
+            INTENTS.STAFF_DIVISION;
+
+        result.parameters.staff =
+
+            staff[0];
+
+        result.parameters.division =
+
+            staff[0].posting?.division ||
+
+            null;
+
+        result.confidence =
+
+            Math.max(
+
+                result.confidence,
+
+                0.98
+
+            );
+
+        return result;
+
+    }
+
+    /*----------------------------------
+      Circle
+    ----------------------------------*/
+
+    if (
+
+        hasKeyword(
+
+            KEYWORDS.STAFF_CIRCLE
+
+        )
+
+    ) {
+
+        result.intent =
+
+            INTENTS.STAFF_CIRCLE;
+
+        result.parameters.staff =
+
+            staff[0];
+
+        result.parameters.circle =
+
+            staff[0].posting?.circle ||
+
+            null;
+
+        result.confidence =
+
+            Math.max(
+
+                result.confidence,
+
+                0.98
+
+            );
+
+        return result;
+
+    }
+
+    return result;
+
+};
  /*=========================================================
  DETECT DUTY INTENT
 =========================================================*/
