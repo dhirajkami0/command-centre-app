@@ -774,42 +774,26 @@ async function () {
     try {
 
         /*----------------------------------
-          Firebase Ready
-        ----------------------------------*/
+  Firestore Ready
+----------------------------------*/
 
-        if (
+if (
 
-            typeof firebase ===
+    !window.db
 
-            "undefined"
+) {
 
-        ) {
+    throw new Error(
 
-            throw new Error(
+        "window.db not available."
 
-                "Firebase not loaded."
+    );
 
-            );
+}
 
-        }
+const db =
 
-        if (
-
-            !firebase.firestore
-
-        ) {
-
-            throw new Error(
-
-                "Firestore unavailable."
-
-            );
-
-        }
-
-        const db =
-
-            firebase.firestore();
+    window.db;
 
         /*----------------------------------
           Read Collection
