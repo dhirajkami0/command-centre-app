@@ -1905,32 +1905,41 @@ StaffIntent.calculateConfidence = function (
             CONF.MULTIPLE_KEYWORDS;
 
     }
+/*----------------------------------
+  Clamp
+----------------------------------*/
 
-    /*----------------------------------
-      Clamp
-    ----------------------------------*/
+score =
 
-    score =
+    Math.max(
 
-        Math.max(
+        0,
 
-            0,
+        Math.min(
 
-            Math.min(
+            1,
 
-                1,
+            score
 
-                score
+        )
 
-            )
+    );
 
-        );
+/*----------------------------------
+  Preserve Higher Confidence
+----------------------------------*/
 
-    result.confidence =
+result.confidence =
 
-        score;
+    Math.max(
 
-    /*----------------------------------
+        result.confidence ||
+
+        0,
+
+        score
+
+    );   /*----------------------------------
       Confidence Label
     ----------------------------------*/
 
