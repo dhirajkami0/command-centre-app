@@ -428,6 +428,9 @@ StaffIntent.setCachedResult = function (
 /*=========================================================
  DETECT STAFF INTENT
 =========================================================*/
+/*=========================================================
+ DETECT
+=========================================================*/
 
 StaffIntent.detect = function (
 
@@ -536,58 +539,74 @@ StaffIntent.detect = function (
     }
 
     /*----------------------------------
-      Copy Extracted Entities
+      Copy Entities
     ----------------------------------*/
 
     result.entities = {
 
         staff :
 
-            extraction.entities?.staff ||
+            [
 
-            [],
+                ...(extraction.entities?.staff || [])
+
+            ],
 
         phones :
 
-            extraction.entities?.phones ||
+            [
 
-            [],
+                ...(extraction.entities?.phones || [])
+
+            ],
 
         roles :
 
-            extraction.entities?.roles ||
+            [
 
-            [],
+                ...(extraction.entities?.roles || [])
+
+            ],
 
         designations :
 
-            extraction.entities?.designations ||
+            [
 
-            [],
+                ...(extraction.entities?.designations || [])
+
+            ],
 
         posting :
 
-            extraction.entities?.posting ||
+            [
 
-            [],
+                ...(extraction.entities?.posting || [])
+
+            ],
 
         team :
 
-            extraction.entities?.team ||
+            [
 
-            [],
+                ...(extraction.entities?.team || [])
+
+            ],
 
         duty :
 
-            extraction.entities?.duty ||
+            [
 
-            [],
+                ...(extraction.entities?.duty || [])
+
+            ],
 
         gps :
 
-            extraction.entities?.gps ||
+            [
 
-            []
+                ...(extraction.entities?.gps || [])
+
+            ]
 
     };
 
@@ -597,19 +616,21 @@ StaffIntent.detect = function (
 
     result.keywords =
 
-        extraction.keywords ||
+        [
 
-        [];
+            ...(extraction.keywords || [])
+
+        ];
 
     /*----------------------------------
       Copy Parameters
     ----------------------------------*/
 
-    result.parameters =
+    result.parameters = {
 
-        extraction.parameters ||
+        ...(extraction.parameters || {})
 
-        {};
+    };
 
     /*----------------------------------
       Save Extraction
@@ -646,11 +667,6 @@ StaffIntent.detect = function (
         result
 
     );
-
-    /*----------------------------------
-      GPS Intent
-      (Enable Later)
-    ----------------------------------*/
 
     // StaffIntent.detectGPSIntent(
     //     result
@@ -695,7 +711,7 @@ StaffIntent.detect = function (
         started;
 
     /*----------------------------------
-      Save Cache
+      Save
     ----------------------------------*/
 
     StaffIntent.lastResult =
@@ -716,7 +732,8 @@ StaffIntent.detect = function (
 
     return result;
 
-};/*=========================================================
+};
+ /*=========================================================
  DETECT DUTY INTENT
 =========================================================*/
 
@@ -2841,15 +2858,61 @@ StaffIntent.detectStaffIntent = function (
     }
 
     /*----------------------------------
+      Debug Helper
+    ----------------------------------*/
+    function debugParameters(
+
+    label
+
+) {
+
+    console.log(
+        "==========",
+        label,
+        "=========="
+    );
+
+    console.log(
+        "Result Frozen:",
+        Object.isFrozen(
+            result
+        )
+    );
+
+    console.log(
+        "Parameters:",
+        result.parameters
+    );
+
+    console.log(
+        "Parameters Frozen:",
+        Object.isFrozen(
+            result.parameters
+        )
+    );
+
+    console.log(
+        "Parameters Extensible:",
+        Object.isExtensible(
+            result.parameters
+        )
+    );
+
+    console.log(
+        "Staff Descriptor:",
+        Object.getOwnPropertyDescriptor(
+            result.parameters,
+            "staff"
+        )
+    );
+
+}
+
+    /*----------------------------------
       Staff Profile
     ----------------------------------*/
     console.log(
         "Checking STAFF_PROFILE..."
-    );
-    console.log(
-        hasKeyword(
-            KEYWORDS.STAFF_PROFILE
-        )
     );
     if (
         hasKeyword(
@@ -2861,6 +2924,9 @@ StaffIntent.detectStaffIntent = function (
         );
         result.intent =
             INTENTS.STAFF_PROFILE;
+        debugParameters(
+            "STAFF_PROFILE"
+        );
         result.parameters.staff =
             staff[0];
         result.confidence =
@@ -2874,11 +2940,6 @@ StaffIntent.detectStaffIntent = function (
     console.log(
         "Checking STAFF_CONTACT..."
     );
-    console.log(
-        hasKeyword(
-            KEYWORDS.STAFF_CONTACT
-        )
-    );
     if (
         hasKeyword(
             KEYWORDS.STAFF_CONTACT
@@ -2889,6 +2950,9 @@ StaffIntent.detectStaffIntent = function (
         );
         result.intent =
             INTENTS.STAFF_CONTACT;
+        debugParameters(
+            "STAFF_CONTACT"
+        );
         result.parameters.staff =
             staff[0];
         result.confidence =
@@ -2906,6 +2970,9 @@ StaffIntent.detectStaffIntent = function (
     ) {
         result.intent =
             INTENTS.STAFF_LOCATION;
+        debugParameters(
+            "STAFF_LOCATION"
+        );
         result.parameters.staff =
             staff[0];
         result.confidence =
@@ -2923,6 +2990,9 @@ StaffIntent.detectStaffIntent = function (
     ) {
         result.intent =
             INTENTS.STAFF_GPS;
+        debugParameters(
+            "STAFF_GPS"
+        );
         result.parameters.staff =
             staff[0];
         result.confidence =
@@ -2940,6 +3010,9 @@ StaffIntent.detectStaffIntent = function (
     ) {
         result.intent =
             INTENTS.STAFF_POSTING;
+        debugParameters(
+            "STAFF_POSTING"
+        );
         result.parameters.staff =
             staff[0];
         result.confidence =
@@ -2957,6 +3030,9 @@ StaffIntent.detectStaffIntent = function (
     ) {
         result.intent =
             INTENTS.STAFF_DUTY;
+        debugParameters(
+            "STAFF_DUTY"
+        );
         result.parameters.staff =
             staff[0];
         result.confidence =
@@ -2974,6 +3050,9 @@ StaffIntent.detectStaffIntent = function (
     ) {
         result.intent =
             INTENTS.STAFF_TEAM;
+        debugParameters(
+            "STAFF_TEAM"
+        );
         result.parameters.staff =
             staff[0];
         result.confidence =
@@ -2991,6 +3070,9 @@ StaffIntent.detectStaffIntent = function (
     ) {
         result.intent =
             INTENTS.STAFF_STATUS;
+        debugParameters(
+            "STAFF_STATUS"
+        );
         result.parameters.staff =
             staff[0];
         result.confidence =
@@ -3008,6 +3090,9 @@ StaffIntent.detectStaffIntent = function (
     ) {
         result.intent =
             INTENTS.STAFF_ROLE;
+        debugParameters(
+            "STAFF_ROLE"
+        );
         result.parameters.staff =
             staff[0];
         result.confidence =
@@ -3025,6 +3110,9 @@ StaffIntent.detectStaffIntent = function (
     ) {
         result.intent =
             INTENTS.STAFF_DESIGNATION;
+        debugParameters(
+            "STAFF_DESIGNATION"
+        );
         result.parameters.staff =
             staff[0];
         result.confidence =
@@ -3040,12 +3128,16 @@ StaffIntent.detectStaffIntent = function (
     );
     result.intent =
         INTENTS.STAFF_SEARCH;
+    debugParameters(
+        "STAFF_SEARCH"
+    );
     result.parameters.staff =
         staff[0];
     result.confidence =
         0.80;
     return result;
-};/*=========================================================
+};
+ /*=========================================================
  INITIALIZE
 =========================================================*/
 
