@@ -277,9 +277,440 @@ function () {
 };
 
 /*=========================================================
-  PLACEHOLDERS
+  NORMALIZE LIVE STAFF DOCUMENT
 =========================================================*/
 
+StaffHydrator.normalizeLiveStaffDocument =
+
+function (
+
+    document
+
+) {
+
+    /*----------------------------------
+      Validate
+    ----------------------------------*/
+
+    if (
+
+        !document ||
+
+        typeof document !== "object"
+
+    ) {
+
+        return null;
+
+    }
+
+    /*----------------------------------
+      Clean Name
+    ----------------------------------*/
+
+    const cleanName =
+
+        String(
+
+            document.cleanName ||
+
+            document.name ||
+
+            ""
+
+        )
+
+        .trim()
+
+        .toUpperCase();
+
+    if (
+
+        cleanName === ""
+
+    ) {
+
+        return null;
+
+    }
+
+    /*----------------------------------
+      Lookup Canonical Staff
+    ----------------------------------*/
+
+    const index =
+
+        GG.StaffEntities
+            .index
+            .byCleanName;
+
+    if (
+
+        !index ||
+
+        !index.has(
+
+            cleanName
+
+        )
+
+    ) {
+
+        console.warn(
+
+            "Live Staff not found:",
+
+            cleanName
+
+        );
+
+        return null;
+
+    }
+
+    const staff =
+
+        index.get(
+
+            cleanName
+
+        )[0];
+
+    if (
+
+        !staff
+
+    ) {
+
+        return null;
+
+    }
+
+    /*----------------------------------
+      Return
+    ----------------------------------*/
+
+    return {
+
+        cleanName,
+
+        document,
+
+        staff
+
+    };
+
+};
+
+  /*=========================================================
+  MERGE LIVE STAFF DOCUMENT
+=========================================================*/
+
+StaffHydrator.mergeLiveStaffDocument =
+
+function (
+
+    normalized
+
+) {
+
+    /*----------------------------------
+      Validate
+    ----------------------------------*/
+
+    if (
+
+        !normalized
+
+    ) {
+
+        return false;
+
+    }
+
+    const staff =
+
+        normalized.staff;
+
+    const live =
+
+        normalized.document;
+
+    if (
+
+        !staff ||
+
+        !live
+
+    ) {
+
+        return false;
+
+    }
+
+    /*----------------------------------
+      Identity
+    ----------------------------------*/
+
+    if (
+
+        live.rawName
+
+    ) {
+
+        staff.identity.rawName =
+
+            live.rawName;
+
+    }
+
+    if (
+
+        live.name
+
+    ) {
+
+        staff.identity.name =
+
+            live.name;
+
+    }
+
+    if (
+
+        live.phone
+
+    ) {
+
+        staff.identity.phone =
+
+            live.phone;
+
+    }
+
+    if (
+
+        live.email
+
+    ) {
+
+        staff.identity.email =
+
+            live.email;
+
+    }
+
+    if (
+
+        live.role
+
+    ) {
+
+        staff.identity.role =
+
+            live.role;
+
+    }
+
+    if (
+
+        live.designation
+
+    ) {
+
+        staff.identity.designation =
+
+            live.designation;
+
+    }
+
+    /*----------------------------------
+      Posting
+    ----------------------------------*/
+
+    staff.posting.circle =
+
+        live.circle ||
+
+        staff.posting.circle;
+
+    staff.posting.division =
+
+        live.division ||
+
+        staff.posting.division;
+
+    staff.posting.range =
+
+        live.range ||
+
+        staff.posting.range;
+
+    staff.posting.beat =
+
+        live.beat ||
+
+        staff.posting.beat;
+
+    /*----------------------------------
+      Assignment
+    ----------------------------------*/
+
+    staff.assignment.assignedCompartment =
+
+        live.compartment ||
+
+        staff.assignment.assignedCompartment;
+
+    staff.assignment.dutyType =
+
+        live.dutyType ||
+
+        staff.assignment.dutyType;
+
+    staff.assignment.dutyActive =
+
+        Boolean(
+
+            live.dutyActive
+
+        );
+
+    staff.assignment.status =
+
+        live.status ||
+
+        staff.assignment.status;
+
+    staff.assignment.leader =
+
+        live.leader ||
+
+        staff.assignment.leader;
+
+    staff.assignment.team =
+
+        live.team ||
+
+        staff.assignment.team;
+
+    staff.assignment.lastDutyEnd =
+
+        live.lastDutyEnd ||
+
+        staff.assignment.lastDutyEnd;
+
+    /*----------------------------------
+      Location
+    ----------------------------------*/
+
+    staff.location.location =
+
+        live.location ||
+
+        staff.location.location;
+
+    staff.location.lat =
+
+        live.lat ??
+
+        staff.location.lat;
+
+    staff.location.lon =
+
+        live.lon ??
+
+        staff.location.lon;
+
+    /*----------------------------------
+      GPS
+    ----------------------------------*/
+
+    staff.gps.accuracy =
+
+        live.accuracy ??
+
+        staff.gps.accuracy;
+
+    staff.gps.heading =
+
+        live.heading ??
+
+        staff.gps.heading;
+
+    staff.gps.speed =
+
+        live.speed ??
+
+        staff.gps.speed;
+
+    staff.gps.lastSeen =
+
+        live.lastSeen ??
+
+        staff.gps.lastSeen;
+
+    staff.gps.timestamp =
+
+        live.timestamp ??
+
+        staff.gps.timestamp;
+
+    staff.gps.updatedAt =
+
+        live.updatedAt ??
+
+        staff.gps.updatedAt;
+
+    staff.gps.turnRate =
+
+        live.turnRate ??
+
+        staff.gps.turnRate;
+
+    /*----------------------------------
+      Tracking
+    ----------------------------------*/
+
+    staff.tracking.sessionId =
+
+        live.sessionId ||
+
+        staff.tracking.sessionId;
+
+    staff.tracking.source =
+
+        live.source ||
+
+        staff.tracking.source;
+
+    staff.tracking.id =
+
+        String(
+
+            live.id ??
+
+            staff.tracking.id
+
+        );
+
+    /*----------------------------------
+      Cache
+    ----------------------------------*/
+
+    cache.merged.set(
+
+        staff.identity.cleanName,
+
+        staff
+
+    );
+
+    statistics.hydratedStaff++;
+
+    return true;
+
+};
 /*=========================================================
   LOAD LIVE STAFF
 =========================================================*/
@@ -428,38 +859,104 @@ async function () {
 
         }
 
-        /*----------------------------------
-          Process Documents
-        ----------------------------------*/
+       /*----------------------------------
+  Process Documents
+----------------------------------*/
 
-        snapshot.forEach(
+snapshot.forEach(
 
-            function (
+    function (
 
-                doc
+        doc
 
-            ) {
+    ) {
 
-                const data =
+        /*------------------------------
+          Read Firestore
+        ------------------------------*/
 
-                    doc.data() ||
+        const raw =
 
-                    {};
+            doc.data() ||
 
-                statistics.liveDocuments++;
+            {};
 
-                cache.liveStaff.set(
+        statistics.liveDocuments++;
 
-                    doc.id,
+        /*------------------------------
+          Cache Raw Document
+        ------------------------------*/
 
-                    data
+        cache.liveStaff.set(
 
-                );
+            doc.id,
 
-            }
+            raw
 
         );
 
+        /*------------------------------
+          Normalize
+        ------------------------------*/
+
+        const normalized =
+
+            StaffHydrator
+                .normalizeLiveStaffDocument(
+
+                    raw
+
+                );
+
+        if (
+
+            !normalized
+
+        ) {
+
+            statistics.skipped++;
+
+            return;
+
+        }
+
+        /*------------------------------
+          Merge Into
+          Canonical Staff Object
+        ------------------------------*/
+
+        const merged =
+
+            StaffHydrator
+                .mergeLiveStaffDocument(
+
+                    normalized
+
+                );
+
+        if (
+
+            !merged
+
+        ) {
+
+            statistics.skipped++;
+
+            return;
+
+        }
+
+        console.log(
+
+            "✅ Live Staff Hydrated:",
+
+            normalized.staff.identity.cleanName
+
+        );
+
+    }
+
+);
         console.log(
 
             "Cached:",
