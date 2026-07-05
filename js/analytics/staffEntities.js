@@ -4874,6 +4874,10 @@ StaffEntities.createExtractionResult = function (
  EXTRACT STAFF ENTITIES
 =========================================================*/
 
+/*=========================================================
+ EXTRACT STAFF ENTITIES
+=========================================================*/
+
 StaffEntities.extractStaffEntities = function (
 
     result
@@ -4896,19 +4900,39 @@ StaffEntities.extractStaffEntities = function (
 
     }
 
+    /*----------------------------------
+      Search Query
+    ----------------------------------*/
+
     const query =
 
-        result.normalizedQuery;
+        String(
+
+            result.searchQuery ||
+
+            result.normalizedQuery ||
+
+            ""
+
+        )
+
+        .trim()
+
+        .toUpperCase();
 
     if (
 
-        !query
+        query === ""
 
     ) {
 
         return result;
 
     }
+
+    /*----------------------------------
+      Matches
+    ----------------------------------*/
 
     const matches =
 
@@ -4919,7 +4943,7 @@ StaffEntities.extractStaffEntities = function (
         new Set();
 
     /*----------------------------------
-      Match Helper
+      Helper
     ----------------------------------*/
 
     function addMatch(
@@ -5012,13 +5036,41 @@ StaffEntities.extractStaffEntities = function (
 
                     ) {
 
-                        return (
+                        token =
 
-                            token &&
+                            String(
+
+                                token ||
+
+                                ""
+
+                            )
+
+                            .trim()
+
+                            .toUpperCase();
+
+                        if (
+
+                            token.length < 2
+
+                        ) {
+
+                            return false;
+
+                        }
+
+                        return (
 
                             query.includes(
 
                                 token
+
+                            ) ||
+
+                            token.includes(
+
+                                query
 
                             )
 
@@ -5047,6 +5099,66 @@ StaffEntities.extractStaffEntities = function (
     );
 
     /*----------------------------------
+      Exact Name First
+    ----------------------------------*/
+
+    matches.sort(
+
+        function (
+
+            a,
+
+            b
+
+        ) {
+
+            const aExact =
+
+                a.identity.cleanName ===
+
+                query;
+
+            const bExact =
+
+                b.identity.cleanName ===
+
+                query;
+
+            if (
+
+                aExact &&
+
+                !bExact
+
+            ) {
+
+                return -1;
+
+            }
+
+            if (
+
+                bExact &&
+
+                !aExact
+
+            ) {
+
+                return 1;
+
+            }
+
+            return a.identity.cleanName.localeCompare(
+
+                b.identity.cleanName
+
+            );
+
+        }
+
+    );
+
+    /*----------------------------------
       Save Result
     ----------------------------------*/
 
@@ -5064,8 +5176,7 @@ StaffEntities.extractStaffEntities = function (
 
     return result;
 
-};
- /*=========================================================
+}; /*=========================================================
  EXTRACT PHONE ENTITIES
 =========================================================*/
 
