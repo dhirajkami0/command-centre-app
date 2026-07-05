@@ -773,44 +773,47 @@ async function () {
 
     try {
 
-        /*----------------------------------
-  Firestore Ready
+      /*----------------------------------
+  Validate StaffEntities
 ----------------------------------*/
 
 if (
 
-    !window.db
+    !GG.StaffEntities
 
 ) {
 
     throw new Error(
 
-        "window.db not available."
+        "StaffEntities not available."
 
     );
 
 }
 
-const db =
+/*----------------------------------
+  Get Collection Reference
+----------------------------------*/
 
-    window.db;
+const collection =
 
-        /*----------------------------------
-          Read Collection
-        ----------------------------------*/
+    GG
+        .StaffEntities
+        .getLiveStaffCollection();
 
-        const snapshot =
+/*----------------------------------
+  Load Firestore Snapshot
+----------------------------------*/
 
-            await db
+const snapshot =
 
-                .collection(
+    await GG
+        .StaffEntities
+        .loadCollection(
 
-                    "live_staff"
+            collection
 
-                )
-
-                .get();
-
+        );
         console.log(
 
             "Documents:",
