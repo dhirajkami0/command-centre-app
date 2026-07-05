@@ -343,6 +343,10 @@ StaffFormatter.format = function (
  FORMAT PROFILE
 =========================================================*/
 
+/*=========================================================
+ FORMAT STAFF PROFILE
+=========================================================*/
+
 StaffFormatter.formatProfile = function (
 
     response
@@ -384,15 +388,37 @@ StaffFormatter.formatProfile = function (
     const profile =
 
         response.data;
-console.log(
-    "FORMAT PROFILE",
-    profile
-);
 
-console.log(
-    "IDENTITY",
-    profile.identity
-);
+    console.log(
+
+        "FORMAT PROFILE",
+
+        profile
+
+    );
+
+    console.log(
+
+        "IDENTITY",
+
+        profile.identity
+
+    );
+
+    /*----------------------------------
+      Display Name
+    ----------------------------------*/
+
+    const displayName =
+
+        profile.identity?.name ||
+
+        profile.identity?.rawName ||
+
+        profile.identity?.cleanName ||
+
+        "-";
+
     /*----------------------------------
       Markdown
     ----------------------------------*/
@@ -405,13 +431,7 @@ console.log(
 
         "**Name:** " +
 
-            (
-
-                profile.identity?.rawName ||
-
-                "-"
-
-            ),
+            displayName,
 
         "**Role:** " +
 
@@ -637,9 +657,7 @@ console.log(
 
         title:
 
-            profile.identity?.rawName ||
-
-            "Staff",
+            displayName,
 
         data:
 
@@ -663,6 +681,26 @@ console.log(
 
     });
 
+    /*----------------------------------
+      Metadata
+    ----------------------------------*/
+
+    result.intent =
+
+        StaffConstants.INTENTS.STAFF_PROFILE;
+
+    result.confidence =
+
+        response.confidence ||
+
+        1;
+
+    result.source =
+
+        response.source ||
+
+        "LOCAL";
+
     result.success =
 
         true;
@@ -673,7 +711,8 @@ console.log(
 
     return result;
 
-};/*=========================================================
+};
+ /*=========================================================
  FORMAT DIRECTORY
 =========================================================*/
 
