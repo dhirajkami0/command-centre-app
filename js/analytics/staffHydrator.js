@@ -909,6 +909,182 @@ function (
     return true;
 
 };
+  /*=========================================================
+  NORMALIZE LIVE STAFF DOCUMENT
+=========================================================*/
+
+StaffHydrator.normalizeLiveStaffDocument =
+
+function (
+
+    document
+
+) {
+
+    /*----------------------------------
+      Validate
+    ----------------------------------*/
+
+    if (
+
+        !document ||
+
+        typeof document !==
+
+        "object"
+
+    ) {
+
+        return null;
+
+    }
+
+    /*----------------------------------
+      Clean Name
+    ----------------------------------*/
+
+    const cleanName =
+
+        String(
+
+            document.cleanName ||
+
+            document.name ||
+
+            ""
+
+        )
+
+        .trim()
+
+        .toUpperCase();
+
+    if (
+
+        cleanName === ""
+
+    ) {
+
+        return null;
+
+    }
+
+    /*----------------------------------
+      Staff Index
+    ----------------------------------*/
+
+    const index =
+
+        GG
+            .StaffEntities
+            ?.index
+            ?.byCleanName;
+
+    if (
+
+        !index
+
+    ) {
+
+        console.error(
+
+            "Staff index unavailable."
+
+        );
+
+        return null;
+
+    }
+
+    /*----------------------------------
+      Lookup Staff
+    ----------------------------------*/
+
+    const matches =
+
+        index.get(
+
+            cleanName
+
+        );
+
+    if (
+
+        !Array.isArray(
+
+            matches
+
+        ) ||
+
+        matches.length ===
+
+        0
+
+    ) {
+
+        console.warn(
+
+            "Live Staff not found:",
+
+            cleanName
+
+        );
+
+        return null;
+
+    }
+
+    /*----------------------------------
+      Canonical Staff
+    ----------------------------------*/
+
+    const staff =
+
+        matches[0];
+
+    if (
+
+        !staff
+
+    ) {
+
+        return null;
+
+    }
+
+    /*----------------------------------
+      Debug
+    ----------------------------------*/
+
+    console.log(
+
+        "✔ Live Staff:",
+
+        cleanName
+
+    );
+
+    /*----------------------------------
+      Return
+    ----------------------------------*/
+
+    return {
+
+        cleanName :
+
+            cleanName,
+
+        document :
+
+            document,
+
+        staff :
+
+            staff
+
+    };
+
+};
 /*=========================================================
   LOAD LIVE STAFF
 =========================================================*/
