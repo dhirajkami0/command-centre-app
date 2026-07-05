@@ -425,6 +425,9 @@ StaffIntent.setCachedResult = function (
  DETECT
  Master Intent Detection
 =========================================================*/
+/*=========================================================
+ DETECT STAFF INTENT
+=========================================================*/
 
 StaffIntent.detect = function (
 
@@ -533,30 +536,64 @@ StaffIntent.detect = function (
     }
 
     /*----------------------------------
-      Copy Extraction
+      Copy Extracted Entities
     ----------------------------------*/
 
-    result.entities =
+    result.entities = {
 
-        extraction.entities || {
+        staff :
 
-            staff: [],
+            extraction.entities?.staff ||
 
-            phones: [],
+            [],
 
-            roles: [],
+        phones :
 
-            designations: [],
+            extraction.entities?.phones ||
 
-            posting: [],
+            [],
 
-            team: [],
+        roles :
 
-            duty: [],
+            extraction.entities?.roles ||
 
-            gps: []
+            [],
 
-        };
+        designations :
+
+            extraction.entities?.designations ||
+
+            [],
+
+        posting :
+
+            extraction.entities?.posting ||
+
+            [],
+
+        team :
+
+            extraction.entities?.team ||
+
+            [],
+
+        duty :
+
+            extraction.entities?.duty ||
+
+            [],
+
+        gps :
+
+            extraction.entities?.gps ||
+
+            []
+
+    };
+
+    /*----------------------------------
+      Copy Keywords
+    ----------------------------------*/
 
     result.keywords =
 
@@ -564,18 +601,26 @@ StaffIntent.detect = function (
 
         [];
 
+    /*----------------------------------
+      Copy Parameters
+    ----------------------------------*/
+
     result.parameters =
 
         extraction.parameters ||
 
         {};
 
+    /*----------------------------------
+      Save Extraction
+    ----------------------------------*/
+
     result.metadata.extraction =
 
         extraction;
 
     /*----------------------------------
-      Run Local Detectors
+      Run Intent Detectors
     ----------------------------------*/
 
     StaffIntent.detectStaffIntent(
@@ -596,10 +641,6 @@ StaffIntent.detect = function (
 
     );
 
-    /*----------------------------------
-      Team Intent
-    ----------------------------------*/
-
     StaffIntent.detectTeamIntent(
 
         result
@@ -608,16 +649,12 @@ StaffIntent.detect = function (
 
     /*----------------------------------
       GPS Intent
-      (Enable when implemented)
+      (Enable Later)
     ----------------------------------*/
 
     // StaffIntent.detectGPSIntent(
     //     result
     // );
-
-    /*----------------------------------
-      Analytics Intent
-    ----------------------------------*/
 
     StaffIntent.detectAnalyticsIntent(
 
@@ -626,7 +663,7 @@ StaffIntent.detect = function (
     );
 
     /*----------------------------------
-      Confidence
+      Calculate Confidence
     ----------------------------------*/
 
     StaffIntent.calculateConfidence(
@@ -658,7 +695,7 @@ StaffIntent.detect = function (
         started;
 
     /*----------------------------------
-      Save
+      Save Cache
     ----------------------------------*/
 
     StaffIntent.lastResult =
@@ -679,8 +716,7 @@ StaffIntent.detect = function (
 
     return result;
 
-};
-/*=========================================================
+};/*=========================================================
  DETECT DUTY INTENT
 =========================================================*/
 
