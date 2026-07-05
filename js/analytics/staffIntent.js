@@ -421,6 +421,11 @@ StaffIntent.setCachedResult = function (
  Master Intent Detection
 =========================================================*/
 
+/*=========================================================
+ DETECT
+ Master Intent Detection
+=========================================================*/
+
 StaffIntent.detect = function (
 
     query
@@ -444,6 +449,10 @@ StaffIntent.detect = function (
         return StaffIntent.createIntentResult();
 
     }
+
+    query =
+
+        query.trim();
 
     /*----------------------------------
       Cache
@@ -527,11 +536,39 @@ StaffIntent.detect = function (
       Copy Extraction
     ----------------------------------*/
 
-    result.entities.staff =
+    result.entities =
 
-        extraction.results ||
+        extraction.entities || {
+
+            staff: [],
+
+            phones: [],
+
+            roles: [],
+
+            designations: [],
+
+            posting: [],
+
+            team: [],
+
+            duty: [],
+
+            gps: []
+
+        };
+
+    result.keywords =
+
+        extraction.keywords ||
 
         [];
+
+    result.parameters =
+
+        extraction.parameters ||
+
+        {};
 
     result.metadata.extraction =
 
@@ -558,32 +595,36 @@ StaffIntent.detect = function (
         result
 
     );
-/*----------------------------------
-  Team Intent
-----------------------------------*/
 
-StaffIntent.detectTeamIntent(
-
-    result
-
-);
     /*----------------------------------
-  GPS Intent
-  (Temporarily Disabled)
-----------------------------------*/
+      Team Intent
+    ----------------------------------*/
 
-// StaffIntent.detectGPSIntent(
-//     result
-// );
-/*----------------------------------
-  Analytics Intent
-----------------------------------*/
+    StaffIntent.detectTeamIntent(
 
-StaffIntent.detectAnalyticsIntent(
+        result
 
-    result
+    );
 
-);
+    /*----------------------------------
+      GPS Intent
+      (Enable when implemented)
+    ----------------------------------*/
+
+    // StaffIntent.detectGPSIntent(
+    //     result
+    // );
+
+    /*----------------------------------
+      Analytics Intent
+    ----------------------------------*/
+
+    StaffIntent.detectAnalyticsIntent(
+
+        result
+
+    );
+
     /*----------------------------------
       Confidence
     ----------------------------------*/
@@ -635,389 +676,6 @@ StaffIntent.detectAnalyticsIntent(
     /*----------------------------------
       Return
     ----------------------------------*/
-
-    return result;
-
-};
-/*=========================================================
- DETECT POSTING INTENT
-=========================================================*/
-
-StaffIntent.detectPostingIntent = function (
-
-    result
-
-) {
-
-    /*----------------------------------
-      Validate
-    ----------------------------------*/
-
-    if (
-
-        !result ||
-
-        !result.entities
-
-    ) {
-
-        return result;
-
-    }
-
-    const staff =
-
-        result.entities.staff ||
-
-        [];
-
-    if (
-
-        staff.length === 0
-
-    ) {
-
-        return result;
-
-    }
-
-    const query =
-
-        result.normalizedQuery;
-
-    const INTENTS =
-
-        StaffConstants.INTENTS;
-
-    const KEYWORDS =
-
-        StaffConstants.KEYWORDS;
-
-    /*----------------------------------
-      Helper
-    ----------------------------------*/
-
-    function hasKeyword(
-
-        list
-
-    ) {
-
-        if (
-
-            !Array.isArray(
-
-                list
-
-            )
-
-        ) {
-
-            return false;
-
-        }
-
-        return list.some(
-
-            function (
-
-                word
-
-            ) {
-
-                return query.includes(
-
-                    String(
-
-                        word
-
-                    )
-
-                    .toUpperCase()
-
-                );
-
-            }
-
-        );
-
-    }
-
-    /*----------------------------------
-      Circle
-    ----------------------------------*/
-
-    if (
-
-        hasKeyword(
-
-            KEYWORDS.STAFF_CIRCLE
-
-        )
-
-    ) {
-
-        result.intent =
-
-            INTENTS.STAFF_CIRCLE;
-
-        result.parameters.staff =
-
-            staff[0];
-
-        result.parameters.circle =
-
-            staff[0].posting.circle;
-
-        result.confidence =
-
-            Math.max(
-
-                result.confidence,
-
-                0.96
-
-            );
-
-        return result;
-
-    }
-
-    /*----------------------------------
-      Division
-    ----------------------------------*/
-
-    if (
-
-        hasKeyword(
-
-            KEYWORDS.STAFF_DIVISION
-
-        )
-
-    ) {
-
-        result.intent =
-
-            INTENTS.STAFF_DIVISION;
-
-        result.parameters.staff =
-
-            staff[0];
-
-        result.parameters.division =
-
-            staff[0].posting.division;
-
-        result.confidence =
-
-            Math.max(
-
-                result.confidence,
-
-                0.96
-
-            );
-
-        return result;
-
-    }
-
-    /*----------------------------------
-      Range
-    ----------------------------------*/
-
-    if (
-
-        hasKeyword(
-
-            KEYWORDS.STAFF_RANGE
-
-        )
-
-    ) {
-
-        result.intent =
-
-            INTENTS.STAFF_RANGE;
-
-        result.parameters.staff =
-
-            staff[0];
-
-        result.parameters.range =
-
-            staff[0].posting.range;
-
-        result.confidence =
-
-            Math.max(
-
-                result.confidence,
-
-                0.96
-
-            );
-
-        return result;
-
-    }
-
-    /*----------------------------------
-      Beat
-    ----------------------------------*/
-
-    if (
-
-        hasKeyword(
-
-            KEYWORDS.STAFF_BEAT
-
-        )
-
-    ) {
-
-        result.intent =
-
-            INTENTS.STAFF_BEAT;
-
-        result.parameters.staff =
-
-            staff[0];
-
-        result.parameters.beat =
-
-            staff[0].posting.beat;
-
-        result.confidence =
-
-            Math.max(
-
-                result.confidence,
-
-                0.96
-
-            );
-
-        return result;
-
-    }
-
-    /*----------------------------------
-      Compartment
-    ----------------------------------*/
-
-    if (
-
-        hasKeyword(
-
-            KEYWORDS.STAFF_COMPARTMENT
-
-        )
-
-    ) {
-
-        result.intent =
-
-            INTENTS.STAFF_COMPARTMENT;
-
-        result.parameters.staff =
-
-            staff[0];
-
-        result.parameters.compartment =
-
-            staff[0].assignment.assignedCompartment;
-
-        result.confidence =
-
-            Math.max(
-
-                result.confidence,
-
-                0.96
-
-            );
-
-        return result;
-
-    }
-
-    /*----------------------------------
-      Area
-    ----------------------------------*/
-
-    if (
-
-        hasKeyword(
-
-            KEYWORDS.STAFF_AREA
-
-        )
-
-    ) {
-
-        result.intent =
-
-            INTENTS.STAFF_AREA;
-
-        result.parameters.staff =
-
-            staff[0];
-
-        result.parameters.area =
-
-            staff[0].assignment.assignedCompartment;
-
-        result.confidence =
-
-            Math.max(
-
-                result.confidence,
-
-                0.95
-
-            );
-
-        return result;
-
-    }
-
-    /*----------------------------------
-      Generic Posting
-    ----------------------------------*/
-
-    if (
-
-        hasKeyword(
-
-            KEYWORDS.STAFF_POSTING
-
-        )
-
-    ) {
-
-        result.intent =
-
-            INTENTS.STAFF_POSTING;
-
-        result.parameters.staff =
-
-            staff[0];
-
-        result.confidence =
-
-            Math.max(
-
-                result.confidence,
-
-                0.90
-
-            );
-
-        return result;
-
-    }
 
     return result;
 
