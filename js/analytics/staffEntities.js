@@ -7087,6 +7087,10 @@ StaffEntities.finalizeExtraction = function (
  EXTRACT
 =========================================================*/
 
+/*=========================================================
+ EXTRACT
+=========================================================*/
+
 StaffEntities.extract = function (
 
     query
@@ -7146,7 +7150,19 @@ StaffEntities.extract = function (
         );
 
     /*----------------------------------
-      Staff
+      Build Search Query
+    ----------------------------------*/
+
+    result.searchQuery =
+
+        StaffEntities.cleanSearchQuery(
+
+            result.normalizedQuery
+
+        );
+
+    /*----------------------------------
+      Extract Staff
     ----------------------------------*/
 
     result =
@@ -7158,7 +7174,7 @@ StaffEntities.extract = function (
         );
 
     /*----------------------------------
-      Phone
+      Extract Phones
     ----------------------------------*/
 
     result =
@@ -7170,7 +7186,7 @@ StaffEntities.extract = function (
         );
 
     /*----------------------------------
-      Role
+      Extract Roles
     ----------------------------------*/
 
     result =
@@ -7182,7 +7198,7 @@ StaffEntities.extract = function (
         );
 
     /*----------------------------------
-      Posting
+      Extract Posting
     ----------------------------------*/
 
     result =
@@ -7194,7 +7210,7 @@ StaffEntities.extract = function (
         );
 
     /*----------------------------------
-      Team
+      Extract Team
     ----------------------------------*/
 
     result =
@@ -7206,7 +7222,7 @@ StaffEntities.extract = function (
         );
 
     /*----------------------------------
-      Duty
+      Extract Duty
     ----------------------------------*/
 
     result =
@@ -7218,7 +7234,7 @@ StaffEntities.extract = function (
         );
 
     /*----------------------------------
-      GPS
+      Extract GPS
     ----------------------------------*/
 
     result =
@@ -7230,7 +7246,7 @@ StaffEntities.extract = function (
         );
 
     /*----------------------------------
-      Keywords
+      Extract Keywords
     ----------------------------------*/
 
     result =
@@ -7242,7 +7258,7 @@ StaffEntities.extract = function (
         );
 
     /*----------------------------------
-      Confidence
+      Calculate Confidence
     ----------------------------------*/
 
     result =
@@ -7277,10 +7293,13 @@ StaffEntities.extract = function (
 
     );
 
+    /*----------------------------------
+      Return
+    ----------------------------------*/
+
     return result;
 
 };
-
  /*=========================================================
  CLEAN SEARCH QUERY
 =========================================================*/
