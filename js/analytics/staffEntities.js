@@ -7307,6 +7307,10 @@ StaffEntities.extract = function (
  CLEAN SEARCH QUERY
 =========================================================*/
 
+/*=========================================================
+ CLEAN SEARCH QUERY
+=========================================================*/
+
 StaffEntities.cleanSearchQuery = function (
 
     query
@@ -7359,7 +7363,7 @@ StaffEntities.cleanSearchQuery = function (
         "LOOKUP",
 
         /*----------------------------------
-          Question
+          Questions
         ----------------------------------*/
 
         "WHO",
@@ -7383,12 +7387,71 @@ StaffEntities.cleanSearchQuery = function (
         "AN",
 
         /*----------------------------------
-          Generic Staff Words
+          Generic Staff
         ----------------------------------*/
 
         "STAFF",
         "OFFICER",
-        "EMPLOYEE"
+        "EMPLOYEE",
+
+        /*----------------------------------
+          Profile
+        ----------------------------------*/
+
+        "PROFILE",
+        "DETAIL",
+        "DETAILS",
+        "INFORMATION",
+        "INFO",
+        "ABOUT",
+
+        /*----------------------------------
+          Contact
+        ----------------------------------*/
+
+        "PHONE",
+        "NUMBER",
+        "MOBILE",
+        "CONTACT",
+        "EMAIL",
+
+        /*----------------------------------
+          Identity
+        ----------------------------------*/
+
+        "ROLE",
+        "DESIGNATION",
+        "TYPE",
+
+        /*----------------------------------
+          Posting
+        ----------------------------------*/
+
+        "POSTING",
+        "POSTED",
+        "CIRCLE",
+        "DIVISION",
+        "RANGE",
+        "BEAT",
+        "COMPARTMENT",
+
+        /*----------------------------------
+          Duty
+        ----------------------------------*/
+
+        "DUTY",
+        "STATUS",
+
+        /*----------------------------------
+          GPS
+        ----------------------------------*/
+
+        "GPS",
+        "LOCATION",
+        "POSITION",
+        "LATITUDE",
+        "LONGITUDE",
+        "COORDINATES"
 
     ];
 
@@ -7416,7 +7479,7 @@ StaffEntities.cleanSearchQuery = function (
 
                         "\\b",
 
-                        "g"
+                        "gi"
 
                     ),
 
@@ -7452,7 +7515,8 @@ StaffEntities.cleanSearchQuery = function (
 
     return search;
 
-}; /*=========================================================
+};
+ /*=========================================================
  BUILD SEARCH CACHE
 =========================================================*/
 
