@@ -724,6 +724,7 @@ return StaffEntities.normalizeStaffDocuments(
 
         throw err;
 
+     
     }
 
     finally {
@@ -7283,6 +7284,9 @@ StaffEntities.extract = function (
  /*=========================================================
  CLEAN SEARCH QUERY
 =========================================================*/
+/*=========================================================
+ CLEAN SEARCH QUERY
+=========================================================*/
 
 StaffEntities.cleanSearchQuery = function (
 
@@ -7317,7 +7321,7 @@ StaffEntities.cleanSearchQuery = function (
             .toUpperCase();
 
     /*----------------------------------
-      Remove Business Words
+      Remove Language Noise
     ----------------------------------*/
 
     const removeWords = [
@@ -7360,76 +7364,17 @@ StaffEntities.cleanSearchQuery = function (
         "AN",
 
         /*----------------------------------
-          Staff
+          Generic Staff Words
         ----------------------------------*/
 
         "STAFF",
         "OFFICER",
-        "EMPLOYEE",
-
-        /*----------------------------------
-          Profile
-        ----------------------------------*/
-
-        "PROFILE",
-        "DETAIL",
-        "DETAILS",
-        "INFORMATION",
-        "INFO",
-        "ABOUT",
-
-        /*----------------------------------
-          Contact
-        ----------------------------------*/
-
-        "PHONE",
-        "NUMBER",
-        "MOBILE",
-        "CONTACT",
-        "EMAIL",
-
-        /*----------------------------------
-          Organization
-        ----------------------------------*/
-
-        "ROLE",
-        "DESIGNATION",
-        "TYPE",
-
-        /*----------------------------------
-          Posting
-        ----------------------------------*/
-
-        "POSTING",
-        "POSTED",
-        "BEAT",
-        "RANGE",
-        "DIVISION",
-        "CIRCLE",
-        "COMPARTMENT",
-
-        /*----------------------------------
-          Duty
-        ----------------------------------*/
-
-        "DUTY",
-        "STATUS",
-
-        /*----------------------------------
-          GPS
-        ----------------------------------*/
-
-        "GPS",
-        "LOCATION",
-        "POSITION",
-        "COORDINATES",
-        "LATITUDE",
-        "LONGITUDE"
+        "EMPLOYEE"
 
     ];
 
     /*----------------------------------
-      Remove Words
+      Remove Noise Words
     ----------------------------------*/
 
     removeWords.forEach(
@@ -7488,8 +7433,7 @@ StaffEntities.cleanSearchQuery = function (
 
     return search;
 
-};
- /*=========================================================
+}; /*=========================================================
  BUILD SEARCH CACHE
 =========================================================*/
 
