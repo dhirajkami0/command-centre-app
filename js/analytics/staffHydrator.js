@@ -280,11 +280,15 @@ function () {
   NORMALIZE LIVE STAFF DOCUMENT
 =========================================================*/
 
-StaffHydrator.normalizeLiveStaffDocument =
+/*=========================================================
+  MERGE LIVE STAFF DOCUMENT
+=========================================================*/
+
+StaffHydrator.mergeLiveStaffDocument =
 
 function (
 
-    document
+    normalized
 
 ) {
 
@@ -294,115 +298,309 @@ function (
 
     if (
 
-        !document ||
-
-        typeof document !== "object"
+        !normalized
 
     ) {
 
-        return null;
+        return false;
+
+    }
+
+    const canonical =
+
+        normalized.staff;
+
+    const live =
+
+        normalized.document;
+
+    if (
+
+        !canonical ||
+
+        !live
+
+    ) {
+
+        return false;
 
     }
 
     /*----------------------------------
-      Clean Name
+      Clone Canonical Staff
     ----------------------------------*/
-
-    const cleanName =
-
-        String(
-
-            document.cleanName ||
-
-            document.name ||
-
-            ""
-
-        )
-
-        .trim()
-
-        .toUpperCase();
-
-    if (
-
-        cleanName === ""
-
-    ) {
-
-        return null;
-
-    }
-
-    /*----------------------------------
-      Lookup Canonical Staff
-    ----------------------------------*/
-
-    const index =
-
-        GG.StaffEntities
-            .index
-            .byCleanName;
-
-    if (
-
-        !index ||
-
-        !index.has(
-
-            cleanName
-
-        )
-
-    ) {
-
-        console.warn(
-
-            "Live Staff not found:",
-
-            cleanName
-
-        );
-
-        return null;
-
-    }
 
     const staff =
 
-        index.get(
+        structuredClone(
 
-            cleanName
+            canonical
 
-        )[0];
+        );
+
+    /*----------------------------------
+      Identity
+    ----------------------------------*/
 
     if (
 
-        !staff
+        live.rawName
 
     ) {
 
-        return null;
+        staff.identity.rawName =
+
+            live.rawName;
+
+    }
+
+    if (
+
+        live.name
+
+    ) {
+
+        staff.identity.name =
+
+            live.name;
+
+    }
+
+    if (
+
+        live.phone
+
+    ) {
+
+        staff.identity.phone =
+
+            live.phone;
+
+    }
+
+    if (
+
+        live.email
+
+    ) {
+
+        staff.identity.email =
+
+            live.email;
+
+    }
+
+    if (
+
+        live.role
+
+    ) {
+
+        staff.identity.role =
+
+            live.role;
+
+    }
+
+    if (
+
+        live.designation
+
+    ) {
+
+        staff.identity.designation =
+
+            live.designation;
 
     }
 
     /*----------------------------------
-      Return
+      Posting
     ----------------------------------*/
 
-    return {
+    staff.posting.circle =
 
-        cleanName,
+        live.circle ||
 
-        document,
+        staff.posting.circle;
+
+    staff.posting.division =
+
+        live.division ||
+
+        staff.posting.division;
+
+    staff.posting.range =
+
+        live.range ||
+
+        staff.posting.range;
+
+    staff.posting.beat =
+
+        live.beat ||
+
+        staff.posting.beat;
+
+    /*----------------------------------
+      Assignment
+    ----------------------------------*/
+
+    staff.assignment.assignedCompartment =
+
+        live.compartment ||
+
+        staff.assignment.assignedCompartment;
+
+    staff.assignment.dutyType =
+
+        live.dutyType ||
+
+        staff.assignment.dutyType;
+
+    staff.assignment.dutyActive =
+
+        Boolean(
+
+            live.dutyActive
+
+        );
+
+    staff.assignment.status =
+
+        live.status ||
+
+        staff.assignment.status;
+
+    staff.assignment.leader =
+
+        live.leader ||
+
+        staff.assignment.leader;
+
+    staff.assignment.team =
+
+        live.team ||
+
+        staff.assignment.team;
+
+    staff.assignment.lastDutyEnd =
+
+        live.lastDutyEnd ||
+
+        staff.assignment.lastDutyEnd;
+
+    /*----------------------------------
+      Location
+    ----------------------------------*/
+
+    staff.location.location =
+
+        live.location ||
+
+        staff.location.location;
+
+    staff.location.lat =
+
+        live.lat ??
+
+        staff.location.lat;
+
+    staff.location.lon =
+
+        live.lon ??
+
+        staff.location.lon;
+
+    /*----------------------------------
+      GPS
+    ----------------------------------*/
+
+    staff.gps.accuracy =
+
+        live.accuracy ??
+
+        staff.gps.accuracy;
+
+    staff.gps.heading =
+
+        live.heading ??
+
+        staff.gps.heading;
+
+    staff.gps.speed =
+
+        live.speed ??
+
+        staff.gps.speed;
+
+    staff.gps.lastSeen =
+
+        live.lastSeen ??
+
+        staff.gps.lastSeen;
+
+    staff.gps.timestamp =
+
+        live.timestamp ??
+
+        staff.gps.timestamp;
+
+    staff.gps.updatedAt =
+
+        live.updatedAt ??
+
+        staff.gps.updatedAt;
+
+    staff.gps.turnRate =
+
+        live.turnRate ??
+
+        staff.gps.turnRate;
+
+    /*----------------------------------
+      Tracking
+    ----------------------------------*/
+
+    staff.tracking.sessionId =
+
+        live.sessionId ||
+
+        staff.tracking.sessionId;
+
+    staff.tracking.source =
+
+        live.source ||
+
+        staff.tracking.source;
+
+    staff.tracking.id =
+
+        String(
+
+            live.id ??
+
+            staff.tracking.id
+
+        );
+
+    /*----------------------------------
+      Cache Merged Copy
+    ----------------------------------*/
+
+    cache.merged.set(
+
+        staff.identity.cleanName,
 
         staff
 
-    };
+    );
 
-};
+    statistics.hydratedStaff++;
 
-  /*=========================================================
+    return true;
+
+};  /*=========================================================
   MERGE LIVE STAFF DOCUMENT
 =========================================================*/
 
