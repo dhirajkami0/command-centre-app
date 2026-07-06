@@ -1,14 +1,4 @@
-/*=========================================================
-  STAFF HYDRATOR
-  ---------------------------------------------------------
-  Hydrates canonical StaffEntities with runtime data from
-
-      • live_staff
-      • patrol_tracks
-
-  Author  : GreenGuard AI
-  Module  : staffHydrator.js
-=========================================================*/
+/* HEADER */
 
 (function (
 
@@ -19,7 +9,7 @@
 "use strict";
 
 /*=========================================================
-  NAMESPACE
+  GREENGUARD NAMESPACE
 =========================================================*/
 
 const GG =
@@ -29,6 +19,10 @@ const GG =
     window.GG ||
 
     {};
+
+/*=========================================================
+  STAFF HYDRATOR MODULE
+=========================================================*/
 
 const StaffHydrator =
 
@@ -40,309 +34,149 @@ const StaffHydrator =
 
 StaffHydrator.VERSION =
 
-    "1.0.0";
+    "2.0.0";
 
 /*=========================================================
-  PRIVATE STATE
+  DESCRIPTION
 =========================================================*/
 
-let initialized =
+StaffHydrator.DESCRIPTION =
 
-    false;
-
-let hydrating =
-
-    false;
-
-let hydrated =
-
-    false;
-
-let lastHydrated =
-
-    null;
+    "Runtime Staff Hydration Engine";
 
 /*=========================================================
-  CACHE
+  hydrate()
 =========================================================*/
 
-const cache = {
-
-    liveStaff :
-
-        new Map(),
-
-    patrolTracks :
-
-        new Map(),
-
-    merged :
-
-        new Map()
-
-};
-
-/*=========================================================
-  OPTIONS
-=========================================================*/
-
-const options = {
-
-    mergeLive :
-
-        true,
-
-    mergeTracks :
-
-        true,
-
-    overwrite :
-
-        true,
-
-    cloneObjects :
-
-        false
-
-};
-
-/*=========================================================
-  STATISTICS
-=========================================================*/
-
-const statistics = {
-
-    liveDocuments :
-
-        0,
-
-    patrolDocuments :
-
-        0,
-
-    hydratedStaff :
-
-        0,
-
-    skipped :
-
-        0,
-
-    failed :
-
-        0
-
-};
-
-/*=========================================================
-  RESET CACHE
-=========================================================*/
-
-StaffHydrator.clear =
-
-function () {
-
-    cache.liveStaff.clear();
-
-    cache.patrolTracks.clear();
-
-    cache.merged.clear();
-
-    statistics.liveDocuments = 0;
-
-    statistics.patrolDocuments = 0;
-
-    statistics.hydratedStaff = 0;
-
-    statistics.skipped = 0;
-
-    statistics.failed = 0;
-
-    hydrated = false;
-
-    lastHydrated = null;
-
-};
-
-/*=========================================================
-  INITIALIZE
-=========================================================*/
-
-StaffHydrator.initialize =
-
-async function () {
-
-    if (
-
-        initialized
-
-    ) {
-
-        return true;
-
-    }
-
-    initialized = true;
-
-    console.log(
-
-        "%cStaff Hydrator Initialized",
-
-        "color:#009688;font-weight:bold;"
-
-    );
-
-    return true;
-
-};
-
-/*=========================================================
-  STATE
-=========================================================*/
-
-StaffHydrator.isInitialized =
-
-function () {
-
-    return initialized;
-
-};
-
-StaffHydrator.isHydrating =
-
-function () {
-
-    return hydrating;
-
-};
-
-StaffHydrator.isHydrated =
-
-function () {
-
-    return hydrated;
-
-};
-
-StaffHydrator.lastHydrated =
-
-function () {
-
-    return lastHydrated;
-
-};
-
-/*=========================================================
-  INFORMATION
-=========================================================*/
-
-StaffHydrator.info =
-
-function () {
-
-    return {
-
-        version :
-
-            StaffHydrator.VERSION,
-
-        initialized,
-
-        hydrating,
-
-        hydrated,
-
-        lastHydrated,
-
-        cache : {
-
-            live :
-
-                cache.liveStaff.size,
-
-            tracks :
-
-                cache.patrolTracks.size,
-
-            merged :
-
-                cache.merged.size
-
-        },
-
-        statistics
-
-    };
-
-};
-
-/*=========================================================
-  NORMALIZE LIVE STAFF DOCUMENT
-=========================================================*/
-
-/*=========================================================
-  MERGE LIVE STAFF DOCUMENT
-=========================================================*/
-/*=========================================================
-  MERGE LIVE STAFF DOCUMENT
-=========================================================*/
-
-StaffHydrator.mergeLiveStaffDocument =
+StaffHydrator.hydrate =
 
 function (
 
-    normalized
+    cleanName
 
 ) {
 
     /*----------------------------------
-      Validate
+      Validate Name
     ----------------------------------*/
 
     if (
 
-        !normalized ||
+        typeof cleanName !==
 
-        typeof normalized !==
-
-        "object"
+        "string"
 
     ) {
 
-        return false;
-
-    }
-
-    const canonical =
-
-        normalized.staff;
-
-    const live =
-
-        normalized.document;
-
-    if (
-
-        !canonical ||
-
-        !live
-
-    ) {
-
-        return false;
+        return null;
 
     }
 
     /*----------------------------------
-      Clone Canonical Staff
-      (Never modify frozen object)
+      Normalize Name
     ----------------------------------*/
 
-    let staff;
+    cleanName =
+
+        cleanName
+
+            .trim()
+
+            .toUpperCase();
+
+    if (
+
+        cleanName === ""
+
+    ) {
+
+        return null;
+
+    }
+
+    /*----------------------------------
+      Validate StaffEntities
+    ----------------------------------*/
+
+    if (
+
+        !GG.StaffEntities ||
+
+        !GG.StaffEntities.index ||
+
+        !GG.StaffEntities.index.byCleanName
+
+    ) {
+
+        console.error(
+
+            "StaffEntities index unavailable."
+
+        );
+
+        return null;
+
+    }
+
+    /*----------------------------------
+      Lookup Canonical Staff
+    ----------------------------------*/
+
+    const matches =
+
+        GG
+            .StaffEntities
+            .index
+            .byCleanName
+            .get(
+
+                cleanName
+
+            );
+
+    if (
+
+        !Array.isArray(
+
+            matches
+
+        ) ||
+
+        matches.length === 0
+
+    ) {
+
+        return null;
+
+    }
+
+    /*----------------------------------
+      Canonical Staff
+    ----------------------------------*/
+
+    const canonical =
+
+        matches[0];
+
+    if (
+
+        !canonical
+
+    ) {
+
+        return null;
+
+    }
+
+    /*----------------------------------
+      Clone Frozen Canonical Object
+    ----------------------------------*/
+
+    let hydrated;
 
     try {
 
-        staff =
+        hydrated =
 
             structuredClone(
 
@@ -360,17 +194,95 @@ function (
 
         console.error(
 
-            "Failed to clone staff:",
-
-            canonical.identity?.cleanName,
+            "structuredClone failed",
 
             error
 
         );
 
-        statistics.failed++;
+        return null;
 
-        return false;
+    }
+
+    /*----------------------------------
+      Safety Check
+    ----------------------------------*/
+
+    if (
+
+        Object.isFrozen(
+
+            hydrated
+
+        )
+
+    ) {
+
+        console.error(
+
+            "Hydrated object is frozen."
+
+        );
+
+        return null;
+
+    }
+
+    /*----------------------------------
+      Return Mutable Copy
+    ----------------------------------*/
+
+    return hydrated;
+
+};
+
+/*=========================================================
+  hydrateLive()
+=========================================================*/
+
+StaffHydrator.hydrateLive =
+
+function (
+
+    staff,
+
+    live
+
+) {
+
+    /*----------------------------------
+      Validate Staff
+    ----------------------------------*/
+
+    if (
+
+        !staff ||
+
+        typeof staff !==
+
+        "object"
+
+    ) {
+
+        return staff;
+
+    }
+
+    /*----------------------------------
+      No Live Document
+    ----------------------------------*/
+
+    if (
+
+        !live ||
+
+        typeof live !==
+
+        "object"
+
+    ) {
+
+        return staff;
 
     }
 
@@ -378,117 +290,139 @@ function (
       Identity
     ----------------------------------*/
 
-    staff.identity.rawName =
+    if (
 
-        live.rawName ||
+        staff.identity
 
-        staff.identity.rawName;
+    ) {
 
-    staff.identity.name =
+        staff.identity.rawName =
 
-        live.name ||
+            live.rawName ??
 
-        staff.identity.name;
+            staff.identity.rawName;
 
-    staff.identity.phone =
+        staff.identity.name =
 
-        live.phone ||
+            live.name ??
 
-        staff.identity.phone;
+            staff.identity.name;
 
-    staff.identity.email =
+        staff.identity.phone =
 
-        live.email ||
+            live.phone ??
 
-        staff.identity.email;
+            staff.identity.phone;
 
-    staff.identity.role =
+        staff.identity.email =
 
-        live.role ||
+            live.email ??
 
-        staff.identity.role;
+            staff.identity.email;
 
-    staff.identity.designation =
+        staff.identity.role =
 
-        live.designation ||
+            live.role ??
 
-        staff.identity.designation;
+            staff.identity.role;
+
+        staff.identity.designation =
+
+            live.designation ??
+
+            staff.identity.designation;
+
+    }
 
     /*----------------------------------
       Posting
     ----------------------------------*/
 
-    staff.posting.circle =
+    if (
 
-        live.circle ||
+        staff.posting
 
-        staff.posting.circle;
+    ) {
 
-    staff.posting.division =
+        staff.posting.circle =
 
-        live.division ||
+            live.circle ??
 
-        staff.posting.division;
+            staff.posting.circle;
 
-    staff.posting.range =
+        staff.posting.division =
 
-        live.range ||
+            live.division ??
 
-        staff.posting.range;
+            staff.posting.division;
 
-    staff.posting.beat =
+        staff.posting.range =
 
-        live.beat ||
+            live.range ??
 
-        staff.posting.beat;
+            staff.posting.range;
+
+        staff.posting.beat =
+
+            live.beat ??
+
+            staff.posting.beat;
+
+    }
 
     /*----------------------------------
       Assignment
     ----------------------------------*/
 
-    staff.assignment.assignedCompartment =
+    if (
 
-        live.compartment ||
+        staff.assignment
 
-        staff.assignment.assignedCompartment;
+    ) {
 
-    staff.assignment.dutyType =
+        staff.assignment.assignedCompartment =
 
-        live.dutyType ||
+            live.compartment ??
 
-        staff.assignment.dutyType;
+            staff.assignment.assignedCompartment;
 
-    staff.assignment.dutyActive =
+        staff.assignment.dutyType =
 
-        Boolean(
+            live.dutyType ??
 
-            live.dutyActive
+            staff.assignment.dutyType;
 
-        );
+        staff.assignment.dutyActive =
 
-    staff.assignment.status =
+            live.dutyActive ??
 
-        live.status ||
+            staff.assignment.dutyActive;
 
-        staff.assignment.status;
+        staff.assignment.status =
 
-    staff.assignment.leader =
+            live.status ??
 
-        live.leader ||
+            staff.assignment.status;
 
-        staff.assignment.leader;
+        staff.assignment.leader =
 
-    staff.assignment.team =
+            live.leader ??
 
-        live.team ||
+            staff.assignment.leader;
 
-        staff.assignment.team;
+        staff.assignment.team =
 
-    staff.assignment.lastDutyEnd =
+            live.team ??
 
-        live.lastDutyEnd ||
+            staff.assignment.team;
 
-        staff.assignment.lastDutyEnd;
+        staff.assignment.lastDutyEnd =
+
+            live.lastDutyEnd ??
+
+            staff.assignment.lastDutyEnd;
+
+    }
 
     /*----------------------------------
       Duty
@@ -502,27 +436,25 @@ function (
 
         staff.duty.dutyType =
 
-            live.dutyType ||
+            live.dutyType ??
 
             staff.duty.dutyType;
 
         staff.duty.dutyActive =
 
-            Boolean(
+            live.dutyActive ??
 
-                live.dutyActive
-
-            );
+            staff.duty.dutyActive;
 
         staff.duty.status =
 
-            live.status ||
+            live.status ??
 
             staff.duty.status;
 
         staff.duty.lastDutyEnd =
 
-            live.lastDutyEnd ||
+            live.lastDutyEnd ??
 
             staff.duty.lastDutyEnd;
 
@@ -532,79 +464,89 @@ function (
       Location
     ----------------------------------*/
 
-    staff.location.location =
+    if (
 
-        live.location ||
+        staff.location
 
-        staff.location.location;
+    ) {
 
-    staff.location.lat =
+        staff.location.location =
 
-        live.lat ??
+            live.location ??
 
-        staff.location.lat;
+            staff.location.location;
 
-    staff.location.lon =
+        staff.location.lat =
 
-        live.lon ??
+            live.lat ??
 
-        staff.location.lon;
+            staff.location.lat;
+
+        staff.location.lon =
+
+            live.lon ??
+
+            staff.location.lon;
+
+    }
 
     /*----------------------------------
       GPS
     ----------------------------------*/
 
-    staff.gps.accuracy =
-
-        live.accuracy ??
-
-        staff.gps.accuracy;
-
-    staff.gps.heading =
-
-        live.heading ??
-
-        staff.gps.heading;
-
-    staff.gps.speed =
-
-        live.speed ??
-
-        staff.gps.speed;
-
-    staff.gps.lastSeen =
-
-        live.lastSeen ??
-
-        staff.gps.lastSeen;
-
-    staff.gps.timestamp =
-
-        live.timestamp ??
-
-        staff.gps.timestamp;
-
-    staff.gps.updatedAt =
-
-        live.updatedAt ??
-
-        staff.gps.updatedAt;
-
-    staff.gps.turnRate =
-
-        live.turnRate ??
-
-        staff.gps.turnRate;
-
     if (
 
-        "turnAngle" in live
+        staff.gps
 
     ) {
 
+        staff.gps.accuracy =
+
+            live.accuracy ??
+
+            staff.gps.accuracy;
+
+        staff.gps.heading =
+
+            live.heading ??
+
+            staff.gps.heading;
+
+        staff.gps.speed =
+
+            live.speed ??
+
+            staff.gps.speed;
+
+        staff.gps.lastSeen =
+
+            live.lastSeen ??
+
+            staff.gps.lastSeen;
+
+        staff.gps.timestamp =
+
+            live.timestamp ??
+
+            staff.gps.timestamp;
+
+        staff.gps.updatedAt =
+
+            live.updatedAt ??
+
+            staff.gps.updatedAt;
+
         staff.gps.turnAngle =
 
-            live.turnAngle;
+            live.turnAngle ??
+
+            staff.gps.turnAngle;
+
+        staff.gps.turnRate =
+
+            live.turnRate ??
+
+            staff.gps.turnRate;
 
     }
 
@@ -612,43 +554,30 @@ function (
       Tracking
     ----------------------------------*/
 
-    staff.tracking.sessionId =
-
-        live.sessionId ||
-
-        staff.tracking.sessionId;
-
-    staff.tracking.source =
-
-        live.source ||
-
-        staff.tracking.source;
-
-    staff.tracking.id =
-
-        String(
-
-            live.id ??
-
-            staff.tracking.id
-
-        );
-
-    /*----------------------------------
-      Analytics
-    ----------------------------------*/
-
     if (
 
-        staff.analytics
+        staff.tracking
 
     ) {
 
-        staff.analytics.updatedAt =
+        staff.tracking.sessionId =
 
-            live.updatedAt ||
+            live.sessionId ??
 
-            staff.analytics.updatedAt;
+            staff.tracking.sessionId;
+
+        staff.tracking.source =
+
+            live.source ??
+
+            staff.tracking.source;
+
+        staff.tracking.id =
+
+            live.id ??
+
+            staff.tracking.id;
+
     }
 
     /*----------------------------------
@@ -668,470 +597,270 @@ function (
     }
 
     /*----------------------------------
-      Cache Merged Copy
+      Return Hydrated Staff
     ----------------------------------*/
 
-    cache.merged.set(
+    return staff;
 
-        staff.identity.cleanName,
+};
 
-        staff
-
-    );
-
-    statistics.hydratedStaff++;
-
-    console.log(
-
-        "✔ Hydrated:",
-
-        staff.identity.cleanName
-
-    );
-
-    return true;
-
-}; /*=========================================================
-  MERGE LIVE STAFF DOCUMENT
+/*=========================================================
+  hydratePatrol()
 =========================================================*/
 
-StaffHydrator.mergeLiveStaffDocument =
+StaffHydrator.hydratePatrol =
 
 function (
 
-    normalized
+    staff,
+
+    patrol
 
 ) {
 
     /*----------------------------------
-      Validate
+      Validate Staff
     ----------------------------------*/
-
-    if (
-
-        !normalized
-
-    ) {
-
-        return false;
-
-    }
-
-    const staff =
-
-        normalized.staff;
-
-    const live =
-
-        normalized.document;
 
     if (
 
         !staff ||
 
-        !live
-
-    ) {
-
-        return false;
-
-    }
-
-    /*----------------------------------
-      Identity
-    ----------------------------------*/
-
-    if (
-
-        live.rawName
-
-    ) {
-
-        staff.identity.rawName =
-
-            live.rawName;
-
-    }
-
-    if (
-
-        live.name
-
-    ) {
-
-        staff.identity.name =
-
-            live.name;
-
-    }
-
-    if (
-
-        live.phone
-
-    ) {
-
-        staff.identity.phone =
-
-            live.phone;
-
-    }
-
-    if (
-
-        live.email
-
-    ) {
-
-        staff.identity.email =
-
-            live.email;
-
-    }
-
-    if (
-
-        live.role
-
-    ) {
-
-        staff.identity.role =
-
-            live.role;
-
-    }
-
-    if (
-
-        live.designation
-
-    ) {
-
-        staff.identity.designation =
-
-            live.designation;
-
-    }
-
-    /*----------------------------------
-      Posting
-    ----------------------------------*/
-
-    staff.posting.circle =
-
-        live.circle ||
-
-        staff.posting.circle;
-
-    staff.posting.division =
-
-        live.division ||
-
-        staff.posting.division;
-
-    staff.posting.range =
-
-        live.range ||
-
-        staff.posting.range;
-
-    staff.posting.beat =
-
-        live.beat ||
-
-        staff.posting.beat;
-
-    /*----------------------------------
-      Assignment
-    ----------------------------------*/
-
-    staff.assignment.assignedCompartment =
-
-        live.compartment ||
-
-        staff.assignment.assignedCompartment;
-
-    staff.assignment.dutyType =
-
-        live.dutyType ||
-
-        staff.assignment.dutyType;
-
-    staff.assignment.dutyActive =
-
-        Boolean(
-
-            live.dutyActive
-
-        );
-
-    staff.assignment.status =
-
-        live.status ||
-
-        staff.assignment.status;
-
-    staff.assignment.leader =
-
-        live.leader ||
-
-        staff.assignment.leader;
-
-    staff.assignment.team =
-
-        live.team ||
-
-        staff.assignment.team;
-
-    staff.assignment.lastDutyEnd =
-
-        live.lastDutyEnd ||
-
-        staff.assignment.lastDutyEnd;
-
-    /*----------------------------------
-      Location
-    ----------------------------------*/
-
-    staff.location.location =
-
-        live.location ||
-
-        staff.location.location;
-
-    staff.location.lat =
-
-        live.lat ??
-
-        staff.location.lat;
-
-    staff.location.lon =
-
-        live.lon ??
-
-        staff.location.lon;
-
-    /*----------------------------------
-      GPS
-    ----------------------------------*/
-
-    staff.gps.accuracy =
-
-        live.accuracy ??
-
-        staff.gps.accuracy;
-
-    staff.gps.heading =
-
-        live.heading ??
-
-        staff.gps.heading;
-
-    staff.gps.speed =
-
-        live.speed ??
-
-        staff.gps.speed;
-
-    staff.gps.lastSeen =
-
-        live.lastSeen ??
-
-        staff.gps.lastSeen;
-
-    staff.gps.timestamp =
-
-        live.timestamp ??
-
-        staff.gps.timestamp;
-
-    staff.gps.updatedAt =
-
-        live.updatedAt ??
-
-        staff.gps.updatedAt;
-
-    staff.gps.turnRate =
-
-        live.turnRate ??
-
-        staff.gps.turnRate;
-
-    /*----------------------------------
-      Tracking
-    ----------------------------------*/
-
-    staff.tracking.sessionId =
-
-        live.sessionId ||
-
-        staff.tracking.sessionId;
-
-    staff.tracking.source =
-
-        live.source ||
-
-        staff.tracking.source;
-
-    staff.tracking.id =
-
-        String(
-
-            live.id ??
-
-            staff.tracking.id
-
-        );
-
-    /*----------------------------------
-      Cache
-    ----------------------------------*/
-
-    cache.merged.set(
-
-        staff.identity.cleanName,
-
-        staff
-
-    );
-
-    statistics.hydratedStaff++;
-
-    return true;
-
-};
-  /*=========================================================
-  NORMALIZE LIVE STAFF DOCUMENT
-=========================================================*/
-
-StaffHydrator.normalizeLiveStaffDocument =
-
-function (
-
-    document
-
-) {
-
-    /*----------------------------------
-      Validate
-    ----------------------------------*/
-
-    if (
-
-        !document ||
-
-        typeof document !==
+        typeof staff !==
 
         "object"
 
     ) {
 
-        return null;
+        return staff;
 
     }
 
     /*----------------------------------
-      Clean Name
+      No Patrol Document
     ----------------------------------*/
-
-    const cleanName =
-
-        String(
-
-            document.cleanName ||
-
-            document.name ||
-
-            ""
-
-        )
-
-        .trim()
-
-        .toUpperCase();
 
     if (
 
-        cleanName === ""
+        !patrol ||
+
+        typeof patrol !==
+
+        "object"
 
     ) {
 
-        return null;
+        return staff;
 
     }
 
     /*----------------------------------
-      Staff Index
+      Tracking
     ----------------------------------*/
-
-    const index =
-
-        GG
-            .StaffEntities
-            ?.index
-            ?.byCleanName;
 
     if (
 
-        !index
+        staff.tracking
 
     ) {
 
-        console.error(
+        staff.tracking.sessionId =
 
-            "Staff index unavailable."
+            patrol.sessionId ??
 
-        );
+            staff.tracking.sessionId;
 
-        return null;
+        staff.tracking.source =
+
+            patrol.source ??
+
+            staff.tracking.source;
+
+        staff.tracking.id =
+
+            patrol.id ??
+
+            staff.tracking.id;
 
     }
 
     /*----------------------------------
-      Lookup Staff
+      GPS
     ----------------------------------*/
-
-    const matches =
-
-        index.get(
-
-            cleanName
-
-        );
 
     if (
 
-        !Array.isArray(
-
-            matches
-
-        ) ||
-
-        matches.length ===
-
-        0
+        staff.gps
 
     ) {
 
-        console.warn(
+        staff.gps.lastSeen =
 
-            "Live Staff not found:",
+            patrol.lastSeen ??
 
-            cleanName
+            staff.gps.lastSeen;
 
-        );
+        staff.gps.timestamp =
 
-        return null;
+            patrol.timestamp ??
+
+            staff.gps.timestamp;
+
+        staff.gps.updatedAt =
+
+            patrol.updatedAt ??
+
+            staff.gps.updatedAt;
 
     }
 
     /*----------------------------------
-      Canonical Staff
+      Analytics
+    ----------------------------------*/
+
+    if (
+
+        staff.analytics
+
+    ) {
+
+        staff.analytics.pointCount =
+
+            patrol.pointCount ??
+
+            staff.analytics.pointCount;
+
+        staff.analytics.distanceKm =
+
+            patrol.distanceKm ??
+
+            staff.analytics.distanceKm;
+
+        staff.analytics.startedAt =
+
+            patrol.startedAt ??
+
+            staff.analytics.startedAt;
+
+        staff.analytics.endedAt =
+
+            patrol.endedAt ??
+
+            staff.analytics.endedAt;
+
+        staff.analytics.monthKey =
+
+            patrol.monthKey ??
+
+            staff.analytics.monthKey;
+
+        staff.analytics.compartments =
+
+            patrol.compartments ??
+
+            staff.analytics.compartments;
+
+        staff.analytics.simplifiedTrack =
+
+            patrol.simplifiedTrack ??
+
+            staff.analytics.simplifiedTrack;
+
+        staff.analytics.startLat =
+
+            patrol.startLat ??
+
+            staff.analytics.startLat;
+
+        staff.analytics.startLon =
+
+            patrol.startLon ??
+
+            staff.analytics.startLon;
+
+        staff.analytics.startAccuracy =
+
+            patrol.startAccuracy ??
+
+            staff.analytics.startAccuracy;
+
+    }
+
+    /*----------------------------------
+      Metadata
+    ----------------------------------*/
+
+    if (
+
+        staff.metadata
+
+    ) {
+
+        staff.metadata.source =
+
+            "PATROL_TRACKS";
+
+    }
+
+    /*----------------------------------
+      Return Hydrated Staff
+    ----------------------------------*/
+
+    return staff;
+
+};
+
+/*=========================================================
+  getHydratedStaff()
+=========================================================*/
+
+/*=========================================================
+  GET HYDRATED STAFF
+-----------------------------------------------------------
+  Purpose
+
+      Returns a fully hydrated runtime staff object.
+
+      Hydration Order
+
+          1. Clone Canonical Staff
+          2. Lookup live_staff
+          3. Merge live_staff
+          4. Lookup patrol_tracks
+          5. Merge patrol_tracks
+
+  Input
+
+      cleanName
+
+  Output
+
+      Hydrated Staff Object
+
+      OR
+
+      null
+=========================================================*/
+
+StaffHydrator.getHydratedStaff =
+
+function (
+
+    cleanName
+
+) {
+
+    /*----------------------------------
+      Clone Canonical Staff
     ----------------------------------*/
 
     const staff =
 
-        matches[0];
+        StaffHydrator.hydrate(
+
+            cleanName
+
+        );
 
     if (
 
@@ -1144,380 +873,373 @@ function (
     }
 
     /*----------------------------------
-      Debug
+      Lookup Live Staff
     ----------------------------------*/
 
-    console.log(
+    const live =
 
-        "✔ Live Staff:",
+        StaffHydrator.getLiveStaff(
 
-        cleanName
+            cleanName
 
-    );
-
-    /*----------------------------------
-      Return
-    ----------------------------------*/
-
-    return {
-
-        cleanName :
-
-            cleanName,
-
-        document :
-
-            document,
-
-        staff :
-
-            staff
-
-    };
-
-};
-/*=========================================================
-  LOAD LIVE STAFF
-=========================================================*/
-
-StaffHydrator.loadLiveStaff =
-
-async function () {
+        );
 
     /*----------------------------------
-      Prevent Parallel Loading
+      Merge Live Staff
     ----------------------------------*/
 
     if (
 
-        hydrating
+        live
 
     ) {
 
-        console.warn(
+        StaffHydrator.hydrateLive(
 
-            "StaffHydrator : already loading."
+            staff,
+
+            live
 
         );
 
-        return cache.liveStaff;
+    }
+
+    /*----------------------------------
+      Lookup Patrol Track
+    ----------------------------------*/
+
+    const patrol =
+
+        StaffHydrator.getPatrolTrack(
+
+            cleanName
+
+        );
+
+    /*----------------------------------
+      Merge Patrol Track
+    ----------------------------------*/
+
+    if (
+
+        patrol
+
+    ) {
+
+        StaffHydrator.hydratePatrol(
+
+            staff,
+
+            patrol
+
+        );
 
     }
 
-    hydrating =
-
-        true;
-
-    console.log(
-
-        "===================================="
-
-    );
-
-    console.log(
-
-        "LOAD LIVE STAFF START"
-
-    );
-
-    console.log(
-
-        "===================================="
-
-    );
-
     /*----------------------------------
-      Clear Previous Cache
+      Return Hydrated Staff
     ----------------------------------*/
 
-    cache.liveStaff.clear();
+    return staff;
 
-    statistics.liveDocuments =
+};
+/*=========================================================
+  GET LIVE STAFF DOCUMENT
+-----------------------------------------------------------
+  Purpose
 
-        0;
+      Locate a runtime live_staff document using
+      cleanName.
 
-    try {
+  Input
 
-      /*----------------------------------
-  Validate StaffEntities
-----------------------------------*/
+      cleanName
 
-if (
+  Output
 
-    !GG.StaffEntities
+      Live Staff Document
+
+      OR
+
+      null
+=========================================================*/
+
+StaffHydrator.getLiveStaff =
+
+function (
+
+    cleanName
 
 ) {
 
-    throw new Error(
+    /*----------------------------------
+      Validate Name
+    ----------------------------------*/
 
-        "StaffEntities not available."
+    if (
 
-    );
+        typeof cleanName !==
 
-}
-
-/*----------------------------------
-  Get Collection Reference
-----------------------------------*/
-
-const collection =
-
-    GG
-        .StaffEntities
-        .getLiveStaffCollection();
-
-/*----------------------------------
-  Load Firestore Snapshot
-----------------------------------*/
-
-const snapshot =
-
-    await GG
-        .StaffEntities
-        .loadCollection(
-
-            collection
-
-        );
-        console.log(
-
-            "Documents:",
-
-            snapshot.size
-
-        );
-
-        /*----------------------------------
-          Empty Collection
-        ----------------------------------*/
-
-        if (
-
-            snapshot.empty
-
-        ) {
-
-            console.warn(
-
-                "No live staff found."
-
-            );
-
-            hydrating =
-
-                false;
-
-            return cache.liveStaff;
-
-        }
-
-       /*----------------------------------
-  Process Documents
-----------------------------------*/
-
-snapshot.forEach(
-
-    function (
-
-        doc
+        "string"
 
     ) {
 
-        /*------------------------------
-          Read Firestore
-        ------------------------------*/
-
-        const raw =
-
-            doc.data() ||
-
-            {};
-
-        statistics.liveDocuments++;
-
-        /*------------------------------
-          Cache Raw Document
-        ------------------------------*/
-
-        cache.liveStaff.set(
-
-            doc.id,
-
-            raw
-
-        );
-
-        /*------------------------------
-          Normalize
-        ------------------------------*/
-
-        const normalized =
-
-            StaffHydrator
-                .normalizeLiveStaffDocument(
-
-                    raw
-
-                );
-
-        if (
-
-            !normalized
-
-        ) {
-
-            statistics.skipped++;
-
-            return;
-
-        }
-
-        /*------------------------------
-          Merge Into
-          Canonical Staff Object
-        ------------------------------*/
-
-        const merged =
-
-            StaffHydrator
-                .mergeLiveStaffDocument(
-
-                    normalized
-
-                );
-
-        if (
-
-            !merged
-
-        ) {
-
-            statistics.skipped++;
-
-            return;
-
-        }
-
-        console.log(
-
-            "✅ Live Staff Hydrated:",
-
-            normalized.staff.identity.cleanName
-
-        );
+        return null;
 
     }
 
-);
-        console.log(
+    cleanName =
 
-            "Cached:",
+        cleanName
 
-            cache.liveStaff.size,
+            .trim()
 
-            "documents"
+            .toUpperCase();
 
-        );
+    if (
 
-    }
-
-    catch (
-
-        error
+        cleanName === ""
 
     ) {
 
-        console.error(
-
-            "loadLiveStaff() failed",
-
-            error
-
-        );
-
-        statistics.failed++;
+        return null;
 
     }
 
-    finally {
+    /*----------------------------------
+      Validate Runtime Collection
+    ----------------------------------*/
 
-        hydrating =
+    const liveStaff =
 
-            false;
+        GG.liveStaff ||
+
+        GG.live_staff ||
+
+        [];
+
+    if (
+
+        !Array.isArray(
+
+            liveStaff
+
+        )
+
+    ) {
+
+        return null;
 
     }
 
-    console.log(
+    /*----------------------------------
+      Search
+    ----------------------------------*/
 
-        "===================================="
+    for (
 
-    );
+        const document of
 
-    console.log(
+        liveStaff
 
-        "LOAD LIVE STAFF END"
+    ) {
 
-    );
+        if (
 
-    console.log(
+            !document
 
-        "===================================="
+        ) {
 
-    );
+            continue;
 
-    return cache.liveStaff;
+        }
+
+        const name =
+
+            String(
+
+                document.cleanName ||
+
+                document.name ||
+
+                ""
+
+            )
+
+            .trim()
+
+            .toUpperCase();
+
+        if (
+
+            name ===
+
+            cleanName
+
+        ) {
+
+            return document;
+
+        }
+
+    }
+
+    /*----------------------------------
+      Not Found
+    ----------------------------------*/
+
+    return null;
+
+};/*=========================================================
+  GET PATROL TRACK DOCUMENT
+-----------------------------------------------------------
+  Purpose
+
+      Locate a runtime patrol_tracks document
+      using cleanName.
+
+  Input
+
+      cleanName
+
+  Output
+
+      Patrol Track Document
+
+      OR
+
+      null
+=========================================================*/
+
+StaffHydrator.getPatrolTrack =
+
+function (
+
+    cleanName
+
+) {
+
+    /*----------------------------------
+      Validate Name
+    ----------------------------------*/
+
+    if (
+
+        typeof cleanName !==
+
+        "string"
+
+    ) {
+
+        return null;
+
+    }
+
+    cleanName =
+
+        cleanName
+
+            .trim()
+
+            .toUpperCase();
+
+    if (
+
+        cleanName === ""
+
+    ) {
+
+        return null;
+
+    }
+
+    /*----------------------------------
+      Validate Runtime Collection
+    ----------------------------------*/
+
+    const patrolTracks =
+
+        GG.patrolTracks ||
+
+        GG.patrol_tracks ||
+
+        [];
+
+    if (
+
+        !Array.isArray(
+
+            patrolTracks
+
+        )
+
+    ) {
+
+        return null;
+
+    }
+
+    /*----------------------------------
+      Search
+    ----------------------------------*/
+
+    for (
+
+        const document of
+
+        patrolTracks
+
+    ) {
+
+        if (
+
+            !document
+
+        ) {
+
+            continue;
+
+        }
+
+        const name =
+
+            String(
+
+                document.cleanName ||
+
+                document.name ||
+
+                ""
+
+            )
+
+            .trim()
+
+            .toUpperCase();
+
+        if (
+
+            name ===
+
+            cleanName
+
+        ) {
+
+            return document;
+
+        }
+
+    }
+
+    /*----------------------------------
+      Not Found
+    ----------------------------------*/
+
+    return null;
 
 };
-StaffHydrator.loadPatrolTracks =
-
-async function () {
-
-    throw new Error(
-
-        "loadPatrolTracks() not implemented."
-
-    );
-
-};
-
-StaffHydrator.mergeLiveStaff =
-
-function () {
-
-    throw new Error(
-
-        "mergeLiveStaff() not implemented."
-
-    );
-
-};
-
-StaffHydrator.mergePatrolTracks =
-
-function () {
-
-    throw new Error(
-
-        "mergePatrolTracks() not implemented."
-
-    );
-
-};
-
-StaffHydrator.hydrate =
-
-async function () {
-
-    throw new Error(
-
-        "hydrate() not implemented."
-
-    );
-
-};
-
 /*=========================================================
-  REGISTER
+  REGISTER MODULE
 =========================================================*/
 
 GG.StaffHydrator =
@@ -1540,4 +1262,8 @@ console.log(
 
 );
 
-})(window);
+})(
+
+    window
+
+);
