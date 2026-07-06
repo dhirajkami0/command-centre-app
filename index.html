@@ -28497,125 +28497,31 @@ window.liveStaffCache[
   PATROL TRACK CACHE
 =========================================================*/
 
+/*=========================================================
+  PATROL TRACK CACHE
+-----------------------------------------------------------
+  Store complete Firestore patrol document
+=========================================================*/
+
 window.patrolTrackCache[
 
-    s.cleanName
+    String(
 
-] = {
+        s.cleanName || ""
 
-    cleanName:
+    )
 
-        s.cleanName,
+    .trim()
 
-    sessionId:
+    .toUpperCase()
 
-        String(
+] =
 
-            s.sessionId || ""
+    structuredClone(
 
-        ),
+        s
 
-    dutyType:
-
-        String(
-
-            s.dutyType || ""
-
-        ),
-
-    dutyActive:
-
-        s.dutyActive === true,
-
-    status:
-
-        String(
-
-            s.status || ""
-
-        ),
-
-    division:
-
-        String(
-
-            s.division || ""
-
-        ),
-
-    range:
-
-        String(
-
-            s.range || ""
-
-        ),
-
-    beat:
-
-        String(
-
-            s.beat || ""
-
-        ),
-
-    compartment:
-
-        String(
-
-            s.compartment || ""
-
-        ),
-
-    leader:
-
-        String(
-
-            s.leader || ""
-
-        ),
-
-    team:
-
-        String(
-
-            s.team || ""
-
-        ),
-
-    pointCount:
-
-        Number(
-
-            window.trackPointCount?.[
-
-                s.cleanName
-
-            ] || 0
-
-        ),
-
-    distanceKm:
-
-        Number(
-
-            window.trackDistanceMap?.[
-
-                s.cleanName
-
-            ] || 0
-
-        ),
-
-    simplifiedTrack:
-
-        window.sessionTrackCache?.[
-
-            s.sessionId
-
-        ] || []
-
-};
+    );
 // ==============================================
 // 🔥 ACTIVE USER LIST
 // ==============================================
