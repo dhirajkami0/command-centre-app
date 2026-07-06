@@ -5086,7 +5086,6 @@ async function startApp(){   // 🔥 ASYNC
 
         await loadRangeKML();
 
-await loadAllStaffProfiles();
         // ==================================================
         // 🔒 BACKEND LOCK
         // ==================================================
@@ -5396,7 +5395,7 @@ await loadAllStaffProfiles();
       },800);
 
     },1000);
-        await GG.StaffEntities.initialize();
+        
 
     // ======================================================
     // ✅ APP READY
@@ -5515,7 +5514,61 @@ setTimeout(() => {
       // ==================================================
       window.firebaseReady = true;
       console.log("🔥 FIREBASE READY");
+/*=========================================================
+  BUILD STAFF INDEX
+=========================================================*/
 
+try {
+
+    console.log(
+
+        "🧠 Initializing StaffEntities..."
+
+    );
+
+    await GG.StaffEntities.initialize();
+
+    console.log(
+
+        "✅ StaffEntities Ready"
+
+    );
+
+    if (
+
+        typeof loadAllStaffProfiles ===
+
+        "function"
+
+    ) {
+
+        await loadAllStaffProfiles();
+
+    }
+
+    console.log(
+
+        "✅ Staff Profiles Loaded"
+
+    );
+
+}
+
+catch (
+
+    err
+
+) {
+
+    console.error(
+
+        "❌ StaffEntities Init Failed",
+
+        err
+
+    );
+
+}
       // ==================================================
       // 🧹 CLEANUP TASKS
       // ==================================================
