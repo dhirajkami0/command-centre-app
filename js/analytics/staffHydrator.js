@@ -909,13 +909,13 @@ function (
       Lookup Patrol Track
     ----------------------------------*/
 
-    const patrol =
+const patrol =
 
-        StaffHydrator.getPatrolTrack(
+    await StaffHydrator.getPatrolTrack(
 
-            cleanName
+        cleanName
 
-        );
+    );
 
     /*----------------------------------
       Merge Patrol Track
@@ -1044,16 +1044,36 @@ function (
       null
 =========================================================*/
 
+/*=========================================================
+  GET PATROL TRACK DOCUMENT
+-----------------------------------------------------------
+  Runtime Patrol Cache
+
+  Builds an in-memory cache from Firestore.
+
+  Cache Key
+
+      cleanName
+
+  Returns
+
+      Patrol Document
+
+      OR
+
+      null
+=========================================================*/
+
 StaffHydrator.getPatrolTrack =
 
-function (
+async function (
 
     cleanName
 
 ) {
 
     /*----------------------------------
-      Validate Name
+      Validate
     ----------------------------------*/
 
     if (
@@ -1087,24 +1107,54 @@ function (
     }
 
     /*----------------------------------
-      Validate Runtime Collection
+      Cache
     ----------------------------------*/
-
-    const patrolTracks =
-
-        GG.patrolTracks ||
-
-        GG.patrol_tracks ||
-
-        [];
 
     if (
 
-        !Array.isArray(
+        !window.patrolTrackCache
 
-            patrolTracks
+    ) {
 
-        )
+        window.patrolTrackCache =
+
+            {};
+
+    }
+
+    /*----------------------------------
+      Already Cached
+    ----------------------------------*/
+
+    if (
+
+        window.patrolTrackCache[
+
+            cleanName
+
+        ]
+
+    ) {
+
+        return
+
+            window.patrolTrackCache[
+
+                cleanName
+
+            ];
+
+    }
+
+    /*----------------------------------
+      Firebase Ready
+    ----------------------------------*/
+
+    if (
+
+        !window.fb ||
+
+        !window.db
 
     ) {
 
@@ -1112,63 +1162,119 @@ function (
 
     }
 
-    /*----------------------------------
-      Search
-    ----------------------------------*/
+    try {
 
-    for (
+        /*------------------------------
+          Query Active Patrol
+        ------------------------------*/
 
-        const document of
+        const q =
 
-        patrolTracks
+            window.fb.query(
 
-    ) {
+                window.fb.collection(
+
+                    window.db,
+
+                    "patrol_tracks"
+
+                ),
+
+                window.fb.where(
+
+                    "cleanName",
+
+                    "==",
+
+                    cleanName
+
+                ),
+
+                window.fb.where(
+
+                    "status",
+
+                    "==",
+
+                    "ACTIVE"
+
+                ),
+
+                window.fb.limit(
+
+                    1
+
+                )
+
+            );
+
+        const snap =
+
+            await window.fb.getDocs(
+
+                q
+
+            );
 
         if (
 
-            !document
+            snap.empty
 
         ) {
 
-            continue;
+            return null;
 
         }
 
-        const name =
+        const doc =
 
-            String(
+            snap.docs[0];
 
-                document.cleanName ||
+        const patrol =
 
-                document.name ||
+            {
 
-                ""
+                id:
 
-            )
+                    doc.id,
 
-            .trim()
+                ...doc.data()
 
-            .toUpperCase();
+            };
 
-        if (
+        /*------------------------------
+          Save Cache
+        ------------------------------*/
 
-            name ===
+        window.patrolTrackCache[
 
             cleanName
 
-        ) {
+        ] =
 
-            return document;
+            patrol;
 
-        }
+        return patrol;
 
     }
 
-    /*----------------------------------
-      Not Found
-    ----------------------------------*/
+    catch (
 
-    return null;
+        err
+
+    ) {
+
+        console.error(
+
+            "❌ Patrol Cache Error",
+
+            err
+
+        );
+
+        return null;
+
+    }
 
 };
 /*=========================================================
