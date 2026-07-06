@@ -27668,6 +27668,11 @@ window.staffTracks = window.staffTracks || {};
 window.staffDecorators = window.staffDecorators || {};
 window.staffTrackCache = window.staffTrackCache || {};
 window.staffLastUpdate = window.staffLastUpdate || {};
+    /*=========================================================
+  PATROL TRACK CACHE
+=========================================================*/
+
+window.patrolTrackCache = {};
 // ======================================
 // 🔥 ANALYTICS BUFFER
 // ======================================
@@ -28484,6 +28489,129 @@ window.liveStaffCache[
     String(
       s.team || ""
     )
+};
+    /*=========================================================
+  PATROL TRACK CACHE
+=========================================================*/
+
+window.patrolTrackCache[
+
+    s.cleanName
+
+] = {
+
+    cleanName:
+
+        s.cleanName,
+
+    sessionId:
+
+        String(
+
+            s.sessionId || ""
+
+        ),
+
+    dutyType:
+
+        String(
+
+            s.dutyType || ""
+
+        ),
+
+    dutyActive:
+
+        s.dutyActive === true,
+
+    status:
+
+        String(
+
+            s.status || ""
+
+        ),
+
+    division:
+
+        String(
+
+            s.division || ""
+
+        ),
+
+    range:
+
+        String(
+
+            s.range || ""
+
+        ),
+
+    beat:
+
+        String(
+
+            s.beat || ""
+
+        ),
+
+    compartment:
+
+        String(
+
+            s.compartment || ""
+
+        ),
+
+    leader:
+
+        String(
+
+            s.leader || ""
+
+        ),
+
+    team:
+
+        String(
+
+            s.team || ""
+
+        ),
+
+    pointCount:
+
+        Number(
+
+            window.trackPointCount?.[
+
+                s.cleanName
+
+            ] || 0
+
+        ),
+
+    distanceKm:
+
+        Number(
+
+            window.trackDistanceMap?.[
+
+                s.cleanName
+
+            ] || 0
+
+        ),
+
+    simplifiedTrack:
+
+        window.sessionTrackCache?.[
+
+            s.sessionId
+
+        ] || []
+
 };
 // ==============================================
 // 🔥 ACTIVE USER LIST
@@ -41288,9 +41416,20 @@ window.realtimePerformanceData = {
 
 window.sessionTrackCache ??= {};
 
+/*=========================================================
+  PATROL TRACK CACHE
+
+  Key
+
+      cleanName
+
+=========================================================*/
+
+window.patrolTrackCache ??= {};
+
 window.sessionTrackCache[
-  sessionId
-] = [];
+    currentSessionId
+] ??= [];
    
 // =====================================================
 // 🔥 DUTY ACTIVE
