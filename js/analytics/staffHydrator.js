@@ -609,6 +609,21 @@ function (
   hydratePatrol()
 =========================================================*/
 
+/*=========================================================
+  HYDRATE PATROL TRACK
+-----------------------------------------------------------
+  Merge patrol_tracks runtime data into the hydrated staff.
+
+  Source
+
+      window.patrolTrackCache
+
+  Target
+
+      Hydrated Staff Object
+
+=========================================================*/
+
 StaffHydrator.hydratePatrol =
 
 function (
@@ -652,6 +667,84 @@ function (
     ) {
 
         return staff;
+
+    }
+
+    /*----------------------------------
+      Posting
+    ----------------------------------*/
+
+    if (
+
+        staff.posting
+
+    ) {
+
+        staff.posting.division =
+
+            patrol.division ??
+
+            staff.posting.division;
+
+        staff.posting.range =
+
+            patrol.range ??
+
+            staff.posting.range;
+
+        staff.posting.beat =
+
+            patrol.beat ??
+
+            staff.posting.beat;
+
+    }
+
+    /*----------------------------------
+      Assignment
+    ----------------------------------*/
+
+    if (
+
+        staff.assignment
+
+    ) {
+
+        staff.assignment.assignedCompartment =
+
+            patrol.compartment ??
+
+            staff.assignment.assignedCompartment;
+
+        staff.assignment.dutyType =
+
+            patrol.dutyType ??
+
+            staff.assignment.dutyType;
+
+        staff.assignment.dutyActive =
+
+            patrol.dutyActive ??
+
+            staff.assignment.dutyActive;
+
+        staff.assignment.status =
+
+            patrol.status ??
+
+            staff.assignment.status;
+
+        staff.assignment.leader =
+
+            patrol.leader ??
+
+            staff.assignment.leader;
+
+        staff.assignment.team =
+
+            patrol.team ??
+
+            staff.assignment.team;
 
     }
 
@@ -754,6 +847,18 @@ function (
             patrol.monthKey ??
 
             staff.analytics.monthKey;
+
+        staff.analytics.createdAt =
+
+            patrol.createdAt ??
+
+            staff.analytics.createdAt;
+
+        staff.analytics.updatedAt =
+
+            patrol.updatedAt ??
+
+            staff.analytics.updatedAt;
 
         staff.analytics.compartments =
 
