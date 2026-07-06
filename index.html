@@ -5085,7 +5085,6 @@ async function startApp(){   // 🔥 ASYNC
         // ==================================================
 
         await loadRangeKML();
-        await GG.StaffEntities.initialize();
 
 await loadAllStaffProfiles();
         // ==================================================
@@ -5397,6 +5396,7 @@ await loadAllStaffProfiles();
       },800);
 
     },1000);
+        await GG.StaffEntities.initialize();
 
     // ======================================================
     // ✅ APP READY
