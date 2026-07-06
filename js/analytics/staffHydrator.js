@@ -911,8 +911,7 @@ function (
 
 const patrol =
 
-    await StaffHydrator.getPatrolTrack(
-
+StaffHydrator.getPatrolTrack(
         cleanName
 
     );
