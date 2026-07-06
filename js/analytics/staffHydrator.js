@@ -1066,215 +1066,37 @@ function (
 
 StaffHydrator.getPatrolTrack =
 
-async function (
+function (
 
     cleanName
 
 ) {
 
-    /*----------------------------------
-      Validate
-    ----------------------------------*/
-
-    if (
-
-        typeof cleanName !==
-
-        "string"
-
-    ) {
-
-        return null;
-
-    }
-
     cleanName =
 
-        cleanName
+        String(
 
-            .trim()
+            cleanName || ""
 
-            .toUpperCase();
+        )
 
-    if (
+        .trim()
 
-        cleanName === ""
+        .toUpperCase();
 
-    ) {
+    return (
 
-        return null;
-
-    }
-
-    /*----------------------------------
-      Cache
-    ----------------------------------*/
-
-    if (
-
-        !window.patrolTrackCache
-
-    ) {
-
-        window.patrolTrackCache =
-
-            {};
-
-    }
-
-    /*----------------------------------
-      Already Cached
-    ----------------------------------*/
-
-    if (
-
-        window.patrolTrackCache[
+        window.patrolTrackCache?.[
 
             cleanName
 
         ]
 
-    ) {
+        ||
 
-        return
+        null
 
-            window.patrolTrackCache[
-
-                cleanName
-
-            ];
-
-    }
-
-    /*----------------------------------
-      Firebase Ready
-    ----------------------------------*/
-
-    if (
-
-        !window.fb ||
-
-        !window.db
-
-    ) {
-
-        return null;
-
-    }
-
-    try {
-
-        /*------------------------------
-          Query Active Patrol
-        ------------------------------*/
-
-        const q =
-
-            window.fb.query(
-
-                window.fb.collection(
-
-                    window.db,
-
-                    "patrol_tracks"
-
-                ),
-
-                window.fb.where(
-
-                    "cleanName",
-
-                    "==",
-
-                    cleanName
-
-                ),
-
-                window.fb.where(
-
-                    "status",
-
-                    "==",
-
-                    "ACTIVE"
-
-                ),
-
-                window.fb.limit(
-
-                    1
-
-                )
-
-            );
-
-        const snap =
-
-            await window.fb.getDocs(
-
-                q
-
-            );
-
-        if (
-
-            snap.empty
-
-        ) {
-
-            return null;
-
-        }
-
-        const doc =
-
-            snap.docs[0];
-
-        const patrol =
-
-            {
-
-                id:
-
-                    doc.id,
-
-                ...doc.data()
-
-            };
-
-        /*------------------------------
-          Save Cache
-        ------------------------------*/
-
-        window.patrolTrackCache[
-
-            cleanName
-
-        ] =
-
-            patrol;
-
-        return patrol;
-
-    }
-
-    catch (
-
-        err
-
-    ) {
-
-        console.error(
-
-            "❌ Patrol Cache Error",
-
-            err
-
-        );
-
-        return null;
-
-    }
+    );
 
 };
 /*=========================================================
