@@ -3939,15 +3939,19 @@ const analytics = {
 
     monthKey: "",
 
+    createdAt: null,
+
+    updatedAt: null,
+
+    startAccuracy: 0,
+
+    startLat: 0,
+
+    startLon: 0,
+
     compartments: [],
 
-    simplifiedTrack: [],
-
-    startLat: null,
-
-    startLon: null,
-
-    startAccuracy: null
+    simplifiedTrack: []
 
 };
     /*=====================================================
