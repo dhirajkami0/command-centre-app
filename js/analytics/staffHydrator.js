@@ -482,12 +482,13 @@ function (
 
             staff.location.lat;
 
-        staff.location.lon =
+       staff.location.lon =
 
-            live.lon ??
+    live.lon ??
 
-            staff.location.lon;
+    live.lng ??
 
+    staff.location.lon;
     }
 
     /*----------------------------------
