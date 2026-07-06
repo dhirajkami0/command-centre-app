@@ -28497,31 +28497,7 @@ window.liveStaffCache[
   PATROL TRACK CACHE
 =========================================================*/
 
-/*=========================================================
-  PATROL TRACK CACHE
------------------------------------------------------------
-  Store complete Firestore patrol document
-=========================================================*/
 
-window.patrolTrackCache[
-
-    String(
-
-        s.cleanName || ""
-
-    )
-
-    .trim()
-
-    .toUpperCase()
-
-] =
-
-    structuredClone(
-
-        s
-
-    );
 // ==============================================
 // 🔥 ACTIVE USER LIST
 // ==============================================
@@ -30326,7 +30302,181 @@ console.log(
   ); // END onSnapshot
 
 } // END loadStaff
-    
+/*=========================================================
+  LOAD PATROL TRACKS
+-----------------------------------------------------------
+  Realtime patrol_tracks cache
+
+  Firestore
+      patrol_tracks
+             ↓
+      window.patrolTrackCache
+
+=========================================================*/
+
+function loadPatrolTracks(){
+
+    if(
+
+        !window.db ||
+
+        !window.fb
+
+    ){
+
+        console.warn(
+
+            "⚠ Firebase not ready"
+
+        );
+
+        return;
+
+    }
+
+    if(
+
+        window.patrolListenerActive === true
+
+    ){
+
+        console.log(
+
+            "⏸ patrol_tracks listener already active"
+
+        );
+
+        return;
+
+    }
+
+    window.patrolListenerActive = true;
+
+    console.log(
+
+        "🔥 Creating SINGLE patrol_tracks listener"
+
+    );
+
+    window.patrolTrackCache ??= {};
+
+    const {
+
+        collection,
+
+        onSnapshot
+
+    } = window.fb;
+
+    const patrolRef =
+
+        collection(
+
+            window.db,
+
+            "patrol_tracks"
+
+        );
+
+    window.patrolUnsubscribe =
+
+        onSnapshot(
+
+            patrolRef,
+
+            snapshot => {
+
+                snapshot.forEach(
+
+                    docSnap => {
+
+                        try {
+
+                            const patrol = {
+
+                                id:
+
+                                    docSnap.id,
+
+                                ...docSnap.data()
+
+                            };
+
+                            const cleanName =
+
+                                String(
+
+                                    patrol.cleanName ||
+
+                                    ""
+
+                                )
+
+                                .trim()
+
+                                .toUpperCase();
+
+                            if(
+
+                                cleanName === ""
+
+                            ){
+
+                                return;
+
+                            }
+
+                            window.patrolTrackCache[
+
+                                cleanName
+
+                            ] =
+
+                                structuredClone(
+
+                                    patrol
+
+                                );
+
+                        }
+
+                        catch(
+
+                            err
+
+                        ){
+
+                            console.error(
+
+                                "❌ Patrol cache error",
+
+                                err
+
+                            );
+
+                        }
+
+                    }
+
+                );
+
+                console.log(
+
+                    "✅ Patrol Cache:",
+
+                    Object.keys(
+
+                        window.patrolTrackCache
+
+                    ).length
+
+                );
+
+            }
+
+        );
+
+}    
     
     
     /* ============================================================
@@ -33874,6 +34024,8 @@ function refreshAll() {
   /* 🔥 STAFF (SIMPLIFIED — DIRECT LOAD) */
   loadStaff();
 
+
+loadPatrolTracks();
   /* 🔥 WEATHER (UNCHANGED) */
   setTimeout(loadWeatherFull, 500);
 
@@ -34136,7 +34288,10 @@ function refreshAll() {
     setInterval(function () {
 
       try {
-        loadStaff();
+       loadStaff();
+
+        loadPatrolTracks();
+
         loadSightings();
       } catch (err) {
         console.error("❌ Fast loop error:", err);
