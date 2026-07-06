@@ -30314,15 +30314,38 @@ console.log(
 
 =========================================================*/
 
-function loadPatrolTracks(){
+/*=========================================================
+  LOAD PATROL TRACKS
+-----------------------------------------------------------
+  Realtime Patrol Track Cache
 
-    if(
+  Firestore
+      patrol_tracks
+             │
+             ▼
+      window.patrolTrackCache
+
+  Cache Key
+
+      cleanName (UPPERCASE)
+
+=========================================================*/
+
+function loadPatrolTracks(
+
+) {
+
+    /*----------------------------------
+      Firebase Ready
+    ----------------------------------*/
+
+    if (
 
         !window.db ||
 
         !window.fb
 
-    ){
+    ) {
 
         console.warn(
 
@@ -30334,11 +30357,15 @@ function loadPatrolTracks(){
 
     }
 
-    if(
+    /*----------------------------------
+      Prevent Duplicate Listener
+    ----------------------------------*/
+
+    if (
 
         window.patrolListenerActive === true
 
-    ){
+    ) {
 
         console.log(
 
@@ -30354,11 +30381,15 @@ function loadPatrolTracks(){
 
     console.log(
 
-        "🔥 Creating SINGLE patrol_tracks listener"
+        "🔥 Creating patrol_tracks listener"
 
     );
 
-    window.patrolTrackCache ??= {};
+    /*----------------------------------
+      Global Cache
+    ----------------------------------*/
+
+    window.patrolTrackCache = {};
 
     const {
 
@@ -30367,6 +30398,10 @@ function loadPatrolTracks(){
         onSnapshot
 
     } = window.fb;
+
+    /*----------------------------------
+      Firestore Collection
+    ----------------------------------*/
 
     const patrolRef =
 
@@ -30378,17 +30413,39 @@ function loadPatrolTracks(){
 
         );
 
+    /*----------------------------------
+      Realtime Listener
+    ----------------------------------*/
+
     window.patrolUnsubscribe =
 
         onSnapshot(
 
             patrolRef,
 
-            snapshot => {
+            function (
+
+                snapshot
+
+            ) {
+
+                /*--------------------------
+                  Fresh Cache
+                --------------------------*/
+
+                window.patrolTrackCache = {};
+
+                /*--------------------------
+                  Read Every Document
+                --------------------------*/
 
                 snapshot.forEach(
 
-                    docSnap => {
+                    function (
+
+                        docSnap
+
+                    ) {
 
                         try {
 
@@ -30401,6 +30458,14 @@ function loadPatrolTracks(){
                                 ...docSnap.data()
 
                             };
+
+                            console.log(
+
+                                "📄 PATROL DOC",
+
+                                patrol
+
+                            );
 
                             const cleanName =
 
@@ -30416,11 +30481,11 @@ function loadPatrolTracks(){
 
                                 .toUpperCase();
 
-                            if(
+                            if (
 
                                 cleanName === ""
 
-                            ){
+                            ) {
 
                                 return;
 
@@ -30440,11 +30505,11 @@ function loadPatrolTracks(){
 
                         }
 
-                        catch(
+                        catch (
 
                             err
 
-                        ){
+                        ) {
 
                             console.error(
 
@@ -30460,9 +30525,13 @@ function loadPatrolTracks(){
 
                 );
 
+                /*--------------------------
+                  Debug
+                --------------------------*/
+
                 console.log(
 
-                    "✅ Patrol Cache:",
+                    "✅ Patrol Cache Ready:",
 
                     Object.keys(
 
@@ -30472,12 +30541,35 @@ function loadPatrolTracks(){
 
                 );
 
+                console.log(
+
+                    window.patrolTrackCache
+
+                );
+
+            },
+
+            function (
+
+                err
+
+            ) {
+
+                console.error(
+
+                    "❌ patrol_tracks listener",
+
+                    err
+
+                );
+
+                window.patrolListenerActive = false;
+
             }
 
         );
 
-}    
-    
+}
     
     /* ============================================================
    🚨 BLOCK 9 → INCIDENT + VILLAGE + PREDICTION
@@ -41271,814 +41363,8 @@ async function cleanupOldTracks(){
           /* 🔥 FIXED START DUTY: CAPTURES DATA, SUBMITS, AND UPDATES BUTTON */
  let startDutySubmitting = false;
 
-function startDuty(event) {
 
-  console.trace("🚨 startDuty CALLED FROM");
-  console.group("🚀 startDuty START");
-
-  try {
-
-    // 🔒 ONLY REAL USER CLICK
-    if (!event || event.isTrusted !== true) {
-      console.warn("⛔ Blocked auto trigger");
-      console.groupEnd();
-      return;
-    }
-
-    // 🔒 PREVENT DOUBLE CLICK
-    if (startDutySubmitting) {
-      console.warn("⛔ Duplicate startDuty blocked");
-      console.groupEnd();
-      return;
-    }
-
-    const startBtn = document.getElementById("startDutyBtn");
-
-    if (!startBtn) {
-      console.error("❌ Button not found");
-      console.groupEnd();
-      return;
-    }
-
-    const profile = window.userProfile;
-
-    if (!profile) {
-      alert("❌ User not loaded");
-      console.groupEnd();
-      return;
-    }
-
-    // 🔹 GET VALUES
-    const staffArray = getCheckedValues("staffOptions").filter(v => v && v.trim());
-    const comptArray = getCheckedValues("comptOptions").filter(v => v && v.trim());
-
-    const staffString = staffArray.join(", ");
-    const comptString = comptArray.join(", ");
-
-    // 🔒 VALIDATION
-    if (staffArray.length === 0) {
-      alert("❌ Select at least one staff");
-      console.groupEnd();
-      return;
-    }
-
-    if (comptArray.length === 0) {
-      alert("❌ Select at least one compartment");
-      console.groupEnd();
-      return;
-    }
-
-    if (window.isDutyActive === true) {
-      alert("⚠ Duty already active");
-      console.groupEnd();
-      return;
-    }
-
-    // 🔒 LOCK PROCESS
-    startDutySubmitting = true;
-
-    window.startDutyInProgress = true;
-  // ========================================
-// 📜 SESSION TRACK STORAGE
-// ========================================
-
-window.sessionTrackPoints = [];
-
-window.lastTrackPoint = null;
-
-window.historyLoaded = false;
-    window.heatmapLoaded = false;
-    window.monthlyHeatmapLayer = null;
-    // =====================================================
-// 🔥 UI TRANSITION LOCK
-// =====================================================
-window.__dutyUpdating = true;
-
-// =====================================================
-// 🔥 SHOW TRANSITION UI
-// =====================================================
-updateDutyButton();
-    const payload = {
-      staff: staffString,
-      type: document.getElementById("d-type")?.value || "",
-      compt: comptString,
-      leader: String(profile.rawName || profile.name || "").trim(),
-      email: profile.email || "",
-      phone: localStorage.getItem("userPhone") || ""
-    };
-
-    console.log("📤 PAYLOAD:", payload);
-
-    const originalText = startBtn.innerHTML;
-
-    // 🔒 LOCK BUTTON UI
-    startBtn.innerHTML = "⏳ Starting Duty...";
-    startBtn.disabled = true;
-
-    // =====================================================
-    // 🔥 IMMEDIATE UI UPDATE (NO WAIT)
-    // =====================================================
-   // =====================================================
-// 🔥 IMMEDIATE UI ACTIVE
-// =====================================================
-
-    // =====================================================
-    // 🔥 BACKEND CALL
-    // =====================================================
-   (async()=>{
-
-  try {
-
-    if(!window.db || !window.fb){
-
-     // =====================================================
-// 🔥 WAIT FIREBASE READY
-// =====================================================
-await waitForFirebaseReady();
-    }
-
-    const {
-      doc,
-      setDoc,
-      updateDoc,
-      serverTimestamp,
-      arrayUnion
-    } = window.fb;
-
-      const cleanLeader =
-  cleanName(payload.leader);
-
-const now =
-  new Date();
-
-// =====================================================
-// 🔥 SESSION ID
-// =====================================================
-const sessionId =
-  `${cleanLeader}_${
-    Date.now()
-  }`;
-
-// =====================================================
-// 🔥 SAVE LOCALLY
-// =====================================================
-localStorage.setItem(
-  "sessionId",
-  sessionId
-);
-
-localStorage.setItem(
-  "dutyActive",
-  "true"
-);
-
-    // =====================================================
-// 🔥 SAVE SESSION RUNTIME
-// =====================================================
-window.currentSessionId =
-  sessionId;
-
-// =====================================
-// SESSION ANALYTICS RESET
-// =====================================
-
-window.sessionVisitedGrids =
-  new Set();
-
-// =====================================
-// SESSION REPORT COUNTERS
-// =====================================
-
-window.sessionNewMonthlyCellCount =
-  0;
-
-window.sessionNewMonthlyCompartmentCount =
-  0;
-
-// =====================================
-// LEGACY MONTHLY TRACKERS
-// KEEP IF USED ELSEWHERE
-// =====================================
-
-window.newMonthlyCellIds =
-  new Set();
-
-window.newMonthlyCompartmentIds =
-  new Set();
-
-window.newMonthlyGridsCaptured =
-  0;
-    // =====================================
-// RESET LIVE PERFORMANCE
-// =====================================
-
-window.realtimePerformanceData = {
-  trackPoints: []
-};// =====================================================
-// 🔥 HISTORY STATE ONLY
-// =====================================================
-
-window.sessionTrackCache ??= {};
-
-/*=========================================================
-  PATROL TRACK CACHE
-
-  Key
-
-      cleanName
-
-=========================================================*/
-
-window.patrolTrackCache ??= {};
-
-window.sessionTrackCache[
-    currentSessionId
-] ??= [];
-   
-// =====================================================
-// 🔥 DUTY ACTIVE
-// =====================================================
-window.isDutyActive =
-  true;
-
-console.log(
-  "🟢 SESSION STARTED:",
-  sessionId
-);
-    const liveRef =
-      doc(
-        window.db,
-        "live_staff",
-        cleanLeader
-      );
-
-    // =====================================================
-    // 🔥 LIVE STAFF UPDATE
-    // =====================================================
-    // =====================================================
-// 🔥 GET REAL GPS FIRST
-// =====================================================
-// =====================================================
-// 🔥 STABILIZED GPS ACQUISITION
-// GET 2-3 GPS READINGS
-// PICK BEST ACCURACY
-// =====================================================
-// =====================================================
-// 🔥 STABILIZED GPS ACQUISITION
-// =====================================================// =====================================================
-// 🔥 STABILIZED GPS ACQUISITION
-// =====================================================
-const gpsPosition =
-
-  await new Promise((resolve)=>{
-
-    try {
-
-      const samples = [];
-
-      let resolved = false;
-
-      const startedAt = Date.now();
-
-      const watchId =
-
-        navigator.geolocation.watchPosition(
-
-          (pos)=>{
-
-            try {
-
-              const accuracy =
-
-                Number(
-                  pos.coords.accuracy || 999
-                );
-
-              const lat =
-                Number(
-                  pos.coords.latitude
-                );
-
-              const lon =
-                Number(
-                  pos.coords.longitude
-                );
-
-              if(
-
-                isNaN(lat) ||
-                isNaN(lon) ||
-                lat === 0 ||
-                lon === 0
-
-              ){
-                return;
-              }
-
-              samples.push({
-
-                lat,
-                lon,
-                accuracy
-              });
-
-              console.log(
-
-                `📡 GPS SAMPLE ${
-                  samples.length
-                } → ${
-                  accuracy.toFixed(1)
-                }m`
-              );
-
-              // ===========================================
-              // 🔥 WAIT 3 SEC
-              // ===========================================
-              if(
-               Date.now() - startedAt >= 6000
-              ){
-
-                if(resolved){
-                  return;
-                }
-
-                resolved = true;
-
-                navigator.geolocation
-                  .clearWatch(watchId);
-
-                // =========================================
-                // 🔥 PICK BEST GPS
-                // =========================================
-                samples.sort(
-
-                  (a,b)=>
-
-                    a.accuracy -
-                    b.accuracy
-                );
-
-                resolve(
-                  samples[0] || null
-                );
-              }
-
-            } catch(e){
-
-              console.warn(
-                "⚠ GPS SAMPLE ERROR:",
-                e
-              );
-            }
-          },
-
-          ()=>{
-
-            if(resolved){
-              return;
-            }
-
-            resolved = true;
-
-            navigator.geolocation
-              .clearWatch(watchId);
-
-            resolve(null);
-          },
-
-          {
-            enableHighAccuracy:true,
-            timeout:8000,
-            maximumAge:0
-          }
-        );
-// =====================================================
-// 🔥 HARD FALLBACK
-// NEVER FREEZE UI
-// =====================================================
-setTimeout(()=>{
-
-  if(resolved){
-    return;
-  }
-
-  resolved = true;
-
-  navigator.geolocation
-    .clearWatch(watchId);
-
-  console.warn(
-    "⚠ GPS TIMEOUT FALLBACK"
-  );
-
-  // ===============================================
-  // 🔥 PICK BEST AVAILABLE
-  // ===============================================
-  if(samples.length > 0){
-
-    samples.sort(
-
-      (a,b)=>
-
-        a.accuracy -
-        b.accuracy
-    );
-
-    resolve(samples[0]);
-
-    return;
-  }
-
-  // ===============================================
-  // 🔥 NO GPS
-  // ===============================================
-  resolve(null);
-
-}, 5000);
-    } catch(e){
-
-      console.error(
-        "❌ GPS ACQUIRE FAILED:",
-        e
-      );
-
-      resolve(null);
-    }
-  });
-
-// =====================================================
-// 🔥 BEST GPS FOUND
-// =====================================================
-const startLat =
-
-  gpsPosition?.lat || 0;
-
-const startLon =
-
-  gpsPosition?.lon || 0;
-
-const startAccuracy =
-
-  gpsPosition?.accuracy || 999;
-
-console.log(
-  `🎯 START GPS: ${startAccuracy.toFixed(1)}m`
-);
-
-// =====================================================
-// 🔥 LIVE STAFF UPDATE
-// =====================================================
-await setDoc(
-
-  liveRef,
-
-  {
-
-    cleanName:
-      cleanLeader,
-
-    name:
-      payload.leader,
-
-    team:
-      payload.staff,
-
-    dutyType:
-      payload.type,
-
-    compartment:
-      payload.compt,
-
-    dutyActive: true,
-
-    sessionId:
-      sessionId,
-
-    phone:
-      payload.phone || "",
-
-    email:
-      payload.email || "",
-
-    beat:
-      document.getElementById(
-        "d-beat"
-      )?.value || "",
-        // ====================================
-    // 🔥 RANGE / DIVISION
-    // REQUIRED FOR STAFF VISIBILITY
-    // ====================================
-    division:
-      profile.division || "",
-
-    range:
-      profile.range || "",
-
-    leader:
-      payload.leader || "",
-
-    source:
-      "AUTO_APP",
-
-    status:
-      "ACTIVE",
-
-    // =================================================
-    // 🔥 BEST GPS
-    // =================================================
-    lat:
-      startLat,
-
-    lon:
-      startLon,
-
-    accuracy:
-      startAccuracy,
-
-    speed:0,
-
-    lastSeen:
-      Date.now(),
-
-    updatedAt:
-      serverTimestamp(),
-
-    timestamp:
-      now.toISOString(),
-
-    time:
-      now.toISOString(),
-
-    type:
-      "Staff"
-
-  },
-
-  { merge:true }
-);
-
-// =====================================================
-// 🔥 TRACK DOCUMENT
-// =====================================================
-const trackRef =
-
-  doc(
-    window.db,
-    "patrol_tracks",
-    sessionId
-  );
-
-await setDoc(
-
-  trackRef,
-
-  {
-
-    // ====================================
-    // 🔥 SESSION
-    // ====================================
-    sessionId,
-
-    cleanName:
-      cleanLeader,
-
-    rawName:
-      payload.leader,
-
-    name:
-      payload.leader,
-
-    leader:
-      payload.leader || "",
-
-    // ====================================
-    // 🔥 ORG
-    // ====================================
-    division:
-      profile.division || "",
-
-    range:
-      profile.range || "",
-
-    beat:
-      document.getElementById(
-        "d-beat"
-      )?.value || "",
-
-    // ====================================
-    // 🔥 DUTY
-    // ====================================
-    team:
-      payload.staff,
-
-    dutyType:
-      payload.type,
-
-    compartment:
-      payload.compt,
-
-    compartments:
-      comptArray,
-
-    dutyActive:
-      true,
-
-    status:
-      "ACTIVE",
-
-    // ====================================
-    // 🔥 TIME
-    // ====================================
-    startedAt:
-      Date.now(),
-
-    endedAt:
-      null,
-
-    updatedAt:
-      Date.now(),
-
-    // ====================================
-    // 🔥 TRACK SUMMARY
-    // ====================================
-    pointCount:0,
-
-    monthKey:
-      new Date()
-      .toISOString()
-      .slice(0,7)
-      .replace("-","_"),
-
-    simplifiedTrack:[],
-
-    distanceKm:0,
-
-    // ====================================
-    // 🔥 GPS START
-    // ====================================
-    startLat:
-      startLat,
-
-    startLon:
-      startLon,
-
-    startAccuracy:
-      startAccuracy,
-
-    // ====================================
-    // 🔥 META
-    // ====================================
-    source:
-      "AUTO_APP",
-
-    type:
-      "Staff",
-
-    createdAt:
-      serverTimestamp()
-
-  },
-
-  { merge:true }
-);
-console.log(
-  "🔥 FIRESTORE DUTY STARTED:",
-  cleanLeader,
-  sessionId
-);
-// =====================================================
-// 🔥 START REALTIME ANALYTICS
-// =====================================================
-
-try {
-
-  console.log(
-    "🟢 STARTING REALTIME ENGINE",
-    sessionId
-  );
-console.log(
-  "🔥 REACHED REALTIME START BLOCK",
-  {
-    sessionId,
-    dutyActive: window.isDutyActive
-  }
-);
-
-await startRealtimeAnalytics();
-
-// =====================================
-// STARTUP COMPLETED SUCCESSFULLY
-// =====================================
-window.startDutyInProgress = false;
-console.log(
-  "🔥 RETURNED FROM REALTIME START",
-  {
-    sessionId:
-      window.realtimeAnalyticsState?.sessionId,
-
-    timer:
-      !!window.realtimeAnalyticsState?.timer,
-
-    listener:
-      !!window.realtimeAnalyticsState?.unsubscribe
-  }
-);
-  setTimeout(() => {
-
-  console.log(
-  "🧪 5 SECOND CHECK",
-  {
-    dutyActive:
-      window.isDutyActive,
-
-    sessionId:
-      window.realtimeAnalyticsState?.sessionId,
-
-    listener:
-      !!window.realtimeAnalyticsState?.unsubscribe,
-
-    pending:
-      window.realtimeAnalyticsState?.pendingPoints?.length || 0,
-
-    processing:
-      !!window.analyticsProcessing
-  }
-);
-
-}, 5000);
-  console.log(
-    "✅ REALTIME ENGINE STARTED",
-    {
-      sessionId:
-        window.realtimeAnalyticsState
-          ?.sessionId,
-
-      timer:
-        !!window.realtimeAnalyticsState
-          ?.timer,
-
-      listener:
-        !!window.realtimeAnalyticsState
-          ?.unsubscribe
-    }
-  );
-
-} catch(err){
-
-  // =====================================
-  // RELEASE STARTUP LOCK
-  // =====================================
-  window.startDutyInProgress = false;
-
-  console.error(
-    "❌ startRealtimeAnalytics FAILED",
-    err
-  );
-}// =====================================================
-// 🔥 CLOSE FORM NOW
-// =====================================================
-if(typeof closeDutyForm === "function"){
-
-  closeDutyForm();
-}
-
-// =====================================================
-// 🔥 FINAL UI STATE
-// =====================================================
-    // =====================================================
-    // 🔥 FINAL UI STATE
-    // =====================================================
     
-  } catch(err){
-  window.startDutyInProgress = false;
-    console.error(
-      "❌ Firestore start duty failed:",
-      err
-    );
-
-    alert(
-      "❌ " + err.message
-    );
-
-    window.__dutyUpdating = false;
-
-    window.isDutyActive = false;
-
-    updateDutyButton();
-
-    startBtn.innerHTML = originalText;
-
-    startBtn.disabled = false;
-    startDutySubmitting = false;
-  }
-
-})();
-    
-  } catch (err) {
-    console.error("💥 CRASH:", err);
-    console.groupEnd();
-  }
-}// ✅ FIX: properly closed startDuty
 async function startRealtimeAnalytics() {
 
   console.assert(
