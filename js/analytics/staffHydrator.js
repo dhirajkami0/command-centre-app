@@ -964,6 +964,12 @@ function (
       null
 =========================================================*/
 
+/*=========================================================
+  GET LIVE STAFF DOCUMENT
+-----------------------------------------------------------
+  Uses the realtime cache created by loadStaff()
+=========================================================*/
+
 StaffHydrator.getLiveStaff =
 
 function (
@@ -971,10 +977,6 @@ function (
     cleanName
 
 ) {
-
-    /*----------------------------------
-      Validate Name
-    ----------------------------------*/
 
     if (
 
@@ -1006,89 +1008,19 @@ function (
 
     }
 
-    /*----------------------------------
-      Validate Runtime Collection
-    ----------------------------------*/
+    return (
 
-    const liveStaff =
-
-        GG.liveStaff ||
-
-        GG.live_staff ||
-
-        [];
-
-    if (
-
-        !Array.isArray(
-
-            liveStaff
-
-        )
-
-    ) {
-
-        return null;
-
-    }
-
-    /*----------------------------------
-      Search
-    ----------------------------------*/
-
-    for (
-
-        const document of
-
-        liveStaff
-
-    ) {
-
-        if (
-
-            !document
-
-        ) {
-
-            continue;
-
-        }
-
-        const name =
-
-            String(
-
-                document.cleanName ||
-
-                document.name ||
-
-                ""
-
-            )
-
-            .trim()
-
-            .toUpperCase();
-
-        if (
-
-            name ===
+        window.liveStaffCache?.[
 
             cleanName
 
-        ) {
+        ]
 
-            return document;
+        ||
 
-        }
+        null
 
-    }
-
-    /*----------------------------------
-      Not Found
-    ----------------------------------*/
-
-    return null;
+    );
 
 };/*=========================================================
   GET PATROL TRACK DOCUMENT
