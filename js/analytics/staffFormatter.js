@@ -189,27 +189,15 @@ StaffFormatter.initialize = function () {
  FORMAT
 =========================================================*/
 
+/*=========================================================
+ FORMAT
+=========================================================*/
+
 StaffFormatter.format = function (
 
     response
 
 ) {
-
-    const started =
-
-        Date.now();
-
-    /*----------------------------------
-      Create Result
-    ----------------------------------*/
-
-    const result =
-
-        StaffFormatter.createResponse(
-
-            response
-
-        );
 
     StaffFormatter.lastRequest =
 
@@ -227,6 +215,10 @@ StaffFormatter.format = function (
 
     ) {
 
+        const result =
+
+            StaffFormatter.createResponse();
+
         result.success =
 
             false;
@@ -235,17 +227,13 @@ StaffFormatter.format = function (
 
             "Invalid formatter response.";
 
+        StaffFormatter.lastResult =
+
+            result;
+
         return result;
 
     }
-
-    /*----------------------------------
-      Formatted Text
-    ----------------------------------*/
-
-    let text =
-
-        "";
 
     /*----------------------------------
       Route
@@ -259,329 +247,231 @@ StaffFormatter.format = function (
 
         case StaffConstants.INTENTS.STAFF_PROFILE:
 
-            text =
+            return StaffFormatter.formatProfile(
 
-                StaffFormatter.formatProfile(
+                response
 
-                    response
-
-                );
-
-            break;
+            );
 
         case StaffConstants.INTENTS.STAFF_DIRECTORY:
 
-            text =
+            return StaffFormatter.formatDirectory(
 
-                StaffFormatter.formatDirectory(
+                response
 
-                    response
-
-                );
-
-            break;
+            );
 
         case StaffConstants.INTENTS.STAFF_CONTACT:
 
-            text =
+            return StaffFormatter.formatContact(
 
-                StaffFormatter.formatContact(
+                response
 
-                    response
-
-                );
-
-            break;
+            );
 
         case StaffConstants.INTENTS.STAFF_DESIGNATION:
 
-            text =
+            return StaffFormatter.formatDesignation(
 
-                StaffFormatter.formatDesignation(
+                response
 
-                    response
-
-                );
-
-            break;
+            );
 
         case StaffConstants.INTENTS.STAFF_ROLE:
 
-            text =
+            return StaffFormatter.formatRole(
 
-                StaffFormatter.formatRole(
+                response
 
-                    response
-
-                );
-
-            break;
+            );
 
         case StaffConstants.INTENTS.STAFF_POSTING:
 
-            text =
+            return StaffFormatter.formatPosting(
 
-                StaffFormatter.formatPosting(
+                response
 
-                    response
-
-                );
-
-            break;
+            );
 
         case StaffConstants.INTENTS.STAFF_CIRCLE:
 
-            text =
+            return StaffFormatter.formatCircle(
 
-                StaffFormatter.formatCircle(
+                response
 
-                    response
-
-                );
-
-            break;
+            );
 
         case StaffConstants.INTENTS.STAFF_DIVISION:
 
-            text =
+            return StaffFormatter.formatDivision(
 
-                StaffFormatter.formatDivision(
+                response
 
-                    response
-
-                );
-
-            break;
+            );
 
         case StaffConstants.INTENTS.STAFF_RANGE:
 
-            text =
+            return StaffFormatter.formatRange(
 
-                StaffFormatter.formatRange(
+                response
 
-                    response
-
-                );
-
-            break;
+            );
 
         case StaffConstants.INTENTS.STAFF_BEAT:
 
-            text =
+            return StaffFormatter.formatBeat(
 
-                StaffFormatter.formatBeat(
+                response
 
-                    response
-
-                );
-
-            break;
+            );
 
         case StaffConstants.INTENTS.STAFF_ASSIGNMENT:
 
-            text =
+            return StaffFormatter.formatStaffAssignment(
 
-                StaffFormatter.formatStaffAssignment(
+                response
 
-                    response
-
-                );
-
-            break;
+            );
 
         case StaffConstants.INTENTS.STAFF_DUTY:
 
-            text =
+            return StaffFormatter.formatDuty(
 
-                StaffFormatter.formatDuty(
+                response
 
-                    response
-
-                );
-
-            break;
+            );
 
         case StaffConstants.INTENTS.STAFF_DUTY_STATUS:
 
-            text =
+            return StaffFormatter.formatDutyStatus(
 
-                StaffFormatter.formatDutyStatus(
+                response
 
-                    response
-
-                );
-
-            break;
+            );
 
         case StaffConstants.INTENTS.STAFF_DUTY_TYPE:
 
-            text =
+            return StaffFormatter.formatDutyType(
 
-                StaffFormatter.formatDutyType(
+                response
 
-                    response
-
-                );
-
-            break;
+            );
 
         case StaffConstants.INTENTS.STAFF_DUTY_STARTED:
 
-            text =
+            return StaffFormatter.formatDutyStarted(
 
-                StaffFormatter.formatDutyStarted(
+                response
 
-                    response
-
-                );
-
-            break;
+            );
 
         case StaffConstants.INTENTS.STAFF_DUTY_ENDED:
 
-            text =
+            return StaffFormatter.formatDutyEnded(
 
-                StaffFormatter.formatDutyEnded(
+                response
 
-                    response
-
-                );
-
-            break;
+            );
 
         case StaffConstants.INTENTS.STAFF_TEAM:
 
-            text =
+            return StaffFormatter.formatTeam(
 
-                StaffFormatter.formatTeam(
+                response
 
-                    response
-
-                );
-
-            break;
+            );
 
         case StaffConstants.INTENTS.STAFF_LEADER:
 
-            text =
+            return StaffFormatter.formatLeader(
 
-                StaffFormatter.formatLeader(
+                response
 
-                    response
-
-                );
-
-            break;
+            );
 
         case StaffConstants.INTENTS.STAFF_LOCATION:
 
-            text =
+            return StaffFormatter.formatLocation(
 
-                StaffFormatter.formatLocation(
+                response
 
-                    response
-
-                );
-
-            break;
+            );
 
         case StaffConstants.INTENTS.STAFF_GPS:
 
-            text =
+            return StaffFormatter.formatGPS(
 
-                StaffFormatter.formatGPS(
+                response
 
-                    response
-
-                );
-
-            break;
+            );
 
         case StaffConstants.INTENTS.STAFF_ANALYTICS:
 
-            text =
+            return StaffFormatter.formatAnalytics(
 
-                StaffFormatter.formatAnalytics(
+                response
 
-                    response
-
-                );
-
-            break;
+            );
 
         case StaffConstants.INTENTS.STAFF_DISTANCE:
 
-            text =
+            return StaffFormatter.formatDistance(
 
-                StaffFormatter.formatDistance(
+                response
 
-                    response
-
-                );
-
-            break;
+            );
 
         case StaffConstants.INTENTS.STAFF_PATROL_POINTS:
 
-            text =
+            return StaffFormatter.formatPatrolPoints(
 
-                StaffFormatter.formatPatrolPoints(
+                response
 
-                    response
-
-                );
-
-            break;
+            );
 
         case StaffConstants.INTENTS.STAFF_PATROL_START:
 
-            text =
+            return StaffFormatter.formatPatrolStart(
 
-                StaffFormatter.formatPatrolStart(
+                response
 
-                    response
-
-                );
-
-            break;
+            );
 
         case StaffConstants.INTENTS.STAFF_PATROL_END:
 
-            text =
+            return StaffFormatter.formatPatrolEnd(
 
-                StaffFormatter.formatPatrolEnd(
+                response
 
-                    response
-
-                );
-
-            break;
+            );
 
         case StaffConstants.INTENTS.STAFF_PATROL_DURATION:
 
-            text =
+            return StaffFormatter.formatPatrolDuration(
 
-                StaffFormatter.formatPatrolDuration(
+                response
 
-                    response
-
-                );
-
-            break;
+            );
 
         case StaffConstants.INTENTS.STAFF_STRENGTH:
 
-            text =
+            return StaffFormatter.formatStrength(
 
-                StaffFormatter.formatStrength(
+                response
+
+            );
+
+        default:
+
+        {
+
+            const result =
+
+                StaffFormatter.createResponse(
 
                     response
 
                 );
-
-            break;
-
-        default:
 
             result.success =
 
@@ -593,63 +483,15 @@ StaffFormatter.format = function (
 
                 response.intent;
 
-            result.metadata.executionTime =
-
-                Date.now() -
-
-                started;
-
             StaffFormatter.lastResult =
 
                 result;
 
             return result;
 
+        }
+
     }
-
-    /*----------------------------------
-      Build Response Object
-    ----------------------------------*/
-
-    result.success =
-
-        true;
-
-    result.markdown =
-
-        text;
-
-    result.html =
-
-        "";
-
-    result.message =
-
-        text;
-
-    result.cards =
-
-        [];
-
-    result.tables =
-
-        [];
-
-    result.sections =
-
-        [];
-
-    result.metadata.executionTime =
-
-        Date.now() -
-
-        started;
-
-    StaffFormatter.lastResult =
-
-        result;
-
-    return result;
 
 };/*=========================================================
  FORMAT PROFILE
