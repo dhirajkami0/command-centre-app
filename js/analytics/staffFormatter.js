@@ -185,6 +185,10 @@ StaffFormatter.initialize = function () {
  MASTER FORMATTER
 =========================================================*/
 
+/*=========================================================
+ FORMAT
+=========================================================*/
+
 StaffFormatter.format = function (
 
     response
@@ -223,6 +227,10 @@ StaffFormatter.format = function (
 
     ) {
 
+        result.success =
+
+            false;
+
         result.message =
 
             "Invalid formatter response.";
@@ -230,6 +238,14 @@ StaffFormatter.format = function (
         return result;
 
     }
+
+    /*----------------------------------
+      Formatted Text
+    ----------------------------------*/
+
+    let text =
+
+        "";
 
     /*----------------------------------
       Route
@@ -243,81 +259,327 @@ StaffFormatter.format = function (
 
         case StaffConstants.INTENTS.STAFF_PROFILE:
 
-            return StaffFormatter.formatProfile(
+            text =
 
-                response
+                StaffFormatter.formatProfile(
 
-            );
+                    response
+
+                );
+
+            break;
 
         case StaffConstants.INTENTS.STAFF_DIRECTORY:
 
-            return StaffFormatter.formatDirectory(
+            text =
 
-                response
+                StaffFormatter.formatDirectory(
 
-            );
-case StaffConstants.INTENTS.STAFF_ASSIGNMENT:
+                    response
 
-    return StaffFormatter.formatStaffAssignment(
+                );
 
-        response
+            break;
 
-    );
+        case StaffConstants.INTENTS.STAFF_CONTACT:
+
+            text =
+
+                StaffFormatter.formatContact(
+
+                    response
+
+                );
+
+            break;
+
+        case StaffConstants.INTENTS.STAFF_DESIGNATION:
+
+            text =
+
+                StaffFormatter.formatDesignation(
+
+                    response
+
+                );
+
+            break;
+
+        case StaffConstants.INTENTS.STAFF_ROLE:
+
+            text =
+
+                StaffFormatter.formatRole(
+
+                    response
+
+                );
+
+            break;
+
         case StaffConstants.INTENTS.STAFF_POSTING:
 
-            return StaffFormatter.formatPosting(
+            text =
 
-                response
+                StaffFormatter.formatPosting(
 
-            );
+                    response
 
-        case StaffConstants.INTENTS.STAFF_LOCATION:
+                );
 
-            return StaffFormatter.formatLocation(
+            break;
 
-                response
+        case StaffConstants.INTENTS.STAFF_CIRCLE:
 
-            );
+            text =
+
+                StaffFormatter.formatCircle(
+
+                    response
+
+                );
+
+            break;
+
+        case StaffConstants.INTENTS.STAFF_DIVISION:
+
+            text =
+
+                StaffFormatter.formatDivision(
+
+                    response
+
+                );
+
+            break;
+
+        case StaffConstants.INTENTS.STAFF_RANGE:
+
+            text =
+
+                StaffFormatter.formatRange(
+
+                    response
+
+                );
+
+            break;
+
+        case StaffConstants.INTENTS.STAFF_BEAT:
+
+            text =
+
+                StaffFormatter.formatBeat(
+
+                    response
+
+                );
+
+            break;
+
+        case StaffConstants.INTENTS.STAFF_ASSIGNMENT:
+
+            text =
+
+                StaffFormatter.formatStaffAssignment(
+
+                    response
+
+                );
+
+            break;
 
         case StaffConstants.INTENTS.STAFF_DUTY:
 
-            return StaffFormatter.formatDuty(
+            text =
 
-                response
+                StaffFormatter.formatDuty(
 
-            );
+                    response
 
-        case StaffConstants.INTENTS.STAFF_GPS:
+                );
 
-            return StaffFormatter.formatGPS(
+            break;
 
-                response
+        case StaffConstants.INTENTS.STAFF_DUTY_STATUS:
 
-            );
+            text =
+
+                StaffFormatter.formatDutyStatus(
+
+                    response
+
+                );
+
+            break;
+
+        case StaffConstants.INTENTS.STAFF_DUTY_TYPE:
+
+            text =
+
+                StaffFormatter.formatDutyType(
+
+                    response
+
+                );
+
+            break;
+
+        case StaffConstants.INTENTS.STAFF_DUTY_STARTED:
+
+            text =
+
+                StaffFormatter.formatDutyStarted(
+
+                    response
+
+                );
+
+            break;
+
+        case StaffConstants.INTENTS.STAFF_DUTY_ENDED:
+
+            text =
+
+                StaffFormatter.formatDutyEnded(
+
+                    response
+
+                );
+
+            break;
 
         case StaffConstants.INTENTS.STAFF_TEAM:
 
-            return StaffFormatter.formatTeam(
+            text =
 
-                response
+                StaffFormatter.formatTeam(
 
-            );
+                    response
 
-        case StaffConstants.INTENTS.STAFF_STRENGTH:
+                );
 
-            return StaffFormatter.formatStrength(
+            break;
 
-                response
+        case StaffConstants.INTENTS.STAFF_LEADER:
 
-            );
+            text =
+
+                StaffFormatter.formatLeader(
+
+                    response
+
+                );
+
+            break;
+
+        case StaffConstants.INTENTS.STAFF_LOCATION:
+
+            text =
+
+                StaffFormatter.formatLocation(
+
+                    response
+
+                );
+
+            break;
+
+        case StaffConstants.INTENTS.STAFF_GPS:
+
+            text =
+
+                StaffFormatter.formatGPS(
+
+                    response
+
+                );
+
+            break;
 
         case StaffConstants.INTENTS.STAFF_ANALYTICS:
 
-            return StaffFormatter.formatAnalytics(
+            text =
 
-                response
+                StaffFormatter.formatAnalytics(
 
-            );
+                    response
+
+                );
+
+            break;
+
+        case StaffConstants.INTENTS.STAFF_DISTANCE:
+
+            text =
+
+                StaffFormatter.formatDistance(
+
+                    response
+
+                );
+
+            break;
+
+        case StaffConstants.INTENTS.STAFF_PATROL_POINTS:
+
+            text =
+
+                StaffFormatter.formatPatrolPoints(
+
+                    response
+
+                );
+
+            break;
+
+        case StaffConstants.INTENTS.STAFF_PATROL_START:
+
+            text =
+
+                StaffFormatter.formatPatrolStart(
+
+                    response
+
+                );
+
+            break;
+
+        case StaffConstants.INTENTS.STAFF_PATROL_END:
+
+            text =
+
+                StaffFormatter.formatPatrolEnd(
+
+                    response
+
+                );
+
+            break;
+
+        case StaffConstants.INTENTS.STAFF_PATROL_DURATION:
+
+            text =
+
+                StaffFormatter.formatPatrolDuration(
+
+                    response
+
+                );
+
+            break;
+
+        case StaffConstants.INTENTS.STAFF_STRENGTH:
+
+            text =
+
+                StaffFormatter.formatStrength(
+
+                    response
+
+                );
+
+            break;
 
         default:
 
@@ -344,6 +606,50 @@ case StaffConstants.INTENTS.STAFF_ASSIGNMENT:
             return result;
 
     }
+
+    /*----------------------------------
+      Build Response Object
+    ----------------------------------*/
+
+    result.success =
+
+        true;
+
+    result.markdown =
+
+        text;
+
+    result.html =
+
+        "";
+
+    result.message =
+
+        text;
+
+    result.cards =
+
+        [];
+
+    result.tables =
+
+        [];
+
+    result.sections =
+
+        [];
+
+    result.metadata.executionTime =
+
+        Date.now() -
+
+        started;
+
+    StaffFormatter.lastResult =
+
+        result;
+
+    return result;
 
 };/*=========================================================
  FORMAT PROFILE
