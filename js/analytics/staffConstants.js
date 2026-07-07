@@ -177,6 +177,9 @@ StaffConstants.INTENTS = Object.freeze({
         "staffLastDuty",
 STAFF_ASSIGNMENT :
     "STAFF_ASSIGNMENT",
+ STAFF_CONTACT:
+
+    "STAFF_CONTACT",
     /*----------------------------------
       Status
     ----------------------------------*/
@@ -1662,6 +1665,9 @@ STAFF_PROFILE: [
     "OFFICER INFORMATION"
 
 ],
+/*----------------------------------
+  Contact
+----------------------------------*/
 
 STAFF_CONTACT: [
 
@@ -1670,20 +1676,98 @@ STAFF_CONTACT: [
     ----------------------------------*/
 
     "PHONE",
+    "PHONE NO",
     "PHONE NUMBER",
+    "PHONE NUM",
+
     "MOBILE",
+    "MOBILE NO",
     "MOBILE NUMBER",
+
+    "CELL",
+    "CELL NO",
+    "CELL NUMBER",
+
     "CONTACT",
+    "CONTACT NO",
     "CONTACT NUMBER",
-    "NUMBER",
+
+    "TELEPHONE",
+    "TELEPHONE NO",
+    "TELEPHONE NUMBER",
+
+    "TEL",
+    "TEL NO",
+
+    "LANDLINE",
+    "LAND LINE",
+
+    /*----------------------------------
+      Communication
+    ----------------------------------*/
+
     "CALL",
+    "CALL HIM",
+    "CALL HER",
+    "CALL STAFF",
+
+    "RING",
+    "DIAL",
+
+    "REACH",
+    "REACH HIM",
+    "REACH HER",
+
+    "CONNECT",
+    "CONNECT TO",
+
+    "GET IN TOUCH",
+    "CONTACT DETAILS",
+    "CONTACT INFO",
+    "CONTACT INFORMATION",
+
+    "COMMUNICATION",
 
     /*----------------------------------
       Email
     ----------------------------------*/
 
     "EMAIL",
-    "EMAIL ADDRESS"
+    "EMAIL ID",
+    "EMAIL ADDRESS",
+    "MAIL",
+    "MAIL ID",
+    "E MAIL",
+
+    /*----------------------------------
+      Address Book
+    ----------------------------------*/
+
+    "NUMBER",
+    "MOBILE",
+    "PHONE",
+
+    /*----------------------------------
+      WhatsApp
+    ----------------------------------*/
+
+    "WHATSAPP",
+    "WHATSAPP NUMBER",
+    "WHATS APP",
+    "WA NUMBER",
+
+    /*----------------------------------
+      Misc
+    ----------------------------------*/
+
+    "CONTACT ME",
+    "HOW TO CONTACT",
+    "HOW CAN I CONTACT",
+    "HOW DO I CONTACT",
+    "REACHABLE",
+    "CAN I CALL",
+    "CAN I CONTACT",
+    "CAN I REACH"
 
 ],
 
