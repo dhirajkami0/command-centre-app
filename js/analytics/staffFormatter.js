@@ -1080,6 +1080,154 @@ StaffFormatter.formatProfile = function (
     return text;
 
 };
+
+ /*=========================================================
+ FORMAT CONTACT
+=========================================================*/
+
+StaffFormatter.formatContact = function (
+
+    response
+
+) {
+
+    const result =
+
+        StaffFormatter.createResponse(
+
+            response
+
+        );
+
+    /*----------------------------------
+      Validate
+    ----------------------------------*/
+
+    if (
+
+        !response ||
+
+        !response.success ||
+
+        !response.contact
+
+    ) {
+
+        result.message =
+
+            response?.message ||
+
+            "Contact information not found.";
+
+        return result;
+
+    }
+
+    const contact =
+
+        response.contact;
+
+    /*----------------------------------
+      Markdown
+    ----------------------------------*/
+
+    result.markdown = [
+
+        "# ☎ STAFF CONTACT",
+
+        "",
+
+        "**Name:** " +
+
+            (
+
+                contact.name ||
+
+                "-"
+
+            ),
+
+        "",
+
+        "**Phone:** " +
+
+            (
+
+                contact.phone ||
+
+                "-"
+
+            ),
+
+        "",
+
+        "**Email:** " +
+
+            (
+
+                contact.email ||
+
+                "-"
+
+            ),
+
+        "",
+
+        "**Role:** " +
+
+            (
+
+                contact.role ||
+
+                "-"
+
+            ),
+
+        "",
+
+        "**Designation:** " +
+
+            (
+
+                contact.designation ||
+
+                "-"
+
+            )
+
+    ].join(
+
+        "\n"
+
+    );
+
+    result.message =
+
+        result.markdown;
+
+    result.success =
+
+        true;
+
+    result.intent =
+
+        StaffConstants.INTENTS.STAFF_CONTACT;
+
+    result.confidence =
+
+        response.confidence ||
+
+        1;
+
+    result.source =
+
+        response.source ||
+
+        "LOCAL";
+
+    return result;
+
+};
  /*=========================================================
  FORMAT DIRECTORY
 =========================================================*/
