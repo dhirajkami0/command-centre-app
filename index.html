@@ -99,7 +99,8 @@
 <link rel="stylesheet" href="css/leaflet.css">
 
 <!-- ⚠️ TEMP KEEP (icons) -->
-<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css"><!-- =======================================================
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css">
+  <!-- =======================================================
      CORE LIBRARIES
 ======================================================= -->
 
@@ -5515,7 +5516,64 @@ setTimeout(() => {
       // ==================================================
       window.firebaseReady = true;
       console.log("🔥 FIREBASE READY");
+/*=========================================================
+  BUILD STAFF INDEX
+=========================================================*/
 
+try {
+
+    console.log(
+
+        "🧠 Initializing StaffEntities..."
+
+    );
+
+       await window.GreenGuardAI
+        .StaffEntities
+        .initialize();
+
+
+    console.log(
+
+        "✅ StaffEntities Ready"
+
+    );
+
+    if (
+
+        typeof loadAllStaffProfiles ===
+
+        "function"
+
+    ) {
+
+        await loadAllStaffProfiles();
+
+    }
+
+    console.log(
+
+        "✅ Staff Profiles Loaded"
+
+    );
+
+}
+
+catch (
+
+    err
+
+) {
+
+    console.error(
+
+        "❌ StaffEntities Init Failed",
+
+        err
+
+    );
+
+}
       // ==================================================
       // 🧹 CLEANUP TASKS
       // ==================================================
@@ -27619,6 +27677,7 @@ window.staffLastUpdate = window.staffLastUpdate || {};
 // 🔥 ANALYTICS BUFFER
 // ======================================
 window.analyticsBuffer = {};
+window.patrolTrackCache = {};
 
 // ======================================
 // 🔥 FLUSH LOCK
@@ -27931,7 +27990,7 @@ async function buildCellToGridLookup(){
 
   return `${row}_${col}`;
 }
-   // ======================================================
+  // ======================================================
 // 🔥 LOAD STAFF
 // ======================================================
 function loadStaff(){
@@ -28432,6 +28491,11 @@ window.liveStaffCache[
       s.team || ""
     )
 };
+    /*=========================================================
+  PATROL TRACK CACHE
+=========================================================*/
+
+
 // ==============================================
 // 🔥 ACTIVE USER LIST
 // ==============================================
@@ -33784,6 +33848,8 @@ function refreshAll() {
   /* 🔥 STAFF (SIMPLIFIED — DIRECT LOAD) */
   loadStaff();
 
+
+loadPatrolTracks();
   /* 🔥 WEATHER (UNCHANGED) */
   setTimeout(loadWeatherFull, 500);
 
@@ -34043,10 +34109,13 @@ function refreshAll() {
     /* ============================================================
        ⚡ FAST LOOP → REAL-TIME (STAFF + ELEPHANTS)
     ============================================================ */
-    setInterval(function () {
+   setInterval(function () {
 
       try {
-        loadStaff();
+       loadStaff();
+
+        loadPatrolTracks();
+
         loadSightings();
       } catch (err) {
         console.error("❌ Fast loop error:", err);
@@ -34110,7 +34179,245 @@ function refreshAll() {
     /* ============================================================
        🧭 BLOCK 13 → LAYER CONTROL + LAZY LOAD (FINAL)
     ============================================================ */
+function loadPatrolTracks(
 
+) {
+
+    /*----------------------------------
+      Firebase Ready
+    ----------------------------------*/
+
+    if (
+
+        !window.db ||
+
+        !window.fb
+
+    ) {
+
+        console.warn(
+
+            "⚠ Firebase not ready"
+
+        );
+
+        return;
+
+    }
+
+    /*----------------------------------
+      Prevent Duplicate Listener
+    ----------------------------------*/
+
+    if (
+
+        window.patrolListenerActive === true
+
+    ) {
+
+        console.log(
+
+            "⏸ patrol_tracks listener already active"
+
+        );
+
+        return;
+
+    }
+
+    window.patrolListenerActive = true;
+
+    console.log(
+
+        "🔥 Creating patrol_tracks listener"
+
+    );
+
+    /*----------------------------------
+      Global Cache
+    ----------------------------------*/
+
+    window.patrolTrackCache = {};
+
+    const {
+
+        collection,
+
+        onSnapshot
+
+    } = window.fb;
+
+    /*----------------------------------
+      Firestore Collection
+    ----------------------------------*/
+
+    const patrolRef =
+
+        collection(
+
+            window.db,
+
+            "patrol_tracks"
+
+        );
+
+    /*----------------------------------
+      Realtime Listener
+    ----------------------------------*/
+
+    window.patrolUnsubscribe =
+
+        onSnapshot(
+
+            patrolRef,
+
+            function (
+
+                snapshot
+
+            ) {
+
+                /*--------------------------
+                  Fresh Cache
+                --------------------------*/
+
+                window.patrolTrackCache = {};
+
+                /*--------------------------
+                  Read Every Document
+                --------------------------*/
+
+                snapshot.forEach(
+
+                    function (
+
+                        docSnap
+
+                    ) {
+
+                        try {
+
+                            const patrol = {
+
+                                id:
+
+                                    docSnap.id,
+
+                                ...docSnap.data()
+
+                            };
+
+                            console.log(
+
+                                "📄 PATROL DOC",
+
+                                patrol
+
+                            );
+
+                            const cleanName =
+
+                                String(
+
+                                    patrol.cleanName ||
+
+                                    ""
+
+                                )
+
+                                .trim()
+
+                                .toUpperCase();
+
+                            if (
+
+                                cleanName === ""
+
+                            ) {
+
+                                return;
+
+                            }
+
+                            window.patrolTrackCache[
+
+                                cleanName
+
+                            ] =
+
+                                structuredClone(
+
+                                    patrol
+
+                                );
+
+                        }
+
+                        catch (
+
+                            err
+
+                        ) {
+
+                            console.error(
+
+                                "❌ Patrol cache error",
+
+                                err
+
+                            );
+
+                        }
+
+                    }
+
+                );
+
+                /*--------------------------
+                  Debug
+                --------------------------*/
+
+                console.log(
+
+                    "✅ Patrol Cache Ready:",
+
+                    Object.keys(
+
+                        window.patrolTrackCache
+
+                    ).length
+
+                );
+
+                console.log(
+
+                    window.patrolTrackCache
+
+                );
+
+            },
+
+            function (
+
+                err
+
+            ) {
+
+                console.error(
+
+                    "❌ patrol_tracks listener",
+
+                    err
+
+                );
+
+                window.patrolListenerActive = false;
+
+            }
+
+        );
+
+}
     /* ============================================================
        🌊 RIVER LAYER (LAZY INIT SAFE)
     ============================================================ */
