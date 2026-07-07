@@ -7539,6 +7539,10 @@ StaffEntities.extract = function (
  CLEAN SEARCH QUERY
 =========================================================*/
 
+/*=========================================================
+ CLEAN SEARCH QUERY
+=========================================================*/
+
 StaffEntities.cleanSearchQuery = function (
 
     query
@@ -7566,9 +7570,7 @@ StaffEntities.cleanSearchQuery = function (
     let search =
 
         query
-
             .trim()
-
             .toUpperCase();
 
     /*----------------------------------
@@ -7589,6 +7591,10 @@ StaffEntities.cleanSearchQuery = function (
         "FIND",
         "SEARCH",
         "LOOKUP",
+        "LIST",
+        "GIVE",
+        "TELL",
+        "RETURN",
 
         /*----------------------------------
           Questions
@@ -7600,6 +7606,7 @@ StaffEntities.cleanSearchQuery = function (
         "WHEN",
         "WHICH",
         "HOW",
+        "WHY",
 
         /*----------------------------------
           Grammar
@@ -7609,10 +7616,23 @@ StaffEntities.cleanSearchQuery = function (
         "ARE",
         "WAS",
         "WERE",
+        "AM",
+        "BE",
+        "BEEN",
+        "BEING",
         "OF",
         "THE",
         "A",
         "AN",
+        "TO",
+        "FOR",
+        "IN",
+        "AT",
+        "ON",
+        "FROM",
+        "WITH",
+        "BY",
+        "UNDER",
 
         /*----------------------------------
           Generic Staff
@@ -7621,6 +7641,8 @@ StaffEntities.cleanSearchQuery = function (
         "STAFF",
         "OFFICER",
         "EMPLOYEE",
+        "PERSON",
+        "MEMBER",
 
         /*----------------------------------
           Profile
@@ -7632,6 +7654,7 @@ StaffEntities.cleanSearchQuery = function (
         "INFORMATION",
         "INFO",
         "ABOUT",
+        "IDENTITY",
 
         /*----------------------------------
           Contact
@@ -7642,6 +7665,8 @@ StaffEntities.cleanSearchQuery = function (
         "MOBILE",
         "CONTACT",
         "EMAIL",
+        "CELL",
+        "CALL",
 
         /*----------------------------------
           Identity
@@ -7650,6 +7675,8 @@ StaffEntities.cleanSearchQuery = function (
         "ROLE",
         "DESIGNATION",
         "TYPE",
+        "RANK",
+        "POST",
 
         /*----------------------------------
           Posting
@@ -7657,10 +7684,24 @@ StaffEntities.cleanSearchQuery = function (
 
         "POSTING",
         "POSTED",
+        "POSTED TO",
+        "WORKING",
+        "WORKING AT",
         "CIRCLE",
         "DIVISION",
         "RANGE",
         "BEAT",
+
+        /*----------------------------------
+          Assignment
+        ----------------------------------*/
+
+        "ASSIGNED",
+        "ASSIGNMENT",
+        "DEPLOYED",
+        "DEPLOYMENT",
+        "AREA",
+        "PLACE",
         "COMPARTMENT",
 
         /*----------------------------------
@@ -7669,6 +7710,21 @@ StaffEntities.cleanSearchQuery = function (
 
         "DUTY",
         "STATUS",
+        "ACTIVE",
+        "INACTIVE",
+        "PATROL",
+        "PATROLLING",
+        "START",
+        "STARTED",
+        "END",
+        "ENDED",
+
+        /*----------------------------------
+          Team
+        ----------------------------------*/
+
+        "TEAM",
+        "LEADER",
 
         /*----------------------------------
           GPS
@@ -7679,7 +7735,30 @@ StaffEntities.cleanSearchQuery = function (
         "POSITION",
         "LATITUDE",
         "LONGITUDE",
-        "COORDINATES"
+        "COORDINATES",
+
+        /*----------------------------------
+          Analytics
+        ----------------------------------*/
+
+        "DISTANCE",
+        "POINT",
+        "POINTS",
+        "TRACK",
+        "TRACKING",
+        "ANALYTICS",
+        "STATISTICS",
+        "SUMMARY",
+        "REPORT",
+
+        /*----------------------------------
+          Strength
+        ----------------------------------*/
+
+        "COUNT",
+        "TOTAL",
+        "STRENGTH",
+        "MANY"
 
     ];
 
@@ -7707,7 +7786,7 @@ StaffEntities.cleanSearchQuery = function (
 
                         "\\b",
 
-                        "gi"
+                        "g"
 
                     ),
 
@@ -7718,6 +7797,20 @@ StaffEntities.cleanSearchQuery = function (
         }
 
     );
+
+    /*----------------------------------
+      Remove Punctuation
+    ----------------------------------*/
+
+    search =
+
+        search.replace(
+
+            /[^A-Z0-9\s]/g,
+
+            " "
+
+        );
 
     /*----------------------------------
       Cleanup Spaces
