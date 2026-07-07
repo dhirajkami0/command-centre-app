@@ -182,14 +182,6 @@ StaffFormatter.initialize = function () {
     return true;
 
 };/*=========================================================
- MASTER FORMATTER
-=========================================================*/
-
-/*=========================================================
- FORMAT
-=========================================================*/
-
-/*=========================================================
  FORMAT
 =========================================================*/
 
@@ -245,17 +237,13 @@ StaffFormatter.format = function (
 
     ) {
 
+        /*=================================================
+          STAFF IDENTITY
+        =================================================*/
+
         case StaffConstants.INTENTS.STAFF_PROFILE:
 
             return StaffFormatter.formatProfile(
-
-                response
-
-            );
-
-        case StaffConstants.INTENTS.STAFF_DIRECTORY:
-
-            return StaffFormatter.formatDirectory(
 
                 response
 
@@ -284,6 +272,22 @@ StaffFormatter.format = function (
                 response
 
             );
+
+        /*=================================================
+          STAFF DIRECTORY
+        =================================================*/
+
+        case StaffConstants.INTENTS.STAFF_DIRECTORY:
+
+            return StaffFormatter.formatDirectory(
+
+                response
+
+            );
+
+        /*=================================================
+          STAFF POSTING
+        =================================================*/
 
         case StaffConstants.INTENTS.STAFF_POSTING:
 
@@ -325,13 +329,9 @@ StaffFormatter.format = function (
 
             );
 
-        case StaffConstants.INTENTS.STAFF_ASSIGNMENT:
-
-            return StaffFormatter.formatStaffAssignment(
-
-                response
-
-            );
+        /*=================================================
+          STAFF DUTY
+        =================================================*/
 
         case StaffConstants.INTENTS.STAFF_DUTY:
 
@@ -373,6 +373,18 @@ StaffFormatter.format = function (
 
             );
 
+        case StaffConstants.INTENTS.STAFF_ASSIGNMENT:
+
+            return StaffFormatter.formatStaffAssignment(
+
+                response
+
+            );
+
+        /*=================================================
+          STAFF TEAM
+        =================================================*/
+
         case StaffConstants.INTENTS.STAFF_TEAM:
 
             return StaffFormatter.formatTeam(
@@ -389,6 +401,10 @@ StaffFormatter.format = function (
 
             );
 
+        /*=================================================
+          STAFF LOCATION
+        =================================================*/
+
         case StaffConstants.INTENTS.STAFF_LOCATION:
 
             return StaffFormatter.formatLocation(
@@ -404,6 +420,10 @@ StaffFormatter.format = function (
                 response
 
             );
+
+        /*=================================================
+          STAFF PATROL ANALYTICS
+        =================================================*/
 
         case StaffConstants.INTENTS.STAFF_ANALYTICS:
 
@@ -453,6 +473,10 @@ StaffFormatter.format = function (
 
             );
 
+        /*=================================================
+          STAFF STRENGTH
+        =================================================*/
+
         case StaffConstants.INTENTS.STAFF_STRENGTH:
 
             return StaffFormatter.formatStrength(
@@ -460,6 +484,10 @@ StaffFormatter.format = function (
                 response
 
             );
+
+        /*=================================================
+          DEFAULT
+        =================================================*/
 
         default:
 
