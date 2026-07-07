@@ -4878,14 +4878,6 @@ StaffEntities.createExtractionResult = function (
  EXTRACT STAFF ENTITIES
 =========================================================*/
 
-/*=========================================================
- EXTRACT STAFF ENTITIES
-=========================================================*/
-
-/*=========================================================
- EXTRACT STAFF ENTITIES
-=========================================================*/
-
 StaffEntities.extractStaffEntities = function (
 
     result
@@ -4976,7 +4968,9 @@ StaffEntities.extractStaffEntities = function (
 
         const key =
 
-            staff.identity.cleanName;
+            staff.identity.cleanName ||
+
+            "";
 
         if (
 
@@ -4998,15 +4992,17 @@ StaffEntities.extractStaffEntities = function (
 
         );
 
-        staff.__matchScore =
+        matches.push({
 
-            score;
+            staff:
 
-        matches.push(
+                staff,
 
-            staff
+            score:
 
-        );
+                score
+
+        });
 
     }
 
@@ -5077,7 +5073,7 @@ StaffEntities.extractStaffEntities = function (
                     }
 
                     /*------------------------------
-                      Perfect Match
+                      Exact Query
                     ------------------------------*/
 
                     if (
@@ -5088,7 +5084,7 @@ StaffEntities.extractStaffEntities = function (
 
                         score +=
 
-                            100;
+                            1000;
 
                         return;
 
@@ -5112,7 +5108,7 @@ StaffEntities.extractStaffEntities = function (
 
                             token.length *
 
-                            10;
+                            100;
 
                     }
 
@@ -5132,7 +5128,9 @@ StaffEntities.extractStaffEntities = function (
 
                         score +=
 
-                            query.length;
+                            query.length *
+
+                            10;
 
                     }
 
@@ -5142,53 +5140,53 @@ StaffEntities.extractStaffEntities = function (
 
                     else {
 
-                        const words =
+                        token
 
-                            token.split(
+                            .split(
 
                                 /\s+/
 
+                            )
+
+                            .forEach(
+
+                                function (
+
+                                    word
+
+                                ) {
+
+                                    if (
+
+                                        word.length < 2
+
+                                    ) {
+
+                                        return;
+
+                                    }
+
+                                    if (
+
+                                        query.includes(
+
+                                            word
+
+                                        )
+
+                                    ) {
+
+                                        score +=
+
+                                            word.length *
+
+                                            25;
+
+                                    }
+
+                                }
+
                             );
-
-                        words.forEach(
-
-                            function (
-
-                                word
-
-                            ) {
-
-                                if (
-
-                                    word.length < 2
-
-                                ) {
-
-                                    return;
-
-                                }
-
-                                if (
-
-                                    query.includes(
-
-                                        word
-
-                                    )
-
-                                ) {
-
-                                    score +=
-
-                                        word.length *
-
-                                        20;
-
-                                }
-
-                            }
-
-                        );
 
                     }
 
@@ -5232,17 +5230,17 @@ StaffEntities.extractStaffEntities = function (
 
             if (
 
-                (b.__matchScore || 0) !==
+                b.score !==
 
-                (a.__matchScore || 0)
+                a.score
 
             ) {
 
                 return (
 
-                    (b.__matchScore || 0) -
+                    b.score -
 
-                    (a.__matchScore || 0)
+                    a.score
 
                 );
 
@@ -5250,11 +5248,11 @@ StaffEntities.extractStaffEntities = function (
 
             return (
 
-                a.identity.cleanName
+                a.staff.identity.cleanName
 
                     .localeCompare(
 
-                        b.identity.cleanName
+                        b.staff.identity.cleanName
 
                     )
 
@@ -5270,15 +5268,27 @@ StaffEntities.extractStaffEntities = function (
 
     result.entities.staff =
 
-        matches;
+        matches.map(
+
+            function (
+
+                item
+
+            ) {
+
+                return item.staff;
+
+            }
+
+        );
 
     result.stats.uniqueStaff =
 
-        matches.length;
+        result.entities.staff.length;
 
     result.stats.totalEntities +=
 
-        matches.length;
+        result.entities.staff.length;
 
     return result;
 
