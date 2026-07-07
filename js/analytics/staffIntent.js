@@ -1274,7 +1274,45 @@ StaffIntent.detectDutyIntent = function (
         return result;
 
     }
+/*----------------------------------
+  Assignment
+----------------------------------*/
 
+if (
+
+    hasKeyword(
+
+        KEYWORDS.STAFF_ASSIGNMENT
+
+    )
+
+) {
+
+    result.intent =
+
+        INTENTS.STAFF_ASSIGNMENT;
+
+    result.parameters.staff =
+
+        staff[0];
+
+    result.parameters.assignment =
+
+        staff[0].assignment;
+
+    result.confidence =
+
+        Math.max(
+
+            result.confidence,
+
+            0.98
+
+        );
+
+    return result;
+
+}
     /*----------------------------------
       Duty Active
     ----------------------------------*/
