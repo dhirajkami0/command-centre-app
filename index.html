@@ -99,8 +99,7 @@
 <link rel="stylesheet" href="css/leaflet.css">
 
 <!-- ⚠️ TEMP KEEP (icons) -->
-<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css">
-  <!-- =======================================================
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css"><!-- =======================================================
      CORE LIBRARIES
 ======================================================= -->
 
@@ -5086,6 +5085,9 @@ async function startApp(){   // 🔥 ASYNC
         // ==================================================
 
         await loadRangeKML();
+        await window.GreenGuardAI.StaffEntities.initialize();
+
+await loadAllStaffProfiles();
         // ==================================================
         // 🔒 BACKEND LOCK
         // ==================================================
@@ -5425,348 +5427,110 @@ async function startApp(){   // 🔥 ASYNC
 // ======================================================
 
 setTimeout(() => {
+  (async () => {
+    try {
+      console.log("🔥 STARTING FIREBASE INIT");
+
+      // ==================================================
+      // 🚀 PARALLEL IMPORTS
+      // ==================================================
+      const [firebaseAppModule, firestoreModule, storageModule] = await Promise.all([
+        import("https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js"),
+        import("https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js"),
+        import("https://www.gstatic.com/firebasejs/10.12.0/firebase-storage.js")
+      ]);
+
+      // ==================================================
+      // 🔥 FIREBASE APP
+      // ==================================================
+      const { initializeApp } = firebaseAppModule;
+
+      // ==================================================
+      // 🔥 FIRESTORE (Importing runTransaction here)
+      // ==================================================
+      const {
+        getFirestore,
+        collection,
+        query,
+        where,
+        orderBy,
+        onSnapshot,
+        serverTimestamp,
+        getDocs,
+        getDoc,
+        deleteDoc,
+        deleteField,
+        doc,
+        setDoc,
+        updateDoc,
+        runTransaction // <--- ADDED THIS IMPORT
+      } = firestoreModule;
+
+      // ==================================================
+      // 🔥 STORAGE
+      // ==================================================
+      const { getStorage, ref, uploadBytes, uploadString, getDownloadURL } = storageModule;
+
+      // ==================================================
+      // 🔥 INIT APP
+      // ==================================================
+      const app = initializeApp(window.firebaseConfig);
+
+      // ==================================================
+      // 🔥 DATABASE
+      // ==================================================
+      window.db = getFirestore(app);
+
+      // ==================================================
+      // 🔥 STORAGE
+      // ==================================================
+      window.storage = getStorage(app);
+
+      // ==================================================
+      // 🔥 FIREBASE HELPERS (Added runTransaction)
+      // ==================================================
+      window.fb = {
+        collection,
+        where,
+        query,
+        orderBy,
+        onSnapshot,
+        serverTimestamp,
+        getDocs,
+        getDoc,
+        deleteDoc,
+        deleteField,
+        doc,
+        setDoc,
+        updateDoc,
+        runTransaction, // <--- ADDED TO HELPER
+        ref,
+        uploadBytes,
+        uploadString,
+        getDownloadURL
+      };
+
+      // ==================================================
+      // 🔥 READY FLAG
+      // ==================================================
+      window.firebaseReady = true;
+      console.log("🔥 FIREBASE READY");
+
+      // ==================================================
+      // 🧹 CLEANUP TASKS
+      // ==================================================
+      setTimeout(() => {
+        try { cleanupOldTracks(); } catch(e) { console.warn("⚠ cleanupOldTracks fail", e); }
+      }, 5000);
+
+      setInterval(cleanupOldTracks, 24 * 60 * 60 * 1000);
+
+    } catch (e) {
+      console.error("❌ Firebase load failed:", e);
+    }
+  })();
+}, 500);    console.log("🔥 NEW BUILD LOADED - VERSION 999");
 
-    (async () => {
-
-        try {
-
-            console.log("🔥 STARTING FIREBASE INIT");
-
-            /*=========================================================
-              IMPORT FIREBASE
-            =========================================================*/
-
-            const [
-
-                firebaseAppModule,
-
-                firestoreModule,
-
-                storageModule
-
-            ] = await Promise.all([
-
-                import("https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js"),
-
-                import("https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js"),
-
-                import("https://www.gstatic.com/firebasejs/10.12.0/firebase-storage.js")
-
-            ]);
-
-            /*=========================================================
-              FIREBASE APP
-            =========================================================*/
-
-            const {
-
-                initializeApp
-
-            } = firebaseAppModule;
-
-            /*=========================================================
-              FIRESTORE
-            =========================================================*/
-
-            const {
-
-                getFirestore,
-
-                collection,
-
-                query,
-
-                where,
-
-                orderBy,
-
-                onSnapshot,
-
-                serverTimestamp,
-
-                getDocs,
-
-                getDoc,
-
-                deleteDoc,
-
-                deleteField,
-
-                doc,
-
-                setDoc,
-
-                updateDoc,
-
-                runTransaction
-
-            } = firestoreModule;
-
-            /*=========================================================
-              STORAGE
-            =========================================================*/
-
-            const {
-
-                getStorage,
-
-                ref,
-
-                uploadBytes,
-
-                uploadString,
-
-                getDownloadURL
-
-            } = storageModule;
-
-            /*=========================================================
-              INITIALIZE FIREBASE
-            =========================================================*/
-
-            const app =
-
-                initializeApp(
-
-                    window.firebaseConfig
-
-                );
-
-            window.db =
-
-                getFirestore(
-
-                    app
-
-                );
-
-            window.storage =
-
-                getStorage(
-
-                    app
-
-                );
-
-            window.fb = {
-
-                collection,
-
-                where,
-
-                query,
-
-                orderBy,
-
-                onSnapshot,
-
-                serverTimestamp,
-
-                getDocs,
-
-                getDoc,
-
-                deleteDoc,
-
-                deleteField,
-
-                doc,
-
-                setDoc,
-
-                updateDoc,
-
-                runTransaction,
-
-                ref,
-
-                uploadBytes,
-
-                uploadString,
-
-                getDownloadURL
-
-            };
-
-            window.firebaseReady = true;
-
-            console.log("🔥 FIREBASE READY");
-
-            /*=========================================================
-              BUILD STAFF INDEX
-            =========================================================*/
-
-            try {
-
-                console.log(
-
-                    "🧠 Initializing StaffEntities..."
-
-                );
-
-                await window.GreenGuardAI
-
-                    .StaffEntities
-
-                    .initialize();
-
-                console.log(
-
-                    "✅ StaffEntities Ready"
-
-                );
-
-                if (
-
-                    typeof loadAllStaffProfiles ===
-
-                    "function"
-
-                ) {
-
-                    await loadAllStaffProfiles();
-
-                }
-
-                console.log(
-
-                    "✅ Staff Profiles Loaded"
-
-                );
-
-            }
-
-            catch (
-
-                err
-
-            ) {
-
-                console.error(
-
-                    "❌ StaffEntities Init Failed",
-
-                    err
-
-                );
-
-            }
-
-            /*=========================================================
-              START REALTIME LISTENERS
-            =========================================================*/
-
-            try {
-
-                console.log(
-
-                    "🚀 Starting Realtime Listeners..."
-
-                );
-
-                loadStaff();
-
-                loadPatrolTracks();
-
-                loadSightings();
-
-                console.log(
-
-                    "✅ Realtime Listeners Started"
-
-                );
-
-            }
-
-            catch (
-
-                err
-
-            ) {
-
-                console.error(
-
-                    "❌ Listener Startup Failed",
-
-                    err
-
-                );
-
-            }
-
-            /*=========================================================
-              CLEANUP
-            =========================================================*/
-
-            if (
-
-                typeof cleanupOldTracks ===
-
-                "function"
-
-            ) {
-
-                setTimeout(
-
-                    cleanupOldTracks,
-
-                    5000
-
-                );
-
-                setInterval(
-
-                    cleanupOldTracks,
-
-                    24 * 60 * 60 * 1000
-
-                );
-
-            }
-
-            else {
-
-                console.warn(
-
-                    "⚠ cleanupOldTracks not found"
-
-                );
-
-            }
-
-            console.log(
-
-                "🔥 FIREBASE INITIALIZATION COMPLETE"
-
-            );
-
-        }
-
-        catch (
-
-            e
-
-        ) {
-
-            console.error(
-
-                "❌ Firebase load failed:",
-
-                e
-
-            );
-
-        }
-
-    })();
-
-}, 500);
-
-console.log(
-
-    "🔥 NEW BUILD LOADED - VERSION 999"
-
-);
 // ======================================================
 // 🚀 SMART SERVICE WORKER UPDATE SYSTEM (FINAL)
 // ======================================================
@@ -27855,7 +27619,6 @@ window.staffLastUpdate = window.staffLastUpdate || {};
 // 🔥 ANALYTICS BUFFER
 // ======================================
 window.analyticsBuffer = {};
-window.patrolTrackCache = {};
 
 // ======================================
 // 🔥 FLUSH LOCK
@@ -28168,7 +27931,7 @@ async function buildCellToGridLookup(){
 
   return `${row}_${col}`;
 }
-  // ======================================================
+   // ======================================================
 // 🔥 LOAD STAFF
 // ======================================================
 function loadStaff(){
@@ -28669,11 +28432,6 @@ window.liveStaffCache[
       s.team || ""
     )
 };
-    /*=========================================================
-  PATROL TRACK CACHE
-=========================================================*/
-
-
 // ==============================================
 // 🔥 ACTIVE USER LIST
 // ==============================================
@@ -34026,8 +33784,6 @@ function refreshAll() {
   /* 🔥 STAFF (SIMPLIFIED — DIRECT LOAD) */
   loadStaff();
 
-
-loadPatrolTracks();
   /* 🔥 WEATHER (UNCHANGED) */
   setTimeout(loadWeatherFull, 500);
 
@@ -34287,21 +34043,17 @@ loadPatrolTracks();
     /* ============================================================
        ⚡ FAST LOOP → REAL-TIME (STAFF + ELEPHANTS)
     ============================================================ */
-setInterval(function(){
+    setInterval(function () {
 
-    try{
-
+      try {
+        loadStaff();
         loadSightings();
+      } catch (err) {
+        console.error("❌ Fast loop error:", err);
+      }
 
-    }
+    }, 8000); // 🔥 8 sec (GOOD BALANCE)
 
-    catch(err){
-
-        console.error(err);
-
-    }
-
-},8000);
 
     /* ============================================================
        🚨 INCIDENT MONITORING
@@ -34358,245 +34110,7 @@ setInterval(function(){
     /* ============================================================
        🧭 BLOCK 13 → LAYER CONTROL + LAZY LOAD (FINAL)
     ============================================================ */
-function loadPatrolTracks(
 
-) {
-
-    /*----------------------------------
-      Firebase Ready
-    ----------------------------------*/
-
-    if (
-
-        !window.db ||
-
-        !window.fb
-
-    ) {
-
-        console.warn(
-
-            "⚠ Firebase not ready"
-
-        );
-
-        return;
-
-    }
-
-    /*----------------------------------
-      Prevent Duplicate Listener
-    ----------------------------------*/
-
-    if (
-
-        window.patrolListenerActive === true
-
-    ) {
-
-        console.log(
-
-            "⏸ patrol_tracks listener already active"
-
-        );
-
-        return;
-
-    }
-
-    window.patrolListenerActive = true;
-
-    console.log(
-
-        "🔥 Creating patrol_tracks listener"
-
-    );
-
-    /*----------------------------------
-      Global Cache
-    ----------------------------------*/
-
-    window.patrolTrackCache = {};
-
-    const {
-
-        collection,
-
-        onSnapshot
-
-    } = window.fb;
-
-    /*----------------------------------
-      Firestore Collection
-    ----------------------------------*/
-
-    const patrolRef =
-
-        collection(
-
-            window.db,
-
-            "patrol_tracks"
-
-        );
-
-    /*----------------------------------
-      Realtime Listener
-    ----------------------------------*/
-
-    window.patrolUnsubscribe =
-
-        onSnapshot(
-
-            patrolRef,
-
-            function (
-
-                snapshot
-
-            ) {
-
-                /*--------------------------
-                  Fresh Cache
-                --------------------------*/
-
-                window.patrolTrackCache = {};
-
-                /*--------------------------
-                  Read Every Document
-                --------------------------*/
-
-                snapshot.forEach(
-
-                    function (
-
-                        docSnap
-
-                    ) {
-
-                        try {
-
-                            const patrol = {
-
-                                id:
-
-                                    docSnap.id,
-
-                                ...docSnap.data()
-
-                            };
-
-                            console.log(
-
-                                "📄 PATROL DOC",
-
-                                patrol
-
-                            );
-
-                            const cleanName =
-
-                                String(
-
-                                    patrol.cleanName ||
-
-                                    ""
-
-                                )
-
-                                .trim()
-
-                                .toUpperCase();
-
-                            if (
-
-                                cleanName === ""
-
-                            ) {
-
-                                return;
-
-                            }
-
-                            window.patrolTrackCache[
-
-                                cleanName
-
-                            ] =
-
-                                structuredClone(
-
-                                    patrol
-
-                                );
-
-                        }
-
-                        catch (
-
-                            err
-
-                        ) {
-
-                            console.error(
-
-                                "❌ Patrol cache error",
-
-                                err
-
-                            );
-
-                        }
-
-                    }
-
-                );
-
-                /*--------------------------
-                  Debug
-                --------------------------*/
-
-                console.log(
-
-                    "✅ Patrol Cache Ready:",
-
-                    Object.keys(
-
-                        window.patrolTrackCache
-
-                    ).length
-
-                );
-
-                console.log(
-
-                    window.patrolTrackCache
-
-                );
-
-            },
-
-            function (
-
-                err
-
-            ) {
-
-                console.error(
-
-                    "❌ patrol_tracks listener",
-
-                    err
-
-                );
-
-                window.patrolListenerActive = false;
-
-            }
-
-        );
-
-}
     /* ============================================================
        🌊 RIVER LAYER (LAZY INIT SAFE)
     ============================================================ */
