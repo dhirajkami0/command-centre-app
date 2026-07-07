@@ -509,211 +509,267 @@ requestAnimationFrame(
       SEND MESSAGE
     ----------------------------------------------------------*/
 
-    async function sendMessage() {
+/*----------------------------------------------------------
+  SEND MESSAGE
+----------------------------------------------------------*/
 
-       const query =
+async function sendMessage() {
 
-    input.value.trim();
+    /*----------------------------------
+      Read Query
+    ----------------------------------*/
 
-if (!query)
-    return;
+    const query =
 
-if (
+        input.value.trim();
 
-    Core.isBusy()
+    if (
 
-) {
+        !query
 
-    return;
+    ) {
 
-}
+        return;
 
-input.value = "";
+    }
 
-Render.appendMessage(
+    /*----------------------------------
+      Prevent Multiple Requests
+    ----------------------------------*/
 
-    "user",
+    if (
 
-    query
+        Core.isBusy()
 
-);
+    ) {
 
-Render.showTyping();
+        return;
 
-sendButton.disabled = true;
+    }
 
-        try {
+    /*----------------------------------
+      Clear Input
+    ----------------------------------*/
 
-            const result =
+    input.value = "";
 
-                await Core.ask(
+    /*----------------------------------
+      Show User Message
+    ----------------------------------*/
 
-                    query
+    Render.appendMessage(
 
-                );
+        "user",
 
-            Render.hideTyping();
+        query
+
+    );
+
+    /*----------------------------------
+      Typing Indicator
+    ----------------------------------*/
+
+    Render.showTyping();
+
+    sendButton.disabled = true;
+
+    try {
+
+        /*----------------------------------
+          Ask AI
+        ----------------------------------*/
+
+        const result =
+
+            await Core.ask(
+
+                query
+
+            );
+
+        Render.hideTyping();
+
+        /*----------------------------------
+          Success
+        ----------------------------------*/
+
+        if (
+
+            result.success
+
+        ) {
+
+            /*------------------------------
+              Normalize Answer
+            ------------------------------*/
+
+            let answer = "";
 
             if (
 
-                result.success
+                typeof result.answer ===
+
+                "string"
 
             ) {
 
-/*----------------------------------
-  Normalize Answer
-----------------------------------*/
+                answer =
 
-let answer = "";
+                    result.answer;
 
-if (
+            }
 
-    typeof result.answer === "string"
+            else if (
 
-) {
+                result.formatted &&
 
-    answer =
+                typeof result.formatted.markdown ===
 
-        result.answer;
+                "string"
 
-}
+            ) {
 
-else if (
+                answer =
 
-    result.formatted &&
+                    result.formatted.markdown;
 
-    typeof result.formatted.markdown === "string"
+            }
 
-) {
+            else if (
 
-    answer =
+                result.formatted &&
 
-        result.formatted.markdown;
+                typeof result.formatted.message ===
 
-}
+                "string"
 
-else if (
+            ) {
 
-    result.formatted &&
+                answer =
 
-    typeof result.formatted.message === "string"
+                    result.formatted.message;
 
-) {
+            }
 
-    answer =
+            else if (
 
-        result.formatted.message;
+                typeof result.message ===
 
-}
+                "string"
 
-else if (
+            ) {
 
-    typeof result.message === "string"
+                answer =
 
-) {
-
-    answer =
-
-        result.message;
-
-}
-
-else {
-
-    answer =
-
-        JSON.stringify(
-
-            result,
-
-            null,
-
-            2
-
-        );
-
-}
-
-/*----------------------------------
-  Render
-----------------------------------*/
-
-const msg =
-
-    Render.appendMessage(
-
-        "assistant",
-
-        answer
-
-    );
-
-Render.enableCopy(
-
-    msg,
-
-    answer
-
-);
-
-const msg =
-
-    Render.appendMessage(
-
-        "assistant",
-
-        answer
-
-    );
-
-Render.enableCopy(
-
-    msg,
-
-    answer
-
-);
+                    result.message;
 
             }
 
             else {
 
-               Render.error(
+                answer =
 
-    result.error ||
+                    JSON.stringify(
 
-    "AI request failed."
+                        result,
 
-);
+                        null,
+
+                        2
+
+                    );
+
+            }
+
+            /*------------------------------
+              Render Assistant Message
+            ------------------------------*/
+
+            const msg =
+
+                Render.appendMessage(
+
+                    "assistant",
+
+                    answer
+
+                );
+
+            /*------------------------------
+              Enable Copy
+            ------------------------------*/
+
+            if (
+
+                typeof Render.enableCopy ===
+
+                "function"
+
+            ) {
+
+                Render.enableCopy(
+
+                    msg,
+
+                    answer
+
+                );
 
             }
 
         }
 
-        catch (err) {
+        /*----------------------------------
+          Failure
+        ----------------------------------*/
 
-            Render.hideTyping();
+        else {
 
             Render.error(
 
-                err.message ||
+                result.error ||
 
-                String(err)
+                result.message ||
+
+                "AI request failed."
 
             );
 
         }
 
-        finally {
+    }
 
-            sendButton.disabled = false;
+    catch (
 
-            input.focus();
+        err
 
-        }
+    ) {
 
-    };
+        Render.hideTyping();
 
+        Render.error(
+
+            err.message ||
+
+            String(
+
+                err
+
+            )
+
+        );
+
+    }
+
+    finally {
+
+        sendButton.disabled = false;
+
+        input.focus();
+
+    }
+
+}
 
 
     /*----------------------------------------------------------
