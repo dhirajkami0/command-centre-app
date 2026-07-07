@@ -300,6 +300,10 @@ StaffLocation.queryStaffLocation = function (
  FIND STAFF
 =========================================================*/
 
+/*=========================================================
+ FIND STAFF
+=========================================================*/
+
 StaffLocation.findStaff = function (
 
     request
@@ -323,6 +327,12 @@ StaffLocation.findStaff = function (
     }
 
     /*----------------------------------
+      Canonical Staff
+    ----------------------------------*/
+
+    let staff = null;
+
+    /*----------------------------------
       Parameters
     ----------------------------------*/
 
@@ -334,7 +344,9 @@ StaffLocation.findStaff = function (
 
     ) {
 
-        return request.parameters.staff;
+        staff =
+
+            request.parameters.staff;
 
     }
 
@@ -342,7 +354,7 @@ StaffLocation.findStaff = function (
       Staff Entity
     ----------------------------------*/
 
-    if (
+    else if (
 
         request.entities &&
 
@@ -356,7 +368,9 @@ StaffLocation.findStaff = function (
 
     ) {
 
-        return request.entities.staff[0];
+        staff =
+
+            request.entities.staff[0];
 
     }
 
@@ -364,7 +378,7 @@ StaffLocation.findStaff = function (
       Phone Entity
     ----------------------------------*/
 
-    if (
+    else if (
 
         request.entities &&
 
@@ -378,7 +392,9 @@ StaffLocation.findStaff = function (
 
     ) {
 
-        return request.entities.phones[0];
+        staff =
+
+            request.entities.phones[0];
 
     }
 
@@ -386,7 +402,7 @@ StaffLocation.findStaff = function (
       Role Entity
     ----------------------------------*/
 
-    if (
+    else if (
 
         request.entities &&
 
@@ -400,7 +416,9 @@ StaffLocation.findStaff = function (
 
     ) {
 
-        return request.entities.roles[0];
+        staff =
+
+            request.entities.roles[0];
 
     }
 
@@ -408,7 +426,7 @@ StaffLocation.findStaff = function (
       Posting Entity
     ----------------------------------*/
 
-    if (
+    else if (
 
         request.entities &&
 
@@ -422,7 +440,9 @@ StaffLocation.findStaff = function (
 
     ) {
 
-        return request.entities.posting[0];
+        staff =
+
+            request.entities.posting[0];
 
     }
 
@@ -430,7 +450,7 @@ StaffLocation.findStaff = function (
       Team Entity
     ----------------------------------*/
 
-    if (
+    else if (
 
         request.entities &&
 
@@ -444,7 +464,9 @@ StaffLocation.findStaff = function (
 
     ) {
 
-        return request.entities.team[0];
+        staff =
+
+            request.entities.team[0];
 
     }
 
@@ -452,7 +474,7 @@ StaffLocation.findStaff = function (
       Duty Entity
     ----------------------------------*/
 
-    if (
+    else if (
 
         request.entities &&
 
@@ -466,7 +488,9 @@ StaffLocation.findStaff = function (
 
     ) {
 
-        return request.entities.duty[0];
+        staff =
+
+            request.entities.duty[0];
 
     }
 
@@ -474,7 +498,7 @@ StaffLocation.findStaff = function (
       GPS Entity
     ----------------------------------*/
 
-    if (
+    else if (
 
         request.entities &&
 
@@ -488,11 +512,105 @@ StaffLocation.findStaff = function (
 
     ) {
 
-        return request.entities.gps[0];
+        staff =
+
+            request.entities.gps[0];
 
     }
 
-    return null;
+    /*----------------------------------
+      Staff Not Found
+    ----------------------------------*/
+
+    if (
+
+        !staff
+
+    ) {
+
+        return null;
+
+    }
+
+    /*----------------------------------
+      Resolve Clean Name
+    ----------------------------------*/
+
+    const cleanName =
+
+        String(
+
+            staff.identity?.cleanName ||
+
+            staff.cleanName ||
+
+            ""
+
+        )
+
+        .trim()
+
+        .toUpperCase();
+
+    /*----------------------------------
+      Cannot Hydrate
+    ----------------------------------*/
+
+    if (
+
+        cleanName === ""
+
+    ) {
+
+        return staff;
+
+    }
+
+    /*----------------------------------
+      Hydrate Runtime Data
+    ----------------------------------*/
+
+    if (
+
+        window.GreenGuardAI &&
+
+        window.GreenGuardAI.StaffHydrator &&
+
+        typeof window.GreenGuardAI
+            .StaffHydrator
+            .getHydratedStaff ===
+
+        "function"
+
+    ) {
+
+        const hydrated =
+
+            window.GreenGuardAI
+                .StaffHydrator
+                .getHydratedStaff(
+
+                    cleanName
+
+                );
+
+        if (
+
+            hydrated
+
+        ) {
+
+            return hydrated;
+
+        }
+
+    }
+
+    /*----------------------------------
+      Fallback
+    ----------------------------------*/
+
+    return staff;
 
 };/*=========================================================
  BUILD LOCATION
