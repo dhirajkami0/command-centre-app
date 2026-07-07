@@ -256,7 +256,13 @@ StaffFormatter.format = function (
                 response
 
             );
+case StaffConstants.INTENTS.STAFF_ASSIGNMENT:
 
+    return StaffFormatter.formatStaffAssignment(
+
+        response
+
+    );
         case StaffConstants.INTENTS.STAFF_POSTING:
 
             return StaffFormatter.formatPosting(
@@ -710,6 +716,62 @@ StaffFormatter.formatProfile = function (
         "Profile formatted.";
 
     return result;
+
+};
+
+ StaffFormatter.formatStaffAssignment = function (
+
+    response
+
+) {
+
+    const a =
+
+        response.assignment;
+
+    if (
+
+        !a
+
+    ) {
+
+        return "Assignment not found.";
+
+    }
+
+    let text =
+
+        "";
+
+    text +=
+
+        a.name + "\n\n";
+
+    text +=
+
+        "Assigned Area\n";
+
+    text +=
+
+        (a.assignedCompartment || "—") + "\n\n";
+
+    text +=
+
+        "Duty Type\n";
+
+    text +=
+
+        (a.dutyType || "—") + "\n\n";
+
+    text +=
+
+        "Duty Status\n";
+
+    text +=
+
+        (a.status || "—");
+
+    return text;
 
 };
  /*=========================================================
