@@ -633,7 +633,17 @@ StaffRouter.registerRoutes = function () {
         GG.queryStaffDuty
 
     );
+/*----------------------------------
+  Assignment
+----------------------------------*/
 
+StaffRouter.register(
+
+    INTENTS.STAFF_ASSIGNMENT,
+
+    GG.queryStaffAssignment
+
+);
     /*----------------------------------
       GPS
     ----------------------------------*/
