@@ -175,7 +175,8 @@ StaffConstants.INTENTS = Object.freeze({
 
     STAFF_LAST_DUTY:
         "staffLastDuty",
-
+STAFF_ASSIGNMENT :
+    "STAFF_ASSIGNMENT",
     /*----------------------------------
       Status
     ----------------------------------*/
@@ -1812,7 +1813,51 @@ STAFF_DESIGNATION: [
         "DUTY TYPE"
 
     ],
+/*----------------------------------
+  Assignment
+----------------------------------*/
 
+STAFF_ASSIGNMENT: [
+
+    "ASSIGNED",
+
+    "ASSIGNMENT",
+
+    "ASSIGNED AREA",
+
+    "ASSIGNED COMPARTMENT",
+
+    "ASSIGNED LOCATION",
+
+    "ASSIGNED PLACE",
+
+    "DEPLOYED",
+
+    "DEPLOYMENT",
+
+    "DEPLOYED AREA",
+
+    "DEPLOYED LOCATION",
+
+    "WORKING AREA",
+
+    "WORK AREA",
+
+    "WORKING IN",
+
+    "WHICH AREA",
+
+    "WHICH COMPARTMENT",
+
+    "WHERE DEPLOYED",
+
+    "WHERE ASSIGNED",
+
+    "DUTY AREA",
+
+    "AREA"
+
+],
     /*----------------------------------
       Status
     ----------------------------------*/
