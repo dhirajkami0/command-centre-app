@@ -496,6 +496,10 @@ StaffTeam.findStaff = function (
  BUILD TEAM
 =========================================================*/
 
+/*=========================================================
+ BUILD TEAM
+=========================================================*/
+
 StaffTeam.buildTeam = function (
 
     staff
@@ -606,7 +610,7 @@ StaffTeam.buildTeam = function (
 
         lastDutyEnd:
 
-            staff.duty.lastDutyEnd,
+            staff.assignment.lastDutyEnd,
 
         /*----------------------------------
           Live Location
