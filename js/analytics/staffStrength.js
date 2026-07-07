@@ -292,6 +292,10 @@ StaffStrength.queryStaffStrength = function (
  CALCULATE STRENGTH
 =========================================================*/
 
+/*=========================================================
+ CALCULATE STRENGTH
+=========================================================*/
+
 StaffStrength.calculateStrength = function (
 
     request
@@ -308,13 +312,87 @@ StaffStrength.calculateStrength = function (
 
         {};
 
+    /*----------------------------------
+      Hydrated Staff
+    ----------------------------------*/
+
     let staff =
 
-        [
+        StaffEntities.staff.map(
 
-            ...StaffEntities.staff
+            function (
 
-        ];
+                s
+
+            ) {
+
+                const cleanName =
+
+                    String(
+
+                        s.identity?.cleanName ||
+
+                        s.cleanName ||
+
+                        ""
+
+                    )
+
+                    .trim()
+
+                    .toUpperCase();
+
+                if (
+
+                    cleanName === ""
+
+                ) {
+
+                    return s;
+
+                }
+
+                if (
+
+                    window.GreenGuardAI &&
+
+                    window.GreenGuardAI.StaffHydrator &&
+
+                    typeof window.GreenGuardAI
+                        .StaffHydrator
+                        .getHydratedStaff ===
+
+                    "function"
+
+                ) {
+
+                    const hydrated =
+
+                        window.GreenGuardAI
+                            .StaffHydrator
+                            .getHydratedStaff(
+
+                                cleanName
+
+                            );
+
+                    if (
+
+                        hydrated
+
+                    ) {
+
+                        return hydrated;
+
+                    }
+
+                }
+
+                return s;
+
+            }
+
+        );
 
     /*----------------------------------
       Division
@@ -351,6 +429,8 @@ StaffStrength.calculateStrength = function (
                         ""
 
                     )
+
+                    .trim()
 
                     .toUpperCase() ===
 
@@ -396,6 +476,8 @@ StaffStrength.calculateStrength = function (
 
                     )
 
+                    .trim()
+
                     .toUpperCase() ===
 
                     range
@@ -440,6 +522,8 @@ StaffStrength.calculateStrength = function (
 
                     )
 
+                    .trim()
+
                     .toUpperCase() ===
 
                     beat
@@ -483,6 +567,8 @@ StaffStrength.calculateStrength = function (
                         ""
 
                     )
+
+                    .trim()
 
                     .toUpperCase() ===
 
@@ -678,7 +764,8 @@ StaffStrength.calculateStrength = function (
 
     return summary;
 
-};/*=========================================================
+};
+ /*=========================================================
  BUILD STRENGTH
 =========================================================*/
 
