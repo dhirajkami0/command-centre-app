@@ -675,18 +675,37 @@ StaffContact.buildContact = function (
 
             staff.identity.type,
 
-        /*----------------------------------
-          Contact
-        ----------------------------------*/
+       /*----------------------------------
+  Contact
+----------------------------------*/
 
-        phone:
+phone:
 
-            staff.identity.phone,
+    staff.identity.phone,
 
-        email:
+phoneNumber:
 
-            staff.identity.email,
+    staff.identity.phone,
 
+mobile:
+
+    staff.identity.phone,
+
+mobileNumber:
+
+    staff.identity.phone,
+
+contact:
+
+    staff.identity.phone,
+
+contactNumber:
+
+    staff.identity.phone,
+
+email:
+
+    staff.identity.email,
         /*----------------------------------
           Administrative Posting
         ----------------------------------*/
