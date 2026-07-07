@@ -655,6 +655,10 @@ StaffProfile.findStaff = function (
  BUILD PROFILE
 =========================================================*/
 
+/*=========================================================
+ BUILD PROFILE
+=========================================================*/
+
 StaffProfile.buildProfile = function (
 
     staff
@@ -720,7 +724,7 @@ StaffProfile.buildProfile = function (
         },
 
         /*----------------------------------
-          Posting
+          Administrative Posting
         ----------------------------------*/
 
         posting: {
@@ -744,7 +748,7 @@ StaffProfile.buildProfile = function (
         },
 
         /*----------------------------------
-          Assignment
+          Operational Assignment
         ----------------------------------*/
 
         assignment: {
@@ -759,7 +763,7 @@ StaffProfile.buildProfile = function (
 
             dutyActive:
 
-                staff.assignment?.dutyActive || false,
+                staff.assignment?.dutyActive ?? false,
 
             status:
 
@@ -771,36 +775,16 @@ StaffProfile.buildProfile = function (
 
             team:
 
-                staff.assignment?.team || ""
-
-        },
-
-        /*----------------------------------
-          Duty
-        ----------------------------------*/
-
-        duty: {
-
-            dutyType:
-
-                staff.duty?.dutyType || "",
-
-            dutyActive:
-
-                staff.duty?.dutyActive || false,
-
-            status:
-
-                staff.duty?.status || "",
+                staff.assignment?.team || "",
 
             lastDutyEnd:
 
-                staff.duty?.lastDutyEnd || ""
+                staff.assignment?.lastDutyEnd || ""
 
         },
 
         /*----------------------------------
-          Location
+          Live Location
         ----------------------------------*/
 
         location: {
@@ -871,7 +855,11 @@ StaffProfile.buildProfile = function (
 
             team:
 
-                staff.teamInfo?.team || ""
+                staff.teamInfo?.team || "",
+
+            teamMembers:
+
+                staff.teamInfo?.teamMembers || []
 
         },
 
@@ -896,26 +884,26 @@ StaffProfile.buildProfile = function (
         },
 
         /*----------------------------------
-          Analytics
+          Patrol Analytics
         ----------------------------------*/
 
         analytics: {
 
             pointCount:
 
-                staff.analytics?.pointCount || 0,
+                staff.analytics?.pointCount ?? 0,
 
             distanceKm:
 
-                staff.analytics?.distanceKm || 0,
+                staff.analytics?.distanceKm ?? 0,
 
             startedAt:
 
-                staff.analytics?.startedAt || null,
+                staff.analytics?.startedAt ?? null,
 
             endedAt:
 
-                staff.analytics?.endedAt || null,
+                staff.analytics?.endedAt ?? null,
 
             monthKey:
 
@@ -939,7 +927,15 @@ StaffProfile.buildProfile = function (
 
             startAccuracy:
 
-                staff.analytics?.startAccuracy ?? null
+                staff.analytics?.startAccuracy ?? null,
+
+            createdAt:
+
+                staff.analytics?.createdAt ?? null,
+
+            updatedAt:
+
+                staff.analytics?.updatedAt ?? null
 
         },
 
@@ -970,7 +966,7 @@ StaffProfile.buildProfile = function (
     };
 
 };
-    /*=========================================================
+ /*=========================================================
  REGISTER
 =========================================================*/
 
