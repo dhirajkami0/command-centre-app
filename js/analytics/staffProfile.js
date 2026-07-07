@@ -298,6 +298,10 @@ StaffProfile.queryStaffProfile = function (
  FIND STAFF
 =========================================================*/
 
+/*=========================================================
+  FIND STAFF
+=========================================================*/
+
 StaffProfile.findStaff = function (
 
     request
@@ -321,6 +325,12 @@ StaffProfile.findStaff = function (
     }
 
     /*----------------------------------
+      Canonical Staff
+    ----------------------------------*/
+
+    let staff = null;
+
+    /*----------------------------------
       Parameters
     ----------------------------------*/
 
@@ -332,67 +342,73 @@ StaffProfile.findStaff = function (
 
     ) {
 
-        return request.parameters.staff;
+        staff =
+
+            request.parameters.staff;
 
     }
-/*----------------------------------
-  Staff Name
-----------------------------------*/
 
-if (
+    /*----------------------------------
+      Staff Name
+    ----------------------------------*/
 
-    request.entities &&
+    else if (
 
-    request.entities.name
+        request.entities &&
 
-) {
-
-    const cleanName =
-
-        String(
-
-            request.entities.name
-
-        )
-
-        .trim()
-
-        .toUpperCase();
-
-    const byName =
-
-        GreenGuardAI
-            .StaffEntities
-            .index
-            .byCleanName
-            .get(
-
-                cleanName
-
-            );
-
-    if (
-
-        Array.isArray(
-
-            byName
-
-        ) &&
-
-        byName.length > 0
+        request.entities.name
 
     ) {
 
-        return byName[0];
+        const cleanName =
+
+            String(
+
+                request.entities.name
+
+            )
+
+            .trim()
+
+            .toUpperCase();
+
+        const byName =
+
+            GreenGuardAI
+                .StaffEntities
+                .index
+                .byCleanName
+                .get(
+
+                    cleanName
+
+                );
+
+        if (
+
+            Array.isArray(
+
+                byName
+
+            ) &&
+
+            byName.length > 0
+
+        ) {
+
+            staff =
+
+                byName[0];
+
+        }
 
     }
 
-}
     /*----------------------------------
       Staff Entity
     ----------------------------------*/
 
-    if (
+    else if (
 
         request.entities &&
 
@@ -406,7 +422,9 @@ if (
 
     ) {
 
-        return request.entities.staff[0];
+        staff =
+
+            request.entities.staff[0];
 
     }
 
@@ -414,7 +432,7 @@ if (
       Phone Entity
     ----------------------------------*/
 
-    if (
+    else if (
 
         request.entities &&
 
@@ -428,7 +446,9 @@ if (
 
     ) {
 
-        return request.entities.phones[0];
+        staff =
+
+            request.entities.phones[0];
 
     }
 
@@ -436,7 +456,7 @@ if (
       Role Entity
     ----------------------------------*/
 
-    if (
+    else if (
 
         request.entities &&
 
@@ -450,7 +470,9 @@ if (
 
     ) {
 
-        return request.entities.roles[0];
+        staff =
+
+            request.entities.roles[0];
 
     }
 
@@ -458,7 +480,7 @@ if (
       Posting Entity
     ----------------------------------*/
 
-    if (
+    else if (
 
         request.entities &&
 
@@ -472,7 +494,9 @@ if (
 
     ) {
 
-        return request.entities.posting[0];
+        staff =
+
+            request.entities.posting[0];
 
     }
 
@@ -480,7 +504,7 @@ if (
       Team Entity
     ----------------------------------*/
 
-    if (
+    else if (
 
         request.entities &&
 
@@ -494,7 +518,9 @@ if (
 
     ) {
 
-        return request.entities.team[0];
+        staff =
+
+            request.entities.team[0];
 
     }
 
@@ -502,7 +528,7 @@ if (
       Duty Entity
     ----------------------------------*/
 
-    if (
+    else if (
 
         request.entities &&
 
@@ -516,7 +542,9 @@ if (
 
     ) {
 
-        return request.entities.duty[0];
+        staff =
+
+            request.entities.duty[0];
 
     }
 
@@ -524,7 +552,7 @@ if (
       GPS Entity
     ----------------------------------*/
 
-    if (
+    else if (
 
         request.entities &&
 
@@ -538,11 +566,89 @@ if (
 
     ) {
 
-        return request.entities.gps[0];
+        staff =
+
+            request.entities.gps[0];
 
     }
 
-    return null;
+    /*----------------------------------
+      Not Found
+    ----------------------------------*/
+
+    if (
+
+        !staff
+
+    ) {
+
+        return null;
+
+    }
+
+    /*----------------------------------
+      Resolve Clean Name
+    ----------------------------------*/
+
+    const cleanName =
+
+        String(
+
+            staff.identity?.cleanName ||
+
+            staff.cleanName ||
+
+            ""
+
+        )
+
+        .trim()
+
+        .toUpperCase();
+
+    if (
+
+        cleanName === ""
+
+    ) {
+
+        return staff;
+
+    }
+
+    /*----------------------------------
+      Return Hydrated Staff
+    ----------------------------------*/
+
+    if (
+
+        window.GreenGuardAI &&
+
+        window.GreenGuardAI.StaffHydrator &&
+
+        typeof window.GreenGuardAI
+            .StaffHydrator
+            .getHydratedStaff ===
+
+        "function"
+
+    ) {
+
+        return window.GreenGuardAI
+            .StaffHydrator
+            .getHydratedStaff(
+
+                cleanName
+
+            );
+
+    }
+
+    /*----------------------------------
+      Fallback
+    ----------------------------------*/
+
+    return staff;
 
 };
     /*=========================================================
