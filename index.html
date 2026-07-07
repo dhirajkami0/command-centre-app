@@ -5425,167 +5425,348 @@ async function startApp(){   // 🔥 ASYNC
 // ======================================================
 
 setTimeout(() => {
-  (async () => {
-    try {
-      console.log("🔥 STARTING FIREBASE INIT");
 
-      // ==================================================
-      // 🚀 PARALLEL IMPORTS
-      // ==================================================
-      const [firebaseAppModule, firestoreModule, storageModule] = await Promise.all([
-        import("https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js"),
-        import("https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js"),
-        import("https://www.gstatic.com/firebasejs/10.12.0/firebase-storage.js")
-      ]);
+    (async () => {
 
-      // ==================================================
-      // 🔥 FIREBASE APP
-      // ==================================================
-      const { initializeApp } = firebaseAppModule;
+        try {
 
-      // ==================================================
-      // 🔥 FIRESTORE (Importing runTransaction here)
-      // ==================================================
-      const {
-        getFirestore,
-        collection,
-        query,
-        where,
-        orderBy,
-        onSnapshot,
-        serverTimestamp,
-        getDocs,
-        getDoc,
-        deleteDoc,
-        deleteField,
-        doc,
-        setDoc,
-        updateDoc,
-        runTransaction // <--- ADDED THIS IMPORT
-      } = firestoreModule;
+            console.log("🔥 STARTING FIREBASE INIT");
 
-      // ==================================================
-      // 🔥 STORAGE
-      // ==================================================
-      const { getStorage, ref, uploadBytes, uploadString, getDownloadURL } = storageModule;
+            /*=========================================================
+              IMPORT FIREBASE
+            =========================================================*/
 
-      // ==================================================
-      // 🔥 INIT APP
-      // ==================================================
-      const app = initializeApp(window.firebaseConfig);
+            const [
 
-      // ==================================================
-      // 🔥 DATABASE
-      // ==================================================
-      window.db = getFirestore(app);
+                firebaseAppModule,
 
-      // ==================================================
-      // 🔥 STORAGE
-      // ==================================================
-      window.storage = getStorage(app);
+                firestoreModule,
 
-      // ==================================================
-      // 🔥 FIREBASE HELPERS (Added runTransaction)
-      // ==================================================
-      window.fb = {
-        collection,
-        where,
-        query,
-        orderBy,
-        onSnapshot,
-        serverTimestamp,
-        getDocs,
-        getDoc,
-        deleteDoc,
-        deleteField,
-        doc,
-        setDoc,
-        updateDoc,
-        runTransaction, // <--- ADDED TO HELPER
-        ref,
-        uploadBytes,
-        uploadString,
-        getDownloadURL
-      };
+                storageModule
 
-      // ==================================================
-      // 🔥 READY FLAG
-      // ==================================================
-      window.firebaseReady = true;
-      console.log("🔥 FIREBASE READY");
-/*=========================================================
-  BUILD STAFF INDEX
-=========================================================*/
+            ] = await Promise.all([
 
-try {
+                import("https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js"),
 
-    console.log(
+                import("https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js"),
 
-        "🧠 Initializing StaffEntities..."
+                import("https://www.gstatic.com/firebasejs/10.12.0/firebase-storage.js")
 
-    );
+            ]);
 
-       await window.GreenGuardAI
-        .StaffEntities
-        .initialize();
+            /*=========================================================
+              FIREBASE APP
+            =========================================================*/
 
+            const {
 
-    console.log(
+                initializeApp
 
-        "✅ StaffEntities Ready"
+            } = firebaseAppModule;
 
-    );
+            /*=========================================================
+              FIRESTORE
+            =========================================================*/
 
-    if (
+            const {
 
-        typeof loadAllStaffProfiles ===
+                getFirestore,
 
-        "function"
+                collection,
 
-    ) {
+                query,
 
-        await loadAllStaffProfiles();
+                where,
 
-    }
+                orderBy,
 
-    console.log(
+                onSnapshot,
 
-        "✅ Staff Profiles Loaded"
+                serverTimestamp,
 
-    );
+                getDocs,
 
-}
+                getDoc,
 
-catch (
+                deleteDoc,
 
-    err
+                deleteField,
 
-) {
+                doc,
 
-    console.error(
+                setDoc,
 
-        "❌ StaffEntities Init Failed",
+                updateDoc,
 
-        err
+                runTransaction
 
-    );
+            } = firestoreModule;
 
-}
-      // ==================================================
-      // 🧹 CLEANUP TASKS
-      // ==================================================
-      setTimeout(() => {
-        try { cleanupOldTracks(); } catch(e) { console.warn("⚠ cleanupOldTracks fail", e); }
-      }, 5000);
+            /*=========================================================
+              STORAGE
+            =========================================================*/
 
-      setInterval(cleanupOldTracks, 24 * 60 * 60 * 1000);
+            const {
 
-    } catch (e) {
-      console.error("❌ Firebase load failed:", e);
-    }
-  })();
-}, 500);    console.log("🔥 NEW BUILD LOADED - VERSION 999");
+                getStorage,
 
+                ref,
+
+                uploadBytes,
+
+                uploadString,
+
+                getDownloadURL
+
+            } = storageModule;
+
+            /*=========================================================
+              INITIALIZE FIREBASE
+            =========================================================*/
+
+            const app =
+
+                initializeApp(
+
+                    window.firebaseConfig
+
+                );
+
+            window.db =
+
+                getFirestore(
+
+                    app
+
+                );
+
+            window.storage =
+
+                getStorage(
+
+                    app
+
+                );
+
+            window.fb = {
+
+                collection,
+
+                where,
+
+                query,
+
+                orderBy,
+
+                onSnapshot,
+
+                serverTimestamp,
+
+                getDocs,
+
+                getDoc,
+
+                deleteDoc,
+
+                deleteField,
+
+                doc,
+
+                setDoc,
+
+                updateDoc,
+
+                runTransaction,
+
+                ref,
+
+                uploadBytes,
+
+                uploadString,
+
+                getDownloadURL
+
+            };
+
+            window.firebaseReady = true;
+
+            console.log("🔥 FIREBASE READY");
+
+            /*=========================================================
+              BUILD STAFF INDEX
+            =========================================================*/
+
+            try {
+
+                console.log(
+
+                    "🧠 Initializing StaffEntities..."
+
+                );
+
+                await window.GreenGuardAI
+
+                    .StaffEntities
+
+                    .initialize();
+
+                console.log(
+
+                    "✅ StaffEntities Ready"
+
+                );
+
+                if (
+
+                    typeof loadAllStaffProfiles ===
+
+                    "function"
+
+                ) {
+
+                    await loadAllStaffProfiles();
+
+                }
+
+                console.log(
+
+                    "✅ Staff Profiles Loaded"
+
+                );
+
+            }
+
+            catch (
+
+                err
+
+            ) {
+
+                console.error(
+
+                    "❌ StaffEntities Init Failed",
+
+                    err
+
+                );
+
+            }
+
+            /*=========================================================
+              START REALTIME LISTENERS
+            =========================================================*/
+
+            try {
+
+                console.log(
+
+                    "🚀 Starting Realtime Listeners..."
+
+                );
+
+                loadStaff();
+
+                loadPatrolTracks();
+
+                loadSightings();
+
+                console.log(
+
+                    "✅ Realtime Listeners Started"
+
+                );
+
+            }
+
+            catch (
+
+                err
+
+            ) {
+
+                console.error(
+
+                    "❌ Listener Startup Failed",
+
+                    err
+
+                );
+
+            }
+
+            /*=========================================================
+              CLEANUP
+            =========================================================*/
+
+            if (
+
+                typeof cleanupOldTracks ===
+
+                "function"
+
+            ) {
+
+                setTimeout(
+
+                    cleanupOldTracks,
+
+                    5000
+
+                );
+
+                setInterval(
+
+                    cleanupOldTracks,
+
+                    24 * 60 * 60 * 1000
+
+                );
+
+            }
+
+            else {
+
+                console.warn(
+
+                    "⚠ cleanupOldTracks not found"
+
+                );
+
+            }
+
+            console.log(
+
+                "🔥 FIREBASE INITIALIZATION COMPLETE"
+
+            );
+
+        }
+
+        catch (
+
+            e
+
+        ) {
+
+            console.error(
+
+                "❌ Firebase load failed:",
+
+                e
+
+            );
+
+        }
+
+    })();
+
+}, 500);
+
+console.log(
+
+    "🔥 NEW BUILD LOADED - VERSION 999"
+
+);
 // ======================================================
 // 🚀 SMART SERVICE WORKER UPDATE SYSTEM (FINAL)
 // ======================================================
@@ -34106,20 +34287,21 @@ loadPatrolTracks();
     /* ============================================================
        ⚡ FAST LOOP → REAL-TIME (STAFF + ELEPHANTS)
     ============================================================ */
-   setInterval(function () {
+setInterval(function(){
 
-      try {
-       loadStaff();
-
-        loadPatrolTracks();
+    try{
 
         loadSightings();
-      } catch (err) {
-        console.error("❌ Fast loop error:", err);
-      }
 
-    }, 8000); // 🔥 8 sec (GOOD BALANCE)
+    }
 
+    catch(err){
+
+        console.error(err);
+
+    }
+
+},8000);
 
     /* ============================================================
        🚨 INCIDENT MONITORING
