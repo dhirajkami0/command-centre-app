@@ -442,29 +442,7 @@ StaffRouter.route = async function (
           Execute Handler
         ----------------------------------*/
 
-       /*----------------------------------
-  Resolve Hydrated Staff
-----------------------------------*/
-
-if (
-
-    GG.StaffResolver &&
-
-    typeof GG.StaffResolver.resolveHydratedStaff ===
-
-    "function"
-
-) {
-
-    request =
-
-        GG.StaffResolver.resolveHydratedStaff(
-
-            request
-
-        );
-
-}
+      
 
 /*----------------------------------
   Execute Handler
