@@ -442,14 +442,41 @@ StaffRouter.route = async function (
           Execute Handler
         ----------------------------------*/
 
-        const result =
+       /*----------------------------------
+  Resolve Hydrated Staff
+----------------------------------*/
 
-            await handler(
+if (
 
-                request
+    GG.StaffResolver &&
 
-            );
+    typeof GG.StaffResolver.resolveHydratedStaff ===
 
+    "function"
+
+) {
+
+    request =
+
+        GG.StaffResolver.resolveHydratedStaff(
+
+            request
+
+        );
+
+}
+
+/*----------------------------------
+  Execute Handler
+----------------------------------*/
+
+const result =
+
+    await handler(
+
+        request
+
+    );
         if (
 
             result &&
