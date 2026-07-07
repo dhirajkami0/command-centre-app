@@ -3299,31 +3299,39 @@ StaffIntent.detectStaffIntent = function (
         return result;
     }
 
-    /*----------------------------------
-      Contact
-    ----------------------------------*/
-    console.log(
-        "Checking STAFF_CONTACT..."
+  /*----------------------------------
+  STAFF CONTACT
+----------------------------------*/
+
+console.log(
+
+    "Checking STAFF_CONTACT..."
+
+);
+
+if (
+
+    StaffIntent.hasKeyword(
+
+        query,
+
+        StaffConstants.KEYWORDS.STAFF_CONTACT
+
+    )
+
+) {
+
+    return StaffIntent.buildIntent(
+
+        StaffConstants.INTENTS.STAFF_CONTACT,
+
+        result,
+
+        0.98
+
     );
-    if (
-        hasKeyword(
-            KEYWORDS.STAFF_CONTACT
-        )
-    ) {
-        console.log(
-            "✅ STAFF_CONTACT MATCH"
-        );
-        result.intent =
-            INTENTS.STAFF_CONTACT;
-        debugParameters(
-            "STAFF_CONTACT"
-        );
-        result.parameters.staff =
-            staff[0];
-        result.confidence =
-            0.98;
-        return result;
-    }
+
+}
 
     /*----------------------------------
       Location
