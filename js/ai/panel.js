@@ -560,21 +560,61 @@ sendButton.disabled = true;
 
             ) {
 
-let answer;
+/*----------------------------------
+  Normalize Answer
+----------------------------------*/
+
+let answer = "";
 
 if (
 
-    window.GreenGuardAI.Formatter
+    typeof result.answer === "string"
 
 ) {
 
     answer =
 
-        window.GreenGuardAI.Formatter.format(
+        result.answer;
 
-            result.answer
+}
 
-        );
+else if (
+
+    result.formatted &&
+
+    typeof result.formatted.markdown === "string"
+
+) {
+
+    answer =
+
+        result.formatted.markdown;
+
+}
+
+else if (
+
+    result.formatted &&
+
+    typeof result.formatted.message === "string"
+
+) {
+
+    answer =
+
+        result.formatted.message;
+
+}
+
+else if (
+
+    typeof result.message === "string"
+
+) {
+
+    answer =
+
+        result.message;
 
 }
 
@@ -582,27 +622,39 @@ else {
 
     answer =
 
-        typeof result.answer ===
+        JSON.stringify(
 
-        "string"
+            result,
 
-            ? result.answer
+            null,
 
-            : result.answer?.text ||
+            2
 
-              result.answer?.message ||
-
-              JSON.stringify(
-
-                  result.answer,
-
-                  null,
-
-                  2
-
-              );
+        );
 
 }
+
+/*----------------------------------
+  Render
+----------------------------------*/
+
+const msg =
+
+    Render.appendMessage(
+
+        "assistant",
+
+        answer
+
+    );
+
+Render.enableCopy(
+
+    msg,
+
+    answer
+
+);
 
 const msg =
 
