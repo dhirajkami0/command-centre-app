@@ -4882,6 +4882,10 @@ StaffEntities.createExtractionResult = function (
  EXTRACT STAFF ENTITIES
 =========================================================*/
 
+/*=========================================================
+ EXTRACT STAFF ENTITIES
+=========================================================*/
+
 StaffEntities.extractStaffEntities = function (
 
     result
@@ -4952,7 +4956,9 @@ StaffEntities.extractStaffEntities = function (
 
     function addMatch(
 
-        staff
+        staff,
+
+        score
 
     ) {
 
@@ -4992,6 +4998,10 @@ StaffEntities.extractStaffEntities = function (
 
         );
 
+        staff.__matchScore =
+
+            score;
+
         matches.push(
 
             staff
@@ -5030,69 +5040,173 @@ StaffEntities.extractStaffEntities = function (
 
             }
 
-            const found =
+            let score =
 
-                staff.search.tokens.some(
+                0;
 
-                    function (
+            staff.search.tokens.forEach(
 
-                        token
+                function (
+
+                    token
+
+                ) {
+
+                    token =
+
+                        String(
+
+                            token ||
+
+                            ""
+
+                        )
+
+                        .trim()
+
+                        .toUpperCase();
+
+                    if (
+
+                        token.length < 2
 
                     ) {
 
-                        token =
+                        return;
 
-                            String(
+                    }
 
-                                token ||
+                    /*------------------------------
+                      Perfect Match
+                    ------------------------------*/
 
-                                ""
+                    if (
 
-                            )
+                        token === query
 
-                            .trim()
+                    ) {
 
-                            .toUpperCase();
+                        score +=
 
-                        if (
+                            100;
 
-                            token.length < 2
+                        return;
 
-                        ) {
+                    }
 
-                            return false;
+                    /*------------------------------
+                      Query Contains Token
+                    ------------------------------*/
 
-                        }
+                    if (
 
-                        return (
+                        query.includes(
 
-                            query.includes(
+                            token
 
-                                token
+                        )
 
-                            ) ||
+                    ) {
 
-                            token.includes(
+                        score +=
 
-                                query
+                            token.length *
 
-                            )
+                            10;
+
+                    }
+
+                    /*------------------------------
+                      Token Contains Query
+                    ------------------------------*/
+
+                    else if (
+
+                        token.includes(
+
+                            query
+
+                        )
+
+                    ) {
+
+                        score +=
+
+                            query.length;
+
+                    }
+
+                    /*------------------------------
+                      Word Match
+                    ------------------------------*/
+
+                    else {
+
+                        const words =
+
+                            token.split(
+
+                                /\s+/
+
+                            );
+
+                        words.forEach(
+
+                            function (
+
+                                word
+
+                            ) {
+
+                                if (
+
+                                    word.length < 2
+
+                                ) {
+
+                                    return;
+
+                                }
+
+                                if (
+
+                                    query.includes(
+
+                                        word
+
+                                    )
+
+                                ) {
+
+                                    score +=
+
+                                        word.length *
+
+                                        20;
+
+                                }
+
+                            }
 
                         );
 
                     }
 
-                );
+                }
+
+            );
 
             if (
 
-                found
+                score > 0
 
             ) {
 
                 addMatch(
 
-                    staff
+                    staff,
+
+                    score
 
                 );
 
@@ -5103,7 +5217,7 @@ StaffEntities.extractStaffEntities = function (
     );
 
     /*----------------------------------
-      Exact Name First
+      Highest Score First
     ----------------------------------*/
 
     matches.sort(
@@ -5116,45 +5230,33 @@ StaffEntities.extractStaffEntities = function (
 
         ) {
 
-            const aExact =
-
-                a.identity.cleanName ===
-
-                query;
-
-            const bExact =
-
-                b.identity.cleanName ===
-
-                query;
-
             if (
 
-                aExact &&
+                (b.__matchScore || 0) !==
 
-                !bExact
+                (a.__matchScore || 0)
 
             ) {
 
-                return -1;
+                return (
+
+                    (b.__matchScore || 0) -
+
+                    (a.__matchScore || 0)
+
+                );
 
             }
 
-            if (
+            return (
 
-                bExact &&
+                a.identity.cleanName
 
-                !aExact
+                    .localeCompare(
 
-            ) {
+                        b.identity.cleanName
 
-                return 1;
-
-            }
-
-            return a.identity.cleanName.localeCompare(
-
-                b.identity.cleanName
+                    )
 
             );
 
@@ -5180,7 +5282,8 @@ StaffEntities.extractStaffEntities = function (
 
     return result;
 
-}; /*=========================================================
+};
+ /*=========================================================
  EXTRACT PHONE ENTITIES
 =========================================================*/
 
