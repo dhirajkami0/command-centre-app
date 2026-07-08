@@ -1433,6 +1433,14 @@ GG.queryStaffProfile = async function (
   Staff Contact
 ----------------------------------*/
 
+/*=========================================================
+ PROFILE QUERIES
+=========================================================*/
+
+/*----------------------------------
+  Staff Contact
+----------------------------------*/
+
 GG.queryStaffContact = async function (
 
     request
@@ -1449,71 +1457,18 @@ GG.queryStaffContact = async function (
 
         ) {
 
-            const profile =
+            return StaffQuery.ensureSingleStaff(
 
-                StaffQuery.ensureSingleStaff(
+                request
 
-                    request
-
-                );
-
-            return {
-
-                cleanName:
-
-                    profile.identity?.cleanName ||
-
-                    "",
-
-                rawName:
-
-                    profile.identity?.rawName ||
-
-                    "",
-
-                name:
-
-                    profile.identity?.name ||
-
-                    "",
-
-                phone:
-
-                    profile.identity?.phone ||
-
-                    "",
-
-                email:
-
-                    profile.identity?.email ||
-
-                    "",
-
-                role:
-
-                    profile.identity?.role ||
-
-                    "",
-
-                designation:
-
-                    profile.identity?.designation ||
-
-                    "",
-
-                type:
-
-                    profile.identity?.type ||
-
-                    ""
-
-            };
+            );
 
         }
 
     );
 
 };
+
 /*----------------------------------
   Staff Role
 ----------------------------------*/
@@ -1534,23 +1489,11 @@ GG.queryStaffRole = async function (
 
         ) {
 
-            const profile =
+            return StaffQuery.ensureSingleStaff(
 
-                StaffQuery.ensureSingleStaff(
+                request
 
-                    request
-
-                );
-
-            return {
-
-                role:
-
-                    profile.identity?.role ||
-
-                    null
-
-            };
+            );
 
         }
 
@@ -1578,23 +1521,11 @@ GG.queryStaffDesignation = async function (
 
         ) {
 
-            const profile =
+            return StaffQuery.ensureSingleStaff(
 
-                StaffQuery.ensureSingleStaff(
+                request
 
-                    request
-
-                );
-
-            return {
-
-                designation:
-
-                    profile.identity?.designation ||
-
-                    null
-
-            };
+            );
 
         }
 
@@ -1602,7 +1533,16 @@ GG.queryStaffDesignation = async function (
 
 };
 
- /*=========================================================
+/*=========================================================
+ POSTING QUERIES
+=========================================================*/
+
+/*----------------------------------
+  Staff Posting
+----------------------------------*/
+
+
+/*=========================================================
  POSTING QUERIES
 =========================================================*/
 
@@ -1626,17 +1566,11 @@ GG.queryStaffPosting = async function (
 
         ) {
 
-            const profile =
+            return StaffQuery.ensureSingleStaff(
 
-                StaffQuery.ensureSingleStaff(
+                request
 
-                    request
-
-                );
-
-            return profile.posting ||
-
-                null;
+            );
 
         }
 
@@ -1664,29 +1598,37 @@ GG.queryStaffCircle = async function (
 
         ) {
 
-            const profile =
+            return StaffQuery.ensureSingleStaff(
 
-                StaffQuery.ensureSingleStaff(
+                request
 
-                    request
-
-                );
-
-            return {
-
-                circle:
-
-                    profile.posting?.circle ||
-
-                    null
-
-            };
+            );
 
         }
 
     );
 
 };
+
+/*----------------------------------
+  Staff Division
+----------------------------------*/
+
+
+/*----------------------------------
+  Staff Range
+----------------------------------*/
+
+
+/*----------------------------------
+  Staff Beat
+----------------------------------*/
+
+
+
+/*=========================================================
+ POSTING QUERIES
+=========================================================*/
 
 /*----------------------------------
   Staff Division
@@ -1708,23 +1650,11 @@ GG.queryStaffDivision = async function (
 
         ) {
 
-            const profile =
+            return StaffQuery.ensureSingleStaff(
 
-                StaffQuery.ensureSingleStaff(
+                request
 
-                    request
-
-                );
-
-            return {
-
-                division:
-
-                    profile.posting?.division ||
-
-                    null
-
-            };
+            );
 
         }
 
@@ -1752,23 +1682,11 @@ GG.queryStaffRange = async function (
 
         ) {
 
-            const profile =
+            return StaffQuery.ensureSingleStaff(
 
-                StaffQuery.ensureSingleStaff(
+                request
 
-                    request
-
-                );
-
-            return {
-
-                range:
-
-                    profile.posting?.range ||
-
-                    null
-
-            };
+            );
 
         }
 
@@ -1796,23 +1714,11 @@ GG.queryStaffBeat = async function (
 
         ) {
 
-            const profile =
+            return StaffQuery.ensureSingleStaff(
 
-                StaffQuery.ensureSingleStaff(
+                request
 
-                    request
-
-                );
-
-            return {
-
-                beat:
-
-                    profile.posting?.beat ||
-
-                    null
-
-            };
+            );
 
         }
 
@@ -1820,7 +1726,7 @@ GG.queryStaffBeat = async function (
 
 };
 
- /*=========================================================
+/*=========================================================
  DUTY QUERIES
 =========================================================*/
 
@@ -1844,23 +1750,11 @@ GG.queryStaffDuty = async function (
 
         ) {
 
-            const profile =
+            return StaffQuery.ensureSingleStaff(
 
-                StaffQuery.ensureSingleStaff(
+                request
 
-                    request
-
-                );
-
-return {
-    assignedCompartment: profile.assignment?.assignedCompartment || "",
-    dutyType: profile.assignment?.dutyType || "",
-    dutyActive: profile.assignment?.dutyActive ?? false,
-    status: profile.assignment?.status || "",
-    leader: profile.assignment?.leader || "",
-    team: profile.assignment?.team || "",
-    lastDutyEnd: profile.assignment?.lastDutyEnd || null
-};
+            );
 
         }
 
@@ -1869,8 +1763,37 @@ return {
 };
 
 /*----------------------------------
-  Duty Status
+  Staff Duty Status
 ----------------------------------*/
+
+
+/*----------------------------------
+  Staff Duty Type
+----------------------------------*/
+
+
+
+/*----------------------------------
+  Staff Duty Started
+----------------------------------*/
+
+
+
+/*----------------------------------
+  Staff Duty Ended
+----------------------------------*/
+
+
+
+/*----------------------------------
+  Staff Assignment
+----------------------------------*/
+
+
+/*=========================================================
+ DUTY QUERIES
+=========================================================*/
+
 /*----------------------------------
   Staff Duty Status
 ----------------------------------*/
@@ -1891,37 +1814,20 @@ GG.queryStaffDutyStatus = async function (
 
         ) {
 
-            const profile =
+            return StaffQuery.ensureSingleStaff(
 
-                StaffQuery.ensureSingleStaff(
+                request
 
-                    request
-
-                );
-
-            return {
-
-                dutyStatus:
-
-                    profile.assignment?.status ||
-
-                    "",
-
-                dutyActive:
-
-                    profile.assignment?.dutyActive ??
-
-                    false
-
-            };
+            );
 
         }
 
     );
 
 };
+
 /*----------------------------------
-  Duty Type
+  Staff Duty Type
 ----------------------------------*/
 
 GG.queryStaffDutyType = async function (
@@ -1940,23 +1846,11 @@ GG.queryStaffDutyType = async function (
 
         ) {
 
-            const profile =
+            return StaffQuery.ensureSingleStaff(
 
-                StaffQuery.ensureSingleStaff(
+                request
 
-                    request
-
-                );
-
-            return {
-
-                dutyType:
-
-                    profile.assignment?.dutyType ||
-
-                    null
-
-            };
+            );
 
         }
 
@@ -1965,11 +1859,7 @@ GG.queryStaffDutyType = async function (
 };
 
 /*----------------------------------
-  Duty Started
-----------------------------------*/
-
-/*----------------------------------
-  Duty Started
+  Staff Duty Started
 ----------------------------------*/
 
 GG.queryStaffDutyStarted = async function (
@@ -1988,23 +1878,11 @@ GG.queryStaffDutyStarted = async function (
 
         ) {
 
-            const profile =
+            return StaffQuery.ensureSingleStaff(
 
-                StaffQuery.ensureSingleStaff(
+                request
 
-                    request
-
-                );
-
-            return {
-
-                dutyStarted:
-
-                    profile.analytics?.startedAt ||
-
-                    null
-
-            };
+            );
 
         }
 
@@ -2013,7 +1891,7 @@ GG.queryStaffDutyStarted = async function (
 };
 
 /*----------------------------------
-  Duty Ended
+  Staff Duty Ended
 ----------------------------------*/
 
 GG.queryStaffDutyEnded = async function (
@@ -2032,33 +1910,20 @@ GG.queryStaffDutyEnded = async function (
 
         ) {
 
-            const profile =
+            return StaffQuery.ensureSingleStaff(
 
-                StaffQuery.ensureSingleStaff(
+                request
 
-                    request
-
-                );
-
-            return {
-
-                dutyEnded:
-
-                    profile.analytics?.endedAt ||
-
-                    profile.assignment?.lastDutyEnd ||
-
-                    null
-
-            };
+            );
 
         }
 
     );
 
 };
+
 /*----------------------------------
-  Duty Active
+  Staff Duty Active
 ----------------------------------*/
 
 GG.queryStaffDutyActive = async function (
@@ -2077,29 +1942,11 @@ GG.queryStaffDutyActive = async function (
 
         ) {
 
-            const profile =
+            return StaffQuery.ensureSingleStaff(
 
-                StaffQuery.ensureSingleStaff(
+                request
 
-                    request
-
-                );
-
-            return {
-
-                dutyActive:
-
-                    profile.assignment?.dutyActive ??
-
-                    false,
-
-                dutyStatus:
-
-                    profile.assignment?.status ||
-
-                    ""
-
-            };
+            );
 
         }
 
@@ -2108,7 +1955,7 @@ GG.queryStaffDutyActive = async function (
 };
 
 /*----------------------------------
-  Last Duty
+  Staff Last Duty
 ----------------------------------*/
 
 GG.queryStaffLastDuty = async function (
@@ -2127,25 +1974,11 @@ GG.queryStaffLastDuty = async function (
 
         ) {
 
-            const profile =
+            return StaffQuery.ensureSingleStaff(
 
-                StaffQuery.ensureSingleStaff(
+                request
 
-                    request
-
-                );
-
-            return {
-
-                lastDuty:
-
-                    profile.assignment?.lastDutyEnd ||
-
-                    profile.analytics?.endedAt ||
-
-                    null
-
-            };
+            );
 
         }
 
@@ -2154,7 +1987,7 @@ GG.queryStaffLastDuty = async function (
 };
 
 /*----------------------------------
-  Assignment
+  Staff Assignment
 ----------------------------------*/
 
 GG.queryStaffAssignment = async function (
@@ -2173,65 +2006,32 @@ GG.queryStaffAssignment = async function (
 
         ) {
 
-            const profile =
+            return StaffQuery.ensureSingleStaff(
 
-                StaffQuery.ensureSingleStaff(
+                request
 
-                    request
-
-                );
-
-            return {
-
-                assignedCompartment:
-
-                    profile.assignment?.assignedCompartment ||
-
-                    "",
-
-                dutyType:
-
-                    profile.assignment?.dutyType ||
-
-                    "",
-
-                dutyActive:
-
-                    profile.assignment?.dutyActive ??
-
-                    false,
-
-                status:
-
-                    profile.assignment?.status ||
-
-                    "",
-
-                leader:
-
-                    profile.assignment?.leader ||
-
-                    "",
-
-                team:
-
-                    profile.assignment?.team ||
-
-                    "",
-
-                lastDutyEnd:
-
-                    profile.assignment?.lastDutyEnd ||
-
-                    null
-
-            };
+            );
 
         }
 
     );
 
 };
+
+/*=========================================================
+ TEAM QUERIES
+=========================================================*/
+
+/*----------------------------------
+  Staff Team
+----------------------------------*/
+/*=========================================================
+ TEAM QUERIES
+=========================================================*/
+
+/*----------------------------------
+  Staff Team
+----------------------------------*/
 
 /*=========================================================
  TEAM QUERIES
@@ -2257,47 +2057,18 @@ GG.queryStaffTeam = async function (
 
         ) {
 
-            const profile =
+            return StaffQuery.ensureSingleStaff(
 
-                StaffQuery.ensureSingleStaff(
+                request
 
-                    request
-
-                );
-
-            return {
-
-                leader:
-
-                    profile.teamInfo?.leader ||
-
-                    "",
-
-                team:
-
-                    profile.teamInfo?.team ||
-
-                    "",
-
-                teamMembers:
-
-                    Array.isArray(
-
-                        profile.teamInfo?.teamMembers
-
-                    )
-
-                        ? profile.teamInfo.teamMembers
-
-                        : []
-
-            };
+            );
 
         }
 
     );
 
 };
+
 /*----------------------------------
   Team Leader
 ----------------------------------*/
@@ -2318,23 +2089,11 @@ GG.queryStaffLeader = async function (
 
         ) {
 
-            const profile =
+            return StaffQuery.ensureSingleStaff(
 
-                StaffQuery.ensureSingleStaff(
+                request
 
-                    request
-
-                );
-
-            return {
-
-                leader:
-
-                    profile.teamInfo?.leader ||
-
-                    ""
-
-            };
+            );
 
         }
 
@@ -2362,29 +2121,11 @@ GG.queryTeamMembers = async function (
 
         ) {
 
-            const profile =
+            return StaffQuery.ensureSingleStaff(
 
-                StaffQuery.ensureSingleStaff(
+                request
 
-                    request
-
-                );
-
-            return {
-
-                teamMembers:
-
-                    Array.isArray(
-
-                        profile.teamInfo?.teamMembers
-
-                    )
-
-                        ? profile.teamInfo.teamMembers
-
-                        : []
-
-            };
+            );
 
         }
 
@@ -2412,47 +2153,18 @@ GG.queryTeamInformation = async function (
 
         ) {
 
-            const profile =
+            return StaffQuery.ensureSingleStaff(
 
-                StaffQuery.ensureSingleStaff(
+                request
 
-                    request
-
-                );
-
-            return {
-
-                team:
-
-                    profile.teamInfo?.team ||
-
-                    "",
-
-                leader:
-
-                    profile.teamInfo?.leader ||
-
-                    "",
-
-                teamMembers:
-
-                    Array.isArray(
-
-                        profile.teamInfo?.teamMembers
-
-                    )
-
-                        ? profile.teamInfo.teamMembers
-
-                        : []
-
-            };
+            );
 
         }
 
     );
 
 };
+
 /*=========================================================
  GPS QUERIES
 =========================================================*/
@@ -2477,77 +2189,11 @@ GG.queryStaffGPS = async function (
 
         ) {
 
-            const profile =
+            return StaffQuery.ensureSingleStaff(
 
-                StaffQuery.ensureSingleStaff(
+                request
 
-                    request
-
-                );
-
-            return {
-
-                latitude:
-
-                    profile.location?.lat ??
-
-                    null,
-
-                longitude:
-
-                    profile.location?.lon ??
-
-                    null,
-
-                accuracy:
-
-                    profile.gps?.accuracy ??
-
-                    null,
-
-                heading:
-
-                    profile.gps?.heading ??
-
-                    null,
-
-                speed:
-
-                    profile.gps?.speed ??
-
-                    null,
-
-                lastSeen:
-
-                    profile.gps?.lastSeen ??
-
-                    null,
-
-                timestamp:
-
-                    profile.gps?.timestamp ??
-
-                    null,
-
-                updatedAt:
-
-                    profile.gps?.updatedAt ??
-
-                    null,
-
-                turnAngle:
-
-                    profile.gps?.turnAngle ??
-
-                    null,
-
-                turnRate:
-
-                    profile.gps?.turnRate ??
-
-                    null
-
-            };
+            );
 
         }
 
@@ -2575,23 +2221,11 @@ GG.queryStaffSpeed = async function (
 
         ) {
 
-            const profile =
+            return StaffQuery.ensureSingleStaff(
 
-                StaffQuery.ensureSingleStaff(
+                request
 
-                    request
-
-                );
-
-            return {
-
-                speed:
-
-                    profile.gps?.speed ??
-
-                    null
-
-            };
+            );
 
         }
 
@@ -2599,9 +2233,9 @@ GG.queryStaffSpeed = async function (
 
 };
 
-/*=========================================================
- STAFF LOCATION
-=========================================================*/
+/*----------------------------------
+  Staff Location
+----------------------------------*/
 
 GG.queryStaffLocation = async function (
 
@@ -2619,89 +2253,18 @@ GG.queryStaffLocation = async function (
 
         ) {
 
-            const profile =
+            return StaffQuery.ensureSingleStaff(
 
-                StaffQuery.ensureSingleStaff(
+                request
 
-                    request
-
-                );
-
-            return {
-
-                latitude:
-
-                    profile.location?.lat ??
-
-                    null,
-
-                longitude:
-
-                    profile.location?.lon ??
-
-                    null,
-
-                location:
-
-                    profile.location?.location ??
-
-                    null,
-
-                accuracy:
-
-                    profile.gps?.accuracy ??
-
-                    null,
-
-                heading:
-
-                    profile.gps?.heading ??
-
-                    null,
-
-                speed:
-
-                    profile.gps?.speed ??
-
-                    null,
-
-                lastSeen:
-
-                    profile.gps?.lastSeen ??
-
-                    null,
-
-                timestamp:
-
-                    profile.gps?.timestamp ??
-
-                    null,
-
-                updatedAt:
-
-                    profile.gps?.updatedAt ??
-
-                    null,
-
-                turnAngle:
-
-                    profile.gps?.turnAngle ??
-
-                    null,
-
-                turnRate:
-
-                    profile.gps?.turnRate ??
-
-                    null
-
-            };
+            );
 
         }
 
     );
 
 };
+
 /*----------------------------------
   Staff Heading
 ----------------------------------*/
@@ -2722,23 +2285,11 @@ GG.queryStaffHeading = async function (
 
         ) {
 
-            const profile =
+            return StaffQuery.ensureSingleStaff(
 
-                StaffQuery.ensureSingleStaff(
+                request
 
-                    request
-
-                );
-
-            return {
-
-                heading:
-
-                    profile.gps?.heading ??
-
-                    null
-
-            };
+            );
 
         }
 
@@ -2766,23 +2317,11 @@ GG.queryStaffAccuracy = async function (
 
         ) {
 
-            const profile =
+            return StaffQuery.ensureSingleStaff(
 
-                StaffQuery.ensureSingleStaff(
+                request
 
-                    request
-
-                );
-
-            return {
-
-                accuracy:
-
-                    profile.gps?.accuracy ??
-
-                    null
-
-            };
+            );
 
         }
 
@@ -2813,101 +2352,11 @@ GG.queryStaffAnalytics = async function (
 
         ) {
 
-            const profile =
+            return StaffQuery.ensureSingleStaff(
 
-                StaffQuery.ensureSingleStaff(
+                request
 
-                    request
-
-                );
-
-            return {
-
-                pointCount:
-
-                    profile.analytics?.pointCount ??
-
-                    0,
-
-                distanceKm:
-
-                    profile.analytics?.distanceKm ??
-
-                    0,
-
-                startedAt:
-
-                    profile.analytics?.startedAt ??
-
-                    null,
-
-                endedAt:
-
-                    profile.analytics?.endedAt ??
-
-                    null,
-
-                monthKey:
-
-                    profile.analytics?.monthKey ??
-
-                    "",
-
-                createdAt:
-
-                    profile.analytics?.createdAt ??
-
-                    null,
-
-                updatedAt:
-
-                    profile.analytics?.updatedAt ??
-
-                    null,
-
-                startAccuracy:
-
-                    profile.analytics?.startAccuracy ??
-
-                    null,
-
-                startLat:
-
-                    profile.analytics?.startLat ??
-
-                    null,
-
-                startLon:
-
-                    profile.analytics?.startLon ??
-
-                    null,
-
-                compartments:
-
-                    Array.isArray(
-
-                        profile.analytics?.compartments
-
-                    )
-
-                        ? profile.analytics.compartments
-
-                        : [],
-
-                simplifiedTrack:
-
-                    Array.isArray(
-
-                        profile.analytics?.simplifiedTrack
-
-                    )
-
-                        ? profile.analytics.simplifiedTrack
-
-                        : []
-
-            };
+            );
 
         }
 
@@ -2935,23 +2384,11 @@ GG.queryStaffDistance = async function (
 
         ) {
 
-            const profile =
+            return StaffQuery.ensureSingleStaff(
 
-                StaffQuery.ensureSingleStaff(
+                request
 
-                    request
-
-                );
-
-            return {
-
-                distanceKm:
-
-                    profile.analytics?.distanceKm ??
-
-                    0
-
-            };
+            );
 
         }
 
@@ -2979,29 +2416,33 @@ GG.queryStaffPatrolPoints = async function (
 
         ) {
 
-            const profile =
+            return StaffQuery.ensureSingleStaff(
 
-                StaffQuery.ensureSingleStaff(
+                request
 
-                    request
-
-                );
-
-            return {
-
-                pointCount:
-
-                    profile.analytics?.pointCount ??
-
-                    0
-
-            };
+            );
 
         }
 
     );
 
 };
+
+/*----------------------------------
+  Patrol Start
+----------------------------------*/
+
+
+/*----------------------------------
+  Patrol End
+----------------------------------*/
+
+
+
+/*----------------------------------
+  Patrol Duration
+----------------------------------*/
+
 
 /*----------------------------------
   Patrol Start
@@ -3023,23 +2464,11 @@ GG.queryStaffPatrolStart = async function (
 
         ) {
 
-            const profile =
+            return StaffQuery.ensureSingleStaff(
 
-                StaffQuery.ensureSingleStaff(
+                request
 
-                    request
-
-                );
-
-            return {
-
-                startedAt:
-
-                    profile.analytics?.startedAt ??
-
-                    null
-
-            };
+            );
 
         }
 
@@ -3067,23 +2496,11 @@ GG.queryStaffPatrolEnd = async function (
 
         ) {
 
-            const profile =
+            return StaffQuery.ensureSingleStaff(
 
-                StaffQuery.ensureSingleStaff(
+                request
 
-                    request
-
-                );
-
-            return {
-
-                endedAt:
-
-                    profile.analytics?.endedAt ??
-
-                    null
-
-            };
+            );
 
         }
 
@@ -3111,70 +2528,17 @@ GG.queryStaffPatrolDuration = async function (
 
         ) {
 
-            const profile =
+            return StaffQuery.ensureSingleStaff(
 
-                StaffQuery.ensureSingleStaff(
+                request
 
-                    request
-
-                );
-
-            const startedAt =
-
-                profile.analytics?.startedAt ??
-
-                null;
-
-            const endedAt =
-
-                profile.analytics?.endedAt ??
-
-                null;
-
-            let durationMs =
-
-                null;
-
-            if (
-
-                startedAt != null &&
-
-                endedAt != null &&
-
-                endedAt >= startedAt
-
-            ) {
-
-                durationMs =
-
-                    endedAt -
-
-                    startedAt;
-
-            }
-
-            return {
-
-                startedAt:
-
-                    startedAt,
-
-                endedAt:
-
-                    endedAt,
-
-                durationMs:
-
-                    durationMs
-
-            };
+            );
 
         }
 
     );
 
 };
-
 /*=========================================================
  STRENGTH & CONTROL ROOM QUERIES
 =========================================================*/
