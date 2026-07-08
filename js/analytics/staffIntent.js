@@ -649,7 +649,12 @@ StaffIntent.detect = function (
             result
 
         );
+  // <<< PLACE IT HERE >>>
+    StaffIntent.calculateConfidence(
 
+        result
+
+    );
     /*----------------------------------
       AI Decision
     ----------------------------------*/
@@ -698,7 +703,67 @@ StaffIntent.detect = function (
  /*=========================================================
  DETECT POSTING INTENT
 =========================================================*/
+/*=========================================================
+  CALCULATE CONFIDENCE
+=========================================================*/
 
+StaffIntent.calculateConfidence = function (
+
+    result
+
+) {
+
+    if (
+
+        !result ||
+
+        typeof result !== "object"
+
+    ) {
+
+        return 0;
+
+    }
+
+    let confidence = Number(
+
+        result.confidence
+
+    );
+
+    if (
+
+        !Number.isFinite(
+
+            confidence
+
+        )
+
+    ) {
+
+        confidence = 0;
+
+    }
+
+    confidence = Math.max(
+
+        0,
+
+        Math.min(
+
+            1,
+
+            confidence
+
+        )
+
+    );
+
+    result.confidence = confidence;
+
+    return confidence;
+
+};
 /*=========================================================
   DETECT STAFF POSTING
 =========================================================*/
