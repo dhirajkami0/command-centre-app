@@ -296,6 +296,10 @@ StaffQuery.initialize = function () {
  CREATE RESPONSE
 =========================================================*/
 
+/*=========================================================
+ CREATE RESPONSE
+=========================================================*/
+
 StaffQuery.createResponse = function (
 
     request = {}
@@ -314,7 +318,9 @@ StaffQuery.createResponse = function (
 
         domain:
 
-            StaffConstants.DOMAIN,
+            StaffConstants.DOMAIN ||
+
+            "STAFF",
 
         intent:
 
@@ -393,7 +399,6 @@ StaffQuery.createResponse = function (
     };
 
 };
-
  /*=========================================================
  CACHE HELPERS
 =========================================================*/
@@ -2301,7 +2306,79 @@ GG.queryStaffSpeed = async function (
     );
 
 };
+/*=========================================================
+ STAFF LOCATION
+=========================================================*/
 
+GG.queryStaffLocation = async function (
+
+    request
+
+) {
+
+    return StaffQuery.execute(
+
+        request,
+
+        async function (
+
+            request
+
+        ) {
+
+            const profile =
+
+                StaffQuery.ensureSingleStaff(
+
+                    request
+
+                );
+
+            return {
+
+                latitude:
+
+                    profile.gps?.latitude ??
+
+                    null,
+
+                longitude:
+
+                    profile.gps?.longitude ??
+
+                    null,
+
+                location:
+
+                    profile.gps?.location ??
+
+                    null,
+
+                fixTime:
+
+                    profile.gps?.fixTime ??
+
+                    null,
+
+                address:
+
+                    profile.gps?.address ??
+
+                    null,
+
+                gps:
+
+                    profile.gps ||
+
+                    null
+
+            };
+
+        }
+
+    );
+
+};
 /*----------------------------------
   Staff Heading
 ----------------------------------*/
