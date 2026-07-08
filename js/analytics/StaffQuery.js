@@ -115,8 +115,7 @@ const StaffQuery =
 =========================================================*/
 
 StaffQuery.VERSION =
-
-    "1.0.0";
+    StaffConstants.VERSION;
 
  /*=========================================================
  MODULE STATUS
@@ -376,7 +375,7 @@ StaffQuery.createResponse = function (
 
             version:
 
-                StaffQuery.VERSION,
+                StaffConstants.VERSION,
 
             module:
 
@@ -3184,71 +3183,7 @@ GG.queryStaffPatrolDuration = async function (
   Staff Strength
 ----------------------------------*/
 
-GG.queryStaffStrength = async function (
 
-    request
-
-) {
-
-    return StaffQuery.execute(
-
-        request,
-
-        async function (
-
-            request
-
-        ) {
-
-            const staff =
-
-                StaffQuery.getStaff(
-
-                    request
-
-                );
-
-            return {
-
-                strength:
-
-                    staff.length,
-
-                active:
-
-                    staff.filter(
-
-                        profile =>
-
-                            profile.assignment?.dutyActive ===
-
-                            true
-
-                    ).length,
-
-                inactive:
-
-                    staff.filter(
-
-                        profile =>
-
-                            profile.assignment?.dutyActive !==
-
-                            true
-
-                    ).length,
-
-                staff:
-
-                    staff
-
-            };
-
-        }
-
-    );
-
-};
 
 /*----------------------------------
   Active Staff Count
@@ -3728,7 +3663,1681 @@ GG.queryStationaryStaff = async function (
     );
 
 };
+/*=========================================================
+ SUMMARY QUERIES
+=========================================================*/
 
+/*----------------------------------
+  Staff Summary
+----------------------------------*/
+
+GG.queryStaffSummary = async function (
+
+    request
+
+) {
+
+    return StaffQuery.execute(
+
+        request,
+
+        async function (
+
+            request
+
+        ) {
+
+            const profiles =
+
+                StaffQuery.ensureStaff(
+
+                    request
+
+                );
+
+            return profiles.map(
+
+                function (
+
+                    profile
+
+                ) {
+
+                    return {
+
+                        /*----------------------------------
+                          Identity
+                        ----------------------------------*/
+
+                        cleanName:
+
+                            profile.identity?.cleanName ||
+
+                            "",
+
+                        rawName:
+
+                            profile.identity?.rawName ||
+
+                            "",
+
+                        name:
+
+                            profile.identity?.name ||
+
+                            "",
+
+                        phone:
+
+                            profile.identity?.phone ||
+
+                            "",
+
+                        email:
+
+                            profile.identity?.email ||
+
+                            "",
+
+                        role:
+
+                            profile.identity?.role ||
+
+                            "",
+
+                        designation:
+
+                            profile.identity?.designation ||
+
+                            "",
+
+                        type:
+
+                            profile.identity?.type ||
+
+                            "",
+
+                        /*----------------------------------
+                          Posting
+                        ----------------------------------*/
+
+                        circle:
+
+                            profile.posting?.circle ||
+
+                            "",
+
+                        division:
+
+                            profile.posting?.division ||
+
+                            "",
+
+                        range:
+
+                            profile.posting?.range ||
+
+                            "",
+
+                        beat:
+
+                            profile.posting?.beat ||
+
+                            "",
+
+                        /*----------------------------------
+                          Assignment
+                        ----------------------------------*/
+
+                        dutyType:
+
+                            profile.assignment?.dutyType ||
+
+                            "",
+
+                        dutyActive:
+
+                            profile.assignment?.dutyActive ??
+
+                            false,
+
+                        dutyStatus:
+
+                            profile.assignment?.status ||
+
+                            "",
+
+                        assignedCompartment:
+
+                            profile.assignment?.assignedCompartment ||
+
+                            "",
+
+                        /*----------------------------------
+                          Team
+                        ----------------------------------*/
+
+                        leader:
+
+                            profile.teamInfo?.leader ||
+
+                            "",
+
+                        team:
+
+                            profile.teamInfo?.team ||
+
+                            "",
+
+                        /*----------------------------------
+                          Location
+                        ----------------------------------*/
+
+                        latitude:
+
+                            profile.location?.lat ??
+
+                            null,
+
+                        longitude:
+
+                            profile.location?.lon ??
+
+                            null,
+
+                        location:
+
+                            profile.location?.location ||
+
+                            "",
+
+                        /*----------------------------------
+                          GPS
+                        ----------------------------------*/
+
+                        speed:
+
+                            profile.gps?.speed ??
+
+                            null,
+
+                        heading:
+
+                            profile.gps?.heading ??
+
+                            null,
+
+                        accuracy:
+
+                            profile.gps?.accuracy ??
+
+                            null,
+
+                        lastSeen:
+
+                            profile.gps?.lastSeen ??
+
+                            null,
+
+                        /*----------------------------------
+                          Patrol Analytics
+                        ----------------------------------*/
+
+                        distanceKm:
+
+                            profile.analytics?.distanceKm ??
+
+                            0,
+
+                        pointCount:
+
+                            profile.analytics?.pointCount ??
+
+                            0,
+
+                        startedAt:
+
+                            profile.analytics?.startedAt ??
+
+                            null,
+
+                        endedAt:
+
+                            profile.analytics?.endedAt ??
+
+                            null
+
+                    };
+
+                }
+
+            );
+
+        }
+
+    );
+
+};
+    /*----------------------------------
+  Jurisdiction Summary
+----------------------------------*/
+
+GG.queryJurisdictionSummary = async function (
+
+    request
+
+) {
+
+    return StaffQuery.execute(
+
+        request,
+
+        async function (
+
+            request
+
+        ) {
+
+            const profiles =
+
+                StaffQuery.ensureStaff(
+
+                    request
+
+                );
+
+            const summary = {};
+
+            profiles.forEach(
+
+                function (
+
+                    profile
+
+                ) {
+
+                    const circle =
+
+                        profile.posting?.circle ||
+
+                        "UNASSIGNED";
+
+                    const division =
+
+                        profile.posting?.division ||
+
+                        "UNASSIGNED";
+
+                    const range =
+
+                        profile.posting?.range ||
+
+                        "UNASSIGNED";
+
+                    const beat =
+
+                        profile.posting?.beat ||
+
+                        "UNASSIGNED";
+
+                    const key =
+
+                        [
+
+                            circle,
+
+                            division,
+
+                            range,
+
+                            beat
+
+                        ].join(
+
+                            "|"
+
+                        );
+
+                    if (
+
+                        !summary[key]
+
+                    ) {
+
+                        summary[key] = {
+
+                            circle,
+
+                            division,
+
+                            range,
+
+                            beat,
+
+                            totalStaff: 0,
+
+                            activeStaff: 0,
+
+                            inactiveStaff: 0,
+
+                            movingStaff: 0,
+
+                            stationaryStaff: 0
+
+                        };
+
+                    }
+
+                    const item =
+
+                        summary[key];
+
+                    item.totalStaff++;
+
+                    if (
+
+                        profile.assignment?.dutyActive
+
+                    ) {
+
+                        item.activeStaff++;
+
+                    }
+
+                    else {
+
+                        item.inactiveStaff++;
+
+                    }
+
+                    if (
+
+                        Number(
+
+                            profile.gps?.speed ||
+
+                            0
+
+                        ) > 0
+
+                    ) {
+
+                        item.movingStaff++;
+
+                    }
+
+                    else {
+
+                        item.stationaryStaff++;
+
+                    }
+
+                }
+
+            );
+
+            return Object.values(
+
+                summary
+
+            );
+
+        }
+
+    );
+
+};
+    /*----------------------------------
+  Designation Summary
+----------------------------------*/
+
+GG.queryDesignationSummary = async function (
+
+    request
+
+) {
+
+    return StaffQuery.execute(
+
+        request,
+
+        async function (
+
+            request
+
+        ) {
+
+            const profiles =
+
+                StaffQuery.ensureStaff(
+
+                    request
+
+                );
+
+            const summary = {};
+
+            profiles.forEach(
+
+                function (
+
+                    profile
+
+                ) {
+
+                    const designation =
+
+                        profile.identity?.designation ||
+
+                        "UNASSIGNED";
+
+                    if (
+
+                        !summary[designation]
+
+                    ) {
+
+                        summary[designation] = {
+
+                            designation:
+
+                                designation,
+
+                            totalStaff:
+
+                                0,
+
+                            activeStaff:
+
+                                0,
+
+                            inactiveStaff:
+
+                                0,
+
+                            movingStaff:
+
+                                0,
+
+                            stationaryStaff:
+
+                                0,
+
+                            totalDistanceKm:
+
+                                0,
+
+                            totalPatrolPoints:
+
+                                0
+
+                        };
+
+                    }
+
+                    const item =
+
+                        summary[designation];
+
+                    item.totalStaff++;
+
+                    if (
+
+                        profile.assignment?.dutyActive ===
+
+                        true
+
+                    ) {
+
+                        item.activeStaff++;
+
+                    }
+
+                    else {
+
+                        item.inactiveStaff++;
+
+                    }
+
+                    if (
+
+                        Number(
+
+                            profile.gps?.speed ||
+
+                            0
+
+                        ) > 0
+
+                    ) {
+
+                        item.movingStaff++;
+
+                    }
+
+                    else {
+
+                        item.stationaryStaff++;
+
+                    }
+
+                    item.totalDistanceKm +=
+
+                        Number(
+
+                            profile.analytics?.distanceKm ||
+
+                            0
+
+                        );
+
+                    item.totalPatrolPoints +=
+
+                        Number(
+
+                            profile.analytics?.pointCount ||
+
+                            0
+
+                        );
+
+                }
+
+            );
+
+            return Object.values(
+
+                summary
+
+            );
+
+        }
+
+    );
+
+};
+
+    /*----------------------------------
+  Circle Directory
+----------------------------------*/
+
+GG.queryCircleDirectory = async function (
+
+    request
+
+) {
+
+    return StaffQuery.execute(
+
+        request,
+
+        async function (
+
+            request
+
+        ) {
+
+            const profiles =
+
+                StaffQuery.ensureStaff(
+
+                    request
+
+                );
+
+            const directory = {};
+
+            profiles.forEach(
+
+                function (
+
+                    profile
+
+                ) {
+
+                    const circle =
+
+                        profile.posting?.circle ||
+
+                        "UNASSIGNED";
+
+                    if (
+
+                        !directory[circle]
+
+                    ) {
+
+                        directory[circle] = {
+
+                            circle:
+
+                                circle,
+
+                            totalStaff:
+
+                                0,
+
+                            staff: []
+
+                        };
+
+                    }
+
+                    const group =
+
+                        directory[circle];
+
+                    group.totalStaff++;
+
+                    group.staff.push({
+
+                        cleanName:
+
+                            profile.identity?.cleanName ||
+
+                            "",
+
+                        rawName:
+
+                            profile.identity?.rawName ||
+
+                            "",
+
+                        name:
+
+                            profile.identity?.name ||
+
+                            "",
+
+                        role:
+
+                            profile.identity?.role ||
+
+                            "",
+
+                        designation:
+
+                            profile.identity?.designation ||
+
+                            "",
+
+                        phone:
+
+                            profile.identity?.phone ||
+
+                            "",
+
+                        email:
+
+                            profile.identity?.email ||
+
+                            "",
+
+                        division:
+
+                            profile.posting?.division ||
+
+                            "",
+
+                        range:
+
+                            profile.posting?.range ||
+
+                            "",
+
+                        beat:
+
+                            profile.posting?.beat ||
+
+                            "",
+
+                        assignedCompartment:
+
+                            profile.assignment?.assignedCompartment ||
+
+                            "",
+
+                        dutyType:
+
+                            profile.assignment?.dutyType ||
+
+                            "",
+
+                        dutyStatus:
+
+                            profile.assignment?.status ||
+
+                            "",
+
+                        dutyActive:
+
+                            profile.assignment?.dutyActive ??
+
+                            false,
+
+                        leader:
+
+                            profile.teamInfo?.leader ||
+
+                            "",
+
+                        team:
+
+                            profile.teamInfo?.team ||
+
+                            "",
+
+                        latitude:
+
+                            profile.location?.lat ??
+
+                            null,
+
+                        longitude:
+
+                            profile.location?.lon ??
+
+                            null,
+
+                        speed:
+
+                            profile.gps?.speed ??
+
+                            null,
+
+                        lastSeen:
+
+                            profile.gps?.lastSeen ??
+
+                            null,
+
+                        distanceKm:
+
+                            profile.analytics?.distanceKm ??
+
+                            0,
+
+                        pointCount:
+
+                            profile.analytics?.pointCount ??
+
+                            0
+
+                    });
+
+                }
+
+            );
+
+            return Object.values(
+
+                directory
+
+            );
+
+        }
+
+    );
+
+};
+    /*----------------------------------
+  Range Directory
+----------------------------------*/
+
+GG.queryRangeDirectory = async function (
+
+    request
+
+) {
+
+    return StaffQuery.execute(
+
+        request,
+
+        async function (
+
+            request
+
+        ) {
+
+            const profiles =
+
+                StaffQuery.ensureStaff(
+
+                    request
+
+                );
+
+            const directory = {};
+
+            profiles.forEach(
+
+                function (
+
+                    profile
+
+                ) {
+
+                    const range =
+
+                        profile.posting?.range ||
+
+                        "UNASSIGNED";
+
+                    if (
+
+                        !directory[range]
+
+                    ) {
+
+                        directory[range] = {
+
+                            range:
+
+                                range,
+
+                            totalStaff:
+
+                                0,
+
+                            staff: []
+
+                        };
+
+                    }
+
+                    const group =
+
+                        directory[range];
+
+                    group.totalStaff++;
+
+                    group.staff.push({
+
+                        cleanName:
+
+                            profile.identity?.cleanName ||
+
+                            "",
+
+                        rawName:
+
+                            profile.identity?.rawName ||
+
+                            "",
+
+                        name:
+
+                            profile.identity?.name ||
+
+                            "",
+
+                        role:
+
+                            profile.identity?.role ||
+
+                            "",
+
+                        designation:
+
+                            profile.identity?.designation ||
+
+                            "",
+
+                        type:
+
+                            profile.identity?.type ||
+
+                            "",
+
+                        phone:
+
+                            profile.identity?.phone ||
+
+                            "",
+
+                        email:
+
+                            profile.identity?.email ||
+
+                            "",
+
+                        circle:
+
+                            profile.posting?.circle ||
+
+                            "",
+
+                        division:
+
+                            profile.posting?.division ||
+
+                            "",
+
+                        beat:
+
+                            profile.posting?.beat ||
+
+                            "",
+
+                        assignedCompartment:
+
+                            profile.assignment?.assignedCompartment ||
+
+                            "",
+
+                        dutyType:
+
+                            profile.assignment?.dutyType ||
+
+                            "",
+
+                        dutyStatus:
+
+                            profile.assignment?.status ||
+
+                            "",
+
+                        dutyActive:
+
+                            profile.assignment?.dutyActive ??
+
+                            false,
+
+                        leader:
+
+                            profile.teamInfo?.leader ||
+
+                            "",
+
+                        team:
+
+                            profile.teamInfo?.team ||
+
+                            "",
+
+                        latitude:
+
+                            profile.location?.lat ??
+
+                            null,
+
+                        longitude:
+
+                            profile.location?.lon ??
+
+                            null,
+
+                        location:
+
+                            profile.location?.location ||
+
+                            "",
+
+                        speed:
+
+                            profile.gps?.speed ??
+
+                            null,
+
+                        heading:
+
+                            profile.gps?.heading ??
+
+                            null,
+
+                        accuracy:
+
+                            profile.gps?.accuracy ??
+
+                            null,
+
+                        lastSeen:
+
+                            profile.gps?.lastSeen ??
+
+                            null,
+
+                        distanceKm:
+
+                            profile.analytics?.distanceKm ??
+
+                            0,
+
+                        pointCount:
+
+                            profile.analytics?.pointCount ??
+
+                            0,
+
+                        startedAt:
+
+                            profile.analytics?.startedAt ??
+
+                            null,
+
+                        endedAt:
+
+                            profile.analytics?.endedAt ??
+
+                            null
+
+                    });
+
+                }
+
+            );
+
+            return Object.values(
+
+                directory
+
+            );
+
+        }
+
+    );
+
+};
+
+    /*----------------------------------
+  Beat Directory
+----------------------------------*/
+
+GG.queryBeatDirectory = async function (
+
+    request
+
+) {
+
+    return StaffQuery.execute(
+
+        request,
+
+        async function (
+
+            request
+
+        ) {
+
+            const profiles =
+
+                StaffQuery.ensureStaff(
+
+                    request
+
+                );
+
+            const directory = {};
+
+            profiles.forEach(
+
+                function (
+
+                    profile
+
+                ) {
+
+                    const beat =
+
+                        profile.posting?.beat ||
+
+                        "UNASSIGNED";
+
+                    if (
+
+                        !directory[beat]
+
+                    ) {
+
+                        directory[beat] = {
+
+                            beat:
+
+                                beat,
+
+                            totalStaff:
+
+                                0,
+
+                            staff: []
+
+                        };
+
+                    }
+
+                    const group =
+
+                        directory[beat];
+
+                    group.totalStaff++;
+
+                    group.staff.push({
+
+                        /*----------------------------------
+                          Identity
+                        ----------------------------------*/
+
+                        cleanName:
+
+                            profile.identity?.cleanName ||
+
+                            "",
+
+                        rawName:
+
+                            profile.identity?.rawName ||
+
+                            "",
+
+                        name:
+
+                            profile.identity?.name ||
+
+                            "",
+
+                        role:
+
+                            profile.identity?.role ||
+
+                            "",
+
+                        designation:
+
+                            profile.identity?.designation ||
+
+                            "",
+
+                        type:
+
+                            profile.identity?.type ||
+
+                            "",
+
+                        phone:
+
+                            profile.identity?.phone ||
+
+                            "",
+
+                        email:
+
+                            profile.identity?.email ||
+
+                            "",
+
+                        /*----------------------------------
+                          Posting
+                        ----------------------------------*/
+
+                        circle:
+
+                            profile.posting?.circle ||
+
+                            "",
+
+                        division:
+
+                            profile.posting?.division ||
+
+                            "",
+
+                        range:
+
+                            profile.posting?.range ||
+
+                            "",
+
+                        /*----------------------------------
+                          Assignment
+                        ----------------------------------*/
+
+                        assignedCompartment:
+
+                            profile.assignment?.assignedCompartment ||
+
+                            "",
+
+                        dutyType:
+
+                            profile.assignment?.dutyType ||
+
+                            "",
+
+                        dutyStatus:
+
+                            profile.assignment?.status ||
+
+                            "",
+
+                        dutyActive:
+
+                            profile.assignment?.dutyActive ??
+
+                            false,
+
+                        /*----------------------------------
+                          Team
+                        ----------------------------------*/
+
+                        leader:
+
+                            profile.teamInfo?.leader ||
+
+                            "",
+
+                        team:
+
+                            profile.teamInfo?.team ||
+
+                            "",
+
+                        /*----------------------------------
+                          Location
+                        ----------------------------------*/
+
+                        latitude:
+
+                            profile.location?.lat ??
+
+                            null,
+
+                        longitude:
+
+                            profile.location?.lon ??
+
+                            null,
+
+                        location:
+
+                            profile.location?.location ||
+
+                            "",
+
+                        /*----------------------------------
+                          GPS
+                        ----------------------------------*/
+
+                        speed:
+
+                            profile.gps?.speed ??
+
+                            null,
+
+                        heading:
+
+                            profile.gps?.heading ??
+
+                            null,
+
+                        accuracy:
+
+                            profile.gps?.accuracy ??
+
+                            null,
+
+                        lastSeen:
+
+                            profile.gps?.lastSeen ??
+
+                            null,
+
+                        timestamp:
+
+                            profile.gps?.timestamp ??
+
+                            null,
+
+                        updatedAt:
+
+                            profile.gps?.updatedAt ??
+
+                            null,
+
+                        /*----------------------------------
+                          Analytics
+                        ----------------------------------*/
+
+                        distanceKm:
+
+                            profile.analytics?.distanceKm ??
+
+                            0,
+
+                        pointCount:
+
+                            profile.analytics?.pointCount ??
+
+                            0,
+
+                        startedAt:
+
+                            profile.analytics?.startedAt ??
+
+                            null,
+
+                        endedAt:
+
+                            profile.analytics?.endedAt ??
+
+                            null
+
+                    });
+
+                }
+
+            );
+
+            return Object.values(
+
+                directory
+
+            );
+
+        }
+
+    );
+
+};
+    /*----------------------------------
+  Designation Directory
+----------------------------------*/
+
+GG.queryDesignationDirectory = async function (
+
+    request
+
+) {
+
+    return StaffQuery.execute(
+
+        request,
+
+        async function (
+
+            request
+
+        ) {
+
+            const profiles =
+
+                StaffQuery.ensureStaff(
+
+                    request
+
+                );
+
+            const directory = {};
+
+            profiles.forEach(
+
+                function (
+
+                    profile
+
+                ) {
+
+                    const designation =
+
+                        profile.identity?.designation ||
+
+                        "UNASSIGNED";
+
+                    if (
+
+                        !directory[designation]
+
+                    ) {
+
+                        directory[designation] = {
+
+                            designation:
+
+                                designation,
+
+                            totalStaff:
+
+                                0,
+
+                            staff: []
+
+                        };
+
+                    }
+
+                    const group =
+
+                        directory[designation];
+
+                    group.totalStaff++;
+
+                    group.staff.push({
+
+                        /*----------------------------------
+                          Identity
+                        ----------------------------------*/
+
+                        cleanName:
+
+                            profile.identity?.cleanName ||
+
+                            "",
+
+                        rawName:
+
+                            profile.identity?.rawName ||
+
+                            "",
+
+                        name:
+
+                            profile.identity?.name ||
+
+                            "",
+
+                        role:
+
+                            profile.identity?.role ||
+
+                            "",
+
+                        type:
+
+                            profile.identity?.type ||
+
+                            "",
+
+                        phone:
+
+                            profile.identity?.phone ||
+
+                            "",
+
+                        email:
+
+                            profile.identity?.email ||
+
+                            "",
+
+                        /*----------------------------------
+                          Posting
+                        ----------------------------------*/
+
+                        circle:
+
+                            profile.posting?.circle ||
+
+                            "",
+
+                        division:
+
+                            profile.posting?.division ||
+
+                            "",
+
+                        range:
+
+                            profile.posting?.range ||
+
+                            "",
+
+                        beat:
+
+                            profile.posting?.beat ||
+
+                            "",
+
+                        /*----------------------------------
+                          Assignment
+                        ----------------------------------*/
+
+                        assignedCompartment:
+
+                            profile.assignment?.assignedCompartment ||
+
+                            "",
+
+                        dutyType:
+
+                            profile.assignment?.dutyType ||
+
+                            "",
+
+                        dutyStatus:
+
+                            profile.assignment?.status ||
+
+                            "",
+
+                        dutyActive:
+
+                            profile.assignment?.dutyActive ??
+
+                            false,
+
+                        /*----------------------------------
+                          Team
+                        ----------------------------------*/
+
+                        leader:
+
+                            profile.teamInfo?.leader ||
+
+                            "",
+
+                        team:
+
+                            profile.teamInfo?.team ||
+
+                            "",
+
+                        /*----------------------------------
+                          Location
+                        ----------------------------------*/
+
+                        latitude:
+
+                            profile.location?.lat ??
+
+                            null,
+
+                        longitude:
+
+                            profile.location?.lon ??
+
+                            null,
+
+                        location:
+
+                            profile.location?.location ||
+
+                            "",
+
+                        /*----------------------------------
+                          GPS
+                        ----------------------------------*/
+
+                        speed:
+
+                            profile.gps?.speed ??
+
+                            null,
+
+                        heading:
+
+                            profile.gps?.heading ??
+
+                            null,
+
+                        accuracy:
+
+                            profile.gps?.accuracy ??
+
+                            null,
+
+                        lastSeen:
+
+                            profile.gps?.lastSeen ??
+
+                            null,
+
+                        timestamp:
+
+                            profile.gps?.timestamp ??
+
+                            null,
+
+                        updatedAt:
+
+                            profile.gps?.updatedAt ??
+
+                            null,
+
+                        /*----------------------------------
+                          Analytics
+                        ----------------------------------*/
+
+                        distanceKm:
+
+                            profile.analytics?.distanceKm ??
+
+                            0,
+
+                        pointCount:
+
+                            profile.analytics?.pointCount ??
+
+                            0,
+
+                        startedAt:
+
+                            profile.analytics?.startedAt ??
+
+                            null,
+
+                        endedAt:
+
+                            profile.analytics?.endedAt ??
+
+                            null
+
+                    });
+
+                }
+
+            );
+
+            return Object.values(
+
+                directory
+
+            );
+
+        }
+
+    );
+
+};
 /*----------------------------------
   Who Is On Duty
 ----------------------------------*/
@@ -3751,15 +5360,87 @@ GG.queryWhoIsOnDuty = async function (
   Who Is Patrolling
 ----------------------------------*/
 
+/*----------------------------------
+  Who Is Patrolling
+----------------------------------*/
+
 GG.queryWhoIsPatrolling = async function (
 
     request
 
 ) {
 
-    return GG.queryMovingStaff(
+    return StaffQuery.execute(
 
-        request
+        request,
+
+        async function (
+
+            request
+
+        ) {
+
+            const staff =
+
+                StaffQuery.ensureStaff(
+
+                    request
+
+                );
+
+            const patrolling =
+
+                staff.filter(
+
+                    function (
+
+                        profile
+
+                    ) {
+
+                        return (
+
+                            profile.assignment?.dutyActive ===
+
+                            true &&
+
+                            String(
+
+                                profile.assignment?.dutyType ||
+
+                                ""
+
+                            )
+
+                            .trim()
+
+                            .toUpperCase()
+
+                            .includes(
+
+                                "PATROL"
+
+                            )
+
+                        );
+
+                    }
+
+                );
+
+            return {
+
+                count:
+
+                    patrolling.length,
+
+                staff:
+
+                    patrolling
+
+            };
+
+        }
 
     );
 
