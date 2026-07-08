@@ -1894,6 +1894,10 @@ StaffEntities.extractTeamFields = function (
 
     }
 
+    /*----------------------------------
+      Ensure Canonical Team Section
+    ----------------------------------*/
+
     if (
 
         !context.teamInfo ||
@@ -1906,24 +1910,46 @@ StaffEntities.extractTeamFields = function (
 
     }
 
+    /*----------------------------------
+      Validate Field Maps
+    ----------------------------------*/
+
     if (
 
         !context.fieldMaps ||
 
-        !context.fieldMaps.TEAM
+        typeof context.fieldMaps !== "object"
 
     ) {
 
         throw new Error(
 
-            "StaffConstants.FIELD_MAPS.TEAM not available."
+            "StaffConstants.FIELD_MAPS not available."
+
+        );
+
+    }
+
+    if (
+
+        !Array.isArray(
+
+            context.fieldMaps.TEAM_INFO
+
+        )
+
+    ) {
+
+        throw new Error(
+
+            "StaffConstants.FIELD_MAPS.TEAM_INFO not available."
 
         );
 
     }
 
     /*----------------------------------
-      Generic Extraction
+      Extract Team Fields
     ----------------------------------*/
 
     StaffEntities.extractFields(
@@ -1932,12 +1958,12 @@ StaffEntities.extractTeamFields = function (
 
         context.teamInfo,
 
-        context.fieldMaps.TEAM
+        context.fieldMaps.TEAM_INFO
 
     );
 
     /*----------------------------------
-      Return Context
+      Return Canonical Context
     ----------------------------------*/
 
     return context;
