@@ -4481,6 +4481,305 @@ GG.queryCircleDirectory = async function (
 
 };
     /*----------------------------------
+  Division Directory
+----------------------------------*/
+
+GG.queryDivisionDirectory = async function (
+
+    request
+
+) {
+
+    return StaffQuery.execute(
+
+        request,
+
+        async function (
+
+            request
+
+        ) {
+
+            const profiles =
+
+                StaffQuery.ensureStaff(
+
+                    request
+
+                );
+
+            const directory = {};
+
+            profiles.forEach(
+
+                function (
+
+                    profile
+
+                ) {
+
+                    const division =
+
+                        profile.posting?.division ||
+
+                        "UNASSIGNED";
+
+                    if (
+
+                        !directory[division]
+
+                    ) {
+
+                        directory[division] = {
+
+                            division:
+
+                                division,
+
+                            totalStaff:
+
+                                0,
+
+                            staff: []
+
+                        };
+
+                    }
+
+                    const group =
+
+                        directory[division];
+
+                    group.totalStaff++;
+
+                    group.staff.push({
+
+                        /*----------------------------------
+                          Identity
+                        ----------------------------------*/
+
+                        cleanName:
+
+                            profile.identity?.cleanName ||
+
+                            "",
+
+                        rawName:
+
+                            profile.identity?.rawName ||
+
+                            "",
+
+                        name:
+
+                            profile.identity?.name ||
+
+                            "",
+
+                        role:
+
+                            profile.identity?.role ||
+
+                            "",
+
+                        designation:
+
+                            profile.identity?.designation ||
+
+                            "",
+
+                        type:
+
+                            profile.identity?.type ||
+
+                            "",
+
+                        phone:
+
+                            profile.identity?.phone ||
+
+                            "",
+
+                        email:
+
+                            profile.identity?.email ||
+
+                            "",
+
+                        /*----------------------------------
+                          Posting
+                        ----------------------------------*/
+
+                        circle:
+
+                            profile.posting?.circle ||
+
+                            "",
+
+                        range:
+
+                            profile.posting?.range ||
+
+                            "",
+
+                        beat:
+
+                            profile.posting?.beat ||
+
+                            "",
+
+                        /*----------------------------------
+                          Assignment
+                        ----------------------------------*/
+
+                        assignedCompartment:
+
+                            profile.assignment?.assignedCompartment ||
+
+                            "",
+
+                        dutyType:
+
+                            profile.assignment?.dutyType ||
+
+                            "",
+
+                        dutyStatus:
+
+                            profile.assignment?.status ||
+
+                            "",
+
+                        dutyActive:
+
+                            profile.assignment?.dutyActive ??
+
+                            false,
+
+                        /*----------------------------------
+                          Team
+                        ----------------------------------*/
+
+                        leader:
+
+                            profile.teamInfo?.leader ||
+
+                            "",
+
+                        team:
+
+                            profile.teamInfo?.team ||
+
+                            "",
+
+                        /*----------------------------------
+                          Location
+                        ----------------------------------*/
+
+                        latitude:
+
+                            profile.location?.lat ??
+
+                            null,
+
+                        longitude:
+
+                            profile.location?.lon ??
+
+                            null,
+
+                        location:
+
+                            profile.location?.location ||
+
+                            "",
+
+                        /*----------------------------------
+                          GPS
+                        ----------------------------------*/
+
+                        speed:
+
+                            profile.gps?.speed ??
+
+                            null,
+
+                        heading:
+
+                            profile.gps?.heading ??
+
+                            null,
+
+                        accuracy:
+
+                            profile.gps?.accuracy ??
+
+                            null,
+
+                        lastSeen:
+
+                            profile.gps?.lastSeen ??
+
+                            null,
+
+                        timestamp:
+
+                            profile.gps?.timestamp ??
+
+                            null,
+
+                        updatedAt:
+
+                            profile.gps?.updatedAt ??
+
+                            null,
+
+                        /*----------------------------------
+                          Analytics
+                        ----------------------------------*/
+
+                        distanceKm:
+
+                            profile.analytics?.distanceKm ??
+
+                            0,
+
+                        pointCount:
+
+                            profile.analytics?.pointCount ??
+
+                            0,
+
+                        startedAt:
+
+                            profile.analytics?.startedAt ??
+
+                            null,
+
+                        endedAt:
+
+                            profile.analytics?.endedAt ??
+
+                            null
+
+                    });
+
+                }
+
+            );
+
+            return Object.values(
+
+                directory
+
+            );
+
+        }
+
+    );
+
+};
+    /*----------------------------------
   Range Directory
 ----------------------------------*/
 
