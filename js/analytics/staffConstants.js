@@ -1018,18 +1018,6 @@ ASSIGNMENT: Object.freeze([
         target: "lastDutyEnd",
         source: StaffConstants.FIELDS.LAST_DUTY_END,
         type: "raw"
-    },
-
-    {
-        target: "leader",
-        source: StaffConstants.FIELDS.LEADER,
-        type: "string"
-    },
-
-    {
-        target: "team",
-        source: StaffConstants.FIELDS.TEAM,
-        type: "string"
     }
 
 ]),
@@ -1058,7 +1046,6 @@ LOCATION: Object.freeze([
     }
 
 ]),
-
 /*-----------------------------------------------------
   GPS
 -----------------------------------------------------*/
@@ -1099,12 +1086,6 @@ GPS: Object.freeze([
         target: "lastSeen",
         source: StaffConstants.FIELDS.LAST_SEEN,
         type: "raw"
-    },
-
-    {
-        target: "updatedAt",
-        source: StaffConstants.FIELDS.UPDATED_AT,
-        type: "raw"
     }
 
 ]),
@@ -1112,7 +1093,7 @@ GPS: Object.freeze([
   Team
 -----------------------------------------------------*/
 
-TEAM: Object.freeze([
+TEAM_INFO: Object.freeze([
 
     {
         target: "leader",
@@ -1140,33 +1121,39 @@ TEAM: Object.freeze([
 TRACKING: Object.freeze([
 
     {
-
         target: "id",
-
         source: StaffConstants.FIELDS.ID,
-
         type: "string"
-
     },
 
     {
-
         target: "sessionId",
-
         source: StaffConstants.FIELDS.SESSION_ID,
-
         type: "string"
-
     },
 
     {
-
         target: "source",
-
         source: StaffConstants.FIELDS.SOURCE,
-
         type: "string"
+    },
 
+    {
+        target: "device",
+        source: StaffConstants.FIELDS.DEVICE,
+        type: "string"
+    },
+
+    {
+        target: "createdAt",
+        source: StaffConstants.FIELDS.CREATED_AT,
+        type: "raw"
+    },
+
+    {
+        target: "updatedAt",
+        source: StaffConstants.FIELDS.UPDATED_AT,
+        type: "raw"
     }
 
 ]),
@@ -1178,113 +1165,63 @@ TRACKING: Object.freeze([
 ANALYTICS: Object.freeze([
 
     {
-
         target: "distanceKm",
-
         source: StaffConstants.FIELDS.DISTANCE_KM,
-
         type: "number"
-
     },
 
     {
-
         target: "pointCount",
-
         source: StaffConstants.FIELDS.POINT_COUNT,
-
         type: "number"
-
     },
 
     {
-
         target: "startedAt",
-
         source: StaffConstants.FIELDS.STARTED_AT,
-
-        type: "number"
-
-    },
-
-    {
-
-        target: "endedAt",
-
-        source: StaffConstants.FIELDS.ENDED_AT,
-
-        type: "number"
-
-    },
-
-    {
-
-        target: "monthKey",
-
-        source: StaffConstants.FIELDS.MONTH_KEY,
-
-        type: "string"
-
-    },
-
-    {
-
-        target: "compartments",
-
-        source: StaffConstants.FIELDS.COMPARTMENTS,
-
-        type: "array"
-
-    },
-
-    {
-
-        target: "simplifiedTrack",
-
-        source: StaffConstants.FIELDS.SIMPLIFIED_TRACK,
-
-        type: "array"
-
-    },
-
-    {
-
-        target: "startLat",
-
-        source: StaffConstants.FIELDS.START_LAT,
-
-        type: "number"
-
-    },
-
-    {
-
-        target: "startLon",
-
-        source: StaffConstants.FIELDS.START_LON,
-
-        type: "number"
-
-    },
-
-    {
-
-        target: "startAccuracy",
-
-        source: StaffConstants.FIELDS.START_ACCURACY,
-
-        type: "number"
-
-    },
-
-    {
-
-        target: "createdAt",
-
-        source: StaffConstants.FIELDS.CREATED_AT,
-
         type: "raw"
+    },
 
+    {
+        target: "endedAt",
+        source: StaffConstants.FIELDS.ENDED_AT,
+        type: "raw"
+    },
+
+    {
+        target: "monthKey",
+        source: StaffConstants.FIELDS.MONTH_KEY,
+        type: "string"
+    },
+
+    {
+        target: "compartments",
+        source: StaffConstants.FIELDS.COMPARTMENTS,
+        type: "array"
+    },
+
+    {
+        target: "simplifiedTrack",
+        source: StaffConstants.FIELDS.SIMPLIFIED_TRACK,
+        type: "array"
+    },
+
+    {
+        target: "startLat",
+        source: StaffConstants.FIELDS.START_LAT,
+        type: "number"
+    },
+
+    {
+        target: "startLon",
+        source: StaffConstants.FIELDS.START_LON,
+        type: "number"
+    },
+
+    {
+        target: "startAccuracy",
+        source: StaffConstants.FIELDS.START_ACCURACY,
+        type: "number"
     }
 
 ]),
