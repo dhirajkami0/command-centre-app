@@ -368,6 +368,40 @@ IntentManager.detectLocal = function (
 
     IntentManager.init();
 
+    const started =
+
+        Date.now();
+
+    console.group(
+
+        "🟣 INTENT MANAGER - LOCAL DETECTION"
+
+    );
+
+    console.log(
+
+        "File:",
+
+        "intentManager.js"
+
+    );
+
+    console.log(
+
+        "Function:",
+
+        "IntentManager.detectLocal"
+
+    );
+
+    console.log(
+
+        "Original Query:",
+
+        query
+
+    );
+
     /*----------------------------------
       Normalize
     ----------------------------------*/
@@ -379,6 +413,14 @@ IntentManager.detectLocal = function (
             query
 
         );
+
+    console.log(
+
+        "Normalized:",
+
+        query
+
+    );
 
     /*----------------------------------
       Local Intent Modules
@@ -402,6 +444,24 @@ IntentManager.detectLocal = function (
 
     ];
 
+    console.log(
+
+        "Detectors:",
+
+        detectors.map(
+
+            d =>
+
+                d?.VERSION ||
+
+                d?.constructor?.name ||
+
+                "Unknown"
+
+        )
+
+    );
+
     let bestIntent =
 
         null;
@@ -409,6 +469,10 @@ IntentManager.detectLocal = function (
     let bestConfidence =
 
         0;
+
+    let bestDetector =
+
+        null;
 
     /*----------------------------------
       Execute Local Detectors
@@ -430,11 +494,39 @@ IntentManager.detectLocal = function (
 
         ) {
 
+            console.warn(
+
+                "⏭ Skipping Detector:",
+
+                detector
+
+            );
+
             continue;
 
         }
 
+        const detectorName =
+
+            detector.constructor?.name ||
+
+            detector.VERSION ||
+
+            "UnknownDetector";
+
+        console.group(
+
+            "🔍 Detector:",
+
+            detectorName
+
+        );
+
         try {
+
+            const detectorStarted =
+
+                Date.now();
 
             const intent =
 
@@ -443,6 +535,14 @@ IntentManager.detectLocal = function (
                     query
 
                 );
+
+            console.log(
+
+                "Returned:",
+
+                intent
+
+            );
 
             if (
 
@@ -454,6 +554,14 @@ IntentManager.detectLocal = function (
 
             ) {
 
+                console.warn(
+
+                    "❌ Invalid Intent"
+
+                );
+
+                console.groupEnd();
+
                 continue;
 
             }
@@ -462,9 +570,47 @@ IntentManager.detectLocal = function (
 
                 Number(
 
-                    intent.confidence || 0
+                    intent.confidence ||
+
+                    0
 
                 );
+
+            console.log(
+
+                "Intent:",
+
+                intent.intent
+
+            );
+
+            console.log(
+
+                "Domain:",
+
+                intent.domain
+
+            );
+
+            console.log(
+
+                "Confidence:",
+
+                confidence
+
+            );
+
+            console.log(
+
+                "Execution:",
+
+                Date.now() -
+
+                detectorStarted,
+
+                "ms"
+
+            );
 
             if (
 
@@ -482,19 +628,53 @@ IntentManager.detectLocal = function (
 
                     intent;
 
+                bestDetector =
+
+                    detectorName;
+
+                console.warn(
+
+                    "🏆 NEW BEST",
+
+                    detectorName,
+
+                    intent.intent,
+
+                    confidence
+
+                );
+
+            }
+
+            else {
+
+                console.log(
+
+                    "Skipped (Lower Confidence)"
+
+                );
+
             }
 
         }
 
-        catch (err) {
+        catch (
+
+            err
+
+        ) {
 
             console.error(
+
+                "Detector Error:",
 
                 err
 
             );
 
         }
+
+        console.groupEnd();
 
     }
 
@@ -507,6 +687,14 @@ IntentManager.detectLocal = function (
         !bestIntent
 
     ) {
+
+        console.warn(
+
+            "❌ No Local Intent Found"
+
+        );
+
+        console.groupEnd();
 
         return {
 
@@ -582,33 +770,73 @@ IntentManager.detectLocal = function (
 
         Number(
 
-            bestIntent.confidence || 0
+            bestIntent.confidence ||
+
+            0
 
         );
 
     /*----------------------------------
-      Debug
+      Final Diagnostics
     ----------------------------------*/
 
-    if (
+    console.log(
 
-        GG.Config?.DEBUG?.ENABLED
+        "================================"
 
-    ) {
+    );
 
-        console.log(
+    console.log(
 
-            "🟢 Local Intent",
+        "🏆 WINNER DETECTOR:",
 
-            bestIntent
+        bestDetector
 
-        );
+    );
 
-    }
+    console.log(
 
-    /*----------------------------------
-      Return
-    ----------------------------------*/
+        "🏆 WINNER INTENT:",
+
+        bestIntent.intent
+
+    );
+
+    console.log(
+
+        "🏆 WINNER DOMAIN:",
+
+        bestIntent.domain
+
+    );
+
+    console.log(
+
+        "🏆 WINNER CONFIDENCE:",
+
+        bestIntent.confidence
+
+    );
+
+    console.log(
+
+        "⏱ TOTAL TIME:",
+
+        Date.now() -
+
+        started,
+
+        "ms"
+
+    );
+
+    console.log(
+
+        "================================"
+
+    );
+
+    console.groupEnd();
 
     return bestIntent;
 
