@@ -76,7 +76,7 @@ const StaffRouter = {};
 =========================================================*/
 
 StaffRouter.VERSION =
-    "2.0.0";
+    StaffConstants.VERSION;
 
 /*=========================================================
  STATUS
@@ -515,15 +515,21 @@ const result =
 
         response;
 
-    StaffRouter.cache.set(
+   const cacheKey =
 
-        request.originalQuery ||
+    request.normalizedQuery ||
 
-        "",
+    request.originalQuery ||
 
-        response
+    "";
 
-    );
+StaffRouter.cache.set(
+
+    cacheKey,
+
+    response
+
+);
 
     return response;
 
@@ -886,29 +892,12 @@ StaffRouter.registerRoutes = function () {
 
     );
 
-    /*----------------------------------
-      STRENGTH
-    ----------------------------------*/
+   
+   
 
     StaffRouter.register(
 
-        INTENTS.STAFF_STRENGTH,
-
-        GG.queryStaffStrength
-
-    );
-
-    StaffRouter.register(
-
-        INTENTS.ACTIVE_STAFF_COUNT,
-
-        GG.queryActiveStaffCount
-
-    );
-
-    StaffRouter.register(
-
-        INTENTS.ACTIVE_STAFF_LIST,
+        INTENTS.STAFF_ACTIVE_LIST,
 
         GG.queryActiveStaffList
 
@@ -916,7 +905,7 @@ StaffRouter.registerRoutes = function () {
 
     StaffRouter.register(
 
-        INTENTS.INACTIVE_STAFF_LIST,
+        INTENTS.STAFF_INACTIVE_LIST,
 
         GG.queryInactiveStaffList
 
@@ -924,7 +913,7 @@ StaffRouter.registerRoutes = function () {
 
     StaffRouter.register(
 
-        INTENTS.DUTY_SUMMARY,
+        INTENTS.STAFF_DUTY_SUMMARY,
 
         GG.queryDutySummary
 
@@ -932,7 +921,7 @@ StaffRouter.registerRoutes = function () {
 
     StaffRouter.register(
 
-        INTENTS.TEAM_LEADER_LIST,
+        INTENTS.STAFF_TEAM_LEADER_LIST,
 
         GG.queryTeamLeaderList
 
@@ -940,19 +929,12 @@ StaffRouter.registerRoutes = function () {
 
     StaffRouter.register(
 
-        INTENTS.MOVING_STAFF,
+        INTENTS.STAFF_MOVING,
 
         GG.queryMovingStaff
 
     );
 
-    StaffRouter.register(
-
-        INTENTS.STATIONARY_STAFF,
-
-        GG.queryStationaryStaff
-
-    );
 
     /*----------------------------------
       CONTROL ROOM
@@ -973,7 +955,132 @@ StaffRouter.registerRoutes = function () {
         GG.queryWhoIsPatrolling
 
     );
+/*----------------------------------
+  STATUS
+----------------------------------*/
 
+StaffRouter.register(
+
+    INTENTS.STAFF_ACTIVE_COUNT,
+
+    GG.queryActiveStaffCount
+
+);
+
+StaffRouter.register(
+
+    INTENTS.STAFF_ACTIVE_LIST,
+
+    GG.queryActiveStaffList
+
+);
+
+StaffRouter.register(
+
+    INTENTS.STAFF_INACTIVE_LIST,
+
+    GG.queryInactiveStaffList
+
+);
+
+StaffRouter.register(
+
+    INTENTS.STAFF_DUTY_SUMMARY,
+
+    GG.queryDutySummary
+
+);
+
+StaffRouter.register(
+
+    INTENTS.STAFF_TEAM_LEADER_LIST,
+
+    GG.queryTeamLeaderList
+
+);
+
+StaffRouter.register(
+
+    INTENTS.STAFF_MOVING,
+
+    GG.queryMovingStaff
+
+);
+
+StaffRouter.register(
+
+    INTENTS.STAFF_STATIONARY,
+
+    GG.queryStationaryStaff
+
+);
+ /*----------------------------------
+  SUMMARY
+----------------------------------*/
+
+StaffRouter.register(
+
+    INTENTS.STAFF_SUMMARY,
+
+    GG.queryStaffSummary
+
+);
+
+StaffRouter.register(
+
+    INTENTS.STAFF_JURISDICTION_SUMMARY,
+
+    GG.queryJurisdictionSummary
+
+);
+
+StaffRouter.register(
+
+    INTENTS.STAFF_DESIGNATION_SUMMARY,
+
+    GG.queryDesignationSummary
+
+);
+
+StaffRouter.register(
+
+    INTENTS.STAFF_CIRCLE_DIRECTORY,
+
+    GG.queryCircleDirectory
+
+);
+
+StaffRouter.register(
+
+    INTENTS.STAFF_DIVISION_DIRECTORY,
+
+    GG.queryDivisionDirectory
+
+);
+
+StaffRouter.register(
+
+    INTENTS.STAFF_RANGE_DIRECTORY,
+
+    GG.queryRangeDirectory
+
+);
+
+StaffRouter.register(
+
+    INTENTS.STAFF_BEAT_DIRECTORY,
+
+    GG.queryBeatDirectory
+
+);
+
+StaffRouter.register(
+
+    INTENTS.STAFF_DESIGNATION_DIRECTORY,
+
+    GG.queryDesignationDirectory
+
+);
 };
     /*=========================================================
  INITIALIZE ROUTER
