@@ -1827,6 +1827,590 @@ StaffIntent.detectAnalyticsIntent = function (
     return result;
 
 };
+
+ /*=========================================================
+ DETECT STRENGTH INTENT
+=========================================================*/
+
+StaffIntent.detectStrengthIntent = function (
+
+    result
+
+) {
+
+    /*----------------------------------
+      Validate
+    ----------------------------------*/
+
+    if (
+
+        !result ||
+
+        !result.entities
+
+    ) {
+
+        return result;
+
+    }
+
+    const staff =
+
+        result.entities.staff ||
+
+        [];
+
+    const query =
+
+        result.normalizedQuery;
+
+    const INTENTS =
+
+        StaffConstants.INTENTS;
+
+    const KEYWORDS =
+
+        StaffConstants.KEYWORDS;
+
+    /*----------------------------------
+      Helper
+    ----------------------------------*/
+
+    function hasKeyword(
+
+        list
+
+    ) {
+
+        if (
+
+            !Array.isArray(
+
+                list
+
+            )
+
+        ) {
+
+            return false;
+
+        }
+
+        return list.some(
+
+            function (
+
+                word
+
+            ) {
+
+                return query.includes(
+
+                    String(
+
+                        word
+
+                    )
+
+                    .toUpperCase()
+
+                );
+
+            }
+
+        );
+
+    }
+
+    /*----------------------------------
+      Staff Strength
+    ----------------------------------*/
+
+    if (
+
+        hasKeyword(
+
+            KEYWORDS.STAFF_STRENGTH
+
+        )
+
+    ) {
+
+        result.intent =
+
+            INTENTS.STAFF_STRENGTH;
+
+        result.parameters.staff =
+
+            staff;
+
+        result.confidence =
+
+            0.98;
+
+        return result;
+
+    }
+
+    /*----------------------------------
+      Active Staff Count
+    ----------------------------------*/
+
+    if (
+
+        hasKeyword(
+
+            KEYWORDS.ACTIVE_STAFF_COUNT
+
+        )
+
+    ) {
+
+        result.intent =
+
+            INTENTS.ACTIVE_STAFF_COUNT;
+
+        result.parameters.staff =
+
+            staff.filter(
+
+                function (
+
+                    s
+
+                ) {
+
+                    return (
+
+                        s.assignment?.dutyActive === true
+
+                    );
+
+                }
+
+            );
+
+        result.parameters.count =
+
+            result.parameters.staff.length;
+
+        result.confidence =
+
+            0.98;
+
+        return result;
+
+    }
+
+    /*----------------------------------
+      Active Staff List
+    ----------------------------------*/
+
+    if (
+
+        hasKeyword(
+
+            KEYWORDS.ACTIVE_STAFF_LIST
+
+        )
+
+    ) {
+
+        result.intent =
+
+            INTENTS.ACTIVE_STAFF_LIST;
+
+        result.parameters.staff =
+
+            staff.filter(
+
+                function (
+
+                    s
+
+                ) {
+
+                    return (
+
+                        s.assignment?.dutyActive === true
+
+                    );
+
+                }
+
+            );
+
+        result.confidence =
+
+            0.98;
+
+        return result;
+
+    }
+
+    /*----------------------------------
+      Inactive Staff List
+    ----------------------------------*/
+
+    if (
+
+        hasKeyword(
+
+            KEYWORDS.INACTIVE_STAFF_LIST
+
+        )
+
+    ) {
+
+        result.intent =
+
+            INTENTS.INACTIVE_STAFF_LIST;
+
+        result.parameters.staff =
+
+            staff.filter(
+
+                function (
+
+                    s
+
+                ) {
+
+                    return (
+
+                        s.assignment?.dutyActive !== true
+
+                    );
+
+                }
+
+            );
+
+        result.confidence =
+
+            0.98;
+
+        return result;
+
+    }
+
+    /*----------------------------------
+      Team Leader List
+    ----------------------------------*/
+
+    if (
+
+        hasKeyword(
+
+            KEYWORDS.TEAM_LEADER_LIST
+
+        )
+
+    ) {
+
+        result.intent =
+
+            INTENTS.TEAM_LEADER_LIST;
+
+        result.parameters.staff =
+
+            staff.filter(
+
+                function (
+
+                    s
+
+                ) {
+
+                    return (
+
+                        s.identity?.role ===
+
+                        "TEAM_LEADER"
+
+                    );
+
+                }
+
+            );
+
+        result.confidence =
+
+            0.97;
+
+        return result;
+
+    }
+
+    /*----------------------------------
+      Duty Summary
+    ----------------------------------*/
+
+    if (
+
+        hasKeyword(
+
+            KEYWORDS.DUTY_SUMMARY
+
+        )
+
+    ) {
+
+        result.intent =
+
+            INTENTS.DUTY_SUMMARY;
+
+        result.parameters.staff =
+
+            staff;
+
+        result.confidence =
+
+            0.97;
+
+        return result;
+
+    }
+
+    /*----------------------------------
+      Staff Near Location
+    ----------------------------------*/
+
+    if (
+
+        hasKeyword(
+
+            KEYWORDS.STAFF_NEAR_LOCATION
+
+        )
+
+    ) {
+
+        result.intent =
+
+            INTENTS.STAFF_NEAR_LOCATION;
+
+        result.parameters.staff =
+
+            staff;
+
+        result.confidence =
+
+            0.96;
+
+        return result;
+
+    }
+
+    /*----------------------------------
+      Moving Staff
+    ----------------------------------*/
+
+    if (
+
+        hasKeyword(
+
+            KEYWORDS.MOVING_STAFF
+
+        )
+
+    ) {
+
+        result.intent =
+
+            INTENTS.MOVING_STAFF;
+
+        result.parameters.staff =
+
+            staff.filter(
+
+                function (
+
+                    s
+
+                ) {
+
+                    return (
+
+                        Number(
+
+                            s.gps?.speed || 0
+
+                        ) > 0
+
+                    );
+
+                }
+
+            );
+
+        result.confidence =
+
+            0.97;
+
+        return result;
+
+    }
+
+    /*----------------------------------
+      Stationary Staff
+    ----------------------------------*/
+
+    if (
+
+        hasKeyword(
+
+            KEYWORDS.STATIONARY_STAFF
+
+        )
+
+    ) {
+
+        result.intent =
+
+            INTENTS.STATIONARY_STAFF;
+
+        result.parameters.staff =
+
+            staff.filter(
+
+                function (
+
+                    s
+
+                ) {
+
+                    return (
+
+                        Number(
+
+                            s.gps?.speed || 0
+
+                        ) <= 0
+
+                    );
+
+                }
+
+            );
+
+        result.confidence =
+
+            0.97;
+
+        return result;
+
+    }
+
+    /*----------------------------------
+      Fast Moving Staff
+    ----------------------------------*/
+
+    if (
+
+        hasKeyword(
+
+            KEYWORDS.FAST_MOVING_STAFF
+
+        )
+
+    ) {
+
+        result.intent =
+
+            INTENTS.FAST_MOVING_STAFF;
+
+        result.parameters.staff =
+
+            staff.filter(
+
+                function (
+
+                    s
+
+                ) {
+
+                    return (
+
+                        Number(
+
+                            s.gps?.speed || 0
+
+                        ) >= 10
+
+                    );
+
+                }
+
+            );
+
+        result.confidence =
+
+            0.97;
+
+        return result;
+
+    }
+
+    /*----------------------------------
+      Slow Moving Staff
+    ----------------------------------*/
+
+    if (
+
+        hasKeyword(
+
+            KEYWORDS.SLOW_MOVING_STAFF
+
+        )
+
+    ) {
+
+        result.intent =
+
+            INTENTS.SLOW_MOVING_STAFF;
+
+        result.parameters.staff =
+
+            staff.filter(
+
+                function (
+
+                    s
+
+                ) {
+
+                    return (
+
+                        Number(
+
+                            s.gps?.speed || 0
+
+                        ) > 0 &&
+
+                        Number(
+
+                            s.gps?.speed || 0
+
+                        ) < 10
+
+                    );
+
+                }
+
+            );
+
+        result.confidence =
+
+            0.97;
+
+        return result;
+
+    }
+
+    return result;
+
+};
 /*=========================================================
  NEEDS AI
 =========================================================*/
@@ -2553,13 +3137,57 @@ StaffIntent.route = async function (
 
             );
 
-        case StaffConstants.INTENTS.STAFF_STATISTICS:
+     /*----------------------------------
+  Patrol Analytics
+----------------------------------*/
 
-            return await router.statistics(
+case StaffConstants.INTENTS.STAFF_ANALYTICS:
 
-                result
+    return await router.analytics(
 
-            );
+        result
+
+    );
+
+case StaffConstants.INTENTS.STAFF_DISTANCE:
+
+    return await router.distance(
+
+        result
+
+    );
+
+case StaffConstants.INTENTS.STAFF_PATROL_POINTS:
+
+    return await router.patrolPoints(
+
+        result
+
+    );
+
+case StaffConstants.INTENTS.STAFF_PATROL_START:
+
+    return await router.patrolStart(
+
+        result
+
+    );
+
+case StaffConstants.INTENTS.STAFF_PATROL_END:
+
+    return await router.patrolEnd(
+
+        result
+
+    );
+
+case StaffConstants.INTENTS.STAFF_PATROL_DURATION:
+
+    return await router.patrolDuration(
+
+        result
+
+    );
 
         case StaffConstants.INTENTS.DUTY_SUMMARY:
 
