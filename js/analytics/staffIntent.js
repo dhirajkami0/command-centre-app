@@ -715,6 +715,10 @@ StaffIntent.detect = function (
   DETECT STAFF POSTING
 =========================================================*/
 
+/*=========================================================
+ DETECT POSTING INTENT
+=========================================================*/
+
 StaffIntent.detectPostingIntent = function (
 
     result
@@ -807,9 +811,7 @@ StaffIntent.detectPostingIntent = function (
 
                         word
 
-                    )
-
-                    .toUpperCase()
+                    ).toUpperCase()
 
                 );
 
@@ -849,7 +851,13 @@ StaffIntent.detectPostingIntent = function (
 
         result.confidence =
 
-            0.98;
+            Math.max(
+
+                result.confidence,
+
+                0.98
+
+            );
 
         return result;
 
@@ -885,7 +893,13 @@ StaffIntent.detectPostingIntent = function (
 
         result.confidence =
 
-            0.98;
+            Math.max(
+
+                result.confidence,
+
+                0.98
+
+            );
 
         return result;
 
@@ -921,7 +935,13 @@ StaffIntent.detectPostingIntent = function (
 
         result.confidence =
 
-            0.98;
+            Math.max(
+
+                result.confidence,
+
+                0.98
+
+            );
 
         return result;
 
@@ -957,7 +977,13 @@ StaffIntent.detectPostingIntent = function (
 
         result.confidence =
 
-            0.98;
+            Math.max(
+
+                result.confidence,
+
+                0.98
+
+            );
 
         return result;
 
@@ -993,7 +1019,13 @@ StaffIntent.detectPostingIntent = function (
 
         result.confidence =
 
-            0.97;
+            Math.max(
+
+                result.confidence,
+
+                0.97
+
+            );
 
         return result;
 
@@ -2500,7 +2532,7 @@ StaffIntent.needsAI = function (
 
         case StaffConstants.INTENTS.STAFF_BEAT:
 
-        case StaffConstants.INTENTS.STAFF_COMPARTMENT:
+        
 
         /* Location */
 
@@ -2684,7 +2716,81 @@ StaffIntent.route = async function (
         result.intent
 
     ) {
+        /*=====================================================
+          SEARCH
+        =====================================================*/
 
+        case StaffConstants.INTENTS.STAFF_SEARCH:
+
+            return await router.search(
+
+                result
+
+            );
+
+        case StaffConstants.INTENTS.STAFF_DIRECTORY:
+
+            return await router.directory(
+
+                result
+
+            );
+
+        case StaffConstants.INTENTS.STAFF_EXISTS:
+
+            return await router.exists(
+
+                result
+
+            );
+
+        case StaffConstants.INTENTS.STAFF_BY_NAME:
+
+            return await router.byName(
+
+                result
+
+            );
+
+        case StaffConstants.INTENTS.STAFF_BY_PHONE:
+
+            return await router.byPhone(
+
+                result
+
+            );
+
+        case StaffConstants.INTENTS.STAFF_BY_ROLE:
+
+            return await router.byRole(
+
+                result
+
+            );
+
+        case StaffConstants.INTENTS.STAFF_BY_DESIGNATION:
+
+            return await router.byDesignation(
+
+                result
+
+            );
+
+        case StaffConstants.INTENTS.STAFF_BY_LEADER:
+
+            return await router.byLeader(
+
+                result
+
+            );
+
+        case StaffConstants.INTENTS.STAFF_BY_TEAM:
+
+            return await router.byTeam(
+
+                result
+
+            );
         /*=====================================================
           PROFILE
         =====================================================*/
@@ -2765,13 +2871,7 @@ StaffIntent.route = async function (
 
             );
 
-        case StaffConstants.INTENTS.STAFF_COMPARTMENT:
 
-            return await router.compartment(
-
-                result
-
-            );
 
         /*=====================================================
           LOCATION
@@ -3291,9 +3391,9 @@ StaffIntent.detectStaffIntent = function (
 
         result.intent === INTENTS.STAFF_RANGE ||
 
-        result.intent === INTENTS.STAFF_BEAT ||
+        result.intent === INTENTS.STAFF_BEAT 
 
-        result.intent === INTENTS.STAFF_COMPARTMENT
+       
 
     ) {
 
