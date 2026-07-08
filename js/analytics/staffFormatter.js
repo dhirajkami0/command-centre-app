@@ -6676,3 +6676,4134 @@ StaffFormatter.formatPatrolDuration = function (
     return result;
 
 };
+ /*=========================================================
+ FORMAT STAFF SUMMARY
+=========================================================*/
+
+StaffFormatter.formatStaffSummary = function (
+
+    response
+
+) {
+
+    const result =
+
+        StaffFormatter.createResponse(
+
+            response
+
+        );
+
+    /*----------------------------------
+      Validate
+    ----------------------------------*/
+
+    if (
+
+        !response ||
+
+        !response.success ||
+
+        !Array.isArray(
+
+            response.data
+
+        )
+
+    ) {
+
+        result.message =
+
+            response?.message ||
+
+            "Staff summary not available.";
+
+        return result;
+
+    }
+
+    /*----------------------------------
+      Summary
+    ----------------------------------*/
+
+    const summary =
+
+        response.data;
+
+    /*----------------------------------
+      Markdown
+    ----------------------------------*/
+
+    const lines = [
+
+        "# 👥 STAFF SUMMARY",
+
+        "",
+
+        "**Total Staff:** " +
+
+            summary.length,
+
+        ""
+
+    ];
+
+    summary.forEach(
+
+        function (
+
+            staff,
+
+            index
+
+        ) {
+
+            lines.push(
+
+                "## " +
+
+                (
+
+                    index + 1
+
+                ) +
+
+                ". " +
+
+                (
+
+                    staff.name ||
+
+                    "-"
+
+                )
+
+            );
+
+            lines.push(
+
+                "**Designation:** " +
+
+                (
+
+                    staff.designation ||
+
+                    "-"
+
+                )
+
+            );
+
+            lines.push(
+
+                "**Role:** " +
+
+                (
+
+                    staff.role ||
+
+                    "-"
+
+                )
+
+            );
+
+            lines.push(
+
+                "**Duty:** " +
+
+                (
+
+                    staff.dutyType ||
+
+                    "-"
+
+                )
+
+            );
+
+            lines.push(
+
+                "**Status:** " +
+
+                (
+
+                    staff.dutyStatus ||
+
+                    "-"
+
+                )
+
+            );
+
+            lines.push(
+
+                "**Circle:** " +
+
+                (
+
+                    staff.circle ||
+
+                    "-"
+
+                )
+
+            );
+
+            lines.push(
+
+                "**Division:** " +
+
+                (
+
+                    staff.division ||
+
+                    "-"
+
+                )
+
+            );
+
+            lines.push(
+
+                "**Range:** " +
+
+                (
+
+                    staff.range ||
+
+                    "-"
+
+                )
+
+            );
+
+            lines.push(
+
+                "**Beat:** " +
+
+                (
+
+                    staff.beat ||
+
+                    "-"
+
+                )
+
+            );
+
+            lines.push("");
+
+        }
+
+    );
+
+    result.markdown =
+
+        lines.join(
+
+            "\n"
+
+        );
+
+    /*----------------------------------
+      Card
+    ----------------------------------*/
+
+    result.cards.push({
+
+        type:
+
+            "staff-summary",
+
+        title:
+
+            "Staff Summary",
+
+        data: {
+
+            total:
+
+                summary.length,
+
+            staff:
+
+                summary
+
+        }
+
+    });
+
+    /*----------------------------------
+      Section
+    ----------------------------------*/
+
+    result.sections.push({
+
+        title:
+
+            "Staff Summary",
+
+        data: {
+
+            total:
+
+                summary.length,
+
+            staff:
+
+                summary
+
+        }
+
+    });
+
+    /*----------------------------------
+      Metadata
+    ----------------------------------*/
+
+    result.success =
+
+        true;
+
+    result.intent =
+
+        StaffConstants.INTENTS.STAFF_SUMMARY;
+
+    result.confidence =
+
+        response.confidence ||
+
+        1;
+
+    result.source =
+
+        response.source ||
+
+        "LOCAL";
+
+    result.message =
+
+        "Staff summary formatted successfully.";
+
+    return result;
+
+};
+ /*=========================================================
+ FORMAT JURISDICTION SUMMARY
+=========================================================*/
+
+StaffFormatter.formatJurisdictionSummary = function (
+
+    response
+
+) {
+
+    const result =
+
+        StaffFormatter.createResponse(
+
+            response
+
+        );
+
+    /*----------------------------------
+      Validate
+    ----------------------------------*/
+
+    if (
+
+        !response ||
+
+        !response.success ||
+
+        !Array.isArray(
+
+            response.data
+
+        )
+
+    ) {
+
+        result.message =
+
+            response?.message ||
+
+            "Jurisdiction summary not available.";
+
+        return result;
+
+    }
+
+    const summary =
+
+        response.data;
+
+    /*----------------------------------
+      Markdown
+    ----------------------------------*/
+
+    const lines = [
+
+        "# 🌳 JURISDICTION SUMMARY",
+
+        "",
+
+        "**Total Jurisdictions:** " +
+
+            summary.length,
+
+        ""
+
+    ];
+
+    summary.forEach(
+
+        function (
+
+            item,
+
+            index
+
+        ) {
+
+            lines.push(
+
+                "## " +
+
+                (
+
+                    index + 1
+
+                )
+
+            );
+
+            lines.push(
+
+                "**Circle:** " +
+
+                (
+
+                    item.circle ||
+
+                    "-"
+
+                )
+
+            );
+
+            lines.push(
+
+                "**Division:** " +
+
+                (
+
+                    item.division ||
+
+                    "-"
+
+                )
+
+            );
+
+            lines.push(
+
+                "**Range:** " +
+
+                (
+
+                    item.range ||
+
+                    "-"
+
+                )
+
+            );
+
+            lines.push(
+
+                "**Beat:** " +
+
+                (
+
+                    item.beat ||
+
+                    "-"
+
+                )
+
+            );
+
+            lines.push(
+
+                "**Total Staff:** " +
+
+                (
+
+                    item.totalStaff ??
+
+                    0
+
+                )
+
+            );
+
+            lines.push(
+
+                "**Active Staff:** " +
+
+                (
+
+                    item.activeStaff ??
+
+                    0
+
+                )
+
+            );
+
+            lines.push(
+
+                "**Inactive Staff:** " +
+
+                (
+
+                    item.inactiveStaff ??
+
+                    0
+
+                )
+
+            );
+
+            lines.push(
+
+                "**Moving Staff:** " +
+
+                (
+
+                    item.movingStaff ??
+
+                    0
+
+                )
+
+            );
+
+            lines.push(
+
+                "**Stationary Staff:** " +
+
+                (
+
+                    item.stationaryStaff ??
+
+                    0
+
+                )
+
+            );
+
+            lines.push("");
+
+        }
+
+    );
+
+    result.markdown =
+
+        lines.join(
+
+            "\n"
+
+        );
+
+    /*----------------------------------
+      Card
+    ----------------------------------*/
+
+    result.cards.push({
+
+        type:
+
+            "jurisdiction-summary",
+
+        title:
+
+            "Jurisdiction Summary",
+
+        data: {
+
+            total:
+
+                summary.length,
+
+            jurisdictions:
+
+                summary
+
+        }
+
+    });
+
+    /*----------------------------------
+      Section
+    ----------------------------------*/
+
+    result.sections.push({
+
+        title:
+
+            "Jurisdiction Summary",
+
+        data: {
+
+            total:
+
+                summary.length,
+
+            jurisdictions:
+
+                summary
+
+        }
+
+    });
+
+    /*----------------------------------
+      Metadata
+    ----------------------------------*/
+
+    result.success =
+
+        true;
+
+    result.intent =
+
+        StaffConstants.INTENTS.STAFF_JURISDICTION_SUMMARY;
+
+    result.confidence =
+
+        response.confidence ||
+
+        1;
+
+    result.source =
+
+        response.source ||
+
+        "LOCAL";
+
+    result.message =
+
+        "Jurisdiction summary formatted successfully.";
+
+    return result;
+
+};
+ /*=========================================================
+ FORMAT DESIGNATION SUMMARY
+=========================================================*/
+
+StaffFormatter.formatDesignationSummary = function (
+
+    response
+
+) {
+
+    const result =
+
+        StaffFormatter.createResponse(
+
+            response
+
+        );
+
+    /*----------------------------------
+      Validate
+    ----------------------------------*/
+
+    if (
+
+        !response ||
+
+        !response.success ||
+
+        !Array.isArray(
+
+            response.data
+
+        )
+
+    ) {
+
+        result.message =
+
+            response?.message ||
+
+            "Designation summary not available.";
+
+        return result;
+
+    }
+
+    const summary =
+
+        response.data;
+
+    /*----------------------------------
+      Markdown
+    ----------------------------------*/
+
+    const lines = [
+
+        "# 👥 DESIGNATION SUMMARY",
+
+        "",
+
+        "**Total Designations:** " +
+
+            summary.length,
+
+        ""
+
+    ];
+
+    summary.forEach(
+
+        function (
+
+            item,
+
+            index
+
+        ) {
+
+            lines.push(
+
+                "## " +
+
+                (
+
+                    index + 1
+
+                ) +
+
+                ". " +
+
+                (
+
+                    item.designation ||
+
+                    "-"
+
+                )
+
+            );
+
+            lines.push(
+
+                "**Total Staff:** " +
+
+                (
+
+                    item.totalStaff ??
+
+                    0
+
+                )
+
+            );
+
+            lines.push(
+
+                "**Active Staff:** " +
+
+                (
+
+                    item.activeStaff ??
+
+                    0
+
+                )
+
+            );
+
+            lines.push(
+
+                "**Inactive Staff:** " +
+
+                (
+
+                    item.inactiveStaff ??
+
+                    0
+
+                )
+
+            );
+
+            lines.push(
+
+                "**Moving Staff:** " +
+
+                (
+
+                    item.movingStaff ??
+
+                    0
+
+                )
+
+            );
+
+            lines.push(
+
+                "**Stationary Staff:** " +
+
+                (
+
+                    item.stationaryStaff ??
+
+                    0
+
+                )
+
+            );
+
+            lines.push(
+
+                "**Distance Covered:** " +
+
+                (
+
+                    item.totalDistanceKm ??
+
+                    0
+
+                ) +
+
+                " km"
+
+            );
+
+            lines.push(
+
+                "**Patrol Points:** " +
+
+                (
+
+                    item.totalPatrolPoints ??
+
+                    0
+
+                )
+
+            );
+
+            lines.push("");
+
+        }
+
+    );
+
+    result.markdown =
+
+        lines.join(
+
+            "\n"
+
+        );
+
+    /*----------------------------------
+      Card
+    ----------------------------------*/
+
+    result.cards.push({
+
+        type:
+
+            "designation-summary",
+
+        title:
+
+            "Designation Summary",
+
+        data: {
+
+            total:
+
+                summary.length,
+
+            designations:
+
+                summary
+
+        }
+
+    });
+
+    /*----------------------------------
+      Section
+    ----------------------------------*/
+
+    result.sections.push({
+
+        title:
+
+            "Designation Summary",
+
+        data: {
+
+            total:
+
+                summary.length,
+
+            designations:
+
+                summary
+
+        }
+
+    });
+
+    /*----------------------------------
+      Metadata
+    ----------------------------------*/
+
+    result.success =
+
+        true;
+
+    result.intent =
+
+        StaffConstants.INTENTS.STAFF_DESIGNATION_SUMMARY;
+
+    result.confidence =
+
+        response.confidence ||
+
+        1;
+
+    result.source =
+
+        response.source ||
+
+        "LOCAL";
+
+    result.message =
+
+        "Designation summary formatted successfully.";
+
+    return result;
+
+};
+ /*=========================================================
+ FORMAT CIRCLE DIRECTORY
+=========================================================*/
+
+StaffFormatter.formatCircleDirectory = function (
+
+    response
+
+) {
+
+    const result =
+
+        StaffFormatter.createResponse(
+
+            response
+
+        );
+
+    /*----------------------------------
+      Validate
+    ----------------------------------*/
+
+    if (
+
+        !response ||
+
+        !response.success ||
+
+        !Array.isArray(
+
+            response.data
+
+        )
+
+    ) {
+
+        result.message =
+
+            response?.message ||
+
+            "Circle directory not available.";
+
+        return result;
+
+    }
+
+    const directory =
+
+        response.data;
+
+    /*----------------------------------
+      Markdown
+    ----------------------------------*/
+
+    const lines = [
+
+        "# 🌳 CIRCLE DIRECTORY",
+
+        "",
+
+        "**Total Circles:** " +
+
+            directory.length,
+
+        ""
+
+    ];
+
+    directory.forEach(
+
+        function (
+
+            group,
+
+            index
+
+        ) {
+
+            lines.push(
+
+                "## " +
+
+                (
+
+                    index + 1
+
+                ) +
+
+                ". " +
+
+                (
+
+                    group.circle ||
+
+                    "UNASSIGNED"
+
+                )
+
+            );
+
+            lines.push(
+
+                "**Staff Count:** " +
+
+                (
+
+                    group.totalStaff ||
+
+                    0
+
+                )
+
+            );
+
+            lines.push("");
+
+            (
+
+                group.staff ||
+
+                []
+
+            ).forEach(
+
+                function (
+
+                    staff
+
+                ) {
+
+                    lines.push(
+
+                        "- **" +
+
+                        (
+
+                            staff.name ||
+
+                            "-"
+
+                        ) +
+
+                        "** (" +
+
+                        (
+
+                            staff.designation ||
+
+                            "-"
+
+                        ) +
+
+                        ")"
+
+                    );
+
+                }
+
+            );
+
+            lines.push("");
+
+        }
+
+    );
+
+    result.markdown =
+
+        lines.join(
+
+            "\n"
+
+        );
+
+    /*----------------------------------
+      Card
+    ----------------------------------*/
+
+    result.cards.push({
+
+        type:
+
+            "circle-directory",
+
+        title:
+
+            "Circle Directory",
+
+        data: {
+
+            total:
+
+                directory.length,
+
+            circles:
+
+                directory
+
+        }
+
+    });
+
+    /*----------------------------------
+      Section
+    ----------------------------------*/
+
+    result.sections.push({
+
+        title:
+
+            "Circle Directory",
+
+        data: {
+
+            total:
+
+                directory.length,
+
+            circles:
+
+                directory
+
+        }
+
+    });
+
+    /*----------------------------------
+      Metadata
+    ----------------------------------*/
+
+    result.success =
+
+        true;
+
+    result.intent =
+
+        StaffConstants.INTENTS.STAFF_CIRCLE_DIRECTORY;
+
+    result.confidence =
+
+        response.confidence ||
+
+        1;
+
+    result.source =
+
+        response.source ||
+
+        "LOCAL";
+
+    result.message =
+
+        "Circle directory formatted successfully.";
+
+    return result;
+
+};
+ /*=========================================================
+ FORMAT DIVISION DIRECTORY
+=========================================================*/
+
+StaffFormatter.formatDivisionDirectory = function (
+
+    response
+
+) {
+
+    const result =
+
+        StaffFormatter.createResponse(
+
+            response
+
+        );
+
+    /*----------------------------------
+      Validate
+    ----------------------------------*/
+
+    if (
+
+        !response ||
+
+        !response.success ||
+
+        !Array.isArray(
+
+            response.data
+
+        )
+
+    ) {
+
+        result.message =
+
+            response?.message ||
+
+            "Division directory not available.";
+
+        return result;
+
+    }
+
+    const directory =
+
+        response.data;
+
+    /*----------------------------------
+      Markdown
+    ----------------------------------*/
+
+    const lines = [
+
+        "# 🌲 DIVISION DIRECTORY",
+
+        "",
+
+        "**Total Divisions:** " +
+
+            directory.length,
+
+        ""
+
+    ];
+
+    directory.forEach(
+
+        function (
+
+            group,
+
+            index
+
+        ) {
+
+            lines.push(
+
+                "## " +
+
+                (
+
+                    index + 1
+
+                ) +
+
+                ". " +
+
+                (
+
+                    group.division ||
+
+                    "UNASSIGNED"
+
+                )
+
+            );
+
+            lines.push(
+
+                "**Staff Count:** " +
+
+                (
+
+                    group.totalStaff ||
+
+                    0
+
+                )
+
+            );
+
+            lines.push("");
+
+            (
+
+                group.staff ||
+
+                []
+
+            ).forEach(
+
+                function (
+
+                    staff
+
+                ) {
+
+                    lines.push(
+
+                        "- **" +
+
+                        (
+
+                            staff.name ||
+
+                            "-"
+
+                        ) +
+
+                        "** (" +
+
+                        (
+
+                            staff.designation ||
+
+                            "-"
+
+                        ) +
+
+                        ")"
+
+                    );
+
+                }
+
+            );
+
+            lines.push("");
+
+        }
+
+    );
+
+    result.markdown =
+
+        lines.join(
+
+            "\n"
+
+        );
+
+    /*----------------------------------
+      Card
+    ----------------------------------*/
+
+    result.cards.push({
+
+        type:
+
+            "division-directory",
+
+        title:
+
+            "Division Directory",
+
+        data: {
+
+            total:
+
+                directory.length,
+
+            divisions:
+
+                directory
+
+        }
+
+    });
+
+    /*----------------------------------
+      Section
+    ----------------------------------*/
+
+    result.sections.push({
+
+        title:
+
+            "Division Directory",
+
+        data: {
+
+            total:
+
+                directory.length,
+
+            divisions:
+
+                directory
+
+        }
+
+    });
+
+    /*----------------------------------
+      Metadata
+    ----------------------------------*/
+
+    result.success =
+
+        true;
+
+    result.intent =
+
+        StaffConstants.INTENTS.STAFF_DIVISION_DIRECTORY;
+
+    result.confidence =
+
+        response.confidence ||
+
+        1;
+
+    result.source =
+
+        response.source ||
+
+        "LOCAL";
+
+    result.message =
+
+        "Division directory formatted successfully.";
+
+    return result;
+
+};
+
+ /*=========================================================
+ FORMAT RANGE DIRECTORY
+=========================================================*/
+
+StaffFormatter.formatRangeDirectory = function (
+
+    response
+
+) {
+
+    const result =
+
+        StaffFormatter.createResponse(
+
+            response
+
+        );
+
+    /*----------------------------------
+      Validate
+    ----------------------------------*/
+
+    if (
+
+        !response ||
+
+        !response.success ||
+
+        !Array.isArray(
+
+            response.data
+
+        )
+
+    ) {
+
+        result.message =
+
+            response?.message ||
+
+            "Range directory not available.";
+
+        return result;
+
+    }
+
+    const directory =
+
+        response.data;
+
+    /*----------------------------------
+      Markdown
+    ----------------------------------*/
+
+    const lines = [
+
+        "# 🌲 RANGE DIRECTORY",
+
+        "",
+
+        "**Total Ranges:** " +
+
+            directory.length,
+
+        ""
+
+    ];
+
+    directory.forEach(
+
+        function (
+
+            group,
+
+            index
+
+        ) {
+
+            lines.push(
+
+                "## " +
+
+                (
+
+                    index + 1
+
+                ) +
+
+                ". " +
+
+                (
+
+                    group.range ||
+
+                    "UNASSIGNED"
+
+                )
+
+            );
+
+            lines.push(
+
+                "**Staff Count:** " +
+
+                (
+
+                    group.totalStaff ||
+
+                    0
+
+                )
+
+            );
+
+            lines.push("");
+
+            (
+
+                group.staff ||
+
+                []
+
+            ).forEach(
+
+                function (
+
+                    staff
+
+                ) {
+
+                    lines.push(
+
+                        "- **" +
+
+                        (
+
+                            staff.name ||
+
+                            "-"
+
+                        ) +
+
+                        "** (" +
+
+                        (
+
+                            staff.designation ||
+
+                            "-"
+
+                        ) +
+
+                        ")"
+
+                    );
+
+                }
+
+            );
+
+            lines.push("");
+
+        }
+
+    );
+
+    result.markdown =
+
+        lines.join(
+
+            "\n"
+
+        );
+
+    /*----------------------------------
+      Card
+    ----------------------------------*/
+
+    result.cards.push({
+
+        type:
+
+            "range-directory",
+
+        title:
+
+            "Range Directory",
+
+        data: {
+
+            total:
+
+                directory.length,
+
+            ranges:
+
+                directory
+
+        }
+
+    });
+
+    /*----------------------------------
+      Section
+    ----------------------------------*/
+
+    result.sections.push({
+
+        title:
+
+            "Range Directory",
+
+        data: {
+
+            total:
+
+                directory.length,
+
+            ranges:
+
+                directory
+
+        }
+
+    });
+
+    /*----------------------------------
+      Metadata
+    ----------------------------------*/
+
+    result.success =
+
+        true;
+
+    result.intent =
+
+        StaffConstants.INTENTS.STAFF_RANGE_DIRECTORY;
+
+    result.confidence =
+
+        response.confidence ||
+
+        1;
+
+    result.source =
+
+        response.source ||
+
+        "LOCAL";
+
+    result.message =
+
+        "Range directory formatted successfully.";
+
+    return result;
+
+};
+ /*=========================================================
+ FORMAT BEAT DIRECTORY
+=========================================================*/
+
+StaffFormatter.formatBeatDirectory = function (
+
+    response
+
+) {
+
+    const result =
+
+        StaffFormatter.createResponse(
+
+            response
+
+        );
+
+    /*----------------------------------
+      Validate
+    ----------------------------------*/
+
+    if (
+
+        !response ||
+
+        !response.success ||
+
+        !Array.isArray(
+
+            response.data
+
+        )
+
+    ) {
+
+        result.message =
+
+            response?.message ||
+
+            "Beat directory not available.";
+
+        return result;
+
+    }
+
+    const directory =
+
+        response.data;
+
+    /*----------------------------------
+      Markdown
+    ----------------------------------*/
+
+    const lines = [
+
+        "# 🌿 BEAT DIRECTORY",
+
+        "",
+
+        "**Total Beats:** " +
+
+            directory.length,
+
+        ""
+
+    ];
+
+    directory.forEach(
+
+        function (
+
+            group,
+
+            index
+
+        ) {
+
+            lines.push(
+
+                "## " +
+
+                (
+
+                    index + 1
+
+                ) +
+
+                ". " +
+
+                (
+
+                    group.beat ||
+
+                    "UNASSIGNED"
+
+                )
+
+            );
+
+            lines.push(
+
+                "**Staff Count:** " +
+
+                (
+
+                    group.totalStaff ||
+
+                    0
+
+                )
+
+            );
+
+            lines.push("");
+
+            (
+
+                group.staff ||
+
+                []
+
+            ).forEach(
+
+                function (
+
+                    staff
+
+                ) {
+
+                    lines.push(
+
+                        "- **" +
+
+                        (
+
+                            staff.name ||
+
+                            "-"
+
+                        ) +
+
+                        "** (" +
+
+                        (
+
+                            staff.designation ||
+
+                            "-"
+
+                        ) +
+
+                        ")"
+
+                    );
+
+                }
+
+            );
+
+            lines.push("");
+
+        }
+
+    );
+
+    result.markdown =
+
+        lines.join(
+
+            "\n"
+
+        );
+
+    /*----------------------------------
+      Card
+    ----------------------------------*/
+
+    result.cards.push({
+
+        type:
+
+            "beat-directory",
+
+        title:
+
+            "Beat Directory",
+
+        data: {
+
+            total:
+
+                directory.length,
+
+            beats:
+
+                directory
+
+        }
+
+    });
+
+    /*----------------------------------
+      Section
+    ----------------------------------*/
+
+    result.sections.push({
+
+        title:
+
+            "Beat Directory",
+
+        data: {
+
+            total:
+
+                directory.length,
+
+            beats:
+
+                directory
+
+        }
+
+    });
+
+    /*----------------------------------
+      Metadata
+    ----------------------------------*/
+
+    result.success =
+
+        true;
+
+    result.intent =
+
+        StaffConstants.INTENTS.STAFF_BEAT_DIRECTORY;
+
+    result.confidence =
+
+        response.confidence ||
+
+        1;
+
+    result.source =
+
+        response.source ||
+
+        "LOCAL";
+
+    result.message =
+
+        "Beat directory formatted successfully.";
+
+    return result;
+
+};
+ /*=========================================================
+ FORMAT DESIGNATION DIRECTORY
+=========================================================*/
+
+StaffFormatter.formatDesignationDirectory = function (
+
+    response
+
+) {
+
+    const result =
+
+        StaffFormatter.createResponse(
+
+            response
+
+        );
+
+    /*----------------------------------
+      Validate
+    ----------------------------------*/
+
+    if (
+
+        !response ||
+
+        !response.success ||
+
+        !Array.isArray(
+
+            response.data
+
+        )
+
+    ) {
+
+        result.message =
+
+            response?.message ||
+
+            "Designation directory not available.";
+
+        return result;
+
+    }
+
+    const directory =
+
+        response.data;
+
+    /*----------------------------------
+      Markdown
+    ----------------------------------*/
+
+    const lines = [
+
+        "# 👤 DESIGNATION DIRECTORY",
+
+        "",
+
+        "**Total Designations:** " +
+
+            directory.length,
+
+        ""
+
+    ];
+
+    directory.forEach(
+
+        function (
+
+            group,
+
+            index
+
+        ) {
+
+            lines.push(
+
+                "## " +
+
+                (
+
+                    index + 1
+
+                ) +
+
+                ". " +
+
+                (
+
+                    group.designation ||
+
+                    "UNASSIGNED"
+
+                )
+
+            );
+
+            lines.push(
+
+                "**Staff Count:** " +
+
+                (
+
+                    group.totalStaff ||
+
+                    0
+
+                )
+
+            );
+
+            lines.push("");
+
+            (
+
+                group.staff ||
+
+                []
+
+            ).forEach(
+
+                function (
+
+                    staff
+
+                ) {
+
+                    lines.push(
+
+                        "- **" +
+
+                        (
+
+                            staff.name ||
+
+                            "-"
+
+                        ) +
+
+                        "** (" +
+
+                        (
+
+                            staff.role ||
+
+                            "-"
+
+                        ) +
+
+                        ")"
+
+                    );
+
+                }
+
+            );
+
+            lines.push("");
+
+        }
+
+    );
+
+    result.markdown =
+
+        lines.join(
+
+            "\n"
+
+        );
+
+    /*----------------------------------
+      Card
+    ----------------------------------*/
+
+    result.cards.push({
+
+        type:
+
+            "designation-directory",
+
+        title:
+
+            "Designation Directory",
+
+        data: {
+
+            total:
+
+                directory.length,
+
+            designations:
+
+                directory
+
+        }
+
+    });
+
+    /*----------------------------------
+      Section
+    ----------------------------------*/
+
+    result.sections.push({
+
+        title:
+
+            "Designation Directory",
+
+        data: {
+
+            total:
+
+                directory.length,
+
+            designations:
+
+                directory
+
+        }
+
+    });
+
+    /*----------------------------------
+      Metadata
+    ----------------------------------*/
+
+    result.success =
+
+        true;
+
+    result.intent =
+
+        StaffConstants.INTENTS.STAFF_DESIGNATION_DIRECTORY;
+
+    result.confidence =
+
+        response.confidence ||
+
+        1;
+
+    result.source =
+
+        response.source ||
+
+        "LOCAL";
+
+    result.message =
+
+        "Designation directory formatted successfully.";
+
+    return result;
+
+};
+ /*=========================================================
+ FORMAT ACTIVE STAFF COUNT
+=========================================================*/
+
+StaffFormatter.formatActiveStaffCount = function (
+
+    response
+
+) {
+
+    const result =
+
+        StaffFormatter.createResponse(
+
+            response
+
+        );
+
+    /*----------------------------------
+      Validate
+    ----------------------------------*/
+
+    if (
+
+        !response ||
+
+        !response.success ||
+
+        !response.data
+
+    ) {
+
+        result.message =
+
+            response?.message ||
+
+            "Active staff count not available.";
+
+        return result;
+
+    }
+
+    const count =
+
+        response.data.count ??
+
+        0;
+
+    /*----------------------------------
+      Markdown
+    ----------------------------------*/
+
+    result.markdown = [
+
+        "# 🟢 ACTIVE STAFF",
+
+        "",
+
+        "**Active Staff Count:** " +
+
+            count
+
+    ].join(
+
+        "\n"
+
+    );
+
+    /*----------------------------------
+      Card
+    ----------------------------------*/
+
+    result.cards.push({
+
+        type:
+
+            "active-staff-count",
+
+        title:
+
+            "Active Staff",
+
+        data: {
+
+            count:
+
+                count
+
+        }
+
+    });
+
+    /*----------------------------------
+      Section
+    ----------------------------------*/
+
+    result.sections.push({
+
+        title:
+
+            "Active Staff",
+
+        data: {
+
+            count:
+
+                count
+
+        }
+
+    });
+
+    /*----------------------------------
+      Metadata
+    ----------------------------------*/
+
+    result.success =
+
+        true;
+
+    result.intent =
+
+        StaffConstants.INTENTS.ACTIVE_STAFF_COUNT;
+
+    result.confidence =
+
+        response.confidence ||
+
+        1;
+
+    result.source =
+
+        response.source ||
+
+        "LOCAL";
+
+    result.message =
+
+        "Active staff count formatted successfully.";
+
+    return result;
+
+};
+ /*=========================================================
+ FORMAT ACTIVE STAFF LIST
+=========================================================*/
+
+StaffFormatter.formatActiveStaffList = function (
+
+    response
+
+) {
+
+    const result =
+
+        StaffFormatter.createResponse(
+
+            response
+
+        );
+
+    /*----------------------------------
+      Validate
+    ----------------------------------*/
+
+    if (
+
+        !response ||
+
+        !response.success ||
+
+        !response.data
+
+    ) {
+
+        result.message =
+
+            response?.message ||
+
+            "Active staff list not available.";
+
+        return result;
+
+    }
+
+    const staff =
+
+        response.data.staff ||
+
+        [];
+
+    /*----------------------------------
+      Markdown
+    ----------------------------------*/
+
+    const lines = [
+
+        "# 🟢 ACTIVE STAFF LIST",
+
+        "",
+
+        "**Total Active Staff:** " +
+
+            (
+
+                response.data.count ??
+
+                staff.length
+
+            ),
+
+        ""
+
+    ];
+
+    staff.forEach(
+
+        function (
+
+            profile,
+
+            index
+
+        ) {
+
+            lines.push(
+
+                "## " +
+
+                (
+
+                    index + 1
+
+                ) +
+
+                ". " +
+
+                (
+
+                    profile.identity?.name ||
+
+                    "-"
+
+                )
+
+            );
+
+            lines.push(
+
+                "**Designation:** " +
+
+                (
+
+                    profile.identity?.designation ||
+
+                    "-"
+
+                )
+
+            );
+
+            lines.push(
+
+                "**Duty:** " +
+
+                (
+
+                    profile.assignment?.dutyType ||
+
+                    "-"
+
+                )
+
+            );
+
+            lines.push(
+
+                "**Beat:** " +
+
+                (
+
+                    profile.posting?.beat ||
+
+                    "-"
+
+                )
+
+            );
+
+            lines.push("");
+
+        }
+
+    );
+
+    result.markdown =
+
+        lines.join(
+
+            "\n"
+
+        );
+
+    /*----------------------------------
+      Card
+    ----------------------------------*/
+
+    result.cards.push({
+
+        type:
+
+            "active-staff-list",
+
+        title:
+
+            "Active Staff",
+
+        data: {
+
+            count:
+
+                response.data.count ??
+
+                staff.length,
+
+            staff:
+
+                staff
+
+        }
+
+    });
+
+    /*----------------------------------
+      Section
+    ----------------------------------*/
+
+    result.sections.push({
+
+        title:
+
+            "Active Staff",
+
+        data: {
+
+            count:
+
+                response.data.count ??
+
+                staff.length,
+
+            staff:
+
+                staff
+
+        }
+
+    });
+
+    /*----------------------------------
+      Metadata
+    ----------------------------------*/
+
+    result.success =
+
+        true;
+
+    result.intent =
+
+        StaffConstants.INTENTS.ACTIVE_STAFF_LIST;
+
+    result.confidence =
+
+        response.confidence ||
+
+        1;
+
+    result.source =
+
+        response.source ||
+
+        "LOCAL";
+
+    result.message =
+
+        "Active staff list formatted successfully.";
+
+    return result;
+
+};
+ /*=========================================================
+ FORMAT INACTIVE STAFF LIST
+=========================================================*/
+
+StaffFormatter.formatInactiveStaffList = function (
+
+    response
+
+) {
+
+    const result =
+
+        StaffFormatter.createResponse(
+
+            response
+
+        );
+
+    /*----------------------------------
+      Validate
+    ----------------------------------*/
+
+    if (
+
+        !response ||
+
+        !response.success ||
+
+        !response.data
+
+    ) {
+
+        result.message =
+
+            response?.message ||
+
+            "Inactive staff list not available.";
+
+        return result;
+
+    }
+
+    const staff =
+
+        response.data.staff ||
+
+        [];
+
+    /*----------------------------------
+      Markdown
+    ----------------------------------*/
+
+    const lines = [
+
+        "# ⚪ INACTIVE STAFF LIST",
+
+        "",
+
+        "**Total Inactive Staff:** " +
+
+            (
+
+                response.data.count ??
+
+                staff.length
+
+            ),
+
+        ""
+
+    ];
+
+    staff.forEach(
+
+        function (
+
+            profile,
+
+            index
+
+        ) {
+
+            lines.push(
+
+                "## " +
+
+                (
+
+                    index + 1
+
+                ) +
+
+                ". " +
+
+                (
+
+                    profile.identity?.name ||
+
+                    "-"
+
+                )
+
+            );
+
+            lines.push(
+
+                "**Designation:** " +
+
+                (
+
+                    profile.identity?.designation ||
+
+                    "-"
+
+                )
+
+            );
+
+            lines.push(
+
+                "**Last Duty:** " +
+
+                (
+
+                    profile.assignment?.lastDutyEnd ||
+
+                    "-"
+
+                )
+
+            );
+
+            lines.push("");
+
+        }
+
+    );
+
+    result.markdown =
+
+        lines.join(
+
+            "\n"
+
+        );
+
+    /*----------------------------------
+      Card
+    ----------------------------------*/
+
+    result.cards.push({
+
+        type:
+
+            "inactive-staff-list",
+
+        title:
+
+            "Inactive Staff",
+
+        data: {
+
+            count:
+
+                response.data.count ??
+
+                staff.length,
+
+            staff:
+
+                staff
+
+        }
+
+    });
+
+    /*----------------------------------
+      Section
+    ----------------------------------*/
+
+    result.sections.push({
+
+        title:
+
+            "Inactive Staff",
+
+        data: {
+
+            count:
+
+                response.data.count ??
+
+                staff.length,
+
+            staff:
+
+                staff
+
+        }
+
+    });
+
+    /*----------------------------------
+      Metadata
+    ----------------------------------*/
+
+    result.success =
+
+        true;
+
+    result.intent =
+
+        StaffConstants.INTENTS.INACTIVE_STAFF_LIST;
+
+    result.confidence =
+
+        response.confidence ||
+
+        1;
+
+    result.source =
+
+        response.source ||
+
+        "LOCAL";
+
+    result.message =
+
+        "Inactive staff list formatted successfully.";
+
+    return result;
+
+};
+ /*=========================================================
+ FORMAT DUTY SUMMARY
+=========================================================*/
+
+StaffFormatter.formatDutySummary = function (
+
+    response
+
+) {
+
+    const result =
+
+        StaffFormatter.createResponse(
+
+            response
+
+        );
+
+    /*----------------------------------
+      Validate
+    ----------------------------------*/
+
+    if (
+
+        !response ||
+
+        !response.success ||
+
+        !response.data
+
+    ) {
+
+        result.message =
+
+            response?.message ||
+
+            "Duty summary not available.";
+
+        return result;
+
+    }
+
+    const summary =
+
+        response.data;
+
+    /*----------------------------------
+      Markdown
+    ----------------------------------*/
+
+    result.markdown = [
+
+        "# 🚓 DUTY SUMMARY",
+
+        "",
+
+        "**Total Staff:** " +
+
+            (
+
+                summary.total ??
+
+                0
+
+            ),
+
+        "**Active Staff:** " +
+
+            (
+
+                summary.active ??
+
+                0
+
+            ),
+
+        "**Inactive Staff:** " +
+
+            (
+
+                summary.inactive ??
+
+                0
+
+            )
+
+    ].join(
+
+        "\n"
+
+    );
+
+    /*----------------------------------
+      Card
+    ----------------------------------*/
+
+    result.cards.push({
+
+        type:
+
+            "duty-summary",
+
+        title:
+
+            "Duty Summary",
+
+        data: {
+
+            total:
+
+                summary.total ??
+
+                0,
+
+            active:
+
+                summary.active ??
+
+                0,
+
+            inactive:
+
+                summary.inactive ??
+
+                0
+
+        }
+
+    });
+
+    /*----------------------------------
+      Section
+    ----------------------------------*/
+
+    result.sections.push({
+
+        title:
+
+            "Duty Summary",
+
+        data: {
+
+            total:
+
+                summary.total ??
+
+                0,
+
+            active:
+
+                summary.active ??
+
+                0,
+
+            inactive:
+
+                summary.inactive ??
+
+                0
+
+        }
+
+    });
+
+    /*----------------------------------
+      Metadata
+    ----------------------------------*/
+
+    result.success =
+
+        true;
+
+    result.intent =
+
+        StaffConstants.INTENTS.DUTY_SUMMARY;
+
+    result.confidence =
+
+        response.confidence ||
+
+        1;
+
+    result.source =
+
+        response.source ||
+
+        "LOCAL";
+
+    result.message =
+
+        "Duty summary formatted successfully.";
+
+    return result;
+
+};
+ /*=========================================================
+ FORMAT MOVING STAFF
+=========================================================*/
+
+StaffFormatter.formatMovingStaff = function (
+
+    response
+
+) {
+
+    const result =
+
+        StaffFormatter.createResponse(
+
+            response
+
+        );
+
+    /*----------------------------------
+      Validate
+    ----------------------------------*/
+
+    if (
+
+        !response ||
+
+        !response.success ||
+
+        !response.data
+
+    ) {
+
+        result.message =
+
+            response?.message ||
+
+            "Moving staff not available.";
+
+        return result;
+
+    }
+
+    const staff =
+
+        response.data.staff ||
+
+        [];
+
+    /*----------------------------------
+      Markdown
+    ----------------------------------*/
+
+    const lines = [
+
+        "# 🚶 MOVING STAFF",
+
+        "",
+
+        "**Total Moving Staff:** " +
+
+            (
+
+                response.data.count ??
+
+                staff.length
+
+            ),
+
+        ""
+
+    ];
+
+    staff.forEach(
+
+        function (
+
+            profile,
+
+            index
+
+        ) {
+
+            lines.push(
+
+                "## " +
+
+                (
+
+                    index + 1
+
+                ) +
+
+                ". " +
+
+                (
+
+                    profile.identity?.name ||
+
+                    "-"
+
+                )
+
+            );
+
+            lines.push(
+
+                "**Designation:** " +
+
+                (
+
+                    profile.identity?.designation ||
+
+                    "-"
+
+                )
+
+            );
+
+            lines.push(
+
+                "**Speed:** " +
+
+                (
+
+                    profile.gps?.speed ??
+
+                    0
+
+                ) +
+
+                " km/h"
+
+            );
+
+            lines.push(
+
+                "**Duty:** " +
+
+                (
+
+                    profile.assignment?.dutyType ||
+
+                    "-"
+
+                )
+
+            );
+
+            lines.push("");
+
+        }
+
+    );
+
+    result.markdown =
+
+        lines.join(
+
+            "\n"
+
+        );
+
+    /*----------------------------------
+      Card
+    ----------------------------------*/
+
+    result.cards.push({
+
+        type:
+
+            "moving-staff",
+
+        title:
+
+            "Moving Staff",
+
+        data: {
+
+            count:
+
+                response.data.count ??
+
+                staff.length,
+
+            staff:
+
+                staff
+
+        }
+
+    });
+
+    /*----------------------------------
+      Section
+    ----------------------------------*/
+
+    result.sections.push({
+
+        title:
+
+            "Moving Staff",
+
+        data: {
+
+            count:
+
+                response.data.count ??
+
+                staff.length,
+
+            staff:
+
+                staff
+
+        }
+
+    });
+
+    /*----------------------------------
+      Metadata
+    ----------------------------------*/
+
+    result.success =
+
+        true;
+
+    result.intent =
+
+        StaffConstants.INTENTS.MOVING_STAFF;
+
+    result.confidence =
+
+        response.confidence ||
+
+        1;
+
+    result.source =
+
+        response.source ||
+
+        "LOCAL";
+
+    result.message =
+
+        "Moving staff formatted successfully.";
+
+    return result;
+
+};
+ /*=========================================================
+ FORMAT STATIONARY STAFF
+=========================================================*/
+
+StaffFormatter.formatStationaryStaff = function (
+
+    response
+
+) {
+
+    const result =
+
+        StaffFormatter.createResponse(
+
+            response
+
+        );
+
+    /*----------------------------------
+      Validate
+    ----------------------------------*/
+
+    if (
+
+        !response ||
+
+        !response.success ||
+
+        !response.data
+
+    ) {
+
+        result.message =
+
+            response?.message ||
+
+            "Stationary staff not available.";
+
+        return result;
+
+    }
+
+    const staff =
+
+        response.data.staff ||
+
+        [];
+
+    /*----------------------------------
+      Markdown
+    ----------------------------------*/
+
+    const lines = [
+
+        "# 🛑 STATIONARY STAFF",
+
+        "",
+
+        "**Total Stationary Staff:** " +
+
+            (
+
+                response.data.count ??
+
+                staff.length
+
+            ),
+
+        ""
+
+    ];
+
+    staff.forEach(
+
+        function (
+
+            profile,
+
+            index
+
+        ) {
+
+            lines.push(
+
+                "## " +
+
+                (
+
+                    index + 1
+
+                ) +
+
+                ". " +
+
+                (
+
+                    profile.identity?.name ||
+
+                    "-"
+
+                )
+
+            );
+
+            lines.push(
+
+                "**Designation:** " +
+
+                (
+
+                    profile.identity?.designation ||
+
+                    "-"
+
+                )
+
+            );
+
+            lines.push(
+
+                "**Speed:** " +
+
+                (
+
+                    profile.gps?.speed ??
+
+                    0
+
+                ) +
+
+                " km/h"
+
+            );
+
+            lines.push(
+
+                "**Duty:** " +
+
+                (
+
+                    profile.assignment?.dutyType ||
+
+                    "-"
+
+                )
+
+            );
+
+            lines.push("");
+
+        }
+
+    );
+
+    result.markdown =
+
+        lines.join(
+
+            "\n"
+
+        );
+
+    /*----------------------------------
+      Card
+    ----------------------------------*/
+
+    result.cards.push({
+
+        type:
+
+            "stationary-staff",
+
+        title:
+
+            "Stationary Staff",
+
+        data: {
+
+            count:
+
+                response.data.count ??
+
+                staff.length,
+
+            staff:
+
+                staff
+
+        }
+
+    });
+
+    /*----------------------------------
+      Section
+    ----------------------------------*/
+
+    result.sections.push({
+
+        title:
+
+            "Stationary Staff",
+
+        data: {
+
+            count:
+
+                response.data.count ??
+
+                staff.length,
+
+            staff:
+
+                staff
+
+        }
+
+    });
+
+    /*----------------------------------
+      Metadata
+    ----------------------------------*/
+
+    result.success =
+
+        true;
+
+    result.intent =
+
+        StaffConstants.INTENTS.STATIONARY_STAFF;
+
+    result.confidence =
+
+        response.confidence ||
+
+        1;
+
+    result.source =
+
+        response.source ||
+
+        "LOCAL";
+
+    result.message =
+
+        "Stationary staff formatted successfully.";
+
+    return result;
+
+};
+ /*=========================================================
+ FORMAT WHO IS ON DUTY
+=========================================================*/
+
+StaffFormatter.formatWhoIsOnDuty = function (
+
+    response
+
+) {
+
+    const result =
+
+        StaffFormatter.createResponse(
+
+            response
+
+        );
+
+    /*----------------------------------
+      Validate
+    ----------------------------------*/
+
+    if (
+
+        !response ||
+
+        !response.success ||
+
+        !response.data
+
+    ) {
+
+        result.message =
+
+            response?.message ||
+
+            "No staff currently on duty.";
+
+        return result;
+
+    }
+
+    const staff =
+
+        response.data.staff ||
+
+        [];
+
+    /*----------------------------------
+      Markdown
+    ----------------------------------*/
+
+    const lines = [
+
+        "# 🚓 WHO IS ON DUTY",
+
+        "",
+
+        "**Total Staff On Duty:** " +
+
+            (
+
+                response.data.count ??
+
+                staff.length
+
+            ),
+
+        ""
+
+    ];
+
+    staff.forEach(
+
+        function (
+
+            profile,
+
+            index
+
+        ) {
+
+            lines.push(
+
+                "## " +
+
+                (
+
+                    index + 1
+
+                ) +
+
+                ". " +
+
+                (
+
+                    profile.identity?.name ||
+
+                    "-"
+
+                )
+
+            );
+
+            lines.push(
+
+                "**Designation:** " +
+
+                (
+
+                    profile.identity?.designation ||
+
+                    "-"
+
+                )
+
+            );
+
+            lines.push(
+
+                "**Duty Type:** " +
+
+                (
+
+                    profile.assignment?.dutyType ||
+
+                    "-"
+
+                )
+
+            );
+
+            lines.push(
+
+                "**Beat:** " +
+
+                (
+
+                    profile.posting?.beat ||
+
+                    "-"
+
+                )
+
+            );
+
+            lines.push("");
+
+        }
+
+    );
+
+    result.markdown =
+
+        lines.join(
+
+            "\n"
+
+        );
+
+    /*----------------------------------
+      Card
+    ----------------------------------*/
+
+    result.cards.push({
+
+        type:
+
+            "who-is-on-duty",
+
+        title:
+
+            "Who Is On Duty",
+
+        data: {
+
+            count:
+
+                response.data.count ??
+
+                staff.length,
+
+            staff:
+
+                staff
+
+        }
+
+    });
+
+    /*----------------------------------
+      Section
+    ----------------------------------*/
+
+    result.sections.push({
+
+        title:
+
+            "Who Is On Duty",
+
+        data: {
+
+            count:
+
+                response.data.count ??
+
+                staff.length,
+
+            staff:
+
+                staff
+
+        }
+
+    });
+
+    /*----------------------------------
+      Metadata
+    ----------------------------------*/
+
+    result.success =
+
+        true;
+
+    result.intent =
+
+        StaffConstants.INTENTS.WHO_IS_ON_DUTY;
+
+    result.confidence =
+
+        response.confidence ||
+
+        1;
+
+    result.source =
+
+        response.source ||
+
+        "LOCAL";
+
+    result.message =
+
+        "Who is on duty formatted successfully.";
+
+    return result;
+
+};/*=========================================================
+ FORMAT WHO IS PATROLLING
+=========================================================*/
+
+StaffFormatter.formatWhoIsPatrolling = function (
+
+    response
+
+) {
+
+    const result =
+
+        StaffFormatter.createResponse(
+
+            response
+
+        );
+
+    /*----------------------------------
+      Validate
+    ----------------------------------*/
+
+    if (
+
+        !response ||
+
+        !response.success ||
+
+        !response.data
+
+    ) {
+
+        result.message =
+
+            response?.message ||
+
+            "No staff currently patrolling.";
+
+        return result;
+
+    }
+
+    const staff =
+
+        response.data.staff ||
+
+        [];
+
+    /*----------------------------------
+      Markdown
+    ----------------------------------*/
+
+    const lines = [
+
+        "# 🚶 WHO IS PATROLLING",
+
+        "",
+
+        "**Total Patrolling Staff:** " +
+
+            (
+
+                response.data.count ??
+
+                staff.length
+
+            ),
+
+        ""
+
+    ];
+
+    staff.forEach(
+
+        function (
+
+            profile,
+
+            index
+
+        ) {
+
+            lines.push(
+
+                "## " +
+
+                (
+
+                    index + 1
+
+                ) +
+
+                ". " +
+
+                (
+
+                    profile.identity?.name ||
+
+                    "-"
+
+                )
+
+            );
+
+            lines.push(
+
+                "**Designation:** " +
+
+                (
+
+                    profile.identity?.designation ||
+
+                    "-"
+
+                )
+
+            );
+
+            lines.push(
+
+                "**Duty Type:** " +
+
+                (
+
+                    profile.assignment?.dutyType ||
+
+                    "-"
+
+                )
+
+            );
+
+            lines.push(
+
+                "**Beat:** " +
+
+                (
+
+                    profile.posting?.beat ||
+
+                    "-"
+
+                )
+
+            );
+
+            lines.push("");
+
+        }
+
+    );
+
+    result.markdown =
+
+        lines.join(
+
+            "\n"
+
+        );
+
+    /*----------------------------------
+      Card
+    ----------------------------------*/
+
+    result.cards.push({
+
+        type:
+
+            "who-is-patrolling",
+
+        title:
+
+            "Who Is Patrolling",
+
+        data: {
+
+            count:
+
+                response.data.count ??
+
+                staff.length,
+
+            staff:
+
+                staff
+
+        }
+
+    });
+
+    /*----------------------------------
+      Section
+    ----------------------------------*/
+
+    result.sections.push({
+
+        title:
+
+            "Who Is Patrolling",
+
+        data: {
+
+            count:
+
+                response.data.count ??
+
+                staff.length,
+
+            staff:
+
+                staff
+
+        }
+
+    });
+
+    /*----------------------------------
+      Metadata
+    ----------------------------------*/
+
+    result.success =
+
+        true;
+
+    result.intent =
+
+        StaffConstants.INTENTS.WHO_IS_PATROLLING;
+
+    result.confidence =
+
+        response.confidence ||
+
+        1;
+
+    result.source =
+
+        response.source ||
+
+        "LOCAL";
+
+    result.message =
+
+        "Who is patrolling formatted successfully.";
+
+    return result;
+
+};
+ /*=========================================================
+ MODULE INFORMATION
+=========================================================*/
+
+/*----------------------------------
+  Status
+----------------------------------*/
+
+StaffFormatter.getStatus = function () {
+
+    return {
+
+        loaded:
+
+            StaffFormatter.loaded,
+
+        loading:
+
+            StaffFormatter.loading,
+
+        version:
+
+            StaffFormatter.VERSION,
+
+        formatterCount:
+
+            Object.keys(
+
+                StaffFormatter
+
+            ).filter(
+
+                function (
+
+                    key
+
+                ) {
+
+                    return (
+
+                        typeof StaffFormatter[
+
+                            key
+
+                        ] ===
+
+                        "function" &&
+
+                        key.startsWith(
+
+                            "format"
+
+                        )
+
+                    );
+
+                }
+
+            ).length
+
+    };
+
+};
+
+/*----------------------------------
+  Reset
+----------------------------------*/
+
+StaffFormatter.reset = function () {
+
+    StaffFormatter.loaded =
+
+        false;
+
+    StaffFormatter.loading =
+
+        false;
+
+    return StaffFormatter.initialize();
+
+};
+
+/*=========================================================
+ AUTO INITIALIZATION
+=========================================================*/
+
+StaffFormatter.initialize();
+
+/*=========================================================
+ EXPORT
+=========================================================*/
+
+GG.StaffFormatter =
+
+    StaffFormatter;
+
+/*=========================================================
+ MODULE LOADED
+=========================================================*/
+
+console.log(
+
+    "✅ StaffFormatter Loaded",
+
+    StaffFormatter.VERSION
+
+);
+
+})(
+
+    window
+
+);
