@@ -738,6 +738,10 @@ StaffIntent.detect = function (
  DETECT POSTING INTENT
 =========================================================*/
 
+/*=========================================================
+  DETECT STAFF POSTING
+=========================================================*/
+
 StaffIntent.detectPostingIntent = function (
 
     result
@@ -776,6 +780,10 @@ StaffIntent.detectPostingIntent = function (
 
     }
 
+    const profile =
+
+        staff[0];
+
     const query =
 
         result.normalizedQuery;
@@ -839,48 +847,6 @@ StaffIntent.detectPostingIntent = function (
     }
 
     /*----------------------------------
-      Staff Posting
-    ----------------------------------*/
-
-    if (
-
-        hasKeyword(
-
-            KEYWORDS.STAFF_POSTING
-
-        )
-
-    ) {
-
-        result.intent =
-
-            INTENTS.STAFF_POSTING;
-
-        result.parameters.staff =
-
-            staff[0];
-
-        result.parameters.posting =
-
-            staff[0].posting ||
-
-            null;
-
-        result.confidence =
-
-            Math.max(
-
-                result.confidence,
-
-                0.97
-
-            );
-
-        return result;
-
-    }
-
-    /*----------------------------------
       Beat
     ----------------------------------*/
 
@@ -900,23 +866,17 @@ StaffIntent.detectPostingIntent = function (
 
         result.parameters.staff =
 
-            staff[0];
+            profile;
 
         result.parameters.beat =
 
-            staff[0].posting?.beat ||
+            profile.posting?.beat ||
 
             null;
 
         result.confidence =
 
-            Math.max(
-
-                result.confidence,
-
-                0.98
-
-            );
+            0.98;
 
         return result;
 
@@ -942,23 +902,17 @@ StaffIntent.detectPostingIntent = function (
 
         result.parameters.staff =
 
-            staff[0];
+            profile;
 
         result.parameters.range =
 
-            staff[0].posting?.range ||
+            profile.posting?.range ||
 
             null;
 
         result.confidence =
 
-            Math.max(
-
-                result.confidence,
-
-                0.98
-
-            );
+            0.98;
 
         return result;
 
@@ -984,23 +938,17 @@ StaffIntent.detectPostingIntent = function (
 
         result.parameters.staff =
 
-            staff[0];
+            profile;
 
         result.parameters.division =
 
-            staff[0].posting?.division ||
+            profile.posting?.division ||
 
             null;
 
         result.confidence =
 
-            Math.max(
-
-                result.confidence,
-
-                0.98
-
-            );
+            0.98;
 
         return result;
 
@@ -1026,23 +974,53 @@ StaffIntent.detectPostingIntent = function (
 
         result.parameters.staff =
 
-            staff[0];
+            profile;
 
         result.parameters.circle =
 
-            staff[0].posting?.circle ||
+            profile.posting?.circle ||
 
             null;
 
         result.confidence =
 
-            Math.max(
+            0.98;
 
-                result.confidence,
+        return result;
 
-                0.98
+    }
 
-            );
+    /*----------------------------------
+      Complete Posting
+    ----------------------------------*/
+
+    if (
+
+        hasKeyword(
+
+            KEYWORDS.STAFF_POSTING
+
+        )
+
+    ) {
+
+        result.intent =
+
+            INTENTS.STAFF_POSTING;
+
+        result.parameters.staff =
+
+            profile;
+
+        result.parameters.posting =
+
+            profile.posting ||
+
+            null;
+
+        result.confidence =
+
+            0.97;
 
         return result;
 
@@ -1056,477 +1034,274 @@ StaffIntent.detectPostingIntent = function (
 =========================================================*/
 
 StaffIntent.detectDutyIntent = function (
-
     result
-
 ) {
-
     /*----------------------------------
       Validate
     ----------------------------------*/
-
     if (
-
         !result ||
-
         !result.entities
-
     ) {
-
         return result;
-
     }
 
     const staff =
-
         result.entities.staff ||
-
         [];
 
     if (
-
         staff.length === 0
-
     ) {
-
         return result;
-
     }
 
-    const query =
+    const profile =
+        staff[0];
 
+    const query =
         result.normalizedQuery;
 
     const INTENTS =
-
         StaffConstants.INTENTS;
-
     const KEYWORDS =
-
         StaffConstants.KEYWORDS;
 
     /*----------------------------------
       Helper
     ----------------------------------*/
-
     function hasKeyword(
-
         list
-
     ) {
-
         if (
-
             !Array.isArray(
-
                 list
-
             )
-
         ) {
-
             return false;
-
         }
-
         return list.some(
-
             function (
-
                 word
-
             ) {
-
                 return query.includes(
-
                     String(
-
                         word
-
                     )
-
                     .toUpperCase()
-
                 );
-
             }
-
         );
-
-    }
-
-    /*----------------------------------
-      Generic Duty
-    ----------------------------------*/
-
-    if (
-
-        hasKeyword(
-
-            KEYWORDS.STAFF_DUTY
-
-        )
-
-    ) {
-
-        result.intent =
-
-            INTENTS.STAFF_DUTY;
-
-        result.parameters.staff =
-
-            staff[0];
-
-        result.parameters.duty =
-
-            staff[0].assignment;
-
-        result.confidence =
-
-            Math.max(
-
-                result.confidence,
-
-                0.97
-
-            );
-
-        return result;
-
     }
 
     /*----------------------------------
       Duty Status
     ----------------------------------*/
-
     if (
-
         hasKeyword(
-
             KEYWORDS.STAFF_DUTY_STATUS
-
         )
-
     ) {
-
         result.intent =
-
             INTENTS.STAFF_DUTY_STATUS;
-
         result.parameters.staff =
-
-            staff[0];
-
+            profile;
         result.parameters.status =
-
-            staff[0].assignment.status;
-
+            profile.assignment?.status || null;
         result.confidence =
-
-            Math.max(
-
-                result.confidence,
-
-                0.98
-
-            );
-
+            0.98;
         return result;
-
     }
 
     /*----------------------------------
       Duty Type
     ----------------------------------*/
-
     if (
-
         hasKeyword(
-
             KEYWORDS.STAFF_DUTY_TYPE
-
         )
-
     ) {
-
         result.intent =
-
             INTENTS.STAFF_DUTY_TYPE;
-
         result.parameters.staff =
-
-            staff[0];
-
+            profile;
         result.parameters.dutyType =
-
-            staff[0].assignment.dutyType;
-
+            profile.assignment?.dutyType || null;
         result.confidence =
-
-            Math.max(
-
-                result.confidence,
-
-                0.98
-
-            );
-
+            0.98;
         return result;
-
     }
-/*----------------------------------
-  Assignment
-----------------------------------*/
 
-if (
+    /*----------------------------------
+      Duty Started
+    ----------------------------------*/
+    if (
+        hasKeyword(
+            KEYWORDS.STAFF_DUTY_STARTED
+        )
+    ) {
+        result.intent =
+            INTENTS.STAFF_DUTY_STARTED;
+        result.parameters.staff =
+            profile;
+        result.parameters.startedAt =
+            profile.analytics?.startedAt ||
+            null;
+        result.confidence =
+            0.98;
+        return result;
+    }
 
-    hasKeyword(
+    /*----------------------------------
+      Duty Ended
+    ----------------------------------*/
+    if (
+        hasKeyword(
+            KEYWORDS.STAFF_DUTY_ENDED
+        )
+    ) {
+        result.intent =
+            INTENTS.STAFF_DUTY_ENDED;
+        result.parameters.staff =
+            profile;
+        result.parameters.endedAt =
+            profile.analytics?.endedAt ||
+            null;
+        result.confidence =
+            0.98;
+        return result;
+    }
 
-        KEYWORDS.STAFF_ASSIGNMENT
+    /*----------------------------------
+      Assignment
+    ----------------------------------*/
+    if (
+        hasKeyword(
+            KEYWORDS.STAFF_ASSIGNMENT
+        )
+    ) {
+        result.intent =
+            INTENTS.STAFF_ASSIGNMENT;
+        result.parameters.staff =
+            profile;
+        result.parameters.assignment =
+            profile.assignment || null;
+        result.parameters.assignedCompartment =
+            profile.assignment?.assignedCompartment || null;
+        result.confidence =
+            0.98;
+        return result;
+    }
 
-    )
-
-) {
-
-    result.intent =
-
-        INTENTS.STAFF_ASSIGNMENT;
-
-    result.parameters.staff =
-
-        staff[0];
-
-    result.parameters.assignment =
-
-        staff[0].assignment;
-
-    result.confidence =
-
-        Math.max(
-
-            result.confidence,
-
-            0.98
-
-        );
-
-    return result;
-
-}
     /*----------------------------------
       Duty Active
     ----------------------------------*/
-
     if (
-
-        query.includes(
-
-            "ACTIVE"
-
-        ) ||
-
-        query.includes(
-
-            "ON DUTY"
-
+        hasKeyword(
+            KEYWORDS.STAFF_DUTY_ACTIVE
         )
-
     ) {
-
         result.intent =
-
             INTENTS.STAFF_DUTY_ACTIVE;
-
         result.parameters.staff =
-
-            staff[0];
-
+            profile;
         result.parameters.dutyActive =
-
-            staff[0].assignment.dutyActive;
-
+            profile.assignment?.dutyActive || false;
         result.confidence =
-
-            Math.max(
-
-                result.confidence,
-
-                0.98
-
-            );
-
+            0.98;
         return result;
-
     }
 
     /*----------------------------------
       Who Is On Duty
     ----------------------------------*/
-
     if (
-
-        query.includes(
-
-            "WHO"
-
-        ) &&
-
-        query.includes(
-
-            "ON DUTY"
-
+        hasKeyword(
+            KEYWORDS.WHO_IS_ON_DUTY
         )
-
     ) {
-
         result.intent =
-
             INTENTS.WHO_IS_ON_DUTY;
-
         result.parameters.staff =
-
             staff.filter(
-
                 function (
-
                     s
-
                 ) {
-
                     return (
-
-                        s.assignment &&
-
-                        s.assignment.dutyActive === true
-
+                        s.assignment?.dutyActive === true
                     );
-
                 }
-
             );
-
         result.confidence =
-
-            Math.max(
-
-                result.confidence,
-
-                0.98
-
-            );
-
+            0.98;
         return result;
-
     }
 
     /*----------------------------------
       Who Is Patrolling
     ----------------------------------*/
-
     if (
-
-        query.includes(
-
-            "PATROLLING"
-
-        ) ||
-
-        query.includes(
-
-            "PATROL"
-
+        hasKeyword(
+            KEYWORDS.WHO_IS_PATROLLING
         )
-
     ) {
-
         result.intent =
-
             INTENTS.WHO_IS_PATROLLING;
-
         result.parameters.staff =
-
             staff.filter(
-
                 function (
-
                     s
-
                 ) {
-
                     return (
-
-                        s.assignment &&
-
-                        s.assignment.dutyActive === true
-
+                        s.assignment?.dutyActive === true
                     );
-
                 }
-
             );
-
         result.confidence =
-
-            Math.max(
-
-                result.confidence,
-
-                0.97
-
-            );
-
+            0.97;
         return result;
-
     }
 
     /*----------------------------------
-      Duty End
+      Last Duty
     ----------------------------------*/
-
     if (
-
-        query.includes(
-
-            "LAST DUTY"
-
-        ) ||
-
-        query.includes(
-
-            "LAST END"
-
+        hasKeyword(
+            KEYWORDS.STAFF_LAST_DUTY
         )
-
     ) {
-
         result.intent =
-
             INTENTS.STAFF_LAST_DUTY;
-
         result.parameters.staff =
-
-            staff[0];
-
+            profile;
         result.parameters.lastDutyEnd =
-
-            staff[0].duty.lastDutyEnd;
-
+            profile.assignment?.lastDutyEnd || null;
         result.confidence =
-
-            Math.max(
-
-                result.confidence,
-
-                0.96
-
-            );
-
+            0.96;
         return result;
+    }
 
+    /*----------------------------------
+      Generic Duty
+    ----------------------------------*/
+    if (
+        hasKeyword(
+            KEYWORDS.STAFF_DUTY
+        )
+    ) {
+        result.intent =
+            INTENTS.STAFF_DUTY;
+        result.parameters.staff =
+            profile;
+        result.parameters.duty =
+            profile.assignment ||
+            null;
+        result.confidence =
+            0.97;
+        return result;
     }
 
     return result;
-
 };
 
  /*=========================================================
@@ -1571,6 +1346,10 @@ StaffIntent.detectTeamIntent = function (
 
     }
 
+    const profile =
+
+        staff[0];
+
     const query =
 
         result.normalizedQuery;
@@ -1634,6 +1413,43 @@ StaffIntent.detectTeamIntent = function (
     }
 
     /*----------------------------------
+      Team Leader
+      (Specific before Generic)
+    ----------------------------------*/
+
+    if (
+
+        hasKeyword(
+
+            KEYWORDS.STAFF_LEADER
+
+        )
+
+    ) {
+
+        result.intent =
+
+            INTENTS.STAFF_LEADER;
+
+        result.parameters.staff =
+
+            profile;
+
+        result.parameters.leader =
+
+            profile.teamInfo?.leader ||
+
+            null;
+
+        result.confidence =
+
+            0.98;
+
+        return result;
+
+    }
+
+    /*----------------------------------
       Team
     ----------------------------------*/
 
@@ -1653,399 +1469,29 @@ StaffIntent.detectTeamIntent = function (
 
         result.parameters.staff =
 
-            staff[0];
+            profile;
 
         result.parameters.team =
 
-            staff[0].teamInfo.team;
+            profile.teamInfo?.team ||
+
+            null;
+
+        result.parameters.teamMembers =
+
+            profile.teamInfo?.teamMembers ||
+
+            [];
 
         result.confidence =
 
-            Math.max(
-
-                result.confidence,
-
-                0.97
-
-            );
-
-        return result;
-
-    }
-
-    /*----------------------------------
-      Team Leader
-    ----------------------------------*/
-
-    if (
-
-        hasKeyword(
-
-            KEYWORDS.STAFF_LEADER
-
-        )
-
-    ) {
-
-        result.intent =
-
-            INTENTS.STAFF_LEADER;
-
-        result.parameters.staff =
-
-            staff[0];
-
-        result.parameters.leader =
-
-            staff[0].teamInfo.leader;
-
-        result.confidence =
-
-            Math.max(
-
-                result.confidence,
-
-                0.98
-
-            );
+            0.97;
 
         return result;
 
     }
 
     return result;
-
-};
-    /*=========================================================
- CALCULATE CONFIDENCE
-=========================================================*/
-
-StaffIntent.calculateConfidence = function (
-
-    result
-
-) {
-
-    /*----------------------------------
-      Validate
-    ----------------------------------*/
-
-    if (
-
-        !result
-
-    ) {
-
-        return 0;
-
-    }
-
-    const CONF =
-
-        StaffConstants.CONFIDENCE;
-
-    let score =
-
-        0;
-
-    /*----------------------------------
-      Intent Match
-    ----------------------------------*/
-
-    if (
-
-        result.intent
-
-    ) {
-
-        score +=
-
-            CONF.PRIMARY_KEYWORD;
-
-    }
-
-    /*----------------------------------
-      Staff Match
-    ----------------------------------*/
-
-    const staffCount =
-
-        result.entities.staff.length;
-
-    if (
-
-        staffCount === 1
-
-    ) {
-
-        score +=
-
-            CONF.STAFF_NAME;
-
-    }
-
-    else if (
-
-        staffCount > 1
-
-    ) {
-
-        score +=
-
-            CONF.STAFF_NAME;
-
-        score +=
-
-            CONF.MULTIPLE_ENTITIES;
-
-    }
-
-    /*----------------------------------
-      Phone Match
-    ----------------------------------*/
-
-    if (
-
-        result.entities.phones.length >
-
-        0
-
-    ) {
-
-        score +=
-
-            CONF.PHONE;
-
-    }
-
-    /*----------------------------------
-      Role Match
-    ----------------------------------*/
-
-    if (
-
-        result.entities.roles.length >
-
-        0
-
-    ) {
-
-        score +=
-
-            CONF.ROLE;
-
-    }
-
-    /*----------------------------------
-      Designation Match
-    ----------------------------------*/
-
-    if (
-
-        result.entities.designations.length >
-
-        0
-
-    ) {
-
-        score +=
-
-            CONF.DESIGNATION;
-
-    }
-
-    /*----------------------------------
-      Posting Match
-    ----------------------------------*/
-
-    if (
-
-        result.entities.posting.length >
-
-        0
-
-    ) {
-
-        score +=
-
-            CONF.BEAT;
-
-    }
-
-    /*----------------------------------
-      Team Match
-    ----------------------------------*/
-
-    if (
-
-        result.entities.team.length >
-
-        0
-
-    ) {
-
-        score +=
-
-            CONF.TEAM;
-
-    }
-
-    /*----------------------------------
-      Duty Match
-    ----------------------------------*/
-
-    if (
-
-        result.entities.duty.length >
-
-        0
-
-    ) {
-
-        score +=
-
-            CONF.MULTIPLE_KEYWORDS;
-
-    }
-
-    /*----------------------------------
-      GPS Match
-    ----------------------------------*/
-
-    if (
-
-        result.entities.gps.length >
-
-        0
-
-    ) {
-
-        score +=
-
-            CONF.MULTIPLE_KEYWORDS;
-
-    }
-
-    /*----------------------------------
-      Keywords
-    ----------------------------------*/
-
-    if (
-
-        result.keywords.length >
-
-        1
-
-    ) {
-
-        score +=
-
-            CONF.MULTIPLE_KEYWORDS;
-
-    }
-/*----------------------------------
-  Clamp
-----------------------------------*/
-
-score =
-
-    Math.max(
-
-        0,
-
-        Math.min(
-
-            1,
-
-            score
-
-        )
-
-    );
-
-/*----------------------------------
-  Preserve Higher Confidence
-----------------------------------*/
-
-result.confidence =
-
-    Math.max(
-
-        result.confidence ||
-
-        0,
-
-        score
-
-    );   /*----------------------------------
-      Confidence Label
-    ----------------------------------*/
-
-    if (
-
-        score >=
-
-        CONF.VERY_HIGH
-
-    ) {
-
-        result.metadata.level =
-
-            "VERY_HIGH";
-
-    }
-
-    else if (
-
-        score >=
-
-        CONF.HIGH
-
-    ) {
-
-        result.metadata.level =
-
-            "HIGH";
-
-    }
-
-    else if (
-
-        score >=
-
-        CONF.GOOD
-
-    ) {
-
-        result.metadata.level =
-
-            "GOOD";
-
-    }
-
-    else if (
-
-        score >=
-
-        CONF.MEDIUM
-
-    ) {
-
-        result.metadata.level =
-
-            "MEDIUM";
-
-    }
-
-    else {
-
-        result.metadata.level =
-
-            "LOW";
-
-    }
-
-    return score;
 
 };
  /*=========================================================
@@ -2057,6 +1503,10 @@ StaffIntent.detectAnalyticsIntent = function (
     result
 
 ) {
+
+    /*----------------------------------
+      Validate
+    ----------------------------------*/
 
     if (
 
@@ -2070,6 +1520,26 @@ StaffIntent.detectAnalyticsIntent = function (
 
     }
 
+    const staff =
+
+        result.entities.staff ||
+
+        [];
+
+    if (
+
+        staff.length === 0
+
+    ) {
+
+        return result;
+
+    }
+
+    const profile =
+
+        staff[0];
+
     const query =
 
         result.normalizedQuery;
@@ -2081,6 +1551,10 @@ StaffIntent.detectAnalyticsIntent = function (
     const KEYWORDS =
 
         StaffConstants.KEYWORDS;
+
+    /*----------------------------------
+      Helper
+    ----------------------------------*/
 
     function hasKeyword(
 
@@ -2116,7 +1590,9 @@ StaffIntent.detectAnalyticsIntent = function (
 
                         word
 
-                    ).toUpperCase()
+                    )
+
+                    .toUpperCase()
 
                 );
 
@@ -2127,14 +1603,14 @@ StaffIntent.detectAnalyticsIntent = function (
     }
 
     /*----------------------------------
-      Staff Strength
+      Patrol Distance
     ----------------------------------*/
 
     if (
 
         hasKeyword(
 
-            KEYWORDS.STAFF_STRENGTH
+            KEYWORDS.STAFF_DISTANCE
 
         )
 
@@ -2142,31 +1618,35 @@ StaffIntent.detectAnalyticsIntent = function (
 
         result.intent =
 
-            INTENTS.STAFF_STRENGTH;
+            INTENTS.STAFF_DISTANCE;
+
+        result.parameters.staff =
+
+            profile;
+
+        result.parameters.distanceKm =
+
+            profile.analytics?.distanceKm ||
+
+            0;
 
         result.confidence =
 
-            Math.max(
-
-                result.confidence,
-
-                0.98
-
-            );
+            0.98;
 
         return result;
 
     }
 
     /*----------------------------------
-      Statistics
+      Patrol Points
     ----------------------------------*/
 
     if (
 
         hasKeyword(
 
-            KEYWORDS.STAFF_STATISTICS
+            KEYWORDS.STAFF_PATROL_POINTS
 
         )
 
@@ -2174,37 +1654,35 @@ StaffIntent.detectAnalyticsIntent = function (
 
         result.intent =
 
-            INTENTS.STAFF_STATISTICS;
+            INTENTS.STAFF_PATROL_POINTS;
+
+        result.parameters.staff =
+
+            profile;
+
+        result.parameters.pointCount =
+
+            profile.analytics?.pointCount ||
+
+            0;
 
         result.confidence =
 
-            Math.max(
-
-                result.confidence,
-
-                0.98
-
-            );
+            0.98;
 
         return result;
 
     }
 
     /*----------------------------------
-      Duty Summary
+      Patrol Started
     ----------------------------------*/
 
     if (
 
-        query.includes(
+        hasKeyword(
 
-            "DUTY SUMMARY"
-
-        ) ||
-
-        query.includes(
-
-            "SUMMARY"
+            KEYWORDS.STAFF_PATROL_START
 
         )
 
@@ -2212,37 +1690,35 @@ StaffIntent.detectAnalyticsIntent = function (
 
         result.intent =
 
-            INTENTS.DUTY_SUMMARY;
+            INTENTS.STAFF_PATROL_START;
+
+        result.parameters.staff =
+
+            profile;
+
+        result.parameters.startedAt =
+
+            profile.analytics?.startedAt ||
+
+            null;
 
         result.confidence =
 
-            Math.max(
-
-                result.confidence,
-
-                0.96
-
-            );
+            0.98;
 
         return result;
 
     }
 
     /*----------------------------------
-      Active Staff Count
+      Patrol Ended
     ----------------------------------*/
 
     if (
 
-        query.includes(
+        hasKeyword(
 
-            "ACTIVE STAFF"
-
-        ) ||
-
-        query.includes(
-
-            "ACTIVE COUNT"
+            KEYWORDS.STAFF_PATROL_END
 
         )
 
@@ -2250,37 +1726,35 @@ StaffIntent.detectAnalyticsIntent = function (
 
         result.intent =
 
-            INTENTS.ACTIVE_STAFF_COUNT;
+            INTENTS.STAFF_PATROL_END;
+
+        result.parameters.staff =
+
+            profile;
+
+        result.parameters.endedAt =
+
+            profile.analytics?.endedAt ||
+
+            null;
 
         result.confidence =
 
-            Math.max(
-
-                result.confidence,
-
-                0.97
-
-            );
+            0.98;
 
         return result;
 
     }
 
     /*----------------------------------
-      Team Leaders
+      Patrol Duration
     ----------------------------------*/
 
     if (
 
-        query.includes(
+        hasKeyword(
 
-            "TEAM LEADER"
-
-        ) ||
-
-        query.includes(
-
-            "TEAM LEADERS"
+            KEYWORDS.STAFF_PATROL_DURATION
 
         )
 
@@ -2288,31 +1762,41 @@ StaffIntent.detectAnalyticsIntent = function (
 
         result.intent =
 
-            INTENTS.TEAM_LEADER_LIST;
+            INTENTS.STAFF_PATROL_DURATION;
+
+        result.parameters.staff =
+
+            profile;
+
+        result.parameters.startedAt =
+
+            profile.analytics?.startedAt ||
+
+            null;
+
+        result.parameters.endedAt =
+
+            profile.analytics?.endedAt ||
+
+            null;
 
         result.confidence =
 
-            Math.max(
-
-                result.confidence,
-
-                0.96
-
-            );
+            0.98;
 
         return result;
 
     }
 
     /*----------------------------------
-      Moving Staff
+      Complete Patrol Analytics
     ----------------------------------*/
 
     if (
 
-        query.includes(
+        hasKeyword(
 
-            "MOVING"
+            KEYWORDS.STAFF_ANALYTICS
 
         )
 
@@ -2320,55 +1804,21 @@ StaffIntent.detectAnalyticsIntent = function (
 
         result.intent =
 
-            INTENTS.MOVING_STAFF;
+            INTENTS.STAFF_ANALYTICS;
+
+        result.parameters.staff =
+
+            profile;
+
+        result.parameters.analytics =
+
+            profile.analytics ||
+
+            null;
 
         result.confidence =
 
-            Math.max(
-
-                result.confidence,
-
-                0.95
-
-            );
-
-        return result;
-
-    }
-
-    /*----------------------------------
-      Stationary Staff
-    ----------------------------------*/
-
-    if (
-
-        query.includes(
-
-            "STATIONARY"
-
-        ) ||
-
-        query.includes(
-
-            "STOPPED"
-
-        )
-
-    ) {
-
-        result.intent =
-
-            INTENTS.STATIONARY_STAFF;
-
-        result.confidence =
-
-            Math.max(
-
-                result.confidence,
-
-                0.95
-
-            );
+            0.97;
 
         return result;
 
@@ -3145,7 +2595,6 @@ StaffIntent.route = async function (
     /*=========================================================
  DETECT STAFF INTENT
 =========================================================*/
-
 StaffIntent.detectStaffIntent = function (
     result
 ) {
@@ -3168,6 +2617,9 @@ StaffIntent.detectStaffIntent = function (
     ) {
         return result;
     }
+
+    const profile =
+        staff[0];
 
     const query =
         result.normalizedQuery;
@@ -3293,7 +2745,7 @@ StaffIntent.detectStaffIntent = function (
             "STAFF_PROFILE"
         );
         result.parameters.staff =
-            staff[0];
+            profile;
         result.confidence =
             0.98;
         return result;
@@ -3336,7 +2788,7 @@ if (
 
     result.parameters.staff =
 
-        staff[0];
+        profile;
 
     result.confidence =
 
@@ -3360,7 +2812,7 @@ if (
             "STAFF_LOCATION"
         );
         result.parameters.staff =
-            staff[0];
+            profile;
         result.confidence =
             0.98;
         return result;
@@ -3380,7 +2832,7 @@ if (
             "STAFF_GPS"
         );
         result.parameters.staff =
-            staff[0];
+            profile;
         result.confidence =
             0.98;
         return result;
@@ -3389,62 +2841,212 @@ if (
     /*----------------------------------
       Posting
     ----------------------------------*/
-    if (
-        hasKeyword(
-            KEYWORDS.STAFF_POSTING
-        )
-    ) {
-        result.intent =
-            INTENTS.STAFF_POSTING;
-        debugParameters(
-            "STAFF_POSTING"
-        );
-        result.parameters.staff =
-            staff[0];
-        result.confidence =
-            0.96;
-        return result;
-    }
+
+result =
+
+    StaffIntent.detectPostingIntent(
+
+        result
+
+    );
+
+if (
+
+    result.intent ===
+
+        INTENTS.STAFF_POSTING ||
+
+    result.intent ===
+
+        INTENTS.STAFF_CIRCLE ||
+
+    result.intent ===
+
+        INTENTS.STAFF_DIVISION ||
+
+    result.intent ===
+
+        INTENTS.STAFF_RANGE ||
+
+    result.intent ===
+
+        INTENTS.STAFF_BEAT
+
+) {
+
+    debugParameters(
+
+        result.intent
+
+    );
+
+    return result;
+
+}
 
     /*----------------------------------
       Duty
     ----------------------------------*/
-    if (
-        hasKeyword(
-            KEYWORDS.STAFF_DUTY
-        )
-    ) {
-        result.intent =
-            INTENTS.STAFF_DUTY;
-        debugParameters(
-            "STAFF_DUTY"
-        );
-        result.parameters.staff =
-            staff[0];
-        result.confidence =
-            0.96;
-        return result;
-    }
+
+result =
+
+    StaffIntent.detectDutyIntent(
+
+        result
+
+    );
+
+if (
+
+    result.intent ===
+
+        INTENTS.STAFF_DUTY ||
+
+    result.intent ===
+
+        INTENTS.STAFF_DUTY_STATUS ||
+
+    result.intent ===
+
+        INTENTS.STAFF_DUTY_TYPE ||
+
+    result.intent ===
+
+        INTENTS.STAFF_DUTY_STARTED ||
+
+    result.intent ===
+
+        INTENTS.STAFF_DUTY_ENDED ||
+
+    result.intent ===
+
+        INTENTS.STAFF_ASSIGNMENT
+
+) {
+
+    debugParameters(
+
+        result.intent
+
+    );
+
+    return result;
+
+}
 
     /*----------------------------------
       Team
     ----------------------------------*/
-    if (
-        hasKeyword(
-            KEYWORDS.STAFF_TEAM
-        )
-    ) {
-        result.intent =
-            INTENTS.STAFF_TEAM;
-        debugParameters(
-            "STAFF_TEAM"
-        );
-        result.parameters.staff =
-            staff[0];
-        result.confidence =
-            0.95;
-        return result;
-    }
+
+result =
+
+    StaffIntent.detectTeamIntent(
+
+        result
+
+    );
+
+if (
+
+    result.intent ===
+
+        INTENTS.STAFF_TEAM ||
+
+    result.intent ===
+
+        INTENTS.STAFF_LEADER
+
+) {
+
+    debugParameters(
+
+        result.intent
+
+    );
+
+    return result;
+
+}
+
+    /*----------------------------------
+      Patrol Analytics
+    ----------------------------------*/
+
+result =
+
+    StaffIntent.detectAnalyticsIntent(
+
+        result
+
+    );
+
+if (
+
+    result.intent ===
+
+        INTENTS.STAFF_ANALYTICS ||
+
+    result.intent ===
+
+        INTENTS.STAFF_DISTANCE ||
+
+    result.intent ===
+
+        INTENTS.STAFF_PATROL_POINTS ||
+
+    result.intent ===
+
+        INTENTS.STAFF_PATROL_START ||
+
+    result.intent ===
+
+        INTENTS.STAFF_PATROL_END ||
+
+    result.intent ===
+
+        INTENTS.STAFF_PATROL_DURATION
+
+) {
+
+    debugParameters(
+
+        result.intent
+
+    );
+
+    return result;
+
+}
+
+    /*----------------------------------
+      Strength
+    ----------------------------------*/
+
+result =
+
+    StaffIntent.detectStrengthIntent(
+
+        result
+
+    );
+
+if (
+
+    result.intent ===
+
+        INTENTS.STAFF_STRENGTH
+
+) {
+
+    debugParameters(
+
+        result.intent
+
+    );
+
+    return result;
+
+}
 
     /*----------------------------------
       Status
@@ -3460,7 +3062,7 @@ if (
             "STAFF_STATUS"
         );
         result.parameters.staff =
-            staff[0];
+            profile;
         result.confidence =
             0.95;
         return result;
@@ -3480,7 +3082,7 @@ if (
             "STAFF_ROLE"
         );
         result.parameters.staff =
-            staff[0];
+            profile;
         result.confidence =
             0.95;
         return result;
@@ -3500,7 +3102,7 @@ if (
             "STAFF_DESIGNATION"
         );
         result.parameters.staff =
-            staff[0];
+            profile;
         result.confidence =
             0.95;
         return result;
@@ -3518,7 +3120,7 @@ if (
         "STAFF_SEARCH"
     );
     result.parameters.staff =
-        staff[0];
+        profile;
     result.confidence =
         0.80;
     return result;
