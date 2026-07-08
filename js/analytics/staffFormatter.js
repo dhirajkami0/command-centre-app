@@ -35,7 +35,11 @@ if (
  MODULE
 =========================================================*/
 
-const StaffFormatter = {};
+const StaffFormatter =
+
+    GG.StaffFormatter =
+
+    GG.StaffFormatter || {};
 
 /*=========================================================
  VERSION
@@ -43,7 +47,7 @@ const StaffFormatter = {};
 
 StaffFormatter.VERSION =
 
-    "1.0.0";
+    StaffConstants.VERSION;
 
 /*=========================================================
  STATUS
@@ -72,6 +76,32 @@ StaffFormatter.lastRequest =
 StaffFormatter.lastResult =
 
     null;
+
+/*=========================================================
+ FORMATTER REGISTRY
+=========================================================*/
+
+StaffFormatter.registry =
+
+    new Map();
+
+/*=========================================================
+ STATISTICS
+=========================================================*/
+
+StaffFormatter.statistics = {
+
+    totalRequests: 0,
+
+    cacheHits: 0,
+
+    formattedResponses: 0,
+
+    formatterErrors: 0,
+
+    lastFormattedAt: null
+
+};
 
 /*=========================================================
  CLEAR CACHE
@@ -149,7 +179,7 @@ StaffFormatter.createResponse = function (
 
             version:
 
-                StaffFormatter.VERSION,
+                StaffConstants.VERSION,
 
             createdAt:
 
@@ -171,6 +201,42 @@ StaffFormatter.createResponse = function (
 
 StaffFormatter.initialize = function () {
 
+    if (
+
+        StaffFormatter.loaded
+
+    ) {
+
+        return true;
+
+    }
+
+    StaffFormatter.loading =
+
+        true;
+
+    StaffFormatter.cache.clear();
+
+    StaffFormatter.statistics.totalRequests =
+
+        0;
+
+    StaffFormatter.statistics.cacheHits =
+
+        0;
+
+    StaffFormatter.statistics.formattedResponses =
+
+        0;
+
+    StaffFormatter.statistics.formatterErrors =
+
+        0;
+
+    StaffFormatter.statistics.lastFormattedAt =
+
+        null;
+
     StaffFormatter.loaded =
 
         true;
@@ -190,6 +256,12 @@ StaffFormatter.format = function (
     response
 
 ) {
+
+    StaffFormatter.statistics.totalRequests++;
+
+    StaffFormatter.statistics.lastFormattedAt =
+
+        Date.now();
 
     StaffFormatter.lastRequest =
 
@@ -211,13 +283,11 @@ StaffFormatter.format = function (
 
             StaffFormatter.createResponse();
 
-        result.success =
-
-            false;
-
         result.message =
 
             "Invalid formatter response.";
+
+        StaffFormatter.statistics.formatterErrors++;
 
         StaffFormatter.lastResult =
 
@@ -227,9 +297,39 @@ StaffFormatter.format = function (
 
     }
 
-    /*----------------------------------
-      Route
-    ----------------------------------*/
+    const formatter =
+
+        StaffFormatter.registry.get(
+
+            response.intent
+
+        );
+
+    if (
+
+        typeof formatter ===
+
+        "function"
+
+    ) {
+
+        const result =
+
+            formatter(
+
+                response
+
+            );
+
+        StaffFormatter.statistics.formattedResponses++;
+
+        StaffFormatter.lastResult =
+
+            result;
+
+        return result;
+
+    }
 
     switch (
 
@@ -238,7 +338,19 @@ StaffFormatter.format = function (
     ) {
 
         /*=================================================
-          STAFF IDENTITY
+          SEARCH
+        =================================================*/
+
+        case StaffConstants.INTENTS.STAFF_DIRECTORY:
+
+            return StaffFormatter.formatDirectory(
+
+                response
+
+            );
+
+        /*=================================================
+          PROFILE
         =================================================*/
 
         case StaffConstants.INTENTS.STAFF_PROFILE:
@@ -274,19 +386,7 @@ StaffFormatter.format = function (
             );
 
         /*=================================================
-          STAFF DIRECTORY
-        =================================================*/
-
-        case StaffConstants.INTENTS.STAFF_DIRECTORY:
-
-            return StaffFormatter.formatDirectory(
-
-                response
-
-            );
-
-        /*=================================================
-          STAFF POSTING
+          POSTING
         =================================================*/
 
         case StaffConstants.INTENTS.STAFF_POSTING:
@@ -330,7 +430,19 @@ StaffFormatter.format = function (
             );
 
         /*=================================================
-          STAFF DUTY
+          LOCATION
+        =================================================*/
+
+        case StaffConstants.INTENTS.STAFF_LOCATION:
+
+            return StaffFormatter.formatLocation(
+
+                response
+
+            );
+
+        /*=================================================
+          DUTY
         =================================================*/
 
         case StaffConstants.INTENTS.STAFF_DUTY:
@@ -382,7 +494,7 @@ StaffFormatter.format = function (
             );
 
         /*=================================================
-          STAFF TEAM
+          TEAM
         =================================================*/
 
         case StaffConstants.INTENTS.STAFF_TEAM:
@@ -402,16 +514,8 @@ StaffFormatter.format = function (
             );
 
         /*=================================================
-          STAFF LOCATION
+          GPS
         =================================================*/
-
-        case StaffConstants.INTENTS.STAFF_LOCATION:
-
-            return StaffFormatter.formatLocation(
-
-                response
-
-            );
 
         case StaffConstants.INTENTS.STAFF_GPS:
 
@@ -422,7 +526,7 @@ StaffFormatter.format = function (
             );
 
         /*=================================================
-          STAFF PATROL ANALYTICS
+          ANALYTICS
         =================================================*/
 
         case StaffConstants.INTENTS.STAFF_ANALYTICS:
@@ -474,12 +578,148 @@ StaffFormatter.format = function (
             );
 
         /*=================================================
-          STAFF STRENGTH
+          SUMMARY
         =================================================*/
 
-        case StaffConstants.INTENTS.STAFF_STRENGTH:
+        case StaffConstants.INTENTS.STAFF_SUMMARY:
 
-            return StaffFormatter.formatStrength(
+            return StaffFormatter.formatStaffSummary(
+
+                response
+
+            );
+
+        case StaffConstants.INTENTS.STAFF_JURISDICTION_SUMMARY:
+
+            return StaffFormatter.formatJurisdictionSummary(
+
+                response
+
+            );
+
+        case StaffConstants.INTENTS.STAFF_DESIGNATION_SUMMARY:
+
+            return StaffFormatter.formatDesignationSummary(
+
+                response
+
+            );
+
+        case StaffConstants.INTENTS.STAFF_CIRCLE_DIRECTORY:
+
+            return StaffFormatter.formatCircleDirectory(
+
+                response
+
+            );
+
+        case StaffConstants.INTENTS.STAFF_DIVISION_DIRECTORY:
+
+            return StaffFormatter.formatDivisionDirectory(
+
+                response
+
+            );
+
+        case StaffConstants.INTENTS.STAFF_RANGE_DIRECTORY:
+
+            return StaffFormatter.formatRangeDirectory(
+
+                response
+
+            );
+
+        case StaffConstants.INTENTS.STAFF_BEAT_DIRECTORY:
+
+            return StaffFormatter.formatBeatDirectory(
+
+                response
+
+            );
+
+        case StaffConstants.INTENTS.STAFF_DESIGNATION_DIRECTORY:
+
+            return StaffFormatter.formatDesignationDirectory(
+
+                response
+
+            );
+
+        /*=================================================
+          STATUS
+        =================================================*/
+
+        case StaffConstants.INTENTS.ACTIVE_STAFF_COUNT:
+
+            return StaffFormatter.formatActiveStaffCount(
+
+                response
+
+            );
+
+        case StaffConstants.INTENTS.ACTIVE_STAFF_LIST:
+
+            return StaffFormatter.formatActiveStaffList(
+
+                response
+
+            );
+
+        case StaffConstants.INTENTS.INACTIVE_STAFF_LIST:
+
+            return StaffFormatter.formatInactiveStaffList(
+
+                response
+
+            );
+
+        case StaffConstants.INTENTS.DUTY_SUMMARY:
+
+            return StaffFormatter.formatDutySummary(
+
+                response
+
+            );
+
+        case StaffConstants.INTENTS.TEAM_LEADER_LIST:
+
+            return StaffFormatter.formatTeamLeaderList(
+
+                response
+
+            );
+
+        case StaffConstants.INTENTS.MOVING_STAFF:
+
+            return StaffFormatter.formatMovingStaff(
+
+                response
+
+            );
+
+        case StaffConstants.INTENTS.STATIONARY_STAFF:
+
+            return StaffFormatter.formatStationaryStaff(
+
+                response
+
+            );
+
+        /*=================================================
+          CONTROL ROOM
+        =================================================*/
+
+        case StaffConstants.INTENTS.WHO_IS_ON_DUTY:
+
+            return StaffFormatter.formatWhoIsOnDuty(
+
+                response
+
+            );
+
+        case StaffConstants.INTENTS.WHO_IS_PATROLLING:
+
+            return StaffFormatter.formatWhoIsPatrolling(
 
                 response
 
@@ -511,6 +751,8 @@ StaffFormatter.format = function (
 
                 response.intent;
 
+            StaffFormatter.statistics.formatterErrors++;
+
             StaffFormatter.lastResult =
 
                 result;
@@ -521,15 +763,8 @@ StaffFormatter.format = function (
 
     }
 
-};/*=========================================================
- FORMAT PROFILE
-=========================================================*/
-
-/*=========================================================
- FORMAT STAFF PROFILE
-=========================================================*/
-
-/*=========================================================
+};
+ /*=========================================================
  FORMAT STAFF PROFILE
 =========================================================*/
 
@@ -591,42 +826,6 @@ StaffFormatter.formatProfile = function (
 
         {};
 
-    const assignment =
-
-        profile.assignment ||
-
-        {};
-
-    const location =
-
-        profile.location ||
-
-        {};
-
-    const gps =
-
-        profile.gps ||
-
-        {};
-
-    const team =
-
-        profile.teamInfo ||
-
-        {};
-
-    const tracking =
-
-        profile.tracking ||
-
-        {};
-
-    const analytics =
-
-        profile.analytics ||
-
-        {};
-
     /*----------------------------------
       Display Name
     ----------------------------------*/
@@ -659,6 +858,16 @@ StaffFormatter.formatProfile = function (
 
             displayName,
 
+        "**Designation:** " +
+
+            (
+
+                identity.designation ||
+
+                "-"
+
+            ),
+
         "**Role:** " +
 
             (
@@ -669,15 +878,11 @@ StaffFormatter.formatProfile = function (
 
             ),
 
-        "**Designation:** " +
+        "",
 
-            (
+        "## 📞 Contact",
 
-                identity.designation ||
-
-                "-"
-
-            ),
+        "",
 
         "**Phone:** " +
 
@@ -701,7 +906,7 @@ StaffFormatter.formatProfile = function (
 
         "",
 
-        "## 📍 Posting",
+        "## 🌳 Posting",
 
         "",
 
@@ -743,262 +948,6 @@ StaffFormatter.formatProfile = function (
 
                 "-"
 
-            ),
-
-        "",
-
-        "## 🚓 Assignment",
-
-        "",
-
-        "**Compartment:** " +
-
-            (
-
-                assignment.assignedCompartment ||
-
-                "-"
-
-            ),
-
-        "**Duty Type:** " +
-
-            (
-
-                assignment.dutyType ||
-
-                "-"
-
-            ),
-
-        "**Status:** " +
-
-            (
-
-                assignment.status ||
-
-                "-"
-
-            ),
-
-        "**Duty Active:** " +
-
-            (
-
-                assignment.dutyActive
-
-                    ? "YES"
-
-                    : "NO"
-
-            ),
-
-        "",
-
-        "## 📡 Current Location",
-
-        "",
-
-        "**Location:** " +
-
-            (
-
-                location.location ||
-
-                "-"
-
-            ),
-
-        "**Latitude:** " +
-
-            (
-
-                location.lat ??
-
-                "-"
-
-            ),
-
-        "**Longitude:** " +
-
-            (
-
-                location.lon ??
-
-                "-"
-
-            ),
-
-        "",
-
-        "## 📡 GPS",
-
-        "",
-
-        "**Accuracy:** " +
-
-            (
-
-                gps.accuracy ??
-
-                "-"
-
-            ),
-
-        "**Speed:** " +
-
-            (
-
-                gps.speed ??
-
-                "-"
-
-            ),
-
-        "**Heading:** " +
-
-            (
-
-                gps.heading ??
-
-                "-"
-
-            ),
-
-        "**Last Seen:** " +
-
-            (
-
-                gps.lastSeen ||
-
-                "-"
-
-            ),
-
-        "",
-
-        "## 👥 Team",
-
-        "",
-
-        "**Leader:** " +
-
-            (
-
-                team.leader ||
-
-                "-"
-
-            ),
-
-        "**Team:** " +
-
-            (
-
-                team.team ||
-
-                "-"
-
-            ),
-
-        "**Members:** " +
-
-            (
-
-                Array.isArray(
-
-                    team.teamMembers
-
-                )
-
-                    ? team.teamMembers.length
-
-                    : 0
-
-            ),
-
-        "",
-
-        "## 📈 Patrol Analytics",
-
-        "",
-
-        "**Distance:** " +
-
-            (
-
-                analytics.distanceKm ??
-
-                0
-
-            ) +
-
-            " km",
-
-        "**GPS Points:** " +
-
-            (
-
-                analytics.pointCount ??
-
-                0
-
-            ),
-
-        "**Started:** " +
-
-            (
-
-                analytics.startedAt ||
-
-                "-"
-
-            ),
-
-        "**Ended:** " +
-
-            (
-
-                analytics.endedAt ||
-
-                "-"
-
-            ),
-
-        "",
-
-        "## 🔄 Tracking",
-
-        "",
-
-        "**Session ID:** " +
-
-            (
-
-                tracking.sessionId ||
-
-                "-"
-
-            ),
-
-        "**Source:** " +
-
-            (
-
-                tracking.source ||
-
-                "-"
-
-            ),
-
-        "**Tracking ID:** " +
-
-            (
-
-                tracking.id ||
-
-                "-"
-
             )
 
     ].join(
@@ -1021,9 +970,17 @@ StaffFormatter.formatProfile = function (
 
             displayName,
 
-        data:
+        data: {
 
-            profile
+            identity:
+
+                identity,
+
+            posting:
+
+                posting
+
+        }
 
     });
 
@@ -1037,9 +994,17 @@ StaffFormatter.formatProfile = function (
 
             "Profile",
 
-        data:
+        data: {
 
-            profile
+            identity:
+
+                identity,
+
+            posting:
+
+                posting
+
+        }
 
     });
 
@@ -1069,16 +1034,16 @@ StaffFormatter.formatProfile = function (
 
     result.message =
 
-        "Profile formatted.";
+        "Staff profile formatted successfully.";
 
     return result;
 
 };
-/*=========================================================
- FORMAT STAFF ASSIGNMENT
+ /*=========================================================
+ FORMAT CONTACT
 =========================================================*/
 
-StaffFormatter.formatStaffAssignment = function (
+StaffFormatter.formatContact = function (
 
     response
 
@@ -1110,7 +1075,7 @@ StaffFormatter.formatStaffAssignment = function (
 
             response?.message ||
 
-            "Assignment information not found.";
+            "Contact information not found.";
 
         return result;
 
@@ -1127,24 +1092,6 @@ StaffFormatter.formatStaffAssignment = function (
     const identity =
 
         profile.identity ||
-
-        {};
-
-    const posting =
-
-        profile.posting ||
-
-        {};
-
-    const assignment =
-
-        profile.assignment ||
-
-        {};
-
-    const team =
-
-        profile.teamInfo ||
 
         {};
 
@@ -1168,23 +1115,13 @@ StaffFormatter.formatStaffAssignment = function (
 
     result.markdown = [
 
-        "# 📋 STAFF ASSIGNMENT",
+        "# 📞 STAFF CONTACT",
 
         "",
 
         "**Name:** " +
 
             displayName,
-
-        "**Role:** " +
-
-            (
-
-                identity.role ||
-
-                "-"
-
-            ),
 
         "**Designation:** " +
 
@@ -1196,129 +1133,11 @@ StaffFormatter.formatStaffAssignment = function (
 
             ),
 
-        "",
-
-        "## 🌳 Administrative Posting",
-
-        "",
-
-        "**Circle:** " +
+        "**Phone:** " +
 
             (
 
-                posting.circle ||
-
-                "-"
-
-            ),
-
-        "**Division:** " +
-
-            (
-
-                posting.division ||
-
-                "-"
-
-            ),
-
-        "**Range:** " +
-
-            (
-
-                posting.range ||
-
-                "-"
-
-            ),
-
-        "**Beat:** " +
-
-            (
-
-                posting.beat ||
-
-                "-"
-
-            ),
-
-        "",
-
-        "## 🚓 Assignment",
-
-        "",
-
-        "**Assigned Compartment:** " +
-
-            (
-
-                assignment.assignedCompartment ||
-
-                "-"
-
-            ),
-
-        "**Duty Type:** " +
-
-            (
-
-                assignment.dutyType ||
-
-                "-"
-
-            ),
-
-        "**Status:** " +
-
-            (
-
-                assignment.status ||
-
-                "-"
-
-            ),
-
-        "**Duty Active:** " +
-
-            (
-
-                assignment.dutyActive
-
-                    ? "YES"
-
-                    : "NO"
-
-            ),
-
-        "**Leader:** " +
-
-            (
-
-                assignment.leader ||
-
-                team.leader ||
-
-                "-"
-
-            ),
-
-        "**Team:** " +
-
-            (
-
-                assignment.team ||
-
-                team.team ||
-
-                "-"
-
-            ),
-
-        "**Last Duty End:** " +
-
-            (
-
-                assignment.lastDutyEnd ||
+                identity.phone ||
 
                 "-"
 
@@ -1338,15 +1157,31 @@ StaffFormatter.formatStaffAssignment = function (
 
         type:
 
-            "staff-assignment",
+            "staff-contact",
 
         title:
 
             displayName,
 
-        data:
+        data: {
 
-            profile
+            name:
+
+                displayName,
+
+            designation:
+
+                identity.designation ||
+
+                "",
+
+            phone:
+
+                identity.phone ||
+
+                ""
+
+        }
 
     });
 
@@ -1358,11 +1193,27 @@ StaffFormatter.formatStaffAssignment = function (
 
         title:
 
-            "Assignment",
+            "Contact",
 
-        data:
+        data: {
 
-            profile
+            name:
+
+                displayName,
+
+            designation:
+
+                identity.designation ||
+
+                "",
+
+            phone:
+
+                identity.phone ||
+
+                ""
+
+        }
 
     });
 
@@ -1376,7 +1227,7 @@ StaffFormatter.formatStaffAssignment = function (
 
     result.intent =
 
-        StaffConstants.INTENTS.STAFF_ASSIGNMENT;
+        StaffConstants.INTENTS.STAFF_CONTACT;
 
     result.confidence =
 
@@ -1392,16 +1243,12 @@ StaffFormatter.formatStaffAssignment = function (
 
     result.message =
 
-        "Assignment formatted.";
+        "Contact formatted successfully.";
 
     return result;
 
 };
  /*=========================================================
- FORMAT ROLE
-=========================================================*/
-
-/*=========================================================
  FORMAT ROLE
 =========================================================*/
 
@@ -1485,8 +1332,6 @@ StaffFormatter.formatRole = function (
 
             displayName,
 
-        "",
-
         "**Role:** " +
 
             (
@@ -1517,9 +1362,19 @@ StaffFormatter.formatRole = function (
 
             displayName,
 
-        data:
+        data: {
 
-            profile
+            name:
+
+                displayName,
+
+            role:
+
+                identity.role ||
+
+                ""
+
+        }
 
     });
 
@@ -1533,9 +1388,19 @@ StaffFormatter.formatRole = function (
 
             "Role",
 
-        data:
+        data: {
 
-            profile
+            name:
+
+                displayName,
+
+            role:
+
+                identity.role ||
+
+                ""
+
+        }
 
     });
 
@@ -1565,14 +1430,12 @@ StaffFormatter.formatRole = function (
 
     result.message =
 
-        "Role formatted.";
+        "Role formatted successfully.";
 
     return result;
 
 };
-
-
-/*=========================================================
+ /*=========================================================
  FORMAT DESIGNATION
 =========================================================*/
 
@@ -1648,15 +1511,13 @@ StaffFormatter.formatDesignation = function (
 
     result.markdown = [
 
-        "# 👤 STAFF DESIGNATION",
+        "# 🏷️ STAFF DESIGNATION",
 
         "",
 
         "**Name:** " +
 
             displayName,
-
-        "",
 
         "**Designation:** " +
 
@@ -1688,9 +1549,19 @@ StaffFormatter.formatDesignation = function (
 
             displayName,
 
-        data:
+        data: {
 
-            profile
+            name:
+
+                displayName,
+
+            designation:
+
+                identity.designation ||
+
+                ""
+
+        }
 
     });
 
@@ -1704,9 +1575,19 @@ StaffFormatter.formatDesignation = function (
 
             "Designation",
 
-        data:
+        data: {
 
-            profile
+            name:
+
+                displayName,
+
+            designation:
+
+                identity.designation ||
+
+                ""
+
+        }
 
     });
 
@@ -1736,12 +1617,12 @@ StaffFormatter.formatDesignation = function (
 
     result.message =
 
-        "Designation formatted.";
+        "Designation formatted successfully.";
 
     return result;
 
 };
-/*=========================================================
+ /*=========================================================
  FORMAT CIRCLE
 =========================================================*/
 
@@ -1831,7 +1712,15 @@ StaffFormatter.formatCircle = function (
 
             displayName,
 
-        "",
+        "**Designation:** " +
+
+            (
+
+                identity.designation ||
+
+                "-"
+
+            ),
 
         "**Circle:** " +
 
@@ -1863,9 +1752,25 @@ StaffFormatter.formatCircle = function (
 
             displayName,
 
-        data:
+        data: {
 
-            profile
+            name:
+
+                displayName,
+
+            designation:
+
+                identity.designation ||
+
+                "",
+
+            circle:
+
+                posting.circle ||
+
+                ""
+
+        }
 
     });
 
@@ -1879,9 +1784,25 @@ StaffFormatter.formatCircle = function (
 
             "Circle",
 
-        data:
+        data: {
 
-            profile
+            name:
+
+                displayName,
+
+            designation:
+
+                identity.designation ||
+
+                "",
+
+            circle:
+
+                posting.circle ||
+
+                ""
+
+        }
 
     });
 
@@ -1911,14 +1832,11 @@ StaffFormatter.formatCircle = function (
 
     result.message =
 
-        "Circle formatted.";
+        "Circle formatted successfully.";
 
     return result;
 
-};
-
-
-/*=========================================================
+};/*=========================================================
  FORMAT DIVISION
 =========================================================*/
 
@@ -2008,25 +1926,31 @@ StaffFormatter.formatDivision = function (
 
             displayName,
 
-        "",
-
-        "**Division:** " +
+        "**Designation:** " +
 
             (
 
-                posting.division ||
+                identity.designation ||
 
                 "-"
 
             ),
-
-        "",
 
         "**Circle:** " +
 
             (
 
                 posting.circle ||
+
+                "-"
+
+            ),
+
+        "**Division:** " +
+
+            (
+
+                posting.division ||
 
                 "-"
 
@@ -2052,9 +1976,31 @@ StaffFormatter.formatDivision = function (
 
             displayName,
 
-        data:
+        data: {
 
-            profile
+            name:
+
+                displayName,
+
+            designation:
+
+                identity.designation ||
+
+                "",
+
+            circle:
+
+                posting.circle ||
+
+                "",
+
+            division:
+
+                posting.division ||
+
+                ""
+
+        }
 
     });
 
@@ -2068,9 +2014,31 @@ StaffFormatter.formatDivision = function (
 
             "Division",
 
-        data:
+        data: {
 
-            profile
+            name:
+
+                displayName,
+
+            designation:
+
+                identity.designation ||
+
+                "",
+
+            circle:
+
+                posting.circle ||
+
+                "",
+
+            division:
+
+                posting.division ||
+
+                ""
+
+        }
 
     });
 
@@ -2100,13 +2068,12 @@ StaffFormatter.formatDivision = function (
 
     result.message =
 
-        "Division formatted.";
+        "Division formatted successfully.";
 
     return result;
 
 };
-
-/*=========================================================
+ /*=========================================================
  FORMAT RANGE
 =========================================================*/
 
@@ -2196,25 +2163,41 @@ StaffFormatter.formatRange = function (
 
             displayName,
 
-        "",
-
-        "**Range:** " +
+        "**Designation:** " +
 
             (
 
-                posting.range ||
+                identity.designation ||
 
                 "-"
 
             ),
 
-        "",
+        "**Circle:** " +
+
+            (
+
+                posting.circle ||
+
+                "-"
+
+            ),
 
         "**Division:** " +
 
             (
 
                 posting.division ||
+
+                "-"
+
+            ),
+
+        "**Range:** " +
+
+            (
+
+                posting.range ||
 
                 "-"
 
@@ -2240,9 +2223,37 @@ StaffFormatter.formatRange = function (
 
             displayName,
 
-        data:
+        data: {
 
-            profile
+            name:
+
+                displayName,
+
+            designation:
+
+                identity.designation ||
+
+                "",
+
+            circle:
+
+                posting.circle ||
+
+                "",
+
+            division:
+
+                posting.division ||
+
+                "",
+
+            range:
+
+                posting.range ||
+
+                ""
+
+        }
 
     });
 
@@ -2256,9 +2267,37 @@ StaffFormatter.formatRange = function (
 
             "Range",
 
-        data:
+        data: {
 
-            profile
+            name:
+
+                displayName,
+
+            designation:
+
+                identity.designation ||
+
+                "",
+
+            circle:
+
+                posting.circle ||
+
+                "",
+
+            division:
+
+                posting.division ||
+
+                "",
+
+            range:
+
+                posting.range ||
+
+                ""
+
+        }
 
     });
 
@@ -2288,14 +2327,12 @@ StaffFormatter.formatRange = function (
 
     result.message =
 
-        "Range formatted.";
+        "Range formatted successfully.";
 
     return result;
 
 };
-
-
-/*=========================================================
+ /*=========================================================
  FORMAT BEAT
 =========================================================*/
 
@@ -2377,7 +2414,7 @@ StaffFormatter.formatBeat = function (
 
     result.markdown = [
 
-        "# 🌿 STAFF BEAT",
+        "# 🌳 STAFF BEAT",
 
         "",
 
@@ -2385,19 +2422,35 @@ StaffFormatter.formatBeat = function (
 
             displayName,
 
-        "",
-
-        "**Beat:** " +
+        "**Designation:** " +
 
             (
 
-                posting.beat ||
+                identity.designation ||
 
                 "-"
 
             ),
 
-        "",
+        "**Circle:** " +
+
+            (
+
+                posting.circle ||
+
+                "-"
+
+            ),
+
+        "**Division:** " +
+
+            (
+
+                posting.division ||
+
+                "-"
+
+            ),
 
         "**Range:** " +
 
@@ -2409,13 +2462,11 @@ StaffFormatter.formatBeat = function (
 
             ),
 
-        "",
-
-        "**Division:** " +
+        "**Beat:** " +
 
             (
 
-                posting.division ||
+                posting.beat ||
 
                 "-"
 
@@ -2441,9 +2492,43 @@ StaffFormatter.formatBeat = function (
 
             displayName,
 
-        data:
+        data: {
 
-            profile
+            name:
+
+                displayName,
+
+            designation:
+
+                identity.designation ||
+
+                "",
+
+            circle:
+
+                posting.circle ||
+
+                "",
+
+            division:
+
+                posting.division ||
+
+                "",
+
+            range:
+
+                posting.range ||
+
+                "",
+
+            beat:
+
+                posting.beat ||
+
+                ""
+
+        }
 
     });
 
@@ -2457,9 +2542,43 @@ StaffFormatter.formatBeat = function (
 
             "Beat",
 
-        data:
+        data: {
 
-            profile
+            name:
+
+                displayName,
+
+            designation:
+
+                identity.designation ||
+
+                "",
+
+            circle:
+
+                posting.circle ||
+
+                "",
+
+            division:
+
+                posting.division ||
+
+                "",
+
+            range:
+
+                posting.range ||
+
+                "",
+
+            beat:
+
+                posting.beat ||
+
+                ""
+
+        }
 
     });
 
@@ -2489,16 +2608,718 @@ StaffFormatter.formatBeat = function (
 
     result.message =
 
-        "Beat formatted.";
+        "Beat formatted successfully.";
 
     return result;
 
 };
  /*=========================================================
- FORMAT DUTY STATUS
+ FORMAT POSTING
 =========================================================*/
 
-/*=========================================================
+StaffFormatter.formatPosting = function (
+
+    response
+
+) {
+
+    const result =
+
+        StaffFormatter.createResponse(
+
+            response
+
+        );
+
+    /*----------------------------------
+      Validate
+    ----------------------------------*/
+
+    if (
+
+        !response ||
+
+        !response.success ||
+
+        !response.data
+
+    ) {
+
+        result.message =
+
+            response?.message ||
+
+            "Posting information not found.";
+
+        return result;
+
+    }
+
+    /*----------------------------------
+      Canonical Profile
+    ----------------------------------*/
+
+    const profile =
+
+        response.data;
+
+    const identity =
+
+        profile.identity ||
+
+        {};
+
+    const posting =
+
+        profile.posting ||
+
+        {};
+
+    /*----------------------------------
+      Display Name
+    ----------------------------------*/
+
+    const displayName =
+
+        identity.name ||
+
+        identity.rawName ||
+
+        identity.cleanName ||
+
+        "-";
+
+    /*----------------------------------
+      Markdown
+    ----------------------------------*/
+
+    result.markdown = [
+
+        "# 🌳 STAFF POSTING",
+
+        "",
+
+        "**Name:** " +
+
+            displayName,
+
+        "",
+
+        "**Circle:** " +
+
+            (
+
+                posting.circle ||
+
+                "-"
+
+            ),
+
+        "**Division:** " +
+
+            (
+
+                posting.division ||
+
+                "-"
+
+            ),
+
+        "**Range:** " +
+
+            (
+
+                posting.range ||
+
+                "-"
+
+            ),
+
+        "**Beat:** " +
+
+            (
+
+                posting.beat ||
+
+                "-"
+
+            )
+
+    ].join(
+
+        "\n"
+
+    );
+
+    /*----------------------------------
+      Card
+    ----------------------------------*/
+
+    result.cards.push({
+
+        type:
+
+            "staff-posting",
+
+        title:
+
+            displayName,
+
+        data: {
+
+            posting:
+
+                posting
+
+        }
+
+    });
+
+    /*----------------------------------
+      Section
+    ----------------------------------*/
+
+    result.sections.push({
+
+        title:
+
+            "Posting",
+
+        data:
+
+            posting
+
+    });
+
+    /*----------------------------------
+      Metadata
+    ----------------------------------*/
+
+    result.success =
+
+        true;
+
+    result.intent =
+
+        StaffConstants.INTENTS.STAFF_POSTING;
+
+    result.confidence =
+
+        response.confidence ||
+
+        1;
+
+    result.source =
+
+        response.source ||
+
+        "LOCAL";
+
+    result.message =
+
+        "Posting formatted.";
+
+    return result;
+
+};
+
+ /*=========================================================
+ FORMAT LOCATION
+=========================================================*/
+
+StaffFormatter.formatLocation = function (
+
+    response
+
+) {
+
+    const result =
+
+        StaffFormatter.createResponse(
+
+            response
+
+        );
+
+    /*----------------------------------
+      Validate
+    ----------------------------------*/
+
+    if (
+
+        !response ||
+
+        !response.success ||
+
+        !response.data
+
+    ) {
+
+        result.message =
+
+            response?.message ||
+
+            "Location information not found.";
+
+        return result;
+
+    }
+
+    /*----------------------------------
+      Canonical Profile
+    ----------------------------------*/
+
+    const profile =
+
+        response.data;
+
+    const identity =
+
+        profile.identity ||
+
+        {};
+
+    const location =
+
+        profile.location ||
+
+        {};
+
+    /*----------------------------------
+      Display Name
+    ----------------------------------*/
+
+    const displayName =
+
+        identity.name ||
+
+        identity.rawName ||
+
+        identity.cleanName ||
+
+        "-";
+
+    /*----------------------------------
+      Markdown
+    ----------------------------------*/
+
+    result.markdown = [
+
+        "# 📍 STAFF LOCATION",
+
+        "",
+
+        "**Name:** " +
+
+            displayName,
+
+        "**Designation:** " +
+
+            (
+
+                identity.designation ||
+
+                "-"
+
+            ),
+
+        "**Latitude:** " +
+
+            (
+
+                location.lat ??
+
+                "-"
+
+            ),
+
+        "**Longitude:** " +
+
+            (
+
+                location.lon ??
+
+                "-"
+
+            )
+
+    ].join(
+
+        "\n"
+
+    );
+
+    /*----------------------------------
+      Card
+    ----------------------------------*/
+
+    result.cards.push({
+
+        type:
+
+            "staff-location",
+
+        title:
+
+            displayName,
+
+        data: {
+
+            name:
+
+                displayName,
+
+            designation:
+
+                identity.designation ||
+
+                "",
+
+            latitude:
+
+                location.lat ??
+
+                null,
+
+            longitude:
+
+                location.lon ??
+
+                null
+
+        }
+
+    });
+
+    /*----------------------------------
+      Section
+    ----------------------------------*/
+
+    result.sections.push({
+
+        title:
+
+            "Location",
+
+        data: {
+
+            name:
+
+                displayName,
+
+            designation:
+
+                identity.designation ||
+
+                "",
+
+            latitude:
+
+                location.lat ??
+
+                null,
+
+            longitude:
+
+                location.lon ??
+
+                null
+
+        }
+
+    });
+
+    /*----------------------------------
+      Metadata
+    ----------------------------------*/
+
+    result.success =
+
+        true;
+
+    result.intent =
+
+        StaffConstants.INTENTS.STAFF_LOCATION;
+
+    result.confidence =
+
+        response.confidence ||
+
+        1;
+
+    result.source =
+
+        response.source ||
+
+        "LOCAL";
+
+    result.message =
+
+        "Location formatted successfully.";
+
+    return result;
+
+};
+ /*=========================================================
+ FORMAT DUTY
+=========================================================*/
+
+StaffFormatter.formatDuty = function (
+
+    response
+
+) {
+
+    const result =
+
+        StaffFormatter.createResponse(
+
+            response
+
+        );
+
+    /*----------------------------------
+      Validate
+    ----------------------------------*/
+
+    if (
+
+        !response ||
+
+        !response.success ||
+
+        !response.data
+
+    ) {
+
+        result.message =
+
+            response?.message ||
+
+            "Duty information not found.";
+
+        return result;
+
+    }
+
+    /*----------------------------------
+      Canonical Profile
+    ----------------------------------*/
+
+    const profile =
+
+        response.data;
+
+    const identity =
+
+        profile.identity ||
+
+        {};
+
+    const assignment =
+
+        profile.assignment ||
+
+        {};
+
+    /*----------------------------------
+      Display Name
+    ----------------------------------*/
+
+    const displayName =
+
+        identity.name ||
+
+        identity.rawName ||
+
+        identity.cleanName ||
+
+        "-";
+
+    /*----------------------------------
+      Markdown
+    ----------------------------------*/
+
+    result.markdown = [
+
+        "# 🚓 STAFF DUTY",
+
+        "",
+
+        "**Name:** " +
+
+            displayName,
+
+        "**Designation:** " +
+
+            (
+
+                identity.designation ||
+
+                "-"
+
+            ),
+
+        "**Duty Status:** " +
+
+            (
+
+                assignment.status ||
+
+                "-"
+
+            ),
+
+        "**Duty Type:** " +
+
+            (
+
+                assignment.dutyType ||
+
+                "-"
+
+            ),
+
+        "**Assignment:** " +
+
+            (
+
+                assignment.assignedCompartment ||
+
+                "-"
+
+            )
+
+    ].join(
+
+        "\n"
+
+    );
+
+    /*----------------------------------
+      Card
+    ----------------------------------*/
+
+    result.cards.push({
+
+        type:
+
+            "staff-duty",
+
+        title:
+
+            displayName,
+
+        data: {
+
+            name:
+
+                displayName,
+
+            designation:
+
+                identity.designation ||
+
+                "",
+
+            status:
+
+                assignment.status ||
+
+                "",
+
+            dutyType:
+
+                assignment.dutyType ||
+
+                "",
+
+            assignment:
+
+                assignment.assignedCompartment ||
+
+                ""
+
+        }
+
+    });
+
+    /*----------------------------------
+      Section
+    ----------------------------------*/
+
+    result.sections.push({
+
+        title:
+
+            "Duty",
+
+        data: {
+
+            name:
+
+                displayName,
+
+            designation:
+
+                identity.designation ||
+
+                "",
+
+            status:
+
+                assignment.status ||
+
+                "",
+
+            dutyType:
+
+                assignment.dutyType ||
+
+                "",
+
+            assignment:
+
+                assignment.assignedCompartment ||
+
+                ""
+
+        }
+
+    });
+
+    /*----------------------------------
+      Metadata
+    ----------------------------------*/
+
+    result.success =
+
+        true;
+
+    result.intent =
+
+        StaffConstants.INTENTS.STAFF_DUTY;
+
+    result.confidence =
+
+        response.confidence ||
+
+        1;
+
+    result.source =
+
+        response.source ||
+
+        "LOCAL";
+
+    result.message =
+
+        "Duty formatted successfully.";
+
+    return result;
+
+};
+ /*=========================================================
  FORMAT DUTY STATUS
 =========================================================*/
 
@@ -2534,7 +3355,7 @@ StaffFormatter.formatDutyStatus = function (
 
             response?.message ||
 
-            "Duty status information not found.";
+            "Duty status not found.";
 
         return result;
 
@@ -2580,7 +3401,7 @@ StaffFormatter.formatDutyStatus = function (
 
     result.markdown = [
 
-        "# 🚓 STAFF DUTY STATUS",
+        "# ✅ DUTY STATUS",
 
         "",
 
@@ -2588,9 +3409,17 @@ StaffFormatter.formatDutyStatus = function (
 
             displayName,
 
-        "",
+        "**Designation:** " +
 
-        "**Duty Status:** " +
+            (
+
+                identity.designation ||
+
+                "-"
+
+            ),
+
+        "**Status:** " +
 
             (
 
@@ -2600,15 +3429,15 @@ StaffFormatter.formatDutyStatus = function (
 
             ),
 
-        "",
-
-        "**Duty Type:** " +
+        "**Duty Active:** " +
 
             (
 
-                assignment.dutyType ||
+                assignment.dutyActive
 
-                "-"
+                    ? "YES"
+
+                    : "NO"
 
             )
 
@@ -2632,9 +3461,31 @@ StaffFormatter.formatDutyStatus = function (
 
             displayName,
 
-        data:
+        data: {
 
-            profile
+            name:
+
+                displayName,
+
+            designation:
+
+                identity.designation ||
+
+                "",
+
+            status:
+
+                assignment.status ||
+
+                "",
+
+            dutyActive:
+
+                assignment.dutyActive ??
+
+                false
+
+        }
 
     });
 
@@ -2648,9 +3499,31 @@ StaffFormatter.formatDutyStatus = function (
 
             "Duty Status",
 
-        data:
+        data: {
 
-            profile
+            name:
+
+                displayName,
+
+            designation:
+
+                identity.designation ||
+
+                "",
+
+            status:
+
+                assignment.status ||
+
+                "",
+
+            dutyActive:
+
+                assignment.dutyActive ??
+
+                false
+
+        }
 
     });
 
@@ -2680,16 +3553,16 @@ StaffFormatter.formatDutyStatus = function (
 
     result.message =
 
-        "Duty status formatted.";
+        "Duty status formatted successfully.";
 
     return result;
 
 };
  /*=========================================================
- FORMAT LEADER
+ FORMAT DUTY TYPE
 =========================================================*/
 
-StaffFormatter.formatLeader = function (
+StaffFormatter.formatDutyType = function (
 
     response
 
@@ -2721,7 +3594,7 @@ StaffFormatter.formatLeader = function (
 
             response?.message ||
 
-            "Leader information not found.";
+            "Duty type not found.";
 
         return result;
 
@@ -2747,12 +3620,6 @@ StaffFormatter.formatLeader = function (
 
         {};
 
-    const teamInfo =
-
-        profile.teamInfo ||
-
-        {};
-
     /*----------------------------------
       Display Name
     ----------------------------------*/
@@ -2773,7 +3640,7 @@ StaffFormatter.formatLeader = function (
 
     result.markdown = [
 
-        "# 👥 STAFF TEAM",
+        "# 🚓 DUTY TYPE",
 
         "",
 
@@ -2781,41 +3648,21 @@ StaffFormatter.formatLeader = function (
 
             displayName,
 
-        "",
-
-        "**Team:** " +
+        "**Designation:** " +
 
             (
 
-                teamInfo.team ||
-
-                assignment.team ||
+                identity.designation ||
 
                 "-"
 
             ),
 
-        "",
-
-        "**Team Leader:** " +
+        "**Duty Type:** " +
 
             (
 
-                teamInfo.leader ||
-
-                assignment.leader ||
-
-                "-"
-
-            ),
-
-        "",
-
-        "**Assigned Compartment:** " +
-
-            (
-
-                assignment.assignedCompartment ||
+                assignment.dutyType ||
 
                 "-"
 
@@ -2835,15 +3682,31 @@ StaffFormatter.formatLeader = function (
 
         type:
 
-            "staff-leader",
+            "staff-duty-type",
 
         title:
 
             displayName,
 
-        data:
+        data: {
 
-            profile
+            name:
+
+                displayName,
+
+            designation:
+
+                identity.designation ||
+
+                "",
+
+            dutyType:
+
+                assignment.dutyType ||
+
+                ""
+
+        }
 
     });
 
@@ -2855,11 +3718,27 @@ StaffFormatter.formatLeader = function (
 
         title:
 
-            "Leader",
+            "Duty Type",
 
-        data:
+        data: {
 
-            profile
+            name:
+
+                displayName,
+
+            designation:
+
+                identity.designation ||
+
+                "",
+
+            dutyType:
+
+                assignment.dutyType ||
+
+                ""
+
+        }
 
     });
 
@@ -2873,7 +3752,7 @@ StaffFormatter.formatLeader = function (
 
     result.intent =
 
-        StaffConstants.INTENTS.STAFF_LEADER;
+        StaffConstants.INTENTS.STAFF_DUTY_TYPE;
 
     result.confidence =
 
@@ -2889,7 +3768,7 @@ StaffFormatter.formatLeader = function (
 
     result.message =
 
-        "Leader formatted.";
+        "Duty type formatted successfully.";
 
     return result;
 
@@ -2956,12 +3835,6 @@ StaffFormatter.formatDutyStarted = function (
 
         {};
 
-    const analytics =
-
-        profile.analytics ||
-
-        {};
-
     /*----------------------------------
       Display Name
     ----------------------------------*/
@@ -2977,14 +3850,40 @@ StaffFormatter.formatDutyStarted = function (
         "-";
 
     /*----------------------------------
-      Duty Started
+      Human Readable Time
     ----------------------------------*/
 
-    const dutyStarted =
+    const startedAt =
 
-        analytics.startedAt ||
+        assignment.startedAt;
 
-        "-";
+    const startedText =
+
+        startedAt
+
+            ? new Date(
+
+                startedAt
+
+            ).toLocaleString(
+
+                "en-IN",
+
+                {
+
+                    dateStyle:
+
+                        "medium",
+
+                    timeStyle:
+
+                        "short"
+
+                }
+
+            )
+
+            : "-";
 
     /*----------------------------------
       Markdown
@@ -2992,7 +3891,7 @@ StaffFormatter.formatDutyStarted = function (
 
     result.markdown = [
 
-        "# ▶️ STAFF DUTY STARTED",
+        "# 🟢 DUTY STARTED",
 
         "",
 
@@ -3000,13 +3899,15 @@ StaffFormatter.formatDutyStarted = function (
 
             displayName,
 
-        "",
+        "**Designation:** " +
 
-        "**Duty Started:** " +
+            (
 
-            dutyStarted,
+                identity.designation ||
 
-        "",
+                "-"
+
+            ),
 
         "**Duty Type:** " +
 
@@ -3016,7 +3917,11 @@ StaffFormatter.formatDutyStarted = function (
 
                 "-"
 
-            )
+            ),
+
+        "**Started:** " +
+
+            startedText
 
     ].join(
 
@@ -3038,9 +3943,29 @@ StaffFormatter.formatDutyStarted = function (
 
             displayName,
 
-        data:
+        data: {
 
-            profile
+            name:
+
+                displayName,
+
+            designation:
+
+                identity.designation ||
+
+                "",
+
+            dutyType:
+
+                assignment.dutyType ||
+
+                "",
+
+            startedAt:
+
+                startedText
+
+        }
 
     });
 
@@ -3054,9 +3979,29 @@ StaffFormatter.formatDutyStarted = function (
 
             "Duty Started",
 
-        data:
+        data: {
 
-            profile
+            name:
+
+                displayName,
+
+            designation:
+
+                identity.designation ||
+
+                "",
+
+            dutyType:
+
+                assignment.dutyType ||
+
+                "",
+
+            startedAt:
+
+                startedText
+
+        }
 
     });
 
@@ -3086,11 +4031,12 @@ StaffFormatter.formatDutyStarted = function (
 
     result.message =
 
-        "Duty start formatted.";
+        "Duty start formatted successfully.";
 
     return result;
 
 };
+
  /*=========================================================
  FORMAT DUTY ENDED
 =========================================================*/
@@ -3153,6 +4099,10 @@ StaffFormatter.formatDutyEnded = function (
 
         {};
 
+    /*----------------------------------
+      Display Name
+    ----------------------------------*/
+
     const displayName =
 
         identity.name ||
@@ -3164,14 +4114,40 @@ StaffFormatter.formatDutyEnded = function (
         "-";
 
     /*----------------------------------
-      Duty Ended
+      Human Readable Time
     ----------------------------------*/
 
-    const dutyEnded =
+    const endedAt =
 
-        assignment.lastDutyEnd ||
+        assignment.endedAt;
 
-        "-";
+    const endedText =
+
+        endedAt
+
+            ? new Date(
+
+                endedAt
+
+            ).toLocaleString(
+
+                "en-IN",
+
+                {
+
+                    dateStyle:
+
+                        "medium",
+
+                    timeStyle:
+
+                        "short"
+
+                }
+
+            )
+
+            : "-";
 
     /*----------------------------------
       Markdown
@@ -3179,7 +4155,7 @@ StaffFormatter.formatDutyEnded = function (
 
     result.markdown = [
 
-        "# ⏹️ STAFF DUTY ENDED",
+        "# 🔴 DUTY ENDED",
 
         "",
 
@@ -3187,13 +4163,15 @@ StaffFormatter.formatDutyEnded = function (
 
             displayName,
 
-        "",
+        "**Designation:** " +
 
-        "**Duty Ended:** " +
+            (
 
-            dutyEnded,
+                identity.designation ||
 
-        "",
+                "-"
+
+            ),
 
         "**Duty Type:** " +
 
@@ -3203,7 +4181,11 @@ StaffFormatter.formatDutyEnded = function (
 
                 "-"
 
-            )
+            ),
+
+        "**Ended:** " +
+
+            endedText
 
     ].join(
 
@@ -3225,9 +4207,29 @@ StaffFormatter.formatDutyEnded = function (
 
             displayName,
 
-        data:
+        data: {
 
-            profile
+            name:
+
+                displayName,
+
+            designation:
+
+                identity.designation ||
+
+                "",
+
+            dutyType:
+
+                assignment.dutyType ||
+
+                "",
+
+            endedAt:
+
+                endedText
+
+        }
 
     });
 
@@ -3241,9 +4243,29 @@ StaffFormatter.formatDutyEnded = function (
 
             "Duty Ended",
 
-        data:
+        data: {
 
-            profile
+            name:
+
+                displayName,
+
+            designation:
+
+                identity.designation ||
+
+                "",
+
+            dutyType:
+
+                assignment.dutyType ||
+
+                "",
+
+            endedAt:
+
+                endedText
+
+        }
 
     });
 
@@ -3273,7 +4295,1254 @@ StaffFormatter.formatDutyEnded = function (
 
     result.message =
 
-        "Duty end formatted.";
+        "Duty end formatted successfully.";
+
+    return result;
+
+};
+ /*=========================================================
+ FORMAT STAFF ASSIGNMENT
+=========================================================*/
+
+StaffFormatter.formatStaffAssignment = function (
+
+    response
+
+) {
+
+    const result =
+
+        StaffFormatter.createResponse(
+
+            response
+
+        );
+
+    /*----------------------------------
+      Validate
+    ----------------------------------*/
+
+    if (
+
+        !response ||
+
+        !response.success ||
+
+        !response.data
+
+    ) {
+
+        result.message =
+
+            response?.message ||
+
+            "Assignment information not found.";
+
+        return result;
+
+    }
+
+    /*----------------------------------
+      Canonical Profile
+    ----------------------------------*/
+
+    const profile =
+
+        response.data;
+
+    const identity =
+
+        profile.identity ||
+
+        {};
+
+    const assignment =
+
+        profile.assignment ||
+
+        {};
+
+    /*----------------------------------
+      Display Name
+    ----------------------------------*/
+
+    const displayName =
+
+        identity.name ||
+
+        identity.rawName ||
+
+        identity.cleanName ||
+
+        "-";
+
+    /*----------------------------------
+      Assignment
+    ----------------------------------*/
+
+    const assignedTo =
+
+        assignment.assignedCompartment ||
+
+        assignment.assignment ||
+
+        "-";
+
+    /*----------------------------------
+      Markdown
+    ----------------------------------*/
+
+    result.markdown = [
+
+        "# 📋 STAFF ASSIGNMENT",
+
+        "",
+
+        "**Name:** " +
+
+            displayName,
+
+        "**Designation:** " +
+
+            (
+
+                identity.designation ||
+
+                "-"
+
+            ),
+
+        "**Duty Type:** " +
+
+            (
+
+                assignment.dutyType ||
+
+                "-"
+
+            ),
+
+        "**Assigned To:** " +
+
+            assignedTo
+
+    ].join(
+
+        "\n"
+
+    );
+
+    /*----------------------------------
+      Card
+    ----------------------------------*/
+
+    result.cards.push({
+
+        type:
+
+            "staff-assignment",
+
+        title:
+
+            displayName,
+
+        data: {
+
+            name:
+
+                displayName,
+
+            designation:
+
+                identity.designation ||
+
+                "",
+
+            dutyType:
+
+                assignment.dutyType ||
+
+                "",
+
+            assignment:
+
+                assignedTo
+
+        }
+
+    });
+
+    /*----------------------------------
+      Section
+    ----------------------------------*/
+
+    result.sections.push({
+
+        title:
+
+            "Assignment",
+
+        data: {
+
+            name:
+
+                displayName,
+
+            designation:
+
+                identity.designation ||
+
+                "",
+
+            dutyType:
+
+                assignment.dutyType ||
+
+                "",
+
+            assignment:
+
+                assignedTo
+
+        }
+
+    });
+
+    /*----------------------------------
+      Metadata
+    ----------------------------------*/
+
+    result.success =
+
+        true;
+
+    result.intent =
+
+        StaffConstants.INTENTS.STAFF_ASSIGNMENT;
+
+    result.confidence =
+
+        response.confidence ||
+
+        1;
+
+    result.source =
+
+        response.source ||
+
+        "LOCAL";
+
+    result.message =
+
+        "Assignment formatted successfully.";
+
+    return result;
+
+};
+ /*=========================================================
+ FORMAT LEADER
+=========================================================*/
+
+StaffFormatter.formatLeader = function (
+
+    response
+
+) {
+
+    const result =
+
+        StaffFormatter.createResponse(
+
+            response
+
+        );
+
+    /*----------------------------------
+      Validate
+    ----------------------------------*/
+
+    if (
+
+        !response ||
+
+        !response.success ||
+
+        !response.data
+
+    ) {
+
+        result.message =
+
+            response?.message ||
+
+            "Leader information not found.";
+
+        return result;
+
+    }
+
+    /*----------------------------------
+      Canonical Profile
+    ----------------------------------*/
+
+    const profile =
+
+        response.data;
+
+    const identity =
+
+        profile.identity ||
+
+        {};
+
+    const teamInfo =
+
+        profile.teamInfo ||
+
+        {};
+
+    /*----------------------------------
+      Display Name
+    ----------------------------------*/
+
+    const displayName =
+
+        identity.name ||
+
+        identity.rawName ||
+
+        identity.cleanName ||
+
+        "-";
+
+    /*----------------------------------
+      Markdown
+    ----------------------------------*/
+
+    result.markdown = [
+
+        "# 👨‍💼 TEAM LEADER",
+
+        "",
+
+        "**Name:** " +
+
+            displayName,
+
+        "**Designation:** " +
+
+            (
+
+                identity.designation ||
+
+                "-"
+
+            ),
+
+        "**Leader:** " +
+
+            (
+
+                teamInfo.leader ||
+
+                "-"
+
+            )
+
+    ].join(
+
+        "\n"
+
+    );
+
+    /*----------------------------------
+      Card
+    ----------------------------------*/
+
+    result.cards.push({
+
+        type:
+
+            "staff-leader",
+
+        title:
+
+            displayName,
+
+        data: {
+
+            name:
+
+                displayName,
+
+            designation:
+
+                identity.designation ||
+
+                "",
+
+            leader:
+
+                teamInfo.leader ||
+
+                ""
+
+        }
+
+    });
+
+    /*----------------------------------
+      Section
+    ----------------------------------*/
+
+    result.sections.push({
+
+        title:
+
+            "Leader",
+
+        data: {
+
+            name:
+
+                displayName,
+
+            designation:
+
+                identity.designation ||
+
+                "",
+
+            leader:
+
+                teamInfo.leader ||
+
+                ""
+
+        }
+
+    });
+
+    /*----------------------------------
+      Metadata
+    ----------------------------------*/
+
+    result.success =
+
+        true;
+
+    result.intent =
+
+        StaffConstants.INTENTS.STAFF_LEADER;
+
+    result.confidence =
+
+        response.confidence ||
+
+        1;
+
+    result.source =
+
+        response.source ||
+
+        "LOCAL";
+
+    result.message =
+
+        "Leader formatted successfully.";
+
+    return result;
+
+};
+ /*=========================================================
+ FORMAT TEAM
+=========================================================*/
+
+StaffFormatter.formatTeam = function (
+
+    response
+
+) {
+
+    const result =
+
+        StaffFormatter.createResponse(
+
+            response
+
+        );
+
+    /*----------------------------------
+      Validate
+    ----------------------------------*/
+
+    if (
+
+        !response ||
+
+        !response.success ||
+
+        !response.data
+
+    ) {
+
+        result.message =
+
+            response?.message ||
+
+            "Team information not found.";
+
+        return result;
+
+    }
+
+    /*----------------------------------
+      Canonical Profile
+    ----------------------------------*/
+
+    const profile =
+
+        response.data;
+
+    const identity =
+
+        profile.identity ||
+
+        {};
+
+    const teamInfo =
+
+        profile.teamInfo ||
+
+        {};
+
+    /*----------------------------------
+      Display Name
+    ----------------------------------*/
+
+    const displayName =
+
+        identity.name ||
+
+        identity.rawName ||
+
+        identity.cleanName ||
+
+        "-";
+
+    /*----------------------------------
+      Markdown
+    ----------------------------------*/
+
+    result.markdown = [
+
+        "# 👥 STAFF TEAM",
+
+        "",
+
+        "**Name:** " +
+
+            displayName,
+
+        "**Designation:** " +
+
+            (
+
+                identity.designation ||
+
+                "-"
+
+            ),
+
+        "**Team:** " +
+
+            (
+
+                teamInfo.team ||
+
+                "-"
+
+            ),
+
+        "**Leader:** " +
+
+            (
+
+                teamInfo.leader ||
+
+                "-"
+
+            )
+
+    ].join(
+
+        "\n"
+
+    );
+
+    /*----------------------------------
+      Card
+    ----------------------------------*/
+
+    result.cards.push({
+
+        type:
+
+            "staff-team",
+
+        title:
+
+            displayName,
+
+        data: {
+
+            name:
+
+                displayName,
+
+            designation:
+
+                identity.designation ||
+
+                "",
+
+            team:
+
+                teamInfo.team ||
+
+                "",
+
+            leader:
+
+                teamInfo.leader ||
+
+                ""
+
+        }
+
+    });
+
+    /*----------------------------------
+      Section
+    ----------------------------------*/
+
+    result.sections.push({
+
+        title:
+
+            "Team",
+
+        data: {
+
+            name:
+
+                displayName,
+
+            designation:
+
+                identity.designation ||
+
+                "",
+
+            team:
+
+                teamInfo.team ||
+
+                "",
+
+            leader:
+
+                teamInfo.leader ||
+
+                ""
+
+        }
+
+    });
+
+    /*----------------------------------
+      Metadata
+    ----------------------------------*/
+
+    result.success =
+
+        true;
+
+    result.intent =
+
+        StaffConstants.INTENTS.STAFF_TEAM;
+
+    result.confidence =
+
+        response.confidence ||
+
+        1;
+
+    result.source =
+
+        response.source ||
+
+        "LOCAL";
+
+    result.message =
+
+        "Team formatted successfully.";
+
+    return result;
+
+};
+ /*=========================================================
+ FORMAT GPS
+=========================================================*/
+
+StaffFormatter.formatGPS = function (
+
+    response
+
+) {
+
+    const result =
+
+        StaffFormatter.createResponse(
+
+            response
+
+        );
+
+    /*----------------------------------
+      Validate
+    ----------------------------------*/
+
+    if (
+
+        !response ||
+
+        !response.success ||
+
+        !response.data
+
+    ) {
+
+        result.message =
+
+            response?.message ||
+
+            "GPS information not found.";
+
+        return result;
+
+    }
+
+    /*----------------------------------
+      Canonical Profile
+    ----------------------------------*/
+
+    const profile =
+
+        response.data;
+
+    const identity =
+
+        profile.identity ||
+
+        {};
+
+    const location =
+
+        profile.location ||
+
+        {};
+
+    const gps =
+
+        profile.gps ||
+
+        {};
+
+    /*----------------------------------
+      Display Name
+    ----------------------------------*/
+
+    const displayName =
+
+        identity.name ||
+
+        identity.rawName ||
+
+        identity.cleanName ||
+
+        "-";
+
+    /*----------------------------------
+      Human Readable Time
+    ----------------------------------*/
+
+    const lastSeen =
+
+        gps.lastSeen ||
+
+        gps.timestamp ||
+
+        gps.updatedAt;
+
+    const lastSeenText =
+
+        lastSeen
+
+            ? new Date(
+
+                lastSeen
+
+            ).toLocaleString(
+
+                "en-IN",
+
+                {
+
+                    dateStyle:
+
+                        "medium",
+
+                    timeStyle:
+
+                        "short"
+
+                }
+
+            )
+
+            : "-";
+
+    /*----------------------------------
+      Markdown
+    ----------------------------------*/
+
+    result.markdown = [
+
+        "# 📡 STAFF GPS",
+
+        "",
+
+        "**Name:** " +
+
+            displayName,
+
+        "**Designation:** " +
+
+            (
+
+                identity.designation ||
+
+                "-"
+
+            ),
+
+        "**Latitude:** " +
+
+            (
+
+                location.lat ??
+
+                "-"
+
+            ),
+
+        "**Longitude:** " +
+
+            (
+
+                location.lon ??
+
+                "-"
+
+            ),
+
+        "**Last Seen:** " +
+
+            lastSeenText
+
+    ].join(
+
+        "\n"
+
+    );
+
+    /*----------------------------------
+      Card
+    ----------------------------------*/
+
+    result.cards.push({
+
+        type:
+
+            "staff-gps",
+
+        title:
+
+            displayName,
+
+        data: {
+
+            name:
+
+                displayName,
+
+            designation:
+
+                identity.designation ||
+
+                "",
+
+            latitude:
+
+                location.lat ??
+
+                null,
+
+            longitude:
+
+                location.lon ??
+
+                null,
+
+            lastSeen:
+
+                lastSeenText
+
+        }
+
+    });
+
+    /*----------------------------------
+      Section
+    ----------------------------------*/
+
+    result.sections.push({
+
+        title:
+
+            "GPS",
+
+        data: {
+
+            name:
+
+                displayName,
+
+            designation:
+
+                identity.designation ||
+
+                "",
+
+            latitude:
+
+                location.lat ??
+
+                null,
+
+            longitude:
+
+                location.lon ??
+
+                null,
+
+            lastSeen:
+
+                lastSeenText
+
+        }
+
+    });
+
+    /*----------------------------------
+      Metadata
+    ----------------------------------*/
+
+    result.success =
+
+        true;
+
+    result.intent =
+
+        StaffConstants.INTENTS.STAFF_GPS;
+
+    result.confidence =
+
+        response.confidence ||
+
+        1;
+
+    result.source =
+
+        response.source ||
+
+        "LOCAL";
+
+    result.message =
+
+        "GPS formatted successfully.";
+
+    return result;
+
+};
+ /*=========================================================
+ FORMAT ANALYTICS
+=========================================================*/
+
+StaffFormatter.formatAnalytics = function (
+
+    response
+
+) {
+
+    const result =
+
+        StaffFormatter.createResponse(
+
+            response
+
+        );
+
+    /*----------------------------------
+      Validate
+    ----------------------------------*/
+
+    if (
+
+        !response ||
+
+        !response.success ||
+
+        !response.data
+
+    ) {
+
+        result.message =
+
+            response?.message ||
+
+            "Analytics information not found.";
+
+        return result;
+
+    }
+
+    /*----------------------------------
+      Canonical Profile
+    ----------------------------------*/
+
+    const profile =
+
+        response.data;
+
+    const identity =
+
+        profile.identity ||
+
+        {};
+
+    const analytics =
+
+        profile.analytics ||
+
+        {};
+
+    /*----------------------------------
+      Display Name
+    ----------------------------------*/
+
+    const displayName =
+
+        identity.name ||
+
+        identity.rawName ||
+
+        identity.cleanName ||
+
+        "-";
+
+    /*----------------------------------
+      Markdown
+    ----------------------------------*/
+
+    result.markdown = [
+
+        "# 📊 STAFF ANALYTICS",
+
+        "",
+
+        "**Name:** " +
+
+            displayName,
+
+        "**Designation:** " +
+
+            (
+
+                identity.designation ||
+
+                "-"
+
+            ),
+
+        "**Distance:** " +
+
+            (
+
+                analytics.distanceKm ??
+
+                0
+
+            ) +
+
+            " km",
+
+        "**GPS Points:** " +
+
+            (
+
+                analytics.pointCount ??
+
+                0
+
+            ),
+
+        "**Duration:** " +
+
+            (
+
+                analytics.duration ||
+
+                "-"
+
+            )
+
+    ].join(
+
+        "\n"
+
+    );
+
+    /*----------------------------------
+      Card
+    ----------------------------------*/
+
+    result.cards.push({
+
+        type:
+
+            "staff-analytics",
+
+        title:
+
+            displayName,
+
+        data: {
+
+            name:
+
+                displayName,
+
+            designation:
+
+                identity.designation ||
+
+                "",
+
+            distanceKm:
+
+                analytics.distanceKm ??
+
+                0,
+
+            pointCount:
+
+                analytics.pointCount ??
+
+                0,
+
+            duration:
+
+                analytics.duration ||
+
+                ""
+
+        }
+
+    });
+
+    /*----------------------------------
+      Section
+    ----------------------------------*/
+
+    result.sections.push({
+
+        title:
+
+            "Analytics",
+
+        data: {
+
+            name:
+
+                displayName,
+
+            designation:
+
+                identity.designation ||
+
+                "",
+
+            distanceKm:
+
+                analytics.distanceKm ??
+
+                0,
+
+            pointCount:
+
+                analytics.pointCount ??
+
+                0,
+
+            duration:
+
+                analytics.duration ||
+
+                ""
+
+        }
+
+    });
+
+    /*----------------------------------
+      Metadata
+    ----------------------------------*/
+
+    result.success =
+
+        true;
+
+    result.intent =
+
+        StaffConstants.INTENTS.STAFF_ANALYTICS;
+
+    result.confidence =
+
+        response.confidence ||
+
+        1;
+
+    result.source =
+
+        response.source ||
+
+        "LOCAL";
+
+    result.message =
+
+        "Analytics formatted successfully.";
 
     return result;
 
@@ -3360,7 +5629,7 @@ StaffFormatter.formatDistance = function (
 
     result.markdown = [
 
-        "# 📏 STAFF DISTANCE",
+        "# 📏 DISTANCE COVERED",
 
         "",
 
@@ -3368,7 +5637,15 @@ StaffFormatter.formatDistance = function (
 
             displayName,
 
-        "",
+        "**Designation:** " +
+
+            (
+
+                identity.designation ||
+
+                "-"
+
+            ),
 
         "**Distance:** " +
 
@@ -3380,19 +5657,7 @@ StaffFormatter.formatDistance = function (
 
             ) +
 
-            " km",
-
-        "",
-
-        "**Patrol Points:** " +
-
-            (
-
-                analytics.pointCount ??
-
-                0
-
-            )
+            " km"
 
     ].join(
 
@@ -3414,9 +5679,25 @@ StaffFormatter.formatDistance = function (
 
             displayName,
 
-        data:
+        data: {
 
-            profile
+            name:
+
+                displayName,
+
+            designation:
+
+                identity.designation ||
+
+                "",
+
+            distanceKm:
+
+                analytics.distanceKm ??
+
+                0
+
+        }
 
     });
 
@@ -3430,9 +5711,25 @@ StaffFormatter.formatDistance = function (
 
             "Distance",
 
-        data:
+        data: {
 
-            profile
+            name:
+
+                displayName,
+
+            designation:
+
+                identity.designation ||
+
+                "",
+
+            distanceKm:
+
+                analytics.distanceKm ??
+
+                0
+
+        }
 
     });
 
@@ -3462,7 +5759,7 @@ StaffFormatter.formatDistance = function (
 
     result.message =
 
-        "Distance formatted.";
+        "Distance formatted successfully.";
 
     return result;
 
@@ -3549,7 +5846,7 @@ StaffFormatter.formatPatrolPoints = function (
 
     result.markdown = [
 
-        "# 📍 STAFF PATROL POINTS",
+        "# 📍 PATROL POINTS",
 
         "",
 
@@ -3557,7 +5854,15 @@ StaffFormatter.formatPatrolPoints = function (
 
             displayName,
 
-        "",
+        "**Designation:** " +
+
+            (
+
+                identity.designation ||
+
+                "-"
+
+            ),
 
         "**Patrol Points:** " +
 
@@ -3567,21 +5872,7 @@ StaffFormatter.formatPatrolPoints = function (
 
                 0
 
-            ),
-
-        "",
-
-        "**Distance:** " +
-
-            (
-
-                analytics.distanceKm ??
-
-                0
-
-            ) +
-
-            " km"
+            )
 
     ].join(
 
@@ -3603,9 +5894,25 @@ StaffFormatter.formatPatrolPoints = function (
 
             displayName,
 
-        data:
+        data: {
 
-            profile
+            name:
+
+                displayName,
+
+            designation:
+
+                identity.designation ||
+
+                "",
+
+            pointCount:
+
+                analytics.pointCount ??
+
+                0
+
+        }
 
     });
 
@@ -3619,9 +5926,25 @@ StaffFormatter.formatPatrolPoints = function (
 
             "Patrol Points",
 
-        data:
+        data: {
 
-            profile
+            name:
+
+                displayName,
+
+            designation:
+
+                identity.designation ||
+
+                "",
+
+            pointCount:
+
+                analytics.pointCount ??
+
+                0
+
+        }
 
     });
 
@@ -3651,12 +5974,11 @@ StaffFormatter.formatPatrolPoints = function (
 
     result.message =
 
-        "Patrol points formatted.";
+        "Patrol points formatted successfully.";
 
     return result;
 
 };
-
  /*=========================================================
  FORMAT PATROL START
 =========================================================*/
@@ -3734,12 +6056,48 @@ StaffFormatter.formatPatrolStart = function (
         "-";
 
     /*----------------------------------
+      Human Readable Time
+    ----------------------------------*/
+
+    const startedAt =
+
+        analytics.startedAt;
+
+    const startedText =
+
+        startedAt
+
+            ? new Date(
+
+                startedAt
+
+            ).toLocaleString(
+
+                "en-IN",
+
+                {
+
+                    dateStyle:
+
+                        "medium",
+
+                    timeStyle:
+
+                        "short"
+
+                }
+
+            )
+
+            : "-";
+
+    /*----------------------------------
       Markdown
     ----------------------------------*/
 
     result.markdown = [
 
-        "# ▶️ STAFF PATROL START",
+        "# 🚶 PATROL START",
 
         "",
 
@@ -3747,29 +6105,19 @@ StaffFormatter.formatPatrolStart = function (
 
             displayName,
 
-        "",
-
-        "**Patrol Started:** " +
+        "**Designation:** " +
 
             (
 
-                analytics.startedAt ||
+                identity.designation ||
 
                 "-"
 
             ),
 
-        "",
+        "**Patrol Started:** " +
 
-        "**Patrol Points:** " +
-
-            (
-
-                analytics.pointCount ??
-
-                0
-
-            )
+            startedText
 
     ].join(
 
@@ -3791,9 +6139,23 @@ StaffFormatter.formatPatrolStart = function (
 
             displayName,
 
-        data:
+        data: {
 
-            profile
+            name:
+
+                displayName,
+
+            designation:
+
+                identity.designation ||
+
+                "",
+
+            startedAt:
+
+                startedText
+
+        }
 
     });
 
@@ -3807,9 +6169,23 @@ StaffFormatter.formatPatrolStart = function (
 
             "Patrol Start",
 
-        data:
+        data: {
 
-            profile
+            name:
+
+                displayName,
+
+            designation:
+
+                identity.designation ||
+
+                "",
+
+            startedAt:
+
+                startedText
+
+        }
 
     });
 
@@ -3839,7 +6215,7 @@ StaffFormatter.formatPatrolStart = function (
 
     result.message =
 
-        "Patrol start formatted.";
+        "Patrol start formatted successfully.";
 
     return result;
 
@@ -3921,12 +6297,48 @@ StaffFormatter.formatPatrolEnd = function (
         "-";
 
     /*----------------------------------
+      Human Readable Time
+    ----------------------------------*/
+
+    const endedAt =
+
+        analytics.endedAt;
+
+    const endedText =
+
+        endedAt
+
+            ? new Date(
+
+                endedAt
+
+            ).toLocaleString(
+
+                "en-IN",
+
+                {
+
+                    dateStyle:
+
+                        "medium",
+
+                    timeStyle:
+
+                        "short"
+
+                }
+
+            )
+
+            : "-";
+
+    /*----------------------------------
       Markdown
     ----------------------------------*/
 
     result.markdown = [
 
-        "# ⏹️ STAFF PATROL END",
+        "# 🏁 PATROL END",
 
         "",
 
@@ -3934,29 +6346,19 @@ StaffFormatter.formatPatrolEnd = function (
 
             displayName,
 
-        "",
-
-        "**Patrol Ended:** " +
+        "**Designation:** " +
 
             (
 
-                analytics.endedAt ||
+                identity.designation ||
 
                 "-"
 
             ),
 
-        "",
+        "**Patrol Ended:** " +
 
-        "**Patrol Points:** " +
-
-            (
-
-                analytics.pointCount ??
-
-                0
-
-            )
+            endedText
 
     ].join(
 
@@ -3978,9 +6380,23 @@ StaffFormatter.formatPatrolEnd = function (
 
             displayName,
 
-        data:
+        data: {
 
-            profile
+            name:
+
+                displayName,
+
+            designation:
+
+                identity.designation ||
+
+                "",
+
+            endedAt:
+
+                endedText
+
+        }
 
     });
 
@@ -3994,9 +6410,23 @@ StaffFormatter.formatPatrolEnd = function (
 
             "Patrol End",
 
-        data:
+        data: {
 
-            profile
+            name:
+
+                displayName,
+
+            designation:
+
+                identity.designation ||
+
+                "",
+
+            endedAt:
+
+                endedText
+
+        }
 
     });
 
@@ -4026,7 +6456,7 @@ StaffFormatter.formatPatrolEnd = function (
 
     result.message =
 
-        "Patrol end formatted.";
+        "Patrol end formatted successfully.";
 
     return result;
 
@@ -4108,14 +6538,12 @@ StaffFormatter.formatPatrolDuration = function (
         "-";
 
     /*----------------------------------
-      Patrol Duration
+      Duration
     ----------------------------------*/
 
-    const patrolDuration =
+    const duration =
 
         analytics.duration ||
-
-        analytics.durationText ||
 
         "-";
 
@@ -4125,7 +6553,7 @@ StaffFormatter.formatPatrolDuration = function (
 
     result.markdown = [
 
-        "# ⏱️ STAFF PATROL DURATION",
+        "# ⏱️ PATROL DURATION",
 
         "",
 
@@ -4133,11 +6561,19 @@ StaffFormatter.formatPatrolDuration = function (
 
             displayName,
 
-        "",
+        "**Designation:** " +
 
-        "**Patrol Duration:** " +
+            (
 
-            patrolDuration
+                identity.designation ||
+
+                "-"
+
+            ),
+
+        "**Duration:** " +
+
+            duration
 
     ].join(
 
@@ -4159,9 +6595,23 @@ StaffFormatter.formatPatrolDuration = function (
 
             displayName,
 
-        data:
+        data: {
 
-            profile
+            name:
+
+                displayName,
+
+            designation:
+
+                identity.designation ||
+
+                "",
+
+            duration:
+
+                duration
+
+        }
 
     });
 
@@ -4175,9 +6625,23 @@ StaffFormatter.formatPatrolDuration = function (
 
             "Patrol Duration",
 
-        data:
+        data: {
 
-            profile
+            name:
+
+                displayName,
+
+            designation:
+
+                identity.designation ||
+
+                "",
+
+            duration:
+
+                duration
+
+        }
 
     });
 
@@ -4207,3864 +6671,8 @@ StaffFormatter.formatPatrolDuration = function (
 
     result.message =
 
-        "Patrol duration formatted.";
+        "Patrol duration formatted successfully.";
 
     return result;
 
 };
- /*=========================================================
- FORMAT DUTY TYPE
-=========================================================*/
-
-StaffFormatter.formatDutyType = function (
-
-    response
-
-) {
-
-    const result =
-
-        StaffFormatter.createResponse(
-
-            response
-
-        );
-
-    /*----------------------------------
-      Validate
-    ----------------------------------*/
-
-    if (
-
-        !response ||
-
-        !response.success ||
-
-        !response.data
-
-    ) {
-
-        result.message =
-
-            response?.message ||
-
-            "Duty type information not found.";
-
-        return result;
-
-    }
-
-    /*----------------------------------
-      Canonical Profile
-    ----------------------------------*/
-
-    const profile =
-
-        response.data;
-
-    const identity =
-
-        profile.identity ||
-
-        {};
-
-    const assignment =
-
-        profile.assignment ||
-
-        {};
-
-    const posting =
-
-        profile.posting ||
-
-        {};
-
-    /*----------------------------------
-      Display Name
-    ----------------------------------*/
-
-    const displayName =
-
-        identity.name ||
-
-        identity.rawName ||
-
-        identity.cleanName ||
-
-        "-";
-
-    /*----------------------------------
-      Markdown
-    ----------------------------------*/
-
-    result.markdown = [
-
-        "# 🚓 STAFF DUTY TYPE",
-
-        "",
-
-        "**Name:** " +
-
-            displayName,
-
-        "",
-
-        "**Duty Type:** " +
-
-            (
-
-                assignment.dutyType ||
-
-                "-"
-
-            ),
-
-        "",
-
-        "**Duty Status:** " +
-
-            (
-
-                assignment.status ||
-
-                "-"
-
-            ),
-
-        "",
-
-        "**Duty Active:** " +
-
-            (
-
-                assignment.dutyActive
-
-                    ? "YES"
-
-                    : "NO"
-
-            ),
-
-        "",
-
-        "**Assigned Compartment:** " +
-
-            (
-
-                assignment.assignedCompartment ||
-
-                "-"
-
-            ),
-
-        "",
-
-        "**Leader:** " +
-
-            (
-
-                assignment.leader ||
-
-                "-"
-
-            ),
-
-        "",
-
-        "**Team:** " +
-
-            (
-
-                assignment.team ||
-
-                "-"
-
-            ),
-
-        "",
-
-        "## 🌳 Administrative Posting",
-
-        "",
-
-        "**Circle:** " +
-
-            (
-
-                posting.circle ||
-
-                "-"
-
-            ),
-
-        "**Division:** " +
-
-            (
-
-                posting.division ||
-
-                "-"
-
-            ),
-
-        "**Range:** " +
-
-            (
-
-                posting.range ||
-
-                "-"
-
-            ),
-
-        "**Beat:** " +
-
-            (
-
-                posting.beat ||
-
-                "-"
-
-            )
-
-    ].join(
-
-        "\n"
-
-    );
-
-    /*----------------------------------
-      Card
-    ----------------------------------*/
-
-    result.cards.push({
-
-        type:
-
-            "staff-duty-type",
-
-        title:
-
-            displayName,
-
-        data:
-
-            profile
-
-    });
-
-    /*----------------------------------
-      Section
-    ----------------------------------*/
-
-    result.sections.push({
-
-        title:
-
-            "Duty Type",
-
-        data:
-
-            profile
-
-    });
-
-    /*----------------------------------
-      Metadata
-    ----------------------------------*/
-
-    result.success =
-
-        true;
-
-    result.intent =
-
-        StaffConstants.INTENTS.STAFF_DUTY_TYPE;
-
-    result.confidence =
-
-        response.confidence ||
-
-        1;
-
-    result.source =
-
-        response.source ||
-
-        "LOCAL";
-
-    result.message =
-
-        "Duty type formatted.";
-
-    return result;
-
-};
- /*=========================================================
- FORMAT CONTACT
-=========================================================*/
-
-/*=========================================================
- FORMAT CONTACT
-=========================================================*/
-
-StaffFormatter.formatContact = function (
-
-    response
-
-) {
-
-    const result =
-
-        StaffFormatter.createResponse(
-
-            response
-
-        );
-
-    /*----------------------------------
-      Validate
-    ----------------------------------*/
-
-    if (
-
-        !response ||
-
-        !response.success ||
-
-        !response.data
-
-    ) {
-
-        result.message =
-
-            response?.message ||
-
-            "Contact information not found.";
-
-        return result;
-
-    }
-
-    const profile =
-
-        response.data;
-
-    const identity =
-
-        profile.identity ||
-
-        {};
-
-    /*----------------------------------
-      Markdown
-    ----------------------------------*/
-
-    result.markdown = [
-
-        "# ☎ STAFF CONTACT",
-
-        "",
-
-        "**Name:** " +
-
-            (
-
-                identity.name ||
-
-                identity.rawName ||
-
-                identity.cleanName ||
-
-                "-"
-
-            ),
-
-        "",
-
-        "**Phone:** " +
-
-            (
-
-                identity.phone ||
-
-                "-"
-
-            ),
-
-        "",
-
-        "**Email:** " +
-
-            (
-
-                identity.email ||
-
-                "-"
-
-            ),
-
-        "",
-
-        "**Role:** " +
-
-            (
-
-                identity.role ||
-
-                "-"
-
-            ),
-
-        "",
-
-        "**Designation:** " +
-
-            (
-
-                identity.designation ||
-
-                "-"
-
-            )
-
-    ].join(
-
-        "\n"
-
-    );
-
-    result.cards.push({
-
-        type:
-
-            "staff-contact",
-
-        title:
-
-            identity.name ||
-
-            identity.rawName ||
-
-            identity.cleanName ||
-
-            "Contact",
-
-        data:
-
-            profile
-
-    });
-
-    result.sections.push({
-
-        title:
-
-            "Contact",
-
-        data:
-
-            profile
-
-    });
-
-    result.success =
-
-        true;
-
-    result.intent =
-
-        StaffConstants.INTENTS.STAFF_CONTACT;
-
-    result.confidence =
-
-        response.confidence ||
-
-        1;
-
-    result.source =
-
-        response.source ||
-
-        "LOCAL";
-
-    result.message =
-
-        "Contact formatted.";
-
-    return result;
-
-};
-
-/*=========================================================
- FORMAT DIRECTORY
-=========================================================*/
-
-StaffFormatter.formatDirectory = function (
-
-    response
-
-) {
-
-    const result =
-
-        StaffFormatter.createResponse(
-
-            response
-
-        );
-
-    /*----------------------------------
-      Validate
-    ----------------------------------*/
-
-    if (
-
-        !response ||
-
-        !response.success ||
-
-        !Array.isArray(
-
-            response.data
-
-        )
-
-    ) {
-
-        result.message =
-
-            response?.message ||
-
-            "No staff found.";
-
-        return result;
-
-    }
-
-    const staff =
-
-        response.data;
-
-    /*----------------------------------
-      Markdown
-    ----------------------------------*/
-
-    const lines = [
-
-        "# 👥 STAFF DIRECTORY",
-
-        "",
-
-        "**Total Staff:** " +
-
-            staff.length,
-
-        ""
-
-    ];
-
-    staff.forEach(
-
-        function (
-
-            person,
-
-            index
-
-        ) {
-
-            const identity =
-
-                person.identity ||
-
-                {};
-
-            const posting =
-
-                person.posting ||
-
-                {};
-
-            lines.push(
-
-                (
-
-                    index + 1
-
-                ) +
-
-                ". **" +
-
-                (
-
-                    identity.name ||
-
-                    identity.rawName ||
-
-                    identity.cleanName ||
-
-                    "-"
-
-                ) +
-
-                "**"
-
-            );
-
-            lines.push(
-
-                "   • Role: " +
-
-                (
-
-                    identity.role ||
-
-                    "-"
-
-                )
-
-            );
-
-            lines.push(
-
-                "   • Division: " +
-
-                (
-
-                    posting.division ||
-
-                    "-"
-
-                )
-
-            );
-
-            lines.push(
-
-                "   • Range: " +
-
-                (
-
-                    posting.range ||
-
-                    "-"
-
-                )
-
-            );
-
-            lines.push(
-
-                "   • Beat: " +
-
-                (
-
-                    posting.beat ||
-
-                    "-"
-
-                )
-
-            );
-
-            lines.push(
-
-                "   • Phone: " +
-
-                (
-
-                    identity.phone ||
-
-                    "-"
-
-                )
-
-            );
-
-            lines.push("");
-
-        }
-
-    );
-
-    result.markdown =
-
-        lines.join(
-
-            "\n"
-
-        );
-
-    /*----------------------------------
-      Table
-    ----------------------------------*/
-
-    result.tables.push({
-
-        title:
-
-            "Staff Directory",
-
-        columns: [
-
-            "Name",
-
-            "Role",
-
-            "Division",
-
-            "Range",
-
-            "Beat",
-
-            "Phone"
-
-        ],
-
-        rows:
-
-            staff.map(
-
-                function (
-
-                    person
-
-                ) {
-
-                    const identity =
-
-                        person.identity ||
-
-                        {};
-
-                    const posting =
-
-                        person.posting ||
-
-                        {};
-
-                    return [
-
-                        identity.name ||
-
-                        identity.rawName ||
-
-                        identity.cleanName ||
-
-                        "",
-
-                        identity.role ||
-
-                        "",
-
-                        posting.division ||
-
-                        "",
-
-                        posting.range ||
-
-                        "",
-
-                        posting.beat ||
-
-                        "",
-
-                        identity.phone ||
-
-                        ""
-
-                    ];
-
-                }
-
-            )
-
-    });
-
-    /*----------------------------------
-      Card
-    ----------------------------------*/
-
-    result.cards.push({
-
-        type:
-
-            "staff-directory",
-
-        title:
-
-            "Staff Directory",
-
-        total:
-
-            staff.length,
-
-        data:
-
-            staff
-
-    });
-
-    /*----------------------------------
-      Section
-    ----------------------------------*/
-
-    result.sections.push({
-
-        title:
-
-            "Directory",
-
-        data:
-
-            staff
-
-    });
-
-    result.success =
-
-        true;
-
-    result.intent =
-
-        StaffConstants.INTENTS.STAFF_DIRECTORY;
-
-    result.confidence =
-
-        response.confidence ||
-
-        1;
-
-    result.source =
-
-        response.source ||
-
-        "LOCAL";
-
-    result.message =
-
-        "Directory formatted.";
-
-    return result;
-
-};
-/*=========================================================
- FORMAT POSTING
-=========================================================*/
-
-StaffFormatter.formatPosting = function (
-
-    response
-
-) {
-
-    const result =
-
-        StaffFormatter.createResponse(
-
-            response
-
-        );
-
-    /*----------------------------------
-      Validate
-    ----------------------------------*/
-
-    if (
-
-        !response ||
-
-        !response.success ||
-
-        !response.data
-
-    ) {
-
-        result.message =
-
-            response?.message ||
-
-            "Posting details not found.";
-
-        return result;
-
-    }
-
-    const profile =
-
-        response.data;
-
-    const identity =
-
-        profile.identity ||
-
-        {};
-
-    const posting =
-
-        profile.posting ||
-
-        {};
-
-    const assignment =
-
-        profile.assignment ||
-
-        {};
-
-    const location =
-
-        profile.location ||
-
-        {};
-
-    const team =
-
-        profile.teamInfo ||
-
-        {};
-
-    result.markdown = [
-
-        "# 📍 STAFF POSTING",
-
-        "",
-
-        "**Name:** " +
-
-            (
-
-                identity.name ||
-
-                identity.rawName ||
-
-                identity.cleanName ||
-
-                "-"
-
-            ),
-
-        "**Role:** " +
-
-            (
-
-                identity.role ||
-
-                "-"
-
-            ),
-
-        "**Designation:** " +
-
-            (
-
-                identity.designation ||
-
-                "-"
-
-            ),
-
-        "",
-
-        "## 🌳 Administrative Posting",
-
-        "",
-
-        "**Circle:** " +
-
-            (
-
-                posting.circle ||
-
-                "-"
-
-            ),
-
-        "**Division:** " +
-
-            (
-
-                posting.division ||
-
-                "-"
-
-            ),
-
-        "**Range:** " +
-
-            (
-
-                posting.range ||
-
-                "-"
-
-            ),
-
-        "**Beat:** " +
-
-            (
-
-                posting.beat ||
-
-                "-"
-
-            ),
-
-        "",
-
-        "## 🚓 Current Assignment",
-
-        "",
-
-        "**Compartment:** " +
-
-            (
-
-                assignment.assignedCompartment ||
-
-                "-"
-
-            ),
-
-        "**Duty Type:** " +
-
-            (
-
-                assignment.dutyType ||
-
-                "-"
-
-            ),
-
-        "**Status:** " +
-
-            (
-
-                assignment.status ||
-
-                "-"
-
-            ),
-
-        "**Duty Active:** " +
-
-            (
-
-                assignment.dutyActive
-
-                    ? "YES"
-
-                    : "NO"
-
-            ),
-
-        "",
-
-        "## 👥 Team",
-
-        "",
-
-        "**Leader:** " +
-
-            (
-
-                team.leader ||
-
-                "-"
-
-            ),
-
-        "**Team:** " +
-
-            (
-
-                team.team ||
-
-                "-"
-
-            ),
-
-        "",
-
-        "## 📡 Current Location",
-
-        "",
-
-        "**Location:** " +
-
-            (
-
-                location.location ||
-
-                "-"
-
-            ),
-
-        "**Latitude:** " +
-
-            (
-
-                location.lat ??
-
-                "-"
-
-            ),
-
-        "**Longitude:** " +
-
-            (
-
-                location.lon ??
-
-                "-"
-
-            )
-
-    ].join(
-
-        "\n"
-
-    );
-
-    result.cards.push({
-
-        type:
-
-            "staff-posting",
-
-        title:
-
-            identity.name ||
-
-            identity.rawName ||
-
-            identity.cleanName ||
-
-            "Staff Posting",
-
-        data:
-
-            profile
-
-    });
-
-    result.sections.push({
-
-        title:
-
-            "Posting",
-
-        data:
-
-            profile
-
-    });
-
-    result.success =
-
-        true;
-
-    result.intent =
-
-        StaffConstants.INTENTS.STAFF_POSTING;
-
-    result.confidence =
-
-        response.confidence ||
-
-        1;
-
-    result.source =
-
-        response.source ||
-
-        "LOCAL";
-
-    result.message =
-
-        "Posting formatted.";
-
-    return result;
-
-};
-
-/*=========================================================
- FORMAT LOCATION
-=========================================================*/
-
-StaffFormatter.formatLocation = function (
-
-    response
-
-) {
-
-    const result =
-
-        StaffFormatter.createResponse(
-
-            response
-
-        );
-
-    /*----------------------------------
-      Validate
-    ----------------------------------*/
-
-    if (
-
-        !response ||
-
-        !response.success ||
-
-        !response.data
-
-    ) {
-
-        result.message =
-
-            response?.message ||
-
-            "Location information not found.";
-
-        return result;
-
-    }
-
-    const profile =
-
-        response.data;
-
-    const identity =
-
-        profile.identity ||
-
-        {};
-
-    const posting =
-
-        profile.posting ||
-
-        {};
-
-    const assignment =
-
-        profile.assignment ||
-
-        {};
-
-    const location =
-
-        profile.location ||
-
-        {};
-
-    const gps =
-
-        profile.gps ||
-
-        {};
-
-    result.markdown = [
-
-        "# 📡 STAFF LOCATION",
-
-        "",
-
-        "**Name:** " +
-
-            (
-
-                identity.name ||
-
-                identity.rawName ||
-
-                identity.cleanName ||
-
-                "-"
-
-            ),
-
-        "**Role:** " +
-
-            (
-
-                identity.role ||
-
-                "-"
-
-            ),
-
-        "**Designation:** " +
-
-            (
-
-                identity.designation ||
-
-                "-"
-
-            ),
-
-        "",
-
-        "## 🌳 Administrative Posting",
-
-        "",
-
-        "**Circle:** " +
-
-            (
-
-                posting.circle ||
-
-                "-"
-
-            ),
-
-        "**Division:** " +
-
-            (
-
-                posting.division ||
-
-                "-"
-
-            ),
-
-        "**Range:** " +
-
-            (
-
-                posting.range ||
-
-                "-"
-
-            ),
-
-        "**Beat:** " +
-
-            (
-
-                posting.beat ||
-
-                "-"
-
-            ),
-
-        "",
-
-        "## 📍 Live Location",
-
-        "",
-
-        "**Location:** " +
-
-            (
-
-                location.location ||
-
-                "-"
-
-            ),
-
-        "**Latitude:** " +
-
-            (
-
-                location.lat ??
-
-                "-"
-
-            ),
-
-        "**Longitude:** " +
-
-            (
-
-                location.lon ??
-
-                "-"
-
-            ),
-
-        "",
-
-        "## 📡 GPS",
-
-        "",
-
-        "**Accuracy:** " +
-
-            (
-
-                gps.accuracy ??
-
-                "-"
-
-            ),
-
-        "**Speed:** " +
-
-            (
-
-                gps.speed ??
-
-                "-"
-
-            ),
-
-        "**Heading:** " +
-
-            (
-
-                gps.heading ??
-
-                "-"
-
-            ),
-
-        "**Last Seen:** " +
-
-            (
-
-                gps.lastSeen ||
-
-                "-"
-
-            ),
-
-        "",
-
-        "## 🚓 Duty",
-
-        "",
-
-        "**Duty Type:** " +
-
-            (
-
-                assignment.dutyType ||
-
-                "-"
-
-            ),
-
-        "**Status:** " +
-
-            (
-
-                assignment.status ||
-
-                "-"
-
-            ),
-
-        "**Duty Active:** " +
-
-            (
-
-                assignment.dutyActive
-
-                    ? "YES"
-
-                    : "NO"
-
-            )
-
-    ].join(
-
-        "\n"
-
-    );
-
-    result.cards.push({
-
-        type:
-
-            "staff-location",
-
-        title:
-
-            identity.name ||
-
-            identity.rawName ||
-
-            identity.cleanName ||
-
-            "Staff Location",
-
-        data:
-
-            profile
-
-    });
-
-    result.sections.push({
-
-        title:
-
-            "Location",
-
-        data:
-
-            profile
-
-    });
-
-    result.success =
-
-        true;
-
-    result.intent =
-
-        StaffConstants.INTENTS.STAFF_LOCATION;
-
-    result.confidence =
-
-        response.confidence ||
-
-        1;
-
-    result.source =
-
-        response.source ||
-
-        "LOCAL";
-
-    result.message =
-
-        "Location formatted.";
-
-    return result;
-
-};
-/*=========================================================
- FORMAT DUTY
-=========================================================*/
-
-StaffFormatter.formatDuty = function (
-
-    response
-
-) {
-
-    const result =
-
-        StaffFormatter.createResponse(
-
-            response
-
-        );
-
-    /*----------------------------------
-      Validate
-    ----------------------------------*/
-
-    if (
-
-        !response ||
-
-        !response.success ||
-
-        !response.data
-
-    ) {
-
-        result.message =
-
-            response?.message ||
-
-            "Duty information not found.";
-
-        return result;
-
-    }
-
-    const profile =
-
-        response.data;
-
-    const identity =
-
-        profile.identity ||
-
-        {};
-
-    const posting =
-
-        profile.posting ||
-
-        {};
-
-    const assignment =
-
-        profile.assignment ||
-
-        {};
-
-    const location =
-
-        profile.location ||
-
-        {};
-
-    const gps =
-
-        profile.gps ||
-
-        {};
-
-    const team =
-
-        profile.teamInfo ||
-
-        {};
-
-    result.markdown = [
-
-        "# 🚓 STAFF DUTY",
-
-        "",
-
-        "**Name:** " +
-
-            (
-
-                identity.name ||
-
-                identity.rawName ||
-
-                identity.cleanName ||
-
-                "-"
-
-            ),
-
-        "**Role:** " +
-
-            (
-
-                identity.role ||
-
-                "-"
-
-            ),
-
-        "**Designation:** " +
-
-            (
-
-                identity.designation ||
-
-                "-"
-
-            ),
-
-        "",
-
-        "## 🌳 Posting",
-
-        "",
-
-        "**Circle:** " +
-
-            (
-
-                posting.circle ||
-
-                "-"
-
-            ),
-
-        "**Division:** " +
-
-            (
-
-                posting.division ||
-
-                "-"
-
-            ),
-
-        "**Range:** " +
-
-            (
-
-                posting.range ||
-
-                "-"
-
-            ),
-
-        "**Beat:** " +
-
-            (
-
-                posting.beat ||
-
-                "-"
-
-            ),
-
-        "",
-
-        "## 🚓 Duty Information",
-
-        "",
-
-        "**Duty Type:** " +
-
-            (
-
-                assignment.dutyType ||
-
-                "-"
-
-            ),
-
-        "**Status:** " +
-
-            (
-
-                assignment.status ||
-
-                "-"
-
-            ),
-
-        "**Duty Active:** " +
-
-            (
-
-                assignment.dutyActive
-
-                    ? "YES"
-
-                    : "NO"
-
-            ),
-
-        "**Last Duty End:** " +
-
-            (
-
-                assignment.lastDutyEnd ||
-
-                "-"
-
-            ),
-
-        "",
-
-        "## 👥 Team",
-
-        "",
-
-        "**Leader:** " +
-
-            (
-
-                team.leader ||
-
-                "-"
-
-            ),
-
-        "**Team:** " +
-
-            (
-
-                team.team ||
-
-                "-"
-
-            ),
-
-        "",
-
-        "## 📡 Live GPS",
-
-        "",
-
-        "**Location:** " +
-
-            (
-
-                location.location ||
-
-                "-"
-
-            ),
-
-        "**Latitude:** " +
-
-            (
-
-                location.lat ??
-
-                "-"
-
-            ),
-
-        "**Longitude:** " +
-
-            (
-
-                location.lon ??
-
-                "-"
-
-            ),
-
-        "**Accuracy:** " +
-
-            (
-
-                gps.accuracy ??
-
-                "-"
-
-            ),
-
-        "**Speed:** " +
-
-            (
-
-                gps.speed ??
-
-                "-"
-
-            ),
-
-        "**Last Seen:** " +
-
-            (
-
-                gps.lastSeen ||
-
-                "-"
-
-            )
-
-    ].join(
-
-        "\n"
-
-    );
-
-    result.cards.push({
-
-        type:
-
-            "staff-duty",
-
-        title:
-
-            identity.name ||
-
-            identity.rawName ||
-
-            identity.cleanName ||
-
-            "Staff Duty",
-
-        data:
-
-            profile
-
-    });
-
-    result.sections.push({
-
-        title:
-
-            "Duty",
-
-        data:
-
-            profile
-
-    });
-
-    result.success =
-
-        true;
-
-    result.intent =
-
-        StaffConstants.INTENTS.STAFF_DUTY;
-
-    result.confidence =
-
-        response.confidence ||
-
-        1;
-
-    result.source =
-
-        response.source ||
-
-        "LOCAL";
-
-    result.message =
-
-        "Duty formatted.";
-
-    return result;
-
-};
-
-/*=========================================================
- FORMAT GPS
-=========================================================*/
-
-StaffFormatter.formatGPS = function (
-
-    response
-
-) {
-
-    const result =
-
-        StaffFormatter.createResponse(
-
-            response
-
-        );
-
-    /*----------------------------------
-      Validate
-    ----------------------------------*/
-
-    if (
-
-        !response ||
-
-        !response.success ||
-
-        !response.data
-
-    ) {
-
-        result.message =
-
-            response?.message ||
-
-            "GPS information not found.";
-
-        return result;
-
-    }
-
-    const profile =
-
-        response.data;
-
-    const identity =
-
-        profile.identity ||
-
-        {};
-
-    const posting =
-
-        profile.posting ||
-
-        {};
-
-    const assignment =
-
-        profile.assignment ||
-
-        {};
-
-    const location =
-
-        profile.location ||
-
-        {};
-
-    const gps =
-
-        profile.gps ||
-
-        {};
-
-    const team =
-
-        profile.teamInfo ||
-
-        {};
-
-    const tracking =
-
-        profile.tracking ||
-
-        {};
-
-    const analytics =
-
-        profile.analytics ||
-
-        {};
-
-    result.markdown = [
-
-        "# 📡 STAFF GPS",
-
-        "",
-
-        "**Name:** " +
-
-            (
-
-                identity.name ||
-
-                identity.rawName ||
-
-                identity.cleanName ||
-
-                "-"
-
-            ),
-
-        "**Role:** " +
-
-            (
-
-                identity.role ||
-
-                "-"
-
-            ),
-
-        "**Designation:** " +
-
-            (
-
-                identity.designation ||
-
-                "-"
-
-            ),
-
-        "",
-
-        "## 📍 Current Location",
-
-        "",
-
-        "**Location:** " +
-
-            (
-
-                location.location ||
-
-                "-"
-
-            ),
-
-        "**Latitude:** " +
-
-            (
-
-                location.lat ??
-
-                "-"
-
-            ),
-
-        "**Longitude:** " +
-
-            (
-
-                location.lon ??
-
-                "-"
-
-            ),
-
-        "",
-
-        "## 📡 GPS Details",
-
-        "",
-
-        "**Accuracy:** " +
-
-            (
-
-                gps.accuracy ??
-
-                "-"
-
-            ),
-
-        "**Speed:** " +
-
-            (
-
-                gps.speed ??
-
-                "-"
-
-            ),
-
-        "**Heading:** " +
-
-            (
-
-                gps.heading ??
-
-                "-"
-
-            ),
-
-        "**Turn Angle:** " +
-
-            (
-
-                gps.turnAngle ??
-
-                "-"
-
-            ),
-
-        "**Turn Rate:** " +
-
-            (
-
-                gps.turnRate ??
-
-                "-"
-
-            ),
-
-        "**Last Seen:** " +
-
-            (
-
-                gps.lastSeen ||
-
-                "-"
-
-            ),
-
-        "**Updated At:** " +
-
-            (
-
-                gps.updatedAt ||
-
-                "-"
-
-            ),
-
-        "",
-
-        "## 🚓 Duty",
-
-        "",
-
-        "**Duty Type:** " +
-
-            (
-
-                assignment.dutyType ||
-
-                "-"
-
-            ),
-
-        "**Duty Active:** " +
-
-            (
-
-                assignment.dutyActive
-
-                    ? "YES"
-
-                    : "NO"
-
-            ),
-
-        "**Status:** " +
-
-            (
-
-                assignment.status ||
-
-                "-"
-
-            ),
-
-        "",
-
-        "## 🌳 Posting",
-
-        "",
-
-        "**Circle:** " +
-
-            (
-
-                posting.circle ||
-
-                "-"
-
-            ),
-
-        "**Division:** " +
-
-            (
-
-                posting.division ||
-
-                "-"
-
-            ),
-
-        "**Range:** " +
-
-            (
-
-                posting.range ||
-
-                "-"
-
-            ),
-
-        "**Beat:** " +
-
-            (
-
-                posting.beat ||
-
-                "-"
-
-            ),
-
-        "",
-
-        "## 👥 Team",
-
-        "",
-
-        "**Leader:** " +
-
-            (
-
-                team.leader ||
-
-                "-"
-
-            ),
-
-        "**Team:** " +
-
-            (
-
-                team.team ||
-
-                "-"
-
-            ),
-
-        "",
-
-        "## 📈 Tracking",
-
-        "",
-
-        "**Session ID:** " +
-
-            (
-
-                tracking.sessionId ||
-
-                "-"
-
-            ),
-
-        "**Source:** " +
-
-            (
-
-                tracking.source ||
-
-                "-"
-
-            ),
-
-        "**Tracking ID:** " +
-
-            (
-
-                tracking.id ||
-
-                "-"
-
-            ),
-
-        "",
-
-        "## 📊 Patrol Analytics",
-
-        "",
-
-        "**Distance:** " +
-
-            (
-
-                analytics.distanceKm ??
-
-                0
-
-            ) +
-
-            " km",
-
-        "**GPS Points:** " +
-
-            (
-
-                analytics.pointCount ??
-
-                0
-
-            ),
-
-        "**Started:** " +
-
-            (
-
-                analytics.startedAt ||
-
-                "-"
-
-            ),
-
-        "**Ended:** " +
-
-            (
-
-                analytics.endedAt ||
-
-                "-"
-
-            )
-
-    ].join(
-
-        "\n"
-
-    );
-
-    result.cards.push({
-
-        type:
-
-            "staff-gps",
-
-        title:
-
-            identity.name ||
-
-            identity.rawName ||
-
-            identity.cleanName ||
-
-            "Staff GPS",
-
-        data:
-
-            profile
-
-    });
-
-    result.sections.push({
-
-        title:
-
-            "GPS",
-
-        data:
-
-            profile
-
-    });
-
-    result.success =
-
-        true;
-
-    result.intent =
-
-        StaffConstants.INTENTS.STAFF_GPS;
-
-    result.confidence =
-
-        response.confidence ||
-
-        1;
-
-    result.source =
-
-        response.source ||
-
-        "LOCAL";
-
-    result.message =
-
-        "GPS formatted.";
-
-    return result;
-
-};
-/*=========================================================
- FORMAT TEAM
-=========================================================*/
-
-StaffFormatter.formatTeam = function (
-
-    response
-
-) {
-
-    const result =
-
-        StaffFormatter.createResponse(
-
-            response
-
-        );
-
-    /*----------------------------------
-      Validate
-    ----------------------------------*/
-
-    if (
-
-        !response ||
-
-        !response.success ||
-
-        !response.data
-
-    ) {
-
-        result.message =
-
-            response?.message ||
-
-            "Team information not found.";
-
-        return result;
-
-    }
-
-    const profile =
-
-        response.data;
-
-    const identity =
-
-        profile.identity ||
-
-        {};
-
-    const posting =
-
-        profile.posting ||
-
-        {};
-
-    const assignment =
-
-        profile.assignment ||
-
-        {};
-
-    const location =
-
-        profile.location ||
-
-        {};
-
-    const gps =
-
-        profile.gps ||
-
-        {};
-
-    const team =
-
-        profile.teamInfo ||
-
-        {};
-
-    const analytics =
-
-        profile.analytics ||
-
-        {};
-
-    result.markdown = [
-
-        "# 👥 STAFF TEAM",
-
-        "",
-
-        "**Name:** " +
-
-            (
-
-                identity.name ||
-
-                identity.rawName ||
-
-                identity.cleanName ||
-
-                "-"
-
-            ),
-
-        "**Role:** " +
-
-            (
-
-                identity.role ||
-
-                "-"
-
-            ),
-
-        "**Designation:** " +
-
-            (
-
-                identity.designation ||
-
-                "-"
-
-            ),
-
-        "",
-
-        "## 👥 Team Information",
-
-        "",
-
-        "**Leader:** " +
-
-            (
-
-                team.leader ||
-
-                "-"
-
-            ),
-
-        "**Team:** " +
-
-            (
-
-                team.team ||
-
-                "-"
-
-            ),
-
-        "**Members:** " +
-
-            (
-
-                Array.isArray(
-
-                    team.teamMembers
-
-                )
-
-                    ? team.teamMembers.length
-
-                    : 0
-
-            ),
-
-        "",
-
-        "## 🌳 Administrative Posting",
-
-        "",
-
-        "**Circle:** " +
-
-            (
-
-                posting.circle ||
-
-                "-"
-
-            ),
-
-        "**Division:** " +
-
-            (
-
-                posting.division ||
-
-                "-"
-
-            ),
-
-        "**Range:** " +
-
-            (
-
-                posting.range ||
-
-                "-"
-
-            ),
-
-        "**Beat:** " +
-
-            (
-
-                posting.beat ||
-
-                "-"
-
-            ),
-
-        "**Compartment:** " +
-
-            (
-
-                assignment.assignedCompartment ||
-
-                "-"
-
-            ),
-
-        "",
-
-        "## 🚓 Duty",
-
-        "",
-
-        "**Duty Type:** " +
-
-            (
-
-                assignment.dutyType ||
-
-                "-"
-
-            ),
-
-        "**Status:** " +
-
-            (
-
-                assignment.status ||
-
-                "-"
-
-            ),
-
-        "**Duty Active:** " +
-
-            (
-
-                assignment.dutyActive
-
-                    ? "YES"
-
-                    : "NO"
-
-            ),
-
-        "",
-
-        "## 📡 Live GPS",
-
-        "",
-
-        "**Location:** " +
-
-            (
-
-                location.location ||
-
-                "-"
-
-            ),
-
-        "**Latitude:** " +
-
-            (
-
-                location.lat ??
-
-                "-"
-
-            ),
-
-        "**Longitude:** " +
-
-            (
-
-                location.lon ??
-
-                "-"
-
-            ),
-
-        "**Accuracy:** " +
-
-            (
-
-                gps.accuracy ??
-
-                "-"
-
-            ),
-
-        "**Speed:** " +
-
-            (
-
-                gps.speed ??
-
-                "-"
-
-            ),
-
-        "",
-
-        "## 📈 Patrol Statistics",
-
-        "",
-
-        "**Distance:** " +
-
-            (
-
-                analytics.distanceKm ??
-
-                0
-
-            ) +
-
-            " km",
-
-        "**GPS Points:** " +
-
-            (
-
-                analytics.pointCount ??
-
-                0
-
-            ),
-
-        "**Session Started:** " +
-
-            (
-
-                analytics.startedAt ||
-
-                "-"
-
-            ),
-
-        "**Session Ended:** " +
-
-            (
-
-                analytics.endedAt ||
-
-                "-"
-
-            )
-
-    ].join(
-
-        "\n"
-
-    );
-
-    result.cards.push({
-
-        type:
-
-            "staff-team",
-
-        title:
-
-            identity.name ||
-
-            identity.rawName ||
-
-            identity.cleanName ||
-
-            "Staff Team",
-
-        data:
-
-            profile
-
-    });
-
-    result.sections.push({
-
-        title:
-
-            "Team",
-
-        data:
-
-            profile
-
-    });
-
-    result.success =
-
-        true;
-
-    result.intent =
-
-        StaffConstants.INTENTS.STAFF_TEAM;
-
-    result.confidence =
-
-        response.confidence ||
-
-        1;
-
-    result.source =
-
-        response.source ||
-
-        "LOCAL";
-
-    result.message =
-
-        "Team formatted.";
-
-    return result;
-
-};
- /*=========================================================
- FORMAT STRENGTH
-=========================================================*/
-
-StaffFormatter.formatStrength = function (
-
-    response
-
-) {
-
-    const result =
-
-        StaffFormatter.createResponse(
-
-            response
-
-        );
-
-    /*----------------------------------
-      Validate
-    ----------------------------------*/
-
-    if (
-
-        !response ||
-
-        !response.success ||
-
-        !response.summary
-
-    ) {
-
-        result.message =
-
-            response?.message ||
-
-            "Staff strength not available.";
-
-        return result;
-
-    }
-
-    const summary =
-
-        response.summary;
-
-    /*----------------------------------
-      Markdown
-    ----------------------------------*/
-
-    const lines = [
-
-        "# 👥 STAFF STRENGTH",
-
-        "",
-
-        "**Total Staff:** " +
-
-        (
-
-            summary.total ||
-
-            0
-
-        ),
-
-        "",
-
-        "**Active Staff:** " +
-
-        (
-
-            summary.active ||
-
-            0
-
-        ),
-
-        "",
-
-        "**Inactive Staff:** " +
-
-        (
-
-            summary.inactive ||
-
-            0
-
-        ),
-
-        "",
-
-        "**Active %:** " +
-
-        (
-
-            summary.statistics?.activePercentage ??
-
-            0
-
-        ) +
-
-        "%",
-
-        "",
-
-        "**Inactive %:** " +
-
-        (
-
-            summary.statistics?.inactivePercentage ??
-
-            0
-
-        ) +
-
-        "%",
-
-        "",
-
-        "## 👮 By Role",
-
-        ""
-
-    ];
-
-    Object.entries(
-
-        summary.byRole ||
-
-        {}
-
-    ).forEach(
-
-        function (
-
-            [
-
-                role,
-
-                count
-
-            ]
-
-        ) {
-
-            lines.push(
-
-                "- " +
-
-                role +
-
-                ": " +
-
-                count
-
-            );
-
-        }
-
-    );
-
-    lines.push("");
-
-    lines.push(
-
-        "## 🌳 By Division"
-
-    );
-
-    lines.push("");
-
-    Object.entries(
-
-        summary.byDivision ||
-
-        {}
-
-    ).forEach(
-
-        function (
-
-            [
-
-                division,
-
-                count
-
-            ]
-
-        ) {
-
-            lines.push(
-
-                "- " +
-
-                division +
-
-                ": " +
-
-                count
-
-            );
-
-        }
-
-    );
-
-    lines.push("");
-
-    lines.push(
-
-        "## 🌲 By Range"
-
-    );
-
-    lines.push("");
-
-    Object.entries(
-
-        summary.byRange ||
-
-        {}
-
-    ).forEach(
-
-        function (
-
-            [
-
-                range,
-
-                count
-
-            ]
-
-        ) {
-
-            lines.push(
-
-                "- " +
-
-                range +
-
-                ": " +
-
-                count
-
-            );
-
-        }
-
-    );
-
-    lines.push("");
-
-    lines.push(
-
-        "## 📍 By Beat"
-
-    );
-
-    lines.push("");
-
-    Object.entries(
-
-        summary.byBeat ||
-
-        {}
-
-    ).forEach(
-
-        function (
-
-            [
-
-                beat,
-
-                count
-
-            ]
-
-        ) {
-
-            lines.push(
-
-                "- " +
-
-                beat +
-
-                ": " +
-
-                count
-
-            );
-
-        }
-
-    );
-
-    result.markdown =
-
-        lines.join(
-
-            "\n"
-
-        );
-
-    /*----------------------------------
-      Dashboard Card
-    ----------------------------------*/
-
-    result.cards.push({
-
-        type:
-
-            "staff-strength",
-
-        title:
-
-            "Staff Strength",
-
-        total:
-
-            summary.total,
-
-        active:
-
-            summary.active,
-
-        inactive:
-
-            summary.inactive,
-
-        data:
-
-            summary
-
-    });
-
-    /*----------------------------------
-      Summary Table
-    ----------------------------------*/
-
-    result.tables.push({
-
-        title:
-
-            "Strength Summary",
-
-        columns: [
-
-            "Metric",
-
-            "Value"
-
-        ],
-
-        rows: [
-
-            [
-
-                "Total Staff",
-
-                summary.total
-
-            ],
-
-            [
-
-                "Active Staff",
-
-                summary.active
-
-            ],
-
-            [
-
-                "Inactive Staff",
-
-                summary.inactive
-
-            ],
-
-            [
-
-                "Active %",
-
-                summary.statistics?.activePercentage +
-
-                "%"
-
-            ],
-
-            [
-
-                "Inactive %",
-
-                summary.statistics?.inactivePercentage +
-
-                "%"
-
-            ]
-
-        ]
-
-    });
-
-    /*----------------------------------
-      Section
-    ----------------------------------*/
-
-    result.sections.push({
-
-        title:
-
-            "Strength Summary",
-
-        data:
-
-            summary
-
-    });
-
-    result.success =
-
-        true;
-
-    result.message =
-
-        "Strength formatted.";
-
-    return result;
-
-};
- /*=========================================================
- FORMAT ANALYTICS
-=========================================================*/
-
-StaffFormatter.formatAnalytics = function (
-
-    response
-
-) {
-
-    const result =
-
-        StaffFormatter.createResponse(
-
-            response
-
-        );
-
-    /*----------------------------------
-      Validate
-    ----------------------------------*/
-
-    if (
-
-        !response ||
-
-        !response.success ||
-
-        !response.analytics
-
-    ) {
-
-        result.message =
-
-            response?.message ||
-
-            "Analytics not available.";
-
-        return result;
-
-    }
-
-    const analytics =
-
-        response.analytics;
-
-    /*----------------------------------
-      Markdown
-    ----------------------------------*/
-
-    const lines = [
-
-        "# 📊 STAFF ANALYTICS",
-
-        "",
-
-        "## 👥 Staff",
-
-        "",
-
-        "**Total Staff:** " +
-
-        (
-
-            analytics.totalStaff ||
-
-            0
-
-        ),
-
-        "",
-
-        "**Active Staff:** " +
-
-        (
-
-            analytics.activeStaff ||
-
-            0
-
-        ),
-
-        "",
-
-        "**Inactive Staff:** " +
-
-        (
-
-            analytics.inactiveStaff ||
-
-            0
-
-        ),
-
-        "",
-
-        "## 🚓 Patrol",
-
-        "",
-
-        "**Total Distance:** " +
-
-        (
-
-            analytics.totalDistance ||
-
-            0
-
-        ) +
-
-        " km",
-
-        "",
-
-        "**Average Distance:** " +
-
-        (
-
-            analytics.averageDistance ||
-
-            0
-
-        ) +
-
-        " km",
-
-        "",
-
-        "**Sessions:** " +
-
-        (
-
-            analytics.totalSessions ||
-
-            0
-
-        ),
-
-        "",
-
-        "## 📡 GPS",
-
-        "",
-
-        "**Total Points:** " +
-
-        (
-
-            analytics.totalPoints ||
-
-            0
-
-        ),
-
-        "",
-
-        "**Average Points:** " +
-
-        (
-
-            analytics.averagePoints ||
-
-            0
-
-        ),
-
-        "",
-
-        "## 🚓 Duty",
-
-        "",
-
-        "**Active Duty:** " +
-
-        (
-
-            analytics.activeDuty ||
-
-            0
-
-        ),
-
-        "",
-
-        "**Inactive Duty:** " +
-
-        (
-
-            analytics.inactiveDuty ||
-
-            0
-
-        ),
-
-        "",
-
-        "## 👮 Role Distribution",
-
-        ""
-
-    ];
-
-    Object.entries(
-
-        analytics.byRole ||
-
-        {}
-
-    ).forEach(
-
-        function (
-
-            [
-
-                role,
-
-                count
-
-            ]
-
-        ) {
-
-            lines.push(
-
-                "- " +
-
-                role +
-
-                ": " +
-
-                count
-
-            );
-
-        }
-
-    );
-
-    lines.push("");
-
-    lines.push(
-
-        "## 🌳 Division Distribution"
-
-    );
-
-    lines.push("");
-
-    Object.entries(
-
-        analytics.byDivision ||
-
-        {}
-
-    ).forEach(
-
-        function (
-
-            [
-
-                division,
-
-                count
-
-            ]
-
-        ) {
-
-            lines.push(
-
-                "- " +
-
-                division +
-
-                ": " +
-
-                count
-
-            );
-
-        }
-
-    );
-
-    lines.push("");
-
-    lines.push(
-
-        "## 🌲 Range Distribution"
-
-    );
-
-    lines.push("");
-
-    Object.entries(
-
-        analytics.byRange ||
-
-        {}
-
-    ).forEach(
-
-        function (
-
-            [
-
-                range,
-
-                count
-
-            ]
-
-        ) {
-
-            lines.push(
-
-                "- " +
-
-                range +
-
-                ": " +
-
-                count
-
-            );
-
-        }
-
-    );
-
-    lines.push("");
-
-    lines.push(
-
-        "## 📍 Beat Distribution"
-
-    );
-
-    lines.push("");
-
-    Object.entries(
-
-        analytics.byBeat ||
-
-        {}
-
-    ).forEach(
-
-        function (
-
-            [
-
-                beat,
-
-                count
-
-            ]
-
-        ) {
-
-            lines.push(
-
-                "- " +
-
-                beat +
-
-                ": " +
-
-                count
-
-            );
-
-        }
-
-    );
-
-    result.markdown =
-
-        lines.join(
-
-            "\n"
-
-        );
-
-    /*----------------------------------
-      Dashboard Card
-    ----------------------------------*/
-
-    result.cards.push({
-
-        type:
-
-            "staff-analytics",
-
-        title:
-
-            "Staff Analytics",
-
-        data:
-
-            analytics
-
-    });
-
-    /*----------------------------------
-      Summary Table
-    ----------------------------------*/
-
-    result.tables.push({
-
-        title:
-
-            "Analytics Summary",
-
-        columns: [
-
-            "Metric",
-
-            "Value"
-
-        ],
-
-        rows: [
-
-            [
-
-                "Total Staff",
-
-                analytics.totalStaff
-
-            ],
-
-            [
-
-                "Active Staff",
-
-                analytics.activeStaff
-
-            ],
-
-            [
-
-                "Inactive Staff",
-
-                analytics.inactiveStaff
-
-            ],
-
-            [
-
-                "Distance (km)",
-
-                analytics.totalDistance
-
-            ],
-
-            [
-
-                "Average Distance",
-
-                analytics.averageDistance
-
-            ],
-
-            [
-
-                "Sessions",
-
-                analytics.totalSessions
-
-            ],
-
-            [
-
-                "GPS Points",
-
-                analytics.totalPoints
-
-            ],
-
-            [
-
-                "Average Points",
-
-                analytics.averagePoints
-
-            ]
-
-        ]
-
-    });
-
-    /*----------------------------------
-      Section
-    ----------------------------------*/
-
-    result.sections.push({
-
-        title:
-
-            "Analytics",
-
-        data:
-
-            analytics
-
-    });
-
-    result.success =
-
-        true;
-
-    result.intent =
-
-        StaffConstants.INTENTS.STAFF_ANALYTICS;
-
-    result.confidence =
-
-        response.confidence ||
-
-        1;
-
-    result.source =
-
-        response.source ||
-
-        "LOCAL";
-
-    result.message =
-
-        "Analytics formatted.";
-
-    return result;
-
-};
- /*=========================================================
- REGISTER
-=========================================================*/
-
-GG.formatStaffResponse = function (
-
-    response
-
-) {
-
-    return StaffFormatter.format(
-
-        response
-
-    );
-
-};
-
-/*=========================================================
- INITIALIZE
-=========================================================*/
-
-StaffFormatter.initialize();
-
-/*=========================================================
- EXPORT
-=========================================================*/
-
-GG.StaffFormatter =
-
-    StaffFormatter;
-
-console.log(
-
-    "%cStaff Formatter Loaded",
-
-    "color:#008000;font-weight:bold;"
-
-);
-
-})(window);
