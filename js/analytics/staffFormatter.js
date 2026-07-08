@@ -247,523 +247,196 @@ StaffFormatter.initialize = function () {
 
     return true;
 
-};/*=========================================================
+};
+StaffFormatter.debugFormatter = function (name, formatter, response) {
+    console.group("🎨 " + name);
+    console.log("Intent:", response.intent);
+    console.log("Input:", response);
+    console.time(name);
+    
+    const result = formatter(response);
+    
+    console.timeEnd(name);
+    console.log("Output:", result);
+    console.groupEnd();
+    
+    return result;
+};
+ 
+ /*=========================================================
  FORMAT
 =========================================================*/
-
-StaffFormatter.format = function (
-
-    response
-
-) {
-
+StaffFormatter.format = function (response) {
     StaffFormatter.statistics.totalRequests++;
-
-    StaffFormatter.statistics.lastFormattedAt =
-
-        Date.now();
-
-    StaffFormatter.lastRequest =
-
-        response;
+    StaffFormatter.statistics.lastFormattedAt = Date.now();
+    StaffFormatter.lastRequest = response;
 
     /*----------------------------------
       Validate
     ----------------------------------*/
-
-    if (
-
-        !response ||
-
-        typeof response !== "object"
-
-    ) {
-
-        const result =
-
-            StaffFormatter.createResponse();
-
-        result.message =
-
-            "Invalid formatter response.";
-
+    if (!response || typeof response !== "object") {
+        const result = StaffFormatter.createResponse();
+        result.message = "Invalid formatter response.";
         StaffFormatter.statistics.formatterErrors++;
-
-        StaffFormatter.lastResult =
-
-            result;
-
+        StaffFormatter.lastResult = result;
         return result;
-
     }
 
-    const formatter =
-
-        StaffFormatter.registry.get(
-
-            response.intent
-
-        );
-
-    if (
-
-        typeof formatter ===
-
-        "function"
-
-    ) {
-
-        const result =
-
-            formatter(
-
-                response
-
-            );
-
+    const formatter = StaffFormatter.registry.get(response.intent);
+    if (typeof formatter === "function") {
+        const result = formatter(response);
         StaffFormatter.statistics.formattedResponses++;
-
-        StaffFormatter.lastResult =
-
-            result;
-
+        StaffFormatter.lastResult = result;
         return result;
-
     }
 
-    switch (
-
-        response.intent
-
-    ) {
-
+    switch (response.intent) {
         /*=================================================
           SEARCH
         =================================================*/
-
         case StaffConstants.INTENTS.STAFF_DIRECTORY:
-
-            return StaffFormatter.formatDirectory(
-
-                response
-
-            );
+            return StaffFormatter.debugFormatter("formatDirectory", StaffFormatter.formatDirectory, response);
 
         /*=================================================
           PROFILE
         =================================================*/
-
         case StaffConstants.INTENTS.STAFF_PROFILE:
-
-            return StaffFormatter.formatProfile(
-
-                response
-
-            );
-
+            return StaffFormatter.debugFormatter("formatProfile", StaffFormatter.formatProfile, response);
         case StaffConstants.INTENTS.STAFF_CONTACT:
-
-            return StaffFormatter.formatContact(
-
-                response
-
-            );
-
+            return StaffFormatter.debugFormatter("formatContact", StaffFormatter.formatContact, response);
         case StaffConstants.INTENTS.STAFF_DESIGNATION:
-
-            return StaffFormatter.formatDesignation(
-
-                response
-
-            );
-
+            return StaffFormatter.debugFormatter("formatDesignation", StaffFormatter.formatDesignation, response);
         case StaffConstants.INTENTS.STAFF_ROLE:
-
-            return StaffFormatter.formatRole(
-
-                response
-
-            );
+            return StaffFormatter.debugFormatter("formatRole", StaffFormatter.formatRole, response);
 
         /*=================================================
           POSTING
         =================================================*/
-
         case StaffConstants.INTENTS.STAFF_POSTING:
-
-            return StaffFormatter.formatPosting(
-
-                response
-
-            );
-
+            return StaffFormatter.debugFormatter("formatPosting", StaffFormatter.formatPosting, response);
         case StaffConstants.INTENTS.STAFF_CIRCLE:
-
-            return StaffFormatter.formatCircle(
-
-                response
-
-            );
-
+            return StaffFormatter.debugFormatter("formatCircle", StaffFormatter.formatCircle, response);
         case StaffConstants.INTENTS.STAFF_DIVISION:
-
-            return StaffFormatter.formatDivision(
-
-                response
-
-            );
-
+            return StaffFormatter.debugFormatter("formatDivision", StaffFormatter.formatDivision, response);
         case StaffConstants.INTENTS.STAFF_RANGE:
-
-            return StaffFormatter.formatRange(
-
-                response
-
-            );
-
+            return StaffFormatter.debugFormatter("formatRange", StaffFormatter.formatRange, response);
         case StaffConstants.INTENTS.STAFF_BEAT:
-
-            return StaffFormatter.formatBeat(
-
-                response
-
-            );
+            return StaffFormatter.debugFormatter("formatBeat", StaffFormatter.formatBeat, response);
 
         /*=================================================
           LOCATION
         =================================================*/
-
         case StaffConstants.INTENTS.STAFF_LOCATION:
-
-            return StaffFormatter.formatLocation(
-
-                response
-
-            );
+            return StaffFormatter.debugFormatter("formatLocation", StaffFormatter.formatLocation, response);
 
         /*=================================================
           DUTY
         =================================================*/
-
         case StaffConstants.INTENTS.STAFF_DUTY:
-
-            return StaffFormatter.formatDuty(
-
-                response
-
-            );
-
+            return StaffFormatter.debugFormatter("formatDuty", StaffFormatter.formatDuty, response);
         case StaffConstants.INTENTS.STAFF_DUTY_STATUS:
-
-            return StaffFormatter.formatDutyStatus(
-
-                response
-
-            );
-
+            return StaffFormatter.debugFormatter("formatDutyStatus", StaffFormatter.formatDutyStatus, response);
         case StaffConstants.INTENTS.STAFF_DUTY_TYPE:
-
-            return StaffFormatter.formatDutyType(
-
-                response
-
-            );
-
+            return StaffFormatter.debugFormatter("formatDutyType", StaffFormatter.formatDutyType, response);
         case StaffConstants.INTENTS.STAFF_DUTY_STARTED:
-
-            return StaffFormatter.formatDutyStarted(
-
-                response
-
-            );
-
+            return StaffFormatter.debugFormatter("formatDutyStarted", StaffFormatter.formatDutyStarted, response);
         case StaffConstants.INTENTS.STAFF_DUTY_ENDED:
-
-            return StaffFormatter.formatDutyEnded(
-
-                response
-
-            );
-
+            return StaffFormatter.debugFormatter("formatDutyEnded", StaffFormatter.formatDutyEnded, response);
         case StaffConstants.INTENTS.STAFF_ASSIGNMENT:
-
-            return StaffFormatter.formatStaffAssignment(
-
-                response
-
-            );
+            return StaffFormatter.debugFormatter("formatStaffAssignment", StaffFormatter.formatStaffAssignment, response);
 
         /*=================================================
           TEAM
         =================================================*/
-
         case StaffConstants.INTENTS.STAFF_TEAM:
-
-            return StaffFormatter.formatTeam(
-
-                response
-
-            );
-
+            return StaffFormatter.debugFormatter("formatTeam", StaffFormatter.formatTeam, response);
         case StaffConstants.INTENTS.STAFF_LEADER:
-
-            return StaffFormatter.formatLeader(
-
-                response
-
-            );
+            return StaffFormatter.debugFormatter("formatLeader", StaffFormatter.formatLeader, response);
 
         /*=================================================
           GPS
         =================================================*/
-
         case StaffConstants.INTENTS.STAFF_GPS:
-
-            return StaffFormatter.formatGPS(
-
-                response
-
-            );
+            return StaffFormatter.debugFormatter("formatGPS", StaffFormatter.formatGPS, response);
 
         /*=================================================
           ANALYTICS
         =================================================*/
-
         case StaffConstants.INTENTS.STAFF_ANALYTICS:
-
-            return StaffFormatter.formatAnalytics(
-
-                response
-
-            );
-
+            return StaffFormatter.debugFormatter("formatAnalytics", StaffFormatter.formatAnalytics, response);
         case StaffConstants.INTENTS.STAFF_DISTANCE:
-
-            return StaffFormatter.formatDistance(
-
-                response
-
-            );
-
+            return StaffFormatter.debugFormatter("formatDistance", StaffFormatter.formatDistance, response);
         case StaffConstants.INTENTS.STAFF_PATROL_POINTS:
-
-            return StaffFormatter.formatPatrolPoints(
-
-                response
-
-            );
-
+            return StaffFormatter.debugFormatter("formatPatrolPoints", StaffFormatter.formatPatrolPoints, response);
         case StaffConstants.INTENTS.STAFF_PATROL_START:
-
-            return StaffFormatter.formatPatrolStart(
-
-                response
-
-            );
-
+            return StaffFormatter.debugFormatter("formatPatrolStart", StaffFormatter.formatPatrolStart, response);
         case StaffConstants.INTENTS.STAFF_PATROL_END:
-
-            return StaffFormatter.formatPatrolEnd(
-
-                response
-
-            );
-
+            return StaffFormatter.debugFormatter("formatPatrolEnd", StaffFormatter.formatPatrolEnd, response);
         case StaffConstants.INTENTS.STAFF_PATROL_DURATION:
-
-            return StaffFormatter.formatPatrolDuration(
-
-                response
-
-            );
+            return StaffFormatter.debugFormatter("formatPatrolDuration", StaffFormatter.formatPatrolDuration, response);
 
         /*=================================================
           SUMMARY
         =================================================*/
-
         case StaffConstants.INTENTS.STAFF_SUMMARY:
-
-            return StaffFormatter.formatStaffSummary(
-
-                response
-
-            );
-
+            return StaffFormatter.debugFormatter("formatStaffSummary", StaffFormatter.formatStaffSummary, response);
         case StaffConstants.INTENTS.STAFF_JURISDICTION_SUMMARY:
-
-            return StaffFormatter.formatJurisdictionSummary(
-
-                response
-
-            );
-
+            return StaffFormatter.debugFormatter("formatJurisdictionSummary", StaffFormatter.formatJurisdictionSummary, response);
         case StaffConstants.INTENTS.STAFF_DESIGNATION_SUMMARY:
-
-            return StaffFormatter.formatDesignationSummary(
-
-                response
-
-            );
-
+            return StaffFormatter.debugFormatter("formatDesignationSummary", StaffFormatter.formatDesignationSummary, response);
         case StaffConstants.INTENTS.STAFF_CIRCLE_DIRECTORY:
-
-            return StaffFormatter.formatCircleDirectory(
-
-                response
-
-            );
-
+            return StaffFormatter.debugFormatter("formatCircleDirectory", StaffFormatter.formatCircleDirectory, response);
         case StaffConstants.INTENTS.STAFF_DIVISION_DIRECTORY:
-
-            return StaffFormatter.formatDivisionDirectory(
-
-                response
-
-            );
-
+            return StaffFormatter.debugFormatter("formatDivisionDirectory", StaffFormatter.formatDivisionDirectory, response);
         case StaffConstants.INTENTS.STAFF_RANGE_DIRECTORY:
-
-            return StaffFormatter.formatRangeDirectory(
-
-                response
-
-            );
-
+            return StaffFormatter.debugFormatter("formatRangeDirectory", StaffFormatter.formatRangeDirectory, response);
         case StaffConstants.INTENTS.STAFF_BEAT_DIRECTORY:
-
-            return StaffFormatter.formatBeatDirectory(
-
-                response
-
-            );
-
+            return StaffFormatter.debugFormatter("formatBeatDirectory", StaffFormatter.formatBeatDirectory, response);
         case StaffConstants.INTENTS.STAFF_DESIGNATION_DIRECTORY:
-
-            return StaffFormatter.formatDesignationDirectory(
-
-                response
-
-            );
+            return StaffFormatter.debugFormatter("formatDesignationDirectory", StaffFormatter.formatDesignationDirectory, response);
 
         /*=================================================
           STATUS
         =================================================*/
-
         case StaffConstants.INTENTS.ACTIVE_STAFF_COUNT:
-
-            return StaffFormatter.formatActiveStaffCount(
-
-                response
-
-            );
-
+            return StaffFormatter.debugFormatter("formatActiveStaffCount", StaffFormatter.formatActiveStaffCount, response);
         case StaffConstants.INTENTS.ACTIVE_STAFF_LIST:
-
-            return StaffFormatter.formatActiveStaffList(
-
-                response
-
-            );
-
+            return StaffFormatter.debugFormatter("formatActiveStaffList", StaffFormatter.formatActiveStaffList, response);
         case StaffConstants.INTENTS.INACTIVE_STAFF_LIST:
-
-            return StaffFormatter.formatInactiveStaffList(
-
-                response
-
-            );
-
+            return StaffFormatter.debugFormatter("formatInactiveStaffList", StaffFormatter.formatInactiveStaffList, response);
         case StaffConstants.INTENTS.DUTY_SUMMARY:
-
-            return StaffFormatter.formatDutySummary(
-
-                response
-
-            );
-
+            return StaffFormatter.debugFormatter("formatDutySummary", StaffFormatter.formatDutySummary, response);
         case StaffConstants.INTENTS.TEAM_LEADER_LIST:
-
-            return StaffFormatter.formatTeamLeaderList(
-
-                response
-
-            );
-
+            return StaffFormatter.debugFormatter("formatTeamLeaderList", StaffFormatter.formatTeamLeaderList, response);
         case StaffConstants.INTENTS.MOVING_STAFF:
-
-            return StaffFormatter.formatMovingStaff(
-
-                response
-
-            );
-
+            return StaffFormatter.debugFormatter("formatMovingStaff", StaffFormatter.formatMovingStaff, response);
         case StaffConstants.INTENTS.STATIONARY_STAFF:
-
-            return StaffFormatter.formatStationaryStaff(
-
-                response
-
-            );
+            return StaffFormatter.debugFormatter("formatStationaryStaff", StaffFormatter.formatStationaryStaff, response);
 
         /*=================================================
           CONTROL ROOM
         =================================================*/
-
         case StaffConstants.INTENTS.WHO_IS_ON_DUTY:
-
-            return StaffFormatter.formatWhoIsOnDuty(
-
-                response
-
-            );
-
+            return StaffFormatter.debugFormatter("formatWhoIsOnDuty", StaffFormatter.formatWhoIsOnDuty, response);
         case StaffConstants.INTENTS.WHO_IS_PATROLLING:
-
-            return StaffFormatter.formatWhoIsPatrolling(
-
-                response
-
-            );
+            return StaffFormatter.debugFormatter("formatWhoIsPatrolling", StaffFormatter.formatWhoIsPatrolling, response);
 
         /*=================================================
           DEFAULT
         =================================================*/
-
         default:
-
         {
-
-            const result =
-
-                StaffFormatter.createResponse(
-
-                    response
-
-                );
-
-            result.success =
-
-                false;
-
-            result.message =
-
-                "Formatter not available for intent: " +
-
-                response.intent;
-
+            const result = StaffFormatter.createResponse(response);
+            result.success = false;
+            result.message = "Formatter not available for intent: " + response.intent;
             StaffFormatter.statistics.formatterErrors++;
-
-            StaffFormatter.lastResult =
-
-                result;
-
+            StaffFormatter.lastResult = result;
             return result;
-
         }
-
     }
-
 };
+
+
  /*=========================================================
  FORMAT STAFF PROFILE
 =========================================================*/
