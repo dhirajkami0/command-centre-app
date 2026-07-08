@@ -432,6 +432,14 @@ StaffIntent.setCachedResult = function (
  DETECT
 =========================================================*/
 
+/*=========================================================
+ DETECT
+=========================================================*/
+
+/*=========================================================
+ DETECT
+=========================================================*/
+
 StaffIntent.detect = function (
 
     query
@@ -486,17 +494,13 @@ StaffIntent.detect = function (
       Create Result
     ----------------------------------*/
 
-    const result =
+    let result =
 
         StaffIntent.createIntentResult(
 
             query
 
         );
-
-    /*----------------------------------
-      Store Query
-    ----------------------------------*/
 
     StaffIntent.lastQuery =
 
@@ -513,10 +517,6 @@ StaffIntent.detect = function (
             query
 
         );
-
-    /*----------------------------------
-      Extraction Failed
-    ----------------------------------*/
 
     if (
 
@@ -544,7 +544,7 @@ StaffIntent.detect = function (
 
     result.entities = {
 
-        staff :
+        staff:
 
             [
 
@@ -552,7 +552,7 @@ StaffIntent.detect = function (
 
             ],
 
-        phones :
+        phones:
 
             [
 
@@ -560,7 +560,7 @@ StaffIntent.detect = function (
 
             ],
 
-        roles :
+        roles:
 
             [
 
@@ -568,7 +568,7 @@ StaffIntent.detect = function (
 
             ],
 
-        designations :
+        designations:
 
             [
 
@@ -576,7 +576,7 @@ StaffIntent.detect = function (
 
             ],
 
-        posting :
+        posting:
 
             [
 
@@ -584,7 +584,7 @@ StaffIntent.detect = function (
 
             ],
 
-        team :
+        team:
 
             [
 
@@ -592,7 +592,7 @@ StaffIntent.detect = function (
 
             ],
 
-        duty :
+        duty:
 
             [
 
@@ -600,7 +600,7 @@ StaffIntent.detect = function (
 
             ],
 
-        gps :
+        gps:
 
             [
 
@@ -611,7 +611,7 @@ StaffIntent.detect = function (
     };
 
     /*----------------------------------
-      Copy Keywords
+      Keywords
     ----------------------------------*/
 
     result.keywords =
@@ -623,7 +623,7 @@ StaffIntent.detect = function (
         ];
 
     /*----------------------------------
-      Copy Parameters
+      Parameters
     ----------------------------------*/
 
     result.parameters = {
@@ -633,7 +633,7 @@ StaffIntent.detect = function (
     };
 
     /*----------------------------------
-      Save Extraction
+      Metadata
     ----------------------------------*/
 
     result.metadata.extraction =
@@ -641,45 +641,19 @@ StaffIntent.detect = function (
         extraction;
 
     /*----------------------------------
-      Run Intent Detectors
+      Intent Detection Pipeline
     ----------------------------------*/
 
-    StaffIntent.detectStaffIntent(
+    result =
 
-        result
+        StaffIntent.detectStaffIntent(
 
-    );
+            result
 
-    StaffIntent.detectPostingIntent(
-
-        result
-
-    );
-
-    StaffIntent.detectDutyIntent(
-
-        result
-
-    );
-
-    StaffIntent.detectTeamIntent(
-
-        result
-
-    );
-
-    // StaffIntent.detectGPSIntent(
-    //     result
-    // );
-
-    StaffIntent.detectAnalyticsIntent(
-
-        result
-
-    );
+        );
 
     /*----------------------------------
-      Calculate Confidence
+      Confidence
     ----------------------------------*/
 
     StaffIntent.calculateConfidence(
@@ -711,7 +685,7 @@ StaffIntent.detect = function (
         started;
 
     /*----------------------------------
-      Save
+      Cache Result
     ----------------------------------*/
 
     StaffIntent.lastResult =
@@ -733,7 +707,6 @@ StaffIntent.detect = function (
     return result;
 
 };
-
  /*=========================================================
  DETECT POSTING INTENT
 =========================================================*/
@@ -1832,6 +1805,10 @@ StaffIntent.detectAnalyticsIntent = function (
  DETECT STRENGTH INTENT
 =========================================================*/
 
+/*=========================================================
+ DETECT STRENGTH INTENT
+=========================================================*/
+
 StaffIntent.detectStrengthIntent = function (
 
     result
@@ -1910,9 +1887,7 @@ StaffIntent.detectStrengthIntent = function (
 
                         word
 
-                    )
-
-                    .toUpperCase()
+                    ).toUpperCase()
 
                 );
 
@@ -1966,11 +1941,7 @@ StaffIntent.detectStrengthIntent = function (
 
     ) {
 
-        result.intent =
-
-            INTENTS.ACTIVE_STAFF_COUNT;
-
-        result.parameters.staff =
+        const active =
 
             staff.filter(
 
@@ -1990,9 +1961,17 @@ StaffIntent.detectStrengthIntent = function (
 
             );
 
+        result.intent =
+
+            INTENTS.ACTIVE_STAFF_COUNT;
+
+        result.parameters.staff =
+
+            active;
+
         result.parameters.count =
 
-            result.parameters.staff.length;
+            active.length;
 
         result.confidence =
 
@@ -2173,36 +2152,6 @@ StaffIntent.detectStrengthIntent = function (
     }
 
     /*----------------------------------
-      Staff Near Location
-    ----------------------------------*/
-
-    if (
-
-        hasKeyword(
-
-            KEYWORDS.STAFF_NEAR_LOCATION
-
-        )
-
-    ) {
-
-        result.intent =
-
-            INTENTS.STAFF_NEAR_LOCATION;
-
-        result.parameters.staff =
-
-            staff;
-
-        result.confidence =
-
-            0.96;
-
-        return result;
-
-    }
-
-    /*----------------------------------
       Moving Staff
     ----------------------------------*/
 
@@ -2302,117 +2251,15 @@ StaffIntent.detectStrengthIntent = function (
 
     }
 
-    /*----------------------------------
-      Fast Moving Staff
-    ----------------------------------*/
-
-    if (
-
-        hasKeyword(
-
-            KEYWORDS.FAST_MOVING_STAFF
-
-        )
-
-    ) {
-
-        result.intent =
-
-            INTENTS.FAST_MOVING_STAFF;
-
-        result.parameters.staff =
-
-            staff.filter(
-
-                function (
-
-                    s
-
-                ) {
-
-                    return (
-
-                        Number(
-
-                            s.gps?.speed || 0
-
-                        ) >= 10
-
-                    );
-
-                }
-
-            );
-
-        result.confidence =
-
-            0.97;
-
-        return result;
-
-    }
-
-    /*----------------------------------
-      Slow Moving Staff
-    ----------------------------------*/
-
-    if (
-
-        hasKeyword(
-
-            KEYWORDS.SLOW_MOVING_STAFF
-
-        )
-
-    ) {
-
-        result.intent =
-
-            INTENTS.SLOW_MOVING_STAFF;
-
-        result.parameters.staff =
-
-            staff.filter(
-
-                function (
-
-                    s
-
-                ) {
-
-                    return (
-
-                        Number(
-
-                            s.gps?.speed || 0
-
-                        ) > 0 &&
-
-                        Number(
-
-                            s.gps?.speed || 0
-
-                        ) < 10
-
-                    );
-
-                }
-
-            );
-
-        result.confidence =
-
-            0.97;
-
-        return result;
-
-    }
-
     return result;
 
 };
 /*=========================================================
  NEEDS AI
+=========================================================*/
+
+/*=========================================================
+ DETERMINE AI REQUIREMENT
 =========================================================*/
 
 StaffIntent.needsAI = function (
@@ -2454,7 +2301,7 @@ StaffIntent.needsAI = function (
     }
 
     /*----------------------------------
-      No Intent
+      Intent Missing
     ----------------------------------*/
 
     if (
@@ -2474,14 +2321,12 @@ StaffIntent.needsAI = function (
     }
 
     /*----------------------------------
-      No Staff
+      Staff Missing
     ----------------------------------*/
 
     if (
 
-        result.entities.staff.length ===
-
-        0
+        result.entities.staff.length === 0
 
     ) {
 
@@ -2496,14 +2341,12 @@ StaffIntent.needsAI = function (
     }
 
     /*----------------------------------
-      Multiple Staff
+      Too Many Matches
     ----------------------------------*/
 
     if (
 
-        result.entities.staff.length >
-
-        10
+        result.entities.staff.length > 10
 
     ) {
 
@@ -2588,7 +2431,7 @@ StaffIntent.needsAI = function (
     }
 
     /*----------------------------------
-      Search Questions
+      Reasoning Queries
     ----------------------------------*/
 
     const query =
@@ -2597,53 +2440,21 @@ StaffIntent.needsAI = function (
 
     if (
 
-        query.includes(
+        query.includes("WHY") ||
 
-            "WHY"
+        query.includes("HOW") ||
 
-        ) ||
+        query.includes("EXPLAIN") ||
 
-        query.includes(
+        query.includes("COMPARE") ||
 
-            "EXPLAIN"
+        query.includes("RECOMMEND") ||
 
-        ) ||
+        query.includes("SUGGEST") ||
 
-        query.includes(
+        query.includes("ANALYSE") ||
 
-            "HOW"
-
-        ) ||
-
-        query.includes(
-
-            "ANALYSE"
-
-        ) ||
-
-        query.includes(
-
-            "ANALYZE"
-
-        ) ||
-
-        query.includes(
-
-            "RECOMMEND"
-
-        ) ||
-
-        query.includes(
-
-            "SUGGEST"
-
-        ) ||
-
-        query.includes(
-
-            "COMPARE"
-
-        )
+        query.includes("ANALYZE")
 
     ) {
 
@@ -2658,31 +2469,7 @@ StaffIntent.needsAI = function (
     }
 
     /*----------------------------------
-      Analytics
-    ----------------------------------*/
-
-    if (
-
-        result.intent ===
-
-        StaffConstants.INTENTS.STAFF_STATISTICS ||
-
-        result.intent ===
-
-        StaffConstants.INTENTS.STAFF_STRENGTH ||
-
-        result.intent ===
-
-        StaffConstants.INTENTS.DUTY_SUMMARY
-
-    ) {
-
-        return false;
-
-    }
-
-    /*----------------------------------
-      Standard Staff Queries
+      Local Intents
     ----------------------------------*/
 
     switch (
@@ -2691,51 +2478,105 @@ StaffIntent.needsAI = function (
 
     ) {
 
+        /* Profile */
+
         case StaffConstants.INTENTS.STAFF_PROFILE:
 
         case StaffConstants.INTENTS.STAFF_CONTACT:
-
-        case StaffConstants.INTENTS.STAFF_LOCATION:
-
-        case StaffConstants.INTENTS.STAFF_POSTING:
-
-        case StaffConstants.INTENTS.STAFF_DUTY:
-
-        case StaffConstants.INTENTS.STAFF_STATUS:
 
         case StaffConstants.INTENTS.STAFF_ROLE:
 
         case StaffConstants.INTENTS.STAFF_DESIGNATION:
 
-        case StaffConstants.INTENTS.STAFF_TEAM:
+        /* Posting */
 
-        case StaffConstants.INTENTS.STAFF_GPS:
-
-        case StaffConstants.INTENTS.STAFF_BEAT:
-
-        case StaffConstants.INTENTS.STAFF_RANGE:
-
-        case StaffConstants.INTENTS.STAFF_DIVISION:
+        case StaffConstants.INTENTS.STAFF_POSTING:
 
         case StaffConstants.INTENTS.STAFF_CIRCLE:
 
+        case StaffConstants.INTENTS.STAFF_DIVISION:
+
+        case StaffConstants.INTENTS.STAFF_RANGE:
+
+        case StaffConstants.INTENTS.STAFF_BEAT:
+
         case StaffConstants.INTENTS.STAFF_COMPARTMENT:
 
-        case StaffConstants.INTENTS.WHO_IS_ON_DUTY:
+        /* Location */
 
-        case StaffConstants.INTENTS.WHO_IS_PATROLLING:
+        case StaffConstants.INTENTS.STAFF_LOCATION:
 
-        case StaffConstants.INTENTS.WHO_IS_OFFLINE:
+        case StaffConstants.INTENTS.STAFF_GPS:
 
-        case StaffConstants.INTENTS.WHO_HAS_OLD_GPS:
+        /* Duty */
 
-        case StaffConstants.INTENTS.WHO_HAS_POOR_ACCURACY:
+        case StaffConstants.INTENTS.STAFF_DUTY:
 
-        case StaffConstants.INTENTS.WHO_STOPPED_MOVING:
+        case StaffConstants.INTENTS.STAFF_DUTY_STATUS:
+
+        case StaffConstants.INTENTS.STAFF_DUTY_TYPE:
+
+        case StaffConstants.INTENTS.STAFF_DUTY_STARTED:
+
+        case StaffConstants.INTENTS.STAFF_DUTY_ENDED:
+
+        case StaffConstants.INTENTS.STAFF_DUTY_ACTIVE:
+
+        case StaffConstants.INTENTS.STAFF_LAST_DUTY:
+
+        case StaffConstants.INTENTS.STAFF_ASSIGNMENT:
+
+        /* Team */
+
+        case StaffConstants.INTENTS.STAFF_TEAM:
+
+        case StaffConstants.INTENTS.STAFF_LEADER:
+
+        /* GPS */
+
+        case StaffConstants.INTENTS.STAFF_SPEED:
+
+        case StaffConstants.INTENTS.STAFF_HEADING:
+
+        case StaffConstants.INTENTS.STAFF_ACCURACY:
+
+        /* Patrol Analytics */
+
+        case StaffConstants.INTENTS.STAFF_ANALYTICS:
+
+        case StaffConstants.INTENTS.STAFF_DISTANCE:
+
+        case StaffConstants.INTENTS.STAFF_PATROL_POINTS:
+
+        case StaffConstants.INTENTS.STAFF_PATROL_START:
+
+        case StaffConstants.INTENTS.STAFF_PATROL_END:
+
+        case StaffConstants.INTENTS.STAFF_PATROL_DURATION:
+
+        /* Strength */
+
+        case StaffConstants.INTENTS.STAFF_STRENGTH:
+
+        case StaffConstants.INTENTS.ACTIVE_STAFF_COUNT:
+
+        case StaffConstants.INTENTS.ACTIVE_STAFF_LIST:
+
+        case StaffConstants.INTENTS.INACTIVE_STAFF_LIST:
+
+        case StaffConstants.INTENTS.DUTY_SUMMARY:
+
+        case StaffConstants.INTENTS.TEAM_LEADER_LIST:
 
         case StaffConstants.INTENTS.MOVING_STAFF:
 
         case StaffConstants.INTENTS.STATIONARY_STAFF:
+
+        /* Control Room */
+
+        case StaffConstants.INTENTS.WHO_IS_ON_DUTY:
+
+        case StaffConstants.INTENTS.WHO_IS_PATROLLING:
 
             return false;
 
@@ -2757,6 +2598,10 @@ StaffIntent.needsAI = function (
 
  /*=========================================================
  ROUTE
+=========================================================*/
+
+/*=========================================================
+ ROUTE STAFF INTENT
 =========================================================*/
 
 StaffIntent.route = async function (
@@ -2814,7 +2659,6 @@ StaffIntent.route = async function (
     const router =
 
         window.GreenGuardAI
-
             ?.StaffRouter;
 
     if (
@@ -2841,9 +2685,9 @@ StaffIntent.route = async function (
 
     ) {
 
-        /*==================================
+        /*=====================================================
           PROFILE
-        ==================================*/
+        =====================================================*/
 
         case StaffConstants.INTENTS.STAFF_PROFILE:
 
@@ -2877,45 +2721,13 @@ StaffIntent.route = async function (
 
             );
 
-        case StaffConstants.INTENTS.STAFF_IDENTITY:
-
-            return await router.identity(
-
-                result
-
-            );
-
-        /*==================================
+        /*=====================================================
           POSTING
-        ==================================*/
+        =====================================================*/
 
         case StaffConstants.INTENTS.STAFF_POSTING:
 
             return await router.posting(
-
-                result
-
-            );
-
-        case StaffConstants.INTENTS.STAFF_BEAT:
-
-            return await router.beat(
-
-                result
-
-            );
-
-        case StaffConstants.INTENTS.STAFF_RANGE:
-
-            return await router.range(
-
-                result
-
-            );
-
-        case StaffConstants.INTENTS.STAFF_DIVISION:
-
-            return await router.division(
 
                 result
 
@@ -2929,6 +2741,30 @@ StaffIntent.route = async function (
 
             );
 
+        case StaffConstants.INTENTS.STAFF_DIVISION:
+
+            return await router.division(
+
+                result
+
+            );
+
+        case StaffConstants.INTENTS.STAFF_RANGE:
+
+            return await router.range(
+
+                result
+
+            );
+
+        case StaffConstants.INTENTS.STAFF_BEAT:
+
+            return await router.beat(
+
+                result
+
+            );
+
         case StaffConstants.INTENTS.STAFF_COMPARTMENT:
 
             return await router.compartment(
@@ -2937,9 +2773,9 @@ StaffIntent.route = async function (
 
             );
 
-        /*==================================
+        /*=====================================================
           LOCATION
-        ==================================*/
+        =====================================================*/
 
         case StaffConstants.INTENTS.STAFF_LOCATION:
 
@@ -2957,33 +2793,9 @@ StaffIntent.route = async function (
 
             );
 
-        case StaffConstants.INTENTS.STAFF_COORDINATES:
-
-            return await router.coordinates(
-
-                result
-
-            );
-
-        case StaffConstants.INTENTS.STAFF_CURRENT_POSITION:
-
-            return await router.currentPosition(
-
-                result
-
-            );
-
-        case StaffConstants.INTENTS.STAFF_LAST_LOCATION:
-
-            return await router.lastLocation(
-
-                result
-
-            );
-
-        /*==================================
+        /*=====================================================
           DUTY
-        ==================================*/
+        =====================================================*/
 
         case StaffConstants.INTENTS.STAFF_DUTY:
 
@@ -3009,6 +2821,22 @@ StaffIntent.route = async function (
 
             );
 
+        case StaffConstants.INTENTS.STAFF_DUTY_STARTED:
+
+            return await router.dutyStarted(
+
+                result
+
+            );
+
+        case StaffConstants.INTENTS.STAFF_DUTY_ENDED:
+
+            return await router.dutyEnded(
+
+                result
+
+            );
+
         case StaffConstants.INTENTS.STAFF_DUTY_ACTIVE:
 
             return await router.dutyActive(
@@ -3017,9 +2845,25 @@ StaffIntent.route = async function (
 
             );
 
-        /*==================================
+        case StaffConstants.INTENTS.STAFF_LAST_DUTY:
+
+            return await router.lastDuty(
+
+                result
+
+            );
+
+        case StaffConstants.INTENTS.STAFF_ASSIGNMENT:
+
+            return await router.assignment(
+
+                result
+
+            );
+
+        /*=====================================================
           TEAM
-        ==================================*/
+        =====================================================*/
 
         case StaffConstants.INTENTS.STAFF_TEAM:
 
@@ -3037,37 +2881,157 @@ StaffIntent.route = async function (
 
             );
 
-        /*==================================
-          STATUS
-        ==================================*/
+        /*=====================================================
+          GPS
+        =====================================================*/
 
-        case StaffConstants.INTENTS.STAFF_STATUS:
+        case StaffConstants.INTENTS.STAFF_SPEED:
 
-            return await router.status(
-
-                result
-
-            );
-
-        case StaffConstants.INTENTS.STAFF_ONLINE:
-
-            return await router.online(
+            return await router.speed(
 
                 result
 
             );
 
-        case StaffConstants.INTENTS.STAFF_OFFLINE:
+        case StaffConstants.INTENTS.STAFF_HEADING:
 
-            return await router.offline(
+            return await router.heading(
 
                 result
 
             );
 
-        /*==================================
+        case StaffConstants.INTENTS.STAFF_ACCURACY:
+
+            return await router.accuracy(
+
+                result
+
+            );
+
+        /*=====================================================
+          PATROL ANALYTICS
+        =====================================================*/
+
+        case StaffConstants.INTENTS.STAFF_ANALYTICS:
+
+            return await router.analytics(
+
+                result
+
+            );
+
+        case StaffConstants.INTENTS.STAFF_DISTANCE:
+
+            return await router.distance(
+
+                result
+
+            );
+
+        case StaffConstants.INTENTS.STAFF_PATROL_POINTS:
+
+            return await router.patrolPoints(
+
+                result
+
+            );
+
+        case StaffConstants.INTENTS.STAFF_PATROL_START:
+
+            return await router.patrolStart(
+
+                result
+
+            );
+
+        case StaffConstants.INTENTS.STAFF_PATROL_END:
+
+            return await router.patrolEnd(
+
+                result
+
+            );
+
+        case StaffConstants.INTENTS.STAFF_PATROL_DURATION:
+
+            return await router.patrolDuration(
+
+                result
+
+            );
+
+        /*=====================================================
+          STRENGTH
+        =====================================================*/
+
+        case StaffConstants.INTENTS.STAFF_STRENGTH:
+
+            return await router.strength(
+
+                result
+
+            );
+
+        case StaffConstants.INTENTS.ACTIVE_STAFF_COUNT:
+
+            return await router.activeStaffCount(
+
+                result
+
+            );
+
+        case StaffConstants.INTENTS.ACTIVE_STAFF_LIST:
+
+            return await router.activeStaffList(
+
+                result
+
+            );
+
+        case StaffConstants.INTENTS.INACTIVE_STAFF_LIST:
+
+            return await router.inactiveStaffList(
+
+                result
+
+            );
+
+        case StaffConstants.INTENTS.DUTY_SUMMARY:
+
+            return await router.dutySummary(
+
+                result
+
+            );
+
+        case StaffConstants.INTENTS.TEAM_LEADER_LIST:
+
+            return await router.teamLeaderList(
+
+                result
+
+            );
+
+        case StaffConstants.INTENTS.MOVING_STAFF:
+
+            return await router.movingStaff(
+
+                result
+
+            );
+
+        case StaffConstants.INTENTS.STATIONARY_STAFF:
+
+            return await router.stationaryStaff(
+
+                result
+
+            );
+
+        /*=====================================================
           CONTROL ROOM
-        ==================================*/
+        =====================================================*/
 
         case StaffConstants.INTENTS.WHO_IS_ON_DUTY:
 
@@ -3085,121 +3049,9 @@ StaffIntent.route = async function (
 
             );
 
-        case StaffConstants.INTENTS.WHO_IS_OFFLINE:
-
-            return await router.whoIsOffline(
-
-                result
-
-            );
-
-        case StaffConstants.INTENTS.WHO_IS_NEAREST:
-
-            return await router.nearest(
-
-                result
-
-            );
-
-        case StaffConstants.INTENTS.WHO_HAS_OLD_GPS:
-
-            return await router.oldGps(
-
-                result
-
-            );
-
-        case StaffConstants.INTENTS.WHO_HAS_POOR_ACCURACY:
-
-            return await router.lowAccuracy(
-
-                result
-
-            );
-
-        case StaffConstants.INTENTS.WHO_STOPPED_MOVING:
-
-            return await router.noMovement(
-
-                result
-
-            );
-
-        /*==================================
-          ANALYTICS
-        ==================================*/
-
-        case StaffConstants.INTENTS.STAFF_STRENGTH:
-
-            return await router.strength(
-
-                result
-
-            );
-
-     /*----------------------------------
-  Patrol Analytics
-----------------------------------*/
-
-case StaffConstants.INTENTS.STAFF_ANALYTICS:
-
-    return await router.analytics(
-
-        result
-
-    );
-
-case StaffConstants.INTENTS.STAFF_DISTANCE:
-
-    return await router.distance(
-
-        result
-
-    );
-
-case StaffConstants.INTENTS.STAFF_PATROL_POINTS:
-
-    return await router.patrolPoints(
-
-        result
-
-    );
-
-case StaffConstants.INTENTS.STAFF_PATROL_START:
-
-    return await router.patrolStart(
-
-        result
-
-    );
-
-case StaffConstants.INTENTS.STAFF_PATROL_END:
-
-    return await router.patrolEnd(
-
-        result
-
-    );
-
-case StaffConstants.INTENTS.STAFF_PATROL_DURATION:
-
-    return await router.patrolDuration(
-
-        result
-
-    );
-
-        case StaffConstants.INTENTS.DUTY_SUMMARY:
-
-            return await router.dutySummary(
-
-                result
-
-            );
-
-        /*==================================
+        /*=====================================================
           DEFAULT
-        ==================================*/
+        =====================================================*/
 
         default:
 
@@ -3223,535 +3075,1065 @@ case StaffConstants.INTENTS.STAFF_PATROL_DURATION:
     /*=========================================================
  DETECT STAFF INTENT
 =========================================================*/
+/*=========================================================
+ DETECT STAFF INTENT (ORCHESTRATOR)
+=========================================================*/
+
 StaffIntent.detectStaffIntent = function (
+
     result
+
 ) {
+
     /*----------------------------------
       Validate
     ----------------------------------*/
+
     if (
+
         !result ||
+
         !result.entities
+
     ) {
+
         return result;
+
     }
 
     const staff =
+
         result.entities.staff ||
+
         [];
 
     if (
+
         staff.length === 0
+
     ) {
+
         return result;
+
     }
 
-    const profile =
-        staff[0];
-
-    const query =
-        result.normalizedQuery;
-
     console.log(
+
         "=============================="
+
     );
+
     console.log(
+
         "detectStaffIntent() START"
+
     );
+
     console.log(
+
         "Query:",
-        query
+
+        result.normalizedQuery
+
     );
+
     console.log(
+
         "Staff:",
+
         staff
+
     );
+
     console.log(
+
         "=============================="
+
     );
 
     const INTENTS =
-        StaffConstants.INTENTS;
-    const KEYWORDS =
-        StaffConstants.KEYWORDS;
 
-    /*----------------------------------
-      Helper
-    ----------------------------------*/
-    function hasKeyword(
-        list
-    ) {
-        if (
-            !Array.isArray(
-                list
-            )
-        ) {
-            return false;
-        }
-        return list.some(
-            function (
-                word
-            ) {
-                return query.includes(
-                    String(
-                        word
-                    )
-                    .toUpperCase()
-                );
-            }
-        );
-    }
+        StaffConstants.INTENTS;
 
     /*----------------------------------
       Debug Helper
     ----------------------------------*/
+
     function debugParameters(
 
-    label
+        label
 
-) {
-
-    console.log(
-        "==========",
-        label,
-        "=========="
-    );
-
-    console.log(
-        "Result Frozen:",
-        Object.isFrozen(
-            result
-        )
-    );
-
-    console.log(
-        "Parameters:",
-        result.parameters
-    );
-
-    console.log(
-        "Parameters Frozen:",
-        Object.isFrozen(
-            result.parameters
-        )
-    );
-
-    console.log(
-        "Parameters Extensible:",
-        Object.isExtensible(
-            result.parameters
-        )
-    );
-
-    console.log(
-        "Staff Descriptor:",
-        Object.getOwnPropertyDescriptor(
-            result.parameters,
-            "staff"
-        )
-    );
-
-}
-
-    /*----------------------------------
-      Staff Profile
-    ----------------------------------*/
-    console.log(
-        "Checking STAFF_PROFILE..."
-    );
-    if (
-        hasKeyword(
-            KEYWORDS.STAFF_PROFILE
-        )
     ) {
+
         console.log(
-            "✅ STAFF_PROFILE MATCH"
+
+            "==========",
+
+            label,
+
+            "=========="
+
         );
-        result.intent =
-            INTENTS.STAFF_PROFILE;
-        debugParameters(
-            "STAFF_PROFILE"
+
+        console.log(
+
+            "Result Frozen:",
+
+            Object.isFrozen(
+
+                result
+
+            )
+
         );
-        result.parameters.staff =
-            profile;
-        result.confidence =
-            0.98;
-        return result;
-    }
-/*----------------------------------
-  STAFF CONTACT
-----------------------------------*/
 
-console.log(
+        console.log(
 
-    "Checking STAFF_CONTACT..."
+            "Parameters:",
 
-);
+            result.parameters
 
-if (
-
-    hasKeyword(
-
-        KEYWORDS.STAFF_CONTACT
-
-    )
-
-) {
-
-    console.log(
-
-        "✅ STAFF_CONTACT MATCH"
-
-    );
-
-    result.intent =
-
-        INTENTS.STAFF_CONTACT;
-
-    debugParameters(
-
-        "STAFF_CONTACT"
-
-    );
-
-    result.parameters.staff =
-
-        profile;
-
-    result.confidence =
-
-        0.98;
-
-    return result;
-
-}
-
-    /*----------------------------------
-      Location
-    ----------------------------------*/
-    if (
-        hasKeyword(
-            KEYWORDS.STAFF_LOCATION
-        )
-    ) {
-        result.intent =
-            INTENTS.STAFF_LOCATION;
-        debugParameters(
-            "STAFF_LOCATION"
         );
-        result.parameters.staff =
-            profile;
-        result.confidence =
-            0.98;
-        return result;
+
+        console.log(
+
+            "Parameters Frozen:",
+
+            Object.isFrozen(
+
+                result.parameters
+
+            )
+
+        );
+
+        console.log(
+
+            "Parameters Extensible:",
+
+            Object.isExtensible(
+
+                result.parameters
+
+            )
+
+        );
+
+        console.log(
+
+            "Staff Descriptor:",
+
+            Object.getOwnPropertyDescriptor(
+
+                result.parameters,
+
+                "staff"
+
+            )
+
+        );
+
     }
 
     /*----------------------------------
-      GPS
+      Profile
     ----------------------------------*/
-    if (
-        hasKeyword(
-            KEYWORDS.STAFF_GPS
-        )
-    ) {
-        result.intent =
-            INTENTS.STAFF_GPS;
-        debugParameters(
-            "STAFF_GPS"
+
+    result =
+
+        StaffIntent.detectProfileIntent(
+
+            result
+
         );
-        result.parameters.staff =
-            profile;
-        result.confidence =
-            0.98;
+
+    if (
+
+        result.intent === INTENTS.STAFF_PROFILE ||
+
+        result.intent === INTENTS.STAFF_CONTACT ||
+
+        result.intent === INTENTS.STAFF_ROLE ||
+
+        result.intent === INTENTS.STAFF_DESIGNATION
+
+    ) {
+
+        debugParameters(
+
+            result.intent
+
+        );
+
         return result;
+
     }
 
     /*----------------------------------
       Posting
     ----------------------------------*/
 
-result =
+    result =
 
-    StaffIntent.detectPostingIntent(
+        StaffIntent.detectPostingIntent(
 
-        result
+            result
 
-    );
+        );
 
-if (
+    if (
 
-    result.intent ===
+        result.intent === INTENTS.STAFF_POSTING ||
 
-        INTENTS.STAFF_POSTING ||
+        result.intent === INTENTS.STAFF_CIRCLE ||
 
-    result.intent ===
+        result.intent === INTENTS.STAFF_DIVISION ||
 
-        INTENTS.STAFF_CIRCLE ||
+        result.intent === INTENTS.STAFF_RANGE ||
 
-    result.intent ===
+        result.intent === INTENTS.STAFF_BEAT ||
 
-        INTENTS.STAFF_DIVISION ||
+        result.intent === INTENTS.STAFF_COMPARTMENT
 
-    result.intent ===
+    ) {
 
-        INTENTS.STAFF_RANGE ||
+        debugParameters(
 
-    result.intent ===
+            result.intent
 
-        INTENTS.STAFF_BEAT
+        );
 
-) {
+        return result;
 
-    debugParameters(
-
-        result.intent
-
-    );
-
-    return result;
-
-}
+    }
 
     /*----------------------------------
       Duty
     ----------------------------------*/
 
-result =
+    result =
 
-    StaffIntent.detectDutyIntent(
+        StaffIntent.detectDutyIntent(
 
-        result
+            result
 
-    );
+        );
 
-if (
+    if (
 
-    result.intent ===
+        result.intent === INTENTS.STAFF_DUTY ||
 
-        INTENTS.STAFF_DUTY ||
+        result.intent === INTENTS.STAFF_DUTY_STATUS ||
 
-    result.intent ===
+        result.intent === INTENTS.STAFF_DUTY_TYPE ||
 
-        INTENTS.STAFF_DUTY_STATUS ||
+        result.intent === INTENTS.STAFF_DUTY_STARTED ||
 
-    result.intent ===
+        result.intent === INTENTS.STAFF_DUTY_ENDED ||
 
-        INTENTS.STAFF_DUTY_TYPE ||
+        result.intent === INTENTS.STAFF_DUTY_ACTIVE ||
 
-    result.intent ===
+        result.intent === INTENTS.STAFF_LAST_DUTY ||
 
-        INTENTS.STAFF_DUTY_STARTED ||
+        result.intent === INTENTS.STAFF_ASSIGNMENT ||
 
-    result.intent ===
+        result.intent === INTENTS.WHO_IS_ON_DUTY ||
 
-        INTENTS.STAFF_DUTY_ENDED ||
+        result.intent === INTENTS.WHO_IS_PATROLLING
 
-    result.intent ===
+    ) {
 
-        INTENTS.STAFF_ASSIGNMENT
+        debugParameters(
 
-) {
+            result.intent
 
-    debugParameters(
+        );
 
-        result.intent
+        return result;
 
-    );
-
-    return result;
-
-}
+    }
 
     /*----------------------------------
       Team
     ----------------------------------*/
 
-result =
+    result =
 
-    StaffIntent.detectTeamIntent(
+        StaffIntent.detectTeamIntent(
 
-        result
+            result
 
-    );
+        );
 
-if (
+    if (
 
-    result.intent ===
+        result.intent === INTENTS.STAFF_TEAM ||
 
-        INTENTS.STAFF_TEAM ||
+        result.intent === INTENTS.STAFF_LEADER
 
-    result.intent ===
+    ) {
 
-        INTENTS.STAFF_LEADER
+        debugParameters(
 
-) {
+            result.intent
 
-    debugParameters(
+        );
 
-        result.intent
+        return result;
 
-    );
+    }
 
-    return result;
+    /*----------------------------------
+      GPS
+    ----------------------------------*/
 
-}
+    result =
+
+        StaffIntent.detectGPSIntent(
+
+            result
+
+        );
+
+    if (
+
+        result.intent === INTENTS.STAFF_LOCATION ||
+
+        result.intent === INTENTS.STAFF_GPS ||
+
+        result.intent === INTENTS.STAFF_SPEED ||
+
+        result.intent === INTENTS.STAFF_HEADING ||
+
+        result.intent === INTENTS.STAFF_ACCURACY
+
+    ) {
+
+        debugParameters(
+
+            result.intent
+
+        );
+
+        return result;
+
+    }
 
     /*----------------------------------
       Patrol Analytics
     ----------------------------------*/
 
-result =
+    result =
 
-    StaffIntent.detectAnalyticsIntent(
+        StaffIntent.detectAnalyticsIntent(
 
-        result
+            result
 
-    );
+        );
 
-if (
+    if (
 
-    result.intent ===
+        result.intent === INTENTS.STAFF_ANALYTICS ||
 
-        INTENTS.STAFF_ANALYTICS ||
+        result.intent === INTENTS.STAFF_DISTANCE ||
 
-    result.intent ===
+        result.intent === INTENTS.STAFF_PATROL_POINTS ||
 
-        INTENTS.STAFF_DISTANCE ||
+        result.intent === INTENTS.STAFF_PATROL_START ||
 
-    result.intent ===
+        result.intent === INTENTS.STAFF_PATROL_END ||
 
-        INTENTS.STAFF_PATROL_POINTS ||
+        result.intent === INTENTS.STAFF_PATROL_DURATION
 
-    result.intent ===
+    ) {
 
-        INTENTS.STAFF_PATROL_START ||
+        debugParameters(
 
-    result.intent ===
+            result.intent
 
-        INTENTS.STAFF_PATROL_END ||
+        );
 
-    result.intent ===
+        return result;
 
-        INTENTS.STAFF_PATROL_DURATION
-
-) {
-
-    debugParameters(
-
-        result.intent
-
-    );
-
-    return result;
-
-}
+    }
 
     /*----------------------------------
       Strength
     ----------------------------------*/
 
-result =
+    result =
 
-    StaffIntent.detectStrengthIntent(
+        StaffIntent.detectStrengthIntent(
 
-        result
+            result
 
-    );
-
-if (
-
-    result.intent ===
-
-        INTENTS.STAFF_STRENGTH
-
-) {
-
-    debugParameters(
-
-        result.intent
-
-    );
-
-    return result;
-
-}
-
-    /*----------------------------------
-      Status
-    ----------------------------------*/
-    if (
-        hasKeyword(
-            KEYWORDS.STAFF_STATUS
-        )
-    ) {
-        result.intent =
-            INTENTS.STAFF_STATUS;
-        debugParameters(
-            "STAFF_STATUS"
         );
-        result.parameters.staff =
-            profile;
-        result.confidence =
-            0.95;
-        return result;
-    }
 
-    /*----------------------------------
-      Role
-    ----------------------------------*/
     if (
-        hasKeyword(
-            KEYWORDS.STAFF_ROLE
-        )
-    ) {
-        result.intent =
-            INTENTS.STAFF_ROLE;
-        debugParameters(
-            "STAFF_ROLE"
-        );
-        result.parameters.staff =
-            profile;
-        result.confidence =
-            0.95;
-        return result;
-    }
 
-    /*----------------------------------
-      Designation
-    ----------------------------------*/
-    if (
-        hasKeyword(
-            KEYWORDS.STAFF_DESIGNATION
-        )
+        result.intent === INTENTS.STAFF_STRENGTH ||
+
+        result.intent === INTENTS.ACTIVE_STAFF_COUNT ||
+
+        result.intent === INTENTS.ACTIVE_STAFF_LIST ||
+
+        result.intent === INTENTS.INACTIVE_STAFF_LIST ||
+
+        result.intent === INTENTS.TEAM_LEADER_LIST ||
+
+        result.intent === INTENTS.DUTY_SUMMARY ||
+
+        result.intent === INTENTS.MOVING_STAFF ||
+
+        result.intent === INTENTS.STATIONARY_STAFF
+
     ) {
-        result.intent =
-            INTENTS.STAFF_DESIGNATION;
+
         debugParameters(
-            "STAFF_DESIGNATION"
+
+            result.intent
+
         );
-        result.parameters.staff =
-            profile;
-        result.confidence =
-            0.95;
+
         return result;
+
     }
 
     /*----------------------------------
       Search Fallback
     ----------------------------------*/
-    console.log(
-        "❌ NO LOCAL MATCH"
-    );
+
     result.intent =
+
         INTENTS.STAFF_SEARCH;
-    debugParameters(
-        "STAFF_SEARCH"
-    );
+
     result.parameters.staff =
-        profile;
+
+        staff[0];
+
     result.confidence =
-        0.80;
+
+        Math.max(
+
+            result.confidence,
+
+            0.80
+
+        );
+
+    debugParameters(
+
+        "STAFF_SEARCH"
+
+    );
+
     return result;
+
+};
+
+ /*=========================================================
+ DETECT PROFILE INTENT
+=========================================================*/
+
+StaffIntent.detectProfileIntent = function (
+
+    result
+
+) {
+
+    /*----------------------------------
+      Validate
+    ----------------------------------*/
+
+    if (
+
+        !result ||
+
+        !result.entities
+
+    ) {
+
+        return result;
+
+    }
+
+    const staff =
+
+        result.entities.staff ||
+
+        [];
+
+    if (
+
+        staff.length === 0
+
+    ) {
+
+        return result;
+
+    }
+
+    const profile =
+
+        staff[0];
+
+    const query =
+
+        result.normalizedQuery;
+
+    const INTENTS =
+
+        StaffConstants.INTENTS;
+
+    const KEYWORDS =
+
+        StaffConstants.KEYWORDS;
+
+    /*----------------------------------
+      Helper
+    ----------------------------------*/
+
+    function hasKeyword(
+
+        list
+
+    ) {
+
+        if (
+
+            !Array.isArray(
+
+                list
+
+            )
+
+        ) {
+
+            return false;
+
+        }
+
+        return list.some(
+
+            function (
+
+                word
+
+            ) {
+
+                return query.includes(
+
+                    String(
+
+                        word
+
+                    )
+
+                    .toUpperCase()
+
+                );
+
+            }
+
+        );
+
+    }
+
+    /*----------------------------------
+      Staff Profile
+    ----------------------------------*/
+
+    if (
+
+        hasKeyword(
+
+            KEYWORDS.STAFF_PROFILE
+
+        )
+
+    ) {
+
+        result.intent =
+
+            INTENTS.STAFF_PROFILE;
+
+        result.parameters.staff =
+
+            profile;
+
+        result.parameters.profile =
+
+            profile.identity;
+
+        result.confidence =
+
+            Math.max(
+
+                result.confidence,
+
+                0.98
+
+            );
+
+        return result;
+
+    }
+
+    /*----------------------------------
+      Contact
+    ----------------------------------*/
+
+    if (
+
+        hasKeyword(
+
+            KEYWORDS.STAFF_CONTACT
+
+        )
+
+    ) {
+
+        result.intent =
+
+            INTENTS.STAFF_CONTACT;
+
+        result.parameters.staff =
+
+            profile;
+
+        result.parameters.phone =
+
+            profile.identity?.phone ||
+
+            null;
+
+        result.parameters.email =
+
+            profile.identity?.email ||
+
+            null;
+
+        result.confidence =
+
+            Math.max(
+
+                result.confidence,
+
+                0.98
+
+            );
+
+        return result;
+
+    }
+
+    /*----------------------------------
+      Role
+    ----------------------------------*/
+
+    if (
+
+        hasKeyword(
+
+            KEYWORDS.STAFF_ROLE
+
+        )
+
+    ) {
+
+        result.intent =
+
+            INTENTS.STAFF_ROLE;
+
+        result.parameters.staff =
+
+            profile;
+
+        result.parameters.role =
+
+            profile.identity?.role ||
+
+            null;
+
+        result.confidence =
+
+            Math.max(
+
+                result.confidence,
+
+                0.97
+
+            );
+
+        return result;
+
+    }
+
+    /*----------------------------------
+      Designation
+    ----------------------------------*/
+
+    if (
+
+        hasKeyword(
+
+            KEYWORDS.STAFF_DESIGNATION
+
+        )
+
+    ) {
+
+        result.intent =
+
+            INTENTS.STAFF_DESIGNATION;
+
+        result.parameters.staff =
+
+            profile;
+
+        result.parameters.designation =
+
+            profile.identity?.designation ||
+
+            null;
+
+        result.confidence =
+
+            Math.max(
+
+                result.confidence,
+
+                0.97
+
+            );
+
+        return result;
+
+    }
+
+    return result;
+
+};
+ /*=========================================================
+ DETECT GPS INTENT
+=========================================================*/
+
+StaffIntent.detectGPSIntent = function (
+
+    result
+
+) {
+
+    /*----------------------------------
+      Validate
+    ----------------------------------*/
+
+    if (
+
+        !result ||
+
+        !result.entities
+
+    ) {
+
+        return result;
+
+    }
+
+    const staff =
+
+        result.entities.staff ||
+
+        [];
+
+    if (
+
+        staff.length === 0
+
+    ) {
+
+        return result;
+
+    }
+
+    const profile =
+
+        staff[0];
+
+    const query =
+
+        result.normalizedQuery;
+
+    const INTENTS =
+
+        StaffConstants.INTENTS;
+
+    const KEYWORDS =
+
+        StaffConstants.KEYWORDS;
+
+    /*----------------------------------
+      Helper
+    ----------------------------------*/
+
+    function hasKeyword(
+
+        list
+
+    ) {
+
+        if (
+
+            !Array.isArray(
+
+                list
+
+            )
+
+        ) {
+
+            return false;
+
+        }
+
+        return list.some(
+
+            function (
+
+                word
+
+            ) {
+
+                return query.includes(
+
+                    String(
+
+                        word
+
+                    )
+
+                    .toUpperCase()
+
+                );
+
+            }
+
+        );
+
+    }
+
+    /*----------------------------------
+      Staff Location
+    ----------------------------------*/
+
+    if (
+
+        hasKeyword(
+
+            KEYWORDS.STAFF_LOCATION
+
+        )
+
+    ) {
+
+        result.intent =
+
+            INTENTS.STAFF_LOCATION;
+
+        result.parameters.staff =
+
+            profile;
+
+        result.parameters.location =
+
+            profile.location ||
+
+            null;
+
+        result.confidence =
+
+            Math.max(
+
+                result.confidence,
+
+                0.98
+
+            );
+
+        return result;
+
+    }
+
+    /*----------------------------------
+      GPS
+    ----------------------------------*/
+
+    if (
+
+        hasKeyword(
+
+            KEYWORDS.STAFF_GPS
+
+        )
+
+    ) {
+
+        result.intent =
+
+            INTENTS.STAFF_GPS;
+
+        result.parameters.staff =
+
+            profile;
+
+        result.parameters.gps =
+
+            profile.gps ||
+
+            null;
+
+        result.confidence =
+
+            Math.max(
+
+                result.confidence,
+
+                0.98
+
+            );
+
+        return result;
+
+    }
+
+    /*----------------------------------
+      Speed
+    ----------------------------------*/
+
+    if (
+
+        hasKeyword(
+
+            KEYWORDS.STAFF_SPEED
+
+        )
+
+    ) {
+
+        result.intent =
+
+            INTENTS.STAFF_SPEED;
+
+        result.parameters.staff =
+
+            profile;
+
+        result.parameters.speed =
+
+            profile.gps?.speed ??
+
+            null;
+
+        result.confidence =
+
+            Math.max(
+
+                result.confidence,
+
+                0.97
+
+            );
+
+        return result;
+
+    }
+
+    /*----------------------------------
+      Heading
+    ----------------------------------*/
+
+    if (
+
+        hasKeyword(
+
+            KEYWORDS.STAFF_HEADING
+
+        )
+
+    ) {
+
+        result.intent =
+
+            INTENTS.STAFF_HEADING;
+
+        result.parameters.staff =
+
+            profile;
+
+        result.parameters.heading =
+
+            profile.gps?.heading ??
+
+            null;
+
+        result.confidence =
+
+            Math.max(
+
+                result.confidence,
+
+                0.97
+
+            );
+
+        return result;
+
+    }
+
+    /*----------------------------------
+      Accuracy
+    ----------------------------------*/
+
+    if (
+
+        hasKeyword(
+
+            KEYWORDS.STAFF_ACCURACY
+
+        )
+
+    ) {
+
+        result.intent =
+
+            INTENTS.STAFF_ACCURACY;
+
+        result.parameters.staff =
+
+            profile;
+
+        result.parameters.accuracy =
+
+            profile.gps?.accuracy ??
+
+            null;
+
+        result.confidence =
+
+            Math.max(
+
+                result.confidence,
+
+                0.97
+
+            );
+
+        return result;
+
+    }
+
+    return result;
+
 };
  /*=========================================================
  INITIALIZE
