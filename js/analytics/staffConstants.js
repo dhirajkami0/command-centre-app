@@ -86,7 +86,7 @@ StaffConstants.INTENTS = Object.freeze({
     STAFF_DIVISION: "staffDivision",
     STAFF_RANGE: "staffRange",
     STAFF_BEAT: "staffBeat",
-    STAFF_COMPARTMENT: "staffCompartment",
+    
 
     /*=========================================================
       LOCATION
