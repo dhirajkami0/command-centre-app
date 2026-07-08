@@ -360,6 +360,28 @@ StaffRouter.route = async function (
 
         Date.now();
 
+    console.group(
+
+        "🟣 STAFF ROUTER"
+
+    );
+
+    console.log(
+
+        "File:",
+
+        "staffRouter.js"
+
+    );
+
+    console.log(
+
+        "Incoming Request:",
+
+        request
+
+    );
+
     /*----------------------------------
       Validate
     ----------------------------------*/
@@ -371,6 +393,14 @@ StaffRouter.route = async function (
         typeof request !== "object"
 
     ) {
+
+        console.error(
+
+            "❌ Invalid Router Request"
+
+        );
+
+        console.groupEnd();
 
         return {
 
@@ -398,6 +428,14 @@ StaffRouter.route = async function (
 
         request;
 
+    console.log(
+
+        "Intent:",
+
+        request.intent
+
+    );
+
     /*----------------------------------
       Resolve Handler
     ----------------------------------*/
@@ -416,6 +454,14 @@ StaffRouter.route = async function (
 
     ) {
 
+        console.error(
+
+            "❌ No Route Registered:",
+
+            request.intent
+
+        );
+
         response.message =
 
             "No route registered for intent.";
@@ -432,29 +478,58 @@ StaffRouter.route = async function (
 
             started;
 
+        console.groupEnd();
+
         return response;
 
     }
 
-    try {
+    console.log(
 
-        /*----------------------------------
-          Execute Handler
-        ----------------------------------*/
+        "Handler:",
 
-      
-
-/*----------------------------------
-  Execute Handler
-----------------------------------*/
-
-const result =
-
-    await handler(
-
-        request
+        handler.name
 
     );
+
+    console.log(
+
+        "Handler Function:",
+
+        handler
+
+    );
+
+    try {
+
+        console.time(
+
+            "Query"
+
+        );
+
+        const result =
+
+            await handler(
+
+                request
+
+            );
+
+        console.timeEnd(
+
+            "Query"
+
+        );
+
+        console.log(
+
+            "Query Result:",
+
+            result
+
+        );
+
         if (
 
             result &&
@@ -484,6 +559,14 @@ const result =
         error
 
     ) {
+
+        console.error(
+
+            "❌ Query Failed",
+
+            error
+
+        );
 
         response.success =
 
@@ -515,21 +598,41 @@ const result =
 
         response;
 
-   const cacheKey =
+    const cacheKey =
 
-    request.normalizedQuery ||
+        request.normalizedQuery ||
 
-    request.originalQuery ||
+        request.originalQuery ||
 
-    "";
+        "";
 
-StaffRouter.cache.set(
+    StaffRouter.cache.set(
 
-    cacheKey,
+        cacheKey,
 
-    response
+        response
 
-);
+    );
+
+    console.log(
+
+        "Router Response:",
+
+        response
+
+    );
+
+    console.log(
+
+        "Execution:",
+
+        response.metadata.executionTime,
+
+        "ms"
+
+    );
+
+    console.groupEnd();
 
     return response;
 
@@ -537,7 +640,84 @@ StaffRouter.cache.set(
     /*=========================================================
  REGISTER ROUTES
 =========================================================*/
+StaffRouter.registerWithLog = function (
 
+    intent,
+
+    handler
+
+) {
+
+    console.group(
+
+        "📝 ROUTE REGISTRATION"
+
+    );
+
+    console.log(
+
+        "File:",
+
+        "staffRouter.js"
+
+    );
+
+    console.log(
+
+        "Intent:",
+
+        intent
+
+    );
+
+    console.log(
+
+        "Handler:",
+
+        handler
+            ? handler.name
+            : "<null>"
+
+    );
+
+    console.log(
+
+        "Function Exists:",
+
+        typeof handler ===
+        "function"
+
+    );
+
+    console.log(
+
+        "Function Object:",
+
+        handler
+
+    );
+
+    StaffRouter.register(
+
+        intent,
+
+        handler
+
+    );
+
+    console.log(
+
+        "Registered:",
+
+        StaffRouter.routes[
+            intent
+        ] === handler
+
+    );
+
+    console.groupEnd();
+
+};
 /*=========================================================
  REGISTER ROUTES
 =========================================================*/
@@ -548,103 +728,115 @@ StaffRouter.registerRoutes = function () {
     /*----------------------------------
       SEARCH
     ----------------------------------*/
-    StaffRouter.register(INTENTS.STAFF_SEARCH, GG.queryStaffSearch);
-    StaffRouter.register(INTENTS.STAFF_DIRECTORY, GG.queryStaffDirectory);
-    StaffRouter.register(INTENTS.STAFF_EXISTS, GG.queryStaffExists);
-    StaffRouter.register(INTENTS.STAFF_BY_NAME, GG.queryStaffByName);
-    StaffRouter.register(INTENTS.STAFF_BY_PHONE, GG.queryStaffByPhone);
-    StaffRouter.register(INTENTS.STAFF_BY_ROLE, GG.queryStaffByRole);
-    StaffRouter.register(INTENTS.STAFF_BY_DESIGNATION, GG.queryStaffByDesignation);
-    StaffRouter.register(INTENTS.STAFF_BY_LEADER, GG.queryStaffByLeader);
-    StaffRouter.register(INTENTS.STAFF_BY_TEAM, GG.queryStaffByTeam);
+    StaffRouter.registerWithLog(INTENTS.STAFF_SEARCH, GG.queryStaffSearch);
+    StaffRouter.registerWithLog(INTENTS.STAFF_DIRECTORY, GG.queryStaffDirectory);
+    StaffRouter.registerWithLog(INTENTS.STAFF_EXISTS, GG.queryStaffExists);
+    StaffRouter.registerWithLog(INTENTS.STAFF_BY_NAME, GG.queryStaffByName);
+    StaffRouter.registerWithLog(INTENTS.STAFF_BY_PHONE, GG.queryStaffByPhone);
+    StaffRouter.registerWithLog(INTENTS.STAFF_BY_ROLE, GG.queryStaffByRole);
+    StaffRouter.registerWithLog(INTENTS.STAFF_BY_DESIGNATION, GG.queryStaffByDesignation);
+    StaffRouter.registerWithLog(INTENTS.STAFF_BY_LEADER, GG.queryStaffByLeader);
+    StaffRouter.registerWithLog(INTENTS.STAFF_BY_TEAM, GG.queryStaffByTeam);
 
     /*----------------------------------
       PROFILE
     ----------------------------------*/
-    StaffRouter.register(INTENTS.STAFF_PROFILE, GG.queryStaffProfile);
-    StaffRouter.register(INTENTS.STAFF_CONTACT, GG.queryStaffContact);
-    StaffRouter.register(INTENTS.STAFF_ROLE, GG.queryStaffRole);
-    StaffRouter.register(INTENTS.STAFF_DESIGNATION, GG.queryStaffDesignation);
+    StaffRouter.registerWithLog(INTENTS.STAFF_PROFILE, GG.queryStaffProfile);
+    StaffRouter.registerWithLog(INTENTS.STAFF_CONTACT, GG.queryStaffContact);
+    StaffRouter.registerWithLog(INTENTS.STAFF_ROLE, GG.queryStaffRole);
+    StaffRouter.registerWithLog(INTENTS.STAFF_DESIGNATION, GG.queryStaffDesignation);
 
     /*----------------------------------
       POSTING
     ----------------------------------*/
-    StaffRouter.register(INTENTS.STAFF_POSTING, GG.queryStaffPosting);
-    StaffRouter.register(INTENTS.STAFF_CIRCLE, GG.queryStaffCircle);
-    StaffRouter.register(INTENTS.STAFF_DIVISION, GG.queryStaffDivision);
-    StaffRouter.register(INTENTS.STAFF_RANGE, GG.queryStaffRange);
-    StaffRouter.register(INTENTS.STAFF_BEAT, GG.queryStaffBeat);
+    StaffRouter.registerWithLog(INTENTS.STAFF_POSTING, GG.queryStaffPosting);
+    StaffRouter.registerWithLog(INTENTS.STAFF_CIRCLE, GG.queryStaffCircle);
+    StaffRouter.registerWithLog(INTENTS.STAFF_DIVISION, GG.queryStaffDivision);
+    StaffRouter.registerWithLog(INTENTS.STAFF_RANGE, GG.queryStaffRange);
+    StaffRouter.registerWithLog(INTENTS.STAFF_BEAT, GG.queryStaffBeat);
 
     /*----------------------------------
       LOCATION
     ----------------------------------*/
-    StaffRouter.register(INTENTS.STAFF_LOCATION, GG.queryStaffLocation);
-    StaffRouter.register(INTENTS.STAFF_GPS, GG.queryStaffGPS);
+    StaffRouter.registerWithLog(INTENTS.STAFF_LOCATION, GG.queryStaffLocation);
+    StaffRouter.registerWithLog(INTENTS.STAFF_GPS, GG.queryStaffGPS);
 
     /*----------------------------------
       DUTY
     ----------------------------------*/
-    StaffRouter.register(INTENTS.STAFF_DUTY, GG.queryStaffDuty);
-    StaffRouter.register(INTENTS.STAFF_DUTY_STATUS, GG.queryStaffDutyStatus);
-    StaffRouter.register(INTENTS.STAFF_DUTY_TYPE, GG.queryStaffDutyType);
-    StaffRouter.register(INTENTS.STAFF_DUTY_STARTED, GG.queryStaffDutyStarted);
-    StaffRouter.register(INTENTS.STAFF_DUTY_ENDED, GG.queryStaffDutyEnded);
-    StaffRouter.register(INTENTS.STAFF_DUTY_ACTIVE, GG.queryStaffDutyActive);
-    StaffRouter.register(INTENTS.STAFF_LAST_DUTY, GG.queryStaffLastDuty);
-    StaffRouter.register(INTENTS.STAFF_ASSIGNMENT, GG.queryStaffAssignment);
+    StaffRouter.registerWithLog(INTENTS.STAFF_DUTY, GG.queryStaffDuty);
+    StaffRouter.registerWithLog(INTENTS.STAFF_DUTY_STATUS, GG.queryStaffDutyStatus);
+    StaffRouter.registerWithLog(INTENTS.STAFF_DUTY_TYPE, GG.queryStaffDutyType);
+    StaffRouter.registerWithLog(INTENTS.STAFF_DUTY_STARTED, GG.queryStaffDutyStarted);
+    StaffRouter.registerWithLog(INTENTS.STAFF_DUTY_ENDED, GG.queryStaffDutyEnded);
+    StaffRouter.registerWithLog(INTENTS.STAFF_DUTY_ACTIVE, GG.queryStaffDutyActive);
+    StaffRouter.registerWithLog(INTENTS.STAFF_LAST_DUTY, GG.queryStaffLastDuty);
+    StaffRouter.registerWithLog(INTENTS.STAFF_ASSIGNMENT, GG.queryStaffAssignment);
 
     /*----------------------------------
       TEAM
     ----------------------------------*/
-    StaffRouter.register(INTENTS.STAFF_TEAM, GG.queryStaffTeam);
-    StaffRouter.register(INTENTS.STAFF_LEADER, GG.queryStaffLeader);
+    StaffRouter.registerWithLog(INTENTS.STAFF_TEAM, GG.queryStaffTeam);
+    StaffRouter.registerWithLog(INTENTS.STAFF_LEADER, GG.queryStaffLeader);
 
     /*----------------------------------
       GPS
     ----------------------------------*/
-    StaffRouter.register(INTENTS.STAFF_SPEED, GG.queryStaffSpeed);
-    StaffRouter.register(INTENTS.STAFF_HEADING, GG.queryStaffHeading);
-    StaffRouter.register(INTENTS.STAFF_ACCURACY, GG.queryStaffAccuracy);
+    StaffRouter.registerWithLog(INTENTS.STAFF_SPEED, GG.queryStaffSpeed);
+    StaffRouter.registerWithLog(INTENTS.STAFF_HEADING, GG.queryStaffHeading);
+    StaffRouter.registerWithLog(INTENTS.STAFF_ACCURACY, GG.queryStaffAccuracy);
 
     /*----------------------------------
       ANALYTICS
     ----------------------------------*/
-    StaffRouter.register(INTENTS.STAFF_ANALYTICS, GG.queryStaffAnalytics);
-    StaffRouter.register(INTENTS.STAFF_DISTANCE, GG.queryStaffDistance);
-    StaffRouter.register(INTENTS.STAFF_PATROL_POINTS, GG.queryStaffPatrolPoints);
-    StaffRouter.register(INTENTS.STAFF_PATROL_START, GG.queryStaffPatrolStart);
-    StaffRouter.register(INTENTS.STAFF_PATROL_END, GG.queryStaffPatrolEnd);
-    StaffRouter.register(INTENTS.STAFF_PATROL_DURATION, GG.queryStaffPatrolDuration);
+    StaffRouter.registerWithLog(INTENTS.STAFF_ANALYTICS, GG.queryStaffAnalytics);
+    StaffRouter.registerWithLog(INTENTS.STAFF_DISTANCE, GG.queryStaffDistance);
+    StaffRouter.registerWithLog(INTENTS.STAFF_PATROL_POINTS, GG.queryStaffPatrolPoints);
+    StaffRouter.registerWithLog(INTENTS.STAFF_PATROL_START, GG.queryStaffPatrolStart);
+    StaffRouter.registerWithLog(INTENTS.STAFF_PATROL_END, GG.queryStaffPatrolEnd);
+    StaffRouter.registerWithLog(INTENTS.STAFF_PATROL_DURATION, GG.queryStaffPatrolDuration);
 
     /*----------------------------------
       SUMMARY
     ----------------------------------*/
-    StaffRouter.register(INTENTS.STAFF_SUMMARY, GG.queryStaffSummary);
-    StaffRouter.register(INTENTS.STAFF_JURISDICTION_SUMMARY, GG.queryJurisdictionSummary);
-    StaffRouter.register(INTENTS.STAFF_DESIGNATION_SUMMARY, GG.queryDesignationSummary);
-    StaffRouter.register(INTENTS.STAFF_CIRCLE_DIRECTORY, GG.queryCircleDirectory);
-    StaffRouter.register(INTENTS.STAFF_DIVISION_DIRECTORY, GG.queryDivisionDirectory);
-    StaffRouter.register(INTENTS.STAFF_RANGE_DIRECTORY, GG.queryRangeDirectory);
-    StaffRouter.register(INTENTS.STAFF_BEAT_DIRECTORY, GG.queryBeatDirectory);
-    StaffRouter.register(INTENTS.STAFF_DESIGNATION_DIRECTORY, GG.queryDesignationDirectory);
+    StaffRouter.registerWithLog(INTENTS.STAFF_SUMMARY, GG.queryStaffSummary);
+    StaffRouter.registerWithLog(INTENTS.STAFF_JURISDICTION_SUMMARY, GG.queryJurisdictionSummary);
+    StaffRouter.registerWithLog(INTENTS.STAFF_DESIGNATION_SUMMARY, GG.queryDesignationSummary);
+    StaffRouter.registerWithLog(INTENTS.STAFF_CIRCLE_DIRECTORY, GG.queryCircleDirectory);
+    StaffRouter.registerWithLog(INTENTS.STAFF_DIVISION_DIRECTORY, GG.queryDivisionDirectory);
+    StaffRouter.registerWithLog(INTENTS.STAFF_RANGE_DIRECTORY, GG.queryRangeDirectory);
+    StaffRouter.registerWithLog(INTENTS.STAFF_BEAT_DIRECTORY, GG.queryBeatDirectory);
+    StaffRouter.registerWithLog(INTENTS.STAFF_DESIGNATION_DIRECTORY, GG.queryDesignationDirectory);
 
     /*----------------------------------
       STATUS
     ----------------------------------*/
-    StaffRouter.register(INTENTS.STAFF_ACTIVE_COUNT, GG.queryActiveStaffCount);
-    StaffRouter.register(INTENTS.STAFF_ACTIVE_LIST, GG.queryActiveStaffList);
-    StaffRouter.register(INTENTS.STAFF_INACTIVE_LIST, GG.queryInactiveStaffList);
-    StaffRouter.register(INTENTS.STAFF_DUTY_SUMMARY, GG.queryDutySummary);
-    StaffRouter.register(INTENTS.STAFF_TEAM_LEADER_LIST, GG.queryTeamLeaderList);
-    StaffRouter.register(INTENTS.STAFF_MOVING, GG.queryMovingStaff);
-    StaffRouter.register(INTENTS.STAFF_STATIONARY, GG.queryStationaryStaff);
+    StaffRouter.registerWithLog(INTENTS.STAFF_ACTIVE_COUNT, GG.queryActiveStaffCount);
+    StaffRouter.registerWithLog(INTENTS.STAFF_ACTIVE_LIST, GG.queryActiveStaffList);
+    StaffRouter.registerWithLog(INTENTS.STAFF_INACTIVE_LIST, GG.queryInactiveStaffList);
+    StaffRouter.registerWithLog(INTENTS.STAFF_DUTY_SUMMARY, GG.queryDutySummary);
+    StaffRouter.registerWithLog(INTENTS.STAFF_TEAM_LEADER_LIST, GG.queryTeamLeaderList);
+    StaffRouter.registerWithLog(INTENTS.STAFF_MOVING, GG.queryMovingStaff);
+    StaffRouter.registerWithLog(INTENTS.STAFF_STATIONARY, GG.queryStationaryStaff);
 
     /*----------------------------------
       CONTROL ROOM
     ----------------------------------*/
-    StaffRouter.register(INTENTS.WHO_IS_ON_DUTY, GG.queryWhoIsOnDuty);
-    StaffRouter.register(INTENTS.WHO_IS_PATROLLING, GG.queryWhoIsPatrolling);
+    StaffRouter.registerWithLog(INTENTS.WHO_IS_ON_DUTY, GG.queryWhoIsOnDuty);
+    StaffRouter.registerWithLog(INTENTS.WHO_IS_PATROLLING, GG.queryWhoIsPatrolling);
+
+    /*----------------------------------
+      TABLE LOG
+    ----------------------------------*/
+    console.group("📋 STAFF ROUTER TABLE");
+    console.log("Total Routes:", Object.keys(StaffRouter.routes).length);
+    Object.entries(StaffRouter.routes).forEach(([intent, fn]) => {
+        console.log(intent, "→", fn.name);
+    });
+    console.groupEnd();
 };
+
+
     /*=========================================================
  INITIALIZE ROUTER
 =========================================================*/
