@@ -217,6 +217,36 @@ AIDispatcher.dispatch = async function (
 
         Date.now();
 
+    console.group(
+
+        "🟠 AI DISPATCHER"
+
+    );
+
+    console.log(
+
+        "File:",
+
+        "aiDispatcher.js"
+
+    );
+
+    console.log(
+
+        "Function:",
+
+        "AIDispatcher.dispatch"
+
+    );
+
+    console.log(
+
+        "Incoming Intent:",
+
+        intent
+
+    );
+
     /*----------------------------------
       Validate
     ----------------------------------*/
@@ -228,6 +258,14 @@ AIDispatcher.dispatch = async function (
         typeof intent !== "object"
 
     ) {
+
+        console.error(
+
+            "❌ Invalid Intent"
+
+        );
+
+        console.groupEnd();
 
         return {
 
@@ -261,6 +299,30 @@ AIDispatcher.dispatch = async function (
 
         intent.query || "";
 
+    console.log(
+
+        "Domain:",
+
+        intent.domain
+
+    );
+
+    console.log(
+
+        "Intent:",
+
+        intent.intent
+
+    );
+
+    console.log(
+
+        "Confidence:",
+
+        intent.confidence
+
+    );
+
     /*----------------------------------
       Route
     ----------------------------------*/
@@ -269,6 +331,12 @@ AIDispatcher.dispatch = async function (
 
         null;
 
+    console.time(
+
+        "Router"
+
+    );
+
     switch (
 
         intent.domain
@@ -276,6 +344,12 @@ AIDispatcher.dispatch = async function (
     ) {
 
         case "staff":
+
+            console.log(
+
+                "➡ Routing → StaffRouter"
+
+            );
 
             routed =
 
@@ -289,6 +363,12 @@ AIDispatcher.dispatch = async function (
 
         case "gis":
 
+            console.log(
+
+                "➡ Routing → GISRouter"
+
+            );
+
             routed =
 
                 await GG.GISRouter.route(
@@ -300,6 +380,12 @@ AIDispatcher.dispatch = async function (
             break;
 
         case "wildlife":
+
+            console.log(
+
+                "➡ Routing → WildlifeRouter"
+
+            );
 
             routed =
 
@@ -313,6 +399,12 @@ AIDispatcher.dispatch = async function (
 
         case "fire":
 
+            console.log(
+
+                "➡ Routing → FireRouter"
+
+            );
+
             routed =
 
                 await GG.FireRouter.route(
@@ -324,6 +416,12 @@ AIDispatcher.dispatch = async function (
             break;
 
         case "patrol":
+
+            console.log(
+
+                "➡ Routing → PatrolRouter"
+
+            );
 
             routed =
 
@@ -337,6 +435,12 @@ AIDispatcher.dispatch = async function (
 
         case "analytics":
 
+            console.log(
+
+                "➡ Routing → AnalyticsRouter"
+
+            );
+
             routed =
 
                 await GG.AnalyticsRouter.route(
@@ -348,6 +452,16 @@ AIDispatcher.dispatch = async function (
             break;
 
         default:
+
+            console.error(
+
+                "❌ Unsupported Domain:",
+
+                intent.domain
+
+            );
+
+            console.groupEnd();
 
             return {
 
@@ -361,6 +475,20 @@ AIDispatcher.dispatch = async function (
 
     }
 
+    console.timeEnd(
+
+        "Router"
+
+    );
+
+    console.log(
+
+        "📦 Router Response:",
+
+        routed
+
+    );
+
     /*----------------------------------
       Router Failed
     ----------------------------------*/
@@ -372,6 +500,14 @@ AIDispatcher.dispatch = async function (
         !routed.success
 
     ) {
+
+        console.error(
+
+            "❌ Router Failed"
+
+        );
+
+        console.groupEnd();
 
         return routed;
 
@@ -385,6 +521,12 @@ AIDispatcher.dispatch = async function (
 
         routed;
 
+    console.time(
+
+        "Formatter"
+
+    );
+
     switch (
 
         intent.domain
@@ -392,6 +534,12 @@ AIDispatcher.dispatch = async function (
     ) {
 
         case "staff":
+
+            console.log(
+
+                "➡ StaffFormatter"
+
+            );
 
             formatted =
 
@@ -411,6 +559,12 @@ AIDispatcher.dispatch = async function (
 
             ) {
 
+                console.log(
+
+                    "➡ GISFormatter"
+
+                );
+
                 formatted =
 
                     GG.GISFormatter.format(
@@ -424,6 +578,20 @@ AIDispatcher.dispatch = async function (
             break;
 
     }
+
+    console.timeEnd(
+
+        "Formatter"
+
+    );
+
+    console.log(
+
+        "📝 Formatted:",
+
+        formatted
+
+    );
 
     /*----------------------------------
       Unified Response
@@ -499,9 +667,29 @@ AIDispatcher.dispatch = async function (
 
         response;
 
+    console.log(
+
+        "✅ Final Dispatcher Response:",
+
+        response
+
+    );
+
+    console.log(
+
+        "⏱ Total Dispatcher Time:",
+
+        response.metadata.executionTime,
+
+        "ms"
+
+    );
+
+    console.groupEnd();
+
     return response;
 
-}; 
+};
  /*=========================================================
  DISPATCH STAFF
 =========================================================*/
