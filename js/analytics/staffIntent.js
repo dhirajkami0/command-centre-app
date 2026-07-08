@@ -651,16 +651,6 @@ StaffIntent.detect = function (
         );
 
     /*----------------------------------
-      Confidence
-    ----------------------------------*/
-
-    StaffIntent.calculateConfidence(
-
-        result
-
-    );
-
-    /*----------------------------------
       AI Decision
     ----------------------------------*/
 
