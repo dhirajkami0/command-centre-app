@@ -771,17 +771,93 @@ StaffQuery.execute = async function (
   Get Staff List
 ----------------------------------*/
 
+/*=========================================================
+ HELPER FUNCTIONS
+=========================================================*/
+
+/*----------------------------------
+  Get Staff List
+----------------------------------*/
+
 StaffQuery.getStaff = function (
 
     request
 
 ) {
 
-    return (
+    const staff =
 
-        request?.entities?.staff ||
+        Array.isArray(
 
-        []
+            request?.entities?.staff
+
+        )
+
+            ? request.entities.staff
+
+            : [];
+
+    return staff.map(
+
+        function (
+
+            profile
+
+        ) {
+
+            const cleanName =
+
+                String(
+
+                    profile?.identity?.cleanName ||
+
+                    profile?.cleanName ||
+
+                    ""
+
+                )
+
+                .trim()
+
+                .toUpperCase();
+
+            if (
+
+                cleanName &&
+
+                GG.StaffHydrator &&
+
+                typeof GG.StaffHydrator
+                    .getHydratedStaff ===
+
+                "function"
+
+            ) {
+
+                const hydrated =
+
+                    GG.StaffHydrator
+                        .getHydratedStaff(
+
+                            cleanName
+
+                        );
+
+                if (
+
+                    hydrated
+
+                ) {
+
+                    return hydrated;
+
+                }
+
+            }
+
+            return profile;
+
+        }
 
     );
 
@@ -867,6 +943,12 @@ StaffQuery.ensureStaff = function (
 
     }
 
+    return StaffQuery.getStaff(
+
+        request
+
+    );
+
 };
 
 /*----------------------------------
@@ -918,7 +1000,6 @@ StaffQuery.ensureSingleStaff = function (
     return staff[0];
 
 };
-
 /*----------------------------------
   Get Parameters
 ----------------------------------*/
@@ -1349,6 +1430,10 @@ GG.queryStaffProfile = async function (
   Staff Contact
 ----------------------------------*/
 
+/*----------------------------------
+  Staff Contact
+----------------------------------*/
+
 GG.queryStaffContact = async function (
 
     request
@@ -1373,16 +1458,63 @@ GG.queryStaffContact = async function (
 
                 );
 
-            return profile.contact ||
+            return {
 
-                null;
+                cleanName:
+
+                    profile.identity?.cleanName ||
+
+                    "",
+
+                rawName:
+
+                    profile.identity?.rawName ||
+
+                    "",
+
+                name:
+
+                    profile.identity?.name ||
+
+                    "",
+
+                phone:
+
+                    profile.identity?.phone ||
+
+                    "",
+
+                email:
+
+                    profile.identity?.email ||
+
+                    "",
+
+                role:
+
+                    profile.identity?.role ||
+
+                    "",
+
+                designation:
+
+                    profile.identity?.designation ||
+
+                    "",
+
+                type:
+
+                    profile.identity?.type ||
+
+                    ""
+
+            };
 
         }
 
     );
 
 };
-
 /*----------------------------------
   Staff Role
 ----------------------------------*/
@@ -1734,6 +1866,9 @@ GG.queryStaffDuty = async function (
 /*----------------------------------
   Duty Status
 ----------------------------------*/
+/*----------------------------------
+  Staff Duty Status
+----------------------------------*/
 
 GG.queryStaffDutyStatus = async function (
 
@@ -1763,9 +1898,15 @@ GG.queryStaffDutyStatus = async function (
 
                 dutyStatus:
 
-                    profile.assignment?.dutyStatus ||
+                    profile.assignment?.status ||
 
-                    null
+                    "",
+
+                dutyActive:
+
+                    profile.assignment?.dutyActive ??
+
+                    false
 
             };
 
@@ -1774,7 +1915,6 @@ GG.queryStaffDutyStatus = async function (
     );
 
 };
-
 /*----------------------------------
   Duty Type
 ----------------------------------*/
@@ -1823,6 +1963,10 @@ GG.queryStaffDutyType = async function (
   Duty Started
 ----------------------------------*/
 
+/*----------------------------------
+  Duty Started
+----------------------------------*/
+
 GG.queryStaffDutyStarted = async function (
 
     request
@@ -1851,7 +1995,7 @@ GG.queryStaffDutyStarted = async function (
 
                 dutyStarted:
 
-                    profile.assignment?.dutyStarted ||
+                    profile.analytics?.startedAt ||
 
                     null
 
@@ -1895,7 +2039,9 @@ GG.queryStaffDutyEnded = async function (
 
                 dutyEnded:
 
-                    profile.assignment?.dutyEnded ||
+                    profile.analytics?.endedAt ||
+
+                    profile.assignment?.lastDutyEnd ||
 
                     null
 
@@ -1906,7 +2052,6 @@ GG.queryStaffDutyEnded = async function (
     );
 
 };
-
 /*----------------------------------
   Duty Active
 ----------------------------------*/
@@ -1939,9 +2084,15 @@ GG.queryStaffDutyActive = async function (
 
                 dutyActive:
 
-                    profile.assignment?.dutyActive ||
+                    profile.assignment?.dutyActive ??
 
-                    false
+                    false,
+
+                dutyStatus:
+
+                    profile.assignment?.status ||
+
+                    ""
 
             };
 
@@ -1983,7 +2134,9 @@ GG.queryStaffLastDuty = async function (
 
                 lastDuty:
 
-                    profile.assignment?.lastDuty ||
+                    profile.assignment?.lastDutyEnd ||
+
+                    profile.analytics?.endedAt ||
 
                     null
 
@@ -2023,9 +2176,51 @@ GG.queryStaffAssignment = async function (
 
                 );
 
-            return profile.assignment ||
+            return {
 
-                null;
+                assignedCompartment:
+
+                    profile.assignment?.assignedCompartment ||
+
+                    "",
+
+                dutyType:
+
+                    profile.assignment?.dutyType ||
+
+                    "",
+
+                dutyActive:
+
+                    profile.assignment?.dutyActive ??
+
+                    false,
+
+                status:
+
+                    profile.assignment?.status ||
+
+                    "",
+
+                leader:
+
+                    profile.assignment?.leader ||
+
+                    "",
+
+                team:
+
+                    profile.assignment?.team ||
+
+                    "",
+
+                lastDutyEnd:
+
+                    profile.assignment?.lastDutyEnd ||
+
+                    null
+
+            };
 
         }
 
@@ -2033,7 +2228,7 @@ GG.queryStaffAssignment = async function (
 
 };
 
- /*=========================================================
+/*=========================================================
  TEAM QUERIES
 =========================================================*/
 
@@ -2065,16 +2260,39 @@ GG.queryStaffTeam = async function (
 
                 );
 
-            return profile.teamInfo ||
+            return {
 
-                null;
+                leader:
+
+                    profile.teamInfo?.leader ||
+
+                    "",
+
+                team:
+
+                    profile.teamInfo?.team ||
+
+                    "",
+
+                teamMembers:
+
+                    Array.isArray(
+
+                        profile.teamInfo?.teamMembers
+
+                    )
+
+                        ? profile.teamInfo.teamMembers
+
+                        : []
+
+            };
 
         }
 
     );
 
 };
-
 /*----------------------------------
   Team Leader
 ----------------------------------*/
@@ -2109,7 +2327,7 @@ GG.queryStaffLeader = async function (
 
                     profile.teamInfo?.leader ||
 
-                    null
+                    ""
 
             };
 
@@ -2147,13 +2365,21 @@ GG.queryTeamMembers = async function (
 
                 );
 
-            return (
+            return {
 
-                profile.teamInfo?.members ||
+                teamMembers:
 
-                []
+                    Array.isArray(
 
-            );
+                        profile.teamInfo?.teamMembers
+
+                    )
+
+                        ? profile.teamInfo.teamMembers
+
+                        : []
+
+            };
 
         }
 
@@ -2195,19 +2421,25 @@ GG.queryTeamInformation = async function (
 
                     profile.teamInfo?.team ||
 
-                    null,
+                    "",
 
                 leader:
 
                     profile.teamInfo?.leader ||
 
-                    null,
+                    "",
 
-                members:
+                teamMembers:
 
-                    profile.teamInfo?.members ||
+                    Array.isArray(
 
-                    []
+                        profile.teamInfo?.teamMembers
+
+                    )
+
+                        ? profile.teamInfo.teamMembers
+
+                        : []
 
             };
 
@@ -2216,8 +2448,7 @@ GG.queryTeamInformation = async function (
     );
 
 };
-
- /*=========================================================
+/*=========================================================
  GPS QUERIES
 =========================================================*/
 
@@ -2249,13 +2480,69 @@ GG.queryStaffGPS = async function (
 
                 );
 
-            return (
+            return {
 
-                profile.gps ||
+                latitude:
 
-                null
+                    profile.location?.lat ??
 
-            );
+                    null,
+
+                longitude:
+
+                    profile.location?.lon ??
+
+                    null,
+
+                accuracy:
+
+                    profile.gps?.accuracy ??
+
+                    null,
+
+                heading:
+
+                    profile.gps?.heading ??
+
+                    null,
+
+                speed:
+
+                    profile.gps?.speed ??
+
+                    null,
+
+                lastSeen:
+
+                    profile.gps?.lastSeen ??
+
+                    null,
+
+                timestamp:
+
+                    profile.gps?.timestamp ??
+
+                    null,
+
+                updatedAt:
+
+                    profile.gps?.updatedAt ??
+
+                    null,
+
+                turnAngle:
+
+                    profile.gps?.turnAngle ??
+
+                    null,
+
+                turnRate:
+
+                    profile.gps?.turnRate ??
+
+                    null
+
+            };
 
         }
 
@@ -2306,6 +2593,7 @@ GG.queryStaffSpeed = async function (
     );
 
 };
+
 /*=========================================================
  STAFF LOCATION
 =========================================================*/
@@ -2338,37 +2626,67 @@ GG.queryStaffLocation = async function (
 
                 latitude:
 
-                    profile.gps?.latitude ??
+                    profile.location?.lat ??
 
                     null,
 
                 longitude:
 
-                    profile.gps?.longitude ??
+                    profile.location?.lon ??
 
                     null,
 
                 location:
 
-                    profile.gps?.location ??
+                    profile.location?.location ??
 
                     null,
 
-                fixTime:
+                accuracy:
 
-                    profile.gps?.fixTime ??
-
-                    null,
-
-                address:
-
-                    profile.gps?.address ??
+                    profile.gps?.accuracy ??
 
                     null,
 
-                gps:
+                heading:
 
-                    profile.gps ||
+                    profile.gps?.heading ??
+
+                    null,
+
+                speed:
+
+                    profile.gps?.speed ??
+
+                    null,
+
+                lastSeen:
+
+                    profile.gps?.lastSeen ??
+
+                    null,
+
+                timestamp:
+
+                    profile.gps?.timestamp ??
+
+                    null,
+
+                updatedAt:
+
+                    profile.gps?.updatedAt ??
+
+                    null,
+
+                turnAngle:
+
+                    profile.gps?.turnAngle ??
+
+                    null,
+
+                turnRate:
+
+                    profile.gps?.turnRate ??
 
                     null
 
@@ -2466,8 +2784,7 @@ GG.queryStaffAccuracy = async function (
     );
 
 };
-
- /*=========================================================
+/*=========================================================
  PATROL ANALYTICS QUERIES
 =========================================================*/
 
@@ -2499,13 +2816,93 @@ GG.queryStaffAnalytics = async function (
 
                 );
 
-            return (
+            return {
 
-                profile.analytics ||
+                pointCount:
 
-                {}
+                    profile.analytics?.pointCount ??
 
-            );
+                    0,
+
+                distanceKm:
+
+                    profile.analytics?.distanceKm ??
+
+                    0,
+
+                startedAt:
+
+                    profile.analytics?.startedAt ??
+
+                    null,
+
+                endedAt:
+
+                    profile.analytics?.endedAt ??
+
+                    null,
+
+                monthKey:
+
+                    profile.analytics?.monthKey ??
+
+                    "",
+
+                createdAt:
+
+                    profile.analytics?.createdAt ??
+
+                    null,
+
+                updatedAt:
+
+                    profile.analytics?.updatedAt ??
+
+                    null,
+
+                startAccuracy:
+
+                    profile.analytics?.startAccuracy ??
+
+                    null,
+
+                startLat:
+
+                    profile.analytics?.startLat ??
+
+                    null,
+
+                startLon:
+
+                    profile.analytics?.startLon ??
+
+                    null,
+
+                compartments:
+
+                    Array.isArray(
+
+                        profile.analytics?.compartments
+
+                    )
+
+                        ? profile.analytics.compartments
+
+                        : [],
+
+                simplifiedTrack:
+
+                    Array.isArray(
+
+                        profile.analytics?.simplifiedTrack
+
+                    )
+
+                        ? profile.analytics.simplifiedTrack
+
+                        : []
+
+            };
 
         }
 
@@ -2543,11 +2940,11 @@ GG.queryStaffDistance = async function (
 
             return {
 
-                distance:
+                distanceKm:
 
-                    profile.analytics?.distance ??
+                    profile.analytics?.distanceKm ??
 
-                    null
+                    0
 
             };
 
@@ -2587,11 +2984,11 @@ GG.queryStaffPatrolPoints = async function (
 
             return {
 
-                patrolPoints:
+                pointCount:
 
-                    profile.analytics?.patrolPoints ??
+                    profile.analytics?.pointCount ??
 
-                    null
+                    0
 
             };
 
@@ -2631,9 +3028,9 @@ GG.queryStaffPatrolStart = async function (
 
             return {
 
-                patrolStart:
+                startedAt:
 
-                    profile.analytics?.patrolStart ??
+                    profile.analytics?.startedAt ??
 
                     null
 
@@ -2675,9 +3072,9 @@ GG.queryStaffPatrolEnd = async function (
 
             return {
 
-                patrolEnd:
+                endedAt:
 
-                    profile.analytics?.patrolEnd ??
+                    profile.analytics?.endedAt ??
 
                     null
 
@@ -2717,13 +3114,53 @@ GG.queryStaffPatrolDuration = async function (
 
                 );
 
+            const startedAt =
+
+                profile.analytics?.startedAt ??
+
+                null;
+
+            const endedAt =
+
+                profile.analytics?.endedAt ??
+
+                null;
+
+            let durationMs =
+
+                null;
+
+            if (
+
+                startedAt != null &&
+
+                endedAt != null &&
+
+                endedAt >= startedAt
+
+            ) {
+
+                durationMs =
+
+                    endedAt -
+
+                    startedAt;
+
+            }
+
             return {
 
-                patrolDuration:
+                startedAt:
 
-                    profile.analytics?.patrolDuration ??
+                    startedAt,
 
-                    null
+                endedAt:
+
+                    endedAt,
+
+                durationMs:
+
+                    durationMs
 
             };
 
@@ -2733,7 +3170,7 @@ GG.queryStaffPatrolDuration = async function (
 
 };
 
- /*=========================================================
+/*=========================================================
  STRENGTH & CONTROL ROOM QUERIES
 =========================================================*/
 
@@ -2771,7 +3208,33 @@ GG.queryStaffStrength = async function (
 
                     staff.length,
 
-                staff
+                active:
+
+                    staff.filter(
+
+                        profile =>
+
+                            profile.assignment?.dutyActive ===
+
+                            true
+
+                    ).length,
+
+                inactive:
+
+                    staff.filter(
+
+                        profile =>
+
+                            profile.assignment?.dutyActive !==
+
+                            true
+
+                    ).length,
+
+                staff:
+
+                    staff
 
             };
 
@@ -2861,29 +3324,43 @@ GG.queryActiveStaffList = async function (
 
         ) {
 
-            return StaffQuery.getStaff(
+            const active =
 
-                request
+                StaffQuery.getStaff(
 
-            ).filter(
+                    request
 
-                function (
+                ).filter(
 
-                    profile
+                    function (
 
-                ) {
+                        profile
 
-                    return (
+                    ) {
 
-                        profile.assignment?.dutyActive ===
+                        return (
 
-                        true
+                            profile.assignment?.dutyActive ===
 
-                    );
+                            true
 
-                }
+                        );
 
-            );
+                    }
+
+                );
+
+            return {
+
+                count:
+
+                    active.length,
+
+                staff:
+
+                    active
+
+            };
 
         }
 
@@ -2911,29 +3388,43 @@ GG.queryInactiveStaffList = async function (
 
         ) {
 
-            return StaffQuery.getStaff(
+            const inactive =
 
-                request
+                StaffQuery.getStaff(
 
-            ).filter(
+                    request
 
-                function (
+                ).filter(
 
-                    profile
+                    function (
 
-                ) {
+                        profile
 
-                    return (
+                    ) {
 
-                        profile.assignment?.dutyActive !==
+                        return (
 
-                        true
+                            profile.assignment?.dutyActive !==
 
-                    );
+                            true
 
-                }
+                        );
 
-            );
+                    }
+
+                );
+
+            return {
+
+                count:
+
+                    inactive.length,
+
+                staff:
+
+                    inactive
+
+            };
 
         }
 
@@ -2969,6 +3460,30 @@ GG.queryDutySummary = async function (
 
                 );
 
+            const active =
+
+                staff.filter(
+
+                    profile =>
+
+                        profile.assignment?.dutyActive ===
+
+                        true
+
+                );
+
+            const inactive =
+
+                staff.filter(
+
+                    profile =>
+
+                        profile.assignment?.dutyActive !==
+
+                        true
+
+                );
+
             return {
 
                 total:
@@ -2977,47 +3492,19 @@ GG.queryDutySummary = async function (
 
                 active:
 
-                    staff.filter(
-
-                        function (
-
-                            profile
-
-                        ) {
-
-                            return (
-
-                                profile.assignment?.dutyActive ===
-
-                                true
-
-                            );
-
-                        }
-
-                    ).length,
+                    active.length,
 
                 inactive:
 
-                    staff.filter(
+                    inactive.length,
 
-                        function (
+                activeStaff:
 
-                            profile
+                    active,
 
-                        ) {
+                inactiveStaff:
 
-                            return (
-
-                                profile.assignment?.dutyActive !==
-
-                                true
-
-                            );
-
-                        }
-
-                    ).length
+                    inactive
 
             };
 
@@ -3047,36 +3534,59 @@ GG.queryTeamLeaderList = async function (
 
         ) {
 
-            return StaffQuery.getStaff(
+            const leaders =
 
-                request
+                StaffQuery.getStaff(
 
-            ).filter(
+                    request
 
-                function (
+                ).filter(
 
-                    profile
+                    function (
 
-                ) {
+                        profile
 
-                    return (
+                    ) {
 
-                        profile.identity?.role ===
+                        return (
 
-                        "TEAM_LEADER"
+                            String(
 
-                    );
+                                profile.identity?.role ||
 
-                }
+                                ""
 
-            );
+                            )
+
+                            .trim()
+
+                            .toUpperCase() ===
+
+                            "TEAM_LEADER"
+
+                        );
+
+                    }
+
+                );
+
+            return {
+
+                count:
+
+                    leaders.length,
+
+                staff:
+
+                    leaders
+
+            };
 
         }
 
     );
 
 };
-
 /*----------------------------------
   Moving Staff
 ----------------------------------*/
@@ -3097,29 +3607,47 @@ GG.queryMovingStaff = async function (
 
         ) {
 
-            return StaffQuery.getStaff(
+            const moving =
 
-                request
+                StaffQuery.getStaff(
 
-            ).filter(
+                    request
 
-                function (
+                ).filter(
 
-                    profile
+                    function (
 
-                ) {
+                        profile
 
-                    return Number(
+                    ) {
 
-                        profile.gps?.speed ||
+                        return (
 
-                        0
+                            Number(
 
-                    ) > 0;
+                                profile.gps?.speed ??
 
-                }
+                                0
 
-            );
+                            ) > 0
+
+                        );
+
+                    }
+
+                );
+
+            return {
+
+                count:
+
+                    moving.length,
+
+                staff:
+
+                    moving
+
+            };
 
         }
 
@@ -3147,29 +3675,47 @@ GG.queryStationaryStaff = async function (
 
         ) {
 
-            return StaffQuery.getStaff(
+            const stationary =
 
-                request
+                StaffQuery.getStaff(
 
-            ).filter(
+                    request
 
-                function (
+                ).filter(
 
-                    profile
+                    function (
 
-                ) {
+                        profile
 
-                    return Number(
+                    ) {
 
-                        profile.gps?.speed ||
+                        return (
 
-                        0
+                            Number(
 
-                    ) <= 0;
+                                profile.gps?.speed ??
 
-                }
+                                0
 
-            );
+                            ) <= 0
+
+                        );
+
+                    }
+
+                );
+
+            return {
+
+                count:
+
+                    stationary.length,
+
+                staff:
+
+                    stationary
+
+            };
 
         }
 
