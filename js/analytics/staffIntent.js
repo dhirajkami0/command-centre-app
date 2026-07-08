@@ -448,6 +448,36 @@ StaffIntent.detect = function (
 
         Date.now();
 
+    console.group(
+
+        "🟤 STAFF INTENT"
+
+    );
+
+    console.log(
+
+        "File:",
+
+        "staffIntent.js"
+
+    );
+
+    console.log(
+
+        "Function:",
+
+        "StaffIntent.detect"
+
+    );
+
+    console.log(
+
+        "Incoming Query:",
+
+        query
+
+    );
+
     /*----------------------------------
       Validate
     ----------------------------------*/
@@ -458,6 +488,14 @@ StaffIntent.detect = function (
 
     ) {
 
+        console.warn(
+
+            "❌ Invalid Query"
+
+        );
+
+        console.groupEnd();
+
         return StaffIntent.createIntentResult();
 
     }
@@ -465,6 +503,14 @@ StaffIntent.detect = function (
     query =
 
         query.trim();
+
+    console.log(
+
+        "Normalized Query:",
+
+        query
+
+    );
 
     /*----------------------------------
       Cache
@@ -484,9 +530,29 @@ StaffIntent.detect = function (
 
     ) {
 
+        console.log(
+
+            "⚡ STAFF CACHE HIT"
+
+        );
+
+        console.log(
+
+            cached
+
+        );
+
+        console.groupEnd();
+
         return cached;
 
     }
+
+    console.log(
+
+        "⚪ STAFF CACHE MISS"
+
+    );
 
     /*----------------------------------
       Create Result
@@ -504,9 +570,23 @@ StaffIntent.detect = function (
 
         query;
 
+    console.log(
+
+        "📄 Initial Result:",
+
+        result
+
+    );
+
     /*----------------------------------
       Extract Entities
     ----------------------------------*/
+
+    console.time(
+
+        "StaffEntities.extract"
+
+    );
 
     const extraction =
 
@@ -516,11 +596,31 @@ StaffIntent.detect = function (
 
         );
 
+    console.timeEnd(
+
+        "StaffEntities.extract"
+
+    );
+
+    console.log(
+
+        "📦 Extraction:",
+
+        extraction
+
+    );
+
     if (
 
         !extraction
 
     ) {
+
+        console.error(
+
+            "❌ Extraction Failed"
+
+        );
 
         result.errors.push(
 
@@ -531,6 +631,8 @@ StaffIntent.detect = function (
         result.requiresAI =
 
             true;
+
+        console.groupEnd();
 
         return result;
 
@@ -608,6 +710,14 @@ StaffIntent.detect = function (
 
     };
 
+    console.log(
+
+        "👥 Entities:",
+
+        result.entities
+
+    );
+
     /*----------------------------------
       Keywords
     ----------------------------------*/
@@ -620,6 +730,14 @@ StaffIntent.detect = function (
 
         ];
 
+    console.log(
+
+        "🏷 Keywords:",
+
+        result.keywords
+
+    );
+
     /*----------------------------------
       Parameters
     ----------------------------------*/
@@ -629,6 +747,14 @@ StaffIntent.detect = function (
         ...(extraction.parameters || {})
 
     };
+
+    console.log(
+
+        "⚙ Parameters:",
+
+        result.parameters
+
+    );
 
     /*----------------------------------
       Metadata
@@ -642,6 +768,12 @@ StaffIntent.detect = function (
       Intent Detection Pipeline
     ----------------------------------*/
 
+    console.time(
+
+        "detectStaffIntent"
+
+    );
+
     result =
 
         StaffIntent.detectStaffIntent(
@@ -649,12 +781,59 @@ StaffIntent.detect = function (
             result
 
         );
-  // <<< PLACE IT HERE >>>
+
+    console.timeEnd(
+
+        "detectStaffIntent"
+
+    );
+
+    console.log(
+
+        "🎯 After detectStaffIntent:",
+
+        result.intent
+
+    );
+
+    console.log(
+
+        "Confidence Before Calculation:",
+
+        result.confidence
+
+    );
+
+    /*----------------------------------
+      Confidence
+    ----------------------------------*/
+
+    console.time(
+
+        "calculateConfidence"
+
+    );
+
     StaffIntent.calculateConfidence(
 
         result
 
     );
+
+    console.timeEnd(
+
+        "calculateConfidence"
+
+    );
+
+    console.log(
+
+        "Confidence After Calculation:",
+
+        result.confidence
+
+    );
+
     /*----------------------------------
       AI Decision
     ----------------------------------*/
@@ -667,6 +846,14 @@ StaffIntent.detect = function (
 
         );
 
+    console.log(
+
+        "Requires AI:",
+
+        result.requiresAI
+
+    );
+
     /*----------------------------------
       Execution Time
     ----------------------------------*/
@@ -677,8 +864,18 @@ StaffIntent.detect = function (
 
         started;
 
+    console.log(
+
+        "Execution Time:",
+
+        result.metadata.executionTime,
+
+        "ms"
+
+    );
+
     /*----------------------------------
-      Cache Result
+      Cache
     ----------------------------------*/
 
     StaffIntent.lastResult =
@@ -693,9 +890,15 @@ StaffIntent.detect = function (
 
     );
 
-    /*----------------------------------
-      Return
-    ----------------------------------*/
+    console.log(
+
+        "🏁 Final Staff Result:",
+
+        result
+
+    );
+
+    console.groupEnd();
 
     return result;
 
