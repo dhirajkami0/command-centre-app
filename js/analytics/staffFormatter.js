@@ -529,6 +529,10 @@ StaffFormatter.format = function (
  FORMAT STAFF PROFILE
 =========================================================*/
 
+/*=========================================================
+ FORMAT STAFF PROFILE
+=========================================================*/
+
 StaffFormatter.formatProfile = function (
 
     response
@@ -567,25 +571,61 @@ StaffFormatter.formatProfile = function (
 
     }
 
+    /*----------------------------------
+      Canonical Profile
+    ----------------------------------*/
+
     const profile =
 
         response.data;
 
-    console.log(
+    const identity =
 
-        "FORMAT PROFILE",
+        profile.identity ||
 
-        profile
+        {};
 
-    );
+    const posting =
 
-    console.log(
+        profile.posting ||
 
-        "IDENTITY",
+        {};
 
-        profile.identity
+    const assignment =
 
-    );
+        profile.assignment ||
+
+        {};
+
+    const location =
+
+        profile.location ||
+
+        {};
+
+    const gps =
+
+        profile.gps ||
+
+        {};
+
+    const team =
+
+        profile.teamInfo ||
+
+        {};
+
+    const tracking =
+
+        profile.tracking ||
+
+        {};
+
+    const analytics =
+
+        profile.analytics ||
+
+        {};
 
     /*----------------------------------
       Display Name
@@ -593,11 +633,11 @@ StaffFormatter.formatProfile = function (
 
     const displayName =
 
-        profile.identity?.name ||
+        identity.name ||
 
-        profile.identity?.rawName ||
+        identity.rawName ||
 
-        profile.identity?.cleanName ||
+        identity.cleanName ||
 
         "-";
 
@@ -611,6 +651,10 @@ StaffFormatter.formatProfile = function (
 
         "",
 
+        "## 👤 Identity",
+
+        "",
+
         "**Name:** " +
 
             displayName,
@@ -619,7 +663,7 @@ StaffFormatter.formatProfile = function (
 
             (
 
-                profile.identity?.role ||
+                identity.role ||
 
                 "-"
 
@@ -629,7 +673,7 @@ StaffFormatter.formatProfile = function (
 
             (
 
-                profile.identity?.designation ||
+                identity.designation ||
 
                 "-"
 
@@ -639,7 +683,7 @@ StaffFormatter.formatProfile = function (
 
             (
 
-                profile.identity?.phone ||
+                identity.phone ||
 
                 "-"
 
@@ -649,7 +693,7 @@ StaffFormatter.formatProfile = function (
 
             (
 
-                profile.identity?.email ||
+                identity.email ||
 
                 "-"
 
@@ -665,7 +709,7 @@ StaffFormatter.formatProfile = function (
 
             (
 
-                profile.posting?.circle ||
+                posting.circle ||
 
                 "-"
 
@@ -675,7 +719,7 @@ StaffFormatter.formatProfile = function (
 
             (
 
-                profile.posting?.division ||
+                posting.division ||
 
                 "-"
 
@@ -685,7 +729,7 @@ StaffFormatter.formatProfile = function (
 
             (
 
-                profile.posting?.range ||
+                posting.range ||
 
                 "-"
 
@@ -695,7 +739,7 @@ StaffFormatter.formatProfile = function (
 
             (
 
-                profile.posting?.beat ||
+                posting.beat ||
 
                 "-"
 
@@ -703,15 +747,25 @@ StaffFormatter.formatProfile = function (
 
         "",
 
-        "## 🚓 Duty",
+        "## 🚓 Assignment",
 
         "",
 
-        "**Duty:** " +
+        "**Compartment:** " +
 
             (
 
-                profile.assignment?.dutyType ||
+                assignment.assignedCompartment ||
+
+                "-"
+
+            ),
+
+        "**Duty Type:** " +
+
+            (
+
+                assignment.dutyType ||
 
                 "-"
 
@@ -721,17 +775,17 @@ StaffFormatter.formatProfile = function (
 
             (
 
-                profile.assignment?.status ||
+                assignment.status ||
 
                 "-"
 
             ),
 
-        "**Active:** " +
+        "**Duty Active:** " +
 
             (
 
-                profile.assignment?.dutyActive
+                assignment.dutyActive
 
                     ? "YES"
 
@@ -741,7 +795,7 @@ StaffFormatter.formatProfile = function (
 
         "",
 
-        "## 📡 GPS",
+        "## 📡 Current Location",
 
         "",
 
@@ -749,7 +803,7 @@ StaffFormatter.formatProfile = function (
 
             (
 
-                profile.location?.location ||
+                location.location ||
 
                 "-"
 
@@ -759,7 +813,7 @@ StaffFormatter.formatProfile = function (
 
             (
 
-                profile.location?.lat ??
+                location.lat ??
 
                 "-"
 
@@ -769,17 +823,23 @@ StaffFormatter.formatProfile = function (
 
             (
 
-                profile.location?.lon ??
+                location.lon ??
 
                 "-"
 
             ),
 
+        "",
+
+        "## 📡 GPS",
+
+        "",
+
         "**Accuracy:** " +
 
             (
 
-                profile.gps?.accuracy ??
+                gps.accuracy ??
 
                 "-"
 
@@ -789,7 +849,27 @@ StaffFormatter.formatProfile = function (
 
             (
 
-                profile.gps?.speed ??
+                gps.speed ??
+
+                "-"
+
+            ),
+
+        "**Heading:** " +
+
+            (
+
+                gps.heading ??
+
+                "-"
+
+            ),
+
+        "**Last Seen:** " +
+
+            (
+
+                gps.lastSeen ||
 
                 "-"
 
@@ -805,7 +885,7 @@ StaffFormatter.formatProfile = function (
 
             (
 
-                profile.teamInfo?.leader ||
+                team.leader ||
 
                 "-"
 
@@ -815,7 +895,107 @@ StaffFormatter.formatProfile = function (
 
             (
 
-                profile.teamInfo?.team ||
+                team.team ||
+
+                "-"
+
+            ),
+
+        "**Members:** " +
+
+            (
+
+                Array.isArray(
+
+                    team.teamMembers
+
+                )
+
+                    ? team.teamMembers.length
+
+                    : 0
+
+            ),
+
+        "",
+
+        "## 📈 Patrol Analytics",
+
+        "",
+
+        "**Distance:** " +
+
+            (
+
+                analytics.distanceKm ??
+
+                0
+
+            ) +
+
+            " km",
+
+        "**GPS Points:** " +
+
+            (
+
+                analytics.pointCount ??
+
+                0
+
+            ),
+
+        "**Started:** " +
+
+            (
+
+                analytics.startedAt ||
+
+                "-"
+
+            ),
+
+        "**Ended:** " +
+
+            (
+
+                analytics.endedAt ||
+
+                "-"
+
+            ),
+
+        "",
+
+        "## 🔄 Tracking",
+
+        "",
+
+        "**Session ID:** " +
+
+            (
+
+                tracking.sessionId ||
+
+                "-"
+
+            ),
+
+        "**Source:** " +
+
+            (
+
+                tracking.source ||
+
+                "-"
+
+            ),
+
+        "**Tracking ID:** " +
+
+            (
+
+                tracking.id ||
 
                 "-"
 
@@ -828,7 +1008,7 @@ StaffFormatter.formatProfile = function (
     );
 
     /*----------------------------------
-      Cards
+      Card
     ----------------------------------*/
 
     result.cards.push({
@@ -848,7 +1028,7 @@ StaffFormatter.formatProfile = function (
     });
 
     /*----------------------------------
-      Sections
+      Section
     ----------------------------------*/
 
     result.sections.push({
@@ -867,6 +1047,10 @@ StaffFormatter.formatProfile = function (
       Metadata
     ----------------------------------*/
 
+    result.success =
+
+        true;
+
     result.intent =
 
         StaffConstants.INTENTS.STAFF_PROFILE;
@@ -883,10 +1067,6 @@ StaffFormatter.formatProfile = function (
 
         "LOCAL";
 
-    result.success =
-
-        true;
-
     result.message =
 
         "Profile formatted.";
@@ -894,64 +1074,334 @@ StaffFormatter.formatProfile = function (
     return result;
 
 };
+/*=========================================================
+ FORMAT STAFF ASSIGNMENT
+=========================================================*/
 
- StaffFormatter.formatStaffAssignment = function (
+StaffFormatter.formatStaffAssignment = function (
 
     response
 
 ) {
 
-    const a =
+    const result =
 
-        response.assignment;
+        StaffFormatter.createResponse(
+
+            response
+
+        );
+
+    /*----------------------------------
+      Validate
+    ----------------------------------*/
 
     if (
 
-        !a
+        !response ||
+
+        !response.success ||
+
+        !response.data
 
     ) {
 
-        return "Assignment not found.";
+        result.message =
+
+            response?.message ||
+
+            "Assignment information not found.";
+
+        return result;
 
     }
 
-    let text =
+    /*----------------------------------
+      Canonical Profile
+    ----------------------------------*/
 
-        "";
+    const profile =
 
-    text +=
+        response.data;
 
-        a.name + "\n\n";
+    const identity =
 
-    text +=
+        profile.identity ||
 
-        "Assigned Area\n";
+        {};
 
-    text +=
+    const posting =
 
-        (a.assignedCompartment || "—") + "\n\n";
+        profile.posting ||
 
-    text +=
+        {};
 
-        "Duty Type\n";
+    const assignment =
 
-    text +=
+        profile.assignment ||
 
-        (a.dutyType || "—") + "\n\n";
+        {};
 
-    text +=
+    const team =
 
-        "Duty Status\n";
+        profile.teamInfo ||
 
-    text +=
+        {};
 
-        (a.status || "—");
+    /*----------------------------------
+      Display Name
+    ----------------------------------*/
 
-    return text;
+    const displayName =
+
+        identity.name ||
+
+        identity.rawName ||
+
+        identity.cleanName ||
+
+        "-";
+
+    /*----------------------------------
+      Markdown
+    ----------------------------------*/
+
+    result.markdown = [
+
+        "# 📋 STAFF ASSIGNMENT",
+
+        "",
+
+        "**Name:** " +
+
+            displayName,
+
+        "**Role:** " +
+
+            (
+
+                identity.role ||
+
+                "-"
+
+            ),
+
+        "**Designation:** " +
+
+            (
+
+                identity.designation ||
+
+                "-"
+
+            ),
+
+        "",
+
+        "## 🌳 Administrative Posting",
+
+        "",
+
+        "**Circle:** " +
+
+            (
+
+                posting.circle ||
+
+                "-"
+
+            ),
+
+        "**Division:** " +
+
+            (
+
+                posting.division ||
+
+                "-"
+
+            ),
+
+        "**Range:** " +
+
+            (
+
+                posting.range ||
+
+                "-"
+
+            ),
+
+        "**Beat:** " +
+
+            (
+
+                posting.beat ||
+
+                "-"
+
+            ),
+
+        "",
+
+        "## 🚓 Assignment",
+
+        "",
+
+        "**Assigned Compartment:** " +
+
+            (
+
+                assignment.assignedCompartment ||
+
+                "-"
+
+            ),
+
+        "**Duty Type:** " +
+
+            (
+
+                assignment.dutyType ||
+
+                "-"
+
+            ),
+
+        "**Status:** " +
+
+            (
+
+                assignment.status ||
+
+                "-"
+
+            ),
+
+        "**Duty Active:** " +
+
+            (
+
+                assignment.dutyActive
+
+                    ? "YES"
+
+                    : "NO"
+
+            ),
+
+        "**Leader:** " +
+
+            (
+
+                assignment.leader ||
+
+                team.leader ||
+
+                "-"
+
+            ),
+
+        "**Team:** " +
+
+            (
+
+                assignment.team ||
+
+                team.team ||
+
+                "-"
+
+            ),
+
+        "**Last Duty End:** " +
+
+            (
+
+                assignment.lastDutyEnd ||
+
+                "-"
+
+            )
+
+    ].join(
+
+        "\n"
+
+    );
+
+    /*----------------------------------
+      Card
+    ----------------------------------*/
+
+    result.cards.push({
+
+        type:
+
+            "staff-assignment",
+
+        title:
+
+            displayName,
+
+        data:
+
+            profile
+
+    });
+
+    /*----------------------------------
+      Section
+    ----------------------------------*/
+
+    result.sections.push({
+
+        title:
+
+            "Assignment",
+
+        data:
+
+            profile
+
+    });
+
+    /*----------------------------------
+      Metadata
+    ----------------------------------*/
+
+    result.success =
+
+        true;
+
+    result.intent =
+
+        StaffConstants.INTENTS.STAFF_ASSIGNMENT;
+
+    result.confidence =
+
+        response.confidence ||
+
+        1;
+
+    result.source =
+
+        response.source ||
+
+        "LOCAL";
+
+    result.message =
+
+        "Assignment formatted.";
+
+    return result;
 
 };
-
  /*=========================================================
+ FORMAT CONTACT
+=========================================================*/
+
+/*=========================================================
  FORMAT CONTACT
 =========================================================*/
 
@@ -979,7 +1429,7 @@ StaffFormatter.formatContact = function (
 
         !response.success ||
 
-        !response.contact
+        !response.data
 
     ) {
 
@@ -993,9 +1443,15 @@ StaffFormatter.formatContact = function (
 
     }
 
-    const contact =
+    const profile =
 
-        response.contact;
+        response.data;
+
+    const identity =
+
+        profile.identity ||
+
+        {};
 
     /*----------------------------------
       Markdown
@@ -1011,7 +1467,11 @@ StaffFormatter.formatContact = function (
 
             (
 
-                contact.name ||
+                identity.name ||
+
+                identity.rawName ||
+
+                identity.cleanName ||
 
                 "-"
 
@@ -1023,7 +1483,7 @@ StaffFormatter.formatContact = function (
 
             (
 
-                contact.phone ||
+                identity.phone ||
 
                 "-"
 
@@ -1035,7 +1495,7 @@ StaffFormatter.formatContact = function (
 
             (
 
-                contact.email ||
+                identity.email ||
 
                 "-"
 
@@ -1047,7 +1507,7 @@ StaffFormatter.formatContact = function (
 
             (
 
-                contact.role ||
+                identity.role ||
 
                 "-"
 
@@ -1059,7 +1519,7 @@ StaffFormatter.formatContact = function (
 
             (
 
-                contact.designation ||
+                identity.designation ||
 
                 "-"
 
@@ -1071,9 +1531,39 @@ StaffFormatter.formatContact = function (
 
     );
 
-    result.message =
+    result.cards.push({
 
-        result.markdown;
+        type:
+
+            "staff-contact",
+
+        title:
+
+            identity.name ||
+
+            identity.rawName ||
+
+            identity.cleanName ||
+
+            "Contact",
+
+        data:
+
+            profile
+
+    });
+
+    result.sections.push({
+
+        title:
+
+            "Contact",
+
+        data:
+
+            profile
+
+    });
 
     result.success =
 
@@ -1095,10 +1585,15 @@ StaffFormatter.formatContact = function (
 
         "LOCAL";
 
+    result.message =
+
+        "Contact formatted.";
+
     return result;
 
 };
- /*=========================================================
+
+/*=========================================================
  FORMAT DIRECTORY
 =========================================================*/
 
@@ -1128,7 +1623,7 @@ StaffFormatter.formatDirectory = function (
 
         !Array.isArray(
 
-            response.staff
+            response.data
 
         )
 
@@ -1146,7 +1641,7 @@ StaffFormatter.formatDirectory = function (
 
     const staff =
 
-        response.staff;
+        response.data;
 
     /*----------------------------------
       Markdown
@@ -1160,7 +1655,7 @@ StaffFormatter.formatDirectory = function (
 
         "**Total Staff:** " +
 
-        staff.length,
+            staff.length,
 
         ""
 
@@ -1176,6 +1671,18 @@ StaffFormatter.formatDirectory = function (
 
         ) {
 
+            const identity =
+
+                person.identity ||
+
+                {};
+
+            const posting =
+
+                person.posting ||
+
+                {};
+
             lines.push(
 
                 (
@@ -1188,9 +1695,11 @@ StaffFormatter.formatDirectory = function (
 
                 (
 
-                    person.rawName ||
+                    identity.name ||
 
-                    person.name ||
+                    identity.rawName ||
+
+                    identity.cleanName ||
 
                     "-"
 
@@ -1206,7 +1715,7 @@ StaffFormatter.formatDirectory = function (
 
                 (
 
-                    person.role ||
+                    identity.role ||
 
                     "-"
 
@@ -1220,7 +1729,7 @@ StaffFormatter.formatDirectory = function (
 
                 (
 
-                    person.division ||
+                    posting.division ||
 
                     "-"
 
@@ -1234,7 +1743,7 @@ StaffFormatter.formatDirectory = function (
 
                 (
 
-                    person.range ||
+                    posting.range ||
 
                     "-"
 
@@ -1248,7 +1757,7 @@ StaffFormatter.formatDirectory = function (
 
                 (
 
-                    person.beat ||
+                    posting.beat ||
 
                     "-"
 
@@ -1262,7 +1771,7 @@ StaffFormatter.formatDirectory = function (
 
                 (
 
-                    person.phone ||
+                    identity.phone ||
 
                     "-"
 
@@ -1320,31 +1829,45 @@ StaffFormatter.formatDirectory = function (
 
                 ) {
 
+                    const identity =
+
+                        person.identity ||
+
+                        {};
+
+                    const posting =
+
+                        person.posting ||
+
+                        {};
+
                     return [
 
-                        person.rawName ||
+                        identity.name ||
 
-                        person.name ||
+                        identity.rawName ||
 
-                        "",
-
-                        person.role ||
+                        identity.cleanName ||
 
                         "",
 
-                        person.division ||
+                        identity.role ||
 
                         "",
 
-                        person.range ||
+                        posting.division ||
 
                         "",
 
-                        person.beat ||
+                        posting.range ||
 
                         "",
 
-                        person.phone ||
+                        posting.beat ||
+
+                        "",
+
+                        identity.phone ||
 
                         ""
 
@@ -1400,13 +1923,30 @@ StaffFormatter.formatDirectory = function (
 
         true;
 
+    result.intent =
+
+        StaffConstants.INTENTS.STAFF_DIRECTORY;
+
+    result.confidence =
+
+        response.confidence ||
+
+        1;
+
+    result.source =
+
+        response.source ||
+
+        "LOCAL";
+
     result.message =
 
         "Directory formatted.";
 
     return result;
 
-};/*=========================================================
+};
+/*=========================================================
  FORMAT POSTING
 =========================================================*/
 
@@ -1434,7 +1974,7 @@ StaffFormatter.formatPosting = function (
 
         !response.success ||
 
-        !response.posting
+        !response.data
 
     ) {
 
@@ -1448,13 +1988,39 @@ StaffFormatter.formatPosting = function (
 
     }
 
+    const profile =
+
+        response.data;
+
+    const identity =
+
+        profile.identity ||
+
+        {};
+
     const posting =
 
-        response.posting;
+        profile.posting ||
 
-    /*----------------------------------
-      Markdown
-    ----------------------------------*/
+        {};
+
+    const assignment =
+
+        profile.assignment ||
+
+        {};
+
+    const location =
+
+        profile.location ||
+
+        {};
+
+    const team =
+
+        profile.teamInfo ||
+
+        {};
 
     result.markdown = [
 
@@ -1466,9 +2032,11 @@ StaffFormatter.formatPosting = function (
 
             (
 
-                posting.rawName ||
+                identity.name ||
 
-                posting.name ||
+                identity.rawName ||
+
+                identity.cleanName ||
 
                 "-"
 
@@ -1478,7 +2046,7 @@ StaffFormatter.formatPosting = function (
 
             (
 
-                posting.role ||
+                identity.role ||
 
                 "-"
 
@@ -1488,7 +2056,7 @@ StaffFormatter.formatPosting = function (
 
             (
 
-                posting.designation ||
+                identity.designation ||
 
                 "-"
 
@@ -1550,7 +2118,7 @@ StaffFormatter.formatPosting = function (
 
             (
 
-                posting.assignedCompartment ||
+                assignment.assignedCompartment ||
 
                 "-"
 
@@ -1560,7 +2128,7 @@ StaffFormatter.formatPosting = function (
 
             (
 
-                posting.dutyType ||
+                assignment.dutyType ||
 
                 "-"
 
@@ -1570,7 +2138,7 @@ StaffFormatter.formatPosting = function (
 
             (
 
-                posting.status ||
+                assignment.status ||
 
                 "-"
 
@@ -1580,7 +2148,7 @@ StaffFormatter.formatPosting = function (
 
             (
 
-                posting.dutyActive
+                assignment.dutyActive
 
                     ? "YES"
 
@@ -1598,7 +2166,7 @@ StaffFormatter.formatPosting = function (
 
             (
 
-                posting.leader ||
+                team.leader ||
 
                 "-"
 
@@ -1608,7 +2176,7 @@ StaffFormatter.formatPosting = function (
 
             (
 
-                posting.team ||
+                team.team ||
 
                 "-"
 
@@ -1624,7 +2192,7 @@ StaffFormatter.formatPosting = function (
 
             (
 
-                posting.location ||
+                location.location ||
 
                 "-"
 
@@ -1634,7 +2202,7 @@ StaffFormatter.formatPosting = function (
 
             (
 
-                posting.latitude ??
+                location.lat ??
 
                 "-"
 
@@ -1644,7 +2212,7 @@ StaffFormatter.formatPosting = function (
 
             (
 
-                posting.longitude ??
+                location.lon ??
 
                 "-"
 
@@ -1656,10 +2224,6 @@ StaffFormatter.formatPosting = function (
 
     );
 
-    /*----------------------------------
-      Card
-    ----------------------------------*/
-
     result.cards.push({
 
         type:
@@ -1668,21 +2232,19 @@ StaffFormatter.formatPosting = function (
 
         title:
 
-            posting.rawName ||
+            identity.name ||
 
-            posting.name ||
+            identity.rawName ||
+
+            identity.cleanName ||
 
             "Staff Posting",
 
         data:
 
-            posting
+            profile
 
     });
-
-    /*----------------------------------
-      Section
-    ----------------------------------*/
 
     result.sections.push({
 
@@ -1692,7 +2254,7 @@ StaffFormatter.formatPosting = function (
 
         data:
 
-            posting
+            profile
 
     });
 
@@ -1700,13 +2262,31 @@ StaffFormatter.formatPosting = function (
 
         true;
 
+    result.intent =
+
+        StaffConstants.INTENTS.STAFF_POSTING;
+
+    result.confidence =
+
+        response.confidence ||
+
+        1;
+
+    result.source =
+
+        response.source ||
+
+        "LOCAL";
+
     result.message =
 
         "Posting formatted.";
 
     return result;
 
-};/*=========================================================
+};
+
+/*=========================================================
  FORMAT LOCATION
 =========================================================*/
 
@@ -1734,7 +2314,7 @@ StaffFormatter.formatLocation = function (
 
         !response.success ||
 
-        !response.location
+        !response.data
 
     ) {
 
@@ -1748,13 +2328,39 @@ StaffFormatter.formatLocation = function (
 
     }
 
+    const profile =
+
+        response.data;
+
+    const identity =
+
+        profile.identity ||
+
+        {};
+
+    const posting =
+
+        profile.posting ||
+
+        {};
+
+    const assignment =
+
+        profile.assignment ||
+
+        {};
+
     const location =
 
-        response.location;
+        profile.location ||
 
-    /*----------------------------------
-      Markdown
-    ----------------------------------*/
+        {};
+
+    const gps =
+
+        profile.gps ||
+
+        {};
 
     result.markdown = [
 
@@ -1766,9 +2372,11 @@ StaffFormatter.formatLocation = function (
 
             (
 
-                location.rawName ||
+                identity.name ||
 
-                location.name ||
+                identity.rawName ||
+
+                identity.cleanName ||
 
                 "-"
 
@@ -1778,7 +2386,7 @@ StaffFormatter.formatLocation = function (
 
             (
 
-                location.role ||
+                identity.role ||
 
                 "-"
 
@@ -1788,7 +2396,7 @@ StaffFormatter.formatLocation = function (
 
             (
 
-                location.designation ||
+                identity.designation ||
 
                 "-"
 
@@ -1804,7 +2412,7 @@ StaffFormatter.formatLocation = function (
 
             (
 
-                location.circle ||
+                posting.circle ||
 
                 "-"
 
@@ -1814,7 +2422,7 @@ StaffFormatter.formatLocation = function (
 
             (
 
-                location.division ||
+                posting.division ||
 
                 "-"
 
@@ -1824,7 +2432,7 @@ StaffFormatter.formatLocation = function (
 
             (
 
-                location.range ||
+                posting.range ||
 
                 "-"
 
@@ -1834,7 +2442,7 @@ StaffFormatter.formatLocation = function (
 
             (
 
-                location.beat ||
+                posting.beat ||
 
                 "-"
 
@@ -1860,7 +2468,7 @@ StaffFormatter.formatLocation = function (
 
             (
 
-                location.latitude ??
+                location.lat ??
 
                 "-"
 
@@ -1870,7 +2478,7 @@ StaffFormatter.formatLocation = function (
 
             (
 
-                location.longitude ??
+                location.lon ??
 
                 "-"
 
@@ -1886,7 +2494,7 @@ StaffFormatter.formatLocation = function (
 
             (
 
-                location.accuracy ??
+                gps.accuracy ??
 
                 "-"
 
@@ -1896,7 +2504,7 @@ StaffFormatter.formatLocation = function (
 
             (
 
-                location.speed ??
+                gps.speed ??
 
                 "-"
 
@@ -1906,7 +2514,7 @@ StaffFormatter.formatLocation = function (
 
             (
 
-                location.heading ??
+                gps.heading ??
 
                 "-"
 
@@ -1916,7 +2524,7 @@ StaffFormatter.formatLocation = function (
 
             (
 
-                location.lastSeen ||
+                gps.lastSeen ||
 
                 "-"
 
@@ -1932,7 +2540,7 @@ StaffFormatter.formatLocation = function (
 
             (
 
-                location.dutyType ||
+                assignment.dutyType ||
 
                 "-"
 
@@ -1942,7 +2550,7 @@ StaffFormatter.formatLocation = function (
 
             (
 
-                location.status ||
+                assignment.status ||
 
                 "-"
 
@@ -1952,7 +2560,7 @@ StaffFormatter.formatLocation = function (
 
             (
 
-                location.dutyActive
+                assignment.dutyActive
 
                     ? "YES"
 
@@ -1966,10 +2574,6 @@ StaffFormatter.formatLocation = function (
 
     );
 
-    /*----------------------------------
-      Card
-    ----------------------------------*/
-
     result.cards.push({
 
         type:
@@ -1978,21 +2582,19 @@ StaffFormatter.formatLocation = function (
 
         title:
 
-            location.rawName ||
+            identity.name ||
 
-            location.name ||
+            identity.rawName ||
+
+            identity.cleanName ||
 
             "Staff Location",
 
         data:
 
-            location
+            profile
 
     });
-
-    /*----------------------------------
-      Section
-    ----------------------------------*/
 
     result.sections.push({
 
@@ -2002,7 +2604,7 @@ StaffFormatter.formatLocation = function (
 
         data:
 
-            location
+            profile
 
     });
 
@@ -2010,13 +2612,30 @@ StaffFormatter.formatLocation = function (
 
         true;
 
+    result.intent =
+
+        StaffConstants.INTENTS.STAFF_LOCATION;
+
+    result.confidence =
+
+        response.confidence ||
+
+        1;
+
+    result.source =
+
+        response.source ||
+
+        "LOCAL";
+
     result.message =
 
         "Location formatted.";
 
     return result;
 
-};/*=========================================================
+};
+/*=========================================================
  FORMAT DUTY
 =========================================================*/
 
@@ -2044,7 +2663,7 @@ StaffFormatter.formatDuty = function (
 
         !response.success ||
 
-        !response.duty
+        !response.data
 
     ) {
 
@@ -2058,13 +2677,45 @@ StaffFormatter.formatDuty = function (
 
     }
 
-    const duty =
+    const profile =
 
-        response.duty;
+        response.data;
 
-    /*----------------------------------
-      Markdown
-    ----------------------------------*/
+    const identity =
+
+        profile.identity ||
+
+        {};
+
+    const posting =
+
+        profile.posting ||
+
+        {};
+
+    const assignment =
+
+        profile.assignment ||
+
+        {};
+
+    const location =
+
+        profile.location ||
+
+        {};
+
+    const gps =
+
+        profile.gps ||
+
+        {};
+
+    const team =
+
+        profile.teamInfo ||
+
+        {};
 
     result.markdown = [
 
@@ -2076,9 +2727,11 @@ StaffFormatter.formatDuty = function (
 
             (
 
-                duty.rawName ||
+                identity.name ||
 
-                duty.name ||
+                identity.rawName ||
+
+                identity.cleanName ||
 
                 "-"
 
@@ -2088,7 +2741,7 @@ StaffFormatter.formatDuty = function (
 
             (
 
-                duty.role ||
+                identity.role ||
 
                 "-"
 
@@ -2098,7 +2751,7 @@ StaffFormatter.formatDuty = function (
 
             (
 
-                duty.designation ||
+                identity.designation ||
 
                 "-"
 
@@ -2114,7 +2767,7 @@ StaffFormatter.formatDuty = function (
 
             (
 
-                duty.circle ||
+                posting.circle ||
 
                 "-"
 
@@ -2124,7 +2777,7 @@ StaffFormatter.formatDuty = function (
 
             (
 
-                duty.division ||
+                posting.division ||
 
                 "-"
 
@@ -2134,7 +2787,7 @@ StaffFormatter.formatDuty = function (
 
             (
 
-                duty.range ||
+                posting.range ||
 
                 "-"
 
@@ -2144,7 +2797,7 @@ StaffFormatter.formatDuty = function (
 
             (
 
-                duty.beat ||
+                posting.beat ||
 
                 "-"
 
@@ -2160,7 +2813,7 @@ StaffFormatter.formatDuty = function (
 
             (
 
-                duty.dutyType ||
+                assignment.dutyType ||
 
                 "-"
 
@@ -2170,7 +2823,7 @@ StaffFormatter.formatDuty = function (
 
             (
 
-                duty.status ||
+                assignment.status ||
 
                 "-"
 
@@ -2180,7 +2833,7 @@ StaffFormatter.formatDuty = function (
 
             (
 
-                duty.dutyActive
+                assignment.dutyActive
 
                     ? "YES"
 
@@ -2192,7 +2845,7 @@ StaffFormatter.formatDuty = function (
 
             (
 
-                duty.lastDutyEnd ||
+                assignment.lastDutyEnd ||
 
                 "-"
 
@@ -2208,7 +2861,7 @@ StaffFormatter.formatDuty = function (
 
             (
 
-                duty.leader ||
+                team.leader ||
 
                 "-"
 
@@ -2218,7 +2871,7 @@ StaffFormatter.formatDuty = function (
 
             (
 
-                duty.team ||
+                team.team ||
 
                 "-"
 
@@ -2234,7 +2887,7 @@ StaffFormatter.formatDuty = function (
 
             (
 
-                duty.location ||
+                location.location ||
 
                 "-"
 
@@ -2244,7 +2897,7 @@ StaffFormatter.formatDuty = function (
 
             (
 
-                duty.latitude ??
+                location.lat ??
 
                 "-"
 
@@ -2254,7 +2907,7 @@ StaffFormatter.formatDuty = function (
 
             (
 
-                duty.longitude ??
+                location.lon ??
 
                 "-"
 
@@ -2264,7 +2917,7 @@ StaffFormatter.formatDuty = function (
 
             (
 
-                duty.accuracy ??
+                gps.accuracy ??
 
                 "-"
 
@@ -2274,7 +2927,7 @@ StaffFormatter.formatDuty = function (
 
             (
 
-                duty.speed ??
+                gps.speed ??
 
                 "-"
 
@@ -2284,7 +2937,7 @@ StaffFormatter.formatDuty = function (
 
             (
 
-                duty.lastSeen ||
+                gps.lastSeen ||
 
                 "-"
 
@@ -2296,10 +2949,6 @@ StaffFormatter.formatDuty = function (
 
     );
 
-    /*----------------------------------
-      Card
-    ----------------------------------*/
-
     result.cards.push({
 
         type:
@@ -2308,21 +2957,19 @@ StaffFormatter.formatDuty = function (
 
         title:
 
-            duty.rawName ||
+            identity.name ||
 
-            duty.name ||
+            identity.rawName ||
+
+            identity.cleanName ||
 
             "Staff Duty",
 
         data:
 
-            duty
+            profile
 
     });
-
-    /*----------------------------------
-      Section
-    ----------------------------------*/
 
     result.sections.push({
 
@@ -2332,7 +2979,7 @@ StaffFormatter.formatDuty = function (
 
         data:
 
-            duty
+            profile
 
     });
 
@@ -2340,13 +2987,31 @@ StaffFormatter.formatDuty = function (
 
         true;
 
+    result.intent =
+
+        StaffConstants.INTENTS.STAFF_DUTY;
+
+    result.confidence =
+
+        response.confidence ||
+
+        1;
+
+    result.source =
+
+        response.source ||
+
+        "LOCAL";
+
     result.message =
 
         "Duty formatted.";
 
     return result;
 
-};/*=========================================================
+};
+
+/*=========================================================
  FORMAT GPS
 =========================================================*/
 
@@ -2374,7 +3039,7 @@ StaffFormatter.formatGPS = function (
 
         !response.success ||
 
-        !response.gps
+        !response.data
 
     ) {
 
@@ -2388,13 +3053,57 @@ StaffFormatter.formatGPS = function (
 
     }
 
+    const profile =
+
+        response.data;
+
+    const identity =
+
+        profile.identity ||
+
+        {};
+
+    const posting =
+
+        profile.posting ||
+
+        {};
+
+    const assignment =
+
+        profile.assignment ||
+
+        {};
+
+    const location =
+
+        profile.location ||
+
+        {};
+
     const gps =
 
-        response.gps;
+        profile.gps ||
 
-    /*----------------------------------
-      Markdown
-    ----------------------------------*/
+        {};
+
+    const team =
+
+        profile.teamInfo ||
+
+        {};
+
+    const tracking =
+
+        profile.tracking ||
+
+        {};
+
+    const analytics =
+
+        profile.analytics ||
+
+        {};
 
     result.markdown = [
 
@@ -2406,9 +3115,11 @@ StaffFormatter.formatGPS = function (
 
             (
 
-                gps.rawName ||
+                identity.name ||
 
-                gps.name ||
+                identity.rawName ||
+
+                identity.cleanName ||
 
                 "-"
 
@@ -2418,7 +3129,7 @@ StaffFormatter.formatGPS = function (
 
             (
 
-                gps.role ||
+                identity.role ||
 
                 "-"
 
@@ -2428,7 +3139,7 @@ StaffFormatter.formatGPS = function (
 
             (
 
-                gps.designation ||
+                identity.designation ||
 
                 "-"
 
@@ -2444,7 +3155,7 @@ StaffFormatter.formatGPS = function (
 
             (
 
-                gps.location ||
+                location.location ||
 
                 "-"
 
@@ -2454,7 +3165,7 @@ StaffFormatter.formatGPS = function (
 
             (
 
-                gps.latitude ??
+                location.lat ??
 
                 "-"
 
@@ -2464,7 +3175,7 @@ StaffFormatter.formatGPS = function (
 
             (
 
-                gps.longitude ??
+                location.lon ??
 
                 "-"
 
@@ -2556,7 +3267,7 @@ StaffFormatter.formatGPS = function (
 
             (
 
-                gps.dutyType ||
+                assignment.dutyType ||
 
                 "-"
 
@@ -2566,7 +3277,7 @@ StaffFormatter.formatGPS = function (
 
             (
 
-                gps.dutyActive
+                assignment.dutyActive
 
                     ? "YES"
 
@@ -2578,7 +3289,7 @@ StaffFormatter.formatGPS = function (
 
             (
 
-                gps.status ||
+                assignment.status ||
 
                 "-"
 
@@ -2594,7 +3305,7 @@ StaffFormatter.formatGPS = function (
 
             (
 
-                gps.circle ||
+                posting.circle ||
 
                 "-"
 
@@ -2604,7 +3315,7 @@ StaffFormatter.formatGPS = function (
 
             (
 
-                gps.division ||
+                posting.division ||
 
                 "-"
 
@@ -2614,7 +3325,7 @@ StaffFormatter.formatGPS = function (
 
             (
 
-                gps.range ||
+                posting.range ||
 
                 "-"
 
@@ -2624,7 +3335,7 @@ StaffFormatter.formatGPS = function (
 
             (
 
-                gps.beat ||
+                posting.beat ||
 
                 "-"
 
@@ -2640,7 +3351,7 @@ StaffFormatter.formatGPS = function (
 
             (
 
-                gps.leader ||
+                team.leader ||
 
                 "-"
 
@@ -2650,7 +3361,7 @@ StaffFormatter.formatGPS = function (
 
             (
 
-                gps.team ||
+                team.team ||
 
                 "-"
 
@@ -2666,7 +3377,7 @@ StaffFormatter.formatGPS = function (
 
             (
 
-                gps.sessionId ||
+                tracking.sessionId ||
 
                 "-"
 
@@ -2676,7 +3387,17 @@ StaffFormatter.formatGPS = function (
 
             (
 
-                gps.source ||
+                tracking.source ||
+
+                "-"
+
+            ),
+
+        "**Tracking ID:** " +
+
+            (
+
+                tracking.id ||
 
                 "-"
 
@@ -2684,7 +3405,7 @@ StaffFormatter.formatGPS = function (
 
         "",
 
-        "## 📊 Analytics",
+        "## 📊 Patrol Analytics",
 
         "",
 
@@ -2692,7 +3413,7 @@ StaffFormatter.formatGPS = function (
 
             (
 
-                gps.distanceKm ??
+                analytics.distanceKm ??
 
                 0
 
@@ -2704,9 +3425,29 @@ StaffFormatter.formatGPS = function (
 
             (
 
-                gps.pointCount ??
+                analytics.pointCount ??
 
                 0
+
+            ),
+
+        "**Started:** " +
+
+            (
+
+                analytics.startedAt ||
+
+                "-"
+
+            ),
+
+        "**Ended:** " +
+
+            (
+
+                analytics.endedAt ||
+
+                "-"
 
             )
 
@@ -2716,10 +3457,6 @@ StaffFormatter.formatGPS = function (
 
     );
 
-    /*----------------------------------
-      Card
-    ----------------------------------*/
-
     result.cards.push({
 
         type:
@@ -2728,21 +3465,19 @@ StaffFormatter.formatGPS = function (
 
         title:
 
-            gps.rawName ||
+            identity.name ||
 
-            gps.name ||
+            identity.rawName ||
+
+            identity.cleanName ||
 
             "Staff GPS",
 
         data:
 
-            gps
+            profile
 
     });
-
-    /*----------------------------------
-      Section
-    ----------------------------------*/
 
     result.sections.push({
 
@@ -2752,7 +3487,7 @@ StaffFormatter.formatGPS = function (
 
         data:
 
-            gps
+            profile
 
     });
 
@@ -2760,13 +3495,30 @@ StaffFormatter.formatGPS = function (
 
         true;
 
+    result.intent =
+
+        StaffConstants.INTENTS.STAFF_GPS;
+
+    result.confidence =
+
+        response.confidence ||
+
+        1;
+
+    result.source =
+
+        response.source ||
+
+        "LOCAL";
+
     result.message =
 
         "GPS formatted.";
 
     return result;
 
-};/*=========================================================
+};
+/*=========================================================
  FORMAT TEAM
 =========================================================*/
 
@@ -2794,7 +3546,7 @@ StaffFormatter.formatTeam = function (
 
         !response.success ||
 
-        !response.team
+        !response.data
 
     ) {
 
@@ -2808,13 +3560,51 @@ StaffFormatter.formatTeam = function (
 
     }
 
+    const profile =
+
+        response.data;
+
+    const identity =
+
+        profile.identity ||
+
+        {};
+
+    const posting =
+
+        profile.posting ||
+
+        {};
+
+    const assignment =
+
+        profile.assignment ||
+
+        {};
+
+    const location =
+
+        profile.location ||
+
+        {};
+
+    const gps =
+
+        profile.gps ||
+
+        {};
+
     const team =
 
-        response.team;
+        profile.teamInfo ||
 
-    /*----------------------------------
-      Markdown
-    ----------------------------------*/
+        {};
+
+    const analytics =
+
+        profile.analytics ||
+
+        {};
 
     result.markdown = [
 
@@ -2826,9 +3616,11 @@ StaffFormatter.formatTeam = function (
 
             (
 
-                team.rawName ||
+                identity.name ||
 
-                team.name ||
+                identity.rawName ||
+
+                identity.cleanName ||
 
                 "-"
 
@@ -2838,7 +3630,7 @@ StaffFormatter.formatTeam = function (
 
             (
 
-                team.role ||
+                identity.role ||
 
                 "-"
 
@@ -2848,7 +3640,7 @@ StaffFormatter.formatTeam = function (
 
             (
 
-                team.designation ||
+                identity.designation ||
 
                 "-"
 
@@ -2880,6 +3672,22 @@ StaffFormatter.formatTeam = function (
 
             ),
 
+        "**Members:** " +
+
+            (
+
+                Array.isArray(
+
+                    team.teamMembers
+
+                )
+
+                    ? team.teamMembers.length
+
+                    : 0
+
+            ),
+
         "",
 
         "## 🌳 Administrative Posting",
@@ -2890,7 +3698,7 @@ StaffFormatter.formatTeam = function (
 
             (
 
-                team.circle ||
+                posting.circle ||
 
                 "-"
 
@@ -2900,7 +3708,7 @@ StaffFormatter.formatTeam = function (
 
             (
 
-                team.division ||
+                posting.division ||
 
                 "-"
 
@@ -2910,7 +3718,7 @@ StaffFormatter.formatTeam = function (
 
             (
 
-                team.range ||
+                posting.range ||
 
                 "-"
 
@@ -2920,7 +3728,7 @@ StaffFormatter.formatTeam = function (
 
             (
 
-                team.beat ||
+                posting.beat ||
 
                 "-"
 
@@ -2930,7 +3738,7 @@ StaffFormatter.formatTeam = function (
 
             (
 
-                team.assignedCompartment ||
+                assignment.assignedCompartment ||
 
                 "-"
 
@@ -2946,7 +3754,7 @@ StaffFormatter.formatTeam = function (
 
             (
 
-                team.dutyType ||
+                assignment.dutyType ||
 
                 "-"
 
@@ -2956,7 +3764,7 @@ StaffFormatter.formatTeam = function (
 
             (
 
-                team.status ||
+                assignment.status ||
 
                 "-"
 
@@ -2966,7 +3774,7 @@ StaffFormatter.formatTeam = function (
 
             (
 
-                team.dutyActive
+                assignment.dutyActive
 
                     ? "YES"
 
@@ -2984,7 +3792,7 @@ StaffFormatter.formatTeam = function (
 
             (
 
-                team.location ||
+                location.location ||
 
                 "-"
 
@@ -2994,7 +3802,7 @@ StaffFormatter.formatTeam = function (
 
             (
 
-                team.latitude ??
+                location.lat ??
 
                 "-"
 
@@ -3004,7 +3812,7 @@ StaffFormatter.formatTeam = function (
 
             (
 
-                team.longitude ??
+                location.lon ??
 
                 "-"
 
@@ -3014,7 +3822,7 @@ StaffFormatter.formatTeam = function (
 
             (
 
-                team.accuracy ??
+                gps.accuracy ??
 
                 "-"
 
@@ -3024,7 +3832,7 @@ StaffFormatter.formatTeam = function (
 
             (
 
-                team.speed ??
+                gps.speed ??
 
                 "-"
 
@@ -3040,7 +3848,7 @@ StaffFormatter.formatTeam = function (
 
             (
 
-                team.distanceKm ??
+                analytics.distanceKm ??
 
                 0
 
@@ -3052,7 +3860,7 @@ StaffFormatter.formatTeam = function (
 
             (
 
-                team.pointCount ??
+                analytics.pointCount ??
 
                 0
 
@@ -3062,7 +3870,7 @@ StaffFormatter.formatTeam = function (
 
             (
 
-                team.startedAt ||
+                analytics.startedAt ||
 
                 "-"
 
@@ -3072,7 +3880,7 @@ StaffFormatter.formatTeam = function (
 
             (
 
-                team.endedAt ||
+                analytics.endedAt ||
 
                 "-"
 
@@ -3084,10 +3892,6 @@ StaffFormatter.formatTeam = function (
 
     );
 
-    /*----------------------------------
-      Card
-    ----------------------------------*/
-
     result.cards.push({
 
         type:
@@ -3096,21 +3900,19 @@ StaffFormatter.formatTeam = function (
 
         title:
 
-            team.rawName ||
+            identity.name ||
 
-            team.name ||
+            identity.rawName ||
+
+            identity.cleanName ||
 
             "Staff Team",
 
         data:
 
-            team
+            profile
 
     });
-
-    /*----------------------------------
-      Section
-    ----------------------------------*/
 
     result.sections.push({
 
@@ -3120,7 +3922,7 @@ StaffFormatter.formatTeam = function (
 
         data:
 
-            team
+            profile
 
     });
 
@@ -3128,13 +3930,30 @@ StaffFormatter.formatTeam = function (
 
         true;
 
+    result.intent =
+
+        StaffConstants.INTENTS.STAFF_TEAM;
+
+    result.confidence =
+
+        response.confidence ||
+
+        1;
+
+    result.source =
+
+        response.source ||
+
+        "LOCAL";
+
     result.message =
 
         "Team formatted.";
 
     return result;
 
-};/*=========================================================
+};
+ /*=========================================================
  FORMAT STRENGTH
 =========================================================*/
 
@@ -3568,7 +4387,8 @@ StaffFormatter.formatStrength = function (
 
     return result;
 
-};/*=========================================================
+};
+ /*=========================================================
  FORMAT ANALYTICS
 =========================================================*/
 
@@ -4080,13 +4900,30 @@ StaffFormatter.formatAnalytics = function (
 
         true;
 
+    result.intent =
+
+        StaffConstants.INTENTS.STAFF_ANALYTICS;
+
+    result.confidence =
+
+        response.confidence ||
+
+        1;
+
+    result.source =
+
+        response.source ||
+
+        "LOCAL";
+
     result.message =
 
         "Analytics formatted.";
 
     return result;
 
-};/*=========================================================
+};
+ /*=========================================================
  REGISTER
 =========================================================*/
 
