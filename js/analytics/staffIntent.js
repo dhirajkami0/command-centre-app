@@ -237,10 +237,9 @@ StaffIntent.createIntentResult = function (
 
             null,
 
-        domain:
+      domain:
 
-            "staff",
-
+    StaffConstants.DOMAIN,
         confidence:
 
             0,
@@ -311,10 +310,9 @@ StaffIntent.createIntentResult = function (
 
         metadata: {
 
-            version:
+           version:
 
-                StaffIntent.VERSION,
-
+    StaffConstants.VERSION,
             timestamp:
 
                 Date.now(),
@@ -1217,55 +1215,7 @@ StaffIntent.detectDutyIntent = function (
         return result;
     }
 
-    /*----------------------------------
-      Who Is On Duty
-    ----------------------------------*/
-    if (
-        hasKeyword(
-            KEYWORDS.WHO_IS_ON_DUTY
-        )
-    ) {
-        result.intent =
-            INTENTS.WHO_IS_ON_DUTY;
-        result.parameters.staff =
-            staff.filter(
-                function (
-                    s
-                ) {
-                    return (
-                        s.assignment?.dutyActive === true
-                    );
-                }
-            );
-        result.confidence =
-            0.98;
-        return result;
-    }
-
-    /*----------------------------------
-      Who Is Patrolling
-    ----------------------------------*/
-    if (
-        hasKeyword(
-            KEYWORDS.WHO_IS_PATROLLING
-        )
-    ) {
-        result.intent =
-            INTENTS.WHO_IS_PATROLLING;
-        result.parameters.staff =
-            staff.filter(
-                function (
-                    s
-                ) {
-                    return (
-                        s.assignment?.dutyActive === true
-                    );
-                }
-            );
-        result.confidence =
-            0.97;
-        return result;
-    }
+  
 
     /*----------------------------------
       Last Duty
@@ -2948,21 +2898,19 @@ StaffIntent.needsAI = function (
 
         /* Strength */
 
-        case StaffConstants.INTENTS.STAFF_STRENGTH:
+       case StaffConstants.INTENTS.STAFF_ACTIVE_COUNT:
 
-        case StaffConstants.INTENTS.ACTIVE_STAFF_COUNT:
+case StaffConstants.INTENTS.STAFF_ACTIVE_LIST:
 
-        case StaffConstants.INTENTS.ACTIVE_STAFF_LIST:
+case StaffConstants.INTENTS.STAFF_INACTIVE_LIST:
 
-        case StaffConstants.INTENTS.INACTIVE_STAFF_LIST:
+case StaffConstants.INTENTS.STAFF_DUTY_SUMMARY:
 
-        case StaffConstants.INTENTS.DUTY_SUMMARY:
+case StaffConstants.INTENTS.STAFF_TEAM_LEADER_LIST:
 
-        case StaffConstants.INTENTS.TEAM_LEADER_LIST:
+case StaffConstants.INTENTS.STAFF_MOVING:
 
-        case StaffConstants.INTENTS.MOVING_STAFF:
-
-        case StaffConstants.INTENTS.STATIONARY_STAFF:
+case StaffConstants.INTENTS.STAFF_STATIONARY:
 
         /* Control Room */
 
