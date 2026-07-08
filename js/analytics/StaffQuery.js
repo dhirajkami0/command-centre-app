@@ -1853,9 +1853,15 @@ GG.queryStaffDuty = async function (
 
                 );
 
-            return profile.assignment ||
-
-                null;
+return {
+    assignedCompartment: profile.assignment?.assignedCompartment || "",
+    dutyType: profile.assignment?.dutyType || "",
+    dutyActive: profile.assignment?.dutyActive ?? false,
+    status: profile.assignment?.status || "",
+    leader: profile.assignment?.leader || "",
+    team: profile.assignment?.team || "",
+    lastDutyEnd: profile.assignment?.lastDutyEnd || null
+};
 
         }
 
