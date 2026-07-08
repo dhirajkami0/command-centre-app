@@ -53,429 +53,154 @@ StaffConstants.DOMAIN =
 =========================================================*/
 
 StaffConstants.INTENTS = Object.freeze({
-
-    /*----------------------------------
-      Search
-    ----------------------------------*/
-
-    STAFF_SEARCH:
-        "staffSearch",
-
-    STAFF_DIRECTORY:
-        "staffDirectory",
-
-    STAFF_EXISTS:
-        "staffExists",
-
-    STAFF_BY_NAME:
-        "staffByName",
-
-    STAFF_BY_PHONE:
-        "staffByPhone",
-
-    STAFF_BY_ROLE:
-        "staffByRole",
-
-    STAFF_BY_DESIGNATION:
-        "staffByDesignation",
-
-    STAFF_BY_LEADER:
-        "staffByLeader",
-
-    STAFF_BY_TEAM:
-        "staffByTeam",
-
-    /*----------------------------------
-      Profile
-    ----------------------------------*/
-
-    STAFF_PROFILE:
-        "staffProfile",
-
-    STAFF_CONTACT:
-        "staffContact",
-
-    STAFF_ROLE:
-        "staffRole",
-
-    STAFF_DESIGNATION:
-        "staffDesignation",
-
-    STAFF_TYPE:
-        "staffType",
-
-    STAFF_IDENTITY:
-        "staffIdentity",
-
-    /*----------------------------------
-      Posting
-    ----------------------------------*/
-
-    STAFF_POSTING:
-        "staffPosting",
-
-    STAFF_BEAT:
-        "staffBeat",
-
-    STAFF_RANGE:
-        "staffRange",
-
-    STAFF_DIVISION:
-        "staffDivision",
-
-    STAFF_CIRCLE:
-        "staffCircle",
-
-    STAFF_COMPARTMENT:
-        "staffCompartment",
-
-    STAFF_AREA:
-        "staffArea",
-
-    /*----------------------------------
-      Location
-    ----------------------------------*/
-
-    STAFF_LOCATION:
-        "staffLocation",
-
-    STAFF_GPS:
-        "staffGPS",
-
-    STAFF_COORDINATES:
-        "staffCoordinates",
-
-    STAFF_CURRENT_POSITION:
-        "staffCurrentPosition",
-
-    STAFF_MAP_LOCATION:
-        "staffMapLocation",
-
-    STAFF_LAST_LOCATION:
-        "staffLastLocation",
-
-    /*----------------------------------
-      Duty
-    ----------------------------------*/
-
-    STAFF_DUTY:
-        "staffDuty",
-
-    STAFF_DUTY_STATUS:
-        "staffDutyStatus",
-
-    STAFF_DUTY_TYPE:
-        "staffDutyType",
-
-    STAFF_DUTY_ACTIVE:
-        "staffDutyActive",
-
-    STAFF_DUTY_HISTORY:
-        "staffDutyHistory",
-
-    STAFF_LAST_DUTY:
-        "staffLastDuty",
-STAFF_ASSIGNMENT :
-    "STAFF_ASSIGNMENT",
- STAFF_CONTACT:
-
-    "STAFF_CONTACT",
-    /*----------------------------------
-      Status
-    ----------------------------------*/
-
-    STAFF_STATUS:
-        "staffStatus",
-
-    STAFF_ONLINE:
-        "staffOnline",
-
-    STAFF_OFFLINE:
-        "staffOffline",
-
-    STAFF_AVAILABLE:
-        "staffAvailable",
-
-    STAFF_UNAVAILABLE:
-        "staffUnavailable",
-     /*----------------------------------
-      Movement
-    ----------------------------------*/
-
-    STAFF_MOVEMENT:
-        "staffMovement",
-
-    STAFF_SPEED:
-        "staffSpeed",
-
-    STAFF_HEADING:
-        "staffHeading",
-
-    STAFF_DIRECTION:
-        "staffDirection",
-
-    STAFF_TURNING:
-        "staffTurning",
-
-    STAFF_MOTION:
-        "staffMotion",
-
-    STAFF_MOVING:
-        "staffMoving",
-
-    /*----------------------------------
-      GPS
-    ----------------------------------*/
-
-    STAFF_GPS_STATUS:
-        "staffGPSStatus",
-
-    STAFF_GPS_ACCURACY:
-        "staffGPSAccuracy",
-
-    STAFF_TRACKING:
-        "staffTracking",
-
-    STAFF_SOURCE:
-        "staffSource",
-
-    STAFF_SIGNAL:
-        "staffSignal",
-
-    STAFF_LAST_SEEN:
-        "staffLastSeen",
-
-    STAFF_UPDATED:
-        "staffUpdated",
-
-    STAFF_TIMESTAMP:
-        "staffTimestamp",
-
-    STAFF_TIME:
-        "staffTime",
-
-    /*----------------------------------
-      Team
-    ----------------------------------*/
-
-    STAFF_LEADER:
-        "staffLeader",
-
-    STAFF_TEAM:
-        "staffTeam",
-
-    STAFF_TEAM_MEMBERS:
-        "staffTeamMembers",
-
-    STAFF_LEADER_INFO:
-        "staffLeaderInfo",
-
-    TEAM_LEADER:
-        "teamLeader",
-
-    TEAM_MEMBERS:
-        "teamMembers",
-
-    TEAM_SEARCH:
-        "teamSearch",
-
-    /*----------------------------------
-      Session
-    ----------------------------------*/
-
-    STAFF_SESSION:
-        "staffSession",
-
-    STAFF_SESSION_STATUS:
-        "staffSessionStatus",
-
-    STAFF_TRACKING_SESSION:
-        "staffTrackingSession",
-
-    /*----------------------------------
-      Hierarchy
-    ----------------------------------*/
-
-    STAFF_HIERARCHY:
-        "staffHierarchy",
-
-    STAFF_REPORTING:
-        "staffReporting",
-
-    STAFF_ADMINISTRATIVE_UNIT:
-        "staffAdministrativeUnit",
-
-    /*----------------------------------
-      Analytics
-    ----------------------------------*/
-
-    STAFF_STRENGTH:
-        "staffStrength",
-
-    ACTIVE_STAFF_COUNT:
-        "activeStaffCount",
-
-    ACTIVE_STAFF_LIST:
-        "activeStaffList",
-
-    INACTIVE_STAFF_LIST:
-        "inactiveStaffList",
-
-    STAFF_BY_ROLE:
-        "staffByRole",
-
-    STAFF_BY_DESIGNATION:
-        "staffByDesignation",
-
-    STAFF_BY_BEAT:
-        "staffByBeat",
-
-    STAFF_BY_RANGE:
-        "staffByRange",
-
-    STAFF_BY_DIVISION:
-        "staffByDivision",
-
-    STAFF_BY_CIRCLE:
-        "staffByCircle",
-
-    STAFF_BY_COMPARTMENT:
-        "staffByCompartment",
-
-    STAFF_BY_DUTY:
-        "staffByDuty",
-
-    STAFF_BY_LEADER:
-        "staffByLeader",
-
-    MOVING_STAFF:
-        "movingStaff",
-
-    STATIONARY_STAFF:
-        "stationaryStaff",
-
-    FAST_MOVING_STAFF:
-        "fastMovingStaff",
-
-    SLOW_MOVING_STAFF:
-        "slowMovingStaff",
-
-    STAFF_NEAR_LOCATION:
-        "staffNearLocation",
-
-    TEAM_LEADER_LIST:
-        "teamLeaderList",
-
-    DUTY_SUMMARY:
-        "dutySummary",
-
-    STAFF_STATISTICS:
-        "staffStatistics",
-
-    /*----------------------------------
-      Administration
-    ----------------------------------*/
-
-    STAFF_DOCUMENT:
-        "staffDocument",
-
-    STAFF_DEVICE:
-        "staffDevice",
-
-  
-
-    STAFF_RECORD:
-        "staffRecord",
-
-    /*----------------------------------
-      Control Room
-    ----------------------------------*/
-
-    WHO_IS_ON_DUTY:
-        "whoIsOnDuty",
-
-    WHO_IS_PATROLLING:
-        "whoIsPatrolling",
-
-    WHO_IS_NEAREST:
-        "whoIsNearest",
-
-    WHO_IS_OFFLINE:
-        "whoIsOffline",
-
-    WHO_HAS_OLD_GPS:
-        "whoHasOldGPS",
-
-    WHO_HAS_POOR_ACCURACY:
-        "whoHasPoorAccuracy",
-
-    WHO_STOPPED_MOVING:
-        "whoStoppedMoving",
-
-    WHO_STARTED_DUTY:
-        "whoStartedDuty",
-
-    WHO_ENDED_DUTY:
-        "whoEndedDuty",
-
-    /*----------------------------------
-      Map
-    ----------------------------------*/
-
-    STAFF_MAP:
-        "staffMap",
-
-    STAFF_MAP_MARKER:
-        "staffMapMarker",
-
-    STAFF_LIVE_MAP:
-        "staffLiveMap",
-
-    STAFF_LOCATION_HISTORY:
-        "staffLocationHistory",
-
-    /*----------------------------------
-      Alerts
-    ----------------------------------*/
-
-    STAFF_NO_GPS:
-        "staffNoGPS",
-
-    STAFF_INACTIVE_GPS:
-        "staffInactiveGPS",
-
-    STAFF_LOW_ACCURACY_GPS:
-        "staffLowAccuracyGPS",
-
-    STAFF_NO_MOVEMENT:
-        "staffNoMovement",
-
-    STAFF_NO_DUTY:
-        "staffNoDuty",
-
-    /*----------------------------------
-      Communication
-    ----------------------------------*/
-
-    STAFF_CALL:
-        "staffCall",
-
-    STAFF_MESSAGE:
-        "staffMessage",
-
-    STAFF_SHARE_LOCATION:
-        "staffShareLocation",
-
-    /*----------------------------------
-      Summary
-    ----------------------------------*/
-
-    STAFF_SUMMARY:
-        "staffSummary",
-
-    STAFF_OPERATIONAL_STATUS:
-        "staffOperationalStatus"
-
+    /* Search */
+    STAFF_SEARCH: "staffSearch",
+    STAFF_DIRECTORY: "staffDirectory",
+    STAFF_EXISTS: "staffExists",
+    STAFF_BY_NAME: "staffByName",
+    STAFF_BY_PHONE: "staffByPhone",
+    STAFF_BY_ROLE: "staffByRole",
+    STAFF_BY_DESIGNATION: "staffByDesignation",
+    STAFF_BY_LEADER: "staffByLeader",
+    STAFF_BY_TEAM: "staffByTeam",
+
+    /* Profile */
+    STAFF_PROFILE: "staffProfile",
+    STAFF_CONTACT: "staffContact",
+    STAFF_ROLE: "staffRole",
+    STAFF_DESIGNATION: "staffDesignation",
+    STAFF_TYPE: "staffType",
+    STAFF_IDENTITY: "staffIdentity",
+
+    /* Posting */
+    STAFF_POSTING: "staffPosting",
+    STAFF_BEAT: "staffBeat",
+    STAFF_RANGE: "staffRange",
+    STAFF_DIVISION: "staffDivision",
+    STAFF_CIRCLE: "staffCircle",
+    STAFF_COMPARTMENT: "staffCompartment",
+    STAFF_AREA: "staffArea",
+
+    /* Location */
+    STAFF_LOCATION: "staffLocation",
+    STAFF_GPS: "staffGPS",
+    STAFF_COORDINATES: "staffCoordinates",
+    STAFF_CURRENT_POSITION: "staffCurrentPosition",
+    STAFF_MAP_LOCATION: "staffMapLocation",
+    STAFF_LAST_LOCATION: "staffLastLocation",
+
+    /* Duty */
+    STAFF_DUTY: "staffDuty",
+    STAFF_DUTY_STATUS: "staffDutyStatus",
+    STAFF_DUTY_TYPE: "staffDutyType",
+    STAFF_DUTY_ACTIVE: "staffDutyActive",
+    STAFF_DUTY_HISTORY: "staffDutyHistory",
+    STAFF_LAST_DUTY: "staffLastDuty",
+    STAFF_ASSIGNMENT: "staffAssignment",
+    STAFF_DUTY_STARTED: "staffDutyStarted",
+    STAFF_DUTY_ENDED: "staffDutyEnded",
+
+    /* Status */
+    STAFF_STATUS: "staffStatus",
+    STAFF_ONLINE: "staffOnline",
+    STAFF_OFFLINE: "staffOffline",
+    STAFF_AVAILABLE: "staffAvailable",
+    STAFF_UNAVAILABLE: "staffUnavailable",
+
+    /* Movement */
+    STAFF_MOVEMENT: "staffMovement",
+    STAFF_SPEED: "staffSpeed",
+    STAFF_HEADING: "staffHeading",
+    STAFF_DIRECTION: "staffDirection",
+    STAFF_TURNING: "staffTurning",
+    STAFF_MOTION: "staffMotion",
+    STAFF_MOVING: "staffMoving",
+
+    /* GPS */
+    STAFF_GPS_STATUS: "staffGPSStatus",
+    STAFF_GPS_ACCURACY: "staffGPSAccuracy",
+    STAFF_TRACKING: "staffTracking",
+    STAFF_SOURCE: "staffSource",
+    STAFF_SIGNAL: "staffSignal",
+    STAFF_LAST_SEEN: "staffLastSeen",
+    STAFF_UPDATED: "staffUpdated",
+    STAFF_TIMESTAMP: "staffTimestamp",
+    STAFF_TIME: "staffTime",
+
+    /* Team */
+    STAFF_LEADER: "staffLeader",
+    STAFF_TEAM: "staffTeam",
+    STAFF_TEAM_MEMBERS: "staffTeamMembers",
+    STAFF_LEADER_INFO: "staffLeaderInfo",
+    TEAM_LEADER: "teamLeader",
+    TEAM_MEMBERS: "teamMembers",
+    TEAM_SEARCH: "teamSearch",
+
+    /* Session & Hierarchy */
+    STAFF_SESSION: "staffSession",
+    STAFF_SESSION_STATUS: "staffSessionStatus",
+    STAFF_TRACKING_SESSION: "staffTrackingSession",
+    STAFF_HIERARCHY: "staffHierarchy",
+    STAFF_REPORTING: "staffReporting",
+    STAFF_ADMINISTRATIVE_UNIT: "staffAdministrativeUnit",
+
+ /* Analytics */
+
+STAFF_STRENGTH: "staffStrength",
+
+ACTIVE_STAFF_COUNT: "activeStaffCount",
+ACTIVE_STAFF_LIST: "activeStaffList",
+INACTIVE_STAFF_LIST: "inactiveStaffList",
+
+STAFF_NEAR_LOCATION: "staffNearLocation",
+TEAM_LEADER_LIST: "teamLeaderList",
+DUTY_SUMMARY: "dutySummary",
+
+STAFF_ANALYTICS: "staffAnalytics",
+STAFF_DISTANCE: "staffDistance",
+STAFF_PATROL_POINTS: "staffPatrolPoints",
+STAFF_PATROL_START: "staffPatrolStart",
+STAFF_PATROL_END: "staffPatrolEnd",
+STAFF_PATROL_DURATION: "staffPatrolDuration",
+
+STAFF_ACCURACY: "staffAccuracy",
+
+MOVING_STAFF: "movingStaff",
+STATIONARY_STAFF: "stationaryStaff",
+FAST_MOVING_STAFF: "fastMovingStaff",
+SLOW_MOVING_STAFF: "slowMovingStaff",
+
+    /* Administration */
+    STAFF_DOCUMENT: "staffDocument",
+    STAFF_DEVICE: "staffDevice",
+    STAFF_RECORD: "staffRecord",
+
+    /* Control Room & Alerts */
+    WHO_IS_ON_DUTY: "whoIsOnDuty",
+    WHO_IS_PATROLLING: "whoIsPatrolling",
+    WHO_IS_NEAREST: "whoIsNearest",
+    WHO_IS_OFFLINE: "whoIsOffline",
+    WHO_HAS_OLD_GPS: "whoHasOldGPS",
+    WHO_HAS_POOR_ACCURACY: "whoHasPoorAccuracy",
+    WHO_STOPPED_MOVING: "whoStoppedMoving",
+    WHO_STARTED_DUTY: "whoStartedDuty",
+    WHO_ENDED_DUTY: "whoEndedDuty",
+    STAFF_NO_GPS: "staffNoGPS",
+    STAFF_INACTIVE_GPS: "staffInactiveGPS",
+    STAFF_LOW_ACCURACY_GPS: "staffLowAccuracyGPS",
+    STAFF_NO_MOVEMENT: "staffNoMovement",
+    STAFF_NO_DUTY: "staffNoDuty",
+
+    /* Map & Communication */
+    STAFF_MAP: "staffMap",
+    STAFF_MAP_MARKER: "staffMapMarker",
+    STAFF_LIVE_MAP: "staffLiveMap",
+    STAFF_LOCATION_HISTORY: "staffLocationHistory",
+    STAFF_CALL: "staffCall",
+    STAFF_MESSAGE: "staffMessage",
+    STAFF_SHARE_LOCATION: "staffShareLocation",
+    STAFF_SUMMARY: "staffSummary",
+    STAFF_OPERATIONAL_STATUS: "staffOperationalStatus"
 });
 
 /*=========================================================
@@ -740,36 +465,29 @@ StaffConstants.FIELDS = Object.freeze({
 
    
 
-    /*----------------------------------
-      Staff Identity
-    ----------------------------------*/
+  /*----------------------------------
+  Staff Identity
+----------------------------------*/
 
-    NAME:
-        "name",
+NAME: "name",
 
-    RAW_NAME:
-        "rawName",
+RAW_NAME: "rawName",
 
-    CLEAN_NAME:
-        "cleanName",
+CLEAN_NAME: "cleanName",
 
-    PHONE:
-        "phone",
+PHONE: "phone",
 
-    EMAIL:
-        "email",
+EMAIL: "email",
 
-    ROLE:
-        "role",
+ROLE: "role",
 
-    DESIGNATION:
-        "designation",
+DESIGNATION: "designation",
 
-  
+TYPE: "type",
 
-    /*----------------------------------
-      Administrative Hierarchy
-    ----------------------------------*/
+/*----------------------------------
+  Administrative Hierarchy
+----------------------------------*/
 
     CIRCLE:
         "circle",
@@ -1065,8 +783,7 @@ StaffConstants.ENTITY_TYPES = Object.freeze({
 
  
 
-TIMESTAMP:
-    "timestamp",
+
 
 
 
@@ -1158,8 +875,21 @@ UPDATED_AT:
     INACTIVE_COUNT:
         "inactiveCount",
 
-    DISTANCE:
-        "distance",
+PATROL_ANALYTICS: "patrolAnalytics",
+
+DISTANCE: "distance",
+
+POINT_COUNT: "pointCount",
+
+PATROL_START: "patrolStart",
+
+PATROL_END: "patrolEnd",
+
+PATROL_DURATION: "patrolDuration",
+
+DUTY_START: "dutyStart",
+
+DUTY_END: "dutyEnd",
 
     /*----------------------------------
       Control Room
@@ -1604,28 +1334,74 @@ StaffConstants.KEYWORDS = Object.freeze({
       Search
     ----------------------------------*/
 
-    STAFF_SEARCH: [
-
-        "SEARCH",
-        "FIND",
-        "LOOKUP",
-        "LOCATE",
-        "GET",
-        "SHOW"
-
-    ],
-
-    STAFF_DIRECTORY: [
-
-        "DIRECTORY",
-        "LIST",
-        "ALL STAFF",
-        "STAFF LIST"
-
-    ],
-
    /*----------------------------------
-  Profile
+  Search
+----------------------------------*/
+
+STAFF_SEARCH: [
+
+    "SEARCH",
+    "SEARCH STAFF",
+    "FIND",
+    "FIND STAFF",
+    "LOOKUP",
+    "LOOK UP",
+    "LOCATE",
+    "GET",
+    "SHOW",
+    "SEARCH FOR",
+    "LOOK FOR",
+    "FIND PERSON",
+    "FIND OFFICER",
+    "SEARCH OFFICER",
+    "WHO HAS",
+    "WHO IS",
+    "SHOW STAFF",
+    "SHOW OFFICER",
+    "LIST STAFF",
+    "STAFF SEARCH",
+    "STAFF LOOKUP"
+
+],
+
+/*----------------------------------
+  Directory
+----------------------------------*/
+
+STAFF_DIRECTORY: [
+
+    "DIRECTORY",
+    "STAFF DIRECTORY",
+    "EMPLOYEE DIRECTORY",
+    "OFFICER DIRECTORY",
+
+    "LIST",
+    "LIST STAFF",
+    "LIST OFFICERS",
+    "SHOW STAFF",
+    "SHOW ALL STAFF",
+    "SHOW OFFICERS",
+    "SHOW ALL OFFICERS",
+
+    "ALL STAFF",
+    "ALL OFFICERS",
+    "EVERY STAFF",
+    "EVERY OFFICER",
+
+    "STAFF LIST",
+    "OFFICER LIST",
+    "PERSONNEL LIST",
+
+    "WHO ARE THE STAFF",
+    "WHO ARE THE OFFICERS",
+
+    "AVAILABLE STAFF",
+    "AVAILABLE OFFICERS"
+
+],
+
+/*----------------------------------
+  Staff Profile
 ----------------------------------*/
 
 STAFF_PROFILE: [
@@ -1638,31 +1414,98 @@ STAFF_PROFILE: [
     "SHOW PROFILE",
     "VIEW PROFILE",
     "OPEN PROFILE",
+    "GET PROFILE",
+    "DISPLAY PROFILE",
+
     "STAFF PROFILE",
     "OFFICER PROFILE",
+    "PERSON PROFILE",
+    "EMPLOYEE PROFILE",
+    "USER PROFILE",
 
     /*----------------------------------
       Identity
     ----------------------------------*/
 
     "WHO IS",
+    "WHO'S",
     "IDENTITY",
+    "IDENTIFY",
+
     "NAME",
     "FULL NAME",
     "DISPLAY NAME",
+    "PERSON NAME",
+    "OFFICER NAME",
+    "STAFF NAME",
 
     /*----------------------------------
-      Information
+      Details
     ----------------------------------*/
 
     "DETAIL",
     "DETAILS",
+    "STAFF DETAILS",
+    "OFFICER DETAILS",
+    "PERSON DETAILS",
+    "EMPLOYEE DETAILS",
+
     "INFORMATION",
     "INFO",
-    "ABOUT",
     "GENERAL INFORMATION",
     "STAFF INFORMATION",
-    "OFFICER INFORMATION"
+    "OFFICER INFORMATION",
+    "PERSON INFORMATION",
+
+    /*----------------------------------
+      About
+    ----------------------------------*/
+
+    "ABOUT",
+    "ABOUT STAFF",
+    "ABOUT OFFICER",
+    "ABOUT PERSON",
+
+    "TELL ME ABOUT",
+    "SHOW ME",
+    "DESCRIBE",
+    "DESCRIBE STAFF",
+    "DESCRIBE OFFICER",
+
+    /*----------------------------------
+      Record
+    ----------------------------------*/
+
+    "RECORD",
+    "STAFF RECORD",
+    "EMPLOYEE RECORD",
+    "PERSONNEL RECORD",
+
+    /*----------------------------------
+      Bio
+    ----------------------------------*/
+
+    "BIO",
+    "BIOGRAPHY",
+    "BACKGROUND",
+
+    /*----------------------------------
+      Misc
+    ----------------------------------*/
+
+    "COMPLETE PROFILE",
+    "FULL PROFILE",
+    "COMPLETE DETAILS",
+    "FULL DETAILS",
+    "SHOW COMPLETE PROFILE",
+    "SHOW COMPLETE DETAILS",
+    "VIEW DETAILS",
+    "VIEW INFORMATION",
+    "VIEW RECORD",
+    "PERSONAL DETAILS",
+    "PERSONAL INFORMATION",
+    "STAFF DATA",
+    "OFFICER DATA"
 
 ],
 /*----------------------------------
@@ -1781,69 +1624,422 @@ STAFF_ROLE: [
 
 ],
 
+/*----------------------------------
+  Designation
+----------------------------------*/
+
 STAFF_DESIGNATION: [
+
+    /*----------------------------------
+      Generic
+    ----------------------------------*/
 
     "DESIGNATION",
     "RANK",
     "POST",
+    "POSITION",
+    "OFFICE",
+    "JOB",
+    "TITLE",
+    "CADRE",
+    "GRADE",
+
+    "WHAT IS DESIGNATION",
+    "WHAT IS HIS DESIGNATION",
+    "WHAT IS HER DESIGNATION",
 
     /*----------------------------------
-      Forest Department
+      PCCF
     ----------------------------------*/
 
+    "PCCF",
+    "PRINCIPAL CHIEF CONSERVATOR OF FORESTS",
+
+    /*----------------------------------
+      APCCF
+    ----------------------------------*/
+
+    "APCCF",
+    "ADDITIONAL PRINCIPAL CHIEF CONSERVATOR OF FORESTS",
+
+    /*----------------------------------
+      CCF
+    ----------------------------------*/
+
+    "CCF",
+    "CHIEF CONSERVATOR OF FORESTS",
+
+    /*----------------------------------
+      CF
+    ----------------------------------*/
+
+    "CF",
+    "CONSERVATOR OF FORESTS",
+
+    /*----------------------------------
+      DCF
+    ----------------------------------*/
+
+    "DCF",
+    "DEPUTY CONSERVATOR OF FORESTS",
+
+    /*----------------------------------
+      DFO
+    ----------------------------------*/
+
+    "DFO",
+    "DIVISIONAL FOREST OFFICER",
+
+    /*----------------------------------
+      ADFO
+    ----------------------------------*/
+
+    "ADFO",
+    "ASSISTANT DIVISIONAL FOREST OFFICER",
+
+    /*----------------------------------
+      ACF
+    ----------------------------------*/
+
+    "ACF",
+    "ASSISTANT CONSERVATOR OF FORESTS",
+
+    /*----------------------------------
+      RO
+    ----------------------------------*/
+
+    "RO",
+    "RANGE OFFICER",
+    "FOREST RANGE OFFICER",
+
+    /*----------------------------------
+      Deputy Range Officer
+    ----------------------------------*/
+
+    "DRO",
+    "DEPUTY RANGE OFFICER",
+
+    /*----------------------------------
+      Forester
+    ----------------------------------*/
+
+    "FORESTER",
     "FR",
+
+    /*----------------------------------
+      Forest Guard
+    ----------------------------------*/
+
+    "FOREST GUARD",
     "FG",
-    "AS",
-    "BS",
-    "DL",
-    "DR",
-    "FV",
+
+    /*----------------------------------
+      Forest Beat Officer
+    ----------------------------------*/
+
+    "FOREST BEAT OFFICER",
+    "FBO",
+
+    /*----------------------------------
+      Banasahayak
+    ----------------------------------*/
 
     "BANASAHAYAK",
     "BANASAYAHAK",
     "BANASAHAYK",
+    "BAN SAHAYAK",
+    "BANA SAHAYAK",
+    "BS",
 
-    "FORESTER",
-    "FOREST GUARD",
-    "DRIVER",
-    "WATCHER"
-
-],    /*----------------------------------
-      Posting
+    /*----------------------------------
+      Driver
     ----------------------------------*/
 
-    STAFF_POSTING: [
+    "DRIVER",
+    "DR",
 
-        "POSTING",
-        "POSTED",
-        "WORKING AT"
+    /*----------------------------------
+      Daily Labour
+    ----------------------------------*/
 
-    ],
+    "DAILY LABOUR",
+    "DAILY LABOURER",
+    "DAILY LABOURERS",
+    "DAILY WAGE",
+    "DAILY WAGER",
+    "CASUAL LABOUR",
+    "DL",
 
-    STAFF_BEAT: [
+    /*----------------------------------
+      Forest Volunteer
+    ----------------------------------*/
 
-        "BEAT"
+    "FOREST VOLUNTEER",
+    "VOLUNTEER",
+    "FV",
 
-    ],
+    /*----------------------------------
+      Watcher
+    ----------------------------------*/
 
-    STAFF_RANGE: [
+    "WATCHER",
 
-        "RANGE"
+    /*----------------------------------
+      Mahout
+    ----------------------------------*/
 
-    ],
+    "MAHOUT",
 
-    STAFF_DIVISION: [
+    /*----------------------------------
+      Elephant Squad
+    ----------------------------------*/
 
-        "DIVISION"
+    "ELEPHANT SQUAD",
 
-    ],
+    /*----------------------------------
+      Administrative
+    ----------------------------------*/
 
-    STAFF_CIRCLE: [
+    "OFFICER",
+    "STAFF",
+    "EMPLOYEE",
+    "PERSONNEL",
+    "FIELD STAFF",
+    "FIELD OFFICER",
+    "FIELD EMPLOYEE"
 
-        "CIRCLE"
+],
+ /*----------------------------------
+  Permanent Posting
+----------------------------------*/
 
-    ],
+/*----------------------------------
+  Permanent Posting
+----------------------------------*/
 
+STAFF_POSTING: [
+
+    /*----------------------------------
+      Generic
+    ----------------------------------*/
+
+    "POSTING",
+    "POSTED",
+    "POSTED AT",
+    "POSTED IN",
+
+    "PERMANENT POSTING",
+    "OFFICIAL POSTING",
+    "CURRENT POSTING",
+    "PRESENT POSTING",
+
+    "STAFF POSTING",
+    "OFFICER POSTING",
+    "EMPLOYEE POSTING",
+
+    /*----------------------------------
+      Administrative
+    ----------------------------------*/
+
+    "OFFICIAL JURISDICTION",
+    "ADMINISTRATIVE POSTING",
+    "ADMINISTRATIVE LOCATION",
+
+    "POSTING DETAILS",
+    "POSTING INFORMATION",
+    "POSTING INFO",
+    "POSTING LOCATION",
+
+    "OFFICIAL DETAILS",
+    "OFFICIAL LOCATION",
+
+    "OFFICIALLY POSTED",
+    "OFFICIALLY WORKING",
+
+    "PERMANENT WORK LOCATION",
+    "OFFICIAL WORK LOCATION",
+
+    /*----------------------------------
+      Questions
+    ----------------------------------*/
+
+    "WHERE IS HE POSTED",
+    "WHERE IS SHE POSTED",
+    "WHERE IS STAFF POSTED",
+
+    "WHERE DOES HE WORK",
+    "WHERE DOES SHE WORK",
+    "WHERE DOES STAFF WORK",
+
+    "SHOW POSTING",
+    "SHOW POSTING DETAILS",
+    "SHOW POSTING INFORMATION",
+
+    "GET POSTING",
+    "VIEW POSTING",
+    "DISPLAY POSTING",
+
+    "SHOW OFFICIAL POSTING",
+    "SHOW PERMANENT POSTING",
+
+    "WHERE DOES HE BELONG",
+    "WHERE DOES SHE BELONG",
+    "WHERE DOES STAFF BELONG",
+
+    /*----------------------------------
+      Office
+    ----------------------------------*/
+
+    "OFFICIAL OFFICE",
+    "POSTING OFFICE",
+    "POSTING HQ",
+
+    /*----------------------------------
+      Misc
+    ----------------------------------*/
+
+    "HOME POSTING",
+    "PERMANENT POST",
+    "OFFICIAL POST"
+
+],  
+ 
+ /*----------------------------------
+  Beat
+----------------------------------*/
+
+STAFF_BEAT: [
+
+    "BEAT",
+    "BEETS",
+    "BET",
+    "BEAT AREA",
+    "FOREST BEAT",
+    "BEAT OFFICE",
+    "BEAT NAME",
+
+    "WHICH BEAT",
+    "WHAT BEAT",
+
+    "BEAT OF",
+
+    "BELONGS TO BEAT",
+    "BELONG TO BEAT",
+
+    "WORKING BEAT",
+    "POSTED BEAT",
+
+    "BEAT LOCATION",
+
+    "BEAT HEADQUARTER",
+    "BEAT HQ",
+
+    "CURRENT BEAT"
+
+],
+
+/*----------------------------------
+  Range
+----------------------------------*/
+
+STAFF_RANGE: [
+
+    "RANGE",
+    "RNAGE",
+    "RNG",
+    "RANG",
+
+    "FOREST RANGE",
+    "RANGE OFFICE",
+    "RANGE NAME",
+
+    "WHICH RANGE",
+    "WHAT RANGE",
+
+    "RANGE OF",
+
+    "BELONGS TO RANGE",
+    "BELONG TO RANGE",
+
+    "WORKING RANGE",
+    "POSTED RANGE",
+
+    "CURRENT RANGE",
+
+    "RANGE HEADQUARTER",
+    "RANGE HQ"
+
+],
+
+/*----------------------------------
+  Division
+----------------------------------*/
+
+STAFF_DIVISION: [
+
+    "DIVISION",
+    "DIVISON",
+    "DIVISON",
+    "DIV",
+    "DIVN",
+
+    "FOREST DIVISION",
+
+    "DIVISION OFFICE",
+    "DIVISION NAME",
+
+    "WHICH DIVISION",
+    "WHAT DIVISION",
+
+    "DIVISION OF",
+
+    "BELONGS TO DIVISION",
+    "BELONG TO DIVISION",
+
+    "WORKING DIVISION",
+    "POSTED DIVISION",
+
+    "CURRENT DIVISION",
+
+    "DIVISION HEADQUARTER",
+    "DIVISION HQ"
+
+],
+
+/*----------------------------------
+  Circle
+----------------------------------*/
+
+STAFF_CIRCLE: [
+
+    "CIRCLE",
+    "CIRCLEE",
+    "CIRLCE",
+    "CRICLE",
+    "CIRCLES",
+
+    "FOREST CIRCLE",
+
+    "CIRCLE OFFICE",
+    "CIRCLE NAME",
+
+    "WHICH CIRCLE",
+    "WHAT CIRCLE",
+
+    "CIRCLE OF",
+
+    "BELONGS TO CIRCLE",
+    "BELONG TO CIRCLE",
+
+    "WORKING CIRCLE",
+    "POSTED CIRCLE",
+
+    "CURRENT CIRCLE",
+
+    "CIRCLE HEADQUARTER",
+    "CIRCLE HQ"
+
+],
     STAFF_COMPARTMENT: [
 
         "COMPARTMENT"
@@ -1851,53 +2047,442 @@ STAFF_DESIGNATION: [
     ],
 
     /*----------------------------------
-      Location
-    ----------------------------------*/
+  Live Location
+----------------------------------*/
 
-    STAFF_LOCATION: [
-
-        "WHERE",
-        "LOCATION",
-        "GPS",
-        "POSITION",
-        "LOCATE",
-        "CURRENT LOCATION",
-        "CURRENT POSITION"
-
-    ],
-
-    STAFF_MAP: [
-
-        "MAP",
-        "SHOW MAP"
-
-    ],
+STAFF_LOCATION: [
 
     /*----------------------------------
-      Duty
+      General
     ----------------------------------*/
 
-    STAFF_DUTY: [
+    "WHERE",
+    "WHERE IS",
+    "WHERE IS HE",
+    "WHERE IS SHE",
+    "WHERE ARE THEY",
 
-        "DUTY",
-        "PATROLLING",
-        "PATROL"
+    "LOCATION",
+    "CURRENT LOCATION",
+    "LIVE LOCATION",
+    "REALTIME LOCATION",
+    "REAL TIME LOCATION",
+    "LATEST LOCATION",
+    "LAST LOCATION",
+    "PRESENT LOCATION",
 
-    ],
+    "POSITION",
+    "CURRENT POSITION",
+    "LIVE POSITION",
+    "PRESENT POSITION",
 
-    STAFF_DUTY_STATUS: [
+    "LOCATE",
+    "FIND LOCATION",
+    "SHOW LOCATION",
+    "TRACK",
+    "TRACK STAFF",
+    "TRACK OFFICER",
 
-        "ON DUTY",
-        "OFF DUTY"
+    /*----------------------------------
+      Current Place
+    ----------------------------------*/
 
-    ],
+    "WHERE NOW",
+    "WHERE IS NOW",
+    "CURRENT PLACE",
+    "PRESENT PLACE",
+    "CURRENT AREA",
+    "CURRENT BEAT",
+    "CURRENT COMPARTMENT",
+    "CURRENT SITE",
 
-    STAFF_DUTY_TYPE: [
+    /*----------------------------------
+      Movement
+    ----------------------------------*/
 
-        "DUTY TYPE"
+    "LIVE",
+    "LIVE STATUS",
+    "LIVE TRACKING",
+    "TRACKING",
+    "CURRENT STATUS",
 
-    ],
+    /*----------------------------------
+      Human Readable
+    ----------------------------------*/
+
+    "NEAR WHERE",
+    "NEAREST PLACE",
+    "WHICH AREA",
+    "WHICH LOCATION",
+    "WHICH PLACE",
+    "WHICH COMPARTMENT",
+    "WHICH BEAT",
+
+    /*----------------------------------
+      Navigation
+    ----------------------------------*/
+
+    "SHOW ON MAP",
+    "OPEN MAP",
+    "VIEW LOCATION",
+    "MAP LOCATION",
+    "MAP POSITION"
+
+],
+  
+   /*----------------------------------
+  Duty
+----------------------------------*/
+
+STAFF_DUTY: [
+
+    /*----------------------------------
+      General
+    ----------------------------------*/
+
+    "DUTY",
+    "ON DUTY",
+    "OFF DUTY",
+    "DUTY DETAILS",
+    "DUTY INFORMATION",
+    "CURRENT DUTY",
+    "TODAY DUTY",
+    "TODAYS DUTY",
+    "PRESENT DUTY",
+    "ACTIVE DUTY",
+    "LAST DUTY",
+
+    /*----------------------------------
+      Patrol
+    ----------------------------------*/
+
+    "PATROL",
+    "PATROLLING",
+    "PATROLL",
+    "PATROL DUTY",
+    "PATROL STATUS",
+    "PATROL DETAILS",
+    "PATROL INFORMATION",
+
+    /*----------------------------------
+      Assignment
+    ----------------------------------*/
+
+    "DEPLOYED",
+    "DEPLOYMENT",
+    "DEPLOYMENT DETAILS",
+    "ASSIGNED",
+    "ASSIGNMENT",
+    "WORKING",
+    "WORKING TODAY",
+    "CURRENT WORK",
+    "TODAY WORK",
+    "TASK",
+    "CURRENT TASK",
+    "JOB",
+    "CURRENT JOB",
+    "RESPONSIBILITY",
+
+    /*----------------------------------
+      Operational
+    ----------------------------------*/
+
+    "SHIFT",
+    "SHIFT DUTY",
+    "FIELD DUTY",
+    "FIELD WORK",
+    "FIELD ASSIGNMENT",
+    "OPERATION",
+    "CURRENT OPERATION",
+    "MISSION",
+    "CURRENT MISSION"
+
+],
 /*----------------------------------
+  Duty Started
+----------------------------------*/
+
+STAFF_DUTY_STARTED: [
+
+    /*----------------------------------
+      Generic
+    ----------------------------------*/
+
+    "DUTY START",
+    "DUTY STARTED",
+    "DUTY START TIME",
+    "DUTY STARTED AT",
+    "DUTY STARTING TIME",
+
+    "START DUTY",
+    "START OF DUTY",
+    "DUTY BEGIN",
+    "DUTY BEGAN",
+    "DUTY BEGINNING",
+
+    /*----------------------------------
+      Questions
+    ----------------------------------*/
+
+    "WHEN DID DUTY START",
+    "WHEN WAS DUTY STARTED",
+
+    "WHEN DID HE START DUTY",
+    "WHEN DID SHE START DUTY",
+    "WHEN DID STAFF START DUTY",
+
+    "WHAT TIME DID DUTY START",
+
+    "SHOW DUTY START",
+    "GET DUTY START",
+    "DISPLAY DUTY START",
+
+    "SHOW DUTY START TIME",
+    "GET DUTY START TIME",
+
+    /*----------------------------------
+      Reporting
+    ----------------------------------*/
+
+    "DUTY START DETAILS",
+    "DUTY START INFORMATION",
+
+    "DUTY TIMELINE",
+    "DUTY HISTORY",
+
+    "TODAY DUTY START",
+    "CURRENT DUTY START",
+
+    /*----------------------------------
+      Attendance
+    ----------------------------------*/
+
+    "DUTY LOGIN",
+    "LOGIN TIME",
+    "REPORTING TIME",
+
+    "JOINED DUTY",
+    "JOIN DUTY",
+
+    "DUTY COMMENCED",
+    "COMMENCED DUTY",
+
+    "DUTY INITIATED",
+    "DUTY INITIATION",
+
+    /*----------------------------------
+      Misc
+    ----------------------------------*/
+
+    "START TIME",
+    "STARTED AT",
+    "DUTY FROM",
+    "DUTY SINCE",
+    "ON DUTY SINCE"
+
+],
+
+ /*----------------------------------
+  Duty Ended
+----------------------------------*/
+
+STAFF_DUTY_ENDED: [
+
+    /*----------------------------------
+      Generic
+    ----------------------------------*/
+
+    "DUTY END",
+    "DUTY ENDED",
+    "DUTY END TIME",
+    "DUTY ENDED AT",
+    "DUTY FINISHED",
+    "DUTY FINISH TIME",
+
+    "END DUTY",
+    "END OF DUTY",
+    "STOP DUTY",
+    "STOPPED DUTY",
+
+    "DUTY COMPLETED",
+    "DUTY COMPLETE",
+
+    "DUTY CLOSED",
+    "DUTY TERMINATED",
+
+    /*----------------------------------
+      Questions
+    ----------------------------------*/
+
+    "WHEN DID DUTY END",
+    "WHEN WAS DUTY ENDED",
+
+    "WHEN DID HE END DUTY",
+    "WHEN DID SHE END DUTY",
+    "WHEN DID STAFF END DUTY",
+
+    "WHAT TIME DID DUTY END",
+
+    "SHOW DUTY END",
+    "GET DUTY END",
+    "DISPLAY DUTY END",
+
+    "SHOW DUTY END TIME",
+    "GET DUTY END TIME",
+
+    /*----------------------------------
+      Reporting
+    ----------------------------------*/
+
+    "DUTY END DETAILS",
+    "DUTY END INFORMATION",
+
+    "LAST DUTY END",
+    "LAST DUTY ENDED",
+
+    "DUTY HISTORY",
+    "DUTY TIMELINE",
+
+    /*----------------------------------
+      Attendance
+    ----------------------------------*/
+
+    "DUTY LOGOUT",
+    "LOGOUT TIME",
+
+    "LEFT DUTY",
+    "LEAVE DUTY",
+
+    "SIGNED OFF",
+    "SIGN OFF",
+
+    "OFF DUTY TIME",
+
+    /*----------------------------------
+      Completion
+    ----------------------------------*/
+
+    "DUTY FINISHED AT",
+    "DUTY COMPLETED AT",
+    "DUTY STOPPED AT",
+    "DUTY CLOSED AT",
+
+    /*----------------------------------
+      Misc
+    ----------------------------------*/
+
+    "END TIME",
+    "ENDED AT",
+    "FINISHED AT",
+    "COMPLETED AT",
+    "STOPPED AT",
+    "LAST DUTY TIME"
+
+],
+/*----------------------------------
+  Duty Status
+----------------------------------*/
+
+STAFF_DUTY_STATUS: [
+
+    /*----------------------------------
+      Active
+    ----------------------------------*/
+
+    "ON DUTY",
+    "ACTIVE",
+    "ACTIVE DUTY",
+    "WORKING",
+    "WORKING NOW",
+    "CURRENTLY WORKING",
+    "IS WORKING",
+    "IS ACTIVE",
+    "AVAILABLE",
+    "AVAILABLE ON DUTY",
+
+    /*----------------------------------
+      Inactive
+    ----------------------------------*/
+
+    "OFF DUTY",
+    "INACTIVE",
+    "NOT WORKING",
+    "NOT ON DUTY",
+    "RESTING",
+    "FREE",
+    "IDLE",
+
+    /*----------------------------------
+      Questions
+    ----------------------------------*/
+
+    "DUTY STATUS",
+    "STATUS",
+    "CURRENT STATUS",
+    "WORK STATUS",
+    "ACTIVE OR NOT",
+    "ON DUTY OR NOT",
+    "IS ON DUTY",
+    "IS OFF DUTY",
+    "IS ACTIVE NOW",
+    "IS AVAILABLE"
+
+],
+
+/*----------------------------------
+  Duty Type
+----------------------------------*/
+
+STAFF_DUTY_TYPE: [
+
+    /*----------------------------------
+      Generic
+    ----------------------------------*/
+
+    "DUTY TYPE",
+    "TYPE OF DUTY",
+    "CURRENT DUTY TYPE",
+    "WHAT DUTY",
+    "WHICH DUTY",
+    "DUTY NAME",
+
+    /*----------------------------------
+      Assignment
+    ----------------------------------*/
+
+    "ASSIGNMENT TYPE",
+    "WORK TYPE",
+    "PATROL TYPE",
+    "CURRENT ASSIGNMENT",
+    "CURRENT WORK",
+    "CURRENT TASK",
+    "CURRENT OPERATION",
+    "CURRENT MISSION",
+
+    /*----------------------------------
+      Forest Department
+    ----------------------------------*/
+
+    "ELEPHANT PATROL",
+    "ELEPHANT DUTY",
+    "FIRE PATROL",
+    "FIRE DUTY",
+    "FOREST PATROL",
+    "NIGHT PATROL",
+    "DAY PATROL",
+    "ANTI POACHING",
+    "ANTI POACHING PATROL",
+    "ANTI POACHING DUTY",
+    "LAW ENFORCEMENT",
+    "DEPREDATION DUTY",
+    "RESCUE DUTY",
+    "VIP DUTY",
+    "CHECK POST DUTY",
+    "CHECKPOST DUTY",
+    "BEAT PATROL",
+    "SPECIAL DUTY"
+
+],/*----------------------------------
   Assignment
 ----------------------------------*/
 
@@ -1958,72 +2543,992 @@ STAFF_ASSIGNMENT: [
       Team
     ----------------------------------*/
 
-    STAFF_TEAM: [
+   /*----------------------------------
+  Team
+----------------------------------*/
 
-        "TEAM"
+STAFF_TEAM: [
 
-    ],
+    /*----------------------------------
+      General
+    ----------------------------------*/
 
-    STAFF_LEADER: [
+    "TEAM",
+    "TEAM DETAILS",
+    "TEAM INFORMATION",
+    "TEAM MEMBERS",
+    "TEAM MEMBER",
+    "TEAM LIST",
+    "TEAM STAFF",
+    "TEAM INFO",
 
-        "LEADER",
-        "TEAM LEADER"
+    /*----------------------------------
+      Members
+    ----------------------------------*/
 
-    ],
+    "MEMBER",
+    "MEMBERS",
+    "GROUP",
+    "GROUP MEMBERS",
+    "CREW",
+    "UNIT",
+    "SQUAD",
+    "PARTY",
+
+    /*----------------------------------
+      Questions
+    ----------------------------------*/
+
+    "WHO IS IN TEAM",
+    "WHO ARE IN TEAM",
+    "WHO IS ON TEAM",
+    "WHO ARE ON TEAM",
+    "WHO IS WITH",
+    "WHO IS WORKING WITH",
+    "WORKING WITH",
+    "TEAM OF",
+    "MEMBERS OF",
+    "PART OF TEAM",
+
+    /*----------------------------------
+      Operations
+    ----------------------------------*/
+
+    "PATROL TEAM",
+    "ELEPHANT PATROL TEAM",
+    "FIRE PATROL TEAM",
+    "ANTI POACHING TEAM",
+    "RESCUE TEAM",
+    "DEPREDATION TEAM",
+
+    /*----------------------------------
+      Misc
+    ----------------------------------*/
+
+    "ASSIGNED TEAM",
+    "CURRENT TEAM",
+    "TODAY TEAM",
+    "TEAM ASSIGNMENT"
+
+],
+
+/*----------------------------------
+  Team Leader
+----------------------------------*/
+
+STAFF_LEADER: [
+
+    /*----------------------------------
+      General
+    ----------------------------------*/
+
+    "LEADER",
+    "TEAM LEADER",
+    "GROUP LEADER",
+    "TEAM HEAD",
+    "HEAD",
+    "HEAD OF TEAM",
+    "HEAD OF GROUP",
+
+    /*----------------------------------
+      Incharge
+    ----------------------------------*/
+
+    "INCHARGE",
+    "IN CHARGE",
+    "OFFICER IN CHARGE",
+    "TEAM INCHARGE",
+    "TEAM IN CHARGE",
+    "PATROL LEADER",
+    "PATROL HEAD",
+
+    /*----------------------------------
+      Questions
+    ----------------------------------*/
+
+    "WHO IS LEADER",
+    "WHO IS TEAM LEADER",
+    "WHO LEADS",
+    "WHO IS INCHARGE",
+    "WHO IS IN CHARGE",
+    "WHO IS HEADING",
+    "WHO IS COMMANDING",
+
+    /*----------------------------------
+      Forest Department
+    ----------------------------------*/
+
+    "LEADING OFFICER",
+    "TEAM COMMANDER",
+    "PATROL COMMANDER",
+    "SUPERVISOR",
+    "SUPERVISING OFFICER",
+
+    /*----------------------------------
+      Misc
+    ----------------------------------*/
+
+    "CURRENT LEADER",
+    "CURRENT TEAM LEADER",
+    "TEAM SUPERVISOR"
+
+], 
+ /*----------------------------------
+  GPS Coordinates
+----------------------------------*/
+
+STAFF_GPS: [
 
     /*----------------------------------
       GPS
     ----------------------------------*/
 
-    STAFF_GPS: [
+    "GPS",
+    "GPS LOCATION",
+    "GPS POSITION",
+    "GPS POINT",
+    "GPS POINTS",
+    "GPS COORDINATES",
+    "GPS COORDINATE",
 
-        "GPS",
-        "COORDINATES",
-        "LATITUDE",
-        "LONGITUDE"
+    /*----------------------------------
+      Coordinates
+    ----------------------------------*/
 
-    ],
+    "COORDINATE",
+    "COORDINATES",
+    "LOCATION COORDINATES",
+    "MAP COORDINATES",
+    "GEO COORDINATES",
+    "GEOLOCATION",
+    "GEO LOCATION",
 
-    STAFF_SPEED: [
+    /*----------------------------------
+      Latitude / Longitude
+    ----------------------------------*/
 
-        "SPEED"
+    "LATITUDE",
+    "LONGITUDE",
+    "LAT",
+    "LON",
+    "LONG",
+    "LAT LONG",
+    "LAT LON",
 
-    ],
+    /*----------------------------------
+      Position
+    ----------------------------------*/
 
-    STAFF_HEADING: [
+    "POSITION",
+    "EXACT LOCATION",
+    "EXACT POSITION",
+    "MAP POINT",
+    "CURRENT GPS",
+    "CURRENT COORDINATES",
+    "CURRENT LATITUDE",
+    "CURRENT LONGITUDE"
 
-        "HEADING",
-        "DIRECTION"
+],
+/*----------------------------------
+  Patrol Distance
+----------------------------------*/
 
-    ],
+STAFF_DISTANCE: [
 
-    STAFF_ACCURACY: [
+    /*----------------------------------
+      Generic Distance
+    ----------------------------------*/
 
-        "ACCURACY"
+    "DISTANCE",
+    "DISTANCES",
+    "HOW FAR",
+    "FAR",
+    "TOTAL DISTANCE",
+    "CURRENT DISTANCE",
+    "DISTANCE COVERED",
+    "DISTANCE TRAVELLED",
+    "DISTANCE TRAVELED",
 
-    ],
+    /*----------------------------------
+      Covered
+    ----------------------------------*/
+
+    "COVERED",
+    "COVER",
+    "COVERING",
+    "COVERAGE DISTANCE",
+
+    "HOW MUCH DISTANCE",
+    "HOW MANY KM",
+    "HOW MANY KILOMETERS",
+    "HOW MANY KILOMETRES",
+
+    /*----------------------------------
+      Travel
+    ----------------------------------*/
+
+    "TRAVELLED",
+    "TRAVELED",
+    "TRAVEL",
+    "TRAVELLING",
+    "TRAVELING",
+
+    "MOVED",
+    "MOVE",
+    "MOVEMENT",
+    "MOVEMENT DISTANCE",
+
+    /*----------------------------------
+      Walking
+    ----------------------------------*/
+
+    "WALKED",
+    "WALK",
+    "WALKING DISTANCE",
+    "TOTAL WALK",
+    "TOTAL WALKED",
+
+    /*----------------------------------
+      Patrol
+    ----------------------------------*/
+
+    "PATROL DISTANCE",
+    "PATROL KM",
+    "PATROL KMS",
+    "PATROL KILOMETERS",
+    "PATROL KILOMETRES",
+
+    "PATROL COVERAGE",
+    "PATROL TRAVEL",
+
+    "HOW FAR PATROLLED",
+    "DISTANCE PATROLLED",
+
+    /*----------------------------------
+      Coverage
+    ----------------------------------*/
+
+    "GROUND COVERAGE",
+    "FIELD COVERAGE",
+    "AREA COVERED",
+
+    /*----------------------------------
+      Questions
+    ----------------------------------*/
+
+    "HOW FAR HAS HE TRAVELLED",
+    "HOW FAR HAS SHE TRAVELLED",
+    "HOW FAR HAS STAFF TRAVELLED",
+
+    "HOW FAR HAS HE WALKED",
+    "HOW FAR HAS SHE WALKED",
+
+    "HOW MUCH DID HE COVER",
+    "HOW MUCH DID SHE COVER",
+
+    "WHAT DISTANCE",
+    "SHOW DISTANCE",
+    "GET DISTANCE",
+    "DISPLAY DISTANCE",
+
+    /*----------------------------------
+      Units
+    ----------------------------------*/
+
+    "KM",
+    "KMS",
+    "KM COVERED",
+    "KMS COVERED",
+
+    "KILOMETER",
+    "KILOMETERS",
+    "KILOMETRE",
+    "KILOMETRES",
+
+    "METRE",
+    "METRES",
+    "METER",
+    "METERS",
+
+    /*----------------------------------
+      Reports
+    ----------------------------------*/
+
+    "DISTANCE REPORT",
+    "DISTANCE SUMMARY",
+    "DISTANCE ANALYTICS",
+
+    "PATROL REPORT",
+    "PATROL SUMMARY",
+
+    /*----------------------------------
+      Misc
+    ----------------------------------*/
+
+    "TOTAL KM",
+    "TOTAL KMS",
+    "TOTAL TRAVEL",
+    "TOTAL WALK",
+
+    "TODAY DISTANCE",
+    "CURRENT DISTANCE",
+    "LIVE DISTANCE"
+
+],
+
+ /*----------------------------------
+  Patrol GPS Points
+----------------------------------*/
+
+STAFF_PATROL_POINTS: [
+
+    /*----------------------------------
+      Generic
+    ----------------------------------*/
+
+    "POINT",
+    "POINTS",
+    "GPS POINT",
+    "GPS POINTS",
+    "TRACK POINT",
+    "TRACK POINTS",
+    "LOCATION POINT",
+    "LOCATION POINTS",
+
+    /*----------------------------------
+      Patrol
+    ----------------------------------*/
+
+    "PATROL POINT",
+    "PATROL POINTS",
+    "PATROL GPS",
+    "PATROL GPS POINT",
+    "PATROL GPS POINTS",
+    "PATROL TRACK",
+    "PATROL TRACKS",
+    "PATROL TRACK POINT",
+    "PATROL TRACK POINTS",
+
+    /*----------------------------------
+      Route
+    ----------------------------------*/
+
+    "ROUTE POINT",
+    "ROUTE POINTS",
+    "TRACK LOG",
+    "TRACK LOGS",
+    "TRACK RECORD",
+    "TRACK RECORDS",
+    "TRACK HISTORY",
+    "TRACK DATA",
+
+    /*----------------------------------
+      GPS Recording
+    ----------------------------------*/
+
+    "GPS RECORD",
+    "GPS RECORDS",
+    "GPS LOG",
+    "GPS LOGS",
+    "GPS HISTORY",
+    "GPS DATA",
+
+    "LOCATION HISTORY",
+    "LOCATION LOG",
+    "LOCATION RECORD",
+
+    /*----------------------------------
+      Count
+    ----------------------------------*/
+
+    "POINT COUNT",
+    "GPS POINT COUNT",
+    "TRACK POINT COUNT",
+    "PATROL POINT COUNT",
+    "NUMBER OF POINTS",
+    "TOTAL POINTS",
+    "TOTAL GPS POINTS",
+    "TOTAL TRACK POINTS",
+
+    "HOW MANY POINTS",
+    "HOW MANY GPS POINTS",
+    "HOW MANY TRACK POINTS",
+    "HOW MANY PATROL POINTS",
+
+    /*----------------------------------
+      Questions
+    ----------------------------------*/
+
+    "SHOW PATROL POINTS",
+    "SHOW GPS POINTS",
+    "SHOW TRACK POINTS",
+
+    "GET PATROL POINTS",
+    "GET GPS POINTS",
+
+    "DISPLAY PATROL POINTS",
+    "DISPLAY GPS POINTS",
+
+    "PATROL POINT DETAILS",
+    "GPS POINT DETAILS",
+    "TRACK POINT DETAILS",
+
+    /*----------------------------------
+      Patrol Analytics
+    ----------------------------------*/
+
+    "PATROL RECORD",
+    "PATROL RECORDS",
+    "PATROL HISTORY",
+
+    "PATROL ANALYTICS",
+    "PATROL SUMMARY",
+    "PATROL REPORT",
+
+    /*----------------------------------
+      Misc
+    ----------------------------------*/
+
+    "RECORDED POINTS",
+    "CAPTURED POINTS",
+    "LOGGED POINTS",
+    "SAMPLED POINTS",
+    "TRACKING POINTS",
+    "PATROL SAMPLES"
+
+],
+ /*----------------------------------
+  Patrol Start
+----------------------------------*/
+
+STAFF_PATROL_START: [
+
+    /*----------------------------------
+      Generic
+    ----------------------------------*/
+
+    "PATROL START",
+    "PATROL STARTED",
+    "PATROL START TIME",
+    "PATROL STARTED AT",
+    "PATROL STARTING TIME",
+
+    "START PATROL",
+    "START OF PATROL",
+    "PATROL BEGIN",
+    "PATROL BEGAN",
+    "PATROL BEGINNING",
+
+    /*----------------------------------
+      Session
+    ----------------------------------*/
+
+    "PATROL SESSION START",
+    "SESSION START",
+    "SESSION START TIME",
+    "TRACK START",
+    "TRACK START TIME",
+    "GPS TRACK START",
+    "GPS START",
+
+    /*----------------------------------
+      Recording
+    ----------------------------------*/
+
+    "TRACKING START",
+    "TRACKING START TIME",
+    "GPS RECORDING START",
+    "GPS LOG START",
+    "LOGGING START",
+
+    /*----------------------------------
+      Questions
+    ----------------------------------*/
+
+    "WHEN DID PATROL START",
+    "WHEN WAS PATROL STARTED",
+    "WHEN DID HE START PATROL",
+    "WHEN DID SHE START PATROL",
+    "WHEN DID STAFF START PATROL",
+
+    "WHAT TIME DID PATROL START",
+    "SHOW PATROL START",
+    "GET PATROL START",
+    "DISPLAY PATROL START",
+
+    "PATROL START DETAILS",
+    "PATROL START INFORMATION",
 
     /*----------------------------------
       Analytics
     ----------------------------------*/
 
-    STAFF_STRENGTH: [
+    "PATROL TIMELINE",
+    "PATROL HISTORY",
+    "PATROL SESSION",
+    "PATROL ANALYTICS",
+    "PATROL SUMMARY",
+    "PATROL REPORT",
 
-        "HOW MANY",
-        "COUNT",
-        "TOTAL",
-        "STRENGTH"
+    /*----------------------------------
+      Misc
+    ----------------------------------*/
 
-    ],
+    "START TIME",
+    "STARTED AT",
+    "PATROL COMMENCED",
+    "COMMENCED PATROL",
+    "PATROL INITIATED",
+    "PATROL INITIATION",
+    "PATROL LAUNCHED"
 
-    STAFF_STATISTICS: [
+],
+ /*----------------------------------
+  Patrol End
+----------------------------------*/
 
-        "STATISTICS",
-        "SUMMARY",
-        "REPORT"
+STAFF_PATROL_END: [
 
-    ]
+    /*----------------------------------
+      Generic
+    ----------------------------------*/
 
+    "PATROL END",
+    "PATROL ENDED",
+    "PATROL END TIME",
+    "PATROL ENDED AT",
+    "PATROL FINISHED",
+    "PATROL FINISH TIME",
+
+    "END PATROL",
+    "END OF PATROL",
+    "PATROL STOP",
+    "PATROL STOPPED",
+    "PATROL COMPLETED",
+    "PATROL COMPLETE",
+    "PATROL CLOSED",
+    "PATROL TERMINATED",
+
+    /*----------------------------------
+      Session
+    ----------------------------------*/
+
+    "PATROL SESSION END",
+    "SESSION END",
+    "SESSION END TIME",
+    "TRACK END",
+    "TRACK END TIME",
+    "GPS TRACK END",
+    "GPS END",
+
+    /*----------------------------------
+      Recording
+    ----------------------------------*/
+
+    "TRACKING END",
+    "TRACKING END TIME",
+    "GPS RECORDING END",
+    "GPS LOG END",
+    "LOGGING END",
+
+    /*----------------------------------
+      Questions
+    ----------------------------------*/
+
+    "WHEN DID PATROL END",
+    "WHEN WAS PATROL ENDED",
+    "WHEN DID HE END PATROL",
+    "WHEN DID SHE END PATROL",
+    "WHEN DID STAFF END PATROL",
+
+    "WHAT TIME DID PATROL END",
+    "SHOW PATROL END",
+    "GET PATROL END",
+    "DISPLAY PATROL END",
+
+    "PATROL END DETAILS",
+    "PATROL END INFORMATION",
+
+    /*----------------------------------
+      Analytics
+    ----------------------------------*/
+
+    "PATROL TIMELINE",
+    "PATROL HISTORY",
+    "PATROL SESSION",
+    "PATROL ANALYTICS",
+    "PATROL SUMMARY",
+    "PATROL REPORT",
+
+    /*----------------------------------
+      Completion
+    ----------------------------------*/
+
+    "PATROL FINISHED AT",
+    "PATROL STOPPED AT",
+    "PATROL COMPLETED AT",
+    "PATROL CLOSED AT",
+
+    "WHEN WAS PATROL COMPLETED",
+    "WHEN DID PATROL FINISH",
+    "WHEN DID PATROL STOP",
+
+    /*----------------------------------
+      Misc
+    ----------------------------------*/
+
+    "END TIME",
+    "ENDED AT",
+    "FINISHED AT",
+    "STOPPED AT",
+    "COMPLETED AT",
+    "CLOSED AT",
+    "TERMINATED AT",
+    "PATROL EXIT TIME"
+
+],
+ /*----------------------------------
+  Patrol Duration
+----------------------------------*/
+
+STAFF_PATROL_DURATION: [
+
+    /*----------------------------------
+      Generic
+    ----------------------------------*/
+
+    "DURATION",
+    "PATROL DURATION",
+    "TOTAL DURATION",
+    "PATROL TIME",
+    "PATROL TIME TAKEN",
+    "PATROL TIME SPENT",
+
+    "TIME TAKEN",
+    "TIME SPENT",
+    "TOTAL TIME",
+    "ELAPSED TIME",
+    "RUNNING TIME",
+
+    /*----------------------------------
+      Patrol Session
+    ----------------------------------*/
+
+    "PATROL SESSION DURATION",
+    "PATROL SESSION TIME",
+    "SESSION DURATION",
+    "SESSION TIME",
+    "TRACK DURATION",
+    "TRACK TIME",
+    "GPS TRACK DURATION",
+    "GPS TRACK TIME",
+
+    /*----------------------------------
+      Recording
+    ----------------------------------*/
+
+    "TRACKING DURATION",
+    "TRACKING TIME",
+    "GPS RECORDING DURATION",
+    "GPS RECORDING TIME",
+    "LOGGING DURATION",
+    "LOGGING TIME",
+
+    /*----------------------------------
+      Questions
+    ----------------------------------*/
+
+    "HOW LONG WAS PATROL",
+    "HOW LONG DID PATROL LAST",
+    "HOW LONG DID HE PATROL",
+    "HOW LONG DID SHE PATROL",
+    "HOW LONG DID STAFF PATROL",
+
+    "HOW MUCH TIME",
+    "HOW MUCH TIME DID PATROL TAKE",
+
+    "WHAT IS PATROL DURATION",
+    "WHAT WAS PATROL DURATION",
+
+    "SHOW PATROL DURATION",
+    "GET PATROL DURATION",
+    "DISPLAY PATROL DURATION",
+
+    "PATROL DURATION DETAILS",
+    "PATROL DURATION INFORMATION",
+
+    /*----------------------------------
+      Time Units
+    ----------------------------------*/
+
+    "HOURS",
+    "HOUR",
+    "MINUTES",
+    "MINUTE",
+    "SECONDS",
+    "SECOND",
+
+    "HR",
+    "HRS",
+    "MIN",
+    "MINS",
+    "SEC",
+    "SECS",
+
+    /*----------------------------------
+      Analytics
+    ----------------------------------*/
+
+    "PATROL ANALYTICS",
+    "PATROL SUMMARY",
+    "PATROL REPORT",
+    "PATROL TIMELINE",
+    "PATROL HISTORY",
+
+    /*----------------------------------
+      Misc
+    ----------------------------------*/
+
+    "PATROL LENGTH",
+    "SESSION LENGTH",
+    "TRACK LENGTH",
+
+    "TOTAL PATROL TIME",
+    "TOTAL TRACK TIME",
+    "TOTAL SESSION TIME",
+
+    "ACTIVE PATROL TIME",
+    "PATROL ELAPSED TIME"
+
+],
+/*----------------------------------
+  Speed
+----------------------------------*/
+
+STAFF_SPEED: [
+
+    "SPEED",
+    "CURRENT SPEED",
+    "LIVE SPEED",
+    "MOVING SPEED",
+    "TRAVEL SPEED",
+    "RUNNING SPEED",
+    "PATROL SPEED",
+    "VELOCITY",
+    "KMH",
+    "KM/H",
+    "KMPH",
+    "HOW FAST",
+    "HOW FAST IS",
+    "IS MOVING",
+    "MOVEMENT SPEED"
+
+],
+
+/*----------------------------------
+  Heading
+----------------------------------*/
+
+STAFF_HEADING: [
+
+    "HEADING",
+    "CURRENT HEADING",
+    "DIRECTION",
+    "CURRENT DIRECTION",
+    "MOVING DIRECTION",
+    "TRAVEL DIRECTION",
+    "BEARING",
+    "CURRENT BEARING",
+    "AZIMUTH",
+    "WHICH DIRECTION",
+    "GOING WHERE",
+    "MOVING WHERE"
+
+],
+
+/*----------------------------------
+  GPS Accuracy
+----------------------------------*/
+
+STAFF_ACCURACY: [
+
+    "ACCURACY",
+    "GPS ACCURACY",
+    "LOCATION ACCURACY",
+    "POSITION ACCURACY",
+    "CURRENT ACCURACY",
+    "GPS ERROR",
+    "ERROR RADIUS",
+    "ACCURATE",
+    "PRECISION",
+    "LOCATION PRECISION"
+
+],
+
+/*----------------------------------
+  Staff Strength
+----------------------------------*/
+
+STAFF_STRENGTH: [
+
+    /*----------------------------------
+      Count
+    ----------------------------------*/
+
+    "HOW MANY",
+    "COUNT",
+    "TOTAL",
+    "NUMBER",
+    "NO OF",
+    "NUMBER OF",
+
+    /*----------------------------------
+      Strength
+    ----------------------------------*/
+
+    "STRENGTH",
+    "TOTAL STRENGTH",
+    "STAFF STRENGTH",
+    "TEAM STRENGTH",
+    "WORKFORCE",
+    "MANPOWER",
+    "PERSONNEL",
+    "HEADCOUNT",
+
+    /*----------------------------------
+      Staff Count
+    ----------------------------------*/
+
+    "TOTAL STAFF",
+    "TOTAL OFFICERS",
+    "STAFF COUNT",
+    "OFFICER COUNT",
+    "EMPLOYEE COUNT",
+    "ACTIVE STAFF",
+    "ACTIVE OFFICERS",
+    "INACTIVE STAFF",
+    "INACTIVE OFFICERS",
+
+    /*----------------------------------
+      Jurisdiction
+    ----------------------------------*/
+
+    "HOW MANY STAFF",
+    "HOW MANY OFFICERS",
+    "HOW MANY FOREST GUARDS",
+    "HOW MANY FORESTERS",
+    "HOW MANY BANASAHAYAK",
+
+    "STAFF IN CIRCLE",
+    "STAFF IN DIVISION",
+    "STAFF IN RANGE",
+    "STAFF IN BEAT",
+
+    "COUNT STAFF",
+    "COUNT OFFICERS",
+    "LIST STAFF",
+    "LIST OFFICERS"
+
+],
+
+/*----------------------------------
+  Statistics
+----------------------------------*/
+
+/*----------------------------------
+  Patrol Analytics
+----------------------------------*/
+
+STAFF_ANALYTICS: [
+
+    /*----------------------------------
+      Complete Analytics
+    ----------------------------------*/
+
+    "PATROL ANALYTICS",
+    "PATROL ANALYSIS",
+    "PATROL SUMMARY",
+    "PATROL OVERVIEW",
+    "PATROL REPORT",
+    "PATROL DASHBOARD",
+
+    "COMPLETE PATROL",
+    "COMPLETE PATROL REPORT",
+    "COMPLETE PATROL ANALYTICS",
+    "COMPLETE PATROL SUMMARY",
+
+    "FULL PATROL REPORT",
+    "FULL PATROL ANALYTICS",
+    "FULL PATROL SUMMARY",
+
+    /*----------------------------------
+      Staff Patrol
+    ----------------------------------*/
+
+    "STAFF PATROL REPORT",
+    "STAFF PATROL ANALYTICS",
+    "STAFF PATROL SUMMARY",
+    "STAFF PATROL OVERVIEW",
+
+    "OFFICER PATROL REPORT",
+    "OFFICER PATROL ANALYTICS",
+    "OFFICER PATROL SUMMARY",
+
+    /*----------------------------------
+      Performance Summary
+    ----------------------------------*/
+
+    "PATROL PERFORMANCE",
+    "PATROL PERFORMANCE REPORT",
+    "PATROL PERFORMANCE SUMMARY",
+
+    "PATROL ACTIVITY",
+    "PATROL ACTIVITY REPORT",
+    "PATROL ACTIVITY SUMMARY",
+
+    /*----------------------------------
+      Dashboard
+    ----------------------------------*/
+
+    "PATROL DASHBOARD",
+    "SHOW PATROL DASHBOARD",
+
+    "SHOW PATROL REPORT",
+    "SHOW PATROL ANALYTICS",
+    "SHOW PATROL SUMMARY",
+
+    "GET PATROL REPORT",
+    "GET PATROL ANALYTICS",
+
+    "DISPLAY PATROL REPORT",
+    "DISPLAY PATROL ANALYTICS",
+
+    "VIEW PATROL REPORT",
+    "VIEW PATROL ANALYTICS",
+
+    /*----------------------------------
+      Questions
+    ----------------------------------*/
+
+    "SHOW COMPLETE PATROL",
+    "SHOW COMPLETE ANALYTICS",
+    "SHOW COMPLETE SUMMARY",
+
+    "HOW WAS PATROL",
+
+    "PATROL DETAILS",
+    "COMPLETE PATROL DETAILS",
+
+    /*----------------------------------
+      Overall
+    ----------------------------------*/
+
+    "PATROL METRICS",
+    "PATROL KPI",
+    "PATROL KPIS",
+    "PATROL INSIGHTS"
+
+]
 });
  /*=========================================================
  SYNONYMS
