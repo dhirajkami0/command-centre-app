@@ -1398,6 +1398,3110 @@ StaffFormatter.formatStaffAssignment = function (
 
 };
  /*=========================================================
+ FORMAT ROLE
+=========================================================*/
+
+/*=========================================================
+ FORMAT ROLE
+=========================================================*/
+
+StaffFormatter.formatRole = function (
+
+    response
+
+) {
+
+    const result =
+
+        StaffFormatter.createResponse(
+
+            response
+
+        );
+
+    /*----------------------------------
+      Validate
+    ----------------------------------*/
+
+    if (
+
+        !response ||
+
+        !response.success ||
+
+        !response.data
+
+    ) {
+
+        result.message =
+
+            response?.message ||
+
+            "Role information not found.";
+
+        return result;
+
+    }
+
+    /*----------------------------------
+      Canonical Profile
+    ----------------------------------*/
+
+    const profile =
+
+        response.data;
+
+    const identity =
+
+        profile.identity ||
+
+        {};
+
+    /*----------------------------------
+      Display Name
+    ----------------------------------*/
+
+    const displayName =
+
+        identity.name ||
+
+        identity.rawName ||
+
+        identity.cleanName ||
+
+        "-";
+
+    /*----------------------------------
+      Markdown
+    ----------------------------------*/
+
+    result.markdown = [
+
+        "# 👤 STAFF ROLE",
+
+        "",
+
+        "**Name:** " +
+
+            displayName,
+
+        "",
+
+        "**Role:** " +
+
+            (
+
+                identity.role ||
+
+                "-"
+
+            )
+
+    ].join(
+
+        "\n"
+
+    );
+
+    /*----------------------------------
+      Card
+    ----------------------------------*/
+
+    result.cards.push({
+
+        type:
+
+            "staff-role",
+
+        title:
+
+            displayName,
+
+        data:
+
+            profile
+
+    });
+
+    /*----------------------------------
+      Section
+    ----------------------------------*/
+
+    result.sections.push({
+
+        title:
+
+            "Role",
+
+        data:
+
+            profile
+
+    });
+
+    /*----------------------------------
+      Metadata
+    ----------------------------------*/
+
+    result.success =
+
+        true;
+
+    result.intent =
+
+        StaffConstants.INTENTS.STAFF_ROLE;
+
+    result.confidence =
+
+        response.confidence ||
+
+        1;
+
+    result.source =
+
+        response.source ||
+
+        "LOCAL";
+
+    result.message =
+
+        "Role formatted.";
+
+    return result;
+
+};
+
+
+/*=========================================================
+ FORMAT DESIGNATION
+=========================================================*/
+
+StaffFormatter.formatDesignation = function (
+
+    response
+
+) {
+
+    const result =
+
+        StaffFormatter.createResponse(
+
+            response
+
+        );
+
+    /*----------------------------------
+      Validate
+    ----------------------------------*/
+
+    if (
+
+        !response ||
+
+        !response.success ||
+
+        !response.data
+
+    ) {
+
+        result.message =
+
+            response?.message ||
+
+            "Designation information not found.";
+
+        return result;
+
+    }
+
+    /*----------------------------------
+      Canonical Profile
+    ----------------------------------*/
+
+    const profile =
+
+        response.data;
+
+    const identity =
+
+        profile.identity ||
+
+        {};
+
+    /*----------------------------------
+      Display Name
+    ----------------------------------*/
+
+    const displayName =
+
+        identity.name ||
+
+        identity.rawName ||
+
+        identity.cleanName ||
+
+        "-";
+
+    /*----------------------------------
+      Markdown
+    ----------------------------------*/
+
+    result.markdown = [
+
+        "# 👤 STAFF DESIGNATION",
+
+        "",
+
+        "**Name:** " +
+
+            displayName,
+
+        "",
+
+        "**Designation:** " +
+
+            (
+
+                identity.designation ||
+
+                "-"
+
+            )
+
+    ].join(
+
+        "\n"
+
+    );
+
+    /*----------------------------------
+      Card
+    ----------------------------------*/
+
+    result.cards.push({
+
+        type:
+
+            "staff-designation",
+
+        title:
+
+            displayName,
+
+        data:
+
+            profile
+
+    });
+
+    /*----------------------------------
+      Section
+    ----------------------------------*/
+
+    result.sections.push({
+
+        title:
+
+            "Designation",
+
+        data:
+
+            profile
+
+    });
+
+    /*----------------------------------
+      Metadata
+    ----------------------------------*/
+
+    result.success =
+
+        true;
+
+    result.intent =
+
+        StaffConstants.INTENTS.STAFF_DESIGNATION;
+
+    result.confidence =
+
+        response.confidence ||
+
+        1;
+
+    result.source =
+
+        response.source ||
+
+        "LOCAL";
+
+    result.message =
+
+        "Designation formatted.";
+
+    return result;
+
+};
+/*=========================================================
+ FORMAT CIRCLE
+=========================================================*/
+
+StaffFormatter.formatCircle = function (
+
+    response
+
+) {
+
+    const result =
+
+        StaffFormatter.createResponse(
+
+            response
+
+        );
+
+    /*----------------------------------
+      Validate
+    ----------------------------------*/
+
+    if (
+
+        !response ||
+
+        !response.success ||
+
+        !response.data
+
+    ) {
+
+        result.message =
+
+            response?.message ||
+
+            "Circle information not found.";
+
+        return result;
+
+    }
+
+    /*----------------------------------
+      Canonical Profile
+    ----------------------------------*/
+
+    const profile =
+
+        response.data;
+
+    const identity =
+
+        profile.identity ||
+
+        {};
+
+    const posting =
+
+        profile.posting ||
+
+        {};
+
+    /*----------------------------------
+      Display Name
+    ----------------------------------*/
+
+    const displayName =
+
+        identity.name ||
+
+        identity.rawName ||
+
+        identity.cleanName ||
+
+        "-";
+
+    /*----------------------------------
+      Markdown
+    ----------------------------------*/
+
+    result.markdown = [
+
+        "# 🌳 STAFF CIRCLE",
+
+        "",
+
+        "**Name:** " +
+
+            displayName,
+
+        "",
+
+        "**Circle:** " +
+
+            (
+
+                posting.circle ||
+
+                "-"
+
+            )
+
+    ].join(
+
+        "\n"
+
+    );
+
+    /*----------------------------------
+      Card
+    ----------------------------------*/
+
+    result.cards.push({
+
+        type:
+
+            "staff-circle",
+
+        title:
+
+            displayName,
+
+        data:
+
+            profile
+
+    });
+
+    /*----------------------------------
+      Section
+    ----------------------------------*/
+
+    result.sections.push({
+
+        title:
+
+            "Circle",
+
+        data:
+
+            profile
+
+    });
+
+    /*----------------------------------
+      Metadata
+    ----------------------------------*/
+
+    result.success =
+
+        true;
+
+    result.intent =
+
+        StaffConstants.INTENTS.STAFF_CIRCLE;
+
+    result.confidence =
+
+        response.confidence ||
+
+        1;
+
+    result.source =
+
+        response.source ||
+
+        "LOCAL";
+
+    result.message =
+
+        "Circle formatted.";
+
+    return result;
+
+};
+
+
+/*=========================================================
+ FORMAT DIVISION
+=========================================================*/
+
+StaffFormatter.formatDivision = function (
+
+    response
+
+) {
+
+    const result =
+
+        StaffFormatter.createResponse(
+
+            response
+
+        );
+
+    /*----------------------------------
+      Validate
+    ----------------------------------*/
+
+    if (
+
+        !response ||
+
+        !response.success ||
+
+        !response.data
+
+    ) {
+
+        result.message =
+
+            response?.message ||
+
+            "Division information not found.";
+
+        return result;
+
+    }
+
+    /*----------------------------------
+      Canonical Profile
+    ----------------------------------*/
+
+    const profile =
+
+        response.data;
+
+    const identity =
+
+        profile.identity ||
+
+        {};
+
+    const posting =
+
+        profile.posting ||
+
+        {};
+
+    /*----------------------------------
+      Display Name
+    ----------------------------------*/
+
+    const displayName =
+
+        identity.name ||
+
+        identity.rawName ||
+
+        identity.cleanName ||
+
+        "-";
+
+    /*----------------------------------
+      Markdown
+    ----------------------------------*/
+
+    result.markdown = [
+
+        "# 🌲 STAFF DIVISION",
+
+        "",
+
+        "**Name:** " +
+
+            displayName,
+
+        "",
+
+        "**Division:** " +
+
+            (
+
+                posting.division ||
+
+                "-"
+
+            ),
+
+        "",
+
+        "**Circle:** " +
+
+            (
+
+                posting.circle ||
+
+                "-"
+
+            )
+
+    ].join(
+
+        "\n"
+
+    );
+
+    /*----------------------------------
+      Card
+    ----------------------------------*/
+
+    result.cards.push({
+
+        type:
+
+            "staff-division",
+
+        title:
+
+            displayName,
+
+        data:
+
+            profile
+
+    });
+
+    /*----------------------------------
+      Section
+    ----------------------------------*/
+
+    result.sections.push({
+
+        title:
+
+            "Division",
+
+        data:
+
+            profile
+
+    });
+
+    /*----------------------------------
+      Metadata
+    ----------------------------------*/
+
+    result.success =
+
+        true;
+
+    result.intent =
+
+        StaffConstants.INTENTS.STAFF_DIVISION;
+
+    result.confidence =
+
+        response.confidence ||
+
+        1;
+
+    result.source =
+
+        response.source ||
+
+        "LOCAL";
+
+    result.message =
+
+        "Division formatted.";
+
+    return result;
+
+};
+
+/*=========================================================
+ FORMAT RANGE
+=========================================================*/
+
+StaffFormatter.formatRange = function (
+
+    response
+
+) {
+
+    const result =
+
+        StaffFormatter.createResponse(
+
+            response
+
+        );
+
+    /*----------------------------------
+      Validate
+    ----------------------------------*/
+
+    if (
+
+        !response ||
+
+        !response.success ||
+
+        !response.data
+
+    ) {
+
+        result.message =
+
+            response?.message ||
+
+            "Range information not found.";
+
+        return result;
+
+    }
+
+    /*----------------------------------
+      Canonical Profile
+    ----------------------------------*/
+
+    const profile =
+
+        response.data;
+
+    const identity =
+
+        profile.identity ||
+
+        {};
+
+    const posting =
+
+        profile.posting ||
+
+        {};
+
+    /*----------------------------------
+      Display Name
+    ----------------------------------*/
+
+    const displayName =
+
+        identity.name ||
+
+        identity.rawName ||
+
+        identity.cleanName ||
+
+        "-";
+
+    /*----------------------------------
+      Markdown
+    ----------------------------------*/
+
+    result.markdown = [
+
+        "# 🌲 STAFF RANGE",
+
+        "",
+
+        "**Name:** " +
+
+            displayName,
+
+        "",
+
+        "**Range:** " +
+
+            (
+
+                posting.range ||
+
+                "-"
+
+            ),
+
+        "",
+
+        "**Division:** " +
+
+            (
+
+                posting.division ||
+
+                "-"
+
+            )
+
+    ].join(
+
+        "\n"
+
+    );
+
+    /*----------------------------------
+      Card
+    ----------------------------------*/
+
+    result.cards.push({
+
+        type:
+
+            "staff-range",
+
+        title:
+
+            displayName,
+
+        data:
+
+            profile
+
+    });
+
+    /*----------------------------------
+      Section
+    ----------------------------------*/
+
+    result.sections.push({
+
+        title:
+
+            "Range",
+
+        data:
+
+            profile
+
+    });
+
+    /*----------------------------------
+      Metadata
+    ----------------------------------*/
+
+    result.success =
+
+        true;
+
+    result.intent =
+
+        StaffConstants.INTENTS.STAFF_RANGE;
+
+    result.confidence =
+
+        response.confidence ||
+
+        1;
+
+    result.source =
+
+        response.source ||
+
+        "LOCAL";
+
+    result.message =
+
+        "Range formatted.";
+
+    return result;
+
+};
+
+
+/*=========================================================
+ FORMAT BEAT
+=========================================================*/
+
+StaffFormatter.formatBeat = function (
+
+    response
+
+) {
+
+    const result =
+
+        StaffFormatter.createResponse(
+
+            response
+
+        );
+
+    /*----------------------------------
+      Validate
+    ----------------------------------*/
+
+    if (
+
+        !response ||
+
+        !response.success ||
+
+        !response.data
+
+    ) {
+
+        result.message =
+
+            response?.message ||
+
+            "Beat information not found.";
+
+        return result;
+
+    }
+
+    /*----------------------------------
+      Canonical Profile
+    ----------------------------------*/
+
+    const profile =
+
+        response.data;
+
+    const identity =
+
+        profile.identity ||
+
+        {};
+
+    const posting =
+
+        profile.posting ||
+
+        {};
+
+    /*----------------------------------
+      Display Name
+    ----------------------------------*/
+
+    const displayName =
+
+        identity.name ||
+
+        identity.rawName ||
+
+        identity.cleanName ||
+
+        "-";
+
+    /*----------------------------------
+      Markdown
+    ----------------------------------*/
+
+    result.markdown = [
+
+        "# 🌿 STAFF BEAT",
+
+        "",
+
+        "**Name:** " +
+
+            displayName,
+
+        "",
+
+        "**Beat:** " +
+
+            (
+
+                posting.beat ||
+
+                "-"
+
+            ),
+
+        "",
+
+        "**Range:** " +
+
+            (
+
+                posting.range ||
+
+                "-"
+
+            ),
+
+        "",
+
+        "**Division:** " +
+
+            (
+
+                posting.division ||
+
+                "-"
+
+            )
+
+    ].join(
+
+        "\n"
+
+    );
+
+    /*----------------------------------
+      Card
+    ----------------------------------*/
+
+    result.cards.push({
+
+        type:
+
+            "staff-beat",
+
+        title:
+
+            displayName,
+
+        data:
+
+            profile
+
+    });
+
+    /*----------------------------------
+      Section
+    ----------------------------------*/
+
+    result.sections.push({
+
+        title:
+
+            "Beat",
+
+        data:
+
+            profile
+
+    });
+
+    /*----------------------------------
+      Metadata
+    ----------------------------------*/
+
+    result.success =
+
+        true;
+
+    result.intent =
+
+        StaffConstants.INTENTS.STAFF_BEAT;
+
+    result.confidence =
+
+        response.confidence ||
+
+        1;
+
+    result.source =
+
+        response.source ||
+
+        "LOCAL";
+
+    result.message =
+
+        "Beat formatted.";
+
+    return result;
+
+};
+ /*=========================================================
+ FORMAT DUTY STATUS
+=========================================================*/
+
+/*=========================================================
+ FORMAT DUTY STATUS
+=========================================================*/
+
+StaffFormatter.formatDutyStatus = function (
+
+    response
+
+) {
+
+    const result =
+
+        StaffFormatter.createResponse(
+
+            response
+
+        );
+
+    /*----------------------------------
+      Validate
+    ----------------------------------*/
+
+    if (
+
+        !response ||
+
+        !response.success ||
+
+        !response.data
+
+    ) {
+
+        result.message =
+
+            response?.message ||
+
+            "Duty status information not found.";
+
+        return result;
+
+    }
+
+    /*----------------------------------
+      Canonical Profile
+    ----------------------------------*/
+
+    const profile =
+
+        response.data;
+
+    const identity =
+
+        profile.identity ||
+
+        {};
+
+    const assignment =
+
+        profile.assignment ||
+
+        {};
+
+    /*----------------------------------
+      Display Name
+    ----------------------------------*/
+
+    const displayName =
+
+        identity.name ||
+
+        identity.rawName ||
+
+        identity.cleanName ||
+
+        "-";
+
+    /*----------------------------------
+      Markdown
+    ----------------------------------*/
+
+    result.markdown = [
+
+        "# 🚓 STAFF DUTY STATUS",
+
+        "",
+
+        "**Name:** " +
+
+            displayName,
+
+        "",
+
+        "**Duty Status:** " +
+
+            (
+
+                assignment.status ||
+
+                "-"
+
+            ),
+
+        "",
+
+        "**Duty Type:** " +
+
+            (
+
+                assignment.dutyType ||
+
+                "-"
+
+            )
+
+    ].join(
+
+        "\n"
+
+    );
+
+    /*----------------------------------
+      Card
+    ----------------------------------*/
+
+    result.cards.push({
+
+        type:
+
+            "staff-duty-status",
+
+        title:
+
+            displayName,
+
+        data:
+
+            profile
+
+    });
+
+    /*----------------------------------
+      Section
+    ----------------------------------*/
+
+    result.sections.push({
+
+        title:
+
+            "Duty Status",
+
+        data:
+
+            profile
+
+    });
+
+    /*----------------------------------
+      Metadata
+    ----------------------------------*/
+
+    result.success =
+
+        true;
+
+    result.intent =
+
+        StaffConstants.INTENTS.STAFF_DUTY_STATUS;
+
+    result.confidence =
+
+        response.confidence ||
+
+        1;
+
+    result.source =
+
+        response.source ||
+
+        "LOCAL";
+
+    result.message =
+
+        "Duty status formatted.";
+
+    return result;
+
+};
+ /*=========================================================
+ FORMAT LEADER
+=========================================================*/
+
+StaffFormatter.formatLeader = function (
+
+    response
+
+) {
+
+    const result =
+
+        StaffFormatter.createResponse(
+
+            response
+
+        );
+
+    /*----------------------------------
+      Validate
+    ----------------------------------*/
+
+    if (
+
+        !response ||
+
+        !response.success ||
+
+        !response.data
+
+    ) {
+
+        result.message =
+
+            response?.message ||
+
+            "Leader information not found.";
+
+        return result;
+
+    }
+
+    /*----------------------------------
+      Canonical Profile
+    ----------------------------------*/
+
+    const profile =
+
+        response.data;
+
+    const identity =
+
+        profile.identity ||
+
+        {};
+
+    const assignment =
+
+        profile.assignment ||
+
+        {};
+
+    const teamInfo =
+
+        profile.teamInfo ||
+
+        {};
+
+    /*----------------------------------
+      Display Name
+    ----------------------------------*/
+
+    const displayName =
+
+        identity.name ||
+
+        identity.rawName ||
+
+        identity.cleanName ||
+
+        "-";
+
+    /*----------------------------------
+      Markdown
+    ----------------------------------*/
+
+    result.markdown = [
+
+        "# 👥 STAFF TEAM",
+
+        "",
+
+        "**Name:** " +
+
+            displayName,
+
+        "",
+
+        "**Team:** " +
+
+            (
+
+                teamInfo.team ||
+
+                assignment.team ||
+
+                "-"
+
+            ),
+
+        "",
+
+        "**Team Leader:** " +
+
+            (
+
+                teamInfo.leader ||
+
+                assignment.leader ||
+
+                "-"
+
+            ),
+
+        "",
+
+        "**Assigned Compartment:** " +
+
+            (
+
+                assignment.assignedCompartment ||
+
+                "-"
+
+            )
+
+    ].join(
+
+        "\n"
+
+    );
+
+    /*----------------------------------
+      Card
+    ----------------------------------*/
+
+    result.cards.push({
+
+        type:
+
+            "staff-leader",
+
+        title:
+
+            displayName,
+
+        data:
+
+            profile
+
+    });
+
+    /*----------------------------------
+      Section
+    ----------------------------------*/
+
+    result.sections.push({
+
+        title:
+
+            "Leader",
+
+        data:
+
+            profile
+
+    });
+
+    /*----------------------------------
+      Metadata
+    ----------------------------------*/
+
+    result.success =
+
+        true;
+
+    result.intent =
+
+        StaffConstants.INTENTS.STAFF_LEADER;
+
+    result.confidence =
+
+        response.confidence ||
+
+        1;
+
+    result.source =
+
+        response.source ||
+
+        "LOCAL";
+
+    result.message =
+
+        "Leader formatted.";
+
+    return result;
+
+};
+ /*=========================================================
+ FORMAT DUTY STARTED
+=========================================================*/
+
+StaffFormatter.formatDutyStarted = function (
+
+    response
+
+) {
+
+    const result =
+
+        StaffFormatter.createResponse(
+
+            response
+
+        );
+
+    /*----------------------------------
+      Validate
+    ----------------------------------*/
+
+    if (
+
+        !response ||
+
+        !response.success ||
+
+        !response.data
+
+    ) {
+
+        result.message =
+
+            response?.message ||
+
+            "Duty start information not found.";
+
+        return result;
+
+    }
+
+    /*----------------------------------
+      Canonical Profile
+    ----------------------------------*/
+
+    const profile =
+
+        response.data;
+
+    const identity =
+
+        profile.identity ||
+
+        {};
+
+    const assignment =
+
+        profile.assignment ||
+
+        {};
+
+    const analytics =
+
+        profile.analytics ||
+
+        {};
+
+    /*----------------------------------
+      Display Name
+    ----------------------------------*/
+
+    const displayName =
+
+        identity.name ||
+
+        identity.rawName ||
+
+        identity.cleanName ||
+
+        "-";
+
+    /*----------------------------------
+      Duty Started
+    ----------------------------------*/
+
+    const dutyStarted =
+
+        analytics.startedAt ||
+
+        "-";
+
+    /*----------------------------------
+      Markdown
+    ----------------------------------*/
+
+    result.markdown = [
+
+        "# ▶️ STAFF DUTY STARTED",
+
+        "",
+
+        "**Name:** " +
+
+            displayName,
+
+        "",
+
+        "**Duty Started:** " +
+
+            dutyStarted,
+
+        "",
+
+        "**Duty Type:** " +
+
+            (
+
+                assignment.dutyType ||
+
+                "-"
+
+            )
+
+    ].join(
+
+        "\n"
+
+    );
+
+    /*----------------------------------
+      Card
+    ----------------------------------*/
+
+    result.cards.push({
+
+        type:
+
+            "staff-duty-started",
+
+        title:
+
+            displayName,
+
+        data:
+
+            profile
+
+    });
+
+    /*----------------------------------
+      Section
+    ----------------------------------*/
+
+    result.sections.push({
+
+        title:
+
+            "Duty Started",
+
+        data:
+
+            profile
+
+    });
+
+    /*----------------------------------
+      Metadata
+    ----------------------------------*/
+
+    result.success =
+
+        true;
+
+    result.intent =
+
+        StaffConstants.INTENTS.STAFF_DUTY_STARTED;
+
+    result.confidence =
+
+        response.confidence ||
+
+        1;
+
+    result.source =
+
+        response.source ||
+
+        "LOCAL";
+
+    result.message =
+
+        "Duty start formatted.";
+
+    return result;
+
+};
+ /*=========================================================
+ FORMAT DUTY ENDED
+=========================================================*/
+
+StaffFormatter.formatDutyEnded = function (
+
+    response
+
+) {
+
+    const result =
+
+        StaffFormatter.createResponse(
+
+            response
+
+        );
+
+    /*----------------------------------
+      Validate
+    ----------------------------------*/
+
+    if (
+
+        !response ||
+
+        !response.success ||
+
+        !response.data
+
+    ) {
+
+        result.message =
+
+            response?.message ||
+
+            "Duty end information not found.";
+
+        return result;
+
+    }
+
+    /*----------------------------------
+      Canonical Profile
+    ----------------------------------*/
+
+    const profile =
+
+        response.data;
+
+    const identity =
+
+        profile.identity ||
+
+        {};
+
+    const assignment =
+
+        profile.assignment ||
+
+        {};
+
+    const displayName =
+
+        identity.name ||
+
+        identity.rawName ||
+
+        identity.cleanName ||
+
+        "-";
+
+    /*----------------------------------
+      Duty Ended
+    ----------------------------------*/
+
+    const dutyEnded =
+
+        assignment.lastDutyEnd ||
+
+        "-";
+
+    /*----------------------------------
+      Markdown
+    ----------------------------------*/
+
+    result.markdown = [
+
+        "# ⏹️ STAFF DUTY ENDED",
+
+        "",
+
+        "**Name:** " +
+
+            displayName,
+
+        "",
+
+        "**Duty Ended:** " +
+
+            dutyEnded,
+
+        "",
+
+        "**Duty Type:** " +
+
+            (
+
+                assignment.dutyType ||
+
+                "-"
+
+            )
+
+    ].join(
+
+        "\n"
+
+    );
+
+    /*----------------------------------
+      Card
+    ----------------------------------*/
+
+    result.cards.push({
+
+        type:
+
+            "staff-duty-ended",
+
+        title:
+
+            displayName,
+
+        data:
+
+            profile
+
+    });
+
+    /*----------------------------------
+      Section
+    ----------------------------------*/
+
+    result.sections.push({
+
+        title:
+
+            "Duty Ended",
+
+        data:
+
+            profile
+
+    });
+
+    /*----------------------------------
+      Metadata
+    ----------------------------------*/
+
+    result.success =
+
+        true;
+
+    result.intent =
+
+        StaffConstants.INTENTS.STAFF_DUTY_ENDED;
+
+    result.confidence =
+
+        response.confidence ||
+
+        1;
+
+    result.source =
+
+        response.source ||
+
+        "LOCAL";
+
+    result.message =
+
+        "Duty end formatted.";
+
+    return result;
+
+};
+ /*=========================================================
+ FORMAT DISTANCE
+=========================================================*/
+
+StaffFormatter.formatDistance = function (
+
+    response
+
+) {
+
+    const result =
+
+        StaffFormatter.createResponse(
+
+            response
+
+        );
+
+    /*----------------------------------
+      Validate
+    ----------------------------------*/
+
+    if (
+
+        !response ||
+
+        !response.success ||
+
+        !response.data
+
+    ) {
+
+        result.message =
+
+            response?.message ||
+
+            "Distance information not found.";
+
+        return result;
+
+    }
+
+    /*----------------------------------
+      Canonical Profile
+    ----------------------------------*/
+
+    const profile =
+
+        response.data;
+
+    const identity =
+
+        profile.identity ||
+
+        {};
+
+    const analytics =
+
+        profile.analytics ||
+
+        {};
+
+    /*----------------------------------
+      Display Name
+    ----------------------------------*/
+
+    const displayName =
+
+        identity.name ||
+
+        identity.rawName ||
+
+        identity.cleanName ||
+
+        "-";
+
+    /*----------------------------------
+      Markdown
+    ----------------------------------*/
+
+    result.markdown = [
+
+        "# 📏 STAFF DISTANCE",
+
+        "",
+
+        "**Name:** " +
+
+            displayName,
+
+        "",
+
+        "**Distance:** " +
+
+            (
+
+                analytics.distanceKm ??
+
+                0
+
+            ) +
+
+            " km",
+
+        "",
+
+        "**Patrol Points:** " +
+
+            (
+
+                analytics.pointCount ??
+
+                0
+
+            )
+
+    ].join(
+
+        "\n"
+
+    );
+
+    /*----------------------------------
+      Card
+    ----------------------------------*/
+
+    result.cards.push({
+
+        type:
+
+            "staff-distance",
+
+        title:
+
+            displayName,
+
+        data:
+
+            profile
+
+    });
+
+    /*----------------------------------
+      Section
+    ----------------------------------*/
+
+    result.sections.push({
+
+        title:
+
+            "Distance",
+
+        data:
+
+            profile
+
+    });
+
+    /*----------------------------------
+      Metadata
+    ----------------------------------*/
+
+    result.success =
+
+        true;
+
+    result.intent =
+
+        StaffConstants.INTENTS.STAFF_DISTANCE;
+
+    result.confidence =
+
+        response.confidence ||
+
+        1;
+
+    result.source =
+
+        response.source ||
+
+        "LOCAL";
+
+    result.message =
+
+        "Distance formatted.";
+
+    return result;
+
+};
+ /*=========================================================
+ FORMAT PATROL POINTS
+=========================================================*/
+
+StaffFormatter.formatPatrolPoints = function (
+
+    response
+
+) {
+
+    const result =
+
+        StaffFormatter.createResponse(
+
+            response
+
+        );
+
+    /*----------------------------------
+      Validate
+    ----------------------------------*/
+
+    if (
+
+        !response ||
+
+        !response.success ||
+
+        !response.data
+
+    ) {
+
+        result.message =
+
+            response?.message ||
+
+            "Patrol point information not found.";
+
+        return result;
+
+    }
+
+    /*----------------------------------
+      Canonical Profile
+    ----------------------------------*/
+
+    const profile =
+
+        response.data;
+
+    const identity =
+
+        profile.identity ||
+
+        {};
+
+    const analytics =
+
+        profile.analytics ||
+
+        {};
+
+    /*----------------------------------
+      Display Name
+    ----------------------------------*/
+
+    const displayName =
+
+        identity.name ||
+
+        identity.rawName ||
+
+        identity.cleanName ||
+
+        "-";
+
+    /*----------------------------------
+      Markdown
+    ----------------------------------*/
+
+    result.markdown = [
+
+        "# 📍 STAFF PATROL POINTS",
+
+        "",
+
+        "**Name:** " +
+
+            displayName,
+
+        "",
+
+        "**Patrol Points:** " +
+
+            (
+
+                analytics.pointCount ??
+
+                0
+
+            ),
+
+        "",
+
+        "**Distance:** " +
+
+            (
+
+                analytics.distanceKm ??
+
+                0
+
+            ) +
+
+            " km"
+
+    ].join(
+
+        "\n"
+
+    );
+
+    /*----------------------------------
+      Card
+    ----------------------------------*/
+
+    result.cards.push({
+
+        type:
+
+            "staff-patrol-points",
+
+        title:
+
+            displayName,
+
+        data:
+
+            profile
+
+    });
+
+    /*----------------------------------
+      Section
+    ----------------------------------*/
+
+    result.sections.push({
+
+        title:
+
+            "Patrol Points",
+
+        data:
+
+            profile
+
+    });
+
+    /*----------------------------------
+      Metadata
+    ----------------------------------*/
+
+    result.success =
+
+        true;
+
+    result.intent =
+
+        StaffConstants.INTENTS.STAFF_PATROL_POINTS;
+
+    result.confidence =
+
+        response.confidence ||
+
+        1;
+
+    result.source =
+
+        response.source ||
+
+        "LOCAL";
+
+    result.message =
+
+        "Patrol points formatted.";
+
+    return result;
+
+};
+
+ /*=========================================================
+ FORMAT PATROL START
+=========================================================*/
+
+StaffFormatter.formatPatrolStart = function (
+
+    response
+
+) {
+
+    const result =
+
+        StaffFormatter.createResponse(
+
+            response
+
+        );
+
+    /*----------------------------------
+      Validate
+    ----------------------------------*/
+
+    if (
+
+        !response ||
+
+        !response.success ||
+
+        !response.data
+
+    ) {
+
+        result.message =
+
+            response?.message ||
+
+            "Patrol start information not found.";
+
+        return result;
+
+    }
+
+    /*----------------------------------
+      Canonical Profile
+    ----------------------------------*/
+
+    const profile =
+
+        response.data;
+
+    const identity =
+
+        profile.identity ||
+
+        {};
+
+    const analytics =
+
+        profile.analytics ||
+
+        {};
+
+    /*----------------------------------
+      Display Name
+    ----------------------------------*/
+
+    const displayName =
+
+        identity.name ||
+
+        identity.rawName ||
+
+        identity.cleanName ||
+
+        "-";
+
+    /*----------------------------------
+      Markdown
+    ----------------------------------*/
+
+    result.markdown = [
+
+        "# ▶️ STAFF PATROL START",
+
+        "",
+
+        "**Name:** " +
+
+            displayName,
+
+        "",
+
+        "**Patrol Started:** " +
+
+            (
+
+                analytics.startedAt ||
+
+                "-"
+
+            ),
+
+        "",
+
+        "**Patrol Points:** " +
+
+            (
+
+                analytics.pointCount ??
+
+                0
+
+            )
+
+    ].join(
+
+        "\n"
+
+    );
+
+    /*----------------------------------
+      Card
+    ----------------------------------*/
+
+    result.cards.push({
+
+        type:
+
+            "staff-patrol-start",
+
+        title:
+
+            displayName,
+
+        data:
+
+            profile
+
+    });
+
+    /*----------------------------------
+      Section
+    ----------------------------------*/
+
+    result.sections.push({
+
+        title:
+
+            "Patrol Start",
+
+        data:
+
+            profile
+
+    });
+
+    /*----------------------------------
+      Metadata
+    ----------------------------------*/
+
+    result.success =
+
+        true;
+
+    result.intent =
+
+        StaffConstants.INTENTS.STAFF_PATROL_START;
+
+    result.confidence =
+
+        response.confidence ||
+
+        1;
+
+    result.source =
+
+        response.source ||
+
+        "LOCAL";
+
+    result.message =
+
+        "Patrol start formatted.";
+
+    return result;
+
+};
+ /*=========================================================
+ FORMAT PATROL END
+=========================================================*/
+
+StaffFormatter.formatPatrolEnd = function (
+
+    response
+
+) {
+
+    const result =
+
+        StaffFormatter.createResponse(
+
+            response
+
+        );
+
+    /*----------------------------------
+      Validate
+    ----------------------------------*/
+
+    if (
+
+        !response ||
+
+        !response.success ||
+
+        !response.data
+
+    ) {
+
+        result.message =
+
+            response?.message ||
+
+            "Patrol end information not found.";
+
+        return result;
+
+    }
+
+    /*----------------------------------
+      Canonical Profile
+    ----------------------------------*/
+
+    const profile =
+
+        response.data;
+
+    const identity =
+
+        profile.identity ||
+
+        {};
+
+    const analytics =
+
+        profile.analytics ||
+
+        {};
+
+    /*----------------------------------
+      Display Name
+    ----------------------------------*/
+
+    const displayName =
+
+        identity.name ||
+
+        identity.rawName ||
+
+        identity.cleanName ||
+
+        "-";
+
+    /*----------------------------------
+      Markdown
+    ----------------------------------*/
+
+    result.markdown = [
+
+        "# ⏹️ STAFF PATROL END",
+
+        "",
+
+        "**Name:** " +
+
+            displayName,
+
+        "",
+
+        "**Patrol Ended:** " +
+
+            (
+
+                analytics.endedAt ||
+
+                "-"
+
+            ),
+
+        "",
+
+        "**Patrol Points:** " +
+
+            (
+
+                analytics.pointCount ??
+
+                0
+
+            )
+
+    ].join(
+
+        "\n"
+
+    );
+
+    /*----------------------------------
+      Card
+    ----------------------------------*/
+
+    result.cards.push({
+
+        type:
+
+            "staff-patrol-end",
+
+        title:
+
+            displayName,
+
+        data:
+
+            profile
+
+    });
+
+    /*----------------------------------
+      Section
+    ----------------------------------*/
+
+    result.sections.push({
+
+        title:
+
+            "Patrol End",
+
+        data:
+
+            profile
+
+    });
+
+    /*----------------------------------
+      Metadata
+    ----------------------------------*/
+
+    result.success =
+
+        true;
+
+    result.intent =
+
+        StaffConstants.INTENTS.STAFF_PATROL_END;
+
+    result.confidence =
+
+        response.confidence ||
+
+        1;
+
+    result.source =
+
+        response.source ||
+
+        "LOCAL";
+
+    result.message =
+
+        "Patrol end formatted.";
+
+    return result;
+
+};
+ /*=========================================================
+ FORMAT PATROL DURATION
+=========================================================*/
+
+StaffFormatter.formatPatrolDuration = function (
+
+    response
+
+) {
+
+    const result =
+
+        StaffFormatter.createResponse(
+
+            response
+
+        );
+
+    /*----------------------------------
+      Validate
+    ----------------------------------*/
+
+    if (
+
+        !response ||
+
+        !response.success ||
+
+        !response.data
+
+    ) {
+
+        result.message =
+
+            response?.message ||
+
+            "Patrol duration information not found.";
+
+        return result;
+
+    }
+
+    /*----------------------------------
+      Canonical Profile
+    ----------------------------------*/
+
+    const profile =
+
+        response.data;
+
+    const identity =
+
+        profile.identity ||
+
+        {};
+
+    const analytics =
+
+        profile.analytics ||
+
+        {};
+
+    /*----------------------------------
+      Display Name
+    ----------------------------------*/
+
+    const displayName =
+
+        identity.name ||
+
+        identity.rawName ||
+
+        identity.cleanName ||
+
+        "-";
+
+    /*----------------------------------
+      Patrol Duration
+    ----------------------------------*/
+
+    const patrolDuration =
+
+        analytics.duration ||
+
+        analytics.durationText ||
+
+        "-";
+
+    /*----------------------------------
+      Markdown
+    ----------------------------------*/
+
+    result.markdown = [
+
+        "# ⏱️ STAFF PATROL DURATION",
+
+        "",
+
+        "**Name:** " +
+
+            displayName,
+
+        "",
+
+        "**Patrol Duration:** " +
+
+            patrolDuration
+
+    ].join(
+
+        "\n"
+
+    );
+
+    /*----------------------------------
+      Card
+    ----------------------------------*/
+
+    result.cards.push({
+
+        type:
+
+            "staff-patrol-duration",
+
+        title:
+
+            displayName,
+
+        data:
+
+            profile
+
+    });
+
+    /*----------------------------------
+      Section
+    ----------------------------------*/
+
+    result.sections.push({
+
+        title:
+
+            "Patrol Duration",
+
+        data:
+
+            profile
+
+    });
+
+    /*----------------------------------
+      Metadata
+    ----------------------------------*/
+
+    result.success =
+
+        true;
+
+    result.intent =
+
+        StaffConstants.INTENTS.STAFF_PATROL_DURATION;
+
+    result.confidence =
+
+        response.confidence ||
+
+        1;
+
+    result.source =
+
+        response.source ||
+
+        "LOCAL";
+
+    result.message =
+
+        "Patrol duration formatted.";
+
+    return result;
+
+};
+ /*=========================================================
+ FORMAT DUTY TYPE
+=========================================================*/
+
+StaffFormatter.formatDutyType = function (
+
+    response
+
+) {
+
+    const result =
+
+        StaffFormatter.createResponse(
+
+            response
+
+        );
+
+    /*----------------------------------
+      Validate
+    ----------------------------------*/
+
+    if (
+
+        !response ||
+
+        !response.success ||
+
+        !response.data
+
+    ) {
+
+        result.message =
+
+            response?.message ||
+
+            "Duty type information not found.";
+
+        return result;
+
+    }
+
+    /*----------------------------------
+      Canonical Profile
+    ----------------------------------*/
+
+    const profile =
+
+        response.data;
+
+    const identity =
+
+        profile.identity ||
+
+        {};
+
+    const assignment =
+
+        profile.assignment ||
+
+        {};
+
+    const posting =
+
+        profile.posting ||
+
+        {};
+
+    /*----------------------------------
+      Display Name
+    ----------------------------------*/
+
+    const displayName =
+
+        identity.name ||
+
+        identity.rawName ||
+
+        identity.cleanName ||
+
+        "-";
+
+    /*----------------------------------
+      Markdown
+    ----------------------------------*/
+
+    result.markdown = [
+
+        "# 🚓 STAFF DUTY TYPE",
+
+        "",
+
+        "**Name:** " +
+
+            displayName,
+
+        "",
+
+        "**Duty Type:** " +
+
+            (
+
+                assignment.dutyType ||
+
+                "-"
+
+            ),
+
+        "",
+
+        "**Duty Status:** " +
+
+            (
+
+                assignment.status ||
+
+                "-"
+
+            ),
+
+        "",
+
+        "**Duty Active:** " +
+
+            (
+
+                assignment.dutyActive
+
+                    ? "YES"
+
+                    : "NO"
+
+            ),
+
+        "",
+
+        "**Assigned Compartment:** " +
+
+            (
+
+                assignment.assignedCompartment ||
+
+                "-"
+
+            ),
+
+        "",
+
+        "**Leader:** " +
+
+            (
+
+                assignment.leader ||
+
+                "-"
+
+            ),
+
+        "",
+
+        "**Team:** " +
+
+            (
+
+                assignment.team ||
+
+                "-"
+
+            ),
+
+        "",
+
+        "## 🌳 Administrative Posting",
+
+        "",
+
+        "**Circle:** " +
+
+            (
+
+                posting.circle ||
+
+                "-"
+
+            ),
+
+        "**Division:** " +
+
+            (
+
+                posting.division ||
+
+                "-"
+
+            ),
+
+        "**Range:** " +
+
+            (
+
+                posting.range ||
+
+                "-"
+
+            ),
+
+        "**Beat:** " +
+
+            (
+
+                posting.beat ||
+
+                "-"
+
+            )
+
+    ].join(
+
+        "\n"
+
+    );
+
+    /*----------------------------------
+      Card
+    ----------------------------------*/
+
+    result.cards.push({
+
+        type:
+
+            "staff-duty-type",
+
+        title:
+
+            displayName,
+
+        data:
+
+            profile
+
+    });
+
+    /*----------------------------------
+      Section
+    ----------------------------------*/
+
+    result.sections.push({
+
+        title:
+
+            "Duty Type",
+
+        data:
+
+            profile
+
+    });
+
+    /*----------------------------------
+      Metadata
+    ----------------------------------*/
+
+    result.success =
+
+        true;
+
+    result.intent =
+
+        StaffConstants.INTENTS.STAFF_DUTY_TYPE;
+
+    result.confidence =
+
+        response.confidence ||
+
+        1;
+
+    result.source =
+
+        response.source ||
+
+        "LOCAL";
+
+    result.message =
+
+        "Duty type formatted.";
+
+    return result;
+
+};
+ /*=========================================================
  FORMAT CONTACT
 =========================================================*/
 
