@@ -883,62 +883,177 @@ Core.callAI = async function (request) {
       PUBLIC API
     ----------------------------------------------------------*/
 
-    Core.ask = async function (
+Core.ask = async function (
 
-        query,
+    query,
 
-        options = {}
+    options = {}
 
-    ) {
+) {
 
-        try {
+    const started =
 
-            const request =
+        Date.now();
 
-                await Core.buildRequest(
+    console.group(
 
-                    query,
+        "🟢 CORE.ASK"
 
-                    options
+    );
 
-                );
+    console.log(
 
-            return await Core.callAI(
+        "File:",
+
+        "core.js"
+
+    );
+
+    console.log(
+
+        "Function:",
+
+        "Core.ask"
+
+    );
+
+    console.log(
+
+        "Query:",
+
+        query
+
+    );
+
+    console.log(
+
+        "Options:",
+
+        options
+
+    );
+
+    try {
+
+        /*----------------------------------
+          Build Request
+        ----------------------------------*/
+
+        const request =
+
+            await Core.buildRequest(
+
+                query,
+
+                options
+
+            );
+
+        console.log(
+
+            "📦 Request Built:",
+
+            request
+
+        );
+
+        /*----------------------------------
+          Call AI Pipeline
+        ----------------------------------*/
+
+        const response =
+
+            await Core.callAI(
 
                 request
 
             );
 
-        }
+        console.log(
 
-        catch (err) {
+            "📥 Response:",
 
-            lastError = err;
+            response
 
-            Config.error(
+        );
 
-                "Core.ask",
+        console.log(
 
-                err
+            "⏱ Execution:",
 
-            );
+            Date.now() -
 
-            return {
+            started,
 
-                success: false,
+            "ms"
 
-                error:
+        );
 
-                    err.message ||
+        console.groupEnd();
 
-                    String(err)
+        return response;
 
-            };
+    }
 
-        }
+    catch (
 
-    };
+        err
 
+    ) {
+
+        lastError =
+
+            err;
+
+        Config.error(
+
+            "Core.ask",
+
+            err
+
+        );
+
+        console.error(
+
+            "❌ Core.ask Error:",
+
+            err
+
+        );
+
+        console.log(
+
+            "⏱ Failed After:",
+
+            Date.now() -
+
+            started,
+
+            "ms"
+
+        );
+
+        console.groupEnd();
+
+        return {
+
+            success: false,
+
+            error:
+
+                err.message ||
+
+                String(
+
+                    err
+
+                )
+
+        };
+
+    }
+
+};
 
 
     /*----------------------------------------------------------
