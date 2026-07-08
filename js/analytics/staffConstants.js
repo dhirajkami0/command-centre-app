@@ -53,7 +53,11 @@ StaffConstants.DOMAIN =
 =========================================================*/
 
 StaffConstants.INTENTS = Object.freeze({
-    /* Search */
+
+    /*=========================================================
+      SEARCH
+    =========================================================*/
+
     STAFF_SEARCH: "staffSearch",
     STAFF_DIRECTORY: "staffDirectory",
     STAFF_EXISTS: "staffExists",
@@ -64,143 +68,95 @@ StaffConstants.INTENTS = Object.freeze({
     STAFF_BY_LEADER: "staffByLeader",
     STAFF_BY_TEAM: "staffByTeam",
 
-    /* Profile */
+    /*=========================================================
+      PROFILE
+    =========================================================*/
+
     STAFF_PROFILE: "staffProfile",
     STAFF_CONTACT: "staffContact",
     STAFF_ROLE: "staffRole",
     STAFF_DESIGNATION: "staffDesignation",
-    STAFF_TYPE: "staffType",
-    STAFF_IDENTITY: "staffIdentity",
 
-    /* Posting */
+    /*=========================================================
+      POSTING
+    =========================================================*/
+
     STAFF_POSTING: "staffPosting",
-    STAFF_BEAT: "staffBeat",
-    STAFF_RANGE: "staffRange",
-    STAFF_DIVISION: "staffDivision",
     STAFF_CIRCLE: "staffCircle",
+    STAFF_DIVISION: "staffDivision",
+    STAFF_RANGE: "staffRange",
+    STAFF_BEAT: "staffBeat",
     STAFF_COMPARTMENT: "staffCompartment",
-    STAFF_AREA: "staffArea",
 
-    /* Location */
+    /*=========================================================
+      LOCATION
+    =========================================================*/
+
     STAFF_LOCATION: "staffLocation",
     STAFF_GPS: "staffGPS",
-    STAFF_COORDINATES: "staffCoordinates",
-    STAFF_CURRENT_POSITION: "staffCurrentPosition",
-    STAFF_MAP_LOCATION: "staffMapLocation",
-    STAFF_LAST_LOCATION: "staffLastLocation",
 
-    /* Duty */
+    /*=========================================================
+      DUTY
+    =========================================================*/
+
     STAFF_DUTY: "staffDuty",
     STAFF_DUTY_STATUS: "staffDutyStatus",
     STAFF_DUTY_TYPE: "staffDutyType",
-    STAFF_DUTY_ACTIVE: "staffDutyActive",
-    STAFF_DUTY_HISTORY: "staffDutyHistory",
-    STAFF_LAST_DUTY: "staffLastDuty",
-    STAFF_ASSIGNMENT: "staffAssignment",
     STAFF_DUTY_STARTED: "staffDutyStarted",
     STAFF_DUTY_ENDED: "staffDutyEnded",
+    STAFF_DUTY_ACTIVE: "staffDutyActive",
+    STAFF_LAST_DUTY: "staffLastDuty",
+    STAFF_ASSIGNMENT: "staffAssignment",
 
-    /* Status */
-    STAFF_STATUS: "staffStatus",
-    STAFF_ONLINE: "staffOnline",
-    STAFF_OFFLINE: "staffOffline",
-    STAFF_AVAILABLE: "staffAvailable",
-    STAFF_UNAVAILABLE: "staffUnavailable",
+    /*=========================================================
+      TEAM
+    =========================================================*/
 
-    /* Movement */
-    STAFF_MOVEMENT: "staffMovement",
+    STAFF_TEAM: "staffTeam",
+    STAFF_LEADER: "staffLeader",
+
+    /*=========================================================
+      GPS
+    =========================================================*/
+
     STAFF_SPEED: "staffSpeed",
     STAFF_HEADING: "staffHeading",
-    STAFF_DIRECTION: "staffDirection",
-    STAFF_TURNING: "staffTurning",
-    STAFF_MOTION: "staffMotion",
-    STAFF_MOVING: "staffMoving",
+    STAFF_ACCURACY: "staffAccuracy",
 
-    /* GPS */
-    STAFF_GPS_STATUS: "staffGPSStatus",
-    STAFF_GPS_ACCURACY: "staffGPSAccuracy",
-    STAFF_TRACKING: "staffTracking",
-    STAFF_SOURCE: "staffSource",
-    STAFF_SIGNAL: "staffSignal",
-    STAFF_LAST_SEEN: "staffLastSeen",
-    STAFF_UPDATED: "staffUpdated",
-    STAFF_TIMESTAMP: "staffTimestamp",
-    STAFF_TIME: "staffTime",
+    /*=========================================================
+      PATROL ANALYTICS
+    =========================================================*/
 
-    /* Team */
-    STAFF_LEADER: "staffLeader",
-    STAFF_TEAM: "staffTeam",
-    STAFF_TEAM_MEMBERS: "staffTeamMembers",
-    STAFF_LEADER_INFO: "staffLeaderInfo",
-    TEAM_LEADER: "teamLeader",
-    TEAM_MEMBERS: "teamMembers",
-    TEAM_SEARCH: "teamSearch",
+    STAFF_ANALYTICS: "staffAnalytics",
+    STAFF_DISTANCE: "staffDistance",
+    STAFF_PATROL_POINTS: "staffPatrolPoints",
+    STAFF_PATROL_START: "staffPatrolStart",
+    STAFF_PATROL_END: "staffPatrolEnd",
+    STAFF_PATROL_DURATION: "staffPatrolDuration",
 
-    /* Session & Hierarchy */
-    STAFF_SESSION: "staffSession",
-    STAFF_SESSION_STATUS: "staffSessionStatus",
-    STAFF_TRACKING_SESSION: "staffTrackingSession",
-    STAFF_HIERARCHY: "staffHierarchy",
-    STAFF_REPORTING: "staffReporting",
-    STAFF_ADMINISTRATIVE_UNIT: "staffAdministrativeUnit",
+    /*=========================================================
+      STRENGTH
+    =========================================================*/
 
- /* Analytics */
+    STAFF_STRENGTH: "staffStrength",
 
-STAFF_STRENGTH: "staffStrength",
+    ACTIVE_STAFF_COUNT: "activeStaffCount",
+    ACTIVE_STAFF_LIST: "activeStaffList",
+    INACTIVE_STAFF_LIST: "inactiveStaffList",
 
-ACTIVE_STAFF_COUNT: "activeStaffCount",
-ACTIVE_STAFF_LIST: "activeStaffList",
-INACTIVE_STAFF_LIST: "inactiveStaffList",
+    DUTY_SUMMARY: "dutySummary",
+    TEAM_LEADER_LIST: "teamLeaderList",
 
-STAFF_NEAR_LOCATION: "staffNearLocation",
-TEAM_LEADER_LIST: "teamLeaderList",
-DUTY_SUMMARY: "dutySummary",
+    MOVING_STAFF: "movingStaff",
+    STATIONARY_STAFF: "stationaryStaff",
 
-STAFF_ANALYTICS: "staffAnalytics",
-STAFF_DISTANCE: "staffDistance",
-STAFF_PATROL_POINTS: "staffPatrolPoints",
-STAFF_PATROL_START: "staffPatrolStart",
-STAFF_PATROL_END: "staffPatrolEnd",
-STAFF_PATROL_DURATION: "staffPatrolDuration",
+    /*=========================================================
+      CONTROL ROOM
+    =========================================================*/
 
-STAFF_ACCURACY: "staffAccuracy",
-
-MOVING_STAFF: "movingStaff",
-STATIONARY_STAFF: "stationaryStaff",
-FAST_MOVING_STAFF: "fastMovingStaff",
-SLOW_MOVING_STAFF: "slowMovingStaff",
-
-    /* Administration */
-    STAFF_DOCUMENT: "staffDocument",
-    STAFF_DEVICE: "staffDevice",
-    STAFF_RECORD: "staffRecord",
-
-    /* Control Room & Alerts */
     WHO_IS_ON_DUTY: "whoIsOnDuty",
-    WHO_IS_PATROLLING: "whoIsPatrolling",
-    WHO_IS_NEAREST: "whoIsNearest",
-    WHO_IS_OFFLINE: "whoIsOffline",
-    WHO_HAS_OLD_GPS: "whoHasOldGPS",
-    WHO_HAS_POOR_ACCURACY: "whoHasPoorAccuracy",
-    WHO_STOPPED_MOVING: "whoStoppedMoving",
-    WHO_STARTED_DUTY: "whoStartedDuty",
-    WHO_ENDED_DUTY: "whoEndedDuty",
-    STAFF_NO_GPS: "staffNoGPS",
-    STAFF_INACTIVE_GPS: "staffInactiveGPS",
-    STAFF_LOW_ACCURACY_GPS: "staffLowAccuracyGPS",
-    STAFF_NO_MOVEMENT: "staffNoMovement",
-    STAFF_NO_DUTY: "staffNoDuty",
+    WHO_IS_PATROLLING: "whoIsPatrolling"
 
-    /* Map & Communication */
-    STAFF_MAP: "staffMap",
-    STAFF_MAP_MARKER: "staffMapMarker",
-    STAFF_LIVE_MAP: "staffLiveMap",
-    STAFF_LOCATION_HISTORY: "staffLocationHistory",
-    STAFF_CALL: "staffCall",
-    STAFF_MESSAGE: "staffMessage",
-    STAFF_SHARE_LOCATION: "staffShareLocation",
-    STAFF_SUMMARY: "staffSummary",
-    STAFF_OPERATIONAL_STATUS: "staffOperationalStatus"
 });
 
 /*=========================================================
