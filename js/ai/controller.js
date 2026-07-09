@@ -163,289 +163,345 @@ async function () {
  ASK
 =========================================================*/
 
-IntentManager.detect = async function (
-
-    query
-
+Controller.ask = async function (
+    request
 ) {
 
-    IntentManager.init();
+    Controller.init();
 
     const started =
-
         Date.now();
 
     console.group(
-
-        "🔵 INTENT MANAGER"
-
+        "🧠 CONTROLLER PIPELINE"
     );
 
     console.log(
-
         "File:",
-
-        "intentManager.js"
-
+        "controller.js"
     );
 
     console.log(
-
         "Function:",
-
-        "IntentManager.detect"
-
+        "Controller.ask()"
     );
 
     console.log(
-
-        "Incoming Query:",
-
-        query
-
+        "Incoming Request:",
+        request
     );
-
-    /*----------------------------------
-      Normalize Query
-    ----------------------------------*/
-
-    query =
-
-        IntentManager.normalize(
-
-            query
-
-        );
-
-    console.log(
-
-        "Normalized:",
-
-        query
-
-    );
-
-    /*----------------------------------
-      Intent Cache
-    ----------------------------------*/
-
-    let intent =
-
-        await IntentManager.getCachedIntent(
-
-            query
-
-        );
-
-    if (
-
-        intent
-
-    ) {
-
-        console.log(
-
-            "⚡ CACHE HIT"
-
-        );
-
-        console.log(
-
-            intent
-
-        );
-
-        console.log(
-
-            "⏱",
-
-            Date.now() -
-
-            started,
-
-            "ms"
-
-        );
-
-        console.groupEnd();
-
-        return intent;
-
-    }
-
-    console.log(
-
-        "⚪ CACHE MISS"
-
-    );
-
-    /*----------------------------------
-      Local Detection
-    ----------------------------------*/
-
-    intent =
-
-        IntentManager.detectLocal(
-
-            query
-
-        );
-
-    console.log(
-
-        "🟢 Local Result:",
-
-        intent
-
-    );
-
-    /*----------------------------------
-      Stay Local?
-    ----------------------------------*/
-
-    const useAI =
-
-        IntentManager.shouldUseAI(
-
-            intent
-
-        );
-
-    console.log(
-
-        "Requires AI:",
-
-        useAI
-
-    );
-
-    if (
-
-        !useAI
-
-    ) {
-
-        await IntentManager.setCachedIntent(
-
-            query,
-
-            intent
-
-        );
-
-        console.log(
-
-            "✅ Returning Local Intent"
-
-        );
-
-        console.log(
-
-            "⏱",
-
-            Date.now() -
-
-            started,
-
-            "ms"
-
-        );
-
-        console.groupEnd();
-
-        return intent;
-
-    }
-
-    /*----------------------------------
-      AI Detection
-    ----------------------------------*/
-
-    console.log(
-
-        "🤖 Calling AI Provider"
-
-    );
-
-    const AI =
-
-        GG.AI;
-
-    if (
-
-        !AI ||
-
-        typeof AI.detectIntent !==
-
-        "function"
-
-    ) {
-
-        console.warn(
-
-            "AI Provider unavailable."
-
-        );
-
-        await IntentManager.setCachedIntent(
-
-            query,
-
-            intent
-
-        );
-
-        console.groupEnd();
-
-        return intent;
-
-    }
 
     try {
 
-        const aiIntent =
+        /*----------------------------------
+          Validate Request
+        ----------------------------------*/
 
-            await AI.detectIntent(
+        if (
 
-                query
+            !request ||
 
+            typeof request !==
+            "object"
+
+        ) {
+
+            throw new Error(
+                "Invalid request."
             );
 
+        }
+
+        if (
+
+            !request.query
+
+        ) {
+
+            throw new Error(
+                "Request query missing."
+            );
+
+        }
+
         console.log(
+            "✅ Request Valid"
+        );
 
-            "🤖 AI Result:",
+        /*----------------------------------
+          Ensure Analytics
+        ----------------------------------*/
 
-            aiIntent
+        console.group(
+            "📊 Analytics"
+        );
 
+        console.log(
+            "Controller.ensureAnalyticsReady()"
+        );
+
+        await Controller.ensureAnalyticsReady();
+
+        console.log(
+            "✅ Analytics Ready"
+        );
+
+        console.groupEnd();
+
+        /*----------------------------------
+          Detect Intent
+        ----------------------------------*/
+
+        console.group(
+            "🎯 Intent Detection"
+        );
+
+        const IntentManager =
+            GG.IntentManager;
+
+        console.log(
+            "Module:",
+            IntentManager
         );
 
         if (
 
-            aiIntent &&
+            !IntentManager ||
 
-            aiIntent.success !== false
+            typeof IntentManager.detect !==
+            "function"
 
         ) {
 
-            intent =
-
-                IntentManager.mergeIntent(
-
-                    intent,
-
-                    aiIntent
-
-                );
-
-            console.log(
-
-                "Merged Intent:",
-
-                intent
-
+            throw new Error(
+                "IntentManager unavailable."
             );
 
         }
+
+        console.log(
+            "Calling:",
+            "IntentManager.detect()"
+        );
+
+        const intent =
+            await IntentManager.detect(
+                request.query
+            );
+
+        console.log(
+            "Intent Returned:"
+        );
+
+        console.log(
+            intent
+        );
+
+        console.log(
+            "Intent:",
+            intent.intent
+        );
+
+        console.log(
+            "Domain:",
+            intent.domain
+        );
+
+        console.log(
+            "Confidence:",
+            intent.confidence
+        );
+
+        console.groupEnd();
+
+        if (
+
+            GG.Config?.DEBUG?.ENABLED
+
+        ) {
+
+            console.log(
+                "Unified Intent:",
+                intent
+            );
+
+        }
+
+        /*----------------------------------
+          Save Intent
+        ----------------------------------*/
+
+        request.detectedIntent =
+            intent;
+
+        console.log(
+            "Request.detectedIntent updated."
+        );
+
+        /*----------------------------------
+          Dispatcher
+        ----------------------------------*/
+
+        console.group(
+            "🚀 Dispatcher"
+        );
+
+        const Dispatcher =
+            GG.AIDispatcher;
+
+        console.log(
+            "Module:",
+            Dispatcher
+        );
+
+        if (
+
+            !Dispatcher ||
+
+            typeof Dispatcher.dispatch !==
+            "function"
+
+        ) {
+
+            throw new Error(
+                "Dispatcher unavailable."
+            );
+
+        }
+
+        console.log(
+            "Calling:",
+            "AIDispatcher.dispatch()"
+        );
+
+        const response =
+            await Dispatcher.dispatch(
+                intent
+            );
+
+        console.log(
+            "Dispatcher Returned:"
+        );
+
+        console.log(
+            response
+        );
+
+        console.groupEnd();
+
+        if (
+
+            GG.Config?.DEBUG?.ENABLED
+
+        ) {
+
+            console.log(
+                "Dispatcher Response:",
+                response
+            );
+
+        }
+
+        /*----------------------------------
+          Local Success
+        ----------------------------------*/
+
+        if (
+
+            response &&
+
+            response.success
+
+        ) {
+
+            console.group(
+                "✅ Controller Success"
+            );
+
+            response.local =
+                true;
+
+            response.intent =
+                intent.intent;
+
+            response.detectedIntent =
+                intent;
+
+            console.log(
+                "Final Intent:",
+                response.intent
+            );
+
+            console.log(
+                "Local:",
+                response.local
+            );
+
+            console.log(
+                "Response:"
+            );
+
+            console.log(
+                response
+            );
+
+            console.log(
+                "Elapsed:",
+                Date.now() -
+                started,
+                "ms"
+            );
+
+            console.groupEnd();
+
+            console.groupEnd();
+
+            return response;
+
+        }
+
+        /*----------------------------------
+          Cloud Required
+        ----------------------------------*/
+
+        console.warn(
+            "⚠ Local pipeline finished but requires cloud."
+        );
+
+        console.log(
+            "Elapsed:",
+            Date.now() -
+            started,
+            "ms"
+        );
+
+        console.groupEnd();
+
+        return {
+
+            success: false,
+
+            local: false,
+
+            reason: "cloud",
+
+            intent:
+
+                intent?.intent ||
+
+                "unknown",
+
+            detectedIntent:
+
+                intent ||
+
+                null,
+
+            message:
+
+                "Requires cloud reasoning."
+
+        };
 
     }
 
@@ -455,55 +511,49 @@ IntentManager.detect = async function (
 
     ) {
 
-        console.error(
-
-            "AI Detect Error:",
-
-            err
-
+        console.group(
+            "❌ Controller Error"
         );
+
+        console.error(
+            err
+        );
+
+        console.log(
+            "Elapsed:",
+            Date.now() -
+            started,
+            "ms"
+        );
+
+        console.groupEnd();
+
+        return {
+
+            success: false,
+
+            local: false,
+
+            source:
+                "controller",
+
+            message:
+                err.message,
+
+            error:
+                err
+
+        };
 
     }
 
-    /*----------------------------------
-      Cache Final
-    ----------------------------------*/
+    finally {
 
-    await IntentManager.setCachedIntent(
+        console.groupEnd();
 
-        query,
-
-        intent
-
-    );
-
-    console.log(
-
-        "🏁 Final Intent:",
-
-        intent
-
-    );
-
-    console.log(
-
-        "⏱",
-
-        Date.now() -
-
-        started,
-
-        "ms"
-
-    );
-
-    console.groupEnd();
-
-    return intent;
+    }
 
 };
-
-
 /*=========================================================
  REGISTER
 =========================================================*/
