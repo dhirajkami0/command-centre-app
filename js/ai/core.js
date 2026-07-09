@@ -277,160 +277,258 @@ Core.init = async function () {
       BUILD REQUEST
     ----------------------------------------------------------*/
 
-    Core.buildRequest = async function (
+  Core.buildRequest = async function (
 
-        query,
+    query,
 
-        options = {}
+    options = {}
+
+) {
+
+    if (
+
+        typeof query !== "string"
 
     ) {
 
-        if (
+        throw new Error(
 
-            typeof query !== "string"
+            "Query must be a string."
 
-        ) {
-
-            throw new Error(
-
-                "Query must be a string."
-
-            );
-
-        }
-
-        query =
-
-            query.trim();
-
-        if (!query.length) {
-
-            throw new Error(
-
-                "Query cannot be empty."
-
-            );
-
-        }
-
-        const route =
-
-            await Router.route(
-
-                query
-
-            );
-
-        const context =
-
-            await Context.snapshot();
-
-        const request = {
-
-            id:
-
-                Config.uuid(),
-
-            timestamp:
-
-                Date.now(),
-
-            query:
-
-                query,
-
-            intent:
-
-                route.intent,
-
-            score:
-
-                route.score,
-
-            route:
-
-                route,
-
-            context:
-
-                context,
-
-            options:
-
-                Config.clone(
-
-                    options
-
-                )
-
-        };
-
-        lastRequest =
-
-            Config.clone(
-
-                request
-
-            );
-
-        requestCount++;
-
-        history.push({
-
-            id:
-
-                request.id,
-
-            query:
-
-                request.query,
-
-            intent:
-
-                request.intent,
-
-            timestamp:
-
-                request.timestamp
-
-        });
-
-        while (
-
-            history.length >
-
-            Config.CHAT.MAX_HISTORY
-
-        ) {
-
-            history.shift();
-
-        }
-
-        return request;
-
-    };
-
-     /*----------------------------------------------------------
-      CACHE KEY
-    ----------------------------------------------------------*/
-
-    function cacheKey(request) {
-
-        return [
-
-            request.intent,
-
-            request.query
-
-        ]
-
-        .join("::")
-
-        .toLowerCase();
+        );
 
     }
 
+    query =
+
+        query.trim();
+
+    if (
+
+        !query.length
+
+    ) {
+
+        throw new Error(
+
+            "Query cannot be empty."
+
+        );
+
+    }
+
+    /*----------------------------------
+      Legacy Router
+      (Context / Tools Only)
+    ----------------------------------*/
+
+    const route =
+
+        await Router.route(
+
+            query
+
+        );
+
+    /*----------------------------------
+      Context Snapshot
+    ----------------------------------*/
+
+    const context =
+
+        await Context.snapshot();
+
+    /*----------------------------------
+      Build Request
+
+      NOTE:
+      Intent will be detected later by
+      Controller -> IntentManager.
+    ----------------------------------*/
+
+    const request = {
+
+        id:
+
+            Config.uuid(),
+
+        timestamp:
+
+            Date.now(),
+
+        query:
+
+            query,
+
+        detectedIntent:
+
+            null,
+
+        intent:
+
+            null,
+
+        domain:
+
+            null,
+
+        entities:
+
+            {},
+
+        confidence:
+
+            0,
+
+        score:
+
+            route?.score ||
+
+            0,
+
+        route:
+
+            route,
+
+        context:
+
+            context,
+
+        options:
+
+            Config.clone(
+
+                options
+
+            )
+
+    };
+
+    /*----------------------------------
+      Diagnostics
+    ----------------------------------*/
+
+    if (
+
+        Config.DEBUG?.ENABLED
+
+    ) {
+
+        console.group(
+
+            "📦 CORE BUILD REQUEST"
+
+        );
+
+        console.log(
+
+            "File:",
+
+            "core.js"
+
+        );
+
+        console.log(
+
+            "Query:",
+
+            request.query
+
+        );
+
+        console.log(
+
+            "Legacy Route:",
+
+            route
+
+        );
+
+        console.log(
+
+            "Context:",
+
+            context
+
+        );
+
+        console.log(
+
+            "Request:",
+
+            request
+
+        );
+
+        console.groupEnd();
+
+    }
+
+    /*----------------------------------
+      Save Last Request
+    ----------------------------------*/
+
+    lastRequest =
+
+        Config.clone(
+
+            request
+
+        );
+
+    requestCount++;
+
+    history.push({
+
+        id:
+
+            request.id,
+
+        query:
+
+            request.query,
+
+        intent:
+
+            request.intent,
+
+        timestamp:
+
+            request.timestamp
+
+    });
+
+    while (
+
+        history.length >
+
+        Config.CHAT.MAX_HISTORY
+
+    ) {
+
+        history.shift();
+
+    }
+
+    return request;
+
+};
+
+    function cacheKey(request) {
+
+    return [
+
+        request.intent,
+
+        request.query
+
+    ]
+
+    .join("::")
+
+    .toLowerCase();
+
+}
 
 
     /*----------------------------------------------------------
