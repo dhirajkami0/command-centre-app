@@ -4905,475 +4905,259 @@ StaffEntities.createExtractionResult = function (
 =========================================================*/
 
 StaffEntities.extractStaffEntities = function (
-
     result
-
 ) {
-
     /*----------------------------------
       Validate Result
     ----------------------------------*/
-
     if (
-
         !result ||
-
         typeof result !== "object"
-
     ) {
-
         return result;
-
     }
-
     /*----------------------------------
       Search Query
     ----------------------------------*/
-
     const query =
-
         String(
-
             result.searchQuery ||
-
             result.normalizedQuery ||
-
             ""
-
         )
-
         .trim()
-
         .toUpperCase();
-
     if (
-
         query === ""
-
     ) {
-
         return result;
-
     }
-
     /*----------------------------------
       Query Words
     ----------------------------------*/
-
     const queryWords =
-
         new Set(
-
             query
-
                 .split(/\s+/)
-
                 .filter(
-
                     function (
-
                         word
-
                     ) {
-
                         return (
-
                             word.length >= 2
-
                         );
-
                     }
-
                 )
-
         );
-
     /*----------------------------------
       Matches
     ----------------------------------*/
-
     const matches = [];
-
     const seen =
-
         new Set();
-
     /*----------------------------------
       Helper
     ----------------------------------*/
-
     function addMatch(
-
         staff,
-
         score
-
     ) {
-
         if (
-
             !staff ||
-
             !staff.identity
-
         ) {
-
             return;
-
         }
-
         const key =
-
             String(
-
                 staff.identity.cleanName ||
-
                 ""
-
             )
-
             .trim()
-
             .toUpperCase();
-
         if (
-
             seen.has(
-
                 key
-
             )
-
         ) {
-
             return;
-
         }
-
         seen.add(
-
             key
-
         );
-
         matches.push({
-
             staff:
-
                 staff,
-
             score:
-
                 score
-
         });
-
     }
-
     /*----------------------------------
       Search Staff
     ----------------------------------*/
-
     StaffEntities.staff.forEach(
-
         function (
-
             staff
-
         ) {
-
             if (
-
                 !staff ||
-
                 !staff.search ||
-
                 !Array.isArray(
-
                     staff.search.tokens
-
                 )
-
             ) {
-
                 return;
-
             }
-
             let score = 0;
-
             staff.search.tokens.forEach(
-
                 function (
-
                     token
-
                 ) {
-
                     token =
-
                         String(
-
                             token ||
-
                             ""
-
                         )
-
                         .trim()
-
                         .toUpperCase();
-
                     if (
-
                         token.length < 2
-
                     ) {
-
                         return;
-
                     }
-
                     /*------------------------------
                       Exact Full Query
                     ------------------------------*/
-
                     if (
-
                         token === query
-
                     ) {
-
                         score += 1000;
-
                         return;
-
                     }
-
                     /*------------------------------
                       Exact Word Match
                     ------------------------------*/
-
                     if (
-
+                        queryWords.size === 1 &&
                         queryWords.has(
-
                             token
-
                         )
-
                     ) {
-
                         score +=
-
                             token.length *
-
                             100;
-
                         return;
-
                     }
-
                     /*------------------------------
                       Multi-word Token
                     ------------------------------*/
-
                     const tokenWords =
-
                         token
-
                             .split(/\s+/)
-
                             .filter(
-
                                 function (
-
                                     word
-
                                 ) {
-
                                     return (
-
                                         word.length >= 2
-
                                     );
-
                                 }
-
                             );
-
                     let matchedWords = 0;
-
                     tokenWords.forEach(
-
                         function (
-
                             word
-
                         ) {
-
                             if (
-
                                 queryWords.has(
-
                                     word
-
                                 )
-
                             ) {
-
                                 matchedWords++;
-
                             }
-
                         }
-
                     );
-
                     if (
+                        tokenWords.length === 1
+                    ) {
+                        if (
+                            queryWords.size === 1 &&
+                            matchedWords === 1
+                        ) {
+                            score +=
+                                token.length *
+                                100;
+                        }
+                    } else {
+                       if (
 
-    tokenWords.length === 1
+    matchedWords === tokenWords.length &&
+
+    tokenWords.length === queryWords.size
 
 ) {
 
-    if (
+    score +=
 
-        matchedWords === 1
+        token.length *
 
-    ) {
-
-        score +=
-
-            token.length *
-
-            100;
-
-    }
+        40;
 
 }
-
-else {
-
-    if (
-
-        matchedWords ===
-
-        tokenWords.length
-
-    ) {
-
-        score +=
-
-            token.length *
-
-            40;
-
-    }
-
-}
-
+                    }
                 }
-
             );
-
             if (
-
                 score > 0
-
             ) {
-
                 addMatch(
-
                     staff,
-
                     score
-
                 );
-
             }
-
         }
-
     );
-
     /*----------------------------------
       Highest Score First
     ----------------------------------*/
-
     matches.sort(
-
         function (
-
             a,
-
             b
-
         ) {
-
             if (
-
                 b.score !==
-
                 a.score
-
             ) {
-
                 return (
-
                     b.score -
-
                     a.score
-
                 );
-
             }
-
             return (
-
                 a.staff.identity.cleanName
-
                     .localeCompare(
-
                         b.staff.identity.cleanName
-
                     )
-
             );
-
         }
-
     );
-
     /*----------------------------------
       Save Result
     ----------------------------------*/
-
     result.entities.staff =
-
         matches.map(
-
             function (
-
                 item
-
             ) {
-
                 return item.staff;
-
             }
-
         );
-
     result.stats.uniqueStaff =
-
         result.entities.staff.length;
-
     result.stats.totalEntities +=
-
         result.entities.staff.length;
-
     return result;
-
 };
  /*=========================================================
  EXTRACT PHONE ENTITIES
