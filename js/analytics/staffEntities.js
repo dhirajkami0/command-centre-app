@@ -4957,12 +4957,42 @@ StaffEntities.extractStaffEntities = function (
     }
 
     /*----------------------------------
+      Query Words
+    ----------------------------------*/
+
+    const queryWords =
+
+        new Set(
+
+            query
+
+                .split(/\s+/)
+
+                .filter(
+
+                    function (
+
+                        word
+
+                    ) {
+
+                        return (
+
+                            word.length >= 2
+
+                        );
+
+                    }
+
+                )
+
+        );
+
+    /*----------------------------------
       Matches
     ----------------------------------*/
 
-    const matches =
-
-        [];
+    const matches = [];
 
     const seen =
 
@@ -4994,9 +5024,17 @@ StaffEntities.extractStaffEntities = function (
 
         const key =
 
-            staff.identity.cleanName ||
+            String(
 
-            "";
+                staff.identity.cleanName ||
+
+                ""
+
+            )
+
+            .trim()
+
+            .toUpperCase();
 
         if (
 
@@ -5062,9 +5100,7 @@ StaffEntities.extractStaffEntities = function (
 
             }
 
-            let score =
-
-                0;
+            let score = 0;
 
             staff.search.tokens.forEach(
 
@@ -5099,7 +5135,7 @@ StaffEntities.extractStaffEntities = function (
                     }
 
                     /*------------------------------
-                      Exact Query
+                      Exact Full Query
                     ------------------------------*/
 
                     if (
@@ -5108,21 +5144,19 @@ StaffEntities.extractStaffEntities = function (
 
                     ) {
 
-                        score +=
-
-                            1000;
+                        score += 1000;
 
                         return;
 
                     }
 
                     /*------------------------------
-                      Query Contains Token
+                      Exact Word Match
                     ------------------------------*/
 
                     if (
 
-                        query.includes(
+                        queryWords.has(
 
                             token
 
@@ -5136,45 +5170,21 @@ StaffEntities.extractStaffEntities = function (
 
                             100;
 
-                    }
-
-                    /*------------------------------
-                      Token Contains Query
-                    ------------------------------*/
-
-                    else if (
-
-                        token.includes(
-
-                            query
-
-                        )
-
-                    ) {
-
-                        score +=
-
-                            query.length *
-
-                            10;
+                        return;
 
                     }
 
                     /*------------------------------
-                      Word Match
+                      Multi-word Token
                     ------------------------------*/
 
-                    else {
+                    const tokenWords =
 
                         token
 
-                            .split(
+                            .split(/\s+/)
 
-                                /\s+/
-
-                            )
-
-                            .forEach(
+                            .filter(
 
                                 function (
 
@@ -5182,37 +5192,55 @@ StaffEntities.extractStaffEntities = function (
 
                                 ) {
 
-                                    if (
+                                    return (
 
-                                        word.length < 2
+                                        word.length >= 2
 
-                                    ) {
-
-                                        return;
-
-                                    }
-
-                                    if (
-
-                                        query.includes(
-
-                                            word
-
-                                        )
-
-                                    ) {
-
-                                        score +=
-
-                                            word.length *
-
-                                            25;
-
-                                    }
+                                    );
 
                                 }
 
                             );
+
+                    let matchedWords = 0;
+
+                    tokenWords.forEach(
+
+                        function (
+
+                            word
+
+                        ) {
+
+                            if (
+
+                                queryWords.has(
+
+                                    word
+
+                                )
+
+                            ) {
+
+                                matchedWords++;
+
+                            }
+
+                        }
+
+                    );
+
+                    if (
+
+                        matchedWords > 0
+
+                    ) {
+
+                        score +=
+
+                            matchedWords *
+
+                            40;
 
                     }
 
