@@ -328,15 +328,40 @@ Controller.ask = async function (
         }
 
         /*----------------------------------
-          Save Intent
+          Save Unified Intent
         ----------------------------------*/
 
         request.detectedIntent =
             intent;
+        request.intent =
+            intent.intent;
+        request.domain =
+            intent.domain;
+        request.entities =
+            intent.entities || {};
+        request.confidence =
+            intent.confidence || 0;
 
-        console.log(
-            "Request.detectedIntent updated."
+        console.group(
+            "📝 Request Updated"
         );
+        console.log(
+            "request.intent:",
+            request.intent
+        );
+        console.log(
+            "request.domain:",
+            request.domain
+        );
+        console.log(
+            "request.confidence:",
+            request.confidence
+        );
+        console.log(
+            "request.entities:",
+            request.entities
+        );
+        console.groupEnd();
 
         /*----------------------------------
           Dispatcher
@@ -376,7 +401,7 @@ Controller.ask = async function (
 
         const response =
             await Dispatcher.dispatch(
-                intent
+                request.detectedIntent || intent
             );
 
         console.log(
@@ -452,6 +477,47 @@ Controller.ask = async function (
                 "ms"
             );
 
+            console.groupEnd();
+
+            console.group(
+                "🏁 FINAL PIPELINE"
+            );
+            console.log(
+                "Query:",
+                request.query
+            );
+            console.log(
+                "Intent:",
+                response.intent
+            );
+            console.log(
+                "Domain:",
+                response.domain
+            );
+            console.log(
+                "Handler:",
+                response.module
+            );
+            console.log(
+                "Formatter:",
+                response.formatted?.module
+            );
+            console.log(
+                "Cards:",
+                response.cards?.length || 0
+            );
+            console.log(
+                "Sections:",
+                response.sections?.length || 0
+            );
+            console.log(
+                "Markdown:",
+                !!response.formatted?.markdown
+            );
+            console.log(
+                "HTML:",
+                !!response.formatted?.html
+            );
             console.groupEnd();
 
             console.groupEnd();
@@ -554,7 +620,7 @@ Controller.ask = async function (
     }
 
 };
-/*=========================================================
+ /*=========================================================
  REGISTER
 =========================================================*/
 
