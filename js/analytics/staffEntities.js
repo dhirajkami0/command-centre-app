@@ -7516,13 +7516,7 @@ StaffEntities.extract = function (
       Extract Posting Parameters
     ----------------------------------*/
 
-    result =
-
-        StaffIntent.extractPostingParameters(
-
-            result
-
-        );
+   
 
     /*----------------------------------
       Extract Team
