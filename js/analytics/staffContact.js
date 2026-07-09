@@ -753,19 +753,7 @@ email:
  REGISTER
 =========================================================*/
 
-GG.queryStaffContact = function (
 
-    request
-
-) {
-
-    return StaffContact.queryStaffContact(
-
-        request
-
-    );
-
-};
 
 /*=========================================================
  INITIALIZE
