@@ -4438,6 +4438,201 @@ StaffIntent.detectGPSIntent = function (
 
 };
  /*=========================================================
+ GLOBAL INTENT DETECTOR
+=========================================================*/
+
+StaffIntent.detectGlobalIntent = function (
+
+    result
+
+) {
+
+    console.group(
+
+        "🌍 GLOBAL INTENT"
+
+    );
+
+    console.log(
+
+        "Incoming:",
+
+        result.intent
+
+    );
+
+    /*----------------------------------
+      CONTROL ROOM
+    ----------------------------------*/
+
+    result =
+
+        StaffIntent.detectControlRoomIntent(
+
+            result
+
+        );
+
+    if (
+
+        result.intent
+
+    ) {
+
+        console.log(
+
+            "✅ Control Room:",
+
+            result.intent
+
+        );
+
+        console.groupEnd();
+
+        return result;
+
+    }
+
+    /*----------------------------------
+      STATUS
+    ----------------------------------*/
+
+    result =
+
+        StaffIntent.detectStatusIntent(
+
+            result
+
+        );
+
+    if (
+
+        result.intent
+
+    ) {
+
+        console.log(
+
+            "✅ Status:",
+
+            result.intent
+
+        );
+
+        console.groupEnd();
+
+        return result;
+
+    }
+
+    /*----------------------------------
+      SUMMARY
+    ----------------------------------*/
+
+    result =
+
+        StaffIntent.detectSummaryIntent(
+
+            result
+
+        );
+
+    if (
+
+        result.intent
+
+    ) {
+
+        console.log(
+
+            "✅ Summary:",
+
+            result.intent
+
+        );
+
+        console.groupEnd();
+
+        return result;
+
+    }
+
+    /*----------------------------------
+      ANALYTICS
+    ----------------------------------*/
+
+    result =
+
+        StaffIntent.detectAnalyticsIntent(
+
+            result
+
+        );
+
+    if (
+
+        result.intent
+
+    ) {
+
+        console.log(
+
+            "✅ Analytics:",
+
+            result.intent
+
+        );
+
+        console.groupEnd();
+
+        return result;
+
+    }
+
+    /*----------------------------------
+      DIRECTORY
+    ----------------------------------*/
+
+    result =
+
+        StaffIntent.detectDirectoryIntent(
+
+            result
+
+        );
+
+    if (
+
+        result.intent
+
+    ) {
+
+        console.log(
+
+            "✅ Directory:",
+
+            result.intent
+
+        );
+
+        console.groupEnd();
+
+        return result;
+
+    }
+
+    console.log(
+
+        "❌ No Global Intent"
+
+    );
+
+    console.groupEnd();
+
+    return result;
+
+};
+ /*=========================================================
  INITIALIZE
 =========================================================*/
 
