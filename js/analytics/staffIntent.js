@@ -764,19 +764,19 @@ StaffIntent.detect = function (
 
         extraction;
 
-    /*----------------------------------
-      Intent Detection Pipeline
-    ----------------------------------*/
+    /*=================================================
+      GLOBAL INTENT DETECTION
+    =================================================*/
 
     console.time(
 
-        "detectStaffIntent"
+        "detectGlobalIntent"
 
     );
 
     result =
 
-        StaffIntent.detectStaffIntent(
+        StaffIntent.detectGlobalIntent(
 
             result
 
@@ -784,17 +784,68 @@ StaffIntent.detect = function (
 
     console.timeEnd(
 
-        "detectStaffIntent"
+        "detectGlobalIntent"
 
     );
 
     console.log(
 
-        "🎯 After detectStaffIntent:",
+        "🌍 After detectGlobalIntent:",
 
         result.intent
 
     );
+
+    /*=================================================
+      STAFF INTENT DETECTION
+      (Only if global did not match)
+    =================================================*/
+
+    if (
+
+        !result.intent
+
+    ) {
+
+        console.time(
+
+            "detectStaffIntent"
+
+        );
+
+        result =
+
+            StaffIntent.detectStaffIntent(
+
+                result
+
+            );
+
+        console.timeEnd(
+
+            "detectStaffIntent"
+
+        );
+
+        console.log(
+
+            "👤 After detectStaffIntent:",
+
+            result.intent
+
+        );
+
+    }
+
+    else {
+
+        console.log(
+
+            "✅ Staff detection skipped (Global intent matched)."
+
+        );
+
+    }
 
     console.log(
 
@@ -902,8 +953,7 @@ StaffIntent.detect = function (
 
     return result;
 
-};
- /*=========================================================
+}; /*=========================================================
  DETECT POSTING INTENT
 =========================================================*/
 /*=========================================================
