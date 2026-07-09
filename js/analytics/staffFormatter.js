@@ -8465,13 +8465,25 @@ StaffFormatter.formatDesignationDirectory = function (
 
             if (
 
-                !group
+                !group ||
+
+                typeof group !== "object"
 
             ) {
 
                 return;
 
             }
+
+            const designation =
+
+                String(
+
+                    group.designation ||
+
+                    "UNASSIGNED"
+
+                );
 
             const staffList =
 
@@ -8501,13 +8513,7 @@ StaffFormatter.formatDesignationDirectory = function (
 
                 ". " +
 
-                (
-
-                    group.designation ||
-
-                    "UNASSIGNED"
-
-                )
+                designation
 
             );
 
@@ -8519,41 +8525,103 @@ StaffFormatter.formatDesignationDirectory = function (
 
             );
 
-            lines.push("");
+            lines.push(
+
+                ""
+
+            );
 
             staffList.forEach(
 
                 function (
 
-                    staff
+                    staff,
+
+                    staffIndex
 
                 ) {
 
+                    if (
+
+                        !staff ||
+
+                        typeof staff !== "object"
+
+                    ) {
+
+                        return;
+
+                    }
+
+                    const name =
+
+                        staff.cleanName ||
+
+                        staff.name ||
+
+                        "-";
+
+                    const role =
+
+                        staff.role ||
+
+                        "-";
+
+                    const range =
+
+                        staff.range ||
+
+                        "-";
+
+                    const beat =
+
+                        staff.beat ||
+
+                        "-";
+
                     lines.push(
 
-                        "- **" +
-
                         (
 
-                            staff.cleanName ||
-
-                            staff.name ||
-
-                            "-"
+                            staffIndex + 1
 
                         ) +
 
-                        "** (" +
+                        ". **" +
 
-                        (
+                        name +
 
-                            staff.role ||
+                        "**"
 
-                            "-"
+                    );
 
-                        ) +
+                    lines.push(
 
-                        ")"
+                        "   • Role : " +
+
+                        role
+
+                    );
+
+                    lines.push(
+
+                        "   • Range : " +
+
+                        range
+
+                    );
+
+                    lines.push(
+
+                        "   • Beat : " +
+
+                        beat
+
+                    );
+
+                    lines.push(
+
+                        ""
 
                     );
 
@@ -8561,7 +8629,27 @@ StaffFormatter.formatDesignationDirectory = function (
 
             );
 
-            lines.push("");
+            if (
+
+                index <
+
+                directory.length - 1
+
+            ) {
+
+                lines.push(
+
+                    "---"
+
+                );
+
+                lines.push(
+
+                    ""
+
+                );
+
+            }
 
         }
 
@@ -8576,7 +8664,7 @@ StaffFormatter.formatDesignationDirectory = function (
         );
 
     /*----------------------------------
-      Card
+      Cards
     ----------------------------------*/
 
     result.cards.push({
@@ -8604,7 +8692,7 @@ StaffFormatter.formatDesignationDirectory = function (
     });
 
     /*----------------------------------
-      Section
+      Sections
     ----------------------------------*/
 
     result.sections.push({
