@@ -7498,6 +7498,14 @@ StaffEntities.extract = function (
 
         );
 
+ /*----------------------------------
+  Extract Designations
+----------------------------------*/
+
+result =
+    StaffEntities.extractDesignationEntities(
+        result
+    );
     /*----------------------------------
       Extract Posting
     ----------------------------------*/
