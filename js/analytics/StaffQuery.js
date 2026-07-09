@@ -34,10 +34,6 @@ const StaffIntent =
 
     GG.StaffIntent;
 
-const StaffRouter =
-
-    GG.StaffRouter;
-
 /*=========================================================
  VALIDATE DEPENDENCIES
 =========================================================*/
@@ -84,20 +80,39 @@ if (
 
 }
 
-if (
+/*=========================================================
+ NOTE
+=========================================================*/
 
-    !StaffRouter
+/*
+    StaffQuery.js intentionally DOES NOT depend on
+    StaffRouter.
 
-) {
+    Dependency chain:
 
-    throw new Error(
+        StaffConstants
+              ↓
+        StaffEntities
+              ↓
+        StaffIntent
+              ↓
+        StaffQuery
+              ↓
+        GG.queryStaffProfile()
+        GG.queryStaffContact()
+        GG.queryStaffPosting()
+              ↓
+        StaffRouter
+              ↓
+        AIDispatcher
+              ↓
+        Controller
+              ↓
+        Core
 
-        "StaffRouter not loaded."
-
-    );
-
-}
-
+    Therefore DO NOT validate or reference
+    GG.StaffRouter inside this file.
+*/
 /*=========================================================
  MODULE
 =========================================================*/
