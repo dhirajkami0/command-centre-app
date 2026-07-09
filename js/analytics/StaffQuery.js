@@ -3122,7 +3122,7 @@ GG.queryTeamLeaderList = async function (
 
         ) {
 
-            const leaders =
+        
 
 const leaders =
     StaffQuery.ensureAllStaff().filter(
