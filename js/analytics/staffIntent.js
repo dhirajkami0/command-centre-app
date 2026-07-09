@@ -5075,6 +5075,10 @@ StaffIntent.detectDirectoryIntent = function (
 
 ) {
 
+    /*----------------------------------
+      Validate
+    ----------------------------------*/
+
     if (
 
         !result ||
@@ -5095,9 +5099,25 @@ StaffIntent.detectDirectoryIntent = function (
 
     const query =
 
-        result.normalizedQuery ||
+        String(
 
-        "";
+            result.normalizedQuery ||
+
+            ""
+
+        )
+
+        .toUpperCase();
+
+    if (
+
+        query.length === 0
+
+    ) {
+
+        return result;
+
+    }
 
     const INTENTS =
 
@@ -5106,6 +5126,10 @@ StaffIntent.detectDirectoryIntent = function (
     const KEYWORDS =
 
         StaffConstants.KEYWORDS;
+
+    /*----------------------------------
+      Exact Keyword Match
+    ----------------------------------*/
 
     function hasKeyword(
 
@@ -5141,7 +5165,9 @@ StaffIntent.detectDirectoryIntent = function (
 
                         word
 
-                    ).toUpperCase()
+                    )
+
+                    .toUpperCase()
 
                 );
 
@@ -5152,6 +5178,82 @@ StaffIntent.detectDirectoryIntent = function (
     }
 
     /*----------------------------------
+      Directory Verbs
+    ----------------------------------*/
+
+    function hasDirectoryVerb() {
+
+        return [
+
+            "LIST",
+
+            "SHOW",
+
+            "DISPLAY",
+
+            "VIEW",
+
+            "GET",
+
+            "GIVE",
+
+            "DIRECTORY"
+
+        ].some(
+
+            function (
+
+                word
+
+            ) {
+
+                return query.includes(
+
+                    word
+
+                );
+
+            }
+
+        );
+
+    }
+
+    /*----------------------------------
+      Posting Word
+    ----------------------------------*/
+
+    function hasPostingWord(
+
+        words
+
+    ) {
+
+        return words.some(
+
+            function (
+
+                word
+
+            ) {
+
+                return query.includes(
+
+                    word
+
+                );
+
+            }
+
+        );
+
+    }
+
+    const directory =
+
+        hasDirectoryVerb();
+
+    /*----------------------------------
       Circle Directory
     ----------------------------------*/
 
@@ -5160,6 +5262,22 @@ StaffIntent.detectDirectoryIntent = function (
         hasKeyword(
 
             KEYWORDS.STAFF_CIRCLE_DIRECTORY
+
+        ) ||
+
+        (
+
+            directory &&
+
+            hasPostingWord(
+
+                [
+
+                    "CIRCLE"
+
+                ]
+
+            )
 
         )
 
@@ -5191,6 +5309,22 @@ StaffIntent.detectDirectoryIntent = function (
 
             KEYWORDS.STAFF_DIVISION_DIRECTORY
 
+        ) ||
+
+        (
+
+            directory &&
+
+            hasPostingWord(
+
+                [
+
+                    "DIVISION"
+
+                ]
+
+            )
+
         )
 
     ) {
@@ -5220,6 +5354,22 @@ StaffIntent.detectDirectoryIntent = function (
         hasKeyword(
 
             KEYWORDS.STAFF_RANGE_DIRECTORY
+
+        ) ||
+
+        (
+
+            directory &&
+
+            hasPostingWord(
+
+                [
+
+                    "RANGE"
+
+                ]
+
+            )
 
         )
 
@@ -5251,6 +5401,22 @@ StaffIntent.detectDirectoryIntent = function (
 
             KEYWORDS.STAFF_BEAT_DIRECTORY
 
+        ) ||
+
+        (
+
+            directory &&
+
+            hasPostingWord(
+
+                [
+
+                    "BEAT"
+
+                ]
+
+            )
+
         )
 
     ) {
@@ -5280,6 +5446,44 @@ StaffIntent.detectDirectoryIntent = function (
         hasKeyword(
 
             KEYWORDS.STAFF_DESIGNATION_DIRECTORY
+
+        ) ||
+
+        (
+
+            directory &&
+
+            hasPostingWord(
+
+                [
+
+                    "DESIGNATION",
+
+                    "RANK",
+
+                    "POST",
+
+                    "POSITION",
+
+                    "FORESTER",
+
+                    "FOREST GUARD",
+
+                    "BANASAHAYAK",
+
+                    "DAILY LABOUR",
+
+                    "RANGE OFFICER",
+
+                    "ACF",
+
+                    "DFO",
+
+                    "ADFO"
+
+                ]
+
+            )
 
         )
 
