@@ -854,6 +854,25 @@ StaffIntent.detect = function (
 
     );
 
+ /*----------------------------------
+  Posting Parameters
+----------------------------------*/
+
+result =
+
+    StaffIntent.extractPostingParameters(
+
+        result
+
+    );
+
+console.log(
+
+    "📍 Posting Parameters:",
+
+    result.parameters
+
+);
     /*----------------------------------
       Metadata
     ----------------------------------*/
