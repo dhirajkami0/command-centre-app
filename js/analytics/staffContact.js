@@ -264,8 +264,10 @@ StaffContact.queryStaffContact = function (
       Build Contact
     ----------------------------------*/
 
-    response.staff =
+    response.data =
+        staff;
 
+    response.staff =
         staff;
 
     response.contact =
@@ -296,7 +298,8 @@ StaffContact.queryStaffContact = function (
 
     return response;
 
-};/*=========================================================
+};
+ /*=========================================================
  FIND STAFF
 =========================================================*/
 
