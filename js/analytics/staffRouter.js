@@ -705,15 +705,17 @@ StaffRouter.registerWithLog = function (
 
     );
 
-    console.log(
+console.log(
 
-        "Registered:",
+    "Registered:",
 
-        StaffRouter.routes[
-            intent
-        ] === handler
+    StaffRouter.getRoute(
 
-    );
+        intent
+
+    ) === handler
+
+);
 
     console.groupEnd();
 
