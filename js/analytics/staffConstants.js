@@ -1966,113 +1966,7 @@ StaffConstants.KEYWORDS = Object.freeze({
   Who Is On Duty
 ----------------------------------*/
 
-WHO_IS_ON_DUTY: [
 
-    /*=========================================================
-      Generic
-    =========================================================*/
-
-    "WHO IS ON DUTY",
-    "WHO ARE ON DUTY",
-
-    "ON DUTY",
-    "STAFF ON DUTY",
-    "OFFICERS ON DUTY",
-    "PERSONNEL ON DUTY",
-    "EMPLOYEES ON DUTY",
-
-    "CURRENTLY ON DUTY",
-    "CURRENT DUTY STAFF",
-    "CURRENT DUTY OFFICERS",
-
-    /*=========================================================
-      Active
-    =========================================================*/
-
-    "ACTIVE STAFF",
-    "ACTIVE DUTY",
-    "ACTIVE OFFICERS",
-    "ACTIVE PERSONNEL",
-    "ACTIVE EMPLOYEES",
-
-    "WHO IS ACTIVE",
-    "WHO ARE ACTIVE",
-
-    "WHO IS WORKING",
-    "WHO ARE WORKING",
-
-    /*=========================================================
-      Show
-    =========================================================*/
-
-    "SHOW ON DUTY STAFF",
-    "SHOW STAFF ON DUTY",
-    "SHOW ACTIVE STAFF",
-    "SHOW CURRENT DUTY STAFF",
-    "SHOW CURRENT STAFF",
-
-    /*=========================================================
-      List
-    =========================================================*/
-
-    "LIST ON DUTY STAFF",
-    "LIST STAFF ON DUTY",
-    "LIST ACTIVE STAFF",
-    "LIST CURRENT STAFF",
-    "LIST CURRENT DUTY STAFF",
-
-    /*=========================================================
-      Display
-    =========================================================*/
-
-    "DISPLAY ON DUTY STAFF",
-    "DISPLAY ACTIVE STAFF",
-    "VIEW ON DUTY STAFF",
-    "VIEW ACTIVE STAFF",
-
-    "GET ON DUTY STAFF",
-    "GET ACTIVE STAFF",
-
-    /*=========================================================
-      Reports
-    =========================================================*/
-
-    "ON DUTY REPORT",
-    "ACTIVE STAFF REPORT",
-    "CURRENT DUTY REPORT",
-
-    /*=========================================================
-      Jurisdiction
-    =========================================================*/
-
-    "WHO IS ON DUTY IN",
-    "WHO ARE ON DUTY IN",
-
-    "WHO IS ON DUTY UNDER",
-    "WHO ARE ON DUTY UNDER",
-
-    "ACTIVE STAFF IN",
-    "ACTIVE STAFF UNDER",
-
-    "STAFF ON DUTY IN",
-    "STAFF ON DUTY UNDER",
-
-    "SHOW ACTIVE STAFF IN",
-    "SHOW ACTIVE STAFF UNDER",
-
-    "LIST ACTIVE STAFF IN",
-    "LIST ACTIVE STAFF UNDER",
-
-    /*=========================================================
-      AI Friendly
-    =========================================================*/
-
-    "GIVE ON DUTY STAFF",
-    "GIVE ACTIVE STAFF",
-    "CURRENT ACTIVE STAFF",
-    "CURRENT ON DUTY STAFF"
-
-],
  /*----------------------------------
   Who Is Patrolling
 ----------------------------------*/
@@ -3691,112 +3585,104 @@ STAFF_DESIGNATION_DIRECTORY: [
  /*----------------------------------
   Active Staff Count
 ----------------------------------*/
+/*=========================================================
+  WHO_IS_ON_DUTY
+  (Only literal "who" questions regarding duty status)
+=========================================================*/
+WHO_IS_ON_DUTY: [
+    "WHO IS ON DUTY",
+    "WHO ARE ON DUTY",
+    "WHO IS CURRENTLY ON DUTY",
+    "WHO ARE CURRENTLY ON DUTY",
+    "WHICH STAFF ARE ON DUTY",
+    "WHICH OFFICERS ARE ON DUTY",
+    "WHO IS WORKING NOW",
+    "WHO ARE WORKING NOW",
+    "WHO IS DEPLOYED",
+    "WHO ARE DEPLOYED",
+    "WHO IS ON DUTY IN",
+    "WHO ARE ON DUTY IN",
+    "WHO IS ON DUTY UNDER",
+    "WHO ARE ON DUTY UNDER"
+],
+
+/*=========================================================
+  STAFF_ACTIVE_LIST
+  (Requests for the list or report of active staff)
+=========================================================*/
+STAFF_ACTIVE_LIST: [
+    "ACTIVE STAFF",
+    "ACTIVE STAFF LIST",
+    "LIST ACTIVE STAFF",
+    "SHOW ACTIVE STAFF",
+    "DISPLAY ACTIVE STAFF",
+    "VIEW ACTIVE STAFF",
+    "GET ACTIVE STAFF",
+    "CURRENT ACTIVE STAFF",
+    "WORKING STAFF",
+    "STAFF ON DUTY",
+    "ON DUTY STAFF",
+    "ACTIVE PERSONNEL",
+    "ACTIVE OFFICERS",
+    "ACTIVE EMPLOYEES",
+    "ACTIVE MEMBERS",
+    "ACTIVE STAFF REPORT",
+    "ACTIVE STAFF IN",
+    "ACTIVE STAFF UNDER",
+    "SHOW ACTIVE STAFF IN",
+    "SHOW ACTIVE STAFF UNDER",
+    "LIST ACTIVE STAFF IN",
+    "LIST ACTIVE STAFF UNDER"
+],
+
+/*=========================================================
+  STAFF_ACTIVE_COUNT
+  (Requests for numerical totals)
+=========================================================*/
+STAFF_ACTIVE_COUNT: [
+    "ACTIVE STAFF COUNT",
+    "ACTIVE COUNT",
+    "CURRENT ACTIVE COUNT",
+    "ACTIVE STRENGTH",
+    "TOTAL ACTIVE STAFF",
+    "NUMBER OF ACTIVE STAFF",
+    "HOW MANY ACTIVE STAFF",
+    "HOW MANY STAFF ARE ON DUTY",
+    "COUNT ACTIVE STAFF",
+    "ON DUTY COUNT",
+    "CURRENT DUTY COUNT",
+    "TOTAL STAFF ON DUTY",
+    "ACTIVE HEADCOUNT",
+    "ACTIVE MANPOWER",
+    "ACTIVE WORKFORCE",
+    "TOTAL ACTIVE",
+    "TOTAL ACTIVE OFFICERS",
+    "TOTAL ACTIVE EMPLOYEES",
+    "SHOW ACTIVE STAFF COUNT",
+    "SHOW ACTIVE COUNT",
+    "SHOW DUTY COUNT",
+    "SHOW ON DUTY COUNT",
+    "DISPLAY ACTIVE COUNT",
+    "DISPLAY ACTIVE STAFF COUNT",
+    "VIEW ACTIVE COUNT",
+    "GET ACTIVE COUNT",
+    "ACTIVE COUNT REPORT",
+    "ACTIVE SUMMARY",
+    "GIVE ACTIVE COUNT",
+    "GIVE ACTIVE STAFF COUNT",
+    "CURRENT ACTIVE STRENGTH"
+],
+
+/*=========================================================
+  STAFF_INACTIVE_LIST
+  (Requests for list or report of inactive/off-duty staff)
+=========================================================*/
 
 /*----------------------------------
   Active Staff Count
 ----------------------------------*/
 
-STAFF_ACTIVE_COUNT: [
 
-    /* Generic */
-
-    "ACTIVE STAFF COUNT",
-    "ACTIVE COUNT",
-    "CURRENT ACTIVE COUNT",
-    "ACTIVE STRENGTH",
-    "ACTIVE MANPOWER",
-    "ACTIVE PERSONNEL",
-    "ACTIVE WORKFORCE",
-    "ACTIVE TOTAL",
-    "ACTIVE HEADCOUNT",
-    "TOTAL ACTIVE",
-
-    /* Duty Count */
-
-    "ON DUTY COUNT",
-    "STAFF ON DUTY COUNT",
-    "CURRENT DUTY COUNT",
-    "CURRENT ON DUTY COUNT",
-    "DUTY COUNT",
-    "WORKING COUNT",
-    "PATROLLING COUNT",
-
-    /* Questions */
-
-    "HOW MANY ACTIVE STAFF",
-    "HOW MANY STAFF ACTIVE",
-    "HOW MANY STAFF ARE ACTIVE",
-
-    "HOW MANY ARE ACTIVE",
-
-    "HOW MANY STAFF ARE ON DUTY",
-    "HOW MANY ON DUTY",
-
-    "HOW MANY WORKING",
-
-    "HOW MANY PATROLLING",
-
-    "NUMBER OF ACTIVE STAFF",
-
-    "NUMBER OF STAFF ON DUTY",
-
-    "COUNT ACTIVE STAFF",
-
-    "COUNT STAFF",
-
-    "ACTIVE STAFF NUMBER",
-
-    "ON DUTY NUMBER",
-
-    /* Totals */
-
-    "TOTAL ACTIVE STAFF",
-
-    "TOTAL ACTIVE OFFICERS",
-
-    "TOTAL ACTIVE EMPLOYEES",
-
-    "TOTAL STAFF ON DUTY",
-
-    "TOTAL WORKING STAFF",
-
-    "TOTAL PATROLLING STAFF",
-
-    /* Reports */
-
-    "SHOW ACTIVE STAFF COUNT",
-
-    "SHOW ACTIVE COUNT",
-
-    "SHOW DUTY COUNT",
-
-    "SHOW ON DUTY COUNT",
-
-    "DISPLAY ACTIVE COUNT",
-
-    "DISPLAY ACTIVE STAFF COUNT",
-
-    "VIEW ACTIVE COUNT",
-
-    "GET ACTIVE COUNT",
-
-    "ACTIVE COUNT REPORT",
-
-    "ACTIVE STAFF REPORT",
-
-    "ACTIVE SUMMARY",
-
-    /* AI Friendly */
-
-    "GIVE ACTIVE COUNT",
-
-    "GIVE ACTIVE STAFF COUNT",
-
-    "CURRENT ACTIVE COUNT",
-
-    "CURRENT ACTIVE STRENGTH"
-
-],
  /*----------------------------------
   Active Staff List
 ----------------------------------*/
@@ -3805,90 +3691,7 @@ STAFF_ACTIVE_COUNT: [
   Active Staff List
 ----------------------------------*/
 
-STAFF_ACTIVE_LIST: [
 
-    /* Generic */
-
-    "ACTIVE STAFF",
-    "ACTIVE STAFF LIST",
-    "ACTIVE LIST",
-    "CURRENT ACTIVE STAFF",
-    "CURRENT ACTIVE STAFF LIST",
-    "ACTIVE PERSONNEL",
-    "ACTIVE EMPLOYEES",
-    "ACTIVE OFFICERS",
-    "ACTIVE MEMBERS",
-    "WORKING STAFF",
-    "WORKING OFFICERS",
-
-    /* Duty */
-
-    "ON DUTY",
-    "ON DUTY STAFF",
-    "ON DUTY STAFF LIST",
-    "STAFF ON DUTY",
-    "STAFF CURRENTLY ON DUTY",
-    "CURRENTLY ON DUTY",
-    "CURRENT DUTY STAFF",
-    "CURRENT DUTY LIST",
-    "DUTY STAFF",
-    "DUTY LIST",
-
-    /* Questions */
-
-    "WHO IS ON DUTY",
-    "WHO ARE ON DUTY",
-    "WHO IS ACTIVE",
-    "WHO ARE ACTIVE",
-    "WHO IS WORKING",
-    "WHO ARE WORKING",
-    "WHO IS AVAILABLE",
-    "WHO ARE AVAILABLE",
-
-    /* Show */
-
-    "SHOW ACTIVE STAFF",
-    "SHOW ACTIVE STAFF LIST",
-    "SHOW ACTIVE PEOPLE",
-    "SHOW ON DUTY STAFF",
-    "SHOW STAFF ON DUTY",
-    "SHOW CURRENT STAFF",
-    "SHOW CURRENT DUTY STAFF",
-    "SHOW WORKING STAFF",
-
-    /* List */
-
-    "LIST ACTIVE STAFF",
-    "LIST ACTIVE PEOPLE",
-    "LIST ON DUTY STAFF",
-    "LIST STAFF ON DUTY",
-    "LIST CURRENT STAFF",
-    "LIST WORKING STAFF",
-
-    /* Display */
-
-    "DISPLAY ACTIVE STAFF",
-    "DISPLAY ON DUTY STAFF",
-    "DISPLAY CURRENT STAFF",
-    "VIEW ACTIVE STAFF",
-    "VIEW ON DUTY STAFF",
-    "GET ACTIVE STAFF",
-    "GET ON DUTY STAFF",
-
-    /* Report */
-
-    "ACTIVE STAFF REPORT",
-    "ON DUTY REPORT",
-    "ACTIVE STAFF SUMMARY",
-
-    /* AI Friendly */
-
-    "GIVE ACTIVE STAFF",
-    "GIVE ACTIVE STAFF LIST",
-    "GIVE ON DUTY STAFF",
-    "GIVE CURRENT STAFF"
-
-],
  /*----------------------------------
   Inactive Staff List
 ----------------------------------*/
@@ -4291,7 +4094,7 @@ STAFF_STATIONARY: [
     "DISPLAY STATIONARY STAFF",
     "VIEW STATIONARY STAFF"
 
-],
+]
 });
  /*=========================================================
  SYNONYMS
