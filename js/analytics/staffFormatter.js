@@ -282,13 +282,93 @@ StaffFormatter.format = function (response) {
         return result;
     }
 
-    const formatter = StaffFormatter.registry.get(response.intent);
-    if (typeof formatter === "function") {
-        const result = formatter(response);
-        StaffFormatter.statistics.formattedResponses++;
-        StaffFormatter.lastResult = result;
-        return result;
-    }
+    const formatter =
+
+    StaffFormatter.registry.get(
+
+        response.intent
+
+    );
+
+if (
+
+    typeof formatter === "function"
+
+) {
+
+    console.group(
+
+        "🟢 FORMATTER DISPATCH"
+
+    );
+
+    console.log(
+
+        "Intent:",
+
+        response.intent
+
+    );
+
+    console.log(
+
+        "Formatter:",
+
+        formatter.name
+
+    );
+
+    console.log(
+
+        "Response:",
+
+        response
+
+    );
+
+    console.log(
+
+        "Data:",
+
+        response.data
+
+    );
+
+    console.log(
+
+        "Groups:",
+
+        response.data?.length
+
+    );
+
+    console.log(
+
+        "Staff:",
+
+        response.data?.[0]?.staff?.length
+
+    );
+
+    console.groupEnd();
+
+    const result =
+
+        formatter(
+
+            response
+
+        );
+
+    StaffFormatter.statistics.formattedResponses++;
+
+    StaffFormatter.lastResult =
+
+        result;
+
+    return result;
+
+}
 
     switch (response.intent) {
         /*=================================================
@@ -8347,6 +8427,10 @@ StaffFormatter.formatDesignationDirectory = function (
 
     }
 
+    /*----------------------------------
+      Directory
+    ----------------------------------*/
+
     const directory =
 
         response.data;
@@ -8379,6 +8463,32 @@ StaffFormatter.formatDesignationDirectory = function (
 
         ) {
 
+            if (
+
+                !group
+
+            ) {
+
+                return;
+
+            }
+
+            const staffList =
+
+                Array.isArray(
+
+                    group.staff
+
+                )
+
+                    ?
+
+                    group.staff
+
+                    :
+
+                    [];
+
             lines.push(
 
                 "## " +
@@ -8405,25 +8515,13 @@ StaffFormatter.formatDesignationDirectory = function (
 
                 "**Staff Count:** " +
 
-                (
-
-                    group.totalStaff ||
-
-                    0
-
-                )
+                staffList.length
 
             );
 
             lines.push("");
 
-            (
-
-                group.staff ||
-
-                []
-
-            ).forEach(
+            staffList.forEach(
 
                 function (
 
@@ -8436,6 +8534,8 @@ StaffFormatter.formatDesignationDirectory = function (
                         "- **" +
 
                         (
+
+                            staff.cleanName ||
 
                             staff.name ||
 
