@@ -1393,7 +1393,213 @@ StaffEntities.extractFields = function (
 
     );
 
-};/*=========================================================
+};
+StaffEntities.extractDesignationEntities = function (
+
+    result
+
+) {
+
+    /*----------------------------------
+      Validate
+    ----------------------------------*/
+
+    if (
+
+        !result ||
+
+        typeof result !== "object"
+
+    ) {
+
+        return result;
+
+    }
+
+    const query =
+
+        String(
+
+            result.normalizedQuery ||
+
+            ""
+
+        )
+
+        .trim()
+
+        .toUpperCase();
+
+    if (
+
+        query === ""
+
+    ) {
+
+        return result;
+
+    }
+
+    const matches = [];
+
+    const seen =
+
+        new Set();
+
+    /*----------------------------------
+      Helper
+    ----------------------------------*/
+
+    function addDesignation(
+
+        staff
+
+    ) {
+
+        if (
+
+            !staff ||
+
+            !staff.identity
+
+        ) {
+
+            return;
+
+        }
+
+        const key =
+
+            String(
+
+                staff.identity.cleanName ||
+
+                ""
+
+            )
+
+            .trim()
+
+            .toUpperCase();
+
+        if (
+
+            seen.has(
+
+                key
+
+            )
+
+        ) {
+
+            return;
+
+        }
+
+        seen.add(
+
+            key
+
+        );
+
+        matches.push(
+
+            staff
+
+        );
+
+    }
+
+    /*----------------------------------
+      Search Designation
+    ----------------------------------*/
+
+    StaffEntities.staff.forEach(
+
+        function (
+
+            staff
+
+        ) {
+
+            if (
+
+                !staff ||
+
+                !staff.identity
+
+            ) {
+
+                return;
+
+            }
+
+            const designation =
+
+                String(
+
+                    staff.identity.designation ||
+
+                    ""
+
+                )
+
+                .trim()
+
+                .toUpperCase();
+
+            if (
+
+                designation === ""
+
+            ) {
+
+                return;
+
+            }
+
+            if (
+
+                query.includes(
+
+                    designation
+
+                )
+
+            ) {
+
+                addDesignation(
+
+                    staff
+
+                );
+
+            }
+
+        }
+
+    );
+
+    /*----------------------------------
+      Save Result
+    ----------------------------------*/
+
+    result.entities.designations =
+
+        matches;
+
+    result.stats.designationMatches =
+
+        matches.length;
+
+    result.stats.totalEntities +=
+
+        matches.length;
+
+    return result;
+
+};
+ /*=========================================================
  EXTRACT IDENTITY FIELDS
 =========================================================*/
 
