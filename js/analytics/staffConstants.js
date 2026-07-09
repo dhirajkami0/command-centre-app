@@ -1962,7 +1962,255 @@ StaffConstants.KEYWORDS = Object.freeze({
         "DUTY AREA",
         "AREA"
     ],
+/*----------------------------------
+  Who Is On Duty
+----------------------------------*/
 
+WHO_IS_ON_DUTY: [
+
+    /*=========================================================
+      Generic
+    =========================================================*/
+
+    "WHO IS ON DUTY",
+    "WHO ARE ON DUTY",
+
+    "ON DUTY",
+    "STAFF ON DUTY",
+    "OFFICERS ON DUTY",
+    "PERSONNEL ON DUTY",
+    "EMPLOYEES ON DUTY",
+
+    "CURRENTLY ON DUTY",
+    "CURRENT DUTY STAFF",
+    "CURRENT DUTY OFFICERS",
+
+    /*=========================================================
+      Active
+    =========================================================*/
+
+    "ACTIVE STAFF",
+    "ACTIVE DUTY",
+    "ACTIVE OFFICERS",
+    "ACTIVE PERSONNEL",
+    "ACTIVE EMPLOYEES",
+
+    "WHO IS ACTIVE",
+    "WHO ARE ACTIVE",
+
+    "WHO IS WORKING",
+    "WHO ARE WORKING",
+
+    /*=========================================================
+      Show
+    =========================================================*/
+
+    "SHOW ON DUTY STAFF",
+    "SHOW STAFF ON DUTY",
+    "SHOW ACTIVE STAFF",
+    "SHOW CURRENT DUTY STAFF",
+    "SHOW CURRENT STAFF",
+
+    /*=========================================================
+      List
+    =========================================================*/
+
+    "LIST ON DUTY STAFF",
+    "LIST STAFF ON DUTY",
+    "LIST ACTIVE STAFF",
+    "LIST CURRENT STAFF",
+    "LIST CURRENT DUTY STAFF",
+
+    /*=========================================================
+      Display
+    =========================================================*/
+
+    "DISPLAY ON DUTY STAFF",
+    "DISPLAY ACTIVE STAFF",
+    "VIEW ON DUTY STAFF",
+    "VIEW ACTIVE STAFF",
+
+    "GET ON DUTY STAFF",
+    "GET ACTIVE STAFF",
+
+    /*=========================================================
+      Reports
+    =========================================================*/
+
+    "ON DUTY REPORT",
+    "ACTIVE STAFF REPORT",
+    "CURRENT DUTY REPORT",
+
+    /*=========================================================
+      Jurisdiction
+    =========================================================*/
+
+    "WHO IS ON DUTY IN",
+    "WHO ARE ON DUTY IN",
+
+    "WHO IS ON DUTY UNDER",
+    "WHO ARE ON DUTY UNDER",
+
+    "ACTIVE STAFF IN",
+    "ACTIVE STAFF UNDER",
+
+    "STAFF ON DUTY IN",
+    "STAFF ON DUTY UNDER",
+
+    "SHOW ACTIVE STAFF IN",
+    "SHOW ACTIVE STAFF UNDER",
+
+    "LIST ACTIVE STAFF IN",
+    "LIST ACTIVE STAFF UNDER",
+
+    /*=========================================================
+      AI Friendly
+    =========================================================*/
+
+    "GIVE ON DUTY STAFF",
+    "GIVE ACTIVE STAFF",
+    "CURRENT ACTIVE STAFF",
+    "CURRENT ON DUTY STAFF"
+
+],
+ /*----------------------------------
+  Who Is Patrolling
+----------------------------------*/
+
+WHO_IS_PATROLLING: [
+
+    /*=========================================================
+      Generic
+    =========================================================*/
+
+    "WHO IS PATROLLING",
+    "WHO ARE PATROLLING",
+
+    "PATROLLING STAFF",
+    "PATROLLING TEAM",
+    "PATROLLING OFFICERS",
+    "PATROLLING PERSONNEL",
+    "PATROLLING EMPLOYEES",
+
+    "STAFF PATROLLING",
+    "TEAM PATROLLING",
+
+    "CURRENTLY PATROLLING",
+    "CURRENT PATROL",
+
+    /*=========================================================
+      Patrol
+    =========================================================*/
+
+    "PATROL STAFF",
+    "PATROL TEAM",
+    "PATROL MEMBERS",
+    "PATROL PARTY",
+
+    "WHO IS ON PATROL",
+    "WHO ARE ON PATROL",
+
+    "WHO IS OUT ON PATROL",
+    "WHO ARE OUT ON PATROL",
+
+    "STAFF ON PATROL",
+    "OFFICERS ON PATROL",
+
+    /*=========================================================
+      Elephant Patrol
+    =========================================================*/
+
+    "ELEPHANT PATROL",
+    "ELEPHANT PATROL TEAM",
+    "ELEPHANT PATROLLING",
+
+    /*=========================================================
+      Foot Patrol
+    =========================================================*/
+
+    "FOOT PATROL",
+    "FOOT PATROLLING",
+
+    /*=========================================================
+      Vehicle Patrol
+    =========================================================*/
+
+    "VEHICLE PATROL",
+    "MOBILE PATROL",
+
+    /*=========================================================
+      Show
+    =========================================================*/
+
+    "SHOW PATROLLING STAFF",
+    "SHOW STAFF PATROLLING",
+    "SHOW PATROL TEAM",
+    "SHOW PATROL STAFF",
+    "SHOW WHO IS PATROLLING",
+
+    /*=========================================================
+      List
+    =========================================================*/
+
+    "LIST PATROLLING STAFF",
+    "LIST STAFF PATROLLING",
+    "LIST PATROL TEAM",
+    "LIST PATROL STAFF",
+
+    /*=========================================================
+      Display
+    =========================================================*/
+
+    "DISPLAY PATROLLING STAFF",
+    "DISPLAY PATROL TEAM",
+    "VIEW PATROLLING STAFF",
+    "VIEW PATROL TEAM",
+
+    "GET PATROLLING STAFF",
+    "GET PATROL TEAM",
+
+    /*=========================================================
+      Jurisdiction
+    =========================================================*/
+
+    "WHO IS PATROLLING IN",
+    "WHO ARE PATROLLING IN",
+
+    "WHO IS PATROLLING UNDER",
+    "WHO ARE PATROLLING UNDER",
+
+    "PATROLLING STAFF IN",
+    "PATROLLING STAFF UNDER",
+
+    "SHOW PATROLLING STAFF IN",
+    "SHOW PATROLLING STAFF UNDER",
+
+    "LIST PATROLLING STAFF IN",
+    "LIST PATROLLING STAFF UNDER",
+
+    "PATROL TEAM IN",
+    "PATROL TEAM UNDER",
+
+    /*=========================================================
+      Reports
+    =========================================================*/
+
+    "PATROL REPORT",
+    "PATROLLING REPORT",
+    "LIVE PATROL",
+
+    /*=========================================================
+      AI Friendly
+    =========================================================*/
+
+    "GIVE PATROLLING STAFF",
+    "GIVE PATROL TEAM",
+
+    "CURRENT PATROL",
+
+    "CURRENTLY PATROLLING"
+
+],
     /*----------------------------------
       Status
     ----------------------------------*/
@@ -2092,86 +2340,101 @@ StaffConstants.KEYWORDS = Object.freeze({
       Patrol Distance
     ----------------------------------*/
 
-    STAFF_DISTANCE: [
-        "DISTANCE",
-        "DISTANCES",
-        "HOW FAR",
-        "FAR",
-        "TOTAL DISTANCE",
-        "CURRENT DISTANCE",
-        "DISTANCE COVERED",
-        "DISTANCE TRAVELLED",
-        "DISTANCE TRAVELED",
-        "COVERED",
-        "COVER",
-        "COVERING",
-        "COVERAGE DISTANCE",
-        "HOW MUCH DISTANCE",
-        "HOW MANY KM",
-        "HOW MANY KILOMETERS",
-        "HOW MANY KILOMETRES",
-        "TRAVELLED",
-        "TRAVELED",
-        "TRAVEL",
-        "TRAVELLING",
-        "TRAVELING",
-        "MOVED",
-        "MOVE",
-        "MOVEMENT",
-        "MOVEMENT DISTANCE",
-        "WALKED",
-        "WALK",
-        "WALKING DISTANCE",
-        "TOTAL WALK",
-        "TOTAL WALKED",
-        "PATROL DISTANCE",
-        "PATROL KM",
-        "PATROL KMS",
-        "PATROL KILOMETERS",
-        "PATROL KILOMETRES",
-        "PATROL COVERAGE",
-        "PATROL TRAVEL",
-        "HOW FAR PATROLLED",
-        "DISTANCE PATROLLED",
-        "GROUND COVERAGE",
-        "FIELD COVERAGE",
-        "AREA COVERED",
-        "HOW FAR HAS HE TRAVELLED",
-        "HOW FAR HAS SHE TRAVELLED",
-        "HOW FAR HAS STAFF TRAVELLED",
-        "HOW FAR HAS HE WALKED",
-        "HOW FAR HAS SHE WALKED",
-        "HOW MUCH DID HE COVER",
-        "HOW MUCH DID SHE COVER",
-        "WHAT DISTANCE",
-        "SHOW DISTANCE",
-        "GET DISTANCE",
-        "DISPLAY DISTANCE",
-        "KM",
-        "KMS",
-        "KM COVERED",
-        "KMS COVERED",
-        "KILOMETER",
-        "KILOMETERS",
-        "KILOMETRE",
-        "KILOMETRES",
-        "METRE",
-        "METRES",
-        "METER",
-        "METERS",
-        "DISTANCE REPORT",
-        "DISTANCE SUMMARY",
-        "DISTANCE ANALYTICS",
-        "PATROL REPORT",
-        "PATROL SUMMARY",
-        "TOTAL KM",
-        "TOTAL KMS",
-        "TOTAL TRAVEL",
-        "TOTAL WALK",
-        "TODAY DISTANCE",
-        "CURRENT DISTANCE",
-        "LIVE DISTANCE"
-    ],
+/*----------------------------------
+  Patrol Distance
+----------------------------------*/
+
+STAFF_DISTANCE: [
+
+    /*=========================================================
+      Generic
+    =========================================================*/
+
+    "DISTANCE",
+    "PATROL DISTANCE",
+    "TOTAL DISTANCE",
+    "DISTANCE COVERED",
+    "TOTAL DISTANCE COVERED",
+    "COVERED DISTANCE",
+    "TRAVEL DISTANCE",
+    "MOVEMENT DISTANCE",
+
+    /*=========================================================
+      Questions
+    =========================================================*/
+
+    "HOW FAR",
+    "HOW FAR DID",
+    "HOW MUCH DISTANCE",
+    "HOW MUCH DISTANCE COVERED",
+    "HOW MUCH HAS",
+    "HOW FAR HAS",
+    "WHAT DISTANCE",
+    "WHAT IS THE DISTANCE",
+
+    /*=========================================================
+      Patrol
+    =========================================================*/
+
+    "PATROL LENGTH",
+    "PATROL ROUTE LENGTH",
+    "PATROL COVERAGE DISTANCE",
+
+    /*=========================================================
+      Reports
+    =========================================================*/
+
+    "DISTANCE REPORT",
+    "PATROL DISTANCE REPORT",
+    "DISTANCE SUMMARY",
+    "PATROL DISTANCE SUMMARY",
+
+    /*=========================================================
+      Rankings
+    =========================================================*/
+
+    "MOST DISTANCE",
+    "MAX DISTANCE",
+    "LONGEST DISTANCE",
+    "LONGEST PATROL",
+    "TOP DISTANCE",
+
+    /*=========================================================
+      Show
+    =========================================================*/
+
+    "SHOW DISTANCE",
+    "SHOW PATROL DISTANCE",
+    "SHOW DISTANCE COVERED",
+
+    /*=========================================================
+      List
+    =========================================================*/
+
+    "LIST DISTANCE",
+    "LIST PATROL DISTANCE",
+
+    /*=========================================================
+      Display
+    =========================================================*/
+
+    "DISPLAY DISTANCE",
+    "DISPLAY PATROL DISTANCE",
+    "VIEW DISTANCE",
+    "VIEW PATROL DISTANCE",
+    "GET DISTANCE",
+    "GET PATROL DISTANCE",
+
+    /*=========================================================
+      AI Friendly
+    =========================================================*/
+
+    "GIVE DISTANCE",
+    "GIVE PATROL DISTANCE",
+    "CURRENT DISTANCE",
+    "CURRENT PATROL DISTANCE"
+
+],
 
     /*----------------------------------
       Patrol GPS Points
@@ -2501,555 +2764,920 @@ StaffConstants.KEYWORDS = Object.freeze({
       Patrol Analytics
     ----------------------------------*/
 
-    STAFF_ANALYTICS: [
-        "PATROL ANALYTICS",
-        "PATROL ANALYSIS",
-        "PATROL SUMMARY",
-        "PATROL OVERVIEW",
-        "PATROL REPORT",
-        "PATROL DASHBOARD",
-        "COMPLETE PATROL",
-        "COMPLETE PATROL REPORT",
-        "COMPLETE PATROL ANALYTICS",
-        "COMPLETE PATROL SUMMARY",
-        "FULL PATROL REPORT",
-        "FULL PATROL ANALYTICS",
-        "FULL PATROL SUMMARY",
-        "STAFF PATROL REPORT",
-        "STAFF PATROL ANALYTICS",
-        "STAFF PATROL SUMMARY",
-        "STAFF PATROL OVERVIEW",
-        "OFFICER PATROL REPORT",
-        "OFFICER PATROL ANALYTICS",
-        "OFFICER PATROL SUMMARY",
-        "PATROL PERFORMANCE",
-        "PATROL PERFORMANCE REPORT",
-        "PATROL PERFORMANCE SUMMARY",
-        "PATROL ACTIVITY",
-        "PATROL ACTIVITY REPORT",
-        "PATROL ACTIVITY SUMMARY",
-        "PATROL DASHBOARD",
-        "SHOW PATROL DASHBOARD",
-        "SHOW PATROL REPORT",
-        "SHOW PATROL ANALYTICS",
-        "SHOW PATROL SUMMARY",
-        "GET PATROL REPORT",
-        "GET PATROL ANALYTICS",
-        "DISPLAY PATROL REPORT",
-        "DISPLAY PATROL ANALYTICS",
-        "VIEW PATROL REPORT",
-        "VIEW PATROL ANALYTICS",
-        "SHOW COMPLETE PATROL",
-        "SHOW COMPLETE ANALYTICS",
-        "SHOW COMPLETE SUMMARY",
-        "HOW WAS PATROL",
-        "PATROL DETAILS",
-        "COMPLETE PATROL DETAILS",
-        "PATROL METRICS",
-        "PATROL KPI",
-        "PATROL KPIS",
-        "PATROL INSIGHTS"
-    ],
+/*----------------------------------
+  Staff Analytics
+----------------------------------*/
+
+STAFF_ANALYTICS: [
+
+    /* Generic */
+
+    "ANALYTICS",
+    "STAFF ANALYTICS",
+    "PATROL ANALYTICS",
+    "PATROLLING ANALYTICS",
+    "ANALYTICS REPORT",
+    "ANALYTICS SUMMARY",
+    "STAFF REPORT",
+    "PERFORMANCE",
+    "PERFORMANCE REPORT",
+    "PERFORMANCE SUMMARY",
+
+    /* Patrol */
+
+    "PATROL",
+    "PATROL REPORT",
+    "PATROL SUMMARY",
+    "PATROL PERFORMANCE",
+    "PATROL STATISTICS",
+    "PATROL STATS",
+    "PATROL DATA",
+    "PATROL DETAILS",
+
+    /* Distance */
+
+    "PATROL DISTANCE",
+    "DISTANCE",
+    "DISTANCE REPORT",
+    "TOTAL DISTANCE",
+    "MOST DISTANCE",
+    "LONGEST DISTANCE",
+    "MAX DISTANCE",
+    "DISTANCE COVERED",
+
+    /* Coverage */
+
+    "PATROL COVERAGE",
+    "COVERAGE",
+    "AREA COVERED",
+    "GRID COVERAGE",
+    "GRID REPORT",
+    "MOST COVERAGE",
+    "BEST COVERAGE",
+
+    /* Patrol Points */
+
+    "PATROL POINTS",
+    "TRACK POINTS",
+    "GPS POINTS",
+    "MOST POINTS",
+    "MAX POINTS",
+
+    /* Rankings */
+
+    "TOP STAFF",
+    "BEST STAFF",
+    "TOP PATROL",
+    "BEST PATROL",
+    "TOP PATROLLING STAFF",
+    "TOP PATROLLING TEAM",
+    "TOP PERFORMER",
+    "BEST PERFORMER",
+    "MOST ACTIVE STAFF",
+    "MOST ACTIVE TEAM",
+
+    /* Jurisdiction Rankings */
+
+    "TOP DIVISION",
+    "BEST DIVISION",
+    "TOP RANGE",
+    "BEST RANGE",
+    "TOP BEAT",
+    "BEST BEAT",
+    "TOP CIRCLE",
+    "BEST CIRCLE",
+
+    /* Reports */
+
+    "STAFF PERFORMANCE REPORT",
+    "PATROL PERFORMANCE REPORT",
+    "PATROL ANALYTICS REPORT",
+    "STAFF ANALYTICS REPORT",
+
+    "PATROL DASHBOARD",
+    "PATROL INSIGHTS",
+
+    /* Questions */
+
+    "WHO PATROLLED MOST",
+    "WHO COVERED MOST DISTANCE",
+    "WHO HAS MOST PATROL POINTS",
+
+    "WHICH DIVISION IS BEST",
+    "WHICH RANGE IS BEST",
+    "WHICH BEAT IS BEST",
+
+    "TOP PATROLLING BEAT",
+    "TOP PATROLLING RANGE",
+    "TOP PATROLLING DIVISION",
+
+    /* Show */
+
+    "SHOW ANALYTICS",
+    "SHOW PATROL ANALYTICS",
+    "SHOW STAFF ANALYTICS",
+    "SHOW PERFORMANCE",
+
+    /* List */
+
+    "LIST ANALYTICS",
+    "LIST PATROL ANALYTICS",
+    "LIST PERFORMANCE",
+
+    /* Display */
+
+    "DISPLAY ANALYTICS",
+    "DISPLAY PATROL ANALYTICS",
+    "VIEW ANALYTICS",
+    "VIEW PATROL ANALYTICS",
+    "GET ANALYTICS",
+    "GET PATROL ANALYTICS",
+
+    /* AI Friendly */
+
+    "GIVE ANALYTICS",
+    "GIVE PATROL ANALYTICS",
+    "GIVE STAFF ANALYTICS",
+    "CURRENT ANALYTICS",
+    "CURRENT PATROL ANALYTICS"
+
+],
 
     /*----------------------------------
       Staff Summary
     ----------------------------------*/
 
-    STAFF_SUMMARY: [
-        "SUMMARY",
-        "STAFF SUMMARY",
-        "STAFF OVERVIEW",
-        "STAFF REPORT",
-        "STAFF STATUS",
-        "STAFF DETAILS",
-        "STAFF INFORMATION",
-        "STAFF STATISTICS",
-        "STAFF ANALYTICS",
-        "STAFF DASHBOARD",
-        "COMPLETE STAFF",
-        "COMPLETE STAFF SUMMARY",
-        "COMPLETE STAFF REPORT",
-        "COMPLETE STAFF DETAILS",
-        "COMPLETE STAFF OVERVIEW",
-        "FULL STAFF",
-        "FULL STAFF SUMMARY",
-        "FULL STAFF REPORT",
-        "FULL STAFF DETAILS",
-        "OVERALL STAFF",
-        "OVERALL SUMMARY",
-        "OVERALL REPORT",
-        "SHOW STAFF SUMMARY",
-        "SHOW STAFF REPORT",
-        "SHOW STAFF DETAILS",
-        "SHOW STAFF STATUS",
-        "GET STAFF SUMMARY",
-        "GET STAFF REPORT",
-        "DISPLAY STAFF SUMMARY",
-        "DISPLAY STAFF REPORT",
-        "VIEW STAFF SUMMARY",
-        "VIEW STAFF REPORT",
-        "TOTAL STAFF",
-        "TOTAL OFFICERS",
-        "TOTAL EMPLOYEES",
-        "TOTAL PERSONNEL",
-        "STAFF COUNT",
-        "OFFICER COUNT",
-        "EMPLOYEE COUNT",
-        "HEADCOUNT",
-        "MANPOWER",
-        "HOW MANY STAFF",
-        "HOW MANY OFFICERS",
-        "STAFF STRENGTH",
-        "STAFF POSITION",
-        "WHO ARE THE STAFF",
-        "LIST ALL STAFF",
-        "STAFF DIRECTORY SUMMARY",
-        "STAFF MASTER",
-        "STAFF MASTER REPORT",
-        "STAFF REGISTER",
-        "PERSONNEL REPORT",
-        "WORKFORCE REPORT",
-        "HUMAN RESOURCE SUMMARY",
-        "GIVE STAFF SUMMARY",
-        "STAFF SNAPSHOT",
-        "CURRENT STAFF SUMMARY",
-        "CURRENT STAFF STATUS",
-        "CURRENT STAFF REPORT"
-    ],
+/*----------------------------------
+  Staff Summary
+----------------------------------*/
 
+STAFF_SUMMARY: [
+
+    /* Generic */
+
+    "STAFF SUMMARY",
+    "SUMMARY OF STAFF",
+    "STAFF OVERVIEW",
+    "STAFF STATUS",
+    "STAFF REPORT",
+    "STAFF DETAILS",
+    "STAFF INFORMATION",
+    "STAFF DATA",
+    "OVERALL STAFF",
+    "COMPLETE STAFF",
+    "FULL STAFF",
+    "ALL STAFF",
+
+    /* Questions */
+
+    "WHAT IS THE STAFF STATUS",
+    "WHAT IS STAFF STATUS",
+    "WHAT IS THE CURRENT STAFF STATUS",
+    "SHOW STAFF STATUS",
+    "HOW IS THE STAFF",
+    "HOW IS STAFF",
+
+    /* Summary */
+
+    "SUMMARY",
+    "OVERALL SUMMARY",
+    "CURRENT SUMMARY",
+    "LIVE SUMMARY",
+    "STAFF OVERALL SUMMARY",
+
+    /* Show */
+
+    "SHOW STAFF",
+    "SHOW ALL STAFF",
+    "SHOW STAFF SUMMARY",
+    "SHOW STAFF REPORT",
+    "SHOW STAFF DETAILS",
+    "SHOW STAFF OVERVIEW",
+
+    /* List */
+
+    "LIST STAFF",
+    "LIST ALL STAFF",
+    "LIST STAFF SUMMARY",
+    "LIST STAFF REPORT",
+    "LIST COMPLETE STAFF",
+
+    /* Display */
+
+    "DISPLAY STAFF",
+    "DISPLAY STAFF SUMMARY",
+    "DISPLAY STAFF REPORT",
+    "VIEW STAFF",
+    "VIEW STAFF SUMMARY",
+    "VIEW STAFF REPORT",
+    "GET STAFF SUMMARY",
+    "GET STAFF REPORT",
+
+    /* Reports */
+
+    "STAFF STATUS REPORT",
+    "STAFF OVERVIEW REPORT",
+    "LIVE STAFF REPORT",
+    "CURRENT STAFF REPORT",
+
+    /* AI Friendly */
+
+    "GIVE STAFF SUMMARY",
+    "GIVE STAFF REPORT",
+    "GIVE STAFF DETAILS",
+    "CURRENT STAFF SUMMARY",
+    "CURRENT STAFF REPORT"
+
+],
     /*----------------------------------
       Jurisdiction Summary
     ----------------------------------*/
 
-    STAFF_JURISDICTION_SUMMARY: [
-        "JURISDICTION SUMMARY",
-        "JURISDICTION REPORT",
-        "JURISDICTION STRENGTH",
-        "AREA SUMMARY",
-        "AREA REPORT",
-        "AREA WISE STAFF",
-        "CIRCLE SUMMARY",
-        "CIRCLE REPORT",
-        "CIRCLE STRENGTH",
-        "CIRCLE WISE STAFF",
-        "CIRCLE WISE STRENGTH",
-        "STAFF BY CIRCLE",
-        "STAFF IN CIRCLE",
-        "HOW MANY STAFF IN CIRCLE",
-        "TOTAL STAFF IN CIRCLE",
-        "DIVISION SUMMARY",
-        "DIVISION REPORT",
-        "DIVISION STRENGTH",
-        "DIVISION WISE STAFF",
-        "DIVISION WISE STRENGTH",
-        "STAFF BY DIVISION",
-        "STAFF IN DIVISION",
-        "HOW MANY STAFF IN DIVISION",
-        "TOTAL STAFF IN DIVISION",
-        "RANGE SUMMARY",
-        "RANGE REPORT",
-        "RANGE STRENGTH",
-        "RANGE WISE STAFF",
-        "RANGE WISE STRENGTH",
-        "STAFF BY RANGE",
-        "STAFF IN RANGE",
-        "HOW MANY STAFF IN RANGE",
-        "TOTAL STAFF IN RANGE",
-        "BEAT SUMMARY",
-        "BEAT REPORT",
-        "BEAT STRENGTH",
-        "BEAT WISE STAFF",
-        "BEAT WISE STRENGTH",
-        "STAFF BY BEAT",
-        "STAFF IN BEAT",
-        "HOW MANY STAFF IN BEAT",
-        "TOTAL STAFF IN BEAT",
-        "STAFF DISTRIBUTION",
-        "WORKFORCE DISTRIBUTION",
-        "STAFF BREAKDOWN",
-        "AREA BREAKDOWN",
-        "JURISDICTION BREAKDOWN",
-        "SHOW JURISDICTION SUMMARY",
-        "SHOW AREA SUMMARY",
-        "SHOW DIVISION SUMMARY",
-        "SHOW RANGE SUMMARY",
-        "SHOW BEAT SUMMARY",
-        "SHOW CIRCLE SUMMARY",
-        "GIVE JURISDICTION SUMMARY",
-        "DISPLAY JURISDICTION SUMMARY",
-        "VIEW JURISDICTION SUMMARY"
-    ],
+/*----------------------------------
+  Jurisdiction Summary
+----------------------------------*/
+
+STAFF_JURISDICTION_SUMMARY: [
+
+    /* Generic */
+
+    "JURISDICTION SUMMARY",
+    "JURISDICTION REPORT",
+    "JURISDICTION OVERVIEW",
+    "JURISDICTION STATUS",
+    "STAFF JURISDICTION SUMMARY",
+
+    /* Circle */
+
+    "CIRCLE SUMMARY",
+    "CIRCLE REPORT",
+    "CIRCLE OVERVIEW",
+    "SUMMARY OF CIRCLE",
+    "SHOW CIRCLE SUMMARY",
+    "LIST CIRCLE SUMMARY",
+
+    /* Division */
+
+    "DIVISION SUMMARY",
+    "DIVISION REPORT",
+    "DIVISION OVERVIEW",
+    "SUMMARY OF DIVISION",
+    "SHOW DIVISION SUMMARY",
+    "LIST DIVISION SUMMARY",
+
+    /* Range */
+
+    "RANGE SUMMARY",
+    "RANGE REPORT",
+    "RANGE OVERVIEW",
+    "SUMMARY OF RANGE",
+    "SHOW RANGE SUMMARY",
+    "LIST RANGE SUMMARY",
+
+    /* Beat */
+
+    "BEAT SUMMARY",
+    "BEAT REPORT",
+    "BEAT OVERVIEW",
+    "SUMMARY OF BEAT",
+    "SHOW BEAT SUMMARY",
+    "LIST BEAT SUMMARY",
+
+    /* Compartment */
+
+    "COMPARTMENT SUMMARY",
+    "COMPARTMENT REPORT",
+    "SUMMARY OF COMPARTMENT",
+    "SHOW COMPARTMENT SUMMARY",
+
+    /* Questions */
+
+    "HOW MANY STAFF IN EACH DIVISION",
+    "HOW MANY STAFF IN EACH RANGE",
+    "HOW MANY STAFF IN EACH BEAT",
+    "HOW MANY STAFF IN EACH CIRCLE",
+
+    "STAFF BY DIVISION",
+    "STAFF BY RANGE",
+    "STAFF BY BEAT",
+    "STAFF BY CIRCLE",
+
+    /* Reports */
+
+    "DIVISION WISE SUMMARY",
+    "RANGE WISE SUMMARY",
+    "BEAT WISE SUMMARY",
+    "CIRCLE WISE SUMMARY",
+
+    "DIVISION WISE REPORT",
+    "RANGE WISE REPORT",
+    "BEAT WISE REPORT",
+    "CIRCLE WISE REPORT",
+
+    /* AI Friendly */
+
+    "GIVE DIVISION SUMMARY",
+    "GIVE RANGE SUMMARY",
+    "GIVE BEAT SUMMARY",
+    "GIVE CIRCLE SUMMARY",
+
+    "CURRENT DIVISION SUMMARY",
+    "CURRENT RANGE SUMMARY",
+    "CURRENT BEAT SUMMARY",
+    "CURRENT CIRCLE SUMMARY"
+
+],
 
     /*----------------------------------
       Designation Summary
     ----------------------------------*/
 
-    STAFF_DESIGNATION_SUMMARY: [
-        "DESIGNATION SUMMARY",
-        "DESIGNATION REPORT",
-        "DESIGNATION WISE SUMMARY",
-        "DESIGNATION WISE REPORT",
-        "DESIGNATION WISE STAFF",
-        "DESIGNATION WISE STRENGTH",
-        "DESIGNATION BREAKDOWN",
-        "DESIGNATION DISTRIBUTION",
-        "DESIGNATION STRENGTH",
-        "STAFF STRENGTH BY DESIGNATION",
-        "STRENGTH BY DESIGNATION",
-        "CADRE STRENGTH",
-        "RANK WISE STRENGTH",
-        "POST WISE STRENGTH",
-        "HOW MANY FR",
-        "HOW MANY FG",
-        "HOW MANY BS",
-        "HOW MANY DL",
-        "HOW MANY PDL",
-        "HOW MANY DR",
-        "HOW MANY FV",
-        "HOW MANY WATCHER",
-        "HOW MANY DRIVER",
-        "HOW MANY ADFO",
-        "HOW MANY DFO",
-        "HOW MANY CCF",
-        "TOTAL FR",
-        "TOTAL FG",
-        "TOTAL BS",
-        "TOTAL DL",
-        "TOTAL PDL",
-        "TOTAL DR",
-        "TOTAL FV",
-        "TOTAL WATCHER",
-        "TOTAL DRIVER",
-        "TOTAL ADFO",
-        "TOTAL DFO",
-        "TOTAL CCF",
-        "STAFF BY DESIGNATION",
-        "OFFICERS BY DESIGNATION",
-        "EMPLOYEES BY DESIGNATION",
-        "STAFF PER DESIGNATION",
-        "DESIGNATION WISE COUNT",
-        "DESIGNATION WISE HEADCOUNT",
-        "DESIGNATION WISE MANPOWER",
-        "SHOW DESIGNATION SUMMARY",
-        "SHOW DESIGNATION REPORT",
-        "SHOW DESIGNATION STRENGTH",
-        "SHOW DESIGNATION WISE STAFF",
-        "GET DESIGNATION SUMMARY",
-        "GET DESIGNATION REPORT",
-        "DISPLAY DESIGNATION SUMMARY",
-        "DISPLAY DESIGNATION REPORT",
-        "VIEW DESIGNATION SUMMARY",
-        "VIEW DESIGNATION REPORT",
-        "DESIGNATION ANALYSIS",
-        "DESIGNATION ANALYTICS",
-        "DESIGNATION DASHBOARD",
-        "CADRE REPORT",
-        "CADRE SUMMARY",
-        "GIVE DESIGNATION SUMMARY",
-        "GIVE DESIGNATION REPORT",
-        "SHOW RANK WISE STAFF",
-        "SHOW POST WISE STAFF",
-        "SHOW CADRE STRENGTH"
-    ],
+/*----------------------------------
+  Designation Summary
+----------------------------------*/
+
+STAFF_DESIGNATION_SUMMARY: [
+
+    /* Generic */
+
+    "DESIGNATION SUMMARY",
+    "DESIGNATION REPORT",
+    "DESIGNATION OVERVIEW",
+    "DESIGNATION STATUS",
+    "STAFF DESIGNATION SUMMARY",
+
+    /* Questions */
+
+    "STAFF BY DESIGNATION",
+    "SUMMARY BY DESIGNATION",
+    "SHOW DESIGNATION SUMMARY",
+    "SHOW STAFF BY DESIGNATION",
+
+    "HOW MANY FOREST GUARDS",
+    "HOW MANY FOREST RANGERS",
+    "HOW MANY BEAT OFFICERS",
+    "HOW MANY TEAM LEADERS",
+    "HOW MANY ADFO",
+    "HOW MANY DFO",
+
+    "COUNT BY DESIGNATION",
+    "DESIGNATION COUNT",
+
+    /* Reports */
+
+    "DESIGNATION WISE SUMMARY",
+    "DESIGNATION WISE REPORT",
+    "DESIGNATION REPORT",
+    "DESIGNATION STATUS REPORT",
+
+    "STAFF DESIGNATION REPORT",
+
+    /* Show */
+
+    "SHOW DESIGNATION REPORT",
+    "SHOW DESIGNATION OVERVIEW",
+    "SHOW DESIGNATION STATUS",
+
+    /* List */
+
+    "LIST DESIGNATIONS",
+    "LIST STAFF DESIGNATIONS",
+    "LIST DESIGNATION SUMMARY",
+
+    /* Display */
+
+    "DISPLAY DESIGNATION SUMMARY",
+    "DISPLAY DESIGNATION REPORT",
+    "VIEW DESIGNATION SUMMARY",
+    "VIEW DESIGNATION REPORT",
+    "GET DESIGNATION SUMMARY",
+    "GET DESIGNATION REPORT",
+
+    /* AI Friendly */
+
+    "GIVE DESIGNATION SUMMARY",
+    "GIVE DESIGNATION REPORT",
+    "CURRENT DESIGNATION SUMMARY",
+    "CURRENT DESIGNATION REPORT"
+
+],
 
     /*----------------------------------
       Circle Directory
     ----------------------------------*/
 
-    STAFF_CIRCLE_DIRECTORY: [
-        "CIRCLE DIRECTORY",
-        "CIRCLE STAFF",
-        "STAFF DIRECTORY OF CIRCLE",
-        "STAFF LIST OF CIRCLE",
-        "STAFF IN CIRCLE",
-        "OFFICERS IN CIRCLE",
-        "EMPLOYEES IN CIRCLE",
-        "PERSONNEL IN CIRCLE",
-        "LIST CIRCLE STAFF",
-        "LIST STAFF OF CIRCLE",
-        "LIST ALL STAFF IN CIRCLE",
-        "LIST OFFICERS IN CIRCLE",
-        "LIST EMPLOYEES IN CIRCLE",
-        "SHOW CIRCLE STAFF",
-        "SHOW STAFF OF CIRCLE",
-        "SHOW ALL STAFF IN CIRCLE",
-        "SHOW OFFICERS IN CIRCLE",
-        "SHOW EMPLOYEES IN CIRCLE",
-        "DISPLAY CIRCLE STAFF",
-        "DISPLAY STAFF OF CIRCLE",
-        "VIEW CIRCLE STAFF",
-        "GET CIRCLE STAFF",
-        "GET STAFF OF CIRCLE",
-        "WHO IS IN CIRCLE",
-        "WHO ARE IN CIRCLE",
-        "WHO WORKS IN CIRCLE",
-        "WHO IS POSTED IN CIRCLE",
-        "WHO BELONGS TO CIRCLE",
-        "CIRCLE STAFF DIRECTORY",
-        "CIRCLE PERSONNEL",
-        "CIRCLE WORKFORCE",
-        "CIRCLE EMPLOYEES",
-        "CIRCLE OFFICERS",
-        "CIRCLE STAFF REPORT",
-        "CIRCLE DIRECTORY REPORT",
-        "CIRCLE PERSONNEL REPORT",
-        "GIVE CIRCLE DIRECTORY",
-        "GIVE CIRCLE STAFF",
-        "SHOW CIRCLE DIRECTORY",
-        "OPEN CIRCLE DIRECTORY",
-        "CURRENT CIRCLE STAFF",
-        "COMPLETE CIRCLE DIRECTORY"
-    ],
+/*----------------------------------
+  Circle Directory
+----------------------------------*/
+
+STAFF_CIRCLE_DIRECTORY: [
+
+    /* Generic */
+
+    "CIRCLE DIRECTORY",
+    "DIRECTORY OF CIRCLES",
+    "CIRCLE LIST",
+    "CIRCLES",
+    "ALL CIRCLES",
+
+    /* Questions */
+
+    "SHOW CIRCLES",
+    "LIST CIRCLES",
+    "WHAT CIRCLES",
+    "WHICH CIRCLES",
+    "WHAT ARE THE CIRCLES",
+    "WHICH ARE THE CIRCLES",
+
+    /* Show */
+
+    "SHOW CIRCLE DIRECTORY",
+    "SHOW ALL CIRCLES",
+    "SHOW CIRCLE LIST",
+    "SHOW FOREST CIRCLES",
+
+    /* List */
+
+    "LIST CIRCLE DIRECTORY",
+    "LIST ALL CIRCLES",
+    "LIST FOREST CIRCLES",
+
+    /* Display */
+
+    "DISPLAY CIRCLE DIRECTORY",
+    "DISPLAY CIRCLES",
+    "VIEW CIRCLE DIRECTORY",
+    "VIEW CIRCLES",
+    "GET CIRCLE DIRECTORY",
+    "GET CIRCLES",
+
+    /* Reports */
+
+    "CIRCLE REPORT",
+    "CIRCLE DIRECTORY REPORT",
+
+    /* AI Friendly */
+
+    "GIVE CIRCLE DIRECTORY",
+    "GIVE CIRCLE LIST",
+    "CURRENT CIRCLES"
+
+],
 
     /*----------------------------------
       Division Directory
     ----------------------------------*/
 
-    STAFF_DIVISION_DIRECTORY: [
-        "DIVISION DIRECTORY",
-        "DIVISION STAFF",
-        "STAFF DIRECTORY OF DIVISION",
-        "STAFF LIST OF DIVISION",
-        "STAFF IN DIVISION",
-        "OFFICERS IN DIVISION",
-        "EMPLOYEES IN DIVISION",
-        "PERSONNEL IN DIVISION",
-        "LIST DIVISION STAFF",
-        "LIST STAFF OF DIVISION",
-        "LIST ALL STAFF IN DIVISION",
-        "LIST OFFICERS IN DIVISION",
-        "LIST EMPLOYEES IN DIVISION",
-        "SHOW DIVISION STAFF",
-        "SHOW STAFF OF DIVISION",
-        "SHOW ALL STAFF IN DIVISION",
-        "SHOW OFFICERS IN DIVISION",
-        "SHOW EMPLOYEES IN DIVISION",
-        "DISPLAY DIVISION STAFF",
-        "DISPLAY STAFF OF DIVISION",
-        "VIEW DIVISION STAFF",
-        "GET DIVISION STAFF",
-        "GET STAFF OF DIVISION",
-        "WHO IS IN DIVISION",
-        "WHO ARE IN DIVISION",
-        "WHO WORKS IN DIVISION",
-        "WHO IS POSTED IN DIVISION",
-        "WHO BELONGS TO DIVISION",
-        "DIVISION STAFF DIRECTORY",
-        "DIVISION PERSONNEL",
-        "DIVISION WORKFORCE",
-        "DIVISION EMPLOYEES",
-        "DIVISION OFFICERS",
-        "DIVISION STAFF REPORT",
-        "DIVISION DIRECTORY REPORT",
-        "DIVISION PERSONNEL REPORT",
-        "GIVE DIVISION DIRECTORY",
-        "GIVE DIVISION STAFF",
-        "SHOW DIVISION DIRECTORY",
-        "OPEN DIVISION DIRECTORY",
-        "CURRENT DIVISION STAFF",
-        "COMPLETE DIVISION DIRECTORY"
-    ],
+/*----------------------------------
+  Division Directory
+----------------------------------*/
+
+STAFF_DIVISION_DIRECTORY: [
+
+    /* Generic */
+
+    "DIVISION DIRECTORY",
+    "DIVISION LIST",
+    "DIVISION STAFF",
+    "DIVISION PERSONNEL",
+    "DIVISION OFFICERS",
+    "DIVISION EMPLOYEES",
+    "DIVISION WORKFORCE",
+    "DIVISION DIRECTORY REPORT",
+    "COMPLETE DIVISION DIRECTORY",
+
+    /* Staff Of Division */
+
+    "STAFF DIRECTORY OF DIVISION",
+    "STAFF LIST OF DIVISION",
+    "STAFF OF DIVISION",
+    "STAFF UNDER DIVISION",
+    "STAFF IN DIVISION",
+
+    "OFFICERS IN DIVISION",
+    "EMPLOYEES IN DIVISION",
+    "PERSONNEL IN DIVISION",
+
+    /* Posting */
+
+    "POSTED IN DIVISION",
+    "POSTED UNDER DIVISION",
+    "BELONGS TO DIVISION",
+    "WORKING IN DIVISION",
+    "WORKING UNDER DIVISION",
+
+    /* Questions */
+
+    "WHO IS IN DIVISION",
+    "WHO ARE IN DIVISION",
+    "WHO WORKS IN DIVISION",
+    "WHO IS POSTED IN DIVISION",
+    "WHO ARE POSTED IN DIVISION",
+    "WHO BELONGS TO DIVISION",
+
+    /* List */
+
+    "LIST DIVISION STAFF",
+    "LIST STAFF OF DIVISION",
+    "LIST STAFF IN DIVISION",
+    "LIST STAFF UNDER DIVISION",
+    "LIST ALL STAFF IN DIVISION",
+    "LIST OFFICERS IN DIVISION",
+    "LIST EMPLOYEES IN DIVISION",
+
+    /* Show */
+
+    "SHOW DIVISION STAFF",
+    "SHOW STAFF OF DIVISION",
+    "SHOW STAFF IN DIVISION",
+    "SHOW STAFF UNDER DIVISION",
+    "SHOW ALL STAFF IN DIVISION",
+    "SHOW OFFICERS IN DIVISION",
+    "SHOW EMPLOYEES IN DIVISION",
+
+    /* Display */
+
+    "DISPLAY DIVISION STAFF",
+    "DISPLAY STAFF OF DIVISION",
+    "VIEW DIVISION STAFF",
+    "VIEW STAFF OF DIVISION",
+
+    /* Get */
+
+    "GET DIVISION STAFF",
+    "GET STAFF OF DIVISION",
+
+    /* AI */
+
+    "OPEN DIVISION DIRECTORY",
+    "GIVE DIVISION DIRECTORY",
+    "GIVE DIVISION STAFF",
+    "CURRENT DIVISION STAFF"
+
+],
 
     /*----------------------------------
       Range Directory
     ----------------------------------*/
 
-    STAFF_RANGE_DIRECTORY: [
-        "RANGE DIRECTORY",
-        "RANGE STAFF",
-        "STAFF DIRECTORY OF RANGE",
-        "STAFF LIST OF RANGE",
-        "STAFF IN RANGE",
-        "OFFICERS IN RANGE",
-        "EMPLOYEES IN RANGE",
-        "PERSONNEL IN RANGE",
-        "LIST RANGE STAFF",
-        "LIST STAFF OF RANGE",
-        "LIST ALL STAFF IN RANGE",
-        "LIST OFFICERS IN RANGE",
-        "LIST EMPLOYEES IN RANGE",
-        "SHOW RANGE STAFF",
-        "SHOW STAFF OF RANGE",
-        "SHOW ALL STAFF IN RANGE",
-        "SHOW OFFICERS IN RANGE",
-        "SHOW EMPLOYEES IN RANGE",
-        "DISPLAY RANGE STAFF",
-        "DISPLAY STAFF OF RANGE",
-        "VIEW RANGE STAFF",
-        "GET RANGE STAFF",
-        "GET STAFF OF RANGE",
-        "WHO IS IN RANGE",
-        "WHO ARE IN RANGE",
-        "WHO WORKS IN RANGE",
-        "WHO IS POSTED IN RANGE",
-        "WHO BELONGS TO RANGE",
-        "RANGE STAFF DIRECTORY",
-        "RANGE PERSONNEL",
-        "RANGE WORKFORCE",
-        "RANGE EMPLOYEES",
-        "RANGE OFFICERS",
-        "RANGE STAFF REPORT",
-        "RANGE DIRECTORY REPORT",
-        "RANGE PERSONNEL REPORT",
-        "GIVE RANGE DIRECTORY",
-        "GIVE RANGE STAFF",
-        "SHOW RANGE DIRECTORY",
-        "OPEN RANGE DIRECTORY",
-        "CURRENT RANGE STAFF",
-        "COMPLETE RANGE DIRECTORY"
-    ],
+/*----------------------------------
+  Range Directory
+----------------------------------*/
+
+STAFF_RANGE_DIRECTORY: [
+
+    /* Generic */
+
+    "RANGE DIRECTORY",
+    "RANGE LIST",
+    "RANGE STAFF",
+    "RANGE PERSONNEL",
+    "RANGE OFFICERS",
+    "RANGE EMPLOYEES",
+    "RANGE WORKFORCE",
+    "RANGE DIRECTORY REPORT",
+    "COMPLETE RANGE DIRECTORY",
+
+    /* Staff */
+
+    "STAFF DIRECTORY OF RANGE",
+    "STAFF LIST OF RANGE",
+    "STAFF OF RANGE",
+    "STAFF UNDER RANGE",
+    "STAFF IN RANGE",
+
+    "OFFICERS IN RANGE",
+    "EMPLOYEES IN RANGE",
+    "PERSONNEL IN RANGE",
+
+    /* Posting */
+
+    "POSTED IN RANGE",
+    "POSTED UNDER RANGE",
+    "BELONGS TO RANGE",
+    "WORKING IN RANGE",
+    "WORKING UNDER RANGE",
+
+    /* Questions */
+
+    "WHO IS IN RANGE",
+    "WHO ARE IN RANGE",
+    "WHO WORKS IN RANGE",
+    "WHO IS POSTED IN RANGE",
+    "WHO ARE POSTED IN RANGE",
+    "WHO BELONGS TO RANGE",
+
+    /* List */
+
+    "LIST RANGE STAFF",
+    "LIST STAFF OF RANGE",
+    "LIST STAFF IN RANGE",
+    "LIST STAFF UNDER RANGE",
+    "LIST ALL STAFF IN RANGE",
+    "LIST OFFICERS IN RANGE",
+    "LIST EMPLOYEES IN RANGE",
+
+    /* Show */
+
+    "SHOW RANGE STAFF",
+    "SHOW STAFF OF RANGE",
+    "SHOW STAFF UNDER RANGE",
+    "SHOW STAFF IN RANGE",
+    "SHOW ALL STAFF IN RANGE",
+    "SHOW OFFICERS IN RANGE",
+    "SHOW EMPLOYEES IN RANGE",
+
+    /* Display */
+
+    "DISPLAY RANGE STAFF",
+    "DISPLAY STAFF OF RANGE",
+    "VIEW RANGE STAFF",
+    "VIEW STAFF OF RANGE",
+
+    /* Get */
+
+    "GET RANGE STAFF",
+    "GET STAFF OF RANGE",
+
+    /* AI */
+
+    "OPEN RANGE DIRECTORY",
+    "GIVE RANGE DIRECTORY",
+    "GIVE RANGE STAFF",
+    "CURRENT RANGE STAFF"
+
+],
  /*----------------------------------
+  Beat Directory
+----------------------------------*/
+
+/*----------------------------------
   Beat Directory
 ----------------------------------*/
 
 STAFF_BEAT_DIRECTORY: [
 
+    /* Generic */
+
     "BEAT DIRECTORY",
+    "BEAT LIST",
     "BEAT STAFF",
+    "BEAT PERSONNEL",
+    "BEAT OFFICERS",
+    "BEAT EMPLOYEES",
+    "BEAT WORKFORCE",
+    "BEAT DIRECTORY REPORT",
+    "COMPLETE BEAT DIRECTORY",
+
+    /* Staff */
+
     "STAFF DIRECTORY OF BEAT",
     "STAFF LIST OF BEAT",
+    "STAFF OF BEAT",
+    "STAFF UNDER BEAT",
     "STAFF IN BEAT",
+
     "OFFICERS IN BEAT",
     "EMPLOYEES IN BEAT",
     "PERSONNEL IN BEAT",
 
-    "LIST BEAT STAFF",
-    "LIST STAFF OF BEAT",
-    "LIST ALL STAFF IN BEAT",
-    "LIST OFFICERS IN BEAT",
-    "LIST EMPLOYEES IN BEAT",
+    /* Posting */
 
-    "SHOW BEAT STAFF",
-    "SHOW STAFF OF BEAT",
-    "SHOW ALL STAFF IN BEAT",
-    "SHOW OFFICERS IN BEAT",
-    "SHOW EMPLOYEES IN BEAT",
+    "POSTED IN BEAT",
+    "POSTED UNDER BEAT",
+    "BELONGS TO BEAT",
+    "WORKING IN BEAT",
+    "WORKING UNDER BEAT",
 
-    "DISPLAY BEAT STAFF",
-    "DISPLAY STAFF OF BEAT",
-
-    "VIEW BEAT STAFF",
-
-    "GET BEAT STAFF",
-    "GET STAFF OF BEAT",
+    /* Questions */
 
     "WHO IS IN BEAT",
     "WHO ARE IN BEAT",
     "WHO WORKS IN BEAT",
     "WHO IS POSTED IN BEAT",
+    "WHO ARE POSTED IN BEAT",
     "WHO BELONGS TO BEAT",
 
-    "BEAT STAFF DIRECTORY",
-    "BEAT PERSONNEL",
-    "BEAT WORKFORCE",
-    "BEAT EMPLOYEES",
-    "BEAT OFFICERS",
+    /* List */
 
-    "BEAT STAFF REPORT",
-    "BEAT DIRECTORY REPORT",
-    "BEAT PERSONNEL REPORT",
+    "LIST BEAT STAFF",
+    "LIST STAFF OF BEAT",
+    "LIST STAFF IN BEAT",
+    "LIST STAFF UNDER BEAT",
+    "LIST ALL STAFF IN BEAT",
+    "LIST OFFICERS IN BEAT",
+    "LIST EMPLOYEES IN BEAT",
 
-    "GIVE BEAT DIRECTORY",
-    "GIVE BEAT STAFF",
+    /* Show */
 
-    "SHOW BEAT DIRECTORY",
+    "SHOW BEAT STAFF",
+    "SHOW STAFF OF BEAT",
+    "SHOW STAFF UNDER BEAT",
+    "SHOW STAFF IN BEAT",
+    "SHOW ALL STAFF IN BEAT",
+    "SHOW OFFICERS IN BEAT",
+    "SHOW EMPLOYEES IN BEAT",
+
+    /* Display */
+
+    "DISPLAY BEAT STAFF",
+    "DISPLAY STAFF OF BEAT",
+    "VIEW BEAT STAFF",
+    "VIEW STAFF OF BEAT",
+
+    /* Get */
+
+    "GET BEAT STAFF",
+    "GET STAFF OF BEAT",
+
+    /* AI */
 
     "OPEN BEAT DIRECTORY",
-
-    "CURRENT BEAT STAFF",
-
-    "COMPLETE BEAT DIRECTORY"
+    "GIVE BEAT DIRECTORY",
+    "GIVE BEAT STAFF",
+    "CURRENT BEAT STAFF"
 
 ],
  /*----------------------------------
   Designation Directory
 ----------------------------------*/
 
+/*----------------------------------
+  Designation Directory
+----------------------------------*/
+
 STAFF_DESIGNATION_DIRECTORY: [
 
-    /*----------------------------------
+    /*=========================================================
       Generic
-    ----------------------------------*/
+    ========================================================*/
 
     "DESIGNATION DIRECTORY",
+    "DESIGNATION LIST",
+    "DESIGNATIONS",
+
     "DESIGNATION STAFF",
-    "DESIGNATION WISE STAFF",
+    "DESIGNATION PERSONNEL",
+    "DESIGNATION EMPLOYEES",
+    "DESIGNATION OFFICERS",
+
     "STAFF BY DESIGNATION",
+    "STAFF DIRECTORY BY DESIGNATION",
+    "STAFF DIRECTORY OF DESIGNATION",
+    "STAFF LIST OF DESIGNATION",
+
     "STAFF OF DESIGNATION",
+    "STAFF UNDER DESIGNATION",
+    "STAFF IN DESIGNATION",
+
     "OFFICERS BY DESIGNATION",
     "EMPLOYEES BY DESIGNATION",
     "PERSONNEL BY DESIGNATION",
 
-    /*----------------------------------
+    /*=========================================================
       Listing
-    ----------------------------------*/
+    ========================================================*/
 
     "LIST DESIGNATION STAFF",
     "LIST STAFF BY DESIGNATION",
     "LIST STAFF OF DESIGNATION",
+    "LIST STAFF UNDER DESIGNATION",
     "LIST ALL STAFF OF DESIGNATION",
 
     "SHOW DESIGNATION STAFF",
     "SHOW STAFF BY DESIGNATION",
     "SHOW STAFF OF DESIGNATION",
+    "SHOW STAFF UNDER DESIGNATION",
     "SHOW ALL STAFF OF DESIGNATION",
 
     "DISPLAY DESIGNATION STAFF",
     "DISPLAY STAFF OF DESIGNATION",
 
     "VIEW DESIGNATION STAFF",
+    "VIEW STAFF OF DESIGNATION",
 
     "GET DESIGNATION STAFF",
     "GET STAFF OF DESIGNATION",
 
-    /*----------------------------------
-      Designation Lists
-    ----------------------------------*/
+    /*=========================================================
+      Abbreviations
+    ========================================================*/
+
+    "FR",
+    "FG",
+    "BS",
+    "FV",
+    "AS",
+    "DL",
+    "PDL",
+    "DRIVER",
+    "WATCHER",
 
     "FR LIST",
     "FG LIST",
     "BS LIST",
     "FV LIST",
-    "DRIVER LIST",
-    "WATCHER LIST",
+    "AS LIST",
     "DL LIST",
     "PDL LIST",
-    "AS LIST",
 
-    "FORESTER LIST",
-    "FOREST GUARD LIST",
-    "BANASAHAYAK LIST",
-    "FOREST VILLAGER LIST",
+    "DRIVER LIST",
+    "WATCHER LIST",
 
-    /*----------------------------------
-      Queries
-    ----------------------------------*/
+    "SHOW FR",
+    "SHOW FG",
+    "SHOW BS",
+    "SHOW FV",
+    "SHOW AS",
+    "SHOW DL",
+    "SHOW PDL",
+
+    "LIST FR",
+    "LIST FG",
+    "LIST BS",
+    "LIST FV",
+    "LIST AS",
+    "LIST DL",
+    "LIST PDL",
+
+    /*=========================================================
+      Full Designation Names
+    ========================================================*/
+
+    "FORESTER",
+    "FORESTERS",
+
+    "FOREST GUARD",
+    "FOREST GUARDS",
+
+    "BANASAHAYAK",
+    "BANASAHAYAKS",
+
+    "FOREST VILLAGER",
+    "FOREST VILLAGERS",
+
+    "DRIVER",
+    "DRIVERS",
+
+    "WATCHER",
+    "WATCHERS",
+
+    "DAILY LABOUR",
+    "DAILY LABOURER",
+    "DAILY LABOURERS",
+
+    "PERMANENT DAILY LABOUR",
+    "PERMANENT DAILY LABOURER",
+    "PERMANENT DAILY LABOURERS",
+
+    "ANIMAL SQUAD",
+    "ANIMAL SQUAD MEMBER",
+    "ANIMAL SQUAD MEMBERS",
+
+    /*=========================================================
+      Questions
+    ========================================================*/
 
     "WHO ARE THE FR",
     "WHO ARE THE FG",
     "WHO ARE THE BS",
+    "WHO ARE THE FV",
+    "WHO ARE THE DL",
+    "WHO ARE THE PDL",
+    "WHO ARE THE AS",
 
-    "WHO ARE THE FOREST GUARDS",
     "WHO ARE THE FORESTERS",
+    "WHO ARE THE FOREST GUARDS",
+    "WHO ARE THE BANASAHAYAKS",
+    "WHO ARE THE FOREST VILLAGERS",
+
+    "WHO ARE DRIVERS",
+    "WHO ARE WATCHERS",
+
+    "WHO IS A FORESTER",
+    "WHO IS A FOREST GUARD",
+    "WHO IS A BANASAHAYAK",
+    "WHO IS A FOREST VILLAGER",
 
     "WHO IS A DRIVER",
-
     "WHO IS A WATCHER",
 
-    /*----------------------------------
+    /*=========================================================
       Administrative
-    ----------------------------------*/
+    ========================================================*/
 
     "DESIGNATION DIRECTORY REPORT",
     "DESIGNATION STAFF REPORT",
+
     "DESIGNATION REGISTER",
     "STAFF REGISTER BY DESIGNATION",
 
-    /*----------------------------------
+    /*=========================================================
       AI Friendly
-    ----------------------------------*/
+    ========================================================*/
 
     "GIVE DESIGNATION DIRECTORY",
+    "GIVE DESIGNATION STAFF",
 
     "SHOW DESIGNATION DIRECTORY",
 
@@ -3064,546 +3692,606 @@ STAFF_DESIGNATION_DIRECTORY: [
   Active Staff Count
 ----------------------------------*/
 
+/*----------------------------------
+  Active Staff Count
+----------------------------------*/
+
 STAFF_ACTIVE_COUNT: [
 
-    /*----------------------------------
-      Generic
-    ----------------------------------*/
+    /* Generic */
 
     "ACTIVE STAFF COUNT",
     "ACTIVE COUNT",
     "CURRENT ACTIVE COUNT",
     "ACTIVE STRENGTH",
-    "CURRENT ACTIVE STRENGTH",
     "ACTIVE MANPOWER",
     "ACTIVE PERSONNEL",
     "ACTIVE WORKFORCE",
+    "ACTIVE TOTAL",
+    "ACTIVE HEADCOUNT",
+    "TOTAL ACTIVE",
 
-    /*----------------------------------
-      On Duty
-    ----------------------------------*/
+    /* Duty Count */
 
     "ON DUTY COUNT",
-    "ON DUTY STAFF COUNT",
     "STAFF ON DUTY COUNT",
-    "DUTY COUNT",
     "CURRENT DUTY COUNT",
     "CURRENT ON DUTY COUNT",
+    "DUTY COUNT",
+    "WORKING COUNT",
+    "PATROLLING COUNT",
 
-    /*----------------------------------
-      Questions
-    ----------------------------------*/
+    /* Questions */
 
-    "HOW MANY STAFF ARE ACTIVE",
     "HOW MANY ACTIVE STAFF",
-    "HOW MANY ARE ON DUTY",
+    "HOW MANY STAFF ACTIVE",
+    "HOW MANY STAFF ARE ACTIVE",
+
+    "HOW MANY ARE ACTIVE",
+
     "HOW MANY STAFF ARE ON DUTY",
-    "HOW MANY OFFICERS ARE ACTIVE",
-    "HOW MANY EMPLOYEES ARE ACTIVE",
+    "HOW MANY ON DUTY",
+
+    "HOW MANY WORKING",
+
+    "HOW MANY PATROLLING",
+
+    "NUMBER OF ACTIVE STAFF",
+
+    "NUMBER OF STAFF ON DUTY",
+
+    "COUNT ACTIVE STAFF",
+
+    "COUNT STAFF",
+
+    "ACTIVE STAFF NUMBER",
+
+    "ON DUTY NUMBER",
+
+    /* Totals */
 
     "TOTAL ACTIVE STAFF",
+
     "TOTAL ACTIVE OFFICERS",
+
+    "TOTAL ACTIVE EMPLOYEES",
+
     "TOTAL STAFF ON DUTY",
 
-    /*----------------------------------
-      Reports
-    ----------------------------------*/
+    "TOTAL WORKING STAFF",
+
+    "TOTAL PATROLLING STAFF",
+
+    /* Reports */
 
     "SHOW ACTIVE STAFF COUNT",
+
     "SHOW ACTIVE COUNT",
+
     "SHOW DUTY COUNT",
+
+    "SHOW ON DUTY COUNT",
+
+    "DISPLAY ACTIVE COUNT",
 
     "DISPLAY ACTIVE STAFF COUNT",
 
-    "VIEW ACTIVE STAFF COUNT",
+    "VIEW ACTIVE COUNT",
 
-    "GET ACTIVE STAFF COUNT",
+    "GET ACTIVE COUNT",
 
-    /*----------------------------------
-      AI Friendly
-    ----------------------------------*/
+    "ACTIVE COUNT REPORT",
+
+    "ACTIVE STAFF REPORT",
+
+    "ACTIVE SUMMARY",
+
+    /* AI Friendly */
+
+    "GIVE ACTIVE COUNT",
 
     "GIVE ACTIVE STAFF COUNT",
-    "CURRENT ACTIVE STAFF COUNT",
-    "CURRENT ACTIVE STRENGTH",
-    "ACTIVE STAFF TOTAL"
+
+    "CURRENT ACTIVE COUNT",
+
+    "CURRENT ACTIVE STRENGTH"
 
 ],
  /*----------------------------------
   Active Staff List
 ----------------------------------*/
 
+/*----------------------------------
+  Active Staff List
+----------------------------------*/
+
 STAFF_ACTIVE_LIST: [
 
-    /*----------------------------------
-      Generic
-    ----------------------------------*/
+    /* Generic */
 
     "ACTIVE STAFF",
     "ACTIVE STAFF LIST",
-    "ACTIVE STAFF DIRECTORY",
-    "ACTIVE OFFICERS",
-    "ACTIVE EMPLOYEES",
+    "ACTIVE LIST",
+    "CURRENT ACTIVE STAFF",
+    "CURRENT ACTIVE STAFF LIST",
     "ACTIVE PERSONNEL",
-    "ACTIVE WORKFORCE",
+    "ACTIVE EMPLOYEES",
+    "ACTIVE OFFICERS",
+    "ACTIVE MEMBERS",
+    "WORKING STAFF",
+    "WORKING OFFICERS",
 
-    /*----------------------------------
-      On Duty
-    ----------------------------------*/
+    /* Duty */
 
-    "STAFF ON DUTY",
+    "ON DUTY",
     "ON DUTY STAFF",
-    "ON DUTY OFFICERS",
-    "ON DUTY EMPLOYEES",
-    "ON DUTY PERSONNEL",
+    "ON DUTY STAFF LIST",
+    "STAFF ON DUTY",
+    "STAFF CURRENTLY ON DUTY",
+    "CURRENTLY ON DUTY",
+    "CURRENT DUTY STAFF",
+    "CURRENT DUTY LIST",
+    "DUTY STAFF",
+    "DUTY LIST",
+
+    /* Questions */
 
     "WHO IS ON DUTY",
     "WHO ARE ON DUTY",
+    "WHO IS ACTIVE",
+    "WHO ARE ACTIVE",
+    "WHO IS WORKING",
+    "WHO ARE WORKING",
+    "WHO IS AVAILABLE",
+    "WHO ARE AVAILABLE",
 
-    "CURRENT ON DUTY STAFF",
-    "CURRENT ACTIVE STAFF",
-
-    /*----------------------------------
-      Listing
-    ----------------------------------*/
-
-    "LIST ACTIVE STAFF",
-    "LIST ALL ACTIVE STAFF",
-    "LIST STAFF ON DUTY",
-    "LIST CURRENT ACTIVE STAFF",
+    /* Show */
 
     "SHOW ACTIVE STAFF",
-    "SHOW ALL ACTIVE STAFF",
+    "SHOW ACTIVE STAFF LIST",
+    "SHOW ACTIVE PEOPLE",
+    "SHOW ON DUTY STAFF",
     "SHOW STAFF ON DUTY",
-    "SHOW CURRENT ACTIVE STAFF",
+    "SHOW CURRENT STAFF",
+    "SHOW CURRENT DUTY STAFF",
+    "SHOW WORKING STAFF",
+
+    /* List */
+
+    "LIST ACTIVE STAFF",
+    "LIST ACTIVE PEOPLE",
+    "LIST ON DUTY STAFF",
+    "LIST STAFF ON DUTY",
+    "LIST CURRENT STAFF",
+    "LIST WORKING STAFF",
+
+    /* Display */
 
     "DISPLAY ACTIVE STAFF",
-    "DISPLAY STAFF ON DUTY",
-
+    "DISPLAY ON DUTY STAFF",
+    "DISPLAY CURRENT STAFF",
     "VIEW ACTIVE STAFF",
-
+    "VIEW ON DUTY STAFF",
     "GET ACTIVE STAFF",
+    "GET ON DUTY STAFF",
 
-    /*----------------------------------
-      Reports
-    ----------------------------------*/
+    /* Report */
 
     "ACTIVE STAFF REPORT",
-    "ACTIVE STAFF DIRECTORY",
-    "ACTIVE PERSONNEL REPORT",
-    "ACTIVE DUTY REPORT",
+    "ON DUTY REPORT",
+    "ACTIVE STAFF SUMMARY",
 
-    /*----------------------------------
-      AI Friendly
-    ----------------------------------*/
+    /* AI Friendly */
 
     "GIVE ACTIVE STAFF",
-
     "GIVE ACTIVE STAFF LIST",
-
-    "OPEN ACTIVE STAFF LIST",
-
-    "CURRENT ACTIVE STAFF LIST",
-
-    "COMPLETE ACTIVE STAFF LIST"
+    "GIVE ON DUTY STAFF",
+    "GIVE CURRENT STAFF"
 
 ],
  /*----------------------------------
   Inactive Staff List
 ----------------------------------*/
 
+/*----------------------------------
+  Inactive Staff List
+----------------------------------*/
+
 STAFF_INACTIVE_LIST: [
 
-    /*----------------------------------
-      Generic
-    ----------------------------------*/
+    /* Generic */
 
     "INACTIVE STAFF",
     "INACTIVE STAFF LIST",
-    "INACTIVE STAFF DIRECTORY",
+    "INACTIVE LIST",
+    "INACTIVE PERSONNEL",
     "INACTIVE OFFICERS",
     "INACTIVE EMPLOYEES",
-    "INACTIVE PERSONNEL",
-    "INACTIVE WORKFORCE",
+    "IDLE STAFF",
+    "OFF DUTY STAFF",
+    "AVAILABLE STAFF",
 
-    /*----------------------------------
-      Off Duty
-    ----------------------------------*/
+    /* Duty */
 
+    "OFF DUTY",
     "OFF DUTY STAFF",
     "STAFF OFF DUTY",
-    "OFF DUTY OFFICERS",
-    "OFF DUTY EMPLOYEES",
-    "OFF DUTY PERSONNEL",
+    "CURRENTLY OFF DUTY",
+    "NOT ON DUTY",
+    "NOT WORKING",
+    "NOT PATROLLING",
+    "FREE STAFF",
+    "RESTING STAFF",
+
+    /* Questions */
 
     "WHO IS OFF DUTY",
     "WHO ARE OFF DUTY",
+    "WHO IS INACTIVE",
+    "WHO ARE INACTIVE",
+    "WHO IS NOT ON DUTY",
+    "WHO ARE NOT ON DUTY",
+    "WHO IS AVAILABLE",
+    "WHO ARE AVAILABLE",
+    "WHO IS FREE",
+    "WHO ARE FREE",
 
-    "CURRENT OFF DUTY STAFF",
-    "CURRENT INACTIVE STAFF",
-
-    /*----------------------------------
-      Listing
-    ----------------------------------*/
-
-    "LIST INACTIVE STAFF",
-    "LIST ALL INACTIVE STAFF",
-    "LIST STAFF OFF DUTY",
-    "LIST CURRENT INACTIVE STAFF",
+    /* Show */
 
     "SHOW INACTIVE STAFF",
-    "SHOW ALL INACTIVE STAFF",
+    "SHOW OFF DUTY STAFF",
     "SHOW STAFF OFF DUTY",
-    "SHOW CURRENT INACTIVE STAFF",
+    "SHOW AVAILABLE STAFF",
+    "SHOW FREE STAFF",
+    "SHOW IDLE STAFF",
+
+    /* List */
+
+    "LIST INACTIVE STAFF",
+    "LIST OFF DUTY STAFF",
+    "LIST STAFF OFF DUTY",
+    "LIST AVAILABLE STAFF",
+    "LIST FREE STAFF",
+
+    /* Display */
 
     "DISPLAY INACTIVE STAFF",
-    "DISPLAY STAFF OFF DUTY",
-
+    "DISPLAY OFF DUTY STAFF",
     "VIEW INACTIVE STAFF",
-
+    "VIEW OFF DUTY STAFF",
     "GET INACTIVE STAFF",
+    "GET OFF DUTY STAFF",
 
-    /*----------------------------------
-      Reports
-    ----------------------------------*/
+    /* Reports */
 
     "INACTIVE STAFF REPORT",
-    "INACTIVE STAFF DIRECTORY",
     "OFF DUTY REPORT",
-    "OFF DUTY STAFF REPORT",
+    "INACTIVE STAFF SUMMARY",
 
-    /*----------------------------------
-      AI Friendly
-    ----------------------------------*/
+    /* AI Friendly */
 
     "GIVE INACTIVE STAFF",
-
-    "GIVE INACTIVE STAFF LIST",
-
-    "OPEN INACTIVE STAFF LIST",
-
-    "CURRENT INACTIVE STAFF LIST",
-
-    "COMPLETE INACTIVE STAFF LIST"
+    "GIVE OFF DUTY STAFF",
+    "GIVE AVAILABLE STAFF",
+    "CURRENT INACTIVE STAFF"
 
 ],
  /*----------------------------------
   Duty Summary
 ----------------------------------*/
 
+/*----------------------------------
+  Duty Summary
+----------------------------------*/
+
 STAFF_DUTY_SUMMARY: [
 
-    /*----------------------------------
-      Generic
-    ----------------------------------*/
+    /* Generic */
 
     "DUTY SUMMARY",
-    "DUTY REPORT",
-    "DUTY STATUS",
-    "DUTY STATUS REPORT",
-    "CURRENT DUTY STATUS",
-    "CURRENT DUTY SUMMARY",
-    "DUTY OVERVIEW",
-    "DUTY ANALYSIS",
-
-    /*----------------------------------
-      Distribution
-    ----------------------------------*/
-
-    "DUTY DISTRIBUTION",
-    "DUTY BREAKDOWN",
     "STAFF DUTY SUMMARY",
+    "CURRENT DUTY SUMMARY",
+    "TODAY DUTY SUMMARY",
+    "DUTY OVERVIEW",
+    "DUTY STATUS",
+    "DUTY STATUS SUMMARY",
+    "DUTY REPORT",
     "STAFF DUTY REPORT",
-    "STAFF DUTY STATUS",
+    "CURRENT DUTY REPORT",
 
-    /*----------------------------------
-      Active Duty
-    ----------------------------------*/
+    /* Questions */
 
-    "WHO IS ON DUTY",
-    "HOW MANY ARE ON DUTY",
-    "TOTAL STAFF ON DUTY",
+    "WHAT IS THE DUTY STATUS",
+    "WHAT IS CURRENT DUTY STATUS",
+    "WHAT DUTY IS RUNNING",
+    "WHICH DUTIES ARE ACTIVE",
+    "WHAT STAFF ARE ON DUTY",
 
-    /*----------------------------------
-      Duty Types
-    ----------------------------------*/
-
-    "PATROL DUTY SUMMARY",
-    "PATROLLING SUMMARY",
-    "DEPREDATION DUTY SUMMARY",
-    "ELEPHANT DUTY SUMMARY",
-    "PROTECTION DUTY SUMMARY",
-    "NIGHT PATROL SUMMARY",
-    "DAY PATROL SUMMARY",
-
-    /*----------------------------------
-      Reports
-    ----------------------------------*/
+    /* Show */
 
     "SHOW DUTY SUMMARY",
-    "SHOW DUTY REPORT",
-    "SHOW DUTY STATUS",
     "SHOW STAFF DUTY",
+    "SHOW DUTY REPORT",
+    "SHOW CURRENT DUTY",
+    "SHOW DUTY STATUS",
+    "SHOW ACTIVE DUTY",
+
+    /* List */
+
+    "LIST DUTY",
+    "LIST DUTY SUMMARY",
+    "LIST STAFF DUTY",
+    "LIST ACTIVE DUTY",
+    "LIST CURRENT DUTY",
+
+    /* Display */
 
     "DISPLAY DUTY SUMMARY",
     "DISPLAY DUTY REPORT",
-
     "VIEW DUTY SUMMARY",
-
+    "VIEW DUTY REPORT",
     "GET DUTY SUMMARY",
+    "GET DUTY REPORT",
 
-    /*----------------------------------
-      AI Friendly
-    ----------------------------------*/
+    /* Patrol */
+
+    "PATROL DUTY",
+    "PATROL DUTY SUMMARY",
+    "ELEPHANT PATROL DUTY",
+    "CURRENT PATROL DUTY",
+
+    /* Reports */
+
+    "TODAY DUTY REPORT",
+    "LIVE DUTY REPORT",
+    "ACTIVE DUTY REPORT",
+    "DUTY STATUS REPORT",
+
+    /* AI Friendly */
 
     "GIVE DUTY SUMMARY",
-
-    "CURRENT DUTY REPORT",
-
-    "COMPLETE DUTY SUMMARY",
-
-    "TODAY DUTY SUMMARY",
-
-    "TODAY DUTY REPORT"
+    "GIVE DUTY REPORT",
+    "CURRENT DUTY SUMMARY",
+    "CURRENT DUTY REPORT"
 
 ],
  /*----------------------------------
   Team Leader List
 ----------------------------------*/
 
+/*----------------------------------
+  Team Leader List
+----------------------------------*/
+
 STAFF_TEAM_LEADER_LIST: [
 
-    /*----------------------------------
-      Generic
-    ----------------------------------*/
+    /* Generic */
 
     "TEAM LEADER",
     "TEAM LEADERS",
     "TEAM LEADER LIST",
-    "TEAM LEADER DIRECTORY",
-    "TEAM LEADER REPORT",
-
+    "TEAM LEADERS LIST",
+    "LEADER",
+    "LEADERS",
     "LEADER LIST",
     "LEADERS LIST",
 
-    /*----------------------------------
-      Listing
-    ----------------------------------*/
+    /* Questions */
 
-    "LIST TEAM LEADERS",
-    "LIST ALL TEAM LEADERS",
-    "LIST LEADERS",
+    "WHO IS TEAM LEADER",
+    "WHO ARE TEAM LEADERS",
+    "WHO IS THE TEAM LEADER",
+    "WHO ARE THE TEAM LEADERS",
+
+    "WHO IS LEADER",
+    "WHO ARE LEADERS",
+
+    /* Show */
 
     "SHOW TEAM LEADERS",
-    "SHOW ALL TEAM LEADERS",
+    "SHOW TEAM LEADER",
     "SHOW LEADERS",
+    "SHOW LEADER LIST",
+    "SHOW TEAM LEADER LIST",
+
+    /* List */
+
+    "LIST TEAM LEADERS",
+    "LIST TEAM LEADER",
+    "LIST LEADERS",
+    "LIST LEADER",
+    "LIST OF TEAM LEADERS",
+    "LIST OF LEADERS",
+
+    /* Display */
 
     "DISPLAY TEAM LEADERS",
-
+    "DISPLAY LEADER LIST",
     "VIEW TEAM LEADERS",
-
+    "VIEW LEADER LIST",
     "GET TEAM LEADERS",
+    "GET LEADER LIST",
 
-    /*----------------------------------
-      Questions
-    ----------------------------------*/
-
-    "WHO ARE THE TEAM LEADERS",
-    "WHO IS TEAM LEADER",
-    "WHO IS THE TEAM LEADER",
-
-    "WHO LEADS THE TEAM",
-
-    "WHO ARE THE LEADERS",
-
-    /*----------------------------------
-      Administrative
-    ----------------------------------*/
+    /* Directory */
 
     "TEAM LEADER DIRECTORY",
+    "LEADER DIRECTORY",
 
-    "TEAM LEADER REGISTER",
+    /* Reports */
 
-    "TEAM LEADER DETAILS",
+    "TEAM LEADER REPORT",
+    "TEAM LEADER SUMMARY",
 
-    "TEAM LEADER INFORMATION",
+    /* AI Friendly */
 
-    /*----------------------------------
-      AI Friendly
-    ----------------------------------*/
-
+    "GIVE TEAM LEADERS",
     "GIVE TEAM LEADER LIST",
-
-    "SHOW TEAM LEADER DIRECTORY",
-
-    "OPEN TEAM LEADER DIRECTORY",
-
-    "CURRENT TEAM LEADERS",
-
-    "COMPLETE TEAM LEADER LIST"
+    "GIVE LEADER LIST",
+    "CURRENT TEAM LEADERS"
 
 ],
  /*----------------------------------
   Moving Staff
 ----------------------------------*/
 
+/*----------------------------------
+  Moving Staff
+----------------------------------*/
+
 STAFF_MOVING: [
 
-    /*----------------------------------
-      Generic
-    ----------------------------------*/
+    /* Generic */
 
     "MOVING STAFF",
+    "MOVING STAFF LIST",
+    "MOVING PEOPLE",
     "MOVING OFFICERS",
-    "MOVING EMPLOYEES",
     "MOVING PERSONNEL",
-    "MOVING WORKFORCE",
+    "MOVING EMPLOYEES",
 
-    /*----------------------------------
-      Motion
-    ----------------------------------*/
-
-    "STAFF IN MOTION",
-    "OFFICERS IN MOTION",
-    "CURRENTLY MOVING",
-    "CURRENTLY MOVING STAFF",
-    "CURRENTLY MOVING OFFICERS",
+    /* Questions */
 
     "WHO IS MOVING",
     "WHO ARE MOVING",
+    "WHO IS CURRENTLY MOVING",
+    "WHO ARE CURRENTLY MOVING",
 
-    /*----------------------------------
-      Live Tracking
-    ----------------------------------*/
-
-    "LIVE MOVING STAFF",
-    "LIVE MOVEMENT",
-    "MOVING GPS",
-    "LIVE GPS STAFF",
-    "MOVING PATROL",
-
-    /*----------------------------------
-      Listing
-    ----------------------------------*/
-
-    "LIST MOVING STAFF",
-    "LIST ALL MOVING STAFF",
+    /* Show */
 
     "SHOW MOVING STAFF",
-    "SHOW ALL MOVING STAFF",
+    "SHOW MOVING PEOPLE",
+    "SHOW STAFF MOVING",
+    "SHOW STAFF IN MOTION",
+    "SHOW MOVING TEAM",
 
-    "DISPLAY MOVING STAFF",
+    /* List */
 
-    "VIEW MOVING STAFF",
+    "LIST MOVING STAFF",
+    "LIST STAFF MOVING",
+    "LIST MOVING PEOPLE",
+    "LIST MOVING TEAM",
 
-    "GET MOVING STAFF",
+    /* Motion */
 
-    /*----------------------------------
-      Reports
-    ----------------------------------*/
+    "IN MOTION",
+    "STAFF IN MOTION",
+    "CURRENTLY MOVING",
+    "CURRENTLY TRAVELLING",
+    "CURRENTLY TRAVELING",
 
-    "MOVING STAFF REPORT",
+    /* Travel */
+
+    "TRAVELLING STAFF",
+    "TRAVELING STAFF",
+    "STAFF TRAVELLING",
+    "STAFF TRAVELING",
+    "WHO IS TRAVELLING",
+    "WHO IS TRAVELING",
+
+    /* Patrol */
+
+    "PATROLLING STAFF",
+    "STAFF PATROLLING",
+    "MOVING PATROL",
+    "PATROL TEAM",
+    "PATROL STAFF",
+    "PATROL MEMBERS",
+
+    /* Vehicle */
+
+    "DRIVING STAFF",
+    "RIDING STAFF",
+    "WALKING STAFF",
+    "STAFF WALKING",
+    "STAFF DRIVING",
+
+    /* Report */
+
     "MOVEMENT REPORT",
-    "LIVE MOVEMENT REPORT",
-    "CURRENT MOVEMENT",
+    "MOVING STAFF REPORT",
 
-    /*----------------------------------
-      AI Friendly
-    ----------------------------------*/
+    /* AI Friendly */
 
     "GIVE MOVING STAFF",
-
-    "SHOW LIVE MOVEMENT",
-
-    "OPEN MOVING STAFF",
-
-    "CURRENT MOVING STAFF",
-
-    "COMPLETE MOVING STAFF LIST"
+    "GET MOVING STAFF",
+    "DISPLAY MOVING STAFF",
+    "VIEW MOVING STAFF"
 
 ],
  /*----------------------------------
   Stationary Staff
 ----------------------------------*/
 
+/*----------------------------------
+  Stationary Staff
+----------------------------------*/
+
 STAFF_STATIONARY: [
 
-    /*----------------------------------
-      Generic
-    ----------------------------------*/
+    /* Generic */
 
     "STATIONARY STAFF",
+    "STATIONARY STAFF LIST",
+    "STATIONARY PEOPLE",
     "STATIONARY OFFICERS",
-    "STATIONARY EMPLOYEES",
     "STATIONARY PERSONNEL",
-    "STATIONARY WORKFORCE",
+    "STATIONARY EMPLOYEES",
 
-    /*----------------------------------
-      Not Moving
-    ----------------------------------*/
-
-    "STAFF NOT MOVING",
-    "OFFICERS NOT MOVING",
-    "STAFF STANDING",
-    "STAFF STOPPED",
-    "STOPPED STAFF",
+    /* Questions */
 
     "WHO IS STATIONARY",
     "WHO ARE STATIONARY",
-
     "WHO IS NOT MOVING",
     "WHO ARE NOT MOVING",
+    "WHO IS IDLE",
+    "WHO ARE IDLE",
+    "WHO IS STOPPED",
+    "WHO ARE STOPPED",
 
-    /*----------------------------------
-      Live Tracking
-    ----------------------------------*/
+    /* Show */
 
-    "LIVE STATIONARY STAFF",
-    "LIVE STATIONARY",
-    "CURRENTLY STATIONARY",
-    "CURRENTLY STATIONARY STAFF",
-    "CURRENTLY STOPPED STAFF",
+    "SHOW STATIONARY STAFF",
+    "SHOW STAFF NOT MOVING",
+    "SHOW IDLE STAFF",
+    "SHOW STOPPED STAFF",
+    "SHOW STATIONARY PEOPLE",
 
-    /*----------------------------------
-      Listing
-    ----------------------------------*/
+    /* List */
 
     "LIST STATIONARY STAFF",
-    "LIST ALL STATIONARY STAFF",
+    "LIST IDLE STAFF",
+    "LIST STOPPED STAFF",
+    "LIST STAFF NOT MOVING",
 
-    "SHOW STATIONARY STAFF",
-    "SHOW ALL STATIONARY STAFF",
+    /* Motion */
 
-    "DISPLAY STATIONARY STAFF",
+    "NOT MOVING",
+    "STAFF NOT MOVING",
+    "CURRENTLY STATIONARY",
+    "CURRENTLY IDLE",
+    "CURRENTLY STOPPED",
 
-    "VIEW STATIONARY STAFF",
+    /* Position */
 
-    "GET STATIONARY STAFF",
+    "STATIC STAFF",
+    "STATIC TEAM",
+    "STAFF STANDING",
+    "STAFF WAITING",
 
-    /*----------------------------------
-      Reports
-    ----------------------------------*/
+    /* Reports */
 
-    "STATIONARY STAFF REPORT",
     "STATIONARY REPORT",
-    "STOPPED STAFF REPORT",
-    "LIVE STATIONARY REPORT",
+    "STATIONARY STAFF REPORT",
+    "IDLE STAFF REPORT",
 
-    /*----------------------------------
-      AI Friendly
-    ----------------------------------*/
+    /* AI Friendly */
 
     "GIVE STATIONARY STAFF",
+    "GET STATIONARY STAFF",
+    "DISPLAY STATIONARY STAFF",
+    "VIEW STATIONARY STAFF"
 
-    "SHOW STATIONARY STAFF",
-
-    "OPEN STATIONARY STAFF",
-
-    "CURRENT STATIONARY STAFF",
-
-    "COMPLETE STATIONARY STAFF LIST"
-
-]
+],
 });
  /*=========================================================
  SYNONYMS
