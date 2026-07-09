@@ -654,22 +654,54 @@ Core.init = async function () {
     };
 
 Core.callAI = async function (request) {
-
     busy = true;
 
     try {
-
         const cached =
             await Core.getCachedResponse(
                 request
             );
 
         if (cached) {
+            console.group(
+                "⚡ CORE CACHE"
+            );
 
-            busy = false;
+            console.log(
+                "Cache Hit"
+            );
+
+            console.log(
+                "Cache Key:",
+                cacheKey(
+                    request
+                )
+            );
+
+            console.log(
+                "Intent:",
+                request.detectedIntent?.intent ||
+                request.intent
+            );
+
+            console.log(
+                "Request:",
+                request
+            );
+
+            console.log(
+                "Cached Response:",
+                cached
+            );
+
+            console.groupEnd();
+
+            lastResponse =
+                Config.clone(
+                    cached
+                );
 
             return cached;
-
         }
 
         /*------------------------------------------
@@ -677,382 +709,380 @@ Core.callAI = async function (request) {
         ------------------------------------------*/
 
         const Controller =
-
             window.GreenGuardAI.Controller;
 
         if (
-
             !Controller ||
-
             typeof Controller.ask !==
             "function"
-
         ) {
-
             throw new Error(
-
                 "Controller unavailable."
-
             );
-
         }
 
         const localResponse =
-
             await Controller.ask(
-
                 request
-
             );
+
+        console.log(
+            "Pipeline Selected:",
+            localResponse?.local
+                ? "LOCAL"
+                : "CLOUD"
+        );
+
+        console.group(
+            "🟢 LOCAL PIPELINE"
+        );
+        console.log(
+            "Controller Response:",
+            localResponse
+        );
+        console.log(
+            "Success:",
+            localResponse?.success
+        );
+        console.log(
+            "Local:",
+            localResponse?.local
+        );
+        console.log(
+            "Intent:",
+            localResponse?.intent
+        );
+        console.log(
+            "Domain:",
+            localResponse?.domain
+        );
+        console.groupEnd();
 
         /*------------------------------------------
           LOCAL SUCCESS
         ------------------------------------------*/
 
         if (
-
             localResponse &&
-
             localResponse.success &&
-
             localResponse.local !== false
-
         ) {
-
             /*----------------------------------
               Normalize Local Response
             ----------------------------------*/
 
             localResponse.answer =
-
                 localResponse.formatted?.markdown ||
-
                 localResponse.formatted?.html ||
-
                 localResponse.message ||
-
                 "";
-
             localResponse.cached =
-
                 false;
-
             localResponse.timestamp =
-
                 Date.now();
-
             localResponse.requestId =
-
                 request.id;
-
             localResponse.raw =
-
                 localResponse.raw ||
-
                 localResponse;
+
+            localResponse.intent =
+                request.detectedIntent?.intent ||
+                localResponse.intent;
+            localResponse.domain =
+                request.detectedIntent?.domain ||
+                localResponse.domain;
+            localResponse.detectedIntent =
+                request.detectedIntent;
 
             /*----------------------------------
               Cache
             ----------------------------------*/
 
             await Core.setCachedResponse(
-
                 request,
-
                 localResponse
-
             );
 
-            busy = false;
+            console.group(
+                "🏁 FINAL LOCAL RESPONSE"
+            );
+            console.log(
+                "Intent:",
+                localResponse.intent
+            );
+            console.log(
+                "Domain:",
+                localResponse.domain
+            );
+            console.log(
+                "Cards:",
+                localResponse.cards?.length || 0
+            );
+            console.log(
+                "Sections:",
+                localResponse.sections?.length || 0
+            );
+            console.log(
+                "Markdown:",
+                !!localResponse.formatted?.markdown
+            );
+            console.log(
+                "HTML:",
+                !!localResponse.formatted?.html
+            );
+            console.log(
+                "Formatter:",
+                localResponse.formatted?.module
+            );
+            console.log(
+                "Cached:",
+                localResponse.cached
+            );
+            console.groupEnd();
 
             responseCount++;
 
             lastResponse =
-
                 Config.clone(
-
                     localResponse
-
                 );
 
-            return localResponse;
+            console.group(
+                "🏆 PIPELINE SUMMARY"
+            );
+            console.table({
+                Query:
+                    request.query,
+                Intent:
+                    localResponse.intent,
+                Domain:
+                    localResponse.domain,
+                Source:
+                    "LOCAL",
+                Module:
+                    localResponse.module,
+                Formatter:
+                    localResponse.formatted?.module,
+                Cards:
+                    localResponse.cards?.length || 0,
+                Sections:
+                    localResponse.sections?.length || 0,
+                Markdown:
+                    !!localResponse.formatted?.markdown,
+                HTML:
+                    !!localResponse.formatted?.html
+            });
+            console.groupEnd();
 
+            return localResponse;
         }
 
         /*------------------------------------------
           CLOUD AI
         ------------------------------------------*/
 
+        console.group(
+            "☁ CLOUD FALLBACK"
+        );
+        console.log(
+            "Detected Intent:",
+            request.detectedIntent
+        );
+        console.log(
+            "Request:",
+            request
+        );
+        console.groupEnd();
+
         let result =
-
             await window.callAI({
-
                 query:
-
                     request.query,
-
                 intent:
-
                     request.detectedIntent ||
-
                     request.intent,
-
                 toolResults: {}
-
             });
 
         if (
-
             result.tool_calls &&
-
             result.tool_calls.length
-
         ) {
-
             const toolResults = {};
 
             for (
-
                 const tool of
-
                 result.tool_calls
-
             ) {
-
                 try {
-
                     toolResults[
                         tool.name
                     ] =
-
-                    await GreenGuardAI.Tools.execute(
-
-                        tool.name,
-
-                        tool.arguments || {}
-
-                    );
-
+                        await GreenGuardAI.Tools.execute(
+                            tool.name,
+                            tool.arguments || {}
+                        );
                 }
-
                 catch (e) {
-
                     toolResults[
                         tool.name
                     ] = {
-
                         error:
-
                             e.message
-
                     };
-
                 }
-
             }
 
             result =
-
                 await window.callAI({
-
                     query:
-
                         request.query,
-
                     intent:
-
+                        request.detectedIntent ||
                         request.intent,
-
                     toolResults
-
                 });
-
         }
 
         const response = {
-
             success: true,
-
             timestamp:
-
                 Date.now(),
-
             requestId:
-
                 request.id,
-
             intent:
-
+                request.detectedIntent?.intent ||
                 request.intent,
-
+            domain:
+                request.detectedIntent?.domain ||
+                request.domain,
+            confidence:
+                request.detectedIntent?.confidence ||
+                request.confidence ||
+                0,
+            detectedIntent:
+                request.detectedIntent ||
+                null,
             answer:
-
                 result.reply ||
-
                 result.answer ||
-
                 result.content ||
-
                 result.message ||
-
                 (
-
                     typeof result === "string"
-
                         ? result
-
                         : JSON.stringify(
-
                             result,
-
                             null,
-
                             2
-
                         )
-
                 ),
-
             raw:
-
                 result,
-
             cached:
-
                 false,
-
             local:
-
                 false
-
         };
 
         await Core.setCachedResponse(
-
             request,
-
             response
-
         );
-
-        busy = false;
 
         responseCount++;
 
         lastResponse =
-
             Config.clone(
-
                 response
-
             );
 
-        return response;
-
-    }
-
-    catch (err) {
-
-        busy = false;
-
-        lastError = err;
-
-        Config.error(
-
-            "Core.callAI",
-
-            err
-
+        console.group(
+            "🏆 PIPELINE SUMMARY"
         );
+        console.table({
+            Query:
+                request.query,
+            Intent:
+                response.intent,
+            Domain:
+                response.domain,
+            Source:
+                "CLOUD",
+            Confidence:
+                response.confidence
+        });
+        console.groupEnd();
 
-        return {
-
-            success: false,
-
-            error:
-
-                err.message
-
-        };
-
+        return response;
     }
+    catch (err) {
+        lastError = err;
+        Config.error(
+            "Core.callAI",
+            err
+        );
+        return {
+            success: false,
+            error:
+                err.message
+        };
+    }
+    finally {
+        busy = false;
+    }
+};
 
-};     /*----------------------------------------------------------
-      PUBLIC API
-    ----------------------------------------------------------*/
+/*----------------------------------------------------------
+  PUBLIC API
+----------------------------------------------------------*/
 
 Core.ask = async function (
-
     query,
-
     options = {}
-
 ) {
-
     const started =
-
         Date.now();
 
     console.group(
-
         "🟢 CORE.ASK"
-
     );
 
     console.log(
-
         "File:",
-
         "core.js"
-
     );
 
     console.log(
-
         "Function:",
-
         "Core.ask"
-
     );
 
     console.log(
-
         "Query:",
-
         query
-
     );
 
     console.log(
-
         "Options:",
-
         options
-
     );
 
     try {
-
         /*----------------------------------
           Build Request
         ----------------------------------*/
 
         const request =
-
             await Core.buildRequest(
-
                 query,
-
                 options
-
             );
 
         console.log(
-
             "📦 Request Built:",
-
             request
-
         );
 
         /*----------------------------------
@@ -1060,99 +1090,61 @@ Core.ask = async function (
         ----------------------------------*/
 
         const response =
-
             await Core.callAI(
-
                 request
-
             );
 
         console.log(
-
             "📥 Response:",
-
             response
-
         );
 
         console.log(
-
             "⏱ Execution:",
-
             Date.now() -
-
             started,
-
             "ms"
-
         );
 
         console.groupEnd();
 
         return response;
-
     }
-
     catch (
-
         err
-
     ) {
-
         lastError =
-
             err;
 
         Config.error(
-
             "Core.ask",
-
             err
-
         );
 
         console.error(
-
             "❌ Core.ask Error:",
-
             err
-
         );
 
         console.log(
-
             "⏱ Failed After:",
-
             Date.now() -
-
             started,
-
             "ms"
-
         );
 
         console.groupEnd();
 
         return {
-
             success: false,
-
             error:
-
                 err.message ||
-
                 String(
-
                     err
-
                 )
-
         };
-
     }
-
 };
-
 
     /*----------------------------------------------------------
       CANCEL
