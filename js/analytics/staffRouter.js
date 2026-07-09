@@ -828,11 +828,49 @@ StaffRouter.registerRoutes = function () {
     /*----------------------------------
       TABLE LOG
     ----------------------------------*/
-    console.group("📋 STAFF ROUTER TABLE");
-    console.log("Total Routes:", Object.keys(StaffRouter.routes).length);
-    Object.entries(StaffRouter.routes).forEach(([intent, fn]) => {
-        console.log(intent, "→", fn.name);
-    });
+
+    console.group(
+
+        "📋 STAFF ROUTER TABLE"
+
+    );
+
+    console.log(
+
+        "Total Routes:",
+
+        StaffRouter.routes.size
+
+    );
+
+    StaffRouter.routes.forEach(
+
+        function (
+
+            handler,
+
+            intent
+
+        ) {
+
+            console.log(
+
+                intent,
+
+                "→",
+
+                handler
+
+                    ? handler.name
+
+                    : "<null>"
+
+            );
+
+        }
+
+    );
+
     console.groupEnd();
 };
 
