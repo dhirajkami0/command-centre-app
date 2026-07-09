@@ -3912,15 +3912,76 @@ GG.queryCircleDirectory = async function (
         ) {
 
             /*----------------------------------
-              Entire Staff Collection
+              Requested Circle
+            ----------------------------------*/
+
+            const requestedCircle =
+
+                String(
+
+                    request.parameters?.circle ||
+
+                    ""
+
+                )
+
+                .trim()
+
+                .toUpperCase();
+
+            /*----------------------------------
+              Profiles
             ----------------------------------*/
 
             const profiles =
 
-                StaffQuery.ensureAllStaff();
+                StaffQuery
+                    .ensureAllStaff()
+
+                    .filter(
+
+                        function (
+
+                            profile
+
+                        ) {
+
+                            if (
+
+                                requestedCircle === ""
+
+                            ) {
+
+                                return true;
+
+                            }
+
+                            return (
+
+                                String(
+
+                                    profile.posting?.circle ||
+
+                                    ""
+
+                                )
+
+                                .trim()
+
+                                .toUpperCase()
+
+                                ===
+
+                                requestedCircle
+
+                            );
+
+                        }
+
+                    );
 
             /*----------------------------------
-              Build Directory
+              Directory
             ----------------------------------*/
 
             const directory =
@@ -3971,6 +4032,10 @@ GG.queryCircleDirectory = async function (
 
                     group.staff.push({
 
+                        /*----------------------------------
+                          Identity
+                        ----------------------------------*/
+
                         cleanName:
 
                             profile.identity?.cleanName ||
@@ -4001,6 +4066,12 @@ GG.queryCircleDirectory = async function (
 
                             "",
 
+                        type:
+
+                            profile.identity?.type ||
+
+                            "",
+
                         phone:
 
                             profile.identity?.phone ||
@@ -4012,6 +4083,10 @@ GG.queryCircleDirectory = async function (
                             profile.identity?.email ||
 
                             "",
+
+                        /*----------------------------------
+                          Posting
+                        ----------------------------------*/
 
                         circle:
 
@@ -4037,6 +4112,10 @@ GG.queryCircleDirectory = async function (
 
                             "",
 
+                        /*----------------------------------
+                          Assignment
+                        ----------------------------------*/
+
                         assignedCompartment:
 
                             profile.assignment?.assignedCompartment ||
@@ -4061,6 +4140,10 @@ GG.queryCircleDirectory = async function (
 
                             false,
 
+                        /*----------------------------------
+                          Team
+                        ----------------------------------*/
+
                         leader:
 
                             profile.teamInfo?.leader ||
@@ -4072,6 +4155,10 @@ GG.queryCircleDirectory = async function (
                             profile.teamInfo?.team ||
 
                             "",
+
+                        /*----------------------------------
+                          Location
+                        ----------------------------------*/
 
                         latitude:
 
@@ -4085,9 +4172,31 @@ GG.queryCircleDirectory = async function (
 
                             null,
 
+                        location:
+
+                            profile.location?.location ||
+
+                            "",
+
+                        /*----------------------------------
+                          GPS
+                        ----------------------------------*/
+
                         speed:
 
                             profile.gps?.speed ??
+
+                            null,
+
+                        heading:
+
+                            profile.gps?.heading ??
+
+                            null,
+
+                        accuracy:
+
+                            profile.gps?.accuracy ??
 
                             null,
 
@@ -4096,6 +4205,22 @@ GG.queryCircleDirectory = async function (
                             profile.gps?.lastSeen ??
 
                             null,
+
+                        timestamp:
+
+                            profile.gps?.timestamp ??
+
+                            null,
+
+                        updatedAt:
+
+                            profile.gps?.updatedAt ??
+
+                            null,
+
+                        /*----------------------------------
+                          Analytics
+                        ----------------------------------*/
 
                         distanceKm:
 
@@ -4107,7 +4232,19 @@ GG.queryCircleDirectory = async function (
 
                             profile.analytics?.pointCount ??
 
-                            0
+                            0,
+
+                        startedAt:
+
+                            profile.analytics?.startedAt ??
+
+                            null,
+
+                        endedAt:
+
+                            profile.analytics?.endedAt ??
+
+                            null
 
                     });
 
@@ -4146,8 +4283,79 @@ GG.queryDivisionDirectory = async function (
 
         ) {
 
-const profiles =
-    StaffQuery.ensureAllStaff();
+            /*----------------------------------
+              Requested Division
+            ----------------------------------*/
+
+            const requestedDivision =
+
+                String(
+
+                    request.parameters?.division ||
+
+                    ""
+
+                )
+
+                .trim()
+
+                .toUpperCase();
+
+            /*----------------------------------
+              Profiles
+            ----------------------------------*/
+
+            const profiles =
+
+                StaffQuery
+                    .ensureAllStaff()
+
+                    .filter(
+
+                        function (
+
+                            profile
+
+                        ) {
+
+                            if (
+
+                                requestedDivision === ""
+
+                            ) {
+
+                                return true;
+
+                            }
+
+                            return (
+
+                                String(
+
+                                    profile.posting?.division ||
+
+                                    ""
+
+                                )
+
+                                .trim()
+
+                                .toUpperCase()
+
+                                ===
+
+                                requestedDivision
+
+                            );
+
+                        }
+
+                    );
+
+            /*----------------------------------
+              Directory
+            ----------------------------------*/
+
             const directory = {};
 
             profiles.forEach(
@@ -4764,8 +4972,78 @@ GG.queryBeatDirectory = async function (
 
         ) {
 
-           const profiles =
-    StaffQuery.ensureAllStaff();
+            /*----------------------------------
+              Requested Beat
+            ----------------------------------*/
+
+            const requestedBeat =
+
+                String(
+
+                    request.parameters?.beat ||
+
+                    ""
+
+                )
+
+                .trim()
+
+                .toUpperCase();
+
+            /*----------------------------------
+              Profiles
+            ----------------------------------*/
+
+            const profiles =
+
+                StaffQuery
+                    .ensureAllStaff()
+
+                    .filter(
+
+                        function (
+
+                            profile
+
+                        ) {
+
+                            if (
+
+                                requestedBeat === ""
+
+                            ) {
+
+                                return true;
+
+                            }
+
+                            return (
+
+                                String(
+
+                                    profile.posting?.beat ||
+
+                                    ""
+
+                                )
+
+                                .trim()
+
+                                .toUpperCase()
+
+                                ===
+
+                                requestedBeat
+
+                            );
+
+                        }
+
+                    );
+
+            /*----------------------------------
+              Directory
+            ----------------------------------*/
 
             const directory = {};
 
@@ -5058,10 +5336,82 @@ GG.queryDesignationDirectory = async function (
 
         ) {
 
-            const profiles =
-    StaffQuery.ensureAllStaff();
+            /*----------------------------------
+              Requested Designation
+            ----------------------------------*/
 
-            const directory = {};
+            const requestedDesignation =
+
+                String(
+
+                    request.parameters?.designation ||
+
+                    ""
+
+                )
+
+                .trim()
+
+                .toUpperCase();
+
+            /*----------------------------------
+              Profiles
+            ----------------------------------*/
+
+            const profiles =
+
+                StaffQuery
+                    .ensureAllStaff()
+
+                    .filter(
+
+                        function (
+
+                            profile
+
+                        ) {
+
+                            if (
+
+                                requestedDesignation === ""
+
+                            ) {
+
+                                return true;
+
+                            }
+
+                            return (
+
+                                String(
+
+                                    profile.identity?.designation ||
+
+                                    ""
+
+                                )
+
+                                .trim()
+
+                                .toUpperCase()
+
+                                ===
+
+                                requestedDesignation
+
+                            );
+
+                        }
+
+                    );
+
+            /*----------------------------------
+              Directory
+            ----------------------------------*/
+
+            const directory =
+
+                {};
 
             profiles.forEach(
 
@@ -5132,6 +5482,12 @@ GG.queryDesignationDirectory = async function (
                         role:
 
                             profile.identity?.role ||
+
+                            "",
+
+                        designation:
+
+                            profile.identity?.designation ||
 
                             "",
 
