@@ -3105,7 +3105,6 @@ GG.queryDutySummary = async function (
 /*----------------------------------
   Team Leader List
 ----------------------------------*/
-
 GG.queryTeamLeaderList = async function (
 
     request
@@ -3122,10 +3121,11 @@ GG.queryTeamLeaderList = async function (
 
         ) {
 
-        
+            const leaders =
 
-const leaders =
-    StaffQuery.ensureAllStaff().filter(
+                StaffQuery.ensureAllStaff()
+
+                .filter(
 
                     function (
 
@@ -3172,7 +3172,7 @@ const leaders =
     );
 
 };
-/*----------------------------------
+    /*----------------------------------
   Moving Staff
 ----------------------------------*/
 
