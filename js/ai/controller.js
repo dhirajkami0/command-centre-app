@@ -502,7 +502,7 @@ IntentManager.detect = async function (
     return intent;
 
 };
-*/
+
 
 /*=========================================================
  REGISTER
