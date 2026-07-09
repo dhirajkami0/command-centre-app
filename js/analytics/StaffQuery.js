@@ -3759,9 +3759,15 @@ GG.queryDesignationSummary = async function (
 
                     const designation =
 
-                        profile.identity?.designation ||
+    String(
 
-                        "UNASSIGNED";
+        profile.identity?.designation ||
+
+        "UNASSIGNED"
+
+    )
+
+    .trim();
 
                     if (
 
@@ -5321,372 +5327,305 @@ GG.queryBeatDirectory = async function (
 ----------------------------------*/
 
 GG.queryDesignationDirectory = async function (
-
     request
-
 ) {
-
     return StaffQuery.execute(
-
         request,
-
         async function (
-
             request
-
         ) {
-
             /*----------------------------------
-              Requested Designation
+              Requested Filters
             ----------------------------------*/
-
             const requestedDesignation =
-
                 String(
-
                     request.parameters?.designation ||
-
                     ""
-
                 )
-
                 .trim()
+                .toUpperCase();
 
+            const requestedCircle =
+                String(
+                    request.parameters?.circle ||
+                    ""
+                )
+                .trim()
+                .toUpperCase();
+
+            const requestedDivision =
+                String(
+                    request.parameters?.division ||
+                    ""
+                )
+                .trim()
+                .toUpperCase();
+
+            const requestedRange =
+                String(
+                    request.parameters?.range ||
+                    ""
+                )
+                .trim()
+                .toUpperCase();
+
+            const requestedBeat =
+                String(
+                    request.parameters?.beat ||
+                    ""
+                )
+                .trim()
+                .toUpperCase();
+
+            const requestedCompartment =
+                String(
+                    request.parameters?.compartment ||
+                    ""
+                )
+                .trim()
                 .toUpperCase();
 
             /*----------------------------------
               Profiles
             ----------------------------------*/
-
             const profiles =
-
                 StaffQuery
                     .ensureAllStaff()
-
                     .filter(
-
                         function (
-
                             profile
-
                         ) {
-
                             if (
-
-                                requestedDesignation === ""
-
-                            ) {
-
-                                return true;
-
-                            }
-
-                            return (
-
+                                requestedDesignation &&
                                 String(
-
                                     profile.identity?.designation ||
-
                                     ""
-
                                 )
-
                                 .trim()
-
                                 .toUpperCase()
-
-                                ===
-
+                                !==
                                 requestedDesignation
-
-                            );
-
+                            ) {
+                                return false;
+                            }
+                            if (
+                                requestedCircle &&
+                                String(
+                                    profile.posting?.circle ||
+                                    ""
+                                )
+                                .trim()
+                                .toUpperCase()
+                                !==
+                                requestedCircle
+                            ) {
+                                return false;
+                            }
+                            if (
+                                requestedDivision &&
+                                String(
+                                    profile.posting?.division ||
+                                    ""
+                                )
+                                .trim()
+                                .toUpperCase()
+                                !==
+                                requestedDivision
+                            ) {
+                                return false;
+                            }
+                            if (
+                                requestedRange &&
+                                String(
+                                    profile.posting?.range ||
+                                    ""
+                                )
+                                .trim()
+                                .toUpperCase()
+                                !==
+                                requestedRange
+                            ) {
+                                return false;
+                            }
+                            if (
+                                requestedBeat &&
+                                String(
+                                    profile.posting?.beat ||
+                                    ""
+                                )
+                                .trim()
+                                .toUpperCase()
+                                !==
+                                requestedBeat
+                            ) {
+                                return false;
+                            }
+                            if (
+                                requestedCompartment &&
+                                String(
+                                    profile.assignment?.assignedCompartment ||
+                                    ""
+                                )
+                                .trim()
+                                .toUpperCase()
+                                !==
+                                requestedCompartment
+                            ) {
+                                return false;
+                            }
+                            return true;
                         }
-
                     );
 
             /*----------------------------------
               Directory
             ----------------------------------*/
-
             const directory =
-
                 {};
-
             profiles.forEach(
-
                 function (
-
                     profile
-
                 ) {
-
                     const designation =
-
                         profile.identity?.designation ||
-
                         "UNASSIGNED";
-
                     if (
-
                         !directory[designation]
-
                     ) {
-
                         directory[designation] = {
-
                             designation:
-
                                 designation,
-
                             totalStaff:
-
                                 0,
-
                             staff: []
-
                         };
-
                     }
-
                     const group =
-
                         directory[designation];
-
                     group.totalStaff++;
-
                     group.staff.push({
-
                         /*----------------------------------
                           Identity
                         ----------------------------------*/
-
                         cleanName:
-
                             profile.identity?.cleanName ||
-
                             "",
-
                         rawName:
-
                             profile.identity?.rawName ||
-
                             "",
-
                         name:
-
                             profile.identity?.name ||
-
                             "",
-
                         role:
-
                             profile.identity?.role ||
-
                             "",
-
                         designation:
-
                             profile.identity?.designation ||
-
                             "",
-
                         type:
-
                             profile.identity?.type ||
-
                             "",
-
                         phone:
-
                             profile.identity?.phone ||
-
                             "",
-
                         email:
-
                             profile.identity?.email ||
-
                             "",
-
                         /*----------------------------------
                           Posting
                         ----------------------------------*/
-
                         circle:
-
                             profile.posting?.circle ||
-
                             "",
-
                         division:
-
                             profile.posting?.division ||
-
                             "",
-
                         range:
-
                             profile.posting?.range ||
-
                             "",
-
                         beat:
-
                             profile.posting?.beat ||
-
                             "",
-
                         /*----------------------------------
                           Assignment
                         ----------------------------------*/
-
                         assignedCompartment:
-
                             profile.assignment?.assignedCompartment ||
-
                             "",
-
                         dutyType:
-
                             profile.assignment?.dutyType ||
-
                             "",
-
                         dutyStatus:
-
                             profile.assignment?.status ||
-
                             "",
-
                         dutyActive:
-
                             profile.assignment?.dutyActive ??
-
                             false,
-
                         /*----------------------------------
                           Team
                         ----------------------------------*/
-
                         leader:
-
                             profile.teamInfo?.leader ||
-
                             "",
-
                         team:
-
                             profile.teamInfo?.team ||
-
                             "",
-
                         /*----------------------------------
                           Location
                         ----------------------------------*/
-
                         latitude:
-
                             profile.location?.lat ??
-
                             null,
-
                         longitude:
-
                             profile.location?.lon ??
-
                             null,
-
                         location:
-
                             profile.location?.location ||
-
                             "",
-
                         /*----------------------------------
                           GPS
                         ----------------------------------*/
-
                         speed:
-
                             profile.gps?.speed ??
-
                             null,
-
                         heading:
-
                             profile.gps?.heading ??
-
                             null,
-
                         accuracy:
-
                             profile.gps?.accuracy ??
-
                             null,
-
                         lastSeen:
-
                             profile.gps?.lastSeen ??
-
                             null,
-
                         timestamp:
-
                             profile.gps?.timestamp ??
-
                             null,
-
                         updatedAt:
-
                             profile.gps?.updatedAt ??
-
                             null,
-
                         /*----------------------------------
                           Analytics
                         ----------------------------------*/
-
                         distanceKm:
-
                             profile.analytics?.distanceKm ??
-
                             0,
-
                         pointCount:
-
                             profile.analytics?.pointCount ??
-
                             0,
-
                         startedAt:
-
                             profile.analytics?.startedAt ??
-
                             null,
-
                         endedAt:
-
                             profile.analytics?.endedAt ??
-
                             null
-
                     });
-
                 }
-
             );
-
             return Object.values(
-
                 directory
-
             );
-
         }
-
     );
-
 };
 /*----------------------------------
   Who Is On Duty
