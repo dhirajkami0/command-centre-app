@@ -1236,127 +1236,155 @@ StaffConstants.KEYWORDS = Object.freeze({
       Search
     ----------------------------------*/
 
-    STAFF_SEARCH: [
-        "SEARCH",
-        "SEARCH STAFF",
-        "FIND",
-        "FIND STAFF",
-        "LOOKUP",
-        "LOOK UP",
-        "LOCATE",
-        "GET",
-        "SHOW",
-        "SEARCH FOR",
-        "LOOK FOR",
-        "FIND PERSON",
-        "FIND OFFICER",
-        "SEARCH OFFICER",
-        "WHO HAS",
-        "WHO IS",
-        "SHOW STAFF",
-        "SHOW OFFICER",
-        "LIST STAFF",
-        "STAFF SEARCH",
-        "STAFF LOOKUP"
-    ],
+STAFF_SEARCH: [
 
+    /* Search */
+
+    "SEARCH",
+    "SEARCH STAFF",
+    "SEARCH FOR",
+    "SEARCH OFFICER",
+
+    /* Find */
+
+    "FIND",
+    "FIND STAFF",
+    "FIND PERSON",
+    "FIND OFFICER",
+
+    /* Lookup */
+
+    "LOOKUP",
+    "LOOK UP",
+    "STAFF LOOKUP",
+
+    /* Locate */
+
+    "LOCATE",
+    "LOCATE STAFF",
+
+    /* Search Variations */
+
+    "LOOK FOR",
+    "LOOK FOR STAFF",
+
+    /* Dedicated */
+
+    "STAFF SEARCH"
+
+],
     /*----------------------------------
       Directory
     ----------------------------------*/
 
     STAFF_DIRECTORY: [
-        "DIRECTORY",
-        "STAFF DIRECTORY",
-        "EMPLOYEE DIRECTORY",
-        "OFFICER DIRECTORY",
-        "LIST",
-        "LIST STAFF",
-        "LIST OFFICERS",
-        "SHOW STAFF",
-        "SHOW ALL STAFF",
-        "SHOW OFFICERS",
-        "SHOW ALL OFFICERS",
-        "ALL STAFF",
-        "ALL OFFICERS",
-        "EVERY STAFF",
-        "EVERY OFFICER",
-        "STAFF LIST",
-        "OFFICER LIST",
-        "PERSONNEL LIST",
-        "WHO ARE THE STAFF",
-        "WHO ARE THE OFFICERS",
-        "AVAILABLE STAFF",
-        "AVAILABLE OFFICERS"
-    ],
+
+    /* Primary */
+
+    "DIRECTORY",
+    "STAFF DIRECTORY",
+    "EMPLOYEE DIRECTORY",
+    "OFFICER DIRECTORY",
+    "PERSONNEL DIRECTORY",
+
+    /* Complete Directory */
+
+    "COMPLETE STAFF DIRECTORY",
+    "FULL STAFF DIRECTORY",
+    "COMPLETE OFFICER DIRECTORY",
+    "FULL OFFICER DIRECTORY",
+
+    /* Listing */
+
+    "STAFF LIST",
+    "OFFICER LIST",
+    "PERSONNEL LIST",
+
+    /* Questions */
+
+    "WHO ARE THE STAFF",
+    "WHO ARE THE OFFICERS",
+
+    /* Display */
+
+    "VIEW STAFF DIRECTORY",
+    "OPEN STAFF DIRECTORY",
+    "DISPLAY STAFF DIRECTORY",
+
+    "VIEW OFFICER DIRECTORY",
+    "OPEN OFFICER DIRECTORY",
+    "DISPLAY OFFICER DIRECTORY"
+
+],
 
     /*----------------------------------
       Staff Profile
     ----------------------------------*/
 
-    STAFF_PROFILE: [
-        "PROFILE",
-        "SHOW PROFILE",
-        "VIEW PROFILE",
-        "OPEN PROFILE",
-        "GET PROFILE",
-        "DISPLAY PROFILE",
-        "STAFF PROFILE",
-        "OFFICER PROFILE",
-        "PERSON PROFILE",
-        "EMPLOYEE PROFILE",
-        "USER PROFILE",
-        "WHO IS",
-        "WHO'S",
-        "IDENTITY",
-        "IDENTIFY",
-        "NAME",
-        "FULL NAME",
-        "DISPLAY NAME",
-        "PERSON NAME",
-        "OFFICER NAME",
-        "STAFF NAME",
-        "DETAIL",
-        "DETAILS",
-        "STAFF DETAILS",
-        "OFFICER DETAILS",
-        "PERSON DETAILS",
-        "EMPLOYEE DETAILS",
-        "INFORMATION",
-        "INFO",
-        "GENERAL INFORMATION",
-        "STAFF INFORMATION",
-        "OFFICER INFORMATION",
-        "PERSON INFORMATION",
-        "ABOUT",
-        "ABOUT STAFF",
-        "ABOUT OFFICER",
-        "ABOUT PERSON",
-        "TELL ME ABOUT",
-        "SHOW ME",
-        "DESCRIBE",
-        "DESCRIBE STAFF",
-        "DESCRIBE OFFICER",
-        "RECORD",
-        "STAFF RECORD",
-        "EMPLOYEE RECORD",
-        "PERSONNEL RECORD",
-        "BIO",
-        "BIOGRAPHY",
-        "BACKGROUND",
-        "COMPLETE PROFILE",
-        "FULL PROFILE",
-        "COMPLETE DETAILS",
-        "FULL DETAILS",
-        "SHOW COMPLETE PROFILE",
-        "SHOW COMPLETE DETAILS",
-        "VIEW DETAILS",
-        "VIEW INFORMATION",
-        "VIEW RECORD",
-        "PERSONAL DETAILS",
-        "PERSONAL INFORMATION",
-        "STAFF DATA",
-        "OFFICER DATA"
-    ],
+STAFF_PROFILE: [
+
+    /* Profile */
+
+    "PROFILE",
+    "STAFF PROFILE",
+    "OFFICER PROFILE",
+    "EMPLOYEE PROFILE",
+    "PERSON PROFILE",
+    "USER PROFILE",
+    "FULL PROFILE",
+    "COMPLETE PROFILE",
+
+    /* View */
+
+    "SHOW PROFILE",
+    "VIEW PROFILE",
+    "OPEN PROFILE",
+    "DISPLAY PROFILE",
+    "GET PROFILE",
+
+    /* Details */
+
+    "STAFF DETAILS",
+    "OFFICER DETAILS",
+    "EMPLOYEE DETAILS",
+    "PERSON DETAILS",
+    "COMPLETE DETAILS",
+    "FULL DETAILS",
+    "PERSONAL DETAILS",
+
+    /* Information */
+
+    "STAFF INFORMATION",
+    "OFFICER INFORMATION",
+    "PERSON INFORMATION",
+    "GENERAL INFORMATION",
+    "PERSONAL INFORMATION",
+
+    /* Identity */
+
+    "IDENTITY",
+    "IDENTIFY",
+    "FULL NAME",
+    "DISPLAY NAME",
+
+    /* Record */
+
+    "STAFF RECORD",
+    "EMPLOYEE RECORD",
+    "PERSONNEL RECORD",
+
+    /* Data */
+
+    "STAFF DATA",
+    "OFFICER DATA",
+
+    /* Biography */
+
+    "BIO",
+    "BIOGRAPHY",
+    "BACKGROUND"
+
+],
 
     /*----------------------------------
       Contact
@@ -1405,7 +1433,7 @@ StaffConstants.KEYWORDS = Object.freeze({
         "MAIL",
         "MAIL ID",
         "E MAIL",
-        "NUMBER",
+       
         "WHATSAPP",
         "WHATSAPP NUMBER",
         "WHATS APP",
@@ -1432,75 +1460,108 @@ StaffConstants.KEYWORDS = Object.freeze({
       Designation
     ----------------------------------*/
 
-    STAFF_DESIGNATION: [
-        "DESIGNATION",
-        "RANK",
-        "POST",
-        "POSITION",
-        "OFFICE",
-        "JOB",
-        "TITLE",
-        "CADRE",
-        "GRADE",
-        "WHAT IS DESIGNATION",
-        "WHAT IS HIS DESIGNATION",
-        "WHAT IS HER DESIGNATION",
-        "PCCF",
-        "PRINCIPAL CHIEF CONSERVATOR OF FORESTS",
-        "APCCF",
-        "ADDITIONAL PRINCIPAL CHIEF CONSERVATOR OF FORESTS",
-        "CCF",
-        "CHIEF CONSERVATOR OF FORESTS",
-        "CF",
-        "CONSERVATOR OF FORESTS",
-        "DCF",
-        "DEPUTY CONSERVATOR OF FORESTS",
-        "DFO",
-        "DIVISIONAL FOREST OFFICER",
-        "ADFO",
-        "ASSISTANT DIVISIONAL FOREST OFFICER",
-        "ACF",
-        "ASSISTANT CONSERVATOR OF FORESTS",
-        "RO",
-        "RANGE OFFICER",
-        "FOREST RANGE OFFICER",
-        "DRO",
-        "DEPUTY RANGE OFFICER",
-        "FORESTER",
-        "FR",
-        "FOREST GUARD",
-        "FG",
-        "FOREST BEAT OFFICER",
-        "FBO",
-        "BANASAHAYAK",
-        "BANASAYAHAK",
-        "BANASAHAYK",
-        "BAN SAHAYAK",
-        "BANA SAHAYAK",
-        "BS",
-        "DRIVER",
-        "DR",
-        "DAILY LABOUR",
-        "DAILY LABOURER",
-        "DAILY LABOURERS",
-        "DAILY WAGE",
-        "DAILY WAGER",
-        "CASUAL LABOUR",
-        "DL",
-        "FOREST VOLUNTEER",
-        "VOLUNTEER",
-        "FV",
-        "WATCHER",
-        "MAHOUT",
-        "ELEPHANT SQUAD",
-        "OFFICER",
-        "STAFF",
-        "EMPLOYEE",
-        "PERSONNEL",
-        "FIELD STAFF",
-        "FIELD OFFICER",
-        "FIELD EMPLOYEE"
-    ],
+STAFF_DESIGNATION: [
+
+    /*----------------------------------
+      Designation Queries
+    ----------------------------------*/
+
+    "DESIGNATION",
+    "RANK",
+    "TITLE",
+    "CADRE",
+    "GRADE",
+
+    "WHAT IS DESIGNATION",
+    "WHAT IS HIS DESIGNATION",
+    "WHAT IS HER DESIGNATION",
+    "WHAT IS THEIR DESIGNATION",
+
+    "SHOW DESIGNATION",
+    "GET DESIGNATION",
+    "DISPLAY DESIGNATION",
+    "VIEW DESIGNATION",
+
+    /*----------------------------------
+      Senior Officers
+    ----------------------------------*/
+
+    "PCCF",
+    "PRINCIPAL CHIEF CONSERVATOR OF FORESTS",
+
+    "APCCF",
+    "ADDITIONAL PRINCIPAL CHIEF CONSERVATOR OF FORESTS",
+
+    "CCF",
+    "CHIEF CONSERVATOR OF FORESTS",
+
+    "CF",
+    "CONSERVATOR OF FORESTS",
+
+    "DCF",
+    "DEPUTY CONSERVATOR OF FORESTS",
+
+    "DFO",
+    "DIVISIONAL FOREST OFFICER",
+
+    "ADFO",
+    "ASSISTANT DIVISIONAL FOREST OFFICER",
+
+    "ACF",
+    "ASSISTANT CONSERVATOR OF FORESTS",
+
+    /*----------------------------------
+      Range
+    ----------------------------------*/
+
+    "RO",
+    "RANGE OFFICER",
+
+    "DRO",
+    "DEPUTY RANGE OFFICER",
+
+    /*----------------------------------
+      Field Staff
+    ----------------------------------*/
+
+    "FORESTER",
+    "FR",
+
+    "FOREST GUARD",
+    "FG",
+
+    "FOREST BEAT OFFICER",
+    "FBO",
+
+    "BANASAHAYAK",
+    "BANASAYAHAK",
+    "BANASAHAYK",
+    "BAN SAHAYAK",
+    "BANA SAHAYAK",
+    "BS",
+
+    "DRIVER",
+    "DR",
+
+    "DAILY LABOUR",
+    "DAILY LABOURER",
+    "DAILY LABOURERS",
+    "DAILY WAGE",
+    "DAILY WAGER",
+    "CASUAL LABOUR",
+    "DL",
+
+    "FOREST VOLUNTEER",
+    "VOLUNTEER",
+    "FV",
+
+    "WATCHER",
+
+    "MAHOUT",
+
+    "ELEPHANT SQUAD"
+
+],
 
     /*----------------------------------
       Permanent Posting
@@ -1589,7 +1650,7 @@ StaffConstants.KEYWORDS = Object.freeze({
         "RANGE",
         "RNAGE",
         "RNG",
-        "RANG",
+  
         "FOREST RANGE",
         "RANGE OFFICE",
         "RANGE NAME",
@@ -1610,25 +1671,31 @@ StaffConstants.KEYWORDS = Object.freeze({
     ----------------------------------*/
 
     STAFF_DIVISION: [
-        "DIVISION",
-        "DIVISON",
-        "DIV",
-        "DIVN",
-        "FOREST DIVISION",
-        "DIVISION OFFICE",
-        "DIVISION NAME",
-        "WHICH DIVISION",
-        "WHAT DIVISION",
-        "DIVISION OF",
-        "BELONGS TO DIVISION",
-        "BELONG TO DIVISION",
-        "WORKING DIVISION",
-        "POSTED DIVISION",
-        "CURRENT DIVISION",
-        "DIVISION HEADQUARTER",
-        "DIVISION HQ"
-    ],
 
+    "DIVISION",
+    "DIVISON",
+
+    "FOREST DIVISION",
+
+    "DIVISION OFFICE",
+    "DIVISION HQ",
+    "DIVISION HEADQUARTER",
+
+    "DIVISION NAME",
+
+    "CURRENT DIVISION",
+    "WORKING DIVISION",
+    "POSTED DIVISION",
+
+    "WHICH DIVISION",
+    "WHAT DIVISION",
+
+    "BELONGS TO DIVISION",
+    "BELONG TO DIVISION",
+
+    "DIVISION OF"
+
+],
     /*----------------------------------
       Circle
     ----------------------------------*/
@@ -1662,56 +1729,46 @@ StaffConstants.KEYWORDS = Object.freeze({
       Live Location
     ----------------------------------*/
 
-    STAFF_LOCATION: [
-        "WHERE",
-        "WHERE IS",
-        "WHERE IS HE",
-        "WHERE IS SHE",
-        "WHERE ARE THEY",
-        "LOCATION",
-        "CURRENT LOCATION",
-        "LIVE LOCATION",
-        "REALTIME LOCATION",
-        "REAL TIME LOCATION",
-        "LATEST LOCATION",
-        "LAST LOCATION",
-        "PRESENT LOCATION",
-        "POSITION",
-        "CURRENT POSITION",
-        "LIVE POSITION",
-        "PRESENT POSITION",
-        "LOCATE",
-        "FIND LOCATION",
-        "SHOW LOCATION",
-        "TRACK",
-        "TRACK STAFF",
-        "TRACK OFFICER",
-        "WHERE NOW",
-        "WHERE IS NOW",
-        "CURRENT PLACE",
-        "PRESENT PLACE",
-        "CURRENT AREA",
-        "CURRENT BEAT",
-        "CURRENT COMPARTMENT",
-        "CURRENT SITE",
-        "LIVE",
-        "LIVE STATUS",
-        "LIVE TRACKING",
-        "TRACKING",
-        "CURRENT STATUS",
-        "NEAR WHERE",
-        "NEAREST PLACE",
-        "WHICH AREA",
-        "WHICH LOCATION",
-        "WHICH PLACE",
-        "WHICH COMPARTMENT",
-        "WHICH BEAT",
-        "SHOW ON MAP",
-        "OPEN MAP",
-        "VIEW LOCATION",
-        "MAP LOCATION",
-        "MAP POSITION"
-    ],
+STAFF_LOCATION: [
+
+    /* Location */
+
+    "LOCATION",
+    "CURRENT LOCATION",
+    "LIVE LOCATION",
+    "GPS LOCATION",
+    "REALTIME LOCATION",
+    "REAL TIME LOCATION",
+    "LATEST LOCATION",
+    "LAST LOCATION",
+    "PRESENT LOCATION",
+
+    /* Questions */
+
+    "WHERE IS NOW",
+    "WHERE HE IS NOW",
+    "WHERE SHE IS NOW",
+    "CURRENT PLACE",
+    "PRESENT PLACE",
+    "WHICH LOCATION",
+    "WHICH PLACE",
+
+    /* Map */
+
+    "SHOW LOCATION",
+    "VIEW LOCATION",
+    "MAP LOCATION",
+    "SHOW ON MAP",
+    "OPEN MAP",
+
+    /* GPS */
+
+    "GPS POSITION",
+    "GPS COORDINATES",
+    "CURRENT GPS",
+    "LIVE GPS"
+
+],
 
     /*----------------------------------
       Duty
@@ -2109,11 +2166,25 @@ WHO_IS_PATROLLING: [
       Status
     ----------------------------------*/
 
-    STAFF_STATUS: [
-        "STATUS",
-        "ACTIVE",
-        "INACTIVE"
-    ],
+STAFF_STATUS: [
+
+    "STAFF STATUS",
+
+    "ACTIVE STATUS",
+    "INACTIVE STATUS",
+
+    "CURRENT STATUS",
+
+    "STAFF ACTIVE STATUS",
+    "STAFF INACTIVE STATUS",
+
+    "OFFICER STATUS",
+
+    "STATUS OF STAFF",
+
+    "STATUS OF OFFICER"
+
+],
 
     /*----------------------------------
       Team
@@ -2664,136 +2735,72 @@ STAFF_DISTANCE: [
 
 STAFF_ANALYTICS: [
 
-    /* Generic */
+    /* Primary */
 
     "ANALYTICS",
     "STAFF ANALYTICS",
-    "PATROL ANALYTICS",
-    "PATROLLING ANALYTICS",
+
     "ANALYTICS REPORT",
     "ANALYTICS SUMMARY",
-    "STAFF REPORT",
+
+    "STAFF ANALYTICS REPORT",
+    "STAFF ANALYTICS SUMMARY",
+
+    /* Performance */
+
     "PERFORMANCE",
     "PERFORMANCE REPORT",
     "PERFORMANCE SUMMARY",
 
-    /* Patrol */
+    "STAFF PERFORMANCE",
 
-    "PATROL",
-    "PATROL REPORT",
-    "PATROL SUMMARY",
-    "PATROL PERFORMANCE",
-    "PATROL STATISTICS",
-    "PATROL STATS",
-    "PATROL DATA",
-    "PATROL DETAILS",
+    "STAFF PERFORMANCE REPORT",
 
-    /* Distance */
+    /* Dashboard */
 
-    "PATROL DISTANCE",
-    "DISTANCE",
-    "DISTANCE REPORT",
-    "TOTAL DISTANCE",
-    "MOST DISTANCE",
-    "LONGEST DISTANCE",
-    "MAX DISTANCE",
-    "DISTANCE COVERED",
+    "DASHBOARD",
 
-    /* Coverage */
+    "ANALYTICS DASHBOARD",
 
-    "PATROL COVERAGE",
-    "COVERAGE",
-    "AREA COVERED",
-    "GRID COVERAGE",
-    "GRID REPORT",
-    "MOST COVERAGE",
-    "BEST COVERAGE",
+    "STAFF DASHBOARD",
 
-    /* Patrol Points */
+    "PERFORMANCE DASHBOARD",
 
-    "PATROL POINTS",
-    "TRACK POINTS",
-    "GPS POINTS",
-    "MOST POINTS",
-    "MAX POINTS",
+    /* Insights */
 
-    /* Rankings */
+    "INSIGHTS",
 
-    "TOP STAFF",
-    "BEST STAFF",
-    "TOP PATROL",
-    "BEST PATROL",
-    "TOP PATROLLING STAFF",
-    "TOP PATROLLING TEAM",
-    "TOP PERFORMER",
-    "BEST PERFORMER",
-    "MOST ACTIVE STAFF",
-    "MOST ACTIVE TEAM",
+    "ANALYTICS INSIGHTS",
 
-    /* Jurisdiction Rankings */
+    "PERFORMANCE INSIGHTS",
 
-    "TOP DIVISION",
-    "BEST DIVISION",
-    "TOP RANGE",
-    "BEST RANGE",
-    "TOP BEAT",
-    "BEST BEAT",
-    "TOP CIRCLE",
-    "BEST CIRCLE",
+    "STAFF INSIGHTS",
 
     /* Reports */
 
-    "STAFF PERFORMANCE REPORT",
-    "PATROL PERFORMANCE REPORT",
-    "PATROL ANALYTICS REPORT",
-    "STAFF ANALYTICS REPORT",
+    "STAFF REPORT",
 
-    "PATROL DASHBOARD",
-    "PATROL INSIGHTS",
+    "STAFF REPORTS",
 
-    /* Questions */
+    "SUMMARY REPORT",
 
-    "WHO PATROLLED MOST",
-    "WHO COVERED MOST DISTANCE",
-    "WHO HAS MOST PATROL POINTS",
-
-    "WHICH DIVISION IS BEST",
-    "WHICH RANGE IS BEST",
-    "WHICH BEAT IS BEST",
-
-    "TOP PATROLLING BEAT",
-    "TOP PATROLLING RANGE",
-    "TOP PATROLLING DIVISION",
-
-    /* Show */
-
-    "SHOW ANALYTICS",
-    "SHOW PATROL ANALYTICS",
-    "SHOW STAFF ANALYTICS",
-    "SHOW PERFORMANCE",
-
-    /* List */
-
-    "LIST ANALYTICS",
-    "LIST PATROL ANALYTICS",
-    "LIST PERFORMANCE",
+    "PERFORMANCE REPORT",
 
     /* Display */
 
-    "DISPLAY ANALYTICS",
-    "DISPLAY PATROL ANALYTICS",
-    "VIEW ANALYTICS",
-    "VIEW PATROL ANALYTICS",
-    "GET ANALYTICS",
-    "GET PATROL ANALYTICS",
+    "SHOW ANALYTICS",
 
-    /* AI Friendly */
+    "VIEW ANALYTICS",
+
+    "DISPLAY ANALYTICS",
+
+    "OPEN ANALYTICS",
+
+    /* AI */
 
     "GIVE ANALYTICS",
-    "GIVE PATROL ANALYTICS",
-    "GIVE STAFF ANALYTICS",
-    "CURRENT ANALYTICS",
-    "CURRENT PATROL ANALYTICS"
+
+    "CURRENT ANALYTICS"
 
 ],
 
@@ -3220,85 +3227,75 @@ STAFF_DIVISION_DIRECTORY: [
 
 STAFF_RANGE_DIRECTORY: [
 
-    /* Generic */
+    /* Primary */
 
     "RANGE DIRECTORY",
-    "RANGE LIST",
-    "RANGE STAFF",
-    "RANGE PERSONNEL",
-    "RANGE OFFICERS",
-    "RANGE EMPLOYEES",
-    "RANGE WORKFORCE",
+    "RANGE STAFF DIRECTORY",
+    "DIRECTORY OF RANGE",
+    "STAFF DIRECTORY OF RANGE",
     "RANGE DIRECTORY REPORT",
     "COMPLETE RANGE DIRECTORY",
 
     /* Staff */
 
-    "STAFF DIRECTORY OF RANGE",
-    "STAFF LIST OF RANGE",
     "STAFF OF RANGE",
-    "STAFF UNDER RANGE",
     "STAFF IN RANGE",
+    "STAFF UNDER RANGE",
+    "STAFF POSTED IN RANGE",
+    "STAFF POSTED UNDER RANGE",
+
+    /* Officers */
 
     "OFFICERS IN RANGE",
+    "OFFICERS OF RANGE",
+    "OFFICERS UNDER RANGE",
+
+    /* Employees */
+
     "EMPLOYEES IN RANGE",
+    "EMPLOYEES OF RANGE",
+
+    /* Personnel */
+
     "PERSONNEL IN RANGE",
+    "PERSONNEL OF RANGE",
 
     /* Posting */
 
     "POSTED IN RANGE",
     "POSTED UNDER RANGE",
     "BELONGS TO RANGE",
-    "WORKING IN RANGE",
-    "WORKING UNDER RANGE",
 
     /* Questions */
 
-    "WHO IS IN RANGE",
-    "WHO ARE IN RANGE",
-    "WHO WORKS IN RANGE",
     "WHO IS POSTED IN RANGE",
     "WHO ARE POSTED IN RANGE",
     "WHO BELONGS TO RANGE",
+    "WHO WORKS IN RANGE",
 
-    /* List */
+    /* Listing */
 
-    "LIST RANGE STAFF",
     "LIST STAFF OF RANGE",
     "LIST STAFF IN RANGE",
     "LIST STAFF UNDER RANGE",
     "LIST ALL STAFF IN RANGE",
     "LIST OFFICERS IN RANGE",
     "LIST EMPLOYEES IN RANGE",
-
-    /* Show */
-
-    "SHOW RANGE STAFF",
-    "SHOW STAFF OF RANGE",
-    "SHOW STAFF UNDER RANGE",
-    "SHOW STAFF IN RANGE",
-    "SHOW ALL STAFF IN RANGE",
-    "SHOW OFFICERS IN RANGE",
-    "SHOW EMPLOYEES IN RANGE",
+    "LIST PERSONNEL IN RANGE",
 
     /* Display */
 
-    "DISPLAY RANGE STAFF",
     "DISPLAY STAFF OF RANGE",
-    "VIEW RANGE STAFF",
+    "DISPLAY STAFF IN RANGE",
+    "DISPLAY RANGE DIRECTORY",
+    "VIEW RANGE DIRECTORY",
     "VIEW STAFF OF RANGE",
-
-    /* Get */
-
-    "GET RANGE STAFF",
-    "GET STAFF OF RANGE",
 
     /* AI */
 
     "OPEN RANGE DIRECTORY",
     "GIVE RANGE DIRECTORY",
-    "GIVE RANGE STAFF",
-    "CURRENT RANGE STAFF"
+    "CURRENT RANGE DIRECTORY"
 
 ],
  /*----------------------------------
