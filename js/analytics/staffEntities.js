@@ -5232,17 +5232,45 @@ StaffEntities.extractStaffEntities = function (
 
                     if (
 
-                        matchedWords > 0
+    tokenWords.length === 1
 
-                    ) {
+) {
 
-                        score +=
+    if (
 
-                            matchedWords *
+        matchedWords === 1
 
-                            40;
+    ) {
 
-                    }
+        score +=
+
+            token.length *
+
+            100;
+
+    }
+
+}
+
+else {
+
+    if (
+
+        matchedWords ===
+
+        tokenWords.length
+
+    ) {
+
+        score +=
+
+            token.length *
+
+            40;
+
+    }
+
+}
 
                 }
 
