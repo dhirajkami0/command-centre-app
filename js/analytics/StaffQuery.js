@@ -928,7 +928,76 @@ StaffQuery.getStaff = function (
     );
 
 };
+/*----------------------------------
+  Get All Staff
+----------------------------------*/
 
+StaffQuery.getAllStaff = function () {
+
+    if (
+
+        GG.StaffHydrator &&
+        typeof GG.StaffHydrator.getAllHydratedStaff ===
+        "function"
+
+    ) {
+
+        const staff =
+            GG.StaffHydrator.getAllHydratedStaff();
+
+        return Array.isArray(staff)
+            ? staff
+            : [];
+
+    }
+
+    if (
+
+        Array.isArray(
+            GG.staffProfiles
+        )
+
+    ) {
+
+        return GG.staffProfiles;
+
+    }
+
+    if (
+
+        Array.isArray(
+            GG.staff
+        )
+
+    ) {
+
+        return GG.staff;
+
+    }
+
+    return [];
+
+};
+    StaffQuery.ensureAllStaff = function () {
+
+    const staff =
+        StaffQuery.getAllStaff();
+
+    if (
+
+        staff.length === 0
+
+    ) {
+
+        throw new Error(
+            "No staff available."
+        );
+
+    }
+
+    return staff;
+
+};
 /*----------------------------------
   Get Single Staff
 ----------------------------------*/
@@ -2801,12 +2870,7 @@ GG.queryActiveStaffCount = async function (
         ) {
 
             const active =
-
-                StaffQuery.getStaff(
-
-                    request
-
-                ).filter(
+StaffQuery.ensureAllStaff().filter(
 
                     function (
 
@@ -2862,11 +2926,7 @@ GG.queryActiveStaffList = async function (
 
             const active =
 
-                StaffQuery.getStaff(
-
-                    request
-
-                ).filter(
+StaffQuery.ensureAllStaff().filter(
 
                     function (
 
@@ -2926,11 +2986,7 @@ GG.queryInactiveStaffList = async function (
 
             const inactive =
 
-                StaffQuery.getStaff(
-
-                    request
-
-                ).filter(
+StaffQuery.ensureAllStaff().filter(
 
                     function (
 
@@ -2990,11 +3046,7 @@ GG.queryDutySummary = async function (
 
             const staff =
 
-                StaffQuery.getStaff(
-
-                    request
-
-                );
+                StaffQuery.ensureAllStaff()
 
             const active =
 
@@ -3072,11 +3124,8 @@ GG.queryTeamLeaderList = async function (
 
             const leaders =
 
-                StaffQuery.getStaff(
-
-                    request
-
-                ).filter(
+const leaders =
+    StaffQuery.ensureAllStaff().filter(
 
                     function (
 
@@ -3145,11 +3194,7 @@ GG.queryMovingStaff = async function (
 
             const moving =
 
-                StaffQuery.getStaff(
-
-                    request
-
-                ).filter(
+                StaffQuery.ensureAllStaff().filter(
 
                     function (
 
@@ -3213,11 +3258,7 @@ GG.queryStationaryStaff = async function (
 
             const stationary =
 
-                StaffQuery.getStaff(
-
-                    request
-
-                ).filter(
+                StaffQuery.ensureAllStaff().filter(
 
                     function (
 
@@ -3266,6 +3307,10 @@ GG.queryStationaryStaff = async function (
   Staff Summary
 ----------------------------------*/
 
+/*----------------------------------
+  Staff Summary
+----------------------------------*/
+
 GG.queryStaffSummary = async function (
 
     request
@@ -3282,13 +3327,17 @@ GG.queryStaffSummary = async function (
 
         ) {
 
+            /*----------------------------------
+              Entire Staff Collection
+            ----------------------------------*/
+
             const profiles =
 
-                StaffQuery.ensureStaff(
+                StaffQuery.ensureAllStaff();
 
-                    request
-
-                );
+            /*----------------------------------
+              Build Summary
+            ----------------------------------*/
 
             return profiles.map(
 
@@ -3475,7 +3524,7 @@ GG.queryStaffSummary = async function (
                             null,
 
                         /*----------------------------------
-                          Patrol Analytics
+                          Analytics
                         ----------------------------------*/
 
                         distanceKm:
@@ -3513,7 +3562,8 @@ GG.queryStaffSummary = async function (
     );
 
 };
-    /*----------------------------------
+
+/*----------------------------------
   Jurisdiction Summary
 ----------------------------------*/
 
@@ -3533,15 +3583,21 @@ GG.queryJurisdictionSummary = async function (
 
         ) {
 
+            /*----------------------------------
+              Entire Staff Collection
+            ----------------------------------*/
+
             const profiles =
 
-                StaffQuery.ensureStaff(
+                StaffQuery.ensureAllStaff();
 
-                    request
+            /*----------------------------------
+              Build Summary
+            ----------------------------------*/
 
-                );
+            const summary =
 
-            const summary = {};
+                {};
 
             profiles.forEach(
 
@@ -3653,7 +3709,9 @@ GG.queryJurisdictionSummary = async function (
 
                             0
 
-                        ) > 0
+                        ) >
+
+                        0
 
                     ) {
 
@@ -3682,7 +3740,7 @@ GG.queryJurisdictionSummary = async function (
     );
 
 };
-    /*----------------------------------
+/*----------------------------------
   Designation Summary
 ----------------------------------*/
 
@@ -3702,15 +3760,21 @@ GG.queryDesignationSummary = async function (
 
         ) {
 
+            /*----------------------------------
+              Entire Staff Collection
+            ----------------------------------*/
+
             const profiles =
 
-                StaffQuery.ensureStaff(
+                StaffQuery.ensureAllStaff();
 
-                    request
+            /*----------------------------------
+              Build Summary
+            ----------------------------------*/
 
-                );
+            const summary =
 
-            const summary = {};
+                {};
 
             profiles.forEach(
 
@@ -3802,7 +3866,9 @@ GG.queryDesignationSummary = async function (
 
                             0
 
-                        ) > 0
+                        ) >
+
+                        0
 
                     ) {
 
@@ -3852,7 +3918,7 @@ GG.queryDesignationSummary = async function (
 
 };
 
-    /*----------------------------------
+/*----------------------------------
   Circle Directory
 ----------------------------------*/
 
@@ -3872,15 +3938,21 @@ GG.queryCircleDirectory = async function (
 
         ) {
 
+            /*----------------------------------
+              Entire Staff Collection
+            ----------------------------------*/
+
             const profiles =
 
-                StaffQuery.ensureStaff(
+                StaffQuery.ensureAllStaff();
 
-                    request
+            /*----------------------------------
+              Build Directory
+            ----------------------------------*/
 
-                );
+            const directory =
 
-            const directory = {};
+                {};
 
             profiles.forEach(
 
@@ -3965,6 +4037,12 @@ GG.queryCircleDirectory = async function (
                         email:
 
                             profile.identity?.email ||
+
+                            "",
+
+                        circle:
+
+                            profile.posting?.circle ||
 
                             "",
 
@@ -4095,14 +4173,8 @@ GG.queryDivisionDirectory = async function (
 
         ) {
 
-            const profiles =
-
-                StaffQuery.ensureStaff(
-
-                    request
-
-                );
-
+const profiles =
+    StaffQuery.ensureAllStaff();
             const directory = {};
 
             profiles.forEach(
@@ -4394,14 +4466,8 @@ GG.queryRangeDirectory = async function (
 
         ) {
 
-            const profiles =
-
-                StaffQuery.ensureStaff(
-
-                    request
-
-                );
-
+const profiles =
+    StaffQuery.ensureAllStaff();
             const directory = {};
 
             profiles.forEach(
@@ -4654,13 +4720,8 @@ GG.queryBeatDirectory = async function (
 
         ) {
 
-            const profiles =
-
-                StaffQuery.ensureStaff(
-
-                    request
-
-                );
+           const profiles =
+    StaffQuery.ensureAllStaff();
 
             const directory = {};
 
@@ -4954,12 +5015,7 @@ GG.queryDesignationDirectory = async function (
         ) {
 
             const profiles =
-
-                StaffQuery.ensureStaff(
-
-                    request
-
-                );
+    StaffQuery.ensureAllStaff();
 
             const directory = {};
 
@@ -5254,10 +5310,6 @@ GG.queryWhoIsOnDuty = async function (
   Who Is Patrolling
 ----------------------------------*/
 
-/*----------------------------------
-  Who Is Patrolling
-----------------------------------*/
-
 GG.queryWhoIsPatrolling = async function (
 
     request
@@ -5274,13 +5326,17 @@ GG.queryWhoIsPatrolling = async function (
 
         ) {
 
+            /*----------------------------------
+              Entire Staff Collection
+            ----------------------------------*/
+
             const staff =
 
-                StaffQuery.ensureStaff(
+                StaffQuery.ensureAllStaff();
 
-                    request
-
-                );
+            /*----------------------------------
+              Filter Patrolling Staff
+            ----------------------------------*/
 
             const patrolling =
 
@@ -5292,15 +5348,17 @@ GG.queryWhoIsPatrolling = async function (
 
                     ) {
 
-                        return (
+                        const assignment =
 
-                            profile.assignment?.dutyActive ===
+                            profile.assignment ||
 
-                            true &&
+                            {};
+
+                        const dutyType =
 
                             String(
 
-                                profile.assignment?.dutyType ||
+                                assignment.dutyType ||
 
                                 ""
 
@@ -5308,9 +5366,15 @@ GG.queryWhoIsPatrolling = async function (
 
                             .trim()
 
-                            .toUpperCase()
+                            .toUpperCase();
 
-                            .includes(
+                        return (
+
+                            assignment.dutyActive ===
+
+                                true &&
+
+                            dutyType.includes(
 
                                 "PATROL"
 
@@ -5321,6 +5385,10 @@ GG.queryWhoIsPatrolling = async function (
                     }
 
                 );
+
+            /*----------------------------------
+              Result
+            ----------------------------------*/
 
             return {
 
@@ -5339,7 +5407,6 @@ GG.queryWhoIsPatrolling = async function (
     );
 
 };
-
  /*=========================================================
  MODULE INFORMATION
 =========================================================*/
