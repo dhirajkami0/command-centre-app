@@ -2970,6 +2970,54 @@ StaffIntent.needsAI = function (
 
     }
 
+
+ /*----------------------------------
+  GLOBAL LOCAL INTENTS
+----------------------------------*/
+
+switch (
+
+    result.intent
+
+) {
+
+    case StaffConstants.INTENTS.WHO_IS_ON_DUTY:
+
+    case StaffConstants.INTENTS.WHO_IS_PATROLLING:
+
+    case StaffConstants.INTENTS.STAFF_ACTIVE_COUNT:
+
+    case StaffConstants.INTENTS.STAFF_ACTIVE_LIST:
+
+    case StaffConstants.INTENTS.STAFF_INACTIVE_LIST:
+
+    case StaffConstants.INTENTS.STAFF_DUTY_SUMMARY:
+
+    case StaffConstants.INTENTS.STAFF_TEAM_LEADER_LIST:
+
+    case StaffConstants.INTENTS.STAFF_MOVING:
+
+    case StaffConstants.INTENTS.STAFF_STATIONARY:
+
+    case StaffConstants.INTENTS.STAFF_SUMMARY:
+
+    case StaffConstants.INTENTS.STAFF_JURISDICTION_SUMMARY:
+
+    case StaffConstants.INTENTS.STAFF_DESIGNATION_SUMMARY:
+
+    case StaffConstants.INTENTS.STAFF_CIRCLE_DIRECTORY:
+
+    case StaffConstants.INTENTS.STAFF_DIVISION_DIRECTORY:
+
+    case StaffConstants.INTENTS.STAFF_RANGE_DIRECTORY:
+
+    case StaffConstants.INTENTS.STAFF_BEAT_DIRECTORY:
+
+    case StaffConstants.INTENTS.STAFF_DESIGNATION_DIRECTORY:
+
+        return false;
+
+}
     /*----------------------------------
       Staff Missing
     ----------------------------------*/
