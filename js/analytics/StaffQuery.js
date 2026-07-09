@@ -660,13 +660,61 @@ StaffQuery.execute = async function (
           Execute Handler
         ----------------------------------*/
 
-        response.data =
+        const result =
 
             await handler(
 
                 request
 
             );
+
+        /*----------------------------------
+          Canonical Result
+        ----------------------------------*/
+
+        response.data =
+
+            result;
+
+        /*----------------------------------
+          Legacy Compatibility
+        ----------------------------------*/
+
+        if (
+
+            Array.isArray(
+
+                result
+
+            )
+
+        ) {
+
+            response.staffList =
+
+                result;
+
+        }
+
+        else if (
+
+            result &&
+
+            typeof result ===
+
+            "object"
+
+        ) {
+
+            response.staff =
+
+                result;
+
+        }
+
+        /*----------------------------------
+          Success
+        ----------------------------------*/
 
         response.success =
 
@@ -676,13 +724,13 @@ StaffQuery.execute = async function (
 
             Array.isArray(
 
-                response.data
+                result
 
             )
 
-                ? response.data.length
+                ? result.length
 
-                : response.data
+                : result
 
                     ? 1
 
@@ -739,7 +787,7 @@ StaffQuery.execute = async function (
         );
 
     /*----------------------------------
-      Save Cache
+      Cache
     ----------------------------------*/
 
     StaffQuery.lastQuery =
@@ -757,6 +805,10 @@ StaffQuery.execute = async function (
         response
 
     );
+
+    /*----------------------------------
+      Return
+    ----------------------------------*/
 
     return response;
 
@@ -960,6 +1012,44 @@ StaffQuery.ensureSingleStaff = function (
 
 ) {
 
+    const started =
+
+        Date.now();
+
+    console.group(
+
+        "👤 StaffQuery.ensureSingleStaff"
+
+    );
+
+    console.log(
+
+        "File:",
+
+        "staffQuery.js"
+
+    );
+
+    console.log(
+
+        "Function:",
+
+        "StaffQuery.ensureSingleStaff"
+
+    );
+
+    console.log(
+
+        "Request:",
+
+        request
+
+    );
+
+    /*----------------------------------
+      Get Staff
+    ----------------------------------*/
+
     const staff =
 
         StaffQuery.getStaff(
@@ -968,11 +1058,61 @@ StaffQuery.ensureSingleStaff = function (
 
         );
 
+    console.log(
+
+        "Matched Staff:",
+
+        staff
+
+    );
+
+    console.log(
+
+        "Count:",
+
+        Array.isArray(
+
+            staff
+
+        )
+
+            ? staff.length
+
+            : 0
+
+    );
+
+    /*----------------------------------
+      Validate
+    ----------------------------------*/
+
+    if (
+
+        !Array.isArray(
+
+            staff
+
+        )
+
+    ) {
+
+        console.groupEnd();
+
+        throw new Error(
+
+            "StaffQuery.getStaff() must return an array."
+
+        );
+
+    }
+
     if (
 
         staff.length === 0
 
     ) {
+
+        console.groupEnd();
 
         throw new Error(
 
@@ -988,6 +1128,8 @@ StaffQuery.ensureSingleStaff = function (
 
     ) {
 
+        console.groupEnd();
+
         throw new Error(
 
             "Multiple staff matched."
@@ -996,7 +1138,81 @@ StaffQuery.ensureSingleStaff = function (
 
     }
 
-    return staff[0];
+    /*----------------------------------
+      Canonical Staff
+    ----------------------------------*/
+
+    const canonical =
+
+        staff[0];
+
+    console.log(
+
+        "Canonical Staff:",
+
+        canonical
+
+    );
+
+    console.log(
+
+        "Identity:",
+
+        canonical.identity
+
+    );
+
+    console.log(
+
+        "Posting:",
+
+        canonical.posting
+
+    );
+
+    console.log(
+
+        "Assignment:",
+
+        canonical.assignment
+
+    );
+
+    console.log(
+
+        "GPS:",
+
+        canonical.gps
+
+    );
+
+    console.log(
+
+        "Analytics:",
+
+        canonical.analytics
+
+    );
+
+    console.log(
+
+        "Execution:",
+
+        Date.now() -
+
+        started,
+
+        "ms"
+
+    );
+
+    console.groupEnd();
+
+    /*----------------------------------
+      Return Canonical Object
+    ----------------------------------*/
+
+    return canonical;
 
 };
 /*----------------------------------
