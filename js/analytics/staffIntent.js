@@ -5294,9 +5294,10 @@ StaffIntent.detectGlobalIntent = function (
     return result;
 
 };
- /*=========================================================
- DIRECTORY INTENT
+/*=========================================================
+  DIRECTORY INTENT
 =========================================================*/
+
 StaffIntent.detectDirectoryIntent = function (
 
     result
@@ -5484,6 +5485,53 @@ StaffIntent.detectDirectoryIntent = function (
         hasDirectoryVerb();
 
     /*==================================================
+      DESIGNATION DIRECTORY
+      (Highest Priority)
+    ==================================================*/
+
+    if (
+
+        (
+
+            hasKeyword(
+
+                KEYWORDS.STAFF_DESIGNATION_DIRECTORY
+
+            ) ||
+
+            directory
+
+        ) &&
+
+        designation.length > 0
+
+    ) {
+
+        result.intent =
+
+            INTENTS.STAFF_DESIGNATION_DIRECTORY;
+
+        result.parameters.staff =
+
+            designation;
+
+        result.parameters.designation =
+
+            designation[0]
+
+                .identity
+
+                .designation;
+
+        result.confidence =
+
+            0.99;
+
+        return result;
+
+    }
+
+    /*==================================================
       RANGE DIRECTORY
     ==================================================*/
 
@@ -5650,52 +5698,6 @@ StaffIntent.detectDirectoryIntent = function (
         result.parameters.staff =
 
             posting;
-
-        result.confidence =
-
-            0.99;
-
-        return result;
-
-    }
-
-    /*==================================================
-      DESIGNATION DIRECTORY
-    ==================================================*/
-
-    if (
-
-        (
-
-            hasKeyword(
-
-                KEYWORDS.STAFF_DESIGNATION_DIRECTORY
-
-            ) ||
-
-            directory
-
-        ) &&
-
-        designation.length > 0
-
-    ) {
-
-        result.intent =
-
-            INTENTS.STAFF_DESIGNATION_DIRECTORY;
-
-        result.parameters.staff =
-
-            designation;
-
-        result.parameters.designation =
-
-            designation[0]
-
-                .identity
-
-                .designation;
 
         result.confidence =
 
