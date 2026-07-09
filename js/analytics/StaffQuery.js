@@ -4439,8 +4439,79 @@ GG.queryRangeDirectory = async function (
 
         ) {
 
-const profiles =
-    StaffQuery.ensureAllStaff();
+            /*----------------------------------
+              Requested Range
+            ----------------------------------*/
+
+            const requestedRange =
+
+                String(
+
+                    request.parameters?.range ||
+
+                    ""
+
+                )
+
+                .trim()
+
+                .toUpperCase();
+
+            /*----------------------------------
+              Profiles
+            ----------------------------------*/
+
+            const profiles =
+
+                StaffQuery
+                    .ensureAllStaff()
+
+                    .filter(
+
+                        function (
+
+                            profile
+
+                        ) {
+
+                            if (
+
+                                requestedRange === ""
+
+                            ) {
+
+                                return true;
+
+                            }
+
+                            return (
+
+                                String(
+
+                                    profile.posting?.range ||
+
+                                    ""
+
+                                )
+
+                                .trim()
+
+                                .toUpperCase()
+
+                                ===
+
+                                requestedRange
+
+                            );
+
+                        }
+
+                    );
+
+            /*----------------------------------
+              Directory
+            ----------------------------------*/
+
             const directory = {};
 
             profiles.forEach(
