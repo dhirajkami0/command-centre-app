@@ -936,42 +936,15 @@ StaffQuery.getAllStaff = function () {
 
     if (
 
-        GG.StaffHydrator &&
-        typeof GG.StaffHydrator.getAllHydratedStaff ===
-        "function"
-
-    ) {
-
-        const staff =
-            GG.StaffHydrator.getAllHydratedStaff();
-
-        return Array.isArray(staff)
-            ? staff
-            : [];
-
-    }
-
-    if (
-
         Array.isArray(
-            GG.staffProfiles
+
+            StaffEntities.staff
+
         )
 
     ) {
 
-        return GG.staffProfiles;
-
-    }
-
-    if (
-
-        Array.isArray(
-            GG.staff
-        )
-
-    ) {
-
-        return GG.staff;
+        return StaffEntities.staff;
 
     }
 
