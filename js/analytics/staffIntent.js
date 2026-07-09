@@ -1457,6 +1457,216 @@ StaffIntent.detectPostingIntent = function (
     return result;
 
 };
+
+  StaffIntent.extractPostingParameters = function (
+
+    result
+
+) {
+
+    /*----------------------------------
+      Validate
+    ----------------------------------*/
+
+    if (
+
+        !result ||
+
+        !result.entities
+
+    ) {
+
+        return result;
+
+    }
+
+    const posting =
+
+        result.entities.posting ||
+
+        [];
+
+    if (
+
+        posting.length === 0
+
+    ) {
+
+        return result;
+
+    }
+
+    if (
+
+        !result.parameters
+
+    ) {
+
+        result.parameters = {};
+
+    }
+
+    /*----------------------------------
+      Unique Values
+    ----------------------------------*/
+
+    const circles =
+        new Set();
+
+    const divisions =
+        new Set();
+
+    const ranges =
+        new Set();
+
+    const beats =
+        new Set();
+
+    const compartments =
+        new Set();
+
+    posting.forEach(
+
+        function (
+
+            staff
+
+        ) {
+
+            if (
+
+                !staff ||
+
+                !staff.posting
+
+            ) {
+
+                return;
+
+            }
+
+            if (
+
+                staff.posting.circle
+
+            ) {
+
+                circles.add(
+
+                    staff.posting.circle
+
+                );
+
+            }
+
+            if (
+
+                staff.posting.division
+
+            ) {
+
+                divisions.add(
+
+                    staff.posting.division
+
+                );
+
+            }
+
+            if (
+
+                staff.posting.range
+
+            ) {
+
+                ranges.add(
+
+                    staff.posting.range
+
+                );
+
+            }
+
+            if (
+
+                staff.posting.beat
+
+            ) {
+
+                beats.add(
+
+                    staff.posting.beat
+
+                );
+
+            }
+
+            if (
+
+                staff.assignment &&
+                staff.assignment.assignedCompartment
+
+            ) {
+
+                compartments.add(
+
+                    staff.assignment.assignedCompartment
+
+                );
+
+            }
+
+        }
+
+    );
+
+    /*----------------------------------
+      Save Parameters
+    ----------------------------------*/
+
+    result.parameters.circle =
+
+        circles.size === 1
+
+            ? [...circles][0]
+
+            : null;
+
+    result.parameters.division =
+
+        divisions.size === 1
+
+            ? [...divisions][0]
+
+            : null;
+
+    result.parameters.range =
+
+        ranges.size === 1
+
+            ? [...ranges][0]
+
+            : null;
+
+    result.parameters.beat =
+
+        beats.size === 1
+
+            ? [...beats][0]
+
+            : null;
+
+    result.parameters.compartment =
+
+        compartments.size === 1
+
+            ? [...compartments][0]
+
+            : null;
+
+    return result;
+
+};
  /*=========================================================
  DETECT DUTY INTENT
 =========================================================*/
