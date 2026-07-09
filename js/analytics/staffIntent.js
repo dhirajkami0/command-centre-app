@@ -5297,7 +5297,6 @@ StaffIntent.detectGlobalIntent = function (
  /*=========================================================
  DIRECTORY INTENT
 =========================================================*/
-
 StaffIntent.detectDirectoryIntent = function (
 
     result
@@ -5320,12 +5319,6 @@ StaffIntent.detectDirectoryIntent = function (
 
     }
 
-    const staff =
-
-        result.entities.staff ||
-
-        [];
-
     const query =
 
         String(
@@ -5335,6 +5328,8 @@ StaffIntent.detectDirectoryIntent = function (
             ""
 
         )
+
+        .trim()
 
         .toUpperCase();
 
@@ -5356,8 +5351,32 @@ StaffIntent.detectDirectoryIntent = function (
 
         StaffConstants.KEYWORDS;
 
+    const parameters =
+
+        result.parameters ||
+
+        {};
+
+    const posting =
+
+        result.entities.posting ||
+
+        [];
+
+    const designation =
+
+        result.entities.designations ||
+
+        [];
+
+    const allStaff =
+
+        result.entities.staff ||
+
+        [];
+
     /*----------------------------------
-      Exact Keyword Match
+      Keyword Helper
     ----------------------------------*/
 
     function hasKeyword(
@@ -5407,7 +5426,7 @@ StaffIntent.detectDirectoryIntent = function (
     }
 
     /*----------------------------------
-      Directory Verbs
+      Directory Verb
     ----------------------------------*/
 
     function hasDirectoryVerb() {
@@ -5426,39 +5445,21 @@ StaffIntent.detectDirectoryIntent = function (
 
             "GIVE",
 
-            "DIRECTORY"
+            "DIRECTORY",
+
+            "STAFF",
+
+            "PERSONNEL",
+
+            "EMPLOYEES",
+
+            "OFFICERS",
+
+            "WHO ARE",
+
+            "WHO IS"
 
         ].some(
-
-            function (
-
-                word
-
-            ) {
-
-                return query.includes(
-
-                    word
-
-                );
-
-            }
-
-        );
-
-    }
-
-    /*----------------------------------
-      Posting Word
-    ----------------------------------*/
-
-    function hasPostingWord(
-
-        words
-
-    ) {
-
-        return words.some(
 
             function (
 
@@ -5482,125 +5483,31 @@ StaffIntent.detectDirectoryIntent = function (
 
         hasDirectoryVerb();
 
-    /*----------------------------------
-      Circle Directory
-    ----------------------------------*/
+    /*==================================================
+      RANGE DIRECTORY
+    ==================================================*/
 
     if (
 
-        hasKeyword(
-
-            KEYWORDS.STAFF_CIRCLE_DIRECTORY
-
-        ) ||
-
         (
 
-            directory &&
+            hasKeyword(
 
-            hasPostingWord(
+                KEYWORDS.STAFF_RANGE_DIRECTORY
 
-                [
+            ) ||
 
-                    "CIRCLE"
+            (
 
-                ]
+                directory &&
+
+                parameters.range
 
             )
 
-        )
+        ) &&
 
-    ) {
-
-        result.intent =
-
-            INTENTS.STAFF_CIRCLE_DIRECTORY;
-
-        result.parameters.staff =
-
-            staff;
-
-        result.confidence =
-
-            0.99;
-
-        return result;
-
-    }
-
-    /*----------------------------------
-      Division Directory
-    ----------------------------------*/
-
-    if (
-
-        hasKeyword(
-
-            KEYWORDS.STAFF_DIVISION_DIRECTORY
-
-        ) ||
-
-        (
-
-            directory &&
-
-            hasPostingWord(
-
-                [
-
-                    "DIVISION"
-
-                ]
-
-            )
-
-        )
-
-    ) {
-
-        result.intent =
-
-            INTENTS.STAFF_DIVISION_DIRECTORY;
-
-        result.parameters.staff =
-
-            staff;
-
-        result.confidence =
-
-            0.99;
-
-        return result;
-
-    }
-
-    /*----------------------------------
-      Range Directory
-    ----------------------------------*/
-
-    if (
-
-        hasKeyword(
-
-            KEYWORDS.STAFF_RANGE_DIRECTORY
-
-        ) ||
-
-        (
-
-            directory &&
-
-            hasPostingWord(
-
-                [
-
-                    "RANGE"
-
-                ]
-
-            )
-
-        )
+        posting.length > 0
 
     ) {
 
@@ -5610,7 +5517,7 @@ StaffIntent.detectDirectoryIntent = function (
 
         result.parameters.staff =
 
-            staff;
+            posting;
 
         result.confidence =
 
@@ -5620,33 +5527,31 @@ StaffIntent.detectDirectoryIntent = function (
 
     }
 
-    /*----------------------------------
-      Beat Directory
-    ----------------------------------*/
+    /*==================================================
+      BEAT DIRECTORY
+    ==================================================*/
 
     if (
 
-        hasKeyword(
-
-            KEYWORDS.STAFF_BEAT_DIRECTORY
-
-        ) ||
-
         (
 
-            directory &&
+            hasKeyword(
 
-            hasPostingWord(
+                KEYWORDS.STAFF_BEAT_DIRECTORY
 
-                [
+            ) ||
 
-                    "BEAT"
+            (
 
-                ]
+                directory &&
+
+                parameters.beat
 
             )
 
-        )
+        ) &&
+
+        posting.length > 0
 
     ) {
 
@@ -5656,7 +5561,7 @@ StaffIntent.detectDirectoryIntent = function (
 
         result.parameters.staff =
 
-            staff;
+            posting;
 
         result.confidence =
 
@@ -5666,55 +5571,113 @@ StaffIntent.detectDirectoryIntent = function (
 
     }
 
-    /*----------------------------------
-      Designation Directory
-    ----------------------------------*/
+    /*==================================================
+      DIVISION DIRECTORY
+    ==================================================*/
 
     if (
 
-        hasKeyword(
-
-            KEYWORDS.STAFF_DESIGNATION_DIRECTORY
-
-        ) ||
-
         (
 
-            directory &&
+            hasKeyword(
 
-            hasPostingWord(
+                KEYWORDS.STAFF_DIVISION_DIRECTORY
 
-                [
+            ) ||
 
-                    "DESIGNATION",
+            (
 
-                    "RANK",
+                directory &&
 
-                    "POST",
-
-                    "POSITION",
-
-                    "FORESTER",
-
-                    "FOREST GUARD",
-
-                    "BANASAHAYAK",
-
-                    "DAILY LABOUR",
-
-                    "RANGE OFFICER",
-
-                    "ACF",
-
-                    "DFO",
-
-                    "ADFO"
-
-                ]
+                parameters.division
 
             )
 
-        )
+        ) &&
+
+        posting.length > 0
+
+    ) {
+
+        result.intent =
+
+            INTENTS.STAFF_DIVISION_DIRECTORY;
+
+        result.parameters.staff =
+
+            posting;
+
+        result.confidence =
+
+            0.99;
+
+        return result;
+
+    }
+
+    /*==================================================
+      CIRCLE DIRECTORY
+    ==================================================*/
+
+    if (
+
+        (
+
+            hasKeyword(
+
+                KEYWORDS.STAFF_CIRCLE_DIRECTORY
+
+            ) ||
+
+            (
+
+                directory &&
+
+                parameters.circle
+
+            )
+
+        ) &&
+
+        posting.length > 0
+
+    ) {
+
+        result.intent =
+
+            INTENTS.STAFF_CIRCLE_DIRECTORY;
+
+        result.parameters.staff =
+
+            posting;
+
+        result.confidence =
+
+            0.99;
+
+        return result;
+
+    }
+
+    /*==================================================
+      DESIGNATION DIRECTORY
+    ==================================================*/
+
+    if (
+
+        (
+
+            hasKeyword(
+
+                KEYWORDS.STAFF_DESIGNATION_DIRECTORY
+
+            ) ||
+
+            directory
+
+        ) &&
+
+        designation.length > 0
 
     ) {
 
@@ -5724,11 +5687,47 @@ StaffIntent.detectDirectoryIntent = function (
 
         result.parameters.staff =
 
-            staff;
+            designation;
+
+        result.parameters.designation =
+
+            designation[0]
+
+                .identity
+
+                .designation;
 
         result.confidence =
 
             0.99;
+
+        return result;
+
+    }
+
+    /*==================================================
+      GENERIC STAFF DIRECTORY
+    ==================================================*/
+
+    if (
+
+        directory &&
+
+        allStaff.length > 1
+
+    ) {
+
+        result.intent =
+
+            INTENTS.STAFF_DIRECTORY;
+
+        result.parameters.staff =
+
+            allStaff;
+
+        result.confidence =
+
+            0.95;
 
         return result;
 
