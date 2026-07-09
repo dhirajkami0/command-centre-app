@@ -429,7 +429,105 @@ StaffIntent.setCachedResult = function (
 /*=========================================================
  DETECT
 =========================================================*/
+StaffIntent.matchIntent = function (
 
+    query,
+
+    config
+
+) {
+
+    query =
+
+        String(
+
+            query ||
+
+            ""
+
+        ).toUpperCase();
+
+    /*--------------------------
+      ANY
+    --------------------------*/
+
+    if (
+
+        config.any &&
+
+        !config.any.every(
+
+            word =>
+
+            query.includes(
+
+                word
+
+            )
+
+        )
+
+    ) {
+
+        return false;
+
+    }
+
+    /*--------------------------
+      ONE OF
+    --------------------------*/
+
+    if (
+
+        config.oneOf &&
+
+        !config.oneOf.some(
+
+            word =>
+
+            query.includes(
+
+                word
+
+            )
+
+        )
+
+    ) {
+
+        return false;
+
+    }
+
+    /*--------------------------
+      EXCLUDE
+    --------------------------*/
+
+    if (
+
+        config.exclude &&
+
+        config.exclude.some(
+
+            word =>
+
+            query.includes(
+
+                word
+
+            )
+
+        )
+
+    ) {
+
+        return false;
+
+    }
+
+    return true;
+
+};
 /*=========================================================
  DETECT
 =========================================================*/
@@ -4726,6 +4824,245 @@ StaffIntent.detectGlobalIntent = function (
     );
 
     console.groupEnd();
+
+    return result;
+
+};
+ /*=========================================================
+ DIRECTORY INTENT
+=========================================================*/
+
+StaffIntent.detectDirectoryIntent = function (
+
+    result
+
+) {
+
+    if (
+
+        !result ||
+
+        !result.entities
+
+    ) {
+
+        return result;
+
+    }
+
+    const staff =
+
+        result.entities.staff ||
+
+        [];
+
+    const query =
+
+        result.normalizedQuery ||
+
+        "";
+
+    const INTENTS =
+
+        StaffConstants.INTENTS;
+
+    const KEYWORDS =
+
+        StaffConstants.KEYWORDS;
+
+    function hasKeyword(
+
+        list
+
+    ) {
+
+        if (
+
+            !Array.isArray(
+
+                list
+
+            )
+
+        ) {
+
+            return false;
+
+        }
+
+        return list.some(
+
+            function (
+
+                word
+
+            ) {
+
+                return query.includes(
+
+                    String(
+
+                        word
+
+                    ).toUpperCase()
+
+                );
+
+            }
+
+        );
+
+    }
+
+    /*----------------------------------
+      Circle Directory
+    ----------------------------------*/
+
+    if (
+
+        hasKeyword(
+
+            KEYWORDS.STAFF_CIRCLE_DIRECTORY
+
+        )
+
+    ) {
+
+        result.intent =
+
+            INTENTS.STAFF_CIRCLE_DIRECTORY;
+
+        result.parameters.staff =
+
+            staff;
+
+        result.confidence =
+
+            0.99;
+
+        return result;
+
+    }
+
+    /*----------------------------------
+      Division Directory
+    ----------------------------------*/
+
+    if (
+
+        hasKeyword(
+
+            KEYWORDS.STAFF_DIVISION_DIRECTORY
+
+        )
+
+    ) {
+
+        result.intent =
+
+            INTENTS.STAFF_DIVISION_DIRECTORY;
+
+        result.parameters.staff =
+
+            staff;
+
+        result.confidence =
+
+            0.99;
+
+        return result;
+
+    }
+
+    /*----------------------------------
+      Range Directory
+    ----------------------------------*/
+
+    if (
+
+        hasKeyword(
+
+            KEYWORDS.STAFF_RANGE_DIRECTORY
+
+        )
+
+    ) {
+
+        result.intent =
+
+            INTENTS.STAFF_RANGE_DIRECTORY;
+
+        result.parameters.staff =
+
+            staff;
+
+        result.confidence =
+
+            0.99;
+
+        return result;
+
+    }
+
+    /*----------------------------------
+      Beat Directory
+    ----------------------------------*/
+
+    if (
+
+        hasKeyword(
+
+            KEYWORDS.STAFF_BEAT_DIRECTORY
+
+        )
+
+    ) {
+
+        result.intent =
+
+            INTENTS.STAFF_BEAT_DIRECTORY;
+
+        result.parameters.staff =
+
+            staff;
+
+        result.confidence =
+
+            0.99;
+
+        return result;
+
+    }
+
+    /*----------------------------------
+      Designation Directory
+    ----------------------------------*/
+
+    if (
+
+        hasKeyword(
+
+            KEYWORDS.STAFF_DESIGNATION_DIRECTORY
+
+        )
+
+    ) {
+
+        result.intent =
+
+            INTENTS.STAFF_DESIGNATION_DIRECTORY;
+
+        result.parameters.staff =
+
+            staff;
+
+        result.confidence =
+
+            0.99;
+
+        return result;
+
+    }
 
     return result;
 
