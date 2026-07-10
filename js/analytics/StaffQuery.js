@@ -588,20 +588,12 @@ StaffQuery.execute = async function (
     );
 
     console.log(
-        "===================================="
-    );
-
-    console.log(
         "REQUEST"
     );
 
     console.log(
         request
     );
-
-    /*----------------------------------
-      Validate
-    ----------------------------------*/
 
     if (
 
@@ -633,10 +625,6 @@ StaffQuery.execute = async function (
 
     }
 
-    /*----------------------------------
-      Create Response
-    ----------------------------------*/
-
     const response =
 
         StaffQuery.createResponse(
@@ -644,18 +632,6 @@ StaffQuery.execute = async function (
             request
 
         );
-
-    console.log(
-        "INITIAL RESPONSE"
-    );
-
-    console.log(
-        response
-    );
-
-    /*----------------------------------
-      Cache Key
-    ----------------------------------*/
 
     const cacheKey =
 
@@ -679,9 +655,21 @@ StaffQuery.execute = async function (
         cacheKey
     );
 
-    /*----------------------------------
-      Cache Lookup
-    ----------------------------------*/
+    console.log(
+        "CACHE SIZE"
+    );
+
+    console.log(
+        StaffQuery.cache.size
+    );
+
+    console.log(
+        "CACHE KEYS"
+    );
+
+    console.log(
+        [...StaffQuery.cache.keys()]
+    );
 
     const cached =
 
@@ -721,6 +709,28 @@ StaffQuery.execute = async function (
             cached.data
         );
 
+        console.log(
+            "CACHED DATA LENGTH"
+        );
+
+        console.log(
+
+            Array.isArray(
+
+                cached.data
+
+            )
+
+                ?
+
+                cached.data.length
+
+                :
+
+                null
+
+        );
+
         cached.metadata.cache =
 
             true;
@@ -731,20 +741,8 @@ StaffQuery.execute = async function (
 
     try {
 
-        /*----------------------------------
-          Execute Handler
-        ----------------------------------*/
-
-        console.log(
-            "------------------------------------"
-        );
-
         console.log(
             "CALLING HANDLER"
-        );
-
-        console.log(
-            handler
         );
 
         const result =
@@ -754,18 +752,9 @@ StaffQuery.execute = async function (
                 request
 
             );
-console.log("========== HANDLER RESULT ==========");
-console.log(result);
-console.log(result.length);
-console.log(result[0]);
-console.log(result[0]?.staff?.length);
-console.log("====================================");
-        console.log(
-            "------------------------------------"
-        );
 
         console.log(
-            "HANDLER RETURNED"
+            "HANDLER RESULT"
         );
 
         console.log(
@@ -773,23 +762,15 @@ console.log("====================================");
         );
 
         console.log(
-            "IS ARRAY"
-        );
-
-        console.log(
-            Array.isArray(
-                result
-            )
-        );
-
-        console.log(
-            "RESULT LENGTH"
+            "HANDLER RESULT LENGTH"
         );
 
         console.log(
 
             Array.isArray(
+
                 result
+
             )
 
                 ?
@@ -802,30 +783,39 @@ console.log("====================================");
 
         );
 
-        /*----------------------------------
-          Canonical Result
-        ----------------------------------*/
-
         response.data =
 
             result;
-console.log("========== RESPONSE.DATA ==========");
-console.log(response.data);
-console.log(response.data.length);
-console.log(response.data[0]);
-console.log(response.data[0]?.staff?.length);
-console.log("===================================");
+
         console.log(
-            "RESPONSE.DATA AFTER ASSIGN"
+            "RESPONSE.DATA"
         );
 
         console.log(
             response.data
         );
 
-        /*----------------------------------
-          Legacy Compatibility
-        ----------------------------------*/
+        console.log(
+            "RESPONSE.DATA LENGTH"
+        );
+
+        console.log(
+
+            Array.isArray(
+
+                response.data
+
+            )
+
+                ?
+
+                response.data.length
+
+                :
+
+                null
+
+        );
 
         if (
 
@@ -840,14 +830,6 @@ console.log("===================================");
             response.staffList =
 
                 result;
-
-            console.log(
-                "STAFFLIST ASSIGNED"
-            );
-
-            console.log(
-                response.staffList
-            );
 
         }
 
@@ -865,19 +847,7 @@ console.log("===================================");
 
                 result;
 
-            console.log(
-                "STAFF ASSIGNED"
-            );
-
-            console.log(
-                response.staff
-            );
-
         }
-
-        /*----------------------------------
-          Success
-        ----------------------------------*/
 
         response.success =
 
@@ -909,22 +879,6 @@ console.log("===================================");
 
         StaffQuery.statistics.successes++;
 
-        console.log(
-            "SUCCESS"
-        );
-
-        console.log(
-            response.success
-        );
-
-        console.log(
-            "COUNT"
-        );
-
-        console.log(
-            response.count
-        );
-
     }
 
     catch (
@@ -955,10 +909,6 @@ console.log("===================================");
 
     }
 
-    /*----------------------------------
-      Metadata
-    ----------------------------------*/
-
     response.metadata.executionTime =
 
         Date.now() -
@@ -981,34 +931,6 @@ console.log("===================================");
 
         );
 
-    /*----------------------------------
-      Before Cache
-    ----------------------------------*/
-
-    console.log(
-        "===================================="
-    );
-
-    console.log(
-        "RESPONSE BEFORE CACHE"
-    );
-
-    console.log(
-        response
-    );
-
-    console.log(
-        "RESPONSE.DATA"
-    );
-
-    console.log(
-        response.data
-    );
-
-    /*----------------------------------
-      Cache
-    ----------------------------------*/
-
     StaffQuery.lastQuery =
 
         request;
@@ -1017,24 +939,42 @@ console.log("===================================");
 
         response;
 
+    console.log(
+        "CACHE STORE DATA"
+    );
+
+    console.log(
+        response.data
+    );
+
+    console.log(
+        "CACHE STORE LENGTH"
+    );
+
+    console.log(
+
+        Array.isArray(
+
+            response.data
+
+        )
+
+            ?
+
+            response.data.length
+
+            :
+
+            null
+
+    );
+
     StaffQuery.setCache(
 
         cacheKey,
 
         response
 
-    );
-
-    console.log(
-        "CACHE STORED"
-    );
-
-    /*----------------------------------
-      Return
-    ----------------------------------*/
-
-    console.log(
-        "===================================="
     );
 
     console.log(
@@ -1051,6 +991,28 @@ console.log("===================================");
 
     console.log(
         response.data
+    );
+
+    console.log(
+        "RETURN DATA LENGTH"
+    );
+
+    console.log(
+
+        Array.isArray(
+
+            response.data
+
+        )
+
+            ?
+
+            response.data.length
+
+            :
+
+            null
+
     );
 
     console.log(
