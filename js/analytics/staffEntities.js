@@ -5947,6 +5947,40 @@ StaffEntities.buildPostingIndex = function () {
 
                     );
 
+                const spaced =
+
+                    upper
+
+                    .replace(
+
+                        /[-_]/g,
+
+                        " "
+
+                    )
+
+                    .replace(
+
+                        /\s+/g,
+
+                        " "
+
+                    )
+
+                    .trim();
+
+                const compact =
+
+                    spaced
+
+                    .replace(
+
+                        /\s+/g,
+
+                        ""
+
+                    );
+
                 /*----------------------------------
                   Original
                 ----------------------------------*/
@@ -5962,7 +5996,7 @@ StaffEntities.buildPostingIndex = function () {
                 );
 
                 /*----------------------------------
-                  Space Removed
+                  Space Normalized
                 ----------------------------------*/
 
                 addAlias(
@@ -5971,18 +6005,80 @@ StaffEntities.buildPostingIndex = function () {
 
                     value,
 
-                    upper.replace(
-
-                        /\s+/g,
-
-                        ""
-
-                    )
+                    spaced
 
                 );
 
                 /*----------------------------------
-                  Jurisdiction Suffix Removed
+                  Compact
+                ----------------------------------*/
+
+                addAlias(
+
+                    type,
+
+                    value,
+
+                    compact
+
+                );
+
+                /*----------------------------------
+                  Reverse Word Order
+                ----------------------------------*/
+
+                const words =
+
+                    spaced.split(
+
+                        " "
+
+                    );
+
+                if (
+
+                    words.length === 2
+
+                ) {
+
+                    const reversed =
+
+                        words[1] +
+
+                        " " +
+
+                        words[0];
+
+                    addAlias(
+
+                        type,
+
+                        value,
+
+                        reversed
+
+                    );
+
+                    addAlias(
+
+                        type,
+
+                        value,
+
+                        reversed.replace(
+
+                            /\s+/g,
+
+                            ""
+
+                        )
+
+                    );
+
+                }
+
+                /*----------------------------------
+                  Remove Jurisdiction Suffix
                 ----------------------------------*/
 
                 [
@@ -6005,7 +6101,7 @@ StaffEntities.buildPostingIndex = function () {
 
                         if (
 
-                            upper.endsWith(
+                            spaced.endsWith(
 
                                 suffix
 
@@ -6015,13 +6111,15 @@ StaffEntities.buildPostingIndex = function () {
 
                             const alias =
 
-                                upper
+                                spaced
 
-                                .replace(
+                                .substring(
 
-                                    suffix,
+                                    0,
 
-                                    ""
+                                    spaced.length -
+
+                                    suffix.length
 
                                 )
 
