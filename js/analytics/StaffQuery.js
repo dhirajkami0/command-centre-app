@@ -5687,244 +5687,188 @@ console.log(
 
             );
 
-            const profiles =
+/*----------------------------------
+  Source Profiles
+----------------------------------*/
 
-                StaffQuery
-                    .ensureAllStaff()
-                    .filter(
+const sourceProfiles =
 
-                        function (
+    Array.isArray(
+        request.parameters?.staff
+    ) &&
+    request.parameters.staff.length > 0
 
-                            profile
+        ?
 
-                        ) {
+        request.parameters.staff
 
-                            const designation =
+        :
 
-                                String(
+        StaffQuery.ensureAllStaff();
 
-                                    profile.identity?.designation ||
+console.log(
+    "SOURCE:",
+    sourceProfiles === request.parameters?.staff
+        ? "REQUEST"
+        : "ENSUREALLSTAFF"
+);
 
-                                    ""
+console.log(
+    "SOURCE COUNT:",
+    sourceProfiles.length
+);
 
-                                )
+/*----------------------------------
+  Filter Profiles
+----------------------------------*/
 
-                                .trim()
+const profiles =
 
-                                .toUpperCase();
+    sourceProfiles.filter(
 
-                            const circle =
+        function (
 
-                                String(
+            profile
 
-                                    profile.posting?.circle ||
+        ) {
 
-                                    ""
+            const designation =
 
-                                )
+                String(
 
-                                .trim()
+                    profile.identity?.designation ||
 
-                                .toUpperCase();
+                    ""
 
-                            const division =
+                )
 
-                                String(
+                .trim()
 
-                                    profile.posting?.division ||
+                .toUpperCase();
 
-                                    ""
+            const circle =
 
-                                )
+                String(
 
-                                .trim()
+                    profile.posting?.circle ||
 
-                                .toUpperCase();
+                    ""
 
-                            const range =
+                )
 
-                                String(
+                .trim()
 
-                                    profile.posting?.range ||
+                .toUpperCase();
 
-                                    ""
+            const division =
 
-                                )
+                String(
 
-                                .trim()
+                    profile.posting?.division ||
 
-                                .toUpperCase();
+                    ""
 
-                            const beat =
+                )
 
-                                String(
+                .trim()
 
-                                    profile.posting?.beat ||
+                .toUpperCase();
 
-                                    ""
+            const range =
 
-                                )
+                String(
 
-                                .trim()
+                    profile.posting?.range ||
 
-                                .toUpperCase();
+                    ""
 
-                            const compartment =
+                )
 
-                                String(
+                .trim()
 
-                                    profile.assignment?.assignedCompartment ||
+                .toUpperCase();
 
-                                    ""
+            const beat =
 
-                                )
+                String(
 
-                                .trim()
+                    profile.posting?.beat ||
 
-                                .toUpperCase();
+                    ""
 
-                            const okDesignation =
+                )
 
-                                !requestedDesignation ||
+                .trim()
 
-                                designation ===
+                .toUpperCase();
 
-                                requestedDesignation;
+            const compartment =
 
-                            const okCircle =
+                String(
 
-                                !requestedCircle ||
+                    profile.assignment?.assignedCompartment ||
 
-                                circle ===
+                    ""
 
-                                requestedCircle;
+                )
 
-                            const okDivision =
+                .trim()
 
-                                !requestedDivision ||
+                .toUpperCase();
 
-                                division ===
+            const okDesignation =
 
-                                requestedDivision;
+                !requestedDesignation ||
 
-                            const okRange =
+                designation === requestedDesignation;
 
-                                !requestedRange ||
+            const okCircle =
 
-                                range ===
+                !requestedCircle ||
 
-                                requestedRange;
+                circle === requestedCircle;
 
-                            const okBeat =
+            const okDivision =
 
-                                !requestedBeat ||
+                !requestedDivision ||
 
-                                beat ===
+                division === requestedDivision;
 
-                                requestedBeat;
+            const okRange =
 
-                            const okCompartment =
+                !requestedRange ||
 
-                                !requestedCompartment ||
+                range === requestedRange;
 
-                                compartment ===
+            const okBeat =
 
-                                requestedCompartment;
+                !requestedBeat ||
 
-                            if (
+                beat === requestedBeat;
 
-                                designation === "FR"
+            const okCompartment =
 
-                            ) {
+                !requestedCompartment ||
 
-                                console.log(
+                compartment === requestedCompartment;
 
-                                    "------------ FR DEBUG ------------"
+            return (
 
-                                );
+                okDesignation &&
+                okCircle &&
+                okDivision &&
+                okRange &&
+                okBeat &&
+                okCompartment
 
-                                console.table({
+            );
 
-                                    Name:
+        }
 
-                                        profile.identity?.cleanName,
-
-                                    Designation:
-
-                                        designation,
-
-                                    Circle:
-
-                                        circle,
-
-                                    Division:
-
-                                        division,
-
-                                    Range:
-
-                                        range,
-
-                                    Beat:
-
-                                        beat,
-
-                                    RequestedDesignation:
-
-                                        requestedDesignation,
-
-                                    RequestedCircle:
-
-                                        requestedCircle,
-
-                                    RequestedDivision:
-
-                                        requestedDivision,
-
-                                    RequestedRange:
-
-                                        requestedRange,
-
-                                    RequestedBeat:
-
-                                        requestedBeat,
-
-                                    okDesignation,
-
-                                    okCircle,
-
-                                    okDivision,
-
-                                    okRange,
-
-                                    okBeat,
-
-                                    okCompartment
-
-                                });
-
-                            }
-
-                            return (
-
-                                okDesignation &&
-
-                                okCircle &&
-
-                                okDivision &&
-
-                                okRange &&
-
-                                okBeat &&
-
-                                okCompartment
-
-                            );
-
-                        }
-
-                    );
-
+    );
+console.log(
+    sourceProfiles[0]
+);
             console.log(
 
                 "===================================="
