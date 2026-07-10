@@ -4454,8 +4454,109 @@ if (
     return result;
 
 };
+StaffIntent.detectDesignationCountIntent =
+function (
+    result
+) {
 
- /*=========================================================
+    if (
+
+        !result
+
+    ) {
+
+        return result;
+
+    }
+
+    const query =
+
+        String(
+
+            result.normalizedQuery ||
+
+            ""
+
+        ).toUpperCase();
+
+    const parameters =
+
+        result.parameters ||
+
+        {};
+
+    const designation =
+
+        result.entities.designations ||
+
+        [];
+
+    const hasCount =
+
+        [
+
+            "COUNT",
+            "TOTAL",
+            "HOW MANY",
+            "NUMBER OF",
+            "HEADCOUNT",
+            "STRENGTH"
+
+        ].some(
+
+            function (
+
+                word
+
+            ) {
+
+                return query.includes(
+
+                    word
+
+                );
+
+            }
+
+        );
+
+    if (
+
+        !hasCount
+
+    ) {
+
+        return result;
+
+    }
+
+    if (
+
+        designation.length === 0
+
+    ) {
+
+        return result;
+
+    }
+
+    result.intent =
+
+        StaffConstants.INTENTS.STAFF_DESIGNATION_COUNT;
+
+    result.parameters.designation =
+
+        designation[0]
+            .identity
+            .designation;
+
+    result.confidence =
+
+        0.99;
+
+    return result;
+
+}; /*=========================================================
  DETECT PROFILE INTENT
 =========================================================*/
 
@@ -5182,7 +5283,21 @@ StaffIntent.detectGlobalIntent = function (
         return result;
 
     }
+result =
 
+    StaffIntent.detectDesignationCountIntent(
+        result
+    );
+
+if (
+
+    result.intent
+
+) {
+
+    return result;
+
+}
     /*----------------------------------
       ANALYTICS
     ----------------------------------*/
