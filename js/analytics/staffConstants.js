@@ -150,7 +150,21 @@ StaffConstants.INTENTS = Object.freeze({
     STAFF_RANGE_DIRECTORY: "staffRangeDirectory",
     STAFF_BEAT_DIRECTORY: "staffBeatDirectory",
     STAFF_DESIGNATION_DIRECTORY: "staffDesignationDirectory",
+    /*=========================================================
+      COUNTS
+    =========================================================*/
 
+    STAFF_COUNT: "staffCount",
+
+    STAFF_CIRCLE_COUNT: "staffCircleCount",
+
+    STAFF_DIVISION_COUNT: "staffDivisionCount",
+
+    STAFF_RANGE_COUNT: "staffRangeCount",
+
+    STAFF_BEAT_COUNT: "staffBeatCount",
+
+    STAFF_DESIGNATION_COUNT: "staffDesignationCount",
     /*=========================================================
       LIVE STATUS
     =========================================================*/
