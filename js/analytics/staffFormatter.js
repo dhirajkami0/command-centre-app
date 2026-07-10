@@ -474,7 +474,51 @@ if (
             return StaffFormatter.debugFormatter("formatBeatDirectory", StaffFormatter.formatBeatDirectory, response);
         case StaffConstants.INTENTS.STAFF_DESIGNATION_DIRECTORY:
             return StaffFormatter.debugFormatter("formatDesignationDirectory", StaffFormatter.formatDesignationDirectory, response);
+/*=================================================
+  COUNTS
+=================================================*/
 
+case StaffConstants.INTENTS.STAFF_COUNT:
+    return StaffFormatter.debugFormatter(
+        "formatStaffCount",
+        StaffFormatter.formatStaffCount,
+        response
+    );
+
+case StaffConstants.INTENTS.STAFF_CIRCLE_COUNT:
+    return StaffFormatter.debugFormatter(
+        "formatCircleCount",
+        StaffFormatter.formatCircleCount,
+        response
+    );
+
+case StaffConstants.INTENTS.STAFF_DIVISION_COUNT:
+    return StaffFormatter.debugFormatter(
+        "formatDivisionCount",
+        StaffFormatter.formatDivisionCount,
+        response
+    );
+
+case StaffConstants.INTENTS.STAFF_RANGE_COUNT:
+    return StaffFormatter.debugFormatter(
+        "formatRangeCount",
+        StaffFormatter.formatRangeCount,
+        response
+    );
+
+case StaffConstants.INTENTS.STAFF_BEAT_COUNT:
+    return StaffFormatter.debugFormatter(
+        "formatBeatCount",
+        StaffFormatter.formatBeatCount,
+        response
+    );
+
+case StaffConstants.INTENTS.STAFF_DESIGNATION_COUNT:
+    return StaffFormatter.debugFormatter(
+        "formatDesignationCount",
+        StaffFormatter.formatDesignationCount,
+        response
+    );
         /*=================================================
           STATUS
         =================================================*/
@@ -8928,7 +8972,1971 @@ result.data = directory;
  /*=========================================================
  FORMAT ACTIVE STAFF COUNT
 =========================================================*/
+/*=========================================================
+  DESIGNATION COUNT
+=========================================================*/
 
+StaffFormatter.formatDesignationCount = function (
+
+    response
+
+) {
+
+    const result =
+
+        StaffFormatter.createResponse(
+
+            response
+
+        );
+
+    /*----------------------------------
+      Validate
+    ----------------------------------*/
+
+    if (
+
+        !response ||
+
+        !response.success ||
+
+        !response.data
+
+    ) {
+
+        result.message =
+
+            response?.message ||
+
+            "Designation count not found.";
+
+        return result;
+
+    }
+
+    /*----------------------------------
+      Data
+    ----------------------------------*/
+
+    const data =
+
+        response.data;
+
+    const designation =
+
+        data.designation ||
+
+        "-";
+
+    const circle =
+
+        data.circle ||
+
+        "";
+
+    const division =
+
+        data.division ||
+
+        "";
+
+    const range =
+
+        data.range ||
+
+        "";
+
+    const beat =
+
+        data.beat ||
+
+        "";
+
+    const compartment =
+
+        data.compartment ||
+
+        "";
+
+    const count =
+
+        Number(
+
+            data.count || 0
+
+        );
+
+    const staff =
+
+        Array.isArray(
+
+            data.staff
+
+        )
+
+            ? data.staff
+
+            : [];
+
+    /*----------------------------------
+      Jurisdiction
+    ----------------------------------*/
+
+    const jurisdiction =
+
+        compartment ||
+
+        beat ||
+
+        range ||
+
+        division ||
+
+        circle ||
+
+        "All Jurisdictions";
+
+    /*----------------------------------
+      Markdown
+    ----------------------------------*/
+
+    const lines = [];
+
+    lines.push(
+
+        "# 👤 DESIGNATION COUNT"
+
+    );
+
+    lines.push("");
+
+    lines.push(
+
+        "**Designation:** " +
+
+        designation
+
+    );
+
+    lines.push(
+
+        "**Jurisdiction:** " +
+
+        jurisdiction
+
+    );
+
+    lines.push(
+
+        "**Total Staff:** " +
+
+        count
+
+    );
+
+    if (
+
+        staff.length > 0
+
+    ) {
+
+        lines.push("");
+
+        staff.forEach(
+
+            function (
+
+                profile,
+
+                index
+
+            ) {
+
+                const identity =
+
+                    profile.identity ||
+
+                    profile;
+
+                const posting =
+
+                    profile.posting ||
+
+                    profile;
+
+                lines.push(
+
+                    (index + 1) +
+
+                    ". **" +
+
+                    (
+
+                        identity.cleanName ||
+
+                        identity.name ||
+
+                        "-"
+
+                    ) +
+
+                    "**"
+
+                );
+
+                lines.push(
+
+                    "   • Range : " +
+
+                    (
+
+                        posting.range ||
+
+                        "-"
+
+                    )
+
+                );
+
+                lines.push(
+
+                    "   • Beat : " +
+
+                    (
+
+                        posting.beat ||
+
+                        "-"
+
+                    )
+
+                );
+
+            }
+
+        );
+
+    }
+
+    else {
+
+        lines.push("");
+
+        lines.push(
+
+            "_No staff found._"
+
+        );
+
+    }
+
+    result.markdown =
+
+        lines.join(
+
+            "\n"
+
+        );
+
+    /*----------------------------------
+      Card
+    ----------------------------------*/
+
+    result.cards.push({
+
+        type:
+
+            "staff-designation-count",
+
+        title:
+
+            designation +
+
+            " Count",
+
+        data: {
+
+            designation:
+
+                designation,
+
+            jurisdiction:
+
+                jurisdiction,
+
+            count:
+
+                count,
+
+            staff:
+
+                staff
+
+        }
+
+    });
+
+    /*----------------------------------
+      Section
+    ----------------------------------*/
+
+    result.sections.push({
+
+        title:
+
+            "Designation Count",
+
+        data: {
+
+            designation:
+
+                designation,
+
+            jurisdiction:
+
+                jurisdiction,
+
+            count:
+
+                count,
+
+            staff:
+
+                staff
+
+        }
+
+    });
+
+    /*----------------------------------
+      Metadata
+    ----------------------------------*/
+
+    result.success =
+
+        true;
+
+    result.intent =
+
+        StaffConstants.INTENTS
+            .STAFF_DESIGNATION_COUNT;
+
+    result.confidence =
+
+        response.confidence ||
+
+        1;
+
+    result.source =
+
+        response.source ||
+
+        "LOCAL";
+
+    result.message =
+
+        "Designation count formatted successfully.";
+
+    return result;
+
+};
+/*=========================================================
+  CIRCLE COUNT
+=========================================================*/
+
+StaffFormatter.formatCircleCount = function (
+
+    response
+
+) {
+
+    const result =
+
+        StaffFormatter.createResponse(
+
+            response
+
+        );
+
+    /*----------------------------------
+      Validate
+    ----------------------------------*/
+
+    if (
+
+        !response ||
+
+        !response.success ||
+
+        !response.data
+
+    ) {
+
+        result.message =
+
+            response?.message ||
+
+            "Circle count not found.";
+
+        return result;
+
+    }
+
+    /*----------------------------------
+      Data
+    ----------------------------------*/
+
+    const data =
+
+        response.data;
+
+    const circle =
+
+        data.circle ||
+
+        "-";
+
+    const count =
+
+        Number(
+
+            data.count || 0
+
+        );
+
+    const staff =
+
+        Array.isArray(
+
+            data.staff
+
+        )
+
+            ? data.staff
+
+            : [];
+
+    /*----------------------------------
+      Markdown
+    ----------------------------------*/
+
+    const lines = [];
+
+    lines.push(
+
+        "# 👤 CIRCLE COUNT"
+
+    );
+
+    lines.push("");
+
+    lines.push(
+
+        "**Circle:** " +
+
+        circle
+
+    );
+
+    lines.push(
+
+        "**Total Staff:** " +
+
+        count
+
+    );
+
+    if (
+
+        staff.length > 0
+
+    ) {
+
+        lines.push("");
+
+        staff.forEach(
+
+            function (
+
+                profile,
+
+                index
+
+            ) {
+
+                const identity =
+
+                    profile.identity ||
+
+                    profile;
+
+                const posting =
+
+                    profile.posting ||
+
+                    profile;
+
+                lines.push(
+
+                    (index + 1) +
+
+                    ". **" +
+
+                    (
+
+                        identity.cleanName ||
+
+                        identity.name ||
+
+                        "-"
+
+                    ) +
+
+                    "**"
+
+                );
+
+                lines.push(
+
+                    "   • Designation : " +
+
+                    (
+
+                        identity.designation ||
+
+                        "-"
+
+                    )
+
+                );
+
+                lines.push(
+
+                    "   • Division : " +
+
+                    (
+
+                        posting.division ||
+
+                        "-"
+
+                    )
+
+                );
+
+                lines.push(
+
+                    "   • Range : " +
+
+                    (
+
+                        posting.range ||
+
+                        "-"
+
+                    )
+
+                );
+
+                lines.push(
+
+                    "   • Beat : " +
+
+                    (
+
+                        posting.beat ||
+
+                        "-"
+
+                    )
+
+                );
+
+            }
+
+        );
+
+    }
+
+    else {
+
+        lines.push("");
+
+        lines.push(
+
+            "_No staff found._"
+
+        );
+
+    }
+
+    result.markdown =
+
+        lines.join(
+
+            "\n"
+
+        );
+
+    /*----------------------------------
+      Card
+    ----------------------------------*/
+
+    result.cards.push({
+
+        type:
+
+            "staff-circle-count",
+
+        title:
+
+            circle +
+
+            " Count",
+
+        data: {
+
+            circle:
+
+                circle,
+
+            count:
+
+                count,
+
+            staff:
+
+                staff
+
+        }
+
+    });
+
+    /*----------------------------------
+      Section
+    ----------------------------------*/
+
+    result.sections.push({
+
+        title:
+
+            "Circle Count",
+
+        data: {
+
+            circle:
+
+                circle,
+
+            count:
+
+                count,
+
+            staff:
+
+                staff
+
+        }
+
+    });
+
+    /*----------------------------------
+      Metadata
+    ----------------------------------*/
+
+    result.success =
+
+        true;
+
+    result.intent =
+
+        StaffConstants.INTENTS
+            .STAFF_CIRCLE_COUNT;
+
+    result.confidence =
+
+        response.confidence ||
+
+        1;
+
+    result.source =
+
+        response.source ||
+
+        "LOCAL";
+
+    result.message =
+
+        "Circle count formatted successfully.";
+
+    return result;
+
+};
+
+ /*=========================================================
+  DIVISION COUNT
+=========================================================*/
+
+StaffFormatter.formatDivisionCount = function (
+
+    response
+
+) {
+
+    const result =
+
+        StaffFormatter.createResponse(
+
+            response
+
+        );
+
+    /*----------------------------------
+      Validate
+    ----------------------------------*/
+
+    if (
+
+        !response ||
+
+        !response.success ||
+
+        !response.data
+
+    ) {
+
+        result.message =
+
+            response?.message ||
+
+            "Division count not found.";
+
+        return result;
+
+    }
+
+    /*----------------------------------
+      Data
+    ----------------------------------*/
+
+    const data =
+
+        response.data;
+
+    const division =
+
+        data.division ||
+
+        "-";
+
+    const count =
+
+        Number(
+
+            data.count || 0
+
+        );
+
+    const staff =
+
+        Array.isArray(
+
+            data.staff
+
+        )
+
+            ? data.staff
+
+            : [];
+
+    /*----------------------------------
+      Markdown
+    ----------------------------------*/
+
+    const lines = [];
+
+    lines.push(
+
+        "# 👤 DIVISION COUNT"
+
+    );
+
+    lines.push("");
+
+    lines.push(
+
+        "**Division:** " +
+
+        division
+
+    );
+
+    lines.push(
+
+        "**Total Staff:** " +
+
+        count
+
+    );
+
+    if (
+
+        staff.length > 0
+
+    ) {
+
+        lines.push("");
+
+        staff.forEach(
+
+            function (
+
+                profile,
+
+                index
+
+            ) {
+
+                const identity =
+
+                    profile.identity ||
+
+                    profile;
+
+                const posting =
+
+                    profile.posting ||
+
+                    profile;
+
+                lines.push(
+
+                    (index + 1) +
+
+                    ". **" +
+
+                    (
+
+                        identity.cleanName ||
+
+                        identity.name ||
+
+                        "-"
+
+                    ) +
+
+                    "**"
+
+                );
+
+                lines.push(
+
+                    "   • Designation : " +
+
+                    (
+
+                        identity.designation ||
+
+                        "-"
+
+                    )
+
+                );
+
+                lines.push(
+
+                    "   • Range : " +
+
+                    (
+
+                        posting.range ||
+
+                        "-"
+
+                    )
+
+                );
+
+                lines.push(
+
+                    "   • Beat : " +
+
+                    (
+
+                        posting.beat ||
+
+                        "-"
+
+                    )
+
+                );
+
+            }
+
+        );
+
+    }
+
+    else {
+
+        lines.push("");
+
+        lines.push(
+
+            "_No staff found._"
+
+        );
+
+    }
+
+    result.markdown =
+
+        lines.join(
+
+            "\n"
+
+        );
+
+    /*----------------------------------
+      Card
+    ----------------------------------*/
+
+    result.cards.push({
+
+        type:
+
+            "staff-division-count",
+
+        title:
+
+            division +
+
+            " Count",
+
+        data: {
+
+            division:
+
+                division,
+
+            count:
+
+                count,
+
+            staff:
+
+                staff
+
+        }
+
+    });
+
+    /*----------------------------------
+      Section
+    ----------------------------------*/
+
+    result.sections.push({
+
+        title:
+
+            "Division Count",
+
+        data: {
+
+            division:
+
+                division,
+
+            count:
+
+                count,
+
+            staff:
+
+                staff
+
+        }
+
+    });
+
+    /*----------------------------------
+      Metadata
+    ----------------------------------*/
+
+    result.success =
+
+        true;
+
+    result.intent =
+
+        StaffConstants.INTENTS
+            .STAFF_DIVISION_COUNT;
+
+    result.confidence =
+
+        response.confidence ||
+
+        1;
+
+    result.source =
+
+        response.source ||
+
+        "LOCAL";
+
+    result.message =
+
+        "Division count formatted successfully.";
+
+    return result;
+
+};
+
+ /*=========================================================
+  RANGE COUNT
+=========================================================*/
+
+StaffFormatter.formatRangeCount = function (
+
+    response
+
+) {
+
+    const result =
+
+        StaffFormatter.createResponse(
+
+            response
+
+        );
+
+    /*----------------------------------
+      Validate
+    ----------------------------------*/
+
+    if (
+
+        !response ||
+
+        !response.success ||
+
+        !response.data
+
+    ) {
+
+        result.message =
+
+            response?.message ||
+
+            "Range count not found.";
+
+        return result;
+
+    }
+
+    /*----------------------------------
+      Data
+    ----------------------------------*/
+
+    const data =
+
+        response.data;
+
+    const range =
+
+        data.range ||
+
+        "-";
+
+    const count =
+
+        Number(
+
+            data.count || 0
+
+        );
+
+    const staff =
+
+        Array.isArray(
+
+            data.staff
+
+        )
+
+            ? data.staff
+
+            : [];
+
+    /*----------------------------------
+      Markdown
+    ----------------------------------*/
+
+    const lines = [];
+
+    lines.push(
+
+        "# 👤 RANGE COUNT"
+
+    );
+
+    lines.push("");
+
+    lines.push(
+
+        "**Range:** " +
+
+        range
+
+    );
+
+    lines.push(
+
+        "**Total Staff:** " +
+
+        count
+
+    );
+
+    if (
+
+        staff.length > 0
+
+    ) {
+
+        lines.push("");
+
+        staff.forEach(
+
+            function (
+
+                profile,
+
+                index
+
+            ) {
+
+                const identity =
+
+                    profile.identity ||
+
+                    profile;
+
+                const posting =
+
+                    profile.posting ||
+
+                    profile;
+
+                lines.push(
+
+                    (index + 1) +
+
+                    ". **" +
+
+                    (
+
+                        identity.cleanName ||
+
+                        identity.name ||
+
+                        "-"
+
+                    ) +
+
+                    "**"
+
+                );
+
+                lines.push(
+
+                    "   • Designation : " +
+
+                    (
+
+                        identity.designation ||
+
+                        "-"
+
+                    )
+
+                );
+
+                lines.push(
+
+                    "   • Beat : " +
+
+                    (
+
+                        posting.beat ||
+
+                        "-"
+
+                    )
+
+                );
+
+                lines.push(
+
+                    "   • Division : " +
+
+                    (
+
+                        posting.division ||
+
+                        "-"
+
+                    )
+
+                );
+
+            }
+
+        );
+
+    }
+
+    else {
+
+        lines.push("");
+
+        lines.push(
+
+            "_No staff found._"
+
+        );
+
+    }
+
+    result.markdown =
+
+        lines.join(
+
+            "\n"
+
+        );
+
+    /*----------------------------------
+      Card
+    ----------------------------------*/
+
+    result.cards.push({
+
+        type:
+
+            "staff-range-count",
+
+        title:
+
+            range +
+
+            " Count",
+
+        data: {
+
+            range:
+
+                range,
+
+            count:
+
+                count,
+
+            staff:
+
+                staff
+
+        }
+
+    });
+
+    /*----------------------------------
+      Section
+    ----------------------------------*/
+
+    result.sections.push({
+
+        title:
+
+            "Range Count",
+
+        data: {
+
+            range:
+
+                range,
+
+            count:
+
+                count,
+
+            staff:
+
+                staff
+
+        }
+
+    });
+
+    /*----------------------------------
+      Metadata
+    ----------------------------------*/
+
+    result.success =
+
+        true;
+
+    result.intent =
+
+        StaffConstants.INTENTS
+            .STAFF_RANGE_COUNT;
+
+    result.confidence =
+
+        response.confidence ||
+
+        1;
+
+    result.source =
+
+        response.source ||
+
+        "LOCAL";
+
+    result.message =
+
+        "Range count formatted successfully.";
+
+    return result;
+
+};
+
+ /*=========================================================
+  BEAT COUNT
+=========================================================*/
+
+StaffFormatter.formatBeatCount = function (
+
+    response
+
+) {
+
+    const result =
+
+        StaffFormatter.createResponse(
+
+            response
+
+        );
+
+    /*----------------------------------
+      Validate
+    ----------------------------------*/
+
+    if (
+
+        !response ||
+
+        !response.success ||
+
+        !response.data
+
+    ) {
+
+        result.message =
+
+            response?.message ||
+
+            "Beat count not found.";
+
+        return result;
+
+    }
+
+    /*----------------------------------
+      Data
+    ----------------------------------*/
+
+    const data =
+
+        response.data;
+
+    const beat =
+
+        data.beat ||
+
+        "-";
+
+    const count =
+
+        Number(
+
+            data.count || 0
+
+        );
+
+    const staff =
+
+        Array.isArray(
+
+            data.staff
+
+        )
+
+            ? data.staff
+
+            : [];
+
+    /*----------------------------------
+      Markdown
+    ----------------------------------*/
+
+    const lines = [];
+
+    lines.push(
+
+        "# 👤 BEAT COUNT"
+
+    );
+
+    lines.push("");
+
+    lines.push(
+
+        "**Beat:** " +
+
+        beat
+
+    );
+
+    lines.push(
+
+        "**Total Staff:** " +
+
+        count
+
+    );
+
+    if (
+
+        staff.length > 0
+
+    ) {
+
+        lines.push("");
+
+        staff.forEach(
+
+            function (
+
+                profile,
+
+                index
+
+            ) {
+
+                const identity =
+
+                    profile.identity ||
+
+                    profile;
+
+                const posting =
+
+                    profile.posting ||
+
+                    profile;
+
+                lines.push(
+
+                    (index + 1) +
+
+                    ". **" +
+
+                    (
+
+                        identity.cleanName ||
+
+                        identity.name ||
+
+                        "-"
+
+                    ) +
+
+                    "**"
+
+                );
+
+                lines.push(
+
+                    "   • Designation : " +
+
+                    (
+
+                        identity.designation ||
+
+                        "-"
+
+                    )
+
+                );
+
+                lines.push(
+
+                    "   • Range : " +
+
+                    (
+
+                        posting.range ||
+
+                        "-"
+
+                    )
+
+                );
+
+                lines.push(
+
+                    "   • Division : " +
+
+                    (
+
+                        posting.division ||
+
+                        "-"
+
+                    )
+
+                );
+
+                lines.push(
+
+                    "   • Circle : " +
+
+                    (
+
+                        posting.circle ||
+
+                        "-"
+
+                    )
+
+                );
+
+            }
+
+        );
+
+    }
+
+    else {
+
+        lines.push("");
+
+        lines.push(
+
+            "_No staff found._"
+
+        );
+
+    }
+
+    result.markdown =
+
+        lines.join(
+
+            "\n"
+
+        );
+
+    /*----------------------------------
+      Card
+    ----------------------------------*/
+
+    result.cards.push({
+
+        type:
+
+            "staff-beat-count",
+
+        title:
+
+            beat +
+
+            " Count",
+
+        data: {
+
+            beat:
+
+                beat,
+
+            count:
+
+                count,
+
+            staff:
+
+                staff
+
+        }
+
+    });
+
+    /*----------------------------------
+      Section
+    ----------------------------------*/
+
+    result.sections.push({
+
+        title:
+
+            "Beat Count",
+
+        data: {
+
+            beat:
+
+                beat,
+
+            count:
+
+                count,
+
+            staff:
+
+                staff
+
+        }
+
+    });
+
+    /*----------------------------------
+      Metadata
+    ----------------------------------*/
+
+    result.success =
+
+        true;
+
+    result.intent =
+
+        StaffConstants.INTENTS
+            .STAFF_BEAT_COUNT;
+
+    result.confidence =
+
+        response.confidence ||
+
+        1;
+
+    result.source =
+
+        response.source ||
+
+        "LOCAL";
+
+    result.message =
+
+        "Beat count formatted successfully.";
+
+    return result;
+
+};
+ /*=========================================================
+  STAFF COUNT
+=========================================================*/
+
+StaffFormatter.formatStaffCount = function (
+
+    response
+
+) {
+
+    const result =
+
+        StaffFormatter.createResponse(
+
+            response
+
+        );
+
+    /*----------------------------------
+      Validate
+    ----------------------------------*/
+
+    if (
+
+        !response ||
+
+        !response.success ||
+
+        !response.data
+
+    ) {
+
+        result.message =
+
+            response?.message ||
+
+            "Staff count not found.";
+
+        return result;
+
+    }
+
+    /*----------------------------------
+      Data
+    ----------------------------------*/
+
+    const data =
+
+        response.data;
+
+    const count =
+
+        Number(
+
+            data.count || 0
+
+        );
+
+    const staff =
+
+        Array.isArray(
+
+            data.staff
+
+        )
+
+            ? data.staff
+
+            : [];
+
+    /*----------------------------------
+      Markdown
+    ----------------------------------*/
+
+    const lines = [];
+
+    lines.push(
+
+        "# 👤 STAFF COUNT"
+
+    );
+
+    lines.push("");
+
+    lines.push(
+
+        "**Total Staff:** " +
+
+        count
+
+    );
+
+    if (
+
+        staff.length > 0
+
+    ) {
+
+        lines.push("");
+
+        staff.forEach(
+
+            function (
+
+                profile,
+
+                index
+
+            ) {
+
+                const identity =
+
+                    profile.identity ||
+
+                    profile;
+
+                const posting =
+
+                    profile.posting ||
+
+                    profile;
+
+                lines.push(
+
+                    (index + 1) +
+
+                    ". **" +
+
+                    (
+
+                        identity.cleanName ||
+
+                        identity.name ||
+
+                        "-"
+
+                    ) +
+
+                    "**"
+
+                );
+
+                lines.push(
+
+                    "   • Designation : " +
+
+                    (
+
+                        identity.designation ||
+
+                        "-"
+
+                    )
+
+                );
+
+                lines.push(
+
+                    "   • Range : " +
+
+                    (
+
+                        posting.range ||
+
+                        "-"
+
+                    )
+
+                );
+
+                lines.push(
+
+                    "   • Beat : " +
+
+                    (
+
+                        posting.beat ||
+
+                        "-"
+
+                    )
+
+                );
+
+            }
+
+        );
+
+    }
+
+    else {
+
+        lines.push("");
+
+        lines.push(
+
+            "_No staff found._"
+
+        );
+
+    }
+
+    result.markdown =
+
+        lines.join(
+
+            "\n"
+
+        );
+
+    /*----------------------------------
+      Card
+    ----------------------------------*/
+
+    result.cards.push({
+
+        type:
+
+            "staff-count",
+
+        title:
+
+            "Staff Count",
+
+        data: {
+
+            count:
+
+                count,
+
+            staff:
+
+                staff
+
+        }
+
+    });
+
+    /*----------------------------------
+      Section
+    ----------------------------------*/
+
+    result.sections.push({
+
+        title:
+
+            "Staff Count",
+
+        data: {
+
+            count:
+
+                count,
+
+            staff:
+
+                staff
+
+        }
+
+    });
+
+    /*----------------------------------
+      Metadata
+    ----------------------------------*/
+
+    result.success =
+
+        true;
+
+    result.intent =
+
+        StaffConstants.INTENTS
+            .STAFF_COUNT;
+
+    result.confidence =
+
+        response.confidence ||
+
+        1;
+
+    result.source =
+
+        response.source ||
+
+        "LOCAL";
+
+    result.message =
+
+        "Staff count formatted successfully.";
+
+    return result;
+
+};
 StaffFormatter.formatActiveStaffCount = function (
 
     response
