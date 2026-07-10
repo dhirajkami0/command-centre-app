@@ -824,7 +824,113 @@ StaffRouter.registerRoutes = function () {
     StaffRouter.registerWithLog(INTENTS.STAFF_PATROL_START, GG.queryStaffPatrolStart);
     StaffRouter.registerWithLog(INTENTS.STAFF_PATROL_END, GG.queryStaffPatrolEnd);
     StaffRouter.registerWithLog(INTENTS.STAFF_PATROL_DURATION, GG.queryStaffPatrolDuration);
+/*----------------------------------
+  Aggregate
+----------------------------------*/
 
+StaffRouter.register(
+
+    INTENTS.STAFF_COUNT,
+
+    GG.queryStaffCount
+
+);
+
+StaffRouter.register(
+
+    INTENTS.STAFF_DESIGNATION_COUNT,
+
+    GG.queryDesignationCount
+
+);
+
+StaffRouter.register(
+
+    INTENTS.STAFF_DIRECTORY,
+
+    GG.queryStaffDirectory
+
+);
+
+StaffRouter.register(
+
+    INTENTS.STAFF_CIRCLE_DIRECTORY,
+
+    GG.queryCircleDirectory
+
+);
+
+StaffRouter.register(
+
+    INTENTS.STAFF_DIVISION_DIRECTORY,
+
+    GG.queryDivisionDirectory
+
+);
+
+StaffRouter.register(
+
+    INTENTS.STAFF_RANGE_DIRECTORY,
+
+    GG.queryRangeDirectory
+
+);
+
+StaffRouter.register(
+
+    INTENTS.STAFF_BEAT_DIRECTORY,
+
+    GG.queryBeatDirectory
+
+);
+
+StaffRouter.register(
+
+    INTENTS.STAFF_DESIGNATION_DIRECTORY,
+
+    GG.queryDesignationDirectory
+
+);
+
+StaffRouter.register(
+
+    INTENTS.ACTIVE_STAFF_LIST,
+
+    GG.queryActiveStaffList
+
+);
+
+StaffRouter.register(
+
+    INTENTS.INACTIVE_STAFF_LIST,
+
+    GG.queryInactiveStaffList
+
+);
+
+StaffRouter.register(
+
+    INTENTS.MOVING_STAFF,
+
+    GG.queryMovingStaff
+
+);
+
+StaffRouter.register(
+
+    INTENTS.STATIONARY_STAFF,
+
+    GG.queryStationaryStaff
+
+);
+
+StaffRouter.register(
+
+    INTENTS.TEAM_LEADER_LIST,
+
+    GG.queryTeamLeaderList
+
+);
     /*----------------------------------
       SUMMARY
     ----------------------------------*/
