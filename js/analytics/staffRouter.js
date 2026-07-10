@@ -836,7 +836,57 @@ StaffRouter.registerRoutes = function () {
     StaffRouter.registerWithLog(INTENTS.STAFF_RANGE_DIRECTORY, GG.queryRangeDirectory);
     StaffRouter.registerWithLog(INTENTS.STAFF_BEAT_DIRECTORY, GG.queryBeatDirectory);
     StaffRouter.registerWithLog(INTENTS.STAFF_DESIGNATION_DIRECTORY, GG.queryDesignationDirectory);
+/*----------------------------------
+  COUNTS
+----------------------------------*/
 
+StaffRouter.registerWithLog(
+
+    INTENTS.STAFF_COUNT,
+
+    GG.queryStaffCount
+
+);
+
+StaffRouter.registerWithLog(
+
+    INTENTS.STAFF_CIRCLE_COUNT,
+
+    GG.queryCircleCount
+
+);
+
+StaffRouter.registerWithLog(
+
+    INTENTS.STAFF_DIVISION_COUNT,
+
+    GG.queryDivisionCount
+
+);
+
+StaffRouter.registerWithLog(
+
+    INTENTS.STAFF_RANGE_COUNT,
+
+    GG.queryRangeCount
+
+);
+
+StaffRouter.registerWithLog(
+
+    INTENTS.STAFF_BEAT_COUNT,
+
+    GG.queryBeatCount
+
+);
+
+StaffRouter.registerWithLog(
+
+    INTENTS.STAFF_DESIGNATION_COUNT,
+
+    GG.queryDesignationCount
+
+);
     /*----------------------------------
       STATUS
     ----------------------------------*/
