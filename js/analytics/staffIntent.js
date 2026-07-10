@@ -5489,47 +5489,69 @@ StaffIntent.detectDirectoryIntent = function (
       (Highest Priority)
     ==================================================*/
 
-    if (
+/*==================================================
+  DESIGNATION DIRECTORY
+==================================================*/
 
-        (
+const hasPosting =
 
-            hasKeyword(
+    !!(
 
-                KEYWORDS.STAFF_DESIGNATION_DIRECTORY
+        parameters.circle ||
 
-            ) ||
+        parameters.division ||
 
-            directory
+        parameters.range ||
 
-        ) &&
+        parameters.beat ||
 
-        designation.length > 0
+        parameters.compartment
 
-    ) {
+    );
 
-        result.intent =
+if (
 
-            INTENTS.STAFF_DESIGNATION_DIRECTORY;
+    designation.length > 0 &&
 
-        result.parameters.staff =
+    (
 
-            designation;
+        hasKeyword(
 
-        result.parameters.designation =
+            KEYWORDS.STAFF_DESIGNATION_DIRECTORY
 
-            designation[0]
+        ) ||
 
-                .identity
+        directory ||
 
-                .designation;
+        hasPosting
 
-        result.confidence =
+    )
 
-            0.99;
+) {
 
-        return result;
+    result.intent =
 
-    }
+        INTENTS.STAFF_DESIGNATION_DIRECTORY;
+
+    result.parameters.staff =
+
+        posting;
+
+    result.parameters.designation =
+
+        designation[0]
+
+            .identity
+
+            .designation;
+
+    result.confidence =
+
+        0.99;
+
+    return result;
+
+}
 
     /*==================================================
       RANGE DIRECTORY
