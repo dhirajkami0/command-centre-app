@@ -5771,107 +5771,21 @@ StaffEntities.extractRoleEntities = function (
     return result;
 
 };
- /*=========================================================
- EXTRACT POSTING ENTITIES
-=========================================================*/
-
-StaffEntities.extractPostingEntities = function (
-
-    result
-
-) {
-
-    /*----------------------------------
-      Validate
-    ----------------------------------*/
+ StaffEntities.buildPostingIndex = function () {
 
     if (
 
-        !result ||
-
-        typeof result !== "object"
+        StaffEntities.postingIndex
 
     ) {
 
-        return result;
+        return StaffEntities.postingIndex;
 
     }
 
-    const query =
-
-        result.normalizedQuery;
-
-    if (
-
-        !query
-
-    ) {
-
-        return result;
-
-    }
-
-    const matches = [];
+    const index = [];
 
     const seen = new Set();
-
-    /*----------------------------------
-      Helper
-    ----------------------------------*/
-
-    function addPosting(
-
-        staff
-
-    ) {
-
-        if (
-
-            !staff ||
-
-            !staff.identity
-
-        ) {
-
-            return;
-
-        }
-
-        const key =
-
-            staff.identity.cleanName;
-
-        if (
-
-            seen.has(
-
-                key
-
-            )
-
-        ) {
-
-            return;
-
-        }
-
-        seen.add(
-
-            key
-
-        );
-
-        matches.push(
-
-            staff
-
-        );
-
-    }
-
-    /*----------------------------------
-      Search Posting
-    ----------------------------------*/
 
     StaffEntities.staff.forEach(
 
@@ -5893,77 +5807,254 @@ StaffEntities.extractPostingEntities = function (
 
             }
 
-            const posting =
+            function add(
 
-                staff.posting;
+                type,
 
-            const fields = [
-
-                posting.circle,
-
-                posting.division,
-
-                posting.range,
-
-                posting.beat,
-
-                staff.assignment ?
-
-                    staff.assignment.assignedCompartment :
-
-                    ""
-
-            ];
-
-            const found =
-
-                fields.some(
-
-                    function (
-
-                        value
-
-                    ) {
-
-                        if (
-
-                            !value
-
-                        ) {
-
-                            return false;
-
-                        }
-
-                        return query.includes(
-
-                            String(
-
-                                value
-
-                            )
-
-                            .trim()
-
-                            .toUpperCase()
-
-                        );
-
-                    }
-
-                );
-
-            if (
-
-                found
+                value
 
             ) {
 
-                addPosting(
+                value =
 
-                    staff
+                    String(
+
+                        value ||
+
+                        ""
+
+                    )
+
+                    .trim();
+
+                if (
+
+                    !value
+
+                ) {
+
+                    return;
+
+                }
+
+                const key =
+
+                    type +
+
+                    "|" +
+
+                    value.toUpperCase();
+
+                if (
+
+                    seen.has(
+
+                        key
+
+                    )
+
+                ) {
+
+                    return;
+
+                }
+
+                seen.add(
+
+                    key
 
                 );
+
+                index.push({
+
+                    type:
+
+                        type,
+
+                    value:
+
+                        value,
+
+                    normalized:
+
+                        value.toUpperCase(),
+
+                    length:
+
+                        value.length
+
+                });
+
+            }
+
+            add(
+
+                "circle",
+
+                staff.posting.circle
+
+            );
+
+            add(
+
+                "division",
+
+                staff.posting.division
+
+            );
+
+            add(
+
+                "range",
+
+                staff.posting.range
+
+            );
+
+            add(
+
+                "beat",
+
+                staff.posting.beat
+
+            );
+
+            add(
+
+                "compartment",
+
+                staff.assignment
+
+                    ?.assignedCompartment
+
+            );
+
+        }
+
+    );
+
+    index.sort(
+
+        function (
+
+            a,
+
+            b
+
+        ) {
+
+            return (
+
+                b.length -
+
+                a.length
+
+            );
+
+        }
+
+    );
+
+    StaffEntities.postingIndex =
+
+        index;
+
+    return index;
+
+};
+StaffEntities.extractPostingEntities = function (
+
+    result
+
+) {
+
+    if (
+
+        !result
+
+    ) {
+
+        return result;
+
+    }
+
+    const query =
+
+        String(
+
+            result.normalizedQuery ||
+
+            ""
+
+        )
+
+        .toUpperCase();
+
+    const posting = [];
+
+    const seen = new Set();
+
+    const index =
+
+        StaffEntities.buildPostingIndex();
+
+    index.forEach(
+
+        function (
+
+            item
+
+        ) {
+
+            if (
+
+                query.includes(
+
+                    item.normalized
+
+                )
+
+            ) {
+
+                const key =
+
+                    item.type +
+
+                    "|" +
+
+                    item.normalized;
+
+                if (
+
+                    seen.has(
+
+                        key
+
+                    )
+
+                ) {
+
+                    return;
+
+                }
+
+                seen.add(
+
+                    key
+
+                );
+
+                posting.push({
+
+                    type:
+
+                        item.type,
+
+                    value:
+
+                        item.value
+
+                });
 
             }
 
@@ -5971,21 +6062,17 @@ StaffEntities.extractPostingEntities = function (
 
     );
 
-    /*----------------------------------
-      Save Result
-    ----------------------------------*/
-
     result.entities.posting =
 
-        matches;
+        posting;
 
     result.stats.postingMatches =
 
-        matches.length;
+        posting.length;
 
     result.stats.totalEntities +=
 
-        matches.length;
+        posting.length;
 
     return result;
 
