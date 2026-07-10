@@ -1265,7 +1265,89 @@ StaffQuery.getProfile = function (
     );
 
 };
+GG.queryStaffCount = async function (
 
+    request
+
+) {
+
+    return StaffQuery.execute(
+
+        request,
+
+        async function (
+
+            request
+
+        ) {
+
+            const staff =
+
+                StaffQuery.filterStaff(
+
+                    request
+
+                );
+
+            const designationSummary =
+
+                {};
+
+            staff.forEach(
+
+                function (
+
+                    profile
+
+                ) {
+
+                    const designation =
+
+                        String(
+
+                            profile.identity?.designation ||
+
+                            "UNASSIGNED"
+
+                        )
+
+                        .trim();
+
+                    designationSummary[designation] =
+
+                        (
+
+                            designationSummary[designation] ||
+
+                            0
+
+                        ) + 1;
+
+                }
+
+            );
+
+            return {
+
+                count:
+
+                    staff.length,
+
+                designationSummary:
+
+                    designationSummary,
+
+                staff:
+
+                    staff
+
+            };
+
+        }
+
+    );
+
+};
 /*----------------------------------
   Has Staff
 ----------------------------------*/
@@ -3800,8 +3882,1675 @@ GG.queryStaffSummary = async function (
     );
 
 };
+StaffQuery.buildSummary = function (
 
-/*----------------------------------
+    staff
+
+) {
+
+    staff =
+
+        Array.isArray(
+
+            staff
+
+        )
+
+            ? staff
+
+            : [];
+
+    const summary = {
+
+        totalStaff:
+
+            staff.length,
+
+        activeStaff:
+
+            0,
+
+        inactiveStaff:
+
+            0,
+
+        movingStaff:
+
+            0,
+
+        stationaryStaff:
+
+            0,
+
+        totalDistanceKm:
+
+            0,
+
+        totalPatrolPoints:
+
+            0,
+
+        designationSummary:
+
+            {},
+
+        roleSummary:
+
+            {},
+
+        staff:
+
+            staff
+
+    };
+
+    staff.forEach(
+
+        function (
+
+            profile
+
+        ) {
+
+            /*----------------------------------
+              Duty
+            ----------------------------------*/
+
+            if (
+
+                profile.assignment?.dutyActive ===
+
+                true
+
+            ) {
+
+                summary.activeStaff++;
+
+            }
+
+            else {
+
+                summary.inactiveStaff++;
+
+            }
+
+            /*----------------------------------
+              Movement
+            ----------------------------------*/
+
+            if (
+
+                Number(
+
+                    profile.gps?.speed ||
+
+                    0
+
+                ) >
+
+                0
+
+            ) {
+
+                summary.movingStaff++;
+
+            }
+
+            else {
+
+                summary.stationaryStaff++;
+
+            }
+
+            /*----------------------------------
+              Analytics
+            ----------------------------------*/
+
+            summary.totalDistanceKm +=
+
+                Number(
+
+                    profile.analytics?.distanceKm ||
+
+                    0
+
+                );
+
+            summary.totalPatrolPoints +=
+
+                Number(
+
+                    profile.analytics?.pointCount ||
+
+                    0
+
+                );
+
+            /*----------------------------------
+              Designation
+            ----------------------------------*/
+
+            const designation =
+
+                String(
+
+                    profile.identity?.designation ||
+
+                    "UNASSIGNED"
+
+                )
+
+                .trim();
+
+            summary.designationSummary[designation] =
+
+                (
+
+                    summary.designationSummary[designation] ||
+
+                    0
+
+                ) + 1;
+
+            /*----------------------------------
+              Role
+            ----------------------------------*/
+
+            const role =
+
+                String(
+
+                    profile.identity?.role ||
+
+                    "UNKNOWN"
+
+                )
+
+                .trim();
+
+            summary.roleSummary[role] =
+
+                (
+
+                    summary.roleSummary[role] ||
+
+                    0
+
+                ) + 1;
+
+        }
+
+    );
+
+    return summary;
+
+};
+StaffQuery.buildDesignationSummary = function (
+
+    staff
+
+) {
+
+    staff =
+
+        Array.isArray(
+
+            staff
+
+        )
+
+            ? staff
+
+            : [];
+
+    const summary =
+
+        {};
+
+    staff.forEach(
+
+        function (
+
+            profile
+
+        ) {
+
+            const designation =
+
+                String(
+
+                    profile.identity?.designation ||
+
+                    "UNASSIGNED"
+
+                )
+
+                .trim();
+
+            if (
+
+                !summary[designation]
+
+            ) {
+
+                summary[designation] = {
+
+                    designation:
+
+                        designation,
+
+                    totalStaff:
+
+                        0,
+
+                    activeStaff:
+
+                        0,
+
+                    inactiveStaff:
+
+                        0,
+
+                    movingStaff:
+
+                        0,
+
+                    stationaryStaff:
+
+                        0,
+
+                    totalDistanceKm:
+
+                        0,
+
+                    totalPatrolPoints:
+
+                        0,
+
+                    staff: []
+
+                };
+
+            }
+
+            const item =
+
+                summary[designation];
+
+            item.totalStaff++;
+
+            if (
+
+                profile.assignment?.dutyActive ===
+
+                true
+
+            ) {
+
+                item.activeStaff++;
+
+            }
+
+            else {
+
+                item.inactiveStaff++;
+
+            }
+
+            if (
+
+                Number(
+
+                    profile.gps?.speed ||
+
+                    0
+
+                ) >
+
+                0
+
+            ) {
+
+                item.movingStaff++;
+
+            }
+
+            else {
+
+                item.stationaryStaff++;
+
+            }
+
+            item.totalDistanceKm +=
+
+                Number(
+
+                    profile.analytics?.distanceKm ||
+
+                    0
+
+                );
+
+            item.totalPatrolPoints +=
+
+                Number(
+
+                    profile.analytics?.pointCount ||
+
+                    0
+
+                );
+
+            item.staff.push(
+
+                profile
+
+            );
+
+        }
+
+    );
+
+    return Object.values(
+
+        summary
+
+    );
+
+};
+    StaffQuery.buildDesignationSummary = function (
+
+    staff
+
+) {
+
+    staff =
+
+        Array.isArray(
+
+            staff
+
+        )
+
+            ? staff
+
+            : [];
+
+    const summary =
+
+        {};
+
+    staff.forEach(
+
+        function (
+
+            profile
+
+        ) {
+
+            const designation =
+
+                String(
+
+                    profile.identity?.designation ||
+
+                    "UNASSIGNED"
+
+                )
+
+                .trim();
+
+            if (
+
+                !summary[designation]
+
+            ) {
+
+                summary[designation] = {
+
+                    designation:
+
+                        designation,
+
+                    totalStaff:
+
+                        0,
+
+                    activeStaff:
+
+                        0,
+
+                    inactiveStaff:
+
+                        0,
+
+                    movingStaff:
+
+                        0,
+
+                    stationaryStaff:
+
+                        0,
+
+                    totalDistanceKm:
+
+                        0,
+
+                    totalPatrolPoints:
+
+                        0,
+
+                    staff: []
+
+                };
+
+            }
+
+            const item =
+
+                summary[designation];
+
+            item.totalStaff++;
+
+            if (
+
+                profile.assignment?.dutyActive ===
+
+                true
+
+            ) {
+
+                item.activeStaff++;
+
+            }
+
+            else {
+
+                item.inactiveStaff++;
+
+            }
+
+            if (
+
+                Number(
+
+                    profile.gps?.speed ||
+
+                    0
+
+                ) >
+
+                0
+
+            ) {
+
+                item.movingStaff++;
+
+            }
+
+            else {
+
+                item.stationaryStaff++;
+
+            }
+
+            item.totalDistanceKm +=
+
+                Number(
+
+                    profile.analytics?.distanceKm ||
+
+                    0
+
+                );
+
+            item.totalPatrolPoints +=
+
+                Number(
+
+                    profile.analytics?.pointCount ||
+
+                    0
+
+                );
+
+            item.staff.push(
+
+                profile
+
+            );
+
+        }
+
+    );
+
+    return Object.values(
+
+        summary
+
+    );
+
+};
+StaffQuery.buildDirectory = function (
+
+    key,
+
+    staff
+
+) {
+
+    staff =
+
+        Array.isArray(
+
+            staff
+
+        )
+
+            ? staff
+
+            : [];
+
+    const directory =
+
+        {};
+
+    staff.forEach(
+
+        function (
+
+            profile
+
+        ) {
+
+            let value =
+
+                "";
+
+            switch (
+
+                key
+
+            ) {
+
+                case "circle":
+
+                    value =
+
+                        profile.posting?.circle;
+
+                    break;
+
+                case "division":
+
+                    value =
+
+                        profile.posting?.division;
+
+                    break;
+
+                case "range":
+
+                    value =
+
+                        profile.posting?.range;
+
+                    break;
+
+                case "beat":
+
+                    value =
+
+                        profile.posting?.beat;
+
+                    break;
+
+                case "designation":
+
+                    value =
+
+                        profile.identity?.designation;
+
+                    break;
+
+                default:
+
+                    value =
+
+                        "";
+
+            }
+
+            value =
+
+                String(
+
+                    value ||
+
+                    "UNASSIGNED"
+
+                )
+
+                .trim();
+
+            if (
+
+                !directory[value]
+
+            ) {
+
+                directory[value] = {
+
+                    [key]:
+
+                        value,
+
+                    totalStaff:
+
+                        0,
+
+                    activeStaff:
+
+                        0,
+
+                    inactiveStaff:
+
+                        0,
+
+                    movingStaff:
+
+                        0,
+
+                    stationaryStaff:
+
+                        0,
+
+                    totalDistanceKm:
+
+                        0,
+
+                    totalPatrolPoints:
+
+                        0,
+
+                    staff: []
+
+                };
+
+            }
+
+            const group =
+
+                directory[value];
+
+            group.totalStaff++;
+
+            if (
+
+                profile.assignment?.dutyActive ===
+
+                true
+
+            ) {
+
+                group.activeStaff++;
+
+            }
+
+            else {
+
+                group.inactiveStaff++;
+
+            }
+
+            if (
+
+                Number(
+
+                    profile.gps?.speed ||
+
+                    0
+
+                ) >
+
+                0
+
+            ) {
+
+                group.movingStaff++;
+
+            }
+
+            else {
+
+                group.stationaryStaff++;
+
+            }
+
+            group.totalDistanceKm +=
+
+                Number(
+
+                    profile.analytics?.distanceKm ||
+
+                    0
+
+                );
+
+            group.totalPatrolPoints +=
+
+                Number(
+
+                    profile.analytics?.pointCount ||
+
+                    0
+
+                );
+
+            group.staff.push(
+
+                profile
+
+            );
+
+        }
+
+    );
+
+    return Object.values(
+
+        directory
+
+    );
+
+};    
+StaffQuery.buildCount = function (
+
+    staff
+
+) {
+
+    staff =
+
+        Array.isArray(
+
+            staff
+
+        )
+
+            ? staff
+
+            : [];
+
+    return {
+
+        count:
+
+            staff.length,
+
+        activeStaff:
+
+            staff.filter(
+
+                function (
+
+                    profile
+
+                ) {
+
+                    return (
+
+                        profile.assignment?.dutyActive ===
+
+                        true
+
+                    );
+
+                }
+
+            ).length,
+
+        inactiveStaff:
+
+            staff.filter(
+
+                function (
+
+                    profile
+
+                ) {
+
+                    return (
+
+                        profile.assignment?.dutyActive !==
+
+                        true
+
+                    );
+
+                }
+
+            ).length,
+
+        movingStaff:
+
+            staff.filter(
+
+                function (
+
+                    profile
+
+                ) {
+
+                    return (
+
+                        Number(
+
+                            profile.gps?.speed ||
+
+                            0
+
+                        ) >
+
+                        0
+
+                    );
+
+                }
+
+            ).length,
+
+        stationaryStaff:
+
+            staff.filter(
+
+                function (
+
+                    profile
+
+                ) {
+
+                    return (
+
+                        Number(
+
+                            profile.gps?.speed ||
+
+                            0
+
+                        ) <=
+
+                        0
+
+                    );
+
+                }
+
+            ).length,
+
+        totalDistanceKm:
+
+            staff.reduce(
+
+                function (
+
+                    total,
+
+                    profile
+
+                ) {
+
+                    return (
+
+                        total +
+
+                        Number(
+
+                            profile.analytics?.distanceKm ||
+
+                            0
+
+                        )
+
+                    );
+
+                },
+
+                0
+
+            ),
+
+        totalPatrolPoints:
+
+            staff.reduce(
+
+                function (
+
+                    total,
+
+                    profile
+
+                ) {
+
+                    return (
+
+                        total +
+
+                        Number(
+
+                            profile.analytics?.pointCount ||
+
+                            0
+
+                        )
+
+                    );
+
+                },
+
+                0
+
+            )
+
+    };
+
+};
+StaffQuery.buildAnalytics = function (
+
+    staff
+
+) {
+
+    staff =
+
+        Array.isArray(
+
+            staff
+
+        )
+
+            ? staff
+
+            : [];
+
+    const analytics = {
+
+        totalStaff:
+
+            staff.length,
+
+        activeStaff:
+
+            0,
+
+        inactiveStaff:
+
+            0,
+
+        movingStaff:
+
+            0,
+
+        stationaryStaff:
+
+            0,
+
+        totalDistanceKm:
+
+            0,
+
+        averageDistanceKm:
+
+            0,
+
+        totalPatrolPoints:
+
+            0,
+
+        averagePatrolPoints:
+
+            0,
+
+        maxDistanceKm:
+
+            0,
+
+        maxPatrolPoints:
+
+            0,
+
+        liveGps:
+
+            0,
+
+        dutyPercentage:
+
+            0,
+
+        movementPercentage:
+
+            0
+
+    };
+
+    staff.forEach(
+
+        function (
+
+            profile
+
+        ) {
+
+            const distance =
+
+                Number(
+
+                    profile.analytics?.distanceKm ||
+
+                    0
+
+                );
+
+            const points =
+
+                Number(
+
+                    profile.analytics?.pointCount ||
+
+                    0
+
+                );
+
+            const speed =
+
+                Number(
+
+                    profile.gps?.speed ||
+
+                    0
+
+                );
+
+            analytics.totalDistanceKm +=
+
+                distance;
+
+            analytics.totalPatrolPoints +=
+
+                points;
+
+            analytics.maxDistanceKm =
+
+                Math.max(
+
+                    analytics.maxDistanceKm,
+
+                    distance
+
+                );
+
+            analytics.maxPatrolPoints =
+
+                Math.max(
+
+                    analytics.maxPatrolPoints,
+
+                    points
+
+                );
+
+            if (
+
+                profile.assignment?.dutyActive ===
+
+                true
+
+            ) {
+
+                analytics.activeStaff++;
+
+            }
+
+            else {
+
+                analytics.inactiveStaff++;
+
+            }
+
+            if (
+
+                speed >
+
+                0
+
+            ) {
+
+                analytics.movingStaff++;
+
+            }
+
+            else {
+
+                analytics.stationaryStaff++;
+
+            }
+
+            if (
+
+                profile.gps?.timestamp ||
+
+                profile.gps?.lastSeen
+
+            ) {
+
+                analytics.liveGps++;
+
+            }
+
+        }
+
+    );
+
+    if (
+
+        analytics.totalStaff >
+
+        0
+
+    ) {
+
+        analytics.averageDistanceKm =
+
+            analytics.totalDistanceKm /
+
+            analytics.totalStaff;
+
+        analytics.averagePatrolPoints =
+
+            analytics.totalPatrolPoints /
+
+            analytics.totalStaff;
+
+        analytics.dutyPercentage =
+
+            (
+
+                analytics.activeStaff /
+
+                analytics.totalStaff
+
+            ) * 100;
+
+        analytics.movementPercentage =
+
+            (
+
+                analytics.movingStaff /
+
+                analytics.totalStaff
+
+            ) * 100;
+
+    }
+
+    return analytics;
+
+};
+    StaffQuery.buildJurisdictionSummary = function (
+
+    level,
+
+    staff
+
+) {
+
+    staff =
+
+        Array.isArray(
+
+            staff
+
+        )
+
+            ? staff
+
+            : [];
+
+    const summary =
+
+        {};
+
+    staff.forEach(
+
+        function (
+
+            profile
+
+        ) {
+
+            let jurisdiction =
+
+                "";
+
+            switch (
+
+                level
+
+            ) {
+
+                case "circle":
+
+                    jurisdiction =
+
+                        profile.posting?.circle;
+
+                    break;
+
+                case "division":
+
+                    jurisdiction =
+
+                        profile.posting?.division;
+
+                    break;
+
+                case "range":
+
+                    jurisdiction =
+
+                        profile.posting?.range;
+
+                    break;
+
+                case "beat":
+
+                    jurisdiction =
+
+                        profile.posting?.beat;
+
+                    break;
+
+                default:
+
+                    jurisdiction =
+
+                        "UNKNOWN";
+
+            }
+
+            jurisdiction =
+
+                String(
+
+                    jurisdiction ||
+
+                    "UNASSIGNED"
+
+                )
+
+                .trim();
+
+            if (
+
+                !summary[jurisdiction]
+
+            ) {
+
+                summary[jurisdiction] = {
+
+                    [level]:
+
+                        jurisdiction,
+
+                    totalStaff:
+
+                        0,
+
+                    activeStaff:
+
+                        0,
+
+                    inactiveStaff:
+
+                        0,
+
+                    movingStaff:
+
+                        0,
+
+                    stationaryStaff:
+
+                        0,
+
+                    totalDistanceKm:
+
+                        0,
+
+                    totalPatrolPoints:
+
+                        0
+
+                };
+
+            }
+
+            const item =
+
+                summary[jurisdiction];
+
+            item.totalStaff++;
+
+            if (
+
+                profile.assignment?.dutyActive ===
+
+                true
+
+            ) {
+
+                item.activeStaff++;
+
+            }
+
+            else {
+
+                item.inactiveStaff++;
+
+            }
+
+            if (
+
+                Number(
+
+                    profile.gps?.speed ||
+
+                    0
+
+                ) >
+
+                0
+
+            ) {
+
+                item.movingStaff++;
+
+            }
+
+            else {
+
+                item.stationaryStaff++;
+
+            }
+
+            item.totalDistanceKm +=
+
+                Number(
+
+                    profile.analytics?.distanceKm ||
+
+                    0
+
+                );
+
+            item.totalPatrolPoints +=
+
+                Number(
+
+                    profile.analytics?.pointCount ||
+
+                    0
+
+                );
+
+        }
+
+    );
+
+    return Object.values(
+
+        summary
+
+    );
+
+};
+
+
+    StaffQuery.buildProfileResponse = function (
+
+    profile
+
+) {
+
+    if (
+
+        !profile
+
+    ) {
+
+        return null;
+
+    }
+
+    return {
+
+        /*----------------------------------
+          Identity
+        ----------------------------------*/
+
+        cleanName:
+
+            profile.identity?.cleanName ||
+
+            "",
+
+        rawName:
+
+            profile.identity?.rawName ||
+
+            "",
+
+        name:
+
+            profile.identity?.name ||
+
+            "",
+
+        designation:
+
+            profile.identity?.designation ||
+
+            "",
+
+        role:
+
+            profile.identity?.role ||
+
+            "",
+
+        phone:
+
+            profile.identity?.phone ||
+
+            "",
+
+        email:
+
+            profile.identity?.email ||
+
+            "",
+
+        /*----------------------------------
+          Posting
+        ----------------------------------*/
+
+        circle:
+
+            profile.posting?.circle ||
+
+            "",
+
+        division:
+
+            profile.posting?.division ||
+
+            "",
+
+        range:
+
+            profile.posting?.range ||
+
+            "",
+
+        beat:
+
+            profile.posting?.beat ||
+
+            "",
+
+        /*----------------------------------
+          Assignment
+        ----------------------------------*/
+
+        assignedCompartment:
+
+            profile.assignment?.assignedCompartment ||
+
+            "",
+
+        dutyType:
+
+            profile.assignment?.dutyType ||
+
+            "",
+
+        dutyStatus:
+
+            profile.assignment?.status ||
+
+            "",
+
+        dutyActive:
+
+            profile.assignment?.dutyActive ??
+
+            false,
+
+        leader:
+
+            profile.assignment?.leader ||
+
+            "",
+
+        /*----------------------------------
+          Team
+        ----------------------------------*/
+
+        team:
+
+            profile.teamInfo?.team ||
+
+            "",
+
+        teamLeader:
+
+            profile.teamInfo?.leader ||
+
+            "",
+
+        /*----------------------------------
+          Location
+        ----------------------------------*/
+
+        latitude:
+
+            profile.location?.lat ??
+
+            null,
+
+        longitude:
+
+            profile.location?.lon ??
+
+            null,
+
+        location:
+
+            profile.location?.location ||
+
+            "",
+
+        /*----------------------------------
+          GPS
+        ----------------------------------*/
+
+        speed:
+
+            profile.gps?.speed ??
+
+            0,
+
+        heading:
+
+            profile.gps?.heading ??
+
+            0,
+
+        accuracy:
+
+            profile.gps?.accuracy ??
+
+            0,
+
+        timestamp:
+
+            profile.gps?.timestamp ??
+
+            null,
+
+        lastSeen:
+
+            profile.gps?.lastSeen ??
+
+            "",
+
+        updatedAt:
+
+            profile.gps?.updatedAt ??
+
+            null,
+
+        /*----------------------------------
+          Analytics
+        ----------------------------------*/
+
+        distanceKm:
+
+            profile.analytics?.distanceKm ??
+
+            0,
+
+        pointCount:
+
+            profile.analytics?.pointCount ??
+
+            0,
+
+        startedAt:
+
+            profile.analytics?.startedAt ??
+
+            null,
+
+        endedAt:
+
+            profile.analytics?.endedAt ??
+
+            null
+
+    };
+
+};
+    /*----------------------------------
   Jurisdiction Summary
 ----------------------------------*/
 
@@ -5222,7 +6971,51 @@ GG.queryRangeDirectory = async function (
     );
 
 };
+GG.queryActiveStaffList = async function (
 
+    request
+
+) {
+
+    return StaffQuery.execute(
+
+        request,
+
+        async function (
+
+            request
+
+        ) {
+
+            request.parameters.dutyActive =
+
+                true;
+
+            const staff =
+
+                StaffQuery.filterStaff(
+
+                    request
+
+                );
+
+            return {
+
+                count:
+
+                    staff.length,
+
+                staff:
+
+                    staff
+
+            };
+
+        }
+
+    );
+
+};
     /*----------------------------------
   Beat Directory
 ----------------------------------*/
@@ -5243,944 +7036,176 @@ GG.queryBeatDirectory = async function (
 
         ) {
 
-            /*----------------------------------
-              Requested Beat
-            ----------------------------------*/
+            const staff =
 
-            const requestedBeat =
+                StaffQuery.filterStaff(
 
-                String(
+                    request
 
-                    request.parameters?.beat ||
+                );
 
-                    ""
+            return [
 
-                )
+                {
 
-                .trim()
+                    beat:
 
-                .toUpperCase();
+                        request.parameters?.beat ||
 
-            /*----------------------------------
-              Profiles
-            ----------------------------------*/
+                        "",
 
-            const profiles =
+                    totalStaff:
 
-                StaffQuery
-                    .ensureAllStaff()
+                        staff.length,
 
-                    .filter(
+                    staff:
 
-                        function (
-
-                            profile
-
-                        ) {
-
-                            if (
-
-                                requestedBeat === ""
-
-                            ) {
-
-                                return true;
-
-                            }
-
-                            return (
-
-                                String(
-
-                                    profile.posting?.beat ||
-
-                                    ""
-
-                                )
-
-                                .trim()
-
-                                .toUpperCase()
-
-                                ===
-
-                                requestedBeat
-
-                            );
-
-                        }
-
-                    );
-
-            /*----------------------------------
-              Directory
-            ----------------------------------*/
-
-            const directory = {};
-
-            profiles.forEach(
-
-                function (
-
-                    profile
-
-                ) {
-
-                    const beat =
-
-                        profile.posting?.beat ||
-
-                        "UNASSIGNED";
-
-                    if (
-
-                        !directory[beat]
-
-                    ) {
-
-                        directory[beat] = {
-
-                            beat:
-
-                                beat,
-
-                            totalStaff:
-
-                                0,
-
-                            staff: []
-
-                        };
-
-                    }
-
-                    const group =
-
-                        directory[beat];
-
-                    group.totalStaff++;
-
-                    group.staff.push({
-
-                        /*----------------------------------
-                          Identity
-                        ----------------------------------*/
-
-                        cleanName:
-
-                            profile.identity?.cleanName ||
-
-                            "",
-
-                        rawName:
-
-                            profile.identity?.rawName ||
-
-                            "",
-
-                        name:
-
-                            profile.identity?.name ||
-
-                            "",
-
-                        role:
-
-                            profile.identity?.role ||
-
-                            "",
-
-                        designation:
-
-                            profile.identity?.designation ||
-
-                            "",
-
-                        type:
-
-                            profile.identity?.type ||
-
-                            "",
-
-                        phone:
-
-                            profile.identity?.phone ||
-
-                            "",
-
-                        email:
-
-                            profile.identity?.email ||
-
-                            "",
-
-                        /*----------------------------------
-                          Posting
-                        ----------------------------------*/
-
-                        circle:
-
-                            profile.posting?.circle ||
-
-                            "",
-
-                        division:
-
-                            profile.posting?.division ||
-
-                            "",
-
-                        range:
-
-                            profile.posting?.range ||
-
-                            "",
-
-                        /*----------------------------------
-                          Assignment
-                        ----------------------------------*/
-
-                        assignedCompartment:
-
-                            profile.assignment?.assignedCompartment ||
-
-                            "",
-
-                        dutyType:
-
-                            profile.assignment?.dutyType ||
-
-                            "",
-
-                        dutyStatus:
-
-                            profile.assignment?.status ||
-
-                            "",
-
-                        dutyActive:
-
-                            profile.assignment?.dutyActive ??
-
-                            false,
-
-                        /*----------------------------------
-                          Team
-                        ----------------------------------*/
-
-                        leader:
-
-                            profile.teamInfo?.leader ||
-
-                            "",
-
-                        team:
-
-                            profile.teamInfo?.team ||
-
-                            "",
-
-                        /*----------------------------------
-                          Location
-                        ----------------------------------*/
-
-                        latitude:
-
-                            profile.location?.lat ??
-
-                            null,
-
-                        longitude:
-
-                            profile.location?.lon ??
-
-                            null,
-
-                        location:
-
-                            profile.location?.location ||
-
-                            "",
-
-                        /*----------------------------------
-                          GPS
-                        ----------------------------------*/
-
-                        speed:
-
-                            profile.gps?.speed ??
-
-                            null,
-
-                        heading:
-
-                            profile.gps?.heading ??
-
-                            null,
-
-                        accuracy:
-
-                            profile.gps?.accuracy ??
-
-                            null,
-
-                        lastSeen:
-
-                            profile.gps?.lastSeen ??
-
-                            null,
-
-                        timestamp:
-
-                            profile.gps?.timestamp ??
-
-                            null,
-
-                        updatedAt:
-
-                            profile.gps?.updatedAt ??
-
-                            null,
-
-                        /*----------------------------------
-                          Analytics
-                        ----------------------------------*/
-
-                        distanceKm:
-
-                            profile.analytics?.distanceKm ??
-
-                            0,
-
-                        pointCount:
-
-                            profile.analytics?.pointCount ??
-
-                            0,
-
-                        startedAt:
-
-                            profile.analytics?.startedAt ??
-
-                            null,
-
-                        endedAt:
-
-                            profile.analytics?.endedAt ??
-
-                            null
-
-                    });
+                        staff
 
                 }
 
-            );
+            ];
 
-            return Object.values(
+        }
 
-                directory
+    );
 
-            );
+};    /*----------------------------------
+  Designation Directory
+----------------------------------*/
+
+GG.queryDesignationDirectory = async function (
+
+    request
+
+) {
+
+    return StaffQuery.execute(
+
+        request,
+
+        async function (
+
+            request
+
+        ) {
+
+            const profiles =
+
+                StaffQuery.filterStaff(
+
+                    request
+
+                );
+
+            const designation =
+
+                String(
+
+                    request.parameters?.designation ||
+
+                    "UNASSIGNED"
+
+                )
+
+                .trim();
+
+            return [
+
+                {
+
+                    designation:
+
+                        designation,
+
+                    totalStaff:
+
+                        profiles.length,
+
+                    staff:
+
+                        profiles
+
+                }
+
+            ];
 
         }
 
     );
 
 };
-    /*----------------------------------
-  Designation Directory
-----------------------------------*/
 
-GG.queryDesignationDirectory = async function (
+    GG.queryDesignationCount = async function (
+
     request
+
 ) {
-console.log("====================================");
-console.log("queryDesignationDirectory()");
-console.log("====================================");
 
-console.log("REQUEST");
-console.log(request);
-
-console.log("PARAMETERS");
-console.log(request.parameters);
-
-console.log("ENTITIES");
-console.log(request.entities);
-
-console.log("DESIGNATION");
-console.log(request.parameters?.designation);
-
-console.log("DIVISION");
-console.log(request.parameters?.division);
-
-console.log("RANGE");
-console.log(request.parameters?.range);
-
-console.log("BEAT");
-console.log(request.parameters?.beat);
-
-console.log("CIRCLE");
-console.log(request.parameters?.circle);
-
-console.log(
-    "ALL STAFF:",
-    StaffQuery.ensureAllStaff().length
-);
-    
     return StaffQuery.execute(
+
         request,
+
         async function (
+
             request
+
         ) {
-            /*----------------------------------
-              Requested Filters
-            ----------------------------------*/
-            const requestedDesignation =
-                String(
-                    request.parameters?.designation ||
-                    ""
-                )
-                .trim()
-                .toUpperCase();
 
-            const requestedCircle =
-                String(
-                    request.parameters?.circle ||
-                    ""
-                )
-                .trim()
-                .toUpperCase();
+            const staff =
 
-            const requestedDivision =
-                String(
-                    request.parameters?.division ||
-                    ""
-                )
-                .trim()
-                .toUpperCase();
+                StaffQuery.filterStaff(
 
-            const requestedRange =
-                String(
-                    request.parameters?.range ||
-                    ""
-                )
-                .trim()
-                .toUpperCase();
+                    request
 
-            const requestedBeat =
-                String(
-                    request.parameters?.beat ||
-                    ""
-                )
-                .trim()
-                .toUpperCase();
+                );
 
-            const requestedCompartment =
-                String(
-                    request.parameters?.compartment ||
-                    ""
-                )
-                .trim()
-                .toUpperCase();
-
-            /*----------------------------------
-              Profiles
-            ----------------------------------*/
-
-            console.log(
-                "===================================="
-            );
-
-            console.log(
-                "queryDesignationDirectory() FILTER"
-            );
-
-            console.log(
-                "Requested Filters"
-            );
-
-            console.table({
+            return {
 
                 designation:
-                    requestedDesignation,
+
+                    request.parameters?.designation ||
+
+                    "",
 
                 circle:
-                    requestedCircle,
+
+                    request.parameters?.circle ||
+
+                    "",
 
                 division:
-                    requestedDivision,
+
+                    request.parameters?.division ||
+
+                    "",
 
                 range:
-                    requestedRange,
+
+                    request.parameters?.range ||
+
+                    "",
 
                 beat:
-                    requestedBeat,
 
-                compartment:
-                    requestedCompartment
+                    request.parameters?.beat ||
 
-            });
+                    "",
 
-            console.log(
+                count:
 
-                "Total Staff:",
+                    staff.length,
 
-                StaffQuery
-                    .ensureAllStaff()
-                    .length
+                staff:
 
-            );
+                    staff
 
-            const profiles =
+            };
 
-                StaffQuery
-                    .ensureAllStaff()
-                    .filter(
-
-                        function (
-
-                            profile
-
-                        ) {
-
-                            const designation =
-
-                                String(
-
-                                    profile.identity?.designation ||
-
-                                    ""
-
-                                )
-
-                                .trim()
-
-                                .toUpperCase();
-
-                            const circle =
-
-                                String(
-
-                                    profile.posting?.circle ||
-
-                                    ""
-
-                                )
-
-                                .trim()
-
-                                .toUpperCase();
-
-                            const division =
-
-                                String(
-
-                                    profile.posting?.division ||
-
-                                    ""
-
-                                )
-
-                                .trim()
-
-                                .toUpperCase();
-
-                            const range =
-
-                                String(
-
-                                    profile.posting?.range ||
-
-                                    ""
-
-                                )
-
-                                .trim()
-
-                                .toUpperCase();
-
-                            const beat =
-
-                                String(
-
-                                    profile.posting?.beat ||
-
-                                    ""
-
-                                )
-
-                                .trim()
-
-                                .toUpperCase();
-
-                            const compartment =
-
-                                String(
-
-                                    profile.assignment?.assignedCompartment ||
-
-                                    ""
-
-                                )
-
-                                .trim()
-
-                                .toUpperCase();
-
-                            const okDesignation =
-
-                                !requestedDesignation ||
-
-                                designation ===
-
-                                requestedDesignation;
-
-                            const okCircle =
-
-                                !requestedCircle ||
-
-                                circle ===
-
-                                requestedCircle;
-
-                            const okDivision =
-
-                                !requestedDivision ||
-
-                                division ===
-
-                                requestedDivision;
-
-                            const okRange =
-
-                                !requestedRange ||
-
-                                range ===
-
-                                requestedRange;
-
-                            const okBeat =
-
-                                !requestedBeat ||
-
-                                beat ===
-
-                                requestedBeat;
-
-                            const okCompartment =
-
-                                !requestedCompartment ||
-
-                                compartment ===
-
-                                requestedCompartment;
-
-                            if (
-
-                                designation === "FR"
-
-                            ) {
-
-                                console.log(
-
-                                    "------------ FR DEBUG ------------"
-
-                                );
-
-                                console.table({
-
-                                    Name:
-
-                                        profile.identity?.cleanName,
-
-                                    Designation:
-
-                                        designation,
-
-                                    Circle:
-
-                                        circle,
-
-                                    Division:
-
-                                        division,
-
-                                    Range:
-
-                                        range,
-
-                                    Beat:
-
-                                        beat,
-
-                                    RequestedDesignation:
-
-                                        requestedDesignation,
-
-                                    RequestedCircle:
-
-                                        requestedCircle,
-
-                                    RequestedDivision:
-
-                                        requestedDivision,
-
-                                    RequestedRange:
-
-                                        requestedRange,
-
-                                    RequestedBeat:
-
-                                        requestedBeat,
-
-                                    okDesignation,
-
-                                    okCircle,
-
-                                    okDivision,
-
-                                    okRange,
-
-                                    okBeat,
-
-                                    okCompartment
-
-                                });
-
-                            }
-
-                            return (
-
-                                okDesignation &&
-
-                                okCircle &&
-
-                                okDivision &&
-
-                                okRange &&
-
-                                okBeat &&
-
-                                okCompartment
-
-                            );
-
-                        }
-
-                    );
-
-            console.log(
-
-                "===================================="
-
-            );
-
-            console.log(
-
-                "FILTERED STAFF:",
-
-                profiles.length
-
-            );
-
-            console.table(
-
-                profiles.map(
-
-                    function (
-
-                        profile
-
-                    ) {
-
-                        return {
-
-                            Name:
-
-                                profile.identity?.cleanName,
-
-                            Designation:
-
-                                profile.identity?.designation,
-
-                            Circle:
-
-                                profile.posting?.circle,
-
-                            Division:
-
-                                profile.posting?.division,
-
-                            Range:
-
-                                profile.posting?.range,
-
-                            Beat:
-
-                                profile.posting?.beat
-
-                        };
-
-                    }
-
-                )
-
-            );
-
-            console.log(
-
-                "===================================="
-
-            );
-            /*----------------------------------
-              Directory
-            ----------------------------------*/
-            const directory =
-                {};
-            profiles.forEach(
-                function (
-                    profile
-                ) {
-                    const designation =
-                        profile.identity?.designation ||
-                        "UNASSIGNED";
-                    if (
-                        !directory[designation]
-                    ) {
-                        directory[designation] = {
-                            designation:
-                                designation,
-                            totalStaff:
-                                0,
-                            staff: []
-                        };
-                    }
-                    const group =
-                        directory[designation];
-                    group.totalStaff++;
-                    group.staff.push({
-                        /*----------------------------------
-                          Identity
-                        ----------------------------------*/
-                        cleanName:
-                            profile.identity?.cleanName ||
-                            "",
-                        rawName:
-                            profile.identity?.rawName ||
-                            "",
-                        name:
-                            profile.identity?.name ||
-                            "",
-                        role:
-                            profile.identity?.role ||
-                            "",
-                        designation:
-                            profile.identity?.designation ||
-                            "",
-                        type:
-                            profile.identity?.type ||
-                            "",
-                        phone:
-                            profile.identity?.phone ||
-                            "",
-                        email:
-                            profile.identity?.email ||
-                            "",
-                        /*----------------------------------
-                          Posting
-                        ----------------------------------*/
-                        circle:
-                            profile.posting?.circle ||
-                            "",
-                        division:
-                            profile.posting?.division ||
-                            "",
-                        range:
-                            profile.posting?.range ||
-                            "",
-                        beat:
-                            profile.posting?.beat ||
-                            "",
-                        /*----------------------------------
-                          Assignment
-                        ----------------------------------*/
-                        assignedCompartment:
-                            profile.assignment?.assignedCompartment ||
-                            "",
-                        dutyType:
-                            profile.assignment?.dutyType ||
-                            "",
-                        dutyStatus:
-                            profile.assignment?.status ||
-                            "",
-                        dutyActive:
-                            profile.assignment?.dutyActive ??
-                            false,
-                        /*----------------------------------
-                          Team
-                        ----------------------------------*/
-                        leader:
-                            profile.teamInfo?.leader ||
-                            "",
-                        team:
-                            profile.teamInfo?.team ||
-                            "",
-                        /*----------------------------------
-                          Location
-                        ----------------------------------*/
-                        latitude:
-                            profile.location?.lat ??
-                            null,
-                        longitude:
-                            profile.location?.lon ??
-                            null,
-                        location:
-                            profile.location?.location ||
-                            "",
-                        /*----------------------------------
-                          GPS
-                        ----------------------------------*/
-                        speed:
-                            profile.gps?.speed ??
-                            null,
-                        heading:
-                            profile.gps?.heading ??
-                            null,
-                        accuracy:
-                            profile.gps?.accuracy ??
-                            null,
-                        lastSeen:
-                            profile.gps?.lastSeen ??
-                            null,
-                        timestamp:
-                            profile.gps?.timestamp ??
-                            null,
-                        updatedAt:
-                            profile.gps?.updatedAt ??
-                            null,
-                        /*----------------------------------
-                          Analytics
-                        ----------------------------------*/
-                        distanceKm:
-                            profile.analytics?.distanceKm ??
-                            0,
-                        pointCount:
-                            profile.analytics?.pointCount ??
-                            0,
-                        startedAt:
-                            profile.analytics?.startedAt ??
-                            null,
-                        endedAt:
-                            profile.analytics?.endedAt ??
-                            null
-                    });
-                }
-            );
-            return Object.values(
-                directory
-            );
         }
+
     );
+
 };
     GG.queryDesignationCount = async function (
 
