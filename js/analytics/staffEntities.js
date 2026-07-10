@@ -5771,7 +5771,7 @@ StaffEntities.extractRoleEntities = function (
     return result;
 
 };
- StaffEntities.buildPostingIndex = function () {
+StaffEntities.buildPostingIndex = function () {
 
     if (
 
@@ -5783,9 +5783,111 @@ StaffEntities.extractRoleEntities = function (
 
     }
 
-    const index = [];
+    const index =
 
-    const seen = new Set();
+        [];
+
+    const seen =
+
+        new Set();
+
+    function normalize(
+
+        value
+
+    ) {
+
+        return String(
+
+            value ||
+
+            ""
+
+        )
+
+        .trim()
+
+        .toUpperCase();
+
+    }
+
+    function addAlias(
+
+        type,
+
+        value,
+
+        alias
+
+    ) {
+
+        alias =
+
+            normalize(
+
+                alias
+
+            );
+
+        if (
+
+            !alias
+
+        ) {
+
+            return;
+
+        }
+
+        const key =
+
+            type +
+
+            "|" +
+
+            alias;
+
+        if (
+
+            seen.has(
+
+                key
+
+            )
+
+        ) {
+
+            return;
+
+        }
+
+        seen.add(
+
+            key
+
+        );
+
+        index.push({
+
+            type:
+
+                type,
+
+            value:
+
+                value,
+
+            normalized:
+
+                alias,
+
+            length:
+
+                alias.length
+
+        });
+
+    }
 
     StaffEntities.staff.forEach(
 
@@ -5837,53 +5939,125 @@ StaffEntities.extractRoleEntities = function (
 
                 }
 
-                const key =
+                const upper =
 
-                    type +
+                    normalize(
 
-                    "|" +
+                        value
 
-                    value.toUpperCase();
+                    );
 
-                if (
+                /*----------------------------------
+                  Original
+                ----------------------------------*/
 
-                    seen.has(
+                addAlias(
 
-                        key
+                    type,
 
-                    )
+                    value,
 
-                ) {
-
-                    return;
-
-                }
-
-                seen.add(
-
-                    key
+                    upper
 
                 );
 
-                index.push({
+                /*----------------------------------
+                  Space Removed
+                ----------------------------------*/
 
-                    type:
+                addAlias(
 
-                        type,
+                    type,
 
-                    value:
+                    value,
 
-                        value,
+                    upper.replace(
 
-                    normalized:
+                        /\s+/g,
 
-                        value.toUpperCase(),
+                        ""
 
-                    length:
+                    )
 
-                        value.length
+                );
 
-                });
+                /*----------------------------------
+                  Jurisdiction Suffix Removed
+                ----------------------------------*/
+
+                [
+
+                    " CIRCLE",
+
+                    " DIVISION",
+
+                    " RANGE",
+
+                    " BEAT"
+
+                ].forEach(
+
+                    function (
+
+                        suffix
+
+                    ) {
+
+                        if (
+
+                            upper.endsWith(
+
+                                suffix
+
+                            )
+
+                        ) {
+
+                            const alias =
+
+                                upper
+
+                                .replace(
+
+                                    suffix,
+
+                                    ""
+
+                                )
+
+                                .trim();
+
+                            addAlias(
+
+                                type,
+
+                                value,
+
+                                alias
+
+                            );
+
+                            addAlias(
+
+                                type,
+
+                                value,
+
+                                alias.replace(
+
+                                    /\s+/g,
+
+                                    ""
+
+                                )
+
+                            );
+
+                        }
+
+                    }
+
+                );
 
             }
 
@@ -5916,16 +6090,6 @@ StaffEntities.extractRoleEntities = function (
                 "beat",
 
                 staff.posting.beat
-
-            );
-
-            add(
-
-                "compartment",
-
-                staff.assignment
-
-                    ?.assignedCompartment
 
             );
 
@@ -5970,7 +6134,11 @@ StaffEntities.extractPostingEntities = function (
 
     if (
 
-        !result
+        !result ||
+
+        !result.entities ||
+
+        !result.stats
 
     ) {
 
@@ -5988,11 +6156,23 @@ StaffEntities.extractPostingEntities = function (
 
         )
 
+        .trim()
+
         .toUpperCase();
 
-    const posting = [];
+    const posting =
 
-    const seen = new Set();
+        [];
+
+    const seen =
+
+        new Set();
+
+    const parameters =
+
+        result.parameters ||
+
+        {};
 
     const index =
 
@@ -6006,61 +6186,131 @@ StaffEntities.extractPostingEntities = function (
 
         ) {
 
+            const normalized =
+
+                String(
+
+                    item.normalized ||
+
+                    ""
+
+                )
+
+                .trim()
+
+                .toUpperCase();
+
             if (
 
-                query.includes(
+                !normalized ||
 
-                    item.normalized
+                !query.includes(
+
+                    normalized
 
                 )
 
             ) {
 
-                const key =
+                return;
 
-                    item.type +
+            }
 
-                    "|" +
+            const key =
 
-                    item.normalized;
+                item.type +
 
-                if (
+                "|" +
 
-                    seen.has(
+                normalized;
 
-                        key
+            if (
 
-                    )
-
-                ) {
-
-                    return;
-
-                }
-
-                seen.add(
+                seen.has(
 
                     key
 
-                );
+                )
 
-                posting.push({
+            ) {
 
-                    type:
+                return;
 
-                        item.type,
+            }
 
-                    value:
+            seen.add(
 
-                        item.value
+                key
 
-                });
+            );
+
+            posting.push({
+
+                type:
+
+                    item.type,
+
+                value:
+
+                    item.value
+
+            });
+
+            switch (
+
+                String(
+
+                    item.type ||
+
+                    ""
+
+                )
+
+                .toLowerCase()
+
+            ) {
+
+                case "circle":
+
+                    parameters.circle =
+
+                        item.value;
+
+                    break;
+
+                case "division":
+
+                    parameters.division =
+
+                        item.value;
+
+                    break;
+
+                case "range":
+
+                    parameters.range =
+
+                        item.value;
+
+                    break;
+
+                case "beat":
+
+                    parameters.beat =
+
+                        item.value;
+
+                    break;
 
             }
 
         }
 
     );
+
+    result.parameters =
+
+        parameters;
 
     result.entities.posting =
 
@@ -6078,6 +6328,119 @@ StaffEntities.extractPostingEntities = function (
 
 };
 
+ StaffEntities.buildPostingParameters = function (
+
+    result
+
+) {
+
+    if (
+
+        !result ||
+
+        !result.entities
+
+    ) {
+
+        return result;
+
+    }
+
+    const posting =
+
+        Array.isArray(
+
+            result.entities.posting
+
+        )
+
+            ? result.entities.posting
+
+            : [];
+
+    const parameters =
+
+        result.parameters ||
+
+        {};
+
+    posting.forEach(
+
+        function (
+
+            item
+
+        ) {
+
+            if (
+
+                !item ||
+
+                !item.type
+
+            ) {
+
+                return;
+
+            }
+
+            switch (
+
+                String(
+
+                    item.type
+
+                )
+
+                .toLowerCase()
+
+            ) {
+
+                case "circle":
+
+                    parameters.circle =
+
+                        item.value;
+
+                    break;
+
+                case "division":
+
+                    parameters.division =
+
+                        item.value;
+
+                    break;
+
+                case "range":
+
+                    parameters.range =
+
+                        item.value;
+
+                    break;
+
+                case "beat":
+
+                    parameters.beat =
+
+                        item.value;
+
+                    break;
+
+            }
+
+        }
+
+    );
+
+    result.parameters =
+
+        parameters;
+
+    return result;
+
+};
  /*=========================================================
  EXTRACT TEAM ENTITIES
 =========================================================*/
@@ -7604,7 +7967,11 @@ result =
             result
 
         );
+StaffEntities.buildPostingParameters(
 
+    result
+
+);
     /*----------------------------------
       Extract Posting Parameters
     ----------------------------------*/
