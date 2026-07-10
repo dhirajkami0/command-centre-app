@@ -754,7 +754,12 @@ StaffQuery.execute = async function (
                 request
 
             );
-
+console.log("========== HANDLER RESULT ==========");
+console.log(result);
+console.log(result.length);
+console.log(result[0]);
+console.log(result[0]?.staff?.length);
+console.log("====================================");
         console.log(
             "------------------------------------"
         );
@@ -804,7 +809,12 @@ StaffQuery.execute = async function (
         response.data =
 
             result;
-
+console.log("========== RESPONSE.DATA ==========");
+console.log(response.data);
+console.log(response.data.length);
+console.log(response.data[0]);
+console.log(response.data[0]?.staff?.length);
+console.log("===================================");
         console.log(
             "RESPONSE.DATA AFTER ASSIGN"
         );
