@@ -355,6 +355,9 @@ StaffRouter.route = async function (
     request
 
 ) {
+  throw new Error(
+        "STAFF ROUTER WAS CALLED"
+    );
 
     const started =
 
