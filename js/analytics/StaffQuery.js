@@ -579,6 +579,26 @@ StaffQuery.execute = async function (
 
     StaffQuery.statistics.queries++;
 
+    console.log(
+        "===================================="
+    );
+
+    console.log(
+        "StaffQuery.execute()"
+    );
+
+    console.log(
+        "===================================="
+    );
+
+    console.log(
+        "REQUEST"
+    );
+
+    console.log(
+        request
+    );
+
     /*----------------------------------
       Validate
     ----------------------------------*/
@@ -625,6 +645,14 @@ StaffQuery.execute = async function (
 
         );
 
+    console.log(
+        "INITIAL RESPONSE"
+    );
+
+    console.log(
+        response
+    );
+
     /*----------------------------------
       Cache Key
     ----------------------------------*/
@@ -643,6 +671,14 @@ StaffQuery.execute = async function (
 
         });
 
+    console.log(
+        "CACHE KEY"
+    );
+
+    console.log(
+        cacheKey
+    );
+
     /*----------------------------------
       Cache Lookup
     ----------------------------------*/
@@ -655,11 +691,35 @@ StaffQuery.execute = async function (
 
         );
 
+    console.log(
+        "CACHE HIT"
+    );
+
+    console.log(
+        !!cached
+    );
+
     if (
 
         cached
 
     ) {
+
+        console.log(
+            "RETURNING CACHED RESPONSE"
+        );
+
+        console.log(
+            cached
+        );
+
+        console.log(
+            "CACHED DATA"
+        );
+
+        console.log(
+            cached.data
+        );
 
         cached.metadata.cache =
 
@@ -675,6 +735,18 @@ StaffQuery.execute = async function (
           Execute Handler
         ----------------------------------*/
 
+        console.log(
+            "------------------------------------"
+        );
+
+        console.log(
+            "CALLING HANDLER"
+        );
+
+        console.log(
+            handler
+        );
+
         const result =
 
             await handler(
@@ -683,6 +755,48 @@ StaffQuery.execute = async function (
 
             );
 
+        console.log(
+            "------------------------------------"
+        );
+
+        console.log(
+            "HANDLER RETURNED"
+        );
+
+        console.log(
+            result
+        );
+
+        console.log(
+            "IS ARRAY"
+        );
+
+        console.log(
+            Array.isArray(
+                result
+            )
+        );
+
+        console.log(
+            "RESULT LENGTH"
+        );
+
+        console.log(
+
+            Array.isArray(
+                result
+            )
+
+                ?
+
+                result.length
+
+                :
+
+                null
+
+        );
+
         /*----------------------------------
           Canonical Result
         ----------------------------------*/
@@ -690,6 +804,14 @@ StaffQuery.execute = async function (
         response.data =
 
             result;
+
+        console.log(
+            "RESPONSE.DATA AFTER ASSIGN"
+        );
+
+        console.log(
+            response.data
+        );
 
         /*----------------------------------
           Legacy Compatibility
@@ -709,6 +831,14 @@ StaffQuery.execute = async function (
 
                 result;
 
+            console.log(
+                "STAFFLIST ASSIGNED"
+            );
+
+            console.log(
+                response.staffList
+            );
+
         }
 
         else if (
@@ -724,6 +854,14 @@ StaffQuery.execute = async function (
             response.staff =
 
                 result;
+
+            console.log(
+                "STAFF ASSIGNED"
+            );
+
+            console.log(
+                response.staff
+            );
 
         }
 
@@ -743,15 +881,39 @@ StaffQuery.execute = async function (
 
             )
 
-                ? result.length
+                ?
 
-                : result
+                result.length
 
-                    ? 1
+                :
 
-                    : 0;
+                result
+
+                    ?
+
+                    1
+
+                    :
+
+                    0;
 
         StaffQuery.statistics.successes++;
+
+        console.log(
+            "SUCCESS"
+        );
+
+        console.log(
+            response.success
+        );
+
+        console.log(
+            "COUNT"
+        );
+
+        console.log(
+            response.count
+        );
 
     }
 
@@ -760,6 +922,14 @@ StaffQuery.execute = async function (
         error
 
     ) {
+
+        console.error(
+            "HANDLER ERROR"
+        );
+
+        console.error(
+            error
+        );
 
         response.success =
 
@@ -802,6 +972,30 @@ StaffQuery.execute = async function (
         );
 
     /*----------------------------------
+      Before Cache
+    ----------------------------------*/
+
+    console.log(
+        "===================================="
+    );
+
+    console.log(
+        "RESPONSE BEFORE CACHE"
+    );
+
+    console.log(
+        response
+    );
+
+    console.log(
+        "RESPONSE.DATA"
+    );
+
+    console.log(
+        response.data
+    );
+
+    /*----------------------------------
       Cache
     ----------------------------------*/
 
@@ -821,14 +1015,41 @@ StaffQuery.execute = async function (
 
     );
 
+    console.log(
+        "CACHE STORED"
+    );
+
     /*----------------------------------
       Return
     ----------------------------------*/
 
+    console.log(
+        "===================================="
+    );
+
+    console.log(
+        "RETURN RESPONSE"
+    );
+
+    console.log(
+        response
+    );
+
+    console.log(
+        "RETURN DATA"
+    );
+
+    console.log(
+        response.data
+    );
+
+    console.log(
+        "===================================="
+    );
+
     return response;
 
 };
-
  /*=========================================================
  HELPER FUNCTIONS
 =========================================================*/
