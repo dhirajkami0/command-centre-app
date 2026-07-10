@@ -515,7 +515,21 @@ StaffRouter.route = async function (
                 request
 
             );
+console.log("====================================");
+console.log("HANDLER RETURNED");
+console.log(result);
 
+console.log("RESULT.DATA");
+console.log(result.data);
+
+console.log("RESULT.DATA LENGTH");
+console.log(
+    Array.isArray(result.data)
+        ? result.data.length
+        : null
+);
+
+console.log("====================================");
         console.timeEnd(
 
             "Query"
@@ -545,8 +559,21 @@ StaffRouter.route = async function (
                 result
 
             );
+console.log("====================================");
+console.log("ROUTER RESPONSE");
+console.log(response);
 
-        }
+console.log("ROUTER RESPONSE.DATA");
+console.log(response.data);
+
+console.log("ROUTER RESPONSE.DATA LENGTH");
+console.log(
+    Array.isArray(response.data)
+        ? response.data.length
+        : null
+);
+
+console.log("====================================");        }
 
         response.success =
 
