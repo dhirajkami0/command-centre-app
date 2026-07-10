@@ -1101,7 +1101,424 @@ StaffQuery.getValidStaff = function () {
 };/*----------------------------------
   Get Staff List
 ----------------------------------*/
+/*----------------------------------
+  Aggregate Staff Filter
+----------------------------------*/
 
+StaffQuery.filterStaff = function (
+    request = {}
+) {
+    /*----------------------------------
+      Source
+    ----------------------------------*/
+
+    let profiles =
+        StaffQuery.getValidStaff();
+if (
+
+    !Array.isArray(
+
+        profiles
+
+    )
+
+) {
+
+    profiles = [];
+
+}
+    /*----------------------------------
+      Parameters
+    ----------------------------------*/
+
+const parameters =
+
+    StaffQuery.getParameters(
+
+        request
+
+    );
+
+    const intent =
+        request.intent ||
+        "";
+
+    /*----------------------------------
+      Normalize
+    ----------------------------------*/
+
+    function normalize(
+        value
+    ) {
+        return String(
+            value ||
+            ""
+        )
+        .trim()
+        .toUpperCase();
+    }
+
+    /*----------------------------------
+      Requested Filters
+    ----------------------------------*/
+
+    const requestedDesignation =
+        normalize(
+            parameters.designation
+        );
+    const requestedCircle =
+        normalize(
+            parameters.circle
+        );
+    const requestedDivision =
+        normalize(
+            parameters.division
+        );
+    const requestedRange =
+        normalize(
+            parameters.range
+        );
+    const requestedBeat =
+        normalize(
+            parameters.beat
+        );
+    const requestedDutyType =
+        normalize(
+            parameters.dutyType
+        );
+    const requestedStatus =
+        normalize(
+            parameters.status
+        );
+    const requestedLeader =
+        normalize(
+            parameters.leader
+        );
+    const requestedTeam =
+        normalize(
+            parameters.team
+        );
+    const requestedDutyActive =
+        parameters.dutyActive;
+    const requestedMoving =
+        parameters.moving;
+    const requestedStationary =
+        parameters.stationary;
+    const requestedPatrolling =
+        parameters.patrolling;
+    const requestedMinDistance =
+        Number(
+            parameters.minDistance ||
+            0
+        );
+    const requestedMinPoints =
+        Number(
+            parameters.minPoints ||
+            0
+        );
+
+    /*----------------------------------
+      Apply Filters
+    ----------------------------------*/
+
+    profiles =
+        profiles.filter(
+            function (
+                profile
+            ) {
+                /*----------------------------------
+                  Identity
+                ----------------------------------*/
+
+                const designation =
+                    normalize(
+                        profile.identity?.designation
+                    );
+
+                /*----------------------------------
+                  Posting
+                ----------------------------------*/
+
+                const circle =
+                    normalize(
+                        profile.posting?.circle
+                    );
+                const division =
+                    normalize(
+                        profile.posting?.division
+                    );
+                const range =
+                    normalize(
+                        profile.posting?.range
+                    );
+                const beat =
+                    normalize(
+                        profile.posting?.beat
+                    );
+
+                /*----------------------------------
+                  Assignment
+                ----------------------------------*/
+
+                const dutyType =
+                    normalize(
+                        profile.assignment
+                            ?.dutyType
+                    );
+                const status =
+                    normalize(
+                        profile.assignment
+                            ?.status
+                    );
+                const dutyActive =
+                    profile.assignment
+                        ?.dutyActive ===
+                    true;
+                const leader =
+                    normalize(
+                        profile.assignment
+                            ?.leader ||
+                        profile.teamInfo
+                            ?.leader
+                    );
+                const team =
+                    normalize(
+                        profile.assignment
+                            ?.team ||
+                        profile.teamInfo
+                            ?.team
+                    );
+
+                /*----------------------------------
+                  GPS
+                ----------------------------------*/
+
+                const speed =
+                    Number(
+                        profile.gps?.speed ||
+                        0
+                    );
+                const moving =
+                    speed >
+                    1;
+                const stationary =
+                    !moving;
+
+                /*----------------------------------
+                  Analytics
+                ----------------------------------*/
+
+                const distance =
+                    Number(
+                        profile.analytics
+                            ?.distanceKm ||
+                        0
+                    );
+                const points =
+                    Number(
+                        profile.analytics
+                            ?.pointCount ||
+                        0
+                    );
+
+                /*----------------------------------
+                  Individual Filters
+                ----------------------------------*/
+
+                if (
+                    requestedDesignation &&
+                    designation !==
+                    requestedDesignation
+                ) {
+                    return false;
+                }
+                if (
+                    requestedCircle &&
+                    circle !==
+                    requestedCircle
+                ) {
+                    return false;
+                }
+                if (
+                    requestedDivision &&
+                    division !==
+                    requestedDivision
+                ) {
+                    return false;
+                }
+                if (
+                    requestedRange &&
+                    range !==
+                    requestedRange
+                ) {
+                    return false;
+                }
+                if (
+                    requestedBeat &&
+                    beat !==
+                    requestedBeat
+                ) {
+                    return false;
+                }
+                if (
+                    requestedDutyType &&
+                    dutyType !==
+                    requestedDutyType
+                ) {
+                    return false;
+                }
+                if (
+                    requestedStatus &&
+                    status !==
+                    requestedStatus
+                ) {
+                    return false;
+                }
+                if (
+                    requestedLeader &&
+                    leader !==
+                    requestedLeader
+                ) {
+                    return false;
+                }
+                if (
+                    requestedTeam &&
+                    team !==
+                    requestedTeam
+                ) {
+                    return false;
+                }
+
+                /*----------------------------------
+                  Duty Active
+                ----------------------------------*/
+
+                if (
+                    typeof requestedDutyActive ===
+                    "boolean"
+                ) {
+                    if (
+                        dutyActive !==
+                        requestedDutyActive
+                    ) {
+                        return false;
+                    }
+                }
+
+                /*----------------------------------
+                  Moving
+                ----------------------------------*/
+
+                if (
+                    typeof requestedMoving ===
+                    "boolean"
+                ) {
+                    if (
+                        moving !==
+                        requestedMoving
+                    ) {
+                        return false;
+                    }
+                }
+
+                /*----------------------------------
+                  Stationary
+                ----------------------------------*/
+
+                if (
+                    typeof requestedStationary ===
+                    "boolean"
+                ) {
+                    if (
+                        stationary !==
+                        requestedStationary
+                    ) {
+                        return false;
+                    }
+                }
+
+                /*----------------------------------
+                  Patrolling
+                ----------------------------------*/
+
+                if (
+                    requestedPatrolling ===
+                    true
+                ) {
+                    if (
+                        !dutyActive ||
+                        !dutyType.includes(
+                            "PATROL"
+                        )
+                    ) {
+                        return false;
+                    }
+                }
+
+                /*----------------------------------
+                  Minimum Distance
+                ----------------------------------*/
+
+                if (
+                    requestedMinDistance >
+                    0
+                ) {
+                    if (
+                        distance <
+                        requestedMinDistance
+                    ) {
+                        return false;
+                    }
+                }
+
+                /*----------------------------------
+                  Minimum GPS Points
+                ----------------------------------*/
+
+                if (
+                    requestedMinPoints >
+                    0
+                ) {
+                    if (
+                        points <
+                        requestedMinPoints
+                    ) {
+                        return false;
+                    }
+                }
+
+                return true;
+            }
+        );
+
+    /*----------------------------------
+      Debug
+    ----------------------------------*/
+
+    console.group(
+        "🧩 StaffQuery.filterStaff"
+    );
+    console.log(
+        "Parameters:",
+        parameters
+    );
+    console.log(
+        "Matched:",
+        profiles.length
+    );
+    console.groupEnd();
+
+    /*----------------------------------
+      Return
+    ----------------------------------*/
+
+    return {
+        staff:
+            profiles,
+        count:
+            profiles.length
+    };
+};
 /*=========================================================
  HELPER FUNCTIONS
 =========================================================*/
