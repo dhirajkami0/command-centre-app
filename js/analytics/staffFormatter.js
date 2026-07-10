@@ -2632,9 +2632,21 @@ StaffFormatter.formatLocation = function (
 
         {};
 
+    const posting =
+
+        profile.posting ||
+
+        {};
+
     const location =
 
         profile.location ||
+
+        {};
+
+    const gps =
+
+        profile.gps ||
 
         {};
 
@@ -2651,6 +2663,73 @@ StaffFormatter.formatLocation = function (
         identity.cleanName ||
 
         "-";
+
+    /*----------------------------------
+      Live Coordinates
+      (Prefer GPS, fallback to Location)
+    ----------------------------------*/
+
+    const latitude =
+
+        gps.lat ??
+
+        location.lat ??
+
+        "-";
+
+    const longitude =
+
+        gps.lon ??
+
+        location.lon ??
+
+        "-";
+
+    /*----------------------------------
+      Last Seen
+    ----------------------------------*/
+
+    const lastSeen =
+
+        gps.lastSeen ||
+
+        gps.timestamp ||
+
+        gps.updatedAt ||
+
+        "-";
+
+    const lastSeenText =
+
+        lastSeen !== "-"
+
+            ?
+
+            new Date(
+
+                lastSeen
+
+            ).toLocaleString(
+
+                "en-IN",
+
+                {
+
+                    dateStyle:
+
+                        "medium",
+
+                    timeStyle:
+
+                        "short"
+
+                }
+
+            )
+
+            :
+
+            "-";
 
     /*----------------------------------
       Markdown
@@ -2676,25 +2755,73 @@ StaffFormatter.formatLocation = function (
 
             ),
 
+        "",
+
+        "**Current GPS Position**",
+
+        "",
+
         "**Latitude:** " +
+
+            latitude,
+
+        "**Longitude:** " +
+
+            longitude,
+
+        "",
+
+        "**Posting:**",
+
+        "• Circle : " +
 
             (
 
-                location.lat ??
+                posting.circle ||
 
                 "-"
 
             ),
 
-        "**Longitude:** " +
+        "• Division : " +
 
             (
 
-                location.lon ??
+                posting.division ||
 
                 "-"
 
-            )
+            ),
+
+        "• Range : " +
+
+            (
+
+                posting.range ||
+
+                "-"
+
+            ),
+
+        "• Beat : " +
+
+            (
+
+                posting.beat ||
+
+                "-"
+
+            ),
+
+        "",
+
+        "**Last Seen:** " +
+
+            lastSeenText,
+
+        "",
+
+        "_Human-readable location will be available after GIS integration._"
 
     ].join(
 
@@ -2730,15 +2857,39 @@ StaffFormatter.formatLocation = function (
 
             latitude:
 
-                location.lat ??
-
-                null,
+                latitude,
 
             longitude:
 
-                location.lon ??
+                longitude,
 
-                null
+            circle:
+
+                posting.circle ||
+
+                "",
+
+            division:
+
+                posting.division ||
+
+                "",
+
+            range:
+
+                posting.range ||
+
+                "",
+
+            beat:
+
+                posting.beat ||
+
+                "",
+
+            lastSeen:
+
+                lastSeenText
 
         }
 
@@ -2752,7 +2903,7 @@ StaffFormatter.formatLocation = function (
 
         title:
 
-            "Location",
+            "Current Location",
 
         data: {
 
@@ -2768,15 +2919,39 @@ StaffFormatter.formatLocation = function (
 
             latitude:
 
-                location.lat ??
-
-                null,
+                latitude,
 
             longitude:
 
-                location.lon ??
+                longitude,
 
-                null
+            circle:
+
+                posting.circle ||
+
+                "",
+
+            division:
+
+                posting.division ||
+
+                "",
+
+            range:
+
+                posting.range ||
+
+                "",
+
+            beat:
+
+                posting.beat ||
+
+                "",
+
+            lastSeen:
+
+                lastSeenText
 
         }
 
