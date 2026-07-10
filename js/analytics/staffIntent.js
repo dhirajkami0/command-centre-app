@@ -5672,51 +5672,97 @@ StaffIntent.detectDirectoryIntent = function (
       COUNT QUERIES ARE NOT DIRECTORY QUERIES
     ==================================================*/
 
-    const hasCount =
+/*==================================================
+  COUNT vs DIRECTORY
+  "TOTAL STAFF LIST" = DIRECTORY
+  "TOTAL STAFF"      = COUNT
+==================================================*/
 
-        [
+const hasDirectoryWord =
 
-            "COUNT",
+    [
 
-            "COUNTS",
+        "LIST",
 
-            "TOTAL",
+        "SHOW",
 
-            "HOW MANY",
+        "DISPLAY",
 
-            "NUMBER OF",
+        "VIEW",
 
-            "HEADCOUNT",
+        "DIRECTORY",
 
-            "STRENGTH"
+        "WHO ARE"
 
-        ].some(
+    ].some(
 
-            function (
+        function (
+
+            word
+
+        ) {
+
+            return query.includes(
 
                 word
 
-            ) {
+            );
 
-                return query.includes(
+        }
 
-                    word
+    );
 
-                );
+const hasCountWord =
 
-            }
+    [
 
-        );
+        "COUNT",
 
-    if (
+        "COUNTS",
 
-        hasCount
+        "TOTAL",
 
-    ) {
+        "HOW MANY",
 
-        return result;
+        "NUMBER OF",
 
-    }
+        "HEADCOUNT",
+
+        "STRENGTH"
+
+    ].some(
+
+        function (
+
+            word
+
+        ) {
+
+            return query.includes(
+
+                word
+
+            );
+
+        }
+
+    );
+
+/*----------------------------------
+  Pure Count Query
+----------------------------------*/
+
+if (
+
+    hasCountWord &&
+
+    !hasDirectoryWord
+
+) {
+
+    return result;
+
+}
 
     /*----------------------------------
       Constants
