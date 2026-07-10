@@ -5256,37 +5256,16 @@ StaffIntent.detectGlobalIntent = function (
       DIRECTORY
     ----------------------------------*/
 
-    result =
+  /*----------------------------------
+  COUNT
+----------------------------------*/
 
-        StaffIntent.detectDirectoryIntent(
-
-            result
-
-        );
-
-    if (
-
-        result.intent
-
-    ) {
-
-        console.log(
-
-            "✅ Directory:",
-
-            result.intent
-
-        );
-
-        console.groupEnd();
-
-        return result;
-
-    }
 result =
 
-    StaffIntent.detectDesignationCountIntent(
+    StaffIntent.detectCountIntent(
+
         result
+
     );
 
 if (
@@ -5294,6 +5273,48 @@ if (
     result.intent
 
 ) {
+
+    console.log(
+
+        "✅ Count:",
+
+        result.intent
+
+    );
+
+    console.groupEnd();
+
+    return result;
+
+}
+
+/*----------------------------------
+  DIRECTORY
+----------------------------------*/
+
+result =
+
+    StaffIntent.detectDirectoryIntent(
+
+        result
+
+    );
+
+if (
+
+    result.intent
+
+    ) {
+
+    console.log(
+
+        "✅ Directory:",
+
+        result.intent
+
+    );
+
+    console.groupEnd();
 
     return result;
 
@@ -5377,6 +5398,222 @@ if (
     return result;
 
 };
+ StaffIntent.detectCountIntent = function (result) {
+
+    /*----------------------------------
+      Validate
+    ----------------------------------*/
+
+    if (
+
+        !result ||
+
+        result.intent
+
+    ) {
+
+        return result;
+
+    }
+
+    const query =
+
+        String(
+
+            result.normalizedQuery ||
+
+            ""
+
+        )
+
+        .trim()
+
+        .toUpperCase();
+
+    const INTENTS =
+
+        StaffConstants.INTENTS;
+
+    const parameters =
+
+        result.parameters ||
+
+        {};
+
+    const entities =
+
+        result.entities ||
+
+        {};
+
+    /*----------------------------------
+      Count Keywords
+    ----------------------------------*/
+
+    const hasCount =
+
+        [
+
+            "COUNT",
+            "COUNTS",
+            "TOTAL",
+            "HOW MANY",
+            "NUMBER OF",
+            "HEADCOUNT",
+            "STRENGTH"
+
+        ].some(
+
+            function (word) {
+
+                return query.includes(word);
+
+            }
+
+        );
+
+    if (
+
+        !hasCount
+
+    ) {
+
+        return result;
+
+    }
+
+    /*----------------------------------
+      Designation Count
+    ----------------------------------*/
+
+    if (
+
+        entities.designations?.length > 0
+
+    ) {
+
+        result.intent =
+
+            INTENTS.STAFF_DESIGNATION_COUNT;
+
+        result.parameters.designation =
+
+            entities
+                .designations[0]
+                .identity
+                .designation;
+
+        result.confidence =
+
+            0.99;
+
+        return result;
+
+    }
+
+    /*----------------------------------
+      Beat Count
+    ----------------------------------*/
+
+    if (
+
+        parameters.beat
+
+    ) {
+
+        result.intent =
+
+            INTENTS.STAFF_BEAT_COUNT;
+
+        result.confidence =
+
+            0.99;
+
+        return result;
+
+    }
+
+    /*----------------------------------
+      Range Count
+    ----------------------------------*/
+
+    if (
+
+        parameters.range
+
+    ) {
+
+        result.intent =
+
+            INTENTS.STAFF_RANGE_COUNT;
+
+        result.confidence =
+
+            0.99;
+
+        return result;
+
+    }
+
+    /*----------------------------------
+      Division Count
+    ----------------------------------*/
+
+    if (
+
+        parameters.division
+
+    ) {
+
+        result.intent =
+
+            INTENTS.STAFF_DIVISION_COUNT;
+
+        result.confidence =
+
+            0.99;
+
+        return result;
+
+    }
+
+    /*----------------------------------
+      Circle Count
+    ----------------------------------*/
+
+    if (
+
+        parameters.circle
+
+    ) {
+
+        result.intent =
+
+            INTENTS.STAFF_CIRCLE_COUNT;
+
+        result.confidence =
+
+            0.99;
+
+        return result;
+
+    }
+
+    /*----------------------------------
+      Generic Staff Count
+    ----------------------------------*/
+
+    result.intent =
+
+        INTENTS.STAFF_COUNT;
+
+    result.confidence =
+
+        0.95;
+
+    return result;
+
+};
 /*=========================================================
   DIRECTORY INTENT
 =========================================================*/
@@ -5403,6 +5640,10 @@ StaffIntent.detectDirectoryIntent = function (
 
     }
 
+    /*----------------------------------
+      Query
+    ----------------------------------*/
+
     const query =
 
         String(
@@ -5427,44 +5668,133 @@ StaffIntent.detectDirectoryIntent = function (
 
     }
 
+    /*==================================================
+      COUNT QUERIES ARE NOT DIRECTORY QUERIES
+    ==================================================*/
+
+    const hasCount =
+
+        [
+
+            "COUNT",
+
+            "COUNTS",
+
+            "TOTAL",
+
+            "HOW MANY",
+
+            "NUMBER OF",
+
+            "HEADCOUNT",
+
+            "STRENGTH"
+
+        ].some(
+
+            function (
+
+                word
+
+            ) {
+
+                return query.includes(
+
+                    word
+
+                );
+
+            }
+
+        );
+
+    if (
+
+        hasCount
+
+    ) {
+
+        return result;
+
+    }
+
+    /*----------------------------------
+      Constants
+    ----------------------------------*/
+
     const INTENTS =
+
         StaffConstants.INTENTS;
 
     const KEYWORDS =
+
         StaffConstants.KEYWORDS;
 
     const parameters =
-        result.parameters || {};
+
+        result.parameters ||
+
+        {};
 
     const designation =
-        result.entities.designations || [];
+
+        result.entities.designations ||
+
+        [];
 
     const allStaff =
-        result.entities.staff || [];
+
+        result.entities.staff ||
+
+        [];
 
     /*----------------------------------
       Helpers
     ----------------------------------*/
 
-    function hasKeyword(list) {
+    function hasKeyword(
 
-        if (!Array.isArray(list)) {
+        list
+
+    ) {
+
+        if (
+
+            !Array.isArray(
+
+                list
+
+            )
+
+        ) {
 
             return false;
 
         }
 
-        return list.some(function (word) {
+        return list.some(
 
-            return query.includes(
+            function (
 
-                String(word)
+                word
+
+            ) {
+
+                return query.includes(
+
+                    String(
+
+                        word
+
+                    )
 
                     .toUpperCase()
 
-            );
+                );
 
-        });
+            }
+
+        );
 
     }
 
@@ -5473,51 +5803,86 @@ StaffIntent.detectDirectoryIntent = function (
         return [
 
             "LIST",
+
             "SHOW",
+
             "DISPLAY",
+
             "VIEW",
+
             "GET",
+
             "GIVE",
+
             "DIRECTORY",
+
             "STAFF",
+
             "PERSONNEL",
+
             "EMPLOYEES",
+
             "OFFICERS",
+
             "WHO ARE",
+
             "WHO IS"
 
-        ].some(function (word) {
+        ].some(
 
-            return query.includes(word);
+            function (
 
-        });
+                word
+
+            ) {
+
+                return query.includes(
+
+                    word
+
+                );
+
+            }
+
+        );
 
     }
 
+    /*----------------------------------
+      Flags
+    ----------------------------------*/
+
     const directory =
+
         hasDirectoryVerb();
 
     const hasDesignation =
+
         designation.length > 0;
 
     const hasCircle =
+
         !!parameters.circle;
 
     const hasDivision =
+
         !!parameters.division;
 
     const hasRange =
+
         !!parameters.range;
 
     const hasBeat =
+
         !!parameters.beat;
 
     const hasCompartment =
+
         !!parameters.compartment;
 
     /*==================================================
       DESIGNATION DIRECTORY
-      Example:
+      Examples:
       AS list of WestDamanpur range
       FR list of BTR_W division
     ==================================================*/
@@ -5572,7 +5937,6 @@ StaffIntent.detectDirectoryIntent = function (
 
     /*==================================================
       BEAT DIRECTORY
-      Highest Jurisdiction
     ==================================================*/
 
     if (
