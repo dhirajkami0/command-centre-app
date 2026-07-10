@@ -865,7 +865,87 @@ result =
         result
 
     );
+if (
 
+    result.parameters.compartment
+
+) {
+
+    // keep everything
+
+}
+
+else if (
+
+    result.parameters.beat
+
+) {
+
+    result.parameters.compartment =
+
+        null;
+
+}
+
+else if (
+
+    result.parameters.range
+
+) {
+
+    result.parameters.beat =
+
+        null;
+
+    result.parameters.compartment =
+
+        null;
+
+}
+
+else if (
+
+    result.parameters.division
+
+) {
+
+    result.parameters.range =
+
+        null;
+
+    result.parameters.beat =
+
+        null;
+
+    result.parameters.compartment =
+
+        null;
+
+}
+
+else if (
+
+    result.parameters.circle
+
+) {
+
+    result.parameters.division =
+
+        null;
+
+    result.parameters.range =
+
+        null;
+
+    result.parameters.beat =
+
+        null;
+
+    result.parameters.compartment =
+
+        null;
+
+}
 console.log(
 
     "📍 Posting Parameters:",
@@ -1458,37 +1538,17 @@ StaffIntent.detectPostingIntent = function (
 
 };
 
-  StaffIntent.extractPostingParameters = function (
+StaffIntent.extractPostingParameters = function (
 
     result
 
 ) {
-
-    /*----------------------------------
-      Validate
-    ----------------------------------*/
 
     if (
 
         !result ||
 
         !result.entities
-
-    ) {
-
-        return result;
-
-    }
-
-    const posting =
-
-        result.entities.posting ||
-
-        [];
-
-    if (
-
-        posting.length === 0
 
     ) {
 
@@ -1506,163 +1566,71 @@ StaffIntent.detectPostingIntent = function (
 
     }
 
-    /*----------------------------------
-      Unique Values
-    ----------------------------------*/
+    (
 
-    const circles =
-        new Set();
+        result.entities.posting ||
 
-    const divisions =
-        new Set();
+        []
 
-    const ranges =
-        new Set();
-
-    const beats =
-        new Set();
-
-    const compartments =
-        new Set();
-
-    posting.forEach(
+    ).forEach(
 
         function (
 
-            staff
+            posting
 
         ) {
 
-            if (
+            switch (
 
-                !staff ||
-
-                !staff.posting
+                posting.type
 
             ) {
 
-                return;
+                case "circle":
 
-            }
+                    result.parameters.circle =
 
-            if (
+                        posting.value;
 
-                staff.posting.circle
+                    break;
 
-            ) {
+                case "division":
 
-                circles.add(
+                    result.parameters.division =
 
-                    staff.posting.circle
+                        posting.value;
 
-                );
+                    break;
 
-            }
+                case "range":
 
-            if (
+                    result.parameters.range =
 
-                staff.posting.division
+                        posting.value;
 
-            ) {
+                    break;
 
-                divisions.add(
+                case "beat":
 
-                    staff.posting.division
+                    result.parameters.beat =
 
-                );
+                        posting.value;
 
-            }
+                    break;
 
-            if (
+                case "compartment":
 
-                staff.posting.range
+                    result.parameters.compartment =
 
-            ) {
+                        posting.value;
 
-                ranges.add(
-
-                    staff.posting.range
-
-                );
-
-            }
-
-            if (
-
-                staff.posting.beat
-
-            ) {
-
-                beats.add(
-
-                    staff.posting.beat
-
-                );
-
-            }
-
-            if (
-
-                staff.assignment &&
-                staff.assignment.assignedCompartment
-
-            ) {
-
-                compartments.add(
-
-                    staff.assignment.assignedCompartment
-
-                );
+                    break;
 
             }
 
         }
 
     );
-
-    /*----------------------------------
-      Save Parameters
-    ----------------------------------*/
-
-    result.parameters.circle =
-
-        circles.size === 1
-
-            ? [...circles][0]
-
-            : null;
-
-    result.parameters.division =
-
-        divisions.size === 1
-
-            ? [...divisions][0]
-
-            : null;
-
-    result.parameters.range =
-
-        ranges.size === 1
-
-            ? [...ranges][0]
-
-            : null;
-
-    result.parameters.beat =
-
-        beats.size === 1
-
-            ? [...beats][0]
-
-            : null;
-
-    result.parameters.compartment =
-
-        compartments.size === 1
-
-            ? [...compartments][0]
-
-            : null;
 
     return result;
 
