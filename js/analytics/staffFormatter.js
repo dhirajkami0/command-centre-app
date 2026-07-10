@@ -283,99 +283,71 @@ StaffFormatter.format = function (response) {
     }
 
     const formatter =
-
-    StaffFormatter.registry.get(
-
-        response.intent
-
-    );
-
-if (
-
-    typeof formatter === "function"
-
-) {
-
-    console.group(
-
-        "🟢 FORMATTER DISPATCH"
-
-    );
-
-    console.log(
-
-        "Intent:",
-
-        response.intent
-
-    );
-
-    console.log(
-
-        "Formatter:",
-
-        formatter.name
-
-    );
-
-    console.log(
-
-        "Response:",
-
-        response
-
-    );
-
-    console.log(
-
-        "Data:",
-
-        response.data
-
-    );
-
-    console.log(
-
-        "Groups:",
-
-        response.data?.length
-
-    );
-
-    console.log(
-
-        "Staff:",
-
-        response.data?.[0]?.staff?.length
-
-    );
-
-    console.groupEnd();
-
-    const result =
-
-        formatter(
-
-            response
-
+        StaffFormatter.registry.get(
+            response.intent
         );
 
-    StaffFormatter.statistics.formattedResponses++;
-
-    StaffFormatter.lastResult =
-
-        result;
-
-    return result;
-
-}
+    if (
+        typeof formatter === "function"
+    ) {
+        console.group(
+            "🟢 FORMATTER DISPATCH"
+        );
+        console.log(
+            "Intent:",
+            response.intent
+        );
+        console.log(
+            "Formatter:",
+            formatter.name
+        );
+        console.log(
+            "Response:",
+            response
+        );
+        console.log(
+            "Data:",
+            response.data
+        );
+        console.log(
+            "Groups:",
+            response.data?.length
+        );
+        console.log(
+            "Staff:",
+            response.data?.[0]?.staff?.length
+        );
+        console.groupEnd();
+        const result =
+            formatter(
+                response
+            );
+        StaffFormatter.statistics.formattedResponses++;
+        StaffFormatter.lastResult =
+            result;
+        return result;
+    }
 
     switch (response.intent) {
         /*=================================================
           SEARCH
         =================================================*/
         case StaffConstants.INTENTS.STAFF_DIRECTORY:
-            return StaffFormatter.debugFormatter("formatDirectory", StaffFormatter.formatDirectory, response);
+        case StaffConstants.INTENTS.STAFF_CIRCLE_DIRECTORY:
+        case StaffConstants.INTENTS.STAFF_DIVISION_DIRECTORY:
+        case StaffConstants.INTENTS.STAFF_RANGE_DIRECTORY:
+        case StaffConstants.INTENTS.STAFF_BEAT_DIRECTORY:
+        case StaffConstants.INTENTS.STAFF_DESIGNATION_DIRECTORY:
+        case StaffConstants.INTENTS.ACTIVE_STAFF_LIST:
+        case StaffConstants.INTENTS.INACTIVE_STAFF_LIST:
+        case StaffConstants.INTENTS.MOVING_STAFF:
+        case StaffConstants.INTENTS.STATIONARY_STAFF:
+        case StaffConstants.INTENTS.TEAM_LEADER_LIST:
+            return StaffFormatter.debugFormatter(
+                "formatDirectory",
+                StaffFormatter.formatDirectory,
+                response
+            );
 
         /*=================================================
           PROFILE
@@ -458,84 +430,60 @@ if (
         /*=================================================
           SUMMARY
         =================================================*/
-        case StaffConstants.INTENTS.STAFF_SUMMARY:
-            return StaffFormatter.debugFormatter("formatStaffSummary", StaffFormatter.formatStaffSummary, response);
-        case StaffConstants.INTENTS.STAFF_JURISDICTION_SUMMARY:
-            return StaffFormatter.debugFormatter("formatJurisdictionSummary", StaffFormatter.formatJurisdictionSummary, response);
-        case StaffConstants.INTENTS.STAFF_DESIGNATION_SUMMARY:
-            return StaffFormatter.debugFormatter("formatDesignationSummary", StaffFormatter.formatDesignationSummary, response);
-        case StaffConstants.INTENTS.STAFF_CIRCLE_DIRECTORY:
-            return StaffFormatter.debugFormatter("formatCircleDirectory", StaffFormatter.formatCircleDirectory, response);
-        case StaffConstants.INTENTS.STAFF_DIVISION_DIRECTORY:
-            return StaffFormatter.debugFormatter("formatDivisionDirectory", StaffFormatter.formatDivisionDirectory, response);
-        case StaffConstants.INTENTS.STAFF_RANGE_DIRECTORY:
-            return StaffFormatter.debugFormatter("formatRangeDirectory", StaffFormatter.formatRangeDirectory, response);
-        case StaffConstants.INTENTS.STAFF_BEAT_DIRECTORY:
-            return StaffFormatter.debugFormatter("formatBeatDirectory", StaffFormatter.formatBeatDirectory, response);
-        case StaffConstants.INTENTS.STAFF_DESIGNATION_DIRECTORY:
-            return StaffFormatter.debugFormatter("formatDesignationDirectory", StaffFormatter.formatDesignationDirectory, response);
-/*=================================================
-  COUNTS
-=================================================*/
+       case StaffConstants.INTENTS.STAFF_SUMMARY:
+case StaffConstants.INTENTS.STAFF_JURISDICTION_SUMMARY:
+case StaffConstants.INTENTS.STAFF_DESIGNATION_SUMMARY:
 
-case StaffConstants.INTENTS.STAFF_COUNT:
     return StaffFormatter.debugFormatter(
-        "formatStaffCount",
-        StaffFormatter.formatStaffCount,
-        response
-    );
 
-case StaffConstants.INTENTS.STAFF_CIRCLE_COUNT:
-    return StaffFormatter.debugFormatter(
-        "formatCircleCount",
-        StaffFormatter.formatCircleCount,
-        response
-    );
+        "formatSummary",
 
-case StaffConstants.INTENTS.STAFF_DIVISION_COUNT:
-    return StaffFormatter.debugFormatter(
-        "formatDivisionCount",
-        StaffFormatter.formatDivisionCount,
-        response
-    );
+        StaffFormatter.formatSummary,
 
-case StaffConstants.INTENTS.STAFF_RANGE_COUNT:
-    return StaffFormatter.debugFormatter(
-        "formatRangeCount",
-        StaffFormatter.formatRangeCount,
         response
-    );
 
-case StaffConstants.INTENTS.STAFF_BEAT_COUNT:
-    return StaffFormatter.debugFormatter(
-        "formatBeatCount",
-        StaffFormatter.formatBeatCount,
-        response
     );
+        /*=================================================
+          COUNTS
+        =================================================*/
+        case StaffConstants.INTENTS.STAFF_COUNT:
+        case StaffConstants.INTENTS.STAFF_CIRCLE_COUNT:
+        case StaffConstants.INTENTS.STAFF_DIVISION_COUNT:
+        case StaffConstants.INTENTS.STAFF_RANGE_COUNT:
+        case StaffConstants.INTENTS.STAFF_BEAT_COUNT:
+        case StaffConstants.INTENTS.STAFF_DESIGNATION_COUNT:
+            return StaffFormatter.debugFormatter(
+                "formatCount",
+                StaffFormatter.formatCount,
+                response
+            );
 
-case StaffConstants.INTENTS.STAFF_DESIGNATION_COUNT:
-    return StaffFormatter.debugFormatter(
-        "formatDesignationCount",
-        StaffFormatter.formatDesignationCount,
-        response
-    );
         /*=================================================
           STATUS
         =================================================*/
         case StaffConstants.INTENTS.ACTIVE_STAFF_COUNT:
-            return StaffFormatter.debugFormatter("formatActiveStaffCount", StaffFormatter.formatActiveStaffCount, response);
-        case StaffConstants.INTENTS.ACTIVE_STAFF_LIST:
-            return StaffFormatter.debugFormatter("formatActiveStaffList", StaffFormatter.formatActiveStaffList, response);
-        case StaffConstants.INTENTS.INACTIVE_STAFF_LIST:
-            return StaffFormatter.debugFormatter("formatInactiveStaffList", StaffFormatter.formatInactiveStaffList, response);
-        case StaffConstants.INTENTS.DUTY_SUMMARY:
-            return StaffFormatter.debugFormatter("formatDutySummary", StaffFormatter.formatDutySummary, response);
-        case StaffConstants.INTENTS.TEAM_LEADER_LIST:
-            return StaffFormatter.debugFormatter("formatTeamLeaderList", StaffFormatter.formatTeamLeaderList, response);
-        case StaffConstants.INTENTS.MOVING_STAFF:
-            return StaffFormatter.debugFormatter("formatMovingStaff", StaffFormatter.formatMovingStaff, response);
-        case StaffConstants.INTENTS.STATIONARY_STAFF:
-            return StaffFormatter.debugFormatter("formatStationaryStaff", StaffFormatter.formatStationaryStaff, response);
+case StaffConstants.INTENTS.STAFF_COUNT:
+
+    return StaffFormatter.debugFormatter(
+
+        "formatCount",
+
+        StaffFormatter.formatCount,
+
+        response
+
+    );
+case StaffConstants.INTENTS.DUTY_SUMMARY:
+
+    return StaffFormatter.debugFormatter(
+
+        "formatSummary",
+
+        StaffFormatter.formatSummary,
+
+        response
+
+    );
 
         /*=================================================
           CONTROL ROOM
@@ -559,8 +507,464 @@ case StaffConstants.INTENTS.STAFF_DESIGNATION_COUNT:
         }
     }
 };
+StaffFormatter.formatSummary = function (
 
+    response
 
+) {
+
+    const result =
+
+        StaffFormatter.createResponse(
+
+            response
+
+        );
+
+    const data =
+
+        response.data ||
+
+        {};
+
+    const totalStaff =
+
+        Number(
+
+            data.totalStaff ??
+
+            data.count ??
+
+            0
+
+        );
+
+    const activeStaff =
+
+        Number(
+
+            data.activeStaff ??
+
+            0
+
+        );
+
+    const inactiveStaff =
+
+        Number(
+
+            data.inactiveStaff ??
+
+            0
+
+        );
+
+    const movingStaff =
+
+        Number(
+
+            data.movingStaff ??
+
+            0
+
+        );
+
+    const stationaryStaff =
+
+        Number(
+
+            data.stationaryStaff ??
+
+            0
+
+        );
+
+    const distanceKm =
+
+        Number(
+
+            data.totalDistanceKm ??
+
+            0
+
+        );
+
+    const patrolPoints =
+
+        Number(
+
+            data.totalPatrolPoints ??
+
+            0
+
+        );
+
+    result.success =
+
+        true;
+
+    result.title =
+
+        "Staff Summary";
+
+    result.message =
+`# 👥 STAFF SUMMARY
+
+**Total Staff:** ${totalStaff}
+
+• Active Staff : ${activeStaff}
+
+• Inactive Staff : ${inactiveStaff}
+
+• Moving Staff : ${movingStaff}
+
+• Stationary Staff : ${stationaryStaff}
+
+• Distance : ${distanceKm.toFixed(2)} km
+
+• Patrol Points : ${patrolPoints}`;
+
+    result.data =
+
+        data;
+
+    return result;
+
+};
+StaffFormatter.formatCount = function (
+
+    response
+
+) {
+
+    const result =
+
+        StaffFormatter.createResponse(
+
+            response
+
+        );
+
+    const data =
+
+        response.data ||
+
+        {};
+
+    const count =
+
+        Number(
+
+            data.count ??
+
+            data.totalStaff ??
+
+            0
+
+        );
+
+    const active =
+
+        Number(
+
+            data.activeStaff ??
+
+            0
+
+        );
+
+    const inactive =
+
+        Number(
+
+            data.inactiveStaff ??
+
+            0
+
+        );
+
+    const moving =
+
+        Number(
+
+            data.movingStaff ??
+
+            0
+
+        );
+
+    const stationary =
+
+        Number(
+
+            data.stationaryStaff ??
+
+            0
+
+        );
+
+    result.success =
+
+        true;
+
+    result.title =
+
+        "Staff Count";
+
+    let text =
+
+`# 👥 STAFF COUNT
+
+**Total Staff:** ${count}`;
+
+    if (
+
+        active ||
+
+        inactive
+
+    ) {
+
+        text +=
+
+`
+
+• Active : ${active}
+
+• Inactive : ${inactive}`;
+
+    }
+
+    if (
+
+        moving ||
+
+        stationary
+
+    ) {
+
+        text +=
+
+`
+
+• Moving : ${moving}
+
+• Stationary : ${stationary}`;
+
+    }
+
+    if (
+
+        data.designationSummary &&
+
+        typeof data.designationSummary ===
+
+        "object"
+
+    ) {
+
+        text +=
+
+`
+
+## DESIGNATIONS`;
+
+        Object.entries(
+
+            data.designationSummary
+
+        ).forEach(
+
+            function (
+
+                entry
+
+            ) {
+
+                text +=
+
+`
+
+• ${entry[0]} : ${entry[1]}`;
+
+            }
+
+        );
+
+    }
+
+    result.message =
+
+        text;
+
+    result.data =
+
+        data;
+
+    return result;
+
+}; 
+ StaffFormatter.formatDirectory = function (
+
+    response
+
+) {
+
+    const result =
+
+        StaffFormatter.createResponse(
+
+            response
+
+        );
+
+    const groups =
+
+        Array.isArray(
+
+            response.data
+
+        )
+
+            ? response.data
+
+            : [];
+
+    let text =
+
+        "# 👤 STAFF DIRECTORY\n\n";
+
+    if (
+
+        groups.length ===
+
+        0
+
+    ) {
+
+        result.success =
+
+            true;
+
+        result.message =
+
+            text +
+
+            "No staff found.";
+
+        result.data =
+
+            groups;
+
+        return result;
+
+    }
+
+    groups.forEach(
+
+        function (
+
+            group,
+
+            index
+
+        ) {
+
+            const title =
+
+                group.circle ||
+
+                group.division ||
+
+                group.range ||
+
+                group.beat ||
+
+                group.designation ||
+
+                "GROUP";
+
+            text +=
+
+`## ${index + 1}. ${title}
+
+**Total Staff:** ${group.totalStaff}
+
+`;
+
+            (
+
+                group.staff ||
+
+                []
+
+            ).forEach(
+
+                function (
+
+                    profile,
+
+                    i
+
+                ) {
+
+                    text +=
+
+`${i + 1}. **${profile.identity?.name || profile.name || ""}**
+
+   • Designation : ${profile.identity?.designation || profile.designation || ""}
+
+   • Role : ${profile.identity?.role || profile.role || ""}
+
+   • Circle : ${profile.posting?.circle || profile.circle || ""}
+
+   • Division : ${profile.posting?.division || profile.division || ""}
+
+   • Range : ${profile.posting?.range || profile.range || ""}
+
+   • Beat : ${profile.posting?.beat || profile.beat || ""}
+
+   • Duty : ${profile.assignment?.status || profile.dutyStatus || ""}
+
+   • Active : ${profile.assignment?.dutyActive ?? profile.dutyActive ? "YES" : "NO"}
+
+   • Speed : ${profile.gps?.speed ?? profile.speed ?? 0}
+
+   • Distance : ${profile.analytics?.distanceKm ?? profile.distanceKm ?? 0} km
+
+`;
+
+                }
+
+            );
+
+            text +=
+
+"\n";
+
+        }
+
+    );
+
+    result.success =
+
+        true;
+
+    result.title =
+
+        "Staff Directory";
+
+    result.message =
+
+        text;
+
+    result.data =
+
+        groups;
+
+    return result;
+
+};
  /*=========================================================
  FORMAT STAFF PROFILE
 =========================================================*/
