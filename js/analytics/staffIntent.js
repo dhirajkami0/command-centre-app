@@ -5450,47 +5450,37 @@ if (
       Count Keywords
     ----------------------------------*/
 
-const hasDirectory =
+    const hasCount =
 
-    [
+        [
 
-        "LIST",
+            "COUNT",
+            "COUNTS",
+            "TOTAL",
+            "HOW MANY",
+            "NUMBER OF",
+            "HEADCOUNT",
+            "STRENGTH"
 
-        "SHOW",
+        ].some(
 
-        "DISPLAY",
+            function (word) {
 
-        "VIEW",
+                return query.includes(word);
 
-        "DIRECTORY"
+            }
 
-    ].some(
+        );
 
-        function (
+    if (
 
-            word
+        !hasCount
 
-        ) {
+    ) {
 
-            return query.includes(
+        return result;
 
-                word
-
-            );
-
-        }
-
-    );
-
-if (
-
-    hasDirectory
-
-) {
-
-    return result;
-
-}
+    }
 
     /*----------------------------------
       Designation Count
@@ -5682,97 +5672,51 @@ StaffIntent.detectDirectoryIntent = function (
       COUNT QUERIES ARE NOT DIRECTORY QUERIES
     ==================================================*/
 
-/*==================================================
-  COUNT vs DIRECTORY
-  "TOTAL STAFF LIST" = DIRECTORY
-  "TOTAL STAFF"      = COUNT
-==================================================*/
+    const hasCount =
 
-const hasDirectoryWord =
+        [
 
-    [
+            "COUNT",
 
-        "LIST",
+            "COUNTS",
 
-        "SHOW",
+            "TOTAL",
 
-        "DISPLAY",
+            "HOW MANY",
 
-        "VIEW",
+            "NUMBER OF",
 
-        "DIRECTORY",
+            "HEADCOUNT",
 
-        "WHO ARE"
+            "STRENGTH"
 
-    ].some(
+        ].some(
 
-        function (
-
-            word
-
-        ) {
-
-            return query.includes(
+            function (
 
                 word
 
-            );
+            ) {
 
-        }
+                return query.includes(
 
-    );
+                    word
 
-const hasCountWord =
+                );
 
-    [
+            }
 
-        "COUNT",
+        );
 
-        "COUNTS",
+    if (
 
-        "TOTAL",
+        hasCount
 
-        "HOW MANY",
+    ) {
 
-        "NUMBER OF",
+        return result;
 
-        "HEADCOUNT",
-
-        "STRENGTH"
-
-    ].some(
-
-        function (
-
-            word
-
-        ) {
-
-            return query.includes(
-
-                word
-
-            );
-
-        }
-
-    );
-
-/*----------------------------------
-  Pure Count Query
-----------------------------------*/
-
-if (
-
-    hasCountWord &&
-
-    !hasDirectoryWord
-
-) {
-
-    return result;
-
-}
+    }
 
     /*----------------------------------
       Constants
