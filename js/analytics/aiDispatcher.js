@@ -540,7 +540,29 @@ AIDispatcher.dispatch = async function (
                 "➡ StaffFormatter"
 
             );
+console.log(
+    "===== ROUTED BEFORE FORMAT ====="
+);
 
+console.log(
+    routed.intent
+);
+
+console.log(
+    routed.data
+);
+
+console.log(
+    routed.data?.length
+);
+
+console.log(
+    routed.data?.[0]
+);
+
+console.log(
+    routed.data?.[0]?.staff?.length
+);
             formatted =
 
                 GG.StaffFormatter.format(
