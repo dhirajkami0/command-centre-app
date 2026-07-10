@@ -5329,6 +5329,39 @@ GG.queryBeatDirectory = async function (
 GG.queryDesignationDirectory = async function (
     request
 ) {
+console.log("====================================");
+console.log("queryDesignationDirectory()");
+console.log("====================================");
+
+console.log("REQUEST");
+console.log(request);
+
+console.log("PARAMETERS");
+console.log(request.parameters);
+
+console.log("ENTITIES");
+console.log(request.entities);
+
+console.log("DESIGNATION");
+console.log(request.parameters?.designation);
+
+console.log("DIVISION");
+console.log(request.parameters?.division);
+
+console.log("RANGE");
+console.log(request.parameters?.range);
+
+console.log("BEAT");
+console.log(request.parameters?.beat);
+
+console.log("CIRCLE");
+console.log(request.parameters?.circle);
+
+console.log(
+    "ALL STAFF:",
+    StaffQuery.ensureAllStaff().length
+);
+    
     return StaffQuery.execute(
         request,
         async function (
@@ -5388,95 +5421,352 @@ GG.queryDesignationDirectory = async function (
             /*----------------------------------
               Profiles
             ----------------------------------*/
+
+            console.log(
+                "===================================="
+            );
+
+            console.log(
+                "queryDesignationDirectory() FILTER"
+            );
+
+            console.log(
+                "Requested Filters"
+            );
+
+            console.table({
+
+                designation:
+                    requestedDesignation,
+
+                circle:
+                    requestedCircle,
+
+                division:
+                    requestedDivision,
+
+                range:
+                    requestedRange,
+
+                beat:
+                    requestedBeat,
+
+                compartment:
+                    requestedCompartment
+
+            });
+
+            console.log(
+
+                "Total Staff:",
+
+                StaffQuery
+                    .ensureAllStaff()
+                    .length
+
+            );
+
             const profiles =
+
                 StaffQuery
                     .ensureAllStaff()
                     .filter(
+
                         function (
+
                             profile
+
                         ) {
-                            if (
-                                requestedDesignation &&
+
+                            const designation =
+
                                 String(
+
                                     profile.identity?.designation ||
+
                                     ""
+
                                 )
+
                                 .trim()
-                                .toUpperCase()
-                                !==
-                                requestedDesignation
-                            ) {
-                                return false;
-                            }
-                            if (
-                                requestedCircle &&
+
+                                .toUpperCase();
+
+                            const circle =
+
                                 String(
+
                                     profile.posting?.circle ||
+
                                     ""
+
                                 )
+
                                 .trim()
-                                .toUpperCase()
-                                !==
-                                requestedCircle
-                            ) {
-                                return false;
-                            }
-                            if (
-                                requestedDivision &&
+
+                                .toUpperCase();
+
+                            const division =
+
                                 String(
+
                                     profile.posting?.division ||
+
                                     ""
+
                                 )
+
                                 .trim()
-                                .toUpperCase()
-                                !==
-                                requestedDivision
-                            ) {
-                                return false;
-                            }
-                            if (
-                                requestedRange &&
+
+                                .toUpperCase();
+
+                            const range =
+
                                 String(
+
                                     profile.posting?.range ||
+
                                     ""
+
                                 )
+
                                 .trim()
-                                .toUpperCase()
-                                !==
-                                requestedRange
-                            ) {
-                                return false;
-                            }
-                            if (
-                                requestedBeat &&
+
+                                .toUpperCase();
+
+                            const beat =
+
                                 String(
+
                                     profile.posting?.beat ||
+
                                     ""
+
                                 )
+
                                 .trim()
-                                .toUpperCase()
-                                !==
-                                requestedBeat
-                            ) {
-                                return false;
-                            }
-                            if (
-                                requestedCompartment &&
+
+                                .toUpperCase();
+
+                            const compartment =
+
                                 String(
+
                                     profile.assignment?.assignedCompartment ||
+
                                     ""
+
                                 )
+
                                 .trim()
-                                .toUpperCase()
-                                !==
-                                requestedCompartment
+
+                                .toUpperCase();
+
+                            const okDesignation =
+
+                                !requestedDesignation ||
+
+                                designation ===
+
+                                requestedDesignation;
+
+                            const okCircle =
+
+                                !requestedCircle ||
+
+                                circle ===
+
+                                requestedCircle;
+
+                            const okDivision =
+
+                                !requestedDivision ||
+
+                                division ===
+
+                                requestedDivision;
+
+                            const okRange =
+
+                                !requestedRange ||
+
+                                range ===
+
+                                requestedRange;
+
+                            const okBeat =
+
+                                !requestedBeat ||
+
+                                beat ===
+
+                                requestedBeat;
+
+                            const okCompartment =
+
+                                !requestedCompartment ||
+
+                                compartment ===
+
+                                requestedCompartment;
+
+                            if (
+
+                                designation === "FR"
+
                             ) {
-                                return false;
+
+                                console.log(
+
+                                    "------------ FR DEBUG ------------"
+
+                                );
+
+                                console.table({
+
+                                    Name:
+
+                                        profile.identity?.cleanName,
+
+                                    Designation:
+
+                                        designation,
+
+                                    Circle:
+
+                                        circle,
+
+                                    Division:
+
+                                        division,
+
+                                    Range:
+
+                                        range,
+
+                                    Beat:
+
+                                        beat,
+
+                                    RequestedDesignation:
+
+                                        requestedDesignation,
+
+                                    RequestedCircle:
+
+                                        requestedCircle,
+
+                                    RequestedDivision:
+
+                                        requestedDivision,
+
+                                    RequestedRange:
+
+                                        requestedRange,
+
+                                    RequestedBeat:
+
+                                        requestedBeat,
+
+                                    okDesignation,
+
+                                    okCircle,
+
+                                    okDivision,
+
+                                    okRange,
+
+                                    okBeat,
+
+                                    okCompartment
+
+                                });
+
                             }
-                            return true;
+
+                            return (
+
+                                okDesignation &&
+
+                                okCircle &&
+
+                                okDivision &&
+
+                                okRange &&
+
+                                okBeat &&
+
+                                okCompartment
+
+                            );
+
                         }
+
                     );
 
+            console.log(
+
+                "===================================="
+
+            );
+
+            console.log(
+
+                "FILTERED STAFF:",
+
+                profiles.length
+
+            );
+
+            console.table(
+
+                profiles.map(
+
+                    function (
+
+                        profile
+
+                    ) {
+
+                        return {
+
+                            Name:
+
+                                profile.identity?.cleanName,
+
+                            Designation:
+
+                                profile.identity?.designation,
+
+                            Circle:
+
+                                profile.posting?.circle,
+
+                            Division:
+
+                                profile.posting?.division,
+
+                            Range:
+
+                                profile.posting?.range,
+
+                            Beat:
+
+                                profile.posting?.beat
+
+                        };
+
+                    }
+
+                )
+
+            );
+
+            console.log(
+
+                "===================================="
+
+            );
             /*----------------------------------
               Directory
             ----------------------------------*/
