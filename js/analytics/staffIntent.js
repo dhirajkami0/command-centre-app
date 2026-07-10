@@ -5450,37 +5450,47 @@ if (
       Count Keywords
     ----------------------------------*/
 
-    const hasCount =
+const hasDirectory =
 
-        [
+    [
 
-            "COUNT",
-            "COUNTS",
-            "TOTAL",
-            "HOW MANY",
-            "NUMBER OF",
-            "HEADCOUNT",
-            "STRENGTH"
+        "LIST",
 
-        ].some(
+        "SHOW",
 
-            function (word) {
+        "DISPLAY",
 
-                return query.includes(word);
+        "VIEW",
 
-            }
+        "DIRECTORY"
 
-        );
+    ].some(
 
-    if (
+        function (
 
-        !hasCount
+            word
 
-    ) {
+        ) {
 
-        return result;
+            return query.includes(
 
-    }
+                word
+
+            );
+
+        }
+
+    );
+
+if (
+
+    hasDirectory
+
+) {
+
+    return result;
+
+}
 
     /*----------------------------------
       Designation Count
