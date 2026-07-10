@@ -5313,249 +5313,139 @@ StaffIntent.detectDirectoryIntent = function (
     }
 
     const INTENTS =
-
         StaffConstants.INTENTS;
 
     const KEYWORDS =
-
         StaffConstants.KEYWORDS;
 
     const parameters =
-
-        result.parameters ||
-
-        {};
-
-    const posting =
-
-        result.entities.posting ||
-
-        [];
+        result.parameters || {};
 
     const designation =
-
-        result.entities.designations ||
-
-        [];
+        result.entities.designations || [];
 
     const allStaff =
-
-        result.entities.staff ||
-
-        [];
+        result.entities.staff || [];
 
     /*----------------------------------
-      Keyword Helper
+      Helpers
     ----------------------------------*/
 
-    function hasKeyword(
+    function hasKeyword(list) {
 
-        list
-
-    ) {
-
-        if (
-
-            !Array.isArray(
-
-                list
-
-            )
-
-        ) {
+        if (!Array.isArray(list)) {
 
             return false;
 
         }
 
-        return list.some(
+        return list.some(function (word) {
 
-            function (
+            return query.includes(
 
-                word
-
-            ) {
-
-                return query.includes(
-
-                    String(
-
-                        word
-
-                    )
+                String(word)
 
                     .toUpperCase()
 
-                );
+            );
 
-            }
-
-        );
+        });
 
     }
-
-    /*----------------------------------
-      Directory Verb
-    ----------------------------------*/
 
     function hasDirectoryVerb() {
 
         return [
 
             "LIST",
-
             "SHOW",
-
             "DISPLAY",
-
             "VIEW",
-
             "GET",
-
             "GIVE",
-
             "DIRECTORY",
-
             "STAFF",
-
             "PERSONNEL",
-
             "EMPLOYEES",
-
             "OFFICERS",
-
             "WHO ARE",
-
             "WHO IS"
 
-        ].some(
+        ].some(function (word) {
 
-            function (
+            return query.includes(word);
 
-                word
-
-            ) {
-
-                return query.includes(
-
-                    word
-
-                );
-
-            }
-
-        );
+        });
 
     }
 
     const directory =
-
         hasDirectoryVerb();
+
+    const hasDesignation =
+        designation.length > 0;
+
+    const hasCircle =
+        !!parameters.circle;
+
+    const hasDivision =
+        !!parameters.division;
+
+    const hasRange =
+        !!parameters.range;
+
+    const hasBeat =
+        !!parameters.beat;
+
+    const hasCompartment =
+        !!parameters.compartment;
 
     /*==================================================
       DESIGNATION DIRECTORY
-      (Highest Priority)
-    ==================================================*/
-
-/*==================================================
-  DESIGNATION DIRECTORY
-==================================================*/
-
-const hasPosting =
-
-    !!(
-
-        parameters.circle ||
-
-        parameters.division ||
-
-        parameters.range ||
-
-        parameters.beat ||
-
-        parameters.compartment
-
-    );
-
-if (
-
-    designation.length > 0 &&
-
-    (
-
-        hasKeyword(
-
-            KEYWORDS.STAFF_DESIGNATION_DIRECTORY
-
-        ) ||
-
-        directory ||
-
-        hasPosting
-
-    )
-
-) {
-
-    result.intent =
-
-        INTENTS.STAFF_DESIGNATION_DIRECTORY;
-
-    result.parameters.staff =
-
-        posting;
-
-    result.parameters.designation =
-
-        designation[0]
-
-            .identity
-
-            .designation;
-
-    result.confidence =
-
-        0.99;
-
-    return result;
-
-}
-
-    /*==================================================
-      RANGE DIRECTORY
+      Example:
+      AS list of WestDamanpur range
+      FR list of BTR_W division
     ==================================================*/
 
     if (
 
+        hasDesignation &&
+
         (
+
+            directory ||
+
+            hasCircle ||
+
+            hasDivision ||
+
+            hasRange ||
+
+            hasBeat ||
+
+            hasCompartment ||
 
             hasKeyword(
 
-                KEYWORDS.STAFF_RANGE_DIRECTORY
-
-            ) ||
-
-            (
-
-                directory &&
-
-                parameters.range
+                KEYWORDS.STAFF_DESIGNATION_DIRECTORY
 
             )
 
-        ) &&
-
-        posting.length > 0
+        )
 
     ) {
 
         result.intent =
 
-            INTENTS.STAFF_RANGE_DIRECTORY;
+            INTENTS.STAFF_DESIGNATION_DIRECTORY;
 
-        result.parameters.staff =
+        result.parameters.designation =
 
-            posting;
+            designation[0]
+
+                .identity
+
+                .designation;
 
         result.confidence =
 
@@ -5567,29 +5457,24 @@ if (
 
     /*==================================================
       BEAT DIRECTORY
+      Highest Jurisdiction
     ==================================================*/
 
     if (
 
+        hasBeat &&
+
         (
+
+            directory ||
 
             hasKeyword(
 
                 KEYWORDS.STAFF_BEAT_DIRECTORY
 
-            ) ||
-
-            (
-
-                directory &&
-
-                parameters.beat
-
             )
 
-        ) &&
-
-        posting.length > 0
+        )
 
     ) {
 
@@ -5597,9 +5482,39 @@ if (
 
             INTENTS.STAFF_BEAT_DIRECTORY;
 
-        result.parameters.staff =
+        result.confidence =
 
-            posting;
+            0.99;
+
+        return result;
+
+    }
+
+    /*==================================================
+      RANGE DIRECTORY
+    ==================================================*/
+
+    if (
+
+        hasRange &&
+
+        (
+
+            directory ||
+
+            hasKeyword(
+
+                KEYWORDS.STAFF_RANGE_DIRECTORY
+
+            )
+
+        )
+
+    ) {
+
+        result.intent =
+
+            INTENTS.STAFF_RANGE_DIRECTORY;
 
         result.confidence =
 
@@ -5615,35 +5530,25 @@ if (
 
     if (
 
+        hasDivision &&
+
         (
+
+            directory ||
 
             hasKeyword(
 
                 KEYWORDS.STAFF_DIVISION_DIRECTORY
 
-            ) ||
-
-            (
-
-                directory &&
-
-                parameters.division
-
             )
 
-        ) &&
-
-        posting.length > 0
+        )
 
     ) {
 
         result.intent =
 
             INTENTS.STAFF_DIVISION_DIRECTORY;
-
-        result.parameters.staff =
-
-            posting;
 
         result.confidence =
 
@@ -5659,35 +5564,25 @@ if (
 
     if (
 
+        hasCircle &&
+
         (
+
+            directory ||
 
             hasKeyword(
 
                 KEYWORDS.STAFF_CIRCLE_DIRECTORY
 
-            ) ||
-
-            (
-
-                directory &&
-
-                parameters.circle
-
             )
 
-        ) &&
-
-        posting.length > 0
+        )
 
     ) {
 
         result.intent =
 
             INTENTS.STAFF_CIRCLE_DIRECTORY;
-
-        result.parameters.staff =
-
-            posting;
 
         result.confidence =
 
