@@ -1101,424 +1101,7 @@ StaffQuery.getValidStaff = function () {
 };/*----------------------------------
   Get Staff List
 ----------------------------------*/
-/*----------------------------------
-  Aggregate Staff Filter
-----------------------------------*/
 
-StaffQuery.filterStaff = function (
-    request = {}
-) {
-    /*----------------------------------
-      Source
-    ----------------------------------*/
-
-    let profiles =
-        StaffQuery.getValidStaff();
-if (
-
-    !Array.isArray(
-
-        profiles
-
-    )
-
-) {
-
-    profiles = [];
-
-}
-    /*----------------------------------
-      Parameters
-    ----------------------------------*/
-
-const parameters =
-
-    StaffQuery.getParameters(
-
-        request
-
-    );
-
-    const intent =
-        request.intent ||
-        "";
-
-    /*----------------------------------
-      Normalize
-    ----------------------------------*/
-
-    function normalize(
-        value
-    ) {
-        return String(
-            value ||
-            ""
-        )
-        .trim()
-        .toUpperCase();
-    }
-
-    /*----------------------------------
-      Requested Filters
-    ----------------------------------*/
-
-    const requestedDesignation =
-        normalize(
-            parameters.designation
-        );
-    const requestedCircle =
-        normalize(
-            parameters.circle
-        );
-    const requestedDivision =
-        normalize(
-            parameters.division
-        );
-    const requestedRange =
-        normalize(
-            parameters.range
-        );
-    const requestedBeat =
-        normalize(
-            parameters.beat
-        );
-    const requestedDutyType =
-        normalize(
-            parameters.dutyType
-        );
-    const requestedStatus =
-        normalize(
-            parameters.status
-        );
-    const requestedLeader =
-        normalize(
-            parameters.leader
-        );
-    const requestedTeam =
-        normalize(
-            parameters.team
-        );
-    const requestedDutyActive =
-        parameters.dutyActive;
-    const requestedMoving =
-        parameters.moving;
-    const requestedStationary =
-        parameters.stationary;
-    const requestedPatrolling =
-        parameters.patrolling;
-    const requestedMinDistance =
-        Number(
-            parameters.minDistance ||
-            0
-        );
-    const requestedMinPoints =
-        Number(
-            parameters.minPoints ||
-            0
-        );
-
-    /*----------------------------------
-      Apply Filters
-    ----------------------------------*/
-
-    profiles =
-        profiles.filter(
-            function (
-                profile
-            ) {
-                /*----------------------------------
-                  Identity
-                ----------------------------------*/
-
-                const designation =
-                    normalize(
-                        profile.identity?.designation
-                    );
-
-                /*----------------------------------
-                  Posting
-                ----------------------------------*/
-
-                const circle =
-                    normalize(
-                        profile.posting?.circle
-                    );
-                const division =
-                    normalize(
-                        profile.posting?.division
-                    );
-                const range =
-                    normalize(
-                        profile.posting?.range
-                    );
-                const beat =
-                    normalize(
-                        profile.posting?.beat
-                    );
-
-                /*----------------------------------
-                  Assignment
-                ----------------------------------*/
-
-                const dutyType =
-                    normalize(
-                        profile.assignment
-                            ?.dutyType
-                    );
-                const status =
-                    normalize(
-                        profile.assignment
-                            ?.status
-                    );
-                const dutyActive =
-                    profile.assignment
-                        ?.dutyActive ===
-                    true;
-                const leader =
-                    normalize(
-                        profile.assignment
-                            ?.leader ||
-                        profile.teamInfo
-                            ?.leader
-                    );
-                const team =
-                    normalize(
-                        profile.assignment
-                            ?.team ||
-                        profile.teamInfo
-                            ?.team
-                    );
-
-                /*----------------------------------
-                  GPS
-                ----------------------------------*/
-
-                const speed =
-                    Number(
-                        profile.gps?.speed ||
-                        0
-                    );
-                const moving =
-                    speed >
-                    1;
-                const stationary =
-                    !moving;
-
-                /*----------------------------------
-                  Analytics
-                ----------------------------------*/
-
-                const distance =
-                    Number(
-                        profile.analytics
-                            ?.distanceKm ||
-                        0
-                    );
-                const points =
-                    Number(
-                        profile.analytics
-                            ?.pointCount ||
-                        0
-                    );
-
-                /*----------------------------------
-                  Individual Filters
-                ----------------------------------*/
-
-                if (
-                    requestedDesignation &&
-                    designation !==
-                    requestedDesignation
-                ) {
-                    return false;
-                }
-                if (
-                    requestedCircle &&
-                    circle !==
-                    requestedCircle
-                ) {
-                    return false;
-                }
-                if (
-                    requestedDivision &&
-                    division !==
-                    requestedDivision
-                ) {
-                    return false;
-                }
-                if (
-                    requestedRange &&
-                    range !==
-                    requestedRange
-                ) {
-                    return false;
-                }
-                if (
-                    requestedBeat &&
-                    beat !==
-                    requestedBeat
-                ) {
-                    return false;
-                }
-                if (
-                    requestedDutyType &&
-                    dutyType !==
-                    requestedDutyType
-                ) {
-                    return false;
-                }
-                if (
-                    requestedStatus &&
-                    status !==
-                    requestedStatus
-                ) {
-                    return false;
-                }
-                if (
-                    requestedLeader &&
-                    leader !==
-                    requestedLeader
-                ) {
-                    return false;
-                }
-                if (
-                    requestedTeam &&
-                    team !==
-                    requestedTeam
-                ) {
-                    return false;
-                }
-
-                /*----------------------------------
-                  Duty Active
-                ----------------------------------*/
-
-                if (
-                    typeof requestedDutyActive ===
-                    "boolean"
-                ) {
-                    if (
-                        dutyActive !==
-                        requestedDutyActive
-                    ) {
-                        return false;
-                    }
-                }
-
-                /*----------------------------------
-                  Moving
-                ----------------------------------*/
-
-                if (
-                    typeof requestedMoving ===
-                    "boolean"
-                ) {
-                    if (
-                        moving !==
-                        requestedMoving
-                    ) {
-                        return false;
-                    }
-                }
-
-                /*----------------------------------
-                  Stationary
-                ----------------------------------*/
-
-                if (
-                    typeof requestedStationary ===
-                    "boolean"
-                ) {
-                    if (
-                        stationary !==
-                        requestedStationary
-                    ) {
-                        return false;
-                    }
-                }
-
-                /*----------------------------------
-                  Patrolling
-                ----------------------------------*/
-
-                if (
-                    requestedPatrolling ===
-                    true
-                ) {
-                    if (
-                        !dutyActive ||
-                        !dutyType.includes(
-                            "PATROL"
-                        )
-                    ) {
-                        return false;
-                    }
-                }
-
-                /*----------------------------------
-                  Minimum Distance
-                ----------------------------------*/
-
-                if (
-                    requestedMinDistance >
-                    0
-                ) {
-                    if (
-                        distance <
-                        requestedMinDistance
-                    ) {
-                        return false;
-                    }
-                }
-
-                /*----------------------------------
-                  Minimum GPS Points
-                ----------------------------------*/
-
-                if (
-                    requestedMinPoints >
-                    0
-                ) {
-                    if (
-                        points <
-                        requestedMinPoints
-                    ) {
-                        return false;
-                    }
-                }
-
-                return true;
-            }
-        );
-
-    /*----------------------------------
-      Debug
-    ----------------------------------*/
-
-    console.group(
-        "🧩 StaffQuery.filterStaff"
-    );
-    console.log(
-        "Parameters:",
-        parameters
-    );
-    console.log(
-        "Matched:",
-        profiles.length
-    );
-    console.groupEnd();
-
-    /*----------------------------------
-      Return
-    ----------------------------------*/
-
-    return {
-        staff:
-            profiles,
-        count:
-            profiles.length
-    };
-};
 /*=========================================================
  HELPER FUNCTIONS
 =========================================================*/
@@ -2035,127 +1618,7 @@ GG.queryStaffSearch = async function (
     );
 
 };
-GG.queryStaffCount = async function (
 
-    request
-
-) {
-
-    return StaffQuery.execute(
-
-        request,
-
-        async function (
-
-            request
-
-        ) {
-
-            /*----------------------------------
-              Filter Staff
-            ----------------------------------*/
-
-            const result =
-
-                StaffQuery.filterStaff(
-
-                    request
-
-                );
-
-            /*----------------------------------
-              Parameters
-            ----------------------------------*/
-
-            const parameters =
-
-                StaffQuery.getParameters(
-
-                    request
-
-                );
-
-            /*----------------------------------
-              Response
-            ----------------------------------*/
-
-            return {
-
-                circle:
-
-                    parameters.circle ||
-
-                    "",
-
-                division:
-
-                    parameters.division ||
-
-                    "",
-
-                range:
-
-                    parameters.range ||
-
-                    "",
-
-                beat:
-
-                    parameters.beat ||
-
-                    "",
-
-                designation:
-
-                    parameters.designation ||
-
-                    "",
-
-                dutyType:
-
-                    parameters.dutyType ||
-
-                    "",
-
-                dutyActive:
-
-                    parameters.dutyActive,
-
-                moving:
-
-                    parameters.moving,
-
-                stationary:
-
-                    parameters.stationary,
-
-                leader:
-
-                    parameters.leader ||
-
-                    "",
-
-                team:
-
-                    parameters.team ||
-
-                    "",
-
-                count:
-
-                    result.count,
-
-                staff:
-
-                    result.staff
-
-            };
-
-        }
-
-    );
-
-};
 /*----------------------------------
   Staff Directory
 ----------------------------------*/
@@ -2176,9 +1639,11 @@ GG.queryStaffDirectory = async function (
 
         ) {
 
-return StaffQuery.filterStaff(
-    request
-);
+            return StaffQuery.getStaff(
+
+                request
+
+            );
 
         }
 
@@ -3626,10 +3091,6 @@ GG.queryStaffPatrolDuration = async function (
   Active Staff Count
 ----------------------------------*/
 
-/*----------------------------------
-  Active Staff Count
-----------------------------------*/
-
 GG.queryActiveStaffCount = async function (
 
     request
@@ -3646,21 +3107,24 @@ GG.queryActiveStaffCount = async function (
 
         ) {
 
-            request.parameters =
+            const active =
+StaffQuery.ensureAllStaff().filter(
 
-                request.parameters ||
+                    function (
 
-                {};
+                        profile
 
-            request.parameters.dutyActive =
+                    ) {
 
-                true;
+                        return (
 
-            const result =
+                            profile.assignment?.dutyActive ===
 
-                StaffQuery.filterStaff(
+                            true
 
-                    request
+                        );
+
+                    }
 
                 );
 
@@ -3668,7 +3132,7 @@ GG.queryActiveStaffCount = async function (
 
                 count:
 
-                    result.count
+                    active.length
 
             };
 
@@ -3698,21 +3162,39 @@ GG.queryActiveStaffList = async function (
 
         ) {
 
-            request.parameters =
+            const active =
 
-                request.parameters ||
+StaffQuery.ensureAllStaff().filter(
 
-                {};
+                    function (
 
-            request.parameters.dutyActive =
+                        profile
 
-                true;
+                    ) {
 
-            return StaffQuery.filterStaff(
+                        return (
 
-                request
+                            profile.assignment?.dutyActive ===
 
-            );
+                            true
+
+                        );
+
+                    }
+
+                );
+
+            return {
+
+                count:
+
+                    active.length,
+
+                staff:
+
+                    active
+
+            };
 
         }
 
@@ -3740,27 +3222,46 @@ GG.queryInactiveStaffList = async function (
 
         ) {
 
-            request.parameters =
+            const inactive =
 
-                request.parameters ||
+StaffQuery.ensureAllStaff().filter(
 
-                {};
+                    function (
 
-            request.parameters.dutyActive =
+                        profile
 
-                false;
+                    ) {
 
-            return StaffQuery.filterStaff(
+                        return (
 
-                request
+                            profile.assignment?.dutyActive !==
 
-            );
+                            true
+
+                        );
+
+                    }
+
+                );
+
+            return {
+
+                count:
+
+                    inactive.length,
+
+                staff:
+
+                    inactive
+
+            };
 
         }
 
     );
 
 };
+
 /*----------------------------------
   Duty Summary
 ----------------------------------*/
@@ -4498,23 +3999,15 @@ GG.queryDesignationSummary = async function (
         ) {
 
             /*----------------------------------
-              Filter Staff
+              Entire Staff Collection
             ----------------------------------*/
-
-            const result =
-
-                StaffQuery.filterStaff(
-
-                    request
-
-                );
 
             const profiles =
 
-                result.staff;
+                StaffQuery.ensureAllStaff();
 
             /*----------------------------------
-              Summary
+              Build Summary
             ----------------------------------*/
 
             const summary =
@@ -4531,15 +4024,15 @@ GG.queryDesignationSummary = async function (
 
                     const designation =
 
-                        String(
+    String(
 
-                            profile.identity?.designation ||
+        profile.identity?.designation ||
 
-                            "UNASSIGNED"
+        "UNASSIGNED"
 
-                        )
+    )
 
-                        .trim();
+    .trim();
 
                     if (
 
@@ -4619,7 +4112,7 @@ GG.queryDesignationSummary = async function (
 
                         ) >
 
-                        1
+                        0
 
                     ) {
 
@@ -4672,6 +4165,7 @@ GG.queryDesignationSummary = async function (
 /*----------------------------------
   Circle Directory
 ----------------------------------*/
+
 GG.queryCircleDirectory = async function (
 
     request
@@ -4689,20 +4183,73 @@ GG.queryCircleDirectory = async function (
         ) {
 
             /*----------------------------------
-              Filter Staff
+              Requested Circle
             ----------------------------------*/
 
-            const result =
+            const requestedCircle =
 
-                StaffQuery.filterStaff(
+                String(
 
-                    request
+                    request.parameters?.circle ||
 
-                );
+                    ""
+
+                )
+
+                .trim()
+
+                .toUpperCase();
+
+            /*----------------------------------
+              Profiles
+            ----------------------------------*/
 
             const profiles =
 
-                result.staff;
+                StaffQuery
+                    .ensureAllStaff()
+
+                    .filter(
+
+                        function (
+
+                            profile
+
+                        ) {
+
+                            if (
+
+                                requestedCircle === ""
+
+                            ) {
+
+                                return true;
+
+                            }
+
+                            return (
+
+                                String(
+
+                                    profile.posting?.circle ||
+
+                                    ""
+
+                                )
+
+                                .trim()
+
+                                .toUpperCase()
+
+                                ===
+
+                                requestedCircle
+
+                            );
+
+                        }
+
+                    );
 
             /*----------------------------------
               Directory
@@ -4840,6 +4387,12 @@ GG.queryCircleDirectory = async function (
                           Assignment
                         ----------------------------------*/
 
+                        assignedCompartment:
+
+                            profile.assignment?.assignedCompartment ||
+
+                            "",
+
                         dutyType:
 
                             profile.assignment?.dutyType ||
@@ -4858,17 +4411,17 @@ GG.queryCircleDirectory = async function (
 
                             false,
 
-                        leader:
+                        /*----------------------------------
+                          Team
+                        ----------------------------------*/
 
-                            profile.assignment?.leader ||
+                        leader:
 
                             profile.teamInfo?.leader ||
 
                             "",
 
                         team:
-
-                            profile.assignment?.team ||
 
                             profile.teamInfo?.team ||
 
@@ -4904,25 +4457,25 @@ GG.queryCircleDirectory = async function (
 
                             profile.gps?.speed ??
 
-                            0,
+                            null,
 
                         heading:
 
                             profile.gps?.heading ??
 
-                            0,
+                            null,
 
                         accuracy:
 
                             profile.gps?.accuracy ??
 
-                            0,
+                            null,
 
                         lastSeen:
 
                             profile.gps?.lastSeen ??
 
-                            "",
+                            null,
 
                         timestamp:
 
@@ -4984,6 +4537,7 @@ GG.queryCircleDirectory = async function (
     /*----------------------------------
   Division Directory
 ----------------------------------*/
+
 GG.queryDivisionDirectory = async function (
 
     request
@@ -5001,28 +4555,79 @@ GG.queryDivisionDirectory = async function (
         ) {
 
             /*----------------------------------
-              Filter Staff
+              Requested Division
             ----------------------------------*/
 
-            const result =
+            const requestedDivision =
 
-                StaffQuery.filterStaff(
+                String(
 
-                    request
+                    request.parameters?.division ||
 
-                );
+                    ""
+
+                )
+
+                .trim()
+
+                .toUpperCase();
+
+            /*----------------------------------
+              Profiles
+            ----------------------------------*/
 
             const profiles =
 
-                result.staff;
+                StaffQuery
+                    .ensureAllStaff()
+
+                    .filter(
+
+                        function (
+
+                            profile
+
+                        ) {
+
+                            if (
+
+                                requestedDivision === ""
+
+                            ) {
+
+                                return true;
+
+                            }
+
+                            return (
+
+                                String(
+
+                                    profile.posting?.division ||
+
+                                    ""
+
+                                )
+
+                                .trim()
+
+                                .toUpperCase()
+
+                                ===
+
+                                requestedDivision
+
+                            );
+
+                        }
+
+                    );
 
             /*----------------------------------
               Directory
             ----------------------------------*/
 
-            const directory =
-
-                {};
+            const directory = {};
 
             profiles.forEach(
 
@@ -5130,12 +4735,6 @@ GG.queryDivisionDirectory = async function (
 
                             "",
 
-                        division:
-
-                            profile.posting?.division ||
-
-                            "",
-
                         range:
 
                             profile.posting?.range ||
@@ -5151,6 +4750,12 @@ GG.queryDivisionDirectory = async function (
                         /*----------------------------------
                           Assignment
                         ----------------------------------*/
+
+                        assignedCompartment:
+
+                            profile.assignment?.assignedCompartment ||
+
+                            "",
 
                         dutyType:
 
@@ -5170,17 +4775,17 @@ GG.queryDivisionDirectory = async function (
 
                             false,
 
-                        leader:
+                        /*----------------------------------
+                          Team
+                        ----------------------------------*/
 
-                            profile.assignment?.leader ||
+                        leader:
 
                             profile.teamInfo?.leader ||
 
                             "",
 
                         team:
-
-                            profile.assignment?.team ||
 
                             profile.teamInfo?.team ||
 
@@ -5216,25 +4821,25 @@ GG.queryDivisionDirectory = async function (
 
                             profile.gps?.speed ??
 
-                            0,
+                            null,
 
                         heading:
 
                             profile.gps?.heading ??
 
-                            0,
+                            null,
 
                         accuracy:
 
                             profile.gps?.accuracy ??
 
-                            0,
+                            null,
 
                         lastSeen:
 
                             profile.gps?.lastSeen ??
 
-                            "",
+                            null,
 
                         timestamp:
 
@@ -5314,28 +4919,79 @@ GG.queryRangeDirectory = async function (
         ) {
 
             /*----------------------------------
-              Filter Staff
+              Requested Range
             ----------------------------------*/
 
-            const result =
+            const requestedRange =
 
-                StaffQuery.filterStaff(
+                String(
 
-                    request
+                    request.parameters?.range ||
 
-                );
+                    ""
+
+                )
+
+                .trim()
+
+                .toUpperCase();
+
+            /*----------------------------------
+              Profiles
+            ----------------------------------*/
 
             const profiles =
 
-                result.staff;
+                StaffQuery
+                    .ensureAllStaff()
+
+                    .filter(
+
+                        function (
+
+                            profile
+
+                        ) {
+
+                            if (
+
+                                requestedRange === ""
+
+                            ) {
+
+                                return true;
+
+                            }
+
+                            return (
+
+                                String(
+
+                                    profile.posting?.range ||
+
+                                    ""
+
+                                )
+
+                                .trim()
+
+                                .toUpperCase()
+
+                                ===
+
+                                requestedRange
+
+                            );
+
+                        }
+
+                    );
 
             /*----------------------------------
               Directory
             ----------------------------------*/
 
-            const directory =
-
-                {};
+            const directory = {};
 
             profiles.forEach(
 
@@ -5380,10 +5036,6 @@ GG.queryRangeDirectory = async function (
                     group.totalStaff++;
 
                     group.staff.push({
-
-                        /*----------------------------------
-                          Identity
-                        ----------------------------------*/
 
                         cleanName:
 
@@ -5433,10 +5085,6 @@ GG.queryRangeDirectory = async function (
 
                             "",
 
-                        /*----------------------------------
-                          Posting
-                        ----------------------------------*/
-
                         circle:
 
                             profile.posting?.circle ||
@@ -5449,21 +5097,17 @@ GG.queryRangeDirectory = async function (
 
                             "",
 
-                        range:
-
-                            profile.posting?.range ||
-
-                            "",
-
                         beat:
 
                             profile.posting?.beat ||
 
                             "",
 
-                        /*----------------------------------
-                          Assignment
-                        ----------------------------------*/
+                        assignedCompartment:
+
+                            profile.assignment?.assignedCompartment ||
+
+                            "",
 
                         dutyType:
 
@@ -5485,23 +5129,15 @@ GG.queryRangeDirectory = async function (
 
                         leader:
 
-                            profile.assignment?.leader ||
-
                             profile.teamInfo?.leader ||
 
                             "",
 
                         team:
 
-                            profile.assignment?.team ||
-
                             profile.teamInfo?.team ||
 
                             "",
-
-                        /*----------------------------------
-                          Location
-                        ----------------------------------*/
 
                         latitude:
 
@@ -5521,49 +5157,29 @@ GG.queryRangeDirectory = async function (
 
                             "",
 
-                        /*----------------------------------
-                          GPS
-                        ----------------------------------*/
-
                         speed:
 
                             profile.gps?.speed ??
 
-                            0,
+                            null,
 
                         heading:
 
                             profile.gps?.heading ??
 
-                            0,
+                            null,
 
                         accuracy:
 
                             profile.gps?.accuracy ??
 
-                            0,
+                            null,
 
                         lastSeen:
 
                             profile.gps?.lastSeen ??
 
-                            "",
-
-                        timestamp:
-
-                            profile.gps?.timestamp ??
-
                             null,
-
-                        updatedAt:
-
-                            profile.gps?.updatedAt ??
-
-                            null,
-
-                        /*----------------------------------
-                          Analytics
-                        ----------------------------------*/
 
                         distanceKm:
 
@@ -5606,6 +5222,7 @@ GG.queryRangeDirectory = async function (
     );
 
 };
+
     /*----------------------------------
   Beat Directory
 ----------------------------------*/
@@ -5627,28 +5244,79 @@ GG.queryBeatDirectory = async function (
         ) {
 
             /*----------------------------------
-              Filter Staff
+              Requested Beat
             ----------------------------------*/
 
-            const result =
+            const requestedBeat =
 
-                StaffQuery.filterStaff(
+                String(
 
-                    request
+                    request.parameters?.beat ||
 
-                );
+                    ""
+
+                )
+
+                .trim()
+
+                .toUpperCase();
+
+            /*----------------------------------
+              Profiles
+            ----------------------------------*/
 
             const profiles =
 
-                result.staff;
+                StaffQuery
+                    .ensureAllStaff()
+
+                    .filter(
+
+                        function (
+
+                            profile
+
+                        ) {
+
+                            if (
+
+                                requestedBeat === ""
+
+                            ) {
+
+                                return true;
+
+                            }
+
+                            return (
+
+                                String(
+
+                                    profile.posting?.beat ||
+
+                                    ""
+
+                                )
+
+                                .trim()
+
+                                .toUpperCase()
+
+                                ===
+
+                                requestedBeat
+
+                            );
+
+                        }
+
+                    );
 
             /*----------------------------------
               Directory
             ----------------------------------*/
 
-            const directory =
-
-                {};
+            const directory = {};
 
             profiles.forEach(
 
@@ -5768,15 +5436,15 @@ GG.queryBeatDirectory = async function (
 
                             "",
 
-                        beat:
-
-                            profile.posting?.beat ||
-
-                            "",
-
                         /*----------------------------------
                           Assignment
                         ----------------------------------*/
+
+                        assignedCompartment:
+
+                            profile.assignment?.assignedCompartment ||
+
+                            "",
 
                         dutyType:
 
@@ -5796,17 +5464,17 @@ GG.queryBeatDirectory = async function (
 
                             false,
 
-                        leader:
+                        /*----------------------------------
+                          Team
+                        ----------------------------------*/
 
-                            profile.assignment?.leader ||
+                        leader:
 
                             profile.teamInfo?.leader ||
 
                             "",
 
                         team:
-
-                            profile.assignment?.team ||
 
                             profile.teamInfo?.team ||
 
@@ -5842,25 +5510,25 @@ GG.queryBeatDirectory = async function (
 
                             profile.gps?.speed ??
 
-                            0,
+                            null,
 
                         heading:
 
                             profile.gps?.heading ??
 
-                            0,
+                            null,
 
                         accuracy:
 
                             profile.gps?.accuracy ??
 
-                            0,
+                            null,
 
                         lastSeen:
 
                             profile.gps?.lastSeen ??
 
-                            "",
+                            null,
 
                         timestamp:
 
@@ -5924,319 +5592,597 @@ GG.queryBeatDirectory = async function (
 ----------------------------------*/
 
 GG.queryDesignationDirectory = async function (
-
     request
-
 ) {
+console.log("====================================");
+console.log("queryDesignationDirectory()");
+console.log("====================================");
 
+console.log("REQUEST");
+console.log(request);
+
+console.log("PARAMETERS");
+console.log(request.parameters);
+
+console.log("ENTITIES");
+console.log(request.entities);
+
+console.log("DESIGNATION");
+console.log(request.parameters?.designation);
+
+console.log("DIVISION");
+console.log(request.parameters?.division);
+
+console.log("RANGE");
+console.log(request.parameters?.range);
+
+console.log("BEAT");
+console.log(request.parameters?.beat);
+
+console.log("CIRCLE");
+console.log(request.parameters?.circle);
+
+console.log(
+    "ALL STAFF:",
+    StaffQuery.ensureAllStaff().length
+);
+    
     return StaffQuery.execute(
-
         request,
-
         async function (
-
             request
-
         ) {
+            /*----------------------------------
+              Requested Filters
+            ----------------------------------*/
+            const requestedDesignation =
+                String(
+                    request.parameters?.designation ||
+                    ""
+                )
+                .trim()
+                .toUpperCase();
+
+            const requestedCircle =
+                String(
+                    request.parameters?.circle ||
+                    ""
+                )
+                .trim()
+                .toUpperCase();
+
+            const requestedDivision =
+                String(
+                    request.parameters?.division ||
+                    ""
+                )
+                .trim()
+                .toUpperCase();
+
+            const requestedRange =
+                String(
+                    request.parameters?.range ||
+                    ""
+                )
+                .trim()
+                .toUpperCase();
+
+            const requestedBeat =
+                String(
+                    request.parameters?.beat ||
+                    ""
+                )
+                .trim()
+                .toUpperCase();
+
+            const requestedCompartment =
+                String(
+                    request.parameters?.compartment ||
+                    ""
+                )
+                .trim()
+                .toUpperCase();
 
             /*----------------------------------
-              Filter Staff
+              Profiles
             ----------------------------------*/
 
-            const result =
+            console.log(
+                "===================================="
+            );
 
-                StaffQuery.filterStaff(
+            console.log(
+                "queryDesignationDirectory() FILTER"
+            );
 
-                    request
+            console.log(
+                "Requested Filters"
+            );
 
-                );
+            console.table({
+
+                designation:
+                    requestedDesignation,
+
+                circle:
+                    requestedCircle,
+
+                division:
+                    requestedDivision,
+
+                range:
+                    requestedRange,
+
+                beat:
+                    requestedBeat,
+
+                compartment:
+                    requestedCompartment
+
+            });
+
+            console.log(
+
+                "Total Staff:",
+
+                StaffQuery
+                    .ensureAllStaff()
+                    .length
+
+            );
 
             const profiles =
 
-                result.staff;
+                StaffQuery
+                    .ensureAllStaff()
+                    .filter(
 
-            /*----------------------------------
-              Directory
-            ----------------------------------*/
+                        function (
 
-            const directory =
+                            profile
 
-                {};
+                        ) {
 
-            profiles.forEach(
+                            const designation =
 
-                function (
+                                String(
 
-                    profile
+                                    profile.identity?.designation ||
 
-                ) {
+                                    ""
 
-                    const designation =
+                                )
 
-                        profile.identity?.designation ||
+                                .trim()
 
-                        "UNASSIGNED";
+                                .toUpperCase();
 
-                    if (
+                            const circle =
 
-                        !directory[designation]
+                                String(
+
+                                    profile.posting?.circle ||
+
+                                    ""
+
+                                )
+
+                                .trim()
+
+                                .toUpperCase();
+
+                            const division =
+
+                                String(
+
+                                    profile.posting?.division ||
+
+                                    ""
+
+                                )
+
+                                .trim()
+
+                                .toUpperCase();
+
+                            const range =
+
+                                String(
+
+                                    profile.posting?.range ||
+
+                                    ""
+
+                                )
+
+                                .trim()
+
+                                .toUpperCase();
+
+                            const beat =
+
+                                String(
+
+                                    profile.posting?.beat ||
+
+                                    ""
+
+                                )
+
+                                .trim()
+
+                                .toUpperCase();
+
+                            const compartment =
+
+                                String(
+
+                                    profile.assignment?.assignedCompartment ||
+
+                                    ""
+
+                                )
+
+                                .trim()
+
+                                .toUpperCase();
+
+                            const okDesignation =
+
+                                !requestedDesignation ||
+
+                                designation ===
+
+                                requestedDesignation;
+
+                            const okCircle =
+
+                                !requestedCircle ||
+
+                                circle ===
+
+                                requestedCircle;
+
+                            const okDivision =
+
+                                !requestedDivision ||
+
+                                division ===
+
+                                requestedDivision;
+
+                            const okRange =
+
+                                !requestedRange ||
+
+                                range ===
+
+                                requestedRange;
+
+                            const okBeat =
+
+                                !requestedBeat ||
+
+                                beat ===
+
+                                requestedBeat;
+
+                            const okCompartment =
+
+                                !requestedCompartment ||
+
+                                compartment ===
+
+                                requestedCompartment;
+
+                            if (
+
+                                designation === "FR"
+
+                            ) {
+
+                                console.log(
+
+                                    "------------ FR DEBUG ------------"
+
+                                );
+
+                                console.table({
+
+                                    Name:
+
+                                        profile.identity?.cleanName,
+
+                                    Designation:
+
+                                        designation,
+
+                                    Circle:
+
+                                        circle,
+
+                                    Division:
+
+                                        division,
+
+                                    Range:
+
+                                        range,
+
+                                    Beat:
+
+                                        beat,
+
+                                    RequestedDesignation:
+
+                                        requestedDesignation,
+
+                                    RequestedCircle:
+
+                                        requestedCircle,
+
+                                    RequestedDivision:
+
+                                        requestedDivision,
+
+                                    RequestedRange:
+
+                                        requestedRange,
+
+                                    RequestedBeat:
+
+                                        requestedBeat,
+
+                                    okDesignation,
+
+                                    okCircle,
+
+                                    okDivision,
+
+                                    okRange,
+
+                                    okBeat,
+
+                                    okCompartment
+
+                                });
+
+                            }
+
+                            return (
+
+                                okDesignation &&
+
+                                okCircle &&
+
+                                okDivision &&
+
+                                okRange &&
+
+                                okBeat &&
+
+                                okCompartment
+
+                            );
+
+                        }
+
+                    );
+
+            console.log(
+
+                "===================================="
+
+            );
+
+            console.log(
+
+                "FILTERED STAFF:",
+
+                profiles.length
+
+            );
+
+            console.table(
+
+                profiles.map(
+
+                    function (
+
+                        profile
 
                     ) {
 
-                        directory[designation] = {
+                        return {
 
-                            designation:
+                            Name:
 
-                                designation,
+                                profile.identity?.cleanName,
 
-                            totalStaff:
+                            Designation:
 
-                                0,
+                                profile.identity?.designation,
 
-                            staff: []
+                            Circle:
+
+                                profile.posting?.circle,
+
+                            Division:
+
+                                profile.posting?.division,
+
+                            Range:
+
+                                profile.posting?.range,
+
+                            Beat:
+
+                                profile.posting?.beat
 
                         };
 
                     }
 
+                )
+
+            );
+
+            console.log(
+
+                "===================================="
+
+            );
+            /*----------------------------------
+              Directory
+            ----------------------------------*/
+            const directory =
+                {};
+            profiles.forEach(
+                function (
+                    profile
+                ) {
+                    const designation =
+                        profile.identity?.designation ||
+                        "UNASSIGNED";
+                    if (
+                        !directory[designation]
+                    ) {
+                        directory[designation] = {
+                            designation:
+                                designation,
+                            totalStaff:
+                                0,
+                            staff: []
+                        };
+                    }
                     const group =
-
                         directory[designation];
-
                     group.totalStaff++;
-
                     group.staff.push({
-
                         /*----------------------------------
                           Identity
                         ----------------------------------*/
-
                         cleanName:
-
                             profile.identity?.cleanName ||
-
                             "",
-
                         rawName:
-
                             profile.identity?.rawName ||
-
                             "",
-
                         name:
-
                             profile.identity?.name ||
-
                             "",
-
                         role:
-
                             profile.identity?.role ||
-
                             "",
-
                         designation:
-
                             profile.identity?.designation ||
-
                             "",
-
                         type:
-
                             profile.identity?.type ||
-
                             "",
-
                         phone:
-
                             profile.identity?.phone ||
-
                             "",
-
                         email:
-
                             profile.identity?.email ||
-
                             "",
-
                         /*----------------------------------
                           Posting
                         ----------------------------------*/
-
                         circle:
-
                             profile.posting?.circle ||
-
                             "",
-
                         division:
-
                             profile.posting?.division ||
-
                             "",
-
                         range:
-
                             profile.posting?.range ||
-
                             "",
-
                         beat:
-
                             profile.posting?.beat ||
-
                             "",
-
                         /*----------------------------------
                           Assignment
                         ----------------------------------*/
-
+                        assignedCompartment:
+                            profile.assignment?.assignedCompartment ||
+                            "",
                         dutyType:
-
                             profile.assignment?.dutyType ||
-
                             "",
-
                         dutyStatus:
-
                             profile.assignment?.status ||
-
                             "",
-
                         dutyActive:
-
                             profile.assignment?.dutyActive ??
-
                             false,
-
                         /*----------------------------------
                           Team
                         ----------------------------------*/
-
                         leader:
-
-                            profile.assignment?.leader ||
-
                             profile.teamInfo?.leader ||
-
                             "",
-
                         team:
-
-                            profile.assignment?.team ||
-
                             profile.teamInfo?.team ||
-
                             "",
-
                         /*----------------------------------
                           Location
                         ----------------------------------*/
-
                         latitude:
-
                             profile.location?.lat ??
-
                             null,
-
                         longitude:
-
                             profile.location?.lon ??
-
                             null,
-
                         location:
-
                             profile.location?.location ||
-
                             "",
-
                         /*----------------------------------
                           GPS
                         ----------------------------------*/
-
                         speed:
-
                             profile.gps?.speed ??
-
-                            0,
-
+                            null,
                         heading:
-
                             profile.gps?.heading ??
-
-                            0,
-
+                            null,
                         accuracy:
-
                             profile.gps?.accuracy ??
-
-                            0,
-
+                            null,
                         lastSeen:
-
                             profile.gps?.lastSeen ??
-
-                            "",
-
+                            null,
                         timestamp:
-
                             profile.gps?.timestamp ??
-
                             null,
-
                         updatedAt:
-
                             profile.gps?.updatedAt ??
-
                             null,
-
                         /*----------------------------------
                           Analytics
                         ----------------------------------*/
-
                         distanceKm:
-
                             profile.analytics?.distanceKm ??
-
                             0,
-
                         pointCount:
-
                             profile.analytics?.pointCount ??
-
                             0,
-
                         startedAt:
-
                             profile.analytics?.startedAt ??
-
                             null,
-
                         endedAt:
-
                             profile.analytics?.endedAt ??
-
                             null
-
                     });
-
                 }
-
             );
-
             return Object.values(
-
                 directory
-
             );
-
         }
-
     );
-
 };
-  GG.queryDesignationCount = async function (
+    GG.queryDesignationCount = async function (
 
     request
 
@@ -6253,28 +6199,296 @@ GG.queryDesignationDirectory = async function (
         ) {
 
             /*----------------------------------
-              Filter Staff
-            ----------------------------------*/
-
-            const result =
-
-                StaffQuery.filterStaff(
-
-                    request
-
-                );
-
-            /*----------------------------------
               Parameters
             ----------------------------------*/
 
-            const parameters =
+            const designation =
 
-                StaffQuery.getParameters(
+                String(
 
-                    request
+                    request.parameters?.designation ||
 
-                );
+                    ""
+
+                )
+
+                .trim()
+
+                .toUpperCase();
+
+            const circle =
+
+                String(
+
+                    request.parameters?.circle ||
+
+                    ""
+
+                )
+
+                .trim()
+
+                .toUpperCase();
+
+            const division =
+
+                String(
+
+                    request.parameters?.division ||
+
+                    ""
+
+                )
+
+                .trim()
+
+                .toUpperCase();
+
+            const range =
+
+                String(
+
+                    request.parameters?.range ||
+
+                    ""
+
+                )
+
+                .trim()
+
+                .toUpperCase();
+
+            const beat =
+
+                String(
+
+                    request.parameters?.beat ||
+
+                    ""
+
+                )
+
+                .trim()
+
+                .toUpperCase();
+
+            const compartment =
+
+                String(
+
+                    request.parameters?.compartment ||
+
+                    ""
+
+                )
+
+                .trim()
+
+                .toUpperCase();
+
+            /*----------------------------------
+              Valid Staff
+            ----------------------------------*/
+
+            const profiles =
+
+                StaffQuery
+                    .getValidStaff()
+
+                    .filter(
+
+                        function (
+
+                            profile
+
+                        ) {
+
+                            /*--------------------------
+                              Designation
+                            --------------------------*/
+
+                            if (
+
+                                designation &&
+
+                                String(
+
+                                    profile.identity?.designation ||
+
+                                    ""
+
+                                )
+
+                                .trim()
+
+                                .toUpperCase()
+
+                                !==
+
+                                designation
+
+                            ) {
+
+                                return false;
+
+                            }
+
+                            /*--------------------------
+                              Circle
+                            --------------------------*/
+
+                            if (
+
+                                circle &&
+
+                                String(
+
+                                    profile.posting?.circle ||
+
+                                    ""
+
+                                )
+
+                                .trim()
+
+                                .toUpperCase()
+
+                                !==
+
+                                circle
+
+                            ) {
+
+                                return false;
+
+                            }
+
+                            /*--------------------------
+                              Division
+                            --------------------------*/
+
+                            if (
+
+                                division &&
+
+                                String(
+
+                                    profile.posting?.division ||
+
+                                    ""
+
+                                )
+
+                                .trim()
+
+                                .toUpperCase()
+
+                                !==
+
+                                division
+
+                            ) {
+
+                                return false;
+
+                            }
+
+                            /*--------------------------
+                              Range
+                            --------------------------*/
+
+                            if (
+
+                                range &&
+
+                                String(
+
+                                    profile.posting?.range ||
+
+                                    ""
+
+                                )
+
+                                .trim()
+
+                                .toUpperCase()
+
+                                !==
+
+                                range
+
+                            ) {
+
+                                return false;
+
+                            }
+
+                            /*--------------------------
+                              Beat
+                            --------------------------*/
+
+                            if (
+
+                                beat &&
+
+                                String(
+
+                                    profile.posting?.beat ||
+
+                                    ""
+
+                                )
+
+                                .trim()
+
+                                .toUpperCase()
+
+                                !==
+
+                                beat
+
+                            ) {
+
+                                return false;
+
+                            }
+
+                            /*--------------------------
+                              Compartment
+                            --------------------------*/
+
+                            if (
+
+                                compartment &&
+
+                                String(
+
+                                    profile.assignment
+                                        ?.assignedCompartment ||
+
+                                    ""
+
+                                )
+
+                                .trim()
+
+                                .toUpperCase()
+
+                                !==
+
+                                compartment
+
+                            ) {
+
+                                return false;
+
+                            }
+
+                            return true;
+
+                        }
+
+                    );
 
             /*----------------------------------
               Response
@@ -6284,41 +6498,35 @@ GG.queryDesignationDirectory = async function (
 
                 designation:
 
-                    parameters.designation ||
-
-                    "",
+                    designation,
 
                 circle:
 
-                    parameters.circle ||
-
-                    "",
+                    circle,
 
                 division:
 
-                    parameters.division ||
-
-                    "",
+                    division,
 
                 range:
 
-                    parameters.range ||
-
-                    "",
+                    range,
 
                 beat:
 
-                    parameters.beat ||
+                    beat,
 
-                    "",
+                compartment:
+
+                    compartment,
 
                 count:
 
-                    result.count,
+                    profiles.length,
 
                 staff:
 
-                    result.staff
+                    profiles
 
             };
 
