@@ -2079,7 +2079,36 @@ Router.resolveTools = function(query, intent){
 ROUTE
 ----------------------------------------------------------*/
 
+Router.route = async function (query) {
 
+    const result =
+
+        Router.detectIntent(query);
+
+    result.context =
+
+        await Router.buildContext(
+
+            result.intent
+
+        );
+
+    result.tools =
+
+        Router.resolveTools(
+
+            query,
+
+            result.intent
+
+        );
+/*--------------------------------------
+LOCAL ANALYTICS ENGINE
+--------------------------------------*/
+
+    return result;
+
+};
      /*----------------------------------------------------------
       RESET
     ----------------------------------------------------------*/
