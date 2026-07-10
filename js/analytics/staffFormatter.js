@@ -8742,7 +8742,11 @@ StaffFormatter.formatDesignationDirectory = function (
     result.message =
 
         "Designation directory formatted successfully.";
+/*----------------------------------
+  Preserve Data
+----------------------------------*/
 
+result.data = directory;
     return result;
 
 };
