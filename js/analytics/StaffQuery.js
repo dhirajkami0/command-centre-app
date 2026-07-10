@@ -1025,8 +1025,80 @@ StaffQuery.execute = async function (
  /*=========================================================
  HELPER FUNCTIONS
 =========================================================*/
+/*=========================================================
+  GET VALID STAFF
+=========================================================*/
 
-/*----------------------------------
+StaffQuery.getValidStaff = function () {
+
+    return StaffQuery
+        .ensureAllStaff()
+        .filter(
+
+            function (
+
+                profile
+
+            ) {
+
+                if (
+
+                    !profile
+
+                ) {
+
+                    return false;
+
+                }
+
+                /*----------------------------------
+                  Must have identity
+                ----------------------------------*/
+
+                if (
+
+                    !profile.identity
+
+                ) {
+
+                    return false;
+
+                }
+
+                /*----------------------------------
+                  Must have designation
+                ----------------------------------*/
+
+                const designation =
+
+                    String(
+
+                        profile.identity
+                            ?.designation ||
+
+                        ""
+
+                    )
+
+                    .trim();
+
+                if (
+
+                    designation.length === 0
+
+                ) {
+
+                    return false;
+
+                }
+
+                return true;
+
+            }
+
+        );
+
+};/*----------------------------------
   Get Staff List
 ----------------------------------*/
 
