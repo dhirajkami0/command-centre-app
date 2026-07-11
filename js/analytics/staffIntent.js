@@ -3553,9 +3553,9 @@ if (
 
             "LIST",
 
-            "SHOW",
+            
 
-            "DISPLAY",
+  
 
             "DIRECTORY",
 
@@ -3834,9 +3834,9 @@ StaffIntent.detectSingleVsAggregate = function (
 
             "LIST",
 
-            "SHOW",
+          
 
-            "DISPLAY",
+      
 
             "DIRECTORY",
 
