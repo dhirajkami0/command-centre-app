@@ -647,6 +647,233 @@ StaffIntent.detectDesignationIntent = function (
  DETECT
  Master Intent Detection
 =========================================================*/
+ /*=========================================================
+ DETECT DUTY STATUS INTENT
+=========================================================*/
+
+StaffIntent.detectDutyStatusIntent = function (
+
+    result
+
+) {
+
+    /*----------------------------------
+      Validate
+    ----------------------------------*/
+
+    if (
+
+        !result ||
+
+        result.intent ||
+
+        !result.entities
+
+    ) {
+
+        return result;
+
+    }
+
+    /*----------------------------------
+      Aggregate Guard
+    ----------------------------------*/
+
+    if (
+
+        result.parameters?.isAggregate
+
+    ) {
+
+        return result;
+
+    }
+
+    const staff =
+
+        result.entities.staff ||
+
+        [];
+
+    if (
+
+        staff.length !== 1
+
+    ) {
+
+        return result;
+
+    }
+
+    const profile =
+
+        staff[0];
+
+    const query =
+
+        String(
+
+            result.normalizedQuery ||
+
+            ""
+
+        )
+
+        .trim()
+
+        .toUpperCase();
+
+    if (
+
+        query === ""
+
+    ) {
+
+        return result;
+
+    }
+
+    const INTENTS =
+
+        StaffConstants.INTENTS;
+
+    const KEYWORDS =
+
+        StaffConstants.KEYWORDS;
+
+    /*----------------------------------
+      Helper
+    ----------------------------------*/
+
+    function hasKeyword(
+
+        list
+
+    ) {
+
+        if (
+
+            !Array.isArray(
+
+                list
+
+            )
+
+        ) {
+
+            return false;
+
+        }
+
+        return list.some(
+
+            function (
+
+                word
+
+            ) {
+
+                return query.includes(
+
+                    String(
+
+                        word
+
+                    )
+
+                    .toUpperCase()
+
+                );
+
+            }
+
+        );
+
+    }
+
+    /*----------------------------------
+      Match
+    ----------------------------------*/
+
+    if (
+
+        !hasKeyword(
+
+            KEYWORDS.STAFF_DUTY_STATUS
+
+        )
+
+    ) {
+
+        return result;
+
+    }
+
+    /*----------------------------------
+      Intent
+    ----------------------------------*/
+
+    result.intent =
+
+        INTENTS.STAFF_DUTY_STATUS;
+
+    /*----------------------------------
+      Parameters
+    ----------------------------------*/
+
+    result.parameters =
+
+        result.parameters ||
+
+        {};
+
+    result.parameters.staff =
+
+        profile;
+
+    result.parameters.dutyStatus =
+
+        profile.assignment?.dutyStatus ??
+
+        null;
+
+    result.parameters.dutyActive =
+
+        profile.assignment?.dutyActive ??
+
+        null;
+
+    result.parameters.dutyStartedAt =
+
+        profile.assignment?.dutyStartedAt ??
+
+        null;
+
+    result.parameters.dutyEndedAt =
+
+        profile.assignment?.dutyEndedAt ??
+
+        null;
+
+    /*----------------------------------
+      Confidence
+    ----------------------------------*/
+
+    result.confidence =
+
+        Math.max(
+
+            result.confidence ||
+
+            0,
+
+            0.99
+
+        );
+
+    return result;
+
+};
 /*=========================================================
  DETECT STAFF INTENT
 =========================================================*/
