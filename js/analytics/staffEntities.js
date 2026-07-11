@@ -4077,17 +4077,51 @@ StaffEntities.buildAliases = function (
 
     );
 
-    /*=====================================================
-      Save
-    =====================================================*/
+/*=====================================================
+  Save
+=====================================================*/
 
-    context.aliasList =
+context.aliasList =
 
-        Array.from(
+    Array.from(
 
-            aliases
+        aliases
 
-        );
+    )
+
+    .filter(
+
+        Boolean
+
+    )
+
+    .sort(
+
+        function (
+
+            a,
+
+            b
+
+        ) {
+
+            return (
+
+                b.length -
+
+                a.length
+
+            ) ||
+
+            a.localeCompare(
+
+                b
+
+            );
+
+        }
+
+    );
 
     /*----------------------------------
       Return
@@ -4847,7 +4881,31 @@ StaffEntities.validateNormalizedData(
 StaffEntities.buildSearchTokens(
     context
 );
+/*----------------------------------
+  Debug Search Tokens
+----------------------------------*/
 
+if (
+
+    StaffEntities.DEBUG
+
+) {
+
+    console.group(
+
+        "🧠 Search Tokens"
+
+    );
+
+    console.log(
+
+        context.search
+
+    );
+
+    console.groupEnd();
+
+}
 /*----------------------------------
   Build Aliases
 ----------------------------------*/
@@ -4863,7 +4921,31 @@ StaffEntities.buildAliases(
 StaffEntities.buildCanonicalStaffObject(
     context
 );
+/*----------------------------------
+  Debug Canonical Staff
+----------------------------------*/
 
+if (
+
+    StaffEntities.DEBUG
+
+) {
+
+    console.group(
+
+        "🧠 Canonical Staff"
+
+    );
+
+    console.log(
+
+        context.normalized
+
+    );
+
+    console.groupEnd();
+
+}
 /*----------------------------------
   Return Canonical Staff
 ----------------------------------*/
@@ -8534,6 +8616,10 @@ StaffEntities.extractGPSEntities = function (
  EXTRACT KEYWORDS
 =========================================================*/
 
+/*=========================================================
+ EXTRACT KEYWORDS
+=========================================================*/
+
 StaffEntities.extractKeywords = function (
 
     result
@@ -8541,7 +8627,7 @@ StaffEntities.extractKeywords = function (
 ) {
 
     /*----------------------------------
-      Validate
+      Validate Result
     ----------------------------------*/
 
     if (
@@ -8556,19 +8642,39 @@ StaffEntities.extractKeywords = function (
 
     }
 
+    /*----------------------------------
+      Query
+    ----------------------------------*/
+
     const query =
 
-        result.normalizedQuery;
+        String(
+
+            result.normalizedQuery ||
+
+            result.searchQuery ||
+
+            ""
+
+        )
+
+            .trim()
+
+            .toUpperCase();
 
     if (
 
-        !query
+        query.length === 0
 
     ) {
 
         return result;
 
     }
+
+    /*----------------------------------
+      Initialize
+    ----------------------------------*/
 
     result.keywords = [];
 
@@ -8578,7 +8684,9 @@ StaffEntities.extractKeywords = function (
 
     const keywordGroups =
 
-        StaffConstants.KEYWORDS || {};
+        StaffConstants.KEYWORDS ||
+
+        {};
 
     /*----------------------------------
       Scan Keyword Groups
@@ -8630,17 +8738,19 @@ StaffEntities.extractKeywords = function (
 
                         String(
 
-                            word
+                            word ||
+
+                            ""
 
                         )
 
-                        .trim()
+                            .trim()
 
-                        .toUpperCase();
+                            .toUpperCase();
 
                     if (
 
-                        keyword === ""
+                        keyword.length === 0
 
                     ) {
 
@@ -8648,11 +8758,33 @@ StaffEntities.extractKeywords = function (
 
                     }
 
+                    /*------------------------------
+                      Exact Word Match
+                    ------------------------------*/
+
+                    const pattern =
+
+                        new RegExp(
+
+                            "\\b" +
+
+                            keyword.replace(
+
+                                /[.*+?^${}()|[\]\\]/g,
+
+                                "\\$&"
+
+                            ) +
+
+                            "\\b"
+
+                        );
+
                     if (
 
-                        !query.includes(
+                        !pattern.test(
 
-                            keyword
+                            query
 
                         )
 
@@ -8661,12 +8793,20 @@ StaffEntities.extractKeywords = function (
                         return;
 
                     }
+
+                    const id =
+
+                        group +
+
+                        "::" +
+
+                        keyword;
 
                     if (
 
                         seen.has(
 
-                            keyword
+                            id
 
                         )
 
@@ -8678,15 +8818,19 @@ StaffEntities.extractKeywords = function (
 
                     seen.add(
 
-                        keyword
+                        id
 
                     );
 
                     result.keywords.push({
 
-                        group,
+                        group:
 
-                        keyword
+                            group,
+
+                        keyword:
+
+                            keyword
 
                     });
 
@@ -8699,16 +8843,80 @@ StaffEntities.extractKeywords = function (
     );
 
     /*----------------------------------
+      Sort
+    ----------------------------------*/
+
+    result.keywords.sort(
+
+        function (
+
+            a,
+
+            b
+
+        ) {
+
+            if (
+
+                a.group ===
+
+                b.group
+
+            ) {
+
+                return a.keyword.localeCompare(
+
+                    b.keyword
+
+                );
+
+            }
+
+            return a.group.localeCompare(
+
+                b.group
+
+            );
+
+        }
+
+    );
+
+    /*----------------------------------
       Statistics
     ----------------------------------*/
+
+    if (
+
+        !result.stats
+
+    ) {
+
+        result.stats =
+
+            {};
+
+    }
 
     result.stats.keywordMatches =
 
         result.keywords.length;
 
-    result.stats.totalEntities +=
+    result.stats.totalEntities =
+
+        (
+
+            result.stats.totalEntities ||
+
+            0
+
+        ) +
 
         result.keywords.length;
+
+    /*----------------------------------
+      Return
+    ----------------------------------*/
 
     return result;
 
