@@ -9267,7 +9267,149 @@ StaffFormatter.formatDesignationDirectory = function (
     const directory =
 
         response.data;
+/*----------------------------------
+  DEBUG
+----------------------------------*/
 
+console.group(
+
+    "📄 FORMAT DESIGNATION DIRECTORY"
+
+);
+
+console.log(
+
+    "Response"
+
+);
+
+console.dir(
+
+    response,
+
+    {
+
+        depth: null
+
+    }
+
+);
+
+console.log(
+
+    "Directory"
+
+);
+
+console.dir(
+
+    directory,
+
+    {
+
+        depth: null
+
+    }
+
+);
+
+console.log(
+
+    "Groups:",
+
+    directory.length
+
+);
+
+directory.forEach(
+
+    function (
+
+        group,
+
+        index
+
+    ) {
+
+        console.group(
+
+            "Group " +
+
+            (
+
+                index + 1
+
+            )
+
+        );
+
+        console.log(
+
+            "Designation:",
+
+            group.designation
+
+        );
+
+        console.log(
+
+            "TotalStaff:",
+
+            group.totalStaff
+
+        );
+
+        console.log(
+
+            "Staff Array Exists:",
+
+            Array.isArray(
+
+                group.staff
+
+            )
+
+        );
+
+        console.log(
+
+            "Staff Length:",
+
+            Array.isArray(
+
+                group.staff
+
+            )
+
+                ?
+
+                group.staff.length
+
+                :
+
+                0
+
+        );
+
+        console.dir(
+
+            group.staff,
+
+            {
+
+                depth: null
+
+            }
+
+        );
+
+        console.groupEnd();
+
+    }
+
+);
+
+console.groupEnd();
     /*----------------------------------
       Markdown
     ----------------------------------*/
