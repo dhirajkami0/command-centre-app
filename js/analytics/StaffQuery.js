@@ -7739,6 +7739,30 @@ GG.queryDesignationDirectory = async function (
 
         ) {
 
+            console.group(
+
+                "📄 QUERY DESIGNATION DIRECTORY"
+
+            );
+
+            console.log(
+
+                "REQUEST"
+
+            );
+
+            console.dir(
+
+                request,
+
+                {
+
+                    depth: null
+
+                }
+
+            );
+
             const profiles =
 
                 StaffQuery.filterStaff(
@@ -7746,6 +7770,62 @@ GG.queryDesignationDirectory = async function (
                     request
 
                 );
+
+            console.log(
+
+                "FILTERED STAFF COUNT:",
+
+                profiles.length
+
+            );
+
+            console.table(
+
+                profiles.map(
+
+                    function (
+
+                        profile
+
+                    ) {
+
+                        return {
+
+                            Name:
+
+                                profile.identity?.cleanName,
+
+                            Designation:
+
+                                profile.identity?.designation,
+
+                            Role:
+
+                                profile.identity?.role,
+
+                            Circle:
+
+                                profile.posting?.circle,
+
+                            Division:
+
+                                profile.posting?.division,
+
+                            Range:
+
+                                profile.posting?.range,
+
+                            Beat:
+
+                                profile.posting?.beat
+
+                        };
+
+                    }
+
+                )
+
+            );
 
             const designation =
 
@@ -7759,25 +7839,57 @@ GG.queryDesignationDirectory = async function (
 
                 .trim();
 
-            return [
+            const result =
+
+                [
+
+                    {
+
+                        designation:
+
+                            designation,
+
+                        totalStaff:
+
+                            profiles.length,
+
+                        staff:
+
+                            profiles
+
+                    }
+
+                ];
+
+            console.log(
+
+                "RETURN OBJECT"
+
+            );
+
+            console.dir(
+
+                result,
 
                 {
 
-                    designation:
-
-                        designation,
-
-                    totalStaff:
-
-                        profiles.length,
-
-                    staff:
-
-                        profiles
+                    depth: null
 
                 }
 
-            ];
+            );
+
+            console.log(
+
+                "RETURN STAFF LENGTH:",
+
+                result[0].staff.length
+
+            );
+
+            console.groupEnd();
+
+            return result;
 
         }
 
