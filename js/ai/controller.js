@@ -399,10 +399,10 @@ Controller.ask = async function (
             "AIDispatcher.dispatch()"
         );
 
-        const response =
-            await Dispatcher.dispatch(
-                request.detectedIntent || intent
-            );
+const response =
+    await Dispatcher.dispatch(
+        request
+    );
 
         console.log(
             "Dispatcher Returned:"
