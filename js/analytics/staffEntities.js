@@ -7350,19 +7350,53 @@ StaffEntities.extractPostingEntities = function (
 
     }
 
-    const query =
+    /*----------------------------------
+      Normalize Text
+    ----------------------------------*/
 
-        String(
+    function normalizeText(
 
-            result.normalizedQuery ||
+        text
+
+    ) {
+
+        return String(
+
+            text ||
 
             ""
 
         )
 
-        .trim()
+            .toUpperCase()
 
-        .toUpperCase();
+            .replace(
+
+                /[_-]/g,
+
+                " "
+
+            )
+
+            .replace(
+
+                /\s+/g,
+
+                " "
+
+            )
+
+            .trim();
+
+    }
+
+    const query =
+
+        normalizeText(
+
+            result.normalizedQuery
+
+        );
 
     const posting =
 
@@ -7396,17 +7430,11 @@ StaffEntities.extractPostingEntities = function (
 
         phrase =
 
-            String(
+            normalizeText(
 
-                phrase ||
+                phrase
 
-                ""
-
-            )
-
-            .trim()
-
-            .toUpperCase();
+            );
 
         if (
 
@@ -7458,17 +7486,11 @@ StaffEntities.extractPostingEntities = function (
 
             const normalized =
 
-                String(
+                normalizeText(
 
-                    item.normalized ||
+                    item.normalized
 
-                    ""
-
-                )
-
-                .trim()
-
-                .toUpperCase();
+                );
 
             if (
 
@@ -7514,7 +7536,7 @@ StaffEntities.extractPostingEntities = function (
 
                 "|" +
 
-                normalized;
+                item.value;
 
             if (
 
@@ -7552,7 +7574,9 @@ StaffEntities.extractPostingEntities = function (
 
                 String(
 
-                    item.type
+                    item.type ||
+
+                    ""
 
                 )
 
