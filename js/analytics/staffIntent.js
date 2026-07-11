@@ -549,7 +549,205 @@ StaffIntent.matchIntent = function (
 /*=========================================================
  DETECT
 =========================================================*/
+/*=========================================================
+ DETECT ROLE INTENT
+=========================================================*/
 
+StaffIntent.detectRoleIntent = function (
+
+    result
+
+) {
+
+    /*----------------------------------
+      Validate
+    ----------------------------------*/
+
+    if (
+
+        !result ||
+
+        result.intent ||
+
+        !result.entities
+
+    ) {
+
+        return result;
+
+    }
+
+    /*----------------------------------
+      Aggregate Guard
+    ----------------------------------*/
+
+    if (
+
+        result.parameters?.isAggregate
+
+    ) {
+
+        return result;
+
+    }
+
+    const staff =
+
+        result.entities.staff ||
+
+        [];
+
+    if (
+
+        staff.length !== 1
+
+    ) {
+
+        return result;
+
+    }
+
+    const profile =
+
+        staff[0];
+
+    const query =
+
+        String(
+
+            result.normalizedQuery ||
+
+            ""
+
+        )
+
+        .trim()
+
+        .toUpperCase();
+
+    if (
+
+        query.length === 0
+
+    ) {
+
+        return result;
+
+    }
+
+    const INTENTS =
+
+        StaffConstants.INTENTS;
+
+    const KEYWORDS =
+
+        StaffConstants.KEYWORDS;
+
+    /*----------------------------------
+      Helper
+    ----------------------------------*/
+
+    function hasKeyword(
+
+        list
+
+    ) {
+
+        if (
+
+            !Array.isArray(
+
+                list
+
+            )
+
+        ) {
+
+            return false;
+
+        }
+
+        return list.some(
+
+            function (
+
+                word
+
+            ) {
+
+                return query.includes(
+
+                    String(
+
+                        word
+
+                    )
+
+                    .toUpperCase()
+
+                );
+
+            }
+
+        );
+
+    }
+
+    /*----------------------------------
+      Role
+    ----------------------------------*/
+
+    if (
+
+        hasKeyword(
+
+            KEYWORDS.STAFF_ROLE
+
+        )
+
+    ) {
+
+        result.intent =
+
+            INTENTS.STAFF_ROLE;
+
+        result.parameters.staff =
+
+            profile;
+
+        result.parameters.role =
+
+            profile.identity?.role ??
+
+            profile.role ??
+
+            null;
+
+        result.parameters.roles =
+
+            profile.identity?.roles ??
+
+            profile.roles ??
+
+            [];
+
+        result.confidence =
+
+            Math.max(
+
+                result.confidence,
+
+                0.99
+
+            );
+
+        return result;
+
+    }
+
+    return result;
+
+};
 
  
  /*=========================================================
