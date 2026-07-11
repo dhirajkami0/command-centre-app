@@ -5177,9 +5177,7 @@ StaffEntities.buildIndexMaps = function () {
 
         indexes
 
-    )
-
-    .forEach(
+    ).forEach(
 
         function (
 
@@ -5187,7 +5185,15 @@ StaffEntities.buildIndexMaps = function () {
 
         ) {
 
-            indexes[key].clear();
+            if (
+
+                indexes[key] instanceof Map
+
+            ) {
+
+                indexes[key].clear();
+
+            }
 
         }
 
@@ -5206,6 +5212,16 @@ StaffEntities.buildIndexMaps = function () {
         staff
 
     ) {
+
+        if (
+
+            !(map instanceof Map)
+
+        ) {
+
+            return;
+
+        }
 
         if (
 
@@ -5261,23 +5277,18 @@ StaffEntities.buildIndexMaps = function () {
 
         }
 
-        map
+        map.get(
 
-            .get(
+            value
 
-                value
+        ).push(
 
-            )
+            staff
 
-            .push(
-
-                staff
-
-            );
+        );
 
     }
 
- 
     /*----------------------------------
       Build All Indexes
     ----------------------------------*/
@@ -5292,13 +5303,33 @@ StaffEntities.buildIndexMaps = function () {
 
             if (
 
-                !staff
+                !staff ||
+
+                typeof staff !== "object"
 
             ) {
 
                 return;
 
             }
+
+            const identity =
+
+                staff.identity ||
+
+                {};
+
+            const posting =
+
+                staff.posting ||
+
+                {};
+
+            const assignment =
+
+                staff.assignment ||
+
+                {};
 
             /*==============================
               Identity
@@ -5308,7 +5339,7 @@ StaffEntities.buildIndexMaps = function () {
 
                 indexes.byCleanName,
 
-                staff.identity.cleanName,
+                identity.cleanName,
 
                 staff
 
@@ -5318,7 +5349,7 @@ StaffEntities.buildIndexMaps = function () {
 
                 indexes.byName,
 
-                staff.identity.name,
+                identity.name,
 
                 staff
 
@@ -5328,7 +5359,7 @@ StaffEntities.buildIndexMaps = function () {
 
                 indexes.byPhone,
 
-                staff.identity.phone,
+                identity.phone,
 
                 staff
 
@@ -5342,7 +5373,7 @@ StaffEntities.buildIndexMaps = function () {
 
                 indexes.byRole,
 
-                staff.identity.role,
+                identity.role,
 
                 staff
 
@@ -5352,7 +5383,7 @@ StaffEntities.buildIndexMaps = function () {
 
                 indexes.byDesignation,
 
-                staff.identity.designation,
+                identity.designation,
 
                 staff
 
@@ -5366,7 +5397,7 @@ StaffEntities.buildIndexMaps = function () {
 
                 indexes.byCircle,
 
-                staff.posting.circle,
+                posting.circle,
 
                 staff
 
@@ -5376,7 +5407,7 @@ StaffEntities.buildIndexMaps = function () {
 
                 indexes.byDivision,
 
-                staff.posting.division,
+                posting.division,
 
                 staff
 
@@ -5386,7 +5417,7 @@ StaffEntities.buildIndexMaps = function () {
 
                 indexes.byRange,
 
-                staff.posting.range,
+                posting.range,
 
                 staff
 
@@ -5396,7 +5427,7 @@ StaffEntities.buildIndexMaps = function () {
 
                 indexes.byBeat,
 
-                staff.posting.beat,
+                posting.beat,
 
                 staff
 
@@ -5406,7 +5437,7 @@ StaffEntities.buildIndexMaps = function () {
 
                 indexes.byCompartment,
 
-                staff.assignment.assignedCompartment,
+                assignment.assignedCompartment,
 
                 staff
 
@@ -5420,7 +5451,7 @@ StaffEntities.buildIndexMaps = function () {
 
                 indexes.byLeader,
 
-                staff.assignment.leader,
+                assignment.leader,
 
                 staff
 
@@ -5430,7 +5461,7 @@ StaffEntities.buildIndexMaps = function () {
 
                 indexes.byTeam,
 
-                staff.assignment.team,
+                assignment.team,
 
                 staff
 
@@ -5560,7 +5591,7 @@ StaffEntities.buildIndexMaps = function () {
       Return
     ----------------------------------*/
 
-    return StaffEntities.index;
+    return indexes;
 
 };
 
