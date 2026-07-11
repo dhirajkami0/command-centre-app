@@ -48,6 +48,10 @@ StaffHydrator.DESCRIPTION =
   hydrate()
 =========================================================*/
 
+/*=========================================================
+  hydrate()
+=========================================================*/
+
 StaffHydrator.hydrate =
 
 function (
@@ -102,15 +106,15 @@ function (
 
         !GG.StaffEntities ||
 
-        !GG.StaffEntities.index ||
+        !GG.StaffEntities.cache ||
 
-        !GG.StaffEntities.index.byCleanName
+        !GG.StaffEntities.cache.entities
 
     ) {
 
         console.error(
 
-            "StaffEntities index unavailable."
+            "StaffEntities cache unavailable."
 
         );
 
@@ -122,41 +126,17 @@ function (
       Lookup Canonical Staff
     ----------------------------------*/
 
-    const matches =
+    const canonical =
 
         GG
             .StaffEntities
-            .index
-            .byCleanName
+            .cache
+            .entities
             .get(
 
                 cleanName
 
             );
-
-    if (
-
-        !Array.isArray(
-
-            matches
-
-        ) ||
-
-        matches.length === 0
-
-    ) {
-
-        return null;
-
-    }
-
-    /*----------------------------------
-      Canonical Staff
-    ----------------------------------*/
-
-    const canonical =
-
-        matches[0];
 
     if (
 
@@ -205,7 +185,7 @@ function (
     }
 
     /*----------------------------------
-      Safety Check
+      Ensure Mutable
     ----------------------------------*/
 
     if (
@@ -229,382 +209,30 @@ function (
     }
 
     /*----------------------------------
-      Return Mutable Copy
+      Runtime Metadata
+    ----------------------------------*/
+
+    hydrated.runtime = {
+
+        hydrated: true,
+
+        hydratedAt:
+
+            Date.now(),
+
+        liveMerged: false,
+
+        patrolMerged: false
+
+    };
+
+    /*----------------------------------
+      Return
     ----------------------------------*/
 
     return hydrated;
 
 };
-
-/*=========================================================
-  hydrateLive()
-=========================================================*/
-
-StaffHydrator.hydrateLive =
-
-function (
-
-    staff,
-
-    live
-
-) {
-
-    /*----------------------------------
-      Validate Staff
-    ----------------------------------*/
-
-    if (
-
-        !staff ||
-
-        typeof staff !==
-
-        "object"
-
-    ) {
-
-        return staff;
-
-    }
-
-    /*----------------------------------
-      No Live Document
-    ----------------------------------*/
-
-    if (
-
-        !live ||
-
-        typeof live !==
-
-        "object"
-
-    ) {
-
-        return staff;
-
-    }
-
-    /*----------------------------------
-      Identity
-    ----------------------------------*/
-
-    if (
-
-        staff.identity
-
-    ) {
-
-        staff.identity.rawName =
-
-            live.rawName ??
-
-            staff.identity.rawName;
-
-        staff.identity.name =
-
-            live.name ??
-
-            staff.identity.name;
-
-        staff.identity.phone =
-
-            live.phone ??
-
-            staff.identity.phone;
-
-        staff.identity.email =
-
-            live.email ??
-
-            staff.identity.email;
-
-        staff.identity.role =
-
-            live.role ??
-
-            staff.identity.role;
-
-        staff.identity.designation =
-
-            live.designation ??
-
-            staff.identity.designation;
-
-    }
-
-    /*----------------------------------
-      Posting
-    ----------------------------------*/
-
-    if (
-
-        staff.posting
-
-    ) {
-
-        staff.posting.circle =
-
-            live.circle ??
-
-            staff.posting.circle;
-
-        staff.posting.division =
-
-            live.division ??
-
-            staff.posting.division;
-
-        staff.posting.range =
-
-            live.range ??
-
-            staff.posting.range;
-
-        staff.posting.beat =
-
-            live.beat ??
-
-            staff.posting.beat;
-
-    }
-
-    /*----------------------------------
-      Assignment
-    ----------------------------------*/
-
-    if (
-
-        staff.assignment
-
-    ) {
-
-        staff.assignment.assignedCompartment =
-
-            live.compartment ??
-
-            staff.assignment.assignedCompartment;
-
-        staff.assignment.dutyType =
-
-            live.dutyType ??
-
-            staff.assignment.dutyType;
-
-        staff.assignment.dutyActive =
-
-            live.dutyActive ??
-
-            staff.assignment.dutyActive;
-
-        staff.assignment.status =
-
-            live.status ??
-
-            staff.assignment.status;
-
-        staff.assignment.leader =
-
-            live.leader ??
-
-            staff.assignment.leader;
-
-        staff.assignment.team =
-
-            live.team ??
-
-            staff.assignment.team;
-
-        staff.assignment.lastDutyEnd =
-
-            live.lastDutyEnd ??
-
-            staff.assignment.lastDutyEnd;
-
-    }
-
-    /*----------------------------------
-      Duty
-    ----------------------------------*/
-
-    if (
-
-        staff.duty
-
-    ) {
-
-        staff.duty.dutyType =
-
-            live.dutyType ??
-
-            staff.duty.dutyType;
-
-        staff.duty.dutyActive =
-
-            live.dutyActive ??
-
-            staff.duty.dutyActive;
-
-        staff.duty.status =
-
-            live.status ??
-
-            staff.duty.status;
-
-        staff.duty.lastDutyEnd =
-
-            live.lastDutyEnd ??
-
-            staff.duty.lastDutyEnd;
-
-    }
-
-    /*----------------------------------
-      Location
-    ----------------------------------*/
-
-    if (
-
-        staff.location
-
-    ) {
-
-        staff.location.location =
-
-            live.location ??
-
-            staff.location.location;
-
-        staff.location.lat =
-
-            live.lat ??
-
-            staff.location.lat;
-
-       staff.location.lon =
-
-    live.lon ??
-
-    live.lng ??
-
-    staff.location.lon;
-    }
-
-    /*----------------------------------
-      GPS
-    ----------------------------------*/
-
-    if (
-
-        staff.gps
-
-    ) {
-
-        staff.gps.accuracy =
-
-            live.accuracy ??
-
-            staff.gps.accuracy;
-
-        staff.gps.heading =
-
-            live.heading ??
-
-            staff.gps.heading;
-
-        staff.gps.speed =
-
-            live.speed ??
-
-            staff.gps.speed;
-
-        staff.gps.lastSeen =
-
-            live.lastSeen ??
-
-            staff.gps.lastSeen;
-
-        staff.gps.timestamp =
-
-            live.timestamp ??
-
-            staff.gps.timestamp;
-
-        staff.gps.updatedAt =
-
-            live.updatedAt ??
-
-            staff.gps.updatedAt;
-
-        staff.gps.turnAngle =
-
-            live.turnAngle ??
-
-            staff.gps.turnAngle;
-
-        staff.gps.turnRate =
-
-            live.turnRate ??
-
-            staff.gps.turnRate;
-
-    }
-
-    /*----------------------------------
-      Tracking
-    ----------------------------------*/
-
-    if (
-
-        staff.tracking
-
-    ) {
-
-        staff.tracking.sessionId =
-
-            live.sessionId ??
-
-            staff.tracking.sessionId;
-
-        staff.tracking.source =
-
-            live.source ??
-
-            staff.tracking.source;
-
-        staff.tracking.id =
-
-            live.id ??
-
-            staff.tracking.id;
-
-    }
-
-    /*----------------------------------
-      Metadata
-    ----------------------------------*/
-
-    if (
-
-        staff.metadata
-
-    ) {
-
-        staff.metadata.source =
-
-            "LIVE_STAFF";
-
-    }
-
-    /*----------------------------------
-      Return Hydrated Staff
-    ----------------------------------*/
-
-    return staff;
-
-};
-
 /*=========================================================
   hydratePatrol()
 =========================================================*/
