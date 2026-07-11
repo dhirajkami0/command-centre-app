@@ -295,16 +295,6 @@ StaffIntent.createIntentResult = function (
         ----------------------------------*/
 
         keywords: [],
-
-        /*----------------------------------
-          Diagnostics
-        ----------------------------------*/
-
-        warnings: [],
-
-        errors: [],
-
-        /*----------------------------------
           Metadata
         ----------------------------------*/
 
@@ -3854,7 +3844,7 @@ StaffIntent.detectSingleVsAggregate = function (
 
         ];
 
-    const aggregate =
+    
 const aggregate =
 
     aggregateWords.some(
