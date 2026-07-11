@@ -1557,7 +1557,17 @@ StaffEntities.extractDesignationEntities = function (
             key
 
         );
+console.log(
 
+    "Matched Designation:",
+
+    designation,
+
+    staff.identity.designation,
+
+    staff.identity.cleanName
+
+);
         matches.push(
 
             staff
