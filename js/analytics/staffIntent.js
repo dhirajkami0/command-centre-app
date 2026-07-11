@@ -647,6 +647,185 @@ StaffIntent.detectDesignationIntent = function (
  DETECT
  Master Intent Detection
 =========================================================*/
+ StaffIntent.detectMovementIntent = function (
+
+    result
+
+) {
+
+    /*----------------------------------
+      Validate
+    ----------------------------------*/
+
+    if (
+
+        !result ||
+
+        result.intent
+
+    ) {
+
+        return result;
+
+    }
+
+    const query =
+
+        String(
+
+            result.normalizedQuery ||
+
+            ""
+
+        )
+
+        .trim()
+
+        .toUpperCase();
+
+    const INTENTS =
+
+        StaffConstants.INTENTS;
+
+    const parameters =
+
+        result.parameters ||
+
+        {};
+
+    /*----------------------------------
+      Helper
+    ----------------------------------*/
+
+    function hasKeyword(
+
+        list
+
+    ) {
+
+        if (
+
+            !Array.isArray(
+
+                list
+
+            )
+
+        ) {
+
+            return false;
+
+        }
+
+        return list.some(
+
+            function (
+
+                keyword
+
+            ) {
+
+                keyword =
+
+                    String(
+
+                        keyword
+
+                    )
+
+                    .trim()
+
+                    .toUpperCase();
+
+                return (
+
+                    keyword !== "" &&
+
+                    query.includes(
+
+                        keyword
+
+                    )
+
+                );
+
+            }
+
+        );
+
+    }
+
+    /*----------------------------------
+      Moving
+    ----------------------------------*/
+
+    if (
+
+        hasKeyword(
+
+            StaffConstants.KEYWORDS.STAFF_MOVING
+
+        )
+
+    ) {
+
+        parameters.moving =
+
+            true;
+
+        result.parameters =
+
+            parameters;
+
+        result.intent =
+
+            INTENTS.STAFF_MOVING;
+
+        result.confidence =
+
+            0.99;
+
+        return result;
+
+    }
+
+    /*----------------------------------
+      Stationary
+    ----------------------------------*/
+
+    if (
+
+        hasKeyword(
+
+            StaffConstants.KEYWORDS.STAFF_STATIONARY
+
+        )
+
+    ) {
+
+        parameters.stationary =
+
+            true;
+
+        result.parameters =
+
+            parameters;
+
+        result.intent =
+
+            INTENTS.STAFF_STATIONARY;
+
+        result.confidence =
+
+            0.99;
+
+        return result;
+
+    }
+
+    return result;
+
+};
  /*=========================================================
  DETECT DUTY STATUS INTENT
 =========================================================*/
