@@ -1685,369 +1685,223 @@ StaffIntent.extractPostingParameters = function (
 =========================================================*/
 
 StaffIntent.detectDutyIntent = function (
-
     result
-
 ) {
-
     if (
-
         !result ||
-
         result.intent ||
-
         !result.entities
-
     ) {
-
         return result;
-
     }
 
     const query =
-
         String(
-
             result.normalizedQuery ||
-
             ""
-
         )
-
         .toUpperCase();
 
+    /*----------------------------------
+      Helper
+    ----------------------------------*/
+
+    function hasKeyword(
+        list
+    ) {
+        if (
+            !Array.isArray(
+                list
+            )
+        ) {
+            return false;
+        }
+        return list.some(
+            function (
+                keyword
+            ) {
+                keyword =
+                    String(
+                        keyword
+                    )
+                    .trim()
+                    .toUpperCase();
+                return (
+                    keyword !== "" &&
+                    query.includes(
+                        keyword
+                    )
+                );
+            }
+        );
+    }
+
     const INTENTS =
-
         StaffConstants.INTENTS;
-
     const parameters =
-
         result.parameters ||
-
         {};
-
     const staff =
-
         result.entities.staff ||
-
         [];
-
     const single =
-
-        staff.length === 1;
+        parameters.isSingle === true;
 
     /*----------------------------------
       Aggregate
     ----------------------------------*/
 
+    /* Duty Summary */
     if (
-
-        query.includes(
-
-            "ACTIVE STAFF"
-
-        ) ||
-
-        query.includes(
-
-            "ON DUTY STAFF"
-
+        hasKeyword(
+            StaffConstants.KEYWORDS.STAFF_DUTY_SUMMARY
         )
-
     ) {
-
-        parameters.dutyActive =
-
-            true;
-
-        result.parameters =
-
-            parameters;
-
         result.intent =
+            INTENTS.STAFF_DUTY_SUMMARY;
+        result.confidence =
+            0.99;
+        return result;
+    }
 
+    if (
+        hasKeyword(
+            StaffConstants.KEYWORDS.STAFF_ACTIVE_LIST
+        )
+    ) {
+        parameters.dutyActive =
+            true;
+        result.parameters =
+            parameters;
+        result.intent =
             INTENTS.STAFF_ACTIVE_LIST;
-
         result.confidence =
-
             0.99;
-
         return result;
-
     }
 
     if (
-
-        query.includes(
-
-            "INACTIVE STAFF"
-
-        ) ||
-
-        query.includes(
-
-            "OFF DUTY STAFF"
-
+        hasKeyword(
+            StaffConstants.KEYWORDS.STAFF_INACTIVE_LIST
         )
-
     ) {
-
         parameters.dutyActive =
-
             false;
-
         result.parameters =
-
             parameters;
-
         result.intent =
-
             INTENTS.STAFF_INACTIVE_LIST;
-
         result.confidence =
-
             0.99;
-
         return result;
+    }
 
+    if (
+        hasKeyword(
+            StaffConstants.KEYWORDS.STAFF_ACTIVE_COUNT
+        )
+    ) {
+        parameters.dutyActive =
+            true;
+        result.parameters =
+            parameters;
+        result.intent =
+            INTENTS.STAFF_ACTIVE_COUNT;
+        result.confidence =
+            0.99;
+        return result;
     }
 
     /*----------------------------------
       Single Staff
     ----------------------------------*/
 
-if (
-
-    single &&
-
-    !parameters.isAggregate &&
-
-    (
-
-        query.includes(
-
-            "ON DUTY"
-
-        ) ||
-
-        query.includes(
-
-            "DUTY STATUS"
-
-        ) ||
-
-        query.includes(
-
-            "DUTY"
-
-        )
-
-    )
-
-) {
-
-        result.intent =
-
-            INTENTS.STAFF_DUTY;
-
+    if (
+        single
+    ) {
         result.parameters.staff =
-
             staff[0];
 
-        result.confidence =
-
-            0.99;
-
-        return result;
-
-    }
-
-    return result;
-
-};
-
- StaffIntent.detectMovementIntent = function (
-
-    result
-
-) {
-
-    if (
-
-        !result ||
-
-        result.intent ||
-
-        !result.entities
-
-    ) {
-
-        return result;
-
-    }
-
-    const query =
-
-        String(
-
-            result.normalizedQuery ||
-
-            ""
-
-        )
-
-        .toUpperCase();
-
-    const INTENTS =
-
-        StaffConstants.INTENTS;
-
-    const parameters =
-
-        result.parameters ||
-
-        {};
-
-    const staff =
-
-        result.entities.staff ||
-
-        [];
-
-    const single =
-
-        staff.length === 1;
-
-    /*----------------------------------
-      Aggregate - Moving
-    ----------------------------------*/
-
-    if (
-
-        query.includes(
-
-            "MOVING STAFF"
-
-        ) ||
-
-        query.includes(
-
-            "MOVING OFFICERS"
-
-        )
-
-    ) {
-
-        parameters.moving =
-
-            true;
-
-        result.parameters =
-
-            parameters;
-
-        result.intent =
-
-            INTENTS.STAFF_MOVING;
-
-        result.confidence =
-
-            0.99;
-
-        return result;
-
-    }
-
-    /*----------------------------------
-      Aggregate - Stationary
-    ----------------------------------*/
-
-    if (
-
-        query.includes(
-
-            "STATIONARY STAFF"
-
-        ) ||
-
-        query.includes(
-
-            "STOPPED STAFF"
-
-        )
-
-    ) {
-
-        parameters.stationary =
-
-            true;
-
-        result.parameters =
-
-            parameters;
-
-        result.intent =
-
-            INTENTS.STAFF_STATIONARY;
-
-        result.confidence =
-
-            0.99;
-
-        return result;
-
-    }
-
-    /*----------------------------------
-      Single Staff
-    ----------------------------------*/
-
-    if (
-
-        single &&
-
-        (
-
-            query.includes(
-
-                "MOVING"
-
-            ) ||
-
-            query.includes(
-
-                "STATIONARY"
-
-            ) ||
-
-            query.includes(
-
-                "STOPPED"
-
+        /* Duty Started */
+        if (
+            hasKeyword(
+                StaffConstants.KEYWORDS.STAFF_DUTY_STARTED
             )
+        ) {
+            result.intent =
+                INTENTS.STAFF_DUTY_STARTED;
+            result.confidence =
+                0.99;
+            return result;
+        }
 
-        )
+        /* Duty Ended */
+        if (
+            hasKeyword(
+                StaffConstants.KEYWORDS.STAFF_DUTY_ENDED
+            )
+        ) {
+            result.intent =
+                INTENTS.STAFF_DUTY_ENDED;
+            result.confidence =
+                0.99;
+            return result;
+        }
 
-    ) {
+        /* Duty Type */
+        if (
+            hasKeyword(
+                StaffConstants.KEYWORDS.STAFF_DUTY_TYPE
+            )
+        ) {
+            result.intent =
+                INTENTS.STAFF_DUTY_TYPE;
+            result.confidence =
+                0.99;
+            return result;
+        }
 
-        result.intent =
+        /* Assignment */
+        if (
+            hasKeyword(
+                StaffConstants.KEYWORDS.STAFF_ASSIGNMENT
+            )
+        ) {
+            result.intent =
+                INTENTS.STAFF_ASSIGNMENT;
+            result.confidence =
+                0.99;
+            return result;
+        }
 
-            INTENTS.STAFF_MOVING;
+        /* Duty Status */
+        if (
+            hasKeyword(
+                StaffConstants.KEYWORDS.STAFF_DUTY_STATUS
+            )
+        ) {
+            result.intent =
+                INTENTS.STAFF_DUTY_STATUS;
+            result.confidence =
+                0.99;
+            return result;
+        }
 
-        result.parameters.staff =
-
-            staff[0];
-
-        result.confidence =
-
-            0.99;
-
-        return result;
-
+        /* General Duty */
+        if (
+            hasKeyword(
+                StaffConstants.KEYWORDS.STAFF_DUTY
+            )
+        ) {
+            result.intent =
+                INTENTS.STAFF_DUTY;
+            result.confidence =
+                0.99;
+            return result;
+        }
     }
 
     return result;
-
 };
  /*=========================================================
  DETECT TEAM INTENT
