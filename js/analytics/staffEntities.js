@@ -5771,25 +5771,49 @@ StaffEntities.buildPostingIndex = function () {
 
         new Set();
 
-    function normalize(
+function normalize(
 
-        value
+    value
 
-    ) {
+) {
 
-        return String(
+    return String(
 
-            value ||
+        value ||
 
-            ""
+        ""
 
-        )
+    )
 
-        .trim()
+    .replace(
 
-        .toUpperCase();
+        /([a-z])([A-Z])/g,
 
-    }
+        "$1 $2"
+
+    )
+
+    .replace(
+
+        /[-_]/g,
+
+        " "
+
+    )
+
+    .replace(
+
+        /\s+/g,
+
+        " "
+
+    )
+
+    .trim()
+
+    .toUpperCase();
+
+}
 
     function addAlias(
 
