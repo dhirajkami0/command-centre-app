@@ -2518,6 +2518,43 @@ function (
       - Runtime object is mutable
 =========================================================*/
 
+/*=========================================================
+  getHydratedStaff()
+-----------------------------------------------------------
+  Returns a fully hydrated runtime staff object.
+
+  Pipeline
+
+      Canonical Staff
+
+              ↓
+
+      hydrate()
+
+              ↓
+
+      hydrateLive()
+
+              ↓
+
+      hydratePatrol()
+
+              ↓
+
+      recalculate()
+
+              ↓
+
+      Hydrated Staff
+
+  Notes
+
+      - Non-breaking
+      - Canonical object remains frozen
+      - Runtime object is mutable
+      - Alias-aware
+=========================================================*/
+
 StaffHydrator.getHydratedStaff =
 
 function (
@@ -2549,6 +2586,18 @@ function (
     }
 
     /*----------------------------------
+      Resolve Canonical Name
+    ----------------------------------*/
+
+    const resolvedName =
+
+        staff
+            .identity
+            ?.cleanName ||
+
+        cleanName;
+
+    /*----------------------------------
       Lookup Live Staff
     ----------------------------------*/
 
@@ -2556,7 +2605,7 @@ function (
 
         StaffHydrator.getLiveStaff(
 
-            cleanName
+            resolvedName
 
         );
 
@@ -2588,7 +2637,7 @@ function (
 
         StaffHydrator.getPatrolTrack(
 
-            cleanName
+            resolvedName
 
         );
 
