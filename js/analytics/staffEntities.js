@@ -8262,6 +8262,16 @@ StaffEntities.extract = function (
 
         );
 
+    console.log(
+
+        "AFTER STAFF",
+
+        result.entities.staff,
+
+        result.parameters
+
+    );
+
     /*----------------------------------
       Extract Phones
     ----------------------------------*/
@@ -8273,6 +8283,16 @@ StaffEntities.extract = function (
             result
 
         );
+
+    console.log(
+
+        "AFTER PHONE",
+
+        result.entities.staff,
+
+        result.parameters
+
+    );
 
     /*----------------------------------
       Extract Roles
@@ -8286,14 +8306,38 @@ StaffEntities.extract = function (
 
         );
 
- /*----------------------------------
-  Extract Designations
-----------------------------------*/
+    console.log(
 
-result =
-    StaffEntities.extractDesignationEntities(
-        result
+        "AFTER ROLE",
+
+        result.entities.staff,
+
+        result.parameters
+
     );
+
+    /*----------------------------------
+      Extract Designations
+    ----------------------------------*/
+
+    result =
+
+        StaffEntities.extractDesignationEntities(
+
+            result
+
+        );
+
+    console.log(
+
+        "AFTER DESIGNATION",
+
+        result.entities.staff,
+
+        result.parameters
+
+    );
+
     /*----------------------------------
       Extract Posting
     ----------------------------------*/
@@ -8305,16 +8349,36 @@ result =
             result
 
         );
-StaffEntities.buildPostingParameters(
 
-    result
+    console.log(
 
-);
+        "AFTER POSTING",
+
+        result.entities.staff,
+
+        result.parameters
+
+    );
+
     /*----------------------------------
-      Extract Posting Parameters
+      Build Posting Parameters
     ----------------------------------*/
 
-   
+    StaffEntities.buildPostingParameters(
+
+        result
+
+    );
+
+    console.log(
+
+        "AFTER POSTING PARAMETERS",
+
+        result.entities.staff,
+
+        result.parameters
+
+    );
 
     /*----------------------------------
       Extract Team
@@ -8328,6 +8392,16 @@ StaffEntities.buildPostingParameters(
 
         );
 
+    console.log(
+
+        "AFTER TEAM",
+
+        result.entities.staff,
+
+        result.parameters
+
+    );
+
     /*----------------------------------
       Extract Duty
     ----------------------------------*/
@@ -8339,6 +8413,16 @@ StaffEntities.buildPostingParameters(
             result
 
         );
+
+    console.log(
+
+        "AFTER DUTY",
+
+        result.entities.staff,
+
+        result.parameters
+
+    );
 
     /*----------------------------------
       Extract GPS
@@ -8352,6 +8436,16 @@ StaffEntities.buildPostingParameters(
 
         );
 
+    console.log(
+
+        "AFTER GPS",
+
+        result.entities.staff,
+
+        result.parameters
+
+    );
+
     /*----------------------------------
       Extract Keywords
     ----------------------------------*/
@@ -8363,6 +8457,16 @@ StaffEntities.buildPostingParameters(
             result
 
         );
+
+    console.log(
+
+        "AFTER KEYWORDS",
+
+        result.entities.staff,
+
+        result.parameters
+
+    );
 
     /*----------------------------------
       Calculate Confidence
@@ -8376,6 +8480,16 @@ StaffEntities.buildPostingParameters(
 
         );
 
+    console.log(
+
+        "AFTER CONFIDENCE",
+
+        result.entities.staff,
+
+        result.parameters
+
+    );
+
     /*----------------------------------
       Finalize
     ----------------------------------*/
@@ -8387,6 +8501,16 @@ StaffEntities.buildPostingParameters(
             result
 
         );
+
+    console.log(
+
+        "AFTER FINALIZE",
+
+        result.entities.staff,
+
+        result.parameters
+
+    );
 
     /*----------------------------------
       Cache
