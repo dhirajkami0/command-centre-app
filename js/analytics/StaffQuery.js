@@ -7785,7 +7785,7 @@ GG.queryDesignationDirectory = async function (
 
 };
 
-    GG.queryDesignationCount = async function (
+GG.queryDesignationCount = async function (
 
     request
 
@@ -7801,7 +7801,7 @@ GG.queryDesignationDirectory = async function (
 
         ) {
 
-            const staff =
+            const profiles =
 
                 StaffQuery.filterStaff(
 
@@ -7809,400 +7809,51 @@ GG.queryDesignationDirectory = async function (
 
                 );
 
-            return {
+            return [
 
-                designation:
+                {
 
-                    request.parameters?.designation ||
+                    designation:
 
-                    "",
+                        request.parameters?.designation ||
 
-                circle:
+                        null,
 
-                    request.parameters?.circle ||
+                    circle:
 
-                    "",
+                        request.parameters?.circle ||
 
-                division:
+                        null,
 
-                    request.parameters?.division ||
+                    division:
 
-                    "",
+                        request.parameters?.division ||
 
-                range:
+                        null,
 
-                    request.parameters?.range ||
+                    range:
 
-                    "",
+                        request.parameters?.range ||
 
-                beat:
+                        null,
 
-                    request.parameters?.beat ||
+                    beat:
 
-                    "",
+                        request.parameters?.beat ||
 
-                count:
+                        null,
 
-                    staff.length,
+                    totalStaff:
 
-                staff:
+                        profiles.length,
 
-                    staff
+                    staff:
 
-            };
+                        profiles
 
-        }
+                }
 
-    );
-
-};
-    GG.queryDesignationCount = async function (
-
-    request
-
-) {
-
-    return StaffQuery.execute(
-
-        request,
-
-        async function (
-
-            request
-
-        ) {
-
-            /*----------------------------------
-              Parameters
-            ----------------------------------*/
-
-            const designation =
-
-                String(
-
-                    request.parameters?.designation ||
-
-                    ""
-
-                )
-
-                .trim()
-
-                .toUpperCase();
-
-            const circle =
-
-                String(
-
-                    request.parameters?.circle ||
-
-                    ""
-
-                )
-
-                .trim()
-
-                .toUpperCase();
-
-            const division =
-
-                String(
-
-                    request.parameters?.division ||
-
-                    ""
-
-                )
-
-                .trim()
-
-                .toUpperCase();
-
-            const range =
-
-                String(
-
-                    request.parameters?.range ||
-
-                    ""
-
-                )
-
-                .trim()
-
-                .toUpperCase();
-
-            const beat =
-
-                String(
-
-                    request.parameters?.beat ||
-
-                    ""
-
-                )
-
-                .trim()
-
-                .toUpperCase();
-
-            const compartment =
-
-                String(
-
-                    request.parameters?.compartment ||
-
-                    ""
-
-                )
-
-                .trim()
-
-                .toUpperCase();
-
-            /*----------------------------------
-              Valid Staff
-            ----------------------------------*/
-
-            const profiles =
-
-                StaffQuery
-                    .getValidStaff()
-
-                    .filter(
-
-                        function (
-
-                            profile
-
-                        ) {
-
-                            /*--------------------------
-                              Designation
-                            --------------------------*/
-
-                            if (
-
-                                designation &&
-
-                                String(
-
-                                    profile.identity?.designation ||
-
-                                    ""
-
-                                )
-
-                                .trim()
-
-                                .toUpperCase()
-
-                                !==
-
-                                designation
-
-                            ) {
-
-                                return false;
-
-                            }
-
-                            /*--------------------------
-                              Circle
-                            --------------------------*/
-
-                            if (
-
-                                circle &&
-
-                                String(
-
-                                    profile.posting?.circle ||
-
-                                    ""
-
-                                )
-
-                                .trim()
-
-                                .toUpperCase()
-
-                                !==
-
-                                circle
-
-                            ) {
-
-                                return false;
-
-                            }
-
-                            /*--------------------------
-                              Division
-                            --------------------------*/
-
-                            if (
-
-                                division &&
-
-                                String(
-
-                                    profile.posting?.division ||
-
-                                    ""
-
-                                )
-
-                                .trim()
-
-                                .toUpperCase()
-
-                                !==
-
-                                division
-
-                            ) {
-
-                                return false;
-
-                            }
-
-                            /*--------------------------
-                              Range
-                            --------------------------*/
-
-                            if (
-
-                                range &&
-
-                                String(
-
-                                    profile.posting?.range ||
-
-                                    ""
-
-                                )
-
-                                .trim()
-
-                                .toUpperCase()
-
-                                !==
-
-                                range
-
-                            ) {
-
-                                return false;
-
-                            }
-
-                            /*--------------------------
-                              Beat
-                            --------------------------*/
-
-                            if (
-
-                                beat &&
-
-                                String(
-
-                                    profile.posting?.beat ||
-
-                                    ""
-
-                                )
-
-                                .trim()
-
-                                .toUpperCase()
-
-                                !==
-
-                                beat
-
-                            ) {
-
-                                return false;
-
-                            }
-
-                            /*--------------------------
-                              Compartment
-                            --------------------------*/
-
-                            if (
-
-                                compartment &&
-
-                                String(
-
-                                    profile.assignment
-                                        ?.assignedCompartment ||
-
-                                    ""
-
-                                )
-
-                                .trim()
-
-                                .toUpperCase()
-
-                                !==
-
-                                compartment
-
-                            ) {
-
-                                return false;
-
-                            }
-
-                            return true;
-
-                        }
-
-                    );
-
-            /*----------------------------------
-              Response
-            ----------------------------------*/
-
-            return {
-
-                designation:
-
-                    designation,
-
-                circle:
-
-                    circle,
-
-                division:
-
-                    division,
-
-                range:
-
-                    range,
-
-                beat:
-
-                    beat,
-
-                compartment:
-
-                    compartment,
-
-                count:
-
-                    profiles.length,
-
-                staff:
-
-                    profiles
-
-            };
+            ];
 
         }
 
