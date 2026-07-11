@@ -9790,190 +9790,121 @@ StaffEntities.cleanSearchQuery = function (
       Remove Language Noise
     ----------------------------------*/
 
-    const removeWords = [
+const removeWords = [
 
-        /*----------------------------------
-          General
-        ----------------------------------*/
+    /*----------------------------------
+      General Commands
+    ----------------------------------*/
 
-        "SHOW",
-        "VIEW",
-        "OPEN",
-        "DISPLAY",
-        "GET",
-        "FIND",
-        "SEARCH",
-        "LOOKUP",
-        "LIST",
-        "GIVE",
-        "TELL",
-        "RETURN",
+    "SHOW",
+    "DISPLAY",
+    "VIEW",
+    "OPEN",
+    "GET",
+    "GIVE",
+    "TELL",
+    "RETURN",
+    "FIND",
+    "SEARCH",
+    "LOOKUP",
+    "LIST",
 
-        /*----------------------------------
-          Questions
-        ----------------------------------*/
+    /*----------------------------------
+      Question Words
+    ----------------------------------*/
 
-        "WHO",
-        "WHAT",
-        "WHERE",
-        "WHEN",
-        "WHICH",
-        "HOW",
-        "WHY",
+    "WHO",
+    "WHAT",
+    "WHERE",
+    "WHEN",
+    "WHICH",
+    "WHY",
+    "HOW",
 
-        /*----------------------------------
-          Grammar
-        ----------------------------------*/
+    /*----------------------------------
+      Grammar
+    ----------------------------------*/
 
-        "IS",
-        "ARE",
-        "WAS",
-        "WERE",
-        "AM",
-        "BE",
-        "BEEN",
-        "BEING",
-        "OF",
-        "THE",
-        "A",
-        "AN",
-        "TO",
-        "FOR",
-        "IN",
-        "AT",
-        "ON",
-        "FROM",
-        "WITH",
-        "BY",
-        "UNDER",
+    "IS",
+    "ARE",
+    "WAS",
+    "WERE",
+    "AM",
+    "BE",
+    "BEEN",
+    "BEING",
+    "DO",
+    "DOES",
+    "DID",
+    "HAS",
+    "HAVE",
+    "HAD",
+    "CAN",
+    "COULD",
+    "SHALL",
+    "SHOULD",
+    "WILL",
+    "WOULD",
+    "MAY",
+    "MIGHT",
+    "MUST",
 
-        /*----------------------------------
-          Generic Staff
-        ----------------------------------*/
+    /*----------------------------------
+      Articles / Connectors
+    ----------------------------------*/
 
-        "STAFF",
-        "OFFICER",
-        "EMPLOYEE",
-        "PERSON",
-        "MEMBER",
+    "A",
+    "AN",
+    "THE",
+    "OF",
+    "TO",
+    "FOR",
+    "FROM",
+    "IN",
+    "ON",
+    "AT",
+    "BY",
+    "WITH",
+    "UNDER",
+    "OVER",
+    "INTO",
+    "ONTO",
+    "AS",
 
-        /*----------------------------------
-          Profile
-        ----------------------------------*/
+    /*----------------------------------
+      Generic Staff Nouns
+    ----------------------------------*/
 
-        "PROFILE",
-        "DETAIL",
-        "DETAILS",
-        "INFORMATION",
-        "INFO",
-        "ABOUT",
-        "IDENTITY",
+    "STAFF",
+    "PERSON",
+    "PERSONNEL",
+    "EMPLOYEE",
+    "MEMBER",
 
-        /*----------------------------------
-          Contact
-        ----------------------------------*/
+    /*----------------------------------
+      Profile
+    ----------------------------------*/
 
-        "PHONE",
-        "NUMBER",
-        "MOBILE",
-        "CONTACT",
-        "EMAIL",
-        "CELL",
-        "CALL",
+    "PROFILE",
+    "DETAIL",
+    "DETAILS",
+    "INFORMATION",
+    "INFO",
+    "ABOUT",
 
-        /*----------------------------------
-          Identity
-        ----------------------------------*/
+    /*----------------------------------
+      Contact
+    ----------------------------------*/
 
-        "ROLE",
-        "DESIGNATION",
-        "TYPE",
-        "RANK",
-        "POST",
+    "PHONE",
+    "NUMBER",
+    "MOBILE",
+    "CONTACT",
+    "EMAIL",
+    "CELL",
+    "CALL"
 
-        /*----------------------------------
-          Posting
-        ----------------------------------*/
-
-        "POSTING",
-        "POSTED",
-        "POSTED TO",
-        "WORKING",
-        "WORKING AT",
-        "CIRCLE",
-        "DIVISION",
-        "RANGE",
-        "BEAT",
-
-        /*----------------------------------
-          Assignment
-        ----------------------------------*/
-
-        "ASSIGNED",
-        "ASSIGNMENT",
-        "DEPLOYED",
-        "DEPLOYMENT",
-        "AREA",
-        "PLACE",
-        "COMPARTMENT",
-
-        /*----------------------------------
-          Duty
-        ----------------------------------*/
-
-        "DUTY",
-        "STATUS",
-        "ACTIVE",
-        "INACTIVE",
-        "PATROL",
-        "PATROLLING",
-        "START",
-        "STARTED",
-        "END",
-        "ENDED",
-
-        /*----------------------------------
-          Team
-        ----------------------------------*/
-
-        "TEAM",
-        "LEADER",
-
-        /*----------------------------------
-          GPS
-        ----------------------------------*/
-
-        "GPS",
-        "LOCATION",
-        "POSITION",
-        "LATITUDE",
-        "LONGITUDE",
-        "COORDINATES",
-
-        /*----------------------------------
-          Analytics
-        ----------------------------------*/
-
-        "DISTANCE",
-        "POINT",
-        "POINTS",
-        "TRACK",
-        "TRACKING",
-        "ANALYTICS",
-        "STATISTICS",
-        "SUMMARY",
-        "REPORT",
-
-        /*----------------------------------
-          Strength
-        ----------------------------------*/
-
-        "COUNT",
-        "TOTAL",
-        "STRENGTH",
-        "MANY"
-
-    ];
+];
 
     /*----------------------------------
       Remove Noise Words
@@ -10712,6 +10643,10 @@ Master Staff Extraction Engine
  EXTRACT NAMES
 =========================================================*/
 
+/*=========================================================
+ EXTRACT NAMES
+=========================================================*/
+
 StaffEntities.extractNames = function (
 
     query
@@ -10754,43 +10689,93 @@ StaffEntities.extractNames = function (
 
     }
 
+    const queryWords =
+
+        new Set(
+
+            search
+
+                .split(
+
+                    /\s+/
+
+                )
+
+                .filter(
+
+                    function (
+
+                        word
+
+                    ) {
+
+                        return (
+
+                            word.length >= 2
+
+                        );
+
+                    }
+
+                )
+
+        );
+
     /*----------------------------------
-      Local References
+      Matches
     ----------------------------------*/
 
-    const {
+    const matches = [];
 
-        byCleanName,
+    const seen =
 
-        byName
-
-    } =
-
-        StaffEntities.index;
-
-    /*----------------------------------
-      Result Collection
-    ----------------------------------*/
-
-    const results =
-
-        new Map();
+        new Set();
 
     /*----------------------------------
       Helper
     ----------------------------------*/
 
-    function addList(
+    function addMatch(
 
-        list
+        staff,
+
+        score
 
     ) {
 
         if (
 
-            !Array.isArray(
+            !staff ||
 
-                list
+            !staff.identity
+
+        ) {
+
+            return;
+
+        }
+
+        const key =
+
+            String(
+
+                staff.identity.cleanName ||
+
+                staff.id ||
+
+                ""
+
+            )
+
+            .trim()
+
+            .toUpperCase();
+
+        if (
+
+            seen.has(
+
+                key
 
             )
 
@@ -10800,89 +10785,213 @@ StaffEntities.extractNames = function (
 
         }
 
-        list.forEach(
+        seen.add(
 
-            function (
-
-                staff
-
-            ) {
-
-                if (
-
-                    !staff
-
-                ) {
-
-                    return;
-
-                }
-
-                results.set(
-
-                    staff.id,
-
-                    staff
-
-                );
-
-            }
+            key
 
         );
+
+        matches.push({
+
+            staff:
+
+                staff,
+
+            score:
+
+                score
+
+        });
 
     }
 
     /*----------------------------------
-      Exact Match
+      Search Identity Tokens
     ----------------------------------*/
 
-    addList(
-
-        byCleanName.get(
-
-            search
-
-        )
-
-    );
-
-    addList(
-
-        byName.get(
-
-            search
-
-        )
-
-    );
-
-    /*----------------------------------
-      Partial Match
-    ----------------------------------*/
-
-    byCleanName.forEach(
+    StaffEntities.staff.forEach(
 
         function (
 
-            value,
-
-            key
+            staff
 
         ) {
 
             if (
 
-                key.includes(
+                !staff ||
 
-                    search
+                !staff.search ||
+
+                !Array.isArray(
+
+                    staff.search.identity
 
                 )
 
             ) {
 
-                addList(
+                return;
 
-                    value
+            }
+
+            let score =
+
+                0;
+
+            staff.search.identity.forEach(
+
+                function (
+
+                    token
+
+                ) {
+
+                    token =
+
+                        String(
+
+                            token ||
+
+                            ""
+
+                        )
+
+                        .trim()
+
+                        .toUpperCase();
+
+                    if (
+
+                        token.length < 2
+
+                    ) {
+
+                        return;
+
+                    }
+
+                    /*------------------------------
+                      Exact
+                    ------------------------------*/
+
+                    if (
+
+                        token === search
+
+                    ) {
+
+                        score +=
+
+                            1000;
+
+                        return;
+
+                    }
+
+                    /*------------------------------
+                      Partial
+                    ------------------------------*/
+
+                    if (
+
+                        token.includes(
+
+                            search
+
+                        )
+
+                    ) {
+
+                        score +=
+
+                            token.length *
+
+                            50;
+
+                    }
+
+                    /*------------------------------
+                      Word Match
+                    ------------------------------*/
+
+                    const tokenWords =
+
+                        token
+
+                            .split(
+
+                                /\s+/
+
+                            )
+
+                            .filter(
+
+                                Boolean
+
+                            );
+
+                    let matched =
+
+                        0;
+
+                    tokenWords.forEach(
+
+                        function (
+
+                            word
+
+                        ) {
+
+                            if (
+
+                                queryWords.has(
+
+                                    word
+
+                                )
+
+                            ) {
+
+                                matched++;
+
+                            }
+
+                        }
+
+                    );
+
+                    if (
+
+                        matched ===
+
+                        tokenWords.length
+
+                    ) {
+
+                        score +=
+
+                            matched *
+
+                            100;
+
+                    }
+
+                }
+
+            );
+
+            if (
+
+                score > 0
+
+            ) {
+
+                addMatch(
+
+                    staff,
+
+                    score
 
                 );
 
@@ -10892,33 +11001,49 @@ StaffEntities.extractNames = function (
 
     );
 
-    byName.forEach(
+    /*----------------------------------
+      Highest Score First
+    ----------------------------------*/
+
+    matches.sort(
 
         function (
 
-            value,
+            a,
 
-            key
+            b
 
         ) {
 
             if (
 
-                key.includes(
+                b.score !==
 
-                    search
-
-                )
+                a.score
 
             ) {
 
-                addList(
+                return (
 
-                    value
+                    b.score -
+
+                    a.score
 
                 );
 
             }
+
+            return (
+
+                a.staff.identity.cleanName
+
+                    .localeCompare(
+
+                        b.staff.identity.cleanName
+
+                    )
+
+            );
 
         }
 
@@ -10928,13 +11053,25 @@ StaffEntities.extractNames = function (
       Return
     ----------------------------------*/
 
-    return Array.from(
+    return matches.map(
 
-        results.values()
+        function (
+
+            item
+
+        ) {
+
+            return item.staff;
+
+        }
 
     );
 
 };
+/*=========================================================
+ EXTRACT PHONES
+=========================================================*/
+
 /*=========================================================
  EXTRACT PHONES
 =========================================================*/
@@ -10946,7 +11083,7 @@ StaffEntities.extractPhones = function (
 ) {
 
     /*----------------------------------
-      Validate Query
+      Validate
     ----------------------------------*/
 
     if (
@@ -10988,36 +11125,60 @@ StaffEntities.extractPhones = function (
     }
 
     /*----------------------------------
-      Index
+      Matches
     ----------------------------------*/
 
-    const phoneIndex =
+    const matches = [];
 
-        StaffEntities.index.byPhone;
+    const seen =
 
-    /*----------------------------------
-      Result Collection
-    ----------------------------------*/
-
-    const results =
-
-        new Map();
+        new Set();
 
     /*----------------------------------
       Helper
     ----------------------------------*/
 
-    function addList(
+    function addMatch(
 
-        list
+        staff,
+
+        score
 
     ) {
 
         if (
 
-            !Array.isArray(
+            !staff ||
 
-                list
+            !staff.identity
+
+        ) {
+
+            return;
+
+        }
+
+        const key =
+
+            String(
+
+                staff.identity.cleanName ||
+
+                staff.id ||
+
+                ""
+
+            )
+
+            .trim()
+
+            .toUpperCase();
+
+        if (
+
+            seen.has(
+
+                key
 
             )
 
@@ -11027,79 +11188,151 @@ StaffEntities.extractPhones = function (
 
         }
 
-        list.forEach(
+        seen.add(
 
-            function (
-
-                staff
-
-            ) {
-
-                if (
-
-                    !staff
-
-                ) {
-
-                    return;
-
-                }
-
-                results.set(
-
-                    staff.id,
-
-                    staff
-
-                );
-
-            }
+            key
 
         );
+
+        matches.push({
+
+            staff:
+
+                staff,
+
+            score:
+
+                score
+
+        });
 
     }
 
     /*----------------------------------
-      Exact Match
+      Search Phone Tokens
     ----------------------------------*/
 
-    addList(
-
-        phoneIndex.get(
-
-            search
-
-        )
-
-    );
-
-    /*----------------------------------
-      Partial Match
-    ----------------------------------*/
-
-    phoneIndex.forEach(
+    StaffEntities.staff.forEach(
 
         function (
 
-            value,
-
-            key
+            staff
 
         ) {
 
             if (
 
-                key.includes(
+                !staff ||
 
-                    search
+                !staff.search ||
+
+                !Array.isArray(
+
+                    staff.search.phone
 
                 )
 
             ) {
 
-                addList(
+                return;
 
-                    value
+            }
+
+            let score =
+
+                0;
+
+            staff.search.phone.forEach(
+
+                function (
+
+                    token
+
+                ) {
+
+                    token =
+
+                        String(
+
+                            token ||
+
+                            ""
+
+                        )
+
+                        .replace(
+
+                            /\D/g,
+
+                            ""
+
+                        );
+
+                    if (
+
+                        token.length === 0
+
+                    ) {
+
+                        return;
+
+                    }
+
+                    /*------------------------------
+                      Exact Match
+                    ------------------------------*/
+
+                    if (
+
+                        token === search
+
+                    ) {
+
+                        score +=
+
+                            1000;
+
+                        return;
+
+                    }
+
+                    /*------------------------------
+                      Partial Match
+                    ------------------------------*/
+
+                    if (
+
+                        token.includes(
+
+                            search
+
+                        )
+
+                    ) {
+
+                        score +=
+
+                            token.length *
+
+                            50;
+
+                    }
+
+                }
+
+            );
+
+            if (
+
+                score > 0
+
+            ) {
+
+                addMatch(
+
+                    staff,
+
+                    score
 
                 );
 
@@ -11110,16 +11343,76 @@ StaffEntities.extractPhones = function (
     );
 
     /*----------------------------------
+      Highest Score First
+    ----------------------------------*/
+
+    matches.sort(
+
+        function (
+
+            a,
+
+            b
+
+        ) {
+
+            if (
+
+                b.score !==
+
+                a.score
+
+            ) {
+
+                return (
+
+                    b.score -
+
+                    a.score
+
+                );
+
+            }
+
+            return (
+
+                a.staff.identity.cleanName
+
+                    .localeCompare(
+
+                        b.staff.identity.cleanName
+
+                    )
+
+            );
+
+        }
+
+    );
+
+    /*----------------------------------
       Return
     ----------------------------------*/
 
-    return Array.from(
+    return matches.map(
 
-        results.values()
+        function (
+
+            item
+
+        ) {
+
+            return item.staff;
+
+        }
 
     );
 
 };
+/*=========================================================
+ EXTRACT ROLES
+=========================================================*/
+
 /*=========================================================
  EXTRACT ROLES
 =========================================================*/
@@ -11131,7 +11424,7 @@ StaffEntities.extractRoles = function (
 ) {
 
     /*----------------------------------
-      Validate Query
+      Validate
     ----------------------------------*/
 
     if (
@@ -11166,37 +11459,93 @@ StaffEntities.extractRoles = function (
 
     }
 
+    const queryWords =
+
+        new Set(
+
+            search
+
+                .split(
+
+                    /\s+/
+
+                )
+
+                .filter(
+
+                    function (
+
+                        word
+
+                    ) {
+
+                        return (
+
+                            word.length >= 2
+
+                        );
+
+                    }
+
+                )
+
+        );
+
     /*----------------------------------
-      Role Index
+      Matches
     ----------------------------------*/
 
-    const roleIndex =
+    const matches = [];
 
-        StaffEntities.index.byRole;
+    const seen =
 
-    /*----------------------------------
-      Results
-    ----------------------------------*/
-
-    const results =
-
-        new Map();
+        new Set();
 
     /*----------------------------------
       Helper
     ----------------------------------*/
 
-    function addList(
+    function addMatch(
 
-        list
+        staff,
+
+        score
 
     ) {
 
         if (
 
-            !Array.isArray(
+            !staff ||
 
-                list
+            !staff.identity
+
+        ) {
+
+            return;
+
+        }
+
+        const key =
+
+            String(
+
+                staff.identity.cleanName ||
+
+                staff.id ||
+
+                ""
+
+            )
+
+            .trim()
+
+            .toUpperCase();
+
+        if (
+
+            seen.has(
+
+                key
 
             )
 
@@ -11206,79 +11555,293 @@ StaffEntities.extractRoles = function (
 
         }
 
-        list.forEach(
+        seen.add(
 
-            function (
-
-                staff
-
-            ) {
-
-                if (
-
-                    !staff
-
-                ) {
-
-                    return;
-
-                }
-
-                results.set(
-
-                    staff.id,
-
-                    staff
-
-                );
-
-            }
+            key
 
         );
+
+        matches.push({
+
+            staff:
+
+                staff,
+
+            score:
+
+                score
+
+        });
 
     }
 
     /*----------------------------------
-      Exact Match
+      Search Role Tokens
     ----------------------------------*/
 
-    addList(
-
-        roleIndex.get(
-
-            search
-
-        )
-
-    );
-
-    /*----------------------------------
-      Partial Match
-    ----------------------------------*/
-
-    roleIndex.forEach(
+    StaffEntities.staff.forEach(
 
         function (
 
-            value,
-
-            key
+            staff
 
         ) {
 
             if (
 
-                key.includes(
+                !staff ||
 
-                    search
+                !staff.search ||
+
+                !Array.isArray(
+
+                    staff.search.role
 
                 )
 
             ) {
 
-                addList(
+                return;
 
-                    value
+            }
+
+            let score =
+
+                0;
+
+            staff.search.role.forEach(
+
+                function (
+
+                    token
+
+                ) {
+
+                    token =
+
+                        String(
+
+                            token ||
+
+                            ""
+
+                        )
+
+                        .trim()
+
+                        .toUpperCase();
+
+                    if (
+
+                        token.length < 2
+
+                    ) {
+
+                        return;
+
+                    }
+
+                    /*------------------------------
+                      Exact Match
+                    ------------------------------*/
+
+                    if (
+
+                        token === search
+
+                    ) {
+
+                        score +=
+
+                            1000;
+
+                        return;
+
+                    }
+
+                    /*------------------------------
+                      Partial Match
+                    ------------------------------*/
+
+                    if (
+
+                        token.includes(
+
+                            search
+
+                        )
+
+                    ) {
+
+                        score +=
+
+                            token.length *
+
+                            50;
+
+                    }
+
+                    /*------------------------------
+                      Word Match
+                    ------------------------------*/
+
+                    const tokenWords =
+
+                        token
+
+                            .split(
+
+                                /\s+/
+
+                            )
+
+                            .filter(
+
+                                Boolean
+
+                            );
+
+                    let matched =
+
+                        0;
+
+                    tokenWords.forEach(
+
+                        function (
+
+                            word
+
+                        ) {
+
+                            if (
+
+                                queryWords.has(
+
+                                    word
+
+                                )
+
+                            ) {
+
+                                matched++;
+
+                            }
+
+                        }
+
+                    );
+
+                    if (
+
+                        matched ===
+
+                        tokenWords.length
+
+                    ) {
+
+                        score +=
+
+                            matched *
+
+                            100;
+
+                    }
+
+                    /*------------------------------
+                      Synonyms
+                    ------------------------------*/
+
+                    const synonyms =
+
+                        StaffConstants
+
+                            ?.SYNONYMS?.[
+
+                                token
+
+                            ];
+
+                    if (
+
+                        Array.isArray(
+
+                            synonyms
+
+                        )
+
+                    ) {
+
+                        synonyms.forEach(
+
+                            function (
+
+                                synonym
+
+                            ) {
+
+                                synonym =
+
+                                    String(
+
+                                        synonym
+
+                                    )
+
+                                    .trim()
+
+                                    .toUpperCase();
+
+                                if (
+
+                                    synonym === search
+
+                                ) {
+
+                                    score +=
+
+                                        900;
+
+                                }
+
+                                else if (
+
+                                    synonym.includes(
+
+                                        search
+
+                                    )
+
+                                ) {
+
+                                    score +=
+
+                                        synonym.length *
+
+                                        40;
+
+                                }
+
+                            }
+
+                        );
+
+                    }
+
+                }
+
+            );
+
+            if (
+
+                score > 0
+
+            ) {
+
+                addMatch(
+
+                    staff,
+
+                    score
 
                 );
 
@@ -11289,64 +11852,76 @@ StaffEntities.extractRoles = function (
     );
 
     /*----------------------------------
-      Synonym Match
+      Highest Score First
     ----------------------------------*/
 
-    if (
+    matches.sort(
 
-        StaffConstants.SYNONYMS &&
+        function (
 
-        StaffConstants.SYNONYMS.ROLE
+            a,
 
-    ) {
+            b
 
-        StaffConstants.SYNONYMS.ROLE.forEach(
+        ) {
 
-            function (
+            if (
 
-                synonym
+                b.score !==
+
+                a.score
 
             ) {
 
-                if (
+                return (
 
-                    synonym.includes(
+                    b.score -
 
-                        search
+                    a.score
 
-                    )
-
-                ) {
-
-                    addList(
-
-                        roleIndex.get(
-
-                            synonym
-
-                        )
-
-                    );
-
-                }
+                );
 
             }
 
-        );
+            return (
 
-    }
+                a.staff.identity.cleanName
+
+                    .localeCompare(
+
+                        b.staff.identity.cleanName
+
+                    )
+
+            );
+
+        }
+
+    );
 
     /*----------------------------------
       Return
     ----------------------------------*/
 
-    return Array.from(
+    return matches.map(
 
-        results.values()
+        function (
+
+            item
+
+        ) {
+
+            return item.staff;
+
+        }
 
     );
 
 };
+/*=========================================================
+ EXTRACT DESIGNATIONS
+=========================================================*/
+
 /*=========================================================
  EXTRACT DESIGNATIONS
 =========================================================*/
@@ -11358,7 +11933,7 @@ StaffEntities.extractDesignations = function (
 ) {
 
     /*----------------------------------
-      Validate Query
+      Validate
     ----------------------------------*/
 
     if (
@@ -11372,15 +11947,13 @@ StaffEntities.extractDesignations = function (
     }
 
     /*----------------------------------
-      Normalize Query
+      Normalize
     ----------------------------------*/
 
     const search =
 
         query
-
             .trim()
-
             .toUpperCase();
 
     if (
@@ -11393,37 +11966,93 @@ StaffEntities.extractDesignations = function (
 
     }
 
+    const queryWords =
+
+        new Set(
+
+            search
+
+                .split(
+
+                    /\s+/
+
+                )
+
+                .filter(
+
+                    function (
+
+                        word
+
+                    ) {
+
+                        return (
+
+                            word.length >= 2
+
+                        );
+
+                    }
+
+                )
+
+        );
+
     /*----------------------------------
-      Designation Index
+      Matches
     ----------------------------------*/
 
-    const designationIndex =
+    const matches = [];
 
-        StaffEntities.index.byDesignation;
+    const seen =
 
-    /*----------------------------------
-      Result Collection
-    ----------------------------------*/
-
-    const results =
-
-        new Map();
+        new Set();
 
     /*----------------------------------
       Helper
     ----------------------------------*/
 
-    function addList(
+    function addMatch(
 
-        list
+        staff,
+
+        score
 
     ) {
 
         if (
 
-            !Array.isArray(
+            !staff ||
 
-                list
+            !staff.identity
+
+        ) {
+
+            return;
+
+        }
+
+        const key =
+
+            String(
+
+                staff.identity.cleanName ||
+
+                staff.id ||
+
+                ""
+
+            )
+
+            .trim()
+
+            .toUpperCase();
+
+        if (
+
+            seen.has(
+
+                key
 
             )
 
@@ -11433,79 +12062,299 @@ StaffEntities.extractDesignations = function (
 
         }
 
-        list.forEach(
+        seen.add(
 
-            function (
-
-                staff
-
-            ) {
-
-                if (
-
-                    !staff
-
-                ) {
-
-                    return;
-
-                }
-
-                results.set(
-
-                    staff.id,
-
-                    staff
-
-                );
-
-            }
+            key
 
         );
+
+        matches.push({
+
+            staff:
+
+                staff,
+
+            score:
+
+                score
+
+        });
 
     }
 
     /*----------------------------------
-      Exact Match
+      Search Designation Tokens
     ----------------------------------*/
 
-    addList(
-
-        designationIndex.get(
-
-            search
-
-        )
-
-    );
-
-    /*----------------------------------
-      Partial Match
-    ----------------------------------*/
-
-    designationIndex.forEach(
+    StaffEntities.staff.forEach(
 
         function (
 
-            value,
-
-            key
+            staff
 
         ) {
 
             if (
 
-                key.includes(
+                !staff ||
 
-                    search
+                !staff.search ||
+
+                !Array.isArray(
+
+                    staff.search.designation
 
                 )
 
             ) {
 
-                addList(
+                return;
 
-                    value
+            }
+
+            let score =
+
+                0;
+
+            staff.search.designation.forEach(
+
+                function (
+
+                    token
+
+                ) {
+
+                    token =
+
+                        String(
+
+                            token ||
+
+                            ""
+
+                        )
+
+                        .trim()
+
+                        .toUpperCase();
+
+                    if (
+
+                        token.length < 2
+
+                    ) {
+
+                        return;
+
+                    }
+
+                    /*------------------------------
+                      Exact Match
+                    ------------------------------*/
+
+                    if (
+
+                        token ===
+
+                        search
+
+                    ) {
+
+                        score +=
+
+                            1000;
+
+                        return;
+
+                    }
+
+                    /*------------------------------
+                      Partial Match
+                    ------------------------------*/
+
+                    if (
+
+                        token.includes(
+
+                            search
+
+                        )
+
+                    ) {
+
+                        score +=
+
+                            token.length *
+
+                            50;
+
+                    }
+
+                    /*------------------------------
+                      Word Match
+                    ------------------------------*/
+
+                    const tokenWords =
+
+                        token
+
+                            .split(
+
+                                /\s+/
+
+                            )
+
+                            .filter(
+
+                                Boolean
+
+                            );
+
+                    let matched =
+
+                        0;
+
+                    tokenWords.forEach(
+
+                        function (
+
+                            word
+
+                        ) {
+
+                            if (
+
+                                queryWords.has(
+
+                                    word
+
+                                )
+
+                            ) {
+
+                                matched++;
+
+                            }
+
+                        }
+
+                    );
+
+                    if (
+
+                        matched ===
+
+                        tokenWords.length
+
+                    ) {
+
+                        score +=
+
+                            matched *
+
+                            100;
+
+                    }
+
+                    /*------------------------------
+                      Designation Aliases
+                    ------------------------------*/
+
+                    const aliases =
+
+                        StaffConstants
+
+                            ?.DESIGNATION_ALIASES?.[
+
+                                token
+
+                            ];
+
+                    if (
+
+                        Array.isArray(
+
+                            aliases
+
+                        )
+
+                    ) {
+
+                        aliases.forEach(
+
+                            function (
+
+                                alias
+
+                            ) {
+
+                                alias =
+
+                                    String(
+
+                                        alias
+
+                                    )
+
+                                    .trim()
+
+                                    .toUpperCase();
+
+                                if (
+
+                                    alias ===
+
+                                    search
+
+                                ) {
+
+                                    score +=
+
+                                        900;
+
+                                }
+
+                                else if (
+
+                                    alias.includes(
+
+                                        search
+
+                                    )
+
+                                ) {
+
+                                    score +=
+
+                                        alias.length *
+
+                                        40;
+
+                                }
+
+                            }
+
+                        );
+
+                    }
+
+                }
+
+            );
+
+            if (
+
+                score >
+
+                0
+
+            ) {
+
+                addMatch(
+
+                    staff,
+
+                    score
 
                 );
 
@@ -11516,200 +12365,75 @@ StaffEntities.extractDesignations = function (
     );
 
     /*----------------------------------
-      Designation Alias Match
+      Highest Score First
     ----------------------------------*/
 
-    if (
+    matches.sort(
 
-        StaffConstants.DESIGNATION_ALIASES &&
+        function (
 
-        typeof StaffConstants.DESIGNATION_ALIASES === "object"
+            a,
 
-    ) {
+            b
 
-        Object.entries(
+        ) {
 
-            StaffConstants.DESIGNATION_ALIASES
+            if (
 
-        )
+                b.score !==
 
-        .forEach(
-
-            function (
-
-                [
-
-                    designation,
-
-                    aliases
-
-                ]
+                a.score
 
             ) {
 
-                if (
+                return (
 
-                    designation
+                    b.score -
 
-                        .toUpperCase()
+                    a.score
 
-                        .includes(
-
-                            search
-
-                        )
-
-                ) {
-
-                    addList(
-
-                        designationIndex.get(
-
-                            designation
-
-                                .toUpperCase()
-
-                        )
-
-                    );
-
-                }
-
-                if (
-
-                    Array.isArray(
-
-                        aliases
-
-                    )
-
-                ) {
-
-                    aliases.forEach(
-
-                        function (
-
-                            alias
-
-                        ) {
-
-                            if (
-
-                                String(
-
-                                    alias
-
-                                )
-
-                                .toUpperCase()
-
-                                .includes(
-
-                                    search
-
-                                )
-
-                            ) {
-
-                                addList(
-
-                                    designationIndex.get(
-
-                                        designation
-
-                                            .toUpperCase()
-
-                                    )
-
-                                );
-
-                            }
-
-                        }
-
-                    );
-
-                }
+                );
 
             }
 
-        );
+            return (
 
-    }
+                a.staff.identity.cleanName
 
-    /*----------------------------------
-      StaffConstants.DESIGNATIONS Match
-    ----------------------------------*/
+                    .localeCompare(
 
-    if (
-
-        StaffConstants.DESIGNATIONS
-
-    ) {
-
-        Object.values(
-
-            StaffConstants.DESIGNATIONS
-
-        )
-
-        .forEach(
-
-            function (
-
-                designation
-
-            ) {
-
-                const value =
-
-                    String(
-
-                        designation
+                        b.staff.identity.cleanName
 
                     )
 
-                    .toUpperCase();
+            );
 
-                if (
+        }
 
-                    value.includes(
-
-                        search
-
-                    )
-
-                ) {
-
-                    addList(
-
-                        designationIndex.get(
-
-                            value
-
-                        )
-
-                    );
-
-                }
-
-            }
-
-        );
-
-    }
+    );
 
     /*----------------------------------
       Return
     ----------------------------------*/
 
-    return Array.from(
+    return matches.map(
 
-        results.values()
+        function (
+
+            item
+
+        ) {
+
+            return item.staff;
+
+        }
 
     );
 
 };
+/*=========================================================
+ EXTRACT POSTING
+=========================================================*/
 
 /*=========================================================
  EXTRACT POSTING
@@ -11722,7 +12446,7 @@ StaffEntities.extractPosting = function (
 ) {
 
     /*----------------------------------
-      Validate Query
+      Validate
     ----------------------------------*/
 
     if (
@@ -11736,7 +12460,7 @@ StaffEntities.extractPosting = function (
     }
 
     /*----------------------------------
-      Normalize Query
+      Normalize
     ----------------------------------*/
 
     const search =
@@ -11757,49 +12481,93 @@ StaffEntities.extractPosting = function (
 
     }
 
+    const queryWords =
+
+        new Set(
+
+            search
+
+                .split(
+
+                    /\s+/
+
+                )
+
+                .filter(
+
+                    function (
+
+                        word
+
+                    ) {
+
+                        return (
+
+                            word.length >= 2
+
+                        );
+
+                    }
+
+                )
+
+        );
+
     /*----------------------------------
-      Local References
+      Matches
     ----------------------------------*/
 
-    const {
+    const matches = [];
 
-        byCircle,
+    const seen =
 
-        byDivision,
-
-        byRange,
-
-        byBeat,
-
-        byCompartment
-
-    } =
-
-        StaffEntities.index;
-
-    /*----------------------------------
-      Result Collection
-    ----------------------------------*/
-
-    const results =
-
-        new Map();
+        new Set();
 
     /*----------------------------------
       Helper
     ----------------------------------*/
 
-    function addList(
+    function addMatch(
 
-        list
+        staff,
+
+        score
 
     ) {
 
         if (
 
-            !Array.isArray(
+            !staff ||
 
-                list
+            !staff.identity
+
+        ) {
+
+            return;
+
+        }
+
+        const key =
+
+            String(
+
+                staff.identity.cleanName ||
+
+                staff.id ||
+
+                ""
+
+            )
+
+            .trim()
+
+            .toUpperCase();
+
+        if (
+
+            seen.has(
+
+                key
 
             )
 
@@ -11809,259 +12577,215 @@ StaffEntities.extractPosting = function (
 
         }
 
-        list.forEach(
+        seen.add(
 
-            function (
-
-                staff
-
-            ) {
-
-                if (
-
-                    !staff
-
-                ) {
-
-                    return;
-
-                }
-
-                results.set(
-
-                    staff.id,
-
-                    staff
-
-                );
-
-            }
+            key
 
         );
 
+        matches.push({
+
+            staff:
+
+                staff,
+
+            score:
+
+                score
+
+        });
+
     }
 
-    /*=====================================================
-      Circle
-    =====================================================*/
+    /*----------------------------------
+      Search Posting Tokens
+    ----------------------------------*/
 
-    addList(
-
-        byCircle.get(
-
-            search
-
-        )
-
-    );
-
-    byCircle.forEach(
+    StaffEntities.staff.forEach(
 
         function (
 
-            value,
-
-            key
+            staff
 
         ) {
 
             if (
 
-                key.includes(
+                !staff ||
 
-                    search
+                !staff.search ||
+
+                !Array.isArray(
+
+                    staff.search.posting
 
                 )
 
             ) {
 
-                addList(
-
-                    value
-
-                );
+                return;
 
             }
 
-        }
+            let score =
 
-    );
+                0;
 
-    /*=====================================================
-      Division
-    =====================================================*/
+            staff.search.posting.forEach(
 
-    addList(
+                function (
 
-        byDivision.get(
+                    token
 
-            search
+                ) {
 
-        )
+                    token =
 
-    );
+                        String(
 
-    byDivision.forEach(
+                            token ||
 
-        function (
+                            ""
 
-            value,
+                        )
 
-            key
+                        .trim()
 
-        ) {
+                        .toUpperCase();
+
+                    if (
+
+                        token.length < 2
+
+                    ) {
+
+                        return;
+
+                    }
+
+                    /*------------------------------
+                      Exact Match
+                    ------------------------------*/
+
+                    if (
+
+                        token === search
+
+                    ) {
+
+                        score +=
+
+                            1000;
+
+                        return;
+
+                    }
+
+                    /*------------------------------
+                      Partial Match
+                    ------------------------------*/
+
+                    if (
+
+                        token.includes(
+
+                            search
+
+                        )
+
+                    ) {
+
+                        score +=
+
+                            token.length *
+
+                            50;
+
+                    }
+
+                    /*------------------------------
+                      Word Match
+                    ------------------------------*/
+
+                    const tokenWords =
+
+                        token
+
+                            .split(
+
+                                /\s+/
+
+                            )
+
+                            .filter(
+
+                                Boolean
+
+                            );
+
+                    let matched =
+
+                        0;
+
+                    tokenWords.forEach(
+
+                        function (
+
+                            word
+
+                        ) {
+
+                            if (
+
+                                queryWords.has(
+
+                                    word
+
+                                )
+
+                            ) {
+
+                                matched++;
+
+                            }
+
+                        }
+
+                    );
+
+                    if (
+
+                        matched ===
+
+                        tokenWords.length
+
+                    ) {
+
+                        score +=
+
+                            matched *
+
+                            100;
+
+                    }
+
+                }
+
+            );
 
             if (
 
-                key.includes(
+                score >
 
-                    search
-
-                )
+                0
 
             ) {
 
-                addList(
+                addMatch(
 
-                    value
+                    staff,
 
-                );
-
-            }
-
-        }
-
-    );
-
-    /*=====================================================
-      Range
-    =====================================================*/
-
-    addList(
-
-        byRange.get(
-
-            search
-
-        )
-
-    );
-
-    byRange.forEach(
-
-        function (
-
-            value,
-
-            key
-
-        ) {
-
-            if (
-
-                key.includes(
-
-                    search
-
-                )
-
-            ) {
-
-                addList(
-
-                    value
-
-                );
-
-            }
-
-        }
-
-    );
-
-    /*=====================================================
-      Beat
-    =====================================================*/
-
-    addList(
-
-        byBeat.get(
-
-            search
-
-        )
-
-    );
-
-    byBeat.forEach(
-
-        function (
-
-            value,
-
-            key
-
-        ) {
-
-            if (
-
-                key.includes(
-
-                    search
-
-                )
-
-            ) {
-
-                addList(
-
-                    value
-
-                );
-
-            }
-
-        }
-
-    );
-
-    /*=====================================================
-      Compartment
-    =====================================================*/
-
-    addList(
-
-        byCompartment.get(
-
-            search
-
-        )
-
-    );
-
-    byCompartment.forEach(
-
-        function (
-
-            value,
-
-            key
-
-        ) {
-
-            if (
-
-                key.includes(
-
-                    search
-
-                )
-
-            ) {
-
-                addList(
-
-                    value
+                    score
 
                 );
 
@@ -12072,16 +12796,75 @@ StaffEntities.extractPosting = function (
     );
 
     /*----------------------------------
+      Highest Score First
+    ----------------------------------*/
+
+    matches.sort(
+
+        function (
+
+            a,
+
+            b
+
+        ) {
+
+            if (
+
+                b.score !==
+
+                a.score
+
+            ) {
+
+                return (
+
+                    b.score -
+
+                    a.score
+
+                );
+
+            }
+
+            return (
+
+                a.staff.identity.cleanName
+
+                    .localeCompare(
+
+                        b.staff.identity.cleanName
+
+                    )
+
+            );
+
+        }
+
+    );
+
+    /*----------------------------------
       Return
     ----------------------------------*/
 
-    return Array.from(
+    return matches.map(
 
-        results.values()
+        function (
+
+            item
+
+        ) {
+
+            return item.staff;
+
+        }
 
     );
 
 };
+/*=========================================================
+ EXTRACT TEAM
+=========================================================*/
 
 /*=========================================================
  EXTRACT TEAM
@@ -12094,7 +12877,7 @@ StaffEntities.extractTeam = function (
 ) {
 
     /*----------------------------------
-      Validate Query
+      Validate
     ----------------------------------*/
 
     if (
@@ -12108,7 +12891,7 @@ StaffEntities.extractTeam = function (
     }
 
     /*----------------------------------
-      Normalize Query
+      Normalize
     ----------------------------------*/
 
     const search =
@@ -12129,43 +12912,93 @@ StaffEntities.extractTeam = function (
 
     }
 
+    const queryWords =
+
+        new Set(
+
+            search
+
+                .split(
+
+                    /\s+/
+
+                )
+
+                .filter(
+
+                    function (
+
+                        word
+
+                    ) {
+
+                        return (
+
+                            word.length >= 2
+
+                        );
+
+                    }
+
+                )
+
+        );
+
     /*----------------------------------
-      Local References
+      Matches
     ----------------------------------*/
 
-    const {
+    const matches = [];
 
-        byLeader,
+    const seen =
 
-        byTeam
-
-    } =
-
-        StaffEntities.index;
-
-    /*----------------------------------
-      Result Collection
-    ----------------------------------*/
-
-    const results =
-
-        new Map();
+        new Set();
 
     /*----------------------------------
       Helper
     ----------------------------------*/
 
-    function addList(
+    function addMatch(
 
-        list
+        staff,
+
+        score
 
     ) {
 
         if (
 
-            !Array.isArray(
+            !staff ||
 
-                list
+            !staff.identity
+
+        ) {
+
+            return;
+
+        }
+
+        const key =
+
+            String(
+
+                staff.identity.cleanName ||
+
+                staff.id ||
+
+                ""
+
+            )
+
+            .trim()
+
+            .toUpperCase();
+
+        if (
+
+            seen.has(
+
+                key
 
             )
 
@@ -12175,133 +13008,29 @@ StaffEntities.extractTeam = function (
 
         }
 
-        list.forEach(
+        seen.add(
 
-            function (
-
-                staff
-
-            ) {
-
-                if (
-
-                    !staff
-
-                ) {
-
-                    return;
-
-                }
-
-                results.set(
-
-                    staff.id,
-
-                    staff
-
-                );
-
-            }
+            key
 
         );
 
+        matches.push({
+
+            staff:
+
+                staff,
+
+            score:
+
+                score
+
+        });
+
     }
 
-    /*=====================================================
-      Leader
-    =====================================================*/
-
-    addList(
-
-        byLeader.get(
-
-            search
-
-        )
-
-    );
-
-    byLeader.forEach(
-
-        function (
-
-            value,
-
-            key
-
-        ) {
-
-            if (
-
-                key.includes(
-
-                    search
-
-                )
-
-            ) {
-
-                addList(
-
-                    value
-
-                );
-
-            }
-
-        }
-
-    );
-
-    /*=====================================================
-      Team
-    =====================================================*/
-
-    addList(
-
-        byTeam.get(
-
-            search
-
-        )
-
-    );
-
-    byTeam.forEach(
-
-        function (
-
-            value,
-
-            key
-
-        ) {
-
-            if (
-
-                key.includes(
-
-                    search
-
-                )
-
-            ) {
-
-                addList(
-
-                    value
-
-                );
-
-            }
-
-        }
-
-    );
-
-    /*=====================================================
-      Team Member Search
-    =====================================================*/
+    /*----------------------------------
+      Search Team Tokens
+    ----------------------------------*/
 
     StaffEntities.staff.forEach(
 
@@ -12315,9 +13044,13 @@ StaffEntities.extractTeam = function (
 
                 !staff ||
 
-                !staff.assignment ||
+                !staff.search ||
 
-                !staff.assignment.team
+                !Array.isArray(
+
+                    staff.search.team
+
+                )
 
             ) {
 
@@ -12325,31 +13058,165 @@ StaffEntities.extractTeam = function (
 
             }
 
-            const members =
+            let score =
 
-                String(
+                0;
 
-                    staff.assignment.team
+            staff.search.team.forEach(
 
-                )
+                function (
 
-                .toUpperCase();
+                    token
+
+                ) {
+
+                    token =
+
+                        String(
+
+                            token ||
+
+                            ""
+
+                        )
+
+                        .trim()
+
+                        .toUpperCase();
+
+                    if (
+
+                        token.length < 2
+
+                    ) {
+
+                        return;
+
+                    }
+
+                    /*------------------------------
+                      Exact Match
+                    ------------------------------*/
+
+                    if (
+
+                        token === search
+
+                    ) {
+
+                        score +=
+
+                            1000;
+
+                        return;
+
+                    }
+
+                    /*------------------------------
+                      Partial Match
+                    ------------------------------*/
+
+                    if (
+
+                        token.includes(
+
+                            search
+
+                        )
+
+                    ) {
+
+                        score +=
+
+                            token.length *
+
+                            50;
+
+                    }
+
+                    /*------------------------------
+                      Word Match
+                    ------------------------------*/
+
+                    const tokenWords =
+
+                        token
+
+                            .split(
+
+                                /\s+/
+
+                            )
+
+                            .filter(
+
+                                Boolean
+
+                            );
+
+                    let matched =
+
+                        0;
+
+                    tokenWords.forEach(
+
+                        function (
+
+                            word
+
+                        ) {
+
+                            if (
+
+                                queryWords.has(
+
+                                    word
+
+                                )
+
+                            ) {
+
+                                matched++;
+
+                            }
+
+                        }
+
+                    );
+
+                    if (
+
+                        matched ===
+
+                        tokenWords.length
+
+                    ) {
+
+                        score +=
+
+                            matched *
+
+                            100;
+
+                    }
+
+                }
+
+            );
 
             if (
 
-                members.includes(
+                score >
 
-                    search
-
-                )
+                0
 
             ) {
 
-                results.set(
+                addMatch(
 
-                    staff.id,
+                    staff,
 
-                    staff
+                    score
 
                 );
 
@@ -12360,16 +13227,76 @@ StaffEntities.extractTeam = function (
     );
 
     /*----------------------------------
+      Highest Score First
+    ----------------------------------*/
+
+    matches.sort(
+
+        function (
+
+            a,
+
+            b
+
+        ) {
+
+            if (
+
+                b.score !==
+
+                a.score
+
+            ) {
+
+                return (
+
+                    b.score -
+
+                    a.score
+
+                );
+
+            }
+
+            return (
+
+                a.staff.identity.cleanName
+
+                    .localeCompare(
+
+                        b.staff.identity.cleanName
+
+                    )
+
+            );
+
+        }
+
+    );
+
+    /*----------------------------------
       Return
     ----------------------------------*/
 
-    return Array.from(
+    return matches.map(
 
-        results.values()
+        function (
+
+            item
+
+        ) {
+
+            return item.staff;
+
+        }
 
     );
 
 };
+
+/*=========================================================
+ EXTRACT DUTY
+=========================================================*/
 
 /*=========================================================
  EXTRACT DUTY
@@ -12382,7 +13309,7 @@ StaffEntities.extractDuty = function (
 ) {
 
     /*----------------------------------
-      Validate Query
+      Validate
     ----------------------------------*/
 
     if (
@@ -12396,7 +13323,7 @@ StaffEntities.extractDuty = function (
     }
 
     /*----------------------------------
-      Normalize Query
+      Normalize
     ----------------------------------*/
 
     const search =
@@ -12417,27 +13344,65 @@ StaffEntities.extractDuty = function (
 
     }
 
+    const queryWords =
+
+        new Set(
+
+            search
+
+                .split(
+
+                    /\s+/
+
+                )
+
+                .filter(
+
+                    function (
+
+                        word
+
+                    ) {
+
+                        return (
+
+                            word.length >= 2
+
+                        );
+
+                    }
+
+                )
+
+        );
+
     /*----------------------------------
-      Result Collection
+      Matches
     ----------------------------------*/
 
-    const results =
+    const matches = [];
 
-        new Map();
+    const seen =
+
+        new Set();
 
     /*----------------------------------
       Helper
     ----------------------------------*/
 
-    function add(
+    function addMatch(
 
-        staff
+        staff,
+
+        score
 
     ) {
 
         if (
 
-            !staff
+            !staff ||
+
+            !staff.identity
 
         ) {
 
@@ -12445,18 +13410,58 @@ StaffEntities.extractDuty = function (
 
         }
 
-        results.set(
+        const key =
 
-            staff.id,
+            String(
 
-            staff
+                staff.identity.cleanName ||
+
+                staff.id ||
+
+                ""
+
+            )
+
+            .trim()
+
+            .toUpperCase();
+
+        if (
+
+            seen.has(
+
+                key
+
+            )
+
+        ) {
+
+            return;
+
+        }
+
+        seen.add(
+
+            key
 
         );
+
+        matches.push({
+
+            staff:
+
+                staff,
+
+            score:
+
+                score
+
+        });
 
     }
 
     /*----------------------------------
-      Search Staff
+      Search Assignment Tokens
     ----------------------------------*/
 
     StaffEntities.staff.forEach(
@@ -12471,7 +13476,13 @@ StaffEntities.extractDuty = function (
 
                 !staff ||
 
-                !staff.assignment
+                !staff.search ||
+
+                !Array.isArray(
+
+                    staff.search.assignment
+
+                )
 
             ) {
 
@@ -12479,183 +13490,245 @@ StaffEntities.extractDuty = function (
 
             }
 
-            const assignment =
+            let score =
 
-                staff.assignment;
+                0;
 
-            /*==============================
-              Duty Type
-            ==============================*/
+            let matched =
 
-            const dutyType =
+                false;
 
-                String(
+            staff.search.assignment.forEach(
 
-                    assignment.dutyType ||
+                function (
 
-                    ""
+                    token
 
-                )
+                ) {
 
-                .toUpperCase();
+                    token =
 
-            /*==============================
-              Status
-            ==============================*/
+                        String(
 
-            const status =
+                            token ||
 
-                String(
+                            ""
 
-                    assignment.status ||
+                        )
 
-                    ""
+                        .trim()
 
-                )
+                        .toUpperCase();
 
-                .toUpperCase();
+                    if (
 
-            /*==============================
-              Duty Active
-            ==============================*/
+                        token.length < 2
 
-            const dutyActive =
+                    ) {
 
-                Boolean(
+                        return;
 
-                    assignment.dutyActive
+                    }
 
-                );
+                    /*------------------------------
+                      Exact Match
+                    ------------------------------*/
 
-            /*==============================
-              Exact Duty Type
-            ==============================*/
+                    if (
+
+                        token === search
+
+                    ) {
+
+                        score +=
+
+                            1000;
+
+                        matched =
+
+                            true;
+
+                        return;
+
+                    }
+
+                    /*------------------------------
+                      Partial Match
+                    ------------------------------*/
+
+                    if (
+
+                        token.includes(
+
+                            search
+
+                        )
+
+                    ) {
+
+                        score +=
+
+                            token.length *
+
+                            50;
+
+                        matched =
+
+                            true;
+
+                    }
+
+                    /*------------------------------
+                      Word Match
+                    ------------------------------*/
+
+                    const tokenWords =
+
+                        token
+
+                            .split(
+
+                                /\s+/
+
+                            )
+
+                            .filter(
+
+                                Boolean
+
+                            );
+
+                    let count =
+
+                        0;
+
+                    tokenWords.forEach(
+
+                        function (
+
+                            word
+
+                        ) {
+
+                            if (
+
+                                queryWords.has(
+
+                                    word
+
+                                )
+
+                            ) {
+
+                                count++;
+
+                            }
+
+                        }
+
+                    );
+
+                    if (
+
+                        count ===
+
+                        tokenWords.length
+
+                    ) {
+
+                        score +=
+
+                            count *
+
+                            100;
+
+                        matched =
+
+                            true;
+
+                    }
+
+                }
+
+            );
+
+            /*------------------------------
+              Duty Type Synonyms
+            ------------------------------*/
 
             if (
 
-                dutyType === search
+                StaffConstants.DUTY_TYPES
 
             ) {
 
-                add(
+                Object.values(
 
-                    staff
+                    StaffConstants.DUTY_TYPES
+
+                ).forEach(
+
+                    function (
+
+                        duty
+
+                    ) {
+
+                        duty =
+
+                            String(
+
+                                duty
+
+                            )
+
+                            .toUpperCase();
+
+                        if (
+
+                            duty === search ||
+
+                            duty.includes(
+
+                                search
+
+                            ) ||
+
+                            search.includes(
+
+                                duty
+
+                            )
+
+                        ) {
+
+                            score +=
+
+                                200;
+
+                            matched =
+
+                                true;
+
+                        }
+
+                    }
 
                 );
 
             }
 
-            /*==============================
-              Partial Duty Type
-            ==============================*/
-
             if (
 
-                dutyType.includes(
-
-                    search
-
-                )
+                matched
 
             ) {
 
-                add(
+                addMatch(
 
-                    staff
+                    staff,
 
-                );
-
-            }
-
-            /*==============================
-              Status
-            ==============================*/
-
-            if (
-
-                status === search
-
-            ) {
-
-                add(
-
-                    staff
-
-                );
-
-            }
-
-            if (
-
-                status.includes(
-
-                    search
-
-                )
-
-            ) {
-
-                add(
-
-                    staff
-
-                );
-
-            }
-
-            /*==============================
-              Active Duty
-            ==============================*/
-
-            if (
-
-                dutyActive &&
-
-                (
-
-                    search === "ACTIVE" ||
-
-                    search === "ON DUTY" ||
-
-                    search === "DUTY ACTIVE" ||
-
-                    search === "PATROLLING"
-
-                )
-
-            ) {
-
-                add(
-
-                    staff
-
-                );
-
-            }
-
-            /*==============================
-              Inactive Duty
-            ==============================*/
-
-            if (
-
-                !dutyActive &&
-
-                (
-
-                    search === "INACTIVE" ||
-
-                    search === "OFF DUTY" ||
-
-                    search === "DUTY ENDED"
-
-                )
-
-            ) {
-
-                add(
-
-                    staff
+                    score
 
                 );
 
@@ -12666,122 +13739,76 @@ StaffEntities.extractDuty = function (
     );
 
     /*----------------------------------
-      Duty Type Synonyms
+      Highest Score First
     ----------------------------------*/
 
-    if (
+    matches.sort(
 
-        StaffConstants.DUTY_TYPES
+        function (
 
-    ) {
+            a,
 
-        Object.values(
+            b
 
-            StaffConstants.DUTY_TYPES
+        ) {
 
-        )
+            if (
 
-        .forEach(
+                b.score !==
 
-            function (
-
-                duty
+                a.score
 
             ) {
 
-                const value =
+                return (
 
-                    String(
+                    b.score -
 
-                        duty
+                    a.score
 
-                    )
-
-                    .toUpperCase();
-
-                if (
-
-                    value.includes(
-
-                        search
-
-                    )
-
-                    ||
-
-                    search.includes(
-
-                        value
-
-                    )
-
-                ) {
-
-                    StaffEntities.staff.forEach(
-
-                        function (
-
-                            staff
-
-                        ) {
-
-                            if (
-
-                                !staff ||
-
-                                !staff.assignment
-
-                            ) {
-
-                                return;
-
-                            }
-
-                            if (
-
-                                String(
-
-                                    staff.assignment.dutyType ||
-
-                                    ""
-
-                                )
-
-                                .toUpperCase() === value
-
-                            ) {
-
-                                add(
-
-                                    staff
-
-                                );
-
-                            }
-
-                        }
-
-                    );
-
-                }
+                );
 
             }
 
-        );
+            return (
 
-    }
+                a.staff.identity.cleanName
+
+                    .localeCompare(
+
+                        b.staff.identity.cleanName
+
+                    )
+
+            );
+
+        }
+
+    );
 
     /*----------------------------------
       Return
     ----------------------------------*/
 
-    return Array.from(
+    return matches.map(
 
-        results.values()
+        function (
+
+            item
+
+        ) {
+
+            return item.staff;
+
+        }
 
     );
 
 };
+/*=========================================================
+ EXTRACT GPS
+=========================================================*/
+
 /*=========================================================
  EXTRACT GPS
 =========================================================*/
@@ -12793,7 +13820,7 @@ StaffEntities.extractGPS = function (
 ) {
 
     /*----------------------------------
-      Validate Query
+      Validate
     ----------------------------------*/
 
     if (
@@ -12807,7 +13834,7 @@ StaffEntities.extractGPS = function (
     }
 
     /*----------------------------------
-      Normalize Query
+      Normalize
     ----------------------------------*/
 
     const search =
@@ -12828,27 +13855,65 @@ StaffEntities.extractGPS = function (
 
     }
 
+    const queryWords =
+
+        new Set(
+
+            search
+
+                .split(
+
+                    /\s+/
+
+                )
+
+                .filter(
+
+                    function (
+
+                        word
+
+                    ) {
+
+                        return (
+
+                            word.length >= 2
+
+                        );
+
+                    }
+
+                )
+
+        );
+
     /*----------------------------------
-      Results
+      Matches
     ----------------------------------*/
 
-    const results =
+    const matches = [];
 
-        new Map();
+    const seen =
+
+        new Set();
 
     /*----------------------------------
       Helper
     ----------------------------------*/
 
-    function add(
+    function addMatch(
 
-        staff
+        staff,
+
+        score
 
     ) {
 
         if (
 
-            !staff
+            !staff ||
+
+            !staff.identity
 
         ) {
 
@@ -12856,18 +13921,58 @@ StaffEntities.extractGPS = function (
 
         }
 
-        results.set(
+        const key =
 
-            staff.id,
+            String(
 
-            staff
+                staff.identity.cleanName ||
+
+                staff.id ||
+
+                ""
+
+            )
+
+            .trim()
+
+            .toUpperCase();
+
+        if (
+
+            seen.has(
+
+                key
+
+            )
+
+        ) {
+
+            return;
+
+        }
+
+        seen.add(
+
+            key
 
         );
+
+        matches.push({
+
+            staff:
+
+                staff,
+
+            score:
+
+                score
+
+        });
 
     }
 
     /*----------------------------------
-      Search All Staff
+      Search GPS Tokens
     ----------------------------------*/
 
     StaffEntities.staff.forEach(
@@ -12880,7 +13985,15 @@ StaffEntities.extractGPS = function (
 
             if (
 
-                !staff
+                !staff ||
+
+                !staff.search ||
+
+                !Array.isArray(
+
+                    staff.search.gps
+
+                )
 
             ) {
 
@@ -12888,303 +14001,175 @@ StaffEntities.extractGPS = function (
 
             }
 
-            const gps =
+            let score =
 
-                staff.gps ||
+                0;
 
-                {};
+            let matched =
 
-            const location =
+                false;
 
-                staff.location ||
+            staff.search.gps.forEach(
 
-                {};
+                function (
 
-            const tracking =
-
-                staff.tracking ||
-
-                {};
-
-            /*==============================
-              Latitude
-            ==============================*/
-
-            if (
-
-                location.lat !== null &&
-
-                String(
-
-                    location.lat
-
-                )
-
-                .toUpperCase()
-
-                .includes(
-
-                    search
-
-                )
-
-            ) {
-
-                add(
-
-                    staff
-
-                );
-
-            }
-
-            /*==============================
-              Longitude
-            ==============================*/
-
-            if (
-
-                location.lon !== null &&
-
-                String(
-
-                    location.lon
-
-                )
-
-                .toUpperCase()
-
-                .includes(
-
-                    search
-
-                )
-
-            ) {
-
-                add(
-
-                    staff
-
-                );
-
-            }
-
-            /*==============================
-              Location String
-            ==============================*/
-
-            if (
-
-                location.location &&
-
-                String(
-
-                    location.location
-
-                )
-
-                .toUpperCase()
-
-                .includes(
-
-                    search
-
-                )
-
-            ) {
-
-                add(
-
-                    staff
-
-                );
-
-            }
-
-            /*==============================
-              Accuracy
-            ==============================*/
-
-            if (
-
-                gps.accuracy !== null &&
-
-                String(
-
-                    gps.accuracy
-
-                )
-
-                .includes(
-
-                    search
-
-                )
-
-            ) {
-
-                add(
-
-                    staff
-
-                );
-
-            }
-
-            /*==============================
-              Speed
-            ==============================*/
-
-            if (
-
-                gps.speed !== null &&
-
-                String(
-
-                    gps.speed
-
-                )
-
-                .includes(
-
-                    search
-
-                )
-
-            ) {
-
-                add(
-
-                    staff
-
-                );
-
-            }
-
-            /*==============================
-              Heading
-            ==============================*/
-
-            if (
-
-                gps.heading !== null &&
-
-                String(
-
-                    gps.heading
-
-                )
-
-                .includes(
-
-                    search
-
-                )
-
-            ) {
-
-                add(
-
-                    staff
-
-                );
-
-            }
-
-            /*==============================
-              GPS Source
-            ==============================*/
-
-            if (
-
-                tracking.source &&
-
-                String(
-
-                    tracking.source
-
-                )
-
-                .toUpperCase()
-
-                .includes(
-
-                    search
-
-                )
-
-            ) {
-
-                add(
-
-                    staff
-
-                );
-
-            }
-
-            /*==============================
-              Session ID
-            ==============================*/
-
-            if (
-
-                tracking.sessionId &&
-
-                String(
-
-                    tracking.sessionId
-
-                )
-
-                .toUpperCase()
-
-                .includes(
-
-                    search
-
-                )
-
-            ) {
-
-                add(
-
-                    staff
-
-                );
-
-            }
-
-            /*==============================
-              GPS Status
-            ==============================*/
-
-            if (
-
-                search === "GPS"
-
-            ) {
-
-                if (
-
-                    location.lat !== null &&
-
-                    location.lon !== null
+                    token
 
                 ) {
 
-                    add(
+                    token =
 
-                        staff
+                        String(
+
+                            token ||
+
+                            ""
+
+                        )
+
+                        .trim()
+
+                        .toUpperCase();
+
+                    if (
+
+                        token.length < 1
+
+                    ) {
+
+                        return;
+
+                    }
+
+                    /*------------------------------
+                      Exact Match
+                    ------------------------------*/
+
+                    if (
+
+                        token === search
+
+                    ) {
+
+                        score +=
+
+                            1000;
+
+                        matched =
+
+                            true;
+
+                        return;
+
+                    }
+
+                    /*------------------------------
+                      Partial Match
+                    ------------------------------*/
+
+                    if (
+
+                        token.includes(
+
+                            search
+
+                        )
+
+                    ) {
+
+                        score +=
+
+                            token.length *
+
+                            50;
+
+                        matched =
+
+                            true;
+
+                    }
+
+                    /*------------------------------
+                      Word Match
+                    ------------------------------*/
+
+                    const tokenWords =
+
+                        token
+
+                            .split(
+
+                                /\s+/
+
+                            )
+
+                            .filter(
+
+                                Boolean
+
+                            );
+
+                    let count =
+
+                        0;
+
+                    tokenWords.forEach(
+
+                        function (
+
+                            word
+
+                        ) {
+
+                            if (
+
+                                queryWords.has(
+
+                                    word
+
+                                )
+
+                            ) {
+
+                                count++;
+
+                            }
+
+                        }
 
                     );
 
+                    if (
+
+                        count ===
+
+                        tokenWords.length
+
+                    ) {
+
+                        score +=
+
+                            count *
+
+                            100;
+
+                        matched =
+
+                            true;
+
+                    }
+
                 }
 
-            }
+            );
+
+            /*------------------------------
+              GPS Status
+            ------------------------------*/
 
             if (
+
+                search === "GPS" ||
 
                 search === "GPS ACTIVE"
 
@@ -13192,17 +14177,21 @@ StaffEntities.extractGPS = function (
 
                 if (
 
-                    location.lat !== null &&
+                    staff.location &&
 
-                    location.lon !== null
+                    staff.location.lat !== null &&
+
+                    staff.location.lon !== null
 
                 ) {
 
-                    add(
+                    score +=
 
-                        staff
+                        200;
 
-                    );
+                    matched =
+
+                        true;
 
                 }
 
@@ -13216,25 +14205,29 @@ StaffEntities.extractGPS = function (
 
                 if (
 
-                    location.lat === null ||
+                    !staff.location ||
 
-                    location.lon === null
+                    staff.location.lat === null ||
+
+                    staff.location.lon === null
 
                 ) {
 
-                    add(
+                    score +=
 
-                        staff
+                        200;
 
-                    );
+                    matched =
+
+                        true;
 
                 }
 
             }
 
-            /*==============================
+            /*------------------------------
               Moving
-            ==============================*/
+            ------------------------------*/
 
             if (
 
@@ -13246,7 +14239,7 @@ StaffEntities.extractGPS = function (
 
                     Number(
 
-                        gps.speed ||
+                        staff.gps?.speed ||
 
                         0
 
@@ -13254,19 +14247,21 @@ StaffEntities.extractGPS = function (
 
                 ) {
 
-                    add(
+                    score +=
 
-                        staff
+                        300;
 
-                    );
+                    matched =
+
+                        true;
 
                 }
 
             }
 
-            /*==============================
+            /*------------------------------
               Stationary
-            ==============================*/
+            ------------------------------*/
 
             if (
 
@@ -13278,7 +14273,7 @@ StaffEntities.extractGPS = function (
 
                     Number(
 
-                        gps.speed ||
+                        staff.gps?.speed ||
 
                         0
 
@@ -13286,15 +14281,81 @@ StaffEntities.extractGPS = function (
 
                 ) {
 
-                    add(
+                    score +=
 
-                        staff
+                        300;
 
-                    );
+                    matched =
+
+                        true;
 
                 }
 
             }
+
+            if (
+
+                matched
+
+            ) {
+
+                addMatch(
+
+                    staff,
+
+                    score
+
+                );
+
+            }
+
+        }
+
+    );
+
+    /*----------------------------------
+      Highest Score First
+    ----------------------------------*/
+
+    matches.sort(
+
+        function (
+
+            a,
+
+            b
+
+        ) {
+
+            if (
+
+                b.score !==
+
+                a.score
+
+            ) {
+
+                return (
+
+                    b.score -
+
+                    a.score
+
+                );
+
+            }
+
+            return (
+
+                a.staff.identity.cleanName
+
+                    .localeCompare(
+
+                        b.staff.identity.cleanName
+
+                    )
+
+            );
 
         }
 
@@ -13304,14 +14365,21 @@ StaffEntities.extractGPS = function (
       Return
     ----------------------------------*/
 
-    return Array.from(
+    return matches.map(
 
-        results.values()
+        function (
+
+            item
+
+        ) {
+
+            return item.staff;
+
+        }
 
     );
 
 };
-
 /*=========================================================
  AUTO INITIALIZE
 =========================================================*/
