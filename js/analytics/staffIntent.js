@@ -203,13 +203,23 @@ StaffIntent.createIntentResult = function (
 
 ) {
 
+    /*----------------------------------
+      Original Query
+    ----------------------------------*/
+
     const originalQuery =
 
-        typeof query === "string"
+        typeof query ===
+
+        "string"
 
             ? query
 
             : "";
+
+    /*----------------------------------
+      Normalized Query
+    ----------------------------------*/
 
     const normalizedQuery =
 
@@ -218,6 +228,10 @@ StaffIntent.createIntentResult = function (
             .trim()
 
             .toUpperCase();
+
+    /*----------------------------------
+      Intent Result
+    ----------------------------------*/
 
     return {
 
@@ -237,9 +251,10 @@ StaffIntent.createIntentResult = function (
 
             null,
 
-      domain:
+        domain:
 
-    StaffConstants.DOMAIN,
+            StaffConstants.DOMAIN,
+
         confidence:
 
             0,
@@ -295,14 +310,17 @@ StaffIntent.createIntentResult = function (
         ----------------------------------*/
 
         keywords: [],
+
+        /*----------------------------------
           Metadata
         ----------------------------------*/
 
         metadata: {
 
-           version:
+            version:
 
-    StaffConstants.VERSION,
+                StaffConstants.VERSION,
+
             timestamp:
 
                 Date.now(),
