@@ -3828,9 +3828,11 @@ console.log(
         ----------------------------------*/
         result = StaffIntent.detectGlobalIntent(result);
     }
-    else {
-        result = StaffIntent.detectSearchIntent(result);
-    }
+else {
+
+    return result;
+
+}
 
     console.timeEnd(
         "detectStaffIntent"
@@ -5102,43 +5104,14 @@ if (
         return result;
 
     }
-/*----------------------------------
-  Summary
-----------------------------------*/
 
-
-
-/*----------------------------------
-  Control Room
-----------------------------------*/
-
-
-
- /*----------------------------------
-      Search Fallback
+    /*----------------------------------
+      No Single-Staff Intent
     ----------------------------------*/
 
-    result.intent =
+    console.log(
 
-        INTENTS.STAFF_SEARCH;
-
-    result.parameters.staff =
-
-        staff[0];
-
-    result.confidence =
-
-        Math.max(
-
-            result.confidence,
-
-            0.80
-
-        );
-
-    debugParameters(
-
-        "STAFF_SEARCH"
+        "❌ No Single Staff Intent"
 
     );
 
@@ -6179,37 +6152,7 @@ StaffIntent.detectGlobalIntent = function (
 
     }
 
-    /*----------------------------------
-      SEARCH
-    ----------------------------------*/
 
-    result =
-
-        StaffIntent.detectSearchIntent(
-
-            result
-
-        );
-
-    if (
-
-        result.intent
-
-    ) {
-
-        console.log(
-
-            "✅ Search:",
-
-            result.intent
-
-        );
-
-        console.groupEnd();
-
-        return result;
-
-    }
 
     /*----------------------------------
       NO GLOBAL INTENT
