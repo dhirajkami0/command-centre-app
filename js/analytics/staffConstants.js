@@ -2878,32 +2878,19 @@ STAFF_DESIGNATION_DIRECTORY: [
 STAFF_COUNT: [
 
     /*----------------------------------
-      Primary
+      Staff
     ----------------------------------*/
 
     "STAFF COUNT",
     "TOTAL STAFF",
     "NUMBER OF STAFF",
     "HOW MANY STAFF",
-    "STAFF TOTAL",
-    "STAFF STRENGTH",
-    "TOTAL STRENGTH",
-    "STAFF HEADCOUNT",
-    "HEADCOUNT",
-    "STRENGTH",
-
-    /*----------------------------------
-      Generic Count
-    ----------------------------------*/
-
-    "COUNT",
-    "COUNTS",
-    "TOTAL",
-    "TOTAL COUNT",
     "COUNT OF STAFF",
     "COUNT STAFF",
-    "NUMBER OF",
-    "HOW MANY",
+    "TOTAL STAFF COUNT",
+    "STAFF HEADCOUNT",
+    "STAFF STRENGTH",
+    "TOTAL STAFF STRENGTH",
 
     /*----------------------------------
       Personnel
@@ -2912,6 +2899,7 @@ STAFF_COUNT: [
     "PERSONNEL COUNT",
     "TOTAL PERSONNEL",
     "NUMBER OF PERSONNEL",
+    "HOW MANY PERSONNEL",
     "PERSONNEL STRENGTH",
 
     /*----------------------------------
@@ -2921,6 +2909,7 @@ STAFF_COUNT: [
     "EMPLOYEE COUNT",
     "TOTAL EMPLOYEES",
     "NUMBER OF EMPLOYEES",
+    "HOW MANY EMPLOYEES",
 
     /*----------------------------------
       Officers
@@ -2929,32 +2918,34 @@ STAFF_COUNT: [
     "OFFICER COUNT",
     "TOTAL OFFICERS",
     "NUMBER OF OFFICERS",
+    "HOW MANY OFFICERS",
 
     /*----------------------------------
       Workforce
     ----------------------------------*/
 
     "WORKFORCE COUNT",
-    "WORKFORCE STRENGTH",
     "TOTAL WORKFORCE",
+    "NUMBER OF WORKFORCE",
 
     /*----------------------------------
       Human Resource
     ----------------------------------*/
 
-    "MANPOWER",
     "MANPOWER COUNT",
     "TOTAL MANPOWER",
-    "STAFFING",
-    "STAFFING LEVEL",
+    "NUMBER OF MANPOWER",
 
     /*----------------------------------
       Availability
     ----------------------------------*/
 
     "AVAILABLE STAFF",
+    "AVAILABLE STAFF COUNT",
     "AVAILABLE PERSONNEL",
-    "AVAILABLE OFFICERS"
+    "AVAILABLE PERSONNEL COUNT",
+    "AVAILABLE OFFICERS",
+    "AVAILABLE OFFICER COUNT"
 
 ],
 
