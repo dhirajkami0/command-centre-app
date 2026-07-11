@@ -632,8 +632,39 @@ StaffQuery.execute = async function (
             request
 
         );
+/*----------------------------------
+  Preserve Canonical Request
+----------------------------------*/
 
-    const cacheKey =
+response.request =
+
+    request;
+
+response.intent =
+
+    request.intent;
+
+response.domain =
+
+    request.domain;
+
+response.entities =
+
+    request.entities ||
+
+    {};
+
+response.parameters =
+
+    request.parameters ||
+
+    {};
+
+response.context =
+
+    request.context ||
+
+    {};    const cacheKey =
 
         JSON.stringify({
 
@@ -731,11 +762,45 @@ StaffQuery.execute = async function (
 
         );
 
-        cached.metadata.cache =
+cached.metadata.cache =
 
-            true;
+    true;
 
-        return cached;
+/*----------------------------------
+  Preserve Canonical Request
+----------------------------------*/
+
+cached.request =
+
+    request;
+
+cached.intent =
+
+    request.intent;
+
+cached.domain =
+
+    request.domain;
+
+cached.entities =
+
+    request.entities ||
+
+    {};
+
+cached.parameters =
+
+    request.parameters ||
+
+    {};
+
+cached.context =
+
+    request.context ||
+
+    {};
+
+return cached;
 
     }
 
@@ -786,7 +851,39 @@ StaffQuery.execute = async function (
         response.data =
 
             result;
+/*----------------------------------
+  Preserve Canonical Request
+----------------------------------*/
 
+response.request =
+
+    request;
+
+response.intent =
+
+    request.intent;
+
+response.domain =
+
+    request.domain;
+
+response.entities =
+
+    request.entities ||
+
+    {};
+
+response.parameters =
+
+    request.parameters ||
+
+    {};
+
+response.context =
+
+    request.context ||
+
+    {};
         console.log(
             "RESPONSE.DATA"
         );
@@ -1018,7 +1115,39 @@ StaffQuery.execute = async function (
     console.log(
         "===================================="
     );
+/*----------------------------------
+  Preserve Canonical Request
+----------------------------------*/
 
+response.request =
+
+    request;
+
+response.intent =
+
+    request.intent;
+
+response.domain =
+
+    request.domain;
+
+response.entities =
+
+    request.entities ||
+
+    {};
+
+response.parameters =
+
+    request.parameters ||
+
+    {};
+
+response.context =
+
+    request.context ||
+
+    {};
     return response;
 
 };
