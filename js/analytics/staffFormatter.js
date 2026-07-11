@@ -409,25 +409,42 @@ StaffFormatter.format = function (response) {
     }
 
     switch (response.intent) {
-        /*=================================================
-          SEARCH
-        =================================================*/
-        case StaffConstants.INTENTS.STAFF_DIRECTORY:
-        case StaffConstants.INTENTS.STAFF_CIRCLE_DIRECTORY:
-        case StaffConstants.INTENTS.STAFF_DIVISION_DIRECTORY:
-        case StaffConstants.INTENTS.STAFF_RANGE_DIRECTORY:
-        case StaffConstants.INTENTS.STAFF_BEAT_DIRECTORY:
-        case StaffConstants.INTENTS.STAFF_DESIGNATION_DIRECTORY:
-        case StaffConstants.INTENTS.ACTIVE_STAFF_LIST:
-        case StaffConstants.INTENTS.INACTIVE_STAFF_LIST:
-        case StaffConstants.INTENTS.MOVING_STAFF:
-        case StaffConstants.INTENTS.STATIONARY_STAFF:
-        case StaffConstants.INTENTS.TEAM_LEADER_LIST:
-            return StaffFormatter.debugFormatter(
-                "formatDirectory",
-                StaffFormatter.formatDirectory,
-                response
-            );
+/*=================================================
+  DIRECTORIES
+=================================================*/
+
+case StaffConstants.INTENTS.STAFF_DIRECTORY:
+case StaffConstants.INTENTS.STAFF_CIRCLE_DIRECTORY:
+case StaffConstants.INTENTS.STAFF_DIVISION_DIRECTORY:
+case StaffConstants.INTENTS.STAFF_RANGE_DIRECTORY:
+case StaffConstants.INTENTS.STAFF_BEAT_DIRECTORY:
+case StaffConstants.INTENTS.STAFF_ACTIVE_LIST:
+case StaffConstants.INTENTS.STAFF_INACTIVE_LIST:
+case StaffConstants.INTENTS.STAFF_MOVING:
+case StaffConstants.INTENTS.STAFF_STATIONARY:
+case StaffConstants.INTENTS.STAFF_TEAM_LEADER_LIST:
+
+    return StaffFormatter.debugFormatter(
+
+        "formatDirectory",
+
+        StaffFormatter.formatDirectory,
+
+        response
+
+    );
+
+case StaffConstants.INTENTS.STAFF_DESIGNATION_DIRECTORY:
+
+    return StaffFormatter.debugFormatter(
+
+        "formatDesignationDirectory",
+
+        StaffFormatter.formatDesignationDirectory,
+
+        response
+
+    );
 
         /*=================================================
           PROFILE
