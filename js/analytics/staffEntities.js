@@ -9391,7 +9391,223 @@ StaffEntities.finalizeExtraction = function (
  /*=========================================================
  EXTRACT
 =========================================================*/
+StaffEntities.buildPostingParameters = function (
 
+    result
+
+) {
+
+    /*----------------------------------
+      Validate
+    ----------------------------------*/
+
+    if (
+
+        !result ||
+
+        !result.entities
+
+    ) {
+
+        return result;
+
+    }
+
+    /*----------------------------------
+      Posting Entities
+    ----------------------------------*/
+
+    const posting =
+
+        Array.isArray(
+
+            result.entities.posting
+
+        )
+
+            ? result.entities.posting
+
+            : [];
+
+    /*----------------------------------
+      Parameters
+    ----------------------------------*/
+
+    const parameters =
+
+        result.parameters ||
+
+        {};
+
+    /*----------------------------------
+      Build Parameters
+    ----------------------------------*/
+
+    posting.forEach(
+
+        function (
+
+            item
+
+        ) {
+
+            if (
+
+                !item ||
+
+                !item.type
+
+            ) {
+
+                return;
+
+            }
+
+            const type =
+
+                String(
+
+                    item.type
+
+                )
+
+                .trim()
+
+                .toLowerCase();
+
+            const value =
+
+                item.value;
+
+            if (
+
+                value === undefined ||
+
+                value === null ||
+
+                value === ""
+
+            ) {
+
+                return;
+
+            }
+
+            switch (
+
+                type
+
+            ) {
+
+                case "circle":
+
+                    parameters.circle =
+
+                        value;
+
+                    break;
+
+                case "division":
+
+                    parameters.division =
+
+                        value;
+
+                    break;
+
+                case "range":
+
+                    parameters.range =
+
+                        value;
+
+                    break;
+
+                case "beat":
+
+                    parameters.beat =
+
+                        value;
+
+                    break;
+
+                case "compartment":
+
+                    parameters.compartment =
+
+                        value;
+
+                    break;
+
+                default:
+
+                    parameters[type] =
+
+                        value;
+
+                    break;
+
+            }
+
+        }
+
+    );
+
+    /*----------------------------------
+      Save Parameters
+    ----------------------------------*/
+
+    result.parameters =
+
+        parameters;
+
+    /*----------------------------------
+      Debug
+    ----------------------------------*/
+
+    console.log(
+
+        "Posting Parameters:",
+
+        {
+
+            circle:
+
+                parameters.circle ||
+
+                null,
+
+            division:
+
+                parameters.division ||
+
+                null,
+
+            range:
+
+                parameters.range ||
+
+                null,
+
+            beat:
+
+                parameters.beat ||
+
+                null,
+
+            compartment:
+
+                parameters.compartment ||
+
+                null
+
+        }
+
+    );
+
+    return result;
+
+};
 /*=========================================================
  EXTRACT
 =========================================================*/
