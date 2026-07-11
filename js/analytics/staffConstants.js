@@ -140,7 +140,7 @@ StaffConstants.INTENTS = Object.freeze({
     STAFF_SUMMARY: "staffSummary",
     STAFF_JURISDICTION_SUMMARY: "staffJurisdictionSummary",
     STAFF_DESIGNATION_SUMMARY: "staffDesignationSummary",
-
+STAFF_AGGREGATE: "staffAggregate",
     /*=========================================================
       DIRECTORIES
     =========================================================*/
@@ -172,7 +172,7 @@ StaffConstants.INTENTS = Object.freeze({
     STAFF_ACTIVE_COUNT: "staffActiveCount",
     STAFF_ACTIVE_LIST: "staffActiveList",
     STAFF_INACTIVE_LIST: "staffInactiveList",
-
+STAFF_STATUS: "staffStatus",
     /*=========================================================
       DUTY SUMMARY
     =========================================================*/
@@ -1272,11 +1272,11 @@ STAFF_DIRECTORY: [
 
     "LIST",
 
-    "SHOW",
+    
 
-    "DISPLAY",
+    
 
-    "VIEW",
+   
 
     "DIRECTORY",
 
@@ -1299,31 +1299,57 @@ STAFF_DIRECTORY: [
   Staff Profile
 ----------------------------------*/
 STAFF_PROFILE: [
-"PROFILE",
-"STAFF PROFILE",
-"OFFICER PROFILE",
-"EMPLOYEE PROFILE",
-"PERSON PROFILE",
-"USER PROFILE",
-"FULL PROFILE",
-"COMPLETE PROFILE",
-"SHOW PROFILE",
-"VIEW PROFILE",
-"OPEN PROFILE",
-"DISPLAY PROFILE",
-"GET PROFILE",
-"IDENTITY",
-"IDENTIFY",
-"FULL NAME",
-"DISPLAY NAME",
-"STAFF RECORD",
-"EMPLOYEE RECORD",
-"PERSONNEL RECORD",
-"BIO",
-"BIOGRAPHY",
-"BACKGROUND"
-],
 
+    /*----------------------------------
+      Primary Business Intent
+    ----------------------------------*/
+
+    "PROFILE",
+    "STAFF PROFILE",
+    "PERSON PROFILE",
+    "EMPLOYEE PROFILE",
+    "OFFICER PROFILE",
+    "USER PROFILE",
+    "FULL PROFILE",
+    "COMPLETE PROFILE",
+
+    /*----------------------------------
+      Identity
+    ----------------------------------*/
+
+    "WHO IS",
+    "WHO'S",
+    "IDENTITY",
+    "IDENTIFY",
+    "FULL NAME",
+    "NAME",
+
+    /*----------------------------------
+      Information
+    ----------------------------------*/
+
+    "ABOUT",
+    "TELL ME ABOUT",
+    "INFORMATION",
+    "INFO",
+    "DETAIL",
+    "DETAILS",
+    "BACKGROUND",
+    "BIO",
+    "BIOGRAPHY",
+
+    /*----------------------------------
+      Staff Record
+    ----------------------------------*/
+
+    "STAFF RECORD",
+    "EMPLOYEE RECORD",
+    "PERSONNEL RECORD",
+    "STAFF DETAILS",
+    "EMPLOYEE DETAILS",
+    "PERSON DETAILS"
+
+],
 /*----------------------------------
   Contact
 ----------------------------------*/
@@ -1598,28 +1624,81 @@ STAFF_COMPARTMENT: [
   Live Location
 ----------------------------------*/
 STAFF_LOCATION: [
-"LOCATION",
-"CURRENT LOCATION",
-"LIVE LOCATION",
-"REALTIME LOCATION",
-"REAL TIME LOCATION",
-"LATEST LOCATION",
-"LAST LOCATION",
-"PRESENT LOCATION",
-"WHERE IS NOW",
-"WHERE HE IS NOW",
-"WHERE SHE IS NOW",
-"CURRENT PLACE",
-"PRESENT PLACE",
-"WHICH LOCATION",
-"WHICH PLACE",
-"SHOW LOCATION",
-"VIEW LOCATION",
-"MAP LOCATION",
-"SHOW ON MAP",
-"OPEN MAP"
-],
 
+    /*----------------------------------
+      Primary Location
+    ----------------------------------*/
+
+    "LOCATION",
+    "CURRENT LOCATION",
+    "LIVE LOCATION",
+    "REALTIME LOCATION",
+    "REAL TIME LOCATION",
+    "LATEST LOCATION",
+    "LAST LOCATION",
+    "PRESENT LOCATION",
+
+    /*----------------------------------
+      Natural Questions
+    ----------------------------------*/
+
+    "WHERE IS",
+    "WHERE IS NOW",
+    "WHERE IS CURRENTLY",
+    "WHERE IS HE",
+    "WHERE IS SHE",
+    "WHERE ARE THEY",
+    "WHERE CAN I FIND",
+    "WHERE CAN WE FIND",
+    "WHERE LOCATED",
+    "WHERE POSTED NOW",
+
+    /*----------------------------------
+      Current Position
+    ----------------------------------*/
+
+    "CURRENT POSITION",
+    "PRESENT POSITION",
+    "CURRENT PLACE",
+    "PRESENT PLACE",
+    "CURRENT SPOT",
+    "CURRENT POINT",
+
+    /*----------------------------------
+      Last Known
+    ----------------------------------*/
+
+    "LAST KNOWN LOCATION",
+    "LAST KNOWN POSITION",
+    "LAST KNOWN PLACE",
+    "LAST SEEN",
+    "LAST SEEN LOCATION",
+    "LAST REPORTED LOCATION",
+    "LAST REPORTED POSITION",
+
+    /*----------------------------------
+      Live Tracking
+    ----------------------------------*/
+
+    "LIVE POSITION",
+    "LIVE POSITION NOW",
+    "LIVE TRACK",
+    "TRACK LOCATION",
+    "TRACK POSITION",
+    "CURRENT TRACK",
+
+    /*----------------------------------
+      Geographic
+    ----------------------------------*/
+
+    "WHICH LOCATION",
+    "WHICH PLACE",
+    "WHICH POSITION",
+    "WHICH AREA",
+    "WHICH BEAT NOW",
+    "WHICH RANGE NOW"
+
+],
 /*----------------------------------
   Duty
 ----------------------------------*/
@@ -2338,58 +2417,76 @@ STAFF_ANALYTICS: [
 
 STAFF_SUMMARY: [
 
-    /* Summary */
+    /*----------------------------------
+      Primary Summary
+    ----------------------------------*/
 
     "STAFF SUMMARY",
     "SUMMARY OF STAFF",
-    "STAFF OVERVIEW",
     "OVERALL STAFF SUMMARY",
-    "OVERALL SUMMARY",
-    "CURRENT SUMMARY",
-    "LIVE SUMMARY",
-
-    /* Overview */
-
     "STAFF OVERVIEW",
+    "OVERALL OVERVIEW",
+    "GENERAL SUMMARY",
+    "GENERAL OVERVIEW",
+
+    /*----------------------------------
+      Current Summary
+    ----------------------------------*/
+
     "CURRENT STAFF SUMMARY",
-    "CURRENT STAFF OVERVIEW",
+    "CURRENT SUMMARY",
+    "CURRENT OVERVIEW",
     "LIVE STAFF SUMMARY",
-    "LIVE STAFF OVERVIEW",
+    "LIVE SUMMARY",
+    "LIVE OVERVIEW",
+    "REALTIME SUMMARY",
+    "REAL TIME SUMMARY",
 
-    /* Status */
+    /*----------------------------------
+      Staff Status
+    ----------------------------------*/
 
-    "WHAT IS STAFF STATUS",
-    "WHAT IS THE STAFF STATUS",
-    "WHAT IS THE CURRENT STAFF STATUS",
+    "STAFF STATUS",
     "STAFF STATUS SUMMARY",
     "STAFF STATUS OVERVIEW",
+    "CURRENT STAFF STATUS",
+    "OVERALL STAFF STATUS",
 
-    /* Reports */
+    /*----------------------------------
+      Workforce Overview
+    ----------------------------------*/
 
+    "WORKFORCE SUMMARY",
+    "WORKFORCE OVERVIEW",
+    "PERSONNEL SUMMARY",
+    "PERSONNEL OVERVIEW",
+    "EMPLOYEE SUMMARY",
+    "EMPLOYEE OVERVIEW",
+    "OFFICER SUMMARY",
+    "OFFICER OVERVIEW",
+
+    /*----------------------------------
+      Summary Report
+    ----------------------------------*/
+
+    "SUMMARY REPORT",
     "STAFF SUMMARY REPORT",
     "STAFF OVERVIEW REPORT",
     "STAFF STATUS REPORT",
-    "LIVE STAFF REPORT",
     "CURRENT STAFF REPORT",
+    "LIVE STAFF REPORT",
+    "WORKFORCE REPORT",
+    "PERSONNEL REPORT",
 
-    /* Display */
+    /*----------------------------------
+      Dashboard
+    ----------------------------------*/
 
-    "SHOW STAFF SUMMARY",
-    "SHOW STAFF OVERVIEW",
-    "SHOW SUMMARY",
-
-    "VIEW STAFF SUMMARY",
-    "VIEW STAFF OVERVIEW",
-
-    "DISPLAY STAFF SUMMARY",
-    "DISPLAY STAFF OVERVIEW",
-
-    "GET STAFF SUMMARY",
-
-    /* AI */
-
-    "GIVE STAFF SUMMARY",
-    "CURRENT STAFF SUMMARY"
+    "DASHBOARD SUMMARY",
+    "STAFF DASHBOARD",
+    "STAFF SNAPSHOT",
+    "STAFF HEALTH",
+    "WORKFORCE SNAPSHOT"
 
 ],
 
@@ -2656,15 +2753,122 @@ STAFF_BEAT_DIRECTORY: [
 
 STAFF_DESIGNATION_DIRECTORY: [
 
-    "LIST",
+    /*----------------------------------
+      Generic
+    ----------------------------------*/
 
-    "SHOW",
+    "DESIGNATION DIRECTORY",
+    "STAFF BY DESIGNATION",
+    "STAFF OF DESIGNATION",
+    "STAFF UNDER DESIGNATION",
+    "STAFF IN DESIGNATION",
+    "DIRECTORY BY DESIGNATION",
 
-    "DISPLAY",
+    /*----------------------------------
+      Forest Guard
+    ----------------------------------*/
 
-    "VIEW",
+    "FR LIST",
+    "FOREST GUARD LIST",
+    "LIST OF FOREST GUARDS",
+    "STAFF OF FR",
+    "STAFF OF FOREST GUARD",
 
-    "DIRECTORY"
+    /*----------------------------------
+      Forester
+    ----------------------------------*/
+
+    "FORESTER LIST",
+    "LIST OF FORESTERS",
+    "STAFF OF FORESTER",
+
+    /*----------------------------------
+      ADFO
+    ----------------------------------*/
+
+    "ADFO LIST",
+    "LIST OF ADFO",
+    "STAFF OF ADFO",
+
+    /*----------------------------------
+      DFO
+    ----------------------------------*/
+
+    "DFO LIST",
+    "LIST OF DFO",
+    "STAFF OF DFO",
+
+    /*----------------------------------
+      RO
+    ----------------------------------*/
+
+    "RO LIST",
+    "RANGE OFFICER LIST",
+    "LIST OF RANGE OFFICERS",
+    "STAFF OF RANGE OFFICER",
+
+    /*----------------------------------
+      DRO
+    ----------------------------------*/
+
+    "DRO LIST",
+    "LIST OF DRO",
+    "STAFF OF DRO",
+
+    /*----------------------------------
+      Driver
+    ----------------------------------*/
+
+    "DRIVER LIST",
+    "LIST OF DRIVERS",
+    "STAFF OF DRIVER",
+
+    /*----------------------------------
+      Daily Labour
+    ----------------------------------*/
+
+    "DL LIST",
+    "DAILY LABOUR LIST",
+    "DAILY LABOURER LIST",
+    "DAILY WAGE LIST",
+    "CASUAL LABOUR LIST",
+    "STAFF OF DL",
+
+    /*----------------------------------
+      Banasahayak
+    ----------------------------------*/
+
+    "BS LIST",
+    "BANASAHAYAK LIST",
+    "BANASAYAHAK LIST",
+    "BANASAHAYK LIST",
+    "LIST OF BANASAHAYAK",
+
+    /*----------------------------------
+      Volunteer
+    ----------------------------------*/
+
+    "VOLUNTEER LIST",
+    "FOREST VOLUNTEER LIST",
+    "FV LIST",
+
+    /*----------------------------------
+      Watcher
+    ----------------------------------*/
+
+    "WATCHER LIST",
+
+    /*----------------------------------
+      Mahout
+    ----------------------------------*/
+
+    "MAHOUT LIST",
+
+    /*----------------------------------
+      Elephant Squad
+    ----------------------------------*/
+
+    "ELEPHANT SQUAD LIST"
 
 ],
 /*----------------------------------
@@ -2673,19 +2877,84 @@ STAFF_DESIGNATION_DIRECTORY: [
 
 STAFF_COUNT: [
 
-    "COUNT",
+    /*----------------------------------
+      Primary
+    ----------------------------------*/
 
-    "COUNTS",
-
-    "HOW MANY",
-
-    "NUMBER OF",
-
+    "STAFF COUNT",
+    "TOTAL STAFF",
+    "NUMBER OF STAFF",
+    "HOW MANY STAFF",
+    "STAFF TOTAL",
+    "STAFF STRENGTH",
+    "TOTAL STRENGTH",
+    "STAFF HEADCOUNT",
     "HEADCOUNT",
-
     "STRENGTH",
 
-    "TOTAL"
+    /*----------------------------------
+      Generic Count
+    ----------------------------------*/
+
+    "COUNT",
+    "COUNTS",
+    "TOTAL",
+    "TOTAL COUNT",
+    "COUNT OF STAFF",
+    "COUNT STAFF",
+    "NUMBER OF",
+    "HOW MANY",
+
+    /*----------------------------------
+      Personnel
+    ----------------------------------*/
+
+    "PERSONNEL COUNT",
+    "TOTAL PERSONNEL",
+    "NUMBER OF PERSONNEL",
+    "PERSONNEL STRENGTH",
+
+    /*----------------------------------
+      Employees
+    ----------------------------------*/
+
+    "EMPLOYEE COUNT",
+    "TOTAL EMPLOYEES",
+    "NUMBER OF EMPLOYEES",
+
+    /*----------------------------------
+      Officers
+    ----------------------------------*/
+
+    "OFFICER COUNT",
+    "TOTAL OFFICERS",
+    "NUMBER OF OFFICERS",
+
+    /*----------------------------------
+      Workforce
+    ----------------------------------*/
+
+    "WORKFORCE COUNT",
+    "WORKFORCE STRENGTH",
+    "TOTAL WORKFORCE",
+
+    /*----------------------------------
+      Human Resource
+    ----------------------------------*/
+
+    "MANPOWER",
+    "MANPOWER COUNT",
+    "TOTAL MANPOWER",
+    "STAFFING",
+    "STAFFING LEVEL",
+
+    /*----------------------------------
+      Availability
+    ----------------------------------*/
+
+    "AVAILABLE STAFF",
+    "AVAILABLE PERSONNEL",
+    "AVAILABLE OFFICERS"
 
 ],
 
@@ -2735,15 +3004,78 @@ STAFF_BEAT_COUNT: [
 
 STAFF_DESIGNATION_COUNT: [
 
-    "HOW MANY",
-
-    "NUMBER OF",
+    /*----------------------------------
+      Primary Count
+    ----------------------------------*/
 
     "COUNT",
-
+    "COUNTS",
     "TOTAL",
+    "TOTAL COUNT",
+    "NUMBER OF",
+    "HOW MANY",
+    "STRENGTH",
+    "HEADCOUNT",
 
-    "STRENGTH"
+    /*----------------------------------
+      Staff Count
+    ----------------------------------*/
+
+    "STAFF COUNT",
+    "TOTAL STAFF",
+    "NUMBER OF STAFF",
+    "HOW MANY STAFF",
+    "STAFF STRENGTH",
+    "STAFF HEADCOUNT",
+
+    /*----------------------------------
+      Personnel
+    ----------------------------------*/
+
+    "PERSONNEL COUNT",
+    "TOTAL PERSONNEL",
+    "NUMBER OF PERSONNEL",
+
+    /*----------------------------------
+      Employee
+    ----------------------------------*/
+
+    "EMPLOYEE COUNT",
+    "TOTAL EMPLOYEES",
+    "NUMBER OF EMPLOYEES",
+
+    /*----------------------------------
+      Officer
+    ----------------------------------*/
+
+    "OFFICER COUNT",
+    "TOTAL OFFICERS",
+    "NUMBER OF OFFICERS",
+
+    /*----------------------------------
+      Workforce
+    ----------------------------------*/
+
+    "WORKFORCE COUNT",
+    "TOTAL WORKFORCE",
+    "MANPOWER",
+    "MANPOWER COUNT",
+    "TOTAL MANPOWER",
+
+    /*----------------------------------
+      Natural Queries
+    ----------------------------------*/
+
+    "HOW MANY ARE THERE",
+    "HOW MANY AVAILABLE",
+    "HOW MANY POSTED",
+    "NUMBER POSTED",
+    "TOTAL POSTED",
+    "TOTAL AVAILABLE",
+    "COUNT OF",
+    "NUMBER OF",
+    "TOTAL OF",
+    "STRENGTH OF"
 
 ],
 WHO_IS_ON_DUTY: [
