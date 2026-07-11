@@ -3978,47 +3978,31 @@ StaffIntent.detectSingleVsAggregate = function (
 
         ).length > 0;
 
-    const aggregateWords =
+    const aggregateWords = [
 
-        [
+    "STAFF COUNT",
 
-            "ALL",
+    "TOTAL STAFF",
 
-            "LIST",
+    "HOW MANY STAFF",
 
-          
+    "NUMBER OF STAFF",
 
-      
+    "STAFF TOTAL",
 
-            "DIRECTORY",
+    "STAFF STRENGTH",
 
-            "WHO ARE",
+    "HEADCOUNT",
 
-            "COUNT",
+    "ALL STAFF",
 
-            "COUNTS",
+    "STAFF LIST",
 
-            "TOTAL",
+    "DIRECTORY",
 
-            "HOW MANY",
+    "TEAM LEADERS"
 
-            "NUMBER OF",
-
-            "HEADCOUNT",
-
-            "STRENGTH",
-
-            "ACTIVE",
-
-            "INACTIVE",
-
-            "MOVING",
-
-            "STATIONARY",
-
-            "TEAM LEADER"
-
-        ];
+];
 
     
 const aggregate =
