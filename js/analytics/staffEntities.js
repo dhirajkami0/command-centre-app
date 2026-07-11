@@ -122,11 +122,15 @@ StaffEntities.index = {
 
 StaffEntities.cache = {
 
-    entities:
+    entities :
 
         new Map(),
 
-    search:
+    aliases :
+
+        new Map(),
+
+    search :
 
         new Map()
 
@@ -154,9 +158,11 @@ StaffEntities.clear = function () {
 
     );
 
-    StaffEntities.cache.entities.clear();
+   StaffEntities.cache.entities.clear();
 
-    StaffEntities.cache.search.clear();
+StaffEntities.cache.aliases.clear();
+
+StaffEntities.cache.search.clear();
 
     StaffEntities.loaded = false;
 
@@ -10198,7 +10204,6 @@ StaffEntities.buildSearchCache = function () {
  /*=========================================================
  BUILD ENTITY CACHE
 =========================================================*/
-
 StaffEntities.buildEntityCache = function () {
 
     /*----------------------------------
@@ -10224,18 +10229,28 @@ StaffEntities.buildEntityCache = function () {
     }
 
     /*----------------------------------
-      Cache Reference
+      Cache References
     ----------------------------------*/
 
-    const cache =
+    const entityCache =
 
-        StaffEntities.cache.entities;
+        StaffEntities
+            .cache
+            .entities;
+
+    const aliasCache =
+
+        StaffEntities
+            .cache
+            .aliases;
 
     /*----------------------------------
       Clear Existing Cache
     ----------------------------------*/
 
-    cache.clear();
+    entityCache.clear();
+
+    aliasCache.clear();
 
     /*----------------------------------
       Helper
@@ -10285,7 +10300,7 @@ StaffEntities.buildEntityCache = function () {
 
         if (
 
-            !cache.has(
+            !entityCache.has(
 
                 value
 
@@ -10293,7 +10308,7 @@ StaffEntities.buildEntityCache = function () {
 
         ) {
 
-            cache.set(
+            entityCache.set(
 
                 value,
 
@@ -10355,75 +10370,73 @@ StaffEntities.buildEntityCache = function () {
 
             }
 
-/*==============================
-  Search Identity
-=============================*/
+            /*==============================
+              Search Identity
+            ==============================*/
 
-if (
+            if (
 
-    staff.search
+                staff.search
 
-) {
+            ) {
 
-    [
+                [
 
-        "identity",
+                    "identity",
 
-        "phone"
+                    "phone"
 
-    ].forEach(
+                ]
 
-        function (
+                .forEach(
 
-            section
-
-        ) {
-
-            const values =
-
-                Array.isArray(
-
-                    staff.search[
+                    function (
 
                         section
 
-                    ]
+                    ) {
 
-                )
+                        const values =
 
-                    ? staff.search[
+                            Array.isArray(
 
-                        section
+                                staff.search[
+                                    section
+                                ]
 
-                    ]
+                            )
 
-                    : [];
+                                ? staff.search[
+                                    section
+                                ]
 
-            values.forEach(
+                                : [];
 
-                function (
+                        values.forEach(
 
-                    value
+                            function (
 
-                ) {
+                                value
 
-                    add(
+                            ) {
 
-                        value,
+                                add(
 
-                        staff
+                                    value,
 
-                    );
+                                    staff
 
-                }
+                                );
 
-            );
+                            }
 
-        }
+                        );
 
-    );
+                    }
 
-}
+                );
+
+            }
 
             /*==============================
               Tracking
@@ -10440,6 +10453,92 @@ if (
                     staff.tracking.sessionId,
 
                     staff
+
+                );
+
+            }
+
+            /*==============================
+              Alias Cache
+            ==============================*/
+
+            if (
+
+                Array.isArray(
+
+                    staff.aliases
+
+                )
+
+            ) {
+
+                staff.aliases.forEach(
+
+                    function (
+
+                        alias
+
+                    ) {
+
+                        alias =
+
+                            String(
+
+                                alias ||
+
+                                ""
+
+                            )
+
+                            .trim()
+
+                            .toUpperCase();
+
+                        if (
+
+                            alias === ""
+
+                        ) {
+
+                            return;
+
+                        }
+
+                        const cleanName =
+
+                            staff.identity?.cleanName;
+
+                        if (
+
+                            !cleanName
+
+                        ) {
+
+                            return;
+
+                        }
+
+                        if (
+
+                            !aliasCache.has(
+
+                                alias
+
+                            )
+
+                        ) {
+
+                            aliasCache.set(
+
+                                alias,
+
+                                cleanName
+
+                            );
+
+                        }
+
+                    }
 
                 );
 
@@ -10463,7 +10562,15 @@ if (
 
         "Entities:",
 
-        cache.size
+        entityCache.size
+
+    );
+
+    console.log(
+
+        "Aliases:",
+
+        aliasCache.size
 
     );
 
@@ -10473,7 +10580,7 @@ if (
       Return
     ----------------------------------*/
 
-    return cache;
+    return entityCache;
 
 };
 /*=========================================================
@@ -10621,7 +10728,13 @@ StaffEntities.buildIndex = async function () {
             StaffEntities.cache.entities.size
 
         );
+console.log(
 
+    "Alias Cache:",
+
+    StaffEntities.cache.aliases.size
+
+);
         console.log(
 
             "✅ Staff Index Ready"
