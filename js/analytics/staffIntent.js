@@ -3818,7 +3818,7 @@ console.log(
         result = StaffIntent.detectGPSIntent(result);
         result = StaffIntent.detectDutyStatusIntent(result);
         result = StaffIntent.detectAnalyticsIntent(result);
-        result = StaffIntent.detectSearchIntent(result);
+        
     }
     else if (
         result.parameters.isAggregate === true
