@@ -208,43 +208,24 @@ AIDispatcher.initialize = function () {
 =========================================================*/
 
 AIDispatcher.dispatch = async function (
-
-    intent
-
+    request
 ) {
-
     const started =
-
         Date.now();
-
     console.group(
-
         "🟠 AI DISPATCHER"
-
     );
-
     console.log(
-
         "File:",
-
         "aiDispatcher.js"
-
     );
-
     console.log(
-
         "Function:",
-
         "AIDispatcher.dispatch"
-
     );
-
     console.log(
-
-        "Incoming Intent:",
-
-        intent
-
+        "Incoming Request:",
+        request
     );
 
     /*----------------------------------
@@ -252,75 +233,51 @@ AIDispatcher.dispatch = async function (
     ----------------------------------*/
 
     if (
-
-        !intent ||
-
-        typeof intent !== "object"
-
+        !request ||
+        typeof request !== "object"
     ) {
-
         console.error(
-
-            "❌ Invalid Intent"
-
+            "❌ Invalid Request"
         );
-
         console.groupEnd();
-
         return {
-
             success: false,
-
             message:
-
-                "Invalid intent."
-
+                "Invalid request."
         };
-
     }
+
+    const intent =
+        request.detectedIntent ||
+        request;
 
     /*----------------------------------
       Create Response
     ----------------------------------*/
 
     const response =
-
         AIDispatcher.createResponse(
-
-            intent.query || ""
-
+            request.query || ""
         );
 
+    AIDispatcher.lastRequest =
+        request;
     AIDispatcher.lastIntent =
-
         intent;
-
     AIDispatcher.lastQuery =
-
-        intent.query || "";
+        request.query || "";
 
     console.log(
-
         "Domain:",
-
         intent.domain
-
     );
-
     console.log(
-
         "Intent:",
-
         intent.intent
-
     );
-
     console.log(
-
         "Confidence:",
-
         intent.confidence
-
     );
 
     /*----------------------------------
@@ -328,165 +285,88 @@ AIDispatcher.dispatch = async function (
     ----------------------------------*/
 
     let routed =
-
         null;
-
     console.time(
-
         "Router"
-
     );
 
     switch (
-
         intent.domain
-
     ) {
-
         case "staff":
-
             console.log(
-
                 "➡ Routing → StaffRouter"
-
             );
-
             routed =
-
                 await GG.StaffRouter.route(
-
-                    intent
-
+                    request
                 );
-
             break;
-
         case "gis":
-
             console.log(
-
                 "➡ Routing → GISRouter"
-
             );
-
             routed =
-
                 await GG.GISRouter.route(
-
-                    intent
-
+                    request
                 );
-
             break;
-
         case "wildlife":
-
             console.log(
-
                 "➡ Routing → WildlifeRouter"
-
             );
-
             routed =
-
                 await GG.WildlifeRouter.route(
-
-                    intent
-
+                    request
                 );
-
             break;
-
         case "fire":
-
             console.log(
-
                 "➡ Routing → FireRouter"
-
             );
-
             routed =
-
                 await GG.FireRouter.route(
-
-                    intent
-
+                    request
                 );
-
             break;
-
         case "patrol":
-
             console.log(
-
                 "➡ Routing → PatrolRouter"
-
             );
-
             routed =
-
                 await GG.PatrolRouter.route(
-
-                    intent
-
+                    request
                 );
-
             break;
-
         case "analytics":
-
             console.log(
-
                 "➡ Routing → AnalyticsRouter"
-
             );
-
             routed =
-
                 await GG.AnalyticsRouter.route(
-
-                    intent
-
+                    request
                 );
-
             break;
-
         default:
-
             console.error(
-
                 "❌ Unsupported Domain:",
-
                 intent.domain
-
             );
-
             console.groupEnd();
-
             return {
-
                 success: false,
-
                 message:
-
                     "Unsupported AI domain."
-
             };
-
     }
 
     console.timeEnd(
-
         "Router"
-
     );
 
     console.log(
-
         "📦 Router Response:",
-
         routed
-
     );
 
     /*----------------------------------
@@ -494,23 +374,14 @@ AIDispatcher.dispatch = async function (
     ----------------------------------*/
 
     if (
-
         !routed ||
-
         !routed.success
-
     ) {
-
         console.error(
-
             "❌ Router Failed"
-
         );
-
         console.groupEnd();
-
         return routed;
-
     }
 
     /*----------------------------------
@@ -518,101 +389,45 @@ AIDispatcher.dispatch = async function (
     ----------------------------------*/
 
     let formatted =
-
         routed;
-
     console.time(
-
         "Formatter"
-
     );
 
     switch (
-
         intent.domain
-
     ) {
-
         case "staff":
-
             console.log(
-
                 "➡ StaffFormatter"
-
             );
-console.log(
-    "===== ROUTED BEFORE FORMAT ====="
-);
-
-console.log(
-    routed.intent
-);
-
-console.log(
-    routed.data
-);
-
-console.log(
-    routed.data?.length
-);
-
-console.log(
-    routed.data?.[0]
-);
-
-console.log(
-    routed.data?.[0]?.staff?.length
-);
             formatted =
-
                 GG.StaffFormatter.format(
-
                     routed
-
                 );
-
             break;
-
         case "gis":
-
             if (
-
                 GG.GISFormatter
-
             ) {
-
                 console.log(
-
                     "➡ GISFormatter"
-
                 );
-
                 formatted =
-
                     GG.GISFormatter.format(
-
                         routed
-
                     );
-
             }
-
             break;
-
     }
 
     console.timeEnd(
-
         "Formatter"
-
     );
 
     console.log(
-
         "📝 Formatted:",
-
         formatted
-
     );
 
     /*----------------------------------
@@ -620,99 +435,59 @@ console.log(
     ----------------------------------*/
 
     response.success =
-
         formatted.success;
-
     response.domain =
-
         intent.domain;
-
     response.intent =
-
         intent.intent;
-
     response.confidence =
-
         intent.confidence;
-
     response.data =
-
         routed.data;
-
     response.raw =
-
         routed;
-
+    response.request =
+        request;
+    response.detectedIntent =
+        intent;
     response.formatted =
-
         formatted;
-
     response.answer =
-
         formatted.markdown ||
-
         formatted.html ||
-
         formatted.message ||
-
         "";
-
     response.message =
-
         formatted.message;
-
     response.cards =
-
         formatted.cards ||
-
         [];
-
     response.tables =
-
         formatted.tables ||
-
         [];
-
     response.sections =
-
         formatted.sections ||
-
         [];
-
     response.metadata.executionTime =
-
         Date.now() -
-
         started;
 
     AIDispatcher.lastResponse =
-
         response;
 
     console.log(
-
         "✅ Final Dispatcher Response:",
-
         response
-
     );
-
     console.log(
-
         "⏱ Total Dispatcher Time:",
-
         response.metadata.executionTime,
-
         "ms"
-
     );
 
     console.groupEnd();
-
     return response;
-
-};
- /*=========================================================
+}; /*=========================================================
  DISPATCH STAFF
 =========================================================*/
 
