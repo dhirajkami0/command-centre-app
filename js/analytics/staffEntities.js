@@ -6008,14 +6008,11 @@ StaffEntities.extractStaffEntities = function (
                         return;
 
                     }
-
                     /*------------------------------
-                      Exact Single Word
+                      Exact Single Token
                     ------------------------------*/
 
                     if (
-
-                        queryWords.size === 1 &&
 
                         queryWords.has(
 
@@ -6097,27 +6094,25 @@ StaffEntities.extractStaffEntities = function (
 
                     );
 
+                    /*------------------------------
+                      All Token Words Matched
+                    ------------------------------*/
+
                     if (
 
-                        tokenWords.length === 1
+                        matchedWords ===
+
+                        tokenWords.length
 
                     ) {
 
-                        if (
+                        score +=
 
-                            queryWords.size === 1 &&
+                            tokenWords.length *
 
-                            matchedWords === 1
+                            100;
 
-                        ) {
-
-                            score +=
-
-                                token.length *
-
-                                100;
-
-                        }
+                    }
 
                     }
 
@@ -9792,7 +9787,6 @@ StaffEntities.extract = function (
 /*=========================================================
  CLEAN SEARCH QUERY
 =========================================================*/
-
 StaffEntities.cleanSearchQuery = function (
 
     query
@@ -9824,127 +9818,153 @@ StaffEntities.cleanSearchQuery = function (
             .toUpperCase();
 
     /*----------------------------------
-      Remove Language Noise
+      Remove Punctuation
     ----------------------------------*/
 
-const removeWords = [
+    search =
+
+        search.replace(
+
+            /[^A-Z0-9\s]/g,
+
+            " "
+
+        );
 
     /*----------------------------------
-      General Commands
+      Noise Words
     ----------------------------------*/
 
-    "SHOW",
-    "DISPLAY",
-    "VIEW",
-    "OPEN",
-    "GET",
-    "GIVE",
-    "TELL",
-    "RETURN",
-    "FIND",
-    "SEARCH",
-    "LOOKUP",
-    "LIST",
+    const removeWords = [
+
+        /* Commands */
+
+        "SHOW",
+        "DISPLAY",
+        "VIEW",
+        "OPEN",
+        "GET",
+        "GIVE",
+        "RETURN",
+        "FIND",
+        "SEARCH",
+        "LOOKUP",
+        "LIST",
+
+        /* Questions */
+
+        "WHO",
+        "WHAT",
+        "WHERE",
+        "WHEN",
+        "WHICH",
+        "WHY",
+        "HOW",
+
+        /* Grammar */
+
+        "IS",
+        "ARE",
+        "AM",
+        "WAS",
+        "WERE",
+        "BE",
+        "BEEN",
+        "BEING",
+        "DO",
+        "DOES",
+        "DID",
+        "HAS",
+        "HAVE",
+        "HAD",
+        "CAN",
+        "COULD",
+        "SHALL",
+        "SHOULD",
+        "WILL",
+        "WOULD",
+        "MAY",
+        "MIGHT",
+        "MUST",
+
+        /* Articles */
+
+        "A",
+        "AN",
+        "THE",
+        "OF",
+        "TO",
+        "FOR",
+        "FROM",
+        "IN",
+        "ON",
+        "AT",
+        "BY",
+        "WITH",
+        "UNDER",
+        "OVER",
+        "INTO",
+        "ONTO",
+
+        /* Generic */
+
+        "PLEASE",
+        "KINDLY",
+        "ME",
+        "MY",
+
+        /* Staff */
+
+        "STAFF",
+        "PERSON",
+        "PERSONNEL",
+        "EMPLOYEE",
+        "MEMBER",
+
+        /* Profile */
+
+        "PROFILE",
+        "DETAIL",
+        "DETAILS",
+        "INFO",
+        "INFORMATION",
+        "ABOUT",
+
+        /* Contact */
+
+        "PHONE",
+        "NUMBER",
+        "MOBILE",
+        "CONTACT",
+        "EMAIL",
+        "CALL",
+
+        /* Business Intent */
+
+        "ROLE",
+        "DESIGNATION",
+        "POSTING",
+        "POSTED",
+        "LOCATION",
+        "LOCATED",
+        "CURRENT",
+        "GPS",
+        "COORDINATES",
+        "POSITION",
+        "DUTY",
+        "STATUS",
+        "ACTIVE",
+        "INACTIVE",
+        "PATROL",
+        "PATROLLING",
+        "PATROLLED",
+        "ANALYTICS",
+        "SUMMARY"
+
+    ];
 
     /*----------------------------------
-      Question Words
-    ----------------------------------*/
-
-    "WHO",
-    "WHAT",
-    "WHERE",
-    "WHEN",
-    "WHICH",
-    "WHY",
-    "HOW",
-
-    /*----------------------------------
-      Grammar
-    ----------------------------------*/
-
-    "IS",
-    "ARE",
-    "WAS",
-    "WERE",
-    "AM",
-    "BE",
-    "BEEN",
-    "BEING",
-    "DO",
-    "DOES",
-    "DID",
-    "HAS",
-    "HAVE",
-    "HAD",
-    "CAN",
-    "COULD",
-    "SHALL",
-    "SHOULD",
-    "WILL",
-    "WOULD",
-    "MAY",
-    "MIGHT",
-    "MUST",
-
-    /*----------------------------------
-      Articles / Connectors
-    ----------------------------------*/
-
-    "A",
-    "AN",
-    "THE",
-    "OF",
-    "TO",
-    "FOR",
-    "FROM",
-    "IN",
-    "ON",
-    "AT",
-    "BY",
-    "WITH",
-    "UNDER",
-    "OVER",
-    "INTO",
-    "ONTO",
-    "AS",
-
-    /*----------------------------------
-      Generic Staff Nouns
-    ----------------------------------*/
-
-    "STAFF",
-    "PERSON",
-    "PERSONNEL",
-    "EMPLOYEE",
-    "MEMBER",
-
-    /*----------------------------------
-      Profile
-    ----------------------------------*/
-
-    "PROFILE",
-    "DETAIL",
-    "DETAILS",
-    "INFORMATION",
-    "INFO",
-    "ABOUT",
-
-    /*----------------------------------
-      Contact
-    ----------------------------------*/
-
-    "PHONE",
-    "NUMBER",
-    "MOBILE",
-    "CONTACT",
-    "EMAIL",
-    "CELL",
-    "CALL"
-
-];
-
-    /*----------------------------------
-      Remove Noise Words
+      Remove Words
     ----------------------------------*/
 
     removeWords.forEach(
@@ -9980,21 +10000,7 @@ const removeWords = [
     );
 
     /*----------------------------------
-      Remove Punctuation
-    ----------------------------------*/
-
-    search =
-
-        search.replace(
-
-            /[^A-Z0-9\s]/g,
-
-            " "
-
-        );
-
-    /*----------------------------------
-      Cleanup Spaces
+      Cleanup
     ----------------------------------*/
 
     search =
@@ -10010,10 +10016,6 @@ const removeWords = [
             )
 
             .trim();
-
-    /*----------------------------------
-      Return
-    ----------------------------------*/
 
     return search;
 
