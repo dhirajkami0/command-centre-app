@@ -7332,6 +7332,10 @@ StaffEntities.extractPostingEntities = function (
 
 ) {
 
+    /*----------------------------------
+      Validate
+    ----------------------------------*/
+
     if (
 
         !result ||
@@ -7378,6 +7382,72 @@ StaffEntities.extractPostingEntities = function (
 
         StaffEntities.buildPostingIndex();
 
+    /*----------------------------------
+      Whole Word Match
+    ----------------------------------*/
+
+    function hasWord(
+
+        text,
+
+        phrase
+
+    ) {
+
+        phrase =
+
+            String(
+
+                phrase ||
+
+                ""
+
+            )
+
+            .trim()
+
+            .toUpperCase();
+
+        if (
+
+            !phrase
+
+        ) {
+
+            return false;
+
+        }
+
+        const escaped =
+
+            phrase.replace(
+
+                /[-\/\\^$*+?.()|[\]{}]/g,
+
+                "\\$&"
+
+            );
+
+        return new RegExp(
+
+            "(^|\\W)" +
+
+            escaped +
+
+            "(\\W|$)"
+
+        ).test(
+
+            text
+
+        );
+
+    }
+
+    /*----------------------------------
+      Search Posting
+    ----------------------------------*/
+
     index.forEach(
 
         function (
@@ -7402,9 +7472,19 @@ StaffEntities.extractPostingEntities = function (
 
             if (
 
-                !normalized ||
+                !normalized
 
-                !query.includes(
+            ) {
+
+                return;
+
+            }
+
+            if (
+
+                !hasWord(
+
+                    query,
 
                     normalized
 
@@ -7415,6 +7495,18 @@ StaffEntities.extractPostingEntities = function (
                 return;
 
             }
+
+            console.log(
+
+                "Matched Posting:",
+
+                item.type,
+
+                normalized,
+
+                item.value
+
+            );
 
             const key =
 
@@ -7460,9 +7552,7 @@ StaffEntities.extractPostingEntities = function (
 
                 String(
 
-                    item.type ||
-
-                    ""
+                    item.type
 
                 )
 
@@ -7524,119 +7614,13 @@ StaffEntities.extractPostingEntities = function (
 
         posting.length;
 
-    return result;
+    console.log(
 
-};
+        "Posting Parameters:",
 
- StaffEntities.buildPostingParameters = function (
-
-    result
-
-) {
-
-    if (
-
-        !result ||
-
-        !result.entities
-
-    ) {
-
-        return result;
-
-    }
-
-    const posting =
-
-        Array.isArray(
-
-            result.entities.posting
-
-        )
-
-            ? result.entities.posting
-
-            : [];
-
-    const parameters =
-
-        result.parameters ||
-
-        {};
-
-    posting.forEach(
-
-        function (
-
-            item
-
-        ) {
-
-            if (
-
-                !item ||
-
-                !item.type
-
-            ) {
-
-                return;
-
-            }
-
-            switch (
-
-                String(
-
-                    item.type
-
-                )
-
-                .toLowerCase()
-
-            ) {
-
-                case "circle":
-
-                    parameters.circle =
-
-                        item.value;
-
-                    break;
-
-                case "division":
-
-                    parameters.division =
-
-                        item.value;
-
-                    break;
-
-                case "range":
-
-                    parameters.range =
-
-                        item.value;
-
-                    break;
-
-                case "beat":
-
-                    parameters.beat =
-
-                        item.value;
-
-                    break;
-
-            }
-
-        }
+        parameters
 
     );
-
-    result.parameters =
-
-        parameters;
 
     return result;
 
