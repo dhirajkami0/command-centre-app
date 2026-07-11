@@ -5514,7 +5514,9 @@ StaffEntities.extractRoleEntities = function (
 
         !result ||
 
-        typeof result !== "object"
+        typeof result !==
+
+        "object"
 
     ) {
 
@@ -5524,7 +5526,17 @@ StaffEntities.extractRoleEntities = function (
 
     const query =
 
-        result.normalizedQuery;
+        String(
+
+            result.normalizedQuery ||
+
+            ""
+
+        )
+
+        .trim()
+
+        .toUpperCase();
 
     if (
 
@@ -5536,12 +5548,78 @@ StaffEntities.extractRoleEntities = function (
 
     }
 
-    const matches = [];
+    const matches =
 
-    const seen = new Set();
+        [];
+
+    const seen =
+
+        new Set();
 
     /*----------------------------------
-      Helper
+      Whole Word Match
+    ----------------------------------*/
+
+    function hasWord(
+
+        text,
+
+        word
+
+    ) {
+
+        word =
+
+            String(
+
+                word ||
+
+                ""
+
+            )
+
+            .trim()
+
+            .toUpperCase();
+
+        if (
+
+            !word
+
+        ) {
+
+            return false;
+
+        }
+
+        const escaped =
+
+            word.replace(
+
+                /[-\/\\^$*+?.()|[\]{}]/g,
+
+                "\\$&"
+
+            );
+
+        return new RegExp(
+
+            "(^|\\W)" +
+
+            escaped +
+
+            "(\\W|$)"
+
+        ).test(
+
+            text
+
+        );
+
+    }
+
+    /*----------------------------------
+      Add Match
     ----------------------------------*/
 
     function addRole(
@@ -5564,7 +5642,9 @@ StaffEntities.extractRoleEntities = function (
 
         const key =
 
-            staff.identity.cleanName;
+            staff.identity.cleanName ||
+
+            staff.id;
 
         if (
 
@@ -5595,7 +5675,7 @@ StaffEntities.extractRoleEntities = function (
     }
 
     /*----------------------------------
-      Search Roles
+      Search
     ----------------------------------*/
 
     StaffEntities.staff.forEach(
@@ -5642,9 +5722,47 @@ StaffEntities.extractRoleEntities = function (
 
             }
 
+            /*----------------------------------
+              Ignore Generic Roles
+            ----------------------------------*/
+
             if (
 
-                query.includes(
+                [
+
+                    "STAFF",
+
+                    "PERSONNEL",
+
+                    "EMPLOYEE",
+
+                    "OFFICER",
+
+                    "MEMBER",
+
+                    "FIELD STAFF"
+
+                ].includes(
+
+                    role
+
+                )
+
+            ) {
+
+                return;
+
+            }
+
+            /*----------------------------------
+              Exact Role
+            ----------------------------------*/
+
+            if (
+
+                hasWord(
+
+                    query,
 
                     role
 
@@ -5662,17 +5780,25 @@ StaffEntities.extractRoleEntities = function (
 
             }
 
-            if (
+            /*----------------------------------
+              Synonyms
+            ----------------------------------*/
 
-                StaffConstants.SYNONYMS &&
+            const synonyms =
 
-                Array.isArray(
+                StaffConstants
 
-                    StaffConstants.SYNONYMS[
+                    ?.SYNONYMS?.[
 
                         role
 
-                    ]
+                    ];
+
+            if (
+
+                Array.isArray(
+
+                    synonyms
 
                 )
 
@@ -5680,37 +5806,25 @@ StaffEntities.extractRoleEntities = function (
 
                 const found =
 
-                    StaffConstants
+                    synonyms.some(
 
-                        .SYNONYMS[
+                        function (
 
-                            role
+                            synonym
 
-                        ]
+                        ) {
 
-                        .some(
+                            return hasWord(
 
-                            function (
+                                query,
 
                                 synonym
 
-                            ) {
+                            );
 
-                                return query.includes(
+                        }
 
-                                    String(
-
-                                        synonym
-
-                                    )
-
-                                    .toUpperCase()
-
-                                );
-
-                            }
-
-                        );
+                    );
 
                 if (
 
@@ -5733,7 +5847,7 @@ StaffEntities.extractRoleEntities = function (
     );
 
     /*----------------------------------
-      Save Result
+      Save
     ----------------------------------*/
 
     result.entities.roles =
