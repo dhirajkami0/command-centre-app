@@ -645,11 +645,55 @@ StaffFormatter.formatCount = function (
 
         );
 
+    /*----------------------------------
+      Validate
+    ----------------------------------*/
+
+    if (
+
+        !response ||
+
+        !response.success ||
+
+        !response.data
+
+    ) {
+
+        result.message =
+
+            response?.message ||
+
+            "Count not available.";
+
+        return result;
+
+    }
+
+    /*----------------------------------
+      Aggregate Data
+    ----------------------------------*/
+
     const data =
 
-        response.data ||
+        Array.isArray(
 
-        {};
+            response.data
+
+        )
+
+            ?
+
+            (
+
+                response.data[0] ||
+
+                {}
+
+            )
+
+            :
+
+            response.data;
 
     const count =
 
@@ -703,19 +747,71 @@ StaffFormatter.formatCount = function (
 
         );
 
-    result.success =
+    const circle =
 
-        true;
+        data.circle ||
 
-    result.title =
+        "";
 
-        "Staff Count";
+    const division =
 
-    let text =
+        data.division ||
 
-`# 👥 STAFF COUNT
+        "";
 
-**Total Staff:** ${count}`;
+    const range =
+
+        data.range ||
+
+        "";
+
+    const beat =
+
+        data.beat ||
+
+        "";
+
+    const compartment =
+
+        data.compartment ||
+
+        "";
+
+    const jurisdiction =
+
+        compartment ||
+
+        beat ||
+
+        range ||
+
+        division ||
+
+        circle ||
+
+        "All Jurisdictions";
+
+    /*----------------------------------
+      Markdown
+    ----------------------------------*/
+
+    const lines = [
+
+        "# 👥 STAFF COUNT",
+
+        "",
+
+        "**Jurisdiction:** " +
+
+            jurisdiction,
+
+        "",
+
+        "**Total Staff:** " +
+
+            count
+
+    ];
 
     if (
 
@@ -725,13 +821,27 @@ StaffFormatter.formatCount = function (
 
     ) {
 
-        text +=
+        lines.push(
 
-`
+            ""
 
-• Active : ${active}
+        );
 
-• Inactive : ${inactive}`;
+        lines.push(
+
+            "• Active : " +
+
+            active
+
+        );
+
+        lines.push(
+
+            "• Inactive : " +
+
+            inactive
+
+        );
 
     }
 
@@ -743,13 +853,27 @@ StaffFormatter.formatCount = function (
 
     ) {
 
-        text +=
+        lines.push(
 
-`
+            ""
 
-• Moving : ${moving}
+        );
 
-• Stationary : ${stationary}`;
+        lines.push(
+
+            "• Moving : " +
+
+            moving
+
+        );
+
+        lines.push(
+
+            "• Stationary : " +
+
+            stationary
+
+        );
 
     }
 
@@ -763,11 +887,17 @@ StaffFormatter.formatCount = function (
 
     ) {
 
-        text +=
+        lines.push(
 
-`
+            ""
 
-## DESIGNATIONS`;
+        );
+
+        lines.push(
+
+            "## DESIGNATIONS"
+
+        );
 
         Object.entries(
 
@@ -781,11 +911,17 @@ StaffFormatter.formatCount = function (
 
             ) {
 
-                text +=
+                lines.push(
 
-`
+                    "• " +
 
-• ${entry[0]} : ${entry[1]}`;
+                    entry[0] +
+
+                    " : " +
+
+                    entry[1]
+
+                );
 
             }
 
@@ -793,17 +929,91 @@ StaffFormatter.formatCount = function (
 
     }
 
-    result.message =
+    result.markdown =
 
-        text;
+        lines.join(
+
+            "\n"
+
+        );
+
+    /*----------------------------------
+      Cards
+    ----------------------------------*/
+
+    result.cards.push({
+
+        type:
+
+            "staff-count",
+
+        title:
+
+            "Staff Count",
+
+        data:
+
+            data
+
+    });
+
+    /*----------------------------------
+      Sections
+    ----------------------------------*/
+
+    result.sections.push({
+
+        title:
+
+            "Staff Count",
+
+        data:
+
+            data
+
+    });
+
+    /*----------------------------------
+      Preserve Data
+    ----------------------------------*/
 
     result.data =
 
         data;
 
+    /*----------------------------------
+      Metadata
+    ----------------------------------*/
+
+    result.success =
+
+        true;
+
+    result.intent =
+
+        response.intent ||
+
+        StaffConstants.INTENTS.STAFF_COUNT;
+
+    result.confidence =
+
+        response.confidence ||
+
+        1;
+
+    result.source =
+
+        response.source ||
+
+        "LOCAL";
+
+    result.message =
+
+        "Staff count formatted successfully.";
+
     return result;
 
-}; 
+};
  StaffFormatter.formatDirectory = function (
 
     response
@@ -9118,17 +9328,13 @@ StaffFormatter.formatDesignationDirectory = function (
 
                 )
 
-                    ? group.staff
+                    ?
 
-                    : Array.isArray(
+                    group.staff
 
-                        group.profiles
+                    :
 
-                    )
-
-                    ? group.profiles
-
-                    : [];
+                    [];
 
             lines.push(
 
@@ -9164,7 +9370,7 @@ StaffFormatter.formatDesignationDirectory = function (
 
                 function (
 
-                    staff,
+                    profile,
 
                     staffIndex
 
@@ -9172,9 +9378,9 @@ StaffFormatter.formatDesignationDirectory = function (
 
                     if (
 
-                        !staff ||
+                        !profile ||
 
-                        typeof staff !==
+                        typeof profile !==
 
                         "object"
 
@@ -9184,63 +9390,17 @@ StaffFormatter.formatDesignationDirectory = function (
 
                     }
 
-                    const name =
+                    const identity =
 
-                        staff.identity?.cleanName ||
+                        profile.identity ||
 
-                        staff.cleanName ||
+                        {};
 
-                        staff.name ||
+                    const posting =
 
-                        "-";
+                        profile.posting ||
 
-                    const staffDesignation =
-
-                        staff.identity?.designation ||
-
-                        staff.designation ||
-
-                        "-";
-
-                    const role =
-
-                        staff.identity?.role ||
-
-                        staff.role ||
-
-                        "-";
-
-                    const circle =
-
-                        staff.posting?.circle ||
-
-                        staff.circle ||
-
-                        "-";
-
-                    const division =
-
-                        staff.posting?.division ||
-
-                        staff.division ||
-
-                        "-";
-
-                    const range =
-
-                        staff.posting?.range ||
-
-                        staff.range ||
-
-                        "-";
-
-                    const beat =
-
-                        staff.posting?.beat ||
-
-                        staff.beat ||
-
-                        "-";
+                        {};
 
                     lines.push(
 
@@ -9252,7 +9412,13 @@ StaffFormatter.formatDesignationDirectory = function (
 
                         ". **" +
 
-                        name +
+                        (
+
+                            identity.cleanName ||
+
+                            "-"
+
+                        ) +
 
                         "**"
 
@@ -9262,7 +9428,13 @@ StaffFormatter.formatDesignationDirectory = function (
 
                         "   • Designation : " +
 
-                        staffDesignation
+                        (
+
+                            identity.designation ||
+
+                            "-"
+
+                        )
 
                     );
 
@@ -9270,7 +9442,13 @@ StaffFormatter.formatDesignationDirectory = function (
 
                         "   • Role : " +
 
-                        role
+                        (
+
+                            identity.role ||
+
+                            "-"
+
+                        )
 
                     );
 
@@ -9278,7 +9456,13 @@ StaffFormatter.formatDesignationDirectory = function (
 
                         "   • Circle : " +
 
-                        circle
+                        (
+
+                            posting.circle ||
+
+                            "-"
+
+                        )
 
                     );
 
@@ -9286,7 +9470,13 @@ StaffFormatter.formatDesignationDirectory = function (
 
                         "   • Division : " +
 
-                        division
+                        (
+
+                            posting.division ||
+
+                            "-"
+
+                        )
 
                     );
 
@@ -9294,7 +9484,13 @@ StaffFormatter.formatDesignationDirectory = function (
 
                         "   • Range : " +
 
-                        range
+                        (
+
+                            posting.range ||
+
+                            "-"
+
+                        )
 
                     );
 
@@ -9302,7 +9498,13 @@ StaffFormatter.formatDesignationDirectory = function (
 
                         "   • Beat : " +
 
-                        beat
+                        (
+
+                            posting.beat ||
+
+                            "-"
+
+                        )
 
                     );
 
@@ -9403,6 +9605,14 @@ StaffFormatter.formatDesignationDirectory = function (
     });
 
     /*----------------------------------
+      Preserve Data
+    ----------------------------------*/
+
+    result.data =
+
+        directory;
+
+    /*----------------------------------
       Metadata
     ----------------------------------*/
 
@@ -9412,7 +9622,8 @@ StaffFormatter.formatDesignationDirectory = function (
 
     result.intent =
 
-        StaffConstants.INTENTS.STAFF_DESIGNATION_DIRECTORY;
+        StaffConstants.INTENTS
+            .STAFF_DESIGNATION_DIRECTORY;
 
     result.confidence =
 
@@ -9429,14 +9640,6 @@ StaffFormatter.formatDesignationDirectory = function (
     result.message =
 
         "Designation directory formatted successfully.";
-
-    /*----------------------------------
-      Preserve Data
-    ----------------------------------*/
-
-    result.data =
-
-        directory;
 
     return result;
 
@@ -9480,25 +9683,43 @@ StaffFormatter.formatDesignationCount = function (
 
             response?.message ||
 
-            "Designation count not found.";
+            "Designation count not available.";
 
         return result;
 
     }
 
     /*----------------------------------
-      Data
+      Aggregate Data
     ----------------------------------*/
 
     const data =
 
-        response.data;
+        Array.isArray(
+
+            response.data
+
+        )
+
+            ?
+
+            (
+
+                response.data[0] ||
+
+                {}
+
+            )
+
+            :
+
+            response.data;
 
     const designation =
 
         data.designation ||
 
-        "-";
+        "UNASSIGNED";
 
     const circle =
 
@@ -9534,11 +9755,15 @@ StaffFormatter.formatDesignationCount = function (
 
         Number(
 
-            data.count || 0
+            data.count ??
+
+            data.totalStaff ??
+
+            0
 
         );
 
-    const staff =
+    const staffList =
 
         Array.isArray(
 
@@ -9546,9 +9771,13 @@ StaffFormatter.formatDesignationCount = function (
 
         )
 
-            ? data.staff
+            ?
 
-            : [];
+            data.staff
+
+            :
+
+            [];
 
     /*----------------------------------
       Jurisdiction
@@ -9572,49 +9801,45 @@ StaffFormatter.formatDesignationCount = function (
       Markdown
     ----------------------------------*/
 
-    const lines = [];
+    const lines = [
 
-    lines.push(
+        "# 👤 DESIGNATION COUNT",
 
-        "# 👤 DESIGNATION COUNT"
-
-    );
-
-    lines.push("");
-
-    lines.push(
+        "",
 
         "**Designation:** " +
 
-        designation
+            designation,
 
-    );
-
-    lines.push(
+        "",
 
         "**Jurisdiction:** " +
 
-        jurisdiction
+            jurisdiction,
 
-    );
-
-    lines.push(
+        "",
 
         "**Total Staff:** " +
 
-        count
+            count
 
-    );
+    ];
 
     if (
 
-        staff.length > 0
+        staffList.length >
+
+        0
 
     ) {
 
-        lines.push("");
+        lines.push(
 
-        staff.forEach(
+            ""
+
+        );
+
+        staffList.forEach(
 
             function (
 
@@ -9624,21 +9849,39 @@ StaffFormatter.formatDesignationCount = function (
 
             ) {
 
+                if (
+
+                    !profile ||
+
+                    typeof profile !==
+
+                    "object"
+
+                ) {
+
+                    return;
+
+                }
+
                 const identity =
 
                     profile.identity ||
 
-                    profile;
+                    {};
 
                 const posting =
 
                     profile.posting ||
 
-                    profile;
+                    {};
 
                 lines.push(
 
-                    (index + 1) +
+                    (
+
+                        index + 1
+
+                    ) +
 
                     ". **" +
 
@@ -9646,13 +9889,67 @@ StaffFormatter.formatDesignationCount = function (
 
                         identity.cleanName ||
 
-                        identity.name ||
-
                         "-"
 
                     ) +
 
                     "**"
+
+                );
+
+                lines.push(
+
+                    "   • Designation : " +
+
+                    (
+
+                        identity.designation ||
+
+                        "-"
+
+                    )
+
+                );
+
+                lines.push(
+
+                    "   • Role : " +
+
+                    (
+
+                        identity.role ||
+
+                        "-"
+
+                    )
+
+                );
+
+                lines.push(
+
+                    "   • Circle : " +
+
+                    (
+
+                        posting.circle ||
+
+                        "-"
+
+                    )
+
+                );
+
+                lines.push(
+
+                    "   • Division : " +
+
+                    (
+
+                        posting.division ||
+
+                        "-"
+
+                    )
 
                 );
 
@@ -9684,6 +9981,12 @@ StaffFormatter.formatDesignationCount = function (
 
                 );
 
+                lines.push(
+
+                    ""
+
+                );
+
             }
 
         );
@@ -9692,7 +9995,11 @@ StaffFormatter.formatDesignationCount = function (
 
     else {
 
-        lines.push("");
+        lines.push(
+
+            ""
+
+        );
 
         lines.push(
 
@@ -9732,6 +10039,26 @@ StaffFormatter.formatDesignationCount = function (
 
                 designation,
 
+            circle:
+
+                circle,
+
+            division:
+
+                division,
+
+            range:
+
+                range,
+
+            beat:
+
+                beat,
+
+            compartment:
+
+                compartment,
+
             jurisdiction:
 
                 jurisdiction,
@@ -9740,9 +10067,13 @@ StaffFormatter.formatDesignationCount = function (
 
                 count,
 
+            totalStaff:
+
+                count,
+
             staff:
 
-                staff
+                staffList
 
         }
 
@@ -9764,6 +10095,26 @@ StaffFormatter.formatDesignationCount = function (
 
                 designation,
 
+            circle:
+
+                circle,
+
+            division:
+
+                division,
+
+            range:
+
+                range,
+
+            beat:
+
+                beat,
+
+            compartment:
+
+                compartment,
+
             jurisdiction:
 
                 jurisdiction,
@@ -9772,13 +10123,25 @@ StaffFormatter.formatDesignationCount = function (
 
                 count,
 
+            totalStaff:
+
+                count,
+
             staff:
 
-                staff
+                staffList
 
         }
 
     });
+
+    /*----------------------------------
+      Preserve Data
+    ----------------------------------*/
+
+    result.data =
+
+        data;
 
     /*----------------------------------
       Metadata
