@@ -3825,8 +3825,8 @@ result =
           Generic
         ----------------------------------*/
         result = StaffIntent.detectSearchIntent(result);
-        result = StaffIntent.detectDefaultIntent(result);
-        result = StaffIntent.detectFallbackIntent(result);
+        
+     
 
         console.timeEnd(
             "detectStaffIntent"
