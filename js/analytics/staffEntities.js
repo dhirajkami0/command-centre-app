@@ -1458,13 +1458,9 @@ StaffEntities.extractDesignationEntities = function (
 
         if (
 
-            !word
+            !word ||
 
-            ||
-
-            word.length <
-
-            2
+            word.length < 2
 
         ) {
 
@@ -1499,7 +1495,7 @@ StaffEntities.extractDesignationEntities = function (
     }
 
     /*----------------------------------
-      Add
+      Add Match
     ----------------------------------*/
 
     function addDesignation(
@@ -1522,9 +1518,19 @@ StaffEntities.extractDesignationEntities = function (
 
         const key =
 
-            staff.identity.cleanName ||
+            String(
 
-            staff.id;
+                staff.identity.cleanName ||
+
+                staff.id ||
+
+                ""
+
+            )
+
+            .trim()
+
+            .toUpperCase();
 
         if (
 
@@ -1555,7 +1561,7 @@ StaffEntities.extractDesignationEntities = function (
     }
 
     /*----------------------------------
-      Search
+      Search Designations
     ----------------------------------*/
 
     StaffEntities.staff.forEach(
@@ -1570,7 +1576,7 @@ StaffEntities.extractDesignationEntities = function (
 
                 !staff ||
 
-                !staff.identity
+                !staff.search
 
             ) {
 
@@ -1578,113 +1584,181 @@ StaffEntities.extractDesignationEntities = function (
 
             }
 
-            const designation =
-
-                String(
-
-                    staff.identity.designation ||
-
-                    ""
-
-                )
-
-                .trim()
-
-                .toUpperCase();
-
-            if (
-
-                !designation
-
-            ) {
-
-                return;
-
-            }
-
-            if (
-
-                hasWord(
-
-                    query,
-
-                    designation
-
-                )
-
-            ) {
-
-                addDesignation(
-
-                    staff
-
-                );
-
-                return;
-
-            }
-
-            const synonyms =
-
-                StaffConstants
-
-                    ?.SYNONYMS?.[
-
-                        designation
-
-                    ];
-
-            if (
+            const designationTokens =
 
                 Array.isArray(
 
-                    synonyms
+                    staff.search.designation
 
                 )
 
+                    ? staff.search.designation
+
+                    : [];
+
+            if (
+
+                designationTokens.length === 0
+
             ) {
 
-                const found =
+                return;
 
-                    synonyms.some(
+            }
 
-                        function (
+            let matched =
 
-                            synonym
+                false;
+
+            designationTokens.forEach(
+
+                function (
+
+                    designation
+
+                ) {
+
+                    if (
+
+                        matched
+
+                    ) {
+
+                        return;
+
+                    }
+
+                    designation =
+
+                        String(
+
+                            designation ||
+
+                            ""
+
+                        )
+
+                        .trim()
+
+                        .toUpperCase();
+
+                    if (
+
+                        !designation
+
+                    ) {
+
+                        return;
+
+                    }
+
+                    /*----------------------------------
+                      Exact Match
+                    ----------------------------------*/
+
+                    if (
+
+                        hasWord(
+
+                            query,
+
+                            designation
+
+                        )
+
+                    ) {
+
+                        matched =
+
+                            true;
+
+                        addDesignation(
+
+                            staff
+
+                        );
+
+                        return;
+
+                    }
+
+                    /*----------------------------------
+                      Synonyms
+                    ----------------------------------*/
+
+                    const synonyms =
+
+                        StaffConstants
+
+                            ?.SYNONYMS?.[
+
+                                designation
+
+                            ];
+
+                    if (
+
+                        Array.isArray(
+
+                            synonyms
+
+                        )
+
+                    ) {
+
+                        const found =
+
+                            synonyms.some(
+
+                                function (
+
+                                    synonym
+
+                                ) {
+
+                                    return hasWord(
+
+                                        query,
+
+                                        synonym
+
+                                    );
+
+                                }
+
+                            );
+
+                        if (
+
+                            found
 
                         ) {
 
-                            return hasWord(
+                            matched =
 
-                                query,
+                                true;
 
-                                synonym
+                            addDesignation(
+
+                                staff
 
                             );
 
                         }
 
-                    );
-
-                if (
-
-                    found
-
-                ) {
-
-                    addDesignation(
-
-                        staff
-
-                    );
+                    }
 
                 }
 
-            }
+            );
 
         }
 
     );
+
+    /*----------------------------------
+      Save Result
+    ----------------------------------*/
 
     result.entities.designations =
 
@@ -2862,423 +2936,755 @@ StaffEntities.buildSearchTokens = function (
     }
 
     /*----------------------------------
-      Create Token Store
-    ----------------------------------*/
+  Create Token Stores
+----------------------------------*/
 
-    const tokens =
+const identityTokens =
 
-        new Set();
+    new Set();
 
+const phoneTokens =
+
+    new Set();
+
+const designationTokens =
+
+    new Set();
+
+const roleTokens =
+
+    new Set();
+
+const postingTokens =
+
+    new Set();
+
+const assignmentTokens =
+
+    new Set();
+
+const teamTokens =
+
+    new Set();
+
+const gpsTokens =
+
+    new Set();
+
+const analyticsTokens =
+
+    new Set();
     /*----------------------------------
       Helper
     ----------------------------------*/
 
-    function add(value) {
 
-        if (
+function add(
 
-            value === null ||
+    store,
 
-            value === undefined
+    value
 
-        ) {
+) {
 
-            return;
+    if (
 
-        }
+        value === null ||
 
-        const text =
+        value === undefined
 
-            String(value)
+    ) {
 
-                .trim()
-
-                .toUpperCase();
-
-        if (
-
-            text.length === 0
-
-        ) {
-
-            return;
-
-        }
-
-        tokens.add(
-
-            text
-
-        );
+        return;
 
     }
 
+    const text =
+
+        String(
+
+            value
+
+        )
+
+        .trim()
+
+        .toUpperCase();
+
+    if (
+
+        !text
+
+    ) {
+
+        return;
+
+    }
+
+    store.add(
+
+        text
+
+    );
+
+}
     /*----------------------------------
       Helper (Split Words)
     ----------------------------------*/
 
-    function addWords(value) {
+function addWords(
 
-        if (
+    store,
 
-            !value
+    value
+
+) {
+
+    if (
+
+        !value
+
+    ) {
+
+        return;
+
+    }
+
+    String(
+
+        value
+
+    )
+
+    .toUpperCase()
+
+    .split(
+
+        /[\s,._()/\\-]+/
+
+    )
+
+    .forEach(
+
+        function (
+
+            word
 
         ) {
 
-            return;
+            add(
 
-        }
+                store,
 
-        String(value)
-
-            .toUpperCase()
-
-            .split(
-
-                /[\s,._()/\\-]+/
-
-            )
-
-            .forEach(
-
-                add
+                word
 
             );
 
-    };
+        }
 
-    /*=====================================================
-      Identity
-    =====================================================*/
+    );
+
+}
+/*=====================================================
+  Identity
+=====================================================*/
+
+add(
+
+    identityTokens,
+
+    context.identity.cleanName
+
+);
+
+add(
+
+    identityTokens,
+
+    context.identity.name
+
+);
+
+add(
+
+    identityTokens,
+
+    context.identity.rawName
+
+);
+
+addWords(
+
+    identityTokens,
+
+    context.identity.cleanName
+
+);
+
+addWords(
+
+    identityTokens,
+
+    context.identity.name
+
+);
+
+addWords(
+
+    identityTokens,
+
+    context.identity.rawName
+
+);
+
+/*=====================================================
+  Phone
+=====================================================*/
+
+add(
+
+    phoneTokens,
+
+    context.identity.phone
+
+);
+
+add(
+
+    phoneTokens,
+
+    context.identity.email
+
+);
+
+/*=====================================================
+  Role
+=====================================================*/
+
+add(
+
+    roleTokens,
+
+    context.identity.role
+
+);
+
+addWords(
+
+    roleTokens,
+
+    context.identity.role
+
+);
+
+/*=====================================================
+  Designation
+=====================================================*/
+
+add(
+
+    designationTokens,
+
+    context.identity.designation
+
+);
+
+addWords(
+
+    designationTokens,
+
+    context.identity.designation
+
+);
+
+add(
+
+    designationTokens,
+
+    context.identity.type
+
+);
+
+addWords(
+
+    designationTokens,
+
+    context.identity.type
+
+);
+
+/*=====================================================
+  Posting
+=====================================================*/
+
+add(
+
+    postingTokens,
+
+    context.posting.circle
+
+);
+
+add(
+
+    postingTokens,
+
+    context.posting.division
+
+);
+
+add(
+
+    postingTokens,
+
+    context.posting.range
+
+);
+
+add(
+
+    postingTokens,
+
+    context.posting.beat
+
+);
+
+addWords(
+
+    postingTokens,
+
+    context.posting.circle
+
+);
+
+addWords(
+
+    postingTokens,
+
+    context.posting.division
+
+);
+
+addWords(
+
+    postingTokens,
+
+    context.posting.range
+
+);
+
+addWords(
+
+    postingTokens,
+
+    context.posting.beat
+
+);
+
+/*----------------------------------
+  Posting Aliases
+----------------------------------*/
+
+if (
+
+    context.posting.range
+
+) {
 
     add(
 
-        context.identity.cleanName
+        postingTokens,
+
+        String(
+
+            context.posting.range
+
+        )
+
+        .replace(
+
+            /\s+/g,
+
+            ""
+
+        )
 
     );
+
+}
+
+if (
+
+    context.posting.beat
+
+) {
 
     add(
 
-        context.identity.name
+        postingTokens,
+
+        String(
+
+            context.posting.beat
+
+        )
+
+        .replace(
+
+            /\s+/g,
+
+            ""
+
+        )
 
     );
+
+}
+
+/*=====================================================
+  Assignment
+=====================================================*/
+
+add(
+    assignmentTokens,
+    context.assignment.assignedCompartment
+);
+
+add(
+    assignmentTokens,
+    context.assignment.dutyType
+);
+
+add(
+    assignmentTokens,
+    context.assignment.status
+);
+
+add(
+    assignmentTokens,
+    context.assignment.leader
+);
+
+add(
+    assignmentTokens,
+    context.assignment.team
+);
+
+add(
+    assignmentTokens,
+    context.assignment.lastDutyStart
+);
+
+add(
+    assignmentTokens,
+    context.assignment.lastDutyEnd
+);
+
+addWords(
+    assignmentTokens,
+    context.assignment.assignedCompartment
+);
+
+addWords(
+    assignmentTokens,
+    context.assignment.dutyType
+);
+
+addWords(
+    assignmentTokens,
+    context.assignment.status
+);
+
+addWords(
+    assignmentTokens,
+    context.assignment.leader
+);
+
+addWords(
+    assignmentTokens,
+    context.assignment.team
+);
+
+/*=====================================================
+  Team
+=====================================================*/
+
+add(
+
+    teamTokens,
+
+    context.teamInfo.leader
+
+);
+
+add(
+
+    teamTokens,
+
+    context.teamInfo.team
+
+);
+
+addWords(
+
+    teamTokens,
+
+    context.teamInfo.leader
+
+);
+
+addWords(
+
+    teamTokens,
+
+    context.teamInfo.team
+
+);
+
+
+/*=====================================================
+  Analytics
+=====================================================*/
+
+add(
+
+    analyticsTokens,
+
+    context.analytics.monthKey
+
+);
+
+/*=====================================================
+  Boolean Flags
+=====================================================*/
+
+if (
+
+    context.assignment.dutyActive
+
+) {
 
     add(
 
-        context.identity.rawName
+        assignmentTokens,
+
+        "DUTY_ACTIVE"
 
     );
+
+}
+
+else {
 
     add(
 
-        context.identity.phone
+        assignmentTokens,
+
+        "DUTY_INACTIVE"
 
     );
 
-    add(
+}
 
-        context.identity.email
+/*=====================================================
+  GPS
+=====================================================*/
 
-    );
+add(
+    gpsTokens,
+    context.location.location
+);
 
-    add(
+addWords(
+    gpsTokens,
+    context.location.location
+);
 
-        context.identity.role
+add(
+    gpsTokens,
+    context.tracking.sessionId
+);
 
-    );
+add(
+    gpsTokens,
+    context.tracking.source
+);
 
-    add(
+add(
+    gpsTokens,
+    context.tracking.id
+);
 
-        context.identity.designation
+add(
+    gpsTokens,
+    context.gps.accuracy
+);
 
-    );
+add(
+    gpsTokens,
+    context.gps.speed
+);
 
-    add(
+add(
+    gpsTokens,
+    context.gps.heading
+);
 
-        context.identity.type
+add(
+    gpsTokens,
+    context.gps.turnRate
+);
 
-    );
+add(
+    gpsTokens,
+    context.gps.turnAngle
+);
 
-    addWords(
+add(
+    gpsTokens,
+    context.gps.lastSeen
+);
 
-        context.identity.cleanName
+add(
+    gpsTokens,
+    context.gps.timestamp
+);
 
-    );
+add(
+    gpsTokens,
+    context.gps.updatedAt
+);
 
-    addWords(
+add(
+    gpsTokens,
+    context.location.lat
+);
 
-        context.identity.name
+add(
+    gpsTokens,
+    context.location.lon
+);
+/*=====================================================
+  Search Priority
+=====================================================*/
 
-    );
+const allTokens =
 
-    addWords(
+    Array.from(
 
-        context.identity.rawName
+        new Set([
 
-    );
+            ...identityTokens,
 
-    /*=====================================================
-      Posting
-    =====================================================*/
+            ...phoneTokens,
 
-    add(
+            ...designationTokens,
 
-        context.posting.circle
+            ...roleTokens,
 
-    );
+            ...postingTokens,
 
-    add(
+            ...assignmentTokens,
 
-        context.posting.division
+            ...teamTokens,
 
-    );
+            ...gpsTokens,
 
-    add(
+            ...analyticsTokens
 
-        context.posting.range
-
-    );
-
-    add(
-
-        context.posting.beat
-
-    );
-
-    addWords(
-
-        context.posting.circle
-
-    );
-
-    addWords(
-
-        context.posting.division
-
-    );
-
-    addWords(
-
-        context.posting.range
-
-    );
-
-    addWords(
-
-        context.posting.beat
-
-    );
-
-    /*=====================================================
-      Assignment
-    =====================================================*/
-
-    add(
-
-        context.assignment.assignedCompartment
-
-    );
-
-    add(
-
-        context.assignment.dutyType
-
-    );
-
-    add(
-
-        context.assignment.status
+        ])
 
     );
 
-    add(
+context.search = {
 
-        context.assignment.leader
+    identity:
 
-    );
+        Array.from(
 
-    add(
+            identityTokens
 
-        context.assignment.team
+        ),
 
-    );
+    phone:
 
-    addWords(
+        Array.from(
 
-        context.assignment.assignedCompartment
+            phoneTokens
 
-    );
+        ),
 
-    addWords(
+    designation:
 
-        context.assignment.leader
+        Array.from(
 
-    );
+            designationTokens
 
-    addWords(
+        ),
 
-        context.assignment.team
+    role:
 
-    );
+        Array.from(
 
-    /*=====================================================
-      Location
-    =====================================================*/
+            roleTokens
 
-    add(
+        ),
 
-        context.location.location
+    posting:
 
-    );
+        Array.from(
 
-    addWords(
+            postingTokens
 
-        context.location.location
+        ),
 
-    );
+    assignment:
 
-    /*=====================================================
-      Team
-    =====================================================*/
+        Array.from(
 
-    add(
+            assignmentTokens
 
-        context.teamInfo.leader
+        ),
 
-    );
+    team:
 
-    add(
+        Array.from(
 
-        context.teamInfo.team
+            teamTokens
 
-    );
+        ),
 
-    addWords(
+    gps:
 
-        context.teamInfo.leader
+        Array.from(
 
-    );
+            gpsTokens
 
-    addWords(
+        ),
 
-        context.teamInfo.team
+    analytics:
 
-    );
+        Array.from(
 
-    /*=====================================================
-      Tracking
-    =====================================================*/
+            analyticsTokens
 
-    add(
+        ),
 
-        context.tracking.sessionId
+    /*----------------------------------
+      Backward Compatibility
+    ----------------------------------*/
 
-    );
+    tokens:
 
-    add(
+        allTokens,
 
-        context.tracking.source
+    priority:
 
-    );
+        StaffConstants
 
-    add(
+            .SEARCH_PRIORITY
 
-        context.tracking.id
-
-    );
-
-    /*=====================================================
-      Analytics
-    =====================================================*/
-
-    add(
-
-        context.analytics.monthKey
-
-    );
-
-    /*=====================================================
-      Boolean Flags
-    =====================================================*/
-
-    if (
-
-        context.assignment.dutyActive
-
-    ) {
-
-        add(
-
-            "DUTY_ACTIVE"
-
-        );
-
-    }
-
-    else {
-
-        add(
-
-            "DUTY_INACTIVE"
-
-        );
-
-    }
-
-    /*=====================================================
-      Numeric Tokens
-    =====================================================*/
-
-    if (
-
-        context.location.lat !== null
-
-    ) {
-
-        add(
-
-            context.location.lat
-
-        );
-
-    }
-
-    if (
-
-        context.location.lon !== null
-
-    ) {
-
-        add(
-
-            context.location.lon
-
-        );
-
-    }
-
-    /*=====================================================
-      Search Priority
-    =====================================================*/
-
-    context.search = {
-
-        tokens:
-
-            Array.from(
-
-                tokens
-
-            ),
-
-        priority:
-
-            StaffConstants
-
-                .SEARCH_PRIORITY
-
-    };
-
+};
     /*----------------------------------
       Return Context
     ----------------------------------*/
@@ -5213,259 +5619,507 @@ StaffEntities.createExtractionResult = function (
 =========================================================*/
 
 StaffEntities.extractStaffEntities = function (
+
     result
+
 ) {
+
     /*----------------------------------
       Validate Result
     ----------------------------------*/
+
     if (
+
         !result ||
+
         typeof result !== "object"
+
     ) {
+
         return result;
+
     }
+
     /*----------------------------------
       Search Query
     ----------------------------------*/
+
     const query =
+
         String(
+
             result.searchQuery ||
+
             result.normalizedQuery ||
+
             ""
+
         )
+
         .trim()
+
         .toUpperCase();
+
     if (
-        query === ""
+
+        !query
+
     ) {
+
         return result;
+
     }
+
     /*----------------------------------
       Query Words
     ----------------------------------*/
+
     const queryWords =
+
         new Set(
+
             query
-                .split(/\s+/)
-                .filter(
-                    function (
-                        word
-                    ) {
-                        return (
-                            word.length >= 2
-                        );
-                    }
+
+                .split(
+
+                    /\s+/
+
                 )
+
+                .filter(
+
+                    function (
+
+                        word
+
+                    ) {
+
+                        return (
+
+                            word.length >= 2
+
+                        );
+
+                    }
+
+                )
+
         );
+
     /*----------------------------------
       Matches
     ----------------------------------*/
-    const matches = [];
+
+    const matches =
+
+        [];
+
     const seen =
+
         new Set();
+
     /*----------------------------------
       Helper
     ----------------------------------*/
+
     function addMatch(
+
         staff,
+
         score
+
     ) {
+
         if (
+
             !staff ||
+
             !staff.identity
+
         ) {
+
             return;
+
         }
+
         const key =
+
             String(
+
                 staff.identity.cleanName ||
+
                 ""
+
             )
+
             .trim()
+
             .toUpperCase();
+
         if (
+
             seen.has(
+
                 key
+
             )
+
         ) {
+
             return;
+
         }
+
         seen.add(
+
             key
+
         );
+
         matches.push({
+
             staff:
+
                 staff,
+
             score:
+
                 score
+
         });
+
     }
+
     /*----------------------------------
       Search Staff
     ----------------------------------*/
+
     StaffEntities.staff.forEach(
+
         function (
+
             staff
+
         ) {
+
             if (
+
                 !staff ||
-                !staff.search ||
-                !Array.isArray(
-                    staff.search.tokens
-                )
+
+                !staff.search
+
             ) {
+
                 return;
+
             }
-            let score = 0;
-            staff.search.tokens.forEach(
+
+            const identityTokens =
+
+                Array.isArray(
+
+                    staff.search.identity
+
+                )
+
+                    ? staff.search.identity
+
+                    : [];
+
+            if (
+
+                identityTokens.length === 0
+
+            ) {
+
+                return;
+
+            }
+
+            let score =
+
+                0;
+
+            identityTokens.forEach(
+
                 function (
+
                     token
+
                 ) {
+
                     token =
+
                         String(
+
                             token ||
+
                             ""
+
                         )
+
                         .trim()
+
                         .toUpperCase();
+
                     if (
+
                         token.length < 2
+
                     ) {
+
                         return;
+
                     }
+
                     /*------------------------------
                       Exact Full Query
                     ------------------------------*/
+
                     if (
+
                         token === query
+
                     ) {
-                        score += 1000;
-                        return;
-                    }
-                    /*------------------------------
-                      Exact Word Match
-                    ------------------------------*/
-                    if (
-                        queryWords.size === 1 &&
-                        queryWords.has(
-                            token
-                        )
-                    ) {
+
                         score +=
-                            token.length *
-                            100;
+
+                            1000;
+
                         return;
+
                     }
+
                     /*------------------------------
-                      Multi-word Token
+                      Exact Single Word
                     ------------------------------*/
-                    const tokenWords =
-                        token
-                            .split(/\s+/)
-                            .filter(
-                                function (
-                                    word
-                                ) {
-                                    return (
-                                        word.length >= 2
-                                    );
-                                }
-                            );
-                    let matchedWords = 0;
-                    tokenWords.forEach(
-                        function (
-                            word
-                        ) {
-                            if (
-                                queryWords.has(
-                                    word
-                                )
-                            ) {
-                                matchedWords++;
-                            }
-                        }
-                    );
+
                     if (
-                        tokenWords.length === 1
+
+                        queryWords.size === 1 &&
+
+                        queryWords.has(
+
+                            token
+
+                        )
+
                     ) {
-                        if (
-                            queryWords.size === 1 &&
-                            matchedWords === 1
-                        ) {
-                            score +=
-                                token.length *
-                                100;
-                        }
-                    } else {
-                       if (
 
-    matchedWords === tokenWords.length &&
+                        score +=
 
-    tokenWords.length === queryWords.size
+                            token.length *
 
-) {
+                            100;
 
-    score +=
+                        return;
 
-        token.length *
-
-        40;
-
-}
                     }
+
+                    /*------------------------------
+                      Multi-word Match
+                    ------------------------------*/
+
+                    const tokenWords =
+
+                        token
+
+                            .split(
+
+                                /\s+/
+
+                            )
+
+                            .filter(
+
+                                function (
+
+                                    word
+
+                                ) {
+
+                                    return (
+
+                                        word.length >= 2
+
+                                    );
+
+                                }
+
+                            );
+
+                    let matchedWords =
+
+                        0;
+
+                    tokenWords.forEach(
+
+                        function (
+
+                            word
+
+                        ) {
+
+                            if (
+
+                                queryWords.has(
+
+                                    word
+
+                                )
+
+                            ) {
+
+                                matchedWords++;
+
+                            }
+
+                        }
+
+                    );
+
+                    if (
+
+                        tokenWords.length === 1
+
+                    ) {
+
+                        if (
+
+                            queryWords.size === 1 &&
+
+                            matchedWords === 1
+
+                        ) {
+
+                            score +=
+
+                                token.length *
+
+                                100;
+
+                        }
+
+                    }
+
+                    else if (
+
+                        matchedWords ===
+
+                        tokenWords.length &&
+
+                        tokenWords.length ===
+
+                        queryWords.size
+
+                    ) {
+
+                        score +=
+
+                            token.length *
+
+                            40;
+
+                    }
+
                 }
+
             );
+
             if (
+
                 score > 0
+
             ) {
+
                 addMatch(
+
                     staff,
+
                     score
+
                 );
+
             }
+
         }
+
     );
+
     /*----------------------------------
       Highest Score First
     ----------------------------------*/
+
     matches.sort(
+
         function (
+
             a,
+
             b
+
         ) {
+
             if (
+
                 b.score !==
+
                 a.score
+
             ) {
+
                 return (
+
                     b.score -
+
                     a.score
+
                 );
+
             }
-            return (
-                a.staff.identity.cleanName
-                    .localeCompare(
-                        b.staff.identity.cleanName
-                    )
-            );
+
+            return
+
+                a.staff.identity.cleanName.localeCompare(
+
+                    b.staff.identity.cleanName
+
+                );
+
         }
+
     );
+
     /*----------------------------------
       Save Result
     ----------------------------------*/
+
     result.entities.staff =
+
         matches.map(
+
             function (
+
                 item
+
             ) {
+
                 return item.staff;
+
             }
+
         );
+
     result.stats.uniqueStaff =
+
         result.entities.staff.length;
+
     result.stats.totalEntities +=
+
         result.entities.staff.length;
+
     return result;
+
 };
  /*=========================================================
  EXTRACT PHONE ENTITIES
@@ -5495,7 +6149,17 @@ StaffEntities.extractPhoneEntities = function (
 
     const query =
 
-        result.normalizedQuery;
+        String(
+
+            result.normalizedQuery ||
+
+            ""
+
+        )
+
+        .trim()
+
+        .toUpperCase();
 
     if (
 
@@ -5509,10 +6173,12 @@ StaffEntities.extractPhoneEntities = function (
 
     const matches = [];
 
-    const seen = new Set();
+    const seen =
+
+        new Set();
 
     /*----------------------------------
-      Search Staff
+      Search Phones
     ----------------------------------*/
 
     StaffEntities.staff.forEach(
@@ -5527,39 +6193,11 @@ StaffEntities.extractPhoneEntities = function (
 
                 !staff ||
 
-                !staff.identity
+                !staff.search ||
 
-            ) {
+                !Array.isArray(
 
-                return;
-
-            }
-
-            const phone =
-
-                String(
-
-                    staff.identity.phone ||
-
-                    ""
-
-                ).trim();
-
-            if (
-
-                phone === ""
-
-            ) {
-
-                return;
-
-            }
-
-            if (
-
-                !query.includes(
-
-                    phone
+                    staff.search.phone
 
                 )
 
@@ -5569,11 +6207,65 @@ StaffEntities.extractPhoneEntities = function (
 
             }
 
+            const found =
+
+                staff.search.phone.some(
+
+                    function (
+
+                        phone
+
+                    ) {
+
+                        phone =
+
+                            String(
+
+                                phone ||
+
+                                ""
+
+                            )
+
+                            .trim()
+
+                            .toUpperCase();
+
+                        return (
+
+                            phone &&
+
+                            query.includes(
+
+                                phone
+
+                            )
+
+                        );
+
+                    }
+
+                );
+
+            if (
+
+                !found
+
+            ) {
+
+                return;
+
+            }
+
+            const key =
+
+                staff.identity.cleanName;
+
             if (
 
                 seen.has(
 
-                    phone
+                    key
 
                 )
 
@@ -5585,7 +6277,7 @@ StaffEntities.extractPhoneEntities = function (
 
             seen.add(
 
-                phone
+                key
 
             );
 
@@ -5764,9 +6456,19 @@ StaffEntities.extractRoleEntities = function (
 
         const key =
 
-            staff.identity.cleanName ||
+            String(
 
-            staff.id;
+                staff.identity.cleanName ||
+
+                staff.id ||
+
+                ""
+
+            )
+
+            .trim()
+
+            .toUpperCase();
 
         if (
 
@@ -5797,7 +6499,7 @@ StaffEntities.extractRoleEntities = function (
     }
 
     /*----------------------------------
-      Search
+      Search Roles
     ----------------------------------*/
 
     StaffEntities.staff.forEach(
@@ -5812,7 +6514,7 @@ StaffEntities.extractRoleEntities = function (
 
                 !staff ||
 
-                !staff.identity
+                !staff.search
 
             ) {
 
@@ -5820,156 +6522,212 @@ StaffEntities.extractRoleEntities = function (
 
             }
 
-            const role =
-
-                String(
-
-                    staff.identity.role ||
-
-                    ""
-
-                )
-
-                .trim()
-
-                .toUpperCase();
-
-            if (
-
-                !role
-
-            ) {
-
-                return;
-
-            }
-
-            /*----------------------------------
-              Ignore Generic Roles
-            ----------------------------------*/
-
-            if (
-
-                [
-
-                    "STAFF",
-
-                    "PERSONNEL",
-
-                    "EMPLOYEE",
-
-                    "OFFICER",
-
-                    "MEMBER",
-
-                    "FIELD STAFF"
-
-                ].includes(
-
-                    role
-
-                )
-
-            ) {
-
-                return;
-
-            }
-
-            /*----------------------------------
-              Exact Role
-            ----------------------------------*/
-
-            if (
-
-                hasWord(
-
-                    query,
-
-                    role
-
-                )
-
-            ) {
-
-                addRole(
-
-                    staff
-
-                );
-
-                return;
-
-            }
-
-            /*----------------------------------
-              Synonyms
-            ----------------------------------*/
-
-            const synonyms =
-
-                StaffConstants
-
-                    ?.SYNONYMS?.[
-
-                        role
-
-                    ];
-
-            if (
+            const roleTokens =
 
                 Array.isArray(
 
-                    synonyms
+                    staff.search.role
 
                 )
 
+                    ? staff.search.role
+
+                    : [];
+
+            if (
+
+                roleTokens.length === 0
+
             ) {
 
-                const found =
+                return;
 
-                    synonyms.some(
+            }
 
-                        function (
+            let matched =
 
-                            synonym
+                false;
+
+            roleTokens.forEach(
+
+                function (
+
+                    role
+
+                ) {
+
+                    if (
+
+                        matched
+
+                    ) {
+
+                        return;
+
+                    }
+
+                    role =
+
+                        String(
+
+                            role ||
+
+                            ""
+
+                        )
+
+                        .trim()
+
+                        .toUpperCase();
+
+                    if (
+
+                        !role
+
+                    ) {
+
+                        return;
+
+                    }
+
+                    /*----------------------------------
+                      Ignore Generic Roles
+                    ----------------------------------*/
+
+                    if (
+
+                        [
+
+                            "STAFF",
+
+                            "PERSONNEL",
+
+                            "EMPLOYEE",
+
+                            "OFFICER",
+
+                            "MEMBER",
+
+                            "FIELD STAFF"
+
+                        ].includes(
+
+                            role
+
+                        )
+
+                    ) {
+
+                        return;
+
+                    }
+
+                    /*----------------------------------
+                      Exact Role
+                    ----------------------------------*/
+
+                    if (
+
+                        hasWord(
+
+                            query,
+
+                            role
+
+                        )
+
+                    ) {
+
+                        matched =
+
+                            true;
+
+                        addRole(
+
+                            staff
+
+                        );
+
+                        return;
+
+                    }
+
+                    /*----------------------------------
+                      Synonyms
+                    ----------------------------------*/
+
+                    const synonyms =
+
+                        StaffConstants
+
+                            ?.SYNONYMS?.[
+
+                                role
+
+                            ];
+
+                    if (
+
+                        Array.isArray(
+
+                            synonyms
+
+                        )
+
+                    ) {
+
+                        const found =
+
+                            synonyms.some(
+
+                                function (
+
+                                    synonym
+
+                                ) {
+
+                                    return hasWord(
+
+                                        query,
+
+                                        synonym
+
+                                    );
+
+                                }
+
+                            );
+
+                        if (
+
+                            found
 
                         ) {
 
-                            return hasWord(
+                            matched =
 
-                                query,
+                                true;
 
-                                synonym
+                            addRole(
+
+                                staff
 
                             );
 
                         }
 
-                    );
-
-                if (
-
-                    found
-
-                ) {
-
-                    addRole(
-
-                        staff
-
-                    );
+                    }
 
                 }
 
-            }
+            );
 
         }
 
     );
 
     /*----------------------------------
-      Save
+      Save Result
     ----------------------------------*/
 
     result.entities.roles =
@@ -6783,6 +7541,10 @@ StaffEntities.extractPostingEntities = function (
  EXTRACT TEAM ENTITIES
 =========================================================*/
 
+/*=========================================================
+ EXTRACT TEAM ENTITIES
+=========================================================*/
+
 StaffEntities.extractTeamEntities = function (
 
     result
@@ -6807,7 +7569,17 @@ StaffEntities.extractTeamEntities = function (
 
     const query =
 
-        result.normalizedQuery;
+        String(
+
+            result.normalizedQuery ||
+
+            ""
+
+        )
+
+        .trim()
+
+        .toUpperCase();
 
     if (
 
@@ -6821,10 +7593,74 @@ StaffEntities.extractTeamEntities = function (
 
     const matches = [];
 
-    const seen = new Set();
+    const seen =
+
+        new Set();
 
     /*----------------------------------
-      Helper
+      Whole Word Match
+    ----------------------------------*/
+
+    function hasWord(
+
+        text,
+
+        word
+
+    ) {
+
+        word =
+
+            String(
+
+                word ||
+
+                ""
+
+            )
+
+            .trim()
+
+            .toUpperCase();
+
+        if (
+
+            !word
+
+        ) {
+
+            return false;
+
+        }
+
+        const escaped =
+
+            word.replace(
+
+                /[-\/\\^$*+?.()|[\]{}]/g,
+
+                "\\$&"
+
+            );
+
+        return new RegExp(
+
+            "(^|\\W)" +
+
+            escaped +
+
+            "(\\W|$)"
+
+        ).test(
+
+            text
+
+        );
+
+    }
+
+    /*----------------------------------
+      Add Match
     ----------------------------------*/
 
     function addTeam(
@@ -6847,7 +7683,19 @@ StaffEntities.extractTeamEntities = function (
 
         const key =
 
-            staff.identity.cleanName;
+            String(
+
+                staff.identity.cleanName ||
+
+                staff.id ||
+
+                ""
+
+            )
+
+            .trim()
+
+            .toUpperCase();
 
         if (
 
@@ -6878,7 +7726,7 @@ StaffEntities.extractTeamEntities = function (
     }
 
     /*----------------------------------
-      Search Team
+      Search Team Tokens
     ----------------------------------*/
 
     StaffEntities.staff.forEach(
@@ -6893,7 +7741,7 @@ StaffEntities.extractTeamEntities = function (
 
                 !staff ||
 
-                !staff.teamInfo
+                !staff.search
 
             ) {
 
@@ -6901,65 +7749,101 @@ StaffEntities.extractTeamEntities = function (
 
             }
 
-            const values = [
+            const teamTokens =
 
-                staff.teamInfo.leader,
+                Array.isArray(
 
-                staff.teamInfo.team
+                    staff.search.team
 
-            ];
+                )
 
-            const found =
+                    ? staff.search.team
 
-                values.some(
+                    : [];
 
-                    function (
+            if (
 
-                        value
+                teamTokens.length === 0
+
+            ) {
+
+                return;
+
+            }
+
+            let matched =
+
+                false;
+
+            teamTokens.forEach(
+
+                function (
+
+                    token
+
+                ) {
+
+                    if (
+
+                        matched
 
                     ) {
 
-                        if (
+                        return;
 
-                            !value
+                    }
 
-                        ) {
+                    token =
 
-                            return false;
+                        String(
 
-                        }
+                            token ||
 
-                        return query.includes(
+                            ""
 
-                            String(
+                        )
 
-                                value
+                        .trim()
 
-                            )
+                        .toUpperCase();
 
-                            .trim()
+                    if (
 
-                            .toUpperCase()
+                        !token
+
+                    ) {
+
+                        return;
+
+                    }
+
+                    if (
+
+                        hasWord(
+
+                            query,
+
+                            token
+
+                        )
+
+                    ) {
+
+                        matched =
+
+                            true;
+
+                        addTeam(
+
+                            staff
 
                         );
 
                     }
 
-                );
+                }
 
-            if (
-
-                found
-
-            ) {
-
-                addTeam(
-
-                    staff
-
-                );
-
-            }
+            );
 
         }
 
@@ -6988,6 +7872,10 @@ StaffEntities.extractTeamEntities = function (
  EXTRACT DUTY ENTITIES
 =========================================================*/
 
+/*=========================================================
+ EXTRACT DUTY ENTITIES
+=========================================================*/
+
 StaffEntities.extractDutyEntities = function (
 
     result
@@ -7012,7 +7900,17 @@ StaffEntities.extractDutyEntities = function (
 
     const query =
 
-        result.normalizedQuery;
+        String(
+
+            result.normalizedQuery ||
+
+            ""
+
+        )
+
+        .trim()
+
+        .toUpperCase();
 
     if (
 
@@ -7031,7 +7929,69 @@ StaffEntities.extractDutyEntities = function (
         new Set();
 
     /*----------------------------------
-      Helper
+      Whole Word Match
+    ----------------------------------*/
+
+    function hasWord(
+
+        text,
+
+        word
+
+    ) {
+
+        word =
+
+            String(
+
+                word ||
+
+                ""
+
+            )
+
+            .trim()
+
+            .toUpperCase();
+
+        if (
+
+            !word
+
+        ) {
+
+            return false;
+
+        }
+
+        const escaped =
+
+            word.replace(
+
+                /[-\/\\^$*+?.()|[\]{}]/g,
+
+                "\\$&"
+
+            );
+
+        return new RegExp(
+
+            "(^|\\W)" +
+
+            escaped +
+
+            "(\\W|$)"
+
+        ).test(
+
+            text
+
+        );
+
+    }
+
+    /*----------------------------------
+      Add Match
     ----------------------------------*/
 
     function addDuty(
@@ -7054,7 +8014,19 @@ StaffEntities.extractDutyEntities = function (
 
         const key =
 
-            staff.identity.cleanName;
+            String(
+
+                staff.identity.cleanName ||
+
+                staff.id ||
+
+                ""
+
+            )
+
+            .trim()
+
+            .toUpperCase();
 
         if (
 
@@ -7085,7 +8057,7 @@ StaffEntities.extractDutyEntities = function (
     }
 
     /*----------------------------------
-      Search Duty
+      Search Assignment Tokens
     ----------------------------------*/
 
     StaffEntities.staff.forEach(
@@ -7098,7 +8070,9 @@ StaffEntities.extractDutyEntities = function (
 
             if (
 
-                !staff
+                !staff ||
+
+                !staff.search
 
             ) {
 
@@ -7106,93 +8080,101 @@ StaffEntities.extractDutyEntities = function (
 
             }
 
-            const values = [
+            const assignmentTokens =
 
-                staff.assignment ?
+                Array.isArray(
 
-                    staff.assignment.dutyType :
+                    staff.search.assignment
 
-                    "",
+                )
 
-                staff.assignment ?
+                    ? staff.search.assignment
 
-                    String(
+                    : [];
 
-                        staff.assignment.dutyActive
+            if (
 
-                    ) :
+                assignmentTokens.length === 0
 
-                    "",
+            ) {
 
-                staff.assignment ?
+                return;
 
-                    staff.assignment.status :
+            }
 
-                    "",
+            let matched =
 
-                staff.duty ?
+                false;
 
-                    staff.duty.lastDutyEnd :
+            assignmentTokens.forEach(
 
-                    ""
+                function (
 
-            ];
+                    token
 
-            const found =
+                ) {
 
-                values.some(
+                    if (
 
-                    function (
-
-                        value
+                        matched
 
                     ) {
 
-                        if (
+                        return;
 
-                            value === null ||
+                    }
 
-                            value === undefined ||
+                    token =
 
-                            value === ""
+                        String(
 
-                        ) {
+                            token ||
 
-                            return false;
+                            ""
 
-                        }
+                        )
 
-                        return query.includes(
+                        .trim()
 
-                            String(
+                        .toUpperCase();
 
-                                value
+                    if (
 
-                            )
+                        !token
 
-                            .trim()
+                    ) {
 
-                            .toUpperCase()
+                        return;
+
+                    }
+
+                    if (
+
+                        hasWord(
+
+                            query,
+
+                            token
+
+                        )
+
+                    ) {
+
+                        matched =
+
+                            true;
+
+                        addDuty(
+
+                            staff
 
                         );
 
                     }
 
-                );
+                }
 
-            if (
-
-                found
-
-            ) {
-
-                addDuty(
-
-                    staff
-
-                );
-
-            }
+            );
 
         }
 
@@ -7221,6 +8203,10 @@ StaffEntities.extractDutyEntities = function (
  EXTRACT GPS ENTITIES
 =========================================================*/
 
+/*=========================================================
+ EXTRACT GPS ENTITIES
+=========================================================*/
+
 StaffEntities.extractGPSEntities = function (
 
     result
@@ -7245,7 +8231,17 @@ StaffEntities.extractGPSEntities = function (
 
     const query =
 
-        result.normalizedQuery;
+        String(
+
+            result.normalizedQuery ||
+
+            ""
+
+        )
+
+        .trim()
+
+        .toUpperCase();
 
     if (
 
@@ -7264,7 +8260,69 @@ StaffEntities.extractGPSEntities = function (
         new Set();
 
     /*----------------------------------
-      Helper
+      Whole Word Match
+    ----------------------------------*/
+
+    function hasWord(
+
+        text,
+
+        word
+
+    ) {
+
+        word =
+
+            String(
+
+                word ||
+
+                ""
+
+            )
+
+            .trim()
+
+            .toUpperCase();
+
+        if (
+
+            !word
+
+        ) {
+
+            return false;
+
+        }
+
+        const escaped =
+
+            word.replace(
+
+                /[-\/\\^$*+?.()|[\]{}]/g,
+
+                "\\$&"
+
+            );
+
+        return new RegExp(
+
+            "(^|\\W)" +
+
+            escaped +
+
+            "(\\W|$)"
+
+        ).test(
+
+            text
+
+        );
+
+    }
+
+    /*----------------------------------
+      Add Match
     ----------------------------------*/
 
     function addGPS(
@@ -7287,7 +8345,19 @@ StaffEntities.extractGPSEntities = function (
 
         const key =
 
-            staff.identity.cleanName;
+            String(
+
+                staff.identity.cleanName ||
+
+                staff.id ||
+
+                ""
+
+            )
+
+            .trim()
+
+            .toUpperCase();
 
         if (
 
@@ -7318,7 +8388,7 @@ StaffEntities.extractGPSEntities = function (
     }
 
     /*----------------------------------
-      Search GPS
+      Search GPS Tokens
     ----------------------------------*/
 
     StaffEntities.staff.forEach(
@@ -7331,7 +8401,9 @@ StaffEntities.extractGPSEntities = function (
 
             if (
 
-                !staff
+                !staff ||
+
+                !staff.search
 
             ) {
 
@@ -7339,171 +8411,101 @@ StaffEntities.extractGPSEntities = function (
 
             }
 
-            const values = [
+            const gpsTokens =
 
-                staff.location ?
+                Array.isArray(
 
-                    staff.location.location :
+                    staff.search.gps
 
-                    "",
+                )
 
-                staff.location ?
+                    ? staff.search.gps
 
-                    String(
+                    : [];
 
-                        staff.location.lat
+            if (
 
-                    ) :
+                gpsTokens.length === 0
 
-                    "",
+            ) {
 
-                staff.location ?
+                return;
 
-                    String(
+            }
 
-                        staff.location.lon
+            let matched =
 
-                    ) :
+                false;
 
-                    "",
+            gpsTokens.forEach(
 
-                staff.gps ?
+                function (
 
-                    String(
+                    token
 
-                        staff.gps.accuracy
+                ) {
 
-                    ) :
+                    if (
 
-                    "",
-
-                staff.gps ?
-
-                    String(
-
-                        staff.gps.speed
-
-                    ) :
-
-                    "",
-
-                staff.gps ?
-
-                    String(
-
-                        staff.gps.heading
-
-                    ) :
-
-                    "",
-
-                staff.gps ?
-
-                    String(
-
-                        staff.gps.turnRate
-
-                    ) :
-
-                    "",
-
-                staff.gps ?
-
-                    String(
-
-                        staff.gps.turnAngle
-
-                    ) :
-
-                    "",
-
-                staff.gps ?
-
-                    String(
-
-                        staff.gps.lastSeen
-
-                    ) :
-
-                    "",
-
-                staff.gps ?
-
-                    String(
-
-                        staff.gps.timestamp
-
-                    ) :
-
-                    "",
-
-                staff.gps ?
-
-                    String(
-
-                        staff.gps.updatedAt
-
-                    ) :
-
-                    ""
-
-            ];
-
-            const found =
-
-                values.some(
-
-                    function (
-
-                        value
+                        matched
 
                     ) {
 
-                        if (
+                        return;
 
-                            value === null ||
+                    }
 
-                            value === undefined ||
+                    token =
 
-                            value === ""
+                        String(
 
-                        ) {
+                            token ||
 
-                            return false;
+                            ""
 
-                        }
+                        )
 
-                        return query.includes(
+                        .trim()
 
-                            String(
+                        .toUpperCase();
 
-                                value
+                    if (
 
-                            )
+                        !token
 
-                            .trim()
+                    ) {
 
-                            .toUpperCase()
+                        return;
+
+                    }
+
+                    if (
+
+                        hasWord(
+
+                            query,
+
+                            token
+
+                        )
+
+                    ) {
+
+                        matched =
+
+                            true;
+
+                        addGPS(
+
+                            staff
 
                         );
 
                     }
 
-                );
+                }
 
-            if (
-
-                found
-
-            ) {
-
-                addGPS(
-
-                    staff
-
-                );
-
-            }
+            );
 
         }
 
@@ -9183,57 +10185,75 @@ StaffEntities.buildEntityCache = function () {
 
             }
 
-            /*==============================
-              Identity
-            ==============================*/
+/*==============================
+  Search Identity
+=============================*/
 
-            if (
+if (
 
-                staff.identity
+    staff.search
 
-            ) {
+) {
 
-                add(
+    [
 
-                    staff.identity.cleanName,
+        "identity",
 
-                    staff
+        "phone"
 
-                );
+    ].forEach(
 
-                add(
+        function (
 
-                    staff.identity.name,
+            section
 
-                    staff
+        ) {
 
-                );
+            const values =
 
-                add(
+                Array.isArray(
 
-                    staff.identity.rawName,
+                    staff.search[
 
-                    staff
+                        section
 
-                );
+                    ]
 
-                add(
+                )
 
-                    staff.identity.phone,
+                    ? staff.search[
 
-                    staff
+                        section
 
-                );
+                    ]
 
-                add(
+                    : [];
 
-                    staff.identity.email,
+            values.forEach(
 
-                    staff
+                function (
 
-                );
+                    value
 
-            }
+                ) {
+
+                    add(
+
+                        value,
+
+                        staff
+
+                    );
+
+                }
+
+            );
+
+        }
+
+    );
+
+}
 
             /*==============================
               Tracking
