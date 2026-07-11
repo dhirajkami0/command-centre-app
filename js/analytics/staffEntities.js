@@ -1388,7 +1388,9 @@ StaffEntities.extractDesignationEntities = function (
 
         !result ||
 
-        typeof result !== "object"
+        typeof result !==
+
+        "object"
 
     ) {
 
@@ -1412,7 +1414,7 @@ StaffEntities.extractDesignationEntities = function (
 
     if (
 
-        query === ""
+        !query
 
     ) {
 
@@ -1420,14 +1422,84 @@ StaffEntities.extractDesignationEntities = function (
 
     }
 
-    const matches = [];
+    const matches =
+
+        [];
 
     const seen =
 
         new Set();
 
     /*----------------------------------
-      Helper
+      Whole Word Match
+    ----------------------------------*/
+
+    function hasWord(
+
+        text,
+
+        word
+
+    ) {
+
+        word =
+
+            String(
+
+                word ||
+
+                ""
+
+            )
+
+            .trim()
+
+            .toUpperCase();
+
+        if (
+
+            !word
+
+            ||
+
+            word.length <
+
+            2
+
+        ) {
+
+            return false;
+
+        }
+
+        const escaped =
+
+            word.replace(
+
+                /[-\/\\^$*+?.()|[\]{}]/g,
+
+                "\\$&"
+
+            );
+
+        return new RegExp(
+
+            "(^|\\W)" +
+
+            escaped +
+
+            "(\\W|$)"
+
+        ).test(
+
+            text
+
+        );
+
+    }
+
+    /*----------------------------------
+      Add
     ----------------------------------*/
 
     function addDesignation(
@@ -1450,17 +1522,9 @@ StaffEntities.extractDesignationEntities = function (
 
         const key =
 
-            String(
+            staff.identity.cleanName ||
 
-                staff.identity.cleanName ||
-
-                ""
-
-            )
-
-            .trim()
-
-            .toUpperCase();
+            staff.id;
 
         if (
 
@@ -1491,7 +1555,7 @@ StaffEntities.extractDesignationEntities = function (
     }
 
     /*----------------------------------
-      Search Designation
+      Search
     ----------------------------------*/
 
     StaffEntities.staff.forEach(
@@ -1530,7 +1594,7 @@ StaffEntities.extractDesignationEntities = function (
 
             if (
 
-                designation === ""
+                !designation
 
             ) {
 
@@ -1540,7 +1604,9 @@ StaffEntities.extractDesignationEntities = function (
 
             if (
 
-                query.includes(
+                hasWord(
+
+                    query,
 
                     designation
 
@@ -1554,15 +1620,71 @@ StaffEntities.extractDesignationEntities = function (
 
                 );
 
+                return;
+
+            }
+
+            const synonyms =
+
+                StaffConstants
+
+                    ?.SYNONYMS?.[
+
+                        designation
+
+                    ];
+
+            if (
+
+                Array.isArray(
+
+                    synonyms
+
+                )
+
+            ) {
+
+                const found =
+
+                    synonyms.some(
+
+                        function (
+
+                            synonym
+
+                        ) {
+
+                            return hasWord(
+
+                                query,
+
+                                synonym
+
+                            );
+
+                        }
+
+                    );
+
+                if (
+
+                    found
+
+                ) {
+
+                    addDesignation(
+
+                        staff
+
+                    );
+
+                }
+
             }
 
         }
 
     );
-
-    /*----------------------------------
-      Save Result
-    ----------------------------------*/
 
     result.entities.designations =
 
