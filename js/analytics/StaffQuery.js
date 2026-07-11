@@ -6440,54 +6440,29 @@ StaffQuery.filterStaff = function (
     let staff =
         StaffQuery.getValidStaff();
 
-    /*----------------------------------
-      Staff Name
-    ----------------------------------*/
+/*----------------------------------
+  Staff Name (Single Staff Only)
+----------------------------------*/
 
-    if (
+if (
 
-        Array.isArray(
+    parameters.isSingle === true &&
 
-            request.entities?.staff
+    Array.isArray(
 
-        ) &&
+        request.entities?.staff
 
-        request.entities.staff.length > 0
+    ) &&
 
-    ) {
+    request.entities.staff.length > 0
 
-        const names =
-            new Set(
+) {
 
-                request.entities.staff.map(
+    const names =
 
-                    function (
+        new Set(
 
-                        profile
-
-                    ) {
-
-                        return String(
-
-                            profile.identity
-                                ?.cleanName ||
-
-                            ""
-
-                        )
-
-                        .trim()
-
-                        .toUpperCase();
-
-                    }
-
-                )
-
-            );
-
-        staff =
-            staff.filter(
+            request.entities.staff.map(
 
                 function (
 
@@ -6495,28 +6470,57 @@ StaffQuery.filterStaff = function (
 
                 ) {
 
-                    return names.has(
+                    return String(
 
-                        String(
+                        profile.identity
+                            ?.cleanName ||
 
-                            profile.identity
-                                ?.cleanName ||
+                        ""
 
-                            ""
+                    )
 
-                        )
+                    .trim()
 
-                        .trim()
-
-                        .toUpperCase()
-
-                    );
+                    .toUpperCase();
 
                 }
 
-            );
+            )
 
-    }
+        );
+
+    staff =
+
+        staff.filter(
+
+            function (
+
+                profile
+
+            ) {
+
+                return names.has(
+
+                    String(
+
+                        profile.identity
+                            ?.cleanName ||
+
+                        ""
+
+                    )
+
+                    .trim()
+
+                    .toUpperCase()
+
+                );
+
+            }
+
+        );
+
+}
 
     /*----------------------------------
       Designation
