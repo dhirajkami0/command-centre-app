@@ -1028,7 +1028,6 @@ function (
       - Never overwrites with null/undefined
       - Returns original staff object
 =========================================================*/
-
 StaffHydrator.mergeLocation =
 
 function (
@@ -1093,23 +1092,23 @@ function (
       Coordinates
     ----------------------------------*/
 
-    staff.location.latitude =
-
-        source.latitude ??
+    staff.location.lat =
 
         source.lat ??
 
-        staff.location.latitude;
+        source.latitude ??
 
-    staff.location.longitude =
+        staff.location.lat;
 
-        source.longitude ??
+    staff.location.lon =
 
         source.lon ??
 
         source.lng ??
 
-        staff.location.longitude;
+        source.longitude ??
+
+        staff.location.lon;
 
     staff.location.altitude =
 
