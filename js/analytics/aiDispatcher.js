@@ -250,7 +250,49 @@ AIDispatcher.dispatch = async function (
     const intent =
         request.detectedIntent ||
         request;
+/*----------------------------------
+  Normalize Request
+----------------------------------*/
 
+if (
+
+    request.detectedIntent
+
+) {
+
+    request.intent =
+
+        request.detectedIntent.intent;
+
+    request.domain =
+
+        request.detectedIntent.domain;
+
+    request.parameters =
+
+        request.detectedIntent.parameters ||
+
+        {};
+
+    request.entities =
+
+        request.detectedIntent.entities ||
+
+        {};
+
+    request.context =
+
+        request.detectedIntent.context ||
+
+        {};
+
+    request.confidence =
+
+        request.detectedIntent.confidence ||
+
+        0;
+
+}
     /*----------------------------------
       Create Response
     ----------------------------------*/
