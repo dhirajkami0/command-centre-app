@@ -2759,117 +2759,187 @@ STAFF_DESIGNATION_DIRECTORY: [
     ----------------------------------*/
 
     "DESIGNATION DIRECTORY",
+    "DIRECTORY BY DESIGNATION",
     "STAFF BY DESIGNATION",
     "STAFF OF DESIGNATION",
     "STAFF UNDER DESIGNATION",
     "STAFF IN DESIGNATION",
-    "DIRECTORY BY DESIGNATION",
+    "STAFF OF",
+    "STAFF UNDER",
+    "STAFF IN",
+    "SHOW",
+    "LIST",
+    "VIEW",
+    "DISPLAY",
+    "GET",
 
     /*----------------------------------
-      Forest Guard
+      Forest Ranger
     ----------------------------------*/
 
+    "FR",
     "FR LIST",
-    "FOREST GUARD LIST",
-    "LIST OF FOREST GUARDS",
+    "SHOW FR",
+    "VIEW FR",
+    "DISPLAY FR",
+    "LIST FR",
+    "FOREST RANGER",
+    "FOREST RANGERS",
+    "SHOW FOREST RANGERS",
+    "LIST FOREST RANGERS",
+    "VIEW FOREST RANGERS",
+    "FOREST RANGER LIST",
+    "LIST OF FOREST RANGERS",
     "STAFF OF FR",
-    "STAFF OF FOREST GUARD",
+    "STAFF OF FOREST RANGER",
 
     /*----------------------------------
       Forester
     ----------------------------------*/
 
+    "FORESTER",
+    "FORESTERS",
+    "SHOW FORESTER",
+    "SHOW FORESTERS",
+    "LIST FORESTER",
+    "LIST FORESTERS",
     "FORESTER LIST",
     "LIST OF FORESTERS",
-    "STAFF OF FORESTER",
+
+    /*----------------------------------
+      Beat Supervisor
+    ----------------------------------*/
+
+    "BEAT SUPERVISOR",
+    "BEAT SUPERVISORS",
+    "SHOW BEAT SUPERVISORS",
+    "LIST BEAT SUPERVISORS",
+    "VIEW BEAT SUPERVISORS",
+
+    /*----------------------------------
+      Assistant Surveyor
+    ----------------------------------*/
+
+    "AS",
+    "SHOW AS",
+    "LIST AS",
+    "VIEW AS",
+    "AS LIST",
 
     /*----------------------------------
       ADFO
     ----------------------------------*/
 
+    "ADFO",
+    "SHOW ADFO",
+    "LIST ADFO",
+    "VIEW ADFO",
     "ADFO LIST",
     "LIST OF ADFO",
-    "STAFF OF ADFO",
 
     /*----------------------------------
       DFO
     ----------------------------------*/
 
+    "DFO",
+    "SHOW DFO",
+    "LIST DFO",
+    "VIEW DFO",
     "DFO LIST",
     "LIST OF DFO",
-    "STAFF OF DFO",
 
     /*----------------------------------
-      RO
+      Range Officer
     ----------------------------------*/
 
-    "RO LIST",
+    "RO",
+    "RANGE OFFICER",
+    "RANGE OFFICERS",
+    "SHOW RANGE OFFICERS",
+    "LIST RANGE OFFICERS",
     "RANGE OFFICER LIST",
-    "LIST OF RANGE OFFICERS",
-    "STAFF OF RANGE OFFICER",
 
     /*----------------------------------
-      DRO
+      Deputy Range Officer
     ----------------------------------*/
 
+    "DRO",
+    "SHOW DRO",
+    "LIST DRO",
+    "VIEW DRO",
     "DRO LIST",
-    "LIST OF DRO",
-    "STAFF OF DRO",
 
     /*----------------------------------
       Driver
     ----------------------------------*/
 
+    "DRIVER",
+    "DRIVERS",
+    "SHOW DRIVERS",
+    "LIST DRIVERS",
     "DRIVER LIST",
-    "LIST OF DRIVERS",
-    "STAFF OF DRIVER",
 
     /*----------------------------------
       Daily Labour
     ----------------------------------*/
 
+    "DL",
+    "DAILY LABOUR",
+    "DAILY LABOURER",
+    "DAILY WAGE",
+    "CASUAL LABOUR",
+    "SHOW DAILY LABOUR",
+    "LIST DAILY LABOUR",
     "DL LIST",
-    "DAILY LABOUR LIST",
-    "DAILY LABOURER LIST",
-    "DAILY WAGE LIST",
-    "CASUAL LABOUR LIST",
-    "STAFF OF DL",
 
     /*----------------------------------
       Banasahayak
     ----------------------------------*/
 
+    "BS",
+    "BANASAHAYAK",
+    "BANASAYAHAK",
+    "BANASAHAYK",
+    "SHOW BANASAHAYAK",
+    "LIST BANASAHAYAK",
     "BS LIST",
-    "BANASAHAYAK LIST",
-    "BANASAYAHAK LIST",
-    "BANASAHAYK LIST",
-    "LIST OF BANASAHAYAK",
 
     /*----------------------------------
-      Volunteer
+      Forest Volunteer
     ----------------------------------*/
 
+    "FV",
+    "FOREST VOLUNTEER",
+    "FOREST VOLUNTEERS",
+    "SHOW FOREST VOLUNTEERS",
+    "LIST FOREST VOLUNTEERS",
     "VOLUNTEER LIST",
-    "FOREST VOLUNTEER LIST",
-    "FV LIST",
 
     /*----------------------------------
       Watcher
     ----------------------------------*/
 
-    "WATCHER LIST",
+    "WATCHER",
+    "WATCHERS",
+    "SHOW WATCHERS",
+    "LIST WATCHERS",
 
     /*----------------------------------
       Mahout
     ----------------------------------*/
 
-    "MAHOUT LIST",
+    "MAHOUT",
+    "MAHOUTS",
+    "SHOW MAHOUTS",
+    "LIST MAHOUTS",
 
     /*----------------------------------
       Elephant Squad
     ----------------------------------*/
 
-    "ELEPHANT SQUAD LIST"
+    "ELEPHANT SQUAD",
+    "SHOW ELEPHANT SQUAD",
+    "LIST ELEPHANT SQUAD"
 
 ],
 /*----------------------------------
@@ -3170,35 +3240,88 @@ STAFF_ACTIVE_COUNT: [
 
 STAFF_INACTIVE_LIST: [
 
-    /* Generic */
+    /*----------------------------------
+      Generic
+    ----------------------------------*/
 
+    "INACTIVE",
     "INACTIVE STAFF",
     "INACTIVE STAFF LIST",
-    "CURRENT INACTIVE STAFF",
     "INACTIVE LIST",
+    "CURRENT INACTIVE STAFF",
+    "CURRENTLY INACTIVE",
+    "STAFF INACTIVE",
 
-    /* List */
+    /*----------------------------------
+      Who
+    ----------------------------------*/
+
+    "WHO IS INACTIVE",
+    "WHO ARE INACTIVE",
+    "WHO IS OFF DUTY",
+    "WHO ARE OFF DUTY",
+    "WHO IS NOT ON DUTY",
+    "WHO ARE NOT ON DUTY",
+
+    /*----------------------------------
+      Off Duty
+    ----------------------------------*/
+
+    "OFF DUTY",
+    "OFF DUTY STAFF",
+    "OFF DUTY LIST",
+    "STAFF OFF DUTY",
+    "NOT ON DUTY",
+    "STAFF NOT ON DUTY",
+
+    /*----------------------------------
+      List
+    ----------------------------------*/
 
     "LIST INACTIVE STAFF",
+    "LIST OFF DUTY STAFF",
+    "LIST STAFF NOT ON DUTY",
 
-    /* Show */
+    /*----------------------------------
+      Show
+    ----------------------------------*/
 
     "SHOW INACTIVE STAFF",
+    "SHOW OFF DUTY STAFF",
+    "SHOW STAFF NOT ON DUTY",
 
-    /* Display */
+    /*----------------------------------
+      View
+    ----------------------------------*/
+
+    "VIEW INACTIVE STAFF",
+    "VIEW OFF DUTY STAFF",
+
+    /*----------------------------------
+      Display
+    ----------------------------------*/
 
     "DISPLAY INACTIVE STAFF",
-    "VIEW INACTIVE STAFF",
+    "DISPLAY OFF DUTY STAFF",
     "GET INACTIVE STAFF",
+    "GET OFF DUTY STAFF",
 
-    /* Reports */
+    /*----------------------------------
+      Report
+    ----------------------------------*/
 
     "INACTIVE STAFF REPORT",
     "INACTIVE STAFF SUMMARY",
+    "OFF DUTY REPORT",
+    "OFF DUTY SUMMARY",
 
-    /* AI */
+    /*----------------------------------
+      AI
+    ----------------------------------*/
 
-    "GIVE INACTIVE STAFF"
+    "GIVE INACTIVE STAFF",
+    "GIVE OFF DUTY STAFF",
+    "SHOW ME INACTIVE STAFF"
 
 ],
 
