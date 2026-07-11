@@ -125,6 +125,10 @@ StaffFormatter.createResponse = function (
 
     return {
 
+        /*----------------------------------
+          Status
+        ----------------------------------*/
+
         success:
 
             false,
@@ -139,17 +143,83 @@ StaffFormatter.createResponse = function (
 
             "StaffFormatter",
 
+        /*----------------------------------
+          Canonical Request
+        ----------------------------------*/
+
+        request:
+
+            request.request ||
+
+            request,
+
         intent:
 
             request.intent ||
 
             "",
 
+        domain:
+
+            request.domain ||
+
+            "",
+
         confidence:
 
-            request.confidence ||
+            Number(
 
-            0,
+                request.confidence ||
+
+                0
+
+            ),
+
+        entities:
+
+            request.entities ||
+
+            {},
+
+        parameters:
+
+            request.parameters ||
+
+            {},
+
+        context:
+
+            request.context ||
+
+            {},
+
+        /*----------------------------------
+          Data
+        ----------------------------------*/
+
+        data:
+
+            request.data ||
+
+            null,
+
+        raw:
+
+            request.raw ||
+
+            null,
+
+        /*----------------------------------
+          Output
+        ----------------------------------*/
+
+        title:
+
+            "",
+
+        message:
+
+            "",
 
         markdown:
 
@@ -171,7 +241,11 @@ StaffFormatter.createResponse = function (
 
             [],
 
-        message:
+        /*----------------------------------
+          Diagnostics
+        ----------------------------------*/
+
+        formatter:
 
             "",
 
@@ -187,7 +261,13 @@ StaffFormatter.createResponse = function (
 
             executionTime:
 
-                0
+                0,
+
+            cache:
+
+                request.metadata?.cache ||
+
+                false
 
         }
 
