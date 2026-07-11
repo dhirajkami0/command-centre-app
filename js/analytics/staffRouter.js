@@ -351,35 +351,20 @@ StaffRouter.createResponse = function (
 =========================================================*/
 
 StaffRouter.route = async function (
-
     request
-
 ) {
-
     const started =
-
         Date.now();
-
     console.group(
-
         "🟣 STAFF ROUTER"
-
     );
-
     console.log(
-
         "File:",
-
         "staffRouter.js"
-
     );
-
     console.log(
-
         "Incoming Request:",
-
         request
-
     );
 
     /*----------------------------------
@@ -387,29 +372,17 @@ StaffRouter.route = async function (
     ----------------------------------*/
 
     if (
-
         !request ||
-
         typeof request !== "object"
-
     ) {
-
         console.error(
-
             "❌ Invalid Router Request"
-
         );
-
         console.groupEnd();
-
         return {
-
             success: false,
-
             message: "Invalid router request."
-
         };
-
     }
 
     /*----------------------------------
@@ -417,23 +390,29 @@ StaffRouter.route = async function (
     ----------------------------------*/
 
     const response =
-
         StaffRouter.createResponse(
-
             request
-
         );
 
-    StaffRouter.lastRequest =
+    response.request =
+        request;
+    response.intent =
+        request.intent;
+    response.domain =
+        request.domain;
+    response.entities =
+        request.entities || {};
+    response.parameters =
+        request.parameters || {};
+    response.context =
+        request.context || {};
 
+    StaffRouter.lastRequest =
         request;
 
     console.log(
-
         "Intent:",
-
         request.intent
-
     );
 
     /*----------------------------------
@@ -441,228 +420,141 @@ StaffRouter.route = async function (
     ----------------------------------*/
 
     const handler =
-
         StaffRouter.getRoute(
-
             request.intent
-
         );
 
     if (
-
         !handler
-
     ) {
-
         console.error(
-
             "❌ No Route Registered:",
-
             request.intent
-
         );
-
         response.message =
-
             "No route registered for intent.";
-
         response.errors.push(
-
             request.intent
-
         );
-
-        response.metadata.executionTime =
-
-            Date.now() -
-
-            started;
-
+        response.metadata = {
+            ...(response.metadata || {}),
+            executionTime: Date.now() - started
+        };
         console.groupEnd();
-
         return response;
-
     }
 
-    console.log(
+    response.handler =
+        handler.name ||
+        "anonymous";
+    response.module =
+        "StaffRouter";
 
+    console.log(
         "Handler:",
-
         handler.name
-
     );
 
-    console.log(
-
-        "Handler Function:",
-
-        handler
-
-    );
+    let result = null;
 
     try {
-
         console.time(
-
             "Query"
-
         );
-
-        const result =
-
+        result =
             await handler(
-
                 request
-
             );
-console.log("====================================");
-console.log("HANDLER RETURNED");
-console.log(result);
-
-console.log("RESULT.DATA");
-console.log(result.data);
-
-console.log("RESULT.DATA LENGTH");
-console.log(
-    Array.isArray(result.data)
-        ? result.data.length
-        : null
-);
-
-console.log("====================================");
         console.timeEnd(
-
             "Query"
-
-        );
-
-        console.log(
-
-            "Query Result:",
-
-            result
-
         );
 
         if (
-
             result &&
-
             typeof result === "object"
-
         ) {
-
             Object.assign(
-
                 response,
-
                 result
-
             );
-console.log("====================================");
-console.log("ROUTER RESPONSE");
-console.log(response);
+        }
 
-console.log("ROUTER RESPONSE.DATA");
-console.log(response.data);
-
-console.log("ROUTER RESPONSE.DATA LENGTH");
-console.log(
-    Array.isArray(response.data)
-        ? response.data.length
-        : null
-);
-
-console.log("====================================");        }
+        /*----------------------------------
+          Preserve Canonical Request
+        ----------------------------------*/
+        response.request =
+            request;
+        response.intent =
+            request.intent;
+        response.domain =
+            request.domain;
+        response.entities =
+            request.entities || {};
+        response.parameters =
+            request.parameters || {};
+        response.context =
+            request.context || {};
+        response.handler =
+            handler.name ||
+            "anonymous";
+        response.module =
+            "StaffRouter";
 
         response.success =
-
-            true;
-
+            !!result &&
+            result.success !== false;
     }
-
     catch (
-
         error
-
     ) {
-
         console.error(
-
             "❌ Query Failed",
-
             error
-
         );
-
         response.success =
-
             false;
-
         response.message =
-
             error.message;
-
         response.errors.push(
-
             error
-
         );
-
     }
 
     /*----------------------------------
       Finish
     ----------------------------------*/
 
-    response.metadata.executionTime =
-
-        Date.now() -
-
-        started;
+    response.metadata = {
+        ...(result?.metadata || {}),
+        ...(response.metadata || {}),
+        executionTime: Date.now() - started
+    };
 
     StaffRouter.lastResponse =
-
         response;
 
     const cacheKey =
-
         request.normalizedQuery ||
-
-        request.originalQuery ||
-
+        request.query ||
         "";
 
     StaffRouter.cache.set(
-
         cacheKey,
-
         response
-
     );
 
     console.log(
-
         "Router Response:",
-
         response
-
     );
-
     console.log(
-
         "Execution:",
-
         response.metadata.executionTime,
-
         "ms"
-
     );
 
     console.groupEnd();
-
     return response;
-
 };
     /*=========================================================
  REGISTER ROUTES
