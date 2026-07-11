@@ -9090,7 +9090,9 @@ StaffFormatter.formatDesignationDirectory = function (
 
                 !group ||
 
-                typeof group !== "object"
+                typeof group !==
+
+                "object"
 
             ) {
 
@@ -9116,13 +9118,17 @@ StaffFormatter.formatDesignationDirectory = function (
 
                 )
 
-                    ?
+                    ? group.staff
 
-                    group.staff
+                    : Array.isArray(
 
-                    :
+                        group.profiles
 
-                    [];
+                    )
+
+                    ? group.profiles
+
+                    : [];
 
             lines.push(
 
@@ -9168,7 +9174,9 @@ StaffFormatter.formatDesignationDirectory = function (
 
                         !staff ||
 
-                        typeof staff !== "object"
+                        typeof staff !==
+
+                        "object"
 
                     ) {
 
@@ -9178,25 +9186,57 @@ StaffFormatter.formatDesignationDirectory = function (
 
                     const name =
 
+                        staff.identity?.cleanName ||
+
                         staff.cleanName ||
 
                         staff.name ||
 
                         "-";
 
+                    const staffDesignation =
+
+                        staff.identity?.designation ||
+
+                        staff.designation ||
+
+                        "-";
+
                     const role =
+
+                        staff.identity?.role ||
 
                         staff.role ||
 
                         "-";
 
+                    const circle =
+
+                        staff.posting?.circle ||
+
+                        staff.circle ||
+
+                        "-";
+
+                    const division =
+
+                        staff.posting?.division ||
+
+                        staff.division ||
+
+                        "-";
+
                     const range =
+
+                        staff.posting?.range ||
 
                         staff.range ||
 
                         "-";
 
                     const beat =
+
+                        staff.posting?.beat ||
 
                         staff.beat ||
 
@@ -9220,9 +9260,33 @@ StaffFormatter.formatDesignationDirectory = function (
 
                     lines.push(
 
+                        "   • Designation : " +
+
+                        staffDesignation
+
+                    );
+
+                    lines.push(
+
                         "   • Role : " +
 
                         role
+
+                    );
+
+                    lines.push(
+
+                        "   • Circle : " +
+
+                        circle
+
+                    );
+
+                    lines.push(
+
+                        "   • Division : " +
+
+                        division
 
                     );
 
@@ -9365,11 +9429,15 @@ StaffFormatter.formatDesignationDirectory = function (
     result.message =
 
         "Designation directory formatted successfully.";
-/*----------------------------------
-  Preserve Data
-----------------------------------*/
 
-result.data = directory;
+    /*----------------------------------
+      Preserve Data
+    ----------------------------------*/
+
+    result.data =
+
+        directory;
+
     return result;
 
 };
