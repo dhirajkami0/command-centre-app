@@ -3337,7 +3337,219 @@ result =
     return result;
 
 };
+/*=========================================================
+ DETECT SEARCH INTENT
+=========================================================*/
 
+StaffIntent.detectSearchIntent = function (
+
+    result
+
+) {
+
+    /*----------------------------------
+      Validate
+    ----------------------------------*/
+
+    if (
+
+        !result ||
+
+        result.intent ||
+
+        !result.entities
+
+    ) {
+
+        return result;
+
+    }
+
+    const query =
+
+        String(
+
+            result.normalizedQuery ||
+
+            ""
+
+        )
+
+        .trim()
+
+        .toUpperCase();
+
+    if (
+
+        query.length === 0
+
+    ) {
+
+        return result;
+
+    }
+
+    const INTENTS =
+
+        StaffConstants.INTENTS;
+
+    const KEYWORDS =
+
+        StaffConstants.KEYWORDS;
+
+    const parameters =
+
+        result.parameters ||
+
+        {};
+
+    const entities =
+
+        result.entities ||
+
+        {};
+
+    const staff =
+
+        entities.staff ||
+
+        [];
+
+    /*----------------------------------
+      Helper
+    ----------------------------------*/
+
+    function hasKeyword(
+
+        list
+
+    ) {
+
+        if (
+
+            !Array.isArray(
+
+                list
+
+            )
+
+        ) {
+
+            return false;
+
+        }
+
+        return list.some(
+
+            function (
+
+                word
+
+            ) {
+
+                return query.includes(
+
+                    String(
+
+                        word
+
+                    )
+
+                    .toUpperCase()
+
+                );
+
+            }
+
+        );
+
+    }
+
+    /*----------------------------------
+      Search Keyword
+    ----------------------------------*/
+
+    if (
+
+        !hasKeyword(
+
+            KEYWORDS.STAFF_SEARCH
+
+        )
+
+    ) {
+
+        return result;
+
+    }
+
+    /*----------------------------------
+      Preserve Scope
+    ----------------------------------*/
+
+    parameters.isSingle =
+
+        !!parameters.isSingle;
+
+    parameters.isAggregate =
+
+        !!parameters.isAggregate;
+
+    result.parameters =
+
+        parameters;
+
+    /*----------------------------------
+      Single Staff Search
+    ----------------------------------*/
+
+    if (
+
+        parameters.isSingle &&
+
+        staff.length === 1
+
+    ) {
+
+        result.parameters.staff =
+
+            staff[0];
+
+    }
+
+    /*----------------------------------
+      Aggregate Search
+    ----------------------------------*/
+
+    else {
+
+        result.parameters.staff =
+
+            staff;
+
+    }
+
+    /*----------------------------------
+      Intent
+    ----------------------------------*/
+
+    result.intent =
+
+        INTENTS.STAFF_SEARCH;
+
+    result.confidence =
+
+        Math.max(
+
+            result.confidence,
+
+            0.85
+
+        );
+
+    return result;
+
+};
 StaffIntent.detectSingleVsAggregate = function (
 
     result
