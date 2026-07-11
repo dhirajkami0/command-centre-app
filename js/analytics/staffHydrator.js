@@ -1038,47 +1038,11 @@ function (
 
 ) {
 
-    /*----------------------------------
-      Validate Staff
-    ----------------------------------*/
-
     if (
 
         !staff ||
 
-        typeof staff !==
-
-        "object"
-
-    ) {
-
-        return staff;
-
-    }
-
-    /*----------------------------------
-      Validate Source
-    ----------------------------------*/
-
-    if (
-
         !source ||
-
-        typeof source !==
-
-        "object"
-
-    ) {
-
-        return staff;
-
-    }
-
-    /*----------------------------------
-      Validate Location
-    ----------------------------------*/
-
-    if (
 
         !staff.location
 
@@ -1088,9 +1052,13 @@ function (
 
     }
 
-    /*----------------------------------
-      Coordinates
-    ----------------------------------*/
+    staff.location.location =
+
+        source.location ??
+
+        source.locationName ??
+
+        staff.location.location;
 
     staff.location.lat =
 
@@ -1109,108 +1077,6 @@ function (
         source.longitude ??
 
         staff.location.lon;
-
-    staff.location.altitude =
-
-        source.altitude ??
-
-        source.alt ??
-
-        staff.location.altitude;
-
-    /*----------------------------------
-      Address
-    ----------------------------------*/
-
-    staff.location.address =
-
-        source.address ??
-
-        staff.location.address;
-
-    staff.location.location =
-
-        source.location ??
-
-        source.locationName ??
-
-        staff.location.location;
-
-    staff.location.landmark =
-
-        source.landmark ??
-
-        staff.location.landmark;
-
-    /*----------------------------------
-      Administrative Location
-    ----------------------------------*/
-
-    staff.location.circle =
-
-        source.circle ??
-
-        staff.location.circle;
-
-    staff.location.division =
-
-        source.division ??
-
-        staff.location.division;
-
-    staff.location.range =
-
-        source.range ??
-
-        staff.location.range;
-
-    staff.location.beat =
-
-        source.beat ??
-
-        staff.location.beat;
-
-    staff.location.compartment =
-
-        source.compartment ??
-
-        source.compartmentName ??
-
-        staff.location.compartment;
-
-    /*----------------------------------
-      Map Information
-    ----------------------------------*/
-
-    staff.location.mapSheet =
-
-        source.mapSheet ??
-
-        staff.location.mapSheet;
-
-    staff.location.grid =
-
-        source.grid ??
-
-        source.gridId ??
-
-        staff.location.grid;
-
-    /*----------------------------------
-      Timestamp
-    ----------------------------------*/
-
-    staff.location.updatedAt =
-
-        source.updatedAt ??
-
-        source.timestamp ??
-
-        staff.location.updatedAt;
-
-    /*----------------------------------
-      Return
-    ----------------------------------*/
 
     return staff;
 
