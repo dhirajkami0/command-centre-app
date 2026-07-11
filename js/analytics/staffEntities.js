@@ -10458,96 +10458,138 @@ StaffEntities.buildEntityCache = function () {
 
             }
 
-            /*==============================
-              Alias Cache
-            ==============================*/
+/*==============================
+  Alias Cache
+==============================*/
+
+if (
+
+    Array.isArray(
+
+        staff.aliases
+
+    )
+
+) {
+
+    staff.aliases.forEach(
+
+        function (
+
+            alias
+
+        ) {
+
+            alias =
+
+                String(
+
+                    alias ||
+
+                    ""
+
+                )
+
+                .trim()
+
+                .toUpperCase();
 
             if (
 
-                Array.isArray(
+                alias === ""
 
-                    staff.aliases
+            ) {
+
+                return;
+
+            }
+
+            const cleanName =
+
+                staff.identity?.cleanName;
+
+            if (
+
+                !cleanName
+
+            ) {
+
+                return;
+
+            }
+
+            /*----------------------------------
+              Preserve First Alias Owner
+            ----------------------------------*/
+
+            if (
+
+                aliasCache.has(
+
+                    alias
 
                 )
 
             ) {
 
-                staff.aliases.forEach(
+                const existing =
 
-                    function (
+                    aliasCache.get(
 
                         alias
 
-                    ) {
+                    );
 
-                        alias =
+                if (
 
-                            String(
+                    existing !==
 
-                                alias ||
+                    cleanName
 
-                                ""
+                ) {
 
-                            )
+                    console.warn(
 
-                            .trim()
+                        "[StaffEntities] Duplicate alias ignored:",
 
-                            .toUpperCase();
+                        alias,
 
-                        if (
+                        "->",
 
-                            alias === ""
+                        cleanName,
 
-                        ) {
+                        "(already assigned to",
 
-                            return;
+                        existing + ")"
 
-                        }
+                    );
 
-                        const cleanName =
+                }
 
-                            staff.identity?.cleanName;
-
-                        if (
-
-                            !cleanName
-
-                        ) {
-
-                            return;
-
-                        }
-
-                        if (
-
-                            !aliasCache.has(
-
-                                alias
-
-                            )
-
-                        ) {
-
-                            aliasCache.set(
-
-                                alias,
-
-                                cleanName
-
-                            );
-
-                        }
-
-                    }
-
-                );
+                return;
 
             }
+
+            /*----------------------------------
+              Store Alias
+            ----------------------------------*/
+
+            aliasCache.set(
+
+                alias,
+
+                cleanName
+
+            );
 
         }
 
     );
 
+}
+        }
+
+    );
     /*----------------------------------
       Summary
     ----------------------------------*/
