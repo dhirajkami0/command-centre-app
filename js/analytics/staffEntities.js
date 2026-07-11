@@ -6114,27 +6114,7 @@ StaffEntities.extractStaffEntities = function (
 
                     }
 
-                    }
 
-                    else if (
-
-                        matchedWords ===
-
-                        tokenWords.length &&
-
-                        tokenWords.length ===
-
-                        queryWords.size
-
-                    ) {
-
-                        score +=
-
-                            token.length *
-
-                            40;
-
-                    }
 
                 }
 
