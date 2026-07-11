@@ -1111,7 +1111,15 @@ StaffIntent.detectPostingIntent = function (
         result.entities.staff ||
 
         [];
+if (
 
+    result.parameters?.isAggregate
+
+) {
+
+    return result;
+
+}
     if (
 
         staff.length === 0
@@ -1633,33 +1641,35 @@ StaffIntent.detectDutyIntent = function (
       Single Staff
     ----------------------------------*/
 
-    if (
+if (
 
-        single &&
+    single &&
 
-        (
+    !parameters.isAggregate &&
 
-            query.includes(
+    (
 
-                "ON DUTY"
+        query.includes(
 
-            ) ||
+            "ON DUTY"
 
-            query.includes(
+        ) ||
 
-                "DUTY STATUS"
+        query.includes(
 
-            ) ||
+            "DUTY STATUS"
 
-            query.includes(
+        ) ||
 
-                "DUTY"
+        query.includes(
 
-            )
+            "DUTY"
 
         )
 
-    ) {
+    )
+
+) {
 
         result.intent =
 
@@ -2002,11 +2012,13 @@ StaffIntent.detectTeamIntent = function (
       Single Staff
     ----------------------------------*/
 
-    if (
+if (
 
-        single &&
+    single &&
 
-        (
+    !parameters.isAggregate &&
+
+    (
 
             query.includes(
 
@@ -2074,7 +2086,15 @@ StaffIntent.detectAnalyticsIntent = function (
         result.entities.staff ||
 
         [];
+if (
 
+    result.parameters?.isAggregate
+
+) {
+
+    return result;
+
+}
     if (
 
         staff.length === 0
@@ -3188,27 +3208,33 @@ StaffIntent.detectSearchIntent = function (
       Single Staff Search
     ----------------------------------*/
 
-    if (
+/*----------------------------------
+  Single Staff Search
+----------------------------------*/
 
-        single
+if (
 
-    ) {
+    single &&
 
-        result.intent =
+    !parameters.isAggregate
 
-            INTENTS.STAFF_SEARCH;
+) {
 
-        result.parameters.staff =
+    result.intent =
 
-            staff[0];
+        INTENTS.STAFF_SEARCH;
 
-        result.confidence =
+    result.parameters.staff =
 
-            0.99;
+        staff[0];
 
-        return result;
+    result.confidence =
 
-    }
+        0.99;
+
+    return result;
+
+}
 
     return result;
 
@@ -3829,40 +3855,43 @@ StaffIntent.detectSingleVsAggregate = function (
         ];
 
     const aggregate =
+const aggregate =
 
-        aggregateWords.some(
+    aggregateWords.some(
 
-            function (
+        function (
+
+            word
+
+        ) {
+
+            return query.includes(
 
                 word
 
-            ) {
+            );
 
-                return query.includes(
+        }
 
-                    word
+    );
 
-                );
+const single =
 
-            }
+    staff.length === 1;
 
-        );
+result.parameters.isSingle =
 
-    result.parameters.isAggregate =
+    single &&
 
-        aggregate ||
+    !aggregate &&
 
-        hasJurisdiction ||
+    !hasJurisdiction &&
 
-        hasDesignation ||
+    !hasDesignation;
 
-        staff.length > 1;
+result.parameters.isAggregate =
 
-    result.parameters.isSingle =
-
-        !result.parameters.isAggregate &&
-
-        staff.length === 1;
+    !result.parameters.isSingle;
 
     return result;
 
@@ -4368,7 +4397,9 @@ StaffIntent.route = async function (
  DETECT LOCATION INTENT
 =========================================================*/
 
-StaffIntent.detectLocationIntent = function (
+StaffIntent.detectLocationIntent =
+
+function (
 
     result
 
@@ -4383,6 +4414,20 @@ StaffIntent.detectLocationIntent = function (
         !result ||
 
         !result.entities
+
+    ) {
+
+        return result;
+
+    }
+
+    /*----------------------------------
+      Aggregate Query
+    ----------------------------------*/
+
+    if (
+
+        result.parameters?.isAggregate
 
     ) {
 
@@ -4448,7 +4493,9 @@ StaffIntent.detectLocationIntent = function (
 
                         word
 
-                    ).toUpperCase()
+                    )
+
+                    .toUpperCase()
 
                 );
 
@@ -5088,15 +5135,17 @@ StaffIntent.detectProfileIntent = function (
       Single Staff Only
     ----------------------------------*/
 
-    if (
+if (
 
-        staff.length !== 1
+    staff.length !== 1 ||
 
-    ) {
+    result.parameters?.isAggregate
 
-        return result;
+) {
 
-    }
+    return result;
+
+}
 
     /*----------------------------------
       Aggregate Guard
@@ -5357,7 +5406,9 @@ StaffIntent.detectProfileIntent = function (
  DETECT GPS INTENT
 =========================================================*/
 
-StaffIntent.detectGPSIntent = function (
+StaffIntent.detectGPSIntent =
+
+function (
 
     result
 
@@ -5372,6 +5423,20 @@ StaffIntent.detectGPSIntent = function (
         !result ||
 
         !result.entities
+
+    ) {
+
+        return result;
+
+    }
+
+    /*----------------------------------
+      Aggregate Query
+    ----------------------------------*/
+
+    if (
+
+        result.parameters?.isAggregate
 
     ) {
 
