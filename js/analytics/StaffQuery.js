@@ -7960,17 +7960,77 @@ GG.queryDesignationDirectory = async function (
 
             );
 
-            const designation =
+/*----------------------------------
+  Resolve Designation
+----------------------------------*/
 
-                String(
+let designation = "";
 
-                    request.parameters?.designation ||
+/* 1. Request parameter */
 
-                    "UNASSIGNED"
+if (
+    request.parameters?.designation
+) {
 
-                )
+    designation =
+        String(
+            request.parameters.designation
+        ).trim();
 
-                .trim();
+}
+
+/* 2. First staff profile */
+
+else if (
+
+    request.parameters?.staff?.identity?.designation
+
+) {
+
+    designation =
+        String(
+            request.parameters
+                .staff
+                .identity
+                .designation
+        ).trim();
+
+}
+
+/* 3. Infer from filtered result */
+
+else if (
+
+    profiles.length > 0
+
+) {
+
+    designation =
+        String(
+
+            profiles[0]
+                .identity
+                ?.designation ||
+
+            ""
+
+        ).trim();
+
+}
+
+/* 4. Final fallback */
+
+if (
+
+    designation === ""
+
+) {
+
+    designation =
+
+        "UNASSIGNED";
+
+}
 
             const result =
 
