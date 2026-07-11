@@ -1191,22 +1191,50 @@ StaffEntities.extractFields = function (
 
         !context ||
 
+        typeof context !==
+
+        "object"
+
+    ) {
+
+        return target;
+
+    }
+
+    if (
+
         !target ||
+
+        typeof target !==
+
+        "object"
+
+    ) {
+
+        return target;
+
+    }
+
+    if (
 
         !Array.isArray(
 
             mappings
 
-        )
+        ) ||
+
+        mappings.length ===
+
+        0
 
     ) {
 
-        return;
+        return target;
 
     }
 
     /*----------------------------------
-      Loop Through Mapping
+      Extract Fields
     ----------------------------------*/
 
     mappings.forEach(
@@ -1216,6 +1244,20 @@ StaffEntities.extractFields = function (
             field
 
         ) {
+
+            if (
+
+                !field ||
+
+                !field.source ||
+
+                !field.target
+
+            ) {
+
+                return;
+
+            }
 
             let value;
 
@@ -1296,62 +1338,20 @@ StaffEntities.extractFields = function (
             }
 
             /*----------------------------------
-              DEBUG
+              Ignore Undefined
             ----------------------------------*/
 
-            console.group(
+            if (
 
-                "🧠 Staff Field Extraction"
+                value ===
 
-            );
+                undefined
 
-            console.log(
+            ) {
 
-                "SOURCE :",
+                return;
 
-                field.source
-
-            );
-
-            console.log(
-
-                "TARGET :",
-
-                field.target
-
-            );
-
-            console.log(
-
-                "TYPE :",
-
-                field.type
-
-            );
-
-            console.log(
-
-                "VALUE :",
-
-                value
-
-            );
-
-            console.log(
-
-                "BEFORE :",
-
-                JSON.parse(
-
-                    JSON.stringify(
-
-                        target
-
-                    )
-
-                )
-
-            );
+            }
 
             /*----------------------------------
               Copy Value
@@ -1367,31 +1367,11 @@ StaffEntities.extractFields = function (
 
             );
 
-            /*----------------------------------
-              DEBUG
-            ----------------------------------*/
-
-            console.log(
-
-                "AFTER :",
-
-                JSON.parse(
-
-                    JSON.stringify(
-
-                        target
-
-                    )
-
-                )
-
-            );
-
-            console.groupEnd();
-
         }
 
     );
+
+    return target;
 
 };
 StaffEntities.extractDesignationEntities = function (
