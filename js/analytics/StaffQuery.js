@@ -6283,6 +6283,655 @@ GG.queryCircleDirectory = async function (
     );
 
 };
+
+    /*=========================================================
+  FILTER STAFF
+=========================================================*/
+
+StaffQuery.filterStaff = function (
+
+    request
+
+) {
+
+    /*----------------------------------
+      Parameters
+    ----------------------------------*/
+
+    request =
+        request || {};
+
+    const parameters =
+        request.parameters || {};
+
+    /*----------------------------------
+      Start With Entire Dataset
+    ----------------------------------*/
+
+    let staff =
+        StaffQuery.getValidStaff();
+
+    /*----------------------------------
+      Staff Name
+    ----------------------------------*/
+
+    if (
+
+        Array.isArray(
+
+            request.entities?.staff
+
+        ) &&
+
+        request.entities.staff.length > 0
+
+    ) {
+
+        const names =
+            new Set(
+
+                request.entities.staff.map(
+
+                    function (
+
+                        profile
+
+                    ) {
+
+                        return String(
+
+                            profile.identity
+                                ?.cleanName ||
+
+                            ""
+
+                        )
+
+                        .trim()
+
+                        .toUpperCase();
+
+                    }
+
+                )
+
+            );
+
+        staff =
+            staff.filter(
+
+                function (
+
+                    profile
+
+                ) {
+
+                    return names.has(
+
+                        String(
+
+                            profile.identity
+                                ?.cleanName ||
+
+                            ""
+
+                        )
+
+                        .trim()
+
+                        .toUpperCase()
+
+                    );
+
+                }
+
+            );
+
+    }
+
+    /*----------------------------------
+      Designation
+    ----------------------------------*/
+
+    if (
+
+        parameters.designation
+
+    ) {
+
+        const designation =
+            String(
+
+                parameters.designation
+
+            )
+
+            .trim()
+
+            .toUpperCase();
+
+        staff =
+            staff.filter(
+
+                function (
+
+                    profile
+
+                ) {
+
+                    return (
+
+                        String(
+
+                            profile.identity
+                                ?.designation ||
+
+                            ""
+
+                        )
+
+                        .trim()
+
+                        .toUpperCase()
+
+                        ===
+
+                        designation
+
+                    );
+
+                }
+
+            );
+
+    }
+
+    /*----------------------------------
+      Circle
+    ----------------------------------*/
+
+    if (
+
+        parameters.circle
+
+    ) {
+
+        const circle =
+            String(
+
+                parameters.circle
+
+            )
+
+            .trim()
+
+            .toUpperCase();
+
+        staff =
+            staff.filter(
+
+                function (
+
+                    profile
+
+                ) {
+
+                    return (
+
+                        String(
+
+                            profile.posting
+                                ?.circle ||
+
+                            ""
+
+                        )
+
+                        .trim()
+
+                        .toUpperCase()
+
+                        ===
+
+                        circle
+
+                    );
+
+                }
+
+            );
+
+    }
+
+    /*----------------------------------
+      Division
+    ----------------------------------*/
+
+    if (
+
+        parameters.division
+
+    ) {
+
+        const division =
+            String(
+
+                parameters.division
+
+            )
+
+            .trim()
+
+            .toUpperCase();
+
+        staff =
+            staff.filter(
+
+                function (
+
+                    profile
+
+                ) {
+
+                    return (
+
+                        String(
+
+                            profile.posting
+                                ?.division ||
+
+                            ""
+
+                        )
+
+                        .trim()
+
+                        .toUpperCase()
+
+                        ===
+
+                        division
+
+                    );
+
+                }
+
+            );
+
+    }
+
+    /*----------------------------------
+      Range
+    ----------------------------------*/
+
+    if (
+
+        parameters.range
+
+    ) {
+
+        const range =
+            String(
+
+                parameters.range
+
+            )
+
+            .trim()
+
+            .toUpperCase();
+
+        staff =
+            staff.filter(
+
+                function (
+
+                    profile
+
+                ) {
+
+                    return (
+
+                        String(
+
+                            profile.posting
+                                ?.range ||
+
+                            ""
+
+                        )
+
+                        .trim()
+
+                        .toUpperCase()
+
+                        ===
+
+                        range
+
+                    );
+
+                }
+
+            );
+
+    }
+
+    /*----------------------------------
+      Beat
+    ----------------------------------*/
+
+    if (
+
+        parameters.beat
+
+    ) {
+
+        const beat =
+            String(
+
+                parameters.beat
+
+            )
+
+            .trim()
+
+            .toUpperCase();
+
+        staff =
+            staff.filter(
+
+                function (
+
+                    profile
+
+                ) {
+
+                    return (
+
+                        String(
+
+                            profile.posting
+                                ?.beat ||
+
+                            ""
+
+                        )
+
+                        .trim()
+
+                        .toUpperCase()
+
+                        ===
+
+                        beat
+
+                    );
+
+                }
+
+            );
+
+    }
+
+    /*----------------------------------
+      Compartment
+    ----------------------------------*/
+
+    if (
+
+        parameters.compartment
+
+    ) {
+
+        const compartment =
+            String(
+
+                parameters.compartment
+
+            )
+
+            .trim()
+
+            .toUpperCase();
+
+        staff =
+            staff.filter(
+
+                function (
+
+                    profile
+
+                ) {
+
+                    return (
+
+                        String(
+
+                            profile.assignment
+                                ?.assignedCompartment ||
+
+                            ""
+
+                        )
+
+                        .trim()
+
+                        .toUpperCase()
+
+                        ===
+
+                        compartment
+
+                    );
+
+                }
+
+            );
+
+    }
+
+    /*----------------------------------
+      Duty Active
+    ----------------------------------*/
+
+    if (
+
+        typeof parameters.dutyActive ===
+
+        "boolean"
+
+    ) {
+
+        staff =
+            staff.filter(
+
+                function (
+
+                    profile
+
+                ) {
+
+                    return (
+
+                        !!profile.assignment
+                            ?.dutyActive
+
+                        ===
+
+                        parameters.dutyActive
+
+                    );
+
+                }
+
+            );
+
+    }
+
+    /*----------------------------------
+      Moving
+    ----------------------------------*/
+
+    if (
+
+        parameters.moving === true
+
+    ) {
+
+        staff =
+            staff.filter(
+
+                function (
+
+                    profile
+
+                ) {
+
+                    return (
+
+                        Number(
+
+                            profile.gps
+                                ?.speed ||
+
+                            0
+
+                        ) > 0
+
+                    );
+
+                }
+
+            );
+
+    }
+
+    /*----------------------------------
+      Stationary
+    ----------------------------------*/
+
+    if (
+
+        parameters.stationary === true
+
+    ) {
+
+        staff =
+            staff.filter(
+
+                function (
+
+                    profile
+
+                ) {
+
+                    return (
+
+                        Number(
+
+                            profile.gps
+                                ?.speed ||
+
+                            0
+
+                        ) <= 0
+
+                    );
+
+                }
+
+            );
+
+    }
+
+    /*----------------------------------
+      Team Leader
+    ----------------------------------*/
+
+    if (
+
+        parameters.teamLeader === true
+
+    ) {
+
+        staff =
+            staff.filter(
+
+                function (
+
+                    profile
+
+                ) {
+
+                    return (
+
+                        String(
+
+                            profile.identity
+                                ?.role ||
+
+                            ""
+
+                        )
+
+                        .trim()
+
+                        .toUpperCase()
+
+                        ===
+
+                        "TEAM_LEADER"
+
+                    );
+
+                }
+
+            );
+
+    }
+
+    /*----------------------------------
+      Sort
+    ----------------------------------*/
+
+    staff.sort(
+
+        function (
+
+            a,
+
+            b
+
+        ) {
+
+            return String(
+
+                a.identity
+                    ?.cleanName ||
+
+                ""
+
+            ).localeCompare(
+
+                String(
+
+                    b.identity
+                        ?.cleanName ||
+
+                    ""
+
+                )
+
+            );
+
+        }
+
+    );
+
+    return staff;
+
+};
     /*----------------------------------
   Division Directory
 ----------------------------------*/
