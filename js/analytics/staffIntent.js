@@ -1908,129 +1908,105 @@ StaffIntent.detectDutyIntent = function (
 =========================================================*/
 
 StaffIntent.detectTeamIntent = function (
-
     result
-
 ) {
 
     if (
-
         !result ||
-
         result.intent ||
-
         !result.entities
-
     ) {
-
         return result;
-
     }
 
     const query =
-
         String(
-
             result.normalizedQuery ||
-
             ""
-
         )
-
         .toUpperCase();
 
-    const INTENTS =
+    /*----------------------------------
+      Helper
+    ----------------------------------*/
 
+    function hasKeyword(
+        list
+    ) {
+
+        if (
+            !Array.isArray(
+                list
+            )
+        ) {
+            return false;
+        }
+
+        return list.some(
+            function (
+                keyword
+            ) {
+
+                keyword =
+                    String(
+                        keyword
+                    )
+                    .trim()
+                    .toUpperCase();
+
+                return (
+                    keyword !== "" &&
+                    query.includes(
+                        keyword
+                    )
+                );
+
+            }
+        );
+
+    }
+
+    const INTENTS =
         StaffConstants.INTENTS;
 
+    const KEYWORDS =
+        StaffConstants.KEYWORDS;
+
     const parameters =
-
         result.parameters ||
-
         {};
 
     const staff =
-
         result.entities.staff ||
-
         [];
 
     const single =
-
-        staff.length === 1;
+        parameters.isSingle === true;
 
     /*----------------------------------
-      Aggregate - Team Leaders
+      Aggregate
     ----------------------------------*/
 
     if (
 
-        query.includes(
+        hasKeyword(
 
-            "TEAM LEADER"
-
-        ) ||
-
-        query.includes(
-
-            "TEAM LEADERS"
+            KEYWORDS.STAFF_TEAM_LEADER_LIST
 
         )
 
     ) {
 
         parameters.teamLeader =
-
             true;
 
         result.parameters =
-
             parameters;
 
         result.intent =
-
             INTENTS.STAFF_TEAM_LEADER_LIST;
 
         result.confidence =
-
-            0.99;
-
-        return result;
-
-    }
-
-    /*----------------------------------
-      Aggregate - Team
-    ----------------------------------*/
-
-    if (
-
-        query.includes(
-
-            "TEAM MEMBERS"
-
-        ) ||
-
-        query.includes(
-
-            "TEAM STAFF"
-
-        ) ||
-
-        query.includes(
-
-            "TEAM LIST"
-
-        )
-
-    ) {
-
-        result.intent =
-
-            INTENTS.STAFF_TEAM;
-
-        result.confidence =
-
             0.99;
 
         return result;
@@ -2041,43 +2017,60 @@ StaffIntent.detectTeamIntent = function (
       Single Staff
     ----------------------------------*/
 
-if (
+    if (
+        single
+    ) {
 
-    single &&
+        result.parameters.staff =
+            staff[0];
 
-    !parameters.isAggregate &&
+        /*------------------------------
+          Leader
+        ------------------------------*/
 
-    (
+        if (
 
-            query.includes(
+            hasKeyword(
 
-                "TEAM"
-
-            ) ||
-
-            query.includes(
-
-                "LEADER"
+                KEYWORDS.STAFF_LEADER
 
             )
 
-        )
+        ) {
 
-    ) {
+            result.intent =
+                INTENTS.STAFF_LEADER;
 
-        result.intent =
+            result.confidence =
+                0.99;
 
-            INTENTS.STAFF_TEAM;
+            return result;
 
-        result.parameters.staff =
+        }
 
-            staff[0];
+        /*------------------------------
+          Team
+        ------------------------------*/
 
-        result.confidence =
+        if (
 
-            0.99;
+            hasKeyword(
 
-        return result;
+                KEYWORDS.STAFF_TEAM
+
+            )
+
+        ) {
+
+            result.intent =
+                INTENTS.STAFF_TEAM;
+
+            result.confidence =
+                0.99;
+
+            return result;
+
+        }
 
     }
 
@@ -6264,27 +6257,18 @@ StaffIntent.detectCountIntent = function (
 =========================================================*/
 
 StaffIntent.detectDirectoryIntent = function (
-
     result
-
 ) {
-
     /*----------------------------------
       Validate
     ----------------------------------*/
 
     if (
-
         !result ||
-
         result.intent ||
-
         !result.entities
-
     ) {
-
         return result;
-
     }
 
     /*----------------------------------
@@ -6292,15 +6276,10 @@ StaffIntent.detectDirectoryIntent = function (
     ----------------------------------*/
 
     if (
-
         result.parameters &&
-
         result.parameters.isSingle
-
     ) {
-
         return result;
-
     }
 
     /*----------------------------------
@@ -6308,27 +6287,17 @@ StaffIntent.detectDirectoryIntent = function (
     ----------------------------------*/
 
     const query =
-
         String(
-
             result.normalizedQuery ||
-
             ""
-
         )
-
         .trim()
-
         .toUpperCase();
 
     if (
-
         query.length === 0
-
     ) {
-
         return result;
-
     }
 
     /*----------------------------------
@@ -6336,29 +6305,17 @@ StaffIntent.detectDirectoryIntent = function (
     ----------------------------------*/
 
     const INTENTS =
-
         StaffConstants.INTENTS;
-
     const KEYWORDS =
-
         StaffConstants.KEYWORDS;
-
     const parameters =
-
         result.parameters ||
-
         {};
-
     const designations =
-
         result.entities.designations ||
-
         [];
-
     const staff =
-
         result.entities.staff ||
-
         [];
 
     /*----------------------------------
@@ -6366,163 +6323,133 @@ StaffIntent.detectDirectoryIntent = function (
     ----------------------------------*/
 
     function hasKeyword(
-
         list
-
     ) {
-
         if (
-
             !Array.isArray(
-
                 list
-
             )
-
         ) {
-
             return false;
-
         }
-
         return list.some(
-
             function (
-
                 keyword
-
             ) {
-
-                return query.includes(
-
+                keyword =
                     String(
-
                         keyword
-
                     )
-
-                    .toUpperCase()
-
+                    .trim()
+                    .toUpperCase();
+                return (
+                    keyword !== "" &&
+                    query.includes(
+                        keyword
+                    )
                 );
-
             }
+        );
+    }
 
+    /*----------------------------------
+      Designation Directory
+    ----------------------------------*/
+
+    const hasDesignation =
+        designations.length > 0;
+    const hasCircle =
+        !!parameters.circle;
+    const hasDivision =
+        !!parameters.division;
+    const hasRange =
+        !!parameters.range;
+    const hasBeat =
+        !!parameters.beat;
+    const hasJurisdiction =
+        hasCircle ||
+        hasDivision ||
+        hasRange ||
+        hasBeat;
+
+    const genericDirectory =
+        hasKeyword(
+            KEYWORDS.STAFF_DIRECTORY
         );
 
+    const directoryQuery =
+        genericDirectory ||
+        hasKeyword(
+            KEYWORDS.STAFF_RANGE_DIRECTORY
+        ) ||
+        hasKeyword(
+            KEYWORDS.STAFF_DIVISION_DIRECTORY
+        ) ||
+        hasKeyword(
+            KEYWORDS.STAFF_BEAT_DIRECTORY
+        ) ||
+        hasKeyword(
+            KEYWORDS.STAFF_CIRCLE_DIRECTORY
+        ) ||
+        query.includes("SHOW") ||
+        query.includes("DISPLAY") ||
+        query.includes("VIEW") ||
+        query.includes("GET") ||
+        query.includes("LIST") ||
+        query.includes("ALL") ||
+        query.includes("STAFF OF") ||
+        query.includes("STAFF UNDER") ||
+        query.includes("STAFF IN");
+
+    const designationDirectory =
+        hasKeyword(
+            KEYWORDS.STAFF_DESIGNATION_DIRECTORY
+        ) ||
+        hasKeyword(
+            KEYWORDS.STAFF_DESIGNATION
+        );
+
+    if (
+        hasDesignation &&
+        (
+            designationDirectory ||
+            directoryQuery
+        )
+    ) {
+        result.intent =
+            INTENTS.STAFF_DESIGNATION_DIRECTORY;
+        result.parameters.designation =
+            designations[0]?.identity?.designation ??
+            designations[0]?.designation ??
+            null;
+        result.confidence =
+            0.99;
+        return result;
     }
 
     /*----------------------------------
       Count Query?
     ----------------------------------*/
 
-    if (
-
-        StaffIntent.detectCountIntent(
-
-            JSON.parse(
-
-                JSON.stringify(
-
-                    result
-
-                )
-
-            )
-
-        ).intent
-
-    ) {
-
-        return result;
-
-    }
-
-    /*----------------------------------
-      Entities
-    ----------------------------------*/
-
-    const hasDesignation =
-
-        designations.length > 0;
-
-    const hasCircle =
-
-        !!parameters.circle;
-
-    const hasDivision =
-
-        !!parameters.division;
-
-    const hasRange =
-
-        !!parameters.range;
-
-    const hasBeat =
-
-        !!parameters.beat;
-
-    const hasJurisdiction =
-
-        hasCircle ||
-
-        hasDivision ||
-
-        hasRange ||
-
-        hasBeat;
-
-    const genericDirectory =
-
-        hasKeyword(
-
-            KEYWORDS.STAFF_DIRECTORY
-
+    const countResult =
+        Object.assign(
+            {},
+            result,
+            {
+                parameters:
+                    Object.assign(
+                        {},
+                        parameters
+                    )
+            }
         );
-
-    const designationDirectory =
-
-        hasKeyword(
-
-            KEYWORDS.STAFF_DESIGNATION_DIRECTORY
-
-        );
-
-    /*----------------------------------
-      Designation Directory
-    ----------------------------------*/
-
+    StaffIntent.detectCountIntent(
+        countResult
+    );
     if (
-
-        hasDesignation &&
-
-        (
-
-            designationDirectory ||
-
-            hasJurisdiction
-
-        )
-
+        countResult.intent
     ) {
-
-        result.intent =
-
-            INTENTS.STAFF_DESIGNATION_DIRECTORY;
-
-        result.parameters.designation =
-
-            designations[0]
-
-                .identity
-
-                .designation;
-
-        result.confidence =
-
-            0.99;
-
         return result;
-
     }
 
     /*----------------------------------
@@ -6530,23 +6457,14 @@ StaffIntent.detectDirectoryIntent = function (
     ----------------------------------*/
 
     if (
-
         hasBeat &&
-
-        genericDirectory
-
+        directoryQuery
     ) {
-
         result.intent =
-
             INTENTS.STAFF_BEAT_DIRECTORY;
-
         result.confidence =
-
             0.99;
-
         return result;
-
     }
 
     /*----------------------------------
@@ -6554,23 +6472,14 @@ StaffIntent.detectDirectoryIntent = function (
     ----------------------------------*/
 
     if (
-
         hasRange &&
-
-        genericDirectory
-
+        directoryQuery
     ) {
-
         result.intent =
-
             INTENTS.STAFF_RANGE_DIRECTORY;
-
         result.confidence =
-
             0.99;
-
         return result;
-
     }
 
     /*----------------------------------
@@ -6578,23 +6487,14 @@ StaffIntent.detectDirectoryIntent = function (
     ----------------------------------*/
 
     if (
-
         hasDivision &&
-
-        genericDirectory
-
+        directoryQuery
     ) {
-
         result.intent =
-
             INTENTS.STAFF_DIVISION_DIRECTORY;
-
         result.confidence =
-
             0.99;
-
         return result;
-
     }
 
     /*----------------------------------
@@ -6602,23 +6502,14 @@ StaffIntent.detectDirectoryIntent = function (
     ----------------------------------*/
 
     if (
-
         hasCircle &&
-
-        genericDirectory
-
+        directoryQuery
     ) {
-
         result.intent =
-
             INTENTS.STAFF_CIRCLE_DIRECTORY;
-
         result.confidence =
-
             0.99;
-
         return result;
-
     }
 
     /*----------------------------------
@@ -6626,29 +6517,20 @@ StaffIntent.detectDirectoryIntent = function (
     ----------------------------------*/
 
     if (
-
-        genericDirectory
-
+        genericDirectory &&
+        !hasJurisdiction &&
+        !hasDesignation
     ) {
-
         result.intent =
-
             INTENTS.STAFF_DIRECTORY;
-
         result.parameters.staff =
-
             staff;
-
         result.confidence =
-
             0.95;
-
         return result;
-
     }
 
     return result;
-
 };
  /*=========================================================
  INITIALIZE
