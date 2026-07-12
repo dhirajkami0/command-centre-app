@@ -1111,7 +1111,8 @@ StaffFormatter.formatCount = function (
     return result;
 
 };
- StaffFormatter.formatDirectory = function (
+ StaffFormatter.formatStaffDirectory
+ = function (
 
     response
 
@@ -1947,7 +1948,8 @@ StaffFormatter.formatStaffRole = function (
  FORMAT DESIGNATION
 =========================================================*/
 
-StaffFormatter.formatDesignation = function (
+StaffFormatter.formatStaffDesignation
+ = function (
 
     response
 
@@ -2134,7 +2136,8 @@ StaffFormatter.formatDesignation = function (
  FORMAT CIRCLE
 =========================================================*/
 
-StaffFormatter.formatCircle = function (
+StaffFormatter.formatStaffCircle
+ = function (
 
     response
 
@@ -2348,7 +2351,8 @@ StaffFormatter.formatCircle = function (
  FORMAT DIVISION
 =========================================================*/
 
-StaffFormatter.formatDivision = function (
+StaffFormatter.formatStaffDivision
+ = function (
 
     response
 
@@ -2585,7 +2589,7 @@ StaffFormatter.formatDivision = function (
  FORMAT RANGE
 =========================================================*/
 
-StaffFormatter.formatRange = function (
+StaffFormatter.formatStaffRange = function (
 
     response
 
@@ -2844,7 +2848,8 @@ StaffFormatter.formatRange = function (
  FORMAT BEAT
 =========================================================*/
 
-StaffFormatter.formatBeat = function (
+StaffFormatter.formatStaffBeat
+ = function (
 
     response
 
@@ -3125,7 +3130,7 @@ StaffFormatter.formatBeat = function (
  FORMAT POSTING
 =========================================================*/
 
-StaffFormatter.formatPosting = function (
+StaffFormatter.formatStaffPosting = function (
 
     response
 
@@ -3335,7 +3340,8 @@ StaffFormatter.formatPosting = function (
  FORMAT LOCATION
 =========================================================*/
 
-StaffFormatter.formatLocation = function (
+StaffFormatter.formatStaffLocation
+ = function (
 
     response
 
@@ -4006,7 +4012,8 @@ StaffFormatter.formatDuty = function (
  FORMAT DUTY STATUS
 =========================================================*/
 
-StaffFormatter.formatDutyStatus = function (
+StaffFormatter.formatStaffDutyStatus
+ = function (
 
     response
 
@@ -4460,7 +4467,8 @@ StaffFormatter.formatDutyType = function (
  FORMAT DUTY STARTED
 =========================================================*/
 
-StaffFormatter.formatDutyStarted = function (
+StaffFormatter.formatStaffDutyStart
+ = function (
 
     response
 
@@ -4724,7 +4732,8 @@ StaffFormatter.formatDutyStarted = function (
  FORMAT DUTY ENDED
 =========================================================*/
 
-StaffFormatter.formatDutyEnded = function (
+StaffFormatter.formatStaffDutyEnd
+ = function (
 
     response
 
@@ -5678,7 +5687,8 @@ StaffFormatter.formatTeam = function (
  FORMAT GPS
 =========================================================*/
 
-StaffFormatter.formatGPS = function (
+StaffFormatter.formatStaffGPS
+ = function (
 
     response
 
@@ -5973,7 +5983,7 @@ StaffFormatter.formatGPS = function (
  FORMAT ANALYTICS
 =========================================================*/
 
-StaffFormatter.formatAnalytics = function (
+StaffFormatter.formatStaffAnalytics = function (
 
     response
 
@@ -6234,7 +6244,7 @@ StaffFormatter.formatAnalytics = function (
  FORMAT DISTANCE
 =========================================================*/
 
-StaffFormatter.formatDistance = function (
+StaffFormatter.formatStaffDistance = function (
 
     response
 
@@ -6451,7 +6461,8 @@ StaffFormatter.formatDistance = function (
  FORMAT PATROL POINTS
 =========================================================*/
 
-StaffFormatter.formatPatrolPoints = function (
+StaffFormatter.formatStaffPatrolPoints
+ = function (
 
     response
 
@@ -6666,7 +6677,7 @@ StaffFormatter.formatPatrolPoints = function (
  FORMAT PATROL START
 =========================================================*/
 
-StaffFormatter.formatPatrolStart = function (
+StaffFormatter.formatStaffPatrolStart = function (
 
     response
 
@@ -6907,7 +6918,8 @@ StaffFormatter.formatPatrolStart = function (
  FORMAT PATROL END
 =========================================================*/
 
-StaffFormatter.formatPatrolEnd = function (
+StaffFormatter.formatStaffPatrolEnd
+ = function (
 
     response
 
@@ -7148,7 +7160,7 @@ StaffFormatter.formatPatrolEnd = function (
  FORMAT PATROL DURATION
 =========================================================*/
 
-StaffFormatter.formatPatrolDuration = function (
+StaffFormatter.formatStaffPatrolDuration = function (
 
     response
 
@@ -7676,7 +7688,7 @@ StaffFormatter.formatStaffSummary = function (
  FORMAT JURISDICTION SUMMARY
 =========================================================*/
 
-StaffFormatter.formatJurisdictionSummary = function (
+StaffFormatter.formatStaffJurisdictionSummary = function (
 
     response
 
@@ -7989,7 +8001,8 @@ StaffFormatter.formatJurisdictionSummary = function (
  FORMAT DESIGNATION SUMMARY
 =========================================================*/
 
-StaffFormatter.formatDesignationSummary = function (
+StaffFormatter.formatStaffDesignationSummary
+ = function (
 
     response
 
@@ -8286,7 +8299,7 @@ StaffFormatter.formatDesignationSummary = function (
  FORMAT CIRCLE DIRECTORY
 =========================================================*/
 
-StaffFormatter.formatCircleDirectory = function (
+StaffFormatter.formatStaffCircleDirectory = function (
 
     response
 
@@ -8543,7 +8556,7 @@ StaffFormatter.formatCircleDirectory = function (
  FORMAT DIVISION DIRECTORY
 =========================================================*/
 
-StaffFormatter.formatDivisionDirectory = function (
+StaffFormatter.formatStaffDivisionDirectory = function (
 
     response
 
@@ -8801,7 +8814,7 @@ StaffFormatter.formatDivisionDirectory = function (
  FORMAT RANGE DIRECTORY
 =========================================================*/
 
-StaffFormatter.formatRangeDirectory = function (
+StaffFormatter.formatStaffRangeDirectory = function (
 
     response
 
@@ -9058,7 +9071,8 @@ StaffFormatter.formatRangeDirectory = function (
  FORMAT BEAT DIRECTORY
 =========================================================*/
 
-StaffFormatter.formatBeatDirectory = function (
+StaffFormatter.formatStaffBeatDirectory
+ = function (
 
     response
 
@@ -9315,7 +9329,7 @@ StaffFormatter.formatBeatDirectory = function (
  FORMAT DESIGNATION DIRECTORY
 =========================================================*/
 
-StaffFormatter.formatDesignationDirectory = function (
+StaffFormatter.formatStaffDesignationDirectory = function (
 
     response
 
@@ -12634,7 +12648,7 @@ StaffFormatter.formatInactiveStaffList = function (
  FORMAT DUTY SUMMARY
 =========================================================*/
 
-StaffFormatter.formatDutySummary = function (
+StaffFormatter.formatStaffDutySummary = function (
 
     response
 
@@ -12829,7 +12843,7 @@ StaffFormatter.formatDutySummary = function (
  FORMAT MOVING STAFF
 =========================================================*/
 
-StaffFormatter.formatMovingStaff = function (
+StaffFormatter.formatStaffMoving = function (
 
     response
 
@@ -13078,7 +13092,8 @@ StaffFormatter.formatMovingStaff = function (
  FORMAT STATIONARY STAFF
 =========================================================*/
 
-StaffFormatter.formatStationaryStaff = function (
+StaffFormatter.formatStaffStationary
+ = function (
 
     response
 
