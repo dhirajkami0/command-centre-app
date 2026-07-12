@@ -1,265 +1,209 @@
-/*==================================================
-  GIS BUSINESS
-==================================================*/
+/*=========================================================
+  GreenGuard AI
+  GIS Business Layer
+=========================================================*/
 
-window.GreenGuardAI ??= {};
+window.GreenGuardAI =
+    window.GreenGuardAI || {};
 
-GreenGuardAI.GISBusiness = Object.create(null);
+(function (
 
-/*==================================================
-  CONFIG
-==================================================*/
+    GG
 
-GreenGuardAI.GISBusiness.VERSION = "1.0.0";
+) {
 
-/*==================================================
-  READY?
-==================================================*/
+    "use strict";
 
-GreenGuardAI.GISBusiness.isReady = function () {
+    const GISBusiness = {};
 
-    return (
+    GISBusiness.VERSION =
 
-        Array.isArray(window.allGISFeatures) &&
+        "1.0.0";
 
-        window.allGISFeatures.length > 0 &&
+    /*--------------------------------------------------
+      Ready
+    --------------------------------------------------*/
 
-        Array.isArray(window.allCompartmentFeatures)
+    GISBusiness.ready = function () {
 
-    );
+        return !!(
 
-};
+            window.allGISFeatures &&
 
-/*==================================================
-  CURRENT FILTER
-==================================================*/
+            window.allCompartmentFeatures
 
-GreenGuardAI.GISBusiness.getCurrentFilter = function () {
-
-    return {
-
-        division:
-
-            window.gisFilter?.division ||
-
-            "ALL",
-
-        range:
-
-            window.gisFilter?.range ||
-
-            "ALL",
-
-        beat:
-
-            window.gisFilter?.beat ||
-
-            "ALL",
-
-        compartment:
-
-            window.gisFilter?.compartment ||
-
-            "ALL"
+        );
 
     };
 
-};
+    /*--------------------------------------------------
+      Info
+    --------------------------------------------------*/
 
-/*==================================================
-  CURRENT SELECTION
-==================================================*/
+    GISBusiness.info = function () {
 
-GreenGuardAI.GISBusiness.getCurrentSelection = function () {
+        return {
 
-    return window.currentSelectedGeometry ||
+            ready:
 
-           null;
+                GISBusiness.ready(),
 
-};
+            gis:
 
-/*==================================================
-  ACTIVE POPUP
-==================================================*/
+                window.allGISFeatures?.length || 0,
 
-GreenGuardAI.GISBusiness.getPopupContext = function () {
+            compartments:
 
-    return window.activePopupContext ||
+                window.allCompartmentFeatures?.length || 0,
 
-           null;
+            villages:
 
-};
+                window.__villageCache?.length || 0,
 
-/*==================================================
-  GIS FEATURES
-==================================================*/
+            monthlyCache:
 
-GreenGuardAI.GISBusiness.getGISFeatures = function () {
+                Object.keys(
 
-    return window.allGISFeatures ||
+                    window.monthlyStatusCache || {}
 
-           [];
+                ).length,
 
-};
+            analyticsCache:
 
-/*==================================================
-  COMPARTMENTS
-==================================================*/
+                Object.keys(
 
-GreenGuardAI.GISBusiness.getCompartments = function () {
+                    window.gisAnalyticsCache || {}
 
-    return window.allCompartmentFeatures ||
+                ).length
 
-           [];
-
-};
-
-/*==================================================
-  VILLAGES
-==================================================*/
-
-GreenGuardAI.GISBusiness.getVillages = function () {
-
-    return window.__villageCache ||
-
-           [];
-
-};
-
-/*==================================================
-  MONTHLY CACHE
-==================================================*/
-
-GreenGuardAI.GISBusiness.getMonthlyStatus = function (
-
-    key = "btr_all"
-
-) {
-
-    return (
-
-        window.monthlyStatusCache?.[key] ||
-
-        null
-
-    );
-
-};
-
-/*==================================================
-  SESSION TRACK
-==================================================*/
-
-GreenGuardAI.GISBusiness.getSessionTrack = function (
-
-    sessionId
-
-) {
-
-    return (
-
-        window.sessionTrackCache?.[sessionId] ||
-
-        []
-
-    );
-
-};
-
-/*==================================================
-  LIVE GPS
-==================================================*/
-
-GreenGuardAI.GISBusiness.getLatestGPS = function () {
-
-    return window.latestGps ||
-
-           null;
-
-};
-
-/*==================================================
-  ACTIVE SESSION
-==================================================*/
-
-GreenGuardAI.GISBusiness.getActiveSession = function (
-
-    cleanName
-
-) {
-
-    return (
-
-        window.activeSessionMap?.[cleanName] ||
-
-        null
-
-    );
-
-};
-
-/*==================================================
-  ANALYTICS CACHE
-==================================================*/
-
-GreenGuardAI.GISBusiness.getAnalyticsCache = function () {
-
-    return window.gisAnalyticsCache ||
-
-           {};
-
-};
-
-/*==================================================
-  INFO
-==================================================*/
-
-GreenGuardAI.GISBusiness.info = function () {
-
-    return {
-
-        ready:
-
-            GreenGuardAI.GISBusiness.isReady(),
-
-        gis:
-
-            window.allGISFeatures?.length ||
-
-            0,
-
-        compartments:
-
-            window.allCompartmentFeatures?.length ||
-
-            0,
-
-        villages:
-
-            window.__villageCache?.length ||
-
-            0,
-
-        monthlyCache:
-
-            Object.keys(
-
-                window.monthlyStatusCache ||
-
-                {}
-
-            ).length,
-
-        analyticsCache:
-
-            Object.keys(
-
-                window.gisAnalyticsCache ||
-
-                {}
-
-            ).length
+        };
 
     };
 
-};
+    /*--------------------------------------------------
+      Current Filter
+    --------------------------------------------------*/
+
+    GISBusiness.getFilter = function () {
+
+        return window.gisFilter || {};
+
+    };
+
+    /*--------------------------------------------------
+      Current Geometry
+    --------------------------------------------------*/
+
+    GISBusiness.getCurrentGeometry = function () {
+
+        return window.currentSelectedGeometry || null;
+
+    };
+
+    /*--------------------------------------------------
+      GIS Features
+    --------------------------------------------------*/
+
+    GISBusiness.getGIS = function () {
+
+        return window.allGISFeatures || [];
+
+    };
+
+    /*--------------------------------------------------
+      Compartments
+    --------------------------------------------------*/
+
+    GISBusiness.getCompartments = function () {
+
+        return window.allCompartmentFeatures || [];
+
+    };
+
+    /*--------------------------------------------------
+      Villages
+    --------------------------------------------------*/
+
+    GISBusiness.getVillages = function () {
+
+        return window.__villageCache || [];
+
+    };
+
+    /*--------------------------------------------------
+      Live Staff
+    --------------------------------------------------*/
+
+    GISBusiness.getLiveStaff = function () {
+
+        return window.liveStaffCache || [];
+
+    };
+
+    /*--------------------------------------------------
+      Staff Profiles
+    --------------------------------------------------*/
+
+    GISBusiness.getStaffProfiles = function () {
+
+        return window.allStaffProfiles || [];
+
+    };
+
+    /*--------------------------------------------------
+      Patrol Tracks
+    --------------------------------------------------*/
+
+    GISBusiness.getTracks = function () {
+
+        return window.staffTracks || [];
+
+    };
+
+    /*--------------------------------------------------
+      Session Tracks
+    --------------------------------------------------*/
+
+    GISBusiness.getSessions = function () {
+
+        return window.sessionTrackCache || {};
+
+    };
+
+    /*--------------------------------------------------
+      Analytics Cache
+    --------------------------------------------------*/
+
+    GISBusiness.getAnalyticsCache = function () {
+
+        return window.gisAnalyticsCache || {};
+
+    };
+
+    /*--------------------------------------------------
+      Monthly Cache
+    --------------------------------------------------*/
+
+    GISBusiness.getMonthlyCache = function () {
+
+        return window.monthlyStatusCache || {};
+
+    };
+
+    /*--------------------------------------------------
+      Export
+    --------------------------------------------------*/
+
+    GG.GISBusiness =
+
+        Object.freeze(
+
+            GISBusiness
+
+        );
+
+})(
+
+    window.GreenGuardAI
+
+);
