@@ -734,17 +734,103 @@ if (
 
     );
 
-    cached.metadata =
+    if (
 
-        cached.metadata ||
+    cached &&
+
+    cached.success === true
+
+) {
+
+    console.log(
+
+        "✅ CACHE HIT"
+
+    );
+
+    const cachedResponse =
+
+        structuredClone(
+
+            cached
+
+        );
+
+    cachedResponse.metadata =
+
+        cachedResponse.metadata ||
 
         {};
 
-    cached.metadata.cache =
+    cachedResponse.metadata.cache =
 
         true;
 
-    return cached;
+    cachedResponse.request =
+
+        request;
+
+    cachedResponse.intent =
+
+        request.intent;
+
+    cachedResponse.domain =
+
+        request.domain;
+
+    cachedResponse.entities =
+
+        request.entities ||
+
+        {};
+
+    cachedResponse.parameters =
+
+        request.parameters ||
+
+        {};
+
+    cachedResponse.context =
+
+        request.context ||
+
+        {};
+
+    return cachedResponse;
+
+}
+
+cachedResponse.request =
+
+    request;
+
+cachedResponse.intent =
+
+    request.intent;
+
+cachedResponse.domain =
+
+    request.domain;
+
+cachedResponse.entities =
+
+    request.entities ||
+
+    {};
+
+cachedResponse.parameters =
+
+    request.parameters ||
+
+    {};
+
+cachedResponse.context =
+
+    request.context ||
+
+    {};
+
+return cachedResponse;
 
 }
 
@@ -1040,11 +1126,15 @@ if (
 
     StaffQuery.setCache(
 
-        cacheKey,
+    cacheKey,
+
+    structuredClone(
 
         response
 
-    );
+    )
+
+);
 
 }
 
