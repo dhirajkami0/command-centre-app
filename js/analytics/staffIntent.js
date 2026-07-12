@@ -1864,223 +1864,441 @@ StaffIntent.extractPostingParameters = function (
 =========================================================*/
 
 StaffIntent.detectDutyIntent = function (
+
     result
+
 ) {
+
+    /*----------------------------------
+      Validate
+    ----------------------------------*/
+
     if (
+
         !result ||
+
         result.intent ||
+
         !result.entities
+
     ) {
+
         return result;
+
     }
 
     const query =
+
         String(
+
             result.normalizedQuery ||
+
             ""
+
         )
+
+        .trim()
+
         .toUpperCase();
+
+    const INTENTS =
+
+        StaffConstants.INTENTS;
+
+    const KEYWORDS =
+
+        StaffConstants.KEYWORDS;
+
+    const parameters =
+
+        result.parameters ||
+
+        {};
+
+    const staff =
+
+        result.entities.staff ||
+
+        [];
+
+    const single =
+
+        parameters.isSingle === true;
 
     /*----------------------------------
       Helper
     ----------------------------------*/
 
     function hasKeyword(
+
         list
+
     ) {
+
         if (
+
             !Array.isArray(
+
                 list
+
             )
+
         ) {
+
             return false;
+
         }
+
         return list.some(
+
             function (
+
                 keyword
+
             ) {
+
                 keyword =
+
                     String(
+
                         keyword
+
                     )
+
                     .trim()
+
                     .toUpperCase();
+
                 return (
+
                     keyword !== "" &&
+
                     query.includes(
+
                         keyword
+
                     )
+
                 );
+
             }
+
         );
+
     }
 
-    const INTENTS =
-        StaffConstants.INTENTS;
-    const parameters =
-        result.parameters ||
-        {};
-    const staff =
-        result.entities.staff ||
-        [];
-    const single =
-        parameters.isSingle === true;
+    /*==================================================
+      AGGREGATE DUTY INTENTS
+    ==================================================*/
 
     /*----------------------------------
-      Aggregate
+      Duty Summary
     ----------------------------------*/
 
-    /* Duty Summary */
     if (
+
         hasKeyword(
-            StaffConstants.KEYWORDS.STAFF_DUTY_SUMMARY
+
+            KEYWORDS.STAFF_DUTY_SUMMARY
+
         )
+
     ) {
+
         result.intent =
+
             INTENTS.STAFF_DUTY_SUMMARY;
-        result.confidence =
-            0.99;
-        return result;
-    }
 
-    if (
-        hasKeyword(
-            StaffConstants.KEYWORDS.STAFF_ACTIVE_LIST
-        )
-    ) {
-        parameters.dutyActive =
-            true;
-        result.parameters =
-            parameters;
-        result.intent =
-            INTENTS.STAFF_ACTIVE_LIST;
         result.confidence =
-            0.99;
-        return result;
-    }
 
-    if (
-        hasKeyword(
-            StaffConstants.KEYWORDS.STAFF_INACTIVE_LIST
-        )
-    ) {
-        parameters.dutyActive =
-            false;
-        result.parameters =
-            parameters;
-        result.intent =
-            INTENTS.STAFF_INACTIVE_LIST;
-        result.confidence =
             0.99;
-        return result;
-    }
 
-    if (
-        hasKeyword(
-            StaffConstants.KEYWORDS.STAFF_ACTIVE_COUNT
-        )
-    ) {
-        parameters.dutyActive =
-            true;
-        result.parameters =
-            parameters;
-        result.intent =
-            INTENTS.STAFF_ACTIVE_COUNT;
-        result.confidence =
-            0.99;
         return result;
+
     }
 
     /*----------------------------------
-      Single Staff
+      Active Count
     ----------------------------------*/
 
     if (
-        single
+
+        hasKeyword(
+
+            KEYWORDS.STAFF_ACTIVE_COUNT
+
+        )
+
     ) {
-        result.parameters.staff =
-            staff[0];
 
-        /* Duty Started */
-        if (
-            hasKeyword(
-                StaffConstants.KEYWORDS.STAFF_DUTY_STARTED
-            )
-        ) {
-            result.intent =
-                INTENTS.STAFF_DUTY_STARTED;
-            result.confidence =
-                0.99;
-            return result;
-        }
+        parameters.dutyActive =
 
-        /* Duty Ended */
-        if (
-            hasKeyword(
-                StaffConstants.KEYWORDS.STAFF_DUTY_ENDED
-            )
-        ) {
-            result.intent =
-                INTENTS.STAFF_DUTY_ENDED;
-            result.confidence =
-                0.99;
-            return result;
-        }
+            true;
 
-        /* Duty Type */
-        if (
-            hasKeyword(
-                StaffConstants.KEYWORDS.STAFF_DUTY_TYPE
-            )
-        ) {
-            result.intent =
-                INTENTS.STAFF_DUTY_TYPE;
-            result.confidence =
-                0.99;
-            return result;
-        }
+        result.parameters =
 
-        /* Assignment */
-        if (
-            hasKeyword(
-                StaffConstants.KEYWORDS.STAFF_ASSIGNMENT
-            )
-        ) {
-            result.intent =
-                INTENTS.STAFF_ASSIGNMENT;
-            result.confidence =
-                0.99;
-            return result;
-        }
+            parameters;
 
-        /* Duty Status */
-        if (
-            hasKeyword(
-                StaffConstants.KEYWORDS.STAFF_DUTY_STATUS
-            )
-        ) {
-            result.intent =
-                INTENTS.STAFF_DUTY_STATUS;
-            result.confidence =
-                0.99;
-            return result;
-        }
+        result.intent =
 
-        /* General Duty */
-        if (
-            hasKeyword(
-                StaffConstants.KEYWORDS.STAFF_DUTY
-            )
-        ) {
-            result.intent =
-                INTENTS.STAFF_DUTY;
-            result.confidence =
-                0.99;
-            return result;
-        }
+            INTENTS.STAFF_ACTIVE_COUNT;
+
+        result.confidence =
+
+            0.99;
+
+        return result;
+
+    }
+
+    /*----------------------------------
+      Active List
+    ----------------------------------*/
+
+    if (
+
+        hasKeyword(
+
+            KEYWORDS.STAFF_ACTIVE_LIST
+
+        )
+
+    ) {
+
+        parameters.dutyActive =
+
+            true;
+
+        result.parameters =
+
+            parameters;
+
+        result.intent =
+
+            INTENTS.STAFF_ACTIVE_LIST;
+
+        result.confidence =
+
+            0.99;
+
+        return result;
+
+    }
+
+    /*----------------------------------
+      Inactive List
+    ----------------------------------*/
+
+    if (
+
+        hasKeyword(
+
+            KEYWORDS.STAFF_INACTIVE_LIST
+
+        )
+
+    ) {
+
+        parameters.dutyActive =
+
+            false;
+
+        result.parameters =
+
+            parameters;
+
+        result.intent =
+
+            INTENTS.STAFF_INACTIVE_LIST;
+
+        result.confidence =
+
+            0.99;
+
+        return result;
+
+    }
+
+    /*----------------------------------
+      Aggregate Only
+    ----------------------------------*/
+
+    if (
+
+        !single
+
+    ) {
+
+        return result;
+
+    }
+
+    /*==================================================
+      SINGLE STAFF DUTY INTENTS
+    ==================================================*/
+
+    result.parameters.staff =
+
+        staff[0];
+
+    /*----------------------------------
+      Duty Status
+    ----------------------------------*/
+
+    if (
+
+        hasKeyword(
+
+            KEYWORDS.STAFF_DUTY_STATUS
+
+        )
+
+    ) {
+
+        result.intent =
+
+            INTENTS.STAFF_DUTY_STATUS;
+
+        result.confidence =
+
+            0.99;
+
+        return result;
+
+    }
+
+    /*----------------------------------
+      Duty Started
+    ----------------------------------*/
+
+    if (
+
+        hasKeyword(
+
+            KEYWORDS.STAFF_DUTY_STARTED
+
+        )
+
+    ) {
+
+        result.intent =
+
+            INTENTS.STAFF_DUTY_STARTED;
+
+        result.confidence =
+
+            0.99;
+
+        return result;
+
+    }
+
+    /*----------------------------------
+      Duty Ended
+    ----------------------------------*/
+
+    if (
+
+        hasKeyword(
+
+            KEYWORDS.STAFF_DUTY_ENDED
+
+        )
+
+    ) {
+
+        result.intent =
+
+            INTENTS.STAFF_DUTY_ENDED;
+
+        result.confidence =
+
+            0.99;
+
+        return result;
+
+    }
+
+    /*----------------------------------
+      Duty Type
+    ----------------------------------*/
+
+    if (
+
+        hasKeyword(
+
+            KEYWORDS.STAFF_DUTY_TYPE
+
+        )
+
+    ) {
+
+        result.intent =
+
+            INTENTS.STAFF_DUTY_TYPE;
+
+        result.confidence =
+
+            0.99;
+
+        return result;
+
+    }
+
+    /*----------------------------------
+      Assignment
+    ----------------------------------*/
+
+    if (
+
+        hasKeyword(
+
+            KEYWORDS.STAFF_ASSIGNMENT
+
+        )
+
+    ) {
+
+        result.intent =
+
+            INTENTS.STAFF_ASSIGNMENT;
+
+        result.confidence =
+
+            0.99;
+
+        return result;
+
+    }
+
+    /*----------------------------------
+      General Duty
+    ----------------------------------*/
+
+    if (
+
+        hasKeyword(
+
+            KEYWORDS.STAFF_DUTY
+
+        )
+
+    ) {
+
+        result.intent =
+
+            INTENTS.STAFF_DUTY;
+
+        result.confidence =
+
+            0.99;
+
+        return result;
+
     }
 
     return result;
+
 };
  /*=========================================================
  DETECT TEAM INTENT
@@ -2920,19 +3138,19 @@ StaffIntent.detectStatusIntent = function (
 
     }
 
-    /*==================================
-      Aggregate
-    ==================================*/
+    /*==================================================
+      AGGREGATE STATUS
+    ==================================================*/
 
     /*----------------------------------
-      Inactive
+      Active Count
     ----------------------------------*/
 
     if (
 
         hasKeyword(
 
-            KEYWORDS.STAFF_INACTIVE_LIST
+            KEYWORDS.STAFF_ACTIVE_COUNT
 
         )
 
@@ -2940,7 +3158,7 @@ StaffIntent.detectStatusIntent = function (
 
         parameters.dutyActive =
 
-            false;
+            true;
 
         result.parameters =
 
@@ -2948,7 +3166,7 @@ StaffIntent.detectStatusIntent = function (
 
         result.intent =
 
-            INTENTS.STAFF_INACTIVE_LIST;
+            INTENTS.STAFF_ACTIVE_COUNT;
 
         result.confidence =
 
@@ -2959,7 +3177,7 @@ StaffIntent.detectStatusIntent = function (
     }
 
     /*----------------------------------
-      Active
+      Active List
     ----------------------------------*/
 
     if (
@@ -2993,7 +3211,41 @@ StaffIntent.detectStatusIntent = function (
     }
 
     /*----------------------------------
-      Moving
+      Inactive List
+    ----------------------------------*/
+
+    if (
+
+        hasKeyword(
+
+            KEYWORDS.STAFF_INACTIVE_LIST
+
+        )
+
+    ) {
+
+        parameters.dutyActive =
+
+            false;
+
+        result.parameters =
+
+            parameters;
+
+        result.intent =
+
+            INTENTS.STAFF_INACTIVE_LIST;
+
+        result.confidence =
+
+            0.99;
+
+        return result;
+
+    }
+
+    /*----------------------------------
+      Moving Staff
     ----------------------------------*/
 
     if (
@@ -3027,7 +3279,7 @@ StaffIntent.detectStatusIntent = function (
     }
 
     /*----------------------------------
-      Stationary
+      Stationary Staff
     ----------------------------------*/
 
     if (
@@ -3061,7 +3313,7 @@ StaffIntent.detectStatusIntent = function (
     }
 
     /*----------------------------------
-      Team Leaders
+      Team Leader List
     ----------------------------------*/
 
     if (
@@ -3094,9 +3346,9 @@ StaffIntent.detectStatusIntent = function (
 
     }
 
-    /*==================================
-      Single Staff
-    ==================================*/
+    /*----------------------------------
+      Aggregate Only
+    ----------------------------------*/
 
     if (
 
@@ -3107,6 +3359,10 @@ StaffIntent.detectStatusIntent = function (
         return result;
 
     }
+
+    /*==================================================
+      SINGLE STAFF STATUS
+    ==================================================*/
 
     result.parameters.staff =
 
@@ -3244,8 +3500,7 @@ StaffIntent.detectStatusIntent = function (
 
     return result;
 
-};
- /*=========================================================
+}; /*=========================================================
  DETECT CONTROL ROOM INTENT
 =========================================================*/
 
@@ -4040,6 +4295,10 @@ StaffIntent.detectSingleVsAggregate = function (
 
 ) {
 
+    /*----------------------------------
+      Validate
+    ----------------------------------*/
+
     if (
 
         !result ||
@@ -4086,6 +4345,10 @@ StaffIntent.detectSingleVsAggregate = function (
 
         [];
 
+    /*----------------------------------
+      Context
+    ----------------------------------*/
+
     const hasJurisdiction =
 
         !!parameters.circle ||
@@ -4094,7 +4357,9 @@ StaffIntent.detectSingleVsAggregate = function (
 
         !!parameters.range ||
 
-        !!parameters.beat;
+        !!parameters.beat ||
+
+        !!parameters.compartment;
 
     const hasDesignation =
 
@@ -4106,70 +4371,113 @@ StaffIntent.detectSingleVsAggregate = function (
 
         ).length > 0;
 
+    /*----------------------------------
+      Aggregate Keywords
+    ----------------------------------*/
+
     const aggregateWords = [
 
-    "STAFF COUNT",
+        /* Counts */
 
-    "TOTAL STAFF",
+        "STAFF COUNT",
 
-    "HOW MANY STAFF",
+        "TOTAL STAFF",
 
-    "NUMBER OF STAFF",
+        "HOW MANY STAFF",
 
-    "STAFF TOTAL",
+        "NUMBER OF STAFF",
 
-    "STAFF STRENGTH",
+        "STAFF TOTAL",
 
-    "HEADCOUNT",
+        "STAFF STRENGTH",
 
-    "ALL STAFF",
+        "HEADCOUNT",
 
-    "STAFF LIST",
+        /* Directories */
 
-    "DIRECTORY",
+        "ALL STAFF",
 
-    "TEAM LEADERS"
+        "STAFF LIST",
 
-];
+        "DIRECTORY",
 
-    
-const aggregate =
+        "LIST STAFF",
 
-    aggregateWords.some(
+        "LIST",
 
-        function (
+        /* Summary */
 
-            word
+        "SUMMARY",
 
-        ) {
+        "DUTY SUMMARY",
 
-            return query.includes(
+        "JURISDICTION SUMMARY",
+
+        "DESIGNATION SUMMARY",
+
+        /* Status */
+
+        "ACTIVE STAFF",
+
+        "INACTIVE STAFF",
+
+        "MOVING STAFF",
+
+        "STATIONARY STAFF",
+
+        "TEAM LEADER LIST",
+
+        "TEAM LEADERS",
+
+        /* Control Room */
+
+        "WHO IS ON DUTY",
+
+        "WHO IS PATROLLING"
+
+    ];
+
+    const aggregate =
+
+        aggregateWords.some(
+
+            function (
 
                 word
 
-            );
+            ) {
 
-        }
+                return query.includes(
 
-    );
+                    word
 
-const single =
+                );
 
-    staff.length === 1;
+            }
 
-result.parameters.isSingle =
+        );
 
-    single &&
+    const single =
 
-    !aggregate &&
+        staff.length === 1;
 
-    !hasJurisdiction &&
+    /*----------------------------------
+      Final Decision
+    ----------------------------------*/
 
-    !hasDesignation;
+    result.parameters.isSingle =
 
-result.parameters.isAggregate =
+        single &&
 
-    !result.parameters.isSingle;
+        !aggregate &&
+
+        !hasJurisdiction &&
+
+        !hasDesignation;
+
+    result.parameters.isAggregate =
+
+        !result.parameters.isSingle;
 
     return result;
 
@@ -5967,17 +6275,12 @@ StaffIntent.detectGlobalIntent = function (
 ) {
 
     console.group(
-
         "🌍 GLOBAL INTENT"
-
     );
 
     console.log(
-
         "Incoming:",
-
         result.intent
-
     );
 
     /*----------------------------------
@@ -6005,15 +6308,12 @@ StaffIntent.detectGlobalIntent = function (
     if (
 
         result.parameters &&
-
         result.parameters.isSingle
 
     ) {
 
         console.log(
-
             "⏭ Single Staff Query - Skip Global"
-
         );
 
         console.groupEnd();
@@ -6027,153 +6327,15 @@ StaffIntent.detectGlobalIntent = function (
     ----------------------------------*/
 
     result =
-
         StaffIntent.detectControlRoomIntent(
-
             result
-
         );
 
-    if (
-
-        result.intent
-
-    ) {
+    if (result.intent) {
 
         console.log(
-
             "✅ Control Room:",
-
             result.intent
-
-        );
-
-        console.groupEnd();
-
-        return result;
-
-    }
-
-    /*----------------------------------
-      STATUS
-    ----------------------------------*/
-
-    result =
-
-        StaffIntent.detectStatusIntent(
-
-            result
-
-        );
-
-    if (
-
-        result.intent
-
-    ) {
-
-        console.log(
-
-            "✅ Status:",
-
-            result.intent
-
-        );
-
-        console.groupEnd();
-
-        return result;
-
-    }
-
-    /*----------------------------------
-      DUTY
-    ----------------------------------*/
-
-    result =
-
-        StaffIntent.detectDutyIntent(
-
-            result
-
-        );
-
-    if (
-
-        result.intent
-
-    ) {
-
-        console.log(
-
-            "✅ Duty:",
-
-            result.intent
-
-        );
-
-        console.groupEnd();
-
-        return result;
-
-    }
-
-    /*----------------------------------
-      MOVEMENT
-    ----------------------------------*/
-
-    result =
-
-        StaffIntent.detectMovementIntent(
-
-            result
-
-        );
-
-    if (
-
-        result.intent
-
-    ) {
-
-        console.log(
-
-            "✅ Movement:",
-
-            result.intent
-
-        );
-
-        console.groupEnd();
-
-        return result;
-
-    }
-
-    /*----------------------------------
-      TEAM
-    ----------------------------------*/
-
-    result =
-
-        StaffIntent.detectTeamIntent(
-
-            result
-
-        );
-
-    if (
-
-        result.intent
-
-    ) {
-
-        console.log(
-
-            "✅ Team:",
-
-            result.intent
-
         );
 
         console.groupEnd();
@@ -6187,25 +6349,15 @@ StaffIntent.detectGlobalIntent = function (
     ----------------------------------*/
 
     result =
-
         StaffIntent.detectSummaryIntent(
-
             result
-
         );
 
-    if (
-
-        result.intent
-
-    ) {
+    if (result.intent) {
 
         console.log(
-
             "✅ Summary:",
-
             result.intent
-
         );
 
         console.groupEnd();
@@ -6219,25 +6371,15 @@ StaffIntent.detectGlobalIntent = function (
     ----------------------------------*/
 
     result =
-
         StaffIntent.detectCountIntent(
-
             result
-
         );
 
-    if (
-
-        result.intent
-
-    ) {
+    if (result.intent) {
 
         console.log(
-
             "✅ Count:",
-
             result.intent
-
         );
 
         console.groupEnd();
@@ -6251,25 +6393,15 @@ StaffIntent.detectGlobalIntent = function (
     ----------------------------------*/
 
     result =
-
         StaffIntent.detectDirectoryIntent(
-
             result
-
         );
 
-    if (
-
-        result.intent
-
-    ) {
+    if (result.intent) {
 
         console.log(
-
             "✅ Directory:",
-
             result.intent
-
         );
 
         console.groupEnd();
@@ -6278,16 +6410,100 @@ StaffIntent.detectGlobalIntent = function (
 
     }
 
+    /*----------------------------------
+      DUTY
+    ----------------------------------*/
 
+    result =
+        StaffIntent.detectDutyIntent(
+            result
+        );
+
+    if (result.intent) {
+
+        console.log(
+            "✅ Duty:",
+            result.intent
+        );
+
+        console.groupEnd();
+
+        return result;
+
+    }
+
+    /*----------------------------------
+      STATUS
+    ----------------------------------*/
+
+    result =
+        StaffIntent.detectStatusIntent(
+            result
+        );
+
+    if (result.intent) {
+
+        console.log(
+            "✅ Status:",
+            result.intent
+        );
+
+        console.groupEnd();
+
+        return result;
+
+    }
+
+    /*----------------------------------
+      MOVEMENT
+    ----------------------------------*/
+
+    result =
+        StaffIntent.detectMovementIntent(
+            result
+        );
+
+    if (result.intent) {
+
+        console.log(
+            "✅ Movement:",
+            result.intent
+        );
+
+        console.groupEnd();
+
+        return result;
+
+    }
+
+    /*----------------------------------
+      TEAM
+    ----------------------------------*/
+
+    result =
+        StaffIntent.detectTeamIntent(
+            result
+        );
+
+    if (result.intent) {
+
+        console.log(
+            "✅ Team:",
+            result.intent
+        );
+
+        console.groupEnd();
+
+        return result;
+
+    }
 
     /*----------------------------------
       NO GLOBAL INTENT
     ----------------------------------*/
 
     console.log(
-
         "❌ No Global Intent"
-
     );
 
     console.groupEnd();
@@ -6431,28 +6647,6 @@ StaffIntent.detectCountIntent = function (
 
         hasWord(
 
-            "INACTIVE"
-
-        ) ||
-
-        query.includes(
-
-            "OFF DUTY"
-
-        )
-
-    ) {
-
-        parameters.dutyActive =
-
-            false;
-
-    }
-
-    else if (
-
-        hasWord(
-
             "ACTIVE"
 
         ) ||
@@ -6471,44 +6665,6 @@ StaffIntent.detectCountIntent = function (
 
     }
 
-    if (
-
-        hasWord(
-
-            "MOVING"
-
-        )
-
-    ) {
-
-        parameters.moving =
-
-            true;
-
-    }
-
-    if (
-
-        hasWord(
-
-            "STATIONARY"
-
-        ) ||
-
-        hasWord(
-
-            "STOPPED"
-
-        )
-
-    ) {
-
-        parameters.stationary =
-
-            true;
-
-    }
-
     result.parameters =
 
         parameters;
@@ -6520,7 +6676,6 @@ StaffIntent.detectCountIntent = function (
     if (
 
         entities.designations &&
-
         entities.designations.length > 0
 
     ) {
@@ -6532,11 +6687,8 @@ StaffIntent.detectCountIntent = function (
         result.parameters.designation =
 
             entities
-
                 .designations[0]
-
                 .identity
-
                 .designation;
 
         result.confidence =
@@ -6636,88 +6788,18 @@ StaffIntent.detectCountIntent = function (
     }
 
     /*----------------------------------
-      Active Count
+      Active Staff Count
     ----------------------------------*/
 
     if (
 
-        parameters.dutyActive ===
-
-        true
+        parameters.dutyActive === true
 
     ) {
 
         result.intent =
 
             INTENTS.STAFF_ACTIVE_COUNT;
-
-        result.confidence =
-
-            0.99;
-
-        return result;
-
-    }
-
-    /*----------------------------------
-      Inactive Count
-    ----------------------------------*/
-
-    if (
-
-        parameters.dutyActive ===
-
-        false
-
-    ) {
-
-        result.intent =
-
-            INTENTS.STAFF_INACTIVE_COUNT;
-
-        result.confidence =
-
-            0.99;
-
-        return result;
-
-    }
-
-    /*----------------------------------
-      Moving Count
-    ----------------------------------*/
-
-    if (
-
-        parameters.moving
-
-    ) {
-
-        result.intent =
-
-            INTENTS.STAFF_MOVING_COUNT;
-
-        result.confidence =
-
-            0.99;
-
-        return result;
-
-    }
-
-    /*----------------------------------
-      Stationary Count
-    ----------------------------------*/
-
-    if (
-
-        parameters.stationary
-
-    ) {
-
-        result.intent =
-
-            INTENTS.STAFF_STATIONARY_COUNT;
 
         result.confidence =
 
