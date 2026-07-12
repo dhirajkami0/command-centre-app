@@ -854,7 +854,35 @@ AIDispatcher.dispatchStaff = async function (
         };
 
     }
+/*----------------------------------
+  Normalize Staff Entities
+----------------------------------*/
 
+intent.entities =
+    intent.entities ||
+    {};
+
+if (
+
+    typeof intent.entities.name ===
+
+    "string" &&
+
+    !Array.isArray(
+
+        intent.entities.staff
+
+    )
+
+) {
+
+    intent.entities.staff = [
+
+        intent.entities.name
+
+    ];
+
+}
     /*----------------------------------
       Route
     ----------------------------------*/
