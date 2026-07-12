@@ -460,6 +460,189 @@ function (
     };
 
 };
+
+  /*--------------------------------------------------
+  Staff Inside Beat
+--------------------------------------------------*/
+
+StaffGIS.findStaffInsideBeat = function (
+
+    beat
+
+) {
+
+    beat =
+
+        String(
+
+            beat || ""
+
+        )
+
+        .trim()
+
+        .toUpperCase();
+
+    return Object
+        .values(
+
+            window.liveStaffCache || {}
+
+        )
+        .filter(
+
+            s =>
+
+                String(
+
+                    s.beat || ""
+
+                )
+
+                .toUpperCase() ===
+
+                beat
+
+        );
+
+};
+
+  /*--------------------------------------------------
+  Staff Inside Range
+--------------------------------------------------*/
+
+StaffGIS.findStaffInsideRange = function (
+
+    range
+
+) {
+
+    range =
+
+        String(
+
+            range || ""
+
+        )
+
+        .trim()
+
+        .toUpperCase();
+
+    return Object
+        .values(
+
+            window.liveStaffCache || {}
+
+        )
+        .filter(
+
+            s =>
+
+                String(
+
+                    s.range || ""
+
+                )
+
+                .toUpperCase() ===
+
+                range
+
+        );
+
+};
+
+  /*--------------------------------------------------
+  Staff Inside Division
+--------------------------------------------------*/
+
+StaffGIS.findStaffInsideDivision = function (
+
+    division
+
+) {
+
+    division =
+
+        String(
+
+            division || ""
+
+        )
+
+        .trim()
+
+        .toUpperCase();
+
+    return Object
+        .values(
+
+            window.liveStaffCache || {}
+
+        )
+        .filter(
+
+            s =>
+
+                String(
+
+                    s.division || ""
+
+                )
+
+                .toUpperCase() ===
+
+                division
+
+        );
+
+};
+  /*--------------------------------------------------
+  Staff Inside Compartment
+--------------------------------------------------*/
+
+StaffGIS.findStaffInsideCompartment = function (
+
+    compartment
+
+) {
+
+    compartment =
+
+        String(
+
+            compartment || ""
+
+        )
+
+        .trim()
+
+        .toUpperCase();
+
+    return Object
+        .values(
+
+            window.liveStaffCache || {}
+
+        )
+        .filter(
+
+            s =>
+
+                String(
+
+                    s.compartment || ""
+
+                )
+
+                .toUpperCase() ===
+
+                compartment
+
+        );
+
+};
   /*=========================================================
   StaffGIS
   Posting Validation
