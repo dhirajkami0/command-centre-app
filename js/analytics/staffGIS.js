@@ -626,19 +626,34 @@ StaffGIS.findStaffInsideCompartment = function (
             window.liveStaffCache || {}
 
         )
+
         .filter(
 
-            s =>
+            function (
 
-                String(
+                staff
 
-                    s.compartment || ""
+            ) {
 
-                )
+                const p =
 
-                .toUpperCase() ===
+                    StaffGIS.locate(
 
-                compartment
+                        staff.cleanName
+
+                    );
+
+                return (
+
+                    p?.profile?.spatial?.compartment ||
+
+                    ""
+
+                ).toUpperCase() ===
+
+                compartment;
+
+            }
 
         );
 
