@@ -1272,6 +1272,10 @@ StaffQuery.getStaff = function (
 
 ) {
 
+    /*----------------------------------
+      Get Staff References
+    ----------------------------------*/
+
     const staff =
 
         Array.isArray(
@@ -1284,72 +1288,158 @@ StaffQuery.getStaff = function (
 
             : [];
 
-    return staff.map(
+    /*----------------------------------
+      Hydrate Staff
+    ----------------------------------*/
 
-        function (
+    return staff
 
-            profile
+        .map(
 
-        ) {
+            function (
 
-            const cleanName =
-
-                String(
-
-                    profile?.identity?.cleanName ||
-
-                    profile?.cleanName ||
-
-                    ""
-
-                )
-
-                .trim()
-
-                .toUpperCase();
-
-            if (
-
-                cleanName &&
-
-                GG.StaffHydrator &&
-
-                typeof GG.StaffHydrator
-                    .getHydratedStaff ===
-
-                "function"
+                item
 
             ) {
 
-                const hydrated =
+                let cleanName =
 
-                    GG.StaffHydrator
-                        .getHydratedStaff(
+                    "";
 
-                            cleanName
-
-                        );
+                /*----------------------------------
+                  String
+                ----------------------------------*/
 
                 if (
 
-                    hydrated
+                    typeof item ===
+
+                    "string"
 
                 ) {
 
-                    return hydrated;
+                    cleanName =
+
+                        item;
 
                 }
 
+                /*----------------------------------
+                  Staff Object
+                ----------------------------------*/
+
+                else if (
+
+                    item &&
+
+                    typeof item ===
+
+                    "object"
+
+                ) {
+
+                    cleanName =
+
+                        item.identity
+                            ?.cleanName ||
+
+                        item.cleanName ||
+
+                        item.identity
+                            ?.name ||
+
+                        item.name ||
+
+                        "";
+
+                }
+
+                cleanName =
+
+                    String(
+
+                        cleanName
+
+                    )
+
+                    .trim()
+
+                    .toUpperCase();
+
+                if (
+
+                    cleanName ===
+
+                    ""
+
+                ) {
+
+                    return null;
+
+                }
+
+                /*----------------------------------
+                  Hydrate
+                ----------------------------------*/
+
+                if (
+
+                    GG.StaffHydrator &&
+
+                    typeof GG.StaffHydrator
+                        .getHydratedStaff ===
+
+                    "function"
+
+                ) {
+
+                    const hydrated =
+
+                        GG.StaffHydrator
+                            .getHydratedStaff(
+
+                                cleanName
+
+                            );
+
+                    if (
+
+                        hydrated
+
+                    ) {
+
+                        return hydrated;
+
+                    }
+
+                }
+
+                /*----------------------------------
+                  Fallback
+                ----------------------------------*/
+
+                return item;
+
             }
 
-            return profile;
+        )
 
-        }
+        .filter(
 
-    );
+            function (
+
+                profile
+
+            ) {
+
+                return !!profile;
+
+            }
+
+        );
 
 };
-/*----------------------------------
+    /*----------------------------------
   Get All Staff
 ----------------------------------*/
 
