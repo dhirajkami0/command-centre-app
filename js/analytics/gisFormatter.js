@@ -28,238 +28,1011 @@ window.GreenGuardAI =
       Format
     --------------------------------------------------*/
 
-    GISFormatter.format = function (
+/*--------------------------------------------------
+  Create Response
+--------------------------------------------------*/
 
-        response
+GISFormatter.createResponse = function (
+
+    request = {}
+
+) {
+
+    return {
+
+        success:
+
+            false,
+
+        source:
+
+            request.source ||
+
+            "LOCAL",
+
+        module:
+
+            "GISFormatter",
+
+        intent:
+
+            request.intent ||
+
+            "",
+
+        confidence:
+
+            request.confidence ||
+
+            0,
+
+        markdown:
+
+            "",
+
+        html:
+
+            "",
+
+        cards:
+
+            [],
+
+        data:
+
+            null
+
+    };
+
+};
+
+/*--------------------------------------------------
+  Current GIS Location
+--------------------------------------------------*/
+
+GISFormatter.formatCurrentLocation = function (
+
+    request = {}
+
+) {
+
+    const response =
+
+        GISFormatter.createResponse(
+
+            request
+
+        );
+
+    const filter =
+
+        Query.getFilter();
+
+    const geometry =
+
+        Query.getCurrentGeometry();
+
+    response.success =
+
+        true;
+
+    response.data = {
+
+        filter,
+
+        geometry
+
+    };
+
+    response.markdown =
+
+`# 📍 Current GIS Location
+
+**Division:** ${filter.division || "-"}
+
+**Range:** ${filter.range || "-"}
+
+**Beat:** ${filter.beat || "-"}
+
+**Compartment:** ${filter.compartment || "-"}
+
+**Geometry:** ${geometry ? geometry.type : "-"}`;
+
+    return response;
+
+};
+  /*--------------------------------------------------
+  Current Village
+--------------------------------------------------*/
+
+GISFormatter.formatCurrentVillage = function (
+
+    request = {}
+
+) {
+
+    const response =
+
+        GISFormatter.createResponse(
+
+            request
+
+        );
+
+    const villages =
+
+        Query.getVillages();
+
+    response.success =
+
+        true;
+
+    response.data =
+
+        villages;
+
+    response.markdown =
+
+`# 🏡 Villages
+
+**Total Villages:** ${villages.length}`;
+
+    return response;
+
+};
+/*--------------------------------------------------
+  Current Compartment
+--------------------------------------------------*/
+
+GISFormatter.formatCurrentCompartment = function (
+
+    request = {}
+
+) {
+
+    const response =
+
+        GISFormatter.createResponse(
+
+            request
+
+        );
+
+    const compartment =
+
+        Query.getCurrentCompartment();
+
+    response.success =
+
+        true;
+
+    response.data =
+
+        compartment;
+
+    response.markdown =
+
+`# 📍 Current Compartment
+
+${compartment || "Not Selected"}`;
+
+    return response;
+
+};
+
+  /*--------------------------------------------------
+  Staff Location
+--------------------------------------------------*/
+
+GISFormatter.formatStaffLocation = function (
+
+    cleanName,
+
+    request = {}
+
+) {
+
+    const response =
+
+        GISFormatter.createResponse(
+
+            request
+
+        );
+
+    const result =
+
+        GG.StaffGIS.locate(
+
+            cleanName
+
+        );
+
+    if (
+
+        !result
 
     ) {
 
-        if (
+        response.markdown =
 
-            !response
+            "# Staff Not Found";
 
-        ) {
+        return response;
 
-            return "";
+    }
 
-        }
+    const profile =
 
-        if (
+        result.profile;
 
-            typeof response ===
+    const spatial =
 
-            "string"
+        profile.spatial || {};
 
-        ) {
+    const gps =
 
-            return response;
+        profile.location || {};
 
-        }
+    response.success =
 
-        return JSON.stringify(
+        true;
 
-            response,
+    response.data =
 
-            null,
+        profile;
 
-            2
+    response.markdown =
+
+`# 📍 ${profile.identity.name}
+
+**Current Division:** ${spatial.division || "-"}
+
+**Current Range:** ${spatial.range || "-"}
+
+**Current Beat:** ${spatial.beat || "-"}
+
+**Current Compartment:** ${spatial.compartment || "-"}
+
+**Latitude:** ${gps.lat || "-"}
+
+**Longitude:** ${gps.lon || "-"}`;
+
+    return response;
+
+};
+    /*--------------------------------------------------
+      Beat Summary
+    --------------------------------------------------*/
+
+/*--------------------------------------------------
+  Beat Summary
+--------------------------------------------------*/
+
+
+  /*--------------------------------------------------
+  Range Summary
+--------------------------------------------------*/
+
+GISFormatter.formatRangeSummary = function (
+
+    range,
+
+    request = {}
+
+) {
+
+    const response =
+
+        GISFormatter.createResponse(
+
+            request
 
         );
 
-    };
+    const result =
 
-    /*--------------------------------------------------
-      Current Filter
-    --------------------------------------------------*/
+        Query.getRangeSummary(
 
-    GISFormatter.formatFilter = function () {
-
-        return GISFormatter.format(
-
-            Query.getFilter()
+            range
 
         );
 
-    };
+    if (
 
-    /*--------------------------------------------------
-      Current Selection
-    --------------------------------------------------*/
+        !result
 
-    GISFormatter.formatSelection = function () {
+    ) {
 
-        return GISFormatter.format(
+        response.markdown =
 
-            {
+            "# Range Not Found";
 
-                division:
+        return response;
 
-                    Query.getCurrentDivision(),
+    }
 
-                range:
+    response.success =
 
-                    Query.getCurrentRange(),
+        true;
 
-                beat:
+    response.data =
 
-                    Query.getCurrentBeat(),
+        result;
 
-                compartment:
+    response.markdown =
 
-                    Query.getCurrentCompartment()
+`# 👥 Staff Status
+
+**Range:** ${result.range}
+
+**Total Staff:** ${result.staffCount}
+
+**On Duty:** ${result.liveStaff}`;
+
+    return response;
+
+};
+  /*--------------------------------------------------
+  Division Summary
+--------------------------------------------------*/
+
+GISFormatter.formatDivisionSummary = function (
+
+    division,
+
+    request = {}
+
+) {
+
+    const response =
+
+        GISFormatter.createResponse(
+
+            request
+
+        );
+
+    const result =
+
+        Query.getDivisionSummary(
+
+            division
+
+        );
+
+    if (
+
+        !result
+
+    ) {
+
+        response.markdown =
+
+            "# Division Not Found";
+
+        return response;
+
+    }
+
+    response.success =
+
+        true;
+
+    response.data =
+
+        result;
+
+    response.markdown =
+
+`# 👥 Staff Status
+
+**Division:** ${result.division}
+
+**Total Staff:** ${result.staffCount}
+
+**On Duty:** ${result.liveStaff}`;
+
+    return response;
+
+};
+  /*--------------------------------------------------
+  Beat Staff
+--------------------------------------------------*/
+
+GISFormatter.formatBeatStaff = function (
+
+    beat,
+
+    request = {}
+
+) {
+
+    const response =
+
+        GISFormatter.createResponse(
+
+            request
+
+        );
+
+    const staff =
+
+        Query.findStaffInsideBeat(
+
+            beat
+
+        );
+
+    response.success =
+
+        true;
+
+    response.data =
+
+        staff;
+
+    let md =
+
+`# 👥 Staff in ${beat}
+
+**Total Staff:** ${staff.length}`;
+
+    if (
+
+        staff.length
+
+    ) {
+
+        md +=
+
+            "\n\n";
+
+        staff.forEach(
+
+            function (
+
+                s,
+
+                i
+
+            ) {
+
+                md +=
+
+`${i + 1}. ${
+
+    s.name ||
+
+    s.cleanName
+
+}
+
+`;
 
             }
 
         );
 
-    };
+    }
 
-    /*--------------------------------------------------
-      Beat Summary
-    --------------------------------------------------*/
+    response.markdown =
 
-    GISFormatter.formatBeatSummary = function (
+        md;
 
-        beat
+    return response;
+
+};
+  /*--------------------------------------------------
+  Range Staff
+--------------------------------------------------*/
+
+GISFormatter.formatRangeStaff = function (
+
+    range,
+
+    request = {}
+
+) {
+
+    const response =
+
+        GISFormatter.createResponse(
+
+            request
+
+        );
+
+    const staff =
+
+        Query.findStaffInsideRange(
+
+            range
+
+        );
+
+    response.success =
+
+        true;
+
+    response.data =
+
+        staff;
+
+    let md =
+
+`# 👥 Staff in ${range}
+
+**Total Staff:** ${staff.length}`;
+
+    if (
+
+        staff.length
 
     ) {
 
-        return GISFormatter.format(
+        md +=
 
-            Query.getBeatSummary(
+            "\n\n";
 
-                beat
+        staff.forEach(
 
-            )
+            function (
+
+                s,
+
+                i
+
+            ) {
+
+                md +=
+
+`${i + 1}. ${
+
+    s.name ||
+
+    s.cleanName
+
+}
+
+`;
+
+            }
 
         );
 
-    };
+    }
 
-    /*--------------------------------------------------
-      Range Summary
-    --------------------------------------------------*/
+    response.markdown =
 
-    GISFormatter.formatRangeSummary = function (
+        md;
 
-        range
+    return response;
+
+};
+  /*--------------------------------------------------
+  Division Staff
+--------------------------------------------------*/
+
+GISFormatter.formatDivisionStaff = function (
+
+    division,
+
+    request = {}
+
+) {
+
+    const response =
+
+        GISFormatter.createResponse(
+
+            request
+
+        );
+
+    const staff =
+
+        Query.findStaffInsideDivision(
+
+            division
+
+        );
+
+    response.success =
+
+        true;
+
+    response.data =
+
+        staff;
+
+    let md =
+
+`# 👥 Staff in ${division}
+
+**Total Staff:** ${staff.length}`;
+
+    if (
+
+        staff.length
 
     ) {
 
-        return GISFormatter.format(
+        md +=
 
-            Query.getRangeSummary(
+            "\n\n";
 
-                range
+        staff.forEach(
 
-            )
+            function (
+
+                s,
+
+                i
+
+            ) {
+
+                md +=
+
+`${i + 1}. ${
+
+    s.name ||
+
+    s.cleanName
+
+}
+
+`;
+
+            }
 
         );
 
-    };
+    }
 
-    /*--------------------------------------------------
-      Division Summary
-    --------------------------------------------------*/
+    response.markdown =
 
-    GISFormatter.formatDivisionSummary = function (
+        md;
 
-        division
+    return response;
+
+};
+  /*--------------------------------------------------
+  Hierarchy
+--------------------------------------------------*/
+
+GISFormatter.formatHierarchy = function (
+
+    value,
+
+    request = {}
+
+) {
+
+    const response =
+
+        GISFormatter.createResponse(
+
+            request
+
+        );
+
+    const hierarchy =
+
+        Query.getHierarchy(
+
+            value
+
+        );
+
+    if (
+
+        !hierarchy
 
     ) {
 
-        return GISFormatter.format(
+        response.markdown =
 
-            Query.getDivisionSummary(
+            "# Area Not Found";
 
-                division
+        return response;
 
-            )
+    }
 
-        );
+    response.success =
 
-    };
+        true;
 
-    /*--------------------------------------------------
-      Staff Inside Beat
-    --------------------------------------------------*/
+    response.data =
 
-    GISFormatter.formatBeatStaff = function (
+        hierarchy;
 
-        beat
+    response.markdown =
 
-    ) {
+`# 🌿 GIS Hierarchy
 
-        return GISFormatter.format(
+**Division:** ${hierarchy.division || "-"}
 
-            Query.findStaffInsideBeat(
+**Range:** ${hierarchy.range || "-"}
 
-                beat
+**Beat:** ${hierarchy.beat || "-"}
 
-            )
+**Compartment:** ${hierarchy.compartment || "-"}`;
 
-        );
+    return response;
 
-    };
+};
+  /*--------------------------------------------------
+  GIS Information
+--------------------------------------------------*/
 
-    /*--------------------------------------------------
-      Staff Inside Range
-    --------------------------------------------------*/
+GISFormatter.formatInfo = function (
 
-    GISFormatter.formatRangeStaff = function (
+    request = {}
 
-        range
+) {
 
-    ) {
+    const response =
 
-        return GISFormatter.format(
+        GISFormatter.createResponse(
 
-            Query.findStaffInsideRange(
-
-                range
-
-            )
+            request
 
         );
 
-    };
+    const info =
 
-    /*--------------------------------------------------
-      Staff Inside Division
-    --------------------------------------------------*/
+        Query.info();
 
-    GISFormatter.formatDivisionStaff = function (
+    response.success =
 
-        division
+        true;
 
-    ) {
+    response.data =
 
-        return GISFormatter.format(
+        info;
 
-            Query.findStaffInsideDivision(
+    response.markdown =
 
-                division
+`# 🌿 GIS Database
 
-            )
+**Divisions:** ${info.gis}
+
+**Compartments:** ${info.compartments}
+
+**Villages:** ${info.villages}
+
+**Staff Profiles:** ${info.staffProfiles}`;
+
+    return response;
+
+};
+
+  /*--------------------------------------------------
+  Current Selection
+--------------------------------------------------*/
+
+/*--------------------------------------------------
+  Current Selection
+--------------------------------------------------*/
+
+GISFormatter.formatCurrentSelection = function (
+
+    request = {}
+
+) {
+
+    const response =
+
+        GISFormatter.createResponse(
+
+            request
 
         );
 
+    const division =
+
+        Query.getCurrentDivision();
+
+    const range =
+
+        Query.getCurrentRange();
+
+    const beat =
+
+        Query.getCurrentBeat();
+
+    const compartment =
+
+        Query.getCurrentCompartment();
+
+    response.success =
+
+        true;
+
+    response.data = {
+
+        division,
+
+        range,
+
+        beat,
+
+        compartment
+
     };
 
-    /*--------------------------------------------------
-      GIS Info
-    --------------------------------------------------*/
+    response.markdown =
 
-    GISFormatter.formatInfo = function () {
+`# 📍 Current Selection
 
-        return GISFormatter.format(
+**Division:** ${division || "-"}
 
-            Query.info()
+**Range:** ${range || "-"}
+
+**Beat:** ${beat || "-"}
+
+**Compartment:** ${compartment || "-"}`;
+
+    return response;
+
+};
+  /*--------------------------------------------------
+  Current Beat
+--------------------------------------------------*/
+
+GISFormatter.formatCurrentBeat = function (
+
+    request = {}
+
+) {
+
+    const response =
+
+        GISFormatter.createResponse(
+
+            request
 
         );
 
-    };
+    const beat =
 
+        Query.getCurrentBeat();
+
+    response.success =
+
+        true;
+
+    response.data =
+
+        beat;
+
+    response.markdown =
+
+`# 📍 Current Beat
+
+${beat || "Not Selected"}`;
+
+    return response;
+
+};
+  /*--------------------------------------------------
+  Current Beat
+--------------------------------------------------*/
+
+GISFormatter.formatCurrentBeat = function (
+
+    request = {}
+
+) {
+
+    const response =
+
+        GISFormatter.createResponse(
+
+            request
+
+        );
+
+    const beat =
+
+        Query.getCurrentBeat();
+
+    response.success =
+
+        true;
+
+    response.data =
+
+        beat;
+
+    response.markdown =
+
+`# 📍 Current Beat
+
+${beat || "Not Selected"}`;
+
+    return response;
+
+};
+  /*--------------------------------------------------
+  Current Range
+--------------------------------------------------*/
+
+GISFormatter.formatCurrentRange = function (
+
+    request = {}
+
+) {
+
+    const response =
+
+        GISFormatter.createResponse(
+
+            request
+
+        );
+
+    const range =
+
+        Query.getCurrentRange();
+
+    response.success =
+
+        true;
+
+    response.data =
+
+        range;
+
+    response.markdown =
+
+`# 📍 Current Range
+
+${range || "Not Selected"}`;
+
+    return response;
+
+};
+  /*--------------------------------------------------
+  Current Division
+--------------------------------------------------*/
+
+GISFormatter.formatCurrentDivision = function (
+
+    request = {}
+
+) {
+
+    const response =
+
+        GISFormatter.createResponse(
+
+            request
+
+        );
+
+    const division =
+
+        Query.getCurrentDivision();
+
+    response.success =
+
+        true;
+
+    response.data =
+
+        division;
+
+    response.markdown =
+
+`# 📍 Current Division
+
+${division || "Not Selected"}`;
+
+    return response;
+
+};
     /*--------------------------------------------------
       Export
     --------------------------------------------------*/
