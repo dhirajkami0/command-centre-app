@@ -527,7 +527,30 @@ AIDispatcher.dispatch = async function (
 
     console.groupEnd();
 
-    return response;
+    /*----------------------------------
+  Metadata
+----------------------------------*/
+
+response.metadata =
+    response.metadata ||
+    {};
+
+response.metadata.executionTime =
+    Date.now() -
+    started;
+
+response.request =
+    request;
+
+response.detectedIntent =
+    intent;
+
+AIDispatcher.lastResponse =
+    response;
+
+/* ADD LOG HERE */
+
+return response;
 
 }; /*=========================================================
  DISPATCH STAFF
