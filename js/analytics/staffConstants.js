@@ -1272,19 +1272,23 @@ STAFF_DIRECTORY: [
 
     "STAFF DIRECTORY",
 
-    "DIRECTORY OF STAFF",
+    "DIRECTORY",
 
     "STAFF LIST",
 
+    "LIST STAFF",
+
+    "LIST OF STAFF",
+
     "ALL STAFF",
 
-    "FULL STAFF",
+    "COMPLETE STAFF LIST",
 
-    "COMPLETE STAFF",
+    "SHOW STAFF DIRECTORY",
 
-    "FULL STAFF LIST",
+    "DISPLAY STAFF DIRECTORY",
 
-    "COMPLETE STAFF LIST"
+    "VIEW STAFF DIRECTORY"
 
 ],
 /*----------------------------------
