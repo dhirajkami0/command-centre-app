@@ -1667,7 +1667,7 @@ STAFF_LOCATION: [
     /*----------------------------------
       Primary Location
     ----------------------------------*/
-
+"LOCATE",
     "LOCATION",
     "CURRENT LOCATION",
     "LIVE LOCATION",
