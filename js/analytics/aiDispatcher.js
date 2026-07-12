@@ -426,46 +426,13 @@ if (
         return routed;
     }
 
-    /*----------------------------------
-      Formatter
-    ----------------------------------*/
+/*----------------------------------
+  Already Formatted By Router
+----------------------------------*/
 
-    let formatted =
-        routed;
-    console.time(
-        "Formatter"
-    );
+const formatted =
 
-    switch (
-        intent.domain
-    ) {
-        case "staff":
-            console.log(
-                "➡ StaffFormatter"
-            );
-            formatted =
-                GG.StaffFormatter.format(
-                    routed
-                );
-            break;
-        case "gis":
-            if (
-                GG.GISFormatter
-            ) {
-                console.log(
-                    "➡ GISFormatter"
-                );
-                formatted =
-                    GG.GISFormatter.format(
-                        routed
-                    );
-            }
-            break;
-    }
-
-    console.timeEnd(
-        "Formatter"
-    );
+    routed;
 
     console.log(
         "📝 Formatted:",
@@ -536,6 +503,9 @@ if (
 /*=========================================================
  DISPATCH STAFF
 =========================================================*/
+/*=========================================================
+ DISPATCH STAFF
+=========================================================*/
 
 AIDispatcher.dispatchStaff = async function (
 
@@ -551,7 +521,9 @@ AIDispatcher.dispatchStaff = async function (
 
         !intent ||
 
-        typeof intent !== "object"
+        typeof intent !==
+
+        "object"
 
     ) {
 
@@ -568,16 +540,12 @@ AIDispatcher.dispatchStaff = async function (
     }
 
     /*----------------------------------
-      Dependencies
+      Router
     ----------------------------------*/
 
     const StaffRouter =
 
         GG.StaffRouter;
-
-    const StaffFormatter =
-
-        GG.StaffFormatter;
 
     if (
 
@@ -601,33 +569,11 @@ AIDispatcher.dispatchStaff = async function (
 
     }
 
-    if (
-
-        !StaffFormatter ||
-
-        typeof StaffFormatter.format !==
-
-        "function"
-
-    ) {
-
-        return {
-
-            success: false,
-
-            message:
-
-                "StaffFormatter unavailable."
-
-        };
-
-    }
-
     /*----------------------------------
-      Route Request
+      Route
     ----------------------------------*/
 
-    const routed =
+    const response =
 
         await StaffRouter.route(
 
@@ -636,20 +582,22 @@ AIDispatcher.dispatchStaff = async function (
         );
 
     /*----------------------------------
-      Route Failed
+      Failed
     ----------------------------------*/
 
     if (
 
-        !routed ||
+        !response ||
 
-        routed.success !== true
+        response.success !==
+
+        true
 
     ) {
 
         return (
 
-            routed ||
+            response ||
 
             {
 
@@ -666,128 +614,17 @@ AIDispatcher.dispatchStaff = async function (
     }
 
     /*----------------------------------
-      Format Response
+      Already Formatted
     ----------------------------------*/
 
-    const formatted =
+    return response;
 
-        StaffFormatter.format(
+};
+ /*=========================================================
+ DISPATCH GIS
+=========================================================*/
 
-            routed
-
-        );
-
-    /*----------------------------------
-      Formatter Failed
-    ----------------------------------*/
-
-    if (
-
-        !formatted ||
-
-        formatted.success !== true
-
-    ) {
-
-        return {
-
-            success: false,
-
-            message:
-
-                "Staff formatter failed."
-
-        };
-
-    }
-
-    /*----------------------------------
-      Return
-    ----------------------------------*/
-
-    return {
-
-        success:
-
-            true,
-
-        source:
-
-            "LOCAL",
-
-        domain:
-
-            "staff",
-
-        intent:
-
-            intent.intent,
-
-        confidence:
-
-            intent.confidence,
-
-        entities:
-
-            intent.entities ||
-
-            {},
-
-        /*----------------------------------
-          IMPORTANT
-        ----------------------------------*/
-
-        data:
-
-            routed.data ||
-
-            null,
-
-        markdown:
-
-            formatted.markdown ||
-
-            "",
-
-        html:
-
-            formatted.html ||
-
-            "",
-
-        cards:
-
-            formatted.cards ||
-
-            [],
-
-        tables:
-
-            formatted.tables ||
-
-            [],
-
-        sections:
-
-            formatted.sections ||
-
-            [],
-
-        message:
-
-            formatted.message ||
-
-            "",
-
-        metadata:
-
-            routed.metadata ||
-
-            {}
-
-    };
-
-};/*=========================================================
+/*=========================================================
  DISPATCH GIS
 =========================================================*/
 
@@ -805,7 +642,9 @@ AIDispatcher.dispatchGIS = async function (
 
         !intent ||
 
-        typeof intent !== "object"
+        typeof intent !==
+
+        "object"
 
     ) {
 
@@ -822,16 +661,12 @@ AIDispatcher.dispatchGIS = async function (
     }
 
     /*----------------------------------
-      Dependencies
+      Router
     ----------------------------------*/
 
     const GISRouter =
 
         GG.GISRouter;
-
-    const GISFormatter =
-
-        GG.GISFormatter;
 
     if (
 
@@ -856,10 +691,10 @@ AIDispatcher.dispatchGIS = async function (
     }
 
     /*----------------------------------
-      Route Request
+      Route
     ----------------------------------*/
 
-    const routed =
+    const response =
 
         await GISRouter.route(
 
@@ -868,20 +703,22 @@ AIDispatcher.dispatchGIS = async function (
         );
 
     /*----------------------------------
-      Route Failed
+      Failed
     ----------------------------------*/
 
     if (
 
-        !routed ||
+        !response ||
 
-        routed.success !== true
+        response.success !==
+
+        true
 
     ) {
 
         return (
 
-            routed ||
+            response ||
 
             {
 
@@ -898,148 +735,20 @@ AIDispatcher.dispatchGIS = async function (
     }
 
     /*----------------------------------
-      Format Response
+      Already Formatted
     ----------------------------------*/
 
-    let formatted =
-
-        routed;
-
-    if (
-
-        GISFormatter &&
-
-        typeof GISFormatter.format ===
-
-        "function"
-
-    ) {
-
-        formatted =
-
-            GISFormatter.format(
-
-                routed
-
-            );
-
-    }
-
-    /*----------------------------------
-      Formatter Failed
-    ----------------------------------*/
-
-    if (
-
-        !formatted ||
-
-        formatted.success !== true
-
-    ) {
-
-        return {
-
-            success: false,
-
-            message:
-
-                "GIS formatter failed."
-
-        };
-
-    }
-
-    /*----------------------------------
-      Return
-    ----------------------------------*/
-
-    return {
-
-        success:
-
-            true,
-
-        source:
-
-            "LOCAL",
-
-        domain:
-
-            "gis",
-
-        intent:
-
-            intent.intent,
-
-        confidence:
-
-            intent.confidence,
-
-        entities:
-
-            intent.entities ||
-
-            {},
-
-        /*----------------------------------
-          IMPORTANT
-        ----------------------------------*/
-
-        data:
-
-            routed.data ||
-
-            null,
-
-        markdown:
-
-            formatted.markdown ||
-
-            "",
-
-        html:
-
-            formatted.html ||
-
-            "",
-
-        cards:
-
-            formatted.cards ||
-
-            [],
-
-        tables:
-
-            formatted.tables ||
-
-            [],
-
-        sections:
-
-            formatted.sections ||
-
-            [],
-
-        message:
-
-            formatted.message ||
-
-            "",
-
-        metadata:
-
-            routed.metadata ||
-
-            {}
-
-    };
+    return response;
 
 };/*=========================================================
  DISPATCH WILDLIFE
 =========================================================*/
 
-AIDispatcher.dispatchWildlife = function (
+/*=========================================================
+ DISPATCH WILDLIFE
+=========================================================*/
+
+AIDispatcher.dispatchWildlife = async function (
 
     intent
 
@@ -1053,7 +762,9 @@ AIDispatcher.dispatchWildlife = function (
 
         !intent ||
 
-        typeof intent !== "object"
+        typeof intent !==
+
+        "object"
 
     ) {
 
@@ -1070,14 +781,20 @@ AIDispatcher.dispatchWildlife = function (
     }
 
     /*----------------------------------
-      Wildlife Module Check
+      Router
     ----------------------------------*/
+
+    const WildlifeRouter =
+
+        GG.WildlifeRouter;
 
     if (
 
-        typeof GG.WildlifeRouter !==
+        !WildlifeRouter ||
 
-        "object"
+        typeof WildlifeRouter.route !==
+
+        "function"
 
     ) {
 
@@ -1085,21 +802,9 @@ AIDispatcher.dispatchWildlife = function (
 
             success: false,
 
-            domain:
-
-                "wildlife",
-
-            intent:
-
-                intent.intent,
-
-            confidence:
-
-                intent.confidence,
-
             message:
 
-                "Wildlife AI module is not installed."
+                "WildlifeRouter unavailable."
 
         };
 
@@ -1109,135 +814,57 @@ AIDispatcher.dispatchWildlife = function (
       Route
     ----------------------------------*/
 
-    const routed =
+    const response =
 
-        GG.WildlifeRouter.route(
+        await WildlifeRouter.route(
 
             intent
 
         );
 
     /*----------------------------------
-      Route Failed
+      Failed
     ----------------------------------*/
 
     if (
 
-        !routed ||
+        !response ||
 
-        routed.success !== true
+        response.success !==
+
+        true
 
     ) {
 
-        return routed || {
+        return (
 
-            success: false,
+            response ||
 
-            message:
+            {
 
-                "Wildlife router failed."
+                success: false,
 
-        };
+                message:
+
+                    "Wildlife router failed."
+
+            }
+
+        );
 
     }
 
     /*----------------------------------
-      Formatter
+      Already Formatted
     ----------------------------------*/
 
-    let formatted =
-
-        routed;
-
-    if (
-
-        GG.WildlifeFormatter &&
-
-        typeof GG.WildlifeFormatter.format ===
-
-        "function"
-
-    ) {
-
-        formatted =
-
-            GG.WildlifeFormatter.format(
-
-                routed
-
-            );
-
-    }
-
-    /*----------------------------------
-      Return
-    ----------------------------------*/
-
-    return {
-
-        success:
-
-            formatted.success,
-
-        domain:
-
-            "wildlife",
-
-        intent:
-
-            intent.intent,
-
-        confidence:
-
-            intent.confidence,
-
-        data:
-
-            routed,
-
-        markdown:
-
-            formatted.markdown ||
-
-            "",
-
-        html:
-
-            formatted.html ||
-
-            "",
-
-        cards:
-
-            formatted.cards ||
-
-            [],
-
-        tables:
-
-            formatted.tables ||
-
-            [],
-
-        sections:
-
-            formatted.sections ||
-
-            [],
-
-        message:
-
-            formatted.message ||
-
-            ""
-
-    };
+    return response;
 
 };/*=========================================================
  DISPATCH FIRE
 =========================================================*/
 
-AIDispatcher.dispatchFire = function (
+AIDispatcher.dispatchFire = async function (
 
     intent
 
@@ -1251,7 +878,9 @@ AIDispatcher.dispatchFire = function (
 
         !intent ||
 
-        typeof intent !== "object"
+        typeof intent !==
+
+        "object"
 
     ) {
 
@@ -1268,14 +897,20 @@ AIDispatcher.dispatchFire = function (
     }
 
     /*----------------------------------
-      Fire Module Check
+      Router
     ----------------------------------*/
+
+    const FireRouter =
+
+        GG.FireRouter;
 
     if (
 
-        typeof GG.FireRouter !==
+        !FireRouter ||
 
-        "object"
+        typeof FireRouter.route !==
+
+        "function"
 
     ) {
 
@@ -1283,21 +918,9 @@ AIDispatcher.dispatchFire = function (
 
             success: false,
 
-            domain:
-
-                "fire",
-
-            intent:
-
-                intent.intent,
-
-            confidence:
-
-                intent.confidence,
-
             message:
 
-                "Fire AI module is not installed."
+                "FireRouter unavailable."
 
         };
 
@@ -1307,135 +930,61 @@ AIDispatcher.dispatchFire = function (
       Route
     ----------------------------------*/
 
-    const routed =
+    const response =
 
-        GG.FireRouter.route(
+        await FireRouter.route(
 
             intent
 
         );
 
     /*----------------------------------
-      Route Failed
+      Failed
     ----------------------------------*/
 
     if (
 
-        !routed ||
+        !response ||
 
-        routed.success !== true
+        response.success !==
+
+        true
 
     ) {
 
-        return routed || {
+        return (
 
-            success: false,
+            response ||
 
-            message:
+            {
 
-                "Fire router failed."
+                success: false,
 
-        };
+                message:
+
+                    "Fire router failed."
+
+            }
+
+        );
 
     }
 
     /*----------------------------------
-      Formatter
+      Already Formatted
     ----------------------------------*/
 
-    let formatted =
-
-        routed;
-
-    if (
-
-        GG.FireFormatter &&
-
-        typeof GG.FireFormatter.format ===
-
-        "function"
-
-    ) {
-
-        formatted =
-
-            GG.FireFormatter.format(
-
-                routed
-
-            );
-
-    }
-
-    /*----------------------------------
-      Return
-    ----------------------------------*/
-
-    return {
-
-        success:
-
-            formatted.success,
-
-        domain:
-
-            "fire",
-
-        intent:
-
-            intent.intent,
-
-        confidence:
-
-            intent.confidence,
-
-        data:
-
-            routed,
-
-        markdown:
-
-            formatted.markdown ||
-
-            "",
-
-        html:
-
-            formatted.html ||
-
-            "",
-
-        cards:
-
-            formatted.cards ||
-
-            [],
-
-        tables:
-
-            formatted.tables ||
-
-            [],
-
-        sections:
-
-            formatted.sections ||
-
-            [],
-
-        message:
-
-            formatted.message ||
-
-            ""
-
-    };
+    return response;
 
 };/*=========================================================
  DISPATCH PATROL
 =========================================================*/
 
-AIDispatcher.dispatchPatrol = function (
+/*=========================================================
+ DISPATCH PATROL
+=========================================================*/
+
+AIDispatcher.dispatchPatrol = async function (
 
     intent
 
@@ -1449,7 +998,9 @@ AIDispatcher.dispatchPatrol = function (
 
         !intent ||
 
-        typeof intent !== "object"
+        typeof intent !==
+
+        "object"
 
     ) {
 
@@ -1466,14 +1017,20 @@ AIDispatcher.dispatchPatrol = function (
     }
 
     /*----------------------------------
-      Patrol Module Check
+      Router
     ----------------------------------*/
+
+    const PatrolRouter =
+
+        GG.PatrolRouter;
 
     if (
 
-        typeof GG.PatrolRouter !==
+        !PatrolRouter ||
 
-        "object"
+        typeof PatrolRouter.route !==
+
+        "function"
 
     ) {
 
@@ -1481,21 +1038,9 @@ AIDispatcher.dispatchPatrol = function (
 
             success: false,
 
-            domain:
-
-                "patrol",
-
-            intent:
-
-                intent.intent,
-
-            confidence:
-
-                intent.confidence,
-
             message:
 
-                "Patrol AI module is not installed."
+                "PatrolRouter unavailable."
 
         };
 
@@ -1505,135 +1050,61 @@ AIDispatcher.dispatchPatrol = function (
       Route
     ----------------------------------*/
 
-    const routed =
+    const response =
 
-        GG.PatrolRouter.route(
+        await PatrolRouter.route(
 
             intent
 
         );
 
     /*----------------------------------
-      Route Failed
+      Failed
     ----------------------------------*/
 
     if (
 
-        !routed ||
+        !response ||
 
-        routed.success !== true
+        response.success !==
+
+        true
 
     ) {
 
-        return routed || {
+        return (
 
-            success: false,
+            response ||
 
-            message:
+            {
 
-                "Patrol router failed."
+                success: false,
 
-        };
+                message:
+
+                    "Patrol router failed."
+
+            }
+
+        );
 
     }
 
     /*----------------------------------
-      Formatter
+      Already Formatted
     ----------------------------------*/
 
-    let formatted =
-
-        routed;
-
-    if (
-
-        GG.PatrolFormatter &&
-
-        typeof GG.PatrolFormatter.format ===
-
-        "function"
-
-    ) {
-
-        formatted =
-
-            GG.PatrolFormatter.format(
-
-                routed
-
-            );
-
-    }
-
-    /*----------------------------------
-      Return
-    ----------------------------------*/
-
-    return {
-
-        success:
-
-            formatted.success,
-
-        domain:
-
-            "patrol",
-
-        intent:
-
-            intent.intent,
-
-        confidence:
-
-            intent.confidence,
-
-        data:
-
-            routed,
-
-        markdown:
-
-            formatted.markdown ||
-
-            "",
-
-        html:
-
-            formatted.html ||
-
-            "",
-
-        cards:
-
-            formatted.cards ||
-
-            [],
-
-        tables:
-
-            formatted.tables ||
-
-            [],
-
-        sections:
-
-            formatted.sections ||
-
-            [],
-
-        message:
-
-            formatted.message ||
-
-            ""
-
-    };
+    return response;
 
 };/*=========================================================
  DISPATCH ANALYTICS
 =========================================================*/
 
-AIDispatcher.dispatchAnalytics = function (
+/*=========================================================
+ DISPATCH ANALYTICS
+=========================================================*/
+
+AIDispatcher.dispatchAnalytics = async function (
 
     intent
 
@@ -1647,7 +1118,9 @@ AIDispatcher.dispatchAnalytics = function (
 
         !intent ||
 
-        typeof intent !== "object"
+        typeof intent !==
+
+        "object"
 
     ) {
 
@@ -1664,14 +1137,20 @@ AIDispatcher.dispatchAnalytics = function (
     }
 
     /*----------------------------------
-      Analytics Module Check
+      Router
     ----------------------------------*/
+
+    const AnalyticsRouter =
+
+        GG.AnalyticsRouter;
 
     if (
 
-        typeof GG.AnalyticsRouter !==
+        !AnalyticsRouter ||
 
-        "object"
+        typeof AnalyticsRouter.route !==
+
+        "function"
 
     ) {
 
@@ -1679,21 +1158,9 @@ AIDispatcher.dispatchAnalytics = function (
 
             success: false,
 
-            domain:
-
-                "analytics",
-
-            intent:
-
-                intent.intent,
-
-            confidence:
-
-                intent.confidence,
-
             message:
 
-                "Analytics AI module is not installed."
+                "AnalyticsRouter unavailable."
 
         };
 
@@ -1703,129 +1170,51 @@ AIDispatcher.dispatchAnalytics = function (
       Route
     ----------------------------------*/
 
-    const routed =
+    const response =
 
-        GG.AnalyticsRouter.route(
+        await AnalyticsRouter.route(
 
             intent
 
         );
 
     /*----------------------------------
-      Route Failed
+      Failed
     ----------------------------------*/
 
     if (
 
-        !routed ||
+        !response ||
 
-        routed.success !== true
+        response.success !==
+
+        true
 
     ) {
 
-        return routed || {
+        return (
 
-            success: false,
+            response ||
 
-            message:
+            {
 
-                "Analytics router failed."
+                success: false,
 
-        };
+                message:
+
+                    "Analytics router failed."
+
+            }
+
+        );
 
     }
 
     /*----------------------------------
-      Formatter
+      Already Formatted
     ----------------------------------*/
 
-    let formatted =
-
-        routed;
-
-    if (
-
-        GG.AnalyticsFormatter &&
-
-        typeof GG.AnalyticsFormatter.format ===
-
-        "function"
-
-    ) {
-
-        formatted =
-
-            GG.AnalyticsFormatter.format(
-
-                routed
-
-            );
-
-    }
-
-    /*----------------------------------
-      Return
-    ----------------------------------*/
-
-    return {
-
-        success:
-
-            formatted.success,
-
-        domain:
-
-            "analytics",
-
-        intent:
-
-            intent.intent,
-
-        confidence:
-
-            intent.confidence,
-
-        data:
-
-            routed,
-
-        markdown:
-
-            formatted.markdown ||
-
-            "",
-
-        html:
-
-            formatted.html ||
-
-            "",
-
-        cards:
-
-            formatted.cards ||
-
-            [],
-
-        tables:
-
-            formatted.tables ||
-
-            [],
-
-        sections:
-
-            formatted.sections ||
-
-            [],
-
-        message:
-
-            formatted.message ||
-
-            ""
-
-    };
+    return response;
 
 };/*=========================================================
  REGISTER
