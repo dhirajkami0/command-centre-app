@@ -6837,32 +6837,52 @@ StaffIntent.detectDirectoryIntent = function (
     ----------------------------------*/
 
     if (
+
         !result ||
+
         result.intent ||
+
         !result.entities
+
     ) {
+
         return result;
+
     }
 
     if (
+
         result.parameters &&
         result.parameters.isSingle
+
     ) {
+
         return result;
+
     }
 
     const query =
+
         String(
+
             result.normalizedQuery ||
+
             ""
+
         )
+
         .trim()
+
         .toUpperCase();
 
     if (
+
         query === ""
+
     ) {
+
         return result;
+
     }
 
     const INTENTS =
@@ -6882,6 +6902,10 @@ StaffIntent.detectDirectoryIntent = function (
     const designations =
         result.entities.designations ||
         [];
+
+    /*----------------------------------
+      Whole Word Helper
+    ----------------------------------*/
 
     function hasKeyword(
         list
@@ -6904,17 +6928,27 @@ StaffIntent.detectDirectoryIntent = function (
             ) {
 
                 keyword =
+
                     String(
                         keyword
                     )
                     .trim()
-                    .toUpperCase();
+                    .toUpperCase()
+                    .replace(
+                        /[.*+?^${}()|[\]\\]/g,
+                        "\\$&"
+                    );
 
-                return (
-                    keyword &&
-                    query.includes(
-                        keyword
-                    )
+                return new RegExp(
+
+                    "(^|\\W)" +
+                    keyword +
+                    "(\\W|$)"
+
+                ).test(
+
+                    query
+
                 );
 
             }
@@ -6924,7 +6958,7 @@ StaffIntent.detectDirectoryIntent = function (
     }
 
     /*----------------------------------
-      Count Query?
+      Ignore Count Queries
     ----------------------------------*/
 
     const copy =
@@ -6939,7 +6973,9 @@ StaffIntent.detectDirectoryIntent = function (
     );
 
     if (
+
         copy.intent
+
     ) {
 
         return result;
@@ -6947,7 +6983,51 @@ StaffIntent.detectDirectoryIntent = function (
     }
 
     /*----------------------------------
-      Entities
+      Ignore Aggregate Status Queries
+    ----------------------------------*/
+
+    if (
+
+        hasKeyword(
+            KEYWORDS.STAFF_ACTIVE_LIST
+        ) ||
+
+        hasKeyword(
+            KEYWORDS.STAFF_ACTIVE_COUNT
+        ) ||
+
+        hasKeyword(
+            KEYWORDS.STAFF_INACTIVE_LIST
+        ) ||
+
+        hasKeyword(
+            KEYWORDS.STAFF_INACTIVE_COUNT
+        ) ||
+
+        hasKeyword(
+            KEYWORDS.STAFF_MOVING
+        ) ||
+
+        hasKeyword(
+            KEYWORDS.STAFF_STATIONARY
+        ) ||
+
+        hasKeyword(
+            KEYWORDS.STAFF_TEAM_LEADER_LIST
+        ) ||
+
+        hasKeyword(
+            KEYWORDS.STAFF_DUTY_SUMMARY
+        )
+
+    ) {
+
+        return result;
+
+    }
+
+    /*----------------------------------
+      Entity Flags
     ----------------------------------*/
 
     const hasDesignation =
@@ -6966,64 +7046,80 @@ StaffIntent.detectDirectoryIntent = function (
         !!parameters.beat;
 
     const hasJurisdiction =
+
         hasCircle ||
+
         hasDivision ||
+
         hasRange ||
+
         hasBeat;
 
     /*----------------------------------
-  Directory Language
-----------------------------------*/
+      Explicit Directory Language Only
+    ----------------------------------*/
 
-const directoryQuery =
+    const directoryQuery =
 
-    hasKeyword(
-        KEYWORDS.STAFF_DIRECTORY
-    ) ||
+        hasKeyword(
+            KEYWORDS.STAFF_DIRECTORY
+        ) ||
 
-    hasKeyword(
-        KEYWORDS.STAFF_RANGE_DIRECTORY
-    ) ||
+        hasKeyword(
+            KEYWORDS.STAFF_CIRCLE_DIRECTORY
+        ) ||
 
-    hasKeyword(
-        KEYWORDS.STAFF_DIVISION_DIRECTORY
-    ) ||
+        hasKeyword(
+            KEYWORDS.STAFF_DIVISION_DIRECTORY
+        ) ||
 
-    hasKeyword(
-        KEYWORDS.STAFF_BEAT_DIRECTORY
-    ) ||
+        hasKeyword(
+            KEYWORDS.STAFF_RANGE_DIRECTORY
+        ) ||
 
-    hasKeyword(
-        KEYWORDS.STAFF_CIRCLE_DIRECTORY
-    ) ||
+        hasKeyword(
+            KEYWORDS.STAFF_BEAT_DIRECTORY
+        ) ||
 
-    hasKeyword(
-        KEYWORDS.STAFF_DESIGNATION_DIRECTORY
-    );
+        hasKeyword(
+            KEYWORDS.STAFF_DESIGNATION_DIRECTORY
+        );
+
+    if (
+
+        !directoryQuery
+
+    ) {
+
+        return result;
+
+    }
+
     /*----------------------------------
       Designation Directory
-      Highest Priority
     ----------------------------------*/
 
     if (
-        hasDesignation &&
-        (
-            directoryQuery ||
-            hasJurisdiction
-        )
+
+        hasDesignation
+
     ) {
 
         result.intent =
+
             INTENTS.STAFF_DESIGNATION_DIRECTORY;
 
         result.parameters.designation =
+
             designations[0]
                 .identity
                 ?.designation ||
+
             designations[0]
                 .designation;
 
         result.confidence =
+
             0.99;
 
         return result;
@@ -7035,14 +7131,17 @@ const directoryQuery =
     ----------------------------------*/
 
     if (
-        hasBeat &&
-        directoryQuery
+
+        hasBeat
+
     ) {
 
         result.intent =
+
             INTENTS.STAFF_BEAT_DIRECTORY;
 
         result.confidence =
+
             0.99;
 
         return result;
@@ -7054,14 +7153,17 @@ const directoryQuery =
     ----------------------------------*/
 
     if (
-        hasRange &&
-        directoryQuery
+
+        hasRange
+
     ) {
 
         result.intent =
+
             INTENTS.STAFF_RANGE_DIRECTORY;
 
         result.confidence =
+
             0.99;
 
         return result;
@@ -7073,14 +7175,17 @@ const directoryQuery =
     ----------------------------------*/
 
     if (
-        hasDivision &&
-        directoryQuery
+
+        hasDivision
+
     ) {
 
         result.intent =
+
             INTENTS.STAFF_DIVISION_DIRECTORY;
 
         result.confidence =
+
             0.99;
 
         return result;
@@ -7092,14 +7197,17 @@ const directoryQuery =
     ----------------------------------*/
 
     if (
-        hasCircle &&
-        directoryQuery
+
+        hasCircle
+
     ) {
 
         result.intent =
+
             INTENTS.STAFF_CIRCLE_DIRECTORY;
 
         result.confidence =
+
             0.99;
 
         return result;
@@ -7110,22 +7218,17 @@ const directoryQuery =
       Generic Directory
     ----------------------------------*/
 
-    if (
-        directoryQuery
-    ) {
+    result.intent =
 
-        result.intent =
-            INTENTS.STAFF_DIRECTORY;
+        INTENTS.STAFF_DIRECTORY;
 
-        result.parameters.staff =
-            staff;
+    result.parameters.staff =
 
-        result.confidence =
-            0.95;
+        staff;
 
-        return result;
+    result.confidence =
 
-    }
+        0.95;
 
     return result;
 
