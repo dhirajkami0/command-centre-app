@@ -958,6 +958,22 @@ AIDispatcher.dispatchGIS = async function (
     }
 
     /*----------------------------------
+      Ensure Routes Registered
+    ----------------------------------*/
+
+    if (
+
+        typeof GISRouter.registerRoutes ===
+
+        "function"
+
+    ) {
+
+        GISRouter.registerRoutes();
+
+    }
+
+    /*----------------------------------
       Route
     ----------------------------------*/
 
