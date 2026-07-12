@@ -161,7 +161,73 @@ GISQuery.findStaffInsideCompartment = function (
     );
 
 };
+/*--------------------------------------------------
+  Beat Summary
+--------------------------------------------------*/
 
+GISQuery.getBeatSummary = function (
+
+    beat
+
+) {
+
+    if (
+
+        !beat
+
+    ) {
+
+        return null;
+
+    }
+
+    const feature =
+
+        GG.GISEntities.search(
+
+            beat
+
+        );
+
+    const staff =
+
+        StaffGIS.findStaffInsideBeat(
+
+            beat
+
+        );
+
+    return {
+
+        beat:
+
+            beat,
+
+        feature:
+
+            feature,
+
+        staff:
+
+            staff,
+
+        staffCount:
+
+            staff.length,
+
+        liveStaff:
+
+            staff.filter(
+
+                s =>
+
+                    s.dutyActive
+
+            ).length
+
+    };
+
+};
   /*--------------------------------------------------
   Staff Inside Beat
 --------------------------------------------------*/
@@ -268,6 +334,142 @@ function (
         staffCount:
 
             staff.length
+
+    };
+
+};
+
+  /*--------------------------------------------------
+  Range Summary
+--------------------------------------------------*/
+
+GISQuery.getRangeSummary = function (
+
+    range
+
+) {
+
+    if (
+
+        !range
+
+    ) {
+
+        return null;
+
+    }
+
+    const feature =
+
+        GG.GISEntities.search(
+
+            range
+
+        );
+
+    const staff =
+
+        StaffGIS.findStaffInsideRange(
+
+            range
+
+        );
+
+    return {
+
+        range:
+
+            range,
+
+        feature:
+
+            feature,
+
+        staff:
+
+            staff,
+
+        staffCount:
+
+            staff.length,
+
+        liveStaff:
+
+            staff.filter(
+
+                s =>
+
+                    s.dutyActive
+
+            ).length
+
+    };
+
+};
+
+  /*--------------------------------------------------
+  Division Summary
+--------------------------------------------------*/
+
+GISQuery.getDivisionSummary = function (
+
+    division
+
+) {
+
+    if (
+
+        !division
+
+    ) {
+
+        return null;
+
+    }
+
+    const feature =
+
+        GG.GISEntities.search(
+
+            division
+
+        );
+
+    const staff =
+
+        StaffGIS.findStaffInsideDivision(
+
+            division
+
+        );
+
+    return {
+
+        division:
+
+            division,
+
+        feature:
+
+            feature,
+
+        staff:
+
+            staff,
+
+        staffCount:
+
+            staff.length,
+
+        liveStaff:
+
+            staff.filter(
+
+                s =>
+
+                    s.dutyActive
+
+            ).length
 
     };
 
