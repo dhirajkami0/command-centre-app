@@ -82,65 +82,78 @@ window.GreenGuardAI =
       Detect
     --------------------------------------------------*/
 
-    GISIntent.detect = function (
+GISIntent.detect = function (
 
-        query
+    query
+
+) {
+
+    const result =
+
+        GISIntent.createResult(
+
+            query
+
+        );
+
+    /*----------------------------------
+      Validate
+    ----------------------------------*/
+
+    if (
+
+        result.normalizedQuery ===
+
+        ""
 
     ) {
 
-        const result =
-
-            GISIntent.createResult(
-
-                query
-
-            );
-
-        if (
-
-            result.normalizedQuery ===
-
-            ""
-
-        ) {
-
-            return result;
-
-        }
-
-        GISIntent.detectSelection(
-
-            result
-
-        );
-
-        GISIntent.detectHierarchy(
-
-            result
-
-        );
-
-        GISIntent.detectSpatial(
-
-            result
-
-        );
-
-        GISIntent.detectAnalytics(
-
-            result
-
-        );
-
-        GISIntent.detectMap(
-
-            result
-
-        );
-
         return result;
 
-    };
+    }
+
+    /*----------------------------------
+      Detection Order
+      (Specific → Generic)
+    ----------------------------------*/
+
+    GISIntent.detectHierarchy(
+
+        result
+
+    );
+
+    GISIntent.detectSelection(
+
+        result
+
+    );
+
+    GISIntent.detectSpatial(
+
+        result
+
+    );
+
+    GISIntent.detectAnalytics(
+
+        result
+
+    );
+
+    GISIntent.detectMap(
+
+        result
+
+    );
+
+    /*----------------------------------
+      Return
+    ----------------------------------*/
+
+    return result;
+
+};
 
     /*--------------------------------------------------
       Selection
