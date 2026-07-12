@@ -632,59 +632,68 @@ StaffQuery.execute = async function (
             request
 
         );
-/*----------------------------------
-  Preserve Canonical Request
-----------------------------------*/
 
-response.request =
+    /*----------------------------------
+      Preserve Canonical Request
+    ----------------------------------*/
 
-    request;
+    response.request =
 
-response.intent =
+        request;
 
-    request.intent;
+    response.intent =
 
-response.domain =
+        request.intent;
 
-    request.domain;
+    response.domain =
 
-response.entities =
+        request.domain;
 
-    request.entities ||
+    response.entities =
 
-    {};
+        request.entities ||
 
-response.parameters =
+        {};
 
-    request.parameters ||
+    response.parameters =
 
-    {};
+        request.parameters ||
 
-response.context =
+        {};
 
-    request.context ||
+    response.context =
 
-    {};   
-    
-    const cacheKey =
+        request.context ||
 
-JSON.stringify({
+        {};
 
-    intent:
+    const cacheKey = JSON.stringify({
 
-        request.intent,
+        intent:
 
-    staff:
+            request.intent,
 
-        request.entities?.staff ||
+        entities:
 
-        [],
+            request.entities ||
 
-    parameters:
+            {},
 
-        request.parameters
+        parameters:
 
-});
+            request.parameters ||
+
+            {},
+
+        normalizedQuery:
+
+            request.normalizedQuery ||
+
+            request.query ||
+
+            ""
+
+    });
 
     console.log(
         "CACHE KEY"
@@ -710,153 +719,103 @@ JSON.stringify({
         [...StaffQuery.cache.keys()]
     );
 
-    
-
     const cached =
 
-    StaffQuery.getCache(
+        StaffQuery.getCache(
 
-        cacheKey
-
-    );
-
-if (
-
-    cached &&
-
-    cached.success === true
-
-) {
-
-    console.log(
-
-        "✅ CACHE HIT"
-
-    );
-
-    if (
-
-    cached &&
-
-    cached.success === true
-
-) {
-
-    console.log(
-
-        "✅ CACHE HIT"
-
-    );
-
-    const cachedResponse =
-
-        structuredClone(
-
-            cached
+            cacheKey
 
         );
 
-    cachedResponse.metadata =
+    if (
 
-        cachedResponse.metadata ||
+        cached &&
 
-        {};
+        cached.success === true
 
-    cachedResponse.metadata.cache =
+    ) {
 
-        true;
+        console.log(
 
-    cachedResponse.request =
+            "✅ CACHE HIT"
 
-        request;
+        );
 
-    cachedResponse.intent =
+        const cachedResponse =
 
-        request.intent;
+            structuredClone(
 
-    cachedResponse.domain =
+                cached
 
-        request.domain;
+            );
 
-    cachedResponse.entities =
+        cachedResponse.metadata =
 
-        request.entities ||
+            cachedResponse.metadata ||
 
-        {};
+            {};
 
-    cachedResponse.parameters =
+        cachedResponse.metadata.cache =
 
-        request.parameters ||
+            true;
 
-        {};
+        cachedResponse.request =
 
-    cachedResponse.context =
+            request;
 
-        request.context ||
+        cachedResponse.intent =
 
-        {};
+            request.intent;
 
-    return cachedResponse;
+        cachedResponse.domain =
 
-}
+            request.domain;
 
-cachedResponse.request =
+        cachedResponse.entities =
 
-    request;
+            request.entities ||
 
-cachedResponse.intent =
+            {};
 
-    request.intent;
+        cachedResponse.parameters =
 
-cachedResponse.domain =
+            request.parameters ||
 
-    request.domain;
+            {};
 
-cachedResponse.entities =
+        cachedResponse.context =
 
-    request.entities ||
+            request.context ||
 
-    {};
+            {};
 
-cachedResponse.parameters =
+        return cachedResponse;
 
-    request.parameters ||
+    }
 
-    {};
+    if (
 
-cachedResponse.context =
+        cached &&
 
-    request.context ||
+        cached.success !== true
 
-    {};
+    ) {
 
-return cachedResponse;
+        console.warn(
 
-}
+            "🗑 Removing Failed Cache",
 
-if (
+            cacheKey
 
-    cached &&
+        );
 
-    cached.success !== true
+        StaffQuery.cache.delete(
 
-) {
+            cacheKey
 
-    console.warn(
+        );
 
-        "🗑 Removing Failed Cache",
-
-        cacheKey
-
-    );
-
-    StaffQuery.cache.delete(
-
-        cacheKey
-
-    );
-
-}
+    }
 
     try {
 
@@ -905,39 +864,41 @@ if (
         response.data =
 
             result;
-/*----------------------------------
-  Preserve Canonical Request
-----------------------------------*/
 
-response.request =
+        /*----------------------------------
+          Preserve Canonical Request
+        ----------------------------------*/
 
-    request;
+        response.request =
 
-response.intent =
+            request;
 
-    request.intent;
+        response.intent =
 
-response.domain =
+            request.intent;
 
-    request.domain;
+        response.domain =
 
-response.entities =
+            request.domain;
 
-    request.entities ||
+        response.entities =
 
-    {};
+            request.entities ||
 
-response.parameters =
+            {};
 
-    request.parameters ||
+        response.parameters =
 
-    {};
+            request.parameters ||
 
-response.context =
+            {};
 
-    request.context ||
+        response.context =
 
-    {};
+            request.context ||
+
+            {};
+
         console.log(
             "RESPONSE.DATA"
         );
@@ -1120,23 +1081,23 @@ response.context =
 
     );
 
-if (
-    response.success === true
-) {
+    if (
+        response.success === true
+    ) {
 
-    StaffQuery.setCache(
+        StaffQuery.setCache(
 
-    cacheKey,
+            cacheKey,
 
-    structuredClone(
+            structuredClone(
 
-        response
+                response
 
-    )
+            )
 
-);
+        );
 
-}
+    }
 
     console.log(
         "RETURN RESPONSE"
@@ -1179,39 +1140,41 @@ if (
     console.log(
         "===================================="
     );
-/*----------------------------------
-  Preserve Canonical Request
-----------------------------------*/
 
-response.request =
+    /*----------------------------------
+      Preserve Canonical Request
+    ----------------------------------*/
 
-    request;
+    response.request =
 
-response.intent =
+        request;
 
-    request.intent;
+    response.intent =
 
-response.domain =
+        request.intent;
 
-    request.domain;
+    response.domain =
 
-response.entities =
+        request.domain;
 
-    request.entities ||
+    response.entities =
 
-    {};
+        request.entities ||
 
-response.parameters =
+        {};
 
-    request.parameters ||
+    response.parameters =
 
-    {};
+        request.parameters ||
 
-response.context =
+        {};
 
-    request.context ||
+    response.context =
 
-    {};
+        request.context ||
+
+        {};
+
     return response;
 
 };
