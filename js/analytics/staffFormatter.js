@@ -13329,9 +13329,13 @@ StaffFormatter.formatStationaryStaff = function (
 
 StaffFormatter.formatWhoIsOnDuty = function (
 
-    response
+    response = {}
 
 ) {
+
+    /*----------------------------------
+      Create Response
+    ----------------------------------*/
 
     const result =
 
@@ -13342,34 +13346,76 @@ StaffFormatter.formatWhoIsOnDuty = function (
         );
 
     /*----------------------------------
-      Validate
+      Normalize Data
+    ----------------------------------*/
+
+    const data =
+
+        response.data ||
+
+        response ||
+
+        {};
+
+    const staff =
+
+        Array.isArray(
+
+            data.staff
+
+        )
+
+            ? data.staff
+
+            : [];
+
+    const count =
+
+        data.count ??
+
+        staff.length;
+
+    /*----------------------------------
+      No Data
     ----------------------------------*/
 
     if (
 
-        !response ||
-
-        !response.success ||
-
-        !response.data
+        staff.length === 0
 
     ) {
 
+        result.success =
+
+            false;
+
+        result.intent =
+
+            StaffConstants.INTENTS.WHO_IS_ON_DUTY;
+
+        result.confidence =
+
+            response.confidence ||
+
+            1;
+
+        result.source =
+
+            response.source ||
+
+            "LOCAL";
+
         result.message =
 
-            response?.message ||
-
             "No staff currently on duty.";
+
+        result.markdown =
+
+            "# 🚓 WHO IS ON DUTY\n\nNo staff currently on duty.";
 
         return result;
 
     }
-
-    const staff =
-
-        response.data.staff ||
-
-        [];
 
     /*----------------------------------
       Markdown
@@ -13383,13 +13429,7 @@ StaffFormatter.formatWhoIsOnDuty = function (
 
         "**Total Staff On Duty:** " +
 
-            (
-
-                response.data.count ??
-
-                staff.length
-
-            ),
+            count,
 
         ""
 
@@ -13462,6 +13502,24 @@ StaffFormatter.formatWhoIsOnDuty = function (
                 (
 
                     profile.posting?.beat ||
+
+                    profile.assignment?.beat ||
+
+                    "-"
+
+                )
+
+            );
+
+            lines.push(
+
+                "**Range:** " +
+
+                (
+
+                    profile.posting?.range ||
+
+                    profile.assignment?.range ||
 
                     "-"
 
@@ -13501,9 +13559,7 @@ StaffFormatter.formatWhoIsOnDuty = function (
 
             count:
 
-                response.data.count ??
-
-                staff.length,
+                count,
 
             staff:
 
@@ -13517,6 +13573,12 @@ StaffFormatter.formatWhoIsOnDuty = function (
       Section
     ----------------------------------*/
 
+    result.sections =
+
+        result.sections ||
+
+        [];
+
     result.sections.push({
 
         title:
@@ -13527,9 +13589,7 @@ StaffFormatter.formatWhoIsOnDuty = function (
 
             count:
 
-                response.data.count ??
-
-                staff.length,
+                count,
 
             staff:
 
@@ -13538,6 +13598,14 @@ StaffFormatter.formatWhoIsOnDuty = function (
         }
 
     });
+
+    /*----------------------------------
+      Response Data
+    ----------------------------------*/
+
+    result.data =
+
+        data;
 
     /*----------------------------------
       Metadata
@@ -13569,15 +13637,20 @@ StaffFormatter.formatWhoIsOnDuty = function (
 
     return result;
 
-};/*=========================================================
- FORMAT WHO IS PATROLLING
+};
+/*=========================================================
+  FORMAT WHO IS PATROLLING
 =========================================================*/
 
 StaffFormatter.formatWhoIsPatrolling = function (
 
-    response
+    response = {}
 
 ) {
+
+    /*----------------------------------
+      Create Response
+    ----------------------------------*/
 
     const result =
 
@@ -13588,34 +13661,76 @@ StaffFormatter.formatWhoIsPatrolling = function (
         );
 
     /*----------------------------------
-      Validate
+      Normalize Data
+    ----------------------------------*/
+
+    const data =
+
+        response.data ||
+
+        response ||
+
+        {};
+
+    const staff =
+
+        Array.isArray(
+
+            data.staff
+
+        )
+
+            ? data.staff
+
+            : [];
+
+    const count =
+
+        data.count ??
+
+        staff.length;
+
+    /*----------------------------------
+      No Data
     ----------------------------------*/
 
     if (
 
-        !response ||
-
-        !response.success ||
-
-        !response.data
+        staff.length === 0
 
     ) {
 
+        result.success =
+
+            false;
+
+        result.intent =
+
+            StaffConstants.INTENTS.WHO_IS_PATROLLING;
+
+        result.confidence =
+
+            response.confidence ||
+
+            1;
+
+        result.source =
+
+            response.source ||
+
+            "LOCAL";
+
         result.message =
 
-            response?.message ||
-
             "No staff currently patrolling.";
+
+        result.markdown =
+
+            "# 🚶 WHO IS PATROLLING\n\nNo staff currently patrolling.";
 
         return result;
 
     }
-
-    const staff =
-
-        response.data.staff ||
-
-        [];
 
     /*----------------------------------
       Markdown
@@ -13629,13 +13744,7 @@ StaffFormatter.formatWhoIsPatrolling = function (
 
         "**Total Patrolling Staff:** " +
 
-            (
-
-                response.data.count ??
-
-                staff.length
-
-            ),
+            count,
 
         ""
 
@@ -13709,6 +13818,24 @@ StaffFormatter.formatWhoIsPatrolling = function (
 
                     profile.posting?.beat ||
 
+                    profile.assignment?.beat ||
+
+                    "-"
+
+                )
+
+            );
+
+            lines.push(
+
+                "**Range:** " +
+
+                (
+
+                    profile.posting?.range ||
+
+                    profile.assignment?.range ||
+
                     "-"
 
                 )
@@ -13747,9 +13874,7 @@ StaffFormatter.formatWhoIsPatrolling = function (
 
             count:
 
-                response.data.count ??
-
-                staff.length,
+                count,
 
             staff:
 
@@ -13763,6 +13888,12 @@ StaffFormatter.formatWhoIsPatrolling = function (
       Section
     ----------------------------------*/
 
+    result.sections =
+
+        result.sections ||
+
+        [];
+
     result.sections.push({
 
         title:
@@ -13773,9 +13904,7 @@ StaffFormatter.formatWhoIsPatrolling = function (
 
             count:
 
-                response.data.count ??
-
-                staff.length,
+                count,
 
             staff:
 
@@ -13784,6 +13913,14 @@ StaffFormatter.formatWhoIsPatrolling = function (
         }
 
     });
+
+    /*----------------------------------
+      Response Data
+    ----------------------------------*/
+
+    result.data =
+
+        data;
 
     /*----------------------------------
       Metadata
