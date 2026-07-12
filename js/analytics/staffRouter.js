@@ -351,431 +351,336 @@ StaffRouter.createResponse = function (
 =========================================================*/
 
 StaffRouter.route = async function (
-
     request
-
 ) {
-
     const started =
-
         Date.now();
-
     console.group(
-
         "🟣 STAFF ROUTER"
-
     );
-
     console.log(
-
         "File:",
-
         "staffRouter.js"
-
     );
-
     console.log(
-
         "Incoming Request:",
-
         request
-
     );
-
     /*----------------------------------
       Validate
     ----------------------------------*/
-
     if (
-
         !request ||
-
         typeof request !== "object"
-
     ) {
-
         console.error(
-
             "❌ Invalid Router Request"
-
         );
-
         console.groupEnd();
-
         return {
-
             success: false,
-
             message:
-
                 "Invalid router request."
-
         };
-
     }
-
     /*----------------------------------
       Create Response
     ----------------------------------*/
-
     const response =
-
         StaffRouter.createResponse(
-
             request
-
         );
-
     response.request =
-
         request;
-
     response.intent =
-
         request.intent;
-
     response.domain =
-
         request.domain;
-
     response.entities =
-
         request.entities ||
-
         {};
-
     response.parameters =
-
         request.parameters ||
-
         {};
-
     response.context =
-
         request.context ||
-
         {};
-
     StaffRouter.lastRequest =
-
         request;
-
     console.log(
-
         "Intent:",
-
         request.intent
-
     );
-
     /*----------------------------------
       Resolve Query Handler
     ----------------------------------*/
-
     const handler =
-
         StaffRouter.getRoute(
-
             request.intent
-
         );
-
     if (
-
         !handler
-
     ) {
-
         console.error(
-
             "❌ No Route Registered:",
-
             request.intent
-
         );
-
         response.message =
-
             "No route registered for intent.";
-
         response.errors.push(
-
             request.intent
-
         );
-
         response.metadata = {
-
             ...(response.metadata || {}),
-
             executionTime:
-
                 Date.now() -
-
                 started
-
         };
-
         console.groupEnd();
-
         return response;
-
     }
-
     response.handler =
-
         handler.name ||
-
         "anonymous";
-
     response.module =
-
         "StaffRouter";
-
     console.log(
-
         "Handler:",
-
         handler.name
-
     );
-
     let result =
-
         null;
-
     try {
-
         /*----------------------------------
           Execute Query
         ----------------------------------*/
-
         console.time(
-
             "Query"
-
         );
-
         result =
-
             await handler(
-
                 request
-
             );
-
         console.timeEnd(
-
             "Query"
-
         );
-
         console.log(
-
             "Raw Query Result:",
-
             result
-
         );
 
-/*----------------------------------
-  Formatter
-----------------------------------*/
-
-if (
-
-    result &&
-
-    result.success &&
-
-    GG.StaffFormatter &&
-
-    typeof GG.StaffFormatter.format ===
-
-    "function"
-
-) {
-
-    result =
-
-        GG.StaffFormatter.format(
-
-            result
-
-        );
-
-}
+        /*----------------------------------
+          Formatter
+        ----------------------------------*/
+        if (
+            result &&
+            result.success
+        ) {
+            const formatterName =
+                "format" +
+                request.intent.charAt(
+                    0
+                ).toUpperCase() +
+                request.intent.slice(
+                    1
+                );
+            const formatter =
+                GG.StaffFormatter?.[
+                    formatterName
+                ];
+            console.log(
+                "===================================="
+            );
+            console.log(
+                "FORMATTER"
+            );
+            console.log(
+                "Formatter Name:",
+                formatterName
+            );
+            console.log(
+                "Formatter Exists:",
+                typeof formatter ===
+                "function"
+            );
+            console.log(
+                "Raw Result:",
+                result
+            );
+            if (
+                typeof formatter ===
+                "function"
+            ) {
+                console.time(
+                    "Formatter"
+                );
+                result =
+                    formatter(
+                        result
+                    );
+                console.timeEnd(
+                    "Formatter"
+                );
+                console.log(
+                    "Formatted Result:",
+                    result
+                );
+                console.log(
+                    "Formatted Success:",
+                    result?.success
+                );
+                console.log(
+                    "Markdown:",
+                    !!result?.markdown
+                );
+                console.log(
+                    "Cards:",
+                    result?.cards?.length ||
+                    0
+                );
+                console.log(
+                    "Sections:",
+                    result?.sections?.length ||
+                    0
+                );
+            }
+            else {
+                console.warn(
+                    "⚠ Missing Formatter:",
+                    formatterName
+                );
+            }
+            console.log(
+                "===================================="
+            );
+        }
 
         /*----------------------------------
           Merge Response
         ----------------------------------*/
-
         if (
-
             result &&
-
             typeof result ===
-
             "object"
-
         ) {
-
             Object.assign(
-
                 response,
-
                 result
-
             );
-
         }
-
         /*----------------------------------
           Preserve Canonical Request
         ----------------------------------*/
-
         response.request =
-
             request;
-
         response.intent =
-
             request.intent;
-
         response.domain =
-
             request.domain;
-
         response.entities =
-
             request.entities ||
-
             {};
-
         response.parameters =
-
             request.parameters ||
-
             {};
-
         response.context =
-
             request.context ||
-
             {};
-
         response.handler =
-
             handler.name ||
-
             "anonymous";
-
         response.module =
-
             response.module ||
-
             "StaffFormatter";
-
         response.success =
-
             !!result &&
-
             result.success !==
-
             false;
-
     }
-
     catch (
-
         error
-
     ) {
-
         console.error(
-
             "❌ Query Failed",
-
             error
-
         );
-
         response.success =
-
             false;
-
         response.message =
-
             error.message;
-
         response.errors.push(
-
             error
-
         );
-
     }
-
     /*----------------------------------
       Finish
     ----------------------------------*/
-
     response.metadata = {
-
         ...(result?.metadata || {}),
-
         ...(response.metadata || {}),
-
         executionTime:
-
             Date.now() -
-
             started
-
     };
-
     StaffRouter.lastResponse =
-
         response;
-
     const cacheKey =
-
         request.normalizedQuery ||
-
         request.query ||
-
         "";
-
     StaffRouter.cache.set(
-
         cacheKey,
-
-        response
-
+        structuredClone(
+            response
+        )
     );
-
     console.log(
-
         "Router Response:",
-
         response
-
     );
-
     console.log(
-
         "Execution:",
-
         response.metadata.executionTime,
-
         "ms"
-
     );
-
+    console.log(
+        "===================================="
+    );
+    console.log(
+        "FINAL ROUTER RESPONSE"
+    );
+    console.log(
+        "Success:",
+        response.success
+    );
+    console.log(
+        "Module:",
+        response.module
+    );
+    console.log(
+        "Intent:",
+        response.intent
+    );
+    console.log(
+        "Markdown:",
+        !!response.markdown
+    );
+    console.log(
+        "Cards:",
+        response.cards?.length || 0
+    );
+    console.log(
+        "Sections:",
+        response.sections?.length || 0
+    );
+    console.dir(
+        response
+    );
+    console.log(
+        "===================================="
+    );
     console.groupEnd();
-
     return response;
-
 };
     /*=========================================================
  REGISTER ROUTES
