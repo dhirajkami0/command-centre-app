@@ -3358,6 +3358,44 @@ StaffIntent.detectControlRoomIntent = function (
     return result;
 
 };
+
+ StaffIntent.detectDutyStartedIntent = function (
+
+    result
+
+) {
+
+    if (
+
+        result.intent
+
+    ) {
+
+        return result;
+
+    }
+
+    if (
+
+        StaffIntent.hasKeyword(
+
+            result,
+
+            "STAFF_DUTY_STARTED"
+
+        )
+
+    ) {
+
+        result.intent =
+
+            "staffDutyStarted";
+
+    }
+
+    return result;
+
+};
 /*=========================================================
  DETECT CONTACT INTENT
 =========================================================*/
@@ -3611,45 +3649,6 @@ StaffIntent.detectContactIntent = function (
     return result;
 
 };
- result =
-
-    StaffIntent.detectDutyTypeIntent(
-
-        result
-
-    );
-
-result =
-
-    StaffIntent.detectDutyStartedIntent(
-
-        result
-
-    );
-
-result =
-
-    StaffIntent.detectDutyEndedIntent(
-
-        result
-
-    );
-
-result =
-
-    StaffIntent.detectDutyStatusIntent(
-
-        result
-
-    );
-
-result =
-
-    StaffIntent.detectDutyIntent(
-
-        result
-
-    );
  /*=========================================================
  DETECT SEARCH INTENT
 =========================================================*/
