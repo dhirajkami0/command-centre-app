@@ -1328,7 +1328,7 @@ StaffQuery.getStaff = function (
 
 StaffQuery.getAllStaff = function () {
 
-    if (
+    const staff =
 
         Array.isArray(
 
@@ -1336,13 +1336,51 @@ StaffQuery.getAllStaff = function () {
 
         )
 
-    ) {
+            ? StaffEntities.staff
 
-        return StaffEntities.staff;
+            : [];
 
-    }
+    return staff.map(
 
-    return [];
+        function (
+
+            profile
+
+        ) {
+
+            const cleanName =
+
+                profile?.identity
+
+                    ?.cleanName;
+
+            if (
+
+                !cleanName
+
+            ) {
+
+                return profile;
+
+            }
+
+            return (
+
+                GreenGuardAI
+
+                    .StaffHydrator
+
+                    .hydrate(
+
+                        cleanName
+
+                    )
+
+            );
+
+        }
+
+    );
 
 };
     StaffQuery.ensureAllStaff = function () {
