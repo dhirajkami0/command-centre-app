@@ -1512,11 +1512,7 @@ EXPORT
 
 GG.AIDispatcher =
 
-    Object.freeze(
-
-        AIDispatcher
-
-    );
+    AIDispatcher;
 
 /*=========================================================
 READY
