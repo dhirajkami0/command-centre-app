@@ -20,269 +20,243 @@ window.GreenGuardAI =
 
         "1.0.0";
 
+    const Query =
+
+        GG.GISQuery;
+
     /*--------------------------------------------------
-      Response
+      Format
     --------------------------------------------------*/
 
-    GISFormatter.createResponse = function (
+    GISFormatter.format = function (
 
-        request = {}
+        response
 
     ) {
 
-        return {
+        if (
 
-            success:
+            !response
 
-                false,
+        ) {
 
-            source:
+            return "";
 
-                request.source ||
+        }
 
-                "LOCAL",
+        if (
 
-            module:
+            typeof response ===
 
-                "GISFormatter",
+            "string"
 
-            intent:
+        ) {
 
-                request.intent ||
+            return response;
 
-                "",
+        }
 
-            confidence:
+        return JSON.stringify(
 
-                request.confidence ||
+            response,
 
-                0,
+            null,
 
-            markdown:
+            2
 
-                "",
-
-            html:
-
-                "",
-
-            cards:
-
-                [],
-
-            data:
-
-                null
-
-        };
+        );
 
     };
 
     /*--------------------------------------------------
-      Info
+      Current Filter
     --------------------------------------------------*/
 
-    GISFormatter.formatInfo = function (
+    GISFormatter.formatFilter = function () {
 
-        info,
+        return GISFormatter.format(
 
-        request = {}
+            Query.getFilter()
 
-    ) {
-
-        const r =
-
-            GISFormatter.createResponse(
-
-                request
-
-            );
-
-        r.success = true;
-
-        r.data = info;
-
-        r.markdown =
-
-`# 🌍 GIS INFORMATION
-
-• GIS Features : ${info.gis}
-
-• Compartments : ${info.compartments}
-
-• Villages : ${info.villages}
-
-• Staff Profiles : ${info.staffProfiles}
-
-• Live Staff : ${info.liveStaff}
-
-• Patrol Tracks : ${info.tracks}
-
-• Sessions : ${info.sessions}
-
-• Spatial Index : ${info.spatialIndex ? "Ready" : "Not Ready"}
-
-• Map Loaded : ${info.mapLoaded ? "Yes" : "No"}`;
-
-        return r;
+        );
 
     };
 
     /*--------------------------------------------------
-      Filter
+      Current Selection
     --------------------------------------------------*/
 
-    GISFormatter.formatFilter = function (
+    GISFormatter.formatSelection = function () {
 
-        filter,
+        return GISFormatter.format(
 
-        request = {}
+            {
 
-    ) {
+                division:
 
-        const r =
+                    Query.getCurrentDivision(),
 
-            GISFormatter.createResponse(
+                range:
 
-                request
+                    Query.getCurrentRange(),
 
-            );
+                beat:
 
-        r.success = true;
+                    Query.getCurrentBeat(),
 
-        r.data = filter;
+                compartment:
 
-        r.markdown =
+                    Query.getCurrentCompartment()
 
-`# 🗺 CURRENT FILTER
+            }
 
-Division : ${filter.division || "-"}
-
-Range : ${filter.range || "-"}
-
-Beat : ${filter.beat || "-"}
-
-Compartment : ${filter.compartment || "-"}`;
-
-        return r;
+        );
 
     };
 
     /*--------------------------------------------------
-      Selection
+      Beat Summary
     --------------------------------------------------*/
 
-    GISFormatter.formatSelection = function (
+    GISFormatter.formatBeatSummary = function (
 
-        geometry,
-
-        request = {}
+        beat
 
     ) {
 
-        const r =
+        return GISFormatter.format(
 
-            GISFormatter.createResponse(
+            Query.getBeatSummary(
 
-                request
+                beat
 
-            );
+            )
 
-        r.success = true;
-
-        r.data = geometry;
-
-        r.markdown =
-
-geometry ?
-
-`# 📍 CURRENT SELECTION
-
-Geometry Type : ${geometry.type}`
-
-:
-
-`# 📍 CURRENT SELECTION
-
-No geometry selected.`;
-
-        return r;
+        );
 
     };
 
     /*--------------------------------------------------
-      Jurisdiction
+      Range Summary
     --------------------------------------------------*/
 
-    GISFormatter.formatJurisdiction = function (
+    GISFormatter.formatRangeSummary = function (
 
-        data,
-
-        request = {}
+        range
 
     ) {
 
-        const r =
+        return GISFormatter.format(
 
-            GISFormatter.createResponse(
+            Query.getRangeSummary(
 
-                request
+                range
 
-            );
+            )
 
-        r.success = true;
-
-        r.data = data;
-
-        r.markdown =
-
-`# 🌲 CURRENT JURISDICTION
-
-Division : ${data.division || "-"}
-
-Range : ${data.range || "-"}
-
-Beat : ${data.beat || "-"}
-
-Compartment : ${data.compartment || "-"}`;
-
-        return r;
+        );
 
     };
 
     /*--------------------------------------------------
-      List
+      Division Summary
     --------------------------------------------------*/
 
-    GISFormatter.formatList = function (
+    GISFormatter.formatDivisionSummary = function (
 
-        title,
-
-        list,
-
-        request = {}
+        division
 
     ) {
 
-        const r =
+        return GISFormatter.format(
 
-            GISFormatter.createResponse(
+            Query.getDivisionSummary(
 
-                request
+                division
 
-            );
+            )
 
-        r.success = true;
+        );
 
-        r.data = list;
+    };
 
-        r.markdown =
+    /*--------------------------------------------------
+      Staff Inside Beat
+    --------------------------------------------------*/
 
-`# ${title}
+    GISFormatter.formatBeatStaff = function (
 
-Total : ${list.length}`;
+        beat
 
-        return r;
+    ) {
+
+        return GISFormatter.format(
+
+            Query.findStaffInsideBeat(
+
+                beat
+
+            )
+
+        );
+
+    };
+
+    /*--------------------------------------------------
+      Staff Inside Range
+    --------------------------------------------------*/
+
+    GISFormatter.formatRangeStaff = function (
+
+        range
+
+    ) {
+
+        return GISFormatter.format(
+
+            Query.findStaffInsideRange(
+
+                range
+
+            )
+
+        );
+
+    };
+
+    /*--------------------------------------------------
+      Staff Inside Division
+    --------------------------------------------------*/
+
+    GISFormatter.formatDivisionStaff = function (
+
+        division
+
+    ) {
+
+        return GISFormatter.format(
+
+            Query.findStaffInsideDivision(
+
+                division
+
+            )
+
+        );
+
+    };
+
+    /*--------------------------------------------------
+      GIS Info
+    --------------------------------------------------*/
+
+    GISFormatter.formatInfo = function () {
+
+        return GISFormatter.format(
+
+            Query.info()
+
+        );
 
     };
 
@@ -297,14 +271,6 @@ Total : ${list.length}`;
             GISFormatter
 
         );
-
-    console.log(
-
-        "GIS Formatter Loaded",
-
-        GISFormatter.VERSION
-
-    );
 
 })(
 
