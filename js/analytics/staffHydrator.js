@@ -207,7 +207,7 @@ function (
     }
 
     /*----------------------------------
-      Clone Frozen Canonical Object
+      Clone Canonical Object
     ----------------------------------*/
 
     let hydrated;
@@ -269,7 +269,7 @@ function (
     }
 
     /*----------------------------------
-      Runtime Metadata
+      Runtime
     ----------------------------------*/
 
     hydrated.runtime =
@@ -310,89 +310,125 @@ function (
 
         cleanName;
 
-/*----------------------------------
-  Metadata
-----------------------------------*/
+    /*----------------------------------
+      Metadata
+    ----------------------------------*/
 
-hydrated.metadata.source =
+    hydrated.metadata =
 
-    "CANONICAL";
+        hydrated.metadata ||
 
-hydrated.metadata.hydratedAt =
+        {};
 
-    hydrated.runtime.hydratedAt;
+    hydrated.metadata.source =
 
-/*----------------------------------
-  Merge Live Staff
-----------------------------------*/
+        "CANONICAL";
 
-const live =
+    hydrated.metadata.hydratedAt =
 
-    StaffHydrator.getLiveStaff(
+        hydrated.runtime.hydratedAt;
 
-        hydrated.identity?.cleanName
+    /*----------------------------------
+      Merge Live Staff
+    ----------------------------------*/
 
-    );
+    if (
 
-if (
+        typeof StaffHydrator.getLiveStaff ===
 
-    live
+        "function"
 
-) {
+    ) {
 
-    StaffHydrator.hydrateLive(
+        const live =
 
-        hydrated,
+            StaffHydrator.getLiveStaff(
 
-        live
+                hydrated.identity?.cleanName
 
-    );
+            );
 
-}
+        if (
 
-/*----------------------------------
-  Merge Patrol
-----------------------------------*/
+            live
 
-const patrol =
+        ) {
 
-    StaffHydrator.getPatrolTrack(
+            StaffHydrator.hydrateLive(
 
-        hydrated.identity?.cleanName
+                hydrated,
 
-    );
+                live
 
-if (
+            );
 
-    patrol
+        }
 
-) {
+    }
 
-    StaffHydrator.hydratePatrol(
+    /*----------------------------------
+      Merge Patrol
+    ----------------------------------*/
 
-        hydrated,
+    if (
 
-        patrol
+        typeof StaffHydrator.getPatrolTrack ===
 
-    );
+        "function"
 
-}
+    ) {
 
-/*----------------------------------
-  Recalculate
-----------------------------------*/
+        const patrol =
 
-StaffHydrator.recalculate(
+            StaffHydrator.getPatrolTrack(
 
-    hydrated
+                hydrated.identity?.cleanName
 
-);
+            );
 
-/*----------------------------------
-  Return
-----------------------------------*/
+        if (
 
-return hydrated;
+            patrol
+
+        ) {
+
+            StaffHydrator.hydratePatrol(
+
+                hydrated,
+
+                patrol
+
+            );
+
+        }
+
+    }
+
+    /*----------------------------------
+      Refresh Analytics
+    ----------------------------------*/
+
+    if (
+
+        typeof StaffHydrator.recalculate ===
+
+        "function"
+
+    ) {
+
+        StaffHydrator.recalculate(
+
+            hydrated
+
+        );
+
+    }
+
+    /*----------------------------------
+      Return
+    ----------------------------------*/
+
+    return hydrated;
 
 };
 
