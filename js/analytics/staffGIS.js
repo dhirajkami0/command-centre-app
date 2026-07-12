@@ -228,61 +228,173 @@ window.GreenGuardAI =
       Hydrated Staff
     --------------------------------------------------*/
 
-    StaffGIS.locate = function (
+StaffGIS.locate =
 
-        cleanName
+function (
+
+    cleanName
+
+) {
+
+    /*----------------------------------
+      Validate Hydrator
+    ----------------------------------*/
+
+    if (
+
+        !Staff ||
+
+        typeof Staff.hydrate !==
+
+        "function"
 
     ) {
 
-        if (
+        return null;
 
-            !Staff ||
+    }
 
-            typeof Staff.hydrate !==
+    /*----------------------------------
+      Hydrate Staff
+    ----------------------------------*/
 
-            "function"
+    const profile =
 
-        ) {
+        Staff.hydrate(
 
-            return null;
+            cleanName
 
-        }
+        );
 
-        const profile =
+    if (
 
-            Staff.hydrate(
+        !profile
 
-                cleanName
+    ) {
 
-            );
+        return null;
 
-        if (
+    }
 
-            !profile
+    /*----------------------------------
+      Resolve GIS Jurisdiction
+    ----------------------------------*/
 
-        ) {
+    const jurisdiction =
 
-            return null;
+        StaffGIS.getJurisdiction(
 
-        }
+            profile
 
-        return {
+        );
 
-            profile:
+    /*----------------------------------
+      Attach Spatial Information
+    ----------------------------------*/
 
-                profile,
+    profile.spatial =
 
-            jurisdiction:
+        profile.spatial ||
 
-                StaffGIS.getJurisdiction(
+        {};
 
-                    profile
+    profile.spatial.valid =
 
-                )
+        !!jurisdiction;
 
-        };
+    profile.spatial.updatedAt =
+
+        Date.now();
+
+    if (
+
+        jurisdiction
+
+    ) {
+
+        profile.spatial.division =
+
+            jurisdiction.division ||
+
+            "";
+
+        profile.spatial.range =
+
+            jurisdiction.range ||
+
+            "";
+
+        profile.spatial.beat =
+
+            jurisdiction.beat ||
+
+            "";
+
+        profile.spatial.compartment =
+
+            jurisdiction.compartment ||
+
+            "";
+
+        profile.spatial.feature =
+
+            jurisdiction.feature ||
+
+            null;
+
+        profile.spatial.source =
+
+            jurisdiction.source ||
+
+            "GIS";
+
+    }
+
+    else {
+
+        profile.spatial.division =
+
+            "";
+
+        profile.spatial.range =
+
+            "";
+
+        profile.spatial.beat =
+
+            "";
+
+        profile.spatial.compartment =
+
+            "";
+
+        profile.spatial.feature =
+
+            null;
+
+        profile.spatial.source =
+
+            "UNKNOWN";
+
+    }
+
+    /*----------------------------------
+      Return
+    ----------------------------------*/
+
+    return {
+
+        profile:
+
+            profile,
+
+        jurisdiction:
+
+            jurisdiction
 
     };
+
+};
 
     /*--------------------------------------------------
       Export
