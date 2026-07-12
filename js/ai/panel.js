@@ -571,19 +571,27 @@ async function sendMessage() {
 
     Render.showTyping();
 
-    sendButton.disabled = true;
+    sendButton.disabled =
+
+        true;
 
     try {
 
         /*----------------------------------
-          Ask AI
+          Ask Controller
         ----------------------------------*/
 
         const result =
 
-            await Core.ask(
+            await GreenGuardAI.Controller.ask(
 
-                query
+                {
+
+                    query:
+
+                        query
+
+                }
 
             );
 
@@ -595,6 +603,8 @@ async function sendMessage() {
 
         if (
 
+            result &&
+
             result.success
 
         ) {
@@ -603,13 +613,33 @@ async function sendMessage() {
               Normalize Answer
             ------------------------------*/
 
-            let answer = "";
+            let answer =
+
+                "";
 
             if (
 
+                typeof result.markdown ===
+
+                "string" &&
+
+                result.markdown.trim()
+
+            ) {
+
+                answer =
+
+                    result.markdown;
+
+            }
+
+            else if (
+
                 typeof result.answer ===
 
-                "string"
+                "string" &&
+
+                result.answer.trim()
 
             ) {
 
@@ -727,9 +757,9 @@ async function sendMessage() {
 
             Render.error(
 
-                result.error ||
+                result?.message ||
 
-                result.message ||
+                result?.error ||
 
                 "AI request failed."
 
@@ -749,7 +779,7 @@ async function sendMessage() {
 
         Render.error(
 
-            err.message ||
+            err?.message ||
 
             String(
 
@@ -763,7 +793,9 @@ async function sendMessage() {
 
     finally {
 
-        sendButton.disabled = false;
+        sendButton.disabled =
+
+            false;
 
         input.focus();
 
