@@ -237,7 +237,100 @@ window.GreenGuardAI =
         );
 
     };
+/*--------------------------------------------------
+  Spatial
+--------------------------------------------------*/
 
+GISBusiness.findContainingCompartment = function (
+
+    lat,
+
+    lng
+
+) {
+
+    if (
+
+        !window.compartmentSpatialIndexReady ||
+
+        !window.compartmentSpatialIndex ||
+
+        typeof turf ===
+
+        "undefined"
+
+    ) {
+
+        return null;
+
+    }
+
+    if (
+
+        lat == null ||
+
+        lng == null
+
+    ) {
+
+        return null;
+
+    }
+
+    const point =
+
+        turf.point(
+
+            [
+
+                Number(lng),
+
+                Number(lat)
+
+            ]
+
+        );
+
+const candidates =
+    window.allCompartmentFeatures || [];
+
+    for (
+
+        const feature of candidates
+
+    ) {
+
+        try {
+
+            if (
+
+                turf.booleanPointInPolygon(
+
+                    point,
+
+                    feature
+
+                )
+
+            ) {
+
+                return feature;
+
+            }
+
+        }
+
+        catch (
+
+            e
+
+        ) {}
+
+    }
+
+    return null;
+
+};
     /*--------------------------------------------------
       Staff
     --------------------------------------------------*/
