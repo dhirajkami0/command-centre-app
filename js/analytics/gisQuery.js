@@ -170,6 +170,183 @@ GISQuery.findStaffInsideDivision = function (
     );
 
 };
+  /*--------------------------------------------------
+  Beat Summary
+--------------------------------------------------*/
+
+GISQuery.getBeatSummary =
+
+function (
+
+    beat
+
+) {
+
+    if (
+
+        !beat
+
+    ) {
+
+        return null;
+
+    }
+
+    const feature =
+
+        GG.GISEntities.search(
+
+            beat
+
+        );
+
+    const staff =
+
+        GISQuery.findStaffInsideBeat(
+
+            beat
+
+        );
+
+    return {
+
+        beat:
+
+            beat,
+
+        feature:
+
+            feature,
+
+        staff:
+
+            staff,
+
+        staffCount:
+
+            staff.length
+
+    };
+
+};
+  /*--------------------------------------------------
+  Range Summary
+--------------------------------------------------*/
+
+GISQuery.getRangeSummary =
+
+function (
+
+    range
+
+) {
+
+    if (
+
+        !range
+
+    ) {
+
+        return null;
+
+    }
+
+    const feature =
+
+        GG.GISEntities.search(
+
+            range
+
+        );
+
+    const staff =
+
+        GISQuery.findStaffInsideRange(
+
+            range
+
+        );
+
+    return {
+
+        range:
+
+            range,
+
+        feature:
+
+            feature,
+
+        staff:
+
+            staff,
+
+        staffCount:
+
+            staff.length
+
+    };
+
+};
+  /*--------------------------------------------------
+  Division Summary
+--------------------------------------------------*/
+
+GISQuery.getDivisionSummary =
+
+function (
+
+    division
+
+) {
+
+    if (
+
+        !division
+
+    ) {
+
+        return null;
+
+    }
+
+    const feature =
+
+        GG.GISEntities.search(
+
+            division
+
+        );
+
+    const staff =
+
+        GISQuery.findStaffInsideDivision(
+
+            division
+
+        );
+
+    return {
+
+        division:
+
+            division,
+
+        feature:
+
+            feature,
+
+        staff:
+
+            staff,
+
+        staffCount:
+
+            staff.length
+
+    };
+
+};
     /*--------------------------------------------------
       Filter
     --------------------------------------------------*/
