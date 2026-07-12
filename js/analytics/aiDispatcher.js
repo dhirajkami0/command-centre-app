@@ -503,6 +503,240 @@ const formatted =
 /*=========================================================
  DISPATCH STAFF
 =========================================================*/
+ /*=========================================================
+ DISPATCH LEGAL
+=========================================================*/
+
+AIDispatcher.dispatchLegal = async function (
+
+    intent
+
+) {
+
+    /*----------------------------------
+      Validate
+    ----------------------------------*/
+
+    if (
+
+        !intent ||
+
+        typeof intent !==
+
+        "object"
+
+    ) {
+
+        return {
+
+            success: false,
+
+            message:
+
+                "Invalid legal intent."
+
+        };
+
+    }
+
+    /*----------------------------------
+      Router
+    ----------------------------------*/
+
+    const LegalRouter =
+
+        GG.LegalRouter;
+
+    if (
+
+        !LegalRouter ||
+
+        typeof LegalRouter.route !==
+
+        "function"
+
+    ) {
+
+        return {
+
+            success: false,
+
+            message:
+
+                "LegalRouter unavailable."
+
+        };
+
+    }
+
+    /*----------------------------------
+      Route
+    ----------------------------------*/
+
+    const response =
+
+        await LegalRouter.route(
+
+            intent
+
+        );
+
+    /*----------------------------------
+      Failed
+    ----------------------------------*/
+
+    if (
+
+        !response ||
+
+        response.success !==
+
+        true
+
+    ) {
+
+        return (
+
+            response ||
+
+            {
+
+                success: false,
+
+                message:
+
+                    "Legal router failed."
+
+            }
+
+        );
+
+    }
+
+    /*----------------------------------
+      Already Formatted
+    ----------------------------------*/
+
+    return response;
+
+};
+ /*=========================================================
+ DISPATCH REPORT
+=========================================================*/
+
+AIDispatcher.dispatchReport = async function (
+
+    intent
+
+) {
+
+    /*----------------------------------
+      Validate
+    ----------------------------------*/
+
+    if (
+
+        !intent ||
+
+        typeof intent !==
+
+        "object"
+
+    ) {
+
+        return {
+
+            success: false,
+
+            message:
+
+                "Invalid report intent."
+
+        };
+
+    }
+
+    /*----------------------------------
+      Router
+    ----------------------------------*/
+
+    const ReportRouter =
+
+        GG.ReportRouter;
+
+    if (
+
+        !ReportRouter ||
+
+        typeof ReportRouter.route !==
+
+        "function"
+
+    ) {
+
+        return {
+
+            success: false,
+
+            message:
+
+                "ReportRouter unavailable."
+
+        };
+
+    }
+
+    /*----------------------------------
+      Route
+    ----------------------------------*/
+
+    const response =
+
+        await ReportRouter.route(
+
+            intent
+
+        );
+
+    /*----------------------------------
+      Failed
+    ----------------------------------*/
+
+    if (
+
+        !response ||
+
+        response.success !==
+
+        true
+
+    ) {
+
+        return (
+
+            response ||
+
+            {
+
+                success: false,
+
+                message:
+
+                    "Report router failed."
+
+                }
+
+        );
+
+    }
+
+    /*----------------------------------
+      Already Formatted
+    ----------------------------------*/
+
+    return response;
+
+};
 /*=========================================================
  DISPATCH STAFF
 =========================================================*/
