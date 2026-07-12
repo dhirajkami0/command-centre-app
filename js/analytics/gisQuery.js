@@ -65,23 +65,6 @@ GISQuery.findContainingCompartment = function (
   Nearest Compartment
 --------------------------------------------------*/
 
-GISQuery.findNearestCompartment = function (
-
-    lat,
-
-    lng
-
-) {
-
-    return GIS.findNearestCompartment(
-
-        lat,
-
-        lng
-
-    );
-
-};
 
   /*--------------------------------------------------
   Hierarchy
