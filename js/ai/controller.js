@@ -54,10 +54,12 @@ Controller.init = function () {
     }
     Controller.initialized =
         true;
-    console.log(
-        "%cGreenGuard Controller Ready",
-        "color:#008000;font-weight:bold;"
-    );
+    if (GG.Config?.DEBUG?.ENABLED) {
+        console.log(
+            "%cGreenGuard Controller Ready",
+            "color:#008000;font-weight:bold;"
+        );
+    }
     return true;
 };
 
@@ -146,17 +148,27 @@ async function () {
       Wait Firebase
     ----------------------------------*/
     await Controller.waitForFirebase();
-    /*----------------------------------
-      Auto Load
-    ----------------------------------*/
+/*----------------------------------
+  Auto Load
+----------------------------------*/
+
+if (
+    GG.Config?.ANALYTICS?.AUTO_LOAD &&
+    !Analytics.loaded
+) {
     if (
-        GG.Config
-            .ANALYTICS
-            .AUTO_LOAD
+        typeof Analytics.load ===
+        "function"
     ) {
         await Analytics.load();
     }
-    return Analytics.loaded;
+}
+ /*----------------------------------
+  Return
+----------------------------------*/
+
+return Analytics.loaded;
+
 };
 
 /*=========================================================
@@ -164,32 +176,16 @@ async function () {
 =========================================================*/
 
 Controller.ask = async function (
+
     request
+
 ) {
 
     Controller.init();
 
     const started =
+
         Date.now();
-
-    console.group(
-        "🧠 CONTROLLER PIPELINE"
-    );
-
-    console.log(
-        "File:",
-        "controller.js"
-    );
-
-    console.log(
-        "Function:",
-        "Controller.ask()"
-    );
-
-    console.log(
-        "Incoming Request:",
-        request
-    );
 
     try {
 
@@ -202,12 +198,15 @@ Controller.ask = async function (
             !request ||
 
             typeof request !==
+
             "object"
 
         ) {
 
             throw new Error(
+
                 "Invalid request."
+
             );
 
         }
@@ -219,213 +218,136 @@ Controller.ask = async function (
         ) {
 
             throw new Error(
+
                 "Request query missing."
+
             );
 
         }
-
-        console.log(
-            "✅ Request Valid"
-        );
 
         /*----------------------------------
           Ensure Analytics
         ----------------------------------*/
 
-        console.group(
-            "📊 Analytics"
-        );
-
-        console.log(
-            "Controller.ensureAnalyticsReady()"
-        );
-
         await Controller.ensureAnalyticsReady();
 
-        console.log(
-            "✅ Analytics Ready"
-        );
-
-        console.groupEnd();
-
         /*----------------------------------
-          Detect Intent
+          Intent Manager
         ----------------------------------*/
 
-        console.group(
-            "🎯 Intent Detection"
-        );
-
         const IntentManager =
-            GG.IntentManager;
 
-        console.log(
-            "Module:",
-            IntentManager
-        );
+            GG.IntentManager;
 
         if (
 
             !IntentManager ||
 
             typeof IntentManager.detect !==
+
             "function"
 
         ) {
 
             throw new Error(
+
                 "IntentManager unavailable."
+
             );
 
         }
-
-        console.log(
-            "Calling:",
-            "IntentManager.detect()"
-        );
 
         const intent =
+
             await IntentManager.detect(
+
                 request.query
+
             );
-
-        console.log(
-            "Intent Returned:"
-        );
-
-        console.log(
-            intent
-        );
-
-        console.log(
-            "Intent:",
-            intent.intent
-        );
-
-        console.log(
-            "Domain:",
-            intent.domain
-        );
-
-        console.log(
-            "Confidence:",
-            intent.confidence
-        );
-
-        console.groupEnd();
-
-        if (
-
-            GG.Config?.DEBUG?.ENABLED
-
-        ) {
-
-            console.log(
-                "Unified Intent:",
-                intent
-            );
-
-        }
 
         /*----------------------------------
-          Save Unified Intent
+          Attach Intent
         ----------------------------------*/
 
-        request.detectedIntent =
-            intent;
-        request.intent =
-            intent.intent;
-        request.domain =
-            intent.domain;
-        request.entities =
-            intent.entities || {};
-        request.confidence =
-            intent.confidence || 0;
+        Object.assign(
 
-        console.group(
-            "📝 Request Updated"
+            request,
+
+            {
+
+                detectedIntent:
+
+                    intent,
+
+                intent:
+
+                    intent.intent,
+
+                domain:
+
+                    intent.domain,
+
+                entities:
+
+                    intent.entities ||
+
+                    {},
+
+                parameters:
+
+                    intent.parameters ||
+
+                    {},
+
+                context:
+
+                    intent.context ||
+
+                    {},
+
+                confidence:
+
+                    intent.confidence ||
+
+                    0
+
+            }
+
         );
-        console.log(
-            "request.intent:",
-            request.intent
-        );
-        console.log(
-            "request.domain:",
-            request.domain
-        );
-        console.log(
-            "request.confidence:",
-            request.confidence
-        );
-        console.log(
-            "request.entities:",
-            request.entities
-        );
-        console.groupEnd();
 
         /*----------------------------------
           Dispatcher
         ----------------------------------*/
 
-        console.group(
-            "🚀 Dispatcher"
-        );
-
         const Dispatcher =
-            GG.AIDispatcher;
 
-        console.log(
-            "Module:",
-            Dispatcher
-        );
+            GG.AIDispatcher;
 
         if (
 
             !Dispatcher ||
 
             typeof Dispatcher.dispatch !==
+
             "function"
 
         ) {
 
             throw new Error(
+
                 "Dispatcher unavailable."
+
             );
 
         }
 
-        console.log(
-            "Calling:",
-            "AIDispatcher.dispatch()"
-        );
+        const response =
 
-const response =
-    await Dispatcher.dispatch(
-        request
-    );
+            await Dispatcher.dispatch(
 
-        console.log(
-            "Dispatcher Returned:"
-        );
+                request
 
-        console.log(
-            response
-        );
-
-        console.groupEnd();
-
-        if (
-
-            GG.Config?.DEBUG?.ENABLED
-
-        ) {
-
-            console.log(
-                "Dispatcher Response:",
-                response
             );
-
-        }
 
         /*----------------------------------
           Local Success
@@ -439,90 +361,37 @@ const response =
 
         ) {
 
-            console.group(
-                "✅ Controller Success"
-            );
-
             response.local =
+
                 true;
 
-            response.intent =
-                intent.intent;
+            response.metadata =
 
-            response.detectedIntent =
-                intent;
+                response.metadata ||
 
-            console.log(
-                "Final Intent:",
-                response.intent
-            );
+                {};
 
-            console.log(
-                "Local:",
-                response.local
-            );
+            response.metadata.controllerTime =
 
-            console.log(
-                "Response:"
-            );
-
-            console.log(
-                response
-            );
-
-            console.log(
-                "Elapsed:",
                 Date.now() -
-                started,
-                "ms"
-            );
 
-            console.groupEnd();
+                started;
 
-            console.group(
-                "🏁 FINAL PIPELINE"
-            );
-            console.log(
-                "Query:",
-                request.query
-            );
-            console.log(
-                "Intent:",
-                response.intent
-            );
-            console.log(
-                "Domain:",
-                response.domain
-            );
-            console.log(
-                "Handler:",
-                response.module
-            );
-            console.log(
-                "Formatter:",
-                response.formatted?.module
-            );
-            console.log(
-                "Cards:",
-                response.cards?.length || 0
-            );
-            console.log(
-                "Sections:",
-                response.sections?.length || 0
-            );
-            console.log(
-                "Markdown:",
-                !!response.formatted?.markdown
-            );
-            console.log(
-                "HTML:",
-                !!response.formatted?.html
-            );
-            console.groupEnd();
+            if (
 
-            console.groupEnd();
+                GG.Config?.FREEZE_RESPONSES ===
 
-            return response;
+                true
+
+            ) {
+
+                return Object.freeze(
+
+                    response
+
+                );
+
+            }return response;
 
         }
 
@@ -530,26 +399,19 @@ const response =
           Cloud Required
         ----------------------------------*/
 
-        console.warn(
-            "⚠ Local pipeline finished but requires cloud."
-        );
-
-        console.log(
-            "Elapsed:",
-            Date.now() -
-            started,
-            "ms"
-        );
-
-        console.groupEnd();
-
         return {
 
-            success: false,
+            success:
 
-            local: false,
+                false,
 
-            reason: "cloud",
+            local:
+
+                false,
+
+            reason:
+
+                "cloud",
 
             intent:
 
@@ -573,49 +435,33 @@ const response =
 
     catch (
 
-        err
+        error
 
     ) {
 
-        console.group(
-            "❌ Controller Error"
-        );
-
-        console.error(
-            err
-        );
-
-        console.log(
-            "Elapsed:",
-            Date.now() -
-            started,
-            "ms"
-        );
-
-        console.groupEnd();
-
         return {
 
-            success: false,
+            success:
 
-            local: false,
+                false,
+
+            local:
+
+                false,
 
             source:
+
                 "controller",
 
             message:
-                err.message,
+
+                error.message,
 
             error:
-                err
+
+                error
 
         };
-
-    }
-
-    finally {
-
-        console.groupEnd();
 
     }
 
@@ -625,10 +471,17 @@ const response =
 =========================================================*/
 
 GG.Controller =
-    Controller;
 
-console.log(
-    "%cGreenGuard AI Controller Loaded",
-    "color:#008000;font-weight:bold;"
-);
+    Object.freeze(
+
+        Controller
+
+    );
+
+if (GG.Config?.DEBUG?.ENABLED) {
+    console.log(
+        "%cGreenGuard AI Controller Loaded",
+        "color:#008000;font-weight:bold;"
+    );
+}
 })(window);
