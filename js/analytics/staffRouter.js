@@ -596,14 +596,6 @@ if (
 
 ) {
 
-    console.log(
-
-        "Formatter:",
-
-        "StaffFormatter.format"
-
-    );
-
     result =
 
         GG.StaffFormatter.format(
@@ -611,14 +603,6 @@ if (
             result
 
         );
-
-    console.log(
-
-        "Formatted:",
-
-        result
-
-    );
 
 }
 
