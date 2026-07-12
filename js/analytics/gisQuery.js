@@ -70,17 +70,77 @@ GISQuery.findContainingCompartment = function (
   Hierarchy
 --------------------------------------------------*/
 
+/*--------------------------------------------------
+  Hierarchy
+--------------------------------------------------*/
+
 GISQuery.getHierarchy = function (
 
     value
 
 ) {
 
-    return GG.GISEntities.getHierarchy(
+    const feature =
 
-        value
+        GG.GISEntities.search(
 
-    );
+            value
+
+        );
+
+    if (
+
+        !feature
+
+    ) {
+
+        return null;
+
+    }
+
+    const p =
+
+        feature.properties ||
+
+        {};
+
+    return {
+
+        feature:
+
+            feature,
+
+        division:
+
+            p.division ||
+
+            "",
+
+        range:
+
+            p.range ||
+
+            "",
+
+        beat:
+
+            p.beat ||
+
+            "",
+
+        compartment:
+
+            p.compartment ||
+
+            "",
+
+        village:
+
+            p.village ||
+
+            ""
+
+    };
 
 };
 
