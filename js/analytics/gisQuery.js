@@ -51,15 +51,123 @@ GISQuery.findContainingCompartment = function (
 
 ) {
 
-    return
+    return GIS.findContainingCompartment(
 
-        GIS.findContainingCompartment(
+        lat,
 
-            lat,
+        lng
 
-            lng
+    );
 
-        );
+};
+
+  /*--------------------------------------------------
+  Nearest Compartment
+--------------------------------------------------*/
+
+GISQuery.findNearestCompartment = function (
+
+    lat,
+
+    lng
+
+) {
+
+    return GIS.findNearestCompartment(
+
+        lat,
+
+        lng
+
+    );
+
+};
+
+  /*--------------------------------------------------
+  Hierarchy
+--------------------------------------------------*/
+
+GISQuery.getHierarchy = function (
+
+    value
+
+) {
+
+    return GG.GISEntities.getHierarchy(
+
+        value
+
+    );
+
+};
+
+  /*--------------------------------------------------
+  Staff Inside Compartment
+--------------------------------------------------*/
+
+GISQuery.findStaffInsideCompartment = function (
+
+    compartment
+
+) {
+
+    return GG.StaffGIS.findStaffInsideCompartment(
+
+        compartment
+
+    );
+
+};
+
+  /*--------------------------------------------------
+  Staff Inside Beat
+--------------------------------------------------*/
+
+GISQuery.findStaffInsideBeat = function (
+
+    beat
+
+) {
+
+    return GG.StaffGIS.findStaffInsideBeat(
+
+        beat
+
+    );
+
+};
+  /*--------------------------------------------------
+  Staff Inside Range
+--------------------------------------------------*/
+
+GISQuery.findStaffInsideRange = function (
+
+    range
+
+) {
+
+    return GG.StaffGIS.findStaffInsideRange(
+
+        range
+
+    );
+
+};
+  /*--------------------------------------------------
+  Staff Inside Division
+--------------------------------------------------*/
+
+GISQuery.findStaffInsideDivision = function (
+
+    division
+
+) {
+
+    return GG.StaffGIS.findStaffInsideDivision(
+
+        division
+
+    );
 
 };
     /*--------------------------------------------------
