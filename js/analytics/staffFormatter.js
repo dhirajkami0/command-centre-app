@@ -12168,7 +12168,7 @@ StaffFormatter.formatActiveStaffCount = function (
  FORMAT ACTIVE STAFF LIST
 =========================================================*/
 
-StaffFormatter.formatActiveStaffList = function (
+StaffFormatter.formatStaffActiveList = function (
 
     response
 
@@ -12407,6 +12407,409 @@ StaffFormatter.formatActiveStaffList = function (
     result.message =
 
         "Active staff list formatted successfully.";
+
+    return result;
+
+};
+ /*=========================================================
+ FORMAT TEAM LEADER LIST
+=========================================================*/
+
+StaffFormatter.formatStaffTeamLeaderList = function (
+
+    response
+
+) {
+
+    const result =
+
+        StaffFormatter.createResponse(
+
+            response
+
+        );
+
+    /*----------------------------------
+      Validate
+    ----------------------------------*/
+
+    if (
+
+        !response ||
+
+        !response.success ||
+
+        !response.data
+
+    ) {
+
+        result.message =
+
+            response?.message ||
+
+            "Team leader list not available.";
+
+        return result;
+
+    }
+
+    /*----------------------------------
+      Data
+    ----------------------------------*/
+
+    const staff =
+
+        response.data.staff ||
+
+        [];
+
+    const count =
+
+        response.data.count ??
+
+        staff.length;
+
+    /*----------------------------------
+      Markdown
+    ----------------------------------*/
+
+    const lines = [
+
+        "# 👮 TEAM LEADER DIRECTORY",
+
+        "",
+
+        "**Total Team Leaders:** " +
+
+            count,
+
+        ""
+
+    ];
+
+    staff.forEach(
+
+        function (
+
+            profile,
+
+            index
+
+        ) {
+
+            const identity =
+
+                profile.identity ||
+
+                profile;
+
+            const posting =
+
+                profile.posting ||
+
+                profile;
+
+            const assignment =
+
+                profile.assignment ||
+
+                profile;
+
+            const gps =
+
+                profile.gps ||
+
+                profile;
+
+            const analytics =
+
+                profile.analytics ||
+
+                profile;
+
+            lines.push(
+
+                "## " +
+
+                (
+
+                    index + 1
+
+                ) +
+
+                ". " +
+
+                (
+
+                    identity.name ||
+
+                    identity.cleanName ||
+
+                    "-"
+
+                )
+
+            );
+
+            lines.push(
+
+                "**Designation:** " +
+
+                (
+
+                    identity.designation ||
+
+                    "-"
+
+                )
+
+            );
+
+            lines.push(
+
+                "**Role:** " +
+
+                (
+
+                    identity.role ||
+
+                    "TEAM LEADER"
+
+                )
+
+            );
+
+            lines.push(
+
+                "**Circle:** " +
+
+                (
+
+                    posting.circle ||
+
+                    "-"
+
+                )
+
+            );
+
+            lines.push(
+
+                "**Division:** " +
+
+                (
+
+                    posting.division ||
+
+                    "-"
+
+                )
+
+            );
+
+            lines.push(
+
+                "**Range:** " +
+
+                (
+
+                    posting.range ||
+
+                    "-"
+
+                )
+
+            );
+
+            lines.push(
+
+                "**Beat:** " +
+
+                (
+
+                    posting.beat ||
+
+                    "-"
+
+                )
+
+            );
+
+            lines.push(
+
+                "**Duty:** " +
+
+                (
+
+                    assignment.dutyType ||
+
+                    "-"
+
+                )
+
+            );
+
+            lines.push(
+
+                "**Status:** " +
+
+                (
+
+                    assignment.status ||
+
+                    assignment.dutyStatus ||
+
+                    "-"
+
+                )
+
+            );
+
+            lines.push(
+
+                "**Speed:** " +
+
+                (
+
+                    gps.speed ??
+
+                    0
+
+                )
+
+            );
+
+            lines.push(
+
+                "**Distance:** " +
+
+                (
+
+                    analytics.distanceKm ??
+
+                    0
+
+                ) +
+
+                " km"
+
+            );
+
+            lines.push("");
+
+        }
+
+    );
+
+    if (
+
+        staff.length === 0
+
+    ) {
+
+        lines.push(
+
+            "_No Team Leaders found._"
+
+        );
+
+    }
+
+    result.markdown =
+
+        lines.join(
+
+            "\n"
+
+        );
+
+    /*----------------------------------
+      Card
+    ----------------------------------*/
+
+    result.cards.push({
+
+        type:
+
+            "team-leader-list",
+
+        title:
+
+            "Team Leaders",
+
+        data: {
+
+            count:
+
+                count,
+
+            staff:
+
+                staff
+
+        }
+
+    });
+
+    /*----------------------------------
+      Section
+    ----------------------------------*/
+
+    result.sections.push({
+
+        title:
+
+            "Team Leaders",
+
+        data: {
+
+            count:
+
+                count,
+
+            staff:
+
+                staff
+
+        }
+
+    });
+
+    /*----------------------------------
+      Preserve Data
+    ----------------------------------*/
+
+    result.data =
+
+        response.data;
+
+    /*----------------------------------
+      Metadata
+    ----------------------------------*/
+
+    result.success =
+
+        true;
+
+    result.intent =
+
+        StaffConstants.INTENTS.STAFF_TEAM_LEADER_LIST;
+
+    result.confidence =
+
+        response.confidence ||
+
+        1;
+
+    result.source =
+
+        response.source ||
+
+        "LOCAL";
+
+    result.message =
+
+        "Team leader list formatted successfully.";
 
     return result;
 
