@@ -507,50 +507,46 @@ AIDispatcher.dispatch = async function (
 
         response;
 
-    console.log(
 
-        "✅ Dispatcher Response:",
 
-        response
+console.log(
+    "=============================="
+);
 
-    );
+console.log(
+    "DISPATCH RETURN"
+);
 
-    console.log(
+console.log(
+    "Success:",
+    response.success
+);
 
-        "⏱ Execution:",
+console.log(
+    "Module:",
+    response.module
+);
 
-        response.metadata.executionTime,
+console.log(
+    "Intent:",
+    response.intent
+);
 
-        "ms"
+console.log(
+    "Markdown:",
+    !!response.markdown
+);
 
-    );
+console.dir(
+    response
+);
 
-    console.groupEnd();
-
-    /*----------------------------------
-  Metadata
-----------------------------------*/
-
-response.metadata =
-    response.metadata ||
-    {};
-
-response.metadata.executionTime =
-    Date.now() -
-    started;
-
-response.request =
-    request;
-
-response.detectedIntent =
-    intent;
-
-AIDispatcher.lastResponse =
-    response;
-
-/* ADD LOG HERE */
+console.log(
+    "=============================="
+);
 
 return response;
+
 
 }; /*=========================================================
  DISPATCH STAFF
