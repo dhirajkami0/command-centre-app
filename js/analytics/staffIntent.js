@@ -6972,79 +6972,34 @@ StaffIntent.detectDirectoryIntent = function (
         hasBeat;
 
     /*----------------------------------
-      Directory Language
-    ----------------------------------*/
+  Directory Language
+----------------------------------*/
 
-    const directoryQuery =
+const directoryQuery =
 
-        hasKeyword(
-            KEYWORDS.STAFF_DIRECTORY
-        ) ||
+    hasKeyword(
+        KEYWORDS.STAFF_DIRECTORY
+    ) ||
 
-        hasKeyword(
-            KEYWORDS.STAFF_RANGE_DIRECTORY
-        ) ||
+    hasKeyword(
+        KEYWORDS.STAFF_RANGE_DIRECTORY
+    ) ||
 
-        hasKeyword(
-            KEYWORDS.STAFF_DIVISION_DIRECTORY
-        ) ||
+    hasKeyword(
+        KEYWORDS.STAFF_DIVISION_DIRECTORY
+    ) ||
 
-        hasKeyword(
-            KEYWORDS.STAFF_BEAT_DIRECTORY
-        ) ||
+    hasKeyword(
+        KEYWORDS.STAFF_BEAT_DIRECTORY
+    ) ||
 
-        hasKeyword(
-            KEYWORDS.STAFF_CIRCLE_DIRECTORY
-        ) ||
+    hasKeyword(
+        KEYWORDS.STAFF_CIRCLE_DIRECTORY
+    ) ||
 
-        hasKeyword(
-            KEYWORDS.STAFF_DESIGNATION_DIRECTORY
-        ) ||
-
-        query.includes(
-            "LIST"
-        ) ||
-
-        query.includes(
-            "SHOW"
-        ) ||
-
-        query.includes(
-            "VIEW"
-        ) ||
-
-        query.includes(
-            "DISPLAY"
-        ) ||
-
-        query.includes(
-            "GET"
-        ) ||
-
-        query.includes(
-            "DIRECTORY"
-        ) ||
-
-        query.includes(
-            "STAFF"
-        ) ||
-
-        query.includes(
-            "ALL"
-        ) ||
-
-        query.includes(
-            "UNDER"
-        ) ||
-
-        query.includes(
-            "IN "
-        ) ||
-
-        query.includes(
-            "OF "
-        );
-
+    hasKeyword(
+        KEYWORDS.STAFF_DESIGNATION_DIRECTORY
+    );
     /*----------------------------------
       Designation Directory
       Highest Priority
