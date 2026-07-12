@@ -49,7 +49,7 @@ AIDispatcher.VERSION =
 
 AIDispatcher.loaded =
 
-    false;
+    true;
 
 AIDispatcher.loading =
 
@@ -148,22 +148,6 @@ AIDispatcher.createResponse = function (
 };
 
 /*=========================================================
- INITIALIZE
-=========================================================*/
-
-AIDispatcher.initialize = function () {
-
-    AIDispatcher.loaded =
-
-        true;
-
-    AIDispatcher.loading =
-
-        false;
-
-    return true;
-
-};/*=========================================================
  MASTER DISPATCH
 =========================================================*/
 
@@ -1517,7 +1501,13 @@ GG.dispatchAI = function (
 
 };
 /*=========================================================
- EXPORT
+INITIALIZE
+=========================================================*/
+
+
+
+/*=========================================================
+EXPORT
 =========================================================*/
 
 GG.AIDispatcher =
@@ -1529,21 +1519,23 @@ GG.AIDispatcher =
     );
 
 /*=========================================================
- INITIALIZE
+READY
 =========================================================*/
 
-AIDispatcher.initialize();
+if (
 
-/*=========================================================
- READY
-=========================================================*/
+    GG.Config?.DEBUG?.ENABLED
 
-console.log(
+) {
 
-    "%cAI Dispatcher Loaded",
+    console.log(
 
-    "color:#008000;font-weight:bold;"
+        "%cAI Dispatcher Loaded",
 
-);
+        "color:#008000;font-weight:bold;"
+
+    );
+
+}
 
 })(window);
