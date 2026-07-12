@@ -310,29 +310,89 @@ function (
 
         cleanName;
 
-    /*----------------------------------
-      Metadata
-    ----------------------------------*/
-
-    hydrated.metadata =
-
-        hydrated.metadata ||
-
-        {};
+/*----------------------------------
+  Metadata
+----------------------------------*/
 
 hydrated.metadata.source =
 
     "CANONICAL";
 
-    hydrated.metadata.hydratedAt =
+hydrated.metadata.hydratedAt =
 
-        hydrated.runtime.hydratedAt;
+    hydrated.runtime.hydratedAt;
 
-    /*----------------------------------
-      Return
-    ----------------------------------*/
+/*----------------------------------
+  Merge Live Staff
+----------------------------------*/
 
-    return hydrated;
+const live =
+
+    StaffHydrator.getLiveStaff(
+
+        hydrated.identity?.cleanName
+
+    );
+
+if (
+
+    live
+
+) {
+
+    StaffHydrator.hydrateLive(
+
+        hydrated,
+
+        live
+
+    );
+
+}
+
+/*----------------------------------
+  Merge Patrol
+----------------------------------*/
+
+const patrol =
+
+    StaffHydrator.getPatrolTrack(
+
+        hydrated.identity?.cleanName
+
+    );
+
+if (
+
+    patrol
+
+) {
+
+    StaffHydrator.hydratePatrol(
+
+        hydrated,
+
+        patrol
+
+    );
+
+}
+
+/*----------------------------------
+  Recalculate
+----------------------------------*/
+
+StaffHydrator.recalculate(
+
+    hydrated
+
+);
+
+/*----------------------------------
+  Return
+----------------------------------*/
+
+return hydrated;
 
 };
 
