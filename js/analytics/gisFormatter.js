@@ -763,6 +763,336 @@ GISFormatter.formatHierarchy = function (
 
 };
   /*--------------------------------------------------
+  Operational Status
+--------------------------------------------------*/
+
+GISFormatter.formatOperationalStatus = function (
+
+    cleanName,
+
+    request = {}
+
+) {
+
+    const response =
+
+        GISFormatter.createResponse(
+
+            request
+
+        );
+
+    const status =
+
+        GG.StaffGIS.getOperationalStatus(
+
+            cleanName
+
+        );
+
+    if (
+
+        !status
+
+    ) {
+
+        response.markdown =
+
+            "# Staff Not Found";
+
+        return response;
+
+    }
+
+    response.success =
+
+        true;
+
+    response.data =
+
+        status;
+
+    response.markdown =
+
+`# 🚔 Operational Status
+
+**Name:** ${status.name}
+
+**Duty:** ${status.dutyActive ? "Active" : "Inactive"}
+
+**Duty Type:** ${status.dutyType || "-"}
+
+**Current Beat:** ${status.currentBeat || "-"}
+
+**Current Compartment:** ${status.currentCompartment || "-"}
+
+**Inside Posting:** ${status.insidePosting ? "Yes" : "No"}
+
+**Inside Assignment:** ${status.insideAssignment ? "Yes" : "No"}`;
+
+    return response;
+
+};
+  /*--------------------------------------------------
+  Movement Summary
+--------------------------------------------------*/
+
+GISFormatter.formatMovementSummary = function (
+
+    cleanName,
+
+    request = {}
+
+) {
+
+    const response =
+
+        GISFormatter.createResponse(
+
+            request
+
+        );
+
+    const movement =
+
+        GG.StaffGIS.getMovementSummary(
+
+            cleanName
+
+        );
+
+    if (
+
+        !movement
+
+    ) {
+
+        response.markdown =
+
+            "# Staff Not Found";
+
+        return response;
+
+    }
+
+    response.success =
+
+        true;
+
+    response.data =
+
+        movement;
+
+    response.markdown =
+
+`# 🚶 Movement Summary
+
+**Name:** ${movement.name}
+
+**Duty:** ${movement.dutyActive ? "Active" : "Inactive"}
+
+**Duty Type:** ${movement.dutyType || "-"}
+
+**Current Beat:** ${movement.current.beat || "-"}
+
+**Current Compartment:** ${movement.current.compartment || "-"}
+
+**Speed:** ${movement.gps.speed || 0} km/h
+
+**Inside Posting:** ${movement.insidePosting ? "Yes" : "No"}
+
+**Inside Assignment:** ${movement.insideAssignment ? "Yes" : "No"}`;
+
+    return response;
+
+};
+  /*--------------------------------------------------
+  Nearby Staff
+--------------------------------------------------*/
+
+GISFormatter.formatNearbyStaff = function (
+
+    cleanName,
+
+    radius = 1000,
+
+    request = {}
+
+) {
+
+    const response =
+
+        GISFormatter.createResponse(
+
+            request
+
+        );
+
+    const nearby =
+
+        GG.StaffGIS.getNearbyStaff(
+
+            cleanName,
+
+            radius
+
+        );
+
+    if (
+
+        !nearby
+
+    ) {
+
+        response.markdown =
+
+            "# Staff Not Found";
+
+        return response;
+
+    }
+
+    response.success =
+
+        true;
+
+    response.data =
+
+        nearby;
+
+    let md =
+
+`# 👥 Nearby Staff
+
+**Radius:** ${radius} m
+
+**Nearby Staff:** ${nearby.length}`;
+
+    if (
+
+        nearby.length
+
+    ) {
+
+        md +=
+
+            "\n\n";
+
+        nearby.forEach(
+
+            function (
+
+                staff,
+
+                i
+
+            ) {
+
+                md +=
+
+`${i + 1}. ${
+
+    staff.name ||
+
+    staff.cleanName
+
+}${
+    staff.distance != null
+        ? ` (${Math.round(staff.distance)} m)`
+        : ""
+}
+
+`;
+
+            }
+
+        );
+
+    }
+
+    response.markdown =
+
+        md;
+
+    return response;
+
+};
+  /*--------------------------------------------------
+  Analytics
+--------------------------------------------------*/
+
+GISFormatter.formatAnalytics = function (
+
+    cleanName,
+
+    request = {}
+
+) {
+
+    const response =
+
+        GISFormatter.createResponse(
+
+            request
+
+        );
+
+    const result =
+
+        GG.StaffGIS.locate(
+
+            cleanName
+
+        );
+
+    if (
+
+        !result
+
+    ) {
+
+        response.markdown =
+
+            "# Staff Not Found";
+
+        return response;
+
+    }
+
+    const analytics =
+
+        result.profile.analytics ||
+
+        {};
+
+    response.success =
+
+        true;
+
+    response.data =
+
+        analytics;
+
+    response.markdown =
+
+`# 📊 Patrol Analytics
+
+**Name:** ${result.profile.identity.name}
+
+**Distance:** ${analytics.distanceKm || 0} km
+
+**Track Points:** ${analytics.pointCount || 0}
+
+**Started:** ${analytics.startedAt || "-"}
+
+**Ended:** ${analytics.endedAt || "-"}
+
+**Coverage:** ${analytics.coverage || 0}%`;
+
+    return response;
+
+};
+  /*--------------------------------------------------
   GIS Information
 --------------------------------------------------*/
 
