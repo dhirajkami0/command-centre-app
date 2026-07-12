@@ -18,7 +18,7 @@ window.GreenGuardAI =
 
     GISRouter.VERSION =
 
-        "1.0.0";
+        "1.1.0";
 
     const ROUTES = {};
 
@@ -66,7 +66,11 @@ window.GreenGuardAI =
 
         const QUERY =
 
-            GG.GISQuery;
+            GG.GISQuery || {};
+
+        const FORMATTER =
+
+            GG.GISFormatter || {};
 
         /*------------------------------
           Search
@@ -75,6 +79,8 @@ window.GreenGuardAI =
         GISRouter.register(
 
             INTENTS.GIS_SEARCH,
+
+            FORMATTER.formatSearch ||
 
             QUERY.getGIS
 
@@ -88,6 +94,8 @@ window.GreenGuardAI =
 
             INTENTS.GIS_PROFILE,
 
+            FORMATTER.formatInfo ||
+
             QUERY.info
 
         );
@@ -99,6 +107,8 @@ window.GreenGuardAI =
         GISRouter.register(
 
             INTENTS.GIS_MAP,
+
+            FORMATTER.formatMap ||
 
             QUERY.getMap
 
@@ -112,6 +122,8 @@ window.GreenGuardAI =
 
             INTENTS.GIS_FILTER,
 
+            FORMATTER.formatCurrentSelection ||
+
             QUERY.getFilter
 
         );
@@ -119,6 +131,8 @@ window.GreenGuardAI =
         GISRouter.register(
 
             INTENTS.GIS_CURRENT_FILTER,
+
+            FORMATTER.formatCurrentSelection ||
 
             QUERY.getFilter
 
@@ -132,6 +146,8 @@ window.GreenGuardAI =
 
             INTENTS.GIS_SELECTION,
 
+            FORMATTER.formatCurrentSelection ||
+
             QUERY.getCurrentGeometry
 
         );
@@ -143,6 +159,8 @@ window.GreenGuardAI =
         GISRouter.register(
 
             INTENTS.GIS_CURRENT_LOCATION,
+
+            FORMATTER.formatCurrentLocation ||
 
             QUERY.getCurrentGeometry
 
@@ -156,6 +174,8 @@ window.GreenGuardAI =
 
             INTENTS.GIS_DIVISION,
 
+            FORMATTER.formatCurrentDivision ||
+
             QUERY.getCurrentDivision
 
         );
@@ -167,6 +187,8 @@ window.GreenGuardAI =
         GISRouter.register(
 
             INTENTS.GIS_RANGE,
+
+            FORMATTER.formatCurrentRange ||
 
             QUERY.getCurrentRange
 
@@ -180,6 +202,8 @@ window.GreenGuardAI =
 
             INTENTS.GIS_BEAT,
 
+            FORMATTER.formatCurrentBeat ||
+
             QUERY.getCurrentBeat
 
         );
@@ -191,6 +215,8 @@ window.GreenGuardAI =
         GISRouter.register(
 
             INTENTS.GIS_COMPARTMENT,
+
+            FORMATTER.formatCurrentCompartment ||
 
             QUERY.getCurrentCompartment
 
@@ -204,6 +230,8 @@ window.GreenGuardAI =
 
             INTENTS.GIS_VILLAGE,
 
+            FORMATTER.formatCurrentVillage ||
+
             QUERY.getVillages
 
         );
@@ -216,7 +244,9 @@ window.GreenGuardAI =
 
             INTENTS.GIS_HIERARCHY,
 
-            QUERY.getFilter
+            FORMATTER.formatHierarchy ||
+
+            QUERY.getHierarchy
 
         );
 
@@ -228,6 +258,8 @@ window.GreenGuardAI =
 
             INTENTS.GIS_NEAREST,
 
+            FORMATTER.formatNearest ||
+
             QUERY.getCurrentGeometry
 
         );
@@ -235,6 +267,8 @@ window.GreenGuardAI =
         GISRouter.register(
 
             INTENTS.GIS_INSIDE,
+
+            FORMATTER.formatInside ||
 
             QUERY.findContainingCompartment
 
@@ -244,6 +278,8 @@ window.GreenGuardAI =
 
             INTENTS.GIS_CONTAINS,
 
+            FORMATTER.formatContains ||
+
             QUERY.findContainingCompartment
 
         );
@@ -252,6 +288,8 @@ window.GreenGuardAI =
 
             INTENTS.GIS_DISTANCE,
 
+            FORMATTER.formatDistance ||
+
             QUERY.getTrackDistanceMap
 
         );
@@ -259,6 +297,8 @@ window.GreenGuardAI =
         GISRouter.register(
 
             INTENTS.GIS_DIRECTION,
+
+            FORMATTER.formatDirection ||
 
             QUERY.getCurrentGeometry
 
@@ -272,13 +312,21 @@ window.GreenGuardAI =
 
             INTENTS.GIS_ANALYTICS,
 
+            FORMATTER.formatAnalytics ||
+
             QUERY.getAnalyticsCache
 
         );
 
+        /*------------------------------
+          Summary
+        ------------------------------*/
+
         GISRouter.register(
 
             INTENTS.GIS_SUMMARY,
+
+            FORMATTER.formatInfo ||
 
             QUERY.info
 
@@ -311,9 +359,7 @@ window.GreenGuardAI =
         const handler =
 
             ROUTES[
-
                 request.intent
-
             ];
 
         if (
@@ -323,6 +369,14 @@ window.GreenGuardAI =
             "function"
 
         ) {
+
+            console.warn(
+
+                "GIS Router: No handler for",
+
+                request.intent
+
+            );
 
             return null;
 
@@ -352,7 +406,7 @@ window.GreenGuardAI =
 
     console.log(
 
-        "GIS Router Loaded",
+        "✅ GIS Router Loaded",
 
         GISRouter.VERSION
 
