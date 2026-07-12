@@ -578,85 +578,49 @@ StaffRouter.route = async function (
 
         );
 
-        /*----------------------------------
-          Formatter
-        ----------------------------------*/
+/*----------------------------------
+  Formatter
+----------------------------------*/
 
-        if (
+if (
 
-            result &&
+    result &&
 
-            result.success
+    result.success &&
 
-        ) {
+    GG.StaffFormatter &&
 
-            const formatterName =
+    typeof GG.StaffFormatter.format ===
 
-                "format" +
+    "function"
 
-                request.intent.charAt(0)
+) {
 
-                    .toUpperCase() +
+    console.log(
 
-                request.intent.slice(1);
+        "Formatter:",
 
-            const formatter =
+        "StaffFormatter.format"
 
-                GG.StaffFormatter?.[
+    );
 
-                    formatterName
+    result =
 
-                ];
+        GG.StaffFormatter.format(
 
-            console.log(
+            result
 
-                "Formatter:",
+        );
 
-                formatterName,
+    console.log(
 
-                formatter
+        "Formatted:",
 
-            );
+        result
 
-            if (
+    );
 
-                typeof formatter ===
-
-                "function"
-
-            ) {
-
-                result =
-
-                    formatter(
-
-                        result
-
-                    );
-
-                console.log(
-
-                    "Formatted:",
-
-                    result
-
-                );
-
-            }
-
-            else {
-
-                console.warn(
-
-                    "⚠ Formatter Missing:",
-
-                    formatterName
-
-                );
-
-            }
-
-        }
+}
 
         /*----------------------------------
           Merge Response
