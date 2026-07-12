@@ -1551,7 +1551,7 @@ StaffFormatter.formatStaffProfile = function (
  FORMAT CONTACT
 =========================================================*/
 
-StaffFormatter.formatContact = function (
+StaffFormatter.formatStaffContact = function (
 
     response
 
