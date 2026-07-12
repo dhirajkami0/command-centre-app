@@ -768,32 +768,53 @@ Core.callAI = async function (request) {
             localResponse.local !== false
         ) {
             /*----------------------------------
-              Normalize Local Response
-            ----------------------------------*/
+            /*----------------------------------
+  Normalize Local Response
+----------------------------------*/
 
-            localResponse.answer =
-                localResponse.formatted?.markdown ||
-                localResponse.formatted?.html ||
-                localResponse.message ||
-                "";
-            localResponse.cached =
-                false;
-            localResponse.timestamp =
-                Date.now();
-            localResponse.requestId =
-                request.id;
-            localResponse.raw =
-                localResponse.raw ||
-                localResponse;
+localResponse.answer =
 
-            localResponse.intent =
-                request.detectedIntent?.intent ||
-                localResponse.intent;
-            localResponse.domain =
-                request.detectedIntent?.domain ||
-                localResponse.domain;
-            localResponse.detectedIntent =
-                request.detectedIntent;
+    localResponse.markdown ||
+
+    localResponse.html ||
+
+    localResponse.message ||
+
+    "";
+
+localResponse.cached =
+
+    false;
+
+localResponse.timestamp =
+
+    Date.now();
+
+localResponse.requestId =
+
+    request.id;
+
+localResponse.raw =
+
+    localResponse.raw ||
+
+    localResponse;
+
+localResponse.intent =
+
+    request.detectedIntent?.intent ||
+
+    localResponse.intent;
+
+localResponse.domain =
+
+    request.detectedIntent?.domain ||
+
+    localResponse.domain;
+
+localResponse.detectedIntent =
+
+    request.detectedIntent;
 
             /*----------------------------------
               Cache
@@ -823,18 +844,20 @@ Core.callAI = async function (request) {
                 "Sections:",
                 localResponse.sections?.length || 0
             );
-            console.log(
-                "Markdown:",
-                !!localResponse.formatted?.markdown
-            );
-            console.log(
-                "HTML:",
-                !!localResponse.formatted?.html
-            );
-            console.log(
-                "Formatter:",
-                localResponse.formatted?.module
-            );
+console.log(
+    "Markdown:",
+    !!localResponse.markdown
+);
+
+console.log(
+    "HTML:",
+    !!localResponse.html
+);
+
+console.log(
+    "Formatter:",
+    localResponse.module
+);
             console.log(
                 "Cached:",
                 localResponse.cached
@@ -862,16 +885,20 @@ Core.callAI = async function (request) {
                     "LOCAL",
                 Module:
                     localResponse.module,
-                Formatter:
-                    localResponse.formatted?.module,
+                
+                
                 Cards:
                     localResponse.cards?.length || 0,
                 Sections:
                     localResponse.sections?.length || 0,
-                Markdown:
-                    !!localResponse.formatted?.markdown,
-                HTML:
-                    !!localResponse.formatted?.html
+                Formatter:
+    localResponse.module,
+
+Markdown:
+    !!localResponse.markdown,
+
+HTML:
+    !!localResponse.html
             });
             console.groupEnd();
 
