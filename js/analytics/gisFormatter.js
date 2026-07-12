@@ -437,6 +437,69 @@ GISFormatter.formatDivisionSummary = function (
 
 };
   /*--------------------------------------------------
+  Beat Summary
+--------------------------------------------------*/
+
+GISFormatter.formatBeatSummary = function (
+
+    beat,
+
+    request = {}
+
+) {
+
+    const response =
+
+        GISFormatter.createResponse(
+
+            request
+
+        );
+
+    const result =
+
+        Query.getBeatSummary(
+
+            beat
+
+        );
+
+    if (
+
+        !result
+
+    ) {
+
+        response.markdown =
+
+            "# Beat Not Found";
+
+        return response;
+
+    }
+
+    response.success =
+
+        true;
+
+    response.data =
+
+        result;
+
+    response.markdown =
+
+`# 👥 Beat Summary
+
+**Beat:** ${result.beat}
+
+**Total Staff:** ${result.staffCount}
+
+**On Duty:** ${result.liveStaff}`;
+
+    return response;
+
+};
+  /*--------------------------------------------------
   Beat Staff
 --------------------------------------------------*/
 
