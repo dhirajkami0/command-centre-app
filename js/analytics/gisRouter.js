@@ -20,9 +20,7 @@ window.GreenGuardAI =
 
         "1.0.0";
 
-    const ROUTES =
-
-        {};
+    const ROUTES = {};
 
     /*--------------------------------------------------
       Register
@@ -66,135 +64,203 @@ window.GreenGuardAI =
 
             GG.GISConstants.INTENTS;
 
+        const QUERY =
+
+            GG.GISQuery;
+
         /*------------------------------
-          Information
+          Search
         ------------------------------*/
 
         GISRouter.register(
 
-            INTENTS.GIS_INFO,
+            INTENTS.GIS_SEARCH,
 
-            GG.GISQuery.info
+            QUERY.getGIS
 
         );
+
+        /*------------------------------
+          Profile
+        ------------------------------*/
+
+        GISRouter.register(
+
+            INTENTS.GIS_PROFILE,
+
+            QUERY.info
+
+        );
+
+        /*------------------------------
+          Map
+        ------------------------------*/
+
+        GISRouter.register(
+
+            INTENTS.GIS_MAP,
+
+            QUERY.getMap
+
+        );
+
+        /*------------------------------
+          Filter
+        ------------------------------*/
 
         GISRouter.register(
 
             INTENTS.GIS_FILTER,
 
-            GG.GISQuery.getFilter
+            QUERY.getFilter
 
         );
+
+        GISRouter.register(
+
+            INTENTS.GIS_CURRENT_FILTER,
+
+            QUERY.getFilter
+
+        );
+
+        /*------------------------------
+          Selection
+        ------------------------------*/
 
         GISRouter.register(
 
             INTENTS.GIS_SELECTION,
 
-            GG.GISQuery.getCurrentGeometry
+            QUERY.getCurrentGeometry
 
         );
 
         /*------------------------------
-          Geography
+          Current Location
         ------------------------------*/
 
         GISRouter.register(
 
-            INTENTS.GIS_FEATURES,
+            INTENTS.GIS_CURRENT_LOCATION,
 
-            GG.GISQuery.getGIS
-
-        );
-
-        GISRouter.register(
-
-            INTENTS.GIS_COMPARTMENTS,
-
-            GG.GISQuery.getCompartments
-
-        );
-
-        GISRouter.register(
-
-            INTENTS.GIS_VILLAGES,
-
-            GG.GISQuery.getVillages
+            QUERY.getCurrentGeometry
 
         );
 
         /*------------------------------
-          Current Jurisdiction
+          Division
         ------------------------------*/
 
         GISRouter.register(
 
-            INTENTS.GIS_CURRENT_DIVISION,
+            INTENTS.GIS_DIVISION,
 
-            GG.GISQuery.getCurrentDivision
-
-        );
-
-        GISRouter.register(
-
-            INTENTS.GIS_CURRENT_RANGE,
-
-            GG.GISQuery.getCurrentRange
-
-        );
-
-        GISRouter.register(
-
-            INTENTS.GIS_CURRENT_BEAT,
-
-            GG.GISQuery.getCurrentBeat
-
-        );
-
-        GISRouter.register(
-
-            INTENTS.GIS_CURRENT_COMPARTMENT,
-
-            GG.GISQuery.getCurrentCompartment
+            QUERY.getCurrentDivision
 
         );
 
         /*------------------------------
-          Staff
+          Range
         ------------------------------*/
 
         GISRouter.register(
 
-            INTENTS.GIS_LIVE_STAFF,
+            INTENTS.GIS_RANGE,
 
-            GG.GISQuery.getLiveStaff
-
-        );
-
-        GISRouter.register(
-
-            INTENTS.GIS_STAFF_PROFILES,
-
-            GG.GISQuery.getStaffProfiles
+            QUERY.getCurrentRange
 
         );
 
         /*------------------------------
-          Patrol
+          Beat
         ------------------------------*/
 
         GISRouter.register(
 
-            INTENTS.GIS_TRACKS,
+            INTENTS.GIS_BEAT,
 
-            GG.GISQuery.getTracks
+            QUERY.getCurrentBeat
+
+        );
+
+        /*------------------------------
+          Compartment
+        ------------------------------*/
+
+        GISRouter.register(
+
+            INTENTS.GIS_COMPARTMENT,
+
+            QUERY.getCurrentCompartment
+
+        );
+
+        /*------------------------------
+          Village
+        ------------------------------*/
+
+        GISRouter.register(
+
+            INTENTS.GIS_VILLAGE,
+
+            QUERY.getVillages
+
+        );
+
+        /*------------------------------
+          Hierarchy
+        ------------------------------*/
+
+        GISRouter.register(
+
+            INTENTS.GIS_HIERARCHY,
+
+            QUERY.getFilter
+
+        );
+
+        /*------------------------------
+          Spatial
+        ------------------------------*/
+
+        GISRouter.register(
+
+            INTENTS.GIS_NEAREST,
+
+            QUERY.getCurrentGeometry
 
         );
 
         GISRouter.register(
 
-            INTENTS.GIS_SESSIONS,
+            INTENTS.GIS_INSIDE,
 
-            GG.GISQuery.getSessions
+            QUERY.findContainingCompartment
+
+        );
+
+        GISRouter.register(
+
+            INTENTS.GIS_CONTAINS,
+
+            QUERY.findContainingCompartment
+
+        );
+
+        GISRouter.register(
+
+            INTENTS.GIS_DISTANCE,
+
+            QUERY.getTrackDistanceMap
+
+        );
+
+        GISRouter.register(
+
+            INTENTS.GIS_DIRECTION,
+
+            QUERY.getCurrentGeometry
 
         );
 
@@ -206,22 +272,22 @@ window.GreenGuardAI =
 
             INTENTS.GIS_ANALYTICS,
 
-            GG.GISQuery.getAnalyticsCache
+            QUERY.getAnalyticsCache
 
         );
 
         GISRouter.register(
 
-            INTENTS.GIS_MONTHLY,
+            INTENTS.GIS_SUMMARY,
 
-            GG.GISQuery.getMonthlyCache
+            QUERY.info
 
         );
 
     };
 
     /*--------------------------------------------------
-      Execute
+      Route
     --------------------------------------------------*/
 
     GISRouter.route = function (
@@ -242,7 +308,7 @@ window.GreenGuardAI =
 
         }
 
-        const fn =
+        const handler =
 
             ROUTES[
 
@@ -252,7 +318,7 @@ window.GreenGuardAI =
 
         if (
 
-            typeof fn !==
+            typeof handler !==
 
             "function"
 
@@ -262,7 +328,7 @@ window.GreenGuardAI =
 
         }
 
-        return fn(
+        return handler(
 
             request
 
@@ -283,6 +349,14 @@ window.GreenGuardAI =
             GISRouter
 
         );
+
+    console.log(
+
+        "GIS Router Loaded",
+
+        GISRouter.VERSION
+
+    );
 
 })(
 
