@@ -470,18 +470,27 @@ Controller.ask = async function (
  REGISTER
 =========================================================*/
 
+/*=========================================================
+ REGISTER
+=========================================================*/
+
 GG.Controller =
 
-    Object.freeze(
+    Controller;
 
-        Controller
+if (
 
-    );
+    GG.Config?.DEBUG?.ENABLED
 
-if (GG.Config?.DEBUG?.ENABLED) {
+) {
+
     console.log(
+
         "%cGreenGuard AI Controller Loaded",
+
         "color:#008000;font-weight:bold;"
+
     );
+
 }
 })(window);
