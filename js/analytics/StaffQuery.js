@@ -664,19 +664,27 @@ response.context =
 
     request.context ||
 
-    {};    const cacheKey =
+    {};   
+    
+    const cacheKey =
 
-        JSON.stringify({
+JSON.stringify({
 
-            intent:
+    intent:
 
-                request.intent,
+        request.intent,
 
-            parameters:
+    staff:
 
-                request.parameters
+        request.entities?.staff ||
 
-        });
+        [],
+
+    parameters:
+
+        request.parameters
+
+});
 
     console.log(
         "CACHE KEY"
@@ -702,107 +710,67 @@ response.context =
         [...StaffQuery.cache.keys()]
     );
 
+    
+
     const cached =
 
-        StaffQuery.getCache(
+    StaffQuery.getCache(
 
-            cacheKey
+        cacheKey
 
-        );
-
-    console.log(
-        "CACHE HIT"
     );
 
+if (
+
+    cached &&
+
+    cached.success === true
+
+) {
+
     console.log(
-        !!cached
+
+        "✅ CACHE HIT"
+
     );
 
-    if (
+    cached.metadata =
 
-        cached
+        cached.metadata ||
 
-    ) {
+        {};
 
-        console.log(
-            "RETURNING CACHED RESPONSE"
-        );
+    cached.metadata.cache =
 
-        console.log(
-            cached
-        );
+        true;
 
-        console.log(
-            "CACHED DATA"
-        );
+    return cached;
 
-        console.log(
-            cached.data
-        );
+}
 
-        console.log(
-            "CACHED DATA LENGTH"
-        );
+if (
 
-        console.log(
+    cached &&
 
-            Array.isArray(
+    cached.success !== true
 
-                cached.data
+) {
 
-            )
+    console.warn(
 
-                ?
+        "🗑 Removing Failed Cache",
 
-                cached.data.length
+        cacheKey
 
-                :
+    );
 
-                null
+    StaffQuery.cache.delete(
 
-        );
+        cacheKey
 
-cached.metadata.cache =
+    );
 
-    true;
-
-/*----------------------------------
-  Preserve Canonical Request
-----------------------------------*/
-
-cached.request =
-
-    request;
-
-cached.intent =
-
-    request.intent;
-
-cached.domain =
-
-    request.domain;
-
-cached.entities =
-
-    request.entities ||
-
-    {};
-
-cached.parameters =
-
-    request.parameters ||
-
-    {};
-
-cached.context =
-
-    request.context ||
-
-    {};
-
-return cached;
-
-    }
+}
 
     try {
 
@@ -1066,6 +1034,10 @@ response.context =
 
     );
 
+if (
+    response.success === true
+) {
+
     StaffQuery.setCache(
 
         cacheKey,
@@ -1073,6 +1045,8 @@ response.context =
         response
 
     );
+
+}
 
     console.log(
         "RETURN RESPONSE"
