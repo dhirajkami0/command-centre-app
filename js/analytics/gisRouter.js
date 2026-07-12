@@ -1,84 +1,291 @@
-(function (window) {
-
-"use strict";
-
-const GG =
-    window.GreenGuardAI =
-    window.GreenGuardAI || {};
-
-const AnalyticsEngine =
-    GG.AnalyticsEngine;
-
 /*=========================================================
- ROUTE GIS INTENT
+  GreenGuard AI
+  GIS Router
 =========================================================*/
 
-AnalyticsEngine.routeGISIntent = function (
+window.GreenGuardAI =
+    window.GreenGuardAI || {};
 
-    intent
+(function (
+
+    GG
 
 ) {
 
-    switch (
+    "use strict";
 
-        intent.intent
+    const GISRouter = {};
+
+    GISRouter.VERSION =
+
+        "1.0.0";
+
+    const ROUTES =
+
+        {};
+
+    /*--------------------------------------------------
+      Register
+    --------------------------------------------------*/
+
+    GISRouter.register = function (
+
+        intent,
+
+        handler
 
     ) {
 
-        /*
-        Future
+        if (
 
-        case "gisBeat":
-        case "gisRange":
-        case "gisCompartment":
-        */
+            !intent ||
 
-        default:
+            typeof handler !==
 
-            return {
+            "function"
 
-                success: false,
+        ) {
 
-                source: "router",
+            return;
 
-                domain: "gis",
+        }
 
-                intent:
+        ROUTES[intent] =
 
-                    intent.intent,
+            handler;
 
-                confidence:
+    };
 
-                    intent.confidence,
+    /*--------------------------------------------------
+      Register Routes
+    --------------------------------------------------*/
 
-                entities:
+    GISRouter.registerRoutes = function () {
 
-                    intent.entities ||
+        const INTENTS =
 
-                    {},
+            GG.GISConstants.INTENTS;
 
-                data: {
+        /*------------------------------
+          Information
+        ------------------------------*/
 
-                    success: false,
+        GISRouter.register(
 
-                    message:
+            INTENTS.GIS_INFO,
 
-                        "GIS module not implemented."
+            GG.GISQuery.info
 
-                }
+        );
 
-            };
+        GISRouter.register(
 
-    }
+            INTENTS.GIS_FILTER,
 
-};
+            GG.GISQuery.getFilter
 
-console.log(
+        );
 
-    "%cGIS Router Loaded",
+        GISRouter.register(
 
-    "color:#008000;font-weight:bold;"
+            INTENTS.GIS_SELECTION,
+
+            GG.GISQuery.getCurrentGeometry
+
+        );
+
+        /*------------------------------
+          Geography
+        ------------------------------*/
+
+        GISRouter.register(
+
+            INTENTS.GIS_FEATURES,
+
+            GG.GISQuery.getGIS
+
+        );
+
+        GISRouter.register(
+
+            INTENTS.GIS_COMPARTMENTS,
+
+            GG.GISQuery.getCompartments
+
+        );
+
+        GISRouter.register(
+
+            INTENTS.GIS_VILLAGES,
+
+            GG.GISQuery.getVillages
+
+        );
+
+        /*------------------------------
+          Current Jurisdiction
+        ------------------------------*/
+
+        GISRouter.register(
+
+            INTENTS.GIS_CURRENT_DIVISION,
+
+            GG.GISQuery.getCurrentDivision
+
+        );
+
+        GISRouter.register(
+
+            INTENTS.GIS_CURRENT_RANGE,
+
+            GG.GISQuery.getCurrentRange
+
+        );
+
+        GISRouter.register(
+
+            INTENTS.GIS_CURRENT_BEAT,
+
+            GG.GISQuery.getCurrentBeat
+
+        );
+
+        GISRouter.register(
+
+            INTENTS.GIS_CURRENT_COMPARTMENT,
+
+            GG.GISQuery.getCurrentCompartment
+
+        );
+
+        /*------------------------------
+          Staff
+        ------------------------------*/
+
+        GISRouter.register(
+
+            INTENTS.GIS_LIVE_STAFF,
+
+            GG.GISQuery.getLiveStaff
+
+        );
+
+        GISRouter.register(
+
+            INTENTS.GIS_STAFF_PROFILES,
+
+            GG.GISQuery.getStaffProfiles
+
+        );
+
+        /*------------------------------
+          Patrol
+        ------------------------------*/
+
+        GISRouter.register(
+
+            INTENTS.GIS_TRACKS,
+
+            GG.GISQuery.getTracks
+
+        );
+
+        GISRouter.register(
+
+            INTENTS.GIS_SESSIONS,
+
+            GG.GISQuery.getSessions
+
+        );
+
+        /*------------------------------
+          Analytics
+        ------------------------------*/
+
+        GISRouter.register(
+
+            INTENTS.GIS_ANALYTICS,
+
+            GG.GISQuery.getAnalyticsCache
+
+        );
+
+        GISRouter.register(
+
+            INTENTS.GIS_MONTHLY,
+
+            GG.GISQuery.getMonthlyCache
+
+        );
+
+    };
+
+    /*--------------------------------------------------
+      Execute
+    --------------------------------------------------*/
+
+    GISRouter.route = function (
+
+        request
+
+    ) {
+
+        if (
+
+            !request ||
+
+            !request.intent
+
+        ) {
+
+            return null;
+
+        }
+
+        const fn =
+
+            ROUTES[
+
+                request.intent
+
+            ];
+
+        if (
+
+            typeof fn !==
+
+            "function"
+
+        ) {
+
+            return null;
+
+        }
+
+        return fn(
+
+            request
+
+        );
+
+    };
+
+    /*--------------------------------------------------
+      Export
+    --------------------------------------------------*/
+
+    GISRouter.registerRoutes();
+
+    GG.GISRouter =
+
+        Object.freeze(
+
+            GISRouter
+
+        );
+
+})(
+
+    window.GreenGuardAI
 
 );
-
-})(window);
