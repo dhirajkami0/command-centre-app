@@ -3537,6 +3537,119 @@ StaffIntent.detectContactIntent = function (
     return result;
 
 };
+ StaffIntent.detectDutyEndedIntent = function (
+
+    result
+
+) {
+
+    if (
+
+        result.intent
+
+    ) {
+
+        return result;
+
+    }
+
+    if (
+
+        StaffIntent.hasKeyword(
+
+            result,
+
+            "STAFF_DUTY_ENDED"
+
+        )
+
+    ) {
+
+        result.intent =
+
+            "staffDutyEnded";
+
+    }
+
+    return result;
+
+};
+ StaffIntent.detectDutyTypeIntent = function (
+
+    result
+
+) {
+
+    if (
+
+        result.intent
+
+    ) {
+
+        return result;
+
+    }
+
+    if (
+
+        StaffIntent.hasKeyword(
+
+            result,
+
+            "STAFF_DUTY_TYPE"
+
+        )
+
+    ) {
+
+        result.intent =
+
+            "staffDutyType";
+
+    }
+
+    return result;
+
+};
+ result =
+
+    StaffIntent.detectDutyTypeIntent(
+
+        result
+
+    );
+
+result =
+
+    StaffIntent.detectDutyStartedIntent(
+
+        result
+
+    );
+
+result =
+
+    StaffIntent.detectDutyEndedIntent(
+
+        result
+
+    );
+
+result =
+
+    StaffIntent.detectDutyStatusIntent(
+
+        result
+
+    );
+
+result =
+
+    StaffIntent.detectDutyIntent(
+
+        result
+
+    );
  /*=========================================================
  DETECT SEARCH INTENT
 =========================================================*/
@@ -3849,23 +3962,116 @@ console.log(
         "detectStaffIntent"
     );
 
-    if (
-        result.parameters.isSingle === true
-    ) {
-        /*----------------------------------
-          Single Staff
-        ----------------------------------*/
-        result = StaffIntent.detectProfileIntent(result);
-        result = StaffIntent.detectContactIntent(result);
-        result = StaffIntent.detectRoleIntent(result);
-        result = StaffIntent.detectDesignationIntent(result);
-        result = StaffIntent.detectPostingIntent(result);
-        result = StaffIntent.detectLocationIntent(result);
-        result = StaffIntent.detectGPSIntent(result);
-        result = StaffIntent.detectDutyStatusIntent(result);
-        result = StaffIntent.detectAnalyticsIntent(result);
-        
-    }
+if (
+    result.parameters.isSingle === true
+) {
+
+    /*----------------------------------
+      Single Staff
+    ----------------------------------*/
+
+    /*----------------------------------
+      Profile
+    ----------------------------------*/
+
+    result =
+        StaffIntent.detectProfileIntent(
+            result
+        );
+
+    /*----------------------------------
+      Contact
+    ----------------------------------*/
+
+    result =
+        StaffIntent.detectContactIntent(
+            result
+        );
+
+    /*----------------------------------
+      Role
+    ----------------------------------*/
+
+    result =
+        StaffIntent.detectRoleIntent(
+            result
+        );
+
+    /*----------------------------------
+      Designation
+    ----------------------------------*/
+
+    result =
+        StaffIntent.detectDesignationIntent(
+            result
+        );
+
+    /*----------------------------------
+      Posting
+    ----------------------------------*/
+
+    result =
+        StaffIntent.detectPostingIntent(
+            result
+        );
+
+    /*----------------------------------
+      Location
+    ----------------------------------*/
+
+    result =
+        StaffIntent.detectLocationIntent(
+            result
+        );
+
+    /*----------------------------------
+      GPS
+    ----------------------------------*/
+
+    result =
+        StaffIntent.detectGPSIntent(
+            result
+        );
+
+    /*----------------------------------
+      Duty
+    ----------------------------------*/
+
+    result =
+        StaffIntent.detectDutyTypeIntent(
+            result
+        );
+
+    result =
+        StaffIntent.detectDutyStartedIntent(
+            result
+        );
+
+    result =
+        StaffIntent.detectDutyEndedIntent(
+            result
+        );
+
+    result =
+        StaffIntent.detectDutyStatusIntent(
+            result
+        );
+
+    result =
+        StaffIntent.detectDutyIntent(
+            result
+        );
+
+    /*----------------------------------
+      Analytics
+    ----------------------------------*/
+
+    result =
+        StaffIntent.detectAnalyticsIntent(
+            result
+        );
+
+}
     else if (
         result.parameters.isAggregate === true
     ) {
