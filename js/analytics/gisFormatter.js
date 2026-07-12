@@ -21,7 +21,7 @@ window.GreenGuardAI =
         "1.0.0";
 
     /*--------------------------------------------------
-      Base Response
+      Response
     --------------------------------------------------*/
 
     GISFormatter.createResponse = function (
@@ -72,73 +72,25 @@ window.GreenGuardAI =
 
             data:
 
-                null,
-
-            metadata: {
-
-                timestamp:
-
-                    Date.now(),
-
-                formatter:
-
-                    "GISFormatter"
-
-            }
+                null
 
         };
 
     };
 
     /*--------------------------------------------------
-      Generic Formatter
-    --------------------------------------------------*/
-
-    GISFormatter.format = function (
-
-        request,
-
-        data
-
-    ) {
-
-        const response =
-
-            GISFormatter.createResponse(
-
-                request
-
-            );
-
-        response.success =
-
-            true;
-
-        response.data =
-
-            data;
-
-        response.markdown =
-
-            "GIS query completed.";
-
-        return response;
-
-    };
-
-    /*--------------------------------------------------
-      Information
+      Info
     --------------------------------------------------*/
 
     GISFormatter.formatInfo = function (
 
-        request,
+        info,
 
-        data
+        request = {}
 
     ) {
 
-        const response =
+        const r =
 
             GISFormatter.createResponse(
 
@@ -146,35 +98,49 @@ window.GreenGuardAI =
 
             );
 
-        response.success =
+        r.success = true;
 
-            true;
+        r.data = info;
 
-        response.data =
+        r.markdown =
 
-            data;
+`# 🌍 GIS INFORMATION
 
-        response.markdown =
+• GIS Features : ${info.gis}
 
-            "# 🌍 GIS INFORMATION";
+• Compartments : ${info.compartments}
 
-        return response;
+• Villages : ${info.villages}
+
+• Staff Profiles : ${info.staffProfiles}
+
+• Live Staff : ${info.liveStaff}
+
+• Patrol Tracks : ${info.tracks}
+
+• Sessions : ${info.sessions}
+
+• Spatial Index : ${info.spatialIndex ? "Ready" : "Not Ready"}
+
+• Map Loaded : ${info.mapLoaded ? "Yes" : "No"}`;
+
+        return r;
 
     };
 
     /*--------------------------------------------------
-      GIS Features
+      Filter
     --------------------------------------------------*/
 
-    GISFormatter.formatGIS = function (
+    GISFormatter.formatFilter = function (
 
-        request,
+        filter,
 
-        data
+        request = {}
 
     ) {
 
-        const response =
+        const r =
 
             GISFormatter.createResponse(
 
@@ -182,35 +148,39 @@ window.GreenGuardAI =
 
             );
 
-        response.success =
+        r.success = true;
 
-            true;
+        r.data = filter;
 
-        response.data =
+        r.markdown =
 
-            data;
+`# 🗺 CURRENT FILTER
 
-        response.markdown =
+Division : ${filter.division || "-"}
 
-            "# 🌍 GIS FEATURES";
+Range : ${filter.range || "-"}
 
-        return response;
+Beat : ${filter.beat || "-"}
+
+Compartment : ${filter.compartment || "-"}`;
+
+        return r;
 
     };
 
     /*--------------------------------------------------
-      Compartments
+      Selection
     --------------------------------------------------*/
 
-    GISFormatter.formatCompartments = function (
+    GISFormatter.formatSelection = function (
 
-        request,
+        geometry,
 
-        data
+        request = {}
 
     ) {
 
-        const response =
+        const r =
 
             GISFormatter.createResponse(
 
@@ -218,35 +188,41 @@ window.GreenGuardAI =
 
             );
 
-        response.success =
+        r.success = true;
 
-            true;
+        r.data = geometry;
 
-        response.data =
+        r.markdown =
 
-            data;
+geometry ?
 
-        response.markdown =
+`# 📍 CURRENT SELECTION
 
-            "# 📦 COMPARTMENTS";
+Geometry Type : ${geometry.type}`
 
-        return response;
+:
+
+`# 📍 CURRENT SELECTION
+
+No geometry selected.`;
+
+        return r;
 
     };
 
     /*--------------------------------------------------
-      Villages
+      Jurisdiction
     --------------------------------------------------*/
 
-    GISFormatter.formatVillages = function (
+    GISFormatter.formatJurisdiction = function (
 
-        request,
+        data,
 
-        data
+        request = {}
 
     ) {
 
-        const response =
+        const r =
 
             GISFormatter.createResponse(
 
@@ -254,35 +230,41 @@ window.GreenGuardAI =
 
             );
 
-        response.success =
+        r.success = true;
 
-            true;
+        r.data = data;
 
-        response.data =
+        r.markdown =
 
-            data;
+`# 🌲 CURRENT JURISDICTION
 
-        response.markdown =
+Division : ${data.division || "-"}
 
-            "# 🏡 VILLAGES";
+Range : ${data.range || "-"}
 
-        return response;
+Beat : ${data.beat || "-"}
+
+Compartment : ${data.compartment || "-"}`;
+
+        return r;
 
     };
 
     /*--------------------------------------------------
-      Live Staff
+      List
     --------------------------------------------------*/
 
-    GISFormatter.formatLiveStaff = function (
+    GISFormatter.formatList = function (
 
-        request,
+        title,
 
-        data
+        list,
+
+        request = {}
 
     ) {
 
-        const response =
+        const r =
 
             GISFormatter.createResponse(
 
@@ -290,55 +272,17 @@ window.GreenGuardAI =
 
             );
 
-        response.success =
+        r.success = true;
 
-            true;
+        r.data = list;
 
-        response.data =
+        r.markdown =
 
-            data;
+`# ${title}
 
-        response.markdown =
+Total : ${list.length}`;
 
-            "# 👤 LIVE STAFF";
-
-        return response;
-
-    };
-
-    /*--------------------------------------------------
-      Tracks
-    --------------------------------------------------*/
-
-    GISFormatter.formatTracks = function (
-
-        request,
-
-        data
-
-    ) {
-
-        const response =
-
-            GISFormatter.createResponse(
-
-                request
-
-            );
-
-        response.success =
-
-            true;
-
-        response.data =
-
-            data;
-
-        response.markdown =
-
-            "# 🚶 PATROL TRACKS";
-
-        return response;
+        return r;
 
     };
 
@@ -353,6 +297,14 @@ window.GreenGuardAI =
             GISFormatter
 
         );
+
+    console.log(
+
+        "GIS Formatter Loaded",
+
+        GISFormatter.VERSION
+
+    );
 
 })(
 
