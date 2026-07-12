@@ -43,7 +43,25 @@ window.GreenGuardAI =
         return GIS.isReady();
 
     };
+GISQuery.findContainingCompartment = function (
 
+    lat,
+
+    lng
+
+) {
+
+    return
+
+        GIS.findContainingCompartment(
+
+            lat,
+
+            lng
+
+        );
+
+};
     /*--------------------------------------------------
       Filter
     --------------------------------------------------*/
