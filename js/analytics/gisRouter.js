@@ -17,10 +17,12 @@ window.GreenGuardAI =
     const GISRouter = {};
 
     GISRouter.VERSION =
-
         "1.1.0";
 
     const ROUTES = {};
+
+    let routesRegistered =
+        false;
 
     /*--------------------------------------------------
       Register
@@ -49,7 +51,6 @@ window.GreenGuardAI =
         }
 
         ROUTES[intent] =
-
             handler;
 
     };
@@ -60,17 +61,32 @@ window.GreenGuardAI =
 
     GISRouter.registerRoutes = function () {
 
+        if (
+            routesRegistered
+        ) {
+            return true;
+        }
+
         const INTENTS =
-
-            GG.GISConstants.INTENTS;
-
+            GG.GISConstants?.INTENTS;
         const QUERY =
-
-            GG.GISQuery || {};
-
+            GG.GISQuery;
         const FORMATTER =
+            GG.GISFormatter;
 
-            GG.GISFormatter || {};
+        if (
+
+            !INTENTS ||
+
+            !QUERY ||
+
+            !FORMATTER
+
+        ) {
+
+            return false;
+
+        }
 
         /*------------------------------
           Search
@@ -332,13 +348,17 @@ window.GreenGuardAI =
 
         );
 
+        routesRegistered =
+            true;
+        return true;
+
     };
 
     /*--------------------------------------------------
       Route
     --------------------------------------------------*/
 
-    GISRouter.route = function (
+    GISRouter.route = async function (
 
         request
 
@@ -352,7 +372,17 @@ window.GreenGuardAI =
 
         ) {
 
-            return null;
+            return {
+
+                success: false,
+
+                source: "LOCAL",
+
+                module: "GISRouter",
+
+                message: "Invalid GIS request."
+
+            };
 
         }
 
@@ -378,39 +408,130 @@ window.GreenGuardAI =
 
             );
 
-            return null;
+            return {
+
+                success: false,
+
+                source: "LOCAL",
+
+                module: "GISRouter",
+
+                intent: request.intent,
+
+                message:
+
+                    "No GIS handler registered."
+
+            };
 
         }
 
-        return handler(
+        try {
 
-            request
+            const response =
 
-        );
+                await handler(
+
+                    request
+
+                );
+
+            return (
+
+                response ||
+
+                {
+
+                    success: false,
+
+                    source: "LOCAL",
+
+                    module: "GISRouter",
+
+                    message:
+
+                        "GIS handler returned no response."
+
+                }
+
+            );
+
+        } catch (
+
+            error
+
+        ) {
+
+            return {
+
+                success: false,
+
+                source: "LOCAL",
+
+                module: "GISRouter",
+
+                intent:
+
+                    request.intent,
+
+                message:
+
+                    error.message,
+
+                error
+
+            };
+
+        }
 
     };
 
     /*--------------------------------------------------
       Export
     --------------------------------------------------*/
-
-    GISRouter.registerRoutes();
-
     GG.GISRouter =
+        GISRouter;
 
-        Object.freeze(
+    /*--------------------------------------------------
+      Register Routes
+    --------------------------------------------------*/
+    const registered =
+        GISRouter.registerRoutes();
 
-            GISRouter
+    if (
+
+        !registered &&
+
+        GG.Config?.DEBUG?.ENABLED
+
+    ) {
+
+        console.warn(
+
+            "GIS Router waiting for dependencies."
 
         );
 
-    console.log(
+    }
 
-        "✅ GIS Router Loaded",
+    /*--------------------------------------------------
+      Debug
+    --------------------------------------------------*/
+    if (
 
-        GISRouter.VERSION
+        GG.Config?.DEBUG?.ENABLED
 
-    );
+    ) {
+
+        console.log(
+
+            "%cGIS Router Loaded",
+
+            "color:#008000;font-weight:bold;"
+
+        );
+
+    }
 
 })(
 
