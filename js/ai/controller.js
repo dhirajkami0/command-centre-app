@@ -348,7 +348,41 @@ Controller.ask = async function (
                 request
 
             );
+console.log(
+    "=============================="
+);
 
+console.log(
+    "CONTROLLER RECEIVED"
+);
+
+console.log(
+    "Success:",
+    response?.success
+);
+
+console.log(
+    "Module:",
+    response?.module
+);
+
+console.log(
+    "Intent:",
+    response?.intent
+);
+
+console.log(
+    "Markdown:",
+    !!response?.markdown
+);
+
+console.dir(
+    response
+);
+
+console.log(
+    "=============================="
+);
         /*----------------------------------
           Local Success
         ----------------------------------*/
