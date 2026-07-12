@@ -795,7 +795,7 @@ AIDispatcher.dispatchReport = async function (
 
 AIDispatcher.dispatchStaff = async function (
 
-    intent
+    request
 
 ) {
 
@@ -805,9 +805,9 @@ AIDispatcher.dispatchStaff = async function (
 
     if (
 
-        !intent ||
+        !request ||
 
-        typeof intent !==
+        typeof request !==
 
         "object"
 
@@ -819,11 +819,64 @@ AIDispatcher.dispatchStaff = async function (
 
             message:
 
-                "Invalid staff intent."
+                "Invalid staff request."
 
         };
 
     }
+
+    /*----------------------------------
+      Normalize Staff Entities
+    ----------------------------------*/
+
+    request.entities =
+
+        request.entities ||
+
+        {};
+
+    /* AI returns:
+       entities.name = "DHIRAJ KAMI"
+
+       Staff pipeline expects:
+       entities.staff = ["DHIRAJ KAMI"]
+    */
+
+    if (
+
+        typeof request.entities.name ===
+
+        "string" &&
+
+        !Array.isArray(
+
+            request.entities.staff
+
+        )
+
+    ) {
+
+        request.entities.staff = [
+
+            request.entities.name
+
+        ];
+
+    }
+
+    console.log(
+
+        "👤 Staff Entity Normalization"
+
+    );
+
+    console.log(
+
+        "Entities:",
+
+        request.entities
+
+    );
 
     /*----------------------------------
       Router
@@ -854,35 +907,7 @@ AIDispatcher.dispatchStaff = async function (
         };
 
     }
-/*----------------------------------
-  Normalize Staff Entities
-----------------------------------*/
 
-intent.entities =
-    intent.entities ||
-    {};
-
-if (
-
-    typeof intent.entities.name ===
-
-    "string" &&
-
-    !Array.isArray(
-
-        intent.entities.staff
-
-    )
-
-) {
-
-    intent.entities.staff = [
-
-        intent.entities.name
-
-    ];
-
-}
     /*----------------------------------
       Route
     ----------------------------------*/
@@ -891,7 +916,7 @@ if (
 
         await StaffRouter.route(
 
-            intent
+            request
 
         );
 
@@ -908,6 +933,14 @@ if (
         true
 
     ) {
+
+        console.error(
+
+            "❌ Staff Router Failed",
+
+            response
+
+        );
 
         return (
 
@@ -928,8 +961,20 @@ if (
     }
 
     /*----------------------------------
-      Already Formatted
+      Success
     ----------------------------------*/
+
+    console.log(
+
+        "✅ Staff Router Success"
+
+    );
+
+    console.log(
+
+        response
+
+    );
 
     return response;
 
