@@ -1760,7 +1760,7 @@ StaffFormatter.formatStaffContact = function (
  FORMAT ROLE
 =========================================================*/
 
-StaffFormatter.formatRole = function (
+StaffFormatter.formatStaffRole = function (
 
     response
 
