@@ -1276,7 +1276,7 @@ StaffFormatter.formatCount = function (
  FORMAT STAFF PROFILE
 =========================================================*/
 
-StaffFormatter.formatProfile = function (
+StaffFormatter.formatStaffProfile = function (
 
     response
 
