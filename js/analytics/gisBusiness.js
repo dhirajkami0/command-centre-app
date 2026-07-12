@@ -18,7 +18,7 @@ window.GreenGuardAI =
 
     GISBusiness.VERSION =
 
-        "1.0.0";
+        "1.1.0";
 
     /*--------------------------------------------------
       Ready
@@ -36,8 +36,12 @@ window.GreenGuardAI =
 
     };
 
+    GISBusiness.isReady =
+
+        GISBusiness.ready;
+
     /*--------------------------------------------------
-      Info
+      Information
     --------------------------------------------------*/
 
     GISBusiness.info = function () {
@@ -60,6 +64,26 @@ window.GreenGuardAI =
 
                 window.__villageCache?.length || 0,
 
+            staffProfiles:
+
+                window.allStaffProfiles?.length || 0,
+
+            liveStaff:
+
+                window.liveStaffCache?.length || 0,
+
+            tracks:
+
+                window.staffTracks?.length || 0,
+
+            sessions:
+
+                Object.keys(
+
+                    window.sessionTrackCache || {}
+
+                ).length,
+
             monthlyCache:
 
                 Object.keys(
@@ -74,14 +98,22 @@ window.GreenGuardAI =
 
                     window.gisAnalyticsCache || {}
 
-                ).length
+                ).length,
+
+            spatialIndex:
+
+                !!window.compartmentSpatialIndexReady,
+
+            mapLoaded:
+
+                !!window.map
 
         };
 
     };
 
     /*--------------------------------------------------
-      Current Filter
+      Filter
     --------------------------------------------------*/
 
     GISBusiness.getFilter = function () {
@@ -90,103 +122,413 @@ window.GreenGuardAI =
 
     };
 
+    GISBusiness.getCurrentDivision = function () {
+
+        return (
+
+            window.gisFilter?.division ||
+
+            null
+
+        );
+
+    };
+
+    GISBusiness.getCurrentRange = function () {
+
+        return (
+
+            window.gisFilter?.range ||
+
+            null
+
+        );
+
+    };
+
+    GISBusiness.getCurrentBeat = function () {
+
+        return (
+
+            window.gisFilter?.beat ||
+
+            window.currentBeat ||
+
+            null
+
+        );
+
+    };
+
+    GISBusiness.getCurrentCompartment = function () {
+
+        return (
+
+            window.gisFilter?.compartment ||
+
+            null
+
+        );
+
+    };
+
     /*--------------------------------------------------
-      Current Geometry
+      Selection
     --------------------------------------------------*/
 
     GISBusiness.getCurrentGeometry = function () {
 
-        return window.currentSelectedGeometry || null;
+        return (
+
+            window.currentSelectedGeometry ||
+
+            null
+
+        );
+
+    };
+
+    GISBusiness.hasSelection = function () {
+
+        return !!(
+
+            window.currentSelectedGeometry
+
+        );
 
     };
 
     /*--------------------------------------------------
-      GIS Features
+      GIS
     --------------------------------------------------*/
 
     GISBusiness.getGIS = function () {
 
-        return window.allGISFeatures || [];
+        return (
+
+            window.allGISFeatures ||
+
+            []
+
+        );
 
     };
-
-    /*--------------------------------------------------
-      Compartments
-    --------------------------------------------------*/
 
     GISBusiness.getCompartments = function () {
 
-        return window.allCompartmentFeatures || [];
+        return (
+
+            window.allCompartmentFeatures ||
+
+            []
+
+        );
 
     };
-
-    /*--------------------------------------------------
-      Villages
-    --------------------------------------------------*/
 
     GISBusiness.getVillages = function () {
 
-        return window.__villageCache || [];
+        return (
+
+            window.__villageCache ||
+
+            []
+
+        );
 
     };
 
     /*--------------------------------------------------
-      Live Staff
-    --------------------------------------------------*/
-
-    GISBusiness.getLiveStaff = function () {
-
-        return window.liveStaffCache || [];
-
-    };
-
-    /*--------------------------------------------------
-      Staff Profiles
+      Staff
     --------------------------------------------------*/
 
     GISBusiness.getStaffProfiles = function () {
 
-        return window.allStaffProfiles || [];
+        return (
+
+            window.allStaffProfiles ||
+
+            []
+
+        );
+
+    };
+
+    GISBusiness.getLiveStaff = function () {
+
+        return (
+
+            window.liveStaffCache ||
+
+            []
+
+        );
+
+    };
+
+    GISBusiness.getStaffMarkers = function () {
+
+        return (
+
+            window.staffMarkers ||
+
+            {}
+
+        );
+
+    };
+
+    GISBusiness.getStaffTracks = function () {
+
+        return (
+
+            window.staffTracks ||
+
+            []
+
+        );
+
+    };
+
+    GISBusiness.getActiveSessions = function () {
+
+        return (
+
+            window.activeSessionMap ||
+
+            {}
+
+        );
 
     };
 
     /*--------------------------------------------------
-      Patrol Tracks
+      Patrol
     --------------------------------------------------*/
 
     GISBusiness.getTracks = function () {
 
-        return window.staffTracks || [];
+        return (
+
+            window.staffTracks ||
+
+            []
+
+        );
 
     };
-
-    /*--------------------------------------------------
-      Session Tracks
-    --------------------------------------------------*/
 
     GISBusiness.getSessions = function () {
 
-        return window.sessionTrackCache || {};
+        return (
+
+            window.sessionTrackCache ||
+
+            {}
+
+        );
+
+    };
+
+    GISBusiness.getPatrolCache = function () {
+
+        return (
+
+            window.patrolTrackCache ||
+
+            {}
+
+        );
+
+    };
+
+    GISBusiness.getTrackDistanceMap = function () {
+
+        return (
+
+            window.trackDistanceMap ||
+
+            {}
+
+        );
+
+    };
+
+    GISBusiness.getTrackPointCount = function () {
+
+        return (
+
+            window.trackPointCount ||
+
+            {}
+
+        );
 
     };
 
     /*--------------------------------------------------
-      Analytics Cache
+      Analytics
     --------------------------------------------------*/
 
     GISBusiness.getAnalyticsCache = function () {
 
-        return window.gisAnalyticsCache || {};
+        return (
+
+            window.gisAnalyticsCache ||
+
+            {}
+
+        );
+
+    };
+
+    GISBusiness.getMonthlyCache = function () {
+
+        return (
+
+            window.monthlyStatusCache ||
+
+            {}
+
+        );
 
     };
 
     /*--------------------------------------------------
-      Monthly Cache
+      Spatial Index
     --------------------------------------------------*/
 
-    GISBusiness.getMonthlyCache = function () {
+    GISBusiness.getSpatialIndex = function () {
 
-        return window.monthlyStatusCache || {};
+        return (
+
+            window.compartmentSpatialIndex ||
+
+            null
+
+        );
+
+    };
+
+    GISBusiness.isSpatialIndexReady = function () {
+
+        return !!(
+
+            window.compartmentSpatialIndexReady
+
+        );
+
+    };
+
+    /*--------------------------------------------------
+      Map
+    --------------------------------------------------*/
+
+    GISBusiness.getMap = function () {
+
+        return (
+
+            window.map ||
+
+            null
+
+        );
+
+    };
+
+    GISBusiness.getLayerControl = function () {
+
+        return (
+
+            window.layerControl ||
+
+            null
+
+        );
+
+    };
+
+    GISBusiness.getRootLayer = function () {
+
+        return (
+
+            window.rootLayer ||
+
+            null
+
+        );
+
+    };
+
+    GISBusiness.getDivisionLayer = function () {
+
+        return (
+
+            window.divisionLayer ||
+
+            null
+
+        );
+
+    };
+
+    GISBusiness.getRangeLayer = function () {
+
+        return (
+
+            window.rangeLayer ||
+
+            null
+
+        );
+
+    };
+
+    GISBusiness.getBeatLayer = function () {
+
+        return (
+
+            window.beatLayer ||
+
+            null
+
+        );
+
+    };
+
+    GISBusiness.getCompartmentLayer = function () {
+
+        return (
+
+            window.compartmentLayer ||
+
+            null
+
+        );
+
+    };
+
+    GISBusiness.getStaffLayer = function () {
+
+        return (
+
+            window.staffLayer ||
+
+            null
+
+        );
+
+    };
+
+    GISBusiness.getVillageLayer = function () {
+
+        return (
+
+            window.villageLayer ||
+
+            null
+
+        );
 
     };
 
@@ -205,5 +547,4 @@ window.GreenGuardAI =
 })(
 
     window.GreenGuardAI
-
 );
