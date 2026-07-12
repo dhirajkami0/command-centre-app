@@ -1,6 +1,6 @@
 /*=========================================================
   GreenGuard AI
-  GIS Query
+  GIS Query Layer
 =========================================================*/
 
 window.GreenGuardAI =
@@ -20,219 +20,257 @@ window.GreenGuardAI =
 
         "1.0.0";
 
+    const GIS =
+
+        GG.GISBusiness;
+
     /*--------------------------------------------------
-      Current Filter
+      Information
     --------------------------------------------------*/
 
-    GISQuery.queryCurrentFilter = function () {
+    GISQuery.info = function () {
 
-        return {
-
-            success: true,
-
-            data:
-
-                GG.GISBusiness.getFilter()
-
-        };
+        return GIS.info();
 
     };
 
     /*--------------------------------------------------
-      Current Selection
+      Ready
     --------------------------------------------------*/
 
-    GISQuery.queryCurrentSelection = function () {
+    GISQuery.isReady = function () {
 
-        return {
-
-            success: true,
-
-            data:
-
-                GG.GISBusiness.getCurrentGeometry()
-
-        };
+        return GIS.isReady();
 
     };
 
     /*--------------------------------------------------
-      GIS Features
+      Filter
     --------------------------------------------------*/
 
-    GISQuery.queryGIS = function () {
+    GISQuery.getFilter = function () {
 
-        return {
+        return GIS.getFilter();
 
-            success: true,
+    };
 
-            data:
+    GISQuery.getCurrentDivision = function () {
 
-                GG.GISBusiness.getGIS()
+        return GIS.getCurrentDivision();
 
-        };
+    };
+
+    GISQuery.getCurrentRange = function () {
+
+        return GIS.getCurrentRange();
+
+    };
+
+    GISQuery.getCurrentBeat = function () {
+
+        return GIS.getCurrentBeat();
+
+    };
+
+    GISQuery.getCurrentCompartment = function () {
+
+        return GIS.getCurrentCompartment();
 
     };
 
     /*--------------------------------------------------
-      Compartments
+      Selection
     --------------------------------------------------*/
 
-    GISQuery.queryCompartments = function () {
+    GISQuery.getCurrentGeometry = function () {
 
-        return {
+        return GIS.getCurrentGeometry();
 
-            success: true,
+    };
 
-            data:
+    GISQuery.hasSelection = function () {
 
-                GG.GISBusiness.getCompartments()
-
-        };
+        return GIS.hasSelection();
 
     };
 
     /*--------------------------------------------------
-      Villages
+      GIS
     --------------------------------------------------*/
 
-    GISQuery.queryVillages = function () {
+    GISQuery.getGIS = function () {
 
-        return {
+        return GIS.getGIS();
 
-            success: true,
+    };
 
-            data:
+    GISQuery.getCompartments = function () {
 
-                GG.GISBusiness.getVillages()
+        return GIS.getCompartments();
 
-        };
+    };
+
+    GISQuery.getVillages = function () {
+
+        return GIS.getVillages();
 
     };
 
     /*--------------------------------------------------
-      Live Staff
+      Staff
     --------------------------------------------------*/
 
-    GISQuery.queryLiveStaff = function () {
+    GISQuery.getStaffProfiles = function () {
 
-        return {
+        return GIS.getStaffProfiles();
 
-            success: true,
+    };
 
-            data:
+    GISQuery.getLiveStaff = function () {
 
-                GG.GISBusiness.getLiveStaff()
+        return GIS.getLiveStaff();
 
-        };
+    };
+
+    GISQuery.getStaffMarkers = function () {
+
+        return GIS.getStaffMarkers();
+
+    };
+
+    GISQuery.getStaffTracks = function () {
+
+        return GIS.getStaffTracks();
+
+    };
+
+    GISQuery.getActiveSessions = function () {
+
+        return GIS.getActiveSessions();
 
     };
 
     /*--------------------------------------------------
-      Staff Profiles
+      Patrol
     --------------------------------------------------*/
 
-    GISQuery.queryStaffProfiles = function () {
+    GISQuery.getTracks = function () {
 
-        return {
+        return GIS.getTracks();
 
-            success: true,
+    };
 
-            data:
+    GISQuery.getSessions = function () {
 
-                GG.GISBusiness.getStaffProfiles()
+        return GIS.getSessions();
 
-        };
+    };
+
+    GISQuery.getPatrolCache = function () {
+
+        return GIS.getPatrolCache();
+
+    };
+
+    GISQuery.getTrackDistanceMap = function () {
+
+        return GIS.getTrackDistanceMap();
+
+    };
+
+    GISQuery.getTrackPointCount = function () {
+
+        return GIS.getTrackPointCount();
 
     };
 
     /*--------------------------------------------------
-      Patrol Tracks
+      Analytics
     --------------------------------------------------*/
 
-    GISQuery.queryTracks = function () {
+    GISQuery.getAnalyticsCache = function () {
 
-        return {
+        return GIS.getAnalyticsCache();
 
-            success: true,
+    };
 
-            data:
+    GISQuery.getMonthlyCache = function () {
 
-                GG.GISBusiness.getTracks()
-
-        };
+        return GIS.getMonthlyCache();
 
     };
 
     /*--------------------------------------------------
-      Sessions
+      Spatial Index
     --------------------------------------------------*/
 
-    GISQuery.querySessions = function () {
+    GISQuery.getSpatialIndex = function () {
 
-        return {
+        return GIS.getSpatialIndex();
 
-            success: true,
+    };
 
-            data:
+    GISQuery.isSpatialIndexReady = function () {
 
-                GG.GISBusiness.getSessions()
-
-        };
+        return GIS.isSpatialIndexReady();
 
     };
 
     /*--------------------------------------------------
-      Analytics Cache
+      Map
     --------------------------------------------------*/
 
-    GISQuery.queryAnalytics = function () {
+    GISQuery.getMap = function () {
 
-        return {
-
-            success: true,
-
-            data:
-
-                GG.GISBusiness.getAnalyticsCache()
-
-        };
+        return GIS.getMap();
 
     };
 
-    /*--------------------------------------------------
-      Monthly Cache
-    --------------------------------------------------*/
+    GISQuery.getLayerControl = function () {
 
-    GISQuery.queryMonthly = function () {
-
-        return {
-
-            success: true,
-
-            data:
-
-                GG.GISBusiness.getMonthlyCache()
-
-        };
+        return GIS.getLayerControl();
 
     };
 
-    /*--------------------------------------------------
-      GIS Information
-    --------------------------------------------------*/
+    GISQuery.getRootLayer = function () {
 
-    GISQuery.queryInfo = function () {
+        return GIS.getRootLayer();
 
-        return {
+    };
 
-            success: true,
+    GISQuery.getDivisionLayer = function () {
 
-            data:
+        return GIS.getDivisionLayer();
 
-                GG.GISBusiness.info()
+    };
 
-        };
+    GISQuery.getRangeLayer = function () {
+
+        return GIS.getRangeLayer();
+
+    };
+
+    GISQuery.getBeatLayer = function () {
+
+        return GIS.getBeatLayer();
+
+    };
+
+    GISQuery.getCompartmentLayer = function () {
+
+        return GIS.getCompartmentLayer();
+
+    };
+
+    GISQuery.getStaffLayer = function () {
+
+        return GIS.getStaffLayer();
+
+    };
+
+    GISQuery.getVillageLayer = function () {
+
+        return GIS.getVillageLayer();
 
     };
 
