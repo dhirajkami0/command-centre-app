@@ -1178,6 +1178,362 @@ StaffQuery.execute = async function (
     return response;
 
 };
+
+    /*=========================================================
+  Nearby Staff
+=========================================================*/
+
+GG.queryNearbyStaff = async function (
+
+    request
+
+) {
+
+    return StaffQuery.execute(
+
+        request,
+
+        async function (
+
+            request
+
+        ) {
+
+            /*----------------------------------
+              Reference Staff
+            ----------------------------------*/
+
+            const reference =
+
+                StaffQuery.ensureSingleStaff(
+
+                    request
+
+                );
+
+            /*----------------------------------
+              Reference Coordinates
+            ----------------------------------*/
+
+            const refLat =
+
+                Number(
+
+                    reference.location?.lat ??
+
+                    reference.gps?.lat
+
+                );
+
+            const refLon =
+
+                Number(
+
+                    reference.location?.lon ??
+
+                    reference.gps?.lon
+
+                );
+
+            if (
+
+                !Number.isFinite(
+
+                    refLat
+
+                ) ||
+
+                !Number.isFinite(
+
+                    refLon
+
+                )
+
+            ) {
+
+                throw new Error(
+
+                    "Reference staff has no valid GPS location."
+
+                );
+
+            }
+
+            /*----------------------------------
+              All Staff
+            ----------------------------------*/
+
+            const staff =
+
+                StaffQuery.ensureAllStaff();
+
+            /*----------------------------------
+              Distance
+            ----------------------------------*/
+
+            function distanceKm(
+
+                lat1,
+
+                lon1,
+
+                lat2,
+
+                lon2
+
+            ) {
+
+                const R =
+
+                    6371;
+
+                const dLat =
+
+                    (
+
+                        lat2 -
+
+                        lat1
+
+                    ) *
+
+                    Math.PI /
+
+                    180;
+
+                const dLon =
+
+                    (
+
+                        lon2 -
+
+                        lon1
+
+                    ) *
+
+                    Math.PI /
+
+                    180;
+
+                const a =
+
+                    Math.sin(
+
+                        dLat / 2
+
+                    ) *
+
+                    Math.sin(
+
+                        dLat / 2
+
+                    ) +
+
+                    Math.cos(
+
+                        lat1 *
+
+                        Math.PI /
+
+                        180
+
+                    ) *
+
+                    Math.cos(
+
+                        lat2 *
+
+                        Math.PI /
+
+                        180
+
+                    ) *
+
+                    Math.sin(
+
+                        dLon / 2
+
+                    ) *
+
+                    Math.sin(
+
+                        dLon / 2
+
+                    );
+
+                return (
+
+                    2 *
+
+                    R *
+
+                    Math.atan2(
+
+                        Math.sqrt(
+
+                            a
+
+                        ),
+
+                        Math.sqrt(
+
+                            1 - a
+
+                        )
+
+                    )
+
+                );
+
+            }
+
+            /*----------------------------------
+              Build Nearby List
+            ----------------------------------*/
+
+            const nearby =
+
+                [];
+
+            staff.forEach(
+
+                function (
+
+                    profile
+
+                ) {
+
+                    if (
+
+                        !profile ||
+
+                        profile.identity?.cleanName ===
+
+                        reference.identity?.cleanName
+
+                    ) {
+
+                        return;
+
+                    }
+
+                    const lat =
+
+                        Number(
+
+                            profile.location?.lat ??
+
+                            profile.gps?.lat
+
+                        );
+
+                    const lon =
+
+                        Number(
+
+                            profile.location?.lon ??
+
+                            profile.gps?.lon
+
+                        );
+
+                    if (
+
+                        !Number.isFinite(
+
+                            lat
+
+                        ) ||
+
+                        !Number.isFinite(
+
+                            lon
+
+                        )
+
+                    ) {
+
+                        return;
+
+                    }
+
+                    nearby.push({
+
+                        profile:
+
+                            profile,
+
+                        distanceKm:
+
+                            distanceKm(
+
+                                refLat,
+
+                                refLon,
+
+                                lat,
+
+                                lon
+
+                            )
+
+                    });
+
+                }
+
+            );
+
+            /*----------------------------------
+              Sort
+            ----------------------------------*/
+
+            nearby.sort(
+
+                function (
+
+                    a,
+
+                    b
+
+                ) {
+
+                    return (
+
+                        a.distanceKm -
+
+                        b.distanceKm
+
+                    );
+
+                }
+
+            );
+
+            /*----------------------------------
+              Return
+            ----------------------------------*/
+
+            return {
+
+                reference:
+
+                    reference,
+
+                count:
+
+                    nearby.length,
+
+                staff:
+
+                    nearby
+
+            };
+
+        }
+
+    );
+
+};
  /*=========================================================
  HELPER FUNCTIONS
 =========================================================*/
