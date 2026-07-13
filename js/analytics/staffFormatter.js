@@ -343,17 +343,11 @@ StaffFormatter.debugFormatter = function (name, formatter, response) {
     return result;
 };
 StaffFormatter.formatStaffNearby = function (
-
     response
-
 ) {
-
     const result =
-
         StaffFormatter.createResponse(
-
             response
-
         );
 
     /*----------------------------------
@@ -361,23 +355,14 @@ StaffFormatter.formatStaffNearby = function (
     ----------------------------------*/
 
     if (
-
         !response ||
-
         !response.success ||
-
         !response.data
-
     ) {
-
         result.message =
-
             response?.message ||
-
             "Nearby staff not found.";
-
         return result;
-
     }
 
     /*----------------------------------
@@ -385,46 +370,87 @@ StaffFormatter.formatStaffNearby = function (
     ----------------------------------*/
 
     const data =
-
         response.data;
 
     const reference =
-
         data.reference ||
-
         {};
 
     const nearby =
-
         Array.isArray(
-
             data.staff
-
         )
-
             ? data.staff
-
             : [];
 
     const identity =
-
         reference.identity ||
-
         {};
 
     const spatial =
-
         reference.spatial ||
-
         {};
 
     const displayName =
-
         identity.name ||
-
         identity.cleanName ||
-
         "-";
+
+    /*----------------------------------
+      Query Based Intro
+    ----------------------------------*/
+    const query =
+        String(
+            response.request?.query ||
+            response.request?.normalizedQuery ||
+            ""
+        )
+            .toUpperCase();
+
+    let intro =
+        "Nearby staff around " +
+        displayName;
+
+    if (
+        query.includes(
+            "NEAREST"
+        ) ||
+        query.includes(
+            "CLOSEST"
+        )
+    ) {
+        intro =
+            "The closest staff to " +
+            displayName +
+            " are:";
+    } else if (
+        query.includes(
+            "AROUND"
+        )
+    ) {
+        intro =
+            "The following staff are operating around " +
+            displayName +
+            ":";
+    } else if (
+        query.includes(
+            "WHO IS NEAR"
+        )
+    ) {
+        intro =
+            "The following staff are near " +
+            displayName +
+            ":";
+    } else if (
+        query.includes(
+            "NEAR"
+        )
+    ) {
+        intro =
+            "Nearby staff around " +
+            displayName +
+            ":";
+    }
 
     /*----------------------------------
       Markdown
@@ -433,279 +459,164 @@ StaffFormatter.formatStaffNearby = function (
     const md = [];
 
     md.push(
-
         "# 👥 NEARBY STAFF"
-
     );
 
     md.push("");
 
     md.push(
-
-        "**Reference Staff:** " +
-
-        displayName
-
+        intro
     );
 
     md.push("");
 
     md.push(
-
-        "**Current GIS Location**"
-
-    );
-
-    md.push(
-
-        "• Division : " +
-
-        (
-
-            spatial.division ||
-
-            "-"
-
-        )
-
-    );
-
-    md.push(
-
-        "• Range : " +
-
-        (
-
-            spatial.range ||
-
-            "-"
-
-        )
-
-    );
-
-    md.push(
-
-        "• Beat : " +
-
-        (
-
-            spatial.beat ||
-
-            "-"
-
-        )
-
-    );
-
-    md.push(
-
-        "• Compartment : " +
-
-        (
-
-            spatial.compartment ||
-
-            "-"
-
-        )
-
-    );
-
-    md.push("");
-
-    md.push(
-
-        "**Nearby Staff:** " +
-
-        nearby.length
-
+        "**Current Position**"
     );
 
     md.push("");
 
     if (
-
-        nearby.length === 0
-
+        spatial.compartment
     ) {
-
         md.push(
-
-            "_No nearby staff found._"
-
+            "• " +
+            spatial.compartment
         );
-
     }
 
-    else {
-
-        nearby.forEach(
-
-            function (
-
-                item,
-
-                index
-
-            ) {
-
-                const profile =
-
-                    item.profile ||
-
-                    {};
-
-                const identity =
-
-                    profile.identity ||
-
-                    {};
-
-                const spatial =
-
-                    profile.spatial ||
-
-                    {};
-
-                md.push(
-
-                    "## " +
-
-                    (
-
-                        index +
-
-                        1
-
-                    )
-
-                );
-
-                md.push("");
-
-                md.push(
-
-                    "**Name:** " +
-
-                    (
-
-                        identity.name ||
-
-                        identity.cleanName ||
-
-                        "-"
-
-                    )
-
-                );
-
-                md.push(
-
-                    "**Designation:** " +
-
-                    (
-
-                        identity.designation ||
-
-                        "-"
-
-                    )
-
-                );
-
-                md.push(
-
-                    "**Distance:** " +
-
-                    Number(
-
-                        item.distanceKm ||
-
-                        0
-
-                    ).toFixed(
-
-                        2
-
-                    ) +
-
-                    " km"
-
-                );
-
-                md.push("");
-
-                md.push(
-
-                    "• Division : " +
-
-                    (
-
-                        spatial.division ||
-
-                        "-"
-
-                    )
-
-                );
-
-                md.push(
-
-                    "• Range : " +
-
-                    (
-
-                        spatial.range ||
-
-                        "-"
-
-                    )
-
-                );
-
-                md.push(
-
-                    "• Beat : " +
-
-                    (
-
-                        spatial.beat ||
-
-                        "-"
-
-                    )
-
-                );
-
-                md.push(
-
-                    "• Compartment : " +
-
-                    (
-
-                        spatial.compartment ||
-
-                        "-"
-
-                    )
-
-                );
-
-                md.push("");
-
-            }
-
+    if (
+        spatial.beat
+    ) {
+        md.push(
+            "• " +
+            spatial.beat +
+            " Beat"
         );
+    }
 
+    if (
+        spatial.range
+    ) {
+        md.push(
+            "• " +
+            spatial.range +
+            " Range"
+        );
+    }
+
+    if (
+        spatial.division
+    ) {
+        md.push(
+            "• " +
+            spatial.division +
+            " Division"
+        );
+    }
+
+    md.push("");
+
+    md.push(
+        nearby.length === 1
+            ? "**1 staff member is nearby.**"
+            : "**" +
+            nearby.length +
+            " staff members are nearby.**"
+    );
+
+    md.push("");
+
+    if (
+        nearby.length === 0
+    ) {
+        md.push(
+            "_No nearby staff found._"
+        );
+    } else {
+        nearby.forEach(
+            function (
+                item,
+                index
+            ) {
+                const profile =
+                    item.profile ||
+                    {};
+                const identity =
+                    profile.identity ||
+                    {};
+                const spatial =
+                    profile.spatial ||
+                    {};
+                const distanceText =
+                    item.distanceKm < 1
+                        ?
+                        Math.round(
+                            item.distanceKm *
+                            1000
+                        ) +
+                        " m"
+                        :
+                        item.distanceKm.toFixed(
+                            2
+                        ) +
+                        " km";
+                md.push(
+                    "## " +
+                    (
+                        index +
+                        1
+                    ) +
+                    ". " +
+                    (
+                        identity.name ||
+                        identity.cleanName ||
+                        "-"
+                    ) +
+                    " (" +
+                    (
+                        identity.designation ||
+                        "-"
+                    ) +
+                    ")"
+                );
+                md.push("");
+                md.push(
+                    "• " +
+                    distanceText +
+                    " away"
+                );
+                md.push(
+                    "• " +
+                    (
+                        spatial.range ||
+                        "-"
+                    ) +
+                    " Range"
+                );
+                md.push(
+                    "• " +
+                    (
+                        spatial.beat ||
+                        "-"
+                    ) +
+                    " Beat"
+                );
+                md.push(
+                    "• " +
+                    (
+                        spatial.compartment ||
+                        "-"
+                    )
+                );
+                md.push("");
+            }
+        );
     }
 
     result.markdown =
-
         md.join(
-
             "\n"
-
         );
 
     /*----------------------------------
@@ -713,31 +624,18 @@ StaffFormatter.formatStaffNearby = function (
     ----------------------------------*/
 
     result.cards.push({
-
         type:
-
             "staff-nearby",
-
         title:
-
             displayName,
-
         data: {
-
             reference:
-
                 reference,
-
             nearby:
-
                 nearby,
-
             count:
-
                 nearby.length
-
         }
-
     });
 
     /*----------------------------------
@@ -745,27 +643,16 @@ StaffFormatter.formatStaffNearby = function (
     ----------------------------------*/
 
     result.sections.push({
-
         title:
-
             "Nearby Staff",
-
         data: {
-
             reference:
-
                 reference,
-
             nearby:
-
                 nearby,
-
             count:
-
                 nearby.length
-
         }
-
     });
 
     /*----------------------------------
@@ -773,36 +660,24 @@ StaffFormatter.formatStaffNearby = function (
     ----------------------------------*/
 
     result.data =
-
         data;
-
     result.success =
-
         true;
-
     result.intent =
-
         StaffConstants.INTENTS.STAFF_NEARBY;
-
     result.source =
-
         response.source ||
-
         "LOCAL";
-
     result.confidence =
-
         response.confidence ||
-
         1;
-
     result.message =
-
         "Nearby staff formatted successfully.";
 
     return result;
-
-}; /*=========================================================
+};
+ 
+ /*=========================================================
  FORMAT
 =========================================================*/
 StaffFormatter.format = function (response) {
