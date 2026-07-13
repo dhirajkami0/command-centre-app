@@ -59,300 +59,399 @@ window.GreenGuardAI =
       Register Routes
     --------------------------------------------------*/
 
-    GISRouter.registerRoutes = function () {
+GISRouter.registerRoutes = function () {
 
-        if (
-            routesRegistered
-        ) {
-            return true;
-        }
+    if (
 
-        const INTENTS =
-            GG.GISConstants?.INTENTS;
-        const QUERY =
-            GG.GISQuery;
-        const FORMATTER =
-            GG.GISFormatter;
+        routesRegistered
 
-        if (
+    ) {
 
-            !INTENTS ||
-
-            !QUERY ||
-
-            !FORMATTER
-
-        ) {
-
-            return false;
-
-        }
-
-        /*------------------------------
-          Search
-        ------------------------------*/
-
-        GISRouter.register(
-
-            INTENTS.GIS_SEARCH,
-
-            FORMATTER.formatSearch ||
-
-            QUERY.getGIS
-
-        );
-
-        /*------------------------------
-          Profile
-        ------------------------------*/
-
-        GISRouter.register(
-
-            INTENTS.GIS_PROFILE,
-
-            FORMATTER.formatInfo ||
-
-            QUERY.info
-
-        );
-
-        /*------------------------------
-          Map
-        ------------------------------*/
-
-        GISRouter.register(
-
-            INTENTS.GIS_MAP,
-
-            FORMATTER.formatMap ||
-
-            QUERY.getMap
-
-        );
-
-        /*------------------------------
-          Filter
-        ------------------------------*/
-
-        GISRouter.register(
-
-            INTENTS.GIS_FILTER,
-
-            FORMATTER.formatCurrentSelection ||
-
-            QUERY.getFilter
-
-        );
-
-        GISRouter.register(
-
-            INTENTS.GIS_CURRENT_FILTER,
-
-            FORMATTER.formatCurrentSelection ||
-
-            QUERY.getFilter
-
-        );
-
-        /*------------------------------
-          Selection
-        ------------------------------*/
-
-        GISRouter.register(
-
-            INTENTS.GIS_SELECTION,
-
-            FORMATTER.formatCurrentSelection ||
-
-            QUERY.getCurrentGeometry
-
-        );
-
-        /*------------------------------
-          Current Location
-        ------------------------------*/
-
-        GISRouter.register(
-
-            INTENTS.GIS_CURRENT_LOCATION,
-
-            FORMATTER.formatCurrentLocation ||
-
-            QUERY.getCurrentGeometry
-
-        );
-
-        /*------------------------------
-          Division
-        ------------------------------*/
-
-        GISRouter.register(
-
-            INTENTS.GIS_DIVISION,
-
-            FORMATTER.formatCurrentDivision ||
-
-            QUERY.getCurrentDivision
-
-        );
-
-        /*------------------------------
-          Range
-        ------------------------------*/
-
-        GISRouter.register(
-
-            INTENTS.GIS_RANGE,
-
-            FORMATTER.formatCurrentRange ||
-
-            QUERY.getCurrentRange
-
-        );
-
-        /*------------------------------
-          Beat
-        ------------------------------*/
-
-        GISRouter.register(
-
-            INTENTS.GIS_BEAT,
-
-            FORMATTER.formatCurrentBeat ||
-
-            QUERY.getCurrentBeat
-
-        );
-
-        /*------------------------------
-          Compartment
-        ------------------------------*/
-
-        GISRouter.register(
-
-            INTENTS.GIS_COMPARTMENT,
-
-            FORMATTER.formatCurrentCompartment ||
-
-            QUERY.getCurrentCompartment
-
-        );
-
-        /*------------------------------
-          Village
-        ------------------------------*/
-
-        GISRouter.register(
-
-            INTENTS.GIS_VILLAGE,
-
-            FORMATTER.formatCurrentVillage ||
-
-            QUERY.getVillages
-
-        );
-
-        /*------------------------------
-          Hierarchy
-        ------------------------------*/
-
-        GISRouter.register(
-
-            INTENTS.GIS_HIERARCHY,
-
-            FORMATTER.formatHierarchy ||
-
-            QUERY.getHierarchy
-
-        );
-
-        /*------------------------------
-          Spatial
-        ------------------------------*/
-
-        GISRouter.register(
-
-            INTENTS.GIS_NEAREST,
-
-            FORMATTER.formatNearest ||
-
-            QUERY.getCurrentGeometry
-
-        );
-
-        GISRouter.register(
-
-            INTENTS.GIS_INSIDE,
-
-            FORMATTER.formatInside ||
-
-            QUERY.findContainingCompartment
-
-        );
-
-        GISRouter.register(
-
-            INTENTS.GIS_CONTAINS,
-
-            FORMATTER.formatContains ||
-
-            QUERY.findContainingCompartment
-
-        );
-
-        GISRouter.register(
-
-            INTENTS.GIS_DISTANCE,
-
-            FORMATTER.formatDistance ||
-
-            QUERY.getTrackDistanceMap
-
-        );
-
-        GISRouter.register(
-
-            INTENTS.GIS_DIRECTION,
-
-            FORMATTER.formatDirection ||
-
-            QUERY.getCurrentGeometry
-
-        );
-
-        /*------------------------------
-          Analytics
-        ------------------------------*/
-
-        GISRouter.register(
-
-            INTENTS.GIS_ANALYTICS,
-
-            FORMATTER.formatAnalytics ||
-
-            QUERY.getAnalyticsCache
-
-        );
-
-        /*------------------------------
-          Summary
-        ------------------------------*/
-
-        GISRouter.register(
-
-            INTENTS.GIS_SUMMARY,
-
-            FORMATTER.formatInfo ||
-
-            QUERY.info
-
-        );
-
-        routesRegistered =
-            true;
         return true;
 
-    };
+    }
+
+    const INTENTS =
+
+        GG.GISConstants?.INTENTS;
+
+    const QUERY =
+
+        GG.GISQuery;
+
+    const FORMATTER =
+
+        GG.GISFormatter;
+
+    if (
+
+        !INTENTS ||
+
+        !QUERY ||
+
+        !FORMATTER
+
+    ) {
+
+        return false;
+
+    }
+
+    /*------------------------------
+      Search
+    ------------------------------*/
+
+    GISRouter.register(
+
+        INTENTS.GIS_SEARCH,
+
+        FORMATTER.formatSearch ||
+
+        QUERY.getGIS
+
+    );
+
+    /*------------------------------
+      Profile
+    ------------------------------*/
+
+    GISRouter.register(
+
+        INTENTS.GIS_PROFILE,
+
+        FORMATTER.formatInfo ||
+
+        QUERY.info
+
+    );
+
+    /*------------------------------
+      Map
+    ------------------------------*/
+
+    GISRouter.register(
+
+        INTENTS.GIS_MAP,
+
+        FORMATTER.formatMap ||
+
+        QUERY.getMap
+
+    );
+
+    /*------------------------------
+      Filter
+    ------------------------------*/
+
+    GISRouter.register(
+
+        INTENTS.GIS_FILTER,
+
+        FORMATTER.formatCurrentSelection ||
+
+        QUERY.getFilter
+
+    );
+
+    GISRouter.register(
+
+        INTENTS.GIS_CURRENT_FILTER,
+
+        FORMATTER.formatCurrentSelection ||
+
+        QUERY.getFilter
+
+    );
+
+    /*------------------------------
+      Selection
+    ------------------------------*/
+
+    GISRouter.register(
+
+        INTENTS.GIS_SELECTION,
+
+        FORMATTER.formatCurrentSelection ||
+
+        QUERY.getCurrentGeometry
+
+    );
+
+    /*------------------------------
+      Current Location
+    ------------------------------*/
+
+    GISRouter.register(
+
+        INTENTS.GIS_CURRENT_LOCATION,
+
+        FORMATTER.formatCurrentLocation ||
+
+        QUERY.getCurrentGeometry
+
+    );
+
+    /*------------------------------
+      Division
+    ------------------------------*/
+
+    GISRouter.register(
+
+        INTENTS.GIS_DIVISION,
+
+        FORMATTER.formatCurrentDivision ||
+
+        QUERY.getCurrentDivision
+
+    );
+
+    /*------------------------------
+      Range
+    ------------------------------*/
+
+    GISRouter.register(
+
+        INTENTS.GIS_RANGE,
+
+        FORMATTER.formatCurrentRange ||
+
+        QUERY.getCurrentRange
+
+    );
+
+    /*------------------------------
+      Beat
+    ------------------------------*/
+
+    GISRouter.register(
+
+        INTENTS.GIS_BEAT,
+
+        FORMATTER.formatCurrentBeat ||
+
+        QUERY.getCurrentBeat
+
+    );
+
+    /*------------------------------
+      Compartment
+    ------------------------------*/
+
+    GISRouter.register(
+
+        INTENTS.GIS_COMPARTMENT,
+
+        FORMATTER.formatCurrentCompartment ||
+
+        QUERY.getCurrentCompartment
+
+    );
+
+    /*------------------------------
+      Village
+    ------------------------------*/
+
+    GISRouter.register(
+
+        INTENTS.GIS_VILLAGE,
+
+        FORMATTER.formatCurrentVillage ||
+
+        QUERY.getVillages
+
+    );
+
+    /*------------------------------
+      Hierarchy
+    ------------------------------*/
+
+    GISRouter.register(
+
+        INTENTS.GIS_HIERARCHY,
+
+        FORMATTER.formatHierarchy ||
+
+        QUERY.getHierarchy
+
+    );
+
+    /*------------------------------
+      Spatial
+    ------------------------------*/
+
+    GISRouter.register(
+
+        INTENTS.GIS_NEAREST,
+
+        FORMATTER.formatNearest ||
+
+        QUERY.getCurrentGeometry
+
+    );
+
+    GISRouter.register(
+
+        INTENTS.GIS_INSIDE,
+
+        FORMATTER.formatInside ||
+
+        QUERY.findContainingCompartment
+
+    );
+
+    GISRouter.register(
+
+        INTENTS.GIS_CONTAINS,
+
+        FORMATTER.formatContains ||
+
+        QUERY.findContainingCompartment
+
+    );
+
+    GISRouter.register(
+
+        INTENTS.GIS_DISTANCE,
+
+        FORMATTER.formatDistance ||
+
+        QUERY.getTrackDistanceMap
+
+    );
+
+    GISRouter.register(
+
+        INTENTS.GIS_DIRECTION,
+
+        FORMATTER.formatDirection ||
+
+        QUERY.getCurrentGeometry
+
+    );
+
+    /*------------------------------
+      Analytics
+    ------------------------------*/
+
+    GISRouter.register(
+
+        INTENTS.GIS_ANALYTICS,
+
+        FORMATTER.formatAnalytics ||
+
+        QUERY.getAnalyticsCache
+
+    );
+
+    /*------------------------------
+      Summary
+    ------------------------------*/
+
+    GISRouter.register(
+
+        INTENTS.GIS_SUMMARY,
+
+        FORMATTER.formatInfo ||
+
+        QUERY.info
+
+    );
+
+    /*------------------------------
+      Staff Presence
+    ------------------------------*/
+
+    GISRouter.register(
+
+        INTENTS.GIS_STAFF_PRESENCE,
+
+        FORMATTER.formatStaffPresence ||
+
+        QUERY.getStaffPresence
+
+    );
+
+    GISRouter.register(
+
+        INTENTS.GIS_STAFF_PRESENCE_COUNT,
+
+        FORMATTER.formatStaffPresenceCount ||
+
+        QUERY.getStaffPresenceCount
+
+    );
+
+    GISRouter.register(
+
+        INTENTS.GIS_STAFF_ON_DUTY,
+
+        FORMATTER.formatStaffOnDuty ||
+
+        QUERY.getStaffOnDuty
+
+    );
+
+    /*------------------------------
+      Circle
+    ------------------------------*/
+
+    GISRouter.register(
+
+        INTENTS.GIS_CURRENT_CIRCLE,
+
+        FORMATTER.formatCurrentCircle ||
+
+        QUERY.getCurrentCircle
+
+    );
+
+    GISRouter.register(
+
+        INTENTS.GIS_CIRCLE_SUMMARY,
+
+        FORMATTER.formatCircleSummary ||
+
+        QUERY.getCircleSummary
+
+    );
+
+    GISRouter.register(
+
+        INTENTS.GIS_BEAT_SUMMARY,
+
+        FORMATTER.formatBeatSummary ||
+
+        QUERY.getBeatSummary
+
+    );
+
+    GISRouter.register(
+
+        INTENTS.GIS_RANGE_SUMMARY,
+
+        FORMATTER.formatRangeSummary ||
+
+        QUERY.getRangeSummary
+
+    );
+
+    GISRouter.register(
+
+        INTENTS.GIS_DIVISION_SUMMARY,
+
+        FORMATTER.formatDivisionSummary ||
+
+        QUERY.getDivisionSummary
+
+    );
+
+    routesRegistered =
+
+        true;
+
+    return true;
+
+};
 
     /*--------------------------------------------------
       Route
