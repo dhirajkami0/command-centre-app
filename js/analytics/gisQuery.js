@@ -165,69 +165,8 @@ GISQuery.findStaffInsideCompartment = function (
   Beat Summary
 --------------------------------------------------*/
 
-GISQuery.getBeatSummary = function (
 
-    beat
-
-) {
-
-    if (
-
-        !beat
-
-    ) {
-
-        return null;
-
-    }
-
-    const feature =
-
-        GG.GISEntities.search(
-
-            beat
-
-        );
-
-    const staff =
-
-        StaffGIS.findStaffInsideBeat(
-
-            beat
-
-        );
-
-    return {
-
-        beat:
-
-            beat,
-
-        feature:
-
-            feature,
-
-        staff:
-
-            staff,
-
-        staffCount:
-
-            staff.length,
-
-        liveStaff:
-
-            staff.filter(
-
-                s =>
-
-                    s.dutyActive
-
-            ).length
-
-    };
-
-};
+  
   /*--------------------------------------------------
   Staff Inside Beat
 --------------------------------------------------*/
@@ -283,9 +222,11 @@ GISQuery.findStaffInsideDivision = function (
   Beat Summary
 --------------------------------------------------*/
 
-GISQuery.getBeatSummary =
+/*--------------------------------------------------
+  Beat Summary
+--------------------------------------------------*/
 
-function (
+GISQuery.getBeatSummary = function (
 
     beat
 
@@ -339,148 +280,11 @@ function (
 
 };
 
-  /*--------------------------------------------------
+/*--------------------------------------------------
   Range Summary
 --------------------------------------------------*/
 
 GISQuery.getRangeSummary = function (
-
-    range
-
-) {
-
-    if (
-
-        !range
-
-    ) {
-
-        return null;
-
-    }
-
-    const feature =
-
-        GG.GISEntities.search(
-
-            range
-
-        );
-
-    const staff =
-
-        StaffGIS.findStaffInsideRange(
-
-            range
-
-        );
-
-    return {
-
-        range:
-
-            range,
-
-        feature:
-
-            feature,
-
-        staff:
-
-            staff,
-
-        staffCount:
-
-            staff.length,
-
-        liveStaff:
-
-            staff.filter(
-
-                s =>
-
-                    s.dutyActive
-
-            ).length
-
-    };
-
-};
-
-  /*--------------------------------------------------
-  Division Summary
---------------------------------------------------*/
-
-GISQuery.getDivisionSummary = function (
-
-    division
-
-) {
-
-    if (
-
-        !division
-
-    ) {
-
-        return null;
-
-    }
-
-    const feature =
-
-        GG.GISEntities.search(
-
-            division
-
-        );
-
-    const staff =
-
-        StaffGIS.findStaffInsideDivision(
-
-            division
-
-        );
-
-    return {
-
-        division:
-
-            division,
-
-        feature:
-
-            feature,
-
-        staff:
-
-            staff,
-
-        staffCount:
-
-            staff.length,
-
-        liveStaff:
-
-            staff.filter(
-
-                s =>
-
-                    s.dutyActive
-
-            ).length
-
-    };
-
-};
-  /*--------------------------------------------------
-  Range Summary
---------------------------------------------------*/
-
-GISQuery.getRangeSummary =
-
-function (
 
     range
 
@@ -533,13 +337,12 @@ function (
     };
 
 };
-  /*--------------------------------------------------
+
+/*--------------------------------------------------
   Division Summary
 --------------------------------------------------*/
 
-GISQuery.getDivisionSummary =
-
-function (
+GISQuery.getDivisionSummary = function (
 
     division
 
@@ -592,7 +395,245 @@ function (
     };
 
 };
-    /*--------------------------------------------------
+  /*--------------------------------------------------
+  Staff Presence
+--------------------------------------------------*/
+
+GISQuery.getStaffPresence = function (
+
+    jurisdiction
+
+) {
+
+    if (
+
+        !jurisdiction
+
+    ) {
+
+        return [];
+
+    }
+
+    if (
+
+        jurisdiction.compartment
+
+    ) {
+
+        return GISQuery.findStaffInsideCompartment(
+
+            jurisdiction.compartment
+
+        );
+
+    }
+
+    if (
+
+        jurisdiction.beat
+
+    ) {
+
+        return GISQuery.findStaffInsideBeat(
+
+            jurisdiction.beat
+
+        );
+
+    }
+
+    if (
+
+        jurisdiction.range
+
+    ) {
+
+        return GISQuery.findStaffInsideRange(
+
+            jurisdiction.range
+
+        );
+
+    }
+
+    if (
+
+        jurisdiction.division
+
+    ) {
+
+        return GISQuery.findStaffInsideDivision(
+
+            jurisdiction.division
+
+        );
+
+    }
+
+    return [];
+
+};
+  /*--------------------------------------------------
+  Staff Presence Count
+--------------------------------------------------*/
+
+GISQuery.getStaffPresenceCount = function (
+
+    jurisdiction
+
+) {
+
+    const staff =
+
+        GISQuery.getStaffPresence(
+
+            jurisdiction
+
+        );
+
+    return {
+
+        staff:
+
+            staff,
+
+        count:
+
+            staff.length
+
+    };
+
+};
+
+/*--------------------------------------------------
+  Staff On Duty
+--------------------------------------------------*/
+
+GISQuery.getStaffOnDuty = function (
+
+    jurisdiction
+
+) {
+
+    const staff =
+
+        GISQuery.getStaffPresence(
+
+            jurisdiction
+
+        );
+
+    const onDuty =
+
+        staff.filter(
+
+            s =>
+
+                s.dutyActive === true
+
+        );
+
+    return {
+
+        staff:
+
+            onDuty,
+
+        count:
+
+            onDuty.length
+
+    };
+
+};
+
+  /*--------------------------------------------------
+  Current Circle
+--------------------------------------------------*/
+
+GISQuery.getCurrentCircle = function () {
+
+    return GIS.getCurrentCircle();
+
+};
+
+/*--------------------------------------------------
+  Staff Inside Circle
+--------------------------------------------------*/
+
+GISQuery.findStaffInsideCircle = function (
+
+    circle
+
+) {
+
+    return GG.StaffGIS.findStaffInsideCircle(
+
+        circle
+
+    );
+
+};
+
+/*--------------------------------------------------
+  Circle Summary
+--------------------------------------------------*/
+
+GISQuery.getCircleSummary = function (
+
+    circle
+
+) {
+
+    if (
+
+        !circle
+
+    ) {
+
+        return null;
+
+    }
+
+    const feature =
+
+        GG.GISEntities.search(
+
+            circle
+
+        );
+
+    const staff =
+
+        GISQuery.findStaffInsideCircle(
+
+            circle
+
+        );
+
+    return {
+
+        circle:
+
+            circle,
+
+        feature:
+
+            feature,
+
+        staff:
+
+            staff,
+
+        staffCount:
+
+            staff.length
+
+    };
+
+};
+  /*--------------------------------------------------
       Filter
     --------------------------------------------------*/
 
