@@ -77,7 +77,203 @@ window.GreenGuardAI =
         };
 
     };
+/*--------------------------------------------------
+  Hierarchy
+--------------------------------------------------*/
 
+GISIntent.detectHierarchy = function (
+
+    result
+
+) {
+
+    /*----------------------------------
+      Already Detected
+    ----------------------------------*/
+
+    if (
+
+        result.intent
+
+    ) {
+
+        return result;
+
+    }
+
+    const INTENTS =
+
+        GG.GISConstants.INTENTS;
+
+    /*----------------------------------
+      Compartment
+    ----------------------------------*/
+
+    if (
+
+        GG.StaffIntent.hasKeyword(
+
+            result,
+
+            "GIS_COMPARTMENT"
+
+        )
+
+    ) {
+
+        result.intent =
+
+            INTENTS.GIS_COMPARTMENT;
+
+        result.confidence =
+
+            0.99;
+
+        return result;
+
+    }
+
+    /*----------------------------------
+      Beat
+    ----------------------------------*/
+
+    if (
+
+        GG.StaffIntent.hasKeyword(
+
+            result,
+
+            "GIS_BEAT"
+
+        )
+
+    ) {
+
+        result.intent =
+
+            INTENTS.GIS_BEAT;
+
+        result.confidence =
+
+            0.99;
+
+        return result;
+
+    }
+
+    /*----------------------------------
+      Range
+    ----------------------------------*/
+
+    if (
+
+        GG.StaffIntent.hasKeyword(
+
+            result,
+
+            "GIS_RANGE"
+
+        )
+
+    ) {
+
+        result.intent =
+
+            INTENTS.GIS_RANGE;
+
+        result.confidence =
+
+            0.99;
+
+        return result;
+
+    }
+
+    /*----------------------------------
+      Division
+    ----------------------------------*/
+
+    if (
+
+        GG.StaffIntent.hasKeyword(
+
+            result,
+
+            "GIS_DIVISION"
+
+        )
+
+    ) {
+
+        result.intent =
+
+            INTENTS.GIS_DIVISION;
+
+        result.confidence =
+
+            0.99;
+
+        return result;
+
+    }
+
+    /*----------------------------------
+      Circle
+    ----------------------------------*/
+
+    if (
+
+        GG.StaffIntent.hasKeyword(
+
+            result,
+
+            "GIS_CIRCLE"
+
+        )
+
+    ) {
+
+        result.intent =
+
+            INTENTS.GIS_CIRCLE;
+
+        result.confidence =
+
+            0.99;
+
+        return result;
+
+    }
+
+    /*----------------------------------
+      Hierarchy
+    ----------------------------------*/
+
+    if (
+
+        GG.StaffIntent.hasKeyword(
+
+            result,
+
+            "GIS_HIERARCHY"
+
+        )
+
+    ) {
+
+        result.intent =
+
+            INTENTS.GIS_HIERARCHY;
+
+        result.confidence =
+
+            0.98;
+
+    }
+
+    return result;
+
+};
     /*--------------------------------------------------
       Detect
     --------------------------------------------------*/
