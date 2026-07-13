@@ -117,11 +117,41 @@ GISIntent.detect = function (
       (Specific → Generic)
     ----------------------------------*/
 
+    /*----------------------------------
+      Jurisdiction
+    ----------------------------------*/
+
     GISIntent.detectHierarchy(
 
         result
 
     );
+
+    /*----------------------------------
+      Live Staff
+    ----------------------------------*/
+
+    GISIntent.detectStaffPresence(
+
+        result
+
+    );
+
+    GISIntent.detectStaffPresenceCount(
+
+        result
+
+    );
+
+    GISIntent.detectStaffOnDuty(
+
+        result
+
+    );
+
+    /*----------------------------------
+      Current Selection
+    ----------------------------------*/
 
     GISIntent.detectSelection(
 
@@ -129,17 +159,29 @@ GISIntent.detect = function (
 
     );
 
+    /*----------------------------------
+      Spatial
+    ----------------------------------*/
+
     GISIntent.detectSpatial(
 
         result
 
     );
 
+    /*----------------------------------
+      Analytics
+    ----------------------------------*/
+
     GISIntent.detectAnalytics(
 
         result
 
     );
+
+    /*----------------------------------
+      Map
+    ----------------------------------*/
 
     GISIntent.detectMap(
 
@@ -154,440 +196,531 @@ GISIntent.detect = function (
     return result;
 
 };
+  
+  /*--------------------------------------------------
+  Staff On Duty
+--------------------------------------------------*/
 
-    /*--------------------------------------------------
-      Selection
-    --------------------------------------------------*/
+/*--------------------------------------------------
+  Staff On Duty
+--------------------------------------------------*/
 
-    GISIntent.detectSelection = function (
+GISIntent.detectStaffOnDuty = function (
 
-        result
+    result
+
+) {
+
+    if (
+
+        result.intent
 
     ) {
 
-        if (
+        return result;
 
-            result.intent
+    }
 
-        ) {
+    if (
 
-            return result;
+        GG.StaffIntent.hasKeyword(
 
-        }
+            result,
 
-        const query =
+            "WHO_IS_ON_DUTY"
 
-            result.normalizedQuery;
+        )
 
-        const KEYWORDS =
+    ) {
 
-            GG.GISConstants.KEYWORDS;
+        result.intent =
 
-        const INTENTS =
+            GG.GISConstants.INTENTS.GIS_STAFF_ON_DUTY;
 
-            GG.GISConstants.INTENTS;
+        result.confidence =
 
-        if (
+            0.99;
 
-            GG.StaffIntent.hasKeyword(
+    }
 
-                query,
+    return result;
 
-                KEYWORDS.GIS_SELECTION
+};
+  /*--------------------------------------------------
+  Staff Presence Count
+--------------------------------------------------*/
 
-            )
+/*--------------------------------------------------
+  Staff Presence Count
+--------------------------------------------------*/
 
-        ) {
+GISIntent.detectStaffPresenceCount = function (
 
-            result.intent =
+    result
 
-                INTENTS.GIS_SELECTION;
+) {
 
-            result.confidence =
+    if (
 
-                0.95;
+        result.intent
 
-        }
+    ) {
 
         return result;
 
-    };
+    }
+
+    if (
+
+        GG.StaffIntent.hasKeyword(
+
+            result,
+
+            "GIS_STAFF_PRESENCE_COUNT"
+
+        )
+
+    ) {
+
+        result.intent =
+
+            GG.GISConstants.INTENTS.GIS_STAFF_PRESENCE_COUNT;
+
+        result.confidence =
+
+            0.99;
+
+    }
+
+    return result;
+
+};
+
+/*--------------------------------------------------
+  Selection
+--------------------------------------------------*/
+
+/*--------------------------------------------------
+  Selection
+--------------------------------------------------*/
+/*--------------------------------------------------
+  Selection
+--------------------------------------------------*/
+
+GISIntent.detectSelection = function (
+
+    result
+
+) {
+
+    /*----------------------------------
+      Already Detected
+    ----------------------------------*/
+
+    if (
+
+        result.intent
+
+    ) {
+
+        return result;
+
+    }
+
+    /*----------------------------------
+      Selected GIS Object
+    ----------------------------------*/
+
+    if (
+
+        GG.StaffIntent.hasKeyword(
+
+            result,
+
+            "GIS_SELECTION"
+
+        )
+
+    ) {
+
+        result.intent =
+
+            GG.GISConstants.INTENTS.GIS_SELECTION;
+
+        result.confidence =
+
+            0.95;
+
+    }
+
+    return result;
+
+};
 
     /*--------------------------------------------------
       Hierarchy
     --------------------------------------------------*/
 
-    GISIntent.detectHierarchy = function (
+/*--------------------------------------------------
+  Spatial
+--------------------------------------------------*/
 
-        result
+GISIntent.detectSpatial = function (
+
+    result
+
+) {
+
+    if (
+
+        result.intent
 
     ) {
 
-        if (
+        return result;
 
-            result.intent
+    }
 
-        ) {
+    const INTENTS =
 
-            return result;
+        GG.GISConstants.INTENTS;
 
-        }
+    /*----------------------------------
+      Nearest
+    ----------------------------------*/
 
-        const query =
+    if (
 
-            result.normalizedQuery;
+        GG.StaffIntent.hasKeyword(
 
-        const KEYWORDS =
+            result,
 
-            GG.GISConstants.KEYWORDS;
+            "GIS_NEAREST"
 
-        const INTENTS =
+        )
 
-            GG.GISConstants.INTENTS;
+    ) {
 
-        if (
+        result.intent =
 
-            GG.StaffIntent.hasKeyword(
+            INTENTS.GIS_NEAREST;
 
-                query,
+        result.confidence =
 
-                KEYWORDS.GIS_COMPARTMENT
-
-            )
-
-        ) {
-
-            result.intent =
-
-                INTENTS.GIS_COMPARTMENT;
-
-            result.confidence =
-
-                0.99;
-
-            return result;
-
-        }
-
-        if (
-
-            GG.StaffIntent.hasKeyword(
-
-                query,
-
-                KEYWORDS.GIS_BEAT
-
-            )
-
-        ) {
-
-            result.intent =
-
-                INTENTS.GIS_BEAT;
-
-            result.confidence =
-
-                0.99;
-
-            return result;
-
-        }
-
-        if (
-
-            GG.StaffIntent.hasKeyword(
-
-                query,
-
-                KEYWORDS.GIS_RANGE
-
-            )
-
-        ) {
-
-            result.intent =
-
-                INTENTS.GIS_RANGE;
-
-            result.confidence =
-
-                0.99;
-
-            return result;
-
-        }
-
-        if (
-
-            GG.StaffIntent.hasKeyword(
-
-                query,
-
-                KEYWORDS.GIS_DIVISION
-
-            )
-
-        ) {
-
-            result.intent =
-
-                INTENTS.GIS_DIVISION;
-
-            result.confidence =
-
-                0.99;
-
-        }
+            0.98;
 
         return result;
 
-    };
+    }
 
+    /*----------------------------------
+      Inside
+    ----------------------------------*/
+
+    if (
+
+        GG.StaffIntent.hasKeyword(
+
+            result,
+
+            "GIS_INSIDE"
+
+        )
+
+    ) {
+
+        result.intent =
+
+            INTENTS.GIS_INSIDE;
+
+        result.confidence =
+
+            0.98;
+
+        return result;
+
+    }
+
+    /*----------------------------------
+      Distance
+    ----------------------------------*/
+
+    if (
+
+        GG.StaffIntent.hasKeyword(
+
+            result,
+
+            "GIS_DISTANCE"
+
+        )
+
+    ) {
+
+        result.intent =
+
+            INTENTS.GIS_DISTANCE;
+
+        result.confidence =
+
+            0.98;
+
+    }
+
+    return result;
+
+};
     /*--------------------------------------------------
       Spatial
     --------------------------------------------------*/
 
-    GISIntent.detectSpatial = function (
+/*--------------------------------------------------
+  Spatial
+--------------------------------------------------*/
 
-        result
+GISIntent.detectSpatial = function (
+
+    result
+
+) {
+
+    /*----------------------------------
+      Already Detected
+    ----------------------------------*/
+
+    if (
+
+        result.intent
 
     ) {
 
-        if (
+        return result;
 
-            result.intent
+    }
 
-        ) {
+    /*----------------------------------
+      Nearest
+    ----------------------------------*/
 
-            return result;
+    if (
 
-        }
+        GG.StaffIntent.hasKeyword(
 
-        const query =
+            result,
 
-            result.normalizedQuery;
+            "GIS_NEAREST"
 
-        const KEYWORDS =
+        )
 
-            GG.GISConstants.KEYWORDS;
+    ) {
 
-        const INTENTS =
+        result.intent =
 
-            GG.GISConstants.INTENTS;
+            GG.GISConstants.INTENTS.GIS_NEAREST;
 
-        if (
+        result.confidence =
 
-            GG.StaffIntent.hasKeyword(
-
-                query,
-
-                KEYWORDS.GIS_NEAREST
-
-            )
-
-        ) {
-
-            result.intent =
-
-                INTENTS.GIS_NEAREST;
-
-            result.confidence =
-
-                0.98;
-
-            return result;
-
-        }
-
-        if (
-
-            GG.StaffIntent.hasKeyword(
-
-                query,
-
-                KEYWORDS.GIS_INSIDE
-
-            )
-
-        ) {
-
-            result.intent =
-
-                INTENTS.GIS_INSIDE;
-
-            result.confidence =
-
-                0.98;
-
-            return result;
-
-        }
-
-        if (
-
-            GG.StaffIntent.hasKeyword(
-
-                query,
-
-                KEYWORDS.GIS_DISTANCE
-
-            )
-
-        ) {
-
-            result.intent =
-
-                INTENTS.GIS_DISTANCE;
-
-            result.confidence =
-
-                0.98;
-
-        }
+            0.98;
 
         return result;
 
-    };
+    }
 
+    /*----------------------------------
+      Inside
+    ----------------------------------*/
+
+    if (
+
+        GG.StaffIntent.hasKeyword(
+
+            result,
+
+            "GIS_INSIDE"
+
+        )
+
+    ) {
+
+        result.intent =
+
+            GG.GISConstants.INTENTS.GIS_INSIDE;
+
+        result.confidence =
+
+            0.98;
+
+        return result;
+
+    }
+
+    /*----------------------------------
+      Distance
+    ----------------------------------*/
+
+    if (
+
+        GG.StaffIntent.hasKeyword(
+
+            result,
+
+            "GIS_DISTANCE"
+
+        )
+
+    ) {
+
+        result.intent =
+
+            GG.GISConstants.INTENTS.GIS_DISTANCE;
+
+        result.confidence =
+
+            0.98;
+
+    }
+
+    return result;
+
+};
     /*--------------------------------------------------
       Analytics
     --------------------------------------------------*/
 
-    GISIntent.detectAnalytics = function (
+/*--------------------------------------------------
+  Analytics
+--------------------------------------------------*/
 
-        result
+GISIntent.detectAnalytics = function (
+
+    result
+
+) {
+
+    if (
+
+        result.intent
 
     ) {
 
-        if (
+        return result;
 
-            result.intent
+    }
 
-        ) {
+    const INTENTS =
 
-            return result;
+        GG.GISConstants.INTENTS;
 
-        }
+    /*----------------------------------
+      Analytics
+    ----------------------------------*/
 
-        const query =
+    if (
 
-            result.normalizedQuery;
+        GG.StaffIntent.hasKeyword(
 
-        const KEYWORDS =
+            result,
 
-            GG.GISConstants.KEYWORDS;
+            "GIS_ANALYTICS"
 
-        const INTENTS =
+        )
 
-            GG.GISConstants.INTENTS;
+    ) {
 
-        if (
+        result.intent =
 
-            GG.StaffIntent.hasKeyword(
+            INTENTS.GIS_ANALYTICS;
 
-                query,
+        result.confidence =
 
-                KEYWORDS.GIS_ANALYTICS
-
-            )
-
-        ) {
-
-            result.intent =
-
-                INTENTS.GIS_ANALYTICS;
-
-            result.confidence =
-
-                0.97;
-
-            return result;
-
-        }
-
-        if (
-
-            GG.StaffIntent.hasKeyword(
-
-                query,
-
-                KEYWORDS.GIS_SUMMARY
-
-            )
-
-        ) {
-
-            result.intent =
-
-                INTENTS.GIS_SUMMARY;
-
-            result.confidence =
-
-                0.97;
-
-        }
+            0.97;
 
         return result;
 
-    };
+    }
 
+    /*----------------------------------
+      Summary
+    ----------------------------------*/
+
+    if (
+
+        GG.StaffIntent.hasKeyword(
+
+            result,
+
+            "GIS_SUMMARY"
+
+        )
+
+    ) {
+
+        result.intent =
+
+            INTENTS.GIS_SUMMARY;
+
+        result.confidence =
+
+            0.97;
+
+    }
+
+    return result;
+
+};
     /*--------------------------------------------------
       Map
     --------------------------------------------------*/
 
-    GISIntent.detectMap = function (
+/*--------------------------------------------------
+  Map
+--------------------------------------------------*/
 
-        result
+GISIntent.detectMap = function (
+
+    result
+
+) {
+
+    if (
+
+        result.intent
 
     ) {
 
-        if (
-
-            result.intent
-
-        ) {
-
-            return result;
-
-        }
-
-        const query =
-
-            result.normalizedQuery;
-
-        const KEYWORDS =
-
-            GG.GISConstants.KEYWORDS;
-
-        const INTENTS =
-
-            GG.GISConstants.INTENTS;
-
-        if (
-
-            GG.StaffIntent.hasKeyword(
-
-                query,
-
-                KEYWORDS.GIS_MAP
-
-            )
-
-        ) {
-
-            result.intent =
-
-                INTENTS.GIS_MAP;
-
-            result.confidence =
-
-                0.96;
-
-        }
-
         return result;
 
-    };
+    }
+
+    const INTENTS =
+
+        GG.GISConstants.INTENTS;
+
+    if (
+
+        GG.StaffIntent.hasKeyword(
+
+            result,
+
+            "GIS_MAP"
+
+        )
+
+    ) {
+
+        result.intent =
+
+            INTENTS.GIS_MAP;
+
+        result.confidence =
+
+            0.96;
+
+    }
+
+    return result;
+
+};
 
     GG.GISIntent =
 
