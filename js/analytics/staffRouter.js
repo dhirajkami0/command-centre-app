@@ -806,6 +806,18 @@ StaffRouter.registerRoutes = function () {
       LOCATION
     ----------------------------------*/
     StaffRouter.registerWithLog(INTENTS.STAFF_LOCATION, GG.queryStaffLocation);
+ /*----------------------------------
+  Nearby Staff
+----------------------------------*/
+
+StaffRouter.registerWithLog(
+
+    INTENTS.STAFF_NEARBY,
+
+    GG.queryNearbyStaff
+
+);
+
     StaffRouter.registerWithLog(INTENTS.STAFF_GPS, GG.queryStaffGPS);
 
     /*----------------------------------
