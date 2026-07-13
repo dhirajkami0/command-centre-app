@@ -368,7 +368,7 @@ GISFormatter.formatRangeSummary = function (
 
 **Total Staff:** ${result.staffCount}
 
-**On Duty:** ${result.liveStaff}`;
+**On Duty:** ${result.onDutyStaffCount}`;
 
     return response;
 
@@ -431,7 +431,7 @@ GISFormatter.formatDivisionSummary = function (
 
 **Total Staff:** ${result.staffCount}
 
-**On Duty:** ${result.liveStaff}`;
+**On Duty:** ${result.onDutyStaffCount}`;
 
     return response;
 
@@ -494,7 +494,7 @@ GISFormatter.formatBeatSummary = function (
 
 **Total Staff:** ${result.staffCount}
 
-**On Duty:** ${result.liveStaff}`;
+**On Duty:** ${result.onDutyStaffCount}`;
 
     return response;
 
@@ -1522,7 +1522,9 @@ GISFormatter.formatCircleSummary = function (
 
 **Circle:** ${result.circle}
 
-**Total Staff:** ${result.staffCount}`;
+**Total Staff:** ${result.staffCount}
+
+**On Duty:** ${result.onDutyStaffCount}`;
 
     return response;
 
