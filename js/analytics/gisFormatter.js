@@ -1204,7 +1204,329 @@ GISFormatter.formatInfo = function (
   /*--------------------------------------------------
   Current Selection
 --------------------------------------------------*/
+/*--------------------------------------------------
+  Staff Presence
+--------------------------------------------------*/
 
+GISFormatter.formatStaffPresence = function (
+
+    jurisdiction,
+
+    request = {}
+
+) {
+
+    const response =
+
+        GISFormatter.createResponse(
+
+            request
+
+        );
+
+    const staff =
+
+        Query.getStaffPresence(
+
+            jurisdiction
+
+        );
+
+    response.success =
+
+        true;
+
+    response.data =
+
+        staff;
+
+    let md =
+
+`# 👥 Staff Presence
+
+**Total Staff:** ${staff.length}`;
+
+    if (
+
+        staff.length
+
+    ) {
+
+        md +=
+
+            "\n\n";
+
+        staff.forEach(
+
+            function (
+
+                s,
+
+                i
+
+            ) {
+
+                md +=
+
+`${i + 1}. ${
+
+    s.name ||
+
+    s.cleanName
+
+}
+
+`;
+
+            }
+
+        );
+
+    }
+
+    response.markdown =
+
+        md;
+
+    return response;
+
+};
+
+  /*--------------------------------------------------
+  Staff Presence Count
+--------------------------------------------------*/
+
+GISFormatter.formatStaffPresenceCount = function (
+
+    jurisdiction,
+
+    request = {}
+
+) {
+
+    const response =
+
+        GISFormatter.createResponse(
+
+            request
+
+        );
+
+    const result =
+
+        Query.getStaffPresenceCount(
+
+            jurisdiction
+
+        );
+
+    response.success =
+
+        true;
+
+    response.data =
+
+        result;
+
+    response.markdown =
+
+`# 👥 Staff Presence
+
+**Total Staff:** ${result.count}`;
+
+    return response;
+
+};
+
+  /*--------------------------------------------------
+  Staff On Duty
+--------------------------------------------------*/
+
+GISFormatter.formatStaffOnDuty = function (
+
+    jurisdiction,
+
+    request = {}
+
+) {
+
+    const response =
+
+        GISFormatter.createResponse(
+
+            request
+
+        );
+
+    const result =
+
+        Query.getStaffOnDuty(
+
+            jurisdiction
+
+        );
+
+    response.success =
+
+        true;
+
+    response.data =
+
+        result;
+
+    let md =
+
+`# 🚔 Staff On Duty
+
+**On Duty:** ${result.count}`;
+
+    if (
+
+        result.staff.length
+
+    ) {
+
+        md +=
+
+            "\n\n";
+
+        result.staff.forEach(
+
+            function (
+
+                s,
+
+                i
+
+            ) {
+
+                md +=
+
+`${i + 1}. ${
+
+    s.name ||
+
+    s.cleanName
+
+}
+
+`;
+
+            }
+
+        );
+
+    }
+
+    response.markdown =
+
+        md;
+
+    return response;
+
+};
+
+  /*--------------------------------------------------
+  Current Circle
+--------------------------------------------------*/
+
+GISFormatter.formatCurrentCircle = function (
+
+    request = {}
+
+) {
+
+    const response =
+
+        GISFormatter.createResponse(
+
+            request
+
+        );
+
+    const circle =
+
+        Query.getCurrentCircle();
+
+    response.success =
+
+        true;
+
+    response.data =
+
+        circle;
+
+    response.markdown =
+
+`# 📍 Current Circle
+
+${circle || "Not Selected"}`;
+
+    return response;
+
+};
+
+  /*--------------------------------------------------
+  Circle Summary
+--------------------------------------------------*/
+
+GISFormatter.formatCircleSummary = function (
+
+    circle,
+
+    request = {}
+
+) {
+
+    const response =
+
+        GISFormatter.createResponse(
+
+            request
+
+        );
+
+    const result =
+
+        Query.getCircleSummary(
+
+            circle
+
+        );
+
+    if (
+
+        !result
+
+    ) {
+
+        response.markdown =
+
+            "# Circle Not Found";
+
+        return response;
+
+    }
+
+    response.success =
+
+        true;
+
+    response.data =
+
+        result;
+
+    response.markdown =
+
+`# 👥 Circle Summary
+
+**Circle:** ${result.circle}
+
+**Total Staff:** ${result.staffCount}`;
+
+    return response;
+
+};
 /*--------------------------------------------------
   Current Selection
 --------------------------------------------------*/
@@ -1274,41 +1596,7 @@ GISFormatter.formatCurrentSelection = function (
   Current Beat
 --------------------------------------------------*/
 
-GISFormatter.formatCurrentBeat = function (
 
-    request = {}
-
-) {
-
-    const response =
-
-        GISFormatter.createResponse(
-
-            request
-
-        );
-
-    const beat =
-
-        Query.getCurrentBeat();
-
-    response.success =
-
-        true;
-
-    response.data =
-
-        beat;
-
-    response.markdown =
-
-`# 📍 Current Beat
-
-${beat || "Not Selected"}`;
-
-    return response;
-
-};
   /*--------------------------------------------------
   Current Beat
 --------------------------------------------------*/
