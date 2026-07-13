@@ -3999,6 +3999,10 @@ if (
     /*----------------------------------
       Single Staff
     ----------------------------------*/
+result =
+    StaffIntent.detectNearbyIntent(
+        result
+    );
 
     /*----------------------------------
       Profile
@@ -5023,6 +5027,33 @@ StaffIntent.detectLocationIntent = function (
     return result;
 
 };
+ StaffIntent.detectNearbyIntent = function (result) {
+
+    if (!result || result.intent) {
+        return result;
+    }
+
+    const query =
+        String(result.normalizedQuery || "")
+            .trim()
+            .toUpperCase();
+
+    if (
+        result.parameters.isSingle &&
+        StaffIntent.hasKeyword(
+            query,
+            StaffConstants.KEYWORDS.STAFF_NEARBY
+        )
+    ) {
+
+        result.intent =
+            StaffConstants.INTENTS.STAFF_NEARBY;
+
+        result.confidence = 0.99;
+    }
+
+    return result;
+};
 /*=========================================================
  DETECT STAFF INTENT (ORCHESTRATOR)
 =========================================================*/
@@ -5182,35 +5213,7 @@ StaffIntent.detectStaffIntent = function (
         );
 
     }
-/*----------------------------------
-  Nearby Staff
-----------------------------------*/
 
-if (
-
-    parameters.isSingle &&
-
-    (
-        /\bNEAR\b/.test(query) ||
-
-        /\bNEARBY\b/.test(query) ||
-
-        /\bNEAREST\b/.test(query) ||
-
-        /\bCLOSEST\b/.test(query) ||
-
-        /\bAROUND\b/.test(query)
-    )
-
-) {
-
-    result.intent =
-
-        StaffConstants.INTENTS.STAFF_NEARBY;
-
-    return;
-
-}
     /*----------------------------------
       Profile
     ----------------------------------*/
