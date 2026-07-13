@@ -404,7 +404,7 @@ GISIntent.detect = function (
         result
 
     );
-
+GG.StaffEntities.extractPostingEntities(result);
     /*----------------------------------
       Live Staff
     ----------------------------------*/
