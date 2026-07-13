@@ -502,6 +502,10 @@ GISIntent.detectStaffPresence = function (
   Staff Presence Count
 --------------------------------------------------*/
 
+/*--------------------------------------------------
+  Staff Presence Count
+--------------------------------------------------*/
+
 GISIntent.detectStaffPresenceCount = function (
 
     result
@@ -522,9 +526,9 @@ GISIntent.detectStaffPresenceCount = function (
 
         GG.StaffIntent.hasKeyword(
 
-            result,
+            result.normalizedQuery,
 
-            "GIS_STAFF_PRESENCE_COUNT"
+            GG.GISConstants.KEYWORDS.GIS_STAFF_PRESENCE_COUNT
 
         )
 
@@ -543,7 +547,6 @@ GISIntent.detectStaffPresenceCount = function (
     return result;
 
 };
-
 /*--------------------------------------------------
   Selection
 --------------------------------------------------*/
