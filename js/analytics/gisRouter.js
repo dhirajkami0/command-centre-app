@@ -527,13 +527,39 @@ GISRouter.registerRoutes = function () {
 
         try {
 
-            const response =
+            const parameters =
 
-                await handler(
+    request.parameters ||
 
-                    request
+    {};
 
-                );
+const jurisdiction =
+
+    parameters.compartment ||
+
+    parameters.beat ||
+
+    parameters.range ||
+
+    parameters.division ||
+
+    parameters.circle ||
+
+    parameters.village ||
+
+    request.query ||
+
+    null;
+
+const response =
+
+    await handler(
+
+        jurisdiction,
+
+        request
+
+    );
 
             return (
 
