@@ -165,8 +165,393 @@ GISConstants.INTENTS = Object.freeze({
     /*--------------------------------------------------
       KEYWORDS
     --------------------------------------------------*/
-
 /*--------------------------------------------------
+  QUERY TYPES
+--------------------------------------------------*/
+
+GISConstants.QUERY_TYPES = Object.freeze({
+
+    /*----------------------------------
+      Information
+    ----------------------------------*/
+
+    PROFILE:
+        "profile",
+
+    SUMMARY:
+        "summary",
+
+    DIRECTORY:
+        "directory",
+
+    COUNT:
+        "count",
+
+    SEARCH:
+        "search",
+
+    ANALYTICS:
+        "analytics",
+
+    /*----------------------------------
+      Spatial
+    ----------------------------------*/
+
+    LOCATION:
+        "location",
+
+    INSIDE:
+        "inside",
+
+    CONTAINS:
+        "contains",
+
+    DISTANCE:
+        "distance",
+
+    DIRECTION:
+        "direction",
+
+    NEAREST:
+        "nearest",
+
+    MAP:
+        "map",
+
+    FILTER:
+        "filter",
+
+    /*----------------------------------
+      Presence
+    ----------------------------------*/
+
+    PRESENT:
+        "present",
+
+    ACTIVE:
+        "active",
+
+    LIVE:
+        "live",
+
+    CURRENT:
+        "current",
+
+    /*----------------------------------
+      Future
+    ----------------------------------*/
+
+    HISTORY:
+        "history",
+
+    TIMELINE:
+        "timeline"
+
+});
+  /*--------------------------------------------------
+  RESOURCE TYPES
+--------------------------------------------------*/
+
+GISConstants.RESOURCES = Object.freeze({
+
+    STAFF:
+        "staff",
+
+    PATROL:
+        "patrol",
+
+    WILDLIFE:
+        "wildlife",
+
+    INCIDENT:
+        "incident",
+
+    VEHICLE:
+        "vehicle",
+
+    GRID:
+        "grid",
+
+    FIRE:
+        "fire",
+
+    VILLAGE:
+        "village",
+
+    WATERBODY:
+        "waterbody",
+
+    CAMERA:
+        "camera"
+
+});
+
+  /*--------------------------------------------------
+  QUERY GROUPS
+--------------------------------------------------*/
+
+GISConstants.QUERY_GROUPS = Object.freeze({
+
+    /*----------------------------------
+      Official Posting
+      (Staff Domain)
+    ----------------------------------*/
+
+    STAFF_DIRECTORY:
+        "staffDirectory",
+
+    STAFF_COUNT:
+        "staffCount",
+
+    STAFF_SUMMARY:
+        "staffSummary",
+
+    /*----------------------------------
+      Live Presence
+      (GIS Domain)
+    ----------------------------------*/
+
+    STAFF_PRESENT:
+        "staffPresent",
+
+    STAFF_PRESENT_COUNT:
+        "staffPresentCount",
+
+    WHO_IS_PRESENT:
+        "whoIsPresent",
+
+    /*----------------------------------
+      Polygon
+    ----------------------------------*/
+
+    PROFILE:
+        "profile",
+
+    SUMMARY:
+        "summary",
+
+    ANALYTICS:
+        "analytics",
+
+    DIRECTORY:
+        "directory",
+
+    MAP:
+        "map"
+
+});
+
+  /*--------------------------------------------------
+  PARAMETERS
+--------------------------------------------------*/
+
+GISConstants.PARAMETERS = Object.freeze({
+
+    /*----------------------------------
+      Jurisdiction
+    ----------------------------------*/
+
+    CIRCLE:
+        "circle",
+
+    DIVISION:
+        "division",
+
+    RANGE:
+        "range",
+
+    BEAT:
+        "beat",
+
+    COMPARTMENT:
+        "compartment",
+
+    VILLAGE:
+        "village",
+
+    /*----------------------------------
+      Resource
+    ----------------------------------*/
+
+    STAFF:
+        "staff",
+
+    PATROL:
+        "patrol",
+
+    WILDLIFE:
+        "wildlife",
+
+    INCIDENT:
+        "incident",
+
+    VEHICLE:
+        "vehicle",
+
+    /*----------------------------------
+      Query Mode
+    ----------------------------------*/
+
+    CURRENT:
+        "current",
+
+    LIVE:
+        "live",
+
+    PRESENT:
+        "present",
+
+    OFFICIAL:
+        "official",
+
+    /*----------------------------------
+      Output
+    ----------------------------------*/
+
+    LIST:
+        "list",
+
+    COUNT:
+        "count",
+
+    SUMMARY:
+        "summary",
+
+    PROFILE:
+        "profile",
+
+    MAP:
+        "map"
+
+});
+  /*--------------------------------------------------
+  RESPONSE TYPES
+--------------------------------------------------*/
+
+GISConstants.RESPONSE_TYPES = Object.freeze({
+
+    /*----------------------------------
+      Generic
+    ----------------------------------*/
+
+    PROFILE:
+        "profile",
+
+    DIRECTORY:
+        "directory",
+
+    SUMMARY:
+        "summary",
+
+    LIST:
+        "list",
+
+    COUNT:
+        "count",
+
+    MAP:
+        "map",
+
+    ANALYTICS:
+        "analytics",
+
+    /*----------------------------------
+      GIS Presence
+    ----------------------------------*/
+
+    STAFF_PRESENT:
+        "staffPresent",
+
+    STAFF_PRESENT_COUNT:
+        "staffPresentCount",
+
+    PATROL_PRESENT:
+        "patrolPresent",
+
+    WILDLIFE_PRESENT:
+        "wildlifePresent",
+
+    INCIDENT_PRESENT:
+        "incidentPresent",
+
+    VEHICLE_PRESENT:
+        "vehiclePresent"
+
+});
+
+  /*--------------------------------------------------
+  DATA SOURCES
+--------------------------------------------------*/
+
+GISConstants.DATA_SOURCES = Object.freeze({
+
+    GIS:
+        "GIS",
+
+    STAFF:
+        "STAFF",
+
+    LIVE_STAFF:
+        "LIVE_STAFF",
+
+    PATROL_TRACKS:
+        "PATROL_TRACKS",
+
+    ANALYTICS:
+        "ANALYTICS",
+
+    WILDLIFE:
+        "WILDLIFE",
+
+    INCIDENTS:
+        "INCIDENTS",
+
+    FIRE:
+        "FIRE"
+
+});
+
+  /*--------------------------------------------------
+  LAYERS
+--------------------------------------------------*/
+
+GISConstants.LAYERS = Object.freeze({
+
+    CIRCLE:
+        "circle",
+
+    DIVISION:
+        "division",
+
+    RANGE:
+        "range",
+
+    BEAT:
+        "beat",
+
+    COMPARTMENT:
+        "compartment",
+
+    VILLAGE:
+        "village",
+
+    GRID:
+        "grid",
+
+    STAFF:
+        "staff",
+
+    PATROL:
+        "patrol",
+
+    WILDLIFE:
+        "wildlife",
+
+    INCIDENT:
+        "incident"
+
+});
+  /*--------------------------------------------------
   KEYWORDS
 --------------------------------------------------*/
 
