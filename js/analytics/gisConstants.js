@@ -32,247 +32,523 @@ window.GreenGuardAI =
 
         "gis";
 
-    /*--------------------------------------------------
-      INTENTS
-    --------------------------------------------------*/
+/*--------------------------------------------------
+  INTENTS
+--------------------------------------------------*/
 
-    GISConstants.INTENTS = Object.freeze({
+GISConstants.INTENTS = Object.freeze({
 
-        GIS_SEARCH:
-            "gisSearch",
+    /*----------------------------------
+      Generic
+    ----------------------------------*/
 
-        GIS_PROFILE:
-            "gisProfile",
+    GIS_SEARCH:
+        "gisSearch",
 
-        GIS_MAP:
-            "gisMap",
+    GIS_PROFILE:
+        "gisProfile",
 
-        GIS_FILTER:
-            "gisFilter",
+    GIS_MAP:
+        "gisMap",
 
-        GIS_SELECTION:
-            "gisSelection",
+    GIS_FILTER:
+        "gisFilter",
 
-        GIS_CURRENT_LOCATION:
-            "gisCurrentLocation",
+    GIS_SELECTION:
+        "gisSelection",
 
-        GIS_CURRENT_FILTER:
-            "gisCurrentFilter",
+    GIS_CURRENT_LOCATION:
+        "gisCurrentLocation",
 
-        GIS_DIVISION:
-            "gisDivision",
+    GIS_CURRENT_FILTER:
+        "gisCurrentFilter",
 
-        GIS_RANGE:
-            "gisRange",
+    /*----------------------------------
+      Jurisdictions
+    ----------------------------------*/
 
-        GIS_BEAT:
-            "gisBeat",
+    GIS_DIVISION:
+        "gisDivision",
 
-        GIS_COMPARTMENT:
-            "gisCompartment",
+    GIS_RANGE:
+        "gisRange",
 
-        GIS_VILLAGE:
-            "gisVillage",
+    GIS_BEAT:
+        "gisBeat",
 
-        GIS_HIERARCHY:
-            "gisHierarchy",
+    GIS_COMPARTMENT:
+        "gisCompartment",
 
-        GIS_NEAREST:
-            "gisNearest",
+    GIS_VILLAGE:
+        "gisVillage",
 
-        GIS_INSIDE:
-            "gisInside",
+    GIS_HIERARCHY:
+        "gisHierarchy",
 
-        GIS_CONTAINS:
-            "gisContains",
+    /*----------------------------------
+      Spatial
+    ----------------------------------*/
 
-        GIS_DISTANCE:
-            "gisDistance",
+    GIS_NEAREST:
+        "gisNearest",
 
-        GIS_DIRECTION:
-            "gisDirection",
+    GIS_INSIDE:
+        "gisInside",
 
-        GIS_ANALYTICS:
-            "gisAnalytics",
+    GIS_CONTAINS:
+        "gisContains",
 
-        GIS_SUMMARY:
-            "gisSummary"
+    GIS_DISTANCE:
+        "gisDistance",
 
-    });
+    GIS_DIRECTION:
+        "gisDirection",
+
+    /*----------------------------------
+      Analytics
+    ----------------------------------*/
+
+    GIS_ANALYTICS:
+        "gisAnalytics",
+
+    GIS_SUMMARY:
+        "gisSummary",
+
+    /*----------------------------------
+      Live Staff Presence
+      (Current GPS inside polygon)
+    ----------------------------------*/
+
+    GIS_STAFF_PRESENT:
+        "gisStaffPresent",
+
+    GIS_STAFF_COUNT:
+        "gisStaffCount",
+
+    GIS_CIRCLE_STAFF_PRESENT:
+        "gisCircleStaffPresent",
+
+    GIS_DIVISION_STAFF_PRESENT:
+        "gisDivisionStaffPresent",
+
+    GIS_RANGE_STAFF_PRESENT:
+        "gisRangeStaffPresent",
+
+    GIS_BEAT_STAFF_PRESENT:
+        "gisBeatStaffPresent",
+
+    GIS_COMPARTMENT_STAFF_PRESENT:
+        "gisCompartmentStaffPresent",
+
+    GIS_VILLAGE_STAFF_PRESENT:
+        "gisVillageStaffPresent",
+
+    /*----------------------------------
+      Other Live Objects
+      (Future)
+    ----------------------------------*/
+
+    GIS_WILDLIFE_PRESENT:
+        "gisWildlifePresent",
+
+    GIS_PATROL_PRESENT:
+        "gisPatrolPresent",
+
+    GIS_INCIDENT_PRESENT:
+        "gisIncidentPresent",
+
+    GIS_VEHICLE_PRESENT:
+        "gisVehiclePresent"
+
+});
 
     /*--------------------------------------------------
       KEYWORDS
     --------------------------------------------------*/
 
-    GISConstants.KEYWORDS = Object.freeze({
+/*--------------------------------------------------
+  KEYWORDS
+--------------------------------------------------*/
 
-        GIS_MAP: [
+GISConstants.KEYWORDS = Object.freeze({
 
-            "MAP",
+    /*----------------------------------
+      Map
+    ----------------------------------*/
 
-            "OPEN MAP",
+    GIS_MAP: [
 
-            "SHOW MAP",
+        "MAP",
 
-            "CURRENT MAP"
+        "SHOW MAP",
 
-        ],
+        "OPEN MAP",
 
-        GIS_FILTER: [
+        "CURRENT MAP",
 
-            "FILTER",
+        "DISPLAY MAP"
 
-            "CURRENT FILTER",
+    ],
 
-            "MAP FILTER"
+    /*----------------------------------
+      Filter
+    ----------------------------------*/
 
-        ],
+    GIS_FILTER: [
 
-        GIS_SELECTION: [
+        "FILTER",
 
-            "SELECTED",
+        "MAP FILTER",
 
-            "CURRENT",
+        "CURRENT FILTER",
 
-            "CURRENT AREA",
+        "APPLY FILTER"
 
-            "SELECTED AREA",
+    ],
 
-            "SELECTED POLYGON"
+    /*----------------------------------
+      Current Selection
+    ----------------------------------*/
 
-        ],
+    GIS_SELECTION: [
 
-        GIS_DIVISION: [
+        "CURRENT",
 
-            "DIVISION"
+        "SELECTED",
 
-        ],
+        "SELECTED AREA",
 
-        GIS_RANGE: [
+        "CURRENT AREA",
 
-            "RANGE"
+        "CURRENT POLYGON",
 
-        ],
+        "SELECTED POLYGON"
 
-        GIS_BEAT: [
+    ],
 
-            "BEAT"
+    /*----------------------------------
+      Jurisdictions
+    ----------------------------------*/
 
-        ],
+    GIS_DIVISION: [
 
-        GIS_COMPARTMENT: [
+        "DIVISION"
 
-            "COMPARTMENT",
+    ],
 
-            "COMP",
+    GIS_RANGE: [
 
-            "COUPE"
+        "RANGE"
 
-        ],
+    ],
 
-        GIS_VILLAGE: [
+    GIS_BEAT: [
 
-            "VILLAGE"
+        "BEAT"
 
-        ],
+    ],
 
-        GIS_HIERARCHY: [
+    GIS_COMPARTMENT: [
 
-            "HIERARCHY",
+        "COMPARTMENT",
 
-            "JURISDICTION"
+        "COMP",
 
-        ],
+        "COUPE"
 
-        GIS_NEAREST: [
+    ],
 
-            "NEAREST",
+    GIS_VILLAGE: [
 
-            "CLOSEST",
+        "VILLAGE"
 
-            "NEAR"
+    ],
 
-        ],
+    GIS_HIERARCHY: [
 
-        GIS_INSIDE: [
+        "HIERARCHY",
 
-            "INSIDE",
+        "JURISDICTION"
 
-            "WITHIN",
+    ],
 
-            "IN"
+    /*----------------------------------
+      Spatial
+    ----------------------------------*/
 
-        ],
+    GIS_NEAREST: [
 
-        GIS_CONTAINS: [
+        "NEAREST",
 
-            "CONTAINS",
+        "NEAR",
 
-            "HAS",
+        "CLOSEST"
 
-            "INCLUDES"
+    ],
 
-        ],
+    GIS_INSIDE: [
 
-        GIS_DISTANCE: [
+        "INSIDE",
 
-            "DISTANCE"
+        "WITHIN",
 
-        ],
+        "IN"
 
-        GIS_DIRECTION: [
+    ],
 
-            "DIRECTION",
+    GIS_CONTAINS: [
 
-            "BEARING"
+        "CONTAINS",
 
-        ],
+        "HAS",
 
-        GIS_ANALYTICS: [
+        "INCLUDES"
 
-            "ANALYTICS",
+    ],
 
-            "STATISTICS",
+    GIS_DISTANCE: [
 
-            "REPORT"
+        "DISTANCE"
 
-        ],
+    ],
 
-        GIS_SUMMARY: [
+    GIS_DIRECTION: [
 
-            "SUMMARY",
+        "DIRECTION",
 
-            "OVERVIEW"
+        "BEARING"
 
-        ]
+    ],
 
-    });
+    /*----------------------------------
+      Analytics
+    ----------------------------------*/
+
+    GIS_ANALYTICS: [
+
+        "ANALYTICS",
+
+        "STATISTICS",
+
+        "REPORT"
+
+    ],
+
+    GIS_SUMMARY: [
+
+        "SUMMARY",
+
+        "OVERVIEW"
+
+    ],
+
+    /*----------------------------------
+      Live Staff Presence
+    ----------------------------------*/
+
+    GIS_STAFF_PRESENT: [
+
+        "STAFF PRESENT",
+
+        "PRESENT STAFF",
+
+        "LIVE STAFF",
+
+        "CURRENT STAFF",
+
+        "STAFF INSIDE",
+
+        "STAFF IN",
+
+        "WHO IS IN",
+
+        "WHO IS INSIDE",
+
+        "WHICH STAFF ARE IN",
+
+        "SHOW STAFF",
+
+        "SHOW STAFF INSIDE",
+
+        "SHOW STAFF IN",
+
+        "STAFF CURRENTLY IN",
+
+        "STAFF CURRENTLY INSIDE"
+
+    ],
+
+    GIS_STAFF_COUNT: [
+
+        "HOW MANY STAFF",
+
+        "STAFF COUNT",
+
+        "NUMBER OF STAFF",
+
+        "TOTAL STAFF",
+
+        "TOTAL STAFF PRESENT",
+
+        "PRESENT STAFF COUNT",
+
+        "LIVE STAFF COUNT",
+
+        "CURRENT STAFF COUNT"
+
+    ],
+
+    /*----------------------------------
+      Wildlife
+    ----------------------------------*/
+
+    GIS_WILDLIFE_PRESENT: [
+
+        "ELEPHANT",
+
+        "ELEPHANTS",
+
+        "ANIMAL",
+
+        "ANIMALS",
+
+        "WILDLIFE",
+
+        "SIGHTINGS"
+
+    ],
+
+    /*----------------------------------
+      Patrol
+    ----------------------------------*/
+
+    GIS_PATROL_PRESENT: [
+
+        "PATROL",
+
+        "PATROLLING",
+
+        "PATROL TEAM",
+
+        "PATROL STAFF"
+
+    ],
+
+    /*----------------------------------
+      Vehicle
+    ----------------------------------*/
+
+    GIS_VEHICLE_PRESENT: [
+
+        "VEHICLE",
+
+        "VEHICLES"
+
+    ],
+
+    /*----------------------------------
+      Incident
+    ----------------------------------*/
+
+    GIS_INCIDENT_PRESENT: [
+
+        "INCIDENT",
+
+        "INCIDENTS",
+
+        "FIRE",
+
+        "FIRES",
+
+        "ALERT",
+
+        "ALERTS"
+
+    ]
+
+});
 
     /*--------------------------------------------------
       ENTITY TYPES
     --------------------------------------------------*/
 
-    GISConstants.ENTITY_TYPES = Object.freeze({
+/*--------------------------------------------------
+  ENTITY TYPES
+--------------------------------------------------*/
 
-        DIVISION:
-            "division",
+GISConstants.ENTITY_TYPES = Object.freeze({
 
-        RANGE:
-            "range",
+    /*----------------------------------
+      Jurisdictions
+    ----------------------------------*/
 
-        BEAT:
-            "beat",
+    CIRCLE:
+        "circle",
 
-        COMPARTMENT:
-            "compartment",
+    DIVISION:
+        "division",
 
-        VILLAGE:
-            "village",
+    RANGE:
+        "range",
 
-        GEOMETRY:
-            "geometry"
+    BEAT:
+        "beat",
 
-    });
+    COMPARTMENT:
+        "compartment",
+
+    VILLAGE:
+        "village",
+
+    /*----------------------------------
+      Geometry
+    ----------------------------------*/
+
+    GEOMETRY:
+        "geometry",
+
+    POLYGON:
+        "polygon",
+
+    POINT:
+        "point",
+
+    LINE:
+        "line",
+
+    /*----------------------------------
+      Live Objects
+    ----------------------------------*/
+
+    STAFF:
+        "staff",
+
+    PATROL:
+        "patrol",
+
+    WILDLIFE:
+        "wildlife",
+
+    INCIDENT:
+        "incident",
+
+    VEHICLE:
+        "vehicle",
+
+    GRID:
+        "grid",
+
+    /*----------------------------------
+      Search
+    ----------------------------------*/
+
+    LOCATION:
+        "location",
+
+    COORDINATE:
+        "coordinate"
+
+});
 
     /*--------------------------------------------------
       EXPORT
