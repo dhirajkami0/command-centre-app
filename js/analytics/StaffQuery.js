@@ -1386,43 +1386,7 @@ StaffQuery.getStaff = function (
 
                     GG.StaffHydrator &&
 /*----------------------------------
-  GIS Hydrate
-----------------------------------*/
-
-if (
-
-    GG.StaffGIS &&
-
-    typeof GG.StaffGIS.locate ===
-
-    "function"
-
-) {
-
-    const located =
-
-        GG.StaffGIS.locate(
-
-            cleanName
-
-        );
-
-    if (
-
-        located &&
-
-        located.profile
-
-    ) {
-
-        return located.profile;
-
-    }
-
-}
-
-/*----------------------------------
-  Hydrator Fallback
+  Hydrate
 ----------------------------------*/
 
 if (
@@ -1455,9 +1419,7 @@ if (
 
     }
 
-}
-
-                /*----------------------------------
+}                /*----------------------------------
                   Fallback
                 ----------------------------------*/
 
