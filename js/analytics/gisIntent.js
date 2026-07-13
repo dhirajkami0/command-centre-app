@@ -366,10 +366,19 @@ GISIntent.extractJurisdiction = function (
     result
 
 ) {
+
     console.log(
+
         "🔥 extractJurisdiction called:",
-        result.normalizedQuery
+
+        result?.normalizedQuery
+
     );
+
+
+    /*----------------------------------
+      Validate
+    ----------------------------------*/
 
     if (
 
@@ -388,7 +397,9 @@ GISIntent.extractJurisdiction = function (
 
         !GG.GISEntities ||
 
-        typeof GG.GISEntities.search !== "function"
+        typeof GG.GISEntities.build !==
+
+        "function"
 
     ) {
 
@@ -402,25 +413,158 @@ GISIntent.extractJurisdiction = function (
 
     const query =
 
-        result.normalizedQuery;
+        GG.normalizeName(
 
-
-    /*----------------------------------
-      1. Direct Search
-    ----------------------------------*/
-
-    feature =
-
-        GG.GISEntities.search(
-
-            query
+            result.normalizedQuery
 
         );
 
 
+    const index =
+
+        GG.GISEntities.build();
+
+
+
     /*----------------------------------
-      2. Range Search
+      Generic GIS matcher
     ----------------------------------*/
+
+    function findMatch(
+
+        collection
+
+    ) {
+
+
+        if (
+
+            !collection
+
+        ) {
+
+            return null;
+
+        }
+
+
+        let best = null;
+
+        let longest = 0;
+
+
+        Object.keys(
+
+            collection
+
+        )
+
+        .forEach(
+
+            function (
+
+                key
+
+            ) {
+
+
+                const normalizedKey =
+
+                    GG.normalizeName(
+
+                        key
+
+                    );
+
+
+                if (
+
+                    !normalizedKey
+
+                ) {
+
+                    return;
+
+                }
+
+
+                if (
+
+                    query.includes(
+
+                        normalizedKey
+
+                    )
+
+                ) {
+
+
+                    /*
+
+                      Keep longest match
+
+                      Example:
+
+                      EASTDAMANPUR
+
+                      beats
+
+                      EAST
+
+                    */
+
+
+                    if (
+
+                        normalizedKey.length >
+
+                        longest
+
+                    ) {
+
+                        longest =
+
+                            normalizedKey.length;
+
+
+                        best =
+
+                            collection[key];
+
+                    }
+
+                }
+
+
+            }
+
+        );
+
+
+        return best;
+
+    }
+
+
+
+    /*----------------------------------
+      Priority Search
+      Specific → Generic
+    ----------------------------------*/
+
+
+    /* Compartment */
+
+    feature =
+
+        findMatch(
+
+            index.compartments
+
+        );
+
+
+    /* Beat */
 
     if (
 
@@ -428,105 +572,78 @@ GISIntent.extractJurisdiction = function (
 
     ) {
 
-        const index =
+        feature =
 
-            GG.GISEntities.build();
+            findMatch(
 
+                index.beats
 
-        for (
-
-            const key in index.ranges
-
-        ) {
-
-            if (
-
-                query.includes(key)
-
-            ) {
-
-                feature =
-
-                    index.ranges[key];
-
-                break;
-
-            }
-
-        }
-
-
-        /*----------------------------------
-          3. Beat Search
-        ----------------------------------*/
-
-        if (
-
-            !feature
-
-        ) {
-
-            for (
-
-                const key in index.beats
-
-            ) {
-
-                if (
-
-                    query.includes(key)
-
-                ) {
-
-                    feature =
-
-                        index.beats[key];
-
-                    break;
-
-                }
-
-            }
-
-        }
-
-
-        /*----------------------------------
-          4. Compartment Search
-        ----------------------------------*/
-
-        if (
-
-            !feature
-
-        ) {
-
-            for (
-
-                const key in index.compartments
-
-            ) {
-
-                if (
-
-                    query.includes(key)
-
-                ) {
-
-                    feature =
-
-                        index.compartments[key];
-
-                    break;
-
-                }
-
-            }
-
-        }
+            );
 
     }
 
+
+    /* Range */
+
+    if (
+
+        !feature
+
+    ) {
+
+        feature =
+
+            findMatch(
+
+                index.ranges
+
+            );
+
+    }
+
+
+    /* Division */
+
+    if (
+
+        !feature
+
+    ) {
+
+        feature =
+
+            findMatch(
+
+                index.divisions
+
+            );
+
+    }
+
+
+    /* Circle */
+
+    if (
+
+        !feature
+
+    ) {
+
+        feature =
+
+            findMatch(
+
+                index.circles
+
+            );
+
+    }
+
+
+
+    /*----------------------------------
+      No GIS match
+    ----------------------------------*/
 
     if (
 
@@ -536,9 +653,16 @@ GISIntent.extractJurisdiction = function (
 
     ) {
 
+        console.log(
+
+            "❌ No GIS jurisdiction match"
+
+        );
+
         return result;
 
     }
+
 
 
     const p =
@@ -546,10 +670,16 @@ GISIntent.extractJurisdiction = function (
         feature.properties;
 
 
+
     result.parameters =
 
         result.parameters || {};
 
+
+
+    /*----------------------------------
+      Full hierarchy extraction
+    ----------------------------------*/
 
     result.parameters.circle =
 
@@ -588,23 +718,30 @@ GISIntent.extractJurisdiction = function (
         "";
 
 
+
     result.entities =
 
         result.entities || {};
 
 
+
     result.entities.gis = {
 
-        type:"Feature",
+        type:
 
-        properties:p
+            "Feature",
+
+        properties:
+
+            p
 
     };
 
 
+
     console.log(
 
-        "GIS Jurisdiction Extracted:",
+        "✅ GIS Jurisdiction Extracted:",
 
         result.parameters
 
