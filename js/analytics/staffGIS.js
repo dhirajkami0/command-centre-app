@@ -597,6 +597,7 @@ StaffGIS.findStaffInsideRange = function (
 
         );
 
+
     return Object
 
         .values(
@@ -607,7 +608,7 @@ StaffGIS.findStaffInsideRange = function (
 
         )
 
-        .filter(
+        .map(
 
             function (
 
@@ -615,37 +616,49 @@ StaffGIS.findStaffInsideRange = function (
 
             ) {
 
+
                 /*--------------------------
-                  Valid GPS
+                  Validate Staff GPS
                 --------------------------*/
 
                 if (
 
+                    !staff ||
+
                     !isFinite(
 
-                        staff.lat
+                        Number(
+
+                            staff.lat
+
+                        )
 
                     ) ||
 
                     !isFinite(
 
-                        staff.lng
+                        Number(
+
+                            staff.lng
+
+                        )
 
                     )
 
                 ) {
 
-                    return false;
+                    return null;
 
                 }
+
 
                 /*--------------------------
                   Spatial Lookup
                 --------------------------*/
 
-const feature =
+                const feature =
 
-    GIS.findContainingCompartment(
+                    GIS.findContainingCompartment(
 
                         Number(
 
@@ -661,6 +674,7 @@ const feature =
 
                     );
 
+
                 if (
 
                     !feature ||
@@ -669,31 +683,106 @@ const feature =
 
                 ) {
 
-                    return false;
+                    return null;
 
                 }
 
+
+                const p =
+
+                    feature.properties;
+
+
                 /*--------------------------
-                  Compare Range
+                  Compare Spatial Range
                 --------------------------*/
 
-                return (
+                const spatialRange =
 
                     GG.normalizeName(
 
-                        feature.properties
-
-                        .range ||
+                        p.range ||
 
                         ""
 
-                    ) ===
+                    );
+
+
+                if (
+
+                    spatialRange !==
 
                     range
 
-                );
+                ) {
+
+                    return null;
+
+                }
+
+
+                /*--------------------------
+                  Return Spatial Enriched Staff
+                --------------------------*/
+
+                return {
+
+                    ...staff,
+
+
+                    /*----------------------
+                      Spatial Location
+                    ----------------------*/
+
+                    spatialDivision:
+
+                        p.division ||
+
+                        "",
+
+
+                    spatialRange:
+
+                        p.range ||
+
+                        "",
+
+
+                    spatialBeat:
+
+                        p.beat ||
+
+                        "",
+
+
+                    spatialCompartment:
+
+                        p.compartment ||
+
+                        p.name ||
+
+                        "",
+
+
+                    spatialFeature:
+
+                        feature,
+
+
+                    spatialSource:
+
+                        "GPS"
+
+                };
+
 
             }
+
+        )
+
+        .filter(
+
+            Boolean
 
         );
 
