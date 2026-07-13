@@ -161,9 +161,6 @@ GISQuery.findStaffInsideCompartment = function (
     );
 
 };
-/*--------------------------------------------------
-  Beat Summary
---------------------------------------------------*/
 
 
   
@@ -218,9 +215,7 @@ GISQuery.findStaffInsideDivision = function (
     );
 
 };
-  /*--------------------------------------------------
-  Beat Summary
---------------------------------------------------*/
+
 
 /*--------------------------------------------------
   Beat Summary
@@ -252,9 +247,19 @@ GISQuery.getBeatSummary = function (
 
     const staff =
 
-        GISQuery.findStaffInsideBeat(
+    GISQuery.findStaffInsideBeat(
 
-            beat
+        beat
+
+    ) || [];
+
+    const onDutyStaff =
+
+        staff.filter(
+
+            s =>
+
+                s.dutyActive === true
 
         );
 
@@ -268,17 +273,49 @@ GISQuery.getBeatSummary = function (
 
             feature,
 
+        /*----------------------------------
+          Backward Compatible
+        ----------------------------------*/
+
         staff:
 
             staff,
 
         staffCount:
 
-            staff.length
+            staff.length,
+
+        /*----------------------------------
+          Explicit Presence
+        ----------------------------------*/
+
+        presentStaff:
+
+            staff,
+
+        presentStaffCount:
+
+            staff.length,
+
+        /*----------------------------------
+          Duty
+        ----------------------------------*/
+
+        onDutyStaff:
+
+            onDutyStaff,
+
+        onDutyStaffCount:
+
+            onDutyStaff.length
 
     };
 
 };
+
+/*--------------------------------------------------
+  Range Summary
+--------------------------------------------------*/
 
 /*--------------------------------------------------
   Range Summary
@@ -314,6 +351,16 @@ GISQuery.getRangeSummary = function (
 
             range
 
+        )|| [];
+
+    const onDutyStaff =
+
+        staff.filter(
+
+            s =>
+
+                s.dutyActive === true
+
         );
 
     return {
@@ -326,13 +373,41 @@ GISQuery.getRangeSummary = function (
 
             feature,
 
+        /*----------------------------------
+          Backward Compatible
+        ----------------------------------*/
+
         staff:
 
             staff,
 
         staffCount:
 
-            staff.length
+            staff.length,
+
+        /*----------------------------------
+          Explicit Presence
+        ----------------------------------*/
+
+        presentStaff:
+
+            staff,
+
+        presentStaffCount:
+
+            staff.length,
+
+        /*----------------------------------
+          Duty
+        ----------------------------------*/
+
+        onDutyStaff:
+
+            onDutyStaff,
+
+        onDutyStaffCount:
+
+            onDutyStaff.length
 
     };
 
@@ -372,6 +447,16 @@ GISQuery.getDivisionSummary = function (
 
             division
 
+        )|| [];
+
+    const onDutyStaff =
+
+        staff.filter(
+
+            s =>
+
+                s.dutyActive === true
+
         );
 
     return {
@@ -384,18 +469,45 @@ GISQuery.getDivisionSummary = function (
 
             feature,
 
+        /*----------------------------------
+          Backward Compatible
+        ----------------------------------*/
+
         staff:
 
             staff,
 
         staffCount:
 
-            staff.length
+            staff.length,
+
+        /*----------------------------------
+          Explicit Presence
+        ----------------------------------*/
+
+        presentStaff:
+
+            staff,
+
+        presentStaffCount:
+
+            staff.length,
+
+        /*----------------------------------
+          Duty
+        ----------------------------------*/
+
+        onDutyStaff:
+
+            onDutyStaff,
+
+        onDutyStaffCount:
+
+            onDutyStaff.length
 
     };
 
-};
-  /*--------------------------------------------------
+};  /*--------------------------------------------------
   Staff Presence
 --------------------------------------------------*/
 
@@ -421,9 +533,13 @@ GISQuery.getStaffPresence = function (
 
     ) {
 
-        return GISQuery.findStaffInsideCompartment(
+        return (
 
-            jurisdiction.compartment
+            GISQuery.findStaffInsideCompartment(
+
+                jurisdiction.compartment
+
+            ) || []
 
         );
 
@@ -435,9 +551,13 @@ GISQuery.getStaffPresence = function (
 
     ) {
 
-        return GISQuery.findStaffInsideBeat(
+        return (
 
-            jurisdiction.beat
+            GISQuery.findStaffInsideBeat(
+
+                jurisdiction.beat
+
+            ) || []
 
         );
 
@@ -449,9 +569,13 @@ GISQuery.getStaffPresence = function (
 
     ) {
 
-        return GISQuery.findStaffInsideRange(
+        return (
 
-            jurisdiction.range
+            GISQuery.findStaffInsideRange(
+
+                jurisdiction.range
+
+            ) || []
 
         );
 
@@ -463,9 +587,13 @@ GISQuery.getStaffPresence = function (
 
     ) {
 
-        return GISQuery.findStaffInsideDivision(
+        return (
 
-            jurisdiction.division
+            GISQuery.findStaffInsideDivision(
+
+                jurisdiction.division
+
+            ) || []
 
         );
 
@@ -580,6 +708,10 @@ GISQuery.findStaffInsideCircle = function (
   Circle Summary
 --------------------------------------------------*/
 
+/*--------------------------------------------------
+  Circle Summary
+--------------------------------------------------*/
+
 GISQuery.getCircleSummary = function (
 
     circle
@@ -610,6 +742,16 @@ GISQuery.getCircleSummary = function (
 
             circle
 
+        )|| [];
+
+    const onDutyStaff =
+
+        staff.filter(
+
+            s =>
+
+                s.dutyActive === true
+
         );
 
     return {
@@ -622,13 +764,41 @@ GISQuery.getCircleSummary = function (
 
             feature,
 
+        /*----------------------------------
+          Backward Compatible
+        ----------------------------------*/
+
         staff:
 
             staff,
 
         staffCount:
 
-            staff.length
+            staff.length,
+
+        /*----------------------------------
+          Explicit Presence
+        ----------------------------------*/
+
+        presentStaff:
+
+            staff,
+
+        presentStaffCount:
+
+            staff.length,
+
+        /*----------------------------------
+          Duty
+        ----------------------------------*/
+
+        onDutyStaff:
+
+            onDutyStaff,
+
+        onDutyStaffCount:
+
+            onDutyStaff.length
 
     };
 
