@@ -5182,7 +5182,35 @@ StaffIntent.detectStaffIntent = function (
         );
 
     }
+/*----------------------------------
+  Nearby Staff
+----------------------------------*/
 
+if (
+
+    parameters.isSingle &&
+
+    (
+        /\bNEAR\b/.test(query) ||
+
+        /\bNEARBY\b/.test(query) ||
+
+        /\bNEAREST\b/.test(query) ||
+
+        /\bCLOSEST\b/.test(query) ||
+
+        /\bAROUND\b/.test(query)
+    )
+
+) {
+
+    result.intent =
+
+        StaffConstants.INTENTS.STAFF_NEARBY;
+
+    return;
+
+}
     /*----------------------------------
       Profile
     ----------------------------------*/
