@@ -244,6 +244,11 @@ GISEntities.build = function () {
   Name Normalizer
 =========================================================*/
 
+/*=========================================================
+  GreenGuard AI
+  Name Normalizer
+=========================================================*/
+
 GG.normalizeName = function (
 
     value
@@ -260,11 +265,13 @@ GG.normalizeName = function (
 
     }
 
-    return String(
+    let text =
 
-        value
+        String(
 
-    )
+            value
+
+        )
 
         .normalize(
 
@@ -282,39 +289,113 @@ GG.normalizeName = function (
 
         .toUpperCase()
 
-        .trim()
+        .trim();
 
-        .replace(
+    /*----------------------------------
+      Common Symbols
+    ----------------------------------*/
 
-            /[&]/g,
+    text =
 
-            " AND "
+        text
 
-        )
+            .replace(
 
-        .replace(
+                /&/g,
 
-            /[-_/.,()'"]/g,
+                "AND"
 
-            " "
+            )
 
-        )
+            .replace(
 
-        .replace(
+                /[(){}\[\].,_\-\/\\]/g,
 
-            /\s+/g,
+                " "
 
-            " "
+            )
 
-        )
+            .replace(
 
-        .replace(
+                /\s+/g,
 
-            /\s/g,
+                " "
 
-            ""
+            )
 
-        );
+            .trim();
+
+    /*----------------------------------
+      Known Aliases
+    ----------------------------------*/
+
+    const aliases = {
+
+        "BTR W":
+
+            "BTR WEST",
+
+        "BTRW":
+
+            "BTR WEST",
+
+        "BTR WEST":
+
+            "BTR WEST",
+
+        "BTR WEST DIVISION":
+
+            "BTR WEST",
+
+        "BTR WEST RANGE":
+
+            "BTR WEST",
+
+        "BTR WEST CIRCLE":
+
+            "BTR WEST",
+
+        "BTR WEST FOREST DIVISION":
+
+            "BTR WEST",
+
+        "BTR E":
+
+            "BTR EAST",
+
+        "BTRE":
+
+            "BTR EAST",
+
+        "BTR EAST":
+
+            "BTR EAST"
+
+    };
+
+    if (
+
+        aliases[text]
+
+    ) {
+
+        text =
+
+            aliases[text];
+
+    }
+
+    /*----------------------------------
+      Canonical Key
+    ----------------------------------*/
+
+    return text.replace(
+
+        /\s+/g,
+
+        ""
+
+    );
 
 };
 
