@@ -215,61 +215,140 @@ window.GreenGuardAI =
       Search
     --------------------------------------------------*/
 
-    GISEntities.search = function (
+/*=========================================================
+  GreenGuard AI
+  Name Normalizer
+=========================================================*/
 
-        text
+GG.normalizeName = function (
+
+    value
+
+) {
+
+    if (
+
+        value == null
 
     ) {
 
-        if (
+        return "";
 
-            !text
+    }
 
-        ) {
+    return String(
 
-            return null;
+        value
 
-        }
+    )
 
-        if (
+        .normalize(
 
-            !index
+            "NFKD"
 
-        ) {
+        )
 
-            GISEntities.build();
+        .replace(
 
-        }
+            /[\u0300-\u036f]/g,
 
-        text =
+            ""
 
-            String(
+        )
 
-                text
+        .toUpperCase()
 
-            )
+        .trim()
 
-            .trim()
+        .replace(
 
-            .toUpperCase();
+            /[&]/g,
 
-        return (
+            " AND "
 
-            index.divisions[text] ||
+        )
 
-            index.ranges[text] ||
+        .replace(
 
-            index.beats[text] ||
+            /[-_/.,()'"]/g,
 
-            index.compartments[text] ||
+            " "
 
-            index.villages[text] ||
+        )
 
-            null
+        .replace(
+
+            /\s+/g,
+
+            " "
+
+        )
+
+        .replace(
+
+            /\s/g,
+
+            ""
 
         );
 
-    };
+};
+
+/*--------------------------------------------------
+  Search
+--------------------------------------------------*/
+
+GISEntities.search = function (
+
+    text
+
+) {
+
+    if (
+
+        !text
+
+    ) {
+
+        return null;
+
+    }
+
+    if (
+
+        !index
+
+    ) {
+
+        GISEntities.build();
+
+    }
+
+    text =
+
+        GG.normalizeName(
+
+            text
+
+        );
+
+    return (
+
+        index.divisions[text] ||
+
+        index.ranges[text] ||
+
+        index.beats[text] ||
+
+        index.compartments[text] ||
+
+        index.villages[text] ||
+
+        null
+
+    );
+
+};
 
     GG.GISEntities =
 
