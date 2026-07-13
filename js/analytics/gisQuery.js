@@ -541,11 +541,37 @@ GISQuery.getStaffPresence = function (
 
         const key =
 
-            GG.Utils.normalizeName(
+            typeof GG.normalizeName ===
 
-                jurisdiction
+            "function"
 
-            );
+                ?
+
+                GG.normalizeName(
+
+                    jurisdiction
+
+                )
+
+                :
+
+                String(
+
+                    jurisdiction
+
+                )
+
+                .trim()
+
+                .toUpperCase()
+
+                .replace(
+
+                    /[\s_\-()]+/g,
+
+                    ""
+
+                );
 
         const index =
 
