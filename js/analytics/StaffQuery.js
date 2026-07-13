@@ -1385,34 +1385,77 @@ StaffQuery.getStaff = function (
                 if (
 
                     GG.StaffHydrator &&
+/*----------------------------------
+  GIS Hydrate
+----------------------------------*/
 
-                    typeof GG.StaffHydrator
-                        .getHydratedStaff ===
+if (
 
-                    "function"
+    GG.StaffGIS &&
 
-                ) {
+    typeof GG.StaffGIS.locate ===
 
-                    const hydrated =
+    "function"
 
-                        GG.StaffHydrator
-                            .getHydratedStaff(
+) {
 
-                                cleanName
+    const located =
 
-                            );
+        GG.StaffGIS.locate(
 
-                    if (
+            cleanName
 
-                        hydrated
+        );
 
-                    ) {
+    if (
 
-                        return hydrated;
+        located &&
 
-                    }
+        located.profile
 
-                }
+    ) {
+
+        return located.profile;
+
+    }
+
+}
+
+/*----------------------------------
+  Hydrator Fallback
+----------------------------------*/
+
+if (
+
+    GG.StaffHydrator &&
+
+    typeof GG.StaffHydrator
+        .getHydratedStaff ===
+
+    "function"
+
+) {
+
+    const hydrated =
+
+        GG.StaffHydrator
+            .getHydratedStaff(
+
+                cleanName
+
+            );
+
+    if (
+
+        hydrated
+
+    ) {
+
+        return hydrated;
+
+    }
+
+}
 
                 /*----------------------------------
                   Fallback
