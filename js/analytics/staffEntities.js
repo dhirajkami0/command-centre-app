@@ -744,6 +744,132 @@ return StaffEntities.normalizeStaffDocuments(
   /*=========================================================
  NORMALIZE STAFF DOCUMENT
 =========================================================*/
+
+ GISIntent.extractPostingParameters = function (
+
+    query
+
+) {
+
+    const result = {};
+
+    const index =
+
+        GG.GISEntities.build();
+
+    const normalized =
+
+        GG.normalizeName(
+
+            query
+
+        );
+
+    /*----------------------------------
+      Range
+    ----------------------------------*/
+
+    for (
+
+        const key in
+
+        index.ranges
+
+    ) {
+
+        if (
+
+            normalized.includes(
+
+                key
+
+            )
+
+        ) {
+
+            result.range =
+
+                index.ranges[key]
+                    .properties
+                    .range;
+
+            break;
+
+        }
+
+    }
+
+    /*----------------------------------
+      Beat
+    ----------------------------------*/
+
+    for (
+
+        const key in
+
+        index.beats
+
+    ) {
+
+        if (
+
+            normalized.includes(
+
+                key
+
+            )
+
+        ) {
+
+            result.beat =
+
+                index.beats[key]
+                    .properties
+                    .beat;
+
+            break;
+
+        }
+
+    }
+
+    /*----------------------------------
+      Division
+    ----------------------------------*/
+
+    for (
+
+        const key in
+
+        index.divisions
+
+    ) {
+
+        if (
+
+            normalized.includes(
+
+                key
+
+            )
+
+        ) {
+
+            result.division =
+
+                index.divisions[key]
+                    .properties
+                    .division;
+
+            break;
+
+        }
+
+    }
+
+    return result;
+
+};
 /*=========================================================
  GET FIELD
 =========================================================*/
