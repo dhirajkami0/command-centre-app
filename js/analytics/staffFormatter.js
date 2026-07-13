@@ -3398,12 +3398,6 @@ StaffFormatter.formatStaffLocation = function (
 
         {};
 
-    const spatial =
-
-        profile.spatial ||
-
-        {};
-
     const location =
 
         profile.location ||
@@ -3432,6 +3426,7 @@ StaffFormatter.formatStaffLocation = function (
 
     /*----------------------------------
       Live Coordinates
+      (Prefer GPS, fallback to Location)
     ----------------------------------*/
 
     const latitude =
@@ -3497,41 +3492,6 @@ StaffFormatter.formatStaffLocation = function (
             "-";
 
     /*----------------------------------
-      Current Spatial Jurisdiction
-      (Prefer GIS)
-    ----------------------------------*/
-
-    const currentDivision =
-
-        spatial.division ||
-
-        posting.division ||
-
-        "-";
-
-    const currentRange =
-
-        spatial.range ||
-
-        posting.range ||
-
-        "-";
-
-    const currentBeat =
-
-        spatial.beat ||
-
-        posting.beat ||
-
-        "-";
-
-    const currentCompartment =
-
-        spatial.compartment ||
-
-        "-";
-
-    /*----------------------------------
       Markdown
     ----------------------------------*/
 
@@ -3571,31 +3531,7 @@ StaffFormatter.formatStaffLocation = function (
 
         "",
 
-        "**Current GIS Location**",
-
-        "",
-
-        "• Division : " +
-
-            currentDivision,
-
-        "• Range : " +
-
-            currentRange,
-
-        "• Beat : " +
-
-            currentBeat,
-
-        "• Compartment : " +
-
-            currentCompartment,
-
-        "",
-
-        "**Official Posting**",
-
-        "",
+        "**Posting:**",
 
         "• Circle : " +
 
@@ -3683,41 +3619,25 @@ StaffFormatter.formatStaffLocation = function (
 
                 longitude,
 
-            division:
-
-                currentDivision,
-
-            range:
-
-                currentRange,
-
-            beat:
-
-                currentBeat,
-
-            compartment:
-
-                currentCompartment,
-
-            postingCircle:
+            circle:
 
                 posting.circle ||
 
                 "",
 
-            postingDivision:
+            division:
 
                 posting.division ||
 
                 "",
 
-            postingRange:
+            range:
 
                 posting.range ||
 
                 "",
 
-            postingBeat:
+            beat:
 
                 posting.beat ||
 
@@ -3761,41 +3681,25 @@ StaffFormatter.formatStaffLocation = function (
 
                 longitude,
 
-            division:
-
-                currentDivision,
-
-            range:
-
-                currentRange,
-
-            beat:
-
-                currentBeat,
-
-            compartment:
-
-                currentCompartment,
-
-            postingCircle:
+            circle:
 
                 posting.circle ||
 
                 "",
 
-            postingDivision:
+            division:
 
                 posting.division ||
 
                 "",
 
-            postingRange:
+            range:
 
                 posting.range ||
 
                 "",
 
-            postingBeat:
+            beat:
 
                 posting.beat ||
 
@@ -3839,8 +3743,7 @@ StaffFormatter.formatStaffLocation = function (
 
     return result;
 
-};
- /*=========================================================
+}; /*=========================================================
  FORMAT DUTY
 =========================================================*/
 
