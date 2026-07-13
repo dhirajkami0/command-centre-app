@@ -5185,430 +5185,262 @@ StaffIntent.detectNearbyIntent = function (
 =========================================================*/
 
 StaffIntent.detectStaffIntent = function (
-
     result
-
 ) {
-
     /*----------------------------------
       Validate
     ----------------------------------*/
-
     if (
-
         !result ||
-
         !result.entities
-
     ) {
-
         return result;
-
     }
 
     const staff =
-
         result.entities.staff ||
-
         [];
 
-    if (
-
-        staff.length === 0
-
-    ) {
-
-        return result;
-
-    }
-
-    console.log(
-
-        "=============================="
-
-    );
-
-    console.log(
-
-        "detectStaffIntent() START"
-
-    );
-
-    console.log(
-
-        "Query:",
-
-        result.normalizedQuery
-
-    );
-
-    console.log(
-
-        "Staff:",
-
-        staff
-
-    );
-
-    console.log(
-
-        "=============================="
-
-    );
-
     const INTENTS =
-
         StaffConstants.INTENTS;
 
     /*----------------------------------
       Debug Helper
     ----------------------------------*/
-
     function debugParameters(
-
         label
-
     ) {
-
         console.log(
-
             "==========",
-
             label,
-
             "=========="
-
         );
-
         console.log(
-
             "Result Frozen:",
-
             Object.isFrozen(
-
                 result
-
             )
-
         );
-
         console.log(
-
             "Parameters:",
-
             result.parameters
-
         );
-
         console.log(
-
             "Parameters Frozen:",
-
             Object.isFrozen(
-
                 result.parameters
-
             )
-
         );
-
         console.log(
-
             "Parameters Extensible:",
-
             Object.isExtensible(
-
                 result.parameters
-
             )
-
         );
-
         console.log(
-
             "Staff Descriptor:",
-
             Object.getOwnPropertyDescriptor(
-
                 result.parameters,
-
                 "staff"
-
             )
+        );
+    }
 
+    /*----------------------------------
+      Nearby
+    ----------------------------------*/
+    result =
+        StaffIntent.detectNearbyIntent(
+            result
         );
 
+    if (
+        result.intent ===
+        INTENTS.STAFF_NEARBY
+    ) {
+        debugParameters(
+            result.intent
+        );
+        return result;
     }
+
+    /*----------------------------------
+      Remaining Single Staff Intents
+    ----------------------------------*/
+    if (
+        staff.length === 0
+    ) {
+        return result;
+    }
+
+    console.log(
+        "=============================="
+    );
+    console.log(
+        "detectStaffIntent() START"
+    );
+    console.log(
+        "Query:",
+        result.normalizedQuery
+    );
+    console.log(
+        "Staff:",
+        staff
+    );
+    console.log(
+        "=============================="
+    );
 
     /*----------------------------------
       Profile
     ----------------------------------*/
-
     result =
-
         StaffIntent.detectProfileIntent(
-
             result
-
         );
-
     if (
-
         result.intent === INTENTS.STAFF_PROFILE ||
-
         result.intent === INTENTS.STAFF_CONTACT ||
-
         result.intent === INTENTS.STAFF_ROLE ||
-
         result.intent === INTENTS.STAFF_DESIGNATION
-
     ) {
-
         debugParameters(
-
             result.intent
-
         );
-
         return result;
-
     }
 
     /*----------------------------------
       Posting
     ----------------------------------*/
-
     result =
-
         StaffIntent.detectPostingIntent(
-
             result
-
         );
-
     if (
-
         result.intent === INTENTS.STAFF_POSTING ||
-
         result.intent === INTENTS.STAFF_CIRCLE ||
-
         result.intent === INTENTS.STAFF_DIVISION ||
-
         result.intent === INTENTS.STAFF_RANGE ||
-
-        result.intent === INTENTS.STAFF_BEAT 
-
-       
-
+        result.intent === INTENTS.STAFF_BEAT
     ) {
-
         debugParameters(
-
             result.intent
-
         );
-
         return result;
-
     }
 
     /*----------------------------------
       Duty
     ----------------------------------*/
-
     result =
-
         StaffIntent.detectDutyIntent(
-
             result
-
         );
-
     if (
-
         result.intent === INTENTS.STAFF_DUTY ||
-
         result.intent === INTENTS.STAFF_DUTY_STATUS ||
-
         result.intent === INTENTS.STAFF_DUTY_TYPE ||
-
         result.intent === INTENTS.STAFF_DUTY_STARTED ||
-
         result.intent === INTENTS.STAFF_DUTY_ENDED ||
-
         result.intent === INTENTS.STAFF_DUTY_ACTIVE ||
-
         result.intent === INTENTS.STAFF_LAST_DUTY ||
-
-        result.intent === INTENTS.STAFF_ASSIGNMENT 
-
-       
-
+        result.intent === INTENTS.STAFF_ASSIGNMENT
     ) {
-
         debugParameters(
-
             result.intent
-
         );
-
         return result;
-
     }
 
     /*----------------------------------
       Team
     ----------------------------------*/
-
     result =
-
         StaffIntent.detectTeamIntent(
-
             result
-
         );
-
     if (
-
         result.intent === INTENTS.STAFF_TEAM ||
-
         result.intent === INTENTS.STAFF_LEADER
-
     ) {
-
         debugParameters(
-
             result.intent
-
         );
-
         return result;
-
     }
-/*----------------------------------
-  Location
-----------------------------------*/
 
-result =
+    /*----------------------------------
+      Location
+    ----------------------------------*/
+    result =
+        StaffIntent.detectLocationIntent(
+            result
+        );
+    if (
+        result.intent ===
+        INTENTS.STAFF_LOCATION
+    ) {
+        debugParameters(
+            result.intent
+        );
+        return result;
+    }
 
-    StaffIntent.detectLocationIntent(
-
-        result
-
-    );
-
-if (
-
-    result.intent ===
-
-    INTENTS.STAFF_LOCATION
-
-) {
-
-    debugParameters(
-
-        result.intent
-
-    );
-
-    return result;
-
-}
-
-/*----------------------------------
-  GPS
-----------------------------------*/
-
-result =
-
-    StaffIntent.detectGPSIntent(
-
-        result
-
-    );
-
-if (
-
-    result.intent ===
-
-        INTENTS.STAFF_GPS ||
-
-    result.intent ===
-
-        INTENTS.STAFF_SPEED ||
-
-    result.intent ===
-
-        INTENTS.STAFF_HEADING ||
-
-    result.intent ===
-
-        INTENTS.STAFF_ACCURACY
-
-) {
-
-    debugParameters(
-
-        result.intent
-
-    );
-
-    return result;
-
-}
+    /*----------------------------------
+      GPS
+    ----------------------------------*/
+    result =
+        StaffIntent.detectGPSIntent(
+            result
+        );
+    if (
+        result.intent ===
+            INTENTS.STAFF_GPS ||
+        result.intent ===
+            INTENTS.STAFF_SPEED ||
+        result.intent ===
+            INTENTS.STAFF_HEADING ||
+        result.intent ===
+            INTENTS.STAFF_ACCURACY
+    ) {
+        debugParameters(
+            result.intent
+        );
+        return result;
+    }
 
     /*----------------------------------
       Patrol Analytics
     ----------------------------------*/
-
     result =
-
         StaffIntent.detectAnalyticsIntent(
-
             result
-
         );
-
     if (
-
         result.intent === INTENTS.STAFF_ANALYTICS ||
-
         result.intent === INTENTS.STAFF_DISTANCE ||
-
         result.intent === INTENTS.STAFF_PATROL_POINTS ||
-
         result.intent === INTENTS.STAFF_PATROL_START ||
-
         result.intent === INTENTS.STAFF_PATROL_END ||
-
         result.intent === INTENTS.STAFF_PATROL_DURATION
-
     ) {
-
         debugParameters(
-
             result.intent
-
         );
-
         return result;
-
     }
 
     /*----------------------------------
       No Single-Staff Intent
     ----------------------------------*/
-
     console.log(
-
         "❌ No Single Staff Intent"
-
     );
-
     return result;
-
 };
-StaffIntent.detectDesignationCountIntent =
+ 
+ StaffIntent.detectDesignationCountIntent =
 function (
     result
 ) {
