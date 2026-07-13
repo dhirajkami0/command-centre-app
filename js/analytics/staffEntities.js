@@ -7338,19 +7338,39 @@ StaffEntities.extractPostingEntities = function (
       Validate
     ----------------------------------*/
 
-    if (
+if (
 
-        !result ||
+    !result
 
-        !result.entities ||
+) {
 
-        !result.stats
+    return result;
 
-    ) {
+}
 
-        return result;
+result.entities =
 
-    }
+    result.entities ||
+
+    {};
+
+result.parameters =
+
+    result.parameters ||
+
+    {};
+
+result.stats =
+
+    result.stats ||
+
+    {
+
+        postingMatches: 0,
+
+        totalEntities: 0
+
+    };
 
     /*----------------------------------
       Normalize Text
