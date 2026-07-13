@@ -5027,32 +5027,144 @@ StaffIntent.detectLocationIntent = function (
     return result;
 
 };
- StaffIntent.detectNearbyIntent = function (result) {
+StaffIntent.detectNearbyIntent = function (
 
-    if (!result || result.intent) {
+    result
+
+) {
+
+    /*----------------------------------
+      Validate
+    ----------------------------------*/
+
+    if (
+
+        !result ||
+
+        result.intent
+
+    ) {
+
         return result;
+
     }
 
     const query =
-        String(result.normalizedQuery || "")
-            .trim()
-            .toUpperCase();
+
+        String(
+
+            result.normalizedQuery ||
+
+            ""
+
+        )
+
+        .trim()
+
+        .toUpperCase();
+
+    const parameters =
+
+        result.parameters ||
+
+        {};
+
+    const staff =
+
+        result.entities?.staff ||
+
+        [];
+
+    /*----------------------------------
+      Nearby Keywords
+    ----------------------------------*/
+
+    const hasNearby =
+
+        StaffIntent.hasKeyword(
+
+            query,
+
+            StaffConstants.KEYWORDS.STAFF_NEARBY
+
+        );
 
     if (
-        result.parameters.isSingle &&
-        StaffIntent.hasKeyword(
-            query,
-            StaffConstants.KEYWORDS.STAFF_NEARBY
-        )
+
+        !hasNearby
+
     ) {
 
-        result.intent =
-            StaffConstants.INTENTS.STAFF_NEARBY;
+        return result;
 
-        result.confidence = 0.99;
     }
 
+    /*----------------------------------
+      Nearby Intent
+    ----------------------------------*/
+
+    result.intent =
+
+        StaffConstants.INTENTS.STAFF_NEARBY;
+
+    result.confidence =
+
+        0.99;
+
+    /*----------------------------------
+      Reference Staff
+    ----------------------------------*/
+
+    if (
+
+        staff.length > 0
+
+    ) {
+
+        parameters.isSingle =
+
+            true;
+
+    }
+
+    /*----------------------------------
+      Reference = Logged-in User
+    ----------------------------------*/
+
+    else if (
+
+        /\bME\b|\bMY\b|\bMYSELF\b/.test(
+
+            query
+
+        )
+
+    ) {
+
+        parameters.reference =
+
+            "SELF";
+
+    }
+
+    /*----------------------------------
+      Generic Nearby
+    ----------------------------------*/
+
+    else {
+
+        parameters.reference =
+
+            "AUTO";
+
+    }
+
+    result.parameters =
+
+        parameters;
+
     return result;
+
 };
 /*=========================================================
  DETECT STAFF INTENT (ORCHESTRATOR)
