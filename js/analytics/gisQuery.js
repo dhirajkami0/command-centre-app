@@ -539,65 +539,185 @@ GISQuery.getStaffPresence = function (
 
     ) {
 
-        const feature =
+        const key =
 
-            GG.GISEntities.search(
+            GG.Utils.normalizeName(
 
                 jurisdiction
 
             );
 
+        const index =
+
+            GG.GISEntities.build();
+
+        /*------------------------------
+          Circle
+        ------------------------------*/
+
         if (
 
-            !feature
+            index.circles &&
+
+            index.circles[
+
+                key
+
+            ] &&
+
+            typeof GISQuery.findStaffInsideCircle ===
+
+            "function"
 
         ) {
 
-            return [];
+            return (
+
+                GISQuery.findStaffInsideCircle(
+
+                    jurisdiction
+
+                ) || []
+
+            );
 
         }
 
-        const p =
+        /*------------------------------
+          Division
+        ------------------------------*/
 
-            feature.properties ||
+        if (
 
-            {};
+            index.divisions[
 
-        jurisdiction = {
+                key
 
-            circle:
+            ]
 
-                p.circle ||
+        ) {
 
-                "",
+            return (
 
-            division:
+                GISQuery.findStaffInsideDivision(
 
-                p.division ||
+                    jurisdiction
 
-                "",
+                ) || []
 
-            range:
+            );
 
-                p.range ||
+        }
 
-                "",
+        /*------------------------------
+          Range
+        ------------------------------*/
 
-            beat:
+        if (
 
-                p.beat ||
+            index.ranges[
 
-                "",
+                key
 
-            compartment:
+            ]
 
-                p.compartment ||
+        ) {
 
-                p.name ||
+            return (
 
-                ""
+                GISQuery.findStaffInsideRange(
 
-        };
+                    jurisdiction
+
+                ) || []
+
+            );
+
+        }
+
+        /*------------------------------
+          Beat
+        ------------------------------*/
+
+        if (
+
+            index.beats[
+
+                key
+
+            ]
+
+        ) {
+
+            return (
+
+                GISQuery.findStaffInsideBeat(
+
+                    jurisdiction
+
+                ) || []
+
+            );
+
+        }
+
+        /*------------------------------
+          Compartment
+        ------------------------------*/
+
+        if (
+
+            index.compartments[
+
+                key
+
+            ]
+
+        ) {
+
+            return (
+
+                GISQuery.findStaffInsideCompartment(
+
+                    jurisdiction
+
+                ) || []
+
+            );
+
+        }
+
+        /*------------------------------
+          Village
+        ------------------------------*/
+
+        if (
+
+            index.villages[
+
+                key
+
+            ] &&
+
+            typeof GISQuery.findStaffInsideVillage ===
+
+            "function"
+
+        ) {
+
+            return (
+
+                GISQuery.findStaffInsideVillage(
+
+                    jurisdiction
+
+                ) || []
+
+            );
+
+        }
+
+        return [];
 
     }
 
