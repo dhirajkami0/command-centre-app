@@ -384,9 +384,7 @@ GISIntent.extractJurisdiction = function (
 
         !GG.GISEntities ||
 
-        typeof GG.GISEntities.search !==
-
-        "function"
+        typeof GG.GISEntities.search !== "function"
 
     ) {
 
@@ -395,13 +393,135 @@ GISIntent.extractJurisdiction = function (
     }
 
 
-    const feature =
+    let feature = null;
+
+
+    const query =
+
+        result.normalizedQuery;
+
+
+    /*----------------------------------
+      1. Direct Search
+    ----------------------------------*/
+
+    feature =
 
         GG.GISEntities.search(
 
-            result.normalizedQuery
+            query
 
         );
+
+
+    /*----------------------------------
+      2. Range Search
+    ----------------------------------*/
+
+    if (
+
+        !feature
+
+    ) {
+
+        const index =
+
+            GG.GISEntities.build();
+
+
+        for (
+
+            const key in index.ranges
+
+        ) {
+
+            if (
+
+                query.includes(key)
+
+            ) {
+
+                feature =
+
+                    index.ranges[key];
+
+                break;
+
+            }
+
+        }
+
+
+        /*----------------------------------
+          3. Beat Search
+        ----------------------------------*/
+
+        if (
+
+            !feature
+
+        ) {
+
+            for (
+
+                const key in index.beats
+
+            ) {
+
+                if (
+
+                    query.includes(key)
+
+                ) {
+
+                    feature =
+
+                        index.beats[key];
+
+                    break;
+
+                }
+
+            }
+
+        }
+
+
+        /*----------------------------------
+          4. Compartment Search
+        ----------------------------------*/
+
+        if (
+
+            !feature
+
+        ) {
+
+            for (
+
+                const key in index.compartments
+
+            ) {
+
+                if (
+
+                    query.includes(key)
+
+                ) {
+
+                    feature =
+
+                        index.compartments[key];
+
+                    break;
+
+                }
+
+            }
+
+        }
+
+    }
 
 
     if (
@@ -471,15 +591,20 @@ GISIntent.extractJurisdiction = function (
 
     result.entities.gis = {
 
-        type:
+        type:"Feature",
 
-            "GIS",
-
-        feature:
-
-            feature
+        properties:p
 
     };
+
+
+    console.log(
+
+        "GIS Jurisdiction Extracted:",
+
+        result.parameters
+
+    );
 
 
     return result;
