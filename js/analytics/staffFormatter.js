@@ -407,49 +407,108 @@ StaffFormatter.formatStaffNearby = function (
         )
             .toUpperCase();
 
+    const parameters =
+        response.request?.parameters ||
+        {};
+    const referenceType =
+        parameters.reference ||
+        "";
+    const isSingle =
+        parameters.isSingle === true;
+
+    /*----------------------------------
+      Dynamic Intro
+    ----------------------------------*/
     let intro =
         "Nearby staff around " +
-        displayName;
+        displayName +
+        ".";
 
+    /*----------------------------------
+      Reference Staff
+    ----------------------------------*/
     if (
-        query.includes(
-            "NEAREST"
-        ) ||
-        query.includes(
-            "CLOSEST"
-        )
+        isSingle
     ) {
-        intro =
-            "The closest staff to " +
-            displayName +
-            " are:";
-    } else if (
-        query.includes(
-            "AROUND"
-        )
+        if (
+            query.includes(
+                "NEAREST"
+            ) ||
+            query.includes(
+                "CLOSEST"
+            )
+        ) {
+            intro =
+                "The closest staff to " +
+                displayName +
+                " are:";
+        } else if (
+            query.includes(
+                "AROUND"
+            )
+        ) {
+            intro =
+                "The following staff are operating around " +
+                displayName +
+                ":";
+        } else if (
+            query.includes(
+                "WHO IS NEAR"
+            )
+        ) {
+            intro =
+                "The following staff are near " +
+                displayName +
+                ":";
+        } else {
+            intro =
+                "Nearby staff around " +
+                displayName +
+                ":";
+        }
+    }
+
+    /*----------------------------------
+      Logged-in User
+    ----------------------------------*/
+    else if (
+        referenceType ===
+        "SELF"
     ) {
-        intro =
-            "The following staff are operating around " +
-            displayName +
-            ":";
-    } else if (
-        query.includes(
-            "WHO IS NEAR"
-        )
-    ) {
-        intro =
-            "The following staff are near " +
-            displayName +
-            ":";
-    } else if (
-        query.includes(
-            "NEAR"
-        )
-    ) {
-        intro =
-            "Nearby staff around " +
-            displayName +
-            ":";
+        if (
+            query.includes(
+                "NEAREST"
+            ) ||
+            query.includes(
+                "CLOSEST"
+            )
+        ) {
+            intro =
+                "The closest staff to your current location are:";
+        } else {
+            intro =
+                "The following staff are operating near your current location:";
+        }
+    }
+
+    /*----------------------------------
+      Generic Nearby
+    ----------------------------------*/
+    else {
+        if (
+            query.includes(
+                "NEAREST"
+            ) ||
+            query.includes(
+                "CLOSEST"
+            )
+        ) {
+            intro =
+                "These are the closest available staff members:";
+        } else {
+            intro =
+                "Nearby staff based on the current live GPS positions:";
+        }
     }
 
     /*----------------------------------
@@ -470,52 +529,51 @@ StaffFormatter.formatStaffNearby = function (
 
     md.push("");
 
-    md.push(
-        "**Current Position**"
-    );
-
-    md.push("");
-
     if (
-        spatial.compartment
-    ) {
-        md.push(
-            "• " +
-            spatial.compartment
-        );
-    }
-
-    if (
-        spatial.beat
-    ) {
-        md.push(
-            "• " +
-            spatial.beat +
-            " Beat"
-        );
-    }
-
-    if (
-        spatial.range
-    ) {
-        md.push(
-            "• " +
-            spatial.range +
-            " Range"
-        );
-    }
-
-    if (
+        spatial.valid ||
+        spatial.compartment ||
+        spatial.beat ||
+        spatial.range ||
         spatial.division
     ) {
         md.push(
-            "• " +
-            spatial.division +
-            " Division"
+            "**Current Position**"
         );
+        md.push("");
+        if (
+            spatial.compartment
+        ) {
+            md.push(
+                "• " +
+                spatial.compartment
+            );
+        }
+        if (
+            spatial.beat
+        ) {
+            md.push(
+                "• " +
+                spatial.beat
+            );
+        }
+        if (
+            spatial.range
+        ) {
+            md.push(
+                "• " +
+                spatial.range
+            );
+        }
+        if (
+            spatial.division
+        ) {
+            md.push(
+                "• " +
+                spatial.division
+            );
+        }
+        md.push("");
     }
-
-    md.push("");
 
     md.push(
         nearby.length === 1
@@ -561,6 +619,10 @@ StaffFormatter.formatStaffNearby = function (
                             2
                         ) +
                         " km";
+                
+                const rangeText = spatial.range || "-";
+                const beatText = spatial.beat || "-";
+
                 md.push(
                     "## " +
                     (
@@ -582,25 +644,16 @@ StaffFormatter.formatStaffNearby = function (
                 );
                 md.push("");
                 md.push(
-                    "• " +
-                    distanceText +
-                    " away"
+                    "• Distance : " +
+                    distanceText
                 );
                 md.push(
                     "• " +
-                    (
-                        spatial.range ||
-                        "-"
-                    ) +
-                    " Range"
+                    rangeText
                 );
                 md.push(
                     "• " +
-                    (
-                        spatial.beat ||
-                        "-"
-                    ) +
-                    " Beat"
+                    beatText
                 );
                 md.push(
                     "• " +
@@ -676,7 +729,6 @@ StaffFormatter.formatStaffNearby = function (
 
     return result;
 };
- 
  /*=========================================================
  FORMAT
 =========================================================*/
