@@ -445,7 +445,59 @@ GISIntent.detectStaffOnDuty = function (
   /*--------------------------------------------------
   Staff Presence Count
 --------------------------------------------------*/
+/*--------------------------------------------------
+  Staff Presence
+--------------------------------------------------*/
 
+GISIntent.detectStaffPresence = function (
+
+    result
+
+) {
+
+    /*----------------------------------
+      Already Detected
+    ----------------------------------*/
+
+    if (
+
+        result.intent
+
+    ) {
+
+        return result;
+
+    }
+
+    /*----------------------------------
+      Staff Presence
+    ----------------------------------*/
+
+    if (
+
+        GG.StaffIntent.hasKeyword(
+
+            result,
+
+            "GIS_STAFF_PRESENCE"
+
+        )
+
+    ) {
+
+        result.intent =
+
+            GG.GISConstants.INTENTS.GIS_STAFF_PRESENCE;
+
+        result.confidence =
+
+            0.99;
+
+    }
+
+    return result;
+
+};
 /*--------------------------------------------------
   Staff Presence Count
 --------------------------------------------------*/
