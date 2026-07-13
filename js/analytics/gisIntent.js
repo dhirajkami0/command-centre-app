@@ -366,6 +366,10 @@ GISIntent.extractJurisdiction = function (
     result
 
 ) {
+    console.log(
+        "🔥 extractJurisdiction called:",
+        result.normalizedQuery
+    );
 
     if (
 
