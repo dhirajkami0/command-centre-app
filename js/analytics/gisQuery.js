@@ -527,6 +527,84 @@ GISQuery.getStaffPresence = function (
 
     }
 
+    /*----------------------------------
+      String Input
+    ----------------------------------*/
+
+    if (
+
+        typeof jurisdiction ===
+
+        "string"
+
+    ) {
+
+        const feature =
+
+            GG.GISEntities.search(
+
+                jurisdiction
+
+            );
+
+        if (
+
+            !feature
+
+        ) {
+
+            return [];
+
+        }
+
+        const p =
+
+            feature.properties ||
+
+            {};
+
+        jurisdiction = {
+
+            circle:
+
+                p.circle ||
+
+                "",
+
+            division:
+
+                p.division ||
+
+                "",
+
+            range:
+
+                p.range ||
+
+                "",
+
+            beat:
+
+                p.beat ||
+
+                "",
+
+            compartment:
+
+                p.compartment ||
+
+                p.name ||
+
+                ""
+
+        };
+
+    }
+
+    /*----------------------------------
+      Compartment
+    ----------------------------------*/
+
     if (
 
         jurisdiction.compartment
@@ -544,6 +622,10 @@ GISQuery.getStaffPresence = function (
         );
 
     }
+
+    /*----------------------------------
+      Beat
+    ----------------------------------*/
 
     if (
 
@@ -563,6 +645,10 @@ GISQuery.getStaffPresence = function (
 
     }
 
+    /*----------------------------------
+      Range
+    ----------------------------------*/
+
     if (
 
         jurisdiction.range
@@ -581,6 +667,10 @@ GISQuery.getStaffPresence = function (
 
     }
 
+    /*----------------------------------
+      Division
+    ----------------------------------*/
+
     if (
 
         jurisdiction.division
@@ -592,6 +682,32 @@ GISQuery.getStaffPresence = function (
             GISQuery.findStaffInsideDivision(
 
                 jurisdiction.division
+
+            ) || []
+
+        );
+
+    }
+
+    /*----------------------------------
+      Circle
+    ----------------------------------*/
+
+    if (
+
+        jurisdiction.circle &&
+
+        typeof GISQuery.findStaffInsideCircle ===
+
+        "function"
+
+    ) {
+
+        return (
+
+            GISQuery.findStaffInsideCircle(
+
+                jurisdiction.circle
 
             ) || []
 
