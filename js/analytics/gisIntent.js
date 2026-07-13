@@ -374,6 +374,7 @@ GISIntent.detect = function (
 
         );
 
+
     /*----------------------------------
       Validate
     ----------------------------------*/
@@ -390,13 +391,15 @@ GISIntent.detect = function (
 
     }
 
-    /*----------------------------------
-      Detection Order
-      (Specific → Generic)
-    ----------------------------------*/
 
     /*----------------------------------
-      Jurisdiction
+      Detection Order
+      Specific → Generic
+    ----------------------------------*/
+
+
+    /*----------------------------------
+      Jurisdiction Detection
     ----------------------------------*/
 
     GISIntent.detectHierarchy(
@@ -404,7 +407,32 @@ GISIntent.detect = function (
         result
 
     );
-GG.StaffEntities.extractPostingEntities(result);
+
+
+    /*----------------------------------
+      Extract GIS Parameters
+      Range / Beat / Division / Circle
+    ----------------------------------*/
+
+    if (
+
+        GG.StaffEntities &&
+
+        typeof GG.StaffEntities.extractPostingEntities ===
+
+        "function"
+
+    ) {
+
+        GG.StaffEntities.extractPostingEntities(
+
+            result
+
+        );
+
+    }
+
+
     /*----------------------------------
       Live Staff
     ----------------------------------*/
@@ -415,17 +443,20 @@ GG.StaffEntities.extractPostingEntities(result);
 
     );
 
+
     GISIntent.detectStaffPresenceCount(
 
         result
 
     );
 
+
     GISIntent.detectStaffOnDuty(
 
         result
 
     );
+
 
     /*----------------------------------
       Current Selection
@@ -437,6 +468,7 @@ GG.StaffEntities.extractPostingEntities(result);
 
     );
 
+
     /*----------------------------------
       Spatial
     ----------------------------------*/
@@ -446,6 +478,7 @@ GG.StaffEntities.extractPostingEntities(result);
         result
 
     );
+
 
     /*----------------------------------
       Analytics
@@ -457,6 +490,7 @@ GG.StaffEntities.extractPostingEntities(result);
 
     );
 
+
     /*----------------------------------
       Map
     ----------------------------------*/
@@ -466,6 +500,7 @@ GG.StaffEntities.extractPostingEntities(result);
         result
 
     );
+
 
     /*----------------------------------
       Return
