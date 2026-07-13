@@ -92,27 +92,25 @@ function (
 
         profile.location?.lon;
 
-    if (
+if (
 
-        lat != null &&
+    lat != null &&
 
-        lng != null &&
+    lng != null &&
 
-        GG.GISBusiness
+    GIS
 
-    ) {
+) {
 
-        const feature =
+    const feature =
 
-            GG.GISBusiness
-                .findContainingCompartment(
+        GIS.findContainingCompartment(
 
-                    lat,
+            lat,
 
-                    lng
+            lng
 
-                );
-
+        );
         if (
 
             feature
@@ -473,35 +471,109 @@ StaffGIS.findStaffInsideBeat = function (
 
     beat =
 
-        String(
+        GG.normalizeName(
 
-            beat || ""
+            beat
 
-        )
-
-        .trim()
-
-        .toUpperCase();
+        );
 
     return Object
+
         .values(
 
-            window.liveStaffCache || {}
+            window.liveStaffCache ||
+
+            {}
 
         )
+
         .filter(
 
-            s =>
+            function (
 
-                String(
+                staff
 
-                    s.beat || ""
+            ) {
 
-                )
+                /*--------------------------
+                  Valid GPS
+                --------------------------*/
 
-                .toUpperCase() ===
+                if (
 
-                beat
+                    !isFinite(
+
+                        staff.lat
+
+                    ) ||
+
+                    !isFinite(
+
+                        staff.lng
+
+                    )
+
+                ) {
+
+                    return false;
+
+                }
+
+                /*--------------------------
+                  Spatial Lookup
+                --------------------------*/
+
+const feature =
+
+    GIS.findContainingCompartment(
+
+        Number(
+
+            staff.lat
+
+        ),
+
+        Number(
+
+            staff.lng
+
+        )
+
+    );
+
+                if (
+
+                    !feature ||
+
+                    !feature.properties
+
+                ) {
+
+                    return false;
+
+                }
+
+                /*--------------------------
+                  Compare Beat
+                --------------------------*/
+
+                return (
+
+                    GG.normalizeName(
+
+                        feature.properties
+
+                        .beat ||
+
+                        ""
+
+                    ) ===
+
+                    beat
+
+                );
+
+            }
 
         );
 
@@ -519,35 +591,109 @@ StaffGIS.findStaffInsideRange = function (
 
     range =
 
-        String(
+        GG.normalizeName(
 
-            range || ""
+            range
 
-        )
-
-        .trim()
-
-        .toUpperCase();
+        );
 
     return Object
+
         .values(
 
-            window.liveStaffCache || {}
+            window.liveStaffCache ||
+
+            {}
 
         )
+
         .filter(
 
-            s =>
+            function (
 
-                String(
+                staff
 
-                    s.range || ""
+            ) {
 
-                )
+                /*--------------------------
+                  Valid GPS
+                --------------------------*/
 
-                .toUpperCase() ===
+                if (
 
-                range
+                    !isFinite(
+
+                        staff.lat
+
+                    ) ||
+
+                    !isFinite(
+
+                        staff.lng
+
+                    )
+
+                ) {
+
+                    return false;
+
+                }
+
+                /*--------------------------
+                  Spatial Lookup
+                --------------------------*/
+
+const feature =
+
+    GIS.findContainingCompartment(
+
+                        Number(
+
+                            staff.lat
+
+                        ),
+
+                        Number(
+
+                            staff.lng
+
+                        )
+
+                    );
+
+                if (
+
+                    !feature ||
+
+                    !feature.properties
+
+                ) {
+
+                    return false;
+
+                }
+
+                /*--------------------------
+                  Compare Range
+                --------------------------*/
+
+                return (
+
+                    GG.normalizeName(
+
+                        feature.properties
+
+                        .range ||
+
+                        ""
+
+                    ) ===
+
+                    range
+
+                );
+
+            }
 
         );
 
@@ -565,35 +711,109 @@ StaffGIS.findStaffInsideDivision = function (
 
     division =
 
-        String(
+        GG.normalizeName(
 
-            division || ""
+            division
 
-        )
-
-        .trim()
-
-        .toUpperCase();
+        );
 
     return Object
+
         .values(
 
-            window.liveStaffCache || {}
+            window.liveStaffCache ||
+
+            {}
 
         )
+
         .filter(
 
-            s =>
+            function (
 
-                String(
+                staff
 
-                    s.division || ""
+            ) {
 
-                )
+                /*--------------------------
+                  Valid GPS
+                --------------------------*/
 
-                .toUpperCase() ===
+                if (
 
-                division
+                    !isFinite(
+
+                        staff.lat
+
+                    ) ||
+
+                    !isFinite(
+
+                        staff.lng
+
+                    )
+
+                ) {
+
+                    return false;
+
+                }
+
+                /*--------------------------
+                  Spatial Lookup
+                --------------------------*/
+
+const feature =
+
+    GIS.findContainingCompartment(
+
+                        Number(
+
+                            staff.lat
+
+                        ),
+
+                        Number(
+
+                            staff.lng
+
+                        )
+
+                    );
+
+                if (
+
+                    !feature ||
+
+                    !feature.properties
+
+                ) {
+
+                    return false;
+
+                }
+
+                /*--------------------------
+                  Compare Division
+                --------------------------*/
+
+                return (
+
+                    GG.normalizeName(
+
+                        feature.properties
+
+                        .division ||
+
+                        ""
+
+                    ) ===
+
+                    division
+
+                );
+
+            }
 
         );
 
@@ -610,35 +830,109 @@ StaffGIS.findStaffInsideCircle = function (
 
     circle =
 
-        String(
+        GG.normalizeName(
 
-            circle || ""
+            circle
 
-        )
-
-        .trim()
-
-        .toUpperCase();
+        );
 
     return Object
+
         .values(
 
-            window.liveStaffCache || {}
+            window.liveStaffCache ||
+
+            {}
 
         )
+
         .filter(
 
-            s =>
+            function (
 
-                String(
+                staff
 
-                    s.circle || ""
+            ) {
 
-                )
+                /*--------------------------
+                  Valid GPS
+                --------------------------*/
 
-                .toUpperCase() ===
+                if (
 
-                circle
+                    !isFinite(
+
+                        staff.lat
+
+                    ) ||
+
+                    !isFinite(
+
+                        staff.lng
+
+                    )
+
+                ) {
+
+                    return false;
+
+                }
+
+                /*--------------------------
+                  Spatial Lookup
+                --------------------------*/
+
+const feature =
+
+    GIS.findContainingCompartment(
+
+        Number(
+
+            staff.lat
+
+        ),
+
+        Number(
+
+            staff.lng
+
+        )
+
+    );
+
+                if (
+
+                    !feature ||
+
+                    !feature.properties
+
+                ) {
+
+                    return false;
+
+                }
+
+                /*--------------------------
+                  Compare Circle
+                --------------------------*/
+
+                return (
+
+                    GG.normalizeName(
+
+                        feature.properties
+
+                        .circle ||
+
+                        ""
+
+                    ) ===
+
+                    circle
+
+                );
+
+            }
 
         );
 
@@ -655,20 +949,19 @@ StaffGIS.findStaffInsideCompartment = function (
 
     compartment =
 
-        String(
+        GG.normalizeName(
 
-            compartment || ""
+            compartment
 
-        )
-
-        .trim()
-
-        .toUpperCase();
+        );
 
     return Object
+
         .values(
 
-            window.liveStaffCache || {}
+            window.liveStaffCache ||
+
+            {}
 
         )
 
@@ -680,23 +973,87 @@ StaffGIS.findStaffInsideCompartment = function (
 
             ) {
 
-                const p =
+                /*--------------------------
+                  Valid GPS
+                --------------------------*/
 
-                    StaffGIS.locate(
+                if (
 
-                        staff.cleanName
+                    !isFinite(
 
-                    );
+                        staff.lat
+
+                    ) ||
+
+                    !isFinite(
+
+                        staff.lng
+
+                    )
+
+                ) {
+
+                    return false;
+
+                }
+
+                /*--------------------------
+                  Spatial Lookup
+                --------------------------*/
+
+                const feature =
+
+    GIS.findContainingCompartment(
+
+        Number(
+
+            staff.lat
+
+        ),
+
+        Number(
+
+            staff.lng
+
+        )
+
+    );
+
+                if (
+
+                    !feature ||
+
+                    !feature.properties
+
+                ) {
+
+                    return false;
+
+                }
+
+                /*--------------------------
+                  Compare Compartment
+                --------------------------*/
 
                 return (
 
-                    p?.profile?.spatial?.compartment ||
+                    GG.normalizeName(
 
-                    ""
+                        feature.properties
 
-                ).toUpperCase() ===
+                        .compartment ||
 
-                compartment;
+                        feature.properties
+
+                        .name ||
+
+                        ""
+
+                    ) ===
+
+                    compartment
+
+                );
 
             }
 
@@ -926,13 +1283,9 @@ StaffGIS.getNearbyStaff =
 
 function (
 
-    cleanName,
+    cleanName
 
-    radiusMeters =
-
-        500
-
-) {
+){
 
     /*----------------------------------
       Locate Staff
@@ -958,9 +1311,11 @@ function (
 
     }
 
+
     const profile =
 
         result.profile;
+
 
     const lat =
 
@@ -970,6 +1325,7 @@ function (
 
         );
 
+
     const lng =
 
         Number(
@@ -978,11 +1334,16 @@ function (
 
         );
 
+
+    /*----------------------------------
+      Validate GPS
+    ----------------------------------*/
+
     if (
 
-        !lat ||
+        !isFinite(lat) ||
 
-        !lng ||
+        !isFinite(lng) ||
 
         typeof turf ===
 
@@ -994,14 +1355,30 @@ function (
 
     }
 
+
     /*----------------------------------
       Live Staff
     ----------------------------------*/
 
     const liveStaff =
 
-        GG.GISBusiness
-            .getLiveStaff();
+        GIS.getLiveStaff();
+
+
+    if (
+
+        !liveStaff ||
+
+        typeof liveStaff !==
+
+        "object"
+
+    ) {
+
+        return [];
+
+    }
+
 
     const origin =
 
@@ -1017,19 +1394,23 @@ function (
 
         );
 
+
     const nearby =
 
         [];
 
+
     /*----------------------------------
-      Scan
+      Scan All Staff
     ----------------------------------*/
 
     Object.values(
 
         liveStaff
 
-    ).forEach(
+    )
+
+    .forEach(
 
         function (
 
@@ -1037,31 +1418,61 @@ function (
 
         ) {
 
+
             if (
 
-                !live ||
+                !live
+
+            ) {
+
+                return;
+
+            }
+
+
+            if (
 
                 live.cleanName ===
 
-                profile.identity.cleanName
+                profile.identity?.cleanName
 
             ) {
 
                 return;
 
             }
+
+
+            const liveLat =
+
+                Number(
+
+                    live.lat
+
+                );
+
+
+            const liveLng =
+
+                Number(
+
+                    live.lng
+
+                );
+
 
             if (
 
-                live.lat == null ||
+                !isFinite(liveLat) ||
 
-                live.lng == null
+                !isFinite(liveLng)
 
             ) {
 
                 return;
 
             }
+
 
             const target =
 
@@ -1069,21 +1480,14 @@ function (
 
                     [
 
-                        Number(
+                        liveLng,
 
-                            live.lng
-
-                        ),
-
-                        Number(
-
-                            live.lat
-
-                        )
+                        liveLat
 
                     ]
 
                 );
+
 
             const distance =
 
@@ -1103,66 +1507,59 @@ function (
 
                 );
 
-            if (
 
-                distance <=
+            nearby.push({
 
-                radiusMeters
+                cleanName:
 
-            ) {
+                    live.cleanName ||
 
-                nearby.push(
+                    "",
 
-                    {
+                name:
 
-                        cleanName:
+                    live.name ||
 
-                            live.cleanName,
+                    "",
 
-                        name:
+                distance:
 
-                            live.name,
+                    Math.round(
 
-                        distance:
+                        distance
 
-                            Math.round(
+                    ),
 
-                                distance
+                duty:
 
-                            ),
+                    live.dutyType ||
 
-                        duty:
+                    "",
 
-                            live.dutyType ||
+                team:
 
-                            "",
+                    live.team ||
 
-                        team:
+                    "",
 
-                            live.team ||
+                lat:
 
-                            "",
+                    liveLat,
 
-                        lat:
+                lng:
 
-                            live.lat,
+                    liveLng
 
-                        lng:
+            });
 
-                            live.lng
-
-                    }
-
-                );
-
-            }
 
         }
 
     );
 
+
     /*----------------------------------
-      Sort
+      Sort Nearest First
     ----------------------------------*/
 
     nearby.sort(
@@ -1187,9 +1584,6 @@ function (
 
     );
 
-    /*----------------------------------
-      Return
-    ----------------------------------*/
 
     return nearby;
 
@@ -1498,15 +1892,13 @@ function (
 
         );
 
-    const nearby =
+const nearby =
 
-        StaffGIS.getNearbyStaff(
+    StaffGIS.getNearbyStaff(
 
-            cleanName,
+        cleanName
 
-            500
-
-        );
+    );
 
     /*----------------------------------
       Return
