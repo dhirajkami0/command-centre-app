@@ -1267,25 +1267,17 @@ StaffQuery.getValidStaff = function () {
 ----------------------------------*/
 
 StaffQuery.getStaff = function (
-
     request
-
 ) {
-
     /*----------------------------------
       Get Staff References
     ----------------------------------*/
 
     const staff =
-
         Array.isArray(
-
             request?.entities?.staff
-
         )
-
             ? request.entities.staff
-
             : [];
 
     /*----------------------------------
@@ -1293,194 +1285,111 @@ StaffQuery.getStaff = function (
     ----------------------------------*/
 
     return staff
-
         .map(
-
             function (
-
                 item
-
             ) {
-
                 let cleanName =
-
                     "";
-
                 /*----------------------------------
                   String
                 ----------------------------------*/
 
                 if (
-
                     typeof item ===
-
                     "string"
-
                 ) {
-
                     cleanName =
-
                         item;
-
                 }
-
                 /*----------------------------------
                   Staff Object
                 ----------------------------------*/
 
                 else if (
-
                     item &&
-
                     typeof item ===
-
                     "object"
-
                 ) {
-
                     cleanName =
-
                         item.identity
                             ?.cleanName ||
-
                         item.cleanName ||
-
                         item.identity
                             ?.name ||
-
                         item.name ||
-
                         "";
-
                 }
 
                 cleanName =
-
                     String(
-
                         cleanName
-
                     )
-
-                    .trim()
-
-                    .toUpperCase();
+                        .trim()
+                        .toUpperCase();
 
                 if (
-
                     cleanName ===
-
                     ""
-
                 ) {
-
                     return null;
-
                 }
 
                 /*----------------------------------
-                  Hydrate
+                  Hydrate + GIS
                 ----------------------------------*/
-
                 if (
+                    GG.StaffGIS &&
+                    typeof GG.StaffGIS.locate ===
+                    "function"
+                ) {
+                    const located =
+                        GG.StaffGIS.locate(
+                            cleanName
+                        );
+                    if (
+                        located &&
+                        located.profile
+                    ) {
+                        return located.profile;
+                    }
+                }
 
+                /*----------------------------------
+                  Hydrator Fallback
+                ----------------------------------*/
+                if (
                     GG.StaffHydrator &&
-/*----------------------------------
-  GIS Hydrate
-----------------------------------*/
-
-if (
-
-    GG.StaffGIS &&
-
-    typeof GG.StaffGIS.locate ===
-
-    "function"
-
-) {
-
-    const located =
-
-        GG.StaffGIS.locate(
-
-            cleanName
-
-        );
-
-    if (
-
-        located &&
-
-        located.profile
-
-    ) {
-
-        return located.profile;
-
-    }
-
-}
-
-/*----------------------------------
-  Hydrator Fallback
-----------------------------------*/
-
-if (
-
-    GG.StaffHydrator &&
-
-    typeof GG.StaffHydrator
-        .getHydratedStaff ===
-
-    "function"
-
-) {
-
-    const hydrated =
-
-        GG.StaffHydrator
-            .getHydratedStaff(
-
-                cleanName
-
-            );
-
-    if (
-
-        hydrated
-
-    ) {
-
-        return hydrated;
-
-    }
-
-}
+                    typeof GG.StaffHydrator
+                        .getHydratedStaff ===
+                    "function"
+                ) {
+                    const hydrated =
+                        GG.StaffHydrator
+                            .getHydratedStaff(
+                                cleanName
+                            );
+                    if (
+                        hydrated
+                    ) {
+                        return hydrated;
+                    }
+                }
 
                 /*----------------------------------
                   Fallback
                 ----------------------------------*/
 
                 return item;
-
             }
-
         )
-
         .filter(
-
             function (
-
                 profile
-
             ) {
-
                 return !!profile;
-
             }
-
         );
-
 };
     /*----------------------------------
   Get All Staff
