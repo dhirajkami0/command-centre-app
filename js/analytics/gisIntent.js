@@ -106,6 +106,88 @@ GISIntent.detectHierarchy = function (
         GG.GISConstants.INTENTS;
 
     /*----------------------------------
+      Populate Parameters
+    ----------------------------------*/
+
+    result.parameters =
+
+        result.parameters ||
+
+        {};
+
+    const feature =
+
+        GG.GISEntities.search(
+
+            result.normalizedQuery
+
+        );
+
+    if (
+
+        feature
+
+    ) {
+
+        const p =
+
+            feature.properties ||
+
+            {};
+
+        result.parameters.circle =
+
+            p.circle ||
+
+            result.parameters.circle ||
+
+            "";
+
+        result.parameters.division =
+
+            p.division ||
+
+            result.parameters.division ||
+
+            "";
+
+        result.parameters.range =
+
+            p.range ||
+
+            result.parameters.range ||
+
+            "";
+
+        result.parameters.beat =
+
+            p.beat ||
+
+            result.parameters.beat ||
+
+            "";
+
+        result.parameters.compartment =
+
+            p.compartment ||
+
+            p.name ||
+
+            result.parameters.compartment ||
+
+            "";
+
+        result.parameters.village =
+
+            p.village ||
+
+            result.parameters.village ||
+
+            "";
+
+    }
+
+    /*----------------------------------
       Compartment
     ----------------------------------*/
 
