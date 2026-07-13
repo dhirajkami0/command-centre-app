@@ -6469,6 +6469,26 @@ StaffIntent.detectCountIntent = function (
     }
 
     /*----------------------------------
+      GIS Spatial Query
+    ----------------------------------*/
+
+    if (
+
+        /\b(INSIDE|WITHIN)\b/
+
+        .test(
+
+            query
+
+        )
+
+    ) {
+
+        return result;
+
+    }
+
+    /*----------------------------------
       Boolean Filters
     ----------------------------------*/
 
@@ -6505,6 +6525,7 @@ StaffIntent.detectCountIntent = function (
     if (
 
         entities.designations &&
+
         entities.designations.length > 0
 
     ) {
@@ -6622,7 +6643,9 @@ StaffIntent.detectCountIntent = function (
 
     if (
 
-        parameters.dutyActive === true
+        parameters.dutyActive ===
+
+        true
 
     ) {
 
