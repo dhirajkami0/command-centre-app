@@ -1385,41 +1385,36 @@ StaffQuery.getStaff = function (
                 if (
 
                     GG.StaffHydrator &&
-/*----------------------------------
-  Hydrate
-----------------------------------*/
 
-if (
+                    typeof GG.StaffHydrator
+                        .getHydratedStaff ===
 
-    GG.StaffHydrator &&
+                    "function"
 
-    typeof GG.StaffHydrator
-        .getHydratedStaff ===
+                ) {
 
-    "function"
+                    const hydrated =
 
-) {
+                        GG.StaffHydrator
+                            .getHydratedStaff(
 
-    const hydrated =
+                                cleanName
 
-        GG.StaffHydrator
-            .getHydratedStaff(
+                            );
 
-                cleanName
+                    if (
 
-            );
+                        hydrated
 
-    if (
+                    ) {
 
-        hydrated
+                        return hydrated;
 
-    ) {
+                    }
 
-        return hydrated;
+                }
 
-    }
-
-}                /*----------------------------------
+                /*----------------------------------
                   Fallback
                 ----------------------------------*/
 
