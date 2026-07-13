@@ -121,8 +121,17 @@ window.GreenGuardAI =
         return window.gisFilter || {};
 
     };
+GISBusiness.getCurrentCircle = function () {
 
-    GISBusiness.getCurrentDivision = function () {
+    return (
+
+        window.gisFilter?.circle ||
+
+        null
+
+    );
+
+};    GISBusiness.getCurrentDivision = function () {
 
         return (
 
