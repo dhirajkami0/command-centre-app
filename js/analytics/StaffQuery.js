@@ -1247,7 +1247,11 @@ GG.queryNearbyStaff = async function (
 
                     refLon
 
-                )
+                ) ||
+
+                refLat === 0 ||
+
+                refLon === 0
 
             ) {
 
@@ -1260,15 +1264,141 @@ GG.queryNearbyStaff = async function (
             }
 
             /*----------------------------------
-              All Staff
+              Live Staff Only
             ----------------------------------*/
 
             const staff =
 
-                StaffQuery.ensureAllStaff();
+                StaffQuery
+
+                    .ensureAllStaff()
+
+                    .filter(
+
+                        function (
+
+                            profile
+
+                        ) {
+
+                            if (
+
+                                !profile
+
+                            ) {
+
+                                return false;
+
+                            }
+
+                            /* Skip self */
+
+                            if (
+
+                                profile.identity?.cleanName ===
+
+                                reference.identity?.cleanName
+
+                            ) {
+
+                                return false;
+
+                            }
+
+                            /* Duty Active */
+
+                            if (
+
+                                profile.assignment?.dutyActive !== true
+
+                            ) {
+
+                                return false;
+
+                            }
+
+                            const lat =
+
+                                Number(
+
+                                    profile.location?.lat ??
+
+                                    profile.gps?.lat
+
+                                );
+
+                            const lon =
+
+                                Number(
+
+                                    profile.location?.lon ??
+
+                                    profile.gps?.lon
+
+                                );
+
+                            if (
+
+                                !Number.isFinite(
+
+                                    lat
+
+                                ) ||
+
+                                !Number.isFinite(
+
+                                    lon
+
+                                )
+
+                            ) {
+
+                                return false;
+
+                            }
+
+                            if (
+
+                                lat === 0 ||
+
+                                lon === 0
+
+                            ) {
+
+                                return false;
+
+                            }
+
+                            const lastSeen =
+
+                                Number(
+
+                                    profile.gps?.lastSeen ??
+
+                                    profile.gps?.updatedAt ??
+
+                                    0
+
+                                );
+
+                            if (
+
+                                lastSeen <= 0
+
+                            ) {
+
+                                return false;
+
+                            }
+
+                            return true;
+
+                        }
+
+                    );
 
             /*----------------------------------
-              Distance
+              Haversine Distance
             ----------------------------------*/
 
             function distanceKm(
@@ -1287,6 +1417,12 @@ GG.queryNearbyStaff = async function (
 
                     6371;
 
+                const toRad =
+
+                    Math.PI /
+
+                    180;
+
                 const dLat =
 
                     (
@@ -1297,9 +1433,7 @@ GG.queryNearbyStaff = async function (
 
                     ) *
 
-                    Math.PI /
-
-                    180;
+                    toRad;
 
                 const dLon =
 
@@ -1311,9 +1445,7 @@ GG.queryNearbyStaff = async function (
 
                     ) *
 
-                    Math.PI /
-
-                    180;
+                    toRad;
 
                 const a =
 
@@ -1321,31 +1453,17 @@ GG.queryNearbyStaff = async function (
 
                         dLat / 2
 
-                    ) *
-
-                    Math.sin(
-
-                        dLat / 2
-
-                    ) +
+                    ) ** 2 +
 
                     Math.cos(
 
-                        lat1 *
-
-                        Math.PI /
-
-                        180
+                        lat1 * toRad
 
                     ) *
 
                     Math.cos(
 
-                        lat2 *
-
-                        Math.PI /
-
-                        180
+                        lat2 * toRad
 
                     ) *
 
@@ -1353,13 +1471,7 @@ GG.queryNearbyStaff = async function (
 
                         dLon / 2
 
-                    ) *
-
-                    Math.sin(
-
-                        dLon / 2
-
-                    );
+                    ) ** 2;
 
                 return (
 
@@ -1393,98 +1505,62 @@ GG.queryNearbyStaff = async function (
 
             const nearby =
 
-                [];
+                staff.map(
 
-            staff.forEach(
+                    function (
 
-                function (
-
-                    profile
-
-                ) {
-
-                    if (
-
-                        !profile ||
-
-                        profile.identity?.cleanName ===
-
-                        reference.identity?.cleanName
+                        profile
 
                     ) {
 
-                        return;
+                        const lat =
+
+                            Number(
+
+                                profile.location?.lat ??
+
+                                profile.gps?.lat
+
+                            );
+
+                        const lon =
+
+                            Number(
+
+                                profile.location?.lon ??
+
+                                profile.gps?.lon
+
+                            );
+
+                        return {
+
+                            profile:
+
+                                profile,
+
+                            distanceKm:
+
+                                distanceKm(
+
+                                    refLat,
+
+                                    refLon,
+
+                                    lat,
+
+                                    lon
+
+                                )
+
+                        };
 
                     }
 
-                    const lat =
-
-                        Number(
-
-                            profile.location?.lat ??
-
-                            profile.gps?.lat
-
-                        );
-
-                    const lon =
-
-                        Number(
-
-                            profile.location?.lon ??
-
-                            profile.gps?.lon
-
-                        );
-
-                    if (
-
-                        !Number.isFinite(
-
-                            lat
-
-                        ) ||
-
-                        !Number.isFinite(
-
-                            lon
-
-                        )
-
-                    ) {
-
-                        return;
-
-                    }
-
-                    nearby.push({
-
-                        profile:
-
-                            profile,
-
-                        distanceKm:
-
-                            distanceKm(
-
-                                refLat,
-
-                                refLon,
-
-                                lat,
-
-                                lon
-
-                            )
-
-                    });
-
-                }
-
-            );
+                );
 
             /*----------------------------------
-              Sort
+              Sort Nearest First
             ----------------------------------*/
 
             nearby.sort(
