@@ -5071,23 +5071,31 @@ StaffIntent.detectNearbyIntent = function (
 
     const staff =
 
-        result.entities?.staff ||
+        Array.isArray(
 
-        [];
+            result.entities?.staff
+
+        )
+
+            ? result.entities.staff
+
+            : [];
 
     /*----------------------------------
-      Nearby Keywords
+      Nearby Detection
     ----------------------------------*/
 
     const hasNearby =
 
-        StaffIntent.hasKeyword(
+        /\bNEAR\b/.test(query) ||
 
-            query,
+        /\bNEARBY\b/.test(query) ||
 
-            StaffConstants.KEYWORDS.STAFF_NEARBY
+        /\bNEAREST\b/.test(query) ||
 
-        );
+        /\bCLOSEST\b/.test(query) ||
+
+        /\bAROUND\b/.test(query);
 
     if (
 
@@ -5128,16 +5136,22 @@ StaffIntent.detectNearbyIntent = function (
     }
 
     /*----------------------------------
-      Reference = Logged-in User
+      Logged-in User
     ----------------------------------*/
 
     else if (
 
-        /\bME\b|\bMY\b|\bMYSELF\b/.test(
+        /\bME\b/.test(query) ||
 
-            query
+        /\bMY\b/.test(query) ||
 
-        )
+        /\bMYSELF\b/.test(query) ||
+
+        /\bHERE\b/.test(query) ||
+
+        /\bMY LOCATION\b/.test(query) ||
+
+        /\bCURRENT LOCATION\b/.test(query)
 
     ) {
 
