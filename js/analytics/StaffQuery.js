@@ -1433,28 +1433,97 @@ StaffQuery.getAllStaff = function () {
 
             }
 
-            return (
+            /*----------------------------------
+              GIS + Hydrated Profile
+            ----------------------------------*/
+
+            if (
+
+                GreenGuardAI.StaffGIS &&
+
+                typeof GreenGuardAI
+                    .StaffGIS
+                    .locate ===
+
+                "function"
+
+            ) {
+
+                const located =
+
+                    GreenGuardAI
+                        .StaffGIS
+                        .locate(
+
+                            cleanName
+
+                        );
+
+                if (
+
+                    located &&
+
+                    located.profile
+
+                ) {
+
+                    return located.profile;
+
+                }
+
+            }
+
+            /*----------------------------------
+              Hydrator Fallback
+            ----------------------------------*/
+
+            if (
 
                 GreenGuardAI
+                    .StaffHydrator &&
 
+                typeof GreenGuardAI
                     .StaffHydrator
+                    .hydrate ===
 
-                    .hydrate(
+                "function"
 
-                        cleanName
+            ) {
 
-                    )
+                return (
 
-            );
+                    GreenGuardAI
+                        .StaffHydrator
+                        .hydrate(
+
+                            cleanName
+
+                        )
+
+                );
+
+            }
+
+            /*----------------------------------
+              Original Profile Fallback
+            ----------------------------------*/
+
+            return profile;
 
         }
 
     );
 
 };
-    StaffQuery.ensureAllStaff = function () {
+
+/*----------------------------------
+  Ensure All Staff
+----------------------------------*/
+
+StaffQuery.ensureAllStaff = function () {
 
     const staff =
+
         StaffQuery.getAllStaff();
 
     if (
@@ -1464,7 +1533,9 @@ StaffQuery.getAllStaff = function () {
     ) {
 
         throw new Error(
+
             "No staff available."
+
         );
 
     }
