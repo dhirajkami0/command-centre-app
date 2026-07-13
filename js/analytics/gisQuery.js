@@ -51,7 +51,7 @@ GISQuery.findContainingCompartment = function (
 
 ) {
 
-    return GIS.findContainingCompartment(
+    return GreenGuardAI.GISBusiness.findContainingCompartment(
 
         lat,
 
