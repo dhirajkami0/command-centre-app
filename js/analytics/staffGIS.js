@@ -599,6 +599,51 @@ StaffGIS.findStaffInsideDivision = function (
 
 };
   /*--------------------------------------------------
+  Staff Inside Circle
+--------------------------------------------------*/
+
+StaffGIS.findStaffInsideCircle = function (
+
+    circle
+
+) {
+
+    circle =
+
+        String(
+
+            circle || ""
+
+        )
+
+        .trim()
+
+        .toUpperCase();
+
+    return Object
+        .values(
+
+            window.liveStaffCache || {}
+
+        )
+        .filter(
+
+            s =>
+
+                String(
+
+                    s.circle || ""
+
+                )
+
+                .toUpperCase() ===
+
+                circle
+
+        );
+
+};
+  /*--------------------------------------------------
   Staff Inside Compartment
 --------------------------------------------------*/
 
