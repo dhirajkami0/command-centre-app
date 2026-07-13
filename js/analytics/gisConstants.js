@@ -590,8 +590,26 @@ GISConstants.KEYWORDS = Object.freeze({
         "APPLY FILTER"
 
     ],
+GIS_STAFF_PRESENCE: [
 
-    /*----------------------------------
+    "INSIDE",
+    "WITHIN",
+    "PRESENT INSIDE",
+    "LOCATED INSIDE"
+
+],
+
+GIS_STAFF_PRESENCE_COUNT: [
+
+    "HOW MANY STAFF ARE INSIDE",
+    "NUMBER OF STAFF INSIDE",
+    "STAFF INSIDE",
+    "COUNT STAFF INSIDE",
+    "TOTAL STAFF INSIDE"
+
+],
+  
+  /*----------------------------------
       Current Selection
     ----------------------------------*/
 
