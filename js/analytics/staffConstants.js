@@ -1278,7 +1278,23 @@ STAFF_NEARBY: [
 
     "CLOSEST",
 
-    "AROUND"
+    "AROUND",
+
+    "AROUND ME",
+
+    "NEAR ME",
+
+    "MY LOCATION",
+
+    "MY CURRENT LOCATION",
+
+    "WHO IS NEAR",
+
+    "WHO IS AROUND",
+
+    "STAFF NEARBY",
+
+    "NEARBY STAFF"
 
 ],
 STAFF_DIRECTORY: [
