@@ -458,6 +458,7 @@ StaffIntent.setCachedResult = function (
     );
 
 };
+ 
     /*=========================================================
  DETECT
  Master Intent Detection
