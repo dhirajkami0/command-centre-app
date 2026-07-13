@@ -3340,8 +3340,7 @@ StaffFormatter.formatStaffPosting = function (
  FORMAT LOCATION
 =========================================================*/
 
-StaffFormatter.formatStaffLocation
- = function (
+StaffFormatter.formatStaffLocation = function (
 
     response
 
@@ -3399,6 +3398,12 @@ StaffFormatter.formatStaffLocation
 
         {};
 
+    const spatial =
+
+        profile.spatial ||
+
+        {};
+
     const location =
 
         profile.location ||
@@ -3427,7 +3432,6 @@ StaffFormatter.formatStaffLocation
 
     /*----------------------------------
       Live Coordinates
-      (Prefer GPS, fallback to Location)
     ----------------------------------*/
 
     const latitude =
@@ -3493,6 +3497,41 @@ StaffFormatter.formatStaffLocation
             "-";
 
     /*----------------------------------
+      Current Spatial Jurisdiction
+      (Prefer GIS)
+    ----------------------------------*/
+
+    const currentDivision =
+
+        spatial.division ||
+
+        posting.division ||
+
+        "-";
+
+    const currentRange =
+
+        spatial.range ||
+
+        posting.range ||
+
+        "-";
+
+    const currentBeat =
+
+        spatial.beat ||
+
+        posting.beat ||
+
+        "-";
+
+    const currentCompartment =
+
+        spatial.compartment ||
+
+        "-";
+
+    /*----------------------------------
       Markdown
     ----------------------------------*/
 
@@ -3532,7 +3571,31 @@ StaffFormatter.formatStaffLocation
 
         "",
 
-        "**Posting:**",
+        "**Current GIS Location**",
+
+        "",
+
+        "• Division : " +
+
+            currentDivision,
+
+        "• Range : " +
+
+            currentRange,
+
+        "• Beat : " +
+
+            currentBeat,
+
+        "• Compartment : " +
+
+            currentCompartment,
+
+        "",
+
+        "**Official Posting**",
+
+        "",
 
         "• Circle : " +
 
@@ -3578,11 +3641,7 @@ StaffFormatter.formatStaffLocation
 
         "**Last Seen:** " +
 
-            lastSeenText,
-
-        "",
-
-        "_Human-readable location will be available after GIS integration._"
+            lastSeenText
 
     ].join(
 
@@ -3624,25 +3683,41 @@ StaffFormatter.formatStaffLocation
 
                 longitude,
 
-            circle:
+            division:
+
+                currentDivision,
+
+            range:
+
+                currentRange,
+
+            beat:
+
+                currentBeat,
+
+            compartment:
+
+                currentCompartment,
+
+            postingCircle:
 
                 posting.circle ||
 
                 "",
 
-            division:
+            postingDivision:
 
                 posting.division ||
 
                 "",
 
-            range:
+            postingRange:
 
                 posting.range ||
 
                 "",
 
-            beat:
+            postingBeat:
 
                 posting.beat ||
 
@@ -3686,25 +3761,41 @@ StaffFormatter.formatStaffLocation
 
                 longitude,
 
-            circle:
+            division:
+
+                currentDivision,
+
+            range:
+
+                currentRange,
+
+            beat:
+
+                currentBeat,
+
+            compartment:
+
+                currentCompartment,
+
+            postingCircle:
 
                 posting.circle ||
 
                 "",
 
-            division:
+            postingDivision:
 
                 posting.division ||
 
                 "",
 
-            range:
+            postingRange:
 
                 posting.range ||
 
                 "",
 
-            beat:
+            postingBeat:
 
                 posting.beat ||
 
