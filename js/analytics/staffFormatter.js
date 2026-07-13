@@ -3341,17 +3341,11 @@ StaffFormatter.formatStaffPosting = function (
 =========================================================*/
 
 StaffFormatter.formatStaffLocation = function (
-
     response
-
 ) {
-
     const result =
-
         StaffFormatter.createResponse(
-
             response
-
         );
 
     /*----------------------------------
@@ -3359,23 +3353,14 @@ StaffFormatter.formatStaffLocation = function (
     ----------------------------------*/
 
     if (
-
         !response ||
-
         !response.success ||
-
         !response.data
-
     ) {
-
         result.message =
-
             response?.message ||
-
             "Location information not found.";
-
         return result;
-
     }
 
     /*----------------------------------
@@ -3383,31 +3368,26 @@ StaffFormatter.formatStaffLocation = function (
     ----------------------------------*/
 
     const profile =
-
         response.data;
 
     const identity =
-
         profile.identity ||
-
         {};
 
     const posting =
-
         profile.posting ||
+        {};
 
+    const spatial =
+        profile.spatial ||
         {};
 
     const location =
-
         profile.location ||
-
         {};
 
     const gps =
-
         profile.gps ||
-
         {};
 
     /*----------------------------------
@@ -3415,13 +3395,9 @@ StaffFormatter.formatStaffLocation = function (
     ----------------------------------*/
 
     const displayName =
-
         identity.name ||
-
         identity.rawName ||
-
         identity.cleanName ||
-
         "-";
 
     /*----------------------------------
@@ -3430,19 +3406,13 @@ StaffFormatter.formatStaffLocation = function (
     ----------------------------------*/
 
     const latitude =
-
         gps.lat ??
-
         location.lat ??
-
         "-";
 
     const longitude =
-
         gps.lon ??
-
         location.lon ??
-
         "-";
 
     /*----------------------------------
@@ -3450,139 +3420,84 @@ StaffFormatter.formatStaffLocation = function (
     ----------------------------------*/
 
     const lastSeen =
-
         gps.lastSeen ||
-
         gps.timestamp ||
-
         gps.updatedAt ||
-
         "-";
 
     const lastSeenText =
-
         lastSeen !== "-"
-
-            ?
-
-            new Date(
-
+            ? new Date(
                 lastSeen
-
             ).toLocaleString(
-
                 "en-IN",
-
                 {
-
                     dateStyle:
-
                         "medium",
-
                     timeStyle:
-
                         "short"
-
                 }
-
             )
-
-            :
-
-            "-";
+            : "-";
 
     /*----------------------------------
       Markdown
     ----------------------------------*/
 
     result.markdown = [
-
         "# 📍 STAFF LOCATION",
-
         "",
-
         "**Name:** " +
-
             displayName,
-
         "**Designation:** " +
-
             (
-
                 identity.designation ||
-
                 "-"
-
             ),
-
         "",
-
         "**Current GPS Position**",
-
         "",
-
         "**Latitude:** " +
-
             latitude,
-
         "**Longitude:** " +
-
             longitude,
-
         "",
-
-        "**Posting:**",
-
-        "• Circle : " +
-
-            (
-
-                posting.circle ||
-
-                "-"
-
-            ),
-
+        "**Current GIS Location**",
         "• Division : " +
-
-            (
-
-                posting.division ||
-
-                "-"
-
-            ),
-
+            (spatial.division || "-"),
         "• Range : " +
-
-            (
-
-                posting.range ||
-
-                "-"
-
-            ),
-
+            (spatial.range || "-"),
         "• Beat : " +
-
-            (
-
-                posting.beat ||
-
-                "-"
-
-            ),
-
+            (spatial.beat || "-"),
+        "• Compartment : " +
+            (spatial.compartment || "-"),
         "",
-
+        "**Posting:**",
+        "• Circle : " +
+            (
+                posting.circle ||
+                "-"
+            ),
+        "• Division : " +
+            (
+                posting.division ||
+                "-"
+            ),
+        "• Range : " +
+            (
+                posting.range ||
+                "-"
+            ),
+        "• Beat : " +
+            (
+                posting.beat ||
+                "-"
+            ),
+        "",
         "**Last Seen:** " +
-
             lastSeenText
-
     ].join(
-
         "\n"
-
     );
 
     /*----------------------------------
@@ -3590,65 +3505,45 @@ StaffFormatter.formatStaffLocation = function (
     ----------------------------------*/
 
     result.cards.push({
-
         type:
-
             "staff-location",
-
         title:
-
             displayName,
-
         data: {
-
             name:
-
                 displayName,
-
             designation:
-
                 identity.designation ||
-
                 "",
-
             latitude:
-
                 latitude,
-
             longitude:
-
                 longitude,
-
+            currentDivision:
+                spatial.division || "",
+            currentRange:
+                spatial.range || "",
+            currentBeat:
+                spatial.beat || "",
+            currentCompartment:
+                spatial.compartment || "",
+            spatialSource:
+                spatial.source || "",
             circle:
-
                 posting.circle ||
-
                 "",
-
             division:
-
                 posting.division ||
-
                 "",
-
             range:
-
                 posting.range ||
-
                 "",
-
             beat:
-
                 posting.beat ||
-
                 "",
-
             lastSeen:
-
                 lastSeenText
-
         }
-
     });
 
     /*----------------------------------
@@ -3656,61 +3551,43 @@ StaffFormatter.formatStaffLocation = function (
     ----------------------------------*/
 
     result.sections.push({
-
         title:
-
             "Current Location",
-
         data: {
-
             name:
-
                 displayName,
-
             designation:
-
                 identity.designation ||
-
                 "",
-
             latitude:
-
                 latitude,
-
             longitude:
-
                 longitude,
-
+            currentDivision:
+                spatial.division || "",
+            currentRange:
+                spatial.range || "",
+            currentBeat:
+                spatial.beat || "",
+            currentCompartment:
+                spatial.compartment || "",
+            spatialSource:
+                spatial.source || "",
             circle:
-
                 posting.circle ||
-
                 "",
-
             division:
-
                 posting.division ||
-
                 "",
-
             range:
-
                 posting.range ||
-
                 "",
-
             beat:
-
                 posting.beat ||
-
                 "",
-
             lastSeen:
-
                 lastSeenText
-
         }
-
     });
 
     /*----------------------------------
@@ -3718,31 +3595,19 @@ StaffFormatter.formatStaffLocation = function (
     ----------------------------------*/
 
     result.success =
-
         true;
-
     result.intent =
-
         StaffConstants.INTENTS.STAFF_LOCATION;
-
     result.confidence =
-
         response.confidence ||
-
         1;
-
     result.source =
-
         response.source ||
-
         "LOCAL";
-
     result.message =
-
         "Location formatted successfully.";
 
     return result;
-
 };
  /*=========================================================
  FORMAT DUTY
