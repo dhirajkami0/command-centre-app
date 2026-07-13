@@ -114,34 +114,66 @@ GISConstants.INTENTS = Object.freeze({
     GIS_SUMMARY:
         "gisSummary",
 
-    /*----------------------------------
-      Live Staff Presence
-      (Current GPS inside polygon)
-    ----------------------------------*/
+/*----------------------------------
+  Live Staff Presence
+  (Current GPS inside polygon)
+----------------------------------*/
 
-    GIS_STAFF_PRESENT:
-        "gisStaffPresent",
+GIS_STAFF_PRESENT:
+    "gisStaffPresent",
 
-    GIS_STAFF_COUNT:
-        "gisStaffCount",
+GIS_STAFF_COUNT:
+    "gisStaffCount",
 
-    GIS_CIRCLE_STAFF_PRESENT:
-        "gisCircleStaffPresent",
+GIS_CIRCLE_STAFF_PRESENT:
+    "gisCircleStaffPresent",
 
-    GIS_DIVISION_STAFF_PRESENT:
-        "gisDivisionStaffPresent",
+GIS_DIVISION_STAFF_PRESENT:
+    "gisDivisionStaffPresent",
 
-    GIS_RANGE_STAFF_PRESENT:
-        "gisRangeStaffPresent",
+GIS_RANGE_STAFF_PRESENT:
+    "gisRangeStaffPresent",
 
-    GIS_BEAT_STAFF_PRESENT:
-        "gisBeatStaffPresent",
+GIS_BEAT_STAFF_PRESENT:
+    "gisBeatStaffPresent",
 
-    GIS_COMPARTMENT_STAFF_PRESENT:
-        "gisCompartmentStaffPresent",
+GIS_COMPARTMENT_STAFF_PRESENT:
+    "gisCompartmentStaffPresent",
 
-    GIS_VILLAGE_STAFF_PRESENT:
-        "gisVillageStaffPresent",
+GIS_VILLAGE_STAFF_PRESENT:
+    "gisVillageStaffPresent",
+
+/*----------------------------------
+  Backward Compatibility
+  (Current GIS Pipeline)
+----------------------------------*/
+
+GIS_STAFF_PRESENCE:
+    "gisStaffPresent",
+
+GIS_STAFF_PRESENCE_COUNT:
+    "gisStaffCount",
+
+GIS_STAFF_ON_DUTY:
+    "gisStaffOnDuty",
+
+GIS_CIRCLE:
+    "gisCircle",
+
+GIS_CURRENT_CIRCLE:
+    "gisCurrentCircle",
+
+GIS_CIRCLE_SUMMARY:
+    "gisCircleSummary",
+
+GIS_BEAT_SUMMARY:
+    "gisBeatSummary",
+
+GIS_RANGE_SUMMARY:
+    "gisRangeSummary",
+
+GIS_DIVISION_SUMMARY:
+    "gisDivisionSummary",
 
     /*----------------------------------
       Other Live Objects
