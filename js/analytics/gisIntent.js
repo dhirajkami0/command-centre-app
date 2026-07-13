@@ -356,6 +356,135 @@ GISIntent.detectHierarchy = function (
     return result;
 
 };
+  /*=========================================================
+  Extract GIS Jurisdiction
+  Source: GISEntities
+=========================================================*/
+
+GISIntent.extractJurisdiction = function (
+
+    result
+
+) {
+
+    if (
+
+        !result ||
+
+        !result.normalizedQuery
+
+    ) {
+
+        return result;
+
+    }
+
+
+    if (
+
+        !GG.GISEntities ||
+
+        typeof GG.GISEntities.search !==
+
+        "function"
+
+    ) {
+
+        return result;
+
+    }
+
+
+    const feature =
+
+        GG.GISEntities.search(
+
+            result.normalizedQuery
+
+        );
+
+
+    if (
+
+        !feature ||
+
+        !feature.properties
+
+    ) {
+
+        return result;
+
+    }
+
+
+    const p =
+
+        feature.properties;
+
+
+    result.parameters =
+
+        result.parameters || {};
+
+
+    result.parameters.circle =
+
+        p.circle ||
+
+        "";
+
+
+    result.parameters.division =
+
+        p.division ||
+
+        "";
+
+
+    result.parameters.range =
+
+        p.range ||
+
+        "";
+
+
+    result.parameters.beat =
+
+        p.beat ||
+
+        "";
+
+
+    result.parameters.compartment =
+
+        p.compartment ||
+
+        p.name ||
+
+        "";
+
+
+    result.entities =
+
+        result.entities || {};
+
+
+    result.entities.gis = {
+
+        type:
+
+            "GIS",
+
+        feature:
+
+            feature
+
+    };
+
+
+    return result;
+
+};
     /*--------------------------------------------------
       Detect
     --------------------------------------------------*/
@@ -402,35 +531,22 @@ GISIntent.detect = function (
       Jurisdiction Detection
     ----------------------------------*/
 
-    GISIntent.detectHierarchy(
+GISIntent.detectHierarchy(
 
-        result
+    result
 
-    );
+);
 
 
-    /*----------------------------------
-      Extract GIS Parameters
-      Range / Beat / Division / Circle
-    ----------------------------------*/
+/*----------------------------------
+  GIS Jurisdiction Extraction
+----------------------------------*/
 
-    if (
+GISIntent.extractJurisdiction(
 
-        GG.StaffEntities &&
+    result
 
-        typeof GG.StaffEntities.extractPostingEntities ===
-
-        "function"
-
-    ) {
-
-        GG.StaffEntities.extractPostingEntities(
-
-            result
-
-        );
-
-    }
+);
 
 
     /*----------------------------------
