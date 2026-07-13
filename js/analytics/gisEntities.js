@@ -28,178 +28,202 @@ window.GreenGuardAI =
       Build
     --------------------------------------------------*/
 
-    GISEntities.build = function () {
+GISEntities.build = function () {
 
-        if (
+    if (
 
-            index
+        index
 
-        ) {
-
-            return index;
-
-        }
-
-        index = {
-
-            divisions: {},
-
-            ranges: {},
-
-            beats: {},
-
-            compartments: {},
-
-            villages: {}
-
-        };
-
-        (
-
-            window.allGISFeatures ||
-
-            []
-
-        ).forEach(
-
-            function (
-
-                feature
-
-            ) {
-
-                const p =
-
-                    feature.properties ||
-
-                    {};
-
-                if (
-
-                    p.division
-
-                ) {
-
-                    index.divisions[
-                        p.division
-                            .toUpperCase()
-                    ] = feature;
-
-                }
-
-                if (
-
-                    p.range
-
-                ) {
-
-                    index.ranges[
-                        p.range
-                            .toUpperCase()
-                    ] = feature;
-
-                }
-
-                if (
-
-                    p.beat
-
-                ) {
-
-                    index.beats[
-                        p.beat
-                            .toUpperCase()
-                    ] = feature;
-
-                }
-
-            }
-
-        );
-
-        (
-
-            window.allCompartmentFeatures ||
-
-            []
-
-        ).forEach(
-
-            function (
-
-                feature
-
-            ) {
-
-                const p =
-
-                    feature.properties ||
-
-                    {};
-
-                const name =
-
-                    p.compartment ||
-
-                    p.name;
-
-                if (
-
-                    name
-
-                ) {
-
-                    index.compartments[
-                        name
-                            .toUpperCase()
-                    ] = feature;
-
-                }
-
-            }
-
-        );
-
-        (
-
-            window.__villageCache ||
-
-            []
-
-        ).forEach(
-
-            function (
-
-                village
-
-            ) {
-
-                const name =
-
-                    village.name ||
-
-                    village.village;
-
-                if (
-
-                    name
-
-                ) {
-
-                    index.villages[
-                        name
-                            .toUpperCase()
-                    ] = village;
-
-                }
-
-            }
-
-        );
+    ) {
 
         return index;
 
+    }
+
+    index = {
+
+        divisions: {},
+
+        ranges: {},
+
+        beats: {},
+
+        compartments: {},
+
+        villages: {}
+
     };
+
+    (
+        window.allGISFeatures ||
+
+        []
+
+    ).forEach(
+
+        function (
+
+            feature
+
+        ) {
+
+            const p =
+
+                feature.properties ||
+
+                {};
+
+            if (
+
+                p.division
+
+            ) {
+
+                index.divisions[
+
+                    GG.normalizeName(
+
+                        p.division
+
+                    )
+
+                ] = feature;
+
+            }
+
+            if (
+
+                p.range
+
+            ) {
+
+                index.ranges[
+
+                    GG.normalizeName(
+
+                        p.range
+
+                    )
+
+                ] = feature;
+
+            }
+
+            if (
+
+                p.beat
+
+            ) {
+
+                index.beats[
+
+                    GG.normalizeName(
+
+                        p.beat
+
+                    )
+
+                ] = feature;
+
+            }
+
+        }
+
+    );
+
+    (
+
+        window.allCompartmentFeatures ||
+
+        []
+
+    ).forEach(
+
+        function (
+
+            feature
+
+        ) {
+
+            const p =
+
+                feature.properties ||
+
+                {};
+
+            const name =
+
+                p.compartment ||
+
+                p.name;
+
+            if (
+
+                name
+
+            ) {
+
+                index.compartments[
+
+                    GG.normalizeName(
+
+                        name
+
+                    )
+
+                ] = feature;
+
+            }
+
+        }
+
+    );
+
+    (
+
+        window.__villageCache ||
+
+        []
+
+    ).forEach(
+
+        function (
+
+            village
+
+        ) {
+
+            const name =
+
+                village.name ||
+
+                village.village;
+
+            if (
+
+                name
+
+            ) {
+
+                index.villages[
+
+                    GG.normalizeName(
+
+                        name
+
+                    )
+
+                ] = village;
+
+            }
+
+        }
+
+    );
+
+    return index;
+
+};
 
     /*--------------------------------------------------
       Ready
