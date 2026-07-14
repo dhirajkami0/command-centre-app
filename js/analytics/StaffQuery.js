@@ -667,6 +667,105 @@ StaffQuery.getCurrentUser = function () {
     return profile;
 
 };
+    /*=========================================================
+  Circle Count
+=========================================================*/
+
+GG.queryCircleCount = async function (
+
+    request
+
+) {
+
+    return StaffQuery.execute(
+
+        request,
+
+        async function (
+
+            request
+
+        ) {
+
+            /*----------------------------------
+              Filter Staff
+            ----------------------------------*/
+
+            const staff =
+
+                StaffQuery.filterStaff(
+
+                    request
+
+                );
+
+            /*----------------------------------
+              Count Summary
+            ----------------------------------*/
+
+            const summary =
+
+                StaffQuery.buildCount(
+
+                    staff
+
+                );
+
+            /*----------------------------------
+              Return
+            ----------------------------------*/
+
+            return {
+
+                jurisdiction:
+
+                    "CIRCLE",
+
+                circle:
+
+                    request.parameters?.circle ||
+
+                    "",
+
+                count:
+
+                    summary.count,
+
+                activeStaff:
+
+                    summary.activeStaff,
+
+                inactiveStaff:
+
+                    summary.inactiveStaff,
+
+                movingStaff:
+
+                    summary.movingStaff,
+
+                stationaryStaff:
+
+                    summary.stationaryStaff,
+
+                totalDistanceKm:
+
+                    summary.totalDistanceKm,
+
+                totalPatrolPoints:
+
+                    summary.totalPatrolPoints,
+
+                staff:
+
+                    staff
+
+            };
+
+        }
+
+    );
+
+};
  /*=========================================================
  EXECUTE QUERY
 =========================================================*/
