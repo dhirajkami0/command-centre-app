@@ -803,25 +803,17 @@ StaffRouter.registerRoutes = function () {
     StaffRouter.registerWithLog(INTENTS.STAFF_BEAT, GG.queryStaffBeat);
 
     /*----------------------------------
-      LOCATION
+      LOCATION & GPS
     ----------------------------------*/
     StaffRouter.registerWithLog(INTENTS.STAFF_LOCATION, GG.queryStaffLocation);
- /*----------------------------------
-  Nearby Staff
-----------------------------------*/
-
-StaffRouter.registerWithLog(
-
-    INTENTS.STAFF_NEARBY,
-
-    GG.queryNearbyStaff
-
-);
-
+    StaffRouter.registerWithLog(INTENTS.STAFF_NEARBY, GG.queryNearbyStaff);
     StaffRouter.registerWithLog(INTENTS.STAFF_GPS, GG.queryStaffGPS);
+    StaffRouter.registerWithLog(INTENTS.STAFF_SPEED, GG.queryStaffSpeed);
+    StaffRouter.registerWithLog(INTENTS.STAFF_HEADING, GG.queryStaffHeading);
+    StaffRouter.registerWithLog(INTENTS.STAFF_ACCURACY, GG.queryStaffAccuracy);
 
     /*----------------------------------
-      DUTY
+      DUTY & ASSIGNMENT
     ----------------------------------*/
     StaffRouter.registerWithLog(INTENTS.STAFF_DUTY, GG.queryStaffDuty);
     StaffRouter.registerWithLog(INTENTS.STAFF_DUTY_STATUS, GG.queryStaffDutyStatus);
@@ -831,22 +823,17 @@ StaffRouter.registerWithLog(
     StaffRouter.registerWithLog(INTENTS.STAFF_DUTY_ACTIVE, GG.queryStaffDutyActive);
     StaffRouter.registerWithLog(INTENTS.STAFF_LAST_DUTY, GG.queryStaffLastDuty);
     StaffRouter.registerWithLog(INTENTS.STAFF_ASSIGNMENT, GG.queryStaffAssignment);
+    StaffRouter.registerWithLog(INTENTS.STAFF_DUTY_SUMMARY, GG.queryDutySummary);
 
     /*----------------------------------
       TEAM
     ----------------------------------*/
     StaffRouter.registerWithLog(INTENTS.STAFF_TEAM, GG.queryStaffTeam);
     StaffRouter.registerWithLog(INTENTS.STAFF_LEADER, GG.queryStaffLeader);
+    StaffRouter.registerWithLog(INTENTS.STAFF_TEAM_LEADER_LIST, GG.queryTeamLeaderList);
 
     /*----------------------------------
-      GPS
-    ----------------------------------*/
-    StaffRouter.registerWithLog(INTENTS.STAFF_SPEED, GG.queryStaffSpeed);
-    StaffRouter.registerWithLog(INTENTS.STAFF_HEADING, GG.queryStaffHeading);
-    StaffRouter.registerWithLog(INTENTS.STAFF_ACCURACY, GG.queryStaffAccuracy);
-
-    /*----------------------------------
-      ANALYTICS
+      ANALYTICS & PATROL
     ----------------------------------*/
     StaffRouter.registerWithLog(INTENTS.STAFF_ANALYTICS, GG.queryStaffAnalytics);
     StaffRouter.registerWithLog(INTENTS.STAFF_DISTANCE, GG.queryStaffDistance);
@@ -854,185 +841,37 @@ StaffRouter.registerWithLog(
     StaffRouter.registerWithLog(INTENTS.STAFF_PATROL_START, GG.queryStaffPatrolStart);
     StaffRouter.registerWithLog(INTENTS.STAFF_PATROL_END, GG.queryStaffPatrolEnd);
     StaffRouter.registerWithLog(INTENTS.STAFF_PATROL_DURATION, GG.queryStaffPatrolDuration);
-/*----------------------------------
-  Aggregate
-----------------------------------*/
 
-StaffRouter.register(
+    /*----------------------------------
+      COUNTS
+    ----------------------------------*/
+    StaffRouter.registerWithLog(INTENTS.STAFF_COUNT, GG.queryStaffCount);
+    StaffRouter.registerWithLog(INTENTS.STAFF_ACTIVE_COUNT, GG.queryActiveStaffCount);
+    StaffRouter.registerWithLog(INTENTS.STAFF_CIRCLE_COUNT, GG.queryCircleCount);
+    StaffRouter.registerWithLog(INTENTS.STAFF_DIVISION_COUNT, GG.queryDivisionCount);
+    StaffRouter.registerWithLog(INTENTS.STAFF_RANGE_COUNT, GG.queryRangeCount);
+    StaffRouter.registerWithLog(INTENTS.STAFF_BEAT_COUNT, GG.queryBeatCount);
+    StaffRouter.registerWithLog(INTENTS.STAFF_DESIGNATION_COUNT, GG.queryDesignationCount);
 
-    INTENTS.STAFF_COUNT,
+    /*----------------------------------
+      DIRECTORIES & LISTS
+    ----------------------------------*/
+    StaffRouter.registerWithLog(INTENTS.STAFF_CIRCLE_DIRECTORY, GG.queryCircleDirectory);
+    StaffRouter.registerWithLog(INTENTS.STAFF_DIVISION_DIRECTORY, GG.queryDivisionDirectory);
+    StaffRouter.registerWithLog(INTENTS.STAFF_RANGE_DIRECTORY, GG.queryRangeDirectory);
+    StaffRouter.registerWithLog(INTENTS.STAFF_BEAT_DIRECTORY, GG.queryBeatDirectory);
+    StaffRouter.registerWithLog(INTENTS.STAFF_DESIGNATION_DIRECTORY, GG.queryDesignationDirectory);
+    StaffRouter.registerWithLog(INTENTS.STAFF_ACTIVE_LIST, GG.queryActiveStaffList);
+    StaffRouter.registerWithLog(INTENTS.STAFF_INACTIVE_LIST, GG.queryInactiveStaffList);
+    StaffRouter.registerWithLog(INTENTS.STAFF_MOVING, GG.queryMovingStaff);
+    StaffRouter.registerWithLog(INTENTS.STAFF_STATIONARY, GG.queryStationaryStaff);
 
-    GG.queryStaffCount
-
-);
-
-StaffRouter.register(
-
-    INTENTS.STAFF_DESIGNATION_COUNT,
-
-    GG.queryDesignationCount
-
-);
-
-StaffRouter.register(
-
-    INTENTS.STAFF_DIRECTORY,
-
-    GG.queryStaffDirectory
-
-);
-
-StaffRouter.register(
-
-    INTENTS.STAFF_CIRCLE_DIRECTORY,
-
-    GG.queryCircleDirectory
-
-);
-
-StaffRouter.register(
-
-    INTENTS.STAFF_DIVISION_DIRECTORY,
-
-    GG.queryDivisionDirectory
-
-);
-
-StaffRouter.register(
-
-    INTENTS.STAFF_RANGE_DIRECTORY,
-
-    GG.queryRangeDirectory
-
-);
-
-StaffRouter.register(
-
-    INTENTS.STAFF_BEAT_DIRECTORY,
-
-    GG.queryBeatDirectory
-
-);
-
-StaffRouter.register(
-
-    INTENTS.STAFF_DESIGNATION_DIRECTORY,
-
-    GG.queryDesignationDirectory
-
-);
-
-StaffRouter.register(
-
-    INTENTS.ACTIVE_STAFF_LIST,
-
-    GG.queryActiveStaffList
-
-);
-
-StaffRouter.register(
-
-    INTENTS.INACTIVE_STAFF_LIST,
-
-    GG.queryInactiveStaffList
-
-);
-
-StaffRouter.register(
-
-    INTENTS.MOVING_STAFF,
-
-    GG.queryMovingStaff
-
-);
-
-StaffRouter.register(
-
-    INTENTS.STATIONARY_STAFF,
-
-    GG.queryStationaryStaff
-
-);
-
-StaffRouter.register(
-
-    INTENTS.TEAM_LEADER_LIST,
-
-    GG.queryTeamLeaderList
-
-);
     /*----------------------------------
       SUMMARY
     ----------------------------------*/
     StaffRouter.registerWithLog(INTENTS.STAFF_SUMMARY, GG.queryStaffSummary);
     StaffRouter.registerWithLog(INTENTS.STAFF_JURISDICTION_SUMMARY, GG.queryJurisdictionSummary);
     StaffRouter.registerWithLog(INTENTS.STAFF_DESIGNATION_SUMMARY, GG.queryDesignationSummary);
-    StaffRouter.registerWithLog(INTENTS.STAFF_CIRCLE_DIRECTORY, GG.queryCircleDirectory);
-    StaffRouter.registerWithLog(INTENTS.STAFF_DIVISION_DIRECTORY, GG.queryDivisionDirectory);
-    StaffRouter.registerWithLog(INTENTS.STAFF_RANGE_DIRECTORY, GG.queryRangeDirectory);
-    StaffRouter.registerWithLog(INTENTS.STAFF_BEAT_DIRECTORY, GG.queryBeatDirectory);
-    StaffRouter.registerWithLog(INTENTS.STAFF_DESIGNATION_DIRECTORY, GG.queryDesignationDirectory);
-/*----------------------------------
-  COUNTS
-----------------------------------*/
-
-StaffRouter.registerWithLog(
-
-    INTENTS.STAFF_COUNT,
-
-    GG.queryStaffCount
-
-);
-
-StaffRouter.registerWithLog(
-
-    INTENTS.STAFF_CIRCLE_COUNT,
-
-    GG.queryCircleCount
-
-);
-
-StaffRouter.registerWithLog(
-
-    INTENTS.STAFF_DIVISION_COUNT,
-
-    GG.queryDivisionCount
-
-);
-
-StaffRouter.registerWithLog(
-
-    INTENTS.STAFF_RANGE_COUNT,
-
-    GG.queryRangeCount
-
-);
-
-StaffRouter.registerWithLog(
-
-    INTENTS.STAFF_BEAT_COUNT,
-
-    GG.queryBeatCount
-
-);
-
-StaffRouter.registerWithLog(
-
-    INTENTS.STAFF_DESIGNATION_COUNT,
-
-    GG.queryDesignationCount
-
-);
-    /*----------------------------------
-      STATUS
-    ----------------------------------*/
-    StaffRouter.registerWithLog(INTENTS.STAFF_ACTIVE_COUNT, GG.queryActiveStaffCount);
-    StaffRouter.registerWithLog(INTENTS.STAFF_ACTIVE_LIST, GG.queryActiveStaffList);
-    StaffRouter.registerWithLog(INTENTS.STAFF_INACTIVE_LIST, GG.queryInactiveStaffList);
-    StaffRouter.registerWithLog(INTENTS.STAFF_DUTY_SUMMARY, GG.queryDutySummary);
-    StaffRouter.registerWithLog(INTENTS.STAFF_TEAM_LEADER_LIST, GG.queryTeamLeaderList);
-    StaffRouter.registerWithLog(INTENTS.STAFF_MOVING, GG.queryMovingStaff);
-    StaffRouter.registerWithLog(INTENTS.STAFF_STATIONARY, GG.queryStationaryStaff);
 
     /*----------------------------------
       CONTROL ROOM
@@ -1043,49 +882,15 @@ StaffRouter.registerWithLog(
     /*----------------------------------
       TABLE LOG
     ----------------------------------*/
-
-    console.group(
-
-        "📋 STAFF ROUTER TABLE"
-
-    );
-
-    console.log(
-
-        "Total Routes:",
-
-        StaffRouter.routes.size
-
-    );
-
-    StaffRouter.routes.forEach(
-
-        function (
-
-            handler,
-
-            intent
-
-        ) {
-
-            console.log(
-
-                intent,
-
-                "→",
-
-                handler
-
-                    ? handler.name
-
-                    : "<null>"
-
-            );
-
-        }
-
-    );
-
+    console.group("📋 STAFF ROUTER TABLE");
+    console.log("Total Routes:", StaffRouter.routes.size);
+    StaffRouter.routes.forEach(function (handler, intent) {
+        console.log(
+            intent,
+            "→",
+            handler ? handler.name : "<null>"
+        );
+    });
     console.groupEnd();
 };
 
