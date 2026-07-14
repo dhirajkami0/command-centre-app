@@ -3941,7 +3941,58 @@ StaffIntent.detect = function (
 StaffIntent.detectSingleVsAggregate(
     result
 );
+/*----------------------------------
+  Nearby (Single / Self / Aggregate)
+----------------------------------*/
 
+result =
+    StaffIntent.detectNearbyIntent(
+        result
+    );
+
+if (
+
+    result.intent ===
+
+    StaffConstants.INTENTS.STAFF_NEARBY
+
+) {
+
+    console.timeEnd(
+        "detectStaffIntent"
+    );
+
+    console.log(
+        "👤 Final Intent:",
+        result.intent
+    );
+
+    StaffIntent.calculateConfidence(
+        result
+    );
+
+    result.requiresAI =
+        StaffIntent.needsAI(
+            result
+        );
+
+    result.metadata.executionTime =
+        Date.now() -
+        started;
+
+    StaffIntent.lastResult =
+        result;
+
+    StaffIntent.setCachedResult(
+        query,
+        result
+    );
+
+    console.groupEnd();
+
+    return result;
+
+}
 console.log(
 
     "👤 Scope:",
@@ -3999,10 +4050,7 @@ if (
     /*----------------------------------
       Single Staff
     ----------------------------------*/
-result =
-    StaffIntent.detectNearbyIntent(
-        result
-    );
+
 
     /*----------------------------------
       Profile
