@@ -614,56 +614,33 @@ StaffQuery.resolveReferenceStaff = function (
     return StaffQuery.getCurrentUser();
 
 };
-    StaffQuery.getCurrentUser = function () {
-
-/*----------------------------------
-  Current User
-----------------------------------*/
-
-const profile =
-
-    window.userProfile ||
-
-    {};
-
-if (
-
-    !profile.cleanName
-
-) {
-
-    throw new Error(
-
-        "Current user unavailable."
-
-    );
-
-}
+StaffQuery.getCurrentUser = function () {
 
     const profile =
 
-        GG.StaffHydrator
-            .getHydratedStaff(
+        window.userProfile ||
 
-                GG.Profile.cleanName
-
-            );
+        {};
 
     if (
 
-        !profile
+        !profile.cleanName
 
     ) {
 
         throw new Error(
 
-            "Unable to locate current user."
+            "Current user unavailable."
 
         );
 
     }
 
-    return profile;
+    return StaffEntities.get(
+
+        profile.cleanName
+
+    );
 
 };
  /*=========================================================
