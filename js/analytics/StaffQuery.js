@@ -616,19 +616,29 @@ StaffQuery.resolveReferenceStaff = function (
 };
     StaffQuery.getCurrentUser = function () {
 
-    if (
+/*----------------------------------
+  Current User
+----------------------------------*/
 
-        !GG.Profile ||
+const profile =
 
-        !GG.Profile.cleanName
+    window.userProfile ||
 
-    ) {
+    {};
 
-        throw new Error(
-            "Current user unavailable."
-        );
+if (
 
-    }
+    !profile.cleanName
+
+) {
+
+    throw new Error(
+
+        "Current user unavailable."
+
+    );
+
+}
 
     const profile =
 
