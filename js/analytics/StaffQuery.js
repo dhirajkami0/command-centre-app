@@ -560,7 +560,102 @@ StaffQuery.hasCache = function (
     );
 
 };
+StaffQuery.resolveReferenceStaff = function (
+    request
+) {
 
+    request = request || {};
+
+    const parameters =
+        request.parameters || {};
+
+    const entities =
+        request.entities || {};
+
+    /*----------------------------------
+      1. Named Staff
+    ----------------------------------*/
+
+    if (
+
+        Array.isArray(
+            entities.staff
+        ) &&
+
+        entities.staff.length > 0
+
+    ) {
+
+        return StaffQuery.ensureSingleStaff(
+            request
+        );
+
+    }
+
+    /*----------------------------------
+      2. SELF
+    ----------------------------------*/
+
+    if (
+
+        parameters.reference ===
+        "SELF"
+
+    ) {
+
+        return StaffQuery.getCurrentUser();
+
+    }
+
+    /*----------------------------------
+      3. AUTO
+    ----------------------------------*/
+
+    return StaffQuery.getCurrentUser();
+
+};
+    StaffQuery.getCurrentUser = function () {
+
+    if (
+
+        !GG.Profile ||
+
+        !GG.Profile.cleanName
+
+    ) {
+
+        throw new Error(
+            "Current user unavailable."
+        );
+
+    }
+
+    const profile =
+
+        GG.StaffHydrator
+            .getHydratedStaff(
+
+                GG.Profile.cleanName
+
+            );
+
+    if (
+
+        !profile
+
+    ) {
+
+        throw new Error(
+
+            "Unable to locate current user."
+
+        );
+
+    }
+
+    return profile;
+
+};
  /*=========================================================
  EXECUTE QUERY
 =========================================================*/
@@ -1203,13 +1298,10 @@ GG.queryNearbyStaff = async function (
               Reference Staff
             ----------------------------------*/
 
-            const reference =
-
-                StaffQuery.ensureSingleStaff(
-
-                    request
-
-                );
+const reference =
+    StaffQuery.resolveReferenceStaff(
+        request
+    );
 
             /*----------------------------------
               Reference Coordinates
