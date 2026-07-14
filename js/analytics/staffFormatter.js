@@ -10702,7 +10702,7 @@ StaffFormatter.formatDesignationCount = function (
   CIRCLE COUNT
 =========================================================*/
 
-StaffFormatter.formatCircleCount = function (
+StaffFormatter.formatStaffCircleCount = function (
 
     response
 
