@@ -5059,9 +5059,9 @@ StaffIntent.detectNearbyIntent = function (
 
         )
 
-        .trim()
+            .trim()
 
-        .toUpperCase();
+            .toUpperCase();
 
     const parameters =
 
@@ -5082,20 +5082,18 @@ StaffIntent.detectNearbyIntent = function (
             : [];
 
     /*----------------------------------
-      Nearby Detection
+      Nearby Keywords
     ----------------------------------*/
 
     const hasNearby =
 
-        /\bNEAR\b/.test(query) ||
+        StaffIntent.hasKeyword(
 
-        /\bNEARBY\b/.test(query) ||
+            query,
 
-        /\bNEAREST\b/.test(query) ||
+            StaffConstants.KEYWORDS.STAFF_NEARBY
 
-        /\bCLOSEST\b/.test(query) ||
-
-        /\bAROUND\b/.test(query);
+        );
 
     if (
 
@@ -5108,7 +5106,7 @@ StaffIntent.detectNearbyIntent = function (
     }
 
     /*----------------------------------
-      Nearby Intent
+      Intent
     ----------------------------------*/
 
     result.intent =
@@ -5120,7 +5118,7 @@ StaffIntent.detectNearbyIntent = function (
         0.99;
 
     /*----------------------------------
-      Reference Staff
+      Reference = Named Staff
     ----------------------------------*/
 
     if (
@@ -5133,25 +5131,53 @@ StaffIntent.detectNearbyIntent = function (
 
             true;
 
+        parameters.reference =
+
+            "STAFF";
+
     }
 
     /*----------------------------------
-      Logged-in User
+      Reference = Logged-in User
     ----------------------------------*/
 
     else if (
 
-        /\bME\b/.test(query) ||
+        /\bME\b/.test(
 
-        /\bMY\b/.test(query) ||
+            query
 
-        /\bMYSELF\b/.test(query) ||
+        ) ||
 
-        /\bHERE\b/.test(query) ||
+        /\bMY\b/.test(
 
-        /\bMY LOCATION\b/.test(query) ||
+            query
 
-        /\bCURRENT LOCATION\b/.test(query)
+        ) ||
+
+        /\bMYSELF\b/.test(
+
+            query
+
+        ) ||
+
+        /\bHERE\b/.test(
+
+            query
+
+        ) ||
+
+        /\bMY LOCATION\b/.test(
+
+            query
+
+        ) ||
+
+        /\bCURRENT LOCATION\b/.test(
+
+            query
+
+        )
 
     ) {
 
@@ -5162,7 +5188,7 @@ StaffIntent.detectNearbyIntent = function (
     }
 
     /*----------------------------------
-      Generic Nearby
+      Reference = Automatic
     ----------------------------------*/
 
     else {
