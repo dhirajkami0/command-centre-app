@@ -616,15 +616,15 @@ StaffQuery.resolveReferenceStaff = function (
 };
 StaffQuery.getCurrentUser = function () {
 
-    const profile =
-
-        window.userProfile ||
-
-        {};
+    /*----------------------------------
+      Logged-in User
+    ----------------------------------*/
 
     if (
 
-        !profile.cleanName
+        !window.userProfile ||
+
+        !window.userProfile.cleanName
 
     ) {
 
@@ -636,11 +636,35 @@ StaffQuery.getCurrentUser = function () {
 
     }
 
-    return StaffEntities.get(
+    /*----------------------------------
+      Runtime Hydrated Profile
+    ----------------------------------*/
 
-        profile.cleanName
+    const profile =
 
-    );
+        GreenGuardAI
+            .StaffHydrator
+            .hydrate(
+
+                window.userProfile.cleanName
+
+            );
+
+    if (
+
+        !profile
+
+    ) {
+
+        throw new Error(
+
+            "Current user not found."
+
+        );
+
+    }
+
+    return profile;
 
 };
  /*=========================================================
