@@ -4340,6 +4340,14 @@ if (
         StaffIntent.detectDesignationIntent(
             result
         );
+/*----------------------------------
+  Assignment
+----------------------------------*/
+
+result =
+    StaffIntent.detectAssignmentIntent(
+        result
+    );
 
     /*----------------------------------
       Posting
@@ -4349,14 +4357,6 @@ if (
         StaffIntent.detectPostingIntent(
             result
         );
-/*----------------------------------
-  Assignment
-----------------------------------*/
-
-result =
-    StaffIntent.detectAssignmentIntent(
-        result
-    );
 
     /*----------------------------------
       Location
