@@ -599,6 +599,10 @@ GISConstants.KEYWORDS = Object.freeze({
         "WHO IS INSIDE",
         "WHO IS WITHIN",
 
+        "WHO ARE IN",
+        "WHO ARE INSIDE",
+        "WHO ARE WITHIN",
+
         "SHOW STAFF IN",
         "SHOW STAFF INSIDE",
         "SHOW STAFF WITHIN",
@@ -618,7 +622,11 @@ GISConstants.KEYWORDS = Object.freeze({
 
         "WHICH STAFF ARE IN",
         "WHICH STAFF ARE INSIDE",
-        "WHICH STAFF ARE WITHIN"
+        "WHICH STAFF ARE WITHIN",
+
+        "WHICH STAFF IS IN",
+        "WHICH STAFF IS INSIDE",
+        "WHICH STAFF IS WITHIN"
 
     ],
 
@@ -661,11 +669,18 @@ GISConstants.KEYWORDS = Object.freeze({
 
     GIS_INSIDE: [
 
+        "IN",
         "INSIDE",
         "WITHIN",
+
         "CONTAINS",
+        "CONTAIN",
+
         "HAS",
-        "INCLUDES"
+        "HAVE",
+
+        "INCLUDES",
+        "INCLUDE"
 
     ]
 
