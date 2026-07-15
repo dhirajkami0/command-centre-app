@@ -3643,43 +3643,7 @@ StaffIntent.detectControlRoomIntent = function (
 
 };
 
- StaffIntent.detectDutyStartedIntent = function (
 
-    result
-
-) {
-
-    if (
-
-        result.intent
-
-    ) {
-
-        return result;
-
-    }
-
-    if (
-
-        StaffIntent.hasKeyword(
-
-            result,
-
-            "STAFF_DUTY_STARTED"
-
-        )
-
-    ) {
-
-        result.intent =
-
-            "staffDutyStarted";
-
-    }
-
-    return result;
-
-};
 /*=========================================================
  DETECT CONTACT INTENT
 =========================================================*/
@@ -3859,80 +3823,8 @@ StaffIntent.detectContactIntent = function (
     return result;
 
 };
- StaffIntent.detectDutyEndedIntent = function (
 
-    result
 
-) {
-
-    if (
-
-        result.intent
-
-    ) {
-
-        return result;
-
-    }
-
-    if (
-
-        StaffIntent.hasKeyword(
-
-            result,
-
-            "STAFF_DUTY_ENDED"
-
-        )
-
-    ) {
-
-        result.intent =
-
-            "staffDutyEnded";
-
-    }
-
-    return result;
-
-};
- StaffIntent.detectDutyTypeIntent = function (
-
-    result
-
-) {
-
-    if (
-
-        result.intent
-
-    ) {
-
-        return result;
-
-    }
-
-    if (
-
-        StaffIntent.hasKeyword(
-
-            result,
-
-            "STAFF_DUTY_TYPE"
-
-        )
-
-    ) {
-
-        result.intent =
-
-            "staffDutyType";
-
-    }
-
-    return result;
-
-};
  /*=========================================================
  DETECT SEARCH INTENT
 =========================================================*/
@@ -4380,20 +4272,11 @@ result =
       Duty
     ----------------------------------*/
 
-    result =
-        StaffIntent.detectDutyTypeIntent(
-            result
-        );
 
-    result =
-        StaffIntent.detectDutyStartedIntent(
-            result
-        );
 
-    result =
-        StaffIntent.detectDutyEndedIntent(
-            result
-        );
+
+
+
 
     result =
         StaffIntent.detectDutyStatusIntent(
