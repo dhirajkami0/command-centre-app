@@ -5464,25 +5464,7 @@ StaffIntent.detectStaffIntent = function (
     /*----------------------------------
       GPS
     ----------------------------------*/
-    result =
-        StaffIntent.detectGPSIntent(
-            result
-        );
-    if (
-        result.intent ===
-            INTENTS.STAFF_GPS ||
-        result.intent ===
-            INTENTS.STAFF_SPEED ||
-        result.intent ===
-            INTENTS.STAFF_HEADING ||
-        result.intent ===
-            INTENTS.STAFF_ACCURACY
-    ) {
-        debugParameters(
-            result.intent
-        );
-        return result;
-    }
+
 
     /*----------------------------------
       Patrol Analytics
