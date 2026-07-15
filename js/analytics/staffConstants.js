@@ -1544,52 +1544,33 @@ STAFF_DESIGNATION: [
 /*----------------------------------
   Permanent Posting
 ----------------------------------*/
-STAFF_POSTING: [
+/*----------------------------------
+  Official Posting
+----------------------------------*/
 
-    /*----------------------------------
-      Business Intent
-    ----------------------------------*/
+STAFF_POSTING: [
 
     "POSTING",
     "POSTED",
     "POST",
+
     "POSTED AT",
     "POSTED IN",
-
-    "CURRENT POSTING",
-    "PRESENT POSTING",
-    "PERMANENT POSTING",
-
-    "STAFF POSTING",
-    "OFFICER POSTING",
-    "EMPLOYEE POSTING",
+    "POSTED UNDER",
 
     "OFFICIAL POSTING",
-    "OFFICIAL JURISDICTION",
+    "CURRENT POSTING",
 
-    "ADMINISTRATIVE POSTING",
-    "ADMINISTRATIVE LOCATION",
+    "PERMANENT POSTING",
 
-    "POSTING DETAILS",
-    "POSTING INFORMATION",
-    "POSTING LOCATION",
-
-    "OFFICIAL DETAILS",
-    "OFFICIAL LOCATION",
-
-    "OFFICIALLY POSTED",
-    "OFFICIALLY WORKING",
-
-    "PERMANENT WORK LOCATION",
+    "OFFICIAL WORKPLACE",
     "OFFICIAL WORK LOCATION",
 
-    "OFFICIAL OFFICE",
-    "POSTING OFFICE",
-    "POSTING HQ",
+    "WORK LOCATION",
 
-    "HOME POSTING",
-    "PERMANENT POST",
-    "OFFICIAL POST",
+    "ADMINISTRATIVE POSTING",
+
+    "OFFICIALLY POSTED",
 
     "WHERE IS HE POSTED",
     "WHERE IS SHE POSTED",
@@ -1601,110 +1582,184 @@ STAFF_POSTING: [
 
     "WHERE DOES HE BELONG",
     "WHERE DOES SHE BELONG",
-    "WHERE DOES STAFF BELONG"
+    "WHERE DOES STAFF BELONG",
+
+    "BELONGS TO",
+
+    "POSTING DETAILS",
+    "POSTING INFORMATION",
+
+    "OFFICIAL DETAILS",
+
+    "HOME POSTING",
+
+    "PERMANENT POST",
+
+    "POSTING OFFICE",
+
+    "POSTING HQ"
 
 ],
 
 /*----------------------------------
-  Beat
+  Beat (Administrative)
 ----------------------------------*/
+
 STAFF_BEAT: [
-"BEAT",
-"BEETS",
-"BET",
-"BEAT AREA",
-"FOREST BEAT",
-"BEAT OFFICE",
-"BEAT NAME",
-"WHICH BEAT",
-"WHAT BEAT",
-"BEAT OF",
-"BEAT LOCATION",
-"BEAT HEADQUARTER",
-"BEAT HQ",
-"CURRENT BEAT"
+
+    "BEAT",
+
+    "FOREST BEAT",
+
+    "BEAT NAME",
+
+    "BEAT OF",
+
+    "WHICH BEAT",
+
+    "WHAT BEAT",
+
+    "POSTED BEAT",
+
+    "OFFICIAL BEAT",
+
+    "ASSIGNED BEAT",
+
+    "BELONGS TO BEAT",
+
+    "BEAT HEADQUARTER",
+
+    "BEAT HQ"
+
 ],
 
 /*----------------------------------
-  Range
+  Range (Administrative)
 ----------------------------------*/
+
 STAFF_RANGE: [
-"RANGE",
-"RNAGE",
-"RNG",
-"FOREST RANGE",
-"RANGE OFFICE",
-"RANGE NAME",
-"WHICH RANGE",
-"WHAT RANGE",
-"RANGE OF",
-"CURRENT RANGE",
-"RANGE HEADQUARTER",
-"RANGE HQ"
+
+    "RANGE",
+
+    "FOREST RANGE",
+
+    "RANGE NAME",
+
+    "RANGE OF",
+
+    "WHICH RANGE",
+
+    "WHAT RANGE",
+
+    "POSTED RANGE",
+
+    "OFFICIAL RANGE",
+
+    "ASSIGNED RANGE",
+
+    "BELONGS TO RANGE",
+
+    "RANGE OFFICE",
+
+    "RANGE HEADQUARTER",
+
+    "RANGE HQ"
+
 ],
 
 /*----------------------------------
-  Division
+  Division (Administrative)
 ----------------------------------*/
+
 STAFF_DIVISION: [
-"DIVISION",
-"DIVISON",
-"FOREST DIVISION",
-"DIVISION OFFICE",
-"DIVISION HQ",
-"DIVISION HEADQUARTER",
-"DIVISION NAME",
-"CURRENT DIVISION",
-"WHICH DIVISION",
-"WHAT DIVISION",
-"DIVISION OF"
+
+    "DIVISION",
+
+    "FOREST DIVISION",
+
+    "DIVISION NAME",
+
+    "DIVISION OF",
+
+    "WHICH DIVISION",
+
+    "WHAT DIVISION",
+
+    "POSTED DIVISION",
+
+    "OFFICIAL DIVISION",
+
+    "ASSIGNED DIVISION",
+
+    "BELONGS TO DIVISION",
+
+    "DIVISION OFFICE",
+
+    "DIVISION HEADQUARTER",
+
+    "DIVISION HQ"
+
 ],
 
 /*----------------------------------
-  Circle
+  Circle (Administrative)
 ----------------------------------*/
-STAFF_CIRCLE: [
-"CIRCLE",
-"CIRCLEE",
-"CIRLCE",
-"CRICLE",
-"CIRCLES",
-"FOREST CIRCLE",
-"CIRCLE OFFICE",
-"CIRCLE NAME",
-"WHICH CIRCLE",
-"WHAT CIRCLE",
-"CIRCLE OF",
-"BELONGS TO CIRCLE",
-"BELONG TO CIRCLE",
-"WORKING CIRCLE",
-"POSTED CIRCLE",
-"CURRENT CIRCLE",
-"CIRCLE HEADQUARTER",
-"CIRCLE HQ"
-],
 
-STAFF_COMPARTMENT: [
-"COMPARTMENT"
+STAFF_CIRCLE: [
+
+    "CIRCLE",
+
+    "FOREST CIRCLE",
+
+    "CIRCLE NAME",
+
+    "CIRCLE OF",
+
+    "WHICH CIRCLE",
+
+    "WHAT CIRCLE",
+
+    "POSTED CIRCLE",
+
+    "OFFICIAL CIRCLE",
+
+    "ASSIGNED CIRCLE",
+
+    "BELONGS TO CIRCLE",
+
+    "CIRCLE OFFICE",
+
+    "CIRCLE HEADQUARTER",
+
+    "CIRCLE HQ"
+
 ],
 
 /*----------------------------------
   Live Location
 ----------------------------------*/
+/*----------------------------------
+  Live GPS Location Only
+----------------------------------*/
+
 STAFF_LOCATION: [
 
     /*----------------------------------
-      Primary Location
+      Primary
     ----------------------------------*/
-"LOCATE",
+
     "LOCATION",
-    "CURRENT LOCATION",
+    "LOCATE",
+
     "LIVE LOCATION",
+    "CURRENT LOCATION",
+    "PRESENT LOCATION",
+
     "REALTIME LOCATION",
     "REAL TIME LOCATION",
+
     "LATEST LOCATION",
     "LAST LOCATION",
-    "PRESENT LOCATION",
 
     /*----------------------------------
       Natural Questions
@@ -1713,181 +1768,132 @@ STAFF_LOCATION: [
     "WHERE IS",
     "WHERE IS NOW",
     "WHERE IS CURRENTLY",
-    "WHERE IS HE",
-    "WHERE IS SHE",
-    "WHERE ARE THEY",
+
+    "WHERE IS HE NOW",
+    "WHERE IS SHE NOW",
+    "WHERE ARE THEY NOW",
+
     "WHERE CAN I FIND",
     "WHERE CAN WE FIND",
-    "WHERE LOCATED",
-    "WHERE POSTED NOW",
+
+    "CURRENTLY WHERE IS",
 
     /*----------------------------------
-      Current Position
+      GPS
+    ----------------------------------*/
+
+    "GPS",
+    "CURRENT GPS",
+    "LIVE GPS",
+
+    "GPS LOCATION",
+    "GPS POSITION",
+
+    "GPS COORDINATE",
+    "GPS COORDINATES",
+
+    "CURRENT COORDINATES",
+
+    "LATITUDE",
+    "LONGITUDE",
+
+    "LAT",
+    "LON",
+    "LONG",
+
+    "LAT LONG",
+    "LAT LON",
+
+    "COORDINATE",
+    "COORDINATES",
+
+    "MAP POINT",
+
+    "EXACT LOCATION",
+    "EXACT POSITION",
+
+    /*----------------------------------
+      Position
     ----------------------------------*/
 
     "CURRENT POSITION",
+    "LIVE POSITION",
     "PRESENT POSITION",
+
     "CURRENT PLACE",
-    "PRESENT PLACE",
     "CURRENT SPOT",
     "CURRENT POINT",
-"GPS",
-"GPS LOCATION",
-"GPS POSITION",
-"GPS COORDINATES",
-"GPS COORDINATE",
-"COORDINATE",
-"COORDINATES",
-"LOCATION COORDINATES",
-"MAP COORDINATES",
-"GEO COORDINATES",
-"GEOLOCATION",
-"GEO LOCATION",
-"LATITUDE",
-"LONGITUDE",
-"LAT",
-"LON",
-"LONG",
-"LAT LONG",
-"LAT LON",
-"POSITION",
-"EXACT LOCATION",
-"EXACT POSITION",
-"MAP POINT",
-"CURRENT GPS",
-"CURRENT COORDINATES",
-"CURRENT LATITUDE",
-"CURRENT LONGITUDE",
+
     /*----------------------------------
       Last Known
     ----------------------------------*/
 
+    "LAST SEEN",
+
+    "LAST LOCATION",
+
     "LAST KNOWN LOCATION",
     "LAST KNOWN POSITION",
-    "LAST KNOWN PLACE",
-    "LAST SEEN",
-    "LAST SEEN LOCATION",
+
     "LAST REPORTED LOCATION",
     "LAST REPORTED POSITION",
 
     /*----------------------------------
-      Live Tracking
+      Tracking
     ----------------------------------*/
 
-    "LIVE POSITION",
-    "LIVE POSITION NOW",
-    "LIVE TRACK",
+    "TRACK",
+
     "TRACK LOCATION",
+
     "TRACK POSITION",
+
+    "LIVE TRACK",
+
     "CURRENT TRACK",
 
+    "TRACK STAFF",
+
     /*----------------------------------
-      Geographic
+      Explicit Spatial Questions
     ----------------------------------*/
 
-    "WHICH LOCATION",
-    "WHICH PLACE",
-    "WHICH POSITION",
-    "WHICH AREA",
+    "WHICH COMPARTMENT NOW",
+
     "WHICH BEAT NOW",
+
     "WHICH RANGE NOW",
-/*----------------------------------
-  Business Location
-----------------------------------*/
 
-"WHICH COMPARTMENT",
-"WHICH COMPARTMENT IS",
-"WHICH COMPARTMENT IS IN",
-"WHICH COMPARTMENT IS INSIDE",
-"WHICH COMPARTMENT IS WITHIN",
+    "WHICH DIVISION NOW",
 
-"WHICH BEAT",
-"WHICH BEAT IS",
-"WHICH BEAT IS IN",
-"WHICH BEAT IS INSIDE",
-"WHICH BEAT IS WITHIN",
-"WHICH BEAT NOW",
+    "CURRENT COMPARTMENT",
 
-"WHICH RANGE",
-"WHICH RANGE IS",
-"WHICH RANGE IS IN",
-"WHICH RANGE IS INSIDE",
-"WHICH RANGE IS WITHIN",
-"WHICH RANGE NOW",
+    "CURRENT BEAT",
 
-"WHICH DIVISION",
-"WHICH DIVISION IS",
-"WHICH DIVISION IS IN",
-"WHICH DIVISION IS INSIDE",
-"WHICH DIVISION IS WITHIN",
+    "CURRENT RANGE",
 
-"WHICH AREA",
-"WHICH AREA IS IN",
-"WHICH AREA IS INSIDE",
-"WHICH AREA IS WITHIN",
+    "CURRENT DIVISION",
 
-"WHICH PLACE",
-"WHICH PLACE IS IN",
-"WHICH PLACE IS INSIDE",
-"WHICH PLACE IS WITHIN",
+    "LIVE COMPARTMENT",
 
-"WHICH LOCATION",
-"WHICH LOCATION IS IN",
-"WHICH LOCATION IS INSIDE",
-"WHICH LOCATION IS WITHIN",
+    "LIVE BEAT",
 
-"IN WHICH COMPARTMENT",
-"IN WHICH BEAT",
-"IN WHICH RANGE",
-"IN WHICH DIVISION",
-"IN WHICH AREA",
-"IN WHICH PLACE",
-"IN WHICH LOCATION",
+    "LIVE RANGE",
 
-"INSIDE WHICH COMPARTMENT",
-"INSIDE WHICH BEAT",
-"INSIDE WHICH RANGE",
-"INSIDE WHICH DIVISION",
-"INSIDE WHICH AREA",
-"INSIDE WHICH PLACE",
-"INSIDE WHICH LOCATION",
+    "LIVE DIVISION",
 
-"WITHIN WHICH COMPARTMENT",
-"WITHIN WHICH BEAT",
-"WITHIN WHICH RANGE",
-"WITHIN WHICH DIVISION",
-"WITHIN WHICH AREA",
-"WITHIN WHICH PLACE",
-"WITHIN WHICH LOCATION"
-],
-/*----------------------------------
-  Duty
-----------------------------------*/
-STAFF_DUTY: [
-"DUTY",
-"ON DUTY",
-"OFF DUTY",
-"DUTY DETAILS",
-"DUTY INFORMATION",
-"CURRENT DUTY",
-"TODAY DUTY",
-"TODAYS DUTY",
-"PRESENT DUTY",
-"ACTIVE DUTY",
-"LAST DUTY",
-"PATROLLING DUTY",
-"PATROL STATUS",
-"PATROL DETAILS",
-"PATROL INFORMATION",
-"SHIFT",
-"SHIFT DUTY",
-"FIELD DUTY",
-"FIELD WORK",
-"FIELD ASSIGNMENT",
-"OPERATION",
-"CURRENT OPERATION",
-"MISSION",
-"CURRENT MISSION"
+    "CURRENTLY IN",
+
+    "CURRENTLY INSIDE",
+
+    "CURRENTLY WITHIN",
+
+    "NOW IN",
+
+    "NOW INSIDE",
+
+    "NOW WITHIN"
+
 ],
 
 STAFF_DUTY_STARTED: [
@@ -2044,26 +2050,122 @@ STAFF_DUTY_TYPE: [
 "SPECIAL DUTY"
 ],
 
+/*----------------------------------
+  Operational Assignment
+----------------------------------*/
+
 STAFF_ASSIGNMENT: [
-"ASSIGNED",
-"ASSIGNMENT",
-"ASSIGNED AREA",
-"ASSIGNED COMPARTMENT",
-"ASSIGNED LOCATION",
-"ASSIGNED PLACE",
-"DEPLOYED",
-"DEPLOYMENT",
-"DEPLOYED AREA",
-"DEPLOYED LOCATION",
-"WORKING AREA",
-"WORK AREA",
-"WORKING IN",
-"WHICH AREA",
-"WHICH COMPARTMENT",
-"WHERE DEPLOYED",
-"WHERE ASSIGNED",
-"DUTY AREA",
-"AREA"
+
+    /*----------------------------------
+      Assignment
+    ----------------------------------*/
+
+    "ASSIGNED",
+    "ASSIGNMENT",
+    "ASSIGNED DUTY",
+    "CURRENT ASSIGNMENT",
+    "TODAY ASSIGNMENT",
+    "ACTIVE ASSIGNMENT",
+
+    /*----------------------------------
+      Deputation
+    ----------------------------------*/
+
+    "DEPUTED",
+    "DEPUTATION",
+    "WHERE DEPUTED",
+    "WHERE IS DEPUTED",
+    "WHERE WAS DEPUTED",
+    "WHERE CURRENTLY DEPUTED",
+
+    /*----------------------------------
+      Assignment Location
+    ----------------------------------*/
+
+    "WHERE ASSIGNED",
+    "WHERE IS ASSIGNED",
+    "ASSIGNED AREA",
+    "ASSIGNED LOCATION",
+    "ASSIGNED PLACE",
+    "ASSIGNED COMPARTMENT",
+    "ASSIGNED BEAT",
+    "ASSIGNED RANGE",
+    "ASSIGNED DIVISION",
+
+    /*----------------------------------
+      Duty Area
+    ----------------------------------*/
+
+    "DUTY AREA",
+    "DUTY LOCATION",
+    "DUTY COMPARTMENT",
+    "DUTY BEAT",
+    "DUTY RANGE",
+    "DUTY DIVISION",
+
+    /*----------------------------------
+      Deployment
+    ----------------------------------*/
+
+    "DEPLOYED",
+    "DEPLOYMENT",
+    "DEPLOYED AREA",
+    "DEPLOYED LOCATION",
+    "DEPLOYED COMPARTMENT",
+    "DEPLOYED BEAT",
+    "DEPLOYED RANGE",
+    "DEPLOYED DIVISION",
+
+    /*----------------------------------
+      Work Area
+    ----------------------------------*/
+
+    "WORK AREA",
+    "WORK LOCATION",
+    "WORK PLACE",
+    "WORKING AREA",
+    "WORKING LOCATION",
+    "WORKING IN",
+    "CURRENT WORK AREA",
+
+    /*----------------------------------
+      Compartment Queries
+    ----------------------------------*/
+
+    "WHICH COMPARTMENT",
+    "WHICH COMPARTMENT ASSIGNED",
+    "WHICH COMPARTMENT DEPLOYED",
+    "IN WHICH COMPARTMENT",
+
+    /*----------------------------------
+      Duty Mode
+    ----------------------------------*/
+
+    "DUTY TYPE",
+    "TYPE OF DUTY",
+    "WHAT IS DUTY TYPE",
+    "WHICH DUTY",
+    "WHAT DUTY",
+
+    "DUTY MODE",
+    "WHAT IS DUTY MODE",
+    "WHICH DUTY MODE",
+
+    "PATROL TYPE",
+    "PATROL MODE",
+    "WORK MODE",
+    "FIELD DUTY",
+
+    /*----------------------------------
+      Operational Queries
+    ----------------------------------*/
+
+    "CURRENT TASK",
+    "CURRENT OPERATION",
+    "CURRENT MISSION",
+    "CURRENT DEPLOYMENT",
+    "CURRENT DUTY LOCATION",
+    "CURRENT DUTY AREA"
 ],
 
 WHO_IS_PATROLLING: [
