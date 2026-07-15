@@ -807,7 +807,7 @@ StaffRouter.registerRoutes = function () {
     ----------------------------------*/
     StaffRouter.registerWithLog(INTENTS.STAFF_LOCATION, GG.queryStaffLocation);
     StaffRouter.registerWithLog(INTENTS.STAFF_NEARBY, GG.queryNearbyStaff);
-    StaffRouter.registerWithLog(INTENTS.STAFF_GPS, GG.queryStaffGPS);
+    
     StaffRouter.registerWithLog(INTENTS.STAFF_SPEED, GG.queryStaffSpeed);
     StaffRouter.registerWithLog(INTENTS.STAFF_HEADING, GG.queryStaffHeading);
     StaffRouter.registerWithLog(INTENTS.STAFF_ACCURACY, GG.queryStaffAccuracy);
