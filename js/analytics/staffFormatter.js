@@ -5142,8 +5142,11 @@ StaffFormatter.formatDuty = function (
  FORMAT DUTY STATUS
 =========================================================*/
 
-StaffFormatter.formatStaffDutyStatus
- = function (
+/*=========================================================
+ FORMAT DUTY STATUS
+=========================================================*/
+
+StaffFormatter.formatStaffDutyStatus = function (
 
     response
 
@@ -5195,6 +5198,12 @@ StaffFormatter.formatStaffDutyStatus
 
         {};
 
+    const posting =
+
+        profile.posting ||
+
+        {};
+
     const assignment =
 
         profile.assignment ||
@@ -5209,11 +5218,103 @@ StaffFormatter.formatStaffDutyStatus
 
         identity.name ||
 
-        identity.rawName ||
-
         identity.cleanName ||
 
         "-";
+
+    /*----------------------------------
+      Duty
+    ----------------------------------*/
+
+    const dutyActive =
+
+        assignment.dutyActive === true;
+
+    const dutyStatus =
+
+        dutyActive
+
+            ? "YES"
+
+            : "NO";
+
+    const dutyType =
+
+        assignment.dutyType ||
+
+        "-";
+
+    /*----------------------------------
+      Assignment
+    ----------------------------------*/
+
+    const assignedCompartment =
+
+        assignment.compartment ||
+
+        assignment.assignedCompartment ||
+
+        "-";
+
+    const assignedBeat =
+
+        assignment.beat ||
+
+        posting.beat ||
+
+        "-";
+
+    const assignedRange =
+
+        assignment.range ||
+
+        posting.range ||
+
+        "-";
+
+    const assignedDivision =
+
+        assignment.division ||
+
+        posting.division ||
+
+        "-";
+
+    const assignedTo =
+
+        assignedCompartment !== "-"
+
+            ? assignedCompartment
+
+            : assignedBeat !== "-"
+
+            ? assignedBeat
+
+            : assignedRange !== "-"
+
+            ? assignedRange
+
+            : assignedDivision;
+
+    /*----------------------------------
+      Business Sentence
+    ----------------------------------*/
+
+    const sentence =
+
+        dutyActive
+
+        ?
+
+        displayName +
+
+        " is currently ON DUTY."
+
+        :
+
+        displayName +
+
+        " is currently OFF DUTY.";
 
     /*----------------------------------
       Markdown
@@ -5221,45 +5322,39 @@ StaffFormatter.formatStaffDutyStatus
 
     result.markdown = [
 
-        "# ✅ DUTY STATUS",
+        "# 🚓 DUTY STATUS",
 
         "",
 
-        "**Name:** " +
+        sentence,
 
-            displayName,
+        "",
 
-        "**Designation:** " +
+        "Duty Active : " +
 
-            (
+        dutyStatus,
 
-                identity.designation ||
+        "Duty Type   : " +
 
-                "-"
+        dutyType,
 
-            ),
+        "Assigned To : " +
 
-        "**Status:** " +
+        assignedTo,
 
-            (
+        "",
 
-                assignment.status ||
+        "Beat        : " +
 
-                "-"
+        assignedBeat,
 
-            ),
+        "Range       : " +
 
-        "**Duty Active:** " +
+        assignedRange,
 
-            (
+        "Division    : " +
 
-                assignment.dutyActive
-
-                    ? "YES"
-
-                    : "NO"
-
-            )
+        assignedDivision
 
     ].join(
 
@@ -5293,17 +5388,33 @@ StaffFormatter.formatStaffDutyStatus
 
                 "",
 
-            status:
-
-                assignment.status ||
-
-                "",
-
             dutyActive:
 
-                assignment.dutyActive ??
+                dutyActive,
 
-                false
+            dutyStatus:
+
+                dutyStatus,
+
+            dutyType:
+
+                dutyType,
+
+            assignedTo:
+
+                assignedTo,
+
+            beat:
+
+                assignedBeat,
+
+            range:
+
+                assignedRange,
+
+            division:
+
+                assignedDivision
 
         }
 
@@ -5331,17 +5442,33 @@ StaffFormatter.formatStaffDutyStatus
 
                 "",
 
-            status:
-
-                assignment.status ||
-
-                "",
-
             dutyActive:
 
-                assignment.dutyActive ??
+                dutyActive,
 
-                false
+            dutyStatus:
+
+                dutyStatus,
+
+            dutyType:
+
+                dutyType,
+
+            assignedTo:
+
+                assignedTo,
+
+            beat:
+
+                assignedBeat,
+
+            range:
+
+                assignedRange,
+
+            division:
+
+                assignedDivision
 
         }
 
