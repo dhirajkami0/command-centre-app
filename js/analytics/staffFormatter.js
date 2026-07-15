@@ -3753,9 +3753,9 @@ StaffFormatter.formatStaffPosting = function (
 StaffFormatter.formatStaffLocation = function (
     response
 ) {
-    const view =
-        response.parameters?.locationView ||
-        "FULL";
+    const type =
+    response.parameters?.locationType ||
+    "FULL";
 
     const result =
         StaffFormatter.createResponse(
@@ -3894,9 +3894,9 @@ StaffFormatter.formatStaffLocation = function (
       Markdown
     ----------------------------------*/
 
-    switch (
-        view
-    ) {
+  switch (
+    type
+){
 case "CURRENT":
 
     result.markdown = [
@@ -3944,7 +3944,78 @@ case "CURRENT":
         case "LAST_SEEN":
             result.markdown = ["# 📍 LAST SEEN", "", businessLocation, "", "Last Seen : " + lastSeenText].join("\n");
             break;
+case "LIVE":
+    result.markdown = [
+    "# 📍 LIVE LOCATION",
+    "",
+    businessLocation
+].join("\n");
 
+break;
+    case "TRACK":
+    result.markdown = [
+    "# 📍 LIVE TRACK",
+    "",
+    businessLocation
+].join("\n");
+
+break;
+    case "AREA":
+    result.markdown = [
+    "# 📍 CURRENT AREA",
+    "",
+    displayName +
+    " is currently in " +
+    (
+        spatial.compartment ||
+        "-"
+    ) +
+    "."
+].join("\n");
+
+break;
+    case "BEAT":
+    result.markdown = [
+    "# 📍 CURRENT BEAT",
+    "",
+    displayName +
+    " is currently in " +
+    (
+        spatial.beat ||
+        "-"
+    ) +
+    "."
+].join("\n");
+
+break;
+    case "RANGE":
+    result.markdown = [
+    "# 📍 CURRENT RANGE",
+    "",
+    displayName +
+    " is currently in " +
+    (
+        spatial.range ||
+        "-"
+    ) +
+    "."
+].join("\n");
+
+break;
+    case "DIVISION":
+    result.markdown = [
+    "# 📍 CURRENT DIVISION",
+    "",
+    displayName +
+    " is currently in " +
+    (
+        spatial.division ||
+        "-"
+    ) +
+    "."
+].join("\n");
+
+break;
         default:
             result.markdown = ["# 📍 STAFF LOCATION", "", businessLocation, "", "GPS Coordinates", "", "Latitude  : " + latitude, "Longitude : " + longitude, "", "Accuracy  : " + (gps.accuracy ?? "-") + " m", "Speed     : " + (gps.speed ?? "-") + " km/h", "Heading   : " + (gps.heading ?? "-") + "°", "", "Last Seen : " + lastSeenText].join("\n");
             break;
