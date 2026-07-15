@@ -3753,6 +3753,10 @@ StaffFormatter.formatStaffPosting = function (
 StaffFormatter.formatStaffLocation = function (
     response
 ) {
+    const view =
+        response.parameters?.locationView ||
+        "FULL";
+
     const result =
         StaffFormatter.createResponse(
             response
@@ -3811,6 +3815,42 @@ StaffFormatter.formatStaffLocation = function (
         "-";
 
     /*----------------------------------
+      Build reusable sentences
+    ----------------------------------*/
+
+    const postingPlace = [
+        posting.beat,
+        posting.range,
+        posting.division
+    ].filter(Boolean).join(", ");
+
+    const currentPlace = [
+        spatial.compartment,
+        spatial.beat
+            ? "under " +
+              spatial.beat
+            : "",
+        spatial.range,
+        spatial.division
+    ].filter(Boolean).join(", ");
+
+    const businessLocation =
+        displayName +
+        (
+            postingPlace
+                ? " posted at " +
+                  postingPlace
+                : ""
+        ) +
+        (
+            currentPlace
+                ? " is currently in " +
+                  currentPlace
+                : ""
+        ) +
+        ".";
+
+    /*----------------------------------
       Live Coordinates
       (Prefer GPS, fallback to Location)
     ----------------------------------*/
@@ -3854,61 +3894,29 @@ StaffFormatter.formatStaffLocation = function (
       Markdown
     ----------------------------------*/
 
-    result.markdown = [
-        "# 📍 STAFF LOCATION",
-        "",
-        "**Name:** " +
-            displayName,
-        "**Designation:** " +
-            (
-                identity.designation ||
-                "-"
-            ),
-        "",
-        "**Current GPS Position**",
-        "",
-        "**Latitude:** " +
-            latitude,
-        "**Longitude:** " +
-            longitude,
-        "",
-        "**Current GIS Location**",
-        "• Division : " +
-            (spatial.division || "-"),
-        "• Range : " +
-            (spatial.range || "-"),
-        "• Beat : " +
-            (spatial.beat || "-"),
-        "• Compartment : " +
-            (spatial.compartment || "-"),
-        "",
-        "**Posting:**",
-        "• Circle : " +
-            (
-                posting.circle ||
-                "-"
-            ),
-        "• Division : " +
-            (
-                posting.division ||
-                "-"
-            ),
-        "• Range : " +
-            (
-                posting.range ||
-                "-"
-            ),
-        "• Beat : " +
-            (
-                posting.beat ||
-                "-"
-            ),
-        "",
-        "**Last Seen:** " +
-            lastSeenText
-    ].join(
-        "\n"
-    );
+    switch (
+        view
+    ) {
+        case "CURRENT":
+            result.markdown = ["# 📍 STAFF LOCATION", "", businessLocation].join("\n");
+            break;
+
+        case "POSTING":
+            result.markdown = ["# 📍 STAFF POSTING", "", displayName + (postingPlace ? " posted at " + postingPlace : "") + "."].join("\n");
+            break;
+
+        case "GPS":
+            result.markdown = ["# 📍 STAFF LOCATION", "", businessLocation, "", "GPS Coordinates", "", "Latitude  : " + latitude, "Longitude : " + longitude, "", "Accuracy  : " + (gps.accuracy ?? "-") + " m", "Speed     : " + (gps.speed ?? "-") + " km/h", "Heading   : " + (gps.heading ?? "-") + "°", "", "Last Seen : " + lastSeenText].join("\n");
+            break;
+
+        case "LAST_SEEN":
+            result.markdown = ["# 📍 LAST SEEN", "", businessLocation, "", "Last Seen : " + lastSeenText].join("\n");
+            break;
+
+        default:
+            result.markdown = ["# 📍 STAFF LOCATION", "", businessLocation, "", "GPS Coordinates", "", "Latitude  : " + latitude, "Longitude : " + longitude, "", "Accuracy  : " + (gps.accuracy ?? "-") + " m", "Speed     : " + (gps.speed ?? "-") + " km/h", "Heading   : " + (gps.heading ?? "-") + "°", "", "Last Seen : " + lastSeenText].join("\n");
+            break;
+    }
 
     /*----------------------------------
       Card
