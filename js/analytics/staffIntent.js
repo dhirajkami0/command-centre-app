@@ -5044,75 +5044,89 @@ StaffIntent.detectLocationIntent = function (
 
         parameters;
 /*----------------------------------
-  Location View
+  Business Location Type
 ----------------------------------*/
 
-parameters.locationView =
+parameters.locationType = "FULL";
 
-    "FULL";
+/* Posting */
 
 if (
-
-    /\bPOSTED\b|\bPOSTING\b/i.test(
-
-        query
-
-    )
-
+    /\bPOSTED\b|\bPOSTING\b/i.test(query)
 ) {
-
-    parameters.locationView =
-
-        "POSTING";
-
+    parameters.locationType = "POSTING";
 }
 
+/* GPS */
+
 else if (
-
-    /\bGPS\b|\bLATITUDE\b|\bLONGITUDE\b|\bLAT\b|\bLON\b|\bCOORDINATE\b|\bCOORDINATES\b|\bMAP POINT\b/i.test(
-
-        query
-
-    )
-
+    /\bGPS\b|\bLATITUDE\b|\bLONGITUDE\b|\bLAT\b|\bLON\b|\bCOORDINATE\b|\bCOORDINATES\b|\bMAP POINT\b/i.test(query)
 ) {
-
-    parameters.locationView =
-
-        "GPS";
-
+    parameters.locationType = "GPS";
 }
 
+/* Last Seen */
+
 else if (
-
-    /\bLAST SEEN\b|\bLAST KNOWN\b|\bLAST REPORTED\b/i.test(
-
-        query
-
-    )
-
+    /\bLAST SEEN\b|\bLAST KNOWN\b|\bLAST REPORTED\b/i.test(query)
 ) {
-
-    parameters.locationView =
-
-        "LAST_SEEN";
-
+    parameters.locationType = "LAST_SEEN";
 }
 
+/* Live */
+
 else if (
-
-    /\bWHERE IS\b|\bCURRENT LOCATION\b|\bLIVE LOCATION\b|\bLOCATION\b|\bCURRENT POSITION\b|\bCURRENT PLACE\b|\bPRESENT LOCATION\b|\bTRACK LOCATION\b|\bWHICH LOCATION\b/i.test(
-
-        query
-
-    )
-
+    /\bLIVE LOCATION\b|\bREALTIME LOCATION\b|\bREAL TIME LOCATION\b|\bLIVE POSITION\b|\bLIVE TRACK\b/i.test(query)
 ) {
+    parameters.locationType = "LIVE";
+}
 
-    parameters.locationView =
+/* Track */
 
-        "CURRENT";
+else if (
+    /\bTRACK LOCATION\b|\bTRACK POSITION\b|\bCURRENT TRACK\b/i.test(query)
+) {
+    parameters.locationType = "TRACK";
+}
 
+/* Beat */
+
+else if (
+    /\bWHICH BEAT\b/i.test(query)
+) {
+    parameters.locationType = "BEAT";
+}
+
+/* Range */
+
+else if (
+    /\bWHICH RANGE\b/i.test(query)
+) {
+    parameters.locationType = "RANGE";
+}
+
+/* Division */
+
+else if (
+    /\bWHICH DIVISION\b/i.test(query)
+) {
+    parameters.locationType = "DIVISION";
+}
+
+/* Area */
+
+else if (
+    /\bWHICH AREA\b|\bWHICH PLACE\b/i.test(query)
+) {
+    parameters.locationType = "AREA";
+}
+
+/* Current */
+
+else if (
+    /\bWHERE IS\b|\bWHERE IS NOW\b|\bWHERE IS CURRENTLY\b|\bCURRENT LOCATION\b|\bLATEST LOCATION\b|\bPRESENT LOCATION\b|\bCURRENT POSITION\b|\bCURRENT PLACE\b|\bLOCATION\b/i.test(query)
+) {
+    parameters.locationType = "CURRENT";
 }
     /*----------------------------------
       Staff Location
