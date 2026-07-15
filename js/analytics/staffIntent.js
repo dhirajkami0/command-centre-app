@@ -1512,6 +1512,11 @@ StaffIntent.detectPostingIntent = function (
     result
 
 ) {
+/*----------------------------------
+  Assignment queries belong to
+  Assignment detector
+----------------------------------*/
+
 
     /*----------------------------------
       Validate
@@ -1602,7 +1607,21 @@ StaffIntent.detectPostingIntent = function (
     const KEYWORDS =
 
         StaffConstants.KEYWORDS;
+if (
 
+    StaffIntent.hasKeyword(
+
+        query,
+
+        KEYWORDS.STAFF_ASSIGNMENT
+
+    )
+
+) {
+
+    return result;
+
+}
     /*----------------------------------
       Preserve Staff
     ----------------------------------*/
