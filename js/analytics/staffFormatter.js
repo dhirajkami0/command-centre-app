@@ -4200,7 +4200,21 @@ break;
         profile.assignment ||
 
         {};
+/*----------------------------------
+  Assigned To
+----------------------------------*/
 
+const assignedTo =
+
+    assignment.compartment ||
+
+    assignment.beat ||
+
+    assignment.range ||
+
+    assignment.division ||
+
+    "-";
     const duty =
 
         profile.duty ||
@@ -4287,51 +4301,19 @@ break;
       Business Sentence
     ----------------------------------*/
 
-    const assignmentSentence =
+const assignmentSentence =
 
-        displayName +
+    displayName +
 
-        " is assigned for " +
+    " is assigned for " +
 
-        dutyType +
+    dutyType +
 
-        " duty" +
+    " duty at " +
 
-        (
+    assignedTo +
 
-            assignedCompartment !== "-"
-
-            ?
-
-            " in compartment " +
-
-            assignedCompartment
-
-            :
-
-            ""
-
-        ) +
-
-        (
-
-            assignedBeat !== "-"
-
-            ?
-
-            " under " +
-
-            assignedBeat +
-
-            " Beat"
-
-            :
-
-            ""
-
-        ) +
-
-        ".";
+    ".";
 
     /*----------------------------------
       Markdown
@@ -4381,335 +4363,524 @@ break;
 
         case "COMPARTMENT":
 
-            result.markdown = [
+result.markdown = [
 
-                "# 🚔 ASSIGNED COMPARTMENT",
+    "# 🚔 DUTY ASSIGNMENT",
 
-                "",
+    "",
 
-                "Name         : " +
+    assignmentSentence,
 
-                displayName,
+    "",
 
-                "",
+    "Duty Type    : " +
 
-                "Compartment  : " +
+    dutyType,
 
-                assignedCompartment,
+    "Duty Mode    : " +
 
-                "Duty Type    : " +
+    dutyMode,
 
-                dutyType
+    "",
 
-            ].join(
+    "Assigned To  : " +
 
-                "\n"
+    assignedTo,
 
-            );
+    "Compartment  : " +
 
-            break;
+    assignedCompartment,
 
-        case "BEAT":
+    "Beat         : " +
 
-            result.markdown = [
+    assignedBeat,
 
-                "# 🚔 ASSIGNED BEAT",
+    "Range        : " +
 
-                "",
+    assignedRange,
 
-                "Name       : " +
+    "Division     : " +
 
-                displayName,
+    assignedDivision,
 
-                "",
+    "Circle       : " +
 
-                "Beat       : " +
+    assignedCircle
 
-                assignedBeat,
-
-                "Duty Type  : " +
-
-                dutyType
-
-            ].join(
-
-                "\n"
-
-            );
+].join("\n");
 
             break;
 
-        case "RANGE":
+switch (
 
-            result.markdown = [
+    type
 
-                "# 🚔 ASSIGNED RANGE",
+) {
 
-                "",
+    case "DUTY_TYPE":
 
-                "Name       : " +
+        result.markdown = [
 
-                displayName,
+            "# 🚔 DUTY TYPE",
 
-                "",
+            "",
 
-                "Range      : " +
-
-                assignedRange,
-
-                "Duty Type  : " +
-
-                dutyType
-
-            ].join(
-
-                "\n"
-
-            );
-
-            break;
-
-        case "DIVISION":
-
-            result.markdown = [
-
-                "# 🚔 ASSIGNED DIVISION",
-
-                "",
-
-                "Name       : " +
-
-                displayName,
-
-                "",
-
-                "Division   : " +
-
-                assignedDivision,
-
-                "Duty Type  : " +
-
-                dutyType
-
-            ].join(
-
-                "\n"
-
-            );
-
-            break;
-
-        default:
-
-            result.markdown = [
-
-                "# 🚔 DUTY ASSIGNMENT",
-
-                "",
-
-                assignmentSentence,
-
-                "",
-
-                "Duty Type    : " +
-
-                dutyType,
-
-                "Duty Mode    : " +
-
-                dutyMode,
-
-                "",
-
-                "Compartment  : " +
-
-                assignedCompartment,
-
-                "Beat         : " +
-
-                assignedBeat,
-
-                "Range        : " +
-
-                assignedRange,
-
-                "Division     : " +
-
-                assignedDivision,
-
-                "Circle       : " +
-
-                assignedCircle
-
-            ].join(
-
-                "\n"
-
-            );
-
-            break;
-
-    }
-      /*----------------------------------
-      Card
-    ----------------------------------*/
-
-    result.cards.push({
-
-        type:
-
-            "staff-assignment",
-
-        title:
+            "Name         : " +
 
             displayName,
 
-        data: {
+            "",
 
-            name:
+            "Duty Type    : " +
 
-                displayName,
+            dutyType,
 
-            designation:
+            "Duty Mode    : " +
 
-                identity.designation ||
+            dutyMode,
 
-                "",
+            "",
 
-            dutyType:
+            "Assigned To  : " +
 
-                dutyType,
+            assignedTo,
 
-            dutyMode:
+            "Compartment  : " +
 
-                dutyMode,
+            assignedCompartment,
 
-            assignedCompartment:
+            "Beat         : " +
 
-                assignedCompartment,
+            assignedBeat
 
-            assignedBeat:
+        ].join(
 
-                assignedBeat,
+            "\n"
 
-            assignedRange:
+        );
 
-                assignedRange,
+        break;
 
-            assignedDivision:
+    case "COMPARTMENT":
 
-                assignedDivision,
+        result.markdown = [
 
-            assignedCircle:
+            "# 🚔 ASSIGNED COMPARTMENT",
 
-                assignedCircle,
+            "",
 
-            postingBeat:
+            "Name         : " +
 
-                posting.beat ||
+            displayName,
 
-                "",
+            "",
 
-            postingRange:
+            "Assigned To  : " +
 
-                posting.range ||
+            assignedTo,
 
-                "",
+            "Compartment  : " +
 
-            postingDivision:
+            assignedCompartment,
 
-                posting.division ||
+            "Beat         : " +
 
-                "",
+            assignedBeat,
 
-            postingCircle:
+            "Duty Type    : " +
 
-                posting.circle ||
+            dutyType
 
-                ""
+        ].join(
 
-        }
+            "\n"
 
-    });
+        );
 
-    /*----------------------------------
-      Section
-    ----------------------------------*/
+        break;
 
-    result.sections.push({
+    case "BEAT":
 
-        title:
+        result.markdown = [
 
-            "Duty Assignment",
+            "# 🚔 ASSIGNED BEAT",
 
-        data: {
+            "",
 
-            name:
+            "Name         : " +
 
-                displayName,
+            displayName,
 
-            designation:
+            "",
 
-                identity.designation ||
+            "Assigned To  : " +
 
-                "",
+            assignedTo,
 
-            dutyType:
+            "Beat         : " +
 
-                dutyType,
+            assignedBeat,
 
-            dutyMode:
+            "Compartment  : " +
 
-                dutyMode,
+            assignedCompartment,
 
-            assignedCompartment:
+            "Duty Type    : " +
 
-                assignedCompartment,
+            dutyType
 
-            assignedBeat:
+        ].join(
 
-                assignedBeat,
+            "\n"
 
-            assignedRange:
+        );
 
-                assignedRange,
+        break;
 
-            assignedDivision:
+    case "RANGE":
 
-                assignedDivision,
+        result.markdown = [
 
-            assignedCircle:
+            "# 🚔 ASSIGNED RANGE",
 
-                assignedCircle,
+            "",
 
-            postingBeat:
+            "Name         : " +
 
-                posting.beat ||
+            displayName,
 
-                "",
+            "",
 
-            postingRange:
+            "Assigned To  : " +
 
-                posting.range ||
+            assignedTo,
 
-                "",
+            "Range        : " +
 
-            postingDivision:
+            assignedRange,
 
-                posting.division ||
+            "Beat         : " +
 
-                "",
+            assignedBeat,
 
-            postingCircle:
+            "Compartment  : " +
 
-                posting.circle ||
+            assignedCompartment,
 
-                ""
+            "Duty Type    : " +
 
-        }
+            dutyType
 
-    });
+        ].join(
 
+            "\n"
+
+        );
+
+        break;
+
+    case "DIVISION":
+
+        result.markdown = [
+
+            "# 🚔 ASSIGNED DIVISION",
+
+            "",
+
+            "Name         : " +
+
+            displayName,
+
+            "",
+
+            "Assigned To  : " +
+
+            assignedTo,
+
+            "Division     : " +
+
+            assignedDivision,
+
+            "Range        : " +
+
+            assignedRange,
+
+            "Beat         : " +
+
+            assignedBeat,
+
+            "Compartment  : " +
+
+            assignedCompartment,
+
+            "Duty Type    : " +
+
+            dutyType
+
+        ].join(
+
+            "\n"
+
+        );
+
+        break;
+
+    default:
+
+        result.markdown = [
+
+            "# 🚔 DUTY ASSIGNMENT",
+
+            "",
+
+            assignmentSentence,
+
+            "",
+
+            "Duty Type    : " +
+
+            dutyType,
+
+            "Duty Mode    : " +
+
+            dutyMode,
+
+            "",
+
+            "Assigned To  : " +
+
+            assignedTo,
+
+            "",
+
+            "Compartment  : " +
+
+            assignedCompartment,
+
+            "Beat         : " +
+
+            assignedBeat,
+
+            "Range        : " +
+
+            assignedRange,
+
+            "Division     : " +
+
+            assignedDivision,
+
+            "Circle       : " +
+
+            assignedCircle
+
+        ].join(
+
+            "\n"
+
+        );
+
+        break;
+
+}
+/*----------------------------------
+  Card
+----------------------------------*/
+
+result.cards.push({
+
+    type:
+
+        "staff-assignment",
+
+    title:
+
+        displayName,
+
+    data: {
+
+        /*----------------------------------
+          Identity
+        ----------------------------------*/
+
+        name:
+
+            displayName,
+
+        designation:
+
+            identity.designation ||
+
+            "",
+
+        /*----------------------------------
+          Duty
+        ----------------------------------*/
+
+        dutyType:
+
+            dutyType,
+
+        dutyMode:
+
+            dutyMode,
+
+        /*----------------------------------
+          Assignment
+        ----------------------------------*/
+
+        assignedTo:
+
+            assignedTo,
+
+        assignedCompartment:
+
+            assignedCompartment,
+
+        assignedBeat:
+
+            assignedBeat,
+
+        assignedRange:
+
+            assignedRange,
+
+        assignedDivision:
+
+            assignedDivision,
+
+        assignedCircle:
+
+            assignedCircle,
+
+        /*----------------------------------
+          Administrative Posting
+        ----------------------------------*/
+
+        postingBeat:
+
+            posting.beat ||
+
+            "",
+
+        postingRange:
+
+            posting.range ||
+
+            "",
+
+        postingDivision:
+
+            posting.division ||
+
+            "",
+
+        postingCircle:
+
+            posting.circle ||
+
+            ""
+
+    }
+
+});
+
+/*----------------------------------
+  Section
+----------------------------------*/
+
+result.sections.push({
+
+    title:
+
+        "Duty Assignment",
+
+    data: {
+
+        /*----------------------------------
+          Identity
+        ----------------------------------*/
+
+        name:
+
+            displayName,
+
+        designation:
+
+            identity.designation ||
+
+            "",
+
+        /*----------------------------------
+          Duty
+        ----------------------------------*/
+
+        dutyType:
+
+            dutyType,
+
+        dutyMode:
+
+            dutyMode,
+
+        /*----------------------------------
+          Assignment
+        ----------------------------------*/
+
+        assignedTo:
+
+            assignedTo,
+
+        assignedCompartment:
+
+            assignedCompartment,
+
+        assignedBeat:
+
+            assignedBeat,
+
+        assignedRange:
+
+            assignedRange,
+
+        assignedDivision:
+
+            assignedDivision,
+
+        assignedCircle:
+
+            assignedCircle,
+
+        /*----------------------------------
+          Administrative Posting
+        ----------------------------------*/
+
+        postingBeat:
+
+            posting.beat ||
+
+            "",
+
+        postingRange:
+
+            posting.range ||
+
+            "",
+
+        postingDivision:
+
+            posting.division ||
+
+            "",
+
+        postingCircle:
+
+            posting.circle ||
+
+            ""
+
+    }
+
+});
     /*----------------------------------
       Metadata
     ----------------------------------*/
