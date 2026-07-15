@@ -85,7 +85,30 @@ GISFormatter.createResponse = function (
     };
 
 };
+GISFormatter.buildStaffLocationBlock = function (staff) {
 
+    const gps =
+        staff.gps || {};
+
+    const spatial =
+        staff.spatial || {};
+
+    return [
+        staff.identity?.name || staff.name || "-",
+        "📍 " + (spatial.compartment || "-"),
+        "Beat      : " + (spatial.beat || "-"),
+        "Range     : " + (spatial.range || "-"),
+        "Latitude  : " + (gps.lat ?? "-"),
+        "Longitude : " + (gps.lon ?? "-"),
+        "Last Seen : " + (
+            gps.lastSeen ||
+            gps.timestamp ||
+            gps.updatedAt ||
+            "-"
+        )
+    ].join("\n");
+
+};
 /*--------------------------------------------------
   Current GIS Location
 --------------------------------------------------*/
@@ -282,21 +305,11 @@ GISFormatter.formatStaffLocation = function (
 
         profile;
 
-    response.markdown =
-
-`# 📍 ${profile.identity.name}
-
-**Current Division:** ${spatial.division || "-"}
-
-**Current Range:** ${spatial.range || "-"}
-
-**Current Beat:** ${spatial.beat || "-"}
-
-**Current Compartment:** ${spatial.compartment || "-"}
-
-**Latitude:** ${gps.lat || "-"}
-
-**Longitude:** ${gps.lon || "-"}`;
+response.markdown =
+    "# 📍 Staff Location\n\n" +
+    GISFormatter.buildStaffLocationBlock(
+        profile
+    );
 
     return response;
 
@@ -499,7 +512,7 @@ GISFormatter.formatBeatSummary = function (
     return response;
 
 };
-  /*--------------------------------------------------
+/*--------------------------------------------------
   Beat Staff
 --------------------------------------------------*/
 
@@ -547,10 +560,6 @@ GISFormatter.formatBeatStaff = function (
 
     ) {
 
-        md +=
-
-            "\n\n";
-
         staff.forEach(
 
             function (
@@ -563,15 +572,13 @@ GISFormatter.formatBeatStaff = function (
 
                 md +=
 
-`${i + 1}. ${
+`\n\n${i + 1}.
 
-    s.name ||
+${GISFormatter.buildStaffLocationBlock(
 
-    s.cleanName
+    s
 
-}
-
-`;
+)}`;
 
             }
 
@@ -586,7 +593,8 @@ GISFormatter.formatBeatStaff = function (
     return response;
 
 };
-  /*--------------------------------------------------
+
+/*--------------------------------------------------
   Range Staff
 --------------------------------------------------*/
 
@@ -634,10 +642,6 @@ GISFormatter.formatRangeStaff = function (
 
     ) {
 
-        md +=
-
-            "\n\n";
-
         staff.forEach(
 
             function (
@@ -650,15 +654,13 @@ GISFormatter.formatRangeStaff = function (
 
                 md +=
 
-`${i + 1}. ${
+`\n\n${i + 1}.
 
-    s.name ||
+${GISFormatter.buildStaffLocationBlock(
 
-    s.cleanName
+    s
 
-}
-
-`;
+)}`;
 
             }
 
@@ -673,7 +675,8 @@ GISFormatter.formatRangeStaff = function (
     return response;
 
 };
-  /*--------------------------------------------------
+
+/*--------------------------------------------------
   Division Staff
 --------------------------------------------------*/
 
@@ -721,10 +724,6 @@ GISFormatter.formatDivisionStaff = function (
 
     ) {
 
-        md +=
-
-            "\n\n";
-
         staff.forEach(
 
             function (
@@ -737,15 +736,13 @@ GISFormatter.formatDivisionStaff = function (
 
                 md +=
 
-`${i + 1}. ${
+`\n\n${i + 1}.
 
-    s.name ||
+${GISFormatter.buildStaffLocationBlock(
 
-    s.cleanName
+    s
 
-}
-
-`;
+)}`;
 
             }
 
@@ -760,7 +757,7 @@ GISFormatter.formatDivisionStaff = function (
     return response;
 
 };
-  /*--------------------------------------------------
+/*--------------------------------------------------
   Hierarchy
 --------------------------------------------------*/
 
@@ -825,7 +822,8 @@ GISFormatter.formatHierarchy = function (
     return response;
 
 };
-  /*--------------------------------------------------
+
+/*--------------------------------------------------
   Operational Status
 --------------------------------------------------*/
 
@@ -867,6 +865,14 @@ GISFormatter.formatOperationalStatus = function (
 
     }
 
+    const staff =
+
+        GG.StaffHydrator.getHydratedStaff(
+
+            cleanName
+
+        );
+
     response.success =
 
         true;
@@ -879,24 +885,55 @@ GISFormatter.formatOperationalStatus = function (
 
 `# 🚔 Operational Status
 
-**Name:** ${status.name}
+${GISFormatter.buildStaffLocationBlock(
 
-**Duty:** ${status.dutyActive ? "Active" : "Inactive"}
+    staff
 
-**Duty Type:** ${status.dutyType || "-"}
+)}
 
-**Current Beat:** ${status.currentBeat || "-"}
+Duty              : ${
 
-**Current Compartment:** ${status.currentCompartment || "-"}
+    status.dutyActive
 
-**Inside Posting:** ${status.insidePosting ? "Yes" : "No"}
+        ? "Active"
 
-**Inside Assignment:** ${status.insideAssignment ? "Yes" : "No"}`;
+        : "Inactive"
+
+}
+
+Duty Type         : ${
+
+    status.dutyType ||
+
+    "-"
+
+}
+
+Inside Posting    : ${
+
+    status.insidePosting
+
+        ? "Yes"
+
+        : "No"
+
+}
+
+Inside Assignment : ${
+
+    status.insideAssignment
+
+        ? "Yes"
+
+        : "No"
+
+}`;
 
     return response;
 
 };
-  /*--------------------------------------------------
+
+/*--------------------------------------------------
   Movement Summary
 --------------------------------------------------*/
 
@@ -938,6 +975,14 @@ GISFormatter.formatMovementSummary = function (
 
     }
 
+    const staff =
+
+        GG.StaffHydrator.getHydratedStaff(
+
+            cleanName
+
+        );
+
     response.success =
 
         true;
@@ -950,26 +995,66 @@ GISFormatter.formatMovementSummary = function (
 
 `# 🚶 Movement Summary
 
-**Name:** ${movement.name}
+${GISFormatter.buildStaffLocationBlock(
 
-**Duty:** ${movement.dutyActive ? "Active" : "Inactive"}
+    staff
 
-**Duty Type:** ${movement.dutyType || "-"}
+)}
 
-**Current Beat:** ${movement.current.beat || "-"}
+Duty              : ${
 
-**Current Compartment:** ${movement.current.compartment || "-"}
+    movement.dutyActive
 
-**Speed:** ${movement.gps.speed || 0} km/h
+        ? "Active"
 
-**Inside Posting:** ${movement.insidePosting ? "Yes" : "No"}
+        : "Inactive"
 
-**Inside Assignment:** ${movement.insideAssignment ? "Yes" : "No"}`;
+}
+
+Duty Type         : ${
+
+    movement.dutyType ||
+
+    "-"
+
+}
+
+Speed             : ${
+
+    movement.gps?.speed ||
+
+    0
+
+} km/h
+
+Inside Posting    : ${
+
+    movement.insidePosting
+
+        ? "Yes"
+
+        : "No"
+
+}
+
+Inside Assignment : ${
+
+    movement.insideAssignment
+
+        ? "Yes"
+
+        : "No"
+
+}`;
 
     return response;
 
 };
   /*--------------------------------------------------
+  Nearby Staff
+--------------------------------------------------*/
+
+/*--------------------------------------------------
   Nearby Staff
 --------------------------------------------------*/
 
@@ -1015,6 +1100,14 @@ GISFormatter.formatNearbyStaff = function (
 
     }
 
+    const reference =
+
+        GG.StaffHydrator.getHydratedStaff(
+
+            cleanName
+
+        );
+
     response.success =
 
         true;
@@ -1027,9 +1120,15 @@ GISFormatter.formatNearbyStaff = function (
 
 `# 👥 Nearby Staff
 
-**Radius:** ${radius} m
+${GISFormatter.buildStaffLocationBlock(
 
-**Nearby Staff:** ${nearby.length}`;
+    reference
+
+)}
+
+Search Radius : ${radius} m
+
+Nearby Staff  : ${nearby.length}`;
 
     if (
 
@@ -1080,7 +1179,8 @@ GISFormatter.formatNearbyStaff = function (
     return response;
 
 };
-  /*--------------------------------------------------
+
+/*--------------------------------------------------
   Analytics
 --------------------------------------------------*/
 
@@ -1140,17 +1240,51 @@ GISFormatter.formatAnalytics = function (
 
 `# 📊 Patrol Analytics
 
-**Name:** ${result.profile.identity.name}
+${GISFormatter.buildStaffLocationBlock(
 
-**Distance:** ${analytics.distanceKm || 0} km
+    result.profile
 
-**Track Points:** ${analytics.pointCount || 0}
+)}
 
-**Started:** ${analytics.startedAt || "-"}
+Distance     : ${
 
-**Ended:** ${analytics.endedAt || "-"}
+    analytics.distanceKm ||
 
-**Coverage:** ${analytics.coverage || 0}%`;
+    0
+
+} km
+
+Track Points : ${
+
+    analytics.pointCount ||
+
+    0
+
+}
+
+Started      : ${
+
+    analytics.startedAt ||
+
+    "-"
+
+}
+
+Ended        : ${
+
+    analytics.endedAt ||
+
+    "-"
+
+}
+
+Coverage     : ${
+
+    analytics.coverage ||
+
+    0
+
+}%`;
 
     return response;
 
