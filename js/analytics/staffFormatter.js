@@ -4240,15 +4240,23 @@ console.log(
 
 const assignedTo =
 
-    assignment.compartment ||
+    assignedCompartment !== "-"
 
-    assignment.beat ||
+        ? assignedCompartment
 
-    assignment.range ||
+        : assignedBeat !== "-"
 
-    assignment.division ||
+        ? assignedBeat
 
-    "-";
+        : assignedRange !== "-"
+
+        ? assignedRange
+
+        : assignedDivision !== "-"
+
+        ? assignedDivision
+
+        : "-";
     const duty =
 
         profile.duty ||
@@ -4275,9 +4283,11 @@ const assignedTo =
 
     const assignedCompartment =
 
-        assignment.compartment ||
+    assignment.compartment ||
 
-        "-";
+    assignment.assignedCompartment ||
+
+    "-";
 
     const assignedBeat =
 
@@ -6159,241 +6169,7 @@ StaffFormatter.formatStaffDutyEnd
  FORMAT STAFF ASSIGNMENT
 =========================================================*/
 
-StaffFormatter.formatStaffAssignment = function (
 
-    response
-
-) {
-
-    const result =
-
-        StaffFormatter.createResponse(
-
-            response
-
-        );
-
-    /*----------------------------------
-      Validate
-    ----------------------------------*/
-
-    if (
-
-        !response ||
-
-        !response.success ||
-
-        !response.data
-
-    ) {
-
-        result.message =
-
-            response?.message ||
-
-            "Assignment information not found.";
-
-        return result;
-
-    }
-
-    /*----------------------------------
-      Canonical Profile
-    ----------------------------------*/
-
-    const profile =
-
-        response.data;
-
-    const identity =
-
-        profile.identity ||
-
-        {};
-
-    const assignment =
-
-        profile.assignment ||
-
-        {};
-
-    /*----------------------------------
-      Display Name
-    ----------------------------------*/
-
-    const displayName =
-
-        identity.name ||
-
-        identity.rawName ||
-
-        identity.cleanName ||
-
-        "-";
-
-    /*----------------------------------
-      Assignment
-    ----------------------------------*/
-
-    const assignedTo =
-
-        assignment.assignedCompartment ||
-
-        assignment.assignment ||
-
-        "-";
-
-    /*----------------------------------
-      Markdown
-    ----------------------------------*/
-
-    result.markdown = [
-
-        "# 📋 STAFF ASSIGNMENT",
-
-        "",
-
-        "**Name:** " +
-
-            displayName,
-
-        "**Designation:** " +
-
-            (
-
-                identity.designation ||
-
-                "-"
-
-            ),
-
-        "**Duty Type:** " +
-
-            (
-
-                assignment.dutyType ||
-
-                "-"
-
-            ),
-
-        "**Assigned To:** " +
-
-            assignedTo
-
-    ].join(
-
-        "\n"
-
-    );
-
-    /*----------------------------------
-      Card
-    ----------------------------------*/
-
-    result.cards.push({
-
-        type:
-
-            "staff-assignment",
-
-        title:
-
-            displayName,
-
-        data: {
-
-            name:
-
-                displayName,
-
-            designation:
-
-                identity.designation ||
-
-                "",
-
-            dutyType:
-
-                assignment.dutyType ||
-
-                "",
-
-            assignment:
-
-                assignedTo
-
-        }
-
-    });
-
-    /*----------------------------------
-      Section
-    ----------------------------------*/
-
-    result.sections.push({
-
-        title:
-
-            "Assignment",
-
-        data: {
-
-            name:
-
-                displayName,
-
-            designation:
-
-                identity.designation ||
-
-                "",
-
-            dutyType:
-
-                assignment.dutyType ||
-
-                "",
-
-            assignment:
-
-                assignedTo
-
-        }
-
-    });
-
-    /*----------------------------------
-      Metadata
-    ----------------------------------*/
-
-    result.success =
-
-        true;
-
-    result.intent =
-
-        StaffConstants.INTENTS.STAFF_ASSIGNMENT;
-
-    result.confidence =
-
-        response.confidence ||
-
-        1;
-
-    result.source =
-
-        response.source ||
-
-        "LOCAL";
-
-    result.message =
-
-        "Assignment formatted successfully.";
-
-    return result;
-
-};
  /*=========================================================
  FORMAT LEADER
 =========================================================*/
