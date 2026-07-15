@@ -463,6 +463,240 @@ StaffIntent.setCachedResult = function (
  DETECT
  Master Intent Detection
 =========================================================*/
+
+ StaffIntent.detectAssignmentIntent = function (
+
+    result
+
+) {
+
+    /*----------------------------------
+      Validate
+    ----------------------------------*/
+
+    if (
+
+        !result ||
+
+        result.intent ||
+
+        !result.entities
+
+    ) {
+
+        return result;
+
+    }
+
+    const parameters =
+
+        result.parameters ||
+
+        {};
+
+    /*----------------------------------
+      Aggregate Guard
+    ----------------------------------*/
+
+    if (
+
+        parameters.isAggregate === true
+
+    ) {
+
+        return result;
+
+    }
+
+    /*----------------------------------
+      Single Staff Only
+    ----------------------------------*/
+
+    const staff =
+
+        result.entities.staff ||
+
+        [];
+
+    if (
+
+        staff.length !== 1
+
+    ) {
+
+        return result;
+
+    }
+
+    /*----------------------------------
+      Query
+    ----------------------------------*/
+
+    const query =
+
+        String(
+
+            result.normalizedQuery ||
+
+            ""
+
+        )
+
+        .trim()
+
+        .toUpperCase();
+
+    if (
+
+        query === ""
+
+    ) {
+
+        return result;
+
+    }
+
+    /*----------------------------------
+      Preserve Staff
+    ----------------------------------*/
+
+    parameters.staff =
+
+        staff[0];
+
+    result.parameters =
+
+        parameters;
+
+    /*----------------------------------
+      Assignment View
+    ----------------------------------*/
+
+    parameters.assignmentView =
+
+        "FULL";
+
+    /* Duty Type */
+
+    if (
+
+        /\bDUTY TYPE\b|\bTYPE OF DUTY\b|\bDUTY MODE\b|\bPATROL TYPE\b|\bWORK MODE\b/i.test(
+
+            query
+
+        )
+
+    ) {
+
+        parameters.assignmentView =
+
+            "DUTY_TYPE";
+
+    }
+
+    /* Compartment */
+
+    else if (
+
+        /\bCOMPARTMENT\b/i.test(
+
+            query
+
+        )
+
+    ) {
+
+        parameters.assignmentView =
+
+            "COMPARTMENT";
+
+    }
+
+    /* Beat */
+
+    else if (
+
+        /\bBEAT\b/i.test(
+
+            query
+
+        )
+
+    ) {
+
+        parameters.assignmentView =
+
+            "BEAT";
+
+    }
+
+    /* Range */
+
+    else if (
+
+        /\bRANGE\b/i.test(
+
+            query
+
+        )
+
+    ) {
+
+        parameters.assignmentView =
+
+            "RANGE";
+
+    }
+
+    /* Division */
+
+    else if (
+
+        /\bDIVISION\b/i.test(
+
+            query
+
+        )
+
+    ) {
+
+        parameters.assignmentView =
+
+            "DIVISION";
+
+    }
+
+    /*----------------------------------
+      Assignment Intent
+    ----------------------------------*/
+
+    if (
+
+        StaffIntent.hasKeyword(
+
+            query,
+
+            StaffConstants.KEYWORDS.STAFF_ASSIGNMENT
+
+        )
+
+    ) {
+
+        result.intent =
+
+            StaffConstants.INTENTS.STAFF_ASSIGNMENT;
+
+        result.confidence =
+
+            0.99;
+
+        return result;
+
+    }
+
+    return result;
+
+};
 /*=========================================================
  DETECT DESIGNATION INTENT
 =========================================================*/
@@ -4096,6 +4330,14 @@ if (
         StaffIntent.detectPostingIntent(
             result
         );
+/*----------------------------------
+  Assignment
+----------------------------------*/
+
+result =
+    StaffIntent.detectAssignmentIntent(
+        result
+    );
 
     /*----------------------------------
       Location
