@@ -5047,11 +5047,17 @@ StaffIntent.detectLocationIntent = function (
   Location View
 ----------------------------------*/
 
-parameters.locationView = "FULL";
+parameters.locationView =
+
+    "FULL";
 
 if (
 
-    /\bPOSTED\b|\bPOSTING\b/.test(query)
+    /\bPOSTED\b|\bPOSTING\b/i.test(
+
+        query
+
+    )
 
 ) {
 
@@ -5063,7 +5069,11 @@ if (
 
 else if (
 
-    /\bGPS\b|\bLATITUDE\b|\bLONGITUDE\b|\bLAT\b|\bLON\b|\bCOORDINATE\b|\bCOORDINATES\b|\bMAP POINT\b/.test(query)
+    /\bGPS\b|\bLATITUDE\b|\bLONGITUDE\b|\bLAT\b|\bLON\b|\bCOORDINATE\b|\bCOORDINATES\b|\bMAP POINT\b/i.test(
+
+        query
+
+    )
 
 ) {
 
@@ -5075,7 +5085,11 @@ else if (
 
 else if (
 
-    /\bLAST SEEN\b|\bLAST KNOWN\b|\bLAST REPORTED\b/.test(query)
+    /\bLAST SEEN\b|\bLAST KNOWN\b|\bLAST REPORTED\b/i.test(
+
+        query
+
+    )
 
 ) {
 
@@ -5087,23 +5101,11 @@ else if (
 
 else if (
 
-    /\bWHERE IS\b|
+    /\bWHERE IS\b|\bCURRENT LOCATION\b|\bLIVE LOCATION\b|\bLOCATION\b|\bCURRENT POSITION\b|\bCURRENT PLACE\b|\bPRESENT LOCATION\b|\bTRACK LOCATION\b|\bWHICH LOCATION\b/i.test(
 
-    \bCURRENT LOCATION\b|
+        query
 
-    \bLIVE LOCATION\b|
-
-    \bLOCATION\b|
-
-    \bCURRENT POSITION\b|
-
-    \bCURRENT PLACE\b|
-
-    \bPRESENT LOCATION\b|
-
-    \bTRACK LOCATION\b|
-
-    \bWHICH LOCATION\b/.test(query)
+    )
 
 ) {
 
