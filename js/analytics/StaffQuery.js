@@ -3734,33 +3734,7 @@ GG.queryTeamInformation = async function (
   Staff GPS
 ----------------------------------*/
 
-GG.queryStaffGPS = async function (
 
-    request
-
-) {
-
-    return StaffQuery.execute(
-
-        request,
-
-        async function (
-
-            request
-
-        ) {
-
-            return StaffQuery.ensureSingleStaff(
-
-                request
-
-            );
-
-        }
-
-    );
-
-};
 
 /*----------------------------------
   Staff Speed
