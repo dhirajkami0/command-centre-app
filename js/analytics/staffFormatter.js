@@ -3897,9 +3897,41 @@ StaffFormatter.formatStaffLocation = function (
     switch (
         view
     ) {
-        case "CURRENT":
-            result.markdown = ["# 📍 STAFF LOCATION", "", businessLocation].join("\n");
-            break;
+case "CURRENT":
+
+    result.markdown = [
+
+        "# 📍 STAFF LOCATION",
+
+        "",
+
+        businessLocation,
+
+        "",
+
+        "GPS Coordinates",
+
+        "",
+
+        "Latitude  : " + latitude,
+
+        "Longitude : " + longitude,
+
+        "",
+
+        "Accuracy  : " + (gps.accuracy ?? "-") + " m",
+
+        "Speed     : " + (gps.speed ?? "-") + " km/h",
+
+        "Heading   : " + (gps.heading ?? "-") + "°",
+
+        "",
+
+        "Last Seen : " + lastSeenText
+
+    ].join("\n");
+
+    break;
 
         case "POSTING":
             result.markdown = ["# 📍 STAFF POSTING", "", displayName + (postingPlace ? " posted at " + postingPlace : "") + "."].join("\n");
