@@ -4179,27 +4179,87 @@ break;
       Canonical Profile
     ----------------------------------*/
 
-    const profile =
+const profile =
 
-        response.data;
+    response.data;
 
-    const identity =
+const identity =
 
-        profile.identity ||
+    profile.identity ||
 
-        {};
+    {};
 
-    const posting =
+const posting =
 
-        profile.posting ||
+    profile.posting ||
 
-        {};
+    {};
 
-    const assignment =
+const assignment =
 
-        profile.assignment ||
+    profile.assignment ||
 
-        {};
+    {};
+
+const duty =
+
+    profile.duty ||
+
+    {};
+
+const displayName =
+
+    identity.name ||
+
+    identity.rawName ||
+
+    identity.cleanName ||
+
+    "-";
+
+/*----------------------------------
+  Assignment Hierarchy
+----------------------------------*/
+
+const assignedCompartment =
+
+    assignment.compartment ||
+
+    assignment.assignedCompartment ||
+
+    "-";
+
+const assignedBeat =
+
+    assignment.beat ||
+
+    posting.beat ||
+
+    "-";
+
+const assignedRange =
+
+    assignment.range ||
+
+    posting.range ||
+
+    "-";
+
+const assignedDivision =
+
+    assignment.division ||
+
+    posting.division ||
+
+    "-";
+
+const assignedCircle =
+
+    assignment.circle ||
+
+    posting.circle ||
+
+    "-";
 
 /*----------------------------------
   Assigned To
@@ -4224,89 +4284,32 @@ const assignedTo =
         ? assignedDivision
 
         : "-";
-    const duty =
 
-        profile.duty ||
+/*----------------------------------
+  Duty
+----------------------------------*/
 
-        {};
+const dutyType =
 
-    /*----------------------------------
-      Display Name
-    ----------------------------------*/
+    duty.dutyType ||
 
-    const displayName =
+    duty.type ||
 
-        identity.name ||
-
-        identity.rawName ||
-
-        identity.cleanName ||
-
-        "-";
-
-    /*----------------------------------
-      Assignment Hierarchy
-    ----------------------------------*/
-
-    const assignedCompartment =
-
-    assignment.compartment ||
-
-    assignment.assignedCompartment ||
+    assignment.dutyType ||
 
     "-";
 
-    const assignedBeat =
+const dutyMode =
 
-        assignment.beat ||
+    duty.mode ||
 
-        posting.beat ||
+    duty.dutyMode ||
 
-        "-";
+    assignment.patrolMode ||
 
-    const assignedRange =
+    assignment.patrolType ||
 
-        assignment.range ||
-
-        posting.range ||
-
-        "-";
-
-    const assignedDivision =
-
-        assignment.division ||
-
-        posting.division ||
-
-        "-";
-
-    const assignedCircle =
-
-        assignment.circle ||
-
-        posting.circle ||
-
-        "-";
-
-    /*----------------------------------
-      Duty
-    ----------------------------------*/
-
-    const dutyType =
-
-        duty.dutyType ||
-
-        duty.type ||
-
-        "-";
-
-    const dutyMode =
-
-        duty.mode ||
-
-        duty.dutyMode ||
-
-        "-";
+    "-";
   console.log(
     "PROFILE:",
     profile
