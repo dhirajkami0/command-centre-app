@@ -948,6 +948,10 @@ GISIntent.detectStaffOnDuty = function (
   Staff Presence
 --------------------------------------------------*/
 
+/*--------------------------------------------------
+  Staff Presence
+--------------------------------------------------*/
+
 GISIntent.detectStaffPresence = function (
 
     result
@@ -976,9 +980,9 @@ GISIntent.detectStaffPresence = function (
 
         GG.StaffIntent.hasKeyword(
 
-            result,
+            result.normalizedQuery,
 
-            "GIS_STAFF_PRESENCE"
+            GG.GISConstants.KEYWORDS.GIS_STAFF_PRESENT
 
         )
 
@@ -986,7 +990,7 @@ GISIntent.detectStaffPresence = function (
 
         result.intent =
 
-            GG.GISConstants.INTENTS.GIS_STAFF_PRESENCE;
+            GG.GISConstants.INTENTS.GIS_STAFF_PRESENT;
 
         result.confidence =
 
@@ -997,9 +1001,6 @@ GISIntent.detectStaffPresence = function (
     return result;
 
 };
-/*--------------------------------------------------
-  Staff Presence Count
---------------------------------------------------*/
 
 /*--------------------------------------------------
   Staff Presence Count
@@ -1011,6 +1012,10 @@ GISIntent.detectStaffPresenceCount = function (
 
 ) {
 
+    /*----------------------------------
+      Already Detected
+    ----------------------------------*/
+
     if (
 
         result.intent
@@ -1021,13 +1026,17 @@ GISIntent.detectStaffPresenceCount = function (
 
     }
 
+    /*----------------------------------
+      Staff Presence Count
+    ----------------------------------*/
+
     if (
 
         GG.StaffIntent.hasKeyword(
 
             result.normalizedQuery,
 
-            GG.GISConstants.KEYWORDS.GIS_STAFF_PRESENCE_COUNT
+            GG.GISConstants.KEYWORDS.GIS_STAFF_COUNT
 
         )
 
@@ -1035,7 +1044,7 @@ GISIntent.detectStaffPresenceCount = function (
 
         result.intent =
 
-            GG.GISConstants.INTENTS.GIS_STAFF_PRESENCE_COUNT;
+            GG.GISConstants.INTENTS.GIS_STAFF_COUNT;
 
         result.confidence =
 
