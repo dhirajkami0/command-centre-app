@@ -109,6 +109,81 @@ GISFormatter.buildStaffLocationBlock = function (staff) {
     ].join("\n");
 
 };
+  /*--------------------------------------------------
+  Build Staff List
+--------------------------------------------------*/
+
+GISFormatter.buildStaffList = function (
+
+    staffList = []
+
+) {
+
+    if (
+
+        !Array.isArray(
+
+            staffList
+
+        ) ||
+
+        !staffList.length
+
+    ) {
+
+        return
+
+            "No staff found.";
+
+    }
+
+    let md =
+
+        "";
+
+    staffList.forEach(
+
+        function (
+
+            staff,
+
+            index
+
+        ) {
+
+            md +=
+
+                (index + 1) +
+
+                ".\n\n" +
+
+                GISFormatter.buildStaffLocationBlock(
+
+                    staff
+
+                );
+
+            if (
+
+                index <
+
+                staffList.length - 1
+
+            ) {
+
+                md +=
+
+                    "\n\n----------------------------------\n\n";
+
+            }
+
+        }
+
+    );
+
+    return md;
+
+};
 /*--------------------------------------------------
   Current GIS Location
 --------------------------------------------------*/
@@ -164,7 +239,9 @@ GISFormatter.formatCurrentLocation = function (
     return response;
 
 };
-  /*--------------------------------------------------
+
+
+/*--------------------------------------------------
   Current Village
 --------------------------------------------------*/
 
@@ -194,15 +271,61 @@ GISFormatter.formatCurrentVillage = function (
 
         villages;
 
-    response.markdown =
+    let md =
 
 `# 🏡 Villages
 
 **Total Villages:** ${villages.length}`;
 
+    if (
+
+        villages.length
+
+    ) {
+
+        md +=
+
+            "\n\n";
+
+        villages.forEach(
+
+            function (
+
+                village,
+
+                index
+
+            ) {
+
+                md +=
+
+`${index + 1}. ${
+
+    village.name ||
+
+    village.village ||
+
+    village
+
+}
+
+`;
+
+            }
+
+        );
+
+    }
+
+    response.markdown =
+
+        md;
+
     return response;
 
 };
+
+
 /*--------------------------------------------------
   Current Compartment
 --------------------------------------------------*/
@@ -243,7 +366,8 @@ ${compartment || "Not Selected"}`;
 
 };
 
-  /*--------------------------------------------------
+
+/*--------------------------------------------------
   Staff Location
 --------------------------------------------------*/
 
@@ -273,7 +397,9 @@ GISFormatter.formatStaffLocation = function (
 
     if (
 
-        !result
+        !result ||
+
+        !result.profile
 
     ) {
 
@@ -289,14 +415,6 @@ GISFormatter.formatStaffLocation = function (
 
         result.profile;
 
-    const spatial =
-
-        profile.spatial || {};
-
-    const gps =
-
-        profile.location || {};
-
     response.success =
 
         true;
@@ -305,11 +423,15 @@ GISFormatter.formatStaffLocation = function (
 
         profile;
 
-response.markdown =
-    "# 📍 Staff Location\n\n" +
-    GISFormatter.buildStaffLocationBlock(
-        profile
-    );
+    response.markdown =
+
+        "# 📍 Staff Location\n\n" +
+
+        GISFormatter.buildStaffLocationBlock(
+
+            profile
+
+        );
 
     return response;
 
@@ -323,7 +445,7 @@ response.markdown =
 --------------------------------------------------*/
 
 
-  /*--------------------------------------------------
+/*--------------------------------------------------
   Range Summary
 --------------------------------------------------*/
 
@@ -375,7 +497,7 @@ GISFormatter.formatRangeSummary = function (
 
     response.markdown =
 
-`# 👥 Staff Status
+`# 🌲 Range Summary
 
 **Range:** ${result.range}
 
@@ -386,7 +508,9 @@ GISFormatter.formatRangeSummary = function (
     return response;
 
 };
-  /*--------------------------------------------------
+
+
+/*--------------------------------------------------
   Division Summary
 --------------------------------------------------*/
 
@@ -438,7 +562,7 @@ GISFormatter.formatDivisionSummary = function (
 
     response.markdown =
 
-`# 👥 Staff Status
+`# 🌲 Division Summary
 
 **Division:** ${result.division}
 
@@ -449,7 +573,9 @@ GISFormatter.formatDivisionSummary = function (
     return response;
 
 };
-  /*--------------------------------------------------
+
+
+/*--------------------------------------------------
   Beat Summary
 --------------------------------------------------*/
 
@@ -501,7 +627,7 @@ GISFormatter.formatBeatSummary = function (
 
     response.markdown =
 
-`# 👥 Beat Summary
+`# 🌲 Beat Summary
 
 **Beat:** ${result.beat}
 
@@ -512,6 +638,8 @@ GISFormatter.formatBeatSummary = function (
     return response;
 
 };
+
+
 /*--------------------------------------------------
   Beat Staff
 --------------------------------------------------*/
@@ -548,51 +676,24 @@ GISFormatter.formatBeatStaff = function (
 
         staff;
 
-    let md =
-
-`# 👥 Staff in ${beat}
-
-**Total Staff:** ${staff.length}`;
-
-    if (
-
-        staff.length
-
-    ) {
-
-        staff.forEach(
-
-            function (
-
-                s,
-
-                i
-
-            ) {
-
-                md +=
-
-`\n\n${i + 1}.
-
-${GISFormatter.buildStaffLocationBlock(
-
-    s
-
-)}`;
-
-            }
-
-        );
-
-    }
-
     response.markdown =
 
-        md;
+        "# 👥 Staff in " +
+
+        beat +
+
+        "\n\n" +
+
+        GISFormatter.buildStaffList(
+
+            staff
+
+        );
 
     return response;
 
 };
+
 
 /*--------------------------------------------------
   Range Staff
@@ -630,51 +731,26 @@ GISFormatter.formatRangeStaff = function (
 
         staff;
 
-    let md =
-
-`# 👥 Staff in ${range}
-
-**Total Staff:** ${staff.length}`;
-
-    if (
-
-        staff.length
-
-    ) {
-
-        staff.forEach(
-
-            function (
-
-                s,
-
-                i
-
-            ) {
-
-                md +=
-
-`\n\n${i + 1}.
-
-${GISFormatter.buildStaffLocationBlock(
-
-    s
-
-)}`;
-
-            }
-
-        );
-
-    }
-
     response.markdown =
 
-        md;
+        "# 👥 Staff in " +
+
+        range +
+
+        "\n\n" +
+
+        GISFormatter.buildStaffList(
+
+            staff
+
+        );
 
     return response;
 
 };
+/*--------------------------------------------------
+  Division Staff
+--------------------------------------------------*/
 
 /*--------------------------------------------------
   Division Staff
@@ -712,51 +788,25 @@ GISFormatter.formatDivisionStaff = function (
 
         staff;
 
-    let md =
-
-`# 👥 Staff in ${division}
-
-**Total Staff:** ${staff.length}`;
-
-    if (
-
-        staff.length
-
-    ) {
-
-        staff.forEach(
-
-            function (
-
-                s,
-
-                i
-
-            ) {
-
-                md +=
-
-`\n\n${i + 1}.
-
-${GISFormatter.buildStaffLocationBlock(
-
-    s
-
-)}`;
-
-            }
-
-        );
-
-    }
-
     response.markdown =
 
-        md;
+        "# 👥 Staff in " +
+
+        division +
+
+        "\n\n" +
+
+        GISFormatter.buildStaffList(
+
+            staff
+
+        );
 
     return response;
 
 };
+
+
 /*--------------------------------------------------
   Hierarchy
 --------------------------------------------------*/
@@ -822,6 +872,7 @@ GISFormatter.formatHierarchy = function (
     return response;
 
 };
+
 
 /*--------------------------------------------------
   Operational Status
@@ -894,9 +945,7 @@ ${GISFormatter.buildStaffLocationBlock(
 Duty              : ${
 
     status.dutyActive
-
         ? "Active"
-
         : "Inactive"
 
 }
@@ -912,9 +961,7 @@ Duty Type         : ${
 Inside Posting    : ${
 
     status.insidePosting
-
         ? "Yes"
-
         : "No"
 
 }
@@ -922,9 +969,7 @@ Inside Posting    : ${
 Inside Assignment : ${
 
     status.insideAssignment
-
         ? "Yes"
-
         : "No"
 
 }`;
@@ -932,6 +977,7 @@ Inside Assignment : ${
     return response;
 
 };
+
 
 /*--------------------------------------------------
   Movement Summary
@@ -1004,9 +1050,7 @@ ${GISFormatter.buildStaffLocationBlock(
 Duty              : ${
 
     movement.dutyActive
-
         ? "Active"
-
         : "Inactive"
 
 }
@@ -1030,9 +1074,7 @@ Speed             : ${
 Inside Posting    : ${
 
     movement.insidePosting
-
         ? "Yes"
-
         : "No"
 
 }
@@ -1040,9 +1082,7 @@ Inside Posting    : ${
 Inside Assignment : ${
 
     movement.insideAssignment
-
         ? "Yes"
-
         : "No"
 
 }`;
@@ -1116,7 +1156,7 @@ GISFormatter.formatNearbyStaff = function (
 
         nearby;
 
-    let md =
+    response.markdown =
 
 `# 👥 Nearby Staff
 
@@ -1128,57 +1168,18 @@ ${GISFormatter.buildStaffLocationBlock(
 
 Search Radius : ${radius} m
 
-Nearby Staff  : ${nearby.length}`;
+Nearby Staff  : ${nearby.length}
 
-    if (
+${GISFormatter.buildStaffList(
 
-        nearby.length
+    nearby
 
-    ) {
-
-        md +=
-
-            "\n\n";
-
-        nearby.forEach(
-
-            function (
-
-                staff,
-
-                i
-
-            ) {
-
-                md +=
-
-`${i + 1}. ${
-
-    staff.name ||
-
-    staff.cleanName
-
-}${
-    staff.distance != null
-        ? ` (${Math.round(staff.distance)} m)`
-        : ""
-}
-
-`;
-
-            }
-
-        );
-
-    }
-
-    response.markdown =
-
-        md;
+)}`;
 
     return response;
 
 };
+
 
 /*--------------------------------------------------
   Analytics
@@ -1222,9 +1223,13 @@ GISFormatter.formatAnalytics = function (
 
     }
 
+    const profile =
+
+        result.profile;
+
     const analytics =
 
-        result.profile.analytics ||
+        profile.analytics ||
 
         {};
 
@@ -1242,7 +1247,7 @@ GISFormatter.formatAnalytics = function (
 
 ${GISFormatter.buildStaffLocationBlock(
 
-    result.profile
+    profile
 
 )}
 
