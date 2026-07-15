@@ -5043,7 +5043,75 @@ StaffIntent.detectLocationIntent = function (
     result.parameters =
 
         parameters;
+/*----------------------------------
+  Location View
+----------------------------------*/
 
+parameters.locationView = "FULL";
+
+if (
+
+    /\bPOSTED\b|\bPOSTING\b/.test(query)
+
+) {
+
+    parameters.locationView =
+
+        "POSTING";
+
+}
+
+else if (
+
+    /\bGPS\b|\bLATITUDE\b|\bLONGITUDE\b|\bLAT\b|\bLON\b|\bCOORDINATE\b|\bCOORDINATES\b|\bMAP POINT\b/.test(query)
+
+) {
+
+    parameters.locationView =
+
+        "GPS";
+
+}
+
+else if (
+
+    /\bLAST SEEN\b|\bLAST KNOWN\b|\bLAST REPORTED\b/.test(query)
+
+) {
+
+    parameters.locationView =
+
+        "LAST_SEEN";
+
+}
+
+else if (
+
+    /\bWHERE IS\b|
+
+    \bCURRENT LOCATION\b|
+
+    \bLIVE LOCATION\b|
+
+    \bLOCATION\b|
+
+    \bCURRENT POSITION\b|
+
+    \bCURRENT PLACE\b|
+
+    \bPRESENT LOCATION\b|
+
+    \bTRACK LOCATION\b|
+
+    \bWHICH LOCATION\b/.test(query)
+
+) {
+
+    parameters.locationView =
+
+        "CURRENT";
+
+}
     /*----------------------------------
       Staff Location
     ----------------------------------*/
