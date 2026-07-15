@@ -4299,17 +4299,7 @@ const dutyType =
 
     "-";
 
-const dutyMode =
 
-    duty.mode ||
-
-    duty.dutyMode ||
-
-    assignment.patrolMode ||
-
-    assignment.patrolType ||
-
-    "-";
   console.log(
     "PROFILE:",
     profile
@@ -4390,11 +4380,7 @@ switch (
 
             dutyType,
 
-            "Duty Mode    : " +
 
-            dutyMode,
-
-            "",
 
             "Assigned To  : " +
 
@@ -4402,9 +4388,7 @@ switch (
 
             "Compartment  : " +
 
-            assignedCompartment,
 
-            "Beat         : " +
 
             assignedBeat
 
@@ -4434,9 +4418,7 @@ switch (
 
             assignedTo,
 
-            "Compartment  : " +
 
-            assignedCompartment,
 
             "Beat         : " +
 
@@ -4458,11 +4440,9 @@ switch (
 
             "Duty Type    : " +
 
-            dutyType,
+            dutyType
 
-            "Duty Mode    : " +
 
-            dutyMode
 
         ].join(
 
@@ -4494,9 +4474,7 @@ switch (
 
             assignedBeat,
 
-            "Compartment  : " +
 
-            assignedCompartment,
 
             "Range        : " +
 
@@ -4514,11 +4492,9 @@ switch (
 
             "Duty Type    : " +
 
-            dutyType,
+            dutyType
 
-            "Duty Mode    : " +
 
-            dutyMode
 
         ].join(
 
@@ -4554,9 +4530,7 @@ switch (
 
             assignedBeat,
 
-            "Compartment  : " +
 
-            assignedCompartment,
 
             "Division     : " +
 
@@ -4570,11 +4544,9 @@ switch (
 
             "Duty Type    : " +
 
-            dutyType,
+            dutyType
 
-            "Duty Mode    : " +
 
-            dutyMode
 
         ].join(
 
@@ -4614,9 +4586,7 @@ switch (
 
             assignedBeat,
 
-            "Compartment  : " +
 
-            assignedCompartment,
 
             "Circle       : " +
 
@@ -4626,11 +4596,9 @@ switch (
 
             "Duty Type    : " +
 
-            dutyType,
+            dutyType
 
-            "Duty Mode    : " +
 
-            dutyMode
 
         ].join(
 
@@ -4656,19 +4624,13 @@ switch (
 
             dutyType,
 
-            "Duty Mode    : " +
 
-            dutyMode,
-
-            "",
 
             "Assigned To  : " +
 
             assignedTo,
 
-            "Compartment  : " +
 
-            assignedCompartment,
 
             "Beat         : " +
 
@@ -4733,9 +4695,7 @@ result.cards.push({
 
             dutyType,
 
-        dutyMode:
-
-            dutyMode,
+        
 
         /*----------------------------------
           Assignment
@@ -4745,9 +4705,7 @@ result.cards.push({
 
             assignedTo,
 
-        assignedCompartment:
 
-            assignedCompartment,
 
         assignedBeat:
 
@@ -4831,9 +4789,7 @@ result.sections.push({
 
             dutyType,
 
-        dutyMode:
-
-            dutyMode,
+        
 
         /*----------------------------------
           Assignment
@@ -4843,9 +4799,7 @@ result.sections.push({
 
             assignedTo,
 
-        assignedCompartment:
 
-            assignedCompartment,
 
         assignedBeat:
 
