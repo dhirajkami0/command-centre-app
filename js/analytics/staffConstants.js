@@ -1989,6 +1989,10 @@ STAFF_DUTY_ENDED: [
 
 STAFF_DUTY_STATUS: [
 
+    /*----------------------------------
+      ON DUTY
+    ----------------------------------*/
+
     "ON DUTY",
     "IS ON DUTY",
     "ON DUTY NOW",
@@ -1996,27 +2000,64 @@ STAFF_DUTY_STATUS: [
     "IS CURRENTLY ON DUTY",
     "STILL ON DUTY",
 
+    /*----------------------------------
+      OFF DUTY
+    ----------------------------------*/
+
     "OFF DUTY",
     "IS OFF DUTY",
     "CURRENTLY OFF DUTY",
     "OFF DUTY NOW",
 
+    /*----------------------------------
+      DUTY STATUS
+    ----------------------------------*/
+
     "DUTY STATUS",
     "CURRENT DUTY STATUS",
     "SHOW DUTY STATUS",
 
+    /*----------------------------------
+      CURRENT DUTY
+    ----------------------------------*/
+
     "CURRENT DUTY",
-    "TODAY DUTY",
     "PRESENT DUTY",
+
+    "TODAY DUTY",
+    "TODAYS DUTY",
+    "TODAY'S DUTY",
     "DUTY TODAY",
+
+    /*----------------------------------
+      ACTIVE
+    ----------------------------------*/
 
     "DUTY ACTIVE",
     "ACTIVE DUTY",
     "IS DUTY ACTIVE",
 
+    /*----------------------------------
+      DUTY ON
+    ----------------------------------*/
+
+    "DUTY ON",
+    "IS DUTY ON",
+    "DUTY IS ON",
+
+    /*----------------------------------
+      LIVE
+    ----------------------------------*/
+
+    "LIVE DUTY",
+    "LIVE ON DUTY",
+
+    /*----------------------------------
+      EXPLICIT BUSINESS
+    ----------------------------------*/
+
     "ACTIVE ON DUTY",
-    "WORKING ON DUTY",
-    "LIVE ON DUTY"
+    "WORKING ON DUTY"
 
 ],
 STAFF_DUTY_TYPE: [
