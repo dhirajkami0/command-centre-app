@@ -4200,40 +4200,7 @@ break;
         profile.assignment ||
 
         {};
-  console.log(
-    "PROFILE:",
-    profile
-);
 
-console.log(
-    "ASSIGNMENT:",
-    assignment
-);
-
-console.log(
-    "COMPARTMENT:",
-    assignment.compartment
-);
-
-console.log(
-    "BEAT:",
-    assignment.beat
-);
-
-console.log(
-    "RANGE:",
-    assignment.range
-);
-
-console.log(
-    "DIVISION:",
-    assignment.division
-);
-
-console.log(
-    "ASSIGNED TO:",
-    assignedTo
-);
 /*----------------------------------
   Assigned To
 ----------------------------------*/
@@ -4340,7 +4307,40 @@ const assignedTo =
         duty.dutyMode ||
 
         "-";
+  console.log(
+    "PROFILE:",
+    profile
+);
 
+console.log(
+    "ASSIGNMENT:",
+    assignment
+);
+
+console.log(
+    "COMPARTMENT:",
+    assignment.compartment
+);
+
+console.log(
+    "BEAT:",
+    assignment.beat
+);
+
+console.log(
+    "RANGE:",
+    assignment.range
+);
+
+console.log(
+    "DIVISION:",
+    assignment.division
+);
+
+console.log(
+    "ASSIGNED TO:",
+    assignedTo
+);
     /*----------------------------------
       Business Sentence
     ----------------------------------*/
