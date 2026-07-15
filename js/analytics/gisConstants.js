@@ -583,102 +583,93 @@ GISConstants.LAYERS = Object.freeze({
         "incident"
 
 });
-  /*--------------------------------------------------
+/*--------------------------------------------------
   KEYWORDS
 --------------------------------------------------*/
 
 GISConstants.KEYWORDS = Object.freeze({
 
     /*----------------------------------
-      Staff Presence
+      Staff Presence (Live Spatial)
     ----------------------------------*/
 
     GIS_STAFF_PRESENT: [
 
-        "WHO IS IN",
         "WHO IS INSIDE",
         "WHO IS WITHIN",
+        "WHO IS CURRENTLY IN",
+        "WHO IS CURRENTLY INSIDE",
+        "WHO IS CURRENTLY WITHIN",
+        "WHO IS LIVE IN",
 
-        "WHO ARE IN",
         "WHO ARE INSIDE",
         "WHO ARE WITHIN",
+        "WHO ARE CURRENTLY IN",
+        "WHO ARE CURRENTLY INSIDE",
+        "WHO ARE CURRENTLY WITHIN",
 
-        "SHOW STAFF IN",
         "SHOW STAFF INSIDE",
         "SHOW STAFF WITHIN",
+        "SHOW LIVE STAFF",
+        "SHOW LIVE STAFF INSIDE",
+        "SHOW LIVE STAFF WITHIN",
 
-        "STAFF IN",
         "STAFF INSIDE",
         "STAFF WITHIN",
+        "LIVE STAFF INSIDE",
+        "LIVE STAFF WITHIN",
+        "CURRENT STAFF INSIDE",
+        "CURRENT STAFF WITHIN",
 
-        "STAFF PRESENT",
-        "PRESENT STAFF",
-        "CURRENT STAFF",
-        "LIVE STAFF",
-
-        "STAFF CURRENTLY IN",
         "STAFF CURRENTLY INSIDE",
         "STAFF CURRENTLY WITHIN",
 
-        "WHICH STAFF ARE IN",
         "WHICH STAFF ARE INSIDE",
         "WHICH STAFF ARE WITHIN",
+        "WHICH STAFF ARE CURRENTLY INSIDE",
 
-        "WHICH STAFF IS IN",
         "WHICH STAFF IS INSIDE",
         "WHICH STAFF IS WITHIN"
 
     ],
 
     /*----------------------------------
-      Staff Count
+      Staff Count (Live Spatial)
     ----------------------------------*/
 
     GIS_STAFF_COUNT: [
 
-        "HOW MANY STAFF",
-
-        "HOW MANY STAFF ARE IN",
         "HOW MANY STAFF ARE INSIDE",
         "HOW MANY STAFF ARE WITHIN",
+        "HOW MANY STAFF ARE CURRENTLY INSIDE",
+        "HOW MANY STAFF ARE CURRENTLY WITHIN",
+        "HOW MANY LIVE STAFF",
 
-        "NUMBER OF STAFF",
-        "NUMBER OF STAFF IN",
         "NUMBER OF STAFF INSIDE",
         "NUMBER OF STAFF WITHIN",
+        "NUMBER OF LIVE STAFF",
 
-        "TOTAL STAFF",
-        "TOTAL STAFF IN",
         "TOTAL STAFF INSIDE",
         "TOTAL STAFF WITHIN",
+        "TOTAL LIVE STAFF",
 
-        "STAFF COUNT",
-        "STAFF COUNT IN",
         "STAFF COUNT INSIDE",
         "STAFF COUNT WITHIN",
-
         "LIVE STAFF COUNT",
-        "CURRENT STAFF COUNT",
-        "PRESENT STAFF COUNT"
+        "CURRENT STAFF COUNT"
 
     ],
 
     /*----------------------------------
-      Generic Spatial
+      Spatial Operators
     ----------------------------------*/
 
     GIS_INSIDE: [
 
-        "IN",
         "INSIDE",
         "WITHIN",
-
         "CONTAINS",
         "CONTAIN",
-
-        "HAS",
-        "HAVE",
-
         "INCLUDES",
         "INCLUDE"
 
