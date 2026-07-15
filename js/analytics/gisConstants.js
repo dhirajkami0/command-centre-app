@@ -590,314 +590,82 @@ GISConstants.LAYERS = Object.freeze({
 GISConstants.KEYWORDS = Object.freeze({
 
     /*----------------------------------
-      Map
-    ----------------------------------*/
-
-    GIS_MAP: [
-
-        "MAP",
-
-        "SHOW MAP",
-
-        "OPEN MAP",
-
-        "CURRENT MAP",
-
-        "DISPLAY MAP"
-
-    ],
-
-    /*----------------------------------
-      Filter
-    ----------------------------------*/
-
-    GIS_FILTER: [
-
-        "FILTER",
-
-        "MAP FILTER",
-
-        "CURRENT FILTER",
-
-        "APPLY FILTER"
-
-    ],
-GIS_STAFF_PRESENCE: [
-
-    "INSIDE",
-    "WITHIN",
-    "PRESENT INSIDE",
-    "LOCATED INSIDE"
-
-],
-
-GIS_STAFF_PRESENCE_COUNT: [
-
-    "HOW MANY STAFF ARE INSIDE",
-    "NUMBER OF STAFF INSIDE",
-    "STAFF INSIDE",
-    "COUNT STAFF INSIDE",
-    "TOTAL STAFF INSIDE"
-
-],
-  
-  /*----------------------------------
-      Current Selection
-    ----------------------------------*/
-
-    GIS_SELECTION: [
-
-        "CURRENT",
-
-        "SELECTED",
-
-        "SELECTED AREA",
-
-        "CURRENT AREA",
-
-        "CURRENT POLYGON",
-
-        "SELECTED POLYGON"
-
-    ],
-
-    /*----------------------------------
-      Jurisdictions
-    ----------------------------------*/
-
-    GIS_DIVISION: [
-
-        "DIVISION"
-
-    ],
-
-    GIS_RANGE: [
-
-        "RANGE"
-
-    ],
-
-    GIS_BEAT: [
-
-        "BEAT"
-
-    ],
-
-    GIS_COMPARTMENT: [
-
-        "COMPARTMENT",
-
-        "COMP",
-
-        "COUPE"
-
-    ],
-
-    GIS_VILLAGE: [
-
-        "VILLAGE"
-
-    ],
-
-    GIS_HIERARCHY: [
-
-        "HIERARCHY",
-
-        "JURISDICTION"
-
-    ],
-
-    /*----------------------------------
-      Spatial
-    ----------------------------------*/
-
-    GIS_NEAREST: [
-
-        "NEAREST",
-
-        "NEAR",
-
-        "CLOSEST"
-
-    ],
-
-    GIS_INSIDE: [
-
-        "INSIDE",
-
-        "WITHIN",
-
-        "IN"
-
-    ],
-
-    GIS_CONTAINS: [
-
-        "CONTAINS",
-
-        "HAS",
-
-        "INCLUDES"
-
-    ],
-
-    GIS_DISTANCE: [
-
-        "DISTANCE"
-
-    ],
-
-    GIS_DIRECTION: [
-
-        "DIRECTION",
-
-        "BEARING"
-
-    ],
-
-    /*----------------------------------
-      Analytics
-    ----------------------------------*/
-
-    GIS_ANALYTICS: [
-
-        "ANALYTICS",
-
-        "STATISTICS",
-
-        "REPORT"
-
-    ],
-
-    GIS_SUMMARY: [
-
-        "SUMMARY",
-
-        "OVERVIEW"
-
-    ],
-
-    /*----------------------------------
-      Live Staff Presence
+      Staff Presence
     ----------------------------------*/
 
     GIS_STAFF_PRESENT: [
 
-        "STAFF PRESENT",
-
-        "PRESENT STAFF",
-
-        "LIVE STAFF",
-
-        "CURRENT STAFF",
-
-        "STAFF INSIDE",
-
-        "STAFF IN",
-
         "WHO IS IN",
-
         "WHO IS INSIDE",
-
-        "WHICH STAFF ARE IN",
-
-        "SHOW STAFF",
-
-        "SHOW STAFF INSIDE",
+        "WHO IS WITHIN",
 
         "SHOW STAFF IN",
+        "SHOW STAFF INSIDE",
+        "SHOW STAFF WITHIN",
+
+        "STAFF IN",
+        "STAFF INSIDE",
+        "STAFF WITHIN",
+
+        "STAFF PRESENT",
+        "PRESENT STAFF",
+        "CURRENT STAFF",
+        "LIVE STAFF",
 
         "STAFF CURRENTLY IN",
+        "STAFF CURRENTLY INSIDE",
+        "STAFF CURRENTLY WITHIN",
 
-        "STAFF CURRENTLY INSIDE"
+        "WHICH STAFF ARE IN",
+        "WHICH STAFF ARE INSIDE",
+        "WHICH STAFF ARE WITHIN"
 
     ],
+
+    /*----------------------------------
+      Staff Count
+    ----------------------------------*/
 
     GIS_STAFF_COUNT: [
 
         "HOW MANY STAFF",
 
-        "STAFF COUNT",
+        "HOW MANY STAFF ARE IN",
+        "HOW MANY STAFF ARE INSIDE",
+        "HOW MANY STAFF ARE WITHIN",
 
         "NUMBER OF STAFF",
+        "NUMBER OF STAFF IN",
+        "NUMBER OF STAFF INSIDE",
+        "NUMBER OF STAFF WITHIN",
 
         "TOTAL STAFF",
+        "TOTAL STAFF IN",
+        "TOTAL STAFF INSIDE",
+        "TOTAL STAFF WITHIN",
 
-        "TOTAL STAFF PRESENT",
-
-        "PRESENT STAFF COUNT",
+        "STAFF COUNT",
+        "STAFF COUNT IN",
+        "STAFF COUNT INSIDE",
+        "STAFF COUNT WITHIN",
 
         "LIVE STAFF COUNT",
-
-        "CURRENT STAFF COUNT"
-
-    ],
-
-    /*----------------------------------
-      Wildlife
-    ----------------------------------*/
-
-    GIS_WILDLIFE_PRESENT: [
-
-        "ELEPHANT",
-
-        "ELEPHANTS",
-
-        "ANIMAL",
-
-        "ANIMALS",
-
-        "WILDLIFE",
-
-        "SIGHTINGS"
+        "CURRENT STAFF COUNT",
+        "PRESENT STAFF COUNT"
 
     ],
 
     /*----------------------------------
-      Patrol
+      Generic Spatial
     ----------------------------------*/
 
-    GIS_PATROL_PRESENT: [
+    GIS_INSIDE: [
 
-        "PATROL",
-
-        "PATROLLING",
-
-        "PATROL TEAM",
-
-        "PATROL STAFF"
-
-    ],
-
-    /*----------------------------------
-      Vehicle
-    ----------------------------------*/
-
-    GIS_VEHICLE_PRESENT: [
-
-        "VEHICLE",
-
-        "VEHICLES"
-
-    ],
-
-    /*----------------------------------
-      Incident
-    ----------------------------------*/
-
-    GIS_INCIDENT_PRESENT: [
-
-        "INCIDENT",
-
-        "INCIDENTS",
-
-        "FIRE",
-
-        "FIRES",
-
-        "ALERT",
-
-        "ALERTS"
+        "INSIDE",
+        "WITHIN",
+        "CONTAINS",
+        "HAS",
+        "INCLUDES"
 
     ]
 
