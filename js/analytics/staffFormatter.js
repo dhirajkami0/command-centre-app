@@ -4319,98 +4319,6 @@ const assignmentSentence =
       Markdown
     ----------------------------------*/
 
-    switch (
-
-        type
-
-    ) {
-
-        case "DUTY_TYPE":
-
-            result.markdown = [
-
-                "# 🚔 DUTY TYPE",
-
-                "",
-
-                "Name       : " +
-
-                displayName,
-
-                "",
-
-                "Duty Type  : " +
-
-                dutyType,
-
-                "Duty Mode  : " +
-
-                dutyMode,
-
-                "",
-
-                "Compartment : " +
-
-                assignedCompartment
-
-            ].join(
-
-                "\n"
-
-            );
-
-            break;
-
-        case "COMPARTMENT":
-
-result.markdown = [
-
-    "# 🚔 DUTY ASSIGNMENT",
-
-    "",
-
-    assignmentSentence,
-
-    "",
-
-    "Duty Type    : " +
-
-    dutyType,
-
-    "Duty Mode    : " +
-
-    dutyMode,
-
-    "",
-
-    "Assigned To  : " +
-
-    assignedTo,
-
-    "Compartment  : " +
-
-    assignedCompartment,
-
-    "Beat         : " +
-
-    assignedBeat,
-
-    "Range        : " +
-
-    assignedRange,
-
-    "Division     : " +
-
-    assignedDivision,
-
-    "Circle       : " +
-
-    assignedCircle
-
-].join("\n");
-
-            break;
-
 switch (
 
     type
@@ -4487,9 +4395,27 @@ switch (
 
             assignedBeat,
 
+            "Range        : " +
+
+            assignedRange,
+
+            "Division     : " +
+
+            assignedDivision,
+
+            "Circle       : " +
+
+            assignedCircle,
+
+            "",
+
             "Duty Type    : " +
 
-            dutyType
+            dutyType,
+
+            "Duty Mode    : " +
+
+            dutyMode
 
         ].join(
 
@@ -4525,9 +4451,27 @@ switch (
 
             assignedCompartment,
 
+            "Range        : " +
+
+            assignedRange,
+
+            "Division     : " +
+
+            assignedDivision,
+
+            "Circle       : " +
+
+            assignedCircle,
+
+            "",
+
             "Duty Type    : " +
 
-            dutyType
+            dutyType,
+
+            "Duty Mode    : " +
+
+            dutyMode
 
         ].join(
 
@@ -4567,9 +4511,23 @@ switch (
 
             assignedCompartment,
 
+            "Division     : " +
+
+            assignedDivision,
+
+            "Circle       : " +
+
+            assignedCircle,
+
+            "",
+
             "Duty Type    : " +
 
-            dutyType
+            dutyType,
+
+            "Duty Mode    : " +
+
+            dutyMode
 
         ].join(
 
@@ -4613,9 +4571,19 @@ switch (
 
             assignedCompartment,
 
+            "Circle       : " +
+
+            assignedCircle,
+
+            "",
+
             "Duty Type    : " +
 
-            dutyType
+            dutyType,
+
+            "Duty Mode    : " +
+
+            dutyMode
 
         ].join(
 
@@ -4650,8 +4618,6 @@ switch (
             "Assigned To  : " +
 
             assignedTo,
-
-            "",
 
             "Compartment  : " +
 
