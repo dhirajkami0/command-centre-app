@@ -1897,45 +1897,70 @@ STAFF_LOCATION: [
 ],
 
 STAFF_DUTY_STARTED: [
-"DUTY START",
-"DUTY STARTED",
-"DUTY START TIME",
-"DUTY STARTED AT",
-"DUTY STARTING TIME",
-"START DUTY",
-"START OF DUTY",
-"DUTY BEGIN",
-"DUTY BEGAN",
-"DUTY BEGINNING",
-"WHEN DID DUTY START",
-"WHEN WAS DUTY STARTED",
-"WHEN DID HE START DUTY",
-"WHEN DID SHE START DUTY",
-"WHEN DID STAFF START DUTY",
-"WHAT TIME DID DUTY START",
-"SHOW DUTY START",
-"GET DUTY START",
-"DISPLAY DUTY START",
-"SHOW DUTY START TIME",
-"GET DUTY START TIME",
-"DUTY START DETAILS",
-"DUTY START INFORMATION",
-"TODAY DUTY START",
-"CURRENT DUTY START",
-"DUTY LOGIN",
-"LOGIN TIME",
-"REPORTING TIME",
-"JOINED DUTY",
-"JOIN DUTY",
-"DUTY COMMENCED",
-"COMMENCED DUTY",
-"DUTY INITIATED",
-"DUTY INITIATION",
-"START TIME",
-"STARTED AT",
-"DUTY FROM",
-"DUTY SINCE",
-"ON DUTY SINCE"
+
+    /*----------------------------------
+      Primary Business Intent
+    ----------------------------------*/
+
+    "DUTY STARTED",
+    "DUTY START TIME",
+    "DUTY STARTED AT",
+
+    /*----------------------------------
+      Since When
+    ----------------------------------*/
+
+    "ON DUTY SINCE",
+    "DUTY SINCE",
+    "SINCE WHEN ON DUTY",
+    "SINCE WHEN STARTED DUTY",
+
+    /*----------------------------------
+      Natural Questions
+    ----------------------------------*/
+
+    "WHEN DID DUTY START",
+    "WHEN WAS DUTY STARTED",
+    "WHEN DID HE START DUTY",
+    "WHEN DID SHE START DUTY",
+    "WHEN DID STAFF START DUTY",
+
+    "WHAT TIME DID DUTY START",
+    "WHAT TIME WAS DUTY STARTED",
+
+    /*----------------------------------
+      Start Information
+    ----------------------------------*/
+
+    "SHOW DUTY START",
+    "SHOW DUTY START TIME",
+
+    "GET DUTY START",
+    "GET DUTY START TIME",
+
+    "DISPLAY DUTY START",
+
+    "DUTY START DETAILS",
+    "DUTY START INFORMATION",
+
+    /*----------------------------------
+      Duration
+    ----------------------------------*/
+
+    "DUTY DURATION",
+    "ON DUTY DURATION",
+    "TIME ON DUTY",
+    "ELAPSED DUTY TIME",
+
+    "HOW LONG ON DUTY",
+    "HOW LONG HAS HE BEEN ON DUTY",
+    "HOW LONG HAS SHE BEEN ON DUTY",
+    "HOW LONG HAS STAFF BEEN ON DUTY",
+
+    "HOW LONG IS HE ON DUTY",
+    "HOW LONG IS SHE ON DUTY",
+    "HOW LONG IS STAFF ON DUTY"
+
 ],
 
 STAFF_DUTY_ENDED: [
