@@ -2115,8 +2115,8 @@ STAFF_ASSIGNMENT: [
     "WHICH DUTY",
     "WHAT IS DUTY TYPE",
 
-    "DUTY NAME",
-    "NAME OF DUTY",
+    
+    
 
     "ASSIGNMENT TYPE",
 
