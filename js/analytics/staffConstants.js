@@ -3018,7 +3018,55 @@ STAFF_BEAT_DIRECTORY: [
 STAFF_DESIGNATION_DIRECTORY: [
 
     /*----------------------------------
-      Generic
+      Count / Directory
+    ----------------------------------*/
+
+    "COUNT",
+    "COUNTS",
+    "TOTAL",
+    "TOTAL COUNT",
+    "NUMBER OF",
+    "HOW MANY",
+    "STRENGTH",
+    "HEADCOUNT",
+
+    "STAFF COUNT",
+    "TOTAL STAFF",
+    "NUMBER OF STAFF",
+    "HOW MANY STAFF",
+    "STAFF STRENGTH",
+    "STAFF HEADCOUNT",
+
+    "PERSONNEL COUNT",
+    "TOTAL PERSONNEL",
+    "NUMBER OF PERSONNEL",
+
+    "EMPLOYEE COUNT",
+    "TOTAL EMPLOYEES",
+    "NUMBER OF EMPLOYEES",
+
+    "OFFICER COUNT",
+    "TOTAL OFFICERS",
+    "NUMBER OF OFFICERS",
+
+    "WORKFORCE COUNT",
+    "TOTAL WORKFORCE",
+    "MANPOWER",
+    "MANPOWER COUNT",
+    "TOTAL MANPOWER",
+
+    "HOW MANY ARE THERE",
+    "HOW MANY AVAILABLE",
+    "HOW MANY POSTED",
+    "NUMBER POSTED",
+    "TOTAL POSTED",
+    "TOTAL AVAILABLE",
+    "COUNT OF",
+    "TOTAL OF",
+    "STRENGTH OF",
+
+    /*----------------------------------
+      Generic Directory
     ----------------------------------*/
 
     "DESIGNATION DIRECTORY",
@@ -3027,9 +3075,11 @@ STAFF_DESIGNATION_DIRECTORY: [
     "STAFF OF DESIGNATION",
     "STAFF UNDER DESIGNATION",
     "STAFF IN DESIGNATION",
+
     "STAFF OF",
     "STAFF UNDER",
     "STAFF IN",
+
     "SHOW",
     "LIST",
     "VIEW",
@@ -3037,7 +3087,7 @@ STAFF_DESIGNATION_DIRECTORY: [
     "GET",
 
     /*----------------------------------
-      Forest Ranger
+      Forest Ranger (FR)
     ----------------------------------*/
 
     "FR",
@@ -3046,6 +3096,7 @@ STAFF_DESIGNATION_DIRECTORY: [
     "VIEW FR",
     "DISPLAY FR",
     "LIST FR",
+
     "FOREST RANGER",
     "FOREST RANGERS",
     "SHOW FOREST RANGERS",
@@ -3053,6 +3104,7 @@ STAFF_DESIGNATION_DIRECTORY: [
     "VIEW FOREST RANGERS",
     "FOREST RANGER LIST",
     "LIST OF FOREST RANGERS",
+
     "STAFF OF FR",
     "STAFF OF FOREST RANGER",
 
@@ -3327,82 +3379,7 @@ STAFF_BEAT_COUNT: [
 
 ],
 
-STAFF_DESIGNATION_COUNT: [
 
-    /*----------------------------------
-      Primary Count
-    ----------------------------------*/
-
-    "COUNT",
-    "COUNTS",
-    "TOTAL",
-    "TOTAL COUNT",
-    "NUMBER OF",
-    "HOW MANY",
-    "STRENGTH",
-    "HEADCOUNT",
-
-    /*----------------------------------
-      Staff Count
-    ----------------------------------*/
-
-    "STAFF COUNT",
-    "TOTAL STAFF",
-    "NUMBER OF STAFF",
-    "HOW MANY STAFF",
-    "STAFF STRENGTH",
-    "STAFF HEADCOUNT",
-
-    /*----------------------------------
-      Personnel
-    ----------------------------------*/
-
-    "PERSONNEL COUNT",
-    "TOTAL PERSONNEL",
-    "NUMBER OF PERSONNEL",
-
-    /*----------------------------------
-      Employee
-    ----------------------------------*/
-
-    "EMPLOYEE COUNT",
-    "TOTAL EMPLOYEES",
-    "NUMBER OF EMPLOYEES",
-
-    /*----------------------------------
-      Officer
-    ----------------------------------*/
-
-    "OFFICER COUNT",
-    "TOTAL OFFICERS",
-    "NUMBER OF OFFICERS",
-
-    /*----------------------------------
-      Workforce
-    ----------------------------------*/
-
-    "WORKFORCE COUNT",
-    "TOTAL WORKFORCE",
-    "MANPOWER",
-    "MANPOWER COUNT",
-    "TOTAL MANPOWER",
-
-    /*----------------------------------
-      Natural Queries
-    ----------------------------------*/
-
-    "HOW MANY ARE THERE",
-    "HOW MANY AVAILABLE",
-    "HOW MANY POSTED",
-    "NUMBER POSTED",
-    "TOTAL POSTED",
-    "TOTAL AVAILABLE",
-    "COUNT OF",
-    "NUMBER OF",
-    "TOTAL OF",
-    "STRENGTH OF"
-
-],
 WHO_IS_ON_DUTY: [
 
     "WHO IS ON DUTY",
