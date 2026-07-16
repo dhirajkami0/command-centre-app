@@ -2085,40 +2085,7 @@ STAFF_DUTY_STATUS: [
     "WORKING ON DUTY"
 
 ],
-STAFF_DUTY_TYPE: [
-"DUTY TYPE",
-"TYPE OF DUTY",
-"CURRENT DUTY TYPE",
-"WHAT DUTY",
-"WHICH DUTY",
-"DUTY NAME",
-"ASSIGNMENT TYPE",
-"WORK TYPE",
-"PATROL TYPE",
-"CURRENT ASSIGNMENT",
-"CURRENT WORK",
-"CURRENT TASK",
-"CURRENT OPERATION",
-"CURRENT MISSION",
-"ELEPHANT PATROL",
-"ELEPHANT DUTY",
-"FIRE PATROL",
-"FIRE DUTY",
-"FOREST PATROL",
-"NIGHT PATROL",
-"DAY PATROL",
-"ANTI POACHING",
-"ANTI POACHING PATROL",
-"ANTI POACHING DUTY",
-"LAW ENFORCEMENT",
-"DEPREDATION DUTY",
-"RESCUE DUTY",
-"VIP DUTY",
-"CHECK POST DUTY",
-"CHECKPOST DUTY",
-"BEAT PATROL",
-"SPECIAL DUTY"
-],
+
 
 /*----------------------------------
   Operational Assignment
@@ -2136,6 +2103,34 @@ STAFF_ASSIGNMENT: [
     "CURRENT ASSIGNMENT",
     "TODAY ASSIGNMENT",
     "ACTIVE ASSIGNMENT",
+
+    /*----------------------------------
+      Duty Type
+    ----------------------------------*/
+
+    "DUTY TYPE",
+    "TYPE OF DUTY",
+    "CURRENT DUTY TYPE",
+    "WHAT DUTY",
+    "WHICH DUTY",
+    "WHAT IS DUTY TYPE",
+
+    "DUTY NAME",
+    "NAME OF DUTY",
+
+    "ASSIGNMENT TYPE",
+
+    "WORK TYPE",
+
+    "PATROL TYPE",
+
+    "DUTY MODE",
+
+    "PATROL MODE",
+
+    "WORK MODE",
+
+    "FIELD DUTY",
 
     /*----------------------------------
       Deputation
@@ -2208,26 +2203,7 @@ STAFF_ASSIGNMENT: [
     "IN WHICH COMPARTMENT",
 
     /*----------------------------------
-      Duty Mode
-    ----------------------------------*/
-
-    "DUTY TYPE",
-    "TYPE OF DUTY",
-    "WHAT IS DUTY TYPE",
-    "WHICH DUTY",
-    "WHAT DUTY",
-
-    "DUTY MODE",
-    "WHAT IS DUTY MODE",
-    "WHICH DUTY MODE",
-
-    "PATROL TYPE",
-    "PATROL MODE",
-    "WORK MODE",
-    "FIELD DUTY",
-
-    /*----------------------------------
-      Operational Queries
+      Current Operational Context
     ----------------------------------*/
 
     "CURRENT TASK",
@@ -2235,7 +2211,44 @@ STAFF_ASSIGNMENT: [
     "CURRENT MISSION",
     "CURRENT DEPLOYMENT",
     "CURRENT DUTY LOCATION",
-    "CURRENT DUTY AREA"
+    "CURRENT DUTY AREA",
+    "CURRENT WORK",
+
+    /*----------------------------------
+      Explicit Duty Categories
+    ----------------------------------*/
+
+    "ELEPHANT PATROL",
+    "ELEPHANT DUTY",
+
+    "FIRE PATROL",
+    "FIRE DUTY",
+
+    "FOREST PATROL",
+
+    "NIGHT PATROL",
+
+    "DAY PATROL",
+
+    "ANTI POACHING",
+    "ANTI POACHING PATROL",
+    "ANTI POACHING DUTY",
+
+    "LAW ENFORCEMENT",
+
+    "DEPREDATION DUTY",
+
+    "RESCUE DUTY",
+
+    "VIP DUTY",
+
+    "CHECK POST DUTY",
+    "CHECKPOST DUTY",
+
+    "BEAT PATROL",
+
+    "SPECIAL DUTY"
+
 ],
 
 WHO_IS_PATROLLING: [
