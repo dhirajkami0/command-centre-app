@@ -2153,7 +2153,7 @@ STAFF_ASSIGNMENT: [
     "ASSIGNED PLACE",
     "ASSIGNED COMPARTMENT",
     "ASSIGNED BEAT",
-    "ASSIGNED RANGE",
+   
     "ASSIGNED DIVISION",
 
     /*----------------------------------
