@@ -3018,59 +3018,12 @@ STAFF_BEAT_DIRECTORY: [
 STAFF_DESIGNATION_DIRECTORY: [
 
     /*----------------------------------
-      Count / Directory
-    ----------------------------------*/
-
-    "COUNT",
-    "COUNTS",
-    "TOTAL",
-    "TOTAL COUNT",
-    "NUMBER OF",
-    "HOW MANY",
-    "STRENGTH",
-    "HEADCOUNT",
-
-    "STAFF COUNT",
-    "TOTAL STAFF",
-    "NUMBER OF STAFF",
-    "HOW MANY STAFF",
-    "STAFF STRENGTH",
-    "STAFF HEADCOUNT",
-
-    "PERSONNEL COUNT",
-    "TOTAL PERSONNEL",
-    "NUMBER OF PERSONNEL",
-
-    "EMPLOYEE COUNT",
-    "TOTAL EMPLOYEES",
-    "NUMBER OF EMPLOYEES",
-
-    "OFFICER COUNT",
-    "TOTAL OFFICERS",
-    "NUMBER OF OFFICERS",
-
-    "WORKFORCE COUNT",
-    "TOTAL WORKFORCE",
-    "MANPOWER",
-    "MANPOWER COUNT",
-    "TOTAL MANPOWER",
-
-    "HOW MANY ARE THERE",
-    "HOW MANY AVAILABLE",
-    "HOW MANY POSTED",
-    "NUMBER POSTED",
-    "TOTAL POSTED",
-    "TOTAL AVAILABLE",
-    "COUNT OF",
-    "TOTAL OF",
-    "STRENGTH OF",
-
-    /*----------------------------------
       Generic Directory
     ----------------------------------*/
 
     "DESIGNATION DIRECTORY",
     "DIRECTORY BY DESIGNATION",
+
     "STAFF BY DESIGNATION",
     "STAFF OF DESIGNATION",
     "STAFF UNDER DESIGNATION",
@@ -3080,29 +3033,32 @@ STAFF_DESIGNATION_DIRECTORY: [
     "STAFF UNDER",
     "STAFF IN",
 
-    "SHOW",
-    "LIST",
-    "VIEW",
-    "DISPLAY",
-    "GET",
-
     /*----------------------------------
       Forest Ranger (FR)
     ----------------------------------*/
 
     "FR",
     "FR LIST",
+
     "SHOW FR",
+    "LIST FR",
     "VIEW FR",
     "DISPLAY FR",
-    "LIST FR",
 
     "FOREST RANGER",
     "FOREST RANGERS",
+
+    "SHOW FOREST RANGER",
     "SHOW FOREST RANGERS",
+
+    "LIST FOREST RANGER",
     "LIST FOREST RANGERS",
+
+    "VIEW FOREST RANGER",
     "VIEW FOREST RANGERS",
+
     "FOREST RANGER LIST",
+
     "LIST OF FOREST RANGERS",
 
     "STAFF OF FR",
@@ -3114,12 +3070,21 @@ STAFF_DESIGNATION_DIRECTORY: [
 
     "FORESTER",
     "FORESTERS",
+
     "SHOW FORESTER",
     "SHOW FORESTERS",
+
     "LIST FORESTER",
     "LIST FORESTERS",
+
+    "VIEW FORESTER",
+    "VIEW FORESTERS",
+
     "FORESTER LIST",
+
     "LIST OF FORESTERS",
+
+    "STAFF OF FORESTER",
 
     /*----------------------------------
       Beat Supervisor
@@ -3127,62 +3092,99 @@ STAFF_DESIGNATION_DIRECTORY: [
 
     "BEAT SUPERVISOR",
     "BEAT SUPERVISORS",
+
+    "SHOW BEAT SUPERVISOR",
     "SHOW BEAT SUPERVISORS",
+
+    "LIST BEAT SUPERVISOR",
     "LIST BEAT SUPERVISORS",
+
+    "VIEW BEAT SUPERVISOR",
     "VIEW BEAT SUPERVISORS",
+
+    "BEAT SUPERVISOR LIST",
 
     /*----------------------------------
       Assistant Surveyor
     ----------------------------------*/
 
     "AS",
+
     "SHOW AS",
     "LIST AS",
     "VIEW AS",
+
     "AS LIST",
+
+    "STAFF OF AS",
 
     /*----------------------------------
       ADFO
     ----------------------------------*/
 
     "ADFO",
+
     "SHOW ADFO",
     "LIST ADFO",
     "VIEW ADFO",
+
     "ADFO LIST",
+
     "LIST OF ADFO",
+
+    "STAFF OF ADFO",
 
     /*----------------------------------
       DFO
     ----------------------------------*/
 
     "DFO",
+
     "SHOW DFO",
     "LIST DFO",
     "VIEW DFO",
+
     "DFO LIST",
+
     "LIST OF DFO",
+
+    "STAFF OF DFO",
 
     /*----------------------------------
       Range Officer
     ----------------------------------*/
 
     "RO",
+
     "RANGE OFFICER",
     "RANGE OFFICERS",
+
+    "SHOW RANGE OFFICER",
     "SHOW RANGE OFFICERS",
+
+    "LIST RANGE OFFICER",
     "LIST RANGE OFFICERS",
+
+    "VIEW RANGE OFFICER",
+    "VIEW RANGE OFFICERS",
+
     "RANGE OFFICER LIST",
+
+    "STAFF OF RANGE OFFICER",
 
     /*----------------------------------
       Deputy Range Officer
     ----------------------------------*/
 
     "DRO",
+
     "SHOW DRO",
     "LIST DRO",
     "VIEW DRO",
+
     "DRO LIST",
+
+    "STAFF OF DRO",
 
     /*----------------------------------
       Driver
@@ -3190,45 +3192,78 @@ STAFF_DESIGNATION_DIRECTORY: [
 
     "DRIVER",
     "DRIVERS",
+
+    "SHOW DRIVER",
     "SHOW DRIVERS",
+
+    "LIST DRIVER",
     "LIST DRIVERS",
+
+    "VIEW DRIVER",
+    "VIEW DRIVERS",
+
     "DRIVER LIST",
+
+    "STAFF OF DRIVER",
 
     /*----------------------------------
       Daily Labour
     ----------------------------------*/
 
     "DL",
+
     "DAILY LABOUR",
     "DAILY LABOURER",
     "DAILY WAGE",
     "CASUAL LABOUR",
+
     "SHOW DAILY LABOUR",
     "LIST DAILY LABOUR",
+    "VIEW DAILY LABOUR",
+
     "DL LIST",
+
+    "STAFF OF DL",
 
     /*----------------------------------
       Banasahayak
     ----------------------------------*/
 
     "BS",
+
     "BANASAHAYAK",
     "BANASAYAHAK",
     "BANASAHAYK",
+
     "SHOW BANASAHAYAK",
     "LIST BANASAHAYAK",
+    "VIEW BANASAHAYAK",
+
     "BS LIST",
+
+    "STAFF OF BS",
 
     /*----------------------------------
       Forest Volunteer
     ----------------------------------*/
 
     "FV",
+
     "FOREST VOLUNTEER",
     "FOREST VOLUNTEERS",
+
+    "SHOW FOREST VOLUNTEER",
     "SHOW FOREST VOLUNTEERS",
+
+    "LIST FOREST VOLUNTEER",
     "LIST FOREST VOLUNTEERS",
+
+    "VIEW FOREST VOLUNTEER",
+    "VIEW FOREST VOLUNTEERS",
+
     "VOLUNTEER LIST",
+
+    "STAFF OF FV",
 
     /*----------------------------------
       Watcher
@@ -3236,8 +3271,17 @@ STAFF_DESIGNATION_DIRECTORY: [
 
     "WATCHER",
     "WATCHERS",
+
+    "SHOW WATCHER",
     "SHOW WATCHERS",
+
+    "LIST WATCHER",
     "LIST WATCHERS",
+
+    "VIEW WATCHER",
+    "VIEW WATCHERS",
+
+    "STAFF OF WATCHER",
 
     /*----------------------------------
       Mahout
@@ -3245,16 +3289,31 @@ STAFF_DESIGNATION_DIRECTORY: [
 
     "MAHOUT",
     "MAHOUTS",
+
+    "SHOW MAHOUT",
     "SHOW MAHOUTS",
+
+    "LIST MAHOUT",
     "LIST MAHOUTS",
+
+    "VIEW MAHOUT",
+    "VIEW MAHOUTS",
+
+    "STAFF OF MAHOUT",
 
     /*----------------------------------
       Elephant Squad
     ----------------------------------*/
 
     "ELEPHANT SQUAD",
+
     "SHOW ELEPHANT SQUAD",
-    "LIST ELEPHANT SQUAD"
+
+    "LIST ELEPHANT SQUAD",
+
+    "VIEW ELEPHANT SQUAD",
+
+    "STAFF OF ELEPHANT SQUAD"
 
 ],
 /*----------------------------------
