@@ -1108,12 +1108,13 @@ IntentManager.detect = async function (
 
         const aiIntent =
 
-            await AI.detectIntent(
+    await AI.detectIntent(
 
-                query
+        query,
 
-            );
+        intent
 
+    );
         /*------------------------------
           Validate
         ------------------------------*/
