@@ -330,75 +330,38 @@ AI.buildIntentPrompt = function (
  CALL API
 =========================================================*/
 
-AI.callAPI = async function (
+AI.callAPI = async function (prompt) {
 
-    payload
+    console.log("AI Prompt:");
+    console.log(prompt);
 
-) {
+    const response = await fetch(
 
-    console.log(
+        GG.Config.API.DETECT_INTENT,
 
-        "AI Payload:",
+        {
 
-        payload
+            method: "POST",
+
+            headers: {
+
+                "Content-Type": "application/json"
+
+            },
+
+            body: JSON.stringify({
+
+                prompt: prompt
+
+            })
+
+        }
 
     );
 
-    /*----------------------------------
-      Call Detect Intent API
-    ----------------------------------*/
+    const data = await response.json();
 
-    const response =
-
-        await fetch(
-
-            GG.Config
-                .API
-                .DETECT_INTENT,
-
-            {
-
-                method: "POST",
-
-                headers: {
-
-                    "Content-Type":
-                        "application/json"
-
-                },
-
-               body: JSON.stringify({
-
-    query:
-
-        payload.question,
-
-    localIntent:
-
-        payload.localIntent
-
-})
-            }
-
-        );
-
-    /*----------------------------------
-      Parse Response
-    ----------------------------------*/
-
-    const data =
-
-        await response.json();
-
-    /*----------------------------------
-      HTTP Error
-    ----------------------------------*/
-
-    if (
-
-        !response.ok
-
-    ) {
+    if (!response.ok) {
 
         throw new Error(
 
@@ -410,15 +373,7 @@ AI.callAPI = async function (
 
     }
 
-    /*----------------------------------
-      API Error
-    ----------------------------------*/
-
-    if (
-
-        data.success === false
-
-    ) {
+    if (data.success === false) {
 
         throw new Error(
 
@@ -429,10 +384,6 @@ AI.callAPI = async function (
         );
 
     }
-
-    /*----------------------------------
-      Success
-    ----------------------------------*/
 
     return data;
 
