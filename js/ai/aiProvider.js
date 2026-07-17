@@ -80,10 +80,11 @@ AI.init = function () {
 
 AI.detectIntent = async function (
 
-    query
+    query,
+
+    localIntent = null
 
 ) {
-
     AI.init();
 
     try {
@@ -94,12 +95,13 @@ AI.detectIntent = async function (
 
         const prompt =
 
-            AI.buildIntentPrompt(
+    AI.buildIntentPrompt(
 
-                query
+        query,
 
-            );
+        localIntent
 
+    );
         /*----------------------------------
           Call API
         ----------------------------------*/
@@ -374,14 +376,17 @@ AI.callAPI = async function (
 
                 },
 
-                body: JSON.stringify({
+               body: JSON.stringify({
 
-                    query:
+    query:
 
-                        payload.question
+        payload.question,
 
-                })
+    localIntent:
 
+        payload.localIntent
+
+})
             }
 
         );
