@@ -2,11 +2,32 @@
 
     "use strict";
 
-    window.callAI = async function (request) {
+    /*=========================================================
+      CALL AI (GEMINI)
+    =========================================================*/
 
-        const res = await fetch(
+    window.callAI = async function (request = {}) {
 
-            "https://askai-ugffgukzca-uc.a.run.app",
+        const endpoint =
+
+            window.GreenGuardAI
+                ?.Config
+                ?.API
+                ?.ASK_AI;
+
+        if (!endpoint) {
+
+            throw new Error(
+
+                "ASK_AI endpoint is not configured."
+
+            );
+
+        }
+
+        const response = await fetch(
+
+            endpoint,
 
             {
 
@@ -24,13 +45,13 @@
 
         );
 
-        const data = await res.json();
+        const data = await response.json();
 
         if (
 
-            !res.ok ||
+            !response.ok ||
 
-            !data.success
+            data.success === false
 
         ) {
 
@@ -38,7 +59,7 @@
 
                 data.error ||
 
-                "AI request failed."
+                "Gemini request failed."
 
             );
 
