@@ -16,6 +16,7 @@
 
     ) {
     console.trace("🧠 AI.detectIntent CALLED");
+    console.dir(request);
 
         try {
 
