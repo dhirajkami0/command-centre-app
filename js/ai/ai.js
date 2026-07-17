@@ -15,6 +15,7 @@
         request = {}
 
     ) {
+    console.trace("🧠 AI.detectIntent CALLED");
 
         try {
 
