@@ -2,43 +2,106 @@
 
     "use strict";
 
-    window.callAI = async function (request = {}) {
+    window.callAI = async function (
+
+        request = {}
+
+    ) {
 
         const endpoint =
+
             window.GreenGuardAI
                 ?.Config
                 ?.API
                 ?.ASK_AI;
 
-        if (!endpoint) {
+        if (
+
+            !endpoint
+
+        ) {
 
             throw new Error(
+
                 "ASK_AI endpoint is not configured."
+
             );
 
         }
 
-        const response = await fetch(endpoint, {
+        const response = await fetch(
 
-            method: "POST",
+            endpoint,
 
-            headers: {
+            {
 
-                "Content-Type": "application/json"
+                method: "POST",
 
-            },
+                headers: {
 
-            body: JSON.stringify(request)
+                    "Content-Type":
 
-        });
+                        "application/json"
 
-        const data = await response.json();
+                },
+
+                body:
+
+                    JSON.stringify(
+
+                        request
+
+                    )
+
+            }
+
+        );
+
+        let data = null;
+
+        try {
+
+            data =
+
+                await response.json();
+
+        }
+
+        catch (
+
+            error
+
+        ) {
+
+            throw new Error(
+
+                "Invalid JSON response from AI."
+
+            );
+
+        }
 
         if (
 
-            !response.ok ||
+            !response.ok
 
-            data.success === false
+        ) {
+
+            throw new Error(
+
+                data?.error ||
+
+                response.statusText ||
+
+                "AI request failed."
+
+            );
+
+        }
+
+        if (
+
+            data?.success === false
 
         ) {
 
@@ -46,7 +109,7 @@
 
                 data.error ||
 
-                "Gemini request failed."
+                "AI request failed."
 
             );
 
