@@ -73,86 +73,66 @@
       CLOUD FUNCTIONS
     ------------------------------------------------------------*/
 
-/*------------------------------------------------------------
-  CLOUD FUNCTIONS
-------------------------------------------------------------*/
+    GG.API = (() => {
 
-/*------------------------------------------------------------
-  CLOUD FUNCTIONS
-------------------------------------------------------------*/
+        const BASE =
 
-/*------------------------------------------------------------
-  CLOUD FUNCTIONS
-------------------------------------------------------------*/
+            "https://us-central1-command-centre-86f62.cloudfunctions.net";
 
-GG.API = (() => {
+        return Object.freeze({
 
-    const BASE =
+            BASE,
 
-        "https://us-central1-command-centre-86f62.cloudfunctions.net";
+            /*----------------------------------
+              New AI APIs
+            ----------------------------------*/
 
-    return Object.freeze({
+            ASK:
+                BASE + "/ask",
 
-        BASE,
+            ASK_AI:
+                BASE + "/ask",
 
-        /*----------------------------------
-          New AI APIs
-        ----------------------------------*/
+            DETECT_INTENT:
+                BASE + "/detectIntent",
 
-        ASK:
+            /*----------------------------------
+              Future
+            ----------------------------------*/
 
-            BASE + "/ask",
+            SEARCH:
+                BASE + "/searchAI",
 
-        DETECT_INTENT:
+            EMBEDDING:
+                BASE + "/embeddingAI",
 
-            BASE + "/detectIntent",
+            IMAGE:
+                BASE + "/imageAI"
 
-        /*----------------------------------
-          Legacy (Temporary)
-        ----------------------------------*/
+        });
 
-        ASK_AI:
+    })();
 
-            "https://askai-ugffgukzca-uc.a.run.app",
+    GG.AI = Object.freeze({
 
-        /*----------------------------------
-          Future
-        ----------------------------------*/
+        ENABLED: true,
 
-        SEARCH:
+        PROVIDER: "Gemini",
 
-            BASE + "/searchAI",
+        MODEL: "gemini-2.5-flash",
 
-        EMBEDDING:
+        INTENT_CONFIDENCE: 0.90,
 
-            BASE + "/embeddingAI",
+        MAX_RETRIES: 2,
 
-        IMAGE:
+        REQUEST_TIMEOUT: 15000,
 
-            BASE + "/imageAI"
+        CACHE_INTENTS: true,
+
+        CACHE_RESPONSES: false
 
     });
 
-})();
-    GG.AI = Object.freeze({
-
-    ENABLED: true,
-
-    PROVIDER: "OpenAI",
-
-    MODEL: "gpt-5.5",
-
-    INTENT_CONFIDENCE: 0.90,
-
-    MAX_RETRIES: 2,
-
-    REQUEST_TIMEOUT: 15000,
-
-    CACHE_INTENTS: true,
-
-    CACHE_RESPONSES: false
-
-});
     /*------------------------------------------------------------
       FIRESTORE COLLECTIONS
     ------------------------------------------------------------*/
@@ -176,71 +156,75 @@ GG.API = (() => {
         SPECIES: "species"
 
     });
-GG.INTENT = Object.freeze({
 
-    LOCAL_ENABLED: true,
+    GG.INTENT = Object.freeze({
 
-    AI_FALLBACK: true,
+        LOCAL_ENABLED: true,
 
-    UNKNOWN_THRESHOLD: 0.60,
+        AI_FALLBACK: true,
 
-    HIGH_CONFIDENCE: 0.90,
+        UNKNOWN_THRESHOLD: 0.60,
 
-    MIN_AI_CONFIDENCE: 0.75
+        HIGH_CONFIDENCE: 0.90,
 
-});
-GG.ROUTER = Object.freeze({
+        MIN_AI_CONFIDENCE: 0.75
 
-    DEFAULT_DOMAIN: "staff",
+    });
 
-    ENABLE_AI_ROUTING: true,
+    GG.ROUTER = Object.freeze({
 
-    ENABLE_MULTI_INTENT: true
+        DEFAULT_DOMAIN: "staff",
 
-});
+        ENABLE_AI_ROUTING: true,
+
+        ENABLE_MULTI_INTENT: true
+
+    });
+
     GG.ANALYTICS = Object.freeze({
 
-    AUTO_LOAD: true,
+        AUTO_LOAD: true,
 
-    AUTO_REFRESH: false,
+        AUTO_REFRESH: false,
 
-    REFRESH_INTERVAL: 60000,
+        REFRESH_INTERVAL: 60000,
 
-    BUILD_ON_STARTUP: true
+        BUILD_ON_STARTUP: true
 
-});
+    });
+
     /*------------------------------------------------------------
       CACHE
     ------------------------------------------------------------*/
 
-GG.CACHE = Object.freeze({
+    GG.CACHE = Object.freeze({
 
-    ENABLED: true,
+        ENABLED: true,
 
-    DATABASE: "GG_AI_CACHE",
+        DATABASE: "GG_AI_CACHE",
 
-    VERSION: 1,
+        VERSION: 1,
 
-    STORE: "responses",
+        STORE: "responses",
 
-    MAX_MEMORY_ITEMS: 100,
+        MAX_MEMORY_ITEMS: 100,
 
-    TTL: 30 * 60 * 1000,
+        TTL: 30 * 60 * 1000,
 
-    /* Intent Cache */
+        /* Intent Cache */
 
-    INTENT_TTL: 24 * 60 * 60 * 1000,
+        INTENT_TTL: 24 * 60 * 60 * 1000,
 
-    /* Response Cache */
+        /* Response Cache */
 
-    RESPONSE_TTL: 30 * 60 * 1000,
+        RESPONSE_TTL: 30 * 60 * 1000,
 
-    /* Context Cache */
+        /* Context Cache */
 
-    CONTEXT_TTL: 5 * 60 * 1000
+        CONTEXT_TTL: 5 * 60 * 1000
 
-});
-    
+    });
+
     /*------------------------------------------------------------
       CHAT
     ------------------------------------------------------------*/
@@ -377,7 +361,7 @@ GG.CACHE = Object.freeze({
 
     };
 
-      /*----------------------------------------------------------
+    /*----------------------------------------------------------
       UTILITIES
     ----------------------------------------------------------*/
 
@@ -393,8 +377,6 @@ GG.CACHE = Object.freeze({
 
     };
 
-
-
     GG.warn = function (module, ...args) {
 
         console.warn(
@@ -403,8 +385,6 @@ GG.CACHE = Object.freeze({
         );
 
     };
-
-
 
     GG.error = function (module, ...args) {
 
@@ -415,23 +395,17 @@ GG.CACHE = Object.freeze({
 
     };
 
-
-
     GG.isOnline = function () {
 
         return navigator.onLine;
 
     };
 
-
-
     GG.now = function () {
 
         return Date.now();
 
     };
-
-
 
     GG.sleep = function (ms) {
 
@@ -450,8 +424,6 @@ GG.CACHE = Object.freeze({
         );
 
     };
-
-
 
     /*----------------------------------------------------------
       UUID
@@ -488,8 +460,6 @@ GG.CACHE = Object.freeze({
         .join("_");
 
     };
-
-
 
     /*----------------------------------------------------------
       CLONE
@@ -537,15 +507,11 @@ GG.CACHE = Object.freeze({
 
     };
 
-
-
     GG.isFunction = function (fn) {
 
         return typeof fn === "function";
 
     };
-
-
 
     GG.exists = function (value) {
 
@@ -559,9 +525,9 @@ GG.CACHE = Object.freeze({
 
     };
 
+    GG.noop = function () {};
 
-
-    GG.noop = function () {};    /*------------------------------------------------------------
+    /*------------------------------------------------------------
       REGISTER MODULE
     ------------------------------------------------------------*/
 
