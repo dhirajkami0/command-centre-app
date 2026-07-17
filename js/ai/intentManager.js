@@ -909,7 +909,12 @@ IntentManager.detect = async function (
             query
 
         );
+console.log("LOCAL:", intent);
 
+console.log(
+    "USE AI:",
+    IntentManager.shouldUseAI(intent)
+);
     /*----------------------------------
       High Confidence
 
