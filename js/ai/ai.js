@@ -2,14 +2,9 @@
 
     "use strict";
 
-    /*=========================================================
-      CALL AI (GEMINI)
-    =========================================================*/
-
     window.callAI = async function (request = {}) {
 
         const endpoint =
-
             window.GreenGuardAI
                 ?.Config
                 ?.API
@@ -18,32 +13,24 @@
         if (!endpoint) {
 
             throw new Error(
-
                 "ASK_AI endpoint is not configured."
-
             );
 
         }
 
-        const response = await fetch(
+        const response = await fetch(endpoint, {
 
-            endpoint,
+            method: "POST",
 
-            {
+            headers: {
 
-                method: "POST",
+                "Content-Type": "application/json"
 
-                headers: {
+            },
 
-                    "Content-Type": "application/json"
+            body: JSON.stringify(request)
 
-                },
-
-                body: JSON.stringify(request)
-
-            }
-
-        );
+        });
 
         const data = await response.json();
 
