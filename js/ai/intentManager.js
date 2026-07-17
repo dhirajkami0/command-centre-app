@@ -39,6 +39,23 @@ if (
 const IntentManager = {};
 
 /*=========================================================
+ BUSINESS REGISTRY (Startup)
+=========================================================*/
+
+GG.BusinessRegistry = Object.freeze({
+    confidenceThreshold: GG.Config.INTENT.HIGH_CONFIDENCE,
+    domains: Object.freeze(
+        Object.values(GG.StaffConstants.DOMAINS)
+    ),
+    intents: Object.freeze(
+        Object.values(GG.StaffConstants.INTENTS)
+    ),
+    entityTypes: Object.freeze(
+        Object.values(GG.StaffConstants.ENTITY_TYPES)
+    )
+});
+
+/*=========================================================
  INFO
 =========================================================*/
 
@@ -356,10 +373,6 @@ IntentManager.setCachedIntent = async function (
  DETECT LOCAL INTENT
 =========================================================*/
 
-/*=========================================================
- DETECT LOCAL INTENT
-=========================================================*/
-
 IntentManager.detectLocal = function (
 
     query
@@ -378,30 +391,6 @@ IntentManager.detectLocal = function (
 
     );
 
-    console.log(
-
-        "File:",
-
-        "intentManager.js"
-
-    );
-
-    console.log(
-
-        "Function:",
-
-        "IntentManager.detectLocal"
-
-    );
-
-    console.log(
-
-        "Original Query:",
-
-        query
-
-    );
-
     /*----------------------------------
       Normalize
     ----------------------------------*/
@@ -413,14 +402,6 @@ IntentManager.detectLocal = function (
             query
 
         );
-
-    console.log(
-
-        "Normalized:",
-
-        query
-
-    );
 
     /*----------------------------------
       Local Intent Modules
@@ -443,24 +424,6 @@ IntentManager.detectLocal = function (
         GG.AnalyticsIntent
 
     ];
-
-    console.log(
-
-        "Detectors:",
-
-        detectors.map(
-
-            d =>
-
-                d?.VERSION ||
-
-                d?.constructor?.name ||
-
-                "Unknown"
-
-        )
-
-    );
 
     let bestIntent =
 
@@ -494,14 +457,6 @@ IntentManager.detectLocal = function (
 
         ) {
 
-            console.warn(
-
-                "⏭ Skipping Detector:",
-
-                detector
-
-            );
-
             continue;
 
         }
@@ -514,19 +469,7 @@ IntentManager.detectLocal = function (
 
             "UnknownDetector";
 
-        console.group(
-
-            "🔍 Detector:",
-
-            detectorName
-
-        );
-
         try {
-
-            const detectorStarted =
-
-                Date.now();
 
             const intent =
 
@@ -535,14 +478,6 @@ IntentManager.detectLocal = function (
                     query
 
                 );
-
-            console.log(
-
-                "Returned:",
-
-                intent
-
-            );
 
             if (
 
@@ -553,14 +488,6 @@ IntentManager.detectLocal = function (
                 "object"
 
             ) {
-
-                console.warn(
-
-                    "❌ Invalid Intent"
-
-                );
-
-                console.groupEnd();
 
                 continue;
 
@@ -575,42 +502,6 @@ IntentManager.detectLocal = function (
                     0
 
                 );
-
-            console.log(
-
-                "Intent:",
-
-                intent.intent
-
-            );
-
-            console.log(
-
-                "Domain:",
-
-                intent.domain
-
-            );
-
-            console.log(
-
-                "Confidence:",
-
-                confidence
-
-            );
-
-            console.log(
-
-                "Execution:",
-
-                Date.now() -
-
-                detectorStarted,
-
-                "ms"
-
-            );
 
             if (
 
@@ -632,27 +523,7 @@ IntentManager.detectLocal = function (
 
                     detectorName;
 
-                console.warn(
-
-                    "🏆 NEW BEST",
-
-                    detectorName,
-
-                    intent.intent,
-
-                    confidence
-
-                );
-
-            }
-
-            else {
-
-                console.log(
-
-                    "Skipped (Lower Confidence)"
-
-                );
+                bestIntent.winningDetector = detectorName;
 
             }
 
@@ -674,8 +545,6 @@ IntentManager.detectLocal = function (
 
         }
 
-        console.groupEnd();
-
     }
 
     /*----------------------------------
@@ -687,12 +556,6 @@ IntentManager.detectLocal = function (
         !bestIntent
 
     ) {
-
-        console.warn(
-
-            "❌ No Local Intent Found"
-
-        );
 
         console.groupEnd();
 
@@ -729,118 +592,138 @@ IntentManager.detectLocal = function (
     }
 
     /*----------------------------------
-      Normalize Metadata
+      Final Metadata
     ----------------------------------*/
 
-    bestIntent.success =
+    bestIntent.success = true;
 
-        true;
+    bestIntent.source = "local";
 
-    bestIntent.source =
+    bestIntent.provider = "IntentManager";
 
-        "local";
+    bestIntent.query = query;
 
-    bestIntent.provider =
+    bestIntent.domain = bestIntent.domain || "unknown";
 
-        "IntentManager";
+    bestIntent.intent = bestIntent.intent || "unknown";
 
-    bestIntent.query =
+    bestIntent.entities = bestIntent.entities || {};
 
-        query;
-
-    bestIntent.domain =
-
-        bestIntent.domain ||
-
-        "unknown";
-
-    bestIntent.intent =
-
-        bestIntent.intent ||
-
-        "unknown";
-
-    bestIntent.entities =
-
-        bestIntent.entities ||
-
-        {};
-
-    bestIntent.confidence =
-
-        Number(
-
-            bestIntent.confidence ||
-
-            0
-
-        );
-
-    /*----------------------------------
-      Final Diagnostics
-    ----------------------------------*/
-
-    console.log(
-
-        "================================"
-
-    );
-
-    console.log(
-
-        "🏆 WINNER DETECTOR:",
-
-        bestDetector
-
-    );
-
-    console.log(
-
-        "🏆 WINNER INTENT:",
-
-        bestIntent.intent
-
-    );
-
-    console.log(
-
-        "🏆 WINNER DOMAIN:",
-
-        bestIntent.domain
-
-    );
-
-    console.log(
-
-        "🏆 WINNER CONFIDENCE:",
-
-        bestIntent.confidence
-
-    );
-
-    console.log(
-
-        "⏱ TOTAL TIME:",
-
-        Date.now() -
-
-        started,
-
-        "ms"
-
-    );
-
-    console.log(
-
-        "================================"
-
-    );
+    bestIntent.confidence = Number(bestIntent.confidence || 0);
 
     console.groupEnd();
 
     return bestIntent;
 
-};/*=========================================================
+};
+ 
+ // Build Gemini Intent Request
+
+IntentManager.buildAIRequest = function (
+
+    query,
+
+    localIntent = {}
+
+) {
+
+    return {
+
+        query,
+
+        normalizedQuery:
+
+            IntentManager.normalize(query),
+
+        detector: {
+            winner: localIntent.winningDetector || "UNKNOWN",
+            provider: localIntent.provider || "UNKNOWN"
+        },
+
+        localIntent: {
+
+            success:
+
+                localIntent.success,
+
+            source:
+
+                "IntentManager",
+
+            domain:
+
+                localIntent.domain ||
+
+                "UNKNOWN",
+
+            intent:
+
+                localIntent.intent ||
+
+                "UNKNOWN",
+
+            confidence:
+
+                localIntent.confidence ||
+
+                0,
+
+            entities:
+
+                localIntent.entities ||
+
+                {},
+
+            parameters:
+
+                localIntent.parameters ||
+
+                {},
+
+            context:
+
+                localIntent.context ||
+
+                {}
+
+        },
+
+        extractedEntities:
+
+            localIntent.entities || {},
+
+        business: GG.BusinessRegistry,
+
+        rules: {
+
+            classifyOnly:
+
+                true,
+
+            allowNewIntent:
+
+                false,
+
+            allowNewDomain:
+
+                false,
+
+            allowNewEntityType:
+
+                false,
+
+            allowReasoning:
+
+                false
+
+        }
+
+    };
+
+};
+ 
+ 
+ /*=========================================================
  SHOULD USE AI
 =========================================================*/
 
@@ -934,22 +817,6 @@ IntentManager.shouldUseAI = function (
       AI Required
     ----------------------------------*/
 
-    if (
-
-        GG.Config?.DEBUG?.ENABLED
-
-    ) {
-
-        console.log(
-
-            "🟡 AI Intent Required",
-
-            confidence
-
-        );
-
-    }
-
     return true;
 
 };/*=========================================================
@@ -994,22 +861,6 @@ IntentManager.detect = async function (
 
     ) {
 
-        if (
-
-            GG.Config?.DEBUG?.ENABLED
-
-        ) {
-
-            console.log(
-
-                "🟢 Intent Cache",
-
-                intent
-
-            );
-
-        }
-
         return intent;
 
     }
@@ -1030,7 +881,7 @@ IntentManager.detect = async function (
       High Confidence
 
       Stay Local
-    ----------------------------------*/
+  ----------------------------------*/
 
     if (
 
@@ -1056,21 +907,7 @@ IntentManager.detect = async function (
 
     /*----------------------------------
       AI Intent Detection
-    ----------------------------------*/
-
-    if (
-
-        GG.Config?.DEBUG?.ENABLED
-
-    ) {
-
-        console.log(
-
-            "🤖 AI Intent Detection"
-
-        );
-
-    }
+  ----------------------------------*/
 
     const AI =
 
@@ -1086,12 +923,6 @@ IntentManager.detect = async function (
 
     ) {
 
-        console.warn(
-
-            "AI Provider unavailable."
-
-        );
-
         await IntentManager.setCachedIntent(
 
             query,
@@ -1106,18 +937,23 @@ IntentManager.detect = async function (
 
     try {
 
-        const aiIntent =
+const request =
 
-    await AI.detectIntent(
+    IntentManager.buildAIRequest(
 
         query,
 
         intent
 
     );
-        /*------------------------------
-          Validate
-        ------------------------------*/
+
+const aiIntent =
+
+    await AI.detectIntent(
+
+        request
+
+    );
 
         if (
 
@@ -1153,7 +989,7 @@ IntentManager.detect = async function (
 
     /*----------------------------------
       Cache Final Intent
-    ----------------------------------*/
+  ----------------------------------*/
 
     await IntentManager.setCachedIntent(
 
@@ -1163,17 +999,9 @@ IntentManager.detect = async function (
 
     );
 
-    /*----------------------------------
-      Return
-    ----------------------------------*/
-
     return intent;
 
 };/*=========================================================
- MERGE INTENT
-=========================================================*/
-
-/*=========================================================
  MERGE INTENT
 =========================================================*/
 
@@ -1189,7 +1017,7 @@ IntentManager.mergeIntent = function (
 
     /*----------------------------------
       Invalid AI
-    ----------------------------------*/
+  ----------------------------------*/
 
     if (
 
@@ -1205,7 +1033,7 @@ IntentManager.mergeIntent = function (
 
     /*----------------------------------
       Invalid Local
-    ----------------------------------*/
+  ----------------------------------*/
 
     if (
 
@@ -1221,7 +1049,7 @@ IntentManager.mergeIntent = function (
 
     /*----------------------------------
       Merge
-    ----------------------------------*/
+  ----------------------------------*/
 
     const merged = {
 
@@ -1283,7 +1111,7 @@ IntentManager.mergeIntent = function (
 
             ...(aiIntent.entities || {})
 
-        },
+      M    },
 
         raw:
 
@@ -1292,10 +1120,6 @@ IntentManager.mergeIntent = function (
             null
 
     };
-
-    /*----------------------------------
-      Return
-    ----------------------------------*/
 
     return merged;
 
@@ -1325,26 +1149,6 @@ IntentManager.clearCache = async function () {
     }
 
     await Cache.clearIntent();
-
-};
-
-/*=========================================================
- GET STATS
-=========================================================*/
-
-IntentManager.getStats = function () {
-
-    return {
-
-        version:
-
-            IntentManager.VERSION,
-
-        initialized:
-
-            IntentManager.initialized
-
-    };
 
 };
 
