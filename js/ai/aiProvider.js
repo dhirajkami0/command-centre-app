@@ -304,7 +304,9 @@ AI.summarize = async function (
 
 AI.buildIntentPrompt = function (
 
-    query
+    query,
+
+    localIntent = null
 
 ) {
 
@@ -314,14 +316,19 @@ AI.buildIntentPrompt = function (
 
         question:
 
-            String(query || "")
+            String(
 
-                .trim()
+                query || ""
+
+            ).trim(),
+
+        localIntent:
+
+            localIntent
 
     };
 
 };
-
 /*=========================================================
  CALL API
 =========================================================*/
