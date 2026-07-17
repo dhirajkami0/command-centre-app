@@ -43,16 +43,49 @@ const IntentManager = {};
 =========================================================*/
 
 GG.BusinessRegistry = Object.freeze({
-    confidenceThreshold: GG.Config.INTENT.HIGH_CONFIDENCE,
-    domains: Object.freeze(
-        Object.values(GG.StaffConstants.DOMAINS)
-    ),
+
+    confidenceThreshold:
+
+        GG.Config.INTENT.HIGH_CONFIDENCE,
+
+    domains: Object.freeze([
+
+        GG.StaffConstants.DOMAIN,
+
+        GG.GISConstants?.DOMAIN,
+
+        "wildlife",
+
+        "patrol",
+
+        "legal",
+
+        "analytics",
+
+        "report"
+
+    ].filter(Boolean)),
+
     intents: Object.freeze(
-        Object.values(GG.StaffConstants.INTENTS)
+
+        Object.values(
+
+            GG.StaffConstants.INTENTS
+
+        )
+
     ),
+
     entityTypes: Object.freeze(
-        Object.values(GG.StaffConstants.ENTITY_TYPES)
+
+        Object.values(
+
+            GG.StaffConstants.ENTITY_TYPES
+
+        )
+
     )
+
 });
 
 /*=========================================================
