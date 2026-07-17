@@ -1111,7 +1111,7 @@ IntentManager.mergeIntent = function (
 
             ...(aiIntent.entities || {})
 
-      M    },
+        },
 
         raw:
 
