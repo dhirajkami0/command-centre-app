@@ -2,29 +2,129 @@
 
     "use strict";
 
-    window.callAI = async function (request) {
+    window.callAI = async function (
 
-        const res = await fetch(
+        request,
 
-            "https://askai-ugffgukzca-uc.a.run.app",
+        endpoint = "ASK_AI"
 
-            {
+    ) {
 
-                method: "POST",
+        const url =
 
-                headers: {
+            GG.Config?.API?.[endpoint];
 
-                    "Content-Type": "application/json"
+        if (
 
-                },
+            !url
 
-                body: JSON.stringify(request)
+        ) {
 
-            }
+            throw new Error(
 
-        );
+                "AI endpoint not configured: " +
 
-        const data = await res.json();
+                endpoint
+
+            );
+
+        }
+
+        if (
+
+            GG.Config?.DEBUG?.ENABLED
+
+        ) {
+
+            console.group(
+
+                "🧠 window.callAI"
+
+            );
+
+            console.log(
+
+                "Endpoint:",
+
+                endpoint
+
+            );
+
+            console.log(
+
+                "URL:",
+
+                url
+
+            );
+
+            console.log(
+
+                "Request:"
+
+            );
+
+            console.dir(
+
+                request
+
+            );
+
+            console.groupEnd();
+
+        }
+
+        const res =
+
+            await fetch(
+
+                url,
+
+                {
+
+                    method: "POST",
+
+                    headers: {
+
+                        "Content-Type":
+
+                            "application/json"
+
+                    },
+
+                    body: JSON.stringify(
+
+                        request
+
+                    )
+
+                }
+
+            );
+
+        let data = {};
+
+        try {
+
+            data =
+
+                await res.json();
+
+        }
+
+        catch (
+
+            err
+
+        ) {
+
+            throw new Error(
+
+                "Invalid JSON response."
+
+            );
+
+        }
 
         if (
 
