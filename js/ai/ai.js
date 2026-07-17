@@ -2,68 +2,71 @@
 
     "use strict";
 
-    window.callAI = async function (
+    const AI =
+
+        window.GreenGuardAI ||= {};
+
+    /*=========================================================
+      DETECT INTENT
+    =========================================================*/
+
+    AI.detectIntent = async function (
 
         request = {}
 
     ) {
 
-        const endpoint =
-
-            window.GreenGuardAI
-                ?.Config
-                ?.API
-                ?.ASK_AI;
-
-        if (
-
-            !endpoint
-
-        ) {
-
-            throw new Error(
-
-                "ASK_AI endpoint is not configured."
-
-            );
-
-        }
-
-        const response = await fetch(
-
-            endpoint,
-
-            {
-
-                method: "POST",
-
-                headers: {
-
-                    "Content-Type":
-
-                        "application/json"
-
-                },
-
-                body:
-
-                    JSON.stringify(
-
-                        request
-
-                    )
-
-            }
-
-        );
-
-        let data = null;
-
         try {
 
-            data =
+            /*----------------------------------
+              Build Prompt
+            ----------------------------------*/
 
-                await response.json();
+            const prompt =
+
+                AIIntentPrompt.build(
+
+                    request
+
+                );
+
+            /*----------------------------------
+              Call Gemini
+            ----------------------------------*/
+
+            const response =
+
+                await window.callAI(
+
+                    prompt
+
+                );
+
+            /*----------------------------------
+              Parse Response
+            ----------------------------------*/
+
+            const parsed =
+
+                AIIntentParser.parse(
+
+                    response
+
+                );
+
+            /*----------------------------------
+              Validate Response
+            ----------------------------------*/
+
+            const validated =
+
+                AIIntentValidator.validate(
+
+                    parsed
+
+                );
+
+            return validated;
 
         }
 
@@ -73,49 +76,21 @@
 
         ) {
 
-            throw new Error(
+            console.error(
 
-                "Invalid JSON response from AI."
+                "AI.detectIntent:",
+
+                error
+
+            );
+
+            return AIIntentValidator.createInvalidIntent(
+
+                error.message
 
             );
 
         }
-
-        if (
-
-            !response.ok
-
-        ) {
-
-            throw new Error(
-
-                data?.error ||
-
-                response.statusText ||
-
-                "AI request failed."
-
-            );
-
-        }
-
-        if (
-
-            data?.success === false
-
-        ) {
-
-            throw new Error(
-
-                data.error ||
-
-                "AI request failed."
-
-            );
-
-        }
-
-        return data;
 
     };
 
