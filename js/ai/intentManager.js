@@ -993,25 +993,291 @@ const aiIntent =
 
     );
 
-        if (
+/*=========================================================
+ NORMALIZE AI INTENT TO BUSINESS REGISTRY
 
-            aiIntent &&
+ IMPORTANT:
+ This affects ONLY the AI result.
 
-            aiIntent.success !== false
+ Local intent detection is NOT modified.
 
-        ) {
+ Examples:
+ STAFF_PROFILE     -> staffProfile
+ STAFF_CONTACT     -> staffContact
+ WHO_IS_ON_DUTY    -> whoIsOnDuty
 
-            intent =
+ If Gemini already returns:
+ staffProfile
 
-                IntentManager.mergeIntent(
+ it remains:
+ staffProfile
+=========================================================*/
 
-                    intent,
+if (
 
-                    aiIntent
+    aiIntent &&
+
+    typeof aiIntent.intent === "string"
+
+) {
+
+    const registry =
+
+        GG.BusinessRegistry || {};
+
+    const intents =
+
+        Array.isArray(
+
+            registry.intents
+
+        )
+
+            ? registry.intents
+
+            : [];
+
+    const rawIntent =
+
+        aiIntent.intent.trim();
+
+    /*----------------------------------
+      1. Exact Canonical Match
+
+      staffProfile -> staffProfile
+    ----------------------------------*/
+
+    let canonicalIntent =
+
+        intents.find(
+
+            function (
+
+                value
+
+            ) {
+
+                return (
+
+                    value ===
+
+                    rawIntent
 
                 );
 
+            }
+
+        );
+
+    /*----------------------------------
+      2. Case-Insensitive Match
+
+      STAFFPROFILE -> staffProfile
+    ----------------------------------*/
+
+    if (
+
+        !canonicalIntent
+
+    ) {
+
+        canonicalIntent =
+
+            intents.find(
+
+                function (
+
+                    value
+
+                ) {
+
+                    return (
+
+                        String(
+
+                            value
+
+                        ).toLowerCase() ===
+
+                        rawIntent.toLowerCase()
+
+                    );
+
+                }
+
+            );
+
+    }
+
+    /*----------------------------------
+      3. CONSTANT_STYLE -> camelCase
+
+      STAFF_PROFILE
+          -> staffProfile
+
+      STAFF_CONTACT
+          -> staffContact
+
+      WHO_IS_ON_DUTY
+          -> whoIsOnDuty
+    ----------------------------------*/
+
+    if (
+
+        !canonicalIntent
+
+    ) {
+
+        const converted =
+
+            rawIntent
+
+                .toLowerCase()
+
+                .split("_")
+
+                .filter(
+
+                    Boolean
+
+                )
+
+                .map(
+
+                    function (
+
+                        part,
+
+                        index
+
+                    ) {
+
+                        if (
+
+                            index === 0
+
+                        ) {
+
+                            return part;
+
+                        }
+
+                        return (
+
+                            part.charAt(0)
+
+                                .toUpperCase() +
+
+                            part.slice(1)
+
+                        );
+
+                    }
+
+                )
+
+                .join("");
+
+        canonicalIntent =
+
+            intents.find(
+
+                function (
+
+                    value
+
+                ) {
+
+                    return (
+
+                        String(
+
+                            value
+
+                        ).toLowerCase() ===
+
+                        converted.toLowerCase()
+
+                    );
+
+                }
+
+            );
+
+    }
+
+    /*----------------------------------
+      4. Apply Canonical Intent
+
+      ONLY modify when a real registry
+      intent was found.
+    ----------------------------------*/
+
+    if (
+
+        canonicalIntent
+
+    ) {
+
+        aiIntent.intent =
+
+            canonicalIntent;
+
+    }
+
+    /*----------------------------------
+      Temporary Debug
+    ----------------------------------*/
+
+    console.log(
+
+        "🧠 AI INTENT CANONICALIZATION",
+
+        {
+
+            raw:
+
+                rawIntent,
+
+            canonical:
+
+                canonicalIntent ||
+
+                "NOT_FOUND",
+
+            final:
+
+                aiIntent.intent
+
         }
+
+    );
+
+}
+
+/*----------------------------------
+  Merge AI With Local Result
+----------------------------------*/
+
+if (
+
+    aiIntent &&
+
+    aiIntent.success !== false
+
+) {
+
+    intent =
+
+        IntentManager.mergeIntent(
+
+            intent,
+
+            aiIntent
+
+        );
+
+}
 
     }
 
