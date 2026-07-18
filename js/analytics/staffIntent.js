@@ -4080,482 +4080,921 @@ StaffIntent.detectContactIntent = function (
 =========================================================*/
 
 StaffIntent.detect = function (
+
     query
+
 ) {
+
     const started =
+
         Date.now();
+
+
     console.group(
+
         "🟤 STAFF INTENT"
+
     );
+
+
     console.log(
+
         "File:",
+
         "staffIntent.js"
+
     );
+
+
     console.log(
+
         "Function:",
+
         "StaffIntent.detect"
+
     );
+
+
     console.log(
+
         "Incoming Query:",
+
         query
+
     );
+
 
     /*----------------------------------
       Validate
     ----------------------------------*/
 
     if (
-        typeof query !== "string"
+
+        typeof query !==
+
+        "string"
+
     ) {
+
         console.warn(
+
             "❌ Invalid Query"
+
         );
+
+
         console.groupEnd();
-        return StaffIntent.createIntentResult();
+
+
+        return StaffIntent
+            .createIntentResult();
+
     }
 
+
     query =
+
         query.trim();
+
+
     console.log(
+
         "Normalized Query:",
+
         query
+
     );
+
 
     /*----------------------------------
       Cache
     ----------------------------------*/
 
     const cached =
-        StaffIntent.getCachedResult(
-            query
-        );
+
+        StaffIntent
+            .getCachedResult(
+
+                query
+
+            );
+
+
     if (
+
         cached
+
     ) {
+
         console.log(
+
             "⚡ STAFF CACHE HIT"
+
         );
+
+
         console.log(
+
             cached
+
         );
+
+
         console.groupEnd();
+
+
         return cached;
+
     }
 
+
     console.log(
+
         "⚪ STAFF CACHE MISS"
+
     );
+
 
     /*----------------------------------
       Create Result
     ----------------------------------*/
 
     let result =
-        StaffIntent.createIntentResult(
-            query
-        );
+
+        StaffIntent
+            .createIntentResult(
+
+                query
+
+            );
+
 
     StaffIntent.lastQuery =
+
         query;
 
+
     console.log(
+
         "📄 Initial Result:",
+
         result
+
     );
+
 
     /*----------------------------------
       Extract Entities
     ----------------------------------*/
 
     console.time(
+
         "StaffEntities.extract"
+
     );
+
+
     const extraction =
+
         StaffEntities.extract(
+
             query
+
         );
+
+
     console.timeEnd(
+
         "StaffEntities.extract"
+
     );
+
 
     console.log(
+
         "📦 Extraction:",
+
         extraction
+
     );
 
+
     if (
+
         !extraction
+
     ) {
+
         console.error(
+
             "❌ Extraction Failed"
+
         );
+
+
         result.errors.push(
+
             "Extraction failed."
+
         );
+
+
         result.requiresAI =
+
             true;
+
+
         console.groupEnd();
+
+
         return result;
+
     }
+
 
     /*----------------------------------
       Copy Entities
     ----------------------------------*/
 
     result.entities = {
-        staff:
-            [
-                ...(extraction.entities?.staff || [])
-            ],
-        phones:
-            [
-                ...(extraction.entities?.phones || [])
-            ],
-        roles:
-            [
-                ...(extraction.entities?.roles || [])
-            ],
-        designations:
-            [
-                ...(extraction.entities?.designations || [])
-            ],
-        posting:
-            [
-                ...(extraction.entities?.posting || [])
-            ],
-        team:
-            [
-                ...(extraction.entities?.team || [])
-            ],
-        duty:
-            [
-                ...(extraction.entities?.duty || [])
-            ],
-        gps:
-            [
-                ...(extraction.entities?.gps || [])
-            ]
+
+        staff: [
+
+            ...(extraction.entities?.staff || [])
+
+        ],
+
+
+        phones: [
+
+            ...(extraction.entities?.phones || [])
+
+        ],
+
+
+        roles: [
+
+            ...(extraction.entities?.roles || [])
+
+        ],
+
+
+        designations: [
+
+            ...(extraction.entities?.designations || [])
+
+        ],
+
+
+        posting: [
+
+            ...(extraction.entities?.posting || [])
+
+        ],
+
+
+        team: [
+
+            ...(extraction.entities?.team || [])
+
+        ],
+
+
+        duty: [
+
+            ...(extraction.entities?.duty || [])
+
+        ],
+
+
+        gps: [
+
+            ...(extraction.entities?.gps || [])
+
+        ]
+
     };
 
+
     console.log(
+
         "👥 Entities:",
+
         result.entities
+
     );
+
 
     /*----------------------------------
       Keywords
     ----------------------------------*/
 
-    result.keywords =
-        [
-            ...(extraction.keywords || [])
-        ];
+    result.keywords = [
+
+        ...(extraction.keywords || [])
+
+    ];
+
 
     console.log(
+
         "🏷 Keywords:",
+
         result.keywords
+
     );
+
 
     /*----------------------------------
       Parameters
     ----------------------------------*/
 
     result.parameters = {
+
         ...(extraction.parameters || {})
+
     };
 
+
     console.log(
+
         "⚙ Parameters:",
+
         result.parameters
+
     );
+
 
     /*----------------------------------
       Posting Parameters
     ----------------------------------*/
 
     result =
-        StaffIntent.extractPostingParameters(
-            result
-        );
+
+        StaffIntent
+            .extractPostingParameters(
+
+                result
+
+            );
+
+
+    /*----------------------------------
+      Preserve Most Specific
+      Jurisdiction Scope
+    ----------------------------------*/
 
     if (
+
         result.parameters.compartment
+
     ) {
-        // keep everything
-    }
-    else if (
-        result.parameters.beat
-    ) {
-        result.parameters.compartment =
-            null;
-    }
-    else if (
-        result.parameters.range
-    ) {
-        result.parameters.beat =
-            null;
-        result.parameters.compartment =
-            null;
-    }
-    else if (
-        result.parameters.division
-    ) {
-        result.parameters.range =
-            null;
-        result.parameters.beat =
-            null;
-        result.parameters.compartment =
-            null;
-    }
-    else if (
-        result.parameters.circle
-    ) {
-        result.parameters.division =
-            null;
-        result.parameters.range =
-            null;
-        result.parameters.beat =
-            null;
-        result.parameters.compartment =
-            null;
+
+        /*
+          Keep all hierarchy parameters.
+
+          Compartment is the most
+          specific jurisdiction.
+        */
+
     }
 
+    else if (
+
+        result.parameters.beat
+
+    ) {
+
+        result.parameters.compartment =
+
+            null;
+
+    }
+
+    else if (
+
+        result.parameters.range
+
+    ) {
+
+        result.parameters.beat =
+
+            null;
+
+
+        result.parameters.compartment =
+
+            null;
+
+    }
+
+    else if (
+
+        result.parameters.division
+
+    ) {
+
+        result.parameters.range =
+
+            null;
+
+
+        result.parameters.beat =
+
+            null;
+
+
+        result.parameters.compartment =
+
+            null;
+
+    }
+
+    else if (
+
+        result.parameters.circle
+
+    ) {
+
+        result.parameters.division =
+
+            null;
+
+
+        result.parameters.range =
+
+            null;
+
+
+        result.parameters.beat =
+
+            null;
+
+
+        result.parameters.compartment =
+
+            null;
+
+    }
+
+
     console.log(
+
         "📍 Posting Parameters:",
+
         result.parameters
+
     );
+
 
     /*----------------------------------
       Single vs Aggregate
     ----------------------------------*/
 
-/*----------------------------------
-  Single vs Aggregate
-----------------------------------*/
+    StaffIntent
+        .detectSingleVsAggregate(
 
-StaffIntent.detectSingleVsAggregate(
-    result
-);
-/*----------------------------------
-  Nearby (Single / Self / Aggregate)
-----------------------------------*/
-
-result =
-    StaffIntent.detectNearbyIntent(
-        result
-    );
-
-if (
-
-    result.intent ===
-
-    StaffConstants.INTENTS.STAFF_NEARBY
-
-) {
-
-    console.timeEnd(
-        "detectStaffIntent"
-    );
-
-    console.log(
-        "👤 Final Intent:",
-        result.intent
-    );
-
-    StaffIntent.calculateConfidence(
-        result
-    );
-
-    result.requiresAI =
-        StaffIntent.needsAI(
             result
+
         );
 
-    result.metadata.executionTime =
-        Date.now() -
-        started;
 
-    StaffIntent.lastResult =
-        result;
+    /*----------------------------------
+      Nearby
 
-    StaffIntent.setCachedResult(
-        query,
-        result
+      Nearby is resolved before the
+      normal single/global pipeline.
+
+      This preserves existing nearby
+      business behavior.
+    ----------------------------------*/
+
+    result =
+
+        StaffIntent
+            .detectNearbyIntent(
+
+                result
+
+            );
+
+
+    if (
+
+        result.intent ===
+
+        StaffConstants
+            .INTENTS
+            .STAFF_NEARBY
+
+    ) {
+
+        console.log(
+
+            "👤 Final Intent:",
+
+            result.intent
+
+        );
+
+
+        /*----------------------------------
+          Confidence
+        ----------------------------------*/
+
+        StaffIntent
+            .calculateConfidence(
+
+                result
+
+            );
+
+
+        /*----------------------------------
+          AI Decision
+        ----------------------------------*/
+
+        result.requiresAI =
+
+            StaffIntent
+                .needsAI(
+
+                    result
+
+                );
+
+
+        /*----------------------------------
+          Execution Time
+        ----------------------------------*/
+
+        result.metadata.executionTime =
+
+            Date.now() -
+
+            started;
+
+
+        /*----------------------------------
+          Save Last Result
+        ----------------------------------*/
+
+        StaffIntent.lastResult =
+
+            result;
+
+
+        /*----------------------------------
+          Cache
+        ----------------------------------*/
+
+        StaffIntent
+            .setCachedResult(
+
+                query,
+
+                result
+
+            );
+
+
+        console.log(
+
+            "🏁 Final Staff Result:",
+
+            result
+
+        );
+
+
+        console.groupEnd();
+
+
+        return result;
+
+    }
+
+
+    /*----------------------------------
+      Scope Diagnostics
+    ----------------------------------*/
+
+    console.log(
+
+        "👤 Scope:",
+
+        result.parameters.isSingle
+
+            ? "Single"
+
+            : result.parameters.isAggregate
+
+                ? "Aggregate"
+
+                : "Unknown"
+
     );
 
-    console.groupEnd();
 
-    return result;
+    if (
 
-}
-console.log(
+        !result.parameters.isSingle &&
 
-    "👤 Scope:",
+        !result.parameters.isAggregate
 
-    result.parameters.isSingle ?
+    ) {
 
-        "Single"
+        console.warn(
 
-        :
+            "⚠ Unable to determine query scope."
 
-        result.parameters.isAggregate ?
+        );
 
-            "Aggregate"
+    }
 
-            :
 
-            "Unknown"
-
-);
-
- if (
-
-    !result.parameters.isSingle &&
-
-    !result.parameters.isAggregate
-
-) {
-
-    console.warn(
-
-        "⚠ Unable to determine query scope."
-
-    );
-
-}
     /*----------------------------------
       Metadata
     ----------------------------------*/
 
     result.metadata.extraction =
+
         extraction;
+
 
     /*=================================================
       STAFF INTENT DETECTION
+
+      IMPORTANT:
+
+      Single-staff detector priority is
+      intentionally NOT duplicated here.
+
+      detectStaffIntent() owns the complete
+      single-staff detector sequence,
+      including:
+
+      - patrol start
+      - patrol end
+      - patrol duration
+      - duty start
+      - duty end
+      - location
+      - other staff intents
+
+      Aggregate/global detector priority
+      remains owned by detectGlobalIntent().
     =================================================*/
 
+
     console.time(
+
         "detectStaffIntent"
+
     );
 
-if (
-    result.parameters.isSingle === true
-) {
 
-    /*----------------------------------
-      Single Staff
+    if (
 
-      All single-staff detector ordering
-      is controlled in one place:
-      detectStaffIntent()
-    ----------------------------------*/
+        result.parameters.isSingle ===
 
-    result =
-        StaffIntent.detectStaffIntent(
-            result
+        true
+
+    ) {
+
+        /*----------------------------------
+          Single Staff
+
+          All single-staff detector ordering
+          is controlled in one place:
+
+          StaffIntent.detectStaffIntent()
+        ----------------------------------*/
+
+        result =
+
+            StaffIntent
+                .detectStaffIntent(
+
+                    result
+
+                );
+
+    }
+
+    else if (
+
+        result.parameters.isAggregate ===
+
+        true
+
+    ) {
+
+        /*----------------------------------
+          Aggregate / Global
+
+          Handles:
+
+          - directories
+          - counts
+          - summaries
+          - control-room queries
+          - queries without named staff
+        ----------------------------------*/
+
+        result =
+
+            StaffIntent
+                .detectGlobalIntent(
+
+                    result
+
+                );
+
+    }
+
+    else {
+
+        console.timeEnd(
+
+            "detectStaffIntent"
+
         );
 
-}
-else if (
-    result.parameters.isAggregate === true
-) {
 
-    /*----------------------------------
-      Aggregate / Global
+        result.requiresAI =
 
-      Handles:
-      - directories
-      - counts
-      - summaries
-      - control-room queries
-      - queries without named staff
-    ----------------------------------*/
+            true;
 
-    result =
-        StaffIntent.detectGlobalIntent(
+
+        result.metadata.executionTime =
+
+            Date.now() -
+
+            started;
+
+
+        StaffIntent.lastResult =
+
+            result;
+
+
+        StaffIntent
+            .setCachedResult(
+
+                query,
+
+                result
+
+            );
+
+
+        console.log(
+
+            "🏁 Final Staff Result:",
+
             result
+
         );
 
-}
-else {
 
-    return result;
+        console.groupEnd();
 
-}
+
+        return result;
+
+    }
+
 
     console.timeEnd(
+
         "detectStaffIntent"
+
     );
 
+
     console.log(
+
         "👤 Final Intent:",
+
         result.intent
+
     );
+
 
     /*----------------------------------
       Confidence
     ----------------------------------*/
 
     console.time(
+
         "calculateConfidence"
-    );
-    StaffIntent.calculateConfidence(
-        result
-    );
-    console.timeEnd(
-        "calculateConfidence"
+
     );
 
-    console.log(
-        "Confidence After Calculation:",
-        result.confidence
+
+    StaffIntent
+        .calculateConfidence(
+
+            result
+
+        );
+
+
+    console.timeEnd(
+
+        "calculateConfidence"
+
     );
+
+
+    console.log(
+
+        "Confidence After Calculation:",
+
+        result.confidence
+
+    );
+
 
     /*----------------------------------
       AI Decision
     ----------------------------------*/
 
     result.requiresAI =
-        StaffIntent.needsAI(
-            result
-        );
+
+        StaffIntent
+            .needsAI(
+
+                result
+
+            );
+
 
     console.log(
+
         "Requires AI:",
+
         result.requiresAI
+
     );
+
 
     /*----------------------------------
       Execution Time
     ----------------------------------*/
 
     result.metadata.executionTime =
+
         Date.now() -
+
         started;
+
+
     console.log(
+
         "Execution Time:",
+
         result.metadata.executionTime,
+
         "ms"
+
     );
+
 
     /*----------------------------------
       Cache
     ----------------------------------*/
 
     StaffIntent.lastResult =
+
         result;
-    StaffIntent.setCachedResult(
-        query,
-        result
-    );
+
+
+    StaffIntent
+        .setCachedResult(
+
+            query,
+
+            result
+
+        );
+
 
     console.log(
+
         "🏁 Final Staff Result:",
+
         result
+
     );
 
+
     console.groupEnd();
+
+
     return result;
+
 };
 StaffIntent.detectSingleVsAggregate = function (
 
