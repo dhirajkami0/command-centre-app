@@ -2068,15 +2068,19 @@ function (
 
     /*----------------------------------
       Posting
+
+      IMPORTANT:
+      Do NOT merge patrol data into
+      staff.posting.
+
+      staff.posting represents the
+      canonical administrative posting
+      and must remain unchanged.
+
+      Patrol jurisdiction is runtime
+      information and is handled through
+      assignment / spatial data.
     ----------------------------------*/
-
-    StaffHydrator.mergePosting(
-
-        staff,
-
-        patrol
-
-    );
 
     /*----------------------------------
       Assignment
