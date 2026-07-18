@@ -2080,6 +2080,10 @@ StaffIntent.detectDutyIntent = function (
 
     }
 
+    /*----------------------------------
+      Query
+    ----------------------------------*/
+
     const query =
 
         String(
@@ -2094,6 +2098,10 @@ StaffIntent.detectDutyIntent = function (
 
         .toUpperCase();
 
+    /*----------------------------------
+      Constants
+    ----------------------------------*/
+
     const INTENTS =
 
         StaffConstants.INTENTS;
@@ -2102,11 +2110,19 @@ StaffIntent.detectDutyIntent = function (
 
         StaffConstants.KEYWORDS;
 
+    /*----------------------------------
+      Parameters
+    ----------------------------------*/
+
     const parameters =
 
         result.parameters ||
 
         {};
+
+    /*----------------------------------
+      Staff
+    ----------------------------------*/
 
     const staff =
 
@@ -2118,9 +2134,24 @@ StaffIntent.detectDutyIntent = function (
 
         parameters.isSingle === true;
 
+
     /*==================================================
       AGGREGATE DUTY INTENTS
+
+      IMPORTANT:
+
+      These remain available regardless
+      of patrol wording because they are
+      aggregate control-room queries.
+
+      Examples:
+
+      "Who is on duty?"
+      "List active staff"
+      "How many active staff?"
+      "Duty summary"
     ==================================================*/
+
 
     /*----------------------------------
       Duty Summary
@@ -2149,6 +2180,7 @@ StaffIntent.detectDutyIntent = function (
         return result;
 
     }
+
 
     /*----------------------------------
       Inactive Staff
@@ -2187,6 +2219,7 @@ StaffIntent.detectDutyIntent = function (
 
     }
 
+
     /*----------------------------------
       Active Count
     ----------------------------------*/
@@ -2222,6 +2255,7 @@ StaffIntent.detectDutyIntent = function (
         return result;
 
     }
+
 
     /*----------------------------------
       Active Staff
@@ -2259,6 +2293,58 @@ StaffIntent.detectDutyIntent = function (
 
     }
 
+
+    /*==================================================
+      EXPLICIT PATROL GUARD
+
+      Duty and patrol use the same
+      canonical session data.
+
+      However, explicit PATROL wording
+      belongs to detectAnalyticsIntent()
+      so that the correct semantic intent
+      is preserved.
+
+      Examples:
+
+      "When did Dhiraj start patrol?"
+          → STAFF_PATROL_START
+
+      "When did Dhiraj end patrol?"
+          → STAFF_PATROL_END
+
+      "How long has Dhiraj been patrolling?"
+          → STAFF_PATROL_DURATION
+
+      This prevents these queries from
+      being claimed as:
+
+      STAFF_DUTY_STARTED
+      STAFF_DUTY_ENDED
+      STAFF_DUTY
+    ==================================================*/
+
+    const isExplicitPatrolQuery =
+
+        /\b(PATROL|PATROLLING|PATROLLED)\b/i
+
+            .test(
+
+                query
+
+            );
+
+    if (
+
+        isExplicitPatrolQuery
+
+    ) {
+
+        return result;
+
+    }
+
+
     /*----------------------------------
       Aggregate Only
     ----------------------------------*/
@@ -2273,13 +2359,20 @@ StaffIntent.detectDutyIntent = function (
 
     }
 
+
     /*==================================================
       SINGLE STAFF DUTY
     ==================================================*/
 
+
+    /*----------------------------------
+      Preserve Staff
+    ----------------------------------*/
+
     result.parameters.staff =
 
         staff[0];
+
 
     /*----------------------------------
       Duty Status
@@ -2309,6 +2402,7 @@ StaffIntent.detectDutyIntent = function (
 
     }
 
+
     /*----------------------------------
       Duty Started
     ----------------------------------*/
@@ -2336,6 +2430,7 @@ StaffIntent.detectDutyIntent = function (
         return result;
 
     }
+
 
     /*----------------------------------
       Duty Ended
@@ -2365,6 +2460,7 @@ StaffIntent.detectDutyIntent = function (
 
     }
 
+
     /*----------------------------------
       Duty Type
     ----------------------------------*/
@@ -2392,6 +2488,7 @@ StaffIntent.detectDutyIntent = function (
         return result;
 
     }
+
 
     /*----------------------------------
       Assignment
@@ -2421,6 +2518,7 @@ StaffIntent.detectDutyIntent = function (
 
     }
 
+
     /*----------------------------------
       General Duty
     ----------------------------------*/
@@ -2448,6 +2546,11 @@ StaffIntent.detectDutyIntent = function (
         return result;
 
     }
+
+
+    /*----------------------------------
+      No Duty Intent Detected
+    ----------------------------------*/
 
     return result;
 
