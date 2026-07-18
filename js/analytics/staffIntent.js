@@ -2828,6 +2828,16 @@ StaffIntent.detectAnalyticsIntent = function (
 
         .toUpperCase();
 
+    if (
+
+        query === ""
+
+    ) {
+
+        return result;
+
+    }
+
     const INTENTS =
 
         StaffConstants.INTENTS;
@@ -2835,6 +2845,7 @@ StaffIntent.detectAnalyticsIntent = function (
     const KEYWORDS =
 
         StaffConstants.KEYWORDS;
+
 
     /*----------------------------------
       Preserve Staff
@@ -2847,6 +2858,303 @@ StaffIntent.detectAnalyticsIntent = function (
     result.parameters =
 
         parameters;
+
+
+    /*=========================================================
+      EXPLICIT PATROL CONTEXT
+
+      IMPORTANT:
+
+      Patrol START / END / DURATION must be detected
+      before generic Duty and Location detectors.
+
+      These explicit checks protect natural-language
+      queries even when keyword groups do not contain
+      every possible wording.
+
+      Examples:
+
+      "When did Dhiraj start patrol?"
+          → STAFF_PATROL_START
+
+      "When did Dhiraj start patrolling?"
+          → STAFF_PATROL_START
+
+      "When did Dhiraj end patrol?"
+          → STAFF_PATROL_END
+
+      "When did Dhiraj stop patrolling?"
+          → STAFF_PATROL_END
+
+      "How long has Dhiraj been patrolling?"
+          → STAFF_PATROL_DURATION
+
+      "What is Dhiraj's patrol duration?"
+          → STAFF_PATROL_DURATION
+    =========================================================*/
+
+
+    /*----------------------------------
+      Patrol Context
+    ----------------------------------*/
+
+    const hasPatrolContext =
+
+        /\bPATROL(?:LING|LED|S)?\b/
+
+            .test(
+
+                query
+
+            );
+
+
+    /*----------------------------------
+      Patrol Duration Language
+
+      Highest priority because:
+
+      "How long has Dhiraj been patrolling?"
+
+      contains patrol context but may not contain
+      the literal word DURATION.
+    ----------------------------------*/
+
+    const hasPatrolDurationLanguage =
+
+        /\bHOW\s+LONG\b/
+
+            .test(
+
+                query
+
+            ) ||
+
+        /\bDURATION\b/
+
+            .test(
+
+                query
+
+            ) ||
+
+        /\bFOR\s+HOW\s+LONG\b/
+
+            .test(
+
+                query
+
+            ) ||
+
+        /\bTIME\s+SPENT\b/
+
+            .test(
+
+                query
+
+            ) ||
+
+        StaffIntent.hasKeyword(
+
+            query,
+
+            KEYWORDS.STAFF_PATROL_DURATION
+
+        );
+
+
+    if (
+
+        hasPatrolContext &&
+
+        hasPatrolDurationLanguage
+
+    ) {
+
+        result.intent =
+
+            INTENTS.STAFF_PATROL_DURATION;
+
+        parameters.startedAt =
+
+            profile.analytics?.startedAt ||
+
+            null;
+
+        parameters.endedAt =
+
+            profile.analytics?.endedAt ||
+
+            null;
+
+        parameters.duration =
+
+            profile.analytics?.duration ||
+
+            null;
+
+        parameters.durationMs =
+
+            profile.analytics?.durationMs ||
+
+            null;
+
+        result.confidence =
+
+            0.99;
+
+        return result;
+
+    }
+
+
+    /*----------------------------------
+      Patrol End Language
+
+      Must be checked before Patrol Start
+      and before generic Duty detection.
+    ----------------------------------*/
+
+    const hasPatrolEndLanguage =
+
+        /\bEND(?:ED|ING)?\b/
+
+            .test(
+
+                query
+
+            ) ||
+
+        /\bSTOP(?:PED|PING)?\b/
+
+            .test(
+
+                query
+
+            ) ||
+
+        /\bFINISH(?:ED|ING)?\b/
+
+            .test(
+
+                query
+
+            ) ||
+
+        /\bCOMPLET(?:E|ED|ING)\b/
+
+            .test(
+
+                query
+
+            ) ||
+
+        StaffIntent.hasKeyword(
+
+            query,
+
+            KEYWORDS.STAFF_PATROL_END
+
+        );
+
+
+    if (
+
+        hasPatrolContext &&
+
+        hasPatrolEndLanguage
+
+    ) {
+
+        result.intent =
+
+            INTENTS.STAFF_PATROL_END;
+
+        parameters.endedAt =
+
+            profile.analytics?.endedAt ||
+
+            null;
+
+        result.confidence =
+
+            0.99;
+
+        return result;
+
+    }
+
+
+    /*----------------------------------
+      Patrol Start Language
+    ----------------------------------*/
+
+    const hasPatrolStartLanguage =
+
+        /\bSTART(?:ED|ING)?\b/
+
+            .test(
+
+                query
+
+            ) ||
+
+        /\bBEGIN(?:S|NING)?\b/
+
+            .test(
+
+                query
+
+            ) ||
+
+        /\bBEGAN\b/
+
+            .test(
+
+                query
+
+            ) ||
+
+        StaffIntent.hasKeyword(
+
+            query,
+
+            KEYWORDS.STAFF_PATROL_START
+
+        );
+
+
+    if (
+
+        hasPatrolContext &&
+
+        hasPatrolStartLanguage
+
+    ) {
+
+        result.intent =
+
+            INTENTS.STAFF_PATROL_START;
+
+        parameters.startedAt =
+
+            profile.analytics?.startedAt ||
+
+            null;
+
+        result.confidence =
+
+            0.99;
+
+        return result;
+
+    }
+
+
+    /*=========================================================
+      EXISTING ANALYTICS DETECTION
+    =========================================================*/
+
 
     /*----------------------------------
       Patrol Distance
@@ -2882,6 +3190,7 @@ StaffIntent.detectAnalyticsIntent = function (
 
     }
 
+
     /*----------------------------------
       Patrol Points
     ----------------------------------*/
@@ -2916,8 +3225,11 @@ StaffIntent.detectAnalyticsIntent = function (
 
     }
 
+
     /*----------------------------------
       Patrol Started
+
+      Existing keyword fallback.
     ----------------------------------*/
 
     if (
@@ -2950,8 +3262,11 @@ StaffIntent.detectAnalyticsIntent = function (
 
     }
 
+
     /*----------------------------------
       Patrol Ended
+
+      Existing keyword fallback.
     ----------------------------------*/
 
     if (
@@ -2984,8 +3299,11 @@ StaffIntent.detectAnalyticsIntent = function (
 
     }
 
+
     /*----------------------------------
       Patrol Duration
+
+      Existing keyword fallback.
     ----------------------------------*/
 
     if (
@@ -3016,6 +3334,18 @@ StaffIntent.detectAnalyticsIntent = function (
 
             null;
 
+        parameters.duration =
+
+            profile.analytics?.duration ||
+
+            null;
+
+        parameters.durationMs =
+
+            profile.analytics?.durationMs ||
+
+            null;
+
         result.confidence =
 
             0.98;
@@ -3023,6 +3353,7 @@ StaffIntent.detectAnalyticsIntent = function (
         return result;
 
     }
+
 
     /*----------------------------------
       Complete Patrol Analytics
@@ -3058,10 +3389,14 @@ StaffIntent.detectAnalyticsIntent = function (
 
     }
 
+
+    /*----------------------------------
+      No Analytics Intent
+    ----------------------------------*/
+
     return result;
 
 };
-
  /*=========================================================
  DETECT STRENGTH INTENT
 =========================================================*/
