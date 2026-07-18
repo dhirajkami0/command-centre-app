@@ -6097,7 +6097,9 @@ StaffIntent.detectNearbyIntent = function (
 =========================================================*/
 
 StaffIntent.detectStaffIntent = function (
+
     result
+
 ) {
 
     /*----------------------------------
@@ -6105,73 +6107,114 @@ StaffIntent.detectStaffIntent = function (
     ----------------------------------*/
 
     if (
+
         !result ||
+
         !result.entities
+
     ) {
 
         return result;
 
     }
 
+
     const staff =
+
         result.entities.staff ||
+
         [];
 
+
     const INTENTS =
+
         StaffConstants.INTENTS;
+
 
     /*----------------------------------
       Debug Helper
     ----------------------------------*/
 
     function debugParameters(
+
         label
+
     ) {
 
         console.log(
+
             "==========",
+
             label,
+
             "=========="
+
         );
 
+
         console.log(
+
             "Result Frozen:",
+
             Object.isFrozen(
+
                 result
+
             )
+
         );
 
+
         console.log(
+
             "Parameters:",
+
             result.parameters
+
         );
 
+
         console.log(
+
             "Parameters Frozen:",
+
             Object.isFrozen(
+
                 result.parameters
+
             )
+
         );
 
+
         console.log(
+
             "Parameters Extensible:",
+
             Object.isExtensible(
+
                 result.parameters
+
             )
+
         );
 
+
         console.log(
+
             "Staff Descriptor:",
+
             Object.getOwnPropertyDescriptor(
+
                 result.parameters,
+
                 "staff"
+
             )
+
         );
 
     }
-
-
-
 
 
     /*=========================================================
@@ -6179,7 +6222,9 @@ StaffIntent.detectStaffIntent = function (
     =========================================================*/
 
     if (
+
         staff.length === 0
+
     ) {
 
         return result;
@@ -6188,25 +6233,41 @@ StaffIntent.detectStaffIntent = function (
 
 
     console.log(
+
         "=============================="
+
     );
 
+
     console.log(
+
         "detectStaffIntent() START"
+
     );
 
+
     console.log(
+
         "Query:",
+
         result.normalizedQuery
+
     );
 
+
     console.log(
+
         "Staff:",
+
         staff
+
     );
 
+
     console.log(
+
         "=============================="
+
     );
 
 
@@ -6222,18 +6283,28 @@ StaffIntent.detectStaffIntent = function (
     =========================================================*/
 
     result =
+
         StaffIntent.detectAssignmentIntent(
+
             result
+
         );
 
+
     if (
+
         result.intent ===
+
         INTENTS.STAFF_ASSIGNMENT
+
     ) {
 
         debugParameters(
+
             result.intent
+
         );
+
 
         return result;
 
@@ -6250,18 +6321,28 @@ StaffIntent.detectStaffIntent = function (
     =========================================================*/
 
     result =
+
         StaffIntent.detectDutyStatusIntent(
+
             result
+
         );
 
+
     if (
+
         result.intent ===
+
         INTENTS.STAFF_DUTY_STATUS
+
     ) {
 
         debugParameters(
+
             result.intent
+
         );
+
 
         return result;
 
@@ -6277,18 +6358,28 @@ StaffIntent.detectStaffIntent = function (
     =========================================================*/
 
     result =
+
         StaffIntent.detectContactIntent(
+
             result
+
         );
 
+
     if (
+
         result.intent ===
+
         INTENTS.STAFF_CONTACT
+
     ) {
 
         debugParameters(
+
             result.intent
+
         );
+
 
         return result;
 
@@ -6303,18 +6394,28 @@ StaffIntent.detectStaffIntent = function (
     =========================================================*/
 
     result =
+
         StaffIntent.detectDesignationIntent(
+
             result
+
         );
 
+
     if (
+
         result.intent ===
+
         INTENTS.STAFF_DESIGNATION
+
     ) {
 
         debugParameters(
+
             result.intent
+
         );
+
 
         return result;
 
@@ -6329,18 +6430,28 @@ StaffIntent.detectStaffIntent = function (
     =========================================================*/
 
     result =
+
         StaffIntent.detectRoleIntent(
+
             result
+
         );
 
+
     if (
+
         result.intent ===
+
         INTENTS.STAFF_ROLE
+
     ) {
 
         debugParameters(
+
             result.intent
+
         );
+
 
         return result;
 
@@ -6358,21 +6469,34 @@ StaffIntent.detectStaffIntent = function (
     =========================================================*/
 
     result =
+
         StaffIntent.detectPostingIntent(
+
             result
+
         );
 
+
     if (
+
         result.intent === INTENTS.STAFF_POSTING ||
+
         result.intent === INTENTS.STAFF_CIRCLE ||
+
         result.intent === INTENTS.STAFF_DIVISION ||
+
         result.intent === INTENTS.STAFF_RANGE ||
+
         result.intent === INTENTS.STAFF_BEAT
+
     ) {
 
         debugParameters(
+
             result.intent
+
         );
+
 
         return result;
 
@@ -6380,30 +6504,125 @@ StaffIntent.detectStaffIntent = function (
 
 
     /*=========================================================
-      8. DUTY
+      8. PATROL ANALYTICS
+
+      IMPORTANT:
+      Patrol-specific intents MUST run before generic
+      duty and location detection.
+
+      This prevents:
+
+      "When did Dhiraj end patrol?"
+          → STAFF_DUTY_ENDED
+
+      "How long has Dhiraj been patrolling?"
+          → STAFF_LOCATION
+
+      Expected:
+
+      "When did Dhiraj start patrol?"
+          → STAFF_PATROL_START
+
+      "When did Dhiraj end patrol?"
+          → STAFF_PATROL_END
+
+      "How long has Dhiraj been patrolling?"
+          → STAFF_PATROL_DURATION
+
+      Duty and patrol may use the same canonical
+      session data, but the user wording must first
+      resolve to the correct business intent.
+    =========================================================*/
+
+    result =
+
+        StaffIntent.detectAnalyticsIntent(
+
+            result
+
+        );
+
+
+    if (
+
+        result.intent === INTENTS.STAFF_ANALYTICS ||
+
+        result.intent === INTENTS.STAFF_DISTANCE ||
+
+        result.intent === INTENTS.STAFF_PATROL_POINTS ||
+
+        result.intent === INTENTS.STAFF_PATROL_START ||
+
+        result.intent === INTENTS.STAFF_PATROL_END ||
+
+        result.intent === INTENTS.STAFF_PATROL_DURATION
+
+    ) {
+
+        debugParameters(
+
+            result.intent
+
+        );
+
+
+        return result;
+
+    }
+
+
+    /*=========================================================
+      9. DUTY
 
       Remaining duty-related single-staff intents.
+
+      Runs AFTER patrol-specific detection so patrol
+      wording is not captured by generic duty logic.
+
+      Examples:
+
+      "When did Dhiraj start duty?"
+          → STAFF_DUTY_STARTED
+
+      "When did Dhiraj end duty?"
+          → STAFF_DUTY_ENDED
     =========================================================*/
 
     result =
+
         StaffIntent.detectDutyIntent(
+
             result
+
         );
 
+
     if (
+
         result.intent === INTENTS.STAFF_DUTY ||
+
         result.intent === INTENTS.STAFF_DUTY_STATUS ||
+
         result.intent === INTENTS.STAFF_DUTY_TYPE ||
+
         result.intent === INTENTS.STAFF_DUTY_STARTED ||
+
         result.intent === INTENTS.STAFF_DUTY_ENDED ||
+
         result.intent === INTENTS.STAFF_DUTY_ACTIVE ||
+
         result.intent === INTENTS.STAFF_LAST_DUTY ||
+
         result.intent === INTENTS.STAFF_ASSIGNMENT
+
     ) {
 
         debugParameters(
+
             result.intent
+
         );
+
 
         return result;
 
@@ -6411,109 +6630,74 @@ StaffIntent.detectStaffIntent = function (
 
 
     /*=========================================================
-      9. TEAM
+      10. TEAM
     =========================================================*/
 
     result =
+
         StaffIntent.detectTeamIntent(
+
             result
+
         );
 
+
     if (
+
         result.intent === INTENTS.STAFF_TEAM ||
+
         result.intent === INTENTS.STAFF_LEADER
+
     ) {
 
         debugParameters(
+
             result.intent
+
         );
+
 
         return result;
 
     }
 
 
-/*=========================================================
-  GPS
-
-  Must run BEFORE generic location detection.
-
-  Handles:
-  - STAFF_SPEED
-  - STAFF_HEADING
-  - STAFF_ACCURACY
-=========================================================*/
-
-result =
-    StaffIntent.detectGPSIntent(
-        result
-    );
-
-if (
-    result.intent === INTENTS.STAFF_SPEED ||
-    result.intent === INTENTS.STAFF_HEADING ||
-    result.intent === INTENTS.STAFF_ACCURACY
-) {
-
-    debugParameters(
-        result.intent
-    );
-
-    return result;
-
-}
-
-
-/*=========================================================
-  LOCATION
-
-  Generic location detection runs after specific
-  GPS field detection.
-=========================================================*/
-
-result =
-    StaffIntent.detectLocationIntent(
-        result
-    );
-
-if (
-    result.intent ===
-    INTENTS.STAFF_LOCATION
-) {
-
-    debugParameters(
-        result.intent
-    );
-
-    return result;
-
-}
-
-
     /*=========================================================
-      11. PATROL ANALYTICS
+      11. GPS
 
-      Specific analytics should be resolved before
-      generic profile fallback.
+      Must run BEFORE generic location detection.
+
+      Handles:
+      - STAFF_SPEED
+      - STAFF_HEADING
+      - STAFF_ACCURACY
     =========================================================*/
 
     result =
-        StaffIntent.detectAnalyticsIntent(
+
+        StaffIntent.detectGPSIntent(
+
             result
+
         );
 
+
     if (
-        result.intent === INTENTS.STAFF_ANALYTICS ||
-        result.intent === INTENTS.STAFF_DISTANCE ||
-        result.intent === INTENTS.STAFF_PATROL_POINTS ||
-        result.intent === INTENTS.STAFF_PATROL_START ||
-        result.intent === INTENTS.STAFF_PATROL_END ||
-        result.intent === INTENTS.STAFF_PATROL_DURATION
+
+        result.intent === INTENTS.STAFF_SPEED ||
+
+        result.intent === INTENTS.STAFF_HEADING ||
+
+        result.intent === INTENTS.STAFF_ACCURACY
+
     ) {
 
         debugParameters(
+
             result.intent
+
         );
+
 
         return result;
 
@@ -6521,7 +6705,48 @@ if (
 
 
     /*=========================================================
-      12. PROFILE — LAST FALLBACK
+      12. LOCATION
+
+      Generic location detection runs after:
+      - Patrol analytics
+      - Duty
+      - Specific GPS field detection
+
+      This prevents patrol-duration wording from being
+      incorrectly claimed by STAFF_LOCATION.
+    =========================================================*/
+
+    result =
+
+        StaffIntent.detectLocationIntent(
+
+            result
+
+        );
+
+
+    if (
+
+        result.intent ===
+
+        INTENTS.STAFF_LOCATION
+
+    ) {
+
+        debugParameters(
+
+            result.intent
+
+        );
+
+
+        return result;
+
+    }
+
+
+    /*=========================================================
+      13. PROFILE — LAST FALLBACK
 
       Generic profile detection must come after all
       specific single-staff intents.
@@ -6532,20 +6757,32 @@ if (
     =========================================================*/
 
     result =
+
         StaffIntent.detectProfileIntent(
+
             result
+
         );
 
+
     if (
+
         result.intent === INTENTS.STAFF_PROFILE ||
+
         result.intent === INTENTS.STAFF_CONTACT ||
+
         result.intent === INTENTS.STAFF_ROLE ||
+
         result.intent === INTENTS.STAFF_DESIGNATION
+
     ) {
 
         debugParameters(
+
             result.intent
+
         );
+
 
         return result;
 
@@ -6557,8 +6794,11 @@ if (
     =========================================================*/
 
     console.log(
+
         "❌ No Single Staff Intent"
+
     );
+
 
     return result;
 
