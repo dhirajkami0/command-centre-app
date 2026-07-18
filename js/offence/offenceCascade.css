@@ -1,0 +1,1096 @@
+/* =========================================================
+   GreenGuard
+   Offence Intelligence Module
+
+   File:
+   css/offence/offenceCascade.css
+
+   Purpose:
+   - Style offence cascade drill-down panel
+   - SOURCE / TARGET hotspot presentation
+   - Linked case list
+   - Case details
+   - Accused and seizure navigation
+   - Related hotspot presentation
+   - Responsive desktop/mobile layout
+
+   ========================================================= */
+
+
+/* =========================================================
+   1. MAIN CASCADE PANEL
+   ========================================================= */
+
+.offence-cascade-panel {
+
+    position: fixed;
+
+    top: 70px;
+    right: 16px;
+
+    width: 380px;
+    max-width: calc(100vw - 32px);
+
+    max-height: calc(100vh - 90px);
+
+    display: none;
+
+    flex-direction: column;
+
+    background: #ffffff;
+
+    border-radius: 14px;
+
+    box-shadow:
+        0 8px 32px
+        rgba(0, 0, 0, 0.22);
+
+    overflow: hidden;
+
+    z-index: 10000;
+
+    font-family:
+        Arial,
+        Helvetica,
+        sans-serif;
+
+}
+
+
+/* =========================================================
+   2. OPEN STATE
+   ========================================================= */
+
+.offence-cascade-panel.is-open {
+
+    display: flex;
+
+}
+
+
+/* =========================================================
+   3. HEADER
+   ========================================================= */
+
+.offence-cascade-header {
+
+    display: flex;
+
+    align-items: center;
+
+    justify-content: space-between;
+
+    min-height: 54px;
+
+    padding:
+        0
+        16px;
+
+    background:
+        linear-gradient(
+            135deg,
+            #173b2c,
+            #245d44
+        );
+
+    color: #ffffff;
+
+    flex-shrink: 0;
+
+}
+
+
+/* =========================================================
+   4. HEADER TITLE
+   ========================================================= */
+
+.offence-cascade-title {
+
+    font-size: 16px;
+
+    font-weight: 700;
+
+    letter-spacing: 0.2px;
+
+}
+
+
+/* =========================================================
+   5. CLOSE BUTTON
+   ========================================================= */
+
+.offence-cascade-close {
+
+    width: 36px;
+    height: 36px;
+
+    display: flex;
+
+    align-items: center;
+
+    justify-content: center;
+
+    border: 0;
+
+    border-radius: 50%;
+
+    background: transparent;
+
+    color: #ffffff;
+
+    font-size: 28px;
+
+    line-height: 1;
+
+    cursor: pointer;
+
+    transition:
+        background 0.2s ease,
+        transform 0.2s ease;
+
+}
+
+
+.offence-cascade-close:hover {
+
+    background:
+        rgba(
+            255,
+            255,
+            255,
+            0.15
+        );
+
+}
+
+
+.offence-cascade-close:active {
+
+    transform: scale(0.94);
+
+}
+
+
+/* =========================================================
+   6. SCROLLABLE CONTENT
+   ========================================================= */
+
+.offence-cascade-content {
+
+    flex: 1;
+
+    overflow-y: auto;
+
+    overflow-x: hidden;
+
+    padding: 14px;
+
+    background: #f5f7f6;
+
+    overscroll-behavior: contain;
+
+}
+
+
+/* =========================================================
+   7. SCROLLBAR
+   ========================================================= */
+
+.offence-cascade-content::-webkit-scrollbar {
+
+    width: 6px;
+
+}
+
+
+.offence-cascade-content::-webkit-scrollbar-track {
+
+    background: transparent;
+
+}
+
+
+.offence-cascade-content::-webkit-scrollbar-thumb {
+
+    background: #b7c1bc;
+
+    border-radius: 10px;
+
+}
+
+
+/* =========================================================
+   8. SECTION CARD
+   ========================================================= */
+
+.offence-cascade-section {
+
+    margin-bottom: 12px;
+
+    padding: 14px;
+
+    background: #ffffff;
+
+    border: 1px solid #e2e8e5;
+
+    border-radius: 10px;
+
+    box-shadow:
+        0 2px 7px
+        rgba(0, 0, 0, 0.05);
+
+}
+
+
+/* =========================================================
+   9. SECTION TITLE
+   ========================================================= */
+
+.offence-section-title {
+
+    margin-bottom: 12px;
+
+    padding-bottom: 8px;
+
+    border-bottom:
+        1px solid
+        #e5e9e7;
+
+    font-size: 14px;
+
+    font-weight: 700;
+
+    color: #263832;
+
+}
+
+
+/* =========================================================
+   10. HOTSPOT TYPE BADGE
+   ========================================================= */
+
+.offence-cascade-type {
+
+    display: inline-flex;
+
+    align-items: center;
+
+    min-height: 24px;
+
+    margin-bottom: 8px;
+
+    padding:
+        3px
+        9px;
+
+    border-radius: 12px;
+
+    font-size: 11px;
+
+    font-weight: 700;
+
+    letter-spacing: 0.6px;
+
+    text-transform: uppercase;
+
+}
+
+
+/* =========================================================
+   11. SOURCE BADGE
+   ========================================================= */
+
+.offence-type-SOURCE {
+
+    background: #e7f4ec;
+
+    color: #176b3a;
+
+    border:
+        1px solid
+        #b9dfc8;
+
+}
+
+
+/* =========================================================
+   12. TARGET BADGE
+   ========================================================= */
+
+.offence-type-TARGET {
+
+    background: #fff0e6;
+
+    color: #a54813;
+
+    border:
+        1px solid
+        #f2c9ae;
+
+}
+
+
+/* =========================================================
+   13. HOTSPOT LOCATION
+   ========================================================= */
+
+.offence-cascade-location {
+
+    margin:
+        2px
+        0
+        14px;
+
+    font-size: 18px;
+
+    font-weight: 700;
+
+    line-height: 1.35;
+
+    color: #1d2c27;
+
+    word-break: break-word;
+
+}
+
+
+/* =========================================================
+   14. HOTSPOT STATISTICS
+   ========================================================= */
+
+.offence-cascade-stats {
+
+    display: grid;
+
+    grid-template-columns:
+        repeat(
+            3,
+            minmax(0, 1fr)
+        );
+
+    gap: 8px;
+
+}
+
+
+/* =========================================================
+   15. STAT CARD
+   ========================================================= */
+
+.offence-stat {
+
+    display: flex;
+
+    flex-direction: column;
+
+    align-items: center;
+
+    justify-content: center;
+
+    min-height: 65px;
+
+    padding: 8px;
+
+    background: #f7f9f8;
+
+    border:
+        1px solid
+        #e1e7e4;
+
+    border-radius: 8px;
+
+    text-align: center;
+
+}
+
+
+/* =========================================================
+   16. STAT VALUE
+   ========================================================= */
+
+.offence-stat-value {
+
+    display: block;
+
+    font-size: 20px;
+
+    font-weight: 700;
+
+    color: #1f5a40;
+
+}
+
+
+/* =========================================================
+   17. STAT LABEL
+   ========================================================= */
+
+.offence-stat-label {
+
+    display: block;
+
+    margin-top: 3px;
+
+    font-size: 11px;
+
+    color: #65746d;
+
+}
+
+
+/* =========================================================
+   18. CASE LIST
+   ========================================================= */
+
+.offence-case-list {
+
+    display: flex;
+
+    flex-direction: column;
+
+    gap: 7px;
+
+}
+
+
+/* =========================================================
+   19. CASE ITEM
+   ========================================================= */
+
+.offence-case-item {
+
+    width: 100%;
+
+    display: flex;
+
+    align-items: center;
+
+    justify-content: space-between;
+
+    gap: 10px;
+
+    padding:
+        11px
+        12px;
+
+    border:
+        1px solid
+        #dde5e1;
+
+    border-radius: 8px;
+
+    background: #ffffff;
+
+    color: #263832;
+
+    text-align: left;
+
+    cursor: pointer;
+
+    transition:
+        background 0.15s ease,
+        border-color 0.15s ease,
+        transform 0.15s ease;
+
+}
+
+
+/* =========================================================
+   20. CASE ITEM HOVER
+   ========================================================= */
+
+.offence-case-item:hover {
+
+    background: #f0f7f3;
+
+    border-color: #9fc5ae;
+
+}
+
+
+/* =========================================================
+   21. CASE ITEM ACTIVE
+   ========================================================= */
+
+.offence-case-item:active {
+
+    transform: scale(0.99);
+
+}
+
+
+/* =========================================================
+   22. CASE TITLE
+   ========================================================= */
+
+.offence-case-title {
+
+    min-width: 0;
+
+    flex: 1;
+
+    font-size: 13px;
+
+    font-weight: 600;
+
+    line-height: 1.4;
+
+    overflow-wrap: anywhere;
+
+}
+
+
+/* =========================================================
+   23. CASE ARROW
+   ========================================================= */
+
+.offence-case-arrow {
+
+    flex-shrink: 0;
+
+    font-size: 22px;
+
+    color: #718079;
+
+}
+
+
+/* =========================================================
+   24. GENERIC CASCADE LIST ITEM
+   ========================================================= */
+
+.offence-cascade-list-item {
+
+    width: 100%;
+
+    display: flex;
+
+    align-items: center;
+
+    justify-content: space-between;
+
+    gap: 10px;
+
+    margin-bottom: 7px;
+
+    padding:
+        10px
+        11px;
+
+    border:
+        1px solid
+        #e0e6e3;
+
+    border-radius: 8px;
+
+    background: #fafcfb;
+
+    color: #263832;
+
+    font-size: 13px;
+
+    font-weight: 500;
+
+    text-align: left;
+
+    cursor: pointer;
+
+    transition:
+        background 0.15s ease,
+        border-color 0.15s ease;
+
+}
+
+
+.offence-cascade-list-item:last-child {
+
+    margin-bottom: 0;
+
+}
+
+
+.offence-cascade-list-item:hover {
+
+    background: #eef6f2;
+
+    border-color: #a8cbb6;
+
+}
+
+
+/* =========================================================
+   25. BACK BUTTON
+   ========================================================= */
+
+.offence-back-button {
+
+    display: inline-flex;
+
+    align-items: center;
+
+    margin:
+        0
+        0
+        12px;
+
+    padding:
+        7px
+        11px;
+
+    border:
+        1px solid
+        #ccd8d2;
+
+    border-radius: 7px;
+
+    background: #ffffff;
+
+    color: #315b48;
+
+    font-size: 12px;
+
+    font-weight: 600;
+
+    cursor: pointer;
+
+    transition:
+        background 0.15s ease,
+        border-color 0.15s ease;
+
+}
+
+
+.offence-back-button:hover {
+
+    background: #edf5f1;
+
+    border-color: #a6bfb3;
+
+}
+
+
+/* =========================================================
+   26. DETAIL ROW
+   ========================================================= */
+
+.offence-detail-row {
+
+    display: grid;
+
+    grid-template-columns:
+        minmax(105px, 0.8fr)
+        minmax(0, 1.5fr);
+
+    gap: 12px;
+
+    padding:
+        8px
+        0;
+
+    border-bottom:
+        1px solid
+        #edf0ef;
+
+}
+
+
+/* =========================================================
+   27. LAST DETAIL ROW
+   ========================================================= */
+
+.offence-detail-row:last-child {
+
+    border-bottom: 0;
+
+}
+
+
+/* =========================================================
+   28. DETAIL LABEL
+   ========================================================= */
+
+.offence-detail-label {
+
+    font-size: 11px;
+
+    font-weight: 700;
+
+    color: #6b7973;
+
+    line-height: 1.4;
+
+}
+
+
+/* =========================================================
+   29. DETAIL VALUE
+   ========================================================= */
+
+.offence-detail-value {
+
+    min-width: 0;
+
+    font-size: 12px;
+
+    font-weight: 500;
+
+    color: #273b32;
+
+    line-height: 1.45;
+
+    overflow-wrap: anywhere;
+
+}
+
+
+/* =========================================================
+   30. RELATED HOTSPOT
+   ========================================================= */
+
+.offence-related-hotspot {
+
+    position: relative;
+
+    margin-bottom: 7px;
+
+    padding:
+        9px
+        10px
+        9px
+        27px;
+
+    background: #f8faf9;
+
+    border:
+        1px solid
+        #e2e7e5;
+
+    border-radius: 7px;
+
+    font-size: 12px;
+
+    color: #354a40;
+
+    line-height: 1.4;
+
+}
+
+
+/* =========================================================
+   31. RELATED HOTSPOT MARKER
+   ========================================================= */
+
+.offence-related-hotspot::before {
+
+    content: "";
+
+    position: absolute;
+
+    left: 10px;
+    top: 50%;
+
+    width: 8px;
+    height: 8px;
+
+    border-radius: 50%;
+
+    background: #587d69;
+
+    transform:
+        translateY(-50%);
+
+}
+
+
+/* =========================================================
+   32. EMPTY STATE
+   ========================================================= */
+
+.offence-empty {
+
+    padding:
+        14px
+        10px;
+
+    border:
+        1px dashed
+        #d3ddd8;
+
+    border-radius: 7px;
+
+    background: #fafbfb;
+
+    color: #7a8781;
+
+    font-size: 12px;
+
+    text-align: center;
+
+}
+
+
+/* =========================================================
+   33. BUTTON FOCUS
+   ========================================================= */
+
+.offence-cascade-panel button:focus-visible {
+
+    outline:
+        2px solid
+        #3d8060;
+
+    outline-offset:
+        2px;
+
+}
+
+
+/* =========================================================
+   34. PANEL ENTRANCE ANIMATION
+   ========================================================= */
+
+@keyframes offenceCascadeSlideIn {
+
+    from {
+
+        opacity: 0;
+
+        transform:
+            translateX(20px);
+
+    }
+
+    to {
+
+        opacity: 1;
+
+        transform:
+            translateX(0);
+
+    }
+
+}
+
+
+.offence-cascade-panel.is-open {
+
+    animation:
+        offenceCascadeSlideIn
+        0.2s
+        ease-out;
+
+}
+
+
+/* =========================================================
+   35. TABLET
+   ========================================================= */
+
+@media (
+    max-width: 768px
+) {
+
+    .offence-cascade-panel {
+
+        top: auto;
+
+        right: 10px;
+        bottom: 10px;
+        left: 10px;
+
+        width: auto;
+
+        max-width: none;
+
+        max-height: 70vh;
+
+        border-radius: 14px;
+
+    }
+
+
+    .offence-cascade-content {
+
+        padding: 12px;
+
+    }
+
+}
+
+
+/* =========================================================
+   36. MOBILE
+   ========================================================= */
+
+@media (
+    max-width: 480px
+) {
+
+    .offence-cascade-panel {
+
+        right: 0;
+        bottom: 0;
+        left: 0;
+
+        max-height: 75vh;
+
+        border-radius:
+            16px
+            16px
+            0
+            0;
+
+    }
+
+
+    .offence-cascade-header {
+
+        min-height: 50px;
+
+        padding:
+            0
+            14px;
+
+    }
+
+
+    .offence-cascade-title {
+
+        font-size: 15px;
+
+    }
+
+
+    .offence-cascade-content {
+
+        padding: 10px;
+
+    }
+
+
+    .offence-cascade-section {
+
+        padding: 12px;
+
+        margin-bottom: 10px;
+
+    }
+
+
+    .offence-cascade-location {
+
+        font-size: 16px;
+
+    }
+
+
+    .offence-stat {
+
+        min-height: 58px;
+
+        padding: 6px;
+
+    }
+
+
+    .offence-stat-value {
+
+        font-size: 18px;
+
+    }
+
+
+    .offence-stat-label {
+
+        font-size: 10px;
+
+    }
+
+
+    .offence-detail-row {
+
+        grid-template-columns:
+            1fr;
+
+        gap: 3px;
+
+    }
+
+
+    .offence-detail-label {
+
+        font-size: 10px;
+
+    }
+
+
+    .offence-detail-value {
+
+        font-size: 12px;
+
+    }
+
+}
+
+
+/* =========================================================
+   37. VERY SMALL MOBILE
+   ========================================================= */
+
+@media (
+    max-width: 340px
+) {
+
+    .offence-cascade-stats {
+
+        grid-template-columns:
+            1fr;
+
+    }
+
+
+    .offence-stat {
+
+        min-height: 48px;
+
+        flex-direction: row;
+
+        justify-content: space-between;
+
+    }
+
+
+    .offence-stat-label {
+
+        margin-top: 0;
+
+    }
+
+}
+
+
+/* =========================================================
+   38. REDUCED MOTION
+   ========================================================= */
+
+@media (
+    prefers-reduced-motion: reduce
+) {
+
+    .offence-cascade-panel.is-open {
+
+        animation: none;
+
+    }
+
+
+    .offence-cascade-close,
+    .offence-case-item,
+    .offence-cascade-list-item,
+    .offence-back-button {
+
+        transition: none;
+
+    }
+
+}
