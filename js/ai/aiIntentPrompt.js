@@ -389,7 +389,141 @@ ${entityTypes.join("\n")}
 `;
 
 };
+/*=========================================================
+ BUILD RULES
+=========================================================*/
 
+AIIntentPrompt.buildRules = function (
+
+    rules = {}
+
+) {
+
+    /*----------------------------------
+      Normalize Rules
+    ----------------------------------*/
+
+    if (
+
+        !rules ||
+
+        typeof rules !== "object"
+
+    ) {
+
+        rules = {};
+
+    }
+
+    /*----------------------------------
+      Build Classification Rules
+    ----------------------------------*/
+
+    return `
+
+=========================================================
+RULES
+=========================================================
+
+You must strictly follow these rules.
+
+1. Your ONLY responsibility is intent classification.
+
+2. NEVER answer the user's question.
+
+3. NEVER generate reports.
+
+4. NEVER summarize.
+
+5. NEVER explain your reasoning.
+
+6. NEVER invent a domain.
+
+7. NEVER invent an intent.
+
+8. NEVER invent an entity type.
+
+9. NEVER invent entities that are not supported by the user's query.
+
+10. Use ONLY the supplied Business Registry.
+
+11. Choose EXACTLY ONE domain.
+
+12. Choose EXACTLY ONE intent.
+
+13. The selected domain MUST be one of the supplied Allowed Domains.
+
+14. The selected intent MUST be one of the supplied Allowed Intents.
+
+15. Return the canonical intent value EXACTLY as it appears in the Allowed Intents registry.
+
+16. Intent names are canonical runtime values.
+
+17. NEVER convert camelCase canonical intent values into UPPER_SNAKE_CASE.
+
+18. Determine the user's PRIMARY requested information or action before selecting an intent.
+
+19. Select the MOST SPECIFIC allowed intent whose semantic definition matches the user's request.
+
+20. A named entity identifies the subject of the request. The presence of a staff name does NOT automatically make the request a staff profile request.
+
+21. A general profile intent must be used only when the user requests general profile, identity, details, or overall information and no more specific information is requested.
+
+22. If the user requests one specific attribute, status, relationship, action, or information category, select the corresponding specific intent instead of a general profile intent.
+
+23. Interpret semantically equivalent natural-language expressions according to their meaning. Exact keyword matching is NOT required.
+
+24. For staff-domain requests, distinguish carefully between profile, contact, role, designation, posting, current location, duty, assignment, team, GPS, patrol, status, directory, count, summary, and analytics intents according to their supplied semantic definitions.
+
+25. A request about communicating with, contacting, calling, reaching, getting in touch with, speaking with, or obtaining communication details for a staff member must be classified using the specific contact-related intent supplied in the registry, not the general profile intent.
+
+26. Current physical location and official organizational posting are different concepts and must use their respective specific intents.
+
+27. Duty status and general staff status are different concepts and must use their respective specific intents.
+
+28. Individual staff requests and aggregate, directory, count, list, or summary requests are different and must use their respective specific intents.
+
+29. If the local intent is successful, valid, and correctly represents the user's request, preserve that intent.
+
+30. Do not replace a correct high-confidence local intent merely because another intent is semantically related.
+
+31. Replace or improve a local intent only when the AI-selected intent is a clearly better and more specific semantic match.
+
+32. If the local intent failed, is unknown, or has insufficient confidence, independently classify the request using the supplied Business Registry.
+
+33. If multiple intents appear possible, select the most specific intent corresponding to the information or action explicitly requested by the user.
+
+34. Semantic definitions are classification guidance. The returned intent value must still be the exact canonical intent name from the Allowed Intents registry.
+
+35. If no supplied intent correctly represents the request, return "UNKNOWN".
+
+36. Confidence must be a number between 0.0 and 1.0.
+
+37. Return JSON ONLY.
+
+38. Do NOT return Markdown.
+
+39. Do NOT wrap JSON inside code blocks.
+
+40. Do NOT include any text before or after the JSON.
+
+---------------------------------------------------------
+CURRENT RUNTIME RULES
+---------------------------------------------------------
+
+Classify Only      : ${rules.classifyOnly === true}
+
+Allow New Domain   : ${rules.allowNewDomain === true}
+
+Allow New Intent   : ${rules.allowNewIntent === true}
+
+Allow Entity Types : ${rules.allowNewEntityType === true}
+
+Allow Reasoning    : ${rules.allowReasoning === true}
+
+`;
+
+};
  /*=========================================================
  BUILD REQUEST
 =========================================================*/
