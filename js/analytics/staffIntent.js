@@ -7161,6 +7161,43 @@ StaffIntent.detectCountIntent = function (
       How many Banasahayak in Poro_east Beat?
 
       Jurisdiction remains an optional filter.
+
+      IMPORTANT:
+
+      Designations remain independent.
+
+      Examples:
+
+      FR
+      DR/Fr
+      BS
+      Banasahayak
+
+      These must NOT be merged.
+
+      If overlapping designation entities
+      are extracted, the longest designation
+      explicitly present in the query wins.
+
+      Example:
+
+      Query:
+      "HOW MANY DR/FR ARE IN WEST DAMANPUR RANGE?"
+
+      Extracted designation entities may include:
+
+      FR
+      DR/Fr
+      DR/Fr
+      DR/Fr
+
+      Correct resolved designation:
+
+      DR/Fr
+
+      NOT:
+
+      FR
     ----------------------------------*/
 
     if (
@@ -7169,23 +7206,200 @@ StaffIntent.detectCountIntent = function (
 
     ) {
 
+        /*----------------------------------
+          Build Designation Candidates
+        ----------------------------------*/
+
+        const designationCandidates =
+
+            designations
+
+                .map(
+
+                    function (
+
+                        entity
+
+                    ) {
+
+                        const designation =
+
+                            entity
+                                ?.identity
+                                ?.designation ||
+
+                            entity
+                                ?.designation ||
+
+                            "";
+
+
+                        return {
+
+                            designation:
+
+                                designation,
+
+                            normalized:
+
+                                String(
+
+                                    designation
+
+                                )
+
+                                .trim()
+
+                                .toUpperCase()
+
+                        };
+
+                    }
+
+                )
+
+                .filter(
+
+                    function (
+
+                        item
+
+                    ) {
+
+                        return (
+
+                            item.normalized !== ""
+
+                        );
+
+                    }
+
+                );
+
+
+        /*----------------------------------
+          Find Designations Explicitly
+          Present In Query
+        ----------------------------------*/
+
+        const queryMatches =
+
+            designationCandidates
+
+                .filter(
+
+                    function (
+
+                        item
+
+                    ) {
+
+                        return query.includes(
+
+                            item.normalized
+
+                        );
+
+                    }
+
+                )
+
+                .sort(
+
+                    function (
+
+                        a,
+
+                        b
+
+                    ) {
+
+                        /*----------------------------------
+                          Longest Match Wins
+
+                          Example:
+
+                          DR/FR
+                          beats
+                          FR
+
+                          BS and Banasahayak remain
+                          independent.
+                        ----------------------------------*/
+
+                        return (
+
+                            b.normalized.length -
+
+                            a.normalized.length
+
+                        );
+
+                    }
+
+                );
+
+
+        /*----------------------------------
+          Resolve Exact Designation
+
+          Priority:
+
+          1. Longest designation explicitly
+             present in query.
+
+          2. First extracted designation
+             as safe fallback.
+        ----------------------------------*/
+
+        const resolvedDesignation =
+
+            queryMatches.length > 0
+
+                ? queryMatches[0]
+                    .designation
+
+                : (
+
+                    designationCandidates[0]
+                        ?.designation ||
+
+                    ""
+
+                );
+
+
+        /*----------------------------------
+          Canonical Business Intent
+        ----------------------------------*/
+
         result.intent =
 
             INTENTS
                 .STAFF_DESIGNATION_DIRECTORY;
 
 
+        /*----------------------------------
+          Preserve Exact Designation
+
+          Examples:
+
+          FR
+          → FR
+
+          DR/Fr
+          → DR/Fr
+
+          BS
+          → BS
+
+          Banasahayak
+          → Banasahayak
+        ----------------------------------*/
+
         result.parameters.designation =
 
-            designations[0]
-
-                .identity
-
-                ?.designation ||
-
-            designations[0]
-
-                .designation;
+            resolvedDesignation;
 
 
         result.confidence =
