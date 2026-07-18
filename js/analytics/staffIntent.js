@@ -7589,8 +7589,12 @@ StaffIntent.detectDirectoryIntent = function (
 
       "How many staff in West Damanpur Range?"
 
-      This must NOT become a directory.
-      It remains STAFF_RANGE_COUNT.
+      This must NOT become a directory here.
+
+      It continues to detectCountIntent(),
+      where current business logic maps
+      jurisdiction LIST + COUNT to the
+      corresponding directory intent.
 
       But:
 
@@ -7759,6 +7763,41 @@ StaffIntent.detectDirectoryIntent = function (
       - Division
       - Range
       - Beat
+
+      IMPORTANT:
+
+      Designations remain independent.
+
+      Examples:
+
+      FR
+      DR/Fr
+      BS
+      Banasahayak
+
+      These are NOT automatically merged.
+
+      When designation extraction returns
+      overlapping designation entities,
+      prefer the longest designation that
+      actually appears in the query.
+
+      Example:
+
+      Query:
+      "DR/FR IN WEST DAMANPUR RANGE"
+
+      Extracted:
+      - FR
+      - DR/Fr
+      - DR/Fr
+      - DR/Fr
+
+      Resolved:
+      DR/Fr
+
+      NOT:
+      FR
     ----------------------------------*/
 
     if (
@@ -7775,25 +7814,219 @@ StaffIntent.detectDirectoryIntent = function (
 
     ) {
 
+        /*----------------------------------
+          Build Designation Candidates
+        ----------------------------------*/
+
+        const designationCandidates =
+
+            designations
+
+                .map(
+
+                    function (
+
+                        entity
+
+                    ) {
+
+                        const designation =
+
+                            entity
+                                ?.identity
+                                ?.designation ||
+
+                            entity
+                                ?.designation ||
+
+                            "";
+
+                        return {
+
+                            entity:
+
+                                entity,
+
+                            designation:
+
+                                designation,
+
+                            normalized:
+
+                                String(
+
+                                    designation
+
+                                )
+
+                                .trim()
+
+                                .toUpperCase()
+
+                        };
+
+                    }
+
+                )
+
+                .filter(
+
+                    function (
+
+                        item
+
+                    ) {
+
+                        return (
+
+                            item.normalized !== ""
+
+                        );
+
+                    }
+
+                );
+
+
+        /*----------------------------------
+          Find Designations Present
+          In Original Query
+
+          Exact designation text is checked
+          against the normalized query.
+
+          Examples:
+
+          FR
+          → matches FR
+
+          DR/FR
+          → both FR and DR/FR may have been
+            extracted, but DR/FR is longer
+            and therefore wins below.
+        ----------------------------------*/
+
+        const queryMatches =
+
+            designationCandidates
+
+                .filter(
+
+                    function (
+
+                        item
+
+                    ) {
+
+                        return query.includes(
+
+                            item.normalized
+
+                        );
+
+                    }
+
+                )
+
+                .sort(
+
+                    function (
+
+                        a,
+
+                        b
+
+                    ) {
+
+                        /*----------------------------------
+                          Longest Match First
+
+                          DR/FR
+                          beats
+                          FR
+                        ----------------------------------*/
+
+                        return (
+
+                            b.normalized.length -
+
+                            a.normalized.length
+
+                        );
+
+                    }
+
+                );
+
+
+        /*----------------------------------
+          Resolve Requested Designation
+
+          Priority:
+
+          1. Longest designation explicitly
+             present in query.
+
+          2. First extracted designation
+             as safe fallback.
+        ----------------------------------*/
+
+        const resolvedDesignation =
+
+            queryMatches.length > 0
+
+                ? queryMatches[0]
+                    .designation
+
+                : (
+
+                    designationCandidates[0]
+                        ?.designation ||
+
+                    ""
+
+                );
+
+
+        /*----------------------------------
+          Set Canonical Intent
+        ----------------------------------*/
+
         result.intent =
 
             INTENTS.STAFF_DESIGNATION_DIRECTORY;
 
+
+        /*----------------------------------
+          Set Exact Designation Parameter
+
+          Preserve canonical designation.
+
+          Examples:
+
+          FR
+          DR/Fr
+          BS
+          Banasahayak
+        ----------------------------------*/
+
         result.parameters.designation =
 
-            designations[0]
+            resolvedDesignation;
 
-                .identity
 
-                ?.designation ||
-
-            designations[0]
-
-                .designation;
+        /*----------------------------------
+          Confidence
+        ----------------------------------*/
 
         result.confidence =
 
             0.99;
+
+
+        /*----------------------------------
+          Return
+        ----------------------------------*/
 
         return result;
 
