@@ -819,6 +819,862 @@ StaffFormatter.formatStaffNearby = function (
     );
 
 };
+
+ /*=========================================================
+  FORMAT DIRECTORY
+
+  BUSINESS PURPOSE
+  ---------------------------------------------------------
+  Handles:
+
+  STAFF_CIRCLE_DIRECTORY
+  STAFF_DIVISION_DIRECTORY
+  STAFF_RANGE_DIRECTORY
+  STAFF_BEAT_DIRECTORY
+
+  Expected Query Data:
+
+  [
+      {
+          circle / division / range / beat,
+          totalStaff,
+
+          designationGroups: [
+              {
+                  designation,
+                  count,
+                  staff: [...]
+              }
+          ],
+
+          staff: [...]
+      }
+  ]
+
+  Output:
+
+  # STAFF DIRECTORY
+
+  Poro-East Beat
+
+  Banasahayak (1)
+  - CHANDAN ORAON
+
+  BS (1)
+  - UPEN RAVA
+
+  DR/Fr (1)
+  - PRADIP BARMAN
+
+  Total Staff: 3
+=========================================================*/
+
+StaffFormatter.formatDirectory = function (
+
+    response
+
+) {
+
+    /*----------------------------------
+      Create Canonical Response
+    ----------------------------------*/
+
+    const result =
+
+        StaffFormatter.createResponse(
+
+            response
+
+        );
+
+    /*----------------------------------
+      Validate
+    ----------------------------------*/
+
+    if (
+
+        !response ||
+
+        !response.success
+
+    ) {
+
+        result.message =
+
+            response?.message ||
+
+            "Staff directory not available.";
+
+        return result;
+
+    }
+
+    /*----------------------------------
+      Directory Groups
+    ----------------------------------*/
+
+    const groups =
+
+        Array.isArray(
+
+            response.data
+
+        )
+
+            ? response.data
+
+            : [];
+
+    /*----------------------------------
+      Empty Directory
+    ----------------------------------*/
+
+    if (
+
+        groups.length === 0
+
+    ) {
+
+        result.success =
+
+            true;
+
+        result.title =
+
+            "Staff Directory";
+
+        result.markdown =
+
+            "# 👥 STAFF DIRECTORY\n\n" +
+
+            "_No staff found._";
+
+        result.message =
+
+            "No staff found.";
+
+        result.data =
+
+            groups;
+
+        result.intent =
+
+            response.intent ||
+
+            "";
+
+        result.confidence =
+
+            response.confidence ||
+
+            1;
+
+        result.source =
+
+            response.source ||
+
+            "LOCAL";
+
+        return result;
+
+    }
+
+    /*----------------------------------
+      Markdown
+    ----------------------------------*/
+
+    const md = [];
+
+    md.push(
+
+        "# 👥 STAFF DIRECTORY"
+
+    );
+
+    md.push(
+
+        ""
+
+    );
+
+    /*----------------------------------
+      Process Jurisdiction Groups
+    ----------------------------------*/
+
+    groups.forEach(
+
+        function (
+
+            group,
+
+            groupIndex
+
+        ) {
+
+            /*----------------------------------
+              Jurisdiction Detection
+            ----------------------------------*/
+
+            let jurisdictionType =
+
+                "";
+
+            let jurisdictionName =
+
+                "";
+
+            if (
+
+                group.beat
+
+            ) {
+
+                jurisdictionType =
+
+                    "Beat";
+
+                jurisdictionName =
+
+                    group.beat;
+
+            }
+
+            else if (
+
+                group.range
+
+            ) {
+
+                jurisdictionType =
+
+                    "Range";
+
+                jurisdictionName =
+
+                    group.range;
+
+            }
+
+            else if (
+
+                group.division
+
+            ) {
+
+                jurisdictionType =
+
+                    "Division";
+
+                jurisdictionName =
+
+                    group.division;
+
+            }
+
+            else if (
+
+                group.circle
+
+            ) {
+
+                jurisdictionType =
+
+                    "Circle";
+
+                jurisdictionName =
+
+                    group.circle;
+
+            }
+
+            else {
+
+                jurisdictionType =
+
+                    "Jurisdiction";
+
+                jurisdictionName =
+
+                    "All Staff";
+
+            }
+
+            /*----------------------------------
+              Jurisdiction Heading
+            ----------------------------------*/
+
+            md.push(
+
+                "## " +
+
+                jurisdictionName +
+
+                " " +
+
+                jurisdictionType
+
+            );
+
+            md.push(
+
+                ""
+
+            );
+
+            /*----------------------------------
+              Designation Groups
+
+              Preferred source:
+              group.designationGroups
+
+              Fallback:
+              build groups from group.staff
+            ----------------------------------*/
+
+            let designationGroups =
+
+                Array.isArray(
+
+                    group.designationGroups
+
+                )
+
+                    ? group.designationGroups
+
+                    : [];
+
+            /*----------------------------------
+              Fallback Designation Grouping
+
+              Important:
+              No designation normalization.
+
+              BS stays BS
+              Banasahayak stays Banasahayak
+              DR/Fr stays DR/Fr
+              FR stays FR
+
+              Every canonical designation
+              remains independent.
+            ----------------------------------*/
+
+            if (
+
+                designationGroups.length === 0 &&
+
+                Array.isArray(
+
+                    group.staff
+
+                )
+
+            ) {
+
+                const designationMap =
+
+                    {};
+
+                group.staff.forEach(
+
+                    function (
+
+                        profile
+
+                    ) {
+
+                        const designation =
+
+                            String(
+
+                                profile.identity
+                                    ?.designation ||
+
+                                profile.designation ||
+
+                                "UNASSIGNED"
+
+                            )
+
+                            .trim() ||
+
+                            "UNASSIGNED";
+
+                        if (
+
+                            !designationMap[
+                                designation
+                            ]
+
+                        ) {
+
+                            designationMap[
+                                designation
+                            ] = {
+
+                                designation:
+
+                                    designation,
+
+                                count:
+
+                                    0,
+
+                                staff:
+
+                                    []
+
+                            };
+
+                        }
+
+                        designationMap[
+                            designation
+                        ]
+                        .count++;
+
+                        designationMap[
+                            designation
+                        ]
+                        .staff
+                        .push(
+
+                            profile
+
+                        );
+
+                    }
+
+                );
+
+                designationGroups =
+
+                    Object.values(
+
+                        designationMap
+
+                    );
+
+            }
+
+            /*----------------------------------
+              Sort Designations
+
+              Alphabetical only.
+              Does NOT merge designations.
+            ----------------------------------*/
+
+            designationGroups =
+
+                designationGroups
+
+                .slice()
+
+                .sort(
+
+                    function (
+
+                        a,
+
+                        b
+
+                    ) {
+
+                        return String(
+
+                            a.designation ||
+
+                            ""
+
+                        ).localeCompare(
+
+                            String(
+
+                                b.designation ||
+
+                                ""
+
+                            )
+
+                        );
+
+                    }
+
+                );
+
+            /*----------------------------------
+              Render Designation Groups
+            ----------------------------------*/
+
+            designationGroups.forEach(
+
+                function (
+
+                    designationGroup
+
+                ) {
+
+                    const designation =
+
+                        designationGroup.designation ||
+
+                        "UNASSIGNED";
+
+                    const staff =
+
+                        Array.isArray(
+
+                            designationGroup.staff
+
+                        )
+
+                            ? designationGroup.staff
+
+                            : [];
+
+                    const count =
+
+                        Number(
+
+                            designationGroup.count ??
+
+                            staff.length
+
+                        );
+
+                    /*----------------------------------
+                      Designation + Count
+                    ----------------------------------*/
+
+                    md.push(
+
+                        "### " +
+
+                        designation +
+
+                        " (" +
+
+                        count +
+
+                        ")"
+
+                    );
+
+                    md.push(
+
+                        ""
+
+                    );
+
+                    /*----------------------------------
+                      Staff List
+                    ----------------------------------*/
+
+                    if (
+
+                        staff.length === 0
+
+                    ) {
+
+                        md.push(
+
+                            "_No staff found._"
+
+                        );
+
+                    }
+
+                    else {
+
+                        staff.forEach(
+
+                            function (
+
+                                profile
+
+                            ) {
+
+                                const staffName =
+
+                                    profile.identity
+                                        ?.name ||
+
+                                    profile.identity
+                                        ?.rawName ||
+
+                                    profile.identity
+                                        ?.cleanName ||
+
+                                    profile.name ||
+
+                                    profile.rawName ||
+
+                                    profile.cleanName ||
+
+                                    "-";
+
+                                md.push(
+
+                                    "- " +
+
+                                    staffName
+
+                                );
+
+                            }
+
+                        );
+
+                    }
+
+                    md.push(
+
+                        ""
+
+                    );
+
+                }
+
+            );
+
+            /*----------------------------------
+              Total Staff
+
+              Prefer totalStaff supplied
+              by StaffQuery.
+
+              Fallback to group.staff length.
+
+              Final fallback sums
+              designation group counts.
+            ----------------------------------*/
+
+            let totalStaff =
+
+                Number(
+
+                    group.totalStaff
+
+                );
+
+            if (
+
+                !Number.isFinite(
+
+                    totalStaff
+
+                )
+
+            ) {
+
+                if (
+
+                    Array.isArray(
+
+                        group.staff
+
+                    )
+
+                ) {
+
+                    totalStaff =
+
+                        group.staff.length;
+
+                }
+
+                else {
+
+                    totalStaff =
+
+                        designationGroups.reduce(
+
+                            function (
+
+                                total,
+
+                                designationGroup
+
+                            ) {
+
+                                const staff =
+
+                                    Array.isArray(
+
+                                        designationGroup.staff
+
+                                    )
+
+                                        ? designationGroup.staff
+
+                                        : [];
+
+                                return (
+
+                                    total +
+
+                                    Number(
+
+                                        designationGroup.count ??
+
+                                        staff.length
+
+                                    )
+
+                                );
+
+                            },
+
+                            0
+
+                        );
+
+                }
+
+            }
+
+            /*----------------------------------
+              Total
+            ----------------------------------*/
+
+            md.push(
+
+                "**Total Staff: " +
+
+                totalStaff +
+
+                "**"
+
+            );
+
+            /*----------------------------------
+              Separator Between Jurisdictions
+            ----------------------------------*/
+
+            if (
+
+                groupIndex <
+
+                groups.length - 1
+
+            ) {
+
+                md.push(
+
+                    ""
+
+                );
+
+                md.push(
+
+                    "---"
+
+                );
+
+            }
+
+            md.push(
+
+                ""
+
+            );
+
+        }
+
+    );
+
+    /*----------------------------------
+      Result Markdown
+    ----------------------------------*/
+
+    result.markdown =
+
+        md.join(
+
+            "\n"
+
+        );
+
+    /*----------------------------------
+      Card
+    ----------------------------------*/
+
+    result.cards.push({
+
+        type:
+
+            "staff-directory",
+
+        title:
+
+            "Staff Directory",
+
+        data:
+
+            groups
+
+    });
+
+    /*----------------------------------
+      Section
+    ----------------------------------*/
+
+    result.sections.push({
+
+        title:
+
+            "Staff Directory",
+
+        data:
+
+            groups
+
+    });
+
+    /*----------------------------------
+      Preserve Canonical Data
+    ----------------------------------*/
+
+    result.data =
+
+        groups;
+
+    /*----------------------------------
+      Metadata
+    ----------------------------------*/
+
+    result.success =
+
+        true;
+
+    result.title =
+
+        "Staff Directory";
+
+    result.intent =
+
+        response.intent ||
+
+        "";
+
+    result.confidence =
+
+        response.confidence ||
+
+        1;
+
+    result.source =
+
+        response.source ||
+
+        "LOCAL";
+
+    result.message =
+
+        "Staff directory formatted successfully.";
+
+    return result;
+
+};
  /*=========================================================
   CIRCLE COUNT
 =========================================================*/
