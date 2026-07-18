@@ -78,80 +78,7 @@ AI.init = function () {
  DETECT INTENT
 =========================================================*/
 
-AI.detectIntent = async function (
 
-    request = {}
-
-) {
-    AI.init();
-
-    try {
-
-        /*----------------------------------
-          Build Prompt
-        ----------------------------------*/
-
-const prompt =
-    AIIntentPrompt.build(request);
-        /*----------------------------------
-          Call API
-        ----------------------------------*/
-
-        const response =
-
-            await AI.callAPI(
-
-                prompt
-
-            );
-
-        /*----------------------------------
-          Validate
-        ----------------------------------*/
-
-        if (
-
-            !AI.validateResponse(
-
-                response
-
-            )
-
-        ) {
-
-            throw new Error(
-
-                "Invalid AI response."
-
-            );
-
-        }
-
-        /*----------------------------------
-          Normalize
-        ----------------------------------*/
-
-        return AI.normalizeIntent(
-
-            response
-
-        );
-
-    }
-
-    catch (err) {
-
-        console.error(
-
-            err
-
-        );
-
-        throw err;
-
-    }
-
-};
 /*=========================================================
  ASK AI
 =========================================================*/
@@ -295,33 +222,7 @@ AI.summarize = async function (
  BUILD INTENT PROMPT
 =========================================================*/
 
-AI.buildIntentPrompt = function (
 
-    query,
-
-    localIntent = null
-
-) {
-
-    return {
-
-        type: "intent",
-
-        question:
-
-            String(
-
-                query || ""
-
-            ).trim(),
-
-        localIntent:
-
-            localIntent
-
-    };
-
-};
 /*=========================================================
  CALL API
 =========================================================*/
@@ -330,64 +231,6 @@ AI.buildIntentPrompt = function (
  CALL API
 =========================================================*/
 
-AI.callAPI = async function (prompt) {
-
-    console.log("AI Prompt:");
-    console.log(prompt);
-
-    const response = await fetch(
-
-        GG.Config.API.DETECT_INTENT,
-
-        {
-
-            method: "POST",
-
-            headers: {
-
-                "Content-Type": "application/json"
-
-            },
-
-            body: JSON.stringify({
-
-                prompt: prompt
-
-            })
-
-        }
-
-    );
-
-    const data = await response.json();
-
-    if (!response.ok) {
-
-        throw new Error(
-
-            data.error ||
-
-            "Detect Intent API failed."
-
-        );
-
-    }
-
-    if (data.success === false) {
-
-        throw new Error(
-
-            data.error ||
-
-            "AI request failed."
-
-        );
-
-    }
-
-    return data;
-
-};
 /*=========================================================
  VALIDATE RESPONSE
 =========================================================*/
