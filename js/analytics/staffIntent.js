@@ -7089,36 +7089,53 @@ StaffIntent.detectCountIntent = function (
 
         parameters;
 
-    /*----------------------------------
-      Designation Count
-    ----------------------------------*/
+/*----------------------------------
+  Designation Directory
 
-    if (
+  LIST + COUNT designation queries
+  use one canonical intent:
 
-        entities.designations &&
+  STAFF_DESIGNATION_DIRECTORY
 
-        entities.designations.length > 0
+  Optional jurisdiction parameters
+  already remain in result.parameters:
+  - circle
+  - division
+  - range
+  - beat
+----------------------------------*/
 
-    ) {
+if (
 
-        result.intent =
+    entities.designations &&
 
-            INTENTS.STAFF_DESIGNATION_COUNT;
+    entities.designations.length > 0
 
-        result.parameters.designation =
+) {
 
-            entities
-                .designations[0]
-                .identity
-                .designation;
+    result.intent =
 
-        result.confidence =
+        INTENTS
+            .STAFF_DESIGNATION_DIRECTORY;
 
-            0.99;
+    result.parameters.designation =
 
-        return result;
+        entities
+            .designations[0]
+            .identity
+            ?.designation ||
 
-    }
+        entities
+            .designations[0]
+            .designation;
+
+    result.confidence =
+
+        0.99;
+
+    return result;
+
+}
 
     /*----------------------------------
       Beat Count
