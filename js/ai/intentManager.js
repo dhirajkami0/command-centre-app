@@ -1309,6 +1309,10 @@ if (
  MERGE INTENT
 =========================================================*/
 
+/*=========================================================
+ MERGE INTENT
+=========================================================*/
+
 IntentManager.mergeIntent = function (
 
     localIntent,
@@ -1321,7 +1325,7 @@ IntentManager.mergeIntent = function (
 
     /*----------------------------------
       Invalid AI
-  ----------------------------------*/
+    ----------------------------------*/
 
     if (
 
@@ -1336,8 +1340,271 @@ IntentManager.mergeIntent = function (
     }
 
     /*----------------------------------
+      Normalize AI Intent Against
+      Business Registry
+
+      Examples:
+      STAFF_PROFILE   -> staffProfile
+      STAFF_CONTACT   -> staffContact
+      WHO_IS_ON_DUTY  -> whoIsOnDuty
+
+      Already canonical values remain
+      unchanged.
+    ----------------------------------*/
+
+    if (
+
+        typeof aiIntent.intent === "string"
+
+    ) {
+
+        const registry =
+
+            GG.BusinessRegistry || {};
+
+        const intents =
+
+            Array.isArray(
+
+                registry.intents
+
+            )
+
+                ? registry.intents
+
+                : [];
+
+        const rawIntent =
+
+            aiIntent.intent.trim();
+
+        let canonicalIntent = null;
+
+        /*----------------------------------
+          1. Exact Canonical Match
+        ----------------------------------*/
+
+        canonicalIntent =
+
+            intents.find(
+
+                function (
+
+                    value
+
+                ) {
+
+                    return (
+
+                        value === rawIntent
+
+                    );
+
+                }
+
+            ) || null;
+
+        /*----------------------------------
+          2. Case-Insensitive Match
+        ----------------------------------*/
+
+        if (
+
+            !canonicalIntent
+
+        ) {
+
+            canonicalIntent =
+
+                intents.find(
+
+                    function (
+
+                        value
+
+                    ) {
+
+                        return (
+
+                            String(
+
+                                value
+
+                            ).toLowerCase() ===
+
+                            rawIntent.toLowerCase()
+
+                        );
+
+                    }
+
+                ) || null;
+
+        }
+
+        /*----------------------------------
+          3. CONSTANT_STYLE -> camelCase
+
+          STAFF_PROFILE
+          ->
+          staffProfile
+
+          WHO_IS_ON_DUTY
+          ->
+          whoIsOnDuty
+        ----------------------------------*/
+
+        if (
+
+            !canonicalIntent &&
+
+            rawIntent.includes("_")
+
+        ) {
+
+            const converted =
+
+                rawIntent
+
+                    .toLowerCase()
+
+                    .split("_")
+
+                    .filter(Boolean)
+
+                    .map(
+
+                        function (
+
+                            part,
+
+                            index
+
+                        ) {
+
+                            if (
+
+                                index === 0
+
+                            ) {
+
+                                return part;
+
+                            }
+
+                            return (
+
+                                part.charAt(0)
+
+                                    .toUpperCase() +
+
+                                part.slice(1)
+
+                            );
+
+                        }
+
+                    )
+
+                    .join("");
+
+            canonicalIntent =
+
+                intents.find(
+
+                    function (
+
+                        value
+
+                    ) {
+
+                        return (
+
+                            String(
+
+                                value
+
+                            ).toLowerCase() ===
+
+                            converted.toLowerCase()
+
+                        );
+
+                    }
+
+                ) || null;
+
+        }
+
+        /*----------------------------------
+          Apply Canonical Intent
+
+          IMPORTANT:
+          Only replace when the converted
+          intent actually exists in the
+          Business Registry.
+
+          This prevents breaking unknown
+          or future intents.
+        ----------------------------------*/
+
+        if (
+
+            canonicalIntent
+
+        ) {
+
+            aiIntent = {
+
+                ...aiIntent,
+
+                intent:
+
+                    canonicalIntent
+
+            };
+
+        }
+
+        /*----------------------------------
+          Debug
+        ----------------------------------*/
+
+        if (
+
+            GG.Config?.DEBUG?.ENABLED
+
+        ) {
+
+            console.log(
+
+                "🧠 AI INTENT NORMALIZED:",
+
+                {
+
+                    raw:
+
+                        rawIntent,
+
+                    canonical:
+
+                        canonicalIntent,
+
+                    final:
+
+                        aiIntent.intent
+
+                }
+
+            );
+
+        }
+
+    }
+
+    /*----------------------------------
       Invalid Local
-  ----------------------------------*/
+    ----------------------------------*/
 
     if (
 
@@ -1353,7 +1620,7 @@ IntentManager.mergeIntent = function (
 
     /*----------------------------------
       Merge
-  ----------------------------------*/
+    ----------------------------------*/
 
     const merged = {
 
