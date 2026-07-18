@@ -1501,9 +1501,10 @@ STAFF_DESIGNATION: [
 
     "DRO",
     "DEPUTY RANGE OFFICER",
-
+"DR/Fr",
     "FORESTER",
     "FR",
+    "DEPUTY RANGER",
 
     "FOREST GUARD",
     "FG",
