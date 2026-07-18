@@ -6933,6 +6933,7 @@ StaffIntent.detectCountIntent = function (
 
     }
 
+
     const query =
 
         String(
@@ -6947,9 +6948,22 @@ StaffIntent.detectCountIntent = function (
 
         .toUpperCase();
 
+
+    if (
+
+        query === ""
+
+    ) {
+
+        return result;
+
+    }
+
+
     const INTENTS =
 
         StaffConstants.INTENTS;
+
 
     const parameters =
 
@@ -6957,11 +6971,20 @@ StaffIntent.detectCountIntent = function (
 
         {};
 
+
     const entities =
 
         result.entities ||
 
         {};
+
+
+    const designations =
+
+        entities.designations ||
+
+        [];
+
 
     /*----------------------------------
       Whole Word Helper
@@ -6989,8 +7012,18 @@ StaffIntent.detectCountIntent = function (
 
     }
 
+
     /*----------------------------------
-      Count Keywords
+      Count Language
+
+      Examples:
+
+      COUNT
+      TOTAL
+      HOW MANY
+      NUMBER OF
+      HEADCOUNT
+      STRENGTH
     ----------------------------------*/
 
     const hasCount =
@@ -7029,6 +7062,7 @@ StaffIntent.detectCountIntent = function (
 
         );
 
+
     if (
 
         !hasCount
@@ -7039,25 +7073,34 @@ StaffIntent.detectCountIntent = function (
 
     }
 
+
     /*----------------------------------
       GIS Spatial Query
+
+      Do not claim spatial queries.
+
+      Examples:
+
+      Staff inside polygon
+      Staff within compartment
     ----------------------------------*/
 
     if (
 
         /\b(INSIDE|WITHIN)\b/
 
-        .test(
+            .test(
 
-            query
+                query
 
-        )
+            )
 
     ) {
 
         return result;
 
     }
+
 
     /*----------------------------------
       Boolean Filters
@@ -7085,60 +7128,104 @@ StaffIntent.detectCountIntent = function (
 
     }
 
+
     result.parameters =
 
         parameters;
 
-/*----------------------------------
-  Designation Directory
 
-  LIST + COUNT designation queries
-  use one canonical intent:
+    /*=========================================================
+      BUSINESS INTENT PRIORITY
+    =========================================================*/
 
-  STAFF_DESIGNATION_DIRECTORY
-
-  Optional jurisdiction parameters
-  already remain in result.parameters:
-  - circle
-  - division
-  - range
-  - beat
-----------------------------------*/
-
-if (
-
-    entities.designations &&
-
-    entities.designations.length > 0
-
-) {
-
-    result.intent =
-
-        INTENTS
-            .STAFF_DESIGNATION_DIRECTORY;
-
-    result.parameters.designation =
-
-        entities
-            .designations[0]
-            .identity
-            ?.designation ||
-
-        entities
-            .designations[0]
-            .designation;
-
-    result.confidence =
-
-        0.99;
-
-    return result;
-
-}
 
     /*----------------------------------
-      Beat Count
+      1. Designation Directory
+
+      LIST + COUNT use ONE canonical intent:
+
+      STAFF_DESIGNATION_DIRECTORY
+
+      Examples:
+
+      List Banasahayak
+
+      How many Banasahayak?
+
+      List Banasahayak in BTR Circle
+
+      How many Banasahayak in BTR_W Division?
+
+      How many Banasahayak in West Damanpur Range?
+
+      How many Banasahayak in Poro_east Beat?
+
+      Jurisdiction remains an optional filter.
+    ----------------------------------*/
+
+    if (
+
+        designations.length > 0
+
+    ) {
+
+        result.intent =
+
+            INTENTS
+                .STAFF_DESIGNATION_DIRECTORY;
+
+
+        result.parameters.designation =
+
+            designations[0]
+
+                .identity
+
+                ?.designation ||
+
+            designations[0]
+
+                .designation;
+
+
+        result.confidence =
+
+            0.99;
+
+
+        return result;
+
+    }
+
+
+    /*----------------------------------
+      2. Beat Directory
+
+      LIST + COUNT use ONE canonical intent:
+
+      STAFF_BEAT_DIRECTORY
+
+      Expected business result:
+
+      - Total staff count
+      - All designation groups
+      - Count per designation
+      - Staff list per designation
+
+      Example:
+
+      How many staff in Poro_east Beat?
+
+      Banasahayak (3)
+      [staff list]
+
+      FR (4)
+      [staff list]
+
+      FG (2)
+      [staff list]
+
+      Total: 9
     ----------------------------------*/
 
     if (
@@ -7149,18 +7236,33 @@ if (
 
         result.intent =
 
-            INTENTS.STAFF_BEAT_COUNT;
+            INTENTS
+                .STAFF_BEAT_DIRECTORY;
+
 
         result.confidence =
 
             0.99;
 
+
         return result;
 
     }
 
+
     /*----------------------------------
-      Range Count
+      3. Range Directory
+
+      LIST + COUNT use ONE canonical intent:
+
+      STAFF_RANGE_DIRECTORY
+
+      Returns:
+
+      - Total staff count
+      - All designation groups
+      - Count per designation
+      - Staff list per designation
     ----------------------------------*/
 
     if (
@@ -7171,18 +7273,33 @@ if (
 
         result.intent =
 
-            INTENTS.STAFF_RANGE_COUNT;
+            INTENTS
+                .STAFF_RANGE_DIRECTORY;
+
 
         result.confidence =
 
             0.99;
 
+
         return result;
 
     }
 
+
     /*----------------------------------
-      Division Count
+      4. Division Directory
+
+      LIST + COUNT use ONE canonical intent:
+
+      STAFF_DIVISION_DIRECTORY
+
+      Returns:
+
+      - Total staff count
+      - All designation groups
+      - Count per designation
+      - Staff list per designation
     ----------------------------------*/
 
     if (
@@ -7193,18 +7310,33 @@ if (
 
         result.intent =
 
-            INTENTS.STAFF_DIVISION_COUNT;
+            INTENTS
+                .STAFF_DIVISION_DIRECTORY;
+
 
         result.confidence =
 
             0.99;
 
+
         return result;
 
     }
 
+
     /*----------------------------------
-      Circle Count
+      5. Circle Directory
+
+      LIST + COUNT use ONE canonical intent:
+
+      STAFF_CIRCLE_DIRECTORY
+
+      Returns:
+
+      - Total staff count
+      - All designation groups
+      - Count per designation
+      - Staff list per designation
     ----------------------------------*/
 
     if (
@@ -7215,18 +7347,30 @@ if (
 
         result.intent =
 
-            INTENTS.STAFF_CIRCLE_COUNT;
+            INTENTS
+                .STAFF_CIRCLE_DIRECTORY;
+
 
         result.confidence =
 
             0.99;
 
+
         return result;
 
     }
 
+
     /*----------------------------------
-      Active Staff Count
+      6. Active Staff Count
+
+      Keep separate because this is
+      STATUS-based, not a jurisdiction
+      directory request.
+
+      Example:
+
+      How many staff are active?
     ----------------------------------*/
 
     if (
@@ -7239,27 +7383,42 @@ if (
 
         result.intent =
 
-            INTENTS.STAFF_ACTIVE_COUNT;
+            INTENTS
+                .STAFF_ACTIVE_COUNT;
+
 
         result.confidence =
 
             0.99;
 
+
         return result;
 
     }
 
+
     /*----------------------------------
-      Generic Staff Count
+      7. Generic Staff Count
+
+      No designation.
+      No jurisdiction.
+      No status filter.
+
+      Example:
+
+      How many staff are there?
     ----------------------------------*/
 
     result.intent =
 
-        INTENTS.STAFF_COUNT;
+        INTENTS
+            .STAFF_COUNT;
+
 
     result.confidence =
 
         0.99;
+
 
     return result;
 
