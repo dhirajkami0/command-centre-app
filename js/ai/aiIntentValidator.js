@@ -355,6 +355,28 @@ AIIntentValidator.validateDomain = function (
  VALIDATE INTENT
 =========================================================*/
 
+/*=========================================================
+ VALIDATE INTENT
+
+ IMPORTANT:
+ BusinessRegistry contains canonical runtime intent values:
+
+ staffProfile
+ staffContact
+ staffPosting
+ staffLocation
+ whoIsOnDuty
+ ...
+
+These values MUST NOT be converted to uppercase.
+
+This validator:
+  1. Accepts exact canonical values.
+  2. Accepts case-insensitive matches safely.
+  3. Converts legacy CONSTANT_STYLE values where possible.
+  4. Returns the canonical registry value.
+=========================================================*/
+
 AIIntentValidator.validateIntent = function (
 
     intent = ""
@@ -363,7 +385,11 @@ AIIntentValidator.validateIntent = function (
 
     AIIntentValidator.init();
 
-    const value =
+    /*----------------------------------
+      Normalize Input
+    ----------------------------------*/
+
+    const rawIntent =
 
         String(
 
@@ -373,13 +399,17 @@ AIIntentValidator.validateIntent = function (
 
     if (
 
-        !value
+        !rawIntent
 
     ) {
 
         return "UNKNOWN";
 
     }
+
+    /*----------------------------------
+      Business Registry
+    ----------------------------------*/
 
     const registry =
 
@@ -398,6 +428,26 @@ AIIntentValidator.validateIntent = function (
             : [];
 
     /*----------------------------------
+      No Registry
+    ----------------------------------*/
+
+    if (
+
+        !intents.length
+
+    ) {
+
+        console.warn(
+
+            "[AIIntentValidator] Intent registry unavailable."
+
+        );
+
+        return "UNKNOWN";
+
+    }
+
+    /*----------------------------------
       1. Exact Canonical Match
 
       Example:
@@ -408,111 +458,172 @@ AIIntentValidator.validateIntent = function (
 
         intents.includes(
 
-            value
+            rawIntent
 
         )
 
     ) {
 
-        return value;
+        return rawIntent;
 
     }
 
     /*----------------------------------
-      2. Case-Insensitive Canonical Match
+      2. Case-Insensitive Match
 
       Example:
       STAFFCONTACT -> staffContact
+      staffcontact -> staffContact
     ----------------------------------*/
 
-    const caseMatch =
+    const lowerIntent =
+
+        rawIntent.toLowerCase();
+
+    const caseInsensitiveMatch =
 
         intents.find(
 
-            item =>
+            function (
 
-                String(item)
+                canonicalIntent
 
-                    .toLowerCase() ===
+            ) {
 
-                value.toLowerCase()
+                return (
+
+                    String(
+
+                        canonicalIntent
+
+                    ).toLowerCase() ===
+
+                    lowerIntent
+
+                );
+
+            }
 
         );
 
     if (
 
-        caseMatch
+        caseInsensitiveMatch
 
     ) {
 
-        return caseMatch;
+        return caseInsensitiveMatch;
 
     }
 
     /*----------------------------------
-      3. Normalize Constant Style
+      3. Legacy CONSTANT_STYLE Match
 
       Example:
-      STAFF_CONTACT
-          ->
-      staffcontact
+      STAFF_PROFILE
+          ↓
+      staffProfile
 
+      STAFF_CONTACT
+          ↓
       staffContact
-          ->
-      staffcontact
+
+      WHO_IS_ON_DUTY
+          ↓
+      whoIsOnDuty
     ----------------------------------*/
 
-    const normalizedInput =
+    const normalizedLegacy =
 
-        value
+        rawIntent
 
-            .replace(
+            .toLowerCase()
 
-                /[^a-zA-Z0-9]/g,
+            .split("_")
 
-                ""
+            .filter(Boolean)
+
+            .map(
+
+                function (
+
+                    part,
+
+                    index
+
+                ) {
+
+                    if (
+
+                        index === 0
+
+                    ) {
+
+                        return part;
+
+                    }
+
+                    return (
+
+                        part.charAt(0)
+
+                            .toUpperCase() +
+
+                        part.slice(1)
+
+                    );
+
+                }
 
             )
 
-            .toLowerCase();
+            .join("");
 
-    const normalizedMatch =
+    const legacyMatch =
 
         intents.find(
 
-            item =>
+            function (
 
-                String(item)
+                canonicalIntent
 
-                    .replace(
+            ) {
 
-                        /[^a-zA-Z0-9]/g,
+                return (
 
-                        ""
+                    String(
 
-                    )
+                        canonicalIntent
 
-                    .toLowerCase() ===
+                    ).toLowerCase() ===
 
-                normalizedInput
+                    normalizedLegacy.toLowerCase()
+
+                );
+
+            }
 
         );
 
     if (
 
-        normalizedMatch
+        legacyMatch
 
     ) {
 
-        return normalizedMatch;
+        return legacyMatch;
 
     }
+
+    /*----------------------------------
+      Invalid
+    ----------------------------------*/
 
     console.warn(
 
         "[AIIntentValidator] Invalid Intent:",
 
-        intent
+        rawIntent
 
     );
 
