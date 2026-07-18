@@ -1415,155 +1415,35 @@ StaffQuery.execute = async function (
 
         {};
 
-    const cacheKey = JSON.stringify({
-
-        intent:
-
-            request.intent,
-
-        entities:
-
-            request.entities ||
-
-            {},
-
-        parameters:
-
-            request.parameters ||
-
-            {},
-
-        normalizedQuery:
-
-            request.normalizedQuery ||
-
-            request.query ||
-
-            ""
-
-    });
-
-    console.log(
-        "CACHE KEY"
-    );
-
-    console.log(
-        cacheKey
-    );
-
-    console.log(
-        "CACHE SIZE"
-    );
-
-    console.log(
-        StaffQuery.cache.size
-    );
-
-    console.log(
-        "CACHE KEYS"
-    );
-
-    console.log(
-        [...StaffQuery.cache.keys()]
-    );
-
-    const cached =
-
-        StaffQuery.getCache(
-
-            cacheKey
-
-        );
-
-    if (
-
-        cached &&
-
-        cached.success === true
-
-    ) {
-
-        console.log(
-
-            "✅ CACHE HIT"
-
-        );
-
-        const cachedResponse =
-
-            structuredClone(
-
-                cached
-
-            );
-
-        cachedResponse.metadata =
-
-            cachedResponse.metadata ||
-
-            {};
-
-        cachedResponse.metadata.cache =
-
-            true;
-
-        cachedResponse.request =
-
-            request;
-
-        cachedResponse.intent =
-
-            request.intent;
-
-        cachedResponse.domain =
-
-            request.domain;
-
-        cachedResponse.entities =
-
-            request.entities ||
-
-            {};
-
-        cachedResponse.parameters =
-
-            request.parameters ||
-
-            {};
-
-        cachedResponse.context =
-
-            request.context ||
-
-            {};
-
-        return cachedResponse;
-
-    }
-
-    if (
-
-        cached &&
-
-        cached.success !== true
-
-    ) {
-
-        console.warn(
-
-            "🗑 Removing Failed Cache",
-
-            cacheKey
-
-        );
-
-        StaffQuery.cache.delete(
-
-            cacheKey
-
-        );
-
-    }
+    /*----------------------------------
+      RESPONSE CACHE DISABLED
+
+      IMPORTANT:
+
+      StaffQuery responses are intentionally
+      NOT cached.
+
+      Staff data may contain dynamic runtime
+      information such as:
+
+      - Current GPS location
+      - Current GIS location
+      - Speed
+      - Heading
+      - Accuracy
+      - Last seen
+      - Duty status
+      - Duty / patrol duration
+      - Patrol analytics
+      - Nearby staff
+
+      Therefore the query handler must run
+      on every request and resolve the latest
+      hydrated runtime data.
+
+      Intent caching may still be handled
+      independently by StaffIntent.
+    ----------------------------------*/
 
     try {
 
@@ -1798,54 +1678,6 @@ StaffQuery.execute = async function (
     StaffQuery.lastResult =
 
         response;
-
-    console.log(
-        "CACHE STORE DATA"
-    );
-
-    console.log(
-        response.data
-    );
-
-    console.log(
-        "CACHE STORE LENGTH"
-    );
-
-    console.log(
-
-        Array.isArray(
-
-            response.data
-
-        )
-
-            ?
-
-            response.data.length
-
-            :
-
-            null
-
-    );
-
-    if (
-        response.success === true
-    ) {
-
-        StaffQuery.setCache(
-
-            cacheKey,
-
-            structuredClone(
-
-                response
-
-            )
-
-        );
-
-    }
 
     console.log(
         "RETURN RESPONSE"
