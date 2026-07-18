@@ -237,6 +237,10 @@ return {
  VALIDATE DOMAIN
 =========================================================*/
 
+/*=========================================================
+ VALIDATE DOMAIN
+=========================================================*/
+
 AIIntentValidator.validateDomain = function (
 
     domain = ""
@@ -245,25 +249,23 @@ AIIntentValidator.validateDomain = function (
 
     AIIntentValidator.init();
 
-    /*----------------------------------
-      Normalize
-    ----------------------------------*/
-
-    domain =
+    const value =
 
         String(
 
             domain || ""
 
-        )
+        ).trim();
 
-        .trim()
+    if (
 
-        .toUpperCase();
+        !value
 
-    /*----------------------------------
-      Business Registry
-    ----------------------------------*/
+    ) {
+
+        return "UNKNOWN";
+
+    }
 
     const registry =
 
@@ -271,29 +273,68 @@ AIIntentValidator.validateDomain = function (
 
     const domains =
 
-        registry.domains || [];
+        Array.isArray(
+
+            registry.domains
+
+        )
+
+            ? registry.domains
+
+            : [];
 
     /*----------------------------------
-      Validate
+      Exact Canonical Match
+
+      Example:
+      staff -> staff
     ----------------------------------*/
 
     if (
 
         domains.includes(
 
-            domain
+            value
 
         )
 
     ) {
 
-        return domain;
+        return value;
 
     }
 
     /*----------------------------------
-      Invalid
+      Case-Insensitive Match
+
+      Example:
+      STAFF -> staff
+      Staff -> staff
     ----------------------------------*/
+
+    const normalized =
+
+        domains.find(
+
+            item =>
+
+                String(item)
+
+                    .toLowerCase() ===
+
+                value.toLowerCase()
+
+        );
+
+    if (
+
+        normalized
+
+    ) {
+
+        return normalized;
+
+    }
 
     console.warn(
 
@@ -306,8 +347,11 @@ AIIntentValidator.validateDomain = function (
     return "UNKNOWN";
 
 };
-
   /*=========================================================
+ VALIDATE INTENT
+=========================================================*/
+
+/*=========================================================
  VALIDATE INTENT
 =========================================================*/
 
@@ -319,25 +363,23 @@ AIIntentValidator.validateIntent = function (
 
     AIIntentValidator.init();
 
-    /*----------------------------------
-      Normalize
-    ----------------------------------*/
-
-    intent =
+    const value =
 
         String(
 
             intent || ""
 
-        )
+        ).trim();
 
-        .trim()
+    if (
 
-        .toUpperCase();
+        !value
 
-    /*----------------------------------
-      Business Registry
-    ----------------------------------*/
+    ) {
+
+        return "UNKNOWN";
+
+    }
 
     const registry =
 
@@ -345,29 +387,126 @@ AIIntentValidator.validateIntent = function (
 
     const intents =
 
-        registry.intents || [];
+        Array.isArray(
+
+            registry.intents
+
+        )
+
+            ? registry.intents
+
+            : [];
 
     /*----------------------------------
-      Validate
+      1. Exact Canonical Match
+
+      Example:
+      staffContact -> staffContact
     ----------------------------------*/
 
     if (
 
         intents.includes(
 
-            intent
+            value
 
         )
 
     ) {
 
-        return intent;
+        return value;
 
     }
 
     /*----------------------------------
-      Invalid
+      2. Case-Insensitive Canonical Match
+
+      Example:
+      STAFFCONTACT -> staffContact
     ----------------------------------*/
+
+    const caseMatch =
+
+        intents.find(
+
+            item =>
+
+                String(item)
+
+                    .toLowerCase() ===
+
+                value.toLowerCase()
+
+        );
+
+    if (
+
+        caseMatch
+
+    ) {
+
+        return caseMatch;
+
+    }
+
+    /*----------------------------------
+      3. Normalize Constant Style
+
+      Example:
+      STAFF_CONTACT
+          ->
+      staffcontact
+
+      staffContact
+          ->
+      staffcontact
+    ----------------------------------*/
+
+    const normalizedInput =
+
+        value
+
+            .replace(
+
+                /[^a-zA-Z0-9]/g,
+
+                ""
+
+            )
+
+            .toLowerCase();
+
+    const normalizedMatch =
+
+        intents.find(
+
+            item =>
+
+                String(item)
+
+                    .replace(
+
+                        /[^a-zA-Z0-9]/g,
+
+                        ""
+
+                    )
+
+                    .toLowerCase() ===
+
+                normalizedInput
+
+        );
+
+    if (
+
+        normalizedMatch
+
+    ) {
+
+        return normalizedMatch;
+
+    }
 
     console.warn(
 
@@ -554,6 +693,10 @@ AIIntentValidator.normalizeRuntimeIntent = function (
  VALIDATE ENTITIES
 =========================================================*/
 
+/*=========================================================
+ VALIDATE ENTITIES
+=========================================================*/
+
 AIIntentValidator.validateEntities = function (
 
     entities = {}
@@ -561,10 +704,6 @@ AIIntentValidator.validateEntities = function (
 ) {
 
     AIIntentValidator.init();
-
-    /*----------------------------------
-      Validate Input
-    ----------------------------------*/
 
     if (
 
@@ -584,27 +723,23 @@ AIIntentValidator.validateEntities = function (
 
     }
 
-    /*----------------------------------
-      Business Registry
-    ----------------------------------*/
-
     const registry =
 
         GG.BusinessRegistry || {};
 
     const entityTypes =
 
-        registry.entityTypes || [];
+        Array.isArray(
 
-    /*----------------------------------
-      Canonical Entities
-    ----------------------------------*/
+            registry.entityTypes
+
+        )
+
+            ? registry.entityTypes
+
+            : [];
 
     const validated = {};
-
-    /*----------------------------------
-      Validate Entity Types
-    ----------------------------------*/
 
     Object.keys(
 
@@ -618,31 +753,109 @@ AIIntentValidator.validateEntities = function (
 
         ) {
 
-            const normalizedType =
+            /*------------------------------
+              Exact Match
+            ------------------------------*/
 
-                String(
-
-                    type || ""
-
-                )
-
-                .trim()
-
-                .toUpperCase();
-
-            if (
+            let canonicalType =
 
                 entityTypes.includes(
 
-                    normalizedType
+                    type
 
                 )
+
+                    ? type
+
+                    : null;
+
+            /*------------------------------
+              Case-Insensitive Match
+            ------------------------------*/
+
+            if (
+
+                !canonicalType
+
+            ) {
+
+                canonicalType =
+
+                    entityTypes.find(
+
+                        item =>
+
+                            String(item)
+
+                                .toLowerCase() ===
+
+                            String(type)
+
+                                .toLowerCase()
+
+                    );
+
+            }
+
+            /*------------------------------
+              Normalized Match
+
+              CLEAN_NAME -> cleanName
+            ------------------------------*/
+
+            if (
+
+                !canonicalType
+
+            ) {
+
+                const normalizedInput =
+
+                    String(type)
+
+                        .replace(
+
+                            /[^a-zA-Z0-9]/g,
+
+                            ""
+
+                        )
+
+                        .toLowerCase();
+
+                canonicalType =
+
+                    entityTypes.find(
+
+                        item =>
+
+                            String(item)
+
+                                .replace(
+
+                                    /[^a-zA-Z0-9]/g,
+
+                                    ""
+
+                                )
+
+                                .toLowerCase() ===
+
+                            normalizedInput
+
+                    );
+
+            }
+
+            if (
+
+                canonicalType
 
             ) {
 
                 validated[
 
-                    normalizedType
+                    canonicalType
 
                 ] =
 
