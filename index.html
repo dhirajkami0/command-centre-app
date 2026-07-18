@@ -103,7 +103,7 @@
 <!-- =======================================================
      CORE LIBRARIES
 ======================================================= -->
-
+<link rel="stylesheet" href="css/offence/offenceCascade.css">
 <script src="js/leaflet.js"></script>
 <script src="js/turf.min.js"></script>
 <script src="js/jsts.min.js"></script>
@@ -271,14 +271,39 @@
 <script src="js/ai/panel.js"></script>
 
 
-  <script src="js/offence/offenceConstants.js"></script>
-<script src="js/offence/offenceNormalizer.js"></script>
-<script src="js/offence/offenceStore.js"></script>
-  <script src="js/offence/offenceGeocoder.js"></script>
+  <!-- =====================================================
+     OFFENCE INTELLIGENCE MODULE
+     ===================================================== -->
 
-  <script src="js/offence/offenceSourceEngine.js"></script>
-  <script src="js/offence/offenceTargetEngine.js"></script>
-  <script src="js/offence/offenceMapRenderer.js"></script>
+<!-- 1. Constants / Configuration -->
+<script src="js/offence/offenceConstants.js"></script>
+
+<!-- 2. Data Normalization -->
+<script src="js/offence/offenceNormalizer.js"></script>
+
+<!-- 3. Central Offence Data Store -->
+<script src="js/offence/offenceStore.js"></script>
+
+<!-- 4. Address / Coordinate Resolution -->
+<script src="js/offence/offenceGeocoder.js"></script>
+
+<!-- 5. Source Intelligence Engine -->
+<script src="js/offence/offenceSourceEngine.js"></script>
+
+<!-- 6. Target / Seizure Intelligence Engine -->
+<script src="js/offence/offenceTargetEngine.js"></script>
+
+<!-- 7. Unified Source + Target Heatmap Engine -->
+<script src="js/offence/offenceHeatmapEngine.js"></script>
+
+<!-- 8. Leaflet Map / Heatmap Renderer -->
+<script src="js/offence/offenceMapRenderer.js"></script>
+
+<!-- 9. Hotspot Click + Cascade State Controller -->
+<script src="js/offence/offenceCascadeController.js"></script>
+
+<!-- 10. Cascade UI Renderer -->
+<script src="js/offence/offenceCascadeRenderer.js"></script>
   <!-- ========================================= -->
 <!-- 🔥 FIXED IDB-KEYVAL -->
 <!-- ========================================= -->
