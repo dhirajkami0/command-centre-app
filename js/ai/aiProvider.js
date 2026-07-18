@@ -592,7 +592,30 @@ AI.detectIntent = async function (
               query,
               localIntent
           }
+console.log(
+    "🚀 FINAL CLOUD INTENT PAYLOAD:",
+    intentRequest
+);
 
+console.log(
+    "🚀 BUSINESS SENT:",
+    intentRequest.business
+);
+
+console.log(
+    "🚀 DOMAINS SENT:",
+    intentRequest.business?.domains
+);
+
+console.log(
+    "🚀 INTENTS SENT:",
+    intentRequest.business?.intents
+);
+
+console.log(
+    "🚀 INTENT COUNT:",
+    intentRequest.business?.intents?.length
+);
         =================================================*/
 
         const response =
