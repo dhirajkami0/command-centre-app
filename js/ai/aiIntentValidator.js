@@ -129,21 +129,47 @@ AIIntentValidator.validate = function (
 
         );
 
-    const detectedIntent =
+/*----------------------------------
+  Validate Registry Intent
 
-        AIIntentValidator.validateIntent(
+  Example:
+  STAFF_CONTACT
+----------------------------------*/
 
-            intent.intent
+const detectedIntent =
 
-        );
+    AIIntentValidator.validateIntent(
 
-    const confidence =
+        intent.intent
 
-        AIIntentValidator.validateConfidence(
+    );
 
-            intent.confidence
+/*----------------------------------
+  Convert To Runtime Intent
 
-        );
+  Example:
+  STAFF_CONTACT
+        ->
+  staffContact
+----------------------------------*/
+
+const runtimeIntent =
+
+    AIIntentValidator.normalizeRuntimeIntent(
+
+        detectedIntent,
+
+        domain
+
+    );
+
+const confidence =
+
+    AIIntentValidator.validateConfidence(
+
+        intent.confidence
+
+    );
 
     const entities =
 
@@ -157,35 +183,52 @@ AIIntentValidator.validate = function (
       Build Canonical Intent
     ----------------------------------*/
 
-    return {
+return {
 
-        success: true,
+    success: true,
 
-        source:
+    source:
 
-            intent.source ||
+        intent.source ||
 
-            "ai",
+        "ai",
 
-        provider:
+    provider:
 
-            intent.provider ||
+        intent.provider ||
 
-            "Gemini",
+        "Gemini",
 
-        domain,
+    domain,
 
-        intent:
+    /*----------------------------------
+      Canonical Runtime Intent
+    ----------------------------------*/
 
-            detectedIntent,
-validated: true,
-        confidence,
+    intent:
 
-        entities,
+        runtimeIntent,
 
-        raw:
+    /*----------------------------------
+      Original Registry Intent
+    ----------------------------------*/
 
-            intent
+    registryIntent:
+
+        detectedIntent,
+
+    validated:
+
+        true,
+
+    confidence,
+
+    entities,
+
+    raw:
+
+        intent
+
 
     };
 
@@ -337,7 +380,176 @@ AIIntentValidator.validateIntent = function (
     return "UNKNOWN";
 
 };
+/*=========================================================
+ NORMALIZE RUNTIME INTENT
 
+ Converts AI / Business Registry intent keys
+ into canonical runtime intent values.
+
+ Example:
+
+ STAFF_PROFILE
+        ->
+ staffProfile
+
+ STAFF_CONTACT
+        ->
+ staffContact
+
+ Local pipeline is NOT affected.
+=========================================================*/
+
+AIIntentValidator.normalizeRuntimeIntent = function (
+
+    intent = "",
+
+    domain = ""
+
+) {
+
+    AIIntentValidator.init();
+
+    /*----------------------------------
+      Validate
+    ----------------------------------*/
+
+    if (
+
+        !intent ||
+
+        typeof intent !== "string"
+
+    ) {
+
+        return intent;
+
+    }
+
+    /*----------------------------------
+      Normalize Inputs
+    ----------------------------------*/
+
+    const value =
+
+        intent.trim();
+
+    const normalizedDomain =
+
+        String(
+
+            domain || ""
+
+        )
+
+        .trim()
+
+        .toUpperCase();
+
+    /*----------------------------------
+      STAFF DOMAIN
+
+      Use StaffConstants as the
+      authoritative runtime mapping.
+    ----------------------------------*/
+
+    if (
+
+        normalizedDomain === "STAFF"
+
+    ) {
+
+        const INTENTS =
+
+            GG.StaffConstants
+                ?.INTENTS;
+
+        if (
+
+            !INTENTS
+
+        ) {
+
+            console.warn(
+
+                "[AIIntentValidator] StaffConstants.INTENTS unavailable."
+
+            );
+
+            return value;
+
+        }
+
+        /*------------------------------
+          Already Canonical
+
+          staffProfile
+          staffContact
+          staffDuty
+          etc.
+        ------------------------------*/
+
+        if (
+
+            Object.values(
+
+                INTENTS
+
+            ).includes(
+
+                value
+
+            )
+
+        ) {
+
+            return value;
+
+        }
+
+        /*------------------------------
+          AI Constant Key
+
+          STAFF_PROFILE
+          STAFF_CONTACT
+          etc.
+        ------------------------------*/
+
+        const key =
+
+            value.toUpperCase();
+
+        if (
+
+            Object.prototype
+                .hasOwnProperty.call(
+
+                    INTENTS,
+
+                    key
+
+                )
+
+        ) {
+
+            return INTENTS[
+
+                key
+
+            ];
+
+        }
+
+    }
+
+    /*----------------------------------
+      Other Domains
+
+      Keep Current Intent
+    ----------------------------------*/
+
+    return value;
+
+};
   /*=========================================================
  VALIDATE ENTITIES
 =========================================================*/
