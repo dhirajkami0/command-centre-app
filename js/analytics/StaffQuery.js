@@ -667,6 +667,549 @@ StaffQuery.getCurrentUser = function () {
     return profile;
 
 };
+
+    /*=========================================================
+  BUILD CANONICAL DUTY / PATROL SESSION
+
+  BUSINESS RULE:
+
+  Duty = Patrol
+
+  Therefore:
+
+  Duty Start      = Patrol Start
+  Duty End        = Patrol End
+  Duty Duration   = Patrol Duration
+
+  Single Source of Truth:
+
+  profile.analytics.startedAt
+  profile.analytics.endedAt
+=========================================================*/
+
+StaffQuery.buildDutyPatrolSession = function (
+
+    profile
+
+) {
+
+    /*----------------------------------
+      Validate
+    ----------------------------------*/
+
+    if (
+
+        !profile ||
+
+        typeof profile !==
+
+        "object"
+
+    ) {
+
+        return null;
+
+    }
+
+
+    /*----------------------------------
+      Canonical Session Timestamps
+    ----------------------------------*/
+
+    const startedAt =
+
+        profile.analytics?.startedAt ??
+
+        null;
+
+
+    const endedAt =
+
+        profile.analytics?.endedAt ??
+
+        null;
+
+
+    /*----------------------------------
+      Active Status
+    ----------------------------------*/
+
+    const dutyActive =
+
+        profile.assignment?.dutyActive ===
+
+        true;
+
+
+    /*----------------------------------
+      Duration End Point
+
+      Active:
+      startedAt → NOW
+
+      Completed:
+      startedAt → endedAt
+    ----------------------------------*/
+
+    let durationMs =
+
+        0;
+
+
+    if (
+
+        startedAt
+
+    ) {
+
+        const endTime =
+
+            dutyActive
+
+                ? Date.now()
+
+                : endedAt;
+
+
+        if (
+
+            endTime &&
+
+            endTime >= startedAt
+
+        ) {
+
+            durationMs =
+
+                endTime -
+
+                startedAt;
+
+        }
+
+    }
+
+
+    /*----------------------------------
+      Assigned Area
+
+      Priority:
+
+      Compartment
+      Beat
+      Range
+      Division
+      Circle
+    ----------------------------------*/
+
+    const assignedArea =
+
+        profile.assignment
+            ?.assignedCompartment ||
+
+        profile.posting
+            ?.compartment ||
+
+        profile.posting
+            ?.beat ||
+
+        profile.posting
+            ?.range ||
+
+        profile.posting
+            ?.division ||
+
+        profile.posting
+            ?.circle ||
+
+        "";
+
+
+    /*----------------------------------
+      Canonical Session Object
+    ----------------------------------*/
+
+    return {
+
+        /*----------------------------------
+          Staff Identity
+        ----------------------------------*/
+
+        cleanName:
+
+            profile.identity
+                ?.cleanName ||
+
+            "",
+
+
+        name:
+
+            profile.identity
+                ?.name ||
+
+            profile.identity
+                ?.cleanName ||
+
+            "",
+
+
+        designation:
+
+            profile.identity
+                ?.designation ||
+
+            "",
+
+
+        /*----------------------------------
+          Canonical Duty / Patrol Timeline
+        ----------------------------------*/
+
+        startedAt:
+
+            startedAt,
+
+
+        endedAt:
+
+            endedAt,
+
+
+        durationMs:
+
+            durationMs,
+
+
+        /*----------------------------------
+          Duty / Patrol State
+        ----------------------------------*/
+
+        dutyActive:
+
+            dutyActive,
+
+
+        status:
+
+            dutyActive
+
+                ? "ACTIVE"
+
+                : (
+
+                    profile.assignment
+                        ?.status ||
+
+                    "INACTIVE"
+
+                ),
+
+
+        /*----------------------------------
+          Duty Information
+        ----------------------------------*/
+
+        dutyType:
+
+            profile.assignment
+                ?.dutyType ||
+
+            "",
+
+
+        assignedArea:
+
+            assignedArea,
+
+
+        assignedCompartment:
+
+            profile.assignment
+                ?.assignedCompartment ||
+
+            "",
+
+
+        /*----------------------------------
+          Posting
+        ----------------------------------*/
+
+        circle:
+
+            profile.posting
+                ?.circle ||
+
+            "",
+
+
+        division:
+
+            profile.posting
+                ?.division ||
+
+            "",
+
+
+        range:
+
+            profile.posting
+                ?.range ||
+
+            "",
+
+
+        beat:
+
+            profile.posting
+                ?.beat ||
+
+            "",
+
+
+        compartment:
+
+            profile.posting
+                ?.compartment ||
+
+            "",
+
+
+        /*----------------------------------
+          Patrol Analytics
+        ----------------------------------*/
+
+        distanceKm:
+
+            profile.analytics
+                ?.distanceKm ??
+
+            0,
+
+
+        pointCount:
+
+            profile.analytics
+                ?.pointCount ??
+
+            0
+
+    };
+
+};
+    /*=========================================================
+  QUERY DUTY STARTED
+=========================================================*/
+
+StaffQuery.queryDutyStarted = async function (
+
+    request
+
+) {
+
+    return StaffQuery.execute(
+
+        request,
+
+        async function (
+
+            request
+
+        ) {
+
+            const profile =
+
+                StaffQuery.ensureSingleStaff(
+
+                    request
+
+                );
+
+
+            return StaffQuery
+                .buildDutyPatrolSession(
+
+                    profile
+
+                );
+
+        }
+
+    );
+
+};
+
+
+/*=========================================================
+  QUERY PATROL START
+=========================================================*/
+
+StaffQuery.queryPatrolStart = async function (
+
+    request
+
+) {
+
+    return StaffQuery.execute(
+
+        request,
+
+        async function (
+
+            request
+
+        ) {
+
+            const profile =
+
+                StaffQuery.ensureSingleStaff(
+
+                    request
+
+                );
+
+
+            return StaffQuery
+                .buildDutyPatrolSession(
+
+                    profile
+
+                );
+
+        }
+
+    );
+
+};
+
+
+/*=========================================================
+  QUERY PATROL DURATION
+=========================================================*/
+
+StaffQuery.queryPatrolDuration = async function (
+
+    request
+
+) {
+
+    return StaffQuery.execute(
+
+        request,
+
+        async function (
+
+            request
+
+        ) {
+
+            const profile =
+
+                StaffQuery.ensureSingleStaff(
+
+                    request
+
+                );
+
+
+            return StaffQuery
+                .buildDutyPatrolSession(
+
+                    profile
+
+                );
+
+        }
+
+    );
+
+};
+
+
+/*=========================================================
+  QUERY DUTY ENDED
+=========================================================*/
+
+StaffQuery.queryDutyEnded = async function (
+
+    request
+
+) {
+
+    return StaffQuery.execute(
+
+        request,
+
+        async function (
+
+            request
+
+        ) {
+
+            const profile =
+
+                StaffQuery.ensureSingleStaff(
+
+                    request
+
+                );
+
+
+            return StaffQuery
+                .buildDutyPatrolSession(
+
+                    profile
+
+                );
+
+        }
+
+    );
+
+};
+
+
+/*=========================================================
+  QUERY PATROL END
+=========================================================*/
+
+StaffQuery.queryPatrolEnd = async function (
+
+    request
+
+) {
+
+    return StaffQuery.execute(
+
+        request,
+
+        async function (
+
+            request
+
+        ) {
+
+            const profile =
+
+                StaffQuery.ensureSingleStaff(
+
+                    request
+
+                );
+
+
+            return StaffQuery
+                .buildDutyPatrolSession(
+
+                    profile
+
+                );
+
+        }
+
+    );
+
+};
     /*=========================================================
   Circle Count
 =========================================================*/
@@ -3423,6 +3966,31 @@ GG.queryStaffDutyType = async function (
   Staff Duty Started
 ----------------------------------*/
 
+/*=========================================================
+  STAFF DUTY STARTED
+
+  BUSINESS RULE:
+
+  Duty = Patrol
+
+  Therefore this query returns the canonical
+  Duty / Patrol Session object.
+
+  Single Source of Truth:
+
+  profile.analytics.startedAt
+  profile.analytics.endedAt
+
+  Also returns:
+
+  - Duration
+  - Duty Type
+  - Assigned Area
+  - Duty Status
+  - Patrol Distance
+  - Patrol Points
+=========================================================*/
+
 GG.queryStaffDutyStarted = async function (
 
     request
@@ -3439,11 +4007,33 @@ GG.queryStaffDutyStarted = async function (
 
         ) {
 
-            return StaffQuery.ensureSingleStaff(
+            /*----------------------------------
+              Get Canonical Staff Profile
+            ----------------------------------*/
 
-                request
+            const profile =
 
-            );
+                StaffQuery.ensureSingleStaff(
+
+                    request
+
+                );
+
+
+            /*----------------------------------
+              Build Canonical Duty / Patrol
+              Session
+
+              Duty Start = Patrol Start
+              Duty Duration = Patrol Duration
+            ----------------------------------*/
+
+            return StaffQuery
+                .buildDutyPatrolSession(
+
+                    profile
+
+                );
 
         }
 
@@ -3451,9 +4041,31 @@ GG.queryStaffDutyStarted = async function (
 
 };
 
-/*----------------------------------
-  Staff Duty Ended
-----------------------------------*/
+
+/*=========================================================
+  STAFF DUTY ENDED
+
+  BUSINESS RULE:
+
+  Duty = Patrol
+
+  Therefore this query returns the same
+  canonical Duty / Patrol Session object.
+
+  Single Source of Truth:
+
+  profile.analytics.startedAt
+  profile.analytics.endedAt
+
+  For completed duty:
+
+      Duration =
+      endedAt - startedAt
+
+  For active duty:
+
+      endedAt may be null
+=========================================================*/
 
 GG.queryStaffDutyEnded = async function (
 
@@ -3471,11 +4083,32 @@ GG.queryStaffDutyEnded = async function (
 
         ) {
 
-            return StaffQuery.ensureSingleStaff(
+            /*----------------------------------
+              Get Canonical Staff Profile
+            ----------------------------------*/
 
-                request
+            const profile =
 
-            );
+                StaffQuery.ensureSingleStaff(
+
+                    request
+
+                );
+
+
+            /*----------------------------------
+              Build Canonical Duty / Patrol
+              Session
+
+              Duty End = Patrol End
+            ----------------------------------*/
+
+            return StaffQuery
+                .buildDutyPatrolSession(
+
+                    profile
+
+                );
 
         }
 
@@ -3983,6 +4616,34 @@ GG.queryStaffPatrolPoints = async function (
   Patrol Start
 ----------------------------------*/
 
+/*=========================================================
+  STAFF PATROL START
+
+  CANONICAL BUSINESS RULE:
+
+  Duty = Patrol
+
+  Therefore:
+
+  Patrol Start = Duty Start
+
+  Single Source of Truth:
+
+  profile.analytics.startedAt
+  profile.analytics.endedAt
+
+  The canonical session object also contains:
+
+  - Started Time
+  - Ended Time
+  - Duration
+  - Duty Type
+  - Assigned Area
+  - Duty Status
+  - Patrol Distance
+  - Patrol Point Count
+=========================================================*/
+
 GG.queryStaffPatrolStart = async function (
 
     request
@@ -3999,11 +4660,32 @@ GG.queryStaffPatrolStart = async function (
 
         ) {
 
-            return StaffQuery.ensureSingleStaff(
+            /*----------------------------------
+              Get Canonical Staff Profile
+            ----------------------------------*/
 
-                request
+            const profile =
 
-            );
+                StaffQuery.ensureSingleStaff(
+
+                    request
+
+                );
+
+
+            /*----------------------------------
+              Build Canonical Duty / Patrol
+              Session
+
+              Patrol Start = Duty Start
+            ----------------------------------*/
+
+            return StaffQuery
+                .buildDutyPatrolSession(
+
+                    profile
+
+                );
 
         }
 
@@ -4011,9 +4693,31 @@ GG.queryStaffPatrolStart = async function (
 
 };
 
-/*----------------------------------
-  Patrol End
-----------------------------------*/
+
+/*=========================================================
+  STAFF PATROL END
+
+  CANONICAL BUSINESS RULE:
+
+  Duty = Patrol
+
+  Therefore:
+
+  Patrol End = Duty End
+
+  Single Source of Truth:
+
+  profile.analytics.startedAt
+  profile.analytics.endedAt
+
+  For active patrol:
+
+      endedAt = null
+
+  For completed patrol:
+
+      endedAt = canonical session end time
+=========================================================*/
 
 GG.queryStaffPatrolEnd = async function (
 
@@ -4031,11 +4735,32 @@ GG.queryStaffPatrolEnd = async function (
 
         ) {
 
-            return StaffQuery.ensureSingleStaff(
+            /*----------------------------------
+              Get Canonical Staff Profile
+            ----------------------------------*/
 
-                request
+            const profile =
 
-            );
+                StaffQuery.ensureSingleStaff(
+
+                    request
+
+                );
+
+
+            /*----------------------------------
+              Build Canonical Duty / Patrol
+              Session
+
+              Patrol End = Duty End
+            ----------------------------------*/
+
+            return StaffQuery
+                .buildDutyPatrolSession(
+
+                    profile
+
+                );
 
         }
 
@@ -4043,9 +4768,32 @@ GG.queryStaffPatrolEnd = async function (
 
 };
 
-/*----------------------------------
-  Patrol Duration
-----------------------------------*/
+
+/*=========================================================
+  STAFF PATROL DURATION
+
+  CANONICAL BUSINESS RULE:
+
+  Duty Duration = Patrol Duration
+
+  Both must always use the same canonical
+  session timeline.
+
+  Active Session:
+
+      Duration =
+      Date.now() - startedAt
+
+  Completed Session:
+
+      Duration =
+      endedAt - startedAt
+
+  Single Source of Truth:
+
+  profile.analytics.startedAt
+  profile.analytics.endedAt
+=========================================================*/
 
 GG.queryStaffPatrolDuration = async function (
 
@@ -4063,11 +4811,32 @@ GG.queryStaffPatrolDuration = async function (
 
         ) {
 
-            return StaffQuery.ensureSingleStaff(
+            /*----------------------------------
+              Get Canonical Staff Profile
+            ----------------------------------*/
 
-                request
+            const profile =
 
-            );
+                StaffQuery.ensureSingleStaff(
+
+                    request
+
+                );
+
+
+            /*----------------------------------
+              Build Canonical Duty / Patrol
+              Session
+
+              Patrol Duration = Duty Duration
+            ----------------------------------*/
+
+            return StaffQuery
+                .buildDutyPatrolSession(
+
+                    profile
+
+                );
 
         }
 
