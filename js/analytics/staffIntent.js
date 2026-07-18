@@ -5891,27 +5891,61 @@ StaffIntent.detectStaffIntent = function (
     }
 
 
-    /*=========================================================
-      10. LOCATION
-    =========================================================*/
+/*=========================================================
+  GPS
 
-    result =
-        StaffIntent.detectLocationIntent(
-            result
-        );
+  Must run BEFORE generic location detection.
 
-    if (
-        result.intent ===
-        INTENTS.STAFF_LOCATION
-    ) {
+  Handles:
+  - STAFF_SPEED
+  - STAFF_HEADING
+  - STAFF_ACCURACY
+=========================================================*/
 
-        debugParameters(
-            result.intent
-        );
+result =
+    StaffIntent.detectGPSIntent(
+        result
+    );
 
-        return result;
+if (
+    result.intent === INTENTS.STAFF_SPEED ||
+    result.intent === INTENTS.STAFF_HEADING ||
+    result.intent === INTENTS.STAFF_ACCURACY
+) {
 
-    }
+    debugParameters(
+        result.intent
+    );
+
+    return result;
+
+}
+
+
+/*=========================================================
+  LOCATION
+
+  Generic location detection runs after specific
+  GPS field detection.
+=========================================================*/
+
+result =
+    StaffIntent.detectLocationIntent(
+        result
+    );
+
+if (
+    result.intent ===
+    INTENTS.STAFF_LOCATION
+) {
+
+    debugParameters(
+        result.intent
+    );
+
+    return result;
+
+}
 
 
     /*=========================================================
