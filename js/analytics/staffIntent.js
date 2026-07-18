@@ -7337,8 +7337,50 @@ StaffIntent.detectDirectoryIntent = function (
 
         [];
 
+
     /*----------------------------------
-      Ignore Count Queries
+      Entity Flags
+    ----------------------------------*/
+
+    const hasDesignation =
+
+        designations.length > 0;
+
+    const hasCircle =
+
+        !!parameters.circle;
+
+    const hasDivision =
+
+        !!parameters.division;
+
+    const hasRange =
+
+        !!parameters.range;
+
+    const hasBeat =
+
+        !!parameters.beat;
+
+
+    /*----------------------------------
+      Count Query Detection
+
+      IMPORTANT:
+
+      Designation count queries are handled
+      by STAFF_DESIGNATION_DIRECTORY.
+
+      Examples:
+
+      "How many Banasahayak?"
+      "How many Banasahayak in BTR?"
+      "How many Banasahayak in BTR_W?"
+      "How many Banasahayak in West Damanpur?"
+      "How many Banasahayak in Poro_east?"
+
+      Normal jurisdiction counts still go
+      to detectCountIntent().
     ----------------------------------*/
 
     const copy =
@@ -7359,15 +7401,41 @@ StaffIntent.detectDirectoryIntent = function (
 
     );
 
+    const isCountQuery =
+
+        !!copy.intent;
+
+
+    /*----------------------------------
+      Ignore Non-Designation Count Queries
+
+      Example:
+
+      "How many staff in West Damanpur Range?"
+
+      This must NOT become a directory.
+      It remains STAFF_RANGE_COUNT.
+
+      But:
+
+      "How many Banasahayak in West Damanpur Range?"
+
+      continues below and becomes
+      STAFF_DESIGNATION_DIRECTORY.
+    ----------------------------------*/
+
     if (
 
-        copy.intent
+        isCountQuery &&
+
+        !hasDesignation
 
     ) {
 
         return result;
 
     }
+
 
     /*----------------------------------
       Ignore Aggregate Status Queries
@@ -7445,32 +7513,9 @@ StaffIntent.detectDirectoryIntent = function (
 
     }
 
-    /*----------------------------------
-      Entity Flags
-    ----------------------------------*/
-
-    const hasDesignation =
-
-        designations.length > 0;
-
-    const hasCircle =
-
-        !!parameters.circle;
-
-    const hasDivision =
-
-        !!parameters.division;
-
-    const hasRange =
-
-        !!parameters.range;
-
-    const hasBeat =
-
-        !!parameters.beat;
 
     /*----------------------------------
-      Explicit Directory Language Only
+      Explicit Directory Language
     ----------------------------------*/
 
     const directoryQuery =
@@ -7523,24 +7568,34 @@ StaffIntent.detectDirectoryIntent = function (
 
         );
 
-    if (
-
-        !directoryQuery
-
-    ) {
-
-        return result;
-
-    }
 
     /*----------------------------------
       Designation Directory
-      Highest Priority
+
+      HIGHEST PRIORITY.
+
+      Handles BOTH:
+      - LIST designation
+      - COUNT designation
+
+      Optional jurisdiction:
+      - Circle
+      - Division
+      - Range
+      - Beat
     ----------------------------------*/
 
     if (
 
-        hasDesignation
+        hasDesignation &&
+
+        (
+
+            directoryQuery ||
+
+            isCountQuery
+
+        )
 
     ) {
 
@@ -7568,6 +7623,23 @@ StaffIntent.detectDirectoryIntent = function (
 
     }
 
+
+    /*----------------------------------
+      Remaining queries require
+      directory language
+    ----------------------------------*/
+
+    if (
+
+        !directoryQuery
+
+    ) {
+
+        return result;
+
+    }
+
+
     /*----------------------------------
       Beat Directory
     ----------------------------------*/
@@ -7589,6 +7661,7 @@ StaffIntent.detectDirectoryIntent = function (
         return result;
 
     }
+
 
     /*----------------------------------
       Range Directory
@@ -7612,6 +7685,7 @@ StaffIntent.detectDirectoryIntent = function (
 
     }
 
+
     /*----------------------------------
       Division Directory
     ----------------------------------*/
@@ -7634,6 +7708,7 @@ StaffIntent.detectDirectoryIntent = function (
 
     }
 
+
     /*----------------------------------
       Circle Directory
     ----------------------------------*/
@@ -7655,6 +7730,7 @@ StaffIntent.detectDirectoryIntent = function (
         return result;
 
     }
+
 
     /*----------------------------------
       Generic Directory
