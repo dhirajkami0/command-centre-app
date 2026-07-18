@@ -131,7 +131,9 @@ STAFF_NEARBY:
     STAFF_DISTANCE: "staffDistance",
     STAFF_PATROL_POINTS: "staffPatrolPoints",
     STAFF_PATROL_START: "staffPatrolStart",
-    
+STAFF_PATROL_END:
+    "staffPatrolEnd",
+
     STAFF_PATROL_DURATION: "staffPatrolDuration",
 
     /*=========================================================
@@ -2582,7 +2584,95 @@ STAFF_PATROL_START: [
 "PATROL LAUNCHED"
 ],
 
+STAFF_PATROL_END: [
 
+    "PATROL END",
+
+    "PATROL ENDED",
+
+    "PATROL END TIME",
+
+    "PATROL ENDED AT",
+
+    "END PATROL",
+
+    "END OF PATROL",
+
+    "PATROL FINISH",
+
+    "PATROL FINISHED",
+
+    "FINISH PATROL",
+
+    "PATROL STOP",
+
+    "PATROL STOPPED",
+
+    "STOP PATROL",
+
+    "STOPPED PATROL",
+
+    "PATROL COMPLETED",
+
+    "COMPLETED PATROL",
+
+    "PATROL SESSION END",
+
+    "SESSION END",
+
+    "SESSION END TIME",
+
+    "TRACK END",
+
+    "TRACK END TIME",
+
+    "GPS TRACK END",
+
+    "GPS END",
+
+    "TRACKING END",
+
+    "TRACKING END TIME",
+
+    "GPS RECORDING END",
+
+    "GPS LOG END",
+
+    "LOGGING END",
+
+    "WHEN DID PATROL END",
+
+    "WHEN WAS PATROL ENDED",
+
+    "WHEN DID HE END PATROL",
+
+    "WHEN DID SHE END PATROL",
+
+    "WHEN DID STAFF END PATROL",
+
+    "WHAT TIME DID PATROL END",
+
+    "SHOW PATROL END",
+
+    "GET PATROL END",
+
+    "DISPLAY PATROL END",
+
+    "PATROL END DETAILS",
+
+    "PATROL END INFORMATION",
+
+    "END TIME",
+
+    "ENDED AT",
+
+    "PATROL CONCLUDED",
+
+    "CONCLUDED PATROL",
+
+    "PATROL TERMINATED"
+
+],
 
 STAFF_PATROL_DURATION: [
 "DURATION",
