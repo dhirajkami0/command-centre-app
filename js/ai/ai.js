@@ -36,13 +36,25 @@
               Call Gemini
             ----------------------------------*/
 
-            const response =
+const response =
 
-                await window.callAI(
+    await window.callAI(
 
-                    prompt
+        {
 
-                );
+            query:
+
+                request.query,
+
+            localIntent:
+
+                request.localIntent
+
+        },
+
+        "DETECT_INTENT"
+
+    );
 
             /*----------------------------------
               Parse Response
