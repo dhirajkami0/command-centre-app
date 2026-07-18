@@ -458,7 +458,172 @@ StaffIntent.setCachedResult = function (
     );
 
 };
- 
+/*=========================================================
+  SAFE KEYWORD MATCHING
+
+  Prevents short keywords such as:
+  FR, RO, DL, BS, FV
+
+  from matching inside unrelated words.
+
+  Examples:
+
+  FR
+  ✓ "FR"
+  ✓ "Dhiraj Kami FR"
+  ✗ "FROM"
+  ✗ "FRONT"
+
+  RO
+  ✓ "RO"
+  ✓ "Who is the RO"
+  ✗ "ROLE"
+
+  Multi-word phrases continue to work normally.
+=========================================================*/
+
+StaffIntent.matchKeyword = function (
+    query,
+    keyword
+) {
+
+    if (
+        !query ||
+        !keyword
+    ) {
+        return false;
+    }
+
+    const normalizedQuery =
+        String(query)
+            .toUpperCase()
+            .trim();
+
+    const normalizedKeyword =
+        String(keyword)
+            .toUpperCase()
+            .trim();
+
+    if (
+        !normalizedQuery ||
+        !normalizedKeyword
+    ) {
+        return false;
+    }
+
+    /*----------------------------------
+      Escape Regex Characters
+    ----------------------------------*/
+
+    const escapedKeyword =
+        normalizedKeyword.replace(
+            /[.*+?^${}()|[\]\\]/g,
+            "\\$&"
+        );
+
+    /*----------------------------------
+      Convert Spaces To Flexible Spaces
+
+      "RANGE OFFICER"
+
+      matches:
+
+      "RANGE OFFICER"
+      "RANGE   OFFICER"
+    ----------------------------------*/
+
+    const pattern =
+        escapedKeyword.replace(
+            /\s+/g,
+            "\\s+"
+        );
+
+    /*----------------------------------
+      Whole Word / Whole Phrase Match
+
+      Prevents:
+
+      FR → FROM
+      RO → ROLE
+      DL → BUNDLE
+
+      But allows:
+
+      FR
+      Dhiraj, FR
+      RANGE OFFICER
+      WHO IS ON DUTY
+    ----------------------------------*/
+
+    const regex =
+        new RegExp(
+            "(^|[^A-Z0-9])" +
+            pattern +
+            "(?=$|[^A-Z0-9])",
+            "i"
+        );
+
+    return regex.test(
+        normalizedQuery
+    );
+
+};
+ /*=========================================================
+  GET BEST KEYWORD MATCH
+
+  Longer / more specific phrases win.
+
+  Example:
+
+  Query:
+  "WHO IS ON DUTY"
+
+  Possible:
+  DUTY
+  ON DUTY
+  WHO IS ON DUTY
+
+  Winner:
+  WHO IS ON DUTY
+=========================================================*/
+
+StaffIntent.getBestKeywordMatch = function (
+    query,
+    keywords
+) {
+
+    if (
+        !query ||
+        !Array.isArray(keywords) ||
+        !keywords.length
+    ) {
+        return null;
+    }
+
+    const matches =
+        keywords.filter(
+            keyword =>
+                StaffIntent.matchKeyword(
+                    query,
+                    keyword
+                )
+        );
+
+    if (
+        !matches.length
+    ) {
+        return null;
+    }
+
+    matches.sort(
+        (a, b) =>
+            String(b).length -
+            String(a).length
+    );
+
+    return matches[0];
+
+};
     /*=========================================================
  DETECT
  Master Intent Detection
@@ -1170,43 +1335,40 @@ StaffIntent.detectDutyStatusIntent = function (
  DETECT
 =========================================================*/
 StaffIntent.matchIntent = function (
-
     query,
-
-    config
-
+    config = {}
 ) {
 
     query =
-
         String(
-
             query ||
-
             ""
+        )
+        .trim()
+        .toUpperCase();
 
-        ).toUpperCase();
+    if (
+        query === ""
+    ) {
+        return false;
+    }
 
     /*--------------------------
-      ANY
+      ALL REQUIRED
     --------------------------*/
 
     if (
-
-        config.any &&
-
+        Array.isArray(
+            config.any
+        ) &&
+        config.any.length > 0 &&
         !config.any.every(
-
             word =>
-
-            query.includes(
-
-                word
-
-            )
-
+                StaffIntent.matchKeyword(
+                    query,
+                    word
+                )
         )
-
     ) {
 
         return false;
@@ -1214,25 +1376,21 @@ StaffIntent.matchIntent = function (
     }
 
     /*--------------------------
-      ONE OF
+      AT LEAST ONE
     --------------------------*/
 
     if (
-
-        config.oneOf &&
-
+        Array.isArray(
+            config.oneOf
+        ) &&
+        config.oneOf.length > 0 &&
         !config.oneOf.some(
-
             word =>
-
-            query.includes(
-
-                word
-
-            )
-
+                StaffIntent.matchKeyword(
+                    query,
+                    word
+                )
         )
-
     ) {
 
         return false;
@@ -1244,21 +1402,16 @@ StaffIntent.matchIntent = function (
     --------------------------*/
 
     if (
-
-        config.exclude &&
-
+        Array.isArray(
+            config.exclude
+        ) &&
         config.exclude.some(
-
             word =>
-
-            query.includes(
-
-                word
-
-            )
-
+                StaffIntent.matchKeyword(
+                    query,
+                    word
+                )
         )
-
     ) {
 
         return false;
@@ -1268,13 +1421,7 @@ StaffIntent.matchIntent = function (
     return true;
 
 };
-/*=========================================================
- DETECT
-=========================================================*/
 
-/*=========================================================
- DETECT
-=========================================================*/
 /*=========================================================
  DETECT ROLE INTENT
 =========================================================*/
@@ -4194,118 +4341,39 @@ if (
 
     /*----------------------------------
       Single Staff
-    ----------------------------------*/
 
-
-    /*----------------------------------
-      Profile
-    ----------------------------------*/
-
-    result =
-        StaffIntent.detectProfileIntent(
-            result
-        );
-
-    /*----------------------------------
-      Contact
+      All single-staff detector ordering
+      is controlled in one place:
+      detectStaffIntent()
     ----------------------------------*/
 
     result =
-        StaffIntent.detectContactIntent(
-            result
-        );
-
-    /*----------------------------------
-      Role
-    ----------------------------------*/
-
-    result =
-        StaffIntent.detectRoleIntent(
-            result
-        );
-
-    /*----------------------------------
-      Designation
-    ----------------------------------*/
-
-    result =
-        StaffIntent.detectDesignationIntent(
-            result
-        );
-/*----------------------------------
-  Assignment
-----------------------------------*/
-
-result =
-    StaffIntent.detectAssignmentIntent(
-        result
-    );
-
-    /*----------------------------------
-      Posting
-    ----------------------------------*/
-
-    result =
-        StaffIntent.detectPostingIntent(
-            result
-        );
-
-    /*----------------------------------
-      Location
-    ----------------------------------*/
-
-    result =
-        StaffIntent.detectLocationIntent(
-            result
-        );
-
-    /*----------------------------------
-      GPS
-    ----------------------------------*/
-
-    result =
-        StaffIntent.detectGPSIntent(
-            result
-        );
-
-    /*----------------------------------
-      Duty
-    ----------------------------------*/
-
-
-
-
-
-
-
-    result =
-        StaffIntent.detectDutyStatusIntent(
-            result
-        );
-
-    result =
-        StaffIntent.detectDutyIntent(
-            result
-        );
-
-    /*----------------------------------
-      Analytics
-    ----------------------------------*/
-
-    result =
-        StaffIntent.detectAnalyticsIntent(
+        StaffIntent.detectStaffIntent(
             result
         );
 
 }
-    else if (
-        result.parameters.isAggregate === true
-    ) {
-        /*----------------------------------
-          Aggregate
-        ----------------------------------*/
-        result = StaffIntent.detectGlobalIntent(result);
-    }
+else if (
+    result.parameters.isAggregate === true
+) {
+
+    /*----------------------------------
+      Aggregate / Global
+
+      Handles:
+      - directories
+      - counts
+      - summaries
+      - control-room queries
+      - queries without named staff
+    ----------------------------------*/
+
+    result =
+        StaffIntent.detectGlobalIntent(
+            result
+        );
+
+}
 else {
 
     return result;
@@ -5489,14 +5557,18 @@ StaffIntent.detectNearbyIntent = function (
 StaffIntent.detectStaffIntent = function (
     result
 ) {
+
     /*----------------------------------
       Validate
     ----------------------------------*/
+
     if (
         !result ||
         !result.entities
     ) {
+
         return result;
+
     }
 
     const staff =
@@ -5509,36 +5581,43 @@ StaffIntent.detectStaffIntent = function (
     /*----------------------------------
       Debug Helper
     ----------------------------------*/
+
     function debugParameters(
         label
     ) {
+
         console.log(
             "==========",
             label,
             "=========="
         );
+
         console.log(
             "Result Frozen:",
             Object.isFrozen(
                 result
             )
         );
+
         console.log(
             "Parameters:",
             result.parameters
         );
+
         console.log(
             "Parameters Frozen:",
             Object.isFrozen(
                 result.parameters
             )
         );
+
         console.log(
             "Parameters Extensible:",
             Object.isExtensible(
                 result.parameters
             )
         );
+
         console.log(
             "Staff Descriptor:",
             Object.getOwnPropertyDescriptor(
@@ -5546,79 +5625,201 @@ StaffIntent.detectStaffIntent = function (
                 "staff"
             )
         );
+
     }
 
-    /*----------------------------------
-      Nearby
-    ----------------------------------*/
+
+
+
+
+    /*=========================================================
+      REMAINING DETECTORS REQUIRE A STAFF ENTITY
+    =========================================================*/
+
+    if (
+        staff.length === 0
+    ) {
+
+        return result;
+
+    }
+
+
+    console.log(
+        "=============================="
+    );
+
+    console.log(
+        "detectStaffIntent() START"
+    );
+
+    console.log(
+        "Query:",
+        result.normalizedQuery
+    );
+
+    console.log(
+        "Staff:",
+        staff
+    );
+
+    console.log(
+        "=============================="
+    );
+
+
+    /*=========================================================
+      2. ASSIGNMENT
+
+      Specific assignment questions should be resolved
+      before generic posting or duty detection.
+
+      Examples:
+      "What is Dhiraj's assignment?"
+      "Which beat is Dhiraj assigned to?"
+    =========================================================*/
+
     result =
-        StaffIntent.detectNearbyIntent(
+        StaffIntent.detectAssignmentIntent(
             result
         );
 
     if (
         result.intent ===
-        INTENTS.STAFF_NEARBY
+        INTENTS.STAFF_ASSIGNMENT
     ) {
+
         debugParameters(
             result.intent
         );
+
         return result;
+
     }
 
-    /*----------------------------------
-      Remaining Single Staff Intents
-    ----------------------------------*/
-    if (
-        staff.length === 0
-    ) {
-        return result;
-    }
 
-    console.log(
-        "=============================="
-    );
-    console.log(
-        "detectStaffIntent() START"
-    );
-    console.log(
-        "Query:",
-        result.normalizedQuery
-    );
-    console.log(
-        "Staff:",
-        staff
-    );
-    console.log(
-        "=============================="
-    );
+    /*=========================================================
+      3. DUTY STATUS
 
-    /*----------------------------------
-      Profile
-    ----------------------------------*/
+      Specific duty-status detection before broader duty logic.
+
+      Example:
+      "Is Dhiraj on duty?"
+    =========================================================*/
+
     result =
-        StaffIntent.detectProfileIntent(
+        StaffIntent.detectDutyStatusIntent(
             result
         );
+
     if (
-        result.intent === INTENTS.STAFF_PROFILE ||
-        result.intent === INTENTS.STAFF_CONTACT ||
-        result.intent === INTENTS.STAFF_ROLE ||
-        result.intent === INTENTS.STAFF_DESIGNATION
+        result.intent ===
+        INTENTS.STAFF_DUTY_STATUS
     ) {
+
         debugParameters(
             result.intent
         );
+
         return result;
+
     }
 
-    /*----------------------------------
-      Posting
-    ----------------------------------*/
+
+    /*=========================================================
+      4. CONTACT
+
+      Example:
+      "What is Dhiraj's phone number?"
+      "Give me Dhiraj's contact"
+    =========================================================*/
+
+    result =
+        StaffIntent.detectContactIntent(
+            result
+        );
+
+    if (
+        result.intent ===
+        INTENTS.STAFF_CONTACT
+    ) {
+
+        debugParameters(
+            result.intent
+        );
+
+        return result;
+
+    }
+
+
+    /*=========================================================
+      5. DESIGNATION
+
+      Example:
+      "What is Dhiraj's designation?"
+    =========================================================*/
+
+    result =
+        StaffIntent.detectDesignationIntent(
+            result
+        );
+
+    if (
+        result.intent ===
+        INTENTS.STAFF_DESIGNATION
+    ) {
+
+        debugParameters(
+            result.intent
+        );
+
+        return result;
+
+    }
+
+
+    /*=========================================================
+      6. ROLE
+
+      Example:
+      "What is Dhiraj's role?"
+    =========================================================*/
+
+    result =
+        StaffIntent.detectRoleIntent(
+            result
+        );
+
+    if (
+        result.intent ===
+        INTENTS.STAFF_ROLE
+    ) {
+
+        debugParameters(
+            result.intent
+        );
+
+        return result;
+
+    }
+
+
+    /*=========================================================
+      7. POSTING
+
+      Single-staff jurisdiction/posting questions.
+
+      Examples:
+      "Which range is Dhiraj posted in?"
+      "What is Dhiraj's beat?"
+    =========================================================*/
+
     result =
         StaffIntent.detectPostingIntent(
             result
         );
+
     if (
         result.intent === INTENTS.STAFF_POSTING ||
         result.intent === INTENTS.STAFF_CIRCLE ||
@@ -5626,19 +5827,27 @@ StaffIntent.detectStaffIntent = function (
         result.intent === INTENTS.STAFF_RANGE ||
         result.intent === INTENTS.STAFF_BEAT
     ) {
+
         debugParameters(
             result.intent
         );
+
         return result;
+
     }
 
-    /*----------------------------------
-      Duty
-    ----------------------------------*/
+
+    /*=========================================================
+      8. DUTY
+
+      Remaining duty-related single-staff intents.
+    =========================================================*/
+
     result =
         StaffIntent.detectDutyIntent(
             result
         );
+
     if (
         result.intent === INTENTS.STAFF_DUTY ||
         result.intent === INTENTS.STAFF_DUTY_STATUS ||
@@ -5649,58 +5858,74 @@ StaffIntent.detectStaffIntent = function (
         result.intent === INTENTS.STAFF_LAST_DUTY ||
         result.intent === INTENTS.STAFF_ASSIGNMENT
     ) {
+
         debugParameters(
             result.intent
         );
+
         return result;
+
     }
 
-    /*----------------------------------
-      Team
-    ----------------------------------*/
+
+    /*=========================================================
+      9. TEAM
+    =========================================================*/
+
     result =
         StaffIntent.detectTeamIntent(
             result
         );
+
     if (
         result.intent === INTENTS.STAFF_TEAM ||
         result.intent === INTENTS.STAFF_LEADER
     ) {
+
         debugParameters(
             result.intent
         );
+
         return result;
+
     }
 
-    /*----------------------------------
-      Location
-    ----------------------------------*/
+
+    /*=========================================================
+      10. LOCATION
+    =========================================================*/
+
     result =
         StaffIntent.detectLocationIntent(
             result
         );
+
     if (
         result.intent ===
         INTENTS.STAFF_LOCATION
     ) {
+
         debugParameters(
             result.intent
         );
+
         return result;
+
     }
 
-    /*----------------------------------
-      GPS
-    ----------------------------------*/
 
+    /*=========================================================
+      11. PATROL ANALYTICS
 
-    /*----------------------------------
-      Patrol Analytics
-    ----------------------------------*/
+      Specific analytics should be resolved before
+      generic profile fallback.
+    =========================================================*/
+
     result =
         StaffIntent.detectAnalyticsIntent(
             result
         );
+
     if (
         result.intent === INTENTS.STAFF_ANALYTICS ||
         result.intent === INTENTS.STAFF_DISTANCE ||
@@ -5709,19 +5934,58 @@ StaffIntent.detectStaffIntent = function (
         result.intent === INTENTS.STAFF_PATROL_END ||
         result.intent === INTENTS.STAFF_PATROL_DURATION
     ) {
+
         debugParameters(
             result.intent
         );
+
         return result;
+
     }
 
-    /*----------------------------------
-      No Single-Staff Intent
-    ----------------------------------*/
+
+    /*=========================================================
+      12. PROFILE — LAST FALLBACK
+
+      Generic profile detection must come after all
+      specific single-staff intents.
+
+      Example:
+      "Show Dhiraj's profile"
+      "Details of Dhiraj"
+    =========================================================*/
+
+    result =
+        StaffIntent.detectProfileIntent(
+            result
+        );
+
+    if (
+        result.intent === INTENTS.STAFF_PROFILE ||
+        result.intent === INTENTS.STAFF_CONTACT ||
+        result.intent === INTENTS.STAFF_ROLE ||
+        result.intent === INTENTS.STAFF_DESIGNATION
+    ) {
+
+        debugParameters(
+            result.intent
+        );
+
+        return result;
+
+    }
+
+
+    /*=========================================================
+      NO SINGLE-STAFF INTENT
+    =========================================================*/
+
     console.log(
         "❌ No Single Staff Intent"
     );
+
     return result;
+
 };
  
  StaffIntent.detectDesignationCountIntent =
