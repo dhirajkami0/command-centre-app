@@ -911,9 +911,27 @@ StaffFormatter.formatDirectory = function (
 
     /*----------------------------------
       Directory Groups
+
+      Supports:
+
+      1. Legacy Array Format
+         response.data = [
+             {...}
+         ]
+
+      2. Canonical Object Format
+         response.data = {
+             jurisdiction,
+             jurisdictionName,
+             totalStaff,
+             designationGroups,
+             staff
+         }
     ----------------------------------*/
 
-    const groups =
+    let groups = [];
+
+    if (
 
         Array.isArray(
 
@@ -921,9 +939,31 @@ StaffFormatter.formatDirectory = function (
 
         )
 
-            ? response.data
+    ) {
 
-            : [];
+        groups =
+
+            response.data;
+
+    }
+
+    else if (
+
+        response.data &&
+
+        typeof response.data ===
+
+            "object"
+
+    ) {
+
+        groups = [
+
+            response.data
+
+        ];
+
+    }
 
     /*----------------------------------
       Empty Directory
@@ -965,7 +1005,7 @@ StaffFormatter.formatDirectory = function (
 
         result.confidence =
 
-            response.confidence ||
+            response.confidence ??
 
             1;
 
@@ -1011,93 +1051,243 @@ StaffFormatter.formatDirectory = function (
 
         ) {
 
+            if (
+
+                !group ||
+
+                typeof group !==
+
+                    "object"
+
+            ) {
+
+                return;
+
+            }
+
             /*----------------------------------
               Jurisdiction Detection
+
+              Preferred Canonical Fields:
+              - jurisdiction
+              - jurisdictionName
+
+              Legacy Fallback:
+              - beat
+              - range
+              - division
+              - circle
             ----------------------------------*/
 
             let jurisdictionType =
 
-                "";
+                String(
+
+                    group.jurisdiction ||
+
+                    ""
+
+                )
+
+                .trim();
 
             let jurisdictionName =
 
-                "";
+                String(
+
+                    group.jurisdictionName ||
+
+                    ""
+
+                )
+
+                .trim();
+
+            /*----------------------------------
+              Legacy Jurisdiction Fallback
+            ----------------------------------*/
 
             if (
 
-                group.beat
+                !jurisdictionName
 
             ) {
 
-                jurisdictionType =
+                if (
 
-                    "Beat";
+                    group.beat
 
-                jurisdictionName =
+                ) {
 
-                    group.beat;
+                    jurisdictionType =
+
+                        "BEAT";
+
+                    jurisdictionName =
+
+                        group.beat;
+
+                }
+
+                else if (
+
+                    group.range
+
+                ) {
+
+                    jurisdictionType =
+
+                        "RANGE";
+
+                    jurisdictionName =
+
+                        group.range;
+
+                }
+
+                else if (
+
+                    group.division
+
+                ) {
+
+                    jurisdictionType =
+
+                        "DIVISION";
+
+                    jurisdictionName =
+
+                        group.division;
+
+                }
+
+                else if (
+
+                    group.circle
+
+                ) {
+
+                    jurisdictionType =
+
+                        "CIRCLE";
+
+                    jurisdictionName =
+
+                        group.circle;
+
+                }
+
+                else {
+
+                    jurisdictionType =
+
+                        "JURISDICTION";
+
+                    jurisdictionName =
+
+                        "All Staff";
+
+                }
 
             }
 
-            else if (
+            /*----------------------------------
+              Jurisdiction Type Fallback
+            ----------------------------------*/
 
-                group.range
+            if (
+
+                !jurisdictionType
 
             ) {
 
-                jurisdictionType =
+                if (
 
-                    "Range";
+                    group.beat
 
-                jurisdictionName =
+                ) {
 
-                    group.range;
+                    jurisdictionType =
+
+                        "BEAT";
+
+                }
+
+                else if (
+
+                    group.range
+
+                ) {
+
+                    jurisdictionType =
+
+                        "RANGE";
+
+                }
+
+                else if (
+
+                    group.division
+
+                ) {
+
+                    jurisdictionType =
+
+                        "DIVISION";
+
+                }
+
+                else if (
+
+                    group.circle
+
+                ) {
+
+                    jurisdictionType =
+
+                        "CIRCLE";
+
+                }
+
+                else {
+
+                    jurisdictionType =
+
+                        "JURISDICTION";
+
+                }
 
             }
 
-            else if (
+            /*----------------------------------
+              Normalize Display Case Only
 
-                group.division
+              Does NOT change stored values.
+            ----------------------------------*/
 
-            ) {
+            const jurisdictionLabel =
 
-                jurisdictionType =
+                jurisdictionType
 
-                    "Division";
+                    .toLowerCase()
 
-                jurisdictionName =
+                    .replace(
 
-                    group.division;
+                        /\b\w/g,
 
-            }
+                        function (
 
-            else if (
+                            char
 
-                group.circle
+                        ) {
 
-            ) {
+                            return char
 
-                jurisdictionType =
+                                .toUpperCase();
 
-                    "Circle";
+                        }
 
-                jurisdictionName =
-
-                    group.circle;
-
-            }
-
-            else {
-
-                jurisdictionType =
-
-                    "Jurisdiction";
-
-                jurisdictionName =
-
-                    "All Staff";
-
-            }
+                    );
 
             /*----------------------------------
               Jurisdiction Heading
@@ -1111,7 +1301,7 @@ StaffFormatter.formatDirectory = function (
 
                 " " +
 
-                jurisdictionType
+                jurisdictionLabel
 
             );
 
@@ -1124,11 +1314,11 @@ StaffFormatter.formatDirectory = function (
             /*----------------------------------
               Designation Groups
 
-              Preferred source:
+              Preferred Source:
               group.designationGroups
 
               Fallback:
-              build groups from group.staff
+              Build groups from group.staff
             ----------------------------------*/
 
             let designationGroups =
@@ -1146,16 +1336,17 @@ StaffFormatter.formatDirectory = function (
             /*----------------------------------
               Fallback Designation Grouping
 
-              Important:
+              IMPORTANT:
+
               No designation normalization.
 
-              BS stays BS
+              BS          stays BS
               Banasahayak stays Banasahayak
-              DR/Fr stays DR/Fr
-              FR stays FR
+              DR/Fr       stays DR/Fr
+              FR          stays FR
 
-              Every canonical designation
-              remains independent.
+              Every designation remains
+              independently grouped.
             ----------------------------------*/
 
             if (
@@ -1181,6 +1372,20 @@ StaffFormatter.formatDirectory = function (
                         profile
 
                     ) {
+
+                        if (
+
+                            !profile ||
+
+                            typeof profile !==
+
+                                "object"
+
+                        ) {
+
+                            return;
+
+                        }
 
                         const designation =
 
@@ -1219,6 +1424,10 @@ StaffFormatter.formatDirectory = function (
 
                                     0,
 
+                                totalStaff:
+
+                                    0,
+
                                 staff:
 
                                     []
@@ -1231,6 +1440,11 @@ StaffFormatter.formatDirectory = function (
                             designation
                         ]
                         .count++;
+
+                        designationMap[
+                            designation
+                        ]
+                        .totalStaff++;
 
                         designationMap[
                             designation
@@ -1260,6 +1474,7 @@ StaffFormatter.formatDirectory = function (
               Sort Designations
 
               Alphabetical only.
+
               Does NOT merge designations.
             ----------------------------------*/
 
@@ -1281,15 +1496,17 @@ StaffFormatter.formatDirectory = function (
 
                         return String(
 
-                            a.designation ||
+                            a?.designation ||
 
                             ""
 
-                        ).localeCompare(
+                        )
+
+                        .localeCompare(
 
                             String(
 
-                                b.designation ||
+                                b?.designation ||
 
                                 ""
 
@@ -1313,9 +1530,31 @@ StaffFormatter.formatDirectory = function (
 
                 ) {
 
+                    if (
+
+                        !designationGroup ||
+
+                        typeof designationGroup !==
+
+                            "object"
+
+                    ) {
+
+                        return;
+
+                    }
+
                     const designation =
 
-                        designationGroup.designation ||
+                        String(
+
+                            designationGroup.designation ||
+
+                            "UNASSIGNED"
+
+                        )
+
+                        .trim() ||
 
                         "UNASSIGNED";
 
@@ -1331,15 +1570,42 @@ StaffFormatter.formatDirectory = function (
 
                             : [];
 
-                    const count =
+                    /*----------------------------------
+                      Designation Count
+
+                      Supports:
+                      - totalStaff
+                      - count
+                      - staff.length
+                    ----------------------------------*/
+
+                    let count =
 
                         Number(
+
+                            designationGroup.totalStaff ??
 
                             designationGroup.count ??
 
                             staff.length
 
                         );
+
+                    if (
+
+                        !Number.isFinite(
+
+                            count
+
+                        )
+
+                    ) {
+
+                        count =
+
+                            staff.length;
+
+                    }
 
                     /*----------------------------------
                       Designation + Count
@@ -1395,20 +1661,20 @@ StaffFormatter.formatDirectory = function (
 
                                 const staffName =
 
-                                    profile.identity
+                                    profile?.identity
                                         ?.name ||
 
-                                    profile.identity
+                                    profile?.identity
                                         ?.rawName ||
 
-                                    profile.identity
+                                    profile?.identity
                                         ?.cleanName ||
 
-                                    profile.name ||
+                                    profile?.name ||
 
-                                    profile.rawName ||
+                                    profile?.rawName ||
 
-                                    profile.cleanName ||
+                                    profile?.cleanName ||
 
                                     "-";
 
@@ -1439,13 +1705,11 @@ StaffFormatter.formatDirectory = function (
             /*----------------------------------
               Total Staff
 
-              Prefer totalStaff supplied
-              by StaffQuery.
+              Priority:
 
-              Fallback to group.staff length.
-
-              Final fallback sums
-              designation group counts.
+              1. group.totalStaff
+              2. group.staff.length
+              3. Sum designationGroups
             ----------------------------------*/
 
             let totalStaff =
@@ -1500,25 +1764,51 @@ StaffFormatter.formatDirectory = function (
 
                                     Array.isArray(
 
-                                        designationGroup.staff
+                                        designationGroup
+                                            ?.staff
 
                                     )
 
-                                        ? designationGroup.staff
+                                        ? designationGroup
+                                            .staff
 
                                         : [];
+
+                                let groupCount =
+
+                                    Number(
+
+                                        designationGroup
+                                            ?.totalStaff ??
+
+                                        designationGroup
+                                            ?.count ??
+
+                                        staff.length
+
+                                    );
+
+                                if (
+
+                                    !Number.isFinite(
+
+                                        groupCount
+
+                                    )
+
+                                ) {
+
+                                    groupCount =
+
+                                        staff.length;
+
+                                }
 
                                 return (
 
                                     total +
 
-                                    Number(
-
-                                        designationGroup.count ??
-
-                                        staff.length
-
-                                    )
+                                    groupCount
 
                                 );
 
@@ -1595,6 +1885,34 @@ StaffFormatter.formatDirectory = function (
         );
 
     /*----------------------------------
+      Ensure Cards / Sections Arrays
+    ----------------------------------*/
+
+    result.cards =
+
+        Array.isArray(
+
+            result.cards
+
+        )
+
+            ? result.cards
+
+            : [];
+
+    result.sections =
+
+        Array.isArray(
+
+            result.sections
+
+        )
+
+            ? result.sections
+
+            : [];
+
+    /*----------------------------------
       Card
     ----------------------------------*/
 
@@ -1658,7 +1976,7 @@ StaffFormatter.formatDirectory = function (
 
     result.confidence =
 
-        response.confidence ||
+        response.confidence ??
 
         1;
 
