@@ -6543,6 +6543,101 @@ StaffIntent.detectStaffIntent = function (
 
 
     /*=========================================================
+      1. CURRENT / LIVE LOCATION DISAMBIGUATION
+
+      IMPORTANT:
+
+      Current spatial location must be resolved before
+      assignment and posting detection.
+
+      This prevents:
+
+      "Which compartment is Dhiraj now in?"
+          → STAFF_ASSIGNMENT
+
+      "Which compartment is Dhiraj currently in?"
+          → STAFF_ASSIGNMENT
+
+      Expected:
+
+      "Which compartment is Dhiraj now in?"
+          → STAFF_LOCATION
+
+      "Which compartment is Dhiraj currently in?"
+          → STAFF_LOCATION
+
+      "Where is Dhiraj now?"
+          → STAFF_LOCATION
+
+      Assignment / posting wording remains unchanged:
+
+      "Which compartment is Dhiraj assigned to?"
+          → STAFF_ASSIGNMENT
+
+      "Which compartment is Dhiraj posted in?"
+          → STAFF_POSTING
+    =========================================================*/
+
+    const query =
+
+        String(
+
+            result.normalizedQuery ||
+
+            ""
+
+        )
+
+        .trim()
+
+        .toUpperCase();
+
+
+    const isCurrentLocationQuery =
+
+        /\b(NOW|CURRENTLY|PRESENTLY)\b/i.test(
+            query
+        ) ||
+
+        /\bCURRENT\s+LOCATION\b/i.test(
+            query
+        ) ||
+
+        /\bLIVE\s+LOCATION\b/i.test(
+            query
+        ) ||
+
+        /\bLIVE\s+POSITION\b/i.test(
+            query
+        );
+
+
+    if (
+        isCurrentLocationQuery
+    ) {
+
+        result =
+            StaffIntent.detectLocationIntent(
+                result
+            );
+
+        if (
+            result.intent ===
+            INTENTS.STAFF_LOCATION
+        ) {
+
+            debugParameters(
+                result.intent
+            );
+
+            return result;
+
+        }
+
+    }
+
+
+    /*=========================================================
       2. ASSIGNMENT
 
       Specific assignment questions should be resolved
@@ -6551,6 +6646,7 @@ StaffIntent.detectStaffIntent = function (
       Examples:
       "What is Dhiraj's assignment?"
       "Which beat is Dhiraj assigned to?"
+      "Which compartment is Dhiraj assigned to?"
     =========================================================*/
 
     result =
@@ -6687,6 +6783,7 @@ StaffIntent.detectStaffIntent = function (
       Examples:
       "Which range is Dhiraj posted in?"
       "What is Dhiraj's beat?"
+      "Which compartment is Dhiraj posted in?"
     =========================================================*/
 
     result =
@@ -6868,6 +6965,9 @@ StaffIntent.detectStaffIntent = function (
       - Patrol analytics
       - Duty
       - Specific GPS field detection
+
+      Current/live location queries have already been
+      given priority before Assignment and Posting.
 
       This prevents patrol-duration wording from being
       incorrectly claimed by STAFF_LOCATION.
