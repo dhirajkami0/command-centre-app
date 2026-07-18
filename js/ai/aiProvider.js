@@ -197,7 +197,193 @@ AI.embed = async function (
     );
 
 };
+/*=========================================================
+ DETECT INTENT
+=========================================================*/
 
+AI.detectIntent = async function (
+
+    request = {}
+
+) {
+
+    AI.init();
+
+    try {
+
+        console.group(
+
+            "🧠 AI.detectIntent"
+
+        );
+
+        console.log(
+
+            "Request:",
+
+            request
+
+        );
+
+        /*----------------------------------
+          Validate
+        ----------------------------------*/
+
+        if (
+
+            !request ||
+
+            typeof request !== "object"
+
+        ) {
+
+            throw new Error(
+
+                "Invalid AI intent request."
+
+            );
+
+        }
+
+        /*----------------------------------
+          Call Cloud Function
+        ----------------------------------*/
+
+        const response =
+
+            await window.callAI(
+
+                {
+
+                    query:
+
+                        request.query ||
+
+                        "",
+
+                    localIntent:
+
+                        request.localIntent ||
+
+                        {}
+
+                },
+
+                "DETECT_INTENT"
+
+            );
+
+        console.log(
+
+            "Raw Response:",
+
+            response
+
+        );
+
+        /*----------------------------------
+          Validate
+        ----------------------------------*/
+
+        if (
+
+            !AI.validateResponse(
+
+                response
+
+            )
+
+        ) {
+
+            throw new Error(
+
+                "Invalid AI response."
+
+            );
+
+        }
+
+        /*----------------------------------
+          Normalize
+        ----------------------------------*/
+
+        const normalized =
+
+            AI.normalizeIntent(
+
+                response
+
+            );
+
+        console.log(
+
+            "Normalized:",
+
+            normalized
+
+        );
+
+        console.groupEnd();
+
+        return normalized;
+
+    }
+
+    catch (
+
+        err
+
+    ) {
+
+        console.error(
+
+            "AI.detectIntent:",
+
+            err
+
+        );
+
+        console.groupEnd();
+
+        return {
+
+            success:
+
+                false,
+
+            source:
+
+                "ai",
+
+            provider:
+
+                AI.PROVIDER,
+
+            domain:
+
+                "unknown",
+
+            intent:
+
+                "unknown",
+
+            confidence:
+
+                0,
+
+            entities:
+
+                {},
+
+            raw:
+
+                err.message
+
+        };
+
+    }
+
+};
 /*=========================================================
  SUMMARIZE
 =========================================================*/
