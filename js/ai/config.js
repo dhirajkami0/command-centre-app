@@ -73,65 +73,63 @@
       CLOUD FUNCTIONS
     ------------------------------------------------------------*/
 
-    GG.API = (() => {
+/*------------------------------------------------------------
+  CLOUD RUN SERVICES
+------------------------------------------------------------*/
 
-        const BASE =
+GG.API = Object.freeze({
 
-            "https://us-central1-command-centre-86f62.cloudfunctions.net";
+    /*----------------------------------
+      Production Cloud Run Endpoints
+    ----------------------------------*/
 
-        return Object.freeze({
+    ASK:
 
-            BASE,
+        "https://ask-692498208499.us-central1.run.app",
 
-            /*----------------------------------
-              New AI APIs
-            ----------------------------------*/
+    ASK_AI:
 
-            ASK:
-                BASE + "/ask",
+        "https://askai-692498208499.us-central1.run.app",
 
-            ASK_AI:
-                BASE + "/ask",
+    DETECT_INTENT:
 
-            DETECT_INTENT:
-                BASE + "/detectIntent",
+        "https://detectintent-692498208499.us-central1.run.app",
 
-            /*----------------------------------
-              Future
-            ----------------------------------*/
+    /*----------------------------------
+      Reserved Future Services
+    ----------------------------------*/
 
-            SEARCH:
-                BASE + "/searchAI",
+    SEARCH:
 
-            EMBEDDING:
-                BASE + "/embeddingAI",
+        null,
 
-            IMAGE:
-                BASE + "/imageAI"
+    EMBEDDING:
 
-        });
+        null,
 
-    })();
+    IMAGE:
 
-    GG.AI = Object.freeze({
+        null
 
-        ENABLED: true,
+});
 
-        PROVIDER: "Gemini",
+GG.AI = Object.freeze({
 
-        MODEL: "gemini-2.5-flash",
+    ENABLED: true,
 
-        INTENT_CONFIDENCE: 0.90,
+    PROVIDER: "Gemini",
 
-        MAX_RETRIES: 2,
+    MODEL: "gemini-2.5-flash",
 
-        REQUEST_TIMEOUT: 15000,
+    REQUEST_TIMEOUT: 15000,
 
-        CACHE_INTENTS: true,
+    MAX_RETRIES: 2,
 
-        CACHE_RESPONSES: false
+    CACHE_INTENTS: true,
 
-    });
+    CACHE_RESPONSES: true
+
+});
 
     /*------------------------------------------------------------
       FIRESTORE COLLECTIONS
@@ -171,15 +169,15 @@
 
     });
 
-    GG.ROUTER = Object.freeze({
+GG.ROUTER = Object.freeze({
 
-        DEFAULT_DOMAIN: "staff",
+    DEFAULT_DOMAIN: "unknown",
 
-        ENABLE_AI_ROUTING: true,
+    ENABLE_AI_ROUTING: true,
 
-        ENABLE_MULTI_INTENT: true
+    ENABLE_MULTI_INTENT: false
 
-    });
+});
 
     GG.ANALYTICS = Object.freeze({
 
