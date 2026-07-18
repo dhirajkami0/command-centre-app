@@ -9977,257 +9977,34 @@ StaffFormatter.formatStaffDesignationSummary
  FORMAT CIRCLE DIRECTORY
 =========================================================*/
 
+/*=========================================================
+  FORMAT CIRCLE DIRECTORY
+
+  Canonical Business Logic:
+  - LIST staff in Circle
+  - COUNT staff in Circle
+  - Group staff by exact designation
+  - Keep designations independent
+  - Show designation count
+  - Show staff names under designation
+  - Show Total Staff
+=========================================================*/
+
 StaffFormatter.formatStaffCircleDirectory = function (
 
     response
 
 ) {
 
-    const result =
-
-        StaffFormatter.createResponse(
-
-            response
-
-        );
-
     /*----------------------------------
-      Validate
+      Use Canonical Directory Formatter
     ----------------------------------*/
 
-    if (
+    return StaffFormatter.formatDirectory(
 
-        !response ||
-
-        !response.success ||
-
-        !Array.isArray(
-
-            response.data
-
-        )
-
-    ) {
-
-        result.message =
-
-            response?.message ||
-
-            "Circle directory not available.";
-
-        return result;
-
-    }
-
-    const directory =
-
-        response.data;
-
-    /*----------------------------------
-      Markdown
-    ----------------------------------*/
-
-    const lines = [
-
-        "# 🌳 CIRCLE DIRECTORY",
-
-        "",
-
-        "**Total Circles:** " +
-
-            directory.length,
-
-        ""
-
-    ];
-
-    directory.forEach(
-
-        function (
-
-            group,
-
-            index
-
-        ) {
-
-            lines.push(
-
-                "## " +
-
-                (
-
-                    index + 1
-
-                ) +
-
-                ". " +
-
-                (
-
-                    group.circle ||
-
-                    "UNASSIGNED"
-
-                )
-
-            );
-
-            lines.push(
-
-                "**Staff Count:** " +
-
-                (
-
-                    group.totalStaff ||
-
-                    0
-
-                )
-
-            );
-
-            lines.push("");
-
-            (
-
-                group.staff ||
-
-                []
-
-            ).forEach(
-
-                function (
-
-                    staff
-
-                ) {
-
-                    lines.push(
-
-                        "- **" +
-
-                        (
-
-                            staff.name ||
-
-                            "-"
-
-                        ) +
-
-                        "** (" +
-
-                        (
-
-                            staff.designation ||
-
-                            "-"
-
-                        ) +
-
-                        ")"
-
-                    );
-
-                }
-
-            );
-
-            lines.push("");
-
-        }
+        response
 
     );
-
-    result.markdown =
-
-        lines.join(
-
-            "\n"
-
-        );
-
-    /*----------------------------------
-      Card
-    ----------------------------------*/
-
-    result.cards.push({
-
-        type:
-
-            "circle-directory",
-
-        title:
-
-            "Circle Directory",
-
-        data: {
-
-            total:
-
-                directory.length,
-
-            circles:
-
-                directory
-
-        }
-
-    });
-
-    /*----------------------------------
-      Section
-    ----------------------------------*/
-
-    result.sections.push({
-
-        title:
-
-            "Circle Directory",
-
-        data: {
-
-            total:
-
-                directory.length,
-
-            circles:
-
-                directory
-
-        }
-
-    });
-
-    /*----------------------------------
-      Metadata
-    ----------------------------------*/
-
-    result.success =
-
-        true;
-
-    result.intent =
-
-        StaffConstants.INTENTS.STAFF_CIRCLE_DIRECTORY;
-
-    result.confidence =
-
-        response.confidence ||
-
-        1;
-
-    result.source =
-
-        response.source ||
-
-        "LOCAL";
-
-    result.message =
-
-        "Circle directory formatted successfully.";
-
-    return result;
 
 };
  /*=========================================================
@@ -10235,261 +10012,52 @@ StaffFormatter.formatStaffCircleDirectory = function (
 =========================================================*/
 
 StaffFormatter.formatStaffDivisionDirectory = function (
-
     response
-
 ) {
 
-    const result =
-
-        StaffFormatter.createResponse(
-
-            response
-
-        );
-
     /*----------------------------------
-      Validate
+      Canonical Directory Formatter
     ----------------------------------*/
 
-    if (
-
-        !response ||
-
-        !response.success ||
-
-        !Array.isArray(
-
-            response.data
-
-        )
-
-    ) {
-
-        result.message =
-
-            response?.message ||
-
-            "Division directory not available.";
-
-        return result;
-
-    }
-
-    const directory =
-
-        response.data;
-
-    /*----------------------------------
-      Markdown
-    ----------------------------------*/
-
-    const lines = [
-
-        "# 🌲 DIVISION DIRECTORY",
-
-        "",
-
-        "**Total Divisions:** " +
-
-            directory.length,
-
-        ""
-
-    ];
-
-    directory.forEach(
-
-        function (
-
-            group,
-
-            index
-
-        ) {
-
-            lines.push(
-
-                "## " +
-
-                (
-
-                    index + 1
-
-                ) +
-
-                ". " +
-
-                (
-
-                    group.division ||
-
-                    "UNASSIGNED"
-
-                )
-
-            );
-
-            lines.push(
-
-                "**Staff Count:** " +
-
-                (
-
-                    group.totalStaff ||
-
-                    0
-
-                )
-
-            );
-
-            lines.push("");
-
-            (
-
-                group.staff ||
-
-                []
-
-            ).forEach(
-
-                function (
-
-                    staff
-
-                ) {
-
-                    lines.push(
-
-                        "- **" +
-
-                        (
-
-                            staff.name ||
-
-                            "-"
-
-                        ) +
-
-                        "** (" +
-
-                        (
-
-                            staff.designation ||
-
-                            "-"
-
-                        ) +
-
-                        ")"
-
-                    );
-
-                }
-
-            );
-
-            lines.push("");
-
-        }
-
+    return StaffFormatter.formatDirectory(
+        response
     );
-
-    result.markdown =
-
-        lines.join(
-
-            "\n"
-
-        );
-
-    /*----------------------------------
-      Card
-    ----------------------------------*/
-
-    result.cards.push({
-
-        type:
-
-            "division-directory",
-
-        title:
-
-            "Division Directory",
-
-        data: {
-
-            total:
-
-                directory.length,
-
-            divisions:
-
-                directory
-
-        }
-
-    });
-
-    /*----------------------------------
-      Section
-    ----------------------------------*/
-
-    result.sections.push({
-
-        title:
-
-            "Division Directory",
-
-        data: {
-
-            total:
-
-                directory.length,
-
-            divisions:
-
-                directory
-
-        }
-
-    });
-
-    /*----------------------------------
-      Metadata
-    ----------------------------------*/
-
-    result.success =
-
-        true;
-
-    result.intent =
-
-        StaffConstants.INTENTS.STAFF_DIVISION_DIRECTORY;
-
-    result.confidence =
-
-        response.confidence ||
-
-        1;
-
-    result.source =
-
-        response.source ||
-
-        "LOCAL";
-
-    result.message =
-
-        "Division directory formatted successfully.";
-
-    return result;
 
 };
 
  /*=========================================================
  FORMAT RANGE DIRECTORY
+=========================================================*/
+
+/*=========================================================
+  FORMAT RANGE DIRECTORY
+
+  Canonical Business Logic:
+  - LIST staff in Range
+  - COUNT staff in Range
+  - Group staff by exact designation
+  - Keep designations independent
+  - Show designation count
+  - Show staff names under designation
+  - Show Total Staff
+
+  Example:
+
+  WestDamanpur Range
+
+  Banasahayak (3)
+  - Staff A
+  - Staff B
+  - Staff C
+
+  BS (2)
+  - Staff D
+  - Staff E
+
+  DR/Fr (1)
+  - Staff F
+
+  Total Staff: 6
 =========================================================*/
 
 StaffFormatter.formatStaffRangeDirectory = function (
@@ -10498,509 +10066,62 @@ StaffFormatter.formatStaffRangeDirectory = function (
 
 ) {
 
-    const result =
-
-        StaffFormatter.createResponse(
-
-            response
-
-        );
-
     /*----------------------------------
-      Validate
+      Use Canonical Directory Formatter
     ----------------------------------*/
 
-    if (
+    return StaffFormatter.formatDirectory(
 
-        !response ||
-
-        !response.success ||
-
-        !Array.isArray(
-
-            response.data
-
-        )
-
-    ) {
-
-        result.message =
-
-            response?.message ||
-
-            "Range directory not available.";
-
-        return result;
-
-    }
-
-    const directory =
-
-        response.data;
-
-    /*----------------------------------
-      Markdown
-    ----------------------------------*/
-
-    const lines = [
-
-        "# 🌲 RANGE DIRECTORY",
-
-        "",
-
-        "**Total Ranges:** " +
-
-            directory.length,
-
-        ""
-
-    ];
-
-    directory.forEach(
-
-        function (
-
-            group,
-
-            index
-
-        ) {
-
-            lines.push(
-
-                "## " +
-
-                (
-
-                    index + 1
-
-                ) +
-
-                ". " +
-
-                (
-
-                    group.range ||
-
-                    "UNASSIGNED"
-
-                )
-
-            );
-
-            lines.push(
-
-                "**Staff Count:** " +
-
-                (
-
-                    group.totalStaff ||
-
-                    0
-
-                )
-
-            );
-
-            lines.push("");
-
-            (
-
-                group.staff ||
-
-                []
-
-            ).forEach(
-
-                function (
-
-                    staff
-
-                ) {
-
-                    lines.push(
-
-                        "- **" +
-
-                        (
-
-                            staff.name ||
-
-                            "-"
-
-                        ) +
-
-                        "** (" +
-
-                        (
-
-                            staff.designation ||
-
-                            "-"
-
-                        ) +
-
-                        ")"
-
-                    );
-
-                }
-
-            );
-
-            lines.push("");
-
-        }
+        response
 
     );
 
-    result.markdown =
-
-        lines.join(
-
-            "\n"
-
-        );
-
-    /*----------------------------------
-      Card
-    ----------------------------------*/
-
-    result.cards.push({
-
-        type:
-
-            "range-directory",
-
-        title:
-
-            "Range Directory",
-
-        data: {
-
-            total:
-
-                directory.length,
-
-            ranges:
-
-                directory
-
-        }
-
-    });
-
-    /*----------------------------------
-      Section
-    ----------------------------------*/
-
-    result.sections.push({
-
-        title:
-
-            "Range Directory",
-
-        data: {
-
-            total:
-
-                directory.length,
-
-            ranges:
-
-                directory
-
-        }
-
-    });
-
-    /*----------------------------------
-      Metadata
-    ----------------------------------*/
-
-    result.success =
-
-        true;
-
-    result.intent =
-
-        StaffConstants.INTENTS.STAFF_RANGE_DIRECTORY;
-
-    result.confidence =
-
-        response.confidence ||
-
-        1;
-
-    result.source =
-
-        response.source ||
-
-        "LOCAL";
-
-    result.message =
-
-        "Range directory formatted successfully.";
-
-    return result;
-
 };
- /*=========================================================
- FORMAT BEAT DIRECTORY
+
+
+/*=========================================================
+  FORMAT BEAT DIRECTORY
+
+  Canonical Business Logic:
+  - LIST staff in Beat
+  - COUNT staff in Beat
+  - Group staff by exact designation
+  - Keep designations independent
+  - Show designation count
+  - Show staff names under designation
+  - Show Total Staff
+
+  Example:
+
+  Poro-East Beat
+
+  Banasahayak (1)
+  - CHANDAN ORAON
+
+  BS (1)
+  - UPEN RAVA
+
+  DR/Fr (1)
+  - PRADIP BARMAN
+
+  Total Staff: 3
 =========================================================*/
 
-StaffFormatter.formatStaffBeatDirectory
- = function (
+StaffFormatter.formatStaffBeatDirectory = function (
 
     response
 
 ) {
 
-    const result =
-
-        StaffFormatter.createResponse(
-
-            response
-
-        );
-
     /*----------------------------------
-      Validate
+      Use Canonical Directory Formatter
     ----------------------------------*/
 
-    if (
+    return StaffFormatter.formatDirectory(
 
-        !response ||
-
-        !response.success ||
-
-        !Array.isArray(
-
-            response.data
-
-        )
-
-    ) {
-
-        result.message =
-
-            response?.message ||
-
-            "Beat directory not available.";
-
-        return result;
-
-    }
-
-    const directory =
-
-        response.data;
-
-    /*----------------------------------
-      Markdown
-    ----------------------------------*/
-
-    const lines = [
-
-        "# 🌿 BEAT DIRECTORY",
-
-        "",
-
-        "**Total Beats:** " +
-
-            directory.length,
-
-        ""
-
-    ];
-
-    directory.forEach(
-
-        function (
-
-            group,
-
-            index
-
-        ) {
-
-            lines.push(
-
-                "## " +
-
-                (
-
-                    index + 1
-
-                ) +
-
-                ". " +
-
-                (
-
-                    group.beat ||
-
-                    "UNASSIGNED"
-
-                )
-
-            );
-
-            lines.push(
-
-                "**Staff Count:** " +
-
-                (
-
-                    group.totalStaff ||
-
-                    0
-
-                )
-
-            );
-
-            lines.push("");
-
-            (
-
-                group.staff ||
-
-                []
-
-            ).forEach(
-
-                function (
-
-                    staff
-
-                ) {
-
-                    lines.push(
-
-                        "- **" +
-
-                        (
-
-                            staff.name ||
-
-                            "-"
-
-                        ) +
-
-                        "** (" +
-
-                        (
-
-                            staff.designation ||
-
-                            "-"
-
-                        ) +
-
-                        ")"
-
-                    );
-
-                }
-
-            );
-
-            lines.push("");
-
-        }
+        response
 
     );
-
-    result.markdown =
-
-        lines.join(
-
-            "\n"
-
-        );
-
-    /*----------------------------------
-      Card
-    ----------------------------------*/
-
-    result.cards.push({
-
-        type:
-
-            "beat-directory",
-
-        title:
-
-            "Beat Directory",
-
-        data: {
-
-            total:
-
-                directory.length,
-
-            beats:
-
-                directory
-
-        }
-
-    });
-
-    /*----------------------------------
-      Section
-    ----------------------------------*/
-
-    result.sections.push({
-
-        title:
-
-            "Beat Directory",
-
-        data: {
-
-            total:
-
-                directory.length,
-
-            beats:
-
-                directory
-
-        }
-
-    });
-
-    /*----------------------------------
-      Metadata
-    ----------------------------------*/
-
-    result.success =
-
-        true;
-
-    result.intent =
-
-        StaffConstants.INTENTS.STAFF_BEAT_DIRECTORY;
-
-    result.confidence =
-
-        response.confidence ||
-
-        1;
-
-    result.source =
-
-        response.source ||
-
-        "LOCAL";
-
-    result.message =
-
-        "Beat directory formatted successfully.";
-
-    return result;
 
 };
  /*=========================================================
