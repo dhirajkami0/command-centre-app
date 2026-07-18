@@ -44,22 +44,13 @@ const IntentManager = {};
 
 GG.BusinessRegistry = Object.freeze({
 
-    /*=====================================================
-      CONFIDENCE
-    =====================================================*/
-
     confidenceThreshold:
 
         GG.Config.INTENT.HIGH_CONFIDENCE,
 
-
-    /*=====================================================
-      REGISTERED DOMAINS
-    =====================================================*/
-
     domains: Object.freeze([
 
-        GG.StaffConstants?.DOMAIN,
+        GG.StaffConstants.DOMAIN,
 
         GG.GISConstants?.DOMAIN,
 
@@ -73,178 +64,27 @@ GG.BusinessRegistry = Object.freeze({
 
         "report"
 
-    ]
+    ].filter(Boolean)),
 
-    .filter(Boolean)
+    intents: Object.freeze(
 
-    .filter(
+        Object.values(
 
-        function (
-
-            value,
-
-            index,
-
-            array
-
-        ) {
-
-            return (
-
-                array.indexOf(value) ===
-
-                index
-
-            );
-
-        }
-
-    )),
-
-
-    /*=====================================================
-      REGISTERED CANONICAL INTENTS
-
-      IMPORTANT:
-      Only Staff and GIS currently expose
-      canonical INTENTS registries.
-    =====================================================*/
-
-    intents: Object.freeze([
-
-        ...Object.values(
-
-            GG.StaffConstants?.INTENTS ||
-
-            {}
-
-        ),
-
-        ...Object.values(
-
-            GG.GISConstants?.INTENTS ||
-
-            {}
+            GG.StaffConstants.INTENTS
 
         )
 
-    ]
+    ),
 
-    .filter(Boolean)
+    entityTypes: Object.freeze(
 
-    .filter(
+        Object.values(
 
-        function (
-
-            value,
-
-            index,
-
-            array
-
-        ) {
-
-            return (
-
-                array.indexOf(value) ===
-
-                index
-
-            );
-
-        }
-
-    )),
-
-
-    /*=====================================================
-      DOMAIN → CANONICAL INTENT OWNERSHIP
-    =====================================================*/
-
-    domainIntents: Object.freeze({
-
-        staff:
-
-            Object.freeze(
-
-                Object.values(
-
-                    GG.StaffConstants?.INTENTS ||
-
-                    {}
-
-                )
-
-            ),
-
-        gis:
-
-            Object.freeze(
-
-                Object.values(
-
-                    GG.GISConstants?.INTENTS ||
-
-                    {}
-
-                )
-
-            )
-
-    }),
-
-
-    /*=====================================================
-      REGISTERED ENTITY TYPES
-
-      Combine Staff + GIS when available.
-    =====================================================*/
-
-    entityTypes: Object.freeze([
-
-        ...Object.values(
-
-            GG.StaffConstants?.ENTITY_TYPES ||
-
-            {}
-
-        ),
-
-        ...Object.values(
-
-            GG.GISConstants?.ENTITY_TYPES ||
-
-            {}
+            GG.StaffConstants.ENTITY_TYPES
 
         )
 
-    ]
-
-    .filter(Boolean)
-
-    .filter(
-
-        function (
-
-            value,
-
-            index,
-
-            array
-
-        ) {
-
-            return (
-
-                array.indexOf(value) ===
-
-                index
-
-            );
-
-        }
-
-    ))
+    )
 
 });
 /*=========================================================
