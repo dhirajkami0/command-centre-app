@@ -201,6 +201,10 @@ AI.embed = async function (
  DETECT INTENT
 =========================================================*/
 
+/*=========================================================
+ DETECT INTENT
+=========================================================*/
+
 AI.detectIntent = async function (
 
     request = {}
@@ -225,15 +229,22 @@ AI.detectIntent = async function (
 
         );
 
-        /*----------------------------------
-          Validate
-        ----------------------------------*/
+
+        /*=================================================
+          VALIDATE REQUEST
+        =================================================*/
 
         if (
 
             !request ||
 
-            typeof request !== "object"
+            typeof request !== "object" ||
+
+            Array.isArray(
+
+                request
+
+            )
 
         ) {
 
@@ -245,33 +256,355 @@ AI.detectIntent = async function (
 
         }
 
-        /*----------------------------------
-          Call Cloud Function
-        ----------------------------------*/
+
+        if (
+
+            typeof request.query !== "string" ||
+
+            !request.query.trim()
+
+        ) {
+
+            throw new Error(
+
+                "AI intent query is required."
+
+            );
+
+        }
+
+
+        /*=================================================
+          BUSINESS REGISTRY
+
+          This is the authoritative runtime registry.
+
+          Gemini may SELECT from this registry.
+
+          Gemini may NOT create new values.
+        =================================================*/
+
+        const business =
+
+            GG.BusinessRegistry;
+
+
+        if (
+
+            !business ||
+
+            typeof business !== "object"
+
+        ) {
+
+            throw new Error(
+
+                "BusinessRegistry unavailable."
+
+            );
+
+        }
+
+
+        const domains =
+
+            Array.isArray(
+
+                business.domains
+
+            )
+
+                ? Array.from(
+
+                    business.domains
+
+                )
+
+                : [];
+
+
+        const intents =
+
+            Array.isArray(
+
+                business.intents
+
+            )
+
+                ? Array.from(
+
+                    business.intents
+
+                )
+
+                : [];
+
+
+        const entityTypes =
+
+            Array.isArray(
+
+                business.entityTypes
+
+            )
+
+                ? Array.from(
+
+                    business.entityTypes
+
+                )
+
+                : [];
+
+
+        if (
+
+            !domains.length
+
+        ) {
+
+            throw new Error(
+
+                "BusinessRegistry contains no domains."
+
+            );
+
+        }
+
+
+        if (
+
+            !intents.length
+
+        ) {
+
+            throw new Error(
+
+                "BusinessRegistry contains no intents."
+
+            );
+
+        }
+
+
+        /*=================================================
+          BUILD RUNTIME RULES
+        =================================================*/
+
+        const rules = {
+
+            classifyOnly:
+
+                true,
+
+            allowNewDomain:
+
+                false,
+
+            allowNewIntent:
+
+                false,
+
+            allowNewEntityType:
+
+                false,
+
+            allowReasoning:
+
+                false
+
+        };
+
+
+        /*=================================================
+          EXTRACT LOCAL ENTITIES
+
+          Preserve entities already found by the local
+          deterministic extraction layer.
+        =================================================*/
+
+        const extractedEntities =
+
+            request.extractedEntities &&
+
+            typeof request.extractedEntities === "object"
+
+                ? request.extractedEntities
+
+                : request.localIntent?.entities &&
+
+                  typeof request.localIntent.entities === "object"
+
+                    ? request.localIntent.entities
+
+                    : {};
+
+
+        /*=================================================
+          NORMALIZED QUERY
+        =================================================*/
+
+        const normalizedQuery =
+
+            request.normalizedQuery ||
+
+            request.query
+
+                .trim()
+
+                .toUpperCase();
+
+
+        /*=================================================
+          BUILD FRONTEND AI INTENT REQUEST
+        =================================================*/
+
+        const intentRequest = {
+
+            query:
+
+                request.query.trim(),
+
+            normalizedQuery:
+
+                normalizedQuery,
+
+            localIntent:
+
+                request.localIntent &&
+
+                typeof request.localIntent === "object"
+
+                    ? request.localIntent
+
+                    : {},
+
+            extractedEntities:
+
+                extractedEntities,
+
+            business: {
+
+                domains:
+
+                    domains,
+
+                intents:
+
+                    intents,
+
+                entityTypes:
+
+                    entityTypes
+
+            },
+
+            rules:
+
+                rules
+
+        };
+
+
+        /*=================================================
+          BUILD SEMANTIC PROMPT
+
+          AIIntentPrompt.build() adds semantic definitions
+          from StaffIntentDefinitions.
+
+          Example:
+
+          staffProfile
+          Definition: General identity/profile...
+
+          staffContact
+          Definition: Contact/call/reach/communicate...
+        =================================================*/
+
+        if (
+
+            GG.AIIntentPrompt &&
+
+            typeof GG.AIIntentPrompt.build ===
+
+                "function"
+
+        ) {
+
+            intentRequest.prompt =
+
+                GG.AIIntentPrompt.build(
+
+                    intentRequest
+
+                );
+
+        }
+
+
+        /*=================================================
+          DEBUG
+
+          Useful while testing.
+        =================================================*/
+
+        console.log(
+
+            "Business Registry:",
+
+            {
+
+                domains:
+
+                    domains.length,
+
+                intents:
+
+                    intents.length,
+
+                entityTypes:
+
+                    entityTypes.length
+
+            }
+
+        );
+
+
+        console.log(
+
+            "Intent Request:",
+
+            intentRequest
+
+        );
+
+
+        /*=================================================
+          CALL CLOUD FUNCTION
+
+          IMPORTANT:
+
+          Send the COMPLETE request.
+
+          Do NOT reduce this back to only:
+          {
+              query,
+              localIntent
+          }
+
+        =================================================*/
 
         const response =
 
             await window.callAI(
 
-                {
-
-                    query:
-
-                        request.query ||
-
-                        "",
-
-                    localIntent:
-
-                        request.localIntent ||
-
-                        {}
-
-                },
+                intentRequest,
 
                 "DETECT_INTENT"
 
             );
+
 
         console.log(
 
@@ -281,9 +614,10 @@ AI.detectIntent = async function (
 
         );
 
-        /*----------------------------------
-          Validate
-        ----------------------------------*/
+
+        /*=================================================
+          VALIDATE RESPONSE STRUCTURE
+        =================================================*/
 
         if (
 
@@ -303,9 +637,159 @@ AI.detectIntent = async function (
 
         }
 
-        /*----------------------------------
-          Normalize
-        ----------------------------------*/
+
+        /*=================================================
+          FRONTEND REGISTRY ENFORCEMENT
+
+          Even though the backend also validates the
+          registry, enforce it again before allowing
+          the intent into IntentManager.
+
+          This provides defense in depth.
+        =================================================*/
+
+        const canonicalDomain =
+
+            domains.find(
+
+                function (
+
+                    domain
+
+                ) {
+
+                    return (
+
+                        String(
+
+                            domain
+
+                        ).toLowerCase() ===
+
+                        String(
+
+                            response.domain
+
+                        ).toLowerCase()
+
+                    );
+
+                }
+
+            );
+
+
+        const canonicalIntent =
+
+            intents.find(
+
+                function (
+
+                    intent
+
+                ) {
+
+                    return (
+
+                        String(
+
+                            intent
+
+                        ).toLowerCase() ===
+
+                        String(
+
+                            response.intent
+
+                        ).toLowerCase()
+
+                    );
+
+                }
+
+            );
+
+
+        /*=================================================
+          REJECT INVENTED DOMAIN
+        =================================================*/
+
+        if (
+
+            !canonicalDomain
+
+        ) {
+
+            throw new Error(
+
+                "AI returned unregistered domain: " +
+
+                response.domain
+
+            );
+
+        }
+
+
+        /*=================================================
+          REJECT INVENTED INTENT
+        =================================================*/
+
+        if (
+
+            !canonicalIntent
+
+        ) {
+
+            throw new Error(
+
+                "AI returned unregistered intent: " +
+
+                response.intent
+
+            );
+
+        }
+
+
+        /*=================================================
+          FORCE EXACT CANONICAL VALUES
+
+          Example:
+
+          Gemini:
+              STAFFCONTACT
+
+          Runtime:
+              staffContact
+
+          Result:
+              staffContact
+
+          But:
+
+          Gemini:
+              staffCommunicationInfo
+
+          Result:
+              REJECTED
+
+          No semantic alias is invented here.
+        =================================================*/
+
+        response.domain =
+
+            canonicalDomain;
+
+
+        response.intent =
+
+            canonicalIntent;
+
+
+        /*=================================================
+          NORMALIZE
+        =================================================*/
 
         const normalized =
 
@@ -315,6 +799,21 @@ AI.detectIntent = async function (
 
             );
 
+
+        /*=================================================
+          FINAL CANONICAL SAFETY CHECK
+        =================================================*/
+
+        normalized.domain =
+
+            canonicalDomain;
+
+
+        normalized.intent =
+
+            canonicalIntent;
+
+
         console.log(
 
             "Normalized:",
@@ -323,7 +822,9 @@ AI.detectIntent = async function (
 
         );
 
+
         console.groupEnd();
+
 
         return normalized;
 
@@ -343,7 +844,9 @@ AI.detectIntent = async function (
 
         );
 
+
         console.groupEnd();
+
 
         return {
 
