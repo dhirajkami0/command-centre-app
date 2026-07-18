@@ -328,6 +328,1045 @@ StaffFormatter.initialize = function () {
     return true;
 
 };
+
+ /*=========================================================
+  FORMAT DUTY / PATROL SESSION
+
+  CANONICAL BUSINESS RULE:
+
+  Duty = Patrol
+
+  ONE shared formatter for:
+
+  STAFF_DUTY_STARTED
+  STAFF_DUTY_ENDED
+  STAFF_PATROL_START
+  STAFF_PATROL_END
+  STAFF_PATROL_DURATION
+
+  All intents use the SAME canonical session data.
+
+  Only presentation priority changes.
+
+  Expected Session Data:
+
+  {
+      name,
+      cleanName,
+      designation,
+
+      startedAt,
+      endedAt,
+
+      durationMs,
+
+      dutyType,
+      assignedArea,
+      dutyActive,
+
+      distanceKm,
+      pointCount
+  }
+=========================================================*/
+
+StaffFormatter.formatDutyPatrolSession = function (
+
+    response,
+
+    intent
+
+) {
+
+    /*----------------------------------
+      Create Canonical Response
+    ----------------------------------*/
+
+    const result =
+
+        StaffFormatter.createResponse(
+
+            response
+
+        );
+
+
+    /*----------------------------------
+      Validate Response
+    ----------------------------------*/
+
+    if (
+
+        !response ||
+
+        !response.success ||
+
+        !response.data ||
+
+        typeof response.data !==
+
+        "object"
+
+    ) {
+
+        result.success =
+
+            false;
+
+        result.message =
+
+            response?.message ||
+
+            "Duty / patrol session information not available.";
+
+        return result;
+
+    }
+
+
+    /*----------------------------------
+      Canonical Session
+    ----------------------------------*/
+
+    const session =
+
+        response.data;
+
+
+    /*----------------------------------
+      Resolve Intent
+    ----------------------------------*/
+
+    const resolvedIntent =
+
+        intent ||
+
+        response.intent ||
+
+        "";
+
+
+    /*----------------------------------
+      Canonical Values
+    ----------------------------------*/
+
+    const name =
+
+        session.name ||
+
+        session.cleanName ||
+
+        "Staff";
+
+
+    const designation =
+
+        session.designation ||
+
+        "";
+
+
+    const startedAt =
+
+        session.startedAt ??
+
+        null;
+
+
+    const endedAt =
+
+        session.endedAt ??
+
+        null;
+
+
+    const durationMs =
+
+        Number(
+
+            session.durationMs ||
+
+            0
+
+        );
+
+
+    const dutyType =
+
+        session.dutyType ||
+
+        "Not Assigned";
+
+
+    const assignedArea =
+
+        session.assignedArea ||
+
+        "Not Assigned";
+
+
+    const dutyActive =
+
+        session.dutyActive ===
+
+        true;
+
+
+    const distanceKm =
+
+        Number(
+
+            session.distanceKm ||
+
+            0
+
+        );
+
+
+    const pointCount =
+
+        Number(
+
+            session.pointCount ||
+
+            0
+
+        );
+
+
+    /*=========================================================
+      FORMAT DATE / TIME
+    =========================================================*/
+
+    function formatDateTime(
+
+        value
+
+    ) {
+
+        if (
+
+            value === null ||
+
+            value === undefined ||
+
+            value === ""
+
+        ) {
+
+            return "Not Available";
+
+        }
+
+
+        const date =
+
+            new Date(
+
+                value
+
+            );
+
+
+        if (
+
+            Number.isNaN(
+
+                date.getTime()
+
+            )
+
+        ) {
+
+            return "Not Available";
+
+        }
+
+
+        return date.toLocaleString(
+
+            "en-IN",
+
+            {
+
+                day:
+
+                    "2-digit",
+
+                month:
+
+                    "short",
+
+                year:
+
+                    "numeric",
+
+                hour:
+
+                    "2-digit",
+
+                minute:
+
+                    "2-digit",
+
+                second:
+
+                    "2-digit",
+
+                hour12:
+
+                    true
+
+            }
+
+        );
+
+    }
+
+
+    /*=========================================================
+      FORMAT DURATION
+    =========================================================*/
+
+    function formatDuration(
+
+        milliseconds
+
+    ) {
+
+        const totalMilliseconds =
+
+            Number(
+
+                milliseconds
+
+            );
+
+
+        if (
+
+            !Number.isFinite(
+
+                totalMilliseconds
+
+            ) ||
+
+            totalMilliseconds <
+
+            0
+
+        ) {
+
+            return "Not Available";
+
+        }
+
+
+        const totalSeconds =
+
+            Math.floor(
+
+                totalMilliseconds /
+
+                1000
+
+            );
+
+
+        const days =
+
+            Math.floor(
+
+                totalSeconds /
+
+                86400
+
+            );
+
+
+        const hours =
+
+            Math.floor(
+
+                (
+
+                    totalSeconds %
+
+                    86400
+
+                ) /
+
+                3600
+
+            );
+
+
+        const minutes =
+
+            Math.floor(
+
+                (
+
+                    totalSeconds %
+
+                    3600
+
+                ) /
+
+                60
+
+            );
+
+
+        const seconds =
+
+            totalSeconds %
+
+            60;
+
+
+        const parts =
+
+            [];
+
+
+        if (
+
+            days >
+
+            0
+
+        ) {
+
+            parts.push(
+
+                days +
+
+                (
+
+                    days === 1
+
+                        ? " day"
+
+                        : " days"
+
+                )
+
+            );
+
+        }
+
+
+        if (
+
+            hours >
+
+            0
+
+        ) {
+
+            parts.push(
+
+                hours +
+
+                (
+
+                    hours === 1
+
+                        ? " hour"
+
+                        : " hours"
+
+                )
+
+            );
+
+        }
+
+
+        if (
+
+            minutes >
+
+            0
+
+        ) {
+
+            parts.push(
+
+                minutes +
+
+                (
+
+                    minutes === 1
+
+                        ? " minute"
+
+                        : " minutes"
+
+                )
+
+            );
+
+        }
+
+
+        if (
+
+            parts.length ===
+
+            0
+
+        ) {
+
+            parts.push(
+
+                seconds +
+
+                (
+
+                    seconds === 1
+
+                        ? " second"
+
+                        : " seconds"
+
+                )
+
+            );
+
+        }
+
+
+        return parts.join(
+
+            " "
+
+        );
+
+    }
+
+
+    /*----------------------------------
+      Formatted Values
+    ----------------------------------*/
+
+    const startedText =
+
+        formatDateTime(
+
+            startedAt
+
+        );
+
+
+    const endedText =
+
+        dutyActive
+
+            ? "Duty Active"
+
+            : formatDateTime(
+
+                endedAt
+
+            );
+
+
+    const durationText =
+
+        startedAt
+
+            ? formatDuration(
+
+                durationMs
+
+            )
+
+            : "Not Available";
+
+
+    const statusText =
+
+        dutyActive
+
+            ? "Active"
+
+            : "Completed";
+
+
+    /*=========================================================
+      MARKDOWN
+    =========================================================*/
+
+    const lines = [
+
+        "# " +
+
+        name
+
+    ];
+
+
+    if (
+
+        designation
+
+    ) {
+
+        lines.push(
+
+            "",
+
+            "**Designation:** " +
+
+            designation
+
+        );
+
+    }
+
+
+    lines.push(
+
+        ""
+
+    );
+
+
+    /*=========================================================
+      INTENT-SPECIFIC PRESENTATION PRIORITY
+
+      Same data.
+      Different requested field appears first.
+    =========================================================*/
+
+
+    /*----------------------------------
+      Duty Started
+    ----------------------------------*/
+
+    if (
+
+        resolvedIntent ===
+
+        StaffConstants.INTENTS
+            .STAFF_DUTY_STARTED
+
+    ) {
+
+        lines.push(
+
+            "**Duty Started:** " +
+
+            startedText,
+
+            "",
+
+            "**Duration:** " +
+
+            durationText
+
+        );
+
+    }
+
+
+    /*----------------------------------
+      Duty Ended
+    ----------------------------------*/
+
+    else if (
+
+        resolvedIntent ===
+
+        StaffConstants.INTENTS
+            .STAFF_DUTY_ENDED
+
+    ) {
+
+        lines.push(
+
+            "**Duty Ended:** " +
+
+            endedText,
+
+            "",
+
+            "**Started:** " +
+
+            startedText,
+
+            "",
+
+            "**Duration:** " +
+
+            durationText
+
+        );
+
+    }
+
+
+    /*----------------------------------
+      Patrol Start
+    ----------------------------------*/
+
+    else if (
+
+        resolvedIntent ===
+
+        StaffConstants.INTENTS
+            .STAFF_PATROL_START
+
+    ) {
+
+        lines.push(
+
+            "**Patrol Started:** " +
+
+            startedText,
+
+            "",
+
+            "**Duration:** " +
+
+            durationText
+
+        );
+
+    }
+
+
+    /*----------------------------------
+      Patrol End
+    ----------------------------------*/
+
+    else if (
+
+        resolvedIntent ===
+
+        StaffConstants.INTENTS
+            .STAFF_PATROL_END
+
+    ) {
+
+        lines.push(
+
+            "**Patrol Ended:** " +
+
+            endedText,
+
+            "",
+
+            "**Started:** " +
+
+            startedText,
+
+            "",
+
+            "**Duration:** " +
+
+            durationText
+
+        );
+
+    }
+
+
+    /*----------------------------------
+      Patrol Duration
+    ----------------------------------*/
+
+    else if (
+
+        resolvedIntent ===
+
+        StaffConstants.INTENTS
+            .STAFF_PATROL_DURATION
+
+    ) {
+
+        lines.push(
+
+            "**Duration:** " +
+
+            durationText,
+
+            "",
+
+            "**Started:** " +
+
+            startedText
+
+        );
+
+    }
+
+
+    /*----------------------------------
+      Generic Session Fallback
+    ----------------------------------*/
+
+    else {
+
+        lines.push(
+
+            "**Started:** " +
+
+            startedText,
+
+            "",
+
+            "**Ended:** " +
+
+            endedText,
+
+            "",
+
+            "**Duration:** " +
+
+            durationText
+
+        );
+
+    }
+
+
+    /*=========================================================
+      COMMON SESSION INFORMATION
+    =========================================================*/
+
+    lines.push(
+
+        "",
+
+        "**Duty Type:** " +
+
+        dutyType,
+
+        "",
+
+        "**Assigned Area:** " +
+
+        assignedArea,
+
+        "",
+
+        "**Status:** " +
+
+        statusText
+
+    );
+
+
+    /*----------------------------------
+      Optional Patrol Analytics
+    ----------------------------------*/
+
+    if (
+
+        distanceKm >
+
+        0
+
+    ) {
+
+        lines.push(
+
+            "",
+
+            "**Distance:** " +
+
+            distanceKm.toFixed(
+
+                2
+
+            ) +
+
+            " km"
+
+        );
+
+    }
+
+
+    if (
+
+        pointCount >
+
+        0
+
+    ) {
+
+        lines.push(
+
+            "",
+
+            "**GPS Points:** " +
+
+            pointCount
+
+        );
+
+    }
+
+
+    /*----------------------------------
+      Markdown
+    ----------------------------------*/
+
+    result.markdown =
+
+        lines.join(
+
+            "\n"
+
+        );
+
+
+    /*=========================================================
+      CARD DATA
+    =========================================================*/
+
+    const cardData = {
+
+        name:
+
+            name,
+
+        cleanName:
+
+            session.cleanName ||
+
+            "",
+
+        designation:
+
+            designation,
+
+        startedAt:
+
+            startedAt,
+
+        endedAt:
+
+            endedAt,
+
+        startedText:
+
+            startedText,
+
+        endedText:
+
+            endedText,
+
+        durationMs:
+
+            durationMs,
+
+        durationText:
+
+            durationText,
+
+        dutyType:
+
+            dutyType,
+
+        assignedArea:
+
+            assignedArea,
+
+        dutyActive:
+
+            dutyActive,
+
+        status:
+
+            statusText,
+
+        distanceKm:
+
+            distanceKm,
+
+        pointCount:
+
+            pointCount
+
+    };
+
+
+    result.cards.push({
+
+        type:
+
+            "duty-patrol-session",
+
+        title:
+
+            name +
+
+            " - Duty / Patrol Session",
+
+        data:
+
+            cardData
+
+    });
+
+
+    /*=========================================================
+      SECTION DATA
+    =========================================================*/
+
+    result.sections.push({
+
+        title:
+
+            "Duty / Patrol Session",
+
+        data:
+
+            cardData
+
+    });
+
+
+    /*=========================================================
+      FINAL RESPONSE METADATA
+    =========================================================*/
+
+    result.success =
+
+        true;
+
+
+    result.intent =
+
+        resolvedIntent;
+
+
+    result.confidence =
+
+        response.confidence ||
+
+        1;
+
+
+    result.source =
+
+        response.source ||
+
+        "LOCAL";
+
+
+    result.message =
+
+        "Duty / patrol session formatted successfully.";
+
+
+    return result;
+
+};
 StaffFormatter.debugFormatter = function (name, formatter, response) {
     console.group("🎨 " + name);
     console.log("Intent:", response.intent);
@@ -8673,487 +9712,106 @@ StaffFormatter.formatStaffPatrolPoints
  FORMAT PATROL START
 =========================================================*/
 
+/*=========================================================
+  FORMAT STAFF PATROL START
+
+  CANONICAL BUSINESS RULE:
+
+  Duty = Patrol
+
+  Patrol Start = Duty Start
+
+  Data is already normalized by:
+
+  StaffQuery.buildDutyPatrolSession()
+
+  This formatter only delegates presentation
+  to the shared canonical session formatter.
+=========================================================*/
+
 StaffFormatter.formatStaffPatrolStart = function (
 
     response
 
 ) {
 
-    const result =
+    return StaffFormatter
+        .formatDutyPatrolSession(
 
-        StaffFormatter.createResponse(
+            response,
 
-            response
+            StaffConstants
+                .INTENTS
+                .STAFF_PATROL_START
 
         );
 
-    /*----------------------------------
-      Validate
-    ----------------------------------*/
-
-    if (
-
-        !response ||
-
-        !response.success ||
-
-        !response.data
-
-    ) {
-
-        result.message =
-
-            response?.message ||
-
-            "Patrol start information not found.";
-
-        return result;
-
-    }
-
-    /*----------------------------------
-      Canonical Profile
-    ----------------------------------*/
-
-    const profile =
-
-        response.data;
-
-    const identity =
-
-        profile.identity ||
-
-        {};
-
-    const analytics =
-
-        profile.analytics ||
-
-        {};
-
-    /*----------------------------------
-      Display Name
-    ----------------------------------*/
-
-    const displayName =
-
-        identity.name ||
-
-        identity.rawName ||
-
-        identity.cleanName ||
-
-        "-";
-
-    /*----------------------------------
-      Human Readable Time
-    ----------------------------------*/
-
-    const startedAt =
-
-        analytics.startedAt;
-
-    const startedText =
-
-        startedAt
-
-            ? new Date(
-
-                startedAt
-
-            ).toLocaleString(
-
-                "en-IN",
-
-                {
-
-                    dateStyle:
-
-                        "medium",
-
-                    timeStyle:
-
-                        "short"
-
-                }
-
-            )
-
-            : "-";
-
-    /*----------------------------------
-      Markdown
-    ----------------------------------*/
-
-    result.markdown = [
-
-        "# 🚶 PATROL START",
-
-        "",
-
-        "**Name:** " +
-
-            displayName,
-
-        "**Designation:** " +
-
-            (
-
-                identity.designation ||
-
-                "-"
-
-            ),
-
-        "**Patrol Started:** " +
-
-            startedText
-
-    ].join(
-
-        "\n"
-
-    );
-
-    /*----------------------------------
-      Card
-    ----------------------------------*/
-
-    result.cards.push({
-
-        type:
-
-            "staff-patrol-start",
-
-        title:
-
-            displayName,
-
-        data: {
-
-            name:
-
-                displayName,
-
-            designation:
-
-                identity.designation ||
-
-                "",
-
-            startedAt:
-
-                startedText
-
-        }
-
-    });
-
-    /*----------------------------------
-      Section
-    ----------------------------------*/
-
-    result.sections.push({
-
-        title:
-
-            "Patrol Start",
-
-        data: {
-
-            name:
-
-                displayName,
-
-            designation:
-
-                identity.designation ||
-
-                "",
-
-            startedAt:
-
-                startedText
-
-        }
-
-    });
-
-    /*----------------------------------
-      Metadata
-    ----------------------------------*/
-
-    result.success =
-
-        true;
-
-    result.intent =
-
-        StaffConstants.INTENTS.STAFF_PATROL_START;
-
-    result.confidence =
-
-        response.confidence ||
-
-        1;
-
-    result.source =
-
-        response.source ||
-
-        "LOCAL";
-
-    result.message =
-
-        "Patrol start formatted successfully.";
-
-    return result;
-
 };
- /*=========================================================
- FORMAT PATROL END
+
+
+/*=========================================================
+  FORMAT STAFF PATROL END
+
+  CANONICAL BUSINESS RULE:
+
+  Duty = Patrol
+
+  Patrol End = Duty End
+
+  Data is already normalized by:
+
+  StaffQuery.buildDutyPatrolSession()
+
+  This formatter only delegates presentation
+  to the shared canonical session formatter.
 =========================================================*/
 
-StaffFormatter.formatStaffPatrolEnd
- = function (
+StaffFormatter.formatStaffPatrolEnd = function (
 
     response
 
 ) {
 
-    const result =
+    return StaffFormatter
+        .formatDutyPatrolSession(
 
-        StaffFormatter.createResponse(
+            response,
 
-            response
+            StaffConstants
+                .INTENTS
+                .STAFF_PATROL_END
 
         );
 
-    /*----------------------------------
-      Validate
-    ----------------------------------*/
-
-    if (
-
-        !response ||
-
-        !response.success ||
-
-        !response.data
-
-    ) {
-
-        result.message =
-
-            response?.message ||
-
-            "Patrol end information not found.";
-
-        return result;
-
-    }
-
-    /*----------------------------------
-      Canonical Profile
-    ----------------------------------*/
-
-    const profile =
-
-        response.data;
-
-    const identity =
-
-        profile.identity ||
-
-        {};
-
-    const analytics =
-
-        profile.analytics ||
-
-        {};
-
-    /*----------------------------------
-      Display Name
-    ----------------------------------*/
-
-    const displayName =
-
-        identity.name ||
-
-        identity.rawName ||
-
-        identity.cleanName ||
-
-        "-";
-
-    /*----------------------------------
-      Human Readable Time
-    ----------------------------------*/
-
-    const endedAt =
-
-        analytics.endedAt;
-
-    const endedText =
-
-        endedAt
-
-            ? new Date(
-
-                endedAt
-
-            ).toLocaleString(
-
-                "en-IN",
-
-                {
-
-                    dateStyle:
-
-                        "medium",
-
-                    timeStyle:
-
-                        "short"
-
-                }
-
-            )
-
-            : "-";
-
-    /*----------------------------------
-      Markdown
-    ----------------------------------*/
-
-    result.markdown = [
-
-        "# 🏁 PATROL END",
-
-        "",
-
-        "**Name:** " +
-
-            displayName,
-
-        "**Designation:** " +
-
-            (
-
-                identity.designation ||
-
-                "-"
-
-            ),
-
-        "**Patrol Ended:** " +
-
-            endedText
-
-    ].join(
-
-        "\n"
-
-    );
-
-    /*----------------------------------
-      Card
-    ----------------------------------*/
-
-    result.cards.push({
-
-        type:
-
-            "staff-patrol-end",
-
-        title:
-
-            displayName,
-
-        data: {
-
-            name:
-
-                displayName,
-
-            designation:
-
-                identity.designation ||
-
-                "",
-
-            endedAt:
-
-                endedText
-
-        }
-
-    });
-
-    /*----------------------------------
-      Section
-    ----------------------------------*/
-
-    result.sections.push({
-
-        title:
-
-            "Patrol End",
-
-        data: {
-
-            name:
-
-                displayName,
-
-            designation:
-
-                identity.designation ||
-
-                "",
-
-            endedAt:
-
-                endedText
-
-        }
-
-    });
-
-    /*----------------------------------
-      Metadata
-    ----------------------------------*/
-
-    result.success =
-
-        true;
-
-    result.intent =
-
-        StaffConstants.INTENTS.STAFF_PATROL_END;
-
-    result.confidence =
-
-        response.confidence ||
-
-        1;
-
-    result.source =
-
-        response.source ||
-
-        "LOCAL";
-
-    result.message =
-
-        "Patrol end formatted successfully.";
-
-    return result;
-
 };
- /*=========================================================
- FORMAT PATROL DURATION
+
+
+/*=========================================================
+  FORMAT STAFF PATROL DURATION
+
+  CANONICAL BUSINESS RULE:
+
+  Duty Duration = Patrol Duration
+
+  Both use the exact same canonical
+  session start and end timestamps.
+
+  Active Session:
+
+      Duration =
+      current time - startedAt
+
+  Completed Session:
+
+      Duration =
+      endedAt - startedAt
+
+  Data is already normalized by:
+
+  StaffQuery.buildDutyPatrolSession()
+
+  This formatter only delegates presentation
+  to the shared canonical session formatter.
 =========================================================*/
 
 StaffFormatter.formatStaffPatrolDuration = function (
@@ -9162,209 +9820,126 @@ StaffFormatter.formatStaffPatrolDuration = function (
 
 ) {
 
-    const result =
+    return StaffFormatter
+        .formatDutyPatrolSession(
 
-        StaffFormatter.createResponse(
+            response,
 
-            response
+            StaffConstants
+                .INTENTS
+                .STAFF_PATROL_DURATION
 
         );
 
-    /*----------------------------------
-      Validate
-    ----------------------------------*/
+};
+ /*=========================================================
+  FORMAT STAFF DUTY STARTED
 
-    if (
+  CANONICAL BUSINESS RULE:
 
-        !response ||
+  Duty = Patrol
 
-        !response.success ||
+  Duty Started = Patrol Start
 
-        !response.data
+  Both use the exact same canonical
+  session startedAt timestamp.
 
-    ) {
+  Data is already normalized by:
 
-        result.message =
+  StaffQuery.buildDutyPatrolSession()
 
-            response?.message ||
+  Expected emphasis:
 
-            "Patrol duration information not found.";
+  "When did Dhiraj start duty?"
 
-        return result;
+  → Duty Started
+  → Duration
+  → Duty Type
+  → Assigned Area
+  → Status
 
-    }
+  This formatter only delegates presentation
+  to the shared canonical session formatter.
+=========================================================*/
 
-    /*----------------------------------
-      Canonical Profile
-    ----------------------------------*/
+StaffFormatter.formatStaffDutyStarted = function (
 
-    const profile =
+    response
 
-        response.data;
+) {
 
-    const identity =
+    return StaffFormatter
+        .formatDutyPatrolSession(
 
-        profile.identity ||
+            response,
 
-        {};
+            StaffConstants
+                .INTENTS
+                .STAFF_DUTY_STARTED
 
-    const analytics =
+        );
 
-        profile.analytics ||
+};
 
-        {};
 
-    /*----------------------------------
-      Display Name
-    ----------------------------------*/
+/*=========================================================
+  FORMAT STAFF DUTY ENDED
 
-    const displayName =
+  CANONICAL BUSINESS RULE:
 
-        identity.name ||
+  Duty = Patrol
 
-        identity.rawName ||
+  Duty Ended = Patrol End
 
-        identity.cleanName ||
+  Both use the exact same canonical
+  session endedAt timestamp.
 
-        "-";
+  Data is already normalized by:
 
-    /*----------------------------------
-      Duration
-    ----------------------------------*/
+  StaffQuery.buildDutyPatrolSession()
 
-    const duration =
+  Expected emphasis:
 
-        analytics.duration ||
+  "When did Dhiraj end duty?"
 
-        "-";
+  → Duty Ended
+  → Duration
+  → Duty Type
+  → Assigned Area
+  → Status
 
-    /*----------------------------------
-      Markdown
-    ----------------------------------*/
+  Active Session:
 
-    result.markdown = [
+      endedAt = null
 
-        "# ⏱️ PATROL DURATION",
+      Status = Active
 
-        "",
+  Completed Session:
 
-        "**Name:** " +
+      endedAt = canonical session end time
 
-            displayName,
+      Status = Ended / Inactive
 
-        "**Designation:** " +
+  This formatter only delegates presentation
+  to the shared canonical session formatter.
+=========================================================*/
 
-            (
+StaffFormatter.formatStaffDutyEnded = function (
 
-                identity.designation ||
+    response
 
-                "-"
+) {
 
-            ),
+    return StaffFormatter
+        .formatDutyPatrolSession(
 
-        "**Duration:** " +
+            response,
 
-            duration
+            StaffConstants
+                .INTENTS
+                .STAFF_DUTY_ENDED
 
-    ].join(
-
-        "\n"
-
-    );
-
-    /*----------------------------------
-      Card
-    ----------------------------------*/
-
-    result.cards.push({
-
-        type:
-
-            "staff-patrol-duration",
-
-        title:
-
-            displayName,
-
-        data: {
-
-            name:
-
-                displayName,
-
-            designation:
-
-                identity.designation ||
-
-                "",
-
-            duration:
-
-                duration
-
-        }
-
-    });
-
-    /*----------------------------------
-      Section
-    ----------------------------------*/
-
-    result.sections.push({
-
-        title:
-
-            "Patrol Duration",
-
-        data: {
-
-            name:
-
-                displayName,
-
-            designation:
-
-                identity.designation ||
-
-                "",
-
-            duration:
-
-                duration
-
-        }
-
-    });
-
-    /*----------------------------------
-      Metadata
-    ----------------------------------*/
-
-    result.success =
-
-        true;
-
-    result.intent =
-
-        StaffConstants.INTENTS.STAFF_PATROL_DURATION;
-
-    result.confidence =
-
-        response.confidence ||
-
-        1;
-
-    result.source =
-
-        response.source ||
-
-        "LOCAL";
-
-    result.message =
-
-        "Patrol duration formatted successfully.";
-
-    return result;
+        );
 
 };
  /*=========================================================
