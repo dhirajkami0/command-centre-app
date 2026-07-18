@@ -61,7 +61,7 @@ StaffConstants.INTENTS = Object.freeze({
     STAFF_SEARCH: "staffSearch",
     STAFF_DIRECTORY: "staffDirectory",
     STAFF_EXISTS: "staffExists",
-    STAFF_BY_NAME: "staffByName",
+    
     STAFF_BY_PHONE: "staffByPhone",
     STAFF_BY_ROLE: "staffByRole",
     STAFF_BY_DESIGNATION: "staffByDesignation",
