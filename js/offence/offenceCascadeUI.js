@@ -152,345 +152,507 @@
     // 6. CREATE UI
     // =====================================================
 
-    OffenceCascadeUI.createUI =
-        function () {
+// =====================================================
+// 6. CREATE UI
+// =====================================================
 
-            // =============================================
-            // LAUNCHER
-            // =============================================
+OffenceCascadeUI.createUI =
+    function () {
 
-            if (
-                !document.getElementById(
-                    OffenceCascadeUI
-                        .IDS
-                        .launcher
-                )
-            ) {
+        // =============================================
+        // 1. CREATE / GET LAUNCHER
+        // =============================================
 
-                const launcher =
-                    document.createElement(
-                        "button"
-                    );
+        let launcher =
+            document.getElementById(
+                OffenceCascadeUI.IDS.launcher
+            );
 
 
-                launcher.id =
-                    OffenceCascadeUI
-                        .IDS
-                        .launcher;
+        if (!launcher) {
 
-
-                launcher.type =
-                    "button";
-
-
-                launcher.innerHTML =
-                    "🔥 OFFENCE FLOW";
-
-
-                launcher.style.cssText = `
-
-                    position:fixed;
-
-                    right:18px;
-
-                    bottom:90px;
-
-                    z-index:999990;
-
-                    background:
-                        linear-gradient(
-                            135deg,
-                            #ff1744,
-                            #b71c1c
-                        );
-
-                    color:white;
-
-                    border:
-                        1px solid
-                        rgba(
-                            255,
-                            255,
-                            255,
-                            0.25
-                        );
-
-                    border-radius:
-                        12px;
-
-                    padding:
-                        11px 16px;
-
-                    font-size:
-                        12px;
-
-                    font-weight:
-                        800;
-
-                    letter-spacing:
-                        0.4px;
-
-                    cursor:
-                        pointer;
-
-                    box-shadow:
-                        0 6px 22px
-                        rgba(
-                            255,
-                            23,
-                            68,
-                            0.35
-                        );
-
-                `;
-
-
-                launcher.addEventListener(
-
-                    "click",
-
-                    function (
-                        event
-                    ) {
-
-                        event
-                            .preventDefault();
-
-                        event
-                            .stopPropagation();
-
-
-                        OffenceCascadeUI
-                            .toggle();
-
-                    }
-
+            launcher =
+                document.createElement(
+                    "button"
                 );
 
 
-                document
-                    .body
-                    .appendChild(
-                        launcher
+            launcher.id =
+                OffenceCascadeUI.IDS.launcher;
+
+
+            launcher.type =
+                "button";
+
+
+            launcher.innerHTML =
+                "🔥 OFFENCE FLOW";
+
+
+            launcher.style.cssText = `
+
+                position:fixed;
+
+                right:18px;
+
+                bottom:90px;
+
+                z-index:999990;
+
+                display:block;
+
+                background:
+                    linear-gradient(
+                        135deg,
+                        #ff1744,
+                        #b71c1c
                     );
 
-            }
+                color:white;
+
+                border:
+                    1px solid
+                    rgba(
+                        255,
+                        255,
+                        255,
+                        0.25
+                    );
+
+                border-radius:12px;
+
+                padding:11px 16px;
+
+                font-size:12px;
+
+                font-weight:800;
+
+                letter-spacing:0.4px;
+
+                cursor:pointer;
+
+                pointer-events:auto;
+
+                user-select:none;
+
+                touch-action:manipulation;
+
+                box-shadow:
+                    0 6px 22px
+                    rgba(
+                        255,
+                        23,
+                        68,
+                        0.35
+                    );
+
+            `;
 
 
-            // =============================================
-            // PANEL
-            // =============================================
+            // =========================================
+            // LAUNCHER CLICK
+            // =========================================
 
-            if (
-                !document.getElementById(
-                    OffenceCascadeUI
-                        .IDS
-                        .panel
-                )
-            ) {
+            launcher.addEventListener(
 
-                const panel =
-                    document.createElement(
-                        "div"
+                "click",
+
+                function (event) {
+
+                    event.preventDefault();
+
+                    event.stopPropagation();
+
+
+                    console.log(
+                        "🔥 OFFENCE FLOW LAUNCHER CLICK"
                     );
 
 
-                panel.id =
-                    OffenceCascadeUI
-                        .IDS
-                        .panel;
+                    OffenceCascadeUI.toggle();
+
+                }
+
+            );
 
 
-                panel.style.cssText = `
+            document.body.appendChild(
+                launcher
+            );
 
-                    display:none;
+        }
 
-                    position:fixed;
 
-                    top:85px;
+        // =============================================
+        // 2. CREATE / GET PANEL
+        // =============================================
 
-                    right:12px;
+        let panel =
+            document.getElementById(
+                OffenceCascadeUI.IDS.panel
+            );
 
-                    width:
-                        min(
-                            390px,
-                            94vw
-                        );
 
-                    max-height:
-                        82vh;
+        if (!panel) {
 
-                    overflow-y:auto;
+            panel =
+                document.createElement(
+                    "div"
+                );
 
-                    z-index:999999;
 
-                    background:
-                        linear-gradient(
-                            180deg,
-                            rgba(
-                                10,
-                                15,
-                                18,
-                                0.98
-                            ),
-                            rgba(
-                                5,
-                                8,
-                                10,
-                                0.99
-                            )
-                        );
+            panel.id =
+                OffenceCascadeUI.IDS.panel;
 
-                    color:white;
 
-                    border:
-                        2px solid
-                        #ff1744;
+            panel.style.cssText = `
 
-                    border-radius:
-                        18px;
+                display:none;
 
-                    padding:
-                        16px;
+                position:fixed;
 
-                    box-shadow:
-                        0 0 25px
+                top:85px;
+
+                right:12px;
+
+                width:min(
+                    390px,
+                    94vw
+                );
+
+                max-height:82vh;
+
+                overflow-y:auto;
+
+                z-index:999999;
+
+                pointer-events:auto;
+
+                isolation:isolate;
+
+                background:
+                    linear-gradient(
+                        180deg,
                         rgba(
-                            255,
-                            23,
-                            68,
-                            0.30
-                        );
+                            10,
+                            15,
+                            18,
+                            0.98
+                        ),
+                        rgba(
+                            5,
+                            8,
+                            10,
+                            0.99
+                        )
+                    );
 
-                    font-family:
-                        Arial,
-                        sans-serif;
+                color:white;
 
-                `;
+                border:
+                    2px solid
+                    #ff1744;
+
+                border-radius:18px;
+
+                padding:16px;
+
+                box-sizing:border-box;
+
+                box-shadow:
+                    0 0 25px
+                    rgba(
+                        255,
+                        23,
+                        68,
+                        0.30
+                    );
+
+                font-family:
+                    Arial,
+                    sans-serif;
+
+            `;
 
 
-                panel.innerHTML = `
+            // =========================================
+            // IMPORTANT
+            //
+            // IDs are intentionally written on ONE LINE.
+            // Do not add line breaks inside id="..."
+            // =========================================
+
+            panel.innerHTML = `
+
+                <div
+                    style="
+                        display:flex;
+                        align-items:center;
+                        justify-content:space-between;
+                        gap:10px;
+                        margin-bottom:12px;
+                    "
+                >
 
                     <div
                         style="
-                            display:flex;
-                            align-items:center;
-                            justify-content:
-                                space-between;
-                            gap:10px;
-                            margin-bottom:12px;
+                            flex:1;
+                            min-width:0;
                         "
                     >
 
-                        <div>
-
-                            <div
-                                id="
-                                    ${OffenceCascadeUI.IDS.title}
-                                "
-                                style="
-                                    font-size:20px;
-                                    font-weight:800;
-                                    color:#ff5252;
-                                "
-                            >
-                                🔥 OFFENCE FLOW
-                            </div>
-
-                            <div
-                                id="
-                                    ${OffenceCascadeUI.IDS.breadcrumb}
-                                "
-                                style="
-                                    margin-top:4px;
-                                    font-size:11px;
-                                    color:#b0bec5;
-                                "
-                            >
-                                Select investigation path
-                            </div>
-
+                        <div
+                            id="offenceFlowTitle"
+                            style="
+                                font-size:20px;
+                                font-weight:800;
+                                color:#ff5252;
+                            "
+                        >
+                            🔥 OFFENCE FLOW
                         </div>
 
 
-                        <button
-
-                            id="
-                                offenceFlowClose
-                            "
-
-                            type="
-                                button
-                            "
-
+                        <div
+                            id="offenceFlowBreadcrumb"
                             style="
-                                width:34px;
-                                height:34px;
-                                border:0;
-                                border-radius:10px;
-                                background:#ff1744;
-                                color:white;
-                                cursor:pointer;
-                                font-weight:bold;
+                                margin-top:4px;
+                                font-size:11px;
+                                color:#b0bec5;
                             "
-
                         >
-                            ✕
-                        </button>
+                            Select investigation path
+                        </div>
 
                     </div>
 
 
-                    <div
-
-                        id="
-                            ${OffenceCascadeUI.IDS.content}
+                    <button
+                        id="offenceFlowClose"
+                        type="button"
+                        style="
+                            flex:0 0 34px;
+                            width:34px;
+                            height:34px;
+                            border:0;
+                            border-radius:10px;
+                            background:#ff1744;
+                            color:white;
+                            cursor:pointer;
+                            pointer-events:auto;
+                            font-weight:bold;
+                            font-size:16px;
+                            position:relative;
+                            z-index:20;
                         "
+                    >
+                        ✕
+                    </button>
 
-                    ></div>
-
-                `;
-
-
-                document
-                    .body
-                    .appendChild(
-                        panel
-                    );
+                </div>
 
 
-                document
-                    .getElementById(
-                        "offenceFlowClose"
-                    )
-                    ?.addEventListener(
+                <div
+                    id="offenceFlowContent"
+                    style="
+                        display:block;
+                        width:100%;
+                        position:relative;
+                        z-index:10;
+                        pointer-events:auto;
+                    "
+                >
+                </div>
 
-                        "click",
-
-                        function (
-                            event
-                        ) {
-
-                            event
-                                .preventDefault();
-
-                            event
-                                .stopPropagation();
+            `;
 
 
-                            OffenceCascadeUI
-                                .close();
+            document.body.appendChild(
+                panel
+            );
 
-                        }
+        }
 
-                    );
+
+        // =============================================
+        // 3. GET CRITICAL ELEMENTS
+        // =============================================
+
+        const closeButton =
+            document.getElementById(
+                "offenceFlowClose"
+            );
+
+
+        const titleElement =
+            document.getElementById(
+                OffenceCascadeUI.IDS.title
+            );
+
+
+        const breadcrumbElement =
+            document.getElementById(
+                OffenceCascadeUI.IDS.breadcrumb
+            );
+
+
+        const contentElement =
+            document.getElementById(
+                OffenceCascadeUI.IDS.content
+            );
+
+
+        // =============================================
+        // 4. DEBUG STRUCTURE
+        // =============================================
+
+        console.log(
+
+            "🔥 OFFENCE UI STRUCTURE",
+
+            {
+
+                launcher:
+                    !!launcher,
+
+                panel:
+                    !!panel,
+
+                title:
+                    !!titleElement,
+
+                breadcrumb:
+                    !!breadcrumbElement,
+
+                content:
+                    !!contentElement,
+
+                closeButton:
+                    !!closeButton
 
             }
 
+        );
 
-            return true;
 
-        };
+        // =============================================
+        // 5. CLOSE BUTTON
+        // =============================================
+
+        if (
+            closeButton &&
+            !closeButton.__offenceCloseBound
+        ) {
+
+            closeButton.__offenceCloseBound =
+                true;
+
+
+            closeButton.addEventListener(
+
+                "click",
+
+                function (event) {
+
+                    event.preventDefault();
+
+                    event.stopPropagation();
+
+
+                    console.log(
+                        "🔥 OFFENCE FLOW CLOSE"
+                    );
+
+
+                    OffenceCascadeUI.close();
+
+                }
+
+            );
+
+        }
+
+
+        // =============================================
+        // 6. PREVENT PANEL CLICKS FROM REACHING MAP
+        // =============================================
+
+        if (
+            panel &&
+            !panel.__offencePanelBound
+        ) {
+
+            panel.__offencePanelBound =
+                true;
+
+
+            panel.addEventListener(
+
+                "click",
+
+                function (event) {
+
+                    event.stopPropagation();
+
+                }
+
+            );
+
+
+            panel.addEventListener(
+
+                "mousedown",
+
+                function (event) {
+
+                    event.stopPropagation();
+
+                }
+
+            );
+
+
+            panel.addEventListener(
+
+                "touchstart",
+
+                function (event) {
+
+                    event.stopPropagation();
+
+                },
+
+                {
+                    passive:true
+                }
+
+            );
+
+        }
+
+
+        // =============================================
+        // 7. VALIDATE
+        // =============================================
+
+        if (!contentElement) {
+
+            console.error(
+
+                "[OffenceCascadeUI] CRITICAL: " +
+                "offenceFlowContent was not created"
+
+            );
+
+
+            return false;
+
+        }
+
+
+        return true;
+
+    };
 
 
     // =====================================================
