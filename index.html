@@ -21633,6 +21633,572 @@ if(
 // ======================================================
 // 🌍 FILTER + RENDER COMPARTMENTS
 // ======================================================
+
+    // ======================================================
+// 🔥 OFFENCE / GIS INTERACTION OWNERSHIP CONTROLLER
+//
+// PURPOSE:
+//
+// OFFENCE HEATMAP VISIBLE
+//     → normal GIS polygons remain visible
+//     → normal GIS polygons do NOT receive pointer clicks
+//     → offence polygons own map interaction
+//
+// OFFENCE HEATMAP HIDDEN
+//     → normal GIS polygon interaction restored
+//
+// IMPORTANT:
+//
+// This does NOT:
+// - remove GIS layers
+// - remove tooltips
+// - remove GIS event handlers
+// - change GIS styles
+// - change GIS filtering
+//
+// It only controls pointer-event ownership.
+// ======================================================
+
+window.setOffenceMapInteractionMode =
+
+function (
+
+    offenceModeActive
+
+) {
+
+    try {
+
+        const active =
+            offenceModeActive === true;
+
+
+        // ==================================================
+        // 1. SAVE GLOBAL STATE
+        // ==================================================
+
+        window.__offenceMapInteractionActive =
+            active;
+
+
+        console.log(
+
+            active
+
+                ? "🔥 OFFENCE MAP INTERACTION MODE: ACTIVE"
+
+                : "🌍 NORMAL GIS INTERACTION MODE: ACTIVE"
+
+        );
+
+
+        // ==================================================
+        // 2. NORMAL GIS LAYER GROUPS
+        // ==================================================
+
+        const gisGroups = [
+
+            window.rootLayer,
+
+            window.divisionLayer,
+
+            window.rangeLayer,
+
+            window.beatLayer,
+
+            window.compartmentLayer
+
+        ];
+
+
+        // ==================================================
+        // 3. ENABLE / DISABLE GIS POINTER EVENTS
+        //
+        // IMPORTANT:
+        //
+        // Leaflet's `interactive` option cannot reliably be
+        // changed after layer creation simply by assigning:
+        //
+        // layer.options.interactive = false
+        //
+        // Therefore we control the actual SVG path.
+        // ==================================================
+
+        gisGroups.forEach(
+
+            function (
+                group
+            ) {
+
+                if (
+                    !group
+                ) {
+
+                    return;
+
+                }
+
+
+                // ==========================================
+                // HANDLE GEOJSON / FEATURE GROUP
+                // ==========================================
+
+                if (
+                    typeof group.eachLayer ===
+                    "function"
+                ) {
+
+                    group.eachLayer(
+
+                        function (
+                            layer
+                        ) {
+
+                            try {
+
+                                // ==========================
+                                // ACTUAL SVG PATH
+                                // ==========================
+
+                                if (
+                                    layer._path
+                                ) {
+
+                                    layer._path.style.pointerEvents =
+
+                                        active
+
+                                            ? "none"
+
+                                            : "auto";
+
+                                }
+
+
+                                // ==========================
+                                // NESTED LAYERS
+                                // ==========================
+
+                                if (
+                                    typeof layer.eachLayer ===
+                                    "function"
+                                ) {
+
+                                    layer.eachLayer(
+
+                                        function (
+                                            child
+                                        ) {
+
+                                            if (
+                                                child._path
+                                            ) {
+
+                                                child._path
+                                                    .style
+                                                    .pointerEvents =
+
+                                                    active
+
+                                                        ? "none"
+
+                                                        : "auto";
+
+                                            }
+
+                                        }
+
+                                    );
+
+                                }
+
+                            }
+
+                            catch (
+                                error
+                            ) {
+
+                                console.warn(
+
+                                    "⚠ GIS interaction toggle failed",
+
+                                    error
+
+                                );
+
+                            }
+
+                        }
+
+                    );
+
+                }
+
+            }
+
+        );
+
+
+        // ==================================================
+        // 4. OFFENCE MAP RENDERER
+        // ==================================================
+
+        const renderer =
+
+            window.GG
+                ?.Offence
+                ?.MapRenderer;
+
+
+        if (
+            renderer
+        ) {
+
+            const offenceGroups = [
+
+                renderer
+                    .layers
+                    ?.sourcePolygonLayer,
+
+                renderer
+                    .layers
+                    ?.targetPolygonLayer
+
+            ];
+
+
+            offenceGroups.forEach(
+
+                function (
+                    group
+                ) {
+
+                    if (
+                        !group
+                    ) {
+
+                        return;
+
+                    }
+
+
+                    // ======================================
+                    // PARENT OFFENCE POLYGONS
+                    // ======================================
+
+                    group.eachLayer?.(
+
+                        function (
+                            parent
+                        ) {
+
+                            try {
+
+                                // ==========================
+                                // PARENT PATH
+                                // ==========================
+
+                                if (
+                                    parent._path
+                                ) {
+
+                                    parent._path
+                                        .style
+                                        .pointerEvents =
+
+                                        active
+
+                                            ? "auto"
+
+                                            : "none";
+
+                                }
+
+
+                                // ==========================
+                                // CHILD FEATURE PATHS
+                                //
+                                // Important for:
+                                // FeatureCollection ranges
+                                // such as NMT with 3 features.
+                                // ==========================
+
+                                parent.eachLayer?.(
+
+                                    function (
+                                        child
+                                    ) {
+
+                                        if (
+                                            child._path
+                                        ) {
+
+                                            child._path
+                                                .style
+                                                .pointerEvents =
+
+                                                active
+
+                                                    ? "auto"
+
+                                                    : "none";
+
+                                        }
+
+
+                                        // ==================
+                                        // OFFENCE ON TOP
+                                        // ==================
+
+                                        if (
+                                            active
+                                        ) {
+
+                                            child
+                                                .bringToFront
+                                                ?.();
+
+                                        }
+
+                                    }
+
+                                );
+
+
+                                // ==========================
+                                // PARENT ON TOP
+                                // ==========================
+
+                                if (
+                                    active
+                                ) {
+
+                                    parent
+                                        .bringToFront
+                                        ?.();
+
+                                }
+
+                            }
+
+                            catch (
+                                error
+                            ) {
+
+                                console.warn(
+
+                                    "⚠ Offence interaction toggle failed",
+
+                                    error
+
+                                );
+
+                            }
+
+                        }
+
+                    );
+
+                }
+
+            );
+
+        }
+
+
+        // ==================================================
+        // 5. SECOND-PASS Z-ORDER
+        //
+        // Some Leaflet SVG operations occur during the
+        // current render frame.
+        //
+        // Re-assert offence polygons after the frame.
+        // ==================================================
+
+        if (
+            active &&
+            renderer
+        ) {
+
+            requestAnimationFrame(
+
+                function () {
+
+                    try {
+
+                        const targetGroup =
+
+                            renderer
+                                .layers
+                                ?.targetPolygonLayer;
+
+
+                        targetGroup
+                            ?.eachLayer
+                            ?.(
+
+                                function (
+                                    parent
+                                ) {
+
+                                    parent
+                                        .bringToFront
+                                        ?.();
+
+
+                                    parent
+                                        .eachLayer
+                                        ?.(
+
+                                            function (
+                                                child
+                                            ) {
+
+                                                if (
+                                                    child._path
+                                                ) {
+
+                                                    child._path
+                                                        .style
+                                                        .pointerEvents =
+                                                        "auto";
+
+                                                }
+
+
+                                                child
+                                                    .bringToFront
+                                                    ?.();
+
+                                            }
+
+                                        );
+
+                                }
+
+                            );
+
+
+                        const sourceGroup =
+
+                            renderer
+                                .layers
+                                ?.sourcePolygonLayer;
+
+
+                        sourceGroup
+                            ?.eachLayer
+                            ?.(
+
+                                function (
+                                    parent
+                                ) {
+
+                                    parent
+                                        .bringToFront
+                                        ?.();
+
+
+                                    parent
+                                        .eachLayer
+                                        ?.(
+
+                                            function (
+                                                child
+                                            ) {
+
+                                                if (
+                                                    child._path
+                                                ) {
+
+                                                    child._path
+                                                        .style
+                                                        .pointerEvents =
+                                                        "auto";
+
+                                                }
+
+
+                                                child
+                                                    .bringToFront
+                                                    ?.();
+
+                                            }
+
+                                        );
+
+                                }
+
+                            );
+
+                    }
+
+                    catch (
+                        error
+                    ) {
+
+                        console.warn(
+
+                            "⚠ Offence z-order refresh failed",
+
+                            error
+
+                        );
+
+                    }
+
+                }
+
+            );
+
+        }
+
+
+        // ==================================================
+        // 6. RETURN STATUS
+        // ==================================================
+
+        return {
+
+            success:
+                true,
+
+            offenceModeActive:
+                active
+
+        };
+
+    }
+
+    catch (
+        error
+    ) {
+
+        console.error(
+
+            "❌ setOffenceMapInteractionMode",
+
+            error
+
+        );
+
+
+        return {
+
+            success:
+                false,
+
+            offenceModeActive:
+                false,
+
+            error:
+                error
+
+        };
+
+    }
+
+};
 // ======================================================
 // 🌍 ENTERPRISE GIS HIERARCHY RENDERER
 // FULLY ALIGNED WITH CURRENT SYSTEM
