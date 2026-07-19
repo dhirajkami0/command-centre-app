@@ -1,64 +1,38 @@
-/* =========================================================
-   GreenGuard
-   Offence Intelligence Module
-
-   File:
-   js/offence/offenceStore.js
-
-   Purpose:
-   Central in-memory store for normalized offence data.
-
-   Responsibilities:
-   - Store normalized cases
-   - Store normalized accused records
-   - Store normalized seizure records
-   - Build CaseID indexes
-   - Build POR indexes
-   - Build SuspectID indexes
-   - Build SeizureID indexes
-   - Support fast SOURCE / TARGET lookup
-   - Support incremental daily data updates
-
-   IMPORTANT:
-   - NO Leaflet rendering
-   - NO geocoding
-   - NO heatmap rendering
-   - NO Firestore queries
-   ========================================================= */
-
-(function () {
+(function (window) {
 
     "use strict";
 
 
-    /* =====================================================
-       1. GLOBAL NAMESPACE
-       ===================================================== */
+    /*=========================================================
+      NAMESPACE
+    =========================================================*/
 
-    window.GG =
-        window.GG ||
-        {};
+    const GG =
+
+        window.GreenGuardAI =
+
+        window.GreenGuardAI || {};
+
 
     GG.Offence =
-        GG.Offence ||
-        {};
+
+        GG.Offence || {};
 
 
-    /* =====================================================
-       2. DEPENDENCIES
-       ===================================================== */
+    /*=========================================================
+      PREVENT DOUBLE LOADING
+    =========================================================*/
 
-    const Constants =
-        GG.Offence.Constants;
+    if (
 
-    const Normalizer =
-        GG.Offence.Normalizer;
+        GG.Offence.Store
 
+    ) {
 
-    if (!Constants) {
+        console.warn(
 
-        console.error(
-            "[OffenceStore] OffenceConstants unavailable."
+            "[GreenGuardAI] Offence Store already loaded."
+
         );
 
         return;
@@ -66,150 +40,311 @@
     }
 
 
-    if (!Normalizer) {
+    /*=========================================================
+      MODULE
+    =========================================================*/
 
-        console.error(
-            "[OffenceStore] OffenceNormalizer unavailable."
-        );
-
-        return;
-
-    }
+    const Store = {};
 
 
-    /* =====================================================
-       3. STORE OBJECT
-       ===================================================== */
+    /*=========================================================
+      VERSION
+    =========================================================*/
 
-    const OffenceStore = {};
+    Store.VERSION =
 
-
-    /* =====================================================
-       4. MODULE INFO
-       ===================================================== */
-
-    OffenceStore.VERSION =
-        "1.0.0";
+        "2.0.0";
 
 
-    /* =====================================================
-       5. INITIALIZED STATE
-       ===================================================== */
+    /*=========================================================
+      STATE
+    =========================================================*/
 
-    OffenceStore.initialized =
+    Store.initialized =
+
         false;
 
 
-    /* =====================================================
-       6. PRIMARY DATASETS
-       ===================================================== */
+    Store.ready =
 
-    OffenceStore.data = {
+        false;
+
+
+    Store.building =
+
+        false;
+
+
+    Store.lastBuiltAt =
+
+        null;
+
+
+    Store.lastBuildDuration =
+
+        0;
+
+
+    Store.sourceData =
+
+        null;
+
+
+    /*=========================================================
+      PRIMARY DATA COLLECTIONS
+
+      These hold normalized canonical records.
+    =========================================================*/
+
+    Store.data = {
 
         cases: [],
 
         accused: [],
 
-        seizures: []
+        witnesses: [],
+
+        seizures: [],
+
+        seizedArticles: []
 
     };
 
 
-    /* =====================================================
-       7. INDEXES
+    /*=========================================================
+      PRIMARY POR INDEXES
 
-       Maps provide fast O(1) lookup.
+      POR KEY IS THE AUTHORITATIVE
+      CROSS-COLLECTION CONNECTOR.
 
-       IMPORTANT:
+      casesByPor
+          Map<porKey, Case[]>
 
-       Some indexes contain ONE record.
+      accusedByPor
+          Map<porKey, Accused[]>
 
-       Others contain ARRAYS because one POR or CaseID
-       can potentially be linked to multiple records.
-       ===================================================== */
+      witnessesByPor
+          Map<porKey, Witness[]>
 
-    OffenceStore.index = {
+      seizuresByPor
+          Map<porKey, Seizure[]>
 
-        caseById:
-            new Map(),
+      seizedArticlesByPor
+          Map<porKey, Article[]>
+    =========================================================*/
+
+    Store.index = {
 
         casesByPor:
-            new Map(),
 
-        accusedBySuspectId:
-            new Map(),
-
-        accusedByCaseId:
             new Map(),
 
         accusedByPor:
+
             new Map(),
 
-        seizureById:
-            new Map(),
+        witnessesByPor:
 
-        seizuresByCaseId:
             new Map(),
 
         seizuresByPor:
+
+            new Map(),
+
+        seizedArticlesByPor:
+
+            new Map(),
+
+
+        /*=====================================================
+          DIRECT ID INDEXES
+        =====================================================*/
+
+        casesById:
+
+            new Map(),
+
+        accusedById:
+
+            new Map(),
+
+        witnessesById:
+
+            new Map(),
+
+        seizuresById:
+
+            new Map(),
+
+        seizedArticlesById:
+
+            new Map(),
+
+
+        /*=====================================================
+          SECONDARY RELATIONSHIP INDEXES
+
+          These are NOT authoritative cross-collection links.
+
+          They exist for fast direct lookup where IDs are valid.
+        =====================================================*/
+
+        accusedByCaseId:
+
+            new Map(),
+
+        witnessesByCaseId:
+
+            new Map(),
+
+        seizuresByCaseId:
+
+            new Map(),
+
+        articlesByCaseId:
+
+            new Map(),
+
+        articlesBySeizureId:
+
             new Map()
 
     };
 
 
-    /* =====================================================
-       8. INITIALIZE
-       ===================================================== */
+    /*=========================================================
+      STATISTICS
+    =========================================================*/
 
-    OffenceStore.init = function () {
+    Store.stats = {
+
+        cases:
+
+            0,
+
+        accused:
+
+            0,
+
+        witnesses:
+
+            0,
+
+        seizures:
+
+            0,
+
+        seizedArticles:
+
+            0,
+
+        uniquePor:
+
+            0,
+
+        casesWithoutPor:
+
+            0,
+
+        accusedWithoutPor:
+
+            0,
+
+        witnessesWithoutPor:
+
+            0,
+
+        seizuresWithoutPor:
+
+            0,
+
+        seizedArticlesWithoutPor:
+
+            0,
+
+        duplicateCasePor:
+
+            0,
+
+        buildDuration:
+
+            0
+
+    };
+
+
+    /*=========================================================
+      GET NORMALIZER
+    =========================================================*/
+
+    Store.getNormalizer = function () {
+
+        const Normalizer =
+
+            GG.Offence
+
+                ?.Normalizer;
+
 
         if (
-            OffenceStore.initialized
+
+            !Normalizer
+
         ) {
 
-            return OffenceStore;
+            throw new Error(
 
-        }
+                "[OffenceStore] GG.Offence.Normalizer is not loaded."
 
-
-        OffenceStore.initialized =
-            true;
-
-
-        if (
-            Constants.DEBUG
-                ?.ENABLED
-        ) {
-
-            console.log(
-                "🔥 OffenceStore Ready"
             );
 
         }
 
 
-        return OffenceStore;
+        return Normalizer;
 
     };
 
 
-    /* =====================================================
-       9. NORMALIZE KEY
+    /*=========================================================
+      SAFE ARRAY
+    =========================================================*/
 
-       Used only for index comparison.
+    Store.safeArray = function (
 
-       Does NOT modify stored values.
-       ===================================================== */
+        value
 
-    OffenceStore.normalizeKey = function (
+    ) {
+
+        return Array.isArray(
+
+            value
+
+        )
+
+            ? value
+
+            : [];
+
+    };
+
+
+    /*=========================================================
+      SAFE STRING
+    =========================================================*/
+
+    Store.safeString = function (
 
         value
 
     ) {
 
         if (
+
             value === null ||
+
             value === undefined
+
         ) {
 
             return "";
@@ -218,46 +353,125 @@
 
 
         return String(
+
             value
-        )
 
-            .trim()
-
-            .toUpperCase();
+        ).trim();
 
     };
 
 
-    /* =====================================================
-       10. ADD VALUE TO ARRAY MAP
+    /*=========================================================
+      NORMALIZE POR KEY
 
-       Example:
+      Always delegates to OffenceNormalizer.
+    =========================================================*/
 
-       CaseID
-          ↓
-       [
-           seizure1,
-           seizure2
-       ]
-       ===================================================== */
-
-    OffenceStore.addToArrayMap = function (
-
-        map,
-
-        key,
+    Store.normalizePor = function (
 
         value
 
     ) {
 
-        key =
-            OffenceStore.normalizeKey(
-                key
+        const Normalizer =
+
+            Store
+
+                .getNormalizer();
+
+
+        return Normalizer
+
+            .normalizePor(
+
+                value
+
             );
 
+    };
 
-        if (!key) {
+
+    /*=========================================================
+      GET POR KEY FROM RECORD
+    =========================================================*/
+
+    Store.getPorKey = function (
+
+        record
+
+    ) {
+
+        if (
+
+            !record
+
+        ) {
+
+            return "";
+
+        }
+
+
+        if (
+
+            record.porKey
+
+        ) {
+
+            return Store
+
+                .normalizePor(
+
+                    record.porKey
+
+                );
+
+        }
+
+
+        const Normalizer =
+
+            Store
+
+                .getNormalizer();
+
+
+        return Normalizer
+
+            .getPorKey(
+
+                record
+
+            );
+
+    };
+
+
+    /*=========================================================
+      ADD TO MULTI-VALUE MAP
+
+      Map<Key, Array<Record>>
+    =========================================================*/
+
+    Store.addToMultiMap = function (
+
+        map,
+
+        key,
+
+        record
+
+    ) {
+
+        if (
+
+            !(
+
+                map instanceof Map
+
+            )
+
+        ) {
 
             return;
 
@@ -265,98 +479,429 @@
 
 
         if (
+
+            !key
+
+        ) {
+
+            return;
+
+        }
+
+
+        if (
+
             !map.has(
+
                 key
+
             )
+
         ) {
 
             map.set(
+
                 key,
+
                 []
+
             );
 
         }
 
 
-        map.get(
-            key
-        ).push(
-            value
+        map
+
+            .get(
+
+                key
+
+            )
+
+            .push(
+
+                record
+
+            );
+
+    };
+
+
+    /*=========================================================
+      ADD TO SINGLE-VALUE MAP
+
+      Map<Key, Record>
+
+      If duplicate ID exists, latest record replaces previous.
+    =========================================================*/
+
+    Store.addToSingleMap = function (
+
+        map,
+
+        key,
+
+        record
+
+    ) {
+
+        if (
+
+            !(
+
+                map instanceof Map
+
+            )
+
+        ) {
+
+            return;
+
+        }
+
+
+        if (
+
+            !key
+
+        ) {
+
+            return;
+
+        }
+
+
+        map.set(
+
+            key,
+
+            record
+
         );
 
     };
 
 
-    /* =====================================================
-       11. CLEAR INDEXES
-       ===================================================== */
+    /*=========================================================
+      CLEAR MAP
+    =========================================================*/
 
-    OffenceStore.clearIndexes = function () {
+    Store.clearMap = function (
 
-        Object.values(
+        map
 
-            OffenceStore.index
+    ) {
 
-        ).forEach(
+        if (
 
-            function (
+            map instanceof Map
 
-                index
+        ) {
 
-            ) {
+            map.clear();
 
-                if (
+        }
 
-                    index instanceof Map
+    };
+
+
+    /*=========================================================
+      RESET INDEXES
+    =========================================================*/
+
+    Store.resetIndexes = function () {
+
+        Object
+
+            .values(
+
+                Store.index
+
+            )
+
+            .forEach(
+
+                function (
+
+                    map
 
                 ) {
 
-                    index.clear();
+                    Store
+
+                        .clearMap(
+
+                            map
+
+                        );
 
                 }
 
-            }
+            );
+
+    };
+
+
+    /*=========================================================
+      RESET STATISTICS
+    =========================================================*/
+
+    Store.resetStats = function () {
+
+        Store.stats = {
+
+            cases:
+
+                0,
+
+            accused:
+
+                0,
+
+            witnesses:
+
+                0,
+
+            seizures:
+
+                0,
+
+            seizedArticles:
+
+                0,
+
+            uniquePor:
+
+                0,
+
+            casesWithoutPor:
+
+                0,
+
+            accusedWithoutPor:
+
+                0,
+
+            witnessesWithoutPor:
+
+                0,
+
+            seizuresWithoutPor:
+
+                0,
+
+            seizedArticlesWithoutPor:
+
+                0,
+
+            duplicateCasePor:
+
+                0,
+
+            buildDuration:
+
+                0
+
+        };
+
+    };
+
+
+    /*=========================================================
+      RESET STORE
+    =========================================================*/
+
+    Store.reset = function () {
+
+        Store.ready =
+
+            false;
+
+
+        Store.building =
+
+            false;
+
+
+        Store.initialized =
+
+            false;
+
+
+        Store.lastBuiltAt =
+
+            null;
+
+
+        Store.lastBuildDuration =
+
+            0;
+
+
+        Store.sourceData =
+
+            null;
+
+
+        Store.data = {
+
+            cases: [],
+
+            accused: [],
+
+            witnesses: [],
+
+            seizures: [],
+
+            seizedArticles: []
+
+        };
+
+
+        Store
+
+            .resetIndexes();
+
+
+        Store
+
+            .resetStats();
+
+
+        console.log(
+
+            "[OffenceStore] Store reset."
 
         );
 
     };
 
 
-    /* =====================================================
-       12. BUILD CASE INDEXES
-       ===================================================== */
+    /*=========================================================
+      INDEX CASES
 
-    OffenceStore.buildCaseIndexes =
-        function () {
+      POR is authoritative.
 
-            for (
+      Multiple cases with same POR are retained as arrays.
 
-                const record
+      This prevents accidental data loss if duplicate POR
+      numbers exist in Firestore.
+    =========================================================*/
 
-                of OffenceStore.data.cases
+    Store.indexCases = function (
+
+        records
+
+    ) {
+
+        records =
+
+            Store
+
+                .safeArray(
+
+                    records
+
+                );
+
+
+        records.forEach(
+
+            function (
+
+                record
 
             ) {
 
-                /* -------------------------
-                   CaseID
-                   ------------------------- */
+                if (
+
+                    !record
+
+                ) {
+
+                    return;
+
+                }
+
+
+                const porKey =
+
+                    Store
+
+                        .getPorKey(
+
+                            record
+
+                        );
+
 
                 const caseId =
 
-                    OffenceStore.normalizeKey(
+                    Store
 
-                        record.caseId
+                        .safeString(
 
-                    );
+                            record.caseId ||
 
+                            record.id ||
+
+                            record.documentId
+
+                        );
+
+
+                /*----------------------------------
+                  POR Index
+                ----------------------------------*/
 
                 if (
-                    caseId
+
+                    porKey
+
                 ) {
 
-                    OffenceStore.index
-                        .caseById
-                        .set(
+                    Store
+
+                        .addToMultiMap(
+
+                            Store.index
+
+                                .casesByPor,
+
+                            porKey,
+
+                            record
+
+                        );
+
+                }
+
+                else {
+
+                    Store.stats
+
+                        .casesWithoutPor++;
+
+                }
+
+
+                /*----------------------------------
+                  Case ID Index
+                ----------------------------------*/
+
+                if (
+
+                    caseId
+
+                ) {
+
+                    Store
+
+                        .addToSingleMap(
+
+                            Store.index
+
+                                .casesById,
 
                             caseId,
 
@@ -366,79 +911,144 @@
 
                 }
 
-
-                /* -------------------------
-                   POR
-                   ------------------------- */
-
-                const porNo =
-
-                    OffenceStore.normalizeKey(
-
-                        record.porNo
-
-                    );
-
-
-                if (
-                    porNo
-                ) {
-
-                    OffenceStore.addToArrayMap(
-
-                        OffenceStore.index
-                            .casesByPor,
-
-                        porNo,
-
-                        record
-
-                    );
-
-                }
-
             }
 
-        };
+        );
+
+    };
 
 
-    /* =====================================================
-       13. BUILD ACCUSED INDEXES
-       ===================================================== */
+    /*=========================================================
+      INDEX ACCUSED
+    =========================================================*/
 
-    OffenceStore.buildAccusedIndexes =
-        function () {
+    Store.indexAccused = function (
 
-            for (
+        records
 
-                const record
+    ) {
 
-                of OffenceStore.data.accused
+        records =
+
+            Store
+
+                .safeArray(
+
+                    records
+
+                );
+
+
+        records.forEach(
+
+            function (
+
+                record
 
             ) {
 
-                /* -------------------------
-                   SuspectID
-                   ------------------------- */
-
-                const suspectId =
-
-                    OffenceStore.normalizeKey(
-
-                        record.suspectId
-
-                    );
-
-
                 if (
-                    suspectId
+
+                    !record
+
                 ) {
 
-                    OffenceStore.index
-                        .accusedBySuspectId
-                        .set(
+                    return;
 
-                            suspectId,
+                }
+
+
+                const porKey =
+
+                    Store
+
+                        .getPorKey(
+
+                            record
+
+                        );
+
+
+                const accusedId =
+
+                    Store
+
+                        .safeString(
+
+                            record.accusedId ||
+
+                            record.id ||
+
+                            record.documentId
+
+                        );
+
+
+                const caseId =
+
+                    Store
+
+                        .safeString(
+
+                            record.caseId
+
+                        );
+
+
+                /*----------------------------------
+                  POR Index
+                ----------------------------------*/
+
+                if (
+
+                    porKey
+
+                ) {
+
+                    Store
+
+                        .addToMultiMap(
+
+                            Store.index
+
+                                .accusedByPor,
+
+                            porKey,
+
+                            record
+
+                        );
+
+                }
+
+                else {
+
+                    Store.stats
+
+                        .accusedWithoutPor++;
+
+                }
+
+
+                /*----------------------------------
+                  Accused ID Index
+                ----------------------------------*/
+
+                if (
+
+                    accusedId
+
+                ) {
+
+                    Store
+
+                        .addToSingleMap(
+
+                            Store.index
+
+                                .accusedById,
+
+                            accusedId,
 
                             record
 
@@ -447,144 +1057,340 @@
                 }
 
 
-                /*
-                 * Accused records may contain linkage
-                 * fields in the original/raw document
-                 * even if those fields are not part of
-                 * the canonical accused object.
-                 */
-
-                const raw =
-
-                    record.raw ||
-
-                    {};
-
-
-                /* -------------------------
-                   CaseID
-                   ------------------------- */
-
-                const caseId =
-
-                    OffenceStore.normalizeKey(
-
-                        Normalizer.getField(
-
-                            raw,
-
-                            [
-                                "CaseID",
-                                "Case ID",
-                                "caseId",
-                                "case_id"
-                            ]
-
-                        )
-
-                    );
-
+                /*----------------------------------
+                  Secondary Case ID Index
+                ----------------------------------*/
 
                 if (
+
                     caseId
+
                 ) {
 
-                    OffenceStore.addToArrayMap(
+                    Store
 
-                        OffenceStore.index
-                            .accusedByCaseId,
+                        .addToMultiMap(
 
-                        caseId,
+                            Store.index
 
-                        record
+                                .accusedByCaseId,
 
-                    );
+                            caseId,
 
-                }
+                            record
 
-
-                /* -------------------------
-                   POR
-                   ------------------------- */
-
-                const porNo =
-
-                    OffenceStore.normalizeKey(
-
-                        Normalizer.getField(
-
-                            raw,
-
-                            [
-                                "Ref POR No",
-                                "POR No",
-                                "POR NO",
-                                "POR Number",
-                                "porNo"
-                            ]
-
-                        )
-
-                    );
-
-
-                if (
-                    porNo
-                ) {
-
-                    OffenceStore.addToArrayMap(
-
-                        OffenceStore.index
-                            .accusedByPor,
-
-                        porNo,
-
-                        record
-
-                    );
+                        );
 
                 }
 
             }
 
-        };
+        );
+
+    };
 
 
-    /* =====================================================
-       14. BUILD SEIZURE INDEXES
-       ===================================================== */
+    /*=========================================================
+      INDEX WITNESSES
+    =========================================================*/
 
-    OffenceStore.buildSeizureIndexes =
-        function () {
+    Store.indexWitnesses = function (
 
-            for (
+        records
 
-                const record
+    ) {
 
-                of OffenceStore.data.seizures
+        records =
+
+            Store
+
+                .safeArray(
+
+                    records
+
+                );
+
+
+        records.forEach(
+
+            function (
+
+                record
 
             ) {
 
-                /* -------------------------
-                   SeizureID
-                   ------------------------- */
+                if (
+
+                    !record
+
+                ) {
+
+                    return;
+
+                }
+
+
+                const porKey =
+
+                    Store
+
+                        .getPorKey(
+
+                            record
+
+                        );
+
+
+                const witnessId =
+
+                    Store
+
+                        .safeString(
+
+                            record.witnessId ||
+
+                            record.id ||
+
+                            record.documentId
+
+                        );
+
+
+                const caseId =
+
+                    Store
+
+                        .safeString(
+
+                            record.caseId
+
+                        );
+
+
+                /*----------------------------------
+                  POR Index
+                ----------------------------------*/
+
+                if (
+
+                    porKey
+
+                ) {
+
+                    Store
+
+                        .addToMultiMap(
+
+                            Store.index
+
+                                .witnessesByPor,
+
+                            porKey,
+
+                            record
+
+                        );
+
+                }
+
+                else {
+
+                    Store.stats
+
+                        .witnessesWithoutPor++;
+
+                }
+
+
+                /*----------------------------------
+                  Witness ID Index
+                ----------------------------------*/
+
+                if (
+
+                    witnessId
+
+                ) {
+
+                    Store
+
+                        .addToSingleMap(
+
+                            Store.index
+
+                                .witnessesById,
+
+                            witnessId,
+
+                            record
+
+                        );
+
+                }
+
+
+                /*----------------------------------
+                  Secondary Case ID Index
+                ----------------------------------*/
+
+                if (
+
+                    caseId
+
+                ) {
+
+                    Store
+
+                        .addToMultiMap(
+
+                            Store.index
+
+                                .witnessesByCaseId,
+
+                            caseId,
+
+                            record
+
+                        );
+
+                }
+
+            }
+
+        );
+
+    };
+
+
+    /*=========================================================
+      INDEX SEIZURES
+    =========================================================*/
+
+    Store.indexSeizures = function (
+
+        records
+
+    ) {
+
+        records =
+
+            Store
+
+                .safeArray(
+
+                    records
+
+                );
+
+
+        records.forEach(
+
+            function (
+
+                record
+
+            ) {
+
+                if (
+
+                    !record
+
+                ) {
+
+                    return;
+
+                }
+
+
+                const porKey =
+
+                    Store
+
+                        .getPorKey(
+
+                            record
+
+                        );
+
 
                 const seizureId =
 
-                    OffenceStore.normalizeKey(
+                    Store
 
-                        record.seizureId
+                        .safeString(
 
-                    );
+                            record.seizureId ||
 
+                            record.id ||
+
+                            record.documentId
+
+                        );
+
+
+                const caseId =
+
+                    Store
+
+                        .safeString(
+
+                            record.caseId
+
+                        );
+
+
+                /*----------------------------------
+                  POR Index
+                ----------------------------------*/
 
                 if (
-                    seizureId
+
+                    porKey
+
                 ) {
 
-                    OffenceStore.index
-                        .seizureById
-                        .set(
+                    Store
+
+                        .addToMultiMap(
+
+                            Store.index
+
+                                .seizuresByPor,
+
+                            porKey,
+
+                            record
+
+                        );
+
+                }
+
+                else {
+
+                    Store.stats
+
+                        .seizuresWithoutPor++;
+
+                }
+
+
+                /*----------------------------------
+                  Seizure ID Index
+                ----------------------------------*/
+
+                if (
+
+                    seizureId
+
+                ) {
+
+                    Store
+
+                        .addToSingleMap(
+
+                            Store.index
+
+                                .seizuresById,
 
                             seizureId,
 
@@ -595,1213 +1401,2896 @@
                 }
 
 
-                /* -------------------------
-                   CaseID
-                   ------------------------- */
+                /*----------------------------------
+                  Secondary Case ID Index
+                ----------------------------------*/
 
                 if (
-                    record.caseId
+
+                    caseId
+
                 ) {
 
-                    OffenceStore.addToArrayMap(
+                    Store
 
-                        OffenceStore.index
-                            .seizuresByCaseId,
+                        .addToMultiMap(
 
-                        record.caseId,
+                            Store.index
 
-                        record
+                                .seizuresByCaseId,
 
-                    );
+                            caseId,
 
-                }
+                            record
 
-
-                /* -------------------------
-                   POR
-                   ------------------------- */
-
-                if (
-                    record.porNo
-                ) {
-
-                    OffenceStore.addToArrayMap(
-
-                        OffenceStore.index
-                            .seizuresByPor,
-
-                        record.porNo,
-
-                        record
-
-                    );
+                        );
 
                 }
 
             }
 
-        };
+        );
+
+    };
 
 
-    /* =====================================================
-       15. REBUILD ALL INDEXES
-       ===================================================== */
+    /*=========================================================
+      INDEX SEIZED ARTICLES
+    =========================================================*/
 
-    OffenceStore.rebuildIndexes =
-        function () {
+    Store.indexSeizedArticles = function (
 
-            OffenceStore.clearIndexes();
-
-
-            OffenceStore
-                .buildCaseIndexes();
-
-
-            OffenceStore
-                .buildAccusedIndexes();
-
-
-            OffenceStore
-                .buildSeizureIndexes();
-
-
-            if (
-                Constants.DEBUG
-                    ?.LOG_DATA
-            ) {
-
-                console.log(
-
-                    "🔥 OffenceStore Indexes Rebuilt",
-
-                    {
-
-                        cases:
-
-                            OffenceStore.index
-                                .caseById
-                                .size,
-
-                        por:
-
-                            OffenceStore.index
-                                .casesByPor
-                                .size,
-
-                        suspects:
-
-                            OffenceStore.index
-                                .accusedBySuspectId
-                                .size,
-
-                        seizures:
-
-                            OffenceStore.index
-                                .seizureById
-                                .size
-
-                    }
-
-                );
-
-            }
-
-        };
-
-
-    /* =====================================================
-       16. LOAD DATA
-
-       Expected input:
-
-       {
-           cases: [],
-           accused: [],
-           seizures: []
-       }
-
-       Raw records are normalized here.
-       ===================================================== */
-
-    OffenceStore.load = function (
-
-        rawData = {}
+        records
 
     ) {
 
-        OffenceStore.init();
+        records =
+
+            Store
+
+                .safeArray(
+
+                    records
+
+                );
 
 
-        const normalized =
+        records.forEach(
 
-            Normalizer.normalizeAll(
+            function (
 
-                rawData
+                record
+
+            ) {
+
+                if (
+
+                    !record
+
+                ) {
+
+                    return;
+
+                }
+
+
+                const porKey =
+
+                    Store
+
+                        .getPorKey(
+
+                            record
+
+                        );
+
+
+                const articleId =
+
+                    Store
+
+                        .safeString(
+
+                            record.articleId ||
+
+                            record.id ||
+
+                            record.documentId
+
+                        );
+
+
+                const seizureId =
+
+                    Store
+
+                        .safeString(
+
+                            record.seizureId
+
+                        );
+
+
+                const caseId =
+
+                    Store
+
+                        .safeString(
+
+                            record.caseId
+
+                        );
+
+
+                /*----------------------------------
+                  POR Index
+
+                  AUTHORITATIVE CROSS-COLLECTION LINK
+                ----------------------------------*/
+
+                if (
+
+                    porKey
+
+                ) {
+
+                    Store
+
+                        .addToMultiMap(
+
+                            Store.index
+
+                                .seizedArticlesByPor,
+
+                            porKey,
+
+                            record
+
+                        );
+
+                }
+
+                else {
+
+                    Store.stats
+
+                        .seizedArticlesWithoutPor++;
+
+                }
+
+
+                /*----------------------------------
+                  Article ID Index
+                ----------------------------------*/
+
+                if (
+
+                    articleId
+
+                ) {
+
+                    Store
+
+                        .addToSingleMap(
+
+                            Store.index
+
+                                .seizedArticlesById,
+
+                            articleId,
+
+                            record
+
+                        );
+
+                }
+
+
+                /*----------------------------------
+                  Direct Seizure ID Index
+
+                  Useful for:
+
+                  seizure
+                      ↓
+                  articles
+                ----------------------------------*/
+
+                if (
+
+                    seizureId
+
+                ) {
+
+                    Store
+
+                        .addToMultiMap(
+
+                            Store.index
+
+                                .articlesBySeizureId,
+
+                            seizureId,
+
+                            record
+
+                        );
+
+                }
+
+
+                /*----------------------------------
+                  Optional Case ID Index
+                ----------------------------------*/
+
+                if (
+
+                    caseId
+
+                ) {
+
+                    Store
+
+                        .addToMultiMap(
+
+                            Store.index
+
+                                .articlesByCaseId,
+
+                            caseId,
+
+                            record
+
+                        );
+
+                }
+
+            }
+
+        );
+
+    };
+
+
+    /*=========================================================
+      BUILD UNIQUE POR SET
+    =========================================================*/
+
+    Store.getAllPorKeys = function () {
+
+        const keys =
+
+            new Set();
+
+
+        [
+
+            Store.index
+
+                .casesByPor,
+
+            Store.index
+
+                .accusedByPor,
+
+            Store.index
+
+                .witnessesByPor,
+
+            Store.index
+
+                .seizuresByPor,
+
+            Store.index
+
+                .seizedArticlesByPor
+
+        ]
+
+            .forEach(
+
+                function (
+
+                    map
+
+                ) {
+
+                    map
+
+                        .forEach(
+
+                            function (
+
+                                value,
+
+                                key
+
+                            ) {
+
+                                if (
+
+                                    key
+
+                                ) {
+
+                                    keys.add(
+
+                                        key
+
+                                    );
+
+                                }
+
+                            }
+
+                        );
+
+                }
 
             );
 
 
-        const validation =
+        return Array.from(
 
-            Normalizer.validate(
+            keys
 
-                normalized
+        );
+
+    };
+
+
+    /*=========================================================
+      CALCULATE STATISTICS
+    =========================================================*/
+
+    Store.calculateStats = function () {
+
+        Store.stats.cases =
+
+            Store.data
+
+                .cases
+
+                .length;
+
+
+        Store.stats.accused =
+
+            Store.data
+
+                .accused
+
+                .length;
+
+
+        Store.stats.witnesses =
+
+            Store.data
+
+                .witnesses
+
+                .length;
+
+
+        Store.stats.seizures =
+
+            Store.data
+
+                .seizures
+
+                .length;
+
+
+        Store.stats.seizedArticles =
+
+            Store.data
+
+                .seizedArticles
+
+                .length;
+
+
+        Store.stats.uniquePor =
+
+            Store
+
+                .getAllPorKeys()
+
+                .length;
+
+
+        Store.stats.duplicateCasePor =
+
+            0;
+
+
+        Store.index
+
+            .casesByPor
+
+            .forEach(
+
+                function (
+
+                    cases
+
+                ) {
+
+                    if (
+
+                        cases.length >
+
+                        1
+
+                    ) {
+
+                        Store.stats
+
+                            .duplicateCasePor++;
+
+                    }
+
+                }
 
             );
 
+    };
+
+
+    /*=========================================================
+      BUILD STORE
+
+      Expected input:
+
+      {
+          cases: [],
+          accused: [],
+          witnesses: [],
+          seizures: [],
+          seizedArticles: []
+      }
+
+      The input can already be normalized.
+
+      If normalize !== false, the store will pass the data
+      through OffenceNormalizer.normalizeAll().
+    =========================================================*/
+
+    Store.build = function (
+
+        data,
+
+        options = {}
+
+    ) {
 
         if (
-            !validation.valid
+
+            Store.building
+
         ) {
 
-            console.error(
+            console.warn(
 
-                "[OffenceStore] Invalid data",
-
-                validation.errors
+                "[OffenceStore] Build already in progress."
 
             );
 
 
-            return {
-
-                success:
-                    false,
-
-                errors:
-                    validation.errors
-
-            };
+            return Store.data;
 
         }
 
 
-        OffenceStore.data.cases =
+        Store.building =
 
-            normalized.cases;
-
-
-        OffenceStore.data.accused =
-
-            normalized.accused;
+            true;
 
 
-        OffenceStore.data.seizures =
+        Store.ready =
 
-            normalized.seizures;
-
-
-        OffenceStore
-            .rebuildIndexes();
+            false;
 
 
-        OffenceStore.dispatchEvent(
+        const startedAt =
 
-            Constants.EVENTS
-                .DATA_LOADED,
+            Date.now();
 
-            OffenceStore.getStats()
+
+        console.group(
+
+            "🔥 OFFENCE STORE BUILD"
 
         );
 
 
+        try {
+
+            data =
+
+                data ||
+
+                {};
+
+
+            Store.sourceData =
+
+                data;
+
+
+            /*----------------------------------
+              Reset Previous Indexes
+            ----------------------------------*/
+
+            Store
+
+                .resetIndexes();
+
+
+            Store
+
+                .resetStats();
+
+
+            /*----------------------------------
+              Normalize
+            ----------------------------------*/
+
+            let normalizedData;
+
+
+            if (
+
+                options.normalize ===
+
+                false
+
+            ) {
+
+                normalizedData =
+
+                    data;
+
+            }
+
+            else {
+
+                const Normalizer =
+
+                    Store
+
+                        .getNormalizer();
+
+
+                normalizedData =
+
+                    Normalizer
+
+                        .normalizeAll(
+
+                            data
+
+                        );
+
+            }
+
+
+            /*----------------------------------
+              Save Canonical Data
+            ----------------------------------*/
+
+            Store.data = {
+
+                cases:
+
+                    Store
+
+                        .safeArray(
+
+                            normalizedData
+
+                                .cases
+
+                        ),
+
+                accused:
+
+                    Store
+
+                        .safeArray(
+
+                            normalizedData
+
+                                .accused
+
+                        ),
+
+                witnesses:
+
+                    Store
+
+                        .safeArray(
+
+                            normalizedData
+
+                                .witnesses
+
+                        ),
+
+                seizures:
+
+                    Store
+
+                        .safeArray(
+
+                            normalizedData
+
+                                .seizures
+
+                        ),
+
+                seizedArticles:
+
+                    Store
+
+                        .safeArray(
+
+                            normalizedData
+
+                                .seizedArticles
+
+                        )
+
+            };
+
+
+            /*----------------------------------
+              Build Indexes
+            ----------------------------------*/
+
+            Store
+
+                .indexCases(
+
+                    Store.data
+
+                        .cases
+
+                );
+
+
+            Store
+
+                .indexAccused(
+
+                    Store.data
+
+                        .accused
+
+                );
+
+
+            Store
+
+                .indexWitnesses(
+
+                    Store.data
+
+                        .witnesses
+
+                );
+
+
+            Store
+
+                .indexSeizures(
+
+                    Store.data
+
+                        .seizures
+
+                );
+
+
+            Store
+
+                .indexSeizedArticles(
+
+                    Store.data
+
+                        .seizedArticles
+
+                );
+
+
+            /*----------------------------------
+              Statistics
+            ----------------------------------*/
+
+            Store
+
+                .calculateStats();
+
+
+            Store.lastBuildDuration =
+
+                Date.now() -
+
+                startedAt;
+
+
+            Store.stats.buildDuration =
+
+                Store.lastBuildDuration;
+
+
+            Store.lastBuiltAt =
+
+                new Date();
+
+
+            Store.initialized =
+
+                true;
+
+
+            Store.ready =
+
+                true;
+
+
+            console.log(
+
+                "✓ Offence Store built."
+
+            );
+
+
+            console.log(
+
+                "Relationship strategy:",
+
+                "POR KEY AUTHORITATIVE"
+
+            );
+
+
+            console.log(
+
+                "Cases:",
+
+                Store.stats.cases
+
+            );
+
+
+            console.log(
+
+                "Accused:",
+
+                Store.stats.accused
+
+            );
+
+
+            console.log(
+
+                "Witnesses:",
+
+                Store.stats.witnesses
+
+            );
+
+
+            console.log(
+
+                "Seizures:",
+
+                Store.stats.seizures
+
+            );
+
+
+            console.log(
+
+                "Seized Articles:",
+
+                Store.stats.seizedArticles
+
+            );
+
+
+            console.log(
+
+                "Unique POR Keys:",
+
+                Store.stats.uniquePor
+
+            );
+
+
+            console.log(
+
+                "Cases without POR:",
+
+                Store.stats.casesWithoutPor
+
+            );
+
+
+            console.log(
+
+                "Accused without POR:",
+
+                Store.stats.accusedWithoutPor
+
+            );
+
+
+            console.log(
+
+                "Witnesses without POR:",
+
+                Store.stats.witnessesWithoutPor
+
+            );
+
+
+            console.log(
+
+                "Seizures without POR:",
+
+                Store.stats.seizuresWithoutPor
+
+            );
+
+
+            console.log(
+
+                "Articles without POR:",
+
+                Store.stats.seizedArticlesWithoutPor
+
+            );
+
+
+            console.log(
+
+                "Duplicate Case POR Keys:",
+
+                Store.stats.duplicateCasePor
+
+            );
+
+
+            console.log(
+
+                "Build Duration:",
+
+                Store.lastBuildDuration,
+
+                "ms"
+
+            );
+
+
+            return Store.data;
+
+        }
+
+        catch (
+
+            error
+
+        ) {
+
+            Store.ready =
+
+                false;
+
+
+            Store.initialized =
+
+                false;
+
+
+            console.error(
+
+                "[OffenceStore] Build failed:",
+
+                error
+
+            );
+
+
+            throw error;
+
+        }
+
+        finally {
+
+            Store.building =
+
+                false;
+
+
+            console.groupEnd();
+
+        }
+
+    };
+
+
+    /*=========================================================
+      INITIALIZE
+
+      Alias for build().
+
+      Allows:
+
+      Store.init(data)
+
+      or
+
+      Store.build(data)
+    =========================================================*/
+
+    Store.init = function (
+
+        data,
+
+        options = {}
+
+    ) {
+
+        return Store
+
+            .build(
+
+                data,
+
+                options
+
+            );
+
+    };
+
+
+    /*=========================================================
+      GET CASES BY POR
+    =========================================================*/
+
+    Store.getCasesByPor = function (
+
+        porNo
+
+    ) {
+
+        const porKey =
+
+            Store
+
+                .normalizePor(
+
+                    porNo
+
+                );
+
+
+        if (
+
+            !porKey
+
+        ) {
+
+            return [];
+
+        }
+
+
+        return [
+
+            ...(
+
+                Store.index
+
+                    .casesByPor
+
+                    .get(
+
+                        porKey
+
+                    ) ||
+
+                []
+
+            )
+
+        ];
+
+    };
+
+
+    /*=========================================================
+      GET PRIMARY CASE BY POR
+
+      Normally one POR = one case.
+
+      If duplicate POR exists, returns first case.
+
+      Use getCasesByPor() when duplicates must be inspected.
+    =========================================================*/
+
+    Store.getCaseByPor = function (
+
+        porNo
+
+    ) {
+
+        const cases =
+
+            Store
+
+                .getCasesByPor(
+
+                    porNo
+
+                );
+
+
+        return cases[0] ||
+
+            null;
+
+    };
+
+
+    /*=========================================================
+      GET ACCUSED BY POR
+    =========================================================*/
+
+    Store.getAccusedByPor = function (
+
+        porNo
+
+    ) {
+
+        const porKey =
+
+            Store
+
+                .normalizePor(
+
+                    porNo
+
+                );
+
+
+        return [
+
+            ...(
+
+                Store.index
+
+                    .accusedByPor
+
+                    .get(
+
+                        porKey
+
+                    ) ||
+
+                []
+
+            )
+
+        ];
+
+    };
+
+
+    /*=========================================================
+      GET WITNESSES BY POR
+    =========================================================*/
+
+    Store.getWitnessesByPor = function (
+
+        porNo
+
+    ) {
+
+        const porKey =
+
+            Store
+
+                .normalizePor(
+
+                    porNo
+
+                );
+
+
+        return [
+
+            ...(
+
+                Store.index
+
+                    .witnessesByPor
+
+                    .get(
+
+                        porKey
+
+                    ) ||
+
+                []
+
+            )
+
+        ];
+
+    };
+
+
+    /*=========================================================
+      GET SEIZURES BY POR
+    =========================================================*/
+
+    Store.getSeizuresByPor = function (
+
+        porNo
+
+    ) {
+
+        const porKey =
+
+            Store
+
+                .normalizePor(
+
+                    porNo
+
+                );
+
+
+        return [
+
+            ...(
+
+                Store.index
+
+                    .seizuresByPor
+
+                    .get(
+
+                        porKey
+
+                    ) ||
+
+                []
+
+            )
+
+        ];
+
+    };
+
+
+    /*=========================================================
+      GET SEIZED ARTICLES BY POR
+    =========================================================*/
+
+    Store.getSeizedArticlesByPor = function (
+
+        porNo
+
+    ) {
+
+        const porKey =
+
+            Store
+
+                .normalizePor(
+
+                    porNo
+
+                );
+
+
+        return [
+
+            ...(
+
+                Store.index
+
+                    .seizedArticlesByPor
+
+                    .get(
+
+                        porKey
+
+                    ) ||
+
+                []
+
+            )
+
+        ];
+
+    };
+
+
+    /*=========================================================
+      GET COMPLETE POR CASCADE
+
+      THIS IS THE MAIN RELATIONSHIP FUNCTION.
+
+      Example:
+
+      Store.getCascadeByPor(
+          "53/HTG of 2025-26"
+      )
+
+      Returns:
+
+      {
+          porNo,
+          porKey,
+          case,
+          cases,
+          accused,
+          witnesses,
+          seizures,
+          seizedArticles,
+          seizureGroups,
+          counts
+      }
+    =========================================================*/
+
+    Store.getCascadeByPor = function (
+
+        porNo
+
+    ) {
+
+        const porKey =
+
+            Store
+
+                .normalizePor(
+
+                    porNo
+
+                );
+
+
+        if (
+
+            !porKey
+
+        ) {
+
+            return null;
+
+        }
+
+
+        const cases =
+
+            Store
+
+                .getCasesByPor(
+
+                    porKey
+
+                );
+
+
+        const accused =
+
+            Store
+
+                .getAccusedByPor(
+
+                    porKey
+
+                );
+
+
+        const witnesses =
+
+            Store
+
+                .getWitnessesByPor(
+
+                    porKey
+
+                );
+
+
+        const seizures =
+
+            Store
+
+                .getSeizuresByPor(
+
+                    porKey
+
+                );
+
+
+        const seizedArticles =
+
+            Store
+
+                .getSeizedArticlesByPor(
+
+                    porKey
+
+                );
+
+
+        /*----------------------------------
+          Group Articles Under Seizures
+
+          POR remains authoritative.
+
+          seizureId is used here only to provide
+          convenient nested display.
+        ----------------------------------*/
+
+        const seizureGroups =
+
+            seizures.map(
+
+                function (
+
+                    seizure
+
+                ) {
+
+                    const seizureId =
+
+                        Store
+
+                            .safeString(
+
+                                seizure
+
+                                    .seizureId
+
+                            );
+
+
+                    let articles = [];
+
+
+                    if (
+
+                        seizureId
+
+                    ) {
+
+                        articles = [
+
+                            ...(
+
+                                Store.index
+
+                                    .articlesBySeizureId
+
+                                    .get(
+
+                                        seizureId
+
+                                    ) ||
+
+                                []
+
+                            )
+
+                        ];
+
+                    }
+
+
+                    return {
+
+                        seizure:
+
+                            seizure,
+
+                        articles:
+
+                            articles
+
+                    };
+
+                }
+
+            );
+
+
         return {
 
-            success:
-                true,
+            porNo:
 
-            stats:
-                OffenceStore.getStats()
+                cases[0]
+
+                    ?.porNo ||
+
+                cases[0]
+
+                    ?.refPorNo ||
+
+                porNo,
+
+            porKey:
+
+                porKey,
+
+
+            /*----------------------------------
+              Primary Case
+            ----------------------------------*/
+
+            case:
+
+                cases[0] ||
+
+                null,
+
+
+            /*----------------------------------
+              All Matching Cases
+
+              Important if duplicate POR exists.
+            ----------------------------------*/
+
+            cases:
+
+                cases,
+
+
+            /*----------------------------------
+              Related Data
+            ----------------------------------*/
+
+            accused:
+
+                accused,
+
+            witnesses:
+
+                witnesses,
+
+            seizures:
+
+                seizures,
+
+            seizedArticles:
+
+                seizedArticles,
+
+
+            /*----------------------------------
+              Nested Display Structure
+            ----------------------------------*/
+
+            seizureGroups:
+
+                seizureGroups,
+
+
+            /*----------------------------------
+              Counts
+            ----------------------------------*/
+
+            counts: {
+
+                cases:
+
+                    cases.length,
+
+                accused:
+
+                    accused.length,
+
+                witnesses:
+
+                    witnesses.length,
+
+                seizures:
+
+                    seizures.length,
+
+                seizedArticles:
+
+                    seizedArticles.length
+
+            }
 
         };
 
     };
 
 
-    /* =====================================================
-       17. GET CASE BY CASE ID
-       ===================================================== */
+    /*=========================================================
+      ALIAS
 
-    OffenceStore.getCaseById =
-        function (
+      Useful for popup/cascade modules.
+    =========================================================*/
 
-            caseId
+    Store.getPorCascade =
 
-        ) {
-
-            const key =
-
-                OffenceStore.normalizeKey(
-
-                    caseId
-
-                );
+        Store.getCascadeByPor;
 
 
-            if (!key) {
+    /*=========================================================
+      GET CASE BY CASE ID
+    =========================================================*/
 
-                return null;
+    Store.getCaseById = function (
 
-            }
+        caseId
 
+    ) {
 
-            return (
+        caseId =
 
-                OffenceStore.index
-                    .caseById
-                    .get(
-                        key
-                    ) ||
+            Store
 
-                null
-
-            );
-
-        };
-
-
-    /* =====================================================
-       18. GET CASES BY POR
-       ===================================================== */
-
-    OffenceStore.getCasesByPor =
-        function (
-
-            porNo
-
-        ) {
-
-            const key =
-
-                OffenceStore.normalizeKey(
-
-                    porNo
-
-                );
-
-
-            if (!key) {
-
-                return [];
-
-            }
-
-
-            return (
-
-                OffenceStore.index
-                    .casesByPor
-                    .get(
-                        key
-                    ) ||
-
-                []
-
-            );
-
-        };
-
-
-    /* =====================================================
-       19. GET ACCUSED BY SUSPECT ID
-       ===================================================== */
-
-    OffenceStore.getAccusedBySuspectId =
-        function (
-
-            suspectId
-
-        ) {
-
-            const key =
-
-                OffenceStore.normalizeKey(
-
-                    suspectId
-
-                );
-
-
-            if (!key) {
-
-                return null;
-
-            }
-
-
-            return (
-
-                OffenceStore.index
-                    .accusedBySuspectId
-                    .get(
-                        key
-                    ) ||
-
-                null
-
-            );
-
-        };
-
-
-    /* =====================================================
-       20. GET ACCUSED BY CASE ID
-       ===================================================== */
-
-    OffenceStore.getAccusedByCaseId =
-        function (
-
-            caseId
-
-        ) {
-
-            const key =
-
-                OffenceStore.normalizeKey(
+                .safeString(
 
                     caseId
 
                 );
 
 
-            if (!key) {
+        if (
 
-                return [];
-
-            }
-
-
-            return (
-
-                OffenceStore.index
-                    .accusedByCaseId
-                    .get(
-                        key
-                    ) ||
-
-                []
-
-            );
-
-        };
-
-
-    /* =====================================================
-       21. GET ACCUSED BY POR
-       ===================================================== */
-
-    OffenceStore.getAccusedByPor =
-        function (
-
-            porNo
+            !caseId
 
         ) {
 
-            const key =
+            return null;
 
-                OffenceStore.normalizeKey(
+        }
 
-                    porNo
+
+        return Store.index
+
+            .casesById
+
+            .get(
+
+                caseId
+
+            ) ||
+
+            null;
+
+    };
+
+
+    /*=========================================================
+      GET ACCUSED BY ID
+    =========================================================*/
+
+    Store.getAccusedById = function (
+
+        accusedId
+
+    ) {
+
+        accusedId =
+
+            Store
+
+                .safeString(
+
+                    accusedId
 
                 );
 
 
-            if (!key) {
+        return Store.index
 
-                return [];
+            .accusedById
 
-            }
+            .get(
 
+                accusedId
 
-            return (
+            ) ||
 
-                OffenceStore.index
-                    .accusedByPor
-                    .get(
-                        key
-                    ) ||
+            null;
 
-                []
-
-            );
-
-        };
+    };
 
 
-    /* =====================================================
-       22. GET SEIZURE BY ID
-       ===================================================== */
+    /*=========================================================
+      GET WITNESS BY ID
+    =========================================================*/
 
-    OffenceStore.getSeizureById =
-        function (
+    Store.getWitnessById = function (
 
-            seizureId
+        witnessId
 
-        ) {
+    ) {
 
-            const key =
+        witnessId =
 
-                OffenceStore.normalizeKey(
+            Store
+
+                .safeString(
+
+                    witnessId
+
+                );
+
+
+        return Store.index
+
+            .witnessesById
+
+            .get(
+
+                witnessId
+
+            ) ||
+
+            null;
+
+    };
+
+
+    /*=========================================================
+      GET SEIZURE BY ID
+    =========================================================*/
+
+    Store.getSeizureById = function (
+
+        seizureId
+
+    ) {
+
+        seizureId =
+
+            Store
+
+                .safeString(
 
                     seizureId
 
                 );
 
 
-            if (!key) {
+        return Store.index
 
-                return null;
+            .seizuresById
 
-            }
+            .get(
 
+                seizureId
 
-            return (
+            ) ||
 
-                OffenceStore.index
-                    .seizureById
-                    .get(
-                        key
-                    ) ||
+            null;
 
-                null
-
-            );
-
-        };
+    };
 
 
-    /* =====================================================
-       23. GET SEIZURES BY CASE ID
-       ===================================================== */
+    /*=========================================================
+      GET ARTICLE BY ID
+    =========================================================*/
 
-    OffenceStore.getSeizuresByCaseId =
-        function (
+    Store.getSeizedArticleById = function (
 
-            caseId
+        articleId
 
-        ) {
+    ) {
 
-            const key =
+        articleId =
 
-                OffenceStore.normalizeKey(
+            Store
+
+                .safeString(
+
+                    articleId
+
+                );
+
+
+        return Store.index
+
+            .seizedArticlesById
+
+            .get(
+
+                articleId
+
+            ) ||
+
+            null;
+
+    };
+
+
+    /*=========================================================
+      GET ACCUSED BY CASE ID
+
+      Secondary relationship only.
+    =========================================================*/
+
+    Store.getAccusedByCaseId = function (
+
+        caseId
+
+    ) {
+
+        caseId =
+
+            Store
+
+                .safeString(
 
                     caseId
 
                 );
 
 
-            if (!key) {
+        return [
 
-                return [];
+            ...(
 
-            }
+                Store.index
+
+                    .accusedByCaseId
+
+                    .get(
+
+                        caseId
+
+                    ) ||
+
+                []
+
+            )
+
+        ];
+
+    };
 
 
-            return (
+    /*=========================================================
+      GET WITNESSES BY CASE ID
+    =========================================================*/
 
-                OffenceStore.index
+    Store.getWitnessesByCaseId = function (
+
+        caseId
+
+    ) {
+
+        caseId =
+
+            Store
+
+                .safeString(
+
+                    caseId
+
+                );
+
+
+        return [
+
+            ...(
+
+                Store.index
+
+                    .witnessesByCaseId
+
+                    .get(
+
+                        caseId
+
+                    ) ||
+
+                []
+
+            )
+
+        ];
+
+    };
+
+
+    /*=========================================================
+      GET SEIZURES BY CASE ID
+    =========================================================*/
+
+    Store.getSeizuresByCaseId = function (
+
+        caseId
+
+    ) {
+
+        caseId =
+
+            Store
+
+                .safeString(
+
+                    caseId
+
+                );
+
+
+        return [
+
+            ...(
+
+                Store.index
+
                     .seizuresByCaseId
+
                     .get(
-                        key
+
+                        caseId
+
                     ) ||
 
                 []
 
-            );
+            )
 
-        };
+        ];
+
+    };
 
 
-    /* =====================================================
-       24. GET SEIZURES BY POR
-       ===================================================== */
+    /*=========================================================
+      GET ARTICLES BY SEIZURE ID
 
-    OffenceStore.getSeizuresByPor =
-        function (
+      Direct child relationship.
+    =========================================================*/
 
-            porNo
+    Store.getArticlesBySeizureId = function (
 
-        ) {
+        seizureId
 
-            const key =
+    ) {
 
-                OffenceStore.normalizeKey(
+        seizureId =
 
-                    porNo
+            Store
+
+                .safeString(
+
+                    seizureId
 
                 );
 
 
-            if (!key) {
+        return [
 
-                return [];
+            ...(
 
-            }
+                Store.index
 
+                    .articlesBySeizureId
 
-            return (
-
-                OffenceStore.index
-                    .seizuresByPor
                     .get(
-                        key
+
+                        seizureId
+
                     ) ||
 
                 []
 
-            );
+            )
 
-        };
+        ];
+
+    };
 
 
-    /* =====================================================
-       25. GET COMPLETE CASE CONTEXT
+    /*=========================================================
+      GET COMPLETE CASCADE FROM CASE ID
 
-       This is important for future map clicks.
+      IMPORTANT:
 
-       CASE
-          ↓
-       ACCUSED
-          ↓
-       SEIZURES
+      We first resolve the case.
 
-       Returns everything linked to one case.
-       ===================================================== */
+      Then use its POR.
 
-    OffenceStore.getCaseContext =
-        function (
+      We DO NOT primarily join child collections by caseId.
+    =========================================================*/
 
-            caseId
+    Store.getCascadeByCaseId = function (
 
-        ) {
+        caseId
 
-            const caseRecord =
+    ) {
 
-                OffenceStore.getCaseById(
+        const caseRecord =
+
+            Store
+
+                .getCaseById(
 
                     caseId
 
                 );
 
 
-            if (
-                !caseRecord
-            ) {
+        if (
 
-                return null;
+            !caseRecord
 
-            }
+        ) {
 
+            return null;
 
-            let accused =
-
-                OffenceStore.getAccusedByCaseId(
-
-                    caseRecord.caseId
-
-                );
+        }
 
 
-            let seizures =
+        const porKey =
 
-                OffenceStore.getSeizuresByCaseId(
+            Store
 
-                    caseRecord.caseId
+                .getPorKey(
+
+                    caseRecord
 
                 );
 
 
-            /*
-             * Fallback to POR linkage when
-             * direct CaseID linkage is unavailable.
-             */
+        if (
 
-            if (
-                accused.length === 0 &&
-                caseRecord.porNo
-            ) {
+            !porKey
 
-                accused =
-
-                    OffenceStore.getAccusedByPor(
-
-                        caseRecord.porNo
-
-                    );
-
-            }
-
-
-            if (
-                seizures.length === 0 &&
-                caseRecord.porNo
-            ) {
-
-                seizures =
-
-                    OffenceStore.getSeizuresByPor(
-
-                        caseRecord.porNo
-
-                    );
-
-            }
-
+        ) {
 
             return {
+
+                porNo:
+
+                    "",
+
+                porKey:
+
+                    "",
 
                 case:
 
                     caseRecord,
 
+                cases:
+
+                    [
+
+                        caseRecord
+
+                    ],
+
                 accused:
 
-                    accused,
+                    [],
+
+                witnesses:
+
+                    [],
 
                 seizures:
 
-                    seizures
+                    [],
+
+                seizedArticles:
+
+                    [],
+
+                seizureGroups:
+
+                    [],
+
+                counts: {
+
+                    cases:
+
+                        1,
+
+                    accused:
+
+                        0,
+
+                    witnesses:
+
+                        0,
+
+                    seizures:
+
+                        0,
+
+                    seizedArticles:
+
+                        0
+
+                }
 
             };
 
-        };
+        }
 
 
-    /* =====================================================
-       26. GET ALL CASE CONTEXTS
-       ===================================================== */
+        return Store
 
-    OffenceStore.getAllCaseContexts =
-        function () {
+            .getCascadeByPor(
+
+                porKey
+
+            );
+
+    };
+
+
+    /*=========================================================
+      GET COMPLETE CASCADE FROM ACCUSED
+
+      accusedId
+          ↓
+      accused
+          ↓
+      POR
+          ↓
+      complete case cascade
+    =========================================================*/
+
+    Store.getCascadeByAccusedId = function (
+
+        accusedId
+
+    ) {
+
+        const accused =
+
+            Store
+
+                .getAccusedById(
+
+                    accusedId
+
+                );
+
+
+        if (
+
+            !accused
+
+        ) {
+
+            return null;
+
+        }
+
+
+        const porKey =
+
+            Store
+
+                .getPorKey(
+
+                    accused
+
+                );
+
+
+        if (
+
+            !porKey
+
+        ) {
+
+            return null;
+
+        }
+
+
+        return Store
+
+            .getCascadeByPor(
+
+                porKey
+
+            );
+
+    };
+
+
+    /*=========================================================
+      GET COMPLETE CASCADE FROM SEIZURE
+    =========================================================*/
+
+    Store.getCascadeBySeizureId = function (
+
+        seizureId
+
+    ) {
+
+        const seizure =
+
+            Store
+
+                .getSeizureById(
+
+                    seizureId
+
+                );
+
+
+        if (
+
+            !seizure
+
+        ) {
+
+            return null;
+
+        }
+
+
+        const porKey =
+
+            Store
+
+                .getPorKey(
+
+                    seizure
+
+                );
+
+
+        if (
+
+            !porKey
+
+        ) {
+
+            return null;
+
+        }
+
+
+        return Store
+
+            .getCascadeByPor(
+
+                porKey
+
+            );
+
+    };
+
+
+    /*=========================================================
+      GET COMPLETE CASCADE FROM ARTICLE
+    =========================================================*/
+
+    Store.getCascadeByArticleId = function (
+
+        articleId
+
+    ) {
+
+        const article =
+
+            Store
+
+                .getSeizedArticleById(
+
+                    articleId
+
+                );
+
+
+        if (
+
+            !article
+
+        ) {
+
+            return null;
+
+        }
+
+
+        const porKey =
+
+            Store
+
+                .getPorKey(
+
+                    article
+
+                );
+
+
+        if (
+
+            !porKey
+
+        ) {
+
+            return null;
+
+        }
+
+
+        return Store
+
+            .getCascadeByPor(
+
+                porKey
+
+            );
+
+    };
+
+
+    /*=========================================================
+      GET ALL CASCADES
+
+      One cascade per POR.
+
+      Useful for:
+          analytics
+          heatmap
+          offence aggregation
+          source/target processing
+    =========================================================*/
+
+    Store.getAllCascades = function () {
+
+        const porKeys =
+
+            Store
+
+                .getAllPorKeys();
+
+
+        return porKeys
+
+            .map(
+
+                function (
+
+                    porKey
+
+                ) {
+
+                    return Store
+
+                        .getCascadeByPor(
+
+                            porKey
+
+                        );
+
+                }
+
+            )
+
+            .filter(
+
+                Boolean
+
+            );
+
+    };
+
+
+    /*=========================================================
+      GET CASE CASCADES ONLY
+
+      Unlike getAllCascades(), this only returns PORs
+      that exist in offence_cases.
+
+      This should normally be used for authoritative
+      offence analytics.
+    =========================================================*/
+
+    Store.getCaseCascades = function () {
+
+        const cascades = [];
+
+
+        Store.index
+
+            .casesByPor
+
+            .forEach(
+
+                function (
+
+                    cases,
+
+                    porKey
+
+                ) {
+
+                    const cascade =
+
+                        Store
+
+                            .getCascadeByPor(
+
+                                porKey
+
+                            );
+
+
+                    if (
+
+                        cascade
+
+                    ) {
+
+                        cascades.push(
+
+                            cascade
+
+                        );
+
+                    }
+
+                }
+
+            );
+
+
+        return cascades;
+
+    };
+
+
+    /*=========================================================
+      FIND ORPHAN POR DATA
+
+      Finds child PORs which do not exist in offence_cases.
+
+      Importers should already prevent most of these,
+      but this gives frontend diagnostics.
+    =========================================================*/
+
+    Store.getOrphanPorData = function () {
+
+        const validCasePor =
+
+            new Set(
+
+                Store.index
+
+                    .casesByPor
+
+                    .keys()
+
+            );
+
+
+        function findOrphans(
+
+            map
+
+        ) {
 
             const result = [];
 
 
-            for (
+            map
 
-                const caseRecord
+                .forEach(
 
-                of OffenceStore.data.cases
+                    function (
 
-            ) {
+                        records,
 
-                if (
-                    !caseRecord.caseId
-                ) {
+                        porKey
 
-                    continue;
+                    ) {
 
-                }
+                        if (
 
+                            !validCasePor
 
-                const context =
+                                .has(
 
-                    OffenceStore
-                        .getCaseContext(
+                                    porKey
 
-                            caseRecord.caseId
+                                )
 
-                        );
+                        ) {
 
+                            result.push(
 
-                if (
-                    context
-                ) {
+                                {
 
-                    result.push(
+                                    porKey:
 
-                        context
+                                        porKey,
 
-                    );
+                                    count:
 
-                }
+                                        records.length,
 
-            }
+                                    records:
+
+                                        [
+
+                                            ...records
+
+                                        ]
+
+                                }
+
+                            );
+
+                        }
+
+                    }
+
+                );
 
 
             return result;
 
-        };
-
-
-    /* =====================================================
-       27. MERGE UNIQUE RECORDS
-
-       Used by incremental daily updates.
-       ===================================================== */
-
-    OffenceStore.mergeUnique =
-        function (
-
-            existing = [],
-
-            incoming = [],
-
-            keyBuilder
-
-        ) {
-
-            const map =
-                new Map();
-
-
-            for (
-
-                const item
-
-                of existing
-
-            ) {
-
-                const key =
-
-                    keyBuilder(
-                        item
-                    );
-
-
-                if (
-                    key
-                ) {
-
-                    map.set(
-
-                        OffenceStore
-                            .normalizeKey(
-                                key
-                            ),
-
-                        item
-
-                    );
-
-                }
-
-            }
-
-
-            for (
-
-                const item
-
-                of incoming
-
-            ) {
-
-                const key =
-
-                    keyBuilder(
-                        item
-                    );
-
-
-                if (
-                    key
-                ) {
-
-                    /*
-                     * Incoming record replaces older
-                     * version of the same logical record.
-                     */
-
-                    map.set(
-
-                        OffenceStore
-                            .normalizeKey(
-                                key
-                            ),
-
-                        item
-
-                    );
-
-                }
-
-            }
-
-
-            return Array.from(
-
-                map.values()
-
-            );
-
-        };
-
-
-    /* =====================================================
-       28. INCREMENTAL UPDATE
-
-       Designed for daily growing offence data.
-
-       Existing history is preserved.
-
-       New or updated records are merged.
-       ===================================================== */
-
-    OffenceStore.update = function (
-
-        rawData = {}
-
-    ) {
-
-        OffenceStore.init();
-
-
-        const normalized =
-
-            Normalizer.normalizeAll(
-
-                rawData
-
-            );
-
-
-        /* -------------------------
-           Cases
-           ------------------------- */
-
-        OffenceStore.data.cases =
-
-            OffenceStore.mergeUnique(
-
-                OffenceStore.data.cases,
-
-                normalized.cases,
-
-                function (
-
-                    item
-
-                ) {
-
-                    return (
-
-                        item.caseId ||
-
-                        item.porNo
-
-                    );
-
-                }
-
-            );
-
-
-        /* -------------------------
-           Accused
-           ------------------------- */
-
-        OffenceStore.data.accused =
-
-            OffenceStore.mergeUnique(
-
-                OffenceStore.data.accused,
-
-                normalized.accused,
-
-                function (
-
-                    item
-
-                ) {
-
-                    return (
-
-                        item.suspectId ||
-
-                        [
-
-                            item.name,
-
-                            item.permanentAddress
-
-                        ].join(
-                            "|"
-                        )
-
-                    );
-
-                }
-
-            );
-
-
-        /* -------------------------
-           Seizures
-           ------------------------- */
-
-        OffenceStore.data.seizures =
-
-            OffenceStore.mergeUnique(
-
-                OffenceStore.data.seizures,
-
-                normalized.seizures,
-
-                function (
-
-                    item
-
-                ) {
-
-                    return (
-
-                        item.seizureId ||
-
-                        [
-
-                            item.caseId,
-
-                            item.seizureDate,
-
-                            item.placeOfSeizure
-
-                        ].join(
-                            "|"
-                        )
-
-                    );
-
-                }
-
-            );
-
-
-        /* -------------------------
-           Rebuild Indexes
-           ------------------------- */
-
-        OffenceStore
-            .rebuildIndexes();
-
-
-        /* -------------------------
-           Event
-           ------------------------- */
-
-        OffenceStore.dispatchEvent(
-
-            Constants.EVENTS
-                .DATA_UPDATED,
-
-            OffenceStore.getStats()
-
-        );
+        }
 
 
         return {
 
-            success:
-                true,
+            accused:
 
-            stats:
-                OffenceStore.getStats()
+                findOrphans(
+
+                    Store.index
+
+                        .accusedByPor
+
+                ),
+
+            witnesses:
+
+                findOrphans(
+
+                    Store.index
+
+                        .witnessesByPor
+
+                ),
+
+            seizures:
+
+                findOrphans(
+
+                    Store.index
+
+                        .seizuresByPor
+
+                ),
+
+            seizedArticles:
+
+                findOrphans(
+
+                    Store.index
+
+                        .seizedArticlesByPor
+
+                )
 
         };
 
     };
 
 
-    /* =====================================================
-       29. GET STATS
-       ===================================================== */
+    /*=========================================================
+      GET DUPLICATE CASE POR DATA
 
-    OffenceStore.getStats =
-        function () {
+      A POR should normally resolve to one case.
 
-            return {
+      We do not silently delete duplicates.
+    =========================================================*/
 
-                cases:
+    Store.getDuplicateCasePor = function () {
 
-                    OffenceStore.data
-                        .cases
-                        .length,
-
-                accused:
-
-                    OffenceStore.data
-                        .accused
-                        .length,
-
-                seizures:
-
-                    OffenceStore.data
-                        .seizures
-                        .length,
-
-                caseIds:
-
-                    OffenceStore.index
-                        .caseById
-                        .size,
-
-                porNumbers:
-
-                    OffenceStore.index
-                        .casesByPor
-                        .size,
-
-                suspectIds:
-
-                    OffenceStore.index
-                        .accusedBySuspectId
-                        .size,
-
-                seizureIds:
-
-                    OffenceStore.index
-                        .seizureById
-                        .size
-
-            };
-
-        };
+        const duplicates = [];
 
 
-    /* =====================================================
-       30. GET RAW STORE DATA
-       ===================================================== */
+        Store.index
 
-    OffenceStore.getData =
-        function () {
+            .casesByPor
 
-            return OffenceStore.data;
+            .forEach(
 
-        };
+                function (
 
+                    cases,
 
-    /* =====================================================
-       31. RESET STORE
-       ===================================================== */
+                    porKey
 
-    OffenceStore.reset =
-        function () {
-
-            OffenceStore.data = {
-
-                cases: [],
-
-                accused: [],
-
-                seizures: []
-
-            };
-
-
-            OffenceStore
-                .clearIndexes();
-
-
-            return true;
-
-        };
-
-
-    /* =====================================================
-       32. DISPATCH EVENT
-       ===================================================== */
-
-    OffenceStore.dispatchEvent =
-        function (
-
-            eventName,
-
-            detail = {}
-
-        ) {
-
-            if (
-                !eventName
-            ) {
-
-                return;
-
-            }
-
-
-            try {
-
-                window.dispatchEvent(
-
-                    new CustomEvent(
-
-                        eventName,
-
-                        {
-
-                            detail:
-                                detail
-
-                        }
-
-                    )
-
-                );
-
-            }
-
-            catch (
-
-                error
-
-            ) {
-
-                if (
-                    Constants.DEBUG
-                        ?.ENABLED
                 ) {
 
-                    console.warn(
+                    if (
 
-                        "[OffenceStore] Event dispatch failed",
+                        cases.length >
 
-                        eventName,
+                        1
 
-                        error
+                    ) {
 
-                    );
+                        duplicates.push(
+
+                            {
+
+                                porKey:
+
+                                    porKey,
+
+                                count:
+
+                                    cases.length,
+
+                                cases:
+
+                                    [
+
+                                        ...cases
+
+                                    ]
+
+                            }
+
+                        );
+
+                    }
 
                 }
 
-            }
+            );
+
+
+        return duplicates;
+
+    };
+
+
+    /*=========================================================
+      HAS POR
+    =========================================================*/
+
+    Store.hasPor = function (
+
+        porNo
+
+    ) {
+
+        const porKey =
+
+            Store
+
+                .normalizePor(
+
+                    porNo
+
+                );
+
+
+        if (
+
+            !porKey
+
+        ) {
+
+            return false;
+
+        }
+
+
+        return Store.index
+
+            .casesByPor
+
+            .has(
+
+                porKey
+
+            );
+
+    };
+
+
+    /*=========================================================
+      GET RAW DATASET
+    =========================================================*/
+
+    Store.getData = function () {
+
+        return Store.data;
+
+    };
+
+
+    /*=========================================================
+      GET CASES
+    =========================================================*/
+
+    Store.getCases = function () {
+
+        return [
+
+            ...Store.data
+
+                .cases
+
+        ];
+
+    };
+
+
+    /*=========================================================
+      GET ACCUSED
+    =========================================================*/
+
+    Store.getAccused = function () {
+
+        return [
+
+            ...Store.data
+
+                .accused
+
+        ];
+
+    };
+
+
+    /*=========================================================
+      GET WITNESSES
+    =========================================================*/
+
+    Store.getWitnesses = function () {
+
+        return [
+
+            ...Store.data
+
+                .witnesses
+
+        ];
+
+    };
+
+
+    /*=========================================================
+      GET SEIZURES
+    =========================================================*/
+
+    Store.getSeizures = function () {
+
+        return [
+
+            ...Store.data
+
+                .seizures
+
+        ];
+
+    };
+
+
+    /*=========================================================
+      GET SEIZED ARTICLES
+    =========================================================*/
+
+    Store.getSeizedArticles = function () {
+
+        return [
+
+            ...Store.data
+
+                .seizedArticles
+
+        ];
+
+    };
+
+
+    /*=========================================================
+      GET STATS
+    =========================================================*/
+
+    Store.getStats = function () {
+
+        return {
+
+            ...Store.stats,
+
+            initialized:
+
+                Store.initialized,
+
+            ready:
+
+                Store.ready,
+
+            lastBuiltAt:
+
+                Store.lastBuiltAt,
+
+            lastBuildDuration:
+
+                Store.lastBuildDuration
 
         };
 
-
-    /* =====================================================
-       33. EXPORT
-       ===================================================== */
-
-    GG.Offence.Store =
-        OffenceStore;
+    };
 
 
-    /* =====================================================
-       34. INITIALIZE
-       ===================================================== */
+    /*=========================================================
+      DEBUG SUMMARY
+    =========================================================*/
 
-    OffenceStore.init();
+    Store.debug = function () {
 
+        console.group(
 
-    /* =====================================================
-       35. READY LOG
-       ===================================================== */
-
-    if (
-        Constants.DEBUG
-            ?.ENABLED
-    ) {
-
-        console.log(
-
-            "🔥 OffenceStore Loaded",
-
-            OffenceStore
+            "🔥 OFFENCE STORE DEBUG"
 
         );
 
-    }
+
+        console.log(
+
+            "Version:",
+
+            Store.VERSION
+
+        );
 
 
-})();
+        console.log(
+
+            "Initialized:",
+
+            Store.initialized
+
+        );
+
+
+        console.log(
+
+            "Ready:",
+
+            Store.ready
+
+        );
+
+
+        console.log(
+
+            "Stats:",
+
+            Store
+
+                .getStats()
+
+        );
+
+
+        console.log(
+
+            "POR Keys:",
+
+            Store
+
+                .getAllPorKeys()
+
+                .length
+
+        );
+
+
+        console.log(
+
+            "Duplicate Case POR:",
+
+            Store
+
+                .getDuplicateCasePor()
+
+        );
+
+
+        console.log(
+
+            "Orphan POR Data:",
+
+            Store
+
+                .getOrphanPorData()
+
+        );
+
+
+        console.groupEnd();
+
+
+        return {
+
+            stats:
+
+                Store
+
+                    .getStats(),
+
+            duplicateCasePor:
+
+                Store
+
+                    .getDuplicateCasePor(),
+
+            orphanPorData:
+
+                Store
+
+                    .getOrphanPorData()
+
+        };
+
+    };
+
+
+    /*=========================================================
+      REGISTER
+    =========================================================*/
+
+    GG.Offence.Store =
+
+        Store;
+
+
+    /*=========================================================
+      READY
+    =========================================================*/
+
+    console.log(
+
+        "%cOffence Store Ready",
+
+        "color:#d32f2f;font-weight:bold;"
+
+    );
+
+
+    console.log(
+
+        "[OffenceStore] Version:",
+
+        Store.VERSION
+
+    );
+
+
+    console.log(
+
+        "[OffenceStore] Relationship strategy:",
+
+        "POR KEY AUTHORITATIVE"
+
+    );
+
+
+})(window);
