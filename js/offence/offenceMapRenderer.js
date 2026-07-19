@@ -491,19 +491,38 @@
 
         polygonHeat: {
 
-            minFillOpacity:
-                0.20,
+    minFillOpacity:
+        0.35,
 
-            maxFillOpacity:
-                0.75,
+    maxFillOpacity:
+        0.85,
 
-            minWeight:
-                1,
+    minWeight:
+        1,
 
-            maxWeight:
-                4
+    maxWeight:
+        4,
 
-        }
+    targetGradient: {
+
+        0.20:
+            "#ffff00",
+
+        0.40:
+            "#ffb300",
+
+        0.60:
+            "#ff6600",
+
+        0.80:
+            "#ff0000",
+
+        1.00:
+            "#800000"
+
+    }
+
+}
 
     };
 
@@ -3920,65 +3939,81 @@ MapRenderer.handlePolygonClick =
        33. GET POLYGON HEAT WEIGHT
        ===================================================== */
 
-    MapRenderer.getPolygonHeatWeight =
-        function (
+MapRenderer.getPolygonHeatWeight =
+    function (
+        entry
+    ) {
 
-            entry
-
+        if (
+            !entry
         ) {
 
-            if (
+            return 0;
 
-                !entry
-
-            ) {
-
-                return 0;
-
-            }
+        }
 
 
-            const explicit =
+        /*
+         * Polygon heat intensity is based primarily
+         * on aggregated offence/case count.
+         *
+         * getPolygonCount() checks:
+         *
+         * offenceCount
+         * hotspotCount
+         * count
+         * total
+         * sourceCount
+         * targetCount
+         *
+         * and finally related hotspot arrays.
+         */
 
-                MapRenderer
-                    .toFiniteNumber(
+        const count =
 
-                        entry.heatWeight ??
-
-                        entry.weight ??
-
-                        entry.intensity,
-
-                        null
-
-                    );
-
-
-            if (
-
-                explicit !==
-                null
-
-            ) {
-
-                return Math.max(
-
-                    0,
-
-                    explicit
-
-                );
-
-            }
-
-
-            return MapRenderer
+            MapRenderer
                 .getPolygonCount(
                     entry
                 );
 
-        };
 
+        if (
+            count >
+            0
+        ) {
+
+            return count;
+
+        }
+
+
+        /*
+         * Fallback only when no usable count exists.
+         */
+
+        const explicit =
+
+            MapRenderer
+                .toFiniteNumber(
+
+                    entry.heatWeight ??
+                    entry.weight ??
+                    entry.intensity,
+
+                    0
+
+                );
+
+
+        return Math.max(
+
+            0,
+
+            explicit
+
+        );
+
+    };
 
     /* =====================================================
        34. GET MAX POLYGON HEAT WEIGHT
