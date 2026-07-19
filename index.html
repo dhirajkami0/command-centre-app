@@ -22294,7 +22294,7 @@ console.error("❌ renderFilteredGIS",e);
 }
 
 }
- function renderFilteredCompartments(){
+function renderFilteredCompartments(){
 
 try {
 
@@ -22669,214 +22669,67 @@ layer.setStyle(originalStyle);
 });
 
 // ==============================================
-// 🔥 ORIGINAL CLICK LOGIC
-// ==============================================
-
-// ==============================================
-// 📦 COMPARTMENT CLICK → ANALYTICS
+// 🚫 COMPARTMENT ANALYTICS CLICK DISABLED
+//
+// IMPORTANT:
+//
+// Only the old analytics-panel opening action
+// has been disabled.
+//
+// The click is still captured here so that
+// clicking this GIS polygon does NOT bubble
+// into the general background map click.
+//
+// No call is made to:
+// showCompartmentAnalyticsPanel()
+// showBTRAnalyticsPanel()
+//
+// All other compartment behaviour remains.
 // ==============================================
 
 layer.on(
 
-    "click",
+"click",
 
-    async function(e){
+function(e){
 
-        try{
+try{
 
-            // ==========================================
-            // STOP CLICK FROM REACHING BACKGROUND MAP
-            // ==========================================
+// ==========================================
+// STOP CLICK FROM REACHING BACKGROUND MAP
+// ==========================================
 
-            L.DomEvent.stopPropagation(
-                e
-            );
+L.DomEvent.stopPropagation(
+e
+);
 
+// ==========================================
+// DEBUG ONLY
+// ==========================================
 
-            // ==========================================
-            // ONLY WHEN COMPARTMENT LEVEL IS ACTIVE
-            // ==========================================
+console.debug(
 
-            if(
+"📦 Compartment analytics click disabled:",
 
-                window.activePopupContext
-                    ?.level !==
-                "compartment"
+compartment
 
-            ){
+);
 
-                return;
+}
 
-            }
+catch(err){
 
+console.error(
 
-            // ==========================================
-            // GET CLICKED COMPARTMENT
-            // ==========================================
+"❌ COMPARTMENT POLYGON CLICK",
 
-            const clickedProps =
+err
 
-                feature.properties ||
+);
 
-                {};
+}
 
-
-            const clickedCompartment =
-
-                String(
-
-                    clickedProps.compartment ||
-
-                    clickedProps.compartmen ||
-
-                    clickedProps.Compartment ||
-
-                    compartment ||
-
-                    ""
-
-                ).trim();
-
-
-            // ==========================================
-            // VALIDATE
-            // ==========================================
-
-            if(
-
-                !clickedCompartment ||
-
-                clickedCompartment ===
-                    "-"
-
-            ){
-
-                console.warn(
-
-                    "⚠ Compartment analytics: " +
-                    "compartment name missing."
-
-                );
-
-                return;
-
-            }
-
-
-            // ==========================================
-            // FIRESTORE DOCUMENT ID
-            //
-            // Examples:
-            //
-            // Adma BL1
-            //     ↓
-            // Adma_BL1
-            //
-            // C Rydak BL1
-            //     ↓
-            // C_Rydak_BL1
-            // ==========================================
-
-            const compartmentDocId =
-
-                clickedCompartment
-
-                    .replace(
-                        /\s+/g,
-                        "_"
-                    )
-
-                    .replace(
-                        /__+/g,
-                        "_"
-                    )
-
-                    .trim();
-
-
-            if(
-                !compartmentDocId
-            ){
-
-                console.warn(
-
-                    "⚠ Compartment analytics: " +
-                    "invalid document ID."
-
-                );
-
-                return;
-
-            }
-
-
-            // ==========================================
-            // DEBUG
-            // ==========================================
-
-            console.log(
-
-                "📦 COMPARTMENT ANALYTICS:",
-
-                {
-
-                    compartment:
-                        clickedCompartment,
-
-                    documentId:
-                        compartmentDocId
-
-                }
-
-            );
-
-
-            // ==========================================
-            // OPEN UNIFIED ANALYTICS PANEL
-            // ==========================================
-
-            if(
-
-                typeof showBTRAnalyticsPanel !==
-                "function"
-
-            ){
-
-                console.error(
-
-                    "❌ showBTRAnalyticsPanel " +
-                    "is not available."
-
-                );
-
-                return;
-
-            }
-
-
-            await showBTRAnalyticsPanel(
-
-                "gis_compartment_analytics",
-
-                compartmentDocId
-
-            );
-
-        }
-
-        catch(err){
-
-            console.error(
-
-                "❌ COMPARTMENT ANALYTICS CLICK",
-
-                err
-
-            );
-
-        }
-
-    }
+}
 
 );
 
