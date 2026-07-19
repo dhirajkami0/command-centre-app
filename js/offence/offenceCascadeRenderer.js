@@ -3509,110 +3509,432 @@ CascadeRenderer
        33. NAVIGATE BACK
        ===================================================== */
 
-    CascadeRenderer.navigateBack =
-        function () {
+// =====================================================
+// 33. NAVIGATE BACK
+// =====================================================
 
-            const state =
+CascadeRenderer.navigateBack =
+    function () {
 
-                CascadeRenderer
-                    .getState();
+        const state =
 
-
-            const level =
-
-                CascadeRenderer
-                    .normalizeLevel(
-                        state?.level
-                    );
+            CascadeRenderer
+                .getCascadeState();
 
 
-            switch (
-                level
-            ) {
+        const level =
 
-                case CascadeRenderer
-                    .LEVEL
-                    .ARTICLE:
-
-                    if (
-                        typeof CascadeController
-                            .backToCase ===
-                            "function"
-                    ) {
-
-                        CascadeController
-                            .backToCase();
-
-                    }
-
-                    break;
+            CascadeRenderer
+                .normalizeLevel(
+                    state?.level
+                );
 
 
-                case CascadeRenderer
-                    .LEVEL
-                    .SEIZURE:
+        console.log(
 
-                case CascadeRenderer
-                    .LEVEL
-                    .ACCUSED:
+            "⬅ CASCADE BACK",
 
-                case CascadeRenderer
-                    .LEVEL
-                    .WITNESS:
+            {
 
-                    if (
-                        typeof CascadeController
-                            .backToCase ===
-                            "function"
-                    ) {
+                level:
+                    level,
 
-                        CascadeController
-                            .backToCase();
-
-                    }
-
-                    break;
-
-
-                case CascadeRenderer
-                    .LEVEL
-                    .CASE:
-
-                    if (
-                        typeof CascadeController
-                            .backToPor ===
-                            "function"
-                    ) {
-
-                        CascadeController
-                            .backToPor();
-
-                    }
-
-                    break;
-
-
-                case CascadeRenderer
-                    .LEVEL
-                    .POR:
-
-                    if (
-                        typeof CascadeController
-                            .backToHotspot ===
-                            "function"
-                    ) {
-
-                        CascadeController
-                            .backToHotspot();
-
-                    }
-
-                    break;
+                state:
+                    state
 
             }
 
-        };
+        );
 
+
+        let result =
+            null;
+
+
+        // ==============================================
+        // ARTICLE
+        // ==============================================
+
+        if (
+            level ===
+            CascadeRenderer
+                .LEVEL
+                .ARTICLE
+        ) {
+
+            /*
+             * Preferred flow:
+             *
+             * ARTICLE
+             *   ↓
+             * SEIZURE
+             *
+             * Current CascadeController does not expose
+             * backToSeizure().
+             *
+             * Therefore restore SEIZURE when the current
+             * seizure context is still available.
+             */
+
+            const seizure =
+
+                state.currentSeizure ||
+
+                state.selectedSeizure ||
+
+                state.seizure ||
+
+                null;
+
+
+            if (
+                seizure &&
+                CascadeController.state
+            ) {
+
+                CascadeController
+                    .state
+                    .currentArticle =
+                    null;
+
+
+                CascadeController
+                    .state
+                    .selectedArticle =
+                    null;
+
+
+                CascadeController
+                    .state
+                    .article =
+                    null;
+
+
+                CascadeController
+                    .state
+                    .currentSeizure =
+                    seizure;
+
+
+                CascadeController
+                    .state
+                    .selectedSeizure =
+                    seizure;
+
+
+                CascadeController
+                    .state
+                    .level =
+
+                    CascadeRenderer
+                        .LEVEL
+                        .SEIZURE;
+
+
+                if (
+                    typeof CascadeController
+                        .dispatchLevelChanged ===
+                    "function"
+                ) {
+
+                    CascadeController
+                        .dispatchLevelChanged();
+
+                }
+
+
+                if (
+                    typeof CascadeController
+                        .dispatchUpdated ===
+                    "function"
+                ) {
+
+                    CascadeController
+                        .dispatchUpdated();
+
+                }
+
+
+                result = {
+
+                    success:
+                        true,
+
+                    level:
+                        CascadeRenderer
+                            .LEVEL
+                            .SEIZURE
+
+                };
+
+            }
+
+            else if (
+                typeof CascadeController
+                    .backToCase ===
+                "function"
+            ) {
+
+                result =
+
+                    CascadeController
+                        .backToCase();
+
+            }
+
+        }
+
+
+        // ==============================================
+        // SEIZURE → CASE
+        // ACCUSED → CASE
+        // WITNESS → CASE
+        // ==============================================
+
+        else if (
+
+            level ===
+                CascadeRenderer
+                    .LEVEL
+                    .SEIZURE ||
+
+            level ===
+                CascadeRenderer
+                    .LEVEL
+                    .ACCUSED ||
+
+            level ===
+                CascadeRenderer
+                    .LEVEL
+                    .WITNESS
+
+        ) {
+
+            if (
+                typeof CascadeController
+                    .backToCase ===
+                "function"
+            ) {
+
+                result =
+
+                    CascadeController
+                        .backToCase();
+
+            }
+
+        }
+
+
+        // ==============================================
+        // CASE → POR
+        // ==============================================
+
+        else if (
+            level ===
+            CascadeRenderer
+                .LEVEL
+                .CASE
+        ) {
+
+            if (
+                typeof CascadeController
+                    .backToPor ===
+                "function"
+            ) {
+
+                result =
+
+                    CascadeController
+                        .backToPor();
+
+            }
+
+        }
+
+
+        // ==============================================
+        // POR → HOTSPOT
+        // ==============================================
+
+        else if (
+            level ===
+            CascadeRenderer
+                .LEVEL
+                .POR
+        ) {
+
+            if (
+                typeof CascadeController
+                    .backToHotspot ===
+                "function"
+            ) {
+
+                result =
+
+                    CascadeController
+                        .backToHotspot();
+
+            }
+
+        }
+
+
+        // ==============================================
+        // HOTSPOT → CLOSE
+        // ==============================================
+
+        else if (
+            level ===
+            CascadeRenderer
+                .LEVEL
+                .HOTSPOT
+        ) {
+
+            if (
+                typeof CascadeController
+                    .close ===
+                "function"
+            ) {
+
+                result =
+
+                    CascadeController
+                        .close();
+
+            }
+
+
+            CascadeRenderer
+                .hide();
+
+
+            return (
+
+                result ||
+
+                {
+
+                    success:
+                        true,
+
+                    level:
+                        CascadeRenderer
+                            .LEVEL
+                            .NONE
+
+                }
+
+            );
+
+        }
+
+
+        // ==============================================
+        // UNKNOWN LEVEL
+        // ==============================================
+
+        else {
+
+            console.warn(
+
+                "⚠ CASCADE BACK NOT AVAILABLE",
+
+                {
+
+                    level:
+                        level
+
+                }
+
+            );
+
+
+            return {
+
+                success:
+                    false,
+
+                reason:
+                    "BACK_NOT_AVAILABLE",
+
+                level:
+                    level
+
+            };
+
+        }
+
+
+        // ==============================================
+        // FORCE UI REFRESH
+        //
+        // Controller normally dispatches its own event.
+        // This is a defensive fallback so the panel
+        // immediately reflects the new controller state.
+        // ==============================================
+
+        const nextState =
+
+            CascadeRenderer
+                .getCascadeState();
+
+
+        console.log(
+
+            "⬅ CASCADE BACK RESULT",
+
+            {
+
+                previousLevel:
+                    level,
+
+                nextLevel:
+                    nextState?.level,
+
+                result:
+                    result
+
+            }
+
+        );
+
+
+        if (
+            nextState &&
+            nextState.open !==
+                false
+        ) {
+
+            CascadeRenderer
+                .render(
+                    nextState
+                );
+
+        }
+
+
+        return (
+
+            result ||
+
+            {
+
+                success:
+                    true,
+
+                level:
+
+                    CascadeRenderer
+                        .normalizeLevel(
+                            nextState?.level
+                        )
+
+            }
+
+        );
+
+    };
 
     /* =====================================================
        34. SHOW
