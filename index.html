@@ -22846,16 +22846,48 @@ console.warn("⚠ Z-order hierarchy failed",e);
 }
 
 // ==================================================
+// 🔥 RE-APPLY OFFENCE INTERACTION OWNERSHIP
+//
+// renderFilteredGIS() may recreate GIS SVG paths.
+// If offence mode is active, the newly created
+// normal GIS paths must remain non-interactive.
+// ==================================================
+
+if (
+
+    window.__offenceMapInteractionActive ===
+        true &&
+
+    typeof window
+        .setOffenceMapInteractionMode ===
+        "function"
+
+) {
+
+    window
+        .setOffenceMapInteractionMode(
+            true
+        );
+
+}
+
+
+// ==================================================
 // ✅ DONE
 // ==================================================
 
-console.log("✅ Enterprise GIS hierarchy rendered");
+console.log(
+    "✅ Enterprise GIS hierarchy rendered"
+);
 
 }
 
 catch(e){
 
-console.error("❌ renderFilteredGIS",e);
+console.error(
+    "❌ renderFilteredGIS",
+    e
+);
 
 }
 
@@ -23396,13 +23428,51 @@ catch(e){}
 
 });
 
-console.log("✅ Compartment layer rebuilt");
+// ==================================================
+// 🔥 RE-APPLY OFFENCE INTERACTION OWNERSHIP
+//
+// renderFilteredCompartments() recreates the
+// compartment SVG paths.
+//
+// If offence mode is active, prevent those new
+// compartment paths from intercepting offence clicks.
+// ==================================================
+
+if (
+
+    window.__offenceMapInteractionActive ===
+        true &&
+
+    typeof window
+        .setOffenceMapInteractionMode ===
+        "function"
+
+) {
+
+    window
+        .setOffenceMapInteractionMode(
+            true
+        );
+
+}
+
+
+// ==================================================
+// ✅ DONE
+// ==================================================
+
+console.log(
+    "✅ Compartment layer rebuilt"
+);
 
 }
 
 catch(e){
 
-console.error("❌ renderFilteredCompartments",e);
+console.error(
+    "❌ renderFilteredCompartments",
+    e
+);
 
 }
 
