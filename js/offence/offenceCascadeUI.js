@@ -675,189 +675,268 @@
     // 12. HOME
     // =====================================================
 
-    OffenceCascadeUI.showHome =
-        function () {
+OffenceCascadeUI.showHome =
+    function () {
 
-            OffenceCascadeUI
-                .state
-                .mode =
-                    null;
+        // =============================================
+        // 1. RESET STATE
+        // =============================================
 
+        OffenceCascadeUI.state.mode =
+            null;
 
-            OffenceCascadeUI
-                .setHeader(
-
-                    "🔥 OFFENCE FLOW",
-
-                    "Select SOURCE or TARGET"
-
-                );
+        OffenceCascadeUI.state.selectedItem =
+            null;
 
 
-            const content =
-                OffenceCascadeUI
-                    .getContent();
+        // =============================================
+        // 2. HEADER
+        // =============================================
+
+        OffenceCascadeUI.setHeader(
+
+            "🔥 OFFENCE FLOW",
+
+            "Select investigation path"
+
+        );
 
 
-            if (
-                !content
-            ) {
+        // =============================================
+        // 3. CONTENT
+        // =============================================
 
-                return;
+        const content =
+            OffenceCascadeUI.getContent();
 
-            }
+
+        if (!content) {
+
+            console.error(
+                "[OffenceCascadeUI] Content container not found"
+            );
+
+            return false;
+
+        }
 
 
-            content.innerHTML = `
+        // =============================================
+        // 4. RENDER SOURCE / TARGET
+        // =============================================
 
-                <div
+        content.innerHTML = `
+
+            <div
+                style="
+                    display:grid;
+                    grid-template-columns:1fr 1fr;
+                    gap:12px;
+                    margin-top:14px;
+                "
+            >
+
+                <button
+                    id="offenceSourceBtn"
+                    type="button"
                     style="
-                        display:grid;
-                        grid-template-columns:
-                            1fr 1fr;
-                        gap:12px;
+                        display:block;
+                        width:100%;
+                        min-height:80px;
+                        padding:16px 10px;
+
+                        border:
+                            1px solid #ff9100;
+
+                        border-radius:14px;
+
+                        background:
+                            rgba(
+                                255,
+                                145,
+                                0,
+                                0.14
+                            );
+
+                        color:#ffb74d;
+
+                        font-size:14px;
+                        font-weight:800;
+
+                        cursor:pointer;
+
+                        pointer-events:auto;
+
+                        position:relative;
+
+                        z-index:10;
                     "
                 >
 
-                    <button
+                    🏠 SOURCE
 
-                        id="
-                            offenceSourceBtn
-                        "
-
-                        type="
-                            button
-                        "
-
+                    <div
                         style="
-                            padding:18px 10px;
-                            border:1px solid #ff9100;
-                            border-radius:14px;
-                            background:
-                                rgba(
-                                    255,
-                                    145,
-                                    0,
-                                    0.12
-                                );
-                            color:#ffb74d;
-                            font-weight:800;
-                            cursor:pointer;
+                            font-size:10px;
+                            font-weight:normal;
+                            opacity:0.75;
+                            margin-top:6px;
                         "
-
                     >
+                        Accused origin
+                    </div>
 
-                        🏠 SOURCE
-
-                        <div
-                            style="
-                                font-size:10px;
-                                opacity:0.75;
-                                margin-top:5px;
-                            "
-                        >
-                            Accused origin
-                        </div>
-
-                    </button>
+                </button>
 
 
-                    <button
+                <button
+                    id="offenceTargetBtn"
+                    type="button"
+                    style="
+                        display:block;
+                        width:100%;
+                        min-height:80px;
+                        padding:16px 10px;
 
-                        id="
-                            offenceTargetBtn
-                        "
+                        border:
+                            1px solid #00e5ff;
 
-                        type="
-                            button
-                        "
+                        border-radius:14px;
 
+                        background:
+                            rgba(
+                                0,
+                                229,
+                                255,
+                                0.12
+                            );
+
+                        color:#00e5ff;
+
+                        font-size:14px;
+                        font-weight:800;
+
+                        cursor:pointer;
+
+                        pointer-events:auto;
+
+                        position:relative;
+
+                        z-index:10;
+                    "
+                >
+
+                    🎯 TARGET
+
+                    <div
                         style="
-                            padding:18px 10px;
-                            border:1px solid #00e5ff;
-                            border-radius:14px;
-                            background:
-                                rgba(
-                                    0,
-                                    229,
-                                    255,
-                                    0.10
-                                );
-                            color:#00e5ff;
-                            font-weight:800;
-                            cursor:pointer;
+                            font-size:10px;
+                            font-weight:normal;
+                            opacity:0.75;
+                            margin-top:6px;
                         "
-
                     >
+                        Offence location
+                    </div>
 
-                        🎯 TARGET
+                </button>
 
-                        <div
-                            style="
-                                font-size:10px;
-                                opacity:0.75;
-                                margin-top:5px;
-                            "
-                        >
-                            Offence location
-                        </div>
+            </div>
 
-                    </button>
-
-                </div>
-
-            `;
+        `;
 
 
-            document
-                .getElementById(
-                    "offenceSourceBtn"
-                )
-                ?.addEventListener(
+        // =============================================
+        // 5. GET BUTTONS
+        // =============================================
 
-                    "click",
-
-                    function (
-                        event
-                    ) {
-
-                        event
-                            .stopPropagation();
+        const sourceButton =
+            document.getElementById(
+                "offenceSourceBtn"
+            );
 
 
-                        OffenceCascadeUI
-                            .showSource();
-
-                    }
-
-                );
+        const targetButton =
+            document.getElementById(
+                "offenceTargetBtn"
+            );
 
 
-            document
-                .getElementById(
-                    "offenceTargetBtn"
-                )
-                ?.addEventListener(
+        console.log(
 
-                    "click",
+            "🔥 Offence Home Buttons",
 
-                    function (
-                        event
-                    ) {
+            {
 
-                        event
-                            .stopPropagation();
+                source:
+                    !!sourceButton,
+
+                target:
+                    !!targetButton,
+
+                content:
+                    content
+
+            }
+
+        );
 
 
-                        OffenceCascadeUI
-                            .showTarget();
+        // =============================================
+        // 6. SOURCE CLICK
+        // =============================================
 
-                    }
+        if (sourceButton) {
 
-                );
+            sourceButton.onclick =
+                function (event) {
 
-        };
+                    event.preventDefault();
 
+                    event.stopPropagation();
+
+
+                    console.log(
+                        "🏠 SOURCE FLOW CLICK"
+                    );
+
+
+                    OffenceCascadeUI.showSource();
+
+                };
+
+        }
+
+
+        // =============================================
+        // 7. TARGET CLICK
+        // =============================================
+
+        if (targetButton) {
+
+            targetButton.onclick =
+                function (event) {
+
+                    event.preventDefault();
+
+                    event.stopPropagation();
+
+
+                    console.log(
+                        "🎯 TARGET FLOW CLICK"
+                    );
+
+
+                    OffenceCascadeUI.showTarget();
+
+                };
+
+        }
+
+
+        return true;
+
+    };
 
     // =====================================================
     // 13. TARGET VIEW
