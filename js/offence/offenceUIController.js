@@ -1,38 +1,127 @@
-(function (window) {
+/* =========================================================
+   GreenGuard
+   Offence Intelligence Module
+
+   File:
+   js/offence/offenceUIController.js
+
+   Version:
+   2.0.0
+
+   PURPOSE:
+   ---------------------------------------------------------
+   Master UI controller for Offence Intelligence.
+
+   Responsibilities:
+
+   - Create Offence Intelligence map control
+   - Activate / deactivate offence intelligence
+   - Switch SOURCE / TARGET / ALL modes
+   - Build SourceEngine
+   - Build TargetEngine
+   - Build HeatmapEngine
+   - Initialize MapRenderer
+   - Render offence heatmap layers
+   - Coordinate CascadeController / CascadeRenderer
+   - Refresh intelligence after store updates
+   - Maintain UI state
+
+   CURRENT ARCHITECTURE:
+   ---------------------------------------------------------
+
+   Firestore
+       ↓
+   OffenceDataLoader
+       ↓
+   OffenceNormalizer
+       ↓
+   OffenceStore
+       ↓
+   OffenceGeocoder
+       ↓
+   OffenceSourceEngine
+       ↓
+   OffenceTargetEngine
+       ↓
+   OffenceHeatmapEngine
+       ↓
+   OffenceMapRenderer
+       ↓
+   SOURCE / TARGET hotspot click
+       ↓
+   OffenceCascadeController
+       ↓
+   POR-authoritative relationship resolution
+       ↓
+   OffenceCascadeRenderer
+
+
+   AUTHORITATIVE CONNECTOR:
+   ---------------------------------------------------------
+
+   POR No / Ref POR No
+           ↓
+       normalized porKey
+           ↓
+   Cases
+   Accused
+   Witnesses
+   Seizures
+   Seized Articles
+   SOURCE locations
+   TARGET locations
+
+
+   IMPORTANT:
+   ---------------------------------------------------------
+
+   UIController DOES NOT:
+
+   - query Firestore directly
+   - normalize records
+   - geocode addresses
+   - resolve POR relationships
+   - render hotspot internals
+   - build cascade HTML
+
+   It only orchestrates the offence intelligence modules.
+
+   ========================================================= */
+
+(function () {
 
     "use strict";
 
 
-    /*=========================================================
-      NAMESPACE
-    =========================================================*/
+    /* =====================================================
+       1. NAMESPACE
 
-    const GG =
+       Canonical namespace:
+       window.GG.Offence
 
-        window.GreenGuardAI =
+       Do not create a separate GreenGuardAI namespace here.
+       ===================================================== */
 
-        window.GreenGuardAI || {};
+    window.GG =
+        window.GG ||
+        {};
 
 
     GG.Offence =
+        GG.Offence ||
+        {};
 
-        GG.Offence || {};
 
-
-    /*=========================================================
-      PREVENT DOUBLE LOADING
-    =========================================================*/
+    /* =====================================================
+       2. PREVENT DOUBLE LOADING
+       ===================================================== */
 
     if (
-
         GG.Offence.UIController
-
     ) {
 
         console.warn(
-
-            "[GreenGuardAI] Offence UI Controller already loaded."
-
+            "[OffenceUIController] Already loaded."
         );
 
         return;
@@ -40,1592 +129,2480 @@
     }
 
 
-    /*=========================================================
-      MODULE
-    =========================================================*/
+    /* =====================================================
+       3. MODULE
+       ===================================================== */
 
     const UIController = {};
 
 
-    /*=========================================================
-      INFO
-    =========================================================*/
-
     UIController.VERSION =
-
-        "1.0.0";
+        "2.0.0";
 
 
     UIController.initialized =
-
         false;
 
 
     UIController.active =
-
         false;
 
 
     UIController.loading =
-
         false;
 
 
+    UIController.eventsBound =
+        false;
+
+
+    UIController.activationPromise =
+        null;
+
+
+    UIController.refreshPromise =
+        null;
+
+
+    /* =====================================================
+       4. MODES
+
+       Must match OffenceMapRenderer.
+       ===================================================== */
+
+    UIController.MODE =
+        Object.freeze({
+
+            ALL:
+                "ALL",
+
+            SOURCE:
+                "SOURCE",
+
+            TARGET:
+                "TARGET"
+
+        });
+
+
     UIController.mode =
+        UIController.MODE.ALL;
 
-        "both";
 
-
-    /*=========================================================
-      DOM IDS
-    =========================================================*/
+    /* =====================================================
+       5. DOM IDS
+       ===================================================== */
 
     UIController.IDS = {
 
         root:
-
             "offenceIntelligenceControl",
 
         button:
-
             "offenceIntelligenceButton",
 
         menu:
-
             "offenceIntelligenceMenu",
 
-        sourceButton:
+        allButton:
+            "offenceAllModeButton",
 
+        sourceButton:
             "offenceSourceModeButton",
 
         targetButton:
-
             "offenceTargetModeButton",
 
-        bothButton:
+        refreshButton:
+            "offenceRefreshButton",
 
-            "offenceBothModeButton",
+        fitButton:
+            "offenceFitButton",
 
         closeButton:
-
             "offenceModeCloseButton",
 
         status:
-
             "offenceIntelligenceStatus"
 
     };
 
 
-    /*=========================================================
-      GET MAP
-    =========================================================*/
+    /* =====================================================
+       6. EVENT NAMES
+       ===================================================== */
 
-    UIController.getMap = function () {
+    UIController.EVENTS =
+        Object.freeze({
 
-        /*
-         * GreenGuard currently uses a global Leaflet map.
-         *
-         * This function deliberately checks several common
-         * locations so the controller does not hard-fail if
-         * the map reference changes later.
-         */
+            ACTIVATED:
+                "offence:ui-activated",
 
-        return (
+            DEACTIVATED:
+                "offence:ui-deactivated",
 
-            window.map ||
+            MODE_CHANGED:
+                "offence:ui-mode-changed",
 
-            GG.map ||
+            REFRESHED:
+                "offence:ui-refreshed",
 
-            GG.Map ||
+            ERROR:
+                "offence:ui-error"
 
-            GG.MapController?.map ||
-
-            null
-
-        );
-
-    };
+        });
 
 
-    /*=========================================================
-      CHECK DEPENDENCIES
-    =========================================================*/
+    /* =====================================================
+       7. GET CONSTANTS
+       ===================================================== */
 
-    UIController.checkDependencies = function () {
+    UIController.getConstants =
+        function () {
 
-        const missing = [];
-
-
-        if (
-
-            !GG.Offence.Store
-
-        ) {
-
-            missing.push(
-
-                "OffenceStore"
-
+            return (
+                GG.Offence.Constants ||
+                null
             );
-
-        }
-
-
-        if (
-
-            !GG.Offence.SourceEngine
-
-        ) {
-
-            missing.push(
-
-                "OffenceSourceEngine"
-
-            );
-
-        }
-
-
-        if (
-
-            !GG.Offence.TargetEngine
-
-        ) {
-
-            missing.push(
-
-                "OffenceTargetEngine"
-
-            );
-
-        }
-
-
-        if (
-
-            !GG.Offence.HeatmapEngine
-
-        ) {
-
-            missing.push(
-
-                "OffenceHeatmapEngine"
-
-            );
-
-        }
-
-
-        if (
-
-            !GG.Offence.MapRenderer
-
-        ) {
-
-            missing.push(
-
-                "OffenceMapRenderer"
-
-            );
-
-        }
-
-
-        if (
-
-            !GG.Offence.CascadeController
-
-        ) {
-
-            missing.push(
-
-                "OffenceCascadeController"
-
-            );
-
-        }
-
-
-        if (
-
-            !GG.Offence.CascadeRenderer
-
-        ) {
-
-            missing.push(
-
-                "OffenceCascadeRenderer"
-
-            );
-
-        }
-
-
-        return {
-
-            success:
-
-                missing.length === 0,
-
-            missing:
-
-                missing
 
         };
 
-    };
 
+    /* =====================================================
+       8. DEBUG ENABLED
+       ===================================================== */
 
-    /*=========================================================
-      CREATE ROOT CONTROL
-    =========================================================*/
+    UIController.isDebugEnabled =
+        function () {
 
-    UIController.createControl = function () {
-
-        let root =
-
-            document.getElementById(
-
-                UIController.IDS.root
-
+            return !!(
+                GG.Offence.Constants
+                    ?.DEBUG
+                    ?.ENABLED
             );
-
-
-        if (
-
-            root
-
-        ) {
-
-            return root;
-
-        }
-
-
-        root =
-
-            document.createElement(
-
-                "div"
-
-            );
-
-
-        root.id =
-
-            UIController.IDS.root;
-
-
-        root.className =
-
-            "offence-intelligence-control";
-
-
-        /*
-         * Inline positioning is intentionally minimal.
-         *
-         * You can move these rules into a dedicated
-         * offenceUI.css file later.
-         */
-
-        root.style.position =
-
-            "fixed";
-
-
-        root.style.right =
-
-            "16px";
-
-
-        root.style.bottom =
-
-            "90px";
-
-
-        root.style.zIndex =
-
-            "9998";
-
-
-        root.style.display =
-
-            "flex";
-
-
-        root.style.flexDirection =
-
-            "column";
-
-
-        root.style.alignItems =
-
-            "flex-end";
-
-
-        root.style.gap =
-
-            "8px";
-
-
-        document.body.appendChild(
-
-            root
-
-        );
-
-
-        return root;
-
-    };
-
-
-    /*=========================================================
-      CREATE MAIN BUTTON
-    =========================================================*/
-
-    UIController.createMainButton = function (
-
-        root
-
-    ) {
-
-        let button =
-
-            document.getElementById(
-
-                UIController.IDS.button
-
-            );
-
-
-        if (
-
-            button
-
-        ) {
-
-            return button;
-
-        }
-
-
-        button =
-
-            document.createElement(
-
-                "button"
-
-            );
-
-
-        button.id =
-
-            UIController.IDS.button;
-
-
-        button.type =
-
-            "button";
-
-
-        button.className =
-
-            "offence-intelligence-button";
-
-
-        button.title =
-
-            "Offence Intelligence";
-
-
-        button.setAttribute(
-
-            "aria-label",
-
-            "Open Offence Intelligence"
-
-        );
-
-
-        button.innerHTML = `
-
-            <i class="fa-solid fa-fire-flame-curved"></i>
-
-            <span>
-                Offence
-            </span>
-
-        `;
-
-
-        /*----------------------------------
-          Temporary Core Styling
-        ----------------------------------*/
-
-        button.style.minHeight =
-
-            "44px";
-
-
-        button.style.padding =
-
-            "10px 14px";
-
-
-        button.style.border =
-
-            "none";
-
-
-        button.style.borderRadius =
-
-            "22px";
-
-
-        button.style.cursor =
-
-            "pointer";
-
-
-        button.style.boxShadow =
-
-            "0 4px 14px rgba(0,0,0,0.22)";
-
-
-        button.style.fontWeight =
-
-            "600";
-
-
-        button.style.display =
-
-            "flex";
-
-
-        button.style.alignItems =
-
-            "center";
-
-
-        button.style.gap =
-
-            "7px";
-
-
-        button.addEventListener(
-
-            "click",
-
-            function (
-
-                event
-
-            ) {
-
-                event.preventDefault();
-
-                event.stopPropagation();
-
-
-                UIController.toggle();
-
-            }
-
-        );
-
-
-        root.appendChild(
-
-            button
-
-        );
-
-
-        return button;
-
-    };
-
-
-    /*=========================================================
-      CREATE MODE BUTTON
-    =========================================================*/
-
-    UIController.createModeButton = function (
-
-        id,
-
-        label,
-
-        icon,
-
-        mode
-
-    ) {
-
-        const button =
-
-            document.createElement(
-
-                "button"
-
-            );
-
-
-        button.id =
-
-            id;
-
-
-        button.type =
-
-            "button";
-
-
-        button.className =
-
-            "offence-mode-button";
-
-
-        button.dataset.mode =
-
-            mode;
-
-
-        button.innerHTML = `
-
-            <i class="${icon}"></i>
-
-            <span>
-
-                ${label}
-
-            </span>
-
-        `;
-
-
-        button.style.border =
-
-            "none";
-
-
-        button.style.padding =
-
-            "9px 12px";
-
-
-        button.style.borderRadius =
-
-            "8px";
-
-
-        button.style.cursor =
-
-            "pointer";
-
-
-        button.style.width =
-
-            "100%";
-
-
-        button.style.textAlign =
-
-            "left";
-
-
-        button.addEventListener(
-
-            "click",
-
-            async function (
-
-                event
-
-            ) {
-
-                event.preventDefault();
-
-                event.stopPropagation();
-
-
-                await UIController.setMode(
-
-                    mode
-
-                );
-
-            }
-
-        );
-
-
-        return button;
-
-    };
-
-
-    /*=========================================================
-      CREATE MENU
-    =========================================================*/
-
-    UIController.createMenu = function (
-
-        root
-
-    ) {
-
-        let menu =
-
-            document.getElementById(
-
-                UIController.IDS.menu
-
-            );
-
-
-        if (
-
-            menu
-
-        ) {
-
-            return menu;
-
-        }
-
-
-        menu =
-
-            document.createElement(
-
-                "div"
-
-            );
-
-
-        menu.id =
-
-            UIController.IDS.menu;
-
-
-        menu.className =
-
-            "offence-intelligence-menu";
-
-
-        menu.style.display =
-
-            "none";
-
-
-        menu.style.width =
-
-            "210px";
-
-
-        menu.style.padding =
-
-            "10px";
-
-
-        menu.style.borderRadius =
-
-            "12px";
-
-
-        menu.style.background =
-
-            "#ffffff";
-
-
-        menu.style.boxShadow =
-
-            "0 6px 24px rgba(0,0,0,0.22)";
-
-
-        /*----------------------------------
-          Header
-        ----------------------------------*/
-
-        const header =
-
-            document.createElement(
-
-                "div"
-
-            );
-
-
-        header.style.display =
-
-            "flex";
-
-
-        header.style.alignItems =
-
-            "center";
-
-
-        header.style.justifyContent =
-
-            "space-between";
-
-
-        header.style.marginBottom =
-
-            "8px";
-
-
-        header.innerHTML = `
-
-            <strong>
-
-                Offence Intelligence
-
-            </strong>
-
-        `;
-
-
-        /*----------------------------------
-          Close Button
-        ----------------------------------*/
-
-        const closeButton =
-
-            document.createElement(
-
-                "button"
-
-            );
-
-
-        closeButton.id =
-
-            UIController.IDS.closeButton;
-
-
-        closeButton.type =
-
-            "button";
-
-
-        closeButton.innerHTML =
-
-            '<i class="fa-solid fa-xmark"></i>';
-
-
-        closeButton.title =
-
-            "Close Offence Intelligence";
-
-
-        closeButton.style.border =
-
-            "none";
-
-
-        closeButton.style.background =
-
-            "transparent";
-
-
-        closeButton.style.cursor =
-
-            "pointer";
-
-
-        closeButton.addEventListener(
-
-            "click",
-
-            function (
-
-                event
-
-            ) {
-
-                event.preventDefault();
-
-                event.stopPropagation();
-
-
-                UIController.deactivate();
-
-            }
-
-        );
-
-
-        header.appendChild(
-
-            closeButton
-
-        );
-
-
-        menu.appendChild(
-
-            header
-
-        );
-
-
-        /*----------------------------------
-          BOTH
-        ----------------------------------*/
-
-        menu.appendChild(
-
-            UIController.createModeButton(
-
-                UIController.IDS.bothButton,
-
-                "Source + Target",
-
-                "fa-solid fa-layer-group",
-
-                "both"
-
-            )
-
-        );
-
-
-        /*----------------------------------
-          SOURCE
-        ----------------------------------*/
-
-        menu.appendChild(
-
-            UIController.createModeButton(
-
-                UIController.IDS.sourceButton,
-
-                "Source Hotspots",
-
-                "fa-solid fa-house-user",
-
-                "source"
-
-            )
-
-        );
-
-
-        /*----------------------------------
-          TARGET
-        ----------------------------------*/
-
-        menu.appendChild(
-
-            UIController.createModeButton(
-
-                UIController.IDS.targetButton,
-
-                "Target Hotspots",
-
-                "fa-solid fa-location-crosshairs",
-
-                "target"
-
-            )
-
-        );
-
-
-        /*----------------------------------
-          Status
-        ----------------------------------*/
-
-        const status =
-
-            document.createElement(
-
-                "div"
-
-            );
-
-
-        status.id =
-
-            UIController.IDS.status;
-
-
-        status.className =
-
-            "offence-intelligence-status";
-
-
-        status.style.marginTop =
-
-            "9px";
-
-
-        status.style.fontSize =
-
-            "12px";
-
-
-        status.style.opacity =
-
-            "0.75";
-
-
-        status.textContent =
-
-            "Inactive";
-
-
-        menu.appendChild(
-
-            status
-
-        );
-
-
-        /*
-         * Insert menu BEFORE main button
-         * so it visually expands upward.
-         */
-
-        root.insertBefore(
-
-            menu,
-
-            root.firstChild
-
-        );
-
-
-        return menu;
-
-    };
-
-
-    /*=========================================================
-      GET ELEMENT
-    =========================================================*/
-
-    UIController.getElement = function (
-
-        id
-
-    ) {
-
-        return document.getElementById(
-
-            id
-
-        );
-
-    };
-
-
-    /*=========================================================
-      SET STATUS
-    =========================================================*/
-
-    UIController.setStatus = function (
-
-        message
-
-    ) {
-
-        const status =
-
-            UIController.getElement(
-
-                UIController.IDS.status
-
-            );
-
-
-        if (
-
-            status
-
-        ) {
-
-            status.textContent =
-
-                message || "";
-
-        }
-
-    };
-
-
-    /*=========================================================
-      SET LOADING
-    =========================================================*/
-
-    UIController.setLoading = function (
-
-        loading
-
-    ) {
-
-        UIController.loading =
-
-            !!loading;
-
-
-        const button =
-
-            UIController.getElement(
-
-                UIController.IDS.button
-
-            );
-
-
-        if (
-
-            !button
-
-        ) {
-
-            return;
-
-        }
-
-
-        button.disabled =
-
-            UIController.loading;
-
-
-        if (
-
-            UIController.loading
-
-        ) {
-
-            button.classList.add(
-
-                "is-loading"
-
-            );
-
-        }
-
-        else {
-
-            button.classList.remove(
-
-                "is-loading"
-
-            );
-
-        }
-
-    };
-
-
-    /*=========================================================
-      UPDATE ACTIVE MODE UI
-    =========================================================*/
-
-    UIController.updateModeUI = function () {
-
-        const buttons = [
-
-            UIController.IDS.bothButton,
-
-            UIController.IDS.sourceButton,
-
-            UIController.IDS.targetButton
-
-        ];
-
-
-        buttons.forEach(
-
-            function (
-
-                id
-
-            ) {
-
-                const button =
-
-                    UIController.getElement(
-
-                        id
-
-                    );
-
-
-                if (
-
-                    !button
-
-                ) {
-
-                    return;
-
-                }
-
-
-                if (
-
-                    button.dataset.mode ===
-
-                    UIController.mode
-
-                ) {
-
-                    button.classList.add(
-
-                        "is-active"
-
-                    );
-
-
-                    button.style.fontWeight =
-
-                        "700";
-
-                }
-
-                else {
-
-                    button.classList.remove(
-
-                        "is-active"
-
-                    );
-
-
-                    button.style.fontWeight =
-
-                        "400";
-
-                }
-
-            }
-
-        );
-
-    };
-
-
-    /*=========================================================
-      BUILD OFFENCE ENGINES
-    =========================================================*/
-
-    UIController.buildData = async function () {
-
-        const SourceEngine =
-
-            GG.Offence.SourceEngine;
-
-
-        const TargetEngine =
-
-            GG.Offence.TargetEngine;
-
-
-        const source =
-
-            await SourceEngine
-
-                .buildFromStore();
-
-
-        const target =
-
-            await TargetEngine
-
-                .buildFromStore();
-
-
-        return {
-
-            source:
-
-                source || [],
-
-            target:
-
-                target || []
 
         };
 
-    };
+
+    /* =====================================================
+       9. GET MAP
+
+       Supports current GreenGuard global map references.
+
+       Preferred initialization:
+
+       GG.Offence.UIController.init(map)
+
+       ===================================================== */
+
+    UIController.getMap =
+        function () {
+
+            const candidates = [
+
+                UIController.map,
+
+                window.map,
+
+                window.leafletMap,
+
+                window.mainMap,
+
+                GG.map,
+
+                GG.Map,
+
+                GG.Map?.map,
+
+                GG.MapController?.map
+
+            ];
 
 
-    /*=========================================================
-      BUILD HEATMAP ENGINE
-    =========================================================*/
+            for (
+                const candidate
+                of candidates
+            ) {
 
-    UIController.buildHeatmap = async function () {
+                if (
+                    candidate &&
+                    typeof candidate.addLayer ===
+                        "function" &&
+                    typeof candidate.removeLayer ===
+                        "function"
+                ) {
 
-        const HeatmapEngine =
+                    return candidate;
 
-            GG.Offence.HeatmapEngine;
+                }
 
+            }
 
-        if (
-
-            !HeatmapEngine
-
-        ) {
 
             return null;
 
-        }
+        };
 
 
-        /*
-         * Different engine implementations may expose
-         * buildFromEngines() or build().
-         *
-         * Prefer buildFromEngines if available.
-         */
+    /* =====================================================
+       10. CHECK CORE DEPENDENCIES
+       ===================================================== */
 
-        if (
+    UIController.checkDependencies =
+        function () {
 
-            typeof HeatmapEngine
+            const missing =
+                [];
 
-                .buildFromEngines ===
-
-            "function"
-
-        ) {
-
-            return await HeatmapEngine
-
-                .buildFromEngines();
-
-        }
-
-
-        if (
-
-            typeof HeatmapEngine.build ===
-
-            "function"
-
-        ) {
-
-            return await HeatmapEngine
-
-                .build({
-
-                    source:
-
-                        GG.Offence
-                            .SourceEngine
-                            .getHotspots(),
-
-                    target:
-
-                        GG.Offence
-                            .TargetEngine
-                            .getHotspots()
-
-                });
-
-        }
-
-
-        return null;
-
-    };
-
-
-    /*=========================================================
-      RENDER CURRENT MODE
-    =========================================================*/
-
-    UIController.render = async function () {
-
-        const Renderer =
-
-            GG.Offence.MapRenderer;
-
-
-        if (
-
-            !Renderer
-
-        ) {
-
-            throw new Error(
-
-                "OffenceMapRenderer unavailable."
-
-            );
-
-        }
-
-
-        /*----------------------------------
-          Clear Existing Offence Layers
-        ----------------------------------*/
-
-        if (
-
-            typeof Renderer.clear ===
-
-            "function"
-
-        ) {
-
-            Renderer.clear();
-
-        }
-
-
-        /*----------------------------------
-          Unified Render Method
-        ----------------------------------*/
-
-        if (
-
-            typeof Renderer.render ===
-
-            "function"
-
-        ) {
-
-            return await Renderer.render({
-
-                mode:
-
-                    UIController.mode,
-
-                source:
-
-                    GG.Offence
-                        .SourceEngine
-                        .getHotspots(),
-
-                target:
-
-                    GG.Offence
-                        .TargetEngine
-                        .getHotspots(),
-
-                sourceHeatmap:
-
-                    GG.Offence
-                        .SourceEngine
-                        .getHeatmapData(),
-
-                targetHeatmap:
-
-                    GG.Offence
-                        .TargetEngine
-                        .getHeatmapData()
-
-            });
-
-        }
-
-
-        /*----------------------------------
-          Mode-Specific Fallback Methods
-        ----------------------------------*/
-
-        if (
-
-            UIController.mode ===
-
-            "source"
-
-        ) {
 
             if (
-
-                typeof Renderer
-                    .renderSource ===
-
-                "function"
-
+                !GG.Offence.Store
             ) {
 
-                return await Renderer
-
-                    .renderSource();
+                missing.push(
+                    "OffenceStore"
+                );
 
             }
 
-        }
-
-
-        if (
-
-            UIController.mode ===
-
-            "target"
-
-        ) {
 
             if (
-
-                typeof Renderer
-                    .renderTarget ===
-
-                "function"
-
+                !GG.Offence.SourceEngine
             ) {
 
-                return await Renderer
-
-                    .renderTarget();
+                missing.push(
+                    "OffenceSourceEngine"
+                );
 
             }
 
-        }
-
-
-        if (
-
-            UIController.mode ===
-
-            "both"
-
-        ) {
 
             if (
-
-                typeof Renderer
-                    .renderBoth ===
-
-                "function"
-
+                !GG.Offence.TargetEngine
             ) {
 
-                return await Renderer
-
-                    .renderBoth();
+                missing.push(
+                    "OffenceTargetEngine"
+                );
 
             }
 
-        }
+
+            if (
+                !GG.Offence.HeatmapEngine
+            ) {
+
+                missing.push(
+                    "OffenceHeatmapEngine"
+                );
+
+            }
 
 
-        console.warn(
+            if (
+                !GG.Offence.MapRenderer
+            ) {
 
-            "[OffenceUIController] No compatible MapRenderer render method found."
+                missing.push(
+                    "OffenceMapRenderer"
+                );
 
-        );
-
-
-        return null;
-
-    };
-
-
-    /*=========================================================
-      ACTIVATE
-    =========================================================*/
-
-    UIController.activate = async function () {
-
-        if (
-
-            UIController.loading
-
-        ) {
-
-            return;
-
-        }
+            }
 
 
-        const dependencyCheck =
+            /*
+             * Cascade modules are required for
+             * hotspot drill-down, but map rendering can
+             * technically exist without them.
+             *
+             * We still report them because the current
+             * GreenGuard design requires cascading.
+             */
 
-            UIController
+            if (
+                !GG.Offence.CascadeController
+            ) {
 
-                .checkDependencies();
+                missing.push(
+                    "OffenceCascadeController"
+                );
 
-
-        if (
-
-            !dependencyCheck.success
-
-        ) {
-
-            console.error(
-
-                "[OffenceUIController] Missing dependencies:",
-
-                dependencyCheck.missing
-
-            );
+            }
 
 
-            UIController.setStatus(
+            if (
+                !GG.Offence.CascadeRenderer
+            ) {
 
-                "Modules unavailable"
+                missing.push(
+                    "OffenceCascadeRenderer"
+                );
 
-            );
-
-
-            return;
-
-        }
-
-
-        UIController.setLoading(
-
-            true
-
-        );
+            }
 
 
-        try {
+            return {
 
-            UIController.active =
+                success:
+                    missing.length === 0,
 
-                true;
+                missing:
+                    missing
+
+            };
+
+        };
 
 
-            /*----------------------------------
-              Open Control Menu
-            ----------------------------------*/
+    /* =====================================================
+       11. CREATE ROOT CONTROL
+       ===================================================== */
 
-            const menu =
+    UIController.createControl =
+        function () {
 
-                UIController.getElement(
+            let root =
 
-                    UIController.IDS.menu
+                document.getElementById(
+
+                    UIController
+                        .IDS
+                        .root
 
                 );
 
 
-            if (
+            if (root) {
 
-                menu
+                return root;
 
-            ) {
+            }
+
+
+            root =
+
+                document.createElement(
+                    "div"
+                );
+
+
+            root.id =
+
+                UIController
+                    .IDS
+                    .root;
+
+
+            root.className =
+
+                "offence-intelligence-control";
+
+
+            /*
+             * Core positioning.
+             *
+             * Visual styling may later move into:
+             * css/offence/offenceUI.css
+             */
+
+            root.style.position =
+                "fixed";
+
+
+            root.style.right =
+                "16px";
+
+
+            root.style.bottom =
+                "90px";
+
+
+            root.style.zIndex =
+                "9998";
+
+
+            root.style.display =
+                "flex";
+
+
+            root.style.flexDirection =
+                "column";
+
+
+            root.style.alignItems =
+                "flex-end";
+
+
+            root.style.gap =
+                "8px";
+
+
+            document.body.appendChild(
+                root
+            );
+
+
+            return root;
+
+        };
+
+
+    /* =====================================================
+       12. CREATE MAIN BUTTON
+       ===================================================== */
+
+    UIController.createMainButton =
+        function (
+            root
+        ) {
+
+            let button =
+
+                document.getElementById(
+
+                    UIController
+                        .IDS
+                        .button
+
+                );
+
+
+            if (button) {
+
+                return button;
+
+            }
+
+
+            button =
+
+                document.createElement(
+                    "button"
+                );
+
+
+            button.id =
+
+                UIController
+                    .IDS
+                    .button;
+
+
+            button.type =
+                "button";
+
+
+            button.className =
+                "offence-intelligence-button";
+
+
+            button.title =
+                "Offence Intelligence";
+
+
+            button.setAttribute(
+
+                "aria-label",
+
+                "Open Offence Intelligence"
+
+            );
+
+
+            button.setAttribute(
+
+                "aria-expanded",
+
+                "false"
+
+            );
+
+
+            button.innerHTML = `
+
+                <i class="fa-solid fa-fire-flame-curved"></i>
+
+                <span>
+                    Offence
+                </span>
+
+            `;
+
+
+            button.style.minHeight =
+                "44px";
+
+
+            button.style.padding =
+                "10px 14px";
+
+
+            button.style.border =
+                "none";
+
+
+            button.style.borderRadius =
+                "22px";
+
+
+            button.style.cursor =
+                "pointer";
+
+
+            button.style.boxShadow =
+                "0 4px 14px rgba(0,0,0,0.22)";
+
+
+            button.style.fontWeight =
+                "600";
+
+
+            button.style.display =
+                "flex";
+
+
+            button.style.alignItems =
+                "center";
+
+
+            button.style.gap =
+                "7px";
+
+
+            button.addEventListener(
+
+                "click",
+
+                async function (
+                    event
+                ) {
+
+                    event.preventDefault();
+
+                    event.stopPropagation();
+
+
+                    await UIController
+                        .toggle();
+
+                }
+
+            );
+
+
+            root.appendChild(
+                button
+            );
+
+
+            return button;
+
+        };
+
+
+    /* =====================================================
+       13. CREATE MODE BUTTON
+       ===================================================== */
+
+    UIController.createModeButton =
+        function (
+
+            id,
+
+            label,
+
+            icon,
+
+            mode
+
+        ) {
+
+            let button =
+
+                document.getElementById(
+                    id
+                );
+
+
+            if (button) {
+
+                return button;
+
+            }
+
+
+            button =
+
+                document.createElement(
+                    "button"
+                );
+
+
+            button.id =
+                id;
+
+
+            button.type =
+                "button";
+
+
+            button.className =
+                "offence-mode-button";
+
+
+            button.dataset.mode =
+                mode;
+
+
+            button.innerHTML = `
+
+                <i class="${icon}"></i>
+
+                <span>
+                    ${label}
+                </span>
+
+            `;
+
+
+            button.style.border =
+                "none";
+
+
+            button.style.padding =
+                "9px 12px";
+
+
+            button.style.borderRadius =
+                "8px";
+
+
+            button.style.cursor =
+                "pointer";
+
+
+            button.style.width =
+                "100%";
+
+
+            button.style.textAlign =
+                "left";
+
+
+            button.style.display =
+                "flex";
+
+
+            button.style.alignItems =
+                "center";
+
+
+            button.style.gap =
+                "8px";
+
+
+            button.addEventListener(
+
+                "click",
+
+                async function (
+                    event
+                ) {
+
+                    event.preventDefault();
+
+                    event.stopPropagation();
+
+
+                    await UIController
+                        .setMode(
+                            mode
+                        );
+
+                }
+
+            );
+
+
+            return button;
+
+        };
+
+
+    /* =====================================================
+       14. CREATE ACTION BUTTON
+       ===================================================== */
+
+    UIController.createActionButton =
+        function (
+
+            id,
+
+            label,
+
+            icon,
+
+            handler
+
+        ) {
+
+            let button =
+
+                document.getElementById(
+                    id
+                );
+
+
+            if (button) {
+
+                return button;
+
+            }
+
+
+            button =
+
+                document.createElement(
+                    "button"
+                );
+
+
+            button.id =
+                id;
+
+
+            button.type =
+                "button";
+
+
+            button.className =
+                "offence-action-button";
+
+
+            button.innerHTML = `
+
+                <i class="${icon}"></i>
+
+                <span>
+                    ${label}
+                </span>
+
+            `;
+
+
+            button.style.border =
+                "none";
+
+
+            button.style.padding =
+                "8px 10px";
+
+
+            button.style.borderRadius =
+                "8px";
+
+
+            button.style.cursor =
+                "pointer";
+
+
+            button.style.flex =
+                "1";
+
+
+            button.addEventListener(
+
+                "click",
+
+                async function (
+                    event
+                ) {
+
+                    event.preventDefault();
+
+                    event.stopPropagation();
+
+
+                    try {
+
+                        await handler();
+
+                    }
+
+                    catch (
+                        error
+                    ) {
+
+                        console.error(
+
+                            "[OffenceUIController] Action failed:",
+
+                            error
+
+                        );
+
+                    }
+
+                }
+
+            );
+
+
+            return button;
+
+        };
+
+
+    /* =====================================================
+       15. CREATE MENU
+       ===================================================== */
+
+    UIController.createMenu =
+        function (
+            root
+        ) {
+
+            let menu =
+
+                document.getElementById(
+
+                    UIController
+                        .IDS
+                        .menu
+
+                );
+
+
+            if (menu) {
+
+                return menu;
+
+            }
+
+
+            menu =
+
+                document.createElement(
+                    "div"
+                );
+
+
+            menu.id =
+
+                UIController
+                    .IDS
+                    .menu;
+
+
+            menu.className =
+                "offence-intelligence-menu";
+
+
+            menu.style.display =
+                "none";
+
+
+            menu.style.width =
+                "230px";
+
+
+            menu.style.padding =
+                "10px";
+
+
+            menu.style.borderRadius =
+                "12px";
+
+
+            menu.style.background =
+                "#ffffff";
+
+
+            menu.style.boxShadow =
+                "0 6px 24px rgba(0,0,0,0.22)";
+
+
+            /* -------------------------
+               Header
+               ------------------------- */
+
+            const header =
+
+                document.createElement(
+                    "div"
+                );
+
+
+            header.style.display =
+                "flex";
+
+
+            header.style.alignItems =
+                "center";
+
+
+            header.style.justifyContent =
+                "space-between";
+
+
+            header.style.marginBottom =
+                "8px";
+
+
+            const title =
+
+                document.createElement(
+                    "strong"
+                );
+
+
+            title.textContent =
+                "Offence Intelligence";
+
+
+            header.appendChild(
+                title
+            );
+
+
+            /* -------------------------
+               Close Button
+               ------------------------- */
+
+            const closeButton =
+
+                document.createElement(
+                    "button"
+                );
+
+
+            closeButton.id =
+
+                UIController
+                    .IDS
+                    .closeButton;
+
+
+            closeButton.type =
+                "button";
+
+
+            closeButton.innerHTML =
+                '<i class="fa-solid fa-xmark"></i>';
+
+
+            closeButton.title =
+                "Close Offence Intelligence";
+
+
+            closeButton.style.border =
+                "none";
+
+
+            closeButton.style.background =
+                "transparent";
+
+
+            closeButton.style.cursor =
+                "pointer";
+
+
+            closeButton.addEventListener(
+
+                "click",
+
+                function (
+                    event
+                ) {
+
+                    event.preventDefault();
+
+                    event.stopPropagation();
+
+
+                    UIController
+                        .deactivate();
+
+                }
+
+            );
+
+
+            header.appendChild(
+                closeButton
+            );
+
+
+            menu.appendChild(
+                header
+            );
+
+
+            /* -------------------------
+               ALL
+               ------------------------- */
+
+            menu.appendChild(
+
+                UIController
+                    .createModeButton(
+
+                        UIController
+                            .IDS
+                            .allButton,
+
+                        "Source + Target",
+
+                        "fa-solid fa-layer-group",
+
+                        UIController
+                            .MODE
+                            .ALL
+
+                    )
+
+            );
+
+
+            /* -------------------------
+               SOURCE
+               ------------------------- */
+
+            menu.appendChild(
+
+                UIController
+                    .createModeButton(
+
+                        UIController
+                            .IDS
+                            .sourceButton,
+
+                        "Source Hotspots",
+
+                        "fa-solid fa-house-user",
+
+                        UIController
+                            .MODE
+                            .SOURCE
+
+                    )
+
+            );
+
+
+            /* -------------------------
+               TARGET
+               ------------------------- */
+
+            menu.appendChild(
+
+                UIController
+                    .createModeButton(
+
+                        UIController
+                            .IDS
+                            .targetButton,
+
+                        "Target Hotspots",
+
+                        "fa-solid fa-location-crosshairs",
+
+                        UIController
+                            .MODE
+                            .TARGET
+
+                    )
+
+            );
+
+
+            /* -------------------------
+               Action Row
+               ------------------------- */
+
+            const actions =
+
+                document.createElement(
+                    "div"
+                );
+
+
+            actions.style.display =
+                "flex";
+
+
+            actions.style.gap =
+                "6px";
+
+
+            actions.style.marginTop =
+                "8px";
+
+
+            actions.appendChild(
+
+                UIController
+                    .createActionButton(
+
+                        UIController
+                            .IDS
+                            .refreshButton,
+
+                        "Refresh",
+
+                        "fa-solid fa-rotate",
+
+                        function () {
+
+                            return UIController
+                                .refresh();
+
+                        }
+
+                    )
+
+            );
+
+
+            actions.appendChild(
+
+                UIController
+                    .createActionButton(
+
+                        UIController
+                            .IDS
+                            .fitButton,
+
+                        "Fit",
+
+                        "fa-solid fa-expand",
+
+                        function () {
+
+                            const Renderer =
+
+                                GG.Offence
+                                    .MapRenderer;
+
+
+                            if (
+                                typeof Renderer
+                                    ?.fitBounds ===
+                                    "function"
+                            ) {
+
+                                return Renderer
+                                    .fitBounds(
+
+                                        UIController
+                                            .mode
+
+                                    );
+
+                            }
+
+
+                            return false;
+
+                        }
+
+                    )
+
+            );
+
+
+            menu.appendChild(
+                actions
+            );
+
+
+            /* -------------------------
+               Status
+               ------------------------- */
+
+            const status =
+
+                document.createElement(
+                    "div"
+                );
+
+
+            status.id =
+
+                UIController
+                    .IDS
+                    .status;
+
+
+            status.className =
+                "offence-intelligence-status";
+
+
+            status.style.marginTop =
+                "9px";
+
+
+            status.style.fontSize =
+                "12px";
+
+
+            status.style.opacity =
+                "0.75";
+
+
+            status.style.lineHeight =
+                "1.4";
+
+
+            status.textContent =
+                "Inactive";
+
+
+            menu.appendChild(
+                status
+            );
+
+
+            /*
+             * Menu before main button so menu
+             * visually expands upward.
+             */
+
+            root.insertBefore(
+
+                menu,
+
+                root.firstChild
+
+            );
+
+
+            return menu;
+
+        };
+
+
+    /* =====================================================
+       16. GET ELEMENT
+       ===================================================== */
+
+    UIController.getElement =
+        function (
+            id
+        ) {
+
+            return document
+                .getElementById(
+                    id
+                );
+
+        };
+
+
+    /* =====================================================
+       17. SHOW MENU
+       ===================================================== */
+
+    UIController.showMenu =
+        function () {
+
+            const menu =
+
+                UIController
+                    .getElement(
+
+                        UIController
+                            .IDS
+                            .menu
+
+                    );
+
+
+            if (menu) {
 
                 menu.style.display =
-
                     "block";
 
             }
 
 
-            /*----------------------------------
-              Cascade Starts Hidden
-            ----------------------------------*/
+            const button =
+
+                UIController
+                    .getElement(
+
+                        UIController
+                            .IDS
+                            .button
+
+                    );
+
+
+            if (button) {
+
+                button.setAttribute(
+
+                    "aria-expanded",
+
+                    "true"
+
+                );
+
+            }
+
+        };
+
+
+    /* =====================================================
+       18. HIDE MENU
+       ===================================================== */
+
+    UIController.hideMenu =
+        function () {
+
+            const menu =
+
+                UIController
+                    .getElement(
+
+                        UIController
+                            .IDS
+                            .menu
+
+                    );
+
+
+            if (menu) {
+
+                menu.style.display =
+                    "none";
+
+            }
+
+
+            const button =
+
+                UIController
+                    .getElement(
+
+                        UIController
+                            .IDS
+                            .button
+
+                    );
+
+
+            if (button) {
+
+                button.setAttribute(
+
+                    "aria-expanded",
+
+                    "false"
+
+                );
+
+            }
+
+        };
+
+
+    /* =====================================================
+       19. SET STATUS
+       ===================================================== */
+
+    UIController.setStatus =
+        function (
+            message
+        ) {
+
+            const status =
+
+                UIController
+                    .getElement(
+
+                        UIController
+                            .IDS
+                            .status
+
+                    );
+
+
+            if (status) {
+
+                status.textContent =
+                    message ||
+                    "";
+
+            }
+
+        };
+
+
+    /* =====================================================
+       20. SET LOADING
+       ===================================================== */
+
+    UIController.setLoading =
+        function (
+            loading
+        ) {
+
+            UIController.loading =
+                !!loading;
+
+
+            const ids = [
+
+                UIController
+                    .IDS
+                    .button,
+
+                UIController
+                    .IDS
+                    .allButton,
+
+                UIController
+                    .IDS
+                    .sourceButton,
+
+                UIController
+                    .IDS
+                    .targetButton,
+
+                UIController
+                    .IDS
+                    .refreshButton
+
+            ];
+
+
+            ids.forEach(
+
+                function (
+                    id
+                ) {
+
+                    const element =
+
+                        UIController
+                            .getElement(
+                                id
+                            );
+
+
+                    if (!element) {
+
+                        return;
+
+                    }
+
+
+                    element.disabled =
+                        UIController.loading;
+
+
+                    if (
+                        UIController.loading
+                    ) {
+
+                        element.classList.add(
+                            "is-loading"
+                        );
+
+                    }
+
+                    else {
+
+                        element.classList.remove(
+                            "is-loading"
+                        );
+
+                    }
+
+                }
+
+            );
+
+        };
+
+
+    /* =====================================================
+       21. UPDATE ACTIVE MODE UI
+       ===================================================== */
+
+    UIController.updateModeUI =
+        function () {
+
+            const buttons = [
+
+                UIController
+                    .IDS
+                    .allButton,
+
+                UIController
+                    .IDS
+                    .sourceButton,
+
+                UIController
+                    .IDS
+                    .targetButton
+
+            ];
+
+
+            buttons.forEach(
+
+                function (
+                    id
+                ) {
+
+                    const button =
+
+                        UIController
+                            .getElement(
+                                id
+                            );
+
+
+                    if (!button) {
+
+                        return;
+
+                    }
+
+
+                    const active =
+
+                        button.dataset.mode ===
+                        UIController.mode;
+
+
+                    button.classList.toggle(
+
+                        "is-active",
+
+                        active
+
+                    );
+
+
+                    button.style.fontWeight =
+
+                        active
+
+                            ? "700"
+
+                            : "400";
+
+
+                    button.setAttribute(
+
+                        "aria-pressed",
+
+                        active
+                            ? "true"
+                            : "false"
+
+                    );
+
+                }
+
+            );
+
+        };
+
+
+    /* =====================================================
+       22. INITIALIZE MAP RENDERER
+       ===================================================== */
+
+    UIController.initializeMapRenderer =
+        function () {
+
+            const Renderer =
+
+                GG.Offence
+                    .MapRenderer;
+
+
+            if (!Renderer) {
+
+                throw new Error(
+                    "OffenceMapRenderer unavailable."
+                );
+
+            }
+
+
+            const map =
+
+                UIController
+                    .getMap();
+
+
+            if (!map) {
+
+                throw new Error(
+                    "Leaflet map unavailable."
+                );
+
+            }
+
+
+            UIController.map =
+                map;
+
 
             if (
+                typeof Renderer.init ===
+                    "function"
+            ) {
 
+                Renderer.init(
+                    map
+                );
+
+            }
+
+
+            return Renderer;
+
+        };
+
+
+    /* =====================================================
+       23. BUILD SOURCE + TARGET ENGINES
+       ===================================================== */
+
+    UIController.buildData =
+        async function () {
+
+            const SourceEngine =
+
+                GG.Offence
+                    .SourceEngine;
+
+
+            const TargetEngine =
+
+                GG.Offence
+                    .TargetEngine;
+
+
+            if (
+                !SourceEngine ||
+                !TargetEngine
+            ) {
+
+                throw new Error(
+                    "SourceEngine or TargetEngine unavailable."
+                );
+
+            }
+
+
+            let source =
+                [];
+
+
+            let target =
+                [];
+
+
+            /*
+             * Build SOURCE intelligence.
+             */
+
+            if (
+                typeof SourceEngine
+                    .buildFromStore ===
+                    "function"
+            ) {
+
+                source =
+
+                    await SourceEngine
+                        .buildFromStore();
+
+            }
+
+            else if (
+                typeof SourceEngine
+                    .build ===
+                    "function"
+            ) {
+
+                source =
+
+                    await SourceEngine
+                        .build();
+
+            }
+
+
+            /*
+             * Build TARGET intelligence.
+             */
+
+            if (
+                typeof TargetEngine
+                    .buildFromStore ===
+                    "function"
+            ) {
+
+                target =
+
+                    await TargetEngine
+                        .buildFromStore();
+
+            }
+
+            else if (
+                typeof TargetEngine
+                    .build ===
+                    "function"
+            ) {
+
+                target =
+
+                    await TargetEngine
+                        .build();
+
+            }
+
+
+            return {
+
+                source:
+                    Array.isArray(
+                        source
+                    )
+                        ? source
+                        : [],
+
+                target:
+                    Array.isArray(
+                        target
+                    )
+                        ? target
+                        : []
+
+            };
+
+        };
+
+
+    /* =====================================================
+       24. BUILD HEATMAP ENGINE
+       ===================================================== */
+
+    UIController.buildHeatmap =
+        async function () {
+
+            const HeatmapEngine =
+
+                GG.Offence
+                    .HeatmapEngine;
+
+
+            const SourceEngine =
+
+                GG.Offence
+                    .SourceEngine;
+
+
+            const TargetEngine =
+
+                GG.Offence
+                    .TargetEngine;
+
+
+            if (!HeatmapEngine) {
+
+                throw new Error(
+                    "OffenceHeatmapEngine unavailable."
+                );
+
+            }
+
+
+            /*
+             * Preferred current architecture.
+             */
+
+            if (
+                typeof HeatmapEngine
+                    .buildFromEngines ===
+                    "function"
+            ) {
+
+                return await HeatmapEngine
+                    .buildFromEngines();
+
+            }
+
+
+            /*
+             * Compatible fallback.
+             */
+
+            if (
+                typeof HeatmapEngine
+                    .build ===
+                    "function"
+            ) {
+
+                const source =
+
+                    typeof SourceEngine
+                        ?.getHotspots ===
+                        "function"
+
+                        ? SourceEngine
+                            .getHotspots()
+
+                        : [];
+
+
+                const target =
+
+                    typeof TargetEngine
+                        ?.getHotspots ===
+                        "function"
+
+                        ? TargetEngine
+                            .getHotspots()
+
+                        : [];
+
+
+                return await HeatmapEngine
+                    .build({
+
+                        source:
+                            source,
+
+                        target:
+                            target
+
+                    });
+
+            }
+
+
+            throw new Error(
+                "No compatible HeatmapEngine build method found."
+            );
+
+        };
+
+
+    /* =====================================================
+       25. RENDER CURRENT MODE
+
+       MapRenderer reads hotspots directly from
+       HeatmapEngine.
+
+       Do not pass raw SourceEngine / TargetEngine
+       arrays into MapRenderer.
+       ===================================================== */
+
+    UIController.render =
+        async function () {
+
+            const Renderer =
+
+                UIController
+                    .initializeMapRenderer();
+
+
+            if (
+                typeof Renderer.render !==
+                    "function"
+            ) {
+
+                throw new Error(
+                    "OffenceMapRenderer.render unavailable."
+                );
+
+            }
+
+
+            return Renderer
+                .render({
+
+                    mode:
+                        UIController.mode,
+
+                    show:
+                        true
+
+                });
+
+        };
+
+
+    /* =====================================================
+       26. GET SOURCE STATS
+       ===================================================== */
+
+    UIController.getSourceStats =
+        function () {
+
+            const Engine =
+
+                GG.Offence
+                    .SourceEngine;
+
+
+            if (
+                typeof Engine
+                    ?.getStats ===
+                    "function"
+            ) {
+
+                return (
+                    Engine.getStats() ||
+                    {}
+                );
+
+            }
+
+
+            const hotspots =
+
+                typeof Engine
+                    ?.getHotspots ===
+                    "function"
+
+                    ? Engine.getHotspots()
+
+                    : [];
+
+
+            return {
+
+                hotspots:
+
+                    Array.isArray(
+                        hotspots
+                    )
+
+                        ? hotspots.length
+
+                        : 0
+
+            };
+
+        };
+
+
+    /* =====================================================
+       27. GET TARGET STATS
+       ===================================================== */
+
+    UIController.getTargetStats =
+        function () {
+
+            const Engine =
+
+                GG.Offence
+                    .TargetEngine;
+
+
+            if (
+                typeof Engine
+                    ?.getStats ===
+                    "function"
+            ) {
+
+                return (
+                    Engine.getStats() ||
+                    {}
+                );
+
+            }
+
+
+            const hotspots =
+
+                typeof Engine
+                    ?.getHotspots ===
+                    "function"
+
+                    ? Engine.getHotspots()
+
+                    : [];
+
+
+            return {
+
+                hotspots:
+
+                    Array.isArray(
+                        hotspots
+                    )
+
+                        ? hotspots.length
+
+                        : 0
+
+            };
+
+        };
+
+
+    /* =====================================================
+       28. UPDATE STATUS FROM STATS
+       ===================================================== */
+
+    UIController.updateStatus =
+        function () {
+
+            const sourceStats =
+
+                UIController
+                    .getSourceStats();
+
+
+            const targetStats =
+
+                UIController
+                    .getTargetStats();
+
+
+            const sourceCount =
+
+                Number(
+
+                    sourceStats.hotspots ??
+
+                    sourceStats.hotspotCount ??
+
+                    sourceStats.count ??
+
+                    0
+
+                );
+
+
+            const targetCount =
+
+                Number(
+
+                    targetStats.hotspots ??
+
+                    targetStats.hotspotCount ??
+
+                    targetStats.count ??
+
+                    0
+
+                );
+
+
+            UIController.setStatus(
+
+                "Source: " +
+                sourceCount +
+                " | Target: " +
+                targetCount
+
+            );
+
+
+            return {
+
+                source:
+                    sourceStats,
+
+                target:
+                    targetStats
+
+            };
+
+        };
+
+
+    /* =====================================================
+       29. ACTIVATE
+       ===================================================== */
+
+    UIController.activate =
+        async function () {
+
+            if (
+                UIController.active &&
+                !UIController.loading
+            ) {
+
+                UIController
+                    .showMenu();
+
+
+                const Renderer =
+
+                    GG.Offence
+                        .MapRenderer;
+
+
+                if (
+                    typeof Renderer
+                        ?.show ===
+                        "function"
+                ) {
+
+                    Renderer.show();
+
+                }
+
+
+                return true;
+
+            }
+
+
+            if (
+                UIController.activationPromise
+            ) {
+
+                return UIController
+                    .activationPromise;
+
+            }
+
+
+            UIController.activationPromise =
+
+                (async function () {
+
+                    const dependencyCheck =
+
+                        UIController
+                            .checkDependencies();
+
+
+                    if (
+                        !dependencyCheck.success
+                    ) {
+
+                        console.error(
+
+                            "[OffenceUIController] Missing dependencies:",
+
+                            dependencyCheck.missing
+
+                        );
+
+
+                        UIController.setStatus(
+
+                            "Missing: " +
+                            dependencyCheck
+                                .missing
+                                .join(", ")
+
+                        );
+
+
+                        return false;
+
+                    }
+
+
+                    UIController.setLoading(
+                        true
+                    );
+
+
+                    try {
+
+                        UIController
+                            .showMenu();
+
+
+                        UIController.setStatus(
+                            "Building offence intelligence..."
+                        );
+
+
+                        /*
+                         * Cascade panel remains hidden until
+                         * a hotspot is clicked.
+                         */
+
+                        if (
+                            typeof GG.Offence
+                                .CascadeRenderer
+                                ?.hide ===
+                                "function"
+                        ) {
+
+                            GG.Offence
+                                .CascadeRenderer
+                                .hide();
+
+                        }
+
+
+                        /*
+                         * Ensure map renderer has map reference.
+                         */
+
+                        UIController
+                            .initializeMapRenderer();
+
+
+                        /*
+                         * Build SOURCE + TARGET.
+                         */
+
+                        await UIController
+                            .buildData();
+
+
+                        /*
+                         * Build unified heatmap model.
+                         */
+
+                        await UIController
+                            .buildHeatmap();
+
+
+                        /*
+                         * Render active mode.
+                         */
+
+                        await UIController
+                            .render();
+
+
+                        UIController.active =
+                            true;
+
+
+                        UIController
+                            .updateModeUI();
+
+
+                        const stats =
+
+                            UIController
+                                .updateStatus();
+
+
+                        const button =
+
+                            UIController
+                                .getElement(
+
+                                    UIController
+                                        .IDS
+                                        .button
+
+                                );
+
+
+                        if (button) {
+
+                            button.classList.add(
+                                "is-active"
+                            );
+
+                        }
+
+
+                        UIController
+                            .dispatchEvent(
+
+                                UIController
+                                    .EVENTS
+                                    .ACTIVATED,
+
+                                {
+
+                                    mode:
+                                        UIController.mode,
+
+                                    source:
+                                        stats.source,
+
+                                    target:
+                                        stats.target
+
+                                }
+
+                            );
+
+
+                        if (
+                            UIController
+                                .isDebugEnabled()
+                        ) {
+
+                            console.log(
+
+                                "🔥 Offence Intelligence Active",
+
+                                {
+
+                                    mode:
+                                        UIController.mode,
+
+                                    source:
+                                        stats.source,
+
+                                    target:
+                                        stats.target
+
+                                }
+
+                            );
+
+                        }
+
+
+                        return true;
+
+                    }
+
+                    catch (
+                        error
+                    ) {
+
+                        UIController.active =
+                            false;
+
+
+                        console.error(
+
+                            "[OffenceUIController] Activation failed:",
+
+                            error
+
+                        );
+
+
+                        UIController.setStatus(
+                            "Unable to activate"
+                        );
+
+
+                        UIController
+                            .dispatchError(
+                                error
+                            );
+
+
+                        return false;
+
+                    }
+
+                    finally {
+
+                        UIController.setLoading(
+                            false
+                        );
+
+                    }
+
+                })();
+
+
+            try {
+
+                return await UIController
+                    .activationPromise;
+
+            }
+
+            finally {
+
+                UIController.activationPromise =
+                    null;
+
+            }
+
+        };
+
+
+    /* =====================================================
+       30. DEACTIVATE
+       ===================================================== */
+
+    UIController.deactivate =
+        function () {
+
+            UIController.active =
+                false;
+
+
+            UIController
+                .hideMenu();
+
+
+            /*
+             * Hide offence map layers.
+             *
+             * Do not destroy built intelligence.
+             * This allows fast reactivation.
+             */
+
+            const Renderer =
+
+                GG.Offence
+                    .MapRenderer;
+
+
+            if (
+                typeof Renderer
+                    ?.hide ===
+                    "function"
+            ) {
+
+                Renderer.hide();
+
+            }
+
+            else if (
+                typeof Renderer
+                    ?.clear ===
+                    "function"
+            ) {
+
+                Renderer.clear();
+
+            }
+
+
+            /*
+             * Close CascadeController state.
+             */
+
+            if (
+                typeof GG.Offence
+                    .CascadeController
+                    ?.close ===
+                    "function"
+            ) {
+
+                GG.Offence
+                    .CascadeController
+                    .close();
+
+            }
+
+
+            /*
+             * Ensure cascade UI hidden.
+             */
+
+            if (
                 typeof GG.Offence
                     .CascadeRenderer
                     ?.hide ===
-
-                "function"
-
+                    "function"
             ) {
 
                 GG.Offence
@@ -1635,816 +2612,1205 @@
             }
 
 
-            UIController.setStatus(
-
-                "Building offence intelligence..."
-
-            );
-
-
-            /*----------------------------------
-              Build Source + Target
-            ----------------------------------*/
-
-            await UIController
-
-                .buildData();
-
-
-            /*----------------------------------
-              Build Unified Heatmap
-            ----------------------------------*/
-
-            await UIController
-
-                .buildHeatmap();
-
-
-            /*----------------------------------
-              Render Current Mode
-            ----------------------------------*/
-
-            await UIController
-
-                .render();
-
-
-            /*----------------------------------
-              Update UI
-            ----------------------------------*/
-
-            UIController
-
-                .updateModeUI();
-
-
-            const sourceStats =
-
-                GG.Offence
-                    .SourceEngine
-                    .getStats();
-
-
-            const targetStats =
-
-                GG.Offence
-                    .TargetEngine
-                    .getStats();
-
-
-            UIController.setStatus(
-
-                "Source: " +
-
-                (
-
-                    sourceStats.hotspots ||
-
-                    0
-
-                ) +
-
-                " | Target: " +
-
-                (
-
-                    targetStats.hotspots ||
-
-                    0
-
-                )
-
-            );
-
-
             const button =
 
-                UIController.getElement(
+                UIController
+                    .getElement(
 
-                    UIController.IDS.button
+                        UIController
+                            .IDS
+                            .button
+
+                    );
+
+
+            if (button) {
+
+                button.classList.remove(
+                    "is-active"
+                );
+
+            }
+
+
+            UIController.setStatus(
+                "Inactive"
+            );
+
+
+            UIController
+                .dispatchEvent(
+
+                    UIController
+                        .EVENTS
+                        .DEACTIVATED,
+
+                    {
+
+                        mode:
+                            UIController.mode
+
+                    }
 
                 );
 
 
             if (
-
-                button
-
+                UIController
+                    .isDebugEnabled()
             ) {
 
-                button.classList.add(
+                console.log(
+                    "🔥 Offence Intelligence Inactive"
+                );
 
-                    "is-active"
+            }
+
+
+            return true;
+
+        };
+
+
+    /* =====================================================
+       31. TOGGLE
+       ===================================================== */
+
+    UIController.toggle =
+        async function () {
+
+            if (
+                UIController.loading
+            ) {
+
+                return false;
+
+            }
+
+
+            if (
+                UIController.active
+            ) {
+
+                return UIController
+                    .deactivate();
+
+            }
+
+
+            return await UIController
+                .activate();
+
+        };
+
+
+    /* =====================================================
+       32. NORMALIZE MODE
+       ===================================================== */
+
+    UIController.normalizeMode =
+        function (
+            mode
+        ) {
+
+            const value =
+
+                String(
+                    mode ||
+                    ""
+                )
+                    .trim()
+                    .toUpperCase();
+
+
+            /*
+             * Backward compatibility.
+             */
+
+            if (
+                value === "BOTH"
+            ) {
+
+                return UIController
+                    .MODE
+                    .ALL;
+
+            }
+
+
+            if (
+                value ===
+                    UIController
+                        .MODE
+                        .SOURCE
+            ) {
+
+                return UIController
+                    .MODE
+                    .SOURCE;
+
+            }
+
+
+            if (
+                value ===
+                    UIController
+                        .MODE
+                        .TARGET
+            ) {
+
+                return UIController
+                    .MODE
+                    .TARGET;
+
+            }
+
+
+            if (
+                value ===
+                    UIController
+                        .MODE
+                        .ALL
+            ) {
+
+                return UIController
+                    .MODE
+                    .ALL;
+
+            }
+
+
+            return null;
+
+        };
+
+
+    /* =====================================================
+       33. SET MODE
+       ===================================================== */
+
+    UIController.setMode =
+        async function (
+            mode
+        ) {
+
+            const normalized =
+
+                UIController
+                    .normalizeMode(
+                        mode
+                    );
+
+
+            if (!normalized) {
+
+                console.warn(
+
+                    "[OffenceUIController] Invalid mode:",
+
+                    mode
+
+                );
+
+
+                return false;
+
+            }
+
+
+            UIController.mode =
+                normalized;
+
+
+            UIController
+                .updateModeUI();
+
+
+            if (
+                !UIController.active
+            ) {
+
+                return true;
+
+            }
+
+
+            if (
+                UIController.loading
+            ) {
+
+                return false;
+
+            }
+
+
+            UIController.setLoading(
+                true
+            );
+
+
+            try {
+
+                const label =
+
+                    normalized ===
+                        UIController.MODE.ALL
+
+                        ? "source + target"
+
+                        : normalized.toLowerCase();
+
+
+                UIController.setStatus(
+
+                    "Rendering " +
+                    label +
+                    " hotspots..."
+
+                );
+
+
+                const Renderer =
+
+                    GG.Offence
+                        .MapRenderer;
+
+
+                /*
+                 * Preferred mode switching.
+                 */
+
+                if (
+                    typeof Renderer
+                        ?.setMode ===
+                        "function"
+                ) {
+
+                    Renderer.setMode(
+                        normalized
+                    );
+
+                }
+
+                else {
+
+                    await UIController
+                        .render();
+
+                }
+
+
+                UIController
+                    .updateStatus();
+
+
+                UIController
+                    .dispatchEvent(
+
+                        UIController
+                            .EVENTS
+                            .MODE_CHANGED,
+
+                        {
+
+                            mode:
+                                normalized
+
+                        }
+
+                    );
+
+
+                return true;
+
+            }
+
+            catch (
+                error
+            ) {
+
+                console.error(
+
+                    "[OffenceUIController] Mode change failed:",
+
+                    error
+
+                );
+
+
+                UIController.setStatus(
+                    "Render failed"
+                );
+
+
+                UIController
+                    .dispatchError(
+                        error
+                    );
+
+
+                return false;
+
+            }
+
+            finally {
+
+                UIController.setLoading(
+                    false
+                );
+
+            }
+
+        };
+
+
+    /* =====================================================
+       34. SHOW ALL
+       ===================================================== */
+
+    UIController.showAll =
+        function () {
+
+            return UIController
+                .setMode(
+
+                    UIController
+                        .MODE
+                        .ALL
+
+                );
+
+        };
+
+
+    /* =====================================================
+       35. SHOW SOURCE
+       ===================================================== */
+
+    UIController.showSource =
+        function () {
+
+            return UIController
+                .setMode(
+
+                    UIController
+                        .MODE
+                        .SOURCE
+
+                );
+
+        };
+
+
+    /* =====================================================
+       36. SHOW TARGET
+       ===================================================== */
+
+    UIController.showTarget =
+        function () {
+
+            return UIController
+                .setMode(
+
+                    UIController
+                        .MODE
+                        .TARGET
+
+                );
+
+        };
+
+
+    /* =====================================================
+       37. REFRESH
+       ===================================================== */
+
+    UIController.refresh =
+        async function () {
+
+            if (
+                !UIController.active
+            ) {
+
+                return false;
+
+            }
+
+
+            if (
+                UIController.refreshPromise
+            ) {
+
+                return UIController
+                    .refreshPromise;
+
+            }
+
+
+            UIController.refreshPromise =
+
+                (async function () {
+
+                    UIController.setLoading(
+                        true
+                    );
+
+
+                    try {
+
+                        UIController.setStatus(
+                            "Refreshing offence intelligence..."
+                        );
+
+
+                        /*
+                         * Rebuild SOURCE + TARGET.
+                         */
+
+                        await UIController
+                            .buildData();
+
+
+                        /*
+                         * Rebuild HeatmapEngine.
+                         */
+
+                        await UIController
+                            .buildHeatmap();
+
+
+                        /*
+                         * Re-render map.
+                         */
+
+                        await UIController
+                            .render();
+
+
+                        const stats =
+
+                            UIController
+                                .updateStatus();
+
+
+                        UIController
+                            .dispatchEvent(
+
+                                UIController
+                                    .EVENTS
+                                    .REFRESHED,
+
+                                {
+
+                                    mode:
+                                        UIController.mode,
+
+                                    source:
+                                        stats.source,
+
+                                    target:
+                                        stats.target
+
+                                }
+
+                            );
+
+
+                        return true;
+
+                    }
+
+                    catch (
+                        error
+                    ) {
+
+                        console.error(
+
+                            "[OffenceUIController] Refresh failed:",
+
+                            error
+
+                        );
+
+
+                        UIController.setStatus(
+                            "Refresh failed"
+                        );
+
+
+                        UIController
+                            .dispatchError(
+                                error
+                            );
+
+
+                        return false;
+
+                    }
+
+                    finally {
+
+                        UIController.setLoading(
+                            false
+                        );
+
+                    }
+
+                })();
+
+
+            try {
+
+                return await UIController
+                    .refreshPromise;
+
+            }
+
+            finally {
+
+                UIController.refreshPromise =
+                    null;
+
+            }
+
+        };
+
+
+    /* =====================================================
+       38. HANDLE STORE UPDATE
+
+       If offence intelligence is active,
+       rebuild derived SOURCE / TARGET / heatmap data.
+       ===================================================== */
+
+    UIController.handleStoreUpdate =
+        function () {
+
+            if (
+                !UIController.active
+            ) {
+
+                return;
+
+            }
+
+
+            UIController
+                .refresh();
+
+        };
+
+
+    /* =====================================================
+       39. HANDLE HOTSPOT CLICK
+
+       MapRenderer dispatches this event.
+
+       CascadeController should normally listen directly.
+
+       This method is intentionally only used to ensure
+       the UI remains active and visible.
+       ===================================================== */
+
+    UIController.handleHotspotClick =
+        function (
+            event
+        ) {
+
+            if (
+                !UIController.active
+            ) {
+
+                return;
+
+            }
+
+
+            if (
+                UIController
+                    .isDebugEnabled()
+            ) {
+
+                console.log(
+
+                    "[OffenceUIController] Hotspot clicked:",
+
+                    event?.detail
+
+                );
+
+            }
+
+        };
+
+
+    /* =====================================================
+       40. BIND GLOBAL EVENTS
+       ===================================================== */
+
+    UIController.bindEvents =
+        function () {
+
+            if (
+                UIController.eventsBound
+            ) {
+
+                return;
+
+            }
+
+
+            UIController.eventsBound =
+                true;
+
+
+            /*
+             * Store update events.
+             */
+
+            window.addEventListener(
+
+                "offence:updated",
+
+                UIController
+                    .handleStoreUpdate
+
+            );
+
+
+            window.addEventListener(
+
+                "offence:data-updated",
+
+                UIController
+                    .handleStoreUpdate
+
+            );
+
+
+            window.addEventListener(
+
+                "offence:data-ready",
+
+                UIController
+                    .handleStoreUpdate
+
+            );
+
+
+            /*
+             * Hotspot click.
+             */
+
+            window.addEventListener(
+
+                GG.Offence.Constants
+                    ?.EVENTS
+                    ?.HOTSPOT_CLICK ||
+
+                "offence:hotspot-click",
+
+                UIController
+                    .handleHotspotClick
+
+            );
+
+        };
+
+
+    /* =====================================================
+       41. UNBIND GLOBAL EVENTS
+       ===================================================== */
+
+    UIController.unbindEvents =
+        function () {
+
+            if (
+                !UIController.eventsBound
+            ) {
+
+                return;
+
+            }
+
+
+            window.removeEventListener(
+
+                "offence:updated",
+
+                UIController
+                    .handleStoreUpdate
+
+            );
+
+
+            window.removeEventListener(
+
+                "offence:data-updated",
+
+                UIController
+                    .handleStoreUpdate
+
+            );
+
+
+            window.removeEventListener(
+
+                "offence:data-ready",
+
+                UIController
+                    .handleStoreUpdate
+
+            );
+
+
+            window.removeEventListener(
+
+                GG.Offence.Constants
+                    ?.EVENTS
+                    ?.HOTSPOT_CLICK ||
+
+                "offence:hotspot-click",
+
+                UIController
+                    .handleHotspotClick
+
+            );
+
+
+            UIController.eventsBound =
+                false;
+
+        };
+
+
+    /* =====================================================
+       42. DISPATCH EVENT
+       ===================================================== */
+
+    UIController.dispatchEvent =
+        function (
+
+            eventName,
+
+            detail = {}
+
+        ) {
+
+            if (!eventName) {
+
+                return;
+
+            }
+
+
+            try {
+
+                window.dispatchEvent(
+
+                    new CustomEvent(
+
+                        eventName,
+
+                        {
+
+                            detail:
+                                detail
+
+                        }
+
+                    )
+
+                );
+
+            }
+
+            catch (
+                error
+            ) {
+
+                if (
+                    UIController
+                        .isDebugEnabled()
+                ) {
+
+                    console.warn(
+
+                        "[OffenceUIController] Event dispatch failed:",
+
+                        eventName,
+
+                        error
+
+                    );
+
+                }
+
+            }
+
+        };
+
+
+    /* =====================================================
+       43. DISPATCH ERROR
+       ===================================================== */
+
+    UIController.dispatchError =
+        function (
+            error
+        ) {
+
+            UIController
+                .dispatchEvent(
+
+                    UIController
+                        .EVENTS
+                        .ERROR,
+
+                    {
+
+                        message:
+
+                            error?.message ||
+
+                            String(
+                                error ||
+                                "Unknown error"
+                            ),
+
+                        error:
+                            error
+
+                    }
+
+                );
+
+        };
+
+
+    /* =====================================================
+       44. GET STATUS
+       ===================================================== */
+
+    UIController.getStatus =
+        function () {
+
+            const Renderer =
+
+                GG.Offence
+                    .MapRenderer;
+
+
+            return {
+
+                version:
+                    UIController.VERSION,
+
+                initialized:
+                    UIController.initialized,
+
+                active:
+                    UIController.active,
+
+                loading:
+                    UIController.loading,
+
+                mode:
+                    UIController.mode,
+
+                mapAvailable:
+                    !!UIController
+                        .getMap(),
+
+                renderer:
+
+                    typeof Renderer
+                        ?.getStatus ===
+                        "function"
+
+                        ? Renderer.getStatus()
+
+                        : null,
+
+                source:
+
+                    UIController
+                        .getSourceStats(),
+
+                target:
+
+                    UIController
+                        .getTargetStats()
+
+            };
+
+        };
+
+
+    /* =====================================================
+       45. INIT
+       ===================================================== */
+
+    UIController.init =
+        function (
+            map = null
+        ) {
+
+            if (
+                UIController.initialized
+            ) {
+
+                if (map) {
+
+                    UIController.map =
+                        map;
+
+
+                    if (
+                        typeof GG.Offence
+                            .MapRenderer
+                            ?.setMap ===
+                            "function"
+                    ) {
+
+                        GG.Offence
+                            .MapRenderer
+                            .setMap(
+                                map
+                            );
+
+                    }
+
+                }
+
+
+                return UIController;
+
+            }
+
+
+            if (map) {
+
+                UIController.map =
+                    map;
+
+            }
+
+
+            const root =
+
+                UIController
+                    .createControl();
+
+
+            UIController
+                .createMenu(
+                    root
+                );
+
+
+            UIController
+                .createMainButton(
+                    root
+                );
+
+
+            UIController
+                .bindEvents();
+
+
+            UIController
+                .updateModeUI();
+
+
+            /*
+             * Cascade remains hidden until
+             * hotspot selection.
+             */
+
+            if (
+                typeof GG.Offence
+                    .CascadeRenderer
+                    ?.hide ===
+                    "function"
+            ) {
+
+                GG.Offence
+                    .CascadeRenderer
+                    .hide();
+
+            }
+
+
+            /*
+             * Initialize MapRenderer only when
+             * map already exists.
+             *
+             * If map is created later, activate()
+             * will initialize it.
+             */
+
+            const resolvedMap =
+
+                UIController
+                    .getMap();
+
+
+            if (
+                resolvedMap &&
+                typeof GG.Offence
+                    .MapRenderer
+                    ?.init ===
+                    "function"
+            ) {
+
+                GG.Offence
+                    .MapRenderer
+                    .init(
+                        resolvedMap
+                    );
+
+            }
+
+
+            UIController.initialized =
+                true;
+
+
+            if (
+                UIController
+                    .isDebugEnabled()
+            ) {
+
+                console.log(
+
+                    "🔥 OffenceUIController Ready",
+
+                    {
+
+                        version:
+                            UIController.VERSION,
+
+                        mode:
+                            UIController.mode,
+
+                        mapAvailable:
+                            !!resolvedMap,
+
+                        connector:
+                            "POR"
+
+                    }
 
                 );
 
             }
 
 
-            console.log(
+            return UIController;
 
-                "🔥 Offence Intelligence Active",
+        };
 
-                {
 
-                    mode:
+    /* =====================================================
+       46. DESTROY
+       ===================================================== */
 
-                        UIController.mode,
-
-                    source:
-
-                        sourceStats,
-
-                    target:
-
-                        targetStats
-
-                }
-
-            );
-
-        }
-
-        catch (
-
-            error
-
-        ) {
-
-            console.error(
-
-                "[OffenceUIController] Activation failed:",
-
-                error
-
-            );
-
-
-            UIController.setStatus(
-
-                "Unable to activate"
-
-            );
-
-        }
-
-        finally {
-
-            UIController.setLoading(
-
-                false
-
-            );
-
-        }
-
-    };
-
-
-    /*=========================================================
-      DEACTIVATE
-    =========================================================*/
-
-    UIController.deactivate = function () {
-
-        UIController.active =
-
-            false;
-
-
-        /*----------------------------------
-          Hide Menu
-        ----------------------------------*/
-
-        const menu =
-
-            UIController.getElement(
-
-                UIController.IDS.menu
-
-            );
-
-
-        if (
-
-            menu
-
-        ) {
-
-            menu.style.display =
-
-                "none";
-
-        }
-
-
-        /*----------------------------------
-          Clear Map Layers
-        ----------------------------------*/
-
-        const Renderer =
-
-            GG.Offence.MapRenderer;
-
-
-        if (
-
-            typeof Renderer?.clear ===
-
-            "function"
-
-        ) {
-
-            Renderer.clear();
-
-        }
-
-
-        /*----------------------------------
-          Hide Cascade
-        ----------------------------------*/
-
-        if (
-
-            typeof GG.Offence
-                .CascadeRenderer
-                ?.hide ===
-
-            "function"
-
-        ) {
-
-            GG.Offence
-                .CascadeRenderer
-                .hide();
-
-        }
-
-
-        /*----------------------------------
-          Main Button State
-        ----------------------------------*/
-
-        const button =
-
-            UIController.getElement(
-
-                UIController.IDS.button
-
-            );
-
-
-        if (
-
-            button
-
-        ) {
-
-            button.classList.remove(
-
-                "is-active"
-
-            );
-
-        }
-
-
-        UIController.setStatus(
-
-            "Inactive"
-
-        );
-
-
-        console.log(
-
-            "🔥 Offence Intelligence Inactive"
-
-        );
-
-    };
-
-
-    /*=========================================================
-      TOGGLE
-    =========================================================*/
-
-    UIController.toggle = async function () {
-
-        if (
-
-            UIController.active
-
-        ) {
+    UIController.destroy =
+        function () {
 
             UIController
-
                 .deactivate();
 
-            return;
-
-        }
-
-
-        await UIController
-
-            .activate();
-
-    };
-
-
-    /*=========================================================
-      SET MODE
-    =========================================================*/
-
-    UIController.setMode = async function (
-
-        mode
-
-    ) {
-
-        const allowed = [
-
-            "both",
-
-            "source",
-
-            "target"
-
-        ];
-
-
-        if (
-
-            !allowed.includes(
-
-                mode
-
-            )
-
-        ) {
-
-            console.warn(
-
-                "[OffenceUIController] Invalid mode:",
-
-                mode
-
-            );
-
-            return;
-
-        }
-
-
-        UIController.mode =
-
-            mode;
-
-
-        UIController
-
-            .updateModeUI();
-
-
-        if (
-
-            !UIController.active
-
-        ) {
-
-            return;
-
-        }
-
-
-        UIController.setLoading(
-
-            true
-
-        );
-
-
-        try {
-
-            UIController.setStatus(
-
-                "Rendering " +
-
-                mode +
-
-                " hotspots..."
-
-            );
-
-
-            await UIController
-
-                .render();
-
-
-            const sourceStats =
-
-                GG.Offence
-                    .SourceEngine
-                    .getStats();
-
-
-            const targetStats =
-
-                GG.Offence
-                    .TargetEngine
-                    .getStats();
-
-
-            UIController.setStatus(
-
-                "Source: " +
-
-                (
-
-                    sourceStats.hotspots ||
-
-                    0
-
-                ) +
-
-                " | Target: " +
-
-                (
-
-                    targetStats.hotspots ||
-
-                    0
-
-                )
-
-            );
-
-        }
-
-        catch (
-
-            error
-
-        ) {
-
-            console.error(
-
-                "[OffenceUIController] Mode change failed:",
-
-                error
-
-            );
-
-
-            UIController.setStatus(
-
-                "Render failed"
-
-            );
-
-        }
-
-        finally {
-
-            UIController.setLoading(
-
-                false
-
-            );
-
-        }
-
-    };
-
-
-    /*=========================================================
-      REFRESH
-    =========================================================*/
-
-    UIController.refresh = async function () {
-
-        if (
-
-            !UIController.active
-
-        ) {
-
-            return;
-
-        }
-
-
-        if (
-
-            UIController.loading
-
-        ) {
-
-            return;
-
-        }
-
-
-        UIController.setLoading(
-
-            true
-
-        );
-
-
-        try {
-
-            UIController.setStatus(
-
-                "Refreshing..."
-
-            );
-
-
-            await UIController
-
-                .buildData();
-
-
-            await UIController
-
-                .buildHeatmap();
-
-
-            await UIController
-
-                .render();
-
-
-            const sourceStats =
-
-                GG.Offence
-                    .SourceEngine
-                    .getStats();
-
-
-            const targetStats =
-
-                GG.Offence
-                    .TargetEngine
-                    .getStats();
-
-
-            UIController.setStatus(
-
-                "Source: " +
-
-                (
-
-                    sourceStats.hotspots ||
-
-                    0
-
-                ) +
-
-                " | Target: " +
-
-                (
-
-                    targetStats.hotspots ||
-
-                    0
-
-                )
-
-            );
-
-        }
-
-        catch (
-
-            error
-
-        ) {
-
-            console.error(
-
-                "[OffenceUIController] Refresh failed:",
-
-                error
-
-            );
-
-
-            UIController.setStatus(
-
-                "Refresh failed"
-
-            );
-
-        }
-
-        finally {
-
-            UIController.setLoading(
-
-                false
-
-            );
-
-        }
-
-    };
-
-
-    /*=========================================================
-      HANDLE STORE UPDATE
-    =========================================================*/
-
-    UIController.handleStoreUpdate = function () {
-
-        /*
-         * Daily offence records may increase.
-         *
-         * If offence mode is currently active,
-         * rebuild the intelligence layers.
-         */
-
-        if (
-
-            !UIController.active
-
-        ) {
-
-            return;
-
-        }
-
-
-        UIController
-
-            .refresh();
-
-    };
-
-
-    /*=========================================================
-      BIND GLOBAL EVENTS
-    =========================================================*/
-
-    UIController.bindEvents = function () {
-
-        /*
-         * These event names can be dispatched by
-         * OffenceStore after load/update.
-         *
-         * Duplicate listeners are prevented by init().
-         */
-
-        window.addEventListener(
-
-            "offence:updated",
-
-            UIController.handleStoreUpdate
-
-        );
-
-
-        window.addEventListener(
-
-            "offence:data-updated",
-
-            UIController.handleStoreUpdate
-
-        );
-
-    };
-
-
-    /*=========================================================
-      INIT
-    =========================================================*/
-
-    UIController.init = function () {
-
-        if (
-
-            UIController.initialized
-
-        ) {
-
-            return;
-
-        }
-
-
-        const root =
 
             UIController
-
-                .createControl();
-
-
-        UIController
-
-            .createMenu(
-
-                root
-
-            );
+                .unbindEvents();
 
 
-        UIController
+            const root =
 
-            .createMainButton(
+                UIController
+                    .getElement(
 
-                root
+                        UIController
+                            .IDS
+                            .root
 
-            );
-
-
-        UIController
-
-            .bindEvents();
+                    );
 
 
-        UIController
+            if (root) {
 
-            .updateModeUI();
+                root.remove();
 
-
-        /*
-         * Cascade should never be visible
-         * merely because UIController loaded.
-         */
-
-        if (
-
-            typeof GG.Offence
-                .CascadeRenderer
-                ?.hide ===
-
-            "function"
-
-        ) {
-
-            GG.Offence
-                .CascadeRenderer
-                .hide();
-
-        }
+            }
 
 
-        UIController.initialized =
-
-            true;
-
-
-        console.log(
-
-            "%cOffence UI Controller Ready",
-
-            "color:#d32f2f;font-weight:bold;"
-
-        );
-
-    };
+            UIController.initialized =
+                false;
 
 
-    /*=========================================================
-      REGISTER
-    =========================================================*/
+            UIController.active =
+                false;
+
+
+            UIController.loading =
+                false;
+
+
+            UIController.map =
+                null;
+
+
+            return true;
+
+        };
+
+
+    /* =====================================================
+       47. REGISTER
+       ===================================================== */
 
     GG.Offence.UIController =
-
         UIController;
 
 
-    /*=========================================================
-      AUTO INIT
-    =========================================================*/
+    /* =====================================================
+       48. AUTO INITIALIZE
+
+       Creates UI controls only.
+
+       Does NOT:
+       - load Firestore
+       - build engines
+       - render heatmaps
+
+       Those operations start when user activates
+       Offence Intelligence.
+       ===================================================== */
+
+    function autoInit() {
+
+        UIController
+            .init();
+
+    }
+
 
     if (
-
         document.readyState ===
-
-        "loading"
-
+            "loading"
     ) {
 
         document.addEventListener(
 
             "DOMContentLoaded",
 
-            function () {
-
-                UIController.init();
-
-            },
+            autoInit,
 
             {
-
                 once:
-
                     true
-
             }
 
         );
@@ -2453,9 +3819,40 @@
 
     else {
 
-        UIController.init();
+        autoInit();
 
     }
 
 
-})(window);
+    /* =====================================================
+       49. READY LOG
+       ===================================================== */
+
+    if (
+        UIController
+            .isDebugEnabled()
+    ) {
+
+        console.log(
+
+            "🔥 OffenceUIController Loaded",
+
+            {
+
+                version:
+                    UIController.VERSION,
+
+                namespace:
+                    "GG.Offence.UIController",
+
+                connector:
+                    "POR"
+
+            }
+
+        );
+
+    }
+
+
+})();
