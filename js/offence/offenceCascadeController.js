@@ -1208,170 +1208,573 @@
        Main heatmap entry point.
        ===================================================== */
 
-    CascadeController.openHotspot =
-        function (
-            hotspotId,
-            entryType = null,
-            options = {}
+/*=========================================================
+  OPEN HOTSPOT
+
+  PURPOSE:
+
+  Unified cascade entry point for:
+
+  1. Individual SOURCE hotspot
+  2. Individual TARGET hotspot
+  3. Aggregated SOURCE polygon
+     - future GIS support
+  4. Aggregated TARGET polygon
+     - current GIS support
+
+  AUTHORITATIVE RELATIONSHIP:
+
+      POR / porKey
+
+  IMPORTANT:
+
+  Aggregated polygons such as:
+
+      RANGE::NMT
+      RANGE::WRVK
+
+  may NOT exist as normal individual hotspots inside:
+
+      HeatmapEngine.getHotspotById()
+
+  Therefore:
+
+  1. Try HeatmapEngine lookup.
+  2. Fall back to options.hotspot.
+  3. Preserve existing hotspot behavior.
+  4. Extract ALL POR keys.
+  5. Build complete POR relationships.
+  6. Aggregate cases / accused / witnesses /
+     seizures / seized articles into cascade state.
+=========================================================*/
+
+CascadeController.openHotspot =
+    function (
+
+        hotspotId,
+
+        entryType = null,
+
+        options = {}
+
+    ) {
+
+        /*---------------------------------------------
+          1. Validate hotspot ID
+        ---------------------------------------------*/
+
+        if (
+            !hotspotId
         ) {
 
-            if (!hotspotId) {
+            return {
 
-                return {
+                success:
+                    false,
 
-                    success:
-                        false,
+                reason:
+                    "HOTSPOT_ID_REQUIRED"
 
-                    reason:
-                        "HOTSPOT_ID_REQUIRED"
+            };
 
-                };
-
-            }
+        }
 
 
-            const entry =
+        /*---------------------------------------------
+          2. Normalize options
 
-                HeatmapEngine
-                    .getHotspotById(
-                        hotspotId
-                    );
+          Prevent invalid/null options from breaking
+          the cascade entry flow.
+        ---------------------------------------------*/
 
+        if (
+            !options ||
 
-            if (!entry) {
+            typeof options !==
+                "object"
+        ) {
 
-                return {
+            options = {};
 
-                    success:
-                        false,
-
-                    reason:
-                        "HOTSPOT_NOT_FOUND"
-
-                };
-
-            }
+        }
 
 
-            const type =
+        /*---------------------------------------------
+          3. Supplied hotspot
 
-                CascadeController
-                    .normalizeKey(
+          MapRenderer may supply an aggregated polygon
+          as the hotspot context.
 
-                        entryType ||
+          Example:
 
-                        entry.type
+              {
+                  id: "RANGE::NMT",
+                  type: "TARGET",
+                  porKeys: [...]
+              }
 
-                    );
+          This is valid even if HeatmapEngine does not
+          have RANGE::NMT as an individual hotspot ID.
+        ---------------------------------------------*/
 
+        const suppliedHotspot =
 
-            if (
-                type !==
-                    CascadeController.TYPE.SOURCE &&
+            options.hotspot ||
 
-                type !==
-                    CascadeController.TYPE.TARGET
-            ) {
-
-                return {
-
-                    success:
-                        false,
-
-                    reason:
-                        "INVALID_HOTSPOT_TYPE"
-
-                };
-
-            }
+            null;
 
 
-            const hotspot =
+        /*---------------------------------------------
+          4. Try canonical HeatmapEngine lookup
 
-                options.hotspot ||
+          Preserve existing behavior for normal
+          SOURCE / TARGET hotspot clicks.
+        ---------------------------------------------*/
 
-                entry.hotspot ||
+        let engineEntry =
 
-                entry;
-
-
-            const porKeys =
-
-                CascadeController
-                    .extractPorKeysFromHotspot(
-
-                        hotspot,
-
-                        entry
-
-                    );
+            null;
 
 
-            const porRelations =
-                [];
+        if (
 
+            HeatmapEngine &&
 
-            for (
-                const porKey
-                of porKeys
-            ) {
+            typeof HeatmapEngine
+                .getHotspotById ===
+                "function"
 
-                const relation =
+        ) {
 
-                    CascadeController
-                        .getPorRelation(
-                            porKey
+            try {
+
+                engineEntry =
+
+                    HeatmapEngine
+                        .getHotspotById(
+
+                            hotspotId
+
                         );
 
+            }
 
-                if (relation) {
+            catch (
+                error
+            ) {
 
-                    porRelations.push(
-                        relation
+                /*
+                 * Do not fail here.
+                 *
+                 * Aggregated polygons are allowed to
+                 * continue using suppliedHotspot.
+                 */
+
+                engineEntry =
+                    null;
+
+
+                if (
+                    Constants.DEBUG
+                        ?.ENABLED
+                ) {
+
+                    console.warn(
+
+                        "[OffenceCascadeController] Heatmap hotspot lookup failed",
+
+                        {
+
+                            hotspotId:
+                                hotspotId,
+
+                            error:
+                                error
+
+                        }
+
                     );
 
                 }
 
             }
 
+        }
 
-            CascadeController.state =
+
+        /*---------------------------------------------
+          5. Resolve canonical entry
+
+          Priority:
+
+          HeatmapEngine entry
+              ↓
+          supplied aggregated hotspot
+
+          This preserves the old flow while allowing
+          aggregated polygons to enter the cascade.
+        ---------------------------------------------*/
+
+        const entry =
+
+            engineEntry ||
+
+            suppliedHotspot;
+
+
+        if (
+            !entry
+        ) {
+
+            return {
+
+                success:
+                    false,
+
+                reason:
+                    "HOTSPOT_NOT_FOUND"
+
+            };
+
+        }
+
+
+        /*---------------------------------------------
+          6. Resolve canonical hotspot
+
+          For normal HeatmapEngine entries:
+
+              entry.hotspot
+
+          For aggregated polygons:
+
+              options.hotspot
+
+          Otherwise:
+
+              entry
+        ---------------------------------------------*/
+
+        const hotspot =
+
+            suppliedHotspot ||
+
+            entry.hotspot ||
+
+            entry;
+
+
+        if (
+            !hotspot
+        ) {
+
+            return {
+
+                success:
+                    false,
+
+                reason:
+                    "HOTSPOT_NOT_FOUND"
+
+            };
+
+        }
+
+
+        /*---------------------------------------------
+          7. Resolve SOURCE / TARGET type
+
+          Priority:
+
+          explicit entryType
+              ↓
+          supplied hotspot type
+              ↓
+          engine entry type
+        ---------------------------------------------*/
+
+        const type =
+
+            CascadeController
+                .normalizeKey(
+
+                    entryType ||
+
+                    hotspot.type ||
+
+                    entry.type ||
+
+                    ""
+
+                );
+
+
+        if (
+
+            type !==
+                CascadeController
+                    .TYPE
+                    .SOURCE &&
+
+            type !==
+                CascadeController
+                    .TYPE
+                    .TARGET
+
+        ) {
+
+            return {
+
+                success:
+                    false,
+
+                reason:
+                    "INVALID_HOTSPOT_TYPE"
+
+            };
+
+        }
+
+
+        /*---------------------------------------------
+          8. Extract complete POR set
+
+          This supports:
+
+          hotspot.porKey
+          hotspot.porKeys
+
+          plus any POR metadata available on entry.
+
+          For aggregated TARGET polygons this is the
+          critical relationship bridge:
+
+          TARGET RANGE
+              ↓
+          POR[]
+              ↓
+          CASES[]
+        ---------------------------------------------*/
+
+        const porKeys =
+
+            CascadeController
+                .extractPorKeysFromHotspot(
+
+                    hotspot,
+
+                    entry
+
+                );
+
+
+        /*---------------------------------------------
+          9. Build POR relationship graph
+
+          One aggregated polygon can represent many
+          POR records.
+
+          Example:
+
+          RANGE::NMT
+              ↓
+          POR-1
+          POR-2
+          POR-3
+          ...
+        ---------------------------------------------*/
+
+        const porRelations = [];
+
+
+        for (
+            const porKey
+            of porKeys
+        ) {
+
+            if (
+                !porKey
+            ) {
+
+                continue;
+
+            }
+
+
+            const relation =
 
                 CascadeController
-                    .createEmptyState();
+                    .getPorRelation(
+
+                        porKey
+
+                    );
 
 
-            const state =
-                CascadeController.state;
+            if (
+                relation
+            ) {
+
+                porRelations.push(
+
+                    relation
+
+                );
+
+            }
+
+        }
 
 
-            state.open =
-                true;
+        /*---------------------------------------------
+          10. Reset cascade state
+
+          Every new SOURCE / TARGET click starts a new
+          cascade context.
+        ---------------------------------------------*/
+
+        CascadeController.state =
+
+            CascadeController
+                .createEmptyState();
 
 
-            state.level =
-                CascadeController
-                    .LEVEL
-                    .HOTSPOT;
+        const state =
+
+            CascadeController
+                .state;
 
 
-            state.entryType =
-                type;
+        /*---------------------------------------------
+          11. Establish hotspot state
+        ---------------------------------------------*/
+
+        state.open =
+
+            true;
 
 
-            state.hotspotId =
-                hotspotId;
+        state.level =
+
+            CascadeController
+                .LEVEL
+                .HOTSPOT;
 
 
-            state.hotspot =
-                hotspot;
+        state.entryType =
+
+            type;
 
 
-            state.latlng =
+        state.hotspotId =
 
-                options.latlng ||
+            hotspotId;
 
-                {
+
+        state.hotspot =
+
+            hotspot;
+
+
+        /*---------------------------------------------
+          12. Preserve optional polygon context
+
+          This is additive and safe.
+
+          Useful for:
+
+          TARGET range
+          TARGET compartment
+
+          and future SOURCE GIS polygons.
+
+          Only assign if these state properties are
+          supported dynamically.
+        ---------------------------------------------*/
+
+        state.polygon =
+
+            options.polygon ||
+
+            hotspot.polygon ||
+
+            null;
+
+
+        state.spatialType =
+
+            options.spatialType ||
+
+            hotspot.spatialType ||
+
+            hotspot.resolutionType ||
+
+            hotspot.resolution ||
+
+            null;
+
+
+        state.spatialName =
+
+            options.spatialName ||
+
+            hotspot.range ||
+
+            hotspot.compartment ||
+
+            hotspot.name ||
+
+            null;
+
+
+        /*---------------------------------------------
+          13. Resolve map coordinates
+
+          Priority:
+
+          Explicit Leaflet click coordinates
+              ↓
+          Hotspot coordinates
+              ↓
+          null
+
+          Aggregated polygons may not have a single
+          canonical lat/lng. The Leaflet click point
+          can therefore be used for UI positioning.
+        ---------------------------------------------*/
+
+        const optionLatLng =
+
+            options.latlng ||
+
+            null;
+
+
+        state.latlng =
+
+            optionLatLng
+
+                ? {
+
+                    lat:
+
+                        optionLatLng.lat ??
+
+                        optionLatLng.latitude ??
+
+                        null,
+
+                    lng:
+
+                        optionLatLng.lng ??
+
+                        optionLatLng.longitude ??
+
+                        null
+
+                }
+
+                : {
 
                     lat:
 
@@ -1392,90 +1795,234 @@
                 };
 
 
-            state.porKeys =
-                porKeys;
+        /*---------------------------------------------
+          14. Store complete POR context
+        ---------------------------------------------*/
+
+        state.porKeys =
+
+            porKeys;
 
 
-            state.porRelations =
-                porRelations;
+        state.porRelations =
+
+            porRelations;
 
 
-            /*
-             * Aggregate complete hotspot data.
-             */
+        /*---------------------------------------------
+          15. Aggregate complete hotspot relationship
+              data into cascade state
+
+          Expected aggregation:
+
+          PORs
+              ↓
+          Cases
+              ↓
+          Accused
+          Witnesses
+          Seizures
+              ↓
+          Seized Articles
+
+          Existing aggregation function remains the
+          authority for relationship aggregation.
+        ---------------------------------------------*/
+
+        CascadeController
+            .aggregateRelationsIntoState(
+
+                porRelations
+
+            );
+
+
+        /*---------------------------------------------
+          16. Single POR optimization
+
+          If hotspot represents exactly one POR,
+          establish POR context automatically.
+
+          IMPORTANT:
+
+          Keep level = HOTSPOT.
+
+          This allows UI to show hotspot summary and
+          cascading buttons before drilling deeper.
+        ---------------------------------------------*/
+
+        if (
+            porRelations.length ===
+                1
+        ) {
+
+            state.porRelation =
+
+                porRelations[0];
+
+
+            state.porKey =
+
+                porRelations[0]
+                    .porKey ||
+
+                porKeys[0] ||
+
+                null;
+
+
+            state.porNo =
+
+                porRelations[0]
+                    .porNo ||
+
+                null;
+
+        }
+
+
+        /*---------------------------------------------
+          17. Multiple POR hotspot
+
+          Do NOT arbitrarily select one POR.
+
+          The hotspot remains the active parent
+          context and UI can expose:
+
+              PORs
+              Cases
+              Case Details
+
+          through cascading navigation.
+        ---------------------------------------------*/
+
+        else {
+
+            state.porRelation =
+
+                null;
+
+
+            state.porKey =
+
+                null;
+
+
+            state.porNo =
+
+                null;
+
+        }
+
+
+        /*---------------------------------------------
+          18. Build canonical hotspot payload
+        ---------------------------------------------*/
+
+        const payload =
 
             CascadeController
-                .aggregateRelationsIntoState(
-                    porRelations
-                );
+                .buildHotspotPayload();
 
 
-            /*
-             * If hotspot represents exactly one POR,
-             * automatically establish POR context.
-             *
-             * We keep level HOTSPOT so UI can still show
-             * hotspot summary first.
-             */
+        /*---------------------------------------------
+          19. Dispatch OPENED event
+        ---------------------------------------------*/
 
-            if (
-                porRelations.length ===
-                1
-            ) {
-
-                state.porRelation =
-                    porRelations[0];
-
-
-                state.porKey =
-                    porRelations[0].porKey ||
-
-                    porKeys[0] ||
-
-                    null;
-
-
-                state.porNo =
-                    porRelations[0].porNo ||
-
-                    null;
-
-            }
-
-
-            const payload =
+        CascadeController
+            .dispatchEvent(
 
                 CascadeController
-                    .buildHotspotPayload();
+                    .EVENTS
+                    .OPENED,
+
+                payload
+
+            );
 
 
-            CascadeController
-                .dispatchEvent(
+        /*---------------------------------------------
+          20. Dispatch general cascade update
+        ---------------------------------------------*/
 
-                    CascadeController
-                        .EVENTS
-                        .OPENED,
-
-                    payload
-
-                );
+        CascadeController
+            .dispatchUpdated();
 
 
-            CascadeController
-                .dispatchUpdated();
+        /*---------------------------------------------
+          21. Debug
+        ---------------------------------------------*/
+
+        if (
+            Constants.DEBUG
+                ?.ENABLED
+        ) {
+
+            console.log(
+
+                "🔥 Offence Cascade Hotspot Opened",
+
+                {
+
+                    hotspotId:
+                        hotspotId,
+
+                    type:
+                        type,
+
+                    source:
+
+                        engineEntry
+
+                            ? "HEATMAP_ENGINE"
+
+                            : "SUPPLIED_HOTSPOT",
+
+                    aggregatedPolygon:
+
+                        !engineEntry &&
+                        !!suppliedHotspot,
+
+                    spatialType:
+                        state.spatialType,
+
+                    spatialName:
+                        state.spatialName,
+
+                    porCount:
+                        porKeys.length,
+
+                    relationCount:
+                        porRelations.length,
+
+                    porKeys:
+                        porKeys,
+
+                    hotspot:
+                        hotspot
+
+                }
+
+            );
+
+        }
 
 
-            return {
+        /*---------------------------------------------
+          22. Return canonical result
+        ---------------------------------------------*/
 
-                success:
-                    true,
+        return {
 
-                data:
-                    payload
+            success:
+                true,
 
-            };
+            data:
+                payload
 
         };
+
+    };
 
 
     /* =====================================================
