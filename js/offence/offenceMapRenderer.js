@@ -8364,38 +8364,110 @@ MapRenderer.createPolygonLayer =
                 );
 
 
-            MapRenderer.visible =
-                false;
+MapRenderer.visible =
+    false;
 
 
-            return true;
+// =============================================
+// RESTORE NORMAL GIS INTERACTION
+// =============================================
 
-        };
+if (
+
+    typeof window
+        .setOffenceMapInteractionMode ===
+        "function"
+
+) {
+
+    window
+        .setOffenceMapInteractionMode(
+            false
+        );
+
+}
+
+
+return true;
+
+};
 
 
     /* =====================================================
        66. SHOW
        ===================================================== */
 
-    MapRenderer.show =
-        function () {
+/* =====================================================
+   66. SHOW
+   ===================================================== */
 
-            if (
+MapRenderer.show =
+    function () {
 
-                !MapRenderer.rendered
+        let result;
 
-            ) {
 
-                return MapRenderer
+        // =============================================
+        // 1. RENDER IF NOT YET RENDERED
+        // =============================================
+
+        if (
+
+            !MapRenderer.rendered
+
+        ) {
+
+            result =
+
+                MapRenderer
                     .render();
 
-            }
+        }
+
+        else {
+
+            // =========================================
+            // 2. APPLY CURRENT SOURCE/TARGET MODE
+            // =========================================
+
+            result =
+
+                MapRenderer
+                    .applyMode();
+
+        }
 
 
-            return MapRenderer
-                .applyMode();
+        // =============================================
+        // 3. GIVE MAP INTERACTION TO OFFENCE LAYERS
+        //
+        // Normal GIS remains visible,
+        // but offence polygons receive pointer clicks.
+        // =============================================
 
-        };
+        if (
+
+            typeof window
+                .setOffenceMapInteractionMode ===
+                "function"
+
+        ) {
+
+            window
+                .setOffenceMapInteractionMode(
+                    true
+                );
+
+        }
+
+
+        // =============================================
+        // 4. RETURN ORIGINAL RESULT
+        // =============================================
+
+        return result;
+
+    };
 
 
     /* =====================================================
