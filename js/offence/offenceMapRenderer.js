@@ -2668,398 +2668,290 @@
        Actual GeoJSON Feature
        ===================================================== */
 
-    MapRenderer.getPolygonFeature =
-        function (
+/*=========================================================
+  Resolve Polygon GeoJSON
 
-            polygon
+  Supports:
+
+  1. Embedded GeoJSON
+  2. Compartment resolution through GISEntities
+  3. Range resolution through GISEntities
+
+  Return contract:
+
+      GeoJSON Feature
+          OR
+      GeoJSON FeatureCollection
+          OR
+      null
+=========================================================*/
+
+MapRenderer.getPolygonFeature =
+    function (
+
+        polygon
+
+    ) {
+
+        if (
+
+            !polygon
+
+        ) {
+
+            return null;
+
+        }
+
+
+        /*
+         * ------------------------------------------------
+         * 1. DIRECT GEOJSON FEATURE
+         * ------------------------------------------------
+         */
+
+        if (
+
+            polygon.type ===
+                "Feature" &&
+
+            polygon.geometry
+
+        ) {
+
+            return polygon;
+
+        }
+
+
+        /*
+         * ------------------------------------------------
+         * 2. DIRECT GEOJSON FEATURE COLLECTION
+         * ------------------------------------------------
+         */
+
+        if (
+
+            polygon.type ===
+                "FeatureCollection" &&
+
+            Array.isArray(
+                polygon.features
+            )
+
+        ) {
+
+            return polygon;
+
+        }
+
+
+        /*
+         * ------------------------------------------------
+         * 3. EMBEDDED FEATURE
+         * ------------------------------------------------
+         */
+
+        const embeddedCandidates = [
+
+            polygon.feature,
+
+            polygon.geoJSON,
+
+            polygon.geojson,
+
+            polygon.gisFeature
+
+        ];
+
+
+        for (
+
+            const candidate
+            of embeddedCandidates
 
         ) {
 
             if (
 
-                !polygon
-
-            ) {
-
-                return null;
-
-            }
-
-
-            /*
-             * -------------------------------------------------
-             * 1. Already a valid GeoJSON Feature
-             * -------------------------------------------------
-             */
-
-            if (
-
-                polygon.type ===
-                    "Feature" &&
-
-                polygon.geometry
-
-            ) {
-
-                return polygon;
-
-            }
-
-
-            /*
-             * -------------------------------------------------
-             * 2. Direct embedded feature
-             * -------------------------------------------------
-             */
-
-            const directFeature =
-
-                polygon.feature ||
-
-                polygon.gisFeature ||
-
-                polygon.GISFeature ||
-
-                polygon.geoJSONFeature ||
-
-                polygon.geoJsonFeature ||
-
-                null;
-
-
-            if (
-
-                directFeature &&
-
-                directFeature.type ===
-                    "Feature" &&
-
-                directFeature.geometry
-
-            ) {
-
-                return directFeature;
-
-            }
-
-
-            /*
-             * -------------------------------------------------
-             * 3. Embedded GeoJSON object
-             * -------------------------------------------------
-             */
-
-            const geoJSON =
-
-                polygon.geoJSON ||
-
-                polygon.geojson ||
-
-                polygon.geoJson ||
-
-                null;
-
-
-            if (
-
-                geoJSON
-
-            ) {
-
-                /*
-                 * Direct Feature.
-                 */
-
-                if (
-
-                    geoJSON.type ===
-                        "Feature" &&
-
-                    geoJSON.geometry
-
-                ) {
-
-                    return geoJSON;
-
-                }
-
-
-                /*
-                 * FeatureCollection containing one feature.
-                 */
-
-                if (
-
-                    geoJSON.type ===
-                        "FeatureCollection" &&
-
-                    Array.isArray(
-                        geoJSON.features
-                    ) &&
-
-                    geoJSON.features.length
-
-                ) {
-
-                    return geoJSON.features[0];
-
-                }
-
-
-                /*
-                 * Raw GeoJSON geometry.
-                 */
-
-                if (
-
-                    geoJSON.type &&
-
-                    (
-
-                        geoJSON.type ===
-                            "Polygon" ||
-
-                        geoJSON.type ===
-                            "MultiPolygon"
-
-                    ) &&
-
-                    geoJSON.coordinates
-
-                ) {
-
-                    return {
-
-                        type:
-                            "Feature",
-
-                        properties:
-                            {},
-
-                        geometry:
-                            geoJSON
-
-                    };
-
-                }
-
-            }
-
-
-            /*
-             * -------------------------------------------------
-             * 4. Direct geometry on polygon wrapper
-             * -------------------------------------------------
-             */
-
-            if (
-
-                polygon.geometry &&
+                candidate &&
 
                 (
 
-                    polygon.geometry.type ===
-                        "Polygon" ||
+                    (
+                        candidate.type ===
+                            "Feature" &&
 
-                    polygon.geometry.type ===
-                        "MultiPolygon"
+                        candidate.geometry
+                    )
+
+                    ||
+
+                    (
+                        candidate.type ===
+                            "FeatureCollection" &&
+
+                        Array.isArray(
+                            candidate.features
+                        )
+                    )
 
                 )
 
             ) {
 
-                return {
-
-                    type:
-                        "Feature",
-
-                    properties:
-
-                        polygon.properties ||
-
-                        {},
-
-                    geometry:
-
-                        polygon.geometry
-
-                };
+                return candidate;
 
             }
 
-
-            /*
-             * -------------------------------------------------
-             * 5. Determine spatial resolution type
-             * -------------------------------------------------
-             */
-
-            const spatialType =
-
-                String(
-
-                    polygon.spatialType ||
-
-                    polygon.resolutionType ||
-
-                    polygon.resolution ||
-
-                    polygon.level ||
-
-                    ""
-
-                )
-
-                    .trim()
-
-                    .toUpperCase();
+        }
 
 
-            /*
-             * -------------------------------------------------
-             * 6. Determine canonical GIS search name
-             *
-             * COMPARTMENT:
-             * Prefer explicit compartment.
-             *
-             * RANGE:
-             * Prefer explicit range.
-             *
-             * Fallback:
-             * polygon.name
-             * -------------------------------------------------
-             */
+        /*
+         * ------------------------------------------------
+         * 4. GIS ENTITIES
+         * ------------------------------------------------
+         */
 
-            let searchName =
+        const GIS =
+
+            GG.GISEntities;
+
+
+        if (
+
+            !GIS
+
+        ) {
+
+            return null;
+
+        }
+
+
+        /*
+         * Determine spatial type.
+         */
+
+        const spatialType =
+
+            String(
+
+                polygon.spatialType ||
+
+                polygon.resolutionType ||
+
+                polygon.resolution ||
+
+                polygon.type ||
+
+                ""
+
+            )
+
+                .trim()
+
+                .toUpperCase();
+
+
+        /*
+         * ------------------------------------------------
+         * 5. COMPARTMENT
+         * ------------------------------------------------
+         *
+         * Priority:
+         *
+         * explicit compartment
+         * compartmentName
+         * name
+         *
+         * Only execute when polygon is actually a
+         * compartment-level spatial entry.
+         */
+
+        if (
+
+            spatialType ===
+                "COMPARTMENT"
+
+        ) {
+
+            const compartmentName =
+
+                polygon.compartment ||
+
+                polygon.compartmentName ||
+
+                polygon.name ||
+
                 "";
 
 
             if (
 
-                spatialType ===
-                "COMPARTMENT"
+                compartmentName
 
             ) {
 
-                searchName =
+                /*
+                 * Preferred complete FeatureCollection.
+                 */
 
-                    polygon.compartment ||
+                if (
 
-                    polygon.compartmentName ||
+                    typeof GIS
+                        .searchCompartmentFeatureCollection ===
+                        "function"
 
-                    polygon.name ||
+                ) {
 
-                    "";
+                    const collection =
 
-            }
+                        GIS
+                            .searchCompartmentFeatureCollection(
 
+                                compartmentName
 
-            else if (
-
-                spatialType ===
-                "RANGE"
-
-            ) {
-
-                searchName =
-
-                    polygon.range ||
-
-                    polygon.rangeName ||
-
-                    polygon.name ||
-
-                    "";
-
-            }
+                            );
 
 
-            else {
+                    if (
 
-                searchName =
+                        collection &&
 
-                    polygon.compartment ||
+                        Array.isArray(
+                            collection.features
+                        ) &&
 
-                    polygon.compartmentName ||
+                        collection.features.length > 0
 
-                    polygon.range ||
+                    ) {
 
-                    polygon.rangeName ||
+                        return collection;
 
-                    polygon.name ||
+                    }
 
-                    "";
-
-            }
-
-
-            searchName =
-
-                String(
-
-                    searchName ||
-
-                    ""
-
-                )
-
-                    .trim();
+                }
 
 
-            if (
+                /*
+                 * Fallback single feature.
+                 */
 
-                !searchName
+                if (
 
-            ) {
+                    typeof GIS
+                        .searchCompartment ===
+                        "function"
 
-                return null;
-
-            }
-
-
-            /*
-             * -------------------------------------------------
-             * 7. Resolve through canonical GreenGuard
-             *    GISEntities.
-             *
-             * Example:
-             *
-             * NMT
-             *   ↓
-             * GISEntities.search("NMT")
-             *   ↓
-             * Range GeoJSON Feature
-             *
-             * WRVK
-             *   ↓
-             * GISEntities.search("WRVK")
-             *   ↓
-             * Range GeoJSON Feature
-             * -------------------------------------------------
-             */
-
-            const GISEntities =
-
-                GG.GISEntities;
-
-
-            if (
-
-                GISEntities &&
-
-                typeof GISEntities.search ===
-                    "function"
-
-            ) {
-
-                try {
+                ) {
 
                     const feature =
 
-                        GISEntities
-                            .search(
+                        GIS
+                            .searchCompartment(
 
-                                searchName
+                                compartmentName
 
                             );
 
@@ -3070,327 +2962,292 @@
 
                     ) {
 
-                        /*
-                         * Standard GeoJSON Feature.
-                         */
-
-                        if (
-
-                            feature.type ===
-                                "Feature" &&
-
-                            feature.geometry
-
-                        ) {
-
-                            return feature;
-
-                        }
-
-
-                        /*
-                         * Wrapper containing feature.
-                         */
-
-                        if (
-
-                            feature.feature &&
-
-                            feature.feature.type ===
-                                "Feature" &&
-
-                            feature.feature.geometry
-
-                        ) {
-
-                            return feature.feature;
-
-                        }
-
-
-                        /*
-                         * Object containing geometry.
-                         */
-
-                        if (
-
-                            feature.geometry
-
-                        ) {
-
-                            return {
-
-                                type:
-                                    "Feature",
-
-                                properties:
-
-                                    feature.properties ||
-
-                                    {},
-
-                                geometry:
-
-                                    feature.geometry
-
-                            };
-
-                        }
+                        return feature;
 
                     }
-
-                }
-
-                catch (
-                    error
-                ) {
-
-                    MapRenderer.debug(
-
-                        "GISEntities polygon lookup failed",
-
-                        {
-
-                            spatialType:
-                                spatialType,
-
-                            searchName:
-                                searchName,
-
-                            error:
-                                error
-
-                        }
-
-                    );
 
                 }
 
             }
 
+        }
+
+
+        /*
+         * ------------------------------------------------
+         * 6. RANGE
+         * ------------------------------------------------
+         *
+         * HeatmapEngine aggregated range entries:
+         *
+         * {
+         *     key: "RANGE::NMT",
+         *     spatialType: "RANGE",
+         *     range: "NMT",
+         *     name: "NMT"
+         * }
+         *
+         * Resolve:
+         *
+         * NMT
+         *   ↓
+         * Nimati
+         *   ↓
+         * FeatureCollection containing all
+         * Nimati GIS features.
+         */
+
+        if (
+
+            spatialType ===
+                "RANGE"
+
+        ) {
+
+            let rangeName =
+
+                polygon.range ||
+
+                polygon.rangeName ||
+
+                polygon.name ||
+
+                "";
+
 
             /*
-             * -------------------------------------------------
-             * 8. Final fallback:
-             *    search raw GreenGuard GIS collections.
+             * Defensive fallback:
              *
-             * This protects the renderer if GISEntities has
-             * not yet been built or if its index is stale.
-             * -------------------------------------------------
+             * RANGE::NMT
+             *      ↓
+             * NMT
              */
 
-            const normalize =
+            if (
 
-                function (
+                !rangeName &&
 
-                    value
+                typeof polygon.key ===
+                    "string" &&
+
+                polygon.key
+                    .toUpperCase()
+                    .startsWith(
+                        "RANGE::"
+                    )
+
+            ) {
+
+                rangeName =
+
+                    polygon.key
+                        .substring(
+                            7
+                        );
+
+            }
+
+
+            if (
+
+                rangeName
+
+            ) {
+
+                /*
+                 * Preferred:
+                 *
+                 * Return complete range FeatureCollection.
+                 */
+
+                if (
+
+                    typeof GIS
+                        .searchRangeFeatureCollection ===
+                        "function"
 
                 ) {
 
+                    const collection =
+
+                        GIS
+                            .searchRangeFeatureCollection(
+
+                                rangeName
+
+                            );
+
+
                     if (
 
-                        typeof GG.normalizeName ===
-                            "function"
+                        collection &&
+
+                        Array.isArray(
+                            collection.features
+                        ) &&
+
+                        collection.features.length > 0
 
                     ) {
 
-                        return GG
-                            .normalizeName(
-                                value
-                            );
+                        return collection;
 
                     }
 
-
-                    return String(
-
-                        value ||
-
-                        ""
-
-                    )
-
-                        .toUpperCase()
-
-                        .replace(
-
-                            /[^A-Z0-9]/g,
-
-                            ""
-
-                        );
-
-                };
+                }
 
 
-            const wantedKey =
+                /*
+                 * Fallback:
+                 *
+                 * Build FeatureCollection from grouped
+                 * range features.
+                 */
 
-                normalize(
+                if (
 
-                    searchName
+                    typeof GIS
+                        .searchRangeFeatures ===
+                        "function"
+
+                ) {
+
+                    const features =
+
+                        GIS
+                            .searchRangeFeatures(
+
+                                rangeName
+
+                            );
+
+
+                    if (
+
+                        Array.isArray(
+                            features
+                        ) &&
+
+                        features.length > 0
+
+                    ) {
+
+                        return {
+
+                            type:
+                                "FeatureCollection",
+
+                            features:
+                                features
+
+                        };
+
+                    }
+
+                }
+
+
+                /*
+                 * Final fallback:
+                 *
+                 * Existing single-feature range lookup.
+                 */
+
+                if (
+
+                    typeof GIS
+                        .searchRange ===
+                        "function"
+
+                ) {
+
+                    const feature =
+
+                        GIS
+                            .searchRange(
+
+                                rangeName
+
+                            );
+
+
+                    if (
+
+                        feature
+
+                    ) {
+
+                        return feature;
+
+                    }
+
+                }
+
+            }
+
+        }
+
+
+        /*
+         * ------------------------------------------------
+         * 7. GENERIC GIS FALLBACK
+         * ------------------------------------------------
+         *
+         * Preserve compatibility for older polygon
+         * structures.
+         */
+
+        const genericName =
+
+            polygon.compartment ||
+
+            polygon.compartmentName ||
+
+            polygon.range ||
+
+            polygon.rangeName ||
+
+            polygon.name ||
+
+            "";
+
+
+        if (
+
+            genericName &&
+
+            typeof GIS.search ===
+                "function"
+
+        ) {
+
+            const feature =
+
+                GIS.search(
+
+                    genericName
 
                 );
 
 
-            /*
-             * COMPARTMENT fallback.
-             */
-
             if (
 
-                spatialType ===
-                "COMPARTMENT"
+                feature &&
+
+                feature.geometry
 
             ) {
 
-                const compartments =
-
-                    window
-                        .allCompartmentFeatures ||
-
-                    [];
-
-
-                for (
-
-                    const feature
-                    of compartments
-
-                ) {
-
-                    const properties =
-
-                        feature.properties ||
-
-                        {};
-
-
-                    const candidate =
-
-                        properties.compartment ||
-
-                        properties.name ||
-
-                        properties.Compartment ||
-
-                        properties.NAME ||
-
-                        "";
-
-
-                    if (
-
-                        normalize(
-                            candidate
-                        ) ===
-                        wantedKey
-
-                    ) {
-
-                        return feature;
-
-                    }
-
-                }
+                return feature;
 
             }
 
-
-            /*
-             * RANGE fallback.
-             */
-
-            if (
-
-                spatialType ===
-                "RANGE"
-
-            ) {
-
-                const gisFeatures =
-
-                    window
-                        .allGISFeatures ||
-
-                    [];
+        }
 
 
-                for (
+        return null;
 
-                    const feature
-                    of gisFeatures
-
-                ) {
-
-                    const properties =
-
-                        feature.properties ||
-
-                        {};
-
-
-                    const candidate =
-
-                        properties.range ||
-
-                        properties.Range ||
-
-                        properties.RANGE ||
-
-                        properties.rangeName ||
-
-                        properties.name ||
-
-                        properties.NAME ||
-
-                        "";
-
-
-                    if (
-
-                        normalize(
-                            candidate
-                        ) ===
-                        wantedKey
-
-                    ) {
-
-                        return feature;
-
-                    }
-
-                }
-
-            }
-
-
-            /*
-             * No valid GIS feature found.
-             */
-
-            MapRenderer.debug(
-
-                "Polygon GeoJSON unresolved",
-
-                {
-
-                    key:
-                        polygon.key,
-
-                    spatialType:
-                        spatialType,
-
-                    searchName:
-                        searchName
-
-                }
-
-            );
-
-
-            return null;
-
-        };
+    };
 
 
     /* =====================================================
@@ -5580,105 +5437,185 @@
        The renderer does NOT search GISEntities again.
        ===================================================== */
 
-    MapRenderer.createPolygonLayer =
-        function (
+/*=========================================================
+  Create Polygon Layer
+=========================================================*/
 
-            entry,
+MapRenderer.createPolygonLayer =
+    function (
 
-            type,
+        polygon,
 
-            maxWeight = 1
+        type
+
+    ) {
+
+        if (
+
+            !polygon ||
+
+            typeof window.L ===
+                "undefined"
+
+        ) {
+
+            return null;
+
+        }
+
+
+        const geoJSON =
+
+            MapRenderer
+                .getPolygonFeature(
+
+                    polygon
+
+                );
+
+
+        if (
+
+            !geoJSON
 
         ) {
 
             if (
 
-                !entry ||
-
-                typeof window.L ===
-                    "undefined"
+                Constants.DEBUG
+                    ?.ENABLED
 
             ) {
 
-                return null;
+                console.warn(
+
+                    "[OffenceMapRenderer] Polygon GIS resolution failed",
+
+                    {
+
+                        key:
+                            polygon.key,
+
+                        name:
+                            polygon.name,
+
+                        range:
+                            polygon.range,
+
+                        compartment:
+                            polygon.compartment,
+
+                        spatialType:
+                            polygon.spatialType
+
+                    }
+
+                );
 
             }
 
 
-            const feature =
+            return null;
 
-                MapRenderer
-                    .getPolygonFeature(
-                        entry
-                    );
+        }
 
 
-            if (
+        /*
+         * Validate GeoJSON contract.
+         */
 
-                !MapRenderer
-                    .isValidPolygonFeature(
-                        feature
-                    )
+        const validGeoJSON =
 
-            ) {
+            (
 
-                return null;
+                geoJSON.type ===
+                    "Feature" &&
 
-            }
+                geoJSON.geometry
 
+            )
 
-            const normalizedType =
+            ||
 
-                String(
+            (
 
-                    type ||
+                geoJSON.type ===
+                    "FeatureCollection" &&
 
-                    ""
+                Array.isArray(
+                    geoJSON.features
+                ) &&
 
-                )
+                geoJSON.features.length > 0
 
-                    .trim()
-
-                    .toUpperCase();
-
-
-            const resolution =
-
-                MapRenderer
-                    .getPolygonResolution(
-                        entry
-                    );
+            );
 
 
-            const style =
+        if (
 
-                normalizedType ===
-                    "TARGET"
+            !validGeoJSON
 
-                    ? MapRenderer
-                        .createTargetPolygonStyle(
+        ) {
 
-                            entry,
+            return null;
 
-                            maxWeight
-
-                        )
-
-                    : MapRenderer
-                        .createSourcePolygonStyle(
-
-                            entry,
-
-                            maxWeight
-
-                        );
+        }
 
 
-            const geoJsonLayer =
+        const normalizedType =
+
+            String(
+
+                type ||
+
+                polygon.type ||
+
+                ""
+
+            )
+
+                .trim()
+
+                .toUpperCase();
+
+
+        /*
+         * Use your existing source/target style here
+         * if already defined elsewhere.
+         *
+         * These defaults are intentionally simple.
+         */
+
+        const isSource =
+
+            normalizedType ===
+                "SOURCE";
+
+
+        const style = {
+
+            weight:
+                2,
+
+            opacity:
+                0.85,
+
+            fillOpacity:
+                0.35
+
+        };
+
+
+        let layer;
+
+
+        try {
+
+            layer =
 
                 L.geoJSON(
 
-                    feature,
+                    geoJSON,
 
                     {
 
@@ -5694,67 +5631,38 @@
 
                             function (
 
-                                geoFeature,
+                                feature,
 
-                                layer
+                                featureLayer
 
                             ) {
 
-                                layer.__offencePolygon =
-                                    entry;
+                                /*
+                                 * Store canonical offence
+                                 * polygon metadata on every
+                                 * child Leaflet feature.
+                                 */
+
+                                featureLayer
+                                    .offencePolygon =
+                                    polygon;
 
 
-                                layer.__offenceFeature =
-                                    geoFeature;
+                                featureLayer
+                                    .offenceType =
+                                    isSource
+
+                                        ? "SOURCE"
+
+                                        : "TARGET";
 
 
-                                layer.__offenceType =
-                                    normalizedType;
+                                /*
+                                 * Preserve hotspot click
+                                 * drill-down.
+                                 */
 
-
-                                layer.__offenceResolution =
-                                    resolution;
-
-
-                                const tooltip =
-
-                                    MapRenderer
-                                        .buildPolygonTooltip(
-
-                                            entry,
-
-                                            normalizedType
-
-                                        );
-
-
-                                if (
-
-                                    tooltip &&
-
-                                    typeof layer
-                                        .bindTooltip ===
-                                    "function"
-
-                                ) {
-
-                                    layer.bindTooltip(
-
-                                        tooltip,
-
-                                        {
-
-                                            sticky:
-                                                true
-
-                                        }
-
-                                    );
-
-                                }
-
-
-                                layer.on(
+                                featureLayer.on(
 
                                     "click",
 
@@ -5766,66 +5674,44 @@
 
                                         if (
 
-                                            event
-                                                ?.originalEvent
+                                            typeof MapRenderer
+                                                .handlePolygonClick ===
+                                                "function"
 
                                         ) {
 
-                                            L.DomEvent
-                                                .stopPropagation(
+                                            MapRenderer
+                                                .handlePolygonClick(
+
+                                                    polygon,
 
                                                     event
-                                                        .originalEvent
 
                                                 );
 
                                         }
 
+                                        else if (
 
-                                        const primaryHotspot =
+                                            GG.Offence
+                                                ?.UIController &&
 
-                                            MapRenderer
-                                                .getPolygonPrimaryHotspot(
-                                                    entry
+                                            typeof GG.Offence
+                                                .UIController
+                                                .handleHotspotClick ===
+                                                "function"
+
+                                        ) {
+
+                                            GG.Offence
+                                                .UIController
+                                                .handleHotspotClick(
+
+                                                    polygon
+
                                                 );
 
-
-                                        MapRenderer
-                                            .handleHotspotClick(
-
-                                                primaryHotspot ||
-
-                                                entry,
-
-                                                normalizedType,
-
-                                                {
-
-                                                    resolution:
-                                                        resolution,
-
-                                                    polygonEntry:
-                                                        entry,
-
-                                                    feature:
-                                                        geoFeature,
-
-                                                    leafletEvent:
-                                                        event,
-
-                                                    layer:
-                                                        layer,
-
-                                                    porKeys:
-
-                                                        MapRenderer
-                                                            .getPolygonPorKeys(
-                                                                entry
-                                                            )
-
-                                                }
-
-                                            );
+                                        }
 
                                     }
 
@@ -5837,26 +5723,67 @@
 
                 );
 
+        }
 
-            /*
-             * Preserve metadata on the outer GeoJSON layer.
-             */
+        catch (
 
-            geoJsonLayer.__offencePolygon =
-                entry;
+            error
+
+        ) {
+
+            console.error(
+
+                "[OffenceMapRenderer] Polygon layer creation failed",
+
+                {
+
+                    polygon:
+                        polygon,
+
+                    type:
+                        normalizedType,
+
+                    error:
+                        error
+
+                }
+
+            );
 
 
-            geoJsonLayer.__offenceType =
-                normalizedType;
+            return null;
+
+        }
 
 
-            geoJsonLayer.__offenceResolution =
-                resolution;
+        /*
+         * Store metadata on parent GeoJSON layer too.
+         */
+
+        layer.offencePolygon =
+
+            polygon;
 
 
-            return geoJsonLayer;
+        layer.offenceType =
 
-        };
+            normalizedType;
+
+
+        layer.offenceSpatialType =
+
+            polygon.spatialType ||
+
+            polygon.resolutionType ||
+
+            polygon.resolution ||
+
+            "";
+
+
+        return layer;
+
+    };
 
 
     /* =====================================================
